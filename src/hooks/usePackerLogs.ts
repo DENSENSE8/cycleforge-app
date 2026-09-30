@@ -7,6 +7,25 @@ import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels'
 import { useAblyChannel } from './useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 
+/** One order line in a scanned package — the Shipped card's line (`fetchPackerLogRows` `package_lines`). */
+export interface PackageLine {
+  id: number;
+  /** The line's marketplace order number and channel — the card's identity when the scan matched no order itself. */
+  order_id: string | null;
+  account_source: string | null;
+  sku: string | null;
+  product_title: string | null;
+  zoho_item_title: string | null;
+  catalog_product_title: string | null;
+  quantity: string | null;
+  condition: string | null;
+  sale_amount: string | number | null;
+  currency: string | null;
+  zoho_item_id: string | null;
+  zoho_image_document_id: string | null;
+  catalog_image_url: string | null;
+}
+
 export interface PackerRecord {
   id: number;
   /** `packer_logs.id` when present; DELETE uses this (not station_activity_logs.id). */
@@ -32,8 +51,13 @@ export interface PackerRecord {
   package_tracking?: string | null;
   /** Order lines owning the package (= record items.length); 0 = unmatched box. */
   package_line_count?: number | null;
+  /** Those lines, lowest `orders.id` first (the record's primary line); null = no package / no line. */
+  package_lines?: PackageLine[] | null;
   account_source: string | null;
   product_title: string | null;
+  /** The matched order line's sale (`o.sale_amount` / `o.currency`). */
+  sale_amount?: string | number | null;
+  currency?: string | null;
   quantity?: string | null;
   item_number?: string | null;
   condition: string | null;

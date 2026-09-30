@@ -7,31 +7,35 @@ import { format } from 'date-fns';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { PomodoroTimer } from '@/components/ui/PomodoroTimer';
-import { Bell, Camera, Check, Play, X } from '@/components/Icons';
+import { Bell, Camera, Check, Maximize2, Play, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
-import {
-  MobileSwipePhotoViewer,
-  type SwipePhotoSlide,
-} from '@/components/mobile/station/MobileSwipePhotoViewer';
+import { MOBILE_ROW_CORNER } from '@/design-system/tokens/radius';
+import type { TaskStatus } from '@/design-system/tokens/task-status';
 import { agendaRecordState } from '@/lib/daily/agenda-record-state';
 import { dailyAgendaFromTask } from '@/lib/daily/daily-agenda-row';
-import { isTaskDeskOpen, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
+import { isTaskDeskOpen, taskDeskTicketNumber, taskDeskTitle, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { taskDeadlineFact, taskRecordLabel } from '@/lib/tasks/task-row-facts';
-import { useStartTask, useToggleTaskDone } from '@/lib/tasks/use-my-tasks';
+import { taskStatusOf } from '@/lib/tasks/task-status';
+import { useSetTaskStatus } from '@/lib/tasks/use-my-tasks';
 import { useTaskDocuments, useTaskLinks, useTaskMedia } from '@/lib/tasks/use-task-workspace';
+import { TASK_MEDIA_ACCEPT, taskLessons, taskStills, useLessonPlayer } from '@/lib/tasks/task-media-lessons';
 import { useRecordView } from '@/lib/pomodoro/use-record-view';
 import { cn } from '@/utils/_cn';
 import {
   TASK_SECTION_LABEL,
   TaskDocumentList,
   TaskDocumentView,
+  TaskEmailLinks,
   TaskLinkDoors,
-  TaskMediaGrid,
-  taskMediaTimeline,
 } from './MobileTaskSections';
-import { MediaLinkField, MediaLinkList } from './MobileTaskMediaLinks';
+import { MobileTaskMedia } from './MobileTaskMedia';
+import { MobileTaskMediaFeature } from './MobileTaskMediaFeature';
+import { MobileTaskStatus } from './MobileTaskStatus';
+import { MobileTaskFollowUps } from './MobileTaskFollowUps';
+import { MobileTaskTeam } from './MobileTaskTeam';
+import { MobileTaskAlert } from './MobileTaskAlert';
 
 const QUIET = 'text-role-caption text-text-muted';
 
@@ -119,12 +123,18 @@ function MobileTaskBody({
   const links = useTaskLinks(row.id);
   const media = useTaskMedia(row.id);
   const docs = useTaskDocuments(row.id);
-  const toggle = useToggleTaskDone();
-  const start = useStartTask();
+  const setStatus = useSetTaskStatus();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const lessons = useMemo(() => taskLessons(media.videos, media.links), [media.videos, media.links]);
+  const stills = useMemo(() => taskStills(media.photos, media.links), [media.photos, media.links]);
+  // The sheet's ONE player: it leads the scroll, and Media's lesson rows drive it.
+  const player = useLessonPlayer(lessons, !media.loading);
+  const playerRef = useRef<HTMLDivElement>(null);
+  const mediaRef = useRef<HTMLParagraphElement>(null);
+
   const [docId, setDocId] = useState<number | null>(null);
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [briefOpen, setBriefOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Stepping into (or back out of) a document starts at its top, not wherever
   // the task's scroll happened to be.
@@ -132,28 +142,19 @@ function MobileTaskBody({
     scrollRef.current?.scrollTo({ top: 0 });
   }, [docId]);
 
-  const timeline = useMemo(
-    () => taskMediaTimeline(media.photos, media.videos, media.links),
-    [media.photos, media.videos, media.links],
-  );
-  const slides = useMemo<SwipePhotoSlide[]>(
-    () =>
-      timeline.map((item) =>
-        item.kind === 'photo'
-          ? { id: `p${item.photo.id}`, previewUrl: item.photo.url, kind: 'photo' }
-          : item.kind === 'video'
-            ? { id: `v${item.video.id}`, previewUrl: item.video.url, kind: 'video' }
-            : { id: `l${item.link.id}`, previewUrl: item.link.embedUrl, kind: 'photo' },
-      ),
-    [timeline],
-  );
-
   const state = agendaRecordState(dailyAgendaFromTask(row), nowMs, true);
   const due = taskDeadlineFact(row.deadlineAtMs, nowMs);
+  const status = taskStatusOf(row);
   const open = isTaskDeskOpen(row.status);
   const notStarted = open && row.status !== 'IN_PROGRESS' && row.startedAtMs == null;
-  const pending = toggle.isPending || start.isPending;
-  const verbError = toggle.error ?? start.error;
+  const pending = setStatus.isPending;
+  const verbError = setStatus.error;
+
+  const setTo = (target: TaskStatus) => {
+    if (target === 'CANCELED' && !window.confirm(`Cancel “${taskDeskTitle(row)}”? A canceled task cannot be reopened.`)) return;
+    // A canceled task leaves the viewer's list, so the sheet goes with it.
+    setStatus.mutate({ row, target }, target === 'CANCELED' ? { onSuccess: onClose } : undefined);
+  };
 
   /*
    * ONE primary (SURFACE_LAW R2): Start while nobody has picked it up, then
@@ -161,15 +162,15 @@ function MobileTaskBody({
    * the row striking through on the list is the answer to "did it take?".
    */
   const primary = notStarted
-    ? { label: pending ? 'Starting…' : 'Start', icon: <Play aria-hidden className="h-5 w-5" />, run: () => start.mutate(row.id) }
+    ? { label: pending ? 'Starting…' : 'Start', icon: <Play aria-hidden className="h-5 w-5" />, run: () => setTo('IN_PROGRESS') }
     : open
       ? {
           label: pending ? 'Saving…' : 'Mark done',
           icon: <Check aria-hidden className="h-5 w-5" />,
-          run: () => toggle.mutate({ taskId: row.id, done: true }, { onSuccess: onClose }),
+          run: () => setStatus.mutate({ row, target: 'DONE' }, { onSuccess: onClose }),
         }
       : row.status === 'DONE'
-        ? { label: pending ? 'Saving…' : 'Reopen', icon: null, run: () => toggle.mutate({ taskId: row.id, done: false }) }
+        ? { label: pending ? 'Saving…' : 'Reopen', icon: null, run: () => setTo('TODO') }
         : null;
 
   const uploading = media.uploading;
@@ -186,7 +187,7 @@ function MobileTaskBody({
       <input
         ref={fileRef}
         type="file"
-        accept="image/*,video/*"
+        accept={TASK_MEDIA_ACCEPT}
         multiple
         className="sr-only"
         tabIndex={-1}
@@ -205,7 +206,18 @@ function MobileTaskBody({
           {state.word}
         </LifecycleCode>
         {due ? (
-          <span className={cn('text-role-micro', due.overdue && open ? 'text-text-danger' : 'text-text-muted')}>
+          <span
+            className={cn(
+              'text-role-micro',
+              !open
+                ? 'text-text-muted'
+                : due.overdue
+                  ? 'text-text-danger'
+                  : due.urgent
+                    ? 'font-semibold text-orange-700 dark:text-orange-300'
+                    : 'text-text-muted',
+            )}
+          >
             {due.text}
           </span>
         ) : null}
@@ -216,10 +228,10 @@ function MobileTaskBody({
           </span>
         ) : null}
       </div>
-      <div className="border-b border-border-hairline px-1 py-2 text-role-caption text-text-muted" data-testid="mobile-task-team">
-        <span className="font-semibold text-text-default">Team: </span>
-        {row.assignees.map((person, index) => `${person.name}${index === 0 ? ' (lead)' : ''}`).join(', ')}
-      </div>
+      <MobileTaskStatus status={status} pending={pending} onSet={setTo} />
+      <MobileTaskTeam taskId={row.id} people={row.assignees} />
+      {/* R7 — the Alert verb line, the desk's Alert twin. */}
+      <MobileTaskAlert taskId={row.id} people={row.assignees} ticketNumber={taskDeskTicketNumber(row)} />
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-4">
         {docId != null ? (
@@ -228,26 +240,67 @@ function MobileTaskBody({
           </div>
         ) : (
           <>
-            <p className={TASK_SECTION_LABEL}>Instructions</p>
-            {row.note ? <MarkdownRenderer content={row.note} /> : <p className={QUIET}>No instructions written.</p>}
-
-            <p className={TASK_SECTION_LABEL}>Media</p>
             {media.loading ? (
-              <p className={QUIET}>Loading photos and videos…</p>
-            ) : timeline.length > 0 ? (
-              <TaskMediaGrid items={timeline} onOpen={setViewerIndex} />
+              row.photoCount + row.videoCount > 0 ? (
+                <div
+                  className={cn(
+                    'mt-3 w-full animate-pulse bg-surface-sunken',
+                    row.videoCount > 0 ? 'aspect-video' : 'h-14',
+                    MOBILE_ROW_CORNER,
+                  )}
+                />
+              ) : null
             ) : (
-              <p className={QUIET}>No photos or videos yet.</p>
-            )}
-            <MediaLinkField onAdd={media.addLink.mutateAsync} />
-            {media.links.length > 0 ? (
-              <MediaLinkList
-                links={media.links}
-                removingId={media.removeLink.isPending ? media.removeLink.variables ?? null : null}
-                onUpdate={(link, patch) => media.updateLink.mutateAsync({ id: link.id, ...patch })}
-                onRemove={(link) => media.removeLink.mutate(link.id)}
+              <MobileTaskMediaFeature
+                lessons={lessons}
+                stills={stills}
+                player={player}
+                playerRef={playerRef}
+                onShowAll={() => mediaRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
               />
-            ) : null}
+            )}
+
+            <div className="flex items-end justify-between gap-2">
+              <p className={TASK_SECTION_LABEL}>Brief</p>
+              {row.note ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mb-1"
+                  icon={<Maximize2 aria-hidden className="h-4 w-4" />}
+                  onClick={() => setBriefOpen(true)}
+                  data-testid="mobile-task-brief-expand"
+                >
+                  Expand
+                </Button>
+              ) : null}
+            </div>
+            {row.note ? <MarkdownRenderer content={row.note} /> : <p className={QUIET}>No brief written.</p>}
+
+            <p className={TASK_SECTION_LABEL}>Follow-ups</p>
+            <MobileTaskFollowUps taskId={row.id} ticketNumber={taskDeskTicketNumber(row)} nowMs={nowMs} />
+
+            <p ref={mediaRef} className={cn(TASK_SECTION_LABEL, 'scroll-mt-2')}>
+              Media
+            </p>
+            <MobileTaskMedia
+              lessons={lessons}
+              stills={stills}
+              playingKey={player.current?.key ?? null}
+              loading={media.loading}
+              uploading={media.uploading}
+              problems={media.problems}
+              onDismissProblems={media.dismissProblems}
+              onPick={() => fileRef.current?.click()}
+              onPlay={(lessonKey) => {
+                player.play(lessonKey);
+                playerRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              }}
+              onAddLink={media.addLink.mutateAsync}
+              onRenameLink={(id, title) => media.updateLink.mutateAsync({ id, title })}
+              onRemoveLink={(id) => media.removeLink.mutate(id)}
+              onRemoveVideo={(id) => media.removeVideo.mutate(id)}
+            />
 
             <p className={TASK_SECTION_LABEL}>Documents</p>
             {docs.loading ? (
@@ -260,6 +313,7 @@ function MobileTaskBody({
 
             <p className={TASK_SECTION_LABEL}>Linked records</p>
             <TaskLinkDoors row={row} links={links.links} loading={links.loading} canOpenTickets={canOpenTickets} />
+            <TaskEmailLinks taskId={row.id} />
           </>
         )}
       </div>
@@ -293,12 +347,13 @@ function MobileTaskBody({
         </Button>
       </div>
 
-      <MobileSwipePhotoViewer
-        slides={slides}
-        open={viewerIndex != null}
-        initialIndex={viewerIndex ?? 0}
-        onClose={() => setViewerIndex(null)}
-      />
+      {/* The phone's reader: the same markdown, full height, nothing else on it. */}
+      <BottomSheet open={briefOpen} onClose={() => setBriefOpen(false)} title="Brief" forceVariant="sheet" fullScreen level={1}>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4" data-testid="mobile-task-brief-reader">
+          <p className="pb-3 text-role-caption text-text-muted">{taskDeskTitle(row)}</p>
+          <MarkdownRenderer content={row.note ?? ''} />
+        </div>
+      </BottomSheet>
     </div>
   );
 }

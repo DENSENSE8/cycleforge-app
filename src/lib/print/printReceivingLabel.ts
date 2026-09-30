@@ -155,7 +155,7 @@ function receivingLabelMatrix(payload: ReceivingLabelPayload): PrintMatrix {
   });
 }
 
-/** The string actually encoded in the carton DataMatrix — a platform Digital Link (`https://{slug}.app.cycleforge.ai/m/r/{id}`) when the… */
+/** The string actually encoded in the carton DataMatrix — a platform Digital Link (`https://{slug}.app.cycleforge.ai/m/r/{id}/qc`) when the… */
 export function resolveReceivingQrValue(payload: ReceivingLabelPayload): string {
   return receivingLabelMatrix(payload).value;
 }

@@ -1,13 +1,18 @@
 'use client';
 
-/** Testing Units display — the per-unit **verdict** surface on the right-edge push column ({@link StationDisplaysPushStack}), sibling of… */
+/**
+ * Testing Units display — the right-edge push column ({@link StationDisplaysPushStack}):
+ * the line's unit strip, then the selected unit as the shared QC unit record
+ * (`useQcUnitRecord` → `useRecordSlot(…, 'qc-record')` → `RecordView`) —
+ * verdict verbs (P / T / F) in its header, the bench (session, readings, next
+ * steps) under the unit.
+ */
 
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
-import {
-  TestingStatusPills,
-  unitStatusToVerdict,
-} from '@/components/receiving/workspace/TestingStatusPills';
 import { QcUnitBench } from '@/components/qc/QcUnitBench';
+import { useQcUnitRecord } from '@/components/qc/qc-unit-record';
+import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
+import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import type { UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
@@ -35,6 +40,16 @@ export function TestingUnitsDisplay({
 }) {
   const serials = (row.serials ?? []) as ActiveRowSerial[];
   const expected = row.quantity_expected ?? null;
+  const active = row.id != null && c.activeSerial?.id != null && c.activeSerial.id > 0 ? c.activeSerial : null;
+  const qc = useQcUnitRecord(active?.id ?? null, {
+    // Keyed so a unit switch drops the last unit's triage list and form drafts.
+    bench: active ? <QcUnitBench key={active.id} unitId={active.id} unitStatus={active.current_status} /> : undefined,
+    onRecorded: () => {
+      void c.refreshLineWithSerials(row.id);
+      window.dispatchEvent(new CustomEvent('testing-result-recorded'));
+    },
+  });
+  const slot = useRecordSlot(qc.record?.model ?? null, qc.record?.verbs ?? [], active ? `SN ${active.serial_number} actions` : 'Unit actions', 'qc-record');
 
   if (row.id == null) {
     return (
@@ -43,8 +58,6 @@ export function TestingUnitsDisplay({
       </p>
     );
   }
-
-  const active = c.activeSerial?.id != null && c.activeSerial.id > 0 ? c.activeSerial : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-0 px-0" data-testid="testing-units-display">
@@ -88,24 +101,20 @@ export function TestingUnitsDisplay({
       </div>
 
       {active ? (
-        // The selected unit's bench — session, readings, next steps. Keyed so a
-        // unit switch drops the last unit's triage list and form drafts.
-        <div className="min-h-0 flex-1 overflow-y-auto border-t border-mode-rule">
-          <p className="px-3 pt-2.5 font-mono text-role-caption font-semibold text-mode-ink">
-            SN {active.serial_number}
-          </p>
-          <QcUnitBench
-            key={active.id}
-            unitId={active.id}
-            unitStatus={active.current_status}
-            verdictActions={
-              <TestingStatusPills
-                value={unitStatusToVerdict(active.current_status)}
-                onChange={(next) => c.requestSlotVerdict(row.id, active, next)}
-                disabled={c.saving}
-              />
-            }
-          />
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t border-mode-rule" data-testid="testing-unit-record">
+          {slot ? (
+            <>
+              <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 border-b border-mode-rule px-3 py-2 font-mono text-role-caption font-semibold text-mode-ink">
+                <span className="min-w-0 overflow-x-auto">{slot.title}</span>
+                <span className="ml-auto min-w-0">{slot.actions}</span>
+              </div>
+              {slot.view}
+            </>
+          ) : (
+            <EvidenceNotice tone={qc.error ? 'warn' : undefined}>
+              {qc.error ? `SN ${active.serial_number} could not be read — ${qc.error}` : `Reading SN ${active.serial_number}…`}
+            </EvidenceNotice>
+          )}
         </div>
       ) : null}
     </div>

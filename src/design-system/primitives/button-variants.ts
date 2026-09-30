@@ -13,12 +13,14 @@ export const BUTTON_VARIANTS = {
   danger: 'bg-rose-600 text-white shadow-sm shadow-rose-600/25 hover:bg-rose-500 active:bg-rose-700',
   dangerSoft:
     'bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100 active:bg-rose-200',
+  /** White on amber-600 / -500 read 3.2 / 2.2:1 — the fill starts at -700 (≥4.5:1) and only deepens on hover/press. */
   warning:
-    'bg-amber-600 text-white shadow-sm shadow-amber-600/25 hover:bg-amber-500 active:bg-amber-700',
+    'bg-amber-700 text-white shadow-sm shadow-amber-700/25 hover:bg-amber-800 active:bg-amber-900',
   yellow:
     'bg-yellow-400 text-yellow-950 shadow-sm shadow-yellow-400/30 hover:bg-yellow-300 active:bg-yellow-500',
+  /** White on emerald-600 / -500 read 3.8 / 2.5:1 — the fill starts at -700 (≥4.5:1) and only deepens on hover/press. */
   success:
-    'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
+    'bg-emerald-700 text-white shadow-sm shadow-emerald-700/25 hover:bg-emerald-800 active:bg-emerald-900',
   execute:
     'bg-surface-hover text-text-default hover:bg-surface-sunken active:bg-surface-sunken',
   /** `glass` is chrome ON LIVE MEDIA — a control riding a blurred bar over a camera feed or a photo. */
@@ -39,8 +41,8 @@ export type ButtonVariant = keyof typeof BUTTON_VARIANTS;
  */
 export const BUTTON_DEPTH_EDGE: Partial<Record<ButtonVariant, string>> = {
   primary: 'shadow-blue-800',
-  success: 'shadow-emerald-800',
+  success: 'shadow-emerald-900',
   danger: 'shadow-rose-800',
-  warning: 'shadow-amber-800',
+  warning: 'shadow-amber-900',
   yellow: 'shadow-yellow-600',
 };

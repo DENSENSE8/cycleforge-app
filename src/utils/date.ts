@@ -234,9 +234,12 @@ function getPstYmdFromDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Built once: constructing an Intl.DateTimeFormat costs far more than formatting with one, and rails call this per row. */
+let pstPartsFormatter: Intl.DateTimeFormat | null = null;
+
 export function formatPSTTimestamp(date?: Date): string {
   const base = date ?? new Date();
-  const parts = new Intl.DateTimeFormat('en-US', {
+  pstPartsFormatter ??= new Intl.DateTimeFormat('en-US', {
     timeZone: PST_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
@@ -245,7 +248,8 @@ export function formatPSTTimestamp(date?: Date): string {
     minute: '2-digit',
     second: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(base);
+  });
+  const parts = pstPartsFormatter.formatToParts(base);
 
   const year = parts.find((part) => part.type === 'year')?.value;
   const month = parts.find((part) => part.type === 'month')?.value;

@@ -4,7 +4,7 @@ import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
-import { looksLikeIdentifier, searchHitHref } from '@/lib/search/search-hit';
+import { looksLikeIdentifier, searchHitHref, skuRecordHref, toteRecordHref } from '@/lib/search/search-hit';
 import {
   receivingOrderIdFromParts,
   receivingSearchTitle,
@@ -21,6 +21,12 @@ import {
 } from '@/lib/search/internal-id';
 import { routeScan } from '@/lib/barcode-routing';
 import { formatSearchSel } from '@/lib/search/search-selection';
+import { parseRepairChannel, REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
+import { isRepairClosed, repairStatusOperatorLabel, repairTabForStatus } from '@/lib/repair-status';
+import { formatRepairPaperTicketNumber } from '@/lib/repair/repair-paper-ticket';
+import { formatDateKeyShort, toPSTDateKey } from '@/utils/date';
+import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 /** Match `serial_units.normalized_serial` (trim + upper) without pulling neon queries. */
 function normalizeSerialQuery(raw: string): string {
@@ -41,7 +47,8 @@ export interface GlobalSearchResult {
     | 'ticket'
     | 'location'
     | 'exception'
-    | 'import_exception';
+    | 'import_exception'
+    | 'tote';
   title: string;
   subtitle: string;
   href: string;
@@ -65,6 +72,8 @@ export interface GlobalSearchResult {
     customer_name?: string | null;
     customer_email?: string | null;
     customer_phone?: string | null;
+    /** A repair's drop-off carton (`R-{id}`) when its ticket landed one. */
+    receiving_handle?: string | null;
   };
 }
 
@@ -327,44 +336,117 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
   return mapOrderSearchRows(result.rows);
 }
 
-async function searchRepairs(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  // "#10063" and "10063" name the same ticket; a phone reaches the repair
-  // through its contact line or its linked customer (last 10 digits).
-  const phone = phoneSearchKey(query);
-  const result = await tenantQueryOneTrip(
-    orgId,
-    `SELECT id, ticket_number, product_title, serial_number, status
-     FROM repair_service r
-     WHERE organization_id = $4
-       AND (ticket_number ILIKE $1
-        OR ltrim(btrim(ticket_number), '#') = ltrim(btrim($2), '#')
-        OR product_title ILIKE $1
-        OR serial_number ILIKE $1
-        OR CAST(id AS TEXT) = $2
-        OR ($5 <> '' AND (
-             regexp_replace(coalesce(r.contact_info, ''), '\\D', '', 'g') LIKE '%' || $5 || '%'
-          OR r.customer_id IN (
-               SELECT c.id FROM customers c
-                WHERE c.organization_id = $4
-                  AND (right(regexp_replace(coalesce(c.phone, ''), '\\D', '', 'g'), 10) = $5
-                    OR right(regexp_replace(coalesce(c.mobile, ''), '\\D', '', 'g'), 10) = $5)))))
-     ORDER BY created_at DESC NULLS LAST
-     LIMIT $3`,
-    [`%${query}%`, query, limit, orgId, phone],
-  );
+/** `RS-{id}` / `RS{id}` → the ticket id the handle names; null for anything else. */
+function repairIdFromHandle(query: string): number | null {
+  const m = /^RS-?0*(\d{1,9})$/i.exec(query.trim());
+  const id = m ? Number(m[1]) : NaN;
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
 
-  return result.rows.map((row: any) => ({
+/**
+ * What finds a repair: ticket # (with or without `#`), `RS-{id}`, the bare id,
+ * device title, serial, the customer's name (contact line or linked customer),
+ * and a phone's last 10 digits. Placeholders are the caller's so the receiving
+ * arm can reuse the same rule over its own aliases.
+ */
+function repairMatchSql(
+  p: { like: string; raw: string; phone: string; rsId: string },
+  alias: { repair: string; customer: string } = { repair: 'r', customer: 'c' },
+): string {
+  const r = alias.repair;
+  const c = alias.customer;
+  return `(${r}.ticket_number ILIKE ${p.like}
+        OR ltrim(btrim(${r}.ticket_number), '#') = ltrim(btrim(${p.raw}), '#')
+        OR ${r}.product_title ILIKE ${p.like}
+        OR ${r}.serial_number ILIKE ${p.like}
+        OR CAST(${r}.id AS TEXT) = ${p.raw}
+        OR ${r}.id = ${p.rsId}::int
+        OR ${r}.contact_info ILIKE ${p.like}
+        OR ${c}.customer_name ILIKE ${p.like}
+        OR ${c}.display_name ILIKE ${p.like}
+        OR (${p.phone} <> '' AND (
+             regexp_replace(coalesce(${r}.contact_info, ''), '\\D', '', 'g') LIKE '%' || ${p.phone} || '%'
+          OR right(regexp_replace(coalesce(${c}.phone, ''), '\\D', '', 'g'), 10) = ${p.phone}
+          OR right(regexp_replace(coalesce(${c}.mobile, ''), '\\D', '', 'g'), 10) = ${p.phone})))`;
+}
+
+/** A repair row as both repair searchers select it — with its customer, drop-off carton and SLA. */
+const REPAIR_SEARCH_SELECT = `SELECT r.id, r.ticket_number, r.product_title, r.serial_number, r.status, r.intake_channel,
+            r.due_at,
+            COALESCE(c.display_name, c.customer_name) AS customer_name,
+            rl.receiving_id
+     FROM repair_service r
+     LEFT JOIN customers c
+       ON c.id = r.customer_id AND c.organization_id = r.organization_id
+     LEFT JOIN receiving_line rl
+       ON rl.id = r.receiving_line_id AND rl.organization_id = r.organization_id`;
+
+type RepairSearchRow = {
+  id: number;
+  ticket_number: string | null;
+  product_title: string | null;
+  serial_number: string | null;
+  status: string | null;
+  intake_channel: string | null;
+  due_at: Date | string | null;
+  customer_name: string | null;
+  receiving_id: number | null;
+}
+
+/** "#10089 · Ana Ruiz · In repair · due Oct 2" — the internal RS- code never shows (it still finds the ticket). */
+function mapRepairSearchRow(row: RepairSearchRow, href: string): GlobalSearchResult {
+  const receivingHandle = row.receiving_id != null ? `R-${row.receiving_id}` : null;
+  const dueKey = row.due_at && !isRepairClosed(row.status) ? toPSTDateKey(row.due_at) : '';
+  return {
     id: Number(row.id),
     entityType: 'repair' as const,
     title: String(row.product_title || `Repair #${row.id}`),
-    subtitle: [row.ticket_number, row.status].filter(Boolean).join(' · '),
-    href: `/repair?tab=active&openRepair=${row.id}`,
+    subtitle: [
+      formatRepairPaperTicketNumber(row.ticket_number) || null,
+      row.customer_name,
+      row.status ? repairStatusOperatorLabel(row.status) : null,
+      dueKey ? `due ${formatDateKeyShort(dueKey)}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    href,
     matchField: 'repair',
     facets: {
       status: row.status != null ? String(row.status) : null,
       serial_number: row.serial_number != null ? String(row.serial_number) : null,
+      customer_name: row.customer_name != null ? String(row.customer_name) : null,
+      receiving_handle: receivingHandle,
     },
-  }));
+  };
+}
+
+/** The repair searcher's statement — "#10063" and "10063" name the same ticket; a phone reaches it through its contact line or customer. */
+export function buildRepairSearchSql(
+  orgId: OrgId,
+  query: string,
+  limit: number,
+): { text: string; params: unknown[] } {
+  return {
+    text: `${REPAIR_SEARCH_SELECT}
+     WHERE r.organization_id = $4
+       AND ${repairMatchSql({ like: '$1', raw: '$2', phone: '$5', rsId: '$6' })}
+     ORDER BY r.created_at DESC NULLS LAST
+     LIMIT $3`,
+    params: [`%${query}%`, query, limit, orgId, phoneSearchKey(query), repairIdFromHandle(query)],
+  };
+}
+
+async function searchRepairs(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+  const { text, params } = buildRepairSearchSql(orgId, query, limit);
+  const result = await tenantQueryOneTrip<RepairSearchRow>(orgId, text, params);
+  // Land on the ticket's own view (Shipped in · Dropped off; All when it has no channel) and the Status list that carries it, so its card is behind the record.
+  return result.rows.map((row) => {
+    const channel = parseRepairChannel(row.intake_channel);
+    return mapRepairSearchRow(
+      row,
+      `/repair?tab=${repairTabForStatus(row.status)}${channel ? `&${REPAIR_CHANNEL_PARAM}=${channel}` : ''}&openRepair=${row.id}`,
+    );
+  });
 }
 
 async function searchFba(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
@@ -392,6 +474,27 @@ async function searchFba(orgId: OrgId, query: string, limit: number): Promise<Gl
       source_platform: 'fba',
     },
   }));
+}
+
+/**
+ * The carton a drop-off ticket landed as, found by anything that finds the
+ * ticket (`repairMatchSql`) — so a ticket #, `RS-{id}`, customer or serial
+ * reaches the repair AND its `R-{id}`. Uncorrelated: the org's matching
+ * tickets are resolved once, not per carton.
+ */
+function cartonOfLinkedRepairSql(org: string, p: Parameters<typeof repairMatchSql>[0]): string {
+  return `r.id IN (
+              SELECT rrl.receiving_id
+                FROM repair_service rs
+                JOIN receiving_line rrl
+                  ON rrl.id = rs.receiving_line_id AND rrl.organization_id = rs.organization_id
+                LEFT JOIN customers rc
+                  ON rc.id = rs.customer_id AND rc.organization_id = rs.organization_id
+               WHERE rs.organization_id = ${org}
+                 AND rs.receiving_line_id IS NOT NULL
+                 AND rrl.receiving_id IS NOT NULL
+                 AND ${repairMatchSql(p, { repair: 'rs', customer: 'rc' })}
+            )`;
 }
 
 /**
@@ -443,8 +546,10 @@ export function buildReceivingSearchSql(
      ) lines ON TRUE`;
 
   if (identifier && trackingShaped) {
-    // Params: $1=query $2=normalized $3=limit $4=org. Tracking pastes must not
-    // OR into the per-carton line EXISTS (timeout).
+    // Params: $1=query $2=normalized $3=limit $4=org $5=like $6=phone $7=RS id.
+    // Tracking pastes must not OR into the per-carton line EXISTS (timeout); the
+    // linked-ticket arm is one hashed subplan over the org's tickets, and a
+    // serial or `RS-{id}` often reads as tracking-shaped.
     const q = '$1';
     const norm = '$2';
     const cartonTrackingMatch = `(
@@ -456,6 +561,7 @@ export function buildReceivingSearchSql(
               AND RIGHT(regexp_replace(COALESCE(stn.tracking_number_normalized, ''), '[^0-9]', '', 'g'), 8)
                 = RIGHT(regexp_replace(${q}, '[^0-9]', '', 'g'), 8)
             )
+         OR ${cartonOfLinkedRepairSql('$4', { like: '$5', raw: q, phone: '$6', rsId: '$7' })}
     )`;
     return {
       text: `${selectSql}
@@ -463,7 +569,7 @@ export function buildReceivingSearchSql(
        AND ${cartonTrackingMatch}
      ORDER BY r.id DESC
      LIMIT $3`,
-      params: [query, normalizedQuery, limit, orgId],
+      params: [query, normalizedQuery, limit, orgId, `%${query}%`, phoneSearchKey(query), repairIdFromHandle(query)],
     };
   }
 
@@ -490,6 +596,7 @@ export function buildReceivingSearchSql(
                 AND l.organization_id = r.organization_id
                 AND ${linkOrderMatch}
             )
+         OR ${cartonOfLinkedRepairSql('$3', { like: '$4', raw: q, phone: '$5', rsId: '$6' })}
     )`;
     return {
       text: `${selectSql}
@@ -497,7 +604,7 @@ export function buildReceivingSearchSql(
        AND ${cartonOrderMatch}
      ORDER BY r.id DESC
      LIMIT $2`,
-      params: [query, limit, orgId],
+      params: [query, limit, orgId, `%${query}%`, phoneSearchKey(query), repairIdFromHandle(query)],
     };
   }
 
@@ -526,6 +633,7 @@ export function buildReceivingSearchSql(
                 AND (l.source_order_id ILIKE $1
                   OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(l.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
             )
+         OR ${cartonOfLinkedRepairSql('$5', { like: '$1', raw: '$2', phone: '$6', rsId: '$7' })}
     )`;
   return {
     text: `${selectSql}
@@ -533,7 +641,7 @@ export function buildReceivingSearchSql(
        AND ${broadMatch}
      ORDER BY r.id DESC
      LIMIT $4`,
-    params: [`%${query}%`, query, normalizedQuery, limit, orgId],
+    params: [`%${query}%`, query, normalizedQuery, limit, orgId, phoneSearchKey(query), repairIdFromHandle(query)],
   };
 }
 
@@ -587,29 +695,162 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
   });
 }
 
+/**
+ * A SKU by its code or title. The SKU is whatever the org stocks OR catalogs:
+ * `sku_stock` holds bin-sheet / provisional SKUs (`TMP-…`) that have no active
+ * catalog row, so both tables feed the candidates. Title is the identity law's
+ * ladder (catalog → Zoho item → the stock row's own text → the SKU); the hit
+ * opens the SKU record (`/inventory?sku=`, SkuDetailView). `id` is the catalog
+ * row's (the doc index keys SKU hits on it); a stock-only SKU uses its
+ * `sku_stock` id.
+ */
 async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  // sku_catalog is the marketplace SKU scheme the Products workbench selects on (NOT the Zoho `items` namespace — they collide on the same…
-  const result = await tenantQueryOneTrip(
+  const q = query.trim();
+  if (!q) return [];
+  const result = await tenantQueryOneTrip<{
+    sku: string;
+    catalog_id: number | null;
+    catalog_product_title: string | null;
+    zoho_item_title: string | null;
+    zoho_item_id: string | null;
+    stock_id: number | null;
+    stock_title: string | null;
+    stock: number | null;
+    location: string | null;
+  }>(
     orgId,
-    `SELECT id, sku, product_title
-     FROM sku_catalog
-     WHERE organization_id = $3
-       AND is_active = true
-       AND (sku ILIKE $1 OR product_title ILIKE $1)
-     ORDER BY CASE WHEN UPPER(sku) = UPPER($2) THEN 0 ELSE 1 END,
-              product_title ASC NULLS LAST
-     LIMIT $4`,
-    [`%${query}%`, query, orgId, limit],
+    `WITH hit AS (
+       SELECT sku, organization_id FROM sku_catalog
+        WHERE organization_id = $1 AND is_active = true
+          AND (sku ILIKE $2 OR product_title ILIKE $2)
+       UNION
+       SELECT sku, organization_id FROM sku_stock
+        WHERE organization_id = $1
+          AND (sku ILIKE $2 OR product_title ILIKE $2)
+     )
+     SELECT h.sku,
+            sc.id            AS catalog_id,
+            sc.product_title AS catalog_product_title,
+            zi.name          AS zoho_item_title,
+            zi.zoho_item_id  AS zoho_item_id,
+            ss.id            AS stock_id,
+            ss.product_title AS stock_title,
+            ss.stock,
+            ss.location
+       FROM hit h
+       LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('h')}
+       LEFT JOIN LATERAL (
+         SELECT s.id, s.product_title, s.stock, s.location
+           FROM sku_stock s
+          WHERE s.sku = h.sku AND s.organization_id = h.organization_id
+          ORDER BY s.id
+          LIMIT 1
+       ) ss ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT i.name, i.zoho_item_id
+           FROM items i
+          WHERE i.sku = h.sku AND i.organization_id = h.organization_id AND i.status = 'active'
+          ORDER BY i.zoho_item_id
+          LIMIT 1
+       ) zi ON TRUE
+      ORDER BY CASE WHEN upper(h.sku) = upper($3) THEN 0
+                    WHEN h.sku ILIKE $4 THEN 1
+                    ELSE 2 END,
+               h.sku
+      LIMIT $5`,
+    [orgId, `%${q}%`, q, `${q}%`, limit],
   );
 
-  return result.rows.map((row: any) => ({
-    id: Number(row.id),
-    entityType: 'sku' as const,
-    title: String(row.product_title || row.sku),
-    subtitle: String(row.sku),
-    href: `/products?view=qc&skuId=${row.id}`,
-    matchField: 'sku',
-  }));
+  return result.rows.flatMap((row) => {
+    const id = Number(row.catalog_id ?? row.stock_id);
+    if (!Number.isSafeInteger(id) || id <= 0) return [];
+    const sku = String(row.sku);
+    const title = resolveSkuIdentityTitle({
+      catalog_product_title: row.catalog_product_title,
+      zoho_item_title: row.zoho_item_title,
+      item_name: row.stock_title,
+      sku,
+      zoho_item_id: row.zoho_item_id,
+    });
+    return [
+      {
+        id,
+        entityType: 'sku' as const,
+        title: title || sku,
+        subtitle: [
+          sku,
+          row.stock != null ? `${Number(row.stock)} on hand` : null,
+          row.location,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        href: skuRecordHref(sku),
+        matchField: 'sku',
+      },
+    ];
+  });
+}
+
+/**
+ * House totes (`handling_units`): the plate's code exactly (`H-12`, or an
+ * external tote barcode) or ids a printed `H-{id}` handle decoded to. The
+ * face: code, then status · bin · paired order · unit count.
+ */
+async function searchTotes(
+  orgId: OrgId,
+  query: string,
+  ids: readonly number[],
+  limit: number,
+): Promise<GlobalSearchResult[]> {
+  const code = query.trim();
+  if (!code && ids.length === 0) return [];
+  const result = await tenantQueryOneTrip<{
+    id: number;
+    code: string;
+    status: string;
+    location_name: string | null;
+    paired_order_id: number | null;
+    paired_order_number: string | null;
+    units: number;
+  }>(
+    orgId,
+    `SELECT hu.id, hu.code, hu.status,
+            l.name     AS location_name,
+            hu.paired_order_id,
+            o.order_id AS paired_order_number,
+            (SELECT count(*)::int FROM serial_units su
+              WHERE su.organization_id = hu.organization_id
+                AND su.handling_unit_id = hu.id) AS units
+       FROM handling_units hu
+       LEFT JOIN locations l ON l.id = hu.location_id AND l.organization_id = hu.organization_id
+       LEFT JOIN orders o ON o.id = hu.paired_order_id AND o.organization_id = hu.organization_id
+      WHERE hu.organization_id = $1
+        AND (($2 <> '' AND upper(hu.code) = upper($2)) OR hu.id = ANY($3::bigint[]))
+      ORDER BY hu.id
+      LIMIT $4`,
+    [orgId, code, [...ids], limit],
+  );
+  return result.rows.map((row) => {
+    const id = Number(row.id);
+    const units = Number(row.units) || 0;
+    const order = row.paired_order_number || (row.paired_order_id != null ? `#${row.paired_order_id}` : null);
+    return {
+      id,
+      entityType: 'tote' as const,
+      title: String(row.code),
+      subtitle: [
+        sentenceCaseLabel(String(row.status)),
+        row.location_name,
+        order ? `Order ${order}` : null,
+        `${units} ${units === 1 ? 'unit' : 'units'}`,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      href: toteRecordHref(id),
+      matchField: ids.includes(id) ? 'id' : 'code',
+      facets: { status: String(row.status) },
+    };
+  });
 }
 
 /**
@@ -902,9 +1143,13 @@ async function searchInternalIds(
         ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }))
       : Promise.resolve({ rows: [] as Array<Record<string, unknown>> });
 
-  // H-class LPN — the box has no /search entity of its own; the designed
-  // landing is its membership ("testing fans out units"), so Find lists the
-  // units currently IN the box, each painting on `/search?sel=unit:{id}`.
+  // H-class LPN — the tote itself first (it opens the tote record), then its
+  // membership ("testing fans out units"): the units currently IN the box,
+  // each painting on `/search?sel=unit:{id}`.
+  const totesPromise =
+    keys.handlingUnitIds.length > 0
+      ? searchTotes(orgId, '', keys.handlingUnitIds, limit).catch(() => [])
+      : Promise.resolve([] as GlobalSearchResult[]);
   const boxUnitsPromise =
     keys.handlingUnitIds.length > 0
       ? tenantQueryOneTrip(
@@ -924,11 +1169,12 @@ async function searchInternalIds(
         ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }))
       : Promise.resolve({ rows: [] as Array<Record<string, unknown>> });
 
-  const [receiving, orders, units, boxUnits] = await Promise.all([
+  const [receiving, orders, units, boxUnits, toteHits] = await Promise.all([
     receivingPromise,
     orderPromise,
     unitPromise,
     boxUnitsPromise,
+    totesPromise,
   ]);
 
   const receivingHits: GlobalSearchResult[] = receiving.rows.map((row) => {
@@ -1020,7 +1266,7 @@ async function searchInternalIds(
   // and as a member of box #n — one row per record.
   const merged: GlobalSearchResult[] = [];
   const seenHits = new Set<string>();
-  for (const hit of [...receivingHits, ...orderHits, ...unitHits, ...boxUnitHits]) {
+  for (const hit of [...toteHits, ...receivingHits, ...orderHits, ...unitHits, ...boxUnitHits]) {
     const key = `${hit.entityType}:${hit.id}`;
     if (seenHits.has(key)) continue;
     seenHits.add(key);
@@ -1091,27 +1337,15 @@ async function searchRepairByPk(
   limit: number,
 ): Promise<GlobalSearchResult[]> {
   if (!Number.isSafeInteger(repairId) || repairId <= 0) return [];
-  const result = await tenantQueryOneTrip(
+  const result = await tenantQueryOneTrip<RepairSearchRow>(
     orgId,
-    `SELECT id, ticket_number, product_title, serial_number, status
-     FROM repair_service
-     WHERE organization_id = $1
-       AND id = $2
+    `${REPAIR_SEARCH_SELECT}
+     WHERE r.organization_id = $1
+       AND r.id = $2
      LIMIT $3`,
     [orgId, repairId, limit],
   );
-  return result.rows.map((row: any) => ({
-    id: Number(row.id),
-    entityType: 'repair' as const,
-    title: String(row.product_title || `Repair #${row.id}`),
-    subtitle: [row.ticket_number, row.status].filter(Boolean).join(' · '),
-    href: `/search?sel=${formatSearchSel('repair', Number(row.id))}`,
-    matchField: 'repair',
-    facets: {
-      status: row.status != null ? String(row.status) : null,
-      serial_number: row.serial_number != null ? String(row.serial_number) : null,
-    },
-  }));
+  return result.rows.map((row) => mapRepairSearchRow(row, `/search?sel=${formatSearchSel('repair', Number(row.id))}`));
 }
 
 /** Axis-scoped searchers. */
@@ -1141,8 +1375,11 @@ export async function searchAllEntities(
   if (scanRoute?.type === 'manifest') {
     return await searchManifestUnits(orgId, query, limit).catch(() => []);
   }
-  // A bin code decodes as a printed class but is no internal PK key.
-  if (scanRoute?.type === 'bin') {
+  // A bin code decodes as a printed class but is no internal PK key. Only a
+  // DECODED bin (it carries a redirect): `routeScan`'s letter-first fallback
+  // also says "bin" for any text — "RS-4898", a serial, a customer's name —
+  // and must fall through to the record arms (the identifier arms ask bins too).
+  if (printed && scanRoute?.type === 'bin') {
     return await searchLocations(orgId, scanRoute.value, limit).catch(() => []);
   }
   if (printed || axis === 'internal') {
@@ -1194,8 +1431,10 @@ async function searchIdentifierArms(
   query: string,
   limit: number,
 ): Promise<GlobalSearchResult[]> {
-  // SKU and FBA belong here as much as orders do.
-  const [orders, units, holds, receiving, skus, fba, repairs, bins] = await Promise.all([
+  // SKU and FBA belong here as much as orders do. A tote plate is an exact
+  // code match — the identity answer — so it leads.
+  const [totes, orders, units, holds, receiving, skus, fba, repairs, bins] = await Promise.all([
+    searchTotes(orgId, query, [], limit).catch(() => []),
     searchOrders(orgId, query, limit).catch(() => []),
     searchSerialUnits(orgId, query, limit).catch(() => []),
     searchTrackingHolds(orgId, query, limit).catch(() => []),
@@ -1205,12 +1444,19 @@ async function searchIdentifierArms(
     searchRepairs(orgId, query, limit).catch(() => []),
     searchLocations(orgId, query, limit).catch(() => []),
   ]);
-  // Order stays as it was — exact parent-table hits first — with the new
-  // sources appended so nothing that already ranked moves.
-  return [...orders, ...receiving, ...holds, ...units, ...skus, ...fba, ...repairs, ...bins].slice(
-    0,
-    limit,
-  );
+  // Otherwise order stays as it was — exact parent-table hits first — with
+  // the new sources appended so nothing that already ranked moves.
+  return [
+    ...totes,
+    ...orders,
+    ...receiving,
+    ...holds,
+    ...units,
+    ...skus,
+    ...fba,
+    ...repairs,
+    ...bins,
+  ].slice(0, limit);
 }
 
 /**
@@ -1249,14 +1495,15 @@ async function searchLocations(orgId: OrgId, query: string, limit: number): Prom
   }));
 }
 
-/** Free-text query: an even share of the page per entity. */
+/** Free-text query: an even share of the page per entity (a tote is an exact code match, so it leads). */
 async function searchBroadArms(
   orgId: OrgId,
   query: string,
   limit: number,
 ): Promise<GlobalSearchResult[]> {
   const perEntity = Math.ceil(limit / 7);
-  const [orders, repairs, fba, receiving, skus, units, holds] = await Promise.all([
+  const [totes, orders, repairs, fba, receiving, skus, units, holds] = await Promise.all([
+    searchTotes(orgId, query, [], perEntity).catch(() => []),
     searchOrders(orgId, query, perEntity).catch(() => []),
     searchRepairs(orgId, query, perEntity).catch(() => []),
     searchFba(orgId, query, perEntity).catch(() => []),
@@ -1265,5 +1512,5 @@ async function searchBroadArms(
     searchSerialUnits(orgId, query, perEntity).catch(() => []),
     searchTrackingHolds(orgId, query, perEntity).catch(() => []),
   ]);
-  return [...orders, ...holds, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit);
+  return [...totes, ...orders, ...holds, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit);
 }

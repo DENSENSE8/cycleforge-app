@@ -20,13 +20,14 @@ export interface StationInputThemeClasses {
   border: string;
 }
 
+/** `text` is the staff NAME ink on every surface (`StaffBadge`): -700 clears 4.5:1 on card, hover and selected fills; globals.css remaps -700 text to -300 under dark. */
 export const stationThemeColors: Record<StationTheme, StationThemeColors> = {
   green: {
     bg: 'bg-emerald-600',
     hover: 'hover:bg-emerald-700',
     light: 'bg-emerald-50',
     border: 'border-emerald-100',
-    text: 'text-emerald-600',
+    text: 'text-emerald-700',
     shadow: 'shadow-emerald-100',
   },
   blue: {
@@ -34,7 +35,7 @@ export const stationThemeColors: Record<StationTheme, StationThemeColors> = {
     hover: 'hover:bg-blue-700',
     light: 'bg-blue-50',
     border: 'border-blue-100',
-    text: 'text-blue-600',
+    text: 'text-blue-700',
     shadow: 'shadow-blue-100',
   },
   purple: {
@@ -42,7 +43,7 @@ export const stationThemeColors: Record<StationTheme, StationThemeColors> = {
     hover: 'hover:bg-purple-700',
     light: 'bg-purple-50',
     border: 'border-purple-100',
-    text: 'text-purple-600',
+    text: 'text-purple-700',
     shadow: 'shadow-purple-100',
   },
   yellow: {
@@ -50,7 +51,7 @@ export const stationThemeColors: Record<StationTheme, StationThemeColors> = {
     hover: 'hover:bg-amber-600',
     light: 'bg-amber-50',
     border: 'border-amber-100',
-    text: 'text-amber-600',
+    text: 'text-amber-700',
     shadow: 'shadow-amber-100',
   },
   black: {
@@ -66,7 +67,7 @@ export const stationThemeColors: Record<StationTheme, StationThemeColors> = {
     hover: 'hover:bg-red-700',
     light: 'bg-red-50',
     border: 'border-red-100',
-    text: 'text-red-600',
+    text: 'text-red-700',
     shadow: 'shadow-red-100',
   },
   lightblue: {
@@ -74,7 +75,7 @@ export const stationThemeColors: Record<StationTheme, StationThemeColors> = {
     hover: 'hover:bg-sky-500',
     light: 'bg-sky-50',
     border: 'border-sky-100',
-    text: 'text-sky-500',
+    text: 'text-sky-700',
     shadow: 'shadow-sky-100',
   },
   pink: {
@@ -82,7 +83,7 @@ export const stationThemeColors: Record<StationTheme, StationThemeColors> = {
     hover: 'hover:bg-pink-600',
     light: 'bg-pink-50',
     border: 'border-pink-100',
-    text: 'text-pink-500',
+    text: 'text-pink-700',
     shadow: 'shadow-pink-100',
   },
 };

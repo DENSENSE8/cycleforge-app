@@ -34,9 +34,22 @@ export function useNavStaffKey(): string {
   return user?.staffId != null ? String(user.staffId) : 'anon';
 }
 
+const noopSubscribe = () => () => {};
+
+/**
+ * False on the server and through hydration, true after. The snapshot lives in
+ * localStorage, which the server cannot see: painting it during hydration made
+ * the client's first render disagree with the SSR HTML (React #418 on every
+ * load with a snapshot, the whole shell re-rendered from scratch).
+ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false);
+}
+
 /**
  * `GET /api/nav/context` for `path`, rendered from the persisted snapshot and
- * revalidated behind it. `view: 'top'` is the `‹` peek.
+ * revalidated behind it. `view: 'top'` is the `‹` peek. The snapshot is a
+ * placeholder painted only after hydration; the cache holds server truth only.
  */
 export function useNavContext(
   path: string,
@@ -44,14 +57,13 @@ export function useNavContext(
 ) {
   const { view, enabled = true } = options;
   const staffKey = useNavStaffKey();
+  const hydrated = useHydrated();
   const query = useQuery({
     queryKey: navContextQueryKey(staffKey, path, view),
     queryFn: ({ signal }) => fetchNavContext(path, { view, signal }),
-    initialData: () => readNavContextSnapshot(staffKey, path, view),
-    // A snapshot is always stale: paint it, then revalidate.
-    initialDataUpdatedAt: 0,
     staleTime: NAV_CONTEXT_STALE_MS,
-    placeholderData: keepPreviousData,
+    placeholderData: (previous) =>
+      keepPreviousData(previous) ?? (hydrated ? readNavContextSnapshot(staffKey, path, view) : undefined),
     enabled,
   });
   const fresh = query.isFetchedAfterMount ? query.data : undefined;
@@ -65,12 +77,14 @@ export function useNavContext(
 //
 // The shell decides column state (open by default for contextual pages) but
 // cannot read `useSearchParams` without a Suspense boundary of its own. The
-// Suspense'd probe below publishes the resolved flag instead.
+// Suspense'd probe below publishes the resolved flag instead. `null` = not
+// resolved yet — the shell falls back to the page's static rollout so the
+// column's space is in the first paint, not shoved in after the fetch.
 
-let contextualActive = false;
+let contextualActive: boolean | null = null;
 const listeners = new Set<() => void>();
 
-function setContextualActive(next: boolean): void {
+function setContextualActive(next: boolean | null): void {
   if (contextualActive === next) return;
   contextualActive = next;
   for (const listener of listeners) listener();
@@ -81,9 +95,9 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-/** True while the current page resolves `rollout: 'contextual'`. */
-export function useContextualSidebarActive(): boolean {
-  return useSyncExternalStore(subscribe, () => contextualActive, () => false);
+/** Whether the current page resolved `rollout: 'contextual'`; `null` until it has. */
+export function useContextualSidebarActive(): boolean | null {
+  return useSyncExternalStore(subscribe, () => contextualActive, () => null);
 }
 
 export function isContextualNav(nav: NavContext | undefined): boolean {
@@ -94,10 +108,10 @@ export function isContextualNav(nav: NavContext | undefined): boolean {
 export function NavRolloutProbe() {
   const path = useCurrentNavPath();
   const { data } = useNavContext(path);
-  const active = isContextualNav(data);
+  const active = data ? isContextualNav(data) : null;
   useEffect(() => {
     setContextualActive(active);
   }, [active]);
-  useEffect(() => () => setContextualActive(false), []);
+  useEffect(() => () => setContextualActive(null), []);
   return null;
 }

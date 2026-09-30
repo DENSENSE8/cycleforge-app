@@ -1,7 +1,6 @@
 /** Post one bench-log entry to its repair's Zendesk ticket as a note — after the entry has committed (`POST /api/repair/actions` schedules… */
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import { recordStaffForPostedComment } from '@/lib/integrations/helpdesk/comment-staff';
-import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { loadRepairAction } from '@/lib/repair/repair-action-queries';
 import {
@@ -89,7 +88,6 @@ export async function postRepairActionToTicket(orgId: OrgId, actionId: number): 
         WHERE id = $1 AND organization_id = $2`,
       [actionId, orgId, commentId],
     );
-    await invalidateZendeskTicketCache(orgId, ticketId).catch(() => undefined);
     await publishRepairChanged({ organizationId: orgId, repairIds: [action.repair_id], source: 'repair.action-ticket-posted' });
     return { status: 'posted', ticketId, commentId };
   } catch (err) {

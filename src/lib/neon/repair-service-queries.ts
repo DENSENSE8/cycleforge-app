@@ -3,6 +3,11 @@ import { formatPSTTimestamp, normalizePSTTimestamp } from '@/utils/date';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveProviderCustomerId } from './customer-queries';
+import type { RepairChannel } from '@/lib/repair/repair-channel';
+import { receiveWalkInRepairInTx } from '@/lib/repair/walk-in-receiving';
+import { repairDueAt } from '@/lib/repair/repair-due-at';
+import type { TxClient } from '@/lib/inbound/purchase-links';
+import { scheduleRepairTaskSync } from '@/lib/tasks/repair-tasks-db';
 
 export interface RepairStatusHistoryEntry {
   status: string;
@@ -35,6 +40,8 @@ export interface RSRecord {
   intake_channel?: string | null;
   delivered_at?: string | null;
   received_at?: string | null;
+  /** The SLA — 3 business days after received / opened (`repairDueAt`); null while Incoming Shipment. */
+  due_at?: string | null;
   intake_confirmed_at?: string | null;
   label_printed_at?: string | null;
   received_by_staff_id?: number | null;
@@ -42,6 +49,14 @@ export interface RSRecord {
   customer_name?: string | null;
   customer_phone?: string | null;
   customer_email?: string | null;
+  /** Drop-off ticket → its receiving line (`repair_service.receiving_line_id`). */
+  receiving_line_id?: number | null;
+  /** That line's carton — the `R-{id}` sticker the floor holds. */
+  receiving_id?: number | null;
+  /** The SKU catalog photo for `source_sku`, when the catalog has one. */
+  image_url?: string | null;
+  /** The counter visit the ticket was checked in on (`counter_transactions.id`) — its receipt's source. */
+  counter_transaction_id?: number | null;
 }
 
 export const REPAIR_STATUS_OPTIONS = [
@@ -56,8 +71,12 @@ export const REPAIR_STATUS_OPTIONS = [
   'Picked Up',
 ] as const;
 
-/** `all` is the HISTORY book: */
-export type RepairTab = 'incoming' | 'active' | 'done' | 'all';
+/**
+ * `all` is the HISTORY book; `open` is every ticket not closed — arriving or
+ * in the store (the station's default, owner 2026-09-30); `active` drops the
+ * arriving ones (in the store only).
+ */
+export type RepairTab = 'open' | 'incoming' | 'active' | 'done' | 'all';
 
 /** Statuses shown on the Done tab — also used by station “next repair” exclusions. */
 export const REPAIR_DONE_TAB_STATUSES = ['Done', 'Picked Up', 'Shipped'] as const;
@@ -118,6 +137,7 @@ function mapRepairRow(row: any): RSRecord {
     intake_channel: row.intake_channel ?? null,
     delivered_at: normalizePSTTimestamp(row.delivered_at) || null,
     received_at: normalizePSTTimestamp(row.received_at) || null,
+    due_at: normalizePSTTimestamp(row.due_at) || null,
     intake_confirmed_at: normalizePSTTimestamp(row.intake_confirmed_at) || null,
     label_printed_at: normalizePSTTimestamp(row.label_printed_at) || null,
     received_by_staff_id: row.received_by_staff_id == null ? null : Number(row.received_by_staff_id),
@@ -125,6 +145,10 @@ function mapRepairRow(row: any): RSRecord {
     customer_name: row.customer_name ?? null,
     customer_phone: row.customer_phone ?? null,
     customer_email: row.customer_email ?? null,
+    receiving_line_id: row.receiving_line_id == null ? null : Number(row.receiving_line_id),
+    receiving_id: row.receiving_id == null ? null : Number(row.receiving_id),
+    image_url: row.image_url ?? null,
+    counter_transaction_id: row.counter_transaction_id == null ? null : Number(row.counter_transaction_id),
   };
 }
 
@@ -148,18 +172,33 @@ const REPAIR_SELECT_COLUMNS = `
   rs.intake_channel,
   rs.delivered_at,
   rs.received_at,
+  rs.due_at,
   rs.intake_confirmed_at,
   rs.label_printed_at,
   rs.received_by_staff_id,
   rs.customer_id,
+  rs.counter_transaction_id,
   COALESCE(c.display_name, c.customer_name, CONCAT_WS(' ', c.first_name, c.last_name)) AS customer_name,
   COALESCE(c.phone, c.mobile) AS customer_phone,
-  c.email AS customer_email
+  c.email AS customer_email,
+  rs.receiving_line_id,
+  rl.receiving_id,
+  sku_photo.image_url
 `;
 
 const REPAIR_FROM = `
   FROM repair_service rs
   LEFT JOIN customers c ON c.id = rs.customer_id
+  LEFT JOIN receiving_line rl ON rl.id = rs.receiving_line_id AND rl.organization_id = rs.organization_id
+  LEFT JOIN LATERAL (
+    SELECT sc.image_url
+      FROM sku_catalog sc
+     WHERE sc.organization_id = rs.organization_id
+       AND NULLIF(btrim(rs.source_sku), '') IS NOT NULL
+       AND sc.sku = btrim(rs.source_sku)
+       AND NULLIF(btrim(sc.image_url), '') IS NOT NULL
+     LIMIT 1
+  ) sku_photo ON TRUE
 `;
 
 /** Extra row predicates shared by list + search — orthogonal to the status tab. */
@@ -178,6 +217,9 @@ function buildRepairTabWhere(tab: RepairTab, needsLabel?: boolean) {
   }
   if (tab === 'all') {
     return `WHERE TRUE ${label}`;
+  }
+  if (tab === 'open') {
+    return `WHERE rs.status != ${sqlCancelledStatus()} AND rs.status NOT IN ${terminalList} ${label}`;
   }
   if (tab === 'done') {
     return `WHERE rs.status IN ${terminalList} ${label}`;
@@ -206,6 +248,7 @@ function buildRepairSearchWhere(idx: number, tab?: RepairTab, needsLabel?: boole
   const terminalList = sqlStatusInTerminal();
   const incomingSt = sqlIncomingTabStatus();
   if (!tab || tab === 'all') return `WHERE ${base} ${label}`;
+  if (tab === 'open') return `WHERE rs.status != ${sqlCancelledStatus()} AND rs.status NOT IN ${terminalList} AND ${base} ${label}`;
   if (tab === 'incoming') return `WHERE rs.status = ${incomingSt} AND ${base} ${label}`;
   if (tab === 'done') return `WHERE rs.status IN ${terminalList} AND ${base} ${label}`;
   return `WHERE rs.status != ${incomingSt}
@@ -218,20 +261,22 @@ function buildRepairSearchWhere(idx: number, tab?: RepairTab, needsLabel?: boole
 export async function getAllRepairs(
   limit = 100,
   offset = 0,
-  options?: { tab?: RepairTab; needsLabel?: boolean },
+  options?: { tab?: RepairTab; needsLabel?: boolean; channel?: RepairChannel | null },
   orgId?: OrgId,
 ): Promise<RSRecord[]> {
   try {
     const where = buildRepairTabWhere(options?.tab || 'active', options?.needsLabel);
+    const channel = options?.channel ?? null;
     if (orgId) {
       const result = await tenantQuery(
         orgId,
         `SELECT ${REPAIR_SELECT_COLUMNS}
          ${REPAIR_FROM}
          ${where} AND rs.organization_id = $3
+         ${channel ? 'AND rs.intake_channel = $4' : ''}
          ORDER BY rs.created_at DESC NULLS LAST, rs.id DESC
          LIMIT $1 OFFSET $2`,
-        [limit, offset, orgId],
+        channel ? [limit, offset, orgId, channel] : [limit, offset, orgId],
       );
       return result.rows.map(mapRepairRow);
     }
@@ -239,9 +284,10 @@ export async function getAllRepairs(
       `SELECT ${REPAIR_SELECT_COLUMNS}
        ${REPAIR_FROM}
        ${where}
+       ${channel ? 'AND rs.intake_channel = $3' : ''}
        ORDER BY rs.created_at DESC NULLS LAST, rs.id DESC
        LIMIT $1 OFFSET $2`,
-      [limit, offset],
+      channel ? [limit, offset, channel] : [limit, offset],
     );
 
     return result.rows.map(mapRepairRow);
@@ -381,26 +427,31 @@ export async function updateRepairStatus(id: number, newStatus: string, orgId?: 
                   )
                 ELSE COALESCE(status_history, '[]'::jsonb)
               END`;
-    const result = orgId
-      ? await withTenantTransaction(orgId, (client) =>
-          client.query(
-            `UPDATE repair_service
-                SET status = $1,
-                    ${statusHistoryExpr},
-                    updated_at = NOW()
-              WHERE id = $3 AND organization_id = $4`,
-            [newStatus, timestamp, id, orgId],
-          ),
-        )
-      : await pool.query(
-          `UPDATE repair_service
-              SET status = $1,
-                  ${statusHistoryExpr},
-                  updated_at = NOW()
-            WHERE id = $3`,
-          [newStatus, timestamp, id],
-        );
-    if ((result.rowCount ?? 0) === 0) throw new Error('Repair not found');
+    // The SLA follows the status: leaving Incoming Shipment starts the clock
+    // (a due date already set stands), going back to Incoming clears it.
+    const write = async (db: RepairWriteDb): Promise<number> => {
+      const scope = orgId ? ' AND organization_id = $2' : '';
+      const stamps = await db.query(
+        `SELECT received_at, created_at FROM repair_service WHERE id = $1${scope} FOR UPDATE`,
+        orgId ? [id, orgId] : [id],
+      );
+      const row = stamps.rows[0];
+      if (!row) return 0;
+      const dueAt = repairDueAt(row.received_at, row.created_at, newStatus);
+      const result = await db.query(
+        `UPDATE repair_service
+            SET status = $1,
+                ${statusHistoryExpr},
+                due_at = CASE WHEN $4::timestamptz IS NULL THEN NULL ELSE COALESCE(due_at, $4::timestamptz) END,
+                updated_at = NOW()
+          WHERE id = $3${orgId ? ' AND organization_id = $5' : ''}`,
+        orgId ? [newStatus, timestamp, id, dueAt, orgId] : [newStatus, timestamp, id, dueAt],
+      );
+      return result.rowCount ?? 0;
+    };
+    const updated = orgId ? await withTenantTransaction(orgId, (client) => write(client)) : await write(pool);
+    if (updated === 0) throw new Error('Repair not found');
+    scheduleRepairTaskSync(orgId, id);
   } catch (error) {
     console.error('Error updating repair status:', error);
     throw new Error('Failed to update repair status');
@@ -408,19 +459,21 @@ export async function updateRepairStatus(id: number, newStatus: string, orgId?: 
 }
 
 export async function updateRepairNotes(id: number, notes: string, orgId?: OrgId): Promise<void> {
+  // Empty = NULL, the intake writer's convention.
+  const value = notes.trim() || null;
   try {
     if (orgId) {
       await withTenantTransaction(orgId, (client) =>
         client.query(
           'UPDATE repair_service SET notes = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3',
-          [notes, id, orgId],
+          [value, id, orgId],
         ),
       );
       return;
     }
     await pool.query(
       'UPDATE repair_service SET notes = $1, updated_at = NOW() WHERE id = $2',
-      [notes, id],
+      [value, id],
     );
   } catch (error) {
     console.error('Error updating repair notes:', error);
@@ -583,19 +636,31 @@ export async function updateRepairField(id: number, field: string, value: any, o
 
     if (!validFields.includes(field)) throw new Error(`Invalid field: ${field}`);
 
-    if (orgId) {
-      await withTenantTransaction(orgId, (client) =>
-        client.query(
-          `UPDATE repair_service SET ${field} = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3`,
-          [value, id, orgId],
-        ),
+    const scope = orgId ? ' AND organization_id = $3' : '';
+    const params = orgId ? [value, id, orgId] : [value, id];
+    const write = async (db: RepairWriteDb): Promise<void> => {
+      if (field !== 'received_at' && field !== 'status') {
+        await db.query(`UPDATE repair_service SET ${field} = $1, updated_at = NOW() WHERE id = $2${scope}`, params);
+        return;
+      }
+      // The SLA reads both: a new receive stamp moves the due date; a status
+      // change only starts it (leaving Incoming Shipment) or clears it.
+      const stamps = await db.query(
+        `SELECT received_at, created_at, status, due_at FROM repair_service WHERE id = $1${orgId ? ' AND organization_id = $2' : ''} FOR UPDATE`,
+        orgId ? [id, orgId] : [id],
       );
-      return;
-    }
-    await pool.query(
-      `UPDATE repair_service SET ${field} = $1, updated_at = NOW() WHERE id = $2`,
-      [value, id],
-    );
+      const row = stamps.rows[0];
+      if (!row) return;
+      const computed = repairDueAt(field === 'received_at' ? value : row.received_at, row.created_at, field === 'status' ? value : row.status);
+      const dueAt = computed == null ? null : field === 'received_at' ? computed : (row.due_at ?? computed);
+      await db.query(
+        `UPDATE repair_service SET ${field} = $1, due_at = $${params.length + 1}::timestamptz, updated_at = NOW() WHERE id = $2${scope}`,
+        [...params, dueAt],
+      );
+    };
+    if (orgId) await withTenantTransaction(orgId, (client) => write(client));
+    else await write(pool);
+    scheduleRepairTaskSync(orgId, id);
   } catch (error) {
     console.error('Error updating repair field:', error);
     throw new Error('Failed to update repair field');
@@ -616,7 +681,8 @@ interface CreateRepairParams {
   sourceOrderId?: string | null;
   sourceTrackingNumber?: string | null;
   sourceSku?: string | null;
-  intakeChannel?: string | null;
+  /** How the device reached us — every new ticket says so. */
+  intakeChannel: RepairChannel;
   deliveredAt?: string | null;
   receivedAt?: string | null;
   intakeConfirmedAt?: string | null;
@@ -624,11 +690,34 @@ interface CreateRepairParams {
   customerId?: number | null;
 }
 
-export async function createRepair(params: CreateRepairParams, orgId?: OrgId): Promise<RSRecord> {
-  const createdAt = normalizePSTTimestamp(params.createdAt, { fallbackToNow: true })!;
-  const intakeChannel = params.intakeChannel ?? 'pickup';
+type RepairInsertDb = {
+  query: (text: string, params?: unknown[]) => Promise<{ rows: Array<{ id: number; ticket_number?: string | null }> }>;
+};
+
+/** The stamps the SLA reads back before a status / receive write (`repairDueAt`). */
+type RepairSlaStamps = {
+  received_at: Date | string | null;
+  created_at: Date | string | null;
+  status: string | null;
+  due_at: Date | string | null;
+};
+
+/** The query surface a repair writer runs on — the pool or a tenant transaction's client. */
+type RepairWriteDb = {
+  query: (text: string, params?: unknown[]) => Promise<{ rows: RepairSlaStamps[]; rowCount?: number | null }>;
+};
+
+/** Insert one ticket (and its RS-#### fallback number) on `db`; returns the id. */
+async function insertRepairRow(
+  db: RepairInsertDb,
+  params: CreateRepairParams,
+  createdAt: string,
+  orgId?: OrgId,
+): Promise<number> {
+  const intakeChannel = params.intakeChannel;
   const receivedAt = params.receivedAt ?? (intakeChannel === 'pickup' ? createdAt : null);
   const intakeConfirmedAt = params.intakeConfirmedAt ?? (intakeChannel === 'pickup' ? createdAt : null);
+  const status = params.status ?? 'Pending Repair';
 
   const insertValues = [
     createdAt,
@@ -639,7 +728,7 @@ export async function createRepair(params: CreateRepairParams, orgId?: OrgId): P
     params.issue,
     params.serialNumber,
     params.notes ?? null,
-    params.status ?? 'Pending Repair',
+    status,
     params.sourceSystem ?? null,
     params.sourceOrderId ?? null,
     params.sourceTrackingNumber ?? null,
@@ -650,76 +739,103 @@ export async function createRepair(params: CreateRepairParams, orgId?: OrgId): P
     intakeConfirmedAt,
     params.receivedByStaffId ?? null,
     params.customerId ?? null,
+    repairDueAt(receivedAt, createdAt, status),
   ];
 
   const result = orgId
-    ? await withTenantTransaction(orgId, (client) =>
-        client.query(
-          `INSERT INTO repair_service
-             (
-               created_at, updated_at, ticket_number, contact_info, product_title, price, issue, serial_number, notes, status,
-               source_system, source_order_id, source_tracking_number, source_sku, intake_channel,
-               delivered_at, received_at, intake_confirmed_at, received_by_staff_id, customer_id, organization_id
-             )
-           VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-           RETURNING id, ticket_number`,
-          [...insertValues, orgId],
-        ),
-      )
-    : await pool.query(
+    ? await db.query(
         `INSERT INTO repair_service
            (
              created_at, updated_at, ticket_number, contact_info, product_title, price, issue, serial_number, notes, status,
              source_system, source_order_id, source_tracking_number, source_sku, intake_channel,
-             delivered_at, received_at, intake_confirmed_at, received_by_staff_id, customer_id
+             delivered_at, received_at, intake_confirmed_at, received_by_staff_id, customer_id, due_at, organization_id
            )
-         VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+         VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+         RETURNING id, ticket_number`,
+        [...insertValues, orgId],
+      )
+    : await db.query(
+        `INSERT INTO repair_service
+           (
+             created_at, updated_at, ticket_number, contact_info, product_title, price, issue, serial_number, notes, status,
+             source_system, source_order_id, source_tracking_number, source_sku, intake_channel,
+             delivered_at, received_at, intake_confirmed_at, received_by_staff_id, customer_id, due_at
+           )
+         VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
          RETURNING id, ticket_number`,
         insertValues,
       );
 
-  const { id } = result.rows[0];
-  let ticketNumber = result.rows[0].ticket_number;
-
-  if (!ticketNumber) {
+  const id = Number(result.rows[0].id);
+  if (!result.rows[0].ticket_number) {
     const fallback = `RS-${String(id).padStart(4, '0')}`;
-    if (orgId) {
-      await withTenantTransaction(orgId, (client) =>
-        client.query(
-          'UPDATE repair_service SET ticket_number = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3',
-          [fallback, id, orgId],
-        ),
-      );
-    } else {
-      await pool.query(
-        'UPDATE repair_service SET ticket_number = $1, updated_at = NOW() WHERE id = $2',
-        [fallback, id],
-      );
+    await db.query(
+      orgId
+        ? 'UPDATE repair_service SET ticket_number = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3'
+        : 'UPDATE repair_service SET ticket_number = $1, updated_at = NOW() WHERE id = $2',
+      orgId ? [fallback, id, orgId] : [fallback, id],
+    );
+  }
+  return id;
+}
+
+/**
+ * Create a ticket. A drop-off (`intakeChannel: 'pickup'`) is born with its
+ * receiving record: the ticket, its REPAIR inbound order, carton and line, and
+ * the ticket → line link commit on ONE transaction (`receiveWalkInRepairInTx`).
+ */
+export async function createRepair(params: CreateRepairParams, orgId?: OrgId): Promise<RSRecord> {
+  const createdAt = normalizePSTTimestamp(params.createdAt, { fallbackToNow: true })!;
+
+  let id: number;
+  if (orgId) {
+    id = await withTenantTransaction(orgId, async (client) => {
+      const repairId = await insertRepairRow(client, params, createdAt, orgId);
+      if (params.intakeChannel === 'pickup') {
+        await receiveWalkInRepairInTx(
+          client as unknown as TxClient,
+          orgId,
+          {
+            id: repairId,
+            productTitle: params.productTitle,
+            receivedOn: (params.receivedAt ?? createdAt).slice(0, 10),
+          },
+          { staffId: params.receivedByStaffId ?? null },
+        );
+      }
+      return repairId;
+    });
+  } else {
+    if (params.intakeChannel === 'pickup') {
+      throw new Error('createRepair: a drop-off ticket lands a receiving record, so it needs its organization');
     }
-    ticketNumber = fallback;
+    id = await insertRepairRow(pool, params, createdAt);
   }
 
+  scheduleRepairTaskSync(orgId, id);
   const record = await getRepairById(id, orgId);
   return record!;
 }
 
 export async function searchRepairs(
   query: string,
-  options?: { tab?: RepairTab; needsLabel?: boolean },
+  options?: { tab?: RepairTab; needsLabel?: boolean; channel?: RepairChannel | null },
   orgId?: OrgId,
 ): Promise<RSRecord[]> {
   try {
     const searchTerm = `%${query}%`;
     const where = buildRepairSearchWhere(1, options?.tab, options?.needsLabel);
+    const channel = options?.channel ?? null;
     if (orgId) {
       const result = await tenantQuery(
         orgId,
         `SELECT ${REPAIR_SELECT_COLUMNS}
          ${REPAIR_FROM}
          ${where} AND rs.organization_id = $2
+         ${channel ? 'AND rs.intake_channel = $3' : ''}
          ORDER BY rs.created_at DESC NULLS LAST, rs.id DESC
          LIMIT 20`,
-        [searchTerm, orgId],
+        channel ? [searchTerm, orgId, channel] : [searchTerm, orgId],
       );
       return result.rows.map(mapRepairRow);
     }
@@ -727,9 +843,10 @@ export async function searchRepairs(
       `SELECT ${REPAIR_SELECT_COLUMNS}
        ${REPAIR_FROM}
        ${where}
+       ${channel ? 'AND rs.intake_channel = $2' : ''}
        ORDER BY rs.created_at DESC NULLS LAST, rs.id DESC
        LIMIT 20`,
-      [searchTerm],
+      channel ? [searchTerm, channel] : [searchTerm],
     );
 
     return result.rows.map(mapRepairRow);
@@ -954,6 +1071,7 @@ export async function upsertEcwidIncomingRepair(params: {
         );
       }
       await attachRepairCustomer(repairId, params.contact, orgId);
+      scheduleRepairTaskSync(orgId, repairId);
       const record = await getRepairById(repairId, orgId);
       return record!;
     }

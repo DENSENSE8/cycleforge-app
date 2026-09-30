@@ -5,8 +5,8 @@ import { CollapseItem } from '@/design-system/components/Collapse';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
 import { PICKUP_HISTORY_VIEW } from '@/lib/triage/views';
-import { pickupMoney } from '../pickup-lines';
-import { pickupRecordCard, type PickupCardModel, type PickupOrderRecord } from './pickup-card-model';
+import { pickupMoney } from '@/lib/receiving/pickup/pickup-lines';
+import { pickupRecordCard, type PickupCardModel, type PickupOrderRecord } from '@/lib/receiving/pickup/pickup-card-model';
 
 function PickupCardPeek({ model }: { model: PickupCardModel }) {
   const lead = model.line;

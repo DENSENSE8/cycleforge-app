@@ -9,7 +9,6 @@ import pool from '@/lib/db';
 import { isHomeInbox } from '@/lib/feature-flags';
 import { listSupportFollowupsForStaff } from '@/lib/inbox/support-followups-queries';
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
-import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
 import { listReceivingWatchesForStaff } from '@/lib/notifications/subscriptions';
 import { setTrackingWatch } from '@/lib/notifications/tracking-watch';
 import { parseTicketScanValue } from '@/lib/support/ticket-scan';
@@ -113,7 +112,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         staffId: ctx.staffId,
         assignedBy: ctx.staffId,
       });
-      await invalidateZendeskTicketCache(ctx.organizationId, ticketId);
 
       await recordAudit(pool, ctx, req, {
         source: 'my-day-watch',

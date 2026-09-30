@@ -113,7 +113,7 @@ export function MobilePickupPaperworkScreen() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <MobileDetailTopBar title="Pickup paperwork" subtitle={draft?.orderNumber || 'Photograph the paperwork'} backHref="/m/receiving" />
+      <MobileDetailTopBar title="Pickup paperwork" subtitle={draft?.orderNumber || 'Photograph the paperwork'} backHref="/m/receiving/pickup" />
       <input
         ref={fileRef}
         type="file"

@@ -258,7 +258,7 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
   create_task: ['task', 'assign', 'remind', 'reminder', 'to do', 'follow up'],
   reconcile_refs: ['reconcile', 'which of these', 'check this list', 'did we receive', 'not received', 'vendor list', 'pasted list'],
   get_customer: ['customer', 'who is', 'calls back', 'caller', 'customer phone', 'customer email', 'find customer'],
-  get_worklist: ['what should i do first', 'do first', 'worklist', 'exceptions queue', 'out of stock orders', 'need to order', 'late orders', 'past ship by', 'pending orders', 'ready to pick', 'pick list'],
+  get_worklist: ['what should i do first', 'do first', 'worklist', 'exceptions queue', 'out of stock orders', 'need to order', 'late orders', 'past ship by', 'pending orders'],
   get_staff_report: ['staff report', 'performance', 'time spent', 'task time', 'how much time', 'per staff', 'per day', 'packing pace'],
   get_tracking_status: ['carrier status', 'tracking status', 'delivered', 'in transit', 'out for delivery', 'where is my package', 'package'],
   watch_tracking: ['watch', 'tell me when', 'notify me', 'let me know when', 'stop watching', 'unwatch', 'arrives'],
@@ -436,7 +436,7 @@ const RECALL_FLOOR: readonly { shape: RegExp; tool: string; why: string }[] = [
     why: 'a caller / customer by name, phone or email is the customer dossier',
   },
   {
-    shape: /\bwhat\s+should\s+i\s+do\s+first\b|\bdo\s+first\b|\bworklist\b|\bexceptions?\s+(queue|list)\b|\bout\s+of\s+stock\s+(orders|list)\b|\bneed\s+to\s+order\b|\bpast\s+(the\s+)?ship[-\s]?by\b|\blate\s+orders?\b|\borders?\s+(are\s+|that\s+are\s+)?late\b|\bready\s+to\s+pick\b|\bpick\s+list\b|\bpending\s+(orders|list)\b/i,
+    shape: /\bwhat\s+should\s+i\s+do\s+first\b|\bdo\s+first\b|\bworklist\b|\bexceptions?\s+(queue|list)\b|\bout\s+of\s+stock\s+(orders|list)\b|\bneed\s+to\s+order\b|\bpast\s+(the\s+)?ship[-\s]?by\b|\blate\s+orders?\b|\borders?\s+(are\s+|that\s+are\s+)?late\b|\bpending\s+(orders|list)\b/i,
     tool: 'get_worklist',
     why: 'a work-queue / what-first question is the ranked worklist',
   },

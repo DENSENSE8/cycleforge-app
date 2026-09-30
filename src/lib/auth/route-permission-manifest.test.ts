@@ -47,6 +47,12 @@ test('regression: receiving.view gates recent-staged-location', () => {
   assert.deepEqual(r.methods, ['GET']);
 });
 
+test('regression: tech.qc_pass gates the QC queue read, same as the QC receiving lines', () => {
+  const paths = routesGatedBy('tech.qc_pass').map((r) => r.path);
+  assert.ok(paths.includes('/api/qc/queue/route.ts'));
+  assert.ok(paths.includes('/api/qc/receiving-lines/route.ts'));
+});
+
 test('permissionsWithRouteCount is sorted descending by routeCount', () => {
   const list = permissionsWithRouteCount();
   assert.ok(list.length > 0);
@@ -126,6 +132,11 @@ test('regression: sourcing.manage gates the compatibility mutation route', () =>
     paths.includes('/api/sourcing/saved-searches/[id]/route.ts'),
     'sourcing.manage should gate saved-search edit/delete',
   );
+});
+
+test('regression: repair.view gates the repair carrier-events read', () => {
+  const paths = routesGatedBy('repair.view').map((r) => r.path);
+  assert.ok(paths.includes('/api/repair-service/[id]/carrier-events/route.ts'));
 });
 
 test('regression: photos.view gates the photo library route', () => {
@@ -898,4 +909,20 @@ test('regression: orders.view gates the import record reads (not admin.view, unl
     assert.ok(paths.includes(path), `orders.view should gate ${path}`);
   }
   assert.equal(routeByPath('/api/imports/runs/[id]/route.ts')?.gate, 'requireRoutePerm');
+});
+
+test('regression: integrations.zendesk gates the support ticket link + create waist (repair anchor rides it)', () => {
+  // The repair record's Link ticket / Create ticket verbs post the `repair`
+  // anchor here; the anchor schemas are pinned in src/lib/schemas/support-tickets.test.ts.
+  const pinned: Array<[string, string[]]> = [
+    ['/api/support/tickets/link/route.ts', ['DELETE', 'GET', 'POST']],
+    ['/api/support/tickets/route.ts', ['POST']],
+  ];
+  for (const [path, methods] of pinned) {
+    const r = routeByPath(path);
+    assert.ok(r, `${path} should be in the manifest`);
+    assert.equal(r.gate, 'withAuth', path);
+    assert.equal(r.permission, 'integrations.zendesk', path);
+    assert.deepEqual(r.methods, methods, path);
+  }
 });

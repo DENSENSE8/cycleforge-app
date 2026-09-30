@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { StopSlider } from '@/design-system/primitives/StopSlider';
 import { useAuth } from '@/contexts/AuthContext';
 import { packProfileSaveError, savePackStandardMinutes } from '@/lib/packing/pack-profile-client';
 import {
@@ -14,7 +14,6 @@ import {
   tierForMinutes,
 } from '@/lib/packing/pack-standard-stops';
 import type { ProductPackProfile } from '@/lib/products/product-detail';
-import { cn } from '@/utils/_cn';
 
 const TIER_LABEL = { SMALL: 'Small', MEDIUM: 'Medium', LARGE: 'Large' } as const;
 
@@ -68,21 +67,14 @@ export function MobileProductPackTimeCard({
         <span className="font-mono text-lg font-semibold tabular-nums text-mode-ink">{formatPackMinutes(minutes)}</span>
         <span className="text-role-eyebrow text-mode-muted">{TIER_LABEL[tierForMinutes(minutes)]}</span>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={MAX_PACK_STOP_INDEX}
-        step={1}
-        value={index}
+      <StopSlider
+        stops={PACK_STANDARD_MINUTE_STOPS}
+        value={minutes}
+        onChange={setDraft}
         disabled={!canManage || saving}
-        aria-label="Time to pack"
-        aria-valuetext={formatPackMinutes(minutes)}
-        onChange={(event) => setDraft(minutesForStopIndex(Number(event.target.value)))}
-        className={cn(
-          'h-11 w-full min-w-0 cursor-pointer accent-[var(--ds-color-accent-text)]',
-          focusRing('field', 'accent'),
-          (!canManage || saving) && 'cursor-not-allowed opacity-50',
-        )}
+        ariaLabel="Time to pack"
+        formatValue={formatPackMinutes}
+        showStops={false}
       />
       <div className="flex justify-between text-role-micro tabular-nums text-mode-muted">
         <span>{formatPackMinutes(PACK_STANDARD_MINUTE_STOPS[0])}</span>

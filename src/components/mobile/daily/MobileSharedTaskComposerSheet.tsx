@@ -1,6 +1,6 @@
 'use client';
 
-/** Phone "Add task" — the words first, then who, then (optionally) a record. */
+/** Phone "New task" — the words first, then who, then (optionally) a record. */
 
 import { useState } from 'react';
 import { BottomSheet } from '@/components/ui/BottomSheet';

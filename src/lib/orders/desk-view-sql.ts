@@ -1,6 +1,7 @@
-/** SQL membership predicates for the outbound desk views (`pair=po`, `queue=pick`) and the base queues they refine. */
+/** SQL membership predicates for the FBM desk views (`DESK_VIEWS`), the parked `pair=po` lens and the base queues they refine. */
 
 import type { DeskRefinements } from '@/lib/orders/desk-view-filters';
+import type { DeskQueueViewId } from '@/lib/outbound/desk-views';
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan, sqlStationActivityMatchesOrder } from '@/lib/orders/order-grain-sql';
 import { ORDER_PICK_SCAN_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
@@ -36,10 +37,10 @@ export function sqlOrderHasPoPairedShortage(orderAlias = 'o'): string {
 }
 
 /**
- * True when every live allocation on the order is picked — the complement of the pick list's "picked < allocated, or nothing picked".
+ * True when every live allocation on the order is picked.
  * Two plain EXISTS, not one `HAVING COUNT(*) > 0 AND COUNT(*) FILTER (…) = 0` aggregate: an aggregate
  * subquery can only run as a per-order SubPlan (a seq scan of order_unit_allocations for each of ~5k
- * orders), while plain EXISTS lets Postgres hash each side once — ~100 → ~56 ms on the pick facet count.
+ * orders), while plain EXISTS lets Postgres hash each side once.
  */
 function sqlOrderFullyPicked(orderAlias: string): string {
   const o = alias(orderAlias);
@@ -58,6 +59,16 @@ function sqlOrderFullyPicked(orderAlias: string): string {
 }
 
 /**
+ * An order still owed a pick: no pack scan on it (order-grain) and not every
+ * allocated unit picked. The pick-owner backfill (`sku-pick-owners`) puts a
+ * picker on in-warehouse orders that match.
+ */
+export function sqlOrderAwaitingPick(orderAlias = 'o'): string {
+  const o = alias(orderAlias);
+  return `(NOT ${sqlOrderHasPackScan(o)} AND NOT ${sqlOrderFullyPicked(o)})`;
+}
+
+/**
  * Where an order's stage signals are read from, as SQL expressions over the
  * order alias. Omitted: the live source probes (`sqlOrderHasPickScan`,
  * `sqlOrderPickedByStaffId`, …). `/api/orders` passes the
@@ -72,15 +83,6 @@ export interface OrderStageSignals {
   pickerId: string;
   /** Live ORDER/PACK assignee (`?packedBy=`). */
   packerId: string;
-}
-
-/**
- * `queue=pick` refinement ON TOP of the in-warehouse To-ship scope: no pack
- * scan on this order (order-grain) and not every allocated unit picked.
- */
-export function sqlOrderAwaitingPick(orderAlias = 'o', signals?: Pick<OrderStageSignals, 'hasPackScan'>): string {
-  const o = alias(orderAlias);
-  return `(NOT ${signals?.hasPackScan ?? sqlOrderHasPackScan(o)} AND NOT ${sqlOrderFullyPicked(o)})`;
 }
 
 /**
@@ -113,19 +115,22 @@ export function sqlOrderBlockedPending(orderAlias = 'o'): string {
     )`;
 }
 
-/** Queue views whose rows are `orders` (`/api/orders` feeds them; desk-counts and nav facets count them). */
-export type DeskQueueView = 'triage' | 'pick' | 'po';
+/**
+ * Order-row scopes: the desk views whose rows are `/api/orders` rows, plus the
+ * parked Shortage desk's `po` lens (its desk-counts badge).
+ */
+export type DeskQueueView = DeskQueueViewId | 'po';
 
 /**
- * Membership of one queue view — the ONE predicate desk-counts and the nav
- * facets share, equal to what `/api/orders` assembles from the flags each desk
- * sends (`inWarehouse=true` [+ `queue=pick`], or `blockedOnly=true&pair=po`).
- * Expects `o` = orders and, for triage/pick, `stn` = its shipping_tracking_numbers join.
+ * Membership of one queue view — the ONE predicate desk-counts, the nav
+ * facets, identify and the locator share, equal to what `/api/orders`
+ * assembles from the flags each desk sends (`inWarehouse=true`, or
+ * `blockedOnly=true&pair=po`). Expects `o` = orders and, for triage, `stn` =
+ * its shipping_tracking_numbers join.
  */
 export function sqlDeskQueueScope(view: DeskQueueView, orderAlias = 'o'): string {
   const o = alias(orderAlias);
   if (view === 'po') return `(${sqlOrderBlockedPending(o)} AND ${sqlOrderHasPoPairedShortage(o)})`;
-  if (view === 'pick') return `(${sqlOrderInWarehouseToShip(o)} AND ${sqlOrderAwaitingPick(o)})`;
   return sqlOrderInWarehouseToShip(o);
 }
 

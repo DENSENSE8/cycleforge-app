@@ -7,12 +7,12 @@ import { recordClaimZendeskEvent } from '@/lib/warranty/zendesk-link';
 import { claimIdFromPath, idempotentJson, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyZendeskCommentBody } from '@/lib/schemas/warranty';
 import {
-  addTicketComment,
   listTicketComments,
   ZendeskApiError,
   ZendeskNotConfiguredError,
   type ZendeskComment,
 } from '@/lib/zendesk';
+import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import type { WarrantyZendeskComment } from '@/lib/warranty/zendesk-format';
 
 export const dynamic = 'force-dynamic';
@@ -97,7 +97,12 @@ export const POST = withAuth(async (request, ctx) => {
       const isPublic = parsed.data.public === true;
       let ticket;
       try {
-        ticket = await addTicketComment(claim.zendeskTicketId, {
+        // The facade write re-mirrors the ticket (write-through) for the support panel.
+        const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+        if (!helpdesk) {
+          return { status: 503, body: { ok: false, error: 'Zendesk is not configured' } };
+        }
+        ticket = await helpdesk.addComment(claim.zendeskTicketId, {
           body: parsed.data.body,
           public: isPublic,
         });

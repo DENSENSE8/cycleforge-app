@@ -51,7 +51,7 @@ import {
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { TableRowPlaneProps } from '@/components/tables/table-surface-binding';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
-import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_EXCEPTIONS_PATH } from '@/lib/shipping/orders-desk';
 import { commitExceptionsItemPaste } from '@/lib/orders/exceptions-cta';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
@@ -72,7 +72,7 @@ import {
 import { useRailActionSnapshot } from '@/components/right-rail/RailSelectionActions';
 import { resolveSelectionAction, type SelectionAction } from '@/lib/selection/selection-actions';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
-import { showOosPendingToast } from '@/lib/outbound/oos-pending-toast';
+import { OOS_ORDERS_HREF, showOosPendingToast } from '@/lib/outbound/oos-pending-toast';
 import {
   morphingListingIdentity,
   morphingOosAssignPayload,
@@ -88,6 +88,7 @@ import { VIEW_SPECS, viewOffersVerb, type OrderViewKey } from '@/lib/views/view-
 import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
 import { buildRecordTaskVerbs } from '@/components/tasks/RecordTaskActions';
 import { supportCreateTicketHref } from '@/lib/support/support-sidebar-shared';
+import { COPY_HOTKEY } from '@/lib/keyboard/key-registry';
 
 function orderIdOf(row: unknown): number | null {
   if (!row || typeof row !== 'object' || !('id' in row)) return null;
@@ -199,6 +200,18 @@ function bulkStripVerbs(verbs: readonly RecordActionVerb[]): RecordActionVerb[] 
  */
 const TRIAGE_BAR_PRIMARY_IDS: readonly string[] = ['paste', 'resolve', 'out-of-stock', 'urgent', 'scan-out', 'documents'];
 const TRIAGE_BAR_DROPPED_IDS: ReadonlySet<string> = new Set(['more-info', 'select', 'notes', 'label']);
+
+/**
+ * The allocate record header's visible verbs, in order, with the face each
+ * wears there (owner 2026-09-29): Urgent keeps its yellow, Create customer
+ * ticket is orange, Assign task white, Report out of stock red.
+ */
+const ALLOCATE_HEADER_PRIMARY: readonly { id: string; face?: Partial<Pick<RecordActionVerb, 'label' | 'tone'>> }[] = [
+  { id: 'urgent' },
+  { id: 'customer-ticket', face: { tone: 'warning' } },
+  { id: 'task-staff', face: { label: 'Assign task', tone: 'default' } },
+  { id: 'out-of-stock' },
+];
 
 function triageBarVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[]): RecordActionVerb[] {
   const byId = new Map(verbs.map((verb) => [verb.id, verb]));
@@ -402,7 +415,7 @@ function useOrderActionVerbs({
         showOosPendingToast({
           count: actionIds.length,
           staysPacked,
-          onViewPending: () => router.push(SHIPPING_SHORTAGE_PATH),
+          onViewExceptions: () => router.push(OOS_ORDERS_HREF),
         }),
       )
       .catch((err) => toast.error(err instanceof Error ? err.message : 'Could not mark out of stock'));
@@ -552,7 +565,8 @@ function useOrderActionVerbs({
       run: () => toggle(record, { shiftKey: false }),
     });
   }
-  verbs.push(...catalogVerb('copy', 'Copy', <Copy />, 'c'));
+  // ⌘/Ctrl+C, never bare C: C is create app-wide (`key-registry`).
+  verbs.push(...catalogVerb('copy', 'Copy', <Copy />, COPY_HOTKEY));
   verbs.push(...catalogVerb('print', 'Print', <Printer />, 'p'));
 
   // ── ⋮ overflow ──
@@ -828,7 +842,7 @@ function OosDisplay({ rows, done }: { rows: readonly MorphingOosRow[]; done: () 
           sku: identity.sku,
           qtyShort: identity.qtyShort,
           staysPacked: morphingOosStaysPacked([row]),
-          onViewPending: () => router.push(SHIPPING_SHORTAGE_PATH),
+          onViewExceptions: () => router.push(OOS_ORDERS_HREF),
         });
         done();
       },
@@ -1038,22 +1052,18 @@ export function OrderRecordActionStrip({
       ];
     }
 
-    // Escalation owns the visible waist. Supporting reference material stays
-    // behind ⋮, so the first scan reads urgency → customer issue → owner.
+    // Escalation owns the visible waist, in colour (owner 2026-09-29):
+    // Urgent (yellow) → Create customer ticket (orange) → Assign task (white)
+    // → Report out of stock (red). Everything else is behind ⋮, ending
+    // Documents → Mark scanned out → Delete at the very bottom.
     const byId = new Map(allVerbs.map((verb) => [verb.id, verb]));
-    const primary = ['urgent', 'customer-ticket', 'task-staff'].flatMap((id) => {
+    const primary = ALLOCATE_HEADER_PRIMARY.flatMap(({ id, face }) => {
       const verb = byId.get(id);
-      if (!verb) return [];
-      return [{
-        ...verb,
-        label: id === 'task-staff' ? 'Assign task' : verb.label,
-        placement: 'primary' as const,
-      }];
+      return verb ? [{ ...verb, ...face, placement: 'primary' as const }] : [];
     });
+    const scanOut = byId.get('scan-out');
+    const deleteVerb = byId.get('delete');
     const skip = new Set([
-      'urgent',
-      'customer-ticket',
-      'task-staff',
       'select',
       'label',
       'notes',
@@ -1063,6 +1073,8 @@ export function OrderRecordActionStrip({
       'create-rule',
       'sku-stock',
       'rules',
+      'scan-out',
+      'delete',
       ...RECORD_INLINE_VERB_IDS,
     ]);
     const seen = new Set(primary.map((verb) => verb.id));
@@ -1072,9 +1084,10 @@ export function OrderRecordActionStrip({
       seen.add(verb.id);
       overflow.push({ ...verb, placement: 'overflow' });
     }
-    // Documents is always last in the overflow: available, but never ahead of
-    // the actions that change the order's operational outcome.
     overflow.push({ ...paperworkVerb(record, 'Documents'), hotkey: 'l', placement: 'overflow' });
+    if (scanOut) overflow.push({ ...scanOut, placement: 'overflow' });
+    // Delete is undoable (deferred with an Undo toast), so from the menu it runs on one press.
+    if (deleteVerb) overflow.push({ ...deleteVerb, placement: 'overflow' });
     return [...primary, ...overflow];
   })();
   const orderRef = String(record.order_id ?? '').trim() || String(record.id);

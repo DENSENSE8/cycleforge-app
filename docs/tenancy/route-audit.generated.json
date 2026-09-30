@@ -1,10 +1,10 @@
 {
   "summary": {
-    "total": 1144,
-    "withAuth": 829,
-    "tenantWrapped": 887,
-    "delegatedTenantWrapped": 826,
-    "orgIdRef": 1014,
+    "total": 1148,
+    "withAuth": 831,
+    "tenantWrapped": 889,
+    "delegatedTenantWrapped": 828,
+    "orgIdRef": 1017,
     "rawPool": 330,
     "drizzle": 19,
     "transitional": 6,
@@ -14,7 +14,7 @@
       "high": 26,
       "medium": 63,
       "low": 622,
-      "info": 414
+      "info": 418
     }
   },
   "routes": [
@@ -6375,7 +6375,7 @@
       "mutates": true,
       "touched": [
         "suppliers",
-        "items"
+        "staff"
       ],
       "risk": "low"
     },
@@ -9983,31 +9983,6 @@
       "risk": "low"
     },
     {
-      "route": "/api/picking/queue",
-      "methods": [
-        "GET"
-      ],
-      "withAuth": true,
-      "permission": "picking.view",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": false,
-      "touched": [
-        "order_unit_allocations",
-        "picking_sessions",
-        "work_assignments",
-        "customers",
-        "orders"
-      ],
-      "risk": "low"
-    },
-    {
       "route": "/api/picking/units/scan",
       "methods": [
         "POST"
@@ -10284,7 +10259,8 @@
     {
       "route": "/api/products/[sku]",
       "methods": [
-        "GET"
+        "GET",
+        "PATCH"
       ],
       "withAuth": false,
       "permission": null,
@@ -10296,14 +10272,16 @@
       "transitional": false,
       "isCron": false,
       "isPathParam": true,
-      "mutates": false,
+      "mutates": true,
       "touched": [
+        "product_parcel_dims",
         "sku_platform_ids",
         "bin_contents",
         "serial_units",
         "sku_catalog",
         "platforms",
         "sku_stock",
+        "orders",
         "items",
         "sku"
       ],
@@ -12759,6 +12737,30 @@
         "sku_stock_ledger",
         "sku_catalog",
         "sku_stock",
+        "sku"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/reports/records/export",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": "operations.view",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": false,
+      "touched": [
+        "receiving_line",
+        "orders",
+        "staff",
         "sku"
       ],
       "risk": "low"
@@ -19257,6 +19259,44 @@
       "risk": "info"
     },
     {
+      "route": "/api/kiosk/local-pickup/extract",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/kiosk/local-pickup/labels",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
       "route": "/api/kiosk/pair",
       "methods": [
         "POST"
@@ -20773,6 +20813,25 @@
       "risk": "info"
     },
     {
+      "route": "/api/print-station/fnskus",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": "print.label",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": false,
+      "touched": [],
+      "risk": "info"
+    },
+    {
       "route": "/api/product-manuals/[id]/content",
       "methods": [
         "GET"
@@ -21341,6 +21400,25 @@
       "isCron": false,
       "isPathParam": false,
       "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/receiving/inbound/ocr-health",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": "receiving.view",
+      "orgIdRef": false,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": false,
       "touched": [],
       "risk": "info"
     },

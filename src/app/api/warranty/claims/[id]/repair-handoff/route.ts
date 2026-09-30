@@ -7,6 +7,7 @@ import { getClaimTicketRef } from '@/lib/warranty/claims';
 import { notifyWarrantyTransition } from '@/lib/warranty/notify';
 import { claimIdFromPath, idempotentJson, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyRepairHandoffBody } from '@/lib/schemas/warranty';
+import { scheduleRepairTaskSync } from '@/lib/tasks/repair-tasks-db';
 
 /**
  * POST /api/warranty/claims/[id]/repair-handoff
@@ -51,6 +52,7 @@ export const POST = withAuth(async (request, ctx) => {
         entityId: id,
         after: { repairServiceId: result.repairServiceId, status: result.claim.status },
       });
+      scheduleRepairTaskSync(ctx.organizationId, result.repairServiceId);
       if (result.claim.status === 'IN_REPAIR') {
         await notifyWarrantyTransition({ organizationId: ctx.organizationId, claim: result.claim, event: 'in_repair', actorStaffId: ctx.staffId ?? null });
       }

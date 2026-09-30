@@ -3,11 +3,11 @@
 /** The PACKAGE record — one carrier tracking number read whole (`GET /api/shipments/[id]/record`, {@link useShipmentRecord}), placed by… */
 
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
-import { EvidenceNotice, EvidenceSection, EvidenceStateStrip } from '@/design-system/components/record-ledger/RecordEvidence';
+import { EvidenceNotice, EvidenceSection } from '@/design-system/components/record-ledger/RecordEvidence';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import { useShipmentRecord } from '@/lib/shipments/shipment-record-client';
 import type { ShipmentRecord } from '@/lib/shipments/shipment-record-types';
-import { isOpenExceptionStatus, shipmentOutboundStage, shippedPackageFace } from './shipped-package-state';
+import { isOpenExceptionStatus } from './shipped-package-state';
 import { ShipmentActionRow, ShipmentFacts, ShipmentItem, SiblingRow } from './shipment-record-sections';
 
 /** One column of the record: the industrial panel its sections stack in. */
@@ -48,17 +48,6 @@ function ShipmentRecordBody({
   onOpenShipment: (shipmentId: number) => void;
 }) {
   const openException = record.exception != null && isOpenExceptionStatus(record.exception.status);
-  const stage = shipmentOutboundStage({
-    packedAt: record.pack?.packedAt ?? null,
-    shipConfirmedAt: record.shipOut?.at ?? null,
-    latestStatusCategory: record.status.category,
-    latestEventAt: record.status.latestEventAt,
-    isTerminal: record.status.isDelivered,
-    hasException: record.status.hasException,
-  });
-  const state = shippedPackageFace(stage, openException);
-  // The one next step this desk offers is the strip's Resolve exception.
-  const next = openException ? 'Resolve exception' : null;
 
   const main = (
     <div className="flex min-w-0 flex-col gap-4">
@@ -110,9 +99,6 @@ function ShipmentRecordBody({
 
   return (
     <div className="flex flex-1 flex-col gap-4 bg-mode-canvas p-4 text-mode-ink" data-testid="shipment-record-view">
-      <div className="border border-mode-ink bg-mode-panel">
-        <EvidenceStateStrip state={state} next={next} />
-      </div>
       {record.sync.lastErrorMessage ? (
         <div className="border border-mode-ink">
           <EvidenceNotice tone="warn">

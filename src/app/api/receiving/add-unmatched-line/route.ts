@@ -8,6 +8,8 @@ import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
 import { upsertEcwidIncomingRepair } from '@/lib/neon/repair-service-queries';
+import { repairDueAt } from '@/lib/repair/repair-due-at';
+import { formatPSTTimestamp } from '@/utils/date';
 import { fetchEcwidOrderContact } from '@/lib/ecwid/client';
 import { withAuth } from '@/lib/auth/withAuth';
 import { after } from 'next/server';
@@ -496,14 +498,18 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         ctx.organizationId as OrgId,
       );
       repairTicketId = ticket.id;
+      // The receive stamp starts the SLA — unless the box is still on
+      // Incoming Shipment, which has no due date until its status moves.
+      const receivedAt = formatPSTTimestamp();
       await withTenantTransaction(ctx.organizationId, async (client) => {
         await client.query(
           `UPDATE repair_service
-              SET received_at = COALESCE(received_at, NOW()),
+              SET due_at = CASE WHEN received_at IS NULL THEN $4::timestamptz ELSE due_at END,
+                  received_at = COALESCE(received_at, $3::timestamptz),
                   updated_at = NOW()
             WHERE id = $1
               AND organization_id = $2::uuid`,
-          [ticket.id, ctx.organizationId],
+          [ticket.id, ctx.organizationId, receivedAt, repairDueAt(receivedAt, ticket.created_at, ticket.status)],
         );
       });
       result.payload.repair_service_id = repairTicketId;

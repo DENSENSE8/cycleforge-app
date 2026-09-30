@@ -1,7 +1,7 @@
 /**
  * Shipping (page `outbound`) facet counts. Every membership predicate is the
- * one the list and desk-counts already read — `sqlDeskQueueScope` (To ship,
- * Pick list, PO paired), `sqlOrderDeskStage`, `sqlOrderAssignedToStaff`,
+ * one the list and desk-counts already read — `sqlDeskQueueScope` (Allocate),
+ * `sqlOrderDeskStage`, `sqlOrderAssignedToStaff`,
  * `sqlDeskRefinementClauses` (packedBy / pickerId / pickedBy / order date /
  * ship-by window), `sqlOrderTestDeadlineAt` (the list's ship-by) — so a
  * facet count is, by construction, the total the list shows for that pick.
@@ -45,7 +45,7 @@ export interface FacetSqlRunner {
   (sql: string, params: readonly unknown[]): Promise<Array<Record<string, unknown>>>;
 }
 
-// ── queue views: To ship (triage) · Pick list (pick) · PO paired (po) ─────────
+// ── queue views: Allocate (triage) ──────────────────────────────────────────────
 
 export interface QueueFacetCombo {
   stage: DeskStage;
@@ -178,8 +178,6 @@ function toQueueCombo(row: Record<string, unknown>): QueueFacetCombo {
 
 const QUEUE_VIEW: Partial<Record<NavFacetContext, DeskQueueView>> = {
   'outbound.triage': 'triage',
-  'outbound.pick': 'pick',
-  'outbound.po': 'po',
 };
 
 /** Keep only the groups the context declares, in its declared order. */

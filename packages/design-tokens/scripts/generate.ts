@@ -17,6 +17,10 @@ import {
   INTAKE,
   INBOUND_DELIVERY,
   INBOUND_DELIVERY_STATES,
+  INBOUND_LIFECYCLE,
+  INBOUND_LIFECYCLE_STATES,
+  PICKUP_LIFECYCLE,
+  PICKUP_LIFECYCLE_STATES,
   INTAKE_CLASSES,
   LIFECYCLE,
   LIFECYCLE_STATES,
@@ -24,6 +28,8 @@ import {
   MODE_NAMES,
   MODE_NEUTRAL_REMAP,
   MODE_REGISTRY,
+  SERVICE_LEVEL,
+  SERVICE_LEVELS,
   STATE_NAMES,
   STATE_TONES,
   TRIALS,
@@ -92,6 +98,15 @@ function renderJson(): string {
   }
   for (const state of INBOUND_DELIVERY_STATES) {
     for (const [field, value] of Object.entries(INBOUND_DELIVERY[state])) flat[`inboundDelivery.${state}.${field}`] = value;
+  }
+  for (const state of INBOUND_LIFECYCLE_STATES) {
+    for (const [field, value] of Object.entries(INBOUND_LIFECYCLE[state])) flat[`inboundLifecycle.${state}.${field}`] = value;
+  }
+  for (const state of PICKUP_LIFECYCLE_STATES) {
+    for (const [field, value] of Object.entries(PICKUP_LIFECYCLE[state])) flat[`pickupLifecycle.${state}.${field}`] = value;
+  }
+  for (const level of SERVICE_LEVELS) {
+    for (const [field, value] of Object.entries(SERVICE_LEVEL[level])) flat[`serviceLevel.${level}.${field}`] = String(value);
   }
   for (const cls of INTAKE_CLASSES) {
     for (const [field, value] of Object.entries(INTAKE[cls])) flat[`intake.${cls}.${field}`] = value;
@@ -327,6 +342,51 @@ function renderSwift(): string {
     const { code, label, tone, icon } = INBOUND_DELIVERY[state];
     out.push(
       `${I2}public static let ${swiftIdent(state.toLowerCase())} = LifecycleState(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)}, tone: State.${tone}, icon: ${JSON.stringify(icon)})`,
+    );
+  }
+  out.push(
+    `${I1}}`,
+    '',
+    `${I1}/// The inbound floor ladder — Ordered → Docked → Unboxed → Graded → Tested → Put away.`,
+    `${I1}public enum InboundLifecycle {`,
+  );
+  for (const state of INBOUND_LIFECYCLE_STATES) {
+    const { code, label, tone, icon } = INBOUND_LIFECYCLE[state];
+    out.push(
+      `${I2}public static let ${swiftIdent(state)} = LifecycleState(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)}, tone: State.${tone}, icon: ${JSON.stringify(icon)})`,
+    );
+  }
+  out.push(
+    `${I1}}`,
+    '',
+    `${I1}/// The local-pickup ladder — Ordered → Collected → Unboxed → Graded → Tested → Put away.`,
+    `${I1}public enum PickupLifecycle {`,
+  );
+  for (const state of PICKUP_LIFECYCLE_STATES) {
+    const { code, label, tone, icon } = PICKUP_LIFECYCLE[state];
+    out.push(
+      `${I2}public static let ${swiftIdent(state)} = LifecycleState(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)}, tone: State.${tone}, icon: ${JSON.stringify(icon)})`,
+    );
+  }
+  out.push(
+    `${I1}}`,
+    '',
+    `${I1}/// One shipping service level: the lifecycle face plus the import rule.`,
+    `${I1}public struct ServiceLevelSpec: Sendable {`,
+    `${I2}public let state: LifecycleState`,
+    `${I2}/// An order first classified at this level is marked urgent.`,
+    `${I2}public let urgent: Bool`,
+    `${I2}/// Speed order — a split order takes its fastest service.`,
+    `${I2}public let rank: Int`,
+    `${I1}}`,
+    '',
+    `${I1}/// Shipping service levels — the speed the buyer paid for.`,
+    `${I1}public enum ServiceLevel {`,
+  );
+  for (const level of SERVICE_LEVELS) {
+    const { code, label, tone, icon, urgent, rank } = SERVICE_LEVEL[level];
+    out.push(
+      `${I2}public static let ${swiftIdent(level)} = ServiceLevelSpec(state: LifecycleState(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)}, tone: State.${tone}, icon: ${JSON.stringify(icon)}), urgent: ${urgent}, rank: ${rank})`,
     );
   }
   out.push(

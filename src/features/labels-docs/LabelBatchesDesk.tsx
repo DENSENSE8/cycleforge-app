@@ -97,7 +97,7 @@ export function LabelBatchesDesk() {
   const picker = useRef<HTMLInputElement>(null);
   const { refresh: refreshRoutes } = usePrintRoutes();
   const stations = usePrintStations();
-  const { print, progress, notice, setNotice, refresh } = useDeskPress(stations, refreshRoutes);
+  const { print, notice, setNotice, refresh } = useDeskPress(stations, refreshRoutes);
   const [dragging, setDragging] = useState(false);
 
   // One view: the lone list, split on open. The frame's view chord cannot move it off.
@@ -494,11 +494,9 @@ export function LabelBatchesDesk() {
     />
   ) : null;
 
-  const status = progress
-    ? `Printing ${progress.done} of ${progress.total}…`
-    : list.isError
-      ? 'The uploads could not be read. It retries on its own.'
-      : notice;
+  const status = list.isError
+    ? 'The uploads could not be read. It retries on its own.'
+    : notice;
   const filtered = Boolean(query.trim() || from || to || statusFilter.size > 0);
 
   return (

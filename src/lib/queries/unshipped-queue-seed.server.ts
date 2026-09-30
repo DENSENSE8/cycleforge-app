@@ -18,8 +18,8 @@ import { parseOrdersListQuery } from '@/lib/orders/orders-list-query';
 import { listOrders } from '@/lib/orders/orders-list';
 import { getQueueCounts } from '@/lib/orders/queue-counts';
 import { normalizeQueueCountsPayload } from '@/lib/orders/queue-counts-normalize';
-import { DESK_PAIR_PARAM, DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
-import type { DeskPairFilter, DeskQueueFilter } from '@/lib/orders/desk-view-filters';
+import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
+import type { DeskPairFilter } from '@/lib/orders/desk-view-filters';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Default page size — keep in lockstep with `UnshippedTable` `rowLimit` initial. */
@@ -35,11 +35,10 @@ interface UnshippedSeedView {
   /** Shortage desk (`lockedFulfillmentState="BLOCKED"`). */
   blockedOnly?: boolean;
   pair?: DeskPairFilter;
-  queue?: DeskQueueFilter;
 }
 
 /** Mirrors `unshippedOrdersQuery`'s key for that mount. */
-function unshippedListKey({ blockedOnly = false, pair, queue }: UnshippedSeedView) {
+function unshippedListKey({ blockedOnly = false, pair }: UnshippedSeedView) {
   return [
     'dashboard-table',
     'unshipped',
@@ -52,7 +51,6 @@ function unshippedListKey({ blockedOnly = false, pair, queue }: UnshippedSeedVie
       stage: null,
       blockedOnly,
       pair,
-      queue,
       limit: UNSHIPPED_SEED_LIMIT,
     },
   ] as const;
@@ -64,7 +62,7 @@ function unshippedCountsKey() {
 
 async function readUnshippedRows(
   orgId: OrgId,
-  { blockedOnly, pair, queue }: UnshippedSeedView,
+  { blockedOnly, pair }: UnshippedSeedView,
 ): Promise<ShippedOrder[]> {
   // The exact params `fetchUnshippedOrdersData` sends for this view (inWarehouse, not fulfillmentScope).
   const params = new URLSearchParams({
@@ -74,7 +72,6 @@ async function readUnshippedRows(
   });
   if (blockedOnly) params.set('blockedOnly', 'true');
   if (pair) params.set(DESK_PAIR_PARAM, pair);
-  if (queue) params.set(DESK_QUEUE_PARAM, queue);
   const { payload } = await listOrders(orgId, parseOrdersListQuery(params));
   // Wire shape, not driver shape: the browser fetch receives JSON (timestamps
   // as strings), and both writers share one cache key.

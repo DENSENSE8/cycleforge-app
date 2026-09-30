@@ -3,18 +3,17 @@
 import pool from '@/lib/db';
 import { readInventorySpine } from '@/lib/audit-log/inventory-spine';
 import { photoContentUrl } from '@/lib/photos/display-url';
-import { productImageUrl } from '@/lib/photos/product-image-url';
 import { sqlOrderOwnsShipment } from '@/lib/search/order-tracking-match-sql';
-import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { getTrackingUrl, getTrackingUrlByCarrier, orderTrackingMatchKeys } from '@/lib/tracking-format';
 import { listShipmentCarrierEvents, type CarrierEventRow } from './carrier-events';
-import type {
-  ShipmentRecord,
-  ShipmentRecordAction,
-  ShipmentRecordItem,
-  ShipmentRecordSibling,
+import {
+  shipmentItemIdentity,
+  type ShipmentRecord,
+  type ShipmentRecordAction,
+  type ShipmentRecordItem,
+  type ShipmentRecordSibling,
 } from './shipment-record-types';
 
 type Instant = Date | string | null;
@@ -601,18 +600,7 @@ export function buildShipmentRecord(rows: ShipmentRecordRows): ShipmentRecord {
     orderRef: clean(o.order_id),
     channel: clean(o.account_source),
     sku: clean(o.sku),
-    title:
-      resolveSkuIdentityTitle({
-        zoho_item_title: o.zoho_item_title,
-        catalog_product_title: o.catalog_product_title,
-        item_name: o.product_title,
-        sku: o.sku,
-      }) || 'Unknown product',
-    photoUrl: productImageUrl({
-      zohoItemId: o.zoho_item_id,
-      zohoImageDocumentId: o.zoho_image_document_id,
-      catalogImageUrl: o.catalog_image_url,
-    }),
+    ...shipmentItemIdentity(o),
     quantity: o.quantity == null || o.quantity === '' || !Number.isFinite(Number(o.quantity)) ? null : Number(o.quantity),
     condition: clean(o.condition),
     orderStatus: clean(o.status),

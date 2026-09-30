@@ -98,15 +98,20 @@ import {
 } from './compound-row-model';
 import { StageStaffAssignPopover } from './StageStaffAssignPopover';
 import { CompoundStaffRosterButton } from './CompoundStaffRosterButton';
+import { PhotoHoverPeek } from '@/design-system/components/PhotoHoverPeek';
 
-/** Column 4 — the photo, EDGE TO EDGE. */
+/** Column 4 — the photo, EDGE TO EDGE. Hover enlarges it; click opens it full screen. */
 export function CompoundThumb({ view }: { view: CompoundRowView }) {
   return (
-    <div className="relative h-full w-full overflow-hidden bg-surface-sunken">
+    <PhotoHoverPeek
+      src={view.thumbUrl}
+      alt={view.title || 'Item photo'}
+      className={cn('block h-full w-full overflow-hidden', view.thumbUrl ? 'bg-surface-card' : 'bg-surface-sunken')}
+    >
       {view.thumbUrl ? (
         <Image
           src={view.thumbUrl}
-          alt={view.title || 'Item photo'}
+          alt=""
           // Intrinsic hint only — the painted size is `h-full w-full`, so a
           // density-scaled track still fills.
           width={COMPOUND_GUTTER_PX}
@@ -118,11 +123,11 @@ export function CompoundThumb({ view }: { view: CompoundRowView }) {
           unoptimized
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-text-faint">
+        <span className="flex h-full w-full items-center justify-center text-text-faint">
           <Package className="h-4 w-4" aria-hidden />
-        </div>
+        </span>
       )}
-    </div>
+    </PhotoHoverPeek>
   );
 }
 

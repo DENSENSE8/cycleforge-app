@@ -23,18 +23,13 @@ interface CreatedSupportTicket {
   providerTicketId: number;
 }
 
-export function useSupportTicketClaimHost() {
+/** `POST /api/support/tickets` anchored to `anchor` (null = unanchored); refreshes support caches on success. */
+export function useCreateSupportTicket(
+  anchor: SupportTicketCreateAnchor | null,
+  options?: { onSuccess?: (created: CreatedSupportTicket) => void },
+) {
   const qc = useQueryClient();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [anchor, setAnchor] = useState<SupportTicketCreateAnchor | null>(null);
-
-  const openCreate = useCallback((a?: SupportTicketCreateAnchor | null) => {
-    setAnchor(a ?? null);
-    setCreateOpen(true);
-  }, []);
-  const closeCreate = useCallback(() => setCreateOpen(false), []);
-
-  const createTicket = useMutation<CreatedSupportTicket, Error, CreateSupportTicketArgs>({
+  return useMutation<CreatedSupportTicket, Error, CreateSupportTicketArgs>({
     mutationFn: async ({ subject, note, linkages }) => {
       const res = await fetch('/api/support/tickets', {
         method: 'POST',
@@ -59,15 +54,28 @@ export function useSupportTicketClaimHost() {
         providerTicketId: Number(data.providerTicketId),
       };
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       invalidateSupportContextCaches(qc);
       void qc.invalidateQueries({ queryKey: ['zendesk'] });
-      setCreateOpen(false);
+      options?.onSuccess?.(created);
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Could not create ticket');
     },
   });
+}
+
+export function useSupportTicketClaimHost() {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [anchor, setAnchor] = useState<SupportTicketCreateAnchor | null>(null);
+
+  const openCreate = useCallback((a?: SupportTicketCreateAnchor | null) => {
+    setAnchor(a ?? null);
+    setCreateOpen(true);
+  }, []);
+  const closeCreate = useCallback(() => setCreateOpen(false), []);
+
+  const createTicket = useCreateSupportTicket(anchor, { onSuccess: () => setCreateOpen(false) });
 
   return {
     createOpen,

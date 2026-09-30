@@ -29,6 +29,8 @@ export const SAVED_VIEW_SURFACES = [
   'products_catalog',
   'inventory_units',
   'warehouse_bins',
+  // The repair cards' saved views (`RepairCardList`, sidebar presets since
+  // 2026-09-29 — `SAVED_VIEW_STORAGE_KEY.repair_queue`).
   'repair_queue',
   'warranty_claims',
   'tracking_exceptions',
@@ -81,7 +83,6 @@ const SHEET_SAVED_VIEW_KEY = {
   products_catalog: 'products_catalog_saved_views',
   inventory_units: 'inventory_units_saved_views',
   warehouse_bins: 'warehouse_bins_saved_views',
-  repair_queue: 'repair_queue_saved_views',
   warranty_claims: 'warranty_claims_saved_views',
   outbound_ready: 'outbound_ready_saved_views',
   outbound_labels: 'outbound_labels_saved_views',
@@ -107,10 +108,6 @@ export const SHEET_SAVED_VIEW_CONFIG = {
   bins: {
     storageKey: SHEET_SAVED_VIEW_KEY.warehouse_bins,
     paramKeys: ['status', 'room', 'colsort', 'coldir'],
-  },
-  repair: {
-    storageKey: SHEET_SAVED_VIEW_KEY.repair_queue,
-    paramKeys: ['tab', 'status', 'colsort', 'coldir'],
   },
   warranty: {
     storageKey: SHEET_SAVED_VIEW_KEY.warranty_claims,
@@ -149,11 +146,11 @@ const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> 
   [SAVED_VIEW_STORAGE_KEY.receiving_history]: 'receiving_history',
   [SAVED_VIEW_STORAGE_KEY.receiving_incoming]: 'receiving_incoming',
   [SAVED_VIEW_STORAGE_KEY.testing_history]: 'testing_history',
+  [SAVED_VIEW_STORAGE_KEY.repair_queue]: 'repair_queue',
   // Phase 4 rebuilds — one entry per key above, or the surface saves nothing.
   [SHEET_SAVED_VIEW_KEY.products_catalog]: 'products_catalog',
   [SHEET_SAVED_VIEW_KEY.inventory_units]: 'inventory_units',
   [SHEET_SAVED_VIEW_KEY.warehouse_bins]: 'warehouse_bins',
-  [SHEET_SAVED_VIEW_KEY.repair_queue]: 'repair_queue',
   [SHEET_SAVED_VIEW_KEY.warranty_claims]: 'warranty_claims',
   [SHEET_SAVED_VIEW_KEY.outbound_ready]: 'outbound_ready',
   [SHEET_SAVED_VIEW_KEY.outbound_labels]: 'outbound_labels',

@@ -9,6 +9,9 @@ import {
   INBOUND_SOURCE_PARAM,
 } from '@/lib/receiving/inbound-lane';
 import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
+import { REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
+import { REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 
 /**
  * Canonical URL param for the universal all-staff ↔ single-staff filter
@@ -56,7 +59,8 @@ type StationSurfaceKey =
   | 'packer_history'
   | 'receiving_history'
   | 'receiving_incoming'
-  | 'testing_history';
+  | 'testing_history'
+  | 'repair_queue';
 
 /**
  * Per-surface saved-view param keys (§6.3). A saved view captures ONLY the
@@ -98,6 +102,10 @@ export const SAVED_VIEW_PARAM_KEYS: Record<StationSurfaceKey, readonly string[]>
     INBOUND_FIND_PARAM,
   ],
   testing_history: [LAYOUT_PARAM, SCOPE_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM, 'view'],
+  // The repair cards (`/repair`, Sales › Repair service): Status (`tab`), the
+  // channel view, Sort, the status chips and the sidebar Find — the owner's
+  // 2026-09-29 list. The open record (`openRepair`) and `page` stay out.
+  repair_queue: ['tab', REPAIR_CHANNEL_PARAM, REPAIR_SORT_PARAM, REPAIR_STATUS_CHIP_PARAM, 'search'],
 };
 
 /** localStorage key holding a surface's saved views. */
@@ -107,4 +115,5 @@ export const SAVED_VIEW_STORAGE_KEY: Record<StationSurfaceKey, string> = {
   receiving_history: 'receiving_history_saved_views',
   receiving_incoming: 'receiving_incoming_saved_views',
   testing_history: 'testing_history_saved_views',
+  repair_queue: 'repair_queue_saved_views',
 };

@@ -40,7 +40,6 @@ const TABLE_ENTITY_FAMILIES = [
   /** To-Ship CSV import staging — parsed rows + triage state, not live orders. */
   'orders-import',
   'catalog',
-  'repair',
   'pickup',
   'warranty',
   'ready',

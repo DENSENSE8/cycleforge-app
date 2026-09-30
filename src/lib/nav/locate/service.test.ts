@@ -22,12 +22,12 @@ const EVERY = new Set(['orders.view', 'packing.view', 'receiving.view']);
 /** Order rows the refs statement returns per pasted ref (its membership flags). */
 const ORDERS: Record<string, Array<Record<string, unknown>>> = {
   '02-15212-00001': [
-    { id: 11, order_id: '02-15212-00001', product_title: 'Bose QC45', in_triage: true, in_pick: true },
+    { id: 11, order_id: '02-15212-00001', product_title: 'Bose QC45', in_triage: true },
   ],
   '1Z999AA10123456784': [{ id: 12, order_id: '113-0000000-0000001', product_title: null, in_shipped: true }],
   'SPLIT-9': [
     { id: 13, order_id: 'SPLIT-9', product_title: 'Speaker', in_exceptions: true },
-    { id: 14, order_id: 'SPLIT-9', product_title: 'Remote', in_po: true },
+    { id: 14, order_id: 'SPLIT-9', product_title: 'Remote', in_triage: true },
   ],
 };
 
@@ -87,13 +87,12 @@ function fakes() {
         return refs.flatMap((ref, index) => (ORDERS[ref] ?? []).map((row) => ({ ...row, ord: index + 1 })));
       }
       const view = /FROM \(LIST:(\w+)\) listed/.exec(sql)?.[1];
-      if (view) return [{ n: { triage: 4, pick: 2, po: 1 }[view] }];
+      if (view) return [{ n: { triage: 4 }[view] }];
       return [{ exceptions: 3, shipped: 5 }];
     },
     ordersListSql: async (orgId, query) => {
       cap.lists.push(query);
-      const view = query.poPaired ? 'po' : query.pickQueue ? 'pick' : 'triage';
-      return { sql: `LIST:${view}`, params: [orgId, query.query] };
+      return { sql: 'LIST:triage', params: [orgId, query.query] };
     },
     inboundCheck: async (_orgId, refs) => {
       cap.checked.push([...refs]);
@@ -129,22 +128,18 @@ test('outbound text: one bucket per desk view in DESK_VIEW_ORDER, each counted b
   }
   const shippedUrl = new URL(body.buckets.find((b) => b.id === 'shipped')?.href ?? '', 'http://t');
   assert.deepEqual(readShippedDateWindow(shippedUrl.searchParams), { start: '', end: '' });
-  assert.deepEqual(body.buckets.map((b) => b.label), ['Exceptions', 'PO paired', 'Pick list', 'Allocate', 'Shipped']);
-  assert.deepEqual(counts(body), { exceptions: 3, po: 1, pick: 2, triage: 4, shipped: 5 });
+  assert.deepEqual(body.buckets.map((b) => b.label), ['Allocate', 'Exceptions', 'Shipped']);
+  assert.deepEqual(counts(body), { triage: 4, exceptions: 3, shipped: 5 });
   assert.deepEqual(body.entries, []);
   assert.equal(body.truncated, 0);
   // Each queue view ran the desk's own scoped search — never the unscoped feed.
-  assert.equal(cap.lists.length, 3);
+  assert.equal(cap.lists.length, 1);
   for (const list of cap.lists) {
     assert.equal(list.query, '02-15212');
     assert.equal(list.inWarehouse, true);
     assert.equal(list.includeShipped, false);
   }
-  assert.deepEqual(cap.lists.map((l) => [l.pickQueue, l.poPaired, l.blockedOnly]), [
-    [false, true, true],
-    [true, false, false],
-    [false, false, false],
-  ]);
+  assert.deepEqual(cap.lists.map((l) => [l.poPaired, l.blockedOnly]), [[false, false]]);
   assert.ok(cap.statements.every((s) => s.orgId === ORG));
 });
 
@@ -152,7 +147,7 @@ test('outbound without packing.view omits the Shipped bucket, not the answer', a
   const { deps, cap } = fakes();
   const caller = { orgId: ORG, permissions: new Set(['orders.view']) };
   const text = await ok(await getNavLocate(caller, 'outbound', { q: 'bose' }, deps));
-  assert.deepEqual(text.buckets.map((b) => b.id), ['exceptions', 'po', 'pick', 'triage']);
+  assert.deepEqual(text.buckets.map((b) => b.id), ['triage', 'exceptions']);
   assert.ok(cap.statements.every((s) => !s.sql.includes('packer_logs pl')), 'shipped never queried');
   const pasted = await ok(await getNavLocate(caller, 'outbound', { refs: '1Z999AA10123456784' }, deps));
   // Its only home is Shipped, which this caller cannot see.
@@ -187,12 +182,12 @@ test('outbound refs: one entry per ref in paste order, [] when found nowhere, co
     ),
   );
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets]), [
-    ['SPLIT-9', ['exceptions', 'po']],
+    ['SPLIT-9', ['triage', 'exceptions']],
     ['NOPE123', []],
-    ['02-15212-00001', ['pick', 'triage']],
+    ['02-15212-00001', ['triage']],
     ['1Z999AA10123456784', ['shipped']],
   ]);
-  assert.deepEqual(counts(body), { exceptions: 1, po: 1, pick: 1, triage: 1, shipped: 1 });
+  assert.deepEqual(counts(body), { triage: 2, exceptions: 1, shipped: 1 });
   const [split, nope, single, shipped] = body.entries;
   // Two order lines are no single record.
   assert.deepEqual([split.title, split.detail, split.recordHref], ['SPLIT-9 · Speaker', '2 order lines', null]);
@@ -264,7 +259,7 @@ test('everywhere: every permitted locator, ids and labels prefixed, entries merg
   assert.equal(body.buckets.find((b) => b.id === 'outbound:triage')?.label, 'Fulfillment · Allocate');
   assert.equal(body.buckets.find((b) => b.id === 'inbound:received')?.label, 'Receiving · Received');
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets, e.title]), [
-    ['02-15212-00001', ['outbound:pick', 'outbound:triage'], '02-15212-00001 · Bose QC45'],
+    ['02-15212-00001', ['outbound:triage'], '02-15212-00001 · Bose QC45'],
     ['PO-1', ['inbound:received'], 'PO PO-1 · Acme'],
     ['ZZZ', [], null],
   ]);
@@ -274,8 +269,6 @@ test('the outbound statements read each view list\'s own membership predicates',
   const refs = buildOutboundRefsSql(ORG, ['02-15212-00001'], true);
   for (const predicate of [
     sqlDeskQueueScope('triage'),
-    sqlDeskQueueScope('pick'),
-    sqlDeskQueueScope('po'),
     sqlOrderInExceptionQueue('o', 'stn'),
     ...buildPackerLogBaseWhere({ organizationId: ORG }, []).conditions.slice(1),
   ]) {

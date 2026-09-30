@@ -17,8 +17,10 @@ export const STAFF_PRINT_STATUS_EVENT = 'staff_print_status';
 export const STAFF_PRINT_STATUS_REQUEST_EVENT = 'staff_print_status_request';
 export const STAFF_PRINT_PROGRESS_EVENT = 'staff_print_progress';
 export const STAFF_PRINT_OPTIONS_PATCH_EVENT = 'staff_print_options_patch';
+/** Sender → station: pause, resume or cancel a job it sent, by request id. */
+export const STAFF_PRINT_CONTROL_EVENT = 'staff_print_control';
 
-export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote' | 'repair' | 'fnsku' | 'documents';
+export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote' | 'repair' | 'fnsku' | 'documents' | 'qc_label';
 export type StaffPrintRole = 'label' | 'paper';
 
 export type StaffPrintLocationPayload = {
@@ -77,11 +79,37 @@ export function repairDocumentRole(document: StaffPrintRepairDocument): StaffPri
   return document === 'label' ? 'label' : 'paper';
 }
 
-/** Amazon FBA unit labels (Code 128 FNSKU · title · condition) on the station's label printer. */
-export type StaffPrintFnskuPayload = { fnsku: string; copies: number };
+/**
+ * Amazon FBA unit labels (Code 128 FNSKU · title · condition) on the station's label printer.
+ * `test`: a test print — the condition line reads `TEST PRINT · <time>` and no reprint is logged.
+ */
+export type StaffPrintFnskuPayload = { fnsku: string; copies: number; test?: true };
 
 /** A catalog key the station may look up: A-Z/0-9, as `fba_fnskus.fnsku` stores it. */
 const FNSKU_WIRE_RE = /^[A-Z0-9]{1,40}$/;
+
+/**
+ * One unit's QC / pre-box sticker on the station's label printer, named by the
+ * key its label carries (`unit_uid`, else the serial) — never a bare row id: the
+ * station resolves it under its own session (`/api/inventory/qc-labels/unit`).
+ */
+export type StaffPrintQcLabelPayload = { unitKey: string };
+
+/** A unit key as `serial_units.unit_uid` / `serial_number` store it — no URL, no path, no whitespace. */
+const QC_UNIT_KEY_WIRE_RE = /^[A-Za-z0-9._-]{1,100}$/;
+
+/**
+ * The key a `qc_label` job names a unit by: its minted `unit_uid`, else its
+ * serial — or null when neither can ride the wire (the sender says so instead
+ * of sending a job every station would drop).
+ */
+export function qcLabelWireKey(unit: { unit_uid: string | null; serial_number: string | null }): string | null {
+  for (const raw of [unit.unit_uid, unit.serial_number]) {
+    const key = (raw ?? '').trim();
+    if (QC_UNIT_KEY_WIRE_RE.test(key)) return key;
+  }
+  return null;
+}
 
 /**
  * One desk document a station prints, by id only: the station rebuilds its
@@ -124,6 +152,7 @@ export type StaffPrintJob = {
   tote?: StaffPrintTotePayload;
   repair?: StaffPrintRepairPayload;
   fnsku?: StaffPrintFnskuPayload;
+  qcLabel?: StaffPrintQcLabelPayload;
   documents?: StaffPrintDocumentsPayload;
 };
 
@@ -160,11 +189,28 @@ export type StaffPrintOptionsPatch = {
   routing?: { label?: string | null; paper?: string | null };
 };
 
+/** Where a station's job stands, as its progress ticks report it. */
+export type StaffPrintJobState = 'running' | 'paused' | 'done' | 'failed' | 'cancelled';
+
 export type StaffPrintProgress = {
   type: 'staff.print_progress';
   request_id: string;
   done: number;
   total: number;
+  /** Absent from a plain tick (and from older stations): still running. */
+  state?: StaffPrintJobState;
+  /** The outcome in words, with a terminal state. */
+  message?: string;
+};
+
+export type StaffPrintControlAction = 'pause' | 'resume' | 'cancel';
+
+export type StaffPrintControl = {
+  type: 'staff.print_control';
+  request_id: string;
+  /** The station printing it; every other host ignores the control. */
+  targetStationId: string;
+  action: StaffPrintControlAction;
 };
 
 function asInt(value: unknown): number | null {
@@ -266,7 +312,8 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     grain !== 'tote' &&
     grain !== 'repair' &&
     grain !== 'fnsku' &&
-    grain !== 'documents'
+    grain !== 'documents' &&
+    grain !== 'qc_label'
   ) {
     return null;
   }
@@ -286,7 +333,16 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     if (!FNSKU_WIRE_RE.test(fnsku)) return null;
     // Clamped, not refused: an absent or junk count from an older phone is one sticker.
     const copies = clampLabelCopies(asInt(p.copies));
-    return { type: 'staff.print_job', request_id: requestId, targetStationId, grain, role: 'label', fnsku: { fnsku, copies } };
+    const fnskuPayload: StaffPrintFnskuPayload = p.test === true ? { fnsku, copies, test: true } : { fnsku, copies };
+    return { type: 'staff.print_job', request_id: requestId, targetStationId, grain, role: 'label', fnsku: fnskuPayload };
+  }
+
+  if (grain === 'qc_label') {
+    const payload = rec.qcLabel;
+    if (!payload || typeof payload !== 'object') return null;
+    const unitKey = String((payload as Record<string, unknown>).unitKey ?? '').trim();
+    if (!QC_UNIT_KEY_WIRE_RE.test(unitKey)) return null;
+    return { type: 'staff.print_job', request_id: requestId, targetStationId, grain, role: 'label', qcLabel: { unitKey } };
   }
 
   if (grain === 'repair') {
@@ -469,6 +525,38 @@ export function parseStaffPrintOptionsPatch(raw: unknown): StaffPrintOptionsPatc
   }
   if (patch.silent === undefined && !patch.routing) return null;
   return patch;
+}
+
+const JOB_STATES: Record<string, true> = { running: true, paused: true, done: true, failed: true, cancelled: true };
+
+/** A station's progress tick, or null on junk. */
+export function parseStaffPrintProgress(raw: unknown): StaffPrintProgress | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const rec = raw as Record<string, unknown>;
+  const requestId = String(rec.request_id ?? '').trim();
+  const done = asInt(rec.done);
+  const total = asInt(rec.total);
+  if (!requestId || done == null || total == null) return null;
+  const state = typeof rec.state === 'string' && Object.hasOwn(JOB_STATES, rec.state) ? (rec.state as StaffPrintJobState) : undefined;
+  return {
+    type: 'staff.print_progress',
+    request_id: requestId,
+    done,
+    total,
+    ...(state ? { state } : {}),
+    ...(typeof rec.message === 'string' && rec.message ? { message: rec.message.slice(0, 300) } : {}),
+  };
+}
+
+export function parseStaffPrintControl(raw: unknown): StaffPrintControl | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const rec = raw as Record<string, unknown>;
+  const requestId = String(rec.request_id ?? '').trim();
+  const targetStationId = String(rec.targetStationId ?? '').trim();
+  const action = rec.action;
+  if (!requestId || !targetStationId) return null;
+  if (action !== 'pause' && action !== 'resume' && action !== 'cancel') return null;
+  return { type: 'staff.print_control', request_id: requestId, targetStationId, action };
 }
 
 export function roleReady(status: StaffPrintStatus | null, role: StaffPrintRole): boolean {

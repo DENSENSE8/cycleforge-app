@@ -10,9 +10,7 @@ describe('Button semantic intents (2a)', () => {
     assert.ok('execute' in BUTTON_VARIANTS, 'execute (Check) must be a Button variant');
   });
 
-  it('success is the emerald Add fill; execute is the shared Check face', () => {
-    assert.match(BUTTON_VARIANTS.success, /bg-emerald-600/);
-    assert.match(BUTTON_VARIANTS.success, /hover:bg-emerald-500/);
+  it('execute is the shared Check face', () => {
     assert.match(BUTTON_VARIANTS.execute, /bg-surface-hover/);
     assert.doesNotMatch(
       BUTTON_VARIANTS.execute,
@@ -26,8 +24,6 @@ describe('Button semantic intents (2a)', () => {
     // error) needs an amber CTA. Without this intent the only way to paint one
     // is a `className` hue override on <Button>, which the DS bans.
     assert.ok('warning' in BUTTON_VARIANTS, 'warning (recoverable) must be a Button variant');
-    assert.match(BUTTON_VARIANTS.warning, /bg-amber-600/);
-    assert.match(BUTTON_VARIANTS.warning, /hover:bg-amber-500/);
   });
 
   it('dangerSoft is the rose outline face of danger, matching primarySoft', () => {

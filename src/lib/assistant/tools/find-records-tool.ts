@@ -16,6 +16,7 @@ import { z } from 'zod';
 import type { GlobalSearchResult } from '@/lib/search/global-entity-search';
 import { formatSearchSel, isSearchRecordType } from '@/lib/search/search-selection';
 import { serveFindRecords } from '@/lib/search/serve-find-records';
+import { hitOpensOwnPage } from '@/lib/search/commit-identifier-find';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import { brandReportEnvelope } from '@/lib/assistant/tool-artifact';
 import type { ArtifactIdentity, ArtifactRecord, ArtifactTable } from '@/lib/assistant/ui-artifacts';
@@ -33,6 +34,7 @@ const ENTITY_NOUN: Record<GlobalSearchResult['entityType'], string> = {
   location: 'Bin',
   exception: 'Exception',
   import_exception: 'Import exception',
+  tote: 'Tote',
 };
 
 /** `awaiting_shipment` → `Awaiting shipment`. */
@@ -52,8 +54,9 @@ function day(iso: string | null | undefined): string | null {
   return iso ? iso.slice(0, 10) : null;
 }
 
-/** `/search?sel=order:123` — the record's durable home. Null for kinds `/search` cannot select. */
-export function recordSearchHref(row: Pick<GlobalSearchResult, 'entityType' | 'id'>): string | null {
+/** `/search?sel=order:123` — the record's durable home. Null for kinds `/search` cannot select (a tote opens `/tote/{id}`) and for the SKU arm's hit (its SKU record page). */
+export function recordSearchHref(row: Pick<GlobalSearchResult, 'entityType' | 'id' | 'href'>): string | null {
+  if (hitOpensOwnPage(row)) return null;
   return isSearchRecordType(row.entityType) && row.id > 0 ? `/search?sel=${formatSearchSel(row.entityType, row.id)}` : null;
 }
 

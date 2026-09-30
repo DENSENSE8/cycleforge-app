@@ -21,6 +21,8 @@ interface InlineEditableValueProps {
   onChange: (value: string) => void;
   onBlur?: () => void;
   onSubmit?: () => void;
+  /** Esc: the edit is abandoned — no submit follows; restore the value here. */
+  onCancel?: () => void;
   editable?: boolean;
   className?: string;
   valueClassName?: string;
@@ -41,6 +43,7 @@ export function InlineEditableValue({
   onChange,
   onBlur,
   onSubmit,
+  onCancel,
   editable = true,
   className = '',
   valueClassName = '',
@@ -55,6 +58,7 @@ export function InlineEditableValue({
 }: InlineEditableValueProps) {
   const [isEditing, setIsEditing] = useState(autoFocus);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const cancelledRef = useRef(false);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -97,6 +101,10 @@ export function InlineEditableValue({
             aria-label={ariaLabel}
             onBlur={() => {
               setIsEditing(false);
+              if (cancelledRef.current) {
+                cancelledRef.current = false;
+                return;
+              }
               onBlur?.();
               onSubmit?.();
             }}
@@ -105,6 +113,10 @@ export function InlineEditableValue({
                 event.currentTarget.blur();
               }
               if (event.key === 'Escape') {
+                // Esc abandons the edit: no submit on the blur that follows, and the host restores its value.
+                cancelledRef.current = true;
+                onCancel?.();
+                event.currentTarget.blur();
                 setIsEditing(false);
               }
             }}

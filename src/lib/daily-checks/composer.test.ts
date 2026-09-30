@@ -156,9 +156,9 @@ test('switching to the face already active is a no-op', () => {
 });
 
 /**
- * Both mounts (phone sheet + desk `DailyComposerRow`) go through these three
- * functions, so normalizing inside them is what makes desktop and mobile
- * capture identically. These pin that wiring.
+ * Every composer mount goes through these three functions, so normalizing
+ * inside them is what keeps capture identical across surfaces. These pin
+ * that wiring.
  */
 test('the create body a Ticket-face draft sends is the ticket row', () => {
   const body = dailyComposerCreateBody(ticketDraft({ title: '#8899' }));

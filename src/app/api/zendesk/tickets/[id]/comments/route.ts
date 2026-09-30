@@ -8,8 +8,9 @@ import {
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
-import { enrichCommentAuthors } from '@/lib/integrations/helpdesk/enrich-comment-authors';
-import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
+import { loadTicketMirror } from '@/lib/support/ticket-mirror';
+import { pageMirrorComments } from '@/lib/support/ticket-mirror-core';
+import { invalidateZendeskOverviewCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,21 +47,24 @@ const ListQuery = z.object({
   perPage: z.coerce.number().int().min(1).max(100).optional(),
 });
 
+/** GET — the thread from the local ticket mirror (whole thread unless page/perPage). */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/tickets/[id]/comments';
     try {
-      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
-      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
       const sp = req.nextUrl.searchParams;
       const { page, perPage } = ListQuery.parse({
         page: sp.get('page') ?? undefined,
         perPage: sp.get('perPage') ?? sp.get('per_page') ?? undefined,
       });
-      const result = await helpdesk.listComments(id, { page, perPage });
-      const comments = await enrichCommentAuthors(ctx.organizationId, helpdesk, result.comments);
-      return NextResponse.json({ success: true, ...result, comments });
+      const load = await loadTicketMirror(ctx.organizationId, id);
+      if (load.status === 'not_configured') return notConfigured(context);
+      if (load.status === 'not_found') throw ApiError.notFound('Zendesk ticket', id);
+      return NextResponse.json({
+        success: true,
+        ...pageMirrorComments(load.mirror.comments, { ticketId: id, page, perPage }),
+      });
     } catch (err) {
       return mapZendeskError(err, context);
     }
@@ -93,7 +97,7 @@ export const POST = withAuth(
         { emailCcs: input.email_ccs?.map((user_email) => ({ user_email, action: 'put' as const })) },
       );
       if (!ticket) throw ApiError.notFound('Zendesk ticket', id);
-      await invalidateZendeskTicketCache(ctx.organizationId, id);
+      await invalidateZendeskOverviewCache(ctx.organizationId);
       return NextResponse.json({ success: true, ticket }, { status: 201 });
     } catch (err) {
       return mapZendeskError(err, context);

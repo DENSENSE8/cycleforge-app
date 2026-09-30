@@ -96,11 +96,11 @@ test('Scan Stations lists benches as a flat map — no Receiving / Walk-In chrom
     'subgroup headers left the palette when the spine flattened',
   );
 
+  // Repair service left the floor for the Receiving lane (owner 2026-09-29).
   const ids = floor!.rows.filter((r) => r.type === 'page').map((r) => r.id);
   assert.deepEqual(ids, [
     'triage',
     'receive',
-    'repair',
     'testing',
     'ready-to-pack',
     'packer',
@@ -120,8 +120,6 @@ test('Scan Stations lists benches as a flat map — no Receiving / Walk-In chrom
     false,
     'parent Testing must not appear on Scan Stations',
   );
-  const repair = floor!.rows.find((r) => r.type === 'page' && r.id === 'repair');
-  assert.equal(repair && repair.type === 'page' ? repair.label : null, 'Repair Service');
 });
 
 test('domain bands own their pages; the desk / print grab-bags are gone', () => {

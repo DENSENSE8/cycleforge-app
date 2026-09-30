@@ -5,7 +5,6 @@
  */
 
 import type { TriageViewDecl, TriageViewId } from '@/design-system/components/triage-card-list/triage-view';
-import { DAILY_AGENDA_VIEW } from './daily-agenda';
 import { EXCEPTIONS_VIEW } from './exceptions';
 import { INCOMING_DOCKED_VIEW } from './incoming-docked';
 import { INCOMING_UNBOXED_VIEW } from './incoming-unboxed';
@@ -25,9 +24,9 @@ import { PICKUP_HISTORY_VIEW } from './pickup-history';
 import { PRINT_STATION_FNSKU_VIEW } from './print-station-fnsku';
 import { PRODUCTS_CATALOG_VIEW } from './products-catalog';
 import { QC_LABELS_VIEW } from './qc-labels';
+import { REPAIR_QUEUE_VIEW } from './repair-queue';
 
 export {
-  DAILY_AGENDA_VIEW,
   EXCEPTIONS_VIEW,
   INCOMING_DOCKED_VIEW,
   INCOMING_UNBOXED_VIEW,
@@ -46,6 +45,7 @@ export {
   PRINT_STATION_FNSKU_VIEW,
   PRODUCTS_CATALOG_VIEW,
   QC_LABELS_VIEW,
+  REPAIR_QUEUE_VIEW,
 };
 
 export const TRIAGE_VIEWS: Readonly<Record<TriageViewId, TriageViewDecl>> = Object.fromEntries(

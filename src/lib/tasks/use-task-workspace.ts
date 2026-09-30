@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deletePhoto } from '@/components/shipped/photo-gallery/photo-gallery-api';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { uploadVideoClient } from '@/lib/photos/video-upload-client';
-import { normalizeMime } from '@/lib/photos/video-upload-rules';
+import { screenTaskMediaFiles } from '@/lib/tasks/task-media-lessons';
 import {
   TASK_LINK_REFUSAL_COPY,
   TASK_MEDIA_ENTITY_TYPE,
@@ -16,6 +16,13 @@ import {
   type TaskLinksPayload,
   type TaskMediaPayload,
 } from '@/lib/tasks/task-links-shared';
+import {
+  TASK_FOLLOW_UP_REFUSAL_COPY,
+  type TaskFollowUp,
+  type TaskFollowUpCreateBody,
+  type TaskFollowUpLogPayload,
+  type TaskFollowUpsPayload,
+} from '@/lib/tasks/task-follow-ups-shared';
 import {
   TASK_DOCUMENT_REFUSAL_COPY,
   type PlanFileEntry,
@@ -33,8 +40,6 @@ import {
   type TaskMediaLinkPatchBody,
 } from '@/lib/tasks/media-links';
 import { toast } from '@/lib/toast';
-
-const VIDEO_EXTENSION = /\.(mp4|m4v|mov|qt|webm)$/i;
 
 async function readJson<T>(res: Response, refusalCopy?: Readonly<Record<string, string>>): Promise<T> {
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -85,10 +90,43 @@ export function useTaskLinks(taskId: number | null) {
   return { links: query.data ?? [], loading: query.isLoading, error: query.error, add, remove };
 }
 
-/** Upload progress, one file at a time — the column paints `Uploading 2/5 · 40%`. */
+/** The open task's follow-up log, newest first, plus the Log write. */
+export function useTaskFollowUps(taskId: number | null) {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: ['tasks', 'follow-ups', taskId],
+    enabled: taskId != null,
+    queryFn: async (): Promise<TaskFollowUp[]> => {
+      const res = await fetch(`/api/tasks/${taskId}/follow-ups`, { cache: 'no-store' });
+      return (await readJson<TaskFollowUpsPayload>(res)).followUps;
+    },
+  });
+
+  const log = useMutation({
+    mutationFn: async (body: TaskFollowUpCreateBody): Promise<TaskFollowUp> => {
+      const res = await fetch(`/api/tasks/${taskId}/follow-ups`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return (await readJson<TaskFollowUpLogPayload>(res, TASK_FOLLOW_UP_REFUSAL_COPY)).followUp;
+    },
+    // The desk row carries lastFollowUpAtMs / nextFollowUpAtMs, so it re-reads too.
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'follow-ups', taskId] });
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'desk'] });
+    },
+  });
+
+  return { followUps: query.data ?? [], loading: query.isLoading, error: query.error, log };
+}
+
+/** Upload progress, one file at a time — the surface paints `Uploading clip.mp4 · 40% · 1 of 3`. */
 export interface TaskMediaUploadState {
   done: number;
   total: number;
+  /** The file in flight. */
+  name: string;
   /** 0–1 of the CURRENT file, videos only (photos are one request). */
   fraction: number | null;
 }
@@ -112,22 +150,28 @@ export function useTaskMedia(taskId: number | null) {
   }, [queryClient, taskId]);
 
   const [uploading, setUploading] = useState<TaskMediaUploadState | null>(null);
+  /** Refused or failed files, in operator words — painted inline until the next upload or a dismiss. */
+  const [problems, setProblems] = useState<string[]>([]);
 
   /** Photos and videos through ONE door — a drop, a paste or a picker hands a mixed bag, and asking the operator to sort it first is a step… */
   const upload = useCallback(
     async (files: readonly File[]) => {
       if (taskId == null || files.length === 0) return;
+      const { accepted, refused } = screenTaskMediaFiles(files);
+      const failed = [...refused];
+      setProblems(failed);
+      if (accepted.length === 0) return;
       let photos = 0;
       let videos = 0;
-      setUploading({ done: 0, total: files.length, fraction: null });
-      for (const [index, file] of files.entries()) {
+      for (const [index, { file, kind }] of accepted.entries()) {
+        setUploading({ done: index, total: accepted.length, name: file.name, fraction: kind === 'video' ? 0 : null });
         try {
-          if (normalizeMime(file.type).startsWith('video/') || VIDEO_EXTENSION.test(file.name)) {
+          if (kind === 'video') {
             await uploadVideoClient({
               file,
               entityType: TASK_MEDIA_ENTITY_TYPE,
               entityId: taskId,
-              onProgress: (fraction) => setUploading({ done: index, total: files.length, fraction }),
+              onProgress: (fraction) => setUploading({ done: index, total: accepted.length, name: file.name, fraction }),
             });
             videos += 1;
           } else {
@@ -140,9 +184,9 @@ export function useTaskMedia(taskId: number | null) {
             photos += 1;
           }
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : `Could not upload ${file.name}`);
+          failed.push(`${file.name} did not upload — ${err instanceof Error ? err.message : 'try again.'}`);
+          setProblems([...failed]);
         }
-        setUploading({ done: index + 1, total: files.length, fraction: null });
       }
       setUploading(null);
       await settle();
@@ -216,6 +260,8 @@ export function useTaskMedia(taskId: number | null) {
     error: query.error,
     uploading,
     upload,
+    problems,
+    dismissProblems: () => setProblems([]),
     removePhoto,
     removeVideo,
     addLink,

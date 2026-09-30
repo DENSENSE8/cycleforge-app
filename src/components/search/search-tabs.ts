@@ -7,11 +7,12 @@ import type { AiSearchHit } from '@/lib/search/ai-search-client';
 
 // ── Header-preview grouping ─────────────────────────────────────────────────
 
-/** UI entity type → group heading (orders first). */
-const PREVIEW_ENTITY_ORDER = ['order', 'exception', 'unit', 'receiving', 'sku', 'repair', 'fba'] as const;
+/** UI entity type → group heading (orders first; a tote leads the units it holds). */
+const PREVIEW_ENTITY_ORDER = ['order', 'exception', 'tote', 'unit', 'receiving', 'sku', 'repair', 'fba'] as const;
 const ENTITY_GROUP_LABEL: Record<string, string> = {
   order: 'Orders',
   exception: 'Exceptions',
+  tote: 'Totes',
   unit: 'Units',
   receiving: 'Receiving',
   sku: 'SKUs',

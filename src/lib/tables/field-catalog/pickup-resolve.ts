@@ -1,7 +1,7 @@
 /** Pickup slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
-import type { PickupLine } from '@/components/receiving/pickup/pickup-lines';
+import type { PickupLine } from '@/lib/receiving/pickup/pickup-lines';
 import { conditionLabel } from '@/lib/conditions';
 import { pickupOrderStatusLabel } from '@/lib/local-pickup/order-status';
 import { formatDateKeyShort } from '@/utils/date';

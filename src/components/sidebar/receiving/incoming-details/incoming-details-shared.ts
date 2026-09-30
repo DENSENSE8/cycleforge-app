@@ -57,6 +57,8 @@ export interface DetailsResponse {
     delivered_at: string | null;
     last_checked_at: string | null;
     out_for_delivery_at: string | null;
+    /** The carrier's promised arrival (`shipping_tracking_numbers.estimated_delivery_at`) — the outbound "Arrives …" source. */
+    estimated_delivery_at?: string | null;
     events: Array<{
       id: number;
       event_occurred_at: string | null;

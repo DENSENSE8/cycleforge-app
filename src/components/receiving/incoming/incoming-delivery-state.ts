@@ -1,4 +1,5 @@
 import { type RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { resolveInboundDeliveryRecordState } from '@/design-system/tokens/inbound-delivery';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
@@ -77,4 +78,32 @@ export function incomingDeliveryNextAction(state: string | null | undefined): st
     case 'RECEIVED': return 'History';
     default: return 'Monitor';
   }
+}
+
+/**
+ * The lane read as a whole — the ledger's summary with nothing open. On the
+ * way counts carrier states; Exceptions counts reasons.
+ */
+export function incomingDeliverySummary(
+  rows: readonly ReceivingLineRow[],
+  lane: 'pipeline' | 'exceptions' = 'pipeline',
+): RecordLedgerSummary {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const key = (lane === 'exceptions' && row.exception_code) || row.delivery_state || 'UNKNOWN';
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return {
+    title: lane === 'exceptions' ? 'Exceptions' : 'Inbound',
+    sub: lane === 'exceptions'
+      ? 'Inbound lines that need a person, not time'
+      : 'Carrier-side lifecycle before warehouse receipt',
+    facts: [
+      { label: 'Lines', value: rows.length },
+      ...[...counts]
+        .sort((a, b) => b[1] - a[1])
+        .map(([deliveryState, count]) => ({ label: deliveryState.replaceAll('_', ' '), value: count })),
+    ],
+    note: 'Select a purchase-order line to see its status, items, carrier trail and actions.',
+  };
 }

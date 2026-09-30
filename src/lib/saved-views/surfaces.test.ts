@@ -112,6 +112,7 @@ test('surfaceFromStorageKey maps Home Today + outbound + station keys', () => {
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.receiving_history), 'receiving_history');
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.receiving_incoming), 'receiving_incoming');
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.testing_history), 'testing_history');
+  assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.repair_queue), 'repair_queue');
 });
 
 test('surfaceFromStorageKey returns null for unknown keys', () => {

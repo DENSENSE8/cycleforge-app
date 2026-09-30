@@ -1,5 +1,16 @@
 # HANDOFF — the inbound record: bring Unboxed + Deliveries up to the order record (written 2026-09-28)
 
+> **Superseded 2026-09-29 (owner):** the two inbound records described below (`IncomingDeliveryEvidence` with
+> `incoming-record-sections`, `CartonRecordView` with `carton-record-sections` / `carton-record-facts`,
+> `ReceivingStatusStrip`, the strip verbs `incoming-record-verbs` / `carton-record-verbs`) are deleted.
+> Every inbound desk record (On the way, pasted numbers, Docked, Unboxed) is now ONE view on the
+> order record's foundation: `src/design-system/components/record-ledger/RecordView.tsx` (shape
+> `record-model.ts`, slot `useRecordSlot.tsx`; inbound adapters `inbound-record-model.tsx`, header
+> verbs `inbound-record-verbs.tsx`, reads `useInboundRecord.tsx`). Receiving group = orange current-status pill + `RecordFulfillmentSources
+> flow="inbound"` (External `CarrierEventsRail` · Internal Docked → Unboxed → Graded → Tested →
+> Received → Put away); serials inline on each item and in `RecordSerials`; verbs in the record
+> header, secondary evidence as panel verbs — no inline disclosures. Read the sections below as history.
+
 **Short way:** `remake /incoming?lane=docked&openLine=32624 like the order record` — the
 `remake-in-style` skill (`.claude/skills/remake-in-style/SKILL.md`) runs the loop. This file is the
 ground truth that run uses for the inbound records (verified on the working tree 2026-09-28; other

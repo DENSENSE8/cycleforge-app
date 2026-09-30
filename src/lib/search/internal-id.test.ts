@@ -101,7 +101,7 @@ describe('searchPageHrefForScanRoute', () => {
     assert.equal(desktopSearchHref('/m/l/900'), '/receiving/lines/900');
     assert.equal(desktopSearchHref('/m/u/CN1A2B3'), '/serial/CN1A2B3');
     assert.equal(desktopSearchHref('/m/b/A0101101'), '/bin/A0101101');
-    assert.equal(desktopSearchHref('/m/h/12'), '/search?q=H-12');
+    assert.equal(desktopSearchHref('/m/h/12'), '/tote/12');
     assert.equal(desktopSearchHref('/m/rs/33'), '/search?sel=repair:33');
     assert.equal(desktopSearchHref('/m/scan'), '/search');
     assert.ok(!desktopSearchHref('/m/r/99').startsWith('/m/'));
@@ -124,7 +124,7 @@ describe('directOpenForTypedHandle', () => {
     assert.match(rack.href, /code=A0101100/);
   });
 
-  it('stays quiet for /search-rooted handles — their record hits land there', () => {
+  it('stays quiet for handles whose record hit answers them (/search records, the tote record)', () => {
     assert.equal(directOpenForTypedHandle('R-99'), null);
     assert.equal(directOpenForTypedHandle('U-451'), null);
     assert.equal(directOpenForTypedHandle('REP-33'), null);

@@ -32,7 +32,9 @@ import { parseTriageLaneWire } from '@/lib/receiving/triage-lane-policy';
 import { RECON_REASONS, parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import { parseTrackingInParam, serializeTrackingIn } from '@/lib/receiving/tracking-paste';
 import { parsePickupStatusTabWire } from '@/lib/local-pickup/order-status';
-import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
+import { parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+import { REPAIR_CHANNELS, REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
+import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { resolveTriageView } from '@/utils/triage-workspace-state';
 import { parseUnboxViewWire } from '@/utils/unbox-workspace-state';
@@ -312,11 +314,16 @@ const REPAIR_ROUTE_PARAMS = defineRouteParams({
     openRepair: paramPositiveInt,
     /** Queue search box. */
     search: paramText,
-    /** Display sort — `newest` or a grid column key (SoT: repair-display-sort). */
-    sort: paramRoundTrip((raw) => (raw === 'newest' || isRepairColumnSort(raw) ? raw : null)),
-    dir: paramEnum(['asc', 'desc'] as const),
-    /** Labels-to-print refine — `RepairTable` reads exactly `1`. */
+    /** Sidebar Sort — `REPAIR_SORT_OPTIONS` (default `newest`, dropped from the URL). */
+    [REPAIR_SORT_PARAM]: paramRoundTrip(parseRepairSort),
+    /** Labels-to-print refine — `RepairCardList` reads exactly `1`. */
     needsLabel: paramEnum(['1'] as const),
+    /** Shared TriageCardList client page. */
+    page: paramPositiveInt,
+    /** Status chips right of the count (comma list, `REPAIR_STATUS_CHIP_KEYS`). */
+    [REPAIR_STATUS_CHIP_PARAM]: paramText,
+    /** Sidebar view: All (bare) · Shipped in (`shipment`) · Dropped off (`pickup`) — `repair_service.intake_channel`. */
+    [REPAIR_CHANNEL_PARAM]: paramEnum(REPAIR_CHANNELS),
   },
   carries: BROWSE_SURFACE_CARRIES,
 });

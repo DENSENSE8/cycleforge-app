@@ -1,5 +1,5 @@
 /**
- * The receiving searcher's statement must bind exactly the `$n` it references:
+ * The receiving and repair searchers' statements must bind exactly the `$n` they reference:
  * node-pg sends parameters untyped, so Postgres rejects an unreferenced one
  * ("could not determine data type of parameter $n") and the whole receiving
  * arm silently returned nothing for order-number pastes.
@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { buildReceivingSearchSql } from './global-entity-search';
+import { buildReceivingSearchSql, buildRepairSearchSql } from './global-entity-search';
 import { looksLikeIdentifier } from './search-hit';
 
 const ORG = '00000000-0000-0000-0000-0000000000c1' as OrgId;
@@ -25,18 +25,22 @@ const CASES: Array<[label: string, query: string, identifier: boolean]> = [
   ['UPS tracking paste', '1Z999AA10123456784', true],
   ['USPS tracking paste', '9400111899560000000000', true],
   ['free text', 'bose wave', false],
+  ['repair handle', 'RS-4894', true],
+  ['customer phone', '(555) 123-4567', false],
 ];
 
 for (const [label, query, identifier] of CASES) {
-  test(`receiving search binds exactly the placeholders it references: ${label}`, () => {
-    assert.equal(looksLikeIdentifier(query), identifier, 'fixture lands in the intended branch');
-    const { text, params } = buildReceivingSearchSql(ORG, query, 10);
-    assert.deepEqual(
-      referencedPlaceholders(text),
-      params.map((_, i) => i + 1),
-      'every bound parameter is referenced and every reference is bound',
-    );
-    assert.ok(params.includes(ORG), 'explicit organization_id filter');
-    assert.ok(params.includes(10), 'limit is bound');
-  });
+  for (const [arm, build] of [['receiving', buildReceivingSearchSql], ['repair', buildRepairSearchSql]] as const) {
+    test(`${arm} search binds exactly the placeholders it references: ${label}`, () => {
+      assert.equal(looksLikeIdentifier(query), identifier, 'fixture lands in the intended branch');
+      const { text, params } = build(ORG, query, 10);
+      assert.deepEqual(
+        referencedPlaceholders(text),
+        params.map((_, i) => i + 1),
+        'every bound parameter is referenced and every reference is bound',
+      );
+      assert.ok(params.includes(ORG), 'explicit organization_id filter');
+      assert.ok(params.includes(10), 'limit is bound');
+    });
+  }
 }

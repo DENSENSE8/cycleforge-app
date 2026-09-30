@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Copy,
   Check,
@@ -20,9 +20,16 @@ import { notificationHref } from '@/lib/notifications/notification-href';
 import {
   INBOX_ENTITY_NOUN,
   isNotifiableEntityType,
+  WORK_TASK_FOLLOW_UP_ALERT,
   type InboxEntityType,
 } from '@/lib/notifications/event-vocabulary';
-import type { InboxFeedDto, InboxItemDto } from '@/lib/notifications/types';
+import type { InboxItemDto } from '@/lib/notifications/types';
+import {
+  DURABLE_INBOX_QUERY_KEY,
+  followUpDueLabel,
+  useDurableInbox,
+} from '@/lib/notifications/use-durable-inbox';
+import { TabSwitch } from '@/design-system/components/TabSwitch';
 import {
   useActivityInbox,
   type ActivityInboxItem,
@@ -37,6 +44,9 @@ import { TrackingChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { Button, IconButton } from '@/design-system/primitives';
 import { SubscribeToggle } from '@/components/notifications/SubscribeToggle';
+import { StaffBadge } from '@/design-system/components/StaffBadge';
+import { InboxContactLinks } from '@/components/ui/InboxContactLinks';
+import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { cn } from '@/utils/_cn';
 import {
   HEADER_MENU_CAPTION_CLASS,
@@ -177,31 +187,51 @@ function metaFactFor(
   return it.subtitle?.trim() || KIND_LABEL[it.kind];
 }
 
-/** The durable notification ledger (`staff_inbox_items` via `GET /api/inbox`). */
-const DURABLE_INBOX_QUERY_KEY = ['api-inbox'] as const;
+/** The Inbox's tabs. Every row lands in All; the rest are derived from what a row IS (event key / reason / session kind). */
+type InboxTab = 'all' | 'alerts' | 'tasks' | 'mentions' | 'watching';
+type DurableTab = Exclude<InboxTab, 'all'>;
+
+const INBOX_TAB_LABEL: Readonly<Record<InboxTab, string>> = {
+  all: 'All',
+  alerts: 'Alerts',
+  tasks: 'Tasks',
+  mentions: 'Mentions',
+  watching: 'Watching',
+};
 
 /**
- * The hue the receiving workflow already paints on ARRIVED / "Scanned"
- * (`src/lib/receiving/workflow-stages.ts`) — a watched carton landing reads as
- * the same moment here as it does on the carton itself.
+ * A durable row's face per tab. Watching keeps the hue the receiving workflow
+ * already paints on ARRIVED / "Scanned" (`src/lib/receiving/workflow-stages.ts`)
+ * — a watched carton landing reads as the same moment here as on the carton.
  */
-const DURABLE_DOT_CLASS = 'bg-sky-500';
-const DURABLE_SECTION_LABEL = 'Watching';
+const DURABLE_FACE: Readonly<Record<DurableTab, { label: string; dot: string }>> = {
+  alerts: { label: 'Alert', dot: 'bg-rose-500' },
+  tasks: { label: 'Task', dot: KIND_DOT.work_task },
+  mentions: { label: 'Mention', dot: 'bg-violet-500' },
+  watching: { label: 'Watching', dot: 'bg-sky-500' },
+};
+
+function durableTab(item: InboxItemDto): DurableTab {
+  if (item.eventKey === WORK_TASK_FOLLOW_UP_ALERT) return 'alerts';
+  if (item.reason === 'assigned') return 'tasks';
+  if (item.reason === 'mentioned') return 'mentions';
+  return 'watching';
+}
+
+/** A session row's tab besides All — a handoff is a task, a teammate's message is addressed to you. */
+function sessionTab(it: ActivityInboxItem): DurableTab | null {
+  if (it.kind === 'work_task' || it.kind === 'support_followup') return 'tasks';
+  if (it.kind === 'staff_message') return 'mentions';
+  return null;
+}
+
+const DURABLE_SECTION_LABEL = 'Unread';
 
 /** A row's trailing icon key — the header dropdown row corner, a hover wash, never a flush square. */
 const INBOX_ROW_KEY_CLASS = cn(
   'pointer-events-auto flex h-7 w-7 items-center justify-center transition-colors hover:bg-surface-sunken',
   HEADER_MENU_ROW_CORNER,
 );
-
-async function fetchDurableInbox(): Promise<InboxItemDto[]> {
-  // 404 is the org running with the Home Inbox flag off — a silent empty
-  // section, never an error: this panel works without it.
-  const res = await fetch('/api/inbox?filter=unread', { cache: 'no-store' });
-  if (!res.ok) return [];
-  const feed = (await res.json()) as InboxFeedDto;
-  return feed.items ?? [];
-}
 
 function DurableInboxRow({
   item,
@@ -216,21 +246,26 @@ function DurableInboxRow({
   // number all ride on the DTO, so this face never re-derives a route or
   // re-words an event.
   const occurredMs = new Date(item.lastEventAt || item.occurredAt).getTime();
+  const tab = durableTab(item);
+  const face = DURABLE_FACE[tab];
+  const title = item.title ? `${item.eventLabel}: ${item.title}` : item.eventLabel;
+  const { getStaffName } = useStaffNameMap();
+  const sender = tab === 'alerts' && item.actorStaffId ? item.actorStaffId : null;
   return (
-    <li className="group relative px-2 py-1 hover:bg-surface-hover">
+    <li className="group relative px-2 py-1 hover:bg-surface-hover" data-inbox-item-id={item.id}>
       <Link
         href={item.href}
         onClick={onNavigate}
-        aria-label={`${DURABLE_SECTION_LABEL}: ${item.eventLabel}`}
+        aria-label={`${face.label}: ${title}`}
         className="absolute inset-0 z-0"
       />
       <div className="pointer-events-none relative z-10">
         <CompactActivityRow
           leading={
-            <HoverTooltip label={DURABLE_SECTION_LABEL} focusable={false} asChild>
+            <HoverTooltip label={face.label} focusable={false} asChild>
               <span
-                className={cn('block h-2 w-2 shrink-0 rounded-full', DURABLE_DOT_CLASS)}
-                aria-label={DURABLE_SECTION_LABEL}
+                className={cn('block h-2 w-2 shrink-0 rounded-full', face.dot)}
+                aria-label={face.label}
               />
             </HoverTooltip>
           }
@@ -260,9 +295,10 @@ function DurableInboxRow({
         >
           <RailRowBody
             vm={{
-              title: item.eventLabel,
-              titleAttr: item.eventLabel,
+              title,
+              titleAttr: title,
               meta: (
+                <>
                 <span className="pointer-events-auto relative z-10 min-w-0 truncate text-text-soft">
                   {item.orderNumber ? (
                     <span className="inline-flex min-w-0 items-center gap-1">
@@ -283,11 +319,30 @@ function DurableInboxRow({
                     // ONE noun map, and the number the operator quotes — a
                     // durable row reading "support ticket 461" beside a desk
                     // row reading "Ticket 10023" is the same handoff twice.
-                    `${INBOX_ENTITY_NOUN[item.entityType as InboxEntityType] ?? 'Record'} ${
-                      item.ticketNumber ?? item.entityId
-                    }`
+                    <>
+                      {[
+                        `${INBOX_ENTITY_NOUN[item.entityType as InboxEntityType] ?? 'Record'} ${
+                          item.ticketNumber ?? item.entityId
+                        }`,
+                        tab === 'alerts' ? followUpDueLabel(item.dueAt) : null,
+                        tab === 'alerts' ? item.note : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      {sender ? (
+                        <>
+                          {' · from '}
+                          <StaffBadge staffId={sender} name={getStaffName(sender)} className="font-semibold" />
+                        </>
+                      ) : null}
+                    </>
                   )}
                 </span>
+                {/* R7 — the contacts the task linked when the alert was sent, each a door. */}
+                {tab === 'alerts' ? (
+                  <InboxContactLinks contacts={item.contacts} surface="desk" className="relative z-10 mt-0.5" />
+                ) : null}
+                </>
               ),
             }}
           />
@@ -298,18 +353,27 @@ function DurableInboxRow({
 }
 
 export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
-  const { items, dismissItem, clear, undoItem, pendingUndoId } = useActivityInbox();
+  const { items: sessionItems, dismissItem, clear, undoItem, pendingUndoId } = useActivityInbox();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<InboxTab>('all');
   const resolvePlatformMeta = usePlatformMeta();
   const queryClient = useQueryClient();
   // The panel is unmounted while the bell is closed, so this fetch happens on
   // open. The Ably `inbox_item` arm in ActivityInboxContext invalidates this
   // same key, which is what makes a watched carton land without a reopen.
-  const { data: durableItems = [] } = useQuery({
-    queryKey: DURABLE_INBOX_QUERY_KEY,
-    queryFn: fetchDurableInbox,
-    staleTime: 15_000,
-  });
+  const { data: allDurableItems = [] } = useDurableInbox();
+
+  const tabs = (Object.keys(INBOX_TAB_LABEL) as InboxTab[]).map((id) => ({
+    id,
+    label: INBOX_TAB_LABEL[id],
+    count:
+      id === 'all'
+        ? undefined
+        : sessionItems.filter((it) => sessionTab(it) === id).length +
+          allDurableItems.filter((dto) => durableTab(dto) === id).length || undefined,
+  }));
+  const items = tab === 'all' ? sessionItems : sessionItems.filter((it) => sessionTab(it) === tab);
+  const durableItems = tab === 'all' ? allDurableItems : allDurableItems.filter((dto) => durableTab(dto) === tab);
 
   const dismissDurableItem = async (id: number) => {
     // Optimistic, like the staff-message dismissal: the row leaves the panel
@@ -345,7 +409,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
       bodyClassName="px-0 py-0"
       toolbar={<InboxTrackingWatchRow />}
       headerActions={
-        items.length > 0 ? (
+        sessionItems.length > 0 ? (
           <Button
             variant="ghost"
             size="sm"
@@ -367,6 +431,15 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
           it renders in both the empty and the populated branch. */}
       {/* "Your next work order" left this popover 2026-08-08 for the header's pace-and-next button (`HeaderGoalChip`), where it shares one… */}
       <InboxQueueLinks onNavigate={onClose} />
+      <div className="border-b border-border-hairline px-2 py-1.5">
+        <TabSwitch
+          tabs={tabs}
+          activeTab={tab}
+          onTabChange={(id) => setTab(id as InboxTab)}
+          size="sm"
+          scrollable
+        />
+      </div>
 
       {items.length === 0 && durableItems.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
@@ -374,9 +447,13 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
           {/* Scoped to the FEED, not to the day. "All caught up" sat directly
               under a queue strip that can be reading "Orders 4", which is a
               contradiction the operator notices before the nuance. */}
-          <p className="text-sm font-semibold text-text-default">No new activity</p>
+          <p className="text-sm font-semibold text-text-default">
+            {tab === 'all' ? 'No new activity' : `No ${INBOX_TAB_LABEL[tab].toLowerCase()}`}
+          </p>
           <p className="max-w-[14rem] text-role-caption text-text-soft">
-            Tech items, repair updates, and messages will show up here.
+            {tab === 'alerts'
+              ? 'When a teammate alerts you to follow up on a task, it shows up here.'
+              : 'Tech items, repair updates, and messages will show up here.'}
           </p>
         </div>
       ) : (

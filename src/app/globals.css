@@ -497,6 +497,72 @@ body {
   .cf-scrim[data-state], .cf-dialog[data-state] { animation: none; }
 }
 
+/* ── Toast lifetime bar (owner 2026-09-30) ──────────────────────────────────
+   A thin tone bar along the bottom edge of every `.cf-toast` (AppToaster) that
+   drains over the toast's lifetime, so the operator sees when it will go.
+   Contract + the Sonner timer it mirrors: src/design-system/components/
+   toast-theme.ts. It is a BACKGROUND LAYER of the toast, not a pseudo-element
+   (Sonner owns both `::before` and `::after` on a toast for its hover/swipe hit
+   areas) and not a child (Sonner owns the markup) — and a background layer
+   clips to the toast's own corner for free. The drain is a timer, not
+   decoration, so it runs under reduced motion too; only the pending
+   breathing collapses. */
+@property --cf-toast-bar-alpha {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 45%;
+}
+/* Two identical drains: `@/lib/toast` flips `--cf-toast-drain` on every
+   in-place update so the bar restarts exactly when Sonner's timer does. */
+@keyframes cf-toast-drain-a {
+  from { background-size: 100% var(--cf-toast-bar-height); }
+  to   { background-size: 0% var(--cf-toast-bar-height); }
+}
+@keyframes cf-toast-drain-b {
+  from { background-size: 100% var(--cf-toast-bar-height); }
+  to   { background-size: 0% var(--cf-toast-bar-height); }
+}
+@keyframes cf-toast-pending {
+  from { --cf-toast-bar-alpha: 18%; }
+  to   { --cf-toast-bar-alpha: 55%; }
+}
+.cf-toast {
+  --cf-toast-bar-height: 3px;
+  --cf-toast-bar-ink: color-mix(in oklab, currentColor var(--cf-toast-bar-alpha), transparent);
+  background-image: linear-gradient(var(--cf-toast-bar-ink), var(--cf-toast-bar-ink));
+  background-repeat: no-repeat;
+  background-position: left bottom;
+  background-size: 0% var(--cf-toast-bar-height);
+  animation: var(--cf-toast-drain, cf-toast-drain-a) var(--cf-toast-lifetime) linear forwards;
+}
+/* Sonner pauses its timers while the stack is hovered (expanded) or the tab
+   is hidden (Toaster carries `.cf-toaster-idle`); the drain pauses with them. */
+.cf-toast[data-expanded='true'],
+.cf-toaster-idle .cf-toast {
+  animation-play-state: paused;
+}
+/* `duration: Infinity` — nothing to count down. */
+.cf-toast.cf-toast-persistent {
+  background-image: none;
+  animation: none;
+}
+/* Pending: Sonner never times a `loading` toast out, so no drain — the bar
+   holds full width as the pending tone (the toast shows no spinner). Inside
+   Band 2 (AppToaster stamps it) it breathes on opacity alone. */
+.cf-toast.cf-toast[data-type='loading'] {
+  background-image: linear-gradient(var(--cf-toast-bar-ink), var(--cf-toast-bar-ink));
+  background-size: 100% var(--cf-toast-bar-height);
+  animation: none;
+}
+[data-motion='2'] .cf-toast.cf-toast[data-type='loading'] {
+  animation: cf-toast-pending var(--cf-motion-status) ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-motion='2'] .cf-toast.cf-toast[data-type='loading'] {
+    animation: none;
+  }
+}
+
 /* ── Light syntax-highlight theme for AI chat code blocks (rehype-highlight). */
 /* Scoped to .hljs so it only affects highlighted fenced code. GitHub-light palette. */
 .hljs { color: #24292e; background: transparent; }

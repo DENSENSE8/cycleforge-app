@@ -26,6 +26,7 @@ import { useLocalTriageSelection } from '@/design-system/components/triage-card-
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { triageRowKeyId } from '@/design-system/components/triage-card-list/triage-row-id';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
+import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { REPLENISHMENT_RECORD_STATE } from '@/design-system/tokens/replenishment';
 import type { RowGroup } from '@/lib/group-rows';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
@@ -277,6 +278,7 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
       record={{
         title: openRow ? (openRow.sku || openRow.item_name || 'Purchasing request') : 'Purchasing request',
         subtitle: openRow?.sku ? openRow.item_name : undefined,
+        actions: openRow ? <LifecycleCode state={REPLENISHMENT_RECORD_STATE[openRow.status]} /> : undefined,
         noun: VIEW.noun.one,
         testId: 'replenish-record',
         summary: <RecordLedgerSummaryPane summary={summary} />,

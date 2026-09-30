@@ -63,15 +63,6 @@ export function unitQcStamp(last: NonNullable<UnitQcSummary['last']>): string {
 }
 
 /**
- * The unit's QC verdict so far: one failed step fails the unit, and it passes
- * only once every step has passed; anything short of that is still open.
- */
-export function unitQcVerdict(summary: UnitQcSummary): 'failed' | 'passed' | 'open' {
-  if (summary.failed > 0) return 'failed';
-  return summary.open === 0 && summary.passed > 0 ? 'passed' : 'open';
-}
-
-/**
  * Why a unit has nothing to check, or null when it has a checklist. The route
  * returns an empty list for all three cases, so the unit's own SKU fields
  * tell them apart.

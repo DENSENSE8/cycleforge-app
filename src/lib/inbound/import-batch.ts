@@ -22,11 +22,11 @@ import type { DeskImportRow } from './desk-csv';
 import {
   emptyInboundOrderDraft,
   emptyInboundOrderLine,
-  INBOUND_ORDER_TYPES,
+  AUTHORED_INBOUND_ORDER_TYPES,
   INBOUND_PRIORITY_AUTO,
   normalizeInboundOrderNumber,
   type InboundOrderDraft,
-  type InboundOrderType,
+  type AuthoredInboundOrderType,
 } from './inbound-order-draft';
 import {
   ingestInboundOrder,
@@ -70,7 +70,9 @@ export async function draftsFromDeskRows(
       continue;
     }
     const upper = (row.receivingType ?? '').trim().toUpperCase() || (row.kind === 'return' ? 'RETURN' : 'PO');
-    const type: InboundOrderType = (INBOUND_ORDER_TYPES as readonly string[]).includes(upper) ? (upper as InboundOrderType) : 'PO';
+    const type: AuthoredInboundOrderType = (AUTHORED_INBOUND_ORDER_TYPES as readonly string[]).includes(upper)
+      ? (upper as AuthoredInboundOrderType)
+      : 'PO';
 
     let skuCatalogId = row.skuCatalogId ?? null;
     let sku = row.sku?.trim() ?? '';

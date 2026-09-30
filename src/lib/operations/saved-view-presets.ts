@@ -1,5 +1,25 @@
 import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
 
+/** The `saved_views` surface (and contextual `savedViews.storageKey`) of Operations ▸ History. */
+export const OPERATIONS_SAVED_VIEWS_KEY = 'operations';
+
+/** Every URL key a journey filter snapshot (`JourneyUrlFilters`) is written to — what a saved view sets and replaces. */
+export const JOURNEY_FILTER_KEYS = [
+  'dim',
+  'order',
+  'serial',
+  'tracking',
+  'unit',
+  'from',
+  'until',
+  'stations',
+  'types',
+  'status',
+  'staffId',
+  'sources',
+  'q',
+] as const;
+
 /** Code-defined SYSTEM saved-views — the former `/audit-log` sections re-expressed as Operations History browse presets (plan §3.3 + §4.1… */
 interface SystemSavedView {
   /** Stable id, applied via `?view=sys:<id>`. */

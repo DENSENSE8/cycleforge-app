@@ -1,13 +1,19 @@
 /**
- * Stock pair → record facts. Pure, shared by the list row (`StockLedger`,
- * one-row triage) and the evidence column so both read one state and one
- * location face.
+ * Stock pair → record facts. Pure, shared by the list card (`StockLedger`)
+ * and the record (`StockEvidence`) so both read one state and one location face.
  */
 
 import type { StockStage } from '@/design-system/tokens/stock-lifecycle';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import { skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
-import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
+import type { LocationStockSource, LocationStockTableRow } from '@/lib/inventory/location-stock-row';
+
+/** How the pair is held, as the floor says it — the record's Held row. */
+export const STOCK_SOURCE_LABEL: Record<LocationStockSource, string> = {
+  bin: 'Loose (tote count)',
+  unit: 'Serialized units',
+  exception: 'Unplaced placeholder',
+};
 
 /**
  * `HLD` for a floor-minted placeholder (it cannot be sold or picked by name
@@ -19,12 +25,6 @@ export function stockRecordState(row: Pick<LocationStockTableRow, 'sku' | 'is_pr
   return row.qty > 0 ? 'inStock' : 'outOfStock';
 }
 
-/** Where the pair goes next: a loose bin takes a desk count; a placeholder waits to be paired. */
-export function stockRecordNext(row: Pick<LocationStockTableRow, 'sku' | 'is_provisional' | 'qty' | 'source' | 'location_barcode'>): string | null {
-  if (stockRecordCountable(row)) return 'Count';
-  return stockRecordState(row) === 'onHold' ? 'Pair' : null;
-}
-
 /** The shelf as the floor reads it: the segmented bin code, else the written handle. */
 export function stockLocationFace(row: Pick<LocationStockTableRow, 'location_barcode' | 'location_name'>): string | null {
   if (row.location_barcode) return skuExceptionLocationFace(row.location_barcode);
@@ -34,13 +34,4 @@ export function stockLocationFace(row: Pick<LocationStockTableRow, 'location_bar
 /** The record's title: the product's own name, else its SKU. */
 export function stockRecordTitle(row: Pick<LocationStockTableRow, 'product_title' | 'sku'>): string {
   return row.product_title?.trim() || row.sku;
-}
-
-/**
- * A desk count (±) writes `PATCH /api/locations/[barcode]` — only a LOOSE bin
- * pair with a registered barcode can take one. Serialized units are placed by
- * scan, never counted.
- */
-export function stockRecordCountable(row: Pick<LocationStockTableRow, 'source' | 'location_barcode'>): boolean {
-  return row.source === 'bin' && Boolean(row.location_barcode);
 }

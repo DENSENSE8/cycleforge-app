@@ -6,6 +6,7 @@
  * ledger labels are then logged as one label batch and printed order
  * paperwork as one paperwork batch, each with the station it printed at.
  */
+import { beginWork } from '@/lib/background-work/store';
 import { printRawToProfile, type PaperSize } from '@/lib/print/browserPrint';
 import type { DesktopPrintOptions } from '@/lib/print/desktop-print-host';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
@@ -46,6 +47,8 @@ export interface PrintOutcome {
   routes: Partial<Record<PrintStock, LabelPrintRoute>>;
   printed: DeskDocument[];
   failed: Array<{ doc: DeskDocument; reason: string }>;
+  /** Documents never sent because the press was cancelled part-way. */
+  cancelled: DeskDocument[];
   /** Set when documents printed but a print log (labels or paperwork) could not be written. */
   logError: string | null;
 }
@@ -110,15 +113,36 @@ async function sendSilently(pages: LabelPages, route: LabelPrintRoute): Promise<
 export async function printDocuments(
   docs: readonly DeskDocument[],
   routeFor: (stock: PrintStock) => LabelPrintRoute,
-  opts?: { onProgress?(done: number, total: number): void; station?: PrintStationRef | null },
+  opts?: {
+    onProgress?(done: number, total: number): void;
+    station?: PrintStationRef | null;
+    /** The header item's id — the station host keys it by request id so a sender's control finds it. */
+    workId?: string;
+  },
 ): Promise<PrintOutcome> {
-  const routes: PrintOutcome['routes'] = {};
   const printed: DeskDocument[] = [];
   const failed: PrintOutcome['failed'] = [];
+  let cancelled: DeskDocument[] = [];
   // The browser dialog is ONE job per stock, sent after every page is rastered.
   const dialogPages: Partial<Record<PrintStock, string[]>> = {};
+  const stocks = new Set(docs.map((doc) => doc.stock));
+  const routes: PrintOutcome['routes'] = {};
+  for (const stock of stocks) routes[stock] = routeFor(stock);
+  // Silent documents go one at a time, so a pause or cancel lands between them; a dialog press is one job.
+  const controllable = [...stocks].every((stock) => routes[stock]?.channel !== 'BROWSER_DIALOG');
+  const work = beginWork({
+    kind: 'print',
+    label: stocks.size > 1 ? 'Labels & paperwork' : stocks.has('paper') ? 'Paperwork' : 'Labels',
+    total: docs.length,
+    id: opts?.workId,
+    ...(controllable ? { controls: { pause: true, cancel: true } } : {}),
+  });
 
   for (const [index, doc] of docs.entries()) {
+    if (!(await work.checkpoint())) {
+      cancelled = docs.slice(index);
+      break;
+    }
     const route = (routes[doc.stock] ??= routeFor(doc.stock));
     try {
       const pages = await rasterizeDocument(doc.src, route.paper);
@@ -133,6 +157,7 @@ export async function printDocuments(
     } catch (error) {
       failed.push({ doc, reason: error instanceof Error ? error.message : String(error) });
     }
+    work.progress(index + 1, docs.length);
     opts?.onProgress?.(index + 1, docs.length);
   }
 
@@ -168,5 +193,8 @@ export async function printDocuments(
   const logFailures = (await Promise.allSettled(logs)).flatMap((result) =>
     result.status === 'rejected' ? [result.reason instanceof Error ? result.reason.message : String(result.reason)] : [],
   );
-  return { routes, printed, failed, logError: logFailures.length > 0 ? logFailures.join(' ') : null };
+  if (cancelled.length > 0) work.cancelled(`Cancelled · ${printed.length} of ${docs.length} printed`);
+  else if (failed.length > 0 && printed.length === 0) work.fail(`${failed.length} of ${docs.length} did not print — ${failed[0].reason}`);
+  else work.finish(failed.length > 0 ? `${printed.length} printed, ${failed.length} failed` : `${printed.length} printed`);
+  return { routes, printed, failed, cancelled, logError: logFailures.length > 0 ? logFailures.join(' ') : null };
 }

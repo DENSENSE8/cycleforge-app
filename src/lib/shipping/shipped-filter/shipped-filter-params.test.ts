@@ -1,56 +1,25 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-  readShippedAllDates,
-  readShippedDateWindow,
-  shippedEffectiveDateWindow,
-  shippedWeekFilterActive,
-} from './shipped-filter-params';
+import { readShippedAllDates, readShippedDateWindow, shippedEffectiveDateWindow } from './shipped-filter-params';
+
+const WEEK = { start: '2026-09-08', end: '2026-09-14' };
 
 describe('shippedEffectiveDateWindow', () => {
-  it('seeds the current week when nothing else is set', () => {
-    assert.deepEqual(
-      shippedEffectiveDateWindow({
-        allDates: false,
-        dateFrom: '',
-        dateTo: '',
-        weekStart: '2026-09-08',
-        weekEnd: '2026-09-14',
-      }),
-      { start: '2026-09-08', end: '2026-09-14' },
-    );
-    assert.equal(
-      shippedWeekFilterActive({ allDates: false, hasDateRange: false }),
-      true,
-    );
+  it('is all-time when nothing narrows it — every shipped package, not this week', () => {
+    assert.deepEqual(shippedEffectiveDateWindow({ allDates: false, dateFrom: '', dateTo: '', week: null }), { start: '', end: '' });
+    assert.deepEqual(readShippedDateWindow(new URLSearchParams('carrier=UPS')), { start: '', end: '' });
   });
 
-  it('allDates=1 is all-time — the week seed does not re-apply', () => {
-    assert.deepEqual(
-      shippedEffectiveDateWindow({
-        allDates: true,
-        dateFrom: '',
-        dateTo: '',
-        weekStart: '2026-09-08',
-        weekEnd: '2026-09-14',
-      }),
-      { start: '', end: '' },
-    );
-    assert.equal(
-      shippedWeekFilterActive({ allDates: true, hasDateRange: false }),
-      false,
-    );
+  it('a named week narrows to that week; allDates=1 still forces all-time', () => {
+    assert.deepEqual(shippedEffectiveDateWindow({ allDates: false, dateFrom: '', dateTo: '', week: WEEK }), WEEK);
+    assert.deepEqual(shippedEffectiveDateWindow({ allDates: true, dateFrom: '', dateTo: '', week: WEEK }), { start: '', end: '' });
+    const named = readShippedDateWindow(new URLSearchParams('shippedWeekOffset=2'));
+    assert.ok(named.start && named.end && named.start <= named.end, 'the offset names a week');
   });
 
-  it('an explicit range beats the week seed', () => {
+  it('an explicit range beats a named week', () => {
     assert.deepEqual(
-      shippedEffectiveDateWindow({
-        allDates: false,
-        dateFrom: '2026-08-01',
-        dateTo: '2026-08-31',
-        weekStart: '2026-09-08',
-        weekEnd: '2026-09-14',
-      }),
+      shippedEffectiveDateWindow({ allDates: false, dateFrom: '2026-08-01', dateTo: '2026-08-31', week: WEEK }),
       { start: '2026-08-01', end: '2026-08-31' },
     );
   });

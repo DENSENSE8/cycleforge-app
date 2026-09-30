@@ -39,6 +39,11 @@ export async function printLabelFacesJob(input: {
    */
   copies?: number;
   onProgress?: LabelFacesJobProgress;
+  /**
+   * USB sequential only: awaited before each sticker; `false` stops the run
+   * there (it still returns `'usb'` — the caller that cancelled knows).
+   */
+  checkpoint?: () => Promise<boolean>;
 }): Promise<LabelFacesJobChannel> {
   if (typeof window === 'undefined') return 'skipped';
   const { faces } = input;
@@ -52,7 +57,6 @@ export async function printLabelFacesJob(input: {
   // Deliberately dynamic, not static:
   const { printLabelJob, buildMultiPageLabelHtml } = await import('@/lib/print/printLabel');
   const { reserveLegacyPrintPopup, printHtmlInIframe } = await import('@/lib/print/iframePrint');
-  const { isSilentPrintEnabled } = await import('@/lib/print/printMode');
 
   if (plates.length === 1) {
     return printLabelJob({
@@ -61,21 +65,19 @@ export async function printLabelFacesJob(input: {
     });
   }
 
-  if (isSilentPrintEnabled()) {
-    const { getProfileForRole } = await import('@/lib/print/browserPrint');
-    const labelProfile = getProfileForRole('label');
-    if (labelProfile && labelProfile.kind !== 'os' && labelProfile.language !== 'none') {
-      const total = plates.length;
-      input.onProgress?.(0, total);
-      let usb = 0;
-      for (const plate of plates) {
-        const result = await printLabelJob(faceToPrintOpts(plate, nameFor(plate)));
-        if (result !== 'usb') break;
-        usb += 1;
-        input.onProgress?.(usb, total);
-      }
-      if (usb === total) return 'usb';
+  const { silentRawLabelProfile } = await import('@/lib/print/browserPrint');
+  if (silentRawLabelProfile()) {
+    const total = plates.length;
+    input.onProgress?.(0, total);
+    let usb = 0;
+    for (const plate of plates) {
+      if (input.checkpoint && !(await input.checkpoint())) return 'usb';
+      const result = await printLabelJob(faceToPrintOpts(plate, nameFor(plate)));
+      if (result !== 'usb') break;
+      usb += 1;
+      input.onProgress?.(usb, total);
     }
+    if (usb === total) return 'usb';
   }
 
   const html = buildMultiPageLabelHtml(plates.map((plate) => faceToPrintOpts(plate, nameFor(plate))));

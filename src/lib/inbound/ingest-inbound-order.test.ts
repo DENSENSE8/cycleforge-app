@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { ingestInboundOrderInTx, InboundOrderRefused, type IngestInboundOrderDeps } from './ingest-inbound-order';
+import {
+  ingestInboundOrderInTx,
+  InboundOrderRefused,
+  REPAIR_DROP_OFF_SOURCE,
+  type IngestInboundOrderDeps,
+} from './ingest-inbound-order';
 import { assignInboundLineKeys, emptyInboundOrderDraft, emptyInboundOrderLine, type InboundOrderDraft } from './inbound-order-draft';
 import type { TxClient } from './purchase-links';
 
@@ -35,6 +40,8 @@ function fakes(opts: { priorHash?: string | null } = {}) {
       if (/INSERT INTO suppliers/.test(text)) return { rows: [{ id: 3 }], rowCount: 1 };
       if (/INSERT INTO inbound_order/.test(text)) return { rows: [{ id: 5, created: true }], rowCount: 1 };
       if (/INSERT INTO local_pickup_orders/.test(text)) return { rows: [{ id: 44 }], rowCount: 1 };
+      if (/INSERT INTO receiving_carton/.test(text)) return { rows: [{ id: 40 }], rowCount: 1 };
+      if (/INSERT INTO receiving_line_facts/.test(text)) return { rows: [{ id: 8 }], rowCount: 1 };
       if (/FROM receiving_line\s+WHERE organization_id = \$1 AND inbound_order_id/.test(text)) {
         return { rows: [{ id: 91, line_key: 'L1', receiving_id: 12 }], rowCount: 1 };
       }
@@ -147,4 +154,51 @@ test('a pickup lands one atomic Receiving and Sales projection with receipt fact
   assert.equal(item.params[7], 'USED_B');
   assert.equal(item.params[8], 'MISSING_PARTS');
   assert.equal(item.params[11], 26_000);
+});
+
+function repairDropOff(): InboundOrderDraft {
+  return draft({
+    type: 'REPAIR',
+    platform: 'manual',
+    orderNumber: 'RS-4894',
+    vendor: '',
+    tracking: [],
+    lines: [{ ...emptyInboundOrderLine(), title: 'Bose Wave Music System', quantity: 1 }],
+  });
+}
+
+test('a repair drop-off lands in hand on its own carton, carrying every repair signal', async () => {
+  const f = fakes();
+  const result = await ingestInboundOrderInTx(
+    f.client, ORG, repairDropOff(), { ...CTX, source: REPAIR_DROP_OFF_SOURCE }, f.deps,
+  );
+
+  assert.equal(f.ingested[0].receivingType, 'REPAIR');
+  assert.deepEqual(f.registered, [], 'a drop-off has no tracking to register');
+  // Its own manual carton, painted as a repair, is what Receiving and Cmd-K call R-40.
+  const carton = f.sql.find((s) => /INSERT INTO receiving_carton/.test(s.text));
+  assert.deepEqual(carton?.params, ['manual', 'RS-4894', null, ORG]);
+  assert.equal(result.receivingId, 40);
+  const cartonPaint = f.sql.find((s) => /UPDATE receiving_carton\s+SET intake_type = 'repair'/.test(s.text));
+  assert.deepEqual(cartonPaint?.params, [40, ORG]);
+  // The line joins the carton already MATCHED (in hand — never on Incoming) with the QC tier's repair flags.
+  const line = f.sql.find((s) => /UPDATE receiving_line\s+SET receiving_id/.test(s.text));
+  assert.ok(line && /is_repair_service = TRUE/.test(line.text) && /intake_type = 'repair'/.test(line.text));
+  assert.match(line.text, /THEN 'MATCHED'/);
+  assert.deepEqual(line.params, [40, ORG, [101]]);
+  const fact = f.sql.find((s) => /INSERT INTO receiving_line_facts/.test(s.text));
+  assert.deepEqual(fact?.params.slice(0, 3), [ORG, 101, 'repair_service']);
+  assert.deepEqual(JSON.parse(String(fact?.params[3])), { isRepairService: true, ticketRef: 'RS-4894' });
+  assert.equal(result.localPickupOrderId, null, 'a repair is not a local-pickup purchase');
+  assert.ok(!f.sql.some((s) => /INSERT INTO suppliers/.test(s.text)), 'the customer is not a supplier');
+});
+
+test('a REPAIR drop-off from any source but its repair ticket is refused before any write', async () => {
+  const f = fakes();
+  await assert.rejects(
+    ingestInboundOrderInTx(f.client, ORG, repairDropOff(), CTX, f.deps),
+    (err: unknown) => err instanceof InboundOrderRefused && err.status === 400,
+  );
+  assert.equal(f.sql.length, 0);
+  assert.equal(f.ingested.length, 0);
 });

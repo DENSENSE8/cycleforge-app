@@ -1,14 +1,13 @@
 /** The Amazon FBA unit label — Code 128 FNSKU, the FNSKU in text, the product title (start…end when it does not fit, the way Amazon's own… */
 
 import bwipjs from 'bwip-js/browser';
-import { getProfileForRole, printRawToProfile, resolvePaperSize } from '@/lib/print/browserPrint';
+import { printRawToProfile, resolvePaperSize, silentRawLabelProfile } from '@/lib/print/browserPrint';
 import type { PaperSize } from '@/lib/print/browserPrint';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
 import { clampLabelCopies } from '@/lib/print/labelCopies';
 import { fbaConditionLabel } from '@/lib/fba/fba-conditions';
 import { createLabelCanvas, drawFittedText, LABEL_DPI, labelCanvasToRawCommands } from '@/lib/print/labelFaceBitmap';
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
-import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
 export interface FnskuLabelFace {
   fnsku: string;
@@ -16,6 +15,24 @@ export interface FnskuLabelFace {
   title: string;
   /** Catalog condition (`Used - Very Good`); blank prints none — never guessed. */
   condition: string;
+  /** Printed in place of the condition line, e.g. `TEST PRINT · 2:41 PM` — a sticker that must never ship. */
+  mark?: string;
+}
+
+/** How a caller holds and hears a run of stickers. */
+export interface FnskuLabelRunControl {
+  /** Awaited before each silent sticker; `false` stops the run there. */
+  checkpoint?: () => Promise<boolean>;
+  /** After each sticker leaves (the dialog hands over every copy at once). */
+  onPrinted?: (printed: number, total: number) => void;
+}
+
+export interface FnskuLabelRunResult {
+  channel: 'usb' | 'iframe';
+  /** Stickers sent to the printer; the dialog counts every copy it was handed. */
+  printed: number;
+  /** Stopped by the checkpoint before every sticker went. */
+  cancelled: boolean;
 }
 
 /** Characters of the title's END kept when it is cut — the colour / variant lives there. */
@@ -97,83 +114,81 @@ function drawFnskuLabel(face: FnskuLabelFace, paper: PaperSize): HTMLCanvasEleme
     y += lineStep;
   }
 
-  const condition = fbaConditionLabel(face.condition);
+  const condition = face.mark ?? fbaConditionLabel(face.condition);
   if (condition) drawFittedText(context, condition, padX, y, inner, dots(0.075), 600);
   return canvas;
 }
 
 /**
- * The face exactly as the thermal head draws it (same canvas), as a PNG data
- * URL — the Print station previews the sticker before it is sent. 2×1 unless
- * a paper is given.
+ * The one rendered label face. Preview, raw thermal output, and browser
+ * fallback printing all consume this raster so screen and paper cannot drift.
+ * Defaults to the station's 2×1 FNSKU stock.
  */
 export function fnskuLabelPreviewUrl(face: FnskuLabelFace, paper: PaperSize = resolvePaperSize('2x1')): string {
   return drawFnskuLabel(face, paper).toDataURL('image/png');
 }
 
-// ── Fallback (HTML) ──────────────────────────────────────────────────────────
+// ── Browser fallback ─────────────────────────────────────────────────────────
 
-/** The same face as HTML, `copies` stickers as `copies` pages of ONE document (one print dialog / one kiosk print). */
+/** Copies of the shared raster, one 2×1 print page each. */
 function buildFnskuLabelHtml(face: FnskuLabelFace, copies: number): string {
-  const svg = bwipjs
-    .toSVG({ bcid: 'code128', text: face.fnsku, scale: 1, height: 8, includetext: false })
-    .replace('<svg ', '<svg preserveAspectRatio="none" ');
-  const modules = Number(/viewBox="0 0 (\d+(?:\.\d+)?) /.exec(svg)?.[1]) || 0;
-  const quietPct = modules > 0 ? (QUIET_MODULES / (modules + QUIET_MODULES * 2)) * 100 : 5;
-  const title = fitTitle(face.title);
-  const condition = fbaConditionLabel(face.condition);
-  const sticker = `<div class="wrap">
-  <div class="bars">${svg}</div>
-  <div class="code">${escapeLabelHtml(face.fnsku)}</div>
-  ${title ? `<div class="title">${escapeLabelHtml(title)}</div>` : ''}
-  ${condition ? `<div class="cond">${escapeLabelHtml(condition)}</div>` : ''}
-</div>`;
+  const rasterUrl = fnskuLabelPreviewUrl(face);
+  const pages = Array.from({ length: copies }, () => '<div class="wrap"><img class="label" alt=""></div>').join('\n');
   return `<!doctype html><html><head><meta charset="utf-8"/><title>${escapeLabelHtml(face.fnsku)}</title>
 <style>
   @page{size:2in 1in;margin:0}
   *{box-sizing:border-box}
-  html,body{width:2in;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
-  .wrap{width:2in;height:1in;padding:0.04in 0;display:flex;flex-direction:column;overflow:hidden;break-after:page;page-break-after:always}
+  html,body{width:2in;margin:0;padding:0;background:#fff}
+  .wrap{width:2in;height:1in;overflow:hidden;break-after:page;page-break-after:always}
   .wrap:last-child{break-after:auto;page-break-after:auto}
-  .bars{height:${BARS_HEIGHT_IN}in;flex:none;padding:0 ${quietPct.toFixed(4)}%}
-  .bars svg{height:100%;width:100%;display:block}
-  .code,.title,.cond{padding:0 0.05in;text-rendering:geometricPrecision}
-  .code{font-size:8pt;font-weight:800;text-align:center;letter-spacing:0.04em;line-height:1.1}
-  .title{font-size:6.5pt;font-weight:600;line-height:1.1;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
-  .cond{font-size:6pt;font-weight:600;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .label{display:block;width:2in;height:1in;object-fit:contain}
 </style></head><body>
-${Array.from({ length: copies }, () => sticker).join('\n')}
+${pages}
 <script>
-window.onload=function(){setTimeout(function(){window.focus();window.print();},120);};
+window.onload=function(){
+  var source=${JSON.stringify(rasterUrl)};
+  var labels=document.querySelectorAll('.label');
+  for(var i=0;i<labels.length;i++)labels[i].src=source;
+  setTimeout(function(){window.focus();window.print();},120);
+};
 window.onafterprint=function(){setTimeout(function(){window.close();},80);};
 </script>
 </body></html>`;
 }
 
-/** Print `copies` FNSKU labels: */
-export async function printFnskuLabelJob(face: FnskuLabelFace, copies: number): Promise<'usb' | 'iframe'> {
+/**
+ * Print `copies` FNSKU labels. Silent: one raw job per sticker, with the
+ * caller's checkpoint before each — so a pause or cancel lands between
+ * stickers. A raw failure hands the rest to the browser dialog as ONE job.
+ */
+export async function printFnskuLabelJob(
+  face: FnskuLabelFace,
+  copies: number,
+  control: FnskuLabelRunControl = {},
+): Promise<FnskuLabelRunResult> {
   const total = clampLabelCopies(copies);
   let printed = 0;
-  if (isSilentPrintEnabled()) {
-    const profile = getProfileForRole('label');
-    if (profile && profile.kind !== 'os' && profile.language !== 'none') {
-      try {
-        const paper = resolvePaperSize(profile.paperSizeId);
-        const commands = labelCanvasToRawCommands(drawFnskuLabel(face, paper), profile, paper);
-        while (printed < total) {
-          const res = await printRawToProfile(commands, profile);
-          if (!res.success) {
-            console.warn('printFnskuLabelJob: raw print failed, falling back:', res.reason);
-            break;
-          }
-          printed += 1;
+  const profile = silentRawLabelProfile();
+  if (profile) {
+    try {
+      const paper = resolvePaperSize(profile.paperSizeId);
+      const commands = labelCanvasToRawCommands(drawFnskuLabel(face, paper), profile, paper);
+      while (printed < total) {
+        if (control.checkpoint && !(await control.checkpoint())) return { channel: 'usb', printed, cancelled: true };
+        const res = await printRawToProfile(commands, profile);
+        if (!res.success) {
+          console.warn('printFnskuLabelJob: raw print failed, falling back:', res.reason);
+          break;
         }
-        if (printed === total) return 'usb';
-      } catch (err) {
-        console.warn('printFnskuLabelJob: raw print failed, falling back:', err instanceof Error ? err.message : err);
+        printed += 1;
+        control.onPrinted?.(printed, total);
       }
+      if (printed === total) return { channel: 'usb', printed, cancelled: false };
+    } catch (err) {
+      console.warn('printFnskuLabelJob: raw print failed, falling back:', err instanceof Error ? err.message : err);
     }
   }
   printHtmlInIframe(buildFnskuLabelHtml(face, total - printed), { name: `FBA label ${face.fnsku}` });
-  return 'iframe';
+  control.onPrinted?.(total, total);
+  return { channel: 'iframe', printed: total, cancelled: false };
 }

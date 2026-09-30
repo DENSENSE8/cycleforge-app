@@ -10,7 +10,6 @@ import {
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
 import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
-import { WeldedStack } from './WeldedFeedbackPanel';
 import type { ReceiveResult } from './line-edit/hooks/useReceiveAction';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
@@ -683,6 +682,43 @@ export function LineEditPanel({
 
   const feedbackResult = c.receiveResult ?? (replaying ? recentVerdict.result : null);
   const showReceiveFeedback = Boolean(c.receiving || feedbackResult);
+  // Welded onto the composer's top edge through its `reaction` slot — one
+  // silhouette with the dock, framed on top only.
+  const receiveFeedback = showReceiveFeedback ? (
+    <ReceiveFeedbackRegion
+      receiving={c.receiving}
+      receiveResult={feedbackResult}
+      replay={replaying}
+      responseExpanded={c.responseExpanded}
+      setResponseExpanded={c.setResponseExpanded}
+      onDismiss={() => {
+        // Clears what is SHOWN, never the memory — that is
+        // what makes the ⓘ able to bring it back.
+        setReplayFor(null);
+        c.setReceiveResult(null);
+        c.setResponseExpanded(false);
+      }}
+      onRetry={() => {
+        // Replay the SAME intent the failed attempt used —
+        // a retry must never silently upgrade a scan-only
+        // or local receive into an inventory push.
+        const attempted =
+          feedbackResult?.kind === 'diagnostic'
+            ? feedbackResult.intent
+            : feedbackResult?.kind === 'success'
+              ? feedbackResult.summary.intent
+              : 'zoho_receive';
+        void c.handleReceive(attempted);
+      }}
+      onPhotoPolicyOverride={(code) => {
+        const blocked =
+          feedbackResult?.kind === 'diagnostic'
+            ? feedbackResult.intent
+            : 'zoho_receive';
+        void c.handleReceive(blocked, { photoPolicyOverride: code });
+      }}
+    />
+  ) : null;
 
   const reduceMotion = useReducedMotion();
   const revealContainer = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
@@ -949,43 +985,6 @@ export function LineEditPanel({
                           {terminalVm.disabledReason}
                         </p>
                       ) : null}
-                      {/* One box for the pair. */}
-                      <WeldedStack welded={showReceiveFeedback}>
-                      {showReceiveFeedback ? (
-                        <ReceiveFeedbackRegion
-                          receiving={c.receiving}
-                          receiveResult={feedbackResult}
-                          replay={replaying}
-                          responseExpanded={c.responseExpanded}
-                          setResponseExpanded={c.setResponseExpanded}
-                          onDismiss={() => {
-                            // Clears what is SHOWN, never the memory — that is
-                            // what makes the ⓘ able to bring it back.
-                            setReplayFor(null);
-                            c.setReceiveResult(null);
-                            c.setResponseExpanded(false);
-                          }}
-                          onRetry={() => {
-                            // Replay the SAME intent the failed attempt used —
-                            // a retry must never silently upgrade a scan-only
-                            // or local receive into an inventory push.
-                            const attempted =
-                              feedbackResult?.kind === 'diagnostic'
-                                ? feedbackResult.intent
-                                : feedbackResult?.kind === 'success'
-                                  ? feedbackResult.summary.intent
-                                  : 'zoho_receive';
-                            void c.handleReceive(attempted);
-                          }}
-                          onPhotoPolicyOverride={(code) => {
-                            const blocked =
-                              feedbackResult?.kind === 'diagnostic'
-                                ? feedbackResult.intent
-                                : 'zoho_receive';
-                            void c.handleReceive(blocked, { photoPolicyOverride: code });
-                          }}
-                        />
-                      ) : null}
                       {terminalVm ? (
                         <WorkspaceNotesCard
                           onTicketCreated={onClaimTicketCreated}
@@ -993,7 +992,7 @@ export function LineEditPanel({
                           row={row}
                           c={c}
                           chrome="raised"
-                          weldTop={showReceiveFeedback}
+                          reaction={receiveFeedback}
                           trailingAction={bubbleTerminal}
                           onPrimaryAction={() => {
                             if (c.isReceived) {
@@ -1029,8 +1028,9 @@ export function LineEditPanel({
                               : undefined
                           }
                         />
-                      ) : null}
-                      </WeldedStack>
+                      ) : (
+                        receiveFeedback
+                      )}
                     </div>
                   </div>
                 }

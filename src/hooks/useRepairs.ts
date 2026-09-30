@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
+import { REPAIR_CHANNEL_PARAM, type RepairChannel } from '@/lib/repair/repair-channel';
 import { useAblyChannel } from './useAblyChannel';
 import { getDbTableChannelName, getRepairsChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,13 +12,15 @@ export function useRepairsTable(
   search?: string | null,
   tab: RepairTab = 'active',
   needsLabel = false,
+  /** `repair_service.intake_channel`; null = every channel. */
+  channel: RepairChannel | null = null,
 ) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
   const repairsChannel = safeChannelName(() => getRepairsChannelName(orgId!));
   const repairDbChannel = safeChannelName(() => getDbTableChannelName(orgId!, 'public', 'repair_service'));
-  const queryKey = ['repairs', search || '', tab, needsLabel] as const;
+  const queryKey = ['repairs', search || '', tab, needsLabel, channel] as const;
 
   const query = useQuery<RSRecord[]>({
     queryKey,
@@ -27,6 +30,7 @@ export function useRepairsTable(
       params.set('limit', '500');
       if (search) params.set('q', search);
       if (needsLabel) params.set('needsLabel', '1');
+      if (channel) params.set(REPAIR_CHANNEL_PARAM, channel);
       const res = await fetch(`/api/repair-service?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch repairs');
       const data = await res.json();

@@ -9,10 +9,11 @@
  * so a Walmart order 1234 and a Goodwill order 1234 are two orders, and two
  * lines typed without ids are two lines.
  *
- * The order type (PO · Return · Trade-in · Pickup) is a classifier on the
- * order, not a separate form. Returns add their return facts and require a
- * reason, tracking number, catalog item and its listing link (the claim ticket
- * and the unboxer need all four).
+ * The order type (PO · Return · Trade-in · Pickup · Repair drop-off) is a
+ * classifier on the order, not a separate form. Returns add their return facts
+ * and require a reason, tracking number, catalog item and its listing link (the
+ * claim ticket and the unboxer need all four). A repair drop-off is never
+ * authored by hand: it lands from its repair ticket (`receiveWalkInRepairInTx`).
  *
  * Client-safe: no server imports. Money is integer cents.
  */
@@ -23,14 +24,19 @@ import { detectCarrier, extractCanonicalTracking } from '@/lib/tracking-format';
 
 const text = (max: number) => z.string().trim().max(max);
 
-export const INBOUND_ORDER_TYPES = ['PO', 'RETURN', 'TRADE_IN', 'PICKUP'] as const;
+/** The types a person authors (form, CSV, chat, paperwork extract). */
+export const AUTHORED_INBOUND_ORDER_TYPES = ['PO', 'RETURN', 'TRADE_IN', 'PICKUP'] as const;
+/** Every type the spine lands — plus the drop-off a repair ticket lands for itself. */
+export const INBOUND_ORDER_TYPES = [...AUTHORED_INBOUND_ORDER_TYPES, 'REPAIR'] as const;
 export type InboundOrderType = (typeof INBOUND_ORDER_TYPES)[number];
+export type AuthoredInboundOrderType = (typeof AUTHORED_INBOUND_ORDER_TYPES)[number];
 
 export const INBOUND_ORDER_TYPE_LABELS: Record<InboundOrderType, string> = {
   PO: 'Purchase order',
   RETURN: 'Return',
   TRADE_IN: 'Trade-in',
   PICKUP: 'Pickup',
+  REPAIR: 'Repair drop-off',
 };
 
 export const INBOUND_PRIORITY_AUTO = 'auto';

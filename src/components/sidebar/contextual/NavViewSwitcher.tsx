@@ -82,8 +82,8 @@ export function useViewHotkeys(items: readonly NavItem[], enabled: boolean) {
 }
 
 /**
- * The page's VIEW (Exceptions · PO paired · Pick list · To ship · Shipped on
- * Shipping; any page's views elsewhere) — the CHILD tier, pinned in the
+ * The page's VIEW (Allocate · Exceptions · Shipped on
+ * FBM; any page's views elsewhere) — the CHILD tier, pinned in the
  * sidebar head under the mode. At rest one block naming the view you are on
  * and its count (an alerting view beacons on it). Hover shows every view's
  * digit beside the sidebar when the page binds them (`viewKeys`, from its

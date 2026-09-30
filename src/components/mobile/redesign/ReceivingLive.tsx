@@ -45,7 +45,7 @@ export default function RedesignedMobileReceivingLive() {
         </p>
         <div className="flex items-center gap-4">
           <Link
-            href="/m/receiving/pickup/new?type=PICKUP"
+            href="/m/receiving/pickup"
             prefetch={false}
             className="inline-flex min-h-11 items-center gap-1.5 text-role-caption font-semibold uppercase tracking-wider text-text-default active:text-text-muted"
           >

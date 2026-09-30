@@ -20,7 +20,7 @@ import { cn } from '@/utils/_cn';
 import type { TicketThreadHandoff } from '@/lib/composer/ticket-thread-handoff';
 import { MobileTicketReplyDock } from './MobileTicketReplyDock';
 
-/** The comments route already resolves author identity server-side (`enrichCommentAuthors` → `author_name` / `author_photo`), so the phone… */
+/** The comments route already resolves author identity server-side (the ticket mirror read → `author_name` / `author_photo`), so the phone… */
 const NO_AGENTS: Map<number, ZendeskAgent> = new Map();
 const NO_USERS: Map<number, ZendeskUser> = new Map();
 

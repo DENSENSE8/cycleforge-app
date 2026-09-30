@@ -291,7 +291,7 @@ function resolveWalkInJobRedirect(url: NextRequest['nextUrl']): NextRequest['nex
   return next;
 }
 
-/** Sales-hub Repair mode redirect (dual-door RepairTable). */
+/** Sales-hub Repair mode redirect (dual-door RepairCardList). */
 function resolveWalkInRepairModeRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/walk-in' && url.pathname !== '/walk-in/') return null;
   const mode = url.searchParams.get('mode');

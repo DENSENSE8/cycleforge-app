@@ -1,47 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import { errorResponse } from '@/lib/api';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { readIdempotencyKey } from '@/lib/api-idempotency';
 import { createSupportTicket } from '@/lib/support/create-ticket';
+import { SupportTicketCreateBody } from '@/lib/schemas/support-tickets';
 import { isHelpdeskNotConnected } from '@/lib/support/ticket-link';
 import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-const Anchor = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('serialUnit'), serialUnitId: z.coerce.number().int().positive() }),
-  z.object({ type: z.literal('order'), orderId: z.coerce.number().int().positive() }),
-  z.object({ type: z.literal('shipment'), shipmentId: z.coerce.number().int().positive() }),
-  z.object({ type: z.literal('tracking'), trackingNumber: z.string().trim().min(1) }),
-  z.object({
-    type: z.literal('receiving'),
-    receivingId: z.coerce.number().int().positive(),
-    lineId: z.coerce.number().int().nullable().optional(),
-  }),
-]);
-
-const Linkages = z
-  .object({
-    order: z.string().trim().min(1).max(128).optional(),
-    tracking: z.string().trim().min(1).max(128).optional(),
-    serial: z.string().trim().min(1).max(128).optional(),
-  })
-  .optional();
-
-const Body = z.object({
-  subject: z.string().trim().min(1).max(300),
-  note: z.string().trim().max(5000).optional(),
-  anchor: Anchor.optional(),
-  linkages: Linkages,
-});
-
 /** POST /api/support/tickets — station-generic ticket create. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));
-    const parsed = Body.safeParse(raw);
+    const parsed = SupportTicketCreateBody.safeParse(raw);
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid request' },

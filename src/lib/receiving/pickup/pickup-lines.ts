@@ -1,0 +1,129 @@
+'use client';
+
+/** Local Pickup display data — the LCPU product lines feeding the `/pickup` receiving mode's rail + table. */
+
+import { useQuery } from '@tanstack/react-query';
+import { parsePickupStatusTab, type PickupStatusTab } from '@/lib/local-pickup/order-status';
+import type { ReceivingUnitStageFactView } from '@/lib/receiving/receiving-line-row';
+
+export type { PickupStatusTab };
+export { parsePickupStatusTab };
+
+export interface PickupLine {
+  id: number;
+  order_id: number;
+  sku: string | null;
+  product_title: string | null;
+  image_url: string | null;
+  quantity: number;
+  condition_grade: string | null;
+  parts_status: string | null;
+  missing_parts_note: string | null;
+  condition_note: string | null;
+  total_price: string;
+  po_number: string | null;
+  reference_number: string | null;
+  customer_name: string | null;
+  order_status: string;
+  /** Linked receiving carton id once finalize/process started; null = need to process. */
+  receiving_id: number | null;
+  /** Canonical receiving-line link for labels, QC, tickets and unit navigation. */
+  receiving_line_id?: number | null;
+  /** One batched projection read; never populated by per-card requests. */
+  unit_stage_facts?: ReceivingUnitStageFactView[];
+  pickup_date: string | null;
+  order_created_at: string;
+  payment_method: string | null;
+  paid_amount_cents: number | null;
+  zoho_po_id: string | null;
+  zoho_status: string | null;
+  zoho_total: string | null;
+  zoho_po_date: string | null;
+  zoho_vendor_name: string | null;
+  /** Who keyed the pickup — the collector on record. */
+  created_by_name?: string | null;
+  /** The linked receiving line's own SKU — what label issuance prints. */
+  line_sku?: string | null;
+  /** `sku_catalog.id` for the line's SKU — where a product photo lands. */
+  sku_catalog_id?: number | null;
+  quantity_received?: number | null;
+  unboxed_at?: string | null;
+  /** The floor's line grade (`receiving_line_testing`) and its grading act. */
+  line_condition_grade?: string | null;
+  line_graded_at?: string | null;
+  line_graded_by_name?: string | null;
+  /** The line's assigned QC tester. */
+  assigned_tech_id?: number | null;
+  /** Physical units on the line shelved (STOCKED) or past it. */
+  put_away_units?: number;
+}
+
+export interface PickupOrderGroup {
+  orderId: number;
+  poNumber: string;
+  customer: string | null;
+  orderStatus: string;
+  receivingId: number | null;
+  zohoStatus: string | null;
+  pickupDate: string | null;
+  lines: PickupLine[];
+  itemCount: number;
+  totalValue: number;
+}
+
+/** React-query feed of every LCPU product line (newest pickup date first). */
+export function usePickupLines(query = '') {
+  const q = query.trim();
+  return useQuery({
+    queryKey: ['local-pickup-lines', q],
+    queryFn: async (): Promise<PickupLine[]> => {
+      const params = new URLSearchParams();
+      // A searching read drops the page bound — the route opens to its ceiling
+      // when `q` is present, so sending `limit` here would be ignored anyway.
+      if (q) params.set('q', q);
+      else params.set('limit', '500');
+      const res = await fetch(`/api/local-pickup-orders/lines?${params}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Pickup lines failed (HTTP ${res.status})`);
+      const data = (await res.json()) as { lines?: PickupLine[] };
+      return Array.isArray(data.lines) ? data.lines : [];
+    },
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+  });
+}
+
+/** Money helper — the endpoint returns a `numeric(12,2)::text` string. */
+export function pickupMoney(raw: string | null | undefined): string {
+  const n = Number((raw ?? '').trim());
+  return `$${(Number.isFinite(n) ? n : 0).toFixed(2)}`;
+}
+
+/**
+ * Fold flat product lines into their LCPU orders, preserving the server's
+ * newest-first ordering (the first line seen for an order fixes its position).
+ */
+export function groupPickupLines(lines: PickupLine[]): PickupOrderGroup[] {
+  const byOrder = new Map<number, PickupOrderGroup>();
+  for (const line of lines) {
+    let group = byOrder.get(line.order_id);
+    if (!group) {
+      group = {
+        orderId: line.order_id,
+        poNumber: line.po_number || line.reference_number || `Order ${line.order_id}`,
+        customer: line.customer_name || line.zoho_vendor_name || null,
+        orderStatus: line.order_status,
+        receivingId: line.receiving_id ?? null,
+        zohoStatus: line.zoho_status,
+        pickupDate: line.pickup_date,
+        lines: [],
+        itemCount: 0,
+        totalValue: 0,
+      };
+      byOrder.set(line.order_id, group);
+    }
+    group.lines.push(line);
+    group.itemCount += line.quantity;
+    group.totalValue += Number(line.total_price) || 0;
+  }
+  return [...byOrder.values()];
+}

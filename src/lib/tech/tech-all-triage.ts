@@ -4,7 +4,7 @@
  */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import type { PickupLine } from '@/components/receiving/pickup/pickup-lines';
+import type { PickupLine } from '@/lib/receiving/pickup/pickup-lines';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ShippedOrder } from '@/types/orders';
 import {

@@ -2,6 +2,7 @@ import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { ShippedOrder } from '@/types/orders';
 import { normalizeOutboundHandlingFacts } from '@/lib/shipping/outbound-handling-facts';
 import { isOutOfStock } from '@/utils/order-out-of-stock';
+import { ordersUrgentLabel } from '@/lib/orders/orders-compound-view';
 
 function asStaffColorHex(raw: string | null | undefined): string | null {
   const hex = String(raw ?? '').trim().toLowerCase();
@@ -68,6 +69,7 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     handlingFacts: normalizeOutboundHandlingFacts(row.catalog_handling_flags),
     outOfStock: isOutOfStock(row) ? 'Out of stock' : null,
     isUrgent: Boolean(row.is_urgent),
+    urgentLabel: ordersUrgentLabel(row),
   };
 }
 

@@ -15,7 +15,9 @@ import { StudioStationPreview } from './StudioStationPreview';
 import { StudioNodeStationEditor } from './StudioNodeStationEditor';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useAssistantContext } from '@/hooks/useAssistantContext';
+import { useNavIntent } from '@/lib/nav/use-nav-intent';
 import { STUDIO_SKILL } from '@/lib/assistant/page-skills';
+import { StudioLibrary } from './StudioLibrary';
 
 export function StudioShell() {
   const {
@@ -58,6 +60,10 @@ export function StudioShell() {
     publish,
     discardDraft,
     submitToCatalog,
+    onAddNode,
+    templates,
+    importingTemplateId,
+    importTemplate,
   } = useStudioWorkspace();
 
   // Global-assistant context: flow-display skill + focused-node selection (plan §-2.2).
@@ -70,6 +76,10 @@ export function StudioShell() {
 
   // Inspector is a workspace preference (not shareable view state) → localStorage.
   const [inspectorOpen, setInspectorOpen] = useLocalStorage('studio:inspector-open', true);
+  // The library (node palette · templates · issues) left of the canvas, same
+  // preference grammar; the contextual sidebar's `Library` verb toggles it.
+  const [libraryOpen, setLibraryOpen] = useLocalStorage('studio:library-open', true);
+  useNavIntent('studio:library', () => setLibraryOpen((open) => !open));
 
   // ─── Simulate (ST6): a client-side ghost-run over the IN-CONTEXT graph (current
   // or draft). Pure dry-run — zero engine writes (see useStudioSimulation). The
@@ -260,8 +270,58 @@ export function StudioShell() {
         {actionError && <span className="text-role-caption font-semibold text-rose-600">{actionError}</span>}
       </header>
 
-      {/* ─── Panes: full-width canvas + contextual inspector ─── */}
+      {/* ─── Panes: library · canvas · contextual inspector ─── */}
       <div className="flex min-h-0 flex-1">
+        {libraryOpen ? (
+          <aside
+            aria-label="Library"
+            data-testid="studio-library"
+            className="hidden w-72 shrink-0 flex-col border-r border-border-soft bg-surface-card md:flex"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-3 py-2">
+              <span className="text-role-micro text-text-faint">Library</span>
+              <HoverTooltip label="Hide library" asChild>
+                <IconButton
+                  type="button"
+                  onClick={() => setLibraryOpen(false)}
+                  ariaLabel="Hide library panel"
+                  icon={<ChevronLeft className="h-4 w-4" />}
+                  className="rounded p-1 text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted"
+                />
+              </HoverTooltip>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <StudioLibrary
+                palette={palette}
+                diagnostics={diagnostics}
+                editable={editing}
+                onAddNode={onAddNode}
+                onFocusIssue={(nodeId) => setParams({ focus: nodeId, z: '1', lens: 'gaps' })}
+                templates={templates}
+                canManage={canManage}
+                importingTemplateId={importingTemplateId}
+                onImportTemplate={importTemplate}
+              />
+            </div>
+          </aside>
+        ) : (
+          <HoverTooltip label="Show library" asChild>
+            {/* ds-raw-button: structural collapsed-rail toggle, the inspector strip's mirror — not a content button */}
+            <button
+              type="button"
+              onClick={() => setLibraryOpen(true)}
+              aria-label="Show library panel"
+              className="relative hidden w-8 shrink-0 flex-col items-center gap-2 border-r border-border-soft bg-surface-card py-3 text-text-faint transition-colors hover:bg-surface-hover hover:text-text-muted md:flex"
+            >
+              <ChevronRight className="h-4 w-4" />
+              <span className="text-role-micro font-semibold [writing-mode:vertical-rl]">Library</span>
+              {/* Issues are waiting in the tucked-away library — hint it. */}
+              {diagnostics.some((d) => d.severity === 'error') && (
+                <span className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-rose-500" />
+              )}
+            </button>
+          </HoverTooltip>
+        )}
         <main className="relative min-w-0 flex-1">
           {error ? (
             <div className="flex h-full items-center justify-center p-8 text-sm text-rose-600">{error}</div>

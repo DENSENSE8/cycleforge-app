@@ -14,6 +14,7 @@ import {
   subscribeActiveDetailStack,
 } from '@/lib/detail-stacks/open-store';
 import { cartonReadHref } from '@/lib/receiving/surface-path';
+import { taskLinkRepairHref } from '@/lib/tasks/task-links-shared';
 import { dispatchDashboardAndStationRefresh } from '@/utils/events';
 import { toast } from '@/lib/toast';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
@@ -24,10 +25,6 @@ const CompactOrderPeek = dynamic(
 );
 const FbaBoardDetailPanel = dynamic(
   () => import('@/components/fba/FbaBoardDetailPanel').then((m) => m.FbaBoardDetailPanel),
-  { ssr: false },
-);
-const RepairDetailsPanel = dynamic(
-  () => import('@/components/repair/RepairDetailsPanel').then((m) => m.RepairDetailsPanel),
   { ssr: false },
 );
 
@@ -72,14 +69,15 @@ export function GlobalDetailStackHost() {
   }, []);
 
   // Decision 2a: receiving "look" lands on the read inspector — never remount
-  // editable ReceivingDetailsStack from the global host.
+  // editable ReceivingDetailsStack from the global host. A repair ("claim")
+  // lands on its one record, the Repair desk's `?openRepair=`.
   useEffect(() => {
-    if (!active || active.kind !== 'receiving') return;
+    if (!active || (active.kind !== 'receiving' && active.kind !== 'claim')) return;
     const id = Number(active.id);
     closeDetailStack();
     setLoaded(null);
     if (Number.isFinite(id) && id > 0) {
-      router.push(cartonReadHref(id));
+      router.push(active.kind === 'receiving' ? cartonReadHref(id) : taskLinkRepairHref(id, 'desk'));
     }
   }, [active, router]);
 
@@ -89,7 +87,7 @@ export function GlobalDetailStackHost() {
       setLoading(false);
       return;
     }
-    if (active.kind === 'receiving') return;
+    if (active.kind === 'receiving' || active.kind === 'claim') return;
 
     let cancelled = false;
     setLoading(true);
@@ -111,7 +109,7 @@ export function GlobalDetailStackHost() {
     };
   }, [active]);
 
-  if (!active || active.kind === 'receiving') return null;
+  if (!active || active.kind === 'receiving' || active.kind === 'claim') return null;
 
   if (loading || !loaded) {
     return <DetailStackLoadingShell stackId={`${active.kind}:${active.id}`} onClose={handleClose} />;
@@ -133,16 +131,6 @@ export function GlobalDetailStackHost() {
         onSaved={handleUpdate}
         disableMoveUp
         disableMoveDown
-      />
-    );
-  }
-
-  if (loaded.kind === 'claim') {
-    return (
-      <RepairDetailsPanel
-        repair={loaded.repair}
-        onClose={handleClose}
-        onUpdate={handleUpdate}
       />
     );
   }

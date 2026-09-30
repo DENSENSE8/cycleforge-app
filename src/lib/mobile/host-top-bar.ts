@@ -27,8 +27,9 @@ const OWN_TOP_BAR_PREFIXES = [
   '/m/pair/',
   // The package hub (one tracking number) and its doors own MobileDetailTopBar.
   '/m/shipping/shipments/',
-  // The QC line pick (landed from the scan kernel armed for QC) owns its bar.
-  '/m/qc/',
+  // QC mirrors Picks: the queue's progress bar heads the screen, and the QC
+  // line pick (landed from the scan kernel armed for QC) owns its bar.
+  '/m/qc',
   // The phone companion to a counter tablet's repair visit wears the
   // exoskeleton (DetailHubScreen) and its /info; both own MobileDetailTopBar.
   '/m/repair-scan',

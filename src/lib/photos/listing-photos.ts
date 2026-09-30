@@ -29,7 +29,7 @@ const defaultDeps: ListingPhotoDeps = { tenantQuery, withTenantTransaction };
 
 export class ListingTargetError extends Error {}
 
-/** `productImageUrl`'s last tier as SQL, for readers that resolve the product photo in the query: */
+/** `productImageUrl`'s cover tier as SQL (after the catalog photo, before Zoho), for readers that resolve the product photo in the query. */
 export function listingCoverThumbUrlSql(catalogAlias: string): string {
   return `(SELECT COALESCE(
                     (SELECT NULLIF(BTRIM(ps.legacy_url), '')
@@ -45,7 +45,6 @@ export function listingCoverThumbUrlSql(catalogAlias: string): string {
             WHERE lp.organization_id = ${catalogAlias}.organization_id
               AND lp.sku_catalog_id = ${catalogAlias}.id
               AND lp.is_cover
-              AND NULLIF(BTRIM(${catalogAlias}.image_url), '') IS NULL
             LIMIT 1)`;
 }
 

@@ -1,35 +1,28 @@
 'use client';
 
-/** Task evidence — **Photos** and **Videos**: */
+/**
+ * A task's **Media** — how the owner teaches a skill (owner 2026-09-29):
+ * attach an unlisted YouTube walkthrough or a recording, and staff watch it
+ * on the task. Top to bottom: the add bar, ONE player, the videos as board
+ * rows (select one to play it), then photos as a thumb strip that opens the
+ * house viewer. Drawn in the Tasks board's voice — no evidence-card chrome.
+ * The surface that mounts it owns the file input, drag-drop and paste.
+ */
 
+import { useMemo } from 'react';
 import Image from 'next/image';
-import { Images, Trash2 } from '@/components/Icons';
+import { X } from 'lucide-react';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
-import { EvidenceSection, evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { autoplaySrc, taskLessons, taskStills, useLessonPlayer, type TaskLesson } from '@/lib/tasks/task-media-lessons';
 import type { TaskMediaPhoto, TaskMediaVideo } from '@/lib/tasks/task-links-shared';
-import type { TaskMediaLink, TaskMediaLinkCreateBody, TaskMediaLinkPatchBody } from '@/lib/tasks/media-links';
-import { cn } from '@/utils/_cn';
+import type { TaskMediaLink, TaskMediaLinkCreateBody } from '@/lib/tasks/media-links';
 import type { TaskMediaUploadState } from '@/lib/tasks/use-task-workspace';
-import { MediaLinkComposer, MediaLinkItem } from './TaskMediaLinks';
+import { cn } from '@/utils/_cn';
+import { MediaAddBar, MediaLessonRow } from './TaskMediaLinks';
 
-function sizeFace(bytes: number): string {
-  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
-  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-}
-
-function uploadFace(state: TaskMediaUploadState): string {
-  const pct = state.fraction != null ? ` · ${Math.round(state.fraction * 100)}%` : '';
-  return `Uploading ${Math.min(state.done + 1, state.total)}/${state.total}${pct}`;
-}
-
-const DELETE_CLASS = cn(
-  'ds-raw-button absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-mode bg-mode-panel text-mode-ink opacity-0 group-hover/media:opacity-100 focus-visible:opacity-100',
-  focusRing('control'),
-);
+const LABEL = 'text-[11px] font-medium text-text-muted';
 
 export function TaskMediaSection({
   photos,
@@ -37,157 +30,157 @@ export function TaskMediaSection({
   links,
   loading,
   uploading,
+  problems,
+  onDismissProblems,
   onPick,
-  onDeletePhoto,
-  onDeleteVideo,
   onAddLink,
-  onUpdateLink,
+  onRenameLink,
   onRemoveLink,
+  onRemoveVideo,
+  onRemovePhoto,
 }: {
   photos: readonly TaskMediaPhoto[];
   videos: readonly TaskMediaVideo[];
+  links: readonly TaskMediaLink[];
   loading: boolean;
   uploading: TaskMediaUploadState | null;
-  /** Open the shared file picker (the column owns the input). */
+  /** Refused / failed files from the last upload, in operator words. */
+  problems: readonly string[];
+  onDismissProblems: () => void;
+  /** Open the surface's file picker. */
   onPick: () => void;
-  onDeletePhoto: (photo: TaskMediaPhoto) => void;
-  onDeleteVideo: (video: TaskMediaVideo) => void;
-  /** Photos / videos attached by URL — full CRUD. */
-  links: readonly TaskMediaLink[];
   onAddLink: (body: TaskMediaLinkCreateBody) => Promise<unknown>;
-  onUpdateLink: (id: number, patch: TaskMediaLinkPatchBody) => Promise<unknown>;
-  onRemoveLink: (link: TaskMediaLink) => void;
+  onRenameLink: (linkId: number, title: string | null) => Promise<unknown>;
+  onRemoveLink: (linkId: number) => void;
+  onRemoveVideo: (videoId: number) => void;
+  onRemovePhoto: (photo: TaskMediaPhoto) => void;
 }) {
-  const linkPhotos = links.filter((link) => link.kind === 'photo');
-  // Uploaded photos first, then linked ones — one viewer steps through both.
+  const lessons = useMemo(() => taskLessons(videos, links), [videos, links]);
+  const stills = useMemo(() => taskStills(photos, links), [photos, links]);
+  const player = useLessonPlayer(lessons, !loading);
   const gallery = usePhotoGallery({
-    photos: [
-      ...photos.map((photo) => ({ id: photo.id, url: photo.url, thumbUrl: photo.thumbUrl })),
-      ...linkPhotos.map((link) => ({ url: link.embedUrl, thumbUrl: link.thumbnailUrl ?? link.embedUrl })),
-    ],
+    photos: stills.map((still) => ({ id: still.photo?.id, url: still.url, thumbUrl: still.thumbUrl })),
   });
-  const photoCount = photos.length + linkPhotos.length;
-  const videoCount = videos.length + links.length - linkPhotos.length;
-  const empty = !loading && photoCount === 0 && videoCount === 0;
+
+  const remove = (lesson: TaskLesson) => {
+    if (!window.confirm(`Delete “${lesson.title}” from this task?${lesson.video ? ' The recording cannot be recovered.' : ''}`)) return;
+    if (lesson.link) onRemoveLink(lesson.link.id);
+    else if (lesson.video) onRemoveVideo(lesson.video.id);
+  };
 
   return (
-    <EvidenceSection
-      label="Media"
-      testId="task-media"
-      collapsible
-      lazy
-      tone={empty ? 'neutral' : 'info'}
-      icon={<Images />}
-      summary={
-        loading
-          ? 'Loading attachments…'
-          : empty
-            ? 'No photos or videos'
-            : `${photoCount} photo${photoCount === 1 ? '' : 's'} · ${videoCount} video${videoCount === 1 ? '' : 's'}`
-      }
-      action={
-        <button
-          type="button"
-          className={cn(evidenceVerbClass(false), 'min-h-0 py-1')}
-          disabled={uploading !== null}
-          onClick={onPick}
-          data-testid="task-media-add"
-        >
-          {uploading ? uploadFace(uploading) : 'Add photos / videos'}
-        </button>
-      }
-    >
-      <div className="mb-3">
-        <MediaLinkComposer onAdd={onAddLink} />
-      </div>
-      {empty ? (
-        <button
-          type="button"
-          onClick={onPick}
-          className={cn(
-            'flex aspect-[16/7] w-full flex-col items-center justify-center gap-1 rounded-mode border border-dashed border-mode-control bg-mode-well',
-            focusRing('control'),
-          )}
-        >
-          <span className={cn(RECORD_LABEL_CLASS, 'text-mode-ink')}>Drop, paste or pick</span>
-          <span className="text-role-data text-mode-muted">Photos and videos of what needs doing.</span>
-        </button>
+    // Full width of whatever holds it (owner 2026-09-30: the Media tab fills the record); a caller that wants a reading column caps it.
+    <div className="flex w-full min-w-0 flex-col gap-4" data-testid="task-media">
+      <MediaAddBar
+        onAdd={onAddLink}
+        onPick={onPick}
+        uploading={uploading}
+        problems={problems}
+        onDismissProblems={onDismissProblems}
+      />
+
+      {loading ? (
+        <div className="aspect-video w-full animate-pulse rounded-xl bg-surface-sunken" />
+      ) : lessons.length === 0 && stills.length === 0 ? (
+        <p className="py-2 text-[13px] text-text-muted" data-testid="task-media-empty">
+          Attach a walkthrough: paste an unlisted YouTube link or upload a recording.
+        </p>
       ) : null}
 
-      {photos.length > 0 ? (
-        <ul className="grid grid-cols-3 gap-2" aria-label="Photos">
-          {photos.map((photo, index) => (
-            <li
-              key={photo.id}
-              className="group/media relative aspect-square overflow-hidden rounded-mode border border-mode-rule bg-mode-well"
-            >
-              <button
-                type="button"
-                aria-label={`Open photo ${index + 1} of ${photos.length}`}
-                onClick={() => gallery.openViewer(index)}
-                className={cn('absolute inset-0 cursor-zoom-in', focusRing('control'))}
-              >
-                <Image src={photo.thumbUrl} alt="" fill unoptimized sizes="8vw" className="object-cover" />
-              </button>
-              <button
-                type="button"
-                aria-label={`Delete photo ${index + 1}`}
-                onClick={() => onDeletePhoto(photo)}
-                className={DELETE_CLASS}
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
+      {player.current ? <TaskLessonPlayer lesson={player.current} autoplay={player.autoplay} /> : null}
+
+      {lessons.length > 0 ? (
+        <section aria-label="Videos" className="flex flex-col gap-1">
+          <span className={LABEL}>
+            Videos <span className="tabular-nums">· {lessons.length}</span>
+          </span>
+          <ul className="-mx-2 flex flex-col gap-0.5">
+            {lessons.map((lesson) => {
+              const { link } = lesson;
+              return (
+                <MediaLessonRow
+                  key={lesson.key}
+                  lesson={lesson}
+                  playing={player.current?.key === lesson.key}
+                  onPlay={() => player.play(lesson.key)}
+                  onRename={link ? (title) => onRenameLink(link.id, title) : null}
+                  onRemove={() => remove(lesson)}
+                />
+              );
+            })}
+          </ul>
+        </section>
       ) : null}
 
-      {videos.length > 0 ? (
-        <ul className={cn('flex flex-col gap-2', photos.length > 0 && 'mt-2')} aria-label="Videos">
-          {videos.map((video, index) => (
-            <li key={video.id} className="group/media relative overflow-hidden rounded-mode border border-mode-rule bg-mode-ink">
-              {/* `#t=0.1` paints a first frame instead of black; metadata only until play. */}
-              <video
-                src={`${video.url}#t=0.1`}
-                controls
-                playsInline
-                preload="metadata"
-                className="aspect-video w-full"
-                aria-label={`Video ${index + 1} of ${videos.length}`}
-              />
-              <span
-                className={cn(RECORD_LABEL_CLASS, 'pointer-events-none absolute left-1 top-1 bg-mode-panel px-1 text-mode-ink')}
-              >
-                {sizeFace(video.sizeBytes)}
-              </span>
-              <button
-                type="button"
-                aria-label={`Delete video ${index + 1}`}
-                onClick={() => onDeleteVideo(video)}
-                className={DELETE_CLASS}
-              >
-                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
+      {stills.length > 0 ? (
+        <section aria-label="Photos" className="flex flex-col gap-1.5">
+          <span className={LABEL}>
+            Photos <span className="tabular-nums">· {stills.length}</span>
+          </span>
+          <ul className="flex flex-wrap gap-2">
+            {stills.map((still, index) => (
+              <li key={still.key} className="group/still relative size-16 overflow-hidden rounded-lg bg-surface-sunken ring-1 ring-border-hairline">
+                <button
+                  type="button"
+                  aria-label={`Open photo ${index + 1} of ${stills.length}`}
+                  onClick={() => gallery.openViewer(index)}
+                  className={cn('absolute inset-0 cursor-zoom-in', focusRing('control'))}
+                >
+                  <Image src={still.thumbUrl} alt="" fill unoptimized sizes="64px" className="object-cover" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete photo ${index + 1}`}
+                  onClick={() => {
+                    if (!window.confirm('Delete this photo from the task?')) return;
+                    if (still.photo) onRemovePhoto(still.photo);
+                    else if (still.link) onRemoveLink(still.link.id);
+                  }}
+                  className={cn(
+                    'absolute right-0.5 top-0.5 inline-flex size-5 items-center justify-center rounded-full bg-surface-card text-text-default shadow-sm opacity-0 group-hover/still:opacity-100 focus-visible:opacity-100',
+                    focusRing('control'),
+                  )}
+                >
+                  <X aria-hidden className="size-3" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
-      {links.length > 0 ? (
-        <ul className="mt-2 flex flex-col gap-2" aria-label="Linked media">
-          {links.map((link) => (
-            <MediaLinkItem
-              key={link.id}
-              link={link}
-              onUpdate={(patch) => onUpdateLink(link.id, patch)}
-              onRemove={() => onRemoveLink(link)}
-              onOpenPhoto={
-                link.kind === 'photo' ? () => gallery.openViewer(photos.length + linkPhotos.indexOf(link)) : undefined
-              }
-            />
-          ))}
-        </ul>
-      ) : null}
+
       <PhotoViewerPortal g={gallery} />
-    </EvidenceSection>
+    </div>
+  );
+}
+
+/** The ONE player a lesson plays in — the Media tab's, and the Overview's featured lesson. */
+export function TaskLessonPlayer({ lesson, autoplay }: { lesson: TaskLesson; autoplay: boolean }) {
+  return (
+    <div className="overflow-hidden rounded-xl bg-black ring-1 ring-border-hairline" data-testid="task-media-player">
+      {lesson.player.kind === 'iframe' ? (
+        <iframe
+          key={lesson.key}
+          src={autoplay ? autoplaySrc(lesson.player.src) : lesson.player.src}
+          title={lesson.title}
+          className="block aspect-video w-full border-0"
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      ) : (
+        // `#t=0.1` paints a first frame instead of black until play.
+        <video
+          key={lesson.key}
+          src={autoplay ? lesson.player.src : `${lesson.player.src}#t=0.1`}
+          controls
+          playsInline
+          autoPlay={autoplay}
+          preload="metadata"
+          aria-label={lesson.title}
+          className="block aspect-video w-full bg-black"
+        />
+      )}
+    </div>
   );
 }

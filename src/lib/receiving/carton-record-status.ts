@@ -29,6 +29,8 @@ export type CartonRecordCarton = {
   listing_url?: string | null;
   is_return?: boolean | null;
   return_reason?: string | null;
+  /** The carton row's creation — its import time when no PO date is known. */
+  created_at?: string | null;
 };
 
 export interface CartonStep extends ReceivingStatusStep {

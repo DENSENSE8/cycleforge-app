@@ -7,12 +7,10 @@ import {
   EvidenceFacts,
   EvidenceNotice,
   EvidenceSection,
-  EvidenceStateStrip,
   EvidenceTitle,
 } from '@/design-system/components/record-ledger/RecordEvidence';
 import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { Button, TextField } from '@/design-system/primitives';
-import { REPLENISHMENT_RECORD_STATE } from '@/design-system/tokens/replenishment';
 import {
   REPLENISHMENT_ALLOWED_TRANSITIONS,
   type ReplenishmentRequestStatus,
@@ -80,7 +78,6 @@ export function ReplenishmentPlanEvidence({
     setNotes(row.notes ?? '');
   }, [row]);
 
-  const state = REPLENISHMENT_RECORD_STATE[row.status];
   const transitions = REPLENISHMENT_ALLOWED_TRANSITIONS[row.status].filter(
     (status) => status !== 'po_created',
   );
@@ -104,7 +101,6 @@ export function ReplenishmentPlanEvidence({
   return (
     <div className="flex min-h-full flex-1 flex-col" data-testid="replenishment-plan-evidence">
       <EvidenceTitle sub={row.sku || 'No SKU'}>{row.item_name}</EvidenceTitle>
-      <EvidenceStateStrip state={state} next={row.status === 'planned_for_po' ? 'Create PO' : undefined} />
       <EvidenceSection label="Demand and stock">
         <EvidenceFacts>
           <EvidenceFact label="Need" mono>{numText(row.quantity_needed)}</EvidenceFact>

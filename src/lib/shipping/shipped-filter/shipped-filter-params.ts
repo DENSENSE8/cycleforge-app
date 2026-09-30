@@ -54,7 +54,7 @@ export function toISODate(d: Date | undefined): string | null {
   return localDateToDateKey(d);
 }
 
-/** Intentional "no date window" — Clear on the week chip; blocks current-week seed. */
+/** Explicit "no date window" — all-time (the Shipped buckets' locate link carries it). */
 export const SHIPPED_ALL_DATES_PARAM = 'allDates';
 
 export function readShippedAllDates(searchParams: ParamReader): boolean {
@@ -63,24 +63,26 @@ export function readShippedAllDates(searchParams: ParamReader): boolean {
 }
 
 /**
- * The fetch window for Shipped. Default is this warehouse week. `allDates=1`
- * is all-time. An explicit `dateFrom`/`dateTo` wins over the week seed. The
- * type / carrier / status / exceptions filters narrow WITHIN the window
- * (operator ruling 2026-09-26: they are answered in SQL over the range).
+ * The fetch window for Shipped. Default is ALL-TIME — every package packed and
+ * scanned out (owner 2026-09-29: the desk showed only this week's pack scans).
+ * An explicit `dateFrom`/`dateTo` narrows to that range; an explicit
+ * `?shippedWeekOffset` (whole weeks back) to that warehouse week; `allDates=1`
+ * forces all-time. The type / carrier / status / exceptions filters narrow
+ * WITHIN the window (operator ruling 2026-09-26: answered in SQL over the range).
  */
 export function shippedEffectiveDateWindow(args: {
   allDates: boolean;
   dateFrom: string;
   dateTo: string;
-  weekStart: string;
-  weekEnd: string;
+  /** The `?shippedWeekOffset` week, when the URL names one. */
+  week: { start: string; end: string } | null;
 }): { start: string; end: string } {
   if (args.allDates) return { start: '', end: '' };
   if (/^\d{4}-\d{2}-\d{2}$/.test(args.dateFrom)) {
     const end = /^\d{4}-\d{2}-\d{2}$/.test(args.dateTo) ? args.dateTo : args.dateFrom;
     return { start: args.dateFrom, end };
   }
-  return { start: args.weekStart, end: args.weekEnd };
+  return args.week ?? { start: '', end: '' };
 }
 
 /** `?shippedWeekOffset` — whole weeks back from this one (0 = this week). */
@@ -91,13 +93,13 @@ export function readShippedWeekOffset(searchParams: ParamReader): number {
 
 /** The Shipped list's window for these URL params — the list and its facet counts read this one derivation. */
 export function readShippedDateWindow(searchParams: ParamReader): { start: string; end: string } {
-  const week = getWeekRangeForOffset(readShippedWeekOffset(searchParams));
+  const named = searchParams.get('shippedWeekOffset') != null;
+  const week = named ? getWeekRangeForOffset(readShippedWeekOffset(searchParams)) : null;
   return shippedEffectiveDateWindow({
     allDates: readShippedAllDates(searchParams),
     dateFrom: (searchParams.get('dateFrom') || '').trim(),
     dateTo: (searchParams.get('dateTo') || '').trim(),
-    weekStart: week.startStr,
-    weekEnd: week.endStr,
+    week: week ? { start: week.startStr, end: week.endStr } : null,
   });
 }
 
@@ -184,9 +186,4 @@ export function readShippedPickedBy(searchParams: ParamReader): number | null {
   if (!/^\d+$/.test(raw)) return null;
   const n = Number(raw);
   return Number.isSafeInteger(n) && n > 0 ? n : null;
-}
-
-/** Default week seed is an active filter the operator can clear. */
-export function shippedWeekFilterActive(args: { allDates: boolean; hasDateRange: boolean }): boolean {
-  return !args.allDates && !args.hasDateRange;
 }

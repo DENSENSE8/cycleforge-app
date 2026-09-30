@@ -7,6 +7,7 @@ import {
   type ScanRoute,
 } from '@/lib/barcode-routing';
 import { formatSearchSel } from '@/lib/search/search-selection';
+import { toteRecordHref } from '@/lib/search/search-hit';
 
 interface InternalIdKeys {
   receivingIds: number[];
@@ -177,7 +178,7 @@ export function desktopSearchHref(href: string): string {
   if (bin) return `/bin/${encodeURIComponent(decodeURIComponent(bin[1]))}`;
 
   const box = /^\/m\/h\/(\d+)(?:\/|$)/.exec(pathname);
-  if (box) return `/search?q=${encodeURIComponent(`H-${box[1]}`)}`;
+  if (box) return toteRecordHref(Number(box[1]));
 
   const gs1 = /^\/01\/\d+(?:\/21\/([^/]+))?/.exec(pathname);
   if (gs1?.[1]) {
@@ -206,7 +207,8 @@ export function directOpenForTypedHandle(
   raw: string,
 ): { href: string; route: ScanRoute } | null {
   const route = decodedHandle(raw);
-  if (!route) return null;
+  // A typed tote plate is answered by the tote hit itself (its state rides the row).
+  if (!route || route.type === 'handling-unit') return null;
   const href = searchPageHrefForScanRoute(route);
   if (!href) return null;
   const q = href.indexOf('?');

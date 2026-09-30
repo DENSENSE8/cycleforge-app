@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
+import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
+import { TICKET_STATUSES, TICKET_STATUS_FACE, type TicketStatus } from '@/design-system/tokens/ticket-status';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { Plus } from '@/components/Icons';
@@ -40,6 +42,8 @@ import {
   taskDeskTitle,
   type TaskDeskRow,
 } from '@/lib/tasks/task-desk-row';
+import { taskMatchesTicketStatuses, ticketStatusCounts } from '@/lib/tasks/ticket-status-filter';
+import { taskStatusOf } from '@/lib/tasks/task-status';
 
 /** One assigned task, reduced to what the shared row paints. */
 interface MobileAgendaTask {
@@ -47,8 +51,12 @@ interface MobileAgendaTask {
   title: string;
   subtitle: string | null;
   overdue: boolean;
+  /** Due today or tomorrow, not yet late — the caption paints orange. */
+  urgent: boolean;
   done: boolean;
   ticketId: number | null;
+  /** The anchor ticket's helpdesk status, else the first linked ticket's — the row's colour pill. */
+  ticketStatus: string | null;
 }
 
 type MobileDailyStatus = 'all' | 'open' | 'done';
@@ -96,6 +104,9 @@ export function MobileDailyChecklist() {
   const { addItem, updateItem, retireItem } = useItemActions(dateKey);
 
   const [status, setStatus] = useState<MobileDailyStatus>('all');
+  /** Helpdesk-status chips (OR) — the desk's `?ticket=` rail, on the phone's own list. */
+  const [ticketFilter, setTicketFilter] = useState<readonly TicketStatus[]>([]);
+  const ticketActive = ticketFilter.length > 0;
   const [openItemId, setOpenItemId] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [sharedTaskOpen, setSharedTaskOpen] = useState(false);
@@ -151,7 +162,8 @@ export function MobileDailyChecklist() {
     return () => window.clearInterval(tick);
   }, []);
 
-  const taskRows = useMemo<MobileAgendaTask[]>(() => {
+  /** Status tab + kind chips — everything but the ticket chips, so each chip counts what tapping it alone keeps. */
+  const listedTasks = useMemo<MobileAgendaTask[]>(() => {
     return (myTasks ?? [])
       .map((row) => {
         const done = row.status === 'DONE';
@@ -168,7 +180,9 @@ export function MobileDailyChecklist() {
           title,
           subtitle: captionParts.length > 0 ? captionParts.join(' · ') : null,
           overdue: Boolean(due?.overdue) && !done,
+          urgent: Boolean(due?.urgent) && !done,
           ticketId: taskDeskTicketNumber(row),
+          ticketStatus: row.ticket?.status ?? row.links.find((link) => link.kind === 'ticket')?.status ?? null,
         };
       })
       .filter((task) => (status === 'all' ? true : status === 'open' ? !task.done : task.done))
@@ -178,11 +192,21 @@ export function MobileDailyChecklist() {
         agendaKindVisible(kindPrefs.prefs, task.row.entityType === 'support_ticket' ? 'ticket' : 'task'),
       )
   }, [myTasks, nowMs, status, kindPrefs.prefs]);
+  const taskRows = useMemo(
+    () => (ticketActive ? listedTasks.filter((task) => taskMatchesTicketStatuses(task.row, ticketFilter)) : listedTasks),
+    [listedTasks, ticketActive, ticketFilter],
+  );
+  const ticketChips = useMemo<StatusChip<TicketStatus>[]>(() => {
+    const counts = ticketStatusCounts(listedTasks.map((task) => task.row));
+    return TICKET_STATUSES.map((id) => ({ id, label: TICKET_STATUS_FACE[id].label, tone: TICKET_STATUS_FACE[id], count: counts[id] }));
+  }, [listedTasks]);
+  const ticketActiveSet = useMemo<ReadonlySet<TicketStatus>>(() => new Set(ticketFilter), [ticketFilter]);
 
   // Recurring first, one-offs under their band — the same order the desk's
   // authored branch keeps, so both faces answer "what does the shift owe"
   // before "what is exceptional today".
-  const showChecks = agendaKindVisible(kindPrefs.prefs, 'checklist');
+  // A ticket-status filter keeps tasks only: a checklist item has no helpdesk status.
+  const showChecks = !ticketActive && agendaKindVisible(kindPrefs.prefs, 'checklist');
   const recurring = showChecks ? byAuthored.filter((i) => i.kind !== 'once' && passesFilter(i.id)) : [];
   const onceItems = showChecks ? byAuthored.filter((i) => i.kind === 'once' && passesFilter(i.id)) : [];
 
@@ -252,8 +276,10 @@ export function MobileDailyChecklist() {
       title={task.title}
       done={task.done}
       subtitle={task.subtitle}
-      subtitleTone={task.overdue ? 'danger' : 'muted'}
+      subtitleTone={task.overdue ? 'danger' : task.urgent ? 'urgent' : 'muted'}
       ticketId={task.ticketId}
+      ticketStatus={task.ticketStatus}
+      taskStatus={taskStatusOf(task.row)}
       detail="record"
       onToggle={(next) => toggleTask.mutate({ taskId: task.row.id, done: next })}
       // The chevron opens the TASK — its instructions, media, documents and
@@ -310,6 +336,20 @@ export function MobileDailyChecklist() {
             className="min-w-0 flex-1"
           />
         </div>
+        {ticketActive || ticketChips.some((chip) => chip.count > 0) ? (
+          <div className="flex pb-1">
+            <StatusChipRail
+              chips={ticketChips}
+              active={ticketActiveSet}
+              onToggle={(id) =>
+                setTicketFilter((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]))
+              }
+              onReset={() => setTicketFilter([])}
+              label="Filter by ticket status"
+              testId="mobile-daily-ticket-chips"
+            />
+          </div>
+        ) : null}
 
         {checksFirst
           ? checklistSection
@@ -331,7 +371,9 @@ export function MobileDailyChecklist() {
         recurring.length === 0 &&
         onceItems.length === 0 &&
         taskRows.length === 0 ? (
-          <p className="pt-6 text-role-caption text-text-muted">{EMPTY_COPY[status]}</p>
+          <p className="pt-6 text-role-caption text-text-muted">
+            {ticketActive ? 'No tasks with a ticket in that status.' : EMPTY_COPY[status]}
+          </p>
         ) : null}
       </div>
 
@@ -344,7 +386,7 @@ export function MobileDailyChecklist() {
           // Task first: the checklist is the org's rarer edit, reachable
           // from inside the task sheet for those who manage it.
           onClick={() => (canSeeTasks ? setSharedTaskOpen(true) : setComposerOpen(true))}
-          ariaLabel="Add task"
+          ariaLabel="New task"
           size="touch"
           radius="pill"
           icon={<Plus aria-hidden className="h-5 w-5" />}

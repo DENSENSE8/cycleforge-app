@@ -10,7 +10,6 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
-import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import { TriageCardList, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
@@ -18,9 +17,9 @@ import { useTriageCut } from '@/design-system/components/triage-card-list/triage
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { ReceivingSelectionVerbs } from '@/components/receiving/ReceivingSelectionVerbs';
 import { useReceivingSelectionPort } from '@/components/receiving/use-receiving-selection-port';
-import { CartonRecordView } from '@/components/receiving/history/CartonRecordView';
-import { cartonRecordTitle, useCartonRecord } from '@/components/receiving/history/use-carton-record';
-import { useCartonVerbs } from '@/components/receiving/history/carton-record-verbs';
+import { cartonRecordTitle } from '@/components/receiving/history/use-carton-record';
+import { useInboundCartonRecord } from '@/components/receiving/record/useInboundRecord';
+import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
 import { cartonBands, cartonCardKey, cartonCardModel } from '@/components/receiving/history/cards/carton-card-model';
 import { ReceivingCartonCard } from '@/components/receiving/history/cards/CartonCard';
 import { INCOMING_DOCKED_VIEW } from '@/lib/triage/views';
@@ -98,8 +97,8 @@ export function DockedPackagesLedger({
     onClose: close,
   });
 
-  const carton = useCartonRecord(openRow);
-  const verbs = useCartonVerbs(carton, close);
+  const carton = useInboundCartonRecord(openRow, close);
+  const slot = useRecordSlot(carton?.model ?? null, carton?.verbs ?? [], openRow ? `${cartonRecordTitle(openRow)} actions` : 'Package actions', 'inbound-record');
   const selection = useReceivingSelectionPort(selectedIds, onToggleRow, visibleRows);
   const family = useMemo(
     () => triageFamily(VIEW, {
@@ -153,12 +152,14 @@ export function DockedPackagesLedger({
         searchEmpty={query.trim() ? <p className="text-sm text-text-muted">No docked package matches those tracking digits.</p> : null}
         allClear={<TriageAllClear title={emptyMessage} detail="Arrival-scanned packages wait here until Unbox begins." />}
         record={{
-          title: openRow ? cartonRecordTitle(openRow) : 'Docked package',
+          title: slot?.title ?? 'Docked package',
+          actions: slot?.actions,
           noun: 'package',
+          showIndex: false,
           testId: 'docked-package-record',
           summary: <RecordLedgerSummaryPane summary={summary} />,
-          view: openRow && carton ? <CartonRecordView record={carton} openLineId={openRow.id} onClose={close} surface="docked" /> : null,
-          strip: openRow && carton ? <RecordActionStrip verbs={verbs} label={`${cartonRecordTitle(openRow)} actions`} /> : null,
+          view: slot?.view ?? null,
+          strip: null,
         }}
       />
     </div>

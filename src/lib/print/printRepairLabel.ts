@@ -86,7 +86,7 @@ export function buildRepairLabelPayload(args: {
 /**
  * Generate a 2×1" repair label with info on the left and a pre-rendered QR SVG
  * on the right. The QR encodes the walk-in repair deep link so a scanner / phone
- * opens RepairDetailsPanel for this repair without needing the app installed.
+ * opens this repair's record without needing the app installed.
  */
 export function printRepairLabel(payload: RepairLabelPayload): void {
   if (typeof window === 'undefined') return;

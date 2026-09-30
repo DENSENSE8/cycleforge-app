@@ -1,32 +1,87 @@
 'use client';
 
-/** SKU exception evidence — Product (title + description), the Barcode fact (attach one to a placeholder created without) and Locations &… */
+/** SKU exception record groups — Product (title + description) and the Barcode fact (attach one to a placeholder created without). Its locations are the stock record's own `StockLocationsGroup`. */
 
 import { useState } from 'react';
 import Link from 'next/link';
 import { CopyChip } from '@/components/ui/CopyChip';
-import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
-import {
-  EVIDENCE_CONTROL_CLASS,
-  EvidenceCountStepper,
-  EvidenceSection,
-  evidenceVerbClass,
-} from '@/design-system/components/record-ledger/RecordEvidence';
+import { EVIDENCE_CONTROL_CLASS } from '@/design-system/components/record-ledger/RecordEvidence';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { Button } from '@/design-system/primitives';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
-import { useAuth } from '@/contexts/AuthContext';
-import { useLocationPickerOptions } from '@/hooks/useLocationPickerOptions';
-import { SKU_EXCEPTIONS_PATH, skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
-import { commitStockRequest, stockAdjustRequest } from '@/lib/inventory/stock-bin-verb-writes';
-import type { StockBinWriteTarget } from '@/lib/inventory/stock-bin-writes';
-import type { ProvisionalSkuDetail, ProvisionalSkuLocation } from '@/lib/neon/provisional-sku-queries';
+import { SKU_EXCEPTIONS_PATH } from '@/lib/inventory/sku-exception-links';
+import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 import { toast } from '@/lib/toast';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 const TITLE_MIN = 2;
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 2000;
+/** Description height: starts at ~4 lines, drags between one short line and most of a screen. */
+const DESCRIPTION_DEFAULT_PX = 96;
+const DESCRIPTION_MIN_PX = 72;
+const DESCRIPTION_MAX_PX = 640;
+const GRIP_KEY_STEP_PX = 24;
 
 type OnChanged = () => Promise<void>;
+
+/**
+ * A full-width grip under a field: press and drag down to grow it, up to
+ * shrink it (↑ / ↓ with the grip focused). The textarea's own corner handle
+ * is too small to find (owner 2026-09-30).
+ */
+function DragResizeGrip({
+  label,
+  heightPx,
+  onHeight,
+  testId,
+}: {
+  label: string;
+  heightPx: number;
+  onHeight: (px: number) => void;
+  testId?: string;
+}) {
+  const clamp = (px: number) => Math.min(DESCRIPTION_MAX_PX, Math.max(DESCRIPTION_MIN_PX, Math.round(px)));
+  return (
+    <div
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label={label}
+      aria-valuemin={DESCRIPTION_MIN_PX}
+      aria-valuemax={DESCRIPTION_MAX_PX}
+      aria-valuenow={heightPx}
+      tabIndex={0}
+      title="Drag to resize"
+      data-testid={testId}
+      className={cn('group/grip -mt-1 flex h-4 w-full cursor-row-resize touch-none items-center justify-center rounded-mode', focusRing('control'))}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        const startY = event.clientY;
+        const startPx = heightPx;
+        const target = event.currentTarget;
+        target.setPointerCapture(event.pointerId);
+        const move = (e: PointerEvent) => onHeight(clamp(startPx + e.clientY - startY));
+        const up = () => {
+          target.removeEventListener('pointermove', move);
+          target.removeEventListener('pointerup', up);
+          target.removeEventListener('pointercancel', up);
+        };
+        target.addEventListener('pointermove', move);
+        target.addEventListener('pointerup', up);
+        target.addEventListener('pointercancel', up);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'ArrowDown') onHeight(clamp(heightPx + GRIP_KEY_STEP_PX));
+        else if (event.key === 'ArrowUp') onHeight(clamp(heightPx - GRIP_KEY_STEP_PX));
+        else return;
+        event.preventDefault();
+      }}
+    >
+      <span aria-hidden className="h-1 w-10 rounded-full bg-border-default transition-colors group-hover/grip:bg-border-emphasis" />
+    </div>
+  );
+}
 
 // ── Product ─────────────────────────────────────────────────────────────────
 
@@ -47,6 +102,7 @@ export function SkuExceptionProductSection({
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [descriptionPx, setDescriptionPx] = useState(DESCRIPTION_DEFAULT_PX);
 
   const title = titleDraft ?? item.productTitle;
   const description = descriptionDraft ?? item.description ?? '';
@@ -85,8 +141,18 @@ export function SkuExceptionProductSection({
   };
 
   return (
-    <EvidenceSection label="Product" testId="sku-exception-product">
-      <div className="flex flex-col gap-2">
+    <RecordGroup
+      title="Product"
+      testId="sku-exception-product"
+      action={
+        dirty ? (
+          <Button variant="ink" size="sm" disabled={!canSave} loading={saving} onClick={() => void save()} data-testid="sku-exception-save">
+            Save
+          </Button>
+        ) : undefined
+      }
+    >
+      <div className="flex flex-col gap-2 px-4 pb-3 pt-1">
         <label htmlFor={`${fieldId}-title`} className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
           Title
         </label>
@@ -106,13 +172,14 @@ export function SkuExceptionProductSection({
           id={`${fieldId}-description`}
           value={description}
           maxLength={DESCRIPTION_MAX}
-          rows={3}
           onChange={(event) => setDescriptionDraft(event.target.value)}
           placeholder="Condition, markings, what's in the box…"
-          className={cn(EVIDENCE_CONTROL_CLASS, 'w-full resize-y py-1.5')}
+          className={cn(EVIDENCE_CONTROL_CLASS, 'w-full resize-none py-1.5')}
+          style={{ height: descriptionPx }}
           data-testid="sku-exception-description"
         />
-        <div className="flex items-center gap-2">
+        <DragResizeGrip label="Resize description" heightPx={descriptionPx} onHeight={setDescriptionPx} testId="sku-exception-description-grip" />
+        <div className="flex min-h-8 items-center gap-2">
           <span role="status" aria-live="polite" className="mr-auto text-role-caption text-mode-muted">
             {titleInvalid
               ? `Title needs ${TITLE_MIN}–${TITLE_MAX} characters`
@@ -120,29 +187,22 @@ export function SkuExceptionProductSection({
                 ? 'Unsaved changes'
                 : 'Up to date'}
           </span>
-          <button
-            type="button"
-            className={evidenceVerbClass(false)}
-            disabled={saving || !dirty}
-            onClick={() => {
-              setTitleDraft(null);
-              setDescriptionDraft(null);
-            }}
-          >
-            Revert
-          </button>
-          <button
-            type="button"
-            className={evidenceVerbClass(true)}
-            disabled={!canSave}
-            onClick={() => void save()}
-            data-testid="sku-exception-save"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
+          {dirty ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={saving}
+              onClick={() => {
+                setTitleDraft(null);
+                setDescriptionDraft(null);
+              }}
+            >
+              Revert
+            </Button>
+          ) : null}
         </div>
       </div>
-    </EvidenceSection>
+    </RecordGroup>
   );
 }
 
@@ -209,8 +269,8 @@ export function SkuExceptionBarcodeValue({
   };
 
   return (
-    <div className="flex flex-col gap-1.5" data-testid="sku-exception-barcode-attach">
-      <span className={cn(RECORD_LABEL_CLASS, 'text-mode-warn')}>No barcode</span>
+    <div className="flex w-full flex-col gap-1.5 pt-1" data-testid="sku-exception-barcode-attach">
+      <span className="text-role-caption font-medium text-mode-warn">No barcode</span>
       <div className="flex items-center gap-2">
         <input
           id={`${fieldId}-barcode`}
@@ -231,15 +291,16 @@ export function SkuExceptionBarcodeValue({
           className={cn(EVIDENCE_CONTROL_CLASS, RECORD_ID_CLASS, 'min-w-0 flex-1')}
           data-testid="sku-exception-barcode-input"
         />
-        <button
-          type="button"
-          className={evidenceVerbClass(true)}
-          disabled={!barcode || busy}
+        <Button
+          variant="ink"
+          size="sm"
+          disabled={!barcode}
+          loading={busy}
           onClick={() => void attach()}
           data-testid="sku-exception-barcode-attach-submit"
         >
-          {busy ? 'Attaching…' : 'Attach'}
-        </button>
+          Attach
+        </Button>
       </div>
       {conflict ? (
         <p role="alert" className="text-role-caption text-mode-warn" data-testid="sku-exception-barcode-conflict">
@@ -262,189 +323,5 @@ export function SkuExceptionBarcodeValue({
         </p>
       ) : null}
     </div>
-  );
-}
-
-// ── Locations & count ───────────────────────────────────────────────────────
-
-function countTarget(sku: string, barcode: string, qty: number): StockBinWriteTarget {
-  const face = skuExceptionLocationFace(barcode);
-  return { rowId: `${barcode}:${sku}`, barcode, sku, qty, face: `${face} · ${sku}` };
-}
-
-/**
- * Put `qty` of a placeholder into one bin — the phone's own bin verb
- * (`PATCH /api/locations/[barcode]` `put`, reason `BIN_ADD`). Shared by Add to
- * location and the New temp SKU form, so both read as one verb in the ledger.
- */
-export async function putSkuExceptionStock(args: {
-  sku: string;
-  barcode: string;
-  /** What the bin holds now — the target's face, never the amount written. */
-  existing: number;
-  qty: number;
-  staffId: number | undefined;
-}): Promise<void> {
-  await commitStockRequest(
-    stockAdjustRequest(countTarget(args.sku, args.barcode, args.existing), {
-      direction: 'in',
-      qty: args.qty,
-      staffId: args.staffId,
-      // The reason the phone's pairing commit sends, so both read as one verb.
-      reasonCode: 'BIN_ADD',
-    }),
-  );
-}
-
-/** One row per location holding the placeholder — − / signed amount / + and Apply — plus Add to location for a bin that holds none yet. */
-export function SkuExceptionLocationsSection({
-  fieldId,
-  item,
-  onChanged,
-}: {
-  fieldId: string;
-  item: ProvisionalSkuDetail;
-  onChanged: OnChanged;
-}) {
-  const { user } = useAuth();
-  const staffId = user?.staffId && user.staffId > 0 ? user.staffId : undefined;
-  const { options, loading } = useLocationPickerOptions();
-  const [barcode, setBarcode] = useState<string | null>(null);
-  const [qtyDraft, setQtyDraft] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const qty = Number.parseInt(qtyDraft, 10);
-  const ready = Boolean(barcode) && Number.isFinite(qty) && qty > 0 && !busy;
-  const existing = item.locations.find((loc) => loc.barcode === barcode)?.qty ?? 0;
-
-  const add = async () => {
-    if (!ready || !barcode) return;
-    setBusy(true);
-    try {
-      await putSkuExceptionStock({ sku: item.sku, barcode, existing, qty, staffId });
-      setQtyDraft('');
-      setBarcode(null);
-      await onChanged();
-      toast.success(`Added ${qty} at ${skuExceptionLocationFace(barcode)}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not add stock.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <EvidenceSection
-      label="Locations & count"
-      testId="sku-exception-locations"
-      action={
-        <span className={cn(RECORD_LABEL_CLASS, 'tabular-nums text-mode-ink')} data-testid="sku-exception-on-hand">
-          {item.stock} on hand
-        </span>
-      }
-    >
-      {item.locations.length > 0 ? (
-        <ul className="flex flex-col" aria-label="Locations holding this SKU">
-          {item.locations.map((location, index) => (
-            <SkuExceptionCountRow
-              key={location.locationId}
-              inputId={index === 0 ? `${fieldId}-count` : undefined}
-              sku={item.sku}
-              location={location}
-              staffId={staffId}
-              onChanged={onChanged}
-            />
-          ))}
-        </ul>
-      ) : (
-        <p className={cn(RECORD_LABEL_CLASS, 'py-1 text-mode-warn')}>Not in any location</p>
-      )}
-      <div className="mt-3 flex flex-col gap-2 border-t border-mode-rule pt-3">
-        <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Add to location</span>
-        <div className="flex items-center gap-2">
-          <SearchableSelectField
-            value={barcode}
-            onChange={(next) => setBarcode(next == null ? null : String(next))}
-            options={options}
-            loading={loading}
-            placeholder="Location"
-            searchPlaceholder="Bin code, name or room…"
-            emptyMessage="No matching location"
-            ariaLabel="Location to add stock to"
-            className="min-w-0 flex-1"
-            testId="sku-exception-add-location"
-          />
-          <input
-            value={qtyDraft}
-            onChange={(event) => setQtyDraft(event.target.value.replace(/\D/g, ''))}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') void add();
-            }}
-            inputMode="numeric"
-            placeholder="Qty"
-            aria-label="Quantity to add"
-            className={cn(EVIDENCE_CONTROL_CLASS, 'w-14 text-center tabular-nums')}
-          />
-          <button
-            type="button"
-            className={evidenceVerbClass(true)}
-            disabled={!ready}
-            onClick={() => void add()}
-          >
-            {busy ? 'Adding…' : 'Add'}
-          </button>
-        </div>
-        {barcode && ready ? (
-          <span className="text-role-caption tabular-nums text-mode-muted">
-            {existing} → {existing + qty} at {skuExceptionLocationFace(barcode)}
-          </span>
-        ) : null}
-      </div>
-    </EvidenceSection>
-  );
-}
-
-function SkuExceptionCountRow({
-  inputId,
-  sku,
-  location,
-  staffId,
-  onChanged,
-}: {
-  inputId?: string;
-  sku: string;
-  location: ProvisionalSkuLocation;
-  staffId: number | undefined;
-  onChanged: OnChanged;
-}) {
-  const face = skuExceptionLocationFace(location.barcode);
-  return (
-    <li
-      className="flex items-center gap-1.5 border-b border-mode-rule py-1.5 last:border-b-0"
-      data-testid={`sku-exception-location-${location.barcode}`}
-    >
-      <div className="min-w-0 flex-1">
-        <p className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')}>{face}</p>
-        {location.room ? <p className="truncate text-role-caption text-mode-muted">{location.room}</p> : null}
-      </div>
-      <span className={cn(RECORD_ID_CLASS, 'w-8 text-right text-mode-ink')} data-testid="sku-exception-location-qty">
-        {location.qty}
-      </span>
-      <EvidenceCountStepper
-        inputId={inputId}
-        face={face}
-        qty={location.qty}
-        onCommit={async (delta) => {
-          await commitStockRequest(
-            stockAdjustRequest(countTarget(sku, location.barcode, location.qty), {
-              direction: delta > 0 ? 'in' : 'out',
-              qty: Math.abs(delta),
-              staffId,
-            }),
-          );
-          await onChanged();
-        }}
-      />
-    </li>
   );
 }

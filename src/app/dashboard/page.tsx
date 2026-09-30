@@ -61,9 +61,10 @@ function DashboardPageContent() {
   }
 
   // Sales (`?mode=sales` | `?mode=pickup` | `?mode=repairs`) — front-desk transaction history, wearing the one page frame…
+  // Repair service's views wear the NavContext header (`bare`: the view as the title, `›` unfolding them) like `/repair`.
   if (domain === 'sales') {
     return (
-      <DeskPageLayout className="h-full">
+      <DeskPageLayout bare={searchParams.get('mode') === 'repairs'} className="h-full">
         <div className="flex min-h-0 w-full flex-1">
           <DashboardSalesView />
         </div>

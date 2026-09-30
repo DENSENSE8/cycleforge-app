@@ -2,6 +2,7 @@
 
 import { TASK_ASSIGNEES_MAX, TASK_STAFF_ID_MAX } from './create-task-core';
 import {
+  isTaskDeskOpen,
   isTaskDeskStatus,
   taskDeskLaneStatuses,
   type TaskDeskLane,
@@ -10,6 +11,7 @@ import {
   type TaskDeskTicket,
   type TaskDeskWireRow,
 } from './task-desk-row';
+import { parseTaskHold, type TaskHold } from '@/design-system/tokens/task-status';
 import {
   TASK_PRIORITY,
   TASK_WORK_TYPE,
@@ -18,6 +20,7 @@ import {
 } from './task-vocabulary';
 import { isTaskLinkKind, TASK_MEDIA_ENTITY_TYPE, type TaskLinkFace } from './task-links-shared';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { TicketStatus } from '@/design-system/tokens/ticket-status';
 
 /**
  * Tenant-scoped query seam. The real bindings live in `list-tasks-db.ts` —
@@ -65,6 +68,12 @@ interface ListTaskDeskOptions {
   q?: string | null;
   /** Narrow to one row — how the patch re-reads its own result. */
   taskId?: number | null;
+  /**
+   * Helpdesk statuses (`support_tickets.status_cache`, case-insensitive) —
+   * a task passes when its anchor ticket OR any linked ticket is in one of
+   * them (several OR together). Empty / absent = no filter.
+   */
+  ticketStatuses?: readonly TicketStatus[] | null;
 }
 
 interface TaskDeskSqlRow {
@@ -75,6 +84,7 @@ interface TaskDeskSqlRow {
   project_name: unknown;
   assignees: unknown;
   status: unknown;
+  task_state: unknown;
   priority: unknown;
   assignee_staff_id: unknown;
   assignee_name: unknown;
@@ -85,6 +95,8 @@ interface TaskDeskSqlRow {
   deadline_at: unknown;
   completed_at: unknown;
   remind_at: unknown;
+  last_follow_up_at: unknown;
+  next_follow_up_at: unknown;
   ticket_id: unknown;
   ticket_provider: unknown;
   ticket_subject: unknown;
@@ -105,6 +117,9 @@ const TASK_DESK_SQL = `
          wa.project_name,
          wa.notes,
          wa.status::text             AS status,
+         -- Read through the row's JSON so this statement runs before AND after
+         -- 2026-09-30_work_assignment_task_state.sql (absent column → NULL).
+         to_jsonb(wa) ->> 'task_state' AS task_state,
          wa.priority,
          wa.assignee_staff_id,
          sa.name                     AS assignee_name,
@@ -116,6 +131,8 @@ const TASK_DESK_SQL = `
          wa.deadline_at,
          wa.completed_at,
          wa.remind_at,
+         wa.last_follow_up_at,
+         wa.next_follow_up_at,
          st.id                       AS ticket_id,
          st.provider                 AS ticket_provider,
          st.subject_cache            AS ticket_subject,
@@ -151,10 +168,23 @@ const TASK_DESK_SQL = `
                            WHEN 'ORDER' THEN 'order'
                            WHEN 'TRACKING' THEN 'tracking'
                            WHEN 'SUPPORT_TICKET' THEN 'ticket'
+                           WHEN 'REPAIR' THEN 'repair'
                          END,
-                 'label', l.label)
+                 'label', l.label,
+                 'status', lt.status_cache,
+                 'repair_id', lr.id,
+                 'repair_ticket', lr.ticket_number,
+                 'repair_status', lr.status)
                ORDER BY l.created_at, l.id) AS links
         FROM work_assignment_links l
+        LEFT JOIN support_tickets lt
+          ON l.entity_type = 'SUPPORT_TICKET'
+         AND lt.id = l.entity_id
+         AND lt.organization_id = l.organization_id
+        LEFT JOIN repair_service lr
+          ON l.entity_type = 'REPAIR'
+         AND lr.id = l.entity_id
+         AND lr.organization_id = l.organization_id
        WHERE l.organization_id = wa.organization_id
          AND l.assignment_id = wa.id
     ) lk ON TRUE
@@ -199,11 +229,24 @@ const TASK_DESK_SQL = `
      AND ($6::int IS NULL OR wa.priority <= $6)
      AND ($7::int IS NULL OR wa.priority > $7)
      AND ($8::bigint IS NULL OR wa.id = $8)
+     AND ($13::text[] IS NULL
+          OR LOWER(BTRIM(st.status_cache)) = ANY($13::text[])
+          OR EXISTS (
+               SELECT 1
+                 FROM work_assignment_links tl
+                 JOIN support_tickets tt
+                   ON tt.organization_id = tl.organization_id
+                  AND tt.id = tl.entity_id
+                WHERE tl.organization_id = wa.organization_id
+                  AND tl.assignment_id = wa.id
+                  AND tl.entity_type = 'SUPPORT_TICKET'
+                  AND LOWER(BTRIM(tt.status_cache)) = ANY($13::text[])))
      AND ($10::text IS NULL OR (
             wa.id::text ILIKE $10
          OR wa.notes ILIKE $10
          OR wa.project_name ILIKE $10
          OR wa.status::text ILIKE $10
+         OR (to_jsonb(wa) ->> 'task_state') ILIKE $10
          OR wa.entity_type::text ILIKE $10
          OR sa.name ILIKE $10
          OR sb.name ILIKE $10
@@ -270,9 +313,23 @@ function linkFaces(value: unknown): TaskLinkFace[] {
   if (!Array.isArray(raw)) return [];
   const faces: TaskLinkFace[] = [];
   for (const item of raw) {
-    const kind = (item as { kind?: unknown } | null)?.kind;
-    const label = (item as { label?: unknown } | null)?.label;
-    if (isTaskLinkKind(kind) && typeof label === 'string') faces.push({ kind, label });
+    if (!item || typeof item !== 'object' || !('kind' in item) || !('label' in item)) continue;
+    const { kind, label } = item;
+    if (!isTaskLinkKind(kind) || typeof label !== 'string') continue;
+    // A ticket link carries its ticket's cached status (the board's pill and ticket filter read it);
+    // a repair link its repair's number and stored status (the board's repair line).
+    if (kind === 'ticket') faces.push({ kind, label, status: 'status' in item ? toTextOrNull(item.status) : null });
+    else if (kind === 'repair' && 'repair_id' in item && toIntOrNull(item.repair_id) != null) {
+      faces.push({
+        kind,
+        label,
+        repair: {
+          id: toIntOrNull(item.repair_id)!,
+          ticketNumber: 'repair_ticket' in item ? toTextOrNull(item.repair_ticket) : null,
+          status: 'repair_status' in item ? toTextOrNull(item.repair_status) : null,
+        },
+      });
+    } else faces.push({ kind, label });
   }
   return faces;
 }
@@ -332,6 +389,7 @@ function mapRow(raw: Record<string, unknown>): TaskDeskWireRow | null {
     note: toTextOrNull(row.notes),
     projectName: toTextOrNull(row.project_name),
     status: String(row.status ?? ''),
+    taskState: toTextOrNull(row.task_state),
     priority: toIntOrNull(row.priority),
     assignee,
     assignees: memberFaces(row.assignees, assignee),
@@ -341,6 +399,8 @@ function mapRow(raw: Record<string, unknown>): TaskDeskWireRow | null {
     deadlineAt: toIso(row.deadline_at),
     completedAt: toIso(row.completed_at),
     remindAt: toIso(row.remind_at),
+    lastFollowUpAt: toIso(row.last_follow_up_at),
+    nextFollowUpAt: toIso(row.next_follow_up_at),
     ticket: ticket(row),
     links: linkFaces(row.links),
     photoCount: toIntOrNull(row.photo_count) ?? 0,
@@ -381,6 +441,7 @@ export async function listTaskDeskRows(
   const taskId = positiveIntOrNull(opts.taskId);
   const { atMost, above } = priorityBounds(opts.urgency ?? null);
   const q = opts.q?.trim() || null;
+  const ticketStatuses = opts.ticketStatuses?.length ? [...opts.ticketStatuses] : null;
 
   // A SEARCH IS NOT A PAGE.
   const result = await deps.query(orgId, TASK_DESK_SQL, [
@@ -396,6 +457,7 @@ export async function listTaskDeskRows(
     q ? `%${q}%` : null,
     TASK_MEDIA_ENTITY_TYPE,
     assignedByStaffId,
+    ticketStatuses,
   ]);
 
   const rows: TaskDeskWireRow[] = [];
@@ -411,6 +473,12 @@ export async function listTaskDeskRows(
 /** The PATCH allowlist, as a type. The route's Zod schema is its mirror. */
 export interface TaskDeskPatch {
   status?: TaskDeskStatus;
+  /**
+   * `work_assignments.task_state` — the hold on OPEN work, null clears it.
+   * Closing a task clears it in the database (trigger), so a status write
+   * never has to name it.
+   */
+  taskState?: TaskHold | null;
   priority?: number;
   deadlineAt?: string | null;
   startedAt?: string | null;
@@ -421,11 +489,14 @@ export interface TaskDeskPatch {
   note?: string | null;
   /** `work_assignments.remind_at` — an absolute instant, null clears it. */
   remindAt?: string | null;
+  /** `work_assignments.next_follow_up_at` — when to chase next, null clears it. */
+  nextFollowUpAt?: string | null;
 }
 
 /** What the row looked like before the patch — the audit row's `before`. */
 export interface TaskDeskBefore {
   status: TaskDeskStatus;
+  taskState: TaskHold | null;
   assigneeStaffId: number | null;
   assigneeStaffIds: number[];
   projectName: string | null;
@@ -439,7 +510,12 @@ export type PatchTaskDeskResult =
       /** The allowlist keys this call actually carried, in request order. */
       changed: ReadonlyArray<keyof TaskDeskPatch>;
     }
-  | { ok: false; reason: 'not_found' | 'illegal_transition' | 'invalid_assignee'; detail?: string };
+  | {
+      ok: false;
+      /** `schema_pending`: a hold write before `2026-09-30_work_assignment_task_state.sql` is applied. */
+      reason: 'not_found' | 'illegal_transition' | 'invalid_assignee' | 'schema_pending';
+      detail?: string;
+    };
 
 /** CANCELED is terminal and everything else is reversible. */
 export function isTaskDeskTransitionAllowed(from: TaskDeskStatus, to: TaskDeskStatus): boolean {
@@ -465,6 +541,7 @@ function patchAssignments(
       set.set('started_at', 'started_at = COALESCE(started_at, now())');
     }
   }
+  if (patch.taskState !== undefined) set.set('task_state', `task_state = ${push(patch.taskState)}`);
   if (patch.priority !== undefined) set.set('priority', `priority = ${push(patch.priority)}`);
   if (patch.deadlineAt !== undefined) {
     set.set('deadline_at', `deadline_at = ${push(patch.deadlineAt)}::timestamptz`);
@@ -487,6 +564,9 @@ function patchAssignments(
   if (patch.remindAt !== undefined) {
     set.set('remind_at', `remind_at = ${push(patch.remindAt)}::timestamptz`);
   }
+  if (patch.nextFollowUpAt !== undefined) {
+    set.set('next_follow_up_at', `next_follow_up_at = ${push(patch.nextFollowUpAt)}::timestamptz`);
+  }
   return set;
 }
 
@@ -500,7 +580,10 @@ export async function patchTaskDeskRowInTx(
   const readerDeps: TaskDeskDeps = { query: (_orgId, sql, params) => tx.query(sql, params) };
 
   const current = await tx.query(
-    `SELECT status::text AS status, assignee_staff_id, project_name
+    `SELECT status::text AS status, assignee_staff_id, project_name,
+            -- JSON null (column present, no hold) is NOT NULL; an absent key is.
+            (to_jsonb(work_assignments) -> 'task_state') IS NOT NULL AS has_task_state,
+            to_jsonb(work_assignments) ->> 'task_state' AS task_state
        FROM work_assignments
       WHERE organization_id = $1::uuid AND id = $2 AND work_type::text = $3
       FOR UPDATE`,
@@ -516,6 +599,13 @@ export async function patchTaskDeskRowInTx(
 
   if (patch.status !== undefined && !isTaskDeskTransitionAllowed(currentStatus, patch.status)) {
     return { ok: false, reason: 'illegal_transition', detail: `${currentStatus} → ${patch.status}` };
+  }
+  if (patch.taskState !== undefined && currentRow.has_task_state !== true) {
+    return { ok: false, reason: 'schema_pending', detail: '2026-09-30_work_assignment_task_state.sql' };
+  }
+  // A hold only exists on open work — on the status this write leaves behind.
+  if (patch.taskState != null && !isTaskDeskOpen(patch.status ?? currentStatus)) {
+    return { ok: false, reason: 'illegal_transition', detail: `${patch.status ?? currentStatus} cannot be ${patch.taskState}` };
   }
 
   const assigneeStaffIds = patch.assigneeStaffIds ??
@@ -587,6 +677,7 @@ export async function patchTaskDeskRowInTx(
     task,
     before: {
       status: currentStatus,
+      taskState: parseTaskHold(currentRow.task_state),
       assigneeStaffId: toIntOrNull(currentRow?.assignee_staff_id),
       assigneeStaffIds: previousMembers.rows.map((member) => Number(member.staff_id)),
       projectName: toTextOrNull(currentRow.project_name),

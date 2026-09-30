@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { PickupLine } from '@/components/receiving/pickup/pickup-lines';
+import type { PickupLine } from '@/lib/receiving/pickup/pickup-lines';
 import {
   PICKUP_SHEET_COLUMNS,
   pickupSheetColumnsFor,

@@ -1,9 +1,17 @@
 /** Bottom-right toast after marking order(s) out of stock. */
 
 import { toast } from '@/lib/toast';
-import { SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
+import { deskViewHref } from '@/lib/outbound/desk-views';
 
 export const OOS_PENDING_TOAST_DURATION_MS = 6000;
+
+/**
+ * Where an out-of-stock order lives: FBM › Exceptions. Its fulfillment list
+ * holds EVERY out-of-stock order, label or not (`sqlOrderInExceptionQueue`,
+ * the "Out of stock · Mark in stock" row); Allocate's Stock filter only sees
+ * the labeled ones.
+ */
+export const OOS_ORDERS_HREF = deskViewHref('exceptions');
 
 type OosPendingToastArgs = {
   count: number;
@@ -12,11 +20,11 @@ type OosPendingToastArgs = {
   qtyShort?: number | null;
   /**
    * When true the row stays packed (lifecycle packed wins over BLOCKED) —
-   * confirm the hold without claiming a move to Picking.
+   * confirm the hold without claiming a move to Exceptions.
    */
   staysPacked?: boolean;
-  /** Navigate to the Picking desk. Caller supplies router.push. */
-  onViewPending: () => void;
+  /** Navigate to {@link OOS_ORDERS_HREF}. Caller supplies router.push. */
+  onViewExceptions: () => void;
 };
 
 export function showOosPendingToast(args: OosPendingToastArgs): void {
@@ -26,7 +34,7 @@ export function showOosPendingToast(args: OosPendingToastArgs): void {
   }
 
   const title =
-    args.count === 1 ? 'Moved to Picking' : `${args.count} orders moved to Picking`;
+    args.count === 1 ? 'Moved to Exceptions' : `${args.count} orders moved to Exceptions`;
   const sku = String(args.sku || '').trim();
   const qty = Number(args.qtyShort);
   const description =
@@ -41,12 +49,8 @@ export function showOosPendingToast(args: OosPendingToastArgs): void {
     duration: OOS_PENDING_TOAST_DURATION_MS,
     closeButton: true,
     action: {
-      label: 'View Picking',
-      onClick: args.onViewPending,
+      label: 'View Exceptions',
+      onClick: args.onViewExceptions,
     },
   });
-}
-
-export function pendingDeskHref(): string {
-  return SHIPPING_SHORTAGE_PATH;
 }

@@ -12,7 +12,7 @@ import type {
   ThreadMessageTimelineRow,
   UnitTimelinePhotoRow,
 } from '@/lib/timeline';
-import type { UnitTimelinePhotoRowSource } from '@/lib/timeline/unit-photos-events';
+import { UNIT_PHOTO_SOURCE_STAGE as PHOTO_SOURCE_STAGE, type UnitTimelinePhotoRowSource } from '@/lib/timeline/unit-photos-events';
 import type {
   EntitySignalTimelineRow,
   OrderNoteTimelineRow,
@@ -36,14 +36,6 @@ const EXCEPTION_TYPES = new Set([
   'RELEASED_HOLD',
 ]);
 const NOTE_TYPES = new Set(['NOTE', 'NOTE_ADDED']);
-
-const PHOTO_SOURCE_STAGE: Record<UnitTimelinePhotoRowSource, PhotoEvidenceStage> = {
-  arrival: 'arrival_package',
-  unbox_carton: 'unbox_carton',
-  unbox_item: 'unbox_item',
-  testing: 'testing',
-  packing: 'packing',
-};
 
 const PHOTO_SOURCE_ORDER: UnitTimelinePhotoRowSource[] = [
   'arrival',

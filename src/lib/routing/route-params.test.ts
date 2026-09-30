@@ -587,7 +587,7 @@ test('every To-ship triage facet survives hygiene on each route that mounts the 
   }
 });
 
-test('/shipping/shortage owns the Picking desk params and nothing of To-ship\'s', () => {
+test('/shipping/shortage owns the parked PO-paired desk params and nothing of To-ship\'s', () => {
   const spec = routeParamsFor('/shipping/shortage')!;
   assert.equal(spec.route, '/shipping/shortage');
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
@@ -598,8 +598,8 @@ test('/shipping/shortage owns the Picking desk params and nothing of To-ship\'s'
   assert.equal(parse('openOrderId=42'), 'openOrderId=42');
   assert.equal(parse('sort=deadline&dir=asc'), 'sort=deadline&dir=asc');
   assert.equal(parse('staff=7'), 'staff=7');
-  // The Labels walk and the pick-list lens are To-ship's; the table ignores them here.
-  assert.equal(parse('paperwork=42&queue=pick'), '');
+  // The Labels walk is To-ship's; the table ignores it here.
+  assert.equal(parse('paperwork=42'), '');
 });
 
 test('/shipping/exceptions keeps a hub record key and drops anything else', () => {
@@ -656,7 +656,7 @@ test('station queues keep their new-order, label and picker params', () => {
   assert.equal(parse('/pick', 'new=true'), 'new=true');
   assert.equal(parse('/pack', 'new=true'), 'new=true');
   assert.equal(parse('/pack', 'new=yes'), '');
-  // `RepairTable` reads `needsLabel === '1'`.
+  // `RepairCardList` reads `needsLabel === '1'`.
   assert.equal(parse('/repair', 'needsLabel=1'), 'needsLabel=1');
   assert.equal(parse('/repair', 'needsLabel=0'), '');
   // Sourcing Models / Compatibility picker.

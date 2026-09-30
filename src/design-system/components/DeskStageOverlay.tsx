@@ -5,6 +5,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
+import { DeskRecordHeadContext } from './DeskActionSlot';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterOverlay } from '@/design-system/hooks';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
@@ -226,10 +227,16 @@ export function DeskStageRecordHeader({
   viewSwitch,
   rail = false,
 }: DeskStageRecordHeaderProps) {
+  // The title takes the band's width first (owner 2026-09-29: two lines, then
+  // clamp); the verbs keep their collapsed row and expand into what is left
+  // (RecordActionStrip's header face). `DeskHeaderAction`s inside drop their
+  // labels to icons while the band is compact (`DeskRecordHeadContext`).
   const verbs = actions ? (
-    <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5">
-      {actions}
-    </div>
+    <DeskRecordHeadContext.Provider value>
+      <div className={cn('flex items-center justify-end gap-1.5', rail ? 'min-w-0 shrink-0' : 'flex-1')}>
+        {actions}
+      </div>
+    </DeskRecordHeadContext.Provider>
   ) : null;
   return (
     // A container, so the band sheds its secondary pieces (n of N, then the
@@ -255,8 +262,13 @@ export function DeskStageRecordHeader({
           className="-ml-2 bg-transparent text-text-default hover:bg-surface-sunken focus-visible:bg-surface-sunken"
         />
       ) : null}
-      <div className="min-w-max shrink-0 overflow-x-auto scrollbar-hide @xs:min-w-0 @xs:flex-1">
-        <h2 className="min-w-max whitespace-nowrap text-role-data font-semibold text-text-default @lg/record-head:text-role-title">{title}</h2>
+      <div className="min-w-0 flex-auto">
+        <h2
+          title={typeof title === 'string' ? title : undefined}
+          className="line-clamp-2 [overflow-wrap:anywhere] text-role-data font-semibold text-text-default @lg/record-head:text-role-title"
+        >
+          {title}
+        </h2>
         {subtitle ? (
           <p className="mt-0.5 truncate text-role-caption text-text-soft">{subtitle}</p>
         ) : null}
@@ -268,7 +280,11 @@ export function DeskStageRecordHeader({
           {indexLabel}
         </span>
       ) : null}
-      {viewSwitch ? <span className="hidden shrink-0 @lg/record-head:flex">{viewSwitch}</span> : null}
+      {viewSwitch ? (
+        <span className="hidden shrink-0 @lg/record-head:flex">
+          <DeskRecordHeadContext.Provider value>{viewSwitch}</DeskRecordHeadContext.Provider>
+        </span>
+      ) : null}
       {(onPrev || onNext) && (
         <div className="flex shrink-0 items-center gap-0.5">
           {onPrev ? (

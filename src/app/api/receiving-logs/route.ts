@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { getReceivingSchema } from '@/lib/receiving-schema-cache';
 import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
@@ -37,6 +38,45 @@ async function checkReceivingScansTableExists(): Promise<boolean> {
     const exists = check.rows[0]?.exists ?? false;
     _receivingScansTableExists = exists;
     return exists;
+}
+
+/**
+ * Hard deletion ordinarily cannot cross an arrival scan: those scans are
+ * append-only evidence. Clearly marked E2E fixtures are the exception, so test
+ * runs can remove their own cartons without opening a delete path for live
+ * receiving evidence. The matching database guard accepts this transaction-
+ * local capability only for `E2E-` tracking numbers.
+ */
+async function deleteReceivingCartons(orgId: OrgId, ids: readonly number[]) {
+    return withTenantTransaction(orgId, async (client) => {
+        const scanClass = await client.query<{ has_operational_scan: boolean; has_e2e_scan: boolean }>(
+            `SELECT
+                COALESCE(BOOL_OR(tracking_number NOT ILIKE 'E2E-%'), false) AS has_operational_scan,
+                COALESCE(BOOL_OR(tracking_number ILIKE 'E2E-%'), false) AS has_e2e_scan
+               FROM receiving_scans
+              WHERE receiving_id = ANY($1::int[])`,
+            [ids],
+        );
+        const { has_operational_scan: hasOperationalScan, has_e2e_scan: hasE2eScan } = scanClass.rows[0] ?? {
+            has_operational_scan: false,
+            has_e2e_scan: false,
+        };
+        if (hasOperationalScan) {
+            return {
+                deleted: [] as number[],
+                error: 'Arrival-scanned cartons are retained as evidence. Hide the carton from your list instead.',
+                ok: false as const,
+            };
+        }
+        if (hasE2eScan) {
+            await client.query("SELECT set_config('app.receiving_e2e_cleanup', 'on', true)");
+        }
+        const deleted = await client.query<{ id: number }>(
+            'DELETE FROM receiving_carton WHERE id = ANY($1::int[]) RETURNING id',
+            [ids],
+        );
+        return { deleted: deleted.rows.map((row) => Number(row.id)), ok: true as const };
+    });
 }
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
@@ -221,12 +261,11 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
                 { status: 400 }
             );
         }
-        const result = await tenantQuery(
-            orgId,
-            `DELETE FROM receiving_carton WHERE id = ANY($1::int[]) RETURNING id`,
-            [ids]
-        );
-        const deleted = result.rows.map((r) => Number(r.id));
+        const result = await deleteReceivingCartons(orgId, ids);
+        if (!result.ok) {
+            return NextResponse.json({ error: result.error }, { status: 409 });
+        }
+        const deleted = result.deleted;
         await invalidateReceivingViews(ctx.organizationId);
         // Count, not the id list — listeners only refetch on this event,
         // and an unbounded id string risks the broker's message size cap.
@@ -249,13 +288,13 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
         );
     }
 
-    const result = await tenantQuery(
-        orgId,
-        `DELETE FROM receiving_carton WHERE id = $1 RETURNING id`,
-        [id]
-    );
+    const result = await deleteReceivingCartons(orgId, [id]);
 
-    if (result.rowCount === 0) {
+    if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: 409 });
+    }
+
+    if (result.deleted.length === 0) {
         return NextResponse.json(
             { error: 'Receiving log not found' },
             { status: 404 }

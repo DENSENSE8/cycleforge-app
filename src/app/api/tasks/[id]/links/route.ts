@@ -19,6 +19,8 @@ const CreateBody = z.discriminatedUnion('kind', [
   /** `#48120` or `48120` — parsed by `resolveTicketTarget`, never here. */
   z.object({ kind: z.literal('ticket'), value: z.string().trim().min(1).max(32) }),
   z.object({ kind: z.literal('tracking'), value: z.string().trim().min(1).max(200) }),
+  /** `RS-74` or the repair's ticket number — parsed by `parseRepairLinkValue`, never here. */
+  z.object({ kind: z.literal('repair'), value: z.string().trim().min(1).max(64) }),
 ]);
 
 /** Domain refusal → HTTP. Each one is something the operator can act on. */
@@ -26,6 +28,8 @@ const REFUSAL_STATUS: Record<TaskLinkRefusal, number> = {
   task_not_found: 404,
   order_not_found: 404,
   not_found: 404,
+  repair_not_found: 404,
+  repair_ambiguous: 409,
   invalid_tracking: 400,
   invalid_number: 400,
   helpdesk_unavailable: 503,

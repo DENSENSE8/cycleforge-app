@@ -3,29 +3,15 @@ import assert from 'node:assert/strict';
 import {
   normalizeDeskCounts,
   parseDeskPairParam,
-  parseDeskQueueParam,
-  readDeskViewFilters,
   shortageDeskRedirectSearch,
 } from './desk-view-filters';
 
-test('lenses accept only their one value — anything else is no lens (unfiltered)', () => {
+test('the pair lens accepts only its one value — anything else is no lens (unfiltered)', () => {
   assert.equal(parseDeskPairParam('po'), 'po');
   assert.equal(parseDeskPairParam(' PO '), 'po');
   assert.equal(parseDeskPairParam('receiving'), null);
   assert.equal(parseDeskPairParam(''), null);
   assert.equal(parseDeskPairParam(null), null);
-  assert.equal(parseDeskQueueParam('pick'), 'pick');
-  assert.equal(parseDeskQueueParam('Pick'), 'pick');
-  assert.equal(parseDeskQueueParam('pack'), null);
-  assert.equal(parseDeskQueueParam(undefined), null);
-});
-
-test('readDeskViewFilters reads both lenses off the URL', () => {
-  assert.deepEqual(readDeskViewFilters(new URLSearchParams('pair=po&queue=pick&stage=tested')), {
-    pair: 'po',
-    queue: 'pick',
-  });
-  assert.deepEqual(readDeskViewFilters(new URLSearchParams('stage=tested')), { pair: null, queue: null });
 });
 
 test('bare Shortage desk redirects to pair=po and keeps every other param', () => {
@@ -57,17 +43,15 @@ test('repeated non-pair params survive the redirect intact', () => {
 });
 
 test('desk counts payload: missing, non-numeric or negative values read 0', () => {
-  assert.deepEqual(normalizeDeskCounts({ exceptions: 3, po: '2', pick: -1, triage: 'x' }), {
+  assert.deepEqual(normalizeDeskCounts({ exceptions: 3, po: '2', triage: -1, shippedToday: 'x' }), {
     exceptions: 3,
     po: 2,
-    pick: 0,
     triage: 0,
     shippedToday: 0,
   });
   assert.deepEqual(normalizeDeskCounts(null), {
     exceptions: 0,
     po: 0,
-    pick: 0,
     triage: 0,
     shippedToday: 0,
   });

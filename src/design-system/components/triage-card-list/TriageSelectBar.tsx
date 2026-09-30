@@ -119,6 +119,7 @@ export function TriageSelectBar({
   onClear,
   bulk,
   viewControls = true,
+  summaryInline = false,
 }: {
   /** What the list holds ("order" / "orders") — aria labels. */
   noun: { one: string; many: string };
@@ -144,6 +145,12 @@ export function TriageSelectBar({
    * its one view is the fixed-width rail + record, so there is nothing to pick.
    */
   viewControls?: boolean;
+  /**
+   * Keep the chips on the bar's one line at every width — between the count
+   * and the pager, scrolling sideways — instead of wrapping under it below
+   * @3xl. For a desk whose chips ARE its triage (Stock's rooms).
+   */
+  summaryInline?: boolean;
 }) {
   const active = selectedCount > 0;
   // True only for the bar's first render — the chips' entrance delay reads it.
@@ -155,7 +162,9 @@ export function TriageSelectBar({
   // chips never push pager · per-page · view switch onto a second row. Find is
   // never here — it is the page's one field, in the sidebar or (closed) the
   // global header (owner 2026-09-28).
-  const middleClass = 'order-last flex min-w-0 basis-full items-center @3xl:order-none @3xl:flex-1 @3xl:basis-0';
+  const middleClass = summaryInline
+    ? 'flex min-w-0 flex-1 basis-0 items-center'
+    : 'order-last flex min-w-0 basis-full items-center @3xl:order-none @3xl:flex-1 @3xl:basis-0';
   return (
     // The desk stage clips its overflow, and the list below paints after the
     // bar: px-1 keeps the raised shadow's sides inside the stage, and the z
@@ -282,7 +291,7 @@ export function TriageSelectBar({
                 />
               ) : null}
               {/* How a record opens — In place or Split — seen and switched before one is open. */}
-              {viewControls ? <DeskRecordViewSwitch labels="wide" /> : null}
+              {viewControls ? <DeskRecordViewSwitch /> : null}
               {/* ⤢ always the bar's last, top-right-most control (owner 2026-09-27). */}
               {viewControls ? <DeskFullscreenToggle /> : null}
             </>

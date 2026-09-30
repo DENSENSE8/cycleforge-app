@@ -89,78 +89,8 @@ export function SupportCreateTicketModal({
   orderFieldLocked?: boolean;
   submitting?: boolean;
   onClose: () => void;
-  onCreate: (args: { subject: string; note: string; linkages: SupportTicketLinkages }) => void;
+  onCreate: (args: SupportCreateTicketSubmit) => void;
 }) {
-  const [subject, setSubject] = useState(defaultSubject ?? '');
-  const [note, setNote] = useState('');
-  const [orderNumber, setOrderNumber] = useState('');
-  const [trackingNumber, setTrackingNumber] = useState('');
-  const [serialNumber, setSerialNumber] = useState('');
-  const [debouncedOrder, setDebouncedOrder] = useState('');
-  const [debouncedTracking, setDebouncedTracking] = useState('');
-  const [debouncedSerial, setDebouncedSerial] = useState('');
-  const [subjectTouched, setSubjectTouched] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Reset + focus each open.
-  useEffect(() => {
-    if (!open) return;
-    setSubject(defaultSubject ?? '');
-    setNote('');
-    setOrderNumber((defaultOrderNumber ?? '').trim());
-    setTrackingNumber('');
-    setSerialNumber('');
-    setDebouncedOrder((defaultOrderNumber ?? '').trim());
-    setDebouncedTracking('');
-    setDebouncedSerial('');
-    setSubjectTouched(Boolean(defaultSubject?.trim()));
-    const t = setTimeout(() => inputRef.current?.focus(), 0);
-    return () => clearTimeout(t);
-  }, [open, defaultSubject, defaultOrderNumber]);
-
-  useEffect(() => {
-    const h = setTimeout(() => setDebouncedOrder(orderNumber.trim()), 300);
-    return () => clearTimeout(h);
-  }, [orderNumber]);
-  useEffect(() => {
-    const h = setTimeout(() => setDebouncedTracking(trackingNumber.trim()), 300);
-    return () => clearTimeout(h);
-  }, [trackingNumber]);
-  useEffect(() => {
-    const h = setTimeout(() => setDebouncedSerial(serialNumber.trim()), 300);
-    return () => clearTimeout(h);
-  }, [serialNumber]);
-
-  const hasLookup = Boolean(debouncedOrder || debouncedTracking || debouncedSerial);
-  const linkageQuery = useQuery({
-    queryKey: ['support-linkage', debouncedOrder, debouncedTracking, debouncedSerial],
-    queryFn: () =>
-      fetchSupportLinkage({
-        order: debouncedOrder || undefined,
-        tracking: debouncedTracking || undefined,
-        serial: debouncedSerial || undefined,
-      }),
-    enabled: open && hasLookup,
-    staleTime: 15_000,
-  });
-
-  // Seed subject from resolved facts when the operator hasn't typed one yet.
-  useEffect(() => {
-    if (!open || subjectTouched) return;
-    const linkage = linkageQuery.data;
-    if (!linkage || linkage.matchedBy == null) return;
-    const seeded = buildSupportTicketSubjectFromLinkage(linkage);
-    if (seeded) setSubject(seeded);
-  }, [open, subjectTouched, linkageQuery.data]);
-
-  const canSubmit = subject.trim().length > 0 && !submitting;
-
-  const linkages: SupportTicketLinkages = {
-    order: orderNumber.trim() || undefined,
-    tracking: trackingNumber.trim() || undefined,
-    serial: serialNumber.trim() || undefined,
-  };
-
   return (
     <RightPaneOverlay
       open={open}
@@ -189,105 +119,214 @@ export function SupportCreateTicketModal({
         />
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (canSubmit) onCreate({ subject: subject.trim(), note, linkages });
-        }}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-role-data">
-          <label className="block space-y-1">
-            <span className="text-role-eyebrow text-text-soft">
-              Subject
-            </span>
-            <input
-              ref={inputRef}
-              value={subject}
-              onChange={(e) => {
-                setSubjectTouched(true);
-                setSubject(e.target.value);
-              }}
-              placeholder="What is this ticket about?"
-              className={FIELD_CLASS}
-            />
-          </label>
+      <SupportCreateTicketForm
+        defaultSubject={defaultSubject}
+        defaultOrderNumber={defaultOrderNumber}
+        orderFieldLocked={orderFieldLocked}
+        submitting={submitting}
+        onCancel={onClose}
+        onCreate={onCreate}
+      />
+    </RightPaneOverlay>
+  );
+}
 
-          <label className="flex min-h-[8rem] flex-col space-y-1">
-            <span className="text-role-eyebrow text-text-soft">
-              First note (optional)
-            </span>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Add context — becomes the ticket's first comment."
-              className={cn(FIELD_CLASS, 'min-h-[7rem] flex-1 resize-y')}
-            />
-          </label>
+export interface SupportCreateTicketSubmit {
+  subject: string;
+  note: string;
+  linkages: SupportTicketLinkages;
+}
 
-          <div className="space-y-2.5 rounded-xl border border-border-hairline bg-surface-sunken/40 p-3">
-            <div>
-              <p className="text-role-eyebrow text-text-soft">
-                Linkages
-              </p>
-              <p className="mt-0.5 text-role-micro text-text-faint">
-                Order, tracking, and serial connect shipping + inventory on create.
-              </p>
-            </div>
+/** The create-ticket fields + submit bar — the modal's body, mountable inline (a record panel owns its own Back). */
+export function SupportCreateTicketForm({
+  defaultSubject,
+  defaultNote,
+  defaultOrderNumber,
+  orderFieldLocked = false,
+  submitting = false,
+  onCancel,
+  onCreate,
+}: {
+  defaultSubject?: string;
+  /** Pre-fill for the first comment (e.g. a repair's reported issue). */
+  defaultNote?: string;
+  defaultOrderNumber?: string | null;
+  orderFieldLocked?: boolean;
+  submitting?: boolean;
+  /** Omit when the host owns dismissal — no Cancel button renders. */
+  onCancel?: () => void;
+  onCreate: (args: SupportCreateTicketSubmit) => void;
+}) {
+  const [subject, setSubject] = useState(defaultSubject ?? '');
+  const [note, setNote] = useState(defaultNote ?? '');
+  const [orderNumber, setOrderNumber] = useState('');
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [serialNumber, setSerialNumber] = useState('');
+  const [debouncedOrder, setDebouncedOrder] = useState('');
+  const [debouncedTracking, setDebouncedTracking] = useState('');
+  const [debouncedSerial, setDebouncedSerial] = useState('');
+  const [subjectTouched, setSubjectTouched] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-            <div className="grid gap-2 sm:grid-cols-3">
-              <label className="space-y-1">
-                <span className="text-role-micro font-semibold text-text-soft">
-                  Order #
-                </span>
-                <input
-                  value={orderNumber}
-                  onChange={(e) => setOrderNumber(e.target.value)}
-                  placeholder="e.g. 12345"
-                  disabled={orderFieldLocked}
-                  className={cn(FIELD_CLASS, orderFieldLocked && 'opacity-70')}
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-role-micro font-semibold text-text-soft">
-                  Tracking #
-                </span>
-                <input
-                  value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
-                  placeholder="Paste or scan"
-                  className={FIELD_CLASS}
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-role-micro font-semibold text-text-soft">
-                  Serial #
-                </span>
-                <input
-                  value={serialNumber}
-                  onChange={(e) => setSerialNumber(e.target.value)}
-                  placeholder="Unit serial"
-                  className={FIELD_CLASS}
-                />
-              </label>
-            </div>
+  // Reset + focus on mount and whenever the host re-seeds the defaults.
+  useEffect(() => {
+    setSubject(defaultSubject ?? '');
+    setNote(defaultNote ?? '');
+    setOrderNumber((defaultOrderNumber ?? '').trim());
+    setTrackingNumber('');
+    setSerialNumber('');
+    setDebouncedOrder((defaultOrderNumber ?? '').trim());
+    setDebouncedTracking('');
+    setDebouncedSerial('');
+    setSubjectTouched(Boolean(defaultSubject?.trim()));
+    const t = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [defaultSubject, defaultNote, defaultOrderNumber]);
 
-            <LinkagePreview
-              linkage={hasLookup ? (linkageQuery.data ?? null) : null}
-              isFetching={hasLookup && linkageQuery.isFetching}
-            />
+  useEffect(() => {
+    const h = setTimeout(() => setDebouncedOrder(orderNumber.trim()), 300);
+    return () => clearTimeout(h);
+  }, [orderNumber]);
+  useEffect(() => {
+    const h = setTimeout(() => setDebouncedTracking(trackingNumber.trim()), 300);
+    return () => clearTimeout(h);
+  }, [trackingNumber]);
+  useEffect(() => {
+    const h = setTimeout(() => setDebouncedSerial(serialNumber.trim()), 300);
+    return () => clearTimeout(h);
+  }, [serialNumber]);
+
+  const hasLookup = Boolean(debouncedOrder || debouncedTracking || debouncedSerial);
+  const linkageQuery = useQuery({
+    queryKey: ['support-linkage', debouncedOrder, debouncedTracking, debouncedSerial],
+    queryFn: () =>
+      fetchSupportLinkage({
+        order: debouncedOrder || undefined,
+        tracking: debouncedTracking || undefined,
+        serial: debouncedSerial || undefined,
+      }),
+    enabled: hasLookup,
+    staleTime: 15_000,
+  });
+
+  // Seed subject from resolved facts when the operator hasn't typed one yet.
+  useEffect(() => {
+    if (subjectTouched) return;
+    const linkage = linkageQuery.data;
+    if (!linkage || linkage.matchedBy == null) return;
+    const seeded = buildSupportTicketSubjectFromLinkage(linkage);
+    if (seeded) setSubject(seeded);
+  }, [subjectTouched, linkageQuery.data]);
+
+  const canSubmit = subject.trim().length > 0 && !submitting;
+
+  const linkages: SupportTicketLinkages = {
+    order: orderNumber.trim() || undefined,
+    tracking: trackingNumber.trim() || undefined,
+    serial: serialNumber.trim() || undefined,
+  };
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (canSubmit) onCreate({ subject: subject.trim(), note, linkages });
+      }}
+      className="flex min-h-0 flex-1 flex-col"
+    >
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-role-data">
+        <label className="block space-y-1">
+          <span className="text-role-eyebrow text-text-soft">
+            Subject
+          </span>
+          <input
+            ref={inputRef}
+            value={subject}
+            onChange={(e) => {
+              setSubjectTouched(true);
+              setSubject(e.target.value);
+            }}
+            placeholder="What is this ticket about?"
+            className={FIELD_CLASS}
+          />
+        </label>
+
+        <label className="flex min-h-[8rem] flex-col space-y-1">
+          <span className="text-role-eyebrow text-text-soft">
+            First note (optional)
+          </span>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add context — becomes the ticket's first comment."
+            className={cn(FIELD_CLASS, 'min-h-[7rem] flex-1 resize-y')}
+          />
+        </label>
+
+        <div className="space-y-2.5 rounded-xl border border-border-hairline bg-surface-sunken/40 p-3">
+          <div>
+            <p className="text-role-eyebrow text-text-soft">
+              Linkages
+            </p>
+            <p className="mt-0.5 text-role-micro text-text-faint">
+              Order, tracking, and serial connect shipping + inventory on create.
+            </p>
           </div>
-        </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-hairline bg-surface-canvas px-4 py-3">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <label className="space-y-1">
+              <span className="text-role-micro font-semibold text-text-soft">
+                Order #
+              </span>
+              <input
+                value={orderNumber}
+                onChange={(e) => setOrderNumber(e.target.value)}
+                placeholder="e.g. 12345"
+                disabled={orderFieldLocked}
+                className={cn(FIELD_CLASS, orderFieldLocked && 'opacity-70')}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-role-micro font-semibold text-text-soft">
+                Tracking #
+              </span>
+              <input
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                placeholder="Paste or scan"
+                className={FIELD_CLASS}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-role-micro font-semibold text-text-soft">
+                Serial #
+              </span>
+              <input
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                placeholder="Unit serial"
+                className={FIELD_CLASS}
+              />
+            </label>
+          </div>
+
+          <LinkagePreview
+            linkage={hasLookup ? (linkageQuery.data ?? null) : null}
+            isFetching={hasLookup && linkageQuery.isFetching}
+          />
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-hairline bg-surface-canvas px-4 py-3">
+        {onCancel ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" size="sm" loading={submitting} disabled={!canSubmit}>
-            Create ticket
-          </Button>
-        </div>
-      </form>
-    </RightPaneOverlay>
+        ) : null}
+        <Button type="submit" size="sm" loading={submitting} disabled={!canSubmit}>
+          Create ticket
+        </Button>
+      </div>
+    </form>
   );
 }

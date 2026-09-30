@@ -52,7 +52,7 @@ interface CreateSupportTicketInput {
   subject: string;
   /** First comment/body pushed to the created ticket (defaults to the subject). */
   note?: string | null;
-  /** Optional entity to anchor the new ticket to (order / receiving / tracking / shipment). */
+  /** Optional entity to anchor the new ticket to (order / receiving / tracking / shipment / repair). */
   anchor?: TicketLinkAnchorInput | null;
   /**
    * Operator-typed identifiers — resolved server-side and merged with `anchor`

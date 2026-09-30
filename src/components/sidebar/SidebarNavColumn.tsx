@@ -43,6 +43,7 @@ export function SidebarNavColumn({
   peeking = false,
   peekSurfaceProps,
   onPeekDismiss,
+  onMounted,
   children,
 }: {
   open: boolean;
@@ -50,8 +51,13 @@ export function SidebarNavColumn({
   peeking?: boolean;
   peekSurfaceProps?: PeekHoverHandlers & { 'data-hover-surface'?: '' };
   onPeekDismiss?: () => void;
+  /** Before paint on mount — the host drops its same-width spacer in the same frame. */
+  onMounted?: () => void;
   children: ReactNode;
 }) {
+  useLayoutEffect(() => {
+    onMounted?.();
+  }, [onMounted]);
   /** Mount the spine on first open — **or during the first idle window**, whichever comes first. */
   const [everOpened, setEverOpened] = useState(open);
   useEffect(() => {

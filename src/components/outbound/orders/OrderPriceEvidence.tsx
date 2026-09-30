@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { ChevronRight } from '@/components/Icons';
 import { EvidenceDisclosure, EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
+import { RecordPriceBreakdown } from '@/design-system/components/record-ledger/RecordPriceBreakdown';
 import {
   RECORD_ID_CLASS,
   RECORD_LABEL_CLASS,
@@ -74,39 +75,7 @@ export function OrderPriceEvidence({
       : immediateTotal != null
         ? [{ label: 'Total', value: immediateTotal }]
         : [];
-    return (
-      <div className="flex min-w-0 justify-end border-t border-mode-edge px-4 py-3" data-testid="order-record-price">
-        <div className="w-full max-w-72">
-          {unreadable ? (
-            <p className={cn(RECORD_ID_CLASS, 'text-right text-mode-warn')}>Unreadable</p>
-          ) : rows.length === 0 ? (
-            <p className={cn(RECORD_ID_CLASS, 'text-right text-mode-muted')}>—</p>
-          ) : (
-            <dl className="grid grid-cols-[1fr_auto] gap-x-5 gap-y-1">
-              {rows.map((row, index) => (
-                <div key={`${row.label}-${index}`} className="contents">
-                  <dt className={cn(RECORD_LABEL_CLASS, 'text-right text-mode-muted')}>{row.label}</dt>
-                  <dd
-                    className={cn(
-                      RECORD_ID_CLASS,
-                      'min-w-20 text-right',
-                      row.value != null && row.value < 0
-                        ? STATE_TONE_CLASSES.danger.text
-                        : row.value == null
-                          ? 'text-mode-muted'
-                          : RECORD_PRICE_CLASS,
-                      index === rows.length - 1 && 'font-black',
-                    )}
-                  >
-                    {row.value == null ? '—' : row.value < 0 ? debit(Math.abs(row.value)) : formatCurrency(row.value)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
-      </div>
-    );
+    return <RecordPriceBreakdown rows={rows} unreadable={unreadable} testId="order-record-price" />;
   }
 
   return (

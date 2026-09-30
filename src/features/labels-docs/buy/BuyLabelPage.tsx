@@ -212,7 +212,7 @@ export function BuyLabelPage() {
   const router = useRouter();
   const stations = usePrintStations();
   const { refresh: refreshRoutes } = usePrintRoutes();
-  const { print, progress, notice } = useDeskPress(stations, refreshRoutes);
+  const { print, notice } = useDeskPress(stations, refreshRoutes);
 
   const [address, setAddress] = useState<AddressDraft>(EMPTY_ADDRESS);
   const [product, setProduct] = useState<LabelBuyProduct | null>(null);
@@ -435,7 +435,7 @@ export function BuyLabelPage() {
                   Open Labels
                 </Link>
               </div>
-              {progress ? <p className="text-role-caption text-text-muted">Printing…</p> : notice ? <p className="text-role-caption text-text-muted">{notice}</p> : null}
+              {notice ? <p className="text-role-caption text-text-muted">{notice}</p> : null}
             </Section>
           ) : (
             <Section title="Service" testId="buy-service">

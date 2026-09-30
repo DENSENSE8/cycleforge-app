@@ -169,6 +169,32 @@ export async function shopifyValidate(orgId: OrgId): Promise<HealthResult> {
   }
 }
 
+const VARIANT_IMAGE_QUERY = `query VariantImage($q: String!) {
+  productVariants(first: 5, query: $q) {
+    edges { node { sku image { url } product { featuredImage { url } } } }
+  }
+}`;
+
+/**
+ * The listing photo for one Shopify variant, by its exact SKU: the variant's
+ * own image, else its product's featured image. Null when no variant carries
+ * the SKU or it has no image; throws on API failure.
+ */
+export async function getShopifyVariantImageUrl(orgId: OrgId, sku: string): Promise<string | null> {
+  const wanted = sku.trim();
+  if (!wanted) return null;
+  const data = await shopifyGraphql<{
+    productVariants?: {
+      edges?: Array<{ node?: { sku?: string | null; image?: { url?: string } | null; product?: { featuredImage?: { url?: string } | null } | null } }>;
+    };
+  }>(orgId, VARIANT_IMAGE_QUERY, { q: `sku:${JSON.stringify(wanted)}` });
+  // `sku:` search is token-based — keep only the variant whose SKU is exactly this one.
+  const hit = (data.productVariants?.edges ?? [])
+    .map((edge) => edge.node)
+    .find((node) => (node?.sku ?? '').trim().toLowerCase() === wanted.toLowerCase());
+  return hit?.image?.url ?? hit?.product?.featuredImage?.url ?? null;
+}
+
 /** Connection-driven order ingestion. Incremental on the updated_at watermark. */
 export async function shopifySync(orgId: OrgId): Promise<SyncOutcome> {
   const cursorKey = `shopify:orders:${orgId}`;

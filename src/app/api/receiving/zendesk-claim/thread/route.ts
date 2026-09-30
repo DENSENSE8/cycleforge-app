@@ -10,6 +10,7 @@ import {
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
 import { getTicketEntity } from '@/lib/zendesk-links';
+import { loadTicketMirror, type TicketMirror } from '@/lib/support/ticket-mirror';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { uploadClaimPhotosToHelpdesk } from '@/lib/receiving-claim-attach';
 import {
@@ -46,20 +47,10 @@ function mapZendeskError(err: unknown, context: string): NextResponse {
   return errorResponse(err, context);
 }
 
-/** Best-effort requester email from via.from, falling back to getUsers. */
-async function resolveRequesterEmail(
-  ticket: {
-    requester_id?: number;
-    via?: { source?: { from?: { address?: string } } };
-  },
-  getUsers: (ids: number[]) => Promise<Array<{ id: number; email: string | null }>>,
-): Promise<string | null> {
-  const viaEmail = ticket.via?.source?.from?.address?.trim() || null;
-  if (viaEmail) return viaEmail;
-  const requesterId = ticket.requester_id;
-  if (!requesterId) return null;
-  const users = await getUsers([requesterId]);
-  return users[0]?.email?.trim() || null;
+/** Best-effort requester email: the inbound email's from-address, else the mirrored requester. */
+function requesterEmailFrom(mirror: TicketMirror): string | null {
+  const via = mirror.ticket.via as { source?: { from?: { address?: string } } } | undefined;
+  return via?.source?.from?.address?.trim() || mirror.requester?.email?.trim() || null;
 }
 
 const Query = z.object({
@@ -71,21 +62,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { ticketId } = Query.parse({ ticketId: req.nextUrl.searchParams.get('ticketId') ?? undefined });
 
+    const load = await loadTicketMirror(ctx.organizationId, ticketId);
+    if (load.status === 'not_configured') return notConfigured(context);
+    if (load.status === 'not_found') throw ApiError.notFound('Helpdesk ticket', ticketId);
+    const { mirror } = load;
+
     // Only expose tickets linked to one of this org's receiving entities — the
-    // popover is a receiving surface, not a general Zendesk reader.
-    const entity = await getTicketEntity(ctx.organizationId, ticketId);
-    if (!entity || (entity.type !== 'RECEIVING' && entity.type !== 'RECEIVING_LINE')) {
+    // popover is a receiving surface, not a general Zendesk reader. The mirror
+    // resolves the entity the way getTicketEntity does.
+    if (!mirror.entity || (mirror.entity.type !== 'RECEIVING' && mirror.entity.type !== 'RECEIVING_LINE')) {
       throw ApiError.notFound('Linked receiving ticket', ticketId);
     }
 
-    const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
-    const ticket = await helpdesk.getTicket(ticketId);
-    if (!ticket) throw ApiError.notFound('Helpdesk ticket', ticketId);
-    const [{ comments }, requesterEmail] = await Promise.all([
-      helpdesk.listComments(ticketId, { perPage: 100 }),
-      resolveRequesterEmail(ticket, (ids) => helpdesk.getUsers(ids)),
-    ]);
-
+    const { ticket } = mirror;
     return NextResponse.json({
       success: true,
       ticket: {
@@ -94,9 +83,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         status: String(ticket.status ?? ''),
         priority: ticket.priority ? String(ticket.priority) : null,
         url: zendeskTicketUrl(ticket.id),
-        requesterEmail,
+        requesterEmail: requesterEmailFrom(mirror),
       },
-      comments: comments.map((c) => ({
+      comments: mirror.comments.map((c) => ({
         id: c.id,
         body: c.body,
         public: c.public,

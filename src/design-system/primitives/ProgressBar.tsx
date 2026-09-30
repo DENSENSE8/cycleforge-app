@@ -18,7 +18,8 @@ interface ProgressBarProps {
   ariaLabel?: string;
   showPercentage?: boolean;
   showRemaining?: boolean;
-  variant?: 'default' | 'success';
+  /** `muted` — a held run (paused, stopped short): the fill keeps its place but greys out. */
+  variant?: 'default' | 'success' | 'muted';
   /**
    * Segmented face (PG12): one segment per step. When the segments would
    * paint thinner than {@link SEGMENT_MIN_PX} the bar goes continuous, with a
@@ -46,7 +47,8 @@ export function ProgressBar({
   const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   const remaining = Math.max(0, goal - current);
   const isComplete = current >= goal;
-  const barColor = variant === 'success' || isComplete ? 'bg-emerald-500' : 'bg-blue-500';
+  const barColor =
+    variant === 'muted' ? 'bg-text-soft' : variant === 'success' || isComplete ? 'bg-emerald-500' : 'bg-blue-500';
   const fillTransition = reduceMotion
     ? { duration: 0 }
     : { duration: motionDuration.progressFill, ease: motionBezier.easeOut };

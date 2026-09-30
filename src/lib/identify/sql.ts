@@ -13,12 +13,8 @@
  */
 
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
-import {
-  sqlOrderAwaitingPick,
-  sqlOrderBlockedPending,
-  sqlOrderHasPoPairedShortage,
-  sqlOrderInWarehouseToShip,
-} from '@/lib/orders/desk-view-sql';
+import { sqlDeskQueueScope } from '@/lib/orders/desk-view-sql';
+import { DESK_VIEW_ORDER, isDeskQueueView } from '@/lib/outbound/desk-views';
 import { sqlOrderInExceptionQueue } from '@/lib/orders/exception-membership';
 import { DOCK_STAGING_LATERAL } from '@/lib/neon/orders-queries';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
@@ -422,14 +418,20 @@ function freeTextSql(first: number): string {
   ),`;
 }
 
-/** Enrichment: title faces, desk view, workflow signals, brand — once per distinct hit. */
+/**
+ * Enrichment: title faces, desk view, workflow signals, brand — once per distinct hit.
+ * The desk arm: Exceptions and Shipped win (their lists are not `orders`
+ * rows), then every queue view of `DESK_VIEWS` in paint order through its own
+ * `sqlDeskQueueScope`.
+ */
 function enrichSql(brandSql: string): string {
+  const queueArms = DESK_VIEW_ORDER.filter(isDeskQueueView)
+    .map((view) => `WHEN ${sqlDeskQueueScope(view)} THEN '${view}'`)
+    .join('\n          ');
   const stage = `CASE
           WHEN ${sqlOrderInExceptionQueue('o', 'stn')} THEN 'exceptions'
           WHEN ${SHIPPED_BY_CARRIER_SQL} OR ${sqlOrderHasShipConfirm('o')} THEN 'shipped'
-          WHEN ${sqlOrderBlockedPending('o')} AND ${sqlOrderHasPoPairedShortage('o')} THEN 'po'
-          WHEN ${sqlOrderInWarehouseToShip('o')} AND ${sqlOrderAwaitingPick('o')} THEN 'pick'
-          WHEN ${sqlOrderInWarehouseToShip('o')} THEN 'triage'
+          ${queueArms}
         END`;
   return `
   SELECT h.arm, h.line, h.probe, h.value, h.kind, h.entity_id, h.arm_rank, h.score,

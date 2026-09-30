@@ -23,7 +23,11 @@
 import type { ModeLookName, ModeName } from '@/design-system/modes/registry';
 
 export interface ModeRouteEntry {
-  /** Path prefix (`/inventory` owns `/inventory/stock`), or the whole path when `exact`. */
+  /**
+   * Path prefix (`/inventory` owns `/inventory/stock`), or the whole path when
+   * `exact`. A `*` segment matches any one segment (`/m/r/*` + `/qc` = every
+   * carton's QC), so a job under a record can wear a different mode than the record.
+   */
   route: string;
   mode: ModeName;
   /** Match `route` itself only, never its children. */
@@ -99,7 +103,13 @@ const DECLARED_ROUTES: readonly ModeRouteEntry[] = [
   { route: '/m/h', mode: 'industrial' }, // handling unit (box / tote) contents
   { route: '/m/u', mode: 'industrial' }, // unit hub: move / pair / stash / test, QC run
   { route: '/m/unit-photos', mode: 'industrial' }, // unit photo capture
-  { route: '/m/qc', mode: 'industrial' }, // QC line pick off the kernel
+  { route: '/m/stock/*/photos', mode: 'industrial' }, // stock product-photo capture (desk "Send to phone")
+  // Quality control — a verdict / ticket / label decision, read at a glance
+  // (owner 2026-09-29: triage, mobile-first, F-pattern record). The carton and
+  // unit hubs around it stay industrial.
+  { route: '/m/qc', mode: 'triage', form: true }, // QC line pick off the kernel
+  { route: '/m/r/*/qc', mode: 'triage', form: true }, // the unbox label's landing: pick a unit
+  { route: '/m/u/*/qc', mode: 'triage', form: true }, // one unit: verdict → ticket / QC label
   { route: '/m/loc', mode: 'industrial' }, // location hub: stock count ±
   { route: '/m/pair', mode: 'industrial' }, // pair a location: SKU → quantity
   { route: '/m/fnsku', mode: 'industrial' }, // FBA label reprint: copies → print
@@ -110,12 +120,19 @@ const DECLARED_ROUTES: readonly ModeRouteEntry[] = [
 /** Every declared entry, longest route first so `/m/scan` beats `/m`. */
 const MODE_ROUTES = [...DECLARED_ROUTES].sort((a, b) => b.route.length - a.route.length);
 
+/** `route` as a prefix pattern: literal segments, `*` = exactly one segment. */
+function routePattern(entry: ModeRouteEntry): RegExp {
+  const body = entry.route
+    .split('/')
+    .map((segment) => (segment === '*' ? '[^/]+' : segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+    .join('/');
+  return new RegExp(`^${body}${entry.exact ? '' : '(?:/.*)?'}$`);
+}
+
+const MODE_PATTERNS = MODE_ROUTES.map((entry) => ({ entry, pattern: routePattern(entry) }));
+
 /** The entry governing `pathname`, or `null` when no route declares it. */
 export function modeRouteFor(pathname: string | null | undefined): ModeRouteEntry | null {
   if (!pathname) return null;
-  for (const entry of MODE_ROUTES) {
-    if (pathname === entry.route) return entry;
-    if (!entry.exact && pathname.startsWith(`${entry.route}/`)) return entry;
-  }
-  return null;
+  return MODE_PATTERNS.find(({ pattern }) => pattern.test(pathname))?.entry ?? null;
 }

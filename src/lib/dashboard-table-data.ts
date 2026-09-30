@@ -15,12 +15,11 @@ import {
   normalizeUnshippedOrdersPayload,
   toOrderRecord,
 } from '@/lib/orders/order-record-normalize';
-import { DESK_PAIR_PARAM, DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
+import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
 import {
   normalizeDeskCounts,
   type DeskCounts,
   type DeskPairFilter,
-  type DeskQueueFilter,
 } from '@/lib/orders/desk-view-filters';
 
 const FRESH_FETCH_OPTIONS: RequestInit = { cache: 'no-store' };
@@ -140,7 +139,6 @@ export async function fetchUnshippedOrdersData({
   stage,
   blockedOnly = false,
   pair,
-  queue,
   limit,
   pickedBy,
   orderFrom,
@@ -158,8 +156,6 @@ export async function fetchUnshippedOrdersData({
   blockedOnly?: boolean;
   /** Shortage desk lens (`?pair=po`) — forwarded as `pair`; the server implies blockedOnly. */
   pair?: DeskPairFilter;
-  /** To-ship lens (`?queue=pick`) — forwarded as `queue`; the server implies inWarehouse. */
-  queue?: DeskQueueFilter;
   limit?: number;
   /** `?pickedBy` — the staffer who picked the order. */
   pickedBy?: number;
@@ -183,7 +179,6 @@ export async function fetchUnshippedOrdersData({
   if (scoped) params.set('inWarehouse', 'true');
   if (blockedOnly) params.set('blockedOnly', 'true');
   if (pair) params.set(DESK_PAIR_PARAM, pair);
-  if (queue) params.set(DESK_QUEUE_PARAM, queue);
   // Phase 1: on the scoped, non-search fulfillment load, request the thin queue
   // projection and push the coarse stage facet to SQL. A search stays full-shape
   // (the route ignores listShape when `q` is present) for match highlighting.

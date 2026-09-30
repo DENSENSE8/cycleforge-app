@@ -60,8 +60,9 @@ const LOCATION_FLAT_RE = /^[A-Z]\d{7,8}$/i;
 
 // Punctuation-stripped platform Digital Link — see the RECOVERY branch in
 // `routeScan`. Right-anchored so a tenant slug containing `m` ("mycompany")
-// cannot be mistaken for the `/m/` path segment.
-const FLATTENED_MOBILE_LINK_RE = /^https?.*m([rluh])(\d+)$/i;
+// cannot be mistaken for the `/m/` path segment. The optional `qc` tail is the
+// carton label's `/m/r/{id}/qc` (it opens the carton's quality control).
+const FLATTENED_MOBILE_LINK_RE = /^https?.*m([rluh])(\d+)(?:qc)?$/i;
 
 function normalizeForeignLabel(value: string): string {
   return value.replace(/[\s-]/g, '').toUpperCase();

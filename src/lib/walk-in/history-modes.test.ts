@@ -10,9 +10,7 @@ import {
   WALK_IN_HISTORY_MODES,
   WALK_IN_HISTORY_MODE_ITEMS,
   WALK_IN_MODE_PERMISSION,
-  defaultRepairTabForSurface,
   defaultTabForMode,
-  isSalesRepairsDesk,
   isWalkInHistoryMode,
   parsePickupTab,
   parseRepairTab,
@@ -73,14 +71,6 @@ test('defaultTabForMode matches the per-mode defaults', () => {
   assert.equal(defaultTabForMode('pickup'), 'completed');
   assert.equal(defaultTabForMode('sales'), 'today');
   assert.equal(defaultTabForMode('repairs'), 'all');
-});
-
-test('Sales repairs desk vs station default tab', () => {
-  const salesSp = new URLSearchParams('mode=repairs');
-  assert.equal(isSalesRepairsDesk('/dashboard', salesSp), true);
-  assert.equal(isSalesRepairsDesk('/repair', salesSp), false);
-  assert.equal(defaultRepairTabForSurface('/dashboard', salesSp), 'all');
-  assert.equal(defaultRepairTabForSurface('/repair', new URLSearchParams()), 'active');
 });
 
 test('pickup tab maps to the API status', () => {

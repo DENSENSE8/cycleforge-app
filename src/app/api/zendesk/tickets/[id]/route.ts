@@ -8,7 +8,8 @@ import {
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
-import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
+import { invalidateZendeskOverviewCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
+import { loadTicketMirror } from '@/lib/support/ticket-mirror';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,16 +42,16 @@ function ticketIdFromUrl(req: NextRequest): number {
   return id;
 }
 
+/** GET — the ticket object from the local ticket mirror (see ticket-mirror.ts). */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/tickets/[id]';
     try {
-      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
-      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
-      const ticket = await helpdesk.getTicket(id);
-      if (!ticket) throw ApiError.notFound('Zendesk ticket', id);
-      return NextResponse.json({ success: true, ticket });
+      const load = await loadTicketMirror(ctx.organizationId, id);
+      if (load.status === 'not_configured') return notConfigured(context);
+      if (load.status === 'not_found') throw ApiError.notFound('Zendesk ticket', id);
+      return NextResponse.json({ success: true, ticket: load.mirror.ticket });
     } catch (err) {
       return mapZendeskError(err, context);
     }
@@ -91,7 +92,7 @@ export const PATCH = withAuth(
 
       const ticket = await helpdesk.updateTicket(id, input);
       if (!ticket) throw ApiError.notFound('Zendesk ticket', id);
-      await invalidateZendeskTicketCache(ctx.organizationId, id);
+      await invalidateZendeskOverviewCache(ctx.organizationId);
       return NextResponse.json({ success: true, ticket });
     } catch (err) {
       return mapZendeskError(err, context);

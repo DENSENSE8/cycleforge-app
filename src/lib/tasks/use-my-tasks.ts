@@ -3,12 +3,14 @@
 /** The tasks thrown at the signed-in staffer, as the phone reads them. */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { TaskStatus } from '@/design-system/tokens/task-status';
 import {
   sortTaskDeskRows,
   taskDeskRowFromWire,
   type TaskDeskListPayload,
   type TaskDeskRow,
 } from '@/lib/tasks/task-desk-row';
+import { applyTaskStatusPatch, taskStatusPatch, type TaskStatusPatch } from '@/lib/tasks/task-status';
 
 /** Cookie session; never a cached answer for a list the operator just changed. */
 const FRESH: RequestInit = { credentials: 'include', cache: 'no-store' };
@@ -43,18 +45,55 @@ export function useMyTasks(enabled: boolean) {
  * the last resort, not the first answer — "Task 91 is canceled" is actionable
  * and "409" is not.
  */
-async function setTaskStatus(taskId: number, status: 'DONE' | 'ASSIGNED' | 'IN_PROGRESS'): Promise<void> {
+async function patchTaskStatus(taskId: number, patch: TaskStatusPatch): Promise<void> {
   const res = await fetch(`/api/tasks/${taskId}`, {
     ...FRESH,
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     // STRICT allowlist on the route — an unknown key is a 403 naming it, so
-    // this body carries the one field the verb changes and nothing else.
-    body: JSON.stringify({ status }),
+    // this body carries the fields the verb changes and nothing else.
+    body: JSON.stringify(patch),
   });
   if (res.ok) return;
   const body = (await res.json().catch(() => null)) as { error?: string } | null;
   throw new Error(body?.error || `Could not update that task (${res.status})`);
+}
+
+/**
+ * The row after `patch`, the way the server writes it: the pair through
+ * `applyTaskStatusPatch` (a closed status clears the hold, as the trigger
+ * does), Done stamps / clears `completedAtMs`, the first In progress stamps
+ * `startedAtMs`.
+ */
+function patchedRow(row: TaskDeskRow, patch: TaskStatusPatch, nowMs: number): TaskDeskRow {
+  const next = applyTaskStatusPatch(row, patch);
+  return {
+    ...row,
+    ...next,
+    completedAtMs: next.status === 'DONE' ? (row.status === 'DONE' ? row.completedAtMs : nowMs) : null,
+    startedAtMs: next.status === 'IN_PROGRESS' ? (row.startedAtMs ?? nowMs) : row.startedAtMs,
+  };
+}
+
+/** Set a task's owners (lead first) — the phone's Team row adds people with it. */
+export function useSetTaskOwners() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskId, assigneeStaffIds }: { taskId: number; assigneeStaffIds: readonly number[] }) => {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        ...FRESH,
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assigneeStaffIds }),
+      });
+      if (res.ok) return;
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error || `Could not update the team (${res.status})`);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
 }
 
 /** Tick / untick an assigned task, optimistically — the same feel as ticking a daily check, because on this list they are the same gesture. */
@@ -62,22 +101,15 @@ export function useToggleTaskDone() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ taskId, done }: { taskId: number; done: boolean }) =>
-      setTaskStatus(taskId, done ? 'DONE' : 'ASSIGNED'),
+      patchTaskStatus(taskId, { status: done ? 'DONE' : 'ASSIGNED' }),
     onMutate: async ({ taskId, done }) => {
       await queryClient.cancelQueries({ queryKey: MY_TASKS_QUERY_KEY });
       const previous = queryClient.getQueryData<TaskDeskRow[]>(MY_TASKS_QUERY_KEY);
       if (previous) {
+        const now = Date.now();
         queryClient.setQueryData<TaskDeskRow[]>(
           MY_TASKS_QUERY_KEY,
-          previous.map((row) =>
-            row.id === taskId
-              ? {
-                  ...row,
-                  status: done ? 'DONE' : 'ASSIGNED',
-                  completedAtMs: done ? Date.now() : null,
-                }
-              : row,
-          ),
+          previous.map((row) => (row.id === taskId ? patchedRow(row, { status: done ? 'DONE' : 'ASSIGNED' }, now) : row)),
         );
       }
       return { previous };
@@ -91,28 +123,36 @@ export function useToggleTaskDone() {
   });
 }
 
-/** Pick a handed task up — `IN_PROGRESS`, which the route stamps `started_at` on (first start only), so the desk's "Started" fact and the… */
-export function useStartTask() {
+/**
+ * Move a task to one of the seven statuses (`TASK_STATUS_FACE`) — the phone
+ * sheet's status picker, its quick slider and its Start / Mark done / Reopen.
+ * The patch is the smallest one that lands `target` (`taskStatusPatch`);
+ * already there, or Canceled → no request. Starting stamps `started_at` on
+ * the route (first start only). A hold before the 2026-09-30 migration is the
+ * route's 409, in its own words, as the mutation error.
+ */
+export function useSetTaskStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (taskId: number) => setTaskStatus(taskId, 'IN_PROGRESS'),
-    onMutate: async (taskId) => {
+    mutationFn: async ({ row, target }: { row: TaskDeskRow; target: TaskStatus }) => {
+      const patch = taskStatusPatch(row, target);
+      if (patch) await patchTaskStatus(row.id, patch);
+    },
+    onMutate: async ({ row, target }) => {
+      const patch = taskStatusPatch(row, target);
+      if (!patch) return { previous: undefined };
       await queryClient.cancelQueries({ queryKey: MY_TASKS_QUERY_KEY });
       const previous = queryClient.getQueryData<TaskDeskRow[]>(MY_TASKS_QUERY_KEY);
       if (previous) {
         const now = Date.now();
         queryClient.setQueryData<TaskDeskRow[]>(
           MY_TASKS_QUERY_KEY,
-          previous.map((row) =>
-            row.id === taskId
-              ? { ...row, status: 'IN_PROGRESS', startedAtMs: row.startedAtMs ?? now }
-              : row,
-          ),
+          previous.map((cached) => (cached.id === row.id ? patchedRow(cached, patch, now) : cached)),
         );
       }
       return { previous };
     },
-    onError: (_error, _taskId, context) => {
+    onError: (_error, _variables, context) => {
       if (context?.previous) queryClient.setQueryData(MY_TASKS_QUERY_KEY, context.previous);
     },
     onSettled: () => {

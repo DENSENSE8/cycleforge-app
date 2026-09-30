@@ -5,6 +5,7 @@ import pool from '@/lib/db';
 import { setQuoteStatus } from '@/lib/warranty/quotes';
 import { claimIdFromPath, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyQuoteStatusBody } from '@/lib/schemas/warranty';
+import { scheduleRepairTaskSync } from '@/lib/tasks/repair-tasks-db';
 
 /** PATCH /api/warranty/quotes/[id] */
 export const PATCH = withAuth(async (request, ctx) => {
@@ -31,5 +32,6 @@ export const PATCH = withAuth(async (request, ctx) => {
     entityId: quoteId,
     after: { status: parsed.data.status, repairServiceId: result.repairServiceId ?? null },
   });
+  scheduleRepairTaskSync(ctx.organizationId, result.repairServiceId);
   return NextResponse.json({ ok: true, quote: result.quote, repairServiceId: result.repairServiceId ?? null });
 }, { permission: 'warranty.manage', feature: 'repair' });

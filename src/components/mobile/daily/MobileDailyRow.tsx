@@ -9,7 +9,11 @@ import { ChevronRight, Pencil, Ticket } from '@/components/Icons';
 import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { StruckLabel } from '@/design-system/components/StruckLabel';
+import { TicketStatusPill } from '@/design-system/components/TicketStatusPill';
+import { TaskStatusPill } from '@/design-system/components/TaskStatusPill';
+import type { TaskStatus } from '@/design-system/tokens/task-status';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
+import { StaffBadge } from '@/design-system/components/StaffBadge';
 import { cornerClass, MOBILE_ROW_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
@@ -28,6 +32,8 @@ export function MobileDailyRow({
   subtitle = null,
   subtitleTone = 'muted',
   ticketId = null,
+  ticketStatus = null,
+  taskStatus,
   detail = 'edit',
   onToggle,
   onOpenDetail,
@@ -52,10 +58,20 @@ export function MobileDailyRow({
    * second sub-line whichever store it came from.
    */
   subtitle?: string | null;
-  /** `danger` is the overdue register — the only tone a caption may raise. */
-  subtitleTone?: 'muted' | 'danger';
+  /**
+   * `danger` = overdue (red); `urgent` = due today or tomorrow (orange, owner
+   * 2026-09-29: tomorrow must already feel urgent). The only tones a caption may raise.
+   */
+  subtitleTone?: 'muted' | 'urgent' | 'danger';
   /** Linked Zendesk ticket — paints the rightmost orange door. Null = plain task. */
   ticketId?: number | null;
+  /** That ticket's helpdesk status (`status_cache`) — its colour pill leads the caption line. */
+  ticketStatus?: string | null;
+  /**
+   * A task row's status (`taskStatusOf`). Its pill paints only off the
+   * ordinary path — To do is the default and Done is the strike.
+   */
+  taskStatus?: TaskStatus;
   /** What the hard-right door promises. */
   detail?: 'edit' | 'record';
   onToggle: (next: boolean) => void;
@@ -64,7 +80,15 @@ export function MobileDailyRow({
   onOpenTicket?: () => void;
 }) {
   const checkboxId = `m-daily-${rowKey ?? `check-${itemId}`}`;
-  const caption = once || subtitle != null;
+  const caption = once || subtitle != null || Boolean(ticketStatus);
+  const statusPill =
+    taskStatus && taskStatus !== 'TODO' && taskStatus !== 'DONE' ? <TaskStatusPill status={taskStatus} size="sm" /> : null;
+  const struckTitle = (
+    <StruckLabel struck={done}>
+      <span className="block text-role-data text-text-default">{title}</span>
+    </StruckLabel>
+  );
+
   return (
     <li
       data-daily-item-id={itemId}
@@ -89,21 +113,32 @@ export function MobileDailyRow({
         className={cn('size-5 border-border-emphasis', cornerClass('pill'), caption && 'mt-0.5')}
       />
       <label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer select-none">
-        <StruckLabel struck={done}>
-          <span className="block text-role-data text-text-default">{title}</span>
-        </StruckLabel>
+        {statusPill && !caption ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            {struckTitle}
+            {statusPill}
+          </span>
+        ) : (
+          struckTitle
+        )}
         {caption ? (
           <span
             className={cn(
               'mt-0.5 flex items-center gap-1.5 text-role-micro',
-              subtitleTone === 'danger' ? 'text-text-danger' : 'text-text-muted',
+              subtitleTone === 'danger'
+                ? 'text-text-danger'
+                : subtitleTone === 'urgent'
+                  ? 'font-semibold text-orange-700 dark:text-orange-300'
+                  : 'text-text-muted',
             )}
           >
-            {subtitle ?? 'Today only'}
+            {statusPill}
+            {ticketStatus ? <TicketStatusPill status={ticketStatus} /> : null}
+            {subtitle ?? (once ? 'Today only' : null)}
             {owner ? (
               <span className="flex min-w-0 items-center gap-1">
                 <StaffAvatar staffId={owner.staffId} name={owner.name} size="xs" alt="" />
-                <span className="truncate">{owner.name}</span>
+                <StaffBadge staffId={owner.staffId} name={owner.name} className="truncate" />
               </span>
             ) : null}
           </span>

@@ -24,6 +24,7 @@ import { AnimatePresence, motion, type Variants } from 'motion/react';
 import { ArrowRight, ChevronDown, MessageSquare, Package } from '@/components/Icons';
 import { Popover, PopoverAnchor, PopoverContent } from '@/design-system/primitives/radix-popover';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PhotoHoverPeek } from '@/design-system/components/PhotoHoverPeek';
 import { CollapseItem } from '@/design-system/components/Collapse';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -49,7 +50,6 @@ export const CARD_LIST_SETTLE_S = CARD_STAGGER_S * CARD_STAGGER_CAP + 0.3;
 /** Propagated from the card's `whileHover` — the photo breathes, the rail thickens, the glyph nods. */
 const RAIL_VARIANTS: Variants = { rest: { scaleX: 1 }, hover: { scaleX: 1.75 } };
 const PHOTO_VARIANTS: Variants = { rest: { scale: 1 }, hover: { scale: 1.07 } };
-const GLYPH_VARIANTS: Variants = { rest: { rotate: 0, scale: 1 }, hover: { rotate: [0, -10, 8, 0], scale: 1.08 } };
 
 /** Chips on line 1 — the fact box, pill-shaped. */
 const CARD_CHIP = cn(CARD_FACT_BOX_CLASS, 'gap-1 rounded-full px-2 text-xs font-semibold');
@@ -188,54 +188,33 @@ export function CardCheck({
 // ── Photo (hover peek) ──────────────────────────────────────────────────────
 
 function CardPhoto({ line, size }: { line: RecordCardLine; size: 'lg' | 'sm' }) {
-  const peek = useHoverPeek(320);
-  const box = size === 'lg' ? 'size-12' : 'size-8';
   return (
-    <Popover open={peek.open && Boolean(line.photoUrl)} onOpenChange={peek.setOpen}>
-      <PopoverAnchor asChild>
-        <span
-          onPointerEnter={peek.enter}
-          onPointerLeave={peek.leave}
-          className={cn('relative z-10 block shrink-0 overflow-hidden bg-surface-sunken ring-1 ring-inset ring-black/5', box)}
-        >
-          {line.photoUrl ? (
-            <motion.img
-              variants={size === 'lg' ? PHOTO_VARIANTS : undefined}
-              transition={SOFT_SPRING}
-              src={line.photoUrl}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="size-full object-contain"
-            />
-          ) : (
-            <span className="flex size-full items-center justify-center text-text-faint" aria-hidden>
-              <Package className={size === 'lg' ? 'size-5' : 'size-4'} />
-            </span>
-          )}
-        </span>
-      </PopoverAnchor>
-      <PopoverContent
-        side="right"
-        align="start"
-        sideOffset={10}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onPointerEnter={peek.enter}
-        onPointerLeave={peek.leave}
-        className="w-auto overflow-hidden border-0 p-0 shadow-elev-overlay"
-      >
-        {/* The photo alone (owner 2026-09-27): no caption, and the box takes the image's own aspect — no letterbox bars. */}
+    <PhotoHoverPeek
+      src={line.photoUrl}
+      alt={line.title}
+      // A photo FILLS the square (owner 2026-09-29: never letterbox bars); the gray well is only the no-photo placeholder.
+      className={cn(
+        'relative z-10 block shrink-0 overflow-hidden ring-1 ring-inset ring-black/5',
+        line.photoUrl ? 'bg-surface-card' : 'bg-surface-sunken',
+        size === 'lg' ? 'size-12' : 'size-8',
+      )}
+    >
+      {line.photoUrl ? (
         <motion.img
-          initial={{ opacity: 0, scale: 0.9, filter: 'blur(4px)' }}
-          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-          transition={SPRING}
-          style={{ transformOrigin: 'var(--radix-popover-content-transform-origin)' }}
-          src={line.photoUrl ?? undefined}
-          alt={line.title}
-          className="block h-auto max-h-80 w-auto max-w-72"
+          variants={size === 'lg' ? PHOTO_VARIANTS : undefined}
+          transition={SOFT_SPRING}
+          src={line.photoUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="size-full object-cover"
         />
-      </PopoverContent>
-    </Popover>
+      ) : (
+        <span className="flex size-full items-center justify-center text-text-faint" aria-hidden>
+          <Package className={size === 'lg' ? 'size-5' : 'size-4'} />
+        </span>
+      )}
+    </PhotoHoverPeek>
   );
 }
 
@@ -283,58 +262,75 @@ function MoreLineRow({
   );
 }
 
-// ── Status icon ─────────────────────────────────────────────────────────────
+// ── Check + status — one slot ───────────────────────────────────────────────
+
+/** At rest the status icon holds the slot; card hover / focus hands it to the checkbox. */
+const SLOT_REST_CLASS =
+  'flex transition-opacity duration-150 group-hover/card:opacity-0 group-focus-within/card:opacity-0 [@media(hover:none)]:opacity-0';
+const SLOT_HOVER_CLASS =
+  'absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover/card:opacity-100 group-focus-within/card:opacity-100 [@media(hover:none)]:opacity-100';
 
 /**
- * With an alert (orders: out of stock): a hover card naming exactly which
- * lines need attention. Otherwise a still icon with a one-line meaning.
+ * The card's top-left slot: status and selection share ONE 18px box (owner
+ * 2026-09-29 — the 2026-09-15 gutter law, "status at rest, checklist on hover",
+ * on every card). Pointer hover or keyboard focus shows the checkbox; touch
+ * (`hover: none`) always shows it; a checked card shows its check. With an alert
+ * (orders: out of stock) hovering or focusing the slot also opens the line peek.
  */
-function StatusGlyph({ model, columns, testId }: { model: RecordCardModel; columns: readonly RecordFactColumn[]; testId: string }) {
+function CheckStatusSlot({
+  model,
+  columns,
+  checked,
+  check,
+  testId,
+}: {
+  model: RecordCardModel;
+  columns: readonly RecordFactColumn[];
+  checked: boolean | 'mixed';
+  check: ReactNode;
+  testId: string;
+}) {
   const peek = useHoverPeek(140);
   const tone = STATE_TONE_CLASSES[model.state.tone];
   const Glyph = model.stateIcon;
-  if (!model.alert) {
-    return (
-      <HoverTooltip label={model.stateMeaning} placement="right" asChild>
+  const resting = checked === false;
+  const slot = (
+    <span
+      data-check-status-slot=""
+      className="pointer-events-auto relative z-10 flex size-[18px] items-center justify-center"
+      onPointerEnter={model.alert ? peek.enter : undefined}
+      onPointerLeave={model.alert ? peek.leave : undefined}
+      onFocus={model.alert ? () => peek.setOpen(true) : undefined}
+      onBlur={model.alert ? () => peek.setOpen(false) : undefined}
+    >
+      {resting ? (
         <span
           data-testid={testId}
           role="img"
-          aria-label={model.stateMeaning}
-          className={cn('pointer-events-auto relative z-10 -m-1 flex size-7 items-center justify-center', tone.text)}
+          aria-label={model.alert?.ariaLabel ?? model.stateMeaning}
+          className={cn(SLOT_REST_CLASS, 'relative items-center justify-center', tone.text)}
         >
           <Glyph className="size-4" />
+          {model.alert && model.alert.count > 0 && model.lines.length > 1 ? (
+            <span className="absolute -right-1.5 -top-1.5 flex size-3.5 items-center justify-center rounded-full bg-fill-danger text-[9px] font-bold leading-none text-white">
+              {model.alert.count}
+            </span>
+          ) : null}
         </span>
+      ) : null}
+      <span className={resting ? SLOT_HOVER_CLASS : 'flex'}>{check}</span>
+    </span>
+  );
+  if (!model.alert) {
+    return (
+      <HoverTooltip label={model.stateMeaning} placement="right" asChild>
+        {slot}
       </HoverTooltip>
     );
   }
   return (
     <Popover open={peek.open} onOpenChange={peek.setOpen}>
-      <PopoverAnchor asChild>
-        <motion.button
-          type="button"
-          aria-label={model.alert.ariaLabel}
-          data-testid={testId}
-          onPointerEnter={peek.enter}
-          onPointerLeave={peek.leave}
-          onFocus={() => peek.setOpen(true)}
-          onBlur={() => peek.setOpen(false)}
-          onPointerDown={stop}
-          onClick={(event) => {
-            event.stopPropagation();
-            peek.setOpen((v) => !v);
-          }}
-          variants={GLYPH_VARIANTS}
-          transition={{ duration: 0.45 }}
-          className={cn('pointer-events-auto relative z-10 -m-1 flex size-7 items-center justify-center rounded-lg', tone.text, focusRing('control'))}
-        >
-          <Glyph className="size-4" />
-          {model.alert.count > 0 && model.lines.length > 1 ? (
-            <span className="absolute -right-0.5 -top-0.5 flex size-3.5 items-center justify-center rounded-full bg-fill-danger text-[9px] font-bold leading-none text-white">
-              {model.alert.count}
-            </span>
-          ) : null}
-        </motion.button>
-      </PopoverAnchor>
+      <PopoverAnchor asChild>{slot}</PopoverAnchor>
       <PopoverContent
         side="right"
         align="start"
@@ -673,6 +669,17 @@ export function RecordCard({
           {status.face}
         </span>
       </HoverTooltip>
+    ) : status.kind === 'state' ? (
+      <HoverTooltip label={status.tip} disabled={!status.tip} asChild>
+        <span
+          data-testid={id('state')}
+          onClick={openRecord}
+          className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 whitespace-nowrap text-[13px] font-medium', STATE_TONE_CLASSES[status.tone].text)}
+        >
+          <span aria-hidden className={cn('size-2 shrink-0 rounded-full', STATE_TONE_CLASSES[status.tone].dot)} />
+          {status.face}
+        </span>
+      </HoverTooltip>
     ) : null;
 
   // 2+ lines: the lead line is the face; "+N items" unfolds the rest (alert lines already first).
@@ -790,10 +797,15 @@ export function RecordCard({
         className={cn('pointer-events-none absolute bottom-3 left-1.5 top-3 w-[3px] origin-left rounded-full', tone.dot)}
       />
 
-      {/* Checkbox, status icon beneath */}
-      <div className="pointer-events-none relative z-10 flex w-7 shrink-0 flex-col items-center gap-3 pt-px">
-        <CardCheck checked={checked} label={model.aria.check} testId={id('check')} onToggle={onToggleCheck} />
-        <StatusGlyph model={model} columns={factColumns} testId={id('status')} />
+      {/* Top-left: status at rest, the checkbox on hover / focus / touch / check — one slot. */}
+      <div className="pointer-events-none relative z-10 flex w-7 shrink-0 justify-center pt-px">
+        <CheckStatusSlot
+          model={model}
+          columns={factColumns}
+          checked={checked}
+          testId={id('status')}
+          check={<CardCheck checked={checked} label={model.aria.check} testId={id('check')} onToggle={onToggleCheck} />}
+        />
       </div>
 
       {/* Record facts */}

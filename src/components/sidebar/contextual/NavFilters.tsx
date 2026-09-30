@@ -16,6 +16,14 @@ import { Collapse } from '@/design-system/components/Collapse';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
 import { useSavedViews } from '@/hooks/useSavedViews';
+import { useOperationsSavedViewPresets } from '@/hooks/useOperationsSavedViews';
+import {
+  MAX_SAVED_VIEW_DIGIT,
+  useSavedViewDigitHotkeys,
+  useShiftHeld,
+} from '@/hooks/useSavedViewDigitHotkeys';
+import { OPERATIONS_SAVED_VIEWS_KEY } from '@/lib/operations/saved-view-presets';
+import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Bookmark, Calendar, Check, ChevronRight, Clock, Plus, User, X } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -114,7 +122,13 @@ export function NavFilters({
 
   return (
     <section data-nav-filters aria-label="Filters" aria-busy={facets.isFetching || undefined} className="px-2 pt-2">
-      {savedViews ? <SavedViewPresets storageKey={savedViews.storageKey} paramKeys={savedViews.paramKeys} /> : null}
+      {savedViews ? (
+        savedViews.storageKey === OPERATIONS_SAVED_VIEWS_KEY ? (
+          <OperationsSavedViewPresets />
+        ) : (
+          <SavedViewPresets storageKey={savedViews.storageKey} paramKeys={savedViews.paramKeys} />
+        )
+      ) : null}
       {/* A hairline opens the category, like every other sidebar category — no
           text heading. The live count + Reset ride the line only while a
           filter is on. */}
@@ -241,22 +255,56 @@ function orderOptions<T extends { value: string; count: number }>(options: reado
   return [...options.filter((option) => !empty(option)), ...options.filter(empty)];
 }
 
-/**
- * The view's saved views as one-click presets (`useSavedViews`), at the top
- * of the body: one block per view (Bookmark glyph, lit while the URL matches
- * it, pressing the lit one clears it), a hover × on your own views, and a
- * `Save view` block only while unsaved filters are on. Nothing saved and no
- * filter on → nothing renders.
- */
+/** The presets a surface offers and how to drive them — `useSavedViews`, or a surface's own store. */
+interface SavedViewPresetsModel<V extends { id: string; name: string; isMine: boolean }> {
+  views: readonly V[];
+  activeView: V | null;
+  hasActiveFilters: boolean;
+  applyView: (view: V) => void;
+  clearView: () => void;
+  saveView: (name: string) => void;
+  removeView: (id: string) => void;
+}
+
 function SavedViewPresets({ storageKey, paramKeys }: { storageKey: string; paramKeys: readonly string[] }) {
-  const { views, activeView, hasActiveFilters, applyView, clearView, saveView, removeView } = useSavedViews({
-    storageKey,
-    paramKeys,
-  });
+  const model = useSavedViews({ storageKey, paramKeys });
+  return <SavedViewPresetList groupId={storageKey} model={model} />;
+}
+
+/** Operations ▸ History keeps its own store (system presets + `/api/operations/saved-views`). */
+function OperationsSavedViewPresets() {
+  const model = useOperationsSavedViewPresets();
+  return <SavedViewPresetList groupId={OPERATIONS_SAVED_VIEWS_KEY} model={model} />;
+}
+
+/**
+ * The view's saved views as one-click presets, at the top of the body: one
+ * block per view (Bookmark glyph, lit while the URL matches it, pressing the
+ * lit one clears it), a hover × on your own views, and a `Save view` block
+ * only while unsaved filters are on. Nothing saved and no filter on →
+ * nothing renders.
+ */
+function SavedViewPresetList<V extends { id: string; name: string; isMine: boolean }>({
+  groupId,
+  model,
+}: {
+  groupId: string;
+  model: SavedViewPresetsModel<V>;
+}) {
+  const { views, activeView, hasActiveFilters, applyView, clearView, saveView, removeView } = model;
   const [naming, setNaming] = useState(false);
   const [draft, setDraft] = useState('');
   const plateTransition = useMotionTransition(motionTransition.sliderIndicator);
   const canSave = hasActiveFilters && !activeView;
+  // Hold Shift: every preset paints its digit, Shift + digit jumps (never
+  // while typing — see the hook's gates).
+  const shiftHeld = useShiftHeld();
+  useSavedViewDigitHotkeys({
+    views,
+    activeViewId: activeView?.id ?? null,
+    applyView,
+    clearView,
+  });
   if (views.length === 0 && !canSave) return null;
 
   const commit = () => {
@@ -268,22 +316,33 @@ function SavedViewPresets({ storageKey, paramKeys }: { storageKey: string; param
 
   return (
     <div role="group" aria-label="Saved views" data-nav-presets className="flex flex-col gap-px">
-      <LayoutGroup id={`nav-presets:${storageKey}`}>
-        {views.map((view) => {
+      <LayoutGroup id={`nav-presets:${groupId}`}>
+        {views.map((view, index) => {
           const lit = view.id === activeView?.id;
+          // The digit takes the Bookmark's slot while Shift is held — the
+          // identifier is READ, never hovered for.
+          const digit = shiftHeld && index < MAX_SAVED_VIEW_DIGIT ? index + 1 : null;
           return (
             <div key={view.id} className="group relative">
               <button
                 type="button"
                 aria-pressed={lit}
+                aria-keyshortcuts={index < MAX_SAVED_VIEW_DIGIT ? `Shift+${index + 1}` : undefined}
                 data-nav-preset={view.id}
+                data-nav-preset-digit={digit ?? undefined}
                 onClick={() => (lit ? clearView() : applyView(view))}
                 className={cn(ROW_CLASS, view.isMine && 'pr-8', lit && 'font-medium')}
               >
                 {lit ? (
                   <motion.span aria-hidden layoutId="nav-preset-plate" transition={plateTransition} className={NAV_BLOCK_PLATE_CLASS} />
                 ) : null}
-                <Bookmark aria-hidden className={cn(ROW_ICON_CLASS, lit && 'text-text-default')} />
+                {digit ? (
+                  <KeyboardKey aria-hidden size="xs" className="pointer-events-none">
+                    {digit}
+                  </KeyboardKey>
+                ) : (
+                  <Bookmark aria-hidden className={cn(ROW_ICON_CLASS, lit && 'text-text-default')} />
+                )}
                 <span className="min-w-0 flex-1 truncate" title={view.name}>
                   {view.name}
                 </span>

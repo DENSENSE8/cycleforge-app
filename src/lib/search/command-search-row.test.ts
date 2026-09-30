@@ -27,3 +27,22 @@ test('the second line never repeats the primary identifier', () => {
     'Used · SKU-1',
   );
 });
+
+test('a SKU titled by its product keeps the SKU code on the second line; other named hits stay one line', () => {
+  assert.equal(
+    commandSearchSecondLine(
+      { entityType: 'sku', title: 'Wireless adapter 300/ 700', subtitle: 'TMP-H5YM4-K68X4 · 25 on hand' },
+      'Wireless adapter 300/ 700',
+      false,
+    ),
+    'TMP-H5YM4-K68X4 · 25 on hand',
+  );
+  assert.equal(
+    commandSearchSecondLine(
+      { entityType: 'repair', title: 'Bose Wave', subtitle: '#10089 · Ana Ruiz' },
+      'Bose Wave',
+      false,
+    ),
+    '',
+  );
+});

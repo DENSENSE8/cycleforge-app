@@ -24,6 +24,9 @@ const PERM_BY_ENTITY_TYPE: Record<string, PermissionString> = {
   BIN_ADJUSTMENT: 'bin.adjust',
   SERIAL_UNIT: 'tech.scan_serial',
   WORK_ASSIGNMENT: 'work_orders.claim',
+  // Same gate as the upload (`entity-permissions.ts`): a mis-shot repair
+  // receiving / shipping photo must be removable by whoever may add one.
+  REPAIR_SERVICE: 'repair.intake',
 };
 
 export async function DELETE(
@@ -84,7 +87,7 @@ export async function DELETE(
     });
   }
   if (entityType === 'SKU_STOCK') {
-    await publishSkuStockMediaChanged(orgId, Number(entityId), 'api.photos.delete');
+    await publishSkuStockMediaChanged(orgId, Number(entityId), 'delete', 'api.photos.delete');
   }
 
   return NextResponse.json({ success: true, id, entityType });

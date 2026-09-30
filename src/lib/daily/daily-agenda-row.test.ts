@@ -31,6 +31,8 @@ function task(overrides: Partial<TaskDeskRow> = {}): TaskDeskRow {
     deadlineAtMs: null,
     completedAtMs: null,
     remindAtMs: null,
+    lastFollowUpAtMs: null,
+    nextFollowUpAtMs: null,
     ticket: null,
     links: [],
     photoCount: 0,

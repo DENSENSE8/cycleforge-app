@@ -76,13 +76,21 @@ export const OrderCard = memo(function OrderCard({
   const record = useMemo<RecordCardModel>(() => {
     const spec = LIFECYCLE[model.state];
     const chips: RecordCardChip[] = [];
-    if (model.urgent && model.state !== 'urgent') chips.push({ id: 'urgent', tone: 'warning', short: 'Urgent' });
+    const urgentWord = model.urgentLabel ?? 'Urgent';
+    // The chip names a paid-for service ("Expedited") even on an urgent-state card; a plain
+    // operator Urgent is already the state icon there, so it needs no chip.
+    if (model.urgent && (model.state !== 'urgent' || urgentWord !== 'Urgent')) {
+      chips.push({ id: 'urgent', tone: 'warning', short: urgentWord });
+    }
     return {
       key: model.key,
       leadId: model.lead.id,
       state: lifecycleRecordState(model.state),
       stateIcon: LIFECYCLE_GLYPH[spec.icon],
-      stateMeaning: STATUS_MEANING[model.state],
+      stateMeaning:
+        model.state === 'urgent' && urgentWord !== 'Urgent'
+          ? `${urgentWord} — ship this one first`
+          : STATUS_MEANING[model.state],
       alert:
         model.outOfStockCount > 0
           ? {

@@ -20,7 +20,9 @@ import {
   parseReceivingHistorySearchFieldWire,
   parseReceivingHistorySearchScopeWire,
 } from '@/lib/receiving-history-search';
-import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
+import { parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+import { REPAIR_CHANNELS, REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
+import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 import { parseSearchEtypeWire } from '@/lib/search/search-refine';
 import {
   parsePickupTab,
@@ -119,15 +121,20 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     wstatus: paramText,
     wexp: paramText,
     /**
-     * Shared search key — Support warranty filter, and RepairTable queue search
+     * Shared search key — Support warranty filter, and the repair cards' Find
      * when `mode=repairs` (same param name as `/repair`).
      */
     search: paramText,
-    /** RepairTable display sort on Sales → Repairs (`?mode=repairs`). */
-    sort: paramRoundTrip((raw) => (raw === 'newest' || isRepairColumnSort(raw) ? raw : null)),
-    dir: paramEnum(['asc', 'desc'] as const),
-    /** RepairTable deep-link (Sales history may open a row; intake stays on `/repair`). */
+    /** Repair cards' sidebar Sort on Sales → Repairs (`?mode=repairs`). */
+    [REPAIR_SORT_PARAM]: paramRoundTrip(parseRepairSort),
+    /** Repair cards' client page (shared TriageCardList). */
+    page: paramPositiveInt,
+    /** Repair cards' status chips right of the count (comma list, `REPAIR_STATUS_CHIP_KEYS`). */
+    [REPAIR_STATUS_CHIP_PARAM]: paramText,
+    /** Repair record deep-link (Sales history may open a card; intake stays on `/repair`). */
     openRepair: paramPositiveInt,
+    /** Sales → Repairs sidebar view: All (bare) · Shipped in (`shipment`) · Dropped off (`pickup`). */
+    [REPAIR_CHANNEL_PARAM]: paramEnum(REPAIR_CHANNELS),
     dq: paramText,
     /**
      * Legacy inbound domain params — kept so `/dashboard?mode=inbound` bookmarks
@@ -141,7 +148,7 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
 });
 
 
-/** `/` (Daily) — the per-staff daily checklist, single surface. */
+/** `/` (Tasks, was Daily) — the follow-up desk: tasks, ticket follow-ups, the checklist, projects. */
 const HOME_ROUTE_PARAMS = defineRouteParams({
   route: '/',
   owns: {
@@ -154,11 +161,17 @@ const HOME_ROUTE_PARAMS = defineRouteParams({
      * so the param survives navigation in the meantime.
      */
     item: paramPositiveInt,
-    /** Daily's sidebar-owned lens, status, scope, and header Find. */
+    /** Tasks' sidebar-owned view, status, scope, and header Find. */
     tab: paramText,
     q: paramText,
     filter: paramText,
     scope: paramText,
+    /** Tasks' project focus — one project's rows (the board's project heading). */
+    project: paramText,
+    /** Tasks' layout: `columns` = wide triage, one column per type (the toolbar's List · Columns, `V`). */
+    layout: paramText,
+    /** Tasks' helpdesk-status chips: a comma list (`new,open,pending,hold,solved,closed`), several OR together. */
+    ticket: paramText,
     /** The agenda row list's 1-based page (`useTriageCut`). */
     page: paramPositiveInt,
   },
@@ -236,6 +249,17 @@ const OPERATIONS_ROUTE_PARAMS = defineRouteParams({
     signalId: paramText,
     window: paramText,
     signalKind: paramText,
+    /**
+     * Goals · Staff · Logs (ex-admin consoles): the stage picker's list filter
+     * (the contextual Find), each view's list choice, the Logs actor, and the
+     * picked log event. `staffId` (the picked staffer) rides the carries.
+     */
+    search: paramText,
+    goalView: paramEnum(['behind', 'on-track', 'exceeded'] as const),
+    staffView: paramEnum(['active', 'inactive', 'technician', 'packer'] as const),
+    logKind: paramEnum(['audit', 'sal'] as const),
+    actorStaffId: paramPositiveInt,
+    eventId: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });

@@ -11,15 +11,72 @@ import {
 import { printLabelFacesJob } from '@/lib/print/printLabelFacesJob';
 import { clampLabelCopies, platesPerTote, DEFAULT_TOTE_COPIES_PER_SIDE } from '@/lib/print/labelCopies';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { silentRawLabelProfile } from '@/lib/print/browserPrint';
+import { beginWork } from '@/lib/background-work/store';
 
 type PrintLabelRunResult = {
-  status: 'printed' | 'skipped' | 'register_failed' | 'mint_failed';
+  /** `cancelled`: stopped between stickers; `count` is what printed before. */
+  status: 'printed' | 'cancelled' | 'skipped' | 'register_failed' | 'mint_failed';
   channel?: 'usb' | 'iframe';
   count: number;
   error?: string;
 };
 
 type PrintLabelRunProgress = (done: number, total: number) => void;
+
+/** What a run gets from its print item: ticks, the pause/cancel gate, and whether a cancel stopped it. */
+interface PrintRun {
+  onProgress: PrintLabelRunProgress;
+  checkpoint: () => Promise<boolean>;
+  /** Stickers printed before a cancel stopped the run; null when it was not cancelled. */
+  cancelledAfter: () => number | null;
+}
+
+/**
+ * One run as one print item in the background-work record — the header's
+ * "Printing N of M". A silent run prints sticker by sticker, so it can be
+ * paused and cancelled between them; a dialog run is one job and cannot.
+ */
+async function asPrintWork(
+  label: string,
+  total: number | undefined,
+  onProgress: PrintLabelRunProgress | undefined,
+  run: (print: PrintRun) => Promise<PrintLabelRunResult>,
+): Promise<PrintLabelRunResult> {
+  const work = beginWork({
+    kind: 'print',
+    label,
+    total,
+    ...(silentRawLabelProfile() ? { controls: { pause: true, cancel: true } } : {}),
+  });
+  let printed = 0;
+  let planned = total;
+  let cancelled = false;
+  try {
+    const result = await run({
+      onProgress: (done, runTotal) => {
+        printed = done;
+        planned = runTotal;
+        work.progress(done, runTotal);
+        onProgress?.(done, runTotal);
+      },
+      checkpoint: async () => {
+        const go = await work.checkpoint();
+        if (!go) cancelled = true;
+        return go;
+      },
+      cancelledAfter: () => (cancelled ? printed : null),
+    });
+    if (result.status === 'printed') work.finish(`${result.count} printed`);
+    else if (result.status === 'cancelled') work.cancelled(`Cancelled · ${result.count} of ${planned ?? result.count} printed`);
+    else if (result.status === 'skipped') work.finish('Nothing printed');
+    else work.fail(result.error ?? 'Nothing printed');
+    return result;
+  } catch (err) {
+    work.fail(err instanceof Error ? err.message : 'Print failed');
+    throw err;
+  }
+}
 
 async function recordLocationPrintJobs(input: {
   segments: readonly LocationSegments[];
@@ -71,36 +128,44 @@ export async function printBinLabelRun(input: {
   if (input.segments.length === 0) {
     return { status: 'skipped', count: 0 };
   }
-  try {
-    await input.register(input.roomName, [...input.segments]);
-  } catch (err) {
-    return {
-      status: 'register_failed',
-      count: 0,
-      error: err instanceof Error ? err.message : 'Could not register location for printing',
-    };
-  }
+  return asPrintWork('Bin labels', input.segments.length, input.onProgress, async (print) => {
+    try {
+      await input.register(input.roomName, [...input.segments]);
+    } catch (err) {
+      return {
+        status: 'register_failed',
+        count: 0,
+        error: err instanceof Error ? err.message : 'Could not register location for printing',
+      };
+    }
 
-  const channel = await printLocationLabelsJob({
-    segments: input.segments,
-    roomName: input.roomName,
-    gln: input.gln,
-    orgSlug: input.orgSlug,
-    onProgress: input.onProgress,
+    const channel = await printLocationLabelsJob({
+      segments: input.segments,
+      roomName: input.roomName,
+      gln: input.gln,
+      orgSlug: input.orgSlug,
+      onProgress: print.onProgress,
+      checkpoint: print.checkpoint,
+    });
+    if (channel === 'skipped') {
+      return { status: 'skipped', count: 0 };
+    }
+
+    // One sticker per location, in order: a cancelled run logs the ones that printed.
+    const stoppedAt = print.cancelledAfter();
+    const printedSegments = stoppedAt === null ? input.segments : input.segments.slice(0, stoppedAt);
+    if (printedSegments.length > 0) {
+      void recordLocationPrintJobs({
+        segments: printedSegments,
+        roomName: input.roomName,
+        gln: input.gln,
+        orgSlug: input.orgSlug,
+        templateId: 'location_bin',
+      });
+    }
+
+    return { status: stoppedAt === null ? 'printed' : 'cancelled', channel, count: printedSegments.length };
   });
-  if (channel === 'skipped') {
-    return { status: 'skipped', count: 0 };
-  }
-
-  void recordLocationPrintJobs({
-    segments: input.segments,
-    roomName: input.roomName,
-    gln: input.gln,
-    orgSlug: input.orgSlug,
-    templateId: 'location_bin',
-  });
-
-  return { status: 'printed', channel, count: input.segments.length };
 }
 
 /** Rack print run — position=0 segments. */
@@ -115,37 +180,44 @@ export async function printRackLabelRun(input: {
   if (input.racks.length === 0) {
     return { status: 'skipped', count: 0 };
   }
-  try {
-    await input.register(input.roomName, [...input.racks]);
-  } catch (err) {
-    return {
-      status: 'register_failed',
-      count: 0,
-      error: err instanceof Error ? err.message : 'Could not register rack for printing',
-    };
-  }
+  return asPrintWork('Rack labels', input.racks.length, input.onProgress, async (print) => {
+    try {
+      await input.register(input.roomName, [...input.racks]);
+    } catch (err) {
+      return {
+        status: 'register_failed',
+        count: 0,
+        error: err instanceof Error ? err.message : 'Could not register rack for printing',
+      };
+    }
 
-  const segments = input.racks.map(rackToLocation);
-  const channel = await printLocationLabelsJob({
-    segments,
-    roomName: input.roomName,
-    gln: input.gln,
-    orgSlug: input.orgSlug,
-    onProgress: input.onProgress,
+    const segments = input.racks.map(rackToLocation);
+    const channel = await printLocationLabelsJob({
+      segments,
+      roomName: input.roomName,
+      gln: input.gln,
+      orgSlug: input.orgSlug,
+      onProgress: print.onProgress,
+      checkpoint: print.checkpoint,
+    });
+    if (channel === 'skipped') {
+      return { status: 'skipped', count: 0 };
+    }
+
+    const stoppedAt = print.cancelledAfter();
+    const printedSegments = stoppedAt === null ? segments : segments.slice(0, stoppedAt);
+    if (printedSegments.length > 0) {
+      void recordLocationPrintJobs({
+        segments: printedSegments,
+        roomName: input.roomName,
+        gln: input.gln,
+        orgSlug: input.orgSlug,
+        templateId: 'location_rack',
+      });
+    }
+
+    return { status: stoppedAt === null ? 'printed' : 'cancelled', channel, count: printedSegments.length };
   });
-  if (channel === 'skipped') {
-    return { status: 'skipped', count: 0 };
-  }
-
-  void recordLocationPrintJobs({
-    segments,
-    roomName: input.roomName,
-    gln: input.gln,
-    orgSlug: input.orgSlug,
-    templateId: 'location_rack',
-  });
-
-  return { status: 'printed', channel, count: segments.length };
 }
 
 /** Bulk tote (handling-unit) print run — mint N boxes, then print their `H-{id}` plates as ONE batched job. */
@@ -163,68 +235,80 @@ export async function printHandlingUnitLabelRun(input: {
   copies?: number;
   onProgress?: PrintLabelRunProgress;
 }): Promise<PrintLabelRunResult> {
-  const copiesPerIdentity = clampLabelCopies(
-    input.copies ?? platesPerTote(DEFAULT_TOTE_COPIES_PER_SIDE),
-  );
+  return asPrintWork('Tote labels', undefined, input.onProgress, async (print) => {
+    const copiesPerIdentity = clampLabelCopies(
+      input.copies ?? platesPerTote(DEFAULT_TOTE_COPIES_PER_SIDE),
+    );
 
-  let boxes: readonly HandlingUnitLabelPayload[];
-  if (input.boxes && input.boxes.length > 0) {
-    boxes = input.boxes;
-  } else {
-    const count = input.count;
-    const mint = input.mint;
-    if (!mint || count == null || !Number.isFinite(count) || count < 1) {
+    let boxes: readonly HandlingUnitLabelPayload[];
+    if (input.boxes && input.boxes.length > 0) {
+      boxes = input.boxes;
+    } else {
+      const count = input.count;
+      const mint = input.mint;
+      if (!mint || count == null || !Number.isFinite(count) || count < 1) {
+        return { status: 'skipped', count: 0 };
+      }
+      try {
+        boxes = await mint(Math.floor(count));
+      } catch (err) {
+        return {
+          status: 'mint_failed',
+          count: 0,
+          error: err instanceof Error ? err.message : 'Could not mint totes for printing',
+        };
+      }
+    }
+    if (boxes.length === 0) {
       return { status: 'skipped', count: 0 };
     }
-    try {
-      boxes = await mint(Math.floor(count));
-    } catch (err) {
-      return {
-        status: 'mint_failed',
-        count: 0,
-        error: err instanceof Error ? err.message : 'Could not mint totes for printing',
-      };
+
+    const faces = boxes.map(handlingUnitLabelToFace);
+    const channel = await printLabelFacesJob({
+      faces,
+      name: 'Tote labels',
+      faceName: (face) => `Tote ${face.center}`.trim(),
+      copies: copiesPerIdentity,
+      onProgress: print.onProgress,
+      checkpoint: print.checkpoint,
+    });
+    if (channel === 'skipped') {
+      return { status: 'skipped', count: 0 };
     }
-  }
-  if (boxes.length === 0) {
-    return { status: 'skipped', count: 0 };
-  }
 
-  const faces = boxes.map(handlingUnitLabelToFace);
-  const channel = await printLabelFacesJob({
-    faces,
-    name: 'Tote labels',
-    faceName: (face) => `Tote ${face.center}`.trim(),
-    copies: copiesPerIdentity,
-    onProgress: input.onProgress,
+    const plates = boxes.length * copiesPerIdentity;
+    const stoppedAt = print.cancelledAfter();
+    const printedPlates = stoppedAt ?? plates;
+    if (printedPlates > 0) void recordHandlingUnitPrintJobs(boxes, faces, copiesPerIdentity, printedPlates);
+
+    return { status: stoppedAt === null ? 'printed' : 'cancelled', channel, count: printedPlates };
   });
-  if (channel === 'skipped') {
-    return { status: 'skipped', count: 0 };
-  }
-
-  void recordHandlingUnitPrintJobs(boxes, faces, copiesPerIdentity);
-
-  return { status: 'printed', channel, count: boxes.length * copiesPerIdentity };
 }
 
+/** `printedPlates`: the run prints each tote's copies together, in order — a cancelled run logs what printed. */
 async function recordHandlingUnitPrintJobs(
   boxes: readonly HandlingUnitLabelPayload[],
   faces: readonly LabelFaceModel[],
   copies: number,
+  printedPlates: number,
 ): Promise<void> {
   const batchId = safeRandomUUID();
-  const jobs = boxes.map((box, i) => {
+  const jobs = boxes.flatMap((box, i) => {
+    const printedCopies = Math.min(copies, Math.max(0, printedPlates - i * copies));
+    if (printedCopies === 0) return [];
     const face = faces[i]!;
-    return {
-      jobType: 'HANDLING_UNIT' as const,
-      handlingUnitId: box.handlingUnitId,
-      qrPayload: face.matrix.value,
-      symbology: face.matrix.symbology,
-      templateId: 'handling_unit_lpn',
-      unitUid: face.center,
-      copies,
-      clientEventId: `tote-print:${batchId}:${face.matrix.value}`,
-    };
+    return [
+      {
+        jobType: 'HANDLING_UNIT' as const,
+        handlingUnitId: box.handlingUnitId,
+        qrPayload: face.matrix.value,
+        symbology: face.matrix.symbology,
+        templateId: 'handling_unit_lpn',
+        unitUid: face.center,
+        copies: printedCopies,
+        clientEventId: `tote-print:${batchId}:${face.matrix.value}`,
+      },
+    ];
   });
   if (jobs.length === 0) return;
   try {

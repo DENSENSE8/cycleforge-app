@@ -42,7 +42,10 @@ channels → exceptions pass**. A failing step never stops the rest. Driven by:
 
 The header Sync key (`GlobalHeaderSync`, right of Add · Inbox) is a fixed-size icon with
 a status dot — blue syncing, amber a latest run failed, green up to date — read from each
-job's latest `cron_runs` row every minute. Hover teaches its `Y` chord like Add's `C`; its
+job's latest `cron_runs` row every minute (every 10s while one runs). Its glyph spins while
+any sync runs: a pressed one or a cron the ledger shows running — both are `sync` items in
+the background-work record (`src/lib/background-work/store.ts`, fed by
+`src/lib/sync/global-sync-client.ts`), which the header's Sync key reads too (it also spins while a print runs; print jobs themselves show only as their overlay cards). Hover teaches its `Y` chord like Add's `C`; its
 panel lists every outbound/inbound sync with its own last run and a Run verb, and (for
 `admin.view`) links **Sync history & past imports** (`/operations?mode=sync`, every run
 with its summary). The To-ship desk no longer carries sync verbs: its face is

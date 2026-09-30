@@ -71,7 +71,6 @@ export function reprintWarning(labels: readonly PrintedLabelFace[]): string | nu
 
 export interface DeskPress {
   print: UseMutationResult<string[], Error, PressInput>;
-  progress: { done: number; total: number } | null;
   notice: string;
   setNotice: (notice: string) => void;
   /** Re-read every desk queue, batch and print log. */
@@ -94,12 +93,12 @@ function localLines(outcome: PrintOutcome, reprint: boolean): string[] {
   const first = outcome.failed[0];
   if (first) lines.push(`${outcome.failed.length} failed — ${first.doc.title}: ${first.reason}`);
   if (outcome.logError) lines.push(`not logged: ${outcome.logError}`);
+  if (outcome.cancelled.length > 0) lines.push(`Cancelled — ${outcome.cancelled.length} not printed`);
   return lines;
 }
 
 export function useDeskPress(stations: PrintStations, refreshRoutes: () => void): DeskPress {
   const queryClient = useQueryClient();
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [notice, setNotice] = useState('');
 
   const refresh = useCallback(async () => {
@@ -117,31 +116,25 @@ export function useDeskPress(stations: PrintStations, refreshRoutes: () => void)
         const go = await requestConfirm({ title: 'Print again?', description: confirm, confirmLabel: 'Print again', cancelLabel: 'Cancel' });
         if (!go) return ['Nothing printed — reprint cancelled.'];
       }
+      // Running progress is the header's (`printDocuments` / `sendDocuments` report it); the desk keeps the outcome.
       const plan = planPress(documents, stations.target, stations.blockedReason, MAX_STATION_DOCUMENTS);
-      const total = plan.local.length + plan.remote.reduce((sum, job) => sum + job.documents.length, 0);
-      let before = 0;
-      const tick = (done: number) => setProgress({ done: before + done, total });
-      setProgress({ done: 0, total });
       const lines: string[] = [];
       try {
         if (plan.local.length > 0) {
           const here = readPrintStation();
           const outcome = await printDocuments(plan.local, currentPrintRoute, {
-            onProgress: (done) => tick(done),
             station: here.id ? { id: here.id, name: here.name } : null,
           });
           lines.push(...localLines(outcome, reprint));
-          before += plan.local.length;
         }
         for (const job of plan.remote) {
           const refs = job.documents.flatMap((doc) => stationDocumentRef(doc) ?? []);
-          const acked = await stations.sendDocuments(job.station.stationId, job.stock, safeRandomUUID(), refs, (done) => tick(done));
+          const acked = await stations.sendDocuments(job.station.stationId, job.stock, safeRandomUUID(), refs);
           lines.push(
             acked
               ? `${stockCount(job.documents.length, job.stock)} → ${job.station.stationName}`
               : `${job.station.stationName} did not answer — ${stockCount(job.documents.length, job.stock)} not sent`,
           );
-          before += job.documents.length;
         }
         for (const block of plan.blocked) lines.push(`${stockCount(block.count, block.stock)} not sent — ${block.reason}`);
       } finally {
@@ -152,10 +145,9 @@ export function useDeskPress(stations: PrintStations, refreshRoutes: () => void)
     onSuccess: (lines) => setNotice(lines.join(' · ') || 'Nothing printed.'),
     onError: (error) => setNotice(error.message || 'Printing failed.'),
     onSettled: async () => {
-      setProgress(null);
       await refresh();
     },
   });
 
-  return { print, progress, notice, setNotice, refresh };
+  return { print, notice, setNotice, refresh };
 }

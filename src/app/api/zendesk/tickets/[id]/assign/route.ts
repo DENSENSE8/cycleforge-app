@@ -10,7 +10,6 @@ import {
 } from '@/lib/zendesk-assignments';
 import { createStaffMessage, resolveRecipient } from '@/lib/neon/staff-messages-queries';
 import { publishStaffMessage } from '@/lib/realtime/publish';
-import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
 import { syncZendeskTicketRegistryCaches } from '@/lib/support/tickets';
 
 export const dynamic = 'force-dynamic';
@@ -59,7 +58,6 @@ export const POST = withAuth(
       // Clear the assignment (stop watching).
       if (staffId == null) {
         await clearTicketAssignment(ctx.organizationId, id);
-        await invalidateZendeskTicketCache(ctx.organizationId, id);
         return NextResponse.json({ success: true, assignment: null });
       }
 
@@ -123,7 +121,6 @@ export const POST = withAuth(
         });
       }
 
-      await invalidateZendeskTicketCache(ctx.organizationId, id);
       return NextResponse.json({ success: true, assignment });
     } catch (err) {
       return errorResponse(err, context);

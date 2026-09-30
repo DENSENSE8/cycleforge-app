@@ -1,23 +1,14 @@
 /**
  * Where a record opens: page + sidebar context + record param. An order that
- * sits in a desk view opens ON that view (Exceptions `?order=`, To-ship /
- * Picking `?openOrderId=`, Shipped `?shipment=`), so the sidebar lights the
- * right section; everything else opens where search already sends it.
+ * sits in a desk view opens ON that view with the view's own `recordParam`
+ * (`DESK_VIEWS`; Shipped opens a package, `?shipment=`), so the sidebar lights
+ * the right section; everything else opens where search already sends it.
  */
 
-import { deskViewHref, type DeskViewId } from '@/lib/outbound/desk-views';
+import { deskViewHref, getDeskView, type DeskViewId } from '@/lib/outbound/desk-views';
 import { searchHitHref, toDbEntityType } from '@/lib/search/search-hit';
 import { SHIPMENT_RECORD_PARAM } from '@/lib/shipments/shipment-record-types';
 import type { IdentifyKind } from './schema';
-
-/** The record param each desk view reads to open an order. */
-const DESK_ORDER_PARAM: Record<DeskViewId, string> = {
-  exceptions: 'order',
-  po: 'openOrderId',
-  pick: 'openOrderId',
-  triage: 'openOrderId',
-  shipped: 'openOrderId',
-};
 
 export function recordHref(record: {
   kind: IdentifyKind;
@@ -36,7 +27,7 @@ export function recordHref(record: {
     if (record.deskView === 'shipped' && Number.isSafeInteger(shipmentId) && shipmentId > 0) {
       params.set(SHIPMENT_RECORD_PARAM, String(shipmentId));
     } else {
-      params.set(DESK_ORDER_PARAM[record.deskView], String(id));
+      params.set(getDeskView(record.deskView).recordParam, String(id));
     }
     return `${pathname}?${params.toString()}`;
   }

@@ -10,8 +10,6 @@ import { cn } from '@/utils/_cn';
 import { Button, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
-import { elevationClass } from '@/design-system/tokens/shadows';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   motionPresence,
   motionTransition,
@@ -115,17 +113,15 @@ export function WeldedFeedbackPanel({
       >
         <div
           className={cn(
-            // No bottom border and no bottom radius:
+            // Frames the TOP of the welded silhouette only: top + side
+            // strokes and top radius. No bottom border — the dock below owns
+            // its full outline, so this panel never paints over it.
             COMPOSER_SHELL_CORNER,
             // `relative` positions the edge sweep below. No `overflow-hidden`
             // here on purpose — the sweep clips itself, and clipping the whole
             // box would eat the CTA's focus ring at the edges.
-            'relative rounded-b-none border border-b-0 shadow-inner',
-            // The STROKE is the silhouette's, not this half's.
-            'border-border-soft',
+            'relative rounded-b-none border border-b-0 border-border-soft',
             palette.bg,
-            // Follow the composer's focus state.
-            focusRing('grouped', 'accent'),
           )}
         >
           <div className="flex min-w-0 items-center gap-2 px-3 py-2">
@@ -214,32 +210,5 @@ export function WeldedFeedbackPanel({
         </div>
       </motion.div>
     </CollapseItem>
-  );
-}
-
-/** WeldedStack — the focus owner for a welded pair. */
-export function WeldedStack({
-  welded,
-  children,
-}: {
-  welded: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={cn(
-        COMPOSER_SHELL_CORNER,
-        // `group` so the panel can follow this box's focus state — it is the
-        // only element that knows the composer inside it has focus.
-        'group',
-        // `halo`, not `wrapper`:
-        welded && focusRing('halo', 'accent'),
-        // ELEVATION is silhouette-level chrome too, for the same reason as the ring.
-        welded && elevationClass('raised'),
-      )}
-      data-welded-stack={welded ? 'true' : undefined}
-    >
-      {children}
-    </div>
   );
 }

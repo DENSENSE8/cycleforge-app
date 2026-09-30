@@ -1,6 +1,7 @@
 /**
- * Backfill every reachable dogfood product image from its Amazon ASIN or eBay
- * listing id. Marketplace media is registered in CycleForge's photo pipeline;
+ * Backfill every reachable dogfood product image from its listing: Amazon ASIN,
+ * eBay item id, Shopify variant SKU, Ecwid product id. Marketplace media is
+ * registered in CycleForge's photo pipeline;
  * public legacy sources can render from their CDN while managed storage keeps
  * using the internal photo route. Catalog-paired lines receive a listing-gallery
  * cover; still-unpaired lines receive an order-scoped fallback.
@@ -18,7 +19,7 @@ async function main() {
   const report = await runMarketplaceMediaBackfill(DOGFOOD_ORG_ID, {
     apply,
     since: new Date(0),
-    providers: ['amazon', 'ebay'],
+    providers: ['amazon', 'ebay', 'shopify', 'ecwid'],
     includeZohoLinked: true,
   });
 

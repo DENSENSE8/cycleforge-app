@@ -18,13 +18,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { resolveSelectionAction } from '@/lib/selection/selection-actions';
+import { resolveSelectionAction, type SelectionAction } from '@/lib/selection/selection-actions';
 import { readPhotoPolicyBlock } from '@/lib/receiving/photo-policy-override-wire';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { toast } from '@/lib/toast';
 
 export type ReceivingAdvance = 'unboxed' | 'received';
+
+/** Preserve the selection catalog's disclosure level in the shared action strip. */
+export function receivingActionPlacement(
+  action: Pick<SelectionAction<unknown>, 'key' | 'primary'>,
+): RecordActionVerb['placement'] {
+  if (action.key === 'delete') return 'isolated';
+  return action.primary ? 'primary' : 'overflow';
+}
 
 export function receivingAdvancePackages(rows: readonly ReceivingLineRow[], advance: ReceivingAdvance): Array<[number, ReceivingLineRow[]]> {
   const packages = new Map<number, ReceivingLineRow[]>();
@@ -149,7 +157,7 @@ export function ReceivingSelectionVerbs({
                   : action.tone === 'emerald'
                     ? 'success'
                     : 'default',
-          placement: action.key === 'delete' ? 'isolated' : 'primary',
+          placement: receivingActionPlacement(action),
           disabled: resolved.disabled,
           disabledReason: resolved.reason,
           pressed: action.direction ? resolved.direction === 'undo' : undefined,
@@ -160,7 +168,10 @@ export function ReceivingSelectionVerbs({
     ];
   }, [scope, rows, actions, lead, advance, advancing, canMarkReceived, noun, queryClient]);
   if (verbs.length === 0) return null;
-  return <RecordActionStrip verbs={verbs} label={`Checked ${noun} actions`} testId="incoming-bulk" />;
+  // TriageSelectBar already owns the selected-state surface. Its nested verb
+  // strip must use the borderless header face, otherwise the standalone strip
+  // face paints a stray bottom hairline through the action bar.
+  return <RecordActionStrip verbs={verbs} label={`Checked ${noun} actions`} testId="incoming-bulk" face="header" />;
 }
 
 const NO_VERBS: readonly RecordActionVerb[] = [];

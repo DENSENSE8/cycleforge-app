@@ -139,8 +139,12 @@ export interface ShippedOrder {
   replenishment_status?: string | null;
   replenishment_po_number?: string | null;
   shortage_link_status?: string | null;
-  /** Operator-marked urgent. */
+  /** Urgent — operator-marked, or set once by the import for a paid-for fast service. */
   is_urgent?: boolean;
+  /** Shipping speed the buyer paid for — a `SERVICE_LEVEL` key (`orders.service_level`). */
+  service_level?: string | null;
+  /** Service code of the label bought, probed only for urgent levels (downgrade check). */
+  label_service_code?: string | null;
   /** Catalog FK — present on the live `/api/orders` queue projection. */
   sku_catalog_id?: number | null;
   /** Catalog listing image from `sku_catalog.image_url` (orders queue join). */

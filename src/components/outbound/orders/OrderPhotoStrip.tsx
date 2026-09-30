@@ -4,7 +4,7 @@
  * The order's photos INLINE in the record (owner 2026-09-27): a thumbnail
  * strip of one evidence stage (packing under Packed, testing under QC,
  * arrival + unbox under the item), each tile opening the shared fullscreen
- * viewer. Same payload as {@link OrderPhotoPeek} (the order-timeline query, one
+ * viewer. Same payload as {@link OrderEvidencePhotosButton} (the order-timeline query, one
  * key, no second request) and the same gallery SoT (`usePhotoGallery` +
  * `PhotoLauncher` thumbnails + `PhotoViewerPortal`) — never a bespoke lightbox.
  */

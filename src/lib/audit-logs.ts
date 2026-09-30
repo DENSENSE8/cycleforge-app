@@ -388,6 +388,18 @@ export const AUDIT_ACTION = {
   WORK_TASK_MEDIA_LINK_ADD:    'work_task.media_link_add',
   WORK_TASK_MEDIA_LINK_UPDATE: 'work_task.media_link_update',
   WORK_TASK_MEDIA_LINK_REMOVE: 'work_task.media_link_remove',
+  // A chase logged on a thrown task (`work_assignment_follow_ups`): email /
+  // call / ticket / note, with when it happened and the next chase instant.
+  WORK_TASK_FOLLOW_UP_LOG:     'work_task.follow_up_log',
+  // Which customer email a thrown task came from (`work_assignment_email_refs`):
+  // customer address, inbound mailbox, order / reference number — added,
+  // re-pointed, removed. A reference only; the email body is never stored.
+  WORK_TASK_EMAIL_REF_ADD:     'work_task.email_ref_add',
+  WORK_TASK_EMAIL_REF_UPDATE:  'work_task.email_ref_update',
+  WORK_TASK_EMAIL_REF_REMOVE:  'work_task.email_ref_remove',
+  // Staff alerted to follow up on a thrown task (one `staff_inbox_items` row
+  // each). after = { staffIds, note, dueAt } — the task Timeline reads it.
+  TASK_FOLLOW_UP_ALERT:        'work_task.follow_up_alert',
   // In-app issue → fix → toast loop
   USER_ISSUE_REPORT:       'user_issue.report',
   USER_ISSUE_RESOLVE:      'user_issue.resolve',

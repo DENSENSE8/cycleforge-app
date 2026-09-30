@@ -69,6 +69,7 @@ import { useActiveAssistantContext, useAssistantContext } from '@/hooks/useAssis
 import { useVoiceDictation } from '@/hooks/useVoiceDictation';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/utils/_cn';
+import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import { writeClipboardText } from '@/lib/clipboard';
 import { toast } from '@/lib/toast';
 import {
@@ -1133,7 +1134,11 @@ function FocusGreeting({ exitTransition }: { exitTransition: Transition }) {
   const presence = useMotionPresence(aiPresence.greeting);
   const enter = useMotionTransition(aiTransition.turn);
   const firstName = useAuth().user?.name.trim().split(/\s+/)[0] ?? '';
-  const hour = new Date().getHours();
+  // Warehouse-zone hour, not the host's: the server (UTC) and the browser must
+  // print the same greeting, or hydration throws React #418 and re-renders.
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', { timeZone: WAREHOUSE_TIME_ZONE, hour: 'numeric', hourCycle: 'h23' }).format(new Date()),
+  );
   const partOfDay = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   return (
     <motion.p

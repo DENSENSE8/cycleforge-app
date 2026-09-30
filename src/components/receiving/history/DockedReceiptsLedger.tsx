@@ -19,16 +19,15 @@ import { useExceptionCounts } from '@/hooks/exceptions';
 import { EXCEPTION_RECORD_PARAM } from '@/lib/exceptions/types';
 import { Button, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/design-system/primitives';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
-import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { TriageCardList, type TriageFeed, type TriageRecordSlot } from '@/design-system/components/triage-card-list/TriageCardList';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut, type TriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import type { StateName } from '@/design-system/tokens/lifecycle';
-import { CartonRecordView } from '@/components/receiving/history/CartonRecordView';
-import { cartonRecordTitle, useCartonRecord } from '@/components/receiving/history/use-carton-record';
-import { useCartonVerbs } from '@/components/receiving/history/carton-record-verbs';
+import { cartonRecordTitle } from '@/components/receiving/history/use-carton-record';
+import { useInboundCartonRecord } from '@/components/receiving/record/useInboundRecord';
+import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
 import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
 import { ReceivingSelectionVerbs } from '@/components/receiving/ReceivingSelectionVerbs';
 import { useReceivingSelectionPort } from '@/components/receiving/use-receiving-selection-port';
@@ -36,7 +35,7 @@ import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
-import { DOCKED_KIND_OPTIONS, DOCKED_STATUS_OPTIONS, dockedCartonStatuses, dockedIntakeKind, dockedRecordFace, type DockedStatus } from '@/lib/receiving/docked-record-state';
+import { DOCKED_FLAG_OPTIONS, DOCKED_KIND_OPTIONS, dockedCartonFlags, dockedIntakeKind, dockedRecordFace, type DockedFlag } from '@/lib/receiving/docked-record-state';
 import { DOCKED_KIND_PARAM } from '@/lib/receiving/inbound-lane';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { defaultDirForReceivingGridSort, isReceivingGridSortable, type ReceivingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
@@ -57,11 +56,11 @@ const SORTS: readonly { key: ReceivingGridColumnKey; label: string }[] = [
   { key: 'tracking', label: 'Tracking' },
 ];
 
-/** Every pill the `?dflag=` cut can name, in pill order. */
-const FLAG_KEYS: readonly string[] = DOCKED_STATUS_OPTIONS.map((option) => option.value);
-const FLAG_LABEL = new Map<string, string>(DOCKED_STATUS_OPTIONS.map((option) => [option.value, option.label] as const));
-/** Unfound is stock nobody can sell or pay for yet (red); Claim and Short need a person (amber); Unboxed is the clean case (green). */
-const FLAG_TONE: Readonly<Record<string, StateName>> = { UNFOUND: 'danger', CLAIM: 'warning', SHORT: 'warning', UNBOXED: 'success' };
+/** Every pill the `?dflag=` cut can name, in pill order — attention only; "Unboxed" is the view itself. */
+const FLAG_KEYS: readonly string[] = DOCKED_FLAG_OPTIONS.map((option) => option.value);
+const FLAG_LABEL = new Map<string, string>(DOCKED_FLAG_OPTIONS.map((option) => [option.value, option.label] as const));
+/** Unfound is stock nobody can sell or pay for yet (red); Claim and Short need a person (amber). */
+const FLAG_TONE: Readonly<Record<string, StateName>> = { UNFOUND: 'danger', CLAIM: 'warning', SHORT: 'warning' };
 /** The pills that ARE Exceptions hub kinds (`src/lib/exceptions/types.ts`). */
 const HUB_KIND_OF_FLAG: Readonly<Record<string, 'claim' | 'short' | 'unfound'>> = { UNFOUND: 'unfound', CLAIM: 'claim', SHORT: 'short' };
 /** Stable lock objects, one per hub kind. */
@@ -119,14 +118,14 @@ export function UnboxedReceiptsLedger({
     const result = rows.filter((row) => receivingLineMatchesQuery(row, query) && (!kind || dockedIntakeKind(row) === kind));
     return sort && dir ? result.sort((a, b) => compareReceivingGridRows(a, b, sort, dir, activityAxis)) : result;
   }, [query, kind, rows, sort, dir, activityAxis]);
-  // Pills are carton facts: every line answers with its carton's statuses.
+  // Pills are carton facts: every line answers with its carton's flags.
   const statusOfRow = useMemo(() => {
-    const byRow = new Map<number, DockedStatus[]>();
+    const byRow = new Map<number, DockedFlag[]>();
     for (const group of groupCartons(foundRows)) {
-      const statuses = dockedCartonStatuses(group.rows);
-      for (const row of group.rows) byRow.set(row.id, statuses);
+      const flags = dockedCartonFlags(group.rows);
+      for (const row of group.rows) byRow.set(row.id, flags);
     }
-    return (row: ReceivingLineRow): DockedStatus[] => byRow.get(row.id) ?? [];
+    return (row: ReceivingLineRow): DockedFlag[] => byRow.get(row.id) ?? [];
   }, [foundRows]);
 
   // Cards: cartons in activity-day sections under the default (activity) sort.
@@ -151,15 +150,15 @@ export function UnboxedReceiptsLedger({
     onOpen: open,
     onClose: close,
   });
-  // The open carton's read — shared by the record view and the strip's verbs.
-  const carton = useCartonRecord(openRow);
-  const verbs = useCartonVerbs(carton, close);
+  // The open carton's read — shared by the record view and its header verbs.
+  const carton = useInboundCartonRecord(openRow, close);
+  const slot = useRecordSlot(carton?.model ?? null, carton?.verbs ?? [], openRow ? `${cartonRecordTitle(openRow)} actions` : 'Receipt actions', 'inbound-record');
 
   // The Exceptions hub door (owner 2026-09-28, one list, two doors): on
   // `/incoming` (the sidebar owns the controls) Claim · Short · Unfound ARE
   // the hub's receiving kinds — single-select, counted by the hub's own
   // predicate, and a lit one swaps this list for the hub list locked to it.
-  // The Unboxed status, and the Unbox History tab, keep the local cut.
+  // The Unbox History tab keeps the local cut.
   const hubDoor = sidebarOwnsControls;
   const hubCounts = useExceptionCounts({ domain: 'receiving' }).data;
   const router = useRouter();
@@ -182,7 +181,7 @@ export function UnboxedReceiptsLedger({
     const counts = new Map<string, number>();
     for (const [, groups] of allCartonBands) {
       for (const group of groups) {
-        for (const flag of dockedCartonStatuses(group.rows)) counts.set(flag, (counts.get(flag) ?? 0) + 1);
+        for (const flag of dockedCartonFlags(group.rows)) counts.set(flag, (counts.get(flag) ?? 0) + 1);
       }
     }
     const hubCount = (id: string): number | null => {
@@ -193,7 +192,7 @@ export function UnboxedReceiptsLedger({
       label: 'Status',
       disabledReason: null,
       onToggle: (id) => (hubDoor && HUB_KIND_OF_FLAG[id] ? toggleHubFlag(id) : toggleStatus(id)),
-      // Fixed pills in a fixed order so the hand learns ⌥1–⌥4; zero reads as "nothing to do".
+      // Fixed pills in a fixed order so the hand learns ⌥1–⌥3; zero reads as "nothing to do".
       chips: FLAG_KEYS.map((id) => ({
         id,
         label: FLAG_LABEL.get(id) ?? id,
@@ -205,17 +204,7 @@ export function UnboxedReceiptsLedger({
   }, [allCartonBands, hubCounts, hubDoor, loading, statusFilter, toggleHubFlag, toggleStatus]);
 
 
-  const recordTitle = openRow ? cartonRecordTitle(openRow) : 'Receipt';
-  const actionStrip =
-    openRow && carton ? (
-      <RecordActionStrip key={carton.receivingId} verbs={verbs} label={`${cartonRecordTitle(openRow)} actions`} testId="carton-actions" />
-    ) : null;
-  const recordView =
-    openRow && carton ? (
-      <CartonRecordView key={carton.receivingId} record={carton} openLineId={openRow.id} onClose={close} />
-    ) : openRow ? (
-      <EvidenceNotice>No carton identity is available for this record.</EvidenceNotice>
-    ) : null;
+  const recordView = slot?.view ?? (openRow ? <EvidenceNotice>No carton identity is available for this record.</EvidenceNotice> : null);
   const summary: RecordLedgerSummary = {
     title: 'Unboxed cartons',
     facts: [{ label: 'Visible cartons', value: cardBands.reduce((sum, [, groups]) => sum + groups.length, 0) }],
@@ -281,12 +270,14 @@ export function UnboxedReceiptsLedger({
           searchEmpty={narrowed ? <p className="text-sm text-text-muted">No matching unboxed cartons.</p> : null}
           allClear={<TriageAllClear title={emptyMessage} detail="Nothing unboxed yet." />}
           record={{
-            title: recordTitle,
+            title: slot?.title ?? (openRow ? cartonRecordTitle(openRow) : 'Receipt'),
+            actions: slot?.actions,
             noun: VIEW.noun.one,
+            showIndex: false,
             testId: 'unboxed-receipts-ledger-record',
             summary: <RecordLedgerSummaryPane summary={summary} />,
             view: recordView,
-            strip: actionStrip,
+            strip: null,
           }}
         />
       </div>

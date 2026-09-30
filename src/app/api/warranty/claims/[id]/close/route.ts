@@ -6,7 +6,7 @@ import { closeClaim } from '@/lib/warranty/mutations';
 import { getClaimTicketRef } from '@/lib/warranty/claims';
 import { notifyWarrantyTransition } from '@/lib/warranty/notify';
 import { recordClaimZendeskEvent } from '@/lib/warranty/zendesk-link';
-import { updateTicket } from '@/lib/zendesk';
+import { requireHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import { claimIdFromPath, idempotentJson, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyVerbBody } from '@/lib/schemas/warranty';
 import { PRODUCT_NAME } from '@/lib/branding/constants';
@@ -50,10 +50,12 @@ export const POST = withAuth(async (request, ctx) => {
       let zendeskWarning: string | null = null;
       if (result.claim.zendeskTicketId) {
         try {
-          await updateTicket(result.claim.zendeskTicketId, {
+          // The facade write re-mirrors the ticket (write-through) for the support panel.
+          const helpdesk = await requireHelpdeskProvider(ctx.organizationId);
+          await helpdesk.updateTicket(result.claim.zendeskTicketId, {
             status: 'solved',
             comment: { body: `Warranty claim ${result.claim.claimNumber} closed in ${PRODUCT_NAME}.`, public: false },
-          }, ctx.organizationId);
+          });
           await recordClaimZendeskEvent({
             claimId: id,
             eventType: 'ZENDESK_STATUS',

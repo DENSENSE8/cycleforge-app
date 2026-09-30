@@ -60,9 +60,10 @@ interface SearchableSelectFieldProps<T = unknown> {
    */
   appearance?: 'default' | 'flush';
   /**
-   * List panel edge relative to the trigger. Default `bottom-stretch`.
-   * Use `top-stretch` when the field sits near the floor (Unbox unfound
-   * classify dock) so the menu opens upward into free space.
+   * Preferred list panel edge relative to the trigger. Default `bottom-stretch`.
+   * The layer flips to the other edge on its own when this one is too short
+   * (field near the viewport floor), so pass `top-stretch` only where upward
+   * is the design intent (Unbox unfound classify dock).
    */
   placement?: SearchableSelectListPlacement;
   /** Autofocus the trigger on mount (form first field). */
@@ -184,7 +185,6 @@ export function SearchableSelectField<T = unknown>({
   const inputRef = useRef<HTMLInputElement>(null);
   const labelId = useId();
   const flush = appearance === 'flush';
-  const opensUp = placement.startsWith('top-');
   const hasLabel = Boolean(label?.trim());
   const remote = typeof onSearchChange === 'function';
 
@@ -344,20 +344,24 @@ export function SearchableSelectField<T = unknown>({
         role="listbox"
         aria-label={ariaLabel ?? label ?? placeholder}
         className={cn(
+          // Column so the list — not the whole panel — gives up height when the
+          // layer caps the panel to the room on its side.
+          'flex flex-col',
           flush && '!rounded-none shadow-sm',
-          // Flush abutment: drop the seam border on the edge that kisses the trigger.
-          flush && (opensUp ? 'border-b-0' : 'border-t-0'),
+          // Flush abutment: drop the seam border on the edge that kisses the
+          // trigger — whichever side the layer actually opened on.
+          flush && '[[data-side=top]>&]:border-b-0 [[data-side=bottom]>&]:border-t-0',
         )}
       >
         <Command
           shouldFilter={false}
-          className="rounded-none bg-surface-card"
+          className="flex min-h-0 flex-col rounded-none bg-surface-card"
           onKeyDown={onListKeyDown}
           id={`${labelId}-listbox`}
         >
           <div
             className={cn(
-              'flex items-center gap-2 border-b border-border-hairline',
+              'flex shrink-0 items-center gap-2 border-b border-border-hairline',
               flush ? 'h-9 gap-1.5 px-3.5' : 'gap-2 px-2.5 py-2',
             )}
             cmdk-input-wrapper=""
@@ -376,7 +380,10 @@ export function SearchableSelectField<T = unknown>({
           </div>
 
           <Command.List
-            className={cn('max-h-56 overflow-y-auto', flush ? 'p-0' : 'py-1')}
+            className={cn(
+              'max-h-72 min-h-0 overflow-y-auto overscroll-contain',
+              flush ? 'p-0' : 'py-1',
+            )}
           >
             {loading ? (
               <div

@@ -1,9 +1,10 @@
-/** A Shipped-desk package's state face — the ledger row's spine / code and the record's status strip read the SAME face, so row and record… */
+/** A Shipped-desk package's state face — the ledger row's spine / code and the record header read the SAME face, so row and record… */
 
 import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
 import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
 import { deriveOutboundState, OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
-import { outboundSignals, type OutboundSignalFacts } from '@/lib/orders/outbound-signals';
+import { outboundSignals } from '@/lib/orders/outbound-signals';
+import type { ShipmentRecord } from '@/lib/shipments/shipment-record-types';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
 
 const STAGE_FACE: Readonly<Record<OutboundState, Pick<RecordStateFace, 'code' | 'tone' | 'icon'>>> = {
@@ -33,9 +34,17 @@ export function shippedPackageFace(stage: OutboundState, openException: boolean)
     : { id: stage, label: OUTBOUND_STATE_META[stage].label, ...STAGE_FACE[stage] };
 }
 
-/** Derive the outbound stage from the record's own facts (same rule as the feed). */
-export function shipmentOutboundStage(facts: OutboundSignalFacts): OutboundState {
-  return deriveOutboundState(outboundSignals(facts));
+/** The face for a loaded package record, its stage derived from its own facts (same rule as the feed). */
+export function shipmentRecordFace(record: ShipmentRecord): RecordStateFace {
+  const stage = deriveOutboundState(outboundSignals({
+    packedAt: record.pack?.packedAt ?? null,
+    shipConfirmedAt: record.shipOut?.at ?? null,
+    latestStatusCategory: record.status.category,
+    latestEventAt: record.status.latestEventAt,
+    isTerminal: record.status.isDelivered,
+    hasException: record.status.hasException,
+  }));
+  return shippedPackageFace(stage, record.exception != null && isOpenExceptionStatus(record.exception.status));
 }
 
 /** `orders_exceptions.status` still awaiting a decision (`open` | `resolved`). */

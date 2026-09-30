@@ -137,17 +137,23 @@ export interface RecordCardModel {
 /**
  * The phone face's contract (`RecordCardMobile`, owner 2026-09-28 / 2026-09-29):
  * the desk card's facts minus what a phone never paints — no check, no hover
- * peek, no chips, no notes, no next step, no state rail, no record ref. The
- * family adapter fills it the same way.
+ * peek, no chips, no notes, no state rail. The family adapter fills it the
+ * same way.
  */
 export interface RecordCardMobileModel {
   key: string;
   leadId: number;
   /** The channel the record came through — painted after the lead line's facts. */
   channel: { label: string; dot: ReactNode; badge: string | null } | null;
-  /** Top-right: the due date (orders: the SLA). */
+  /** Top-right: the due date (orders: the SLA; QC: the age since unbox). */
   deadline: RecordCardDeadline;
   /** Every line; [0] is the lead (the adapter puts alert lines first). */
   lines: readonly RecordCardLine[];
   aria: { card: string; open: string };
+  /** Top row, after the location: the family's state code (QC: the urgency tier). Absent = none. */
+  code?: RecordStateFace | null;
+  /** Top row, after the code: the handle the operator holds (QC: the carton sticker `R-{id}`). Absent = none. */
+  ref?: string | null;
+  /** End of the lead's facts row: "→ Test". Absent = none. */
+  next?: RecordCardNextStep | null;
 }

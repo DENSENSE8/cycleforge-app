@@ -1,14 +1,15 @@
 /**
  * get_worklist — "what should I do first?" (chat-roi row 8). GREEN.
  *
- * Six outbound worklists, each read through the desk's OWN list so a chat
+ * Five outbound worklists, each read through the desk's OWN list so a chat
  * answer can never disagree with the page it points at:
  *
  *  - exceptions     → `listOrderExceptions` (the Exceptions desk, its order)
- *  - out_of_stock   → `listOrders` `blockedOnly` (the Shortage desk)
- *  - need_to_order  → `listNeedToOrder` (replenishment requests, FIFO)
- *  - pending        → `listOrders` `inWarehouse` (the To-ship desk)
- *  - ready          → `listOrders` `inWarehouse` + `queue=pick` (the Pick list)
+ *  - out_of_stock   → `listOrders` `blockedOnly` (every out-of-stock order —
+ *                     FBM › Exceptions lists them all)
+ *  - need_to_order  → `listNeedToOrder` (replenishment requests, FIFO —
+ *                     Warehouse › Replenish)
+ *  - pending        → `listOrders` `inWarehouse` (FBM › Allocate)
  *  - late           → pending ∪ out of stock whose ship-by day is before
  *                     today on the warehouse calendar
  *  - all            → one row per list with its count and top item
@@ -25,34 +26,30 @@ import { listOrders } from '@/lib/orders/orders-list';
 import { parseOrdersListQuery } from '@/lib/orders/orders-list-query';
 import { deskViewHref } from '@/lib/outbound/desk-views';
 import { listNeedToOrder } from '@/lib/replenishment';
-import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import type { AssistantToolDef } from './types';
 
-export const WORKLIST_KINDS = ['all', 'exceptions', 'out_of_stock', 'need_to_order', 'late', 'pending', 'ready'] as const;
+export const WORKLIST_KINDS = ['all', 'exceptions', 'out_of_stock', 'need_to_order', 'late', 'pending'] as const;
 export type WorklistKind = (typeof WORKLIST_KINDS)[number];
 type ListKind = Exclude<WorklistKind, 'all'>;
 
 /** Most urgent first — the order "what do I do first" walks. */
-const URGENCY: readonly ListKind[] = ['late', 'exceptions', 'out_of_stock', 'need_to_order', 'ready', 'pending'];
+const URGENCY: readonly ListKind[] = ['late', 'exceptions', 'out_of_stock', 'need_to_order', 'pending'];
 
 const LIST_LABELS: Readonly<Record<ListKind, string>> = {
   late: 'Late (past ship-by)',
   exceptions: 'Exceptions',
   out_of_stock: 'Out of stock',
   need_to_order: 'Need to order',
-  ready: 'Ready to pick',
   pending: 'Pending (to ship)',
 };
 
 const LIST_HREFS: Readonly<Record<ListKind, string>> = {
-  late: SHIPPING_ORDERS_PATH,
+  late: deskViewHref('triage'),
   exceptions: deskViewHref('exceptions'),
-  // The Shortage desk has no "all blocked" view; its canonical door is PO paired.
-  out_of_stock: deskViewHref('po'),
-  need_to_order: deskViewHref('po'),
-  ready: deskViewHref('pick'),
+  out_of_stock: deskViewHref('exceptions'),
+  need_to_order: '/inventory?section=replenish',
   pending: deskViewHref('triage'),
 };
 
@@ -126,7 +123,6 @@ const COLUMNS: Readonly<Record<ListKind, readonly string[]>> = {
   need_to_order: ['SKU', 'Item', 'To order', 'Orders waiting', 'Vendor', 'Status'],
   late: ['Order', 'Ship by', 'Days late', 'SKU', 'Item', 'Why'],
   pending: ['Order', 'Ship by', 'SKU', 'Item', 'Qty', 'Channel'],
-  ready: ['Order', 'Ship by', 'SKU', 'Item', 'Qty', 'Channel'],
 };
 
 function cells(item: WorkItem): Record<string, string | number | null> {
@@ -315,8 +311,6 @@ async function loadList(orgId: OrgId, kind: ListKind, today: string): Promise<Wo
       return (await sources.orders(orgId, { blockedOnly: 'true' })).map((r) => workItemFromOrder(r, today, true));
     case 'pending':
       return (await sources.orders(orgId, { inWarehouse: 'true' })).map((r) => workItemFromOrder(r, today, false));
-    case 'ready':
-      return (await sources.orders(orgId, { inWarehouse: 'true', queue: 'pick' })).map((r) => workItemFromOrder(r, today, false));
     case 'late': {
       const [toShip, blocked] = await Promise.all([loadList(orgId, 'pending', today), loadList(orgId, 'out_of_stock', today)]);
       const seen: Record<string, true> = {};
@@ -333,13 +327,13 @@ const worklistInput = z.object({
   kind: z
     .enum(WORKLIST_KINDS)
     .default('all')
-    .describe('all = what to do first across every list; exceptions; out_of_stock; need_to_order; late (past ship-by); pending (to ship); ready (ready to pick).'),
+    .describe('all = what to do first across every list; exceptions; out_of_stock; need_to_order; late (past ship-by); pending (to ship).'),
 });
 
 export const getWorklist: AssistantToolDef<typeof worklistInput> = {
   name: 'get_worklist',
   description:
-    'Outbound worklists ranked by urgency, with the one thing to do first: "what should I do first", exceptions queue, out of stock, need to order, late / past ship-by orders, pending (to ship), ready to pick. Shows the ranked table itself.',
+    'Outbound worklists ranked by urgency, with the one thing to do first: "what should I do first", exceptions queue, out of stock, need to order, late / past ship-by orders, pending (to ship). Shows the ranked table itself.',
   permission: 'orders.view',
   inputSchema: worklistInput,
   run: async (input, ctx) => {

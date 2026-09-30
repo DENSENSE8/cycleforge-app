@@ -3,6 +3,7 @@ import {
   publishReceivingPhotoChanged,
   publishRepairChanged,
   publishSkuExceptionChanged,
+  publishSkuStockPhotoChanged,
   publishUnitPhotoChanged,
 } from '@/lib/realtime/publish';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -66,28 +67,33 @@ export async function publishEntityMediaInsert(input: {
     // repair.changed, so the Photos screen paints live.
     await publishRepairChanged({ organizationId: orgId, repairIds: [entityId], source });
   } else if (entityType === 'SKU_STOCK') {
-    await publishSkuStockMediaChanged(organizationId, entityId, source);
+    await publishSkuStockMediaChanged(organizationId, entityId, 'insert', source);
   }
   return { receivingId: null };
 }
 
 /**
- * A photo added to / removed from a `sku_stock` row. Only placeholder
- * (SKU exception) rows have a live surface, so real SKUs publish nothing.
+ * A photo added to / removed from a `sku_stock` row. Every row announces
+ * `sku-stock-photo.changed` (the desk stock record repaints); a placeholder
+ * (SKU exception) row also announces `sku-exception.changed` for its hub.
  */
 export async function publishSkuStockMediaChanged(
   organizationId: string,
   stockId: number,
+  action: 'insert' | 'delete',
   source: string,
 ): Promise<void> {
-  const r = await tenantQuery<{ sku: string }>(
+  const r = await tenantQuery<{ sku: string; is_provisional: boolean }>(
     organizationId,
-    `SELECT sku FROM sku_stock WHERE id = $1 AND organization_id = $2 AND is_provisional = true LIMIT 1`,
+    `SELECT sku, is_provisional FROM sku_stock WHERE id = $1 AND organization_id = $2 LIMIT 1`,
     [stockId, organizationId],
   );
-  const sku = r.rows[0]?.sku;
-  if (!sku) return;
-  await publishSkuExceptionChanged({ organizationId, sku, action: 'photo', source });
+  const row = r.rows[0];
+  if (!row?.sku) return;
+  await publishSkuStockPhotoChanged({ organizationId, action, stockId, sku: row.sku, source });
+  if (row.is_provisional) {
+    await publishSkuExceptionChanged({ organizationId, sku: row.sku, action: 'photo', source });
+  }
 }
 
 async function resolveReceivingId(lineId: number, organizationId: string): Promise<number | null> {

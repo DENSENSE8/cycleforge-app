@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getNavFacets, type NavFacetsDeps } from './service';
-import { NAV_FACET_GROUPS, type NavFacetContext } from './contexts';
+import type { NavFacetContext } from './contexts';
 import type { LocalPickupLineRow } from '@/lib/local-pickup/pickup-lines-query';
 import type { DeskRefinements } from '@/lib/orders/desk-view-filters';
 import {
@@ -187,25 +187,23 @@ test('every refinement case narrows the fixture, so the equality below is a real
   }
 });
 
-for (const context of ['outbound.triage', 'outbound.pick', 'outbound.po'] as const) {
-  test(`${context}: total and every option count equal the list total for the same params`, async () => {
-    const orders = fixtureOrders();
-    for (const params of PARAM_CASES) {
-      const res = await facetsBody(context, new URLSearchParams(params), comboRunner(orders));
-      assert.equal(res.total, listRows(orders, params).length, `total for ${JSON.stringify(params)}`);
-      for (const group of res.groups) {
-        for (const option of group.options) {
-          const picked = { ...params, [group.param]: option.value };
-          assert.equal(
-            option.count,
-            listRows(orders, picked).length,
-            `${group.id}=${option.value} under ${JSON.stringify(params)}`,
-          );
-        }
+test('outbound.triage: total and every option count equal the list total for the same params', async () => {
+  const orders = fixtureOrders();
+  for (const params of PARAM_CASES) {
+    const res = await facetsBody('outbound.triage', new URLSearchParams(params), comboRunner(orders));
+    assert.equal(res.total, listRows(orders, params).length, `total for ${JSON.stringify(params)}`);
+    for (const group of res.groups) {
+      for (const option of group.options) {
+        const picked = { ...params, [group.param]: option.value };
+        assert.equal(
+          option.count,
+          listRows(orders, picked).length,
+          `${group.id}=${option.value} under ${JSON.stringify(params)}`,
+        );
       }
     }
-  });
-}
+  }
+});
 
 test('partition groups (stage, ship-by) sum to the list total while their own param is unset', async () => {
   const orders = fixtureOrders();
@@ -230,19 +228,12 @@ test('a group never narrows its own options: picking a stage keeps the sibling s
   assert.equal(picked.total, unfiltered.groups.find((g) => g.id === 'stage')?.options.find((o) => o.value === 'picked')?.count);
 });
 
-test('PO paired returns only its declared groups, yet an undeclared list param still narrows the total', async () => {
-  const orders = fixtureOrders();
-  const res = await facetsBody('outbound.po', new URLSearchParams({ stage: 'picked' }), comboRunner(orders));
-  assert.deepEqual(res.groups.map((g) => g.id), NAV_FACET_GROUPS['outbound.po'].map((g) => g.id));
-  assert.equal(res.total, listRows(orders, { stage: 'picked' }).length);
-});
-
 test('queue facets read the list predicates: the view scope fragment, and ?staff= bound as a parameter', async () => {
   const captured: Array<{ sql: string; params: readonly unknown[] }> = [];
-  await facetsBody('outbound.pick', new URLSearchParams({ staff: '42' }), comboRunner([], captured));
+  await facetsBody('outbound.triage', new URLSearchParams({ staff: '42' }), comboRunner([], captured));
   await facetsBody('outbound.triage', new URLSearchParams({ staff: '-3' }), comboRunner([], captured));
   assert.equal(captured.length, 2, 'one statement per facet request');
-  assert.ok(captured[0].sql.includes(sqlDeskQueueScope('pick')));
+  assert.ok(captured[0].sql.includes(sqlDeskQueueScope('triage')));
   assert.deepEqual(captured[0].params, [ORG, 42]);
   // A staff value the list rejects is not a filter.
   assert.deepEqual(captured[1].params, [ORG]);

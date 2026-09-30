@@ -251,14 +251,27 @@ test('ARMED FOR QC: a line label opens QC to pick one of its units', () => {
   strictEqual(unitsOnly.parks, false);
 });
 
-test('ARMED FOR QC: a carton label opens QC to pick one of its lines', () => {
-  for (const scan of ['R-77', 'r-77', 'r/77', 'RCV-77', 'https://usav.app.cycleforge.ai/m/r/77']) {
+test('ARMED FOR QC: a carton label opens QC to pick one of its units', () => {
+  for (const scan of ['R-77', 'r-77', 'r/77', 'RCV-77', 'https://usav.app.cycleforge.ai/m/r/77/qc']) {
     const d = dispatchScan({ scan, armedSession: QC_SCAN_SESSION });
     strictEqual(d.card, 'qc', scan);
     strictEqual(d.mode, 'act', scan);
     strictEqual(d.parks, true, scan);
     strictEqual(d.title, 'QC · Carton R-77', scan);
   }
+});
+
+test('UNARMED: the unbox carton label still opens QC, but only previews — nothing parks', () => {
+  for (const scan of ['R-77', 'https://usav.app.cycleforge.ai/m/r/77/qc', 'https://usav.app.cycleforge.ai/m/r/77']) {
+    const d = dispatchScan({ scan });
+    strictEqual(d.card, 'qc', scan);
+    strictEqual(d.mode, 'preview', scan);
+    strictEqual(d.parks, false, scan);
+  }
+  // A session armed for other work refuses the carton like any stray class.
+  const pack = dispatchScan({ scan: 'R-77', armedSession: { expects: ['bin'], work: 'pack' } });
+  strictEqual(pack.card, 'qc');
+  strictEqual(pack.parks, false);
 });
 
 // ─── The tie ────────────────────────────────────────────────────────────────

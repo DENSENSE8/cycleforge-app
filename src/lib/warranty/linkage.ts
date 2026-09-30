@@ -6,6 +6,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getClaim } from './claims';
 import type { WarrantyClaimDetail } from './types';
+import { repairDueAt } from '@/lib/repair/repair-due-at';
 
 interface ClaimCore {
   id: number;
@@ -264,11 +265,12 @@ export async function handoffToRepair(
 
     const inserted = await client.query<{ id: number }>(
       // organization_id is derived from the warranty claim this handoff is for so the row is org-stamped even on the raw (non-GUC) pool —…
+      // intake_channel 'shipment': a warranty claim is against a unit we sold and shipped, and it comes back under the claim's RMA.
       `INSERT INTO repair_service (
          product_title, serial_number, issue, notes, source_system,
-         source_order_id, source_tracking_number, source_sku, intake_channel, customer_id,
+         source_order_id, source_tracking_number, source_sku, intake_channel, customer_id, due_at,
          organization_id
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'warranty_logger', $9,
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'shipment', $9, $11,
          (SELECT organization_id FROM warranty_claims WHERE id = $10))
        RETURNING id`,
       [
@@ -282,6 +284,7 @@ export async function handoffToRepair(
         claim.sku,
         claim.customerId,
         claimId,
+        repairDueAt(null, new Date(), null),
       ],
     );
     const repairServiceId = Number(inserted.rows[0].id);

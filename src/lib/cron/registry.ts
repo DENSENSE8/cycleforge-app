@@ -61,6 +61,7 @@ export const CRON_JOBS: CronJobDef[] = [
   { job: 'photos.nas_mirror', label: 'Photo NAS mirror', category: 'Integrations', schedule: 'daily 04:30', expectedEveryMs: DAY },
   { job: 'zendesk-ticket-watch', label: 'Zendesk ticket watch', category: 'Integrations', schedule: 'every 10 min', expectedEveryMs: 10 * MIN },
   { job: 'tickets.designated_assign', label: 'Designated-tag ticket assign', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
+  { job: 'tasks.repair_sync', label: 'Repair service → Tasks reconcile', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
   { job: 'staff_goals.history', label: 'Staff goals snapshot', category: 'Integrations', schedule: 'daily 00:30', expectedEveryMs: DAY },
   { job: 'signals.buyer_notes_heal', label: 'Buyer-note signal heal sweep', category: 'Integrations', schedule: 'nightly 09:15 UTC', expectedEveryMs: DAY },
   // System
@@ -105,6 +106,7 @@ export const CRON_JOB_TRIGGER_PATH: Record<string, string> = {
   'documents.ecwid_packing_slips': '/api/cron/documents/ecwid-packing-slips?limit=25',
   'staff_goals.history': '/api/cron/staff-goals/history',
   'tickets.designated_assign': '/api/cron/tickets/designated-assign',
+  'tasks.repair_sync': '/api/cron/tasks/repair-sync',
   'signals.buyer_notes_heal': '/api/cron/signals/buyer-notes-heal',
   'insights.signal_rollup': '/api/cron/signal-insight-rollup',
   'feed_memberships.projection': '/api/cron/feed-membership-projection',

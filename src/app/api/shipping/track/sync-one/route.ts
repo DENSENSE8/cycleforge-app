@@ -42,7 +42,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     ? (carrierInput as CarrierCode)
     : undefined;
 
-  // Session-authed route (withAuth + permission) — the only caller is the ShipmentTab UI, so the tenant comes from ctx.
+  // Session-authed route (withAuth + permission) — the only caller is CarrierTrackingSection (station Timeline), so the tenant comes from ctx.
   const orgId = ctx.organizationId;
 
   const result = await syncShipment({ shipmentId, trackingNumber, carrier }, orgId);

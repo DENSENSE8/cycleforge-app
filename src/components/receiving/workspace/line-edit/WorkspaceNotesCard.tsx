@@ -40,11 +40,10 @@ interface WorkspaceNotesCardProps {
    */
   chrome?: 'raised' | 'bare';
   /**
-   * Pass-through to OmnichannelComposerDock. Set while this station has a
-   * feedback panel welded to the composer's top edge (Unbox receive), so the
-   * dock drops its top radius and the pair reads as one shape.
+   * Staff reaction welded onto the composer's top edge (Unbox receive
+   * feedback) — pass-through to StationComposerHost `reaction`.
    */
-  weldTop?: boolean;
+  reaction?: ReactNode;
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
   trailingAction?: ReactNode;
   /** Enter → same primary as the trailing Receive CTA (print + receive). */
@@ -91,7 +90,7 @@ export function WorkspaceNotesCard({
   noteGrain = 'line',
   animateMount = true,
   chrome = 'raised',
-  weldTop = false,
+  reaction,
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled,
@@ -137,7 +136,7 @@ export function WorkspaceNotesCard({
         showSyncToPo={!(c.isUnfound ?? false)}
         animateMount={animateMount}
         chrome={chrome}
-        weldTop={weldTop}
+        reaction={reaction}
         trailingAction={trailingAction}
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}

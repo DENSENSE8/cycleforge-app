@@ -9,10 +9,10 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseBody } from '@/lib/schemas/parse';
 import { extractPoIntake } from '@/lib/inbound/extract-po-llm';
-import { inboundOrderMissing, inboundOrderMissingSentence, INBOUND_ORDER_TYPES } from '@/lib/inbound/inbound-order-draft';
+import { inboundOrderMissing, inboundOrderMissingSentence, AUTHORED_INBOUND_ORDER_TYPES } from '@/lib/inbound/inbound-order-draft';
 
 const Body = z.object({
-  type: z.enum(INBOUND_ORDER_TYPES).optional(),
+  type: z.enum(AUTHORED_INBOUND_ORDER_TYPES).optional(),
   text: z.string().trim().max(20_000).optional().nullable(),
   /** data:image/...;base64,... — keep under ~4MB of base64. */
   image_data_url: z.string().trim().max(6_000_000).optional().nullable(),

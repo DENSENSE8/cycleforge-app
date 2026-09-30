@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { receivingAdvancePackages } from './ReceivingSelectionVerbs';
+import { receivingActionPlacement, receivingAdvancePackages } from './ReceivingSelectionVerbs';
 
 const row = (fields: Partial<ReceivingLineRow>) => fields as ReceivingLineRow;
 
@@ -23,4 +23,12 @@ test('Unboxed selection advances packages with unfinished receipt work', () => {
   ], 'received');
 
   assert.deepEqual(packages.map(([id]) => id), [21]);
+});
+
+test('secondary receiving actions use the three-dot overflow', () => {
+  assert.equal(receivingActionPlacement({ key: 'copy', primary: true }), 'primary');
+  assert.equal(receivingActionPlacement({ key: 'print' }), 'overflow');
+  assert.equal(receivingActionPlacement({ key: 'share' }), 'overflow');
+  assert.equal(receivingActionPlacement({ key: 'location' }), 'overflow');
+  assert.equal(receivingActionPlacement({ key: 'delete' }), 'isolated');
 });

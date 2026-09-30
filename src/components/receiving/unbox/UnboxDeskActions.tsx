@@ -10,10 +10,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ClipboardList, Package, ReceivingModeUnbox } from '@/components/Icons';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
-import {
-  IncomingDeskRightRail,
-  type IncomingDeskRailTool,
-} from '@/components/sidebar/receiving/incoming/IncomingDeskRightRail';
+import { IncomingBulkTrackingPanel } from '@/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel';
 import { parseStaffParam } from '@/lib/station/table-url-params';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { emitReceiving } from '@/components/receiving/receiving-events';
@@ -26,14 +23,13 @@ export function UnboxDeskActions() {
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
   const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
-  const [deskRail, setDeskRail] = useState<IncomingDeskRailTool | null>(null);
+  const [checkOpen, setCheckOpen] = useState(false);
   const isIncoming = unboxView === 'incoming';
 
   const handleCheck = useCallback(() => {
-    setDeskRail((current) =>
-      current?.kind === 'check' ? null : { kind: 'check', checkOnly: true },
-    );
+    setCheckOpen((open) => !open);
   }, []);
+  const closeCheck = useCallback(() => setCheckOpen(false), []);
 
   const handleAddPo = useCallback(() => {
     router.push(newInboundOrderHref('PO'));
@@ -101,7 +97,7 @@ export function UnboxDeskActions() {
   return (
     <>
       <DeskActionSlotRegistrar>{control}</DeskActionSlotRegistrar>
-      <IncomingDeskRightRail tool={deskRail} onClose={() => setDeskRail(null)} />
+      <IncomingBulkTrackingPanel open={checkOpen} checkOnly onClose={closeCheck} />
     </>
   );
 }

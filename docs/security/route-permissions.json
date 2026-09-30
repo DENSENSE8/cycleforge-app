@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-29T16:30:54Z",
-  "totalRoutes": 1149,
+  "generatedAt": "2026-09-30T08:22:08Z",
+  "totalRoutes": 1156,
   "summary": {
-    "permissionGated": 933,
+    "permissionGated": 940,
     "authenticatedNoPermission": 131,
     "anonymousIntentional": 36,
     "serviceToService": 49,
@@ -5757,15 +5757,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/picking/queue/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "picking.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/picking/units/scan/route.ts",
       "methods": [
         "POST"
@@ -6013,6 +6004,15 @@
       ],
       "gate": "withAuth",
       "permission": "tech.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/qc/queue/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.qc_pass",
       "exemptReason": null
     },
     {
@@ -6464,6 +6464,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/[id]/carrier-events/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "receiving.view",
       "exemptReason": null
     },
     {
@@ -7056,6 +7065,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/scan-verdict/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/serial-move/route.ts",
       "methods": [
         "POST"
@@ -7259,6 +7277,15 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/repair-service/[id]/carrier-events/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "repair.view",
       "exemptReason": null
     },
     {
@@ -9421,9 +9448,40 @@
       "exemptReason": null
     },
     {
+      "path": "/api/tasks/[id]/alerts/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
       "path": "/api/tasks/[id]/documents/route.ts",
       "methods": [
         "DELETE",
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/tasks/[id]/email-refs/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/tasks/[id]/follow-ups/route.ts",
+      "methods": [
         "GET",
         "POST"
       ],
@@ -9467,6 +9525,15 @@
       "path": "/api/tasks/[id]/route.ts",
       "methods": [
         "PATCH"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/tasks/[id]/timeline/route.ts",
+      "methods": [
+        "GET"
       ],
       "gate": "withAuth",
       "permission": "work_orders.claim",

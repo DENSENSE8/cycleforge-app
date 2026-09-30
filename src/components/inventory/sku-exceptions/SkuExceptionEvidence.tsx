@@ -1,36 +1,28 @@
 'use client';
 
-/** SKU Exceptions — the open placeholder SKU (triage evidence stack, BRIEF §4), placed by the ledger's `DeskRecordPlane`: */
+/**
+ * SKU exception — the open placeholder SKU, placed by its host's record
+ * plane, in the order record's grammar: one `RecordGroup` card per section.
+ * Main (the work) = Pair to Zoho SKU → the host's item card → Product →
+ * Locations. Aside (the facts, {@link SkuExceptionFacts}) = Photos → Details.
+ */
 
-import { useCallback, useId, useMemo, useRef } from 'react';
+import { useCallback, useId, type ReactNode } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
-import { Camera, Hash, Link2, Share2 } from '@/components/Icons';
-import { CopyChip } from '@/components/ui/CopyChip';
-import {
-  EvidenceDecisionBar,
-  EvidenceFact,
-  EvidenceFacts,
-  EvidenceNotice,
-  EvidenceSection,
-  EvidenceStateStrip,
-  EvidenceTitle,
-  type EvidenceVerb,
-} from '@/design-system/components/record-ledger/RecordEvidence';
-import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
+import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
+import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
-import { skuExceptionShareUrl } from '@/lib/inventory/sku-exception-links';
 import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
-import { shareRecordLink } from '@/lib/share-link';
-import { skuExceptionNextStep, skuExceptionTitle } from './sku-exception-record';
-import {
-  SkuExceptionBarcodeValue,
-  SkuExceptionLocationsSection,
-  SkuExceptionProductSection,
-} from './SkuExceptionEvidenceSections';
+import { StockLocationsGroup } from '@/components/inventory/stock/StockLocationsGroup';
+import { SkuExceptionBarcodeValue, SkuExceptionProductSection } from './SkuExceptionEvidenceSections';
 import { SkuExceptionPairSection } from './SkuExceptionPairSection';
 import { SkuExceptionPhotosSection } from './SkuExceptionPhotosSection';
+
+/** Fact rows inside a group — the stock record's facts body. */
+const FACTS_BODY_CLASS = 'flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0';
 
 export interface SkuExceptionEvidenceProps {
   /** `?sku=` — the record the URL names. */
@@ -42,14 +34,16 @@ export interface SkuExceptionEvidenceProps {
   mergedInto: string | null;
   /** Leave the record (a completed pair lands here). */
   onExit: () => void;
+  /** The host's item card (photo tile · title · SKU), painted right under Pair. */
+  itemRow?: ReactNode;
 }
 
+/** The work column. */
 export function SkuExceptionEvidence(props: SkuExceptionEvidenceProps) {
   const { sku, item, loading, error, mergedInto } = props;
-  if (item) return <SkuExceptionRecordEvidence key={item.sku} item={item} onExit={props.onExit} />;
+  if (item) return <SkuExceptionRecordEvidence key={item.sku} item={item} onExit={props.onExit} itemRow={props.itemRow} />;
   return (
     <>
-      <EvidenceTitle>{sku}</EvidenceTitle>
       {loading ? (
         <EvidenceNotice>Loading {sku}…</EvidenceNotice>
       ) : error ? (
@@ -78,92 +72,49 @@ export function SkuExceptionEvidence(props: SkuExceptionEvidenceProps) {
   );
 }
 
-function SkuExceptionRecordEvidence({ item, onExit }: { item: ProvisionalSkuDetail; onExit: () => void }) {
-  const fieldId = useId();
+function useRefreshSkuExceptions() {
   const queryClient = useQueryClient();
-  const fileRef = useRef<HTMLInputElement | null>(null);
-  const title = skuExceptionTitle(item);
-  const next = skuExceptionNextStep(item);
+  return useCallback(() => invalidateSkuExceptions(queryClient), [queryClient]);
+}
 
-  const refresh = useCallback(() => invalidateSkuExceptions(queryClient), [queryClient]);
+function SkuExceptionRecordEvidence({ item, onExit, itemRow }: { item: ProvisionalSkuDetail; onExit: () => void; itemRow?: ReactNode }) {
+  const fieldId = useId();
+  const refresh = useRefreshSkuExceptions();
   // Leave first: the record no longer exists once the merge lands.
   const paired = useCallback(async () => {
     onExit();
     await refresh();
   }, [onExit, refresh]);
 
-  const created = item.createdAt ? new Date(item.createdAt) : null;
-  const createdFace =
-    created && !Number.isNaN(created.getTime()) ? format(created, 'MMM d · h:mm a') : null;
-
-  const verbs = useMemo<EvidenceVerb[]>(
-    () => [
-      {
-        label: 'Add photo',
-        icon: <Camera />,
-        primary: next === 'Photo',
-        onPress: () => fileRef.current?.click(),
-        testId: 'sku-exception-verb-photo',
-      },
-      {
-        label: 'Count',
-        icon: <Hash />,
-        primary: next === 'Count',
-        onPress: () => {
-          const input =
-            document.getElementById(`${fieldId}-count`) ??
-            document.querySelector<HTMLElement>('[data-testid="sku-exception-add-location"]');
-          input?.scrollIntoView({ block: 'center' });
-          input?.focus();
-        },
-        testId: 'sku-exception-verb-count',
-      },
-      {
-        label: 'Pair',
-        icon: <Link2 />,
-        primary: next === 'Pair',
-        onPress: () => {
-          const trigger = document.getElementById(`${fieldId}-pair`);
-          trigger?.scrollIntoView({ block: 'center' });
-          trigger?.click();
-        },
-        testId: 'sku-exception-verb-pair',
-      },
-      {
-        label: 'Share link',
-        icon: <Share2 />,
-        onPress: () => void shareRecordLink(skuExceptionShareUrl(item.sku), `SKU exception — ${title}`),
-        testId: 'sku-exception-share',
-      },
-    ],
-    [fieldId, item.sku, next, title],
+  // Pair to Zoho leads: it is the one decision that closes a placeholder.
+  return (
+    <div className="flex min-w-0 flex-col gap-4" data-testid="sku-exception-evidence">
+      <SkuExceptionPairSection fieldId={fieldId} item={item} onPaired={paired} />
+      {itemRow}
+      <SkuExceptionProductSection fieldId={fieldId} item={item} onChanged={refresh} />
+      <StockLocationsGroup sku={item.sku} onChanged={refresh} />
+    </div>
   );
+}
+
+/** The facts column: Photos (when any) → Details (barcode, who made it). */
+export function SkuExceptionFacts({ item }: { item: ProvisionalSkuDetail }) {
+  const fieldId = useId();
+  const refresh = useRefreshSkuExceptions();
+  const created = item.createdAt ? new Date(item.createdAt) : null;
+  const createdFace = created && !Number.isNaN(created.getTime()) ? format(created, 'MMM d · h:mm a') : null;
 
   return (
-    <div className="flex min-h-full flex-1 flex-col" data-testid="sku-exception-evidence">
-      <EvidenceTitle sub={title}>{item.sku}</EvidenceTitle>
-      <EvidenceStateStrip state={lifecycleRecordState('onHold')} next={next} />
-      <SkuExceptionPhotosSection item={item} onChanged={refresh} fileRef={fileRef} />
-      <SkuExceptionProductSection fieldId={fieldId} item={item} onChanged={refresh} />
-      <EvidenceSection label="Facts">
-        <EvidenceFacts>
-          <EvidenceFact label="Barcode">
+    <>
+      <SkuExceptionPhotosSection item={item} onChanged={refresh} />
+      <RecordGroup title="Details" testId="sku-exception-details">
+        <div className={FACTS_BODY_CLASS}>
+          <EvidenceFactRow label="Barcode" wide={!item.barcode}>
             <SkuExceptionBarcodeValue fieldId={fieldId} item={item} onChanged={refresh} />
-          </EvidenceFact>
-          <EvidenceFact label="SKU">
-            <CopyChip value={item.sku} display={item.sku} tone="sku" fitDisplayWidth />
-          </EvidenceFact>
-          <EvidenceFact label="Created">
-            {[item.createdByName, createdFace].filter(Boolean).join(' · ') || '—'}
-          </EvidenceFact>
-          <EvidenceFact label="On hand" mono>
-            {item.stock}
-          </EvidenceFact>
-        </EvidenceFacts>
-      </EvidenceSection>
-      <SkuExceptionLocationsSection fieldId={fieldId} item={item} onChanged={refresh} />
-      <SkuExceptionPairSection fieldId={fieldId} item={item} onPaired={paired} />
-      <EvidenceDecisionBar verbs={verbs} />
-    </div>
+          </EvidenceFactRow>
+          <EvidenceFactRow label="Created">{[item.createdByName, createdFace].filter(Boolean).join(' · ') || '—'}</EvidenceFactRow>
+        </div>
+      </RecordGroup>
+    </>
   );
 }

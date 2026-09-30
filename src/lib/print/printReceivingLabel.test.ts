@@ -148,9 +148,9 @@ test('receivingPayloadToFace keeps R- HRI when matrix encodes platform URL', () 
       notes: '',
       conditionCode: 'BRAND_NEW',
       date: '8/1/26',
-    }), 'https://usav.app.cycleforge.ai/m/r/12');
+    }), 'https://usav.app.cycleforge.ai/m/r/12/qc');
     assert.equal(face.hri, 'R-12');
-    assert.equal(face.matrix.value, 'https://usav.app.cycleforge.ai/m/r/12');
+    assert.equal(face.matrix.value, 'https://usav.app.cycleforge.ai/m/r/12/qc');
   } finally {
     if (prevApp === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
     else process.env.NEXT_PUBLIC_APP_URL = prevApp;

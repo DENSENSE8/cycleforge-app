@@ -172,6 +172,28 @@ export async function fetchEcwidOrderContact(
 }
 
 /**
+ * One Ecwid product's main image (largest available face), by product id.
+ * Null when the org has no Ecwid credentials or the product has no image;
+ * throws on an API failure so a backfill reports it instead of skipping.
+ */
+export async function fetchEcwidProductImageUrl(orgId: OrgId, productId: string): Promise<string | null> {
+  const creds = await resolveEcwidCreds(orgId);
+  if (!creds) return null;
+  const url = `${ECWID_BASE_URL}/${encodeURIComponent(creds.storeId)}/products/${encodeURIComponent(productId)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${creds.apiToken}`, Accept: 'application/json' },
+    cache: 'no-store',
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Ecwid product ${productId}: HTTP ${res.status}`);
+  const product = (await res.json()) as Record<string, unknown>;
+  const face = [product.originalImageUrl, product.hdThumbnailUrl, product.imageUrl, product.thumbnailUrl].find(
+    (value): value is string => typeof value === 'string' && value.trim() !== '',
+  );
+  return face?.trim() ?? null;
+}
+
+/**
  * Fetch the Ecwid order invoice PDF (packing-slip / receipt stand-in).
  * `orderRef` is the public order number (e.g. `4787`) or Ecwid internal id.
  */

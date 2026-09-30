@@ -1,10 +1,11 @@
-/** Zendesk ticket-watch poller — pull live ticket state for in-app watches (`support_ticket_assignments`) and notify assignees when… */
+/** Zendesk ticket-watch poller — pull live ticket state for in-app watches (`support_ticket_assignments`), refresh each visited ticket's full local mirror, and notify assignees when… */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
-import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
+import { invalidateZendeskOverviewCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';
 import { createStaffMessage } from '@/lib/neon/staff-messages-queries';
 import { publishStaffMessage } from '@/lib/realtime/publish';
+import { remirrorFetchedTicket } from '@/lib/support/ticket-mirror';
 import { syncZendeskTicketRegistryCaches } from '@/lib/support/tickets';
 import { listTicketAssignmentsForOrg } from '@/lib/zendesk-assignments';
 import { diffTicketWatchCaches } from '@/lib/jobs/zendesk-ticket-watch-diff';
@@ -61,6 +62,10 @@ export async function runZendeskTicketWatch(
         staffId: watch.assignedBy,
       });
 
+      // Full mirror (ticket + thread) for every visited ticket, changed or not —
+      // reuses the ticket just fetched; never blocks the notify below.
+      await remirrorFetchedTicket(orgId, helpdesk, ticket);
+
       const diff = diffTicketWatchCaches(synced.previous, next);
       if (!diff.changed) {
         result.skipped += 1;
@@ -68,7 +73,7 @@ export async function runZendeskTicketWatch(
       }
 
       result.changed += 1;
-      await invalidateZendeskTicketCache(orgId, watch.ticketId);
+      await invalidateZendeskOverviewCache(orgId);
 
       // First-time registry fill (null → values on first poll) is not a
       // "ticket updated" event — only notify when we had a prior cache.

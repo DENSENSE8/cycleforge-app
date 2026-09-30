@@ -8,6 +8,7 @@ import {
   type IssueReceivingUnitLabelsDeps,
 } from './issue-receiving-unit-labels';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { guard, type SerialState } from '@/lib/inventory/state-machine';
 
 const ORG = '00000000-0000-4000-8000-000000000123' as OrgId;
 
@@ -38,6 +39,7 @@ test('quantity three mints three durable identities and a retry reuses them', as
   const slots: Slot[] = [];
   let upsertCalls = 0;
   const refreshTargets: number[][] = [];
+  const mintedStatuses: SerialState[] = [];
 
   const client = {
     query: async <T>(sql: string, params?: unknown[]) => {
@@ -79,7 +81,7 @@ test('quantity three mints three durable identities and a retry reuses them', as
             condition_grade: null,
             serial_number: slot.serial,
             unit_uid: slot.uid,
-            current_status: slot.serialUnitId ? 'LABELED' : null,
+            current_status: slot.serialUnitId ? 'RECEIVED' : null,
             print_count: slot.serialUnitId ? 1 : 0,
           })) as T[],
           rowCount: slots.length,
@@ -102,6 +104,7 @@ test('quantity three mints three durable identities and a retry reuses them', as
 
   const upsertUnit: IssueReceivingUnitLabelsDeps['upsertUnit'] = async (input) => {
     upsertCalls += 1;
+    mintedStatuses.push(input.target_status as SerialState);
     const lineUnitId = Number(input.serial_number.replace('AUTO-RLU-', ''));
     const slot = slots.find((candidate) => candidate.id === lineUnitId);
     assert.ok(slot);
@@ -120,7 +123,7 @@ test('quantity three mints three durable identities and a retry reuses them', as
         sku_catalog_id: input.sku_catalog_id ?? null,
         unit_uid: uid,
         zoho_item_id: null,
-        current_status: 'LABELED',
+        current_status: 'RECEIVED',
         current_location: null,
         condition_grade: input.condition_grade ?? null,
         received_at: null,
@@ -149,6 +152,12 @@ test('quantity three mints three durable identities and a retry reuses them', as
   assert.equal(first.quantity, 3);
   assert.equal(new Set(first.labels.map((label) => label.unitUid)).size, 3);
   assert.deepEqual(first.labels.map((label) => label.serialNumber), [null, null, null]);
+  // A freshly labelled unit must still take a QC verdict (PASS → TESTED, TEST_AGAIN → IN_TEST).
+  assert.equal(mintedStatuses.length, 3);
+  for (const status of mintedStatuses) {
+    assert.equal(guard(status, 'TESTED').ok, true, `${status} → TESTED`);
+    assert.equal(guard(status, 'IN_TEST').ok, true, `${status} → IN_TEST`);
+  }
 
   const retry = await issueReceivingUnitLabels(
     { lineId: 7, issuanceVersion: 'issue_0002', actorStaffId: 3 },

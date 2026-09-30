@@ -11,7 +11,7 @@ import { NAV_BLOCK_CLASS } from './nav-block';
 
 export function NavSidebarActions({ actions }: { actions: readonly NavAction[] }) {
   return (
-    <section aria-label="Report actions" className="px-2 pt-2" data-nav-sidebar-actions>
+    <section aria-label="Page actions" className="px-2 pt-2" data-nav-sidebar-actions>
       <div className="flex h-7 items-center px-2">
         <span role="separator" className="h-px min-w-0 flex-1 bg-border-hairline" />
       </div>

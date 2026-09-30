@@ -35,7 +35,7 @@ export function parseDashboardModeWire(raw: string): string | null {
   return (DASHBOARD_MODE_WIRE as readonly string[]).includes(v) ? v : null;
 }
 
-/** Wire value for the Sales → Repairs L2 child (`RepairTable` history desk). */
+/** Wire value for the Sales → Repairs L2 child (`RepairCardList` history desk). */
 export const DASHBOARD_REPAIRS_MODE = 'repairs';
 
 /** Default wire value when opening the sales domain from nav. */

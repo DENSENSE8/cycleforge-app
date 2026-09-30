@@ -37,22 +37,13 @@ export const DOCKED_FLAG_OPTIONS = [
 export type DockedFlag = (typeof DOCKED_FLAG_OPTIONS)[number]['value'];
 
 /**
- * The Unboxed status pills (owner 2026-09-28): the attention pills, then
- * **Unboxed** — the normal case, a carton with nothing left to fix (every line
- * reads green Unboxed). The `?dflag=` vocabulary, in pill order.
+ * A carton's attention pills, in pill order: every flag any of its lines
+ * wears. A clean carton wears none — inside the Unboxed view "Unboxed" is
+ * every card, so it is never a pill (owner 2026-09-29).
  */
-export const DOCKED_STATUS_OPTIONS = [...DOCKED_FLAG_OPTIONS, { value: 'UNBOXED', label: 'Unboxed' }] as const;
-export type DockedStatus = (typeof DOCKED_STATUS_OPTIONS)[number]['value'];
-
-/**
- * A carton's pills, in pill order: every attention flag any of its lines wears,
- * else Unboxed when every line reads clean (an Exception line is neither).
- */
-export function dockedCartonStatuses(rows: readonly ReceivingLineRow[]): DockedStatus[] {
+export function dockedCartonFlags(rows: readonly ReceivingLineRow[]): DockedFlag[] {
   const flags = new Set(rows.flatMap(dockedFlags));
-  if (flags.size > 0) return DOCKED_FLAG_OPTIONS.map((o) => o.value).filter((flag) => flags.has(flag));
-  const clean = rows.length > 0 && rows.every((row) => dockedRecordFace(row).id === RECEIVING_LIFECYCLE.RECEIVED.id);
-  return clean ? ['UNBOXED'] : [];
+  return DOCKED_FLAG_OPTIONS.map((o) => o.value).filter((flag) => flags.has(flag));
 }
 
 /**
@@ -183,8 +174,8 @@ export function dockedRecordFace(row: ReceivingLineRow): RecordStateFace {
 
 /**
  * The line's NEXT step as a present-tense verb, painted "→ Claim" at a card's
- * bottom-right and the Floor row's end — only verbs the carton strip actually
- * runs today (`carton-record-verbs.tsx`): Resolve (pair an unfound carton),
+ * bottom-right and the Floor row's end — only verbs the carton record's header
+ * actually runs today (`useInboundCartonVerbs`): Resolve (pair an unfound carton),
  * Claim (short or failed, no ticket yet), Print label (a SKU'd line never
  * printed). Null = nothing left on the inbound side (a filed claim waits on
  * the ticket; put-away has no carton verb yet).

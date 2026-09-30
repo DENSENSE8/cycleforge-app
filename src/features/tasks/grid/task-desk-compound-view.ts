@@ -11,7 +11,8 @@ import {
   taskDeskTitle,
   type TaskDeskRow,
 } from '@/lib/tasks/task-desk-row';
-import { workStatusLabel } from '@/lib/work-orders/work-status-display';
+import { TASK_STATUS_FACE } from '@/design-system/tokens/task-status';
+import { taskStatusOf } from '@/lib/tasks/task-status';
 
 /** Whole days between now and a deadline; negative when still ahead of it. */
 function daysPast(deadlineMs: number, nowMs: number): number {
@@ -73,7 +74,7 @@ export function taskDeskCompoundView(
     tracking: null,
     platformValue: null,
     carrier: null,
-    stateLabel: workStatusLabel(row.status) ?? row.status,
+    stateLabel: TASK_STATUS_FACE[taskStatusOf(row)].label,
     stateTone: taskStateTone(row, parts.nowMs),
     stateTip:
       row.urgency === 'urgent' && isTaskDeskOpen(row.status)

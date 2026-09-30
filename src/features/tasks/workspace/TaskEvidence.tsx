@@ -15,6 +15,7 @@ import {
   taskDeskRecordHref,
   taskDeskRecordLabel,
   taskDeskTicketNumber,
+  taskDeskTitle,
   type TaskDeskRow,
 } from '@/lib/tasks/task-desk-row';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
@@ -183,28 +184,25 @@ export function TaskEvidence({
       ) : (
         <>
           <div className="flex flex-col gap-3 p-3">
-            <TaskBriefSection key={row.id} note={row.note} onSave={(note) => onPatch({ note })} />
-            <TaskMediaSection
-              photos={media.photos}
-              videos={media.videos}
-              loading={media.loading}
-              uploading={media.uploading}
-              onPick={() => fileRef.current?.click()}
-              onDeletePhoto={(photo) => {
-                if (window.confirm('Delete this photo? This cannot be undone.')) {
-                  media.removePhoto.mutate({ id: photo.id, url: photo.url });
-                }
-              }}
-              onDeleteVideo={(video) => {
-                if (window.confirm('Delete this video? This cannot be undone.')) media.removeVideo.mutate(video.id);
-              }}
-              links={media.links}
-              onAddLink={(body) => media.addLink.mutateAsync(body)}
-              onUpdateLink={(id, patch) => media.updateLink.mutateAsync({ id, ...patch })}
-              onRemoveLink={(link) => {
-                if (window.confirm('Remove this link from the task?')) media.removeLink.mutate(link.id);
-              }}
-            />
+            <TaskBriefSection key={row.id} note={row.note} title={taskDeskTitle(row)} onSave={(note) => onPatch({ note })} />
+            {/* A reading column here, under the Brief: the player stays a watchable size and the documents stay in view. */}
+            <div className="max-w-3xl">
+              <TaskMediaSection
+                photos={media.photos}
+                videos={media.videos}
+                links={media.links}
+                loading={media.loading}
+                uploading={media.uploading}
+                problems={media.problems}
+                onDismissProblems={media.dismissProblems}
+                onPick={() => fileRef.current?.click()}
+                onAddLink={(body) => media.addLink.mutateAsync(body)}
+                onRenameLink={(id, title) => media.updateLink.mutateAsync({ id, title })}
+                onRemoveLink={(id) => media.removeLink.mutate(id)}
+                onRemoveVideo={(id) => media.removeVideo.mutate(id)}
+                onRemovePhoto={(photo) => media.removePhoto.mutate({ id: photo.id, url: photo.url })}
+              />
+            </div>
             <TaskDocumentsSection
               documents={docs.documents}
               loading={docs.loading}

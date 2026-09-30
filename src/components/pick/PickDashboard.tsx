@@ -1,20 +1,18 @@
 'use client';
 
-/** Picker desk workspace (`/pick`) — thin composition layer over the shipping workspace, its order panes and the repair rail. */
+/** Picker desk workspace (`/pick`) — thin composition layer over the shipping workspace and its order panes; a scanned repair opens its record on the Repair desk. */
 
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { StationDetailsHandler } from '@/components/station/StationDetailsHandler';
-import { AnimatePresence } from '@/design-system/motion';
-import { TechRepairRail } from '@/components/tech/TechRepairRail';
 import { PickOrderWorkspace } from '@/components/pick/PickOrderWorkspace';
 import { usePickOrderPanes } from '@/components/pick/usePickOrderPanes';
-import { usePickRepairPanel } from '@/components/pick/usePickRepairPanel';
+import { useOpenScannedRepair } from '@/components/pick/useOpenScannedRepair';
 import { dispatchTechCloseActiveOrder } from '@/components/tech/tech-active-order-events';
 import { dispatchCloseShippedDetails, dispatchUpNextPreview } from '@/utils/events';
 
 export function PickDashboard() {
   const { activeOrderPane, setActiveOrderPane, previewSel, setPreviewSel } = usePickOrderPanes();
-  const { repairPanel, setRepairPanel, loadingRepair } = usePickRepairPanel();
+  useOpenScannedRepair();
 
   return (
     <div className="relative flex h-full w-full flex-col">
@@ -43,23 +41,6 @@ export function PickDashboard() {
       </div>
 
       <StationDetailsHandler viewMode="history" />
-
-      {loadingRepair && (
-        <div className="fixed inset-0 bg-scrim/20 z-panelBackdrop flex items-center justify-center pointer-events-none">
-          <div className="w-8 h-8 border-4 border-orange-400 border-t-transparent rounded-full animate-spin pointer-events-auto" />
-        </div>
-      )}
-      <AnimatePresence>
-        {repairPanel && (
-          <TechRepairRail
-            repair={repairPanel.record}
-            assignmentId={repairPanel.assignmentId}
-            assignedTechId={repairPanel.assignedTechId}
-            onClose={() => setRepairPanel(null)}
-            onUpdate={() => setRepairPanel(null)}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }

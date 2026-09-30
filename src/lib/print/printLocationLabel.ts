@@ -51,6 +51,8 @@ export async function printLocationLabelsJob(input: {
   orgSlug?: string | null;
   /** USB sequential only — StickyActionBar `Printing 12/47`. Iframe batch does not tick. */
   onProgress?: (done: number, total: number) => void;
+  /** USB sequential only — awaited before each sticker; `false` stops the run. */
+  checkpoint?: () => Promise<boolean>;
 }): Promise<'usb' | 'iframe' | 'skipped'> {
   const faces = input.segments.map((segments) =>
     locationLabelToFace({
@@ -65,5 +67,6 @@ export async function printLocationLabelsJob(input: {
     name: 'Location labels',
     faceName: (face) => `Location ${face.center}`.trim(),
     onProgress: input.onProgress,
+    checkpoint: input.checkpoint,
   });
 }

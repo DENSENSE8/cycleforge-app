@@ -160,6 +160,7 @@ export function SearchEntityRecord({
   handoffs,
   photos = [],
   relationship,
+  evidence,
   onBack,
 }: {
   /** What the record is — "Unit", "Carton", "SKU" … (the header reads "Unit 2807"). */
@@ -183,6 +184,8 @@ export function SearchEntityRecord({
   photos?: readonly PeekCard[];
   /** Directional party/movement facts, normally a RecordFlowFacts card. */
   relationship?: ReactNode;
+  /** The record's evidence door (e.g. the Photos button) — top of the aside, above the facts. */
+  evidence?: ReactNode;
   onBack?: () => void;
 }) {
   const hrefOf = useTargetHref();
@@ -235,6 +238,7 @@ export function SearchEntityRecord({
 
   const aside = (
     <div className="flex min-w-0 flex-col gap-4">
+      {evidence}
       {relationship}
       <div className={DESK_RECORD_COLUMN_CARD_CLASS}>
         <div className="flex flex-col px-4" data-testid="search-record-facts">

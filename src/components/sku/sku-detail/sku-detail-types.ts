@@ -3,8 +3,10 @@
 export interface SkuDetailData {
   sku: string;
   productTitle: string | null;
+  /** The SKU's own stock cover, else Ecwid / catalog. */
   productImage: string | null;
-  stock: { id: number | null; qty: number };
+  /** `location` = `sku_stock.location`, the SKU's home bin as written (null ⇒ none). */
+  stock: { id: number | null; qty: number; location: string | null };
   catalog: {
     id: number;
     category: string | null;
@@ -50,14 +52,6 @@ export interface SkuDetailData {
     created_at: string;
   }>;
   locations: string[];
-  allLocations: Array<{
-    id: number;
-    name: string;
-    room: string | null;
-    description: string | null;
-    barcode: string | null;
-    sort_order: number;
-  }>;
   transfers: Array<{
     id: number;
     entity_type: string;

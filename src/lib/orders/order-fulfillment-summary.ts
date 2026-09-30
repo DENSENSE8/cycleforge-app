@@ -2,11 +2,7 @@ import { nonSentinelTimestamp } from '@/components/dashboard/orders-queue/helper
 import type { StateName } from '@/design-system/tokens/lifecycle';
 import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import type { ShippedOrder } from '@/types/orders';
-import {
-  orderFulfillmentBadge,
-  type OrderFulfillmentLine,
-  type OrderFulfillmentTone,
-} from './order-fulfillment-badge';
+import { orderFulfillmentBadge, type OrderFulfillmentLine } from './order-fulfillment-badge';
 
 export type FulfillmentSummaryLine = OrderFulfillmentLine &
   Pick<
@@ -18,19 +14,11 @@ export type FulfillmentSummaryLine = OrderFulfillmentLine &
     | 'latest_status_label'
   >;
 
+/** The order's current fulfillment status. Painted in ONE pinned tone by the record, so it carries no tone of its own. */
 export interface FulfillmentCurrentStatus {
   label: string;
-  tone: StateName;
   detail?: string;
 }
-
-const INTERNAL_TONE: Readonly<Record<OrderFulfillmentTone, StateName>> = {
-  attention: 'warning',
-  info: 'info',
-  warning: 'warning',
-  critical: 'danger',
-  success: 'success',
-};
 
 export function carrierStatusTone(category: string | null | undefined): StateName {
   const value = String(category ?? '').toUpperCase();
@@ -72,7 +60,6 @@ export function fulfillmentCurrentStatus(lines: readonly FulfillmentSummaryLine[
   if (delivered) {
     return {
       label: 'Delivered',
-      tone: 'success',
       detail: delivered.latest_status_description?.trim() || undefined,
     };
   }
@@ -86,15 +73,13 @@ export function fulfillmentCurrentStatus(lines: readonly FulfillmentSummaryLine[
       'With carrier';
     return {
       label,
-      tone: carrierStatusTone(category),
       detail: carrierLine.latest_status_description?.trim() || undefined,
     };
   }
 
   if (hasExternalFulfillmentHandoff(lines)) {
-    return { label: 'Awaiting carrier scan', tone: 'neutral' };
+    return { label: 'Awaiting carrier scan' };
   }
 
-  const internal = orderFulfillmentBadge(lines);
-  return { label: internal.label, tone: INTERNAL_TONE[internal.tone] };
+  return { label: orderFulfillmentBadge(lines).label };
 }

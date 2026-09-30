@@ -6,9 +6,8 @@
  * (`OrderRecordActionStrip`, owner 2026-09-25).
  */
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import Image from 'next/image';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { RecordFlowFacts, RecordFlowSection, recordFlowLabels } from '@/design-system/components/RecordFlowFacts';
@@ -50,14 +49,19 @@ import { IconButton } from '@/design-system/primitives';
 import { formatShipByFace } from '@/lib/orders/ship-by-face';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
+import { RecordSerials } from '@/design-system/components/record-ledger/RecordSerials';
+import { CarrierEventsRail } from '@/design-system/components/record-ledger/CarrierEventsRail';
+import { InlineStageAssign } from '@/design-system/components/record-ledger/InlineStageAssign';
+import { RecordItem, RecordItemCost, RecordItemValue } from '@/design-system/components/record-ledger/RecordItem';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { formatCurrency } from '@/utils/_number';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
-import { initials, recordState, worstState } from './outbound-orders-ledger-state';
+import { recordState, worstState } from './outbound-orders-ledger-state';
 import { StepRail, type RailStep, type StepState } from '@/design-system/components/record-ledger/StepRail';
-import { Calendar, Check, ExternalLink, FileText, Package, PackageSearch, Pencil, ShieldCheck, Truck } from '@/components/Icons';
+import { LatestEdgeScroller } from '@/design-system/components/record-ledger/LatestEdgeScroller';
+import { Calendar, Check, FileText, Package, PackageSearch, Pencil, ShieldCheck, Truck } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { CopyableCellValue, SerialChip } from '@/components/ui/CopyChip';
+import { SerialChip } from '@/components/ui/CopyChip';
 import {
   LedgerCondition,
   LedgerOpenAction,
@@ -71,15 +75,16 @@ import { PaperworkPanel, type PaperworkTab } from './paperwork/PaperworkDocument
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
-import { OrderPhotoPeek } from './OrderPhotoPeek';
+import { OrderEvidencePhotosButton } from './OrderEvidencePhotosButton';
 import { OrderPhotoStrip } from './OrderPhotoStrip';
+import { RecordFulfillmentSources } from '@/design-system/components/record-ledger/RecordFulfillmentSources';
 import type { UnitTimelinePhotoRowSource } from '@/lib/timeline/unit-photos-events';
 import { OrderPoLinksRow } from './OrderPoLinksRow';
 import { OrderNotesPanel } from './notes/OrderNotesPanel';
 import { requestOrderNoteFocus } from './notes/order-note-focus';
 import { TrackingReplaceField } from './tracking/TrackingReplaceField';
 import { TrackingHistory } from './tracking/TrackingHistory';
-import { DeliveryPromise } from './tracking/DeliveryPromise';
+import { DeliveryPromise } from '@/design-system/components/record-ledger/DeliveryPromise';
 import { useOrderRecordKeys } from './record-keys/useOrderRecordKeys';
 import { OrderRecordSummaryBar } from './record-keys/OrderRecordSummaryBar';
 import { usePrintPackingSlip } from './record-keys/print-slip';
@@ -90,14 +95,9 @@ import { DuplicateOrderBanner } from './facts/DuplicateOrderBanner';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { platformMetaIconTone } from '@/lib/source-platform';
 import { platformDisplayName } from '@/lib/platform-display';
-import { orderCarrierEventsQuery, type OrderCarrierEvent } from '@/lib/queries/order-carrier-events-query';
+import { orderCarrierEventsQuery, type CarrierEvent } from '@/lib/queries/carrier-events-query';
 import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
-import { linePhotoLabel } from '@/lib/photos/line-photos';
-import {
-  carrierStatusTone,
-  fulfillmentCurrentStatus,
-  hasExternalFulfillmentHandoff,
-} from '@/lib/orders/order-fulfillment-summary';
+import { fulfillmentCurrentStatus, hasExternalFulfillmentHandoff } from '@/lib/orders/order-fulfillment-summary';
 
 /** One column of the record: the industrial panel its sections stack in. */
 const COLUMN_CLASS = DESK_RECORD_COLUMN_CARD_CLASS;
@@ -212,19 +212,12 @@ export function OrderRecordStatus({ record, records }: { record: ShippedOrder; r
   );
 }
 
-function carrierEventTitle(event: OrderCarrierEvent): string {
-  const category = String(event.category ?? '').replaceAll('_', ' ').toLowerCase();
-  return String(event.description ?? event.label ?? (category || 'Carrier update')).trim();
-}
-
 /** Carrier scans are the external half of Fulfillment, chronological left → right. */
 function CarrierFulfillmentRail({ orderId, record }: { orderId: number; record: ShippedOrder }) {
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
   const query = useQuery({ ...orderCarrierEventsQuery(orderId), enabled: Number.isInteger(orderId) && orderId > 0 });
-  const carrier = String(query.data?.carrier ?? record.carrier ?? '').trim().toUpperCase();
-  const integrationPending = carrier === 'USPS';
-  const fallback: OrderCarrierEvent[] = record.latest_status_label || record.latest_status_description
+  // Before the first read lands (or when the order has no stored events), the
+  // row's own latest carrier status stands in as the one event.
+  const fallback: CarrierEvent[] = record.latest_status_label || record.latest_status_description
     ? [{
         id: -1,
         eventOccurredAt: record.latest_event_at ?? null,
@@ -237,100 +230,14 @@ function CarrierFulfillmentRail({ orderId, record }: { orderId: number; record: 
         signedBy: null,
       }]
     : [];
-  const events = [...(query.data?.events.length ? query.data.events : fallback)].reverse();
-  const rail: RailStep[] = integrationPending
-    ? [{
-        id: 'carrier:integration-pending',
-        icon: <Truck aria-hidden />,
-        state: 'current',
-        tone: 'neutral',
-        title: 'USPS integration pending',
-        meta: 'Live carrier updates are not connected yet',
-      } satisfies RailStep]
-    : events.length > 0
-    ? events.map((event) => {
-        const location = [event.city, event.state].filter(Boolean).join(', ');
-        return {
-          id: `carrier:${event.id}`,
-          icon: <Truck aria-hidden />,
-          state: 'done',
-          tone: carrierStatusTone(event.category),
-          title: carrierEventTitle(event),
-          meta: [event.eventOccurredAt ? formatMonthDayTimePST(event.eventOccurredAt) : null, location || null]
-            .filter(Boolean)
-            .join(' · ') || undefined,
-          detail: event.exception ?? (event.signedBy ? `Signed by ${event.signedBy}` : undefined),
-        } satisfies RailStep;
-      })
-    : [{
-        id: 'carrier:pending',
-        icon: <Truck aria-hidden />,
-        state: query.isLoading ? 'pending' : 'current',
-        tone: query.isError ? 'danger' : 'neutral',
-        title: query.isError ? 'Carrier updates unavailable' : 'Carrier handoff',
-        meta: query.isLoading ? 'Loading updates' : 'Awaiting first carrier event',
-      } satisfies RailStep];
-  const latestRailId = rail.at(-1)?.id ?? null;
-
-  // Carrier history reads chronologically left → right, but the operator opens
-  // this row to see what is true NOW. The query, fonts and responsive rail can
-  // all establish their final width after first paint, so keep the initial
-  // viewport pinned to the newest edge through those layout changes instead of
-  // relying on one early scroll assignment.
-  useLayoutEffect(() => {
-    let frame: number | null = null;
-    const pinToLatest = () => {
-      const viewport = viewportRef.current;
-      if (!viewport) return;
-      viewport.scrollLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-    };
-    const schedulePin = () => {
-      if (frame != null) window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(pinToLatest);
-    };
-
-    pinToLatest();
-    schedulePin();
-    const observer =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(schedulePin);
-    if (observer && contentRef.current) observer.observe(contentRef.current);
-
-    return () => {
-      if (frame != null) window.cancelAnimationFrame(frame);
-      observer?.disconnect();
-    };
-  }, [latestRailId]);
-
   return (
-    <div className="min-w-0 px-4 py-3" data-testid="order-record-carrier-fulfillment">
-      <div
-        ref={viewportRef}
-        className="min-w-0 overflow-x-auto overscroll-x-contain pb-1 scrollbar-thin"
-        tabIndex={0}
-        data-testid="carrier-fulfillment-scroll"
-        data-initial-edge="latest"
-      >
-        <div ref={contentRef} className="min-w-max">
-          <StepRail
-            steps={rail}
-            size="lg"
-            label="Carrier fulfillment events"
-            orientation="horizontal"
-            horizontalScroll
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FulfillmentSourceLabel({ children }: { children: ReactNode }) {
-  return (
-    <span className="inline-flex h-6 items-center rounded-mode-pill bg-mode-well px-2 text-role-micro font-semibold text-mode-muted">
-      {children}
-    </span>
+    <CarrierEventsRail
+      events={query.data?.events.length ? query.data.events : fallback}
+      carrier={String(query.data?.carrier ?? record.carrier ?? '').trim() || null}
+      loading={query.isLoading}
+      error={query.isError}
+      testId="order-record-carrier-fulfillment"
+    />
   );
 }
 
@@ -507,16 +414,17 @@ export function OrderRecordView({
       title="Fulfillment"
       titleAccessory={
         allocateDetail ? (
+          // Pinned orange (owner 2026-09-29): the current status reads in ONE tone, whatever the stage.
           <span
             className={cn(
-              'inline-flex min-w-0 items-center gap-1.5 text-role-data font-semibold',
-              STATE_TONE_CLASSES[currentFulfillment.tone].text,
+              'inline-flex h-6 min-w-0 items-center gap-1.5 rounded-mode-pill px-2 text-role-data font-semibold',
+              STATE_TONE_CLASSES.warning.pill,
             )}
             title={currentFulfillment.detail ?? `Current status: ${currentFulfillment.label}`}
             aria-label={`Current status: ${currentFulfillment.label}`}
             data-testid="fulfillment-current-status"
           >
-            <span className={cn('size-1.5 shrink-0 rounded-full', STATE_TONE_CLASSES[currentFulfillment.tone].dot)} aria-hidden />
+            <span className={cn('size-1.5 shrink-0 rounded-full', STATE_TONE_CLASSES.warning.dot)} aria-hidden />
             <span className="truncate">{currentFulfillment.label}</span>
           </span>
         ) : undefined
@@ -526,40 +434,19 @@ export function OrderRecordView({
       singleLineHeader
     >
       {allocateDetail ? (
-        <div className="min-w-0">
-          <section
-            aria-label="Internal fulfillment"
-            className="grid min-w-0 grid-cols-1 @sm:grid-cols-[5.5rem_minmax(0,1fr)]"
-            data-testid="fulfillment-source-internal"
-          >
-            <div className="px-4 pt-3 @sm:py-3">
-              <FulfillmentSourceLabel>Internal</FulfillmentSourceLabel>
-            </div>
-            <div className="min-w-0">
-              {lines.map((line) => (
-                <OrderLineFulfilment
-                  key={line.id}
-                  {...lineProps(line)}
-                  assign={shows.has('assign')}
-                  named={multi}
-                  compact
-                />
-              ))}
-            </div>
-          </section>
-          {externalFulfillmentVisible ? (
-            <section
-              aria-label="External fulfillment"
-              className="grid min-w-0 grid-cols-1 border-t border-mode-fact @sm:grid-cols-[5.5rem_minmax(0,1fr)]"
-              data-testid="fulfillment-source-external"
-            >
-              <div className="px-4 pt-3 @sm:py-3">
-                <FulfillmentSourceLabel>External</FulfillmentSourceLabel>
-              </div>
-              <CarrierFulfillmentRail orderId={Number(record.id)} record={record} />
-            </section>
-          ) : null}
-        </div>
+        <RecordFulfillmentSources
+          key={record.id}
+          internal={lines.map((line) => (
+            <OrderLineFulfilment
+              key={line.id}
+              {...lineProps(line)}
+              assign={shows.has('assign')}
+              named={multi}
+              compact
+            />
+          ))}
+          external={externalFulfillmentVisible ? <CarrierFulfillmentRail orderId={Number(record.id)} record={record} /> : null}
+        />
       ) : (
         <div className="min-w-0">
           {lines.map((line) => (
@@ -598,6 +485,10 @@ export function OrderRecordView({
       ) : null}
     </RecordGroup>
   ) : null;
+  // Serials are their own section too (owner 2026-09-29), right under the items they identify.
+  const serials: string[] = shows.has('item')
+    ? lines.flatMap((line) => ordersCompoundView(line, { stateLabel: null, delayDays: null, todayKey }).detail?.serials ?? [])
+    : [];
 
   const left = (
     <div className="flex flex-col gap-4 industrial:gap-0">
@@ -623,6 +514,7 @@ export function OrderRecordView({
         </RecordGroup>
       ) : null}
       {itemsGroup}
+      <RecordSerials rows={serials} testId="order-record-serials" />
       {/* Payment — the money's detail, one disclosure under the items (the
           line prices read on the items). Off the Floor rail: price is noise
           during pick and pack (owner 2026-09-24). */}
@@ -737,7 +629,10 @@ export function OrderRecordView({
         ) : null}
         {shows.has('facts') || shows.has('shipment') ? (
           <>
-            <DeliveryPromise record={record} shipByDateKey={view.delay?.dateKey ?? null} />
+            <DeliveryPromise
+              promise={{ estimatedDeliveryAt: record.estimated_delivery_at, deliveredAt: record.delivered_at, isDelivered: record.is_delivered }}
+              shipByDateKey={view.delay?.dateKey ?? null}
+            />
             <TrackingHistory orderId={Number(record.id)} current={view.tracking ?? null} />
           </>
         ) : null}
@@ -752,6 +647,8 @@ export function OrderRecordView({
   // information category and sends its verbs to the header overflow.
   const right = (
     <div className="flex flex-col gap-4 industrial:gap-0">
+      {/* The evidence door — always here, above Shipping, so it is learnt. */}
+      <OrderEvidencePhotosButton key={`photos:${record.id}`} orderId={Number(record.id)} packerPhotos={record.packer_photos_url} />
       {!allocateDetail && shows.has('customer') && buyer ? (
         <OrderCustomerGroup orderId={Number(record.id)} customer={buyer.customer} source={buyer.source} />
       ) : null}
@@ -828,7 +725,6 @@ export function OrderRecordView({
       className="flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0"
       data-testid="order-record-view"
       data-order-view={viewKey}
-      data-record-presentation={VIEW_SPECS[viewKey].recordPresentation}
     >
       {paperwork ? (
         <DeskRecordLayout
@@ -848,7 +744,7 @@ export function OrderRecordView({
       ) : (
         <>
           {!allocateDetail ? <OrderRecordSummaryBar record={record} records={records} todayKey={todayKey} /> : null}
-          <DeskRecordLayout main={left} aside={right} peek={<OrderPhotoPeek key={record.id} orderId={Number(record.id)} />} />
+          <DeskRecordLayout main={left} aside={right} />
         </>
       )}
     </div>
@@ -880,14 +776,11 @@ function lineTitle(line: ShippedOrder, todayKey: string): string {
 }
 
 /**
- * One line in the Items group: photo · title · **platform · SKU · item # (↗
- * listing · ✎ · copy)** · one facts row **Qty · Condition · Bin … price**
- * (owner 2026-09-27). The platform and the listing live ON the item — for
- * eBay the listing IS the item number, so the number carries its listing
- * link instead of a second "Listing" row. The price reads in the line,
- * right-aligned like a storefront order line (the line total, with the unit
- * price beside it when qty > 1); the paid / tax / label-cost / net detail is
- * the Payment group's disclosure. Who handled it lives in Fulfilment.
+ * One line in the Items group on the shared `RecordItem` ruler (owner
+ * 2026-09-29): SKU | Item # (documents · ↗ listing · ✎ in the actions slot),
+ * Cond | Qty, Serial | Cost. The price reads on the item when the desk keeps
+ * it on the floor; the paid / tax / label-cost / net detail is the Payment
+ * group's disclosure. Who handled it lives in Fulfilment.
  */
 function OrderItem({
   line,
@@ -917,180 +810,119 @@ function OrderItem({
   // `orders.sale_amount` is the LINE total (unit × qty).
   const lineTotal = line.sale_amount != null && Number.isFinite(Number(line.sale_amount)) ? Number(line.sale_amount) : null;
   const [photosOpen, setPhotosOpen] = useState(false);
-  const photoLabel = linePhotoLabel(line.item_number ?? null, sku);
+  const queryClient = useQueryClient();
+  const itemNumber = String(line.item_number ?? '').trim() || null;
+  const skuCatalogId = Number(line.sku_catalog_id) > 0 ? Number(line.sku_catalog_id) : null;
 
   return (
-    <article
-      data-testid="order-record-item"
-      data-current={current ? '' : undefined}
-      aria-label={title || 'Item'}
-      className={cn('border-b border-mode-fact', current ? 'bg-mode-panel' : 'bg-mode-bar')}
-    >
-      <div className="flex gap-3 px-4 py-3">
-        {view.thumbUrl ? (
-          <button
-            type="button"
-            aria-label={`View photos for ${photoLabel}`}
-            data-testid="order-record-item-photo"
-            className={cn(
-              'ds-raw-button relative h-28 w-28 shrink-0 cursor-zoom-in overflow-hidden border border-mode-frame bg-mode-well',
-              focusRing('cell'),
-            )}
-            onClick={() => setPhotosOpen(true)}
-          >
-            <Image src={view.thumbUrl} alt="" fill unoptimized sizes="112px" className="object-contain" />
-          </button>
-        ) : (
-          <span className="relative h-28 w-28 shrink-0 overflow-hidden border border-mode-frame bg-mode-well">
-            <span className="flex h-full w-full items-center justify-center text-role-title font-black text-mode-muted industrial:font-mono" aria-hidden>
-              {initials(title)}
-            </span>
-          </span>
-        )}
-        {photosOpen ? (
-          <LedgerPhotoViewer
-            subject={{
-              skuCatalogId: Number(line.sku_catalog_id) > 0 ? Number(line.sku_catalog_id) : null,
-              sku,
-              itemNumber: line.item_number ?? null,
-              catalogImageUrl: view.thumbUrl ?? null,
-            }}
-            onClose={() => setPhotosOpen(false)}
-          />
-        ) : null}
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex min-w-0 items-start gap-2">
-            <p className="line-clamp-3 min-w-0 flex-1 text-role-body font-bold">{title || '—'}</p>
-            {assign ? <OrderAutoAssignRuleAction record={line} records={records} getStaffName={getStaffName} /> : null}
-          </div>
-          <div
-            className="grid min-w-0 grid-cols-1 gap-x-4 @sm:grid-cols-2"
-            data-testid="order-record-item-ids"
-          >
-            <span className="group/identity flex min-h-8 min-w-0 items-center gap-2 border-b border-mode-fact">
-              <span className={cn(RECORD_LABEL_CLASS, 'w-11 shrink-0 text-mode-muted')}>SKU</span>
-              <span className="min-w-0 flex-1">
-                <CopyableCellValue
-                  value={sku}
-                  display={sku ?? '—'}
-                  historyKind="SKU"
-                  disableCopy={!sku}
-                  className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal text-mode-ink')}
-                />
-              </span>
-              {sku ? (
-                <span className="shrink-0 opacity-0 transition-opacity group-focus-within/identity:opacity-100 group-hover/identity:opacity-100">
-                  <HoverTooltip label="View in inventory" asChild placement="above">
-                    <a
-                      href={`/inventory?sku=${encodeURIComponent(sku)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`View ${sku} in inventory`}
-                      className={cn(
-                        'inline-flex size-7 items-center justify-center rounded-mode-control text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
-                        focusRing('control'),
-                      )}
-                    >
-                      <ExternalLink className="size-3.5" aria-hidden />
-                    </a>
-                  </HoverTooltip>
-                </span>
-              ) : null}
-            </span>
-            {line.item_number ? (
-              <span
-                className="group/identity flex min-h-8 min-w-0 items-center gap-2 border-b border-mode-fact"
-                data-testid="evidence-listing"
+    <RecordItem
+      testId="order-record-item"
+      title={title || '—'}
+      current={current}
+      titleAccessory={assign ? <OrderAutoAssignRuleAction record={line} records={records} getStaffName={getStaffName} /> : undefined}
+      photo={{
+        src: view.thumbUrl ?? null,
+        onOpen: () => setPhotosOpen(true),
+        upload: skuCatalogId
+          ? { skuCatalogId, onUploaded: () => void queryClient.invalidateQueries({ queryKey: ['orders'] }) }
+          : null,
+      }}
+      sku={sku}
+      item={{
+        testId: 'evidence-listing',
+        value:
+          itemNumber || !editFacts ? (
+            <RecordItemValue value={itemNumber} historyKind="Item number" />
+          ) : (
+            <ListingLinkEditor
+              face="label"
+              currentItem={null}
+              targets={[{ id: Number(line.id), itemNumber: null, accountSource: line.account_source ?? null }]}
+            />
+          ),
+        actions: itemNumber ? (
+          <>
+            <HoverTooltip label="Item documents" asChild placement="above">
+              <button
+                type="button"
+                data-testid="evidence-item-paperwork"
+                aria-label="Open paperwork paired to this item number"
+                onClick={() => onOpenItemPaperwork(itemNumber)}
+                className={cn(
+                  'ds-raw-button inline-flex size-7 items-center justify-center rounded-mode-control text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
+                  focusRing('control'),
+                )}
               >
-                <span className={cn(RECORD_LABEL_CLASS, 'w-11 shrink-0 text-mode-muted')}>Item</span>
-                <span className="min-w-0 flex-1">
-                  <CopyableCellValue
-                    value={String(line.item_number).trim() || null}
-                    historyKind="Item number"
-                    className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal text-mode-ink')}
-                  />
-                </span>
-                <span className="flex shrink-0 items-center opacity-0 transition-opacity group-focus-within/identity:opacity-100 group-hover/identity:opacity-100">
-                  <HoverTooltip label="Item documents" asChild placement="above">
-                    <button
-                      type="button"
-                      data-testid="evidence-item-paperwork"
-                      aria-label="Open paperwork paired to this item number"
-                      onClick={() => onOpenItemPaperwork(String(line.item_number))}
-                      className={cn(
-                        'ds-raw-button inline-flex size-7 items-center justify-center rounded-mode-control text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
-                        focusRing('control'),
-                      )}
-                    >
-                      <FileText className="size-3.5" aria-hidden />
-                    </button>
-                  </HoverTooltip>
-                  {view.titleHref ? <LedgerOpenAction href={view.titleHref} label="listing" /> : null}
-                  {editFacts ? (
-                    <ListingLinkEditor
-                      face="icon"
-                      currentItem={String(line.item_number).trim() || null}
-                      targets={[{ id: Number(line.id), itemNumber: line.item_number ?? null, accountSource: line.account_source ?? null }]}
-                    />
-                  ) : null}
-                </span>
-              </span>
-            ) : editFacts ? (
-              <span className="flex min-h-8 items-center border-b border-mode-fact">
-                <ListingLinkEditor
-                  face="label"
-                  currentItem={null}
-                  targets={[{ id: Number(line.id), itemNumber: null, accountSource: line.account_source ?? null }]}
-                />
-              </span>
-            ) : (
-              <span className="min-h-8 border-b border-mode-fact" />
-            )}
-          </div>
-          {/* Only item-defining facts live here. Stock, allocation and empty
-              location facts belong to fulfillment decisions, not identity. */}
-          <div className="flex flex-wrap items-center gap-3" data-testid="order-record-item-facts-row">
-            <span className="inline-flex h-8 items-center gap-2">
-              <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Qty</span>
-              <span className="block h-8 w-20">
-                <LedgerQty
-                  bare
-                  value={units}
-                  onCommit={(value) => commits.handleCommitSubtitleField(line, 'orders.qty', value)}
-                />
-              </span>
-            </span>
-            <span className="w-24">
+                <FileText className="size-3.5" aria-hidden />
+              </button>
+            </HoverTooltip>
+            {view.titleHref ? <LedgerOpenAction href={view.titleHref} label="listing" /> : null}
+            {editFacts ? (
+              <ListingLinkEditor
+                face="icon"
+                currentItem={itemNumber}
+                targets={[{ id: Number(line.id), itemNumber: line.item_number ?? null, accountSource: line.account_source ?? null }]}
+              />
+            ) : null}
+          </>
+        ) : null,
+      }}
+      left={[
+        {
+          label: 'Cond',
+          value: (
+            <span className="block w-24">
               <LedgerCondition value={line.condition ?? null} onCommit={(value) => commits.handleCommitCondition(line, value)} />
             </span>
-            {serials.length > 0 ? (
-              <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1" data-testid="order-record-item-serials">
-                <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
-                  {serials.length === 1 ? 'Serial' : 'Serials'}
-                </span>
-                {serials.map((serial) => (
-                  <SerialChip key={serial} value={serial} dense width="w-auto max-w-full" />
-                ))}
-              </span>
-            ) : null}
-            {priceOnFloor ? (
-              <span className="ml-auto inline-flex shrink-0 items-baseline gap-1.5" data-testid="evidence-item-price">
-                {lineTotal != null && units > 1 ? (
-                  <span className="text-role-caption tabular-nums text-mode-muted">
-                    {formatCurrency(lineTotal / units)} × {units}
-                  </span>
-                ) : null}
-                <span className={cn(RECORD_PRICE_CLASS, lineTotal == null && 'text-mode-muted')}>
-                  {lineTotal != null ? formatCurrency(lineTotal) : '—'}
-                </span>
-              </span>
-            ) : null}
-          </div>
-          {/* How it arrived — the receiving evidence, inline on the item. */}
-          <OrderPhotoStrip orderId={Number(line.id)} sources={RECEIVED_PHOTO_SOURCES} />
-        </div>
-      </div>
-    </article>
+          ),
+        },
+        ...(serials.length > 0
+          ? [
+              {
+                label: serials.length === 1 ? 'Serial' : 'Serials',
+                testId: 'order-record-item-serials',
+                wrap: true,
+                value: serials.map((serial) => <SerialChip key={serial} value={serial} dense width="w-auto max-w-full" />),
+              },
+            ]
+          : []),
+      ]}
+      right={[
+        {
+          label: 'Qty',
+          value: (
+            <span className="block h-8 w-20">
+              <LedgerQty bare value={units} onCommit={(value) => commits.handleCommitSubtitleField(line, 'orders.qty', value)} />
+            </span>
+          ),
+        },
+        ...(priceOnFloor
+          ? [
+              {
+                label: 'Cost',
+                value: (
+                  <RecordItemCost
+                    unit={lineTotal != null ? lineTotal / units : null}
+                    qty={units}
+                    total={lineTotal}
+                    format={formatCurrency}
+                    testId="evidence-item-price"
+                  />
+                ),
+              },
+            ]
+          : []),
+      ]}
+    >
+      {photosOpen ? (
+        <LedgerPhotoViewer
+          subject={{ skuCatalogId, sku, itemNumber: line.item_number ?? null, catalogImageUrl: view.thumbUrl ?? null }}
+          onClose={() => setPhotosOpen(false)}
+        />
+      ) : null}
+      {/* How it arrived — the receiving evidence, inline on the item. */}
+      <OrderPhotoStrip orderId={Number(line.id)} sources={RECEIVED_PHOTO_SOURCES} />
+    </RecordItem>
   );
 }
 
@@ -1177,11 +1009,24 @@ function OrderLineFulfilment({
     [facts.who && facts.who !== '---' ? `By ${facts.who}` : null, facts.at].filter(Boolean).join(' · ') || 'Complete';
   const openMeta = (assignee: string | null) =>
     assignee && assignee !== '---' ? `Assigned to ${assignee}` : 'Awaiting assignment';
+  // Compact (Allocate): the step's own second line IS the assign control —
+  // click "Assign packer" in line, no detached button under the step.
+  const inlineAssign = (kind: 'pick' | 'pack') =>
+    compact && assign ? (
+      <InlineStageAssign
+        label={kind === 'pick' ? 'picker' : 'packer'}
+        role={kind === 'pick' ? 'technician' : 'packer'}
+        selectedStaffId={kind === 'pick' ? staff.pickerId : staff.packerId}
+        assignedName={kind === 'pick' ? staff.pickerDisplay : staff.packerDisplay}
+        onCommit={(id, name) => commits.handleCommitStageAssign(line, kind === 'pick' ? 'orders.picked' : 'orders.packed', id, name)}
+        testId={`order-record-assign-${kind}`}
+      />
+    ) : null;
   const assignAction = (kind: 'pick' | 'pack') =>
     assign ? (
-      <span className={cn('block h-8', compact ? 'w-full max-w-40' : 'w-40')}>
+      <span className="block h-8 w-40">
         <LedgerStageAssign
-          verb={compact ? 'Assign' : kind === 'pick' ? 'Pick' : 'Pack'}
+          verb={kind === 'pick' ? 'Pick' : 'Pack'}
           doneVerb={kind === 'pick' ? 'Picked' : 'Packed'}
           role={kind === 'pick' ? 'technician' : 'packer'}
           facts={null}
@@ -1192,20 +1037,20 @@ function OrderLineFulfilment({
       </span>
     ) : undefined;
   // QC is assigned on the unit, so it needs a unit allocated to the line.
-  const qcAssignAction =
-    assign && Number.isFinite(allocated) && allocated > 0 ? (
-      <span className={cn('block h-8', compact ? 'w-full max-w-40' : 'w-40')}>
-        <LedgerStageAssign
-          verb={compact ? 'Assign' : 'QC'}
-          doneVerb="QC'd"
-          role="all"
-          facts={null}
-          selectedStaffId={qcAssignee.id}
-          assignedName={qcAssignee.name ?? '---'}
-          onCommit={commitQcAssignee}
-        />
-      </span>
-    ) : undefined;
+  const qcAssignable = assign && Number.isFinite(allocated) && allocated > 0;
+  const qcAssignAction = qcAssignable ? (
+    <span className="block h-8 w-40">
+      <LedgerStageAssign
+        verb="QC"
+        doneVerb="QC'd"
+        role="all"
+        facts={null}
+        selectedStaffId={qcAssignee.id}
+        assignedName={qcAssignee.name ?? '---'}
+        onCommit={commitQcAssignee}
+      />
+    </span>
+  ) : undefined;
 
   const rail: RailStep[] = [
     {
@@ -1214,12 +1059,24 @@ function OrderLineFulfilment({
       state: stateOf(0),
       tone: 'warning',
       title: qcFacts ? 'QC complete' : 'QC',
-      meta: qcFacts ? doneMeta(qcFacts) : openMeta(qcAssignee.name),
+      meta: qcFacts
+        ? doneMeta(qcFacts)
+        : compact && qcAssignable
+          ? (
+              <InlineStageAssign
+                label="QC tech"
+                role="all"
+                selectedStaffId={qcAssignee.id}
+                assignedName={qcAssignee.name ?? '---'}
+                onCommit={commitQcAssignee}
+                testId="order-record-assign-qc"
+              />
+            )
+          : openMeta(qcAssignee.name),
       action: qcFacts || compact ? undefined : qcAssignAction,
       testId: 'order-record-qc',
       children: (
         <>
-          {compact && !qcFacts ? qcAssignAction : null}
           {!compact ? <OrderPhotoStrip orderId={Number(line.id)} sources={TESTING_PHOTO_SOURCES} /> : null}
         </>
       ),
@@ -1230,12 +1087,11 @@ function OrderLineFulfilment({
       state: stateOf(1),
       tone: LIFECYCLE.picked.tone,
       title: pickFacts ? 'Picked' : 'Pick',
-      meta: pickFacts ? doneMeta(pickFacts) : openMeta(staff.pickerDisplay),
+      meta: pickFacts ? doneMeta(pickFacts) : (inlineAssign('pick') ?? openMeta(staff.pickerDisplay)),
       action: pickFacts || compact ? undefined : assignAction('pick'),
       testId: 'order-record-step-pick',
       children: (
         <>
-          {compact && !pickFacts ? assignAction('pick') : null}
           {!compact && locationPaths.length > 1 ? (
             <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
               Bins <span className={cn(RECORD_ID_CLASS, 'text-mode-ink')}>{locationPaths.join(' · ')}</span>
@@ -1259,12 +1115,11 @@ function OrderLineFulfilment({
       state: stateOf(2),
       tone: LIFECYCLE.packed.tone,
       title: packFacts ? 'Packed' : 'Pack',
-      meta: packFacts ? [doneMeta(packFacts), packFacts.station].filter(Boolean).join(' · ') : openMeta(staff.packerDisplay),
+      meta: packFacts ? [doneMeta(packFacts), packFacts.station].filter(Boolean).join(' · ') : (inlineAssign('pack') ?? openMeta(staff.packerDisplay)),
       action: packFacts || compact ? undefined : assignAction('pack'),
       testId: 'order-record-step-pack',
       children: (
         <>
-          {compact && !packFacts ? assignAction('pack') : null}
           {!compact && preboxUnits > 0 ? (
             <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')} data-testid="order-record-prebox" data-prebox={preboxed > 0 ? 'yes' : 'no'}>
               {preboxed > 0
@@ -1294,15 +1149,26 @@ function OrderLineFulfilment({
     },
   ];
 
+  const stepRail = (
+    <StepRail
+      steps={rail}
+      size="lg"
+      label="Fulfillment steps"
+      orientation={compact ? 'horizontal' : 'vertical'}
+      horizontalScroll={compact}
+    />
+  );
+
   return (
     <div className="border-b border-mode-fact px-4 py-3 last:border-b-0" data-testid="order-record-stages">
       {named ? <p className="mb-2 truncate text-role-caption font-semibold text-mode-ink">{lineTitle(line, todayKey) || '—'}</p> : null}
-      <StepRail
-        steps={rail}
-        size="lg"
-        label="Fulfillment steps"
-        orientation={compact ? 'horizontal' : 'vertical'}
-      />
+      {compact ? (
+        <LatestEdgeScroller latestKey={rail[Math.min(currentIndex, rail.length - 1)]!.id} testId="order-record-stages-scroll">
+          {stepRail}
+        </LatestEdgeScroller>
+      ) : (
+        stepRail
+      )}
     </div>
   );
 }

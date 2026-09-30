@@ -11,7 +11,7 @@ import { conditionLabel } from '@/lib/conditions';
 import { Button } from '@/design-system/primitives';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { DetailAck, DetailFact, DetailFacts, DetailNav, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
-import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
+import { useSerialUnit } from '@/lib/serial/use-serial-unit';
 import { useUnitHubRows, type UnitHubVerb } from '@/components/mobile/unit/useUnitHubRows';
 import { UnitLineTestSheet, UnitStashSheet } from '@/components/mobile/unit/UnitLineSheets';
 import { UnitMoveSheet, UnitPairSheet } from '@/components/mobile/unit/UnitVerbSheets';
@@ -78,7 +78,7 @@ export default function MobileUnitPage() {
     if (isLoaded && !user) router.replace(`/signin?next=/m/u/${rawParam}`);
   }, [isLoaded, user, router, rawParam]);
 
-  const { data, isLoading, error, refetch } = useMobileUnit(rawParam);
+  const { data, isLoading, error, refetch } = useSerialUnit(rawParam);
 
   // Once on mount — re-running would reopen a sheet the operator closed.
   useEffect(() => {

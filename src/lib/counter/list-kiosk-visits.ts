@@ -245,7 +245,7 @@ function buildKioskHistoryQuery(args: {
   const repairWhere: string[] = [
     'rs.organization_id = $1',
     'rs.counter_transaction_id IS NULL',
-    `COALESCE(NULLIF(TRIM(LOWER(rs.intake_channel)), ''), 'walk_in') <> 'shipment'`,
+    `rs.intake_channel IS DISTINCT FROM 'shipment'`,
   ];
 
   if (cursor) {

@@ -1,34 +1,52 @@
 import {
+  Activity,
   AlertCircle,
   AlertTriangle,
+  BarChart3,
   Barcode,
-  Clipboard,
   Check,
+  Clipboard,
   ClipboardList,
   Clock,
   Cpu,
   Download,
   FileText,
   History,
+  Images,
+  Inbox,
   Layers,
   Link2,
+  List,
   ListChecks,
+  MessageSquare,
   Package,
   PackageCheck,
   PackageOpen,
-  PackageSearch,
+  Phone,
   Plus,
   Printer,
-  Receipt,
   RefreshCw,
   ScanBarcode,
+  SalesModeCounter,
+  SalesPrice,
   Search,
+  Settings,
+  Share2,
+  ShieldCheck,
+  ShoppingCart,
   Star,
+  TicketHelp,
+  TrendingUp,
   Truck,
   Upload,
+  User,
+  Voicemail,
   Warehouse,
+  Zap,
 } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
+import { TASK_BOARD_TYPE_FACE } from '@/lib/task-board/task-board-model';
+import { TASK_STATUS_FACE } from '@/design-system/tokens/task-status';
 
 type NavViewIcon = {
   icon: React.ComponentType<{ className?: string }>;
@@ -41,14 +59,16 @@ type NavViewIcon = {
 /**
  * Page-panel view glyphs, keyed `<pageId>.<itemId>` (operator 2026-09-27:
  * "identify and click without even reading the text"). One glyph per job:
- * Exceptions warns, PO paired is the purchase order, Pick list is finding
- * the unit, To ship is the carrier, Shipped is the closed box. A view with no
- * entry paints no glyph.
+ * Exceptions warns, Allocate is the carrier, Shipped is the closed box.
+ *
+ * COMPLETENESS LAW (owner 2026-09-29): every unparked child of every page
+ * gets an entry in the same change that adds the view — the test beside this
+ * file names any gap, so a view never ships glyphless. A page's views wear
+ * its lane/mode ink with shade steps; a page with no ink of its own gives
+ * each view a distinct tone so the switcher scans before its words.
  */
 export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'outbound.exceptions': { icon: AlertTriangle, tone: 'text-amber-600', alertCount: true },
-  'outbound.po': { icon: Receipt, tone: 'text-sky-600' },
-  'outbound.pick': { icon: PackageSearch, tone: 'text-violet-600' },
   'outbound.triage': { icon: Truck, tone: 'text-blue-600' },
   'outbound.shipped': { icon: PackageCheck, tone: 'text-emerald-600' },
   // Deliveries lifecycle: three distinct inks make the switcher scannable
@@ -56,6 +76,62 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'incoming.pipeline': { icon: Truck, tone: 'text-blue-600' },
   'incoming.docked': { icon: Package, tone: 'text-violet-600' },
   'incoming.unboxed': { icon: PackageOpen, tone: 'text-emerald-600' },
+  // Repair service splits by how the device arrived: both stacked (All), the
+  // carrier, the counter.
+  'repair.all': { icon: Layers, tone: 'text-violet-600' },
+  'repair.shipped-in': { icon: Truck, tone: 'text-blue-600' },
+  'repair.dropped-off': { icon: SalesModeCounter, tone: 'text-amber-600' },
+  'sales.repairs-all': { icon: Layers, tone: 'text-violet-600' },
+  'sales.repairs-shipped-in': { icon: Truck, tone: 'text-blue-600' },
+  'sales.repairs-dropped-off': { icon: SalesModeCounter, tone: 'text-amber-600' },
+  // The Sales trio (owner 2026-09-29): the board charts, the counter closes,
+  // the pickup waits — three jobs, three glyphs, three inks.
+  'sales.sales': { icon: BarChart3, tone: 'text-sky-600' },
+  'sales.counter': { icon: SalesPrice, tone: 'text-emerald-600' },
+  'sales.pickup': { icon: ShoppingCart, tone: 'text-indigo-600' },
+  // Reports: one glyph per report job — who worked, what packed, how full the
+  // bins, how fast stock moves, what stopped moving, work tracked, time spent.
+  'reports.staff-day': { icon: ClipboardList, tone: 'text-sky-600' },
+  'reports.packer-day': { icon: Package, tone: 'text-violet-600' },
+  'reports.utilization': { icon: BarChart3, tone: 'text-emerald-600' },
+  'reports.velocity': { icon: TrendingUp, tone: 'text-cyan-600' },
+  'reports.dead-stock': { icon: FileText, tone: 'text-amber-700' },
+  'reports.tasks': { icon: ListChecks, tone: 'text-indigo-600' },
+  'reports.activity': { icon: Clock, tone: 'text-blue-600' },
+  // Automations: the canvas, the trigger, the parts shelf.
+  'studio.graph': { icon: Share2, tone: 'text-indigo-600' },
+  'studio.rules': { icon: Zap, tone: 'text-amber-600' },
+  'studio.catalog': { icon: Layers, tone: 'text-violet-600' },
+  // Operations (Monitor): the pulse, the rounds, the past, the alarms, the
+  // links, the targets, the bar, the people, the plumbing, the paper trail.
+  'operations.live': { icon: Activity, tone: 'text-emerald-600' },
+  'operations.checks': { icon: ClipboardList, tone: 'text-blue-600' },
+  'operations.packing-review': { icon: Clipboard, tone: 'text-amber-600' },
+  'operations.history': { icon: History, tone: 'text-indigo-600' },
+  'operations.signals': { icon: Zap, tone: 'text-orange-600' },
+  'operations.reconciliation': { icon: Link2, tone: 'text-teal-600' },
+  'operations.goals': { icon: BarChart3, tone: 'text-sky-600' },
+  'operations.quality': { icon: ShieldCheck, tone: 'text-emerald-700' },
+  'operations.staff': { icon: User, tone: 'text-blue-700' },
+  'operations.sync': { icon: RefreshCw, tone: 'text-cyan-600' },
+  'operations.logs': { icon: FileText, tone: 'text-slate-600' },
+  // Imports: the runs, then one row per order each run touched.
+  'imports.runs': { icon: History, tone: 'text-blue-600' },
+  'imports.rows': { icon: List, tone: 'text-sky-700' },
+  // Support: the queue, the recordings, the line, the claims, the escalations.
+  'support.tickets': { icon: Inbox, tone: 'text-blue-600' },
+  'support.voicemail': { icon: Voicemail, tone: 'text-violet-600' },
+  'support.calls': { icon: Phone, tone: 'text-emerald-600' },
+  'support.warranty': { icon: ShieldCheck, tone: 'text-amber-600' },
+  'support.issues': { icon: MessageSquare, tone: 'text-rose-600' },
+  // Media Library scopes: every source surface an image comes in on.
+  'ops-photos.all': { icon: Images, tone: 'text-sky-600' },
+  'ops-photos.unboxing': { icon: PackageOpen, tone: 'text-blue-600' },
+  'ops-photos.local_pickup': { icon: SalesModeCounter, tone: 'text-amber-600' },
+  'ops-photos.packing': { icon: Package, tone: 'text-violet-600' },
+  'ops-photos.repair': { icon: Settings, tone: 'text-orange-600' },
+  'ops-photos.claims': { icon: TicketHelp, tone: 'text-rose-600' },
+  'ops-photos.outbound': { icon: Share2, tone: 'text-emerald-600' },
   // FBA wears the purple family (its mode tone is `text-purple-600`).
   'fba.ready': { icon: ListChecks, tone: 'text-violet-600' },
   'fba.plan': { icon: ClipboardList, tone: 'text-purple-500' },
@@ -109,6 +185,25 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'exceptions.claim': { icon: AlertCircle, tone: 'text-blue-600', alertCount: true },
   'exceptions.short': { icon: PackageOpen, tone: 'text-blue-600', alertCount: true },
   'exceptions.unfound': { icon: Search, tone: 'text-blue-600', alertCount: true },
+  // Tasks (owner 2026-09-29): each PARENT wears its row-type glyph and hue
+  // (`TASK_BOARD_TYPE_FACE`, the same mark every board row leads with; All
+  // tasks the stack); the views under it say state, never the parent's glyph
+  // again — open work is the clock, finished work the check.
+  'home.tasks': { icon: Layers, tone: 'text-sky-600' },
+  'home.support': { icon: TASK_BOARD_TYPE_FACE.ticket.icon, tone: TASK_BOARD_TYPE_FACE.ticket.ink },
+  'home.daily': { icon: TASK_BOARD_TYPE_FACE.checklist.icon, tone: TASK_BOARD_TYPE_FACE.checklist.ink },
+  'home.projects': { icon: TASK_BOARD_TYPE_FACE.project.icon, tone: TASK_BOARD_TYPE_FACE.project.ink },
+  'home.all': { icon: Clock, tone: 'text-sky-700' },
+  'home.task': { icon: TASK_BOARD_TYPE_FACE.task.icon, tone: TASK_BOARD_TYPE_FACE.task.ink },
+  'home.ticket': { icon: Clock, tone: 'text-orange-700' },
+  'home.checklist': { icon: Clock, tone: 'text-emerald-700' },
+  'home.project': { icon: Clock, tone: 'text-indigo-700' },
+  'home.all-done': { icon: Check, tone: 'text-emerald-700' },
+  // Held work (Pending · Follow-up · Blocked) wears the Pending face (`TASK_STATUS_FACE`).
+  'home.all-waiting': { icon: TASK_STATUS_FACE.PENDING.icon, tone: TASK_STATUS_FACE.PENDING.ink },
+  'home.ticket-done': { icon: Check, tone: 'text-emerald-700' },
+  'home.checklist-done': { icon: Check, tone: 'text-emerald-700' },
+  'home.project-done': { icon: Check, tone: 'text-emerald-700' },
 };
 
 /**
@@ -131,4 +226,5 @@ export const NAV_ACTION_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'reports.export-packing': { icon: Download, tone: 'text-text-muted' },
   'reports.export-inbound': { icon: Download, tone: 'text-text-muted' },
   'reports.export-outbound': { icon: Download, tone: 'text-text-muted' },
+  'studio.library': { icon: Layers, tone: 'text-text-muted' },
 };

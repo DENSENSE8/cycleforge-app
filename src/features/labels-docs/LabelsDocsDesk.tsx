@@ -270,7 +270,7 @@ function PrintQueueDesk({ view }: { view: LabelPrintView }) {
   }, [docs.documents, openKey, defaultTaken]);
   const checkedDocs = useMemo(() => docs.documents.filter((doc) => included.has(doc.key)), [docs.documents, included]);
 
-  const { print, progress, notice, setNotice, refresh } = useDeskPress(stations, refreshRoutes);
+  const { print, notice, setNotice, refresh } = useDeskPress(stations, refreshRoutes);
   // Every label this desk has read, by ingestion id — the reprint warning names what a press would print again.
   const labelsById = useMemo(() => {
     const byId = new Map<number, LabelPrintRow>();
@@ -591,11 +591,9 @@ function PrintQueueDesk({ view }: { view: LabelPrintView }) {
     </dl>
   );
 
-  const status = progress
-    ? `Printing ${progress.done} of ${progress.total}…`
-    : queue.isError
-      ? 'The print queue could not be read. It retries on its own.'
-      : notice;
+  const status = queue.isError
+    ? 'The print queue could not be read. It retries on its own.'
+    : notice;
 
   const orderId = openCard?.lead.orderId ?? null;
   const recordView = openCard ? (

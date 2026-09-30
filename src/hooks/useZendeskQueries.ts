@@ -62,7 +62,7 @@ export const zendeskKeys = {
   users: (ids: number[]) => ['zendesk', 'users', [...ids].sort((a, b) => a - b)] as const,
 };
 
-/** Detail reads stay warm 90s — matches server bundle cache TTL. */
+/** Detail reads stay warm 90s client-side; the server serves them from the local ticket mirror. */
 const ZENDESK_DETAIL_STALE_MS = 90_000;
 
 function zendeskShouldRetry(count: number, err: HttpError): boolean {
@@ -166,7 +166,7 @@ function seedZendeskTicketCaches(qc: QueryClient, id: number, bundle: ZendeskTic
   qc.setQueryData(zendeskKeys.photos(id), { entity: bundle.entity, photos: bundle.photos });
 }
 
-/** One round-trip for the support detail panel (server bundle + Redis cache). */
+/** One round-trip for the support detail panel (server bundle from the local ticket mirror). */
 export function useZendeskTicketBundle(id: number | null) {
   const qc = useQueryClient();
   return useQuery<ZendeskTicketBundle, HttpError>({

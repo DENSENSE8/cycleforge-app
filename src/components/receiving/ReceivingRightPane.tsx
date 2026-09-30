@@ -8,11 +8,11 @@ import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
 import { TriageLineWorkspace } from '@/components/receiving/triage/TriageLineWorkspace';
-import { RepairTable } from '@/components/repair';
+import { RepairCardList } from '@/components/repair/RepairCardList';
 import { RepairIntakeHost } from '@/components/repair/RepairIntakeHost';
 import { PickupWorkspace } from '@/components/receiving/pickup/PickupWorkspace';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
-import { parseRepairTab } from '@/lib/walk-in/history-modes';
+import { DEFAULT_REPAIR_TAB } from '@/lib/walk-in/history-modes';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type {
   NavState,
@@ -62,14 +62,16 @@ export function ReceivingRightPane({
     return (
       <RightPaneOverlayHost className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* The Repair Service desk: the desk stage gives the queue its fixed
-            width and the staffer's fullscreen choice (the record plane's split). */}
-        <DeskPageLayout className="h-full">
-          <RepairTable filter={parseRepairTab(searchParams.get('tab'))} />
+            width and the staffer's fullscreen choice (the record plane's split).
+            `bare`: the header is the page's NavContext — the view as the title,
+            `›` unfolding All · Shipped in · Dropped off on their digits, like
+            Allocate. */}
+        <DeskPageLayout bare className="h-full">
+          <RepairCardList defaultTab={DEFAULT_REPAIR_TAB} />
+          {/* The New repair CTA top-right (registers into the frame) and the
+              `?new=true` intake it opens — a portal, no in-flow DOM. */}
+          <RepairIntakeHost />
         </DeskPageLayout>
-        {/* `?new=true` intake lives here because the left rail that used to host
-            it is gone — favorites became a scope of the catalog picker, so the
-            repair desk is rail-less. Portal host: no in-flow DOM. */}
-        <RepairIntakeHost />
       </RightPaneOverlayHost>
     );
   }

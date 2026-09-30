@@ -312,7 +312,7 @@ const TOOL_ROUTES: ReadonlyArray<readonly [tool: string, when: string]> = [
   ['get_node_detail', 'one workflow station'],
   ['reconcile_refs', 'a pasted list of tracking / order / PO numbers: which were received (call with NO arguments — never retype the list)'],
   ['get_customer', 'who is this caller / a customer by name, phone or email (dossier: orders, ship-to, open tickets)'],
-  ['get_worklist', 'what should I do first / exceptions, out of stock, need to order, late, pending or ready-to-pick lists'],
+  ['get_worklist', 'what should I do first / exceptions, out of stock, need to order, late or pending lists'],
   ['get_staff_report', 'a staff member\'s performance / time spent per task / per day / goals'],
   ['get_tracking_status', 'live carrier status or delivery of a tracking number'],
   ['watch_tracking', 'tell me when a tracking number arrives / stop watching it'],

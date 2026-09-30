@@ -17,7 +17,7 @@ import type { TriageSectionSpec } from '@/design-system/components/TriageSection
 import { triagePanelControl, TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/triage-panel';
 import {
   composeInboundReturnReason,
-  INBOUND_ORDER_TYPES,
+  AUTHORED_INBOUND_ORDER_TYPES,
   INBOUND_ORDER_TYPE_LABELS,
   parseInboundReturnReason,
   type InboundOrderDraft,
@@ -78,7 +78,7 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
 
   const typeSwitch = (
     <div role="radiogroup" aria-label="Order type" className="grid grid-cols-2 gap-1 sm:grid-cols-4">
-      {INBOUND_ORDER_TYPES.map((type) => {
+      {AUTHORED_INBOUND_ORDER_TYPES.map((type) => {
         const selected = draft.type === type;
         return (
           <button

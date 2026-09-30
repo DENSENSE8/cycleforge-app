@@ -73,15 +73,15 @@ function world(rows: OrderImageRow[], gates: Partial<Record<'amazon' | 'ebay', P
   return { deps, fetched, stored, orderStored };
 }
 
-test('productImageUrl: the listing-gallery cover is the last tier — Zoho and catalog photos always win', () => {
-  const cover = { listingCoverPhotoId: 77 };
+test('productImageUrl: the catalog photo first, then our listing cover, then Zoho, then nothing', () => {
+  const zoho = { zohoItemId: 'Z1', zohoImageDocumentId: 'D1' };
   assert.equal(
-    productImageUrl({ zohoItemId: 'Z1', zohoImageDocumentId: 'D1', catalogImageUrl: 'https://cat/x.jpg', ...cover }),
-    '/api/zoho/items/Z1/image',
+    productImageUrl({ ...zoho, catalogImageUrl: 'https://cat/x.jpg', listingCoverPhotoId: 77 }),
+    'https://cat/x.jpg',
   );
-  assert.equal(productImageUrl({ catalogImageUrl: 'https://cat/x.jpg', ...cover }), 'https://cat/x.jpg');
-  assert.equal(productImageUrl(cover), '/api/photos/77/content?variant=thumb');
-  assert.equal(productImageUrl({ listingCoverPhotoId: 0 }), null);
+  assert.equal(productImageUrl({ ...zoho, listingCoverPhotoId: 77 }), '/api/photos/77/content?variant=thumb');
+  assert.equal(productImageUrl({ ...zoho, listingCoverPhotoId: 0 }), '/api/zoho/items/Z1/image');
+  assert.equal(productImageUrl({ zohoItemId: 'Z1' }), null);
 });
 
 test('backfill preserves existing photos and supplies a gallery fallback when a Zoho-linked product has none', async () => {

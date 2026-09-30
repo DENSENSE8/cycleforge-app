@@ -2,7 +2,7 @@
 
 import type { TaskMediaLink } from './media-links';
 
-export const TASK_LINK_KINDS = ['order', 'tracking', 'ticket'] as const;
+export const TASK_LINK_KINDS = ['order', 'tracking', 'ticket', 'repair'] as const;
 export type TaskLinkKind = (typeof TASK_LINK_KINDS)[number];
 
 export function isTaskLinkKind(raw: unknown): raw is TaskLinkKind {
@@ -14,12 +14,17 @@ export const TASK_LINK_NOUN: Readonly<Record<TaskLinkKind, string>> = {
   order: 'Order',
   tracking: 'Tracking',
   ticket: 'Ticket',
+  repair: 'Repair',
 };
 
 /** The lean face a task ROW carries — enough to search, count and paint band 3. */
 export interface TaskLinkFace {
   kind: TaskLinkKind;
   label: string;
+  /** `ticket` links only — the linked ticket's `support_tickets.status_cache` (null when unknown or not a ticket). */
+  status?: string | null;
+  /** `repair` links only — the repair row's id, stamped ticket number and stored status (absent when the row is gone). */
+  repair?: { id: number; ticketNumber: string | null; status: string | null };
 }
 
 /** The order a link names (an `order` link, or a `tracking` link that resolved to one). */
@@ -48,6 +53,24 @@ export interface TaskLink {
   tracking: { carrier: string | null; status: string | null } | null;
   /** `ticket` links only — local caches, never a live helpdesk read. */
   ticket: { providerTicketId: number | null; subject: string | null; status: string | null } | null;
+  /** `repair` links only — the `repair_service` row (`entityId` is its id; `label` is `RS-<id>`). */
+  repair: TaskLinkRepair | null;
+}
+
+/** The repair a `repair` link names. */
+export interface TaskLinkRepair {
+  /** `repair_service.id` — the `RS-<id>` an operator quotes. */
+  id: number;
+  /** `repair_service.ticket_number` — the helpdesk number on the paperwork, when stamped. */
+  ticketNumber: string | null;
+  status: string | null;
+  /** `repair_service.product_title` — the device read in one phrase. */
+  title: string | null;
+}
+
+/** A repair's door: the Repair desk opens it on `?openRepair=` (`RepairCardList.tsx`); the phone at `/m/rs/<id>`. */
+export function taskLinkRepairHref(repairId: number, surface: 'desk' | 'phone'): string {
+  return surface === 'phone' ? `/m/rs/${repairId}` : `/repair?openRepair=${repairId}`;
 }
 
 export interface TaskLinksPayload {
@@ -59,7 +82,9 @@ export interface TaskLinksPayload {
 export type TaskLinkCreateBody =
   | { kind: 'order'; entityId: number }
   | { kind: 'ticket'; value: string }
-  | { kind: 'tracking'; value: string };
+  | { kind: 'tracking'; value: string }
+  /** `RS-74`, `rs74`, or the repair's ticket number (`#48120` / `48120`). */
+  | { kind: 'repair'; value: string };
 
 /** Refusals the link route returns, in words an operator can act on. */
 export const TASK_LINK_REFUSAL_COPY: Readonly<Record<string, string>> = {
@@ -68,6 +93,8 @@ export const TASK_LINK_REFUSAL_COPY: Readonly<Record<string, string>> = {
   invalid_tracking: 'That is not a tracking number.',
   invalid_number: 'A ticket is a number — 48120, or #48120.',
   not_found: 'No ticket with that number, here or on the helpdesk.',
+  repair_not_found: 'No repair with that number — try RS-74 or the repair’s ticket number.',
+  repair_ambiguous: 'Several repairs carry that ticket number. Link it by its RS- number.',
   helpdesk_unavailable: 'The helpdesk did not answer. Try again in a moment.',
   anchor_duplicate: 'That record is already what this task is about.',
 };
@@ -86,6 +113,8 @@ export interface TaskMediaVideo {
   contentType: string;
   sizeBytes: number;
   createdAt: string;
+  /** Who uploaded it — null once their staff row is gone. */
+  createdBy: { id: number; name: string } | null;
 }
 
 export interface TaskMediaPayload {

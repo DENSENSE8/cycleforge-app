@@ -14,7 +14,6 @@ import {
   EvidenceFacts,
   EvidenceNotice,
   EvidenceSection,
-  EvidenceStateStrip,
 } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import type { OrderChannelResolver } from '@/lib/platform-display';
@@ -29,7 +28,7 @@ import {
   importStepCountsLine,
   importTriggerLabel,
 } from '@/lib/imports/record-faces';
-import { IMPORT_ROW_OUTCOME_LIFECYCLE, IMPORT_RUN_LIFECYCLE } from '@/design-system/tokens/import-record-lifecycle';
+import { IMPORT_ROW_OUTCOME_LIFECYCLE } from '@/design-system/tokens/import-record-lifecycle';
 import { useImportRows, useImportRun } from '@/lib/imports/record-client';
 import { ImportFilledFields, ImportOrderNumber, ImportReviewDoor } from './import-record-parts';
 
@@ -60,10 +59,8 @@ export function ImportRunRecordView({
     return <EvidenceNotice tone="warn">{detail.error?.message ?? `Run ${runId} is not on file.`}</EvidenceNotice>;
   }
 
-  const state = IMPORT_RUN_LIFECYCLE[run.status];
   return (
     <div className="flex min-h-0 flex-col" data-testid="import-run-record">
-      <EvidenceStateStrip state={state} next={run.totals.needsReview > 0 ? `Review ${run.totals.needsReview}` : null} />
       {run.error ? <EvidenceNotice tone="warn">{run.error}</EvidenceNotice> : null}
       <EvidenceSection label="Totals">
         <EvidenceFacts>

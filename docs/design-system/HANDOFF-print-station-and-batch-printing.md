@@ -82,13 +82,26 @@ packer's table, set an exact quantity, print there silently (the existing `fnsku
    browser-scaled preview text is smooth and fallback typography uses print-stable point sizes.
 7. A top-right **Add FNSKU** action opens the existing catalog fields as a fixed-width inline
    triage form above the cards.
-8. The label title and selected print-station name are editable inline. Title edits redraw the
-   label before persistence; station renames use the organization print-station registry.
+8. The label title is editable inline; title edits redraw the label before persistence.
 9. The Print action is bottom-right under the station roster.
 10. While an FNSKU record is open, its Back + FNSKU title band replaces the page-level
     **All FNSKUs** header and occupies the topmost desk-header position.
 11. Printed condition text omits the internal house-grade prefix (`A`, `A+`, `B+`, and so on);
-    the preview and both print paths show only Amazon's condition words in a smaller 600-weight line.
+    the label shows only Amazon's condition words in a smaller 600-weight line.
+12. `drawFnskuLabel` is the single face renderer. The on-screen preview, raw thermal commands, and
+    browser-print fallback all consume its PNG raster; the fallback has no parallel HTML typography
+    or barcode layout that can drift from the display.
+13. Quantity uses `StopSlider` (`@/design-system/primitives/StopSlider`) over common print-run
+    stops (`1, 2, 5, 10, 20, 30, 40, 50, 75, 99`). Exact numeric entry remains visible and can
+    insert any `1..99` amount into the slider scale.
+14. `StopSlider` is the repo's one range-slider face: light info track, bright info fill, white
+    ringed thumb, a 44px band that is the whole hit area, and tappable stop chips when they fit.
+    Pack time (desk + `/m`) and tote runs mount it too; no native `accent-*` range inputs remain.
+15. The station name is edited inline in the chosen station's own row: click the name (it opens
+    blank for an unnamed computer, not prefilled with "Unnamed computer"), Enter or click-away
+    saves it org-wide, Esc reverts. The row's meta line shows "Saving name…", "Name saved for
+    everyone", or the server's refusal in place. `InlineEditableValue` gained `onCancel`: Esc
+    never submits.
 
 ## 3. Verification result
 

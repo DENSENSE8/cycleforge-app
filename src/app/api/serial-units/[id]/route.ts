@@ -6,6 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { listPhotosForEntity } from '@/lib/photos/service';
 import { resolveCurrentReceivingLineIds } from '@/lib/neon/serial-units-queries';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
+import { productImageUrl } from '@/lib/photos/product-image-url';
 
 /** GET /api/serial-units/:id Returns one serial_units row (the unit's lifecycle state) plus a recent timeline of inventory_events for that… */
 export async function GET(
@@ -85,9 +86,25 @@ export async function GET(
     // The line this unit is CURRENTLY on — origin_receiving_line_id freezes to the FIRST-ever receiving line (upsertSerialUnit COALESCEs it)…
     const currentLineMap = await resolveCurrentReceivingLineIds([Number(unit.id)], orgId);
     const currentReceivingLineId = currentLineMap.get(Number(unit.id)) ?? null;
+    // Its carton — the claim a failed QC files is keyed on the carton + line — and the line's filed ticket and QC tester.
+    const currentLine =
+      currentReceivingLineId == null
+        ? null
+        : ((
+            await tenantQuery<{ receiving_id: number | null; zendesk_ticket: string | null; assigned_tech_id: number | null }>(
+              orgId,
+              `SELECT rl.receiving_id, NULLIF(BTRIM(rl.zendesk_ticket), '') AS zendesk_ticket, rlt.assigned_tech_id
+                 FROM receiving_line rl
+                 LEFT JOIN receiving_line_testing rlt
+                   ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
+                WHERE rl.id = $1 AND rl.organization_id = $2 LIMIT 1`,
+              [currentReceivingLineId, orgId],
+            )
+          ).rows[0] ?? null);
+    const currentReceivingId = currentLine?.receiving_id ?? null;
 
-    // Product title (SKU identity law) + receiver name for display.
-    const productTitle = await resolveUnitTitle(orgId, {
+    // Product title (SKU identity law) and photo + receiver name for display.
+    const product = await resolveUnitProduct(orgId, {
       zohoItemId: (unit.zoho_item_id as string | null) ?? null,
       skuCatalogId: unit.sku_catalog_id != null ? Number(unit.sku_catalog_id) : null,
       sku: (unit.sku as string | null) ?? null,
@@ -242,7 +259,11 @@ export async function GET(
       serial_unit: {
         ...unit,
         current_receiving_line_id: currentReceivingLineId,
-        product_title: productTitle,
+        current_receiving_id: currentReceivingId == null ? null : Number(currentReceivingId),
+        current_line_ticket: currentLine?.zendesk_ticket ?? null,
+        current_line_tech_id: currentLine?.assigned_tech_id ?? null,
+        product_title: product.title,
+        product_image_url: product.imageUrl,
         received_by_name: receivedByName,
       },
       events,
@@ -374,7 +395,7 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
         .catch(() => null)
     : null;
 
-  const productTitle = await resolveUnitTitle(orgId, {
+  const product = await resolveUnitProduct(orgId, {
     zohoItemId: liveUnit?.zoho_item_id ?? null,
     skuCatalogId,
     sku,
@@ -395,10 +416,14 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
     origin_source: 'label_print',
     origin_receiving_line_id: null,
     current_receiving_line_id: null,
+    current_receiving_id: null,
+    current_line_ticket: null,
+    current_line_tech_id: null,
     received_at: liveUnit?.received_at ?? row.created_at,
     received_by: liveUnit?.received_by ?? row.staff_id,
     received_by_name: staffRow,
-    product_title: productTitle,
+    product_title: product.title,
+    product_image_url: product.imageUrl,
     created_at: row.created_at,
     updated_at: row.created_at,
   };
@@ -439,15 +464,18 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
   };
 }
 
-/** The unit's product title under the SKU identity law: */
-async function resolveUnitTitle(
+/** The unit's product title under the SKU identity law, and its photo under the one product-photo rule. */
+async function resolveUnitProduct(
   orgId: OrgId,
   ref: { zohoItemId: string | null; skuCatalogId: number | null; sku: string | null },
-): Promise<string | null> {
-  if (!ref.zohoItemId && ref.skuCatalogId == null && !ref.sku) return null;
+): Promise<{ title: string | null; imageUrl: string | null }> {
+  if (!ref.zohoItemId && ref.skuCatalogId == null && !ref.sku) return { title: null, imageUrl: null };
   const r = await tenantQuery<{
     zoho_item_title: string | null;
+    zoho_image_document_id: string | null;
     catalog_product_title: string | null;
+    catalog_image_url: string | null;
+    listing_cover_photo_id: number | null;
     item_name: string | null;
   }>(
     orgId,
@@ -455,13 +483,33 @@ async function resolveUnitTitle(
        (SELECT name FROM items
          WHERE zoho_item_id = $1 AND organization_id = $4 AND status = 'active'
          LIMIT 1) AS zoho_item_title,
+       (SELECT image_document_id FROM items
+         WHERE zoho_item_id = $1 AND organization_id = $4 AND status = 'active'
+         LIMIT 1) AS zoho_image_document_id,
        (SELECT product_title FROM sku_catalog
          WHERE id = $2 AND organization_id = $4
          LIMIT 1) AS catalog_product_title,
+       (SELECT image_url FROM sku_catalog
+         WHERE id = $2 AND organization_id = $4
+         LIMIT 1) AS catalog_image_url,
+       (SELECT photo_id FROM listing_photos
+         WHERE sku_catalog_id = $2 AND organization_id = $4 AND is_cover
+         LIMIT 1) AS listing_cover_photo_id,
        (SELECT product_title FROM sku_stock
          WHERE sku = $3 AND organization_id = $4
          LIMIT 1) AS item_name`,
     [ref.zohoItemId, ref.skuCatalogId, ref.sku, orgId],
   );
-  return resolveSkuIdentityTitle(r.rows[0] ?? {}) || null;
+  const row = r.rows[0];
+  return {
+    title: resolveSkuIdentityTitle(row ?? {}) || null,
+    imageUrl: row
+      ? productImageUrl({
+          catalogImageUrl: row.catalog_image_url,
+          listingCoverPhotoId: row.listing_cover_photo_id,
+          zohoItemId: ref.zohoItemId,
+          zohoImageDocumentId: row.zoho_image_document_id,
+        })
+      : null,
+  };
 }

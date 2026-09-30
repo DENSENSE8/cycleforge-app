@@ -14,6 +14,7 @@ import { createTaskDeps } from '@/lib/tasks/create-task-deps';
 import { patchTaskDeskRow } from '@/lib/tasks/list-tasks-db';
 import { isInboxAnchorable, TASK_PRIORITY } from '@/lib/tasks/task-vocabulary';
 import { isTaskDeskStatus } from '@/lib/tasks/task-desk-row';
+import { TASK_HOLDS } from '@/design-system/tokens/task-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,8 @@ const isoish = z.string().refine((raw) => Number.isFinite(Date.parse(raw)), {
 
 const PatchSchema = z.strictObject({
   status: z.string().refine(isTaskDeskStatus, { message: 'not an assignment status' }).optional(),
+  /** The hold on open work (Pending · Follow-up · Blocked); null clears it. */
+  taskState: z.enum(TASK_HOLDS).nullable().optional(),
   priority: z.number().int().min(0).max(PRIORITY_MAX).optional(),
   deadlineAt: isoish.nullable().optional(),
   startedAt: isoish.nullable().optional(),
@@ -37,6 +40,8 @@ const PatchSchema = z.strictObject({
   note: z.string().max(TASK_NOTE_MAX).nullable().optional(),
   /** "Remind me" instant; null clears it. */
   remindAt: isoish.nullable().optional(),
+  /** When to chase this task next; null clears it. */
+  nextFollowUpAt: isoish.nullable().optional(),
 }).refine((body) => body.assigneeStaffId === undefined || body.assigneeStaffIds === undefined ||
   body.assigneeStaffId === body.assigneeStaffIds[0], {
   message: 'Primary assignee must be first member',
@@ -47,6 +52,12 @@ const REFUSAL_STATUS: Record<string, number> = {
   not_found: 404,
   illegal_transition: 409,
   invalid_assignee: 400,
+  schema_pending: 409,
+};
+
+/** The refusal's words when the reason code alone would not tell the operator what to do. */
+const REFUSAL_MESSAGE: Readonly<Record<string, string>> = {
+  schema_pending: 'Pending, Follow-up and Blocked need the task-state database update (2026-09-30) — ask an admin to apply it.',
 };
 
 function taskIdFromUrl(req: NextRequest): number | null {
@@ -93,7 +104,7 @@ export const PATCH = withAuth(
       const result = await patchTaskDeskRow(ctx.organizationId, taskId, patch, ctx.staffId);
       if (!result.ok) {
         return NextResponse.json(
-          { error: result.reason, detail: result.detail ?? null },
+          { error: REFUSAL_MESSAGE[result.reason] ?? result.reason, reason: result.reason, detail: result.detail ?? null },
           { status: REFUSAL_STATUS[result.reason] ?? 400 },
         );
       }
@@ -108,12 +119,14 @@ export const PATCH = withAuth(
         entityId: result.task.id,
         before: {
           status: result.before.status,
+          taskState: result.before.taskState,
           assigneeStaffId: result.before.assigneeStaffId,
           assigneeStaffIds: result.before.assigneeStaffIds,
           projectName: result.before.projectName,
         },
         after: {
           status: result.task.status,
+          taskState: result.task.taskState,
           assigneeStaffId: result.task.assignee?.id ?? null,
           assigneeStaffIds: result.task.assignees.map(({ id }) => id),
           projectName: result.task.projectName,
@@ -122,6 +135,7 @@ export const PATCH = withAuth(
           startedAt: result.task.startedAt,
           completedAt: result.task.completedAt,
           remindAt: result.task.remindAt,
+          nextFollowUpAt: result.task.nextFollowUpAt,
           // The text itself is not copied into the audit trail; that the
           // description moved (and who moved it) is the fact worth keeping.
           noteChanged: patch.note !== undefined,

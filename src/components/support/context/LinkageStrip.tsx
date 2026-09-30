@@ -14,7 +14,7 @@ import type { SupportContextBundle } from '@/lib/support/context-types';
 import { primaryTicketLabel, secondaryProviderLabel } from '@/lib/support/ticket-refs';
 import { cn } from '@/utils/_cn';
 import { resolveLinkageProviderTicketId } from './linkage-provider-ticket-id';
-import { TicketLinkPopover, invalidateSupportContextCaches } from './TicketLinkPopover';
+import { TicketLinkPopover, anchorToParams, invalidateSupportContextCaches } from './TicketLinkPopover';
 
 /**
  * Closed-loop linkage strip + link/unlink affordances for the Support Context Hub.
@@ -66,19 +66,8 @@ export function LinkageStrip({
       if (!ticket?.providerTicketId || !linkable) {
         throw new Error('Nothing to unlink');
       }
-      const sp = new URLSearchParams();
+      const sp = anchorToParams(linkable);
       sp.set('ticketId', String(ticket.providerTicketId));
-      sp.set('anchorType', linkable.anchorType);
-      if (linkable.anchorType === 'receiving') {
-        sp.set('receivingId', String(linkable.receivingId ?? linkable.anchorId));
-        if (linkable.lineId != null) sp.set('lineId', String(linkable.lineId));
-      } else if (linkable.anchorType === 'tracking') {
-        sp.set('tracking', linkable.trackingNumber ?? '');
-      } else if (linkable.anchorType === 'shipment') {
-        sp.set('shipmentId', String(linkable.anchorId));
-      } else {
-        sp.set('orderId', String(linkable.anchorId));
-      }
       const res = await fetch(`/api/support/tickets/link?${sp.toString()}`, {
         method: 'DELETE',
       });

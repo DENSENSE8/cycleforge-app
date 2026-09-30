@@ -1,13 +1,13 @@
 'use client';
 
 import { Suspense } from 'react';
-import { HomeWorkspace } from '@/features/home/HomeWorkspace';
+import { TaskBoard } from '@/features/task-board/TaskBoard';
 
-/** Daily (`/`, was Home) — the start-of-shift checklist, single surface. */
+/** Tasks (`/`, was Daily) — the follow-up desk: tasks, ticket follow-ups, the shift checklist, projects. */
 export default function Home() {
   return (
     <Suspense>
-      <HomeWorkspace />
+      <TaskBoard />
     </Suspense>
   );
 }

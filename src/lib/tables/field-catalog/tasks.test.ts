@@ -114,7 +114,7 @@ describe('resolveTasksSlotValue', () => {
   it('resolves each catalog field off the view-model row', () => {
     const r = row();
     assert.deepEqual(resolveTasksSlotValue(r, 'tasks.task'), { kind: 'value', text: '#19' });
-    assert.deepEqual(resolveTasksSlotValue(r, 'tasks.status'), { kind: 'value', text: 'Open' });
+    assert.deepEqual(resolveTasksSlotValue(r, 'tasks.status'), { kind: 'value', text: 'To do' });
     assert.deepEqual(resolveTasksSlotValue(r, 'tasks.priority'), { kind: 'value', text: 'Normal' });
     assert.deepEqual(resolveTasksSlotValue(r, 'tasks.assignee'), {
       kind: 'value',

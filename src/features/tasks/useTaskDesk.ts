@@ -13,6 +13,9 @@ import {
   type TaskDeskStatus,
   type TaskDeskWireRow,
 } from '@/lib/tasks/task-desk-row';
+import { ticketStatusParam } from '@/lib/tasks/ticket-status-filter';
+import type { TicketStatus } from '@/design-system/tokens/ticket-status';
+import type { TaskHold } from '@/design-system/tokens/task-status';
 
 /** Lateness moves in minutes, not seconds — the old chip's cadence. */
 const CLOCK_TICK_MS = 30_000;
@@ -20,6 +23,8 @@ const CLOCK_TICK_MS = 30_000;
 /** The fields `PATCH /api/tasks/[id]` accepts. An unknown key is a 403 there. */
 export interface TaskDeskPatch {
   status?: TaskDeskStatus;
+  /** The hold on open work (`task_state`); null clears it. Build both with `taskStatusPatch`. */
+  taskState?: TaskHold | null;
   priority?: number;
   /** ISO string, or `null` to clear. */
   deadlineAt?: string | null;
@@ -33,6 +38,8 @@ export interface TaskDeskPatch {
   note?: string | null;
   /** "Remind me" instant, ISO, or `null` to clear. */
   remindAt?: string | null;
+  /** Next follow-up instant, ISO, or `null` to clear. */
+  nextFollowUpAt?: string | null;
 }
 
 /** WHOSE work the desk reads. */
@@ -52,12 +59,16 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   return data;
 }
 
-/** Key + fetcher for one lane × scope of the desk — shared by the hook and WelcomeGate's welcome warm-up. */
-export function taskDeskQueryOptions(lane: TaskDeskLane, scope: TaskDeskScope = 'mine') {
+/**
+ * Key + fetcher for one lane × scope of the desk — shared by the hook and WelcomeGate's welcome warm-up.
+ * `ticketStatuses` narrows in SQL (`?ticketStatus=`); its own cache entry, under the same `['tasks', 'desk']` prefix every write invalidates.
+ */
+export function taskDeskQueryOptions(lane: TaskDeskLane, scope: TaskDeskScope = 'mine', ticketStatuses: readonly TicketStatus[] = []) {
+  const ticketStatus = ticketStatusParam(ticketStatuses);
   return queryOptions({
-    queryKey: ['tasks', 'desk', lane, scope] as const,
+    queryKey: ticketStatus ? (['tasks', 'desk', lane, scope, ticketStatus] as const) : (['tasks', 'desk', lane, scope] as const),
     queryFn: async (): Promise<TaskDeskWireRow[]> => {
-      const params = new URLSearchParams({ lane, ...SCOPE_PARAMS[scope] });
+      const params = new URLSearchParams({ lane, ...SCOPE_PARAMS[scope], ...(ticketStatus ? { ticketStatus } : {}) });
       const res = await fetch(`/api/tasks?${params}`, { credentials: 'same-origin' });
       const data = (await readJson(res)) as unknown as TaskDeskListPayload;
       return data.tasks ?? [];

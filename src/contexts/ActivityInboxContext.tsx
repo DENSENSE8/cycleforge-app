@@ -26,7 +26,9 @@ import {
   INBOX_ENTITY_NOUN,
   notifiableEvent,
   type InboxEntityType,
+  WORK_TASK_FOLLOW_UP_ALERT,
 } from '@/lib/notifications/event-vocabulary';
+import { DURABLE_INBOX_QUERY_KEY } from '@/lib/notifications/use-durable-inbox';
 
 const MAX_ITEMS = 20;
 /** Time window during which Undo is offered for reversible items */
@@ -519,7 +521,15 @@ export function ActivityInboxProvider({
     }) => {
       const d = msg?.data ?? {};
       if (typeof d.eventKey === 'string' && notifiableEvent(d.eventKey)) {
-        void queryClient.invalidateQueries({ queryKey: ['api-inbox'] });
+        void queryClient.invalidateQueries({ queryKey: DURABLE_INBOX_QUERY_KEY });
+        return;
+      }
+      // A follow-up alert lives in the durable feed (Inbox → Alerts, the header's
+      // personal line): refetch it and say so once.
+      if (d.eventKey === WORK_TASK_FOLLOW_UP_ALERT) {
+        void queryClient.invalidateQueries({ queryKey: DURABLE_INBOX_QUERY_KEY });
+        const from = typeof d.actorName === 'string' && d.actorName ? d.actorName : 'A teammate';
+        toast.info(`${from} asked you to follow up`);
         return;
       }
       // The channel carries every inbox push; render only the assignment kind

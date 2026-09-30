@@ -119,6 +119,18 @@ export function searchOrderFeedbackHref(orderId: string | number): string {
   return `${SEARCH_SURFACE_PATH}?sel=order:${id}`;
 }
 
+/** The SKU record page (`SkuDetailView`) — where the SKU arm's hits open. */
+export const SKU_RECORD_PATH_PREFIX = '/inventory?sku=';
+
+export function skuRecordHref(sku: string): string {
+  return `${SKU_RECORD_PATH_PREFIX}${encodeURIComponent(sku)}`;
+}
+
+/** The desktop tote record (`/tote/{id}`) — a tote hit and a scanned `H-{id}` plate land here. */
+export function toteRecordHref(id: number): string {
+  return `/tote/${id}`;
+}
+
 export function searchHitHref(dbType: SearchEntityType, entityId: number): string {
   switch (dbType) {
     case 'ORDER':

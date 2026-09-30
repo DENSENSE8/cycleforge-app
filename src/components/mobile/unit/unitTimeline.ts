@@ -1,7 +1,7 @@
-import type { MobileUnitEvent } from './useMobileUnit';
+import type { SerialUnitEvent } from '@/lib/serial/use-serial-unit';
 
 /** The unit timeline the phone shows — newest first, capped so the screen stays short. */
-export function newestUnitEvents(events: readonly MobileUnitEvent[], cap = 25): MobileUnitEvent[] {
+export function newestUnitEvents(events: readonly SerialUnitEvent[], cap = 25): SerialUnitEvent[] {
   return [...events].sort((a, b) => (a.occurred_at < b.occurred_at ? 1 : -1)).slice(0, cap);
 }
 

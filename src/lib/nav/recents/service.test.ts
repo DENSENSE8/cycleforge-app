@@ -94,12 +94,12 @@ test('an open is written for the caller (org + staff from auth) with that surfac
     { surface: 'support.tickets', entityType: 'ticket', entityId: '9600', label: 'Refund request' },
     deps,
   );
-  await recordNavRecentOpen(caller([], 11), { surface: 'command_bar', entityType: 'page', entityId: '/shipping/orders?queue=pick', label: 'Pick list' }, deps);
+  await recordNavRecentOpen(caller([], 11), { surface: 'command_bar', entityType: 'page', entityId: '/shipping/shipped?shippedFilter=orders', label: 'Shipped' }, deps);
   assert.equal(cap.writes.length, 2);
   // [org, staff, surface, entity_type, entity_id, label, keep-others]; keep-others = cap − 1.
   assert.deepEqual(cap.writes[0].params, [ORG, 11, 'support.tickets', 'ticket', '9600', 'Refund request', 7]);
   assert.equal(cap.writes[0].orgId, ORG);
-  assert.deepEqual(cap.writes[1].params.slice(0, 5), [ORG, 11, 'command_bar', 'page', '/shipping/orders?queue=pick']);
+  assert.deepEqual(cap.writes[1].params.slice(0, 5), [ORG, 11, 'command_bar', 'page', '/shipping/shipped?shippedFilter=orders']);
   assert.equal(cap.writes[1].params[6], 5);
 });
 

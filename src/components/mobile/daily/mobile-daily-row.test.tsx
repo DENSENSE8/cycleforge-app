@@ -106,3 +106,10 @@ test('a recurring row paints no caption — only the exception is marked', () =>
   assert.doesNotMatch(html, /Today only/);
   assert.doesNotMatch(html, /data-once="true"/);
 });
+
+test('a held task row wears its status pill; a To do row wears none', () => {
+  const held = paint(false, { rowKey: 'task-7', detail: 'record', taskStatus: 'PENDING', subtitle: 'Due today' });
+  assert.match(held, /data-task-status="PENDING"[^>]*>.*Pending/);
+  const todo = paint(false, { rowKey: 'task-7', detail: 'record', taskStatus: 'TODO', subtitle: 'Due today' });
+  assert.doesNotMatch(todo, /data-task-status=/, 'To do is the default — no pill');
+});

@@ -11,7 +11,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { listStaffOutOnDate } from '@/lib/staff/staff-out-today';
 import type { AssignWorkAction, ResolvedAssignee } from '@/lib/automations/listing-match';
-import { sqlDeskQueueScope, sqlOrderPickAssigneeId } from '@/lib/orders/desk-view-sql';
+import { sqlOrderAwaitingPick, sqlOrderInWarehouseToShip, sqlOrderPickAssigneeId } from '@/lib/orders/desk-view-sql';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderAssignmentsUpdated, publishOrderChanged } from '@/lib/realtime/publish';
 import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
@@ -209,7 +209,7 @@ export interface OpenOrderPicker {
 }
 
 /**
- * Orders on the desk's pick queue (in-warehouse To-ship, awaiting pick) that
+ * In-warehouse To-ship orders still awaiting a pick (`sqlOrderAwaitingPick`) that
  * have never had a picker — not now, and not one someone cleared — keyed by
  * item number. `$1` org.
  */
@@ -220,7 +220,8 @@ const UNPICKED_UNASSIGNED_ORDERS_SQL = `
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
     LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id AND sc.organization_id = o.organization_id
    WHERE o.organization_id = $1
-     AND ${sqlDeskQueueScope('pick', 'o')}
+     AND ${sqlOrderInWarehouseToShip('o')}
+     AND ${sqlOrderAwaitingPick('o')}
      AND ${sqlOrderPickAssigneeId('o')} IS NULL
      AND NOT EXISTS (
        SELECT 1 FROM work_assignments wa

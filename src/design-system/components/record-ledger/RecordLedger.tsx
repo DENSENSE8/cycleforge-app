@@ -170,7 +170,7 @@ export function RecordLedger<T>({
             {inPlace ? <RecordLedgerTally summary={summary} /> : null}
             {onStage ? (
               <span className="flex shrink-0 items-center border-l border-mode-seam px-1.5">
-                <DeskRecordViewSwitch labels="wide" />
+                <DeskRecordViewSwitch />
               </span>
             ) : null}
           </div>

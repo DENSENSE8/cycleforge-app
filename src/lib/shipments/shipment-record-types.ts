@@ -1,5 +1,8 @@
 /** The shipment (package) record — one carrier tracking number (`shipping_tracking_numbers.id`) read as a whole: */
 
+import { productImageUrl } from '@/lib/photos/product-image-url';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
+
 export interface ShipmentRecordSerial {
   serial: string;
   testedByName: string | null;
@@ -20,6 +23,35 @@ export interface ShipmentRecordItem {
   condition: string | null;
   orderStatus: string | null;
   serials: ShipmentRecordSerial[];
+}
+
+/** A box line's title / photo sources — the columns the package record and the Shipped card both read. */
+export interface ShipmentItemIdentitySources {
+  product_title: string | null;
+  zoho_item_title: string | null;
+  catalog_product_title: string | null;
+  sku: string | null;
+  zoho_item_id: string | null;
+  zoho_image_document_id: string | null;
+  catalog_image_url: string | null;
+}
+
+/** A box line's title (SKU identity law) and photo (Zoho first) — one rule for the package record and the Shipped card. */
+export function shipmentItemIdentity(line: ShipmentItemIdentitySources): { title: string; photoUrl: string | null } {
+  return {
+    title:
+      resolveSkuIdentityTitle({
+        zoho_item_title: line.zoho_item_title,
+        catalog_product_title: line.catalog_product_title,
+        item_name: line.product_title,
+        sku: line.sku,
+      }) || 'Unknown product',
+    photoUrl: productImageUrl({
+      zohoItemId: line.zoho_item_id,
+      zohoImageDocumentId: line.zoho_image_document_id,
+      catalogImageUrl: line.catalog_image_url,
+    }),
+  };
 }
 
 /** Another package on the same order(s) — `shipment_links` siblings. */

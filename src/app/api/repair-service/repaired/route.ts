@@ -4,6 +4,7 @@ import { publishRepairChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { scheduleRepairTaskSync } from '@/lib/tasks/repair-tasks-db';
 
 /** POST /api/repair-service/repaired */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -90,6 +91,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   await invalidateCacheTags(['repair-service']);
   await publishRepairChanged({ organizationId: ctx.organizationId, repairIds: [Number(repairId)], source: 'repair-service.repaired' });
+  scheduleRepairTaskSync(ctx.organizationId, Number(repairId));
 
   return NextResponse.json({ success: true });
 }, { permission: 'repair.mark_repaired', feature: 'repair' });

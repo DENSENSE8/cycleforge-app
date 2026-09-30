@@ -12,7 +12,7 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { orderAdminUrl } from '@/utils/order-platform';
-import { ordersCompoundView, ordersEdgeMark, ordersGroupItemStatus } from '@/lib/orders/orders-compound-view';
+import { ordersCompoundView, ordersGroupEdgeMark, ordersGroupItemStatus } from '@/lib/orders/orders-compound-view';
 import { ordersSlotValues } from '@/lib/tables/field-catalog/orders-resolve';
 import { lineQtySubtitlePart } from '@/lib/tables/slot-table-line-qty';
 import { statusWordRollup, ordersBandStateTone } from '@/lib/receiving/receiving-group-rollup';
@@ -184,11 +184,7 @@ function QueueOrderParentRow({
       ],
     }),
     itemStatus: ordersGroupItemStatus(group.rows),
-    edgeMark: ordersEdgeMark({
-      has_exception: group.rows.some((row) => Boolean(row.has_exception)),
-      is_urgent: group.rows.some((row) => Boolean(row.is_urgent)),
-      is_out_of_stock: group.rows.some((row) => Boolean(row.is_out_of_stock)),
-    }),
+    edgeMark: ordersGroupEdgeMark(group.rows),
   };
   const orderMeta = resolveMarketplacePlatformMeta(orderId, lead.account_source);
 
@@ -252,11 +248,7 @@ function QueueOrderIndexRow({
         values: ordersIndexValues(group.rows, columns, { todayKey: getCurrentPSTDateKey() }),
         view: {
           ...ordersCompoundView(lead, { stateLabel: null, delayDays: null }),
-          edgeMark: ordersEdgeMark({
-            has_exception: group.rows.some((row) => Boolean(row.has_exception)),
-            is_urgent: group.rows.some((row) => Boolean(row.is_urgent)),
-            is_out_of_stock: group.rows.some((row) => Boolean(row.is_out_of_stock)),
-          }),
+          edgeMark: ordersGroupEdgeMark(group.rows),
         },
         orderId: String(lead.order_id || group.key || '').trim(),
         accountSource: lead.account_source ?? null,

@@ -37,10 +37,17 @@ them. ⌘K **navigation** (the empty-query page map) is sidebar work and yours.
 
 `parityGaps` per page (all permissions, no org override):
 
+**Update 2026-09-29 (owner: "switch all, this is dogfood"):** every entry in
+`NAV_CONTEXT_ROLLOUT` is `contextual`, app-wide, and every page's `parityGaps` is
+empty. Operations closed its gaps (goals/staff/logs controls, history saved views;
+the goals/staff/logs lists moved into the page body as picker panes). Studio's
+library is a canvas panel toggled by the `studio.library` action. The table below
+is the 2026-09-27 snapshot, kept for history.
+
 | Page | Rollout | Gaps |
 |---|---|---|
 | `ai-chat`, `incoming` | **contextual** | none |
-| `outbound`, `fba`, `label-intake` | legacy (Michael dogfoods `outbound` via `nav.contextual.outbound`) | none |
+| `outbound`, `fba`, `label-intake` | legacy (Michael dogfooded `outbound`) | none |
 | `products`, `inventory`, `sourcing`, `sales`, `support`, `reports` | legacy | none |
 | `studio` | legacy | `action:studio.library` |
 | `home` | legacy | `view:all/checklist/task/ticket/task_ticket`, `param:tab` |

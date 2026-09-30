@@ -6,15 +6,21 @@ Printed QR / DataMatrix codes for receiving cartons mint on the **Cycle Forge
 platform host** for the tenant:
 
 ```
-https://{slug}.app.cycleforge.ai/m/r/{id}
+https://{slug}.app.cycleforge.ai/m/r/{id}/qc
 ```
 
-- **Staff wedge / in-app scan** — `routeScan()` ignores the host and opens
-  receiving / unbox locally (bare `R-{id}` stickers still work).
+The `/qc` tail is the carton's quality control: the sticker is printed at
+unbox, so its next job is QC (pass / test again / failed per unit). Stickers
+printed before the tail (`/m/r/{id}`) still route to the same carton.
+
+- **Staff wedge / in-app scan** — `routeScan()` ignores the host; the dispatch
+  row `qc-carton` (`src/lib/scan/dispatch-table.ts`) opens `/m/r/{id}/qc` for
+  every carton form, bare `R-{id}` included.
 - **Consumer phone camera** — hits `{slug}.app.cycleforge.ai`, which *is* this
   app. Anonymous visitors see a branded **interstitial** with a button to the
   tenant’s configured customer website (`brand.publicLandingUrl` in org
-  settings). Authed staff get the mobile carton ops page.
+  settings) — the gate is `src/app/m/(shell)/r/[id]/layout.tsx`, so it covers
+  `/qc` too. Authed staff land on the carton's QC.
 - Tenants do **not** configure DNS or edge rewrites for QR. They only set the
   outbound website URL under Settings → Organization → Branding.
 
@@ -31,7 +37,7 @@ preview and print cannot disagree. Pinned by
 
 | Kind | Encodes | Anon landing |
 |---|---|---|
-| carton | `/m/r/{id}` on the slug host | `/m/r/[id]` → interstitial |
+| carton | `/m/r/{id}/qc` on the slug host | `/m/r/[id]/*` → interstitial |
 | unit (GTIN known) | `/01/{gtin}[/21/{serial}]` on the slug host | `/01/…` → interstitial |
 | unit (no GTIN) | `(01)…(21)…` element string, `U-{serial}`, or the SKU | — |
 | as-listed | bare `L-{id}` / `R-{id}` | none yet — see below |
@@ -143,12 +149,12 @@ export default {
 
 1. Print an unbox carton label while signed into `{slug}.app.cycleforge.ai`.
    Confirm the matrix encodes
-   `https://{slug}.app.cycleforge.ai/m/r/<id>` and the HRI under it is `R-<id>`.
+   `https://{slug}.app.cycleforge.ai/m/r/<id>/qc` and the HRI under it is `R-<id>`.
 2. Phone-camera scan (signed out) → branded interstitial; tap **Continue to
    website** → org `publicLandingUrl`.
-3. Staff wedge scan of the same sticker → unbox / carton ops with no hop to
-   a customer storefront.
-4. Legacy bare `R-<id>` stickers still resolve in-app.
+3. Phone-camera scan (signed in) and the in-app scan button → the carton's QC;
+   a one-unit carton opens that unit's verdict directly.
+4. Legacy bare `R-<id>` and pre-tail `/m/r/<id>` stickers still resolve in-app.
 
 ## Environment variables
 

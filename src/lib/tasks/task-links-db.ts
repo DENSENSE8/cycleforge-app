@@ -40,7 +40,11 @@ const TASK_LINKS_SQL = `
          stn.latest_status_category AS tracking_status,
          st.external_ticket_id    AS ticket_external_id,
          st.subject_cache         AS ticket_subject,
-         st.status_cache          AS ticket_status
+         st.status_cache          AS ticket_status,
+         rs.id                    AS repair_id,
+         rs.ticket_number         AS repair_ticket_number,
+         rs.status                AS repair_status,
+         rs.product_title         AS repair_title
     FROM work_assignment_links l
     LEFT JOIN staff s
       ON s.id = l.created_by_staff_id
@@ -74,6 +78,10 @@ const TASK_LINKS_SQL = `
       ON l.entity_type = 'SUPPORT_TICKET'
      AND st.id = l.entity_id
      AND st.organization_id = l.organization_id
+    LEFT JOIN repair_service rs
+      ON l.entity_type = 'REPAIR'
+     AND rs.id = l.entity_id
+     AND rs.organization_id = l.organization_id
    WHERE l.organization_id = $1::uuid
      AND l.assignment_id = $2
      AND ($3::text IS NULL OR (l.entity_type = $3 AND l.label = $4))
@@ -81,7 +89,7 @@ const TASK_LINKS_SQL = `
 
 /** The anchor of a FOLLOW_UP task in this org, or null — the task-existence gate. */
 export async function findTaskAnchor(orgId: OrgId, taskId: number): Promise<TaskAnchor | null> {
-  const res = await tenantQuery<{ entity_type: string; entity_id: string | number }>(
+  const res = await tenantQuery<{ entity_type: string | null; entity_id: string | number | null }>(
     orgId,
     `SELECT entity_type::text AS entity_type, entity_id
        FROM work_assignments
@@ -90,10 +98,13 @@ export async function findTaskAnchor(orgId: OrgId, taskId: number): Promise<Task
     [orgId, taskId, TASK_WORK_TYPE],
   );
   const row = res.rows[0];
-  const entityType = row ? taskEntityFromEnum(row.entity_type) : null;
+  if (!row) return null;
+  // A standalone task (no record) is a task like any other.
+  if (row.entity_type == null) return { entityType: null, entityId: null };
+  const entityType = taskEntityFromEnum(row.entity_type);
   // A row outside the task vocabulary is not a task the desk can show, so it
   // is not one links or media may hang off either.
-  return row && entityType ? { entityType, entityId: Number(row.entity_id) } : null;
+  return entityType ? { entityType, entityId: Number(row.entity_id) } : null;
 }
 
 /** The deps seam bound to one org (and the acting staffer, for ticket mirrors). */
@@ -119,6 +130,28 @@ function taskLinksDbDeps(orgId: OrgId, staffId: number | null): TaskLinksDeps {
     async findOrderIdByTracking(canonical) {
       const match = await findOrderByTrackingKey(canonical, pool, orgId);
       return match ? Number(match.id) : null;
+    },
+
+    async findRepairIds(ref) {
+      // LIMIT 2: one match links; two means the ticket number is shared and the operator must quote RS-<id>.
+      const res =
+        'repairId' in ref
+          ? await tenantQuery<{ id: number }>(
+              orgId,
+              `SELECT id FROM repair_service WHERE organization_id = $1::uuid AND id = $2 LIMIT 1`,
+              [orgId, ref.repairId],
+            )
+          : await tenantQuery<{ id: number }>(
+              orgId,
+              `SELECT id
+                 FROM repair_service
+                WHERE organization_id = $1::uuid
+                  AND UPPER(BTRIM(ticket_number, ' #')) = UPPER($2)
+                ORDER BY id DESC
+                LIMIT 2`,
+              [orgId, ref.ticketNumber],
+            );
+      return res.rows.map((row) => Number(row.id));
     },
 
     async insertLink(row) {

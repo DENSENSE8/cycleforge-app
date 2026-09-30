@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Picking desk — orders waiting to be picked (BLOCKED / out-of-stock lines,
- * PO paired) on the shared Unshipped table. Tab label "Picking" (operator
- * 2026-09-26; was "Pending").
+ * PO-paired shortage desk — out-of-stock orders whose shortage is earmarked
+ * onto a PO / receiving line, on the shared Unshipped table. PARKED (owner
+ * 2026-09-29): no FBM nav row, reachable by URL for the PO pairing build.
  */
 
 import { Suspense } from 'react';

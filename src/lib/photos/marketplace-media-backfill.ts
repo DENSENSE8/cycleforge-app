@@ -8,16 +8,21 @@ import { loadActiveAmazonAccounts, loadAmazonCreds } from '@/lib/amazon/accounts
 import { getCatalogItemImages, pickAmazonCatalogMainImage } from '@/lib/amazon/client';
 import { getBrowseAppToken, getEbayItemImageUrl } from '@/lib/ebay/browse-client';
 import { amazonValidate } from '@/lib/integrations/connectors/amazon';
+import { getShopifyVariantImageUrl, shopifyValidate } from '@/lib/integrations/connectors/shopify';
+import { fetchEcwidProductImageUrl, resolveEcwidCreds } from '@/lib/ecwid/client';
 import { listConnections } from '@/lib/integrations/connectors/connections';
 import { productImageUrl } from './product-image-url';
 import { addPhotosToListingInTx } from './listing-photos';
 import { attachPhotoWithLegacyUrlInTx } from './service';
 
-export type MarketplaceProvider = 'amazon' | 'ebay';
+export type MarketplaceProvider = 'amazon' | 'ebay' | 'shopify' | 'ecwid';
 
-const MARKETPLACE_PROVIDERS: readonly MarketplaceProvider[] = ['amazon', 'ebay'];
+const MARKETPLACE_PROVIDERS: readonly MarketplaceProvider[] = ['amazon', 'ebay', 'shopify', 'ecwid'];
 
-/** A listing identifier a provider can answer an image for: ASIN or eBay legacy item id. */
+/**
+ * A listing identifier a provider can answer an image for: Amazon ASIN, eBay
+ * legacy item id, Shopify variant SKU, Ecwid product id.
+ */
 export interface MarketplaceRef {
   provider: MarketplaceProvider;
   id: string;
@@ -35,6 +40,8 @@ const ASIN_RE = /^B[0-9A-Z]{9}$/;
  * for listings while retaining legacy inventory.
  */
 const EBAY_ITEM_ID_RE = /^\d{9,19}$/;
+/** Ecwid product id — a positive integer. */
+const ECWID_PRODUCT_ID_RE = /^\d{1,19}$/;
 /** Order-number shapes, for ShipStation rows whose account_source names no channel. */
 const AMAZON_ORDER_RE = /^\d{3}-\d{7}-\d{7}$/;
 const EBAY_ORDER_RE = /^\d{2}-\d{5}-\d{5}$/;
@@ -44,6 +51,8 @@ const MARKETPLACE_REPAIR: Record<MarketplaceProvider, string> = {
     'Settings → Integrations → Amazon → Connect: authorize in Seller Central (OAuth) or paste a self-authorized SP-API refresh token + Seller ID. The server must carry the SP-API app LWA credentials (AMAZON_LWA_CLIENT_ID / AMAZON_LWA_CLIENT_SECRET).',
   ebay:
     'The eBay app keyset (App ID / Cert ID — the unscoped eBay vault row, else EBAY_APP_ID / EBAY_CERT_ID) must be accepted by eBay; then Settings → Integrations → eBay → reconnect the account marked Needs attention.',
+  shopify: 'Settings → Integrations → Shopify → Connect (Nango), or paste the shop domain + Admin API access token.',
+  ecwid: 'Settings → Integrations → Ecwid → paste the store id + API token (or set ECWID_STORE_ID / ECWID_API_TOKEN).',
 };
 
 // ─── Rows ────────────────────────────────────────────────────────────────────
@@ -104,6 +113,8 @@ function orderChannel(accountSource: string | null, orderRef: string | null): Ma
   const source = String(accountSource ?? '').trim().toLowerCase();
   if (source.startsWith('amazon')) return 'amazon';
   if (source.startsWith('ebay')) return 'ebay';
+  if (source.startsWith('shopify')) return 'shopify';
+  if (source.startsWith('ecwid')) return 'ecwid';
   const ref = String(orderRef ?? '').trim();
   if (AMAZON_ORDER_RE.test(ref)) return 'amazon';
   if (EBAY_ORDER_RE.test(ref)) return 'ebay';
@@ -112,9 +123,13 @@ function orderChannel(accountSource: string | null, orderRef: string | null): Ma
 
 /** A well-formed ref for `provider`, or null — ids are shape-checked before any API call. */
 function toRef(provider: string, rawId: string | null | undefined): MarketplaceRef | null {
-  const id = String(rawId ?? '').trim().toUpperCase();
+  const raw = String(rawId ?? '').trim();
+  const id = raw.toUpperCase();
   if (provider === 'amazon' && ASIN_RE.test(id)) return { provider, id };
   if (provider === 'ebay' && EBAY_ITEM_ID_RE.test(id)) return { provider, id };
+  // Shopify is asked by variant SKU, as written (SKU search is exact text).
+  if (provider === 'shopify' && raw) return { provider, id: raw };
+  if (provider === 'ecwid' && ECWID_PRODUCT_ID_RE.test(raw)) return { provider, id: raw };
   return null;
 }
 
@@ -123,8 +138,14 @@ function toRef(provider: string, rawId: string | null | undefined): MarketplaceR
  * listing (on its own channel first), then the catalog row's platform ids.
  */
 export function marketplaceRefsFor(row: OrderImageRow): MarketplaceRef[] {
-  const own = [toRef('amazon', row.itemNumber), toRef('amazon', row.sku), toRef('ebay', row.itemNumber)];
   const channel = orderChannel(row.accountSource, row.orderRef);
+  const own = [
+    toRef('amazon', row.itemNumber),
+    toRef('amazon', row.sku),
+    toRef('ebay', row.itemNumber),
+    // A storefront order's own SKU is its listing key on that storefront.
+    channel === 'shopify' ? toRef('shopify', row.sku) : null,
+  ];
   const ordered = [
     ...own.filter((ref) => ref?.provider === channel),
     ...own.filter((ref) => ref?.provider !== channel),
@@ -599,12 +620,17 @@ const ORDER_IMAGE_ROWS_SQL = `
          AND p.photo_type = '${LISTING_PHOTO_TYPE}'
     ) order_photo ON TRUE
     LEFT JOIN LATERAL (
-      SELECT jsonb_agg(jsonb_build_object('provider', spi.platform, 'id', BTRIM(spi.platform_item_id))
+      SELECT jsonb_agg(jsonb_build_object(
+                 'provider', spi.platform,
+                 -- Shopify is keyed by variant SKU; every other platform by its listing id.
+                 'id', CASE WHEN spi.platform = 'shopify'
+                            THEN COALESCE(NULLIF(BTRIM(spi.platform_sku), ''), BTRIM(spi.platform_item_id))
+                            ELSE BTRIM(spi.platform_item_id) END)
                        ORDER BY spi.is_active DESC, spi.id) AS list
         FROM sku_platform_ids spi
        WHERE spi.organization_id = o.organization_id
          AND spi.sku_catalog_id = sc.id
-         AND spi.platform IN ('amazon', 'ebay')
+         AND spi.platform IN ('amazon', 'ebay', 'shopify', 'ecwid')
          AND NULLIF(BTRIM(spi.platform_item_id), '') IS NOT NULL
     ) refs ON TRUE
    WHERE o.organization_id = $1
@@ -641,6 +667,18 @@ async function checkProvider(orgId: OrgId, provider: MarketplaceProvider): Promi
       ? { ok: true, notes: [] }
       : { ok: false, reason: health.error ?? 'Amazon validation failed', repair: MARKETPLACE_REPAIR.amazon };
   }
+  if (provider === 'shopify') {
+    const health = await shopifyValidate(orgId);
+    return health.ok
+      ? { ok: true, notes: [] }
+      : { ok: false, reason: health.error ?? 'Shopify validation failed', repair: MARKETPLACE_REPAIR.shopify };
+  }
+  if (provider === 'ecwid') {
+    // The product sync already mirrors each product's image onto `sku_platform_ids`;
+    // the API is only the fallback for a product the mirror has no image for.
+    const creds = await resolveEcwidCreds(orgId);
+    return { ok: true, notes: creds ? [] : ['No Ecwid API credentials — mirrored images only'] };
+  }
 
   // Listing pictures come from the Browse API, which needs only the app keyset
   // (client-credentials) — so the app token is the gate. A seller/buyer
@@ -659,12 +697,30 @@ async function checkProvider(orgId: OrgId, provider: MarketplaceProvider): Promi
 
 async function fetchImageUrl(orgId: OrgId, ref: MarketplaceRef): Promise<string | null> {
   if (ref.provider === 'ebay') return getEbayItemImageUrl(ref.id, orgId);
+  if (ref.provider === 'shopify') return getShopifyVariantImageUrl(orgId, ref.id);
+  if (ref.provider === 'ecwid') return getEcwidProductImageUrl(orgId, ref.id);
   for (const account of await loadActiveAmazonAccounts(orgId)) {
     const creds = await loadAmazonCreds(orgId, account);
     if (!creds?.refreshToken) continue;
     return pickAmazonCatalogMainImage(await getCatalogItemImages(account, creds, ref.id), account.marketplaceIds);
   }
   throw new Error('No active Amazon account with stored credentials');
+}
+
+/** Ecwid: the product sync's mirrored image, else the product's own image from the API. */
+async function getEcwidProductImageUrl(orgId: OrgId, productId: string): Promise<string | null> {
+  const mirrored = await tenantQuery<{ image_url: string | null }>(
+    orgId,
+    `SELECT NULLIF(BTRIM(image_url), '') AS image_url
+       FROM sku_platform_ids
+      WHERE organization_id = $1 AND platform = 'ecwid' AND BTRIM(platform_item_id) = $2
+        AND NULLIF(BTRIM(image_url), '') IS NOT NULL
+      ORDER BY is_active DESC, id
+      LIMIT 1`,
+    [orgId, productId],
+  );
+  if (mirrored.rows[0]?.image_url) return mirrored.rows[0].image_url;
+  return fetchEcwidProductImageUrl(orgId, productId);
 }
 
 /** Thrown inside the store transaction to roll it back when the cover did not land. */

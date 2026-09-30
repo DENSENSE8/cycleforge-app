@@ -54,5 +54,5 @@ A rule the reference itself breaks is not a rule — skip it. A rule that needs 
 - One target per run. A second target is a second run.
 
 Worked example + ground truth for the inbound records: `docs/design-system/HANDOFF-inbound-record.md`.
-Inventory Stock + QC labels records (done; the SKU exception face is the open second target):
+Inventory Stock, QC labels and SKU exception records (done):
 `docs/design-system/HANDOFF-inventory-records.md`.

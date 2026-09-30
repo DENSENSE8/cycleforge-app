@@ -22,11 +22,13 @@
  * modal host): a dead switch is worse than none.
  */
 
-import { useEffect, useId, useRef, type KeyboardEvent } from 'react';
+import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { HotkeyTooltip } from '@/components/ui/HotkeyTooltip';
-import { LayoutGroup, motion, motionRole, useReducedMotion } from '@/design-system/motion';
+import { AnimatePresence, LayoutGroup, motion, motionRole, useReducedMotion } from '@/design-system/motion';
+import { AnimateText } from '@/design-system/motion/plus';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { DESK_RECORD_HEAD_LABEL_CLASS, DeskRecordHeadContext } from './DeskActionSlot';
 import { DESK_SPLIT_SHORTCUT_HINT, useDeskStageOptional, type DeskStageView } from './DeskStageContext';
 
 /** In place: the record fills the stage where the list was. */
@@ -60,18 +62,15 @@ const VIEWS: readonly { view: DeskStageView; label: string; action: string; chor
   { view: 'split', label: 'Split', action: 'Keep the list, open records beside it', chord: DESK_SPLIT_SHORTCUT_HINT, Glyph: SplitGlyph },
 ];
 
-export function DeskRecordViewSwitch({
-  className,
-  labels = 'always',
-}: {
-  className?: string;
-  /** `wide`: the words show only in a wide `@container` (the list bar); the drawings always do. */
-  labels?: 'always' | 'wide';
-}) {
+export function DeskRecordViewSwitch({ className }: { className?: string }) {
   const stage = useDeskStageOptional();
+  // On a record header band the words give way to the title while the band is compact.
+  const inRecordHead = useContext(DeskRecordHeadContext);
   const groupId = useId();
   const reduce = useReducedMotion();
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  // The option under the pointer / keyboard focus — it spells itself out like the selected one.
+  const [peeked, setPeeked] = useState<DeskStageView | null>(null);
   // A split pane below this measure cannot preserve both a useful list and a
   // readable record. Collapse to the full-width record as the viewport crosses
   // the phone/tablet boundary; the remembered desktop control remains explicit.
@@ -116,21 +115,31 @@ export function DeskRecordViewSwitch({
       >
         {options.map(({ view, label, action, chord, Glyph }, index) => {
           const active = stage.view === view;
+          // Expanded vs collapsed (owner 2026-09-29): the selected view wears its
+          // word; the other is its drawing alone until hovered or focused.
+          const expanded = active || peeked === view;
           return (
             <HotkeyTooltip key={view} action={action} chord={chord} placement="above">
-            <button
-              ref={(el) => {
+            <motion.button
+              ref={(el: HTMLButtonElement | null) => {
                 buttons.current[index] = el;
               }}
+              layout
+              transition={transition}
               type="button"
               role="radio"
               aria-checked={active}
               aria-label={label}
               tabIndex={index === activeIndex ? 0 : -1}
               data-testid={`desk-record-view-${view}`}
+              data-expanded={expanded ? '' : undefined}
               onClick={active ? undefined : () => stage.setView(view)}
+              onPointerEnter={() => setPeeked(view)}
+              onPointerLeave={() => setPeeked(null)}
+              onFocus={() => setPeeked(view)}
+              onBlur={() => setPeeked(null)}
               className={cn(
-                'relative inline-flex h-7 items-center gap-1.5 rounded-mode-control px-2 text-role-caption font-medium transition-colors duration-mode-feedback',
+                'relative inline-flex h-7 items-center rounded-mode-control px-2 text-role-caption font-medium transition-colors duration-mode-feedback',
                 active ? 'text-text-default' : 'text-text-muted hover:text-text-default',
                 focusRing('control'),
               )}
@@ -145,9 +154,28 @@ export function DeskRecordViewSwitch({
                   aria-hidden
                 />
               ) : null}
-              <Glyph className={cn('relative h-3.5 w-[18px]', active && 'text-text-info')} />
-              <span className={cn('relative', labels === 'wide' && 'hidden @4xl:inline')}>{label}</span>
-            </button>
+              <motion.span layout="position" transition={transition} className="relative inline-flex">
+                <Glyph className={cn('h-3.5 w-[18px]', active && 'text-text-info')} />
+              </motion.span>
+              <AnimatePresence initial={false}>
+                {expanded ? (
+                  <motion.span
+                    key="label"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 'auto', opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={transition}
+                    className={cn('relative overflow-hidden whitespace-nowrap', inRecordHead && DESK_RECORD_HEAD_LABEL_CLASS)}
+                    aria-hidden
+                  >
+                    {/* Motion+ spells the word in as the option opens. */}
+                    <span className="inline-block pl-1.5">
+                      {reduce ? label : <AnimateText type="char">{label}</AnimateText>}
+                    </span>
+                  </motion.span>
+                ) : null}
+              </AnimatePresence>
+            </motion.button>
             </HotkeyTooltip>
           );
         })}

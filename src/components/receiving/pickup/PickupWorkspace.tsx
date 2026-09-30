@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Camera } from '@/components/Icons';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
+import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import {
@@ -32,7 +33,7 @@ import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { PICKUP_HISTORY_VIEW } from '@/lib/triage/views';
 import { newInboundOrderHref } from '@/lib/inbound/new-inbound-order-path';
 import { formatDateKeyMedium } from '@/utils/date';
-import { PickupRecordView } from './PickupRecordView';
+import { usePickupRecord } from '@/lib/receiving/pickup/usePickupRecord';
 import { PickupCard } from './cards/PickupCard';
 import {
   pickupCardKey,
@@ -41,12 +42,12 @@ import {
   pickupOrderRecords,
   type PickupCardModel,
   type PickupOrderRecord,
-} from './cards/pickup-card-model';
+} from '@/lib/receiving/pickup/pickup-card-model';
 import {
   parsePickupStatusTab,
   usePickupLines,
   type PickupLine,
-} from './pickup-lines';
+} from '@/lib/receiving/pickup/pickup-lines';
 
 const VIEW = PICKUP_HISTORY_VIEW;
 const NO_CARD_STATUS = [] as const;
@@ -195,6 +196,8 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     [pathname, router, searchParams],
   );
   const open = useCallback((row: PickupOrderRecord) => setOrder(row.orderId), [setOrder]);
+  const pickup = usePickupRecord(openGroup);
+  const slot = useRecordSlot(pickup?.model ?? null, pickup?.verbs ?? [], openGroup ? `Local pickup ${openGroup.identity} actions` : 'Pickup actions', 'pickup-record');
   const close = useCallback(() => setOrder(null), [setOrder]);
   const importPaperwork = useCallback(() => router.push(newInboundOrderHref('PICKUP')), [router]);
   const importAction = useMemo(
@@ -281,12 +284,12 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
         feed={feed}
         cut={cut}
         record={{
-          title: openGroup ? `Local pickup ${openGroup.identity}` : 'Local pickup',
-          subtitle: openGroup?.customer ?? undefined,
+          title: slot?.title ?? 'Local pickup',
+          actions: slot?.actions,
           noun: VIEW.noun.one,
           testId: 'pickup-history-record',
           summary: <RecordLedgerSummaryPane summary={summary} />,
-          view: openGroup ? <PickupRecordView model={openGroup} openLineId={openGroup.rows[0]!.id} /> : null,
+          view: slot?.view ?? null,
           strip: null,
         }}
         summary={<span className="text-xs text-text-muted">{cardCount} pickups · {totalItems} items</span>}

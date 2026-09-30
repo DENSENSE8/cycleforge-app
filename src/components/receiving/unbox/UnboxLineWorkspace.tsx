@@ -1,8 +1,8 @@
 'use client';
 
-/** Unbox right-pane shell — browse workbench always mounted; focused line workspace crossfades over it (TestingLineWorkspace pattern). */
+/** Unbox right-pane shell — the browse workbench mounts the first time it is shown, then stays mounted; the focused line workspace crossfades over it (TestingLineWorkspace pattern). */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 // useRef carries the render-time pane slot below (see `paneSlotRef`)
 import dynamic from 'next/dynamic';
 import {
@@ -98,6 +98,13 @@ export function UnboxLineWorkspace({
     }
   }, [unboxPrimaryPaint, showOverlay, showRestoreSkeleton]);
 
+  // The desk (the full receiving grid) under an open carton is invisible, yet
+  // rendering it on a cold load with a carton open was the page's biggest
+  // main-thread cost. It mounts the first time the middle actually shows it,
+  // then stays mounted so later back-to-list is instant.
+  const [deskMounted, setDeskMounted] = useState(!showOverlay);
+  if (!deskMounted && !showOverlay) setDeskMounted(true);
+
   return (
     /* The outer shell wraps BOTH the desk pane and the carton overlay. */
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
@@ -115,7 +122,7 @@ export function UnboxLineWorkspace({
           {showRestoreSkeleton ? (
             <UniversalLoader isLoading label="Restoring carton" />
           ) : (
-            <UnboxWorkspaceView selectedLine={row} />
+            deskMounted ? <UnboxWorkspaceView selectedLine={row} /> : null
           )}
         </LoaderFieldCover>
       </div>

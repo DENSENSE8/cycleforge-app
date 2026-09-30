@@ -42,6 +42,7 @@ import { memo, useRef, type MouseEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight } from '@/components/Icons';
 import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
+import { PhotoHoverPeek } from '@/design-system/components/PhotoHoverPeek';
 import { CARD_STAGGER_CAP, CARD_STAGGER_S, CardCheck } from '@/design-system/components/record-card/RecordCard';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -184,7 +185,11 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
           </LifecycleCode>
         </span>
         {face.photo ? (
-          <span className="size-8 shrink-0 overflow-hidden rounded-md bg-mode-well ring-1 ring-inset ring-mode-rule">
+          <PhotoHoverPeek
+            src={face.photo.url}
+            alt={face.title}
+            className={cn('block size-8 shrink-0 overflow-hidden rounded-md ring-1 ring-inset ring-mode-rule', face.photo.url ? 'bg-surface-card' : 'bg-mode-well')}
+          >
             {face.photo.url ? (
               <img
                 src={face.photo.url}
@@ -197,7 +202,7 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
                 className="size-full object-cover"
               />
             ) : null}
-          </span>
+          </PhotoHoverPeek>
         ) : null}
         <span
           className={cn(

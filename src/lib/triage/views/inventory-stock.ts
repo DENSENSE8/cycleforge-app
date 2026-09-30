@@ -1,8 +1,9 @@
 /**
- * Inventory › Stock — `inventory.stock`, the shared three-row triage card.
- * One card per (location, SKU, source) pair: lifecycle and bin identity,
- * product title, SKU · room · qty, then “Count” / “Pair”. Room chips write
- * `?room=`; the State funnel (`?status=`) is the sidebar's.
+ * Inventory › Stock — `inventory.stock`, the shared triage card, three rows:
+ * line 1 = room · bin (top-left) … last counted / moved (top-right); the
+ * product title; then the count left of the SKU. No next step. Room chips write
+ * `?room=` and sit inline in the bar (`summaryInline`); the State funnel
+ * (`?status=`) is the sidebar's.
  */
 
 import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
@@ -20,10 +21,9 @@ export const INVENTORY_STOCK_VIEW: TriageViewDecl = {
   paging: 'client',
   status: 'state',
   facts: [
-    { id: 'sku', tier: 'always' },
-    { id: 'room', tier: 'always' },
     { id: 'qty', tier: 'always' },
+    { id: 'sku', tier: 'always' },
   ],
   sections: null,
-  next: ['Pair', 'Count'],
+  next: [],
 };

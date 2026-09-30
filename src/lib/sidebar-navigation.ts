@@ -34,6 +34,7 @@ import {
   Share2,
   ShieldCheck,
   ShoppingCart,
+  Truck,
   Star,
   Tags,
   TicketHelp,
@@ -43,7 +44,6 @@ import {
   Zap,
   Warehouse,
   ShelvingUnit,
-  StationWalkIn,
   Phone,
   Voicemail,
   Upload,
@@ -64,11 +64,10 @@ import { isTabParked } from '@/lib/nav/parked-tabs';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
-import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import { QC_LABELS_PATH } from '@/lib/labels/qc-label-views';
 import { PRINT_STATION_PATH, PRINT_STATION_FNSKU_PARAM, PRINT_STATION_VIEW_PARAM } from '@/lib/print-station/fnsku';
-import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
-import { DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
+import { DESK_LANDING_VIEW, DESK_VIEWS, deskViewHref, getDeskView, resolveDeskView, type DeskViewNavChild } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
 import { FBA_MODE_PARAM, resolveFbaModeFromSearchParams } from '@/lib/fba/fba-modes';
@@ -88,6 +87,12 @@ import {
   type ExceptionKind,
 } from '@/lib/exceptions/types';
 import { EXCEPTION_KIND_PERMISSION } from '@/lib/exceptions/permissions';
+import {
+  REPAIR_ALL_CHANNELS_LABEL,
+  REPAIR_CHANNEL_LABEL,
+  REPAIR_CHANNEL_PARAM,
+  parseRepairChannel,
+} from '@/lib/repair/repair-channel';
 
 export type SidebarRouteKey =
   | 'home'
@@ -160,12 +165,11 @@ export const MAIN_GROUPS = [
   icon: SidebarIconComponent;
 }>;
 
-/** Optional peer tags on floor benches (Arrival · Unbox / Repair Service / Quality Control). */
-export type StationSubgroupId = 'receiving' | 'walk-in' | 'testing';
+/** Optional peer tags on floor benches (Arrival · Unbox / Quality Control). */
+export type StationSubgroupId = 'receiving' | 'testing';
 
 export const STATION_SUBGROUPS = [
   { id: 'receiving', label: 'Receiving', icon: STATION_PAGE_ICONS.receiving },
-  { id: 'walk-in', label: 'Walk-In', icon: StationWalkIn },
   { id: 'testing', label: 'Testing', icon: STATION_PAGE_ICONS.tech },
 ] as const satisfies ReadonlyArray<{
   id: StationSubgroupId;
@@ -208,11 +212,11 @@ export type SpineSectionId = (typeof SPINE_SECTIONS)[number]['id'];
 /** Distinct station ink shared by the parent switcher and its `G` key hint. */
 export const SCAN_STATION_TONES = {
   triage: 'text-cyan-600',
-  receive: 'text-emerald-600',
-  repair: 'text-orange-600',
-  testing: 'text-violet-600',
-  'ready-to-pack': 'text-blue-600',
-  packer: 'text-amber-600',
+  receive: 'text-blue-600',
+  repair: 'text-amber-600',
+  testing: 'text-orange-600',
+  'ready-to-pack': 'text-emerald-600',
+  packer: 'text-purple-600',
   'scan-out': 'text-rose-600',
 } as const;
 
@@ -338,13 +342,13 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
 
 /** Dogfood prod surface (stations + shipping + inventory + warehouse + thin support). */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Top map rows — Chat → Daily → Automations → Exceptions → Media Library. Chat leads the
+  // Top map rows — Chat → Tasks → Automations → Exceptions → Media Library. Chat leads the
   // page map and the ⌘K pin (operator 2026-09-27); `/ai-chat` → SessionSurface,
   // the ONE assistant door. Automations sits right under Chat, a top row rather
   // than the last lane (operator 2026-09-27: a more prominent action; href
   // stays /studio).
   { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', requires: 'assistant.chat' },
-  { id: 'home',              label: 'Daily',           href: '/',                   icon: ListChecks,      kind: 'top' },
+  { id: 'home',              label: 'Tasks',           href: '/',                   icon: ListChecks,      kind: 'top' },
   { id: 'studio',            label: 'Automations',    href: '/studio',             icon: Workflow,        kind: 'top', requires: 'studio.view' },
   // Exceptions (owner 2026-09-28): every category's blockers in one hub. No
   // single `requires` — the row shows while ANY kind child survives the child
@@ -369,12 +373,14 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Reports — DATED, per-entity, exportable tables (Staff day · Bin utilization · Velocity · Dead stock).
   // **A PARENT-LEVEL row, not a Monitor member** (operator 2026-09-15:
   { id: 'reports',            label: 'Reports',     href: '/reports',            icon: BarChart3,       kind: 'top', spineFlat: true, spineBottom: true, requires: 'operations.view' },
-  // Scan Stations — scan-first benches (Arrival / Unbox / Repair
-  // Service / Quality Control / Ready to Pack / Packing / Scan out).
+  // Scan Stations — scan-first benches (Arrival / Unbox / Quality Control /
+  // Picker / Packing / Scan out).
   { id: 'triage',            label: 'Arrival',     href: '/triage',             icon: RECEIVING_NAV_ICONS.triage,  tone: SCAN_STATION_TONES.triage, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'receive',           label: 'Unbox',       href: '/unbox',              icon: RECEIVING_NAV_ICONS.receive, tone: SCAN_STATION_TONES.receive, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'pickup',            label: 'Local Pickup', href: '/pickup',            icon: RECEIVING_NAV_ICONS.pickup,  kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view' },
-  { id: 'repair',            label: 'Repair Service', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  tone: SCAN_STATION_TONES.repair, kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
+  // Repair service is a Receiving MODE (owner 2026-09-29) — the repair tickets,
+  // split into Shipped in · Dropped off by `repair_service.intake_channel`.
+  { id: 'repair',            label: 'Repair service', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  tone: SCAN_STATION_TONES.repair, kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view' },
   // Quality Control (`/test`) and the Picker desk (`/pick`) are separate
   // first-class Scan Stations (owner 2026-09-27). Picking is not a testing bench,
   // so the Picker row carries no `testing` subgroup.
@@ -407,7 +413,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // FBM (owner 2026-09-28): every order WE store, pack and ship, on any channel —
   // the clean split from FBA, where Amazon ships. Same page id / routes as the
   // old "Shipping" desk; the old name still finds it in ⌘K.
-  { id: 'outbound',          label: 'FBM',         href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view', description: 'Fulfilled by merchant · all channels', keywords: ['shipping', 'ship', 'fulfilled by merchant', 'merchant fulfilled', 'mfn', 'to ship', 'allocate'] },
+  { id: 'outbound',          label: 'FBM',         href: deskViewHref(DESK_LANDING_VIEW.id), icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view', description: 'Fulfilled by merchant · all channels', keywords: ['shipping', 'ship', 'fulfilled by merchant', 'merchant fulfilled', 'mfn', 'to ship', 'allocate'] },
   // FBA rides the Fulfillment lane beside FBM (operator 2026-09-14).
   { id: 'fba',               label: 'FBA',         href: OUTBOUND_MODE_PATHS.fba, icon: SHIPPING_NAV_ICONS.fba, kind: 'domain', domainGroup: 'fulfillment', requires: 'fba.view', description: 'Fulfilled by Amazon' },
   // Labels & docs rides the Outbound lane beside Shipping and FBA: label printing + document intake (renamed from Label intake 2026-09-27).
@@ -519,7 +525,8 @@ export const isDeskStageSurface = isRaillessSurface;
 /** Route keys whose sidebar spine carries a per-route **context panel** — a picker / rail that is the route's primary navigator (Products'… */
 const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // `home` dropped 2026-08-12 — Today is rail-less (Pattern E).
-  'studio',
+  // `studio` DROPPED 2026-09-29 — lens · zoom live in the contextual sidebar;
+  // the library moved into the stage beside the canvas.
   // `settings` DROPPED 2026-09-10 — Pattern E card landing + /settings/me.
   // Roles/Access still need their picker rails; those paths are special-cased
   // in hasSidebarContextPanel below (the route key stays `settings`).
@@ -679,7 +686,7 @@ export function masterNavLabelForPath(
   pathname: string | null,
   searchParams?: Pick<URLSearchParams, 'get'> | null,
 ): string {
-  return masterNavItemForPath(pathname, searchParams)?.label ?? 'Daily';
+  return masterNavItemForPath(pathname, searchParams)?.label ?? 'Tasks';
 }
 
 export function masterNavItemForHref(href: string): SidebarNavItem | undefined {
@@ -946,20 +953,51 @@ const EXCEPTION_DOMAIN_ICONS: Readonly<Record<ExceptionDomain, SidebarIconCompon
   receiving: domainLane('inbound').icon,
 };
 
+/** Each FBM view's nav glyph, keyed by its nav child (the views are `DESK_VIEWS`). */
+const FBM_VIEW_ICONS: Readonly<Record<DeskViewNavChild, SidebarIconComponent>> = {
+  orders: LayoutDashboard,
+  exceptions: AlertTriangle,
+  shipped: PackageCheck,
+};
+
+/** A Tasks saved view: `?tab=` × `?filter=`, the project and open record cleared. */
+function homeView(tab: string | null, filter: 'done' | 'waiting' | null): ChildNavTarget {
+  return { pathname: '/', params: { tab, filter, project: null, task: null, check: null } };
+}
+
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
-  // ── Daily (was Home) ──────────────────────────────────────────────────────
+  // ── Tasks (was Daily, was Home) ───────────────────────────────────────────
+  // Owner 2026-09-29: task-first follow-up desk on the house two-tier sidebar
+  // (`NAV_PAGE_DECLS.home.modes`, the Exceptions shape): four PARENTS — the
+  // mode card, `G` + letter (`NAV_PAGE_GO_KEYS.home`) — and under the current
+  // parent its saved views on bare `1`–`3`. Ungrouped child = parent; a
+  // child's `group` names its parent. A view is `?tab=` × `?filter=`.
   {
-    id: 'home', label: 'Daily', href: '/', icon: ListChecks, kind: 'top',
+    id: 'home', label: 'Tasks', href: '/', icon: ListChecks, kind: 'top',
     children: [
-      { id: 'all', label: 'All', icon: List, to: () => ({ pathname: '/', params: { tab: null } }) },
-      { id: 'checklist', label: 'Checklist', icon: Check, to: () => ({ pathname: '/', params: { tab: 'checklist', scope: null } }) },
-      { id: 'task', label: 'Tasks', icon: ClipboardList, to: () => ({ pathname: '/', params: { tab: 'task' } }) },
-      { id: 'ticket', label: 'Tickets', icon: Phone, to: () => ({ pathname: '/', params: { tab: 'ticket' } }) },
-      { id: 'task_ticket', label: 'Tasks + tickets', icon: Layers, to: () => ({ pathname: '/', params: { tab: 'task_ticket' } }) },
+      { id: 'tasks', label: 'All tasks', icon: Inbox, to: () => homeView(null, null) },
+      { id: 'support', label: 'Support', icon: TicketHelp, to: () => homeView('ticket', null) },
+      { id: 'daily', label: 'Daily checklist', icon: ListChecks, to: () => homeView('checklist', null) },
+      { id: 'projects', label: 'Long-term projects', icon: Layers, to: () => homeView('project', null) },
+      { id: 'all', label: 'Everything', icon: Inbox, group: 'tasks', to: () => homeView(null, null) },
+      { id: 'task', label: 'Standalone', icon: ClipboardList, group: 'tasks', to: () => homeView('task', null) },
+      { id: 'all-done', label: 'Finished', icon: History, group: 'tasks', to: () => homeView(null, 'done') },
+      // Open work on a hold — Pending · Follow-up · Blocked (`TASK_HOLDS`, owner 2026-09-30).
+      { id: 'all-waiting', label: 'Waiting', icon: Clock, group: 'tasks', to: () => homeView(null, 'waiting') },
+      { id: 'ticket', label: 'Follow-ups', icon: TicketHelp, group: 'support', to: () => homeView('ticket', null) },
+      { id: 'ticket-done', label: 'Resolved', icon: History, group: 'support', to: () => homeView('ticket', 'done') },
+      { id: 'checklist', label: 'Today', icon: Check, group: 'daily', to: () => homeView('checklist', null) },
+      { id: 'checklist-done', label: 'Ticked off', icon: History, group: 'daily', to: () => homeView('checklist', 'done') },
+      { id: 'project', label: 'Active', icon: Layers, group: 'projects', to: () => homeView('project', null) },
+      { id: 'project-done', label: 'Wrapped up', icon: History, group: 'projects', to: () => homeView('project', 'done') },
     ],
     resolveChild: ({ params }) => {
-      const tab = params.get('tab');
-      return tab === 'checklist' || tab === 'task' || tab === 'ticket' || tab === 'task_ticket' ? tab : 'all';
+      const raw = params.get('tab');
+      const tab = raw === 'task' || raw === 'ticket' || raw === 'checklist' || raw === 'project' ? raw : 'all';
+      // `task` has no finished view of its own: its done list is the parent's.
+      if (params.get('filter') === 'done') return tab === 'all' || tab === 'task' ? 'all-done' : `${tab}-done`;
+      if (params.get('filter') === 'waiting' && (tab === 'all' || tab === 'task')) return 'all-waiting';
+      return tab;
     },
   },
   // ── Chat ─────────────────────────────────────────────────────────────────── No views: its panel is the staffer's
@@ -975,13 +1013,20 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'counter', label: 'Counter', icon: SalesModeCounter, requires: 'walk_in.view', to: () => ({ pathname: '/counter', params: {} }) },
       { id: 'sales', label: 'Sales Board', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
       { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'pickup' } }) },
-      { id: 'repairs', label: 'Repair Service', icon: RECEIVING_NAV_ICONS.repair, requires: 'repair.view', to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_REPAIRS_MODE } }) },
+      // Repairs, by how the device arrived (owner 2026-09-29/30) — the same three
+      // views `/repair` carries, under a heading (never a row) of their own.
+      { id: 'repairs-all', label: REPAIR_ALL_CHANNELS_LABEL, icon: Layers, group: 'Repair service', requires: 'repair.view', to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_REPAIRS_MODE, [REPAIR_CHANNEL_PARAM]: null } }) },
+      { id: 'repairs-shipped-in', label: REPAIR_CHANNEL_LABEL.shipment, icon: Truck, group: 'Repair service', requires: 'repair.view', to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_REPAIRS_MODE, [REPAIR_CHANNEL_PARAM]: 'shipment' } }) },
+      { id: 'repairs-dropped-off', label: REPAIR_CHANNEL_LABEL.pickup, icon: SalesModeCounter, group: 'Repair service', requires: 'repair.view', to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_REPAIRS_MODE, [REPAIR_CHANNEL_PARAM]: 'pickup' } }) },
     ],
     resolveChild: ({ params, pathname }) => {
       if (pathname.startsWith('/counter')) return 'counter';
       const mode = params.get('mode');
       if (mode === 'pickup') return 'pickup';
-      if (mode === 'repairs') return 'repairs';
+      if (mode === 'repairs') {
+        const channel = parseRepairChannel(params.get(REPAIR_CHANNEL_PARAM));
+        return channel === 'pickup' ? 'repairs-dropped-off' : channel === 'shipment' ? 'repairs-shipped-in' : 'repairs-all';
+      }
       return 'sales';
     },
   },
@@ -1140,8 +1185,8 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     ],
     resolveChild: ({ params }) => (params.get(PRINT_STATION_VIEW_PARAM) === 'reprinted' ? 'fnsku-reprinted' : 'fnsku'),
   },
-  // ── Receiving family ─────── Arrival / Unbox / Repair are physical stations;
-  // Local Pickup is a first-class mode of the Inbound desk lane.
+  // ── Receiving family ─────── Arrival / Unbox are physical stations; Local
+  // Pickup and Repair service are modes of the Receiving desk lane.
   {
     id: 'triage', label: 'Arrival', href: TRIAGE, icon: RECEIVING_NAV_ICONS.triage, tone: SCAN_STATION_TONES.triage,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view',
@@ -1155,11 +1200,25 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
     railless: true,
   },
+  // Repair service (Receiving mode, owner 2026-09-29/30): its views split the
+  // tickets by `repair_service.intake_channel` — All (bare, every channel) ·
+  // Shipped in (`?channel=shipment`) · Dropped off (`?channel=pickup`), bare
+  // keys 1 · 2 · 3. The status `?tab=` rides beside.
   {
-    id: 'repair', label: 'Repair Service', href: REPAIR, icon: RECEIVING_NAV_ICONS.repair, tone: SCAN_STATION_TONES.repair,
-    kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view',
+    id: 'repair', label: 'Repair service', href: REPAIR, icon: RECEIVING_NAV_ICONS.repair, tone: SCAN_STATION_TONES.repair,
+    kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
     // Rail-less (2026-09-16):
     railless: true,
+    children: [
+      { id: 'all',         label: REPAIR_ALL_CHANNELS_LABEL,     icon: Layers,           to: () => ({ pathname: REPAIR, params: { [REPAIR_CHANNEL_PARAM]: null } }) },
+      { id: 'shipped-in',  label: REPAIR_CHANNEL_LABEL.shipment, icon: Truck,            to: () => ({ pathname: REPAIR, params: { [REPAIR_CHANNEL_PARAM]: 'shipment' } }) },
+      { id: 'dropped-off', label: REPAIR_CHANNEL_LABEL.pickup,   icon: SalesModeCounter, to: () => ({ pathname: REPAIR, params: { [REPAIR_CHANNEL_PARAM]: 'pickup' } }) },
+    ],
+    resolveChild: ({ pathname, params }) => {
+      if (pathname !== REPAIR && !pathname.startsWith(`${REPAIR}/`)) return null;
+      const channel = parseRepairChannel(params.get(REPAIR_CHANNEL_PARAM));
+      return channel === 'pickup' ? 'dropped-off' : channel === 'shipment' ? 'shipped-in' : 'all';
+    },
   },
   {
     id: 'testing', label: 'Quality Control', href: TECH, icon: TECH_NAV_ICONS.testing, tone: SCAN_STATION_TONES.testing,
@@ -1201,7 +1260,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'triage',   label: 'Arrival',      icon: RECEIVING_NAV_ICONS.triage,   to: () => ({ pathname: TRIAGE, params: {} }) },
       { id: 'receive',  label: 'Unbox',        icon: RECEIVING_NAV_ICONS.receive,  to: () => ({ pathname: UNBOX, params: {} }) },
       { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_NAV_ICONS.pickup,   to: () => ({ pathname: PICKUP, params: {} }) },
-      { id: 'repair',   label: 'Repair Service', icon: RECEIVING_NAV_ICONS.repair, to: () => ({ pathname: REPAIR, params: {} }) },
+      { id: 'repair',   label: 'Repair service', icon: RECEIVING_NAV_ICONS.repair, to: () => ({ pathname: REPAIR, params: {} }) },
     ],
     resolveChild: ({ pathname, params }) => {
       if (pathname === UNBOX || pathname.startsWith(`${UNBOX}/`)) return 'receive';
@@ -1276,78 +1335,34 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return view === 'labels' || view === 'paperwork' || view === 'printed' ? view : 'uploads';
     },
   },
-  // ── FBM (Fulfilled by merchant — Fulfillment lane) ────────────────────────── Exceptions · Picking · Allocate · Shipped.
+  // ── FBM (Fulfilled by merchant — Fulfillment lane) ────────────────────────── One child per `DESK_VIEWS` view, in its paint order.
   {
-    id: 'outbound', label: 'FBM', href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound, tone: 'text-blue-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
+    id: 'outbound', label: 'FBM', href: deskViewHref(DESK_LANDING_VIEW.id), icon: STATION_PAGE_ICONS.outbound, tone: 'text-blue-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
     // Rail-less, said out loud (2026-08-31).
     railless: true,
-    // Tab order (owner 2026-09-24): Exceptions · Picking · Allocate · Shipped —
-    // the same order the contextual sidebar paints from `DESK_VIEWS`.
-    children: [
-      // Exceptions is a PEER by the same test FBA passes:
-      { id: 'exceptions', label: 'Exceptions', icon: AlertTriangle,             requires: 'orders.view',  to: () => ({ pathname: SHIPPING_EXCEPTIONS_PATH, params: {} }) },
-      // "Picking", not "Pending" (operator 2026-09-26): these orders are not in
-      // limbo — they are waiting to be picked (PO paired · pick list).
-      { id: 'shortage', label: 'Picking',   icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
-      { id: 'orders',   label: 'Allocate',  icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
-      // No `fba` child — FBA is a lane row now (see the docblock above).
-      // `packing.view` because the archive IS the packer log: `/api/packerlogs`
-      // already enforces it, and a tab that 403s is worse than an absent one.
-      { id: 'shipped',  label: 'Shipped',   icon: PackageCheck,                 requires: 'packing.view', to: () => ({ pathname: SHIPPING_SHIPPED_PATH, params: {} }) },
-    ],
+    // The views, their order, gates and paths are `DESK_VIEWS`; the child id is
+    // the view's `navChild` (the org nav's stable key). No `fba` child — FBA is a
+    // lane row (see the docblock above).
+    children: DESK_VIEWS.map((view) => ({
+      id: view.navChild,
+      label: view.label,
+      icon: FBM_VIEW_ICONS[view.navChild],
+      requires: view.requires,
+      to: () => ({ pathname: view.pathname, params: { ...view.params } }),
+    })),
     resolveChild: ({ pathname, params }) => {
-      // Packing Review is a Scan Stations L1 — never a Shipping child highlight.
-      if (pathname === REVIEW || pathname.startsWith(`${REVIEW}/`)) return null;
-      // Label intake is a SIBLING row in the Outbound lane — it lights nothing
-      // here rather than falling through to the `orders` catch-all.
-      if (pathname === SHIPPING_LABEL_INTAKE_PATH || pathname.startsWith(`${SHIPPING_LABEL_INTAKE_PATH}/`)) return null;
-      // Shipped is a path, so it resolves before the orders clause — the final
-      // `return 'orders'` below is a catch-all, and without this the history
-      // desk would light To ship on a page the operator is not on.
-      if (
-        pathname === SHIPPING_SHIPPED_PATH ||
-        pathname.startsWith(`${SHIPPING_SHIPPED_PATH}/`)
-      ) {
-        return 'shipped';
-      }
-      if (
-        pathname === SHIPPING_SHORTAGE_PATH ||
-        pathname.startsWith(`${SHIPPING_SHORTAGE_PATH}/`)
-      ) {
-        return 'shortage';
-      }
-      // Exceptions is its own path and must resolve BEFORE the orders
-      // catch-all below, or the workbench would light "To ship" — a tab for a
-      // page the operator is not on, the same bug the Shipped clause fixes.
-      if (
-        pathname === SHIPPING_EXCEPTIONS_PATH ||
-        pathname.startsWith(`${SHIPPING_EXCEPTIONS_PATH}/`)
-      ) {
-        return 'exceptions';
-      }
-      if (
-        pathname === SHIPPING_ORDERS_PATH ||
-        pathname.startsWith(`${SHIPPING_ORDERS_PATH}/`) ||
-        pathname === DASHBOARD ||
-        pathname.startsWith(`${DASHBOARD}/`)
-      ) {
-        // Support › Inquiries alias — Support's resolveChild owns the pin.
-        if (params.get('context') === 'support') return null;
-        // The pick list is a Picking view (`DESK_VIEWS` `pick`), not To ship.
-        if (params.get(DESK_QUEUE_PARAM) === 'pick') return 'shortage';
-        return 'orders';
-      }
-      // FBA is a SIBLING DESK in the Outbound lane, not a tab here, so its paths light nothing on this band rather than falling through to the…
-      if (
-        outboundModeFromPath(pathname) === 'fba' ||
-        pathname === '/shipping/ready' ||
-        pathname.startsWith('/shipping/ready/')
-      ) {
-        return null;
-      }
-      const m = params.get('mode');
-      if (m === 'fba' || m === 'ready') return null;
-      return 'orders';
+      // Support › Inquiries alias — Support's resolveChild owns the pin.
+      if (params.get('context') === 'support') return null;
+      const view = resolveDeskView(pathname);
+      if (view) return getDeskView(view).navChild;
+      // FBM's aliases — bare `/shipping`, legacy `/outbound` and the old
+      // `/dashboard` queue — redirect to the landing view, so they light it;
+      // their `?mode=fba|ready` belongs to the FBA desk. Every other path (FBA,
+      // Labels & docs, Packing Review, the parked Shortage desk) is on no FBM
+      // view and lights none.
+      const alias = pathname === '/shipping' || pathname === '/outbound' || pathname === DASHBOARD || pathname.startsWith(`${DASHBOARD}/`);
+      const mode = params.get('mode');
+      return alias && mode !== 'fba' && mode !== 'ready' ? DESK_LANDING_VIEW.navChild : null;
     },
   },
   // ── Scan out (Scan Stations) ────────────────────────────────────────────── Mobile-first composer station:
@@ -1576,7 +1591,6 @@ export function floorStationPages(
 export const CONTEXTUAL_SCAN_STATION_PAGE_IDS = [
   'triage',
   'receive',
-  'repair',
   'testing',
   'ready-to-pack',
   'packer',

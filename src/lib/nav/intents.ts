@@ -9,7 +9,14 @@
  * page body live in different subtrees of the shell.
  */
 
-type NavIntentHandler = () => void;
+/**
+ * Optional data a caller hands the verb — ⌘K's create-on-miss passes the typed
+ * query (`daily:compose` → `{ note }`). Strings only: the same verb must be
+ * reachable off-page as URL params.
+ */
+export type NavIntentPayload = Readonly<Record<string, string>>;
+
+type NavIntentHandler = (payload?: NavIntentPayload) => void;
 
 const handlers = new Map<string, NavIntentHandler>();
 const listeners = new Set<() => void>();
@@ -32,10 +39,10 @@ export function registerNavIntent(intent: string, handler: NavIntentHandler): ()
 }
 
 /** Run the registered handler; `false` when no page body owns the intent. */
-export function runNavIntent(intent: string): boolean {
+export function runNavIntent(intent: string, payload?: NavIntentPayload): boolean {
   const handler = handlers.get(intent);
   if (!handler) return false;
-  handler();
+  handler(payload);
   return true;
 }
 

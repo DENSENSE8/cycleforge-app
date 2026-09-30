@@ -7,6 +7,9 @@ import type { RecordStateFace } from './industrial-record';
  */
 
 export { LIFECYCLE, LIFECYCLE_STATES, type LifecycleState, type StateName } from '@cycleforge/design-tokens';
+export { INBOUND_LIFECYCLE, type InboundLifecycleState } from '@cycleforge/design-tokens';
+export { PICKUP_LIFECYCLE, type PickupLifecycleState } from '@cycleforge/design-tokens';
+export { QC_UNIT_LIFECYCLE, type QcUnitLifecycleState } from '@cycleforge/design-tokens';
 
 export function lifecycleRecordState(state: LifecycleState): RecordStateFace {
   return { id: state, ...LIFECYCLE[state] };

@@ -204,6 +204,8 @@ export interface TriageCardListProps<Row, Model extends TriageCardModelBase<Row>
   record: TriageRecordSlot;
   /** Status chips (the bar's left, while nothing is checked). */
   summary: ReactNode;
+  /** Chips stay inline between the count and the pager at every width (`TriageSelectBar`). */
+  summaryInline?: boolean;
   /** The selection's verbs (Law 5), while anything is checked. */
   bulk: ReactNode;
   /** Non-blocking band above the cards. */
@@ -229,6 +231,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
   cut,
   record,
   summary,
+  summaryInline,
   bulk,
   banner,
   leadSlot,
@@ -582,6 +585,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
       pageMode={serverPages ? null : pageMode}
       onPageModeChange={setPageMode}
       summary={summary}
+      summaryInline={summaryInline}
       onToggleAll={() => setAll(!allSelected)}
       onClear={() => setAll(false)}
       // Law 5: the selection's verbs, the same list in the same order at 1 or N checked.

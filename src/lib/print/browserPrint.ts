@@ -1,5 +1,6 @@
 /** Browser-native silent printing — WebUSB / Web Serial — with named PROFILES. */
 
+import { isSilentPrintEnabled } from '@/lib/print/printMode';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 const PROFILES_KEY = 'cf.printerProfiles';
@@ -208,6 +209,16 @@ export function getProfileForRole(role: PrinterRole): PrinterProfile | null {
     if (found) return found;
   }
   return store.profiles.find((p) => p.role === role) ?? null;
+}
+
+/**
+ * The thermal profile a silent label run sends raw commands to, one sticker at
+ * a time — or null when labels go to the browser dialog (one job, no units).
+ */
+export function silentRawLabelProfile(): PrinterProfile | null {
+  if (!isSilentPrintEnabled()) return null;
+  const profile = getProfileForRole('label');
+  return profile && profile.kind !== 'os' && profile.language !== 'none' ? profile : null;
 }
 
 /** Create or update a profile. Auto-routes its role to it if that role is unset. */

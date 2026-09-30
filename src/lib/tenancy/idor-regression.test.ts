@@ -276,6 +276,8 @@ test('IDOR: repair-service queries reject cross-org read/update/link', { skip: !
       price: '0',
       issue: 'idor',
       serialNumber: 'IDOR-RS-1',
+      // 'shipment': a drop-off would also land a receiving record this test never cleans up.
+      intakeChannel: 'shipment',
     },
     ORG_B,
   );

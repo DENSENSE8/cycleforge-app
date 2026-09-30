@@ -13,7 +13,7 @@ import {
   stopIndexForMinutes,
   tierForMinutes,
 } from '@/lib/packing/pack-standard-stops';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { StopSlider } from '@/design-system/primitives/StopSlider';
 import { cn } from '@/utils/_cn';
 
 const TIER_LABEL = { SMALL: 'Small', MEDIUM: 'Medium', LARGE: 'Large' } as const;
@@ -50,21 +50,14 @@ export function PackTimeSlider({
         </span>
       </div>
 
-      <input
-        type="range"
-        min={0}
-        max={MAX_PACK_STOP_INDEX}
-        step={1}
-        value={index}
+      <StopSlider
+        stops={PACK_STANDARD_MINUTE_STOPS}
+        value={snapped}
+        onChange={onMinutes}
         disabled={disabled}
-        aria-label="Time to pack"
-        aria-valuetext={formatPackMinutes(snapped)}
-        onChange={(e) => onMinutes(minutesForStopIndex(Number(e.target.value)))}
-        className={cn(
-          'h-9 w-full min-w-0 cursor-pointer accent-[var(--ds-color-accent-text)]',
-          focusRing('field', 'accent'),
-          disabled && 'cursor-not-allowed opacity-50',
-        )}
+        ariaLabel="Time to pack"
+        formatValue={formatPackMinutes}
+        showStops={false}
       />
 
       {/* Endpoints name the range so the thumb position means something before

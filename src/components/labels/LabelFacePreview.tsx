@@ -9,7 +9,7 @@ import {
   patchLabelFaceDocument,
   type LabelFaceModel,
 } from '@/lib/print/labelFace';
-import { buildLabelHtml } from '@/lib/print/printLabel';
+import { loadBuildLabelHtml, loadedBuildLabelHtml } from '@/lib/print/label-html-loader';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
@@ -51,11 +51,24 @@ export function LabelFacePreview({
   const matrixValue = model.matrix.value?.trim() ?? '';
   const cappedMax = maxScale ?? MAX_SCALE_CAPPED;
 
+  // The label shell (and its bwip-js barcode renderer) loads on first use; once
+  // in, every later preview builds synchronously — no flash on open.
+  const [buildLabelHtml, setBuildLabelHtml] = useState(loadedBuildLabelHtml);
+  useEffect(() => {
+    if (buildLabelHtml) return;
+    let live = true;
+    void loadBuildLabelHtml().then((build) => {
+      if (live) setBuildLabelHtml(() => build);
+    });
+    return () => {
+      live = false;
+    };
+  }, [buildLabelHtml]);
+
   // Full print-shell rebuild — matrix / kind identity only. Text slots patch
   // in place below so dock typing does not flash the iframe.
-  // Sync: static buildLabelHtml — no useEffect/setState pulse on open.
   const html = useMemo(() => {
-    if (!matrixValue) return null;
+    if (!matrixValue || !buildLabelHtml) return null;
     const faceHtml = buildFaceInfoHtml(model);
     return buildLabelHtml({
       name: 'Label',
@@ -66,7 +79,7 @@ export function LabelFacePreview({
     });
     // Rebuild keys only — text slots update via patchLabelFaceDocument.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- matrix/kind identity
-  }, [matrixValue, model.matrix.symbology, model.matrix.scale, model.kind]);
+  }, [buildLabelHtml, matrixValue, model.matrix.symbology, model.matrix.scale, model.kind]);
 
   // Patch face text slots without touching srcDoc.
   useEffect(() => {

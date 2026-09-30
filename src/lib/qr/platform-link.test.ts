@@ -22,13 +22,13 @@ test('platformQrOriginForSlug builds tenant staff origin', () => {
   }
 });
 
-test('receivingPlatformLink mints /m/r/{id} on slug host', () => {
+test('receivingPlatformLink mints /m/r/{id}/qc on slug host', () => {
   const prevApp = process.env.NEXT_PUBLIC_APP_URL;
   process.env.NEXT_PUBLIC_APP_URL = 'https://app.cycleforge.ai';
   try {
     assert.equal(
       receivingPlatformLink(42, 'acme'),
-      'https://acme.app.cycleforge.ai/m/r/42',
+      'https://acme.app.cycleforge.ai/m/r/42/qc',
     );
     assert.equal(receivingPlatformLink(42, null), 'R-42');
   } finally {
@@ -51,7 +51,7 @@ test('resolveReceivingQrValue prefers platform link and keeps bare-handle overri
         conditionCode: 'BRAND_NEW',
         date: '8/1/26',
       }),
-      'https://usav.app.cycleforge.ai/m/r/7',
+      'https://usav.app.cycleforge.ai/m/r/7/qc',
     );
     assert.equal(
       resolveReceivingQrValue({
@@ -72,7 +72,7 @@ test('resolveReceivingQrValue prefers platform link and keeps bare-handle overri
 });
 
 test('routeScan accepts platform Digital Link and bare R- handle', () => {
-  const fromUrl = routeScan('https://usav.app.cycleforge.ai/m/r/99');
+  const fromUrl = routeScan('https://usav.app.cycleforge.ai/m/r/99/qc');
   assert.ok(fromUrl);
   assert.equal(fromUrl.type, 'receiving');
   assert.equal(fromUrl.redirect, '/m/r/99');

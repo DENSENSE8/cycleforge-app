@@ -3,9 +3,9 @@
  * per desk view (`DESK_VIEWS`, in `DESK_VIEW_ORDER`), each counted with the
  * SAME predicate that view's list reads:
  *
- * - To ship · Pick list · PO paired: `sqlDeskQueueScope` (`/api/orders`
- *   with the flags the desk sends — `inWarehouse=true` [+ `queue=pick` |
- *   `pair=po`]);
+ * - Allocate (and any view whose rows are `/api/orders` rows):
+ *   `sqlDeskQueueScope` (`/api/orders` with the flags the desk sends —
+ *   `inWarehouse=true` plus the view's defining params);
  * - Exceptions: `sqlOrderInExceptionQueue` = `exceptionScopeWhere('actionable')`
  *   (`/api/orders/exceptions`);
  * - Shipped: `buildPackerLogBaseWhere` (`/api/packerlogs`), one row per
@@ -25,11 +25,18 @@
 
 import type { NavLocateBucket, NavLocateEntry } from '@/lib/nav/context/schema';
 import { buildPackerLogBaseWhere, sqlPackerLogSearch } from '@/lib/neon/packer-logs-week';
-import { sqlDeskQueueScope, type DeskQueueView } from '@/lib/orders/desk-view-sql';
+import { sqlDeskQueueScope } from '@/lib/orders/desk-view-sql';
 import { sqlOrderInExceptionQueue } from '@/lib/orders/exception-membership';
 import { exceptionScopeWhere, exceptionSearchSql } from '@/lib/orders/order-exceptions';
 import { parseOrdersListQuery, type OrdersListQuery } from '@/lib/orders/orders-list-query';
-import { DESK_VIEW_ORDER, deskViewHref, getDeskView, type DeskViewId } from '@/lib/outbound/desk-views';
+import {
+  DESK_VIEW_ORDER,
+  deskViewHref,
+  getDeskView,
+  isDeskQueueView,
+  type DeskQueueViewId,
+  type DeskViewId,
+} from '@/lib/outbound/desk-views';
 import { looksLikeTrackingIdentifier } from '@/lib/search/global-entity-search';
 import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
 import { sqlOrderOwnsShipment, sqlTrackingNumberMatches } from '@/lib/search/order-tracking-match-sql';
@@ -44,8 +51,6 @@ export const SHIPPED_BUCKET_PERMISSION = 'packing.view';
 
 const TONE: Readonly<Record<DeskViewId, NavLocateBucket['tone']>> = {
   exceptions: 'danger',
-  po: 'info',
-  pick: 'info',
   triage: 'neutral',
   shipped: 'success',
 };
@@ -53,8 +58,6 @@ const TONE: Readonly<Record<DeskViewId, NavLocateBucket['tone']>> = {
 /** The list each bucket counts. Shipped opens all-time — the window its count reads. */
 const BUCKET_HREF: Readonly<Record<DeskViewId, string>> = {
   exceptions: deskViewHref('exceptions'),
-  po: deskViewHref('po'),
-  pick: deskViewHref('pick'),
   triage: deskViewHref('triage'),
   shipped: withParam(deskViewHref('shipped'), SHIPPED_ALL_DATES_PARAM, '1'),
 };
@@ -66,8 +69,8 @@ function withParam(href: string, key: string, value: string): string {
   return `${url.pathname}?${url.searchParams}`;
 }
 
-/** Queue views whose rows are `/api/orders` rows, in bucket order. */
-const QUEUE_VIEWS: readonly DeskQueueView[] = ['po', 'pick', 'triage'];
+/** Views whose rows are `/api/orders` rows, in bucket order. */
+const QUEUE_VIEWS: readonly DeskQueueViewId[] = DESK_VIEW_ORDER.filter(isDeskQueueView);
 
 export type OutboundSqlRunner = (sql: string, params: readonly unknown[]) => Promise<Array<Record<string, unknown>>>;
 
@@ -95,9 +98,9 @@ function bucketsWith(ids: readonly DeskViewId[], counts: Partial<Record<DeskView
 /**
  * The To-ship desk's search request for a queue view — `fetchUnshippedOrdersData`
  * with `strictSearchScope` (every desk mount): the scope flag plus the view's
- * defining params (`queue=pick`, `pair=po`), and the text.
+ * defining params, and the text.
  */
-export function queueSearchQuery(view: DeskQueueView, q: string): OrdersListQuery {
+export function queueSearchQuery(view: DeskQueueViewId, q: string): OrdersListQuery {
   return parseOrdersListQuery(new URLSearchParams({ q, inWarehouse: 'true', ...getDeskView(view).params }));
 }
 
@@ -250,9 +253,7 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
            o.order_id,
            o.product_title,
            ${sqlOrderInExceptionQueue('o', 'stn')} AS in_exceptions,
-           ${sqlDeskQueueScope('po')} AS in_po,
-           ${sqlDeskQueueScope('pick')} AS in_pick,
-           ${sqlDeskQueueScope('triage')} AS in_triage,
+           ${QUEUE_VIEWS.map((view) => `${sqlDeskQueueScope(view)} AS in_${view},`).join('\n           ')}
            ${shipped} AS in_shipped
       FROM hit h
       JOIN orders o ON o.id = h.id

@@ -20,6 +20,7 @@ import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
 import { invalidateOrderViews } from '@/lib/orders/invalidation';
 import { matchAggregatorOrderRows, type PlatformOf } from '@/lib/orders/order-source-match';
+import { applyOrderServiceLevels } from '@/lib/shipping/order-service-level';
 import {
   attachShipStationTracking,
   planShipStationTracking,
@@ -667,6 +668,8 @@ async function processOrderPage(ctx: SyncContext, orders: readonly ShipStationV1
     }
   }
   await upsertOrderRefs(orgId, refs);
+  // Next day / 2-day / Expedited → urgent, once, from the refs just paired.
+  await applyOrderServiceLevels(orgId, [...new Set(refs.map((ref) => ref.rowId))]);
   await resolveQuarantine(orgId, rowIdByNumber);
 
   // Report what the writer actually did (the plan is its forecast).

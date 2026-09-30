@@ -8,14 +8,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { PackageSearch } from '@/components/Icons';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
-import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { MobileTriagePage, type TriageSection } from '@/components/mobile/triage/MobileTriagePage';
 import { TriageRow } from '@/components/mobile/triage/TriageRow';
 import { ProvisionalCreateSheet } from '@/components/mobile/scan/ProvisionalCreateSheet';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { PairDetailSheet } from './PairDetailSheet';
-import { OnHoldBadge } from './OnHoldBadge';
 import type { PairCandidate } from '@/lib/neon/pair-candidates-queries';
 
 function faceFor(code: string): string {
@@ -119,9 +117,6 @@ export function MobilePairLocation({ code, openException = false }: { code: stri
                 </span>
               }
               imageUrl={candidate.imageUrl}
-              code={
-                candidate.isProvisional || isProvisionalSku(candidate.sku) ? <OnHoldBadge /> : null
-              }
               actionLabel="Pair"
               actionName={`Pair ${title} to ${face}`}
               inspectName={`Details for ${title}`}

@@ -32,6 +32,7 @@ const P = {
   q: 9,
   mediaEntityType: 10,
   assignedBy: 11,
+  ticketStatuses: 12,
 } as const;
 
 interface Captured {
@@ -70,6 +71,8 @@ function sqlRow(over: Record<string, unknown> = {}): Record<string, unknown> {
     deadline_at: null,
     completed_at: null,
     remind_at: null,
+    last_follow_up_at: null,
+    next_follow_up_at: null,
     ticket_id: null,
     ticket_provider: null,
     ticket_subject: null,
@@ -188,6 +191,37 @@ test('the thrower filter is bound as an int, independent of the assignee filter'
   const plain = fakes();
   await listTaskDeskRows(ORG, { assigneeStaffId: 9 }, plain.deps);
   assert.equal(plain.calls[0].params[P.assignedBy], null);
+});
+
+test('the ticket-status filter binds its statuses as one text[] (OR), and absent or empty binds no filter', async () => {
+  const picked = fakes();
+  await listTaskDeskRows(ORG, { ticketStatuses: ['open', 'pending'] }, picked.deps);
+  assert.deepEqual(picked.calls[0].params[P.ticketStatuses], ['open', 'pending']);
+  assert.equal(picked.calls[0].params[P.org], ORG, 'the status filter reads inside the same org');
+
+  for (const ticketStatuses of [undefined, null, []] as const) {
+    const plain = fakes();
+    await listTaskDeskRows(ORG, { ticketStatuses }, plain.deps);
+    assert.equal(plain.calls[0].params[P.ticketStatuses], null);
+  }
+});
+
+test('a ticket link face carries its ticket status; other kinds carry none', async () => {
+  const { deps } = fakes([
+    sqlRow({
+      links: [
+        { kind: 'ticket', label: '48120', status: 'pending' },
+        { kind: 'ticket', label: '48121', status: null },
+        { kind: 'order', label: '112-0000000-1', status: null },
+      ],
+    }),
+  ]);
+  const [row] = await listTaskDeskRows(ORG, {}, deps);
+  assert.deepEqual(row.links, [
+    { kind: 'ticket', label: '48120', status: 'pending' },
+    { kind: 'ticket', label: '48121', status: null },
+    { kind: 'order', label: '112-0000000-1' },
+  ]);
 });
 
 test('urgency maps onto the stored priority bounds, not a second column', async () => {
@@ -384,6 +418,46 @@ test('an unknown id is not_found before any write', async () => {
   assert.equal(updateSql(), null);
 });
 
+test('a hold writes task_state on open work once the column exists', async () => {
+  const { tx, statements } = txFakes({ current: { status: 'IN_PROGRESS', assignee_staff_id: 9, has_task_state: true, task_state: null } });
+  const result = await patchTaskDeskRowInTx(ORG, 11, { taskState: 'PENDING' }, tx);
+  assert.equal(result.ok, true);
+  const update = statements.find((s) => /^\s*UPDATE/.test(s.sql));
+  assert.match(update?.sql ?? '', /task_state = \$3/);
+  assert.equal(update?.params[2], 'PENDING');
+  assert.doesNotMatch(update?.sql ?? '', /status = /, 'a hold leaves the lifecycle where it is');
+});
+
+test('a hold before the task_state migration is refused as schema_pending, nothing written', async () => {
+  const { tx, updateSql } = txFakes({ current: { status: 'OPEN', assignee_staff_id: 9, has_task_state: false, task_state: null } });
+  const result = await patchTaskDeskRowInTx(ORG, 11, { taskState: 'BLOCKED' }, tx);
+  assert.equal(result.ok === false && result.reason, 'schema_pending');
+  assert.equal(updateSql(), null);
+
+  // A plain status write never names the column, so it still lands pre-migration.
+  const plain = txFakes({ current: { status: 'OPEN', assignee_staff_id: 9, has_task_state: false, task_state: null } });
+  assert.equal((await patchTaskDeskRowInTx(ORG, 11, { status: 'DONE' }, plain.tx)).ok, true);
+  assert.doesNotMatch(plain.updateSql() ?? '', /task_state/);
+});
+
+test('a hold only exists on open work: holding a finished task must reopen it in the same write', async () => {
+  const closed = txFakes({ current: { status: 'DONE', assignee_staff_id: 9, has_task_state: true, task_state: null } });
+  const refused = await patchTaskDeskRowInTx(ORG, 11, { taskState: 'FOLLOW_UP' }, closed.tx);
+  assert.equal(refused.ok === false && refused.reason, 'illegal_transition');
+  assert.equal(closed.updateSql(), null);
+
+  const reopened = txFakes({ current: { status: 'DONE', assignee_staff_id: 9, has_task_state: true, task_state: null } });
+  const result = await patchTaskDeskRowInTx(ORG, 11, { status: 'OPEN', taskState: 'FOLLOW_UP' }, reopened.tx);
+  assert.equal(result.ok, true);
+  assert.match(reopened.updateSql() ?? '', /task_state = /);
+});
+
+test('the pre-image records the hold, for the audit and the Timeline', async () => {
+  const { tx } = txFakes({ current: { status: 'OPEN', assignee_staff_id: 9, has_task_state: true, task_state: 'BLOCKED' } });
+  const result = await patchTaskDeskRowInTx(ORG, 11, { status: 'DONE' }, tx);
+  assert.equal(result.ok && result.before.taskState, 'BLOCKED');
+});
+
 test('handing a task to a staffer outside the org is refused, not written', async () => {
   const { tx, updateSql } = txFakes({ staffInOrg: false });
   const result = await patchTaskDeskRowInTx(ORG, 11, { assigneeStaffId: 4242 }, tx);
@@ -404,7 +478,7 @@ test('a successful patch reports the pre-image and which fields moved', async ()
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.deepEqual(result.before, {
-    status: 'OPEN', assigneeStaffId: 9, assigneeStaffIds: [9], projectName: null,
+    status: 'OPEN', taskState: null, assigneeStaffId: 9, assigneeStaffIds: [9], projectName: null,
   });
   assert.deepEqual([...result.changed].sort(), ['deadlineAt', 'status']);
   assert.equal(result.task.id, 11);

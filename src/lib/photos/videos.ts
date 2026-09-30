@@ -21,12 +21,16 @@ interface EntityVideoRow {
   fileSizeBytes: number | null;
   createdAt: string;
   uploadedAt: string | null;
+  /** Who uploaded it; null once their staff row is gone. */
+  uploadedBy: { id: number; name: string } | null;
 }
 
 const VIDEO_SELECT = `
   SELECT id::text AS id, entity_type, entity_id::text AS entity_id, status, bucket, object_key,
          content_type, declared_size_bytes::text AS declared_size_bytes,
-         file_size_bytes::text AS file_size_bytes, created_at, uploaded_at
+         file_size_bytes::text AS file_size_bytes, created_at, uploaded_at, staff_id,
+         (SELECT s.name FROM staff s
+           WHERE s.id = entity_videos.staff_id AND s.organization_id = entity_videos.organization_id) AS staff_name
     FROM entity_videos`;
 
 interface VideoDbRow {
@@ -41,6 +45,8 @@ interface VideoDbRow {
   file_size_bytes: string | null;
   created_at: Date;
   uploaded_at: Date | null;
+  staff_id: number | null;
+  staff_name: string | null;
 }
 
 function mapVideoRow(row: VideoDbRow): EntityVideoRow {
@@ -56,6 +62,7 @@ function mapVideoRow(row: VideoDbRow): EntityVideoRow {
     fileSizeBytes: row.file_size_bytes == null ? null : Number(row.file_size_bytes),
     createdAt: row.created_at.toISOString(),
     uploadedAt: row.uploaded_at ? row.uploaded_at.toISOString() : null,
+    uploadedBy: row.staff_id != null && row.staff_name ? { id: Number(row.staff_id), name: row.staff_name } : null,
   };
 }
 

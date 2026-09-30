@@ -14,7 +14,7 @@ import { aliasNgrams, brandTokens } from '@/lib/brands/normalize';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 import { createCacheLookupKey, getOrSet } from '@/lib/cache/upstash-cache';
 import { CONDITION_GRADES, resolveConditionGrade, type ConditionGrade } from '@/lib/conditions';
-import type { DeskViewId } from '@/lib/outbound/desk-views';
+import { DESK_VIEW_ORDER, type DeskViewId } from '@/lib/outbound/desk-views';
 import { rrfMerge, type DocHitRow } from '@/lib/search/hybrid-retrieval';
 import { pageContextToEntityTypes } from '@/lib/search/page-context';
 import { recordSearchQueries } from '@/lib/search/query-log';
@@ -74,13 +74,16 @@ export const defaultIdentifyDeps: IdentifyDeps = {
 
 // ── Context ─────────────────────────────────────────────────────────────────
 
-/** Outbound sidebar sections that ARE a workflow stage. */
-const SECTION_STAGE: Record<string, IdentifyStage> = {
-  'outbound.exceptions': 'exception',
-  'outbound.shortage': 'picking',
-  'outbound.orders': 'to_ship',
-  'outbound.shipped': 'shipped',
+const DESK_VIEW_STAGE: Record<DeskViewId, IdentifyStage> = {
+  exceptions: 'exception',
+  triage: 'to_ship',
+  shipped: 'shipped',
 };
+
+/** FBM sidebar sections (`outbound.<view id>`, the nav search scope) that ARE a workflow stage. */
+const SECTION_STAGE: Record<string, IdentifyStage> = Object.fromEntries(
+  DESK_VIEW_ORDER.map((id) => [`outbound.${id}`, DESK_VIEW_STAGE[id]]),
+);
 
 /** `context` (`<pageId>[.<sectionId>]`) → the kinds (and stage) ranked first. */
 export function identifyContextScope(context: string | null | undefined): IdentifyContextScope | null {
@@ -92,14 +95,6 @@ export function identifyContextScope(context: string | null | undefined): Identi
 }
 
 // ── Row → candidate facts ───────────────────────────────────────────────────
-
-const DESK_VIEW_STAGE: Record<DeskViewId, IdentifyStage> = {
-  exceptions: 'exception',
-  po: 'picking',
-  pick: 'picking',
-  triage: 'to_ship',
-  shipped: 'shipped',
-};
 
 const UNIT_STATUS_STAGE: Record<string, IdentifyStage> = {
   ON_HOLD: 'exception',

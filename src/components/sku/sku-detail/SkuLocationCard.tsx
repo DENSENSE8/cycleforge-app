@@ -1,98 +1,38 @@
-import { Check, MapPin, X } from '@/components/Icons';
-import { Button } from '@/design-system/primitives/Button';
-import { IconButton } from '@/design-system/primitives/IconButton';
+import { MapPin } from '@/components/Icons';
+import { StockPairBin } from '@/components/inventory/stock/StockPairBin';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { SkuDetailData } from './sku-detail-types';
 import type { SkuDetailController } from './useSkuDetailView';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cn } from '@/utils/_cn';
 
-
-
-/** Location card — shows assigned locations, or a room-grouped editor on Change. */
+/**
+ * Home tote card — the SKU's home tote (`sku_stock.location`) and the Stock
+ * record's own Pair tote picker (`StockPairBin`, `POST /api/update-sku-location`,
+ * which also drops the To-ship queue's cached location), then every location
+ * the SKU's log has seen it in. Where its stock sits now is the Locations
+ * group under it (`StockLocationsGroup`).
+ */
 export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: SkuDetailData }) {
-  // Group DB locations by room for the dropdown.
-  const locationsByRoom = (data.allLocations || []).reduce<Record<string, typeof data.allLocations>>((acc, loc) => {
-    const room = loc.room || 'Other';
-    if (!acc[room]) acc[room] = [];
-    acc[room].push(loc);
-    return acc;
-  }, {});
-
+  const seen = data.locations.filter((loc) => loc !== data.stock.location);
   return (
-    <div className="rounded-none bg-surface-card border border-border-soft p-4">
-      <div className="flex items-center justify-between mb-2">
-        <h2 className={sectionLabel}>
-          <MapPin className="inline h-3 w-3 mr-1" />
-          Location
-        </h2>
-        {!c.editingLocation && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              c.setEditingLocation(true);
-              c.setSelectedLocation(data.locations[0] || '');
-            }}
-            className="text-role-micro text-blue-600 hover:text-blue-800"
-          >
-            Change
-          </Button>
-        )}
+    <div className="rounded-none bg-surface-card border border-border-soft p-4" data-testid="sku-location-card">
+      <h2 className={`${sectionLabel} mb-2`}>
+        <MapPin className="inline h-3 w-3 mr-1" />
+        Home tote
+      </h2>
+      <div className="flex flex-wrap items-center gap-2">
+        <StockPairBin sku={data.sku} barcode={null} face={null} homeLocation={data.stock.location} onPaired={() => void c.refresh()} />
       </div>
-
-      {c.editingLocation ? (
-        <div className="flex items-center gap-2">
-          <select
-            value={c.selectedLocation}
-            onChange={(e) => c.setSelectedLocation(e.target.value)}
-            className={cn("h-10 flex-1 rounded-lg border border-border-default px-3 text-sm font-semibold", focusRing('field', 'accent'))}
-          >
-            <option value="">Select location...</option>
-            {Object.entries(locationsByRoom).map(([room, locs]) => (
-              <optgroup key={room} label={room}>
-                {locs.map((loc) => (
-                  <option key={loc.id} value={loc.name}>{loc.name}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={c.selectedLocation}
-            onChange={(e) => c.setSelectedLocation(e.target.value)}
-            placeholder="Or type custom..."
-            className={cn("h-10 w-40 rounded-lg border border-border-default px-3 text-sm font-semibold", focusRing('field', 'accent'))}
-          />
-          <button
-            onClick={c.handleLocationSave}
-            disabled={c.saving || !c.selectedLocation.trim()}
-            className="ds-raw-button h-10 px-3 rounded-lg bg-emerald-600 text-white"
-            aria-label="Save location"
-          >
-            <Check className="h-4 w-4" />
-          </button>
-          <IconButton
-            onClick={() => c.setEditingLocation(false)}
-            className="h-10 px-3 rounded-lg bg-surface-strong text-text-muted"
-            ariaLabel="Cancel"
-            icon={<X className="h-4 w-4" />}
-          />
+      {seen.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-text-faint">Seen at</span>
+          {seen.map((loc) => (
+            <span key={loc} className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-3 py-1 text-xs font-semibold text-text-default">
+              <MapPin className="h-3 w-3" />
+              {loc}
+            </span>
+          ))}
         </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {data.locations.length > 0 ? (
-            data.locations.map((loc) => (
-              <span key={loc} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                <MapPin className="h-3 w-3" />
-                {loc}
-              </span>
-            ))
-          ) : (
-            <span className="text-xs font-semibold text-text-faint">No location set</span>
-          )}
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

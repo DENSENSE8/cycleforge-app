@@ -25,8 +25,8 @@ export type GoTarget = {
  * - `pressed`: the key that just fired (`go:s`, `view:triage`), held for one
  *   press-in beat so the eye sees which cap went down;
  * - `strips`: mounted header strips — while one is up it is where `G` is taught;
- * - `peek`: the header title was hovered — its views stay unfolded until Esc,
- *   a press outside, or a pill chosen.
+ * - `peek`: the header title was hovered (or Shift tapped) — its views stay
+ *   unfolded until Esc, another Shift tap, a press outside, or a pill chosen.
  */
 type GoKeysSnapshot = {
   targets: readonly GoTarget[];
@@ -89,4 +89,9 @@ export function openViewsPeek() {
 /** Fold the views: Esc, a press outside the title and pills, or a pill chosen. */
 export function closeViewsPeek() {
   if (snapshot.peek) publish({ peek: false });
+}
+
+/** A lone Shift tap: the same unfold hovering the title gives; a second tap folds it. */
+export function toggleViewsPeek() {
+  publish({ peek: !snapshot.peek });
 }

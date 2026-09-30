@@ -13,6 +13,7 @@ import {
   REPAIR_STATUS_OPTIONS,
   type RepairTab,
 } from '@/lib/neon/repair-service-queries';
+import { parseRepairChannel, REPAIR_CHANNEL_PARAM, REPAIR_CHANNELS } from '@/lib/repair/repair-channel';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
@@ -53,7 +54,8 @@ const createRepairSchema = z.object({
   sourceOrderId: z.string().trim().max(120).nullish(),
   sourceTrackingNumber: z.string().trim().max(120).nullish(),
   sourceSku: z.string().trim().max(120).nullish(),
-  intakeChannel: z.string().trim().max(40).optional(),
+  // How the device arrived — required: a hand-typed ticket is still either shipped in or dropped off.
+  intakeChannel: z.enum(REPAIR_CHANNELS),
   // Optional client-supplied idempotency key (also accepted via Idempotency-Key
   // header) — replays the original 201 instead of double-creating a ticket.
   idempotencyKey: z.string().trim().max(200).nullish(),
@@ -62,6 +64,7 @@ const createRepairSchema = z.object({
 // ── Tab normalization ────────────────────────────────────────
 
 function normalizeTab(raw: string): RepairTab {
+  if (raw === 'open') return 'open';
   if (raw === 'incoming') return 'incoming';
   if (raw === 'done') return 'done';
   if (raw === 'all') return 'all';
@@ -82,9 +85,10 @@ const handler = createCrudHandler({
     const tab = normalizeTab(params.tab);
     const needsLabelRaw = params.searchParams.get('needsLabel');
     const needsLabel = needsLabelRaw === '1' || needsLabelRaw === 'true';
+    const channel = parseRepairChannel(params.searchParams.get(REPAIR_CHANNEL_PARAM));
     if (!params.organizationId) throw ApiError.unauthorized('Organization context required');
     const orgId = params.organizationId;
-    const repairs = await getAllRepairs(params.limit, params.offset, { tab, needsLabel }, orgId);
+    const repairs = await getAllRepairs(params.limit, params.offset, { tab, needsLabel, channel }, orgId);
     return { rows: repairs };
   },
 
@@ -92,9 +96,10 @@ const handler = createCrudHandler({
     const tab = normalizeTab(params.tab);
     const needsLabelRaw = params.searchParams.get('needsLabel');
     const needsLabel = needsLabelRaw === '1' || needsLabelRaw === 'true';
+    const channel = parseRepairChannel(params.searchParams.get(REPAIR_CHANNEL_PARAM));
     if (!params.organizationId) throw ApiError.unauthorized('Organization context required');
     const orgId = params.organizationId;
-    return searchRepairs(query, { tab, needsLabel }, orgId);
+    return searchRepairs(query, { tab, needsLabel, channel }, orgId);
   },
 
   update: async (body, _req, organizationId) => {
@@ -186,7 +191,7 @@ async function createRepairHandler(req: NextRequest, ctx: AuthContext) {
       sourceOrderId: d.sourceOrderId ?? null,
       sourceTrackingNumber: d.sourceTrackingNumber ?? null,
       sourceSku: d.sourceSku ?? null,
-      intakeChannel: d.intakeChannel ?? 'manual',
+      intakeChannel: d.intakeChannel,
       receivedByStaffId: ctx.staffId ?? null,
     },
     ctx.organizationId,

@@ -32,6 +32,7 @@ export * from './Toolbar';
 export * from './ToolbarListbox';
 export * from './SearchField';
 export * from './Switch';
+export * from './StopSlider';
 export * from './StatusText';
 
 export * from './TextField';

@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import type { PickupLine } from '@/components/receiving/pickup/pickup-lines';
+import type { PickupLine } from '@/lib/receiving/pickup/pickup-lines';
 import { pickupLineNeedsProcess } from '@/lib/local-pickup/order-status';
 import { QC_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 import { unshippedOrdersQuery } from '@/lib/queries/dashboard-queries';

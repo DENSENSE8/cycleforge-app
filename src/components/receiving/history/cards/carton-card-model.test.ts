@@ -75,6 +75,17 @@ test('Docked paints expected quantity without inferring Short', () => {
   assert.equal(card.next?.label, 'Unbox');
 });
 
+test('Docked uses package-location language until the box is unboxed', () => {
+  const card = cartonRecordCard(
+    cartonCardModel(
+      carton([row({ id: 66, receiving_id: 9, scanned_at: day, quantity_expected: 1 })]),
+      'scanned',
+      'docked',
+    ),
+  );
+  assert.deepEqual(card.lines[0]?.facts.bin, { kind: 'place', path: null, empty: 'No location' });
+});
+
 test('Docked preserves arrival order instead of prioritizing an uninspected shortage', () => {
   const first = row({ id: 71, receiving_id: 10, scanned_at: day, quantity_received: 1, quantity_expected: 1 });
   const looksShortButIsSealed = row({ id: 72, receiving_id: 10, scanned_at: day, quantity_received: 0, quantity_expected: 4 });

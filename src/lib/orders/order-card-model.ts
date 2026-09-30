@@ -22,6 +22,13 @@ import { customerFullName } from '@/lib/customers/customer-display';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import { marketplaceThumbUrl } from '@/lib/photos/marketplace-thumb-url';
 import type { RecordCardLine } from '@/design-system/components/record-card/record-card-types';
+import { ordersGroupEdgeMark } from '@/lib/orders/orders-compound-view';
+
+/** The order's urgent word across its lines — the same one the desk rail paints. */
+function ordersUrgentWord(rows: readonly ShippedOrder[]): string | null {
+  const mark = ordersGroupEdgeMark(rows);
+  return mark?.kind === 'urgent' ? mark.label : null;
+}
 
 export interface OrderCardLine {
   record: ShippedOrder;
@@ -75,6 +82,8 @@ export interface OrderCardModel {
   units: number;
   outOfStockCount: number;
   urgent: boolean;
+  /** Why it is urgent ("Next day", "2-day → Ground", "Urgent"); null when not urgent. */
+  urgentLabel: string | null;
   buyerNote: string | null;
   /** The staff note on the order (`orders.notes`), when one is written. */
   staffNote: string | null;
@@ -109,7 +118,9 @@ export interface OrderNextStep {
 }
 
 /** A line's price in its currency; `estimate` when it came from the listing, not the sale. Cards and the ledger share it. */
-export function linePrice(line: ShippedOrder): { text: string | null; estimate: boolean } {
+export function linePrice(
+  line: Pick<ShippedOrder, 'sale_amount' | 'currency' | 'price_currency' | 'price_cents' | 'price_is_estimate'>,
+): { text: string | null; estimate: boolean } {
   const currency = String(line.currency || line.price_currency || 'USD').trim().toUpperCase();
   const format = (amount: number) => {
     try {
@@ -128,7 +139,8 @@ export function linePrice(line: ShippedOrder): { text: string | null; estimate: 
   return { text: null, estimate: false };
 }
 
-function lineCondition(line: ShippedOrder): { label: string | null; code: string | null } {
+/** A line's grade: sentence-case label + raw code (the tone reads it); both null when the channel sent none. */
+export function lineCondition(line: { condition?: string | null }): { label: string | null; code: string | null } {
   const code = String(line.condition ?? '').trim().toUpperCase();
   if (!code || code === 'N/A') return { label: null, code: null }; // ds-allow-na: marketplace empty-vocab reader
   return { label: conditionSentenceLabel(code), code };
@@ -169,6 +181,17 @@ export function orderCardLine(line: ShippedOrder, todayKey: string, staffName?: 
   };
 }
 
+/** An order line's facts — qty · condition · price — keyed by the order views' fact columns (To ship and Shipped alike). */
+export function orderLineFacts(
+  line: Pick<OrderCardLine, 'qty' | 'condition' | 'conditionCode' | 'price' | 'priceEstimate'>,
+): RecordCardLine['facts'] {
+  return {
+    qty: { kind: 'qty', value: line.qty },
+    condition: line.condition ? { kind: 'grade', label: line.condition, code: line.conditionCode } : null,
+    price: line.price ? { kind: 'money', text: line.price, estimate: line.priceEstimate, estimateTitle: 'Estimate from the listing price' } : null,
+  };
+}
+
 /** An order line as a record-card line — the facts every order card face paints (qty · condition · price). */
 export function orderRecordLine(line: OrderCardLine): RecordCardLine {
   return {
@@ -177,11 +200,7 @@ export function orderRecordLine(line: OrderCardLine): RecordCardLine {
     photoUrl: line.thumbUrl,
     alert: line.outOfStock,
     alertNote: line.shortNote,
-    facts: {
-      qty: { kind: 'qty', value: line.qty },
-      condition: line.condition ? { kind: 'grade', label: line.condition, code: line.conditionCode } : null,
-      price: line.price ? { kind: 'money', text: line.price, estimate: line.priceEstimate, estimateTitle: 'Estimate from the listing price' } : null,
-    },
+    facts: orderLineFacts(line),
   };
 }
 
@@ -292,6 +311,7 @@ export function orderCardModel(
     units: built.reduce((sum, l) => sum + l.qty, 0),
     outOfStockCount: built.filter((l) => l.outOfStock).length,
     urgent: rows.some((r) => r.is_urgent === true),
+    urgentLabel: ordersUrgentWord(rows),
     buyerNote,
     staffNote,
     buyerName,

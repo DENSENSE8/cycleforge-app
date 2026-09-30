@@ -221,10 +221,12 @@ export async function issueReceivingUnitLabels(
       const syntheticSerial = receivingUnitSyntheticSerial(lineUnitId);
       const storedSerial = slot.serial_number?.trim() || syntheticSerial;
       const condition = slot.condition_grade ?? line.line_condition ?? null;
-      // A reprint must not regress TESTED/STOCKED/PICKED/SHIPPED back to
-      // LABELED. Existing identified units are read as-is; only a new slot or
-      // a legacy linked unit missing its UID passes through the canonical
-      // upsert/mint path.
+      // A reprint must not regress TESTED/STOCKED/PICKED/SHIPPED. Existing
+      // identified units are read as-is; only a new slot or a legacy linked
+      // unit missing its UID passes through the canonical upsert/mint path.
+      // A new unit mints RECEIVED — `LABELED` is the outbound shipping-label
+      // state, from which no QC verdict is legal; the receiving label itself
+      // is recorded by `label_print_jobs`.
       const upserted =
         slot.serial_unit_id != null && slot.unit_uid
           ? null
@@ -240,7 +242,7 @@ export async function issueReceivingUnitLabels(
                 target_status:
                   slot.serial_unit_id != null && slot.current_status
                     ? (slot.current_status as SerialStatus)
-                    : 'LABELED',
+                    : 'RECEIVED',
               },
               { dbClient: client },
               orgId,

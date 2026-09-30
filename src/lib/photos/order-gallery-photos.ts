@@ -3,15 +3,7 @@
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { photoStageLabel } from '@/lib/photos/stages';
 import type { UnitTimelinePhotoRow } from '@/lib/timeline';
-
-/** Timeline photo `source` → the stage vocabulary `photoStageLabel` speaks. */
-const SOURCE_STAGE = {
-  arrival: 'arrival_package',
-  unbox_carton: 'unbox_carton',
-  unbox_item: 'unbox_item',
-  testing: 'testing',
-  packing: 'packing',
-} as const;
+import { UNIT_PHOTO_SOURCE_STAGE } from '@/lib/timeline/unit-photos-events';
 
 function toReadOnlyGalleryInput(url: string, caption?: string): PhotoGalleryInput {
   return { url, meta: caption ? { caption } : undefined };
@@ -29,7 +21,7 @@ export function buildOrderGalleryPhotos(
     const url = String(photo.fullUrl || photo.thumbUrl || '').trim();
     if (!url || seen.has(url)) continue;
     seen.add(url);
-    out.push(toReadOnlyGalleryInput(url, photoStageLabel(SOURCE_STAGE[photo.source])));
+    out.push(toReadOnlyGalleryInput(url, photoStageLabel(UNIT_PHOTO_SOURCE_STAGE[photo.source])));
   }
 
   const legacy = Array.isArray(packerUrls) ? packerUrls : [];

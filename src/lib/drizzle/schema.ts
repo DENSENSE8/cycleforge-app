@@ -1066,6 +1066,9 @@ export const orders = pgTable('orders', {
   /** Operator-toggled urgent / expedited flag (dashboard queue quick-actions Zap).
    *  Tier-0 semantics for the future "Expedited" filter. Migration 2026-07-14. */
   isUrgent: boolean('is_urgent').notNull().default(false),
+  /** Shipping speed the buyer paid for (SERVICE_LEVEL key), classified from the
+   *  ShipStation refs. Changing to an urgent level sets isUrgent once. Migration 2026-09-29_orders_service_level. */
+  serviceLevel: text('service_level'),
   /** Marketplace buyer checkout note (eBay buyerCheckoutNotes), mirrored raw
    *  by the sync; projected into entity_signals by buyer-note-derivation.
    *  Migration 2026-07-03p. */
@@ -1965,6 +1968,15 @@ export const workAssignments = pgTable('work_assignments', {
    * apps schedule a LOCAL notification from `GET /api/v1/reminders`.
    */
   remindAt: timestamp('remind_at', { withTimezone: true }),
+  /** Latest logged follow-up (2026-09-29); GREATEST of the log's occurred_at. */
+  lastFollowUpAt: timestamp('last_follow_up_at', { withTimezone: true }),
+  /** Operator-set next chase (2026-09-29); NULL = none. */
+  nextFollowUpAt: timestamp('next_follow_up_at', { withTimezone: true }),
+  /**
+   * A task's hold on OPEN work (2026-09-30): PENDING · FOLLOW_UP · BLOCKED, or
+   * NULL. Named CHECK in SQL; a trigger clears it once status closes.
+   */
+  taskState: text('task_state'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -2028,7 +2040,8 @@ export const repairService = pgTable('repair_service', {
   sourceOrderId: text('source_order_id'),
   sourceTrackingNumber: text('source_tracking_number'),
   sourceSku: text('source_sku'),
-  intakeChannel: text('intake_channel'),
+  /** 'shipment' (shipped in) | 'pickup' (dropped off) — CHECK + NOT NULL since 2026-09-29_repair_service_intake_channel_backfill.sql. */
+  intakeChannel: text('intake_channel').$type<'shipment' | 'pickup'>().notNull(),
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   receivedAt: timestamp('received_at', { withTimezone: true }),
   intakeConfirmedAt: timestamp('intake_confirmed_at', { withTimezone: true }),
@@ -5674,6 +5687,52 @@ export const workAssignmentMediaLinks = pgTable('work_assignment_media_links', {
 }));
 
 export type WorkAssignmentMediaLinkRow = typeof workAssignmentMediaLinks.$inferSelect;
+
+/** Follow-up log on a thrown task (2026-09-29): one row per email / call / ticket / note chase. */
+export const workAssignmentFollowUps = pgTable('work_assignment_follow_ups', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  assignmentId: integer('assignment_id').notNull().references(() => workAssignments.id, { onDelete: 'cascade' }),
+  /** email | call | ticket | note (named CHECK in SQL). */
+  channel: text('channel').notNull(),
+  /** outbound | inbound (named CHECK in SQL). */
+  direction: text('direction').notNull().default('outbound'),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  staffId: integer('staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  emailTo: text('email_to'),
+  emailSubject: text('email_subject'),
+  body: text('body'),
+  /** Phase 2 (Gmail send); NULL for free-text logs. */
+  provider: text('provider'),
+  providerThreadId: text('provider_thread_id'),
+  providerMessageId: text('provider_message_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  assignmentIdx: index('idx_work_assignment_follow_ups_assignment').on(t.organizationId, t.assignmentId, t.occurredAt.desc()),
+}));
+
+export type WorkAssignmentFollowUpRow = typeof workAssignmentFollowUps.$inferSelect;
+
+/** Email references on a thrown task (2026-09-29, R3): which customer email, on which inbound mailbox, a task came from. */
+export const workAssignmentEmailRefs = pgTable('work_assignment_email_refs', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  assignmentId: integer('assignment_id').notNull().references(() => workAssignments.id, { onDelete: 'cascade' }),
+  customerEmail: text('customer_email').notNull(),
+  /** Full inbound address or a bare local part (`sales`). */
+  mailbox: text('mailbox').notNull(),
+  /** Order number OR reference number, never both (named CHECK in SQL). */
+  orderNumber: text('order_number'),
+  referenceNumber: text('reference_number'),
+  subject: text('subject'),
+  createdByStaffId: integer('created_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  assignmentIdx: index('idx_work_assignment_email_refs_assignment').on(t.organizationId, t.assignmentId),
+}));
+
+export type WorkAssignmentEmailRefRow = typeof workAssignmentEmailRefs.$inferSelect;
 export type NewWorkAssignmentMediaLinkRow = typeof workAssignmentMediaLinks.$inferInsert;
 
 // ─── Tool Forge:

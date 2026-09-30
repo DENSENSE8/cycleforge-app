@@ -19,7 +19,9 @@ import { GoalsAnalyticsTab } from '@/components/admin/GoalsAnalyticsTab';
 import { QualityDashboardTab } from '@/components/admin/QualityDashboardTab';
 import { StaffScheduleTab } from '@/components/admin/StaffScheduleTab';
 import { SystemSyncActivityTab } from '@/components/admin/SystemSyncActivityTab';
-import { AdminLogsTab } from '@/components/admin/AdminLogsTab';
+import { GoalsPickerPane } from '@/components/admin/GoalsPickerPane';
+import { StaffPickerPane } from '@/components/admin/StaffPickerPane';
+import { OperationsLogsView } from './OperationsLogsView';
 
 /** Legacy `/operations?mode=plans` → Plans Live (`/forge`). */
 function OperationsPlansRedirect() {
@@ -48,15 +50,31 @@ export function OperationsWorkspace() {
   /* `analytics` is GONE (2026-09-16, operator ruling). */
   if (mode === 'history') return <OperationsHistoryView />;
   if (mode === 'signals') return <SignalsWorkspace />;
-  if (mode === 'goals') return <GoalsAnalyticsTab />;
-  if (mode === 'quality') return <QualityDashboardTab />;
-  if (mode === 'staff') return <StaffScheduleTab />;
-  if (mode === 'sync') return <SystemSyncActivityTab />;
-  if (mode === 'logs') {
-    // Ex-Admin › Operations log carried `?search=`; the desk's shared filter
-    // band is `q` (owned by OPERATIONS_ROUTE_PARAMS).
-    return <AdminLogsTab initialSearch={searchParams.get('q') ?? ''} />;
+  // Goals · Staff · Logs: their pickers sit in the stage, left of the record
+  // (the contextual sidebar holds only their filters).
+  if (mode === 'goals') {
+    return (
+      <div className="flex h-full min-h-0">
+        <GoalsPickerPane />
+        <div className="min-w-0 flex-1 overflow-y-auto">
+          <GoalsAnalyticsTab />
+        </div>
+      </div>
+    );
   }
+  if (mode === 'quality') return <QualityDashboardTab />;
+  if (mode === 'staff') {
+    return (
+      <div className="flex h-full min-h-0">
+        <StaffPickerPane />
+        <div className="min-w-0 flex-1 overflow-y-auto">
+          <StaffScheduleTab />
+        </div>
+      </div>
+    );
+  }
+  if (mode === 'sync') return <SystemSyncActivityTab />;
+  if (mode === 'logs') return <OperationsLogsView />;
   if (mode === 'reconciliation') return <OperationsReconciliationView />;
   if (mode === 'checks') return <OperationsChecksView />;
   if (mode === 'plans') return <OperationsPlansRedirect />;

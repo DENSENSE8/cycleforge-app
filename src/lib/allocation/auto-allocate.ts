@@ -12,6 +12,7 @@ import {
   type AllocationSupplyUnit,
 } from './plan-allocations';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
+import { transition } from '@/lib/inventory/state-machine';
 
 interface DemandRow {
   id: number;
@@ -138,15 +139,36 @@ export async function autoAllocateForOrders(
       return `($${params.length - 1}, $${params.length}, $2, 'ALLOCATED', $1)`;
     });
 
-    const res = await client.query<{ order_id: number }>(
+    const res = await client.query<{ id: number; order_id: number; serial_unit_id: number }>(
       `INSERT INTO order_unit_allocations
          (order_id, serial_unit_id, allocated_by_staff_id, state, organization_id)
        VALUES ${rows.join(', ')}
        ON CONFLICT (serial_unit_id) WHERE state <> ALL (ARRAY['RELEASED'::text, 'RETURNED'::text])
        DO NOTHING
-       RETURNING order_id`,
+       RETURNING id, order_id, serial_unit_id`,
       params,
     );
+    // The unit is reserved, not just the row: STOCKED → ALLOCATED through the guarded
+    // state machine, as `allocateOrderInTx` does. A unit left STOCKED under an open
+    // allocation cannot be picked (`desk-serial-pick` refuses it).
+    for (const row of res.rows) {
+      const moved = await transition(
+        {
+          unitId: Number(row.serial_unit_id),
+          to: 'ALLOCATED',
+          eventType: 'ALLOCATED',
+          actorStaffId: opts.staffId ?? null,
+          station: 'SYSTEM',
+          expectedFrom: 'STOCKED',
+          payload: { source: 'orders.auto-allocate', order_id: Number(row.order_id), allocation_id: Number(row.id) },
+        },
+        client,
+        opts.orgId,
+      );
+      if (!moved.ok) {
+        throw new Error(`auto-allocate: STOCKED→ALLOCATED failed for unit ${row.serial_unit_id}: ${moved.error}`);
+      }
+    }
     // An allocated unit's verdict is the order's (inherited) QC.
     await refreshOrderStageFacts(opts.orgId, { orderIds: res.rows.map((r) => r.order_id) }, client);
 

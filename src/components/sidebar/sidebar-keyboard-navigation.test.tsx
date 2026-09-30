@@ -42,7 +42,7 @@ test('arrow keys walk and clamp; Home and End jump to the visible bounds', () =>
       h(
         'nav',
         { onKeyDown: handleSidebarNavigationKeyDown },
-        ['Chat', 'Daily', 'Sales'].map((label) =>
+        ['Chat', 'Tasks', 'Sales'].map((label) =>
           h('button', { key: label, type: 'button', 'data-sidebar-nav-item': '' }, label),
         ),
       ),

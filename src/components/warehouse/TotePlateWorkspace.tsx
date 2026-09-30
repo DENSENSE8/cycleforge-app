@@ -31,7 +31,6 @@ export function TotePlateWorkspace() {
   const [copiesPerSide, setCopiesPerSide] = useState(DEFAULT_TOTE_COPIES_PER_SIDE);
   const [reprintCode, setReprintCode] = useState('');
   const [printing, setPrinting] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const totes = mode === 'reprint' ? 1 : clampToteCount(count);
   const total = toteRunPlateCount(totes, copiesPerSide);
@@ -47,7 +46,6 @@ export function TotePlateWorkspace() {
 
   const run = useCallback(async () => {
     setPrinting(true);
-    setProgress(null);
     try {
       const copies = platesPerTote(copiesPerSide);
       const result =
@@ -55,13 +53,11 @@ export function TotePlateWorkspace() {
           ? await printHandlingUnitLabelRun({
               copies,
               boxes: [toteReprintFromTyped(reprintCode)],
-              onProgress: (done, totalN) => setProgress({ done, total: totalN }),
             })
           : await printHandlingUnitLabelRun({
               count: clampToteCount(count),
               copies,
               mint: mintTotesForPrint,
-              onProgress: (done, totalN) => setProgress({ done, total: totalN }),
             });
       if (result.status === 'mint_failed') {
         toast.error(result.error || 'Could not create the totes — nothing printed');
@@ -76,7 +72,6 @@ export function TotePlateWorkspace() {
       toast.error(err instanceof Error ? err.message : 'Could not print tote labels');
     } finally {
       setPrinting(false);
-      setProgress(null);
     }
   }, [mode, count, copiesPerSide, reprintCode]);
 
@@ -110,12 +105,6 @@ export function TotePlateWorkspace() {
             printing={printing}
             printDisabled={!reprintReady}
           />
-
-          {progress && (
-            <p className="font-mono text-role-caption text-text-soft">
-              Printing {progress.done}/{progress.total}
-            </p>
-          )}
         </div>
       </div>
     </div>

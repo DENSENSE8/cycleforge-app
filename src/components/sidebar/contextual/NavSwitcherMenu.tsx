@@ -156,7 +156,8 @@ export function NavSwitcherMenu({
         ) : null}
         <span className="min-w-0 flex-1 truncate">{current.label}</span>
         {current.trailing}
-        <ChevronDown aria-hidden className={cn('size-3.5 shrink-0 text-text-faint transition-transform', open && 'rotate-180')} />
+        {/* text-muted, not -faint: the chevron is the menu's only affordance and -faint read 2.6:1 on the light sidebar. */}
+        <ChevronDown aria-hidden className={cn('size-3.5 shrink-0 text-text-muted transition-transform', open && 'rotate-180')} />
       </button>
       <AnimatePresence initial={false}>
         {open ? (

@@ -18,7 +18,9 @@
  *    storefront orders already arrive through the Ecwid API sync — owner
  *    2026-09-27.) Same grammar as `G` then a letter (NavGoKeys); ⌘K stays
  *    find. A scanner burst that starts with `C` never arms: the next wedge key
- *    lands before `C` settles.
+ *    lands before `C` settles. `C` is create on every page (`key-registry`):
+ *    a desk that claims it for its own create (`registerPageCreate` — the
+ *    Tasks board's New task) runs that instead, and this pill teaches so.
  */
 
 import { Fragment, useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
@@ -44,6 +46,8 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 import { GO_SCAN_BURST_MS } from '@/lib/keyboard/go-keys';
 import { newInboundOrderHref } from '@/lib/inbound/new-inbound-order-path';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { CREATE_LEADER } from '@/lib/keyboard/key-registry';
+import { currentPageCreate, usePageCreate } from '@/lib/keyboard/page-create-key';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
 import { NEW_SALES_ORDER_PATH } from '@/lib/orders/manual-order-draft';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
@@ -55,8 +59,8 @@ const ARM_SETTLE_MS = GO_SCAN_BURST_MS + 20;
 /** How long the card waits for the next key — long enough to read it the first time. */
 const ARMED_TIMEOUT_MS = 4000;
 
-/** The leader key that arms the Add sequence. */
-const LEADER = 'C';
+/** The leader key that arms the Add sequence (the key law's create letter). */
+const LEADER = CREATE_LEADER.toUpperCase();
 
 /** The two groups every surface labels, in order. */
 const ADD_GROUPS = ['Outbound', 'Inbound'] as const;
@@ -92,6 +96,7 @@ export function GlobalHeaderAdd() {
   const [armed, setArmed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hintAt, setHintAt] = useState<KeyHintAt | null>(null);
+  const pageCreate = usePageCreate();
   const armedRef = useRef(false);
   const timer = useRef<number | null>(null);
 
@@ -143,7 +148,7 @@ export function GlobalHeaderAdd() {
         return;
       }
       if (
-        event.key.toLowerCase() !== 'c'
+        event.key.toLowerCase() !== CREATE_LEADER
         || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey
         || event.repeat || event.isComposing || event.defaultPrevented
         || event.timeStamp - previousAt < GO_SCAN_BURST_MS
@@ -156,7 +161,12 @@ export function GlobalHeaderAdd() {
       // No preventDefault: a wedge scan listener still gets this key if a burst follows.
       pending = window.setTimeout(() => {
         pending = null;
-        arm();
+        // A page verb that took this `C` (a record's Create ticket) owns it: never a second card.
+        if (event.defaultPrevented) return;
+        // The page's own create owns `C` here (the Tasks board's New task).
+        const create = currentPageCreate();
+        if (create) create.run();
+        else arm();
       }, ARM_SETTLE_MS);
     };
     // A click that is not on the card itself cancels.
@@ -178,9 +188,11 @@ export function GlobalHeaderAdd() {
       registerShortcutOverviewGroup({
         id: 'global-create',
         title: 'Add',
-        rows: NEXT_KEYS.map((n) => ({ keys: ['C', n.key.toUpperCase()], label: n.label })),
+        rows: pageCreate
+          ? [{ keys: [LEADER], label: pageCreate.label }]
+          : NEXT_KEYS.map((n) => ({ keys: [LEADER, n.key.toUpperCase()], label: n.label })),
       }),
-    [],
+    [pageCreate],
   );
 
   return (
@@ -245,7 +257,20 @@ export function GlobalHeaderAdd() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <KeyHintPopover id="add" at={menuOpen ? null : hintAt} rows={HINT_ROWS} lead={HINT_LEAD} />
+      <KeyHintPopover
+        id="add"
+        at={menuOpen ? null : hintAt}
+        rows={pageCreate ? HINT_ROWS.map((row) => ({ ...row, keys: [] })) : HINT_ROWS}
+        lead={
+          pageCreate ? (
+            <>
+              <KeyboardKey size="xs">{LEADER}</KeyboardKey> is {pageCreate.label} here · click to add
+            </>
+          ) : (
+            HINT_LEAD
+          )
+        }
+      />
       <NextKeysCard on={armed} onRun={run} />
     </div>
   );

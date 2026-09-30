@@ -17,7 +17,11 @@ import { navRowGlyph } from './NavSectionList';
 import { KEY_PRESSED_CLASS } from './NavGoKeys';
 import { isNavModeSection } from './NavModeSwitcher';
 import { useCurrentNavPath, useNavContext } from './useNavContext';
-import { closeViewsPeek, openViewsPeek, registerKeyStrip, useGoKeys } from './go-keys-store';
+import { closeViewsPeek, openViewsPeek, registerKeyStrip, toggleViewsPeek, useGoKeys } from './go-keys-store';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
+import { SHIFT_TAP_IDLE, shiftTapReduce, type ShiftTapInput } from '@/lib/keyboard/shift-tap';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 
 const PILL_CLASS = cn(
   NAV_BLOCK_CLASS,
@@ -72,10 +76,10 @@ const subscribeNever = () => () => undefined;
 
 /**
  * The desk header title — the view you are on, then a `›` that says "hover
- * me". On hover it sits in a grey bubble (held while the views are
- * unfolded), and every view unfolds as pills right beside it
- * (`NavKeyStrip`), each led by its digit, so the keys are memorised where
- * the eye already is.
+ * me". On hover (or a lone Shift tap — `NavKeyStrip`) it sits in a grey
+ * bubble (held while the views are unfolded), and every view unfolds as
+ * pills right beside it (`NavKeyStrip`), each led by its digit, so the keys
+ * are memorised where the eye already is.
  */
 export function NavViewTitle({ label }: { label: string }) {
   const { peek } = useGoKeys();
@@ -103,11 +107,12 @@ export function NavViewTitle({ label }: { label: string }) {
  * The desk header's KEY STRIP — the slot between the title (top left) and
  * the page's verbs (top right). Empty at rest: nothing to read until you ask.
  *
- * - title hovered (`peek`): the views unfold as pills starting right beside
- *   the title — `[1]⌂ Exceptions  [2]⌂ PO paired …`, key flush left against
- *   the icon — the shortest pointer trip from the title to a choice. They
- *   STICK: hovering off never folds them; Esc, a press outside the title and
- *   pills, or choosing a pill does.
+ * - title hovered, or Shift tapped alone (`peek`): the views unfold as pills
+ *   starting right beside the title — `[1]⌂ Exceptions  [2]⌂ PO paired …`,
+ *   key flush left against the icon — the shortest pointer trip from the
+ *   title to a choice. They STICK: hovering off never folds them; Esc,
+ *   another Shift tap, a press outside the title and pills, or choosing a
+ *   pill does.
  * - `G` armed: the current lane's modes — `[S]⌂ Shipping [F]⌂ FBA
  *   [L]⌂ Label intake`, icons in their mode tones, no `[G] then` lead (the
  *   staffer just pressed it) — centred. Nothing shades or outlines the list
@@ -144,6 +149,42 @@ export function NavKeyStrip({ views, pageId }: { views: readonly NavItem[]; page
       window.removeEventListener('pointerdown', onPointerDown);
     };
   }, [peek]);
+
+  // A lone Shift tap toggles the same unfold (owner 2026-09-30) — never in a
+  // field, never under an overlay, never as part of a chord or Shift+click.
+  const hasViews = views.length > 1;
+  useEffect(() => {
+    if (!hasViews) return undefined;
+    let state = SHIFT_TAP_IDLE;
+    const step = (input: ShiftTapInput, target: EventTarget | null) => {
+      const next = shiftTapReduce(state, input);
+      state = next.state;
+      if (!next.tapped || isEditableKeyTarget(target) || hasOpenOverlay()) return;
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      toggleViewsPeek();
+    };
+    const onKeyDown = (event: KeyboardEvent) =>
+      step({ type: 'keydown', key: event.key, repeat: event.repeat, metaKey: event.metaKey, ctrlKey: event.ctrlKey, altKey: event.altKey, at: event.timeStamp }, event.target);
+    const onKeyUp = (event: KeyboardEvent) => step({ type: 'keyup', key: event.key, at: event.timeStamp }, event.target);
+    const onPointerDown = () => step({ type: 'pointerdown' }, null);
+    const onBlur = () => step({ type: 'blur' }, null);
+    window.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('keyup', onKeyUp, true);
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('blur', onBlur);
+    const unregister = registerShortcutOverviewGroup({
+      id: 'views-peek',
+      title: 'Views on this page',
+      rows: [{ keys: ['Shift'], label: 'Tap alone: show / hide the views beside the title (same as hovering it)' }],
+    });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('keyup', onKeyUp, true);
+      window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('blur', onBlur);
+      unregister();
+    };
+  }, [hasViews]);
 
   return (
     <div

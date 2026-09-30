@@ -8,7 +8,7 @@
  * Check's facts. J / K walk the numbers; the triage keys act on the focused
  * (else hovered, else open) number:
  *
- *   ↵ open · C copy · ⇧C copy every shown number · R recheck · ⌫ remove from list
+ *   ↵ open · ⌘/Ctrl+C copy · ⌘⌥C / Ctrl+Alt+C copy every shown number · R recheck · ⌫ remove from list
  *
  * X stays the face's check key (TriageCardList), so remove is ⌫ / Delete —
  * the popout's own remove key.
@@ -27,11 +27,12 @@ import { triageFamily } from '@/design-system/components/triage-card-list/triage
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { RecordLedgerSummaryPane } from '@/design-system/components/record-ledger/RecordLedgerSummary';
-import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import type { RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { ReceivingSelectionVerbs } from '@/components/receiving/ReceivingSelectionVerbs';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { RowGroup } from '@/lib/group-rows';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { COPY_HOTKEY, COPY_SHOWN_HOTKEY, hotkeyFires } from '@/lib/keyboard/key-registry';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import type { InboundCheck } from '@/lib/receiving/inbound-check-query';
 import { pastedNumberPlaceholderId, pastedNumbers, removePastedNumbers } from '@/lib/receiving/pasted-numbers';
@@ -52,12 +53,12 @@ import {
   type PastedNumberCardModel,
   type PastedNumberRow,
 } from './cards/PastedNumberCard';
-import { IncomingDeliveryEvidence, incomingDeliverySummary, useIncomingDelivery } from './IncomingDeliveryEvidence';
-import { incomingDeliveryRecordState, purchaseIdentity } from './incoming-delivery-state';
-import { buildIncomingDeliveryVerbs } from './incoming-record-verbs';
+import { useInboundDeliveryRecord } from '@/components/receiving/record/useInboundRecord';
+import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
+import { inboundPastedNumberModel } from '@/components/receiving/record/inbound-record-model';
+import { incomingDeliverySummary } from './incoming-delivery-state';
 import { IncomingStatusChips, type IncomingStatusChipSet } from './IncomingStatusChips';
 import { PastedNumbersBanner } from './PastedNumbersBanner';
-import { PastedNumberEvidence } from './PastedNumberEvidence';
 
 const VIEW = INCOMING_PIPELINE_VIEW;
 const NO_FACE_CHIPS: readonly never[] = [];
@@ -304,22 +305,24 @@ export function PastedNumbersLedger({
       return (Number.isFinite(key) ? latest.current.cardById.get(key) : undefined) ?? latest.current.openCard;
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.repeat || event.defaultPrevented) return;
       if (hasOpenOverlay() || isEditableKeyTarget(event.target)) return;
       const key = event.key;
       const { copyText: copy, copyShown: copyAll, recheck: ask, remove: drop } = latest.current;
-      if (key === 'C' && event.shiftKey) {
+      // Copy is ⌘/Ctrl+C (⌘⌥C / Ctrl+Alt+C every shown number) — C is create app-wide (`key-registry`).
+      if (hotkeyFires(COPY_SHOWN_HOTKEY, event)) {
         event.preventDefault();
         copyAll();
         return;
       }
-      if (event.shiftKey) return;
+      const copying = hotkeyFires(COPY_HOTKEY, event);
+      if (!copying && (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)) return;
       const lower = key.toLowerCase();
-      if (lower !== 'c' && lower !== 'r' && key !== 'Backspace' && key !== 'Delete') return;
+      if (!copying && lower !== 'r' && key !== 'Backspace' && key !== 'Delete') return;
       const card = cardUnderCursor(event.target);
       if (!card) return;
       event.preventDefault();
-      if (lower === 'c') void copy(card.number.entry.ref, card.number.entry.ref);
+      if (copying) void copy(card.number.entry.ref, card.number.entry.ref);
       else if (lower === 'r') ask(card);
       else drop([card]);
     };
@@ -329,7 +332,6 @@ export function PastedNumbersLedger({
 
   // ── The record plane ──────────────────────────────────────────────────────
   const openLine = openRow?.line ?? null;
-  const delivery = useIncomingDelivery(openLine);
   const openLines = useMemo(() => {
     if (!openLine) return [];
     const key = purchaseKey(openLine);
@@ -337,40 +339,21 @@ export function PastedNumbersLedger({
   }, [openLine, rows]);
   const openNumber = openRow?.number ?? null;
   const openFace = openNumber ? pastedNumberStatusFace(openNumber.entry) : null;
-  const recordTitle = openLine ? `PO ${purchaseIdentity(openLine)}` : (openNumber?.entry.ref ?? 'Number');
   const recordSubtitle = openNumber && openFace ? (openLine ? `${openNumber.entry.ref} · ${openFace.face}` : openFace.face) : undefined;
-  const strip =
-    openRow && openCard ? (
-      <RecordActionStrip
-        key={openRow.id}
-        verbs={[
-          ...numberVerbs(openCard),
-          ...(openLine ? buildIncomingDeliveryVerbs({ row: openLine, delivery, navigate: router.push, onRemoved: close }) : []),
-        ]}
-        label={`${openCard.number.entry.ref} actions`}
-        testId="incoming-actions"
-      />
-    ) : null;
-  const recordView = openRow ? (
-    openLine ? (
-      <IncomingDeliveryEvidence
-        key={openRow.id}
-        row={openLine}
-        lines={openLines}
-        state={incomingDeliveryRecordState(openLine)}
-        delivery={delivery}
-      />
-    ) : openCard ? (
-      <PastedNumberEvidence
-        key={openRow.id}
-        number={openRow.number}
-        check={check.rowsByKey.get(openRow.number.entry.key) ?? null}
-        verbs={numberVerbs(openCard)
-          .filter((verb) => verb.id !== 'number-recheck')
-          .map((verb) => ({ id: verb.id.replace('number-', ''), label: verb.label, run: () => void verb.run?.() }))}
-      />
-    ) : null
-  ) : null;
+  // A number with lines opens its purchase's record; one nothing on file
+  // carries opens the Check's answer — the same inbound record either way.
+  const delivery = useInboundDeliveryRecord({ row: openLine, lines: openLines, onRemoved: close });
+  const numberModel =
+    openRow && !openLine ? inboundPastedNumberModel(openRow.number, check.rowsByKey.get(openRow.number.entry.key) ?? null) : null;
+  const lead = openCard ? numberVerbs(openCard) : [];
+  const slot = useRecordSlot(
+    delivery?.model ?? numberModel,
+    delivery
+      ? [...delivery.verbs, ...lead.map((verb) => ({ ...verb, placement: 'overflow' as const }))]
+      : lead.map((verb) => (verb.id === 'number-remove' ? { ...verb, placement: 'overflow' as const } : verb)),
+    `${openCard?.number.entry.ref ?? 'Number'} actions`,
+    'inbound-record',
+  );
   const summary = useMemo(() => incomingDeliverySummary(rows, 'pipeline'), [rows]);
 
   // ── The face ──────────────────────────────────────────────────────────────
@@ -431,13 +414,15 @@ export function PastedNumbersLedger({
           feed={feed}
           cut={cut}
           record={{
-            title: recordTitle,
+            title: slot?.title ?? 'Number',
             subtitle: recordSubtitle,
+            actions: slot?.actions,
             noun: 'number',
+            showIndex: false,
             testId: 'incoming-deliveries-ledger-record',
             summary: <RecordLedgerSummaryPane summary={summary} />,
-            view: recordView,
-            strip,
+            view: slot?.view ?? null,
+            strip: null,
           }}
           summary={statusChips ? <IncomingStatusChips set={statusChips} /> : null}
           bulk={<ReceivingSelectionVerbs noun="numbers" lead={bulkLead} />}

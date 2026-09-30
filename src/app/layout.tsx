@@ -58,16 +58,17 @@ export default async function RootLayout({
     // `/m/*` is the handheld tree.
     const mobileTree = pathname === '/m' || pathname.startsWith('/m/');
 
-    // Paint seed for routes whose first-paint content lives in the SHELL rather than the page (Unbox recents rail; the Testing station's…
-    const shellSeed = await shellSeedPromise;
-
     // Activation gate — covers desks that skip `requirePermission` (e.g. `/`,
     // `/incoming`). Exempt paths + fail-open live in activation-gate.ts.
-    if (initialUser && !kioskHost) {
-      if (await isActivationBlocked(initialUser.organizationId, pathname)) {
-        redirect(ACTIVATION_REDIRECT_HREF);
-      }
-    }
+    // Started before the seed is awaited: both are DB reads on the TTFB path.
+    const activationBlockedPromise =
+        initialUser && !kioskHost
+            ? isActivationBlocked(initialUser.organizationId, pathname)
+            : Promise.resolve(false);
+
+    // Paint seed for routes whose first-paint content lives in the SHELL rather than the page (Unbox recents rail; the Testing station's…
+    const [shellSeed, activationBlocked] = await Promise.all([shellSeedPromise, activationBlockedPromise]);
+    if (activationBlocked) redirect(ACTIVATION_REDIRECT_HREF);
 
     // suppressHydrationWarning on <html>:
     return (

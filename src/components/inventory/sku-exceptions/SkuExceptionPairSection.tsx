@@ -8,11 +8,9 @@
 
 import { useMemo, useState } from 'react';
 import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
-import {
-  EVIDENCE_CONTROL_CLASS,
-  EvidenceSection,
-  evidenceVerbClass,
-} from '@/design-system/components/record-ledger/RecordEvidence';
+import { EVIDENCE_CONTROL_CLASS } from '@/design-system/components/record-ledger/RecordEvidence';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { Button } from '@/design-system/primitives';
 import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
 import { useDebounce } from '@/hooks';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
@@ -22,7 +20,7 @@ import { useResolvePairsException } from '@/hooks/exceptions';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
-/** Pair to Zoho SKU — the resolution. */
+/** Pair to Zoho SKU — the resolution. Its one action, **Pair**, sits top-right once an item is chosen. */
 export function SkuExceptionPairSection({
   fieldId,
   item,
@@ -65,62 +63,53 @@ export function SkuExceptionPairSection({
   const units = `${item.stock} unit${item.stock === 1 ? '' : 's'}`;
 
   return (
-    <EvidenceSection label="Pair to Zoho SKU" testId="sku-exception-pair">
-      <IntakeCombobox
-        triggerId={`${fieldId}-pair`}
-        className={cn(EVIDENCE_CONTROL_CLASS, 'w-full')}
-        contentClassName="overflow-hidden rounded-mode"
-        value={chosen?.sku ?? null}
-        onChange={(value) => setChosen(hits.find((hit) => hit.sku === value) ?? null)}
-        options={hits.map((hit) => ({
-          value: hit.sku,
-          label: hit.sku,
-          mono: true,
-          meta: hit.product_title || undefined,
-          imageUrl: hit.image_url,
-        }))}
-        query={query}
-        onQueryChange={setQuery}
-        loading={search.isFetching}
-        disabled={busy}
-        placeholder="Find the real Zoho item…"
-        searchPlaceholder="Search Zoho by SKU or title…"
-        emptyMessage={search.isFetching ? 'Searching…' : 'Nothing in Zoho matches.'}
-        ariaLabel="Zoho item to pair this SKU into"
-        testId="sku-exception-pair-search"
-      />
-      {chosen ? (
-        <div className="mt-2 flex flex-col gap-2">
-          <p className="text-role-data text-mode-ink">
+    <RecordGroup
+      title="Pair to Zoho SKU"
+      testId="sku-exception-pair"
+      action={
+        chosen ? (
+          <Button variant="ink" size="sm" loading={busy} onClick={confirm} data-testid="sku-exception-pair-confirm">
+            Pair
+          </Button>
+        ) : undefined
+      }
+    >
+      <div className="flex flex-col gap-2 px-4 pb-3 pt-1">
+        <IntakeCombobox
+          triggerId={`${fieldId}-pair`}
+          className={cn(EVIDENCE_CONTROL_CLASS, 'w-full')}
+          contentClassName="overflow-hidden rounded-mode"
+          value={chosen?.sku ?? null}
+          onChange={(value) => setChosen(hits.find((hit) => hit.sku === value) ?? null)}
+          options={hits.map((hit) => ({
+            value: hit.sku,
+            label: hit.sku,
+            mono: true,
+            meta: hit.product_title || undefined,
+            imageUrl: hit.image_url,
+          }))}
+          query={query}
+          onQueryChange={setQuery}
+          loading={search.isFetching}
+          disabled={busy}
+          placeholder="Find the real Zoho item…"
+          searchPlaceholder="Search Zoho by SKU or title…"
+          emptyMessage={search.isFetching ? 'Searching…' : 'Nothing in Zoho matches.'}
+          ariaLabel="Zoho item to pair this SKU into"
+          testId="sku-exception-pair-search"
+        />
+        {chosen ? (
+          <p className="text-role-data text-mode-ink" data-testid="sku-exception-pair-preview">
             {units} become{item.stock === 1 ? 's' : ''}{' '}
             <span className="font-semibold">{chosen.product_title || chosen.sku}</span>{' '}
             <span className={cn(RECORD_ID_CLASS, 'text-mode-muted')}>{chosen.sku}</span>
           </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={cn(evidenceVerbClass(false), 'flex-1')}
-              disabled={busy}
-              onClick={() => setChosen(null)}
-            >
-              Choose again
-            </button>
-            <button
-              type="button"
-              className={cn(evidenceVerbClass(true), 'flex-1')}
-              disabled={busy}
-              onClick={confirm}
-              data-testid="sku-exception-pair-confirm"
-            >
-              {busy ? 'Pairing…' : 'Pair'}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <p className="mt-2 text-role-caption text-mode-muted">
-          Pairing moves the stock, photos and description onto the real SKU and closes this exception.
-        </p>
-      )}
-    </EvidenceSection>
+        ) : (
+          <p className="text-role-caption text-mode-muted">
+            Pairing moves the stock, photos and description onto the real SKU and closes this exception.
+          </p>
+        )}
+      </div>
+    </RecordGroup>
   );
 }

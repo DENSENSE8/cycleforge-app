@@ -48,6 +48,9 @@ interface HandlingUnitRollup {
 interface HandlingUnitDetail extends HandlingUnitRow {
   location_name: string | null;
   created_by_name: string | null;
+  /** The order this tote carries (pick → pack), and its marketplace number. */
+  paired_order_id: number | null;
+  paired_order_number: string | null;
   units: HandlingUnitMember[];
   /** Distinct, non-null origin_receiving_line_id across the box's units. */
   receiving_line_ids: number[];
@@ -201,26 +204,31 @@ export async function getHandlingUnitDetail(
 ): Promise<HandlingUnitDetail | null> {
   const headSelect = `SELECT ${HU_COLS.split(',').map((c) => `hu.${c.trim()}`).join(', ')},
             l.name AS location_name,
-            s.name AS created_by_name
+            s.name AS created_by_name,
+            hu.paired_order_id,
+            o.order_id AS paired_order_number
        FROM handling_units hu
        LEFT JOIN locations l ON l.id = hu.location_id
-       LEFT JOIN staff s ON s.id = hu.created_by`;
+       LEFT JOIN staff s ON s.id = hu.created_by
+       LEFT JOIN orders o ON o.id = hu.paired_order_id AND o.organization_id = hu.organization_id`;
+  type HeadRow = HandlingUnitRow & {
+    location_name: string | null;
+    created_by_name: string | null;
+    paired_order_id: number | null;
+    paired_order_number: string | null;
+  };
   // Tenant-aware: org-scope the head + thread orgId into the member read. The
   // LEFT JOINs are on integer surrogate PKs (l.id / s.id) so they're safe bare;
   // we anchor on hu.organization_id = $2.
   const head = orgId
-    ? await tenantQuery<
-        HandlingUnitRow & { location_name: string | null; created_by_name: string | null }
-      >(
+    ? await tenantQuery<HeadRow>(
         orgId,
         `${headSelect}
       WHERE hu.id = $1 AND hu.organization_id = $2
       LIMIT 1`,
         [id, orgId],
       )
-    : await pool.query<
-        HandlingUnitRow & { location_name: string | null; created_by_name: string | null }
-      >(
+    : await pool.query<HeadRow>(
         `${headSelect}
       WHERE hu.id = $1
       LIMIT 1`,

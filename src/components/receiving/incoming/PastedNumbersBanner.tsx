@@ -13,8 +13,9 @@ const LEGEND: readonly { keys: readonly string[]; label: string }[] = [
   { keys: ['J', 'K'], label: 'walk' },
   { keys: ['↵'], label: 'open' },
   { keys: ['X'], label: 'check' },
-  { keys: ['C'], label: 'copy' },
-  { keys: ['⇧C'], label: 'copy shown' },
+  // Copy is ⌘/Ctrl+C: bare C is create app-wide (`key-registry`).
+  { keys: ['mod', 'C'], label: 'copy' },
+  { keys: ['mod', 'alt', 'C'], label: 'copy shown' },
   { keys: ['R'], label: 'recheck' },
   { keys: ['⌫'], label: 'remove' },
 ];

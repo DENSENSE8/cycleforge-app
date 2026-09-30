@@ -8,6 +8,7 @@ import {
   Clock,
   Box,
   ChevronRight,
+  Plus,
   Search,
 } from '@/components/Icons';
 import {
@@ -207,7 +208,9 @@ export function CommandBar() {
   // The catalog-aware resolver — the SAME one the rails and grids use, so an
   // org that recolours a channel in its platform catalog recolours it here.
   const platformMeta = usePlatformMeta();
-  const { user } = useAuth();
+  const { user, has } = useAuth();
+  /** New task writes through `POST /api/tasks`, which needs the same permission. */
+  const canCreateTask = has('work_orders.claim');
   const navGroups = useMemo(
     () => buildCommandBarNavGroups(new Set(user?.permissions ?? [])),
     [user?.permissions],
@@ -531,6 +534,27 @@ export function CommandBar() {
   /** The fetch came back FULL, so the server had at least one more it was not asked for. */
   const showAllResultsRow =
     Boolean(trimmedQuery) && !searching && searchResults.length >= PALETTE_LIMIT;
+  /**
+   * Create-on-miss: typed words that found no record (none, or only the
+   * server's broadened set) can become a task. Not for an identifier — a
+   * missed order number is a miss, not a task headline.
+   */
+  const showNewTask =
+    canCreateTask &&
+    Boolean(trimmedQuery) &&
+    !searching &&
+    !findMode &&
+    !directOpen &&
+    (searchResults.length === 0 || relaxedTo !== null);
+  const newTaskFromQuery = useCallback(() => {
+    const note = trimmedQuery;
+    setDialogOpen(false);
+    // On `/` the board owns the verb; anywhere else it lands there with the note.
+    window.requestAnimationFrame(() => {
+      if (runNavIntent('daily:compose', { note })) return;
+      router.push(`/?compose=1&note=${encodeURIComponent(note)}`);
+    });
+  }, [router, setDialogOpen, trimmedQuery]);
 
   return (
     <CommandDialog open={open} onOpenChange={setDialogOpen}>
@@ -733,6 +757,20 @@ export function CommandBar() {
               ))}
             </CommandGroup>
           ))}
+          {showNewTask ? (
+            <CommandGroup heading="Actions">
+              <CommandItem
+                value={`new task ${trimmedQuery}`}
+                onSelect={newTaskFromQuery}
+                data-testid="palette-new-task"
+              >
+                <Plus className="size-4 text-text-faint" />
+                <span className="min-w-0 flex-1 truncate">
+                  New task &ldquo;{trimmedQuery}&rdquo;
+                </span>
+              </CommandItem>
+            </CommandGroup>
+          ) : null}
           {/* Overflow exit. */}
           {showAllResultsRow ? (
             <CommandGroup>

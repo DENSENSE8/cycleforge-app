@@ -5,6 +5,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { scheduleRepairTaskSync } from '@/lib/tasks/repair-tasks-db';
 
 interface RepairLookupRow {
   id: number;
@@ -330,6 +331,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     repairIds: [outcome.repairId],
     source: outcome.sourceTag,
   });
+  // A signed pickup ends the repair: its Tasks-board task closes after the response.
+  scheduleRepairTaskSync(ctx.organizationId, outcome.repairId);
 
   return NextResponse.json({
     success: true,

@@ -46,7 +46,34 @@ export interface InboxItemDto {
   carrierStatus: string | null;
   /** The PROVIDER ticket number on a `support_ticket` row — the `#48120` an operator quotes. */
   ticketNumber: number | null;
+  /** The task's one-line face, stamped by a follow-up alert — the row names the task without a join. */
+  title: string | null;
+  /** The sender's words on a follow-up alert (or a thrown task's note). Render hint only. */
+  note: string | null;
+  /** When a follow-up alert asks for the chase by (ISO), or null. */
+  dueAt: string | null;
+  /**
+   * The task's linked contacts AT SEND TIME, stamped by a follow-up alert
+   * (owner 2026-09-30: "showing up in the inbox for them with the exact
+   * contacts linked"). Empty on every other row. Render hint only.
+   */
+  contacts: InboxContact[];
 }
+
+/**
+ * One contact a follow-up alert carries — a snapshot, never re-read: the
+ * customer email (+ the mailbox it came in on and its order / reference), the
+ * ticket, an order, a repair or a tracking number the task linked.
+ */
+export type InboxContact =
+  | { kind: 'email'; address: string; mailbox: string; orderNumber: string | null; referenceNumber: string | null }
+  /** The PROVIDER ticket number (`#48120`). */
+  | { kind: 'ticket'; number: number }
+  /** `orderId` = `orders.id` (the door); `orderNumber` = the number an operator quotes. */
+  | { kind: 'order'; orderNumber: string; orderId: number | null }
+  /** `label` = `RS-74`; `repairId` = `repair_service.id`. */
+  | { kind: 'repair'; label: string; repairId: number | null }
+  | { kind: 'tracking'; trackingNumber: string };
 
 export interface InboxFeedDto {
   items: InboxItemDto[];

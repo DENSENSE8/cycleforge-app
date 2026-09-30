@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import { deepStrictEqual, strictEqual } from 'node:assert';
 
-import { summarizeUnitQc, unitQcEmptyReason, unitQcMeta, unitQcVerdict, type UnitQcStep } from './unit-qc';
+import { summarizeUnitQc, unitQcEmptyReason, unitQcMeta, type UnitQcStep } from './unit-qc';
 
 function step(id: number, result: Partial<UnitQcStep> = {}): UnitQcStep {
   return {
@@ -48,15 +48,6 @@ test('the last stamp is the latest server time, not list order', () => {
   ]);
   deepStrictEqual(summary.last, { name: 'Michael', at: '2026-09-24T23:41:00Z' });
   strictEqual(summarizeUnitQc([step(1)]).last, null);
-});
-
-test('one failed step fails the unit; it passes only when every step passed', () => {
-  const passed = { passed: true, verified_at: '2026-09-24T20:00:00Z' };
-  strictEqual(unitQcVerdict(summarizeUnitQc([step(1, passed), step(2, { passed: false })])), 'failed');
-  strictEqual(unitQcVerdict(summarizeUnitQc([step(1, { passed: false }), step(2)])), 'failed', 'a fail is final while others are open');
-  strictEqual(unitQcVerdict(summarizeUnitQc([step(1, passed), step(2)])), 'open');
-  strictEqual(unitQcVerdict(summarizeUnitQc([step(1, passed), step(2, passed)])), 'passed');
-  strictEqual(unitQcVerdict(summarizeUnitQc([])), 'open', 'no steps is not a pass');
 });
 
 test('each empty case says why', () => {

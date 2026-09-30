@@ -8,7 +8,6 @@ import { SalesHistoryTable } from '@/components/walk-in/SalesHistoryTable';
 import {
   DEFAULT_SALES_REPAIR_TAB,
   parsePickupTab,
-  parseRepairTab,
   parseSalesTab,
   parseWalkInHistoryMode,
 } from '@/lib/walk-in/history-modes';
@@ -23,9 +22,15 @@ const PickupOrdersTable = dynamic(
   { ssr: false, loading: TableFallback },
 );
 
-const RepairTable = dynamic(
-  () => import('@/components/repair/RepairTable').then((m) => m.RepairTable),
+const RepairCardList = dynamic(
+  () => import('@/components/repair/RepairCardList').then((m) => m.RepairCardList),
   { ssr: false, loading: TableFallback },
+);
+
+// The New repair CTA top-right of the page and the intake it opens (Repair service's one Add).
+const RepairIntakeHost = dynamic(
+  () => import('@/components/repair/RepairIntakeHost').then((m) => m.RepairIntakeHost),
+  { ssr: false },
 );
 
 export function WalkInHistoryHub() {
@@ -36,11 +41,12 @@ export function WalkInHistoryHub() {
   const isRepairs = mode === 'repairs';
   const feedMode: 'pickup' | 'sales' = mode === 'pickup' ? 'pickup' : 'sales';
 
-  // RepairTable keeps its own table controls; the page adds no second chrome band.
+  // The repair cards take every control from the contextual sidebar; the page adds no chrome band.
   if (isRepairs) {
     return (
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-        <RepairTable filter={parseRepairTab(tabRaw, DEFAULT_SALES_REPAIR_TAB)} />
+        <RepairCardList defaultTab={DEFAULT_SALES_REPAIR_TAB} />
+        <RepairIntakeHost />
       </div>
     );
   }

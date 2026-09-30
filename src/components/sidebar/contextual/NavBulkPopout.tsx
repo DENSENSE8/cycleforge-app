@@ -21,6 +21,7 @@ import {
 } from '@/components/Icons';
 import { setDeskSearch, useDeskSearch } from '@/lib/outbound/desk-search-store';
 import type { NavLocateBucket } from '@/lib/nav/context/schema';
+import { COPY_HOTKEY, COPY_SHOWN_HOTKEY, hotkeyFires } from '@/lib/keyboard/key-registry';
 import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -99,7 +100,7 @@ interface RowBucket {
  * the number as pasted, why, what it is. It follows the bucket filter, so one
  * bucket isolates exactly those numbers. Enter pinpoints a number: Find
  * narrows the list on screen when its bucket is that list, otherwise the
- * bucket's list opens narrowed to it. E edit · C copy · ⌫ remove.
+ * bucket's list opens narrowed to it. E edit · ⌘/Ctrl+C copy · ⌫ remove.
  */
 export function NavBulkPopout({
   list,
@@ -220,17 +221,21 @@ export function NavBulkPopout({
   const checking = list.entries.filter((entry) => entry.pending).length;
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (editing || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (editing) return;
     const entry = visible[safeCursor];
     const key = event.key;
-    if (key === 'ArrowDown' || key === 'j') setCursor(Math.min(visible.length - 1, safeCursor + 1));
+    // Copy is ⌘/Ctrl+C (⌘⌥C / Ctrl+Alt+C every shown number) — C is create app-wide (`key-registry`).
+    if (hotkeyFires(COPY_SHOWN_HOTKEY, event)) copyShown();
+    else if (hotkeyFires(COPY_HOTKEY, event)) {
+      if (!entry) return;
+      void copy(entry.ref, entry.ref);
+    } else if (event.metaKey || event.ctrlKey || event.altKey) return;
+    else if (key === 'ArrowDown' || key === 'j') setCursor(Math.min(visible.length - 1, safeCursor + 1));
     else if (key === 'ArrowUp' || key === 'k') setCursor(Math.max(0, safeCursor - 1));
     else if (key === 'Home') setCursor(0);
     else if (key === 'End') setCursor(Math.max(0, visible.length - 1));
     else if (key === 'Enter' && entry) pinpoint(entry);
     else if ((key === 'e' || key === 'E') && entry) setEditing(entry.ref);
-    else if (key === 'C' && event.shiftKey) copyShown();
-    else if ((key === 'c' || key === 'C') && entry) void copy(entry.ref, entry.ref);
     else if ((key === 'r' || key === 'R') && entry) recheck(entry);
     else if ((key === 'Backspace' || key === 'Delete' || key === 'x') && entry) removeEntry(entry);
     else if (key === 'o' || key === 'O') cycleOrderSort();
@@ -276,7 +281,7 @@ export function NavBulkPopout({
         <button
           type="button"
           aria-label="Copy the numbers shown"
-          title="Copy the numbers shown (⇧C)"
+          title="Copy the numbers shown (⌘⌥C / Ctrl+Alt+C)"
           onClick={copyShown}
           className={ICON_KEY_CLASS}
         >
@@ -384,8 +389,8 @@ export function NavBulkPopout({
         <Legend keys={['↑', '↓']} label="move" />
         <Legend keys={['↵']} label="pinpoint" />
         <Legend keys={['E']} label="edit" />
-        <Legend keys={['C']} label="copy" />
-        <Legend keys={['⇧C']} label="copy shown" />
+        <Legend keys={['mod', 'C']} label="copy" />
+        <Legend keys={['mod', 'alt', 'C']} label="copy shown" />
         <Legend keys={['R']} label="recheck" />
         <Legend keys={['⌫']} label="remove" />
         <Legend keys={['Esc']} label="close" />

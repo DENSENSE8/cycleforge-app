@@ -25,6 +25,7 @@ import {
   Printer,
 } from '@/components/Icons';
 import { repairStorefrontUrl } from '@/lib/repair/repair-storefront-url';
+import { parseRepairChannel } from '@/lib/repair/repair-channel';
 import { visitLineAdjustmentText, visitMoneyEvents } from '@/lib/counter/visit-line-adjustment';
 import { SignatureStrokesView } from '@/components/repair/SignatureStrokesView';
 import { buildRepairLabelPayload, printRepairLabel } from '@/lib/print/printRepairLabel';
@@ -79,28 +80,6 @@ function formatCents(cents: number | null | undefined): string {
   if (cents == null) return '—';
   const sign = cents < 0 ? '-' : '';
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
-}
-
-/** The intake chip, in the counter's words — or nothing. */
-function intakeChip(channel: string | null | undefined): string | null {
-  const key = (channel ?? '').trim().toLowerCase();
-  switch (key) {
-    case '':
-    case 'pickup':
-    case 'walk_in':
-    case 'manual':
-      return null;
-    case 'shipment':
-      return 'Mail-in';
-    case 'warranty_logger':
-      return 'Warranty';
-    case 'warranty_paid_repair':
-      return 'Paid warranty repair';
-    default: {
-      const words = key.replace(/_/g, ' ');
-      return words.charAt(0).toUpperCase() + words.slice(1);
-    }
-  }
 }
 
 /** The RECEIPT MEASURE — how wide one record is allowed to be. */
@@ -330,7 +309,8 @@ export function KioskHistoryDetail({
   // nobody has taken money for. Saying "Total" over both would be a lie on one.
   const amountCaption = visit ? 'Total' : 'Quoted';
   const soleDevice = provenance.length === 1 ? provenance[0] : null;
-  const intakeLabel = intakeChip(repair?.intakeChannel);
+  // The intake chip, in the counter's words: a drop-off is the counter's default, so only a mail-in wears one.
+  const intakeLabel = parseRepairChannel(repair?.intakeChannel) === 'shipment' ? 'Mail-in' : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="kiosk-history-detail">

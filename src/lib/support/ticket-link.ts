@@ -221,6 +221,42 @@ export async function listCandidatesForAnchor(args: {
   });
 }
 
+export interface AnchorLinkedTicket {
+  supportTicketId: number;
+  /** Helpdesk ticket id — the unlink key; null for an internal ticket. */
+  ticketId: number | null;
+  subject: string | null;
+  status: string | null;
+}
+
+/** Tickets currently linked to the resolved anchor, primary first. Reads ticket_links only — no helpdesk call. */
+export async function listTicketsLinkedToAnchor(args: {
+  orgId: OrgId;
+  anchor: TicketLinkAnchorInput;
+}): Promise<AnchorLinkedTicket[]> {
+  const resolved = await resolveTicketLinkAnchor(args.orgId, args.anchor);
+  const res = await tenantQuery<{
+    support_ticket_id: string;
+    zendesk_ticket_id: string | null;
+    subject_cache: string | null;
+    status_cache: string | null;
+  }>(
+    args.orgId,
+    `SELECT tl.support_ticket_id, tl.zendesk_ticket_id, st.subject_cache, st.status_cache
+       FROM ticket_links tl
+       JOIN support_tickets st ON st.id = tl.support_ticket_id AND st.organization_id = tl.organization_id
+      WHERE tl.organization_id = $1 AND tl.entity_type = $2 AND tl.entity_id = $3
+      ORDER BY tl.is_primary DESC, tl.created_at DESC`,
+    [args.orgId, resolved.entityType, resolved.entityId],
+  );
+  return res.rows.map((row) => ({
+    supportTicketId: Number(row.support_ticket_id),
+    ticketId: row.zendesk_ticket_id == null ? null : Number(row.zendesk_ticket_id),
+    subject: row.subject_cache,
+    status: row.status_cache,
+  }));
+}
+
 export interface LinkTicketToAnchorResult {
   ticketNumber: string;
   ticketUrl: string | null;

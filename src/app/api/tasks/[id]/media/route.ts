@@ -55,7 +55,8 @@ export const GET = withAuth(
           url: videoContentUrl(video.id),
           contentType: video.contentType,
           sizeBytes: video.fileSizeBytes ?? video.declaredSizeBytes,
-          createdAt: video.createdAt,
+          createdAt: video.uploadedAt ?? video.createdAt,
+          createdBy: video.uploadedBy,
         })),
         links,
       };

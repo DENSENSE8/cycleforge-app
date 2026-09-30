@@ -48,6 +48,7 @@ const TICKET_REFUSAL_COPY: Record<string, string> = {
 export function useThrowTask({
   onThrown,
   mode = 'record',
+  initialNote = '',
 }: {
   /**
    * Called with the created task's id (null if the response omitted it) and
@@ -56,6 +57,8 @@ export function useThrowTask({
   onThrown: (taskId: number | null, mine: boolean) => void;
   /** Which question the record field asks. See {@link ThrowTaskMode}. */
   mode?: ThrowTaskMode;
+  /** Prefills the note once, on mount (⌘K's New task "<query>"). */
+  initialNote?: string;
 }) {
   const { user } = useAuth();
   const selfId = user?.staffId ?? null;
@@ -65,7 +68,7 @@ export function useThrowTask({
   const [staff, setStaff] = useState<StaffRecipient[] | null>(null);
   const [assignees, setAssignees] = useState<StaffRecipient[]>([]);
   const [projectName, setProjectName] = useState('');
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(initialNote);
   const [urgent, setUrgent] = useState(false);
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [throwing, setThrowing] = useState(false);

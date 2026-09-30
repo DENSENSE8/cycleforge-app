@@ -154,7 +154,8 @@ export async function submitRepairIntake(
     orgId,
   );
 
-  // Step 2: Create repair row with customer_id FK
+  // Step 2: Create repair row with customer_id FK. A counter / desk intake is a
+  // drop-off: the ticket lands its receiving record on the same transaction.
   const repairRecord = await createRepair(
     {
       createdAt: postedAt,
@@ -168,6 +169,7 @@ export async function submitRepairIntake(
       sourceSystem: normalizedSourceSku ? 'ecwid' : null,
       sourceSku: normalizedSourceSku || null,
       customerId: customerRecord.id,
+      intakeChannel: 'pickup',
     },
     orgId,
   );

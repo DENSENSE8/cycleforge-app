@@ -14,13 +14,20 @@ import { cn } from '@/utils/_cn';
 import { useThrowTask } from '@/hooks/useThrowTask';
 import type { ThrowTarget } from '@/lib/tasks/throw-targets';
 import { ClipboardList } from '@/components/Icons';
+import { InlineStageAssign } from '@/design-system/components/record-ledger/InlineStageAssign';
 
 type RecordTaskKind = 'mine' | 'staff';
 
 const TASK_TITLE: Record<RecordTaskKind, string> = { mine: 'Add task', staff: 'Send to staff as task' };
 
-/** The record a task is thrown at — `label` names it in the composer (`Order 113-…`, `PO 15-…`). */
-type RecordTaskTarget = Pick<ThrowTarget, 'entityType' | 'entityId' | 'label'>;
+/**
+ * The record a task is thrown at — `label` names it in the composer (`Order 113-…`, `PO 15-…`).
+ * A record kind tasks cannot anchor to (a stock pair: not an urgency target) throws a
+ * STANDALONE task instead, its title the label (`C-02-01-2-00 · TMP-H5YM4`).
+ */
+type RecordTaskTarget =
+  | Pick<ThrowTarget, 'entityType' | 'entityId' | 'label'>
+  | { entityType: null; entityId: null; label: string };
 
 /** "Add task" · "Send to staff as task" as strip verbs; each morphs into the composer. */
 export function buildRecordTaskVerbs(target: RecordTaskTarget): RecordActionVerb[] {
@@ -29,7 +36,7 @@ export function buildRecordTaskVerbs(target: RecordTaskTarget): RecordActionVerb
     label: TASK_TITLE[kind],
     icon: <ClipboardList />,
     placement: 'overflow',
-    display: (done) => <RecordTaskForm key={`${kind}:${target.entityId}`} kind={kind} target={target} onDone={done} />,
+    display: (done) => <RecordTaskForm key={`${kind}:${target.entityId ?? target.label}`} kind={kind} target={target} onDone={done} />,
   }));
 }
 
@@ -65,7 +72,8 @@ function RecordTaskActions({ target }: { target: RecordTaskTarget }) {
   );
 }
 
-function RecordTaskForm({
+/** The task composer body — a strip verb's morph, or inline in a record (Stock's "Send to staff" group). */
+export function RecordTaskForm({
   kind,
   target,
   onDone,
@@ -75,13 +83,14 @@ function RecordTaskForm({
   onDone: () => void;
 }) {
   const task = useThrowTask({ onThrown: () => onDone() });
-  const { setPicked, staff, assignees, toggleAssigneeById } = task;
+  const { setPicked, setProjectName, staff, assignees, toggleAssigneeById } = task;
   const { entityType, entityId, label } = target;
 
   // The record IS the task's target — no scan / resolve step on this surface.
   useEffect(() => {
-    setPicked({ entityType, entityId, label });
-  }, [setPicked, entityType, entityId, label]);
+    if (entityType == null) setProjectName(label);
+    else setPicked({ entityType, entityId, label });
+  }, [setPicked, setProjectName, entityType, entityId, label]);
 
   // "Send to staff": the creator starts unticked (the hook preselects you).
   const clearedSelf = useRef(false);
@@ -91,7 +100,7 @@ function RecordTaskForm({
     toggleAssigneeById(assignees[0]!.id, assignees[0]!.name);
   }, [kind, staff, assignees, toggleAssigneeById]);
 
-  const picked = new Set(assignees.map((person) => person.id));
+  const lead = assignees[0] ?? null;
 
   return (
     <form
@@ -101,32 +110,21 @@ function RecordTaskForm({
         void task.submit();
       }}
     >
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className={cn(RECORD_LABEL_CLASS, 'mb-1 text-text-muted')}>Who does it</legend>
-        <div className="flex flex-wrap gap-1.5" data-testid="record-task-assignees">
-          {staff == null ? (
-            <span className="text-role-caption text-text-muted">Loading staff…</span>
-          ) : (
-            staff.map((person) => (
-              <button
-                key={person.id}
-                type="button"
-                aria-pressed={picked.has(person.id)}
-                onClick={() => toggleAssigneeById(person.id, person.name)}
-                className={cn(
-                  'ds-raw-button border px-2 py-1 text-role-caption',
-                  focusRing('control'),
-                  picked.has(person.id)
-                    ? 'border-text-default bg-text-default text-surface-card'
-                    : 'border-border-default text-text-default hover:bg-surface-canvas',
-                )}
-              >
-                {person.name}
-              </button>
-            ))
-          )}
-        </div>
-      </fieldset>
+      {/* ONE person, through the house staff picker (avatar + name) — never a grid of name bubbles. */}
+      <div className="flex items-center gap-2 text-role-caption">
+        <span className={cn(RECORD_LABEL_CLASS, 'text-text-muted')}>Who does it</span>
+        <InlineStageAssign
+          label="staff"
+          role="all"
+          selectedStaffId={lead?.id ?? null}
+          assignedName={lead?.name ?? null}
+          onCommit={(staffId, staffName) => {
+            for (const person of assignees) if (person.id !== staffId) toggleAssigneeById(person.id, person.name);
+            if (staffId != null && staffName && !assignees.some((person) => person.id === staffId)) toggleAssigneeById(staffId, staffName);
+          }}
+          testId="record-task-assignee"
+        />
+      </div>
       <label className="flex flex-col gap-1.5">
         <span className={cn(RECORD_LABEL_CLASS, 'text-text-muted')}>What needs doing</span>
         <textarea

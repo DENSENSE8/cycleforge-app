@@ -128,15 +128,16 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
     reason: 'this station is running QC — pick a unit on this line',
   },
   {
-    // A carton label is a useful QC starting point too: it opens the carton
-    // hub's line picker, rather than pretending the carton itself is a unit.
+    // The carton label is printed at unbox, so its next job is QC — armed or
+    // not, it opens the carton's QC to pick a unit (the phone camera lands
+    // there too: the sticker encodes `/m/r/{id}/qc`). Not stateful: a stateful
+    // row elsewhere still wins a tie, and an unarmed scan still only previews.
     id: 'qc-carton',
     classes: ['receiving'],
     when: ALWAYS,
-    armedFor: 'qc',
     card: 'qc',
-    stateful: true,
-    reason: 'this station is running QC — pick a line in this carton',
+    stateful: false,
+    reason: 'a carton label is printed at unbox — pick a unit in this carton to QC',
   },
   {
     id: 'staged-for-pack',
@@ -163,14 +164,13 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
     reason: 'this bin is not paired to an order',
   },
   {
-    // The catch-all: serial, SKU, kit, ticket, FNSKU, a bare carton or line
-    // handle, and any licence plate with nothing outstanding. Preview is the
-    // safe answer — the existing page opens and no work starts.
+    // The catch-all: serial, SKU, kit, ticket, FNSKU, a bare line handle, and
+    // any licence plate with nothing outstanding. Preview is the safe answer —
+    // the existing page opens and no work starts.
     id: 'preview',
     classes: [
       'sku',
       'bin',
-      'receiving',
       'receiving-line',
       'serial-unit',
       'handling-unit',

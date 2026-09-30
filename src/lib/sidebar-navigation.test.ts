@@ -419,9 +419,9 @@ test('every dashboard-board mode clears Search-scoped openOrderId/map/q', () => 
       assert.equal(params.get('q'), null, `${page.id}/${mode.id} should clear q`);
     }
   }
-  // Sales Board + Local Pickup + Repair Service (Orders moved to
-  // `/shipping/orders`; Inbound Board folded into `/incoming`).
-  assert.equal(checked, 3, `expected 3 dashboard-board modes, found ${checked}`);
+  // Sales Board + Local Pickup + Repair service's All · Shipped in · Dropped off
+  // (Orders moved to `/shipping/orders`; Inbound Board folded into `/incoming`).
+  assert.equal(checked, 5, `expected 5 dashboard-board modes, found ${checked}`);
 });
 
 // A page's bare href must resolve to one of its declared modes (its default) —
@@ -503,7 +503,6 @@ test('every floor station mounts its working panel inside the contextual sidebar
   for (const pathname of [
     '/triage',
     '/unbox',
-    '/repair',
     '/test',
     '/pick',
     '/pack',
@@ -512,7 +511,9 @@ test('every floor station mounts its working panel inside the contextual sidebar
   ]) {
     assert.equal(isContextualScanStationRoute(pathname), true, pathname);
   }
+  // Receiving modes, not benches.
   assert.equal(isContextualScanStationRoute('/pickup'), false);
+  assert.equal(isContextualScanStationRoute('/repair'), false);
   assert.equal(isContextualScanStationRoute('/shipping/fba'), false);
 });
 
@@ -600,8 +601,8 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('outbound', at('/shipping')), 'orders');
   assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=ready')), null);
   assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=fba')), null);
-  // `/shipping/labels` is GONE (route deleted 2026-08-30).
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), 'orders');
+  // `/shipping/labels` is GONE (route deleted 2026-08-30): on no FBM view, it lights none.
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), null);
   assert.equal(resolveSidebarChild('outbound', at('/shipping/ready')), null);
   assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), null);
   assert.equal(resolveSidebarChild('outbound', at('/shipping/fba', 'fbaMode=ready')), null);
@@ -657,11 +658,13 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   );
   // The route key is untouched, so the Review surface still mounts its own panel.
   assert.equal(getSidebarRouteKey('/review'), 'review');
-  // The desk's tab band, in order.
+  // The desk's tab band, in order — Allocate (child `orders`) leads: FBM lands there.
   assert.deepEqual(
     getSidebarPageNav('outbound')?.children?.map((c) => c.id),
-    ['exceptions', 'shortage', 'orders', 'shipped'],
+    ['orders', 'exceptions', 'shipped'],
   );
+  assert.equal(getSidebarPageNav('outbound')?.href, '/shipping/orders');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/shortage', 'pair=po')), null);
   assert.ok(
     getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),
   );
@@ -704,7 +707,9 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('incoming', at('/incoming', 'lane=bogus')), 'pipeline');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=sales')), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=pickup')), 'pickup');
-  assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs')), 'repairs');
+  assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs')), 'repairs-all');
+  assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs&channel=shipment')), 'repairs-shipped-in');
+  assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs&channel=pickup')), 'repairs-dropped-off');
   assert.equal(getSidebarNavPageId('/counter'), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/counter')), 'counter');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=warranty')), 'warranty');
@@ -832,16 +837,11 @@ test('isSidebarTopPinActive: Plans and Home are separate paths, never both curre
   assert.equal(isSidebarTopPinActive(plans, { pathname: '/search', searchParams: live }), false);
 });
 
-test('stationSubgroupMembers still groups receiving / walk-in / testing peers', () => {
+test('stationSubgroupMembers groups receiving / testing peers', () => {
   assert.deepEqual(
     stationSubgroupMembers('receiving').map((p) => p.id),
     ['triage', 'receive'],
   );
-  assert.deepEqual(
-    stationSubgroupMembers('walk-in').map((p) => p.id),
-    ['repair'],
-  );
-  assert.equal(getSidebarPageNav('repair')?.label, 'Repair Service');
 });
 
 test('floorStationPages is the flat Scan Stations map for the header switcher', () => {
@@ -850,7 +850,6 @@ test('floorStationPages is the flat Scan Stations map for the header switcher', 
     [
       ['triage', 'Arrival'],
       ['receive', 'Unbox'],
-      ['repair', 'Repair Service'],
       ['testing', 'Quality Control'],
       ['ready-to-pack', 'Picker'],
       ['packer', 'Packing'],
@@ -985,7 +984,7 @@ test('every desk lane is expandable: 2+ pages, or one page that declares childre
 test('the single-page lanes the operator named expand into their desk children', () => {
   // Named verbatim: "for inventory, for products, sales, support, operations".
   const expected: Record<string, string[]> = {
-    sales: ['Counter', 'Sales Board', 'Local Pickup', 'Repair Service'],
+    sales: ['Counter', 'Sales Board', 'Local Pickup', 'All repairs', 'Shipped in', 'Dropped off'],
   };
 
   for (const pageId of ['inventory', 'products', 'sales', 'support', 'operations']) {

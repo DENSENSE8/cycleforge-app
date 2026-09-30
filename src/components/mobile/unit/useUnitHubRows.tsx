@@ -5,7 +5,7 @@ import { useUnitQcRow } from '@/components/mobile/qc/useUnitQc';
 import { Activity, Archive, History, Inbox, ListChecks, MapPin, ShoppingCart } from '@/components/Icons';
 import { timeAgo } from '@/utils/_date';
 import { newestUnitEvents, unitEventLabel } from './unitTimeline';
-import type { MobileUnitResponse } from './useMobileUnit';
+import type { SerialUnitResponse } from '@/lib/serial/use-serial-unit';
 
 export type UnitHubVerb = 'pair' | 'move' | 'line-test' | 'stash';
 
@@ -18,7 +18,7 @@ const NO_LINE = 'Not on a receiving line';
  */
 export function useUnitHubRows(
   unitRef: string,
-  data: MobileUnitResponse | undefined,
+  data: SerialUnitResponse | undefined,
   openVerb: (verb: UnitHubVerb) => void,
 ): DetailNavItem[] {
   const unit = data?.serial_unit ?? null;

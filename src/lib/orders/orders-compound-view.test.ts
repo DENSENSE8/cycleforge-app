@@ -7,6 +7,7 @@ import { describe, it } from 'node:test';
 import {
   ordersCompoundView,
   ordersEdgeMark,
+  ordersGroupEdgeMark,
   ordersIdentityLine,
   ordersItemStatus,
   ordersStateTone,
@@ -267,6 +268,32 @@ describe('ordersEdgeMark', () => {
       ordersEdgeMark({ is_urgent: false, is_out_of_stock: false, has_exception: false }),
       null,
     );
+  });
+
+  it('an imported fast service names itself on the urgent rail', () => {
+    const mark = ordersEdgeMark({ is_urgent: true, service_level: 'nextDay' });
+    assert.equal(mark?.label, 'Next day');
+    assert.equal(mark?.kind, 'urgent');
+  });
+
+  it('a 2-day order on a Ground label says so on the urgent rail', () => {
+    const mark = ordersEdgeMark({ is_urgent: true, service_level: 'secondDay', label_service_code: 'usps_ground_advantage' });
+    assert.equal(mark?.label, '2-day → Ground');
+    assert.equal(mark?.kind, 'urgent');
+  });
+
+  it('an operator who cleared urgent gets no rail, whatever the service', () => {
+    assert.equal(ordersEdgeMark({ is_urgent: false, service_level: 'nextDay', label_service_code: 'ups_ground' }), null);
+  });
+});
+
+describe('ordersGroupEdgeMark', () => {
+  it('a band carries the downgraded line, not just the fastest one', () => {
+    const mark = ordersGroupEdgeMark([
+      { is_urgent: true, service_level: 'nextDay', label_service_code: 'ups_next_day_air' },
+      { is_urgent: true, service_level: 'secondDay', label_service_code: 'usps_ground_advantage' },
+    ]);
+    assert.equal(mark?.label, '2-day → Ground');
   });
 });
 

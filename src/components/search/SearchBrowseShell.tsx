@@ -30,7 +30,7 @@ import {
   type SearchSelection,
 } from '@/lib/search/search-selection';
 import { looksLikeIdentifier } from '@/lib/search/search-hit';
-import { desktopSearchHref } from '@/lib/search/internal-id';
+import { hitOpensOwnPage, hrefForPreviewHit } from '@/lib/search/commit-identifier-find';
 import {
   clearGlobalSearchPending,
   setGlobalSearchPending,
@@ -185,11 +185,11 @@ export function SearchBrowseShell({
   const selectHit = useCallback(
     (hit: AiSearchHit) => {
       const { entityType, id } = hit;
-      if (isSearchRecordType(entityType)) {
+      if (isSearchRecordType(entityType) && !hitOpensOwnPage(hit)) {
         setSel({ entityType, id });
         return;
       }
-      if (hit.href) router.push(desktopSearchHref(hit.href));
+      if (hit.href) router.push(hrefForPreviewHit(hit));
     },
     [setSel, router],
   );
@@ -210,7 +210,7 @@ export function SearchBrowseShell({
       setZeroHits(false);
       // One row is not a choice, so a sole hit opens itself — except on a
       // deliberate return, where it would slam the door the operator opened.
-      const nextSel = autoOpen ? soleHitSel(hits) : null;
+      const nextSel = autoOpen && !hits.some(hitOpensOwnPage) ? soleHitSel(hits) : null;
       if (nextSel) {
         const parsed = parseSearchSel(nextSel);
         if (!parsed) return;

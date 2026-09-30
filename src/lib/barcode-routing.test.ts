@@ -187,9 +187,18 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
 
   // ── Rung 3 · platform Digital Link (internal identity, anon landing) ──────
   {
-    what: 'platform Digital Link — carton',
+    what: 'platform Digital Link — carton (opens its quality control)',
     rung: 3,
     mint: () => encodePrintMatrix({ kind: 'carton', orgSlug: SLUG, receivingId: 1234 }).value,
+    value: 'https://usav.app.cycleforge.ai/m/r/1234/qc',
+    type: 'receiving',
+    redirect: '/m/r/1234',
+  },
+  {
+    // Stickers printed before the `/qc` tail still route to the same carton.
+    what: 'platform Digital Link — carton, pre-QC-tail sticker',
+    rung: 3,
+    mint: null,
     value: 'https://usav.app.cycleforge.ai/m/r/1234',
     type: 'receiving',
     redirect: '/m/r/1234',
@@ -200,6 +209,14 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     what: 'platform Digital Link — carton, punctuation stripped by the wedge',
     rung: 3,
     mint: null,
+    value: 'HTTPSUSAVAPPCYCLEFORGEAIMR1234QC',
+    type: 'receiving',
+    redirect: '/m/r/1234',
+  },
+  {
+    what: 'platform Digital Link — pre-QC-tail carton, punctuation stripped by the wedge',
+    rung: 3,
+    mint: null,
     value: 'HTTPSUSAVAPPCYCLEFORGEAIMR1234',
     type: 'receiving',
     redirect: '/m/r/1234',
@@ -208,7 +225,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     what: 'platform Digital Link — carton, colon eaten but slashes intact',
     rung: 3,
     mint: null,
-    value: 'https//usav.app.cycleforge.ai/m/r/1234',
+    value: 'https//usav.app.cycleforge.ai/m/r/1234/qc',
     type: 'receiving',
     redirect: '/m/r/1234',
   },
@@ -373,7 +390,7 @@ test('KNOWN LIMIT: a sku-only unit label is not distinguishable from a bin barco
 test('scannedReceivingId reads a carton id out of EVERY printed carton form', () => {
   withAppHost(() => {
     const url = encodePrintMatrix({ kind: 'carton', orgSlug: SLUG, receivingId: 1234 }).value;
-    strictEqual(url, 'https://usav.app.cycleforge.ai/m/r/1234');
+    strictEqual(url, 'https://usav.app.cycleforge.ai/m/r/1234/qc');
     // The defect this closes: the printed sticker is the URL, and every
     // consumer of `parsePoListSearch` only knew the bare handle.
     strictEqual(scannedReceivingId(url), 1234);

@@ -21,6 +21,7 @@ import {
   type ShippedDeskFilters,
 } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
 import { sqlOrderPickedByStaff } from '@/lib/orders/desk-view-sql';
+import { orderLineImageSql } from '@/lib/photos/order-line-image-sql';
 
 interface FetchPackerLogRowsOptions {
   /**
@@ -67,7 +68,10 @@ interface FetchPackerLogRowsResult {
 // v10: the Shipped desk's type / carrier / status / exceptions filters are
 // answered here (they were a browser pass over the page), so a filtered page
 // is a different answer than v9's.
-const CACHE_NAMESPACE = 'api:packing-logs-v10';
+// v11: rows carry the package's order lines (`package_lines`) — the Shipped
+// card's lines, read with the same title / photo joins as the package record.
+// v12: a line's photo is the Allocate precedence (`orderLineImageSql`), not the catalog image alone.
+const CACHE_NAMESPACE = 'api:packing-logs-v12';
 const CACHE_TAGS = ['packing-logs'];
 
 // Hard ceiling for a SEARCHING read — the page bound `searchTerm` replaces.
@@ -406,12 +410,31 @@ export async function fetchPackerLogRows(
   // Shipped desk filter reads the package — pulled in only when active.
   const shippedJoins = hasShippedDeskFilter(shippedFilters);
 
-  // The PACKAGE a row is about:
+  // The PACKAGE a row is about, and its order lines (lowest `orders.id` first —
+  // the record's primary line) with the SKU identity title / photo sources the
+  // package record reads (`loadShipmentRecordRows`), so card and record agree.
   const packageCols = `sal.shipment_id::int                   AS package_shipment_id,
         stn.tracking_number_raw                AS package_tracking,
-        package_lines.line_count               AS package_line_count`;
+        package_lines.line_count               AS package_line_count,
+        package_lines.lines                    AS package_lines`;
   const packageLinesJoin = `LEFT JOIN LATERAL (
-        SELECT COUNT(*)::int AS line_count
+        SELECT COUNT(*)::int AS line_count,
+               json_agg(json_build_object(
+                   'id', o_pk.id,
+                   'order_id', o_pk.order_id,
+                   'account_source', o_pk.account_source,
+                   'sku', o_pk.sku,
+                   'product_title', o_pk.product_title,
+                   'zoho_item_title', zi_pk.name,
+                   'catalog_product_title', sc_pk.product_title,
+                   'quantity', o_pk.quantity,
+                   'condition', o_pk.condition,
+                   'sale_amount', o_pk.sale_amount,
+                   'currency', o_pk.currency,
+                   'zoho_item_id', zi_pk.zoho_item_id,
+                   'zoho_image_document_id', zi_pk.image_document_id,
+                   'catalog_image_url', ${orderLineImageSql('o_pk')}
+               ) ORDER BY o_pk.id) AS lines
         FROM (
             SELECT o_pk.id
             FROM orders o_pk
@@ -425,6 +448,15 @@ export async function fetchPackerLogRows(
               AND sl_pk.shipment_id = sal.shipment_id
               AND sl_pk.organization_id = sal.organization_id
         ) pk_lines
+        JOIN orders o_pk ON o_pk.id = pk_lines.id
+        LEFT JOIN sku_catalog sc_pk ON sc_pk.sku = o_pk.sku AND sc_pk.organization_id = o_pk.organization_id
+        LEFT JOIN LATERAL (
+            SELECT i.name, i.zoho_item_id, i.image_document_id
+            FROM items i
+            WHERE i.sku = o_pk.sku AND i.organization_id = o_pk.organization_id AND i.status = 'active'
+            ORDER BY i.id
+            LIMIT 1
+        ) zi_pk ON TRUE
     ) package_lines ON sal.shipment_id IS NOT NULL`;
 
   // Resolve the page of station_activity_logs rows BEFORE the expensive per-row product-title / serial / order-match laterals run.

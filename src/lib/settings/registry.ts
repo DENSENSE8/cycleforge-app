@@ -32,7 +32,7 @@ const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) 
  * desk. Floor is a session posture and is never stored (owner 2026-09-26).
  */
 const DESK_VIEW_DESKS = [
-  { id: 'home', label: 'Daily' },
+  { id: 'home', label: 'Tasks' },
   { id: 'outbound', label: 'FBM' },
   { id: 'fba', label: 'FBA' },
   { id: 'incoming', label: 'Deliveries' },
@@ -94,6 +94,9 @@ const VIEW_DENSITY_SETTINGS: readonly SettingDef[] = ORDER_LIST_VIEW_KEYS.map((v
     options: density.allowed.map((value) => ({ value, label: DENSITY_LABEL[value] })),
   };
 });
+
+/** The Tasks board's pinned Daily checklist column, shown or hidden per staffer (`H` on `/`). */
+export const TASK_BOARD_CHECKLIST_COLUMN_SETTING = 'desk.home.checklistColumn';
 
 /**
  * The contextual-sidebar switch, one per `SIDEBAR_PAGE_NAV` page — the org
@@ -480,6 +483,16 @@ export const SETTINGS: readonly SettingDef[] = [
       { value: 'active', label: 'Active only' },
       { value: 'all', label: 'Expand all' },
     ],
+  },
+  {
+    key: TASK_BOARD_CHECKLIST_COLUMN_SETTING,
+    page: 'desk',
+    group: 'Tasks board',
+    scope: 'staff',
+    label: 'Tasks: Daily checklist column',
+    description: 'Pin today’s checklist as the left-most column of the Tasks board. H on the board hides or shows it.',
+    control: 'toggle',
+    schema: z.boolean().default(true),
   },
   ...DESK_VIEW_SETTINGS,
   ...VIEW_DENSITY_SETTINGS,

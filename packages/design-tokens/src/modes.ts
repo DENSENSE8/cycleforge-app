@@ -221,8 +221,13 @@ export const NEUTRAL_SURFACES: ModeSurfaces = {
   mark: 'transparent',
 };
 
-/** #d39200 fails contrast as text; this is its readable ink on warm and neutral planes. */
-const WARN_INK = '#8a5f00';
+/**
+ * The warn INK on every plane — deep orange (orange-800, 7.3:1 on white) so a
+ * warning reads as a warning, never as brown body text (owner 2026-09-29:
+ * "No tracking attached yet" must be readable at a glance). #d39200 fails
+ * contrast as text; the old #8a5f00 read as brown.
+ */
+const WARN_INK = '#9a3412';
 
 /**
  * The pre-mode spacing scale — the values the intent utilities rendered

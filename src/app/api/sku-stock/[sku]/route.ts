@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { getActiveLocations, logLocationTransfer, getTransfersForSku } from '@/lib/neon/location-queries';
+import { logLocationTransfer, getTransfersForSku } from '@/lib/neon/location-queries';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import {
   getApiIdempotencyResponse,
@@ -20,6 +20,7 @@ import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { readSessionSid } from '@/lib/auth/session';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { photoContentUrl } from '@/lib/photos/display-url';
 
 /** Build a lightweight AuthContext from the session cookie without going through withAuth() — this route uses Next's typed second arg `{… */
 async function resolveCtx(req: NextRequest): Promise<AnonymousAuthContext> {
@@ -90,12 +91,23 @@ export async function GET(
     // Run all queries in parallel. Tenant-owned tables go through the GUC
     // wrapper (tenantQuery) so RLS can isolate them; explicit
     // organization_id predicates stay as a defense-in-depth backstop.
-    const [stockResult, historyResult, catalogResult, photosResult, ledgerResult, allLocations, transfers] =
+    const [stockResult, historyResult, catalogResult, photosResult, ledgerResult, transfers] =
       await Promise.all([
-        // 1. sku_stock row
+        // 1. sku_stock row, with its home bin and its own cover (the first
+        //    SKU_STOCK photo — the cover every Stock card and record paints).
         tenantQuery(
           orgId,
-          `SELECT id, sku, product_title, stock FROM sku_stock WHERE sku = $1 AND organization_id = $2 LIMIT 1`,
+          `SELECT ss.id, ss.sku, ss.product_title, ss.stock,
+                  NULLIF(TRIM(ss.location), '') AS location,
+                  (SELECT MIN(pel.photo_id)
+                     FROM photo_entity_links pel
+                    WHERE pel.organization_id = ss.organization_id
+                      AND pel.entity_type = 'SKU_STOCK'
+                      AND pel.entity_id = ss.id
+                      AND pel.link_role = 'primary') AS cover_photo_id
+             FROM sku_stock ss
+            WHERE ss.sku = $1 AND ss.organization_id = $2
+            LIMIT 1`,
           [skuValue, orgId],
         ),
         // 2. sku history rows (inventory log entries for this static_sku).
@@ -147,9 +159,7 @@ export async function GET(
            LIMIT 25`,
           [skuValue, orgId],
         ).catch(() => ({ rows: [] })), // table may not exist yet
-        // 6. All defined locations
-        getActiveLocations(orgId).catch(() => []),
-        // 7. Location transfer history for this SKU
+        // 6. Location transfer history for this SKU
         getTransfersForSku(skuValue, 25, orgId).catch(() => []),
       ]);
 
@@ -211,9 +221,13 @@ export async function GET(
       }
     }
 
-    // Derive best available image
+    // Derive best available image: the SKU's own stock cover first (the Stock
+    // page's precedence), then Ecwid, then the catalog.
     const productImage =
-      ecwid?.thumbnailUrl || catalog?.image_url || null;
+      (stock?.cover_photo_id != null ? photoContentUrl(Number(stock.cover_photo_id), 'thumb') : null) ||
+      ecwid?.thumbnailUrl ||
+      catalog?.image_url ||
+      null;
 
     // Derive product title from best source
     const productTitle =
@@ -229,8 +243,8 @@ export async function GET(
       productTitle,
       productImage,
       stock: stock
-        ? { id: stock.id, qty: Number(stock.stock) || 0 }
-        : { id: null, qty: 0 },
+        ? { id: stock.id, qty: Number(stock.stock) || 0, location: stock.location ?? null }
+        : { id: null, qty: 0, location: null },
       catalog: catalog
         ? {
             id: catalog.id,
@@ -253,7 +267,6 @@ export async function GET(
       })),
       ledger,
       locations,
-      allLocations,
       transfers,
     });
   } catch (err: any) {

@@ -6,7 +6,8 @@ import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { Button, type ButtonVariant } from '@/design-system/primitives/Button';
-import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
+import { KeyboardChord } from '@/design-system/primitives/KeyboardKey';
+import { hotkeyAriaShortcuts, hotkeyChord } from '@/lib/keyboard/key-registry';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useSelectionStatusBarHotkeys } from '@/hooks/useSelectionStatusBarHotkeys';
@@ -38,7 +39,7 @@ export interface TableStatusSelectionAction {
   onClick: () => void;
   /** Design-system Button fill. Defaults to `secondary`. */
   variant?: ButtonVariant;
-  /** Single-letter hotkey (bound while selected; revealed inline after `?`). */
+  /** Hotkey — a letter or a chord (`mod+c`, `key-registry`); bound while selected, revealed inline after `?`. */
   hotkey?: string;
 }
 
@@ -140,19 +141,14 @@ export function TableTabs({
 }
 
 /**
- * Teaching keycap — {@link KeyboardKey} SoT, overlaid right-inside the Button.
- * Zero layout shift.
+ * Teaching keycaps — {@link KeyboardChord} (KeyboardKey SoT), overlaid
+ * right-inside the Button. Zero layout shift.
  */
-function HotkeyGlyph({ letter }: { letter: string }) {
+function HotkeyGlyph({ hotkey }: { hotkey: string }) {
   return (
-    <KeyboardKey
-      aria-hidden
-      size="sm"
-      data-testid="data-table-selection-hotkey-cap"
-      className="pointer-events-none absolute right-1.5 top-1/2 z-raised -translate-y-1/2"
-    >
-      {letter}
-    </KeyboardKey>
+    <span data-testid="data-table-selection-hotkey-cap" className="pointer-events-none absolute right-1.5 top-1/2 z-raised -translate-y-1/2">
+      <KeyboardChord chord={hotkeyChord(hotkey)} size="sm" tone="default" />
+    </span>
   );
 }
 
@@ -164,11 +160,10 @@ function StatusActionButton({
   showHotkey: boolean;
 }) {
   const variant = action.variant ?? 'secondary';
-  const hotkey = action.hotkey?.trim().toLowerCase();
-  const hasHotkey = !!hotkey && hotkey.length === 1;
-  const showGlyph = Boolean(showHotkey && hasHotkey);
-  const aria = hasHotkey
-    ? `${action.label} (press ${hotkey.toUpperCase()})`
+  const hotkey = action.hotkey?.trim();
+  const showGlyph = Boolean(showHotkey && hotkey);
+  const aria = hotkey
+    ? `${action.label} (press ${hotkeyAriaShortcuts(hotkey).split(' ').at(-1)})`
     : action.label;
 
   return (
@@ -181,12 +176,12 @@ function StatusActionButton({
         icon={action.icon}
         onClick={action.onClick}
         aria-label={aria}
-        aria-keyshortcuts={hasHotkey ? hotkey.toUpperCase() : undefined}
+        aria-keyshortcuts={hotkey ? hotkeyAriaShortcuts(hotkey) : undefined}
         data-testid={`data-table-selection-action-${action.key}`}
       >
         {action.label}
       </Button>
-      {showGlyph && hotkey ? <HotkeyGlyph letter={hotkey} /> : null}
+      {showGlyph && hotkey ? <HotkeyGlyph hotkey={hotkey} /> : null}
     </span>
   );
 }

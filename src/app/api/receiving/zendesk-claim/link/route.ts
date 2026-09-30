@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
+  getHelpdeskProvider,
 } from '@/lib/integrations/helpdesk';
+import { refreshTicketMirror } from '@/lib/support/ticket-mirror';
 import {
   isHelpdeskNotConnected,
   linkTicketToAnchor,
@@ -96,6 +98,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         staffId: ctx.staffId,
       }).catch((err) => console.warn('[POST /api/receiving/zendesk-claim/link] ticket reason write failed', err));
     }
+    // Mirror the freshly linked ticket so opening it (Unbox history, Support)
+    // renders from our tables on the first read.
+    after(async () => {
+      try {
+        const helpdesk = await getHelpdeskProvider(ctx.organizationId);
+        if (helpdesk) await refreshTicketMirror(ctx.organizationId, helpdesk, body.ticketId);
+      } catch (err) {
+        console.warn('[POST /api/receiving/zendesk-claim/link] ticket mirror failed', body.ticketId, err);
+      }
+    });
     return NextResponse.json({
       success: true,
       ticketNumber: result.ticketNumber,

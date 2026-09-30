@@ -11,11 +11,10 @@
 import { getSidebarPageNav, spineSectionIdForPage, type SpineSectionId } from '@/lib/sidebar-navigation';
 
 export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Record<string, string>>>>> = {
-  // Scan Stations mirrors the contextual parent switcher. Repair remains a
-  // routable legacy station, but is intentionally absent from both surfaces.
+  // Scan Stations mirrors the contextual parent switcher.
   floor: { a: 'triage', u: 'receive', q: 'testing', p: 'ready-to-pack', k: 'packer', s: 'scan-out' },
   fulfillment: { s: 'outbound', f: 'fba', l: 'label-intake' },
-  inbound: { d: 'incoming', p: 'pickup', s: 'sourcing' },
+  inbound: { d: 'incoming', p: 'pickup', r: 'repair', s: 'sourcing' },
   inventory: { i: 'inventory', q: 'qc-labels' },
 };
 
@@ -26,6 +25,9 @@ export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Recor
  */
 export const NAV_PAGE_GO_KEYS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   exceptions: { f: 'fulfillment', i: 'inventory', r: 'receiving' },
+  // Tasks (owner 2026-09-29): G A All tasks · G S Support · G D Daily checklist · G P Long-term projects — the parents; bare 1–3 the views under each.
+  // Not G C: C is create app-wide (owner 2026-09-30, `key-registry.ts`).
+  home: { a: 'tasks', s: 'support', d: 'daily', p: 'projects' },
 };
 
 /** One `G` destination: a page, or one of `pageId`'s children (`childId`). */

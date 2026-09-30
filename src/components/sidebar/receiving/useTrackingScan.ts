@@ -41,6 +41,7 @@ import {
   pendingScanReconcileKey,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
+import { checkUnboxScanVerdict } from '@/lib/receiving/unbox-scan-feedback-store';
 
 // `ScanResolutionMode` now lives with the scan pipeline (src/lib/receiving/scan) and is re-exported here for the existing import surface.
 export type { ScanResolutionMode };
@@ -248,6 +249,19 @@ export function useTrackingScan({
         setLineAccordionBootstrap(accordionBootstrapRef.current);
         setSelectedLine(paneStub);
         setScanDriven(true);
+      }
+      // Found / unfound in one round trip, in parallel with the open chain
+      // below — the header's top-left line says it before the carton opens.
+      if (
+        scanSurface === 'unbox'
+        && !resolveOnly
+        && (lookupMode === 'tracking'
+          || (lookupMode === 'auto'
+            && !looksLikeTicketScan(trackingNumber)
+            && !looksLikeReceivingCode(trackingNumber)
+            && !trackingNumber.includes('-')))
+      ) {
+        void checkUnboxScanVerdict(trackingNumber);
       }
 
       // Triage arms the surface-tagged in-flight loader. Unbox uses the real

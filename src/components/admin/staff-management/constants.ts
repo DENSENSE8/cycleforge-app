@@ -17,7 +17,7 @@ export function toNullableDateInput(value: string): string | null {
 
 /** Curated list of paths the admin can pick as a per-staff default landing page. */
 export const STAFF_HOME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: '/',            label: 'Daily' },
+  { value: '/',            label: 'Tasks' },
   { value: '/operations',  label: 'Operations' },
   { value: '/receiving',   label: 'Receiving' },
   { value: '/test',        label: 'Quality Control' },

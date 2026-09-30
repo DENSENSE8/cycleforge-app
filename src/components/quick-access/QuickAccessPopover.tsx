@@ -1,15 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { Settings } from '@/components/Icons';
-import { useRouter } from 'next/navigation';
+import { Bell, Settings } from '@/components/Icons';
+import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { ActionsSection } from './ActionsSection';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { InboxContactLinks } from '@/components/ui/InboxContactLinks';
 import { Panel, IconButton } from '@/design-system/primitives';
+import { StaffBadge } from '@/design-system/components/StaffBadge';
+import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { StaffAvatar } from '@/components/identity';
+import {
+  DURABLE_INBOX_QUERY_KEY,
+  followUpDueLabel,
+  useFollowUpAlerts,
+} from '@/lib/notifications/use-durable-inbox';
+import type { InboxItemDto } from '@/lib/notifications/types';
 
 interface QuickAccessPopoverProps {
   onClose: () => void;
@@ -49,6 +59,8 @@ export function QuickAccessPopover({
           onClose={onClose}
         />
       ) : null}
+
+      <FollowUpAlerts onClose={onClose} />
 
       {!compact && (
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -104,5 +116,63 @@ export function QuickAccessPopover({
         </button>
       )}
     </Panel>
+  );
+}
+
+/** R7 — unread "follow up on this task" alerts, newest first. Opening one reads it. */
+function FollowUpAlerts({ onClose }: { onClose: () => void }) {
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const alerts = useFollowUpAlerts({ enabled: Boolean(user?.staffId) });
+  const { getStaffName } = useStaffNameMap();
+  if (alerts.length === 0) return null;
+  // The phone opens a task in its own sheet (`/m/home?task=`); the desk on the board.
+  const phone = pathname?.startsWith('/m') ?? false;
+
+  const open = (item: InboxItemDto) => {
+    onClose();
+    queryClient.setQueryData<InboxItemDto[]>(DURABLE_INBOX_QUERY_KEY, (prev) => (prev ?? []).filter((x) => x.id !== item.id));
+    void fetch(`/api/inbox/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'read' }),
+    }).finally(() => void queryClient.invalidateQueries({ queryKey: DURABLE_INBOX_QUERY_KEY }));
+  };
+
+  return (
+    <section aria-label="Alerts" className="shrink-0 border-b border-border-hairline" data-testid="quick-access-alerts">
+      <p className="px-4 pb-1 pt-3 text-role-eyebrow text-text-faint">Alerts</p>
+      <ul className="max-h-60 overflow-y-auto overscroll-contain pb-1">
+        {alerts.map((item) => (
+          <li key={item.id} className="transition hover:bg-surface-sunken">
+            <Link
+              href={phone ? `/m/home?task=${item.entityId}` : item.href}
+              onClick={() => open(item)}
+              className={`flex min-h-11 items-start gap-2.5 px-4 pt-2 ${item.contacts.length > 0 ? 'pb-1' : 'pb-2'}`}
+              data-inbox-item-id={item.id}
+            >
+              <Bell className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-text-default">
+                  {item.eventLabel}: {item.title ?? `Task ${item.entityId}`}
+                </span>
+                <span className="block truncate text-role-micro text-text-soft">
+                  {[followUpDueLabel(item.dueAt), item.note].filter(Boolean).join(' · ') || `Task ${item.entityId}`}
+                  {item.actorStaffId ? (
+                    <>
+                      {' · from '}
+                      <StaffBadge staffId={item.actorStaffId} name={getStaffName(item.actorStaffId)} className="font-semibold" />
+                    </>
+                  ) : null}
+                </span>
+              </span>
+            </Link>
+            {/* The contacts the task linked when the alert was sent — doors of their own, so outside the row's link. */}
+            <InboxContactLinks contacts={item.contacts} surface={phone ? 'phone' : 'desk'} className="pb-2 pl-[2.625rem] pr-4" />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

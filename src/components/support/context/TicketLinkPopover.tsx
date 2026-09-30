@@ -2,8 +2,9 @@
 
 /**
  * TicketLinkPopover — search + pick an existing Zendesk ticket and link it to
- * a resolved anchor (receiving / tracking / shipment / order). Shared by the
+ * a resolved anchor (receiving / tracking / shipment / order / repair). Shared by the
  * Support Context Hub LinkageStrip across Support / Unbox / packing surfaces.
+ * {@link TicketLinkPicker} is its body, for hosts that render the picker inline.
  */
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,7 +22,8 @@ import {
 
 export type { TicketLinkCandidate };
 export { parseTicketIdQuery, resolveTicketIdForLink };
-function anchorToParams(linkable: SupportContextLinkable): URLSearchParams {
+/** `?anchorType=…&<id>=…` for the link waist's GET candidates / DELETE unlink. */
+export function anchorToParams(linkable: SupportContextLinkable): URLSearchParams {
   const sp = new URLSearchParams();
   sp.set('anchorType', linkable.anchorType);
   if (linkable.anchorType === 'serialUnit') {
@@ -33,6 +35,8 @@ function anchorToParams(linkable: SupportContextLinkable): URLSearchParams {
     sp.set('tracking', linkable.trackingNumber ?? '');
   } else if (linkable.anchorType === 'shipment') {
     sp.set('shipmentId', String(linkable.anchorId));
+  } else if (linkable.anchorType === 'repair') {
+    sp.set('repairId', String(linkable.anchorId));
   } else {
     sp.set('orderId', String(linkable.anchorId));
   }
@@ -97,6 +101,9 @@ function anchorToBody(linkable: SupportContextLinkable) {
   if (linkable.anchorType === 'shipment') {
     return { type: 'shipment' as const, shipmentId: linkable.anchorId };
   }
+  if (linkable.anchorType === 'repair') {
+    return { type: 'repair' as const, repairId: linkable.anchorId };
+  }
   return { type: 'order' as const, orderId: linkable.anchorId };
 }
 
@@ -117,6 +124,45 @@ export function TicketLinkPopover({
   /** Eyebrow label — the shared strip surfaces a scoped variant. */
   title?: string;
 }) {
+  // Unmounting the picker on close resets its search + pick for the next open.
+  if (!open) return null;
+
+  return (
+    <Panel radius="xl" padding="sm" elevation="md">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-role-eyebrow text-text-soft">{title}</p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="ds-raw-button rounded-md p-1 text-text-faint hover:bg-surface-hover hover:text-text-muted"
+          aria-label="Close"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <TicketLinkPicker
+        linkable={linkable}
+        initialQuery={initialQuery}
+        onLinked={(ticketNumber) => {
+          onLinked?.(ticketNumber);
+          onClose();
+        }}
+      />
+    </Panel>
+  );
+}
+
+/** Search box + candidate list + Link button — the popover's body, mountable inline. */
+export function TicketLinkPicker({
+  linkable,
+  onLinked,
+  initialQuery = '',
+}: {
+  linkable: SupportContextLinkable;
+  onLinked?: (ticketNumber: string) => void;
+  /** Seed the search box (and the first candidates fetch) with a known identifier. */
+  initialQuery?: string;
+}) {
   const qc = useQueryClient();
   const [query, setQuery] = useState(initialQuery);
   const [debounced, setDebounced] = useState(initialQuery.trim());
@@ -127,16 +173,9 @@ export function TicketLinkPopover({
     return () => clearTimeout(t);
   }, [query]);
 
-  useEffect(() => {
-    if (!open) {
-      setQuery(initialQuery);
-      setSelectedId(null);
-    }
-  }, [open, initialQuery]);
-
   const candidates = useQuery({
     queryKey: ['ticket-link-candidates', linkable, debounced],
-    enabled: open && linkable.canLinkTicket,
+    enabled: linkable.canLinkTicket,
     staleTime: 10_000,
     queryFn: async () => {
       const res = await fetch(candidatesUrl(linkable, debounced));
@@ -168,15 +207,13 @@ export function TicketLinkPopover({
     onSuccess: (data) => {
       invalidateSupportContextCaches(qc);
       toast.success(`Linked ${data.ticketNumber}`);
+      setSelectedId(null);
       onLinked?.(data.ticketNumber);
-      onClose();
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Could not link ticket');
     },
   });
-
-  if (!open) return null;
 
   const rows = candidates.data?.tickets ?? [];
   const hiddenLinked = candidates.data?.hiddenLinked ?? 0;
@@ -208,19 +245,7 @@ export function TicketLinkPopover({
   };
 
   return (
-    <Panel radius="xl" padding="sm" elevation="md">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-role-eyebrow text-text-soft">{title}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="ds-raw-button rounded-md p-1 text-text-faint hover:bg-surface-hover hover:text-text-muted"
-          aria-label="Close"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
+    <div>
       <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-border-soft bg-surface-canvas px-2 py-1.5">
         <Search className="h-3.5 w-3.5 shrink-0 text-text-faint" />
         <input
@@ -303,7 +328,7 @@ export function TicketLinkPopover({
       >
         Link ticket
       </Button>
-    </Panel>
+    </div>
   );
 }
 

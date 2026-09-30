@@ -40,7 +40,7 @@ function itemFacts(
     {
       label: 'Owner',
       value:
-        item.kind === 'once' ? (item.assignedStaffName ?? 'Whole shift') : 'The shift, every day',
+        item.kind === 'once' ? (item.assignedStaffName ?? 'Daily checklist') : 'Daily checklist, every day',
     },
     { label: 'You', value: mineDone ? 'Checked off today' : 'Not checked off yet' },
     {

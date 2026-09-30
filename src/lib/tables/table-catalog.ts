@@ -19,7 +19,6 @@ export const PRODUCT_TABLES: readonly ProductTable[] = [
   { tableId: 'ready', label: 'Recently tested units' },
   { tableId: 'catalog', label: 'Products catalog' },
   { tableId: 'unfound', label: 'Unfound queue' },
-  { tableId: 'repair', label: 'Repair queue' },
   { tableId: 'tech-all', label: 'Tech · All' },
   { tableId: 'bins', label: 'Warehouse bins' },
   { tableId: 'inventory-events', label: 'Inventory ledger activity' },

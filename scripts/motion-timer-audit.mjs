@@ -55,7 +55,6 @@ const REVIEWED_TIMERS = {
   'src/design-system/components/FindField.tsx': ['mixed-lifecycle', 'placeholder tour and input debounce'],
   'src/design-system/components/UniversalLoader.tsx': ['acknowledgement', 'loader label pacing'],
   'src/design-system/components/record-card/RecordCard.tsx': ['interaction-lifetime', 'hover-card enter and leave delays'],
-  'src/features/home/DailyEntrance.tsx': ['choreography', 'one-time entrance pacing'],
 };
 
 async function walk(directory) {

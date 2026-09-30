@@ -26,7 +26,7 @@ import {
   useScanModeRelease,
 } from '@/components/station/scan-bar';
 import { useUnboxPreviewOpen } from '@/components/sidebar/receiving/useUnboxPreviewOpen';
-import type { PickupLine, PickupOrderGroup } from '@/components/receiving/pickup/pickup-lines';
+import type { PickupLine, PickupOrderGroup } from '@/lib/receiving/pickup/pickup-lines';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { resolvePickupScan } from '@/lib/local-pickup/resolve-pickup-scan';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

@@ -9,6 +9,7 @@ import {
   JOURNEY_DIMENSION_PARAM,
 } from './operations-sidebar-shared';
 import type { JourneyDimension } from '@/lib/timeline/journey';
+import { JOURNEY_FILTER_KEYS } from '@/lib/operations/saved-view-presets';
 
 /** The full filter snapshot — also the shape persisted in a saved view. */
 export interface JourneyUrlFilters {
@@ -30,21 +31,7 @@ export interface JourneyUrlFilters {
 }
 
 const ENTITY_KEYS = ['order', 'serial', 'tracking', 'unit'] as const;
-const FILTER_KEYS = [
-  'dim',
-  'order',
-  'serial',
-  'tracking',
-  'unit',
-  'from',
-  'until',
-  'stations',
-  'types',
-  'status',
-  'staffId',
-  'sources',
-  'q',
-] as const;
+const FILTER_KEYS = JOURNEY_FILTER_KEYS;
 
 function csv(raw: string | null): string[] {
   if (!raw) return [];

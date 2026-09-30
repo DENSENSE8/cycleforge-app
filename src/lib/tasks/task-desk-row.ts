@@ -5,6 +5,7 @@ import {
   type TaskEntityType,
   type TaskUrgency,
 } from './task-vocabulary';
+import { parseTaskHold, type TaskHold } from '@/design-system/tokens/task-status';
 import type { TaskLinkFace } from './task-links-shared';
 
 /**
@@ -86,6 +87,12 @@ export interface TaskDeskRow {
   /** `work_assignments.notes` — task instructions an operator typed. */
   note: string;
   status: TaskDeskStatus;
+  /**
+   * `work_assignments.task_state` — the hold on open work (Pending ·
+   * Follow-up · Blocked), or null. Read the task's ONE status through
+   * `taskStatusOf` (`task-status.ts`), never this alone.
+   */
+  taskState: TaskHold | null;
   /** Stored int. Lower sorts first (`idx_work_assignments_assignee`). */
   priority: number;
   /** Derived from {@link priority} once, here. */
@@ -106,6 +113,10 @@ export interface TaskDeskRow {
    * phone apps schedule a LOCAL notification for it from `GET /api/v1/reminders`.
    */
   remindAtMs: number | null;
+  /** Latest logged follow-up (`work_assignments.last_follow_up_at`). */
+  lastFollowUpAtMs: number | null;
+  /** Operator-set next chase (`work_assignments.next_follow_up_at`). */
+  nextFollowUpAtMs: number | null;
   ticket: TaskDeskTicket | null;
   /** Every record the task names beyond its anchor (`work_assignment_links`). */
   links: TaskLinkFace[];
@@ -129,6 +140,8 @@ export interface TaskDeskWireRow {
   note: string | null;
   projectName: string | null;
   status: string;
+  /** `task_state`, verbatim; null before the 2026-09-30 migration too. */
+  taskState: string | null;
   priority: number | null;
   assignee: TaskDeskPerson | null;
   assignees: TaskDeskPerson[];
@@ -138,6 +151,8 @@ export interface TaskDeskWireRow {
   deadlineAt: string | null;
   completedAt: string | null;
   remindAt: string | null;
+  lastFollowUpAt: string | null;
+  nextFollowUpAt: string | null;
   ticket: TaskDeskTicket | null;
   links: TaskLinkFace[];
   photoCount: number;
@@ -170,6 +185,8 @@ export function taskDeskRowFromWire(wire: TaskDeskWireRow): TaskDeskRow {
     // An unknown status label is a schema drift, not a row to drop: paint it
     // as OPEN so the operator still sees the work, and let the enum test fail.
     status: isTaskDeskStatus(wire.status) ? wire.status : 'OPEN',
+    // A hold outside the vocabulary reads as none — the row stays its lifecycle status.
+    taskState: parseTaskHold(wire.taskState),
     priority,
     urgency: taskUrgencyFromPriority(priority),
     assignee: wire.assignee,
@@ -180,6 +197,8 @@ export function taskDeskRowFromWire(wire: TaskDeskWireRow): TaskDeskRow {
     deadlineAtMs: ms(wire.deadlineAt),
     completedAtMs: ms(wire.completedAt),
     remindAtMs: ms(wire.remindAt),
+    lastFollowUpAtMs: ms(wire.lastFollowUpAt),
+    nextFollowUpAtMs: ms(wire.nextFollowUpAt),
     ticket: wire.ticket,
     links: wire.links,
     photoCount: wire.photoCount,

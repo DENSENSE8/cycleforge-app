@@ -45,3 +45,15 @@ export function qcLabelStage(row: Pick<QcLabelRow, 'current_status' | 'allocatio
 export function qcLabelHandle(row: Pick<QcLabelRow, 'unit_uid' | 'serial_number' | 'serial_unit_id'>): string {
   return row.unit_uid?.trim() || (row.serial_number?.trim() ? `U-${row.serial_number.trim()}` : `U-${row.serial_unit_id}`);
 }
+
+/** A unit the desk can print a QC label for — resolved from a scan or a typed serial (`findQcLabelPrintUnit`). */
+export interface QcLabelPrintUnit {
+  serial_unit_id: number;
+  unit_uid: string | null;
+  serial_number: string | null;
+  sku: string | null;
+  title: string;
+  condition_grade: string | null;
+  /** A QC label was printed before — the next print is a reprint. */
+  printed: boolean;
+}

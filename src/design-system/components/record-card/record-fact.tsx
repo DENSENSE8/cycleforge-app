@@ -14,6 +14,8 @@ import type { CardDisclosureTier, RecordCardLine } from './record-card-types';
 export type RecordFactFace =
   /** ×N — above 1 the quantity takes its tone. */
   | { kind: 'qty'; value: number }
+  /** A plain count (a shelf's quantity): bold tabular number, warning ink at or below zero — no order-line tone. */
+  | { kind: 'count'; value: number }
   /** Received against expected: reads as `×N` when they agree; `received/expected` in warning ink when they differ (short or over). */
   | { kind: 'received'; received: number; expected: number | null }
   /** A condition grade, inked by its code. */
@@ -49,6 +51,10 @@ export function RecordFactPaint({ face }: { face: RecordFactFace }): ReactNode {
         <span className={cn('font-semibold tabular-nums', face.value > 1 ? orderRowQtyTone(face.value) : 'text-text-default')}>
           ×{face.value}
         </span>
+      );
+    case 'count':
+      return (
+        <span className={cn('font-semibold tabular-nums', face.value > 0 ? 'text-text-default' : 'text-text-warning')}>{face.value}</span>
       );
     case 'received': {
       const { received, expected } = face;

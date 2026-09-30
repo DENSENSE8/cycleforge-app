@@ -8,13 +8,16 @@
  * unit's `unit_uid` (else `U-{serial}`); the picker scans it and the pick
  * binds that serial to the order (`linkPickedSerialToOrder`), which the record
  * shows as "Serial on order". Print = a unit's label, from a scan or a typed
- * serial; Reprint = the open record's label (`./QcLabelRecord`). Every
+ * serial; the open unit is the shared QC unit record (`useQcUnitRecord` →
+ * `RecordView`), its verdicts and Reprint in the header. Every
  * sticker is a `label_print_jobs` row.
  */
 
 import { memo, useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
+import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
+import { useQcUnitRecord } from '@/components/qc/qc-unit-record';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import {
   RecordLedgerSummaryPane,
@@ -35,14 +38,7 @@ import { useNavIntent } from '@/lib/nav/use-nav-intent';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { QC_LABELS_VIEW } from '@/lib/triage/views';
-import {
-  QC_LABEL_NEXT,
-  QcLabelEvidence,
-  QcLabelPrintForm,
-  QcLabelRecordStatus,
-  RECORD_ROOT_CLASS,
-  stamp,
-} from './QcLabelRecord';
+import { QC_LABEL_NEXT, QcLabelPrintForm, RECORD_ROOT_CLASS, qcLabelReprintVerb, stamp } from './QcLabelRecord';
 
 const VIEW = QC_LABELS_VIEW;
 
@@ -148,6 +144,16 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
   };
 
   const summary = useMemo(() => qcLabelSummary(rows), [rows]);
+  const qc = useQcUnitRecord(printing ? null : (openRecord?.serial_unit_id ?? null), {
+    label: openRecord,
+    onRecorded: () => router.refresh(),
+  });
+  const slot = useRecordSlot(
+    qc.record?.model ?? null,
+    qc.record && openRecord ? [...qc.record.verbs, qcLabelReprintVerb(openRecord, () => router.refresh())] : [],
+    openRecord ? `QC label ${qcLabelHandle(openRecord)} actions` : 'QC label actions',
+    'qc-record',
+  );
   const narrowed = Boolean(searchParams.get('q')?.trim()) || Boolean(searchParams.get('view'));
 
   return (
@@ -175,10 +181,9 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
       searchEmpty={narrowed ? <p className="text-sm text-text-muted">No QC labels match — clear the search or pick All labels.</p> : null}
       allClear={<TriageAllClear title="No QC labels printed yet" detail="Print one from a scanned serial." />}
       record={{
-        // The record is the LABEL: its sticker identity heads it; the product reads on the item card.
-        title: printing ? 'Print QC label' : openRecord ? qcLabelHandle(openRecord) : 'Not in this list',
-        subtitle: !printing && openRecord?.serial_number ? `SN ${openRecord.serial_number}` : undefined,
-        actions: !printing && openRecord ? <QcLabelRecordStatus row={openRecord} /> : undefined,
+        // The record is the UNIT: `# SN … · SKU · tested`; its sticker identity reads under Label.
+        title: printing ? 'Print QC label' : (slot?.title ?? (openRecord ? qcLabelHandle(openRecord) : 'Not in this list')),
+        actions: printing ? undefined : slot?.actions,
         noun: printing ? 'print form' : 'QC label',
         testId: 'qc-label-record',
         summary: <RecordLedgerSummaryPane summary={summary} />,
@@ -190,11 +195,21 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
               router.refresh();
             }}
           />
-        ) : openRecord ? (
-          <QcLabelEvidence key={openRecord.serial_unit_id} row={openRecord} onPrinted={() => router.refresh()} />
-        ) : openKey ? (
+        ) : slot ? (
+          slot.view
+        ) : openRecord || openKey ? (
           <div className={RECORD_ROOT_CLASS}>
-            <DeskRecordLayout main={<EvidenceNotice>This label is not in the current list.</EvidenceNotice>} />
+            <DeskRecordLayout
+              main={
+                <EvidenceNotice tone={openRecord && !qc.error ? undefined : 'warn'}>
+                  {!openRecord
+                    ? 'This label is not in the current list.'
+                    : qc.error
+                      ? `The unit could not be read — ${qc.error}`
+                      : 'Reading the unit…'}
+                </EvidenceNotice>
+              }
+            />
           </div>
         ) : null,
       }}

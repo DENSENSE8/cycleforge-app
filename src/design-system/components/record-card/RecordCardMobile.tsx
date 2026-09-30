@@ -10,19 +10,24 @@
  *   +2 items ▾
  *
  * Owner 2026-09-29: the TOP ROW is the location (left, room for a real bin
- * code) and the due date (right) — no record ref on the card, no state rail.
- * The BODY ROW: the square photo (no corner) at the far left, exactly as tall
- * as its two rows — the title (one line) over the subtitle: qty · condition ·
- * price, then the channel (dot + name). No checkbox, no hover peek, no chips,
- * no notes, no verbs. The whole card is the open target; the location badge
- * and "+N items" are the only other presses. Nothing here knows the family:
- * the adapter hands a {@link RecordCardMobileModel} (Law 1).
+ * code) and the due date (right), no state rail. A family MAY add its state
+ * code and the handle the operator holds after the location (QC queue:
+ * `[📍 No bin] RET R-51815 …… 3D`). The BODY ROW: the square photo (no
+ * corner) at the far left, exactly as tall as its two rows — the title (one
+ * line) over the subtitle: the family's facts, then the channel (dot + name)
+ * and, when the family names one, the next step ("→ Test"). No checkbox, no
+ * hover peek, no chips, no notes, no verbs. The whole card is the open
+ * target; the location badge and "+N items" are the only other presses.
+ * Nothing here knows the family: the adapter hands a
+ * {@link RecordCardMobileModel} (Law 1).
  */
 
 import { useState } from 'react';
-import { ChevronDown, Package } from '@/components/Icons';
+import { ArrowRight, ChevronDown, Package } from '@/components/Icons';
 import { LocationBadge } from '@/design-system/components/LocationBadge';
+import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { RECORD_DEADLINE_DOT_CLASS, RECORD_DEADLINE_TONE_CLASS, RECORD_MOBILE_PHOTO_SIZE_CLASS } from '@/design-system/tokens/record-card';
 import { cn } from '@/utils/_cn';
 import { RecordFactSep, RecordLineFacts, type RecordFactColumn } from './record-fact';
@@ -64,16 +69,18 @@ export function RecordSquarePhoto({ url, size, alt = '' }: { url: string | null;
   );
 }
 
-/** One line: square photo · title (one line) over facts, then — on the lead only — the channel. */
+/** One line: square photo · title (one line) over facts, then — on the lead only — the channel and the next step. */
 function CardLine({
   line,
   factColumns,
   channel,
+  next,
   testId,
 }: {
   line: RecordCardLine;
   factColumns: readonly RecordFactColumn[];
   channel: RecordCardMobileModel['channel'];
+  next?: RecordCardMobileModel['next'];
   testId?: (part: string) => string;
 }) {
   return (
@@ -94,6 +101,18 @@ function CardLine({
                 {channel.badge ? <span className="shrink-0 rounded-md bg-surface-sunken px-1 text-text-muted">{channel.badge}</span> : null}
               </span>
             </>
+          ) : null}
+          {next ? (
+            <span
+              data-testid={testId?.('next')}
+              title={next.tip}
+              aria-label={`Next step: ${next.label}`}
+              className={cn('ml-auto flex shrink-0 items-center gap-1 whitespace-nowrap', next.blocked ? 'text-text-danger' : 'text-text-faint')}
+            >
+              <ArrowRight className="size-3.5" aria-hidden />
+              <span aria-hidden className={cn('size-2 shrink-0 rounded-full', STATE_TONE_CLASSES[next.tone].dot)} />
+              <span className={cn('font-semibold', next.blocked ? 'text-text-danger' : 'text-text-default')}>{next.label}</span>
+            </span>
           ) : null}
         </div>
         {line.alertNote ? <p className="text-role-caption font-medium text-text-danger">{line.alertNote}</p> : null}
@@ -126,9 +145,19 @@ export function RecordCardMobile({ model, factColumns, location, onOpen, testIdP
         className={cn('absolute inset-0 z-0 cursor-pointer rounded-mode', focusRing('control'))}
       />
 
-      {/* Top row — location …… due date. */}
+      {/* Top row — location · code · ref …… due date. */}
       <div data-testid={id('row')} className="pointer-events-none relative z-10 flex min-w-0 items-center gap-2">
         <LocationBadge text={location.path} onPress={location.onPress} className="pointer-events-auto shrink" />
+        {model.code ? (
+          <LifecycleCode state={model.code} srLabel={model.code.label} className="shrink-0 text-role-eyebrow">
+            {model.code.code}
+          </LifecycleCode>
+        ) : null}
+        {model.ref ? (
+          <span data-testid={id('ref')} className="shrink-0 font-mono text-role-caption font-semibold text-text-muted">
+            {model.ref}
+          </span>
+        ) : null}
         <span
           data-testid={id('deadline')}
           title={deadline.tip ?? undefined}
@@ -141,7 +170,7 @@ export function RecordCardMobile({ model, factColumns, location, onOpen, testIdP
 
       {/* Body row — the lead line. */}
       <div className="pointer-events-none relative z-10">
-        <CardLine line={lead} factColumns={factColumns} channel={model.channel} testId={id} />
+        <CardLine line={lead} factColumns={factColumns} channel={model.channel} next={model.next} testId={id} />
       </div>
 
       {more.length > 0 ? (

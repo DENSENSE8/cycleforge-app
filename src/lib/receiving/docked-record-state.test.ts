@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ReceivingLineRow } from './receiving-line-row';
-import { dockedCartonStatuses, dockedFlags, dockedIntakeKind, dockedNextStep, dockedPackageRecordFace, dockedReceivedQuantity, dockedReceivingState, dockedRecordFace, dockedTicketLabels } from './docked-record-state';
+import { dockedCartonFlags, dockedFlags, dockedIntakeKind, dockedNextStep, dockedPackageRecordFace, dockedReceivedQuantity, dockedReceivingState, dockedRecordFace, dockedTicketLabels } from './docked-record-state';
 import { isClaimCode, isInvestigationCode } from './exception-codes';
 import { receivingLineMatchesQuery } from './receiving-line-search';
 
@@ -155,19 +155,16 @@ test('unfound is red and outranks claim and short; an exception still outranks u
   assert.equal(dockedRecordFace(row({ ...unmatched, ...claimedShort, zoho_purchaseorder_id: '9' })).id, 'CLAIM');
 });
 
-test('carton status: attention pills first, Unboxed only when every line is clean', () => {
+test('carton pills: every flag its lines wear, in pill order; a clean carton wears none', () => {
   const cleanLine = { workflow_status: 'DONE', received_done_at: '2026-09-25', quantity_received: 1, quantity_expected: 1 };
-  assert.deepEqual(dockedCartonStatuses([row({ id: 1, ...cleanLine }), row({ id: 2, ...cleanLine })]), ['UNBOXED']);
-  // One short line: the carton is Short, never also Unboxed.
-  assert.deepEqual(dockedCartonStatuses([row({ id: 1, ...cleanLine }), row({ id: 2, ...cleanLine, quantity_received: 0 })]), ['SHORT']);
+  assert.deepEqual(dockedCartonFlags([row({ id: 1, ...cleanLine }), row({ id: 2, ...cleanLine })]), []);
+  // One short line makes the carton Short.
+  assert.deepEqual(dockedCartonFlags([row({ id: 1, ...cleanLine }), row({ id: 2, ...cleanLine, quantity_received: 0 })]), ['SHORT']);
   // Pill order holds across lines.
   assert.deepEqual(
-    dockedCartonStatuses([row({ id: 1, ...cleanLine, quantity_received: 0 }), row({ id: 2, ...cleanLine, receiving_source: 'unmatched' })]),
+    dockedCartonFlags([row({ id: 1, ...cleanLine, quantity_received: 0 }), row({ id: 2, ...cleanLine, receiving_source: 'unmatched' })]),
     ['UNFOUND', 'SHORT'],
   );
-  // A failed line is an Exception: not clean, and not an attention pill either.
-  assert.deepEqual(dockedCartonStatuses([row({ id: 1, ...cleanLine, workflow_status: 'FAILED' })]), []);
-  assert.deepEqual(dockedCartonStatuses([]), []);
 });
 
 test('a claim with no recorded reason still counts as a Claim and reads "Claim #…"', () => {

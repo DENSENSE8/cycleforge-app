@@ -41,13 +41,13 @@ export const GET = withAuth(
       return NextResponse.json({ success: false, error: 'Handling unit not found' }, { status: 404 });
     }
 
-    // Org-ownership gate: the queries below aren't org-aware, so a cross-tenant
-    // box id reads as "not found" rather than leaking another org's contents.
+    // Org-ownership gate: a cross-tenant box id reads as "not found" rather
+    // than leaking another org's contents; the detail read is tenant-scoped too.
     if (!(await ownsHandlingUnit(ctx.organizationId, id))) {
       return NextResponse.json({ success: false, error: 'Handling unit not found' }, { status: 404 });
     }
 
-    const detail = await getHandlingUnitDetail(id);
+    const detail = await getHandlingUnitDetail(id, ctx.organizationId);
     if (!detail) {
       return NextResponse.json({ success: false, error: 'Handling unit not found' }, { status: 404 });
     }

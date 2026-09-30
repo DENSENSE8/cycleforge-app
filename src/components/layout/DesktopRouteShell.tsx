@@ -10,7 +10,8 @@ import { useUIMode } from '@/design-system/providers/UIModeProvider';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { AlertTriangle, RotateCcw, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
+import { getSidebarNavPageId, isMobileAllowedPath } from '@/lib/sidebar-navigation';
+import { NAV_CONTEXT_PINNED_LEGACY, NAV_CONTEXT_ROLLOUT } from '@/lib/nav/context/rollout';
 import { SIDEBAR_SPINE_WIDTH } from '@/components/sidebar/sidebar-spine';
 import { ContextPanelLayout } from '@/components/sidebar/ContextPanelLayout';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
@@ -52,6 +53,16 @@ const FOCUS_ROUTE_PATHS: ReadonlyArray<RegExp> = [/^\/shipping\/buy-label(?:$|\/
 
 function isFocusRoutePath(pathname: string | null): boolean {
   return !!pathname && FOCUS_ROUTE_PATHS.some((re) => re.test(pathname));
+}
+
+/**
+ * The page's rollout before `/api/nav/context` answers — the static map only
+ * (a `nav.contextual.<pageId>` override or a parity clamp arrives with the
+ * fetch and wins). Server-computable, so SSR can lay the column out.
+ */
+function isStaticContextualPath(pathname: string | null): boolean {
+  const pageId = getSidebarNavPageId(pathname);
+  return NAV_CONTEXT_ROLLOUT[pageId] === 'contextual' && !NAV_CONTEXT_PINNED_LEGACY.has(pageId);
 }
 
 const SidebarNavColumn = dynamic(
@@ -153,7 +164,10 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   const [navOpen, setNavOpen] = useState(false);
   // A contextual page's sidebar carries its views and filters, so it is open
   // unless the operator closed it (remembered); the spine keeps its own state.
-  const contextualActive = useContextualSidebarActive();
+  // Until `/api/nav/context` answers, the page's static rollout stands in, so
+  // SSR and the first paint already hold the column's space.
+  const staticContextual = isStaticContextualPath(pathname);
+  const contextualActive = useContextualSidebarActive() ?? staticContextual;
   const [contextualOpen, setContextualOpen] = useLocalStorage('contextual-sidebar-open', true);
   const contextualActiveRef = useRef(contextualActive);
   contextualActiveRef.current = contextualActive;
@@ -165,7 +179,9 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
     window.addEventListener(MASTER_NAV_TOGGLE_EVENT, toggleNav);
     return () => window.removeEventListener(MASTER_NAV_TOGGLE_EVENT, toggleNav);
   }, [toggleNav]);
-  const columnOpen = contextualActive ? contextualOpen : navOpen;
+  // Before mount, only what the server also knows (localStorage is invisible
+  // to SSR — reading it here would break hydration).
+  const columnOpen = !mounted ? staticContextual : contextualActive ? contextualOpen : navOpen;
   // ⌘\ / Ctrl+\ opens and closes the column (owner 2026-09-27); the toggle's
   // tooltip shows the chord.
   useSidebarToggleHotkey(toggleNav);
@@ -196,6 +212,13 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+  // The column is a client-only chunk. Until it mounts, a same-width spacer
+  // holds its place: a column appearing seconds after first paint pushed the
+  // whole workspace right (CLS 0.18 on /unbox). Before mount only server-known
+  // state decides (localStorage is invisible to SSR), so hydration matches.
+  const [columnMounted, setColumnMounted] = useState(false);
+  const onColumnMounted = useCallback(() => setColumnMounted(true), []);
+  const reserveColumn = !chromeless && !columnMounted && columnOpen;
 
   /** Warm the spine chunk during the first idle window — the backstop tier of the prefetch (`preload-spine.ts`). */
   useEffect(() => {
@@ -304,12 +327,14 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
 
         {/* The nav column — one host for every page. The probe publishes
             whether the page has its own panel (it opens the column by default). */}
+        {reserveColumn ? <div aria-hidden className={cn('h-full shrink-0', SIDEBAR_SPINE_WIDTH)} /> : null}
         {!chromeless && (
           <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
             <Suspense fallback={null}>
               <NavRolloutProbe />
               <OrgCapabilitiesRealtime />
               <SidebarNavColumn
+                onMounted={onColumnMounted}
                 open={columnOpen}
                 peeking={navPeek.isOpen}
                 peekSurfaceProps={navPeek.surfaceProps}

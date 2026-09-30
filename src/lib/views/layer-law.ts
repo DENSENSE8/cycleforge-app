@@ -71,7 +71,6 @@ export const LAYER_LAW_ALLOWLIST: Readonly<Record<LayerLaw, Readonly<Record<stri
     'src/components/outbound/orders/facts/CustomerOrderStats.tsx': 'first-order month via toLocaleDateString',
     'src/components/outbound/orders/intake/OrderIntakeForm.tsx': 'orders.ship_by date key assembled by hand',
     'src/components/receiving/inventory/InventoryPoLineList.tsx': 'PO line rate / total via $…toFixed(2)',
-    'src/components/receiving/pickup/pickup-lines.ts': 'pickup money via $…toFixed(2)',
     'src/components/receiving/workspace/note-composer-helpers.ts': 'PO unit cost via $…toFixed(2)',
     'src/components/receiving/workspace/carton-add/WebTab.tsx': 'web search hit price (not an order fact) via toFixed(2)',
   },

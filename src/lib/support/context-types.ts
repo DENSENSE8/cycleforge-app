@@ -33,7 +33,8 @@ export interface SupportContextThread {
 
 export interface SupportContextLinkable {
   canLinkTicket: boolean;
-  anchorType: 'serialUnit' | 'receiving' | 'tracking' | 'shipment' | 'order';
+  /** `repair` anchors on `anchorId` = repair_service.id. */
+  anchorType: 'serialUnit' | 'receiving' | 'tracking' | 'shipment' | 'order' | 'repair';
   anchorId: number;
   serialUnitId?: number | null;
   trackingNumber?: string | null;

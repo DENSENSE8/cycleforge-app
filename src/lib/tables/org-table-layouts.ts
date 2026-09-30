@@ -129,7 +129,6 @@ import {
 } from '@/lib/tables/field-catalog/receiving';
 import { MY_DAY_FIELD_CATALOG, MY_DAY_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/my-day';
 import { READY_FIELD_CATALOG, READY_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/ready';
-import { REPAIR_FIELD_CATALOG, REPAIR_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/repair';
 import { UNFOUND_FIELD_CATALOG, UNFOUND_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/unfound';
 import { UNITS_FIELD_CATALOG, UNITS_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/units';
 import {
@@ -200,7 +199,6 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   [CATALOG_TABLE_LAYOUT_ID]: { catalog: CATALOG_FIELD_CATALOG, morphs: ['sheet'] },
   [TECH_ALL_TABLE_LAYOUT_ID]: { catalog: TECH_ALL_FIELD_CATALOG, morphs: ['sheet'] },
   [UNFOUND_TABLE_LAYOUT_ID]: { catalog: UNFOUND_FIELD_CATALOG, morphs: ['sheet'] },
-  [REPAIR_TABLE_LAYOUT_ID]: { catalog: REPAIR_FIELD_CATALOG, morphs: ['sheet'] },
   [MY_DAY_TABLE_LAYOUT_ID]: { catalog: MY_DAY_FIELD_CATALOG, morphs: ['sheet'] },
   // Staging keeps its OWN document on purpose — hiding a staging column must
   // not densify live To-ship.

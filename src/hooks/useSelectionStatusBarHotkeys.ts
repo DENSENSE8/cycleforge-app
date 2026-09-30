@@ -5,12 +5,13 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { ButtonVariant } from '@/design-system/primitives/Button';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { COPY_HOTKEY, hotkeyFires } from '@/lib/keyboard/key-registry';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { closeShortcutOverview } from '@/lib/keyboard/shortcut-overview';
 
 type SelectionStatusHotkeyAction = {
   key: string;
-  /** Single letter, case-insensitive. Omit to skip bind + reveal. */
+  /** A letter (case-insensitive) or a chord (`mod+c`, `key-registry`). Omit to skip bind + reveal. */
   hotkey?: string;
   onClick: () => void;
 };
@@ -29,7 +30,8 @@ export const SELECTION_STATUS_BAR_META: Record<
   condition: { label: 'Condition', variant: 'secondary', hotkey: 'o' },
   qty: { label: 'Qty', variant: 'secondary', hotkey: 'q' },
   notes: { label: 'Notes', variant: 'secondary', hotkey: 'n' },
-  copy: { label: 'Copy', variant: 'primary', hotkey: 'c' },
+  // Copy is ⌘/Ctrl+C, never bare C: C is create app-wide (owner 2026-09-30, `key-registry`).
+  copy: { label: 'Copy', variant: 'primary', hotkey: COPY_HOTKEY },
   // `l` belongs to Labels (operator R-FLOW-6, 2026-09-01): the To-ship lane
   // appends the Labels verb locally and two verbs cannot share a letter on
   // one strip, so Listing → staff moved to `r` (its "rule" half).
@@ -199,26 +201,15 @@ export function useSelectionStatusBarHotkeys(
 
   useEffect(() => {
     if (!enabled || !signature) return;
-
-    const byLetter = new Map<string, string>();
-    for (const action of actionsRef.current) {
-      const letter = action.hotkey?.trim().toLowerCase();
-      if (!letter || letter.length !== 1) continue;
-      if (!byLetter.has(letter)) byLetter.set(letter, action.key);
-    }
-    if (byLetter.size === 0) return;
+    if (!actionsRef.current.some((action) => action.hotkey?.trim())) return;
 
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isEditableKeyTarget(e.target)) return;
       if (hasOpenOverlay()) return;
-
-      const letter = e.key.length === 1 ? e.key.toLowerCase() : '';
-      if (!letter || letter === '?') return;
-      const actionKey = byLetter.get(letter);
-      if (!actionKey) return;
-      const action = actionsRef.current.find((a) => a.key === actionKey);
+      if (e.key === '?') return;
+      // The first action to claim a key runs it.
+      const action = actionsRef.current.find((a) => hotkeyFires(a.hotkey, e));
       if (!action) return;
 
       e.preventDefault();

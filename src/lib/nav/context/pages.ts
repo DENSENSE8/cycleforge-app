@@ -42,6 +42,9 @@ import {
   REPLENISH_TAB_OPTIONS,
   STOCK_STATE_OPTIONS,
 } from '@/lib/inventory/inventory-nav-choices';
+import { JOURNEY_FILTER_KEYS, OPERATIONS_SAVED_VIEWS_KEY } from '@/lib/operations/saved-view-presets';
+import { DEFAULT_REPAIR_SORT, REPAIR_SORT_OPTIONS, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 
 /**
  * The import record (`/operations/imports`, `src/lib/imports/params.ts`) —
@@ -288,7 +291,7 @@ const PIPELINE_CONTROLS: NavControls = {
 };
 
 /**
- * Shipping's queue lists (To ship · Pick list · PO paired). Staff roles: the
+ * FBM's queue list (Allocate). Staff roles: the
  * universal `?staff=` assignee filter (`STAFF_FILTER_PARAM`, `sqlOrderAssignedToStaff`)
  * and `?pickedBy=` — who ACTUALLY picked (`PICK_FACTS_LATERALS`), plus the
  * pick / pack assignees the list already reads (`?pickerId=` / `?packedBy=`). Dates: order date and ship-by
@@ -332,6 +335,45 @@ const QUEUE_CONTROLS: NavControls = {
 };
 
 /**
+ * Repair service's cards (`RepairCardList`, owner 2026-09-29) on `/repair`
+ * and Sales › Repair service: Status (`?tab=`; unset = the surface's default
+ * — the station's Open tickets (in the store or arriving, owner 2026-09-30),
+ * Sales' whole book) and Sort (`?sort=`), formerly the retired repair table's
+ * header sort and toolbar. The channel is the view (All · Shipped in ·
+ * Dropped off). Status decides what is LOADED; the status chips beside the
+ * count (`?repairStatus=`: Arriving · Still needs work · Completed · Closed)
+ * narrow within it, so a new Status drops the lit chips.
+ */
+const REPAIR_CONTROLS: NavControls = {
+  choices: [
+    {
+      id: 'status',
+      label: 'Status',
+      param: 'tab',
+      options: [
+        { value: 'open', label: 'Open' },
+        { value: 'active', label: 'In the store' },
+        { value: 'incoming', label: 'Arriving' },
+        { value: 'done', label: 'Closed' },
+        { value: 'all', label: 'All' },
+      ],
+      clearParams: ['page', REPAIR_STATUS_CHIP_PARAM],
+    },
+  ],
+  sort: {
+    param: REPAIR_SORT_PARAM,
+    defaultValue: DEFAULT_REPAIR_SORT,
+    options: REPAIR_SORT_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+  },
+};
+
+/** The repair cards' saved views — held Shift paints their digits (`SavedViewPresets`). */
+const REPAIR_VIEWS = {
+  storageKey: SAVED_VIEW_STORAGE_KEY.repair_queue,
+  paramKeys: SAVED_VIEW_PARAM_KEYS.repair_queue,
+};
+
+/**
  * Shipped's period picker (`useShippedTableFilters.setPeriodRange`), now with
  * a time of day at each end (`timeFrom`/`timeTo`, PT), plus who shipped it:
  * `?staff=` (`effStaffId`), `?pickedBy=`, `?packedBy=`.
@@ -349,7 +391,8 @@ const SHIPPED_CONTROLS: NavControls = {
       fromParam: 'dateFrom',
       toParam: 'dateTo',
       clearParams: ['shippedWeekOffset', 'allDates'],
-      placeholder: 'This week',
+      // No range = every shipped package (`shippedEffectiveDateWindow`'s all-time default).
+      placeholder: 'All dates',
       fromTimeParam: 'timeFrom',
       toTimeParam: 'timeTo',
     },
@@ -409,8 +452,6 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   outbound: {
     viewKeys: true,
     items: {
-      po: { savedViews: UNSHIPPED_VIEWS, controls: QUEUE_CONTROLS },
-      pick: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
       triage: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
       shipped: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
     },
@@ -638,10 +679,75 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       param: 'q',
     },
   },
+  // Operations (Monitor). History's saved views are its own store (system
+  // presets + `/api/operations/saved-views`, painted by NavFilters through the
+  // journey URL state). Goals · Staff · Logs were admin consoles whose rail
+  // was a picker: the pickers moved into the stage (`GoalsPickerPane`,
+  // `StaffPickerPane`, `LogsPickerPane`, left of the record) and their list
+  // filters are these: Find narrows the picker (`?search=`), a choice picks
+  // the slice, Logs adds the actor. A pick writes `staffId` / `eventId`.
   operations: {
     items: {
       'packing-review': {
         search: { placeholder: 'Filter order, SKU or tracking…', source: 'url-param', param: 'q' },
+      },
+      history: {
+        savedViews: { storageKey: OPERATIONS_SAVED_VIEWS_KEY, paramKeys: [...JOURNEY_FILTER_KEYS] },
+      },
+      goals: {
+        search: { placeholder: 'Filter staff or role', source: 'url-param', param: 'search' },
+        controls: {
+          choices: [
+            {
+              id: 'goal-view',
+              label: 'Progress',
+              param: 'goalView',
+              options: [
+                { value: 'behind', label: 'Below 70%' },
+                { value: 'on-track', label: '70% – 99%' },
+                { value: 'exceeded', label: '100%+' },
+              ],
+              clearParams: [],
+            },
+          ],
+        },
+      },
+      staff: {
+        search: { placeholder: 'Filter name or ID…', source: 'url-param', param: 'search' },
+        controls: {
+          choices: [
+            {
+              id: 'staff-view',
+              label: 'Show',
+              param: 'staffView',
+              options: [
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'technician', label: 'Testing' },
+                { value: 'packer', label: 'Packing' },
+              ],
+              clearParams: [],
+            },
+          ],
+        },
+      },
+      logs: {
+        search: { placeholder: 'Filter action, source, entity…', source: 'url-param', param: 'search' },
+        controls: {
+          staff: [{ id: 'actor', param: 'actorStaffId', label: 'Actor' }],
+          choices: [
+            {
+              id: 'log-kind',
+              label: 'Log',
+              param: 'logKind',
+              options: [
+                { value: 'audit', label: 'Audit' },
+                { value: 'sal', label: 'Station activity' },
+              ],
+              clearParams: [],
+            },
+          ],
+        },
       },
     },
   },
@@ -660,33 +766,16 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     ],
   },
   home: {
-    // Daily's Find is the header's page search (bare F): narrows the agenda on `?q=`.
+    // The house two-tier sidebar (owner 2026-09-29): `G` + letter picks the
+    // parent (mode card), bare 1–3 the saved views under it. Whose work
+    // (Mine · Handed off · Everyone) and Open · Done · All live in the middle
+    // of the page for triage (`TaskBulkBar`), not here.
+    modes: { label: 'Task list' },
+    viewKeys: true,
+    // Tasks' Find is the header's page search (bare F): narrows the board on `?q=`.
     search: { placeholder: 'Find a task, order #, tracking #, ticket or person…', source: 'url-param', param: 'q' },
-    controls: {
-      choices: [
-        {
-          id: 'status',
-          label: 'Status',
-          param: 'filter',
-          options: [
-            { value: 'open', label: 'Open' },
-            { value: 'done', label: 'Done' },
-          ],
-          clearParams: [],
-        },
-        {
-          id: 'scope',
-          label: 'Scope',
-          param: 'scope',
-          options: [
-            { value: 'handed', label: 'Handed off' },
-            { value: 'everyone', label: 'Everyone' },
-          ],
-          clearParams: [],
-        },
-      ],
-    },
-    actions: [{ action: { id: 'daily.add-task', label: 'Add task', intent: 'daily:compose' } }],
+    // `C` is create app-wide; the board claims it for New task (`registerPageCreate`), N too.
+    actions: [{ action: { id: 'daily.add-task', label: 'New task', intent: 'daily:compose', hotkey: 'c' } }],
   },
   // Sales station actions plus the URL-owned Find for each searchable view.
   sales: {
@@ -701,7 +790,24 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     items: {
       counter: { actions: [] },
       sales: { search: { placeholder: 'Search sales…', source: 'url-param', param: 'sq' } },
-      repairs: { actions: [], search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' } },
+      'repairs-all': {
+        actions: [],
+        search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' },
+        savedViews: REPAIR_VIEWS,
+        controls: REPAIR_CONTROLS,
+      },
+      'repairs-shipped-in': {
+        actions: [],
+        search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' },
+        savedViews: REPAIR_VIEWS,
+        controls: REPAIR_CONTROLS,
+      },
+      'repairs-dropped-off': {
+        actions: [],
+        search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' },
+        savedViews: REPAIR_VIEWS,
+        controls: REPAIR_CONTROLS,
+      },
     },
   },
   // ── Scan Stations ───────────────────────────────────────────────────────
@@ -746,8 +852,12 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     // Resolved client-side over the cached rail; the hit writes `?lcpu=`.
     scanInput: { grammar: 'pickup', endpoint: '/api/local-pickup-orders/lines' },
   },
+  // Receiving mode: All · Shipped in · Dropped off on bare 1 · 2 · 3 (no repair surface binds a bare digit).
   repair: {
+    viewKeys: true,
     search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' },
+    savedViews: REPAIR_VIEWS,
+    controls: REPAIR_CONTROLS,
   },
   testing: {
     search: { placeholder: 'Filter tests…', source: 'url-param', param: 'search' },
@@ -813,5 +923,47 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     modes: { label: 'Domain' },
     viewKeys: true,
     search: { placeholder: 'Order, SKU, PO, tracking or bin…', source: 'url-param', param: 'q' },
+  },
+  // Automations › Studio (the canvas): its old rail (`StudioSidebarPanel`)
+  // was the lens · zoom menu over the library. Lens and zoom are choices here
+  // (unset = Build · L1, as the canvas reads them); a zoom change drops the
+  // focused node, as the menu did. The library (node palette · templates ·
+  // issues) is a stage pane beside the canvas; `Library` shows or hides it
+  // (`StudioShell` owns the intent).
+  studio: {
+    items: {
+      graph: {
+        controls: {
+          choices: [
+            {
+              id: 'lens',
+              label: 'Lens',
+              param: 'lens',
+              options: [
+                { value: 'procedure', label: 'Procedure' },
+                { value: 'static', label: 'Static' },
+                { value: 'live', label: 'Live' },
+                { value: 'flow', label: 'Flow²' },
+                { value: 'people', label: 'People' },
+                { value: 'gaps', label: 'Gaps' },
+              ],
+              clearParams: [],
+            },
+            {
+              id: 'zoom',
+              label: 'Zoom',
+              param: 'z',
+              options: [
+                { value: '0', label: 'L0 · Business map' },
+                { value: '2', label: 'L2 · Station' },
+              ],
+              clearParams: ['focus'],
+            },
+          ],
+        },
+        actionsPlacement: 'sidebar',
+        actions: [{ action: { id: 'studio.library', label: 'Library', intent: 'studio:library' } }],
+      },
+    },
   },
 };

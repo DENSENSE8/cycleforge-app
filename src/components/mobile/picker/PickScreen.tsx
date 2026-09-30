@@ -2,7 +2,7 @@
 
 /**
  * Picks — `/m/pick`, a PICK LIST only (owner 2026-09-28, BRIEF §14):
- * - the walk's progress at the very top ({@link PickProgress});
+ * - the walk's progress at the very top ({@link JobProgress});
  * - my list: the To-pick orders whose PICK assignee is me, then the unowned
  *   ones; another picker's orders are never listed (`@/lib/picking/pick-walk`).
  *   No status chips, no filters — the picker triages the list itself;
@@ -38,7 +38,7 @@ import { OUTBOUND_TRIAGE_VIEW } from '@/lib/triage/views';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { PickOrderScreen, type PickOrderDetails } from './PickOrderScreen';
-import { PickProgress } from './PickProgress';
+import { JobProgress } from '@/components/mobile/JobProgress';
 import { SetBinSheet } from './SetBinSheet';
 
 /** `?order=` — the order open on the scan card. */
@@ -186,7 +186,7 @@ export function PickScreen() {
 
   return (
     <div className={cn('flex h-full min-h-full flex-col', appMobilePageGroundClass)}>
-      <PickProgress picked={progress.picked} total={progress.total} />
+      <JobProgress done={progress.picked} total={progress.total} doneWord="picked" />
 
       <div className="flex flex-1 flex-col overflow-y-auto" data-testid="pick-queue">
         {walkDone ? (

@@ -24,6 +24,7 @@ export type DeviceAckKind =
   | 'receiving_share'
   | 'pack_scan'
   | 'unit_photo'
+  | 'stock_photo'
   | 'print_job';
 
 /** `idle → request_sent → peer_active | timed_out`. */

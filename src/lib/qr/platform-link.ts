@@ -26,7 +26,9 @@ export function platformQrOriginForSlug(orgSlug: string | null | undefined): str
 }
 
 /**
- * Absolute carton Digital Link on the platform host.
+ * Absolute carton Digital Link on the platform host — `/m/r/{id}/qc`: a phone
+ * camera opening the unbox sticker lands on the carton's quality control
+ * (in-app scans route the same label there via the dispatch table).
  * Falls back to bare `R-{id}` when slug is missing (preview / offline).
  */
 export function receivingPlatformLink(
@@ -35,7 +37,7 @@ export function receivingPlatformLink(
 ): string {
   const base = platformQrOriginForSlug(orgSlug);
   if (!base) return receivingHandle(receivingId);
-  return mobileQrUrl('r', receivingId, { baseUrl: base });
+  return `${mobileQrUrl('r', receivingId, { baseUrl: base })}/qc`;
 }
 
 /** Absolute GS1 Digital Link URL on the platform host (unit labels). */

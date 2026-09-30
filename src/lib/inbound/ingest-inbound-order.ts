@@ -18,6 +18,8 @@ import type { QueryResultRow } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
+import { writeLineFact } from '@/lib/receiving/facts/store';
+import { ensureReceivingForInboundOrder } from '@/lib/receiving/attach-box';
 import { ingestPurchase, type IngestPurchaseDeps } from './ingest-purchase';
 import { upsertInboundMirror } from './mirror';
 import { upsertPurchaseLink, type TxClient } from './purchase-links';
@@ -37,7 +39,10 @@ import {
   type InboundOrderNeed,
 } from './inbound-order-draft';
 
-export type InboundOrderOrigin = 'manual' | 'csv' | 'chat' | 'sync' | 'auto_replenish';
+export type InboundOrderOrigin = 'manual' | 'csv' | 'chat' | 'sync' | 'auto_replenish' | 'backfill';
+
+/** Ledger source of the one writer allowed to land a REPAIR drop-off: the repair ticket itself. */
+export const REPAIR_DROP_OFF_SOURCE = 'repair_intake';
 
 export class InboundOrderRefused extends Error {
   constructor(
@@ -51,7 +56,7 @@ export class InboundOrderRefused extends Error {
 
 export interface IngestInboundOrderContext {
   origin: InboundOrderOrigin;
-  /** Ledger source: 'form' · 'csv' · 'chat' · 'zoho' · 'ebay' · 'amazon' · 'replenish'. */
+  /** Ledger source: 'form' · 'csv' · 'chat' · 'zoho' · 'ebay' · 'amazon' · 'replenish' · 'repair_intake'. */
   source: string;
   staffId: number | null;
   /** The source's idempotency handle; defaults to the order identity + content hash. */
@@ -285,6 +290,59 @@ async function projectLocalPickup(
 }
 
 /**
+ * A repair drop-off is in hand the moment the ticket is written: it gets its
+ * own carton (the `R-{id}` Receiving and Cmd-K show), leaves Incoming (the
+ * line is MATCHED, never EXPECTED), and carries every repair signal the
+ * Receiving surfaces read — carton and line `intake_type = 'repair'`,
+ * `is_repair_service`, and the `repair_service` line fact naming the ticket.
+ */
+async function projectRepairDropOff(
+  client: TxClient,
+  orgId: OrgId,
+  draft: InboundOrderDraft,
+  identity: InboundOrderIdentity,
+  inboundOrderId: number,
+  landed: readonly IngestedInboundLine[],
+): Promise<number | null> {
+  if (draft.type !== 'REPAIR') return null;
+
+  const receivingId = await ensureReceivingForInboundOrder({
+    sourceType: 'manual',
+    sourceOrderId: identity.externalOrderId,
+    organizationId: orgId,
+    inboundOrderId,
+    db: client as unknown as Parameters<typeof ensureReceivingForInboundOrder>[0]['db'],
+  });
+  await client.query(
+    `UPDATE receiving_carton
+        SET intake_type = 'repair',
+            updated_at = NOW()
+      WHERE id = $1 AND organization_id = $2`,
+    [receivingId, orgId],
+  );
+  const lineIds = landed.map((l) => l.receivingLineId);
+  await client.query(
+    `UPDATE receiving_line
+        SET receiving_id = $1,
+            intake_type = 'repair',
+            is_repair_service = TRUE,
+            workflow_status = CASE WHEN workflow_status = 'EXPECTED'
+                                   THEN 'MATCHED'::inbound_workflow_status_enum
+                                   ELSE workflow_status END,
+            updated_at = NOW()
+      WHERE organization_id = $2 AND id = ANY($3::int[])`,
+    [receivingId, orgId, lineIds],
+  );
+  const factDeps = {
+    query: ((_org: OrgId, sql: string, params?: unknown[]) => client.query(sql, params)) as typeof tenantQuery,
+  };
+  for (const lineId of lineIds) {
+    await writeLineFact(orgId, lineId, 'repair_service', { isRepairService: true, ticketRef: identity.externalOrderId }, factDeps);
+  }
+  return receivingId;
+}
+
+/**
  * Land one order on the caller's transaction client. Refusals throw
  * `InboundOrderRefused`; the caller's transaction rolls back on any throw.
  */
@@ -301,6 +359,9 @@ export async function ingestInboundOrderInTx(
   const identity = inboundOrderIdentity(draft);
   if (identity.sourceType === 'zoho' && ctx.origin !== 'sync') {
     throw new InboundOrderRefused('Zoho orders arrive by sync, not by hand', 400);
+  }
+  if (draft.type === 'REPAIR' && (ctx.source !== REPAIR_DROP_OFF_SOURCE || identity.sourceType !== 'manual')) {
+    throw new InboundOrderRefused('A repair drop-off lands from its repair ticket, not by hand', 400);
   }
   const fingerprint = inboundOrderFingerprint(draft);
   const contentHash = sha256(fingerprint);
@@ -499,6 +560,8 @@ export async function ingestInboundOrderInTx(
       [identity.paintPlatform, priorityTier, orgId, inboundOrderId],
     );
   }
+
+  receivingId = (await projectRepairDropOff(client, orgId, draft, identity, inboundOrderId, landed)) ?? receivingId;
 
   const localPickupOrderId = await projectLocalPickup(
     query,

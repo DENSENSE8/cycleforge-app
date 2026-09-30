@@ -21,8 +21,6 @@ describe('slotCatalogFor', () => {
     assert.ok(slotCatalogFor('pickup'));
     // Wave 1.1 (seller-table-program §03): Ready is opted in.
     assert.ok(slotCatalogFor('ready'));
-    // Repair is a sheet family (wave 1.4+).
-    assert.ok(slotCatalogFor('repair'));
     // NOT `fba`: its catalog exists but the board display was torn out
     // 2026-08-30. Opt-in is per-MOUNT — a registered id whose table renders
     // nothing lets the route store an org layout into a void, silently.
@@ -42,7 +40,6 @@ describe('slotMorphsFor', () => {
     assert.deepEqual(slotMorphsFor('pickup'), ['sheet']);
     // Ready is the second sheet family (wave 1.1).
     assert.deepEqual(slotMorphsFor('ready'), ['sheet']);
-    assert.deepEqual(slotMorphsFor('repair'), ['sheet']);
     // An unmounted table accepts nothing — see the catalog test above.
     assert.deepEqual(slotMorphsFor('fba'), []);
   });

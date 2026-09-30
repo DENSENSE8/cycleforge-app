@@ -14,8 +14,8 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
   // `/incoming` is the Deliveries desk (On the way · History · PO Mailbox) — the title mirrors the sidebar page LABEL, which the name law…
   assert.equal(getMobileAppTitle('/incoming'), 'Deliveries');
   assert.equal(getMobileAppTitle('/pickup'), 'Local Pickup');
-  // 'Repair Service', not 'Repair':
-  assert.equal(getMobileAppTitle('/repair'), 'Repair Service');
+  // The Receiving mode's label, not 'Repair':
+  assert.equal(getMobileAppTitle('/repair'), 'Repair service');
 });
 
 test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () => {

@@ -41,10 +41,6 @@ export function useRackLabelPrinter() {
   const level = stored.level;
 
   const [isPrinting, setIsPrinting] = useState(false);
-  const [printProgress, setPrintProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
   const [overrideStep, setOverrideStep] = useState<Step | null>(null);
 
   useEffect(() => {
@@ -153,7 +149,6 @@ export function useRackLabelPrinter() {
         return false;
       }
       setIsPrinting(true);
-      setPrintProgress(null);
       try {
         const result = await printRackLabelRun({
           roomName: selectedRoom,
@@ -161,7 +156,6 @@ export function useRackLabelPrinter() {
           gln: orgGs1.gln,
           orgSlug: user?.organizationSlug,
           register: registerRackLocations,
-          onProgress: (done, total) => setPrintProgress({ done, total }),
         });
         if (result.status === 'register_failed') {
           toast.error(result.error || 'Could not register bay for printing');
@@ -176,7 +170,6 @@ export function useRackLabelPrinter() {
         return false;
       } finally {
         setIsPrinting(false);
-        setPrintProgress(null);
       }
     },
     [orgGs1.gln, selectedRoom, user?.organizationSlug],
@@ -226,7 +219,6 @@ export function useRackLabelPrinter() {
     missingLetter,
     currentSegments,
     isPrinting,
-    printProgress,
     // config sheet
     configOpen,
     setConfigOpen,

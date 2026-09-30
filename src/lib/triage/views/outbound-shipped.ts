@@ -1,15 +1,21 @@
 /**
- * Shipping › Shipped — `outbound.shipped`, the one-row density
- * (`TriageCardList density="row"`, owner 2026-09-28). Goal: find a shipped
- * package and read what happened to it. One row per PACKAGE (carrier
- * tracking number; a pack scan with none keys as `scan-<id>`): state
- * (`shippedPackageFace`) → tracking → title → shipped · carrier status ·
- * order · packed by → "→ Resolve" on an unmatched scan. No chips: the period, type,
- * carrier and status facets (`ostatus`, …) and Find are the sidebar's, read by
- * the feed. The open package is `?shipment=` (`SHIPMENT_RECORD_PARAM`).
+ * Shipping › Shipped — `outbound.shipped`, on the Allocate card's anatomy
+ * (owner 2026-09-29: the Shipped page wears the To-ship / Allocate display).
+ * Goal: find a shipped package and read what happened to it. One card per
+ * PACKAGE (carrier tracking number; a pack scan with none keys as
+ * `scan-<id>`): state rail + glyph (`shippedPackageFace`) · order number ·
+ * channel · packer · carrier status + tracking · shipped stamp top-right; its
+ * lines are the box's order lines (×qty · condition · price, the Allocate
+ * card's facts) folded behind "+N items"; the package's status sits at the
+ * card's bottom-right where Allocate paints its next step ("→ Resolve" on an
+ * unmatched scan). Status pills (`?cardStatus=`) sit beside the count, the
+ * Allocate summary row's place; the period, type, carrier and tracking-status
+ * facets and Find are the sidebar's, read by the feed. The open package is
+ * `?shipment=` (`SHIPMENT_RECORD_PARAM`).
  */
 
 import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { OUTBOUND_STATE_META } from '@/lib/outbound-state';
 import { SHIPMENT_RECORD_PARAM } from '@/lib/shipments/shipment-record-types';
 
 export const OUTBOUND_SHIPPED_VIEW: TriageViewDecl = {
@@ -17,19 +23,18 @@ export const OUTBOUND_SHIPPED_VIEW: TriageViewDecl = {
   grain: 'package',
   noun: { one: 'package', many: 'packages' },
   listLabel: 'Shipped packages',
-  testIdPrefix: 'shipped-row',
-  bodyTestId: 'shipped-rows',
-  storageKeys: { pageMode: 'cf:shipped-rows:page-mode', scrollTop: 'cf:shipped-rows:scroll-top' },
+  testIdPrefix: 'shipped-card',
+  bodyTestId: 'shipped-cards',
+  storageKeys: { pageMode: 'cf:shipped-cards:page-mode', scrollTop: 'cf:shipped-cards:scroll-top' },
   recordParams: [SHIPMENT_RECORD_PARAM, 'openOrderId'],
-  chips: { owner: 'host', param: 'ostatus' },
+  chips: { owner: 'face', param: 'cardStatus' },
   paging: 'client',
-  status: 'state',
+  status: 'date',
   facts: [
-    { id: 'shipped', tier: 'always' },
-    { id: 'carrier', tier: 'always' },
-    { id: 'order', tier: 'always' },
-    { id: 'packed', tier: 'always' },
+    { id: 'qty', tier: 'always' },
+    { id: 'condition', tier: 'always' },
+    { id: 'price', tier: 'always' },
   ],
   sections: null,
-  next: ['Resolve'],
+  next: ['Resolve', ...Object.values(OUTBOUND_STATE_META).map((meta) => meta.label)],
 };

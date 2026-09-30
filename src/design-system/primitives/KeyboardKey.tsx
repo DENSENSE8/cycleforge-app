@@ -57,8 +57,10 @@ const TONE_CLASS: Record<KeyboardKeyTone, string> = {
     'border border-border-soft bg-surface-card text-text-default',
     'shadow-[0_1px_0_0_color-mix(in_oklab,currentColor_22%,transparent)]',
   ),
+  // The face lifts only 5%: at 12% it pulled white ink on a solid AA fill (amber-700 / emerald-700 /
+  // blue-600, 5.0–5.5:1) down to 4.1–4.3:1 on the cap. The edge and lip still carve the key.
   inverse: cn(
-    'border border-current/30 bg-current/12 text-current',
+    'border border-current/30 bg-current/5 text-current',
     'shadow-[0_1px_0_0_color-mix(in_oklab,currentColor_40%,transparent)]',
   ),
 };

@@ -2,7 +2,8 @@
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { taskDeskRecordLabel, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
-import { workStatusLabel } from '@/lib/work-orders/work-status-display';
+import { TASK_STATUS_FACE } from '@/design-system/tokens/task-status';
+import { taskStatusOf } from '@/lib/tasks/task-status';
 import { formatDateKeyShort } from '@/utils/date';
 
 /** Epoch ms → the civil-day face every other date slot paints. */
@@ -22,10 +23,7 @@ export function resolveTasksSlotValue(
     case 'tasks.task':
       return { kind: 'value', text: `#${row.id}` };
     case 'tasks.status':
-      // `workStatusLabel` returns null for a label it does not know; every
-      // `assignment_status_enum` value is in its table, so the fallback is
-      // defensive rather than reachable.
-      return { kind: 'value', text: workStatusLabel(row.status) ?? row.status };
+      return { kind: 'value', text: TASK_STATUS_FACE[taskStatusOf(row)].label };
     case 'tasks.priority':
       return { kind: 'value', text: row.urgency === 'urgent' ? 'Urgent' : 'Normal' };
     case 'tasks.assignee':

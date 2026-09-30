@@ -1,6 +1,6 @@
 /** Orders row → {@link CompoundRowView}. */
 
-import type { LifecycleState } from '@cycleforge/design-tokens';
+import { SERVICE_LEVEL, type LifecycleState } from '@cycleforge/design-tokens';
 import {
   firstNote,
   type CompoundDelay,
@@ -10,6 +10,7 @@ import {
 import { ordersNextStep } from '@/lib/orders/orders-next-step';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import type { ShippedOrder } from '@/types/orders';
+import { asServiceLevel, fastestServiceLevel, serviceDowngrade } from '@/lib/shipping/service-level';
 import {
   formatDateKeyMedium,
   formatDateKeyShort,
@@ -221,15 +222,33 @@ export function ordersOrderedAt(
 }
 
 /**
+ * What an urgent order's mark says — null when the order is not urgent. Names
+ * WHY: a paid-for fast service on a Ground label ("2-day → Ground"), else the
+ * buyer's service ("Next day"), else the operator's plain "Urgent". One word
+ * for the desk rail and the phone card.
+ */
+export function ordersUrgentLabel(
+  record: Pick<ShippedOrder, 'is_urgent' | 'service_level' | 'label_service_code'>,
+): string | null {
+  if (!record.is_urgent) return null;
+  const level = asServiceLevel(record.service_level);
+  return (
+    serviceDowngrade(level, record.label_service_code)?.label ??
+    (level && SERVICE_LEVEL[level].urgent ? SERVICE_LEVEL[level].label : 'Urgent')
+  );
+}
+
+/**
  * The row's leading rail — TRIAGE HEAT, in precedence order.
  * exception is the same bob in RED: operator 2026-09-15, "the out of stock
  */
 export function ordersEdgeMark(
-  record: Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock' | 'has_exception'>,
+  record: Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock' | 'has_exception' | 'service_level' | 'label_service_code'>,
 ): CompoundRowView['edgeMark'] {
-  if (record.is_urgent) {
+  const urgentLabel = ordersUrgentLabel(record);
+  if (urgentLabel) {
     return {
-      label: 'Urgent',
+      label: urgentLabel,
       kind: 'urgent',
       barClass: 'bg-yellow-400',
       pulse: true,
@@ -255,6 +274,20 @@ export function ordersEdgeMark(
     };
   }
   return null;
+}
+
+/** A multi-line order's band rail: the hottest fact any of its lines carries. */
+export function ordersGroupEdgeMark(
+  rows: ReadonlyArray<Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock' | 'has_exception' | 'service_level' | 'label_service_code'>>,
+): CompoundRowView['edgeMark'] {
+  const downgraded = rows.find((row) => serviceDowngrade(asServiceLevel(row.service_level), row.label_service_code));
+  return ordersEdgeMark({
+    has_exception: rows.some((row) => Boolean(row.has_exception)),
+    is_urgent: rows.some((row) => Boolean(row.is_urgent)),
+    is_out_of_stock: rows.some((row) => Boolean(row.is_out_of_stock)),
+    service_level: downgraded?.service_level ?? fastestServiceLevel(rows.map((row) => asServiceLevel(row.service_level))),
+    label_service_code: downgraded?.label_service_code ?? null,
+  });
 }
 
 /**

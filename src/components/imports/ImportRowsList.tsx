@@ -25,6 +25,7 @@ import { TriageCardList, type TriageFamily, type TriageFeed } from '@/design-sys
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut, useTriagePageMode } from '@/design-system/components/triage-card-list/triage-list-state';
+import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { IMPORT_ROW_OUTCOME_LIFECYCLE } from '@/design-system/tokens/import-record-lifecycle';
 import { writeClipboardText } from '@/lib/clipboard';
 import type { ImportRowOutcome, ImportRunRowItem } from '@/lib/imports/types';
@@ -263,7 +264,8 @@ export function ImportRowsList() {
         allClear={<TriageAllClear title="No imported orders in this window" detail="Widen the dates or clear a filter in the sidebar." />}
         record={{
           title: openRow ? `Order ${openRow.externalOrderId}` : openRowId != null ? `Import row ${openRowId}` : 'Order',
-          subtitle: openRow ? (openRow.title ?? IMPORT_ROW_OUTCOME_LIFECYCLE[openRow.outcome].label) : undefined,
+          subtitle: openRow?.title ?? undefined,
+          actions: openRow ? <LifecycleCode state={IMPORT_ROW_OUTCOME_LIFECYCLE[openRow.outcome]} /> : undefined,
           noun: 'imported order',
           testId: 'import-row-record-plane',
           summary: (

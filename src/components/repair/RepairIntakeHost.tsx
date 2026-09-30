@@ -1,13 +1,27 @@
 'use client';
 
-/** Repair intake overlay host — the `?new=true` host for the **rail-less** repair desk. */
+/**
+ * Repair intake — the ONE Add of Repair service (`/repair` and Sales ›
+ * Repair service): the `New repair` CTA top-right of the page (the desk
+ * chrome's primary slot, bare `N` while it is painted) and the full-screen
+ * intake it opens (also `?new=true`). Closing after a submit opens the new
+ * repair.
+ */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { Plus } from '@/components/Icons';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { useRepairNewParam } from '@/hooks/useRepairNewParam';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { toast } from '@/lib/toast';
+import { qk } from '@/queries/keys';
 import {
   RepairIntakeForm,
   type RepairFormData,
@@ -15,18 +29,65 @@ import {
 } from '@/components/repair/RepairIntakeForm';
 
 const REPAIR_SUBMIT_TIMEOUT_MS = 60_000;
+const NEW_REPAIR_KEY = 'N';
 
 export function RepairIntakeHost() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
   const { newPulse, clearPulse } = useRepairNewParam();
   const [showIntakeForm, setShowIntakeForm] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   // Idempotency key for the in-flight intake submission. Persists across failed
   // retries (so a replay dedupes the Zendesk ticket) and is cleared on success.
   const repairIdemKey = useRef<string | null>(null);
+  // The repair this intake created — its record opens when the intake closes.
+  const createdId = useRef<number | null>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const addAction = useMemo(
+    () => (
+      <DeskHeaderAction
+        ref={addRef}
+        type="button"
+        variant="primary"
+        size="md"
+        icon={<Plus aria-hidden />}
+        label="New repair"
+        shortcut={NEW_REPAIR_KEY}
+        aria-keyshortcuts={NEW_REPAIR_KEY}
+        onClick={() => setShowIntakeForm(true)}
+        data-testid="repair-new"
+      />
+    ),
+    [],
+  );
+
+  // Bare `N` — only while the CTA is painted (an open record or fullscreen hides the header row).
+  useEffect(() => {
+    if (showIntakeForm) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key.toLowerCase() !== 'n' || isEditableKeyTarget(e.target) || hasOpenOverlay()) return;
+      if (addRef.current?.offsetParent == null) return;
+      e.preventDefault();
+      setShowIntakeForm(true);
+    };
+    window.addEventListener('keydown', onKey);
+    const unregister = registerShortcutOverviewGroup({
+      id: 'repair-new',
+      title: 'Repair service',
+      rows: [{ keys: [NEW_REPAIR_KEY], label: 'New repair' }],
+    });
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      unregister();
+    };
+  }, [showIntakeForm]);
 
   // One-shot: paint intake from optimistic/URL pulse, then strip `?new=`.
   useEffect(() => {
@@ -39,6 +100,13 @@ export function RepairIntakeHost() {
 
   const handleCloseForm = () => {
     setShowIntakeForm(false);
+    const id = createdId.current;
+    if (id == null) return;
+    createdId.current = null;
+    const next = new URLSearchParams(window.location.search);
+    next.delete('new');
+    next.set('openRepair', String(id));
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   };
 
   const handleSubmitForm = async (data: RepairFormData): Promise<RepairSubmitResult | null> => {
@@ -70,6 +138,8 @@ export function RepairIntakeHost() {
 
       if (response.ok && result.success) {
         repairIdemKey.current = null;
+        createdId.current = Number(result.id);
+        void queryClient.invalidateQueries({ queryKey: qk.repairs.all });
         const ticketUrl: string | null =
           typeof result.zendeskTicketUrl === 'string' ? result.zendeskTicketUrl : null;
         const ticketSuffix = result.zendeskTicketNumber
@@ -110,12 +180,17 @@ export function RepairIntakeHost() {
     }
   };
 
-  return isMounted && showIntakeForm
-    ? createPortal(
-        <div className="fixed inset-0 z-panelOverlay bg-surface-card">
-          <RepairIntakeForm onClose={handleCloseForm} onSubmit={handleSubmitForm} />
-        </div>,
-        document.body,
-      )
-    : null;
+  return (
+    <>
+      <DeskActionSlotRegistrar role="primary">{addAction}</DeskActionSlotRegistrar>
+      {isMounted && showIntakeForm
+        ? createPortal(
+            <div className="fixed inset-0 z-panelOverlay bg-surface-card">
+              <RepairIntakeForm onClose={handleCloseForm} onSubmit={handleSubmitForm} />
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
 }

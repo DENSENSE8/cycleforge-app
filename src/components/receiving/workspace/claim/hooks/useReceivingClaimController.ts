@@ -24,6 +24,7 @@ import { useClaimTicketSearch } from './useClaimTicketSearch';
 import { useClaimTemplate } from './useClaimTemplate';
 import { useClaimSellerMessage } from './useClaimSellerMessage';
 import { useClaimTicketReply } from './useClaimTicketReply';
+import { noteUnboxTicketLinked } from '@/lib/receiving/unbox-scan-feedback-store';
 import {
   nextAutoCreateFromEmptyTrackingFlag,
   shouldAutoCreateFromEmptyTrackingSeed,
@@ -626,6 +627,13 @@ export function useReceivingClaimController({
       setLinkUpdateStatus('idle');
       setFiledTicket({ number: ticketNumber, url, id: selected.id });
       seller.resetBootstrap();
+      noteUnboxTicketLinked({
+        receivingId,
+        ticketId: selected.id,
+        subject: typeof data.subject === 'string' ? data.subject : selected.subject,
+        status: selected.status,
+        url,
+      });
       return { ok: true, ticketNumber, ticketId: selected.id, ticketUrl: url };
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error');

@@ -27,6 +27,7 @@ import {
   type SearchDossierLink,
 } from '@/lib/search/search-dossier-model';
 import { cartonHeaderIdentity } from '@/components/receiving/inspector/carton-inspector-model';
+import { InboundEvidencePhotosButton } from '@/components/receiving/record/InboundEvidencePhotosButton';
 
 export function SearchReceivingDossier({
   receivingId,
@@ -162,6 +163,9 @@ export function SearchReceivingDossier({
       })}
       emptyEvents="No history on this carton yet."
       facts={facts}
+      // The inbound record's evidence door, same place (top of the aside,
+      // above the facts): linked photos open full-res in the shared viewer.
+      evidence={<InboundEvidencePhotosButton key={`photos:${receivingId}`} receivingId={receivingId} poRef={po || null} />}
       relationship={(
         <RecordFlowFacts
           direction="inbound"

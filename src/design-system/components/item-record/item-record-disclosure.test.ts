@@ -121,4 +121,17 @@ describe('ItemRecordRow disclosure', () => {
     assert.match(html, /ThinkPad X1 Carbon Gen 9/);
     assert.match(html, /LEN-X1C-G9|X1C-G9/, 'the SKU ledger cell still paints');
   });
+
+  it('uses the condition chip itself as the action — never a button inside a button', () => {
+    const html = render({
+      conditionAction: { label: 'Edit condition in dock', onClick: () => {} },
+    });
+    const condition = html.slice(
+      html.indexOf('data-col="condition"'),
+      html.indexOf('data-col="serial"'),
+    );
+
+    assert.match(condition, /aria-label="Edit condition in dock"/);
+    assert.equal(condition.match(/<button/g)?.length, 1);
+  });
 });

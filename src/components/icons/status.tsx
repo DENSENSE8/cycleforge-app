@@ -7,6 +7,7 @@ import {
   CircleDot as LucideCircleDot,
   CircleCheck as LucideCircleCheck,
   CirclePause as LucideCirclePause,
+  CircleStop as LucideCircleStop,
   PackageX as LucidePackageX,
 } from 'lucide-react';
 
@@ -112,4 +113,9 @@ export const PackageX = ({ className = "w-6 h-6" }: { className?: string }) => (
 /** On hold — `HLD`. */
 export const CirclePause = ({ className = "w-6 h-6" }: { className?: string }) => (
     <LucideCirclePause className={className} />
+);
+
+/** Stop a running job for good (cancel a print run) — the sibling of {@link CirclePause}. */
+export const CircleStop = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideCircleStop className={className} />
 );

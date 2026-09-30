@@ -1572,7 +1572,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           ) : null}
           <DataTableZoomToggle />
           {/* Renders nothing at all off a desk stage — see the component. */}
-          <DeskRecordViewSwitch labels="wide" />
+          <DeskRecordViewSwitch />
         </span>
       </div> : null}
         <div

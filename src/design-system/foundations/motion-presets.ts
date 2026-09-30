@@ -240,6 +240,13 @@ export const motionTransition = {
   /** Work order assignment overlay backdrop — opacity only */
   overlayScrim: fadeInstant,
 
+  /**
+   * Print banner (macOS-notification drop under the header) — a settled spring
+   * with a whisper of bounce (0.12; an ops tool, never springy). Pair with
+   * `motionPresence.printBanner`; the stack's `layout` reflow rides it too.
+   */
+  printBannerDrop: { type: 'spring', visualDuration: 0.36, bounce: 0.12 } satisfies Transition,
+
   /** Centered assignment modal shell — `springSnappy` */
   workOrderModalSpring: springSnappy,
 
@@ -593,6 +600,18 @@ export const motionPresence = {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
+  },
+  /** Print banner card — drops from under the header, slightly small, and folds back up toward the Printing key on dismiss. */
+  printBanner: {
+    initial: { opacity: 0, y: -24, scale: 0.96 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -16, scale: 0.92 },
+  },
+  /** Print job sheet (the header key's expanded list) — a short drop from the key. */
+  printSheet: {
+    initial: { opacity: 0, y: -8, scale: 0.98 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -8, scale: 0.98 },
   },
   workOrderModal: {
     initial: { opacity: 0, scale: 0.94, y: 14 },

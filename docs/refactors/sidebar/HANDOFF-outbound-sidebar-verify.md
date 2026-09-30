@@ -35,9 +35,9 @@ report problems there instead.
    ```sh
    cd /tmp && rm -f cj && id=$(curl -s -H 'x-tenant-slug: usav' http://localhost:3050/api/auth/staff-picker | python3 -c "import json,sys;d=json.load(sys.stdin);print(next(s['id'] for s in d['staff'] if s['name'].lower().startswith('michael')))") && curl -s -c cj -H 'x-tenant-slug: usav' -H 'content-type: application/json' -d "{\"staffId\":$id,\"deviceKind\":\"personal\"}" http://localhost:3050/api/auth/signin
    ```
-   Michael has Shipping on the contextual sidebar through the staff setting
-   `nav.contextual.outbound`. Everyone else is still `legacy` until
-   `NAV_CONTEXT_ROLLOUT.outbound` flips in `src/lib/nav/context/rollout.ts`.
+   Shipping is on the contextual sidebar for every org and staffer:
+   `NAV_CONTEXT_ROLLOUT.outbound` is `contextual` (2026-09-29). Michael's old
+   staff-only `nav.contextual.outbound` override was removed.
 
 ## The design system (what "correct" means)
 

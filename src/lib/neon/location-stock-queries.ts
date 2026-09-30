@@ -3,6 +3,7 @@
 import { tenantQuery } from '../tenancy/db';
 import type { OrgId } from '../tenancy/constants';
 import { productImageUrl } from '../photos/product-image-url';
+import { resolveSkuIdentityTitle } from '../sku/sku-identity-law';
 import { photoContentUrl } from '../photos/display-url';
 import type { LocationStockTableRow } from '../inventory/location-stock-row';
 import { escapeLike } from '../sql-like';
@@ -23,7 +24,12 @@ interface StockByLocationDbRow {
   location_barcode: string | null;
   room: string | null;
   sku: string;
-  product_title: string | null;
+  stock_id: number | string | null;
+  home_location: string | null;
+  title_override: string | null;
+  catalog_title: string | null;
+  zoho_title: string | null;
+  stock_title: string | null;
   is_provisional: boolean | null;
   cover_photo_id: number | string | null;
   catalog_image_url: string | null;
@@ -145,11 +151,12 @@ export async function getStockByLocation(args: {
         l.row_label,
         l.col_label,
         p.sku,
-        COALESCE(
-          NULLIF(ss.display_name_override, ''),
-          NULLIF(ss.product_title, ''),
-          NULLIF(sc.product_title, '')
-        )                                      AS product_title,
+        ss.id                                  AS stock_id,
+        NULLIF(TRIM(ss.location), '')          AS home_location,
+        NULLIF(ss.display_name_override, '')   AS title_override,
+        NULLIF(sc.product_title, '')           AS catalog_title,
+        NULLIF(zi.name, '')                    AS zoho_title,
+        NULLIF(ss.product_title, '')           AS stock_title,
         COALESCE(ss.is_provisional, false)     AS is_provisional,
         ph.cover_photo_id,
         NULLIF(sc.image_url, '')               AS catalog_image_url,
@@ -173,12 +180,13 @@ export async function getStockByLocation(args: {
       LEFT JOIN items zi
         ON zi.sku = p.sku
        AND zi.organization_id = $1
-      -- A placeholder's cover: the first SKU_STOCK photo on its sku_stock row.
+      -- The SKU's own cover: the first SKU_STOCK photo on its sku_stock row —
+      -- a placeholder's, or one uploaded from the stock record (it wins over
+      -- the catalog / Zoho image, the "our cover first" precedence).
       LEFT JOIN LATERAL (
         SELECT MIN(pel.photo_id) AS cover_photo_id
           FROM photo_entity_links pel
-         WHERE ss.is_provisional = true
-           AND pel.organization_id = $1
+         WHERE pel.organization_id = $1
            AND pel.entity_type = 'SKU_STOCK'
            AND pel.entity_id = ss.id
            AND pel.link_role = 'primary'
@@ -194,7 +202,12 @@ export async function getStockByLocation(args: {
       j.location_barcode,
       j.room,
       j.sku,
-      j.product_title,
+      j.stock_id,
+      j.home_location,
+      j.title_override,
+      j.catalog_title,
+      j.zoho_title,
+      j.stock_title,
       j.is_provisional,
       j.cover_photo_id,
       j.catalog_image_url,
@@ -207,7 +220,10 @@ export async function getStockByLocation(args: {
       COUNT(*) OVER ()::int                    AS total_count
     FROM joined j
     WHERE ($4::text IS NULL OR (
-            COALESCE(j.product_title, '')      ILIKE $4
+            COALESCE(j.title_override, '')     ILIKE $4
+         OR COALESCE(j.catalog_title, '')      ILIKE $4
+         OR COALESCE(j.zoho_title, '')         ILIKE $4
+         OR COALESCE(j.stock_title, '')        ILIKE $4
          OR j.sku                              ILIKE $4
          OR COALESCE(j.location_name, '')      ILIKE $4
          OR COALESCE(j.location_barcode, '')   ILIKE $4
@@ -247,7 +263,19 @@ export async function getStockByLocation(args: {
       location_barcode: row.location_barcode,
       room: row.room,
       sku: row.sku,
-      product_title: row.product_title,
+      stock_id: row.stock_id == null ? null : Number(row.stock_id),
+      home_location: row.home_location,
+      // An operator's explicit override wins; else the SKU identity law
+      // (catalog → Zoho item name), then the sku_stock title — where a TMP
+      // placeholder's operator-typed title lives (it has no catalog row).
+      product_title:
+        row.title_override ??
+        (resolveSkuIdentityTitle({
+          catalog_product_title: row.catalog_title,
+          zoho_item_title: row.zoho_title,
+          item_name: row.stock_title,
+        }) ||
+          null),
       is_provisional: Boolean(row.is_provisional),
       image_url:
         row.cover_photo_id != null

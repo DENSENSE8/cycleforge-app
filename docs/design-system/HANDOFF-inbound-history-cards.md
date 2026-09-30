@@ -1,5 +1,9 @@
 # Handoff prompt — Inbound history (Docked) onto the triage card list
 
+> **2026-09-29:** `CartonRecordView` / `useCartonVerbs` named below are deleted — the carton opens in
+> the one shared record (`src/design-system/components/record-ledger/RecordView.tsx`, verbs
+> `useInboundCartonVerbs` in the record header).
+
 Paste everything below the line into a fresh session.
 
 ---

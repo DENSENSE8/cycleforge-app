@@ -2,20 +2,21 @@
 
 /**
  * Inventory › **Stock** — every (location, SKU) pair holding stock,
- * warehouse-wide, as the shared three-row triage card. State · bin identity ·
- * title · SKU · room · qty → Count / Pair. Room chips narrow the loaded pairs
- * (`?room=`); Find and the State funnel are the sidebar's (server). The open
+ * warehouse-wide, as the shared three-row triage card (room · bin … last
+ * count; title; count · SKU). Room chips narrow the loaded pairs (`?room=`);
+ * Find and the State funnel are the sidebar's (server). The page's one CTA,
+ * Add stock, opens the inline form (a new product is minted there). The open
  * pair (`?open=<loc:sku:source>`) reads in the record plane.
  */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { format } from 'date-fns';
 import { Plus } from '@/components/Icons';
-import { BinChip } from '@/components/ui/CopyChip';
+import { CopyChip } from '@/components/ui/CopyChip';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
-import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
-import { RecordLedgerSummaryPane, RecordLedgerTally } from '@/design-system/components/record-ledger/RecordLedgerSummary';
+import { RecordLedgerSummaryPane } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import type { RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import { LIFECYCLE_GLYPH } from '@/design-system/components/record-ledger/LifecycleCode';
@@ -29,8 +30,7 @@ import { STOCK_LIFECYCLE } from '@/design-system/tokens/stock-lifecycle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useProvisionalSku, useSkuExceptionsRealtime } from '@/hooks/useProvisionalSkus';
-import { SkuExceptionCreateForm } from '@/components/inventory/sku-exceptions/SkuExceptionCreateForm';
-import { SkuExceptionEvidence } from '@/components/inventory/sku-exceptions/SkuExceptionEvidence';
+import { SkuExceptionEvidence, SkuExceptionFacts } from '@/components/inventory/sku-exceptions/SkuExceptionEvidence';
 import type { RowGroup } from '@/lib/group-rows';
 import { isStockDeltaActivity } from '@/lib/inventory/stock-live-refresh';
 import {
@@ -46,14 +46,13 @@ import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { INVENTORY_STOCK_ROUTE_PARAMS } from '@/lib/routing/query-mode-routes';
 import { parseRouteParams } from '@/lib/routing/route-params';
 import { INVENTORY_STOCK_VIEW } from '@/lib/triage/views';
-import { stockLocationFace, stockRecordNext, stockRecordState, stockRecordTitle } from './stock-record';
-import { StockEvidence, StockRecordStatus, stockSummary } from './StockEvidence';
+import { stockLocationFace, stockRecordState, stockRecordTitle } from './stock-record';
+import { StockEvidence, stockSummary } from './StockEvidence';
+import { StockAddForm } from './StockAddForm';
+import { cn } from '@/utils/_cn';
 
 const VIEW = INVENTORY_STOCK_VIEW;
 const STOCK_PATH = '/inventory/stock';
-
-/** The plane's record id while it holds the New temp SKU form (no row carries it). */
-const CREATE_ID = -1;
 
 /** A burst of counts (a gun session) costs one loader re-read. */
 const LIVE_REFRESH_DEBOUNCE_MS = 400;
@@ -152,11 +151,10 @@ export function StockLedger({ rows, rooms, selectedStates, totalCount, capped }:
   const openProvisionalSku = openRecord?.is_provisional ? openRecord.sku : requestedSku;
   const provisionalRecord = useProvisionalSku(openProvisionalSku);
   useSkuExceptionsRealtime();
-  const [creating, setCreating] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const openRow = useCallback(
     (row: LocationStockTableRow) => {
-      setCreating(false);
       writeRecord((params) => {
         params.set('open', locationStockRowId(row));
         if (row.is_provisional) params.set('sku', row.sku);
@@ -166,7 +164,6 @@ export function StockLedger({ rows, rooms, selectedStates, totalCount, capped }:
     [writeRecord],
   );
   const closeRecord = useCallback(() => {
-    setCreating(false);
     writeRecord((params) => {
       params.delete('open');
       params.delete('sku');
@@ -178,24 +175,14 @@ export function StockLedger({ rows, rooms, selectedStates, totalCount, capped }:
     scope: 'record',
     enabled: true,
     order: bands,
-    openId: openRecord && !creating ? stockRowId(openRecord) : null,
+    openId: openRecord ? stockRowId(openRecord) : null,
     getId: stockRowId,
     onOpen: openRow,
     onClose: closeRecord,
   });
 
-  const toggleCreate = useCallback(() => {
-    if (creating) {
-      setCreating(false);
-      return;
-    }
-    setCreating(true);
-    writeRecord((params) => {
-      params.delete('open');
-      params.delete('sku');
-    });
-  }, [creating, writeRecord]);
-
+  // ONE page CTA, top-right: Add stock. A product the catalog does not know is
+  // minted inside that form — pairing is part of adding, not a second CTA.
   const createAction = useMemo(
     () => (
       <DeskHeaderAction
@@ -203,14 +190,14 @@ export function StockLedger({ rows, rooms, selectedStates, totalCount, capped }:
         variant="primary"
         size="md"
         icon={<Plus aria-hidden />}
-        aria-pressed={creating}
-        onClick={toggleCreate}
-        data-testid="stock-new-temp-sku"
+        aria-pressed={adding}
+        onClick={() => setAdding((open) => !open)}
+        data-testid="stock-add-open"
       >
-        New temp SKU
+        Add stock
       </DeskHeaderAction>
     ),
-    [creating, toggleCreate],
+    [adding],
   );
 
   // Live: any STOCK_DELTA_* re-reads the loader (debounced).
@@ -267,7 +254,7 @@ export function StockLedger({ rows, rooms, selectedStates, totalCount, capped }:
     search: { value: searchParams.get('q') ?? '', pending: false },
     selection,
     open: {
-      id: creating ? CREATE_ID : resolvedOpenKey ? stockPairId(resolvedOpenKey) : null,
+      id: resolvedOpenKey ? stockPairId(resolvedOpenKey) : null,
       open: openRow,
       close: closeRecord,
     },
@@ -300,20 +287,17 @@ export function StockLedger({ rows, rooms, selectedStates, totalCount, capped }:
             />
           ) : null
         }
+        // Rooms ARE this desk's triage: the chips stay between the count and the pager.
+        summaryInline
         bulk={<span className="truncate text-sm text-text-muted">Open one to count it</span>}
-        // The list's tally rides one line under the bar, so the room chips keep the bar.
         banner={
-          <div className="flex min-w-0 items-center gap-3 pb-2 pl-4" data-testid="stock-tally">
-            {capped ? (
-              <p className="truncate text-sm text-text-warning" data-testid="stock-capped">
-                First {rows.length} of {totalCount} pairs — narrow the search
-              </p>
-            ) : null}
-            <span className="ml-auto flex">
-              <RecordLedgerTally summary={summary} />
-            </span>
-          </div>
+          capped ? (
+            <p className="truncate pb-2 pl-4 text-sm text-text-warning" data-testid="stock-capped">
+              First {rows.length} of {totalCount} pairs — narrow the search
+            </p>
+          ) : null
         }
+        leadSlot={adding ? <StockAddForm rows={rows} onAdded={refreshSoon} onClose={() => setAdding(false)} /> : null}
         searchEmpty={
           narrowed ? (
             <div className="flex flex-col items-center gap-3 text-center">
@@ -336,49 +320,51 @@ export function StockLedger({ rows, rooms, selectedStates, totalCount, capped }:
         }
         allClear={<TriageAllClear title="No stock on any shelf" detail="Counts land here from the floor." />}
         record={{
-          title: creating ? 'New temp SKU' : openRecord ? stockRecordTitle(openRecord) : 'Not in this list',
-          subtitle: !creating && openRecord ? [openRecord.sku, stockLocationFace(openRecord)].filter(Boolean).join(' · ') : undefined,
-          actions: !creating && openRecord && !openRecord.is_provisional ? <StockRecordStatus record={openRecord} /> : undefined,
-          noun: openRecord?.is_provisional || creating ? 'SKU exception' : VIEW.noun.one,
+          // The record reads what is here and what it is (owner 2026-09-30): the stock on the left, the product title after it.
+          // Where it sits (tote · room) is the item card's location line, not the header.
+          title: openRecord ? (
+            <span className="flex min-w-0 items-baseline gap-3" data-testid="stock-record-title">
+              <span
+                className={cn('shrink-0 tabular-nums', openRecord.qty > 0 ? 'text-text-default' : 'text-text-warning')}
+                data-testid="stock-record-title-qty"
+              >
+                {openRecord.qty}
+              </span>
+              <span className="min-w-0 truncate">{stockRecordTitle(openRecord)}</span>
+            </span>
+          ) : (
+            'Not in this list'
+          ),
+          noun: openRecord?.is_provisional ? 'SKU exception' : VIEW.noun.one,
           testId: 'stock-record',
           summary: <RecordLedgerSummaryPane summary={summary} />,
           strip: null,
-          view: creating ? (
-            <DeskRecordLayout
-              main={
-                <SkuExceptionCreateForm
-                  onCreated={(sku) => {
-                    setCreating(false);
-                    replace((params) => {
-                      params.set('status', 'on-hold');
-                      params.set('sku', sku);
-                      params.delete('open');
-                    });
-                    router.refresh();
-                  }}
-                  onCancel={closeRecord}
-                />
+          view: resolvedOpenKey ? (
+            <StockEvidence
+              record={openRecord}
+              onCounted={() => router.refresh()}
+              placeholder={
+                openRecord?.is_provisional
+                  ? {
+                      main: (itemRow) => (
+                        <SkuExceptionEvidence
+                          sku={openRecord.sku}
+                          item={provisionalRecord.data}
+                          loading={provisionalRecord.isLoading}
+                          error={provisionalRecord.isError ? provisionalRecord.error : null}
+                          mergedInto={provisionalRecord.mergedInto}
+                          itemRow={itemRow}
+                          onExit={() => {
+                            closeRecord();
+                            router.refresh();
+                          }}
+                        />
+                      ),
+                      aside: provisionalRecord.data ? <SkuExceptionFacts item={provisionalRecord.data} /> : null,
+                    }
+                  : undefined
               }
             />
-          ) : openRecord?.is_provisional ? (
-            <DeskRecordLayout
-              main={
-                <SkuExceptionEvidence
-                  sku={openRecord.sku}
-                  item={provisionalRecord.data}
-                  loading={provisionalRecord.isLoading}
-                  error={provisionalRecord.isError ? provisionalRecord.error : null}
-                  mergedInto={provisionalRecord.mergedInto}
-                  onExit={() => {
-                    closeRecord();
-                    router.refresh();
-                  }}
-                />
-              }
-            />
-          ) : resolvedOpenKey ? (
-            // The stock pair lays out its own main / aside (order-record shape).
-            <StockEvidence record={openRecord} onCounted={() => router.refresh()} />
           ) : null,
         }}
       />
@@ -386,14 +372,21 @@ export function StockLedger({ rows, rooms, selectedStates, totalCount, capped }:
   );
 }
 
-/** One stock pair as a three-row triage card. */
+/**
+ * One stock pair as a three-row triage card: room · exact bin top-left … the
+ * last count (else last move) top-right; the product title; the count then
+ * the SKU. No next step.
+ */
 const StockRow = memo(function StockRow(props: TriageCardSlotProps<LocationStockTableRow, StockRowModel>) {
   const { model } = props;
   const row = model.lead;
   const title = stockRecordTitle(row);
   const bin = stockLocationFace(row);
-  const next = stockRecordNext(row);
   const state = STOCK_LIFECYCLE[stockRecordState(row)];
+  // A bin's last count is the number the floor trusts; a unit placement has none, so its last move stands in.
+  const touchedIso = row.last_counted ?? row.last_moved;
+  const touched = touchedIso ? new Date(touchedIso) : null;
+  const touchedVerb = row.last_counted ? 'Counted' : 'Moved';
   const record = useMemo<RecordCardModel>(
     () => ({
       key: model.key,
@@ -412,16 +405,15 @@ const StockRow = memo(function StockRow(props: TriageCardSlotProps<LocationStock
       chips: [],
       notes: { fixed: null, own: null },
       status: { kind: 'none' },
-      next: next ? { label: next, tone: state.tone, tip: next, blocked: false } : null,
+      next: null,
       lines: [
         {
           id: stockRowId(row),
           title,
           photoUrl: row.image_url,
           facts: {
+            qty: { kind: 'count', value: row.qty },
             sku: { kind: 'code', text: row.sku, title: `SKU ${row.sku}` },
-            room: row.room ? { kind: 'text', text: row.room } : { kind: 'missing', text: 'No room' },
-            qty: { kind: 'qty', value: row.qty },
           },
           alert: false,
           alertNote: null,
@@ -429,7 +421,7 @@ const StockRow = memo(function StockRow(props: TriageCardSlotProps<LocationStock
       ],
       hiddenAlertLabel: () => '',
     }),
-    [bin, model.key, next, row, state, title],
+    [bin, model.key, row, state, title],
   );
   return (
     <RecordCard
@@ -443,9 +435,34 @@ const StockRow = memo(function StockRow(props: TriageCardSlotProps<LocationStock
       onTogglePeek={() => props.onTogglePeek(model.key)}
       identity={{
         role: 'identity',
-        content: bin ? <BinChip value={bin} display={bin} /> : <span className="text-text-warning">No location</span>,
+        content: (
+          <span className="flex min-w-0 items-center gap-2" data-testid={`${VIEW.testIdPrefix}-location`}>
+            <span className={cn('min-w-0 truncate', !row.room && 'text-text-warning')}>{row.room ?? 'No room'}</span>
+            <span aria-hidden className="text-text-faint">·</span>
+            {bin ? (
+              <CopyChip value={bin} display={bin} tone="bin" icon={null} width="w-fit max-w-full" />
+            ) : (
+              <span className="shrink-0 text-text-warning">No location</span>
+            )}
+          </span>
+        ),
       }}
-      trailing={null}
+      trailing={
+        touched && !Number.isNaN(touched.getTime())
+          ? {
+              role: 'trailing',
+              content: (
+                <span
+                  className="shrink-0 text-xs tabular-nums text-text-muted"
+                  title={`${touchedVerb} ${format(touched, 'MMM d, yyyy · h:mm a')}`}
+                  data-testid={`${VIEW.testIdPrefix}-touched`}
+                >
+                  {touchedVerb} {format(touched, 'MMM d')}
+                </span>
+              ),
+            }
+          : null
+      }
       quickLook={null}
     />
   );

@@ -5,8 +5,7 @@
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, TextField } from '@/design-system/primitives';
 import { LabelPrintRunNumField } from '@/components/labels/LabelPrintRunNumField';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cn } from '@/utils/_cn';
+import { StopSlider } from '@/design-system/primitives/StopSlider';
 import {
   DEFAULT_TOTE_COPIES_PER_SIDE,
   TOTE_COUNT_SLIDER_MAX,
@@ -21,6 +20,8 @@ const MODE_TABS = [
   { id: 'reprint', label: 'Reprint' },
 ] as const;
 
+const TOTE_COUNT_STOPS = Array.from({ length: TOTE_COUNT_SLIDER_MAX }, (_, i) => i + 1);
+
 function ToteCountSlider({
   count,
   onCount,
@@ -32,26 +33,20 @@ function ToteCountSlider({
 }) {
   const value = clampToteCount(count);
   return (
-    <label className="flex w-full min-w-0 items-center gap-2">
+    <div className="flex w-full min-w-0 items-center gap-2">
       <span className="w-7 shrink-0 text-right font-mono text-sm font-semibold tabular-nums text-text-default">
         {value}
       </span>
-      <input
-        type="range"
-        min={1}
-        max={TOTE_COUNT_SLIDER_MAX}
-        step={1}
+      <StopSlider
+        stops={TOTE_COUNT_STOPS}
         value={value}
+        onChange={onCount}
         disabled={disabled}
-        aria-label="How many totes"
-        onChange={(e) => onCount(clampToteCount(Number(e.target.value)))}
-        className={cn(
-          'h-9 min-w-0 flex-1 cursor-pointer accent-[var(--ds-color-accent-text)]',
-          focusRing('field', 'accent'),
-          disabled && 'cursor-not-allowed opacity-50',
-        )}
+        ariaLabel="How many totes"
+        formatValue={(n) => `${n} ${n === 1 ? 'tote' : 'totes'}`}
+        className="flex-1"
       />
-    </label>
+    </div>
   );
 }
 

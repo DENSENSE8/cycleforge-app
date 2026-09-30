@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
 
-/** GET /api/orders/desk-counts — the outbound desk sidebar's five badges in one request: */
+/** GET /api/orders/desk-counts — the outbound desk's four lens totals in one request: */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const startedAt = Date.now();
   let ok = false;
@@ -18,7 +18,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId as OrgId;
     // Bump `version` when any membership rule in desk-counts changes.
-    const cacheLookup = createCacheLookupKey({ organizationId: orgId, version: 'desk_counts_v1' });
+    const cacheLookup = createCacheLookupKey({ organizationId: orgId, version: 'desk_counts_v2' });
     const cached = await getCachedJson<unknown>('api:orders-desk-counts', cacheLookup);
     if (cached) {
       ok = true;

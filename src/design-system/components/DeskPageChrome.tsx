@@ -127,10 +127,12 @@ export function DeskPageChrome({
                 'flex min-w-0 shrink-0 items-center justify-between gap-3',
                 measure,
                 DESK_PAGE_HEADER_ROW_CLASS,
-                // A record that owns the work replaces the page-level title
-                // and CTA so its Back + identity band is the topmost header.
-                '[:root:has([data-record-presentation="allocate"])_&]:hidden',
-                '[:root:has([data-record-presentation="fnsku"])_&]:hidden',
+                // HARD LAW (owner 2026-09-29): while ANY record is open
+                // (`DESK_RECORD_OPEN_ATTR`, stamped by DeskRecordPlane) the page
+                // title and the page CTA are not painted — the record's Back +
+                // identity band is the topmost header. Keyed on the plane, never
+                // on a per-record attribute.
+                '[:root:has([data-desk-record-open])_&]:hidden',
               )}
             >
               {/* A rich title face keeps its width (the middle slot flexes instead)

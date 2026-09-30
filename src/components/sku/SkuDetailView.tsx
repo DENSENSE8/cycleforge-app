@@ -12,6 +12,8 @@ import { SkuStockCard } from './sku-detail/SkuStockCard';
 import { SkuLocationCard } from './sku-detail/SkuLocationCard';
 import { SkuDetailCards } from './sku-detail/SkuDetailCards';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
+import { StockLocationsGroup } from '@/components/inventory/stock/StockLocationsGroup';
+import { StockPhotoTile } from '@/components/inventory/stock/StockPhotoTile';
 
 /**
  * SKU detail view (panel slide-over or full page). Thin composition layer —
@@ -68,14 +70,21 @@ export default function SkuDetailView({ sku, variant = 'page', onClose }: SkuDet
       <SkuDetailHeader c={c} data={data} />
 
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
-        {data.productImage && (
-          <div className="rounded-none bg-surface-card border border-border-soft overflow-hidden">
-            <img src={data.productImage} alt={data.productTitle || data.sku} className="w-full h-48 object-contain bg-surface-canvas" loading="eager" decoding="async" fetchPriority="high" />
-          </div>
-        )}
+        {/* The Stock record's own photo tile: the cover, else initials with Upload · Phone inside. The header already names it. */}
+        <div className="rounded-none bg-surface-card border border-border-soft p-4" data-testid="sku-detail-photo">
+          <StockPhotoTile
+            stockId={data.stock.id}
+            sku={data.sku}
+            photoUrl={data.productImage}
+            title={data.productTitle || data.sku}
+            onChanged={() => void c.refresh()}
+          />
+        </div>
 
         <SkuStockCard c={c} data={data} />
         <SkuLocationCard c={c} data={data} />
+        {/* Every tote and bin the SKU sits in, each countable, plus Add location — the Stock record's own group. */}
+        <StockLocationsGroup sku={data.sku} onChanged={() => void c.refresh()} />
         <SkuDetailCards c={c} data={data} />
       </div>
 

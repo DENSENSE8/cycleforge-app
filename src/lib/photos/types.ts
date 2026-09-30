@@ -59,6 +59,16 @@ export const PACKER_BOX_LABEL_PHOTO_TYPE = 'box_label';
 export const STAFF_AVATAR_PHOTO_TYPE = 'staff_avatar';
 
 /**
+ * `photo_type`s for a repair ticket's two evidence kinds (entity_type
+ * `REPAIR_SERVICE`, owner 2026-09-30): the device as it came into the store
+ * (receiving) and as it leaves / is packed back (shipping). REPAIR_SERVICE stays
+ * unconstrained in the write matrix — bench before/after and untyped phone
+ * shots land there too; `repairPhotoKind` sorts every row into one of the two.
+ */
+export const REPAIR_RECEIVING_PHOTO_TYPE = 'repair_receiving';
+export const REPAIR_SHIPPING_PHOTO_TYPE = 'repair_shipping';
+
+/**
  * Resolve the serial-units photo POST `stage` body field → canonical photo_type.
  * `shipout` (default) → packer_photo; `prepack` kept as a free-text stage label
  * for verify-before-pack captures that are still unit-scoped.

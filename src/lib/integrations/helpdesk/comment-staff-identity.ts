@@ -3,6 +3,38 @@ export interface StaffAuthorHit {
   name: string;
 }
 
+/** Staff rows → hits keyed by lowercased email; the first row per email wins. */
+export function staffHitsByEmail(
+  rows: ReadonlyArray<{ id: number; name: string; email: string | null }>,
+): Map<string, StaffAuthorHit> {
+  const out = new Map<string, StaffAuthorHit>();
+  for (const row of rows) {
+    const key = (row.email ?? '').trim().toLowerCase();
+    if (!key || out.has(key)) continue;
+    out.set(key, { staffId: Number(row.id), name: row.name });
+  }
+  return out;
+}
+
+/** Staff rows → hits keyed by lowercased name. A name two staff share is ambiguous and dropped. */
+export function staffHitsByName(
+  rows: ReadonlyArray<{ id: number; name: string }>,
+): Map<string, StaffAuthorHit> {
+  const out = new Map<string, StaffAuthorHit>();
+  const ambiguous = new Set<string>();
+  for (const row of rows) {
+    const key = row.name.trim().toLowerCase();
+    if (!key) continue;
+    if (out.has(key)) {
+      ambiguous.add(key);
+      continue;
+    }
+    out.set(key, { staffId: Number(row.id), name: row.name });
+  }
+  for (const key of ambiguous) out.delete(key);
+  return out;
+}
+
 /** Resolve a comment's Cycle Forge author, strongest evidence first: */
 export function applyStaffAuthor<
   T extends {

@@ -1,37 +1,35 @@
 'use client';
 
 /**
- * The Shipped desk (`/shipping/shipped`) as the one-row triage list
- * (`TriageCardList density="row"`, owner 2026-09-28) — one row per PACKAGE
- * (carrier tracking number; a pack scan with none keys as `scan-<id>`):
- * state · tracking · title · shipped · carrier status · order · packed by →
- * Resolve on an unmatched scan. The feed is `useShippedTableFilters` →
- * `useShippedTableRecords` (week buckets, Load older); its facets and Find are
- * the sidebar's. The open package is `?shipment=` (`SHIPMENT_RECORD_PARAM`,
- * `replaceState`) and may name a package outside the loaded window (a sibling
- * box, or a tracking # resolved through `/api/shipments/lookup`); legacy
- * `?openOrderId=` bookmarks map to that line's package.
+ * The Shipped desk (`/shipping/shipped`) on the Allocate card face
+ * (`TriageCardList` + `RecordCard`, owner 2026-09-29) — one card per PACKAGE
+ * (carrier tracking number; a pack scan with none keys as `scan-<id>`), its
+ * lines the box's order lines (`ShippedPackageCard`). The feed is
+ * `useShippedTableFilters` → `useShippedTableRecords` (week buckets, Load
+ * older); its facets and Find are the sidebar's. The open package is
+ * `?shipment=` (`SHIPMENT_RECORD_PARAM`, `replaceState`) and may name a
+ * package outside the loaded window (a sibling box, or a tracking # resolved
+ * through `/api/shipments/lookup`); legacy `?openOrderId=` bookmarks map to
+ * that line's package.
  */
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
-import {
-  RecordLedgerSummaryPane,
-  RecordLedgerTally,
-  type RecordLedgerSummary,
-} from '@/design-system/components/record-ledger/RecordLedgerSummary';
+import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
+import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
-import { TriageRow, type TriageRowFace } from '@/design-system/components/triage-card-list/TriageRow';
 import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { triageRowKeyId } from '@/design-system/components/triage-card-list/triage-row-id';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { useShippedTableFilters } from '@/components/shipped/dashboard-table/useShippedTableFilters';
 import { useShippedTableRecords } from '@/components/shipped/dashboard-table/useShippedTableRecords';
-import { displayCarrierFromHint } from '@/lib/carrier-brand';
 import type { RowGroup } from '@/lib/group-rows';
+import { fetchNavFacets } from '@/lib/nav/context/http-client';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { lookupShipmentByTracking, useShipmentRecord } from '@/lib/shipments/shipment-record-client';
@@ -41,21 +39,29 @@ import type { DerivedPackerRecord } from '@/lib/shipped-records';
 import { toast } from '@/lib/toast';
 import { OUTBOUND_SHIPPED_VIEW } from '@/lib/triage/views';
 import { detectCarrierFromTracking } from '@/utils/carrier-patterns';
-import { formatMonthDayTimePST, formatWeekRangeCompact } from '@/utils/date';
+import { formatWeekRangeCompact } from '@/utils/date';
 import { ShipmentRecordView } from './ShipmentRecordView';
 import { ShippedPackageActionStrip } from './ShippedPackageActionStrip';
-import { isOpenExceptionStatus, shippedPackageFace, shippedPackageKey, shippedPackageTracking } from './shipped-package-state';
+import { ShippedPackageCard } from './ShippedPackageCard';
+import {
+  isOpenUnmatchedScan,
+  SHIPPED_STATUS_CHIPS,
+  shippedStatusChipFace,
+  shippedStatusKeys,
+  type ShippedCardModel,
+  type ShippedStatusChip,
+} from './shipped-card-model';
+import { shipmentRecordFace, shippedPackageKey, shippedPackageTracking } from './shipped-package-state';
 
 const VIEW = OUTBOUND_SHIPPED_VIEW;
 const LEGACY_OPEN_ORDER_PARAM = 'openOrderId';
 
-/** No chips: the period, type, carrier and status facets are the sidebar's, read by the feed. */
-const NO_CHIPS: readonly never[] = [];
+/** The sidebar's facet counts for this view — their `total` is the list's server total (one package per row). */
+const FACET_CONTEXT = 'outbound.shipped';
+const FACETS_STALE_MS = 15_000;
 
 /** A package key is `<shipment id>` or `scan-<id>`; the face speaks numbers (a deterministic hash — rows render on the server too). */
 const shippedRowId = (row: DerivedPackerRecord): number => triageRowKeyId(shippedPackageKey(row));
-
-type ShippedRowModel = { key: string; ids: readonly number[]; lead: DerivedPackerRecord };
 
 /** Newest scan-out first (pack time when a box never left). */
 function byShippedDesc(a: DerivedPackerRecord, b: DerivedPackerRecord): number {
@@ -75,14 +81,39 @@ export function ShippedLedger() {
 
   const rows = useMemo(() => [...derivedRecords].sort(byShippedDesc), [derivedRecords]);
 
-  const cut = useTriageCut({ statusKeys: NO_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
+  const cut = useTriageCut({ statusKeys: SHIPPED_STATUS_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   const { filterBands } = cut;
   const allBands = useMemo<[string, RowGroup<DerivedPackerRecord>[]][]>(
     () => (rows.length ? [['shipped', rows.map((row) => ({ key: shippedPackageKey(row), rows: [row] }))]] : []),
     [rows],
   );
-  const bands = useMemo(() => filterBands(allBands, (group) => group.key, () => NO_CHIPS), [filterBands, allBands]);
+  const bands = useMemo(() => filterBands(allBands, (group) => group.key, shippedStatusKeys), [filterBands, allBands]);
   const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
+
+  // ── Status pills beside the count (the Allocate summary row) ──────────────
+  // Counted in PACKAGES over everything loaded, never the lit cut — tapping a pill shows that many.
+  const { statusFilter, toggleStatus, resetStatus } = cut.url;
+  const statusChips = useMemo<StatusChip<ShippedStatusChip>[]>(() => {
+    const counts = new Map<ShippedStatusChip, number>();
+    for (const row of rows) for (const key of shippedStatusKeys(row)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    return SHIPPED_STATUS_CHIPS.filter((key) => (counts.get(key) ?? 0) > 0 || statusFilter.has(key)).map((key) => ({
+      id: key,
+      ...shippedStatusChipFace(key),
+      count: counts.get(key) ?? 0,
+    }));
+  }, [rows, statusFilter]);
+
+  // The server's package total for this window + filters — the pager's "of N" while pages remain unloaded.
+  // `ostatus` and a browser-only type preference narrow in the browser, beyond what the facets count.
+  const search = searchParams.toString();
+  const facets = useQuery({
+    queryKey: ['nav-facets', FACET_CONTEXT, search],
+    queryFn: ({ signal }) => fetchNavFacets(FACET_CONTEXT, search, signal),
+    staleTime: FACETS_STALE_MS,
+    placeholderData: keepPreviousData,
+  });
+  const serverCounted = !searchParams.get('ostatus') && (searchParams.get('shippedFilter') != null || filters.shippedFilter === 'all');
+  const serverTotal = serverCounted ? facets.data?.total : undefined;
 
   // ── Open key: `?shipment=` ────────────────────────────────────────────────
   const openKey = searchParams.get(SHIPMENT_RECORD_PARAM)?.trim() || null;
@@ -191,13 +222,13 @@ export function ShippedLedger() {
       triageFamily(VIEW, {
         rowId: shippedRowId,
         groupKey: (group: RowGroup<DerivedPackerRecord>) => group.key,
-        cardModel: (group: RowGroup<DerivedPackerRecord>): ShippedRowModel => {
+        cardModel: (group: RowGroup<DerivedPackerRecord>): ShippedCardModel => {
           const lead = group.rows[0]!;
           return { key: group.key, ids: [shippedRowId(lead)], lead };
         },
         // A Find naming exactly one package's tracking number opens it.
-        exactFind: (query: string, model: ShippedRowModel) => shippedPackageTracking(model.lead).toLowerCase() === query,
-        renderCard: (props: TriageCardSlotProps<DerivedPackerRecord, ShippedRowModel>) => <ShippedRow {...props} />,
+        exactFind: (query: string, model: ShippedCardModel) => shippedPackageTracking(model.lead).toLowerCase() === query,
+        renderCard: (props: TriageCardSlotProps<DerivedPackerRecord, ShippedCardModel>) => <ShippedPackageCard {...props} />,
       }),
     [],
   );
@@ -207,6 +238,7 @@ export function ShippedLedger() {
     allBands,
     painted,
     sectioned: false,
+    total: serverTotal,
     loading: query.isLoading,
     fetching: query.isFetching || pagination.isLoadingMore,
     onLoadMore: pagination.isTruncated ? pagination.loadMore : undefined,
@@ -224,34 +256,33 @@ export function ShippedLedger() {
 
   return (
     <TriageCardList
-      density="row"
       family={family}
       feed={feed}
       cut={cut}
-      // No chips: the facets are the sidebar's.
-      summary={null}
+      summary={
+        <StatusChipRail
+          chips={statusChips}
+          active={statusFilter}
+          onToggle={toggleStatus}
+          onReset={resetStatus}
+          label="Filter by package status"
+          testId="shipped-status-chips"
+        />
+      }
       bulk={<span className="truncate text-sm text-text-muted">Open one to act on it</span>}
-      // The period and the tally ride one line under the bar.
       banner={
-        <div className="flex min-w-0 flex-col gap-2 pb-2 pl-4" data-testid="shipped-tally">
-          <div className="flex min-w-0 items-center gap-3">
-            <p className="truncate text-sm text-text-muted">
-              {rows.length.toLocaleString()} packages · {periodLabel}
-            </p>
-            <span className="ml-auto flex">
-              <RecordLedgerTally summary={summary} />
-            </span>
-          </div>
-          {outsideWindow && openKey ? (
+        outsideWindow && openKey ? (
+          <div className="pb-2 pl-4">
             <EvidenceNotice>{outsideWindow} is outside the loaded period — opened from the package lookup.</EvidenceNotice>
-          ) : null}
-        </div>
+          </div>
+        ) : null
       }
       searchEmpty={needle ? <p className="text-sm text-text-muted">No package in {periodLabel} matches “{needle}”.</p> : null}
       allClear={<TriageAllClear title={`No packages shipped in ${periodLabel}`} detail="Pick another period in the sidebar." />}
       record={{
         title: recordTitle,
         subtitle: recordSubtitle,
+        actions: openRecord ? <LifecycleCode state={shipmentRecordFace(openRecord)} /> : undefined,
         noun: VIEW.noun.one,
         testId: 'shipped-record',
         summary: <RecordLedgerSummaryPane summary={summary} />,
@@ -275,7 +306,7 @@ function shippedSummary(rows: readonly DerivedPackerRecord[], periodLabel: strin
   let unmatched = 0;
   let neverPacked = 0;
   for (const row of rows) {
-    if (row.row_source === 'exception' && isOpenExceptionStatus(row.exception_status)) unmatched += 1;
+    if (isOpenUnmatchedScan(row)) unmatched += 1;
     if (row.packed_by == null) neverPacked += 1;
   }
   return {
@@ -289,76 +320,3 @@ function shippedSummary(rows: readonly DerivedPackerRecord[], periodLabel: strin
     note: 'Open a package to see every item in the box, every action taken on it, who packed it and when it shipped.',
   };
 }
-
-/** One package as a row: state · tracking · title · shipped · carrier status · order · packed by → Resolve. */
-const ShippedRow = memo(function ShippedRow(props: TriageCardSlotProps<DerivedPackerRecord, ShippedRowModel>) {
-  const row = props.model.lead;
-  const face = useMemo<TriageRowFace>(() => {
-    const openException = row.row_source === 'exception' && isOpenExceptionStatus(row.exception_status);
-    const state = shippedPackageFace(row.outboundState, openException);
-    const tracking = shippedPackageTracking(row);
-    const lines = row.package_line_count ?? 0;
-    const product = (row.product_title || '').trim() || (openException ? 'Unmatched pack scan' : 'No order line');
-    const title = lines > 1 ? `${product} +${lines - 1} more` : product;
-    const photo = Array.isArray(row.packer_photos_url)
-      ? (row.packer_photos_url.find((p: { url?: unknown }) => typeof p?.url === 'string')?.url as string | undefined)
-      : undefined;
-    const carrier = displayCarrierFromHint(row.carrier) ?? (row.carrier || null);
-    const uspsIntegrationPending = String(row.carrier ?? '').trim().toUpperCase() === 'USPS';
-    const carrierStatus = uspsIntegrationPending
-      ? 'Integration pending'
-      : (row.latest_status_label || row.latest_status_code || '').trim() || null;
-    const shippedAt = row.ship_confirmed_at ?? null;
-    // A scan-out-only package (never pack-scanned) arrives with `packed_by` null
-    // and `created_at` = its scan-out time — never paint that as a pack.
-    const packed = row.packed_by != null;
-    const packer = (row.packed_by_name || '').trim() || `Staff #${row.packed_by}`;
-    const handle = tracking || `Scan ${row.id}`;
-    return {
-      state,
-      identity: handle,
-      identityWidth: 'long',
-      title,
-      photo: { url: photo ?? null },
-      facts: [
-        {
-          id: 'shipped',
-          value: shippedAt
-            ? { kind: 'date', text: formatMonthDayTimePST(shippedAt), title: `Shipped · ${formatMonthDayTimePST(shippedAt)}` }
-            : { kind: 'missing', text: 'Not scanned out' },
-          width: 'code',
-        },
-        {
-          id: 'carrier',
-          label: carrier ?? undefined,
-          value: carrierStatus,
-          width: 'short',
-          tone: 'muted',
-          tip: uspsIntegrationPending
-            ? 'USPS live tracking integration is pending.'
-            : row.latest_status_description || row.latest_status_label || undefined,
-        },
-        {
-          id: 'order',
-          value: row.order_id ? { kind: 'code', text: String(row.order_id), title: `Order ${row.order_id}` } : null,
-          width: 'long',
-        },
-        {
-          id: 'packed',
-          // A scan-out-only box never had a packer: say so in warning ink.
-          value: packed ? packer : 'Never packed',
-          width: 'short',
-          tone: packed ? 'default' : 'warn',
-          tip: packed ? `Packed by ${packer} · ${formatMonthDayTimePST(row.created_at)}` : 'Never pack-scanned',
-        },
-      ],
-      next: openException ? { label: 'Resolve', blocked: true } : null,
-      aria: {
-        row: `Package ${handle}, ${product}, ${state.label}`,
-        open: `Open package ${handle} · ${product}`,
-        check: `Select package ${handle}`,
-      },
-    };
-  }, [row]);
-  return <TriageRow {...props} face={face} testIdPrefix={VIEW.testIdPrefix} />;
-});

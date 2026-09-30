@@ -30,7 +30,7 @@ import { RecordSquarePhoto } from '@/design-system/components/record-card/Record
 import { RecordLineFacts } from '@/design-system/components/record-card/record-fact';
 import type { RecordCardDeadline, RecordCardLine, RecordCardMobileModel } from '@/design-system/components/record-card/record-card-types';
 import { OUTBOUND_TRIAGE_VIEW } from '@/lib/triage/views';
-import { PickProgress } from './PickProgress';
+import { JobProgress } from '@/components/mobile/JobProgress';
 import { PickSerialList } from './PickSerialList';
 import { usePairBin } from './usePairBin';
 import { usePickOrder, type PickOrderMessage } from './usePickOrder';
@@ -129,9 +129,10 @@ export function PickOrderScreen({
 
   return (
     <div className={cn('flex h-full flex-col', appMobilePageGroundClass)} data-testid="pick-order">
-      <PickProgress
-        picked={progress.picked}
+      <JobProgress
+        done={progress.picked}
         total={progress.total}
+        doneWord="picked"
         active={active ?? undefined}
         onClose={onBack}
         onSkip={onSkip}

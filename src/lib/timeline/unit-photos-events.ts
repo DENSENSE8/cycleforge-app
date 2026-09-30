@@ -27,7 +27,7 @@ export interface UnitTimelinePhotoRow {
 }
 
 /** Wire-source → evidence-stage bridge; labels resolve via `photoStageLabel`. */
-const SOURCE_STAGE: Record<UnitTimelinePhotoRowSource, PhotoEvidenceStage> = {
+export const UNIT_PHOTO_SOURCE_STAGE: Record<UnitTimelinePhotoRowSource, PhotoEvidenceStage> = {
   arrival: 'arrival_package',
   unbox_carton: 'unbox_carton',
   unbox_item: 'unbox_item',
@@ -78,7 +78,7 @@ export function unitPhotosToTimeline(rows: UnitTimelinePhotoRow[]): TimelineItem
     const list = bySource.get(source);
     if (!list || list.length === 0) continue;
     const sorted = [...list].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
-    const stageLabel = photoStageLabel(SOURCE_STAGE[source]);
+    const stageLabel = photoStageLabel(UNIT_PHOTO_SOURCE_STAGE[source]);
     items.push({
       id: `unit-photos-${source}`,
       at: sorted[0]?.at ?? null,

@@ -92,8 +92,6 @@ export type StationComposerHostProps = {
   locationAction?: ReactNode;
   trailingAction?: ReactNode;
   chrome?: 'raised' | 'bare';
-  /** Square the top corners when a panel welds on top of the composer. */
-  weldTop?: boolean;
   animateMount?: boolean;
   textareaRef?: Ref<HTMLTextAreaElement>;
   ghostSuffix?: string;
@@ -230,7 +228,6 @@ export function StationComposerHost({
   locationAction,
   trailingAction,
   chrome = 'raised',
-  weldTop = false,
   animateMount = true,
   textareaRef,
   ghostSuffix,
@@ -493,7 +490,7 @@ export function StationComposerHost({
         // the dock's raised shadow). isolate keeps z-raised dock above z-base
         // modes so the shadow paints across the caption.
         'flex min-w-0 isolate flex-col gap-1 bg-surface-card pb-[max(0.25rem,env(safe-area-inset-bottom))]',
-        weldTop ? `${COMPOSER_SHELL_CORNER} rounded-t-none` : COMPOSER_SHELL_CORNER,
+        COMPOSER_SHELL_CORNER,
         className,
       )}
       data-testid="station-composer-host"
@@ -501,7 +498,10 @@ export function StationComposerHost({
     >
       <div className="flex min-w-0 flex-col gap-1.5 px-3">
         {weldAskStage ? <ComposerAskStage chat={askChat} /> : null}
-        {reactionOpen ? <div className="mx-2">{reactionNode}</div> : null}
+        {/* Welded onto the dock: same width, no gap (the -mb cancels the
+            column gap), so panel + dock read as ONE outline — the panel
+            frames the top, the dock's own border the rest. */}
+        {reactionOpen ? <div className="-mb-1.5 min-w-0">{reactionNode}</div> : null}
       <OmnichannelComposerDock
         ref={dockRef}
         value={value}
@@ -659,7 +659,7 @@ export function StationComposerHost({
         }
         trailingAction={inlineComposerRow ? undefined : printTrailing}
         chrome={chrome}
-        weldTop={weldTop}
+        weldTop={reactionOpen}
         animateMount={animateMount}
         textareaRef={textareaRef}
         onTextareaKeyDown={handleModeKey}

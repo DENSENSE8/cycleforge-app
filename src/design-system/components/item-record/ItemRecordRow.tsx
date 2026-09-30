@@ -242,10 +242,21 @@ export function ItemRecordRow({
                   <EmptySkuChipFace dense />
                 )
               }
-              condition={withAction(
-                conditionAction,
-                <ConditionGradeChip grade={item.conditionGrade} dense />,
-              )}
+              condition={
+                conditionAction ? (
+                  <HoverTooltip label={conditionAction.label} asChild>
+                    <ConditionGradeChip
+                      grade={item.conditionGrade}
+                      dense
+                      onActivate={conditionAction.onClick}
+                      activationLabel={conditionAction.label}
+                      disableTooltip
+                    />
+                  </HoverTooltip>
+                ) : (
+                  <ConditionGradeChip grade={item.conditionGrade} dense />
+                )
+              }
               serial={
                 serialsLoading ? (
                   <SerialChipSkeleton width="w-fit max-w-full" dense />

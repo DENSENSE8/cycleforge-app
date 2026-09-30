@@ -27,7 +27,7 @@ export function WalkInFeedPane({
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-surface-canvas">
       {/* Feed flush in the sheet host; the scroll lives here so the day-band
-          headers dock at top-0 of this region (RepairTable pattern). */}
+          headers dock at top-0 of this region (RepairCardList pattern). */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="min-h-0 w-full flex-1 overflow-y-auto">
           <SalesTransactionsFeed

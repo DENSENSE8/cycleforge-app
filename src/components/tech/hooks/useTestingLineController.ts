@@ -868,7 +868,7 @@ export function useTestingLineController(
     serialSubmitting, headerSerialEdit, setHeaderSerialEdit, isMutating,
     activeSlotByLine, setActiveSlotByLine, activeSlot, activeSerial, activeAllocation,
     previewPayload, isPrinting,
-    handleSlotVerdict, requestSlotVerdict, requestLineVerdict,
+    handleSlotVerdict, requestSlotVerdict, requestLineVerdict, refreshLineWithSerials,
     handleSlotCondition, applyLineVerdict, deriveLineVerdict,
     pendingFail, confirmPendingFail, cancelPendingFail,
     enqueueSerial, deleteSerial, replaceSerial,

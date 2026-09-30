@@ -65,9 +65,11 @@ export const MobileToShipRow = memo(function MobileToShipRow({
         platform: row.accountSource?.trim() || getPlatformLabelByItemNumber(listingItemKey),
       }
     : null;
-  const orderContext = row.accountSource?.trim()
-    ? `${row.accountSource.trim()} · ${orderReference}`
-    : `Order · ${orderReference}`;
+  // Touch has no hover gutter: the urgent word ("Next day") rides the context line.
+  const orderContext = [
+    row.accountSource?.trim() ? `${row.accountSource.trim()} · ${orderReference}` : `Order · ${orderReference}`,
+    row.urgentLabel,
+  ].filter(Boolean).join(' · ');
   const workflow = resolveOutboundWorkflowFacts({
     shipmentId: row.shipmentId,
     hasPickScan: row.hasPickScan,

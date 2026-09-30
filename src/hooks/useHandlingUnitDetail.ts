@@ -21,6 +21,9 @@ interface HandlingUnitDetailView {
   code: string;
   status: string;
   location_name: string | null;
+  /** The order this tote carries (pick → pack), and its marketplace number. */
+  paired_order_id: number | null;
+  paired_order_number: string | null;
   notes: string | null;
   units: HandlingUnitMemberView[];
   receiving_line_ids: number[];

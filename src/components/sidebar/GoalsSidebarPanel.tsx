@@ -23,13 +23,13 @@ const GOAL_VIEW_OPTIONS = [
   { value: 'exceeded', label: '100%+' },
 ] as const;
 
-type GoalViewMode = (typeof GOAL_VIEW_OPTIONS)[number]['value'];
+export type GoalViewMode = (typeof GOAL_VIEW_OPTIONS)[number]['value'];
 
 function emitGoalsRefresh() {
   window.dispatchEvent(new CustomEvent('admin-goals-refresh'));
 }
 
-function getGoalProgress(row: GoalRow) {
+export function getGoalProgress(row: GoalRow) {
   const percent = row.daily_goal > 0 ? Math.round((row.today_count / row.daily_goal) * 100) : 0;
   return { percent, progress: row.daily_goal > 0 ? row.today_count / row.daily_goal : 0 };
 }
@@ -53,14 +53,14 @@ function getGoalStatus(percent: number, current: number, goal: number) {
   return { label: 'Getting Started', className: 'text-indigo-600' };
 }
 
-function matchesView(progress: number, goalView: GoalViewMode) {
+export function matchesView(progress: number, goalView: GoalViewMode) {
   if (goalView === 'behind') return progress < 0.7;
   if (goalView === 'on-track') return progress >= 0.7 && progress < 1;
   if (goalView === 'exceeded') return progress >= 1;
   return true;
 }
 
-function CurrentGoalEntry({
+export function CurrentGoalEntry({
   row,
   onSaved,
   selected,

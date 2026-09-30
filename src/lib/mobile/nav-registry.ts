@@ -6,7 +6,6 @@
 import { AlertTriangle, BarChart3, ListChecks, Tags } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
 import { TECH_NAV_ICONS } from '@/lib/nav/station-nav-icons';
-import { QC_SCAN_HREF } from '@/lib/scan/identify-land';
 import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 
 // ─── Destination tree (sidebar drawer) ───────────────────────────────────────
@@ -88,12 +87,14 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
     ],
   },
   // An L0 row, the phone twin of the desk's Quality Control station row (same
-  // glyph). QC is its own scan TYPE (operator 2026-09-24), run on the one scan
+  // glyph). It opens the QC queue (owner 2026-09-29, `/m/qc`: every unit
+  // waiting for QC, most urgent first); the queue's Scan to QC arms the one
+  // scan kernel for QC (QC is its own scan TYPE, operator 2026-09-24).
   {
     kind: 'leaf',
     id: 'qc',
     label: 'Quality control',
-    href: QC_SCAN_HREF,
+    href: '/m/qc',
     icon: TECH_NAV_ICONS.testing,
     requires: 'tech.qc_pass',
   },

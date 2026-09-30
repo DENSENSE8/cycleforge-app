@@ -1,49 +1,49 @@
 'use client';
 
 /**
- * Inventory › Stock — the open stock pair, on the order record's shape (owner
- * 2026-09-28, `remake-in-style`): left, the work — the Item (identity only),
- * then Count; right, the Location facts. Every group is one `RecordGroup`;
- * the pair's ONE status sits in the record header (`StockRecordStatus`).
+ * Inventory › Stock — the open stock pair, on the triage card's soft, rounded
+ * face. The header reads the stock then the product title (`StockLedger`).
+ * Main = the item card — the photo (Upload · Phone inside it while empty),
+ * the SKU chip, then the pinned location line: room · the exact tote/bin
+ * (copies its dashed face) · how it is held · the SKU's home tote (Pair tote /
+ * Switch home tote, `StockPairBin`) — then **Locations**: every tote and bin
+ * the SKU sits in, each countable, plus Add location (`StockLocationsGroup`).
+ * A placeholder (`TMP-`) swaps main for its own work column (Pair to Zoho
+ * first, this item card under it) and leads the aside with its own facts
+ * (`placeholder`). Aside = [placeholder facts →] Send to staff → Movement.
  */
 
-import { useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { format } from 'date-fns';
-import { Package } from '@/components/Icons';
-import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
-import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
+import { RecordTaskForm } from '@/components/tasks/RecordTaskActions';
 import { CopyChip } from '@/components/ui/CopyChip';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
-import { Button } from '@/design-system/primitives';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
-import { RecordPhoto } from '@/design-system/components/record-ledger/IndustrialRecord';
-import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
-import { EvidenceCountStepper, EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
+import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { SkuOpenInMenu } from '@/design-system/components/record-ledger/RecordItemIdentity';
 import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
-import { RECORD_FACT_KEY_CLASS, RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
-import { STOCK_LIFECYCLE } from '@/design-system/tokens/stock-lifecycle';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { useAuth } from '@/contexts/AuthContext';
-import { commitStockRequest, stockAdjustRequest } from '@/lib/inventory/stock-bin-verb-writes';
-import { skuExceptionHref } from '@/lib/inventory/sku-exception-links';
 import {
   locationStockRowId,
   type LocationStockRoomFacet,
   type LocationStockTableRow,
 } from '@/lib/inventory/location-stock-row';
 import { cn } from '@/utils/_cn';
-import {
-  stockLocationFace,
-  stockRecordCountable,
-  stockRecordNext,
-  stockRecordState,
-  stockRecordTitle,
-} from './stock-record';
+import { STOCK_SOURCE_LABEL, stockLocationFace, stockRecordState, stockRecordTitle } from './stock-record';
+import { StockLocationsGroup } from './StockLocationsGroup';
+import { StockPairBin } from './StockPairBin';
+import { StockPhotoTile } from './StockPhotoTile';
 
 /** Fact rows inside a group — the carton record's facts body. */
 const FACTS_BODY_CLASS = 'flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0';
+/** A soft triage pill (room, how it is held). */
+const PILL_CLASS = 'inline-flex h-6 items-center rounded-full bg-surface-sunken px-2.5 text-xs font-medium text-text-default';
+
+/** A `TMP-` placeholder's own record parts: its work column (handed this record's item card) and its facts. */
+interface PlaceholderParts {
+  main: (itemRow: ReactNode) => ReactNode;
+  aside?: ReactNode;
+}
 
 function stamp(iso: string | null): string | null {
   if (!iso) return null;
@@ -51,63 +51,19 @@ function stamp(iso: string | null): string | null {
   return Number.isNaN(at.getTime()) ? null : format(at, 'MMM d, yyyy · h:mm a');
 }
 
-/** The pair's ONE status, top-right of the record header: its state and where it goes next. */
-export function StockRecordStatus({ record }: { record: LocationStockTableRow }) {
-  const state = STOCK_LIFECYCLE[stockRecordState(record)];
-  const next = stockRecordNext(record);
-  return (
-    <span className="flex min-w-0 items-center gap-2" data-testid="stock-record-status">
-      <LifecycleCode state={state} />
-      {next ? (
-        <span className={cn(RECORD_LABEL_CLASS, 'hidden truncate text-mode-muted @md/record-head:inline')} data-testid="stock-record-next">
-          {next}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-function StockRecordPhoto({ src, title }: { src: string | null; title: string }) {
-  const photos = useMemo(() => (src ? [{ url: src, thumbUrl: src }] : []), [src]);
-  const gallery = usePhotoGallery({ photos });
-
-  if (!src) {
-    return (
-      <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well">
-        <RecordPhoto src={null} fallback={title} />
-      </span>
-    );
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        aria-label={`View photo for ${title}`}
-        onClick={() => gallery.openViewer(0)}
-        className={cn(
-          'ds-raw-button relative h-14 w-14 shrink-0 cursor-zoom-in overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well',
-          focusRing('control'),
-        )}
-        data-testid="stock-record-photo"
-      >
-        <RecordPhoto src={src} fallback={title} />
-      </button>
-      <PhotoViewerPortal g={gallery} />
-    </>
-  );
-}
-
-
 export function StockEvidence({
   record,
   onCounted,
+  placeholder,
 }: {
   /** The open pair (live row), or null when the link names a pair no longer listed. */
   record: LocationStockTableRow | null;
   /** A count landed — re-read the loader. */
   onCounted: () => void;
+  /** A `TMP-` placeholder's own record parts. */
+  placeholder?: PlaceholderParts;
 }) {
-  if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} />;
+  if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} placeholder={placeholder} />;
   return (
     <DeskRecordLayout
       main={
@@ -119,107 +75,74 @@ export function StockEvidence({
   );
 }
 
-function StockRecordEvidence({ record, onCounted }: { record: LocationStockTableRow; onCounted: () => void }) {
-  const router = useRouter();
-  const { user } = useAuth();
-  const staffId = user?.staffId && user.staffId > 0 ? user.staffId : undefined;
+function StockRecordEvidence({
+  record,
+  onCounted,
+  placeholder,
+}: {
+  record: LocationStockTableRow;
+  onCounted: () => void;
+  placeholder?: PlaceholderParts;
+}) {
   const face = stockLocationFace(record);
   const title = stockRecordTitle(record);
-  const countable = stockRecordCountable(record);
-  const placeholder = stockRecordState(record) === 'onHold';
 
-  const main = (
+  // The item: photo · SKU, then the pinned location line. Its count and title read in the record header.
+  const itemBody = (
+    <div className="flex min-w-0 items-start gap-4 px-4 py-3" data-testid="stock-record-item">
+      <StockPhotoTile stockId={record.stock_id} sku={record.sku} photoUrl={record.image_url} title={title} />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <span className="flex min-w-0 items-center gap-1">
+          <CopyChip value={record.sku} display={record.sku} tone="sku" fitDisplayWidth />
+          <SkuOpenInMenu sku={record.sku} />
+        </span>
+        <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="stock-record-location">
+          <span className={cn(PILL_CLASS, !record.room && 'text-text-warning')}>{record.room ?? 'No room'}</span>
+          {face ? (
+            // The exact tote/bin: no glyph, and it copies the dashed face the floor reads (`C-02-01-2-00`).
+            <CopyChip value={face} display={face} tone="bin" icon={null} width="w-fit max-w-full" />
+          ) : (
+            <span className={cn(PILL_CLASS, 'text-text-warning')}>No tote</span>
+          )}
+          <span className={cn(PILL_CLASS, 'text-text-muted')}>{STOCK_SOURCE_LABEL[record.source]}</span>
+          <StockPairBin sku={record.sku} barcode={record.location_barcode} face={face} homeLocation={record.home_location} />
+        </div>
+      </div>
+    </div>
+  );
+
+  const itemRow = (
+    <RecordGroup title="Item" titleHidden>
+      {itemBody}
+    </RecordGroup>
+  );
+
+  const main = placeholder ? (
+    placeholder.main(itemRow)
+  ) : (
     <div className="flex min-w-0 flex-col gap-4">
-      {/* A TMP- SKU the loader did not flag: it still cannot be sold by name — say so once, with its way out. */}
-      {placeholder ? (
-        <EvidenceNotice tone="warn">
-          On hold — a floor-minted placeholder.{' '}
-          <button
-            type="button"
-            onClick={() => router.push(skuExceptionHref(record.sku))}
-            className="ds-raw-button underline underline-offset-2"
-            data-testid="stock-verb-exception"
-          >
-            Pair it to its Zoho item
-          </button>
-        </EvidenceNotice>
+      {stockRecordState(record) === 'onHold' ? (
+        // A TMP- SKU the loader did not flag: it still cannot be sold by name.
+        <EvidenceNotice tone="warn">A floor-minted placeholder — pair it to its Zoho item before it sells.</EvidenceNotice>
       ) : null}
-      <RecordGroup
-        title="Item"
-        titleHidden
-        testId="stock-record-item"
-        action={
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Package aria-hidden />}
-            onClick={() => router.push(`/inventory/sku/${encodeURIComponent(record.sku)}`)}
-            data-testid="stock-verb-open-sku"
-          >
-            Open SKU
-          </Button>
-        }
-      >
-        <article aria-label={title} className="flex items-start gap-3 px-4 pb-3">
-          <StockRecordPhoto src={record.image_url} title={title} />
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <p className="line-clamp-2 min-w-0 text-role-body font-bold" title={title}>
-              {title}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-role-data">
-              <span className="inline-flex items-center gap-1">
-                <span className={RECORD_FACT_KEY_CLASS}>SKU </span>
-                <CopyChip value={record.sku} display={record.sku} tone="sku" fitDisplayWidth />
-              </span>
-              <span data-testid="stock-record-qty">
-                <span className={RECORD_FACT_KEY_CLASS}>Qty </span>
-                <span className={cn(RECORD_ID_CLASS, record.qty > 0 ? 'text-mode-ink' : 'text-mode-warn')}>{record.qty}</span>
-              </span>
-              <span>
-                <span className={RECORD_FACT_KEY_CLASS}>Held as </span>
-                <span className="text-mode-ink">{record.source === 'bin' ? 'Bin count (loose stock)' : 'Serialized units'}</span>
-              </span>
-            </div>
-          </div>
-        </article>
-      </RecordGroup>
-      {countable && record.location_barcode ? (
-        <RecordGroup title="Count at this location" testId="stock-evidence-count">
-          <div className="px-4 pb-3">
-            <EvidenceCountStepper
-              inputId="stock-evidence-count"
-              face={face ?? record.location_barcode}
-              qty={record.qty}
-              onCommit={async (delta) => {
-                await commitStockRequest(
-                  stockAdjustRequest(
-                    {
-                      rowId: locationStockRowId(record),
-                      barcode: record.location_barcode ?? '',
-                      sku: record.sku,
-                      qty: record.qty,
-                      face: `${face ?? record.location_barcode} · ${record.sku}`,
-                    },
-                    { direction: delta > 0 ? 'in' : 'out', qty: Math.abs(delta), staffId },
-                  ),
-                );
-                onCounted();
-              }}
-            />
-          </div>
-        </RecordGroup>
-      ) : null}
+      {itemRow}
+      <StockLocationsGroup sku={record.sku} onChanged={onCounted} />
     </div>
   );
 
   const aside = (
     <div className="flex min-w-0 flex-col gap-4">
-      <RecordGroup title="Location" testId="stock-record-location">
+      {placeholder?.aside}
+      {/* A stock pair is not a task anchor kind: a standalone task titled where · what. */}
+      <RecordGroup title="Send to staff" testId="stock-record-send">
+        <RecordTaskForm
+          kind="staff"
+          target={{ entityType: null, entityId: null, label: `${face ?? 'No location'} · ${record.sku}` }}
+          onDone={() => undefined}
+        />
+      </RecordGroup>
+      <RecordGroup title="Movement" testId="stock-record-location">
         <div className={FACTS_BODY_CLASS}>
-          <EvidenceFactRow label="Bin">
-            <span className={cn(RECORD_ID_CLASS, 'select-all', !face && 'text-mode-warn')}>{face ?? 'No location'}</span>
-          </EvidenceFactRow>
-          <EvidenceFactRow label="Room">{record.room ?? '—'}</EvidenceFactRow>
           <EvidenceFactRow label="Last moved">{stamp(record.last_moved) ?? '—'}</EvidenceFactRow>
           {record.source === 'bin' ? (
             <EvidenceFactRow label="Counted">{stamp(record.last_counted) ?? 'Never'}</EvidenceFactRow>

@@ -1,37 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import { AdminEmptyDetail } from './shared';
-
-type UnifiedLogRow = {
-  event_id: string;
-  kind: 'AUDIT' | 'SAL';
-  created_at: string;
-  actor_staff_id: number | null;
-  actor_name: string | null;
-  actor_role: string | null;
-  station: string | null;
-  action: string;
-  source: string | null;
-  entity_type: string | null;
-  entity_id: string | null;
-  station_activity_log_id: number | null;
-  notes: string | null;
-  scan_ref: string | null;
-  fnsku: string | null;
-  detail_value: string | null;
-  detail_route: string | null;
-  metadata: Record<string, unknown> | null;
-};
-
-type LogKind = 'all' | 'audit' | 'sal';
-
-function asKind(raw: string | null): LogKind {
-  if (raw === 'audit' || raw === 'sal') return raw;
-  return 'all';
-}
+import { useAdminLogsPage } from './admin-logs-query';
 
 function formatDateTime(value: string) {
   const d = new Date(value);
@@ -39,43 +11,11 @@ function formatDateTime(value: string) {
   return d.toLocaleString();
 }
 
-interface AdminLogsTabProps {
-  initialSearch?: string;
-}
-
-export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
+/** The picked event (`?eventId=`) — looked up on the page the stage picker shows (`offset`). */
+export function AdminLogsTab({ offset }: { offset: number }) {
   const searchParams = useSearchParams();
-  const search = searchParams.get('search') ?? '';
-  const kind = asKind(searchParams.get('logKind'));
-  const actorRaw = searchParams.get('actorStaffId');
-  const actorStaffId = useMemo(() => {
-    if (!actorRaw) return null;
-    const n = Number(actorRaw);
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }, [actorRaw]);
   const selectedEventId = searchParams.get('eventId') ?? '';
-
-  const [offset] = useState(0);
-
-  // Same key as the sidebar's query so we share the cache; sidebar drives
-  // pagination so we just read whatever it last loaded.
-  const query = useQuery({
-    queryKey: ['admin-logs', { search, kind, actorStaffId, offset }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set('limit', '100');
-      params.set('offset', '0');
-      if (search.trim()) params.set('q', search.trim());
-      if (kind !== 'all') params.set('kind', kind);
-      if (actorStaffId != null) params.set('actorStaffId', String(actorStaffId));
-      const res = await fetch(`/api/admin/logs?${params.toString()}`, { cache: 'no-store' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to load admin logs');
-      return {
-        rows: (Array.isArray(data?.rows) ? data.rows : []) as UnifiedLogRow[],
-      };
-    },
-  });
+  const query = useAdminLogsPage(offset);
 
   const event = useMemo(
     () => query.data?.rows.find((r) => r.event_id === selectedEventId) ?? null,

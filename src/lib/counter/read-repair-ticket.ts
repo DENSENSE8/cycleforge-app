@@ -24,7 +24,7 @@ export interface KioskRepairHeader {
    */
   priceCents: number | null;
   customer: KioskRepairCustomer | null;
-  /** How it arrived — `pickup`, `shipment`, … Null on a hand-entered ticket. */
+  /** How it arrived — `pickup` (dropped off) | `shipment` (shipped in); see `@/lib/repair/repair-channel`. */
   intakeChannel: string | null;
   sourceSystem: string | null;
   sourceOrderId: string | null;

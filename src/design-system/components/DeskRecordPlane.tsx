@@ -65,6 +65,16 @@ export const DESK_RECORD_KEY_ATTR = 'data-desk-record-key';
  */
 export const DESK_RECORD_ANCHOR_ATTR = 'data-desk-record-anchor';
 
+/*
+ * `data-desk-record-open` is stamped on the record while one is OPEN, in every
+ * view. The HARD law it carries (owner 2026-09-29): while a record is being
+ * read, the page's furniture — the top-left page title / context line and the
+ * top-right page CTA (Add, Export) — is not painted; the record's own Back +
+ * identity band is the topmost header. `DeskPageChrome` keys on this
+ * attribute, so every record opened through this plane obeys it; a record
+ * never hides page chrome itself.
+ */
+
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /** Record body: the container the record's own layout queries. */
@@ -308,7 +318,7 @@ export function DeskRecordPlane({
                     actions={actions}
                     // The split pane is narrow: the drawings alone (words in the tooltip), so the order's title keeps its room.
                     // A rail desk has one view — no switch.
-                    viewSwitch={railed ? undefined : <DeskRecordViewSwitch labels="wide" />}
+                    viewSwitch={railed ? undefined : <DeskRecordViewSwitch />}
                     rail={rail}
                   />
                   <motion.div
@@ -339,7 +349,7 @@ export function DeskRecordPlane({
           // In place the record opens BELOW the list's anchor (its search row
           // and the record action strip, operator 2026-09-25): those stay
           // visible and live; the rows beneath are covered.
-          <div className="absolute inset-x-0 bottom-0" style={{ top: overlayTop }}>
+          <div className="absolute inset-x-0 bottom-0" style={{ top: overlayTop }} data-desk-record-open="">
             <DeskStageOverlay
               open
               onClose={onClose}

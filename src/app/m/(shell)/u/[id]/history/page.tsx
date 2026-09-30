@@ -3,19 +3,19 @@
 import { useParams } from 'next/navigation';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
-import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
+import { useSerialUnit } from '@/lib/serial/use-serial-unit';
 import { newestUnitEvents, unitEventLabel } from '@/components/mobile/unit/unitTimeline';
 import { formatMonthDayTimePST } from '@/utils/date';
 
 /**
  * `/m/u/[id]/history` — the unit's lifecycle events, newest first (last 25),
  * each stamped with the server's clock and actor. Read-only; shares the hub's
- * `useMobileUnit` cache entry, so opening it from the hub costs no fetch.
+ * `useSerialUnit` cache entry, so opening it from the hub costs no fetch.
  */
 export default function MobileUnitHistoryPage() {
   const params = useParams<{ id: string }>();
   const rawParam = String(params?.id ?? '');
-  const { data, isLoading, error } = useMobileUnit(rawParam);
+  const { data, isLoading, error } = useSerialUnit(rawParam);
   const unit = data?.serial_unit ?? null;
   const events = newestUnitEvents(data?.events ?? []);
 

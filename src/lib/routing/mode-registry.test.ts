@@ -55,6 +55,15 @@ test('a prefix matches whole segments only', () => {
   assert.equal(modeRouteFor('/kiosk/v2')?.mode, 'counter');
 });
 
+test('a * segment matches one record id — QC under a record is triage, the record stays industrial', () => {
+  assert.equal(modeRouteFor('/m/r/51743/qc')?.mode, 'triage');
+  assert.equal(modeRouteFor('/m/u/2457/qc')?.mode, 'triage');
+  assert.equal(modeRouteFor('/m/r/51743')?.mode, 'industrial', 'the carton hub');
+  assert.equal(modeRouteFor('/m/r/51743/photos')?.mode, 'industrial');
+  assert.equal(modeRouteFor('/m/r/qc')?.mode, 'industrial', '* needs a segment of its own');
+  assert.equal(modeRouteFor('/m/r/1/2/qc')?.mode, 'industrial', '* is one segment, not many');
+});
+
 test('no pathname resolves to nothing', () => {
   assert.equal(modeRouteFor(null), null);
   assert.equal(modeRouteFor(''), null);
@@ -67,10 +76,10 @@ test('industrial is declared only by /m/* operation flows — no desk page is ev
   assert.deepEqual(industrialDesks, []);
 });
 
-test('phone operation flows declare industrial; reading flows and the whole pick flow declare triage (owner 2026-09-28)', () => {
-  const operations = ['/m/scan', '/m/pack', '/m/pack/start/7', '/m/id/scan-out/7', '/m/r/5', '/m/r/5/classify', '/m/loc/A-01', '/m/pair/A-01/SKU1', '/m/u/9/qc'];
+test('phone operation flows declare industrial; reading flows, the whole pick flow and QC declare triage (owner 2026-09-28; QC 2026-09-29)', () => {
+  const operations = ['/m/scan', '/m/pack', '/m/pack/start/7', '/m/id/scan-out/7', '/m/r/5', '/m/r/5/classify', '/m/loc/A-01', '/m/pair/A-01/SKU1', '/m/u/9'];
   for (const pathname of operations) assert.equal(modeRouteFor(pathname)?.mode, 'industrial', pathname);
-  const reading = ['/m', '/m/home', '/m/work', '/m/orders', '/m/orders/7/info', '/m/imports', '/m/exceptions', '/m/rs/3', '/m/pick', '/m/pick/42', '/m/id/pick/42'];
+  const reading = ['/m', '/m/home', '/m/work', '/m/orders', '/m/orders/7/info', '/m/imports', '/m/exceptions', '/m/rs/3', '/m/pick', '/m/pick/42', '/m/id/pick/42', '/m/u/9/qc', '/m/r/5/qc', '/m/qc/line/3'];
   for (const pathname of reading) assert.equal(modeRouteFor(pathname)?.mode, 'triage', pathname);
 });
 

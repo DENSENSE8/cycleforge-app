@@ -11,6 +11,8 @@ export interface ReceivingStatusStep {
   who: string | null;
   /** Raw stamp (ISO / pg); the strip formats it in warehouse time. */
   at: string | null;
+  /** `at` is a calendar day (a PO date) — paint no time. */
+  dateOnly?: boolean;
   /** Count / place / reason — `2/3`, `SHELF A-4`, `Unbox-only intake`. */
   detail: string | null;
 }

@@ -5,12 +5,7 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { deriveCartonReadiness, type CartonReadiness } from '@/lib/receiving/carton-readiness';
-import {
-  deriveCartonAlerts,
-  deriveCartonSteps,
-  type CartonRecordCarton,
-  type CartonStep,
-} from '@/lib/receiving/carton-record-status';
+import { deriveCartonAlerts, type CartonRecordCarton } from '@/lib/receiving/carton-record-status';
 import type { ReceivingStatusAlert } from '@/lib/receiving/receiving-status-strip';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
@@ -49,7 +44,6 @@ export interface CartonRecord {
   /** `PO …` / `Carton …` — names the carton in verbs and composers. */
   recordLabel: string;
   readiness: CartonReadiness | null;
-  steps: CartonStep[];
   alerts: ReceivingStatusAlert[];
   unfound: boolean;
   linesLoading: boolean;
@@ -98,7 +92,6 @@ export function useCartonRecord(row: ReceivingLineRow | null): CartonRecord | nu
         : null,
     [carton, itemLines],
   );
-  const steps = useMemo(() => deriveCartonSteps(carton, lines), [carton, lines]);
   const alerts = useMemo(() => deriveCartonAlerts(carton, lines, poNumber), [carton, lines, poNumber]);
 
   const refresh = useCallback(() => {
@@ -119,7 +112,6 @@ export function useCartonRecord(row: ReceivingLineRow | null): CartonRecord | nu
     carrier: (carton?.carrier || live.carrier || '').trim() || null,
     recordLabel: poNumber ? `PO ${poNumber}` : `Carton ${receivingId}`,
     readiness,
-    steps,
     alerts,
     unfound: alerts.some((alert) => alert.key === 'unfound'),
     linesLoading: linesQuery.isLoading,

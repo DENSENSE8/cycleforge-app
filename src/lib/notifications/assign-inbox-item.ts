@@ -1,6 +1,7 @@
 /** The inbox's missing CREATE path — a directly-addressed row. */
 
-import { WORK_TASK_ASSIGNED } from './event-vocabulary';
+import { WORK_TASK_ASSIGNED, WORK_TASK_FOLLOW_UP_ALERT } from './event-vocabulary';
+import type { InboxContact } from './types';
 
 /** Idempotency + collapse keys for a thrown task. */
 function assignedTaskKeys(workAssignmentId: number): {
@@ -88,6 +89,46 @@ export function mentionInboxItemParams(organizationId: string, args: MentionInbo
     args.eventKey,
     args.actorStaffId,
     JSON.stringify({ note: args.note, urgent: false }),
+    key,
+    key,
+  ];
+}
+
+/** The follow-up alert twin of `ASSIGN_INBOX_ITEM_SQL` — same row shape, reason 'manual' (a person pressed Alert). */
+export const TASK_ALERT_INBOX_ITEM_SQL = ASSIGN_INBOX_ITEM_SQL.replace("'assigned'", "'manual'");
+
+interface TaskAlertInboxItemArgs {
+  staffId: number;
+  taskId: number;
+  /** One id per Alert press — every recipient's row shares it, so a replayed request inserts nothing. */
+  alertKey: string;
+  actorStaffId: number | null;
+  /** The task's one-line face, so the inbox row names the task without a join. */
+  title: string;
+  note: string | null;
+  dueAt: string | null;
+  /** The task's linked contacts at send time — read back as `InboxItemDto.contacts`. */
+  contacts: readonly InboxContact[];
+}
+
+/** An alert anchors on the task itself, whatever record the task points at: its row opens `/?task=<id>`. */
+export function taskAlertInboxItemParams(organizationId: string, args: TaskAlertInboxItemArgs): unknown[] {
+  const key = `alert:${args.alertKey}`;
+  return [
+    organizationId,
+    args.staffId,
+    'task',
+    args.taskId,
+    WORK_TASK_FOLLOW_UP_ALERT,
+    args.actorStaffId,
+    JSON.stringify({
+      workAssignmentId: args.taskId,
+      title: args.title,
+      note: args.note,
+      dueAt: args.dueAt,
+      contacts: args.contacts,
+      urgent: false,
+    }),
     key,
     key,
   ];

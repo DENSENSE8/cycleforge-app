@@ -144,9 +144,7 @@ export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
         actionRowClassName="flex-nowrap"
         primary={{
           label: c.isPrinting
-            ? c.printProgress
-              ? `Printing ${c.printProgress.done}/${c.printProgress.total}`
-              : 'Printing…'
+            ? 'Printing…'
             : c.missingLetter
               ? 'Assign a zone letter first'
               : bulkActive && canOpenRun && runCount > 0

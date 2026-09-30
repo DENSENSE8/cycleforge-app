@@ -17,6 +17,7 @@ import {
   getStationChannelName,
   getKioskBridgeChannelName,
 } from '@/lib/realtime/channels';
+import { SKU_STOCK_PHOTO_CHANGED_EVENT } from '@/lib/realtime/sku-stock-photo-request';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { getPrimaryTechStaffIds } from '@/lib/neon/staff-stations-queries';
 import { formatPSTTimestamp } from '@/utils/date';
@@ -902,6 +903,27 @@ export async function publishUnitPhotoChanged(payload: UnitPhotoChangedPayload) 
     photo_id: photoId != null && Number.isFinite(photoId) ? photoId : null,
     total_photo_count:
       totalPhotoCount != null && Number.isFinite(totalPhotoCount) ? totalPhotoCount : null,
+    source: payload.source,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
+/** A `sku_stock` row's product photos changed (any SKU, real or placeholder) — the desk stock record's live-repaint signal. */
+export async function publishSkuStockPhotoChanged(payload: {
+  organizationId: string;
+  action: 'insert' | 'delete';
+  stockId: number;
+  sku: string;
+  source: string;
+}) {
+  const stockId = Number(payload.stockId);
+  if (!Number.isFinite(stockId) || stockId <= 0) return;
+
+  await publishEvent(getStationChannelName(payload.organizationId), SKU_STOCK_PHOTO_CHANGED_EVENT, {
+    type: SKU_STOCK_PHOTO_CHANGED_EVENT,
+    action: payload.action,
+    stock_id: stockId,
+    sku: payload.sku,
     source: payload.source,
     timestamp: formatPSTTimestamp(),
   });

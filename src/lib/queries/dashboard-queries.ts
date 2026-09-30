@@ -14,7 +14,7 @@ import {
 import { fetchStagedOrdersData } from '@/lib/outbound/outbound-table-data';
 import { fetchWarrantyClaims, fetchWarrantyCoverage, type FetchWarrantyClaimsParams } from '@/lib/warranty/client';
 import { isPastWeekStart } from '@/lib/dashboard-week-range';
-import type { DeskPairFilter, DeskQueueFilter } from '@/lib/orders/desk-view-filters';
+import type { DeskPairFilter } from '@/lib/orders/desk-view-filters';
 import type { ShippedTimeParams } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 
 interface OrderQueryParams {
@@ -32,8 +32,6 @@ interface OrderQueryParams {
   blockedOnly?: boolean;
   /** Shortage desk lens — `?pair=po` (PO / receiving-line paired shortages). */
   pair?: DeskPairFilter;
-  /** To-ship lens — `?queue=pick` (not packed, not fully picked, newest first). */
-  queue?: DeskQueueFilter;
   /** Row ceiling for the fulfillment page (Phase 2). Grows on "Load more"; the
    *  server truncates + the counts endpoint's total drives whether more exist. */
   limit?: number;
@@ -103,7 +101,6 @@ export function unshippedOrdersQuery({
   stage,
   blockedOnly = false,
   pair,
-  queue,
   limit,
   pickedBy,
   orderFrom,
@@ -126,7 +123,6 @@ export function unshippedOrdersQuery({
         // `undefined` when off (dropped from the hashed key), so the key stays
         // byte-identical to the pre-lens key for every other desk.
         pair,
-        queue,
         limit: limit ?? null,
         // Same `undefined`-when-off rule for the sidebar refinements.
         pickedBy,
@@ -146,7 +142,6 @@ export function unshippedOrdersQuery({
         stage,
         blockedOnly,
         pair,
-        queue,
         limit,
         pickedBy,
         orderFrom,

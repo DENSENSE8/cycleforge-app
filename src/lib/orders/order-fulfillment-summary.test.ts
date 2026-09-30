@@ -31,19 +31,13 @@ describe('fulfillment summary', () => {
   test('does not reveal external fulfillment for a label-only order', () => {
     const lines = [line({ latest_status_category: 'LABEL_CREATED', latest_status_label: 'Label created' })];
     assert.equal(hasExternalFulfillmentHandoff(lines), false);
-    assert.deepEqual(fulfillmentCurrentStatus(lines), {
-      label: 'Unfulfilled',
-      tone: 'warning',
-    });
+    assert.deepEqual(fulfillmentCurrentStatus(lines), { label: 'Unfulfilled' });
   });
 
   test('opens external after dock handoff while awaiting the first carrier scan', () => {
     const lines = [line({ ship_confirmed_at: '2026-09-29T08:00:00.000Z' })];
     assert.equal(hasExternalFulfillmentHandoff(lines), true);
-    assert.deepEqual(fulfillmentCurrentStatus(lines), {
-      label: 'Awaiting carrier scan',
-      tone: 'neutral',
-    });
+    assert.deepEqual(fulfillmentCurrentStatus(lines), { label: 'Awaiting carrier scan' });
   });
 
   test('carrier truth becomes the current status and delivered always wins', () => {
@@ -65,7 +59,7 @@ describe('fulfillment summary', () => {
           latest_status_category: 'DELIVERED',
         }),
       ]),
-      { label: 'Delivered', tone: 'success', detail: undefined },
+      { label: 'Delivered', detail: undefined },
     );
   });
 });

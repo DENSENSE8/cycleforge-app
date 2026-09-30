@@ -117,14 +117,14 @@ tables, receipt HTML. AI artifacts (`InlineArtifact.tsx`, `renderers.tsx`, `Repo
 
 ### Wave order (owner 2026-09-27: outbound first, page by page)
 
-The five outbound desk views are `DESK_VIEWS` in `src/lib/outbound/desk-views.ts`.
+The FBM desk views are `DESK_VIEWS` in `src/lib/outbound/desk-views.ts` — since 2026-09-29 Allocate · Exceptions · Shipped (owner: the Pick list is removed; PO paired is parked, URL-only, for the PO pairing build — O3 waits for that build, O4 is dropped).
 
 | Wave | Page | Route | Today (observed at `:3050`) | Ledger rows | Gate |
 |---|---|---|---|---|---|
 | O1 | **Root lock on To ship** | `/shipping/orders` | `OrderCardList` (reference card) | #1 | Extract `RecordCard` / `TriageCardList` / action registry out of `OrderCard*`; **zero visual change** except the approved selection bar. Before/after screenshots at 3 widths. Owner signs off the root. |
 | O2 | Exceptions | `/shipping/exceptions` | `OutboundOrdersLedger mode="exceptions"` | #3 | Exception reason = top-right status; verbs paste item # / resolve / delete in the registry. Owner sign-off. |
-| O3 | PO paired | `/shipping/shortage?pair=po` | `UnshippedTable ledger` → `OutboundOrdersLedger mode="pending"` | #2 (shortage) | Drop the forced `ledger`; PO / coverage as status. Owner sign-off. |
-| O4 | Pick list | `/shipping/orders?queue=pick` | same `OrderCardList` as To ship, `queue=pick` lens | #1 | Pick-stage emphasis only through layout ids. Owner sign-off. |
+| O3 | PO paired *(parked 2026-09-29)* | `/shipping/shortage?pair=po` | `UnshippedTable ledger` → `OutboundOrdersLedger mode="pending"` | #2 (shortage) | Waits for the PO pairing build. |
+| O4 | ~~Pick list~~ | — | removed 2026-09-29 (owner) | — | Dropped. |
 | O5 | Shipped | `/shipping/shipped` | `ShippedLedger` (RecordLedger) | #4 | Carrier / tracking as status, shipped time far right, read-mostly verbs. Owner sign-off. |
 
 Floor (⌘/Ctrl+Shift+F on To ship) keeps `OutboundOrdersLedger` throughout. After O5, remaining

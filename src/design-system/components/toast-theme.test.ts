@@ -9,10 +9,9 @@ describe('toast theme', () => {
     assert.equal(TOAST_DURATION.loading, 45_000);
   });
 
-  it('centers loading toast chrome (no top-skewed icon padding)', () => {
+  it('centers toast chrome (no top-skewed icon padding)', () => {
     assert.match(TOAST_CLASSNAMES.toast, /items-center/);
     assert.doesNotMatch(TOAST_CLASSNAMES.icon, /mt-0\.5/);
-    assert.doesNotMatch(TOAST_CLASSNAMES.loader, /mt-0\.5/);
   });
 
   it('uses light semantic fills (not solid richColors paint)', () => {

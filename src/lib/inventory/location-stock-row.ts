@@ -20,14 +20,23 @@ export interface LocationStockTableRow {
   /** `locations.room` — the ROOM facet. */
   room: string | null;
   sku: string;
+  /** `sku_stock.id` — the SKU_STOCK photo / task anchor. Null ⇒ the SKU has no stock row. */
+  stock_id: number | null;
   /**
-   * The house title coalesce `sku_stock.display_name_override →
-   * sku_stock.product_title → sku_catalog.product_title`. Null ⇒ nothing names it.
+   * `sku_stock.location` — the SKU's home bin as written (the To-ship queue's
+   * `sku_home_location`; set by Pair bin, `POST /api/update-sku-location`).
+   * Null ⇒ the SKU has no home bin yet.
+   */
+  home_location: string | null;
+  /**
+   * `sku_stock.display_name_override`, else the SKU identity law
+   * (`resolveSkuIdentityTitle`: catalog → Zoho item name), else the
+   * `sku_stock` title (a TMP placeholder's typed name). Null ⇒ nothing names it.
    */
   product_title: string | null;
   /**
-   * The photo: the Zoho / catalog image for a real SKU (`productImageUrl`), the
-   * placeholder's first `SKU_STOCK` photo for a `TMP-` SKU. Null ⇒ none known.
+   * The photo: the SKU's own first `SKU_STOCK` photo, else the catalog / Zoho
+   * image (`productImageUrl`). Null ⇒ none known.
    */
   image_url: string | null;
   /** A floor-minted placeholder SKU (`TMP-…`) awaiting its Zoho pairing. */

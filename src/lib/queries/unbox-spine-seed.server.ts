@@ -8,7 +8,7 @@ import {
   transformUnboxOpenedRows,
   UNBOX_SIDEBAR_LIMIT,
 } from '@/lib/receiving/rail/unbox-opened-rows';
-import { tenantQuery, withTenantConnection } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import { parseReceivingLinesQuery } from '@/lib/receiving/lines/query';
 import {
   buildReceivingLinesListSql,
@@ -37,7 +37,7 @@ async function rankUnboxMruReceivingIds(
   limit: number,
 ): Promise<number[]> {
   try {
-    const res = await tenantQuery<{ receiving_id: number }>(
+    const res = await tenantQueryOneTrip<{ receiving_id: number }>(
       orgId,
       `SELECT ru.receiving_id
          FROM receiving_unbox ru
@@ -100,18 +100,17 @@ async function readUnboxOpenedRows(
     unboxRailColumnRead,
   });
 
-  const [listRes, placeholderRes] = await withTenantConnection(orgId, (client) =>
-    Promise.all([
-      client.query(built.list.sql, built.list.params as unknown[]),
-      shouldIncludeUnboxOpenedPlaceholders(query)
-        ? client.query(
-            buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead).list.sql,
-            buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead).list
-              .params as unknown[],
-          )
-        : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
-    ]),
-  );
+  // Two independent reads, one round trip each, in parallel — this sits on
+  // the /unbox TTFB, where a BEGIN / query / query / COMMIT chain cost ~4 trips.
+  const placeholders = shouldIncludeUnboxOpenedPlaceholders(query)
+    ? buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead).list
+    : null;
+  const [listRes, placeholderRes] = await Promise.all([
+    tenantQueryOneTrip<Record<string, unknown>>(orgId, built.list.sql, built.list.params as unknown[]),
+    placeholders
+      ? tenantQueryOneTrip<Record<string, unknown>>(orgId, placeholders.sql, placeholders.params as unknown[])
+      : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
+  ]);
 
   const lined = listRes.rows.map((r) => normalizeRow(r as Record<string, unknown>));
   const lineless = placeholderRes.rows.map((pkg) =>
@@ -147,7 +146,7 @@ async function seedMruCartonLines(
   try {
     // The route does NOT run a single carton through the generic list builder, and neither may this:
     const byReceiving = buildReceivingLinesByReceivingIdSql(receivingId, orgId);
-    const res = await tenantQuery<Record<string, unknown>>(
+    const res = await tenantQueryOneTrip<Record<string, unknown>>(
       orgId,
       byReceiving.lines.sql,
       byReceiving.lines.params as unknown[],

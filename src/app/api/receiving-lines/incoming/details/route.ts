@@ -39,10 +39,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       delivered_at: string | null;
       last_checked_at: string | null;
       out_for_delivery_at: string | null;
+      estimated_delivery_at: string | null;
     }>(
       orgId,
       `SELECT id, tracking_number_raw, carrier, latest_status_category, is_delivered,
-                delivered_at::text, last_checked_at::text, out_for_delivery_at::text
+                delivered_at::text, last_checked_at::text, out_for_delivery_at::text,
+                estimated_delivery_at::text
            FROM shipping_tracking_numbers
           WHERE id = $1
           LIMIT 1`,
@@ -96,6 +98,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         delivered_at: stn.delivered_at,
         last_checked_at: stn.last_checked_at,
         out_for_delivery_at: stn.out_for_delivery_at,
+        estimated_delivery_at: stn.estimated_delivery_at,
         events: ev.rows,
       },
       receive_events: [],
@@ -270,6 +273,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             delivered_at: null,
             last_checked_at: null,
             out_for_delivery_at: null,
+            estimated_delivery_at: null,
             events: [],
           }
         : null,
@@ -335,6 +339,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       delivered_at: string | null;
       last_checked_at: string | null;
       out_for_delivery_at: string | null;
+      estimated_delivery_at: string | null;
       events: unknown[];
     } | null = null;
 
@@ -349,10 +354,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         delivered_at: string | null;
         last_checked_at: string | null;
         out_for_delivery_at: string | null;
+        estimated_delivery_at: string | null;
       }>(
         orgId,
         `SELECT id, tracking_number_raw, carrier, latest_status_category, is_delivered,
-                  delivered_at::text, last_checked_at::text, out_for_delivery_at::text
+                  delivered_at::text, last_checked_at::text, out_for_delivery_at::text,
+                  estimated_delivery_at::text
              FROM shipping_tracking_numbers
             WHERE id = $1
             LIMIT 1`,
@@ -382,6 +389,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           delivered_at: stn.delivered_at,
           last_checked_at: stn.last_checked_at,
           out_for_delivery_at: stn.out_for_delivery_at,
+          estimated_delivery_at: stn.estimated_delivery_at,
           events: ev.rows,
         };
       }
@@ -588,6 +596,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     shipment_delivered_at: string | null;
     shipment_last_checked_at: string | null;
     shipment_out_for_delivery_at: string | null;
+    shipment_estimated_delivery_at: string | null;
   }>(
     orgId,
     focusReceivingId != null
@@ -609,7 +618,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                   stn.is_delivered                AS shipment_is_delivered,
                   stn.delivered_at::text          AS shipment_delivered_at,
                   stn.last_checked_at::text       AS shipment_last_checked_at,
-                  stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at
+                  stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at,
+                  stn.estimated_delivery_at::text AS shipment_estimated_delivery_at
              FROM receiving_carton r
              LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
@@ -638,7 +648,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                   stn.is_delivered                AS shipment_is_delivered,
                   stn.delivered_at::text          AS shipment_delivered_at,
                   stn.last_checked_at::text       AS shipment_last_checked_at,
-                  stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at
+                  stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at,
+                  stn.estimated_delivery_at::text AS shipment_estimated_delivery_at
              FROM receiving_carton r
              LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
@@ -671,7 +682,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                 stn.is_delivered                AS shipment_is_delivered,
                 stn.delivered_at::text          AS shipment_delivered_at,
                 stn.last_checked_at::text       AS shipment_last_checked_at,
-                stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at
+                stn.out_for_delivery_at::text   AS shipment_out_for_delivery_at,
+                stn.estimated_delivery_at::text AS shipment_estimated_delivery_at
            FROM receiving_carton r
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
@@ -974,6 +986,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           delivered_at: recv.shipment_delivered_at,
           last_checked_at: recv.shipment_last_checked_at,
           out_for_delivery_at: recv.shipment_out_for_delivery_at,
+          estimated_delivery_at: recv.shipment_estimated_delivery_at,
           events: shipmentEvents,
         }
       : null,

@@ -17,6 +17,7 @@ import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import {
   TASK_LINK_KINDS,
   TASK_LINK_NOUN,
+  taskLinkRepairHref,
   type TaskLink,
   type TaskLinkCreateBody,
   type TaskLinkKind,
@@ -25,18 +26,26 @@ import { detectCarrier, getTrackingUrl } from '@/lib/tracking-format';
 import { cn } from '@/utils/_cn';
 
 const TICKET_SHAPE = /^#?\d{1,7}$/;
+const REPAIR_SHAPE = /^RS[-_:#]?\d+$/i;
 
 function guessKind(raw: string): TaskLinkKind {
   const value = raw.trim();
+  if (REPAIR_SHAPE.test(value.replace(/\s+/g, ''))) return 'repair';
   if (TICKET_SHAPE.test(value)) return 'ticket';
   if (detectCarrier(value) !== 'Unknown') return 'tracking';
   return 'order';
 }
 
-const KIND_CODE: Readonly<Record<TaskLinkKind, string>> = { order: 'ORD', tracking: 'TRK', ticket: 'TKT' };
+const KIND_CODE: Readonly<Record<TaskLinkKind, string>> = { order: 'ORD', tracking: 'TRK', ticket: 'TKT', repair: 'RPR' };
 
 /** The record's context line, from the link's own enrichment. */
 function linkContext(link: TaskLink): string | null {
+  if (link.kind === 'repair') {
+    if (!link.repair) return 'Repair no longer on file';
+    const status = link.repair.status ? sentenceCaseLabel(link.repair.status.toUpperCase()) : null;
+    const ticket = link.repair.ticketNumber ? `Ticket ${link.repair.ticketNumber}` : null;
+    return [link.repair.title, status, ticket].filter(Boolean).join(' · ') || null;
+  }
   if (link.kind === 'ticket') {
     const status = link.ticket?.status ? sentenceCaseLabel(link.ticket.status.toUpperCase()) : null;
     return [link.ticket?.subject, status].filter(Boolean).join(' · ') || null;
@@ -54,6 +63,7 @@ function linkContext(link: TaskLink): string | null {
 
 function linkHref(link: TaskLink): string | null {
   if (link.kind === 'tracking') return getTrackingUrl(link.label);
+  if (link.kind === 'repair') return link.entityId != null ? taskLinkRepairHref(link.entityId, 'desk') : null;
   if (link.kind === 'order' || link.order) return `/dashboard?order=${link.order?.id ?? link.entityId}`;
   return null;
 }
@@ -162,7 +172,7 @@ export function TaskLinksSection({
         loading && linkedCount === 0
           ? 'Loading records…'
           : linkedCount === 0
-            ? 'No orders, tracking, or tickets'
+            ? 'No orders, tracking, tickets, or repairs'
             : `${linkedCount} linked record${linkedCount === 1 ? '' : 's'}`
       }
     >
@@ -173,7 +183,7 @@ export function TaskLinksSection({
           void submit();
         }}
       >
-        <div role="radiogroup" aria-label="What you are linking" className="grid grid-cols-3 gap-1">
+        <div role="radiogroup" aria-label="What you are linking" className="grid grid-cols-4 gap-1">
           {TASK_LINK_KINDS.map((k) => (
             <button
               key={k}
@@ -195,7 +205,7 @@ export function TaskLinksSection({
               setCandidates(null);
               setError(null);
             }}
-            placeholder="Paste an order #, tracking # or #ticket"
+            placeholder="Paste an order #, tracking #, #ticket or RS-#"
             aria-label={`${TASK_LINK_NOUN[kind]} to link`}
             className={cn(EVIDENCE_CONTROL_CLASS, RECORD_ID_CLASS, 'min-w-0 flex-1')}
             data-testid="task-link-input"

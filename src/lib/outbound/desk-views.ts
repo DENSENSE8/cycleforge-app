@@ -1,100 +1,125 @@
-/** Outbound desk views — the ONE registry the Shipping sidebar section (`resolveNavContext`) and the routing contract read. */
+/**
+ * FBM desk views — the ONE definition of the FBM views. The sidebar section
+ * (`resolveNavContext`), the `SIDEBAR_PAGE_NAV` `outbound` children and their
+ * `resolveChild`, the FBM door href, identify's desk arm, the locator's buckets
+ * and record links all read this registry; none keeps its own list.
+ */
 
-import {
-  SHIPPING_EXCEPTIONS_PATH,
-  SHIPPING_ORDERS_PATH,
-  SHIPPING_SHORTAGE_PATH,
-} from '@/lib/shipping/orders-desk';
+import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 
-export type DeskViewId = 'exceptions' | 'po' | 'pick' | 'triage' | 'shipped';
+/** Views whose rows are `/api/orders` rows — `sqlDeskQueueScope(id)` is their membership. */
+export type DeskQueueViewId = 'triage';
 
-/** Keys of `GET /api/orders/desk-counts`. */
-export type DeskCountKey = 'exceptions' | 'po' | 'pick' | 'triage' | 'shippedToday';
+export type DeskViewId = DeskQueueViewId | 'exceptions' | 'shipped';
 
 /**
- * The `SIDEBAR_PAGE_NAV` `outbound` child a view hangs under. The child carries
- * the view's permission and the org nav's hide / rename / order, so the desk
- * views and the old tab row go through ONE pipeline. A child with two views
- * (`shortage` → PO paired · Pick list) is the sidebar's labelled group.
+ * Keys of `GET /api/orders/desk-counts`. `po` is the parked Shortage desk's
+ * lens total (`/shipping/shortage?pair=po`, reachable by URL, not a view).
  */
-export type DeskViewNavChild = 'exceptions' | 'shortage' | 'orders' | 'shipped';
+export type DeskCountKey = 'exceptions' | 'po' | 'triage' | 'shippedToday';
+
+/**
+ * The `SIDEBAR_PAGE_NAV` `outbound` child a view IS (one child per view). The
+ * child id is the key the org nav's hide / rename / order is stored under, so
+ * it stays stable when a view's own id or label changes.
+ */
+export type DeskViewNavChild = 'orders' | 'exceptions' | 'shipped';
 
 export interface DeskView {
   id: DeskViewId;
   label: string;
   navChild: DeskViewNavChild;
+  /** The row source: `orders` rows (`/api/orders`), the Exceptions hub, or the packer-log Shipped list. */
+  rows: 'orders' | 'exceptions' | 'shipments';
   pathname: string;
   /** Params that DEFINE the view. Every other param is the operator's own. */
   params: Readonly<Record<string, string>>;
+  /** The param the view reads to open an order record. */
+  recordParam: string;
+  /** Permission the view's list needs — the nav child's gate. */
+  requires: string;
   countKey: DeskCountKey;
   /** Placeholder of the sidebar search while this view is open. */
   searchScope: string;
+  /** The view FBM opens on (exactly one). */
+  landing?: true;
 }
 
-/** Shortage-desk pairing param — `pair=po` is the PO-paired view. */
+/** Shortage-desk pairing param — `pair=po` is the (parked) PO-paired lens of `/shipping/shortage`. */
 export const DESK_PAIR_PARAM = 'pair';
-/** To-ship queue lens — `queue=pick` is the pick list. */
-export const DESK_QUEUE_PARAM = 'queue';
 
+/**
+ * Paint order (owner 2026-09-29): Allocate · Exceptions · Shipped. Allocate
+ * leads because it is where FBM lands — "the landing page for FBM should be
+ * Allocate and the first thing the user drops onto when they click FBM".
+ */
 export const DESK_VIEWS: readonly DeskView[] = [
-  {
-    id: 'exceptions',
-    label: 'Exceptions',
-    navChild: 'exceptions',
-    pathname: SHIPPING_EXCEPTIONS_PATH,
-    params: {},
-    countKey: 'exceptions',
-    searchScope: 'Search exceptions',
-  },
-  {
-    id: 'po',
-    label: 'PO paired',
-    navChild: 'shortage',
-    pathname: SHIPPING_SHORTAGE_PATH,
-    params: { [DESK_PAIR_PARAM]: 'po' },
-    countKey: 'po',
-    searchScope: 'Search PO-paired orders',
-  },
-  {
-    id: 'pick',
-    label: 'Pick list',
-    navChild: 'shortage',
-    pathname: SHIPPING_ORDERS_PATH,
-    params: { [DESK_QUEUE_PARAM]: 'pick' },
-    countKey: 'pick',
-    searchScope: 'Search the pick list',
-  },
   {
     id: 'triage',
     label: 'Allocate',
     navChild: 'orders',
+    rows: 'orders',
     pathname: SHIPPING_ORDERS_PATH,
     params: {},
+    recordParam: 'openOrderId',
+    requires: 'orders.view',
     countKey: 'triage',
     searchScope: 'Search orders to allocate',
+    landing: true,
+  },
+  {
+    id: 'exceptions',
+    label: 'Exceptions',
+    navChild: 'exceptions',
+    rows: 'exceptions',
+    pathname: SHIPPING_EXCEPTIONS_PATH,
+    params: {},
+    recordParam: 'order',
+    requires: 'orders.view',
+    countKey: 'exceptions',
+    searchScope: 'Search exceptions',
   },
   {
     id: 'shipped',
     label: 'Shipped',
     navChild: 'shipped',
+    rows: 'shipments',
     pathname: SHIPPING_SHIPPED_PATH,
     // FBM's Shipped is merchant-fulfilled only (owner 2026-09-28): FBA prep
     // shipments live in FBA › Shipped, so the list, its counts and the URL all
     // carry `shippedFilter=orders` (the `orders-queries` non-FBA predicate).
     params: { shippedFilter: 'orders' },
+    recordParam: 'openOrderId',
+    // `packing.view` because the archive IS the packer log: `/api/packerlogs`
+    // already enforces it, and a view that 403s is worse than an absent one.
+    requires: 'packing.view',
     countKey: 'shippedToday',
     searchScope: 'Search shipments',
   },
 ];
 
-/** Paint order: Exceptions · Picking (PO paired · Pick list) · Allocate · Shipped. */
-export const DESK_VIEW_ORDER: readonly DeskViewId[] = ['exceptions', 'po', 'pick', 'triage', 'shipped'];
+/** View ids in paint order. */
+export const DESK_VIEW_ORDER: readonly DeskViewId[] = DESK_VIEWS.map((view) => view.id);
 
 export function getDeskView(id: DeskViewId): DeskView {
   const view = DESK_VIEWS.find((v) => v.id === id);
   if (!view) throw new Error(`unknown desk view: ${id}`);
   return view;
+}
+
+function landingView(): DeskView {
+  const landing = DESK_VIEWS.filter((view) => view.landing);
+  if (landing.length !== 1) throw new Error(`FBM needs exactly one landing view, found ${landing.length}`);
+  return landing[0];
+}
+
+/** The view FBM opens on — the FBM door and mode card link here. */
+export const DESK_LANDING_VIEW: DeskView = landingView();
+
+/** A view whose rows are `/api/orders` rows (its membership is `sqlDeskQueueScope`). */
+export function isDeskQueueView(id: DeskViewId): id is DeskQueueViewId {
+  return getDeskView(id).rows === 'orders';
 }
 
 function onPath(pathname: string, base: string): boolean {
@@ -113,22 +138,12 @@ export function isOutboundDeskPath(pathname: string | null): boolean {
 }
 
 /**
- * Which view a location is on. Bare `/shipping/shortage` is the PO-paired view
- * (the page redirects it to `?pair=po`; resolving it here keeps the sidebar lit
- * during that redirect).
+ * Which view a location is on — the view whose pathname it is (every view
+ * owns its own path). The parked `/shipping/shortage` is on no view.
  */
-export function resolveDeskView(
-  pathname: string | null,
-  params: Pick<URLSearchParams, 'get'> | null,
-): DeskViewId | null {
+export function resolveDeskView(pathname: string | null): DeskViewId | null {
   if (!pathname) return null;
-  if (onPath(pathname, SHIPPING_EXCEPTIONS_PATH)) return 'exceptions';
-  if (onPath(pathname, SHIPPING_SHORTAGE_PATH)) return 'po';
-  if (onPath(pathname, SHIPPING_SHIPPED_PATH)) return 'shipped';
-  if (onPath(pathname, SHIPPING_ORDERS_PATH)) {
-    return params?.get(DESK_QUEUE_PARAM) === 'pick' ? 'pick' : 'triage';
-  }
-  return null;
+  return DESK_VIEWS.find((view) => onPath(pathname, view.pathname))?.id ?? null;
 }
 
 /**

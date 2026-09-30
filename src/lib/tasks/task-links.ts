@@ -2,7 +2,13 @@
 
 import { extractCanonicalTracking } from '@/lib/tracking-format';
 import type { ResolveTicketTargetResult } from './resolve-ticket-target';
-import type { TaskLink, TaskLinkCreateBody, TaskLinkFace, TaskLinkKind } from './task-links-shared';
+import type {
+  TaskLink,
+  TaskLinkCreateBody,
+  TaskLinkFace,
+  TaskLinkKind,
+  TaskLinkRepair,
+} from './task-links-shared';
 import type { TaskEntityType } from './task-vocabulary';
 
 /** `work_assignment_links.entity_type`, per wire kind. */
@@ -10,6 +16,7 @@ const TASK_LINK_ENTITY_TYPE = {
   order: 'ORDER',
   tracking: 'TRACKING',
   ticket: 'SUPPORT_TICKET',
+  repair: 'REPAIR',
 } as const satisfies Record<TaskLinkKind, string>;
 
 export type TaskLinkEntityType = (typeof TASK_LINK_ENTITY_TYPE)[TaskLinkKind];
@@ -22,6 +29,23 @@ const KIND_BY_ENTITY_TYPE = Object.fromEntries(
 const TASK_LINK_TRACKING_MIN = 8;
 /** `work_assignment_links_label_len` — the CHECK's upper bound. */
 const TASK_LINK_LABEL_MAX = 200;
+/** `RS-74`, `rs74`, `RS 0074`, `RS#74` — the internal repair code (same shape the pickup scan reads). */
+const REPAIR_CODE = /^RS[-_:#]?0*(\d+)$/;
+
+/** What a repair link value names: the repair row itself, or the ticket number stamped on it. */
+export type RepairLinkRef = { repairId: number } | { ticketNumber: string };
+
+/** Parse a repair link value; null when there is nothing to look up. */
+export function parseRepairLinkValue(raw: string): RepairLinkRef | null {
+  const compact = raw.replace(/\s+/g, '').toUpperCase();
+  const code = REPAIR_CODE.exec(compact);
+  if (code) {
+    const repairId = Number(code[1]);
+    return Number.isSafeInteger(repairId) && repairId > 0 ? { repairId } : null;
+  }
+  const ticketNumber = raw.trim().replace(/^#/, '').trim();
+  return ticketNumber ? { ticketNumber } : null;
+}
 
 export type TaskLinkRefusal =
   | 'task_not_found'
@@ -29,13 +53,19 @@ export type TaskLinkRefusal =
   | 'invalid_tracking'
   | 'invalid_number'
   | 'not_found'
+  | 'repair_not_found'
+  | 'repair_ambiguous'
   | 'helpdesk_unavailable'
   | 'anchor_duplicate';
 
-/** The task a link hangs off, as the anchor-duplicate rule needs it. */
+/**
+ * The task a link hangs off, as the anchor-duplicate rule needs it. A
+ * standalone task (no record behind it) has both null — it still exists and
+ * still takes links, media and documents.
+ */
 export interface TaskAnchor {
-  entityType: TaskEntityType;
-  entityId: number;
+  entityType: TaskEntityType | null;
+  entityId: number | null;
 }
 
 export interface NewTaskLinkRow {
@@ -57,6 +87,8 @@ export interface TaskLinksDeps {
   resolveTicket(value: string): Promise<ResolveTicketTargetResult>;
   /** The org order a canonical tracking number belongs to, or null. */
   findOrderIdByTracking(canonical: string): Promise<number | null>;
+  /** `repair_service` ids in this org the ref names (at most two — enough to tell one from several). */
+  findRepairIds(ref: RepairLinkRef): Promise<number[]>;
   /** INSERT … ON CONFLICT DO NOTHING on the natural key; true when a row landed. */
   insertLink(row: NewTaskLinkRow): Promise<boolean>;
   /** Enriched links on one task, oldest first; `key` narrows to one natural key. */
@@ -147,6 +179,23 @@ async function resolveLinkTarget(
         registeredTicket: null,
       };
     }
+    case 'repair': {
+      const ref = parseRepairLinkValue(body.value);
+      if (!ref) return { ok: false, reason: 'repair_not_found' };
+      const ids = await deps.findRepairIds(ref);
+      if (ids.length === 0) return { ok: false, reason: 'repair_not_found' };
+      if (ids.length > 1) return { ok: false, reason: 'repair_ambiguous' };
+      return {
+        ok: true,
+        row: {
+          entityType: TASK_LINK_ENTITY_TYPE.repair,
+          entityId: ids[0],
+          label: `RS-${ids[0]}`,
+          resolvedOrderId: null,
+        },
+        registeredTicket: null,
+      };
+    }
   }
 }
 
@@ -226,6 +275,10 @@ interface TaskLinkSqlRow {
   ticket_external_id: unknown;
   ticket_subject: unknown;
   ticket_status: unknown;
+  repair_id: unknown;
+  repair_ticket_number: unknown;
+  repair_status: unknown;
+  repair_title: unknown;
 }
 
 function intOrNull(value: unknown): number | null {
@@ -284,5 +337,18 @@ export function mapTaskLinkRow(raw: Record<string, unknown>): TaskLink | null {
             status: textOrNull(row.ticket_status),
           }
         : null,
+    repair: repairFace(kind, row),
+  };
+}
+
+/** The repair a `repair` link names; null for any other kind, or when the repair row is gone. */
+function repairFace(kind: TaskLinkKind, row: TaskLinkSqlRow): TaskLinkRepair | null {
+  const repairId = kind === 'repair' ? intOrNull(row.repair_id) : null;
+  if (repairId == null) return null;
+  return {
+    id: repairId,
+    ticketNumber: textOrNull(row.repair_ticket_number)?.trim() || null,
+    status: textOrNull(row.repair_status),
+    title: textOrNull(row.repair_title)?.trim() || null,
   };
 }

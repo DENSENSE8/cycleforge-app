@@ -18,19 +18,13 @@ import { INCOMING_PIPELINE_VIEW } from '@/lib/triage/views';
 import { IncomingDeliveryCard } from './cards/IncomingDeliveryCard';
 import { receiptCardKey, receiptCardModel, type ReceiptCardModel } from './cards/receipt-card-model';
 import { IncomingStatusChips, type IncomingStatusChipSet } from './IncomingStatusChips';
-import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
-import { useRouter } from 'next/navigation';
-import { buildIncomingDeliveryVerbs } from './incoming-record-verbs';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { IncomingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
 import type { RowGroup } from '@/lib/group-rows';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
-import {
-  IncomingDeliveryEvidence,
-  incomingDeliverySummary,
-  useIncomingDelivery,
-} from './IncomingDeliveryEvidence';
-import { incomingDeliveryRecordState, purchaseDeliveryState, purchaseIdentity } from './incoming-delivery-state';
+import { useInboundDeliveryRecord } from '@/components/receiving/record/useInboundRecord';
+import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
+import { incomingDeliverySummary, purchaseDeliveryState, purchaseIdentity } from './incoming-delivery-state';
 
 const receivingLineId = (row: ReceivingLineRow): number => row.id;
 const purchaseKey = (row: ReceivingLineRow): string =>
@@ -137,8 +131,6 @@ export function IncomingDeliveriesLedger({
     const key = purchaseKey(openRow);
     return key ? rows.filter((row) => purchaseKey(row) === key) : [openRow];
   }, [openRow, rows]);
-  const delivery = useIncomingDelivery(openRow);
-  const router = useRouter();
 
   const open = useCallback((row: ReceivingLineRow) => {
     setOpenId(row.id);
@@ -170,24 +162,8 @@ export function IncomingDeliveriesLedger({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const summary = useMemo(() => incomingDeliverySummary(rows, lane), [lane, rows]);
 
-  const recordTitle = openRow ? `PO ${purchaseIdentity(openRow)}` : 'Delivery';
-  const actionStrip = openRow ? (
-    <RecordActionStrip
-      key={openRow.id}
-      verbs={buildIncomingDeliveryVerbs({ row: openRow, delivery, navigate: router.push, onRemoved: close })}
-      label={`PO ${purchaseIdentity(openRow)} actions`}
-      testId="incoming-actions"
-    />
-  ) : null;
-  const record = openRow ? (
-    <IncomingDeliveryEvidence
-      key={openRow.id}
-      row={openRow}
-      lines={openLines}
-      state={incomingDeliveryRecordState(openRow)}
-      delivery={delivery}
-    />
-  ) : null;
+  const inbound = useInboundDeliveryRecord({ row: openRow, lines: openLines, onRemoved: close });
+  const slot = useRecordSlot(inbound?.model ?? null, inbound?.verbs ?? [], openRow ? `PO ${purchaseIdentity(openRow)} actions` : 'Delivery actions', 'inbound-record');
   // Off the desk (the Unbox embed) this row owns Source and Sort only. Find is
   // the page header's URL-bound field.
   const controls = sidebarOwnsControls ? null : (
@@ -228,12 +204,14 @@ export function IncomingDeliveriesLedger({
           statusChips={statusChips ? <IncomingStatusChips set={statusChips} /> : null}
           notice={notice ?? null}
           record={{
-            title: recordTitle,
+            title: slot?.title ?? 'Delivery',
+            actions: slot?.actions,
             noun: VIEW.noun.one,
+            showIndex: false,
             testId: 'incoming-deliveries-ledger-record',
             summary: <RecordLedgerSummaryPane summary={summary} />,
-            view: record,
-            strip: actionStrip,
+            view: slot?.view ?? null,
+            strip: null,
           }}
         />
       </div>

@@ -9,11 +9,11 @@
 import { createCacheLookupKey } from '@/lib/cache/upstash-cache';
 import { parsePackedDateKey } from '@/lib/packed/packed-filters';
 import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
+import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
 import {
+  parseDeskPairParam,
   readDeskRefinements,
-  readDeskViewFilters,
   type DeskPairFilter,
-  type DeskQueueFilter,
   type DeskRefinements,
 } from '@/lib/orders/desk-view-filters';
 
@@ -53,10 +53,8 @@ export interface OrdersListQuery extends DeskRefinements {
   /** Not-yet-packed queue incl. unlabeled rows, `o.id DESC`. */
   fulfillmentScope: boolean;
   pairFilter: DeskPairFilter | null;
-  queueFilter: DeskQueueFilter | null;
-  pickQueue: boolean;
   poPaired: boolean;
-  /** The To-ship desk scope (`sqlOrderInWarehouseToShip`); `queue=pick` implies it. */
+  /** The To-ship desk scope (`sqlOrderInWarehouseToShip`). */
   inWarehouse: boolean;
   /** Every unshipped out-of-stock order, label or not; `pair=po` implies it. */
   blockedOnly: boolean;
@@ -103,8 +101,7 @@ export function parseOrdersListQuery(searchParams: URLSearchParams): OrdersListQ
     staffFilterRaw && Number.isFinite(Number(staffFilterRaw)) && Number(staffFilterRaw) > 0
       ? Number(staffFilterRaw)
       : null;
-  const { pair: pairFilter, queue: queueFilter } = readDeskViewFilters(searchParams);
-  const pickQueue = queueFilter === 'pick';
+  const pairFilter = parseDeskPairParam(searchParams.get(DESK_PAIR_PARAM));
   const poPaired = pairFilter === 'po';
   const stallHoursRaw = Number(searchParams.get('stallHours'));
   const carrierRaw = String(searchParams.get('carrier') || '').toUpperCase();
@@ -133,11 +130,9 @@ export function parseOrdersListQuery(searchParams: URLSearchParams): OrdersListQ
     excludePacked: searchParams.get('excludePacked') === 'true',
     awaitingOnly: searchParams.get('awaitingOnly') === 'true',
     fulfillmentScope: searchParams.get('fulfillmentScope') === 'true',
-    pairFilter: pairFilter ?? null,
-    queueFilter: queueFilter ?? null,
-    pickQueue,
+    pairFilter,
     poPaired,
-    inWarehouse: searchParams.get('inWarehouse') === 'true' || pickQueue,
+    inWarehouse: searchParams.get('inWarehouse') === 'true',
     blockedOnly: searchParams.get('blockedOnly') === 'true' || poPaired,
     stagedOnly: searchParams.get('stagedOnly') === 'true',
     exceptionsOnly: searchParams.get('exceptions') === '1' || searchParams.get('exceptions') === 'true',

@@ -18,6 +18,31 @@ interface StaffScheduleFilters {
   filteredStaff: StaffList;
 }
 
+/** The roster list filter (`?search=` · `?staffView=`) — the pane's rows and the stage picker's. */
+export function matchesStaffRosterFilter(
+  member: { name: string; employee_id?: string | null; active?: boolean | null; role: string },
+  searchTerm: string,
+  staffView: string,
+): boolean {
+  const matchesSearch =
+    !searchTerm ||
+    member.name.toLowerCase().includes(searchTerm) ||
+    (member.employee_id || '').toLowerCase().includes(searchTerm);
+
+  const matchesView =
+    staffView === 'active'
+      ? Boolean(member.active)
+      : staffView === 'inactive'
+        ? !member.active
+        : staffView === 'technician'
+          ? member.role === 'technician'
+          : staffView === 'packer'
+            ? member.role === 'packer'
+            : true;
+
+  return matchesSearch && matchesView;
+}
+
 export function useStaffScheduleFilters(staff: StaffList): StaffScheduleFilters {
   const searchParams = useSearchParams();
   const searchTerm = (searchParams.get('search') || '').trim().toLowerCase();
@@ -32,24 +57,7 @@ export function useStaffScheduleFilters(staff: StaffList): StaffScheduleFilters 
   const filteredStaff = useMemo(() => {
     return staff.filter((member) => {
       if (selectedStaffId != null && member.id !== selectedStaffId) return false;
-
-      const matchesSearch =
-        !searchTerm ||
-        member.name.toLowerCase().includes(searchTerm) ||
-        (member.employee_id || '').toLowerCase().includes(searchTerm);
-
-      const matchesView =
-        staffView === 'active'
-          ? Boolean(member.active)
-          : staffView === 'inactive'
-            ? !member.active
-            : staffView === 'technician'
-              ? member.role === 'technician'
-              : staffView === 'packer'
-                ? member.role === 'packer'
-                : true;
-
-      return matchesSearch && matchesView;
+      return matchesStaffRosterFilter(member, searchTerm, staffView);
     });
   }, [searchTerm, staff, staffView, selectedStaffId]);
 

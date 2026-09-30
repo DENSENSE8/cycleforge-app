@@ -1,5 +1,5 @@
 /**
- * Tests for morphing OOS picker decisions + Picking toast targets.
+ * Tests for morphing OOS picker decisions + the OOS toast's target.
  * Callers: MorphingRowActionMenu, ordersItemStatus. User: OOS identity plan.
  */
 
@@ -11,11 +11,8 @@ import {
   morphingOosStartView,
   morphingOosStaysPacked,
 } from '@/lib/outbound/morphing-oos';
-import {
-  OOS_PENDING_TOAST_DURATION_MS,
-  pendingDeskHref,
-} from '@/lib/outbound/oos-pending-toast';
-import { SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
+import { OOS_ORDERS_HREF } from '@/lib/outbound/oos-pending-toast';
+import { resolveDeskView } from '@/lib/outbound/desk-views';
 import { ordersGroupItemStatus, ordersItemStatus } from '@/lib/orders/orders-compound-view';
 
 describe('morphing-oos', () => {
@@ -77,9 +74,8 @@ describe('morphing-oos', () => {
 });
 
 describe('oos-pending-toast', () => {
-  it('targets the Shipping Picking desk with a long enough duration', () => {
-    assert.equal(pendingDeskHref(), SHIPPING_SHORTAGE_PATH);
-    assert.ok(OOS_PENDING_TOAST_DURATION_MS >= 6000);
+  it('sends an out-of-stock order to a listed FBM view — Exceptions, which lists every OOS order', () => {
+    assert.equal(resolveDeskView(new URL(OOS_ORDERS_HREF, 'http://x').pathname), 'exceptions');
   });
 });
 

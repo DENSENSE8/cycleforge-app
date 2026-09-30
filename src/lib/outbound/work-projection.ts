@@ -143,12 +143,12 @@ const WORK_SQL = `
     zi.name AS zoho_item_title,
     sc.product_title AS catalog_product_title,
     COALESCE(
+      NULLIF(sc.image_url, ''),
+      ${listingCoverThumbUrlSql('sc')},
       CASE WHEN zi.zoho_item_id IS NOT NULL AND NULLIF(zi.image_document_id, '') IS NOT NULL
              THEN '/api/zoho/items/' || zi.zoho_item_id || '/image'
            ELSE NULLIF(zi.image_url, '')
-      END,
-      NULLIF(sc.image_url, ''),
-      ${listingCoverThumbUrlSql('sc')}
+      END
     ) AS thumbnail_url,
     stock.ready AS stock_ready,
     stock.received AS stock_received,

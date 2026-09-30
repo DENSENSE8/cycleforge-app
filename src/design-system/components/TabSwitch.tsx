@@ -93,7 +93,8 @@ export function TabSwitch({
   // Hug keeps an intrinsic track even when `scrollable` — `min-w-full` would
   // stretch short rails and fight the compact padding.
   const trackWidthClass = hug ? 'w-max' : scrollable ? 'w-max min-w-full' : 'w-full';
-  const tabFlexClass = hug ? 'shrink-0' : 'flex-1';
+  // A scrollable rail scrolls instead of squeezing: a tab never shrinks below its label (a squeezed label bleeds into its neighbour).
+  const tabFlexClass = hug ? 'shrink-0' : scrollable ? 'flex-1 min-w-max' : 'flex-1';
   const railRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -236,13 +237,10 @@ export function TabSwitch({
                   'relative z-10 min-w-[2.5rem] whitespace-nowrap font-medium tracking-normal transition-colors duration-150',
                   tabFlexClass,
                   faceCorner,
-                  hug
-                    ? compact
-                      ? 'flex h-full items-center px-2.5 text-role-caption'
-                      : 'px-3.5 py-1.5 text-role-caption'
-                    : compact
-                      ? 'flex h-full items-center px-2.5 text-role-caption'
-                      : 'px-3.5 py-1.5 text-role-caption',
+                  // Label centred in its tab in every mode — a `flex` face without `justify-center` sits left in a `flex-1` tab.
+                  compact
+                    ? 'flex h-full items-center justify-center px-2.5 text-role-caption'
+                    : 'px-3.5 py-1.5 text-role-caption',
                   isActive
                     ? 'text-text-inverse'
                     : 'text-text-soft hover:text-text-default',

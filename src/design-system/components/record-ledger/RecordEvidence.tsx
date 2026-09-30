@@ -8,7 +8,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Minus, Plus } from '@/components/Icons';
 import { STATE_TONE_CLASSES } from '../../tokens/lifecycle';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, recordStateCodeClass, type RecordStateFace } from '../../tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, type RecordStateFace } from '../../tokens/industrial-record';
 import { focusRing } from '../../tokens/focus-ring';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { toast } from '@/lib/toast';
@@ -49,24 +49,6 @@ export function EvidenceTitle({ children, sub }: { children: ReactNode; sub?: Re
         {children}
       </h2>
       {sub ? <p className="mt-1 text-role-data text-mode-muted">{sub}</p> : null}
-    </div>
-  );
-}
-
-/** `HLD · On hold ··· → Photo` — state and the next step, one strip. */
-export function EvidenceStateStrip({ state, next }: { state: RecordStateFace; next?: string | null }) {
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-2 border-b border-mode-divide px-4',
-        RECORD_HIT_CLASS,
-      )}
-    >
-      <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.tone].dot)} />
-      <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(state))}>
-        {state.code} · {state.label}
-      </span>
-      {next ? <span className={cn(RECORD_LABEL_CLASS, 'ml-auto text-mode-ink')}>→ {next}</span> : null}
     </div>
   );
 }
@@ -175,7 +157,7 @@ export function EvidenceNotice({ children, tone = 'neutral' }: { children: React
       role="status"
       className={cn(
         'border-b border-mode-rule px-4 py-2 text-role-data',
-        tone === 'warn' ? 'bg-mode-well text-mode-warn' : 'text-mode-ink',
+        tone === 'warn' ? 'bg-surface-warning font-medium text-mode-warn' : 'text-mode-ink',
       )}
     >
       {children}

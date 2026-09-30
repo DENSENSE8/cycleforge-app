@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { Sparkles, ThumbsDown, ThumbsUp } from '@/components/Icons';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,15 +14,7 @@ const KIND_BADGE: Record<TriageSuggestion['kind'], 'secondary' | 'warning' | 'de
   RETEST: 'default',
 };
 
-function StepRow({
-  step,
-  triage,
-  retestActions,
-}: {
-  step: TriageSuggestion;
-  triage: QcTriage;
-  retestActions: ReactNode;
-}) {
+function StepRow({ step, triage }: { step: TriageSuggestion; triage: QcTriage }) {
   const decided = triage.decisions[step.id] ?? null;
   const busy = triage.deciding === step.id;
   return (
@@ -81,17 +72,16 @@ function StepRow({
           {decided === 'REJECTED' ? 'Rejected' : 'Reject'}
         </Button>
       </div>
-      {step.kind === 'RETEST' && retestActions ? <div className="pl-5 pt-1">{retestActions}</div> : null}
     </li>
   );
 }
 
 /**
  * Next steps (triage) for the unit and its open session: ranked CHECK / FIX / RETEST steps with the
- * why, confidence and evidence; Accept / Reject each. A RETEST step carries the unit's verdict
- * actions (`retestActions`). When the AI pass failed the deterministic order stands, with a note.
+ * why, confidence and evidence; Accept / Reject each. A RETEST step is taken with the record's
+ * Test again verb (T). When the AI pass failed the deterministic order stands, with a note.
  */
-export function QcNextSteps({ triage, retestActions }: { triage: QcTriage; retestActions?: ReactNode }) {
+export function QcNextSteps({ triage }: { triage: QcTriage }) {
   const { result } = triage;
   return (
     <section aria-labelledby="qc-next-heading" className="flex flex-col border-b border-mode-rule">
@@ -140,7 +130,7 @@ export function QcNextSteps({ triage, retestActions }: { triage: QcTriage; retes
         ) : (
           <ol aria-label="Ranked next steps">
             {result.steps.map((step) => (
-              <StepRow key={step.id} step={step} triage={triage} retestActions={retestActions} />
+              <StepRow key={step.id} step={step} triage={triage} />
             ))}
           </ol>
         )

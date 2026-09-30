@@ -65,8 +65,6 @@ const QUEUE_GROUPS = [['stage', 'stage'], ['aging', 'aging'], ['late', 'late'], 
 const FACET_GROUPS = {
   'outbound.exceptions': [['category', 'category']],
   'outbound.triage': QUEUE_GROUPS,
-  'outbound.pick': QUEUE_GROUPS,
-  'outbound.po': [['aging', 'aging'], ['late', 'late'], ['attention', 'attention']],
   pickup: [['status', 'status']],
 };
 
@@ -78,8 +76,6 @@ const FACET_GROUPS = {
 const FACET_LISTS = {
   'outbound.exceptions': { countKey: 'exceptions', list: '/api/orders/exceptions?limit=500', listParam: 'category', total: (j) => j.count, cap: 500 },
   'outbound.triage': { countKey: 'triage', list: '/api/orders?inWarehouse=true&listShape=queue', listParam: 'stage', total: (j) => j.count },
-  'outbound.pick': { countKey: 'pick', list: '/api/orders?inWarehouse=true&listShape=queue&queue=pick', listParam: 'stage', total: (j) => j.count },
-  'outbound.po': { countKey: 'po', list: '/api/orders?inWarehouse=true&listShape=queue&pair=po', listParam: null, total: (j) => j.count },
   pickup: { countKey: null, list: '/api/local-pickup-orders/lines?limit=500', listParam: null, total: (j) => j.lines?.length, cap: 500 },
 };
 

@@ -9,14 +9,19 @@ import {
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
 import {
+  parseTicketLinkAnchorSearch,
+  TicketLinkBody,
+  TicketReferenceBody,
+} from '@/lib/schemas/support-tickets';
+import {
   addTicketShipmentReference,
   isHelpdeskNotConnected,
   linkTicketToAnchor,
   listCandidatesForAnchor,
   listTicketShipmentReferences,
+  listTicketsLinkedToAnchor,
   removeTicketShipmentReference,
   unlinkTicketFromAnchor,
-  type TicketLinkAnchorInput,
 } from '@/lib/support/ticket-link';
 
 export const dynamic = 'force-dynamic';
@@ -29,70 +34,6 @@ function notConfigured(context: string): NextResponse {
     context,
   );
 }
-
-const AnchorType = z.enum(['serialUnit', 'receiving', 'tracking', 'shipment', 'order']);
-
-function parseAnchorFromSearch(sp: URLSearchParams): TicketLinkAnchorInput {
-  const anchorType = AnchorType.parse(sp.get('anchorType') ?? undefined);
-  if (anchorType === 'serialUnit') {
-    const serialUnitId = z.coerce.number().int().positive().parse(sp.get('serialUnitId'));
-    return { type: 'serialUnit', serialUnitId };
-  }
-  if (anchorType === 'receiving') {
-    const receivingId = z.coerce.number().int().positive().parse(sp.get('receivingId'));
-    const lineRaw = sp.get('lineId');
-    const lineId = lineRaw != null && lineRaw !== ''
-      ? z.coerce.number().int().parse(lineRaw)
-      : undefined;
-    return { type: 'receiving', receivingId, lineId };
-  }
-  if (anchorType === 'tracking') {
-    const trackingNumber = z.string().trim().min(1).parse(sp.get('tracking') ?? sp.get('trackingNumber'));
-    return { type: 'tracking', trackingNumber };
-  }
-  if (anchorType === 'shipment') {
-    const shipmentId = z.coerce.number().int().positive().parse(sp.get('shipmentId'));
-    return { type: 'shipment', shipmentId };
-  }
-  const orderId = z.coerce.number().int().positive().parse(sp.get('orderId'));
-  return { type: 'order', orderId };
-}
-
-/** Add an EXTRA shipment to a ticket that keeps its existing anchor. */
-const ReferenceBody = z.object({
-  ticketId: z.number().int().positive(),
-  reference: z.union([
-    z.object({ shipmentId: z.number().int().positive() }),
-    z.object({ trackingNumber: z.string().trim().min(1) }),
-  ]),
-});
-
-const LinkBody = z.object({
-  ticketId: z.number().int().positive(),
-  anchor: z.discriminatedUnion('type', [
-    z.object({
-      type: z.literal('serialUnit'),
-      serialUnitId: z.number().int().positive(),
-    }),
-    z.object({
-      type: z.literal('receiving'),
-      receivingId: z.number().int().positive(),
-      lineId: z.number().int().nullable().optional(),
-    }),
-    z.object({
-      type: z.literal('tracking'),
-      trackingNumber: z.string().trim().min(1),
-    }),
-    z.object({
-      type: z.literal('shipment'),
-      shipmentId: z.number().int().positive(),
-    }),
-    z.object({
-      type: z.literal('order'),
-      orderId: z.number().int().positive(),
-    }),
-  ]),
-});
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const context = 'GET /api/support/tickets/link';
@@ -110,7 +51,16 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: true, shipments });
     }
 
-    const anchor = parseAnchorFromSearch(sp);
+    // ?list=linked&anchorType=… — tickets already linked to this anchor (ticket_links; no helpdesk call).
+    if (sp.get('list') === 'linked') {
+      const tickets = await listTicketsLinkedToAnchor({
+        orgId: ctx.organizationId,
+        anchor: parseTicketLinkAnchorSearch(sp),
+      });
+      return NextResponse.json({ success: true, tickets });
+    }
+
+    const anchor = parseTicketLinkAnchorSearch(sp);
     const mode = sp.get('mode') === 'reference' ? 'reference' as const : 'anchor' as const;
     const { tickets, hiddenLinked } = await listCandidatesForAnchor({
       orgId: ctx.organizationId,
@@ -132,7 +82,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     // { ticketId, reference } — attach an EXTRA shipment; the anchor is untouched.
     if (raw && typeof raw === 'object' && 'reference' in raw) {
-      const body = ReferenceBody.parse(raw);
+      const body = TicketReferenceBody.parse(raw);
       const ref = body.reference;
       const result = await addTicketShipmentReference({
         orgId: ctx.organizationId,
@@ -157,7 +107,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: true, ...result });
     }
 
-    const body = LinkBody.parse(raw);
+    const body = TicketLinkBody.parse(raw);
     const result = await linkTicketToAnchor({
       orgId: ctx.organizationId,
       ticketId: body.ticketId,
@@ -213,7 +163,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: true, ...result });
     }
 
-    const anchor = parseAnchorFromSearch(sp);
+    const anchor = parseTicketLinkAnchorSearch(sp);
     const { removed, entityType, entityId } = await unlinkTicketFromAnchor({
       orgId: ctx.organizationId,
       ticketId,

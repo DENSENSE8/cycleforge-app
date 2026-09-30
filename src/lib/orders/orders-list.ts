@@ -27,6 +27,7 @@ import {
 } from '@/lib/neon/orders-queries';
 import { resolveLinePrice } from '@/lib/orders/price-resolve';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { URGENT_SERVICE_LEVELS } from '@/lib/shipping/service-level';
 import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
 import { ORDER_STAGE_FACTS_JOIN, ORDER_STAGE_FACTS_SIGNALS } from '@/lib/orders/order-stage-facts';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
@@ -34,7 +35,6 @@ import {
   WA_TEST_DEADLINE_RANK_ORDER_SQL,
   sqlDeskRefinementClauses,
   sqlOrderAssignedToStaff,
-  sqlOrderAwaitingPick,
   sqlOrderBlockedPending,
   sqlOrderDeskStage,
   sqlOrderHasPoPairedShortage,
@@ -185,7 +185,7 @@ export function buildOrdersListSql(
     orderIdFilter, singleOrderMode, status, assignedTo, query, weekStart, weekEnd,
     packedDateFrom, packedDateTo, assignmentStatus, shipByDate, staffFilterId,
     includeShipped, shippedOnly, packedOnly, excludePacked, awaitingOnly, fulfillmentScope,
-    pickQueue, poPaired, inWarehouse, blockedOnly, stagedOnly, exceptionsOnly, stallHours,
+    poPaired, inWarehouse, blockedOnly, stagedOnly, exceptionsOnly, stallHours,
     carrierFilter, statusCategoryFilter, queueShape, stageFilter, pageLimit, cursor,
   } = q;
   const shippedByCarrierOrLatestStatusSql = SHIPPED_BY_CARRIER_SQL;
@@ -295,6 +295,20 @@ export function buildOrdersListSql(
         SELECT COUNT(*)::int FROM order_notes n WHERE n.order_id = o.id
       ) AS note_count,
       o.is_urgent,
+      o.service_level,
+      /* The service of the label bought for a paid-for fast order, so the row can
+       * flag a downgrade (2-day shipped Ground). Probed only for urgent levels:
+       * latest live ShipStation shipment, else the in-app label purchase. */
+      CASE WHEN o.service_level IN (${sqlInList(URGENT_SERVICE_LEVELS)}) THEN COALESCE(
+        (SELECT sh.service_code FROM shipstation_shipment_refs sh
+          WHERE sh.organization_id = o.organization_id AND sh.order_row_id = o.id
+            AND NOT sh.voided AND NOT sh.is_return_label
+          ORDER BY sh.create_date DESC NULLS LAST, sh.id DESC LIMIT 1),
+        (SELECT slp.service_code FROM shipping_label_purchases slp
+          WHERE slp.organization_id = o.organization_id AND slp.order_id = o.id
+            AND NOT slp.is_test AND slp.unlinked_at IS NULL AND slp.purpose IS DISTINCT FROM 'return'
+          ORDER BY slp.created_at DESC LIMIT 1)
+      ) END AS label_service_code,
       o.sale_amount,
       o.currency,
       ${replenishmentSelect}
@@ -392,8 +406,8 @@ export function buildOrdersListSql(
       o.sku_catalog_id,
       COALESCE(
         NULLIF(BTRIM(sc.image_url), ''),
-        ecwid_image.image_url,
         listing_cover.image_url,
+        ecwid_image.image_url,
         order_listing_image.image_url,
         shipstation_image.image_url
       ) AS catalog_image_url,
@@ -438,11 +452,11 @@ export function buildOrdersListSql(
       ORDER BY sp.created_at DESC NULLS LAST, sp.id DESC
       LIMIT 1
     ) ecwid_image ON TRUE
-    /* Last tier: the SKU listing-gallery cover, where acquired Amazon/eBay
-     * media lands (lib/photos/marketplace-media-backfill.ts). The paired
-     * catalog row wins; an unpaired order reaches its catalog row by the
-     * exact, org-scoped SKU. The fragment itself refuses to paint over a
-     * catalog photo or a Zoho-owned SKU. */
+    /* Second tier (owner 2026-09-29: catalog → cover → Zoho): the SKU
+     * listing-gallery cover — a product photo uploaded on a record, or the
+     * acquired Amazon/eBay media (lib/photos/marketplace-media-backfill.ts).
+     * The paired catalog row wins; an unpaired order reaches its catalog row
+     * by the exact, org-scoped SKU. */
     LEFT JOIN LATERAL (
       SELECT ${listingCoverThumbUrlSql('sc_cover')} AS image_url
         FROM sku_catalog sc_cover
@@ -719,12 +733,6 @@ export function buildOrdersListSql(
     sql += hasShortage ? ` AND ${sqlOrderHasPoPairedShortage('o')}` : ` AND false`;
   }
 
-  // To-ship · Pick list: not packed, not every allocated unit picked (same
-  // fragment the desk-counts `pick` badge reads).
-  if (pickQueue) {
-    sql += ` AND ${sqlOrderAwaitingPick('o', ORDER_STAGE_FACTS_SIGNALS)}`;
-  }
-
   if (stagedOnly) {
     sql += ` AND EXISTS (
       SELECT 1 FROM station_activity_logs sal_pack
@@ -957,7 +965,7 @@ export function buildOrdersListSql(
   // Keyset cursor: fulfillment is `o.id DESC`; everything else is
   // `deadline_at ASC NULLS LAST, id ASC`.
   if (cursor) {
-    if (fulfillmentScope || pickQueue) {
+    if (fulfillmentScope) {
       sql += ` AND o.id < $${paramCount++}`;
       params.push(cursor.id);
     } else if (cursor.d != null) {
@@ -974,9 +982,9 @@ export function buildOrdersListSql(
     }
   }
 
-  // Pick list is newest-synced first: `orders.created_at` defaults to the
+  // Fulfillment is newest-synced first: `orders.created_at` defaults to the
   // insert time, so `id DESC` is that order and keeps the id-only cursor.
-  const orderBySql = fulfillmentScope || pickQueue
+  const orderBySql = fulfillmentScope
     ? ` ORDER BY o.id DESC`
     : ` ORDER BY wa_deadline.deadline_at ASC NULLS LAST, o.id ASC`;
 

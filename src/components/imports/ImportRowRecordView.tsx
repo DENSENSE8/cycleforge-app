@@ -12,7 +12,6 @@ import {
   EvidenceFacts,
   EvidenceNotice,
   EvidenceSection,
-  EvidenceStateStrip,
   evidenceVerbClass,
 } from '@/design-system/components/record-ledger/RecordEvidence';
 import type { ImportRunRowItem } from '@/lib/imports/types';
@@ -25,7 +24,6 @@ import {
   importSourceLabel,
   importStamp,
 } from '@/lib/imports/record-faces';
-import { IMPORT_ROW_OUTCOME_LIFECYCLE } from '@/design-system/tokens/import-record-lifecycle';
 import { ImportFilledFields } from './import-record-parts';
 
 export function ImportRowRecordView({
@@ -37,11 +35,9 @@ export function ImportRowRecordView({
   channel: PlatformDisplay;
   canReview: boolean;
 }) {
-  const state = IMPORT_ROW_OUTCOME_LIFECYCLE[row.outcome];
   const orderHref = importOrderHref(row.orderRowId);
   return (
     <div className="flex min-h-0 flex-col" data-testid="import-row-record">
-      <EvidenceStateStrip state={state} next={row.importExceptionId != null ? 'Review' : null} />
       {row.reason ? <EvidenceNotice tone="warn">{importRowReasonLabel(row.reason)}</EvidenceNotice> : null}
       {orderHref == null ? (
         <EvidenceNotice>No order row: this import refused the order, so there is nothing to open.</EvidenceNotice>

@@ -676,9 +676,16 @@ export const UnitPriceChip = ({
 export const ConditionGradeChip = ({
   grade,
   dense,
+  onActivate,
+  activationLabel,
+  disableTooltip,
 }: {
   grade: string | null | undefined;
   dense?: boolean;
+  /** Optional host action; keeps the chip as the only button in its cell. */
+  onActivate?: () => void;
+  activationLabel?: string;
+  disableTooltip?: boolean;
 }) => {
   const { iconClass, isPending } = conditionGradeChipStyleOrPending(grade);
   const code = String(grade || '').trim().toUpperCase();
@@ -693,6 +700,9 @@ export const ConditionGradeChip = ({
       truncateDisplay={false}
       fitDisplayWidth
       dense={dense}
+      onActivate={onActivate}
+      activationLabel={activationLabel}
+      disableTooltip={disableTooltip}
     />
   );
 };

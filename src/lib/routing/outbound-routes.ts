@@ -117,12 +117,6 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     triage: paramText,
     /** To-ship Labels walk (`PaperworkWalkHost`). */
     paperwork: paramPositiveInt,
-    /**
-     * Desk-sidebar lens: `pick` = the pick list (not packed, not fully picked,
-     * newest synced first). Filtered server-side via `GET /api/orders?queue=`.
-     * MUST stay declared — hygiene drops undeclared keys on the next tick.
-     */
-    queue: paramEnum(['pick'] as const),
     /** Order card list (owner 2026-09-27): status chips (comma list) and the 1-based page. */
     cardStatus: paramText,
     page: paramPositiveInt,
@@ -199,12 +193,12 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
     openOrderId: paramPositiveInt,
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
     shippedSearchField: paramRoundTrip(parseShippedSearchFieldWire),
-    /** Week window (0 = current). The default paint, never "all time". */
+    /** A named warehouse week, whole weeks back (`readShippedDateWindow`); absent = all-time. */
     shippedWeekOffset: paramPositiveInt,
-    /** Explicit day window — wins over the week in `resolveShippedQueryArgs`. */
+    /** Explicit day window — wins over a named week. */
     dateFrom: paramDateKey,
     dateTo: paramDateKey,
-    /** Intentional "no date window" (Packed's dismissable seed). */
+    /** Explicit all-time (the Shipped locate bucket's link). */
     allDates: paramFlag,
     /** Outbound-state facet off the status legend (e.g. `PACKED_STAGED`). */
     ostatus: paramText,
@@ -220,7 +214,8 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
     /** Grid display sort — column/server ids, same alphabet as the desk. */
     sort: paramText,
     dir: paramEnum(['asc', 'desc'] as const),
-    /** The row list's 1-based page (`useTriageCut`). */
+    /** The card list's status pills (comma list, `useTriageCut`) and its 1-based page. */
+    cardStatus: paramText,
     page: paramPositiveInt,
     ...DESK_LOCATE_PARAMS,
   },
@@ -247,7 +242,7 @@ const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/shipping/shortage` — the Picking desk: the To-ship table locked to BLOCKED
+ * `/shipping/shortage` — the parked PO-paired desk: the To-ship table locked to BLOCKED
  * (`lockedFulfillmentState`), narrowed server-side by the PO-pair lens. Search
  * is desk-local (`useDeskSearch`), never a URL param.
  */

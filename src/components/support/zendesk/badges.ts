@@ -1,24 +1,20 @@
 /**
  * Zendesk-specific status/priority badge maps. The generic
  * design-system StatusBadge only covers a couple of these, so the console
- * uses its own complete map.
+ * uses its own complete map. Status faces are the ONE ticket status map
+ * (`@/design-system/tokens/ticket-status`) the Tasks board and phone read too.
  */
+
+import { TICKET_STATUSES, TICKET_STATUS_FACE, parseTicketStatus, type TicketStatusFace } from '@/design-system/tokens/ticket-status';
 
 interface BadgeStyle {
   label: string;
   className: string;
 }
 
-const NEUTRAL = 'bg-surface-sunken text-text-muted ring-1 ring-border-soft';
+const badgeClass = (face: TicketStatusFace) => `${face.pill} ring-1 ${face.ring}`;
 
-const STATUS_BADGE: Record<string, BadgeStyle> = {
-  new: { label: 'New', className: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200' },
-  open: { label: 'Open', className: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200' },
-  pending: { label: 'Pending', className: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' },
-  hold: { label: 'On-hold', className: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200' },
-  solved: { label: 'Solved', className: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' },
-  closed: { label: 'Closed', className: NEUTRAL },
-};
+const NEUTRAL = badgeClass(TICKET_STATUS_FACE.closed);
 
 const PRIORITY_BADGE: Record<string, BadgeStyle> = {
   urgent: { label: 'Urgent', className: 'bg-red-50 text-red-700 ring-1 ring-red-200' },
@@ -28,8 +24,8 @@ const PRIORITY_BADGE: Record<string, BadgeStyle> = {
 };
 
 export function statusBadge(status?: string | null): BadgeStyle {
-  const key = String(status ?? '').toLowerCase();
-  return STATUS_BADGE[key] ?? { label: status || '—', className: NEUTRAL };
+  const key = parseTicketStatus(status);
+  return key ? { label: TICKET_STATUS_FACE[key].label, className: badgeClass(TICKET_STATUS_FACE[key]) } : { label: status || '—', className: NEUTRAL };
 }
 
 /** Returns null for normal/low/unset so the UI can hide low-signal priorities. */
@@ -38,30 +34,16 @@ export function priorityBadge(priority?: string | null): BadgeStyle | null {
   return PRIORITY_BADGE[key] ?? null;
 }
 
-/** Row-dot hue per status — the saturated sibling of {@link STATUS_BADGE}. */
-const STATUS_DOT: Record<string, string> = {
-  new: 'bg-sky-500',
-  open: 'bg-rose-500',
-  pending: 'bg-amber-500',
-  hold: 'bg-violet-500',
-  solved: 'bg-emerald-500',
-  closed: 'bg-border-emphasis',
-};
-
-/** Zendesk status → the one-row-anatomy status dot. */
+/** Zendesk status → the one-row-anatomy status dot (the saturated sibling of the badge). */
 export function statusDot(status?: string | null): string {
-  // Lowercased on the same terms as statusBadge above — the row renders both off one status, and `ZendeskTicket.status` is typed…
-  return STATUS_DOT[String(status ?? '').toLowerCase()] ?? 'bg-border-emphasis';
+  const key = parseTicketStatus(status);
+  return key ? TICKET_STATUS_FACE[key].dot : 'bg-border-emphasis';
 }
 
-export const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'new', label: 'New' },
-  { value: 'open', label: 'Open' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'hold', label: 'On-hold' },
-  { value: 'solved', label: 'Solved' },
-  { value: 'closed', label: 'Closed' },
-];
+export const STATUS_OPTIONS: { value: string; label: string }[] = TICKET_STATUSES.map((value) => ({
+  value,
+  label: TICKET_STATUS_FACE[value].label,
+}));
 
 export const PRIORITY_OPTIONS: { value: string; label: string }[] = [
   { value: 'urgent', label: 'Urgent' },

@@ -18,7 +18,8 @@ import { orgHasActivity, useOnboardingStats } from '@/hooks/useOnboardingStats';
 import { PackAwaitingFeedback } from '@/components/packer/PackAwaitingFeedback';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
 import { deskCountsQuery, unshippedOrderRowQuery, unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import { readDeskRefinements, readDeskViewFilters } from '@/lib/orders/desk-view-filters';
+import { parseDeskPairParam, readDeskRefinements } from '@/lib/orders/desk-view-filters';
+import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
 import {
   cagedOrdersQuery,
   cagedRecordToQueueRow,
@@ -209,10 +210,9 @@ export function UnshippedTable({
   const openOrderId =
     Number.isFinite(openOrderIdValue) && openOrderIdValue > 0 ? openOrderIdValue : null;
   const paperworkId = parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM));
-  /* Desk-sidebar lenses, filtered SERVER-side (`@/lib/orders/desk-view-filters`): */
-  const deskLens = readDeskViewFilters(searchParams);
-  const pairFilter = lockedFulfillmentState === 'BLOCKED' ? deskLens.pair ?? undefined : undefined;
-  const queueFilter = lockedFulfillmentState ? undefined : deskLens.queue ?? undefined;
+  /* Shortage desk lens (`?pair=po`), filtered SERVER-side (`@/lib/orders/desk-view-filters`): */
+  const pairFilter =
+    lockedFulfillmentState === 'BLOCKED' ? parseDeskPairParam(searchParams.get(DESK_PAIR_PARAM)) ?? undefined : undefined;
   /* Sidebar refinements (`?pickedBy` / `?packedBy` / `?pickerId` / `?orderFrom|To` /
    * `?shipByFrom|To`), filtered SERVER-side with the same parse the nav facets use.
    * An explicit `packedBy` / `pickerId` prop wins over the URL. */
@@ -244,7 +244,6 @@ export function UnshippedTable({
     packStationId,
     cagedOnly,
     pairFilter,
-    queueFilter,
     packedByFilter,
     pickerIdFilter,
     pickedByFilter,
@@ -281,19 +280,17 @@ export function UnshippedTable({
       // To-ship scope would never hand it a label-less blocked row to filter.
       blockedOnly: lockedFulfillmentState === 'BLOCKED',
       pair: pairFilter,
-      queue: queueFilter,
     }),
     // Keep rows visible while search/stage refetch, but never bleed the previous
     // staff scope or desk lens into a new one — that made ?staff= look like it
-    // wasn't filtering, and would paint the Action list under "Pick list".
+    // wasn't filtering.
     placeholderData: (previousData, previousQuery) => {
       const prev = previousQuery?.queryKey?.[2] as
-        | { staffId?: number; pair?: string; queue?: string; pickedBy?: number; packedBy?: number; pickerId?: number }
+        | { staffId?: number; pair?: string; pickedBy?: number; packedBy?: number; pickerId?: number }
         | undefined;
       if (
         prev?.staffId !== staffId ||
         prev?.pair !== pairFilter ||
-        prev?.queue !== queueFilter ||
         prev?.pickedBy !== pickedByFilter ||
         prev?.packedBy !== packedByFilter ||
         prev?.pickerId !== pickerIdFilter
@@ -351,10 +348,9 @@ export function UnshippedTable({
   const { data: queueCounts } = useQuery({
     ...unshippedQueueCountsQuery({ staffId }),
   });
-  // A lens narrows the rows server-side, so its denominator is the desk-counts
-  // badge for that lens (same SQL), not the unfiltered queue total.
-  const lensActive = pairFilter != null || queueFilter != null;
-  const { data: deskCounts } = useQuery({ ...deskCountsQuery(), enabled: lensActive });
+  // The `pair=po` lens narrows the rows server-side, so its denominator is the
+  // desk-counts `po` badge (same SQL), not the unfiltered queue total.
+  const { data: deskCounts } = useQuery({ ...deskCountsQuery(), enabled: pairFilter != null });
 
   const ordersChannelName = safeChannelName(() => getOrdersChannelName(orgId!));
 
@@ -780,7 +776,6 @@ export function UnshippedTable({
   const laneTotals = fulfillmentLaneTotals(queueCounts);
   const stageTotal =
     pairFilter === 'po' ? (deskCounts?.po ?? 0)
-    : queueFilter === 'pick' ? (deskCounts?.pick ?? 0)
     : lockedFulfillmentState === 'BLOCKED'
       ? laneTotals.blocked
       : fulfillmentLane === 'pending'

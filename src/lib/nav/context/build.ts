@@ -44,14 +44,7 @@ import { LANE_DOORS } from '@/lib/nav/lanes';
 import { NAV_FACET_GROUPS, isNavFacetContext, mayReadNavFacet } from '@/lib/nav/facets/contexts';
 import { getNavRecentSurface } from '@/lib/nav/recents/surfaces';
 import { OUTBOUND_LOCATE, OUTBOUND_LOCATE_PERMISSION } from '@/lib/nav/locate/outbound-params';
-import {
-  DESK_VIEWS,
-  DESK_VIEW_ORDER,
-  deskViewHref,
-  getDeskView,
-  resolveDeskView,
-  type DeskView,
-} from '@/lib/outbound/desk-views';
+import { DESK_VIEWS, deskViewHref, resolveDeskView } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
 import {
   NAV_PAGE_DECLS,
@@ -70,7 +63,7 @@ import {
   type NavSection,
 } from './schema';
 
-/** The Shipping page — its section comes from `DESK_VIEWS`, not from its children. */
+/** The FBM page — its rows are keyed by `DESK_VIEWS` view id, and lit by `resolveDeskView`. */
 const SHIPPING_PAGE_ID = 'outbound';
 
 /** Search box of every page that declares none: the global identify box. */
@@ -130,24 +123,16 @@ function hrefOf(target: { pathname: string; search: string }): string {
   return target.search ? `${target.pathname}?${target.search}` : target.pathname;
 }
 
-/** Shipping rows: each reachable child expands to its `DESK_VIEWS` in paint order. */
+/**
+ * Shipping rows: each reachable child is its `DESK_VIEWS` view — the row id is
+ * the VIEW id (the facet / icon / search-scope key), the label the child's
+ * (possibly org-renamed) one.
+ */
 function shippingRows(page: SidebarPageNav): SectionRow[] {
-  const rows: SectionRow[] = [];
-  for (const child of page.children ?? []) {
-    const views: DeskView[] = DESK_VIEW_ORDER.map(getDeskView).filter((v) => v.navChild === child.id);
-    const group = views.length > 1 ? { id: child.id, label: child.label } : undefined;
-    for (const view of views) {
-      rows.push({
-        id: view.id,
-        // A lone view wears its child's (possibly org-renamed) label.
-        label: group ? view.label : child.label,
-        href: deskViewHref(view.id),
-        pathname: view.pathname,
-        group,
-      });
-    }
-  }
-  return rows;
+  return (page.children ?? []).flatMap((child) => {
+    const view = DESK_VIEWS.find((v) => v.navChild === child.id);
+    return view ? [{ id: view.id, label: child.label, href: deskViewHref(view.id), pathname: view.pathname }] : [];
+  });
 }
 
 function childRows(page: SidebarPageNav): SectionRow[] {
@@ -178,7 +163,7 @@ function hasSectionPanel(page: SidebarPageNav, rows: readonly SectionRow[]): boo
 }
 
 function activeRowId(page: SidebarPageNav, pathname: string, params: URLSearchParams): string | null {
-  if (page.id === SHIPPING_PAGE_ID) return resolveDeskView(pathname, params);
+  if (page.id === SHIPPING_PAGE_ID) return resolveDeskView(pathname);
   return page.resolveChild?.({ pathname, params }) ?? null;
 }
 
@@ -344,16 +329,11 @@ function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInpu
 }
 
 const CONTEXTUAL_SCAN_STATION_IDS = new Set<string>(CONTEXTUAL_SCAN_STATION_PAGE_IDS);
-const SCAN_STATION_NAV_HIDDEN_IDS = new Set<string>(['repair']);
 
 /** Visible floor stations — the shared parent tier in contextual sidebars. */
-function scanStationModeRows(input: PipelineInput, currentPageId: string): SectionRow[] {
+function scanStationModeRows(input: PipelineInput): SectionRow[] {
   const group = { id: 'scan-stations.modes', label: 'Scan Stations' };
   return CONTEXTUAL_SCAN_STATION_PAGE_IDS.flatMap((pageId) => {
-    // Repair remains a working direct route, but is not advertised from the
-    // top-level station navigation. When already there, keep it as the current
-    // card so the switcher never mislabels the page as another station.
-    if (SCAN_STATION_NAV_HIDDEN_IDS.has(pageId) && pageId !== currentPageId) return [];
     const registered = getSidebarPageNav(pageId);
     if (!registered) return [];
     const page = pipelinePage(registered, input);
@@ -437,7 +417,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   // A page with its own modes paints them as the card, and the current mode's views under it.
   const modeDecl = page ? NAV_PAGE_DECLS[pageId]?.modes : undefined;
   const panelRows = scanStationPanel
-    ? [...scanStationModeRows(pipeline, page.id), ...rows]
+    ? [...scanStationModeRows(pipeline), ...rows]
     : modeDecl
       ? pageModeRows(modeDecl, rows, activeId)
       : modeLane && page

@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
 
 // Every panel is code-split on the route key.
-const StudioSidebarPanel = dynamic(() => import('@/components/sidebar/StudioSidebarPanel').then((m) => m.StudioSidebarPanel));
 const RolesSidebarPanel = dynamic(() => import('@/components/admin/RolesSidebarPanel').then((m) => m.RolesSidebarPanel));
 const AccessSidebarPanel = dynamic(() => import('@/components/admin/AccessSidebarPanel').then((m) => m.AccessSidebarPanel));
 const ReceivingSidebarPanel = dynamic(() => import('@/components/sidebar/ReceivingSidebarPanel').then((m) => m.ReceivingSidebarPanel));
@@ -28,9 +27,8 @@ export function SidebarContextPanel() {
   // Dashboard, Operations, Products, Support, Shipping, Audit, and FBA never mount a
   // second record-list sidebar. Their navigation lives in ContextualSidebar;
   // their records and search results live in the central workspace.
-  // `/studio/automations` never reaches here — it is rail-less (SoT:
-  // `isRaillessSurface`), so `ContextPanelLayout` mounts no panel at all.
-  if (routeKey === 'studio') return <StudioSidebarPanel />;
+  // Studio has no branch: its lens · zoom live in the contextual sidebar and
+  // its library is a stage pane beside the canvas (`StudioShell`).
   // Settings overview is railless (card landing). Roles / Access keep their
   // picker panels — the editors still say "choose from the sidebar".
   if (routeKey === 'settings') {

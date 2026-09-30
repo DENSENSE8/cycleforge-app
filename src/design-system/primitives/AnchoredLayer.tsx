@@ -50,8 +50,14 @@ interface AnchoredLayerProps {
   /** Gap in px between the trigger edge and the panel. Default 4. */
   gap?: number;
   /**
-   * When false, skip the horizontal viewport clamp so a below-start panel
-   * cannot be shoved left over siblings (carton photos over Claim). Default true.
+   * Keep the panel inside the viewport. Horizontally: clamp a top-/bottom-
+   * panel that would overflow a side edge. Vertically: when the authored side
+   * is too short for the panel and the opposite side has more room, flip to
+   * it; either way publish the chosen side's room as
+   * `--anchored-available-height` (Popover caps its height with it) and the
+   * chosen side as `data-side`. When false, the panel sits exactly where the
+   * placement puts it — no clamp, no flip — so a below-start panel cannot be
+   * shoved over siblings (carton photos over Claim). Default true.
    */
   avoidCollisions?: boolean;
   /**
@@ -80,6 +86,56 @@ interface AnchoredLayerProps {
 
 /** Breathing room kept between a clamped panel and the viewport edge. */
 const VIEWPORT_GUTTER_PX = 8;
+
+/** CSS custom property carrying the chosen side's room, in px — Popover caps its height with it. */
+const AVAILABLE_HEIGHT_VAR = '--anchored-available-height';
+
+interface VerticalFit {
+  /** Opens on the side opposite the authored one. */
+  flipped: boolean;
+  /** Room on the chosen side, trigger gap and viewport gutter already taken out. */
+  available: number;
+}
+
+/**
+ * Pick the vertical side for a top-/bottom- panel: stay on the authored side
+ * while the panel's natural height fits there; otherwise take the opposite
+ * side when it has more room — never a sliver squeezed against an edge.
+ * Once flipped it stays flipped while it still fits (or still has more room),
+ * so a combobox list that shrinks as the operator types does not jump sides
+ * under the cursor.
+ */
+function resolveVerticalFit(
+  rect: DOMRect,
+  placement: AnchoredPlacement,
+  gap: number,
+  naturalHeight: number,
+  viewportHeight: number,
+  wasFlipped: boolean,
+): VerticalFit {
+  const below = Math.max(0, viewportHeight - rect.bottom - gap - VIEWPORT_GUTTER_PX);
+  const above = Math.max(0, rect.top - gap - VIEWPORT_GUTTER_PX);
+  const prefersTop = placement.startsWith('top-');
+  const preferred = prefersTop ? above : below;
+  const opposite = prefersTop ? below : above;
+  const flipped = wasFlipped
+    ? naturalHeight <= opposite || opposite > preferred
+    : naturalHeight > preferred && opposite > preferred;
+  return { flipped, available: Math.floor(flipped ? opposite : preferred) };
+}
+
+/**
+ * The panel's height with no available-height cap — drop the custom property,
+ * read, restore. Synchronous inside a layout effect, so nothing paints between.
+ */
+function measureNaturalHeight(panel: HTMLElement): number {
+  const capped = panel.style.getPropertyValue(AVAILABLE_HEIGHT_VAR);
+  if (!capped) return panel.offsetHeight;
+  panel.style.removeProperty(AVAILABLE_HEIGHT_VAR);
+  const height = panel.offsetHeight;
+  panel.style.setProperty(AVAILABLE_HEIGHT_VAR, capped);
+  return height;
+}
 
 /** Where a vertical-edge (top-/bottom-) panel's LEFT wants to sit, in viewport coordinates, before any clamp — mirrors {@link… */
 function intendedPanelLeft(
@@ -180,6 +236,9 @@ export function AnchoredLayer({
   // When a vertical-edge panel would overflow the viewport horizontally, the
   // clamped left it should sit at instead. Null = fits, position as authored.
   const [clampLeft, setClampLeft] = useState<number | null>(null);
+  // Side + room for a top-/bottom- panel. Null = horizontal placement or
+  // collisions off: position exactly as authored, uncapped.
+  const [verticalFit, setVerticalFit] = useState<VerticalFit | null>(null);
 
   useEffect(() => {
     setTarget(document.body);
@@ -252,6 +311,35 @@ export function AnchoredLayer({
     setClampLeft(Math.abs(clamped - intended) > 0.5 ? clamped : null);
   }, [open, rect, placement, gap, avoidCollisions, edgeAlign]);
 
+  // Vertical flip + available height. Re-fits when the panel resizes too —
+  // options loading in after open can outgrow the authored side.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const vertical = placement.startsWith('top-') || placement.startsWith('bottom-');
+    if (!open || !rect || !panel || !vertical || !avoidCollisions) {
+      setVerticalFit(null);
+      return;
+    }
+    const fit = () => {
+      const naturalHeight = measureNaturalHeight(panel);
+      setVerticalFit((prev) => {
+        const next = resolveVerticalFit(
+          rect,
+          placement,
+          gap,
+          naturalHeight,
+          window.innerHeight,
+          prev?.flipped ?? false,
+        );
+        return prev?.flipped === next.flipped && prev.available === next.available ? prev : next;
+      });
+    };
+    fit();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+    ro?.observe(panel);
+    return () => ro?.disconnect();
+  }, [open, rect, placement, gap, avoidCollisions]);
+
   // Outside-click that accounts for the (portaled) panel AND the anchor, so a
   // click inside either is not treated as "outside". Replaces each caller's
   // own rootRef.contains() handler, which can't see the portaled panel.
@@ -276,8 +364,13 @@ export function AnchoredLayer({
 
   if (!open || !target || !rect) return null;
 
+  const resolvedPlacement = verticalFit?.flipped
+    ? ((placement.startsWith('top-')
+        ? placement.replace('top-', 'bottom-')
+        : placement.replace('bottom-', 'top-')) as AnchoredPlacement)
+    : placement;
   const stretch = placement.endsWith('-stretch');
-  const positioned = computeStyle(rect, placement, gap, matchWidth || stretch, level, edgeAlign);
+  const positioned = computeStyle(rect, resolvedPlacement, gap, matchWidth || stretch, level, edgeAlign);
   if (clampLeft != null) {
     // Replace whatever horizontal anchoring the placement chose with a concrete
     // clamped left, dropping the `right` / translateX(-50%) it may have used.
@@ -287,11 +380,17 @@ export function AnchoredLayer({
   }
   const resolvedStyle = {
     ...positioned,
+    ...(verticalFit ? { [AVAILABLE_HEIGHT_VAR]: `${verticalFit.available}px` } : null),
     ...style,
-  };
+  } as CSSProperties;
 
   return createPortal(
-    <div ref={panelRef} className={cn(className)} style={resolvedStyle}>
+    <div
+      ref={panelRef}
+      className={cn(className)}
+      style={resolvedStyle}
+      data-side={resolvedPlacement.split('-')[0]}
+    >
       {children}
     </div>,
     target,

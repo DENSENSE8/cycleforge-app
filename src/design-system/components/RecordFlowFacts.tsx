@@ -5,13 +5,17 @@ import { cn } from '@/utils/_cn';
 export type RecordFlowDirection = 'outbound' | 'inbound';
 
 export interface RecordFlowLabels {
-  party: 'Customer' | 'Vendor';
-  movement: 'Shipping' | 'Purchased from';
+  party: 'Customer' | 'Purchased from';
+  movement: 'Shipping';
 }
 
+/**
+ * Owner 2026-09-29: the inbound card reads like outbound's — who (Purchased
+ * from) on top, then under the hairline the Shipping: tracking, arrival, dock.
+ */
 const RECORD_FLOW_LABELS: Record<RecordFlowDirection, RecordFlowLabels> = {
   outbound: { party: 'Customer', movement: 'Shipping' },
-  inbound: { party: 'Vendor', movement: 'Purchased from' },
+  inbound: { party: 'Purchased from', movement: 'Shipping' },
 };
 
 /**

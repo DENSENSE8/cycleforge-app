@@ -12,7 +12,6 @@ import {
   APP_SIDEBAR_NAV,
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
-  resolveSidebarChild,
   spineSectionIdForPage,
 } from '@/lib/sidebar-navigation';
 import { LANE_DOORS } from '@/lib/nav/lanes';
@@ -165,7 +164,7 @@ test('Fulfillment is a lane door: one map row, the lane name on its panel, its p
 });
 
 test('the parent map keeps Scan Stations to one door across every station route', () => {
-  const stationPaths = ['/triage', '/unbox', '/repair', '/test', '/pick', '/pack', '/shipping/scan-out'];
+  const stationPaths = ['/triage', '/unbox', '/test', '/pick', '/pack', '/shipping/scan-out'];
   for (const href of stationPaths) {
     const map = at(href, { view: 'top' });
     const stationSection = map.sections.find((section) => section.id === 'floor');
@@ -237,10 +236,8 @@ test('permission filtering removes the rows a role cannot reach', () => {
     'outbound',
     'fba',
     'label-intake',
-    'exceptions',
-    'po',
-    'pick',
     'triage',
+    'exceptions',
   ]);
 
   // Only the Shipped archive door: still the Shipping section, one row.
@@ -276,8 +273,8 @@ test('the org nav override shapes the section and the map — one pipeline with 
       {
         id: 'outbound',
         children: [
-          { id: 'orders', order: 0 },
-          { id: 'shortage', label: 'Pick queue' },
+          { id: 'exceptions', order: 0 },
+          { id: 'orders', label: 'Allocate queue' },
           { id: 'shipped', hidden: true },
         ],
       },
@@ -286,16 +283,16 @@ test('the org nav override shapes the section and the map — one pipeline with 
       { id: 'products', label: 'Catalog desk' },
     ],
   };
-  const shipping = at('/shipping/orders?queue=pick', { orgNav });
-  assert.deepEqual(itemIds(shipping), ['outbound', 'label-intake', 'triage', 'exceptions', 'po', 'pick']);
-  assert.equal(shipping.sections.find((s) => s.items.some((i) => i.id === 'pick'))?.label, 'Pick queue');
+  const shipping = at('/shipping/orders', { orgNav });
+  assert.deepEqual(itemIds(shipping), ['outbound', 'label-intake', 'exceptions', 'triage']);
+  assert.equal(items(shipping).find((i) => i.id === 'triage')?.label, 'Allocate queue');
 
   const map = at('/', { orgNav, view: 'top' });
   assert.ok(!itemIds(map).includes('fba'));
   assert.equal(items(map).find((i) => i.id === 'products')?.label, 'Catalog desk');
 });
 
-test('Picking replaces Pending in fulfillment; Picker keeps its Pending queue view', () => {
+test('Fulfillment never says Pending; Picker keeps its Pending queue view', () => {
   for (const { href, ctx } of everyContext()) {
     const words = [
       ctx.page.label,
@@ -308,13 +305,6 @@ test('Picking replaces Pending in fulfillment; Picker keeps its Pending queue vi
     if (ctx.page.id === 'ready-to-pack' || ctx.page.id === 'testing') continue;
     for (const word of words) if (word) assert.doesNotMatch(word, /\bpending\b/i, `${href}: "${word}"`);
   }
-  const shipping = at('/shipping/orders');
-  const picking = shipping.sections.find((section) => section.label === 'Picking');
-  assert.deepEqual(picking?.items.map((item) => item.label), ['PO paired', 'Pick list']);
-  assert.equal(items(shipping).find((item) => item.id === 'triage')?.label, 'Allocate');
-  // The old nav agrees: the pick list lights Picking, not To ship.
-  const pick = new URL('http://t/shipping/orders?queue=pick');
-  assert.equal(resolveSidebarChild('outbound', { pathname: pick.pathname, params: pick.searchParams }), 'shortage');
 });
 
 test('every advertised param survives the hygiene of the view that reads it', () => {
@@ -345,8 +335,6 @@ test('every advertised param survives the hygiene of the view that reads it', ()
 test('the Shipping filters removed on 2026-09-26 are advertised and survive with real values', () => {
   const samples: ReadonlyArray<readonly [string, string, string]> = [
     ['/shipping/exceptions', 'record', 'fbm:42'],
-    ['/shipping/shortage', 'pair', 'po'],
-    ['/shipping/orders', 'queue', 'pick'],
     ['/shipping/orders', 'stage', 'packed'],
     ['/shipping/orders', 'aging', 'overdue'],
     ['/shipping/orders', 'late', '1'],
@@ -389,7 +377,7 @@ test('the Shipping filters removed on 2026-09-26 are advertised and survive with
 test('a pasted list and its bucket filter survive every Shipping view, past the free-text cap', () => {
   // 40 order numbers ≈ 600 chars — longer than a text param may be.
   const refs = Array.from({ length: 40 }, (_, i) => `02-${15200 + i}-${40000 + i}`).join(',');
-  for (const href of ['/shipping/orders', '/shipping/orders?queue=pick', '/shipping/shortage?pair=po', '/shipping/exceptions', '/shipping/shipped']) {
+  for (const href of ['/shipping/orders', '/shipping/exceptions', '/shipping/shipped']) {
     const locate = at(href).search.locate;
     assert.ok(locate, `${href} locates a pasted list`);
     assert.equal(locate.locator, 'outbound');
@@ -433,15 +421,13 @@ test('each Shipping view carries the filters and controls its own list reads', (
   for (const key of ['staff', 'pickedBy', 'packedBy', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo']) {
     assert.ok(shippedControls.includes(key), `shipped control ${key}`);
   }
-  for (const href of ['/shipping/orders', '/shipping/orders?queue=pick', '/shipping/shortage?pair=po']) {
-    const controls = at(href).controls;
-    const keys = navControlParams(controls);
-    for (const key of ['staff', 'pickedBy', 'shipByFrom', 'shipByTo', 'orderFrom', 'orderTo', 'sort', 'dir']) {
-      assert.ok(keys.includes(key), `${href} control ${key}`);
-    }
-    // "What to ship first": the queue's default order is ship-by, soonest first.
-    assert.equal(controls?.sort?.defaultValue, 'deadline', href);
+  const allocate = at('/shipping/orders').controls;
+  const allocateControls = navControlParams(allocate);
+  for (const key of ['staff', 'pickedBy', 'shipByFrom', 'shipByTo', 'orderFrom', 'orderTo', 'sort', 'dir']) {
+    assert.ok(allocateControls.includes(key), `Allocate control ${key}`);
   }
+  // "What to ship first": the queue's default order is ship-by, soonest first.
+  assert.equal(allocate?.sort?.defaultValue, 'deadline');
   // The Exceptions workbench reads no staff or date param.
   assert.equal(at('/shipping/exceptions').controls, undefined);
 });
@@ -528,20 +514,30 @@ test('every facet context names a real page or section view, and every recents s
   }
 });
 
-test('every desk view hangs under a Shipping child, so none can silently vanish', () => {
-  const children = new Set(getSidebarPageNav('outbound')?.children?.map((child) => child.id));
-  for (const view of DESK_VIEWS) assert.ok(children.has(view.navChild), view.id);
-  assert.deepEqual(itemIds(at('/shipping/orders')), ['outbound', 'fba', 'label-intake', 'exceptions', 'po', 'pick', 'triage', 'shipped']);
+test('FBM\'s children ARE its DESK_VIEWS, Allocate first, and FBM opens on Allocate', () => {
+  assert.deepEqual(getSidebarPageNav('outbound')?.children?.map((child) => child.id), DESK_VIEWS.map((view) => view.navChild));
+  assert.deepEqual(itemIds(at('/shipping/orders')), ['outbound', 'fba', 'label-intake', 'triage', 'exceptions', 'shipped']);
+  // The lane map door and the FBM mode card both land on Allocate.
+  assert.equal(items(at('/unbox', { view: 'top' })).find((item) => item.id === 'outbound')?.href, '/shipping/orders');
+  const modes = at('/shipping/shipped').sections.find(isLanePageSection);
+  assert.equal(modes?.items.find((item) => item.id === 'outbound')?.href, '/shipping/orders');
+  assert.deepEqual(activeIds(at('/shipping/orders')).filter((id) => id !== 'outbound'), ['triage']);
+  // No Pick list and no PO paired row anywhere in FBM's nav; the parked Shortage desk lights no view.
+  for (const href of ['/shipping/orders', '/shipping/shortage?pair=po']) {
+    const labels = items(at(href)).map((item) => item.label);
+    assert.ok(!labels.includes('Pick list') && !labels.includes('PO paired') && !labels.includes('Picking'), href);
+  }
+  assert.deepEqual(activeIds(at('/shipping/shortage?pair=po')).filter((id) => id !== 'outbound'), []);
 });
 
 test('view=top is the ‹ peek: the lane map with the page lit, the page tools kept', () => {
-  const peek = at('/shipping/orders?queue=pick', { view: 'top' });
+  const peek = at('/shipping/orders', { view: 'top' });
   assert.equal(peek.scope, 'top');
   assert.equal(peek.back, null);
   assert.deepEqual(activeIds(peek), ['outbound']);
   assert.equal(items(peek).find((item) => item.id === 'outbound')?.kind, 'drill');
-  assert.equal(peek.search.scope, 'outbound.pick');
-  assert.equal(peek.filters?.facetContext, 'outbound.pick');
+  assert.equal(peek.search.scope, 'outbound.triage');
+  assert.equal(peek.filters?.facetContext, 'outbound.triage');
 
   const station = at('/unbox');
   assert.equal(station.scope, 'section');
@@ -559,24 +555,16 @@ test('view=top is the ‹ peek: the lane map with the page lit, the page tools k
   assert.equal(station.scanInput?.grammar, 'unbox');
 });
 
-test('every floor station shares the Scan Stations parent switcher without advertising Repair', () => {
+test('every floor station shares the Scan Stations parent switcher', () => {
   const cases = [
     ['/triage', 'triage', 'arrival'],
     ['/unbox', 'receive', 'unbox'],
-    ['/repair', 'repair', undefined],
     ['/test', 'testing', 'testing'],
     ['/pick', 'ready-to-pack', 'station'],
     ['/pack', 'packer', 'pack'],
     ['/shipping/scan-out', 'scan-out', 'scan-out'],
   ] as const;
-  const visibleStationIds = [
-    'triage',
-    'receive',
-    'testing',
-    'ready-to-pack',
-    'packer',
-    'scan-out',
-  ];
+  const stationIds = cases.map(([, pageId]) => pageId);
   for (const [href, pageId, grammar] of cases) {
     const ctx = at(href);
     assert.equal(ctx.scope, 'section', href);
@@ -584,12 +572,39 @@ test('every floor station shares the Scan Stations parent switcher without adver
     assert.equal(ctx.page.label, 'Scan Stations', href);
     assert.deepEqual(ctx.back, { label: 'Scan Stations', mode: 'local' }, href);
     const stationSection = ctx.sections.find((section) => /\.scan-stations\.modes$/.test(section.id));
-    const expectedIds = pageId === 'repair'
-      ? ['triage', 'receive', 'repair', ...visibleStationIds.slice(2)]
-      : visibleStationIds;
-    assert.deepEqual(stationSection?.items.map((item) => item.id), expectedIds, href);
+    assert.deepEqual(stationSection?.items.map((item) => item.id), stationIds, href);
     assert.equal(ctx.scanInput?.grammar, grammar, href);
   }
+});
+
+test('Repair service is a Receiving mode whose views split tickets by intake channel', () => {
+  const modesOf = (ctx: NavContext) => ctx.sections.find(isLanePageSection)?.items.map((item) => item.label);
+  const viewsOf = (ctx: NavContext) => ctx.sections.filter((section) => !isLanePageSection(section)).flatMap((section) => section.items);
+
+  const bare = at('/repair');
+  assert.equal(bare.page.id, 'repair');
+  assert.equal(bare.back?.label, 'Receiving');
+  assert.deepEqual(modesOf(bare), ['Deliveries', 'Local Pickup', 'Repair service', 'Sourcing']);
+  assert.deepEqual(viewsOf(bare).map((item) => [item.label, item.href, item.active]), [
+    ['All repairs', '/repair', true],
+    ['Shipped in', '/repair?channel=shipment', false],
+    ['Dropped off', '/repair?channel=pickup', false],
+  ]);
+  assert.equal(bare.viewKeys, true);
+
+  // The status tab rides beside the channel; an unknown channel reads as All.
+  assert.deepEqual(viewsOf(at('/repair?channel=pickup&tab=done')).map((item) => item.active), [false, false, true]);
+  assert.deepEqual(viewsOf(at('/repair?channel=shipment')).map((item) => item.active), [false, true, false]);
+  assert.deepEqual(viewsOf(at('/repair?channel=bogus')).map((item) => item.active), [true, false, false]);
+
+  // Sales shows the same three views under their own heading, same param.
+  const sales = at('/dashboard?mode=repairs&channel=pickup');
+  const repairs = sales.sections.find((section) => section.label === 'Repair service');
+  assert.deepEqual(repairs?.items.map((item) => [item.label, item.active]), [
+    ['All repairs', false],
+    ['Shipped in', false],
+    ['Dropped off', true],
+  ]);
 });
 
 test('headings never repeat the name of a row beneath them (nav-name law)', () => {
@@ -686,7 +701,7 @@ test('the parent map places Scan Stations above Sales and closes with Print stat
     items(map).slice(0, 11).map((item) => item.label),
     [
       'Chat',
-      'Daily',
+      'Tasks',
       'Automations',
       'Exceptions',
       'Media Library',

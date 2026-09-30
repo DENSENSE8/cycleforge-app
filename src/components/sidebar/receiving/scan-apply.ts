@@ -33,6 +33,7 @@ import type { ScanApplyCtx } from './scan-types';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { photoStageForScanIntakeSurface } from '@/lib/receiving/photo-intent';
+import { pairUnboxUnfoundTicket } from '@/lib/receiving/unbox-scan-feedback-store';
 
 /** Announce that this scan was an INSPECTION of finished work, not work. */
 /** Read the lookup verdict off a lookup-po response. */
@@ -456,6 +457,9 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
       railRow: buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber),
       ...lookupScanFieldsFrom(d),
     });
+    // Unfound: find the Zendesk ticket that mentions this tracking and link it
+    // to the carton — the header's top-left line reports each step.
+    void pairUnboxUnfoundTicket({ receivingId: unmatchedReceivingId, tracking: ctx.trackingNumber });
   }
 
   // Auto-open the unfound workspace so the operator can immediately add items via

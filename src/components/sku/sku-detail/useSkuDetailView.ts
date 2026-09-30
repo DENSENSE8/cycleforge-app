@@ -27,10 +27,6 @@ export function useSkuDetailView({ sku, variant = 'page', onClose }: SkuDetailVi
   const reasonRows = useReasonVocabulary('inventory_adjust');
   const reasonOptions = reasonRows && reasonRows.length > 0 ? reasonRows : SKU_STOCK_REASONS;
 
-  // Location
-  const [editingLocation, setEditingLocation] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState('');
-
   // Photo lightbox — the shared fullscreen viewer (read-only: url-only inputs
   // keep the delete affordance off, matching the old single-image lightbox).
   const gallery = usePhotoGallery({
@@ -86,12 +82,6 @@ export function useSkuDetailView({ sku, variant = 'page', onClose }: SkuDetailVi
     patchStock({ action: 'set', absoluteQty: qty, reason: 'SET' });
   };
 
-  const handleLocationSave = () => {
-    if (!selectedLocation.trim()) return;
-    patchStock({ action: 'location', location: selectedLocation.trim() });
-    setEditingLocation(false);
-  };
-
   const handleCopy = async (text: string, field: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -135,10 +125,7 @@ export function useSkuDetailView({ sku, variant = 'page', onClose }: SkuDetailVi
     setShowSetMode,
     absoluteQty,
     setAbsoluteQty,
-    editingLocation,
-    setEditingLocation,
-    selectedLocation,
-    setSelectedLocation,
+    refresh: fetchData,
     gallery,
     openPhoto: gallery.openViewer,
     copiedField,
@@ -146,7 +133,6 @@ export function useSkuDetailView({ sku, variant = 'page', onClose }: SkuDetailVi
     deactivateError,
     handleAdjust,
     handleSetAbsolute,
-    handleLocationSave,
     handleDeactivate,
     isPanel,
     handleClose,

@@ -58,9 +58,9 @@ export const INBOUND_FIND_PARAM = 'find';
 const PASTE_PARAMS = ['ref_in', 'recon', 'recon_reason'] as const;
 
 /**
- * Unboxed status pills (`dockedCartonStatuses(rows)`: UNFOUND · CLAIM · SHORT
- * · UNBOXED, comma-separated) — narrow the loaded list to those cartons in
- * place. In the URL so a saved view and a shared link keep the cut.
+ * Unboxed attention pills (`dockedCartonFlags(rows)`: UNFOUND · CLAIM · SHORT,
+ * comma-separated) — narrow the loaded list to those cartons in place. In the
+ * URL so a saved view and a shared link keep the cut.
  */
 export const DOCKED_FLAG_PARAM = 'dflag';
 

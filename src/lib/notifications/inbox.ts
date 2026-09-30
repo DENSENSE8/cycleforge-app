@@ -9,6 +9,7 @@ import {
   eventLabelFor,
   type InboxEntityType,
 } from './event-vocabulary';
+import { readInboxContacts } from './inbox-contacts';
 import { notificationHref } from './notification-href';
 import type { InboxFeedDto, InboxItemDto, InboxState, InboxTriageAction } from './types';
 
@@ -197,6 +198,10 @@ function toItemDto(row: InboxRow): InboxItemDto {
     orderNumber: readStringPayloadField(row.payload, 'orderNumber'),
     carrierStatus: readStringPayloadField(row.payload, 'carrierStatus'),
     ticketNumber: readTicketNumber(row.payload),
+    title: readStringPayloadField(row.payload, 'title'),
+    note: readStringPayloadField(row.payload, 'note'),
+    dueAt: readStringPayloadField(row.payload, 'dueAt'),
+    contacts: readInboxContacts(row.payload),
   };
 }
 

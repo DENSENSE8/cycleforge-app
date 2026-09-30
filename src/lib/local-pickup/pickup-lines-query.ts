@@ -4,6 +4,8 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { listReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
 import type { ReceivingUnitStageFactView } from '@/lib/receiving/receiving-line-row';
+import { listingCoverThumbUrlSql } from '@/lib/photos/listing-photos';
+import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 
 export interface LocalPickupLineRow {
   id: number;
@@ -33,6 +35,22 @@ export interface LocalPickupLineRow {
   zoho_total: string | null;
   zoho_po_date: string | null;
   zoho_vendor_name: string | null;
+  /** Who keyed the pickup — the collector on record. */
+  created_by_name: string | null;
+  /** The linked receiving line's own SKU — what label issuance prints. */
+  line_sku: string | null;
+  /** `sku_catalog.id` for the line's SKU — where a product photo lands. */
+  sku_catalog_id: number | null;
+  quantity_received: number | null;
+  unboxed_at: string | null;
+  /** The floor's line grade (`receiving_line_testing`) and its grading act. */
+  line_condition_grade: string | null;
+  line_graded_at: string | null;
+  line_graded_by_name: string | null;
+  /** The line's assigned QC tester. */
+  assigned_tech_id: number | null;
+  /** Physical units on the line whose serial is shelved (STOCKED) or past it. */
+  put_away_units: number;
 }
 
 export interface LocalPickupLinesQuery {
@@ -75,7 +93,8 @@ export async function listLocalPickupLines(
        i.order_id,
        i.sku,
        i.product_title,
-       i.image_url,
+       -- Our catalog first (owner 2026-09-29), then the photo keyed on the pickup.
+       COALESCE(NULLIF(BTRIM(sc.image_url), ''), ${listingCoverThumbUrlSql('sc')}, NULLIF(i.image_url, '')) AS image_url,
        i.quantity,
        i.condition_grade,
        i.parts_status,
@@ -96,13 +115,41 @@ export async function listLocalPickupLines(
        m.status                    AS zoho_status,
        m.total::text               AS zoho_total,
        m.po_date::text             AS zoho_po_date,
-       m.vendor_name               AS zoho_vendor_name
+       m.vendor_name               AS zoho_vendor_name,
+       creator.name                AS created_by_name,
+       NULLIF(BTRIM(rl.sku), '')   AS line_sku,
+       sc.id                       AS sku_catalog_id,
+       rl.quantity_received,
+       rl.unboxed_at::text         AS unboxed_at,
+       rlt.condition_grade::text   AS line_condition_grade,
+       rlt.condition_graded_at::text AS line_graded_at,
+       grader.name                 AS line_graded_by_name,
+       rlt.assigned_tech_id,
+       COALESCE(shelved.units, 0)::int AS put_away_units
      FROM local_pickup_order_items i
      JOIN local_pickup_orders o
        ON o.id = i.order_id AND o.organization_id = i.organization_id
      LEFT JOIN zoho_po_mirror m
        ON m.zoho_purchaseorder_id::text = o.zoho_po_id::text
       AND m.organization_id = o.organization_id
+     LEFT JOIN staff creator
+       ON creator.id = o.created_by AND creator.organization_id = o.organization_id
+     LEFT JOIN receiving_line rl
+       ON rl.id = i.receiving_line_id AND rl.organization_id = i.organization_id
+     LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
+     LEFT JOIN receiving_line_testing rlt
+       ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
+     LEFT JOIN staff grader
+       ON grader.id = rlt.condition_graded_by AND grader.organization_id = rlt.organization_id
+     LEFT JOIN LATERAL (
+       SELECT COUNT(*) AS units
+         FROM receiving_line_unit rlu
+         JOIN serial_units su
+           ON su.id = rlu.serial_unit_id AND su.organization_id = rlu.organization_id
+        WHERE rlu.receiving_line_id = rl.id
+          AND rlu.organization_id = rl.organization_id
+          AND su.current_status::text IN ('STOCKED', 'ALLOCATED', 'PICKING', 'PICKED', 'PACKING', 'PACKED', 'SHIPPED')
+     ) shelved ON TRUE
      WHERE ${clauses.join(' AND ')}
      ORDER BY o.pickup_date DESC NULLS LAST, o.created_at DESC, i.id ASC
      LIMIT $${limitIdx}`,

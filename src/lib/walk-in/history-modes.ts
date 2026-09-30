@@ -92,8 +92,8 @@ export function parseSalesTab(raw: string | null | undefined): SalesTab {
 }
 
 // ── Repair `?tab=` SoT (station `/repair` + Sales `?mode=repairs`) ────────────
-/** Station / task door default — open work queue. */
-export const DEFAULT_REPAIR_TAB: RepairTab = 'active';
+/** Station / task door default — every ticket not closed: arriving or in the store (owner 2026-09-30). */
+export const DEFAULT_REPAIR_TAB: RepairTab = 'open';
 /** Sales history desk default — EVERY repair, any status (operator 2026-09-25: */
 export const DEFAULT_SALES_REPAIR_TAB: RepairTab = 'all';
 
@@ -101,26 +101,7 @@ export function parseRepairTab(
   raw: string | null | undefined,
   defaultTab: RepairTab = DEFAULT_REPAIR_TAB,
 ): RepairTab {
-  return raw === 'incoming' || raw === 'active' || raw === 'done' || raw === 'all' ? raw : defaultTab;
-}
-
-/** True when the URL is the Sales → Repairs history desk (not the station). */
-export function isSalesRepairsDesk(
-  pathname: string | null | undefined,
-  searchParams: Pick<URLSearchParams, 'get'>,
-): boolean {
-  if (pathname !== '/dashboard' && pathname !== '/dashboard/') return false;
-  return searchParams.get('mode') === 'repairs';
-}
-
-/** Surface-aware default tab for RepairTable chrome (Sales history vs station). */
-export function defaultRepairTabForSurface(
-  pathname: string | null | undefined,
-  searchParams: Pick<URLSearchParams, 'get'>,
-): RepairTab {
-  return isSalesRepairsDesk(pathname, searchParams)
-    ? DEFAULT_SALES_REPAIR_TAB
-    : DEFAULT_REPAIR_TAB;
+  return raw === 'open' || raw === 'incoming' || raw === 'active' || raw === 'done' || raw === 'all' ? raw : defaultTab;
 }
 
 /** The default `?tab=` for a mode — used to drop it from the URL when active. */

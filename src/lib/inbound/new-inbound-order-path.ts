@@ -5,17 +5,22 @@
  * different form.
  */
 
-import { INBOUND_ORDER_TYPES, type InboundOrderType } from '@/lib/inbound/inbound-order-draft';
+import {
+  AUTHORED_INBOUND_ORDER_TYPES,
+  type AuthoredInboundOrderType,
+} from '@/lib/inbound/inbound-order-draft';
 
 export const NEW_INBOUND_ORDER_PATH = '/incoming/new';
 export const INBOUND_ORDER_TYPE_PARAM = 'type';
 
-export function newInboundOrderHref(type: InboundOrderType): string {
+export function newInboundOrderHref(type: AuthoredInboundOrderType): string {
   return `${NEW_INBOUND_ORDER_PATH}?${INBOUND_ORDER_TYPE_PARAM}=${type}`;
 }
 
 /** `?type=` → the order type; anything unknown or missing opens a PO. */
-export function parseInboundOrderTypeParam(raw: string | null | undefined): InboundOrderType {
+export function parseInboundOrderTypeParam(raw: string | null | undefined): AuthoredInboundOrderType {
   const value = raw?.trim().toUpperCase();
-  return (INBOUND_ORDER_TYPES as readonly string[]).includes(value ?? '') ? (value as InboundOrderType) : 'PO';
+  return (AUTHORED_INBOUND_ORDER_TYPES as readonly string[]).includes(value ?? '')
+    ? (value as AuthoredInboundOrderType)
+    : 'PO';
 }

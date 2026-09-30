@@ -56,6 +56,8 @@ function taskAgendaRow(overrides: Partial<TaskDeskRow> = {}): DailyAgendaRow {
     deadlineAtMs: DEADLINE_MS,
     completedAtMs: null,
     remindAtMs: null,
+    lastFollowUpAtMs: null,
+    nextFollowUpAtMs: null,
     ticket: null,
     links: [],
     photoCount: 0,

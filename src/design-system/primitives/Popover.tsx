@@ -111,7 +111,9 @@ export function Popover({
             exit={presence.exit}
             transition={transition}
             className={cn(
-              'min-w-[10rem] overflow-hidden border border-border-default bg-surface-card text-text-default',
+              // Capped to the room AnchoredLayer found on the chosen side; a
+              // panel taller than that scrolls instead of running off-screen.
+              'max-h-[var(--anchored-available-height,none)] min-w-[10rem] overflow-y-auto overflow-x-hidden border border-border-default bg-surface-card text-text-default',
               DROPDOWN_SHELL_CORNER,
               elevationClass('raised', 'soft'),
               padded && 'p-2',

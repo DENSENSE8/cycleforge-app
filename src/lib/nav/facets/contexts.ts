@@ -20,8 +20,6 @@ import { exceptionKindsOf } from '@/lib/exceptions/types';
 export const NAV_FACET_CONTEXTS = [
   'outbound.exceptions',
   'outbound.triage',
-  'outbound.pick',
-  'outbound.po',
   'outbound.shipped',
   'pickup',
   'imports.runs',
@@ -63,8 +61,6 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
   // FBM › Exceptions is the hub list locked to Fulfillment — counts only.
   'outbound.exceptions': [],
   'outbound.triage': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
-  'outbound.pick': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
-  'outbound.po': [AGING, LATE, URGENT],
   // The Shipped list's own params (`useShippedTableFilters`), answered in
   // `fetchPackerLogRows`' WHERE — `src/lib/shipping/shipped-filter/shipped-filter-sql.ts`.
   'outbound.shipped': [
@@ -116,8 +112,6 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
 export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | readonly string[]>> = {
   'outbound.exceptions': [...new Set(exceptionKindsOf('fulfillment').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
   'outbound.triage': 'orders.view',
-  'outbound.pick': 'orders.view',
-  'outbound.po': 'orders.view',
   'outbound.shipped': 'packing.view',
   pickup: 'walk_in.view',
   'imports.runs': 'orders.view',

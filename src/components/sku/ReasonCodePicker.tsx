@@ -36,9 +36,18 @@ async function loadReasons(direction: 'in' | 'out'): Promise<ReasonCode[]> {
   if (cached) return cached;
   const promise = fetch(`/api/reason-codes?direction=${direction}`, { cache: 'no-store' })
     .then((res) => res.json())
-    .then((data) =>
-      Array.isArray(data?.reason_codes) ? (data.reason_codes as ReasonCode[]) : [],
-    )
+    .then((data) => {
+      const rows = Array.isArray(data?.reason_codes) ? (data.reason_codes as ReasonCode[]) : [];
+      // A bin adjustment picks from STOCK reasons only: the table also holds
+      // uncategorised receiving / QC / command-palette codes ("Go · Arrival",
+      // "No sound", three "Damaged"), which made this list ~90 long. One per label.
+      const seen = new Set<string>();
+      return rows.filter((row) => {
+        if (!row.category || seen.has(row.label)) return false;
+        seen.add(row.label);
+        return true;
+      });
+    })
     .catch(() => []);
   cache.set(key, promise);
   return promise;

@@ -130,7 +130,7 @@ export function PhotoLibraryFindRow({
           isRefreshing={isRefreshing}
         />
         <span className={cn('inline-flex items-center px-1', cornerClass('flush'))}>
-          <DeskRecordViewSwitch labels="wide" />
+          <DeskRecordViewSwitch />
         </span>
       </span>
     </div>

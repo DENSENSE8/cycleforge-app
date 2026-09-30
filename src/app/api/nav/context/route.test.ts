@@ -43,7 +43,7 @@ test('GET refuses a caller with no session', async () => {
 });
 
 test('the query takes an in-app path only', () => {
-  assert.equal(NavContextQuerySchema.safeParse({ path: '/shipping/orders?queue=pick' }).success, true);
+  assert.equal(NavContextQuerySchema.safeParse({ path: '/shipping/orders?stage=picked' }).success, true);
   assert.equal(NavContextQuerySchema.safeParse({ path: '/unbox', view: 'top' }).success, true);
   for (const path of ['//evil.test/x', 'https://evil.test/', '/\\evil.test', '']) {
     assert.equal(NavContextQuerySchema.safeParse({ path }).success, false, path);
@@ -53,34 +53,35 @@ test('the query takes an in-app path only', () => {
 
 test('the body is a valid NavContext, loaded for the session org, staffer and page switch', async () => {
   const { deps, cap } = fakes();
-  const nav = await getNavContextForStaff(request('/shipping/orders?queue=pick'), deps);
+  const nav = await getNavContextForStaff(request('/shipping/orders?stage=picked'), deps);
   assert.deepEqual(NavContextSchema.parse(JSON.parse(JSON.stringify(nav))), nav);
   assert.deepEqual(cap.loads, [{ orgId: ORG, staffId: 7, settingKey: 'nav.contextual.outbound' }]);
   assert.deepEqual(cap.orgs, [ORG]);
-  assert.equal(nav.rollout, 'legacy');
+  assert.equal(nav.rollout, 'contextual');
   assert.equal(nav.scope, 'section');
 });
 
 test('the switch: staff pick beats the org, staff inherit defers to it, bad values fall to the map', async () => {
   const key = 'nav.contextual.outbound';
-  const orgContextual = { orgSettings: { [key]: 'contextual' } };
-  assert.equal((await getNavContextForStaff(request('/shipping/orders'), fakes(orgContextual).deps)).rollout, 'contextual');
+  // The map says contextual (every page, owner 2026-09-29), so the org opts OUT to prove precedence.
+  const orgLegacy = { orgSettings: { [key]: 'legacy' } };
+  assert.equal((await getNavContextForStaff(request('/shipping/orders'), fakes(orgLegacy).deps)).rollout, 'legacy');
   assert.equal(
-    (await getNavContextForStaff(request('/shipping/orders'), fakes({ ...orgContextual, staffSetting: 'legacy' }).deps)).rollout,
-    'legacy',
-  );
-  assert.equal(
-    (await getNavContextForStaff(request('/shipping/orders'), fakes({ ...orgContextual, staffSetting: 'inherit' }).deps)).rollout,
+    (await getNavContextForStaff(request('/shipping/orders'), fakes({ ...orgLegacy, staffSetting: 'contextual' }).deps)).rollout,
     'contextual',
   );
   assert.equal(
-    (await getNavContextForStaff(request('/shipping/orders'), fakes({ orgSettings: { [key]: 'bogus' } }).deps)).rollout,
+    (await getNavContextForStaff(request('/shipping/orders'), fakes({ ...orgLegacy, staffSetting: 'inherit' }).deps)).rollout,
     'legacy',
+  );
+  assert.equal(
+    (await getNavContextForStaff(request('/shipping/orders'), fakes({ orgSettings: { [key]: 'bogus' } }).deps)).rollout,
+    'contextual',
   );
   // Another page's switch does not leak onto this one; Unbox keeps its own
   // contextual rollout from the page map.
   assert.equal(
-    (await getNavContextForStaff(request('/unbox'), fakes({ orgSettings: { [key]: 'contextual' } }).deps)).rollout,
+    (await getNavContextForStaff(request('/unbox'), fakes({ orgSettings: { [key]: 'legacy' } }).deps)).rollout,
     'contextual',
   );
 });
@@ -105,5 +106,5 @@ test('the org nav override stored in nav_definitions reaches the section', async
   // The lane's modes (`<page>.<lane>.modes`) lead the panel; the views follow.
   const views = nav.sections.filter((section) => !section.id.endsWith('.modes'));
   const ids = views.flatMap((section) => section.items.map((item) => item.id));
-  assert.deepEqual(ids, ['exceptions', 'po', 'pick', 'triage']);
+  assert.deepEqual(ids, ['triage', 'exceptions']);
 });

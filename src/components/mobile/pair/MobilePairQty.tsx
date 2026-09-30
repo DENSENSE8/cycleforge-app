@@ -19,7 +19,6 @@ import { previousMobilePath } from '@/lib/mobile/nav-trail';
 import { locationHubHref } from '@/lib/mobile/location-hub-href';
 import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { cn } from '@/utils/_cn';
-import { OnHoldBadge } from './OnHoldBadge';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
 
 type Mode = 'minus' | 'plus';
@@ -200,12 +199,9 @@ export function MobilePairQty({
 
       <div className="flex-1 divide-y divide-mode-rule">
         {/* The header already carries the product name, and when the catalog has no title that name IS the SKU — printing it again underneath is… */}
-        {(title !== sku || isProvisionalSku(sku)) && (
-          <div className="flex items-center justify-between gap-2 px-mode-page py-3">
-            <span className="min-w-0 truncate font-mono text-role-caption text-mode-muted">
-              {title !== sku ? sku : ''}
-            </span>
-            {isProvisionalSku(sku) && <OnHoldBadge />}
+        {title !== sku && (
+          <div className="px-mode-page py-3">
+            <span className="block min-w-0 truncate font-mono text-role-caption text-mode-muted">{sku}</span>
           </div>
         )}
 

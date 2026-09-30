@@ -19,11 +19,14 @@ import { cn } from '@/utils/_cn';
 
 const CHIP_SPRING = { type: 'spring', stiffness: 520, damping: 34 } as const;
 
+/** A lifecycle tone name, or a family's own face (the helpdesk statuses' house hues, `@/design-system/tokens/ticket-status`). */
+export type StatusChipTone = StateName | { pill: string; border: string; dot: string };
+
 /** One chip: its filter key, face, tone (the dot and the lit pill) and card count. */
 export interface StatusChip<K extends string> {
   id: K;
   label: string;
-  tone: StateName;
+  tone: StatusChipTone;
   count: number;
 }
 
@@ -57,7 +60,7 @@ export function StatusChipRail<K extends string>({
       className="flex w-full min-w-0 snap-x snap-proximity items-center gap-1.5 overflow-x-auto overscroll-x-contain py-0.5 pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {chips.map(({ id: key, label: face, tone: toneName, count }) => {
-        const tone = STATE_TONE_CLASSES[toneName];
+        const tone = typeof toneName === 'string' ? STATE_TONE_CLASSES[toneName] : toneName;
         const on = active.has(key);
         return (
           <motion.button

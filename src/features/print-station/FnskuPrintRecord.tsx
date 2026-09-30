@@ -4,16 +4,18 @@
  * One FNSKU on the Print station — read top to bottom as the job:
  *
  *   Label      the sticker exactly as the thermal head draws it
- *   How many   an exact count, 1–99 (one station job; the station prints N)
+ *   How many   a snapped common-run slider plus always-visible exact entry
  *   Print at   every computer in the org — who is at it, online, label printer
  *   Print      "Print 3 labels → Packing bench": this computer prints here;
- *              any other station gets the `fnsku` job and prints silently
+ *              any other station gets the `fnsku` job and prints silently.
+ *              "Test print" sends the same run the same way, face marked
+ *              TEST PRINT, and never logs a reprint.
  * The aside carries only the label identity, title, and editable condition.
  * Condition edits redraw the preview immediately and persist only on Save.
  */
 
-import { useEffect, useState } from 'react';
-import { Check, Minus, Monitor, Plus, Printer, User } from '@/components/Icons';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, Monitor, Printer, User } from '@/components/Icons';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { InlineEditableValue } from '@/design-system/components/InlineEditableValue';
@@ -28,13 +30,16 @@ import {
   motionTargetFor,
   useReducedMotion,
 } from '@/design-system/motion';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { DeferredQtyInput } from '@/design-system/primitives/DeferredQtyInput';
+import { StopSlider } from '@/design-system/primitives/StopSlider';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
 import { usePrintStations, type PrintStationEntry } from '@/hooks/usePrintStations';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { clampLabelCopies, MAX_LABEL_COPIES } from '@/lib/print/labelCopies';
+import { PRINT_STATION_NAME_MAX } from '@/lib/print/print-station';
+import { UNNAMED_PRINT_STATION } from '@/lib/print/staff-print-bridge';
 import type { PrintStationFnskuRow } from '@/lib/print-station/fnsku';
 import type { PrintStationFnskuPatch } from '@/lib/print-station/fnsku-client';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -46,18 +51,17 @@ const FACTS_BODY_CLASS = 'flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0';
 /** The record body on the triage stage canvas. */
 export const FNSKU_RECORD_ROOT_CLASS = 'flex-1 bg-mode-canvas p-4 text-mode-ink';
 
-/** One-tap counts — a sheet of 1, a small bundle, a case. The exact field takes anything else. */
-const QUICK_COUNTS = [1, 2, 5, 10, 20] as const;
+/** Useful print-run sizes. Manual entry inserts its exact value into this scale. */
+const COPY_STOPS = [1, 2, 5, 10, 20, 30, 40, 50, 75, MAX_LABEL_COPIES] as const;
 
 /** After a station acks, how long until its print log lands (it prints, then logs). */
 const LOG_SETTLE_MS = 4_000;
 
 const labels = (n: number) => `${n} ${n === 1 ? 'label' : 'labels'}`;
 
-
 // ── Print state → motion ──────────────────────────────────────────────────────
 
-type PrintPhase = 'idle' | 'sending' | 'sent' | 'failed';
+type PrintPhase = 'idle' | 'sending' | 'sent' | 'cancelled' | 'failed';
 
 /** Product state is the phase; the notice's travel is only its projection. */
 const PRINT_NOTICE_MOTION = defineStateMotionContract<PrintPhase, { opacity: number; y: number }>({
@@ -65,6 +69,7 @@ const PRINT_NOTICE_MOTION = defineStateMotionContract<PrintPhase, { opacity: num
     idle: { opacity: 0, y: 4 },
     sending: { opacity: 1, y: 0 },
     sent: { opacity: 1, y: 0 },
+    cancelled: { opacity: 1, y: 0 },
     failed: { opacity: 1, y: 0 },
   },
   transition: motionContentSwap.enter,
@@ -118,32 +123,19 @@ function FnskuLabelPreview({ row }: { row: PrintStationFnskuRow }) {
 
 function QuantityPicker({ copies, onCopies, disabled }: { copies: number; onCopies: (next: number) => void; disabled: boolean }) {
   const set = (next: number) => onCopies(clampLabelCopies(next));
+  const stops = useMemo<readonly number[]>(() => {
+    if (COPY_STOPS.includes(copies as (typeof COPY_STOPS)[number])) return COPY_STOPS;
+    return [...COPY_STOPS, copies].sort((a, b) => a - b);
+  }, [copies]);
+
   return (
     <div className="flex flex-col gap-3 px-4 pb-4 pt-1">
-      <div className="flex items-center gap-3">
-        <IconButton
-          icon={<Minus className="size-4" />}
-          ariaLabel="One fewer label"
-          size="md"
-          radius="control"
-          disabled={disabled || copies <= 1}
-          onClick={() => set(copies - 1)}
-          data-testid="fnsku-copies-minus"
-        />
-        <div className="flex min-w-24 flex-col items-center" aria-live="polite">
+      <div className="flex items-end justify-between gap-4">
+        <div className="flex items-baseline gap-2" aria-live="polite">
           <AnimatedStat value={copies} profile="scanQuantity" className="text-4xl font-semibold text-text-default" />
           <span className="text-role-caption text-text-muted">{copies === 1 ? 'label' : 'labels'}</span>
         </div>
-        <IconButton
-          icon={<Plus className="size-4" />}
-          ariaLabel="One more label"
-          size="md"
-          radius="control"
-          disabled={disabled || copies >= MAX_LABEL_COPIES}
-          onClick={() => set(copies + 1)}
-          data-testid="fnsku-copies-plus"
-        />
-        <label className="ml-auto flex items-center gap-2 text-role-caption text-text-muted">
+        <label className="flex shrink-0 items-center gap-2 text-role-caption text-text-muted">
           Exact
           <DeferredQtyInput
             value={copies}
@@ -159,31 +151,16 @@ function QuantityPicker({ copies, onCopies, disabled }: { copies: number; onCopi
           />
         </label>
       </div>
-      <div role="group" aria-label="Quick counts" className="flex flex-wrap gap-1.5">
-        {QUICK_COUNTS.map((n) => {
-          const on = n === copies;
-          return (
-            <button
-              key={n}
-              type="button"
-              disabled={disabled}
-              aria-pressed={on}
-              onClick={() => set(n)}
-              className={cn(
-                'relative h-8 min-w-10 rounded-mode-control px-3 text-sm font-semibold tabular-nums transition-colors',
-                on ? 'text-text-default' : 'text-text-muted hover:bg-surface-sunken',
-                focusRing('control'),
-              )}
-              data-testid={`fnsku-copies-quick-${n}`}
-            >
-              {/* One lit plate glides between counts — the choice, not five buttons, moves. */}
-              {on ? <motion.span layoutId="fnsku-quick-count" className="absolute inset-0 rounded-mode-control bg-surface-sunken ring-1 ring-inset ring-border-strong" transition={{ type: 'spring', stiffness: 520, damping: 38 }} /> : null}
-              <span className="relative">{n}</span>
-            </button>
-          );
-        })}
-      </div>
-      <p className="text-role-caption text-text-muted">Up to {MAX_LABEL_COPIES} in one job.</p>
+
+      <StopSlider
+        stops={stops}
+        value={copies}
+        onChange={set}
+        disabled={disabled}
+        ariaLabel="Label quantity"
+        formatValue={labels}
+        data-testid="fnsku-copies-slider"
+      />
     </div>
   );
 }
@@ -206,128 +183,186 @@ function StationPicker({
   chosenId,
   onChoose,
   disabled,
+  canRename,
+  onRename,
 }: {
   stations: readonly PrintStationEntry[];
   chosenId: string | null;
   onChoose: (id: string) => void;
   disabled: boolean;
+  canRename: (station: PrintStationEntry) => boolean;
+  onRename: (stationId: string, name: string) => Promise<void>;
 }) {
-  const { getStaffName } = useStaffNameMap();
   const reduce = useReducedMotion();
   if (stations.length === 0) {
     return <p className="px-4 pb-4 text-role-caption text-text-muted">Looking for print stations…</p>;
   }
   return (
     <ul role="radiogroup" aria-label="Print at" className="flex flex-col gap-1 px-2 pb-2" data-testid="fnsku-stations">
-      {stations.map((station, index) => {
-        const blocked = stationBlocked(station);
-        const chosen = station.stationId === chosenId;
-        const who = station.lastSeenStaffId ? getStaffName(station.lastSeenStaffId) : null;
-        return (
-          <motion.li
-            key={station.stationId}
-            initial={reduce ? false : { opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reduce ? { duration: 0 } : { ...motionContentSwap.enter, delay: Math.min(index, 8) * 0.025 }}
-          >
-            <button
-              type="button"
-              role="radio"
-              aria-checked={chosen}
-              disabled={disabled || blocked != null}
-              onClick={() => onChoose(station.stationId)}
-              className={cn(
-                'relative flex w-full min-w-0 items-center gap-3 rounded-mode-control px-3 py-2.5 text-left transition-colors',
-                blocked ? 'cursor-not-allowed opacity-60' : chosen ? '' : 'hover:bg-surface-sunken',
-                focusRing('control'),
-              )}
-              data-testid="fnsku-station"
-              data-station-id={station.stationId}
-            >
-              {chosen ? (
-                <motion.span
-                  layoutId="fnsku-station-plate"
-                  className="absolute inset-0 rounded-mode-control bg-surface-sunken ring-2 ring-inset ring-fill-info"
-                  transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 460, damping: 36 }}
-                />
-              ) : null}
-              <span className="relative flex size-8 shrink-0 items-center justify-center rounded-mode-control bg-surface-card ring-1 ring-inset ring-border-hairline">
-                <Monitor className="size-4 text-text-muted" />
-                {/* Live dot: the station's heartbeat, not decoration. */}
-                <span
-                  aria-hidden
-                  className={cn('absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-surface-card', station.live ? 'bg-fill-success' : 'bg-text-faint')}
-                />
-              </span>
-              <span className="relative min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-text-default">{station.stationName}</span>
-                  {station.thisComputer ? (
-                    <span className="shrink-0 rounded-mode-control bg-surface-card px-1.5 text-[11px] font-medium text-text-muted ring-1 ring-inset ring-border-hairline">This computer</span>
-                  ) : null}
-                </span>
-                <span className="flex min-w-0 items-center gap-1.5 text-role-caption text-text-muted">
-                  {who ? (
-                    <>
-                      <User className="size-3 shrink-0" />
-                      <span className="truncate">{who}</span>
-                      <span aria-hidden>·</span>
-                    </>
-                  ) : null}
-                  <span className={cn('truncate', blocked && 'text-text-warning')}>
-                    {blocked ?? (station.label.printer ? station.label.printer : station.thisComputer ? 'Prints here' : 'Label printer ready')}
-                  </span>
-                </span>
-              </span>
-              {chosen ? <Check className="relative size-4 shrink-0 text-text-info" /> : null}
-            </button>
-          </motion.li>
-        );
-      })}
+      {stations.map((station, index) => (
+        <motion.li
+          key={station.stationId}
+          className="relative"
+          initial={reduce ? false : { opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reduce ? { duration: 0 } : { ...motionContentSwap.enter, delay: Math.min(index, 8) * 0.025 }}
+        >
+          <StationRow
+            station={station}
+            chosen={station.stationId === chosenId}
+            onChoose={() => onChoose(station.stationId)}
+            disabled={disabled}
+            canRename={canRename(station)}
+            onRename={onRename}
+          />
+        </motion.li>
+      ))}
     </ul>
   );
 }
 
-function SelectedStationName({
+/** How long "Name saved" stays in the row's meta line. */
+const NAME_SAVED_MS = 2_500;
+
+/**
+ * One station. The whole row is the radio (a stretched button under the
+ * content); on the chosen row the NAME itself is the editor: click it, type,
+ * Enter or click away saves for the whole org, Esc puts it back. The meta line
+ * reports saving / saved / the refusal, in place.
+ */
+function StationRow({
   station,
-  canRename,
+  chosen,
+  onChoose,
   disabled,
+  canRename,
   onRename,
 }: {
   station: PrintStationEntry;
-  canRename: boolean;
+  chosen: boolean;
+  onChoose: () => void;
   disabled: boolean;
+  canRename: boolean;
   onRename: (stationId: string, name: string) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState(station.stationName);
-  const [saving, setSaving] = useState(false);
+  const { getStaffName } = useStaffNameMap();
+  const reduce = useReducedMotion();
+  const blocked = stationBlocked(station);
+  const who = station.lastSeenStaffId ? getStaffName(station.lastSeenStaffId) : null;
+  // Unnamed opens blank, never pre-filled with the "Unnamed computer" filler.
+  const saved = station.stationName === UNNAMED_PRINT_STATION ? '' : station.stationName;
+  // null = untouched: the row follows the registry (a rename from another computer lands here too).
+  const [draft, setDraft] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [error, setError] = useState<string | null>(null);
+
   const save = async () => {
-    const name = draft.trim();
-    if (saving || name === station.stationName) return;
-    setSaving(true);
+    const name = (draft ?? saved).trim().slice(0, PRINT_STATION_NAME_MAX);
+    if (draft === null || name === saved) {
+      setDraft(null);
+      return;
+    }
+    setRenaming('saving');
     setError(null);
     try {
       await onRename(station.stationId, name);
+      setRenaming('saved');
+      window.setTimeout(() => setRenaming((now) => (now === 'saved' ? 'idle' : now)), NAME_SAVED_MS);
     } catch (failure) {
-      setDraft(station.stationName);
+      setRenaming('idle');
       setError(failure instanceof Error ? failure.message : 'The station name was not saved.');
     } finally {
-      setSaving(false);
+      setDraft(null);
     }
   };
+
+  const meta =
+    error != null
+      ? { text: error, tone: 'text-text-danger' }
+      : renaming === 'saving'
+        ? { text: 'Saving name…', tone: 'text-text-muted' }
+        : renaming === 'saved'
+          ? { text: 'Name saved for everyone', tone: 'text-text-success' }
+          : blocked
+            ? { text: blocked, tone: 'text-text-warning' }
+            : { text: station.label.printer ?? (station.thisComputer ? 'Prints here' : 'Label printer ready'), tone: '' };
+
   return (
-    <div className="border-t border-border-hairline px-4 py-3" data-testid="fnsku-selected-station-name">
-      <p className="mode-label mb-1 text-mode-muted">Station name</p>
-      <InlineEditableValue
-        value={draft}
-        onChange={setDraft}
-        onSubmit={() => void save()}
-        editable={canRename && !disabled && !saving}
-        ariaLabel="Edit print station name"
-      />
-      {error ? <p className="mt-1 text-role-caption text-text-danger">{error}</p> : null}
-    </div>
+    <>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={chosen}
+        aria-label={`${station.stationName}${station.thisComputer ? ' (this computer)' : ''}`}
+        disabled={disabled || blocked != null}
+        onClick={onChoose}
+        className={cn(
+          'absolute inset-0 rounded-mode-control transition-colors',
+          blocked ? 'cursor-not-allowed' : chosen ? '' : 'hover:bg-surface-sunken',
+          focusRing('control'),
+        )}
+        data-testid="fnsku-station"
+        data-station-id={station.stationId}
+      >
+        {chosen ? (
+          <motion.span
+            layoutId="fnsku-station-plate"
+            className="absolute inset-0 rounded-mode-control bg-surface-sunken ring-2 ring-inset ring-fill-info"
+            transition={reduce ? { duration: 0 } : { type: 'spring', stiffness: 460, damping: 36 }}
+          />
+        ) : null}
+      </button>
+      {/* Content rides above the radio and lets clicks fall through — except the name editor. */}
+      <div className={cn('pointer-events-none relative flex min-w-0 items-center gap-3 px-3 py-2.5', blocked && 'opacity-60')}>
+        <span className="relative flex size-8 shrink-0 items-center justify-center rounded-mode-control bg-surface-card ring-1 ring-inset ring-border-hairline">
+          <Monitor className="size-4 text-text-muted" />
+          {/* Live dot: the station's heartbeat, not decoration. */}
+          <span
+            aria-hidden
+            className={cn('absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-surface-card', station.live ? 'bg-fill-success' : 'bg-text-faint')}
+          />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-2">
+            {chosen && canRename ? (
+              <InlineEditableValue
+                value={draft ?? saved}
+                placeholder={UNNAMED_PRINT_STATION}
+                onChange={(next) => {
+                  setDraft(next);
+                  setError(null);
+                }}
+                onSubmit={() => void save()}
+                onCancel={() => setDraft(null)}
+                editable={!disabled && renaming !== 'saving'}
+                ariaLabel="Rename print station"
+                className="pointer-events-auto min-w-0"
+                inputClassName="h-6 min-w-48"
+              />
+            ) : (
+              <span className="truncate text-sm font-semibold text-text-default">{station.stationName}</span>
+            )}
+            {station.thisComputer ? (
+              <span className="shrink-0 rounded-mode-control bg-surface-card px-1.5 text-[11px] font-medium text-text-muted ring-1 ring-inset ring-border-hairline">This computer</span>
+            ) : null}
+          </span>
+          <span className="flex min-w-0 items-center gap-1.5 text-role-caption text-text-muted">
+            {who ? (
+              <>
+                <User className="size-3 shrink-0" />
+                <span className="truncate">{who}</span>
+                <span aria-hidden>·</span>
+              </>
+            ) : null}
+            <span className={cn('flex min-w-0 items-center gap-1 truncate', meta.tone)} role={error ? 'alert' : undefined}>
+              {renaming === 'saved' ? <Check className="size-3 shrink-0" /> : null}
+              <span className="truncate">{meta.text}</span>
+            </span>
+          </span>
+        </span>
+        {chosen ? <Check className="size-4 shrink-0 text-text-info" /> : null}
+      </div>
+    </>
   );
 }
 
@@ -361,31 +396,41 @@ export function FnskuPrintRecord({
   const chosen = byId(chosenId) ?? byId(stations.target.label?.stationId ?? null) ?? stations.stations[0] ?? null;
   const blocked = chosen ? stationBlocked(chosen) : 'Choose a print station';
 
-  const print = async () => {
+  const print = async ({ test = false }: { test?: boolean } = {}) => {
     if (!chosen || blocked) return;
     const count = clampLabelCopies(copies);
+    const run = test ? `a test print of ${labels(count)}` : labels(count);
     setPhase('sending');
-    setNotice(chosen.thisComputer ? `Printing ${labels(count)} here…` : `Sending ${labels(count)} to ${chosen.stationName}…`);
+    setNotice(chosen.thisComputer ? `Printing ${run} here…` : `Sending ${run} to ${chosen.stationName}…`);
     if (chosen.thisComputer) {
-      // This computer: the same station-side job, run here (prints silently when set up, else the dialog; logs the reprint).
+      // This computer: the same station-side job, run here (prints silently when set up, else the dialog; logs a reprint unless it is a test).
       const { printFnskuStationJob } = await import('@/lib/print/printFnskuStationJob');
-      const failure = await printFnskuStationJob({ fnsku: row.fnsku, copies: count }, safeRandomUUID()).catch((error: unknown) =>
-        error instanceof Error ? error.message : 'The label did not print.',
-      );
-      setPhase(failure ? 'failed' : 'sent');
-      setNotice(failure ?? `Printed ${labels(count)} of ${row.fnsku} here.`);
-      if (!failure) onPrinted();
+      const job = test ? { fnsku: row.fnsku, copies: count, test: true as const } : { fnsku: row.fnsku, copies: count };
+      const outcome = await printFnskuStationJob(job, safeRandomUUID()).catch((error: unknown) => ({
+        printed: 0,
+        cancelled: false,
+        failure: error instanceof Error ? error.message : 'The label did not print.',
+      }));
+      if (outcome.cancelled) {
+        setPhase('cancelled');
+        setNotice(`Cancelled — ${outcome.printed} of ${labels(count)} printed here.`);
+      } else {
+        setPhase(outcome.failure ? 'failed' : 'sent');
+        setNotice(outcome.failure ?? (test ? `Test printed ${labels(count)} here — nothing logged.` : `Printed ${labels(count)} of ${row.fnsku} here.`));
+      }
+      // A test print logs nothing, so the list has nothing new to read.
+      if (!test && outcome.printed > 0) onPrinted();
       return;
     }
-    const acked = await stations.sendFnsku(chosen.stationId, row.fnsku, count);
+    const acked = await stations.sendFnsku(chosen.stationId, row.fnsku, count, { test });
     setPhase(acked ? 'sent' : 'failed');
     setNotice(
       acked
-        ? `${chosen.stationName} is printing ${labels(count)} of ${row.fnsku}.`
+        ? `${chosen.stationName} is printing ${run} of ${row.fnsku}.`
         : `${chosen.stationName} did not answer — is CycleForge open there? Nothing was printed.`,
     );
     // The station prints, then logs; the list re-reads once that log has had time to land.
-    if (acked) window.setTimeout(onPrinted, LOG_SETTLE_MS);
+    if (acked && !test) window.setTimeout(onPrinted, LOG_SETTLE_MS);
   };
 
   const printLabel = chosen ? `Print ${labels(copies)} → ${chosen.thisComputer ? 'this computer' : chosen.stationName}` : `Print ${labels(copies)}`;
@@ -428,42 +473,47 @@ export function FnskuPrintRecord({
             if (phase !== 'sending') setPhase('idle');
           }}
           disabled={phase === 'sending'}
+          canRename={(station) => station.thisComputer || stations.canRenameOthers}
+          onRename={stations.rename}
         />
-        {chosen ? (
-          <SelectedStationName
-            key={chosen.stationId}
-            station={chosen}
-            canRename={chosen.thisComputer || stations.canRenameOthers}
-            disabled={phase === 'sending'}
-            onRename={stations.rename}
-          />
-        ) : null}
         <div className="flex flex-col items-end gap-2 border-t border-border-hairline px-4 py-3">
-          <MagneticActionField fieldClassName="self-end" disabled={Boolean(blocked) || phase === 'sending'} maxOffset={6} pull={0.12}>
+          <div className="flex items-center justify-end gap-2">
             <Button
-              variant="primary"
+              variant="secondary"
               size="lg"
               radius="control"
-              icon={<Printer />}
-              loading={phase === 'sending'}
-              disabled={Boolean(blocked)}
-              onClick={() => void print()}
-              data-testid="fnsku-print"
+              disabled={Boolean(blocked) || phase === 'sending'}
+              onClick={() => void print({ test: true })}
+              data-testid="fnsku-test-print"
             >
-              {/* Content swap: the face never cross-fades two labels. */}
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={printLabel}
-                  initial={reduce ? false : { opacity: 0, y: 3 }}
-                  animate={{ opacity: 1, y: 0, transition: motionContentSwap.enter }}
-                  exit={reduce ? { opacity: 0 } : { opacity: 0, y: -3, transition: motionContentSwap.exit }}
-                  className="inline-block"
-                >
-                  {printLabel}
-                </motion.span>
-              </AnimatePresence>
+              Test print
             </Button>
-          </MagneticActionField>
+            <MagneticActionField fieldClassName="self-end" disabled={Boolean(blocked) || phase === 'sending'} maxOffset={6} pull={0.12}>
+              <Button
+                variant="primary"
+                size="lg"
+                radius="control"
+                icon={<Printer />}
+                loading={phase === 'sending'}
+                disabled={Boolean(blocked)}
+                onClick={() => void print()}
+                data-testid="fnsku-print"
+              >
+                {/* Content swap: the face never cross-fades two labels. */}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={printLabel}
+                    initial={reduce ? false : { opacity: 0, y: 3 }}
+                    animate={{ opacity: 1, y: 0, transition: motionContentSwap.enter }}
+                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -3, transition: motionContentSwap.exit }}
+                    className="inline-block"
+                  >
+                    {printLabel}
+                  </motion.span>
+                </AnimatePresence>
+              </Button>
+            </MagneticActionField>
+          </div>
           {blocked ? <p className="text-right text-role-caption text-text-warning">{chosen ? `${chosen.stationName}: ${blocked}.` : `${blocked}.`}</p> : null}
           <AnimatePresence initial={false}>
             {phase !== 'idle' ? (
@@ -503,6 +553,7 @@ export function FnskuPrintRecord({
               value={titleDraft}
               onChange={setTitleDraft}
               onSubmit={() => void saveTitle()}
+              onCancel={() => setTitleDraft(row.title ?? '')}
               editable={!labelSaving}
               placeholder="No label in the catalog"
               ariaLabel="Edit FNSKU label"
@@ -536,7 +587,7 @@ export function FnskuPrintRecord({
   );
 
   return (
-    <div className={FNSKU_RECORD_ROOT_CLASS} data-testid="fnsku-print-evidence" data-record-presentation="fnsku">
+    <div className={FNSKU_RECORD_ROOT_CLASS} data-testid="fnsku-print-evidence">
       <DeskRecordLayout main={main} aside={aside} />
     </div>
   );

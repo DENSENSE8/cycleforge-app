@@ -1,7 +1,7 @@
 /** The two derived facts a phone task row paints — the record it is about, and when it is owed. */
 
 import { taskDeskRecordLabel, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
-import { formatDateKeyShort, toPSTDateKey } from '@/utils/date';
+import { addDaysToDateKey, formatDateKeyShort, toPSTDateKey } from '@/utils/date';
 
 /** What the record READS as on a 390px row. */
 export function taskRecordLabel(row: Pick<TaskDeskRow, 'entityType' | 'entityId' | 'ticket'>): string | null {
@@ -19,6 +19,8 @@ interface TaskDeadlineFact {
   text: string;
   /** Past its instant — the row marks it, the list does not re-sort for it. */
   overdue: boolean;
+  /** Due today or tomorrow and not yet past — owner 2026-09-29: tomorrow must already read urgent. */
+  urgent: boolean;
 }
 
 /** The deadline as an operator reads it. */
@@ -35,7 +37,10 @@ export function taskDeadlineFact(
   const todayKey = toPSTDateKey(new Date(nowMs));
 
   if (dueKey === todayKey) {
-    return { text: overdue ? 'Overdue today' : 'Due today', overdue };
+    return { text: overdue ? 'Overdue today' : 'Due today', overdue, urgent: !overdue };
   }
-  return { text: `${overdue ? 'Overdue' : 'Due'} ${formatDateKeyShort(dueKey)}`, overdue };
+  if (!overdue && dueKey === addDaysToDateKey(todayKey, 1)) {
+    return { text: 'Due tomorrow', overdue, urgent: true };
+  }
+  return { text: `${overdue ? 'Overdue' : 'Due'} ${formatDateKeyShort(dueKey)}`, overdue, urgent: false };
 }

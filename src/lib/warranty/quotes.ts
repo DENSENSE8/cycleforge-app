@@ -5,6 +5,7 @@ import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { WarrantyQuoteRow, WarrantyQuoteLineItem, WarrantyQuoteStatus } from './types';
+import { repairDueAt } from '@/lib/repair/repair-due-at';
 
 export function computeQuoteTotals(
   lineItems: WarrantyQuoteLineItem[],
@@ -281,11 +282,12 @@ export async function setQuoteStatus(
             const ins = await client.query<{ id: number }>(
               // organization_id derived from the org-scoped parent claim and
               // additionally org-pinned ($12) so the parent join can't cross tenants.
+              // intake_channel 'shipment': the claimed unit comes back to us under the claim's RMA.
               `INSERT INTO repair_service (
                  product_title, serial_number, issue, notes, source_system,
-                 source_order_id, source_tracking_number, source_sku, intake_channel, customer_id, price,
+                 source_order_id, source_tracking_number, source_sku, intake_channel, customer_id, price, due_at,
                  organization_id
-               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'warranty_paid_repair', $9, $10,
+               ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'shipment', $9, $10, $13,
                  (SELECT organization_id FROM warranty_claims WHERE id = $11 AND organization_id = $12))
                RETURNING id`,
               [
@@ -301,6 +303,7 @@ export async function setQuoteStatus(
                 rows[0].total,
                 claimId,
                 orgId,
+                repairDueAt(null, new Date(), null),
               ],
             );
             repairServiceId = Number(ins.rows[0].id);
@@ -382,11 +385,12 @@ export async function setQuoteStatus(
           // organization_id derived from the warranty claim this handoff is for
           // ($11 = claimId); repair_service.organization_id is NOT NULL with a
           // loud-fail GUC default, so omitting it on the raw pool would throw.
+          // intake_channel 'shipment': the claimed unit comes back to us under the claim's RMA.
           `INSERT INTO repair_service (
              product_title, serial_number, issue, notes, source_system,
-             source_order_id, source_tracking_number, source_sku, intake_channel, customer_id, price,
+             source_order_id, source_tracking_number, source_sku, intake_channel, customer_id, price, due_at,
              organization_id
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'warranty_paid_repair', $9, $10,
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'shipment', $9, $10, $12,
              (SELECT organization_id FROM warranty_claims WHERE id = $11))
            RETURNING id`,
           [
@@ -401,6 +405,7 @@ export async function setQuoteStatus(
             c.customer_id,
             rows[0].total,
             claimId,
+            repairDueAt(null, new Date(), null),
           ],
         );
         repairServiceId = Number(ins.rows[0].id);

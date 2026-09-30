@@ -36,6 +36,8 @@ const SHIPPED_VIEW_PARAMS = [
   'pickedBy',
   'packedBy',
   'exceptions',
+  // The Shipped card list's status pills (`outbound.shipped`, `?cardStatus=`) — a saved view keeps the cut.
+  'cardStatus',
 ] as const;
 
 /** Packed tab — staff + packed-at window (exact staged list). */

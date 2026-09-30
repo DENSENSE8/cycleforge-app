@@ -36,10 +36,6 @@ export function useBinLabelPrinter() {
   const position = stored.position;
 
   const [isPrinting, setIsPrinting] = useState(false);
-  const [printProgress, setPrintProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
   const [overrideStep, setOverrideStep] = useState<Step | null>(null);
 
   useEffect(() => {
@@ -173,7 +169,6 @@ export function useBinLabelPrinter() {
         return false;
       }
       setIsPrinting(true);
-      setPrintProgress(null);
       try {
         const result = await printBinLabelRun({
           roomName: selectedRoom,
@@ -181,7 +176,6 @@ export function useBinLabelPrinter() {
           gln: orgGs1.gln,
           orgSlug: user?.organizationSlug,
           register: registerLocations,
-          onProgress: (done, total) => setPrintProgress({ done, total }),
         });
         if (result.status === 'register_failed') {
           toast.error(result.error || 'Could not register location for printing');
@@ -196,7 +190,6 @@ export function useBinLabelPrinter() {
         return false;
       } finally {
         setIsPrinting(false);
-        setPrintProgress(null);
       }
     },
     [orgGs1.gln, selectedRoom, user?.organizationSlug],
@@ -244,7 +237,6 @@ export function useBinLabelPrinter() {
     allSelected,
     missingLetter,
     isPrinting,
-    printProgress,
     configOpen,
     setConfigOpen,
     handleConfigSave,

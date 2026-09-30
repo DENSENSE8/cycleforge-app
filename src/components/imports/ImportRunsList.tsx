@@ -23,6 +23,7 @@ import { TriageCardList, type TriageFamily, type TriageFeed } from '@/design-sys
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut, useTriagePageMode } from '@/design-system/components/triage-card-list/triage-list-state';
+import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { IMPORT_RUN_LIFECYCLE } from '@/design-system/tokens/import-record-lifecycle';
 import { writeClipboardText } from '@/lib/clipboard';
 import { IMPORT_RUN_STATUSES, type ImportRunListItem, type ImportRunStatus } from '@/lib/imports/types';
@@ -221,6 +222,7 @@ export function ImportRunsList() {
         record={{
           title: openRunId != null ? `Run ${openRunId}` : 'Run',
           subtitle: openRun ? `${importKindLabel(openRun.kind)} · ${importTriggerLabel(openRun)} · ${importStamp(openRun.startedAt)} PT` : undefined,
+          actions: openRun ? <LifecycleCode state={IMPORT_RUN_LIFECYCLE[openRun.status]} /> : undefined,
           noun: 'import run',
           testId: 'import-run-record-plane',
           summary: (

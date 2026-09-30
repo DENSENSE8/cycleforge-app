@@ -47,7 +47,6 @@ export type TableId =
   | 'packer'
   | 'catalog'
   | 'pickup'
-  | 'repair'
   /** Support › Warranty claims spreadsheet (`WARRANTY_GRID_COLUMNS`). */
   | 'warranty'
   /** Outbound › Ready / recently-tested history (slot-materialized). */
@@ -197,13 +196,6 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   catalog: [],
   /** Pickup — **deliberately empty** (Wave-2 hand-model kill, kill-list 07 §4): */
   pickup: [],
-  // Keys are the `hideKey`s in `src/lib/repair/repair-grid-layout.ts`.
-  /**
-   * Repair queue — **deliberately empty** since the wave 1.4 slot port. Hiding
-   * a repair fact is now unbinding it from a slot. The KEY stays because
-   * `TableId`'s runtime vocabulary derives from this record's keys.
-   */
-  repair: [],
   // Keys are the `hideKey`s in `src/components/warranty/grid/warranty-grid-layout.ts`.
   /** Warranty claims — **deliberately empty** since the wave 1.4 slot port. */
   warranty: [],

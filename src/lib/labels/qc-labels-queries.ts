@@ -5,7 +5,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import type { QcLabelView } from '@/lib/labels/qc-label-views';
-import type { QcLabelRow } from '@/lib/labels/qc-label-row';
+import type { QcLabelPrintUnit, QcLabelRow } from '@/lib/labels/qc-label-row';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 
 /** Rows painted per load; the footer says when the list is capped. */
@@ -118,18 +118,6 @@ export async function listQcLabels(
       title: resolveSkuIdentityTitle({ catalog_product_title, zoho_item_title, sku: row.sku }) || row.sku || 'Unknown SKU',
     })),
   };
-}
-
-/** A unit the desk can print a QC label for — resolved from a scan or a typed serial. */
-export interface QcLabelPrintUnit {
-  serial_unit_id: number;
-  unit_uid: string | null;
-  serial_number: string | null;
-  sku: string | null;
-  title: string;
-  condition_grade: string | null;
-  /** A QC label was printed before — the next print is a reprint. */
-  printed: boolean;
 }
 
 /**

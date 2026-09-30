@@ -221,7 +221,11 @@ function cartonLine(row: ReceivingLineRow, surface: CartonCardModel['surface']):
           : null,
       condition: row.id > 0 && row.condition_grade ? { kind: 'grade', label: conditionSentenceLabel(row.condition_grade), code: resolveConditionGrade(row.condition_grade) } : null,
       sku: row.sku ? { kind: 'code', text: row.sku, title: 'SKU' } : null,
-      bin: { kind: 'place', path: bin, empty: 'No bin' },
+      // Docked is a sealed package, not an inventoried SKU. Until staff assigns
+      // its physical resting place, say "No location" rather than implying a
+      // product-bin decision has already been made. Unboxed lines retain the
+      // bin-specific fallback because they are inventory.
+      bin: { kind: 'place', path: bin, empty: surface === 'docked' ? 'No location' : 'No bin' },
       // No price reads as a struck "$—" (missing, not zero) so a claim's value is never guessed.
       price: row.id > 0 ? { kind: 'money', text: linePrice(row), estimate: false, estimateTitle: '' } : null,
     },

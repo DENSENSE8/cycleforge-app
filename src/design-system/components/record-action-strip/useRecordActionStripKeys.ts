@@ -5,6 +5,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { claimOverlay, hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { hotkeyChord, hotkeyFires } from '@/lib/keyboard/key-registry';
 import {
   registerSelectionInlineHotkeySurface,
   shouldSuppressSelectionQuestionMark,
@@ -50,16 +51,16 @@ export function useRecordActionStripKeys({
     };
   }, [displayOpen]);
 
-  // Verbs view: letters run their verb; Escape dismisses a dismissible strip.
+  // Verbs view: hotkeys (letters, or a chord like ⌘/Ctrl+C) run their verb; Escape dismisses a dismissible strip.
   const verbsLive = verbs.length > 0 && !displayOpen;
   useEffect(() => {
     if (!verbsLive) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.defaultPrevented) return;
       // A text field keeps its own keys — Escape cancels the field's edit (an
       // inline note), it does not clear the check-set under it.
       if (hasOpenOverlay() || isEditableKeyTarget(event.target)) return;
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !event.metaKey && !event.ctrlKey && !event.altKey) {
         const dismiss = latest.current.onDismiss;
         if (!dismiss) return;
         event.preventDefault();
@@ -67,9 +68,7 @@ export function useRecordActionStripKeys({
         dismiss();
         return;
       }
-      const letter = event.key.length === 1 ? event.key.toLowerCase() : '';
-      if (!letter) return;
-      const verb = latest.current.verbs.find((candidate) => candidate.hotkey?.toLowerCase() === letter);
+      const verb = latest.current.verbs.find((candidate) => hotkeyFires(candidate.hotkey, event));
       if (!verb || verb.disabled) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -87,7 +86,7 @@ export function useRecordActionStripKeys({
         .filter((verb) => verb.hotkey)
         .filter((verb, index, all) => all.findIndex((v) => v.hotkey?.toLowerCase() === verb.hotkey?.toLowerCase()) === index)
         .filter((verb) => !verb.disabled)
-        .map((verb) => `${verb.hotkey!.toUpperCase()}\u0000${verb.label}`)
+        .map((verb) => `${hotkeyChord(verb.hotkey!)}\u0000${verb.label}`)
         .join('\u0001')
     : '';
   useEffect(() => {
@@ -97,7 +96,7 @@ export function useRecordActionStripKeys({
       title: 'Record actions',
       rows: overviewRows.split('\u0001').map((row) => {
         const [key, label] = row.split('\u0000');
-        return { keys: [key], label };
+        return { keys: key.split('+'), label };
       }),
     });
   }, [overviewId, overviewRows]);

@@ -50,7 +50,8 @@ export function RecordGroup({
           )}
         >
           <h3 className={cn(RECORD_GROUP_TITLE_CLASS, titleAccessory ? 'shrink-0' : 'flex-1', titleHidden && 'sr-only')}>{title}</h3>
-          {titleAccessory ? <div className="min-w-0 flex-1">{titleAccessory}</div> : null}
+          {/* A flex box, not a block: an inline pill in a block line box sits on the text baseline and reads low beside the title. */}
+          {titleAccessory ? <div className="flex min-w-0 flex-1 items-center">{titleAccessory}</div> : null}
           {action ? (
             <div
               className={cn(

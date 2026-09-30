@@ -123,7 +123,7 @@ public enum DesignTokens {
             frame: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
             fact: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
             mark: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
-            warnText: Color(red: 138.0 / 255.0, green: 95.0 / 255.0, blue: 0.0 / 255.0), // #8a5f00
+            warnText: Color(red: 154.0 / 255.0, green: 52.0 / 255.0, blue: 18.0 / 255.0), // #9a3412
             brand: nil,
             radius: 0.0,
             radiusControl: 0.0,
@@ -174,7 +174,7 @@ public enum DesignTokens {
             frame: Color.clear, // transparent
             fact: Color.clear, // transparent
             mark: Color.clear, // transparent
-            warnText: Color(red: 138.0 / 255.0, green: 95.0 / 255.0, blue: 0.0 / 255.0), // #8a5f00
+            warnText: Color(red: 154.0 / 255.0, green: 52.0 / 255.0, blue: 18.0 / 255.0), // #9a3412
             brand: nil,
             radius: 10.0,
             radiusControl: 8.0,
@@ -415,6 +415,45 @@ public enum DesignTokens {
         public static let wrong_destination = LifecycleState(code: "DST", label: "Wrong destination", tone: State.danger, icon: "map-pin")
         public static let received = LifecycleState(code: "RCV", label: "Received", tone: State.success, icon: "package-open")
         public static let unknown = LifecycleState(code: "UNK", label: "Unknown", tone: State.warning, icon: "circle-help")
+    }
+
+    /// The inbound floor ladder — Ordered → Docked → Unboxed → Graded → Tested → Put away.
+    public enum InboundLifecycle {
+        public static let ordered = LifecycleState(code: "ORD", label: "Ordered", tone: State.info, icon: "file-text")
+        public static let docked = LifecycleState(code: "DCK", label: "Docked", tone: State.info, icon: "door-open")
+        public static let unboxed = LifecycleState(code: "UBX", label: "Unboxed", tone: State.info, icon: "package-open")
+        public static let graded = LifecycleState(code: "GRD", label: "Graded", tone: State.warning, icon: "star")
+        public static let tested = LifecycleState(code: "TST", label: "Tested", tone: State.warning, icon: "shield-check")
+        public static let putAway = LifecycleState(code: "PUT", label: "Put away", tone: State.success, icon: "warehouse")
+    }
+
+    /// The local-pickup ladder — Ordered → Collected → Unboxed → Graded → Tested → Put away.
+    public enum PickupLifecycle {
+        public static let ordered = LifecycleState(code: "ORD", label: "Ordered", tone: State.info, icon: "file-text")
+        public static let collected = LifecycleState(code: "COL", label: "Collected", tone: State.info, icon: "map-pin")
+        public static let unboxed = LifecycleState(code: "UBX", label: "Unboxed", tone: State.info, icon: "package-open")
+        public static let graded = LifecycleState(code: "GRD", label: "Graded", tone: State.warning, icon: "star")
+        public static let tested = LifecycleState(code: "TST", label: "Tested", tone: State.warning, icon: "shield-check")
+        public static let putAway = LifecycleState(code: "PUT", label: "Put away", tone: State.success, icon: "warehouse")
+    }
+
+    /// One shipping service level: the lifecycle face plus the import rule.
+    public struct ServiceLevelSpec: Sendable {
+        public let state: LifecycleState
+        /// An order first classified at this level is marked urgent.
+        public let urgent: Bool
+        /// Speed order — a split order takes its fastest service.
+        public let rank: Int
+    }
+
+    /// Shipping service levels — the speed the buyer paid for.
+    public enum ServiceLevel {
+        public static let nextDay = ServiceLevelSpec(state: LifecycleState(code: "NXD", label: "Next day", tone: State.danger, icon: "zap"), urgent: true, rank: 4)
+        public static let secondDay = ServiceLevelSpec(state: LifecycleState(code: "2DA", label: "2-day", tone: State.warning, icon: "zap"), urgent: true, rank: 3)
+        public static let expedited = ServiceLevelSpec(state: LifecycleState(code: "EXP", label: "Expedited", tone: State.warning, icon: "zap"), urgent: true, rank: 2)
+        public static let standard = ServiceLevelSpec(state: LifecycleState(code: "STD", label: "Standard", tone: State.neutral, icon: "truck"), urgent: false, rank: 1)
+        public static let economy = ServiceLevelSpec(state: LifecycleState(code: "ECO", label: "Economy", tone: State.neutral, icon: "truck"), urgent: false, rank: 0)
+        public static let pickup = ServiceLevelSpec(state: LifecycleState(code: "PKU", label: "Pickup", tone: State.neutral, icon: "store"), urgent: false, rank: 0)
     }
 
     /// One intake class: 3-letter mono code and the full word it reads as.

@@ -9,7 +9,10 @@ import { describe, it } from 'node:test';
 import {
   STAFF_PRINT_STATION_STALE_MS,
   UNNAMED_PRINT_STATION,
+  parseStaffPrintControl,
   parseStaffPrintJob,
+  parseStaffPrintProgress,
+  qcLabelWireKey,
   parseStaffPrintOptionsPatch,
   parseStaffPrintStatus,
   resolveStaffPrintTarget,
@@ -162,6 +165,37 @@ describe('parseStaffPrintJob', () => {
     assert.equal(copiesOf('lots'), 1);
   });
 
+  it('an FNSKU test print says so only when the sender said exactly true', () => {
+    const base = { request_id: 'req-8', targetStationId: BENCH, grain: 'fnsku' };
+    assert.deepEqual(parseStaffPrintJob({ ...base, fnsku: { fnsku: 'X004O69DL9', copies: 10, test: true } })?.fnsku, {
+      fnsku: 'X004O69DL9',
+      copies: 10,
+      test: true,
+    });
+    // Anything but `true` is a real reprint (it logs): a junk flag never skips the ledger silently.
+    assert.deepEqual(parseStaffPrintJob({ ...base, fnsku: { fnsku: 'X004O69DL9', copies: 2, test: 'yes' } })?.fnsku, {
+      fnsku: 'X004O69DL9',
+      copies: 2,
+    });
+  });
+
+  it('a QC label job is a label job naming one unit key — never a URL or path', () => {
+    const base = { request_id: 'req-qc', targetStationId: BENCH, grain: 'qc_label' };
+    const job = parseStaffPrintJob({ ...base, role: 'paper', qcLabel: { unitKey: ' APL-2639-000123 ' } });
+    assert.equal(job?.role, 'label');
+    assert.deepEqual(job?.qcLabel, { unitKey: 'APL-2639-000123' });
+    for (const unitKey of ['', '../../api/x', 'https://evil.test/u', 'SN 123', 'x'.repeat(101)]) {
+      assert.equal(parseStaffPrintJob({ ...base, qcLabel: { unitKey } }), null, unitKey);
+    }
+    assert.equal(parseStaffPrintJob(base), null);
+  });
+
+  it('qcLabelWireKey prefers the minted unit id, falls back to the serial, refuses what cannot ride', () => {
+    assert.equal(qcLabelWireKey({ unit_uid: 'APL-2639-000123', serial_number: 'C02X' }), 'APL-2639-000123');
+    assert.equal(qcLabelWireKey({ unit_uid: null, serial_number: ' C02X1 ' }), 'C02X1');
+    assert.equal(qcLabelWireKey({ unit_uid: null, serial_number: 'SN 1/2' }), null);
+  });
+
   describe('documents grain', () => {
     const base = { request_id: 'req-doc', targetStationId: BENCH, grain: 'documents' };
     const BATCH = '0b8e2c4a-7d1f-4c55-9b0e-3a1f5d6c7e80';
@@ -253,6 +287,35 @@ describe('parseStaffPrintOptionsPatch', () => {
       targetStationId: BENCH,
       routing: { label: 'p1' },
     });
+  });
+});
+
+describe('parseStaffPrintControl', () => {
+  it('names one job at one station, with a known action', () => {
+    assert.deepEqual(parseStaffPrintControl({ request_id: 'req-1', targetStationId: BENCH, action: 'pause' }), {
+      type: 'staff.print_control',
+      request_id: 'req-1',
+      targetStationId: BENCH,
+      action: 'pause',
+    });
+    assert.equal(parseStaffPrintControl({ request_id: 'req-1', action: 'cancel' }), null);
+    assert.equal(parseStaffPrintControl({ targetStationId: BENCH, action: 'cancel' }), null);
+    assert.equal(parseStaffPrintControl({ request_id: 'req-1', targetStationId: BENCH, action: 'delete' }), null);
+  });
+});
+
+describe('parseStaffPrintProgress', () => {
+  it('reads a plain tick, a state report, and drops an unknown state instead of the tick', () => {
+    assert.deepEqual(parseStaffPrintProgress({ request_id: 'req-1', done: 3, total: 10 }), {
+      type: 'staff.print_progress',
+      request_id: 'req-1',
+      done: 3,
+      total: 10,
+    });
+    assert.equal(parseStaffPrintProgress({ request_id: 'req-1', done: 4, total: 10, state: 'cancelled', message: 'Cancelled · 4 of 10' })?.state, 'cancelled');
+    assert.equal(parseStaffPrintProgress({ request_id: 'req-1', done: 4, total: 10, state: 'exploded' })?.state, undefined);
+    assert.equal(parseStaffPrintProgress({ done: 4, total: 10 }), null);
+    assert.equal(parseStaffPrintProgress({ request_id: 'req-1', done: 'x', total: 10 }), null);
   });
 });
 

@@ -3,15 +3,18 @@ import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import { ZendeskApiError, ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
-  getHelpdeskProvider,
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
-import { loadZendeskTicketBundle } from '@/lib/integrations/helpdesk/load-ticket-bundle';
+import { loadTicketMirror } from '@/lib/support/ticket-mirror';
 
 export const dynamic = 'force-dynamic';
 
-/** GET /api/zendesk/tickets/:id/bundle */
+/**
+ * GET /api/zendesk/tickets/:id/bundle[?refresh=1] — ticket + full thread +
+ * agents + assignment + entity/photos from the local ticket mirror (one DB
+ * round trip warm; `refresh=1` re-mirrors live first).
+ */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
@@ -48,14 +51,25 @@ export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/tickets/[id]/bundle';
     try {
-      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
-      if (!helpdesk || !(await helpdesk.isConfigured())) return notConfigured(context);
       const id = ticketIdFromUrl(req);
-      const bypassCache = req.nextUrl.searchParams.get('refresh') === '1';
-      const bundle = await loadZendeskTicketBundle(ctx.organizationId, id, helpdesk, {
-        bypassCache,
+      const load = await loadTicketMirror(ctx.organizationId, id, {
+        refresh: req.nextUrl.searchParams.get('refresh') === '1',
       });
-      return NextResponse.json({ success: true, ...bundle });
+      if (load.status === 'not_configured') return notConfigured(context);
+      if (load.status === 'not_found') throw ApiError.notFound('Zendesk ticket', id);
+      const { mirror } = load;
+      return NextResponse.json({
+        success: true,
+        ticket: mirror.ticket,
+        comments: mirror.comments,
+        // The mirror holds the whole thread — never a next page.
+        commentsCount: mirror.comments.length,
+        commentsNextPage: null,
+        agents: mirror.agents,
+        assignment: mirror.assignment,
+        entity: mirror.entity,
+        photos: mirror.photos,
+      });
     } catch (err) {
       return mapZendeskError(err, context);
     }

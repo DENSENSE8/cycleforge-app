@@ -170,7 +170,7 @@ omits `filters` for a caller without the context's permission.
 
 | View | `controls` |
 |---|---|
-| To ship · Pick list · PO paired | `{ staff: { param: 'staff' } }` (`useToShipChrome.ts:59`, `UnshippedTable.tsx:220`) |
+| Allocate | `{ staff: { param: 'staff' } }` (`useToShipChrome.ts:59`, `UnshippedTable.tsx:220`) |
 | Shipped | `{ staff: { param: 'staff' }, dateRange: { fromParam: 'dateFrom', toParam: 'dateTo', clearParams: ['shippedWeekOffset', 'allDates'], placeholder: 'This week' } }` (`useShippedTableFilters`: `effStaffId`, `setPeriodRange`) |
 | Exceptions | none (the workbench reads no staff or date param) |
 
@@ -235,40 +235,13 @@ Example — a Shipping view (`?path=/shipping/orders?view=triage`, section scope
   },
   "sections": [
     {
-      "id": "outbound.shortage",
-      "label": "Picking",
-      "items": [
-        {
-          "id": "po",
-          "label": "PO paired",
-          "href": "/shipping/shortage?pair=po",
-          "active": false,
-          "kind": "link"
-        },
-        {
-          "id": "pick",
-          "label": "Pick list",
-          "href": "/shipping/orders?queue=pick",
-          "active": false,
-          "kind": "link"
-        }
-      ]
-    },
-    {
       "id": "outbound.triage",
       "items": [
         {
           "id": "triage",
-          "label": "To ship",
+          "label": "Allocate",
           "href": "/shipping/orders",
           "active": true,
-          "kind": "link"
-        },
-        {
-          "id": "shipped",
-          "label": "Shipped",
-          "href": "/shipping/shipped",
-          "active": false,
           "kind": "link"
         },
         {
@@ -277,12 +250,18 @@ Example — a Shipping view (`?path=/shipping/orders?view=triage`, section scope
           "href": "/shipping/exceptions",
           "active": false,
           "kind": "link"
+        },
+        {
+          "id": "shipped",
+          "label": "Shipped",
+          "href": "/shipping/shipped?shippedFilter=orders",
+          "active": false,
+          "kind": "link"
         }
       ]
     }
   ],
   "params": [
-    "pair",
     "openOrderId",
     "sort",
     "dir",
@@ -1765,7 +1744,7 @@ Captured (`?input=00280`, a SKU of the Wave line under Bose):
 - **Route:** `src/app/api/orders/route.ts:13` · **Auth:** `withAuth`, permission **`orders.view`**.
 - **Query:** hand-parsed by `parseOrdersListQuery` (`src/lib/orders/orders-list-query.ts:93`; no zod). Sidebar-relevant params:
   - `inWarehouse=true` (the To-ship scope);
-  - `queue=pick`, `pair=po`;
+  - `pair=po` (the parked Shortage desk lens);
   - `stage=pending|tested|packed`, `staff=<id>`;
   - `limit` (1..500; absent = unbounded, the legacy callers);
   - `cursor` (opaque base64 `{d, id}` keyset over `deadline_at, id`);

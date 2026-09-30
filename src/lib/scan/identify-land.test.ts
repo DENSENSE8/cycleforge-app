@@ -111,3 +111,21 @@ test('the kernel armed for QC lands a unit label on its checklist, a line on its
   const bin = routeScan(BIN_FLAT);
   strictEqual(landScanIdentify(dispatchScan({ scan: bin!, armedSession: QC_SCAN_SESSION }), bin).kind, 'settle');
 });
+
+test('the unbox carton label opens the carton QC from the plain scan button, every printed form', () => {
+  for (const raw of [
+    'R-32545',
+    'https://usav.app.cycleforge.ai/m/r/32545/qc',
+    // Stickers printed before the `/qc` tail.
+    'https://usav.app.cycleforge.ai/m/r/32545',
+    'HTTPSUSAVAPPCYCLEFORGEAIMR32545QC',
+  ]) {
+    const { route, land } = landFor(raw);
+    strictEqual(route?.type, 'receiving', raw);
+    strictEqual(land.kind, 'identify', raw);
+    if (land.kind === 'identify') strictEqual(land.href, '/m/r/32545/qc', raw);
+  }
+  // A line label outside QC still opens its line — only the carton sticker means QC.
+  const line = landFor('L-32545');
+  strictEqual(line.land.kind === 'identify' ? line.land.href : null, '/m/l/32545');
+});

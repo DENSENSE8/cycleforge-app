@@ -4,8 +4,6 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { getTicket, updateTicket } from './zendesk';
 import { upsertSupportTicket } from '@/lib/support/tickets';
 import { photoContentUrl } from '@/lib/photos/display-url';
-import { listPhotosForEntity } from '@/lib/photos/service';
-import type { PhotoEntityType } from '@/lib/photos/types';
 import { refreshReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -283,7 +281,7 @@ export async function getTicketEntity(
   return null;
 }
 
-interface EntityPhoto {
+export interface EntityPhoto {
   id: number;
   url: string;
   caption: string | null;
@@ -291,75 +289,63 @@ interface EntityPhoto {
   createdAt: string;
 }
 
+/** A row of {@link entityPhotosSql}. `created_at` is a Date via pg, an ISO string via json_agg. */
+export interface EntityPhotoRow {
+  id: string | number;
+  photo_type: string | null;
+  taken_by_staff_id: number | null;
+  created_at: string | Date;
+}
+
+export function mapEntityPhotoRow(row: EntityPhotoRow): EntityPhoto {
+  const id = Number(row.id);
+  return {
+    id,
+    url: photoContentUrl(id),
+    caption: row.photo_type,
+    takenByStaffId: row.taken_by_staff_id,
+    createdAt: new Date(row.created_at).toISOString(),
+  };
+}
+
 /**
- * Fetch photos for an entity via photo_entity_links dual-read.
- * For RECEIVING_LINE, includes parent PO-level photos (not other lines).
+ * One SELECT for an entity's photos via photo_entity_links (distinct per photo;
+ * callers order by created_at DESC). `org`, `type`, `id` are SQL expressions so
+ * the ticket mirror can embed this in its one-trip read.
+ *   RECEIVING      → the carton's photos + every line's under it.
+ *   RECEIVING_LINE → the line's photos + its parent carton-level (PO) photos, not other lines.
+ *   anything else  → photos linked to exactly (type, id).
  */
+export function entityPhotosSql(org: string, type: string, id: string): string {
+  return `
+    SELECT DISTINCT p.id, p.photo_type, p.taken_by_staff_id, p.created_at
+      FROM photos p
+      JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
+      LEFT JOIN receiving_line rl ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
+     WHERE p.organization_id = ${org}
+       AND CASE ${type}
+             WHEN 'RECEIVING' THEN
+                  (l.entity_type = 'RECEIVING' AND l.entity_id = ${id})
+               OR (l.entity_type = 'RECEIVING_LINE' AND rl.receiving_id = ${id})
+             WHEN 'RECEIVING_LINE' THEN
+                  (l.entity_type = 'RECEIVING_LINE' AND l.entity_id = ${id})
+               OR (l.entity_type = 'RECEIVING' AND l.entity_id = (
+                     SELECT prl.receiving_id FROM receiving_line prl
+                      WHERE prl.id = ${id} AND prl.organization_id = ${org}))
+             ELSE l.entity_type = ${type} AND l.entity_id = ${id}
+           END`;
+}
+
+/** Photos for an entity (see {@link entityPhotosSql}), newest first. */
 export async function getEntityPhotos(
   organizationId: string,
   entity: TicketEntityRef,
 ): Promise<EntityPhoto[]> {
-  const byId = new Map<number, EntityPhoto>();
-
-  const addRows = (
-    rows: Awaited<ReturnType<typeof listPhotosForEntity>>,
-  ) => {
-    for (const row of rows) {
-      if (byId.has(row.id)) continue;
-      byId.set(row.id, {
-        id: row.id,
-        url: row.url?.startsWith('/api/photos/') ? row.url : photoContentUrl(row.id),
-        caption: row.photoType,
-        takenByStaffId: row.takenByStaffId,
-        createdAt: row.createdAt,
-      });
-    }
-  };
-
-  if (entity.type === 'RECEIVING_LINE') {
-    addRows(
-      await listPhotosForEntity({
-        organizationId,
-        entityType: 'RECEIVING_LINE',
-        entityId: entity.id,
-      }),
-    );
-    const parent = await tenantQuery<{ receiving_id: number | null }>(
-      organizationId,
-      `SELECT receiving_id FROM receiving_line WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-      [entity.id, organizationId],
-    );
-    const receivingId = parent.rows[0]?.receiving_id;
-    if (receivingId != null) {
-      addRows(
-        await listPhotosForEntity({
-          organizationId,
-          entityType: 'RECEIVING',
-          entityId: Number(receivingId),
-        }),
-      );
-    }
-  } else if (entity.type === 'RECEIVING') {
-    addRows(
-      await listPhotosForEntity({
-        organizationId,
-        entityType: 'RECEIVING',
-        entityId: entity.id,
-        receivingId: entity.id,
-      }),
-    );
-  } else {
-    const entityType = entity.type as PhotoEntityType;
-    addRows(
-      await listPhotosForEntity({
-        organizationId,
-        entityType,
-        entityId: entity.id,
-      }),
-    );
-  }
-
-  return [...byId.values()].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  const { rows } = await tenantQuery<EntityPhotoRow>(
+    organizationId,
+    `SELECT ph.* FROM (${entityPhotosSql('$1::uuid', '$2::text', '$3::bigint')}) ph
+      ORDER BY ph.created_at DESC, ph.id`,
+    [organizationId, entity.type, entity.id],
   );
+  return rows.map(mapEntityPhotoRow);
 }

@@ -117,11 +117,11 @@ test('Scan stays out of the drawer — it owns the permanent top-right seat', ()
   assert.equal(hrefs.includes('/m/scan'), false);
 });
 
-test('Quality control is an L0 door onto the scan kernel armed for QC, gated on tech.qc_pass', () => {
-  // The checklist GET/POST both carry `tech.qc_pass`; a drawer row without the
-  // same gate would open a station whose first step 403s.
+test('Quality control is an L0 door onto the QC queue, gated on tech.qc_pass', () => {
+  // The queue read and the checklist GET/POST all carry `tech.qc_pass`; a
+  // drawer row without the same gate would open a station whose first read 403s.
   const qc = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'qc');
   assert.equal(qc?.kind, 'leaf');
-  assert.equal(qc?.href, '/m/scan?work=qc', 'the one scan kernel, armed for QC — not a second scan door');
+  assert.equal(qc?.href, '/m/qc', 'the queue — its Scan to QC arms the one scan kernel, never a second scan door');
   assert.equal(qc?.requires, 'tech.qc_pass');
 });

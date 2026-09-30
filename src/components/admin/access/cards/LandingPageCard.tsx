@@ -15,7 +15,7 @@ const MOBILE_LANDING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = 
   { value: '/m/pick',      label: 'Pick' },
 ];
 
-// Mirrors sign-in precedence: station roles → their station; everyone else → Daily ('/').
+// Mirrors sign-in precedence: station roles → their station; everyone else → Tasks ('/').
 const DESKTOP_ROLE_DEFAULTS: Record<string, string> = {
   receiver: '/receiving', receiving: '/receiving', packer: '/pack', technician: '/test',
 };
@@ -54,7 +54,7 @@ export function LandingPageCard({
     : MOBILE_LANDING_OPTIONS;
 
   const desktopDefault = (primaryRoleKey && DESKTOP_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()]) || DESKTOP_FALLBACK_HOME;
-  const desktopDefaultLabel = desktopDefault === '/' ? 'Daily' : desktopDefault;
+  const desktopDefaultLabel = desktopDefault === '/' ? 'Tasks' : desktopDefault;
   const mobileDefault = primaryRoleKey ? MOBILE_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()] ?? '/m/work' : '/m/work';
 
   return (

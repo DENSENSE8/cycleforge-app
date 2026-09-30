@@ -79,7 +79,7 @@ export function LineNotesCard({
   showSyncToPo = true,
   animateMount = true,
   chrome = 'raised',
-  weldTop = false,
+  reaction,
   trailingAction,
   onOpenLocations,
   onPrimaryAction,
@@ -142,10 +142,10 @@ export function LineNotesCard({
    */
   chrome?: 'raised' | 'bare';
   /**
-   * Pass-through to OmnichannelComposerDock. True while a feedback panel is
-   * welded to this composer's top edge, so the two share one silhouette.
+   * Staff reaction welded onto the composer's top edge (Unbox receive
+   * feedback) — pass-through to StationComposerHost `reaction`.
    */
-  weldTop?: boolean;
+  reaction?: ReactNode;
   /**
    * Terminal CTA rendered at the composer's trailing edge (Unbox overview
    * mounts the Receive/Print split here). Replaces the blue Send — Enter
@@ -651,7 +651,7 @@ export function LineNotesCard({
         }
         trailingAction={trailingAction}
         chrome={chrome}
-        weldTop={weldTop}
+        reaction={reaction}
         animateMount={animateMount}
         textareaRef={textareaRef}
         ghostSuffix={paintGhostSuffix}

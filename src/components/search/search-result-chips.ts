@@ -1,6 +1,6 @@
 /** search-result-chips — shared presentation config for the one search-result renderer (SearchResultRow). */
 
-import { AlertTriangle, Tool, Package, PackageOpen, Box, PackageCheck, Boxes, Search } from '@/components/Icons';
+import { AlertTriangle, Tool, Package, PackageOpen, Box, PackageCheck, Boxes, Archive, Search } from '@/components/Icons';
 import { LIFECYCLE, STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
 import type { SearchByScope } from '@/lib/search/search-by';
 
@@ -18,6 +18,7 @@ export const ENTITY_ICONS: Record<string, IconComponent> = {
   receiving: PackageOpen,
   sku: Box,
   unit: PackageCheck,
+  tote: Archive,
   exception: AlertTriangle,
   import_exception: AlertTriangle,
 };
@@ -27,11 +28,13 @@ export type ChipTone = 'gray' | 'blue' | 'emerald' | 'amber' | 'rose' | 'purple'
 
 /**
  * UI entity type → chip / glyph tone. Order + receiving share blue so the
- * package closed/open pair reads as one family on the /search feed.
+ * package closed/open pair reads as one family on the /search feed; a tote and
+ * the units it holds share emerald the same way.
  */
 export const ENTITY_TONE: Record<string, ChipTone> = {
   order: 'blue',
   unit: 'emerald',
+  tote: 'emerald',
   receiving: 'blue',
   sku: 'gray',
   repair: 'rose',

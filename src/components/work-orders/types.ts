@@ -74,8 +74,10 @@ export interface WorkOrderRow {
   allocatedUnitCount?: number | null;
   pickedUnitCount?: number | null;
   outOfStock?: string | null;
-  /** Explicit operator expedited flag; independent from the ship-by deadline. */
+  /** Urgent flag — operator-set, or set once by the import for a paid-for fast service. */
   isUrgent?: boolean;
+  /** Why it is urgent, as the desk rail says it ("Next day", "2-day → Ground", "Urgent"). */
+  urgentLabel?: string | null;
 }
 
 export interface QueueCounts {

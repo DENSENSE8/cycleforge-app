@@ -7,6 +7,7 @@ import { SidebarCollapseControl } from './SidebarCollapseControl';
 import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButton';
 import { GlobalHeaderAdd } from './GlobalHeaderAdd';
 import { GlobalHeaderSync } from './GlobalHeaderSync';
+import { HeaderNextAction, PrintJobOverlay } from './HeaderWork';
 import {
   HEADER_ICON_CLUSTER,
   HEADER_INSET_X,
@@ -17,10 +18,11 @@ import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 /**
- * Global desktop header — one persistent, deliberately quiet utility bar.
- * Navigation and search lead the F-pattern on the left; infrequent global
- * actions stay grouped at the far right. Page identity and secondary
- * navigation belong to the page/sidebar instead of competing in this band.
+ * Global desktop header — one persistent, deliberately quiet utility bar,
+ * split by who acts: the left says what YOU do next (the page's next step,
+ * beside navigation and search); the right says what the SYSTEM is doing
+ * (Sync, print job cards) next to the infrequent global actions. Page identity
+ * and secondary navigation belong to the page/sidebar instead.
  */
 export function GlobalHeader({
   navOpen,
@@ -67,11 +69,16 @@ export function GlobalHeader({
         )}
       </div>
 
+      {/* Top-left: what YOU do next on this page — beside the sidebar seam, open or closed. */}
+      <HeaderNextAction />
+
       <div className="min-w-0 flex-1" aria-hidden />
+      {/* Top-right: what the SYSTEM is doing — Sync spins for syncs and prints; print jobs exist only as the overlay cards. */}
       <div className={HEADER_ICON_CLUSTER} data-header-zone="actions">
         <GlobalHeaderAdd />
         <ActivityInboxButton />
         <GlobalHeaderSync />
+        <PrintJobOverlay />
       </div>
     </header>
   );
