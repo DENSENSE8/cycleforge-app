@@ -19,7 +19,7 @@
  * `[` / `]` step the tabs; the plane owns Esc and ⌘/Ctrl+Shift+S.
  */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Check, ChevronDown, Link2, Mail, MessageSquareReply, Package, Plus, RotateCcw, Ticket, Truck, Wrench, X, type LucideIcon } from 'lucide-react';
 import { Zap } from '@/components/Icons';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
@@ -38,7 +38,7 @@ import { taskLinkRepairHref, type TaskLink, type TaskLinkCreateBody, type TaskLi
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/design-system/primitives/DropdownMenu';
 import type { TaskDeskPatch } from '@/features/tasks/useTaskDesk';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
-import { taskStatusOf, taskStatusPatch } from '@/lib/tasks/task-status';
+import { applyTaskStatusPatch, taskStatusOf, taskStatusPatch, type TaskStatusSource } from '@/lib/tasks/task-status';
 import {
   TASK_STATUS_FACE,
   TASK_STATUS_SLIDER_STOPS,
@@ -343,10 +343,9 @@ function OverviewTab({
 }
 
 /**
- * Status and Priority on ONE row (owner 2026-09-30): the status combobox left
- * (`S` opens it too), Priority right, wrapping under it in a narrow split
- * pane; under them the three-stop slider — Not done · Pending · Done — for
- * thumb / drag triage. The combobox reaches every other state.
+ * Status and Priority on ONE row (owner 2026-09-30): the status combobox (`S`
+ * opens it too), the three-stop slider — Not done · Pending · Done — for thumb /
+ * drag triage, and Priority at the right. The combobox reaches every other state.
  */
 function StatusAndPriority({
   row,
@@ -358,7 +357,7 @@ function StatusAndPriority({
   onPatch: (patch: TaskDeskPatch) => Promise<unknown>;
 }) {
   const stored = taskStatusOf(task);
-  // The slider answers before the refetch lands; it lets go once the row agrees (or the write fails).
+  // The control answers before the refetch lands; it lets go once the row agrees (or the write fails).
   const [pending, setPending] = useState<TaskStatus | null>(null);
   useEffect(() => {
     if (pending === stored) setPending(null);
@@ -366,39 +365,39 @@ function StatusAndPriority({
   const current = pending ?? stored;
   const sliderIndex = taskStatusSliderIndex(current);
 
+  // Each write is computed from the state the PREVIOUS write leaves behind, and
+  // writes go one at a time. Computing from the refetched row raced: Done then a
+  // quick Pending sent a bare hold while Done was still landing → 409.
+  const storedRef = useRef<TaskStatusSource>({ status: task.status, taskState: task.taskState ?? null });
+  const projected = useRef<TaskStatusSource>({ status: task.status, taskState: task.taskState ?? null });
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const inFlight = useRef(0);
+  useEffect(() => {
+    storedRef.current = { status: task.status, taskState: task.taskState ?? null };
+    if (inFlight.current === 0) projected.current = storedRef.current;
+  }, [task.status, task.taskState]);
+
   const setStatus = (target: TaskStatus) => {
-    const patch = taskStatusPatch(task, target);
+    const patch = taskStatusPatch(projected.current, target);
     if (!patch) return;
+    projected.current = applyTaskStatusPatch(projected.current, patch);
     setPending(target);
-    onPatch(patch).catch((error: unknown) => {
-      setPending(null);
-      toast.error(error instanceof Error ? error.message : 'Could not change the status.');
-    });
+    inFlight.current += 1;
+    queue.current = queue.current
+      .then(() => onPatch(patch))
+      .catch((error: unknown) => {
+        projected.current = storedRef.current;
+        setPending(null);
+        toast.error(error instanceof Error ? error.message : 'Could not change the status.');
+      })
+      .finally(() => {
+        inFlight.current -= 1;
+      });
   };
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <TaskStatusCombobox current={current} onPick={setStatus} />
-        <span className="inline-flex items-center gap-2">
-          <span className="text-[11px] font-medium text-text-muted">Priority</span>
-          <button
-            type="button"
-            aria-label={`Priority: ${row.urgent ? 'Urgent' : 'Normal'}. Toggle`}
-            onClick={() =>
-              void onPatch({ priority: row.urgent ? TASK_PRIORITY.normal : TASK_PRIORITY.urgent })
-            }
-            className={cn(
-              'inline-flex h-6 items-center gap-1 rounded-full px-3 text-[11px] font-semibold transition-colors',
-              row.urgent ? 'bg-surface-card text-text-default ring-1 ring-inset ring-border-soft shadow-sm' : 'bg-surface-sunken text-text-muted hover:text-text-default',
-            )}
-            data-testid="task-priority-toggle"
-          >
-            <Zap className={cn('size-3.5', row.urgent ? 'text-text-warning' : 'text-text-muted')} />
-            {row.urgent ? 'Urgent' : 'Normal'}
-          </button>
-        </span>
-      </div>
+    <div className="flex min-w-0 flex-nowrap items-center gap-3">
+      <TaskStatusCombobox current={current} onPick={setStatus} />
       {sliderIndex != null ? (
         <StopSlider
           stops={[0, 1, 2]}
@@ -406,11 +405,25 @@ function StatusAndPriority({
           onChange={(index) => setStatus(TASK_STATUS_SLIDER_STOPS[index]!.status)}
           ariaLabel="Quick status"
           formatValue={(index) => TASK_STATUS_SLIDER_STOPS[index]?.label ?? ''}
-          stopLabel={(index) => TASK_STATUS_SLIDER_STOPS[index]?.label ?? ''}
-          className="max-w-xs"
+          showStops={false}
+          className="w-28 min-w-20 shrink"
           data-testid="task-status-slider"
         />
       ) : null}
+      <button
+        type="button"
+        aria-label={`Priority: ${row.urgent ? 'Urgent' : 'Normal'}. Toggle`}
+        title="Priority"
+        onClick={() => void onPatch({ priority: row.urgent ? TASK_PRIORITY.normal : TASK_PRIORITY.urgent })}
+        className={cn(
+          'ml-auto inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors',
+          row.urgent ? 'bg-surface-card text-text-default ring-1 ring-inset ring-border-soft shadow-sm' : 'bg-surface-sunken text-text-muted hover:text-text-default',
+        )}
+        data-testid="task-priority-toggle"
+      >
+        <Zap className={cn('size-3.5', row.urgent ? 'text-text-warning' : 'text-text-muted')} />
+        {row.urgent ? 'Urgent' : 'Normal'}
+      </button>
     </div>
   );
 }
