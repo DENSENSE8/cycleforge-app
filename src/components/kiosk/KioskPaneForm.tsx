@@ -37,6 +37,7 @@ export function KioskPaneForm({
   measure = 'plain',
   hero,
   footer,
+  footerNote,
   children,
 }: {
   /** `data-testid` on the pane root — the handle every kiosk e2e already uses. */
@@ -56,6 +57,13 @@ export function KioskPaneForm({
   hero?: ReactNode;
   /** Action floor content. Omitted → no floor is rendered at all. */
   footer?: ReactNode;
+  /**
+   * One sentence on the floor, above its keys — why the key is disabled.
+   * On the floor rather than in the body so it stays beside the key it
+   * explains, including when the floor rides above the OS keyboard. A key's
+   * `title` is not a substitute: a tooltip does not exist under a finger.
+   */
+  footerNote?: string | null;
   children?: ReactNode;
 }) {
   const { keyboardHeight } = useKeyboard();
@@ -104,6 +112,15 @@ export function KioskPaneForm({
             data-kiosk-footer-band
             style={keyboardHeight > 0 ? { marginBottom: keyboardHeight } : undefined}
           >
+            {footerNote ? (
+              <p
+                className="basis-full text-center text-sm font-semibold text-text-soft"
+                aria-live="polite"
+                data-testid="kiosk-pane-footer-note"
+              >
+                {footerNote}
+              </p>
+            ) : null}
             {footer}
           </div>
         ) : null}

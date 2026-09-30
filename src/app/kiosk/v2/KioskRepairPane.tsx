@@ -21,6 +21,7 @@ import {
   buildInitialFormData,
   canSubmitRepairIntake,
   getRepairSubmitBlockReason,
+  repairStepBlockReason,
   repairStepGates,
 } from '@/components/repair/repair-intake-logic';
 import {
@@ -356,6 +357,19 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
     return open === -1 ? lastStep : open;
   });
   const stepCanContinue = stepGates[step] ?? canSave;
+  // Why Continue is grey, in words on the floor. The review step prints its
+  // own refusal in the body under the signature, so the floor stays quiet
+  // there — one sentence per screen, never the same one twice.
+  const continueReason =
+    hasDevices && step < lastStep
+      ? repairStepBlockReason(
+          step as 0 | 1 | 2,
+          formData,
+          !!signatureData,
+          ticketSettled,
+          devices,
+        )
+      : null;
   const completedSteps = stepGates.filter(Boolean).length;
 
   /*
@@ -479,6 +493,7 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
         closeLabel: 'Back to catalog',
         label: 'Repair intake progress',
       }}
+      footerNote={continueReason}
       hero={
         hasDevices ? undefined : (
           <div className="text-center">
