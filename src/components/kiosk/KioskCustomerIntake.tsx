@@ -10,11 +10,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { PhoneKeypadPress } from '@/components/kiosk/KioskAmountKeypad';
 import { KioskFloatingPhoneKeypad } from '@/components/kiosk/KioskFloatingPhoneKeypad';
 import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
+import { Mail, MapPin, Phone, User } from '@/components/Icons';
 import { useKioskCustomerMatch, type KioskCustomerMatch } from '@/components/kiosk/useKioskCustomerMatch';
 import { TextField } from '@/design-system/primitives';
 import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import { counterCorner } from '@/app/kiosk/kiosk-counter-surface';
 import { cn } from '@/utils/_cn';
+import { formatKioskPhoneInput } from '@/lib/kiosk/phone';
 import {
   useKioskSession,
   useKioskSessionActions,
@@ -37,17 +39,8 @@ interface KioskCustomerValue {
   address?: string;
 }
 
-/**
- * One phone shape across the kiosk — `555-867-5309`. Formatting on the way in
- * means every channel writes the same string, so a lookup by phone matches
- * whichever command took the customer's details.
- */
-export function formatKioskPhoneInput(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 10);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
-}
+/** One phone shape across every intake — see {@link formatKioskPhoneInput}. */
+export { formatKioskPhoneInput };
 
 interface KioskCustomerIntakeProps {
   /** Which contact fields this channel asks for. Default: all three. */
@@ -191,6 +184,8 @@ export function KioskCustomerIntake({
                   inputMode="none"
                   autoComplete="tel"
                   maxLength={12}
+                  icon={<Phone className="h-4 w-4" />}
+                  iconTone="neutral"
                   testId="kiosk-customer-phone"
                   onEnter={onSubmit}
                 />
@@ -227,7 +222,9 @@ export function KioskCustomerIntake({
               value={current.name}
               onChange={(v) => patch({ name: v })}
               autoComplete="name"
-              testId="kiosk-customer-name"
+              icon={<User className="h-4 w-4" />}
+                iconTone="neutral"
+                testId="kiosk-customer-name"
               onEnter={onSubmit}
             />
           ) : (
@@ -249,7 +246,9 @@ export function KioskCustomerIntake({
               type="email"
               inputMode="email"
               autoComplete="email"
-              testId="kiosk-customer-email"
+              icon={<Mail className="h-4 w-4" />}
+                iconTone="neutral"
+                testId="kiosk-customer-email"
               onEnter={onSubmit}
             />
           ) : (
@@ -271,7 +270,9 @@ export function KioskCustomerIntake({
               value={current.address ?? ''}
               onChange={(v) => patch({ address: v })}
               autoComplete="street-address"
-              testId="kiosk-customer-address"
+              icon={<MapPin className="h-4 w-4" />}
+                iconTone="neutral"
+                testId="kiosk-customer-address"
               onEnter={onSubmit}
             />
           ) : (

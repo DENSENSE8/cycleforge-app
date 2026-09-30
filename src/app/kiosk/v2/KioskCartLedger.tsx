@@ -229,6 +229,9 @@ export function KioskCartLedger({
           closeLabel: 'Close cart',
           label: 'Cart progress',
         }}
+        // The review step prints its refusal in the body; the floor explains
+        // only a grey Continue, which otherwise said nothing to a finger.
+        footerNote={step < LAST_STEP && !confirmVoid ? stepBlockReason : null}
         footer={
           step === 0 && confirmVoid && session.lines.length > 0 ? (
             /*

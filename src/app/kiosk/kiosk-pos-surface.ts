@@ -152,6 +152,18 @@ export const KIOSK_POS_ENTRY_ICON =
   'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-success';
 export const KIOSK_POS_ENTRY_ICON_INSET = 'pl-11';
 /**
+ * The same slot in soft ink — for glyphs that name a field's KIND without
+ * being money (the contact step's phone / person / mail / pin). Green is the
+ * money ink; a phone number is not a price.
+ *
+ * This is also what lets an entry field keep its name once it is filled: the
+ * placeholder vanishes on the first keystroke, and a second TEXT label above
+ * the field is exactly the "Phone number twice above the keypad" failure
+ * (operator 2026-09-30). The glyph stays, so the field still says what it is.
+ */
+export const KIOSK_POS_ENTRY_ICON_NEUTRAL =
+  'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-soft';
+/**
  * Form measure — the fixed-width column every ENTRY surface renders in.
  * Operator ruling 2026-09-13: the product field is full-bleed (it is a
  */

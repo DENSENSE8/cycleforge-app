@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { TextField } from '@/design-system/primitives';
+import { formatKioskPhoneInput } from '@/lib/kiosk/phone';
 
 export type ContactFieldKey = 'name' | 'phone' | 'email' | 'extras';
 
@@ -43,27 +44,6 @@ interface CustomerInfoFormAllProps extends CustomerInfoFormBase {
 
 type CustomerInfoFormProps = CustomerInfoFormStepProps | CustomerInfoFormAllProps;
 
-function formatPhoneInput(value: string): string {
-    const cleaned = value.replace(/\D/g, '');
-    if (cleaned.length >= 10) {
-        return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
-    }
-    if (cleaned.length > 6) {
-        return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
-    }
-    if (cleaned.length > 3) {
-        return `${cleaned.slice(0, 3)}-${cleaned.slice(3)}`;
-    }
-    return cleaned;
-}
-
-function fieldLabelFor(activeField: ContactFieldKey): string {
-    if (activeField === 'name') return 'Customer Name';
-    if (activeField === 'phone') return 'Phone Number';
-    if (activeField === 'email') return 'Email (optional)';
-    return 'Repair Details';
-}
-
 export function CustomerInfoForm(props: CustomerInfoFormProps) {
     const {
         customer,
@@ -78,7 +58,7 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
     const showAll = props.layout === 'all';
 
     const handlePhoneChange = (value: string) => {
-        onCustomerChange('phone', formatPhoneInput(value));
+        onCustomerChange('phone', formatKioskPhoneInput(value));
     };
 
     const nameField = (
@@ -162,8 +142,13 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
 
     return (
         <div className="space-y-4">
-            <p className="text-role-micro text-text-faint">
-                {fieldIndex + 1} of {fieldCount} · {fieldLabelFor(activeField)}
+            {/*
+              Position only. The field under this line already names itself
+              ("Phone Number"), so repeating that name here printed it twice
+              above the input. One visible name per field — the field's own.
+            */}
+            <p className="text-role-micro text-text-faint" data-testid="repair-contact-field-position">
+                {fieldIndex + 1} of {fieldCount}
             </p>
 
             {activeField === 'name' && nameField}

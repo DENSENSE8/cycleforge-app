@@ -9,6 +9,7 @@ import {
   KIOSK_POS_ENTRY_ICON,
   KIOSK_POS_ENTRY_ICON_HOST,
   KIOSK_POS_ENTRY_ICON_INSET,
+  KIOSK_POS_ENTRY_ICON_NEUTRAL,
 } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 
@@ -26,6 +27,7 @@ export function KioskEntryField({
   maxLength,
   multiline = false,
   icon,
+  iconTone = 'money',
   testId,
   idScope,
   onEnter,
@@ -42,6 +44,11 @@ export function KioskEntryField({
   multiline?: boolean;
   /** Leading glyph inside the field — states the field's KIND before anyone reads the placeholder. */
   icon?: ReactNode;
+  /**
+   * Ink of the leading glyph. `money` (default) is the price field's green
+   * mark; `neutral` is soft ink for glyphs that only name the field's kind.
+   */
+  iconTone?: 'money' | 'neutral';
   testId?: string;
   /** Disambiguator for the derived DOM id. */
   idScope?: string;
@@ -85,7 +92,10 @@ export function KioskEntryField({
       ) : (
         <>
           {withIcon ? (
-            <span className={KIOSK_POS_ENTRY_ICON} aria-hidden>
+            <span
+              className={iconTone === 'neutral' ? KIOSK_POS_ENTRY_ICON_NEUTRAL : KIOSK_POS_ENTRY_ICON}
+              aria-hidden
+            >
               {icon}
             </span>
           ) : null}

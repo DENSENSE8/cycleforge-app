@@ -6,6 +6,7 @@ import {
   buildInitialFormData,
   canSubmitRepairIntake,
   getRepairSubmitBlockReason,
+  repairStepBlockReason,
   repairStepGates,
   type RepairDeviceGateRow,
 } from './repair-intake-logic';
@@ -225,4 +226,41 @@ test('a linked repair on the cart never gates the reason unit', () => {
     },
   ];
   assert.equal(repairStepGates(visitForm(), false, false, repairDevicesFromLines(lines))[0], true);
+});
+
+test('repairStepBlockReason: a disabled Continue always says why, in words', () => {
+  const empty = buildInitialFormData();
+  assert.equal(repairStepBlockReason(0, empty, false, true), 'Pick a reason or add a note to continue');
+  assert.equal(repairStepBlockReason(1, empty, false, true, []), 'Add the device being dropped off');
+  assert.equal(
+    repairStepBlockReason(1, empty, false, true, [device({ serialNumber: '' })]),
+    'Add the serial number to continue',
+  );
+  assert.equal(
+    repairStepBlockReason(1, empty, false, true, [
+      device(),
+      device({ title: 'JBL Flip', serialNumber: '', price: '' }),
+    ]),
+    'JBL Flip still needs its serial number and price',
+  );
+  assert.equal(repairStepBlockReason(2, empty, false, true), "Enter the customer's phone number to continue");
+  // Reasons are per unit: several devices name the blank one.
+  assert.equal(
+    repairStepBlockReason(0, empty, false, true, [device(), device({ title: 'Acoustimass 6', repairReasons: [] })]),
+    'Acoustimass 6 still needs a reason for repair',
+  );
+});
+
+test('repairStepBlockReason: null exactly where the gate is satisfied', () => {
+  const data = filled();
+  const devices: RepairDeviceGateRow[] = [device()];
+  for (const step of [0, 1, 2, 3] as const) {
+    const gate = repairStepGates(data, true, true, devices)[step];
+    assert.equal(repairStepBlockReason(step, data, true, true, devices) === null, gate, `step ${step}`);
+  }
+  assert.equal(repairStepBlockReason(3, data, false, true, devices), 'Signature required to submit');
+  assert.equal(
+    repairStepBlockReason(3, data, true, false, devices),
+    'Pick the existing ticket to attach this repair to',
+  );
 });

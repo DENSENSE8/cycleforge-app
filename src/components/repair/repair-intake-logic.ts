@@ -167,6 +167,57 @@ export function repairStepGates(
   ] as const;
 }
 
+/**
+ * Why the kiosk step in view cannot advance — the sentence the floor prints
+ * above a disabled Continue. `null` when the step's gate is satisfied.
+ *
+ * One reason per gate in {@link repairStepGates}, same order, so the key and
+ * its sentence can never disagree. It exists because the reason used to ride
+ * only on the key's `title`, and a tooltip does not exist under a finger: on
+ * the counter iPad a greyed Continue said nothing at all. The last step reuses
+ * {@link getRepairSubmitBlockReason} (the one copy deck for submit gaps) plus
+ * the unsettled ticket, exactly as the review floor already words it.
+ */
+export function repairStepBlockReason(
+  step: 0 | 1 | 2 | 3,
+  data: RepairFormData,
+  hasSignature: boolean,
+  ticketSettled: boolean,
+  devices?: readonly RepairDeviceGateRow[],
+): string | null {
+  const gates = repairStepGates(data, hasSignature, ticketSettled, devices);
+  if (gates[step]) return null;
+  switch (step) {
+    case 0: {
+      // Reasons are per unit: with several devices, name the one still blank.
+      const short =
+        devices && devices.length > 1 ? devices.find((d) => d.repairReasons.length === 0) : null;
+      return short
+        ? `${short.title} still needs a reason for repair`
+        : 'Pick a reason or add a note to continue';
+    }
+    case 1: {
+      if (devices && devices.length === 0) return 'Add the device being dropped off';
+      const short = devices?.find((d) => !d.serialNumber.trim() || !d.price.trim());
+      const serialMissing = short ? !short.serialNumber.trim() : !data.serialNumber.trim();
+      const priceMissing = short ? !short.price.trim() : !data.price.trim();
+      const missing = [serialMissing ? 'serial number' : null, priceMissing ? 'price' : null]
+        .filter(Boolean)
+        .join(' and ');
+      return devices && devices.length > 1 && short
+        ? `${short.title} still needs its ${missing}`
+        : `Add the ${missing} to continue`;
+    }
+    case 2:
+      return "Enter the customer's phone number to continue";
+    case 3:
+      return (
+        getRepairSubmitBlockReason(data, hasSignature, devices) ??
+        'Pick the existing ticket to attach this repair to'
+      );
+  }
+}
+
 /** Seed the form state from optional initial data.
  *  Price starts empty — the catalog projection (or staff override) must supply it.
  *  An invented default like `130` is an audit smell and is intentionally gone. */
