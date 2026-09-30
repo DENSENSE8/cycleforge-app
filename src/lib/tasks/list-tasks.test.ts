@@ -440,16 +440,18 @@ test('a hold before the task_state migration is refused as schema_pending, nothi
   assert.doesNotMatch(plain.updateSql() ?? '', /task_state/);
 });
 
-test('a hold only exists on open work: holding a finished task must reopen it in the same write', async () => {
-  const closed = txFakes({ current: { status: 'DONE', assignee_staff_id: 9, has_task_state: true, task_state: null } });
-  const refused = await patchTaskDeskRowInTx(ORG, 11, { taskState: 'FOLLOW_UP' }, closed.tx);
-  assert.equal(refused.ok === false && refused.reason, 'illegal_transition');
-  assert.equal(closed.updateSql(), null);
+test('a hold only exists on open work: holding a finished task reopens it in the same write', async () => {
+  const done = txFakes({ current: { status: 'DONE', assignee_staff_id: 9, has_task_state: true, task_state: null } });
+  const reopened = await patchTaskDeskRowInTx(ORG, 11, { taskState: 'FOLLOW_UP' }, done.tx);
+  assert.equal(reopened.ok, true);
+  assert.match(done.updateSql() ?? '', /status = /);
+  assert.match(done.updateSql() ?? '', /task_state = /);
 
-  const reopened = txFakes({ current: { status: 'DONE', assignee_staff_id: 9, has_task_state: true, task_state: null } });
-  const result = await patchTaskDeskRowInTx(ORG, 11, { status: 'OPEN', taskState: 'FOLLOW_UP' }, reopened.tx);
-  assert.equal(result.ok, true);
-  assert.match(reopened.updateSql() ?? '', /task_state = /);
+  // Canceled is final: no hold, no reopening.
+  const canceled = txFakes({ current: { status: 'CANCELED', assignee_staff_id: 9, has_task_state: true, task_state: null } });
+  const refused = await patchTaskDeskRowInTx(ORG, 11, { taskState: 'PENDING' }, canceled.tx);
+  assert.equal(refused.ok === false && refused.reason, 'illegal_transition');
+  assert.equal(canceled.updateSql(), null);
 });
 
 test('the pre-image records the hold, for the audit and the Timeline', async () => {

@@ -87,11 +87,18 @@ function StockRecordEvidence({
   const face = stockLocationFace(record);
   const title = stockRecordTitle(record);
 
-  // The item: photo · SKU, then the pinned location line. Its count and title read in the record header.
+  // The item: photo · title (always above the SKU — the header carries it too, owner 2026-09-30) · SKU, then the pinned location line.
   const itemBody = (
     <div className="flex min-w-0 items-start gap-4 px-4 py-3" data-testid="stock-record-item">
       <StockPhotoTile stockId={record.stock_id} sku={record.sku} photoUrl={record.image_url} title={title} />
       <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <p
+          className="line-clamp-2 min-w-0 text-[15px] font-semibold leading-snug text-text-default [overflow-wrap:anywhere]"
+          title={title}
+          data-testid="stock-record-item-title"
+        >
+          {title}
+        </p>
         <span className="flex min-w-0 items-center gap-1">
           <CopyChip value={record.sku} display={record.sku} tone="sku" fitDisplayWidth />
           <SkuOpenInMenu sku={record.sku} />

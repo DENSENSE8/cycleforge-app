@@ -3,10 +3,10 @@
 /**
  * Locations — every tote and bin holding the SKU (one SKU, many places:
  * one `bin_contents` row each, `GET /api/sku-stock/[sku]/bins`), each with
- * the one count control (− / signed amount / + · Apply), then **Add
- * location**: a tote or bin (`useStockPlaceOptions`; a tote that never held
- * stock becomes a stock place on first use) and a qty, written as the
- * phone's own put (`PATCH /api/locations/[barcode]`, reason `BIN_ADD`).
+ * its count slider (`StockQtySlider`: − · slide · + · type the new count ·
+ * Set N), then **Add location**: a tote or bin (`useStockPlaceOptions`; a tote
+ * that never held stock becomes a stock place on first use) and a qty slider,
+ * written as the phone's own put (`PATCH /api/locations/[barcode]`, `BIN_ADD`).
  * Mounted by every stock record — paired and `TMP-` placeholder alike.
  */
 
@@ -14,7 +14,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
-import { EVIDENCE_CONTROL_CLASS, EvidenceCountStepper } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
@@ -24,6 +23,7 @@ import { commitStockRequest, stockAdjustRequest } from '@/lib/inventory/stock-bi
 import type { StockBinWriteTarget } from '@/lib/inventory/stock-bin-writes';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { StockQtySlider } from './StockQtySlider';
 import { useStockPlaceOptions } from './useStockPlaceOptions';
 
 interface SkuPlaceRow {
@@ -67,10 +67,9 @@ export function StockLocationsGroup({
   const [wanted, setWanted] = useState(false);
   const picker = useStockPlaceOptions({ enabled: wanted });
   const [choice, setChoice] = useState<string | null>(null);
-  const [qtyDraft, setQtyDraft] = useState('1');
+  const [qty, setQty] = useState(1);
   const [busy, setBusy] = useState(false);
-  const qty = Number.parseInt(qtyDraft, 10);
-  const ready = choice != null && Number.isFinite(qty) && qty > 0 && !busy;
+  const ready = choice != null && qty > 0 && !busy;
 
   const changed = async () => {
     await queryClient.invalidateQueries({ queryKey: skuPlacesQueryKey(sku) });
@@ -89,7 +88,7 @@ export function StockLocationsGroup({
       );
       toast.success(`Added ${qty} of ${sku} to ${picker.faceOf(choice)}`);
       setChoice(null);
-      setQtyDraft('1');
+      setQty(1);
       await changed();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not add stock.');
@@ -113,73 +112,32 @@ export function StockLocationsGroup({
           <p className="py-2 text-role-caption text-mode-muted">Loading locations…</p>
         ) : rows.length > 0 ? (
           <ul className="flex flex-col" aria-label={`Totes and bins holding ${sku}`}>
-            {rows.map((row) => {
-              const barcode = row.location.barcode!;
-              const face = skuExceptionLocationFace(barcode);
-              return (
-                <li
-                  key={row.location.id}
-                  className="flex items-center gap-1.5 border-b border-mode-fact py-1.5 last:border-b-0"
-                  data-testid={`stock-location-${barcode}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')}>{face}</p>
-                    {row.location.room ? <p className="truncate text-role-caption text-mode-muted">{row.location.room}</p> : null}
-                  </div>
-                  <span className={cn(RECORD_ID_CLASS, 'w-8 text-right text-mode-ink')} data-testid="stock-location-qty">
-                    {row.qty}
-                  </span>
-                  <EvidenceCountStepper
-                    face={face}
-                    qty={row.qty}
-                    onCommit={async (delta) => {
-                      await commitStockRequest(
-                        stockAdjustRequest(writeTarget(sku, barcode, row.qty), {
-                          direction: delta > 0 ? 'in' : 'out',
-                          qty: Math.abs(delta),
-                          staffId,
-                        }),
-                      );
-                      await changed();
-                    }}
-                  />
-                </li>
-              );
-            })}
+            {rows.map((row) => (
+              <StockPlaceCountRow key={row.location.id} sku={sku} row={row} staffId={staffId} onChanged={changed} />
+            ))}
           </ul>
         ) : (
           <p className="py-2 text-role-data font-medium text-mode-warn">Not in any tote or bin</p>
         )}
         <div className="mt-2 flex flex-col gap-2 border-t border-mode-fact pt-3">
           <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Add location</span>
+          <SearchableSelectField
+            value={choice}
+            onOpenChange={(open) => {
+              if (open) setWanted(true);
+            }}
+            onChange={(next) => setChoice(next == null ? null : String(next))}
+            options={picker.options}
+            loading={picker.loading}
+            placeholder="Tote or bin"
+            searchPlaceholder="Tote (H-12), bin code or room…"
+            emptyMessage="No matching tote or location"
+            ariaLabel={`Tote or bin to add ${sku} to`}
+            className="w-full"
+            testId="stock-add-location"
+          />
           <div className="flex items-center gap-2">
-            <SearchableSelectField
-              value={choice}
-              onOpenChange={(open) => {
-                if (open) setWanted(true);
-              }}
-              onChange={(next) => setChoice(next == null ? null : String(next))}
-              options={picker.options}
-              loading={picker.loading}
-              placeholder="Tote or bin"
-              searchPlaceholder="Tote (H-12), bin code or room…"
-              emptyMessage="No matching tote or location"
-              ariaLabel={`Tote or bin to add ${sku} to`}
-              className="min-w-0 flex-1"
-              testId="stock-add-location"
-            />
-            <input
-              value={qtyDraft}
-              onChange={(event) => setQtyDraft(event.target.value.replace(/\D/g, ''))}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') void add();
-              }}
-              inputMode="numeric"
-              placeholder="Qty"
-              aria-label="Quantity to add"
-              className={cn(EVIDENCE_CONTROL_CLASS, 'w-14 text-center tabular-nums')}
-              data-testid="stock-add-location-qty"
-            />
+            <StockQtySlider value={qty} onChange={setQty} min={1} anchor={1} ariaLabel="Quantity to add" disabled={busy} testId="stock-add-location-qty" />
             <Button variant="ink" size="sm" disabled={!ready} loading={busy} onClick={() => void add()} data-testid="stock-add-location-submit">
               Add
             </Button>
@@ -187,5 +145,81 @@ export function StockLocationsGroup({
         </div>
       </div>
     </RecordGroup>
+  );
+}
+
+/**
+ * One tote / bin holding the SKU: its face and room, what it holds now, then
+ * the count to set — slide, step (− / +) or type the NEW count; **Set N**
+ * writes the difference as a put (more) or take (fewer).
+ */
+function StockPlaceCountRow({
+  sku,
+  row,
+  staffId,
+  onChanged,
+}: {
+  sku: string;
+  row: SkuPlaceRow;
+  staffId: number | undefined;
+  onChanged: () => Promise<void>;
+}) {
+  const barcode = row.location.barcode!;
+  const face = skuExceptionLocationFace(barcode);
+  const [target, setTarget] = useState(row.qty);
+  const [busy, setBusy] = useState(false);
+  // A re-read landed (this row, the phone, another desk): the slider starts from the new count.
+  const [seenQty, setSeenQty] = useState(row.qty);
+  if (seenQty !== row.qty) {
+    setSeenQty(row.qty);
+    setTarget(row.qty);
+  }
+  const delta = target - row.qty;
+
+  const write = async (change: number) => {
+    await commitStockRequest(
+      stockAdjustRequest(writeTarget(sku, barcode, row.qty), { direction: change > 0 ? 'in' : 'out', qty: Math.abs(change), staffId }),
+    );
+    await onChanged();
+  };
+
+  const apply = async () => {
+    if (delta === 0 || busy) return;
+    setBusy(true);
+    try {
+      await write(delta);
+      toast.success(`${face}: ${row.qty} → ${target}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not change the count.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <li className="flex flex-col gap-1.5 border-b border-mode-fact py-2 last:border-b-0" data-testid={`stock-location-${barcode}`}>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <div className="min-w-0 flex-1">
+          <p className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')}>{face}</p>
+          {row.location.room ? <p className="truncate text-role-caption text-mode-muted">{row.location.room}</p> : null}
+        </div>
+        <span className={cn(RECORD_ID_CLASS, 'text-right text-mode-ink')} data-testid="stock-location-qty">
+          {row.qty}
+        </span>
+      </div>
+      <div className="flex min-w-0 items-center gap-2">
+        <StockQtySlider value={target} onChange={setTarget} anchor={row.qty} ariaLabel={`Count at ${face}`} disabled={busy} testId={`stock-location-count-${barcode}`} />
+        <Button
+          variant={delta === 0 ? 'secondary' : 'ink'}
+          size="sm"
+          disabled={delta === 0}
+          loading={busy}
+          onClick={() => void apply()}
+          data-testid={`stock-location-set-${barcode}`}
+        >
+          {delta === 0 ? 'Set' : `Set ${target}`}
+        </Button>
+      </div>
+    </li>
   );
 }

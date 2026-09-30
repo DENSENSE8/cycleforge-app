@@ -574,7 +574,7 @@ function patchAssignments(
 export async function patchTaskDeskRowInTx(
   orgId: OrgId,
   taskId: number,
-  patch: TaskDeskPatch,
+  requested: TaskDeskPatch,
   tx: TaskDeskTx,
 ): Promise<PatchTaskDeskResult> {
   const readerDeps: TaskDeskDeps = { query: (_orgId, sql, params) => tx.query(sql, params) };
@@ -597,13 +597,23 @@ export async function patchTaskDeskRowInTx(
     return { ok: false, reason: 'not_found' };
   }
 
+  // A hold only exists on open work. Holding finished work ("Pending" on a Done
+  // row) means "reopen it, held" — the one reading of that intent — so a bare
+  // hold on DONE reopens in the same write instead of refusing. A client that
+  // computed its patch from a status that just changed under it (Done, then a
+  // quick slide to Pending) lands where the operator pointed, not on a 409.
+  const patch: TaskDeskPatch =
+    requested.taskState != null && requested.status === undefined && currentStatus === 'DONE'
+      ? { ...requested, status: 'OPEN' }
+      : requested;
+
   if (patch.status !== undefined && !isTaskDeskTransitionAllowed(currentStatus, patch.status)) {
     return { ok: false, reason: 'illegal_transition', detail: `${currentStatus} → ${patch.status}` };
   }
   if (patch.taskState !== undefined && currentRow.has_task_state !== true) {
     return { ok: false, reason: 'schema_pending', detail: '2026-09-30_work_assignment_task_state.sql' };
   }
-  // A hold only exists on open work — on the status this write leaves behind.
+  // Canceled is final: it can carry no hold (and cannot reopen).
   if (patch.taskState != null && !isTaskDeskOpen(patch.status ?? currentStatus)) {
     return { ok: false, reason: 'illegal_transition', detail: `${patch.status ?? currentStatus} cannot be ${patch.taskState}` };
   }

@@ -53,6 +53,14 @@ Owner rulings 2026-09-30, shipped:
   `src/lib/tasks/repair-tasks.ts`), kept in sync by repair-writer hooks + cron `/api/cron/tasks/repair-sync`
   (every 15 min); backfill `scripts/backfill-repair-tasks.ts` created 34 (2026-09-30), rerun = no-op.
   Import does not notify owners (would have been 136 inbox items).
+- Task status: To do · In progress · Pending · Follow-up · Blocked · Done · Canceled (one map
+  `src/design-system/tokens/task-status.ts`). Holds live in `work_assignments.task_state` (migration
+  `2026-09-30_work_assignment_task_state.sql`, applied; trigger clears it when a row closes); the shared
+  status enum is untouched. Record: combobox (`S`) + slider Not done · Pending · Done; Status and Priority
+  share one row; linked media leads the Overview. Board: Waiting filter + line-2 status pill.
+- Keys: `C` = create everywhere (guard `src/lib/keyboard/key-registry.test.ts`); Copy = ⌘/Ctrl+C,
+  copy-shown = ⌘⌥C; Daily checklist go-key `G D`; checklist column `H`; tapping Shift alone toggles the
+  views strip (same as hovering the page title).
 
 Open:
 - Recorded video upload is ONE XHR PUT of the whole file: on cellular a large recording can still die
