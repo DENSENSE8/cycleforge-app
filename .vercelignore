@@ -3,6 +3,7 @@
 .next-perf
 .next-perf-si
 .next-perf-lh
+.next-perf-*
 node_modules
 desktop-dist
 build
@@ -41,6 +42,7 @@ tools/design-mcp/design-mcp.profile.json
 # Env and local-only files
 .env
 .env.local
+.env.bak*
 .env.*.local
 
 # Electron/desktop extras not needed for web deploy
