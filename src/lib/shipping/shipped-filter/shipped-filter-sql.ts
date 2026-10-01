@@ -10,11 +10,9 @@
  * (the page query's own FROM) plus {@link shippedFilterJoins}; aliases end in
  * `_f` so they never collide with the page's optional order laterals.
  *
- * The row semantics are the ones the desk used to apply in the browser
- * (`src/lib/shipped-records.ts`: `isFbaPackerRecord`, `isSkuPackerRecord`,
- * `hasLinkedOrder`, `isExceptionPackerRecord`; `isStalled`), ANDed with the
- * server's older `trackingTypeFilter` narrowing for fba/orders/sku, so the
- * list keeps exactly the rows the two passes together kept.
+ * Type membership is based on the station record's tracking class, not on
+ * whether an order currently owns the shipment. This keeps scanned-out
+ * unfound/unmatched ORDERS labels visible for reconciliation.
  */
 
 import type { CarrierCode, ShipmentStatusCategory } from '@/lib/shipping/shipment-status';
@@ -35,6 +33,8 @@ export interface ShippedDeskFilters {
   carrier: CarrierCode | null;
   statusCategory: ShipmentStatusCategory | null;
   exceptionsOnly: boolean;
+  /** `account_source` values, lower-cased. Empty = no channel predicate. */
+  channels: readonly string[];
 }
 
 export const NO_SHIPPED_DESK_FILTERS: ShippedDeskFilters = {
@@ -42,21 +42,30 @@ export const NO_SHIPPED_DESK_FILTERS: ShippedDeskFilters = {
   carrier: null,
   statusCategory: null,
   exceptionsOnly: false,
+  channels: [],
 };
 
 /** The desk's own parse of each param (`useShippedTableFilters`); anything else is not a filter. */
 export function readShippedDeskFilters(params: ParamReader): ShippedDeskFilters {
   const type = params.get('shippedFilter') ?? '';
+  const parsed = (SHIPPED_TYPE_FILTERS as readonly string[]).includes(type) ? (type as ShippedTypeFilter) : null;
+  const channels = (params.get('channel') ?? '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter((value) => value.length > 0);
   return {
-    type: (SHIPPED_TYPE_FILTERS as readonly string[]).includes(type) ? (type as ShippedTypeFilter) : null,
+    // `all` is absence: every package that left, including SKU. A predicate that
+    // drops SKU makes `?shippedFilter=all` disagree with a URL that names no type.
+    type: parsed === 'all' ? null : parsed,
     carrier: readShippedCarrierFilter(params),
     statusCategory: readShippedStatusFilter(params),
     exceptionsOnly: readShippedExceptionsFilter(params),
+    channels,
   };
 }
 
 export function hasShippedDeskFilter(filters: ShippedDeskFilters): boolean {
-  return filters.type != null || filters.carrier != null || filters.statusCategory != null || filters.exceptionsOnly;
+  return filters.type != null || filters.carrier != null || filters.statusCategory != null || filters.exceptionsOnly || filters.channels.length > 0;
 }
 
 /**
@@ -90,7 +99,7 @@ const IS_FBA_SQL = `(BTRIM(COALESCE(sal.scan_ref, '')) ~* ${FBA_SCAN_REF_RE}
 const IS_SKU_SQL = `(UPPER(${TRACKING_TYPE_SQL}) = 'SKU'
         OR POSITION(':' IN BTRIM(COALESCE(sal.scan_ref, ''))) > 0)`;
 
-/** The server's type narrowing before the move (kept so no list loses or gains a row). */
+/** Operational tracking-class gates; order ownership is deliberately not one. */
 const SERVER_FBA_SQL = `(COALESCE(pl.tracking_type, '') IN ('FBA', 'FNSKU')
         OR sal.activity_type = 'FBA_READY'
         OR COALESCE(sal.scan_ref, '') ~* ${FBA_SCAN_REF_RE})`;
@@ -99,49 +108,17 @@ const SERVER_ORDERS_SQL = `(COALESCE(pl.tracking_type, 'ORDERS') = 'ORDERS'
         AND sal.activity_type != 'FBA_READY')`;
 const SERVER_SKU_SQL = `COALESCE(pl.tracking_type, '') = 'SKU'`;
 
-/** The package has an owning order in the row's org (the list's `package_owner` / shipment match). */
-const PACKAGE_HAS_ORDER_SQL = `(EXISTS (
-            SELECT 1 FROM orders o_f
-            WHERE o_f.shipment_id = sal.shipment_id
-              AND o_f.organization_id = sal.organization_id
-        ) OR EXISTS (
-            SELECT 1 FROM shipment_links sl_f
-            JOIN orders o_f ON o_f.id = sl_f.owner_id AND o_f.organization_id = sal.organization_id
-            WHERE sl_f.owner_type = 'ORDER'
-              AND sl_f.shipment_id = sal.shipment_id
-              AND sl_f.organization_id = sal.organization_id
-        ))`;
-
-/**
- * `hasLinkedOrder || isExceptionPackerRecord` — the row resolves an order
- * (`o.id`), or carries an orders_exceptions row (`oe.id`; an exception reason
- * implies one). Enriched path: the projection's `order_row_id` when the row is
- * projected, else the package's owning order (the list's fallback laterals).
- */
-function linkedOrExceptionSql(enriched: boolean): string {
-  const order = enriched
-    ? `(EXISTS (
-            SELECT 1 FROM orders o_f
-            WHERE o_f.id = enr_f.order_row_id
-              AND o_f.organization_id = sal.organization_id
-        ) OR (enr_f.sal_id IS NULL AND ${PACKAGE_HAS_ORDER_SQL}))`
-    : PACKAGE_HAS_ORDER_SQL;
-  return `(${order}
-        OR EXISTS (SELECT 1 FROM orders_exceptions oe_f WHERE oe_f.id = sal.orders_exception_id))`;
-}
-
 /** Row membership in one type view (`shippedFilter`), never NULL. */
-export function shippedTypeSql(type: ShippedTypeFilter, enriched: boolean): string {
-  const linked = linkedOrExceptionSql(enriched);
+export function shippedTypeSql(type: ShippedTypeFilter, _enriched: boolean): string {
   switch (type) {
     case 'fba':
       return `COALESCE((${SERVER_FBA_SQL} AND ${IS_FBA_SQL}), false)`;
     case 'orders':
-      return `COALESCE((${SERVER_ORDERS_SQL} AND NOT ${IS_FBA_SQL} AND ${linked}), false)`;
+      return `COALESCE((${SERVER_ORDERS_SQL} AND NOT ${IS_FBA_SQL}), false)`;
     case 'sku':
       return `COALESCE((${SERVER_SKU_SQL} AND ${IS_SKU_SQL}), false)`;
     case 'all':
-      return `COALESCE((NOT ${IS_SKU_SQL} AND (${IS_FBA_SQL} OR ${linked})), false)`;
+      return 'true';
   }
 }
 
@@ -150,6 +127,9 @@ export const SHIPPED_CARRIER_SQL = `UPPER(COALESCE(stn_f.carrier, ''))`;
 
 /** The package's latest tracking status category (upper-cased, '' when unknown). */
 export const SHIPPED_STATUS_SQL = `UPPER(COALESCE(stn_f.latest_status_category, ''))`;
+
+/** The package's channel, the same expression the list projects as `account_source`. */
+export const SHIPPED_CHANNEL_SQL = `LOWER(COALESCE(o.account_source, CASE WHEN NULLIF(BTRIM(sal.fnsku), '') IS NOT NULL THEN 'fba' ELSE '' END))`;
 
 /** Exceptions-only: the carrier flagged an exception, or the package stalled (`isStalled`, 72 h). */
 export const SHIPPED_EXCEPTION_SQL = `COALESCE((
@@ -164,7 +144,7 @@ export const SHIPPED_EXCEPTION_SQL = `COALESCE((
 
 /**
  * WHERE conditions for the active filters. `bind` pushes a value and returns
- * its placeholder; carrier and status are the only bound values.
+ * its placeholder; carrier, status, and channel are the bound values.
  */
 export function shippedDeskConditions(
   filters: ShippedDeskFilters,
@@ -176,5 +156,6 @@ export function shippedDeskConditions(
   if (filters.carrier) conditions.push(`${SHIPPED_CARRIER_SQL} = ${bind(filters.carrier)}`);
   if (filters.statusCategory) conditions.push(`${SHIPPED_STATUS_SQL} = ${bind(filters.statusCategory)}`);
   if (filters.exceptionsOnly) conditions.push(SHIPPED_EXCEPTION_SQL);
+  if (filters.channels.length > 0) conditions.push(`${SHIPPED_CHANNEL_SQL} = ANY(${bind(filters.channels)}::text[])`);
   return conditions;
 }

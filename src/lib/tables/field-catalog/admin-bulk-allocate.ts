@@ -1,7 +1,7 @@
 /** Bulk-allocate field catalog — the bindable facts of ONE allocation candidate (an unallocated `orders` row beside its SKU's STOCKED count). */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const ADMIN_BULK_ALLOCATE_FIELD_CATALOG: FieldCatalog = [
   { id: 'admin-bulk-allocate.order_id', family: 'admin-bulk-allocate', label: 'Order id', displayType: 'id', slotKinds: ['identity', 'status', 'subtitle'], paths: { value: 'order_id' } },
@@ -19,7 +19,7 @@ export const ADMIN_BULK_ALLOCATE_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const ADMIN_BULK_ALLOCATE_PRODUCT_LAYOUT: SlotLayout = {
+export const ADMIN_BULK_ALLOCATE_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'admin-bulk-allocate.order_id',
   statusBindings: [
@@ -31,6 +31,6 @@ export const ADMIN_BULK_ALLOCATE_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'admin-bulk-allocate.condition' },
   ],
   amountFieldId: null,
-};
+}
 
 export const ADMIN_BULK_ALLOCATE_TABLE_LAYOUT_ID = 'admin-bulk-allocate';

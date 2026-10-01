@@ -35,7 +35,7 @@ function parseInstant(iso: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Compact civil face for the Dates Hash line — no year (slot-table date law). */
+/** Compact civil face for the Dates Hash line — no year (DataTable date law). */
 function civilFace(iso: string | null | undefined): { label: string; dateKey: string } | null {
   const d = parseInstant(iso);
   return d ? { label: format(d, 'MMM d'), dateKey: format(d, 'yyyy-MM-dd') } : null;

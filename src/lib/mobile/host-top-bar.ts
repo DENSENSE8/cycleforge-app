@@ -1,5 +1,8 @@
 /** Which `/m` routes draw their OWN top bar, and therefore which ones the host header (`MobileTopBar`, mounted by `RedesignedMobileShell`)… */
 const OWN_TOP_BAR_PREFIXES = [
+  // The scan station owns its mode switch, exit semantics and camera state.
+  // The host's generic scan CTA was a duplicate "new scan" button.
+  '/m/scan',
   '/m/receiving/po',
   '/m/r/',
   '/m/u/',

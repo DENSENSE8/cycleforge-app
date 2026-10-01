@@ -1,4 +1,4 @@
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 import type { ImportRowOutcome, ImportRunStatus } from '@/lib/imports/types';
 
 /**

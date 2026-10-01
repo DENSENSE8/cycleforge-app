@@ -16,7 +16,7 @@ import type { RecordCardModel } from '@/design-system/components/record-card/rec
 import type { RecordFactColumn } from '@/design-system/components/record-card/record-fact';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { TriageCardModelBase, TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import type { StateName } from '@/design-system/tokens/lifecycle';
 import type { RowGroup } from '@/lib/group-rows';
 import type { PastedNumber } from '@/lib/receiving/pasted-numbers';

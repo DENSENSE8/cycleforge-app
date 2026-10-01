@@ -1,5 +1,5 @@
 /**
- * Industrial ledger state helpers — pure. The row, the group parent, the
+ * Record state helpers — pure. The row, the group parent, the
  * evidence column and the SSR stand-in read an order's `LIFECYCLE` key here,
  * through {@link orderLifecycleState} (the one stage → key mapping).
  */

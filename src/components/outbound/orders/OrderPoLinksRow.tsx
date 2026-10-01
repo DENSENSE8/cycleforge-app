@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { orderTimelineQuery } from '@/lib/queries/order-timeline-query';
 import { searchHitHref } from '@/lib/search/search-hit';
 import { cn } from '@/utils/_cn';

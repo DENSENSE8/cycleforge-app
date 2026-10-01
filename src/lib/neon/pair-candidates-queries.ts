@@ -1,5 +1,6 @@
 import { tenantQuery } from '../tenancy/db';
 import type { OrgId } from '../tenancy/constants';
+import { photoContentUrl } from '../photos/display-url';
 
 /** What to offer an operator standing at an EMPTY location. */
 
@@ -22,6 +23,7 @@ export async function listRoomPairCandidates(
     sku: string;
     product_title: string | null;
     image_url: string | null;
+    cover_photo_id: number | null;
     is_provisional: boolean | null;
     bin_count: string;
   }>(
@@ -46,6 +48,7 @@ export async function listRoomPairCandidates(
               NULLIF(sc.product_title, '')
             ) AS product_title,
             sc.image_url,
+            ph.cover_photo_id,
             COALESCE(ss.is_provisional, false) AS is_provisional,
             rs.bin_count::text AS bin_count
        FROM room_stock rs
@@ -53,6 +56,16 @@ export async function listRoomPairCandidates(
               ON ss.sku = rs.sku AND ss.organization_id = $1
        LEFT JOIN sku_catalog sc
               ON sc.sku = rs.sku AND sc.organization_id = $1
+       LEFT JOIN LATERAL (
+         SELECT pel.photo_id AS cover_photo_id
+           FROM photo_entity_links pel
+          WHERE pel.organization_id = $1
+            AND pel.entity_type = 'SKU_STOCK'
+            AND pel.entity_id = ss.id
+            AND pel.link_role = 'primary'
+          ORDER BY pel.sort_order ASC NULLS LAST, pel.photo_id ASC
+          LIMIT 1
+       ) ph ON true
       ORDER BY rs.updated_at DESC NULLS LAST
       LIMIT $4`,
     [orgId, input.locationId, input.room, limit],
@@ -61,7 +74,9 @@ export async function listRoomPairCandidates(
   return result.rows.map((row) => ({
     sku: row.sku,
     productTitle: row.product_title,
-    imageUrl: row.image_url,
+    imageUrl: row.cover_photo_id != null
+      ? photoContentUrl(Number(row.cover_photo_id), 'thumb')
+      : row.image_url,
     isProvisional: row.is_provisional === true,
     binCount: Number(row.bin_count) || 0,
   }));

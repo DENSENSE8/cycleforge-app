@@ -14,7 +14,7 @@ import { compoundIdentityFace } from '@/components/tables/compound/compound-row-
 export function cycleCountsCompoundView(row: CycleCountCampaignRow): CompoundRowView {
   const created = new Date(row.createdAt);
   const hasCreated = !Number.isNaN(created.getTime());
-  // Compact civil face — no year (slot-table date law).
+  // Compact civil face — no year (DataTable date law).
   const createdFace = hasCreated ? format(created, 'MMM d') : null;
   const createdTip = createdFace ? `Created ${createdFace}` : null;
 

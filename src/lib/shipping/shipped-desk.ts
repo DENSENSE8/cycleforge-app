@@ -1,6 +1,41 @@
-/** Shipping · Shipped desk — `/shipping/shipped`. */
+/** Fulfillment · Fulfilled — `/fulfilled`. `/shipping/shipped` redirects here. */
 
-export const SHIPPING_SHIPPED_PATH = '/shipping/shipped';
+export const SHIPPING_SHIPPED_PATH = '/fulfilled';
+
+/** Saved views of this page. Presets of the sidebar params, never a second desk. */
+export const FULFILLED_VIEWS = [
+  { id: 'all', label: 'All', params: { view: 'all', shippedFilter: 'all', statusCategory: null } },
+  { id: 'online', label: 'Online', params: { view: 'online', shippedFilter: 'orders', statusCategory: null } },
+  { id: 'fba', label: 'FBA', params: { view: 'fba', shippedFilter: 'fba', statusCategory: null } },
+  { id: 'sku', label: 'SKU', params: { view: 'sku', shippedFilter: 'sku', statusCategory: null } },
+  { id: 'delivered', label: 'Delivered', params: { view: 'delivered', shippedFilter: null, statusCategory: 'DELIVERED' } },
+] as const;
+
+export type FulfilledViewId = (typeof FULFILLED_VIEWS)[number]['id'];
+
+function isFulfilledViewId(id: string): id is FulfilledViewId {
+  return FULFILLED_VIEWS.some((view) => view.id === id);
+}
+
+/**
+ * Which saved view a Fulfilled URL is on. `?view=` wins; a bookmark that only
+ * names the preset's filter still lights that view.
+ */
+export function resolveFulfilledView(params: Pick<URLSearchParams, 'get'>): FulfilledViewId {
+  const named = (params.get('view') || '').trim();
+  if (isFulfilledViewId(named)) return named;
+  if ((params.get('statusCategory') || '').trim().toUpperCase() === 'DELIVERED') return 'delivered';
+  switch ((params.get('shippedFilter') || '').trim()) {
+    case 'orders':
+      return 'online';
+    case 'fba':
+      return 'fba';
+    case 'sku':
+      return 'sku';
+    default:
+      return 'all';
+  }
+}
 
 /** The keys a legacy shipped URL is allowed to carry onto the desk. */
 const SHIPPED_DESK_CARRIED_PARAMS = [

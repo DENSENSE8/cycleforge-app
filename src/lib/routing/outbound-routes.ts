@@ -3,7 +3,7 @@
 import {
   OUTBOUND_MODE_PATHS,
   type OutboundMode,
-} from '@/components/outbound/outbound-sidebar-shared';
+} from '@/lib/outbound/route-contract';
 import { parseFbaModeWire } from '@/lib/fba/fba-modes';
 import { EXCEPTION_KIND_PARAM, EXCEPTION_KINDS } from '@/lib/exceptions/types';
 import { EXCEPTION_RECORD_ROUTE_PARAMS } from './desk-page-routes';
@@ -119,6 +119,8 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     paperwork: paramPositiveInt,
     /** Order card list (owner 2026-09-27): status chips (comma list) and the 1-based page. */
     cardStatus: paramText,
+    /** Shared client-side status exclusion cut (`?hide=`). */
+    hide: paramText,
     page: paramPositiveInt,
     /** CSV import staging surface on the To-Ship desk (session draft in memory). */
     import: paramEnum(['csv'] as const),
@@ -192,6 +194,8 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
     /** Legacy open order line — the ledger maps it to that line's package, then drops it. */
     openOrderId: paramPositiveInt,
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
+    /** Saved view preset (`FULFILLED_VIEWS`). Absence is All. */
+    view: paramEnum(['all', 'online', 'fba', 'sku', 'delivered'] as const),
     shippedSearchField: paramRoundTrip(parseShippedSearchFieldWire),
     /** A named warehouse week, whole weeks back (`readShippedDateWindow`); absent = all-time. */
     shippedWeekOffset: paramPositiveInt,
@@ -205,6 +209,8 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
     exceptions: paramFlag,
     carrier: paramText,
     statusCategory: paramText,
+    /** Channel (`account_source`), comma-joined when more than one. */
+    channel: paramText,
     packedBy: paramPositiveInt,
     /** Who ACTUALLY picked the shipped order (pick facts). */
     pickedBy: paramPositiveInt,

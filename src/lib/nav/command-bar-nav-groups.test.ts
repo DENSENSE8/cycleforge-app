@@ -99,6 +99,7 @@ test('Scan Stations lists benches as a flat map — no Receiving / Walk-In chrom
   // Repair service left the floor for the Receiving lane (owner 2026-09-29).
   const ids = floor!.rows.filter((r) => r.type === 'page').map((r) => r.id);
   assert.deepEqual(ids, [
+    'stations-live',
     'triage',
     'receive',
     'testing',
@@ -156,7 +157,7 @@ test('domain bands own their pages; the desk / print grab-bags are gone', () => 
     'sales',
     'support',
   ]) {
-    for (const bench of ['triage', 'receive', 'testing', 'ready-to-pack', 'packer', 'scan-out']) {
+    for (const bench of ['stations-live', 'triage', 'receive', 'testing', 'ready-to-pack', 'packer', 'scan-out']) {
       assert.equal(idsIn(band).includes(bench), false, `${bench} leaked into ${band}`);
     }
   }

@@ -22,7 +22,12 @@ import {
 } from '@/lib/receiving/intake-classification';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { isReceivingUnifiedInbound } from '@/lib/feature-flags';
-import { recordReceivingScan, type ReceivingIntakeSurface } from '@/lib/receiving/record-scan';
+import { commitIsPhoneOrigin } from '@/lib/auth/phone-origin.server';
+import {
+  recordReceivingScan,
+  type ReceivingIntakeSurface,
+  type RecordReceivingScanOptions,
+} from '@/lib/receiving/record-scan';
 import { recordUnboxScanOpened } from '@/lib/receiving/unbox-scan-opened';
 import {
   recordUnboxLookupScan,
@@ -628,11 +633,13 @@ async function recordScan(
   // false when the scanned value resolved as a pure PO identity, not a
   // carrier tracking number — see `RecordReceivingScanOptions.registerTracking`.
   registerTracking = true,
+  phoneActivity: RecordReceivingScanOptions['phoneActivity'] = null,
 ): Promise<number> {
   return recordReceivingScan(receivingId, trackingNumber, carrier, staffId, source, {
     intakeSurface,
     scanKind,
     registerTracking,
+    phoneActivity,
   });
 }
 
@@ -697,6 +704,21 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   // Server-trusted actor from the verified session cookie.
   const staffId = ctx.staffId;
   const intakeSurface = body?.intakeSurface === 'unbox' ? 'unbox' : 'triage';
+  const mobileScanEventId = Number.isSafeInteger(Number(body?.mobileScanEventId)) && Number(body.mobileScanEventId) > 0
+    ? Number(body.mobileScanEventId)
+    : null;
+  const phoneOrigin = await commitIsPhoneOrigin({
+    session: ctx.session,
+    organizationId: ctx.organizationId,
+    staffId,
+    mobileScanEventId,
+  });
+  const phoneActivity: RecordReceivingScanOptions['phoneActivity'] = phoneOrigin
+    ? {
+        mobileScanEventId,
+        clientEventId: String(body?.clientEventId ?? '').trim() || null,
+      }
+    : null;
   /** The lookup verdict has to reach the RESPONSE, not just the writes: */
   let lookupScanState: UnboxScanState | null = null;
 
@@ -825,7 +847,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           carrier,
           staffId,
           recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
-          { intakeSurface, scanKind: hitScanKind },
+          { intakeSurface, scanKind: hitScanKind, phoneActivity },
         );
         await stampUnboxOpened(hit.receivingId, scanId, rawTracking, hitScanKind);
         const poIdsSet = new Set<string>();
@@ -936,6 +958,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           intakeSurface,
           orderScanKind,
           false,
+          phoneActivity,
         );
         await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
         await applyIntakeClassification(receivingId, classification, ctx.organizationId);
@@ -1034,6 +1057,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       intakeSurface,
       orderScanKind,
       poMatchIsTracking,
+      phoneActivity,
     );
     await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
     await applyIntakeClassification(receivingId, classification, ctx.organizationId);
@@ -1127,7 +1151,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         carrier,
         staffId,
         recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
-        { intakeSurface, scanKind: dedupScanKind },
+        { intakeSurface, scanKind: dedupScanKind, phoneActivity },
       );
       await stampUnboxOpened(existingScan.receiving_id, dedupScanId, trackingNumber, dedupScanKind);
       const poIdsSet = new Set<string>();
@@ -1324,6 +1348,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       'zoho_po',
       intakeSurface,
       matchedScanKind,
+      true,
+      phoneActivity,
     );
     await stampUnboxOpened(primaryReceivingId, scanId, trackingNumber, matchedScanKind);
     // If the scan was attached to a different receiving row (rare race between promote and upsert fallback), re-parent it now.
@@ -1371,6 +1397,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           'zoho_po',
           intakeSurface,
           await scanKindForMaybeExisting(extraReceivingId, extraPreexisting),
+          true,
+          phoneActivity,
         );
         await linkLocalPoLinesToReceiving(poId, extraReceivingId, ctx.organizationId);
         secondaryPoIds.push(poId);
@@ -1541,6 +1569,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     'unmatched',
     intakeSurface,
     unmatchedScanKind,
+    true,
+    phoneActivity,
   );
   await stampUnboxOpened(unmatchedReceivingId, unmatchedScanId, trackingNumber, unmatchedScanKind);
 

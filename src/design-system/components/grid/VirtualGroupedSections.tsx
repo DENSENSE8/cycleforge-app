@@ -20,7 +20,7 @@ import {
   LEDGER_GRID_OVERSCAN,
   LEDGER_GRID_ROW_ESTIMATE_PX,
 } from '@/design-system/components/grid/grid-paint';
-import { slotTableScrollItemMatches } from '@/lib/tables/slot-table-find';
+import { dataTableScrollItemMatches } from '@/lib/tables/data-table-find';
 import {
   compoundRowDetailEstimatePx,
   subscribeCompoundRowDetailOpen,
@@ -293,7 +293,7 @@ export function VirtualGroupedSections<T>({
           it.record && typeof it.record === 'object' && 'id' in it.record
             ? String(it.record.id)
             : undefined;
-        return slotTableScrollItemMatches(scrollToKey, {
+        return dataTableScrollItemMatches(scrollToKey, {
           key: it.key,
           rowIds: id ? [id] : undefined,
         });
@@ -304,7 +304,7 @@ export function VirtualGroupedSections<T>({
         }
         return [];
       });
-      return slotTableScrollItemMatches(scrollToKey, {
+      return dataTableScrollItemMatches(scrollToKey, {
         key: it.key,
         groupKey: it.group.key,
         rowIds,

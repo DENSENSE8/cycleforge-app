@@ -1,7 +1,7 @@
 /** Auth-sessions field catalog — the bindable facts of one live staff session. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const AUTHSESSIONS_FIELD_CATALOG: FieldCatalog = [
   { id: 'auth-sessions.session', family: 'auth-sessions', label: 'Session', displayType: 'id', slotKinds: ['identity', 'status', 'subtitle'], paths: { value: 'sid' } },
@@ -13,13 +13,13 @@ export const AUTHSESSIONS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** `staff` paints as the row TITLE and `device_kind` as the state pill — neither is a track, so neither is bound. */
-export const AUTHSESSIONS_PRODUCT_LAYOUT: SlotLayout = {
+export const AUTHSESSIONS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'auth-sessions.session',
   statusBindings: [{ fieldId: 'auth-sessions.ip' }],
   subtitleBindings: [{ fieldId: 'auth-sessions.device_label' }],
   amountFieldId: null,
-};
+}
 
 export const AUTHSESSIONS_TABLE_LAYOUT_ID = 'auth-sessions';
 

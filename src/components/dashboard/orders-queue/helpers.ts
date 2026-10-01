@@ -171,7 +171,7 @@ export function resolveRowStatus(
 
 /**
  * The row's pre-dock workflow stage — the one derivation the To-ship status
- * pill ({@link resolveRowStatus}) and the industrial ledger's state code
+ * pill ({@link resolveRowStatus}) and the record's state code
  * (`orderLifecycleState`) both read, so the two can never disagree.
  */
 export function resolveRowWorkflowStage(record: QueueRowRecord): OrderLifecycleStage {

@@ -24,7 +24,7 @@ import { importListQuery, useImportRows, useImportRuns } from '@/lib/imports/rec
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, Inset } from '@/design-system/primitives';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
-import { recordStateCodeClass } from '@/design-system/tokens/industrial-record';
+import { recordStateCodeClass } from '@/design-system/tokens/record';
 import type { ImportRunListItem, ImportRunRowItem } from '@/lib/imports/types';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { cn } from '@/utils/_cn';

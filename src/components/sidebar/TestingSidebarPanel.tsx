@@ -37,6 +37,7 @@ import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtim
 import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
 import { scannedUnitKey } from '@/lib/barcode-routing';
 import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
+import { QcRecentScanRail } from '@/components/sidebar/QcRecentScanRail';
 
 interface Props {
   /**
@@ -413,6 +414,7 @@ export function TestingSidebarPanel({
           </div>
         </>
       ) : null}
+      {!isMobile ? <QcRecentScanRail /> : null}
 
       {isMobile ? (
         <div className="flex-shrink-0 border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">

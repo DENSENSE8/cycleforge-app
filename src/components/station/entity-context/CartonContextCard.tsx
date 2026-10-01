@@ -101,7 +101,6 @@ export function CartonContextCard({
   photoStage,
   listingLink,
   showListing = true,
-  onEditListing,
   listingOpenHref,
   listingLinks = [],
   poOpenHref,
@@ -137,9 +136,6 @@ export function CartonContextCard({
   showPoTotal = true,
   qty = null,
   onSendToTicket,
-  onOpenMovePhotosExternal,
-  onOpenPhotosDisplay,
-  suppressPhotoHoverGallery = false,
   photosCell = null,
   assigneeCell = null,
 }: {
@@ -180,8 +176,6 @@ export function CartonContextCard({
   listingLink: string;
   /** Hide the listing slot for stations whose active entity has no storefront listing. */
   showListing?: boolean;
-  /** Called when listing chip edit is requested - opens external editor. */
-  onEditListing?: () => void;
   listingOpenHref: string | null | undefined;
   /** All resolvable listing URLs (inventory catalog + manual + derived). */
   listingLinks?: CartonListingLink[];
@@ -237,12 +231,11 @@ export function CartonContextCard({
   /** Set/clear the priority tier (null = Auto). Omit to render urgency display-only. */
   onPrioritySelect?: (tier: number | null) => void;
   /**
-   * Opt-in: toggle the Unbox Ticket push column (`?ticketView=1`) from the
-   * ticket chip Edit row. Provided only by unbox `LineCartonContextSection` —
-   * omitting it hides Edit (History still opens the thread popover).
+   * Select the caller-owned Ticket task from the ticket chip. Omit to hide the
+   * edit verb; History still opens the thread popover.
    */
   onToggleTicketView?: () => void;
-  /** True while the ticket push column is open — ticket History stays non-pulsing. */
+  /** True while the Ticket task is selected; History stays non-pulsing. */
   ticketViewActive?: boolean;
   /** Far-left back button that closes the active entity so the right pane crossfades back to this page's list/history display (in-page — NOT… */
   onExitToList?: () => void;
@@ -253,17 +246,6 @@ export function CartonContextCard({
    * Omit to hide the ticket icon in the gallery peek.
    */
   onSendToTicket?: () => void;
-  /**
-   * Unbox: open Move photos in the station tool push instead of a center overlay.
-   */
-  onOpenMovePhotosExternal?: () => void;
-  /**
-   * Unbox: double-click Photos pill → Displays → Photos (Actions). Replaces
-   * whatever leaf is open. Omit on Arrival.
-   */
-  onOpenPhotosDisplay?: () => void;
-  /** Opt-out: suppress Photos hover toolbar. */
-  suppressPhotoHoverGallery?: boolean;
   /** Station-owned Photos track (e.g. */
   photosCell?: ReactNode;
   /** Station-owned assignee cell (QC bench: the line's QC tech) — leads the right cluster. */
@@ -459,24 +441,14 @@ export function CartonContextCard({
 
 
   /** Order id — ONE face for every scan station. */
-  const orderPairCta = !effectiveOrder && !!onEditPo;
   const orderChip = showOrderIdentity ? (
     <IdentityLinkChip
-      // No order id ⇒ nothing to open. The href is dropped here (and
-      // IdentityLinkChip then omits the row entirely) so an unfound carton's
-      // hover menu offers Link Id alone, not a dead "Open".
       openHref={!effectiveOrder || orderCopyOnly ? undefined : poOpenHref}
       openTitle={orderCopyOnly ? 'Order number' : 'Open purchase order'}
       value={effectiveOrder}
-      display={
-        effectiveOrder
-          ? getLast8(effectiveOrder)
-          : orderPairCta
-            ? 'Pair'
-            : resolveChipDisplay('')
-      }
+      display={effectiveOrder ? getLast8(effectiveOrder) : 'Pair'}
       tone="id"
-      lockLast8Width
+      lockLast8Width={Boolean(effectiveOrder)}
       iconClass={platformIconTone?.className}
       iconStyle={platformIconTone?.style}
       platformLabel={platformValue ? platformMeta.label : null}
@@ -572,8 +544,6 @@ export function CartonContextCard({
       openHref={listingOpenHref}
       copyValue={listingLink || listingOpenHref || ''}
       links={formatListingLinkMenuOptions(listingLinks) ?? listingLinks}
-      onEdit={onEditListing}
-      editLabel="Edit listing"
     />
   ) : null;
 
@@ -622,20 +592,17 @@ export function CartonContextCard({
       </div>
     ) : null;
 
-  // Photos stay on the bar even at 0 and even without a receiving id —
-  // listing · price · photos are top-right chrome, never parked in ⋯.
+  // Photos stay on the bar even at 0 and even without a receiving id.
   const emptyPhotosCell = (
-    <button
-      type="button"
-      onClick={onOpenPhotosDisplay}
-      disabled={!onOpenPhotosDisplay}
+    <span
       className={STATION_CONTEXT_PHOTO_CHROME_CLASS}
       data-testid="carton-context-photos"
-      aria-label="Photos"
+      aria-label="Photos: 0"
+      role="img"
     >
       <Camera className={STATION_CHROME_GLYPH_CLASS} aria-hidden />
       <span className="leading-none tabular-nums">0</span>
-    </button>
+    </span>
   );
 
   const photosCellNode =
@@ -650,9 +617,6 @@ export function CartonContextCard({
             appearance="chrome"
             galleryPlacement="below"
             onSendToTicket={onSendToTicket}
-            onOpenMovePhotosExternal={onOpenMovePhotosExternal}
-            onOpenPhotosDisplay={onOpenPhotosDisplay}
-            suppressHoverGallery={suppressPhotoHoverGallery}
           />
         ) : (
           emptyPhotosCell
@@ -765,15 +729,14 @@ export function CartonContextCard({
         </div>
       ) : null}
 
-      {/* Left — identity (always visible) */}
       <div
         data-carton-bar-slot="identity"
-        className="relative flex min-w-0 shrink-0 items-stretch gap-0"
+        className="relative z-raised flex shrink-0 items-stretch gap-0"
       >
         {exitControl ? (
           <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
-        <div className="flex h-full min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
+        <div className="flex h-full shrink-0 items-stretch [&_[data-chip-face]]:rounded-none">
           {platformFace}
           {/* Order # is a copy/menu target, so it gets the same cell box as every other interactive cell. */}
           {orderChip ? (

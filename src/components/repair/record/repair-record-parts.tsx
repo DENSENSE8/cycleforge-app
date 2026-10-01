@@ -33,7 +33,7 @@ import { StepRail, type RailStep } from '@/design-system/components/record-ledge
 import { Button, TextField } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { DESK_RECORD_COLUMN_CARD_CLASS } from '@/design-system/tokens/desk-stage';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import type { RepairLifecycleStep } from '@/design-system/tokens/repair-lifecycle';
 import { repairCarrierEventsQuery } from '@/lib/queries/carrier-events-query';
 import { cartonReadHref } from '@/lib/receiving/surface-path';

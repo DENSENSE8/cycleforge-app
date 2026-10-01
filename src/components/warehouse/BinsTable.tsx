@@ -15,10 +15,8 @@ import {
 } from '@/lib/selection/table-selection';
 import { BINS_SELECTION_SCOPE } from './bins-grid/bins-grid-descriptor';
 import { BINS_TABLE_BINDING } from './bins-grid/bins-table-definition';
-import { useBinsTableLayout } from './bins-grid/useBinsTableLayout';
 import { BinsGridRow } from './bins-grid/BinsGridRow';
 import {
-  binsSheetColumnsFor,
   binsSortFactFor,
   defaultDirForBinsColumn,
   isBinsColumnSortable,
@@ -87,11 +85,7 @@ export function BinsTable({
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // The COLUMNS are the effective slot layout's materialization (staff ?? org
-  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
-  // keys; each resolves to its bound field's fact through `binsSortFactFor`.
-  const { effectiveLayout: binsLayout, fields: binsFields } = useBinsTableLayout();
-  const columns = useMemo(() => binsSheetColumnsFor(binsLayout), [binsLayout]);
+  const columns = BINS_TABLE_BINDING.columns;
   const sortFactByKey = useMemo(
     () => new Map(columns.map((c) => [c.key as string, binsSortFactFor(c)])),
     [columns],
@@ -180,7 +174,6 @@ export function BinsTable({
       <DataTable<BinsOverviewRow, BinsGridColumnKey, BinsGridColumn>
         binding={BINS_TABLE_BINDING}
         columns={columns}
-        fields={binsFields}
         orderGroupsByDate={orderGroupsByDate}
         rows={rows}
         getRowId={(r) => String(r.id)}

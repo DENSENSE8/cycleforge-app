@@ -25,7 +25,17 @@ function faceFor(code: string): string {
  * `openException` — land with the SKU-exception sheet already up (the
  * location hub's "Not in the catalog" door: `?exception=1`).
  */
-export function MobilePairLocation({ code, openException = false }: { code: string; openException?: boolean }) {
+export function MobilePairLocation({
+  code,
+  openException = false,
+  verificationToken,
+  returnHref,
+}: {
+  code: string;
+  openException?: boolean;
+  verificationToken: string | null;
+  returnHref?: string | null;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const staffId = user?.staffId ?? 0;
@@ -65,9 +75,12 @@ export function MobilePairLocation({ code, openException = false }: { code: stri
    */
   const pair = useCallback(
     (sku: string) => {
-      router.replace(`/m/pair/${encodeURIComponent(code)}/${encodeURIComponent(sku)}`);
+      const params = new URLSearchParams();
+      if (verificationToken) params.set('verified', verificationToken);
+      if (returnHref) params.set('return', returnHref);
+      router.replace(`/m/pair/${encodeURIComponent(code)}/${encodeURIComponent(sku)}${params.size ? `?${params.toString()}` : ''}`);
     },
-    [code, router],
+    [code, returnHref, router, verificationToken],
   );
 
   const sections: TriageSection[] = useMemo(() => {
@@ -134,7 +147,7 @@ export function MobilePairLocation({ code, openException = false }: { code: stri
       <MobileTriagePage
         title="Pair location"
         subtitle={face}
-        backHref="/m/scan"
+        backHref={returnHref ?? '/m/stock'}
         query={query}
         onQueryChange={setQuery}
         searchLabel="Search SKU or product title"

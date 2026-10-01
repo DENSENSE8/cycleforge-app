@@ -13,7 +13,7 @@ import { workStatusLabel } from '@/lib/work-orders/work-status-display';
 
 const DAY_MS = 86_400_000;
 
-/** Compact civil face for a DATES line — no year (slot-table date law). */
+/** Compact civil face for a DATES line — no year (DataTable date law). */
 function civilFace(ms: number | null): { label: string; dateKey: string; clock: string } | null {
   if (ms === null) return null;
   const moment = new Date(ms);

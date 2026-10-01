@@ -203,11 +203,11 @@ test('ARMED FOR QC: an LPN keeps qc-open semantics and is not taken as a unit', 
   const open = dispatchScan({ scan: LPN, state: { qcOpen: true }, armedSession: QC_SCAN_SESSION });
   strictEqual(open.card, 'qc');
   strictEqual(open.title, 'QC · LPN 12', 'the LPN title, not a unit title');
-  strictEqual(open.mode, 'preview', 'the unit station does not expect licence plates');
-  strictEqual(open.parks, false);
+  strictEqual(open.mode, 'act', 'the QC station accepts licence plates');
+  strictEqual(open.parks, true);
 
-  // With nothing open the plate previews, whatever the session is running.
-  strictEqual(dispatchScan({ scan: LPN, armedSession: QC_SCAN_SESSION }).card, 'preview');
+  // The armed job can start QC on a box even when no check exists yet.
+  strictEqual(dispatchScan({ scan: LPN, armedSession: QC_SCAN_SESSION }).card, 'qc');
 
   // And the LPN tie is untouched by the new row.
   const tie = dispatchScan({

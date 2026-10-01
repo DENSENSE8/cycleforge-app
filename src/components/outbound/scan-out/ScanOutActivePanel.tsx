@@ -48,7 +48,6 @@ type ScanOutDisplayNav = typeof STATION_DISPLAY_INDEX | ScanOutDisplayTab;
 const STATUS_TONE: Record<ScanOutActivePane['status'], string> = {
   ok: 'bg-surface-success text-text-success ring-1 ring-inset ring-border-success',
   dup: 'bg-surface-warning text-text-warning ring-1 ring-inset ring-border-warning',
-  exc: 'bg-surface-warning text-text-warning ring-1 ring-inset ring-border-warning',
   blk: 'bg-surface-danger text-text-danger ring-1 ring-inset ring-border-danger',
   pending: 'bg-surface-canvas text-text-muted ring-1 ring-inset ring-border-soft',
   miss: 'bg-surface-danger text-text-danger ring-1 ring-inset ring-border-danger',
@@ -58,11 +57,9 @@ const STATUS_TONE: Record<ScanOutActivePane['status'], string> = {
 function statusLabel(pane: ScanOutActivePane): string {
   switch (pane.status) {
     case 'ok':
-      return 'Shipped out';
+      return 'Fulfilled';
     case 'dup':
-      return 'Already scanned out';
-    case 'exc':
-      return pane.message || 'Delivered already';
+      return 'Already fulfilled';
     case 'blk':
       return pane.message || 'Do not ship — order cancelled';
     case 'pending':
@@ -81,7 +78,6 @@ function paneToCartonJson(pane: ScanOutActivePane): ScanOutCartonJson {
     ok: pane.status !== 'err',
     matched: pane.status !== 'miss' && pane.status !== 'err',
     blocked: pane.status === 'blk',
-    alreadyDelivered: pane.status === 'exc',
     duplicate: pane.status === 'dup',
     orderRowId: pane.orderRowId,
     orderId: pane.orderId,

@@ -24,7 +24,6 @@
     "src/app/api/zoho/purchase-orders/receive/route.ts",
     "src/app/m/(immersive)/r/[id]/photos/page.tsx",
     "src/components/admin/workflow/operations-catalog.ts",
-    "src/components/mobile/redesign/MobileToShipQueue.tsx",
     "src/components/outbound/orders/oos/OosProductCombobox.tsx",
     "src/components/receiving/workspace/unmatched-items/ReturnScanCard.tsx",
     "src/components/replenish/replenish-types.ts",

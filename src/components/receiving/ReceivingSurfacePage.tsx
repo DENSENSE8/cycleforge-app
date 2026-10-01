@@ -6,23 +6,15 @@ import { Suspense } from 'react';
 import ReceivingDashboard from '@/components/ReceivingDashboard';
 import { ReceivingSidebarPanel } from '@/components/sidebar/ReceivingSidebarPanel';
 import { RouteShell } from '@/design-system/components/RouteShell';
-import { ZohoSplitPane } from '@/components/receiving/workspace/ZohoSplitPane';
 
 function ReceivingSurfacePageInner() {
   return (
-    <>
-      {/* Sidebar + form flows. */}
-      <div className="flex h-full w-full overflow-hidden">
-        <RouteShell
-          actions={<ReceivingSidebarPanel />}
-          history={<ReceivingDashboard />}
-        />
-      </div>
-
-      {/* Electron-only: right-side Zoho viewer triggered by the per-line
-          "Open in Zoho" action. Hidden until activated; no-op in a browser. */}
-      <ZohoSplitPane />
-    </>
+    <div className="flex h-full w-full overflow-hidden">
+      <RouteShell
+        actions={<ReceivingSidebarPanel />}
+        history={<ReceivingDashboard />}
+      />
+    </div>
   );
 }
 

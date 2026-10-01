@@ -1,4 +1,4 @@
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 
 /** Where a (location, SKU) stock pair stands — Inventory › Stock. */
 export type StockStage = 'inStock' | 'outOfStock' | 'onHold';

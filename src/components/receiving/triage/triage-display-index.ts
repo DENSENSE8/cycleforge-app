@@ -1,12 +1,11 @@
 /**
- * Arrival Displays Root Index — Ticket + Pairing + Locations + Timeline (no React).
+ * Arrival Displays Root Index — Pairing + Locations + Timeline (no React).
  */
 
 import type { DisplayIndexRow } from '@/components/station/displays';
 import type { TriageDisplayTab } from './build-triage-displays';
 
 const LABELS: Record<TriageDisplayTab, string> = {
-  ticket: 'Ticket',
   linkage: 'Pairing',
   location: 'Locations',
   timeline: 'Timeline',
@@ -15,18 +14,11 @@ const LABELS: Record<TriageDisplayTab, string> = {
 function enrich(
   id: TriageDisplayTab,
   signals: {
-    hasTicketId: boolean;
     linkagePaired: boolean;
     isUnfound: boolean;
   },
 ): Omit<DisplayIndexRow, 'id' | 'label'> {
   switch (id) {
-    case 'ticket':
-      return {
-        subtitle: signals.hasTicketId ? 'Linked ticket' : 'No ticket',
-        tone: signals.hasTicketId ? 'ok' : 'action',
-        group: 'context',
-      };
     case 'linkage':
       if (signals.linkagePaired) {
         return { subtitle: 'Paired', tone: 'ok', group: 'verification' };
@@ -52,7 +44,6 @@ function enrich(
 export function buildTriageDisplayIndexRows(
   tabIds: TriageDisplayTab[],
   signals: {
-    hasTicketId: boolean;
     linkagePaired: boolean;
     isUnfound: boolean;
   },

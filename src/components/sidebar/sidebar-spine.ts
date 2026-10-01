@@ -84,13 +84,13 @@ export const SPINE_ROW_SHELL_CLASS = cn(
 export const SPINE_PARENT_ROW_MOTION_CLASS =
   'will-change-transform transition-[background-color,box-shadow,transform] duration-200 ease-out hover:translate-x-0.5 active:translate-x-0 active:scale-[0.985] motion-reduce:transform-none motion-reduce:transition-colors';
 
-/** Parent glyphs carry the color and a small hover flourish; child rows remain quiet. */
+/** Parent glyphs keep their small hover flourish; child rows remain quiet. */
 export const SPINE_PARENT_ICON_MOTION_CLASS =
   'transition-[color,filter,transform] duration-200 ease-out group-hover:-rotate-3 group-hover:scale-110 group-active:scale-95 motion-reduce:transform-none';
 
-/** The active parent's colored edge grows in instead of appearing as a hard rule. */
+/** The active parent's restrained category edge grows in instead of appearing as a hard rule. */
 export const SPINE_PARENT_MARKER_CLASS =
-  'pointer-events-none absolute inset-y-2 left-0 w-0.5 origin-center rounded-full opacity-0 scale-y-50 transition-[opacity,transform] duration-200 ease-out';
+  'pointer-events-none absolute inset-y-2.5 left-0 w-px origin-center rounded-full opacity-0 scale-y-50 transition-[opacity,transform] duration-200 ease-out';
 
 /** Quiet hierarchy label used instead of horizontal rules between nav bands. */
 export const SPINE_NAV_GROUP_TITLE_CLASS =
@@ -104,7 +104,6 @@ const BUSINESS_NAV_IDS = new Set([
   'fulfillment',
   'inventory',
   'catalog',
-  'ordered-top',
 ]);
 
 /** The visual family an L1 sidebar block belongs to. */

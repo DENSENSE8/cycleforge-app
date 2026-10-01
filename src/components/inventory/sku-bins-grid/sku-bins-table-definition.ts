@@ -2,11 +2,11 @@
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
-  defaultDirForSlotTableColumn,
-  isSlotTableColumnSortable,
-  slotTableColumnsFor,
-  type SlotTableColumn,
-} from '@/components/tables/compound/slot-table-columns';
+  defaultDirForDataTableCompoundColumn,
+  isDataTableCompoundColumnSortable,
+  dataTableCompoundColumnsFor,
+  type DataTableCompoundColumn,
+} from '@/components/tables/compound/data-table-compound-columns';
 import {
   makeGridSurfaceDescriptor,
   type GridSurfaceCapabilities,
@@ -17,7 +17,7 @@ import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { SKU_BINS_FAMILY, SKU_BINS_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/sku-bins';
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
-export const SKU_BINS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColumnsFor(
+export const SKU_BINS_COMPOUND_COLUMNS: readonly DataTableCompoundColumn[] = dataTableCompoundColumnsFor(
   SKU_BINS_FAMILY,
   SKU_BINS_PRODUCT_LAYOUT,
 );
@@ -27,20 +27,19 @@ export const SKU_BINS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 function makeSkuBinsGridDescriptor(
-  columns: readonly SlotTableColumn[],
-): GridSurfaceDescriptor<SkuBinTableRow, SlotTableColumn> {
-  return makeGridSurfaceDescriptor<SkuBinTableRow, SlotTableColumn>(
+  columns: readonly DataTableCompoundColumn[],
+): GridSurfaceDescriptor<SkuBinTableRow, DataTableCompoundColumn> {
+  return makeGridSurfaceDescriptor<SkuBinTableRow, DataTableCompoundColumn>(
     'sku-bins.sku',
     columns,
     {
-      isSortable: (key) => isSlotTableColumnSortable(SKU_BINS_FAMILY, columns, key),
-      sortDescFirst: (key) => defaultDirForSlotTableColumn(SKU_BINS_FAMILY, columns, key) === 'desc',
+      isSortable: (key) => isDataTableCompoundColumnSortable(SKU_BINS_FAMILY, columns, key),
+      sortDescFirst: (key) => defaultDirForDataTableCompoundColumn(SKU_BINS_FAMILY, columns, key) === 'desc',
       isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     SKU_BINS_GRID_CAPABILITIES,
@@ -66,7 +65,7 @@ const SKU_BINS_TABLE_DEFINITION = parseTableDefinition({
   columns: SKU_BINS_COMPOUND_COLUMNS,
 });
 
-export const SKU_BINS_TABLE_BINDING: TableSurfaceBinding<SkuBinTableRow, SlotTableColumn> = {
+export const SKU_BINS_TABLE_BINDING: TableSurfaceBinding<SkuBinTableRow, DataTableCompoundColumn> = {
   definition: SKU_BINS_TABLE_DEFINITION,
   columns: SKU_BINS_COMPOUND_COLUMNS,
   makeDescriptor: makeSkuBinsGridDescriptor,

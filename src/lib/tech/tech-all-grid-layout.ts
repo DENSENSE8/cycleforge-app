@@ -1,4 +1,4 @@
-/** Tech All triage spreadsheet columns — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
+/** Tech All triage spreadsheet columns — MATERIALIZED from a {@link DataTableColumnLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
@@ -8,9 +8,9 @@ import {
   TECH_ALL_FIELD_CATALOG,
   TECH_ALL_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/tech-all';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-family';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import { DATA_TABLE_ID_HEADER_WORD } from '@/lib/tables/data-table-family';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -24,19 +24,17 @@ export type TechAllGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface TechAllGridColumn extends SlotTrackFields {
-  key: TechAllGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  align?: 'start' | 'end';
-  frozen?: boolean;
-  sortable?: boolean;
-  hideKey?: string;
-  tier?: 'core' | 'optional';
-}
+export interface TechAllGridColumn extends DataTableColumnFields { key: TechAllGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+align?: 'start' | 'end';
+frozen?: boolean;
+sortable?: boolean;
+hideKey?: string;
+tier?: 'core' | 'optional'; }
 
 /**
  * The structural sheet skeleton — what Tech-All paints with ZERO bindings.
@@ -50,10 +48,10 @@ const TECH_ALL_SHEET_BASE: readonly TechAllGridColumn[] = [
     frozen: true,
     width: 'minmax(12rem, 1fr)',
     // The word is the ENGINE's on every identity track, sheet or compound
-    // (`slot-table-family.ts`). The FACT stays this family's
+    // (`data-table-family.ts`). The FACT stays this family's
     // (`tech-all.item`), and the cell still paints title over its quiet line.
-    label: SLOT_TABLE_ID_HEADER_WORD,
-    gridLabel: SLOT_TABLE_ID_HEADER_WORD,
+    label: DATA_TABLE_ID_HEADER_WORD,
+    gridLabel: DATA_TABLE_ID_HEADER_WORD,
     type: 'text',
     labelFitRem: 8,
   },
@@ -64,15 +62,13 @@ const TECH_ALL_SHEET_BASE: readonly TechAllGridColumn[] = [
  * anchor on `identity`, so the default plate reads type · stage · urgency —
  * the retired hand model's whole strip.
  */
-export function techAllSheetColumnsFor(layout: SlotLayout): readonly TechAllGridColumn[] {
-  return materializeTracks<TechAllGridColumn>({
-    layout,
-    catalog: TECH_ALL_FIELD_CATALOG,
-    base: TECH_ALL_SHEET_BASE,
-    statusAnchorKey: 'identity',
-    subtitleAnchorKey: 'identity',
-  });
-}
+export function techAllSheetColumnsFor(layout: DataTableColumnLayout): readonly TechAllGridColumn[] { return materializeTracks<TechAllGridColumn>({
+  layout,
+  catalog: TECH_ALL_FIELD_CATALOG,
+  base: TECH_ALL_SHEET_BASE,
+  statusAnchorKey: 'identity',
+  subtitleAnchorKey: 'identity',
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts,

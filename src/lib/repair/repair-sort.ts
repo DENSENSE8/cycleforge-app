@@ -1,7 +1,7 @@
 /**
  * The repair list's Sort (owner 2026-09-29) — the contextual sidebar's
  * `sort` control on `/repair` and Sales › Repair service, the route specs'
- * `?sort=` and `RepairCardList`'s order. Browser- and server-safe: no imports.
+ * `?sort=` and `RepairCardList`'s default order. Browser- and server-safe.
  */
 
 export const REPAIR_SORT_PARAM = 'sort';

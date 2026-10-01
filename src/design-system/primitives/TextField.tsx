@@ -12,7 +12,7 @@ import { cn } from '@/utils/_cn';
 
 /**
  * `default` — soft card field (`rounded-xl` + border).
- * `flush` — joined industrial bar cell (`rounded-none`, no outer border); host
+ * `flush` — joined bar cell (`rounded-none`, no outer border); host
  * owns the shared hairline. Floating label stays inside the field cell width.
  */
 type TextFieldAppearance = 'default' | 'flush';

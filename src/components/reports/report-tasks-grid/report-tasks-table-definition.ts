@@ -2,11 +2,11 @@
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
-  defaultDirForSlotTableColumn,
-  isSlotTableColumnSortable,
-  slotTableColumnsFor,
-  type SlotTableColumn,
-} from '@/components/tables/compound/slot-table-columns';
+  defaultDirForDataTableCompoundColumn,
+  isDataTableCompoundColumnSortable,
+  dataTableCompoundColumnsFor,
+  type DataTableCompoundColumn,
+} from '@/components/tables/compound/data-table-compound-columns';
 import {
   makeGridSurfaceDescriptor,
   type GridSurfaceCapabilities,
@@ -20,7 +20,7 @@ import {
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
-const REPORT_TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColumnsFor(
+const REPORT_TASKS_COMPOUND_COLUMNS: readonly DataTableCompoundColumn[] = dataTableCompoundColumnsFor(
   REPORT_TASKS_FAMILY,
   REPORT_TASKS_PRODUCT_LAYOUT,
 );
@@ -30,21 +30,20 @@ export const REPORT_TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 function makeReportTasksGridDescriptor(
-  columns: readonly SlotTableColumn[],
-): GridSurfaceDescriptor<TaskDeskRow, SlotTableColumn> {
-  return makeGridSurfaceDescriptor<TaskDeskRow, SlotTableColumn>(
+  columns: readonly DataTableCompoundColumn[],
+): GridSurfaceDescriptor<TaskDeskRow, DataTableCompoundColumn> {
+  return makeGridSurfaceDescriptor<TaskDeskRow, DataTableCompoundColumn>(
     'reports.tasks',
     columns,
     {
-      isSortable: (key) => isSlotTableColumnSortable(REPORT_TASKS_FAMILY, columns, key),
+      isSortable: (key) => isDataTableCompoundColumnSortable(REPORT_TASKS_FAMILY, columns, key),
       sortDescFirst: (key) =>
-        defaultDirForSlotTableColumn(REPORT_TASKS_FAMILY, columns, key) === 'desc',
+        defaultDirForDataTableCompoundColumn(REPORT_TASKS_FAMILY, columns, key) === 'desc',
       isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     REPORT_TASKS_GRID_CAPABILITIES,
@@ -66,7 +65,7 @@ const REPORT_TASKS_TABLE_DEFINITION = parseTableDefinition({
   columns: REPORT_TASKS_COMPOUND_COLUMNS,
 });
 
-export const REPORT_TASKS_TABLE_BINDING: TableSurfaceBinding<TaskDeskRow, SlotTableColumn> = {
+export const REPORT_TASKS_TABLE_BINDING: TableSurfaceBinding<TaskDeskRow, DataTableCompoundColumn> = {
   definition: REPORT_TASKS_TABLE_DEFINITION,
   columns: REPORT_TASKS_COMPOUND_COLUMNS,
   makeDescriptor: makeReportTasksGridDescriptor,

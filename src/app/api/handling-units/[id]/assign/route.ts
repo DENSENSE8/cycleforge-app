@@ -40,12 +40,12 @@ export const POST = withAuth(
       if (hit) return NextResponse.json(hit.response_body, { status: hit.status_code });
     }
 
-    const box = await getHandlingUnitById(id);
+    const box = await getHandlingUnitById(id, pool, ctx.organizationId);
     if (!box) {
       return NextResponse.json({ success: false, error: 'Handling unit not found' }, { status: 404 });
     }
 
-    const resolved = await resolveUnitRefs(parsed.units);
+    const resolved = await resolveUnitRefs(parsed.units, ctx.organizationId);
     if (resolved.unresolved.length > 0) {
       return NextResponse.json(
         { success: false, error: 'Some units could not be resolved', unresolved: resolved.unresolved },
@@ -53,8 +53,8 @@ export const POST = withAuth(
       );
     }
 
-    const { moved, previous } = await assignUnitsToHandlingUnit(id, resolved.ids);
-    const detail = await getHandlingUnitDetail(id);
+    const { moved, previous } = await assignUnitsToHandlingUnit(id, resolved.ids, ctx.organizationId);
+    const detail = await getHandlingUnitDetail(id, ctx.organizationId);
 
     await recordAudit(pool, ctx, req, {
       source: 'handling-units-api',

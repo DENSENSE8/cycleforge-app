@@ -2,7 +2,7 @@
 
 /**
  * Orders list — `/m/work`, the compatibility alias of `/m/orders`. The queue
- * root ({@link RedesignedMobileAssignedOrders}) declares its own industrial
+ * root ({@link RedesignedMobileAssignedOrders}) uses the shared triage
  * region, so both doors resolve the same mode.
  */
 

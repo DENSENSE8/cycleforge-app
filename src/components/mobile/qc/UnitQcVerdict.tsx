@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { DetailAck, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { QcFailTicketPanel } from '@/components/ui/QcFailTicketPanel';
 import { Button } from '@/design-system/primitives';
-import { TextField } from '@/design-system/primitives/TextField';
 import { serialStatusLabel } from '@/lib/inventory/serial-status-display';
 import { qcUnitRecordState } from '@/lib/qc/qc-unit-record-model';
 import { QC_VERDICTS, postQcVerdict } from '@/lib/qc/qc-verdict';
@@ -40,7 +39,9 @@ export function UnitQcVerdict({
   steps: readonly UnitQcStep[];
   onRecorded: () => void;
 }) {
-  const [note, setNote] = useState('');
+  // Notes are progressive: Pass needs none; Test again is expressed by the
+  // verdict; Failed collects a categorized reason in its resolution sheet.
+  const note = '';
   const [busy, setBusy] = useState<TestVerdict | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ack, setAck] = useState<string | null>(null);
@@ -86,7 +87,6 @@ export function UnitQcVerdict({
               </Button>
             ))}
           </div>
-          <TextField label="Note (optional)" value={note} onChange={setNote} multiline rows={2} disabled={!!busy} />
         </div>
         {error ? (
           <p role="alert" className={ERROR}>

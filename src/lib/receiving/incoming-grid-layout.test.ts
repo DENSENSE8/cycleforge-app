@@ -1,6 +1,6 @@
 /**
  * `/incoming` mounts the RecordLedger — there is no Incoming column model or
- * slot table any more. What a consumer can still observe is pinned here: the
+ * data table any more. What a consumer can still observe is pinned here: the
  * sort vocabulary the ledger header reads, and the comparator.
  */
 import assert from 'node:assert/strict';

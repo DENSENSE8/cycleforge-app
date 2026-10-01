@@ -38,7 +38,7 @@ export function CompoundRowDetailBand({
       data-compound-row-detail=""
       aria-label={`Details for ${title.trim() || 'this line'}`}
       // Leaf face, not a canvas wash — same ruling as the group band
-      // (SlotTableGroupParentRow). Operator 2026-09-14: expanded state is an
+      // (CompoundGroupParentRow). Operator 2026-09-14: expanded state is an
       className={cn(ledgerGridRowShellClass(false), 'bg-surface-card')}
       style={{ gridTemplateColumns: template, minHeight: COMPOUND_ROW_PX }}
       onClick={(event) => event.stopPropagation()}

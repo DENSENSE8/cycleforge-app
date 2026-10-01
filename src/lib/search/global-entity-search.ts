@@ -5,6 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
 import { looksLikeIdentifier, searchHitHref, skuRecordHref, toteRecordHref } from '@/lib/search/search-hit';
+import { skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
 import {
   receivingOrderIdFromParts,
   receivingSearchTitle,
@@ -712,7 +713,6 @@ async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<G
     catalog_id: number | null;
     catalog_product_title: string | null;
     zoho_item_title: string | null;
-    zoho_item_id: string | null;
     stock_id: number | null;
     stock_title: string | null;
     stock: number | null;
@@ -731,8 +731,7 @@ async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<G
      SELECT h.sku,
             sc.id            AS catalog_id,
             sc.product_title AS catalog_product_title,
-            zi.name          AS zoho_item_title,
-            zi.zoho_item_id  AS zoho_item_id,
+            cxi.external_name AS zoho_item_title,
             ss.id            AS stock_id,
             ss.product_title AS stock_title,
             ss.stock,
@@ -747,12 +746,14 @@ async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<G
           LIMIT 1
        ) ss ON TRUE
        LEFT JOIN LATERAL (
-         SELECT i.name, i.zoho_item_id
-           FROM items i
-          WHERE i.sku = h.sku AND i.organization_id = h.organization_id AND i.status = 'active'
-          ORDER BY i.zoho_item_id
+         SELECT x.external_name
+           FROM catalog_external_ids x
+          WHERE x.sku_catalog_id = sc.id
+            AND x.organization_id = h.organization_id
+            AND x.provider = 'zoho'
+          ORDER BY x.id
           LIMIT 1
-       ) zi ON TRUE
+       ) cxi ON TRUE
       ORDER BY CASE WHEN upper(h.sku) = upper($3) THEN 0
                     WHEN h.sku ILIKE $4 THEN 1
                     ELSE 2 END,
@@ -770,7 +771,6 @@ async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<G
       zoho_item_title: row.zoho_item_title,
       item_name: row.stock_title,
       sku,
-      zoho_item_id: row.zoho_item_id,
     });
     return [
       {
@@ -780,7 +780,7 @@ async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<G
         subtitle: [
           sku,
           row.stock != null ? `${Number(row.stock)} on hand` : null,
-          row.location,
+          row.location ? skuExceptionLocationFace(String(row.location)) : null,
         ]
           .filter(Boolean)
           .join(' · '),

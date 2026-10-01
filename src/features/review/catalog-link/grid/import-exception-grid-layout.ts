@@ -9,8 +9,8 @@ import {
   IMPORT_EXCEPTION_FIELD_CATALOG,
   IMPORT_EXCEPTION_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/import-exception';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
@@ -37,33 +37,27 @@ export type ImportExceptionGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface ImportExceptionGridColumn extends SlotTrackFields {
-  key: ImportExceptionGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  dateFace?: 'day' | 'stamp' | 'duration';
-  align?: 'start' | 'end';
-  frozen?: boolean;
-  sortable?: boolean;
-  hideKey?: string;
-  tier?: 'core' | 'optional';
-  resizable?: boolean;
-  omitCellIcon?: boolean;
-}
+export interface ImportExceptionGridColumn extends DataTableColumnFields { key: ImportExceptionGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+dateFace?: 'day' | 'stamp' | 'duration';
+align?: 'start' | 'end';
+frozen?: boolean;
+sortable?: boolean;
+hideKey?: string;
+tier?: 'core' | 'optional';
+resizable?: boolean;
+omitCellIcon?: boolean; }
 
 /** Canonical Missing item number columns, in scan order. */
-export function importExceptionCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly ImportExceptionGridColumn[] {
-  return materializeTracks<ImportExceptionGridColumn>({
-    layout,
-    catalog: IMPORT_EXCEPTION_FIELD_CATALOG,
-    base: compoundColumnsFor<ImportExceptionGridColumn>(),
-  });
-}
+export function importExceptionCompoundColumnsFor(layout: DataTableColumnLayout): readonly ImportExceptionGridColumn[] { return materializeTracks<ImportExceptionGridColumn>({
+  layout,
+  catalog: IMPORT_EXCEPTION_FIELD_CATALOG,
+  base: compoundColumnsFor<ImportExceptionGridColumn>(),
+}); }
 
 /** The PRODUCT-DEFAULT materialization — what an org with no override mounts. */
 export const IMPORT_EXCEPTION_COMPOUND_COLUMNS: readonly ImportExceptionGridColumn[] =

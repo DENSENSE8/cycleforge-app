@@ -1,12 +1,12 @@
 /** Staff-directory field catalog — the bindable facts of ONE `staff` row. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const STAFF_DIRECTORY_FIELD_CATALOG: FieldCatalog = [
   /**
-   * The IDENTITY fact. `displayType: 'id'` is what `parseSlotLayout` requires
-   * of an identity and what makes the fulfillment cell paint an ID face.
+   * The IDENTITY fact. `displayType: 'id'` is required for an identity and
+   * makes the fulfillment cell paint an ID face.
    */
   {
     id: 'staff-directory.staff_id',
@@ -95,7 +95,7 @@ export const STAFF_DIRECTORY_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default — the four retired DISPLAY columns that the shared row chrome does not already paint. */
-export const STAFF_DIRECTORY_PRODUCT_LAYOUT: SlotLayout = {
+export const STAFF_DIRECTORY_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'staff-directory.staff_id',
   statusBindings: [
@@ -106,7 +106,7 @@ export const STAFF_DIRECTORY_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Team entry. */
 export const STAFF_DIRECTORY_TABLE_LAYOUT_ID = 'staff-directory';

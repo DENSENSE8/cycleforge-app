@@ -1,4 +1,4 @@
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 
 /**
  * A repair ticket's stored status as the card and the badges read it (owner

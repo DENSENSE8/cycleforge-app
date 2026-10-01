@@ -72,13 +72,12 @@ describe('scan-station depth tokens', () => {
     assert.equal(STATION_DISPLAYS_BAND_CLASS, STATION_SCAN_BENCH_CLASS);
   });
 
-  it('industrial Color + flat Depth are the defaults', () => {
-    assert.equal(DEFAULT_STATION_SKIN, 'industrial');
+  it('porcelain Color + flat Depth are the defaults', () => {
+    assert.equal(DEFAULT_STATION_SKIN, 'porcelain');
     assert.equal(DEFAULT_STATION_DEPTH, 'flat');
-    assert.match(STATION_SKINS.industrial.vars.well, /surface-strong/);
-    assert.match(STATION_SKINS.industrial.vars.plate, /surface-accent/);
-    assert.match(STATION_SKINS.industrial.vars['bevel-highlight'], /background-canvas/);
-    assert.match(STATION_SKINS.industrial.vars.ink, /text-primary/);
+    assert.equal(STATION_SKINS.porcelain.vars.well, '#ebe6df');
+    assert.equal(STATION_SKINS.porcelain.vars.plate, '#faf8f5');
+    assert.equal(STATION_SKINS.porcelain.vars.ink, '#1a1714');
   });
 
   it('packing bench keeps wood Color tokens; grain is Depth Deep only', () => {

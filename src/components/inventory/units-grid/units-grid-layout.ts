@@ -1,12 +1,12 @@
-/** Inventory › Units spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
+/** Inventory › Units spreadsheet column model — MATERIALIZED from a {@link DataTableColumnLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
 import { UNITS_FIELD_CATALOG, UNITS_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/units';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -17,24 +17,22 @@ export type UnitsGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface UnitsGridColumn extends SlotTrackFields {
-  key: UnitsGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  /** Staff-preference key (`staff_preferences.tableColumns.inventory_units`). */
-  hideKey?: string;
-  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
-  tier?: 'core' | 'optional';
-  /** When false, header is not click-to-sort. */
-  sortable?: boolean;
-}
+export interface UnitsGridColumn extends DataTableColumnFields { key: UnitsGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+/** Staff-preference key (`staff_preferences.tableColumns.inventory_units`). */
+hideKey?: string;
+/** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
+tier?: 'core' | 'optional';
+/** When false, header is not click-to-sort. */
+sortable?: boolean; }
 
 /**
  * The structural sheet skeleton — what Units paints with ZERO bindings.
@@ -61,15 +59,13 @@ const UNITS_SHEET_BASE: readonly UnitsGridColumn[] = [
 ];
 
 /** Materialize the mounted units columns from an effective layout. */
-export function unitsSheetColumnsFor(layout: SlotLayout): readonly UnitsGridColumn[] {
-  return materializeTracks<UnitsGridColumn>({
-    layout,
-    catalog: UNITS_FIELD_CATALOG,
-    base: UNITS_SHEET_BASE,
-    statusAnchorKey: 'product',
-    subtitleAnchorKey: 'product',
-  });
-}
+export function unitsSheetColumnsFor(layout: DataTableColumnLayout): readonly UnitsGridColumn[] { return materializeTracks<UnitsGridColumn>({
+  layout,
+  catalog: UNITS_FIELD_CATALOG,
+  base: UNITS_SHEET_BASE,
+  statusAnchorKey: 'product',
+  subtitleAnchorKey: 'product',
+}); }
 
 /** The PRODUCT-DEFAULT materialization — what an org with no override mounts (`serial · product · status · condition · location · updated`,… */
 export const UNITS_SHEET_COLUMNS: readonly UnitsGridColumn[] =

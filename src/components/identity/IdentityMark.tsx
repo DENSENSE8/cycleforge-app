@@ -41,7 +41,7 @@ interface IdentityMarkProps {
    * `round` (default) — the spine / nav mark: a circle with a hairline ring.
    * `record` — the mark on a record row (To-ship pick / pack, agenda owner):
    * no hairline ring, and the corner + initials voice follow the region's
-   * mode — radius 0 + mono caps on the industrial Floor, the control radius +
+   * mode — the control radius and
    * sans in triage. There is no forced square: the mode owns the corner.
    */
   face?: 'round' | 'record';

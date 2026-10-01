@@ -36,6 +36,8 @@ export interface Location {
 
 interface BinContent {
   id: number;
+  /** Joined `sku_stock.id`, used by the shared SKU_STOCK photo contract. */
+  stock_id?: number | null;
   location_id: number;
   sku: string;
   qty: number;
@@ -51,6 +53,9 @@ interface BinContent {
   col_label?: string;
   barcode?: string;
   product_title?: string;
+  is_provisional?: boolean;
+  cover_photo_id?: number | null;
+  catalog_image_url?: string | null;
 }
 
 interface LocationTransfer {
@@ -929,14 +934,28 @@ export async function getTransfersForSku(sku: string, limit = 25, orgId: OrgId):
 async function getBinContents(locationId: number, orgId?: OrgId): Promise<BinContent[]> {
   // The locations join is on a globally-unique integer PK (safe bare).
   const sql = `SELECT bc.*, l.name AS location_name, l.room, l.row_label, l.col_label, l.barcode,
+            ss.id AS stock_id,
             COALESCE(
               NULLIF(ss.display_name_override, ''),
               NULLIF(ss.product_title, '')
             ) AS product_title,
-            ss.display_name_override
+            COALESCE(ss.is_provisional, false) AS is_provisional,
+            ss.display_name_override,
+            ph.cover_photo_id,
+            NULLIF(sc.image_url, '') AS catalog_image_url
      FROM bin_contents bc
      JOIN locations l ON l.id = bc.location_id
      LEFT JOIN sku_stock ss ON ss.sku = bc.sku${orgId ? ' AND ss.organization_id = bc.organization_id' : ''}
+     LEFT JOIN sku_catalog sc ON sc.sku = bc.sku${orgId ? ' AND sc.organization_id = bc.organization_id' : ''}
+     LEFT JOIN LATERAL (
+       SELECT pel.photo_id AS cover_photo_id
+         FROM photo_entity_links pel
+        WHERE pel.entity_type = 'SKU_STOCK'
+          AND pel.entity_id = ss.id${orgId ? ' AND pel.organization_id = bc.organization_id' : ''}
+          AND pel.link_role = 'primary'
+        ORDER BY pel.sort_order ASC NULLS LAST, pel.photo_id ASC
+        LIMIT 1
+     ) ph ON true
      WHERE bc.location_id = $1${orgId ? ' AND bc.organization_id = $2' : ''}
      ORDER BY bc.sku`;
   const params = orgId ? [locationId, orgId] : [locationId];
@@ -948,6 +967,9 @@ async function getBinContents(locationId: number, orgId?: OrgId): Promise<BinCon
 
 /** Get all bin locations for a specific SKU (where is this product stored?). */
 export async function getBinLocationsBySku(sku: string, orgId?: OrgId): Promise<BinContent[]> {
+  // A zero-count row still names a PLACE when the SKU is a floor placeholder
+  // (`Item at <face>` pairs an empty location for photos) — same placement
+  // rule as the stock loader's `placed_bins`.
   const sql = `SELECT bc.*, l.name AS location_name, l.room, l.row_label, l.col_label, l.barcode,
             COALESCE(
               NULLIF(ss.display_name_override, ''),
@@ -957,7 +979,7 @@ export async function getBinLocationsBySku(sku: string, orgId?: OrgId): Promise<
      FROM bin_contents bc
      JOIN locations l ON l.id = bc.location_id
      LEFT JOIN sku_stock ss ON ss.sku = bc.sku${orgId ? ' AND ss.organization_id = bc.organization_id' : ''}
-     WHERE bc.sku = $1 AND bc.qty > 0${orgId ? ' AND bc.organization_id = $2' : ''}
+     WHERE bc.sku = $1 AND (bc.qty > 0 OR COALESCE(ss.is_provisional, false))${orgId ? ' AND bc.organization_id = $2' : ''}
      ORDER BY l.room, l.row_label, l.col_label`;
   const params = orgId ? [sku.trim(), orgId] : [sku.trim()];
   const result = orgId

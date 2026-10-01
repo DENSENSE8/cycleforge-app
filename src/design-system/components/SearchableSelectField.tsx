@@ -107,7 +107,17 @@ const TONE_FLOAT: Record<NonNullable<SearchableSelectFieldProps['tone']>, string
 function defaultFilter(opt: SearchableSelectOption, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return opt.label.toLowerCase().includes(q) || (opt.meta?.toLowerCase().includes(q) ?? false);
+  if (opt.label.toLowerCase().includes(q) || (opt.meta?.toLowerCase().includes(q) ?? false)) return true;
+  // A scanner types the RAW code (`C0201200`); the option wears the formatted
+  // face (`C-02-01-2` — trailing `00` dropped). Compare both with separators
+  // stripped, either direction: the scan is a SUPERSET of the face, a typed
+  // prefix a subset. A scan finds its option without a separate scan mode.
+  const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const qs = squash(q);
+  if (!qs) return false;
+  const ls = squash(opt.label);
+  const ms = squash(opt.meta ?? '');
+  return ls.includes(qs) || qs.includes(ls) || ms.includes(qs) || qs.includes(ms);
 }
 
 function groupOptions<T>(options: ReadonlyArray<SearchableSelectOption<T>>) {

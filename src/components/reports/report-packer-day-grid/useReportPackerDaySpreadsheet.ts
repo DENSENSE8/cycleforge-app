@@ -12,7 +12,6 @@ import { resolveReportPackerDaySlotValue } from '@/lib/tables/field-catalog/repo
 import type { PackingReportRow } from '@/lib/packing/packing-report-shared';
 import { reportPackerDayCompoundView } from './report-packer-day-row-view';
 import {
-  reportPackerDayCompoundColumnsFor,
   reportPackerDaySortFactFor,
   type ReportPackerDayGridColumn,
   type ReportPackerDayGridColumnKey,
@@ -21,7 +20,6 @@ import {
   REPORT_PACKER_DAY_GRID_CAPABILITIES,
   REPORT_PACKER_DAY_TABLE_BINDING,
 } from './report-packer-day-table-definition';
-import { useReportPackerDayTableLayout } from './useReportPackerDayTableLayout';
 
 interface UseReportPackerDaySpreadsheetOptions {
   /** One day's packs, newest first; a header click re-orders. */
@@ -46,11 +44,8 @@ export function useReportPackerDaySpreadsheet({
   const [sort, setSort] = useState<ReportPackerDayGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useReportPackerDayTableLayout();
-  const columns = useMemo(
-    () => reportPackerDayCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: ReportPackerDayGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -71,14 +66,12 @@ export function useReportPackerDaySpreadsheet({
     ReportPackerDayGridColumn
   >({
     binding: REPORT_PACKER_DAY_TABLE_BINDING,
-    columns,
-    fields,
+    columns: REPORT_PACKER_DAY_TABLE_BINDING.columns,
     rows,
     // `salId` is the station_activity_logs id — one pack scan, one row, and a
     // stable key across a refetch.
     getRowId: (row) => String(row.salId),
     adapter: reportPackerDayCompoundView,
-    subtitleFieldIds,
     resolve: resolveReportPackerDaySlotValue,
     sortFactFor: reportPackerDaySortFactFor,
     capabilities: REPORT_PACKER_DAY_GRID_CAPABILITIES,

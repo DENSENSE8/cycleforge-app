@@ -21,7 +21,7 @@ function str(value: string | number | null | undefined): string | null {
   return s || null;
 }
 
-/** Compact civil face for the Dates Hash line — no year (slot-table date law). */
+/** Compact civil face for the Dates Hash line — no year (DataTable date law). */
 function civilFace(iso: string | null | undefined): { label: string; dateKey: string | null } | null {
   if (!iso) return null;
   const d = new Date(iso);

@@ -1,8 +1,8 @@
-/** Mode registry — the single source of truth for the four TASK modes, on every platform (web, bundled desktop via generated/tokens.css,… */
+/** Mode registry — the single source of truth for task modes, on every platform (web, bundled desktop via generated/tokens.css, …). */
 
 // ── Contract ────────────────────────────────────────────────────────────────
 
-export type ModeName = 'industrial' | 'triage' | 'counter' | 'assistant';
+export type ModeName = 'triage' | 'counter' | 'assistant';
 
 /** Light-scheme palette of a mode. Plain CSS colours. */
 export interface ModeSurfaces {
@@ -126,26 +126,6 @@ export interface ModeSpec {
   warnText?: string;
   /** Tenant brand colour; overridden per org at the region root. */
   brand?: string;
-  /** Matte grain, as a DEPTH ladder: */
-  grain?: ModeGrain;
-}
-
-/** One grain layer: noise opacity over the surface, and speck frequency (lower = coarser). */
-export interface GrainLayer {
-  opacity: number;
-  frequency: number;
-}
-
-/** Grain per depth, deepest first. */
-export interface ModeGrain {
-  /** Recessed wells — photo slot, empty slots, troughs. Coarsest. No amber text on a well. */
-  well: GrainLayer;
-  /** The ground behind the stage. */
-  canvas: GrainLayer;
-  /** Chrome — tab strip, toolbar, evidence column, group bands. Finest. */
-  bar: GrainLayer;
-  /** Pressed / active ink fills (active tab, pressed segment). */
-  inverse: GrainLayer;
 }
 
 // ── Registry ────────────────────────────────────────────────────────────────
@@ -168,30 +148,6 @@ export const SLATE_SURFACES: ModeSurfaces = {
   frame: '#cbd5e1',
   fact: '#e2e8f0',
   mark: '#0f172a',
-};
-
-/**
- * The warm industrial palette — the phone floor (`/m/*`, scan stations, the
- * hardware mirror). No light-grey text on the floor: `faint` is `muted`.
- */
-export const WARM_SURFACES: ModeSurfaces = {
-  canvas: '#fafafa',
-  bar: '#f8f8f4',
-  panel: '#ffffff',
-  well: '#e6e7e1',
-  hover: '#f4f4ef',
-  ink: '#10110f',
-  muted: '#535650',
-  faint: '#535650',
-  rule: '#cacbc5',
-  edge: '#b7b8b0',
-  control: '#10110f',
-  // The floor is drawn in lines: ink between records, edge seams, ink boxes.
-  divide: '#10110f',
-  seam: '#b7b8b0',
-  frame: '#10110f',
-  fact: '#b7b8b0',
-  mark: '#10110f',
 };
 
 /**
@@ -231,7 +187,7 @@ const WARN_INK = '#9a3412';
 
 /**
  * The pre-mode spacing scale — the values the intent utilities rendered
- * before they became mode-aware; industrial, counter and assistant run it.
+ * before they became mode-aware; counter and assistant run it.
  * A mode diverges by declaring its own {@link ModeSpacing} (triage:
  * {@link TRIAGE_SPACING}), never by a component overriding an intent.
  */
@@ -270,32 +226,7 @@ export const TRIAGE_SPACING: ModeSpacing = {
   row: { gap: '8px', tight: '6px' },
 };
 
-/** Industrial on phones, triage on desktop (owner 2026-09-26, BRIEF §12). */
 export const MODE_REGISTRY = {
-  industrial: {
-    name: 'industrial',
-    label: 'Industrial',
-    hint: 'Phones and scan stations — dense: flush rows, square, 13px, no page padding, 0 ms.',
-    surfaces: WARM_SURFACES,
-    radius: '0',
-    radiusControl: '0',
-    radiusPill: '0',
-    warnText: WARN_INK,
-    // Owner 2026-09-25: a hardware finish that reads as DEPTH — rougher is deeper.
-    grain: {
-      well: { opacity: 0.03, frequency: 0.45 },
-      canvas: { opacity: 0.07, frequency: 0.65 },
-      bar: { opacity: 0.07, frequency: 0.85 },
-      inverse: { opacity: 0.12, frequency: 0.85 },
-    },
-    pagePad: { base: '0', coarse: '0' },
-    hit: { base: '32px', coarse: '48px' },
-    bodyText: { base: '13px', coarse: '13px' },
-    spacing: DESK_SPACING,
-    labelVoice: 'mono',
-    // 150ms is the scan-status spot only; nothing else on the floor moves.
-    motion: { feedback: '150ms' },
-  },
   triage: {
     name: 'triage',
     label: 'Triage',
@@ -355,9 +286,8 @@ export const MODE_NAMES = Object.keys(MODE_REGISTRY) as ModeName[];
 
 /**
  * A LOOK is one job's refinement of the modes — never a fifth mode. The
- * region still requests a mode (`mode`) and still resolves by device
- * (`data-mode`: triage on a desk, industrial on a phone / touch screen), and
- * the look re-declares, PER RESOLVED MODE, only the planes, corners, padding
+ * region still requests a mode (`mode`), and the look re-declares, PER MODE,
+ * only the planes, corners, padding
  * and body size that job needs. Hit targets and label voice stay the mode's.
  * A mode the look does not refine paints as that mode, untouched.
  */
@@ -433,8 +363,6 @@ export const MODE_LOOKS = {
         bodyText: { base: '13px', coarse: '14px' },
         spacing: LABELS_DOCUMENTS_SPACING,
       },
-      // Triage only (owner 2026-09-27): one job — show labels, print them —
-      // so no industrial refinement; the region never resolves industrial.
     },
   },
 } satisfies Record<ModeLookName, ModeLookSpec>;
@@ -522,32 +450,9 @@ function modeSelector(name: ModeName): string {
   return `[data-mode='${name}']`;
 }
 
-/** A look inside one resolved mode: `[data-mode='industrial'][data-look='…']`. */
+/** A look inside one resolved mode: `[data-mode='triage'][data-look='…']`. */
 function lookSelector(name: ModeLookName, mode: ModeName): string {
   return `${modeSelector(mode)}[data-look='${name}']`;
-}
-
-/** The grain layers, deepest first — the order the stylesheet and guard walk. */
-export const GRAIN_DEPTHS = ['well', 'canvas', 'bar', 'inverse'] as const satisfies readonly (keyof ModeGrain)[];
-
-/** Surface utilities each grain depth rides on. */
-const GRAIN_SURFACES: Readonly<Record<keyof ModeGrain, readonly string[]>> = {
-  well: ['bg-mode-well', 'bg-surface-sunken'],
-  canvas: ['bg-mode-canvas', 'bg-surface-canvas'],
-  bar: ['bg-mode-bar'],
-  inverse: ['bg-mode-ink'],
-};
-
-/** One 160px tile of greyscale fractal noise, as a base64 SVG data URI. */
-export function grainImage({ opacity, frequency }: GrainLayer): string {
-  const stretch = `type='linear' slope='3' intercept='-1'`;
-  const svg =
-    `<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'>` +
-    `<filter id='g'><feTurbulence type='fractalNoise' baseFrequency='${frequency}' numOctaves='3' stitchTiles='stitch'/>` +
-    `<feColorMatrix type='matrix' values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 1'/>` +
-    `<feComponentTransfer><feFuncR ${stretch}/><feFuncG ${stretch}/><feFuncB ${stretch}/></feComponentTransfer></filter>` +
-    `<rect width='160' height='160' filter='url(#g)' opacity='${opacity}'/></svg>`;
-  return `url("data:image/svg+xml;base64,${btoa(svg)}")`;
 }
 
 /** The label voice as CSS — consumed by the `mode-label` / `mode-label-case` utilities (tailwind.config.mjs). */
@@ -603,9 +508,6 @@ function modeVarDeclarations(spec: ModeSpec): string[] {
   for (const [name, value] of modeSpacingVars(spec.spacing)) lines.push(`  ${name}: ${pxToRem(value)};`);
   lines.push(...labelVoiceDeclarations(spec.labelVoice, '  '));
   if (spec.brand) lines.push(`  --mode-brand: ${spec.brand};`);
-  // Every region resets the ladder, so a nested ungrained region (assistant
-  // rail) never inherits its parent's grain; the light block sets the values.
-  for (const depth of GRAIN_DEPTHS) lines.push(`  --mode-grain-${depth}: none;`);
   return lines;
 }
 
@@ -621,9 +523,6 @@ function baseDeclarations(spec: ModeSpec): string[] {
 function lightModeVarDeclarations(spec: ModeSpec): string[] {
   const lines = SURFACE_KEYS.map((key) => `  --mode-${key}: ${spec.surfaces[key]};`);
   if (spec.warnText) lines.push(`  --mode-warn-text: ${spec.warnText};`);
-  if (spec.grain) {
-    for (const depth of GRAIN_DEPTHS) lines.push(`  --mode-grain-${depth}: ${grainImage(spec.grain[depth])};`);
-  }
   return lines;
 }
 
@@ -635,11 +534,6 @@ function lightDeclarations(spec: ModeSpec): string[] {
   lines.push(`  --mode-bar: ${spec.surfaces.bar};`, `  --mode-control: ${spec.surfaces.control};`);
   for (const key of LINE_KEYS) lines.push(`  --mode-${key}: ${spec.surfaces[key]};`);
   if (spec.warnText) lines.push(`  --mode-warn-text: ${spec.warnText};`);
-  // Light scheme only: black noise is invisible on dark planes, and the
-  // contrast guard measures the light palette.
-  if (spec.grain) {
-    for (const depth of GRAIN_DEPTHS) lines.push(`  --mode-grain-${depth}: ${grainImage(spec.grain[depth])};`);
-  }
   return lines;
 }
 
@@ -683,22 +577,12 @@ export function modeRegistryCssText(): string {
   // Outside every region (sign-in, app shell chrome, any route no layout wraps)
   // the page renders as triage: every `--mode-*` var resolves, so no
   // `bg-mode-*` / `text-mode-*` / `border-mode-*` utility paints nothing.
-  // Corners + label voice still follow the device: square mono labels on a touch
-  // screen (owner 2026-09-26); hit / pad / body text follow the pointer.
+  // Hit targets, padding and body text still follow the pointer.
   const desk = MODE_REGISTRY.triage;
-  const floor = MODE_REGISTRY.industrial;
   blocks.push(
     `:root {\n${modeVarDeclarations(desk).join('\n')}\n}`,
     `html:not([data-color-scheme='dark']) {\n${lightModeVarDeclarations(desk).join('\n')}\n}`,
-    `@media (pointer: coarse) {\n  :root {\n    --mode-radius: ${floor.radius};\n    --mode-radius-control: ${floor.radiusControl};\n    --mode-radius-pill: ${floor.radiusPill};\n${labelVoiceDeclarations(floor.labelVoice, '    ').join('\n')}\n${coarseDeclarations(desk).join('\n')}\n  }\n}`,
-  );
-  // `:where()` keeps these at zero specificity, so a component's own
-  // background-image (hatched spine, gradient) always wins over the grain.
-  blocks.push(
-    ...GRAIN_DEPTHS.map(
-      (depth) =>
-        `:where(${GRAIN_SURFACES[depth].map((cls) => `.${cls}`).join(', ')}) {\n  background-image: var(--mode-grain-${depth}, none);\n}`,
-    ),
+    `@media (pointer: coarse) {\n  :root {\n${coarseDeclarations(desk).join('\n')}\n  }\n}`,
   );
   blocks.push(
     `@media (prefers-reduced-motion: reduce) {\n  :root,\n  [data-mode] {\n    --mode-motion-feedback: 0ms;\n    --mode-motion-press: 0ms;\n    --mode-motion-pulse: 0s;\n  }\n}`,

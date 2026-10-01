@@ -10,7 +10,7 @@ import {
   type UnitsGridColumn,
 } from './units-grid-layout';
 
-/** One serialized unit — CSS-grid columns matching the MOUNTED model (a `SlotLayout` materialization since the wave 1.4 hand-model kill;… */
+/** One serialized unit — CSS-grid columns matching the MOUNTED model (a `DataTableColumnLayout` materialization since the wave 1.4 hand-model kill). */
 export const UnitsGridRow = memo(function UnitsGridRow({
   row,
   onOpen,

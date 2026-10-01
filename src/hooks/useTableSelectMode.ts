@@ -6,7 +6,7 @@ import {
   emitSelectionTotal,
   onToggleAll,
 } from '@/lib/selection/table-selection';
-import { slotTableSelectableIds } from '@/lib/tables/slot-table-visible';
+import { dataTableSelectableIds } from '@/lib/tables/data-table-visible-rows';
 import {
   clearSelection,
   extendTo,
@@ -67,7 +67,7 @@ export function useTableSelectMode<T>({
    */
   const anchorStateFor = useCallback(
     (selected: ReadonlySet<number>): SelectionAnchorState => ({
-      ids: [...slotTableSelectableIds(
+      ids: [...dataTableSelectableIds(
         scope,
         rowsRef.current.map((r) => getIdRef.current(r)),
       )],
@@ -144,7 +144,7 @@ export function useTableSelectMode<T>({
   useEffect(() => {
     return onToggleAll(scope, (mode) => {
       if (mode !== 'all') anchorRef.current = null;
-      const ids = slotTableSelectableIds(
+      const ids = dataTableSelectableIds(
         scope,
         rowsRef.current.map((r) => getIdRef.current(r)),
       );
@@ -156,7 +156,7 @@ export function useTableSelectMode<T>({
     emitSelectionTotal(
       scope,
       selectMode
-        ? slotTableSelectableIds(
+        ? dataTableSelectableIds(
             scope,
             rowsRef.current.map((r) => getIdRef.current(r)),
           ).length

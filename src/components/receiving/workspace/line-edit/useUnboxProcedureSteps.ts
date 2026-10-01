@@ -11,7 +11,6 @@ import {
 } from '../derive-capture-step-states';
 import {
   resolveActiveStep,
-  resolveNextStepAfter,
   shouldReleaseFocusAfterEvidence,
 } from '@/lib/receiving/procedure-pointer';
 import {
@@ -26,14 +25,9 @@ import { refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
 import { parsePhotoAspectList, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { isReturnIntake, isIntakeClassified } from '@/lib/receiving/triage-intake-kind';
-import {
-  resolveContextFromFlags,
-  UNBOX_FLOW_LABEL,
-  type UnboxFlowId,
-} from '@/lib/stations/procedure';
+import { resolveContextFromFlags } from '@/lib/stations/procedure';
 import {
   parseUnboxFlowCaptureOrder,
-  serializeUnboxFlowCaptureOrder,
   UNBOX_FLOW_CAPTURE_ORDER_SETTING_KEY,
 } from '@/lib/stations/unbox-flow-capture-order';
 import { conditionLabel } from '@/lib/conditions';
@@ -45,8 +39,6 @@ import {
 } from '@/utils/date';
 import type { ProcedureStepRow } from '@/design-system/components/procedure';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { resolveStepRailLeaf } from './steps/rail';
-import type { UnboxSideTab } from './unbox-side-tabs';
 
 /** A settled step's completion instant, for the deck's history rows. */
 function formatStepAt(at: string | null): string | undefined {
@@ -145,32 +137,15 @@ function stepSummary(
 interface UnboxProcedureStepsResult {
   /** Every step, in vocabulary order, with state + summary + time. */
   steps: ProcedureStepRow[];
-  /** Named Unbox flow for this carton (Found · Unfound · Return). */
-  flow: UnboxFlowId;
-  /** Operator-voiced flow label for checklist / receipt chrome. */
-  flowLabel: string;
   /** The step the operator is on. `null` ⇒ every step settled. */
   activeKey: string | null;
-  /** The Displays leaf the cockpit rail auto-shows for the active step — the KNOW half of the DO/KNOW split (`display/scan-cockpit.md`). */
-  railLeaf: UnboxSideTab | null;
-  /** What a skip would advance TO — the skip target, not the next card. */
-  nextStep: ProcedureStepRow | null;
   /** The active card's NEIGHBOURS in vocabulary order — what the pager pages to. */
   prevStep: ProcedureStepRow | null;
   nextNeighbour: ProcedureStepRow | null;
-  /** Declared photo aspect per step key — never inferred from the key. */
-  aspectByKey: Record<string, PhotoAspect | undefined>;
   /** Evidence has arrived, so a zero means "nothing shot", not "not loaded". */
   settled: boolean;
-  /** Row count for a skeleton at the real geometry. */
-  stepCount: number;
   /** Jump the pointer to a settled step (the reopen affordance). */
   focusStep: (key: string | null) => void;
-  /**
-   * Persist capture-step order for the active named flow as org SOP
-   * (`receiving.unboxFlowCaptureOrder`). Deck + checklist both re-derive.
-   */
-  reorderCaptureSteps: (orderedKeys: string[]) => void;
 }
 
 export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureStepsResult {
@@ -197,9 +172,9 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     [requiredAspectsRaw],
   );
 
-  // Org SOP capture order (dogfood right-rail DnD). One JSON string in the
-  // settings registry — both surfaces read it through the resolver override.
-  const { value: captureOrderRaw, set: setCaptureOrder } = useSetting<string>(
+  // Org SOP capture order. One JSON string in the settings registry; every
+  // procedure surface derives from the same override.
+  const { value: captureOrderRaw } = useSetting<string>(
     'receiving',
     UNBOX_FLOW_CAPTURE_ORDER_SETTING_KEY,
   );
@@ -208,9 +183,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     [captureOrderRaw],
   );
 
-  // Shared across surfaces, not per-component: the checklist is the map and
-  // clicking a row there must move the CENTRE's card. Two `useState` pointers
-  // would render two answers on one screen.
+  // One focused-step pointer is shared by every consumer of this hook.
   const cartonId = row.receiving_id ?? null;
   const focusedKey = useFocusedStep(cartonId);
   // Snapshot done-ness at the moment focus is set — see release effect below.
@@ -243,8 +216,6 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       },
     };
   }, [row, captureOrderMap]);
-  const flow = vocabulary.flow;
-  const flowLabel = UNBOX_FLOW_LABEL[flow];
 
   // Aspect + stage per step, straight off the declaration — never inferred from
   // the key. Both the capture bodies and the evidence-time fold below read this,
@@ -411,10 +382,6 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   }, [focusedKey, pointerSteps, cartonId]);
 
   const activeKey = resolveActiveStep(pointerSteps, { focusedKey });
-  const skipTargetKey = activeKey ? resolveNextStepAfter(pointerSteps, activeKey) : null;
-  const nextStep = skipTargetKey
-    ? (steps.find((step) => step.key === skipTargetKey) ?? null)
-    : null;
 
   // Positional neighbours, for the under-dock step context (bottom-left).
   const activeIndex = activeKey ? steps.findIndex((step) => step.key === activeKey) : -1;
@@ -422,30 +389,13 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
   const nextNeighbour =
     activeIndex >= 0 && activeIndex < steps.length - 1 ? steps[activeIndex + 1] : null;
 
-  const reorderCaptureSteps = useCallback(
-    (orderedKeys: string[]) => {
-      const next = serializeUnboxFlowCaptureOrder({
-        ...captureOrderMap,
-        [flow]: orderedKeys,
-      });
-      void setCaptureOrder(next, 'org');
-    },
-    [captureOrderMap, flow, setCaptureOrder],
-  );
 
   return {
     steps,
-    flow,
-    flowLabel,
     activeKey,
-    railLeaf: resolveStepRailLeaf(activeKey),
-    nextStep,
     prevStep,
     nextNeighbour,
-    aspectByKey,
     settled: counts.settled,
-    stepCount: captureStepVocabulary(input.vocabulary).length,
     focusStep,
-    reorderCaptureSteps,
   };
 }

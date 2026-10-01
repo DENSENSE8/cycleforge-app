@@ -2,9 +2,7 @@
 
 /**
  * Live sync health in the app top bar — "Live" / "Sync paused" — on routes
- * whose live layer the shell mounts (`realtime-registry.ts`). One component,
- * two looks: the region's mode draws it (triage: pill, sentence case;
- * industrial: square tile, mono caps — `rounded-mode-pill` + `.mode-label`).
+ * whose live layer the shell mounts (`realtime-registry.ts`).
  */
 
 import { useState } from 'react';

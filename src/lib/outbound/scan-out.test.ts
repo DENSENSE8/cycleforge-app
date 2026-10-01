@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { AUDIT_ACTION } from '@/lib/audit-logs';
 import {
   blockedOrderStatus,
+  scanOutBlockedMessage,
+  scanOutBlockReason,
+  scanOutKnownShipment,
   scanOutLabel,
   type ScanOutContext,
   type ScanOutDeps,
@@ -32,6 +35,7 @@ function context(over: Partial<ScanOutContext['carton']> = {}, carrier: Partial<
     },
     latestStatusCategory: null,
     isTerminal: false,
+    isPacked: true,
     ...carrier,
   };
 }
@@ -99,7 +103,25 @@ test('unresolvable label is unmatched and writes nothing', async () => {
   assertNoWrites(cap);
 });
 
-test('a cancelled order is refused before the delivered check, with no departure', async () => {
+test('bulk known-shipment scan-out never re-resolves a legacy tracking value', async () => {
+  const { deps, cap } = fakes({
+    shipmentId: null,
+    ctx: context({ shipmentId: 88 }),
+  });
+  let resolveCalls = 0;
+  deps.resolveShipment = async () => {
+    resolveCalls += 1;
+    return 999;
+  };
+
+  const out = await scanOutKnownShipment({ ...bulk, shipmentId: 88 }, deps);
+
+  assert.equal(out.kind, 'confirmed');
+  assert.equal(resolveCalls, 0);
+  assert.equal(cap.created[0]?.shipmentId, 88);
+});
+
+test('a cancelled order is refused before scan-out, regardless of carrier status', async () => {
   const { deps, cap } = fakes({
     ctx: context({ orderStatus: ' Canceled ' }, { latestStatusCategory: 'DELIVERED' }),
   });
@@ -109,21 +131,29 @@ test('a cancelled order is refused before the delivered check, with no departure
   assertNoWrites(cap);
 });
 
-test('carrier-delivered (or terminal non-return) packages are not scanned out', async () => {
+test('an unpacked order is refused before duplicate lookup and writes nothing', async () => {
+  const { deps, cap } = fakes({
+    ctx: context({}, { isPacked: false }),
+    existing: { createdAt: '2026-09-20 10:00:00' },
+  });
+  const out = await scanOutLabel(bulk, deps);
+  assert.equal(out.kind, 'blocked');
+  assert.equal(out.kind === 'blocked' && out.blockReason, 'not_packed');
+  assertNoWrites(cap);
+});
+
+test('carrier-delivered and terminal packages still scan out', async () => {
   for (const carrier of [
     { latestStatusCategory: 'DELIVERED' },
     { latestStatusCategory: 'EXCEPTION', isTerminal: true },
   ]) {
     const { deps, cap } = fakes({ ctx: context({}, carrier) });
-    assert.equal((await scanOutLabel(bulk, deps)).kind, 'already-delivered');
-    assertNoWrites(cap);
+    assert.equal((await scanOutLabel(bulk, deps)).kind, 'confirmed');
+    assert.equal(cap.created.length, 1);
   }
-  const { deps, cap } = fakes({ ctx: context({}, { latestStatusCategory: 'RETURNED', isTerminal: true }) });
-  assert.equal((await scanOutLabel(bulk, deps)).kind, 'confirmed');
-  assert.equal(cap.created.length, 1);
 });
 
-test('a package already scanned out is a duplicate: no second event or audit', async () => {
+test('a package already fulfilled is a duplicate: no second event or audit', async () => {
   const { deps, cap } = fakes({ existing: { createdAt: '2026-09-20 10:00:00' } });
   const out = await scanOutLabel(bulk, deps);
   assert.deepEqual(out.kind === 'duplicate' && out.shipConfirmedAt, '2026-09-20 10:00:00');
@@ -175,9 +205,40 @@ test('desk selection threads the request ctx into the audit and flags the event;
   assert.equal(cap.audits[0][2].source, 'api.shipped.scan-out');
 });
 
-test('blockedOrderStatus only names hold states', () => {
+test('phone scan-out records resolver correlation and the canonical subject', async () => {
+  const { deps, cap } = fakes();
+  const out = await scanOutLabel({
+    ...bulk,
+    origin: 'phone',
+    actorStaffId: 12,
+    correlation: {
+      clientEventId: '2e0c2964-a785-49b9-ac54-2a01cbdd1f0b',
+      mobileScanEventId: 44,
+      surface: '/m/id/scan-out/A-1',
+    },
+  }, deps);
+  assert.equal(out.kind, 'confirmed');
+  assert.deepEqual(cap.created[0].metadata, {
+    source: 'shipped-scan-out',
+    origin: 'phone',
+    surface: '/m/id/scan-out/A-1',
+    client_event_id: '2e0c2964-a785-49b9-ac54-2a01cbdd1f0b',
+    mobile_scan_event_id: 44,
+    order_row_id: 501,
+    order_id: 'A-1',
+    subject_entity_type: 'order',
+    subject_id: '501',
+    subject_identifier: 'A-1',
+  });
+});
+
+test('scan-out preconditions name cancellation and missing pack records', () => {
   assert.equal(blockedOrderStatus('CANCELLED'), 'cancelled');
   assert.equal(blockedOrderStatus('packed'), null);
   assert.equal(blockedOrderStatus(null), null);
   assert.equal(blockedOrderStatus('constructor'), null);
+  assert.equal(scanOutBlockReason('packed', false), 'not_packed');
+  assert.equal(scanOutBlockReason(' Canceled ', true), 'canceled');
+  assert.equal(scanOutBlockReason('packed', true), null);
+  assert.equal(scanOutBlockedMessage('not_packed'), 'Order is not packed — pack it before scan-out.');
 });

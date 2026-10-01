@@ -179,7 +179,7 @@ export const motionRole = {
    * `pane`: the split view's record pane arriving beside the list, on the
    * house utilitarian spring (48px from the right + fade). The record swap
    * inside either view (J/K, a clicked row) is {@link swap.focus}, not a new
-   * job. Industrial regions pin both to 0 ms at the host.
+   * job. Reduced motion pins both to 0 ms at the host.
    */
   record: {
     pane: {

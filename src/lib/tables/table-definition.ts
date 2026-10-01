@@ -37,6 +37,8 @@ const TABLE_ID_VALUES = Object.keys(TABLE_COLUMNS) as [TableId, ...TableId[]];
 const TABLE_ENTITY_FAMILIES = [
   'receiving',
   'orders',
+  /** Repair service ticket — warehouse queue and bench record. */
+  'repair',
   /** To-Ship CSV import staging — parsed rows + triage state, not live orders. */
   'orders-import',
   'catalog',
@@ -193,7 +195,7 @@ export const tableDefinitionColumnSchema = z.strictObject({
   tier: z.enum(['core', 'optional']).optional(),
   /** Header is click-to-sort. The runtime vocabulary stays the family's code. */
   sortable: z.boolean().optional(),
-  // ── Materialized slot-track metadata (`materializeTracks`) ──────────────── A definition whose canonical columns are a SlotLayout…
+  // ── Materialized data-track metadata (`materializeTracks`) ──────────────── A definition whose canonical columns come from a DataTableColumnLayout.
   /** Catalog field bound into this slot track (`status:N`); key stays the slot. */
   fieldId: z.string().min(1).optional(),
   /** Glyph key for `stage_event` slot cells, copied from the field. */
@@ -213,7 +215,6 @@ const tableDefinitionCapabilitiesSchema = z.strictObject({
   rowTriageFlags: z.boolean(),
   multiSelect: z.boolean(),
   inCellEdit: z.boolean(),
-  fieldsMenu: z.boolean(),
   dayBands: z.boolean(),
 });
 

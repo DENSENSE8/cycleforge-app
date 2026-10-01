@@ -20,7 +20,7 @@ import {
   PART_COMPATIBILITY_TABLE_LAYOUT_ID,
 } from './part-compatibility';
 import { resolvePartCompatibilitySlotValue } from './part-compatibility-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<PartCompatibilityEdgeRow> = {}): PartCompatibilityEdgeRow {
   return {
@@ -91,10 +91,7 @@ describe('part-compatibility catalog', () => {
   });
 
   it('product default parses against the catalog — the four scannable tracks', () => {
-    const parsed = parseSlotLayout(
-      PART_COMPATIBILITY_PRODUCT_LAYOUT,
-      PART_COMPATIBILITY_FIELD_CATALOG,
-    );
+    const parsed = PART_COMPATIBILITY_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'part-compatibility.sku');
     assert.deepEqual(parsed.statusBindings, [
@@ -168,7 +165,7 @@ describe('the mounted part-compatibility compound model', () => {
     const label = (key: string) =>
       PART_COMPATIBILITY_COMPOUND_COLUMNS.find((c) => c.key === key)?.gridLabel;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
+    // 2026-09-15 (`data-table-family.ts`); this desk used to print
     // "SKU", which is now the Fields-picker word and the cell's hover word.
     assert.equal(label('fulfillment'), 'Id');
     assert.equal(label('item'), 'Part');

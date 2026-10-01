@@ -10,7 +10,7 @@ import {
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { BINS_FIELD_CATALOG, BINS_PRODUCT_LAYOUT } from './bins';
 import { resolveBinsSlotValue } from './bins-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<BinsOverviewRow> = {}): BinsOverviewRow {
   return {
@@ -47,7 +47,7 @@ describe('bins catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; the full set bound)', () => {
-    const parsed = parseSlotLayout(BINS_PRODUCT_LAYOUT, BINS_FIELD_CATALOG);
+    const parsed = BINS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'bins.barcode');
     assert.equal(parsed.statusBindings.length, 6);

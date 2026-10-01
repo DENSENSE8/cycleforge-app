@@ -7,7 +7,6 @@ import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
 import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
-import { useWarrantyTableLayout } from '@/components/warranty/grid/useWarrantyTableLayout';
 import {
   WarrantyGridRow,
   warrantyClaimItemLabel,
@@ -15,7 +14,6 @@ import {
 import {
   defaultDirForWarrantyColumn,
   isWarrantyColumnSortable,
-  warrantySheetColumnsFor,
   warrantySortFactFor,
   type WarrantyGridColumn,
   type WarrantyGridColumnKey,
@@ -72,11 +70,7 @@ export function WarrantyClaimsTable() {
   // ▦ portals into Band-1 controls (find lives in Support sidebar — Units recipe).
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // The COLUMNS are the effective slot layout's materialization (staff ?? org
-  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
-  // keys; each resolves to its bound field's fact through `warrantySortFactFor`.
-  const { effectiveLayout: warrantyLayout, fields: warrantyFields } = useWarrantyTableLayout();
-  const columns = useMemo(() => warrantySheetColumnsFor(warrantyLayout), [warrantyLayout]);
+  const columns = WARRANTY_TABLE_BINDING.columns;
   const sortFactByKey = useMemo(
     () => new Map(columns.map((c) => [c.key as string, warrantySortFactFor(c)])),
     [columns],
@@ -140,7 +134,6 @@ export function WarrantyClaimsTable() {
         <DataTable<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
           binding={WARRANTY_TABLE_BINDING}
           columns={columns}
-          fields={warrantyFields}
           orderGroupsByDate={orderGroupsByDate}
           rows={claims}
           getRowId={(r) => String(r.id)}

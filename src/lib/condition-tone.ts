@@ -20,7 +20,7 @@ type ConditionGradeTone = {
   /** Solid dot fill for a status-token chip (`bg-*`), matching the active pill hue. */
   dotClass: string;
   /**
-   * Solid chip — fill + ink, ≥ 4.5:1 (the industrial condition chip, owner
+   * Solid chip — fill + ink, ≥ 4.5:1 (the record condition chip, owner
    * 2026-09-25). The fill is the grade's text hue, a step darker where white
    * on it would fail (teal / emerald -700).
    */
@@ -148,7 +148,8 @@ export function conditionGradeStatusChip(
 
 /**
  * Marketplace / order-queue condition string tone (NEW / USED / `--` — not only grade codes).
- * NEW / BRAND_NEW warns; PARTS is brown (orange-900); empty dash + everything else muted for scan.
+ * NEW / BRAND_NEW uses a high-chroma blue identity cue; PARTS is brown
+ * (orange-900); empty dash + everything else stays quiet for scanning.
  */
 export function orderRowConditionTone(condition: string | null | undefined): string {
   const normalized = String(condition || '')
@@ -158,7 +159,7 @@ export function orderRowConditionTone(condition: string | null | undefined): str
   if (!normalized || normalized === 'N/A' || normalized === '--' || normalized === '—' || normalized === '---') { // ds-allow-na: condition empty-vocab reader
     return 'text-text-muted';
   }
-  if (normalized === 'NEW' || normalized === 'BRAND_NEW') return 'text-text-warning';
+  if (normalized === 'NEW' || normalized === 'BRAND_NEW') return 'text-blue-600';
   if (normalized === 'PARTS') return 'text-orange-900';
   return 'text-text-muted';
 }

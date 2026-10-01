@@ -11,7 +11,8 @@ import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombob
 import { EVIDENCE_CONTROL_CLASS } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { useDebounce } from '@/hooks';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
@@ -35,6 +36,8 @@ export function SkuExceptionPairSection({
   const [chosen, setChosen] = useState<SkuCatalogItem | null>(null);
   const merge = useResolvePairsException();
   const busy = merge.isPending;
+  // The phone reads Pair at the 44px touch rung.
+  const { isMobile } = useUIModeOptional();
 
   // Seeded with the typed name: the likeliest real SKU is whatever the catalog
   // already calls the thing the operator described.
@@ -68,36 +71,48 @@ export function SkuExceptionPairSection({
       testId="sku-exception-pair"
       action={
         chosen ? (
-          <Button variant="ink" size="sm" loading={busy} onClick={confirm} data-testid="sku-exception-pair-confirm">
+          <Button variant="ink" size={isMobile ? 'lg' : 'sm'} loading={busy} onClick={confirm} data-testid="sku-exception-pair-confirm">
             Pair
           </Button>
         ) : undefined
       }
     >
       <div className="flex flex-col gap-2 px-4 pb-3 pt-1">
-        <IntakeCombobox
-          triggerId={`${fieldId}-pair`}
-          className={cn(EVIDENCE_CONTROL_CLASS, 'w-full')}
-          contentClassName="overflow-hidden rounded-mode"
-          value={chosen?.sku ?? null}
-          onChange={(value) => setChosen(hits.find((hit) => hit.sku === value) ?? null)}
-          options={hits.map((hit) => ({
-            value: hit.sku,
-            label: hit.sku,
-            mono: true,
-            meta: hit.product_title || undefined,
-            imageUrl: hit.image_url,
-          }))}
-          query={query}
-          onQueryChange={setQuery}
-          loading={search.isFetching}
-          disabled={busy}
-          placeholder="Find the real Zoho item…"
-          searchPlaceholder="Search Zoho by SKU or title…"
-          emptyMessage={search.isFetching ? 'Searching…' : 'Nothing in Zoho matches.'}
-          ariaLabel="Zoho item to pair this SKU into"
-          testId="sku-exception-pair-search"
-        />
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={cn(RECORD_ID_CLASS, 'shrink-0 text-mode-ink')}
+            data-testid="sku-exception-pair-current"
+            title="Current SKU"
+          >
+            {item.sku}
+          </span>
+          <span className="shrink-0 text-role-caption text-mode-muted" aria-hidden>
+            →
+          </span>
+          <IntakeCombobox
+            triggerId={`${fieldId}-pair`}
+            className={cn(EVIDENCE_CONTROL_CLASS, 'min-w-0 flex-1')}
+            contentClassName="overflow-hidden rounded-mode"
+            value={chosen?.sku ?? null}
+            onChange={(value) => setChosen(hits.find((hit) => hit.sku === value) ?? null)}
+            options={hits.map((hit) => ({
+              value: hit.sku,
+              label: hit.sku,
+              mono: true,
+              meta: hit.product_title || undefined,
+              imageUrl: hit.image_url,
+            }))}
+            query={query}
+            onQueryChange={setQuery}
+            loading={search.isFetching}
+            disabled={busy}
+            placeholder="Find the real Zoho item…"
+            searchPlaceholder="Search Zoho by SKU or title…"
+            emptyMessage={search.isFetching ? 'Searching…' : 'Nothing in Zoho matches.'}
+            ariaLabel="Zoho item to pair this SKU into"
+            testId="sku-exception-pair-search"
+          />
+        </div>
         {chosen ? (
           <p className="text-role-data text-mode-ink" data-testid="sku-exception-pair-preview">
             {units} become{item.stock === 1 ? 's' : ''}{' '}

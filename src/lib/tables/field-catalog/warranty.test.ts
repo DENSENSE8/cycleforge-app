@@ -10,7 +10,7 @@ import {
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
 import { WARRANTY_FIELD_CATALOG, WARRANTY_PRODUCT_LAYOUT } from './warranty';
 import { resolveWarrantySlotValue, warrantyClockLabel } from './warranty-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function claim(overrides: Partial<WarrantyClaimListRow> = {}): WarrantyClaimListRow {
   return {
@@ -50,14 +50,14 @@ describe('warranty catalog', () => {
   });
 
   it('the identity fact is bound NOWHERE else — the write gate counts it as a binding', () => {
-    const parsed = parseSlotLayout(WARRANTY_PRODUCT_LAYOUT, WARRANTY_FIELD_CATALOG);
+    const parsed = WARRANTY_PRODUCT_LAYOUT;
     assert.equal(parsed.identityFieldId, 'warranty.claim');
     assert.ok(!parsed.statusBindings.some((b) => b.fieldId === 'warranty.claim'));
     assert.ok(!parsed.subtitleBindings.some((b) => b.fieldId === 'warranty.claim'));
   });
 
   it('product default parses against the catalog (sheet morph; the core view bound)', () => {
-    const parsed = parseSlotLayout(WARRANTY_PRODUCT_LAYOUT, WARRANTY_FIELD_CATALOG);
+    const parsed = WARRANTY_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.deepEqual(parsed.statusBindings, [
       { fieldId: 'warranty.customer' },

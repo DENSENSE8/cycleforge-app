@@ -1,6 +1,6 @@
 'use client';
 
-/** Slot-table leading-edge rail — reusable across every PRODUCT_TABLES family. */
+/** DataTable leading-edge rail — reusable across every PRODUCT_TABLES family. */
 
 import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from '@/design-system/motion';
 import { motionDuration } from '@/design-system/foundations/motion-presets';

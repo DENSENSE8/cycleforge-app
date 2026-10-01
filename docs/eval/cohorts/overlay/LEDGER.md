@@ -1,6 +1,6 @@
 # Overlay cohort — retired as a display eval
 
-Display SoT is **slot-table** (`pnpm run eval:cohort slot-table`).
+Display contracts live in the canonical DataTable and design-system pins.
 
 The idle↔overlay *shell* contract still lives in
 `src/lib/station/scan-station-overlay-cohort.ts` for `eval:station <id>`

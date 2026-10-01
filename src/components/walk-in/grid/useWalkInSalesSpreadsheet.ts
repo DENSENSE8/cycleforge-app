@@ -13,13 +13,11 @@ import { walkInSaleCompoundView } from '@/lib/walk-in/walk-in-sales-row-adapter'
 import type { SaleRow } from '@/lib/walk-in/transactions';
 import { WALKINSALES_GRID_CAPABILITIES } from './walk-in-sales-grid-descriptor';
 import {
-  walkInSalesCompoundColumnsFor,
   walkInSalesSortFactFor,
   type WalkInSalesGridColumn,
   type WalkInSalesGridColumnKey,
 } from './walk-in-sales-grid-layout';
 import { WALKINSALES_TABLE_BINDING } from './walk-in-sales-table-definition';
-import { useWalkInSalesTableLayout } from './useWalkInSalesTableLayout';
 
 interface UseWalkInSalesSpreadsheetOptions {
   rows: readonly SaleRow[];
@@ -49,11 +47,8 @@ export function useWalkInSalesSpreadsheet({
   const [sort, setSort] = useState<WalkInSalesGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useWalkInSalesTableLayout();
-  const columns = useMemo(
-    () => walkInSalesCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback((key: WalkInSalesGridColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
@@ -73,12 +68,10 @@ export function useWalkInSalesSpreadsheet({
 
   return useCompoundSpreadsheet<SaleRow, WalkInSalesGridColumnKey, WalkInSalesGridColumn>({
     binding: WALKINSALES_TABLE_BINDING,
-    columns,
-    fields,
+    columns: WALKINSALES_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => row.id,
     adapter: walkInSaleCompoundView,
-    subtitleFieldIds,
     resolve: resolveWalkInSalesSlotValue,
     sortFactFor: walkInSalesSortFactFor,
     capabilities: WALKINSALES_GRID_CAPABILITIES,

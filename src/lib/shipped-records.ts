@@ -61,6 +61,15 @@ export function isShippedDeskRow(row: {
   return ['ACCEPTED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'RETURNED'].includes(category)
     || (row.is_terminal === true && category !== 'EXCEPTION');
 }
+
+/** Timestamp that places a row on the Shipped desk; PACK time is fallback only. */
+export function shippedRecordTimestamp(row: {
+  ship_confirmed_at?: string | null;
+  effShipTime?: string | null;
+  created_at?: string | null;
+}): string {
+  return String(row.ship_confirmed_at || row.effShipTime || row.created_at || '');
+}
 /** Collapse duplicate scans of the SAME package, while keeping a multi-package order as one row PER package (they ship at different times). */
 export function dedupeShippedRecords(records: PackerRecord[]): PackerRecord[] {
   const seen = new Map<string, PackerRecord>();

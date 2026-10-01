@@ -1,15 +1,16 @@
 /**
  * Un-pack — the inverse of the pack writers (POST /api/packerlogs,
  * /api/packing-logs/update), run inside the caller's transaction.
- *
  * The PACK activity rows and the packer_log are removed, not flagged: some
  * fifty readers key "packed" off `station_activity_logs` PACK rows and
  * `packer_logs`, and a void flag each of them had to learn is a flag one of
- * them would miss. The record of the pack survives where evidence lives —
- * its PACK_COMPLETED audit row keeps its (now historical) activity id, and
- * the caller appends a `pack.reverse` audit row carrying the snapshot this
- * returns (migration 2026-09-28z made that audit pointer a plain column, so
- * the delete no longer trips the append-only guard).
+ * them would miss. Removing the final completed ORDERS pack also removes its
+ * SHIP_CONFIRM: an unpacked carton cannot retain a scanned-out fact.
+ *
+ * The record of both operations survives where evidence lives — the original
+ * audit rows keep their now-historical activity ids, and the caller appends a
+ * `pack.reverse` audit row carrying every removed activity (migration
+ * 2026-09-28z made those audit pointers plain columns).
  *
  * What the pack moved is moved back:
  * - units the pack mirrored to PACKED (`sync-legacy-pack`, whose PACKED event
@@ -123,17 +124,37 @@ export async function reversePack(
     }
   }
 
+  const removesFinalOrderPack =
+    packerLog?.trackingType === 'ORDERS' &&
+    packerLog.completionState === 'COMPLETED' &&
+    packerLog.shipmentId != null;
   // 1. The PACK activity rows: the named one and every row of its packer_log.
   const actQ = await client.query<{
     id: number; station: string; activity_type: string; staff_id: number | null;
     shipment_id: string | number | null; scan_ref: string | null; created_at: string;
   }>(
-    `DELETE FROM station_activity_logs
-      WHERE organization_id = $1
-        AND (id = $2 OR ($3::int IS NOT NULL AND packer_log_id = $3::int))
-      RETURNING id, station, activity_type, staff_id, shipment_id, scan_ref,
-                to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at`,
-    [orgId, input.salId ?? null, packerLogId],
+    `DELETE FROM station_activity_logs sal
+      WHERE sal.organization_id = $1
+        AND (
+          sal.id = $2
+          OR ($3::int IS NOT NULL AND sal.packer_log_id = $3::int)
+          OR (
+            $4::bigint IS NOT NULL
+            AND sal.activity_type = 'SHIP_CONFIRM'
+            AND sal.shipment_id = $4::bigint
+            AND NOT EXISTS (
+              SELECT 1 FROM packer_logs remaining
+               WHERE remaining.organization_id = $1
+                 AND remaining.shipment_id = $4::bigint
+                 AND remaining.tracking_type = 'ORDERS'
+                 AND remaining.completion_state = 'COMPLETED'
+                 AND remaining.id <> $3::int
+            )
+          )
+        )
+      RETURNING sal.id, sal.station, sal.activity_type, sal.staff_id, sal.shipment_id, sal.scan_ref,
+                to_char(sal.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at`,
+    [orgId, input.salId ?? null, packerLogId, removesFinalOrderPack ? (packerLog?.shipmentId ?? null) : null],
   );
   const activities = actQ.rows
     .map((r) => ({

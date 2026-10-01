@@ -143,6 +143,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 ru.unboxed_by                 AS receiving_unboxed_by,
                 staff_rb.name                AS received_by_name,
                 staff_ub.name                AS unboxed_by_name,
+                staff_uo.name                AS unbox_opened_by_name,
                 COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                 scan_first.scanned_by        AS first_scanned_by,
                 staff_sb.name                AS scanned_by_name,
@@ -216,6 +217,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          LEFT JOIN staff staff_rb                ON staff_rb.id = rt.door_received_by
          LEFT JOIN staff staff_ub                ON staff_ub.id = ru.unboxed_by
+         LEFT JOIN staff staff_uo                ON staff_uo.id = ru.opened_by
          LEFT JOIN LATERAL (
            SELECT rs.scanned_at, rs.scanned_by
            FROM receiving_scans rs
@@ -1125,6 +1127,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 ru.unboxed_by                 AS receiving_unboxed_by,
                 staff_rb.name                AS received_by_name,
                 staff_ub.name                AS unboxed_by_name,
+                staff_uo.name                AS unbox_opened_by_name,
                 -- first_scanned_at is the genuine door/tracking scan ONLY. It feeds
                 -- the "Scanned" display (row.scanned_at → tracking_scanned_at), which
                 -- is triage-owned — never fold unbox_opened_at in here or opening a
@@ -1222,6 +1225,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
          LEFT JOIN sku_catalog sc                ON ${SKU_CATALOG_JOIN_ON_SQL}
          LEFT JOIN staff staff_rb                ON staff_rb.id = rt.door_received_by
          LEFT JOIN staff staff_ub                ON staff_ub.id = ru.unboxed_by
+         LEFT JOIN staff staff_uo                ON staff_uo.id = ru.opened_by
          LEFT JOIN LATERAL (
            SELECT rs.scanned_at, rs.scanned_by
            FROM receiving_scans rs
@@ -1368,6 +1372,8 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
                   COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                   COALESCE(ops_scan.last_scanned_at, rs_agg.last_scan)::text       AS last_scan_at,
                   COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
+                  staff_ub.name AS unboxed_by_name,
+                  staff_uo.name AS unbox_opened_by_name,
                 ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count,
                 ${sqlReceivingCartonZendeskTicketColumn()}
            FROM receiving_carton r
@@ -1375,6 +1381,8 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
            ${sqlCartonLinkedSupportTicketLateralJoin()}
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
            LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+           LEFT JOIN staff staff_ub ON staff_ub.id = ru.unboxed_by
+           LEFT JOIN staff staff_uo ON staff_uo.id = ru.opened_by
            LEFT JOIN LATERAL (
                SELECT rs.scanned_at, rs.scanned_by
                FROM receiving_scans rs
@@ -1485,6 +1493,8 @@ export function legacyBuildUnboxOpenedPlaceholdersSql(searchParams: URLSearchPar
                   stn.delivered_at::text       AS shipment_delivered_at,
                   COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                   COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
+                  staff_ub.name AS unboxed_by_name,
+                  staff_uo.name AS unbox_opened_by_name,
                   ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count,
                   ${sqlReceivingCartonZendeskTicketColumn()}
            FROM receiving_carton r
@@ -1492,6 +1502,8 @@ export function legacyBuildUnboxOpenedPlaceholdersSql(searchParams: URLSearchPar
            ${sqlCartonLinkedSupportTicketLateralJoin()}
            LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
            LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+           LEFT JOIN staff staff_ub ON staff_ub.id = ru.unboxed_by
+           LEFT JOIN staff staff_uo ON staff_uo.id = ru.opened_by
            LEFT JOIN LATERAL (
                SELECT rs.scanned_at, rs.scanned_by
                FROM receiving_scans rs

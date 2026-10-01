@@ -14,7 +14,7 @@ import { EvidenceFact, EvidenceFacts, EvidenceSection } from '@/design-system/co
 import type { TriageSelectionPort } from '@/design-system/components/triage-card-list/TriageCardList';
 import type { TriageSectionTone } from '@/design-system/components/triage-card-list/TriageListBody';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import type { RowGroup } from '@/lib/group-rows';
 import type { ImportRunRowItem } from '@/lib/imports/types';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';

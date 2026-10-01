@@ -29,8 +29,7 @@ export const SAVED_VIEW_SURFACES = [
   'products_catalog',
   'inventory_units',
   'warehouse_bins',
-  // The repair cards' saved views (`RepairCardList`, sidebar presets since
-  // 2026-09-29 — `SAVED_VIEW_STORAGE_KEY.repair_queue`).
+  // Repair card views (`RepairCardList`; `SAVED_VIEW_STORAGE_KEY.repair_queue`).
   'repair_queue',
   'warranty_claims',
   'tracking_exceptions',

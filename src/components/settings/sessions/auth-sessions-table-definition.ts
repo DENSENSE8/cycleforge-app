@@ -25,7 +25,6 @@ export const AUTHSESSIONS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

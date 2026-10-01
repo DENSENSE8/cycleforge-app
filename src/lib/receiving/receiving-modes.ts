@@ -471,6 +471,23 @@ export function reconcileListParams(refIn: readonly string[]): URLSearchParams {
   return p;
 }
 
+/**
+ * The Incoming Awaiting-tracking list for a paste — `view=incoming` plus
+ * `delivery_state=AWAITING_TRACKING` (open PO, not dock-scanned, no shipment
+ * row) cut to these refs. Same reader the bucket opens. No serials: membership
+ * is the rows, not their units.
+ */
+export function awaitingTrackingListParams(refs: readonly string[]): URLSearchParams {
+  const p = new URLSearchParams({
+    view: 'incoming',
+    delivery_state: 'AWAITING_TRACKING',
+    limit: String(RECONCILE_ROW_LIMIT),
+    offset: '0',
+  });
+  p.set(REF_IN_PARAM, serializeRefIn(refs));
+  return p;
+}
+
 export function reconcileListQueryKey(refIn: readonly string[]): readonly unknown[] {
   return [QUERY_ROOT, 'incoming', 'reconcile', refIn.join(',')] as const;
 }

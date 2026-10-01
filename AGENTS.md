@@ -38,7 +38,7 @@ the design system when it is actually good.
 ## 4. Product facts worth remembering
 
 - "Omni Composer" / station mouth = `StationComposerHost`. Dumb stations keep
-  `showModeRow` and set `showModeFaces={false}`.
+  `showModeRow`. Header tasks own Ticket versus station work; the bottom row has no Unbox|Ticket faces.
 - Mobile-first is repo-wide: every operator verb should be completable on `/m/*`.
   Law: `docs/mobile-first/SURFACE_LAW.md`. Start URLs: `/m/pick`, `/m/work`.
 - Nav: a lane is a `SidebarGroup`; icons at parent level only; a parent and a

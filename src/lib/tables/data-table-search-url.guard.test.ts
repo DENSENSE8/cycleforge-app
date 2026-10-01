@@ -46,7 +46,7 @@ test('orders review tables share the header q parameter', () => {
   assert.match(pairing, /params\.set\('q', next\)/);
 });
 
-test('receiving slot-table search follows the shared inbound header parameter', () => {
+test('receiving data-table search follows the shared inbound header parameter', () => {
   const receiving = source('components/station/ReceivingLinesTable.tsx');
   const spreadsheet = source('components/station/receiving-grid/useReceivingSpreadsheet.tsx');
 
@@ -91,7 +91,7 @@ test('kiosk catalog find stays out of browser URL state', () => {
   assert.doesNotMatch(selector, /from ['"]next\/navigation['"]/);
   assert.doesNotMatch(selector, /params\.set\('(q|search)'/);
 
-  // Settings' kiosk-devices slot table follows the same law as every desk.
+  // Settings' kiosk-devices data table follows the same law as every desk.
   assert.match(devices, /const \[query, setQuery\] = useState\(''\)/);
   assert.doesNotMatch(devices, /from ['"]next\/navigation['"]/);
 });

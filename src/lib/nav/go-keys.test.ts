@@ -33,6 +33,7 @@ test('Receiving hover teaching includes Deliveries, Local Pickup, Repair service
 
 test('Scan Stations G keys mirror the visible parent switcher', () => {
   const expected = [
+    { letter: 'l', pageId: 'stations-live' },
     { letter: 'a', pageId: 'triage' },
     { letter: 'u', pageId: 'receive' },
     { letter: 'q', pageId: 'testing' },
@@ -41,7 +42,7 @@ test('Scan Stations G keys mirror the visible parent switcher', () => {
     { letter: 's', pageId: 'scan-out' },
   ];
 
-  for (const pageId of ['triage', 'receive', 'testing', 'ready-to-pack', 'packer', 'scan-out']) {
+  for (const pageId of ['stations-live', 'triage', 'receive', 'testing', 'ready-to-pack', 'packer', 'scan-out']) {
     assert.deepEqual(navGoDestinations(pageId), expected, pageId);
   }
 });

@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 

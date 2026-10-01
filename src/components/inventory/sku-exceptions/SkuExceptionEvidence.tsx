@@ -4,7 +4,8 @@
  * SKU exception — the open placeholder SKU, placed by its host's record
  * plane, in the order record's grammar: one `RecordGroup` card per section.
  * Main (the work) = Pair to Zoho SKU → the host's item card → Product →
- * Locations. Aside (the facts, {@link SkuExceptionFacts}) = Photos → Details.
+ * Locations. Stock may place the host item first so populated and empty
+ * location records share Item → Zoho SKU.
  */
 
 import { useCallback, useId, type ReactNode } from 'react';
@@ -16,7 +17,7 @@ import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordE
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
 import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
-import { StockLocationsGroup } from '@/components/inventory/stock/StockLocationsGroup';
+import { StockLocationsGroup } from '@/components/stock/StockLocationsGroup';
 import { SkuExceptionBarcodeValue, SkuExceptionProductSection } from './SkuExceptionEvidenceSections';
 import { SkuExceptionPairSection } from './SkuExceptionPairSection';
 import { SkuExceptionPhotosSection } from './SkuExceptionPhotosSection';
@@ -34,14 +35,29 @@ export interface SkuExceptionEvidenceProps {
   mergedInto: string | null;
   /** Leave the record (a completed pair lands here). */
   onExit: () => void;
-  /** The host's item card (photo tile · title · SKU), painted right under Pair. */
+  /** The host's item card (photo tile · title · SKU). */
   itemRow?: ReactNode;
+  /** Stock records place the pairing group under the item, matching empty locations. */
+  pairAfterItem?: boolean;
+  /** Stock records open pairing from the header menu, not an inline group. */
+  hidePair?: boolean;
 }
 
 /** The work column. */
 export function SkuExceptionEvidence(props: SkuExceptionEvidenceProps) {
   const { sku, item, loading, error, mergedInto } = props;
-  if (item) return <SkuExceptionRecordEvidence key={item.sku} item={item} onExit={props.onExit} itemRow={props.itemRow} />;
+  if (item) {
+    return (
+      <SkuExceptionRecordEvidence
+        key={item.sku}
+        item={item}
+        onExit={props.onExit}
+        itemRow={props.itemRow}
+        pairAfterItem={props.pairAfterItem}
+        hidePair={props.hidePair}
+      />
+    );
+  }
   return (
     <>
       {loading ? (
@@ -77,7 +93,19 @@ function useRefreshSkuExceptions() {
   return useCallback(() => invalidateSkuExceptions(queryClient), [queryClient]);
 }
 
-function SkuExceptionRecordEvidence({ item, onExit, itemRow }: { item: ProvisionalSkuDetail; onExit: () => void; itemRow?: ReactNode }) {
+function SkuExceptionRecordEvidence({
+  item,
+  onExit,
+  itemRow,
+  pairAfterItem = false,
+  hidePair = false,
+}: {
+  item: ProvisionalSkuDetail;
+  onExit: () => void;
+  itemRow?: ReactNode;
+  pairAfterItem?: boolean;
+  hidePair?: boolean;
+}) {
   const fieldId = useId();
   const refresh = useRefreshSkuExceptions();
   // Leave first: the record no longer exists once the merge lands.
@@ -86,11 +114,11 @@ function SkuExceptionRecordEvidence({ item, onExit, itemRow }: { item: Provision
     await refresh();
   }, [onExit, refresh]);
 
-  // Pair to Zoho leads: it is the one decision that closes a placeholder.
+  const pairRow = hidePair ? null : <SkuExceptionPairSection fieldId={fieldId} item={item} onPaired={paired} />;
   return (
     <div className="flex min-w-0 flex-col gap-4" data-testid="sku-exception-evidence">
-      <SkuExceptionPairSection fieldId={fieldId} item={item} onPaired={paired} />
-      {itemRow}
+      {pairAfterItem ? itemRow : pairRow}
+      {pairAfterItem ? pairRow : itemRow}
       <SkuExceptionProductSection fieldId={fieldId} item={item} onChanged={refresh} />
       <StockLocationsGroup sku={item.sku} onChanged={refresh} />
     </div>
@@ -106,7 +134,7 @@ export function SkuExceptionFacts({ item }: { item: ProvisionalSkuDetail }) {
 
   return (
     <>
-      <SkuExceptionPhotosSection item={item} onChanged={refresh} />
+      <SkuExceptionPhotosSection photos={item.photos} stockId={item.stockId} onChanged={refresh} />
       <RecordGroup title="Details" testId="sku-exception-details">
         <div className={FACTS_BODY_CLASS}>
           <EvidenceFactRow label="Barcode" wide={!item.barcode}>

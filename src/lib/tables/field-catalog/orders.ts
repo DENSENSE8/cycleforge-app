@@ -1,7 +1,7 @@
 /** Orders field catalog — the bindable To-ship triage facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const ORDERS_FIELD_CATALOG = [
   {
@@ -99,7 +99,7 @@ export const ORDERS_FIELD_CATALOG = [
 ] as const satisfies FieldCatalog;
 
 /** The PRODUCT default To-ship layout: */
-export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
+export const ORDERS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'orders.order_id',
   statusBindings: [{ fieldId: 'orders.picked' }, { fieldId: 'orders.packed' }],
@@ -111,7 +111,7 @@ export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'orders.notes' },
   ],
   amountFieldId: null,
-};
+}
 
 /**
  * Status facts that belong on the Shipped lane only. A dock scan-out is not a
@@ -120,12 +120,10 @@ export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
 const SHIPPED_LANE_STATUS_FIELDS = ['orders.scanned_out'] as const;
 
 /** Drop Shipped-only bindings so a working-queue layout cannot paint them. */
-export function omitShippedOnlyBindings(layout: SlotLayout): SlotLayout {
-  const drop = new Set<string>(SHIPPED_LANE_STATUS_FIELDS);
-  const statusBindings = layout.statusBindings.filter((b) => !drop.has(b.fieldId));
-  if (statusBindings.length === layout.statusBindings.length) return layout;
-  return { ...layout, statusBindings };
-}
+export function omitShippedOnlyBindings(layout: DataTableColumnLayout): DataTableColumnLayout { const drop = new Set<string>(SHIPPED_LANE_STATUS_FIELDS);
+const statusBindings = layout.statusBindings.filter((b) => !drop.has(b.fieldId));
+if (statusBindings.length === layout.statusBindings.length) return layout;
+return { ...layout, statusBindings }; }
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' To-ship entry. */
 export const ORDERS_TABLE_LAYOUT_ID = 'orders';
@@ -227,7 +225,7 @@ const ORDERS_INDEX_ONLY_FIELDS = [
  * The INDEX face's catalog: the order handle, the order-level facts, then the
  * warehouse steps (Bin · Pick · Pack) — offered in the Fields picker, unbound by
  * default. No line facts (qty, price, condition, item #, notes): they belong to
- * the line rows of the industrial floor and the record, not the order list.
+ * the line rows of the record, not the order list.
  */
 export const ORDERS_INDEX_FIELD_CATALOG: FieldCatalog = [
   ...ORDERS_FIELD_CATALOG.filter((f) => f.id === 'orders.order_id'),
@@ -240,7 +238,7 @@ export const ORDERS_INDEX_FIELD_CATALOG: FieldCatalog = [
  * minus Payment (owner D4: every To-ship order is paid by construction).
  * Order is the locked identity track, so it is always first.
  */
-export const ORDERS_INDEX_LAYOUT: SlotLayout = {
+export const ORDERS_INDEX_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'orders.order_id',
   statusBindings: [
@@ -256,7 +254,7 @@ export const ORDERS_INDEX_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /**
  * The index face's OWN layout document, over its own catalog. Not `orders`:

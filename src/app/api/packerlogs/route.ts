@@ -11,7 +11,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
 import { readShippedDeskFilters } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
-import { readShippedPickedBy, readShippedTimeWindow } from '@/lib/shipping/shipped-filter/shipped-filter-params';
+import { readShippedDateWindow, readShippedPickedBy, readShippedTimeWindow, shippedTimeWindow } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
@@ -32,9 +32,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // `statusCategory`, `exceptions`) — answered in SQL, one predicate with
     // the sidebar facet counts. Absent params narrow nothing.
     const shippedFilters = readShippedDeskFilters(searchParams);
-    // `dateFrom`/`dateTo` + `timeFrom`/`timeTo` → the exact shipped-instant
-    // window (warehouse wall clock); absent times = no narrowing beyond the week.
-    const timeWindow = readShippedTimeWindow(searchParams);
+    // A picked day (`dateFrom`/`dateTo`) is the list window even with no
+    // time-of-day. The week bucket around that day must not leak in.
+    const dateWindow = readShippedDateWindow(searchParams);
+    const timeWindow = readShippedTimeWindow(searchParams)
+      ?? (dateWindow.start && dateWindow.end
+        ? shippedTimeWindow({ dateFrom: dateWindow.start, dateTo: dateWindow.end })
+        : null);
     // `?pickedBy` — the order's picker.
     const pickedBy = readShippedPickedBy(searchParams);
 
@@ -62,6 +66,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         pickedBy,
         spineOnly,
         searchTerm,
+        sort: searchParams.get('sort'),
     });
     const CACHE_HEADERS = { 'Cache-Control': `private, max-age=${cacheTTL}, stale-while-revalidate=30` };
     return NextResponse.json(rows, {

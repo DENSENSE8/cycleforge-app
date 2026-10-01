@@ -40,6 +40,14 @@ export interface ParityRow {
 type Row = readonly [ParityKind, string, string, string?];
 
 const ROWS: Readonly<Record<string, readonly Row[]>> = {
+  'stations-live': [
+    ['param', 'job', 'src/lib/station-feed/query.server.ts'],
+    ['param', 'outcome', 'src/lib/station-feed/query.server.ts'],
+    ['param', 'staff', 'src/lib/station-feed/query.server.ts'],
+    ['param', 'from', 'src/lib/station-feed/query.server.ts'],
+    ['param', 'to', 'src/lib/station-feed/query.server.ts'],
+    ['param', 'sort', 'src/lib/station-feed/query.server.ts'],
+  ],
   'ai-chat': [
     ['action', 'chat.new', 'src/components/sidebar/master-nav/SidebarNavList.tsx:547-560 (Chat row `+`)'],
     ['recents', 'assistant.sessions', 'src/components/sidebar/master-nav/ChatSessionsNav.tsx:176-234'],
@@ -81,8 +89,8 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'sq', 'src/components/walk-in/SalesHistoryTable.tsx', 'sales'],
     ['param', 'search', 'src/components/repair/RepairCardList.tsx', 'repairs-shipped-in'],
     ['param', 'channel', 'src/components/repair/RepairCardList.tsx', 'repairs-dropped-off'],
-    ['param', 'sort', 'src/components/repair/RepairCardList.tsx (Sort, formerly the table header sort)', 'repairs-shipped-in'],
-    ['savedViews', 'repair_queue_saved_views', 'src/lib/station/table-url-params.ts (repair_queue; the repair cards had no saved views)'],
+    ['param', 'sort', 'src/components/repair/RepairCardList.tsx (card order)', 'repairs-shipped-in'],
+    ['savedViews', 'repair_queue_saved_views', 'src/lib/station/table-url-params.ts (repair_queue views)'],
     ['action', 'walk-in.new-sale', 'src/lib/nav/context/pages.ts NAV_PAGE_DECLS.sales.actions'],
     ['action', 'walk-in.local-pickup', 'src/lib/nav/context/pages.ts NAV_PAGE_DECLS.sales.actions'],
     ['action', 'walk-in.repair-intake', 'src/lib/nav/context/pages.ts NAV_PAGE_DECLS.sales.actions'],
@@ -185,9 +193,9 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['view', 'dropped-off', 'src/lib/sidebar-navigation.ts (Dropped off, 3)'],
     ['param', 'channel', 'src/components/repair/RepairCardList.tsx', 'dropped-off'],
     ['param', 'tab', 'src/components/repair/RepairCardList.tsx (Status)'],
-    ['param', 'sort', 'src/components/repair/RepairCardList.tsx (Sort, formerly the table header sort)'],
+    ['param', 'sort', 'src/components/repair/RepairCardList.tsx (card order)'],
     ['param', 'search', 'src/components/repair/RepairCardList.tsx (Find)'],
-    ['savedViews', 'repair_queue_saved_views', 'src/lib/station/table-url-params.ts (repair_queue; the repair cards had no saved views)'],
+    ['savedViews', 'repair_queue_saved_views', 'src/lib/station/table-url-params.ts (repair_queue views)'],
   ],
   testing: [
     ['scanInput', 'testing', 'src/components/sidebar/receiving/TestingScanBar.tsx:27-149'],
@@ -272,7 +280,6 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
   outbound: [
     ['view', 'exceptions', 'src/lib/outbound/desk-views.ts; e7dc59d^:src/design-system/components/DeskPageChrome.tsx:298-320'],
     ['view', 'triage', 'src/lib/outbound/desk-views.ts (Allocate — the FBM landing view)'],
-    ['view', 'shipped', 'src/lib/outbound/desk-views.ts'],
     // FBM › Exceptions renders the Exceptions hub list locked to Fulfillment (owner 2026-09-28); its old `category` facet and `order` record went with the held-order workbench.
     ['param', 'record', 'src/components/outbound/orders/exceptions/FulfillmentExceptionsDoor.tsx (the hub record, `?record=<kind>:<id>`)', 'exceptions'],
     ['param', 'stage', 'src/components/unshipped/useToShipChrome.ts:147-152', 'triage'],
@@ -285,25 +292,30 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'staff', 'src/hooks/useStaffFilter.ts; src/components/unshipped/useToShipChrome.ts:59', 'triage'],
     ['param', 'sort', 'e7dc59d^:src/components/outbound/orders/OutboundOrdersLedger.tsx:479', 'triage'],
     ['param', 'dir', 'e7dc59d^:src/components/outbound/orders/OutboundOrdersLedger.tsx:479', 'triage'],
-    ['param', 'shippedFilter', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:52-58', 'shipped'],
-    ['param', 'shippedSearchField', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:50', 'shipped'],
-    ['param', 'shippedWeekOffset', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:61-64', 'shipped'],
-    ['param', 'ostatus', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:76', 'shipped'],
-    ['param', 'packedBy', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:87', 'shipped'],
-    ['param', 'pickedBy', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:183-185', 'shipped'],
-    ['param', 'dateFrom', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:93', 'shipped'],
-    ['param', 'dateTo', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:94', 'shipped'],
-    ['param', 'allDates', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:58', 'shipped'],
-    ['param', 'exceptions', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:28', 'shipped'],
-    ['param', 'carrier', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:18', 'shipped'],
-    ['param', 'statusCategory', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:23', 'shipped'],
-    // orders.sync / sync-platforms / add-test / demo-sync / past-imports / labels
-    // left the To-ship menu (owner 2026-09-28): sync → global header Sync
-    // (history on Operations › Sync); Labels walk keeps its `L` key.
     ['action', 'orders.upload-csv', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:137-146'],
     ['action', 'orders.export-csv', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:147-159'],
     ['action', 'orders.add', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:160-165 (?triage=new)'],
     ['savedViews', 'unshipped_saved_views', 'e7dc59d^:src/components/outbound/orders/OutboundOrdersLedger.tsx:482-488; src/components/dashboard/orders-queue/useOrdersQueueFeed.ts:253-256'],
+  ],
+  fulfilled: [
+    ['view', 'all', 'src/lib/shipping/shipped-desk.ts FULFILLED_VIEWS'],
+    ['view', 'online', 'src/lib/shipping/shipped-desk.ts FULFILLED_VIEWS'],
+    ['view', 'fba', 'src/lib/shipping/shipped-desk.ts FULFILLED_VIEWS'],
+    ['view', 'sku', 'src/lib/shipping/shipped-desk.ts FULFILLED_VIEWS'],
+    ['view', 'delivered', 'src/lib/shipping/shipped-desk.ts FULFILLED_VIEWS'],
+    ['param', 'view', 'src/lib/shipping/shipped-desk.ts FULFILLED_VIEWS'],
+    ['param', 'shippedFilter', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:52-58'],
+    ['param', 'shippedSearchField', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:50'],
+    ['param', 'shippedWeekOffset', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:61-64'],
+    ['param', 'ostatus', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:76'],
+    ['param', 'packedBy', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:87'],
+    ['param', 'pickedBy', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:183-185'],
+    ['param', 'dateFrom', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:93'],
+    ['param', 'dateTo', 'src/components/shipped/dashboard-table/useShippedTableFilters.ts:94'],
+    ['param', 'allDates', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:58'],
+    ['param', 'exceptions', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:28'],
+    ['param', 'carrier', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:18'],
+    ['param', 'statusCategory', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:23'],
     ['savedViews', 'shipped_saved_views', 'src/components/dashboard/orders-queue/useOrdersQueueFeed.ts:257-261'],
   ],
   'scan-out': [

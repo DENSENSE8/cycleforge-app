@@ -30,6 +30,11 @@ export interface RepairInfoDraft extends RepairContactFields {
   serialNumber: string;
   price: string;
   notes: string;
+  sourceSystem: string;
+  sourceOrderId: string;
+  sourceTrackingNumber: string;
+  sourceSku: string;
+  intakeChannel: string;
   customer: CustomerIntent;
 }
 
@@ -40,6 +45,11 @@ export interface RepairInfoSource {
   serial_number?: string | null;
   price?: string | null;
   notes?: string | null;
+  source_system?: string | null;
+  source_order_id?: string | null;
+  source_tracking_number?: string | null;
+  source_sku?: string | null;
+  intake_channel?: string | null;
   contact_info?: string | null;
   customer_id?: number | null;
   customer_name?: string | null;
@@ -105,6 +115,11 @@ export function repairInfoDraft(row: RepairInfoSource): RepairInfoDraft {
     serialNumber: row.serial_number ?? '',
     price: row.price ?? '',
     notes: row.notes ?? '',
+    sourceSystem: row.source_system ?? '',
+    sourceOrderId: row.source_order_id ?? '',
+    sourceTrackingNumber: row.source_tracking_number ?? '',
+    sourceSku: row.source_sku ?? '',
+    intakeChannel: row.intake_channel ?? '',
     customer: KEEP,
     ...contactSeed(row, KEEP),
   };
@@ -217,6 +232,11 @@ export function repairInfoPlan(id: number, row: RepairInfoSource, draft: RepairI
   field('Device', 'product_title', before.productTitle, draft.productTitle);
   field('Issue', 'issue', before.issue, draft.issue);
   field('Serial', 'serial_number', before.serialNumber, draft.serialNumber);
+  field('Source system', 'source_system', before.sourceSystem, draft.sourceSystem);
+  field('Source order', 'source_order_id', before.sourceOrderId, draft.sourceOrderId);
+  field('Tracking', 'source_tracking_number', before.sourceTrackingNumber, draft.sourceTrackingNumber);
+  field('SKU', 'source_sku', before.sourceSku, draft.sourceSku);
+  field('Ingress', 'intake_channel', before.intakeChannel, draft.intakeChannel);
   const customer = customerPlan(id, row, draft);
   writes.push(...customer.writes);
   field('Price', 'price', before.price, draft.price);
@@ -252,6 +272,11 @@ export function applyRepairInfoDraft<T extends RepairInfoSource>(row: T, draft: 
     issue: draft.issue.trim(),
     serial_number: draft.serialNumber.trim(),
     price: draft.price.trim(),
+    source_system: draft.sourceSystem.trim(),
+    source_order_id: draft.sourceOrderId.trim(),
+    source_tracking_number: draft.sourceTrackingNumber.trim(),
+    source_sku: draft.sourceSku.trim(),
+    intake_channel: draft.intakeChannel.trim(),
     notes: draft.notes,
     ...customer,
   };

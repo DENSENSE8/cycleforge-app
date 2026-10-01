@@ -402,6 +402,7 @@ export async function fetchDashboardPackedRecords({
   weekEnd,
   shippedFilter,
   carrier,
+  channel,
   statusCategory,
   exceptionsOnly = false,
   searchTerm = '',
@@ -410,6 +411,7 @@ export async function fetchDashboardPackedRecords({
   limit = 1000,
   offset = 0,
   phase = 'full',
+  sort = null,
 }: {
   packedBy?: number;
   staffId?: number;
@@ -419,6 +421,8 @@ export async function fetchDashboardPackedRecords({
   /** Shipped desk view filters, answered in SQL by `/api/packerlogs` (one predicate with the facet counts). */
   carrier?: string | null;
   statusCategory?: string | null;
+  /** `?channel` — comma-separated, lower-cased. Same predicate as the facet counts. */
+  channel?: string | null;
   exceptionsOnly?: boolean;
   /** The desk's find text, answered in SQL by `/api/packerlogs?q=`. */
   searchTerm?: string;
@@ -431,6 +435,7 @@ export async function fetchDashboardPackedRecords({
   /** Spine-first: 'spine' returns immediate-paint columns only (deferred fields
    *  arrive via fetchShippedHydration); 'full' is the complete row (default). */
   phase?: 'spine' | 'full';
+  sort?: string | null;
 }) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (offset) params.set('offset', String(offset));
@@ -441,6 +446,7 @@ export async function fetchDashboardPackedRecords({
   if (shippedFilter) params.set('shippedFilter', shippedFilter);
   if (carrier) params.set('carrier', carrier);
   if (statusCategory) params.set('statusCategory', statusCategory);
+  if (channel) params.set('channel', channel);
   if (exceptionsOnly) params.set('exceptions', '1');
   if (searchTerm.trim()) params.set('q', searchTerm.trim());
   if (shippedTime) {
@@ -451,6 +457,7 @@ export async function fetchDashboardPackedRecords({
   }
   if (pickedBy !== undefined) params.set('pickedBy', String(pickedBy));
   if (phase === 'spine') params.set('phase', 'spine');
+  if (sort && sort !== 'ship_confirmed_at') params.set('sort', sort);
 
   const res = await fetch(`/api/packerlogs?${params.toString()}`, FRESH_FETCH_OPTIONS);
   if (!res.ok) {

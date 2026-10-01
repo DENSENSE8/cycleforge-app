@@ -22,9 +22,15 @@ export function useLocationRecord() {
   const segs = useMemo(() => parseLocationCodeFlat(code), [code]);
   const face = segs ? locationCode(segs) : code;
   const back = mobileJobReturn(searchParams.get('back'));
+  const verificationToken = searchParams.get('verified')?.trim() || null;
   const base = locationHubPath(code);
   /** A sibling screen of this record, keeping the job the X returns to. */
-  const link = useCallback((href: string) => (back ? withJobReturn(href, back) : href), [back]);
+  const link = useCallback((href: string) => {
+    const url = new URL(href, 'https://cycleforge.local');
+    if (verificationToken) url.searchParams.set('verified', verificationToken);
+    const withProof = `${url.pathname}${url.search}${url.hash}`;
+    return back ? withJobReturn(withProof, back) : withProof;
+  }, [back, verificationToken]);
 
   const query = useQuery({
     queryKey: locationRecordQueryKey(code),
@@ -36,6 +42,7 @@ export function useLocationRecord() {
     code,
     face,
     back,
+    verificationToken,
     base,
     link,
     record: query.data,

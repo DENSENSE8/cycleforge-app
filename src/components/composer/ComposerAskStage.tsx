@@ -1,8 +1,7 @@
 'use client';
 
 /**
- * Desk Ask thread — welded above the desk mouth only. Station Ask lives in
- * {@link StationAskPane} (Unbox display), not here.
+ * Desk Ask thread welded above the desk mouth.
  */
 
 import { AskThread } from './AskThread';

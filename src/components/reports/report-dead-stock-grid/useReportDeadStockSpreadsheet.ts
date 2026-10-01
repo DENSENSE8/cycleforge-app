@@ -12,7 +12,6 @@ import { resolveReportDeadStockSlotValue } from '@/lib/tables/field-catalog/repo
 import type { DeadStockReportRow } from '@/lib/reports/report-rows';
 import { reportDeadStockCompoundView } from './report-dead-stock-row-view';
 import {
-  reportDeadStockCompoundColumnsFor,
   reportDeadStockSortFactFor,
   type ReportDeadStockGridColumn,
   type ReportDeadStockGridColumnKey,
@@ -21,7 +20,6 @@ import {
   REPORT_DEAD_STOCK_GRID_CAPABILITIES,
   REPORT_DEAD_STOCK_TABLE_BINDING,
 } from './report-dead-stock-table-definition';
-import { useReportDeadStockTableLayout } from './useReportDeadStockTableLayout';
 
 interface UseReportDeadStockSpreadsheetOptions {
   /** One report page, already ordered by the route; a header click re-orders it. */
@@ -46,11 +44,8 @@ export function useReportDeadStockSpreadsheet({
   const [sort, setSort] = useState<ReportDeadStockGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useReportDeadStockTableLayout();
-  const columns = useMemo(
-    () => reportDeadStockCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: ReportDeadStockGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -71,12 +66,10 @@ export function useReportDeadStockSpreadsheet({
     ReportDeadStockGridColumn
   >({
     binding: REPORT_DEAD_STOCK_TABLE_BINDING,
-    columns,
-    fields,
+    columns: REPORT_DEAD_STOCK_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => row.sku,
     adapter: reportDeadStockCompoundView,
-    subtitleFieldIds,
     resolve: resolveReportDeadStockSlotValue,
     sortFactFor: reportDeadStockSortFactFor,
     capabilities: REPORT_DEAD_STOCK_GRID_CAPABILITIES,

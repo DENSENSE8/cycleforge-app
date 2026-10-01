@@ -10,7 +10,7 @@ export const STATION_COMPOSER_MODES = ['unbox', 'ticket', 'ask'] as const;
 
 export type StationComposerMode = (typeof STATION_COMPOSER_MODES)[number];
 
-/** The station faces — what a mouth honors by default and what Shift+Tab cycles. */
+/** Default modes a station mouth honors. Header tasks select between them. */
 export const STATION_COMPOSER_FACES = ['unbox', 'ticket'] as const satisfies readonly StationComposerMode[];
 
 export const STATION_COMPOSER_MODE_DEFAULT: StationComposerMode = 'unbox';
@@ -81,12 +81,6 @@ export function resolveStationComposerMode(
   );
 }
 
-export function cycleStationComposerMode(
-  current: StationComposerMode,
-): StationComposerMode {
-  const i = (STATION_COMPOSER_FACES as readonly StationComposerMode[]).indexOf(current);
-  return STATION_COMPOSER_FACES[(i + 1) % STATION_COMPOSER_FACES.length]!;
-}
 
 export function stationComposerModeKeepsTrailingAction(
   mode: StationComposerMode,
@@ -133,22 +127,6 @@ export function stationComposerModeAriaLabel(
   return 'Unbox item note';
 }
 
-type StationComposerModeKeyHit = { kind: 'cycle' };
-
-/** Classify a station keydown. */
-export function classifyStationComposerModeKey(
-  e: Pick<
-    KeyboardEvent,
-    'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'
-  >,
-): StationComposerModeKeyHit | null {
-  // THE toggle, and the only one. Bare Tab is deliberately not here — it is
-  // the wedge scanner's terminator and ghost autocomplete's accept key.
-  if (e.key === 'Tab' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    return { kind: 'cycle' };
-  }
-  return null;
-}
 
 /** What a click inside the ticket thread should do. */
 export function resolveTicketThreadActivation(opts: {

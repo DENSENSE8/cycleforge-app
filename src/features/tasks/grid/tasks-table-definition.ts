@@ -2,11 +2,11 @@
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
-  defaultDirForSlotTableColumn,
-  isSlotTableColumnSortable,
-  slotTableColumnsFor,
-  type SlotTableColumn,
-} from '@/components/tables/compound/slot-table-columns';
+  defaultDirForDataTableCompoundColumn,
+  isDataTableCompoundColumnSortable,
+  dataTableCompoundColumnsFor,
+  type DataTableCompoundColumn,
+} from '@/components/tables/compound/data-table-compound-columns';
 import {
   makeGridSurfaceDescriptor,
   type GridSurfaceCapabilities,
@@ -17,7 +17,7 @@ import { TASKS_FAMILY, TASKS_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/t
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
-export const TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColumnsFor(
+export const TASKS_COMPOUND_COLUMNS: readonly DataTableCompoundColumn[] = dataTableCompoundColumnsFor(
   TASKS_FAMILY,
   TASKS_PRODUCT_LAYOUT,
 );
@@ -27,7 +27,6 @@ const TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 
@@ -36,15 +35,15 @@ const TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
  * header's sortability is answered against the tracks actually mounted.
  */
 function makeTasksGridDescriptor(
-  columns: readonly SlotTableColumn[],
-): GridSurfaceDescriptor<TaskDeskRow, SlotTableColumn> {
-  return makeGridSurfaceDescriptor<TaskDeskRow, SlotTableColumn>(
+  columns: readonly DataTableCompoundColumn[],
+): GridSurfaceDescriptor<TaskDeskRow, DataTableCompoundColumn> {
+  return makeGridSurfaceDescriptor<TaskDeskRow, DataTableCompoundColumn>(
     'tasks.mine',
     columns,
     {
-      isSortable: (key) => isSlotTableColumnSortable(TASKS_FAMILY, columns, key),
+      isSortable: (key) => isDataTableCompoundColumnSortable(TASKS_FAMILY, columns, key),
       sortDescFirst: (key) =>
-        defaultDirForSlotTableColumn(TASKS_FAMILY, columns, key) === 'desc',
+        defaultDirForDataTableCompoundColumn(TASKS_FAMILY, columns, key) === 'desc',
     },
     TASKS_GRID_CAPABILITIES,
   );
@@ -67,7 +66,7 @@ const TASKS_TABLE_DEFINITION = parseTableDefinition({
   columns: TASKS_COMPOUND_COLUMNS,
 });
 
-export const TASKS_TABLE_BINDING: TableSurfaceBinding<TaskDeskRow, SlotTableColumn> = {
+export const TASKS_TABLE_BINDING: TableSurfaceBinding<TaskDeskRow, DataTableCompoundColumn> = {
   definition: TASKS_TABLE_DEFINITION,
   columns: TASKS_COMPOUND_COLUMNS,
   makeDescriptor: makeTasksGridDescriptor,

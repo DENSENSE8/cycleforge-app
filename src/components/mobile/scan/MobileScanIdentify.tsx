@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/design-system/primitives';
 import { useNetworkOnline } from '@/hooks/useConnectionHealth';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
-import { useRegisterNewScan } from '@/components/mobile/redesign/mobile-scan-cta';
+import { MobileScanHeader, type MobileScanMode } from '@/components/mobile/scan/MobileScanHeader';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
 import { MobileStationShell } from '@/components/mobile/station/MobileStationShell';
 import {
@@ -21,14 +21,14 @@ import {
   parseArrivalReceivingId,
   parseArrivalTypeHint,
 } from '@/lib/receiving/arrival-mobile-flow';
-import { withJobReturn } from '@/lib/mobile/nav-trail';
-import { locationHubHref } from '@/lib/mobile/location-hub-href';
+import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
+import { locationHubHref, locationHubPath, locationKeypadHref, withLocationScanProof } from '@/lib/mobile/location-hub-href';
 import { fnskuHubHref } from '@/lib/mobile/fnsku-hub-href';
 import { routeScan, unwrapScannedLocation, locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { fnskuFromTail } from '@/lib/scan-resolver';
 import { fetchFnskuRecord } from '@/components/mobile/fnsku/useFnskuRecord';
 import { landOutboundTracking } from '@/components/mobile/shipping/shipment/outbound-scan-land';
-import { landScanIdentify } from '@/lib/scan/identify-land';
+import { landScanIdentify, viewOnlyIdentityHref } from '@/lib/scan/identify-land';
 import { QC_SCAN_SESSION } from '@/lib/scan/dispatch-table';
 import { useScanDispatch } from '@/hooks/useScanDispatch';
 import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
@@ -36,10 +36,21 @@ import { MobileArrivalClassifyFlow } from '@/components/mobile/receiving/MobileA
 import { ARRIVAL_DEDUPE_KIND, arrivalTapeEntry, type SettledArrival } from '@/components/mobile/receiving/arrival-station-tape';
 import { useArrivalHistory } from '@/components/mobile/receiving/useArrivalHistory';
 import { useArrivalStation } from '@/components/mobile/receiving/useArrivalStation';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { fetchLocationRecord } from '@/components/mobile/scan/location-bind-api';
+import {
+  resolvePhoneScanIntent,
+  withPhoneScanCorrelation,
+} from '@/lib/scan/phone-scan-intent';
 
 function locationFace(code: string): string {
   const segs = parseLocationCodeFlat(code);
   return segs ? locationCode(segs) : code;
+}
+
+function withScanMode(href: string, mode: MobileScanMode): string {
+  const sep = href.includes('?') ? '&' : '?';
+  return `${href}${sep}scanMode=${mode}`;
 }
 
 /** The scan-tape / session-feed row for a location that opened its record. */
@@ -62,6 +73,19 @@ function locationTapeEntry(code: string, seq: number): StationTapeEntry {
   };
 }
 
+async function authorizeScannedLocation(code: string): Promise<string> {
+  // This read also registers a structurally valid new flat location before
+  // the proof endpoint checks it. Legacy labels must already exist.
+  await fetchLocationRecord(code, parseLocationCodeFlat(code));
+  const response = await fetch(`/api/locations/${encodeURIComponent(code)}/verify`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  const body = (await response.json().catch(() => null)) as { token?: string; error?: string } | null;
+  if (!response.ok || !body?.token) throw new Error(body?.error || 'Could not verify location scan');
+  return body.token;
+}
+
 function MobileScanIdentifyInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -69,6 +93,12 @@ function MobileScanIdentifyInner() {
   const classifyStep = parseArrivalClassifyStep(searchParams.get('step'));
   const classifyTypeHint = parseArrivalTypeHint(searchParams.get('type'));
   const qcArmed = searchParams.get('work') === 'qc';
+  const locationOnly = searchParams.get('intent') === 'location';
+  const lpnTarget = searchParams.get('lpn')?.trim() || null;
+  const operationLocked = locationOnly || qcArmed;
+  const [scanMode, setScanMode] = useState<MobileScanMode>(() =>
+    operationLocked || searchParams.get('mode') !== 'view' ? 'operate' : 'view',
+  );
 
   const [tape, setTape] = useState<StationTapeEntry[]>([]);
   const { history, isError: historyFailed, retry: retryHistory } = useArrivalHistory();
@@ -87,9 +117,6 @@ function MobileScanIdentifyInner() {
 
   const [cameraOff, setCameraOff] = useState(false);
   const [arrived, setArrived] = useState(0);
-  const [armRequest, setArmRequest] = useState(0);
-  useRegisterNewScan(() => setArmRequest((n) => n + 1));
-
   const { playScanFeedback } = useScanFeedback();
   const online = useNetworkOnline();
 
@@ -116,6 +143,7 @@ function MobileScanIdentifyInner() {
   const { submitRaw, inFlight } = useArrivalStation({ onSettled });
   const { resolve } = useScanDispatch();
   const [dispatching, setDispatching] = useState(0);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const locationSeqRef = useRef(0);
 
   const applyLocationTape = useCallback((entry: StationTapeEntry, href: string) => {
@@ -137,60 +165,174 @@ function MobileScanIdentifyInner() {
     (raw: string) => {
       const value = raw.trim();
       if (!value) return;
+      setLocationError(null);
       setDispatching((n) => n + 1);
       void (async () => {
         try {
+          const route = routeScan(value);
+          if (locationOnly) {
+            if (route?.type !== 'bin' && route?.type !== 'bin-paired-order') {
+              setLocationError('That is not a location label');
+              playScanFeedback('reject');
+              return;
+            }
+            const code = unwrapScannedLocation(value);
+            let proof: string;
+            try {
+              proof = await authorizeScannedLocation(code);
+            } catch (error) {
+              setLocationError(error instanceof Error ? error.message : 'Could not verify location');
+              playScanFeedback('reject');
+              return;
+            }
+            const returnTo = mobileJobReturn(searchParams.get('returnTo')) ?? '/m/stock';
+            const pairSku = searchParams.get('pairSku')?.trim();
+            const moveLpn = searchParams.get('moveLpn')?.trim();
+            if (moveLpn) {
+              const commandId = safeRandomUUID();
+              const response = await fetch(`/api/handling-units/${encodeURIComponent(moveLpn)}`, {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandId },
+                body: JSON.stringify({
+                  action: 'move',
+                  locationCode: code,
+                  locationVerificationToken: proof,
+                  clientEventId: commandId,
+                }),
+              });
+              const body = (await response.json().catch(() => null)) as { success?: boolean; error?: string } | null;
+              if (!response.ok || !body?.success) {
+                setLocationError(body?.error || 'Could not move the LPN');
+                playScanFeedback('reject');
+                return;
+              }
+              playScanFeedback('success');
+              router.replace(returnTo);
+              return;
+            }
+            const href = pairSku
+              ? locationKeypadHref(code, pairSku, { returnTo, verificationToken: proof })
+              : withLocationScanProof(withJobReturn(locationHubPath(code), returnTo), proof);
+            applyLocationTape(locationTapeEntry(code, ++locationSeqRef.current), href);
+            playScanFeedback('success');
+            router.push(href);
+            return;
+          }
+          const correlation = await resolvePhoneScanIntent(value, safeRandomUUID());
           const dispatch = await resolve(value, qcArmed ? QC_SCAN_SESSION : null);
           const returnTo = searchParams.get('returnTo');
+          if (returnTo === '/m/orders') {
+            // Allocate opens scan as a find action, not a route away from the
+            // queue. The queue runs the scanned value through its existing
+            // backend search contract and spotlights the matching work.
+            router.push(withPhoneScanCorrelation(`/m/orders?scan=${encodeURIComponent(value)}`, correlation));
+            return;
+          }
           if (returnTo === '/m/orders/new') {
             // The shared dispatch path has already classified this scan. Return
             // the raw value to the mobile intake surface so it can decide whether
             // it is an order number, SKU, or item number without a second parser.
-            router.push(`/m/orders/new?scan=${encodeURIComponent(value)}`);
+            router.push(withPhoneScanCorrelation(`/m/orders/new?scan=${encodeURIComponent(value)}`, correlation));
             return;
           }
           if (!dispatch) {
-            submitRaw(value);
+            if (scanMode === 'view') {
+              setLocationError('No saved record found · switch to Operate to intake');
+              playScanFeedback('reject');
+              return;
+            }
+            submitRaw(value, correlation);
             return;
           }
-          const route = routeScan(value);
+          if (qcArmed && lpnTarget) {
+            if (route?.type !== 'serial-unit') {
+              setLocationError('Scan a unit label to add it to this LPN');
+              playScanFeedback('reject');
+              return;
+            }
+            const commandId = safeRandomUUID();
+            const response = await fetch(`/api/handling-units/${encodeURIComponent(lpnTarget)}/assign`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandId },
+              body: JSON.stringify({ units: [value], idempotencyKey: commandId }),
+            });
+            const body = (await response.json().catch(() => null)) as { success?: boolean; error?: string; unresolved?: string[] } | null;
+            if (!response.ok || !body?.success) {
+              setLocationError(body?.unresolved?.length ? `Unit not found: ${body.unresolved.join(', ')}` : body?.error || 'Could not add the unit to this LPN');
+              playScanFeedback('reject');
+              return;
+            }
+          }
           // A bare 7-character guess may be an FNSKU tail; the catalog decides.
           const tail = route?.redirect ? null : fnskuFromTail(value);
           if (tail && (await fetchFnskuRecord(tail).catch(() => null))) {
-            router.push(fnskuHubHref(tail));
+            router.push(withPhoneScanCorrelation(fnskuHubHref(tail), correlation));
             return;
+          }
+          // View means identity, never the object's next operational job. A
+          // carton with open QC may dispatch to its QC card in Operate mode;
+          // support staff scanning the same printed R-label must see the carton
+          // record, its ticket and its contents instead.
+          if (scanMode === 'view' && !qcArmed && route?.type === 'receiving') {
+            const identityHref = viewOnlyIdentityHref(route);
+            if (identityHref) {
+              const href = withJobReturn(withScanMode(identityHref, 'view'), '/m/scan');
+              router.push(withPhoneScanCorrelation(href, correlation));
+              return;
+            }
           }
           const land = landScanIdentify(dispatch, route);
           if (land.kind === 'identify') {
-            router.push(land.href);
+            const receivingRecord = !qcArmed && route?.type === 'receiving' && land.href.startsWith('/m/r/');
+            const href = lpnTarget
+              ? withJobReturn(land.href, `/m/qc/lpn/${encodeURIComponent(lpnTarget)}`)
+              : receivingRecord
+                ? withJobReturn(withScanMode(land.href, scanMode), '/m/scan')
+                : land.href;
+            router.push(withPhoneScanCorrelation(href, correlation));
             return;
           }
           if (land.kind === 'intake') {
+            if (scanMode === 'view') {
+              setLocationError('No saved record found · switch to Operate to intake');
+              playScanFeedback('reject');
+              return;
+            }
             // A never-seen tracking may be a box WE packed or shipped — that
             // is its package (or its order), not an inbound arrival.
             const outbound = route?.type === 'carrier-tracking' ? await landOutboundTracking(value, '/m/scan') : null;
             if (outbound) {
-              router.push(outbound);
+              router.push(withPhoneScanCorrelation(outbound, correlation));
               return;
             }
-            submitRaw(value);
+            submitRaw(value, correlation);
             return;
           }
           if (route?.type === 'bin' || route?.type === 'bin-paired-order') {
             // A location is a full-screen record with an X back here, never
             // a sheet over the camera (operator 2026-09-25).
             const code = unwrapScannedLocation(value);
-            const href = locationHubHref(code);
+            let proof: string;
+            try {
+              proof = await authorizeScannedLocation(code);
+            } catch (error) {
+              setLocationError(error instanceof Error ? error.message : 'Could not verify location');
+              playScanFeedback('reject');
+              return;
+            }
+            const href = withLocationScanProof(locationHubHref(code), proof);
             applyLocationTape(locationTapeEntry(code, ++locationSeqRef.current), href);
             playScanFeedback('success');
-            router.push(href);
+            router.push(withPhoneScanCorrelation(href, correlation));
           }
         } finally {
           setDispatching((n) => Math.max(0, n - 1));
         }
       })();
     },
-    [resolve, qcArmed, router, searchParams, submitRaw, playScanFeedback, applyLocationTape],
+    [resolve, qcArmed, locationOnly, router, searchParams, submitRaw, playScanFeedback, applyLocationTape, scanMode, lpnTarget],
   );
 
   // The kernel owns hardware scans on this screen.
@@ -241,9 +383,12 @@ function MobileScanIdentifyInner() {
   const status = useMemo(() => {
     if (!online) return 'Offline';
     if (cameraOff) return 'Camera off';
+    if (locationError) return locationError;
+    if (locationOnly) return pending > 0 ? 'Checking location…' : 'Location scan';
     if (pending > 0) return `${pending} pending · ${arrived} in`;
+    if (scanMode === 'view') return 'View only';
     return `${arrived} in`;
-  }, [online, cameraOff, pending, arrived]);
+  }, [online, cameraOff, locationError, locationOnly, pending, arrived, scanMode]);
 
   if (classifyRid != null) {
     return (
@@ -251,52 +396,76 @@ function MobileScanIdentifyInner() {
     );
   }
 
+  const exitHref = locationOnly
+    ? mobileJobReturn(searchParams.get('returnTo'))
+    : lpnTarget
+      ? `/m/qc/lpn/${encodeURIComponent(lpnTarget)}`
+      : mobileJobReturn(searchParams.get('returnTo'));
+  const scanTitle = locationOnly ? 'Scan location' : qcArmed ? 'Quality control' : 'Scan';
+
   return (
-    <MobileStationShell
-      tape={tape}
-      untitledLabel="Package"
-      empty={
-        <div className="flex flex-col items-center gap-3 px-8 pb-6 text-center">
-          {historyFailed ? (
-            <>
-              <p className="text-role-eyebrow text-text-danger">
-                Could not load earlier packages
-              </p>
-              <Button
-                variant="secondary"
-                size="lg"
-                radius="mode"
-                className="min-h-mode-hit"
-                onClick={() => void retryHistory()}
-              >
-                Try again
-              </Button>
-            </>
-          ) : qcArmed ? (
-            <p className="text-role-eyebrow text-text-soft">
-              Quality control — scan the unit label unbox put on the unit
-            </p>
-          ) : (
-            <p className="text-role-eyebrow text-text-soft">
-              Scan a tracking number or location code
-            </p>
-          )}
-        </div>
-      }
-      itemOpen={itemOpen}
-      window={
-        <MobileCaptureWindow
-          label="Scan camera"
-          collapsedLabel={qcArmed ? 'Scan a unit label' : 'Scan a label'}
-          status={status}
-          statusAlert={cameraOff || !online}
-          pending={pending}
-          onDecode={onDecode}
-          onErrorChange={setCameraOff}
-          armRequest={armRequest}
+    <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
+      <MobileScanHeader
+        title={scanTitle}
+        mode={operationLocked ? 'operate' : scanMode}
+        onModeChange={setScanMode}
+        operationLocked={operationLocked}
+        exitHref={exitHref}
+      />
+      <div className="min-h-0 flex-1">
+        <MobileStationShell
+          tape={tape}
+          windowPlacement="bottom"
+          untitledLabel="Package"
+          empty={
+            <div className="flex flex-col items-center gap-3 px-8 pb-6 text-center">
+              {historyFailed ? (
+                <>
+                  <p className="text-role-eyebrow text-text-danger">
+                    Could not load earlier packages
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    radius="mode"
+                    className="min-h-mode-hit"
+                    onClick={() => void retryHistory()}
+                  >
+                    Try again
+                  </Button>
+                </>
+              ) : locationOnly ? (
+                <p className="text-role-eyebrow text-text-soft">Scan a shelf or bin location</p>
+              ) : qcArmed ? (
+                <p className="text-role-eyebrow text-text-soft">
+                  Quality control — scan an LPN, carton, line or unit
+                </p>
+              ) : (
+                <p className="text-role-eyebrow text-text-soft">
+                  {scanMode === 'view'
+                    ? 'View records without changing them'
+                    : 'Scan a tracking number or location code'}
+                </p>
+              )}
+            </div>
+          }
+          itemOpen={itemOpen}
+          window={
+            <MobileCaptureWindow
+              label="Scan camera"
+              collapsedLabel={
+                locationOnly ? 'Scan a location' : qcArmed ? 'Scan QC label' : 'Scan a label'
+              }
+              status={status}
+              statusAlert={cameraOff || !online || Boolean(locationError)}
+              pending={pending}
+              onDecode={onDecode}
+              onErrorChange={setCameraOff}
+            />
+          }
         />
-      }
-    />
+      </div>
+    </div>
   );
 }
 

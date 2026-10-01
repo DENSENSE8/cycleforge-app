@@ -78,6 +78,7 @@ export function ClaimTicketReply({
             </Button>
           ) : null}
           <PaneHeaderTabs<ReplyMode>
+            appearance="flush"
             tabs={[
               {
                 value: 'internal',
@@ -98,7 +99,7 @@ export function ClaimTicketReply({
             ]}
             value={mode}
             onChange={(next) => setIsPublic(next === 'public')}
-            className="rounded-none border border-border-soft px-1 py-0.5"
+            className="border border-border-soft px-1 py-0.5"
           />
         </div>
       </div>

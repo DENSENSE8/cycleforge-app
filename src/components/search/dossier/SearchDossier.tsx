@@ -12,7 +12,7 @@ import { SearchOrderDossier } from '@/components/search/dossier/SearchOrderDossi
 import { SearchOrderRecord } from '@/components/search/dossier/SearchOrderRecord';
 import { useFindDensity } from '@/components/search/find-density-context';
 import { SearchUnitDossier } from '@/components/search/dossier/SearchUnitDossier';
-import { SearchReceivingDossier } from '@/components/search/dossier/SearchReceivingDossier';
+import { SearchReceivingRecord } from '@/components/search/dossier/SearchReceivingRecord';
 import { SearchSkuDossier, SearchStackDossier } from '@/components/search/dossier/SearchGenericDossier';
 import type { SearchSelection } from '@/lib/search/search-selection';
 
@@ -36,7 +36,7 @@ export function SearchDossier({
         <SearchOrderRecord orderId={sel.id} onBack={onBack} />
       );
     case 'receiving':
-      return <SearchReceivingDossier receivingId={sel.id} onBack={onBack} />;
+      return <SearchReceivingRecord receivingId={sel.id} onBack={onBack} />;
     case 'unit':
       return <SearchUnitDossier unitRef={sel.id} onBack={onBack} />;
     case 'sku':

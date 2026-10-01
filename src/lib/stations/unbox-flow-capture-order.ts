@@ -1,4 +1,4 @@
-/** Org override for Unbox capture-step order (dogfood right-rail DnD). */
+/** Optional org override for Unbox capture-step order. */
 
 type UnboxFlowCaptureOrderFlowId = 'found' | 'unfound' | 'return';
 
@@ -6,7 +6,6 @@ type UnboxFlowCaptureOrderMap = Partial<Record<UnboxFlowCaptureOrderFlowId, stri
 
 const FLOW_IDS: readonly UnboxFlowCaptureOrderFlowId[] = ['found', 'unfound', 'return'];
 
-const EMPTY_JSON = '{}';
 
 /** Reorder `allowedKeys` by preference list; append any allowed keys not named. */
 export function applyCaptureOrderOverride(
@@ -61,23 +60,5 @@ export function parseUnboxFlowCaptureOrder(raw: string | null | undefined): Unbo
   return out;
 }
 
-export function serializeUnboxFlowCaptureOrder(map: UnboxFlowCaptureOrderMap): string {
-  const clean: UnboxFlowCaptureOrderMap = {};
-  for (const flow of FLOW_IDS) {
-    const list = map[flow];
-    if (!list?.length) continue;
-    const keys: string[] = [];
-    const seen = new Set<string>();
-    for (const item of list) {
-      const key = String(item).trim();
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      keys.push(key);
-    }
-    if (keys.length > 0) clean[flow] = keys;
-  }
-  const json = JSON.stringify(clean);
-  return json === EMPTY_JSON ? EMPTY_JSON : json;
-}
 
 export const UNBOX_FLOW_CAPTURE_ORDER_SETTING_KEY = 'receiving.unboxFlowCaptureOrder' as const;

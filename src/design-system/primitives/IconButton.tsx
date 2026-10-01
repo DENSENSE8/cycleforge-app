@@ -54,7 +54,7 @@ interface IconButtonProps
    * `control` is `TRIAGE_PANEL_INNER_CORNER` — follows the region: rounded on desk records, square on phones.
    * `surface` is `cornerClass('surface')` for mobile chrome beside inset-grouped cards.
    * `pill` is `cornerClass('pill')` — a circle in every region.
-   * `modePill` is `rounded-mode-pill` — a circle in triage, square on Floor / phones (industrial radius 0).
+   * `modePill` is `rounded-mode-pill`.
    */
   radius?: 'flush' | 'control' | 'surface' | 'pill' | 'modePill';
 }

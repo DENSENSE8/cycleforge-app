@@ -9,7 +9,9 @@
 
 import { NavContextSchema, type NavContext } from '@/lib/nav/context/schema';
 
-const STORAGE_PREFIX = 'nav-context:v1:';
+// v2 keys include organization + staff. Do not read the old staff-only cache:
+// its valid schema cannot prove which tenant produced it.
+const STORAGE_PREFIX = 'nav-context:v2:';
 const MAX_ENTRIES = 40;
 
 type SnapshotMap = Record<string, NavContext>;

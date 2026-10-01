@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, type ReactNode, type RefObject } from 're
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
+import { dataTableFindHighlightId } from '@/lib/tables/data-table-find';
 import {
   ORDER_EXPORT_COLUMNS,
   buildOrderExportRow,
@@ -12,11 +12,9 @@ import {
 import type { DataTableProps } from '@/components/tables/DataTable';
 import type { TableId } from '@/lib/tables/table-columns';
 import {
-  ordersIndexColumnsFor,
   type OrdersQueueColumn,
   type OrdersQueueColumnKey,
 } from '@/lib/dashboard-order-row-layout';
-import { useOrdersTableLayout } from './useOrdersTableLayout';
 import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { ORDERS_DEFAULT_TABLE_BINDING } from './orders-table-definition';
 import {
@@ -156,19 +154,9 @@ export function useOrdersSpreadsheet({
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
   const { isMobile } = useUIModeOptional();
 
-  // ONE Orders binding (Wave-1 hand-model kill). `?ustatus=PICKED` narrows
-  // ROWS (`UnshippedTable`'s lane predicate) — it never swaps column models;
-  // "show who + when for pick" is the `orders.picked` slot binding.
   const binding = ORDERS_DEFAULT_TABLE_BINDING;
-
-  // Effective slot layout (staff ?? org ?? product) → the mounted INDEX model:
-  // one line per order (owner 2026-09-26). Rebinding changes bindings, never
-  // keys, so slot-keyed prefs hold. The industrial line ledger is the floor.
-  const { effectiveLayout, subtitleFieldIds, fields } = useOrdersTableLayout();
-  const indexColumns = useMemo(
-    () => ordersIndexColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+  const indexColumns = binding.columns;
+  const subtitleFieldIds: readonly string[] = [];
 
   // The feed — rows, grouping, URL sort, selection plane, inline-edit commits,
   // sort menu and views. Shared with the To-ship ledger (`useOrdersQueueFeed`).
@@ -379,7 +367,7 @@ export function useOrdersSpreadsheet({
   );
   const findScrollToKey = selectedRecord
     ? String(selectedRecord.id)
-    : slotTableFindHighlightId({
+    : dataTableFindHighlightId({
         query: searchValue,
         paintedRowIds: painted.map((row) => String(row.id)),
       });
@@ -391,12 +379,7 @@ export function useOrdersSpreadsheet({
       columns: [...ORDER_EXPORT_COLUMNS],
       toRow: (row: ShippedOrder) => buildOrderExportRow(row),
     },
-    // INDEX (one line per order) layout — MATERIALIZED from the effective slot layout, never a hand array.
     columns: indexColumns,
-    // Fields picker data — DataTable renders it when the definition declares
-    // `fieldsMenu` (org/staff slot binding lives behind it). Header and
-    // under-title drags both write through `fields.onReorderByDrop`.
-    fields,
     onResizeColumn: handleResizeColumn,
     ariaLabel,
     orderGroupsByDate,

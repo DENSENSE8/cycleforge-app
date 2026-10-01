@@ -15,9 +15,13 @@ import type { NavLocateBucket, NavLocateEntry } from '@/lib/nav/context/schema';
 import type { CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
+  RECON_PARAM,
   RECON_REASON_LABELS,
   RECON_STATUS_LABELS,
+  REF_IN_PARAM,
   reconcileCheck,
+  rowRefKeys,
+  type ReconStatus,
   type RefSelection,
 } from '@/lib/receiving/reconcile';
 import { INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
@@ -26,43 +30,65 @@ import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 /** The Check's own gate (`POST …/check-zoho-received`) and the ledger's. */
 export const INBOUND_LOCATE_PERMISSION = 'receiving.view';
 
-export const INBOUND_BUCKET_IDS = ['received', 'not_received', 'exceptions'] as const;
+export const INBOUND_BUCKET_IDS = ['awaiting_tracking', 'received', 'not_received', 'exceptions'] as const;
 type InboundBucketId = (typeof INBOUND_BUCKET_IDS)[number];
 
+function inboundLedgerHref(status: ReconStatus, ref?: string): string {
+  const params = new URLSearchParams({ [RECON_PARAM]: status });
+  if (ref) params.set(REF_IN_PARAM, ref);
+  return `${INCOMING_SURFACE_ROUTE}?${params.toString()}`;
+}
+
 const INBOUND_BUCKETS: Readonly<Record<InboundBucketId, Omit<NavLocateBucket, 'id' | 'count'>>> = {
-  // Verdicts over the paste — their list is the ledger under the page's own `?recon=`.
-  received: { label: RECON_STATUS_LABELS.received, tone: 'success', href: null },
-  not_received: { label: RECON_STATUS_LABELS.not_received, tone: 'warning', href: null },
+  // The Incoming status chip's words — the list `?state=AWAITING_TRACKING` opens.
+  awaiting_tracking: {
+    label: 'Awaiting tracking',
+    tone: 'warning',
+    href: `${INCOMING_SURFACE_ROUTE}?state=AWAITING_TRACKING`,
+  },
+  // The ledger under `?recon=` — the same list the chips count. Null left Enter with nowhere to go.
+  received: { label: RECON_STATUS_LABELS.received, tone: 'success', href: inboundLedgerHref('received') },
+  not_received: { label: RECON_STATUS_LABELS.not_received, tone: 'warning', href: inboundLedgerHref('not_received') },
   exceptions: { label: 'Exceptions', tone: 'danger', href: `${INCOMING_SURFACE_ROUTE}?lane=exceptions` },
 };
 
-export interface InboundLocateDeps {
-  /** The Unbox Check rows for these refs (every bucket of its answer). */
-  check(refs: readonly string[]): Promise<CheckZohoReceivedRow[]>;
-  /** `GET /api/receiving-lines?view=reconcile&ref_in=…` rows. */
-  lines(refs: readonly string[]): Promise<ReceivingLineRow[]>;
-}
+ export interface InboundLocateDeps {
+   /** The Unbox Check rows for these refs (every bucket of its answer). */
+   check(refs: readonly string[]): Promise<CheckZohoReceivedRow[]>;
+   /** `GET /api/receiving-lines?view=reconcile&ref_in=…` rows. */
+   lines(refs: readonly string[]): Promise<ReceivingLineRow[]>;
+   /** Incoming `?state=AWAITING_TRACKING` rows for these refs — the list the bucket opens. */
+   awaiting(refs: readonly string[]): Promise<ReceivingLineRow[]>;
+ }
 
 export async function locateInbound(
   selection: Pick<RefSelection, 'refs' | 'keys'>,
   deps: InboundLocateDeps,
 ): Promise<{ buckets: NavLocateBucket[]; entries: NavLocateEntry[] }> {
-  const [checkRows, lineRows] =
+  const [checkRows, lineRows, awaitingRows] =
     selection.refs.length > 0
-      ? await Promise.all([deps.check(selection.refs), deps.lines(selection.refs)])
-      : [[], []];
+      ? await Promise.all([deps.check(selection.refs), deps.lines(selection.refs), deps.awaiting(selection.refs)])
+      : [[], [], []];
   const recon = reconcileCheck({ ...selection, truncated: 0 }, checkRows, lineRows);
   // Found nowhere = the branch `reconcileCheck` answers "No match anywhere":
   // no Check row, or no ERP answer and nothing in our tables.
   const checked = new Set(checkRows.map((row) => canonicalizeTrackingKey(row.tracking)));
-  const counts: Record<InboundBucketId, number> = { received: 0, not_received: 0, exceptions: 0 };
+  const awaitingKeys = new Set(awaitingRows.flatMap((row) => rowRefKeys(row)));
+  const counts: Record<InboundBucketId, number> = {
+    awaiting_tracking: 0,
+    received: 0,
+    not_received: 0,
+    exceptions: 0,
+  };
   const entries = recon.map((entry): NavLocateEntry => {
     const nowhere = !checked.has(entry.key) || entry.reasonCode === 'no_match';
-    const buckets: InboundBucketId[] = nowhere
-      ? []
-      : entry.exception?.inView
-        ? [entry.status, 'exceptions']
-        : [entry.status];
+    const buckets: InboundBucketId[] = [];
+    // The list, not the in_transit facet. A ref the list holds is found.
+    if (awaitingKeys.has(entry.key)) buckets.push('awaiting_tracking');
+    if (!nowhere) {
+      buckets.push(entry.status);
+      if (entry.exception?.inView) buckets.push('exceptions');
+    }
     for (const id of buckets) counts[id] += 1;
     const title = entry.poNumber
       ? [`PO ${entry.poNumber}`, entry.vendor].filter(Boolean).join(' · ')
@@ -73,7 +99,7 @@ export async function locateInbound(
       buckets,
       title: title || null,
       detail: nowhere ? null : reason && reason !== entry.detail ? `${entry.detail} · ${reason}` : entry.detail,
-      recordHref: null,
+      recordHref: nowhere ? null : inboundLedgerHref(entry.status, entry.ref),
       facet: entry.reasonCode ? { id: entry.reasonCode, label: RECON_REASON_LABELS[entry.reasonCode] } : null,
     };
   });

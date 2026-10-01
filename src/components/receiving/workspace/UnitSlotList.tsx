@@ -537,7 +537,7 @@ function ExpandedRow({
     typeof onMarkUnitNoSerial === "function";
   // Committed serial — show readout + delete (not an empty field with + / check).
   const showFilledReadout = !!serial && !editing && !waived;
-  // Joined industrial bar: Unbox accordion single-row OR Units Displays flush.
+  // Joined bar: Unbox accordion single-row OR Units Displays flush.
   const joined = singleRow || flush;
 
   const slotGrade = String(

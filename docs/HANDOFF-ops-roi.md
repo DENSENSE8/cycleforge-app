@@ -69,17 +69,16 @@ allocation with `SHORT_PICK_<reason>` (`src/lib/picking/sessions.ts:741-783`); r
 
 ## F2 — Scan-out refuses unready orders
 
-**Evidence:** scan-out blocks only cancelled / delivered / duplicate
-(`src/lib/outbound/scan-out.ts:143-150`); no packed, cage or buyer-note check. It passes
-`packerLogId: activityId` (`:184`) — suspected id-type bug; verify.
+**Packed gate landed 2026-09-30.** `scanOutLabel` now fails closed with
+`blockReason='not_packed'` unless the shipment has a completed `ORDERS` `packer_logs` row; the
+read-only identification face uses the same decision. `reversePack` removes `SHIP_CONFIRM` when it
+removes the final completed pack. Migration
+`2026-09-30_ship_confirm_requires_completed_pack.sql` deletes historical violations and installs
+deferred database triggers on both tables, so direct writes and later un-packs cannot split the
+facts. Live cleanup removed 793 invalid `SHIP_CONFIRM` rows; 0 remained.
 
-**Prompt**
-> Read `docs/HANDOFF-ops-roi.md` (Rules + F2). In `src/lib/outbound/scan-out.ts`, before writing
-> SHIP_CONFIRM, refuse (409 with a machine code, like the buyer-note hold) when the order is not
-> packed, is caged (`release_state`), or has an unacknowledged buyer note
-> (`buyerNoteUnacknowledgedSql`, `src/lib/orders/buyer-note-interlock.ts`). The scan-out screen
-> shows the reason and the one action that clears it. Verify and fix the `packerLogId` argument.
-> Regression test on the scan-out decision function.
+**Still open in F2:** cage (`release_state`) and unacknowledged buyer-note gates, plus verification
+of the legacy `mirrorAllocations({ packerLogId: activityId })` identifier.
 
 **Owner test**
 1. Scan out a CF-TEST order that was never packed → refused, says "Not packed".

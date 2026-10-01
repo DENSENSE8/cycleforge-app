@@ -21,7 +21,7 @@ export interface PackerPhotoScope {
   /**
    * `photos.photo_type` for this shot — the guided Review capture threads
    * `pack_slip` / `pack_box` (src/lib/photos/types.ts) so slip vs box bucket
-   * without a schema change. Defaults to `packer_photo` (the spam-capture path).
+   * without a schema change. Defaults to `packer_photo` (unclassified capture).
    */
   photoType?: string | null;
   /** Device-reported capture instant (epoch ms) from `CapturedShot.capturedAtMs` — stored as `photos.client_captured_at`, beside (never… */

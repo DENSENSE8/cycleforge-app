@@ -72,40 +72,30 @@ at all… I do not see any code at all from it."
    aside), `DeskPageChrome` (while a record is open, no page title and no page
    CTA), `RecordActionStrip`, `RepairCardList`.
 
-## What exists today (verified 2026-09-30)
+## Current implementation
 
-- List: `src/components/repair/RepairCardList.tsx` (TriageCardList, Receiving
-  mode `/repair` with views Shipped in `?channel=shipment` (default) / Dropped
-  off `?channel=pickup`, same list on Sales `/dashboard?mode=repairs`). It
-  passes the record slot `view={<RepairRecordView …/>}` and
-  `strip={<RepairRecordStrip …/>}`.
-- Old record (TO DELETE): `src/components/repair/RepairRecordView.tsx`,
-  `RepairRecordStatus.tsx` (`RepairStatusStrip`, hand-rolled 8-step
-  pipeline), `repair-record-sections.tsx` (`TicketFact`, `CustomerFacts`,
-  `LinkFacts`), `repair-record-verbs.tsx` (`RepairRecordStrip`, `StatusDisplay`,
-  `TicketDisplay`, `LinkDisplay`, pickup portal). Controller:
-  `details-panel/useRepairDetailsPanel.ts`.
-- Old right-rail inspector (ALSO TO DELETE — owner wants no old display code):
-  `src/components/repair/RepairDetailsPanel.tsx` + `details-panel/*`
-  (`RepairOverviewTab`, `RepairLinkageSection`, `RepairStatusSection`,
-  `RepairInfoSections`, `repair-details-shared.ts`). Mounted by
-  `TechRepairRail` (via `PickDashboard.tsx:54`) and `GlobalDetailStackHost.tsx:142`.
-  Cut both over to the new record (open `/repair?openRepair=<id>` or mount the
-  new record body) in the same change, then delete.
+- List: `src/components/repair/RepairCardList.tsx`, one `RepairCard` per ticket
+  through `TriageCardList` on Receiving `/repair` and Sales
+  `/dashboard?mode=repairs`. It owns checked-card bulk actions and opens
+  `RepairServiceRecordView` through `DeskRecordPlane`.
+- Historical baseline removed by the migration: `RepairRecordView.tsx`,
+  `RepairRecordStatus.tsx`, `repair-record-sections.tsx`,
+  `repair-record-verbs.tsx`, `details-panel/useRepairDetailsPanel.ts`,
+  `RepairDetailsPanel.tsx`, and `details-panel/*`. Their callers now open the
+  shared repair record rather than mounting the retired inspector.
 - Not affected (own stacks, keep): mobile `/m/rs/*` (`src/components/mobile/repair/*`),
   kiosk intake (`RepairServiceForm`, `RepairPaperworkCanvas`, …),
   `RepairPickupFlow.tsx` (reuse it as a panel for Start pickup).
-- Card data: `RSRecord` from `getAllRepairs` / `searchRepairs`
+- Queue data: `RSRecord` from `getAllRepairs` / `searchRepairs`
   (`src/lib/neon/repair-service-queries.ts`) — includes `status`,
   `status_history` (jsonb), `intake_channel` ('shipment' | 'pickup'),
   `received_at`, `due_at` (3-business-day SLA), `ticket_number`,
   `source_tracking_number`, `source_order_id`, `source_sku`, `serial_number`,
   `issue`, `price`, `customer_id`/`contact_info`, `counter_transaction_id`,
   `receiving_line_id` / `receiving_id` (drop-off carton `R-{id}`), `image_url`.
-- Status faces: `src/design-system/tokens/repair-status.ts` (`REPAIR_STATUS`),
-  `src/lib/repair-status.ts`; card inline status control
-  `src/components/repair/cards/RepairStatusControl.tsx` +
-  `useRepairStatusChange.ts` (reuse for the record's Change status).
+- Status faces: `src/design-system/tokens/repair-status.ts` (`REPAIR_STATUS`)
+  and `src/lib/repair-status.ts`; the table displays status read-only while the
+  selected-set bulk bar and record Change status panel own mutations.
 
 ## The record, section by section
 
@@ -207,10 +197,8 @@ host passes.
 `repairPipeline`), `repair-record-sections.tsx`, `repair-record-verbs.tsx`
 (`RepairRecordStrip` & co.), `RepairDetailsPanel.tsx`, `details-panel/*`,
 `REPAIR_RECORD_COLUMN_CLASS` and any token/test/pinned entry that only served
-them. Before deleting, run LSP references / grep for every exported symbol and
-cut over `TechRepairRail`, `GlobalDetailStackHost`, `RepairCardList`, and
-`src/components/repair/index.ts`. `git grep -n "RepairRecordView\|RepairStatusStrip\|repairPipeline\|RepairDetailsPanel\|RepairRecordStrip\|useRepairDetailsPanel"`
-must return nothing but the new code's comments (ideally nothing).
+them. Before deleting, run LSP references for every exported symbol and cut over
+all record-plane callers. The retired symbols must have zero references.
 
 ## Model + tests
 
@@ -254,3 +242,22 @@ must return nothing but the new code's comments (ideally nothing).
 - Receipt for tickets without a counter visit: build a repair receipt, or
   disabled with reason?
 - Inline Add: lead-slot form vs the existing overlay.
+
+
+## Desktop queue and record contract
+
+- The desktop queue is the registered `repair.queue` `DataTable`. Its
+  checkmark gutter owns selection; workflow status remains a read-only row
+  fact and is changed only through the selected-set action bar or the open
+  record's Change status panel.
+- Selected repairs support status changes, staff assignment, one print run
+  for repair labels, ticket-number copy, CSV export, and partial-failure
+  reporting.
+- The funnel combines workflow-status and warehouse-attention questions:
+  overdue, missing ticket/serial/price/customer, needs label, parts/payment
+  waits, and inbound not received. These params participate in saved views.
+- The open record contains embedded support-ticket triage, complete manual
+  repair/customer/source editing, the shared bench timer/action writer, and
+  tenant-scoped before/after activity history.
+- Keyboard access keeps `J`/`K` for record walking. Record verbs use distinct
+  keys (`T` triage ticket, `V` link ticket, `I` information, `B` bench log).

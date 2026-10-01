@@ -4,7 +4,7 @@
  */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const REPORT_STAFF_DAY_FIELD_CATALOG: FieldCatalog = [
   /** Staff attribution — a person, bound to status or subtitle tracks. */
@@ -62,13 +62,13 @@ export const REPORT_STAFF_DAY_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const REPORT_STAFF_DAY_PRODUCT_LAYOUT: SlotLayout = {
+export const REPORT_STAFF_DAY_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'report-staff-day.ticket',
   statusBindings: [{ fieldId: 'report-staff-day.staff' }, { fieldId: 'report-staff-day.kind' }],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Staff-day entry. */
 export const REPORT_STAFF_DAY_TABLE_LAYOUT_ID = 'report-staff-day';

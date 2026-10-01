@@ -1,4 +1,4 @@
-/** Phone industrial record facts from a queue `WorkOrderRow` — the same `LIFECYCLE` key, next step and ship-by inputs the desk ledger… */
+/** Phone record facts from a queue `WorkOrderRow`, using the shared lifecycle data. */
 
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { LifecycleState } from '@/design-system/tokens/lifecycle';

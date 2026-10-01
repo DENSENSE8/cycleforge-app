@@ -28,7 +28,12 @@ async function main() {
   console.log(`${apply ? 'APPLY' : 'DRY RUN'} · org ${orgId}`);
   for (const action of result.actions) {
     const target = action.kind === 'create' ? `owners ${action.assigneeStaffIds.join(',')}` : `task ${action.taskId}`;
-    const headline = action.kind === 'create' || action.note ? ` · "${(action.note ?? '').split('\n')[0]}"` : '';
+    const headline =
+      action.kind === 'create' || 'note' in action
+        ? ` · "${(action.note ?? '').split('\n')[0]}"`
+        : action.kind === 'linkTicket'
+          ? ` · Ticket ${action.ticketNumber}`
+          : '';
     console.log(`  ${action.kind.padEnd(7)} RS-${action.repairId} · ${target}${headline}`);
   }
   console.log(JSON.stringify(result.summary));

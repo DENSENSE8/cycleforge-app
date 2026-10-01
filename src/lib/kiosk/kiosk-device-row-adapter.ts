@@ -26,7 +26,7 @@ const STATUS_TONE: Record<KioskDeviceTableRow['status'], CompoundStateTone> = {
   revoked: 'alert',
 };
 
-/** Compact civil face for the Dates Hash line — no year (slot-table date law). */
+/** Compact civil face for the Dates Hash line — no year (DataTable date law). */
 function civilFace(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(iso);

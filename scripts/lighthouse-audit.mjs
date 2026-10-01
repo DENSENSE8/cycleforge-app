@@ -160,6 +160,7 @@ export const ROUTES = [
   // `/shipping` 308s to the labels desk (`resolveShippingSurfaceRedirect`);
   // name the surface, not the alias.
   { path: '/shipping/labels', tier: 2, auth: true, formFactor: 'desktop' },
+  { path: '/fulfilled', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/support', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/inventory', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/settings', tier: 2, auth: true, formFactor: 'desktop' },
@@ -492,8 +493,10 @@ async function auditRoute(route) {
 }
 
 function writeSummary(results) {
+  const measuredFormFactors = [...new Set(results.map((result) => result.formFactor))];
+  const summaryFormFactor = measuredFormFactors.length === 1 ? measuredFormFactors[0] : 'mixed profiles';
   const lines = [
-    `# Lighthouse summary — ${formFactor}, ${runsPerRoute} run(s)/route, median reported`,
+    `# Lighthouse summary — ${summaryFormFactor}, ${runsPerRoute} run(s)/route, median reported`,
     '',
     `Generated: ${new Date().toISOString()} · base: ${BASE_URL}`,
     '',

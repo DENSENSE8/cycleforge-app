@@ -1,7 +1,7 @@
 /**
  * Scan-out JobFace mapper — POST/GET carton JSON → IdentificationResult.
- *
- * Pure. Cancelled / already-delivered never advertise SHIP_CONFIRM. Dual-entry:
+ * Scan-out refuses cancellation and cartons without a completed pack. Carrier
+ * delivery state does not authorize or block SHIP_CONFIRM. Dual-entry:
  * `source: 'scan'` (gun) and `source: 'claim'` (GET ?orderId=) share this function.
  */
 
@@ -17,7 +17,6 @@ export interface ScanOutCartonJson {
   matched?: boolean;
   blocked?: boolean;
   blockReason?: string | null;
-  alreadyDelivered?: boolean;
   duplicate?: boolean;
   ambiguous?: boolean;
   candidates?: unknown[];
@@ -78,11 +77,10 @@ function entityId(json: ScanOutCartonJson, requestedKey?: string): string {
 }
 
 function faceFor(json: ScanOutCartonJson, source: IdentificationSource): JobFace {
-  const cancelled =
+  const blocked =
     json.blocked === true ||
     isBlockedStatus(json.blockReason) ||
     isBlockedStatus(json.orderStatus);
-  const delivered = json.alreadyDelivered === true;
   const ambiguous =
     json.ambiguous === true ||
     (Array.isArray(json.candidates) && json.candidates.length > 1);
@@ -101,19 +99,19 @@ function faceFor(json: ScanOutCartonJson, source: IdentificationSource): JobFace
   } else if (json.matched === false) {
     state = 'miss';
     title = 'No order found';
-  } else if (cancelled || delivered) {
+  } else if (blocked) {
     state = 'blocked';
-    title = delivered && !cancelled ? 'Already delivered' : 'Do not ship';
+    title = 'Do not ship';
   } else if (json.duplicate === true) {
     state = 'done';
-    title = 'Already scanned out';
+    title = 'Already fulfilled';
   } else if (source === 'claim') {
     state = 'ready';
     title = 'Ready to scan out';
     mutate = 'SHIP_CONFIRM';
   } else {
     state = 'done';
-    title = 'Shipped out';
+    title = 'Fulfilled';
   }
 
   return { state, title, message, mutate };

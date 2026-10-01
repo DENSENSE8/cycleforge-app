@@ -10,7 +10,7 @@ import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { NAV_KEY_HINT_CLASS, useNavRegion } from '@/lib/keyboard/nav-keys';
 import { LIFECYCLE, LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_OPEN_CLASS, RECORD_TITLE_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_OPEN_CLASS, RECORD_TITLE_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { recordState } from '../outbound-orders-ledger-state';

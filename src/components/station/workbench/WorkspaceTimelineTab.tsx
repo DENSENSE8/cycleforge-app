@@ -4,7 +4,6 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Barcode, History, MapPin } from '@/components/Icons';
 import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import {
   CarrierTrackingSection,
@@ -306,7 +305,6 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
       next.push({
         id: 'activity',
         label: 'Activity',
-        icon: History,
         content: (
           <ActivityPanel items={activity.items} loading={Boolean(activity.loading)} />
         ),
@@ -316,7 +314,6 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
       next.push({
         id: 'units',
         label: 'Units',
-        icon: Barcode,
         content: <UnitsPanel serials={serials} loading={serialsLoading} />,
       });
     }
@@ -324,7 +321,6 @@ export function WorkspaceTimelineTab(props: WorkspaceTimelineAnchor) {
       next.push({
         id: 'tracking',
         label: 'Tracking',
-        icon: MapPin,
         content: <CarrierPanel carrier={carrier} />,
       });
     }

@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   REPORT_STAFF_DAY_COMPOUND_COLUMNS,
   reportStaffDaySortFactFor,
@@ -15,7 +15,7 @@ import {
   REPORT_STAFF_DAY_PRODUCT_LAYOUT,
 } from './report-staff-day';
 import { resolveReportStaffDaySlotValue } from './report-staff-day-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '../table-definition';
 
 /** The skeleton's six non-gutter chrome tracks leave this many status slots. */
@@ -47,7 +47,7 @@ describe('report-staff-day catalog', () => {
   });
 
   it('product default parses with machine identity and staff attribution', () => {
-    const parsed = parseSlotLayout(REPORT_STAFF_DAY_PRODUCT_LAYOUT, REPORT_STAFF_DAY_FIELD_CATALOG);
+    const parsed = REPORT_STAFF_DAY_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'report-staff-day.ticket');
     assert.deepEqual(
@@ -100,7 +100,7 @@ describe('report-staff-day materialization', () => {
     );
     assert.deepEqual(keys.slice(6), ['status:1', 'status:2', '_fill']);
     for (const col of REPORT_STAFF_DAY_COMPOUND_COLUMNS) {
-      if (!isSlotTableChromeTrack(col.key)) continue;
+      if (!isDataTableChromeColumn(col.key)) continue;
       if (col.key === 'select' || col.key === '_fill') continue;
       assert.ok(col.label, `chrome track ${col.key} has no header`);
     }
@@ -110,7 +110,7 @@ describe('report-staff-day materialization', () => {
     const header = (key: string) =>
       REPORT_STAFF_DAY_COMPOUND_COLUMNS.find((c) => c.key === key)?.label;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
+    // 2026-09-15 (`data-table-family.ts`); this desk used to print
     // "Staff", which is now the Fields-picker word and the cell's hover word.
     assert.equal(header('fulfillment'), 'Id');
     assert.equal(header('item'), 'Task');
@@ -125,7 +125,7 @@ describe('report-staff-day materialization', () => {
   });
 
   it('materializes any PARSED layout, not just the product default', () => {
-    const parsed = parseSlotLayout(REPORT_STAFF_DAY_PRODUCT_LAYOUT, REPORT_STAFF_DAY_FIELD_CATALOG);
+    const parsed = REPORT_STAFF_DAY_PRODUCT_LAYOUT;
     const remount = reportStaffDayCompoundColumnsFor(parsed);
     assert.deepEqual(
       remount.map((c) => c.key),

@@ -24,6 +24,7 @@ import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import type { ProvisionalSku } from '@/lib/neon/provisional-sku-queries';
+import { MobileNativePhotoInput } from '@/components/mobile/photos/MobileNativePhotoCapture';
 
 const DESCRIPTION_MAX = 2000;
 
@@ -225,11 +226,8 @@ export function ProvisionalCreateSheet({
               maxLength={DESCRIPTION_MAX}
               autoComplete="off"
             />
-            <input
+            <MobileNativePhotoInput
               ref={fileInput}
-              type="file"
-              accept="image/*"
-              capture="environment"
               multiple
               className="hidden"
               onChange={(event) => {

@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Check, ExternalLink, Ticket } from '@/components/Icons';
+import { Check, ExternalLink, ImagePlus, Ticket } from '@/components/Icons';
+import { usePathname } from 'next/navigation';
 import type { SerialUnitRead } from '@/lib/serial/use-serial-unit';
 import { Button } from '@/design-system/primitives';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
@@ -41,19 +42,21 @@ export function QcFailTicketPanel({
 }: {
   unit: Pick<
     SerialUnitRead,
-    'serial_number' | 'sku' | 'product_title' | 'condition_grade' | 'current_receiving_id' | 'current_receiving_line_id'
+    'id' | 'serial_number' | 'sku' | 'product_title' | 'condition_grade' | 'current_receiving_id' | 'current_receiving_line_id'
   >;
   steps: readonly UnitQcStep[];
   note: string;
   /** The ticket is on the line — the record re-reads to show it. */
   onFiled?: () => void;
 }) {
+  const pathname = usePathname();
   const suggestion = useMemo(() => {
     const { failed, total } = summarizeUnitQc(steps);
     return suggestQcFailRemedy({ failed, total, conditionGrade: unit.condition_grade });
   }, [steps, unit.condition_grade]);
   const [remedy, setRemedy] = useState<QcFailRemedy>(suggestion.remedy);
   const [detail, setDetail] = useState(note);
+  const [failureReason, setFailureReason] = useState<string | null>(null);
   const [filing, setFiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filed, setFiled] = useState<ClaimResult | null>(null);
@@ -79,7 +82,7 @@ export function QcFailTicketPanel({
             title: unit.product_title,
             serialNumber: unit.serial_number,
             sku: unit.sku,
-            note: detail,
+            note: [failureReason, detail.trim()].filter(Boolean).join(' — '),
           }),
         }),
       });
@@ -121,6 +124,32 @@ export function QcFailTicketPanel({
         </div>
       ) : (
         <div className={PANEL}>
+          <fieldset>
+            <legend className="mb-2 text-role-caption font-semibold text-mode-muted">Why it failed</legend>
+            <div className="flex flex-wrap gap-2">
+              {['Functional', 'Electrical / safety', 'Cosmetic damage', 'Wrong product', 'Missing parts', 'Identity mismatch', 'Shipping damage', 'Other'].map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  aria-pressed={failureReason === reason}
+                  onClick={() => setFailureReason(reason)}
+                  className={`min-h-9 rounded-full border px-3 text-xs font-semibold ${failureReason === reason ? 'border-rose-600 bg-rose-600 text-white' : 'border-mode-rule bg-mode-panel text-mode-ink'}`}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <Button
+            href={`/m/unit-photos/${unit.id}?stage=testing&back=${encodeURIComponent(pathname)}`}
+            variant="secondary"
+            size="lg"
+            radius="surface"
+            className="w-full"
+            icon={<ImagePlus />}
+          >
+            Add failure photo
+          </Button>
           <TabSwitch
             tabs={[
               { id: 'return', label: QC_FAIL_REMEDY_LABEL.return },
@@ -132,7 +161,7 @@ export function QcFailTicketPanel({
           <p className={CAPTION} data-testid="qc-remedy-suggestion">
             Suggested: {QC_FAIL_REMEDY_LABEL[suggestion.remedy]} — {suggestion.why}
           </p>
-          <TextField label="What failed" value={detail} onChange={setDetail} multiline rows={3} disabled={filing} />
+          <TextField label={failureReason === 'Other' ? 'What failed (required)' : 'Additional detail'} value={detail} onChange={setDetail} multiline rows={3} disabled={filing} />
           {receivingId == null ? (
             <p className={CAPTION}>This unit is not on a receiving carton — open the ticket from Support.</p>
           ) : null}
@@ -142,7 +171,7 @@ export function QcFailTicketPanel({
             className="w-full"
             icon={<Ticket />}
             loading={filing}
-            disabled={receivingId == null}
+            disabled={receivingId == null || failureReason == null || (failureReason === 'Other' && detail.trim().length === 0)}
             onClick={() => void file()}
             data-testid="qc-ticket-create"
           >

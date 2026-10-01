@@ -2,9 +2,9 @@ import { compoundColumnsFor } from '@/components/tables/compound/compound-column
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import { CATALOG_FIELD_CATALOG, CATALOG_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/catalog';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export type CatalogGridColumnKey =
   | 'select'
@@ -17,32 +17,28 @@ export type CatalogGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface CatalogGridColumn extends Omit<LedgerGridColumnModel, 'key'>, SlotTrackFields {
-  key: CatalogGridColumnKey;
-}
+export interface CatalogGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: CatalogGridColumnKey; }
 
-export function catalogCompoundColumnsFor(layout: SlotLayout): readonly CatalogGridColumn[] {
-  const tracks = materializeTracks<CatalogGridColumn>({
-    layout,
-    catalog: CATALOG_FIELD_CATALOG,
-    base: compoundColumnsFor<CatalogGridColumn>(),
-  });
-  const identity = CATALOG_FIELD_CATALOG.find((field) => field.id === layout.identityFieldId);
-  return tracks.map((track) => {
-    if (track.key === 'fulfillment' && identity) {
-      return { ...track, fieldId: identity.id, slotDisplayType: identity.displayType };
-    }
-    if (track.key === 'item') return { ...track, label: 'Product', gridLabel: 'Product' };
-    if (track.key === 'dates') return { ...track, label: 'Channels', gridLabel: 'Channels' };
-    if (track.key === 'state') return { ...track, label: 'Status', gridLabel: 'Status' };
-    return track;
-  });
-}
+export function catalogCompoundColumnsFor(layout: DataTableColumnLayout): readonly CatalogGridColumn[] { const tracks = materializeTracks<CatalogGridColumn>({
+  layout,
+  catalog: CATALOG_FIELD_CATALOG,
+  base: compoundColumnsFor<CatalogGridColumn>(),
+});
+const identity = CATALOG_FIELD_CATALOG.find((field) => field.id === layout.identityFieldId);
+return tracks.map((track) => {
+  if (track.key === 'fulfillment' && identity) {
+    return { ...track, fieldId: identity.id, slotDisplayType: identity.displayType };
+  }
+  if (track.key === 'item') return { ...track, label: 'Product', gridLabel: 'Product' };
+  if (track.key === 'dates') return { ...track, label: 'Channels', gridLabel: 'Channels' };
+  if (track.key === 'state') return { ...track, label: 'Status', gridLabel: 'Status' };
+  return track;
+}); }
 
 export const CATALOG_COMPOUND_COLUMNS = catalogCompoundColumnsFor(CATALOG_PRODUCT_LAYOUT);
 
 export function catalogCompoundSortFactFor(column: { key: string; fieldId?: string; sortable?: boolean }): string | null {
-  if (column.sortable === false || isSlotTableChromeTrack(column.key)) return null;
+  if (column.sortable === false || isDataTableChromeColumn(column.key)) return null;
   if (column.key === 'fulfillment') return 'catalog.sku';
   if (column.key === 'item') return 'catalog.title';
   if (column.key === 'dates') return 'catalog.platforms';

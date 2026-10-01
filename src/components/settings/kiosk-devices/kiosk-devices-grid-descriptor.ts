@@ -1,6 +1,6 @@
 /**
  * Kiosk devices grid surface descriptor — lifts the MOUNTED column model (a
- * `SlotLayout` materialization) into the TanStack defs `LedgerGridSurface`
+ * `DataTableColumnLayout` materialization) into the TanStack defs `LedgerGridSurface`
  * mounts.
  */
 
@@ -25,7 +25,6 @@ export const KIOSKDEVICES_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

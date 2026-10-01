@@ -4,15 +4,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { queueOrFetch } from '@/lib/offline/write-queue';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /** How long after the last tap the burst commits. */
 const BIN_QTY_COMMIT_IDLE_MS = 1200;
 
-/** Reason codes for the quick path when the caller names none: */
+/** Reason code for stock arriving at a scanned location. */
 const QUICK_PUT_REASON = 'BIN_ADD';
-const QUICK_TAKE_REASON = 'BIN_PULL';
 
 interface BinQtyCommitted {
   sku: string;
@@ -52,6 +50,7 @@ export function useBinQtyCommit({
   binBarcode,
   staffId,
   invalidateKey,
+  locationVerificationToken,
   takeReason,
   onCommitStart,
   onCommitted,
@@ -61,6 +60,8 @@ export function useBinQtyCommit({
   staffId: number;
   /** React-query key invalidated once a burst has been written. */
   invalidateKey: readonly unknown[];
+  /** Fresh server-signed proof that this operator scanned this location. */
+  locationVerificationToken: string | null;
   /**
    * Why a take left the location, read when the burst commits. Callers flush
    * before changing it so one burst never straddles two reasons.
@@ -85,9 +86,13 @@ export function useBinQtyCommit({
   /** The location currently mounted, whatever the open burst belongs to. */
   const binBarcodeRef = useRef(binBarcode);
   const takeReasonRef = useRef(takeReason);
+  const verificationRef = useRef(locationVerificationToken);
   useEffect(() => {
     takeReasonRef.current = takeReason;
   }, [takeReason]);
+  useEffect(() => {
+    verificationRef.current = locationVerificationToken;
+  }, [locationVerificationToken]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current != null) {
@@ -118,9 +123,12 @@ export function useBinQtyCommit({
         // retry, so a flaky radio cannot double-apply this adjustment.
         const idempotencyKey = safeRandomUUID();
         try {
-          const res = await queueOrFetch({
-            url: `/api/locations/${encodeURIComponent(burstBarcodeRef.current)}`,
-            aggregateKey: `location:${burstBarcodeRef.current}:sku:${sku}`,
+          if (!verificationRef.current) throw new Error('Scan this location again to edit stock.');
+          if (delta < 0 && !take?.reason) throw new Error('Choose why this stock is leaving.');
+          // Physical movement never joins the generic offline queue: scan
+          // proofs expire, and replaying one later would no longer prove the
+          // operator is standing at this location.
+          const res = await fetch(`/api/locations/${encodeURIComponent(burstBarcodeRef.current)}`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',
@@ -131,9 +139,10 @@ export function useBinQtyCommit({
               sku,
               qty: Math.abs(delta),
               staffId,
-              reason: delta < 0 ? (take?.reason ?? QUICK_TAKE_REASON) : QUICK_PUT_REASON,
+              reason: delta < 0 ? take?.reason : QUICK_PUT_REASON,
               notes: take?.notes ?? null,
               clientEventId: idempotencyKey,
+              locationVerificationToken: verificationRef.current,
             }),
           });
           const data = (await res.json().catch(() => null)) as
@@ -179,6 +188,8 @@ export function useBinQtyCommit({
 
   const bump = useCallback(
     (sku: string, step: number, baseQty: number): boolean => {
+      if (!verificationRef.current) return false;
+      if (step < 0 && !takeReasonRef.current?.reason) return false;
       const next = (pendingRef.current[sku] ?? 0) + step;
       if (baseQty + next < 0) return false;
       // First tap of a burst pins the address every write in it will use.

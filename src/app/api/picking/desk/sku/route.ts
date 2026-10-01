@@ -5,7 +5,7 @@ import { getValidStationScanSession, trackingMatchesSession } from '@/lib/statio
 import { normalizeSku } from '@/utils/sku';
 import { TECH_EMPLOYEE_IDS } from '@/utils/staff';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { publishTechLogChanged } from '@/lib/realtime/publish';
+import { publishStockLedgerEvent, publishTechLogChanged } from '@/lib/realtime/publish';
 import { parseSerialCsvField } from '@/lib/tech/serialFields';
 import {
   getTechSerialsBySalId,
@@ -13,7 +13,6 @@ import {
   resolveTechSerialSalContext,
 } from '@/lib/tech/insertTechSerialForSalContext';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
-import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 

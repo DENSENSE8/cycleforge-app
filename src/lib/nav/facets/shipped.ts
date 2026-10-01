@@ -5,10 +5,10 @@
  * window, exact time window) and the SAME filter fragments (`shipped-filter-sql.ts`),
  * so an option's count is by construction the list total for that pick. On top
  * of the page query it applies what the list still does in the browser to the
- * fetched rows: the exact window clip (`created_at`'s day inside the range, or
- * the `timeFrom`/`timeTo` instants) and the one-row-per-
- * package collapse (`dedupeShippedRecords` keys every Shipped row by its
- * package, since scan-out membership requires one).
+ * fetched rows: the exact window clip (`ship_confirmed_at` inside the range, or
+ * the `timeFrom`/`timeTo` instants) and the one-row-per-package collapse
+ * (`dedupeShippedRecords` keys every Shipped row by its package, since scan-out
+ * membership requires one).
  *
  * Per package, a type view matches when ANY of its rows does (filter, then
  * collapse — the list's order); carrier, status and the exception flag belong
@@ -35,15 +35,18 @@ import {
   readShippedDateWindow,
   readShippedPickedBy,
   readShippedTimeWindow,
+  shippedTimeWindow,
 } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import {
   SHIPPED_CARRIER_SQL,
+  SHIPPED_CHANNEL_SQL,
   SHIPPED_EXCEPTION_SQL,
   SHIPPED_STATUS_SQL,
   readShippedDeskFilters,
   shippedFilterJoins,
   shippedTypeSql,
 } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
+import { SOURCE_PLATFORMS } from '@/lib/source-platform';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 type ParamReader = Pick<URLSearchParams, 'get'>;
@@ -51,6 +54,7 @@ type ParamReader = Pick<URLSearchParams, 'get'>;
 export interface ShippedFacetCombo {
   types: Readonly<Record<ShippedTypeFilter, boolean>>;
   carrier: string;
+  channel: string;
   status: string;
   exception: boolean;
   n: number;
@@ -64,45 +68,46 @@ function staffParam(params: ParamReader, key: string): number | null {
 
 /** One statement: per-package facet values, counted per combination. */
 export function buildShippedFacetSql(orgId: OrgId, params: ParamReader, enriched: boolean) {
-  const window = readShippedDateWindow(params);
-  const timeWindow = readShippedTimeWindow(params);
+  const dateWindow = readShippedDateWindow(params);
+  // Same fallback as `/api/packerlogs`: a named day is the warehouse instant
+  // window, not `to_char` in the session zone (that rolled Pacific evening
+  // scans into the next civil day and disagreed with the list).
+  const timeWindow = readShippedTimeWindow(params)
+    ?? (dateWindow.start && dateWindow.end
+      ? shippedTimeWindow({ dateFrom: dateWindow.start, dateTo: dateWindow.end })
+      : null);
   const bind: unknown[] = [];
-  const { conditions, needsOrderJoins } = buildPackerLogBaseWhere(
+  const { conditions } = buildPackerLogBaseWhere(
     {
       organizationId: orgId,
       packerId: staffParam(params, 'packedBy'),
       staffId: staffParam(params, 'staff'),
-      weekStart: window.start,
-      weekEnd: window.end,
+      weekStart: dateWindow.start,
+      weekEnd: dateWindow.end,
       shippedFrom: timeWindow?.fromIso ?? null,
       shippedTo: timeWindow?.toIso ?? null,
       pickedBy: readShippedPickedBy(params),
     },
     bind,
   );
-  // The list's clip of the padded page to the window (`toPSTDateKey(created_at)`);
-  // a time window replaces it with the exact instants (already bound above).
-  if (window.start && window.end && !timeWindow) {
-    bind.push(window.start, window.end);
-    conditions.push(`to_char(sal.created_at, 'YYYY-MM-DD') BETWEEN $${bind.length - 1} AND $${bind.length}`);
-  }
   const sql = `
-    SELECT p.t_all, p.t_orders, p.t_sku, p.t_fba, p.carrier, p.status, p.exception, COUNT(*)::int AS n
+    SELECT p.t_all, p.t_orders, p.t_sku, p.t_fba, p.channel, p.carrier, p.status, p.exception, COUNT(*)::int AS n
       FROM (
         SELECT
           bool_or(${shippedTypeSql('all', enriched)}) AS t_all,
           bool_or(${shippedTypeSql('orders', enriched)}) AS t_orders,
           bool_or(${shippedTypeSql('sku', enriched)}) AS t_sku,
           bool_or(${shippedTypeSql('fba', enriched)}) AS t_fba,
+          MAX(${SHIPPED_CHANNEL_SQL}) AS channel,
           MAX(${SHIPPED_CARRIER_SQL}) AS carrier,
           MAX(${SHIPPED_STATUS_SQL}) AS status,
           bool_or(${SHIPPED_EXCEPTION_SQL}) AS exception
         FROM station_activity_logs sal
-        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins ? packerLogOrderJoins(enriched) : ''}${shippedFilterJoins(enriched)}
+        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${packerLogOrderJoins(enriched)}${shippedFilterJoins(enriched)}
         WHERE ${conditions.join(' AND ')}
         GROUP BY sal.shipment_id
       ) p
-     GROUP BY 1, 2, 3, 4, 5, 6, 7`;
+     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8`;
   return { sql, params: bind };
 }
 
@@ -115,6 +120,7 @@ function toShippedCombo(row: Record<string, unknown>): ShippedFacetCombo {
       fba: row.t_fba === true,
     },
     carrier: String(row.carrier ?? ''),
+    channel: String(row.channel ?? ''),
     status: String(row.status ?? ''),
     exception: row.exception === true,
     n: Number(row.n) || 0,
@@ -132,6 +138,11 @@ function shippedDimensions(): FacetDimension<ShippedFacetCombo>[] {
       groupId: 'type', label: decl('type').label, param: decl('type').param,
       options: TYPE_ITEMS.map((item) => ({ value: String(item.id), label: item.label })),
       matches: (row, value) => row.types[value as ShippedTypeFilter] === true,
+    },
+    {
+      groupId: 'channel', label: decl('channel').label, param: decl('channel').param,
+      options: SOURCE_PLATFORMS.map((platform) => ({ value: platform.value, label: platform.label })),
+      matches: (row, value) => value.split(',').includes(row.channel),
     },
     {
       groupId: 'carrier', label: decl('carrier').label, param: decl('carrier').param,
@@ -168,6 +179,7 @@ export async function shippedFacets(orgId: OrgId, params: ParamReader, run: Face
   const { total, groups } = computeFacets(rows.map(toShippedCombo), shippedDimensions(), {
     type: filters.type ?? 'all',
     carrier: filters.carrier,
+    channel: filters.channels.length > 0 ? filters.channels.join(',') : null,
     status: filters.statusCategory,
     exceptions: filters.exceptionsOnly ? '1' : null,
   });

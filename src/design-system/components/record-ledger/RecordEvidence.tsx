@@ -8,7 +8,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Minus, Plus } from '@/components/Icons';
 import { STATE_TONE_CLASSES } from '../../tokens/lifecycle';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, type RecordStateFace } from '../../tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, type RecordStateFace } from '../../tokens/record';
 import { focusRing } from '../../tokens/focus-ring';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { toast } from '@/lib/toast';

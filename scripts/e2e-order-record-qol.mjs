@@ -178,15 +178,6 @@ try {
     assert.ok(shown, 'the bar did not appear');
   });
 
-  await step('Floor from the same switch, then back', async () => {
-    const floor = page.locator('[data-testid="desk-record-view-floor"]').first();
-    if (!(await floor.count())) return;
-    await floor.click();
-    await page.waitForFunction(() => document.querySelector('[data-mode="industrial"]') != null, null, { timeout: 5_000 });
-    assert.equal(await page.locator('[data-testid="desk-record-view-floor"]').first().getAttribute('aria-checked'), 'true');
-    await page.locator('[data-testid="desk-record-view-in-place"]').first().click();
-    await page.waitForFunction(() => document.querySelector('[data-mode="industrial"]') == null, null, { timeout: 5_000 });
-  });
 } finally {
   // Never leave a throwaway number on a real order: put the original back if Undo did not.
   const chip = await page.locator('[data-testid="evidence-tracking-chip"]').first().textContent().catch(() => null);

@@ -66,9 +66,9 @@ import {
 } from '@/lib/outbound/scan-out-desk-stamp';
 import { scanOutDirection, shipmentIdForScanOut, type OutboundVerbRow } from '@/lib/selection/order-verb-state';
 import {
-  SLOT_TABLE_ACTION_ROW_ATTR,
-  SLOT_TABLE_OVERLAY_HOST_ATTR,
-} from '@/components/tables/slot-table-overlay-host';
+  DATA_TABLE_ACTION_ROW_ATTR,
+  DATA_TABLE_OVERLAY_HOST_ATTR,
+} from '@/components/tables/data-table-overlay-host';
 import { useRailActionSnapshot } from '@/components/right-rail/RailSelectionActions';
 import { resolveSelectionAction, type SelectionAction } from '@/lib/selection/selection-actions';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
@@ -178,25 +178,18 @@ const RECORD_INLINE_VERB_IDS: ReadonlySet<string> = new Set([
 /** Per-order verbs the desk's check-set strip drops: the open record answers them inline. */
 const RAIL_REPLACED_VERB_IDS: ReadonlySet<string> = new Set(['label', 'notes', 'more-info']);
 
-/** Desktop check-set strip: bulk verbs as buttons, the check-set's other verbs in ⋮. */
+/** Check-set actions in importance order. */
 function bulkStripVerbs(verbs: readonly RecordActionVerb[]): RecordActionVerb[] {
-  return verbs
-    .filter((verb) => !RAIL_REPLACED_VERB_IDS.has(verb.id))
-    .map((verb) =>
-      ORDER_BULK_VERB_IDS.has(verb.id) || verb.placement === 'overflow' || verb.placement === 'isolated'
-        ? verb
-        : { ...verb, placement: 'overflow' as const },
-    );
+  const available = verbs.filter((verb) => !RAIL_REPLACED_VERB_IDS.has(verb.id));
+  return [
+    ...available.filter((verb) => ORDER_BULK_VERB_IDS.has(verb.id)),
+    ...available.filter((verb) => !ORDER_BULK_VERB_IDS.has(verb.id)),
+  ];
 }
 
 /**
- * The triage list's selection bar (Law 5, owner 2026-09-27): ONE list in ONE
- * order at 1 or N checked — the triage verbs as buttons, the check-set catalog
- * and the record links behind ⋮, Delete far right. A verb that cannot take
- * the check-set stays in place, disabled with its reason ({@link scopeRecordVerbs}).
- * Documents (label · slip · manuals, in the split pane) replaces Label and
- * Paperwork; Notes are written on the card's own line 1; More information is
- * the quick look (Space) and the open record — none of those has a seat here.
+ * Selection actions in importance order. Record-only links follow the shared
+ * workflow verbs; destructive actions remain last and overflow automatically.
  */
 const TRIAGE_BAR_PRIMARY_IDS: readonly string[] = ['paste', 'resolve', 'out-of-stock', 'urgent', 'scan-out', 'documents'];
 const TRIAGE_BAR_DROPPED_IDS: ReadonlySet<string> = new Set(['more-info', 'select', 'notes', 'label']);
@@ -217,18 +210,13 @@ function triageBarVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[]
   const byId = new Map(verbs.map((verb) => [verb.id, verb]));
   const primary = TRIAGE_BAR_PRIMARY_IDS.flatMap((id) => {
     const verb = byId.get(id);
-    return verb ? [{ ...verb, placement: 'primary' as const }] : [];
+    return verb ? [verb] : [];
   });
-  const overflow = [
-    ...verbs.filter(
-      (verb) =>
-        !TRIAGE_BAR_PRIMARY_IDS.includes(verb.id) &&
-        !TRIAGE_BAR_DROPPED_IDS.has(verb.id) &&
-        verb.placement !== 'isolated',
-    ),
-    ...recordLinkVerbs(record),
-  ].map((verb) => ({ ...verb, placement: 'overflow' as const }));
-  return [...primary, ...overflow, ...verbs.filter((verb) => verb.placement === 'isolated')];
+  const primaryIds = new Set(primary.map((verb) => verb.id));
+  const remaining = verbs.filter(
+    (verb) => !primaryIds.has(verb.id) && !TRIAGE_BAR_DROPPED_IDS.has(verb.id),
+  );
+  return [...primary, ...remaining, ...recordLinkVerbs(record)];
 }
 
 /** The open record's own controls, when the strip is armed for it. */
@@ -526,7 +514,7 @@ function useOrderActionVerbs({
   );
   verbs.push({
     id: 'scan-out',
-    label: scanOut?.label ?? 'Mark scanned out',
+    label: scanOut?.label ?? 'Mark fulfilled',
     icon: <Truck />,
     // S, not X: X checks the record under the cursor on every list (Law 5).
     hotkey: 's',
@@ -576,7 +564,6 @@ function useOrderActionVerbs({
       label: 'Create rule',
       icon: <Bookmark />,
       hotkey: viewOffersVerb(viewKey, 'resolve') ? undefined : 'r',
-      placement: 'overflow',
       run: () => {
         const rule = catalog.find((action) => action.key === 'listing-rule');
         if (rule) void rule.run(actionRows);
@@ -590,7 +577,6 @@ function useOrderActionVerbs({
       id: key,
       label: r.label,
       icon: r.action.icon,
-      placement: 'overflow',
       disabled: r.disabled,
       disabledReason: r.reason,
       run: () => r.action.run(actionRows, r.direction ? { direction: r.direction } : undefined),
@@ -604,7 +590,6 @@ function useOrderActionVerbs({
       label: 'Print packing slip',
       icon: <Printer />,
       hotkey: PRINT_SLIP_HOTKEY,
-      placement: 'overflow',
       scope: 'single',
       disabled: slip.pending,
       run: slip.print,
@@ -613,7 +598,6 @@ function useOrderActionVerbs({
       id: 'return-label',
       label: 'Return label',
       icon: <RotateCcw />,
-      placement: 'overflow',
       scope: 'single',
       run: () => router.push(`${labelDeskHref}return`),
     },
@@ -621,7 +605,6 @@ function useOrderActionVerbs({
       id: 'replacement-label',
       label: 'Replacement label',
       icon: <Repeat />,
-      placement: 'overflow',
       scope: 'single',
       run: () => router.push(`${labelDeskHref}replacement`),
     },
@@ -630,7 +613,6 @@ function useOrderActionVerbs({
     id: 'customer-ticket',
     label: 'Create customer ticket',
     icon: <Ticket />,
-    placement: 'overflow',
     scope: 'single',
     run: () => router.push(supportCreateTicketHref(orderId)),
   });
@@ -646,7 +628,6 @@ function useOrderActionVerbs({
       label: 'More information',
       icon: <Tag />,
       hotkey: MORPHING_MORE_INFO_HOTKEY,
-      placement: 'overflow',
       scope: 'single',
       run: () => {
         onFinished();
@@ -660,7 +641,6 @@ function useOrderActionVerbs({
     icon: <Trash2 />,
     hotkey: 'd',
     tone: 'danger',
-    placement: 'isolated',
     scope: 'both',
     run: deleteOrder,
   });
@@ -705,14 +685,11 @@ function ScanOutDisplay({ rows, done }: { rows: readonly ShippedOrder[]; done: (
           const body = (await res.json().catch(() => null)) as {
             matched?: boolean;
             blocked?: boolean;
-            alreadyDelivered?: boolean;
             error?: string;
             message?: string;
           } | null;
           if (!res.ok) throw new Error(body?.error || `scan-out ${res.status}`);
           if (body?.matched === false) throw new Error('No shipment found for this label');
-          if (body?.blocked) throw new Error(body.message || 'Order is cancelled — do not ship');
-          if (body?.alreadyDelivered) throw new Error(body.message || 'Already delivered — scan-out blocked');
         }),
       );
     if (jobs.length === 0) {
@@ -1040,26 +1017,22 @@ export function OrderRecordActionStrip({
     onFinished: () => undefined,
   });
   const allocateDetail = VIEW_SPECS[viewKey].recordPresentation === 'allocate';
-  // Ledger desks: the quick triage verbs as buttons, the record's other
-  // actions behind ⋮ (the same list the record repeats below its details).
-  // The Shipped package record keeps its full strip.
+  // Ledger desks keep one ordered action list; RecordActionStrip chooses the
+  // three visible non-destructive actions and owns the overflow.
   const verbs = (() => {
     if (viewKey === 'shipping.shipped') return allVerbs;
     if (!allocateDetail) {
       return [
         ...allVerbs.filter((verb) => ORDER_BULK_VERB_IDS.has(verb.id)),
-        ...recordMoreVerbs(record, allVerbs).map((verb) => ({ ...verb, placement: 'overflow' as const })),
+        ...recordMoreVerbs(record, allVerbs),
       ];
     }
 
-    // Escalation owns the visible waist, in colour (owner 2026-09-29):
-    // Urgent (yellow) → Create customer ticket (orange) → Assign task (white)
-    // → Report out of stock (red). Everything else is behind ⋮, ending
-    // Documents → Mark scanned out → Delete at the very bottom.
+    // Escalation actions lead in importance order. Everything else follows.
     const byId = new Map(allVerbs.map((verb) => [verb.id, verb]));
     const primary = ALLOCATE_HEADER_PRIMARY.flatMap(({ id, face }) => {
       const verb = byId.get(id);
-      return verb ? [{ ...verb, ...face, placement: 'primary' as const }] : [];
+      return verb ? [{ ...verb, ...face }] : [];
     });
     const scanOut = byId.get('scan-out');
     const deleteVerb = byId.get('delete');
@@ -1082,12 +1055,11 @@ export function OrderRecordActionStrip({
     for (const verb of [...allVerbs, ...recordMoreVerbs(record, allVerbs)]) {
       if (skip.has(verb.id) || seen.has(verb.id) || (!verb.run && !verb.display)) continue;
       seen.add(verb.id);
-      overflow.push({ ...verb, placement: 'overflow' });
+      overflow.push(verb);
     }
-    overflow.push({ ...paperworkVerb(record, 'Documents'), hotkey: 'l', placement: 'overflow' });
-    if (scanOut) overflow.push({ ...scanOut, placement: 'overflow' });
-    // Delete is undoable (deferred with an Undo toast), so from the menu it runs on one press.
-    if (deleteVerb) overflow.push({ ...deleteVerb, placement: 'overflow' });
+    overflow.push({ ...paperworkVerb(record, 'Documents'), hotkey: 'l' });
+    if (scanOut) overflow.push(scanOut);
+    if (deleteVerb) overflow.push(deleteVerb);
     return [...primary, ...overflow];
   })();
   const orderRef = String(record.order_id ?? '').trim() || String(record.id);
@@ -1124,7 +1096,6 @@ function recordMoreVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[
     ...verbs.filter(
       (verb) =>
         (verb.run || verb.display) &&
-        verb.placement !== 'isolated' &&
         !ORDER_BULK_VERB_IDS.has(verb.id) &&
         !RECORD_INLINE_VERB_IDS.has(verb.id),
     ),
@@ -1236,9 +1207,9 @@ function MorphingRowActionMenu({
       return;
     }
     const table =
-      anchorRef.current?.closest(`[${SLOT_TABLE_OVERLAY_HOST_ATTR}]`)
-      ?? document.querySelector(`[${SLOT_TABLE_OVERLAY_HOST_ATTR}]`);
-    const slot = (table ?? document).querySelector(`[${SLOT_TABLE_ACTION_ROW_ATTR}]`);
+      anchorRef.current?.closest(`[${DATA_TABLE_OVERLAY_HOST_ATTR}]`)
+      ?? document.querySelector(`[${DATA_TABLE_OVERLAY_HOST_ATTR}]`);
+    const slot = (table ?? document).querySelector(`[${DATA_TABLE_ACTION_ROW_ATTR}]`);
     setOverlayHost(slot instanceof HTMLElement ? slot : null);
   }, [open, anchorRef, inline]);
 
@@ -1284,7 +1255,7 @@ function MorphingRowActionMenu({
 }
 
 /**
- * The slot-table host of the order strip — ONE verbs source, two placements:
+ * The DataTable host of the order strip — ONE verbs source, two placements:
  * - `header` (`DataTable` `bulkBar`, the floor ledger's check-set bar, and the
  *   triage list's selection bar with `verbSet="triage"`): the check-set strip
  *   while rows are checked, else nothing. Escape clears the check-set.

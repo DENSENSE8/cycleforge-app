@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import type { PriorPhoto } from '@/components/mobile/station/MobilePackerSpamCamera';
+import type { PriorPhoto } from '@/components/mobile/photos/MobileNativePhotoCapture';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 
 /** Committed SERIAL_UNIT testing-scan photos for one unit — the unit-scoped twin of `useScopedReceivingPhotos`. */

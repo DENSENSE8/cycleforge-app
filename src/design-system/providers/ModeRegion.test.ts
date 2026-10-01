@@ -32,24 +32,24 @@ function ModeProbe() {
 }
 
 test('a page region and one nested region render their modes without a report', () => {
-  const { html, errors } = renderCapturingErrors(region('industrial', region('triage', h(ModeProbe))));
+  const { html, errors } = renderCapturingErrors(region('counter', region('triage', h(ModeProbe))));
   assert.deepEqual(errors, []);
-  assert.match(html, /^<div data-mode="industrial"><div data-mode="triage"><span data-probe="triage">/);
+  assert.match(html, /^<div data-mode="counter"><div data-mode="triage"><span data-probe="triage">/);
 });
 
 test('a third level is reported, naming both enclosing modes', () => {
   const { html, errors } = renderCapturingErrors(
-    region('industrial', region('triage', region('assistant'))),
+    region('counter', region('triage', region('assistant'))),
   );
   assert.equal(errors.length, 1);
   assert.match(errors[0], /"assistant"/);
-  assert.match(errors[0], /"industrial" → "triage"/);
+  assert.match(errors[0], /"counter" → "triage"/);
   // Reported, not refused: the region still renders.
   assert.match(html, /data-mode="assistant"/);
 });
 
 test('sibling regions do not add depth to each other', () => {
-  const { errors } = renderCapturingErrors(region('industrial', region('triage'), region('assistant')));
+  const { errors } = renderCapturingErrors(region('counter', region('triage'), region('assistant')));
   assert.deepEqual(errors, []);
 });
 
@@ -65,8 +65,8 @@ test('re-declaring the enclosing mode is not a new level', () => {
 
 test('a third distinct mode under a re-declared region is still reported', () => {
   const { errors } = renderCapturingErrors(
-    region('industrial', region('triage', region('triage', region('assistant')))),
+    region('counter', region('triage', region('triage', region('assistant')))),
   );
   assert.equal(errors.length, 1);
-  assert.match(errors[0], /"industrial" → "triage"/);
+  assert.match(errors[0], /"counter" → "triage"/);
 });

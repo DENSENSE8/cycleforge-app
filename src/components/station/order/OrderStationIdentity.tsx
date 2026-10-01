@@ -18,14 +18,12 @@ export function OrderStationIdentity({
   order,
   onExitToList,
   exitLabel = 'Back to orders queue',
-  onOpenPhotosDisplay,
 }: {
   order: ShippedOrder;
   /** Identity ◁ — host must clear the focused order (same as Unbox Back to list). */
   onExitToList?: () => void;
   /** What ◁ returns to on this surface ("Back to results" on `/search`). */
   exitLabel?: string;
-  onOpenPhotosDisplay?: () => void;
 }) {
   const tracking = String(order.shipping_tracking_number || '').trim();
   const orderId = String(order.order_id || '').trim();
@@ -69,7 +67,6 @@ export function OrderStationIdentity({
       onTypeSelect={() => {}}
       onExitToList={onExitToList}
       exitLabel={exitLabel}
-      onOpenPhotosDisplay={onOpenPhotosDisplay}
     />
   );
 }

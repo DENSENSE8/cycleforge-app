@@ -8,35 +8,21 @@
  */
 
 import { Suspense } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus } from '@/components/Icons';
-import { Inset } from '@/design-system/primitives';
-import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
-import { MobileActionSlotRegistrar, MobileTopBarAction } from '@/components/mobile/redesign/MobileActionSlot';
-import { MobileToShipQueue } from '@/components/mobile/redesign/MobileToShipQueue';
+import { MobileV2FulfillmentOrders } from '@/components/mobile/v2/fulfillment/MobileV2FulfillmentOrders';
 
 /**
  * The route's mode comes from src/lib/routing/mode-registry.ts (triage: the
  * orders queue is a reading flow on `/m/orders` and `/m/work`).
  */
 export default function RedesignedMobileAssignedOrders() {
-  const router = useRouter();
   return (
-    <div className={`h-full overflow-hidden ${TOKENS.colors.background}`}>
-      {/* The page's one action: take a new sales order (call or walk-in) from the phone. */}
-      <MobileActionSlotRegistrar>
-        <MobileTopBarAction icon={<Plus className="size-4" />} onClick={() => router.push('/m/orders/new')} data-testid="m-orders-new">
-          New
-        </MobileTopBarAction>
-      </MobileActionSlotRegistrar>
+    <div className="min-h-full bg-surface-canvas">
       <Suspense
         fallback={
-          <Inset space="field">
-            <p className="text-role-caption text-text-muted">Loading…</p>
-          </Inset>
+          <div className="p-4 text-sm text-text-muted">Loading orders…</div>
         }
       >
-        <MobileToShipQueue />
+        <MobileV2FulfillmentOrders />
       </Suspense>
     </div>
   );

@@ -26,6 +26,9 @@ export interface CartonHubLine {
   zoho_purchaseorder_number?: string | null;
   receiving_type?: string | null;
   intake_type?: string | null;
+  listing_url?: string | null;
+  listing_reference?: string | null;
+  zendesk_ticket?: string | null;
   serials?: CartonHubSerial[];
 }
 
@@ -42,6 +45,9 @@ export interface CartonHubCarton {
   target_channel: string | null;
   qa_status: string | null;
   condition_grade: string | null;
+  zendesk_ticket: string | null;
+  listing_url: string | null;
+  zoho_notes: string | null;
   zoho_purchaseorder_id: string | null;
   zoho_purchaseorder_number: string | null;
   received_at: string | null;

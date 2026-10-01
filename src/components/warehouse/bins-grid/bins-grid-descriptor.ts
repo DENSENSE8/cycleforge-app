@@ -1,4 +1,4 @@
-/** Warehouse › Bins grid surface descriptor — lifts the MOUNTED column model (a `SlotLayout` materialization since the wave 1.4 hand-model… */
+/** Warehouse › Bins grid surface descriptor — lifts the MOUNTED column model (a `DataTableColumnLayout` materialization since the wave 1.4 hand-model kill) into the TanStack surface. */
 
 import {
   makeGridSurfaceDescriptor,
@@ -17,7 +17,6 @@ export const BINS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

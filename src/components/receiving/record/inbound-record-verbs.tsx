@@ -29,7 +29,7 @@ import {
 } from '@/components/Icons';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { TimelineSection } from '@/components/ui/TimelineSection';
 import { buildRecordTaskVerbs } from '@/components/tasks/RecordTaskActions';
 import { ReceivingClaimPanel } from '@/components/receiving/workspace/ReceivingClaimPanel';
@@ -302,7 +302,7 @@ export function buildInboundDeliveryVerbs({
       },
     },
   ];
-  return [...primary, ...overflow.map((verb) => ({ ...verb, placement: 'overflow' as const }))];
+  return [...primary, ...overflow];
 }
 
 /** Pushes every unboxed / received line Zoho has not recorded yet — not just this record; the drain also runs every 5 minutes. */
@@ -513,7 +513,7 @@ export function useInboundCartonVerbs(record: CartonRecord | null, onClose: () =
         disabledReason: 'No item lines to file a claim against',
         panel: (done) => <CartonClaimPanel record={record} onDone={done} />,
       },
-      ...overflow.map((verb) => ({ ...verb, placement: 'overflow' as const })),
+      ...overflow,
     ];
   }, [record, openInUnbox, deleteCarton, canSyncZoho]);
 }

@@ -48,7 +48,7 @@ import { cn } from '@/utils/_cn';
 /** Host trailing pad while a Displays push column is mounted (flush — no-op). */
 export const STATION_DISPLAYS_HOST_PAD_CLASS = '';
 
-/** Default open width preference for Unbox Displays / Ticket / Claim / tool. */
+/** Default open width for station Ticket / Claim / tool displays. */
 const STATION_DISPLAYS_DEFAULT_WIDTH_PX = 420;
 
 const STATION_DISPLAYS_PUSH_EXPAND_LABEL = 'Widen panel';

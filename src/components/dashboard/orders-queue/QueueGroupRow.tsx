@@ -2,10 +2,10 @@
 
 import { useState, type MouseEvent, type ReactNode } from 'react';
 import {
-  SlotTableGroupFold,
-  SlotTableGroupFoldBody,
-  SlotTableGroupParentRow,
-} from '@/components/tables/compound/SlotTableGroupParentRow';
+  CompoundGroupFold,
+  CompoundGroupFoldBody,
+  CompoundGroupParentRow,
+} from '@/components/tables/compound/CompoundGroupParentRow';
 import type { RowGroup } from '@/lib/group-rows';
 import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -14,11 +14,11 @@ import { platformMetaBrandDot } from '@/lib/source-platform';
 import { orderAdminUrl } from '@/utils/order-platform';
 import { ordersCompoundView, ordersGroupEdgeMark, ordersGroupItemStatus } from '@/lib/orders/orders-compound-view';
 import { ordersSlotValues } from '@/lib/tables/field-catalog/orders-resolve';
-import { lineQtySubtitlePart } from '@/lib/tables/slot-table-line-qty';
+import { lineQtySubtitlePart } from '@/lib/tables/data-table-line-qty';
 import { statusWordRollup, ordersBandStateTone } from '@/lib/receiving/receiving-group-rollup';
 import { resolveRowStatus } from './helpers';
 import type { OrdersQueueMode, QueueRowRecord } from '@/lib/dashboard/orders-queue-helpers';
-import { lineMoneySubtitlePart } from '@/lib/tables/slot-table-line-money';
+import { lineMoneySubtitlePart } from '@/lib/tables/data-table-line-money';
 import { formatCurrency } from '@/utils/_number';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { isOrdersIndexColumnModel, type OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
@@ -101,7 +101,7 @@ export function QueueGroupRow({
   // A single-line order has nothing to fold — its line IS the order row.
   const [folded, setFolded] = useState(index && multi);
   return (
-    <SlotTableGroupFold multi={multi}>
+    <CompoundGroupFold multi={multi}>
       {multi && index ? (
         <QueueOrderIndexRow
           group={group}
@@ -124,7 +124,7 @@ export function QueueGroupRow({
         />
       ) : null}
       {folded ? null : (
-        <SlotTableGroupFoldBody multi={multi}>
+        <CompoundGroupFoldBody multi={multi}>
           {group.rows.map((row, i) =>
             renderRow(
               row,
@@ -133,9 +133,9 @@ export function QueueGroupRow({
               multi,
             ),
           )}
-        </SlotTableGroupFoldBody>
+        </CompoundGroupFoldBody>
       )}
-    </SlotTableGroupFold>
+    </CompoundGroupFold>
   );
 }
 
@@ -189,9 +189,9 @@ function QueueOrderParentRow({
   const orderMeta = resolveMarketplacePlatformMeta(orderId, lead.account_source);
 
   // Orders supplies FACTS; the band itself is engine-owned so Unbox, Pickup and
-  // every other peer paint the identical row (SlotTableGroupParentRow).
+  // every other peer paint the identical row (CompoundGroupParentRow).
   return (
-    <SlotTableGroupParentRow
+    <CompoundGroupParentRow
       identity={
         orderId
           ? {

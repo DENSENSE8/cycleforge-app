@@ -87,17 +87,17 @@ export function ActiveLineConditionSerial({
   /**
    * Multi-unit Station body: keep empty scan inputs, but collapse condition
    * controls and completed serials to readouts. Durable editing stays in the
-   * Units right-edge display.
+   * caller-owned unit detail surface.
    */
   stationCompact?: boolean;
   /**
-   * Units Displays feed (legacy): serials only — no ConditionPills / grade circle.
-   * Prefer {@link flush} for the Units explosion (in-row collapsible pills).
+   * Serial-only detail feed: no ConditionPills / grade circle. Prefer
+   * {@link flush} for an in-row unit explosion.
    */
   hideCondition?: boolean;
   /**
-   * Units Displays flush chrome: square serial rows, hairline dividers,
-   * underline/joined fields. Per-unit ConditionPills expand collapses photo + serial.
+   * Flush unit-detail chrome: square serial rows, hairline dividers and
+   * underline/joined fields. Per-unit ConditionPills disclose photo + serial.
    */
   flush?: boolean;
   /**
@@ -119,13 +119,13 @@ export function ActiveLineConditionSerial({
   /**
    * Show saved serial chips under the scan field. Centre PO accordion keeps
    * chips in the meta row (`false`); rarely used when {@link forceUnitRows}
-   * is on (Units Displays lists one row per serial instead).
+   * is on because the detail surface lists one row per serial.
    */
   showSavedChips?: boolean;
   /**
    * Always use per-unit rows ({@link ReceivingUnitRows}), even when
-   * quantity_expected is 1. Units Displays explosion needs one editable row
-   * per serial — not a single SerialCard with chips.
+   * quantity_expected is 1. Unit-detail surfaces need one editable row per
+   * serial, not a single SerialCard with chips.
    */
   forceUnitRows?: boolean;
   /** RETURN match CTA — pair the order + open the prefilled claim. */
@@ -304,7 +304,7 @@ export function ActiveLineConditionSerial({
           onArmCapture={onArmCapture}
         />
       ) : isMultiQty ? (
-        // Units Displays / non-progressive multi: compact unit rows.
+        // Non-progressive multi-unit detail: compact unit rows.
         <>
           <ReceivingUnitRows
             lineId={lineId}

@@ -39,7 +39,7 @@ import {
   type CompoundRowView,
   type CompoundStageAssign,
 } from '@/components/tables/compound/compound-row-model';
-import { SLOT_TABLE_GROUP_CHILD_RAIL_CLASS } from '@/components/tables/compound/compound-row-chrome';
+import { COMPOUND_GROUP_CHILD_RAIL_CLASS } from '@/components/tables/compound/compound-row-chrome';
 import { gridDataCellClass, LEDGER_GRID_FROZEN_CELL } from '@/design-system/components/grid';
 import { ledgerGridRowShellClass } from '@/design-system/components/grid/grid-cell-chrome';
 import { gridFrozenLeft, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
@@ -343,7 +343,7 @@ function OrderIdentity({ facts, fold }: Pick<OrdersIndexCellParams, 'facts' | 'f
   if (facts.childTitle) {
     return (
       <>
-        <span aria-hidden data-group-child-rail="" className={SLOT_TABLE_GROUP_CHILD_RAIL_CLASS} />
+        <span aria-hidden data-group-child-rail="" className={COMPOUND_GROUP_CHILD_RAIL_CLASS} />
         <HoverTooltip label={facts.childTitle} asChild>
           <span className="min-w-0 truncate pl-2 text-sm text-text-muted">{facts.childTitle}</span>
         </HoverTooltip>

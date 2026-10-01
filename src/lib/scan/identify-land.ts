@@ -2,6 +2,7 @@
 
 import { scannedUnitKey, type ScanRoute } from '@/lib/barcode-routing';
 import { fnskuHubHref } from '@/lib/mobile/fnsku-hub-href';
+import { qcWorkHref } from '@/lib/qc/qc-work-href';
 import type { ScanDispatch } from '@/lib/scan/dispatch-table';
 
 /** The kernel armed for QC — where the runner's "Next unit" returns. */
@@ -16,6 +17,17 @@ function isLocationScan(route: ScanRoute | null): boolean {
   return route?.type === 'bin' || route?.type === 'bin-paired-order';
 }
 
+/**
+ * View mode names the record; it never inherits the next operational step
+ * encoded by a printed label. Receiving labels may point at `/qc`, but support
+ * staff still land on the carton record to inspect its contents and evidence.
+ */
+export function viewOnlyIdentityHref(route: ScanRoute | null): string | null {
+  if (route?.type !== 'receiving') return null;
+  const receivingId = /^\/m\/r\/(\d+)/.exec(route.redirect || '')?.[1];
+  return receivingId ? `/m/r/${receivingId}` : null;
+}
+
 export function landScanIdentify(
   dispatch: ScanDispatch,
   route: ScanRoute | null,
@@ -23,20 +35,16 @@ export function landScanIdentify(
   if (dispatch.card === 'arrival') return { kind: 'intake' };
   if (isLocationScan(route)) return { kind: 'settle' };
   if (route?.type === 'fnsku') return { kind: 'identify', href: fnskuHubHref(route.value) };
+  if (dispatch.card === 'qc' && route) {
+    const href = qcWorkHref(route);
+    if (href) return { kind: 'identify', href };
+  }
   if (route?.type === 'serial-unit') {
     const key = scannedUnitKey(route.value);
     if (key) {
       const hub = `/m/u/${encodeURIComponent(key)}`;
-      return { kind: 'identify', href: dispatch.card === 'qc' ? `${hub}/qc` : hub };
+      return { kind: 'identify', href: hub };
     }
-  }
-  if (dispatch.card === 'qc' && route?.type === 'receiving-line') {
-    const line = /^\/m\/l\/(\d+)$/.exec(route.redirect || '');
-    if (line) return { kind: 'identify', href: `/m/qc/line/${line[1]}` };
-  }
-  if (dispatch.card === 'qc' && route?.type === 'receiving') {
-    const carton = /^\/m\/r\/(\d+)$/.exec(route.redirect || '');
-    if (carton) return { kind: 'identify', href: `/m/r/${carton[1]}/qc` };
   }
   if (route?.redirect) return { kind: 'identify', href: route.redirect };
   return { kind: 'settle' };

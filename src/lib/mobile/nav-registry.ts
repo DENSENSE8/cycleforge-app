@@ -3,7 +3,7 @@
  * Operator: 2026-09-14 — "focusing on the routing for the sidebar navigation
  */
 
-import { AlertTriangle, BarChart3, ListChecks, Tags } from '@/components/Icons';
+import { AlertTriangle, BarChart3, ListChecks, Tags, Warehouse } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
 import { TECH_NAV_ICONS } from '@/lib/nav/station-nav-icons';
 import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
@@ -53,6 +53,7 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
   // Inventory, Receiving — in one list, so it is an L0 row of its own, not a
   // row inside any one lane (the desk's top-level Exceptions row, same glyph).
   { kind: 'leaf', id: 'exceptions', label: 'Exceptions', href: '/m/exceptions', icon: AlertTriangle },
+  { kind: 'leaf', id: 'stock', label: 'Stock', href: '/m/stock', icon: Warehouse, requires: 'sku_stock.view' },
   { kind: 'leaf', id: 'products', label: 'Products', href: '/m/products', icon: Tags, requires: 'sku_stock.view' },
   { kind: 'leaf', id: 'reports', label: 'Reports', href: '/m/reports', icon: BarChart3, requires: 'operations.view' },
   {
@@ -65,7 +66,7 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
     // deep-link there marks Outbound active even though no row points at it.
     matchPrefixes: ['/m/work', '/m/pick', '/m/pack', '/m/orders', '/m/shipping', '/m/imports'],
     children: [
-      { kind: 'leaf', id: 'orders', label: 'Order management', href: '/m/orders' },
+      { kind: 'leaf', id: 'orders', label: 'Allocate', href: '/m/orders' },
       { kind: 'leaf', id: 'picks', label: 'Picks', href: '/m/pick' },
       { kind: 'leaf', id: 'packing', label: 'Packing', href: '/m/pack' },
       // The import record's phone twin (desk: `/operations/imports`) — what each import brought in.

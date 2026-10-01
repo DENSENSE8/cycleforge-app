@@ -23,7 +23,7 @@ interface ActivationEventOpts {
 }
 
 export interface ActivationEventDeps {
-  recordOpsEvent: (input: RecordOpsEventInput) => Promise<void>;
+  recordOpsEvent: (input: RecordOpsEventInput) => Promise<unknown>;
 }
 
 const defaultDeps: ActivationEventDeps = { recordOpsEvent };

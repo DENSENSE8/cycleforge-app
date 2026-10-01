@@ -6,18 +6,13 @@ import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { OrdersQueueColumn, OrdersQueueColumnKey } from '@/lib/dashboard-order-row-layout';
-import type { SlotTableLayout } from '@/components/tables/useSlotTableLayout';
 import {
   useCompoundSpreadsheet,
   type CompoundSpreadsheetFeed,
 } from '@/components/tables/useCompoundSpreadsheet';
 import { benchRowCompoundView } from '@/components/station/bench-grid/bench-row-view';
 import {
-  PACKER_COMPOUND_COLUMNS,
-  TECH_COMPOUND_COLUMNS,
-  packerCompoundColumnsFor,
   packerSortFactFor,
-  techCompoundColumnsFor,
   techSortFactFor,
 } from '@/components/station/bench-grid/bench-grid-layout';
 import {
@@ -36,8 +31,6 @@ const BENCH_REGISTRATION = {
   tech: {
     binding: TECH_TABLE_BINDING,
     capabilities: TECH_GRID_CAPABILITIES,
-    columnsFor: techCompoundColumnsFor,
-    productColumns: TECH_COMPOUND_COLUMNS,
     resolve: resolveTechSlotValue,
     sortFactFor: techSortFactFor,
     ariaLabel: 'Tech bench history',
@@ -46,8 +39,6 @@ const BENCH_REGISTRATION = {
   packer: {
     binding: PACKER_TABLE_BINDING,
     capabilities: PACKER_GRID_CAPABILITIES,
-    columnsFor: packerCompoundColumnsFor,
-    productColumns: PACKER_COMPOUND_COLUMNS,
     resolve: resolvePackerSlotValue,
     sortFactFor: packerSortFactFor,
     ariaLabel: 'Packer bench history',
@@ -57,8 +48,6 @@ const BENCH_REGISTRATION = {
 
 interface UseBenchSpreadsheetOptions {
   family: BenchFamily;
-  /** The caller's own `use*TableLayout()` result — one prefs read per desk. */
-  layout: SlotTableLayout;
   rows: readonly QueueRowRecord[];
   loading: boolean;
   emptyMessage: string;
@@ -75,7 +64,6 @@ interface UseBenchSpreadsheetOptions {
 
 export function useBenchSpreadsheet({
   family,
-  layout,
   rows,
   loading,
   emptyMessage,
@@ -90,10 +78,7 @@ export function useBenchSpreadsheet({
   const [sort, setSort] = useState<OrdersQueueColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const columns = useMemo(
-    () => registration.columnsFor(layout.effectiveLayout) ?? registration.productColumns,
-    [registration, layout.effectiveLayout],
-  );
+  const columns = registration.binding.columns;
 
   const onSortChange = useCallback((key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
@@ -116,11 +101,9 @@ export function useBenchSpreadsheet({
   return useCompoundSpreadsheet<QueueRowRecord, OrdersQueueColumnKey, OrdersQueueColumn>({
     binding: registration.binding,
     columns,
-    fields: layout.fields,
     rows,
     getRowId: (row) => String(row.id),
     adapter: benchRowCompoundView,
-    subtitleFieldIds: layout.subtitleFieldIds,
     resolve: registration.resolve,
     sortFactFor: registration.sortFactFor,
     capabilities: registration.capabilities,

@@ -23,7 +23,7 @@ export const STATION_DEPTHS: Record<StationDepthName, StationDepth> = {
   mill: {
     name: 'mill',
     label: 'Mill',
-    hint: 'Industrial relief — 2px bevel, no grain.',
+    hint: 'Raised relief — 2px bevel, no grain.',
     bevelWidth: '2px',
     grain: false,
   },

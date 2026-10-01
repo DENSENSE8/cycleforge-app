@@ -5,7 +5,7 @@
  * same way (owner 2026-09-29). Presentational — the host computes the rows.
  */
 
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';

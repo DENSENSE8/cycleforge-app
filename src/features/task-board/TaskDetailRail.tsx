@@ -19,7 +19,7 @@
  * `[` / `]` step the tabs; the plane owns Esc and ⌘/Ctrl+Shift+S.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Check, ChevronDown, Link2, Mail, MessageSquareReply, Package, Plus, RotateCcw, Ticket, Truck, Wrench, X, type LucideIcon } from 'lucide-react';
 import { Zap } from '@/components/Icons';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
@@ -38,12 +38,13 @@ import { taskLinkRepairHref, type TaskLink, type TaskLinkCreateBody, type TaskLi
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/design-system/primitives/DropdownMenu';
 import type { TaskDeskPatch } from '@/features/tasks/useTaskDesk';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
-import { applyTaskStatusPatch, taskStatusOf, taskStatusPatch, type TaskStatusSource } from '@/lib/tasks/task-status';
+import { taskStatusOf } from '@/lib/tasks/task-status';
+import { useTaskStatusCommit } from '@/lib/tasks/use-task-status-commit';
 import {
   TASK_STATUS_FACE,
   TASK_STATUS_SLIDER_STOPS,
   taskStatusSliderIndex,
-  type TaskStatus,
+
 } from '@/design-system/tokens/task-status';
 import { StopSlider } from '@/design-system/primitives/StopSlider';
 import { TASK_PRIORITY } from '@/lib/tasks/task-vocabulary';
@@ -72,9 +73,11 @@ const RECORD_TAB_LABEL: Readonly<Record<RecordTab, string>> = {
 /** Tabs that need a real task (a checklist item has none). */
 const TASK_ONLY_TABS: Readonly<Partial<Record<RecordTab, true>>> = { timeline: true, media: true, links: true };
 
-/** The tabs this row can show, in order — `[` / `]` walk exactly these. */
+/** The tabs this row can show, in order — `[` / `]` walk exactly these. The ticket thread is always one
+ *  tab away (owner 2026-09-30): every task row can link a ticket and reply inline; only a checklist item
+ *  (no task to link from) omits it. */
 export function recordTabsFor(row: TaskBoardRow, task: TaskDeskRow | null): RecordTab[] {
-  return RECORD_TABS.filter((t) => (TASK_ONLY_TABS[t] ? task != null : t === 'ticket' ? row.ticket != null : true));
+  return RECORD_TABS.filter((t) => (TASK_ONLY_TABS[t] ? task != null : t === 'ticket' ? task != null : true));
 }
 
 /** Marks the header's Status verb — the `S` picker anchors to it while a record is open. */
@@ -187,12 +190,12 @@ export function TaskRecordBody({
         />
       </div>
 
-      {active === 'ticket' && row.ticket ? (
+      {active === 'ticket' && task ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          {row.ticket.number != null ? (
+          {row.ticket?.number != null ? (
             <SupportTicketDetail ticketId={row.ticket.number} embedded />
           ) : (
-            <p className="px-4 py-6 text-[13px] text-text-muted">This ticket has no helpdesk number yet.</p>
+            <TicketLinkPanel taskId={task.id} />
           )}
         </div>
       ) : (
@@ -223,7 +226,21 @@ export function TaskRecordBody({
           ) : null}
         </div>
       )}
+      {task ? <RecordStatusFooter task={task} onPatch={onPatch} /> : null}
     </div>
+  );
+}
+
+/**
+ * The status, bottom-left, on EVERY tab (owner 2026-09-30). Same commit path as
+ * the Overview row (`useTaskStatusCommit`); the pill opens the status combobox.
+ */
+function RecordStatusFooter({ task, onPatch }: { task: TaskDeskRow; onPatch: (patch: TaskDeskPatch) => Promise<unknown> }) {
+  const { current, setStatus } = useTaskStatusCommit(task, onPatch);
+  return (
+    <footer className="flex h-9 shrink-0 items-center border-t border-border-hairline px-4" data-testid="task-status-footer">
+      <TaskStatusCombobox current={current} onPick={setStatus} />
+    </footer>
   );
 }
 
@@ -356,44 +373,8 @@ function StatusAndPriority({
   task: TaskDeskRow;
   onPatch: (patch: TaskDeskPatch) => Promise<unknown>;
 }) {
-  const stored = taskStatusOf(task);
-  // The control answers before the refetch lands; it lets go once the row agrees (or the write fails).
-  const [pending, setPending] = useState<TaskStatus | null>(null);
-  useEffect(() => {
-    if (pending === stored) setPending(null);
-  }, [pending, stored]);
-  const current = pending ?? stored;
+  const { current, setStatus } = useTaskStatusCommit(task, onPatch);
   const sliderIndex = taskStatusSliderIndex(current);
-
-  // Each write is computed from the state the PREVIOUS write leaves behind, and
-  // writes go one at a time. Computing from the refetched row raced: Done then a
-  // quick Pending sent a bare hold while Done was still landing → 409.
-  const storedRef = useRef<TaskStatusSource>({ status: task.status, taskState: task.taskState ?? null });
-  const projected = useRef<TaskStatusSource>({ status: task.status, taskState: task.taskState ?? null });
-  const queue = useRef<Promise<unknown>>(Promise.resolve());
-  const inFlight = useRef(0);
-  useEffect(() => {
-    storedRef.current = { status: task.status, taskState: task.taskState ?? null };
-    if (inFlight.current === 0) projected.current = storedRef.current;
-  }, [task.status, task.taskState]);
-
-  const setStatus = (target: TaskStatus) => {
-    const patch = taskStatusPatch(projected.current, target);
-    if (!patch) return;
-    projected.current = applyTaskStatusPatch(projected.current, patch);
-    setPending(target);
-    inFlight.current += 1;
-    queue.current = queue.current
-      .then(() => onPatch(patch))
-      .catch((error: unknown) => {
-        projected.current = storedRef.current;
-        setPending(null);
-        toast.error(error instanceof Error ? error.message : 'Could not change the status.');
-      })
-      .finally(() => {
-        inFlight.current -= 1;
-      });
-  };
 
   return (
     <div className="flex min-w-0 flex-nowrap items-center gap-3">
@@ -406,6 +387,7 @@ function StatusAndPriority({
           ariaLabel="Quick status"
           formatValue={(index) => TASK_STATUS_SLIDER_STOPS[index]?.label ?? ''}
           showStops={false}
+          compact
           className="w-28 min-w-20 shrink"
           data-testid="task-status-slider"
         />
@@ -862,6 +844,58 @@ function LinkLine({
       )}
       {trailing}
     </li>
+  );
+}
+
+/** Paste a helpdesk number and the thread mounts right here — inline replies stay in the rail (owner
+ *  2026-09-30). The link lands through the house links writer; the desk row refetches and the tab swaps
+ *  to `SupportTicketDetail`. */
+function TicketLinkPanel({ taskId }: { taskId: number }) {
+  const { add } = useTaskLinks(taskId);
+  const [value, setValue] = useState('');
+  const number = value.trim().replace(/^#/, '');
+  const submit = () => {
+    if (!/^\d{1,9}$/.test(number) || add.isPending) return;
+    add.mutate(
+      { kind: 'ticket', value: number },
+      {
+        onSuccess: () => setValue(''),
+        onError: (error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not link that ticket.'),
+      },
+    );
+  };
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+      <span className="inline-flex size-10 items-center justify-center rounded-xl bg-orange-50 text-orange-500 ring-1 ring-inset ring-orange-200 dark:bg-orange-500/10 dark:ring-orange-500/30">
+        <Ticket aria-hidden className="size-5" />
+      </span>
+      <p className="max-w-xs text-[13px] text-text-muted">
+        No support ticket linked yet. Paste the ticket number and the conversation opens here — reply inline, internal or public.
+      </p>
+      <div className="flex items-center gap-2 rounded-full bg-surface-sunken py-1 pl-3.5 pr-1">
+        <input
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') submit();
+          }}
+          inputMode="numeric"
+          placeholder="Ticket #…"
+          aria-label="Ticket number to link"
+          className="w-36 min-w-0 bg-transparent text-[13px] outline-none placeholder:text-text-muted"
+          data-testid="task-ticket-link-input"
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!/^\d{1,9}$/.test(number) || add.isPending}
+          className="h-7 rounded-full bg-surface-card px-3 text-[11px] font-semibold shadow-sm disabled:opacity-40"
+          data-testid="task-ticket-link-submit"
+        >
+          {add.isPending ? 'Linking…' : 'Link ticket'}
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -46,6 +46,9 @@ Owner rulings 2026-09-30, shipped:
 - Recorded-video upload from the phone failed: the lane is reached over the tailnet
   (`http://avion:3050` etc.), which the bucket CORS did not allow. Origins added in `scripts/gcs-bucket-cors.mjs`.
 - "Delegate" → **New task** everywhere (`NewTaskSheet.tsx`, board `N`, ⌘K `New task “<query>”`).
++- Ticket thread: always a tab on every task row — with no ticket linked it shows a paste-a-number panel;
++  the repair sync resolves a repair's paperwork number against `support_tickets` (exact org-scoped match)
++  and links the thread, so repair rows carry "Support #10089" and reply inline.
 - Alerts: never to yourself (server `cannot_alert_self`; owners default minus sender); the Alert verb/`A` key
   only under scope Everyone. Media tab fills the record width.
 - Repairs are Support rows: every open repair (not Done / Picked Up / Shipped / Cancelled, no pickup
@@ -61,6 +64,21 @@ Owner rulings 2026-09-30, shipped:
 - Keys: `C` = create everywhere (guard `src/lib/keyboard/key-registry.test.ts`); Copy = ⌘/Ctrl+C,
   copy-shown = ⌘⌥C; Daily checklist go-key `G D`; checklist column `H`; tapping Shift alone toggles the
   views strip (same as hovering the page title).
+- 2026-09-30 #2: after a cold `.next` wipe every route failed to compile — `next/font/google queries have
+  exactly one entry` (Turbopack cannot build the font import map when one family is instantiated twice).
+  `src/lib/fonts.ts` now loads Inter's italic cut inside the same `Inter()` call (`cfSansItalic` = alias).
+- Status is pinned bottom-left of the record on EVERY tab (`RecordStatusFooter`, same commit path via
+  `useTaskStatusCommit`); the Mine · Handed off · Everyone segment hides while the Daily checklist column
+  is open (the checklist is the shift's shared list — scope does not apply). The Overview slider is the
+  compact `StopSlider` band (h-7/small thumb — new `compact` prop, other callers unchanged) so the Status
+  row matches its siblings' height (49px vs 42–53px). Footer status change verified end to end
+  (PATCH 200 from the Links tab, task restored).
+- Optimistic status is ONE shared store per task (`use-task-status-commit.ts`): every control reads the
+  same face; writes queue one at a time, confirm from the write RESPONSE (not refetches), and a refetched
+  row that differs from the high-water mark is ignored for 4s (stale echo / out-of-order board+desk
+  snapshots were flipping the slider by itself). External edits still land after the window.
+  During the rewrite the write step was briefly dropped (face moved, nothing saved) — the drift test now
+  asserts PATCH 200s AND zero idle flips.
 
 Open:
 - Recorded video upload is ONE XHR PUT of the whole file: on cellular a large recording can still die
@@ -89,7 +107,7 @@ Open:
 
 - Record plane: `DeskRecordPlane`, `DeskStageOverlay`/`DeskStageRecordHeader` (back ⟵ top-left in place,
   × in split), `DeskRecordViewSwitch`, `DeskStageContext` (one view enum, never a second boolean),
-  `useDeskView`. Callers to copy: `src/components/repair/RepairTable.tsx:194`,
+  `useDeskView`. Callers to copy: `src/components/repair/RepairCardList.tsx`,
   `src/components/outbound/orders/OutboundOrdersLedger.tsx:395`. Pinned law: never hand-roll a split
   or register a record with `RightRailHost`.
 - Width: `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle` (`RightRailHost.tsx:213`,

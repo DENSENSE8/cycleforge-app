@@ -26,7 +26,6 @@ import {
   type ReceivingGridColumn,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
-import type { DataTableFieldsMenuData } from '@/components/tables/DataTable';
 import { RECEIVING_TABLE_BINDING } from './receiving-table-definition';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
@@ -70,12 +69,6 @@ interface ReceivingSpreadsheetProps {
   selectionScope?: string;
   /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly ReceivingGridColumn[];
-  /**
-   * Fields-picker DATA for the toolbar `+` popover, from the caller's slot
-   * layout hook. Absent ⇒ no picker, which is the honest face for a mount
-   * with no catalog behind it.
-   */
-  fields?: DataTableFieldsMenuData;
   /**
    * Staff-prefs identity for per-staff column config. Unbox / History are
    * `receiving`; Testing History passes `testing` so the two keep independent
@@ -158,7 +151,6 @@ export function ReceivingSpreadsheet({
   statusVocabulary = 'fine',
   selectionScope = RECEIVING_SELECTION_SCOPE,
   columns,
-  fields,
   tableId,
   showDayHeaders,
   scrollRef,
@@ -295,7 +287,6 @@ export function ReceivingSpreadsheet({
     <DataTable<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
       binding={RECEIVING_TABLE_BINDING}
       columns={allColumns}
-      fields={fields}
       orderGroupsByDate={orderGroupsByDate}
       rows={flatRows}
       sort={columnSort}

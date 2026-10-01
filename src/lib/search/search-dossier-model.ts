@@ -9,14 +9,7 @@ import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
   deriveOrderExceptionBlockers,
 } from '@/lib/orders/order-exception-types';
-import {
-  cartonExceptions,
-  type CartonInspectorLine,
-  type CartonInspectorReceiving,
-  type CartonInspectorTotals,
-} from '@/components/receiving/inspector/carton-inspector-model';
 import { SHIPPING_EXCEPTIONS_PATH, shippingOrdersHref } from '@/lib/shipping/orders-desk';
-import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import type { SearchSelection } from '@/lib/search/search-selection';
 
 export interface SearchDossierFinding {
@@ -115,61 +108,4 @@ export function orderDossierHandoffs(orderId: number, hasFindings: boolean): Sea
     primary: !hasFindings,
   };
   return hasFindings ? [exceptions, desk] : [desk];
-}
-
-export function cartonDossierFindings(
-  receiving: CartonInspectorReceiving,
-  totals: CartonInspectorTotals | undefined | null,
-  lines: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
-): SearchDossierFinding[] {
-  return cartonExceptions(receiving, totals, lines).map((ex) => ({
-    key: ex.key,
-    label: ex.label,
-    hint: ex.ctaHint,
-    href: '/unbox',
-    hrefLabel: 'Open Unbox',
-  }));
-}
-
-export function cartonDossierLines(
-  lines: ReadonlyArray<CartonInspectorLine>,
-  unmatched: boolean,
-): SearchDossierLine[] {
-  return lines.map((line) => {
-    // SKU identity law: the Zoho item title governs.
-    const title = resolveSkuIdentityTitle(line) || `Line ${line.id}`;
-    const expected = line.quantity_expected;
-    const received = line.quantity_received;
-    const finding =
-      unmatched && !presentFact(line.zoho_purchaseorder_number)
-        ? 'No matched PO'
-        : expected != null && expected > 0 && (received ?? 0) === 0
-          ? 'None received'
-          : null;
-    const facts: Array<{ label: string; value: string }> = [];
-    const sku = presentFact(line.sku);
-    if (sku) facts.push({ label: 'SKU', value: sku });
-    if (expected != null || received != null) {
-      facts.push({ label: 'Received', value: `${received ?? '—'} of ${expected ?? '—'}` });
-    }
-    const grade = presentFact(line.condition_grade);
-    if (grade) facts.push({ label: 'Condition', value: grade });
-    const bin = presentFact(line.location_code);
-    if (bin) facts.push({ label: 'Bin', value: bin });
-    const po = presentFact(line.zoho_purchaseorder_number);
-    if (po) facts.push({ label: 'PO', value: po });
-    return {
-      id: line.id,
-      title,
-      imageUrl: presentFact(line.image_url),
-      facts,
-      links: (line.serials ?? []).map((serial) => ({
-        id: `unit:${serial.id}`,
-        label: 'Serial',
-        value: serial.serial_number,
-        target: { sel: { entityType: 'unit' as const, id: serial.id } },
-      })),
-      finding,
-    };
-  });
 }

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The Shipped desk (`/shipping/shipped`) on the Allocate card face
+ * The Fulfilled desk (`/fulfilled`) on the Allocate card face
  * (`TriageCardList` + `RecordCard`, owner 2026-09-29) — one card per PACKAGE
  * (carrier tracking number; a pack scan with none keys as `scan-<id>`), its
  * lines the box's order lines (`ShippedPackageCard`). The feed is
@@ -14,11 +14,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
-import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
@@ -28,20 +27,23 @@ import { triageRowKeyId } from '@/design-system/components/triage-card-list/tria
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { useShippedTableFilters } from '@/components/shipped/dashboard-table/useShippedTableFilters';
 import { useShippedTableRecords } from '@/components/shipped/dashboard-table/useShippedTableRecords';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { RowGroup } from '@/lib/group-rows';
 import { fetchNavFacets } from '@/lib/nav/context/http-client';
+import { EXCEPTION_DOMAIN_PARAM, EXCEPTIONS_PATH } from '@/lib/exceptions/types';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
-import { lookupShipmentByTracking, useShipmentRecord } from '@/lib/shipments/shipment-record-client';
+import { lookupShipmentByTracking } from '@/lib/shipments/shipment-record-client';
 import { fetchOrderLinePackageId } from '@/lib/shipments/shipment-order-search';
 import { SHIPMENT_RECORD_PARAM } from '@/lib/shipments/shipment-record-types';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
+import type { ShippedTypeFilter } from '@/lib/shipping/shipped-filter/shipped-filter-constants';
 import { toast } from '@/lib/toast';
 import { OUTBOUND_SHIPPED_VIEW } from '@/lib/triage/views';
 import { detectCarrierFromTracking } from '@/utils/carrier-patterns';
 import { formatWeekRangeCompact } from '@/utils/date';
-import { ShipmentRecordView } from './ShipmentRecordView';
-import { ShippedPackageActionStrip } from './ShippedPackageActionStrip';
 import { ShippedPackageCard } from './ShippedPackageCard';
 import {
   isOpenUnmatchedScan,
@@ -51,35 +53,50 @@ import {
   type ShippedCardModel,
   type ShippedStatusChip,
 } from './shipped-card-model';
-import { shipmentRecordFace, shippedPackageKey, shippedPackageTracking } from './shipped-package-state';
+import { shippedPackageKey, shippedPackageTracking } from './shipped-package-state';
+import { useShipmentRecordSlot } from './use-shipment-record-slot';
 
 const VIEW = OUTBOUND_SHIPPED_VIEW;
 const LEGACY_OPEN_ORDER_PARAM = 'openOrderId';
 
 /** The sidebar's facet counts for this view — their `total` is the list's server total (one package per row). */
 const FACET_CONTEXT = 'outbound.shipped';
-const FACETS_STALE_MS = 15_000;
+const FACETS_STALE_MS = 60_000;
 
 /** A package key is `<shipment id>` or `scan-<id>`; the face speaks numbers (a deterministic hash — rows render on the server too). */
 const shippedRowId = (row: DerivedPackerRecord): number => triageRowKeyId(shippedPackageKey(row));
 
 /** Newest scan-out first (pack time when a box never left). */
-function byShippedDesc(a: DerivedPackerRecord, b: DerivedPackerRecord): number {
-  return new Date(b.effShipTime || b.created_at || 0).getTime() - new Date(a.effShipTime || a.created_at || 0).getTime();
-}
+
 
 /** A find-box text a carrier tracking number (or its last 8 digits) could be. */
 function looksLikeTracking(text: string): boolean {
   return !/\s/.test(text) && (detectCarrierFromTracking(text) != null || /^\d{8,}$/.test(text));
 }
 
-export function ShippedLedger() {
-  const pathname = usePathname() || '/shipping/shipped';
+export function ShippedLedger({
+  initialShippedFilter,
+}: {
+  initialShippedFilter: ShippedTypeFilter;
+}) {
+  const pathname = usePathname() || '/fulfilled';
   const searchParams = useSearchParams();
-  const filters = useShippedTableFilters({});
+  const filters = useShippedTableFilters({ initialShippedFilter });
   const { query, derivedRecords, pagination } = useShippedTableRecords(filters);
-
-  const rows = useMemo(() => [...derivedRecords].sort(byShippedDesc), [derivedRecords]);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const stationChannel = user?.organizationId ? safeChannelName(() => getStationChannelName(user.organizationId)) : '';
+  useAblyChannel(
+    stationChannel,
+    'activity.logged',
+    (msg: { data?: { activityType?: string } }) => {
+      if (msg?.data?.activityType !== 'SHIP_CONFIRM') return;
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
+      void queryClient.invalidateQueries({ queryKey: ['nav-facets', 'outbound.shipped'] });
+    },
+    !!stationChannel,
+  );
+  const rows = derivedRecords;
 
   const cut = useTriageCut({ statusKeys: SHIPPED_STATUS_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   const { filterBands } = cut;
@@ -93,6 +110,14 @@ export function ShippedLedger() {
   // ── Status pills beside the count (the Allocate summary row) ──────────────
   // Counted in PACKAGES over everything loaded, never the lit cut — tapping a pill shows that many.
   const { statusFilter, toggleStatus, resetStatus } = cut.url;
+  const router = useRouter();
+  const onToggleStatus = useCallback((key: ShippedStatusChip) => {
+    if (key === 'EXCEPTION') {
+      router.push(`${EXCEPTIONS_PATH}?${EXCEPTION_DOMAIN_PARAM}=fulfillment`);
+      return;
+    }
+    toggleStatus(key);
+  }, [router, toggleStatus]);
   const statusChips = useMemo<StatusChip<ShippedStatusChip>[]>(() => {
     const counts = new Map<ShippedStatusChip, number>();
     for (const row of rows) for (const key of shippedStatusKeys(row)) counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -110,6 +135,7 @@ export function ShippedLedger() {
     queryKey: ['nav-facets', FACET_CONTEXT, search],
     queryFn: ({ signal }) => fetchNavFacets(FACET_CONTEXT, search, signal),
     staleTime: FACETS_STALE_MS,
+    refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
   });
   const serverCounted = !searchParams.get('ostatus') && (searchParams.get('shippedFilter') != null || filters.shippedFilter === 'all');
@@ -197,23 +223,8 @@ export function ShippedLedger() {
     onClose: close,
   });
 
-  // ── Open package: title + strip (same query key as the record body) ───────
-  const openRecord = useShipmentRecord(openShipmentId).data ?? null;
-  // The package's primary order line (lowest `orders.id` owning it) arms the
-  // order verbs; before the record lands, the loaded row's line stands in.
-  const orderLineId = openRecord ? (openRecord.items[0]?.orderRowId ?? null) : (loadedOpenRow?.order_row_id ?? null);
-
-  const openTracking = openRecord?.tracking ?? (loadedOpenRow ? shippedPackageTracking(loadedOpenRow) : null);
-  const recordTitle = openTracking ? `Package ${openTracking}` : openKey ? `Package ${openKey}` : 'Package';
-  const recordSubtitle = openRecord
-    ? [
-        openRecord.carrier,
-        openRecord.box ? `Box ${openRecord.box.seq ?? '—'} of ${openRecord.box.total}` : null,
-        openRecord.items[0]?.orderRef ? `Order ${openRecord.items[0].orderRef}` : null,
-      ]
-        .filter(Boolean)
-        .join(' · ') || undefined
-    : undefined;
+  // ── Open package: the same shared record slot as inbound. ────────────────
+  const shipmentSlot = useShipmentRecordSlot(openShipmentId, (id) => openKeyed(String(id)));
 
   // ── The face ──────────────────────────────────────────────────────────────
   const selection = useLocalTriageSelection(shippedRowId);
@@ -263,7 +274,7 @@ export function ShippedLedger() {
         <StatusChipRail
           chips={statusChips}
           active={statusFilter}
-          onToggle={toggleStatus}
+          onToggle={onToggleStatus}
           onReset={resetStatus}
           label="Filter by package status"
           testId="shipped-status-chips"
@@ -280,18 +291,15 @@ export function ShippedLedger() {
       searchEmpty={needle ? <p className="text-sm text-text-muted">No package in {periodLabel} matches “{needle}”.</p> : null}
       allClear={<TriageAllClear title={`No packages shipped in ${periodLabel}`} detail="Pick another period in the sidebar." />}
       record={{
-        title: recordTitle,
-        subtitle: recordSubtitle,
-        actions: openRecord ? <LifecycleCode state={shipmentRecordFace(openRecord)} /> : undefined,
+        title: shipmentSlot?.title ?? 'Package',
+        actions: shipmentSlot?.actions,
         noun: VIEW.noun.one,
         testId: 'shipped-record',
         summary: <RecordLedgerSummaryPane summary={summary} />,
-        strip: openKey ? (
-          <ShippedPackageActionStrip key={openKey} record={openRecord} orderLineId={orderLineId} label={`${recordTitle} actions`} />
-        ) : null,
+        strip: null,
         view:
           openShipmentId != null ? (
-            <ShipmentRecordView key={openShipmentId} shipmentId={openShipmentId} onOpenShipment={(id) => openKeyed(String(id))} />
+            shipmentSlot?.view ?? null
           ) : openKey ? (
             <EvidenceNotice tone="warn">
               This scan has no package on file — no tracking number was captured, so there is no package record to open.
@@ -310,7 +318,7 @@ function shippedSummary(rows: readonly DerivedPackerRecord[], periodLabel: strin
     if (row.packed_by == null) neverPacked += 1;
   }
   return {
-    title: 'Shipped packages',
+    title: 'Scanned out',
     sub: periodLabel,
     facts: [
       { label: 'Packages', value: rows.length },

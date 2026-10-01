@@ -27,6 +27,9 @@ export type RecordCursorOpen = (
   ctx: { intent: CursorIntent; revealFoldKey: string | null },
 ) => boolean;
 
+/** Per-surface J/K direction; arrows keep their physical up/down semantics. */
+export type RecordCursorKeyOrder = 'j-next' | 'j-prev';
+
 export interface RecordCursorPublication {
   /** Stable identity of the publishing surface, e.g. `orders-grid`,
    *  `receiving-lines-table`, `unbox-recent-rail`. */
@@ -37,6 +40,8 @@ export interface RecordCursorPublication {
   priority: number;
   /** The resolved cursor for the currently open record. */
   cursor: RecordCursor;
+  /** Defaults to Vim order (`J` next, `K` previous). */
+  keyOrder?: RecordCursorKeyOrder;
   /** Opens a record on this surface (and reveals its fold first). */
   open: RecordCursorOpen;
   /** Dismiss the open record. Omitted by surfaces that own close elsewhere. */
@@ -140,6 +145,7 @@ export function publishRecordCursor(input: PublicationInput): () => void {
     scope: input.scope,
     priority: input.priority,
     cursor: input.cursor,
+    keyOrder: input.keyOrder,
     open: input.open,
     close: input.close,
     seq: mySeq,
@@ -165,6 +171,7 @@ export function updateRecordCursor(input: PublicationInput): void {
     current.scope === input.scope &&
     current.priority === input.priority &&
     current.open === input.open &&
+    current.keyOrder === input.keyOrder &&
     current.close === input.close &&
     sameCursor(current.cursor, input.cursor)
   ) {
@@ -174,6 +181,7 @@ export function updateRecordCursor(input: PublicationInput): void {
     ...current,
     scope: input.scope,
     priority: input.priority,
+    keyOrder: input.keyOrder,
     cursor: input.cursor,
     open: input.open,
     close: input.close,

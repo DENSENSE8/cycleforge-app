@@ -34,7 +34,7 @@ import { Button } from '@/design-system/primitives';
 import { DeferredQtyInput } from '@/design-system/primitives/DeferredQtyInput';
 import { StopSlider } from '@/design-system/primitives/StopSlider';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { usePrintStations, type PrintStationEntry } from '@/hooks/usePrintStations';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { clampLabelCopies, MAX_LABEL_COPIES } from '@/lib/print/labelCopies';

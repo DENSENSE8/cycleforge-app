@@ -12,7 +12,6 @@ import { resolveReportVelocitySlotValue } from '@/lib/tables/field-catalog/repor
 import type { VelocityReportRow } from '@/lib/reports/report-rows';
 import { reportVelocityCompoundView } from './report-velocity-row-view';
 import {
-  reportVelocityCompoundColumnsFor,
   reportVelocitySortFactFor,
   type ReportVelocityGridColumn,
   type ReportVelocityGridColumnKey,
@@ -21,7 +20,6 @@ import {
   REPORT_VELOCITY_GRID_CAPABILITIES,
   REPORT_VELOCITY_TABLE_BINDING,
 } from './report-velocity-table-definition';
-import { useReportVelocityTableLayout } from './useReportVelocityTableLayout';
 
 interface UseReportVelocitySpreadsheetOptions {
   /** One report page, already ordered by the route; a header click re-orders it. */
@@ -46,11 +44,8 @@ export function useReportVelocitySpreadsheet({
   const [sort, setSort] = useState<ReportVelocityGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useReportVelocityTableLayout();
-  const columns = useMemo(
-    () => reportVelocityCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: ReportVelocityGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -71,12 +66,10 @@ export function useReportVelocitySpreadsheet({
     ReportVelocityGridColumn
   >({
     binding: REPORT_VELOCITY_TABLE_BINDING,
-    columns,
-    fields,
+    columns: REPORT_VELOCITY_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => row.sku,
     adapter: reportVelocityCompoundView,
-    subtitleFieldIds,
     resolve: resolveReportVelocitySlotValue,
     sortFactFor: reportVelocitySortFactFor,
     capabilities: REPORT_VELOCITY_GRID_CAPABILITIES,

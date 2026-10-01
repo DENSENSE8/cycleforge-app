@@ -14,13 +14,10 @@ import {
   ImportExceptionFormRail,
 } from '@/features/review/catalog-link/CatalogLinkFormRail';
 import { catalogLinkCompoundView } from '@/features/review/catalog-link/grid/catalog-link-compound-view';
-import { useCatalogLinkTableLayout } from '@/features/review/catalog-link/grid/useCatalogLinkTableLayout';
-import { useImportExceptionTableLayout } from '@/features/review/catalog-link/grid/useImportExceptionTableLayout';
 import { importExceptionSlotValuesFor } from '@/lib/tables/field-catalog/import-exception-resolve';
 import { catalogLinkSlotValuesFor } from '@/lib/tables/field-catalog/catalog-link-resolve';
 import { CATALOG_LINK_GRID_CAPABILITIES } from '@/features/review/catalog-link/grid/catalog-link-grid-descriptor';
 import {
-  catalogLinkCompoundColumnsFor,
   CATALOG_LINK_SORT_TYPES,
   defaultDirForCatalogLinkGridSort,
   isCatalogLinkGridSortable,
@@ -31,7 +28,6 @@ import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/
 import { importExceptionCompoundView } from '@/features/review/catalog-link/grid/import-exception-compound-view';
 import { IMPORT_EXCEPTION_GRID_CAPABILITIES } from '@/features/review/catalog-link/grid/import-exception-grid-descriptor';
 import {
-  importExceptionCompoundColumnsFor,
   IMPORT_EXCEPTION_SORT_TYPES,
   defaultDirForImportExceptionGridSort,
   isImportExceptionGridSortable,
@@ -67,24 +63,8 @@ const REVIEW_SECTION_TABS = [
 ] as const;
 
 export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
-  // The effective slot layout (staff ?? org ?? product) materialized into the
-  // compound tracks — matching chores are facts an organization binds, not a
-  // private column model.
-  const { effectiveLayout: catalogLinkLayout, fields: catalogLinkFields } =
-    useCatalogLinkTableLayout();
-  const catalogLinkColumns = useMemo(
-    () => catalogLinkCompoundColumnsFor(catalogLinkLayout),
-    [catalogLinkLayout],
-  );
-
-  // The page's SECOND queue keeps its own document — same cells, different
-  // vocabulary, exactly as incoming and receiving do.
-  const { effectiveLayout: importExceptionLayout, fields: importExceptionFields } =
-    useImportExceptionTableLayout();
-  const importExceptionColumns = useMemo(
-    () => importExceptionCompoundColumnsFor(importExceptionLayout),
-    [importExceptionLayout],
-  );
+  const catalogLinkColumns = CATALOG_LINK_TABLE_BINDING.columns;
+  const importExceptionColumns = IMPORT_EXCEPTION_TABLE_BINDING.columns;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -277,7 +257,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                 )
               }
               columns={importExceptionColumns}
-              fields={importExceptionFields}
               orderGroupsByDate={exceptionGroups}
               rows={exceptionRows}
               getRowId={(r) => String(r.id)}
@@ -368,7 +347,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                 )
               }
               columns={catalogLinkColumns}
-              fields={catalogLinkFields}
               orderGroupsByDate={choreGroups}
               rows={choreRows}
               getRowId={(r) => String(r.id)}

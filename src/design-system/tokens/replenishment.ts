@@ -1,4 +1,4 @@
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 
 type ReplenishmentRecordState =
   | 'detected'

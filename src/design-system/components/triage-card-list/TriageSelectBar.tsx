@@ -19,7 +19,7 @@ import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewS
 import { DeskFullscreenToggle } from '@/design-system/components/DeskFullscreenToggle';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { SLOT_TABLE_PAGE_SIZES } from '@/lib/tables/slot-table-page';
+import { DATA_TABLE_PAGE_SIZES } from '@/lib/tables/data-table-pagination';
 import { cn } from '@/utils/_cn';
 import type { TriagePageMode } from './triage-list-state';
 import { CARD_LIST_SETTLE_S } from '../record-card/RecordCard';
@@ -67,7 +67,7 @@ function PageModeMenu({
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
-  const options: readonly TriagePageMode[] = [...SLOT_TABLE_PAGE_SIZES, 'scroll'];
+  const options: readonly TriagePageMode[] = [...DATA_TABLE_PAGE_SIZES, 'scroll'];
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -176,8 +176,10 @@ export function TriageSelectBar({
       <div
         data-testid={`${testIdPrefix}-select-bar`}
         className={cn(
-          // px-1 + pl-3 + a 28px box column = the cards' check axis; gap-x-3 = the cards' ml-3.
-          'flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl py-1.5 pl-3 pr-0.5 transition-[background-color,box-shadow] duration-200',
+          // List is px-1 and the card is pl-4, so the 28px check column starts
+          // 20px in. px-1 + pl-3 sat the select-all 4px left of the row checks
+          // (measured on /fulfilled 2026-09-30). gap-x-3 = the cards' ml-3.
+          'flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl py-1.5 pl-4 pr-0.5 transition-[background-color,box-shadow] duration-200',
           active ? 'bg-surface-card shadow-elev-raised ring-1 ring-border-soft' : 'bg-transparent',
         )}
       >

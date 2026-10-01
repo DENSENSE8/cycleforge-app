@@ -9,9 +9,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ReasonCodePicker, type ReasonCode } from '@/components/sku/ReasonCodePicker';
 import { queueOrFetch } from '@/lib/offline/write-queue';
 import {
-  MobilePackerSpamCamera,
+  MobileNativePhotoCapture,
   type CapturedShot,
-} from '@/components/mobile/station/MobilePackerSpamCamera';
+} from '@/components/mobile/photos/MobileNativePhotoCapture';
 import { compressPhotoForUpload } from '@/lib/image/compress-for-upload';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -500,7 +500,7 @@ export function BinStockNumpadSheet({
       </footer>
 
       {cameraOpen && (
-        <MobilePackerSpamCamera
+        <MobileNativePhotoCapture
           maxPhotos={3}
           header={
             <div className="min-w-0">

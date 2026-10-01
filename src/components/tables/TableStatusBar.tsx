@@ -12,7 +12,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useSelectionStatusBarHotkeys } from '@/hooks/useSelectionStatusBarHotkeys';
 import { cn } from '@/utils/_cn';
-import { formatSlotTableCount } from '@/lib/tables/slot-table-page';
+import { formatDataTableCount } from '@/lib/tables/data-table-pagination';
 
 
 /** One tab in the strip. Never an `all` entry — see {@link DataTable}. */
@@ -291,7 +291,7 @@ export function TableStatusBar({
         ) : null}
         {typeof shown === 'number' ? (
           <span className="tabular-nums" data-testid="data-table-row-count">
-            {formatSlotTableCount(shown, total)}
+            {formatDataTableCount(shown, total)}
           </span>
         ) : null}
         {pager && (pager.pageCount > 1 || onLoadMore) ? (

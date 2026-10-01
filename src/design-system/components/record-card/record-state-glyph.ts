@@ -23,7 +23,7 @@ import {
   Truck,
   Unlink,
 } from '@/components/Icons';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 
 type Glyph = ComponentType<{ className?: string }>;
 

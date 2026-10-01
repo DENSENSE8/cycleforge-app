@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * One unit as the QC phone reads it — the industrial record at phone width
- * (`MobileOrderRecord`'s anatomy, HANDOFF-industrial-record-ledger §laws),
+ * One unit as the QC phone reads it — the shared record at phone width
+ * (`MobileOrderRecord`'s anatomy, HANDOFF-record-ledger §laws),
  * F-pattern Context → Identity → Execution with one right lane:
  *
  *   band 1  CODE · condition ··················│ R-{carton}   ← the sticker scanned
@@ -23,10 +23,10 @@ import {
   RECORD_LABEL_CLASS,
   RECORD_TITLE_CLASS,
   recordStateCodeClass,
-} from '@/design-system/tokens/industrial-record';
+} from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RECORD_SPINE_HATCH_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
-import { recordInitials } from '@/design-system/components/record-ledger/IndustrialRecord';
+import { recordInitials } from '@/design-system/components/record-ledger/RecordPhoto';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { conditionGradeTableLabel } from '@/lib/conditions';
 import { QC_UNIT_NEXT, type QcUnitStage } from '@/lib/qc/unit-qc-stage';

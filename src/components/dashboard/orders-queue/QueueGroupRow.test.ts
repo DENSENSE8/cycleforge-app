@@ -61,7 +61,7 @@ describe('QueueGroupRow — the fold parent band', () => {
       line({ id: 1, tracking_numbers: ['1ZAAA'], quantity: 1, sale_amount: 19 }),
       line({ id: 2, tracking_numbers: ['1ZBBB'], quantity: 2, sale_amount: 19 }),
     ]);
-    assert.match(html, /data-slot-table-fold/);
+    assert.match(html, /data-compound-group-fold/);
     assert.match(html, /role="rowgroup"/);
     assert.match(html, /data-order-group-parent/);
     assert.match(html, /data-group-fold/);
@@ -157,7 +157,7 @@ describe('QueueGroupRow — the fold parent band', () => {
   it('skips the parent on a singleton — the leaf is the order', () => {
     const { html, quiet } = paint([line()]);
     assert.doesNotMatch(html, /data-order-group-parent/);
-    assert.doesNotMatch(html, /data-slot-table-fold/);
+    assert.doesNotMatch(html, /data-compound-group-fold/);
     assert.match(html, /data-leaf="1"/);
     assert.deepEqual(quiet, [false]);
   });

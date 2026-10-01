@@ -40,6 +40,10 @@ test('a card wears its most urgent attention, and only a clean line reads Unboxe
   assert.equal(dockedRecordFace(row({ id: -5, unboxed_at: '2026-09-25' })).id, 'UNFOUND');
   // A line added to an unmatched carton stops being unfound once paired to a PO.
   assert.equal(dockedRecordFace(row({ ...clean, receiving_source: 'unmatched', zoho_purchaseorder_id: '9' })).id, 'RECEIVED');
+  // The matching write can carry a PO number or marketplace order before its
+  // internal PO id. Those are known goods, not an Unfound carton.
+  assert.equal(dockedRecordFace(row({ ...clean, receiving_source: 'unmatched', zoho_purchaseorder_number: '15-15190-56779' })).id, 'RECEIVED');
+  assert.equal(dockedRecordFace(row({ ...clean, receiving_source: 'unmatched', source_order_id: '111-8911758-3549041' })).id, 'RECEIVED');
 });
 
 test('next step is a verb the carton strip runs, else nothing', () => {

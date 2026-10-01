@@ -17,8 +17,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Check, Package, Printer, Truck, X } from '@/components/Icons';
+import { BuyLabelSection } from '@/components/outbound/labels/BuyLabelSection';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, Checkbox, IconButton, TextField } from '@/design-system/primitives';
@@ -26,6 +27,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { usePrintStations } from '@/hooks/usePrintStations';
 import { V1RequestError } from '@/lib/api/v1-client';
 import type { LabelBuyProduct, LabelBuyPurpose, LabelBuyResult } from '@/lib/label-buys/contracts';
+import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
 import { buyLabel, fetchLabelBuyRates, searchLabelBuyProducts } from '@/lib/label-buys/http-client';
 import { labelPdfSrc } from '@/lib/label-prints/http-client';
 import { rasterizeDocument } from '@/lib/label-prints/label-raster';
@@ -213,7 +215,10 @@ export function BuyLabelPage() {
   const stations = usePrintStations();
   const { refresh: refreshRoutes } = usePrintRoutes();
   const { print, notice } = useDeskPress(stations, refreshRoutes);
-
+  const unlabeled = useQuery(awaitingLabelsQuery());
+  const [orderId, setOrderId] = useState<number | null>(null);
+  const [mode, setMode] = useState<'order' | 'manual'>('order');
+  const picked = unlabeled.data?.find((order) => order.id === orderId) ?? null;
   const [address, setAddress] = useState<AddressDraft>(EMPTY_ADDRESS);
   const [product, setProduct] = useState<LabelBuyProduct | null>(null);
   const [weight, setWeight] = useState('');
@@ -364,13 +369,63 @@ export function BuyLabelPage() {
         <Truck className="size-5 text-text-muted" />
         <div className="min-w-0 flex-1">
           <h1 className="text-role-title text-text-default">Buy a label</h1>
-          <p className="text-role-caption text-text-soft">One ShipStation label — no order needed. It lands on Labels & docs to print and reprint.</p>
+          <p className="text-role-caption text-text-soft">Buy for an order that has no label, or type the address yourself. An item number is never required.</p>
         </div>
         <IconButton icon={<X className="size-4" />} ariaLabel="Close" title="Close (Esc)" size="sm" radius="control" onClick={close} data-testid="buy-label-close" />
       </header>
 
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-4 p-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex min-w-0 flex-col gap-4">
+          <TabSwitch
+            tabs={[{ id: 'order', label: 'An order' }, { id: 'manual', label: 'Manual' }]}
+            activeTab={mode}
+            onTabChange={(id) => setMode(id as 'order' | 'manual')}
+            size="sm"
+            fit="fill"
+          />
+          {mode === 'order' ? (
+          <Section title="Orders with no label" testId="buy-unlabeled">
+            {unlabeled.isPending ? <p className="text-role-caption text-text-muted">Reading orders…</p> : null}
+            {unlabeled.isError ? <p className="text-role-caption text-text-danger">Could not read orders with no label.</p> : null}
+            {unlabeled.isSuccess && unlabeled.data.length === 0 ? (
+              <p className="text-role-caption text-text-muted">Every open order already has a label.</p>
+            ) : null}
+            <ul className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
+              {(unlabeled.data ?? []).map((order) => {
+                const selected = order.id === orderId;
+                return (
+                  <li key={order.id}>
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex w-full min-w-0 items-center gap-2 rounded-mode-control px-2 py-1.5 text-left',
+                        selected ? 'bg-surface-sunken' : 'hover:bg-surface-sunken',
+                        focusRing('control'),
+                      )}
+                      onClick={() => setOrderId(order.id)}
+                      data-testid="buy-unlabeled-order"
+                    >
+                      <span className="shrink-0 font-mono text-sm font-semibold">{order.order_id}</span>
+                      <span className="min-w-0 flex-1 truncate text-role-caption">{order.product_title || order.sku}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {picked ? (
+              <BuyLabelSection
+                key={picked.id}
+                orderId={picked.id}
+                orderRef={picked.order_id}
+                onChange={() => void unlabeled.refetch()}
+                onPurchased={() => void unlabeled.refetch()}
+              />
+            ) : (
+              <p className="text-role-caption text-text-muted">Pick an order to buy its label. No item number.</p>
+            )}
+          </Section>
+          ) : (
+          <>
           <Section title="Ship to" testId="buy-ship-to">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <TextField label="Name" {...field('name')} autoFocus data-testid="buy-name" />
@@ -402,8 +457,11 @@ export function BuyLabelPage() {
               </label>
             ) : null}
           </Section>
+          </>
+          )}
         </div>
 
+        {mode === 'manual' ? (
         <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20">
           {bought ? (
             <Section title="Label bought" testId="buy-result">
@@ -494,6 +552,7 @@ export function BuyLabelPage() {
             </Section>
           )}
         </div>
+        ) : null}
       </div>
     </div>
   );

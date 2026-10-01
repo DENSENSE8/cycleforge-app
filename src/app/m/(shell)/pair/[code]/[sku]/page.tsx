@@ -7,7 +7,7 @@ export default async function MobilePairQtyPage({
   searchParams,
 }: {
   params: Promise<{ code: string; sku: string }>;
-  searchParams: Promise<{ return?: string | string[]; mode?: string | string[] }>;
+  searchParams: Promise<{ return?: string | string[]; mode?: string | string[]; verified?: string | string[] }>;
 }) {
   const [{ code, sku }, query] = await Promise.all([params, searchParams]);
   const returnParam = typeof query.return === 'string' ? mobileJobReturn(query.return) : null;
@@ -17,6 +17,7 @@ export default async function MobilePairQtyPage({
       sku={decodeURIComponent(sku)}
       returnHref={returnParam ?? undefined}
       initialMode={query.mode === 'take' ? 'minus' : 'plus'}
+      verificationToken={typeof query.verified === 'string' ? query.verified.trim() || null : null}
     />
   );
 }

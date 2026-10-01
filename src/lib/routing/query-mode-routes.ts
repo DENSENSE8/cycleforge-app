@@ -13,6 +13,7 @@ import { parseHomeModeWire } from '@/features/home/home-modes';
 import { parseReviewModeWire } from '@/features/review/review-mode';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
+import { LOCATION_STOCK_SORTS } from '@/lib/inventory/location-stock-row';
 import { parseQcLabelViewWire } from '@/lib/labels/qc-label-views';
 import { parseLabelCopiesWire } from '@/lib/print/labelCopies';
 import {
@@ -24,6 +25,7 @@ import { parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
 import { REPAIR_CHANNELS, REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 import { parseSearchEtypeWire } from '@/lib/search/search-refine';
+import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import {
   parsePickupTab,
   parseRepairTab,
@@ -129,8 +131,10 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     [REPAIR_SORT_PARAM]: paramRoundTrip(parseRepairSort),
     /** Repair cards' client page (shared TriageCardList). */
     page: paramPositiveInt,
-    /** Repair cards' status chips right of the count (comma list, `REPAIR_STATUS_CHIP_KEYS`). */
+    /** Status chips right of the count (comma list, `REPAIR_STATUS_CHIP_KEYS`). */
     [REPAIR_STATUS_CHIP_PARAM]: paramText,
+    /** Shared client-side status exclusion cut (`?hide=`). */
+    hide: paramText,
     /** Repair record deep-link (Sales history may open a card; intake stays on `/repair`). */
     openRepair: paramPositiveInt,
     /** Sales → Repairs sidebar view: All (bare) · Shipped in (`shipment`) · Dropped off (`pickup`). */
@@ -457,6 +461,10 @@ export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
     q: paramText,
     /** Room chips — a comma-separated multi-select over `locations.room` (the list's own cut, `useTriageCut`). */
     room: paramText,
+    /** Numeric aisle multi-select, comma-separated. */
+    aisle: paramText,
+    /** Physical location order in the stock walk. */
+    sort: paramEnum(LOCATION_STOCK_SORTS),
     /** Operational state funnel: open placeholders or catalog-paired stock. */
     status: paramText,
     /** The open stock pair (its record key) — the evidence column. */
@@ -691,8 +699,9 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
      * Deliberately NOT `status` — `/support` (and others) already own that key.
      */
     hstat: paramText,
-    /** Client channel refine against `facets.source_platform`, holding the STORED value (`ebay` / `amazon` / `ecwid`) rather than a display… */
     chan: paramText,
+    /** Pasted identifiers, comma-joined. Two or more lands the locate desk; hygiene must not strip it. */
+    refs: paramCanonical((raw) => serializeRefIn(parseRefInParam(raw).refs) || null),
   },
   carries: ['staff', 'colsort', 'coldir'],
 });

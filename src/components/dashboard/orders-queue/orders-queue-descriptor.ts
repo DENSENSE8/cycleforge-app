@@ -10,7 +10,6 @@ export const ORDERS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: true,
   multiSelect: true,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

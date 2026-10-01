@@ -42,8 +42,8 @@ hooks get the same path from the `new-ui-surface` skill
 
 - Omni Composer / station mouth → **StationComposerHost**
 - Raw `OmnichannelComposerDock` alone → incomplete mouth
-- Dumb / gun station → `showModeFaces={false}` (keep context ring); never
-  `showModeRow={false}` to hide Unbox|Ticket
+- Dumb / gun station → keep `showModeRow` (context ring on); never
+  `showModeRow={false}`. Header tasks own Ticket versus station work — no bottom Unbox|Ticket faces.
 - Mobile scanned-entity hub / mobile record / phone drill-in → **DetailHubScreen**
   (the only record grammar on `/m`)
   - card slot → a **DetailSummaryCard** mapper; whole card → `/info`, which

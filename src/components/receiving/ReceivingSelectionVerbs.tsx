@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { resolveSelectionAction, type SelectionAction } from '@/lib/selection/selection-actions';
+import { resolveSelectionAction } from '@/lib/selection/selection-actions';
 import { readPhotoPolicyBlock } from '@/lib/receiving/photo-policy-override-wire';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { emitToggleAll } from '@/lib/selection/table-selection';
@@ -26,13 +26,6 @@ import { toast } from '@/lib/toast';
 
 export type ReceivingAdvance = 'unboxed' | 'received';
 
-/** Preserve the selection catalog's disclosure level in the shared action strip. */
-export function receivingActionPlacement(
-  action: Pick<SelectionAction<unknown>, 'key' | 'primary'>,
-): RecordActionVerb['placement'] {
-  if (action.key === 'delete') return 'isolated';
-  return action.primary ? 'primary' : 'overflow';
-}
 
 export function receivingAdvancePackages(rows: readonly ReceivingLineRow[], advance: ReceivingAdvance): Array<[number, ReceivingLineRow[]]> {
   const packages = new Map<number, ReceivingLineRow[]>();
@@ -104,7 +97,6 @@ export function ReceivingSelectionVerbs({
           label: advancing ? `Marking ${advance}…` : `Mark ${advance}`,
           icon: advance === 'unboxed' ? <PackageOpen className="h-4 w-4" /> : <PackageCheck className="h-4 w-4" />,
           tone: advance === 'received' ? 'success' : 'blue',
-          placement: 'primary',
           disabled: advancing || !canMarkReceived || packages.length === 0,
           disabledReason: !canMarkReceived
             ? 'You do not have permission to update receiving status'
@@ -157,7 +149,6 @@ export function ReceivingSelectionVerbs({
                   : action.tone === 'emerald'
                     ? 'success'
                     : 'default',
-          placement: receivingActionPlacement(action),
           disabled: resolved.disabled,
           disabledReason: resolved.reason,
           pressed: action.direction ? resolved.direction === 'undo' : undefined,

@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { cn } from '@/utils/_cn';
 
 /**

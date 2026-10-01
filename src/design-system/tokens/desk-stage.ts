@@ -67,11 +67,9 @@ export const DESK_SPLIT_RECORD_CARD_CLASS = 'flex min-h-0 flex-1 flex-col overfl
  * A record COLUMN — the 2/3 work column and the 1/3 facts column of
  * {@link DESK_RECORD_COLUMNS_CLASS} — the only lifted surfaces on a desk
  * record (owner 2026-09-26, Shopify / Ecwid order page): the mode's card
- * corner and the raised shadow on the white page. Industrial (the phone's
- * operation flows) drops the box: no frame, no lift, no inset — each column
- * runs full width, closed by one `divide` hairline (owner 2026-09-27).
+ * corner and the raised shadow on the white page.
  */
-export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hidden rounded-mode border border-mode-frame bg-mode-bar ${elevationClass('raised')} industrial:border-x-0 industrial:border-t-0 industrial:border-b-mode-divide industrial:shadow-none`;
+export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hidden rounded-mode border border-mode-frame bg-mode-bar ${elevationClass('raised')}`;
 
 /**
  * The split LIST's body (owner 2026-09-26): full width of its two thirds with

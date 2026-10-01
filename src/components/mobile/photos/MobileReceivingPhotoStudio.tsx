@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import {
-  MobilePackerSpamCamera,
+  MobileNativePhotoCapture,
   type CapturedShot,
-} from '@/components/mobile/station/MobilePackerSpamCamera';
+} from '@/components/mobile/photos/MobileNativePhotoCapture';
 import {
   photoUploadQueue,
   useClearDoneOnUnmount,
@@ -49,7 +49,7 @@ interface MobileReceivingPhotoStudioProps {
   /**
    * Arrival-only guided capture: shipping label → box exterior, each shot
    * stamped with `scope.stage` (must be `arrival_package`) + the step aspect.
-   * Omit / false keeps the legacy spam-capture path (aspect unset).
+   * Omit / false keeps native batch capture with the aspect unset.
    */
   guided?: boolean;
   /** Guided entry step (from `?step=`); defaults to shipping_label. */
@@ -178,7 +178,7 @@ export function MobileReceivingPhotoStudio({
     [query.data?.photos?.length, scope],
   );
 
-  // ── Legacy spam-capture path (unchanged) ──────────────────────────────────
+  // ── Unclassified native-capture path ──────────────────────────────────────
   const handleDone = useCallback(
     (shots: CapturedShot[]) => {
       if (shots.length === 0) {
@@ -196,7 +196,7 @@ export function MobileReceivingPhotoStudio({
     [enqueueShots, returnToCaller],
   );
 
-  // Guided only for the door stage — other stages keep spam capture.
+  // Guided only for the door stage — other stages keep native batch capture.
   const guidedArrival =
     guided && effectiveReceivingPhotoStage(scope) === 'arrival_package';
 
@@ -232,7 +232,7 @@ export function MobileReceivingPhotoStudio({
 
   if (!guidedArrival) {
     return (
-      <MobilePackerSpamCamera
+      <MobileNativePhotoCapture
         embedded
         onDone={handleDone}
         onCancel={returnToCaller}
@@ -258,7 +258,7 @@ export function MobileReceivingPhotoStudio({
   const aspectLabel = photoAspectLabel(step);
 
   return (
-    <MobilePackerSpamCamera
+    <MobileNativePhotoCapture
       key={step}
       embedded
       onDone={isLabel ? onLabelDone : onBoxDone}

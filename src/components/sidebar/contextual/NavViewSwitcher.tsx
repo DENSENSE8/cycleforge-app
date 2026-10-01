@@ -16,6 +16,7 @@ import { cn } from '@/utils/_cn';
 import { navRowGlyph, type Glyph } from './NavSectionList';
 import { NavSwitcherMenu } from './NavSwitcherMenu';
 import { publishKeyPressed } from './go-keys-store';
+import { useNavStaffKey } from './useNavContext';
 
 /** A view's unfiltered count revalidates at most this often. */
 const VIEW_COUNT_STALE_MS = 20_000;
@@ -28,6 +29,7 @@ const VIEW_COUNT_STALE_MS = 20_000;
  * fetch is shared.
  */
 export function useViewCounts(pageId: string, items: readonly NavItem[]) {
+  const staffKey = useNavStaffKey();
   const specs = items.flatMap((item) => {
     const context = `${pageId}.${item.id}`;
     if (!isNavFacetContext(context)) return [];
@@ -35,7 +37,7 @@ export function useViewCounts(pageId: string, items: readonly NavItem[]) {
   });
   const results = useQueries({
     queries: specs.map((spec) => ({
-      queryKey: ['nav-facets', spec.context, spec.search],
+      queryKey: ['nav-facets', staffKey, spec.context, spec.search],
       queryFn: ({ signal }: { signal: AbortSignal }) => fetchNavFacets(spec.context, spec.search, signal),
       staleTime: VIEW_COUNT_STALE_MS,
       placeholderData: keepPreviousData,

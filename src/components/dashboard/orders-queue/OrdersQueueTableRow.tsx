@@ -145,7 +145,7 @@ interface OrdersQueueTableRowProps {
   /** Ordered VISIBLE column models (already sanitized + visibility-resolved). */
   columns: readonly OrdersQueueColumn[];
   /**
-   * Bound subtitle field ids from the effective slot layout (compound morph
+   * Bound subtitle field ids from the effective data-table column layout (compound morph
    * paints them inside the item cell's secondary line). Absent/empty keeps the
    * legacy note/identity fallback line.
    */

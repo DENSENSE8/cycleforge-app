@@ -2,7 +2,7 @@ import {
   INBOUND_DELIVERY,
   type InboundDeliveryState,
 } from '@cycleforge/design-tokens';
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 
 export {
   INBOUND_DELIVERY,

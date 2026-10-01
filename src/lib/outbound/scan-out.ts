@@ -15,30 +15,48 @@ import { productImageUrl } from '@/lib/photos/product-image-url';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/** Order states that must never leave the building. */
-const BLOCKED_ORDER_STATUSES: Record<string, true> = { canceled: true, cancelled: true };
+/** Reasons the dock must refuse a physical handoff. */
+export type ScanOutBlockReason = 'canceled' | 'cancelled' | 'not_packed';
 
-/** The normalized blocking status, or null when the order may ship. */
-export function blockedOrderStatus(status: unknown): string | null {
+/** Order states that must never leave the building. */
+const BLOCKED_ORDER_STATUSES: Readonly<Record<string, true>> = { canceled: true, cancelled: true };
+
+/** The normalized blocking status, or null when status itself permits shipping. */
+export function blockedOrderStatus(status: unknown): Exclude<ScanOutBlockReason, 'not_packed'> | null {
   const normalized = String(status ?? '').trim().toLowerCase();
-  return BLOCKED_ORDER_STATUSES[normalized] === true ? normalized : null;
+  return BLOCKED_ORDER_STATUSES[normalized] === true
+    ? normalized as Exclude<ScanOutBlockReason, 'not_packed'>
+    : null;
+}
+
+/** One decision for the API POST and read-only identification face. */
+export function scanOutBlockReason(status: unknown, isPacked: boolean): ScanOutBlockReason | null {
+  return blockedOrderStatus(status) ?? (isPacked ? null : 'not_packed');
+}
+
+export function scanOutBlockedMessage(reason: ScanOutBlockReason): string {
+  return reason === 'not_packed'
+    ? 'Order is not packed — pack it before scan-out.'
+    : 'Order is cancelled — do not ship. Pull this package.';
 }
 
 /**
  * Who pressed it. `dock` = the gun; `desk-selection` = the Scan out verb on a
  * desk selection; `bulk` = an operator-authorized backlog clear run as a script.
  */
-export type ScanOutOrigin = 'dock' | 'desk-selection' | 'bulk';
+export type ScanOutOrigin = 'dock' | 'desk-selection' | 'phone' | 'bulk';
 
 const ORIGIN_NOTES: Record<ScanOutOrigin, string> = {
   dock: 'Scanned out at dock',
   'desk-selection': 'Marked as shipped from selection',
+  phone: 'Scanned out on phone',
   bulk: 'Bulk scanned out (operator-authorized backlog clear)',
 };
 
 const ORIGIN_AUDIT_SOURCE: Record<ScanOutOrigin, string> = {
   dock: 'api.shipped.scan-out',
   'desk-selection': 'api.shipped.scan-out',
+  phone: 'api.shipped.scan-out',
   bulk: 'scripts.scan-out-packed-orders',
 };
 
@@ -64,12 +82,13 @@ export interface ScanOutContext {
   carton: ScanOutCarton;
   latestStatusCategory: string | null;
   isTerminal: boolean;
+  /** A completed ORDERS packer_log exists for this shipment. */
+  isPacked: boolean;
 }
 
 export type ScanOutResult =
   | { kind: 'unmatched' }
-  | { kind: 'blocked'; blockReason: string; carton: ScanOutCarton }
-  | { kind: 'already-delivered'; carton: ScanOutCarton }
+  | { kind: 'blocked'; blockReason: ScanOutBlockReason; carton: ScanOutCarton }
   | { kind: 'duplicate'; shipConfirmedAt: string; carton: ScanOutCarton }
   | { kind: 'confirmed'; activityId: number | null; carton: ScanOutCarton };
 
@@ -82,6 +101,12 @@ export interface ScanOutInput {
   /** Already-validated backdate (PST-normalized), or null for server now. */
   createdAt: string | null;
   origin: ScanOutOrigin;
+  /** Resolver intent correlation and canonical phone surface metadata. */
+  correlation?: {
+    clientEventId?: string | null;
+    mobileScanEventId?: number | null;
+    surface?: string | null;
+  };
   /**
    * Request attribution for the audit row. Routes pass their auth ctx + req;
    * scripts omit it and the audit falls back to `actorStaffId` + org override.
@@ -121,29 +146,45 @@ export interface ScanOutDeps {
   publishOrderChanged: (organizationId: string, orderRowId: number) => Promise<unknown>;
 }
 
-/** Carrier already reports this package delivered — scanning it out is anomalous (wrong/returned package, or a data conflict). */
-function isAlreadyDelivered(ctx: ScanOutContext): boolean {
-  const statusCat = String(ctx.latestStatusCategory ?? '').toUpperCase();
-  return statusCat === 'DELIVERED' || (ctx.isTerminal && statusCat !== 'RETURNED');
-}
 
 export async function scanOutLabel(
   input: ScanOutInput,
   deps: ScanOutDeps = defaultScanOutDeps,
 ): Promise<ScanOutResult> {
-  const { organizationId, scan, origin } = input;
-
-  const shipmentId = await deps.resolveShipment(scan, organizationId);
+  const shipmentId = await deps.resolveShipment(input.scan, input.organizationId);
   if (shipmentId == null) return { kind: 'unmatched' };
+  return scanOutResolvedShipment(input, shipmentId, deps);
+}
 
+/**
+ * Bulk callers already hold the canonical shipment id. Do not re-resolve its
+ * stored label: legacy routed/GS1 values can canonicalize to a different
+ * registry row and would stamp the wrong carton.
+ */
+export async function scanOutKnownShipment(
+  input: ScanOutInput & { shipmentId: number },
+  deps: ScanOutDeps = defaultScanOutDeps,
+): Promise<ScanOutResult> {
+  const shipmentId = Number(input.shipmentId);
+  if (!Number.isSafeInteger(shipmentId) || shipmentId <= 0) {
+    throw new Error(`Invalid shipment id: ${input.shipmentId}`);
+  }
+  return scanOutResolvedShipment(input, shipmentId, deps);
+}
+
+async function scanOutResolvedShipment(
+  input: ScanOutInput,
+  shipmentId: number,
+  deps: ScanOutDeps,
+): Promise<ScanOutResult> {
+  const { organizationId, scan, origin } = input;
   const context = await deps.loadContext(organizationId, shipmentId, scan);
   const { carton } = context;
 
-  /* Precondition: */
-  const blockReason = blockedOrderStatus(carton.orderStatus);
+  /* Preconditions: cancellation and an absent completed pack both fail closed. */
+  const blockReason = scanOutBlockReason(carton.orderStatus, context.isPacked);
   if (blockReason) return { kind: 'blocked', blockReason, carton };
 
-  if (isAlreadyDelivered(context)) return { kind: 'already-delivered', carton };
 
   // Idempotency: a package leaves once. Return the existing event if present.
   const existing = await deps.findShipConfirm(organizationId, shipmentId);
@@ -158,6 +199,22 @@ export async function scanOutLabel(
     metadata: {
       source: origin === 'bulk' ? 'bulk-scan-out' : 'shipped-scan-out',
       ...(origin === 'desk-selection' ? { deskSelection: true } : null),
+      ...(origin === 'phone'
+        ? {
+            origin: 'phone',
+            surface: input.correlation?.surface ?? '/m/id/scan-out',
+            client_event_id: input.correlation?.clientEventId ?? null,
+            ...(Number.isSafeInteger(Number(input.correlation?.mobileScanEventId))
+              && Number(input.correlation?.mobileScanEventId) > 0
+              ? { mobile_scan_event_id: Number(input.correlation?.mobileScanEventId) }
+              : null),
+            order_row_id: carton.orderRowId,
+            order_id: carton.orderId,
+            subject_entity_type: carton.orderRowId != null ? 'order' : 'shipment',
+            subject_id: String(carton.orderRowId ?? carton.shipmentId),
+            subject_identifier: carton.orderId ?? carton.tracking,
+          }
+        : null),
     },
     createdAt: input.createdAt,
   });
@@ -273,8 +330,7 @@ async function loadScanOutContext(
   shipmentId: number,
   scan: string,
 ): Promise<ScanOutContext> {
-  // Light context for the toast / running list (best-effort). Also pulls the
-  // carrier status so an already-delivered package is flagged.
+  // Light context for the toast / running list (best-effort).
   const row = await tenantQuery(
     organizationId,
     `SELECT stn.tracking_number_raw    AS tracking,
@@ -289,6 +345,14 @@ async function loadScanOutContext(
               o.quantity              AS quantity,
               o.account_source        AS account_source,
               o.status                AS order_status,
+              EXISTS (
+                SELECT 1
+                  FROM packer_logs pl
+                 WHERE pl.organization_id = stn.organization_id
+                   AND pl.shipment_id = stn.id
+                   AND pl.tracking_type = 'ORDERS'
+                   AND pl.completion_state = 'COMPLETED'
+              )                       AS is_packed,
               sc.image_url            AS catalog_image_url,
               zi.zoho_item_id         AS zoho_item_id,
               zi.image_document_id    AS zoho_image_document_id,
@@ -339,6 +403,7 @@ async function loadScanOutContext(
     },
     latestStatusCategory: (row?.latest_status_category as string | null) ?? null,
     isTerminal: row?.is_terminal === true,
+    isPacked: row?.is_packed === true,
   };
 }
 

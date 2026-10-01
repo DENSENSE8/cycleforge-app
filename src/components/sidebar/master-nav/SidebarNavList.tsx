@@ -1,21 +1,6 @@
 'use client';
 
-import { Fragment, Suspense, useCallback, useMemo, type ReactNode } from 'react';
-import {
-  DndContext,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { Fragment, Suspense, useMemo, type ReactNode } from 'react';
 import { ChevronDown, Plus } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
@@ -80,13 +65,11 @@ interface SidebarNavListProps {
   /** Push an in-app href (a chat thread, `?new=1`) and close the mobile sheet. */
   onOpenHref: (href: string) => void;
   onRowHover?: (page: SidebarPageNav) => void;
-  spineOrder: string[];
-  onSpineOrderChange: (ids: string[]) => void;
   className?: string;
 }
 
-/** A row the operator can hold-drag to reorder (L0 slots only). */
-function SortableMenuRow({
+/** A parent destination row in the product-defined navigation order. */
+function ParentMenuRow({
   id,
   label,
   icon: RowIcon,
@@ -104,27 +87,10 @@ function SortableMenuRow({
   onMouseEnter?: () => void;
 }) {
   const tone = spineParentTone(id);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
 
   return (
-    <SidebarMenuItem
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      className={cn(isDragging && 'z-10 opacity-80')}
-    >
+    <SidebarMenuItem>
       <SidebarMenuButton
-        {...attributes}
-        {...listeners}
         data-sidebar-nav-item
         isActive={active}
         onClick={onActivate}
@@ -132,10 +98,8 @@ function SortableMenuRow({
         aria-label={ariaLabel}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'touch-none',
           SPINE_PARENT_ROW_MOTION_CLASS,
           tone.row,
-          isDragging && 'cursor-grabbing ring-1 ring-inset ring-border-soft',
         )}
       >
         <span
@@ -166,8 +130,6 @@ function SectionTriggerFace({
   ownsCurrent,
   bodyId,
   onToggle,
-  dragProps,
-  isDragging = false,
 }: {
   toneKey: string;
   label: string;
@@ -176,8 +138,6 @@ function SectionTriggerFace({
   ownsCurrent: boolean;
   bodyId: string;
   onToggle: () => void;
-  dragProps?: Record<string, unknown>;
-  isDragging?: boolean;
 }) {
   const tone = spineParentTone(toneKey);
   return (
@@ -189,15 +149,13 @@ function SectionTriggerFace({
         data-owns-current={ownsCurrent ? 'true' : undefined}
         aria-expanded={open}
         aria-controls={bodyId}
-        {...dragProps}
         onClick={onToggle}
         className={cn(
-          'relative cursor-pointer touch-none',
+          'relative cursor-pointer',
           SPINE_SECTION_LABEL_STICKY_CLASS,
           SPINE_PARENT_ROW_MOTION_CLASS,
           tone.section,
           ownsCurrent && 'font-semibold',
-          isDragging && 'cursor-grabbing ring-1 ring-inset ring-border-soft',
         )}
       >
         <span
@@ -232,56 +190,6 @@ function SectionTriggerFace({
   );
 }
 
-function SortableSectionTrigger({
-  id,
-  label,
-  icon,
-  open,
-  ownsCurrent,
-  bodyId,
-  onToggle,
-}: {
-  id: string;
-  label: string;
-  icon: SidebarIconComponent;
-  open: boolean;
-  ownsCurrent: boolean;
-  bodyId: string;
-  onToggle: () => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
-      className={cn('relative', isDragging && 'z-10 opacity-80')}
-    >
-      <SectionTriggerFace
-        toneKey={id}
-        label={label}
-        icon={icon}
-        open={open}
-        ownsCurrent={ownsCurrent}
-        bodyId={bodyId}
-        onToggle={onToggle}
-        dragProps={{ ...attributes, ...listeners }}
-        isDragging={isDragging}
-      />
-    </div>
-  );
-}
-
 export function SidebarNavList({
   activePage,
   activeChildId,
@@ -289,8 +197,6 @@ export function SidebarNavList({
   onNavigate,
   onOpenHref,
   onRowHover,
-  spineOrder,
-  onSpineOrderChange,
   className,
 }: SidebarNavListProps) {
   const highlightedChildId = activeChildId ?? activePage.children?.[0]?.id ?? null;
@@ -309,10 +215,7 @@ export function SidebarNavList({
     [otherPages],
   );
 
-  const mapEntries = useMemo(
-    () => resolveSpineMapEntries(spineOrder, otherPages),
-    [spineOrder, otherPages],
-  );
+  const mapEntries = useMemo(() => resolveSpineMapEntries(otherPages), [otherPages]);
 
   type SpineBlock =
     | { kind: 'stations' }
@@ -343,24 +246,6 @@ export function SidebarNavList({
     }
     return blocks;
   }, [mapEntries]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
-    }),
-  );
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const oldIndex = spineOrder.indexOf(String(active.id));
-      const newIndex = spineOrder.indexOf(String(over.id));
-      if (oldIndex < 0 || newIndex < 0) return;
-      onSpineOrderChange(arrayMove(spineOrder, oldIndex, newIndex));
-    },
-    [spineOrder, onSpineOrderChange],
-  );
 
   /**
    * One destination row.
@@ -452,7 +337,6 @@ export function SidebarNavList({
 
   const renderSection = (opts: {
     sectionKey: string;
-    sortableId: string;
     domId: string;
     label: string;
     icon: SidebarIconComponent;
@@ -465,8 +349,8 @@ export function SidebarNavList({
     const bodyId = `${opts.domId}-body`;
     return (
       <SidebarGroup id={opts.domId} role="group" aria-label={opts.label}>
-        <SortableSectionTrigger
-          id={opts.sortableId}
+        <SectionTriggerFace
+          toneKey={opts.sectionKey}
           label={opts.label}
           icon={opts.icon}
           open={open}
@@ -505,7 +389,7 @@ export function SidebarNavList({
       return (
         <SidebarGroup key={lane.id}>
           <SidebarMenu>
-            <SortableMenuRow
+            <ParentMenuRow
               id={lane.id}
               label={lane.label}
               icon={lane.icon}
@@ -532,7 +416,7 @@ export function SidebarNavList({
         return (
           <SidebarGroup key={lane.id}>
             <SidebarMenu>
-              <SortableMenuRow
+              <ParentMenuRow
                 id={lane.id}
                 label={lane.label}
                 icon={lane.icon}
@@ -552,7 +436,6 @@ export function SidebarNavList({
         <div key={lane.id}>
           {renderSection({
             sectionKey: lane.id,
-            sortableId: lane.id,
             domId: `spine-section-${lane.id}`,
             label: lane.label,
             icon: lane.icon,
@@ -577,7 +460,6 @@ export function SidebarNavList({
       <div key={lane.id}>
         {renderSection({
           sectionKey: lane.id,
-          sortableId: lane.id,
           domId: `spine-section-${lane.id}`,
           label: lane.label,
           icon: lane.icon,
@@ -648,9 +530,7 @@ export function SidebarNavList({
           </SidebarGroup>
         ) : null}
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={spineOrder} strategy={verticalListSortingStrategy}>
-            {spineBlocks.map((block, index) => {
+        {spineBlocks.map((block, index) => {
               const blockId =
                 block.kind === 'stations'
                   ? SPINE_STATIONS_SLOT_ID
@@ -689,7 +569,7 @@ export function SidebarNavList({
                 return wrapBlock(
                   <SidebarGroup>
                     <SidebarMenu>
-                      <SortableMenuRow
+                      <ParentMenuRow
                         id={SPINE_STATIONS_SLOT_ID}
                         label={stationsSection.label}
                         icon={stationsSection.icon}
@@ -714,7 +594,6 @@ export function SidebarNavList({
                   <div>
                     {renderSection({
                       sectionKey: page.id,
-                      sortableId: page.id,
                       domId: `spine-section-${page.id}`,
                       label: page.label,
                       icon: page.icon,
@@ -737,7 +616,7 @@ export function SidebarNavList({
                 <SidebarGroup>
                   <SidebarMenu>
                     {block.pages.map((page) => (
-                      <SortableMenuRow
+                      <ParentMenuRow
                         key={page.id}
                         id={page.id}
                         label={page.label}
@@ -751,9 +630,7 @@ export function SidebarNavList({
                   </SidebarMenu>
                 </SidebarGroup>,
               );
-            })}
-          </SortableContext>
-        </DndContext>
+        })}
         {bottomPages.length > 0 ? (
           <SidebarGroup id="spine-section-bottom" role="group" aria-label="Utilities">
             <div data-sidebar-group-title className={SPINE_NAV_GROUP_TITLE_CLASS}>

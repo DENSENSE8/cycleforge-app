@@ -20,7 +20,6 @@ export const REPORT_BIN_UTILIZATION_GRID_CAPABILITIES: GridSurfaceCapabilities =
   rowTriageFlags: false,
   multiSelect: true,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

@@ -2,13 +2,14 @@
 
 /** SKU exception record groups — Product (title + description) and the Barcode fact (attach one to a placeholder created without). Its locations are the stock record's own `StockLocationsGroup`. */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CopyChip } from '@/components/ui/CopyChip';
 import { EVIDENCE_CONTROL_CLASS } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { SKU_EXCEPTIONS_PATH } from '@/lib/inventory/sku-exception-links';
 import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 import { toast } from '@/lib/toast';
@@ -103,8 +104,8 @@ export function SkuExceptionProductSection({
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [descriptionPx, setDescriptionPx] = useState(DESCRIPTION_DEFAULT_PX);
-
   const title = titleDraft ?? item.productTitle;
+
   const description = descriptionDraft ?? item.description ?? '';
   const titleChanged = titleDraft !== null && titleDraft.trim() !== item.productTitle;
   const descriptionChanged =
@@ -132,7 +133,6 @@ export function SkuExceptionProductSection({
       await onChanged();
       setTitleDraft(null);
       setDescriptionDraft(null);
-      toast.success('Saved', { id: `sku-exception-saved-${item.sku}` });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save.');
     } finally {
@@ -140,17 +140,18 @@ export function SkuExceptionProductSection({
     }
   };
 
+  useEffect(() => {
+    if (!canSave) return;
+    const timer = window.setTimeout(() => void save(), 700);
+    return () => window.clearTimeout(timer);
+  }, [canSave, title, description]);
+
   return (
     <RecordGroup
       title="Product"
+      titleHidden
       testId="sku-exception-product"
-      action={
-        dirty ? (
-          <Button variant="ink" size="sm" disabled={!canSave} loading={saving} onClick={() => void save()} data-testid="sku-exception-save">
-            Save
-          </Button>
-        ) : undefined
-      }
+      action={saving ? <span className="text-role-caption text-mode-muted" data-testid="sku-exception-saving">Saving…</span> : undefined}
     >
       <div className="flex flex-col gap-2 px-4 pb-3 pt-1">
         <label htmlFor={`${fieldId}-title`} className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
@@ -227,6 +228,7 @@ export function SkuExceptionBarcodeValue({
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState<BarcodeConflict | null>(null);
+  const { isMobile } = useUIModeOptional();
 
   if (item.barcode) {
     return <CopyChip value={item.barcode} display={item.barcode} tone="id" fitDisplayWidth />;
@@ -293,7 +295,7 @@ export function SkuExceptionBarcodeValue({
         />
         <Button
           variant="ink"
-          size="sm"
+          size={isMobile ? 'lg' : 'sm'}
           disabled={!barcode}
           loading={busy}
           onClick={() => void attach()}

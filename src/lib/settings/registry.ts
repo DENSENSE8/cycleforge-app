@@ -3,8 +3,6 @@
 import { z } from 'zod';
 import { parsePhotoAspectList } from '@/lib/photos/photo-aspects';
 import { ALL_ROLES } from '@/lib/auth/permissions-shared';
-import { SIDEBAR_PAGE_NAV } from '@/lib/sidebar-navigation';
-import { NAV_ROLLOUT_SETTING_VALUES, navRolloutSettingKey } from '@/lib/nav/context/rollout';
 import type { SettingDef, SettingPage } from './types';
 import { ORDER_LIST_VIEW_KEYS, VIEW_SPECS, type Density, type OrderListViewKey } from '@/lib/views/view-specs';
 
@@ -98,34 +96,10 @@ const VIEW_DENSITY_SETTINGS: readonly SettingDef[] = ORDER_LIST_VIEW_KEYS.map((v
 /** The Tasks board's pinned Daily checklist column, shown or hidden per staffer (`H` on `/`). */
 export const TASK_BOARD_CHECKLIST_COLUMN_SETTING = 'desk.home.checklistColumn';
 
-/**
- * The contextual-sidebar switch, one per `SIDEBAR_PAGE_NAV` page — the org
- * dogfoods a page before `NAV_CONTEXT_ROLLOUT` flips it for everyone, and a
- * staffer may keep their own pick. `inherit` defers staff → org → the map.
- */
-const NAV_CONTEXTUAL_SETTINGS: readonly SettingDef[] = SIDEBAR_PAGE_NAV.map((page) => ({
-  key: navRolloutSettingKey(page.id),
-  page: 'nav' as const,
-  group: 'Contextual sidebar',
-  scope: 'org' as const,
-  personalizable: true,
-  label: `${page.label} (${page.id})`,
-  description: 'Which sidebar this page shows. Inherit follows the rollout.',
-  control: 'segmented' as const,
-  schema: z.enum(NAV_ROLLOUT_SETTING_VALUES).default('inherit'),
-  options: [
-    { value: 'inherit', label: 'Inherit' },
-    { value: 'legacy', label: 'Classic' },
-    { value: 'contextual', label: 'Contextual' },
-  ],
-  permission: 'admin.manage_features',
-}));
-
 export const SETTING_PAGES = [
   { id: 'receiving', label: 'Receiving', description: 'Unboxing & intake behavior' },
   { id: 'scan', label: 'Scan feedback', description: 'Tones and buzzes on a scan, at every station' },
   { id: 'desk', label: 'Desks', description: 'How each desk shows its records' },
-  { id: 'nav', label: 'Sidebar', description: 'Which pages use the contextual sidebar' },
 ] as const satisfies readonly { id: SettingPage; label: string; description: string }[];
 
 export const SETTINGS: readonly SettingDef[] = [
@@ -496,7 +470,6 @@ export const SETTINGS: readonly SettingDef[] = [
   },
   ...DESK_VIEW_SETTINGS,
   ...VIEW_DENSITY_SETTINGS,
-  ...NAV_CONTEXTUAL_SETTINGS,
 ];
 
 const BY_KEY = new Map<string, SettingDef>(SETTINGS.map((s) => [s.key, s]));

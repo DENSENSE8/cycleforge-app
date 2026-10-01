@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import type { ExceptionRecordResponse } from '@/lib/exceptions/facts';
 import { EXCEPTION_DOMAIN_LABEL, EXCEPTION_KIND_SPEC } from '@/lib/exceptions/types';
 import { cn } from '@/utils/_cn';
@@ -16,7 +16,7 @@ export function ExceptionFactsGroup({ record }: { record: ExceptionRecordRespons
   const spec = EXCEPTION_KIND_SPEC[row.kind];
   const raised = row.raisedAt ? new Date(row.raisedAt) : null;
   return (
-    <div className="flex min-w-0 flex-col gap-4 industrial:gap-0">
+    <div className="flex min-w-0 flex-col gap-4">
       <RecordGroup title="Why it is here" testId="exception-record-why">
         <div className="flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0">
           <EvidenceFactRow label="Exception">

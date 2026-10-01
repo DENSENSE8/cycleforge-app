@@ -14,13 +14,11 @@ import { kioskDeviceCompoundView } from '@/lib/kiosk/kiosk-device-row-adapter';
 import type { KioskDeviceTableRow } from '@/lib/kiosk/kiosk-device-row';
 import { KIOSKDEVICES_GRID_CAPABILITIES } from './kiosk-devices-grid-descriptor';
 import {
-  kioskDevicesCompoundColumnsFor,
   kioskDevicesSortFactFor,
   type KioskDevicesGridColumn,
   type KioskDevicesGridColumnKey,
 } from './kiosk-devices-grid-layout';
 import { KIOSKDEVICES_TABLE_BINDING } from './kiosk-devices-table-definition';
-import { useKioskDevicesTableLayout } from './useKioskDevicesTableLayout';
 
 interface UseKioskDevicesSpreadsheetOptions {
   rows: readonly KioskDeviceTableRow[];
@@ -46,8 +44,8 @@ export function useKioskDevicesSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useKioskDevicesTableLayout();
-  const columns = useMemo(() => kioskDevicesCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
+
+
 
   const onSortChange = useCallback((key: KioskDevicesGridColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
@@ -61,12 +59,10 @@ export function useKioskDevicesSpreadsheet({
 
   return useCompoundSpreadsheet<KioskDeviceTableRow, KioskDevicesGridColumnKey, KioskDevicesGridColumn>({
     binding: KIOSKDEVICES_TABLE_BINDING,
-    columns,
-    fields,
+    columns: KIOSKDEVICES_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: kioskDeviceCompoundView,
-    subtitleFieldIds,
     resolve: resolveKioskDevicesSlotValue,
     sortFactFor: kioskDevicesSortFactFor,
     capabilities: KIOSKDEVICES_GRID_CAPABILITIES,

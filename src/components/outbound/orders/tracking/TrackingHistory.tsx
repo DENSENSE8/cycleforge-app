@@ -4,7 +4,7 @@
 
 import { useId, useState } from 'react';
 import { ChevronDown, History } from '@/components/Icons';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';

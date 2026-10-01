@@ -20,6 +20,7 @@ import { TextField } from '@/design-system/primitives/TextField';
 import { parcelFromText } from '@/hooks/orders/useOrderTriage';
 import type { IntakeShippingMode, IntakeState } from '@/lib/orders/intake/intake-model';
 import { detectCarrierFromTracking, toDisplayCarrier } from '@/utils/carrier-patterns';
+import { MobileNativePhotoInput } from '@/components/mobile/photos/MobileNativePhotoCapture';
 
 const MODES: ReadonlyArray<MobileChoiceOption<IntakeShippingMode>> = [
   { value: 'pickup', label: 'Pickup / walk-in', hint: 'Handed over at the counter' },
@@ -107,11 +108,8 @@ function ElsewhereLabel({
           }
           data-testid="m-order-tracking"
         />
-        <input
+        <MobileNativePhotoInput
           ref={cameraRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={(e) => onLabelFile(e.target.files?.[0] ?? null)}
           data-testid="m-order-label-photo"

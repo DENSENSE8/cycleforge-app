@@ -22,10 +22,10 @@ import {
 import type { RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import { INCOMING_UNBOXED_VIEW } from '@/lib/triage/views';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { fmtMoney } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
-import { formatDateTimePST, formatMonthDayTimePST } from '@/utils/date';
+import { diffDaysDateKey, formatDateKeyShort, formatDateTimePST, formatMonthDayTimePST, getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
@@ -62,8 +62,11 @@ export interface CartonCardModel {
   /** Docked knows only package arrival; Unboxed may describe inspected contents. */
   surface: 'docked' | 'unboxed';
   state: RecordStateFace;
-  /** The carton's one unique id, bare — its PO / order #, else `#<carton>` (the page already says History). */
+  /** The surface's top-left identity: Unboxed leads with order id; Docked leads with tracking/carton. */
   identity: string;
+  identityKind: 'order' | 'tracking' | 'carton';
+  /** The source order / PO, when matching established one. */
+  orderId: string | null;
   /** `source_platform` key (catalog slug) — the card's channel. */
   platform: string | null;
   /** Full package tracking number, shown beside the record identity in the compact card header. */
@@ -76,18 +79,21 @@ export interface CartonCardModel {
   unboxedAt: string | null;
   /** Who unboxed it (`unboxed_by_name`); null = not recorded. */
   unboxedBy: string | null;
+  /** Unboxed's mandatory far-right fact. Docked has no unboxer yet. */
+  topRight: { label: 'Unboxed by'; value: string } | null;
 }
 
 const cartonKeyOf = (row: ReceivingLineRow) => (row.receiving_id != null ? `carton:${row.receiving_id}` : `line:${row.id}`);
 
-/**
- * A carton's unique id with no label word and no "#": the PO / marketplace
- * order #, else the carton number — bare, the same way every platform's order
- * id reads (owner 2026-09-28: an unfound carton wears no hashtag).
- */
+/** The scanned package handle: tracking first, then carton number. */
 export function cartonCardIdentity(row: ReceivingLineRow): string {
-  const order = (row.zoho_purchaseorder_number || row.source_order_id || '').trim();
-  return order || String(row.receiving_id ?? Math.abs(row.id));
+  const tracking = (row.tracking_number || '').trim();
+  return tracking || String(row.receiving_id ?? Math.abs(row.id));
+}
+
+/** A receipt's order identity, if matching has established one. */
+export function cartonOrderId(row: ReceivingLineRow): string | null {
+  return (row.zoho_purchaseorder_number || row.source_order_id || '').trim() || null;
 }
 
 /** Lines → cartons, in the order the host's rows arrive (its sort stays the list's order). */
@@ -125,13 +131,19 @@ function firstUnboxed(rows: readonly ReceivingLineRow[]): string | null {
   return first;
 }
 
-/** Who unboxed the carton — the first line that recorded a name. */
+/** Who unboxed the carton — completion actor first, then the staffer who opened it. */
 function unboxedByName(rows: readonly ReceivingLineRow[]): string | null {
-  return rows.map((row) => (row.unboxed_by_name ?? '').trim()).find(Boolean) ?? null;
+  return rows
+    .map((row) => (row.unboxed_by_name || row.unbox_opened_by_name || '').trim())
+    .find(Boolean) ?? null;
 }
 
 function firstTrackingNumber(rows: readonly ReceivingLineRow[]): string | null {
   return rows.map((row) => (row.tracking_number ?? '').trim()).find(Boolean) ?? null;
+}
+
+function firstOrderId(rows: readonly ReceivingLineRow[]): string | null {
+  return rows.map(cartonOrderId).find((value): value is string => value != null) ?? null;
 }
 
 /** A carton's section by its latest activity, against the viewer's today. */
@@ -184,6 +196,11 @@ export function cartonCardModel(
     ? [...group.rows]
     : [...group.rows].sort((a, b) => urgency(dockedRecordFace(b)) - urgency(dockedRecordFace(a)));
   const lead = rows[0]!;
+  const orderId = firstOrderId(rows);
+  const tracking = firstTrackingNumber(rows);
+  const identityKind: CartonCardModel['identityKind'] =
+    surface === 'unboxed' ? (orderId ? 'order' : 'carton') : tracking ? 'tracking' : 'carton';
+  const identity = identityKind === 'order' ? orderId! : identityKind === 'tracking' ? tracking! : String(lead.receiving_id ?? Math.abs(lead.id));
   return {
     key: group.key,
     ids: rows.map((row) => row.id),
@@ -191,13 +208,16 @@ export function cartonCardModel(
     rows,
     surface,
     state: surface === 'docked' ? DOCKED_PACKAGE_FACE : dockedRecordFace(lead),
-    identity: cartonCardIdentity(lead),
+    identity,
+    identityKind,
+    orderId,
     platform: (lead.source_platform_pill || lead.source_platform || '').trim() || null,
-    tracking: firstTrackingNumber(rows),
+    tracking,
     vendor: (lead.vendor_name || lead.platform_account_label || '').trim() || null,
     activity: latestActivity(rows, axis),
     unboxedAt: firstUnboxed(rows),
     unboxedBy: unboxedByName(rows),
+    topRight: surface === 'unboxed' ? { label: 'Unboxed by', value: unboxedByName(rows) ?? 'Not recorded' } : null,
   };
 }
 
@@ -234,6 +254,22 @@ function cartonLine(row: ReceivingLineRow, surface: CartonCardModel['surface']):
 
 const moreExceptions = (count: number) => `${count} more ${count === 1 ? 'exception' : 'exceptions'}`;
 
+/** The vendor promise is the inbound SLA. It belongs in the card's top-right status slot. */
+function expectedArrivalSla(rows: readonly ReceivingLineRow[]) {
+  const expected = rows
+    .map((row) => toPSTDateKey(row.expected_delivery_date))
+    .filter(Boolean)
+    .sort()[0] ?? null;
+  if (!expected) return null;
+  const days = diffDaysDateKey(getCurrentPSTDateKey(), expected);
+  const day = formatDateKeyShort(expected);
+  const tip = `Expected arrival · ${expected}`;
+  if (days != null && days < 0) return { face: `${Math.abs(days)}d late · ${day}`, tone: 'late' as const, tip };
+  if (days === 0) return { face: 'Expected today', tone: 'today' as const, tip };
+  if (days === 1) return { face: 'Expected tomorrow', tone: 'soon' as const, tip };
+  return { face: `Expected ${day}`, tone: 'later' as const, tip };
+}
+
 const TICKET_FAMILY_ORDER = { investigation: 0, claim: 1 } as const;
 
 /** The carton's filed tickets, one per number, investigations first (a carton can be both). */
@@ -257,10 +293,11 @@ export function cartonRecordCard(model: CartonCardModel): RecordCardModel {
     ? 'Unbox'
     : model.rows.map(dockedNextStep).find((step) => step != null) ?? null;
   const tickets = cartonTicketLabels(model.rows);
-  // The corner reads the exact unpack moment, date AND time, and who did it
-  // (owner 2026-09-28: "when it was unpacked" and by whom, without opening the
-  // carton); else the activity stamp.
-  const corner = model.unboxedAt ? { label: 'Unboxed', instant: model.unboxedAt, by: model.unboxedBy } : activity ? { ...activity, by: null } : null;
+  // Unboxed owns a historical record: its mandatory far-right fact is
+  // `topRight` (the unboxer). Arrival SLA remains the status of a still-sealed
+  // Docked package; unpack timestamps remain in the quick look.
+  const corner = model.unboxedAt ? { label: 'Unboxed', instant: model.unboxedAt } : activity ? { label: activity.label, instant: activity.instant } : null;
+  const expectedSla = model.surface === 'docked' ? expectedArrivalSla(model.rows) : null;
   const note = (model.lead.notes ?? '').trim();
   return {
     key: model.key,
@@ -295,15 +332,19 @@ export function cartonRecordCard(model: CartonCardModel): RecordCardModel {
       testId: 'receipt-card-ticket',
     })),
     notes: { fixed: note ? { label: 'Receiving note', text: note } : null, own: null },
-    // When (and by whom) the carton was unpacked — danger while one of its lines is in exception.
-    status: corner
-      ? {
-          kind: 'date',
-          face: corner.by ? `${formatMonthDayTimePST(corner.instant)} · ${corner.by}` : formatMonthDayTimePST(corner.instant),
-          tip: `${corner.label} · ${formatDateTimePST(corner.instant)} PT${corner.by ? ` · by ${corner.by}` : ''}`,
-          alert: alertCount > 0,
-        }
-      : { kind: 'date', face: 'No date', tip: null, alert: alertCount > 0 },
+    status:
+      model.surface === 'unboxed'
+        ? { kind: 'none' }
+        : expectedSla
+          ? { kind: 'deadline', ...expectedSla }
+          : corner
+            ? {
+                kind: 'date',
+                face: formatMonthDayTimePST(corner.instant),
+                tip: `${corner.label} · ${formatDateTimePST(corner.instant)} PT`,
+                alert: alertCount > 0,
+              }
+            : { kind: 'date', face: 'No date', tip: null, alert: alertCount > 0 },
     next: next ? { label: next, tone: state.tone, tip: `Next: ${next.toLowerCase()}`, blocked: false } : null,
     lines,
     hiddenAlertLabel: moreExceptions,

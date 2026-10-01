@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executeWmsExecutionCommand } from './wms-execution-command';
+import { signLocationScanProof } from '@/lib/inventory/location-scan-proof';
 
 const ORG = '00000000-0000-4000-8000-000000000001';
 const identity = { organizationId: ORG, staffId: 7 };
+const TEST_SECRET = 'test-wms-location-secret-at-least-thirty-two-chars';
+process.env.WMS_GATEWAY_SECRET = TEST_SECRET;
+
+function proof(organizationId: string, barcode: string): string {
+  return signLocationScanProof({ organizationId, staffId: 7, locationCode: barcode }, { secret: TEST_SECRET }).token;
+}
 
 function base(name: 'pick.confirm' | 'pick.short') {
   return {
@@ -86,6 +93,7 @@ test('routes a tenant-authenticated putaway adjustment and preserves replay stat
       reason: 'BIN_ADD',
       reasonCodeId: null,
       notes: null,
+      locationVerificationToken: proof(ORG, 'B02'),
     },
   }, identity, {
     confirmPick: async () => ({ ok: true, serialUnitId: 1, pickedAt: new Date().toISOString() }),
@@ -115,7 +123,7 @@ test('accepts the seeded tenant ids, which are not RFC-versioned UUIDs', async (
       organizationId,
       name: 'putaway.adjust',
       commandId: `putaway-seeded-${organizationId}`,
-      input: { barcode: 'B02', sku: 'TMP-ABC', direction: 'put', qty: 1, reason: 'BIN_ADD', reasonCodeId: null, notes: null },
+      input: { barcode: 'B02', sku: 'TMP-ABC', direction: 'put', qty: 1, reason: 'BIN_ADD', reasonCodeId: null, notes: null, locationVerificationToken: proof(organizationId, 'B02') },
     }, { organizationId, staffId: 7 }, {
       confirmPick: async () => ({ ok: true, serialUnitId: 1, pickedAt: new Date().toISOString() }),
       completeSession: async () => ({ ok: true, stagedTotes: [] }),

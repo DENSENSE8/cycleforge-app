@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { EVIDENCE_CONTROL_CLASS } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { useResolveShortException } from '@/hooks/exceptions';
 import type { CartonExceptionFacts } from '@/lib/exceptions/facts';
 import type { ExceptionRow } from '@/lib/exceptions/types';

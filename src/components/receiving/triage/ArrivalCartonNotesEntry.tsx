@@ -8,16 +8,21 @@ import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { toast } from '@/lib/toast';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { WorkspaceNotesCard } from '../workspace/line-edit/WorkspaceNotesCard';
+import type { WorkspaceTicketDraftModel } from '../workspace/line-edit/hooks/useWorkspaceTicketDraft';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export function ArrivalCartonNotesEntry({
   row,
+  ticketDraftModel,
+  providerTicketId,
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled,
   onOpenStatusHistory,
 }: {
   row: ReceivingLineRow;
+  ticketDraftModel: WorkspaceTicketDraftModel;
+  providerTicketId?: number | null;
   /** Station terminal (Save for unbox) — the composer's bottom-right CTA. */
   trailingAction?: ReactNode;
   /** Enter → the same action the trailing CTA fires (chat Send grammar). */
@@ -64,6 +69,7 @@ export function ArrivalCartonNotesEntry({
 
   return (
     <WorkspaceNotesCard
+      ticketDraftModel={ticketDraftModel}
       row={row}
       noteGrain="carton"
       // `isUnfound` gates the synced-PO insert: an unfound carton has no PO
@@ -72,6 +78,8 @@ export function ArrivalCartonNotesEntry({
         itemNote: draft,
         setItemNote: setDraft,
         patch,
+        zendeskTrimmed: row.zendesk_ticket,
+        providerTicketId,
         isUnfound: shouldUseUnmatchedItemsSurface(row),
       }}
       chrome="raised"

@@ -17,7 +17,7 @@ test('mode-default returns Pass · Print carton terminal', () => {
   assert.equal(vm?.disabled, false);
 });
 
-test('unknown / ticket kinds return null — replies stay in Ticket Displays', () => {
+test('unknown kinds return null — Ticket is not a dock terminal', () => {
   assert.equal(resolveTestingTerminal('ticket', baseInput), null);
   assert.equal(resolveTestingTerminal('checklist', baseInput), null);
 });

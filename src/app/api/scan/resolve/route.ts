@@ -18,7 +18,7 @@ import { brandsForSkus, type SkuBrandFact } from '@/lib/brands/lookup';
 import { query } from '@/lib/neon-client';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
-import { publishScanLog } from '@/lib/realtime/publish';
+import { publishMobileScanLogged, publishScanLog } from '@/lib/realtime/publish';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
@@ -70,6 +70,8 @@ interface ResolveResponse {
   matchOutcome: MatchOutcome;
   /** Where the mobile cockpit should navigate. NEVER points at /receiving. */
   mobileRoute: string | null;
+  /** Durable resolver intent row; correlate it onto the eventual phone commit. */
+  mobileScanEventId: number | null;
 }
 
 // ─── Order lookups ───────────────────────────────────────────────────────────
@@ -233,10 +235,10 @@ interface LogParams {
   device: unknown;
 }
 
-async function logScanEvent(p: LogParams): Promise<void> {
+async function logScanEvent(p: LogParams): Promise<number | null> {
   try {
     // mobile_scan_events grew an organization_id column (2026-06-14 phase-B needs-col-2) with a GUC-based default.
-    await query`
+    const rows = await query<{ id: number }>`
       INSERT INTO mobile_scan_events (
         staff_id, raw_value, normalized, kind, carrier,
         matched_order_id, match_outcome, routed_to, parsed_ais, device_info,
@@ -255,9 +257,15 @@ async function logScanEvent(p: LogParams): Promise<void> {
         ${p.device ? JSON.stringify(p.device) : null}::jsonb,
         ${p.organizationId}::uuid
       )
+      RETURNING id
     `;
+    const id = Number(rows[0]?.id);
+    if (!Number.isSafeInteger(id) || id <= 0) return null;
+    void publishMobileScanLogged({ organizationId: p.organizationId, id }).catch(() => {});
+    return id;
   } catch {
     // Telemetry must never break the resolver.
+    return null;
   }
 }
 
@@ -316,6 +324,7 @@ async function resolve(input: string, organizationId: string, staffId: number, d
     matches: [] as OrderMatch[],
     matchOutcome: 'none' as MatchOutcome,
     mobileRoute: null as string | null,
+    mobileScanEventId: null as number | null,
   };
 
   if (!trimmed) return { ...base, kind: 'unknown', source: 'none' };
@@ -351,7 +360,7 @@ async function resolve(input: string, organizationId: string, staffId: number, d
       matchOutcome: 'single',
       mobileRoute: handleRoute.redirect,
     };
-    await logScanEvent({
+    const mobileScanEventId = await logScanEvent({
       organizationId, staffId, raw: trimmed, normalized: null, kind, carrier: null,
       matches: [], outcome: 'single', routedTo: handleRoute.redirect,
       parsedAis: null, device,
@@ -362,7 +371,7 @@ async function resolve(input: string, organizationId: string, staffId: number, d
     void publishScanLog({
       organizationId, staffId, rawValue: trimmed, kind, routedTo: handleRoute.redirect,
     });
-    return result;
+    return { ...result, mobileScanEventId };
   }
 
   // 0.5 Tenant identification grammar (Studio-compiled Zod). After printed
@@ -383,7 +392,7 @@ async function resolve(input: string, organizationId: string, staffId: number, d
           matchOutcome: 'single',
           mobileRoute: route,
         };
-        await logScanEvent({
+        const mobileScanEventId = await logScanEvent({
           organizationId, staffId, raw: trimmed, normalized: hit.entityId, kind: 'order',
           carrier: null, matches: [], outcome: 'single', routedTo: route,
           parsedAis: null, device,
@@ -391,7 +400,7 @@ async function resolve(input: string, organizationId: string, staffId: number, d
         void publishScanLog({
           organizationId, staffId, rawValue: trimmed, kind: 'order', routedTo: route,
         });
-        return result;
+        return { ...result, mobileScanEventId };
       }
     }
   }
@@ -411,13 +420,13 @@ async function resolve(input: string, organizationId: string, staffId: number, d
         matchOutcome: 'single',
         mobileRoute: route,
       };
-      await logScanEvent({
+      const mobileScanEventId = await logScanEvent({
         organizationId, staffId, raw: trimmed, normalized: trimmed.toUpperCase(), kind: 'package',
         carrier: null, matches: [], outcome: 'single', routedTo: route,
         parsedAis: null, device,
       });
       void publishScanLog({ organizationId, staffId, rawValue: trimmed, kind: 'package', routedTo: route });
-      return result;
+      return { ...result, mobileScanEventId };
     }
   }
 
@@ -431,11 +440,11 @@ async function resolve(input: string, organizationId: string, staffId: number, d
       ...base, kind: 'gs1_ai', source: 'ai', ais: aiTree.ais,
       entity: { ais: aiTree.ais }, matches, matchOutcome: outcome, mobileRoute,
     };
-    await logScanEvent({
+    const mobileScanEventId = await logScanEvent({
       organizationId, staffId, raw: trimmed, normalized: null, kind: 'gs1_ai', carrier: null,
       matches, outcome, routedTo: mobileRoute, parsedAis: aiTree.ais, device,
     });
-    return result;
+    return { ...result, mobileScanEventId };
   }
 
   // 2. URL branch.
@@ -461,11 +470,11 @@ async function resolve(input: string, organizationId: string, staffId: number, d
       entity: urlEntity as unknown as Record<string, unknown>,
       matches, matchOutcome: outcome, mobileRoute,
     };
-    await logScanEvent({
+    const mobileScanEventId = await logScanEvent({
       organizationId, staffId, raw: trimmed, normalized: null, kind, carrier: null,
       matches, outcome, routedTo: mobileRoute, parsedAis: null, device,
     });
-    return result;
+    return { ...result, mobileScanEventId };
   }
 
   // 3. Pattern classify branch. An exact order number wins before any serial
@@ -493,12 +502,12 @@ async function resolve(input: string, organizationId: string, staffId: number, d
     entity: { normalized: classified.normalized, carrier: classified.carrier },
     matches, matchOutcome: outcome, mobileRoute,
   };
-  await logScanEvent({
+  const mobileScanEventId = await logScanEvent({
     organizationId, staffId, raw: trimmed, normalized: classified.normalized, kind,
     carrier: classified.carrier, matches, outcome, routedTo: mobileRoute,
     parsedAis: null, device,
   });
-  return result;
+  return { ...result, mobileScanEventId };
 }
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {

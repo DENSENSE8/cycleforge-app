@@ -33,10 +33,7 @@ interface LineCartonContextSectionProps {
   claimViewActive?: boolean;
   /** Draft ticket number badge — replaces the Claim verb while a claim is drafted. */
   draftTicketNumber?: string | null;
-  /**
-   * Toggle the inline support-ticket editor (`?ticketView=1`). Passed through to
-   * the carton card's reply-toggle button (unbox-only opt-in). Omit to hide it.
-   */
+  /** Select the caller-owned support-ticket task. Omit to hide the ticket verb. */
   onToggleTicketView?: () => void;
   /** True while the inline ticket editor is open. */
   ticketViewActive?: boolean;
@@ -50,32 +47,20 @@ interface LineCartonContextSectionProps {
    */
   showClassifyControls?: boolean;
   /**
-   * When false, header pills are read-only facts. Default true = chip-anchored
-   * InlinePillPicker menus. Classify Displays / Arrival Classify stay available
-   * when staff open those surfaces themselves.
+   * When false, header pills are read-only facts. Default true uses the shared
+   * chip-anchored InlinePillPicker menus.
    */
   classifyInteractive?: boolean;
-  /** Switch Unbox workspace to the Tracking tab. */
+  /** Open the caller-owned inline tracking editor. */
   onEditTracking?: () => void;
-  /** Switch Unbox workspace to the Listings tab. */
-  onEditListing?: () => void;
-  /** Open Package Pairing → PO tab (link / change / import a Zoho PO). */
+  /** Open Package Pairing → PO (link / change / import a Zoho PO). */
   onEditPo?: () => void;
   /** Pulse tracking chip while Tracking tab is active. */
   trackingEditOpen?: boolean;
   /** Pulse PO chip while Package Pairing (PO) is open. */
   poEditOpen?: boolean;
-  /** Unbox: open Photos → Move in Displays. */
-  onOpenMovePhotosExternal?: () => void;
-  /** Unbox: open Photos → Send in Displays. */
+  /** Open Send to ticket in a caller-owned surface. */
   onSendToTicketExternal?: () => void;
-  /**
-   * Unbox: double-click Photos pill → Displays → Photos (Actions).
-   * Replaces whatever Displays leaf is open; opens the column when closed.
-   */
-  onOpenPhotosDisplay?: () => void;
-  /** Opt-out: suppress Photos hover toolbar. */
-  suppressPhotoHoverGallery?: boolean;
 }
 
 // The carton-context card (photos + claim) is identical in unbox and triage —
@@ -95,15 +80,11 @@ export function LineCartonContextSection({
   showClassifyControls = true,
   classifyInteractive = true,
   onEditTracking,
-  onEditListing,
   onEditPo,
   trackingEditOpen = false,
   poEditOpen = false,
   photoStage,
-  onOpenMovePhotosExternal,
   onSendToTicketExternal,
-  onOpenPhotosDisplay,
-  suppressPhotoHoverGallery = false,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
 
@@ -133,7 +114,6 @@ export function LineCartonContextSection({
       listingLink={c.listingLink}
       listingOpenHref={c.listingOpenHref}
       listingLinks={c.listingLinks}
-      onEditListing={onEditListing}
       poOpenHref={c.poOpenHref}
       trackingOpenHref={c.trackingOpenHref}
       poDisplay={cartonOrderNumber || c.poNumber}
@@ -177,12 +157,7 @@ export function LineCartonContextSection({
       // Unbox + Arrival share this close. Unbox's pane hook must enter desk
       // (`?unboxdesk=1`) so station-first MRU does not reopen the carton.
       onExitToList={() => dispatchReceivingWorkspaceClose()}
-      onSendToTicket={
-        onSendToTicketExternal ?? (() => c.setPhotoNoteOpen(true))
-      }
-      onOpenMovePhotosExternal={onOpenMovePhotosExternal}
-      onOpenPhotosDisplay={onOpenPhotosDisplay}
-      suppressPhotoHoverGallery={suppressPhotoHoverGallery}
+      onSendToTicket={onSendToTicketExternal}
     />
   );
 }

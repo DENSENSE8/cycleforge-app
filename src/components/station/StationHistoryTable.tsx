@@ -9,7 +9,6 @@ import {
   useBenchSpreadsheet,
   type BenchFamily,
 } from '@/components/station/bench-grid/useBenchSpreadsheet';
-import type { SlotTableLayout } from '@/components/tables/useSlotTableLayout';
 import { getStationSourceRecord, type StationSourceKind } from '@/lib/station/record-to-queue-row';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { OrdersQueueColumn, OrdersQueueColumnKey } from '@/lib/dashboard-order-row-layout';
@@ -36,12 +35,6 @@ interface StationHistoryTableProps<T> {
   daySections: [string, T[]][];
   /** Which registered bench family paints — selects binding · columns · resolver. */
   family: BenchFamily;
-  /**
-   * The caller's own slot layout (`useDeskPickTableLayout` / `usePackerTableLayout`).
-   * Passed in rather than resolved here so each desk pays for one prefs read
-   * and this component branches on data, never on hooks.
-   */
-  layout: SlotTableLayout;
   /** Saved-views storage + params. DataTable mounts the menu. */
   savedViewsStorageKey: string;
   savedViewsParamKeys: readonly string[];
@@ -90,7 +83,6 @@ export function StationHistoryTable<T>({
   onNextWeek,
   daySections,
   family,
-  layout,
   savedViewsStorageKey,
   savedViewsParamKeys,
   emptyMessage,
@@ -134,7 +126,6 @@ export function StationHistoryTable<T>({
 
   const feed = useBenchSpreadsheet({
     family,
-    layout,
     rows,
     loading,
     emptyMessage,
@@ -286,7 +277,6 @@ export function StationHistoryTable<T>({
           views={{
             storageKey: savedViewsStorageKey,
             paramKeys: savedViewsParamKeys,
-            layout: layout.effectiveLayout,
           }}
         />
       </div>

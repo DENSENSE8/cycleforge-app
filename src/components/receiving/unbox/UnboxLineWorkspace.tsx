@@ -185,6 +185,7 @@ export function UnboxLineWorkspace({
               row={workspace.row}
               staffId={staffId}
               accordionBootstrap={workspace.accordionBootstrap}
+              scanDriven={workspace.scanDriven}
               nav={nav}
               variant="unbox"
               // Absent = a path that predates the feed's click-to-open (scan,

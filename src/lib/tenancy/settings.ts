@@ -214,8 +214,6 @@ export const OrgSettingsSchema = z.object({
       vertical: z.string().max(80).optional(),
     })
     .default({}),
-  // Org-wide slot-table layouts, keyed by tableId ('orders', …) — the ORG layer of the slot cascade…
-  tableLayouts: z.record(z.string(), z.unknown()).optional(),
   // AI provider preferences.
   ai: z
     .object({

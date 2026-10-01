@@ -18,25 +18,6 @@
     @slot;
   }
 }
-/* `industrial:` — the element's NEAREST `data-mode` (self or ancestor) is
-   industrial. Nearest wins: a triage region nested inside Floor (the
-   paperwork walk, a triage dialog stamped in place) is excluded by the
-   `:not(…)`, so its pieces keep the base look. Bounded at the ModeRegion
-   nesting law (page region + one nested region, `MAX_MODE_DEPTH`).
-   Zero specificity (`:where`), so the variant only reorders against its
-   base utility. Triage, counter and assistant share one voice (sans,
-   sentence case, flat fields — `modes.ts` label voice), so the base class
-   IS the triage look and only the industrial face needs a variant. */
-@custom-variant industrial {
-  &:where([data-mode='industrial'], [data-mode='industrial'] *):not(
-      :where(
-          [data-mode='industrial'] [data-mode]:not([data-mode='industrial']),
-          [data-mode='industrial'] [data-mode]:not([data-mode='industrial']) *
-        )
-    ) {
-    @slot;
-  }
-}
 /* Source discovery is deliberately bounded to application source. Automatic
    discovery can race Next's generated `.next` tree during a cold dev build,
    feeding compiled/binary fragments back into Tailwind's candidate scanner.

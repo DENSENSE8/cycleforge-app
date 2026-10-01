@@ -12,7 +12,6 @@ import { resolveAdminReturnsSlotValue } from '@/lib/tables/field-catalog/admin-r
 import type { RecentReturnRow } from '@/lib/inventory/returns-row';
 import { adminReturnsCompoundView } from './admin-returns-row-view';
 import {
-  adminReturnsCompoundColumnsFor,
   adminReturnsSortFactFor,
   type AdminReturnsGridColumn,
   type AdminReturnsGridColumnKey,
@@ -21,7 +20,6 @@ import {
   ADMIN_RETURNS_GRID_CAPABILITIES,
   ADMIN_RETURNS_TABLE_BINDING,
 } from './admin-returns-table-definition';
-import { useAdminReturnsTableLayout } from './useAdminReturnsTableLayout';
 
 interface UseAdminReturnsSpreadsheetOptions {
   /** The feed. Already ordered by the server; a header click re-orders it. */
@@ -48,11 +46,8 @@ export function useAdminReturnsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useAdminReturnsTableLayout();
-  const columns = useMemo(
-    () => adminReturnsCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: AdminReturnsGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -73,12 +68,10 @@ export function useAdminReturnsSpreadsheet({
     AdminReturnsGridColumn
   >({
     binding: ADMIN_RETURNS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: ADMIN_RETURNS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: adminReturnsCompoundView,
-    subtitleFieldIds,
     resolve: resolveAdminReturnsSlotValue,
     sortFactFor: adminReturnsSortFactFor,
     capabilities: ADMIN_RETURNS_GRID_CAPABILITIES,

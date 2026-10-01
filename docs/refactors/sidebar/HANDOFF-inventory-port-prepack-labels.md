@@ -122,8 +122,9 @@ its letter; delete probe scripts from `/tmp` when done.
     `template_id` e.g. `'lpn'`, `qr_payload`, `is_reprint`, `client_event_id` idempotency) —
     this is "stored in the system".
   - `label_manifests` (`2026-07-06b`, `KIT-…`, `PREBOX | KIT | MASTER_CARTON`,
-    `OPEN → SEALED → DISSOLVED`): one master label over N serial units. Prebox flow lives in
-    Unbox (`PreboxWizard`, `PreboxDisplayHost`).
+    `OPEN → SEALED → DISSOLVED`): one master label over N serial units. The old
+    Unbox Prebox display and its unreachable wizard were removed; a future owner
+    must place this workflow explicitly rather than reviving that display leaf.
   - Location labels: `src/lib/print/printLocationLabel.ts`, special-bin print page
     `src/app/inventory/locations/print/special-bin/page.tsx`.
   - Printing channels + queue: `src/lib/label-prints/{contracts,print-queue,print-route}.ts`

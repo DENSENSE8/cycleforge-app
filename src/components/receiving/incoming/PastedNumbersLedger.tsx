@@ -41,7 +41,7 @@ import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search
 import { filterEntriesByRecon, type ReconReason, type ReconStatus } from '@/lib/receiving/reconcile';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { emitToggleAll } from '@/lib/selection/table-selection';
-import { clearSlotTableVisibleIds, publishSlotTableVisibleIds } from '@/lib/tables/slot-table-visible';
+import { clearDataTableVisibleIds, publishDataTableVisibleIds } from '@/lib/tables/data-table-visible-rows';
 import { INCOMING_PIPELINE_VIEW } from '@/lib/triage/views';
 import { toast } from '@/lib/toast';
 import { copyToClipboard } from '@/utils/_dom';
@@ -224,8 +224,8 @@ export function PastedNumbersLedger({
         setCheckedPlaceholders(on ? new Set(cards.filter((card) => !card.receipt).map((card) => card.lead.id)) : new Set());
       },
       publishVisible: (ids) => {
-        publishSlotTableVisibleIds(RECEIVING_SELECTION_SCOPE, ids);
-        return () => clearSlotTableVisibleIds(RECEIVING_SELECTION_SCOPE);
+        publishDataTableVisibleIds(RECEIVING_SELECTION_SCOPE, ids);
+        return () => clearDataTableVisibleIds(RECEIVING_SELECTION_SCOPE);
       },
     }),
     [cards, checkedIds, onToggleRow, rowById, togglePlaceholder],
@@ -349,8 +349,8 @@ export function PastedNumbersLedger({
   const slot = useRecordSlot(
     delivery?.model ?? numberModel,
     delivery
-      ? [...delivery.verbs, ...lead.map((verb) => ({ ...verb, placement: 'overflow' as const }))]
-      : lead.map((verb) => (verb.id === 'number-remove' ? { ...verb, placement: 'overflow' as const } : verb)),
+      ? [...delivery.verbs, ...lead]
+      : lead,
     `${openCard?.number.entry.ref ?? 'Number'} actions`,
     'inbound-record',
   );

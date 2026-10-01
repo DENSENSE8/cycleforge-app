@@ -1,4 +1,4 @@
-import { type RecordStateFace } from '@/design-system/tokens/industrial-record';
+import { type RecordStateFace } from '@/design-system/tokens/record';
 import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { resolveInboundDeliveryRecordState } from '@/design-system/tokens/inbound-delivery';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';

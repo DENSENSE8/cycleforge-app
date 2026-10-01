@@ -12,7 +12,6 @@ import { resolveReportStaffDaySlotValue } from '@/lib/tables/field-catalog/repor
 import type { StaffDayReportRow } from '@/lib/reports/staff-day-rows';
 import { reportStaffDayCompoundView } from './report-staff-day-row-view';
 import {
-  reportStaffDayCompoundColumnsFor,
   reportStaffDaySortFactFor,
   type ReportStaffDayGridColumn,
   type ReportStaffDayGridColumnKey,
@@ -21,7 +20,6 @@ import {
   REPORT_STAFF_DAY_GRID_CAPABILITIES,
   REPORT_STAFF_DAY_TABLE_BINDING,
 } from './report-staff-day-table-definition';
-import { useReportStaffDayTableLayout } from './useReportStaffDayTableLayout';
 
 interface UseReportStaffDaySpreadsheetOptions {
   /** One day's (staffer × task) rows, roster order; a header click re-orders. */
@@ -46,11 +44,8 @@ export function useReportStaffDaySpreadsheet({
   const [sort, setSort] = useState<ReportStaffDayGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useReportStaffDayTableLayout();
-  const columns = useMemo(
-    () => reportStaffDayCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: ReportStaffDayGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -71,12 +66,10 @@ export function useReportStaffDaySpreadsheet({
     ReportStaffDayGridColumn
   >({
     binding: REPORT_STAFF_DAY_TABLE_BINDING,
-    columns,
-    fields,
+    columns: REPORT_STAFF_DAY_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => `${row.staffId}-${row.itemId}`,
     adapter: reportStaffDayCompoundView,
-    subtitleFieldIds,
     resolve: resolveReportStaffDaySlotValue,
     sortFactFor: reportStaffDaySortFactFor,
     capabilities: REPORT_STAFF_DAY_GRID_CAPABILITIES,

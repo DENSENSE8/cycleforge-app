@@ -1,12 +1,12 @@
-/** Kiosk devices column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
+/** Kiosk devices column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   KIOSKDEVICES_FIELD_CATALOG,
   KIOSKDEVICES_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/kiosk-devices';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -15,47 +15,43 @@ export type KioskDevicesGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface KioskDevicesGridColumn extends Omit<LedgerGridColumnModel, 'key'>, SlotTrackFields {
-  key: KioskDevicesGridColumnKey;
-}
+export interface KioskDevicesGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: KioskDevicesGridColumnKey; }
 
 /**
  * Materialize the mounted columns from an effective layout. Tracks this family
  * has no fact for are filtered off the MOUNT — never removed from
  * `COMPOUND_TRACKS`.
  */
-export function kioskDevicesCompoundColumnsFor(layout: SlotLayout): readonly KioskDevicesGridColumn[] {
-  // Select stays — row multi-select. Thumb stays off (no photo gutter). Dates
-  // stays — last seen · enrolled on the Hash line beside Device id.
-  const base = compoundColumnsFor<KioskDevicesGridColumn>().filter(c => c.key !== 'thumb');
-  const tracks = materializeTracks<KioskDevicesGridColumn>({
-    layout,
-    catalog: KIOSKDEVICES_FIELD_CATALOG,
-    base,
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = KIOSKDEVICES_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    if (t.key === 'dates') {
-      return {
-        ...t,
-        label: 'Seen · Enrolled',
-        gridLabel: 'Seen',
-      };
-    }
-    return t;
-  });
-}
+export function kioskDevicesCompoundColumnsFor(layout: DataTableColumnLayout): readonly KioskDevicesGridColumn[] { // Select stays — row multi-select. Thumb stays off (no photo gutter). Dates
+// stays — last seen · enrolled on the Hash line beside Device id.
+const base = compoundColumnsFor<KioskDevicesGridColumn>().filter(c => c.key !== 'thumb');
+const tracks = materializeTracks<KioskDevicesGridColumn>({
+  layout,
+  catalog: KIOSKDEVICES_FIELD_CATALOG,
+  base,
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = KIOSKDEVICES_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  if (t.key === 'dates') {
+    return {
+      ...t,
+      label: 'Seen · Enrolled',
+      gridLabel: 'Seen',
+    };
+  }
+  return t;
+}); }
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const KIOSKDEVICES_COMPOUND_COLUMNS: readonly KioskDevicesGridColumn[] =

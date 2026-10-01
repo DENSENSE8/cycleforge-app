@@ -1,7 +1,7 @@
 /** Audit-log field catalog — the bindable facts of ONE `audit_logs` row. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const AUDITLOG_FIELD_CATALOG: FieldCatalog = [
   { id: 'audit-log.entity_id', family: 'audit-log', label: 'Entity id', displayType: 'id', slotKinds: ['identity', 'status', 'subtitle'], paths: { value: 'entity_id' } },
@@ -15,7 +15,7 @@ export const AUDITLOG_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const AUDITLOG_PRODUCT_LAYOUT: SlotLayout = {
+export const AUDITLOG_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'audit-log.entity_id',
   statusBindings: [
@@ -27,6 +27,6 @@ export const AUDITLOG_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'audit-log.actor_role' },
   ],
   amountFieldId: null,
-};
+}
 
 export const AUDITLOG_TABLE_LAYOUT_ID = 'audit-log';

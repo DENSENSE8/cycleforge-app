@@ -18,10 +18,10 @@ import {
 import { SupportCreateTicketForm } from '@/components/support/service-workspace/SupportCreateTicketModal';
 import { useCreateSupportTicket } from '@/components/support/service-workspace/useSupportTicketClaimHost';
 import { Button } from '@/design-system/primitives';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { resolveRepairContact } from '@/lib/repair/contact-info';
-import { repairTicketHandle } from '@/lib/repair/repair-card-model';
+import { repairTicketHandle } from '@/lib/repair/repair-queue-model';
 import { repairDeviceName } from '@/lib/repair/repair-device-name';
 import type { SupportContextLinkable } from '@/lib/support/context-types';
 import type { AnchorLinkedTicket } from '@/lib/support/ticket-link';

@@ -10,7 +10,7 @@ import {
 } from '@/lib/receiving/receiving-grid-layout';
 import { RECEIVING_FIELD_CATALOG, RECEIVING_PRODUCT_LAYOUT } from './receiving';
 import { receivingSlotValuesFor, resolveReceivingSlotValue } from './receiving-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
   return {
@@ -59,7 +59,7 @@ describe('receiving catalog', () => {
   });
 
   it('product default parses against the catalog — compound morph, NOTHING bound', () => {
-    const parsed = parseSlotLayout(RECEIVING_PRODUCT_LAYOUT, RECEIVING_FIELD_CATALOG);
+    const parsed = RECEIVING_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'receiving.order');
     // The empty band IS the port's parity guarantee — see the catalog docblock.

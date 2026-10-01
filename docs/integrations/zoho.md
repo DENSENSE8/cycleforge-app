@@ -171,11 +171,11 @@ The tokenless endpoint is retired and returns `410`.
   No `sync` fn in the connector — Zoho's sync runs through its own dedicated crons, not
   the generic orders orchestrator.
 - Settings card: `connect: 'oauth'`, `managePermission` → `integrations.zoho`.
-- **Inventory Displays trust view** (`InventoryDisplayHost`): paints from
-  `GET /api/receiving-lines/incoming/details` — prefer fat `zoho_po_mirror.raw.line_items`,
-  fall back to `receiving_line` + `receiving_line_zoho` siblings (list/delta sync often
-  stores header-only `raw`). Line descriptions prefer `rz.zoho_notes` (post-receive
-  `SN: … · {condition}` text).
+- **Inventory trust source:** `GET /api/receiving-lines/incoming/details` prefers
+  fat `zoho_po_mirror.raw.line_items`, then falls back to `receiving_line` +
+  `receiving_line_zoho` siblings (list/delta sync often stores header-only
+  `raw`). Line descriptions prefer `rz.zoho_notes` (post-receive `SN: … ·
+  {condition}` text). Unbox no longer wraps this source in an Inventory display.
 - **Cmd+S block-if-stale:** PO notes (`PATCH /api/receiving/[id]` + `push_to_zoho`) and
   line notes (`…/inventory-note`) accept `base_last_modified_zoho` from the last trusted
   pull; if live Zoho `last_modified_time` differs → **409**, draft kept, operator Refresh.

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
-import type { PriorPhoto } from '@/components/mobile/station/MobilePackerSpamCamera';
+import type { PriorPhoto } from '@/components/mobile/photos/MobileNativePhotoCapture';
 import type { PhotoScope } from '@/components/mobile/receiving/PhotoUploadQueue';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 import { deleteNasPhoto, isNasPhotoUrl } from '@/lib/nas-photos';

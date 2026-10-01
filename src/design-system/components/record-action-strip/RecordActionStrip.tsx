@@ -29,8 +29,6 @@ export interface RecordActionVerb {
   hotkey?: string;
   /** `warning` = the orange escalation fill (Create customer ticket). */
   tone?: 'default' | 'danger' | 'warning' | 'yellow' | 'blue' | 'success';
-  /** `isolated` = far right, second press (Delete). Default `primary`. */
-  placement?: 'primary' | 'overflow' | 'isolated';
   disabled?: boolean;
   disabledReason?: string;
   /** A toggle verb's current state (Select, Mark urgent) — `aria-pressed`. */
@@ -65,29 +63,39 @@ interface RecordActionStripProps {
   /**
    * `strip` (default): its own bordered row. `header`: bare, inside a table
    * header that became the bulk bar (the header owns the rule and the fill).
+   * `inline`: a shrink-wrapped row of icon+text verbs, no border and no width
+   * of its own — sits in a title row.
    */
-  face?: 'strip' | 'header';
+  face?: 'strip' | 'header' | 'inline';
 }
 
-const STRIP_CLASS = 'flex w-full min-w-0 items-center gap-1 border-b border-border-soft bg-surface-card px-2 py-1.5';
-// Fills its slot, so ⋮ and the isolated verb (Delete) sit at the far right of
-// the verbs. A container, so the primary verbs expand as its width allows.
+const STRIP_CLASS =
+  'flex w-full min-w-0 items-center gap-1 border-b border-border-soft bg-surface-card px-2 py-1.5';
 const HEADER_FACE_CLASS = '@container/verbs flex w-full min-w-0 flex-1 items-center gap-1';
+const INLINE_FACE_CLASS = 'flex shrink-0 items-center gap-1';
 
 /**
- * Header face, expanded vs collapsed (owner 2026-09-29): each primary verb is a
- * 24px icon until the header is wide enough to spell it out, and they expand
- * in order — the first verb first, the last one last. Each rung is the
- * container width at which verbs 1…n fit with their labels beside ⋮. Literal
- * classes, so Tailwind generates them; a verb past the ladder stays an icon.
+ * Header actions start as icons and expand in importance order. At most three
+ * actions can occupy the strip; every remaining action lives behind ⋮.
  */
 const HEADER_EXPAND_TIERS: readonly { button: string; label: string }[] = [
   { button: '@xs/verbs:w-auto @xs/verbs:!px-2.5', label: '@xs/verbs:not-sr-only' },
   { button: '@sm/verbs:w-auto @sm/verbs:!px-2.5', label: '@sm/verbs:not-sr-only' },
   { button: '@lg/verbs:w-auto @lg/verbs:!px-2.5', label: '@lg/verbs:not-sr-only' },
-  { button: '@2xl/verbs:w-auto @2xl/verbs:!px-2.5', label: '@2xl/verbs:not-sr-only' },
-  { button: '@4xl/verbs:w-auto @4xl/verbs:!px-2.5', label: '@4xl/verbs:not-sr-only' },
 ];
+
+export function partitionRecordActionVerbs(verbs: readonly RecordActionVerb[]): {
+  primary: RecordActionVerb[];
+  overflow: RecordActionVerb[];
+} {
+  const primary: RecordActionVerb[] = [];
+  const overflow: RecordActionVerb[] = [];
+  for (const verb of verbs) {
+    if (verb.tone !== 'danger' && primary.length < 3) primary.push(verb);
+    else overflow.push(verb);
+  }
+  return { primary, overflow };
+}
 
 export function RecordActionStrip({
   verbs,
@@ -96,9 +104,8 @@ export function RecordActionStrip({
   onDismiss,
   face = 'strip',
 }: RecordActionStripProps) {
-  const shellClass = face === 'header' ? HEADER_FACE_CLASS : STRIP_CLASS;
+  const shellClass = face === 'header' ? HEADER_FACE_CLASS : face === 'inline' ? INLINE_FACE_CLASS : STRIP_CLASS;
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [armedId, setArmedId] = useState<string | null>(null);
   // The ⋮ menu holds the keyboard while open, like any overlay: its Escape
   // closes the menu — not this strip, and not the host's check-set.
   const [moreOpen, setMoreOpen] = useState(false);
@@ -114,16 +121,10 @@ export function RecordActionStrip({
 
   const done = () => {
     setActiveId(null);
-    setArmedId(null);
   };
 
   const press = (verb: RecordActionVerb) => {
     if (verb.disabled) return;
-    if (verb.placement === 'isolated' && armedId !== verb.id) {
-      setArmedId(verb.id);
-      return;
-    }
-    setArmedId(null);
     if (verb.display) {
       setActiveId(verb.id);
       return;
@@ -155,14 +156,10 @@ export function RecordActionStrip({
     );
   }
 
-  const primary = verbs.filter((verb) => (verb.placement ?? 'primary') === 'primary');
-  const overflow = verbs.filter((verb) => verb.placement === 'overflow');
-  const isolated = verbs.filter((verb) => verb.placement === 'isolated');
+  const { primary, overflow } = partitionRecordActionVerbs(verbs);
 
   /** `expand` = the header face's rung for this verb; without one a header verb stays a 24px icon. */
   const verbButton = (verb: RecordActionVerb, expand?: (typeof HEADER_EXPAND_TIERS)[number]) => {
-    const armed = armedId === verb.id;
-    const danger = verb.tone === 'danger';
     const warning = verb.tone === 'warning';
     const yellow = verb.tone === 'yellow';
     const blue = verb.tone === 'blue';
@@ -180,19 +177,17 @@ export function RecordActionStrip({
           size="sm"
           radius="pill"
           variant={
-            danger
-              ? (armed || verb.placement !== 'isolated' ? 'danger' : 'dangerSoft')
-              : warning
-                ? 'warning'
+            warning
+              ? 'warning'
               : yellow
                 ? 'yellow'
                 : blue
                   ? 'primarySoft'
                   : success
                     ? 'success'
-                : verb.pressed
-                  ? 'ink'
-                  : 'secondary'
+                    : verb.pressed
+                      ? 'ink'
+                      : 'secondary'
           }
           icon={verb.icon}
           ariaLabel={verb.label}
@@ -200,7 +195,6 @@ export function RecordActionStrip({
           aria-pressed={verb.pressed}
           aria-haspopup={verb.display ? 'true' : undefined}
           data-testid={`${testId}-${verb.id}`}
-          data-armed={armed ? '' : undefined}
           // A record header spends its width on identity first: a verb is a
           // 24px icon, spelled out only once the header has room for it
           // (HEADER_EXPAND_TIERS); the tooltip and accessible name carry it until then.
@@ -208,7 +202,7 @@ export function RecordActionStrip({
           onClick={() => press(verb)}
         >
           <span className={face === 'header' ? cn('sr-only', expand?.label) : undefined}>
-            {armed ? `${verb.label} — press again` : verb.label}
+            {verb.label}
           </span>
           {face !== 'header' && showHotkeys && verb.hotkey ? (
             <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-1" />
@@ -224,21 +218,24 @@ export function RecordActionStrip({
       aria-label={label}
       data-testid={testId}
       data-view="verbs"
-      className={cn(shellClass, face === 'header' ? 'flex-nowrap' : 'flex-wrap')}
+      className={cn(shellClass, face === 'strip' ? 'flex-wrap' : 'flex-nowrap')}
       // A size container has no content width of its own, so the header face
       // declares its collapsed row (24px icons, gap-1) as its floor.
       style={
         face === 'header'
-          ? { minWidth: `${(primary.length + isolated.length + (overflow.length > 0 ? 1 : 0)) * 1.75}rem` }
+          ? { minWidth: `${(primary.length + (overflow.length > 0 ? 1 : 0)) * 1.75}rem` }
           : undefined
       }
     >
       <div
         className={cn(
-          'flex min-w-0 flex-1 items-center gap-1',
-          // Scrolls sideways; the pad (cancelled by the negative margin) keeps the pills' rings unclipped.
-          // Header: the verbs sit at the far right; the first one's auto margin (not justify-end) keeps an overflowing row scrollable from its start.
-          face === 'header' ? '-m-1 flex-nowrap overflow-x-auto p-1 scrollbar-hide [&>*:first-child]:ml-auto' : 'flex-wrap',
+          'flex min-w-0 items-center gap-1',
+          face === 'inline' ? 'shrink-0 flex-nowrap' : 'flex-1',
+          face === 'header'
+            ? 'flex-nowrap [&>*:first-child]:ml-auto'
+            : face === 'inline'
+              ? 'flex-nowrap'
+              : 'flex-wrap',
         )}
       >
         {primary.map((verb, index) => verbButton(verb, HEADER_EXPAND_TIERS[index]))}
@@ -271,7 +268,7 @@ export function RecordActionStrip({
                 >
                   {verb.icon}
                   {verb.label}
-                  {showHotkeys && verb.hotkey ? (
+                  {verb.hotkey ? (
                     <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
                   ) : null}
                 </DropdownMenuItem>
@@ -279,7 +276,6 @@ export function RecordActionStrip({
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
-        {isolated.map((verb) => verbButton(verb))}
       </div>
     </div>
   );

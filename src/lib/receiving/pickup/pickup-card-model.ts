@@ -3,7 +3,7 @@
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import type { RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import { conditionSentenceLabel, resolveConditionGrade } from '@/lib/conditions';
 import {
   pickupLineNeedsProcess,

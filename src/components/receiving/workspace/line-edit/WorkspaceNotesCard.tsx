@@ -5,9 +5,9 @@
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import type { ReactNode } from 'react';
 import { LineNotesCard } from './LineNotesCard';
+import type { WorkspaceTicketDraftModel } from './hooks/useWorkspaceTicketDraft';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
-
 /**
  * Minimal notes contract — Unbox + Testing (+ Arrival) compose the same dock
  * without hard-wiring `UnboxLineController`.
@@ -26,6 +26,8 @@ type WorkspaceNotesController = {
 interface WorkspaceNotesCardProps {
   row: ReceivingLineRow;
   c: WorkspaceNotesController;
+  /** Claim/audience state shared with the center Ticket preview. */
+  ticketDraftModel: WorkspaceTicketDraftModel;
   /**
    * Which note buffer this composer owns — see the GRAIN block above. Defaults
    * to the line item note; Arrival's door bench passes `'carton'`.
@@ -50,12 +52,6 @@ interface WorkspaceNotesCardProps {
   onPrimaryAction?: () => void;
   /** Mirrors the disabled Receive pill so Enter is a no-op when blocked. */
   primaryActionDisabled?: boolean;
-  /**
-   * Open this station's Displays → Locations leaf (the footer location pill's
-   * **New location**). Omitted on a surface with no Displays column — the menu
-   * item then says so instead of pretending.
-   */
-  onOpenLocations?: () => void;
   /** Header ⓘ → this station's Displays → Timeline leaf (see LineNotesCard). */
   onOpenStatusHistory?: () => void;
   /**
@@ -72,12 +68,6 @@ interface WorkspaceNotesCardProps {
   progressTone?: 'idle' | 'selected';
   onProgressClick?: () => void;
   /**
-   * A claim filed from the composer's Ticket tab. Same handler the claim form
-   * used — the dock now files on an unlinked carton, so the station still has
-   * to hear about the new ticket number.
-   */
-  onTicketCreated?: (ticketNumber: string) => void;
-  /**
    * The operator typed into the note field. Unbox opens the Label band on this
    * so the sticker face shows the note as it is being written.
    */
@@ -87,6 +77,7 @@ interface WorkspaceNotesCardProps {
 export function WorkspaceNotesCard({
   row,
   c,
+  ticketDraftModel,
   noteGrain = 'line',
   animateMount = true,
   chrome = 'raised',
@@ -94,7 +85,6 @@ export function WorkspaceNotesCard({
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled,
-  onOpenLocations,
   onOpenStatusHistory,
   headerAction,
   onComposerModeChange,
@@ -103,14 +93,12 @@ export function WorkspaceNotesCard({
   progressPercent,
   progressTone,
   onProgressClick,
-  onTicketCreated,
   onNoteTyped,
 }: WorkspaceNotesCardProps) {
   return (
     <div id="zoho-notes-card">
       <LineNotesCard
-        row={row}
-        onTicketCreated={onTicketCreated}
+        ticketDraftModel={ticketDraftModel}
         onNoteTyped={onNoteTyped}
         notes={c.itemNote}
         overallZohoNotes={row.receiving_zoho_notes ?? null}
@@ -140,7 +128,6 @@ export function WorkspaceNotesCard({
         trailingAction={trailingAction}
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}
-        onOpenLocations={onOpenLocations}
         onOpenStatusHistory={onOpenStatusHistory}
         headerAction={headerAction}
         onComposerModeChange={onComposerModeChange}

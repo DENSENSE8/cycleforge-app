@@ -2,10 +2,8 @@
 
 /**
  * TabSwitch — the segmented tab box (one face only).
- * The corner follows the region (owner 2026-09-27): boxed and square where
- * the floor runs (industrial, `radiusControl: 0` — operator 2026-09-23 "box it
- * off, no corner radius"), the concentric segmented pair in triage. Never
- * hard-flush a face.
+ * The corner follows the region's concentric segmented pair. Never hard-flush
+ * a face.
  */
 
 import type { ReactNode } from 'react';
@@ -103,7 +101,7 @@ export function TabSwitch({
   // {left:0,width:0}. Snap once, then spring on every later tab change.
   const hasPlacedPillRef = useRef(false);
   const prefersReducedMotion = useReducedMotion();
-  // The corner follows the region: square on industrial (`radiusControl: 0`), the concentric pair in triage.
+  // The corner follows the region's concentric pair.
   const faceCorner = SEGMENTED_CONTROL_FACE_CORNER;
 
   const measurePill = useCallback(() => {

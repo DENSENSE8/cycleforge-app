@@ -1,7 +1,8 @@
 'use client';
 
 import { useQueries } from '@tanstack/react-query';
-import { dashboardShippedWeekQuery, SHIPPED_WEEK_PAGE_SIZE } from '@/lib/queries/dashboard-queries';
+import { dashboardShippedWeekQuery } from '@/lib/queries/dashboard-queries';
+import { SHIPPED_FEED_PAGE_SIZE } from '@/lib/shipping/shipped-feed-config';
 import { getWeekBucketsForRange } from '@/lib/dashboard-week-range';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { ShippedTypeFilter } from './useShippedTableFilters';
@@ -21,15 +22,18 @@ interface UseShippedWeekBucketsParams {
   exceptionsOnly: boolean;
   /** Exact shipped-instant window (`?timeFrom`/`?timeTo`); null = none. Answered in SQL. */
   shippedTime: ShippedTimeParams | null;
-  /** `?pickedBy` — the order's picker. Answered in SQL. */
   pickedBy?: number;
+  /** `?channel` — comma-separated, lower-cased. Answered in SQL with the facet counts. */
+  channel?: string | null;
+  /** Sidebar sort key. Answered in SQL, not by reordering the loaded window. */
+  sort?: string | null;
   /** False in all-time mode (empty window ⇒ there is nothing to bucket). */
   enabled: boolean;
   /** Desk find text. Rides the fetch (`/api/packerlogs?q=`), never a pass over
    *  the merged rows — a bucket is a WINDOW, so an in-memory narrowing could
    *  only ever narrow the page, never reach the week's older matches. */
   searchTerm?: string;
-  /** Per-week row ceiling; default {@link SHIPPED_WEEK_PAGE_SIZE}. */
+  /** Per-week row ceiling; default {@link SHIPPED_FEED_PAGE_SIZE}. */
   limit?: number;
   /** Spine-first phase; 'spine' fetches immediate-paint columns only. */
   phase?: 'spine' | 'full';
@@ -55,9 +59,11 @@ export function useShippedWeekBuckets({
   exceptionsOnly,
   shippedTime,
   pickedBy,
+  channel = null,
+  sort = null,
   enabled,
   searchTerm = '',
-  limit = SHIPPED_WEEK_PAGE_SIZE,
+  limit = SHIPPED_FEED_PAGE_SIZE,
   phase = 'full',
 }: UseShippedWeekBucketsParams): ShippedWeekBucketsResult {
   const buckets = enabled ? getWeekBucketsForRange(rangeStart, rangeEnd) : [];
@@ -67,7 +73,7 @@ export function useShippedWeekBuckets({
       // Key + fetch + TTLs come from the shared factory (SoT) so the warm-up
       // prefetch and this live query can never drift apart.
       ...dashboardShippedWeekQuery({
-        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, shippedTime, pickedBy, searchTerm, limit, phase,
+        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, shippedTime, pickedBy, searchTerm, limit, phase, sort, channel,
       }),
       placeholderData: (prev: PackerRecord[] | undefined) => prev,
       enabled,

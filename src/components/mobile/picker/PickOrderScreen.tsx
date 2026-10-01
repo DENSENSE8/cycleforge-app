@@ -7,7 +7,7 @@
  * write; once the order is in hand the walk advances (`onPicked`). Pair bin /
  * Update location lifts the same camera to name the SKU's bin
  * ({@link usePairBin}). The bottom bar is the flush terminal block — an
- * `industrial` action region (BRIEF §14: industrial is the phone's action
+ * shared triage action region
  * surface) — edge to edge, square cells.
  */
 
@@ -25,7 +25,6 @@ import { cn } from '@/utils/_cn';
 import { Badge } from '@/components/ui/badge';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { RecordSquarePhoto } from '@/design-system/components/record-card/RecordCardMobile';
 import { RecordLineFacts } from '@/design-system/components/record-card/record-fact';
 import type { RecordCardDeadline, RecordCardLine, RecordCardMobileModel } from '@/design-system/components/record-card/record-card-types';
@@ -266,7 +265,7 @@ export function PickOrderScreen({
         </div>
       ) : null}
 
-      <ModeRegion mode="industrial" className="shrink-0">
+      <div className="shrink-0">
         <MobileCaptureWindow
           label={pairBin.pairing ? 'Bin camera' : 'Pick camera'}
           collapsedLabel={scanLabel}
@@ -282,7 +281,7 @@ export function PickOrderScreen({
           )}
         />
         {cameraUp ? <DetailDock label="Pick actions" verbs={verbs} onVerb={onVerb} size="glove" /> : null}
-      </ModeRegion>
+      </div>
     </div>
   );
 }

@@ -12,6 +12,45 @@ interface StockBinRequest {
 }
 
 /**
+ * Reconcile one location/SKU pair to an exact count. This is the manual count
+ * door: unlike a physical put/take, it does not claim the operator scanned the
+ * location. The route protects it with `bin.set` and records it as a count.
+ */
+export function stockSetRequest(
+  target: StockBinWriteTarget,
+  absoluteQty: number,
+  args: {
+    staffId?: number;
+    reason?: string;
+    notes?: string;
+    expectedUpdatedAt?: string;
+  } = {},
+): StockBinRequest {
+  const clientEventId = safeRandomUUID();
+  return {
+    url: `/api/locations/${encodeURIComponent(target.barcode)}`,
+    init: {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': clientEventId,
+      },
+      body: JSON.stringify({
+        action: 'set',
+        sku: target.sku,
+        qty: Math.max(0, Math.round(absoluteQty)),
+        staffId: args.staffId,
+        reason: args.reason || 'MANUAL_COUNT',
+        notes: args.notes,
+        expectedUpdatedAt: args.expectedUpdatedAt,
+        clientEventId,
+      }),
+    },
+  };
+}
+
+/**
  * A `put` / `take` on one bin. The idempotency key is generated per CALL, so a
  * retry of the same `fetch` replays and two deliberate presses are two writes.
  */

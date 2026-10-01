@@ -114,7 +114,7 @@ test('recentStagedLocationQueryKey nests under receiving feed root', () => {
   ]);
 });
 
-test('locationControlMenuState disables Last entry / Move until a last PO bin exists', () => {
+test('locationControlMenuState disables Last entry until a prior PO bin exists', () => {
   const empty = locationControlMenuState({ lastLabel: null, lastLocationId: null });
   assert.equal(empty.hasLast, false);
   assert.equal(empty.lastEntryLabel, 'Last entry');
@@ -126,5 +126,4 @@ test('locationControlMenuState disables Last entry / Move until a last PO bin ex
   });
   assert.equal(ready.hasLast, true);
   assert.equal(ready.lastEntryLabel, 'Last entry · A0101101');
-  assert.match(ready.moveTitle, /Move to A0101101/);
 });

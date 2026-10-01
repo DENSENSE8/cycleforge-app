@@ -10,7 +10,7 @@ import { useState } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { Pencil } from '@/components/Icons';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
-import { RECORD_TRAILING_ACTION_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_TRAILING_ACTION_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { OrderAutoAssignRule, useOrderListingRule } from './OrderAutoAssignRule';

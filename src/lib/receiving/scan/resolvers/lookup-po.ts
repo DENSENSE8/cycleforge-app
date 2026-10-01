@@ -12,6 +12,8 @@ export async function resolveViaLookupPo(
     mode: input.callMode,
     localOnly: true,
     intakeSurface: input.intakeSurface,
+    mobileScanEventId: input.mobileScanEventId ?? null,
+    clientEventId: input.clientEventId ?? null,
   });
 
   if (!data?.success) {

@@ -1,7 +1,7 @@
 /** Cycle-counts field catalog — the bindable facts of ONE cycle-count campaign. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const CYCLECOUNTS_FIELD_CATALOG: FieldCatalog = [
   { id: 'cycle-counts.id', family: 'cycle-counts', label: 'Campaign', displayType: 'id', slotKinds: ['identity', 'status', 'subtitle'], paths: { value: 'id' } },
@@ -17,7 +17,7 @@ export const CYCLECOUNTS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const CYCLECOUNTS_PRODUCT_LAYOUT: SlotLayout = {
+export const CYCLECOUNTS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'cycle-counts.id',
   statusBindings: [
@@ -28,6 +28,6 @@ export const CYCLECOUNTS_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [{ fieldId: 'cycle-counts.tol' }],
   amountFieldId: null,
-};
+}
 
 export const CYCLECOUNTS_TABLE_LAYOUT_ID = 'cycle-counts';

@@ -1,7 +1,7 @@
 /** Ready field catalog — the bindable recently-tested facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const READY_FIELD_CATALOG: FieldCatalog = [
   {
@@ -66,7 +66,7 @@ export const READY_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default Ready layout — visual parity with the retired hand model's CORE view (`select · title · verdict · destination ·… */
-export const READY_PRODUCT_LAYOUT: SlotLayout = {
+export const READY_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'ready.unit',
   statusBindings: [
@@ -77,7 +77,7 @@ export const READY_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Ready entry. */
 export const READY_TABLE_LAYOUT_ID = 'ready';

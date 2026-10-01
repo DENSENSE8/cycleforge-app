@@ -8,8 +8,8 @@ import {
   MY_DAY_FIELD_CATALOG,
   MY_DAY_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/my-day';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -23,24 +23,22 @@ export type MyDayGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface MyDayGridColumn extends SlotTrackFields {
-  key: MyDayGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  /** When false, the header is not click-to-sort (select gutter only). */
-  sortable?: boolean;
-  /** Per-staff pref key for the Fields menu (`TABLE_COLUMNS.my-day`). */
-  hideKey?: string;
-  /** `optional` ships hidden and is opted into from Fields; `core` ships on. */
-  tier?: 'core' | 'optional';
-}
+export interface MyDayGridColumn extends DataTableColumnFields { key: MyDayGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+/** When false, the header is not click-to-sort (select gutter only). */
+sortable?: boolean;
+/** Per-staff pref key for the Fields menu (`TABLE_COLUMNS.my-day`). */
+hideKey?: string;
+/** `optional` ships hidden and is opted into from Fields; `core` ships on. */
+tier?: 'core' | 'optional'; }
 
 /**
  * The structural sheet skeleton — what Today paints with ZERO bindings.
@@ -65,15 +63,13 @@ const MY_DAY_SHEET_BASE: readonly MyDayGridColumn[] = [
  * anchor on `task`, so the default plate reads lane · record · due — the
  * retired hand model's core view.
  */
-export function myDaySheetColumnsFor(layout: SlotLayout): readonly MyDayGridColumn[] {
-  return materializeTracks<MyDayGridColumn>({
-    layout,
-    catalog: MY_DAY_FIELD_CATALOG,
-    base: MY_DAY_SHEET_BASE,
-    statusAnchorKey: 'task',
-    subtitleAnchorKey: 'task',
-  });
-}
+export function myDaySheetColumnsFor(layout: DataTableColumnLayout): readonly MyDayGridColumn[] { return materializeTracks<MyDayGridColumn>({
+  layout,
+  catalog: MY_DAY_FIELD_CATALOG,
+  base: MY_DAY_SHEET_BASE,
+  statusAnchorKey: 'task',
+  subtitleAnchorKey: 'task',
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts,

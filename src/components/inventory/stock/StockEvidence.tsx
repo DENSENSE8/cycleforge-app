@@ -13,31 +13,26 @@
  * (`placeholder`). Aside = [placeholder facts →] Send to staff → Movement.
  */
 
-import type { ReactNode } from 'react';
+import { useSyncExternalStore, type ReactNode } from 'react';
 import { format } from 'date-fns';
-import { RecordTaskForm } from '@/components/tasks/RecordTaskActions';
-import { CopyChip } from '@/components/ui/CopyChip';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
-import { SkuOpenInMenu } from '@/design-system/components/record-ledger/RecordItemIdentity';
 import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import {
   locationStockRowId,
   type LocationStockRoomFacet,
   type LocationStockTableRow,
 } from '@/lib/inventory/location-stock-row';
-import { cn } from '@/utils/_cn';
-import { STOCK_SOURCE_LABEL, stockLocationFace, stockRecordState, stockRecordTitle } from './stock-record';
-import { StockLocationsGroup } from './StockLocationsGroup';
-import { StockPairBin } from './StockPairBin';
-import { StockPhotoTile } from './StockPhotoTile';
+import type { StockScopeCounts } from '@/lib/neon/location-stock-queries';
+import { stockRecordState } from './stock-record';
+import { StockItemCard } from './StockItemCard';
+import { StockLocationsGroup } from '@/components/stock/StockLocationsGroup';
+import { StockPhotosGroup } from './StockPhotosGroup';
 
 /** Fact rows inside a group — the carton record's facts body. */
 const FACTS_BODY_CLASS = 'flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0';
-/** A soft triage pill (room, how it is held). */
-const PILL_CLASS = 'inline-flex h-6 items-center rounded-full bg-surface-sunken px-2.5 text-xs font-medium text-text-default';
 
 /** A `TMP-` placeholder's own record parts: its work column (handed this record's item card) and its facts. */
 interface PlaceholderParts {
@@ -51,10 +46,25 @@ function stamp(iso: string | null): string | null {
   return Number.isNaN(at.getTime()) ? null : format(at, 'MMM d, yyyy · h:mm a');
 }
 
+const subscribeNever = () => () => undefined;
+
+/**
+ * A stamp in the VIEWER's timezone. The server renders in UTC, so the formatted
+ * text only paints after hydration (the server pass and the hydration pass both
+ * paint the placeholder) — no hydration text mismatch (React #418).
+ */
+function LocalStamp({ iso, fallback }: { iso: string | null; fallback: string }) {
+  const hydrated = useSyncExternalStore(subscribeNever, () => true, () => false);
+  const text = stamp(iso);
+  if (!text) return <>{fallback}</>;
+  return <time dateTime={iso ?? undefined}>{hydrated ? text : '…'}</time>;
+}
+
 export function StockEvidence({
   record,
   onCounted,
   placeholder,
+  elsewhereQty = 0,
 }: {
   /** The open pair (live row), or null when the link names a pair no longer listed. */
   record: LocationStockTableRow | null;
@@ -62,8 +72,10 @@ export function StockEvidence({
   onCounted: () => void;
   /** A `TMP-` placeholder's own record parts. */
   placeholder?: PlaceholderParts;
+  /** Same SKU sitting at OTHER locations right now — the zero-here empty state's "stock exists elsewhere" arm. */
+  elsewhereQty?: number;
 }) {
-  if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} placeholder={placeholder} />;
+  if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} placeholder={placeholder} elsewhereQty={elsewhereQty} />;
   return (
     <DeskRecordLayout
       main={
@@ -79,44 +91,16 @@ function StockRecordEvidence({
   record,
   onCounted,
   placeholder,
+  elsewhereQty,
 }: {
   record: LocationStockTableRow;
   onCounted: () => void;
   placeholder?: PlaceholderParts;
+  elsewhereQty: number;
 }) {
-  const face = stockLocationFace(record);
-  const title = stockRecordTitle(record);
-
-  // The item: photo · title (always above the SKU — the header carries it too, owner 2026-09-30) · SKU, then the pinned location line.
-  const itemBody = (
-    <div className="flex min-w-0 items-start gap-4 px-4 py-3" data-testid="stock-record-item">
-      <StockPhotoTile stockId={record.stock_id} sku={record.sku} photoUrl={record.image_url} title={title} />
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <p
-          className="line-clamp-2 min-w-0 text-[15px] font-semibold leading-snug text-text-default [overflow-wrap:anywhere]"
-          title={title}
-          data-testid="stock-record-item-title"
-        >
-          {title}
-        </p>
-        <span className="flex min-w-0 items-center gap-1">
-          <CopyChip value={record.sku} display={record.sku} tone="sku" fitDisplayWidth />
-          <SkuOpenInMenu sku={record.sku} />
-        </span>
-        <div className="flex min-w-0 flex-wrap items-center gap-2" data-testid="stock-record-location">
-          <span className={cn(PILL_CLASS, !record.room && 'text-text-warning')}>{record.room ?? 'No room'}</span>
-          {face ? (
-            // The exact tote/bin: no glyph, and it copies the dashed face the floor reads (`C-02-01-2-00`).
-            <CopyChip value={face} display={face} tone="bin" icon={null} width="w-fit max-w-full" />
-          ) : (
-            <span className={cn(PILL_CLASS, 'text-text-warning')}>No tote</span>
-          )}
-          <span className={cn(PILL_CLASS, 'text-text-muted')}>{STOCK_SOURCE_LABEL[record.source]}</span>
-          <StockPairBin sku={record.sku} barcode={record.location_barcode} face={face} homeLocation={record.home_location} />
-        </div>
-      </div>
-    </div>
-  );
+  // Empty and populated records share this exact item layout. Only the empty
+  // record swaps the title/SKU content for editors.
+  const itemBody = <StockItemCard record={record} onChanged={onCounted} elsewhereQty={elsewhereQty} />;
 
   const itemRow = (
     <RecordGroup title="Item" titleHidden>
@@ -139,20 +123,12 @@ function StockRecordEvidence({
 
   const aside = (
     <div className="flex min-w-0 flex-col gap-4">
-      {placeholder?.aside}
-      {/* A stock pair is not a task anchor kind: a standalone task titled where · what. */}
-      <RecordGroup title="Send to staff" testId="stock-record-send">
-        <RecordTaskForm
-          kind="staff"
-          target={{ entityType: null, entityId: null, label: `${face ?? 'No location'} · ${record.sku}` }}
-          onDone={() => undefined}
-        />
-      </RecordGroup>
+      {placeholder ? placeholder.aside : record.sku ? <StockPhotosGroup sku={record.sku} stockId={record.stock_id} /> : null}
       <RecordGroup title="Movement" testId="stock-record-location">
         <div className={FACTS_BODY_CLASS}>
-          <EvidenceFactRow label="Last moved">{stamp(record.last_moved) ?? '—'}</EvidenceFactRow>
+          <EvidenceFactRow label="Last moved"><LocalStamp iso={record.last_moved} fallback="—" /></EvidenceFactRow>
           {record.source === 'bin' ? (
-            <EvidenceFactRow label="Counted">{stamp(record.last_counted) ?? 'Never'}</EvidenceFactRow>
+            <EvidenceFactRow label="Counted"><LocalStamp iso={record.last_counted} fallback="Never" /></EvidenceFactRow>
           ) : null}
         </div>
       </RecordGroup>
@@ -168,25 +144,18 @@ function StockRecordEvidence({
 
 /** Nothing open: the list read as the floor reads it. */
 export function stockSummary(
-  rows: readonly LocationStockTableRow[],
+  pairs: number,
+  counts: StockScopeCounts,
   rooms: readonly LocationStockRoomFacet[],
 ): RecordLedgerSummary {
-  let units = 0;
-  let held = 0;
-  let out = 0;
-  for (const row of rows) {
-    units += Math.max(row.qty, 0);
-    const state = stockRecordState(row);
-    if (state === 'onHold') held += 1;
-    else if (state === 'outOfStock') out += 1;
-  }
   return {
     title: 'Stock',
     facts: [
-      { label: 'Location × SKU pairs', value: rows.length },
-      { label: 'Units on the shelves', value: units, toolbar: true },
-      { label: 'On hold (TMP)', value: held, warn: held > 0, toolbar: true },
-      { label: 'At or below zero', value: out, warn: out > 0, toolbar: true },
+      { label: 'Location × SKU pairs', value: pairs },
+      { label: 'Units on the shelves', value: counts.inStockUnits, toolbar: true },
+      { label: 'Products in stock', value: counts.inStockProducts },
+      { label: 'On hold (TMP)', value: counts.onHoldPairs, warn: counts.onHoldPairs > 0 },
+      { label: 'At or below zero', value: counts.outPairs, warn: counts.outPairs > 0 },
       { label: 'Rooms', value: rooms.length },
     ],
   };

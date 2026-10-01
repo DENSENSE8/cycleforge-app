@@ -135,18 +135,18 @@ async function chat(base, model, user, timeoutMs = 180000, { system } = {}) {
   return String(content);
 }
 
-const CONTRACT_USER = `Machine eval failed. Stamp .garisek/eval-session.json. Snapshot docs/eval/cohorts/slot-table/snapshots/(fixture-tripwire). Make that contract green. Do not change paint. Do not fold Queue/Viewed/History into the funnel. Do not delete overlay visibility / zIndex.panel. Do not invent Operator verdict.
+const CONTRACT_USER = `Machine eval failed. Stamp .garisek/eval-session.json. Snapshot docs/eval/snapshots/(fixture-tripwire). Make that contract green. Do not change paint. Do not fold Queue/Viewed/History into the funnel. Do not delete overlay visibility / zIndex.panel. Do not invent Operator verdict.
 
-Allowed: fix SLOT_TABLE_ENGINE_CONTRACT / DataTableFilterMenu always-mounted / KEEP rows. Forbidden: FilterRefinementBar, hunt tiles, folding Unbox Queue/Viewed/History into the funnel, deleting overlay visibility, rewriting Operator verdict, screenshot baselines.
+Allowed: fix DATA_TABLE_ENGINE_CONTRACT / DataTableFilterMenu always-mounted / KEEP rows. Forbidden: FilterRefinementBar, hunt tiles, folding Unbox Queue/Viewed/History into the funnel, deleting overlay visibility, rewriting Operator verdict, screenshot baselines.
 
 Reply with a short repair plan (3-6 bullets). Name at least one allowed action. Do not recommend forbidden items.`;
 
 const ALLOWED_HINTS = [
-  /SLOT_TABLE_ENGINE_CONTRACT/i,
+  /DATA_TABLE_ENGINE_CONTRACT/i,
   /DataTableFilterMenu/i,
   /\bKEEP\b/,
   /always[- ]mounted/i,
-  /slot-table/i,
+  /data-table/i,
   /engine contract/i,
 ];
 
@@ -194,7 +194,7 @@ async function main() {
   console.log("[eval:mlx-smoke] contract reply:\n" + contract.slice(0, 1200));
   const { allowed, recommendBad } = gradeContract(contract);
   if (!allowed) {
-    fail("contract reply named no allowed action (SLOT_TABLE_ENGINE_CONTRACT / DataTableFilterMenu / KEEP)");
+    fail("contract reply named no allowed action (DATA_TABLE_ENGINE_CONTRACT / DataTableFilterMenu / KEEP)");
   }
   if (recommendBad.length) {
     fail(`contract reply recommended forbidden: ${recommendBad.map(String).join(", ")}`);
@@ -220,7 +220,7 @@ async function main() {
     base,
     model,
     followup +
-      "\n\nAllowed: fix SLOT_TABLE_ENGINE_CONTRACT / DataTableFilterMenu always-mounted / KEEP rows. " +
+      "\n\nAllowed: fix DATA_TABLE_ENGINE_CONTRACT / DataTableFilterMenu always-mounted / KEEP rows. " +
       "Forbidden: FilterRefinementBar, hunt tiles. Short repair plan only.",
     300000,
     { system: PLANNER_SYSTEM },

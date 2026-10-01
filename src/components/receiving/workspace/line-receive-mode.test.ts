@@ -1,4 +1,4 @@
-/** Unit + source guards for multi-qty Unbox display modes: */
+/** Unit + source guards for multi-quantity Unbox receive modes. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

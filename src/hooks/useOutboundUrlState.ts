@@ -10,7 +10,7 @@ import {
   parseOutboundSort,
   type OutboundMode,
   type OutboundSort,
-} from '@/components/outbound/outbound-sidebar-shared';
+} from '@/lib/outbound/route-contract';
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { OUTBOUND_MODE_ROUTE_PARAMS } from '@/lib/routing/outbound-routes';
 import { buildRouteUrl, parseRouteParams } from '@/lib/routing/route-params';

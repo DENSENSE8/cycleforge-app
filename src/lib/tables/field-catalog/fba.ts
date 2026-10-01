@@ -1,7 +1,7 @@
 /** FBA field catalog — the bindable Amazon-Prep board facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const FBA_FIELD_CATALOG: FieldCatalog = [
   {
@@ -71,7 +71,7 @@ export const FBA_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default FBA board layout — near-parity with the retired hand model's scan order (`select · asin · title · fnsku · qty ·… */
-export const FBA_PRODUCT_LAYOUT: SlotLayout = {
+export const FBA_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'fba.asin',
   statusBindings: [
@@ -85,7 +85,7 @@ export const FBA_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'fba.condition' },
   ],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog will serve when the board display returns. */
 const FBA_TABLE_LAYOUT_ID = 'fba';

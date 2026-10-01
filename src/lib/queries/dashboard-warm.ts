@@ -1,12 +1,15 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { getDashboardOrderViewFromSearch } from '@/utils/dashboard-search-state';
-import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
-import { readShippedFilterPreference } from '@/utils/dashboard-preferences';
 import {
-  unshippedOrdersQuery,
   dashboardShippedQuery,
   packedOrdersQuery,
+  unshippedOrdersQuery,
 } from '@/lib/queries/dashboard-queries';
+import {
+  SHIPPED_FEED_PAGE_SIZE,
+  SHIPPED_FEED_PHASE,
+} from '@/lib/shipping/shipped-feed-config';
+import { readShippedFilterPreference } from '@/utils/dashboard-preferences';
 
 /** Default Unshipped page size — keep in lockstep with `UnshippedTable`'s `rowLimit` initial (200) and `UNSHIPPED_SEED_LIMIT` in… */
 const UNSHIPPED_WARM_LIMIT = 200;
@@ -34,10 +37,13 @@ export function warmActiveView(
     return queryClient.prefetchQuery(packedOrdersQuery({ searchQuery, staffId, dateFrom, dateTo }));
   }
   if (view === 'shipped') {
-    const week = getWeekRangeForOffset(0);
     const shippedFilter = sp.get('shippedFilter') || readShippedFilterPreference() || 'all';
     return queryClient.prefetchQuery(
-      dashboardShippedQuery({ weekStart: week.startStr, weekEnd: week.endStr, shippedFilter }),
+      dashboardShippedQuery({
+        shippedFilter,
+        limit: SHIPPED_FEED_PAGE_SIZE,
+        phase: SHIPPED_FEED_PHASE,
+      }),
     );
   }
   // Default + legacy `?pending` → the merged To Ship backlog.

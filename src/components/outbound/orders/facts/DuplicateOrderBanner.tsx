@@ -7,7 +7,7 @@ import { AlertTriangle } from '@/components/Icons';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
 import {
   duplicateLeadCopy,

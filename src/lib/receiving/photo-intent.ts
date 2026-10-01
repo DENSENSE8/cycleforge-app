@@ -23,7 +23,7 @@ export type ReceivingPhotoStage = (typeof RECEIVING_PHOTO_STAGES)[number];
 
 /**
  * Auto-push stage for a tracking scan on a given intake surface.
- * Unbox → per-scan carton spam capture; Arrival/triage → guided door package.
+ * Unbox → per-scan carton native capture; Arrival/triage → guided door package.
  * Never invent a third stage here — item capture is line-driven, not scan-bar.
  */
 export function photoStageForScanIntakeSurface(

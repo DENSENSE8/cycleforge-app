@@ -77,7 +77,7 @@ export function TaskStatusCombobox({
         data-testid="task-status-combobox"
         {...{ [TASK_RECORD_STATUS_FIELD_ATTR]: '' }}
       >
-        <TaskStatusPill status={current} size="md" />
+        <TaskStatusPill status={current} size="sm" />
         <ChevronDown aria-hidden className="size-3.5 text-text-muted transition-colors group-hover/status:text-text-default" />
       </button>
       <TaskStatusPicker open={open} anchorRef={anchor} current={current} onPick={onPick} onClose={() => setOpen(false)} />

@@ -22,19 +22,11 @@ export const VALID_STATUS = new Set(STATUS_CATEGORIES.map((s) => s.value));
 
 export type ShippedTypeFilter = 'all' | 'orders' | 'sku' | 'fba';
 
-interface StaffOption {
-  id: number;
-  name: string;
-}
 
 // Type filter is a *view switcher* (Shopify-style segmented tabs), not a refinement.
 export const TYPE_ITEMS: HorizontalSliderItem[] = [
   { id: 'all', label: 'All' },
-  { id: 'orders', label: 'Orders' },
+  { id: 'orders', label: 'Online' },
   { id: 'sku', label: 'SKU' },
-  { id: 'fba', label: 'Amazon Prep' },
+  { id: 'fba', label: 'FBA' },
 ];
-
-const CARRIER_LABEL = new Map(CARRIERS.map((c) => [c.value, c.label]));
-const STATUS_LABEL = new Map(STATUS_CATEGORIES.map((s) => [s.value, s.label]));
-const TYPE_LABEL = new Map(TYPE_ITEMS.map((t) => [String(t.id), t.label]));

@@ -5,7 +5,7 @@ import type { CompoundRowView } from '@/components/tables/compound/compound-row-
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import { resolveStationSource, SOURCE_DOT_LABEL } from '@/utils/source-dot';
 
-/** Compact civil face for the Dates Hash line — no year (slot-table date law). */
+/** Compact civil face for the Dates Hash line — no year (DataTable date law). */
 function civilFace(iso: string | null | undefined): {
   label: string;
   dateKey: string | null;

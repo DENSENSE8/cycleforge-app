@@ -10,7 +10,7 @@ import {
 import type { MyDayTask } from '@/lib/my-day/my-day-tasks';
 import { MY_DAY_FIELD_CATALOG, MY_DAY_PRODUCT_LAYOUT } from './my-day';
 import { resolveMyDaySlotValue } from './my-day-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function task(overrides: Partial<MyDayTask> = {}): MyDayTask {
   return {
@@ -41,7 +41,7 @@ describe('my-day catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; the lean core view)', () => {
-    const parsed = parseSlotLayout(MY_DAY_PRODUCT_LAYOUT, MY_DAY_FIELD_CATALOG);
+    const parsed = MY_DAY_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'my-day.task');
     assert.deepEqual(parsed.statusBindings, [

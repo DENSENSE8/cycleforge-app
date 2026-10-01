@@ -1,13 +1,13 @@
-/** Staff-day column model — MATERIALIZED from a {@link SlotLayout} onto the shared compound skeleton, exactly as its two report siblings are. */
+/** Staff-day column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the shared compound skeleton, exactly as its two report siblings are. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
 import {
   REPORT_STAFF_DAY_FIELD_CATALOG,
   REPORT_STAFF_DAY_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/report-staff-day';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type ReportStaffDayGridColumnKey =
@@ -23,50 +23,42 @@ export type ReportStaffDayGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface ReportStaffDayGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: ReportStaffDayGridColumnKey;
-}
+export interface ReportStaffDayGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: ReportStaffDayGridColumnKey; }
 
 /** Materialize the mounted columns from an effective layout. */
-export function reportStaffDayCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly ReportStaffDayGridColumn[] {
-  const tracks = materializeTracks<ReportStaffDayGridColumn>({
-    layout,
-    catalog: REPORT_STAFF_DAY_FIELD_CATALOG,
-    base: compoundColumnsFor<ReportStaffDayGridColumn>(),
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = REPORT_STAFF_DAY_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    if (t.key === 'item') return { ...t, label: 'Task', gridLabel: 'Task' };
-    // The one temporal fact: the instant the check happened — the sentence the
-    // whole report exists to answer.
-    if (t.key === 'dates') return { ...t, label: 'Checked at', gridLabel: 'Checked at' };
-    if (t.key === 'state') {
-      // `slotDisplayType:
-      return {
-        ...t,
-        label: 'Checked',
-        gridLabel: 'Checked',
-        slotDisplayType: 'date' as const,
-      };
-    }
-    return t;
-  });
-}
+export function reportStaffDayCompoundColumnsFor(layout: DataTableColumnLayout): readonly ReportStaffDayGridColumn[] { const tracks = materializeTracks<ReportStaffDayGridColumn>({
+  layout,
+  catalog: REPORT_STAFF_DAY_FIELD_CATALOG,
+  base: compoundColumnsFor<ReportStaffDayGridColumn>(),
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = REPORT_STAFF_DAY_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  if (t.key === 'item') return { ...t, label: 'Task', gridLabel: 'Task' };
+  // The one temporal fact: the instant the check happened — the sentence the
+  // whole report exists to answer.
+  if (t.key === 'dates') return { ...t, label: 'Checked at', gridLabel: 'Checked at' };
+  if (t.key === 'state') {
+    // `slotDisplayType:
+    return {
+      ...t,
+      label: 'Checked',
+      gridLabel: 'Checked',
+      slotDisplayType: 'date' as const,
+    };
+  }
+  return t;
+}); }
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const REPORT_STAFF_DAY_COMPOUND_COLUMNS: readonly ReportStaffDayGridColumn[] =

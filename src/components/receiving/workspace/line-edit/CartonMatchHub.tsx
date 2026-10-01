@@ -77,9 +77,8 @@ type CartonMatchHubProps = {
   /** `unbox` = Inventory Item + PO + Store; `arrival` omits Inventory. */
   tabSet?: CartonMatchTabSet;
   /**
-   * `bare` — Unbox Displays host: no duplicate "Package Pairing" title, no
-   * pencil, Pairing-only secondary-token dropdown (+ Auto-match strip when
-   * unfound). `card` — Arrival / Triage chrome.
+   * `bare` — caller-owned pairing surface with no duplicate title or pencil.
+   * `card` — Arrival / Triage chrome.
    */
   chrome?: CartonMatchHubChrome;
   /** Arrival Station: false. Unbox desk: typically true. */
@@ -422,7 +421,7 @@ function MatchHubCard({
           </Button>
         </HoverTooltip>
       ) : null}
-      {/* Card hosts only — bare Unbox Displays owns Store via the mode dropdown. */}
+      {/* Card hosts only; a bare host owns Store through its avenue switcher. */}
       {!embedded && !bareChrome ? (
         <HoverTooltip label="Add items — search recent store orders by order #, title, or SKU" focusable={false}>
           <IconButton
@@ -514,7 +513,7 @@ function MatchHubCard({
     );
 
   const body = (
-    // `bareChrome` (right-rail Store panel) fills whatever height its host gives it:
+    // A bare host fills whatever height its caller gives it.
     <div className={cn('min-w-0 max-w-full', bareChrome && 'flex min-h-0 flex-1 flex-col')}>
       {/* FIND LEADS (2026-08-19). */}
       {avenueSwitcher}
@@ -618,7 +617,7 @@ function MatchHubCard({
   }
 
   if (bareChrome) {
-    // Fills the host's flex column (LinkageDisplayHost's `flex-1` link body) instead of sizing to content — the fixed `max-h-[60vh]` cap this…
+    // Fills a caller-owned flex column instead of sizing to content.
     return (
       <div className={cn(PAIRING_FLUSH_HOST_CLASS, 'flex h-full min-h-0 flex-col overflow-hidden')}>
         {content}

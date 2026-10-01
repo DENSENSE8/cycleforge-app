@@ -2,16 +2,14 @@
 
 /**
  * Section headers in sidebars, panels, and cards ("Shipping", "Details").
- * Write them in sentence case; industrial (the nearest `data-mode`,
- * `industrial:` in globals.css) swaps to the micro face, and its case is the
- * mode's label voice (`--mode-label-case`).
+ * Write them in sentence case.
  */
 export const sectionLabel =
-  'text-role-caption font-semibold text-text-soft industrial:text-role-micro industrial:font-normal' as const;
+  'text-role-caption font-semibold text-text-soft' as const;
 
 /** Form field labels ("SKU *", "Condition") — same two faces as {@link sectionLabel}. */
 export const fieldLabel =
-  'text-role-caption font-medium text-text-muted industrial:text-role-micro industrial:font-normal' as const;
+  'text-role-caption font-medium text-text-muted' as const;
 
 /** Primary data values (e.g. product titles, names) */
 export const dataValue = 'text-sm font-semibold text-text-default' as const;
@@ -36,7 +34,7 @@ export const qtyProgress = 'text-role-caption font-semibold font-mono tabular-nu
  */
 export const ledgerCell = 'min-w-0 truncate text-role-caption text-text-default' as const;
 
-/** Card titles (e.g. OrderCard, FbaItemCard, RepairCard main heading) */
+/** Card titles (e.g. OrderCard and FbaItemCard main headings). */
 export const cardTitle = 'text-base font-semibold text-text-default leading-tight' as const;
 
 /** LedgerGrid / AdminTable column headers — quiet label chrome (override role-micro's 600 weight). */

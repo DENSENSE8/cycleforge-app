@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   ADMIN_BULK_ALLOCATE_COMPOUND_COLUMNS,
   adminBulkAllocateCompoundColumnsFor,
@@ -23,7 +23,7 @@ import {
   ADMIN_BULK_ALLOCATE_PRODUCT_LAYOUT,
 } from './admin-bulk-allocate';
 import { resolveAdminBulkAllocateSlotValue } from './admin-bulk-allocate-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /** Computed, never selected — a `paths` entry here would be a lie. */
 const DERIVED_FIELD_IDS = ['admin-bulk-allocate.qty', 'admin-bulk-allocate.eligible'] as const;
@@ -96,10 +96,7 @@ describe('admin-bulk-allocate catalog', () => {
   });
 
   it('product default parses, with the ORDER ID as identity and qty pinned first', () => {
-    const parsed = parseSlotLayout(
-      ADMIN_BULK_ALLOCATE_PRODUCT_LAYOUT,
-      ADMIN_BULK_ALLOCATE_FIELD_CATALOG,
-    );
+    const parsed = ADMIN_BULK_ALLOCATE_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'admin-bulk-allocate.order_id');
     // The two facts read ACROSS rows are the two tracks…
@@ -168,7 +165,7 @@ describe('admin-bulk-allocate materialization', () => {
     const identity = ADMIN_BULK_ALLOCATE_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'admin-bulk-allocate.order_id');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Order id" is now the Fields-picker row
+    // (`data-table-family.ts`). "Order id" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -189,7 +186,7 @@ describe('admin-bulk-allocate materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of ADMIN_BULK_ALLOCATE_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key)) {
+      if (isDataTableChromeColumn(col.key)) {
         assert.equal(adminBulkAllocateSortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

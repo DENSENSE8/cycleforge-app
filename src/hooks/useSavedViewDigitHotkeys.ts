@@ -1,9 +1,8 @@
 'use client';
 
 /**
- * Saved-view digit hotkeys — ONE hook for the held-Shift reveal + jump on the
- * contextual sidebar's saved-view presets (`SavedViewPresetList`).
- *
+ * Saved-view digit hotkeys — one hook for the held-Shift reveal + jump on the
+ * global header's centered saved-view switcher.
  * Hold Shift: every preset row paints its digit keycap (no hover needed).
  * Shift + 1–9 while held: jump to that view — same gesture as clicking the
  * row (the lit view's digit clears it). Digits are matched on `event.code`,
@@ -132,7 +131,7 @@ export function useSavedViewDigitHotkeys<V extends { id: string; name: string }>
     // The `?` / ⌘⇧? sheet teaches the reveal and every painted digit.
     const unregister = registerShortcutOverviewGroup({
       id: 'saved-view-digits',
-      title: 'Saved views — left rail',
+      title: 'Saved views — global header',
       rows: [
         { keys: ['Shift'], label: 'Hold to show each view’s digit' },
         ...model.views.slice(0, MAX_SAVED_VIEW_DIGIT).map((view, index) => ({

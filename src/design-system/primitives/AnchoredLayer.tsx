@@ -241,8 +241,19 @@ export function AnchoredLayer({
   const [verticalFit, setVerticalFit] = useState<VerticalFit | null>(null);
 
   useEffect(() => {
-    setTarget(document.body);
-  }, []);
+    const anchor = anchorRef.current;
+    // A body-level portal is outside Radix Dialog's modal ownership. Radix
+    // deliberately sets `pointer-events: none` on <body> while a sheet is
+    // open, so a body-portaled combobox can be visible yet untappable (and its
+    // ordinary dropdown z-band also sits below the modal). Keep anchored
+    // children inside the sheet/dialog that owns their trigger. Fixed
+    // positioning still uses viewport coordinates because these Radix
+    // content roots are not transformed.
+    const modalOwner = anchor?.closest<HTMLElement>(
+      '[data-slot="sheet-content"], [data-slot="dialog-content"]',
+    );
+    setTarget(modalOwner ?? document.body);
+  }, [anchorRef, open]);
 
   // Claim keyboard ownership while open so ambient Escape owners (the outbound queue keyboard bridge, the right-rail inspector) stand down —…
   useRegisterOverlay(open);

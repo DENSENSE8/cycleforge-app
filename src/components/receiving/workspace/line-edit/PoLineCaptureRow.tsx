@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Camera, ScanBarcode } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Button } from '@/design-system/primitives/Button';
 import { cn } from '@/utils/_cn';
 import {
   CAPTURE_SEGMENT_ORDER,
@@ -237,16 +238,19 @@ export function PoLineCaptureRow({
             Glyph: Camera,
             hint: photosDone
               ? `${photoCount} item photo${photoCount === 1 ? '' : 's'} — edit photos`
-              : 'Photos — Link, Upload, or Send to phone',
+              : 'Photos — Upload or send to phone',
             count: photosDone ? photoCount : null,
             onClick: openPhotos,
           };
 
     return (
       <HoverTooltip key={key} label={hint} asChild>
-        <button
+        <Button
           type="button"
-          aria-label={hint}
+          variant="ghost"
+          size="sm"
+          radius="flush"
+          ariaLabel={hint}
           data-capture-segment={key}
           data-capture-filled={
             (key === 'serial' ? serialDone : photosDone) || undefined
@@ -259,7 +263,7 @@ export function PoLineCaptureRow({
           {count != null ? (
             <span className={PO_LINE_CAPTURE_COUNT_CLASS}>{count}</span>
           ) : null}
-        </button>
+        </Button>
       </HoverTooltip>
     );
   };

@@ -41,18 +41,18 @@ describe('radius SoT', () => {
       roles.map(cornerClass),
       [
         'rounded-none', // flush
-        'rounded-none', // chip   (flushed 0c)
-        'rounded-none', // row    (flushed 0c)
-        'rounded-none', // control (flushed 0b)
-        'rounded-none', // field  (flushed 0b)
-        'rounded-none', // card   (flushed 0d)
-        'rounded-none', // canvas (flushed 0e)
+        'rounded',
+        'rounded-md',
+        'rounded-lg',
+        'rounded-xl',
+        'rounded-2xl',
+        'rounded-3xl',
         'rounded-full', // pill   (status dots · avatars · Switch only)
       ],
     );
   });
 
-  it('surface (triage panels) follows the region corner — 10px triage, square industrial', () => {
+  it('surface follows the region corner', () => {
     assert.equal(cornerClass('surface'), 'rounded-mode');
     assert.equal(nestedCorner('surface', 0), 'control'); // 10 → the 8px rung
   });
@@ -70,9 +70,8 @@ describe('radius SoT', () => {
 
   describe('nestedCorner — concentric inner = outer − padding', () => {
     it('reproduces the one pairing the house already documents by hand', () => {
-      // nestedCorner keys off CORNER_PX (untouched by the zero-radius staging), so the returned ROLE is still `field` for a canvas + p-3 nest.
       assert.equal(nestedCorner('canvas', 3), 'field');
-      assert.equal(nestedCornerClass('canvas', 3), 'rounded-none');
+      assert.equal(nestedCornerClass('canvas', 3), 'rounded-xl');
     });
 
     it('steps down the ladder as padding grows', () => {

@@ -43,7 +43,10 @@ export function useSkuStockPhotoUpload(stockId: number | null, onChanged?: () =>
         }
       }
       setProgress(null);
-      await invalidateSkuExceptions(queryClient);
+      await Promise.all([
+        invalidateSkuExceptions(queryClient),
+        queryClient.invalidateQueries({ queryKey: ['sku-stock-photos'] }),
+      ]);
       router.refresh();
       onChanged?.();
       const added = files.length - failed;

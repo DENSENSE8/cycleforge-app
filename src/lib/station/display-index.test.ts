@@ -166,7 +166,7 @@ test('withLookDisplayIndexRow refreshes subtitle without duplicating', () => {
     {
       id: STATION_LOOK_DISPLAY_ID,
       label: 'Look',
-      subtitle: 'Industrial',
+      subtitle: 'Warehouse',
       tone: 'neutral',
       group: 'assets',
     },

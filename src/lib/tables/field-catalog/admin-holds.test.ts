@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '@/lib/tables/table-definition';
 import {
   ADMINHOLDS_COMPOUND_COLUMNS,
@@ -23,7 +23,7 @@ import {
 } from '@/lib/inventory/held-unit-row';
 import { ADMINHOLDS_FIELD_CATALOG, ADMINHOLDS_PRODUCT_LAYOUT } from './admin-holds';
 import { resolveAdminHoldsSlotValue } from './admin-holds-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /** Fetched by the query, painted by nothing, and not facts until one paints them. */
 const UNPAINTED_UNIT_COLUMNS = ['condition_grade', 'notes'] as const;
@@ -94,7 +94,7 @@ describe('admin-holds catalog', () => {
   });
 
   it('product default parses, and the UNIT ID is the identity', () => {
-    const parsed = parseSlotLayout(ADMINHOLDS_PRODUCT_LAYOUT, ADMINHOLDS_FIELD_CATALOG);
+    const parsed = ADMINHOLDS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'admin-holds.unit');
     // WHAT is quarantined and WHO quarantined it are the two tracks…
@@ -171,7 +171,7 @@ describe('admin-holds materialization', () => {
     const identity = ADMINHOLDS_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'admin-holds.unit');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Unit" is now the Fields-picker row
+    // (`data-table-family.ts`). "Unit" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -192,7 +192,7 @@ describe('admin-holds materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of ADMINHOLDS_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key) || col.key === '_fill') {
+      if (isDataTableChromeColumn(col.key) || col.key === '_fill') {
         assert.equal(adminHoldsSortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

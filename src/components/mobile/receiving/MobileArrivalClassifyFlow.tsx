@@ -106,7 +106,7 @@ export function MobileArrivalClassifyFlow({
         derivedLabel: 'platform',
         derivedTierEquivalent: null,
         // Mode vars, not raw slate: the chip paints in whichever mode the
-        // region resolves to (industrial on the phone).
+        // region resolves to triage on every device.
         autoActiveClass: 'border-mode-rule bg-mode-well text-mode-ink',
       }),
     [],

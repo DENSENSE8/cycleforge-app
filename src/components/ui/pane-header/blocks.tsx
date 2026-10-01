@@ -1,6 +1,13 @@
 'use client';
 
-import { Fragment, useRef, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
+import {
+  Fragment,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type SVGProps,
+} from 'react';
 import {
   ArrowRightToLine,
   ChevronDown,
@@ -231,87 +238,6 @@ export function PaneHeaderStatusPill({
   );
 }
 
-// ─── PaneHeaderTabs ───────────────────────────────────────────────────────── Segmented tab strip for the secondary row beneath the…
-
-interface PaneHeaderTab<TValue extends string> {
-  value: TValue;
-  label: ReactNode;
-  count?: number;
-}
-
-interface PaneHeaderTabsProps<TValue extends string> {
-  tabs: Array<PaneHeaderTab<TValue>>;
-  value: TValue;
-  onChange: (next: TValue) => void;
-  className?: string;
-  /** Condensed strip — tighter padding + smaller type for panes where the tab row competes for vertical space (e.g. */
-  dense?: boolean;
-  /** Far-right affordance on the tab row (e.g. Open in unbox). */
-  rightSlot?: ReactNode;
-}
-
-export function PaneHeaderTabs<TValue extends string>({
-  tabs,
-  value,
-  onChange,
-  className,
-  dense = false,
-  rightSlot,
-}: PaneHeaderTabsProps<TValue>) {
-  return (
-    <div
-      className={cn(
-        'flex min-w-0 items-center justify-between gap-2 bg-surface-card',
-        dense ? 'px-1 py-0.5' : 'px-2 py-1',
-        className,
-      )}
-    >
-      <div
-        role="tablist"
-        className={cn(
-          'flex min-w-0 items-center',
-          dense ? 'gap-0.5' : 'gap-1',
-        )}
-      >
-        {tabs.map((tab) => {
-          const active = tab.value === value;
-          return (
-            // ds-raw-button: segmented tab (role="tab" + aria-selected + active fill + count), not a Button/IconButton
-            <button
-              key={tab.value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => onChange(tab.value)}
-              className={cn(
-                'ds-raw-button inline-flex items-center font-semibold transition-colors',
-                dense
-                  ? 'gap-1 rounded px-2 py-1 text-role-caption'
-                  : 'gap-1.5 rounded-md px-3 py-1.5 text-xs',
-                active
-                  ? 'bg-surface-inverse text-white'
-                  : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
-              )}
-            >
-              <span>{tab.label}</span>
-              {tab.count != null ? (
-                <span
-                  className={cn(
-                    'tabular-nums',
-                    active ? 'text-white/70' : 'text-text-faint',
-                  )}
-                >
-                  {tab.count}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-      {rightSlot ? <div className="flex shrink-0 items-center">{rightSlot}</div> : null}
-    </div>
-  );
-}
 
 // ─── PaneHeaderActionBar ──────────────────────────────────────────────────── Horizontal utility toolbar — icon+label action buttons on…
 

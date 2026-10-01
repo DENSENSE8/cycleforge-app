@@ -49,6 +49,8 @@ export interface WorkOrderRow {
   catalogCategory?: string | null;
   serialNumber?: string | null;
   shipmentId?: number | string | null;
+  /** Backend-owned route: PICKUP is physical counter work; null/MFN is online fulfillment. */
+  fulfillmentChannel?: string | null;
   accountSource?: string | null;
   quantity?: string | null;
   /** Line sale — desk `orders.amount` under the title. */

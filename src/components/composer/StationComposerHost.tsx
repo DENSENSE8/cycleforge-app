@@ -7,13 +7,12 @@
  *   │  textarea… (auto-grows)                     │
  *   │ [+]              [Location] [↵] [Print?]    │  ← bottom action bar
  *   └─────────────────────────────────────────────┘
- *   [ Unbox ] [ Ticket ]                    ( ◠ )   ← BELOW outline
+ *   ( ◠ ring )                                          ← context row
  *
- * Shell is flex-col (field above tools). Station modes are Unbox | Ticket —
- * leftmost cluster under the outline (icons left of labels; Unbox blue,
- * Ticket orange). Ask is honored ONLY where a surface names it
- * (`modes={['ask']}` — the `/ai-chat` session panel); it is never a default
- * face, so a station never grows a second chat door.
+ * Shell is flex-col (field above tools). Header tasks own Ticket versus
+ * station work; this mouth does not paint Unbox | Ticket faces. Ask is
+ * honored ONLY where a surface names it (`modes={['ask']}` — the `/ai-chat`
+ * session panel), so a station never grows a second chat door.
  * Location pill sits in the bottom action bar left of Print and remains
  * mounted when the composer switches to Ticket.
  * Plus is circular. Enter is a bare gray icon. Unbox keeps Print·Receive;
@@ -38,7 +37,6 @@ import { useAssistantChat } from '@/components/assistant/useAssistantChat';
 import { useActiveAssistantContext } from '@/hooks/useAssistantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  classifyStationComposerModeKey,
   stationComposerModeAriaLabel,
   stationComposerModeKeepsTrailingAction,
   stationComposerModePlaceholder,
@@ -145,15 +143,10 @@ export type StationComposerHostProps = {
   onModeChange?: (mode: StationComposerMode) => void;
   modeRowLeading?: ReactNode;
   /**
-   * Always on. Pass `true` (or omit). Hide Unbox | Ticket with
-   * {@link showModeFaces} so the context ring stays. `false` is not on the type.
+   * Always on. The row under the outline is context and the procedure ring.
+   * `false` is not on the type — hiding the row deletes the context ring.
    */
   showModeRow?: true;
-  /**
-   * When false (with the mode row still mounted), hide Unbox | Ticket and keep
-   * only the bottom-right context / procedure ring — dumb scan mouths.
-   */
-  showModeFaces?: boolean;
   /**
    * Pin Unbox vs Ticket vs Ask regardless of `?composerMode=` / session.
    */
@@ -252,7 +245,6 @@ export function StationComposerHost({
   ticketFooterStart,
   onModeChange,
   modeRowLeading,
-  showModeFaces = true,
   forceMode,
   modes,
   askOwnedBySurface = false,
@@ -266,7 +258,7 @@ export function StationComposerHost({
   onProgressClick,
   className,
 }: StationComposerHostProps) {
-  const { mode: sessionMode, setMode, cycleMode } = useStationComposerMode();
+  const { mode: sessionMode, setMode } = useStationComposerMode();
   // The honored set, in catalog order. A mouth that names one mode resolves to
   // it no matter what the shared session / `?composerMode=` says, and a shared
   // mode this mouth cannot honor falls back to the first one it can.
@@ -390,35 +382,6 @@ export function StationComposerHost({
       : (labelPlaceholder ?? stationComposerModePlaceholder(mode, { ticketLabel, hasTicket }))
     : stationComposerModePlaceholder(mode, { ticketLabel, hasTicket });
 
-  // DOCUMENT-scoped, not textarea-scoped (2026-08-31). These chords hung off
-  // the composer's own onKeyDown, so they only fired while the field had focus
-  // — which is exactly when an operator is NOT reaching for them. Someone who
-  // just scanned a box, or who is reading the ticket thread, pressed ⌥2 and
-  // nothing happened.
-  //
-  // Bubble phase, so a control that legitimately owns the chord can stop it
-  // first. preventDefault is what takes Shift+Tab off reverse focus traversal
-  // for this surface — the deliberate trade the operator made for one toggle.
-  //
-  // Two mounted hosts both firing is harmless: `cycleMode` derives the next
-  // mode from the CURRENT one rather than toggling, so both compute the same
-  // target and the second call is a no-op write.
-  useEffect(() => {
-    // A mouth that honors one mode has nothing to cycle, and cycleMode writes
-    // the SHARED session mode — a chord here would move every other mouth.
-    if (singleMode) return;
-    const onKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (!classifyStationComposerModeKey(e)) return;
-      e.preventDefault();
-      cycleMode();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [cycleMode, singleMode]);
-
-  // The textarea still delegates to the host's ghost-autocomplete handler; the
-  // mode chords are no longer handled here — the document listener above owns
-  // them, and handling them twice would cycle twice.
   const handleModeKey = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (onTextareaKeyDown?.(e)) return true;
@@ -668,8 +631,6 @@ export function StationComposerHost({
       {inlineComposerRow ? null : (
       <ComposerModeRow
         mode={mode}
-        onModeChange={setMode}
-        showModeFaces={showModeFaces}
         progressPercent={progressPercent}
         progressTone={progressTone}
         onProgressClick={onProgressClick}

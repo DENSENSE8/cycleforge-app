@@ -49,8 +49,7 @@ Material); expressiveness follows the **moment** (Carbon). Cycle Forge's mode-pe
 
 | Mode | Purpose | Jobs |
 |---|---|---|
-| `industrial` | the person on the floor doing it now — most rows, fastest hands | queue, ~~pick~~ (§14: triage), pack, scan-out, unbox, label intake, inventory |
-| `triage` | understand one thing, then decide; managers/overseers change rules that update industrial | arrival + exception triage, QC, repair, support, rule edits |
+| `triage` | understand one thing, then decide or act | ordinary desktop and mobile work |
 | `counter` | staff + customer read one screen; Square/Shopify-POS simple | kiosk, counter, walk-in, pickup |
 | `assistant` | talking to the AI; job progress; live notifications | AI rail, `/ai-chat` |
 
@@ -58,35 +57,8 @@ Hit size follows the **device** (touch vs pointer), not a mode.
 
 ## 4. Dials per mode
 
-### industrial — **Approved** (Q4a) except canvas **Changed** (Q11)
-| Dial | Touch / desk |
-|---|---|
-| Page padding | 0, edge-to-edge; rows separated by 1 px rules |
-| Spacing | 4 px base, 8 inside bands, ≤12; **no density multiplier** (Changed) |
-| Radius | 0 everywhere |
-| Row | touch: 5 pt spine · 108 pt photo · 3 × 36 pt bands. Desk: see §4a and the To-ship handoff. **Row zoom per list (S/M/L) + app zoom per staff** (Changed) |
-| Labels | mono 9–10 pt heavy uppercase, 0.08 em |
-| Values | IDs/SKUs/serials mono bold 12–13; titles sans bold 15 |
-| State | spine + **state icon + state code** `RDY URG PKD OOS SHP` beside it; selection = 2 px ink outline; tint/details on hover or selection. **Approved (owner, 2026-09-25):** each code is led by its `LIFECYCLE` icon — circle-dot · alarm-clock · package · package-x · truck · circle-pause — so state reads by shape as well as colour. **Changed (owner, 2026-09-25): no row wash for any state** — the pink out-of-stock fill is gone (red on pink was 4.41:1); out of stock is carried by the hatched spine + `OOS` code on white |
-| Borders | 1 px rules, no shadows |
-| Grain | **Approved (owner, 2026-09-25): grain is a depth ladder — rougher = deeper.** SVG noise tile per surface role: well (photo slot, sunken troughs) 3 % coarse · canvas 7 % medium · bar (tabs, toolbar, evidence column, group bands) 7 % fine · ink fills (active tab, pressed segment) 12 %. The white row panel and anything raised over it carry none. Rides both `bg-mode-*` and the remapped `bg-surface-sunken` / `bg-surface-canvas` inside a light region, so every component gets it; zero specificity, so a component's own background image wins. Light scheme only. No amber text on a well. Opacity is capped by contrast (7 % keeps urgent ink ≥ 4.5:1 at a full-black noise pixel); depth is carried by speck size. Guard: `modes.guard.test.ts`. Bar segment labels (tabs, bar actions) are mono **11 px** so light-on-ink text holds up over the grain |
-| Imagery | photo fills its square |
-| Motion | none, **except the one fixed scan-status spot** (≤150 ms; motion.dev on web, native elsewhere) |
-| Hit | touch 48 (bottom sheet for details / exact actions); desk 32 |
-| Trailing edge | **Approved (owner, 2026-09-25):** every right-edge glyph of a row or evidence fact (+/−, open ↗, edit ✎, a picker's ⌄) sits centred in one 32 px trailing cell flush with the content edge — one vertical axis. `RECORD_TRAILING_CELL_CLASS` / `RECORD_TRAILING_GLYPH_INSET_CLASS` (`tokens/industrial-record.ts`); facts and sections mount `record-ledger/EvidenceDisclosure`. Pinned in `pinned.json` (`EvidenceDisclosure`, `SearchableSelectField`) |
-| Surfaces | **canvas `#fafafa`** (Changed from `#ecece8`), bar `#f8f8f4`, rows `#fff`, ink `#10110f`, muted `#535650`, rule `#cacbc5`, edge `#b7b8b0`, well `#e6e7e1`, urgent text `#8a5f00` |
-
 ### triage — **Approved** (Q4b)
-> **Changed (owner, 2026-09-24): one language, two densities.** Triage no longer has its own
-> identity. It shares industrial's warm greys (`#10110f` / `#cacbc5` …), **radius 0**, warning
-> ink and label voice (mono heavy caps for labels and codes, sans for values). Triage differs
-> from industrial in **space only** — page padding 12/16, body 14/16, hit, motion. The slate
-> palette and the 4px radius below are **superseded** for triage (they remain for `counter` /
-> `assistant`, which keep their own identity). Source: `OPERATIONAL_BASE` in
-> `packages/design-tokens/src/modes.ts`; CI guard: `src/design-system/modes/modes.guard.test.ts`
-> (fails if an operational mode overrides anything but density, if a new mode is neither in the
-> family nor exempted by name, or if a triage corner constant rounds).
-Padding 12 desk / 16 touch · 4 px base, 8/12/16 · **radius 4** · evidence stack: what it is →
+Padding 12 desk / 16 touch · 4 px base, 8/12/16 · **10px cards, 8px controls, pill chips** · evidence stack: what it is →
 evidence (photos, logs, timeline) → decision bar (2–4 verbs, bottom on touch) · body 14/16,
 lh 1.45 · mono labels/IDs · neutral decisions, primary = ink fill · 1 px rules, one shadow level for
 sheets · evidence photos full-frame, 2–3 col, tap to zoom · ≤120 ms opacity crossfade; decisions
@@ -110,8 +82,6 @@ composer (delete the private textareas) · body 15/16, lh 1.6 · AI accent colou
 pending-jobs button, AI notifications in Activity Inbox, composer unification — "a later
 triageable task".
 
-**Radius ladder across modes — Changed (2026-09-24):** industrial 0 · triage **0** (shared identity) · counter 12 + pill · assistant 12 + pill.
-
 ## 5. Invariants — **Approved** with state colours **Changed** (Q5)
 
 Never change by mode or region: brand mark · state meanings · state codes · data vocabulary
@@ -132,14 +102,12 @@ fills, spines, dots and tints keep `#16a34a` / `#ea580c`.
 
 "The mode is decided by the job in the region." Route + region → mode, fixed. Role → which pages
 you land on, never a page's mode. Device → hit size, sheet vs rail. User → app zoom, row zoom,
-light/dark; **no mode switcher**. AI/automations run in assistant; their effects show in industrial.
+light/dark; **no mode switcher**. AI/automations run in assistant; their effects appear in triage.
 
 **Nesting — Approved (Q3):** by region, one level deep: page mode + right-rail mode (triage for a
 record, assistant for the AI; one right-edge slot, detail outranks assistant). Edits: one fact on
-one order → inline (industrial); understand one order → rail (triage); rule for many orders →
+one order → inline; understand one order → rail; rule for many orders →
 rules view or AI with a triage-style preview before apply.
-*Industrial desks override the rail for records — see §11 "Changed": the record opens in the
-desk's evidence column. The rail keeps the assistant.*
 
 ## 7. Platforms — **Changed** (Q7, Q7b)
 
@@ -174,8 +142,6 @@ per mode → component.
 
 ```ts
 // packages/design-tokens/src/modes.ts (shape)
-industrial: { canvas: '#fafafa', ink: '#10110f', rule: '#cacbc5', radius: 0, pagePad: 0,
-              hitMin: { touch: 48, desk: 32 }, motion: { feedback: 150 } },
 triage:     { canvas: '#fafafa', ink: '#0f172a', rule: '#e2e8f0', radius: 4,
               pagePad: { touch: 16, desk: 12 }, hitMin: { touch: 48, desk: 32 }, motion: { feedback: 120 } },
 ```
@@ -195,16 +161,7 @@ CSS injected by `src/app/layout.tsx`, mounts on `/shipping`, `/pack`, `/m/pick`,
 
 ## 11. First slice — **Approved** (Q10, Q11)
 
-Outbound **To ship** (`/shipping/orders`): replace the slot DataTable with the industrial record
-ledger. Spec and prompt: [`HANDOFF-outbound-to-ship-ledger.md`](./HANDOFF-outbound-to-ship-ledger.md).
-
-**Changed (owner, 2026-09-24, after the first slice landed):** on an industrial desk the open
-record reads in an **evidence column** beside the ledger (the desktop terminal's
-`.evidence-panel`), never in the right rail and never over the rows — "the right rail components
-are terrible and not used properly for this use case". **Location** leads the context band (between
-the state code and the platform); **condition** sits beside the select box. The desk frame is one
-full-width **industrial bar** (modes as flush segments, no page title row). Port spec and prompt:
-[`HANDOFF-industrial-record-ledger.md`](./HANDOFF-industrial-record-ledger.md).
+Outbound **To ship** (`/shipping/orders`) uses the readable record and evidence-column presentation.
 
 **Changed (owner, 2026-09-25):** the desk record's bands regroup by job. Band 1 is context —
 state · platform · order # ··· buyer · **listing** (right end, no hairline) · ship-by. Band 3 is
@@ -248,7 +205,7 @@ the QTY box and the note field.
 **Changed (owner, 2026-09-25):** preserve existing `staff.color_hex` values and choose
 pure black `#000000` or white `#ffffff` initials by whichever has higher WCAG contrast.
 `blackOrWhiteInk` supplies this decision to `IdentityMark` and the staff recipient list.
-The square industrial mark keeps its ring-free, mono bold uppercase initials.
+The identity mark keeps its ring-free initials.
 
 **Item 8a reverted (owner, 2026-09-25):** remove the muted/richer palette, colour mapping,
 palette restrictions and added Change color controls. Existing colour editors and arbitrary
@@ -256,21 +213,6 @@ hex choices remain as before. No staff records were recoloured. Only initials co
 black or white provides at least 4.5:1 contrast on every valid RGB background.
 
 ## 12. Owner rulings 2026-09-26
-
-**Changed — motion and density follow the task context, never the device.** One phone switches
-systems as the operator moves between routes (`/m/scan` → `/m/tasks`). Supersedes every motion
-line above that is keyed to a device, and the triage (≤120 ms crossfade) and assistant motion
-dials in §4. The context is the region's `ModeRegion mode` (`data-mode`); no second prop.
-
-| Context | Modes | Motion | Visuals |
-|---|---|---|---|
-| Industrial execution — scanning, picking, packing, clearing a physical queue | `industrial` | minimal to zero: no motion.dev layout transitions; a scan or a Pass tap lands the next record in 0 ms | 0 padding, flush grids, rigid high-contrast blocks |
-| Detective work and triage — task lists, exception investigation, order-history audit, AI chat | `triage`, `assistant` | expressive: motion.dev `layoutId` for opening sidebars / expanding details, staggered list enter/exit, deliberate AI thinking states, skeleton loaders | generous padding, structured hierarchy, clear type |
-
-Still law: §8 reduced motion turns every animation off in both contexts; touch hit floor 48 is
-accessibility, not density. **Approved (owner):** the industrial scan-status spot (≤150 ms, §4)
-stays — it is the one discoverable feedback for a scan. **Changed (owner):** `/m/scan` is
-`industrial` — scanning an item in or out needs no padding or display methods.
 
 **Changed — AI inference goes through Cloudflare AI Gateway only.** Vercel AI Gateway is
 removed completely (`GATEWAY_BASE` in `src/lib/ai/org-provider.ts`, the `ai_gateway` BYOK
@@ -285,26 +227,6 @@ doesn't matter, just do everything in the production work tree, face by face, st
 step, it doesn't matter if I commit a non-working design." Commit and push each face as
 it lands; red gates are reported, not blockers.
 
-**Changed (owner, 2026-09-26) — industrial on phones, triage on desktop.** "completely dropping
-the industrial design system display from desktop and mainly only displaying it on mobile."
-Supersedes "motion and density follow the task, never the device" (above) and triage's
-"one language, two densities" (§4b, 2026-09-24). Owner picks: **every desktop route = triage**;
-triage radius = **shadcn new-york default** (`--radius` 0.625rem: cards 10 px, controls 8 px,
-chips pill); triage palette = **shadcn neutral**. Industrial (0 radius, flush, 0 ms) stays the
-phone (`/m/*`, coarse pointer) system. **Mode C — hardware mirror:** a desktop view that mirrors
-a live phone renders industrial 1:1 (explicit `ModeRegion mode="industrial"`), never triage.
-Desktop triage gets motion.dev: row selection + a fixed-width floating selection bar that
-reward the action (owner: "high throughput animations and rewarding feedback and building trust").
-
-~~**Mode D — floor (owner 2026-09-26):** the one user-invoked industrial view on desktop. A desk
-whose list offers a floor face (To ship: `OutboundOrdersLedger`) enters it with **⌘/Ctrl+Shift+F**
-or the **Floor** button on the table's toolbar row; the stage view becomes `floor` (one enum with
-In place / Split, `DeskStageContext`), the page header, tab row and sidebar leave, and the route's
-page region paints `industrial` (square, caps, 0 ms). Records open In place. Floor is a session
-posture, never remembered; Esc (after closing the record / clearing checks) or **Exit floor**
-returns to the view it was entered from. Every other desktop view stays triage — the To-ship
-index face included.~~ **Withdrawn (owner 2026-09-28, §14):** no Floor on the desktop.
-
 **Repo diet (owner 2026-09-26):** dead source files, one-off scripts that already ran,
 `docs/todo/` and every screenshot under `docs/` are deleted; proof shots stay local
 (`docs/**/screenshots/` is gitignored).
@@ -314,8 +236,7 @@ index face included.~~ **Withdrawn (owner 2026-09-28, §14):** no Floor on the d
 ## 13. Owner rulings 2026-09-27
 
 **Motion rules abolished (owner 2026-09-27):** "Completely abolish any motion.dev animation
-rules." Supersedes every motion line in this brief (§4 dials, §11, §12 context matrix, the 0 ms
-industrial / floor posture, the ≤120 ms triage crossfade). Any surface may import `motion/react`
+rules." Supersedes every motion line in this brief. Any surface may import `motion/react`
 (or `@/design-system/motion`, which re-exports the whole engine) and animate as it sees fit;
 `motionRole` / `motion-presets` are optional presets, not law. The one thing kept is the OS
 "reduce motion" setting (`ReducedMotionProvider`, `MotionConfig reducedMotion="user"`) —
@@ -331,7 +252,7 @@ down from the card's right; two or more → the bar above the list becomes the b
 (owner, 2026-09-27):** selection verbs live only in the selection bar above the list — same verbs,
 same order, same place for 1 or N checked, disabled with a reason, never hidden; single-card verbs
 live only in fixed card spots (⋮ at line 1 far right, identity ↗, stage-chip popovers). No column
-header. ~~Floor keeps the industrial ledger.~~ (Floor withdrawn 2026-09-28, §14.)
+header.
 
 **Changed (owner, 2026-09-27) — card line 1:** order number · ↗ (always-visible link to the
 platform's admin order page). Hovering the NUMBER flies out its menu — "Copy order ID" and "Edit
@@ -382,8 +303,7 @@ Packed by rows all read `orderStage` (`src/lib/orders/order-stages.ts`). Done �
 
 ## 14. Owner rulings 2026-09-28
 **Status grammar (owner 2026-09-28).** Triage uses one sentence-case soft
-status pill with tone tint, outline, text, and a distinct state icon; industrial
-keeps the solid code chip. Cards show state once through their rail and icon,
+status pill with tone tint, outline, text, and a distinct state icon. Cards show state once through their rail and icon,
 one-row density shows the pill, and record headers show one `LifecycleCode`.
 No title-line duplicate or body state strip.
 
@@ -392,23 +312,7 @@ No title-line duplicate or body state strip.
 triaging experience … a thinking task, an investigating and finding task, not go as fast as you
 can." Every `/m/pick*` surface (the To-pick list, Next pick, scan bin, confirm unit, tote, short
 pick, notes) resolves `triage` on a phone and paints the triage look: mode radius, pills, chips.
-Pack and scan-out stay `industrial`. Supersedes `pick` in the §2 Fast list and the §3
-`industrial` row, `HANDOFF-lane-mode-policy.md` §3.5 / Prompt step 4 ("`/m/pick` … unchanged
-industrial"), and the 2026-09-25 "no queue to read" on `/m/pick`.
-
-**Changed — no Floor; industrial is the mobile ACTION surface only (owner 2026-09-28).** "Remove
-the Floor / industrial display across the entire desktop … The industrial edge-to-edge look is only
-viable for a mobile button — on iPad and on phone — for immediately taking action on a task in the
-warehouse." Supersedes Mode D (§12), "Floor keeps the industrial ledger" (§13),
-`HANDOFF-lane-mode-policy.md` §1 and the Floor half of `MODE-SPLIT-INVENTORY.md` decision 6.
-- **Desktop:** every desk is triage and offers exactly **In place / Split** (⌘/Ctrl+Shift+S). No
-  Floor view, no ⌘/Ctrl+Shift+F, no `runtime` routes, no `flush` industrial desk frame. A desk list
-  is the triage card list (`TriageCardList`) or its one-row density; `RecordLedger` /
-  `IndustrialRecord` never mount on a desk.
-- **Phone and iPad:** the ROUTE declares the mode — no device collapse (a coarse pointer no longer
-  turns a desk industrial). Only `/m/*` operation flows (a scan or tap that moves a thing to its
-  next operation, big pressable next step) declare `industrial`; `/m/*` reading flows (tasks, home,
-  imports, order lists, exceptions, forms) are triage.
+The whole `/m/pick*` flow uses the same triage presentation as every other ordinary application route.
 
 **One To-pick count (2026-09-28):** the phone's pick counts equal the desk's FBM → Allocate
 chips exactly: same `/api/orders` feed, same per-order grouping, same `recordState` tally. A

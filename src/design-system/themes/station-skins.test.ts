@@ -12,12 +12,11 @@ import {
 } from './station-skins';
 
 describe('station-skins catalog', () => {
-  it('lists every registry name and keeps industrial as the default mill', () => {
-    assert.equal(DEFAULT_STATION_SKIN, 'industrial');
+  it('lists every registry name and keeps porcelain as the readable default', () => {
+    assert.equal(DEFAULT_STATION_SKIN, 'porcelain');
     assert.deepEqual(STATION_SKIN_NAMES, Object.keys(STATION_SKINS));
-    assert.ok(STATION_SKIN_NAMES.length >= 16);
-    assert.equal(STATION_SKINS.industrial.group, 'mill');
-    assert.ok(!('grain' in STATION_SKINS.industrial));
+    assert.ok(STATION_SKIN_NAMES.length >= 15);
+    assert.equal(STATION_SKINS.porcelain.group, 'material');
   });
 
   it('every skin covers the station var keys including ink and a picker group', () => {
@@ -46,7 +45,7 @@ describe('station-skins catalog', () => {
     assert.match(css, /--ds-color-background-canvas:\s*var\(--ds-station-well\)/);
     assert.match(css, /--ds-color-text-soft:\s*var\(--ds-station-ink-muted\)/);
     for (const name of STATION_SKIN_NAMES) {
-      if (name === 'industrial') continue;
+      if (name === DEFAULT_STATION_SKIN) continue;
       assert.match(css, new RegExp(`html\\[data-station-skin='${name}'\\]`));
     }
   });
@@ -68,16 +67,16 @@ describe('station-skins catalog', () => {
     assert.match(skin.vars.plate, /--ds-color-accent-bg/);
     assert.doesNotMatch(skin.vars['bevel-shadow'], /accent/);
     assert.doesNotMatch(skin.vars['bevel-highlight'], /accent/);
-    assert.equal(skin.vars.well, STATION_SKINS.industrial.vars.well);
-    assert.equal(skin.vars.ink, STATION_SKINS.industrial.vars.ink);
+    assert.equal(skin.vars.well, STATION_SKINS.porcelain.vars.well);
+    assert.equal(skin.vars.ink, STATION_SKINS.porcelain.vars.ink);
   });
 
   it('coal ink is light for dark plates', () => {
     assert.match(STATION_SKINS.coal.vars.ink, /#f4efe8/i);
   });
 
-  it('unknown names resolve to industrial', () => {
-    assert.equal(resolveStationSkin('leather').name, 'industrial');
+  it('unknown names resolve to porcelain', () => {
+    assert.equal(resolveStationSkin('leather').name, 'porcelain');
     assert.equal(isStationSkinName('matcha'), true);
     assert.equal(isStationSkinName('leather'), false);
   });

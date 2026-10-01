@@ -44,7 +44,6 @@
     ".next-perf-lh/dev/types/**/*.ts",
     ".next-vercel/types/**/*.ts",
     ".next-vercel/dev/types/**/*.ts",
-    ".next-perf/dev/types/**/*.ts",
     ".next-perf-client/types/**/*.ts",
     ".next-perf-client/dev/types/**/*.ts",
     ".next-perf-client-after/types/**/*.ts",

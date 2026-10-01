@@ -26,7 +26,7 @@ export function staffLoginClockFace(iso: string | null | undefined): string | nu
   return d ? format(d, 'h:mm a') : null;
 }
 
-/** Compact civil face for the Dates Hash line — no year (slot-table date law). */
+/** Compact civil face for the Dates Hash line — no year (DataTable date law). */
 function civilFace(iso: string | null | undefined): { label: string; dateKey: string } | null {
   const d = parseInstant(iso);
   return d ? { label: format(d, 'MMM d'), dateKey: format(d, 'yyyy-MM-dd') } : null;

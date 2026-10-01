@@ -3,7 +3,7 @@
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { useResolveClaimException } from '@/hooks/exceptions';
 import type { CartonExceptionFacts } from '@/lib/exceptions/facts';
 import type { ExceptionRow } from '@/lib/exceptions/types';

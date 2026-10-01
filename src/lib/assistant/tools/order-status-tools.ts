@@ -18,7 +18,6 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { brandReportEnvelope } from '@/lib/assistant/tool-artifact';
 import { ORDER_ROW_FLAG_IDS, resolveOrderRowFlag, type OrderRowFlagId } from '@/lib/orders/order-row-flags';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
-import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
 import { loadPackedOnToShip } from '@/lib/outbound/packed-on-to-ship';
 import {
   buildConfirmableWriteTool,
@@ -332,16 +331,36 @@ const scanFields = z.object({
     .string()
     .max(20000)
     .optional()
-    .describe('Only these order #s (as pasted). Omit for every packed order still on To ship.'),
+    .describe('Only these order #s (as pasted). Omit for every packed identification still on To ship, including unfound labels.'),
 });
 type ScanPayload = { shipments: Array<{ shipmentId: number; tracking: string }>; staffId: number | null };
 
-const SCANNED_SQL = `SELECT o.id, o.order_id, o.product_title, o.shipment_id, stn.tracking_number_raw AS tracking,
-       ${sqlOrderHasShipConfirm('o')} AS scanned_out
-  FROM orders o
-  JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
- WHERE o.organization_id = $1 AND o.shipment_id = ANY($2::int[])
- ORDER BY o.order_id, o.id`;
+const SCANNED_SQL = `SELECT packed.shipment_id,
+       COALESCE(o.order_id, '(unfound)') AS order_id,
+       COALESCE(o.product_title, '') AS product_title,
+       COALESCE(stn.tracking_number_raw, packed.scan_ref, '') AS tracking,
+       EXISTS (
+         SELECT 1 FROM station_activity_logs sal_out
+          WHERE sal_out.organization_id = $1
+            AND sal_out.shipment_id = packed.shipment_id
+            AND sal_out.activity_type = 'SHIP_CONFIRM'
+       ) AS scanned_out
+  FROM (
+    SELECT DISTINCT ON (pl.shipment_id)
+           pl.shipment_id,
+           pl.scan_ref
+      FROM packer_logs pl
+     WHERE pl.organization_id = $1
+       AND pl.tracking_type = 'ORDERS'
+       AND pl.completion_state = 'COMPLETED'
+       AND pl.shipment_id = ANY($2::int[])
+     ORDER BY pl.shipment_id, pl.created_at DESC NULLS LAST, pl.id DESC
+  ) packed
+  LEFT JOIN shipping_tracking_numbers stn ON stn.id = packed.shipment_id
+  LEFT JOIN orders o
+    ON o.organization_id = $1
+   AND o.shipment_id = packed.shipment_id
+ ORDER BY o.order_id NULLS LAST, o.id NULLS LAST, packed.shipment_id`;
 
 const MAX_SHIPMENTS = 500;
 
@@ -350,9 +369,9 @@ const scanOutSpec: ConfirmableWriteSpec<typeof scanFields, ScanPayload> = {
   kind: 'order.scan_out',
   permission: 'shipping.mark_shipped',
   description:
-    'Scan out PACKED orders still on the To ship desk (record that the cartons left the building) — all of them, or only pasted order #s. Two steps: action "propose" shows a table of exactly which orders will be scanned out with the count and returns needs_confirmation — ASK the user to confirm and stop. Next message: "confirm" (yes) or "cancel" (no).',
+    'Scan out every PACKED identification still on the To ship desk (record that the cartons left the building), including unfound labels, or only cartons for pasted order #s. Two steps: action "propose" shows a table of exactly which identifications will be scanned out with the count and returns needs_confirmation — ASK the user to confirm and stop. Next message: "confirm" (yes) or "cancel" (no).',
   fields: scanFields,
-  pendingPhrase: (p) => `scan out ${plural(p.shipments?.length ?? 0, 'packed carton')}`,
+  pendingPhrase: (p) => `scan out ${plural(p.shipments?.length ?? 0, 'packed identification')}`,
   propose: async (ctx, input, deps): Promise<ProposeOutcome<ScanPayload>> => {
     const tokens = tokensOf(ctx, input.orders);
     if ('error' in tokens) return { ok: false, error: tokens.error };
@@ -367,7 +386,7 @@ const scanOutSpec: ConfirmableWriteSpec<typeof scanFields, ScanPayload> = {
     }
     const packed = rowIds && rowIds.length === 0 ? [] : await loadPackedOnToShip(ctx.organizationId, rowIds);
     if (packed.length > MAX_SHIPMENTS) {
-      return { ok: false, error: `${packed.length} packed cartons are on To ship — more than ${MAX_SHIPMENTS} at once. Ask the user to paste the order numbers to scan out. Nothing was changed.` };
+      return { ok: false, error: `${packed.length} packed identifications are on To ship — more than ${MAX_SHIPMENTS} at once. Ask the user to paste the order numbers to scan out. Nothing was changed.` };
     }
     const onDesk = new Set(packed.flatMap((s) => s.order_row_ids.map(Number)));
     const orderNumbers = new Set(named.filter((l) => !onDesk.has(l.id)).map((l) => l.orderNumber));
@@ -375,22 +394,23 @@ const scanOutSpec: ConfirmableWriteSpec<typeof scanFields, ScanPayload> = {
       if (!named.some((l) => l.orderNumber === n && onDesk.has(l.id))) unmatched.push({ token: n, why: 'not packed on To ship, or already scanned out' });
     }
     const columns = ['Order #', 'Tracking', 'Channel', 'Packed'];
-    const rows = packed.flatMap((s) =>
-      s.order_ids.map((orderId) => ({
-        'Order #': orderId,
+    const rows = packed.flatMap((s) => {
+      const common = {
         Tracking: s.tracking,
-        Channel: s.account_source,
+        Channel: s.account_source ?? '(unfound)',
         Packed: new Date(s.packed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
-      })),
-    );
+      };
+      return s.order_ids.length
+        ? s.order_ids.map((orderId) => ({ 'Order #': orderId, ...common }))
+        : [{ 'Order #': '(unfound)', ...common }];
+    });
     if (packed.length === 0) {
-      const summary = `No packed orders ${tokens.length ? 'among those' : 'are waiting on To ship'} — nothing to scan out.${unmatchedSentence(unmatched)}`;
+      const summary = `No packed identifications ${tokens.length ? 'among those' : 'are waiting on To ship'} — nothing to scan out.${unmatchedSentence(unmatched)}`;
       return { ok: true, answer: unmatched.length
         ? brandReportEnvelope({ artifact: table("Couldn't match", columns, withUnmatched([], unmatched, columns, 'Packed')), summary, answer: summary }, BULK_SCAN_OUT_TOOL)
         : { ok: true, status: 'no_change', summary } };
     }
-    const orders = new Set(rows.map((r) => r['Order #'])).size;
-    const counted = `${plural(orders, 'order')} on ${plural(packed.length, 'carton')}`;
+    const counted = plural(packed.length, 'identification');
     return {
       ok: true,
       payload: { shipments: packed.map((s) => ({ shipmentId: Number(s.shipment_id), tracking: s.tracking })), staffId: ctx.staffId },
@@ -409,18 +429,19 @@ const scanOutSpec: ConfirmableWriteSpec<typeof scanFields, ScanPayload> = {
     const ids = payload.shipments.map((s) => s.shipmentId);
     const rows = (await deps.query(ctx.organizationId, SCANNED_SQL, [ctx.organizationId, ids])).rows;
     const out = rows.filter((r) => r.scanned_out === true);
-    const refused = rows.length - out.length;
+    const outShipments = new Set(out.map((r) => Number(r.shipment_id))).size;
+    const refused = new Set(rows.filter((r) => r.scanned_out !== true).map((r) => Number(r.shipment_id))).size;
     const columns = ['Order #', 'Tracking', 'Item', 'Result'];
     return brandReportEnvelope(
       {
-        artifact: table(`Scanned out · ${plural(out.length, 'order')}`, columns, rows.slice(0, TABLE_ROWS).map((r) => ({
-          'Order #': String(r.order_id ?? ''),
+        artifact: table(`Fulfilled · ${plural(outShipments, 'identification')}`, columns, rows.slice(0, TABLE_ROWS).map((r) => ({
+          'Order #': String(r.order_id ?? '(unfound)'),
           Tracking: String(r.tracking ?? ''),
           Item: String(r.product_title ?? ''),
-          Result: r.scanned_out === true ? 'Scanned out' : 'Not scanned out (refused: cancelled or delivered)',
+          Result: r.scanned_out === true ? 'Fulfilled' : 'Not fulfilled (refused)',
         }))),
-        summary: `Done: ${plural(out.length, 'order')} scanned out (change #${mutationId}).${refused ? ` ${refused} refused by the scan-out check (cancelled or already delivered).` : ''}`,
-        answer: `Done — ${plural(out.length, 'order')} scanned out.${refused ? ` ${refused} refused (cancelled or delivered).` : ''}`,
+        summary: `Done: ${plural(outShipments, 'identification')} fulfilled (change #${mutationId}).${refused ? ` ${refused} refused by the scan-out check.` : ''}`,
+        answer: `Done — ${plural(outShipments, 'identification')} fulfilled.${refused ? ` ${refused} refused.` : ''}`,
       },
       BULK_SCAN_OUT_TOOL,
     );

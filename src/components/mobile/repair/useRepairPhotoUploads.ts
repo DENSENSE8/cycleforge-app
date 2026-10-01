@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CapturedShot } from '@/components/mobile/station/MobilePackerSpamCamera';
+import type { CapturedShot } from '@/components/mobile/photos/MobileNativePhotoCapture';
 import { uploadRepairPhoto } from '@/lib/repair/repair-photos';
 import { uploadVideoClient } from '@/lib/photos/video-upload-client';
 

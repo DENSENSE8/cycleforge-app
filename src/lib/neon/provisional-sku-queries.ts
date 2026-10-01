@@ -108,7 +108,8 @@ const PROVISIONAL_SELECT = `
     FROM sku_stock ss
     LEFT JOIN staff st ON st.id = ss.provisional_created_by
     LEFT JOIN LATERAL (
-      SELECT COUNT(*)::int AS photo_count, MIN(l.photo_id) AS cover_photo_id
+      SELECT COUNT(*)::int AS photo_count,
+             (ARRAY_AGG(l.photo_id ORDER BY l.sort_order ASC NULLS LAST, l.photo_id ASC))[1] AS cover_photo_id
         FROM photo_entity_links l
        WHERE l.organization_id = ss.organization_id
          AND l.entity_type = 'SKU_STOCK'
@@ -208,6 +209,61 @@ export async function listProvisionalSkus(orgId: OrgId): Promise<ProvisionalSku[
   return result.rows.map(toProvisional);
 }
 
+/**
+ * Delete a placeholder that never held stock anywhere (the bulk cleanup verb
+ * for rows like `Item at <barcode>`). Refused while any bin row or serial unit
+ * still names it — a placeholder that holds stock must be PAIRED, not deleted.
+ */
+export async function deleteProvisionalSku(
+  sku: string,
+  orgId: OrgId,
+): Promise<{ stockId: number; title: string | null }> {
+  const trimmed = sku.trim();
+  return withTenantTransaction(orgId, async (db) => {
+    const placeholder = await db.query<{ id: number; product_title: string | null }>(
+      `SELECT id, product_title FROM sku_stock
+        WHERE organization_id = $1 AND sku = $2 AND is_provisional = true
+        FOR UPDATE`,
+      [orgId, trimmed],
+    );
+    const row = placeholder.rows[0];
+    if (!row) throw new Error(`No on-hold product named ${trimmed}`);
+
+    const holds = await db.query<{ n: number }>(
+      `SELECT (
+         (SELECT COUNT(*) FROM bin_contents bc
+           WHERE bc.organization_id = $1 AND bc.sku = $2 AND bc.qty <> 0)
+         + (SELECT COUNT(*) FROM serial_units su
+              WHERE su.organization_id = $1 AND su.sku = $2)
+       )::int AS n`,
+      [orgId, trimmed],
+    );
+    if (Number(holds.rows[0]?.n) > 0) {
+      throw new Error('Refused: this placeholder holds stock — pair it to its real SKU instead of deleting it.');
+    }
+
+    // Its photos describe nothing once the placeholder goes; the links follow.
+    await db.query(
+      `DELETE FROM photo_entity_links
+        WHERE organization_id = $1 AND entity_type = 'SKU_STOCK' AND entity_id = $2`,
+      [orgId, row.id],
+    );
+    await db.query(
+      `DELETE FROM bin_contents WHERE organization_id = $1 AND sku = $2`,
+      [orgId, trimmed],
+    );
+    await db.query(
+      `DELETE FROM sku_stock WHERE organization_id = $1 AND sku = $2 AND is_provisional = true`,
+      [orgId, trimmed],
+    );
+    await db.query(
+      `DELETE FROM sku_catalog WHERE organization_id = $1 AND sku = $2 AND is_provisional = true`,
+      [orgId, trimmed],
+    );
+    return { stockId: Number(row.id), title: row.product_title };
+  });
+}
+
 /** How many open placeholders {@link listProvisionalSkus} returns — its WHERE, without the display laterals. */
 export async function countProvisionalSkus(orgId: OrgId): Promise<number> {
   const result = await tenantQueryOneTrip<{ n: number }>(
@@ -238,7 +294,7 @@ export async function getProvisionalSkuDetail(
         AND l.entity_type = 'SKU_STOCK'
         AND l.entity_id = $2
         AND l.link_role = 'primary'
-      ORDER BY p.created_at ASC, p.id ASC`,
+      ORDER BY l.sort_order ASC NULLS LAST, l.photo_id ASC`,
     [orgId, row.id],
   );
   return {
@@ -497,9 +553,24 @@ export async function mergeProvisionalSku(
 
     // The photos describe the physical product, so they follow it. A photo
     // already linked to the target keeps that link and the duplicate goes.
+    // The target's current display order is pinned first (explicit 1-based
+    // sort_order) and the moved links land with NULL sort_order — after it —
+    // so pairing never changes the real SKU's main photo.
+    await db.query(
+      `UPDATE photo_entity_links l
+          SET sort_order = o.pos
+         FROM (
+           SELECT id, ROW_NUMBER() OVER (ORDER BY sort_order ASC NULLS LAST, photo_id ASC)::int AS pos
+             FROM photo_entity_links
+            WHERE organization_id = $1 AND entity_type = 'SKU_STOCK' AND entity_id = $2
+              AND link_role = 'primary'
+         ) o
+        WHERE l.id = o.id`,
+      [orgId, targetStockId],
+    );
     const moved = await db.query(
       `UPDATE photo_entity_links l
-          SET entity_id = $3
+          SET entity_id = $3, sort_order = NULL
         WHERE l.organization_id = $1 AND l.entity_type = 'SKU_STOCK' AND l.entity_id = $2
           AND NOT EXISTS (
             SELECT 1 FROM photo_entity_links t

@@ -12,7 +12,7 @@ import { getSidebarPageNav, spineSectionIdForPage, type SpineSectionId } from '@
 
 export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Record<string, string>>>>> = {
   // Scan Stations mirrors the contextual parent switcher.
-  floor: { a: 'triage', u: 'receive', q: 'testing', p: 'ready-to-pack', k: 'packer', s: 'scan-out' },
+  floor: { l: 'stations-live', a: 'triage', u: 'receive', q: 'testing', p: 'ready-to-pack', k: 'packer', s: 'scan-out' },
   fulfillment: { s: 'outbound', f: 'fba', l: 'label-intake' },
   inbound: { d: 'incoming', p: 'pickup', r: 'repair', s: 'sourcing' },
   inventory: { i: 'inventory', q: 'qc-labels' },

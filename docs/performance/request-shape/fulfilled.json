@@ -1,0 +1,306 @@
+{
+  "url": "http://localhost:3117/fulfilled",
+  "ttfb": 1236,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 1573,
+      "end": 2270,
+      "ms": 697,
+      "bytes": 324
+    },
+    {
+      "url": "/api/v1/print-stations",
+      "start": 1574,
+      "end": 2269,
+      "ms": 696,
+      "bytes": 390
+    },
+    {
+      "url": "/api/nav/context?path=%2Ffulfilled",
+      "start": 1575,
+      "end": 2074,
+      "ms": 499,
+      "bytes": 2194
+    },
+    {
+      "url": "/api/inbox?filter=unread",
+      "start": 1576,
+      "end": 2816,
+      "ms": 1240,
+      "bytes": 29932
+    },
+    {
+      "url": "/api/sync/global",
+      "start": 1576,
+      "end": 1781,
+      "ms": 205,
+      "bytes": 1782
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 1578,
+      "end": 2075,
+      "ms": 497,
+      "bytes": 3240
+    },
+    {
+      "url": "/api/packerlogs/hydrate",
+      "start": 1781,
+      "end": 2060,
+      "ms": 279,
+      "bytes": 11835
+    },
+    {
+      "url": "/api/nav/facets?context=outbound.shipped",
+      "start": 1782,
+      "end": 2724,
+      "ms": 942,
+      "bytes": 1403
+    },
+    {
+      "url": "/api/settings?page=desk",
+      "start": 1783,
+      "end": 2172,
+      "ms": 389,
+      "bytes": 1862
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 1852,
+      "end": 2649,
+      "ms": 797,
+      "bytes": 6104
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 1870,
+      "end": 3000,
+      "ms": 1130,
+      "bytes": 606
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 1871,
+      "end": 2541,
+      "ms": 670,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 1871,
+      "end": 2692,
+      "ms": 821,
+      "bytes": 312
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 2551,
+      "end": 2812,
+      "ms": 261,
+      "bytes": 3682
+    },
+    {
+      "url": "/api/realtime/token?rnd=1130022532020335",
+      "start": 2566,
+      "end": 2952,
+      "ms": 386,
+      "bytes": 2107
+    }
+  ],
+  "focus": [
+    {
+      "count": 1,
+      "bytes": 390,
+      "rows": [
+        {
+          "url": "/api/v1/print-stations",
+          "ms": 1222,
+          "bytes": 390
+        }
+      ]
+    },
+    {
+      "count": 1,
+      "bytes": 29932,
+      "rows": [
+        {
+          "url": "/api/inbox?filter=unread",
+          "ms": 615,
+          "bytes": 29932
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "duplicates": [],
+    "multiShape": [],
+    "chains": [
+      {
+        "from": "/api/inbox/support",
+        "to": "/api/realtime/token?rnd=1130022532020335",
+        "gapMs": 25,
+        "tailEnd": 2952
+      },
+      {
+        "from": "/api/inbox/support",
+        "to": "/api/catalog/platforms",
+        "gapMs": 10,
+        "tailEnd": 2812
+      },
+      {
+        "from": "/api/sync/global",
+        "to": "/api/nav/facets?context=outbound.shipped",
+        "gapMs": 1,
+        "tailEnd": 2724
+      },
+      {
+        "from": "/api/sync/global",
+        "to": "/api/staff?active=false",
+        "gapMs": 71,
+        "tailEnd": 2649
+      },
+      {
+        "from": "/api/sync/global",
+        "to": "/api/settings?page=desk",
+        "gapMs": 2,
+        "tailEnd": 2172
+      },
+      {
+        "from": "/api/sync/global",
+        "to": "/api/packerlogs/hydrate",
+        "gapMs": 0,
+        "tailEnd": 2060
+      }
+    ],
+    "peakConcurrency": 12,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/inbox?filter=unread",
+        "start": 1576,
+        "end": 2816,
+        "ms": 1240,
+        "bytes": 29932
+      },
+      {
+        "url": "/api/packerlogs/hydrate",
+        "start": 1781,
+        "end": 2060,
+        "ms": 279,
+        "bytes": 11835
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1852,
+        "end": 2649,
+        "ms": 797,
+        "bytes": 6104
+      },
+      {
+        "url": "/api/catalog/platforms",
+        "start": 2551,
+        "end": 2812,
+        "ms": 261,
+        "bytes": 3682
+      },
+      {
+        "url": "/api/staff-preferences",
+        "start": 1578,
+        "end": 2075,
+        "ms": 497,
+        "bytes": 3240
+      },
+      {
+        "url": "/api/nav/context?path=%2Ffulfilled",
+        "start": 1575,
+        "end": 2074,
+        "ms": 499,
+        "bytes": 2194
+      },
+      {
+        "url": "/api/realtime/token?rnd=1130022532020335",
+        "start": 2566,
+        "end": 2952,
+        "ms": 386,
+        "bytes": 2107
+      },
+      {
+        "url": "/api/settings?page=desk",
+        "start": 1783,
+        "end": 2172,
+        "ms": 389,
+        "bytes": 1862
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/inbox?filter=unread",
+        "start": 1576,
+        "end": 2816,
+        "ms": 1240,
+        "bytes": 29932
+      },
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 1870,
+        "end": 3000,
+        "ms": 1130,
+        "bytes": 606
+      },
+      {
+        "url": "/api/nav/facets?context=outbound.shipped",
+        "start": 1782,
+        "end": 2724,
+        "ms": 942,
+        "bytes": 1403
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 1871,
+        "end": 2692,
+        "ms": 821,
+        "bytes": 312
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 1852,
+        "end": 2649,
+        "ms": 797,
+        "bytes": 6104
+      },
+      {
+        "url": "/api/station-commands/aliases",
+        "start": 1573,
+        "end": 2270,
+        "ms": 697,
+        "bytes": 324
+      },
+      {
+        "url": "/api/v1/print-stations",
+        "start": 1574,
+        "end": 2269,
+        "ms": 696,
+        "bytes": 390
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 1871,
+        "end": 2541,
+        "ms": 670,
+        "bytes": 322
+      }
+    ]
+  },
+  "route": "/fulfilled",
+  "base": "http://localhost:3117",
+  "runs": 3,
+  "metrics": {
+    "duplicateRequests": 0,
+    "countProbes": 0,
+    "focusRefetch": 1,
+    "requests": 15
+  },
+  "capturedAt": "2026-10-01T04:00:53.323Z"
+}

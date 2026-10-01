@@ -5,9 +5,8 @@ import { TextField } from '@/design-system/primitives';
 import { TAKE_REASONS, type TakeReasonChoice } from '@/lib/inventory/take-reason';
 
 /**
- * Why this stock is leaving the location: FBA, Orders, or Custom… (free text).
- * Optional — no choice keeps the plain location take. Tapping the chosen
- * reason again clears it. Puts carry no reason.
+ * Why this stock is leaving the location. A take cannot commit until one
+ * explicit reason is selected; Custom also requires the operator's words.
  */
 export function TakeReasonChooser({
   value,
@@ -21,7 +20,7 @@ export function TakeReasonChooser({
   return (
     <div className="space-y-2" data-testid="take-reason">
       <p className="text-role-eyebrow text-text-soft">{label}</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {TAKE_REASONS.map((option) => {
           const selected = value?.code === option.code;
           return (

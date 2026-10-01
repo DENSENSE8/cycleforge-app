@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-30T08:22:08Z",
-  "totalRoutes": 1156,
+  "generatedAt": "2026-10-01T08:34:12Z",
+  "totalRoutes": 1160,
   "summary": {
-    "permissionGated": 940,
+    "permissionGated": 943,
     "authenticatedNoPermission": 131,
     "anonymousIntentional": 36,
-    "serviceToService": 49,
+    "serviceToService": 50,
     "ungatedRead": 0,
     "ungatedWrite": 0
   },
@@ -2016,6 +2016,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/cron/tasks/repair-sync/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "cron bearer secret",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/cron/ticket-outbox/route.ts",
       "methods": [
         "GET"
@@ -2912,7 +2921,8 @@
       "path": "/api/handling-units/[id]/route.ts",
       "methods": [
         "DELETE",
-        "GET"
+        "GET",
+        "PATCH"
       ],
       "gate": "withAuth",
       "permission": "handling_unit.view",
@@ -3917,6 +3927,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "bin.swap",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/locations/[barcode]/verify/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "sku_stock.view",
       "exemptReason": null
     },
     {
@@ -5564,6 +5583,7 @@
     {
       "path": "/api/photos/links/route.ts",
       "methods": [
+        "PATCH",
         "POST"
       ],
       "gate": "withAuth (no permission)",
@@ -7280,6 +7300,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/repair-service/[id]/activity/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "repair.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/repair-service/[id]/carrier-events/route.ts",
       "methods": [
         "GET"
@@ -8563,6 +8592,7 @@
     {
       "path": "/api/sku-catalog/provisional/[sku]/route.ts",
       "methods": [
+        "DELETE",
         "GET",
         "PATCH"
       ],
@@ -9077,6 +9107,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/stations/live/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/stations/publish/route.ts",
       "methods": [
         "POST"
@@ -9099,6 +9138,16 @@
       "path": "/api/stock-alerts/route.ts",
       "methods": [
         "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/stock-places/route.ts",
+      "methods": [
+        "GET",
+        "POST"
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
@@ -9429,16 +9478,6 @@
     },
     {
       "path": "/api/tables/catalog/route.ts",
-      "methods": [
-        "GET",
-        "PUT"
-      ],
-      "gate": "withAuth",
-      "permission": "dashboard.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/tables/layouts/route.ts",
       "methods": [
         "GET",
         "PUT"

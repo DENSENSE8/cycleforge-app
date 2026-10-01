@@ -10,9 +10,9 @@ import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
 import {
-  MobilePackerSpamCamera,
+  MobileNativePhotoCapture,
   type CapturedShot,
-} from '@/components/mobile/station/MobilePackerSpamCamera';
+} from '@/components/mobile/photos/MobileNativePhotoCapture';
 import {
   packerPhotoUploadQueue,
   useClearPackerDoneOnUnmount,
@@ -39,13 +39,15 @@ interface MobilePackerPhotoStudioProps {
   /**
    * When set, run the guided Packer Review flow (plan §2b): slip → box →
    * confirm, threading pack_slip/pack_box photo types and firing the
-   * tracking-verify submit on finish. Omit for the legacy spam-capture path.
+   * tracking-verify submit on finish. Omit for unclassified native capture.
    */
   guided?: boolean;
   /** Guided entry step (from `?step=`); defaults to slip. */
   initialStep?: GuidedCaptureStep;
   /** Complete a phone-started CAPTURING pack after evidence + verification. */
   completePacking?: boolean;
+  scanClientEventId?: string | null;
+  mobileScanEventId?: number | null;
 }
 
 /** Immersive pack photo capture — legacy spam mirror + the guided Review flow. */
@@ -59,6 +61,8 @@ export function MobilePackerPhotoStudio({
   guided = false,
   initialStep = 'slip',
   completePacking = false,
+  scanClientEventId = null,
+  mobileScanEventId = null,
 }: MobilePackerPhotoStudioProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -128,7 +132,7 @@ export function MobilePackerPhotoStudio({
     [query.data?.photos?.length, scope],
   );
 
-  // ── Legacy spam-capture path (unchanged) ──────────────────────────────────
+  // ── Unclassified native-capture path ──────────────────────────────────────
   const handleDone = useCallback(
     (shots: CapturedShot[]) => {
       if (shots.length === 0) {
@@ -152,7 +156,7 @@ export function MobilePackerPhotoStudio({
   const [submitting, setSubmitting] = useState(false);
   const [slipBlob, setSlipBlob] = useState<Blob | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
-  const verificationCommandIdRef = useRef<string | null>(null);
+  const verificationCommandIdRef = useRef<string | null>(scanClientEventId);
 
   const onSlipDone = useCallback(
     (shots: CapturedShot[]) => {
@@ -241,6 +245,7 @@ export function MobilePackerPhotoStudio({
               orderId,
               draftPackerLogId: packerLogId,
               clientEventId: verificationCommandIdRef.current,
+              mobileScanEventId,
             }),
           });
           const body = await response.json().catch(() => null) as { error?: string; details?: string } | null;
@@ -261,14 +266,14 @@ export function MobilePackerPhotoStudio({
       toast.error(error instanceof Error ? error.message : 'Could not finish packing.', { position: 'top-center' });
       setSubmitting(false);
     }
-  }, [completePacking, executeWmsCommand, orderId, packerLogId, returnToPack, tracking, user]);
+  }, [completePacking, executeWmsCommand, mobileScanEventId, orderId, packerLogId, returnToPack, tracking, user]);
 
   const openPaperwork = orderRowId ? () => setPaperworkOpen(true) : undefined;
 
   if (!guided) {
     return (
       <>
-        <MobilePackerSpamCamera
+        <MobileNativePhotoCapture
           embedded
           onDone={handleDone}
           onCancel={returnToPack}
@@ -305,7 +310,7 @@ export function MobilePackerPhotoStudio({
   const isSlip = step === 'slip';
   return (
     <>
-      <MobilePackerSpamCamera
+      <MobileNativePhotoCapture
         key={step}
         embedded
         onDone={isSlip ? onSlipDone : onBoxDone}

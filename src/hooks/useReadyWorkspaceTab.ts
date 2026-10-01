@@ -7,7 +7,7 @@ import {
   normalizeReadyWorkspaceTabParams,
   type ReadyWorkspaceTab,
 } from '@/utils/ready-workspace-state';
-import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
+import { SHIPPING_PATH } from '@/lib/outbound/route-contract';
 
 /** URL SoT for Ready disposition facets on `/shipping/fba?fbaMode=ready` (`?rtab=`). */
 export function useReadyWorkspaceTab() {

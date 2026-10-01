@@ -11,7 +11,7 @@ import {
 import { READY_GRID_CAPABILITIES } from './ready-grid-descriptor';
 import { readyGridTemplate, type ReadyGridColumn } from './ready-grid-layout';
 
-/** One recently-tested hit — CSS-grid columns matching the MOUNTED model (a `SlotLayout` materialization since the wave 1.1 hand-model… */
+/** One recently-tested hit — CSS-grid columns matching the MOUNTED model (a `DataTableColumnLayout` materialization since the wave 1.1 hand-model kill). */
 export const ReadyGridRow = memo(function ReadyGridRow({
   hit,
   columns,

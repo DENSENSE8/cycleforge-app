@@ -69,10 +69,9 @@ test('registry: every registered tab id maps to a non-empty kind string', () => 
   }
 });
 
-test('resolveTerminalKind: unbox is carton-terminal — no tab varies the dock', () => {
-  // Unbox displays live in the right-edge Displays push column now, so a tab →
-  // kind map would let a right-panel click silently re-label the bottom
-  // primary. The slice is `hasSectionTabs: false` + `defaultKind: 'mode-default'`.
+test('resolveTerminalKind: unbox is carton-terminal — no task varies the dock', () => {
+  // Unbox task selection must never silently relabel the bottom primary.
+  // The slice is `hasSectionTabs: false` + `defaultKind: 'mode-default'`.
   assert.equal(resolveTerminalKind({ mode: 'unbox', tabId: null }), 'mode-default');
   assert.equal(resolveTerminalKind({ mode: 'unbox' }), 'mode-default');
   for (const tabId of [

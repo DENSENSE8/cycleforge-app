@@ -25,38 +25,13 @@ import { useClaimTemplate } from './useClaimTemplate';
 import { useClaimSellerMessage } from './useClaimSellerMessage';
 import { useClaimTicketReply } from './useClaimTicketReply';
 import { noteUnboxTicketLinked } from '@/lib/receiving/unbox-scan-feedback-store';
+import { readStoredClaimCcEmails, rememberClaimCcEmails } from '@/lib/receiving/claim-cc-memory';
 import {
   nextAutoCreateFromEmptyTrackingFlag,
   shouldAutoCreateFromEmptyTrackingSeed,
 } from './claim-empty-seed-create';
 
 /** Prefer the server's field-level `details` (e.g. */
-/**
- * Reads the operator's accumulated claim-CC history. Tolerates the legacy
- * single-email string this key used to hold (`receiving-claim:last-cc-email`)
- * so an existing stored value seeds the new list rather than being dropped.
- */
-function readStoredCcEmails(storageKey: string): string[] {
-  let stored: string | null;
-  try {
-    stored = window.localStorage.getItem(storageKey);
-  } catch {
-    return [];
-  }
-  if (!stored) return [];
-  try {
-    const parsed: unknown = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((v) => String(v ?? '').trim())
-      .filter(Boolean)
-      .filter((v, i, arr) => arr.indexOf(v) === i);
-  } catch {
-    // Not JSON — the legacy single-email string.
-    const trimmed = stored.trim();
-    return trimmed ? [trimmed] : [];
-  }
-}
 
 function apiErrorText(data: unknown, fallback: string): string {
   const d = (data ?? {}) as { error?: unknown; details?: unknown };
@@ -96,7 +71,6 @@ export function useReceivingClaimController({
   onTicketCreated,
   onTicketUnlinked,
 }: ClaimModalProps) {
-  const LAST_CC_EMAIL_STORAGE_KEY = 'receiving-claim:cc-emails';
   const receivingId = row.receiving_id;
   // `undefined` override = default to the row's own line; an explicit value (incl.
   const rawLineId = lineIdOverride !== undefined ? lineIdOverride : row.id;
@@ -236,7 +210,7 @@ export function useReceivingClaimController({
     setDraftBody(null);
     setClaimType(seed.claimType);
     setNotePublic(true);
-    setCcEmails(readStoredCcEmails(LAST_CC_EMAIL_STORAGE_KEY));
+    setCcEmails(readStoredClaimCcEmails());
     // `crypto.randomUUID` only exists in a secure context (HTTPS / localhost);
     // over a plain-HTTP LAN IP it's undefined. `randomId` falls back safely.
     idempotencyKey.current = randomId();
@@ -254,22 +228,7 @@ export function useReceivingClaimController({
   // history — removing a chip from the current form doesn't forget it.
   useEffect(() => {
     if (!open || !ccEmails.length) return;
-    try {
-      const known = new Set(readStoredCcEmails(LAST_CC_EMAIL_STORAGE_KEY));
-      let changed = false;
-      for (const email of ccEmails) {
-        const trimmed = email.trim();
-        if (trimmed && !known.has(trimmed)) {
-          known.add(trimmed);
-          changed = true;
-        }
-      }
-      if (changed) {
-        window.localStorage.setItem(LAST_CC_EMAIL_STORAGE_KEY, JSON.stringify([...known]));
-      }
-    } catch {
-      // Best-effort only.
-    }
+    rememberClaimCcEmails(ccEmails);
   }, [ccEmails, open]);
 
   // Hide 'unfound' once a real PO# is present — an order with a PO can't be

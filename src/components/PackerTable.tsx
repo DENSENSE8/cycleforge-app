@@ -6,7 +6,6 @@ import { useStaffFilter } from '@/hooks/useStaffFilter';
 import { usePackerTableController } from '@/hooks/station/usePackerTableController';
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
-import { usePackerTableLayout } from '@/components/station/bench-grid/usePackerTableLayout';
 import { packerRecordToDetail, getPackerDetailId } from '@/components/station/packer-record-mappers';
 import { SAVED_VIEW_PARAM_KEYS, SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { AlertTriangle, Calendar, Clock, Package } from '@/components/Icons';
@@ -64,7 +63,6 @@ export function PackerTable({ packedBy }: PackerTableProps) {
     query,
     setQuery,
   } = usePackerTableController({ staffId: staffFilterId ?? packedBy });
-  const packerLayout = usePackerTableLayout();
 
   // Day bands (newest day first, each day newest-first) for rendering. The
   // controller's `orderedRecords` drives keyboard navigation.
@@ -111,7 +109,6 @@ export function PackerTable({ packedBy }: PackerTableProps) {
       onResetWeek={() => setWeekOffset(0)}
       daySections={daySections}
       family="packer"
-      layout={packerLayout}
       savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
       // History is WEEK-scoped, so an empty view is a no-results state, not a first run — hence no `firstRunEmpty`.

@@ -23,7 +23,7 @@ import { useCurrentNavPath, useNavContext } from '@/components/sidebar/contextua
 import { RollingHint, useHintActivity } from '@/design-system/components/FindField';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence } from '@/design-system/foundations/motion-presets-hooks';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { Popover } from '@/design-system/primitives/Popover';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useBackgroundWork, type WorkItem } from '@/lib/background-work/store';
@@ -37,6 +37,49 @@ import { cn } from '@/utils/_cn';
 import { HEADER_ICON_CLUSTER, HEADER_ICON_WRAP } from './header-shell';
 import { PrintJobBanner } from './PrintJobBanner';
 import { FACE_TONE, FaceGlyph, UnboxScanHistory, type LineFace } from './UnboxScanHistory';
+
+function OverflowLine({ text, className }: { text: string; className?: string }) {
+  const reduce = useReducedMotion();
+  const viewportRef = useRef<HTMLSpanElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [overflow, setOverflow] = useState(0);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const node = textRef.current;
+    if (!viewport || !node) return;
+    const measure = () => {
+      setOverflow(Math.max(0, Math.ceil(node.scrollWidth - viewport.clientWidth)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [text]);
+
+  const travel = overflow > 0 && !reduce;
+  return (
+    <span ref={viewportRef} className="relative block h-full overflow-hidden">
+      <motion.span
+        ref={textRef}
+        className={cn('inline-block whitespace-nowrap', className)}
+        animate={
+          travel
+            ? { transform: ['translateX(0px)', `translateX(-${overflow}px)`, 'translateX(0px)'] }
+            : { transform: 'translateX(0px)' }
+        }
+        transition={
+          travel
+            ? { duration: Math.max(6, overflow / 28), repeat: Infinity, ease: 'linear', repeatDelay: 1.2 }
+            : { duration: 0 }
+        }
+      >
+        {text}
+      </motion.span>
+    </span>
+  );
+}
 
 // ── Top-left: your next step ─────────────────────────────────────────────────
 
@@ -99,11 +142,18 @@ export function HeaderNextAction() {
       </span>
       {/* A scan line carries the FULL tracking number — give it the wider slot. */}
       <span className={cn('relative h-full min-w-0', feedbackLine ? 'w-lg' : 'w-96')}>
-        <RollingHint
-          hints={hints.length > 0 ? hints : ['Recent scans']}
-          active={look.active}
-          className={cn('text-role-caption font-medium', FACE_TONE[face])}
-        />
+        {topLine ? (
+          <OverflowLine
+            text={topLine}
+            className={cn('text-role-caption font-medium', FACE_TONE[face])}
+          />
+        ) : (
+          <RollingHint
+            hints={hints.length > 0 ? hints : ['Recent scans']}
+            active={look.active}
+            className={cn('text-role-caption font-medium', FACE_TONE[face])}
+          />
+        )}
       </span>
     </>
   );

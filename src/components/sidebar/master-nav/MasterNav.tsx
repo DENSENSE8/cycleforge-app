@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -13,9 +13,7 @@ import {
 } from '@/lib/sidebar-navigation';
 import { applyOrgNavToPage } from '@/lib/nav/org-nav';
 import { useOrgNavDefinition, useOrgNavItems } from '@/hooks/useOrgNavItems';
-import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
-import { migrateSpineSlots } from '@/lib/nav/spine-slots';
 import { useActiveSidebarChild } from './useActiveSidebarChild';
 import { useSidebarChildNav } from './useSidebarChildNav';
 import { MasterNavView } from './MasterNavView';
@@ -35,9 +33,8 @@ function toPageNav(item: SidebarNavItem): SidebarPageNav {
 }
 
 /**
- * Router-wired master nav. Org hide/rename via {@link useOrgNavItems}; staff
- * `prefs.spineSlots` reorders Stations / Workspaces / remaining L1.
- * Absent prefs → Stations, Workspaces, then Studio / Admin.
+ * Router-wired master nav. Org hide/rename comes from {@link useOrgNavItems};
+ * the product registry owns one stable navigation order for every staffer.
  */
 export function MasterNav({
   permissions,
@@ -52,7 +49,6 @@ export function MasterNav({
 }) {
   const { pageId, childId } = useActiveSidebarChild();
   const navigate = useSidebarChildNav();
-  const { prefs, update: updatePrefs } = useStaffPreferences();
   const orgNav = useOrgNavDefinition();
 
   const navItems = useOrgNavItems({ permissions, mobileRestricted });
@@ -64,29 +60,6 @@ export function MasterNav({
         .map((page) => filterPageChildren(page, permissions))
         .filter(isSidebarPageReachable),
     [navItems, permissions, orgNav],
-  );
-
-  // Roll a saved order onto the current generation.
-  const { slots: spineOrder, stamp } = useMemo(
-    () => migrateSpineSlots(prefs?.spineSlots, navItems, prefs?.spineSlotsVersion),
-    [prefs?.spineSlots, prefs?.spineSlotsVersion, navItems],
-  );
-
-  // One write per staffer, ever. The ref guards the window between the PUT and
-  // the refetched prefs — without it a slow round-trip re-renders with the old
-  // `spineSlotsVersion` still in cache and fires the same write again.
-  const stampedRef = useRef(false);
-  useEffect(() => {
-    if (!stamp || stampedRef.current) return;
-    stampedRef.current = true;
-    updatePrefs(stamp);
-  }, [stamp, updatePrefs]);
-
-  const handleSpineOrderChange = useCallback(
-    (next: string[]) => {
-      updatePrefs({ spineSlots: next });
-    },
-    [updatePrefs],
   );
 
   const activePage = useMemo<SidebarPageNav>(() => {
@@ -132,8 +105,6 @@ export function MasterNav({
       onNavigate={handleNavigate}
       onOpenHref={handleOpenHref}
       onRowHover={handleRowHover}
-      spineOrder={spineOrder}
-      onSpineOrderChange={handleSpineOrderChange}
       className={className}
     />
   );

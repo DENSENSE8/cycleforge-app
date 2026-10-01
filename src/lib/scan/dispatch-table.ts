@@ -39,7 +39,9 @@ export interface ArmedScanSession {
  * and a line label is taken so the tech can pick one of its units.
  */
 export const QC_SCAN_SESSION: ArmedScanSession = {
-  expects: ['serial-unit', 'receiving-line', 'receiving'],
+  // A receiving carton/line selects a unit; a unit starts its checklist; an
+  // H-LPN/SSCC opens the shared box queue. All are first-class QC subjects.
+  expects: ['serial-unit', 'receiving-line', 'receiving', 'handling-unit', 'sscc'],
   work: 'qc',
   title: 'Quality control',
 };
@@ -105,6 +107,16 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
     card: 'qc',
     stateful: true,
     reason: 'this licence plate has an open QC check',
+  },
+  {
+    // Session work, not object state:
+    id: 'qc-lpn',
+    classes: ['handling-unit', 'sscc'],
+    when: ALWAYS,
+    armedFor: 'qc',
+    card: 'qc',
+    stateful: true,
+    reason: 'this station is running QC on licence-plated boxes',
   },
   {
     // Session work, not object state:

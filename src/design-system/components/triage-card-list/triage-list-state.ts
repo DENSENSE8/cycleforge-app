@@ -11,22 +11,28 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { usePathname, useSearchParams } from 'next/navigation';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import {
-  SLOT_TABLE_PAGE_SIZE,
-  isSlotTablePageSize,
-  readSlotTablePageSize,
-  writeSlotTablePageSize,
-  type SlotTablePageSize,
-} from '@/lib/tables/slot-table-page';
+  DATA_TABLE_PAGE_SIZE,
+  isDataTablePageSize,
+  readDataTablePageSize,
+  writeDataTablePageSize,
+  type DataTablePageSize,
+} from '@/lib/tables/data-table-pagination';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import type { RowGroup } from '@/lib/group-rows';
 import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
 
-// ── URL: status chips + page ─────────────────────────────────────────────────
+// ── URL: status chips, exclusions + page ─────────────────────────────────────
 
 const DEFAULT_STATUS_PARAM = 'cardStatus';
+const DEFAULT_EXCLUDE_PARAM = 'hide';
 const PAGE_PARAM = 'page';
 
+/** Parse a comma-list status parameter into the vocabulary's stable order. */
+export function parseStatusParam<K extends string>(raw: string | null | undefined, statusKeys: readonly K[]): ReadonlySet<K> {
+  const requested = new Set((raw ?? '').split(',').filter(Boolean));
+  return new Set(statusKeys.filter((key) => requested.has(key)));
+}
 /**
  * Status chips and the page live in the URL (`?cardStatus=outOfStock,late&page=2`),
  * so a reload or a shared link lands on the same cut. Every route that mounts
@@ -65,8 +71,12 @@ export function useTriageUrlState<K extends string>({
 
   const statusRaw = searchParams.get(statusParam) ?? '';
   const statusFilter = useMemo<ReadonlySet<K>>(
-    () => new Set(statusRaw.split(',').filter((k): k is K => (statusKeys as readonly string[]).includes(k))),
+    () => parseStatusParam(statusRaw, statusKeys),
     [statusRaw, statusKeys],
+  );
+  const excludedFilter = useMemo<ReadonlySet<K>>(
+    () => parseStatusParam(searchParams.get(DEFAULT_EXCLUDE_PARAM), statusKeys),
+    [searchParams, statusKeys],
   );
   const pageRaw = Number(searchParams.get(PAGE_PARAM));
   const pageIndex = Number.isFinite(pageRaw) && pageRaw > 1 ? Math.floor(pageRaw) - 1 : 0;
@@ -115,13 +125,14 @@ export function useTriageUrlState<K extends string>({
   }, [searchParams, recordParams]);
 
   return useMemo(
-    () => ({ statusFilter, toggleStatus, resetStatus, pageIndex, setPageIndex, scopeKey }),
-    [statusFilter, toggleStatus, resetStatus, pageIndex, setPageIndex, scopeKey],
+    () => ({ statusFilter, excludedFilter, toggleStatus, resetStatus, pageIndex, setPageIndex, scopeKey }),
+    [statusFilter, excludedFilter, toggleStatus, resetStatus, pageIndex, setPageIndex, scopeKey],
   );
 }
 
 export interface TriageUrlState<K extends string> {
   statusFilter: ReadonlySet<K>;
+  excludedFilter: ReadonlySet<K>;
   toggleStatus: (key: K) => void;
   resetStatus: () => void;
   pageIndex: number;
@@ -151,6 +162,33 @@ export interface TriageCut<K extends string> {
     rowStatusKeys: (row: Row) => readonly K[],
   ) => [string, RowGroup<Row>[]][];
 }
+export function filterTriageBands<Row, K extends string>(
+  bands: readonly (readonly [string, readonly RowGroup<Row>[]])[],
+  groupKey: (group: RowGroup<Row>) => string,
+  rowStatusKeys: (row: Row) => readonly K[],
+  statusFilter: ReadonlySet<K>,
+  excludedFilter: ReadonlySet<K>,
+  heldKeys: ReadonlySet<string> = new Set(),
+): [string, RowGroup<Row>[]][] {
+  return (
+    bands.map(([band, groups]) => [
+      band,
+      groups
+        .filter((group) => !heldKeys.has(groupKey(group)))
+        .map((group) => ({
+          ...group,
+          rows: group.rows.filter((row) => {
+            const keys = rowStatusKeys(row);
+            return (
+              !keys.some((key) => excludedFilter.has(key)) &&
+              (statusFilter.size === 0 || keys.some((key) => statusFilter.has(key)))
+            );
+          }),
+        }))
+        .filter((group) => group.rows.length > 0),
+    ]) as [string, RowGroup<Row>[]][]
+  ).filter(([, groups]) => groups.length > 0);
+}
 
 export function useTriageCut<K extends string>(opts: {
   statusKeys: readonly K[];
@@ -159,22 +197,15 @@ export function useTriageCut<K extends string>(opts: {
   statusSelect?: 'many' | 'one';
 }): TriageCut<K> {
   const url: TriageUrlState<K> = useTriageUrlState(opts);
-  const { statusFilter } = url;
+  const { statusFilter, excludedFilter } = url;
   const [heldKeys, setHeldKeys] = useState<ReadonlySet<string>>(() => new Set());
   const filterBands = useCallback(
     <Row,>(
       bands: readonly (readonly [string, readonly RowGroup<Row>[]])[],
       groupKey: (group: RowGroup<Row>) => string,
       rowStatusKeys: (row: Row) => readonly K[],
-    ): [string, RowGroup<Row>[]][] => {
-      const keep = (group: RowGroup<Row>) =>
-        !heldKeys.has(groupKey(group)) &&
-        (statusFilter.size === 0 || group.rows.some((row) => rowStatusKeys(row).some((key) => statusFilter.has(key))));
-      return bands
-        .map(([band, groups]) => [band, groups.filter(keep)] as [string, RowGroup<Row>[]])
-        .filter(([, groups]) => groups.length > 0);
-    },
-    [statusFilter, heldKeys],
+    ): [string, RowGroup<Row>[]][] => filterTriageBands(bands, groupKey, rowStatusKeys, statusFilter, excludedFilter, heldKeys),
+    [statusFilter, excludedFilter, heldKeys],
   );
   return useMemo(() => ({ url, heldKeys, setHeldKeys, filterBands }), [url, heldKeys, filterBands]);
 }
@@ -182,13 +213,13 @@ export function useTriageCut<K extends string>(opts: {
 // ── Per-person display prefs ─────────────────────────────────────────────────
 
 /** `scroll` = every loaded card on one page, the next chunk loading as you near the end. */
-export type TriagePageMode = SlotTablePageSize | 'scroll';
+export type TriagePageMode = DataTablePageSize | 'scroll';
 
 /** Every mounted `useTriagePageMode` — a change in one (the face's menu) re-reads in all (a host that fetches by it). */
 const pageModeReaders = new Set<() => void>();
 
 /**
- * Page size (shared with the slot tables) or infinite scroll, remembered in
+ * Page size (shared with the data tables) or infinite scroll, remembered in
  * this browser under `storageKey`. `resolved` turns true once the remembered
  * choice is read — until then the mode is the SSR default, and a page clamp
  * must not act on it (at 100 / page a reload's `?page=2` looks past the end
@@ -200,10 +231,10 @@ export function useTriagePageMode(storageKey: string): {
   setMode: (mode: TriagePageMode) => void;
   resolved: boolean;
 } {
-  const [mode, setModeState] = useState<TriagePageMode>(SLOT_TABLE_PAGE_SIZE);
+  const [mode, setModeState] = useState<TriagePageMode>(DATA_TABLE_PAGE_SIZE);
   const [resolved, setResolved] = useState(false);
   useEffect(() => {
-    const read = () => setModeState(window.localStorage.getItem(storageKey) === '1' ? 'scroll' : readSlotTablePageSize());
+    const read = () => setModeState(window.localStorage.getItem(storageKey) === '1' ? 'scroll' : readDataTablePageSize());
     read();
     setResolved(true);
     pageModeReaders.add(read);
@@ -216,7 +247,7 @@ export function useTriagePageMode(storageKey: string): {
       if (next === 'scroll') window.localStorage.setItem(storageKey, '1');
       else {
         window.localStorage.removeItem(storageKey);
-        if (isSlotTablePageSize(next)) writeSlotTablePageSize(next);
+        if (isDataTablePageSize(next)) writeDataTablePageSize(next);
       }
       for (const read of pageModeReaders) read();
     },

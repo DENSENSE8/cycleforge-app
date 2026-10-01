@@ -12,7 +12,6 @@ import { resolveAdminSkuDriftSlotValue } from '@/lib/tables/field-catalog/admin-
 import type { SkuDriftRow } from '@/lib/inventory/drift-rows';
 import { adminSkuDriftCompoundView } from './admin-sku-drift-row-view';
 import {
-  adminSkuDriftCompoundColumnsFor,
   adminSkuDriftSortFactFor,
   type AdminSkuDriftGridColumn,
   type AdminSkuDriftGridColumnKey,
@@ -21,7 +20,6 @@ import {
   ADMIN_SKU_DRIFT_GRID_CAPABILITIES,
   ADMIN_SKU_DRIFT_TABLE_BINDING,
 } from './admin-sku-drift-table-definition';
-import { useAdminSkuDriftTableLayout } from './useAdminSkuDriftTableLayout';
 
 /** The retired clean-drift paragraph, now the table's settled-empty answer. */
 const SKU_DRIFT_CLEAN_MESSAGE =
@@ -52,11 +50,8 @@ export function useAdminSkuDriftSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useAdminSkuDriftTableLayout();
-  const columns = useMemo(
-    () => adminSkuDriftCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: AdminSkuDriftGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -77,12 +72,10 @@ export function useAdminSkuDriftSpreadsheet({
     AdminSkuDriftGridColumn
   >({
     binding: ADMIN_SKU_DRIFT_TABLE_BINDING,
-    columns,
-    fields,
+    columns: ADMIN_SKU_DRIFT_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => row.sku,
     adapter: adminSkuDriftCompoundView,
-    subtitleFieldIds,
     resolve: resolveAdminSkuDriftSlotValue,
     sortFactFor: adminSkuDriftSortFactFor,
     capabilities: ADMIN_SKU_DRIFT_GRID_CAPABILITIES,

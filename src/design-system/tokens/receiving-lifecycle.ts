@@ -1,4 +1,4 @@
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 
 /**
  * Inbound's Unboxed view lifecycle — the receiving of inbound orders and

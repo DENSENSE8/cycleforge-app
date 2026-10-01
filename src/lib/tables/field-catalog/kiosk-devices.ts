@@ -1,7 +1,7 @@
 /** Kiosk-devices field catalog — the bindable facts of one enrolled tablet. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const KIOSKDEVICES_FIELD_CATALOG: FieldCatalog = [
   { id: 'kiosk-devices.id', family: 'kiosk-devices', label: 'Device', displayType: 'id', slotKinds: ['identity', 'status', 'subtitle'], paths: { value: 'id' } },
@@ -20,7 +20,7 @@ export const KIOSKDEVICES_FIELD_CATALOG: FieldCatalog = [
  * Last seen / enrolled ride the Dates chrome (Hash line) via the row adapter;
  * terminal · hardware · enrolled_by are status bindings.
  */
-export const KIOSKDEVICES_PRODUCT_LAYOUT: SlotLayout = {
+export const KIOSKDEVICES_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'kiosk-devices.id',
   statusBindings: [
@@ -30,6 +30,6 @@ export const KIOSKDEVICES_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 export const KIOSKDEVICES_TABLE_LAYOUT_ID = 'kiosk-devices';

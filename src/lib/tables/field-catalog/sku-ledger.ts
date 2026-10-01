@@ -1,7 +1,7 @@
 /** Stock-ledger field catalog — the bindable facts of ONE `sku_stock_ledger` row, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const SKU_LEDGER_FIELD_CATALOG: FieldCatalog = [
   /** The IDENTITY fact — the order this movement belongs to. */
@@ -97,7 +97,7 @@ export const SKU_LEDGER_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const SKU_LEDGER_PRODUCT_LAYOUT: SlotLayout = {
+export const SKU_LEDGER_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'sku-ledger.ref_order',
   statusBindings: [
@@ -107,7 +107,7 @@ export const SKU_LEDGER_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The tableId this catalog serves — `PRODUCT_TABLES`' stock-ledger entry. */
 export const SKU_LEDGER_TABLE_LAYOUT_ID = 'sku-ledger';

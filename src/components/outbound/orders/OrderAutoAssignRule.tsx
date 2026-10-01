@@ -14,7 +14,7 @@ import { refreshDomain } from '@/lib/refresh/bus';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { Button } from '@/design-system/primitives/Button';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { cn } from '@/utils/_cn';
 import { OrderAutoAssignSlot } from './OrderAutoAssignSlot';

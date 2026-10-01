@@ -6,29 +6,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resolveTicketThreadActivation,
-  classifyStationComposerModeKey,
-  cycleStationComposerMode,
   parseStationComposerMode,
   resolveStationComposerMode,
   stationComposerModeKeepsTrailingAction,
   stationComposerModePlaceholder,
 } from './station-composer-mode';
 
-function key(
-  partial: Partial<
-    Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'metaKey' | 'altKey'>
-  >,
-) {
-  return {
-    key: 'a',
-    code: 'KeyA',
-    shiftKey: false,
-    ctrlKey: false,
-    metaKey: false,
-    altKey: false,
-    ...partial,
-  };
-}
 
 test('parseStationComposerMode accepts live ids, aliases label→unbox, drops location', () => {
   assert.equal(parseStationComposerMode('unbox'), 'unbox');
@@ -48,10 +31,6 @@ test('resolveStationComposerMode: URL wins, then session, then Unbox', () => {
   assert.equal(resolveStationComposerMode('label', null), 'unbox');
 });
 
-test('cycleStationComposerMode is a two-step ring', () => {
-  assert.equal(cycleStationComposerMode('unbox'), 'ticket');
-  assert.equal(cycleStationComposerMode('ticket'), 'unbox');
-});
 
 test('trailing Print·Receive stays on Unbox only', () => {
   assert.equal(stationComposerModeKeepsTrailingAction('unbox'), true);
@@ -73,31 +52,6 @@ test('placeholder names the destination (I4)', () => {
   );
 });
 
-test('Shift+Tab is the ONE toggle; nothing else is a mode hit', () => {
-  // A keyboard-wedge scanner terminates with a BARE Tab and has no shift key,
-  // so Shift+Tab was never in competition with it — the old refusal protected
-  // the chord from a collision that could not happen (ruling 2026-08-31).
-  assert.deepEqual(classifyStationComposerModeKey(key({ key: 'Tab', shiftKey: true })), {
-    kind: 'cycle',
-  });
-  // Bare Tab stays the wedge terminator + ghost-autocomplete accept.
-  assert.equal(classifyStationComposerModeKey(key({ key: 'Tab' })), null);
-  // Ctrl+Tab is not ours: Chrome never dispatches it to the page.
-  assert.equal(classifyStationComposerModeKey(key({ key: 'Tab', ctrlKey: true })), null);
-  assert.equal(
-    classifyStationComposerModeKey(key({ key: 'Tab', shiftKey: true, ctrlKey: true })),
-    null,
-  );
-  // The ⌥1 / ⌥2 jumps were REMOVED — two modes need one key, not three.
-  assert.equal(
-    classifyStationComposerModeKey(key({ key: '1', code: 'Digit1', altKey: true })),
-    null,
-  );
-  assert.equal(
-    classifyStationComposerModeKey(key({ key: '™', code: 'Digit2', altKey: true })),
-    null,
-  );
-});
 
 test('touching the ticket thread hands the composer to Ticket mode AND focus', () => {
   assert.deepEqual(resolveTicketThreadActivation({ mode: 'unbox' }), {

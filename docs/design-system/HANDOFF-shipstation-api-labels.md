@@ -164,9 +164,6 @@ gate query joins `product_parcel_dims` and 500s without it.
 - Unit: `node scripts/run-unit-tests.mjs` — known pre-existing reds on HEAD (not yours):
   `compound-title-strike`, `color-neutrals`, `nav-registry`, `scan-station-overlay-cohort`
   (+ `label-ingestions/database` needs `V1_TEST_DATABASE_URL`)
-- `node --import tsx tools/eval-ledger/run-cohort-eval.mjs slot-table` and `… shortcuts`
-  (after any verb / hotkey change) — run the script directly; `pnpm run` trips a lockfile check
-  in sandboxes without `api.motion.dev`
 - `git push` runs `verify:dogfood` via `.githooks/pre-push` (~6 min). Another lane pushes often:
   `git fetch && git rebase origin/prod/worktree-2026-09-11` right before pushing.
 

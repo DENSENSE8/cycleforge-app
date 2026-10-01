@@ -31,6 +31,7 @@ import {
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
 import { SUPPORT_MODES } from '@/components/sidebar/support/support-sidebar-shared';
+import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import {
   applyToShipTriageFacet,
   getToShipTriageFacetFromSearch,
@@ -131,29 +132,6 @@ test('retired PO Mailbox links resolve to the incoming ledger without a mailbox 
   assert.equal(next.get('lane'), 'docked');
 });
 
-test('Unbox Displays URL keys are stripped by surface hygiene', () => {
-  // Displays leaf + nest are local React state (Arrival parity). Stale
-  // `?display=` / nest params must not survive hygiene — mount strip + desk
-  // claim also clear them, and the registry must not re-own them.
-  const dirty = new URLSearchParams(
-    'openReceivingId=7&display=photos&photoAction=send&linkageAction=note&ticketAction=claim&unitsAction=prebox&claimMode=link&ticketView=1&claimView=1&inventoryAction=items',
-  );
-  const next = parseRouteParams(UNBOX_ROUTE_PARAMS, dirty);
-  assert.equal(next.get('openReceivingId'), '7');
-  for (const key of [
-    'display',
-    'photoAction',
-    'linkageAction',
-    'ticketAction',
-    'unitsAction',
-    'claimMode',
-    'ticketView',
-    'claimView',
-    'inventoryAction',
-  ]) {
-    assert.equal(next.get(key), null, `?${key}= must be stripped from /unbox hygiene`);
-  }
-});
 
 test('EVERY Unbox workbench tab wire survives surface hygiene', () => {
   // When History got an explicit wire (`?unboxview=history`, 2026-08-08) the route enum still only listed `recent|queue|viewed`.
@@ -291,6 +269,10 @@ test('closed outbound vocabularies survive hygiene (fbaMode / rtab / etype)', ()
   assert.equal(
     parseRouteParams(search!, new URLSearchParams('etype=nonsense')).get('etype'),
     null,
+  );
+  assert.equal(
+    parseRouteParams(search!, new URLSearchParams('refs=SO-1, 1Z999')).get('refs'),
+    serializeRefIn(parseRefInParam('SO-1, 1Z999').refs),
   );
 });
 

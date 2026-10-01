@@ -114,8 +114,6 @@ export interface GridSurfaceCapabilities {
   multiSelect: boolean;
   /** Reserved: no surface mounts a cell editor — every grid cell is read-only. */
   inCellEdit: boolean;
-  /** Fields menu / staff column prefs (`hideKey` + `tier`). */
-  fieldsMenu: boolean;
   /** Sticky civil-day bands (Receiving Testing History, etc.). */
   dayBands: boolean;
 }

@@ -172,6 +172,6 @@ await page.waitForTimeout(600);
 log('J scrollTop after reload (set 700)', await page.evaluate((s) => Math.round(document.querySelector(s)?.scrollTop ?? -1), scroller));
 
 // restore prefs
-await page.evaluate(() => { localStorage.removeItem('cf:order-cards:scroll'); localStorage.setItem('cf:slot-table-page-size', '100'); });
+await page.evaluate(() => { localStorage.removeItem('cf:order-cards:scroll'); localStorage.setItem('cf:data-table-page-size', '100'); });
 log('Z errors', errors.length, JSON.stringify([...new Set(errors)].slice(0, 6)));
 await browser.close();

@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { Camera } from '@/components/Icons';
 import {
-  MobilePackerSpamCamera,
+  MobileNativePhotoCapture,
   type CapturedShot,
-} from '@/components/mobile/station/MobilePackerSpamCamera';
+} from '@/components/mobile/photos/MobileNativePhotoCapture';
 import { photoContentUrl } from '@/lib/photos/display-url';
 import { uploadRepairPhoto } from '@/lib/repair/repair-photos';
 import { BENCH_PHOTO_TYPE, type BenchPhotoSide } from '@/lib/repair/repair-actions';
@@ -82,7 +82,7 @@ export function RepairBenchPhotoField({
       ) : null}
       {error ? <p className="mt-1 text-role-caption font-semibold text-rose-700">{error}</p> : null}
       {cameraOpen ? (
-        <MobilePackerSpamCamera
+        <MobileNativePhotoCapture
           maxPhotos={4}
           header={`${SIDE_LABEL[side]} · RS-${repairId}`}
           onDone={(shots) => void upload(shots)}

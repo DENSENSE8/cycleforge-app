@@ -2,7 +2,7 @@
 
 **Route:** `/triage`
 
-Run: `pnpm run eval:station triage` · Display SoT: `pnpm run eval:cohort slot-table`
+Run: `pnpm run eval:station triage`
 
 ---
 

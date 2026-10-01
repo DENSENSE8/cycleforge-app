@@ -261,28 +261,31 @@ export function MergedRecordStream({
   onOpenPhoto,
   events,
   bottomInsetPx = 0,
+  previewComments,
 }: {
   ticketId: number;
   requesterId?: number;
   requesterName?: string | null;
   requesterEmail?: string | null;
   onOpenPhoto?: (url: string) => void;
-  /**
-   * Warehouse / carrier spine — `SupportContextBundle.timeline`, already merged,
-   * sorted and collapsed. Omit ⇒ messages only.
-   */
   events?: TimelineItem[];
-  /** Live height of a floating composer overlaying the bottom of this stream's scroll port (measured by {@link useMeasuredHeight} in the host). */
   bottomInsetPx?: number;
+  /** Unfiled station draft — render these instead of fetching the helpdesk. */
+  previewComments?: readonly ZendeskComment[];
 }) {
-  const { data, isLoading, error } = useTicketComments(ticketId);
+  const live = useTicketComments(previewComments ? null : ticketId);
   const { data: agents = [] } = useZendeskAgents();
   const agentsById = useMemo(
     () => new Map<number, ZendeskAgent>(agents.map((a) => [a.id, a] as [number, ZendeskAgent])),
     [agents],
   );
 
-  const comments = useMemo(() => data?.comments ?? [], [data]);
+  const comments = useMemo(
+    () => previewComments ?? live.data?.comments ?? [],
+    [previewComments, live.data],
+  );
+  const isLoading = previewComments ? false : live.isLoading;
+  const error = previewComments ? null : live.error;
 
   const userIds = useMemo(
     () =>

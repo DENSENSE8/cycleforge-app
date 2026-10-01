@@ -4,16 +4,11 @@
  * siblings under the shipping layout, not one React provider).
  */
 
-/**
- * `blk` — the order must not ship (cancelled). Distinct from `exc`
- * (already delivered): that is a data conflict; this is pull the box.
- */
 export type ScanOutFocusStatus =
   | 'ok'
   | 'dup'
   | 'miss'
   | 'err'
-  | 'exc'
   | 'blk'
   | 'pending';
 

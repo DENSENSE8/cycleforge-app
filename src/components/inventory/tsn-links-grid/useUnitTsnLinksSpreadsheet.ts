@@ -12,7 +12,6 @@ import { resolveUnitTsnLinksSlotValue } from '@/lib/tables/field-catalog/unit-ts
 import type { UnitTsnLinkTableRow } from '@/lib/inventory/tsn-link-row';
 import { unitTsnLinksCompoundView } from './unit-tsn-links-row-view';
 import {
-  unitTsnLinksCompoundColumnsFor,
   unitTsnLinksSortFactFor,
   type UnitTsnLinksGridColumn,
   type UnitTsnLinksGridColumnKey,
@@ -21,7 +20,6 @@ import {
   UNIT_TSN_LINKS_GRID_CAPABILITIES,
   UNIT_TSN_LINKS_TABLE_BINDING,
 } from './unit-tsn-links-table-definition';
-import { useUnitTsnLinksTableLayout } from './useUnitTsnLinksTableLayout';
 
 interface UseUnitTsnLinksSpreadsheetOptions {
   /** The feed. Already ordered by the API; a header click re-orders it. */
@@ -46,11 +44,8 @@ export function useUnitTsnLinksSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useUnitTsnLinksTableLayout();
-  const columns = useMemo(
-    () => unitTsnLinksCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: UnitTsnLinksGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -71,12 +66,10 @@ export function useUnitTsnLinksSpreadsheet({
     UnitTsnLinksGridColumn
   >({
     binding: UNIT_TSN_LINKS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: UNIT_TSN_LINKS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: unitTsnLinksCompoundView,
-    subtitleFieldIds,
     resolve: resolveUnitTsnLinksSlotValue,
     sortFactFor: unitTsnLinksSortFactFor,
     capabilities: UNIT_TSN_LINKS_GRID_CAPABILITIES,

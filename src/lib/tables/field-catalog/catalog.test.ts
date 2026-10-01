@@ -10,7 +10,7 @@ import {
 } from '@/lib/products/catalog-grid-layout';
 import { CATALOG_FIELD_CATALOG, CATALOG_PRODUCT_LAYOUT } from './catalog';
 import { resolveCatalogSlotValue } from './catalog-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<CatalogListRow> = {}): CatalogListRow {
   return {
@@ -48,7 +48,7 @@ describe('products-catalog catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; the lean core view)', () => {
-    const parsed = parseSlotLayout(CATALOG_PRODUCT_LAYOUT, CATALOG_FIELD_CATALOG);
+    const parsed = CATALOG_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'catalog.sku');
     assert.deepEqual(parsed.statusBindings, [

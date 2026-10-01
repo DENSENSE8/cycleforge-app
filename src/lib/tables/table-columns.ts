@@ -181,7 +181,7 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // Unbox / History / Testing receiving-line grids (`RECEIVING_GRID_COLUMNS`).
   /** Receiving — **deliberately empty** since the wave 1.3 slot port. */
   receiving: [],
-  /** Orders + its station twins — **deliberately empty** (Wave-1 hand-model kill, `docs/kill-list/07-slot-table-hand-models.md` §3). */
+  /** Orders + its station twins — deliberately empty after the hand-modeled column cleanup. */
   orders: [],
   shipped: [],
   tech: [],

@@ -12,7 +12,6 @@ import { resolveAdminDriftAlertsSlotValue } from '@/lib/tables/field-catalog/adm
 import type { DriftAlertRow } from '@/lib/inventory/drift-rows';
 import { adminDriftAlertsCompoundView } from './admin-drift-alerts-row-view';
 import {
-  adminDriftAlertsCompoundColumnsFor,
   adminDriftAlertsSortFactFor,
   type AdminDriftAlertsGridColumn,
   type AdminDriftAlertsGridColumnKey,
@@ -21,7 +20,6 @@ import {
   ADMIN_DRIFT_ALERTS_GRID_CAPABILITIES,
   ADMIN_DRIFT_ALERTS_TABLE_BINDING,
 } from './admin-drift-alerts-table-definition';
-import { useAdminDriftAlertsTableLayout } from './useAdminDriftAlertsTableLayout';
 
 interface UseAdminDriftAlertsSpreadsheetOptions {
   /** The feed — newest first off the server. A header click re-orders it. */
@@ -48,11 +46,8 @@ export function useAdminDriftAlertsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useAdminDriftAlertsTableLayout();
-  const columns = useMemo(
-    () => adminDriftAlertsCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: AdminDriftAlertsGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -73,12 +68,10 @@ export function useAdminDriftAlertsSpreadsheet({
     AdminDriftAlertsGridColumn
   >({
     binding: ADMIN_DRIFT_ALERTS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: ADMIN_DRIFT_ALERTS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: adminDriftAlertsCompoundView,
-    subtitleFieldIds,
     resolve: resolveAdminDriftAlertsSlotValue,
     sortFactFor: adminDriftAlertsSortFactFor,
     capabilities: ADMIN_DRIFT_ALERTS_GRID_CAPABILITIES,

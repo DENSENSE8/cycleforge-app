@@ -17,9 +17,8 @@ import {
   resolveOrdersIndexValue,
   resolveOrdersSlotValue,
 } from './orders-resolve';
-import { resolveEffectiveLayout } from '../resolve-effective-layout';
 import { ordersIndexColumnsFor } from '@/lib/dashboard-order-row-layout';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Record<string, unknown> = {}): ShippedOrder {
   return {
@@ -55,7 +54,7 @@ describe('orders catalog', () => {
   });
 
   it('product default parses against the catalog (Pick + Pack status stamps, qty · amount · condition · item # · notes under the title)', () => {
-    const parsed = parseSlotLayout(ORDERS_PRODUCT_LAYOUT, ORDERS_FIELD_CATALOG);
+    const parsed = ORDERS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.deepEqual(parsed.statusBindings, [
       { fieldId: 'orders.picked' },
@@ -345,16 +344,10 @@ describe('ordersSubtitleParts', () => {
 describe('orders INDEX face — one row per order', () => {
   const ctx = { todayKey: '2026-09-26' };
 
-  it('the product default parses against the index catalog and survives the cascade untouched', () => {
-    const parsed = parseSlotLayout(ORDERS_INDEX_LAYOUT, ORDERS_INDEX_FIELD_CATALOG);
-    assert.equal(parsed.morph, 'sheet');
+  it('the product default uses the sheet morph and keeps subtitle facts unbound', () => {
+    assert.equal(ORDERS_INDEX_LAYOUT.morph, 'sheet');
     // No line-qty / line-money pin may inject Qty or Amount columns into the order list.
-    const effective = resolveEffectiveLayout({
-      productDefault: ORDERS_INDEX_LAYOUT,
-      catalog: ORDERS_INDEX_FIELD_CATALOG,
-    });
-    assert.deepEqual(effective.statusBindings, ORDERS_INDEX_LAYOUT.statusBindings);
-    assert.deepEqual(effective.subtitleBindings, []);
+    assert.deepEqual(ORDERS_INDEX_LAYOUT.subtitleBindings, []);
   });
 
   it('Order is the first column after the select gutter; Bin · Pick · Pack are offered but unbound', () => {

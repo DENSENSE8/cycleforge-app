@@ -1,67 +1,44 @@
 /**
  * The server side of `GET /api/nav/context`: load the two per-request inputs
- * the pure resolver cannot know (the org's nav override and the page's
- * `nav.contextual.<pageId>` switch), then resolve.
+ * the pure resolver cannot know (the org's nav override), then resolve.
  *
- * Cost: one tenant query (nav override + the staffer's switch value, one
- * statement) plus the in-process-cached organization row.
+ * Cost: one tenant query (nav override + active capabilities, one statement).
  */
 
-import type { Entitlements } from '@/lib/billing/plans';
-import { getEntitlements } from '@/lib/billing/entitlements';
 import { parseNavDefinition } from '@/lib/nav/org-nav';
 import { hiddenNavItemIds } from '@/lib/capabilities/catalog';
 import { ACTIVE_CAPABILITIES_SUBQUERY_SQL, withCapabilityGate } from '@/lib/capabilities/nav-gate';
-import { settingByKey } from '@/lib/settings/registry';
-import { resolveSetting } from '@/lib/settings/resolve';
-import { getSidebarNavPageId } from '@/lib/sidebar-navigation';
-import { getOrganization } from '@/lib/tenancy/organizations';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveNavContext } from './resolve';
-import { navRolloutOverride, navRolloutSettingKey } from './rollout';
 import type { NavContext, NavContextQuery } from './schema';
 
 export interface NavContextInputs {
   /** Raw `nav_definitions.config` of the org's active row, or null. */
   navConfig: unknown;
-  /** The staffer's raw value for the page's switch key, or null. */
-  staffSetting: unknown;
   /** The org's ACTIVE capability ids (SIMPLE-FIRST gate); absent = no gate. */
   activeCapabilities?: string[];
 }
 
 export interface NavContextDeps {
-  loadInputs(orgId: OrgId, staffId: number, settingKey: string): Promise<NavContextInputs>;
-  loadOrg(orgId: OrgId): Promise<{
-    settings: Record<string, unknown>;
-    features: Entitlements['features'];
-  }>;
+  loadInputs(orgId: OrgId): Promise<NavContextInputs>;
 }
 
 const defaultDeps: NavContextDeps = {
-  async loadInputs(orgId, staffId, settingKey) {
-    const { rows } = await tenantQueryOneTrip<{ nav_config: unknown; staff_setting: unknown; active_capabilities: string[] }>(
+  async loadInputs(orgId) {
+    const { rows } = await tenantQueryOneTrip<{ nav_config: unknown; active_capabilities: string[] }>(
       orgId,
       `SELECT
          (SELECT nd.config FROM nav_definitions nd
            WHERE nd.organization_id = $1 AND nd.is_active = TRUE
            ORDER BY nd.version DESC LIMIT 1) AS nav_config,
-         (SELECT sp.prefs -> $3::text FROM staff_preferences sp
-           WHERE sp.organization_id = $1 AND sp.staff_id = $2
-           LIMIT 1) AS staff_setting,
          ${ACTIVE_CAPABILITIES_SUBQUERY_SQL} AS active_capabilities`,
-      [orgId, staffId, settingKey],
+      [orgId],
     );
     return {
       navConfig: rows[0]?.nav_config ?? null,
-      staffSetting: rows[0]?.staff_setting ?? null,
       activeCapabilities: rows[0]?.active_capabilities ?? [],
     };
-  },
-  async loadOrg(orgId) {
-    const [org, entitlements] = await Promise.all([getOrganization(orgId), getEntitlements(orgId)]);
-    return { settings: org?.settings ?? {}, features: entitlements.features };
   },
 };
 
@@ -77,23 +54,7 @@ export async function getNavContextForStaff(
   deps: NavContextDeps = defaultDeps,
 ): Promise<NavContext> {
   const url = new URL(request.path, 'http://nav.local');
-  const pageId = getSidebarNavPageId(url.pathname, url.searchParams);
-  const settingKey = navRolloutSettingKey(pageId);
-  const [inputs, org] = await Promise.all([
-    deps.loadInputs(request.orgId, request.staffId, settingKey),
-    deps.loadOrg(request.orgId),
-  ]);
-
-  const def = settingByKey(settingKey);
-  const override = def
-    ? navRolloutOverride(
-        resolveSetting(def, {
-          orgSettings: org.settings,
-          staffPrefs: { [settingKey]: inputs.staffSetting },
-          features: org.features,
-        }),
-      )
-    : null;
+  const inputs = await deps.loadInputs(request.orgId);
 
   return resolveNavContext({
     pathname: url.pathname,
@@ -103,7 +64,6 @@ export async function getNavContextForStaff(
       parseNavDefinition(inputs.navConfig),
       inputs.activeCapabilities ? hiddenNavItemIds(inputs.activeCapabilities) : null,
     ),
-    rolloutOverrides: override ? { [pageId]: override } : undefined,
     view: request.view,
   });
 }

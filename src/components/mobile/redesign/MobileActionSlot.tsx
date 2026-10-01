@@ -17,11 +17,12 @@ import { cn } from '@/utils/_cn';
 export const MOBILE_BAR_CELL_CLASS =
   'relative shrink-0 border-border-soft text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default active:scale-100 enabled:active:scale-100 active:bg-surface-sunken';
 
-/** The one corner for a phone top-bar cell — flush, same as every bar segment. */
-export const MOBILE_TOP_BAR_ACTION_RADIUS = 'flush' as const;
+/** V2 page actions are normal rounded controls. */
+export const MOBILE_TOP_BAR_ACTION_RADIUS = 'surface' as const;
 
 /** A labelled cell: full bar height, width from its label. */
-const MOBILE_TOP_BAR_ACTION_FACE = `${MOBILE_BAR_CELL_CLASS} h-11 border-l px-3 text-role-caption font-semibold tracking-tight`;
+const MOBILE_TOP_BAR_ACTION_FACE =
+  'my-1 h-11 px-3 text-role-caption font-semibold tracking-tight text-text-default hover:bg-surface-hover';
 
 export type MobileTopBarActionProps = Omit<ButtonProps, 'radius' | 'size' | 'variant'>;
 

@@ -3,7 +3,7 @@
 /**
  * A small segmented toggle used in timeline/journey headers and as the ⌘K
  * palette's search-method pills (`bare`). Labels speak the region's VOICE
- * (`mode-label-case`): sentence case in triage, caps on the industrial floor.
+ * (`mode-label-case`): sentence case in triage.
  * `bare` options are the triage pill chips (`rounded-mode-pill`).
  */
 

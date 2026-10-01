@@ -1,9 +1,9 @@
-/** Ready / recently-tested sheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
+/** Ready / recently-tested sheet column model — MATERIALIZED from a {@link DataTableColumnLayout}, never a hand array. */
 
 import { gridFrozenLeft, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { READY_FIELD_CATALOG, READY_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/ready';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -16,22 +16,20 @@ export type ReadyGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface ReadyGridColumn extends SlotTrackFields {
-  key: ReadyGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  minTrackRem?: number;
-  resizable?: boolean;
-  /** When false, header is not click-to-sort (gutter / action tracks). */
-  sortable?: boolean;
-}
+export interface ReadyGridColumn extends DataTableColumnFields { key: ReadyGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+minTrackRem?: number;
+resizable?: boolean;
+/** When false, header is not click-to-sort (gutter / action tracks). */
+sortable?: boolean; }
 
 /**
  * The structural sheet skeleton — what Ready paints with ZERO bindings.
@@ -54,15 +52,13 @@ const READY_SHEET_BASE: readonly ReadyGridColumn[] = [
 ];
 
 /** Materialize the mounted Ready columns from an effective layout. */
-export function readySheetColumnsFor(layout: SlotLayout): readonly ReadyGridColumn[] {
-  return materializeTracks<ReadyGridColumn>({
-    layout,
-    catalog: READY_FIELD_CATALOG,
-    base: READY_SHEET_BASE,
-    statusAnchorKey: 'title',
-    subtitleAnchorKey: 'title',
-  });
-}
+export function readySheetColumnsFor(layout: DataTableColumnLayout): readonly ReadyGridColumn[] { return materializeTracks<ReadyGridColumn>({
+  layout,
+  catalog: READY_FIELD_CATALOG,
+  base: READY_SHEET_BASE,
+  statusAnchorKey: 'title',
+  subtitleAnchorKey: 'title',
+}); }
 
 /** The PRODUCT-DEFAULT materialization — what an org with no override mounts (`select · title · verdict · destination · cond · tested ·… */
 export const READY_SHEET_COLUMNS: readonly ReadyGridColumn[] =

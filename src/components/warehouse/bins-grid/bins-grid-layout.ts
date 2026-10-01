@@ -1,12 +1,12 @@
-/** Warehouse › Bins spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
+/** Warehouse › Bins spreadsheet column model — MATERIALIZED from a {@link DataTableColumnLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
 import { BINS_FIELD_CATALOG, BINS_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/bins';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -17,24 +17,22 @@ export type BinsGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface BinsGridColumn extends SlotTrackFields {
-  key: BinsGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  /** Staff-preference key (`staff_preferences.tableColumns.bins`). */
-  hideKey?: string;
-  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
-  tier?: 'core' | 'optional';
-  /** When false, header is not click-to-sort (gutter / chip-list tracks). */
-  sortable?: boolean;
-}
+export interface BinsGridColumn extends DataTableColumnFields { key: BinsGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+/** Staff-preference key (`staff_preferences.tableColumns.bins`). */
+hideKey?: string;
+/** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
+tier?: 'core' | 'optional';
+/** When false, header is not click-to-sort (gutter / chip-list tracks). */
+sortable?: boolean; }
 
 /**
  * The structural sheet skeleton — what Bins paints with ZERO bindings.
@@ -58,15 +56,13 @@ const BINS_SHEET_BASE: readonly BinsGridColumn[] = [
  * anchor on `barcode`, so the default plate reads location · SKUs · qty · fill
  * · counted · status — the retired hand model's scan order.
  */
-export function binsSheetColumnsFor(layout: SlotLayout): readonly BinsGridColumn[] {
-  return materializeTracks<BinsGridColumn>({
-    layout,
-    catalog: BINS_FIELD_CATALOG,
-    base: BINS_SHEET_BASE,
-    statusAnchorKey: 'barcode',
-    subtitleAnchorKey: 'barcode',
-  });
-}
+export function binsSheetColumnsFor(layout: DataTableColumnLayout): readonly BinsGridColumn[] { return materializeTracks<BinsGridColumn>({
+  layout,
+  catalog: BINS_FIELD_CATALOG,
+  base: BINS_SHEET_BASE,
+  statusAnchorKey: 'barcode',
+  subtitleAnchorKey: 'barcode',
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts,

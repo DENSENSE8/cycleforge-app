@@ -1,7 +1,7 @@
 /** Inventory events field catalog — the bindable facts of one inventory event, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const INVENTORY_EVENTS_FIELD_CATALOG: FieldCatalog = [
   {
@@ -83,7 +83,7 @@ export const INVENTORY_EVENTS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default — what an org with no override mounts. */
-export const INVENTORY_EVENTS_PRODUCT_LAYOUT: SlotLayout = {
+export const INVENTORY_EVENTS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   // COMPOUND, not sheet (2026-09-04).
   morph: 'compound',
   identityFieldId: 'inventory-events.sku',
@@ -96,7 +96,7 @@ export const INVENTORY_EVENTS_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Inventory events entry. */
 export const INVENTORY_EVENTS_TABLE_LAYOUT_ID = 'inventory-events';

@@ -16,7 +16,6 @@ import {
   findEventsFromReceivingPhotos,
   findEventsFromStationActivity,
   findEventsFromThreadMessages,
-  presentCartonFindEvents,
   presentOrderFindEvents,
 } from './find-events-from-sources';
 import type { ReceivingPhotoRow } from '@/hooks/useReceivingPhotos';
@@ -227,15 +226,6 @@ describe('find events from sources', () => {
     assert.equal(findEventsFromReceivingPhotos([]).length, 0);
   });
 
-  it('carton stream carries evidence when photos exist and omits it when none', () => {
-    const base = { events: [], totals: { expected: 1, received: 1 } as never, createdAt: '2026-09-01T00:00:00.000Z' };
-    const withPhotos = presentCartonFindEvents({
-      ...base,
-      photos: [{ id: 1, receivingId: 1, receivingLineId: null, photoUrl: 'https://x/a.jpg', caption: null, photoType: 'receiving_unbox_carton', createdAt: '2026-09-02T00:00:00.000Z' }],
-    });
-    assert.ok(withPhotos.some((e) => e.kind === 'evidence'));
-    assert.ok(!presentCartonFindEvents(base).some((e) => e.kind === 'evidence'));
-  });
 
   it('maps thread messages to note faces, naming an internal note and a public reply apart', () => {
     const events = findEventsFromThreadMessages([

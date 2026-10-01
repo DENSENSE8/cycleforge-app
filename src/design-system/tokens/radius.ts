@@ -4,7 +4,7 @@
 export const radius = {
   /**
    * Flush — data rows, table cells, solid {@link Button} CTAs
-   * (`cornerClass('flush')`), industrial instrument chrome.
+   * (`cornerClass('flush')`).
    */
   none: '0px',
   /** 2px — hairline softening, rarely the right call */
@@ -45,24 +45,19 @@ export type CornerRole =
   | 'canvas'
   /**
    * Grok-style triage panels — TriageScrollLayout right-pane cards only.
-   * Off the industrial ladder on purpose: remapping `card` would re-round every
-   * ops surface. Agents retrieve `cornerClass('surface')`, never a raw `rounded-*`.
    */
   | 'surface'
   /** Pills, dots, avatars */
   | 'pill';
 
-// Zero-radius industrial:
 const CORNER_CLASS: Record<CornerRole, string> = {
   flush: 'rounded-none',
-  chip: 'rounded-none',
-  row: 'rounded-none',
-  control: 'rounded-none',
-  field: 'rounded-none',
-  card: 'rounded-none',
-  canvas: 'rounded-none',
-  // Follows the region (owner 2026-09-26, BRIEF §12): 10px card in triage,
-  // square in industrial, square outside any ModeRegion (var unset).
+  chip: 'rounded',
+  row: 'rounded-md',
+  control: 'rounded-lg',
+  field: 'rounded-xl',
+  card: 'rounded-2xl',
+  canvas: 'rounded-3xl',
   surface: 'rounded-mode',
   pill: 'rounded-full',
 };
@@ -100,7 +95,7 @@ export const COUNTER_CARD_CORNER = 'rounded-xl';
 /** Menu rows inside a {@link COMPOSER_SHELL_CORNER} drop panel padded `p-1`. */
 export const COMPOSER_MENU_ITEM_CORNER = 'rounded-xl';
 
-/** Half the region's control corner — a row nested in a control-corner panel (triage 4px, Floor 0). */
+/** Half the region's control corner — a row nested in a control-corner panel. */
 const DROPDOWN_ROW_HALF_CONTROL = 'rounded-[calc(var(--mode-radius-control)/2)]';
 
 /** A segmented control's track and its two faces — the concentric pair for a pick-one toggle sitting inside a SOFT shell ({@link… */
@@ -108,8 +103,7 @@ export const SEGMENTED_CONTROL_CORNER = 'rounded-mode-control';
 
 /**
  * The pressed/unpressed faces inside {@link SEGMENTED_CONTROL_CORNER} padded
- * `p-0.5` — concentric: the region's control corner minus the 2px pad (triage
- * 6px, square on the Floor; `max` keeps a 0 control corner from going negative).
+ * `p-0.5` — concentric: the region's control corner minus the 2px pad.
  */
 export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-[max(0px,calc(var(--mode-radius-control)_-_2px))]';
 
@@ -119,7 +113,7 @@ export const SPINE_ROW_CORNER = DROPDOWN_ROW_HALF_CONTROL;
 
 /**
  * Floating menu / dropdown / popover panel — the region's control corner
- * (triage 8px, square on the Floor / a touch screen).
+ * (8px in triage).
  */
 export const DROPDOWN_SHELL_CORNER = 'rounded-mode-control';
 
@@ -148,7 +142,7 @@ export const SEARCH_WELL_CORNER =
 /**
  * DataTable find-row tokens — search, filter, sort, views, date, fields,
  * zoom, fullscreen, the export glyph. The region's control corner (triage
- * 8px, square on the Floor).
+ * 8px).
  */
 export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-mode-control';
 
@@ -156,7 +150,7 @@ export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-mode-control';
  * Chrome INSIDE a `cornerClass('surface')` triage panel — the alerts, pickers, fields and buttons an operator works in the exception editor.
  * Operator 2026-08-31, on the order-exceptions display: round it off. The
  */
-// Follows the region's control corner: 8px in triage, square in industrial (owner 2026-09-26).
+// Follows the region's control corner.
 export const TRIAGE_PANEL_INNER_CORNER = 'rounded-mode-control';
 
 /** ── The mobile family (operator 2026-09-15) ────────────────────────────────── */

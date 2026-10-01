@@ -1,5 +1,5 @@
 /**
- * Callers: node:test. No API. User: make SLOT_TABLE_ENGINE_CONTRACT green.
+ * Callers: node:test. No API. User: make DATA_TABLE_ENGINE_CONTRACT green.
  */
 
 import assert from 'node:assert/strict';

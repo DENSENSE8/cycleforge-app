@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   SKU_LEDGER_COMPOUND_COLUMNS,
   skuLedgerCompoundColumnsFor,
@@ -16,7 +16,7 @@ import {
 import type { SkuLedgerTableRow } from '@/lib/inventory/sku-ledger-row';
 import { SKU_LEDGER_FIELD_CATALOG, SKU_LEDGER_PRODUCT_LAYOUT } from './sku-ledger';
 import { resolveSkuLedgerSlotValue, skuLedgerDeltaText } from './sku-ledger-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /**
  * Columns of `sku_stock_ledger` that no cell has ever painted — refs and codes
@@ -127,7 +127,7 @@ describe('sku-ledger catalog', () => {
   });
 
   it('product default parses, and the ORDER ref is the identity', () => {
-    const parsed = parseSlotLayout(SKU_LEDGER_PRODUCT_LAYOUT, SKU_LEDGER_FIELD_CATALOG);
+    const parsed = SKU_LEDGER_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'sku-ledger.ref_order');
     // What moved, who moved it, and which unit — the three tracks.
@@ -192,7 +192,7 @@ describe('sku-ledger materialization', () => {
     const identity = SKU_LEDGER_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'sku-ledger.ref_order');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Order" is now the Fields-picker row
+    // (`data-table-family.ts`). "Order" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -213,7 +213,7 @@ describe('sku-ledger materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of SKU_LEDGER_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key)) {
+      if (isDataTableChromeColumn(col.key)) {
         assert.equal(skuLedgerSortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

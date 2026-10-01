@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { slotTableColumnsFor } from '@/components/tables/compound/slot-table-columns';
+import { dataTableCompoundColumnsFor } from '@/components/tables/compound/data-table-compound-columns';
 import { DAILY_COMPOUND_COLUMNS } from '@/features/home/grid/daily-table-definition';
 import {
   dailyAgendaFromChecklist,
@@ -15,7 +15,7 @@ import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { DAILY_FAMILY, DAILY_FIELD_CATALOG, DAILY_PRODUCT_LAYOUT } from './daily';
 import { TASKS_FIELD_CATALOG } from './tasks';
 import { dailySlotValuesFor, resolveDailySlotValue } from './daily-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 const MARKED_AT = '2026-09-22T15:30:00.000Z';
 const DEADLINE_MS = Date.parse('2026-09-24T17:00:00.000Z');
@@ -123,7 +123,7 @@ describe('daily catalog', () => {
   });
 
   it('product default parses against the catalog — compound morph, Owner bound', () => {
-    const parsed = parseSlotLayout(DAILY_PRODUCT_LAYOUT, DAILY_FIELD_CATALOG);
+    const parsed = DAILY_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'daily.item');
     assert.deepEqual(
@@ -163,7 +163,7 @@ describe('the engine materialization', () => {
   });
 
   it('binding Team opens the track the retired flat model spent a column on', () => {
-    const columns = slotTableColumnsFor(DAILY_FAMILY, {
+    const columns = dataTableCompoundColumnsFor(DAILY_FAMILY, {
       ...DAILY_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'daily.team' }, { fieldId: 'daily.deadline' }],
     });

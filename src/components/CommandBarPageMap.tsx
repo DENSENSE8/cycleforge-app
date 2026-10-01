@@ -48,7 +48,9 @@ export function CommandBarPageMap({
 
   const hasPanel = page?.scope === 'section';
   const views = hasPanel ? page.sections.filter((section) => !isNavModeSection(section)).flatMap((s) => s.items) : [];
-  const verbs = hasPanel ? (page.actions ?? []) : [];
+  const verbs = (hasPanel ? (page.actions ?? []) : []).filter(
+    (action) => action.href !== undefined || (action.intent !== undefined && hasNavIntent(action.intent)),
+  );
 
   return (
     <>
@@ -150,16 +152,13 @@ function VerbItem({
 }) {
   const apple = useApplePlatform();
   const glyph = NAV_ACTION_ICONS[action.id] ?? null;
-  const intentReady = action.intent !== undefined && hasNavIntent(action.intent);
-  const ready = intentReady || action.href !== undefined;
   const keys = action.hotkey ? chordKeys(action.hotkey, apple) : [];
   return (
     <CommandItem
       value={`verb ${action.label}`}
-      disabled={!ready}
       className="group/verb"
       onSelect={() => {
-        if (action.intent && intentReady) onIntent(action.intent);
+        if (action.intent) onIntent(action.intent);
         else if (action.href) onHref(action.href);
       }}
     >

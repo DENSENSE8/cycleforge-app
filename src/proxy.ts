@@ -20,6 +20,7 @@ import {
   VDPL_MAX_AGE_SEC,
   skewPinDecision,
 } from '@/lib/vercel/skew-pin';
+import { extractStaffTenantSlug } from '@/lib/tenancy/staff-host';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
 const SESSION_COOKIE_NAME = 'cf_sid';
@@ -86,48 +87,8 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/.well-known\//,
 ];
 
-// Hostnames that should NOT be treated as a tenant subdomain.
-const RESERVED_SUBDOMAINS = new Set<string>([
-  'www',
-  'app',
-  'api',
-  'admin',
-  'docs',
-  'status',
-  'staging',
-  'preview',
-  // Platform kiosk apex (`kiosk.app.cycleforge.ai`) — not a tenant. Tenant
-  // kiosks live at `{slug}.kiosk.app.cycleforge.ai` (first label = slug).
-  'kiosk',
-  // Named Cloudflare dev tunnel (pnpm dev:tunnel:named) — not a tenant slug.
-  'usav-dev',
-]);
-
 function extractTenantSlug(host: string | null): string | null {
-  if (!host) return null;
-  // Strip port if present.
-  const cleaned = host.split(':')[0]!.toLowerCase();
-  // localhost and bare IPs never carry a subdomain.
-  if (cleaned === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(cleaned)) return null;
-  const parts = cleaned.split('.');
-  // Need at least subdomain.root.tld to claim a tenant slug.
-  if (parts.length < 3) return null;
-  const candidate = parts[0]!;
-  if (RESERVED_SUBDOMAINS.has(candidate)) return null;
-  // Vercel preview hostnames like usav-orders-git-foo-bar.vercel.app — the
-  // subdomain there is the project, not a tenant. Cheap heuristic: any host
-  // ending in .vercel.app skips slug extraction.
-  if (cleaned.endsWith('.vercel.app')) return null;
-  // Dev tunnel hostnames (Cloudflare quick tunnels, ngrok) carry a random subdomain that is not a tenant.
-  if (
-    cleaned.endsWith('.trycloudflare.com') ||
-    cleaned.endsWith('.ngrok-free.app') ||
-    cleaned.endsWith('.ngrok.app') ||
-    cleaned.endsWith('.ngrok.io')
-  ) {
-    return null;
-  }
-  return candidate;
+  return extractStaffTenantSlug(host, { laneHost: process.env.LANE_HOST });
 }
 
 // `/m/u/` is deliberately absent: the phone unit hub lives at
@@ -445,15 +406,27 @@ const PERMISSIONS_POLICY = [
 ].join(', ');
 
 function applySkewPinCookie(req: NextRequest, res: NextResponse): void {
+  const kioskHost = isKioskHost(req.headers.get('host'));
+  const existingVdpl = req.cookies.get(VDPL_COOKIE)?.value;
+  // Staff URLs are deliberately unpinned. Clear any cookie issued by the old
+  // policy as soon as the request reaches the current deployment.
+  if (!kioskHost) {
+    if (existingVdpl) {
+      res.cookies.set(VDPL_COOKIE, '', {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.VERCEL === '1' || req.nextUrl.protocol === 'https:',
+        maxAge: 0,
+      });
+    }
+    return;
+  }
   const decision = skewPinDecision({
     skewProtectionEnabled: process.env.VERCEL_SKEW_PROTECTION_ENABLED,
     deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
-    existingVdpl: req.cookies.get(VDPL_COOKIE)?.value,
-    hasStaffSession: Boolean(
-      req.cookies.get(SESSION_COOKIE_NAME)?.value ||
-        req.cookies.get(LEGACY_SESSION_COOKIE_NAME)?.value,
-    ),
-    isKioskHost: isKioskHost(req.headers.get('host')),
+    existingVdpl,
+    isKioskHost: kioskHost,
   });
   if (!decision.pin) return;
   res.cookies.set(VDPL_COOKIE, decision.deploymentId, {
@@ -467,6 +440,13 @@ function applySkewPinCookie(req: NextRequest, res: NextResponse): void {
 
 function applySecurityHeaders(req: NextRequest, res: NextResponse): NextResponse {
   applySkewPinCookie(req, res);
+  // Fast production triage: the document/API response says exactly which
+  // immutable build served it. Two staff hostnames must report the same value
+  // immediately after a hard refresh following deployment.
+  res.headers.set(
+    'X-CycleForge-Deployment',
+    process.env.VERCEL_DEPLOYMENT_ID?.trim() || 'development',
+  );
   res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

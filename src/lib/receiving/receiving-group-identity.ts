@@ -1,6 +1,6 @@
 /** What an Unbox / Inbound fold IS — the facts the shared group-parent band needs from a `ReceivingLineRow[]`. */
 
- import type { SlotTableGroupIdentity } from '@/components/tables/compound/SlotTableGroupParentRow';
+import type { CompoundGroupIdentity } from '@/components/tables/compound/CompoundGroupParentRow';
  import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform';
 import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 
@@ -22,7 +22,7 @@ function clean(value: string | null | undefined): string {
  */
 export function receivingGroupIdentity(
   rows: readonly ReceivingGroupIdentityRow[],
-): SlotTableGroupIdentity | null {
+): CompoundGroupIdentity | null {
    const po = rows.map((r) => clean(r.zoho_purchaseorder_number) || clean(r.zoho_purchaseorder_id)).find(Boolean);
   if (po) {
     // Operator 2026-09-14:

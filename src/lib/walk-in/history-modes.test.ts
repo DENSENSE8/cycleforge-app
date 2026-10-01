@@ -60,7 +60,7 @@ test('per-mode tab parsers default correctly', () => {
   assert.equal(parseSalesTab('all'), 'all');
   assert.equal(parseRepairTab(null), DEFAULT_REPAIR_TAB);
   assert.equal(parseRepairTab('done'), 'done');
-  assert.equal(parseRepairTab('bogus'), 'active');
+  assert.equal(parseRepairTab('bogus'), 'open');
   // The Sales desk is the history book: every status, like the kiosk History face.
   assert.equal(parseRepairTab(null, DEFAULT_SALES_REPAIR_TAB), 'all');
   assert.equal(parseRepairTab('bogus', DEFAULT_SALES_REPAIR_TAB), 'all');

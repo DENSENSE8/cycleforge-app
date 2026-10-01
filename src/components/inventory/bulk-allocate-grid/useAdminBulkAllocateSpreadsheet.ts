@@ -13,7 +13,6 @@ import { resolveAdminBulkAllocateSlotValue } from '@/lib/tables/field-catalog/ad
 import type { AllocationCandidateRow } from '@/lib/inventory/allocation-candidate-row';
 import { adminBulkAllocateCompoundView } from './admin-bulk-allocate-row-view';
 import {
-  adminBulkAllocateCompoundColumnsFor,
   adminBulkAllocateSortFactFor,
   type AdminBulkAllocateGridColumn,
   type AdminBulkAllocateGridColumnKey,
@@ -22,7 +21,6 @@ import {
   ADMIN_BULK_ALLOCATE_GRID_CAPABILITIES,
   ADMIN_BULK_ALLOCATE_TABLE_BINDING,
 } from './admin-bulk-allocate-table-definition';
-import { useAdminBulkAllocateTableLayout } from './useAdminBulkAllocateTableLayout';
 
 interface UseAdminBulkAllocateSpreadsheetOptions {
   /** One offset page of candidates. Already ordered by the server. */
@@ -52,11 +50,8 @@ export function useAdminBulkAllocateSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useAdminBulkAllocateTableLayout();
-  const columns = useMemo(
-    () => adminBulkAllocateCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: AdminBulkAllocateGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -77,12 +72,10 @@ export function useAdminBulkAllocateSpreadsheet({
     AdminBulkAllocateGridColumn
   >({
     binding: ADMIN_BULK_ALLOCATE_TABLE_BINDING,
-    columns,
-    fields,
+    columns: ADMIN_BULK_ALLOCATE_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.order_id),
     adapter: adminBulkAllocateCompoundView,
-    subtitleFieldIds,
     resolve: resolveAdminBulkAllocateSlotValue,
     sortFactFor: adminBulkAllocateSortFactFor,
     capabilities: ADMIN_BULK_ALLOCATE_GRID_CAPABILITIES,

@@ -13,7 +13,6 @@ import { resolveAdminHoldsSlotValue } from '@/lib/tables/field-catalog/admin-hol
 import type { HeldUnitRow } from '@/lib/inventory/held-unit-row';
 import { adminHoldsCompoundView } from './admin-holds-row-view';
 import {
-  adminHoldsCompoundColumnsFor,
   adminHoldsSortFactFor,
   type AdminHoldsGridColumn,
   type AdminHoldsGridColumnKey,
@@ -22,7 +21,6 @@ import {
   ADMINHOLDS_GRID_CAPABILITIES,
   ADMINHOLDS_TABLE_BINDING,
 } from './admin-holds-table-definition';
-import { useAdminHoldsTableLayout } from './useAdminHoldsTableLayout';
 
 interface UseAdminHoldsSpreadsheetOptions {
   /** The feed. Already ordered by the server; a header click re-orders it. */
@@ -52,11 +50,8 @@ export function useAdminHoldsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useAdminHoldsTableLayout();
-  const columns = useMemo(
-    () => adminHoldsCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: AdminHoldsGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -73,12 +68,10 @@ export function useAdminHoldsSpreadsheet({
 
   return useCompoundSpreadsheet<HeldUnitRow, AdminHoldsGridColumnKey, AdminHoldsGridColumn>({
     binding: ADMINHOLDS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: ADMINHOLDS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: adminHoldsCompoundView,
-    subtitleFieldIds,
     resolve: resolveAdminHoldsSlotValue,
     sortFactFor: adminHoldsSortFactFor,
     capabilities: ADMINHOLDS_GRID_CAPABILITIES,

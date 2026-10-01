@@ -1,14 +1,16 @@
-/** Why stock left a location on the phone take flow — FBA, Orders, or the operator's own words. */
+/** Closed vocabulary for why physical stock left a location. */
 export const TAKE_REASONS = [
+  { code: 'TAKE_ORDER', label: 'Customer order' },
   { code: 'TAKE_FBA', label: 'FBA' },
-  { code: 'TAKE_ORDER', label: 'Orders' },
+  { code: 'TAKE_MOVE', label: 'Move' },
+  { code: 'TAKE_DAMAGED', label: 'Damaged' },
+  { code: 'TAKE_MISSING', label: 'Missing' },
+  { code: 'TAKE_VENDOR', label: 'Return to vendor' },
+  { code: 'TAKE_COUNT', label: 'Count correction' },
   { code: 'TAKE_CUSTOM', label: 'Custom…' },
 ] as const;
 
 export type TakeReasonCode = (typeof TAKE_REASONS)[number]['code'];
-
-/** No choice made: the take keeps the location default. */
-const TAKE_DEFAULT_REASON = 'BIN_PULL';
 
 export type TakeReasonChoice = { code: TakeReasonCode; custom: string } | null;
 
@@ -17,7 +19,7 @@ type TakeReasonPayload =
   | { ok: false; error: string };
 
 export function takeReasonPayload(choice: TakeReasonChoice): TakeReasonPayload {
-  if (!choice) return { ok: true, reason: TAKE_DEFAULT_REASON, notes: null };
+  if (!choice) return { ok: false, error: 'Choose why this stock is leaving' };
   const text = choice.custom.trim();
   if (choice.code === 'TAKE_CUSTOM') {
     if (!text) return { ok: false, error: 'Type the reason for this take' };
@@ -27,8 +29,13 @@ export function takeReasonPayload(choice: TakeReasonChoice): TakeReasonPayload {
 }
 
 const LEDGER_LABELS: Readonly<Record<string, string>> = {
+  TAKE_ORDER: 'Taken · Customer order',
   TAKE_FBA: 'Taken · FBA',
-  TAKE_ORDER: 'Taken · Orders',
+  TAKE_MOVE: 'Taken · Move',
+  TAKE_DAMAGED: 'Taken · Damaged',
+  TAKE_MISSING: 'Taken · Missing',
+  TAKE_VENDOR: 'Taken · Return to vendor',
+  TAKE_COUNT: 'Taken · Count correction',
   TAKE_CUSTOM: 'Taken',
 };
 

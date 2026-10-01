@@ -1,4 +1,4 @@
-/** Tech / Packer bench column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
+/** Tech / Packer bench column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
@@ -12,12 +12,12 @@ import {
 } from '@/lib/tables/field-catalog/tech';
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import { materializeTracks } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** The shared bench materialization. */
 function benchCompoundColumnsFor(
-  layout: SlotLayout,
+  layout: DataTableColumnLayout,
   catalog: FieldCatalog,
   datesLabel: string,
 ): readonly OrdersQueueColumn[] {
@@ -44,13 +44,9 @@ function benchCompoundColumnsFor(
   });
 }
 
-export function techCompoundColumnsFor(layout: SlotLayout): readonly OrdersQueueColumn[] {
-  return benchCompoundColumnsFor(layout, TECH_FIELD_CATALOG, 'Tested');
-}
+export function techCompoundColumnsFor(layout: DataTableColumnLayout): readonly OrdersQueueColumn[] { return benchCompoundColumnsFor(layout, TECH_FIELD_CATALOG, 'Tested'); }
 
-export function packerCompoundColumnsFor(layout: SlotLayout): readonly OrdersQueueColumn[] {
-  return benchCompoundColumnsFor(layout, PACKER_FIELD_CATALOG, 'Packed');
-}
+export function packerCompoundColumnsFor(layout: DataTableColumnLayout): readonly OrdersQueueColumn[] { return benchCompoundColumnsFor(layout, PACKER_FIELD_CATALOG, 'Packed'); }
 
 /** The PRODUCT-DEFAULT materialization — what an org with no override mounts. */
 export const TECH_COMPOUND_COLUMNS: readonly OrdersQueueColumn[] =

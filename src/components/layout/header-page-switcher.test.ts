@@ -10,9 +10,9 @@ import { resolveHeaderPage } from './header-page-face';
 import { HEADER_PAGE_MENU_SCROLL_CLASS } from './header-shell';
 
 const FLOOR_IDS = [
+  'stations-live',
   'triage',
   'receive',
-  'repair',
   'testing',
   'ready-to-pack',
   'packer',
@@ -31,9 +31,9 @@ test('Unbox switcher lists every Scan Stations bench, not Arrival/Unbox only', (
   assert.deepEqual(
     face!.menuRows?.map((r) => r.label),
     [
+      'Live feed V2',
       'Arrival',
       'Unbox',
-      'Repair Service',
       'Quality Control',
       'Picker',
       'Packing',

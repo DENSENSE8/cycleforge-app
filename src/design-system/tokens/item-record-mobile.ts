@@ -8,7 +8,7 @@ import { elevationClass } from './shadows';
 /**
  * Phone queue card (owner 2026-09-28: "Round ItemCardRow everywhere"). The
  * corner is the region's mode card corner — rounded in triage, square on the
- * industrial floor — so the one card follows whatever region mounts it.
+ * mobile surface — so the one card follows whatever region mounts it.
  */
 export const ITEM_RECORD_MOBILE_ROW = {
   /** The card list host: mode page inset + the mode's tight stack between cards. */

@@ -9,7 +9,7 @@ import {
   EvidenceSection,
   evidenceVerbClass,
 } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   TASK_DOCUMENT_CONTENT_MAX,

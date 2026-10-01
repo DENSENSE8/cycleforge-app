@@ -40,11 +40,12 @@ import {
   LOCATIONS_TAB_OPTIONS,
   REPLENISH_STATUS_OPTIONS,
   REPLENISH_TAB_OPTIONS,
-  STOCK_STATE_OPTIONS,
 } from '@/lib/inventory/inventory-nav-choices';
 import { JOURNEY_FILTER_KEYS, OPERATIONS_SAVED_VIEWS_KEY } from '@/lib/operations/saved-view-presets';
 import { DEFAULT_REPAIR_SORT, REPAIR_SORT_OPTIONS, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
+import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
+import { QUEUE_STATUS_CHIPS } from '@/lib/orders/to-ship-queue';
 
 /**
  * The import record (`/operations/imports`, `src/lib/imports/params.ts`) —
@@ -311,6 +312,12 @@ const QUEUE_CONTROLS: NavControls = {
     { id: 'ship-by', label: 'Ship-by date', fromParam: 'shipByFrom', toParam: 'shipByTo', clearParams: [], placeholder: 'Any day' },
     { id: 'ordered', label: 'Order date', fromParam: 'orderFrom', toParam: 'orderTo', clearParams: [], placeholder: 'Any day' },
   ],
+  exclude: {
+    id: 'exclude-status',
+    label: 'Exclude status',
+    param: 'hide',
+    options: QUEUE_STATUS_CHIPS.map((value) => ({ value, label: LIFECYCLE[value].label, tone: LIFECYCLE[value].tone })),
+  },
   sort: {
     param: 'sort',
     dirParam: 'dir',
@@ -335,14 +342,11 @@ const QUEUE_CONTROLS: NavControls = {
 };
 
 /**
- * Repair service's cards (`RepairCardList`, owner 2026-09-29) on `/repair`
- * and Sales › Repair service: Status (`?tab=`; unset = the surface's default
- * — the station's Open tickets (in the store or arriving, owner 2026-09-30),
- * Sales' whole book) and Sort (`?sort=`), formerly the retired repair table's
- * header sort and toolbar. The channel is the view (All · Shipped in ·
- * Dropped off). Status decides what is LOADED; the status chips beside the
- * count (`?repairStatus=`: Arriving · Still needs work · Completed · Closed)
- * narrow within it, so a new Status drops the lit chips.
+ * Repair service's `RepairCardList` on `/repair` and Sales › Repair service.
+ * Status (`?tab=`; unset = the surface's default) decides what is loaded;
+ * status chips (`?repairStatus=`) narrow within it. Channel is the view
+ * (All · Shipped in · Dropped off). Sidebar Sort
+ * (`?sort=`) sets the queue order.
  */
 const REPAIR_CONTROLS: NavControls = {
   choices: [
@@ -360,6 +364,18 @@ const REPAIR_CONTROLS: NavControls = {
       clearParams: ['page', REPAIR_STATUS_CHIP_PARAM],
     },
   ],
+  exclude: {
+    id: 'exclude-status',
+    label: 'Exclude status',
+    param: 'hide',
+    options: [
+      { value: 'arriving', label: 'Arriving', tone: 'info' },
+      { value: 'needs-work', label: 'Still needs work', tone: 'warning' },
+      { value: 'completed', label: 'Completed', tone: 'success' },
+      { value: 'closed', label: 'Closed', tone: 'neutral' },
+      { value: 'other', label: 'Other', tone: 'neutral' },
+    ],
+  },
   sort: {
     param: REPAIR_SORT_PARAM,
     defaultValue: DEFAULT_REPAIR_SORT,
@@ -387,7 +403,7 @@ const SHIPPED_CONTROLS: NavControls = {
   dateRanges: [
     {
       id: 'shipped',
-      label: 'Shipped',
+      label: 'Fulfilled',
       fromParam: 'dateFrom',
       toParam: 'dateTo',
       clearParams: ['shippedWeekOffset', 'allDates'],
@@ -397,6 +413,17 @@ const SHIPPED_CONTROLS: NavControls = {
       toTimeParam: 'timeTo',
     },
   ],
+  sort: {
+    param: 'sort',
+    defaultValue: 'ship_confirmed_at',
+    options: [
+      { value: 'ship_confirmed_at', label: 'Scanned out, newest' },
+      { value: 'ship_confirmed_at_asc', label: 'Scanned out, oldest' },
+      { value: 'delivered_at', label: 'Delivered, newest' },
+      { value: 'status', label: 'Carrier state' },
+      { value: 'sale_amount', label: 'Order total' },
+    ],
+  },
 };
 
 /** The To-ship desk header (OrdersDeskAddAction · Past imports · Labels walk), removed 2026-09-26. */
@@ -430,7 +457,7 @@ function labelsDocsActions(view: 'uploads' | 'labels' | 'paperwork' | 'printed')
   const buyLabel: NavAction = { id: 'labels-docs.buy-label', label: 'Buy label', href: '/shipping/buy-label' };
   const order =
     view === 'uploads' ? [upload, printLabels, printPaperwork, printAll, uploadSlips]
-    : view === 'paperwork' ? [printPaperwork, printLabels, printAll, uploadSlips, upload]
+    : view === 'paperwork' ? [uploadSlips, printPaperwork, printLabels, printAll, upload]
     : view === 'labels' ? [buyLabel, printLabels, printPaperwork, printAll, upload, uploadSlips]
     : [printLabels, printPaperwork, printAll, upload, uploadSlips];
   return order.map((action) => ({ action }));
@@ -449,11 +476,21 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     actions: [{ action: { id: 'chat.new', label: 'New chat', intent: 'ai-chat:new', hotkey: 'mod+shift+o' } }],
   },
   // Search for the Shipping views comes from `DESK_VIEWS` (the desk store).
+  // Fulfilled is its own page; its controls used to live on `outbound.items.shipped`.
   outbound: {
     viewKeys: true,
     items: {
       triage: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
-      shipped: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
+    },
+  },
+  fulfilled: {
+    viewKeys: true,
+    items: {
+      all: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
+      online: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
+      fba: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
+      sku: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
+      delivered: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
     },
   },
   // Header split action `IncomingDeskAddAction` — the Global Add inbound leaves.
@@ -606,19 +643,23 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   // Inventory (lane door, `G I`): the painted views are Stock · SKU Exceptions ·
   // Ledger · Replenish · Locations (the rest are parked, `parked-tabs.ts`), so
-  // digits bind 1–5. Their filters moved out of the stage: Stock's find box
-  // and state segment, Replenish's lost rail controls (`rtab`/`rsku`/`rstatus`,
-  // stripped by hygiene since the rail left on 2026-09-15), and the Locations
-  // tool dropdown. Stock's Rooms stay in the stage: a per-tenant facet with
-  // counts, which `choices` (fixed vocabulary, no counts) cannot carry. Ledger
-  // reads no `q` — its face is ⌘K.
+  // digits bind 1–5. Stock's Find, aisle facet, location order and state live
+  // in the contextual sidebar; Rooms remain counted stage chips because their
+  // labels are tenant data. Ledger reads no `q` — its face is ⌘K.
   inventory: {
     viewKeys: true,
     items: {
       stock: {
         search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
         controls: {
-          choices: [{ id: 'status', label: 'State', param: 'status', options: [...STOCK_STATE_OPTIONS], clearParams: ['open', 'sku'] }],
+          sort: {
+            param: 'sort',
+            defaultValue: 'location-asc',
+            options: [
+              { value: 'location-asc', label: 'Earliest location first' },
+              { value: 'location-desc', label: 'Latest location first' },
+            ],
+          },
         },
       },
       // The Exceptions hub list locked to Missing pairs (owner 2026-09-28): Find narrows it through `?q=`.
@@ -858,6 +899,27 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     search: { placeholder: 'Filter repairs…', source: 'url-param', param: 'search' },
     savedViews: REPAIR_VIEWS,
     controls: REPAIR_CONTROLS,
+  },
+  'stations-live': {
+    controls: {
+      staff: [{ id: 'staff', param: 'staff', label: 'Staff' }],
+      dateRanges: [{
+        id: 'activity-window',
+        label: 'Activity date',
+        fromParam: 'from',
+        toParam: 'to',
+        clearParams: [],
+        placeholder: 'All time',
+      }],
+      sort: {
+        param: 'sort',
+        defaultValue: 'newest',
+        options: [
+          { value: 'newest', label: 'Newest first' },
+          { value: 'oldest', label: 'Oldest first' },
+        ],
+      },
+    },
   },
   testing: {
     search: { placeholder: 'Filter tests…', source: 'url-param', param: 'search' },

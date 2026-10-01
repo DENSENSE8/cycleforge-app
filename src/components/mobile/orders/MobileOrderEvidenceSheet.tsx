@@ -10,14 +10,13 @@ import { type ReactNode } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   RECORD_ID_CLASS,
   RECORD_LABEL_CLASS,
   RECORD_PRICE_CLASS,
   recordStateCodeClass,
-} from '@/design-system/tokens/industrial-record';
+} from '@/design-system/tokens/record';
 import { LIFECYCLE, LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
@@ -135,8 +134,7 @@ export function MobileOrderEvidenceSheet({
 
   return (
     <BottomSheet open onClose={onClose} forceVariant="sheet" title={`Order ${facts.orderLabel}`} scrollBody>
-      {/* BottomSheet portals out of the page's region; re-declare industrial. */}
-      <ModeRegion mode="industrial" className="-mx-6 -mb-6 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-mode-bar text-mode-ink" data-testid="mobile-order-evidence">
+      <div className="-mx-6 -mb-6 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-mode-bar text-mode-ink" data-testid="mobile-order-evidence">
         <div
           className="flex min-h-12 items-center gap-2 border-y border-mode-ink px-4"
         >
@@ -298,7 +296,7 @@ export function MobileOrderEvidenceSheet({
             <Assignee staffId={row.packerId} name={packer} colorHex={row.packerColorHex} />
           </Fact>
         </dl>
-      </ModeRegion>
+      </div>
     </BottomSheet>
   );
 }

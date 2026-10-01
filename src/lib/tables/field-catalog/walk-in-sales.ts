@@ -1,7 +1,7 @@
 /** Walk-in sales field catalog — bindable facts of one completed counter visit. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const WALKINSALES_FIELD_CATALOG: FieldCatalog = [
   {
@@ -67,7 +67,7 @@ export const WALKINSALES_FIELD_CATALOG: FieldCatalog = [
  * STATUS tracks; line money pins under the title via `{family}.amount`.
  * `created` stays catalogued for Dates chrome + Fields, not a duplicate track.
  */
-export const WALKINSALES_PRODUCT_LAYOUT: SlotLayout = {
+export const WALKINSALES_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'walk-in-sales.id',
   statusBindings: [
@@ -79,6 +79,6 @@ export const WALKINSALES_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'walk-in-sales.detail' },
   ],
   amountFieldId: null,
-};
+}
 
 export const WALKINSALES_TABLE_LAYOUT_ID = 'walk-in-sales';

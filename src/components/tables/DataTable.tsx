@@ -22,8 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/design-system/primitives/radix-popover';
-import { ArrowUpDown, Check, ChevronDown, Download, Filter, SlidersHorizontal } from '@/components/Icons';
-import type { SlotFieldOption } from '@/lib/tables/layout-edit';
+import { ArrowUpDown, ChevronDown, Download, Filter } from '@/components/Icons';
 import { Button, SearchField } from '@/design-system/primitives';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import type { DateRange } from 'react-day-picker';
@@ -33,8 +32,6 @@ import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/compo
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
 import { DESK_RECORD_ANCHOR_ATTR } from '@/design-system/components/DeskRecordPlane';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
-import { SlotLayoutReorderProvider } from '@/components/tables/SlotLayoutReorderContext';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import {
   EXPORT_FORMATS,
   serializeRows,
@@ -47,27 +44,26 @@ import type { LedgerGridColumnModel } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import { dropSlotColumns } from '@/lib/tables/slot-column-reorder';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { TableStatusBar, type DataTableTab } from '@/components/tables/TableStatusBar';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { flattenRenderOrder, type RowGroup } from '@/lib/group-rows';
 import {
-  SLOT_TABLE_PAGE_SIZE,
-  SLOT_TABLE_PAGE_SIZES,
-  isSlotTablePageSize,
+  DATA_TABLE_PAGE_SIZE,
+  DATA_TABLE_PAGE_SIZES,
+  isDataTablePageSize,
   pageGroupedRenderOrder,
   pageIndexForRowId,
-  readSlotTablePageSize,
-  writeSlotTablePageSize,
-  type SlotTablePageSize,
-} from '@/lib/tables/slot-table-page';
-import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
+  readDataTablePageSize,
+  writeDataTablePageSize,
+  type DataTablePageSize,
+} from '@/lib/tables/data-table-pagination';
+import { dataTableFindHighlightId } from '@/lib/tables/data-table-find';
 import {
-  clearSlotTableVisibleIds,
-  publishSlotTableVisibleIds,
-  type SlotTableRowId,
-} from '@/lib/tables/slot-table-visible';
+  clearDataTableVisibleIds,
+  publishDataTableVisibleIds,
+  type DataTableRowId,
+} from '@/lib/tables/data-table-visible-rows';
 import { emitSelectionTotal } from '@/lib/selection/table-selection';
 import { MenuBrandIdentity } from '@/components/ui/grid-cells';
 import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
@@ -84,11 +80,10 @@ import {
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { DESK_TABLE_SURFACE_CLASS } from '@/design-system/tokens/desk-stage';
 import {
-  SLOT_TABLE_ACTION_ROW_ATTR,
-  SLOT_TABLE_OVERLAY_HOST_ATTR,
-} from '@/components/tables/slot-table-overlay-host';
+  DATA_TABLE_ACTION_ROW_ATTR,
+  DATA_TABLE_OVERLAY_HOST_ATTR,
+} from '@/components/tables/data-table-overlay-host';
 import { cn } from '@/utils/_cn';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 /**
  * The QUICK DATE control — a peer of the filter, not a second toolbar.
@@ -212,36 +207,6 @@ function DataTableDateMenuControl({ range, onRangeChange }: DataTableDateMenu) {
 /** Export the CURRENT view to a CSV file. */
 /* `DataTableExportButton` was DELETED with the configurable export (2026-09-02). */
 
-/** The Fields picker, as DATA — the slot-layout half of the toolbar. */
-export interface DataTableFieldsMenuData {
-  options: readonly SlotFieldOption[];
-  /** Bind (unbound row) or unbind (bound row) — one gesture. */
-  onToggle: (fieldId: string) => void;
-  /**
-   * Present ⇒ bound rows carry ↑/↓ arrows that rewrite the band's BINDING
-   * order (display order = binding order). One click per step, inside the
-   * already-open popover — no drag.
-   */
-  onMove?: (fieldId: string, direction: 'up' | 'down') => void;
-  /**
-   * Drop one bound field onto another in the same band. DataTable uses this
-   * for header click-and-hold AND provides it to the compound subtitle line
-   * so both gestures share one write. See `docs/todo/subtitle-band-reorder-PLAN.md`.
-   */
-  onReorderByDrop?: (dragFieldId: string, dropFieldId: string) => void;
-  /** Locked identity row copy (e.g. "Order"). */
-  identityLabel?: string;
-  /**
-   * Band headings. Defaults fit the compound morph ("Status columns" /
-   * "Under the title"); a sheet mount, whose subtitle bindings open real
-   * columns, names them for what they are.
-   */
-  bandLabels?: { status?: string; subtitle?: string };
-  /** Present ⇒ admin: offers "Save as organization default" with confirm. */
-  onSaveAsOrgDefault?: () => void;
-  /** Present ⇒ a personal override exists; offers reset to the shared default. */
-  onResetToDefault?: () => void;
-}
 
 /**
  * How a surface's rows copy out. Declared as DATA so the copy control can act
@@ -252,6 +217,9 @@ export interface DataTableExport<Row> {
   toRow: (row: Row) => readonly (string | number | null | undefined)[];
 }
 
+/** @deprecated Field menus were removed; retained only while callers drain the prop. */
+export type DataTableFieldsMenuData = unknown;
+
 export interface DataTableProps<Row, K extends string, C extends LedgerGridColumnModel> {
   /** Definition + typed columns + descriptor factory. The data waist. */
   binding: TableSurfaceBinding<Row, C>;
@@ -260,11 +228,7 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   hideToolbar?: boolean;
 
   // ── Feed ───────────────────────────────────────────────────────────────────
-  /**
-   * Mounted column model. Defaults to the binding's canonical list; pass the
-   * family's COMPOUND (two-row) model to mount that presentation instead — the
-   * definition (testid, shell recipe) is untouched, only the model moves.
-   */
+  /** Mounted column model. Defaults to the binding's canonical list. */
   columns?: readonly C[];
   rows: Row[];
   /** House grouping / day bands (grouping stays outside TanStack). */
@@ -331,12 +295,13 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
     storageKey: string;
     paramKeys: readonly string[];
     emptyHint?: string;
-    /** The mount's EFFECTIVE layout, so a saved view captures COLUMNS too. */
-    layout?: SlotLayout | null;
+    /** @deprecated Saved views no longer persist a configurable field layout. */
+    layout?: unknown;
   };
 
-  // ── The Fields picker (data, not a node) — slot-layout surfaces only ───────
+  /** @deprecated Configurable field menus were deleted; this prop is ignored. */
   fields?: DataTableFieldsMenuData;
+
 
   // ── Bottom strip ───────────────────────────────────────────────────────────
   tabs?: readonly DataTableTab[];
@@ -358,11 +323,7 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   // Selection VERBS are not a table prop.
   /** Quick date refinement — drawn beside the filter. See {@link DataTableDateMenu}. */
   dateMenu?: DataTableDateMenu;
-  /**
-   * Drag a column header onto another to reorder. Omit and headers still drag
-   * when {@link DataTableFieldsMenuData.onReorderByDrop} is present — DataTable
-   * maps track keys to field ids. Pass this only to override that synthesis.
-   */
+  /** Drag a column header onto another to reorder. */
   onReorderColumn?: (dragKey: string, dropKey: string) => void;
   /** Commit a drag-resized column width in px. Omit and headers do not resize. */
   onResizeColumn?: (key: string, widthPx: number) => void;
@@ -985,170 +946,6 @@ export function DataTablePageSizeMenu({
   );
 }
 
-/** The **+** Fields picker — bind/unbind catalog facts into the surface's slot bands, via the house shadcn Popover… */
-function DataTableFieldsMenu({
-  options,
-  onToggle,
-  identityLabel,
-  bandLabels,
-  onSaveAsOrgDefault,
-  onResetToDefault,
-}: DataTableFieldsMenuData) {
-  const [open, setOpen] = useState(false);
-  const [confirmingOrgSave, setConfirmingOrgSave] = useState(false);
-  const statusOptions = options.filter((o) => o.band === 'status');
-  const subtitleOptions = options.filter((o) => o.band === 'subtitle');
-
-  const handleOpenChange = (next: boolean) => {
-    setOpen(next);
-    if (!next) setConfirmingOrgSave(false);
-  };
-
-  // ↑/↓ on a bound row rewrites its band's BINDING order — display order IS binding order, so this is the reorder affordance the append-only…
-  /* Bind / unbind only. */
-  const renderOption = (option: SlotFieldOption) => {
-    const toggle = (
-      <HoverTooltip label={option.disabledReason} asChild><button
-        type="button"
-        disabled={Boolean(option.disabledReason)}
-       
-        onClick={() => onToggle(option.fieldId)}
-        data-testid={`data-table-field-${option.fieldId}`}
-        data-bound={option.bound ? '' : undefined}
-        // A bind/unbind row is a TOGGLE — without pressed state a screen reader
-        // announces six identical buttons and the check glyph says nothing.
-        aria-pressed={option.bound}
-        className={cn(
-          'ds-raw-button flex w-full min-w-0 flex-1 items-center justify-between gap-2 px-2 py-1.5 text-left text-role-caption',
-          DROPDOWN_ITEM_CORNER,
-          focusRing('control'),
-          option.bound
-            ? 'bg-surface-sunken font-semibold text-text-default'
-            : 'text-text-soft hover:bg-surface-hover hover:text-text-default',
-          option.disabledReason && 'cursor-not-allowed opacity-50',
-        )}
-      >
-        <span className="truncate">{option.label}</span>
-        {option.bound ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
-      </button></HoverTooltip>
-    );
-    return <Fragment key={option.fieldId}>{toggle}</Fragment>;
-  };
-
-  const bandHeading = (label: string) => (
-    <p className="px-2 pb-0.5 pt-1.5 text-role-micro font-semibold text-text-faint">
-      {label}
-    </p>
-  );
-
-  const fullBand = options.find((o) => o.disabledReason)?.disabledReason;
-
-  return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          data-testid="data-table-fields"
-          aria-label="Add or remove columns"
-          aria-expanded={open}
-          className={cn(
-            'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-1.5 text-role-caption',
-            'transition-colors duration-100 ease-out',
-            PRIMARY_CHROME_ROW_FACE,
-            DATA_TABLE_TOOLBAR_CORNER,
-            focusRing('control'),
-            'text-text-muted hover:bg-surface-hover hover:text-text-default',
-          )}
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        sideOffset={2}
-        data-testid="data-table-fields-menu"
-        className={cn(DROPDOWN_SHELL_CORNER, 'w-64 overflow-hidden p-0.5')}
-      >
-          {identityLabel ? (
-            <p className="px-2 py-1.5 text-role-caption text-text-faint">
-              {identityLabel} — identity, always shown
-            </p>
-          ) : null}
-          {/* ONE wrapper, and the subtitle band leads (operator ruling 2026-08-31). */}
-          <div className="flex flex-col">
-            {subtitleOptions.length > 0 ? (
-              <>
-                {bandHeading(bandLabels?.subtitle ?? 'Under the title')}
-                {subtitleOptions.map(renderOption)}
-              </>
-            ) : null}
-            {statusOptions.length > 0 ? (
-              <>
-                {bandHeading(bandLabels?.status ?? 'Status columns')}
-                {statusOptions.map(renderOption)}
-              </>
-            ) : null}
-          </div>
-          {fullBand ? (
-            <p
-              data-testid="data-table-fields-limit"
-              className="px-2 py-1.5 text-role-micro text-text-faint"
-            >
-              {fullBand}
-            </p>
-          ) : null}
-          {onResetToDefault || onSaveAsOrgDefault ? (
-            <div className="my-0.5 h-px bg-border-soft" aria-hidden />
-          ) : null}
-          {onResetToDefault ? (
-            <button
-              type="button"
-              data-testid="data-table-fields-reset"
-              onClick={() => {
-                onResetToDefault();
-                setOpen(false);
-              }}
-              className={cn(
-                'ds-raw-button w-full px-2 py-1.5 text-left text-role-caption text-text-soft',
-                DROPDOWN_ITEM_CORNER,
-                focusRing('control'),
-                'hover:bg-surface-hover hover:text-text-default',
-              )}
-            >
-              Reset to shared default
-            </button>
-          ) : null}
-          {onSaveAsOrgDefault ? (
-            <button
-              type="button"
-              data-testid="data-table-fields-save-org"
-              onClick={() => {
-                if (!confirmingOrgSave) {
-                  setConfirmingOrgSave(true);
-                  return;
-                }
-                onSaveAsOrgDefault();
-                setConfirmingOrgSave(false);
-                setOpen(false);
-              }}
-              className={cn(
-                'ds-raw-button w-full px-2 py-1.5 text-left text-role-caption',
-                DROPDOWN_ITEM_CORNER,
-                focusRing('control'),
-                confirmingOrgSave
-                  ? 'bg-blue-600 font-semibold text-white hover:bg-blue-600'
-                  : 'text-text-soft hover:bg-surface-hover hover:text-text-default',
-              )}
-            >
-              {confirmingOrgSave
-                ? 'Confirm: set for the whole organization'
-                : 'Save as organization default'}
-            </button>
-          ) : null}
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 /** Rows this grid may hand keyboard focus to. */
 const DATA_TABLE_ROW_SELECTOR =
@@ -1223,7 +1020,6 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   actions,
   sortMenu,
   views,
-  fields,
   tabs,
   activeTab,
   onTabChange,
@@ -1260,9 +1056,9 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   const selectedRows = useTableSelection<Row>(selectionScope ?? '__idle__');
   const selectedCount = selectionScope ? selectedRows.length : 0;
   const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize, setPageSize] = useState<SlotTablePageSize>(SLOT_TABLE_PAGE_SIZE);
+  const [pageSize, setPageSize] = useState<DataTablePageSize>(DATA_TABLE_PAGE_SIZE);
   useEffect(() => {
-    setPageSize(readSlotTablePageSize());
+    setPageSize(readDataTablePageSize());
   }, []);
   const sheetFindValue = sheetFind?.value ?? '';
   useEffect(() => {
@@ -1278,7 +1074,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   /** The page's row ids, in render order — what Select-all may tick and what the foot's "N selected" counts against. */
   const visibleIds = useMemo(() => {
     return flattenRenderOrder(paged.order)
-      .map((row): SlotTableRowId | null => {
+      .map((row): DataTableRowId | null => {
         const key = getRowId
           ? getRowId(row)
           : row && typeof row === 'object' && 'id' in row
@@ -1288,13 +1084,13 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         const numeric = Number(key);
         return Number.isFinite(numeric) && numeric > 0 ? numeric : key;
       })
-      .filter((id): id is SlotTableRowId => id !== null);
+      .filter((id): id is DataTableRowId => id !== null);
   }, [paged.order, getRowId]);
   useEffect(() => {
     if (!selectionScope) return;
-    publishSlotTableVisibleIds(selectionScope, visibleIds);
+    publishDataTableVisibleIds(selectionScope, visibleIds);
     emitSelectionTotal(selectionScope, visibleIds.length);
-    return () => clearSlotTableVisibleIds(selectionScope);
+    return () => clearDataTableVisibleIds(selectionScope);
   }, [selectionScope, visibleIds]);
   const paintedRowIds = useMemo(
     () =>
@@ -1305,7 +1101,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       }).filter(Boolean),
     [orderGroupsByDate, getRowId],
   );
-  const findScrollToKey = scrollToKey ?? slotTableFindHighlightId({
+  const findScrollToKey = scrollToKey ?? dataTableFindHighlightId({
     query: sheetFindValue,
     paintedRowIds,
   });
@@ -1328,23 +1124,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   // `enableSorting` is already the surface's sort vocabulary, so reading it back
   // is what keeps a header from offering a sort the engine will not perform.
   const mounted = columns ?? binding.columns;
-  const handleSlotHeaderReorder = useCallback(
-    (dragKey: string, dropKey: string) => {
-      // Slot tables always write the ORGANIZATION layout (ruling 2026-08-31).
-      // `fields.onReorderByDrop` is that write; an explicit `onReorderColumn`
-      // is only the fallback for a mount that is not on the slot engine.
-      const byDrop = fields?.onReorderByDrop;
-      if (byDrop) {
-        const pair = dropSlotColumns(dragKey, dropKey, mounted);
-        if (pair) byDrop(pair.dragFieldId, pair.dropFieldId);
-        return;
-      }
-      onReorderColumn?.(dragKey, dropKey);
-    },
-    [onReorderColumn, fields, mounted],
-  );
-  const headerReorder =
-    onReorderColumn || fields?.onReorderByDrop ? handleSlotHeaderReorder : undefined;
+  const headerReorder = onReorderColumn;
   const headerLayout = useMemo(() => {
     if (isSortable) return { isSortable };
     const sortable = new Set(
@@ -1499,20 +1279,19 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   const defaultViews = sheetSavedViewConfigForTable(binding.definition.tableId);
   const resolvedViews = views ?? (
     defaultViews
-      ? { ...defaultViews, emptyHint: undefined, layout: undefined }
+      ? { ...defaultViews, emptyHint: undefined }
       : null
   );
 
 
   return (
-    <SlotLayoutReorderProvider onReorderByDrop={fields?.onReorderByDrop ?? null}>
-      <>
+    <>
         {exportInHeader ? (
           <DeskActionSlotRegistrar role="overall">{exportControl}</DeskActionSlotRegistrar>
         ) : null}
         <div
           className={cn(DESK_TABLE_SURFACE_CLASS, className)}
-          {...{ [SLOT_TABLE_OVERLAY_HOST_ATTR]: '' }}
+          {...{ [DATA_TABLE_OVERLAY_HOST_ATTR]: '' }}
         >
       {/* ── The list anchor: table controls + record action strip. In place,
           the open record opens below it; both stay live over the record. ──── */}
@@ -1549,34 +1328,29 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
               storageKey={resolvedViews.storageKey}
               paramKeys={resolvedViews.paramKeys}
               emptyHint={resolvedViews.emptyHint}
-              tableId={resolvedViews.layout ? binding.definition.tableId : undefined}
-              layout={resolvedViews.layout}
             />
           </div>
         ) : null}
         {dateMenu ? <DataTableDateMenuControl {...dateMenu} /> : null}
         <DataTablePageSizeMenu
           pageSize={pageSize}
-          pageSizes={SLOT_TABLE_PAGE_SIZES}
+          pageSizes={DATA_TABLE_PAGE_SIZES}
           onPageSizeChange={(size) => {
-            if (!isSlotTablePageSize(size)) return;
-            writeSlotTablePageSize(size);
+            if (!isDataTablePageSize(size)) return;
+            writeDataTablePageSize(size);
             setPageSize(size);
           }}
         />
         {/* The order, left to right (operator ruling 2026-09-01, verbs 2026-09-04): */}
         <span className="ml-auto inline-flex shrink-0 items-center gap-1">
           {showExportGlyph ? exportControl : null}
-          {fields && binding.definition.capabilities.fieldsMenu ? (
-            <DataTableFieldsMenu {...fields} />
-          ) : null}
           <DataTableZoomToggle />
           {/* Renders nothing at all off a desk stage — see the component. */}
           <DeskRecordViewSwitch />
         </span>
       </div> : null}
         <div
-          {...{ [SLOT_TABLE_ACTION_ROW_ATTR]: '' }}
+          {...{ [DATA_TABLE_ACTION_ROW_ATTR]: '' }}
           data-testid="data-table-action-row"
           className="min-w-0 w-full empty:hidden"
         >
@@ -1645,7 +1419,6 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         onLoadMore={onLoadMore}
       />
     </div>
-      </>
-    </SlotLayoutReorderProvider>
+    </>
   );
 }

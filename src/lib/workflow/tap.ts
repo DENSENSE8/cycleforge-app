@@ -81,7 +81,7 @@ export interface TapDeps {
   enroll: typeof enrollItem;
   advance: (orgId: string, args: Omit<AdvanceArgs, 'orgId'>) => Promise<AdvanceOutcome>;
   /** Best-effort ops_events emit for drop/divergence observability. */
-  emitOps: (input: RecordOpsEventInput) => Promise<void>;
+  emitOps: (input: RecordOpsEventInput) => Promise<unknown>;
   /** Intended-tap outbox gate — real impl reads WORKFLOW_TAP_OUTBOX (default OFF). */
   outboxEnabled: () => boolean;
   outbox: TapOutboxDeps;

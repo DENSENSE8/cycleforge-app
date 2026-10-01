@@ -7,7 +7,7 @@ import { CompoundPlaneRow } from '@/components/tables/compound/CompoundPlaneRow'
 import { compoundRowActivationProps } from '@/components/tables/compound/compound-row-activation';
 import type { DataTableProps, DataTableSearch } from '@/components/tables/DataTable';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import type { SlotTableFieldsMenu } from '@/components/tables/useSlotTableLayout';
+import { dataTableSubtitleFieldIds } from '@/components/tables/data-table-row-metadata';
 import type {
   CompoundRowAction,
   CompoundRowAdapter,
@@ -18,16 +18,16 @@ import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 import { compareGridValues } from '@/design-system/components/grid';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import { singleBand, type RowGroup } from '@/lib/group-rows';
-import type { SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import { slotSubtitlePartsFor, type LineQtyMeaning } from '@/lib/tables/slot-table-line-qty';
-import { slotTableSearchFactIds } from '@/lib/tables/slot-table-search-vocabulary';
+import type { DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import { dataTableSubtitlePartsFor, type LineQtyMeaning } from '@/lib/tables/data-table-line-qty';
+import { dataTableSearchFactIds } from '@/lib/tables/data-table-search-vocabulary';
 
 /**
  * Structural shape of a mounted compound column. Every family's column
  * interface already satisfies it — typing against a concrete family model is
  * what this hook exists to avoid.
  */
-export interface CompoundSpreadsheetColumn extends SlotTrackFields {
+export interface CompoundSpreadsheetColumn extends DataTableColumnFields {
   key: string;
   width: string;
   label?: string;
@@ -43,20 +43,12 @@ export interface UseCompoundSpreadsheetOptions<
 > {
   /** Definition + descriptor factory — the family's registry line, by reference. */
   binding: TableSurfaceBinding<Row, C>;
-  /** The MOUNTED model, materialized from the effective slot layout. */
+  /** Mounted columns; direct bindings normally pass `binding.columns`. */
   columns: readonly C[];
-  /** Fields-picker data from `useSlotTableLayout`. */
-  fields?: SlotTableFieldsMenu;
   rows: readonly Row[];
   getRowId: (row: Row) => string;
   /** The family's pure `row → CompoundRowView` adapter. */
   adapter: CompoundRowAdapter<Row>;
-  /**
-   * Bound under-title field ids from `useSlotTableLayout`. Compound morph
-   * paints these inside the item cell — they are not tracks. When the adapter
-   * already supplies `subtitleParts`, those win (family face: qty/money).
-   */
-  subtitleFieldIds?: readonly string[];
   /**
    * What the line qty MEANS here, which decides its tone. Defaults to
    * `order-line` (2+ warns — the pick-and-pack risk every outbound peer
@@ -65,7 +57,7 @@ export interface UseCompoundSpreadsheetOptions<
   lineQtyMeaning?: LineQtyMeaning;
   /**
    * Facts the family's ADAPTER paints that no track names — see
-   * {@link slotTableSearchFactIds}. The Id track's second line
+   * {@link dataTableSearchFactIds}. The Id track's second line
    * (`identitySubFace`) is the case this exists for.
    */
   adapterPaintedFieldIds?: readonly string[];
@@ -160,11 +152,9 @@ export function useCompoundSpreadsheet<
 >({
   binding,
   columns,
-  fields,
   rows,
   getRowId,
   adapter,
-  subtitleFieldIds,
   lineQtyMeaning,
   adapterPaintedFieldIds,
   resolve,
@@ -187,6 +177,9 @@ export function useCompoundSpreadsheet<
   sectionHeaders,
 }: UseCompoundSpreadsheetOptions<Row, K, C>): CompoundSpreadsheetFeed<Row, K, C> {
   const shellRef = useRef<HTMLDivElement>(null);
+  const subtitleFieldIds = binding.definition
+    ? dataTableSubtitleFieldIds(binding.definition.tableId)
+    : [];
 
   /** The gutter control, or `null`. */
   const rowSelect =
@@ -200,7 +193,7 @@ export function useCompoundSpreadsheet<
   /** Every fact the operator can READ off a row — bound tracks ∪ the structural facts the chrome tracks paint ∪ the under-title band. */
   const searchFactIds = useMemo(
     () =>
-      slotTableSearchFactIds({
+      dataTableSearchFactIds({
         columns,
         sortFactFor,
         subtitleFieldIds,
@@ -242,7 +235,7 @@ export function useCompoundSpreadsheet<
       const subtitleParts =
         adapted.subtitleParts ??
         (subtitleFieldIds && subtitleFieldIds.length > 0
-          ? slotSubtitlePartsFor(
+          ? dataTableSubtitlePartsFor(
               subtitleFieldIds,
               (fieldId) => resolve(row, fieldId),
               lineQtyMeaning,
@@ -304,7 +297,6 @@ export function useCompoundSpreadsheet<
   return {
     binding,
     columns,
-    fields,
     rows: sorted,
     getRowId,
     orderGroupsByDate: groups,
@@ -315,9 +307,7 @@ export function useCompoundSpreadsheet<
     sort,
     dir,
     onSortChange,
-    // Law (`SLOT_TABLE_PAINT_LAW.headerSort`): every painted DATA header
-    // click-sorts. A track with no sortable fact is exactly the transition case
-    // the family's `sortFactFor` refuses, and chrome tracks carry no fieldId.
+    // Every painted data header sorts by the fact declared by its column.
     isSortable: (key: string) => (sortFactByKey.get(key) ?? null) !== null,
     ariaLabel,
     className,

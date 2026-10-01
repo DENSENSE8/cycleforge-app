@@ -7,8 +7,8 @@
  * {@link identificationFromScanOut} with `source: 'claim'`.
  */
 
-import { useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useMemo, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
@@ -17,11 +17,22 @@ import {
   identificationFromScanOut,
   type ScanOutCartonJson,
 } from '@/lib/identification';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { toast } from '@/lib/toast';
 
 export default function MobileScanOutIdentificationPage() {
   const params = useParams<{ orderId: string }>();
   const orderId = params?.orderId ? decodeURIComponent(params.orderId) : '';
+  const searchParams = useSearchParams();
   const { user, isLoaded } = useAuth();
+  const clientEventIdRef = useRef(searchParams.get('scanEvent')?.trim() || safeRandomUUID());
+  const mobileScanEventIdRaw = Number(searchParams.get('mse'));
+  const mobileScanEventId =
+    Number.isSafeInteger(mobileScanEventIdRaw) && mobileScanEventIdRaw > 0
+      ? mobileScanEventIdRaw
+      : null;
+  const [committing, setCommitting] = useState(false);
+  const [committed, setCommitted] = useState<ScanOutCartonJson | null>(null);
 
   const query = useQuery({
     queryKey: ['identification', 'scan-out', orderId],
@@ -36,15 +47,44 @@ export default function MobileScanOutIdentificationPage() {
   });
 
   const result = useMemo(() => {
-    if (!user?.organizationId || !query.data) return null;
+    const json = committed ?? query.data;
+    if (!user?.organizationId || !json) return null;
     return identificationFromScanOut({
-      source: 'claim',
+      source: committed ? 'scan' : 'claim',
       organizationId: user.organizationId,
-      clientEventId: `claim:scan_out:${orderId}`,
-      json: query.data,
+      clientEventId: clientEventIdRef.current,
+      json,
       requestedKey: orderId,
     });
-  }, [orderId, query.data, user?.organizationId]);
+  }, [committed, orderId, query.data, user?.organizationId]);
+  const continueScanOut = async () => {
+    const tracking = query.data?.tracking?.trim();
+    if (!tracking || committing) return;
+    setCommitting(true);
+    try {
+      const response = await fetch('/api/shipped/scan-out', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackingNumber: tracking,
+          orderId,
+          source: 'phone',
+          clientEventId: clientEventIdRef.current,
+          mobileScanEventId,
+          surface: `/m/id/scan-out/${encodeURIComponent(orderId)}`,
+        }),
+      });
+      const body = await response.json().catch(() => null) as ScanOutCartonJson | null;
+      if (!response.ok || !body?.ok) throw new Error(body?.message || `Scan out failed (${response.status})`);
+      setCommitted(body);
+      toast.success(body.duplicate ? 'Already scanned out' : 'Scanned out');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not scan out this order');
+    } finally {
+      setCommitting(false);
+    }
+  };
 
   const title =
     query.data?.productTitle?.trim() ||
@@ -74,7 +114,12 @@ export default function MobileScanOutIdentificationPage() {
             })}
           />
         ) : result ? (
-          <IdentificationJobFace result={result} carton={query.data} />
+          <IdentificationJobFace
+            result={result}
+            carton={committed ?? query.data}
+            onContinue={committing || committed ? undefined : () => { void continueScanOut(); }}
+            continueLabel={committing ? 'Scanning out…' : 'Scan out'}
+          />
         ) : (
           <p className="text-role-caption text-text-muted">Loading…</p>
         )}

@@ -4,10 +4,10 @@ import { Suspense, useCallback, useMemo, useRef, useState, type ChangeEvent } fr
 import { useParams, useRouter } from 'next/navigation';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import {
-  MobilePackerSpamCamera,
+  MobileNativePhotoCapture,
   type CapturedShot,
   type PriorPhoto,
-} from '@/components/mobile/station/MobilePackerSpamCamera';
+} from '@/components/mobile/photos/MobileNativePhotoCapture';
 import {
   MobileSwipePhotoViewer,
   type SwipePhotoSlide,
@@ -311,7 +311,7 @@ function RepairPhotosInner() {
       />
 
       {capturing ? (
-        <MobilePackerSpamCamera
+        <MobileNativePhotoCapture
           onDone={onCaptured}
           onCancel={() => setCapturing(false)}
           maxPhotos={10}

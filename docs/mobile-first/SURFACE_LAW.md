@@ -172,6 +172,7 @@ Canonical phone entrypoints (non-exhaustive; grow this table, don’t fork):
 | Packing | **`/m/p/[id]/photos`** — the photo feed reached from the desk `scan_ready` bridge. There is **no `/m/pack` queue**: deleted 2026-09-14 by operator ruling. Do not recreate it. |
 | Claim | `/m/claim` |
 | SKU exceptions (on-hold `TMP-…` placeholders) | `/m/on-hold` queue · `/m/on-hold/[sku]` hub (summary card → `/info` details + pencil edit; doors Photos · Locations · Pair; dock Share · Take photo · Pair) · `/photos` · `/locations` (count via `/m/pair/[code]/[sku]?from=on-hold`, returns here) · `/pair` pair to Zoho SKU. Desk twin `/inventory/sku-exceptions`; `?sku=` share links land on the phone hub. |
+| Warehouse stock record (a location · SKU pair: title + description, count per location, Add location, home tote, Pair to Zoho SKU, photos, Send to staff; an empty location creates a TMP SKU) | `/m/stock` list · `/m/stock/detail?open=<location:sku:source>` record = the desk record's own body (`src/features/stock-record/StockRecordView.tsx`, ARCHITECTURE.md rule 6) in `DetailRecordFrame`, bottom walk Previous · Add photo (`/m/stock/[stockId]/photos`) · Next. Desk twin `/inventory/stock?open=`. |
 | Locations / labels (port target) | `/m/…` TBD — must exist before desk Labels is “done” |
 
 **Outbound / inbound verb order** (operator, 2026-09-14) is the ledger in

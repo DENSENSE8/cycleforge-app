@@ -294,6 +294,7 @@ test('prod nav ships every unparked page; parked lanes and redirect surfaces sta
   // Stations + shipping + inventory + warehouse stay visible (receiving family
   // promoted to L1: Arrival / Unbox / Pickup / Repair + Incoming on Desk).
   for (const id of [
+    'stations-live',
     'triage',
     'receive',
     'pickup',
@@ -349,6 +350,9 @@ test('every mode round-trips: resolveChild(apply(to(mode))) === mode', () => {
   for (const page of SIDEBAR_PAGE_NAV) {
     if (!page.children || page.children.length === 0) continue;
     for (const mode of page.children) {
+      // A mode parent may intentionally share its landing URL with its first
+      // saved view; the resolver returns that concrete view, not the parent.
+      if (NAV_PAGE_DECLS[page.id]?.modes && page.children.some((child) => child.group === mode.id)) continue;
       // Start from the page's bare href with no params — the cold-link case.
       const { pathname, search } = applyChildTarget(
         { pathname: page.href, params: new URLSearchParams() },
@@ -372,6 +376,7 @@ test('mode round-trip resolves, preserving unrelated params only on un-migrated 
   for (const page of SIDEBAR_PAGE_NAV) {
     if (!page.children || page.children.length === 0) continue;
     for (const mode of page.children) {
+      if (NAV_PAGE_DECLS[page.id]?.modes && page.children.some((child) => child.group === mode.id)) continue;
       const target = mode.to();
       // A mode legitimately sets/clears its OWN params (e.g.
       const delta = target.params ?? {};
@@ -436,7 +441,7 @@ test("a page's bare href resolves to a declared mode (its default)", () => {
       assert.equal(resolved, null, `${page.id} is modeless but resolved "${resolved}"`);
       continue;
     }
-    if (NAV_PAGE_DECLS[page.id]?.modes) {
+    if (NAV_PAGE_DECLS[page.id]?.modes && resolved === null) {
       assert.equal(resolved, null, `${page.id}: its bare href names no child; the page redirects it`);
       continue;
     }
@@ -661,7 +666,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // The desk's tab band, in order — Allocate (child `orders`) leads: FBM lands there.
   assert.deepEqual(
     getSidebarPageNav('outbound')?.children?.map((c) => c.id),
-    ['orders', 'exceptions', 'shipped'],
+    ['orders', 'exceptions'],
   );
   assert.equal(getSidebarPageNav('outbound')?.href, '/shipping/orders');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/shortage', 'pair=po')), null);
@@ -680,10 +685,8 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   }
   assert.equal(resolveSidebarChild('outbound', at('/dashboard')), 'orders');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/orders')), 'orders');
-  // Shipped lights its own tab. Without its clause the catch-all `return
-  // 'orders'` would light To ship on the history desk — a tab claiming to be
-  // somewhere the operator is not.
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/shipped')), 'shipped');
+  // Fulfilled is a sibling page, so no FBM child lights on its archive route.
+  assert.equal(resolveSidebarChild('outbound', at('/fulfilled')), null);
   // FBA is a sibling desk in the Outbound lane now — no tab of this band lights
   // on its path, and the FBA page's own resolver owns the highlight instead.
   assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), null);
@@ -848,6 +851,7 @@ test('floorStationPages is the flat Scan Stations map for the header switcher', 
   assert.deepEqual(
     floorStationPages().map((p) => [p.id, p.label]),
     [
+      ['stations-live', 'Live feed V2'],
       ['triage', 'Arrival'],
       ['receive', 'Unbox'],
       ['testing', 'Quality Control'],

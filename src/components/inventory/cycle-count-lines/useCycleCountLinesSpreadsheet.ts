@@ -13,7 +13,6 @@ import type { CycleCountLineRow } from '@/lib/inventory/cycle-count-line-row';
 import { resolveCycleCountLinesSlotValue } from '@/lib/tables/field-catalog/cycle-count-lines-resolve';
 import { cycleCountLinesCompoundView } from './cycle-count-lines-row-view';
 import {
-  cycleCountLinesCompoundColumnsFor,
   cycleCountLinesSortFactFor,
   type CycleCountLinesGridColumn,
   type CycleCountLinesGridColumnKey,
@@ -22,7 +21,6 @@ import {
   CYCLECOUNTLINES_GRID_CAPABILITIES,
   CYCLECOUNTLINES_TABLE_BINDING,
 } from './cycle-count-lines-table-definition';
-import { useCycleCountLinesTableLayout } from './useCycleCountLinesTableLayout';
 
 interface UseCycleCountLinesSpreadsheetOptions {
   rows: readonly CycleCountLineRow[];
@@ -48,11 +46,8 @@ export function useCycleCountLinesSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useCycleCountLinesTableLayout();
-  const columns = useMemo(
-    () => cycleCountLinesCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: CycleCountLinesGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -73,12 +68,10 @@ export function useCycleCountLinesSpreadsheet({
     CycleCountLinesGridColumn
   >({
     binding: CYCLECOUNTLINES_TABLE_BINDING,
-    columns,
-    fields,
+    columns: CYCLECOUNTLINES_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: cycleCountLinesCompoundView,
-    subtitleFieldIds,
     resolve: resolveCycleCountLinesSlotValue,
     sortFactFor: cycleCountLinesSortFactFor,
     capabilities: CYCLECOUNTLINES_GRID_CAPABILITIES,

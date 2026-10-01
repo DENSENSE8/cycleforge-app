@@ -979,13 +979,14 @@ function SupportTicketPopover({
 
           {hasTicket ? (
             <PaneHeaderTabs<'reply' | 'create'>
+              appearance="flush"
               tabs={[
                 { value: 'reply', label: 'Reply' },
                 { value: 'create', label: 'New ticket' },
               ]}
               value={mode}
               onChange={setMode}
-              className="rounded-none border border-border-soft px-1 py-0.5"
+              className="border border-border-soft px-1 py-0.5"
             />
           ) : null}
 
@@ -1086,13 +1087,14 @@ function TicketCreateInline({
   return (
     <section className="space-y-2">
       <PaneHeaderTabs<'internal' | 'public'>
+        appearance="flush"
         tabs={[
           { value: 'internal', label: 'Internal' },
           { value: 'public', label: 'Email customer' },
         ]}
         value={isPublic ? 'public' : 'internal'}
         onChange={(next) => setIsPublic(next === 'public')}
-        className="rounded-none border border-border-soft px-1 py-0.5"
+        className="border border-border-soft px-1 py-0.5"
       />
       <textarea
         value={body}

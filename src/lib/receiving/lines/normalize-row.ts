@@ -159,6 +159,7 @@ export function normalizeRow(row: Record<string, unknown>) {
     received_done_at:         asStampText(row.received_done_at),
     unboxed_at:               asStampText(row.receiving_unboxed_at),
     unboxed_by_name:          (row.unboxed_by_name as string | null) ?? null,
+    unbox_opened_by_name:     (row.unbox_opened_by_name as string | null) ?? null,
     scanned_at:               asStampText(row.first_scanned_at),
     scanned_by_name:          (row.scanned_by_name as string | null) ?? null,
     // First-class "opened for unbox" time (receiving.unbox_opened_at / UNBOX_SCAN_OPENED).
@@ -222,6 +223,8 @@ export function buildUnmatchedEmptyReceivingLine(pkg: Record<string, unknown>): 
     carrier: pkg.carrier,
     receiving_received_at: pkg.receiving_received_at,
     receiving_unboxed_at: unboxedAt,
+    unboxed_by_name: pkg.unboxed_by_name ?? null,
+    unbox_opened_by_name: pkg.unbox_opened_by_name ?? null,
     receiving_support_notes: pkg.receiving_support_notes ?? null,
     receiving_zoho_notes: pkg.receiving_zoho_notes ?? null,
     receiving_listing_url: pkg.receiving_listing_url ?? null,

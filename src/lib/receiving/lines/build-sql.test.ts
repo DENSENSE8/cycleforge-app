@@ -640,6 +640,16 @@ test('tracking_in suppresses the delivery-state facet — a stale chip must not 
     'naming a tracking outranks a facet the operator armed earlier');
 });
 
+test('ref_in on Incoming keeps the awaiting-tracking list predicate', () => {
+  const plain = listFor('view=incoming&delivery_state=AWAITING_TRACKING');
+  const pasted = listFor('view=incoming&delivery_state=AWAITING_TRACKING&ref_in=27-15205-38270');
+  assert.ok(pasted.list.sql.includes('stn.id IS NULL'), 'the facet stays — unlike tracking_in');
+  assert.ok(pasted.list.sql.includes(NOT_ZOHO_RECEIVED), 'the open-PO guard stays');
+  assert.ok(pasted.list.sql.includes('NOT ('), 'the dock-scan guard stays');
+  assert.ok(pasted.list.sql.includes('tracking_number_normalized = ANY('), 'the paste cuts the same list');
+  assert.ok(pasted.list.sql.length > plain.list.sql.length);
+});
+
 test('the relaxation is SCOPED — no other view or predicate loosens', () => {
   const scanned = listFor('view=scanned&tracking_in=1Z999AA10123456784');
   assert.ok(

@@ -298,7 +298,7 @@ export function DeskRecordPlane({
             aria-label={regionLabel}
             data-testid={testId}
             data-desk-record-view={view}
-            data-desk-record-open={open ? '' : undefined}
+            data-desk-record-open={open && listRail !== true ? '' : undefined}
             className={rail ? DESK_RAIL_RECORD_CLASS : DESK_SPLIT_RECORD_CLASS}
           >
             <motion.div
@@ -423,9 +423,9 @@ export function DeskRecordLayout({ main, aside, peek, className }: DeskRecordLay
   const view = useDeskRecordView();
   if (deskRecordBesideList(view)) {
     return (
-      <div className={cn('flex max-w-full flex-col gap-4 industrial:gap-0', DESK_RECORD_MEASURE_CLASS, className)}>
+      <div className={cn('flex max-w-full flex-col gap-4', DESK_RECORD_MEASURE_CLASS, className)}>
         {/* `-mb-4` cancels the column gap the zero-height strip would add. */}
-        {peek != null ? <DeskRecordPeekEdge peek={peek} rail={false} className="-mb-4 industrial:mb-0" /> : null}
+        {peek != null ? <DeskRecordPeekEdge peek={peek} rail={false} className="-mb-4" /> : null}
         {main}
         {aside}
       </div>

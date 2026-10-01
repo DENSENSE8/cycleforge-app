@@ -4,7 +4,7 @@
  * LocationBadge — the one face for "which bin is this on": the bin code in
  * mono on a quiet pill, or an honest `No bin` warning pill when the shelf is
  * unknown. The corner follows the region's mode (pill in triage, square on the
- * industrial floor). With `onPress` it becomes the door to set the bin.
+ * operation surface). With `onPress` it becomes the door to set the bin.
  */
 
 import { AlertTriangle, MapPin } from '@/components/Icons';

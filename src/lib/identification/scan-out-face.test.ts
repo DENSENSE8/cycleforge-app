@@ -92,7 +92,7 @@ describe('identificationFromScanOut', () => {
       json: dupCarton,
     });
     assert.equal(result.face.state, 'done');
-    assert.equal(result.face.title, 'Already scanned out');
+    assert.equal(result.face.title, 'Already fulfilled');
   });
 
   it('scan and claim share entity, job, and blocked state', () => {

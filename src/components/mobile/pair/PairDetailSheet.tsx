@@ -7,6 +7,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/design-system/primitives/Button';
 import { Loader2 } from '@/components/Icons';
 import type { SkuStockedAt } from '@/lib/neon/pair-candidates-queries';
+import { SkuLinkedPhotoStrip } from '@/components/mobile/stock/SkuLinkedPhotoStrip';
 
 export function PairDetailSheet({
   sku,
@@ -40,6 +41,8 @@ export function PairDetailSheet({
     <BottomSheet open onClose={onClose} title={title}>
       <div className="flex flex-col gap-3 px-4 pb-4">
         <p className="font-mono text-role-caption text-text-soft">{sku}</p>
+
+        <SkuLinkedPhotoStrip sku={sku} />
 
         <div>
           <p className="text-role-eyebrow text-text-soft">

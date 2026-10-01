@@ -1,7 +1,7 @@
 /** Tech-All field catalog — the bindable cross-store triage facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const TECH_ALL_FIELD_CATALOG: FieldCatalog = [
   {
@@ -42,7 +42,7 @@ export const TECH_ALL_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default Tech-All layout — visual parity with the retired hand model (`select · identity · type · stage · urgency`), which is… */
-export const TECH_ALL_PRODUCT_LAYOUT: SlotLayout = {
+export const TECH_ALL_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'tech-all.item',
   statusBindings: [
@@ -52,7 +52,7 @@ export const TECH_ALL_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Tech · All entry. */
 export const TECH_ALL_TABLE_LAYOUT_ID = 'tech-all';

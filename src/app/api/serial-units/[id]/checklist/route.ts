@@ -116,15 +116,30 @@ export const POST = withAuth(async (request, ctx) => {
   const orgId = ctx.organizationId;
 
   // tech_verifications.sku_catalog_id is NOT NULL — resolve it from the unit.
-  const unit = await tenantQuery<{ sku_catalog_id: number | null }>(
+  const unit = await tenantQuery<{
+    sku_catalog_id: number | null;
+    serial_number: string | null;
+    sku: string | null;
+    current_status: string | null;
+    catalog_product_title: string | null;
+    catalog_image_url: string | null;
+  }>(
     orgId,
-    `SELECT sku_catalog_id FROM serial_units WHERE id = $1 AND organization_id = $2`,
+    `SELECT su.sku_catalog_id, su.serial_number, su.sku,
+            su.current_status::text AS current_status,
+            sc.product_title AS catalog_product_title,
+            sc.image_url AS catalog_image_url
+       FROM serial_units su
+  LEFT JOIN sku_catalog sc ON sc.id = su.sku_catalog_id
+                          AND sc.organization_id = su.organization_id
+      WHERE su.id = $1 AND su.organization_id = $2`,
     [serialUnitId, orgId],
   );
   if (unit.rows.length === 0) {
     return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
   }
-  const skuCatalogId = unit.rows[0].sku_catalog_id;
+  const unitRow = unit.rows[0];
+  const skuCatalogId = unitRow.sku_catalog_id;
   if (skuCatalogId == null) {
     return NextResponse.json(
       { ok: false, error: 'unit has no SKU catalog row — cannot record checklist' },
@@ -140,9 +155,10 @@ export const POST = withAuth(async (request, ctx) => {
     failure_mode_id: number | null;
     sku_catalog_id: number | null;
     category: string | null;
+    step_label: string | null;
   }>(
     orgId,
-    `SELECT pass_min, pass_max, failure_mode_id, sku_catalog_id, category
+    `SELECT pass_min, pass_max, failure_mode_id, sku_catalog_id, category, step_label
        FROM qc_check_templates WHERE id = $1 AND organization_id = $2`,
     [parsed.stepId, orgId],
   );

@@ -73,6 +73,14 @@ start URLs `/m/pick`, `/m/work`).
 **Scan out.**
 - Desk: `/shipping/scan-out`. Phone: `/m/id/scan-out/[orderId]`, `/m/scan`.
 - API `POST /api/shipped/scan-out` (DELETE = undo).
+- A dock handoff is accepted only when the shipment has a completed `packer_logs` row with
+  `tracking_type = 'ORDERS'`; deleting the final completed ORDERS pack removes its stale
+  `SHIP_CONFIRM`.
+- The Shipped desk dates and orders rows by `SHIP_CONFIRM.created_at`, not the older PACK row.
+  Scanned-out ORDERS labels remain visible when no `orders` row owns the shipment; those
+  unfound/unmatched packages are reconciliation records, not rows to discard.
+- Bulk backlog clears use the already selected shipment id. They must not re-resolve the stored
+  tracking text: legacy routed/GS1 values can canonicalize to a different registry row.
 - Release gates: a **pickup** skips the tracking gates (G1/G3), per the intake handoff. A shipped
   order needs tracking and a label first (labels-docs lane).
 - Decide with the owner which one the E2E proves (§4). Test Fill defaults to Pickup.

@@ -10,7 +10,7 @@ import {
 } from '@/components/receiving/pickup/grid/pickup-grid-layout';
 import { PICKUP_FIELD_CATALOG, PICKUP_PRODUCT_LAYOUT } from './pickup';
 import { resolvePickupSlotValue } from './pickup-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function line(overrides: Partial<PickupLine> = {}): PickupLine {
   return {
@@ -51,7 +51,7 @@ describe('pickup catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; date · status in the status band)', () => {
-    const parsed = parseSlotLayout(PICKUP_PRODUCT_LAYOUT, PICKUP_FIELD_CATALOG);
+    const parsed = PICKUP_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'pickup.order');
     assert.deepEqual(parsed.statusBindings, [

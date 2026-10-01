@@ -90,28 +90,6 @@
       "updatedAt": "2026-08-29T23:45:00.000Z",
       "scenario": "authenticated"
     },
-    "/m/receive": {
-      "tier": 1,
-      "min": {
-        "performance": 77,
-        "accessibility": 93,
-        "bestPractices": 96,
-        "seo": 91
-      },
-      "measured": {
-        "performance": 77,
-        "accessibility": 93,
-        "bestPractices": 96,
-        "seo": 91,
-        "lcpMs": 6361,
-        "tbtMs": 22,
-        "cls": 0
-      },
-      "updatedAt": "2026-07-19T09:30:00.000Z",
-      "formFactor": "mobile",
-      "scenario": "authenticated",
-      "profileNote": "formFactor/scenario stamped 2026-08-30; floor is the original July measurement, which was taken on this same profile."
-    },
     "/m/scan": {
       "tier": 1,
       "min": {
@@ -293,6 +271,29 @@
       },
       "hostLoad": 0.34,
       "updatedAt": "2026-09-24T09:15:07.602Z"
+    },
+    "/fulfilled": {
+      "tier": 2,
+      "formFactor": "desktop",
+      "scenario": "authenticated",
+      "min": {
+        "performance": 93,
+        "accessibility": 100,
+        "bestPractices": 96,
+        "seo": 66
+      },
+      "measured": {
+        "performance": 93,
+        "accessibility": 100,
+        "bestPractices": 96,
+        "seo": 66,
+        "lcpMs": 1629,
+        "siMs": 1329,
+        "tbtMs": 73,
+        "cls": 0.035
+      },
+      "hostLoad": 0.36,
+      "updatedAt": "2026-10-01T04:03:30.165Z"
     }
   }
 }

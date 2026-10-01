@@ -20,7 +20,7 @@ import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
 /** The record body on the stage canvas — its groups lift as cards. */
-export const RECORD_ROOT_CLASS = 'flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0';
+export const RECORD_ROOT_CLASS = 'flex-1 bg-mode-canvas p-4 text-mode-ink';
 
 /** Where the labelled unit goes next in the outbound loop (none once it rests or ships). */
 export const QC_LABEL_NEXT: Readonly<Partial<Record<QcLabelStage, string>>> = {
@@ -81,7 +81,7 @@ export function QcLabelPrintForm({ onPrinted }: { onPrinted: () => void }) {
     <div className={RECORD_ROOT_CLASS} data-testid="qc-label-print-form">
       <DeskRecordLayout
         main={
-          <div className="flex min-w-0 flex-col gap-4 industrial:gap-0">
+          <div className="flex min-w-0 flex-col gap-4">
             {error ? <EvidenceNotice tone="warn">{error}</EvidenceNotice> : null}
             <RecordGroup
               title="Scan the unit's serial or its old label"

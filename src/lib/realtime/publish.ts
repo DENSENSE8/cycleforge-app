@@ -830,6 +830,17 @@ export async function publishScanLog(payload: ScanLoggedPayload) {
   });
 }
 
+/** Resolver-only phone scan wakeup for the organization-wide station ledger. */
+export async function publishMobileScanLogged(payload: { organizationId: string; id: number }) {
+  const id = Number(payload.id);
+  if (!Number.isSafeInteger(id) || id <= 0) return;
+  await publishEvent(getStationChannelName(payload.organizationId), 'mobile.scan.logged', {
+    type: 'mobile.scan.logged',
+    id,
+    timestamp: formatPSTTimestamp(),
+  }, payload.organizationId);
+}
+
 export async function publishReceivingLogChanged(payload: ReceivingLogChangedPayload) {
   await publishEvent(getStationChannelName(payload.organizationId), 'receiving-log.changed', {
     type: 'receiving-log.changed',
@@ -1006,7 +1017,29 @@ export async function publishFbaCatalogChanged(payload: FbaCatalogChangedPayload
   });
 }
 
-// ─── Activity Stream ─────────────────────────────────────────────────────────
+type OpsEventLoggedPayload = {
+  organizationId: string;
+  id: number;
+  eventType: string;
+  actorStaffId: number | null;
+  source: string;
+};
+
+/** Wake durable ops-event projections without impersonating a SAL activity id. */
+export async function publishOpsEventLogged(payload: OpsEventLoggedPayload) {
+  await publishEvent(getStationChannelName(payload.organizationId), 'ops.event.logged', {
+    type: 'ops.event.logged',
+    id: payload.id,
+    eventType: payload.eventType,
+    actorStaffId: payload.actorStaffId,
+    source: payload.source,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
+// ─── Activity streams ────────────────────────────────────────────────────────
+
+/** SAL-specific legacy activity stream. */
 
 type ActivityLoggedPayload = {
   organizationId: string;

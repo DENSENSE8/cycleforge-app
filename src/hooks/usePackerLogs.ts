@@ -21,8 +21,6 @@ export interface PackageLine {
   condition: string | null;
   sale_amount: string | number | null;
   currency: string | null;
-  zoho_item_id: string | null;
-  zoho_image_document_id: string | null;
   catalog_image_url: string | null;
 }
 
@@ -91,6 +89,9 @@ export interface PackerRecord {
   has_exception?: boolean | null;
   exception_at?: string | null;
   is_terminal?: boolean | null;
+  delivered_at?: string | null;
+  estimated_delivery_at?: string | null;
+  is_delivered?: boolean | null;
   /** Dock scan-out (station_activity_logs SHIP_CONFIRM) — when the package left the warehouse. */
   ship_confirmed_at?: string | null;
   shipped_out_by?: number | null;

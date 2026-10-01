@@ -37,11 +37,14 @@ export function getMobileAppTitle(
   // `/m/home` is the shift checklist since 2026-09-14 — the drawer row and this title are one word, "Daily".
   if (pathname === '/m/home' || pathname.startsWith('/m/home/')) return 'Daily';
   if (pathname === '/m/settings' || pathname.startsWith('/m/settings/')) return 'Settings';
-  if (pathname === '/m/work' || pathname.startsWith('/m/work/')) return 'Order management';
+  if (pathname === '/m/work') return 'Allocate';
+  if (pathname.startsWith('/m/work/')) return 'Fulfill';
   if (pathname === '/m/orders/new' || pathname.startsWith('/m/orders/new/')) return 'New order';
-  if (pathname === '/m/orders' || pathname.startsWith('/m/orders/')) return 'Order management';
+  if (pathname === '/m/orders') return 'Allocate';
+  if (pathname.startsWith('/m/orders/')) return 'Fulfill';
   if (pathname === '/m/exceptions' || pathname.startsWith('/m/exceptions/')) return 'Exceptions';
   if (pathname === '/m/imports' || pathname.startsWith('/m/imports/')) return 'Imports';
+  if (pathname === '/m/stock' || pathname.startsWith('/m/stock/')) return 'Stock';
   if (pathname === '/m/products' || pathname.startsWith('/m/products/')) return 'Products';
   if (pathname === '/m/reports' || pathname.startsWith('/m/reports/')) return 'Reports';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';

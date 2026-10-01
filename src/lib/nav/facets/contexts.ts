@@ -18,10 +18,12 @@ import { EXCEPTION_KIND_PERMISSION } from '@/lib/exceptions/permissions';
 import { exceptionKindsOf } from '@/lib/exceptions/types';
 
 export const NAV_FACET_CONTEXTS = [
+  'stations-live',
   'outbound.exceptions',
   'outbound.triage',
   'outbound.shipped',
   'pickup',
+  'inventory.stock',
   'imports.runs',
   'imports.rows',
   // The Exceptions hub (`/exceptions`): one context per kind plus the whole
@@ -48,6 +50,12 @@ export interface NavFacetGroupDecl {
   /** URL param the group writes (and the list reads). */
   param: string;
   multi: boolean;
+  /**
+   * Render the options INLINE, always open, instead of a collapsed row the
+   * operator must click first — for short, ordered option sets (aisles 1–4)
+   * the extra click hides the walk the list is ordered by (owner 2026-09-30).
+   */
+  inline?: boolean;
 }
 
 const STAGE: NavFacetGroupDecl = { id: 'stage', label: 'Stage', param: 'stage', multi: false };
@@ -58,13 +66,22 @@ const OUT_OF_STOCK: NavFacetGroupDecl = { id: 'ustatus', label: 'Stock', param: 
 const IMPORT_SOURCE: NavFacetGroupDecl = { id: 'source', label: 'Source', param: 'source', multi: true };
 
 export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFacetGroupDecl[]>> = {
+  'stations-live': [
+    { id: 'job', label: 'Job', param: 'job', multi: true },
+    { id: 'outcome', label: 'Outcome', param: 'outcome', multi: true },
+  ],
   // FBM › Exceptions is the hub list locked to Fulfillment — counts only.
   'outbound.exceptions': [],
+  'inventory.stock': [
+    { id: 'room', label: 'Room', param: 'room', multi: false },
+    { id: 'aisle', label: 'Aisle', param: 'aisle', multi: true, inline: true },
+  ],
   'outbound.triage': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
   // The Shipped list's own params (`useShippedTableFilters`), answered in
   // `fetchPackerLogRows`' WHERE — `src/lib/shipping/shipped-filter/shipped-filter-sql.ts`.
   'outbound.shipped': [
     { id: 'type', label: 'Type', param: 'shippedFilter', multi: false },
+    { id: 'channel', label: 'Channel', param: 'channel', multi: true },
     { id: 'carrier', label: 'Carrier', param: 'carrier', multi: false },
     { id: 'status', label: 'Tracking status', param: 'statusCategory', multi: false },
     { id: 'exceptions', label: 'Needs attention', param: 'exceptions', multi: false },
@@ -110,8 +127,10 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
  * the resolver omits `filters` for a caller who lacks it.
  */
 export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | readonly string[]>> = {
+  'stations-live': 'operations.view',
   'outbound.exceptions': [...new Set(exceptionKindsOf('fulfillment').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
   'outbound.triage': 'orders.view',
+  'inventory.stock': 'sku_stock.view',
   'outbound.shipped': 'packing.view',
   pickup: 'walk_in.view',
   'imports.runs': 'orders.view',

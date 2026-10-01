@@ -1,6 +1,6 @@
 import { resolveInboundDeliveryRecordState } from '@/design-system/tokens/inbound-delivery';
 import { RECEIVING_LIFECYCLE } from '@/design-system/tokens/receiving-lifecycle';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import { isClaimCode, isInvestigationCode, receivingExceptionLabel } from './exception-codes';
 import type { DockedKind } from './inbound-lane';
 import { effectiveIntakeKind } from './kinds/registry';
@@ -56,8 +56,16 @@ export function dockedCartonFlags(rows: readonly ReceivingLineRow[]): DockedFlag
  */
 export function dockedFlags(row: ReceivingLineRow): DockedFlag[] {
   const flags: DockedFlag[] = [];
+  // An arrival can begin on the unmatched intake before its matching write
+  // lands. It is not "Unfound" when it already carries an order reference —
+  // that would paint known, unboxed goods as unnamed inventory for one sync.
+  const hasOrderIdentity = Boolean(
+    (row.zoho_purchaseorder_id ?? '').trim()
+      || (row.zoho_purchaseorder_number ?? '').trim()
+      || (row.source_order_id ?? '').trim(),
+  );
   // Most urgent first (pill order): the face reads flags[0].
-  if (row.id <= 0 || (row.receiving_source === 'unmatched' && !row.zoho_purchaseorder_id)) flags.push('UNFOUND');
+  if (row.id <= 0 || (row.receiving_source === 'unmatched' && !hasOrderIdentity)) flags.push('UNFOUND');
   if ((row.ticket_reasons ?? []).some((r) => isClaimCode(r.code) && (r.ticket ?? '').trim())) flags.push('CLAIM');
   if (row.id > 0 && row.quantity_expected != null && dockedReceivedQuantity(row) < row.quantity_expected) flags.push('SHORT');
   return flags;

@@ -18,7 +18,7 @@ import type { ShippedOrder } from '@/types/orders';
 import { LIFECYCLE_STATES, type LifecycleState } from '@/design-system/tokens/lifecycle';
 import type { RowGroup } from '@/lib/group-rows';
 import { unshippedOrdersQuery } from '@/lib/queries/dashboard-queries';
-import { SLOT_TABLE_PAGE_SIZES } from '@/lib/tables/slot-table-page';
+import { DATA_TABLE_PAGE_SIZES } from '@/lib/tables/data-table-pagination';
 import { pinRecentlyCreatedUnshipped } from '@/lib/orders/order-record-normalize';
 import { recordState } from '@/components/outbound/orders/outbound-orders-ledger-state';
 import { buildOrdersQueueRows } from '@/components/dashboard/orders-queue/useOrdersQueueRows';
@@ -31,7 +31,7 @@ import { buildOrdersQueueRows } from '@/components/dashboard/orders-queue/useOrd
 export const QUEUE_STATUS_CHIPS: readonly LifecycleState[] = ['urgent', 'toPick', 'picked', 'packed', 'outOfStock'];
 
 /** Rows the unsearched To-ship desk reads before "Load more" — the widest slot page. */
-export const TO_SHIP_QUEUE_WINDOW: number = SLOT_TABLE_PAGE_SIZES[SLOT_TABLE_PAGE_SIZES.length - 1];
+export const TO_SHIP_QUEUE_WINDOW: number = DATA_TABLE_PAGE_SIZES[DATA_TABLE_PAGE_SIZES.length - 1];
 
 /** The To-ship desk's default read (no find text, no lens, first window). */
 export function toShipQueueQuery() {

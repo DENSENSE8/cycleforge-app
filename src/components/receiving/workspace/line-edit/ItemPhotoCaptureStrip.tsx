@@ -147,14 +147,6 @@ export function ItemPhotoCaptureStrip({
     <PhotoStepDockStrip
       hostMarker={hostMarker}
       rootProps={dz.rootProps}
-      link={{
-        onClick: () => {
-          emitReceiving('receiving-open-photo-link', { lineId });
-          handFocusBack();
-        },
-        ariaLabel: 'Link an existing carton photo to this line',
-        label: 'Link a photo',
-      }}
       upload={{
         onClick: () => dz.openPicker(),
         disabled: uploading,

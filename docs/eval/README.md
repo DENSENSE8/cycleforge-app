@@ -3,8 +3,8 @@
 Introspective eval — machine gates, design critique, and graph impact written
 back into committed docs so the next agent session compounds.
 
-Four **sibling** cohorts under one CLI (`pnpm run eval:cohort <name>`).
-**Display SoT is slot-table only.** Overlay is not a display cohort.
+Three **sibling** cohorts share one ledger format.
+Display contracts live in the design system and the canonical DataTable implementation.
 `sku-identity` is an IDENTITY cohort, not a display one.
 
 Repo-wide **mobile-first** product law (not a display cohort yet):
@@ -15,7 +15,6 @@ User: "span repo-wide" / "do everything on the mobile app first."
 
 | Cohort | SoT | Ledger |
 |--------|-----|--------|
-| `slot-table` | Slot engine + every `PRODUCT_TABLES` peer (`slot-table-cohort.ts`) — **the only display eval** | [`cohorts/slot-table/LEDGER.md`](cohorts/slot-table/LEDGER.md) |
 | `shortcuts` | Staff `?` reveals letters **inline on the buttons** (`shortcut-display-cohort.ts`) | [`cohorts/shortcuts/LEDGER.md`](cohorts/shortcuts/LEDGER.md) |
 | `sku-identity` | The **Zoho item** governs one title / one SKU / one photo across every reader AND writer (`sku-identity-cohort.ts`); law `sku-identity-law.ts` | [`cohorts/sku-identity/LEDGER.md`](cohorts/sku-identity/LEDGER.md) |
 | `outbound-workflow` | Versioned mobile/desk/station workflow verdict (`outbound-workflow-cohort.ts`) | [`cohorts/outbound-workflow/LEDGER.md`](cohorts/outbound-workflow/LEDGER.md) |
@@ -23,15 +22,12 @@ User: "span repo-wide" / "do everything on the mobile app first."
 ## Quick start
 
 ```bash
-pnpm run eval:cohort slot-table                 # engine + PRODUCT_TABLES (display SoT)
-pnpm run eval:cohort slot-table -- --skip-verify
 pnpm run eval:cohort shortcuts                 # `?` paints letters on the CTAs
 pnpm run eval:cohort shortcuts -- --skip-verify
 pnpm run eval:cohort sku-identity              # Zoho item governs title/SKU/photo
 pnpm run eval:cohort sku-identity -- --skip-verify
 pnpm run eval:cohort outbound-workflow         # shared outbound workflow verdict
 pnpm run eval:cohort outbound-workflow -- --skip-verify
-pnpm run eval:discover                          # slot-table DELETE vs KEEP inventory
 pnpm run eval:station scan-out                  # single-station mouth/domain / overlay shell
 pnpm run eval:station unbox -- --skip-verify
 ```
@@ -43,9 +39,6 @@ pnpm run eval:station unbox -- --skip-verify
 docs/eval/
 ├── cohorts/overlay/
 │   ├── LEDGER.md              ← retirement notice (not a display cohort)
-│   └── snapshots/
-├── cohorts/slot-table/
-│   ├── LEDGER.md              ← PRODUCT_TABLES × engine + CompoundItem paint
 │   └── snapshots/
 ├── cohorts/shortcuts/
 │   ├── LEDGER.md              ← `?` paints letters on the CTAs (not a sheet)
@@ -61,7 +54,7 @@ tools/eval-ledger/
 ├── registry.json              ← pointer only; authority is the TS cohorts
 ├── eval-core.mjs
 ├── run-station-eval.mjs       ← node --import tsx …
-├── run-cohort-eval.mjs        ← slot-table | shortcuts | sku-identity
+├── run-cohort-eval.mjs        ← shortcuts | sku-identity | outbound-workflow
 ├── machine-gate.mjs           ← Host checker (Hermes LOOP_VERIFY)
 ├── perf-target.mjs            ← Lighthouse / Speed Insights north star 95
 ├── perf-gate.mjs              ← baseline gap debt (+ optional live check)
@@ -80,46 +73,6 @@ Add a station: append a cohort row + mirror path in `tools/design-mcp/server.mjs
 `zIndex.panel` to silence critique.
 
 Retired notice: [`cohorts/overlay/LEDGER.md`](cohorts/overlay/LEDGER.md).
-
-## Slot-table cohort
-
-**SoT:** engine (`CompoundItem`, `useSlotTableLayout`, `materializeTracks`,
-`DataTableFilterMenu`) + every peer in `PRODUCT_TABLES` — see
-[`src/lib/tables/slot-table-cohort.ts`](../../src/lib/tables/slot-table-cohort.ts).
-
-The filter icon always mounts beside search (`DATA_TABLE_FILTER_IDLE` when a
-family has no facets). Unbox Queue/Viewed/History share `?ukpi=` via
-`useReceivingTableChrome`. Do not fold page tabs into the funnel.
-
-The root itself is governed by
-[`data-table-industrial-law.ts`](../../src/lib/tables/data-table-industrial-law.ts):
-line count is a maintenance metric, never a design-system failure. The hard
-contract is one owner for search, filter, headers, body host and status strip,
-with typed data seams and no caller-owned chrome slots. The deterministic
-TypeScript-AST adjudicator is
-served unchanged through its unit test, JSON CLI, `ds_data_table`, and this
-cohort, so the gate does not depend on an evaluator model or harness.
-
-The external industrial brief is governed separately by
-[`industrial-translation-law.ts`](../../src/lib/design-system/industrial-translation-law.ts).
-Run `pnpm run eval:cohort industrial-translation`; its deterministic coverage
-verdict ensures every pasted concept resolves exactly once without introducing
-a terminal token axis, fixed-blue brand layer, or call-site motion physics.
-
-**Discover (delete vs keep):**
-[`src/lib/tables/slot-table-discover.ts`](../../src/lib/tables/slot-table-discover.ts).
-Walks the tree. Agents pick one unblocked DELETE id, never a KEEP row.
-
-```bash
-pnpm run eval:discover
-pnpm run eval:cohort slot-table -- --skip-verify
-```
-
-Paint law lives on **CompoundItem** + the DataTable funnel, not a desk fork.
-Peers come from `PRODUCT_TABLES` (never hand-copied). Layout hooks in
-`SLOT_TABLE_ENGINE_LAYOUT_HOOKS` mark engine opt-in.
-
-Pin: `CompoundItem` + `DataTable` in `src/design-system/pinned.json`.
 
 ## Shortcuts cohort
 
@@ -152,7 +105,7 @@ Exception: ⌘; reveal-on-arm (`NAV_KEY_HINT_CLASS`); ScanHotkeyControl bind-edi
 ## Iteration loop
 
 1. Agent reads the relevant cohort LEDGER Open gaps; implements **one**.
-2. Compound / slot layout / listing face / table funnel → `pnpm run eval:cohort slot-table`.
+2. DataTable / listing face / table funnel → `pnpm verify:fast`.
 3. Shortcut / `?` / button-face keycaps → `pnpm run eval:cohort shortcuts`.
 4. Mouth/domain/overlay shell → `pnpm run eval:station <id>` is enough.
 5. Human walks tunnel → edits Operator verdict.

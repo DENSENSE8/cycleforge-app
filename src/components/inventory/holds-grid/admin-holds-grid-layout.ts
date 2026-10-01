@@ -1,12 +1,12 @@
-/** Admin › Holds column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
+/** Admin › Holds column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   ADMINHOLDS_FIELD_CATALOG,
   ADMINHOLDS_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/admin-holds';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -27,50 +27,42 @@ export type AdminHoldsGridColumnKey =
  * One column of the holds desk. EXTENDS the house model rather than
  * re-declaring it — every shared field is inherited and only `key` narrows.
  */
-export interface AdminHoldsGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: AdminHoldsGridColumnKey;
-}
+export interface AdminHoldsGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: AdminHoldsGridColumnKey; }
 
 /**
  * Materialize the mounted columns from an effective layout. Tracks this family
  * has no fact for are filtered off the MOUNT by the engine — never removed from
  * `COMPOUND_TRACKS`.
  */
-export function adminHoldsCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly AdminHoldsGridColumn[] {
-  const tracks = materializeTracks<AdminHoldsGridColumn>({
-    layout,
-    catalog: ADMINHOLDS_FIELD_CATALOG,
-    base: compoundColumnsFor<AdminHoldsGridColumn>(),
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = ADMINHOLDS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    // The title line is the SERIAL — what is printed on the thing in the bin.
-    // (The retired `unit` cell stacked `#id · serial` under one header; the id
-    // is the handle and lives on the identity chip. See the catalog docblock.)
-    if (t.key === 'item') return { ...t, label: 'Serial', gridLabel: 'Serial' };
-    // One temporal fact on this desk: when the unit was quarantined.
-    if (t.key === 'dates') return { ...t, label: 'Held at', gridLabel: 'Held at' };
-    // The pill says where a release puts the unit back, not `ON_HOLD` — every
-    // row on this feed is on hold, so that word would be a constant column.
-    if (t.key === 'state') return { ...t, label: 'Restore to', gridLabel: 'Restore to' };
-    return t;
-  });
-}
+export function adminHoldsCompoundColumnsFor(layout: DataTableColumnLayout): readonly AdminHoldsGridColumn[] { const tracks = materializeTracks<AdminHoldsGridColumn>({
+  layout,
+  catalog: ADMINHOLDS_FIELD_CATALOG,
+  base: compoundColumnsFor<AdminHoldsGridColumn>(),
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = ADMINHOLDS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  // The title line is the SERIAL — what is printed on the thing in the bin.
+  // (The retired `unit` cell stacked `#id · serial` under one header; the id
+  // is the handle and lives on the identity chip. See the catalog docblock.)
+  if (t.key === 'item') return { ...t, label: 'Serial', gridLabel: 'Serial' };
+  // One temporal fact on this desk: when the unit was quarantined.
+  if (t.key === 'dates') return { ...t, label: 'Held at', gridLabel: 'Held at' };
+  // The pill says where a release puts the unit back, not `ON_HOLD` — every
+  // row on this feed is on hold, so that word would be a constant column.
+  if (t.key === 'state') return { ...t, label: 'Restore to', gridLabel: 'Restore to' };
+  return t;
+}); }
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const ADMINHOLDS_COMPOUND_COLUMNS: readonly AdminHoldsGridColumn[] =

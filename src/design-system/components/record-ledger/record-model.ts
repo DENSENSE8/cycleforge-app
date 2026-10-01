@@ -83,7 +83,7 @@ export interface RecordModel {
     /** A helpdesk ticket chip after the date. */
     ticket?: { label: string; href: string | null } | null;
   };
-  status: { label: string; detail?: string };
+  status: { label: string; detail?: string; tone?: StateName };
   alerts: readonly { key: string; label: string }[];
   exception: { why: string; next: string } | null;
   /** Main band title: "Receiving", "Repair", "Quality control". */
@@ -118,6 +118,9 @@ export interface RecordModel {
   serials: readonly string[];
   expectedUnits: number | undefined;
   notes: readonly RecordFact[];
+  /** Domain activity that belongs in the work column, after serial identity. */
+  activity?: readonly RecordFact[];
+  activityTitle?: string;
   /** The inline staff-note editor under the serials. */
   staffNote: ReactNode | null;
   /** The Items group's money footer; null = no price known. */

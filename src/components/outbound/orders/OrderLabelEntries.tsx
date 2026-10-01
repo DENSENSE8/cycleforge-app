@@ -18,7 +18,7 @@ import {
 import { Button, TextField } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { requestConfirm } from '@/design-system/components/confirm';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { outboundDocumentContentSrc } from '@/lib/documents/outbound-document-display';

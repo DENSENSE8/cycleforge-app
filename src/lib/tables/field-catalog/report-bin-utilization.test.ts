@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   REPORT_BIN_UTILIZATION_COMPOUND_COLUMNS,
   reportBinUtilizationCompoundColumnsFor,
@@ -19,7 +19,7 @@ import {
   binFillPercent,
   resolveReportBinUtilizationSlotValue,
 } from './report-bin-utilization-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '../table-definition';
 
 /** Selected by the route, painted by nothing, and not a fact until one paints it. */
@@ -118,10 +118,7 @@ describe('report-bin-utilization catalog', () => {
   });
 
   it('product default parses, and the BIN handle is the identity', () => {
-    const parsed = parseSlotLayout(
-      REPORT_BIN_UTILIZATION_PRODUCT_LAYOUT,
-      REPORT_BIN_UTILIZATION_FIELD_CATALOG,
-    );
+    const parsed = REPORT_BIN_UTILIZATION_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'report-bin-utilization.bin');
     assert.deepEqual(
@@ -193,7 +190,7 @@ describe('report-bin-utilization materialization', () => {
     const identity = col('fulfillment');
     assert.equal(identity?.fieldId, 'report-bin-utilization.bin');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Bin" is now the Fields-picker row
+    // (`data-table-family.ts`). "Bin" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -234,7 +231,7 @@ describe('report-bin-utilization materialization', () => {
 
   it('every painted DATA header sorts, except the declared factless chrome', () => {
     for (const col of REPORT_BIN_UTILIZATION_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key)) {
+      if (isDataTableChromeColumn(col.key)) {
         assert.equal(reportBinUtilizationSortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

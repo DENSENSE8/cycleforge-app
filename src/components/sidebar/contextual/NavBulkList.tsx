@@ -88,7 +88,7 @@ interface LocatedMemo {
  * recheck asks only the numbers without an answer in hand; a refresh of the
  * same list asks them all.
  */
-function useLocatedList(scope: NavLocateScope, refs: readonly string[]) {
+export function useLocatedList(scope: NavLocateScope, refs: readonly string[]) {
   const staffKey = useNavStaffKey();
   const queryClient = useQueryClient();
   const known = useRef<LocatedMemo | null>(null);

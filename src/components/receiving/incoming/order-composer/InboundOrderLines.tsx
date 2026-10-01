@@ -17,7 +17,7 @@ import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { FormField } from '@/design-system/components/FormField';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/triage-panel';
 import { useDebounce } from '@/hooks';
 import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';

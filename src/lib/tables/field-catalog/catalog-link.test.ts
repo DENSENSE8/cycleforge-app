@@ -10,7 +10,7 @@ import {
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
 import { CATALOG_LINK_FIELD_CATALOG, CATALOG_LINK_PRODUCT_LAYOUT } from './catalog-link';
 import { catalogLinkSlotValuesFor, resolveCatalogLinkSlotValue } from './catalog-link-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<CatalogLinkChoreRow> = {}): CatalogLinkChoreRow {
   return {
@@ -40,7 +40,7 @@ describe('catalog-link catalog', () => {
   });
 
   it('product default parses against the catalog — compound morph, NOTHING bound', () => {
-    const parsed = parseSlotLayout(CATALOG_LINK_PRODUCT_LAYOUT, CATALOG_LINK_FIELD_CATALOG);
+    const parsed = CATALOG_LINK_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'catalog-link.item');
     assert.deepEqual(parsed.statusBindings, []);

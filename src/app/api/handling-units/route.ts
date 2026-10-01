@@ -26,7 +26,7 @@ const VALID_STATUSES: ReadonlySet<string> = new Set(['OPEN', 'STAGED', 'IN_TEST'
  * Staging-board list of boxes/trays with member counts.
  */
 export const GET = withAuth(
-  async (request: NextRequest) => {
+  async (request: NextRequest, ctx) => {
     const { searchParams } = new URL(request.url);
     const statusRaw = String(searchParams.get('status') || '').trim().toUpperCase();
     const status = VALID_STATUSES.has(statusRaw) ? (statusRaw as HandlingUnitStatus) : null;
@@ -35,7 +35,10 @@ export const GET = withAuth(
     const limit = Math.min(Number(searchParams.get('limit') || 100), 500);
     const offset = Math.max(Number(searchParams.get('offset') || 0), 0);
 
-    const { items, total } = await listHandlingUnits({ status, locationId, limit, offset });
+    const { items, total } = await listHandlingUnits(
+      { status, locationId, limit, offset },
+      ctx.organizationId,
+    );
     return NextResponse.json({ success: true, handling_units: items, total, limit, offset });
   },
   { permission: 'handling_unit.view' },
@@ -63,7 +66,7 @@ export const POST = withAuth(
     // empty orphan box.
     let unitIds: number[] = [];
     if (parsed.units && parsed.units.length > 0) {
-      const resolved = await resolveUnitRefs(parsed.units);
+      const resolved = await resolveUnitRefs(parsed.units, ctx.organizationId);
       if (resolved.unresolved.length > 0) {
         return NextResponse.json(
           { success: false, error: 'Some units could not be resolved', unresolved: resolved.unresolved },
@@ -75,13 +78,17 @@ export const POST = withAuth(
 
     let box;
     try {
-      box = await createHandlingUnit({
-        organizationId: ctx.organizationId,
-        createdBy: ctx.staffId,
-        locationId: parsed.locationId ?? null,
-        notes: parsed.notes ?? null,
-        code: parsed.code ?? null,
-      });
+      box = await createHandlingUnit(
+        {
+          organizationId: ctx.organizationId,
+          createdBy: ctx.staffId,
+          locationId: parsed.locationId ?? null,
+          notes: parsed.notes ?? null,
+          code: parsed.code ?? null,
+        },
+        pool,
+        ctx.organizationId,
+      );
     } catch (error: unknown) {
       const e = error as { code?: string; message?: string };
       if (e?.code === '23505') {
@@ -94,10 +101,10 @@ export const POST = withAuth(
     }
 
     if (unitIds.length > 0) {
-      await assignUnitsToHandlingUnit(box.id, unitIds);
+      await assignUnitsToHandlingUnit(box.id, unitIds, ctx.organizationId);
     }
 
-    const detail = await getHandlingUnitDetail(box.id);
+    const detail = await getHandlingUnitDetail(box.id, ctx.organizationId);
 
     await recordAudit(pool, ctx, req, {
       source: 'handling-units-api',

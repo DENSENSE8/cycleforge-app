@@ -1,4 +1,4 @@
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import type { ExceptionRow } from '@/lib/exceptions/types';
 
 /**

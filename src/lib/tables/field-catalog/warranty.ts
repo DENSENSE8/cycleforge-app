@@ -1,7 +1,7 @@
 /** Warranty field catalog — the bindable claim facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const WARRANTY_FIELD_CATALOG: FieldCatalog = [
   {
@@ -72,7 +72,7 @@ export const WARRANTY_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default warranty layout — visual parity with the retired hand model's CORE view (`select · title · claim · customer · status… */
-export const WARRANTY_PRODUCT_LAYOUT: SlotLayout = {
+export const WARRANTY_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'warranty.claim',
   statusBindings: [
@@ -83,7 +83,7 @@ export const WARRANTY_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Warranty claims entry. */
 export const WARRANTY_TABLE_LAYOUT_ID = 'warranty';

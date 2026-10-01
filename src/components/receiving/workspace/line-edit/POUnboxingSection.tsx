@@ -49,9 +49,9 @@ interface POUnboxingSectionProps {
     serial_number: string;
     condition_grade?: string | null;
   }) => void;
-  /** Serials cell click → Units Displays. */
+  /** Serials cell click → the caller-owned unit detail. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
-  /** RETURN match → Displays Timeline. */
+  /** RETURN match → the caller-owned serial history. */
   onOpenReturnHistory?: () => void;
   /**
    * Per-line capture disclosure ({@link useLineCollapse}) — Unbox centre only.

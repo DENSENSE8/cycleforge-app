@@ -8,8 +8,8 @@ import {
   ORDERS_INDEX_LAYOUT,
   ORDERS_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/orders';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 
 /** Stable key set for the orders-queue columns (scan order). */
@@ -47,13 +47,11 @@ export type OrdersQueueColumnKey =
   | '_fill';
 
 /** One column of the orders-queue grid — the SoT that the grid template, the sticky header (label + type glyph + per-column menu), and the… */
-export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'>, SlotTrackFields {
-  key: OrdersQueueColumnKey;
-}
+export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: OrdersQueueColumnKey; }
 
-/** COMPOUND (two-row) Orders / To-Ship columns — MATERIALIZED from a {@link SlotLayout}, never hand-spliced. */
+/** COMPOUND (two-row) Orders / To-Ship columns — MATERIALIZED from a {@link DataTableColumnLayout}, never hand-spliced. */
 export function ordersCompoundColumnsFor(
-  layout: SlotLayout,
+  layout: DataTableColumnLayout,
   options?: { queueMode?: 'fulfillment' | 'labels' | 'staged' | 'shipped' },
 ): readonly OrdersQueueColumn[] {
   const resolved =
@@ -117,19 +115,17 @@ const ORDERS_INDEX_TRACK_GEOMETRY: Readonly<
   'orders.bin': { width: 'minmax(6rem, 8rem)' },
 };
 
-/** INDEX (one line per order) To-ship columns — MATERIALIZED from a sheet {@link SlotLayout}. */
-export function ordersIndexColumnsFor(layout: SlotLayout): readonly OrdersQueueColumn[] {
-  return materializeTracks<OrdersQueueColumn>({
-    layout,
-    catalog: ORDERS_INDEX_FIELD_CATALOG,
-    base: ORDERS_INDEX_BASE,
-    statusAnchorKey: 'fulfillment',
-    subtitleAnchorKey: 'fulfillment',
-  }).map((col) => {
-    const geometry = col.fieldId ? ORDERS_INDEX_TRACK_GEOMETRY[col.fieldId] : undefined;
-    return geometry ? { ...col, ...geometry } : col;
-  });
-}
+/** INDEX (one line per order) To-ship columns — MATERIALIZED from a sheet {@link DataTableColumnLayout}. */
+export function ordersIndexColumnsFor(layout: DataTableColumnLayout): readonly OrdersQueueColumn[] { return materializeTracks<OrdersQueueColumn>({
+  layout,
+  catalog: ORDERS_INDEX_FIELD_CATALOG,
+  base: ORDERS_INDEX_BASE,
+  statusAnchorKey: 'fulfillment',
+  subtitleAnchorKey: 'fulfillment',
+}).map((col) => {
+  const geometry = col.fieldId ? ORDERS_INDEX_TRACK_GEOMETRY[col.fieldId] : undefined;
+  return geometry ? { ...col, ...geometry } : col;
+}); }
 
 /** The index face's product-default columns — the SoT specs and guards read. */
 export const ORDERS_INDEX_COLUMNS: readonly OrdersQueueColumn[] =

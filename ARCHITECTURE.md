@@ -57,6 +57,14 @@ Rules:
 5. The only sanctioned rendered-component shares are explicitly listed in the
    boundary exemption file (shrink-only; every entry must eventually split or
    be ratified as a shared job face). Unlisted shares fail the gate.
+6. Owner 2026-09-30 ("the phone must edit everything the desk stock record
+   edits … desktop and mobile must SHARE the same components"): a record both
+   surfaces edit may be ONE feature face under `src/features/<feature>/**`,
+   mounted by the desk record plane and by the `/m` frame alike. The first is
+   `src/features/stock-record/StockRecordView.tsx` (`StockLedger` +
+   `MobileWarehouseStockDetail`). The face must be surface-neutral: touch
+   sizing comes from `useUIModeOptional()` (the 44px `lg` rung on the phone),
+   widths collapse by container, never a `lg:hidden` second tree.
 
 Enforcement: dependency-cruiser gate wired into `verify`, following the house
 exemption pattern (`scripts/tenancy-guard-exemptions.ts`) — a visible,

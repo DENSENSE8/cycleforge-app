@@ -63,11 +63,12 @@ import { domainLane, isLaneVisible, type DomainGroupId } from '@/lib/nav/lanes';
 import { isTabParked } from '@/lib/nav/parked-tabs';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { parseProductsView } from '@/components/products/products-view';
-import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
+import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/lib/outbound/route-contract';
 import { SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { FULFILLED_VIEWS, resolveFulfilledView, SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { QC_LABELS_PATH } from '@/lib/labels/qc-label-views';
 import { PRINT_STATION_PATH, PRINT_STATION_FNSKU_PARAM, PRINT_STATION_VIEW_PARAM } from '@/lib/print-station/fnsku';
-import { DESK_LANDING_VIEW, DESK_VIEWS, deskViewHref, getDeskView, resolveDeskView, type DeskViewNavChild } from '@/lib/outbound/desk-views';
+import { DESK_LANDING_VIEW, FBM_PAINTED_VIEWS, deskViewHref, getDeskView, resolveDeskView, type DeskViewNavChild } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
 import { FBA_MODE_PARAM, resolveFbaModeFromSearchParams } from '@/lib/fba/fba-modes';
@@ -95,6 +96,7 @@ import {
 } from '@/lib/repair/repair-channel';
 
 export type SidebarRouteKey =
+  | 'stations-live'
   | 'home'
   | 'dashboard'
   | 'operations'
@@ -211,6 +213,7 @@ export type SpineSectionId = (typeof SPINE_SECTIONS)[number]['id'];
 
 /** Distinct station ink shared by the parent switcher and its `G` key hint. */
 export const SCAN_STATION_TONES = {
+  'stations-live': 'text-sky-600',
   triage: 'text-cyan-600',
   receive: 'text-blue-600',
   repair: 'text-amber-600',
@@ -271,13 +274,8 @@ type SidebarNavItemFields = {
   /** `kind: 'top'` only. */
   spineBand?: boolean;
   /**
-   * Keep a command-palette `top` item in the draggable map order instead of
-   * the fixed pin band.
-   */
-  spineOrderable?: boolean;
-  /**
    * Keep this parent row in the fixed utility band at the absolute bottom of
-   * the sidebar, below Scan Stations and outside staff drag ordering.
+   * the sidebar, below the main navigation sequence.
    */
   spineBottom?: boolean;
   /**
@@ -375,6 +373,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'reports',            label: 'Reports',     href: '/reports',            icon: BarChart3,       kind: 'top', spineFlat: true, spineBottom: true, requires: 'operations.view' },
   // Scan Stations — scan-first benches (Arrival / Unbox / Quality Control /
   // Picker / Packing / Scan out).
+  { id: 'stations-live',      label: 'Live feed V2', href: '/stations/live',       icon: Activity, tone: SCAN_STATION_TONES['stations-live'], kind: 'station', stationGroup: 'floor', requires: 'operations.view' },
   { id: 'triage',            label: 'Arrival',     href: '/triage',             icon: RECEIVING_NAV_ICONS.triage,  tone: SCAN_STATION_TONES.triage, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'receive',           label: 'Unbox',       href: '/unbox',              icon: RECEIVING_NAV_ICONS.receive, tone: SCAN_STATION_TONES.receive, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'pickup',            label: 'Local Pickup', href: '/pickup',            icon: RECEIVING_NAV_ICONS.pickup,  kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view' },
@@ -414,6 +413,8 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // the clean split from FBA, where Amazon ships. Same page id / routes as the
   // old "Shipping" desk; the old name still finds it in ⌘K.
   { id: 'outbound',          label: 'FBM',         href: deskViewHref(DESK_LANDING_VIEW.id), icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view', description: 'Fulfilled by merchant · all channels', keywords: ['shipping', 'ship', 'fulfilled by merchant', 'merchant fulfilled', 'mfn', 'to ship', 'allocate'] },
+  // Fulfilled is the archive of every package that left — peer of FBM, not its child.
+  { id: 'fulfilled',         label: 'Fulfilled',   href: SHIPPING_SHIPPED_PATH, icon: PackageCheck, kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.view', description: 'Every package that left the building', keywords: ['fulfilled', 'shipped', 'scan out', 'delivered', 'tracking'] },
   // FBA rides the Fulfillment lane beside FBM (operator 2026-09-14).
   { id: 'fba',               label: 'FBA',         href: OUTBOUND_MODE_PATHS.fba, icon: SHIPPING_NAV_ICONS.fba, kind: 'domain', domainGroup: 'fulfillment', requires: 'fba.view', description: 'Fulfilled by Amazon' },
   // Labels & docs rides the Outbound lane beside Shipping and FBA: label printing + document intake (renamed from Label intake 2026-09-27).
@@ -552,6 +553,7 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return 'dashboard';
   // `/o/[orderId]` permanently redirects to search feedback — no dedicated
   // order workspace sidebar.
+  if (pathname === '/stations/live' || pathname.startsWith('/stations/live/')) return 'stations-live';
   if (pathname === '/operations' || pathname.startsWith('/operations/')) return 'operations';
   if (pathname === '/signals' || pathname.startsWith('/signals/')) return 'operations';
   if (pathname === '/ops/photos' || pathname.startsWith('/ops/photos/')) return 'ops-photos';
@@ -591,6 +593,8 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/packer' || pathname.startsWith('/packer/')) return 'packer';
   // Review station (WS-REVIEW) — resolves to its own key across every mode.
   if (pathname === '/review' || pathname.startsWith('/review/')) return 'review';
+  // `/fulfilled` is the package archive (legacy `/shipping/shipped` redirects here).
+  if (pathname === '/fulfilled' || pathname.startsWith('/fulfilled/')) return 'outbound';
   // `/shipping` is the first-class Shipping surface; it reuses the `outbound`
   // sidebar panel + station key (legacy `/outbound` too).
   if (pathname === '/shipping' || pathname.startsWith('/shipping/')) return 'outbound';
@@ -609,6 +613,7 @@ export function getSidebarNavPageId(
   searchParams?: Pick<URLSearchParams, 'get'> | null,
 ): string {
   if (!pathname) return 'unknown';
+  if (pathname === '/stations/live' || pathname.startsWith('/stations/live/')) return 'stations-live';
   if (pathname === '/unbox' || pathname.startsWith('/unbox/')) return 'receive';
   if (pathname === '/triage' || pathname.startsWith('/triage/')) return 'triage';
   if (pathname === '/incoming' || pathname.startsWith('/incoming/')) return 'incoming';
@@ -647,6 +652,7 @@ export function getSidebarNavPageId(
   // KEY stays `outbound` (`getSidebarRouteKey`) — panel chrome is unchanged.
   if (outboundMode === 'fba') return 'fba';
   if (pathname === SHIPPING_LABEL_INTAKE_PATH || pathname.startsWith(`${SHIPPING_LABEL_INTAKE_PATH}/`)) return 'label-intake';
+  if (pathname === '/fulfilled' || pathname.startsWith('/fulfilled/')) return 'fulfilled';
   if (outboundMode) return 'outbound';
   if (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) return 'outbound';
   if (pathname === '/reports' || pathname.startsWith('/reports/')) return 'reports';
@@ -749,7 +755,7 @@ export function isSidebarTopPinActive(
  * Settings) stay reachable via ⌘K / URL / the account ⋯ menu.
  */
 export function isSpineMapTopRow(item: SidebarNavItem): boolean {
-  return item.kind === 'top' && item.spineBand !== false && item.spineOrderable !== true && item.spineBottom !== true;
+  return item.kind === 'top' && item.spineBand !== false && item.spineBottom !== true;
 }
 
 /** Fixed utility rows rendered after every lane and Scan Station. */
@@ -823,6 +829,7 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   // To-ship desk is orders-entity gated (shared with Support › Inquiries).
   // Longer prefix must beat `/shipping` → shipping.view.
   { prefix: SHIPPING_LABEL_INTAKE_PATH, permission: 'packing.review' },
+  { prefix: '/fulfilled', permission: 'packing.view' },
   { prefix: '/shipping/orders',    permission: 'orders.view' },
   { prefix: '/shipping',           permission: 'shipping.view' },
   { prefix: '/outbound',           permission: 'shipping.view' },
@@ -1188,6 +1195,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Receiving family ─────── Arrival / Unbox are physical stations; Local
   // Pickup and Repair service are modes of the Receiving desk lane.
   {
+    id: 'stations-live', label: 'Live feed V2', href: '/stations/live', icon: Activity, tone: SCAN_STATION_TONES['stations-live'],
+    kind: 'station', stationGroup: 'floor', requires: 'operations.view', railless: true,
+  },
+  {
     id: 'triage', label: 'Arrival', href: TRIAGE, icon: RECEIVING_NAV_ICONS.triage, tone: SCAN_STATION_TONES.triage,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view',
   },
@@ -1335,15 +1346,35 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return view === 'labels' || view === 'paperwork' || view === 'printed' ? view : 'uploads';
     },
   },
-  // ── FBM (Fulfilled by merchant — Fulfillment lane) ────────────────────────── One child per `DESK_VIEWS` view, in its paint order.
+  // ── Fulfilled (Fulfillment lane) ────────────────────────────────────────── Every package that left. Saved views are presets, never a child named Fulfilled.
+  {
+    id: 'fulfilled', label: 'Fulfilled', href: SHIPPING_SHIPPED_PATH, icon: PackageCheck, tone: 'text-emerald-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.view',
+    railless: true,
+    description: 'Every package that left the building',
+    children: FULFILLED_VIEWS.map((view) => ({
+      id: view.id,
+      label: view.label,
+      icon: view.id === 'online' ? ShoppingCart
+        : view.id === 'fba' ? SHIPPING_NAV_ICONS.fba
+        : view.id === 'sku' ? Tags
+        : view.id === 'delivered' ? Check
+        : List,
+      to: () => ({ pathname: SHIPPING_SHIPPED_PATH, params: { ...view.params } }),
+    })),
+    resolveChild: ({ pathname, params }) => {
+      if (pathname !== SHIPPING_SHIPPED_PATH && !pathname.startsWith(`${SHIPPING_SHIPPED_PATH}/`)) return null;
+      return resolveFulfilledView(params);
+    },
+  },
+  // ── FBM (Fulfilled by merchant — Fulfillment lane) ────────────────────────── Painted views only. Fulfilled is the lane peer above.
   {
     id: 'outbound', label: 'FBM', href: deskViewHref(DESK_LANDING_VIEW.id), icon: STATION_PAGE_ICONS.outbound, tone: 'text-blue-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
     // Rail-less, said out loud (2026-08-31).
     railless: true,
-    // The views, their order, gates and paths are `DESK_VIEWS`; the child id is
-    // the view's `navChild` (the org nav's stable key). No `fba` child — FBA is a
-    // lane row (see the docblock above).
-    children: DESK_VIEWS.map((view) => ({
+    // The views, their order, gates and paths are `FBM_PAINTED_VIEWS`; the child
+    // id is the view's `navChild`. The archive is not a child — it is the
+    // Fulfilled row. No `fba` child — FBA is a lane row.
+    children: FBM_PAINTED_VIEWS.map((view) => ({
       id: view.navChild,
       label: view.label,
       icon: FBM_VIEW_ICONS[view.navChild],
@@ -1354,12 +1385,13 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // Support › Inquiries alias — Support's resolveChild owns the pin.
       if (params.get('context') === 'support') return null;
       const view = resolveDeskView(pathname);
-      if (view) return getDeskView(view).navChild;
+      // `/fulfilled` still resolves as the archive view for identify/locate.
+      // It is not an FBM child.
+      if (view && view !== 'shipped') return getDeskView(view).navChild;
       // FBM's aliases — bare `/shipping`, legacy `/outbound` and the old
       // `/dashboard` queue — redirect to the landing view, so they light it;
       // their `?mode=fba|ready` belongs to the FBA desk. Every other path (FBA,
-      // Labels & docs, Packing Review, the parked Shortage desk) is on no FBM
-      // view and lights none.
+      // Labels & docs, the archive, the parked Shortage desk) is on no FBM view.
       const alias = pathname === '/shipping' || pathname === '/outbound' || pathname === DASHBOARD || pathname.startsWith(`${DASHBOARD}/`);
       const mode = params.get('mode');
       return alias && mode !== 'fba' && mode !== 'ready' ? DESK_LANDING_VIEW.navChild : null;
@@ -1589,6 +1621,7 @@ export function floorStationPages(
  * sidebars. These are parent destinations, not browse views inside one page.
  */
 export const CONTEXTUAL_SCAN_STATION_PAGE_IDS = [
+  'stations-live',
   'triage',
   'receive',
   'testing',

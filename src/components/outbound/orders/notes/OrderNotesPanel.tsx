@@ -6,7 +6,7 @@ import { AtSign, ChevronDown, Pin } from '@/components/Icons';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_LABEL_CLASS, RECORD_RECESS_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS, RECORD_RECESS_CLASS } from '@/design-system/tokens/record';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { useAppendOrderNote, useOrderNotes } from '@/hooks/useOrderNotes';
 import {

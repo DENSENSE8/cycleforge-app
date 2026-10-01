@@ -51,6 +51,7 @@ import { conditionLabel } from '@/lib/conditions';
 import { mergeSerialNoteIntoLineDescription } from '@/lib/zoho';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
+import { publishOpsEventLogged } from '@/lib/realtime/publish';
 
 function normalizeSkuKey(s: string | null | undefined): string {
   return String(s ?? '').trim().toLowerCase();
@@ -212,6 +213,35 @@ export const POST = withAuth(async (request, ctx) => {
     };
 
     const now = formatPSTTimestamp();
+    const phoneUnboxPayload = (lineCount: number, receiveIntent: string) => {
+      if (ctx.session.deviceKind !== 'phone' || isUnreceive) return {};
+      const mobileScanEventId = Number(body?.mobileScanEventId);
+      return {
+        origin: 'phone',
+        surface: `/m/r/${receivingId}`,
+        client_event_id: String(body?.scanClientEventId ?? clientEventId ?? '').trim() || null,
+        mobile_scan_event_id: Number.isSafeInteger(mobileScanEventId) && mobileScanEventId > 0
+          ? mobileScanEventId
+          : null,
+        receivingId,
+        receiving_id: receivingId,
+        line_count: lineCount,
+        receive_intent: receiveIntent,
+        subject_entity_type: 'receiving',
+        subject_id: String(receivingId),
+        subject_title: `Carton ${receivingId}`,
+      };
+    };
+    const publishPhoneUnbox = async (eventId: number | null) => {
+      if (eventId == null || ctx.session.deviceKind !== 'phone' || isUnreceive) return;
+      await publishOpsEventLogged({
+        organizationId: ctx.organizationId,
+        id: eventId,
+        eventType: 'UNBOX_CONFIRMED',
+        actorStaffId: staffId,
+        source: 'receiving.unbox',
+      }).catch(() => {});
+    };
 
     const stampRes = await tenantQuery<{ scanned_at: Date | null; unboxed_at: Date | null }>(
       ctx.organizationId,
@@ -338,7 +368,7 @@ export const POST = withAuth(async (request, ctx) => {
           // Append-only ops spine event. Fail-open: receiving must proceed even if
           // ops_events is not yet present.
           try {
-            await recordOpsEvent({
+            const eventId = await recordOpsEvent({
               organizationId: ctx.organizationId,
               entityType: 'receiving',
               entityId: receivingId,
@@ -349,8 +379,9 @@ export const POST = withAuth(async (request, ctx) => {
               // Phase 2 (ops-events unification): receive/unbox is the Unbox
               // surface — stamp its Studio-node binding (null when unpublished).
               workflowNodeId: await resolveSurfaceWorkflowNodeId('unbox', ctx.organizationId),
-              payload: { receivingId, kind: 'unfound_no_po' },
+              payload: { receivingId, kind: 'unfound_no_po', ...phoneUnboxPayload(0, 'unfound_no_po') },
             });
+            await publishPhoneUnbox(eventId);
           } catch (err) {
             console.warn('[mark-received-po] ops_events unbox skipped:', err);
           }
@@ -547,7 +578,7 @@ export const POST = withAuth(async (request, ctx) => {
     // Carton-level unbox confirmation event: the act of receiving/unboxing this
     // carton (regardless of Zoho reconciliation) is a durable operator event.
     try {
-      await recordOpsEvent({
+      const eventId = await recordOpsEvent({
         organizationId: ctx.organizationId,
         entityType: 'receiving',
         entityId: receivingId,
@@ -558,8 +589,12 @@ export const POST = withAuth(async (request, ctx) => {
         // Phase 2 (ops-events unification): receive/unbox is the Unbox
         // surface — stamp its Studio-node binding (null when unpublished).
         workflowNodeId: await resolveSurfaceWorkflowNodeId('unbox', ctx.organizationId),
-        payload: { receivingId },
+        payload: {
+          receivingId,
+          ...phoneUnboxPayload(updatedLines.length, localReceive ? 'local_receive' : 'zoho_receive'),
+        },
       });
+      await publishPhoneUnbox(eventId);
     } catch (err) {
       console.warn('[mark-received-po] ops_events unbox skipped:', err);
     }

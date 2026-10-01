@@ -94,9 +94,17 @@ describe('addDeskSerial', () => {
 
   it('posts `add` on the card anchor and surfaces the pick warning', async () => {
     stubFetch({ success: true, serialNumbers: ['SN9'], attachedToOrder: true, pickWarning: 'Unit held by another order' });
-    const result = await addDeskSerial({ input: 'sn9', contextOrder: card(), scanSessionId: null, idempotencyKey: 'k' });
+    const result = await addDeskSerial({
+      input: 'sn9',
+      contextOrder: card(),
+      scanSessionId: null,
+      idempotencyKey: 'k',
+      correlation: { clientEventId: 'scan-1', mobileScanEventId: 41 },
+    });
     assert.equal(calls[0].body.action, 'add');
     assert.equal(calls[0].body.salId, 900);
+    assert.equal(calls[0].body.scanClientEventId, 'scan-1');
+    assert.equal(calls[0].body.mobileScanEventId, 41);
     assert.ok(result.ok);
     assert.deepEqual(result.order?.serialNumbers, ['SN9']);
     assert.equal(result.pickWarning, 'Unit held by another order');

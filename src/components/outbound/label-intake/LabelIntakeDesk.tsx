@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { EVIDENCE_CONTROL_CLASS, evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { DESK_TRIAGE_RAIL_CLASS } from '@/design-system/tokens/desk-stage';
 import { orderLabelSummaryKey, printDocument } from '@/lib/orders/order-paperwork-client';
 import { LABEL_PURPOSE_FACE } from '@/lib/shipping/label-purpose';

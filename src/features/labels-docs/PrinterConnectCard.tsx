@@ -18,7 +18,7 @@ import { useState } from 'react';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, Switch } from '@/design-system/primitives';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { Printer } from '@/components/Icons';
 import type { LabelPrintRoute } from '@/lib/label-prints/print-route';
 import { SHIPPING_LABEL_PAPER } from '@/lib/label-prints/print-route';

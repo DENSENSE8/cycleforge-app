@@ -16,7 +16,7 @@ import { StatusChipRail, type StatusChip } from '@/design-system/components/Queu
 import { RecordFacts } from '@/design-system/components/record-ledger/RecordView';
 import type { RecordFact, RecordModel, RecordModelItem } from '@/design-system/components/record-ledger/record-model';
 import { Button, Checkbox } from '@/design-system/primitives';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { PICKUP_LIFECYCLE, STATE_TONE_CLASSES, type PickupLifecycleState, type StateName } from '@/design-system/tokens/lifecycle';
 import { conditionLabel } from '@/lib/conditions';
 import type { ReceivingUnitStageFactView } from '@/lib/receiving/receiving-line-row';

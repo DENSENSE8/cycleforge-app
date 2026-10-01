@@ -38,13 +38,11 @@ import {
 } from '@/lib/tables/import/staging-store';
 import { CsvImportStagingRail } from '@/components/outbound/orders/CsvImportStagingRail';
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
-import { useOrdersImportTableLayout } from '@/components/outbound/orders/import-staging/useOrdersImportTableLayout';
 import {
   CsvImportStagingGridRow,
   csvImportStagingRowKey,
 } from '@/components/outbound/orders/import-staging/CsvImportStagingGridRow';
 import {
-  csvImportStagingSheetColumnsFor,
   csvImportStagingSortFactFor,
   defaultDirForCsvImportStagingColumn,
   isCsvImportStagingColumnSortable,
@@ -110,15 +108,7 @@ export function CsvImportStagingHost() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  // The COLUMNS are the effective slot layout's materialization (staff ?? org
-  // ?? product — wave 1.4 hand-model kill). Staging keeps its OWN tableId on
-  // purpose: hiding a staging column must not densify live To-ship.
-  const { effectiveLayout: stagingLayout, fields: stagingFields } =
-    useOrdersImportTableLayout();
-  const columns = useMemo(
-    () => csvImportStagingSheetColumnsFor(stagingLayout),
-    [stagingLayout],
-  );
+  const columns = CSV_IMPORT_STAGING_TABLE_BINDING.columns;
   const sortFactByKey = useMemo(
     () => new Map(columns.map((c) => [c.key as string, csvImportStagingSortFactFor(c)])),
     [columns],
@@ -308,7 +298,6 @@ export function CsvImportStagingHost() {
         >
           binding={CSV_IMPORT_STAGING_TABLE_BINDING}
           columns={columns}
-          fields={stagingFields}
           orderGroupsByDate={orderGroupsByDate}
           rows={views}
           getRowId={csvImportStagingRowKey}

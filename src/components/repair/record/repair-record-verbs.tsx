@@ -24,13 +24,17 @@ import {
   Tag,
   Ticket,
   Trash2,
+  Wrench,
 } from '@/components/Icons';
 import type { RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { buildRepairLabelPayload, printRepairLabel } from '@/lib/print/printRepairLabel';
 import type { RepairRecordModel, RepairVerbId } from '@/lib/repair/repair-record-model';
 import { RepairStatusList } from '../cards/RepairStatusControl';
 import { useRepairStatusChange } from '../useRepairStatusChange';
+import { RepairInfoEditor } from './RepairInfoEditor';
+import { RepairBenchPanel } from './RepairBenchPanel';
 import { RepairCreateTicketPanel, RepairLinkTicketPanel, useRepairLinkedTickets } from './RepairTicketPanels';
 import {
   CancelRepairPanel,
@@ -59,6 +63,8 @@ export function useRepairRecordVerbs(
   const linked = useRepairLinkedTickets(repair?.id ?? 0);
   if (!repair || !model) return [];
   const linkedTicket = (linked.data ?? []).find((row) => row.ticketId != null)?.ticketId ?? null;
+  const typedTicket = /^\d+$/.test(String(model.title.ticket ?? '')) ? Number(model.title.ticket) : null;
+  const triageTicket = linkedTicket ?? typedTicket;
 
   const setStatus = async (next: string) => {
     await changeStatus(repair, next);
@@ -122,11 +128,42 @@ export function useRepairRecordVerbs(
       hotkey: 'r',
       run: () => printPage(`/api/counter/visit/${repair.counter_transaction_id}/receipt?print=1`, 'Repair receipt'),
     },
+    'edit-info': {
+      id: 'edit-info',
+      label: 'Edit information',
+      icon: <Pencil aria-hidden />,
+      hotkey: 'i',
+      panel: (done) => <RepairInfoEditor repair={repair} onSaved={refresh} onDone={done} />,
+    },
+    'work-log': {
+      id: 'work-log',
+      label: 'Bench log',
+      icon: <Wrench aria-hidden />,
+      hotkey: 'b',
+      panel: () => <RepairBenchPanel repair={repair} />,
+    },
+    'triage-ticket': {
+      id: 'triage-ticket',
+      label: 'Triage ticket',
+      icon: <Ticket aria-hidden />,
+      hotkey: 't',
+      disabled: triageTicket == null,
+      disabledReason: triageTicket == null ? 'Add or link a support ticket first' : undefined,
+      panel: () => triageTicket == null ? null : (
+        <SupportTicketDetail
+          ticketId={triageTicket}
+          embedded
+          hideLinkedContext
+          showRequesterDetail
+          mergeFloorTimeline
+        />
+      ),
+    },
     'link-ticket': {
       id: 'link-ticket',
       label: 'Link ticket',
       icon: <Link2 aria-hidden />,
-      hotkey: 't',
+      hotkey: 'v',
       panel: (done) => (
         <RepairLinkTicketPanel
           repair={repair}
@@ -190,7 +227,6 @@ export function useRepairRecordVerbs(
       id: 'square',
       label: 'Square checkout',
       icon: <Store aria-hidden />,
-      placement: 'overflow',
       run: () => openSquareCheckout(repair),
     },
     cancel: {
@@ -198,7 +234,6 @@ export function useRepairRecordVerbs(
       label: 'Cancel repair',
       icon: <Trash2 aria-hidden />,
       tone: 'danger',
-      placement: 'isolated',
       panel: () => (
         <CancelRepairPanel
           repair={repair}
@@ -219,6 +254,9 @@ export function useRepairRecordVerbs(
     'label',
     'paperwork',
     'receipt',
+    'edit-info',
+    'work-log',
+    'triage-ticket',
     'link-ticket',
     'ticket-number',
     'create-ticket',

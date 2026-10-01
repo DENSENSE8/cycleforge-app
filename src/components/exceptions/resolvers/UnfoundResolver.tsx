@@ -6,7 +6,7 @@ import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordE
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
 import { SearchField } from '@/design-system/primitives/SearchField';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { useResolveUnfoundException } from '@/hooks/exceptions';
 import type { CartonExceptionFacts } from '@/lib/exceptions/facts';
 import type { ExceptionRow } from '@/lib/exceptions/types';

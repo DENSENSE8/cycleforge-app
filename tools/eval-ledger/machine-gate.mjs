@@ -46,7 +46,7 @@ export const CYCLEFORGE_REPAIR_LAW = [
   "Do not fold Queue/Viewed/History into the funnel.",
   "Do not delete overlay visibility / zIndex.panel.",
   "Do not invent Operator verdict.",
-  "Allowed: fix SLOT_TABLE_ENGINE_CONTRACT / DataTableFilterMenu always-mounted / KEEP rows.",
+  "Allowed: fix DATA_TABLE_ENGINE_CONTRACT / DataTableFilterMenu always-mounted / KEEP rows.",
   "Forbidden: FilterRefinementBar, hunt tiles, screenshot baselines as a resume reason.",
   PERF_REPAIR_LAW,
 ].join(" ");
@@ -100,7 +100,7 @@ function run(cmd, cmdArgs, timeoutSec = VERIFY_TIMEOUT_SEC) {
 }
 
 function repairBrief(snapshot, detail) {
-  const snap = snapshot || "docs/eval/cohorts/slot-table/snapshots/";
+  const snap = snapshot || "docs/eval/snapshots/";
   let body = `Machine eval failed. Stamp .garisek/eval-session.json. Snapshot ${snap}. ${CYCLEFORGE_REPAIR_LAW}`;
   if (detail) {
     let clipped = detail.trim();
@@ -152,7 +152,7 @@ function main() {
   if (DRY_FAIL) {
     log("--dry-fail");
     fail(
-      "docs/eval/cohorts/slot-table/snapshots/(dry-run)",
+      "docs/eval/snapshots/(dry-run)",
       "DRY FAIL: fixture tripwire for machine-gate / Hermes loop.",
     );
   }

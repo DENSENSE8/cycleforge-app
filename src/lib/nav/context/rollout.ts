@@ -5,8 +5,8 @@
  * Every `SIDEBAR_PAGE_NAV` page starts `legacy` (the old master nav + panel).
  * A page flips to `contextual` in the same PR that deletes its old panel and
  * tab row, and only when `parityGaps(pageId)` is empty (the resolver test
- * fails otherwise). Before that, an org or a staffer can dogfood one page
- * through the `nav.contextual.<pageId>` setting.
+ * fails otherwise). Runtime org/staff switches were retired: one deployed
+ * build now has one sidebar contract on every hostname.
  */
 
 import type { NavRolloutState } from './schema';
@@ -21,6 +21,7 @@ export const NAV_CONTEXT_PINNED_LEGACY: ReadonlySet<string> = new Set();
 export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   'ai-chat': 'contextual',
   home: 'contextual',
+  'stations-live': 'contextual',
   sales: 'contextual',
   operations: 'contextual',
   reports: 'contextual',
@@ -38,6 +39,7 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   'label-intake': 'contextual',
   // App-wide (owner 2026-09-29): dogfooded contextual by the org-1 owner, parity gaps empty — every org gets it.
   outbound: 'contextual',
+  fulfilled: 'contextual',
   'scan-out': 'contextual',
   packer: 'contextual',
   products: 'contextual',

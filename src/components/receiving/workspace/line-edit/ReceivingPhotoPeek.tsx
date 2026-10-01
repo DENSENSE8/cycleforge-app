@@ -55,6 +55,8 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
   poRef,
   photoIntent = 'all',
   onOpenMovePhotosExternal,
+  placement = 'pane',
+  emptyLabel,
 }: {
   receivingId: number;
   staffId: number;
@@ -65,14 +67,18 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
    * unbox carton strip peeks `unbox_carton`, line peeks `item`.
    */
   photoIntent?: ReceivingPhotoListIntent;
-  /** Unbox: open Move photos in the station tool push. */
+  /** Open Move photos in a caller-owned surface. */
   onOpenMovePhotosExternal?: () => void;
+  /** `inline` participates in the record flow; `pane` parks at the pane edge. */
+  placement?: 'pane' | 'inline';
+  /** Optional empty state for an inline evidence section. */
+  emptyLabel?: string;
 }) {
   const { user } = useAuth();
   const orgId = user?.organizationId;
   const queryClient = useQueryClient();
   const photoParams = { receivingId, photoIntent };
-  const { data } = useQuery<PhotosPayload>({
+  const { data, isPending } = useQuery<PhotosPayload>({
     queryKey: receivingPhotoListQueryKey(photoParams),
     queryFn: () => fetchReceivingPhotoList(photoParams),
     enabled: Number.isFinite(receivingId) && receivingId > 0,
@@ -133,6 +139,14 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
     [demo, demoShown, realCards, inFlight, receivingId],
   );
 
+  if (!isPending && cards.length === 0 && emptyLabel) {
+    return (
+      <p role="status" className="text-role-caption text-text-muted">
+        {emptyLabel}
+      </p>
+    );
+  }
+
   return (
     <PhotoPeekFan
       cards={cards}
@@ -140,6 +154,7 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
       poRef={poRef}
       onPhotoDeleted={(photoId) => refresh(photoId)}
       onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+      placement={placement}
     />
   );
 });

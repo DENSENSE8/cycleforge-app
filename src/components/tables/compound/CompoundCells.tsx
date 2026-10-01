@@ -22,8 +22,8 @@ import {
   ShippingModeScanOut,
 } from '@/components/Icons';
 import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
-import { pinLineMoneyAfterQty } from '@/lib/tables/slot-table-line-money';
-import { pinLineQtyFirst } from '@/lib/tables/slot-table-line-qty';
+import { pinLineMoneyAfterQty } from '@/lib/tables/data-table-line-money';
+import { pinLineQtyFirst } from '@/lib/tables/data-table-line-qty';
 import {
   compoundSlotAgeFace,
   compoundSlotFaceFor,
@@ -56,7 +56,6 @@ import { copyToClipboard } from '@/utils/_dom';
 import { cn } from '@/utils/_cn';
 import { CompoundSelectStatusFace } from './CompoundSelectStatusFace';
 import type { CompoundSelectStatus } from './compound-select-status';
-import { useSlotLayoutReorder } from '@/components/tables/SlotLayoutReorderContext';
 import { useSubtitlePointerReorder } from './useSubtitlePointerReorder';
 import { CompoundSubtitleTextEditor } from './CompoundSubtitleTextEditor';
 import { CompoundCell, CompoundLine } from './CompoundCell';
@@ -468,10 +467,8 @@ export function CompoundItem({
   const [editingItemNumber, setEditingItemNumber] = useState(false);
 
   /* Click-and-hold reorder of the under-title facts. */
-  const contextReorder = useSlotLayoutReorder();
-  const reorder = onReorderSubtitle ?? contextReorder;
   const { draggingKey, overKey, skipClick, bindPart, enabled: reorderable } =
-    useSubtitlePointerReorder(reorder);
+    useSubtitlePointerReorder(onReorderSubtitle);
 
   const renderPart = (part: CompoundSubtitlePart, i: number) => {
     const select = selectFor(part);
@@ -1266,7 +1263,7 @@ function compoundSlotPrimary(
     case 'tag':
       return (
         <HoverTooltip label={text} asChild>
-          <span className="inline-flex min-w-0 max-w-full items-center truncate rounded-mode-control bg-surface-sunken px-1.5 py-0.5 font-sans text-role-micro text-text-muted industrial:font-mono">
+          <span className="inline-flex min-w-0 max-w-full items-center truncate rounded-mode-control bg-surface-sunken px-1.5 py-0.5 font-sans text-role-micro text-text-muted">
             {text}
           </span>
         </HoverTooltip>

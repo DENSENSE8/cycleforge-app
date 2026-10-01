@@ -40,12 +40,12 @@ export const POST = withAuth(
       if (hit) return NextResponse.json(hit.response_body, { status: hit.status_code });
     }
 
-    const box = await getHandlingUnitById(id);
+    const box = await getHandlingUnitById(id, pool, ctx.organizationId);
     if (!box) {
       return NextResponse.json({ success: false, error: 'Handling unit not found' }, { status: 404 });
     }
 
-    const resolved = await resolveUnitRefs(parsed.units);
+    const resolved = await resolveUnitRefs(parsed.units, ctx.organizationId);
     if (resolved.unresolved.length > 0) {
       return NextResponse.json(
         { success: false, error: 'Some units could not be resolved', unresolved: resolved.unresolved },
@@ -55,12 +55,12 @@ export const POST = withAuth(
 
     // Scope the removal to this box: only clear membership for units that are
     // actually in it, so a stray ref can't pull a unit out of a different box.
-    const detailBefore = await getHandlingUnitDetail(id);
+    const detailBefore = await getHandlingUnitDetail(id, ctx.organizationId);
     const memberIds = new Set((detailBefore?.units ?? []).map((u) => u.id));
     const toRemove = resolved.ids.filter((uid) => memberIds.has(uid));
 
-    const { removed } = await unassignUnits(toRemove);
-    const detail = await getHandlingUnitDetail(id);
+    const { removed } = await unassignUnits(toRemove, ctx.organizationId);
+    const detail = await getHandlingUnitDetail(id, ctx.organizationId);
 
     await recordAudit(pool, ctx, req, {
       source: 'handling-units-api',

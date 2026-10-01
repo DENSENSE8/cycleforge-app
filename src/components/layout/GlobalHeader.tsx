@@ -8,6 +8,7 @@ import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButt
 import { GlobalHeaderAdd } from './GlobalHeaderAdd';
 import { GlobalHeaderSync } from './GlobalHeaderSync';
 import { HeaderNextAction, PrintJobOverlay } from './HeaderWork';
+import { HeaderCenter } from './HeaderCenter';
 import {
   HEADER_ICON_CLUSTER,
   HEADER_INSET_X,
@@ -30,11 +31,9 @@ const RECEDE_WHILE_FINDING = [
 ].join(' ');
 
 /**
- * Global desktop header — one persistent, deliberately quiet utility bar,
- * split by who acts: the left says what YOU do next (the page's next step,
- * beside navigation and search); the right says what the SYSTEM is doing
- * (Sync, print job cards) next to the infrequent global actions. Page identity
- * and secondary navigation belong to the page/sidebar instead.
+ * Global desktop header — one persistent utility bar. The left says what the
+ * operator does next, the geometric center switches the current page/record
+ * context, and the right reports system work plus global actions.
  */
 export function GlobalHeader({
   navOpen,
@@ -56,7 +55,7 @@ export function GlobalHeader({
     <header
       className={cn(
         TOP_CHROME_BAND_CLASS,
-        'sticky top-0 z-header w-full select-none backdrop-blur-sm',
+        'relative sticky top-0 z-header w-full select-none backdrop-blur-sm',
         TOP_CHROME_ZONE_GAP,
         HEADER_INSET_X,
         appChromeMutedClass,
@@ -93,9 +92,10 @@ export function GlobalHeader({
       {/* Top-left: what YOU do next on this page — beside the sidebar seam, open or closed. */}
       <HeaderNextAction />
 
-      <div className="min-w-0 flex-1" aria-hidden />
+      <HeaderCenter />
+
       {/* Top-right: what the SYSTEM is doing — Sync spins for syncs and prints; print jobs exist only as the overlay cards. */}
-      <div className={HEADER_ICON_CLUSTER} data-header-zone="actions">
+      <div className={cn(HEADER_ICON_CLUSTER, 'ml-auto')} data-header-zone="actions">
         <GlobalHeaderAdd />
         <ActivityInboxButton />
         <GlobalHeaderSync />

@@ -25,8 +25,7 @@ export function SendPhotoNotePanel({
   defaultTicket,
   lockTicket = false,
   /**
-   * `display` — Unbox Displays Photos→Send: strip + tabs name the verb; omit
-   * gray title / PO restatement / X.
+   * `display` — embedded host owns the title and close affordance.
    * `modal` — rail / overlay hosts keep the title + close.
    */
   chrome = 'modal',

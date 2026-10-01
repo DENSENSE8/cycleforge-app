@@ -10,7 +10,7 @@ import {
 import type { AllocationHit } from '@/lib/channel-allocation/types';
 import { READY_FIELD_CATALOG, READY_PRODUCT_LAYOUT } from './ready';
 import { resolveReadySlotValue } from './ready-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function hit(overrides: Partial<AllocationHit> = {}): AllocationHit {
   return {
@@ -57,7 +57,7 @@ describe('ready catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; the core view in the status band)', () => {
-    const parsed = parseSlotLayout(READY_PRODUCT_LAYOUT, READY_FIELD_CATALOG);
+    const parsed = READY_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'ready.unit');
     assert.deepEqual(parsed.statusBindings, [

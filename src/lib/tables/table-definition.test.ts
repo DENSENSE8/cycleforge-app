@@ -14,7 +14,6 @@ const CAPABILITIES = {
   rowTriageFlags: false,
   multiSelect: true,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: true,
 };
 

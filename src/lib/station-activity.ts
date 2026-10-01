@@ -5,10 +5,13 @@ type Queryable = {
 type StationName = 'TECH' | 'PICK' | 'PACK' | 'FBA' | 'RECEIVING' | 'ADMIN' | 'OUTBOUND';
 type StationActivityType =
   | 'TRACKING_SCANNED'
+  | 'ARRIVAL_SCANNED'
+  | 'UNBOX_COMPLETED'
   // Picker desk (/pick?ship=urgent) tracking scan: units taken for this order.
   | 'PICK_SCANNED'
   | 'FNSKU_SCANNED'
   | 'SERIAL_ADDED'
+  | 'QC_RESULT_RECORDED'
   | 'PACK_COMPLETED'
   | 'PACK_SCAN'
   | 'PACK_SHIPPED'

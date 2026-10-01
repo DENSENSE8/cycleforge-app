@@ -1,7 +1,7 @@
 /** Unit-TSN-links field catalog — the bindable facts of ONE `tech_serial_numbers` cross-reference row, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const UNIT_TSN_LINKS_FIELD_CATALOG: FieldCatalog = [
   /** The IDENTITY fact — the v1 row's own id. */
@@ -61,7 +61,7 @@ export const UNIT_TSN_LINKS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default — byte-for-byte the six facts the retired hand table painted, four of them on the shared row chrome. */
-export const UNIT_TSN_LINKS_PRODUCT_LAYOUT: SlotLayout = {
+export const UNIT_TSN_LINKS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'unit-tsn-links.tsn',
   statusBindings: [
@@ -70,7 +70,7 @@ export const UNIT_TSN_LINKS_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The tableId this catalog serves — `PRODUCT_TABLES`' TSN-links entry. */
 export const UNIT_TSN_LINKS_TABLE_LAYOUT_ID = 'unit-tsn-links';

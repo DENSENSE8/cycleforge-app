@@ -1,10 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  readStoredSlotLayout,
-  type SlotLayout,
-} from '@/lib/tables/slot-layout-core';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { surfaceFromStorageKey } from '@/lib/saved-views/surfaces';
@@ -16,8 +12,6 @@ export interface SavedView {
   name: string;
   /** Encoded subset of the view's params (stable key order). */
   query: string;
-  /** The COLUMNS this view was saved with, or null for a view saved before layout capture (and for surfaces that do not opt in). */
-  layout: SlotLayout | null;
   /** Org-wide visibility. */
   isShared: boolean;
   /** True when the signed-in staffer owns this row (can edit/delete/share). */
@@ -26,8 +20,6 @@ export interface SavedView {
 
 export interface SaveViewOptions {
   isShared?: boolean;
-  /** The EFFECTIVE layout to capture. Only the mount knows it. */
-  layout?: SlotLayout | null;
 }
 
 export interface UseSavedViewsResult {
@@ -42,12 +34,7 @@ export interface UseSavedViewsResult {
   applyView: (view: SavedView) => void;
   /** Clear every `paramKeys` key from the URL (idle board for this surface). */
   clearView: () => void;
-  /**
-   * Save the current params under a name (replaces a same-name owned view).
-   *
-   * Pass `layout` to capture the columns too — the caller supplies it because
-   * only the mount knows its EFFECTIVE layout (staff ?? org ?? product).
-   */
+  /** Save the current params under a name (replaces a same-name owned view). */
   saveView: (name: string, options?: SaveViewOptions) => void;
   /** Rename an owned view. Filters stay; only the label moves. */
   renameView: (id: string, name: string) => void;
@@ -72,8 +59,6 @@ function toClientView(row: ServerView, staffId: number | null): SavedView {
     id: String(row.id),
     name: row.name,
     query,
-    // A view saved before layout capture simply has none, and the cascade falls through to staff ??
-    layout: readStoredSlotLayout(row.filters?.layout),
     isShared: row.is_shared === true,
     isMine: staffId != null && ownerId === staffId,
   };
@@ -170,9 +155,7 @@ export function useSavedViews({
     (name: string, options?: SaveViewOptions) => {
       const trimmed = name.trim();
       if (!trimmed || !surface) return;
-      // The layout rides beside the query rather than in it:
       const filters: Record<string, unknown> = { query: currentQuery };
-      if (options?.layout) filters.layout = options.layout;
       const isShared = options?.isShared === true;
       const existing = views.find(
         (v) => v.isMine && v.name.toLowerCase() === trimmed.toLowerCase(),
@@ -192,7 +175,6 @@ export function useSavedViews({
                   ...existing,
                   name: trimmed,
                   query: currentQuery,
-                  layout: options?.layout ?? existing.layout,
                   isShared,
                 };
             setViews((prev) =>

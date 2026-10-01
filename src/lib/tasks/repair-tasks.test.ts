@@ -29,6 +29,7 @@ function repair(overrides: Partial<RepairTaskSource> = {}): RepairTaskSource {
     status: 'Pending Repair',
     issue: 'CD Issues',
     pickedUp: false,
+    helpdeskTicketNumber: null,
     ...overrides,
   };
 }
@@ -40,6 +41,7 @@ function task(overrides: Partial<RepairSyncTask> = {}): RepairSyncTask {
     status: 'OPEN',
     note: repairTaskNote(repair()),
     closedBySync: false,
+    hasTicketLink: false,
     ...overrides,
   };
 }
@@ -151,17 +153,35 @@ test('run: dry-run counts the plan without writing; apply counts refusals as fai
       writes.push(`create:${a.repairId}`);
       return a.repairId !== refuse;
     },
-    updateTask: async (a: Exclude<RepairTaskAction, { kind: 'create' }>) => {
+    updateTask: async (a: Exclude<RepairTaskAction, { kind: 'create' } | { kind: 'linkTicket' }>) => {
       writes.push(`${a.kind}:${a.taskId}`);
+      return true;
+    },
+    linkTicket: async (a: Extract<RepairTaskAction, { kind: 'linkTicket' }>) => {
+      writes.push(`linkTicket:${a.taskId}:${a.ticketNumber}`);
       return true;
     },
   });
 
   const dry = await runRepairTaskSync(OWNERS, deps(null), { dryRun: true });
-  assert.deepEqual(dry.summary, { repairs: 3, created: 2, closed: 1, reopened: 0, refreshed: 0, failed: 0 });
+  assert.deepEqual(dry.summary, { repairs: 3, created: 2, closed: 1, reopened: 0, refreshed: 0, ticketLinked: 0, failed: 0 });
   assert.deepEqual(writes, []);
 
   const applied = await runRepairTaskSync(OWNERS, deps(2));
-  assert.deepEqual(applied.summary, { repairs: 3, created: 1, closed: 1, reopened: 0, refreshed: 0, failed: 1 });
+  assert.deepEqual(applied.summary, { repairs: 3, created: 1, closed: 1, reopened: 0, refreshed: 0, ticketLinked: 0, failed: 1 });
   assert.deepEqual(writes, ['create:1', 'create:2', 'close:900']);
+});
+
+test('a paperwork number that is a real helpdesk thread is linked once, never for a withdrawn task', () => {
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [task()], OWNERS), [
+    { kind: 'linkTicket', taskId: 900, repairId: 53, ticketNumber: '10089' },
+  ]);
+  // Already linked, or the number matches no helpdesk thread: nothing to do.
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [task({ hasTicketLink: true })], OWNERS), []);
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: 'RS-0053' })], [task()], OWNERS), []);
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [task({ status: 'CANCELED' })], OWNERS), []);
+  // A fresh create carries the number so the link lands with the task.
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [], OWNERS), [
+    { kind: 'create', repairId: 53, note: repairTaskNote(repair({ ticketNumber: '10089' })), assigneeStaffIds: OWNERS, ticketNumber: '10089' },
+  ]);
 });

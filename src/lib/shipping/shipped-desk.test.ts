@@ -81,17 +81,17 @@ describe('shipped-desk', () => {
     assert.equal(shippingShippedHref(), SHIPPING_SHIPPED_PATH);
     assert.equal(
       shippingShippedHref({ search: '1Z999' }),
-      '/shipping/shipped?search=1Z999',
+      '/fulfilled?search=1Z999',
     );
     // Week 0 is the default paint — it is absence, not a param.
     assert.equal(shippingShippedHref({ weekOffset: 0 }), SHIPPING_SHIPPED_PATH);
     assert.equal(
       shippingShippedHref({ weekOffset: 3 }),
-      '/shipping/shipped?shippedWeekOffset=3',
+      '/fulfilled?shippedWeekOffset=3',
     );
     assert.equal(
       shippingShippedHref({ ostatus: 'PACKED_STAGED' }),
-      '/shipping/shipped?ostatus=PACKED_STAGED',
+      '/fulfilled?ostatus=PACKED_STAGED',
     );
   });
 
@@ -100,7 +100,7 @@ describe('shipped-desk', () => {
     // wider set than the number it was printed on.
     assert.equal(
       shippedTodayHref('2026-08-30'),
-      '/shipping/shipped?dateFrom=2026-08-30&dateTo=2026-08-30',
+      '/fulfilled?dateFrom=2026-08-30&dateTo=2026-08-30',
     );
   });
 });

@@ -1,7 +1,7 @@
 /** Bins field catalog — the bindable warehouse-bin facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const BINS_FIELD_CATALOG: FieldCatalog = [
   {
@@ -73,7 +73,7 @@ export const BINS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default bins layout — visual parity with the retired hand model (`select · barcode · location · SKUs · qty · fill · counted… */
-export const BINS_PRODUCT_LAYOUT: SlotLayout = {
+export const BINS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'bins.barcode',
   statusBindings: [
@@ -86,7 +86,7 @@ export const BINS_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Warehouse bins entry. */
 export const BINS_TABLE_LAYOUT_ID = 'bins';

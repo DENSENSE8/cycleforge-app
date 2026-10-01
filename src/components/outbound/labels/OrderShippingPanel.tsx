@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/design-system/primitives';
 import { orderReleaseGatesQuery } from '@/lib/queries/caged-orders-queries';
 import { toast } from '@/lib/toast';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { cn } from '@/utils/_cn';
 import { SHIP_FROM_SETTINGS_PATH } from '@/lib/shipping/ship-from-settings';
 import { useShipStationStatus } from '@/hooks/useShipStationStatus';

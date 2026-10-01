@@ -78,7 +78,7 @@ export function resolveFulfillmentLane(signals: OrderLifecycleSignals): Fulfillm
   return 'PENDING';
 }
 
-/** Pre‑dock stage (+ the order's expedite flag) → the cross‑platform {@link LifecycleState} key whose code, word and tone every industrial… */
+/** Pre-dock stage (+ expedite flag) → the shared lifecycle key used on every surface. */
 export function orderLifecycleState(
   stage: OrderLifecycleStage,
   flags: { urgent?: boolean | null } = {},

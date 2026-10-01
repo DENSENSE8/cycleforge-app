@@ -2,15 +2,10 @@
 
 /** Band-3 **Views** menu — the PAGE-WIDE saved-views control for ops-queue / workbench data tables. */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Bookmark } from '@/components/Icons';
 import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
 import { useSavedViews } from '@/hooks/useSavedViews';
-import {
-  clearSavedViewLayout,
-  setSavedViewLayout,
-} from '@/lib/tables/saved-view-layout-store';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import { cn } from '@/utils/_cn';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
@@ -29,33 +24,16 @@ export function WorkbenchViewsMenu({
   paramKeys,
   emptyHint,
   className,
-  tableId,
-  layout,
 }: {
   storageKey: string;
   paramKeys: readonly string[];
   emptyHint?: string;
   className?: string;
-  /**
-   * The slot `tableId` this surface paints, when it has one. Present ⇒ the
-   * view captures COLUMNS as well as params, and publishes the applied view's
-   * layout to `saved-view-layout-store` for the table's own layout hook.
-   */
-  tableId?: string;
-  /** The mount's EFFECTIVE layout (staff ?? org ?? product) — what a save captures. */
-  layout?: SlotLayout | null;
 }) {
   const [open, setOpen] = useState(false);
   const controller = useSavedViews({ storageKey, paramKeys });
   const tip = controller.activeView ? controller.activeView.name : 'Views';
 
-  /** Publish the applied view's layout so `useSlotTableLayout` can put it at the head of the cascade. */
-  const activeLayout = controller.activeView?.layout ?? null;
-  useEffect(() => {
-    if (!tableId) return;
-    setSavedViewLayout(tableId, activeLayout);
-    return () => clearSavedViewLayout(tableId);
-  }, [tableId, activeLayout]);
 
   return (
     <div className={cn('relative inline-flex shrink-0 items-center', className)}>
@@ -73,11 +51,6 @@ export function WorkbenchViewsMenu({
           emptyHint={emptyHint}
           controller={{
             ...controller,
-            // Capture the columns alongside the params. Only the mount knows
-            // its effective layout, so the menu injects it here rather than
-            // the hook guessing.
-            saveView: (name, options) =>
-              controller.saveView(name, { ...options, layout: layout ?? null }),
             applyView: (view) => {
               controller.applyView(view);
               setOpen(false);

@@ -68,6 +68,12 @@ export function useReceivingLinesData({
     modeContext,
     enabled: !isDeliveredUnscannedFacet && !isDeliveredNotUnboxedFacet,
   });
+  // `localRows` deliberately receives authoritative rows in an effect so
+  // selection and optimistic edits have one mutable display source. Between
+  // React Query resolving and that effect committing there is one render where
+  // the server has records but the display array is still empty. Keep that
+  // handoff busy: an empty state must only ever describe an empty response.
+  const awaitingAuthoritativeRows = Boolean(data?.receiving_lines?.length) && localRows.length === 0;
 
   // "Delivered · not scanned" facet:
   const { data: deliveredData } = useQuery<DeliveredUnscannedResponse>({
@@ -197,5 +203,5 @@ export function useReceivingLinesData({
     return () => window.removeEventListener('receiving-lines-prepended', handler);
   }, [setWeekOffset, scrollRef]);
 
-  return { data, isLoading, isError, refetch, deliveredRows, localRows, setLocalRows };
+  return { data, isLoading: isLoading || awaitingAuthoritativeRows, isError, refetch, deliveredRows, localRows, setLocalRows };
 }

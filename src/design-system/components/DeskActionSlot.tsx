@@ -65,7 +65,7 @@ const INVERSE_KEY_VARIANTS: Readonly<Partial<Record<NonNullable<ButtonProps['var
  */
 export const DESK_BAR_SEGMENT_CLASS = cn(
   'ds-raw-button inline-flex min-h-mode-hit shrink-0 items-center gap-2 px-4',
-  'font-sans text-role-eyebrow font-semibold industrial:font-mono industrial:font-extrabold',
+  'font-sans text-role-eyebrow font-semibold',
   'disabled:cursor-not-allowed disabled:opacity-40',
   'rounded-mode-control',
   focusRing('cell'),

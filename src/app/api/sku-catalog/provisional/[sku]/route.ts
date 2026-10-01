@@ -4,6 +4,7 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { parseBody } from '@/lib/schemas/parse';
 import { ProvisionalUpdateBody } from '@/lib/schemas/provisional-sku';
 import {
+  deleteProvisionalSku,
   findProvisionalMergeTarget,
   getProvisionalSkuDetail,
   ProvisionalBarcodeError,
@@ -109,5 +110,39 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sk
     }
     console.error('Error in PATCH /api/sku-catalog/provisional/[sku]:', error);
     return NextResponse.json({ success: false, error: 'Failed to update on-hold product' }, { status: 500 });
+  }
+}
+
+/** Delete a placeholder that never held stock — the bulk cleanup verb. */
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ sku: string }> }) {
+  const gate = await requireRoutePerm(req, 'sku_stock.adjust');
+  if (gate.denied) return gate.denied;
+  const orgId = gate.ctx.organizationId;
+
+  const sku = await readSku(params);
+  if (!sku) {
+    return NextResponse.json({ success: false, error: 'Not an on-hold SKU' }, { status: 400 });
+  }
+
+  try {
+    const removed = await deleteProvisionalSku(sku, orgId);
+    await recordAudit(pool, gate.ctx, req, {
+      source: 'api',
+      action: AUDIT_ACTION.SKU_STOCK_ADJUST,
+      entityType: AUDIT_ENTITY.SKU_STOCK,
+      entityId: removed.stockId,
+      before: { sku, product_title: removed.title },
+      reasonCode: 'PROVISIONAL_DELETE',
+      extra: { sku, mode: 'delete-placeholder' },
+    });
+    await invalidateCacheTags(orgId, [CACHE_TAGS.skuCatalog]);
+    after(() => {
+      void publishSkuExceptionChanged({ organizationId: orgId, sku, action: 'updated', source: 'api' });
+    });
+    return NextResponse.json({ success: true, sku });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Could not delete the placeholder.';
+    const conflict = /holds stock|serial/i.test(message);
+    return NextResponse.json({ success: false, error: message }, { status: conflict ? 409 : 500 });
   }
 }

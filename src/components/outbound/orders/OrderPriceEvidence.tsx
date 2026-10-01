@@ -11,7 +11,7 @@ import {
   RECORD_LABEL_CLASS,
   RECORD_PRICE_CLASS,
   RECORD_TRAILING_CELL_CLASS,
-} from '@/design-system/tokens/industrial-record';
+} from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { LABEL_PURPOSES, LABEL_PURPOSE_FACE } from '@/lib/shipping/label-purpose';

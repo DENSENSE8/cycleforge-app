@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   REPORT_VELOCITY_COMPOUND_COLUMNS,
   reportVelocityCompoundColumnsFor,
@@ -16,7 +16,7 @@ import {
   REPORT_VELOCITY_PRODUCT_LAYOUT,
 } from './report-velocity';
 import { resolveReportVelocitySlotValue } from './report-velocity-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '../table-definition';
 
 /** The skeleton's six non-gutter chrome tracks leave this many status slots. */
@@ -64,10 +64,7 @@ describe('report-velocity catalog', () => {
   });
 
   it('product default parses, and the SKU is the identity', () => {
-    const parsed = parseSlotLayout(
-      REPORT_VELOCITY_PRODUCT_LAYOUT,
-      REPORT_VELOCITY_FIELD_CATALOG,
-    );
+    const parsed = REPORT_VELOCITY_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'report-velocity.sku');
     assert.deepEqual(
@@ -130,7 +127,7 @@ describe('report-velocity materialization', () => {
     const identity = col('fulfillment');
     assert.equal(identity?.fieldId, 'report-velocity.sku');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "SKU" is now the Fields-picker row
+    // (`data-table-family.ts`). "SKU" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -151,7 +148,7 @@ describe('report-velocity materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of REPORT_VELOCITY_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key)) {
+      if (isDataTableChromeColumn(col.key)) {
         assert.equal(reportVelocitySortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

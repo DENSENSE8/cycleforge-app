@@ -31,14 +31,12 @@ import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir'
 import {
   defaultDirForTechAllColumn,
   isTechAllColumnSortable,
-  techAllSheetColumnsFor,
   techAllSortFactFor,
   type TechAllGridColumn,
   type TechAllGridColumnKey,
 } from '@/lib/tech/tech-all-grid-layout';
 import { TECH_ALL_TABLE_BINDING } from './tech-all-table-definition';
 import { TechAllGridRow } from './TechAllGridRow';
-import { useTechAllTableLayout } from './useTechAllTableLayout';
 
 /** Row order for a column sort, keyed by SORT FACT — the structural `identity` plus catalog field ids (`techAllSortFactFor` maps a mounted… */
 function compareTechAllRows(
@@ -218,11 +216,7 @@ export function TechAllTriageTable({
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // The COLUMNS are the effective slot layout's materialization (staff ?? org
-  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
-  // keys; each resolves to its bound field's fact through `techAllSortFactFor`.
-  const { effectiveLayout: techAllLayout, fields: techAllFields } = useTechAllTableLayout();
-  const columns = useMemo(() => techAllSheetColumnsFor(techAllLayout), [techAllLayout]);
+  const columns = TECH_ALL_TABLE_BINDING.columns;
   const sortFactByKey = useMemo(
     () => new Map(columns.map((c) => [c.key as string, techAllSortFactFor(c)])),
     [columns],
@@ -261,7 +255,6 @@ export function TechAllTriageTable({
     <DataTable<TechAllTriageRow, TechAllGridColumnKey, TechAllGridColumn>
       binding={TECH_ALL_TABLE_BINDING}
       columns={columns}
-      fields={techAllFields}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => r.id}

@@ -1,12 +1,12 @@
-/** Inventory › Ledger activity column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
+/** Inventory › Ledger activity column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   INVENTORY_EVENTS_FIELD_CATALOG,
   INVENTORY_EVENTS_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/inventory-events';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -28,23 +28,15 @@ export type InventoryEventsGridColumnKey =
  * it — every shared field is inherited and only `key` narrows, which is what
  * stops this family drifting from the same field on every other surface.
  */
-export interface InventoryEventsGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: InventoryEventsGridColumnKey;
-}
+export interface InventoryEventsGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: InventoryEventsGridColumnKey; }
 
 /** Materialize the mounted ledger columns from an effective layout. */
-export function inventoryEventsCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly InventoryEventsGridColumn[] {
-  const base = compoundColumnsFor<InventoryEventsGridColumn>().filter(c => c.key !== 'dates' && c.key !== 'select');
-  return materializeTracks<InventoryEventsGridColumn>({
-    layout,
-    catalog: INVENTORY_EVENTS_FIELD_CATALOG,
-    base,
-  });
-}
+export function inventoryEventsCompoundColumnsFor(layout: DataTableColumnLayout): readonly InventoryEventsGridColumn[] { const base = compoundColumnsFor<InventoryEventsGridColumn>().filter(c => c.key !== 'dates' && c.key !== 'select');
+return materializeTracks<InventoryEventsGridColumn>({
+  layout,
+  catalog: INVENTORY_EVENTS_FIELD_CATALOG,
+  base,
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts,

@@ -7,7 +7,9 @@ import { countExceptions } from '@/lib/exceptions/hub';
 import { importFacets } from '@/lib/nav/facets/imports';
 import { outboundFacets, type FacetSqlRunner } from '@/lib/nav/facets/outbound';
 import { pickupFacets } from '@/lib/nav/facets/pickup';
+import { inventoryStockFacets } from '@/lib/nav/facets/inventory-stock';
 import { shippedFacets } from '@/lib/nav/facets/shipped';
+import { stationLiveFacets } from '@/lib/nav/facets/station-live';
 import { listLocalPickupLines } from '@/lib/local-pickup/pickup-lines-query';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -44,6 +46,8 @@ export async function getNavFacets(
     return { ok: true, body: await pickupFacets(caller.orgId, params, deps.listLocalPickupLines) };
   }
   const run: FacetSqlRunner = (sql, bind) => deps.run(caller.orgId, sql, bind);
+  if (context === 'stations-live') return { ok: true, body: await stationLiveFacets(caller.orgId, params, run) };
+  if (context === 'inventory.stock') return { ok: true, body: await inventoryStockFacets(caller.orgId, params, run) };
   if (context === 'outbound.shipped') return { ok: true, body: await shippedFacets(caller.orgId, params, run) };
   if (context === 'imports.runs' || context === 'imports.rows') {
     return { ok: true, body: await importFacets(context, caller.orgId, params, run) };

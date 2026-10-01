@@ -75,8 +75,8 @@ in-flight `ShippedLedger` work, so confirm with the owner first.
 
 **Phase 1 — cut by usage (2–4 sessions).** Owner names the desk routes he actually
 dogfoods; delete the rest, as `/m` was pruned. Pick ONE table primitive
-(`DataTable`, `RecordLedger`, `LedgerGrid`, the slot-table compound engine → one)
-and migrate; the `actionStrip` typed contract lands here.
+(`DataTable`, `RecordLedger`, `LedgerGrid` → one) and migrate; the
+`actionStrip` typed contract lands here.
 
 **Phase 2 — platform seams (3–5 sessions).**
 1. Cloudflare AI Gateway cutover. Seam: `src/lib/ai/org-provider.ts`

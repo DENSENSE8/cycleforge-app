@@ -4,7 +4,7 @@
  */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const REPORT_PACKER_DAY_FIELD_CATALOG: FieldCatalog = [
   /** Packer attribution — a `person`, bound to status or subtitle tracks. */
@@ -99,7 +99,7 @@ export const REPORT_PACKER_DAY_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const REPORT_PACKER_DAY_PRODUCT_LAYOUT: SlotLayout = {
+export const REPORT_PACKER_DAY_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'report-packer-day.order_number',
   statusBindings: [
@@ -110,7 +110,7 @@ export const REPORT_PACKER_DAY_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Packer-day entry. */
 export const REPORT_PACKER_DAY_TABLE_LAYOUT_ID = 'report-packer-day';

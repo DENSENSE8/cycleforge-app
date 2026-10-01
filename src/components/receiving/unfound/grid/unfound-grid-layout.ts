@@ -1,4 +1,4 @@
-/** Unfound queue spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
+/** Unfound queue spreadsheet column model — MATERIALIZED from a {@link DataTableColumnLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
@@ -8,8 +8,8 @@ import {
   UNFOUND_FIELD_CATALOG,
   UNFOUND_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/unfound';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -22,24 +22,22 @@ export type UnfoundGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface UnfoundGridColumn extends SlotTrackFields {
-  key: UnfoundGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  /** Staff-preference key (`staff_preferences.tableColumns.unfound`). */
-  hideKey?: string;
-  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
-  tier?: 'core' | 'optional';
-  /** When false, header is not click-to-sort (gutter / action tracks). */
-  sortable?: boolean;
-}
+export interface UnfoundGridColumn extends DataTableColumnFields { key: UnfoundGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+/** Staff-preference key (`staff_preferences.tableColumns.unfound`). */
+hideKey?: string;
+/** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
+tier?: 'core' | 'optional';
+/** When false, header is not click-to-sort (gutter / action tracks). */
+sortable?: boolean; }
 
 /**
  * The structural sheet skeleton — what Unfound paints with ZERO bindings.
@@ -66,15 +64,13 @@ const UNFOUND_SHEET_BASE: readonly UnfoundGridColumn[] = [
  * anchor on `title`, so the default plate reads ticket · USA note · VN note ·
  * check — the hand model's full ops set — with `action` always last.
  */
-export function unfoundSheetColumnsFor(layout: SlotLayout): readonly UnfoundGridColumn[] {
-  return materializeTracks<UnfoundGridColumn>({
-    layout,
-    catalog: UNFOUND_FIELD_CATALOG,
-    base: UNFOUND_SHEET_BASE,
-    statusAnchorKey: 'title',
-    subtitleAnchorKey: 'title',
-  });
-}
+export function unfoundSheetColumnsFor(layout: DataTableColumnLayout): readonly UnfoundGridColumn[] { return materializeTracks<UnfoundGridColumn>({
+  layout,
+  catalog: UNFOUND_FIELD_CATALOG,
+  base: UNFOUND_SHEET_BASE,
+  statusAnchorKey: 'title',
+  subtitleAnchorKey: 'title',
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts,

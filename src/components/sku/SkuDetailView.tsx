@@ -12,7 +12,7 @@ import { SkuStockCard } from './sku-detail/SkuStockCard';
 import { SkuLocationCard } from './sku-detail/SkuLocationCard';
 import { SkuDetailCards } from './sku-detail/SkuDetailCards';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
-import { StockLocationsGroup } from '@/components/inventory/stock/StockLocationsGroup';
+import { StockLocationsGroup } from '@/components/stock/StockLocationsGroup';
 import { StockPhotoTile } from '@/components/inventory/stock/StockPhotoTile';
 
 /**

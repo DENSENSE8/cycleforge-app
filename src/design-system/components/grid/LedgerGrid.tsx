@@ -334,19 +334,19 @@ export function LedgerGrid<T>({
     </div>
   );
 
-  // Morphing portals into `data-slot-table-action-row` here — in-flow under the column header, `empty:hidden` when idle.
+  // Morphing portals into `data-table-action-row` here — in-flow under the column header, `empty:hidden` when idle.
   const pinnedPrefix = (
     <div
       ref={prefixRef}
-      data-slot-table-prefix=""
+      data-table-prefix=""
       className={cn(
         'relative z-sticky isolate w-full min-w-0 shrink-0 bg-surface-card',
         !selfScrollX && 'sticky top-[var(--cf-grid-header-h,0px)]',
       )}
     >
       <div
-        data-slot-table-action-row=""
-        data-testid="slot-table-action-row"
+        data-table-action-row=""
+        data-testid="data-table-action-row"
         className="min-w-0 w-full overflow-hidden empty:hidden"
       />
       {bodyPrefix}

@@ -14,7 +14,7 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { incomingExceptionReason } from '@/lib/receiving/incoming-exceptions';
 import type { RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { incomingDeliveryNextAction, purchaseDeliveryState, purchaseIdentity } from '../incoming-delivery-state';

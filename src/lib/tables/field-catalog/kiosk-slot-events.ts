@@ -1,7 +1,7 @@
 /** Kiosk slot-events field catalog — one physical slot / lane state transition. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const KIOSKSLOTEVENTS_FIELD_CATALOG: FieldCatalog = [
   {
@@ -58,7 +58,7 @@ export const KIOSKSLOTEVENTS_FIELD_CATALOG: FieldCatalog = [
  * PRODUCT default. Chrome carries device title + landing state; tracks carry
  * when / slot / transition / dwell / hardware — facts the chrome cannot say.
  */
-export const KIOSKSLOTEVENTS_PRODUCT_LAYOUT: SlotLayout = {
+export const KIOSKSLOTEVENTS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'kiosk-slot-events.device',
   statusBindings: [
@@ -70,7 +70,7 @@ export const KIOSKSLOTEVENTS_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES` entry. */
 export const KIOSKSLOTEVENTS_TABLE_LAYOUT_ID = 'kiosk-slot-events';

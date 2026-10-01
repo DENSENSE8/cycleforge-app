@@ -45,6 +45,12 @@ export interface RepairTaskSource {
   issue: string | null;
   /** `pickup_signed_at` — a signed pickup ends the repair whatever its status says. */
   pickedUp: boolean;
+  /**
+   * The helpdesk thread behind the paperwork number: `support_tickets` only,
+   * exact org-scoped match on the number. `Ticket 10089` on a task row is
+   * otherwise just words — the inline reply tab needs this to mount.
+   */
+  helpdeskTicketNumber: string | null;
 }
 
 /** A repair's task, found through its system-made REPAIR link. */
@@ -59,6 +65,8 @@ export interface RepairSyncTask {
    * done while the repair is still open is not overruled.
    */
   closedBySync: boolean;
+  /** The task already carries the helpdesk ticket link. */
+  hasTicketLink: boolean;
 }
 
 export function isRepairOpen(repair: Pick<RepairTaskSource, 'status' | 'pickedUp'>): boolean {
@@ -106,11 +114,13 @@ export function isSyncOwnedNote(note: string | null, repair: RepairTaskSource): 
 }
 
 export type RepairTaskAction =
-  | { kind: 'create'; repairId: number; note: string; assigneeStaffIds: readonly number[] }
+  | { kind: 'create'; repairId: number; note: string; assigneeStaffIds: readonly number[]; ticketNumber: string | null }
   /** `note` is set only when the task still wears the sync's words and they changed. */
   | { kind: 'close'; taskId: number; repairId: number; note: string | null }
   | { kind: 'reopen'; taskId: number; repairId: number; note: string | null }
-  | { kind: 'refresh'; taskId: number; repairId: number; note: string };
+  | { kind: 'refresh'; taskId: number; repairId: number; note: string }
+  /** The repair's paperwork number is a real helpdesk thread: link it so the record's Ticket tab replies inline. */
+  | { kind: 'linkTicket'; taskId: number; repairId: number; ticketNumber: string };
 
 /**
  * Decide, per repair, what its task needs. Repairs with no task that are
@@ -136,11 +146,16 @@ export function planRepairTaskSync(
 
     if (!task) {
       if (open && owners.length > 0) {
-        actions.push({ kind: 'create', repairId: repair.id, note, assigneeStaffIds: owners });
+        actions.push({ kind: 'create', repairId: repair.id, note, assigneeStaffIds: owners, ticketNumber: repair.helpdeskTicketNumber });
       }
       continue;
     }
     if (task.status === 'CANCELED') continue;
+
+    // The paperwork number is a real helpdesk thread: link it so the record's Ticket tab replies inline.
+    if (repair.helpdeskTicketNumber && !task.hasTicketLink) {
+      actions.push({ kind: 'linkTicket', taskId: task.taskId, repairId: repair.id, ticketNumber: repair.helpdeskTicketNumber });
+    }
 
     const refreshed = task.note !== note && isSyncOwnedNote(task.note, repair) ? note : null;
     if (isTaskDeskOpen(task.status)) {
@@ -168,8 +183,10 @@ export interface RepairTaskSyncDeps {
   createTask(action: Extract<RepairTaskAction, { kind: 'create' }>): Promise<boolean>;
   /** House status/note writer, audited. False when refused. */
   updateTask(
-    action: Exclude<RepairTaskAction, { kind: 'create' }>,
+    action: Exclude<RepairTaskAction, { kind: 'create' } | { kind: 'linkTicket' }>,
   ): Promise<boolean>;
+  /** House ticket-link writer, audited. False when refused (a duplicate counts as done). */
+  linkTicket(action: Extract<RepairTaskAction, { kind: 'linkTicket' }>): Promise<boolean>;
 }
 
 export interface RepairTaskSyncSummary {
@@ -178,6 +195,7 @@ export interface RepairTaskSyncSummary {
   closed: number;
   reopened: number;
   refreshed: number;
+  ticketLinked: number;
   failed: number;
 }
 
@@ -194,8 +212,8 @@ export async function runRepairTaskSync(
 ): Promise<RepairTaskSyncResult> {
   const [repairs, tasks] = await Promise.all([deps.listRepairs(), deps.listRepairTasks()]);
   const actions = planRepairTaskSync(repairs, tasks, owners);
-  const summary: RepairTaskSyncSummary = { repairs: repairs.length, created: 0, closed: 0, reopened: 0, refreshed: 0, failed: 0 };
-  const counter = { create: 'created', close: 'closed', reopen: 'reopened', refresh: 'refreshed' } as const;
+  const summary: RepairTaskSyncSummary = { repairs: repairs.length, created: 0, closed: 0, reopened: 0, refreshed: 0, ticketLinked: 0, failed: 0 };
+  const counter = { create: 'created', close: 'closed', reopen: 'reopened', refresh: 'refreshed', linkTicket: 'ticketLinked' } as const;
 
   for (const action of actions) {
     if (opts.dryRun) {
@@ -204,7 +222,12 @@ export async function runRepairTaskSync(
     }
     let ok = false;
     try {
-      ok = action.kind === 'create' ? await deps.createTask(action) : await deps.updateTask(action);
+      ok =
+        action.kind === 'create'
+          ? await deps.createTask(action)
+          : action.kind === 'linkTicket'
+            ? await deps.linkTicket(action)
+            : await deps.updateTask(action);
     } catch (error) {
       console.warn(`[repair-tasks] ${action.kind} RS-${action.repairId} failed:`, error instanceof Error ? error.message : error);
     }

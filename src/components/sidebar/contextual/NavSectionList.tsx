@@ -88,7 +88,7 @@ export function NavSectionList({
                   item={item}
                   href={doorHref(item.id) ?? item.href}
                   glyph={navRowGlyph(item, undefined)}
-                  toneKey={section.id === 'top' || section.id === 'ordered-top' || section.id === 'bottom' ? item.id : section.id}
+                  toneKey={section.id === 'top' || section.id === 'bottom' ? item.id : section.id}
                   onActiveSelect={onActiveSelect}
                   activeRowRef={item.active ? activeRowRef : undefined}
                 />

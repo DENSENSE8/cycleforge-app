@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const locked = await withCronLock(JOB, () =>
       withCronRun(JOB, async () => {
         const orgIds = (await listSweepOrgIds()).filter((orgId) => REPAIR_TASK_OWNER_IDS[orgId]);
-        const totals: RepairTaskSyncSummary = { repairs: 0, created: 0, closed: 0, reopened: 0, refreshed: 0, failed: 0 };
+        const totals: RepairTaskSyncSummary = { repairs: 0, created: 0, closed: 0, reopened: 0, refreshed: 0, ticketLinked: 0, failed: 0 };
         let orgsFailed = 0;
         for (const orgId of orgIds) {
           try {

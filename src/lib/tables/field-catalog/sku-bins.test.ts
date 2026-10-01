@@ -3,18 +3,18 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
-  slotTableColumnsFor,
-  slotTableSortFactFor,
-} from '@/components/tables/compound/slot-table-columns';
+  dataTableCompoundColumnsFor,
+  dataTableCompoundSortFactFor,
+} from '@/components/tables/compound/data-table-compound-columns';
 import { SKU_BINS_COMPOUND_COLUMNS } from '@/components/inventory/sku-bins-grid/sku-bins-table-definition';
 import { skuBinsCompoundView } from '@/components/inventory/sku-bins-grid/sku-bins-row-view';
 import type { SkuBinTableRow } from '@/lib/inventory/sku-bin-row';
 import { SKU_BINS_FAMILY, SKU_BINS_FIELD_CATALOG, SKU_BINS_PRODUCT_LAYOUT } from './sku-bins';
 import { resolveSkuBinsSlotValue, skuBinLevel } from './sku-bins-resolve';
 import { BINS_FIELD_CATALOG } from './bins';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /**
  * Facts of the warehouse-wide `bins` row. They describe a LOCATION over every
@@ -96,7 +96,7 @@ describe('sku-bins catalog', () => {
   });
 
   it('product default parses, and the BIN is the identity', () => {
-    const parsed = parseSlotLayout(SKU_BINS_PRODUCT_LAYOUT, SKU_BINS_FIELD_CATALOG);
+    const parsed = SKU_BINS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'sku-bins.bin');
     // The three quantity facts are the tracks…
@@ -154,14 +154,14 @@ describe('sku-bins materialization', () => {
     const identity = SKU_BINS_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'sku-bins.bin');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Bin" is now the Fields-picker row
+    // (`data-table-family.ts`). "Bin" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
   });
 
   it('rebinds without changing track keys (keys are slot indices)', () => {
-    const columns = slotTableColumnsFor(SKU_BINS_FAMILY, {
+    const columns = dataTableCompoundColumnsFor(SKU_BINS_FAMILY, {
       ...SKU_BINS_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'sku-bins.last_counted' }],
     });
@@ -175,19 +175,19 @@ describe('sku-bins materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of SKU_BINS_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key)) {
-        assert.equal(slotTableSortFactFor(SKU_BINS_FAMILY, col), null, `${col.key} is chrome`);
+      if (isDataTableChromeColumn(col.key)) {
+        assert.equal(dataTableCompoundSortFactFor(SKU_BINS_FAMILY, col), null, `${col.key} is chrome`);
         continue;
       }
       assert.ok(
-        slotTableSortFactFor(SKU_BINS_FAMILY, col) !== null,
+        dataTableCompoundSortFactFor(SKU_BINS_FAMILY, col) !== null,
         `${col.key} is a painted data track with a dead header`,
       );
     }
-    assert.equal(slotTableSortFactFor(SKU_BINS_FAMILY, { key: 'dates' }), 'sku-bins.last_counted');
-    assert.equal(slotTableSortFactFor(SKU_BINS_FAMILY, { key: 'item' }), 'sku-bins.item');
-    assert.equal(slotTableSortFactFor(SKU_BINS_FAMILY, { key: 'state' }), 'sku-bins.level');
-    assert.equal(slotTableSortFactFor(SKU_BINS_FAMILY, { key: 'fulfillment' }), 'sku-bins.bin');
+    assert.equal(dataTableCompoundSortFactFor(SKU_BINS_FAMILY, { key: 'dates' }), 'sku-bins.last_counted');
+    assert.equal(dataTableCompoundSortFactFor(SKU_BINS_FAMILY, { key: 'item' }), 'sku-bins.item');
+    assert.equal(dataTableCompoundSortFactFor(SKU_BINS_FAMILY, { key: 'state' }), 'sku-bins.level');
+    assert.equal(dataTableCompoundSortFactFor(SKU_BINS_FAMILY, { key: 'fulfillment' }), 'sku-bins.bin');
   });
 });
 

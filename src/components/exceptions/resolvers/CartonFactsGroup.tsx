@@ -3,7 +3,7 @@
 import { format } from 'date-fns';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import type { CartonExceptionFacts } from '@/lib/exceptions/facts';
 import { cn } from '@/utils/_cn';
 

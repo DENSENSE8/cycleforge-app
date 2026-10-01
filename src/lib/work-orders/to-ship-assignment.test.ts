@@ -13,6 +13,7 @@ import {
   isAssignedToShipRow,
   isToShipOutOfStock,
   mobileProcessOrderHref,
+  MOBILE_ALLOCATE_STATUS_VIEWS,
   parseMobileToShipTab,
   toShipOrderId,
   toShipTrackingNumber,
@@ -36,16 +37,35 @@ describe('mobile warehouse order views', () => {
   ];
 
   it('parses only governed views', () => {
+    assert.equal(parseMobileOrderView('to-pick'), 'to-pick');
     assert.equal(parseMobileOrderView('ready-to-pack'), 'ready-to-pack');
     assert.equal(parseMobileOrderView('anything'), 'all');
   });
 
+  it('keeps Allocate pins in the desktop operational order and vocabulary', () => {
+    assert.deepEqual(MOBILE_ALLOCATE_STATUS_VIEWS, [
+      { id: 'all', label: 'All' },
+      { id: 'urgent', label: 'Urgent' },
+      { id: 'to-pick', label: 'To pick' },
+      { id: 'ready-to-pack', label: 'Picked' },
+      { id: 'packed', label: 'Packed' },
+      { id: 'blocked', label: 'Out of stock' },
+    ]);
+  });
+
   it('derives each view from shared deadline and lifecycle facts', () => {
+    assert.deepEqual(filterToShipByOrderView(rows, 'to-pick', today).map((r) => r.entityId), [1]);
     assert.deepEqual(filterToShipByOrderView(rows, 'must-go-today', today).map((r) => r.entityId), [1]);
     assert.deepEqual(filterToShipByOrderView(rows, 'urgent', today).map((r) => r.entityId), [2]);
     assert.deepEqual(filterToShipByOrderView(rows, 'blocked', today).map((r) => r.entityId), [3]);
     assert.deepEqual(filterToShipByOrderView(rows, 'ready-to-pack', today).map((r) => r.entityId), [4]);
     assert.deepEqual(filterToShipByOrderView(rows, 'packed', today).map((r) => r.entityId), [5]);
+  });
+
+  it('uses the desktop lifecycle precedence so every status pin is exclusive', () => {
+    const urgentAndBlocked = row({ entityId: 6, isUrgent: true, outOfStock: 'Out of stock' });
+    assert.deepEqual(filterToShipByOrderView([urgentAndBlocked], 'urgent', today), []);
+    assert.deepEqual(filterToShipByOrderView([urgentAndBlocked], 'blocked', today).map((r) => r.entityId), [6]);
   });
 });
 

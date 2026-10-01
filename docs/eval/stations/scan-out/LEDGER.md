@@ -10,7 +10,7 @@ Run: `pnpm run eval:station scan-out`
 
 _Promote to `src/design-system/pinned.json` when stable._
 
-- `StationComposerHost` with `showModeFaces={false}` — dumb station, context ring on
+- `StationComposerHost` with `showModeRow` — dumb station, context ring on, no mode faces
 - One mouth only — no dual composer + scan bar
 - White `bg-surface-card` floor — no gray canvas fork
 - Idle↔overlay shell is a **cohort SoT** (`SCAN_STATION_OVERLAY_COHORT`) — every

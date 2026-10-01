@@ -11,7 +11,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';
 import { useResolveFbmException, useResolvePairsException } from '@/hooks/exceptions';
 import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { ExceptionCatalogPairing, ExceptionUnpairedBanner } from './ExceptionCatalogPairing';

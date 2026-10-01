@@ -162,7 +162,7 @@ export function resolveReceivingQrValue(payload: ReceivingLabelPayload): string 
 
 /**
  * Map a carton payload onto the shared {@link LabelFaceModel}. The single
- * source of truth for the carton label's slot layout — consumed by both the
+ * source of truth for the carton label's geometry — consumed by both the
  * on-screen `ReceivingPoLabelPreview` and every print path, so they can't drift.
  */
 export function receivingPayloadToFace(payload: ReceivingLabelPayload): LabelFaceModel {

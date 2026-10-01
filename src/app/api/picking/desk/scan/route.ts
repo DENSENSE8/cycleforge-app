@@ -93,6 +93,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE);
     if (hit?.status_code === 200) return NextResponse.json(hit.response_body);
   }
+  const phoneMetadata = ctx.session.deviceKind === 'phone'
+    ? {
+        origin: 'phone',
+        surface: '/m/pick',
+        ...(idemKey ? { client_event_id: idemKey } : null),
+        ...(Number.isSafeInteger(Number(body.mobileScanEventId)) && Number(body.mobileScanEventId) > 0
+          ? { mobile_scan_event_id: Number(body.mobileScanEventId) }
+          : null),
+        ...(String(body.scanClientEventId ?? '').trim()
+          ? { scan_client_event_id: String(body.scanClientEventId).trim() }
+          : null),
+      }
+    : {};
 
   try {
     const staff = await resolveStaff(pool, techId);
@@ -147,7 +160,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           scanRef: resolved.scanRef ?? value,
           ordersExceptionId,
           notes: isFbaSource ? 'FBA tracking scan without matched order' : 'Pick scan without matched order',
-          metadata: { source: stationSource, order_found: false, tracking: value },
+          metadata: {
+            source: stationSource,
+            order_found: false,
+            tracking: value,
+            ...phoneMetadata,
+          },
           createdAt: testDateTime,
         });
         await refreshOrderStageFacts(ctx.organizationId, { shipmentIds: [resolved.shipmentId] }, client);
@@ -214,6 +232,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           tracking: trackingValue || null,
           pack_location_id: packLocationId,
           pack_location_barcode: packLocationBarcode,
+          ...phoneMetadata,
         },
         createdAt: testDateTime,
       });

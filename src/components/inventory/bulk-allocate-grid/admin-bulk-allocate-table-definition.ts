@@ -20,7 +20,6 @@ export const ADMIN_BULK_ALLOCATE_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

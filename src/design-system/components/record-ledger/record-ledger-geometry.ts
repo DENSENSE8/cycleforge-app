@@ -1,4 +1,4 @@
-/** Record ledger geometry — the industrial record's box, in ONE place, for every page that adopts the ledger after To ship… */
+/** Record geometry in one place for every record surface. */
 
 import type { CSSProperties } from 'react';
 

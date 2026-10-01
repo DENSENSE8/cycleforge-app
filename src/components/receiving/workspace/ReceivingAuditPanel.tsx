@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { X } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
@@ -100,8 +100,8 @@ function groupEvents(events: ReceivingAuditEvent[]): AuditGroup[] {
 
 /**
  * Carton audit log — chrome-free panel body.
- * Hosted by Unbox Displays Timeline, History Audit topic, or {@link ReceivingAuditRail}.
- * Pass `hideHeader` when the host already owns the title (History / Timeline).
+ * Hosted by station timeline/history surfaces or {@link ReceivingAuditRail}.
+ * Pass `hideHeader` when the host already owns the title.
  */
 export function ReceivingAuditPanel({
   open,
@@ -255,17 +255,20 @@ function SerialBatchRow({
     <li className="flex items-start gap-2 text-role-caption">
       <span className="mt-[3px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-border-emphasis" aria-hidden />
       <div className="min-w-0 flex-1">
-        <button
+        <Button
           type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="ds-raw-button flex items-center gap-1 text-left font-semibold text-text-default hover:text-text-muted"
+          variant="ghost"
+          size="sm"
+          radius="flush"
+          onClick={() => setExpanded((value) => !value)}
+          className="h-auto justify-start gap-1 p-0 text-left text-text-default hover:text-text-muted"
           aria-expanded={expanded}
         >
           <span>{label}</span>
           <span className="text-role-micro font-normal text-text-faint">
             {expanded ? '▾ hide' : '▸ show'}
           </span>
-        </button>
+        </Button>
         <p className="text-text-soft">
           {latest.actor_name || 'Unknown'} · {formatTimelineAgo(latest.occurred_at)} ago
           {latest.station ? ` · ${latest.station}` : ''}

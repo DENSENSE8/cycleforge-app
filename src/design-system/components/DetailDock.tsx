@@ -4,7 +4,6 @@ import { Fragment, useRef, type ReactNode } from 'react';
 import { X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { usePressHaptic } from '@/lib/scan-feedback/useScanFeedback';
-import { useMode } from '@/design-system/providers/ModeRegion';
 import { FLOATING_CTA_WIDTH, FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
 
 export interface DetailDockVerb<Id extends string = string> {
@@ -31,10 +30,8 @@ interface DetailDockSelection {
 const DETAIL_DOCK_LOCK_MS = 500;
 
 /**
- * The phone's ONE touch verb band (the exoskeleton dock, operator 2026-09-24; the industrial terminal block, 2026-09-25):
- * flush cells, 1 px rules, radius 0, double-tap lock, press haptic. In a TRIAGE region (a phone
- * form, owner 2026-09-27) the same verbs paint as separate design-system buttons on the bar,
- * with the region's control corner — same verbs, same lock, same haptic.
+ * The phone's touch verb band: readable design-system buttons, double-tap
+ * lock and press haptic.
  *
  * `placement="dock"` — the sticky bottom execution bar, up to three verbs.
  * `placement="inline"` — the same band in-flow under a record (a board row, an
@@ -82,9 +79,6 @@ export function DetailDock<Id extends string>({
   const lockedUntil = useRef(0);
   const inFlight = useRef(false);
   const haptic = usePressHaptic();
-  // Industrial (and outside every region) keeps the terminal block byte for byte.
-  const triage = useMode() === 'triage';
-
   const fire = (run: () => void | Promise<unknown>) => {
     const now = Date.now();
     if (inFlight.current || now < lockedUntil.current) return;
@@ -108,64 +102,16 @@ export function DetailDock<Id extends string>({
   const inline = placement === 'inline';
   const centred = center != null && !inline && !selection;
   const shown = verbs.slice(0, selection || centred ? 2 : inline ? 4 : 3);
-  const cell = inline
-    ? 'h-auto min-h-12 w-full whitespace-normal px-2 py-2 text-center text-role-data leading-tight'
-    : size === 'glove'
-      ? 'min-h-18 w-full gap-1 whitespace-nowrap px-1 text-role-caption'
-      : 'min-h-18 w-full px-2 text-mode-body';
-  // Instant inversion; cancel the primitive's scale + colour transition.
-  const still = 'shadow-none ring-0 transition-none enabled:active:scale-100';
-  const press = `${still} active:bg-mode-ink active:text-mode-panel`;
-
-  // Twentieths: 30% dismiss + 70% verbs (35/35 for two). Four verbs (inline only) are a 2×2.
+  // Four inline verbs are a 2×2; selection adds one clear action.
   const grid = selection
     ? shown.length >= 2
-      ? 'grid-cols-20'
-      : 'grid-cols-10'
+      ? 'grid-cols-3'
+      : 'grid-cols-2'
     : centred || shown.length === 3
       ? 'grid-cols-3'
       : shown.length === 2 || shown.length === 4
         ? 'grid-cols-2'
         : 'grid-cols-1';
-  const verbSpan = selection ? 'col-span-7' : '';
-  const clearSpan = selection ? (shown.length >= 2 ? 'col-span-6' : 'col-span-3') : '';
-
-  const cells = (
-    <>
-      {selection ? (
-        <Button
-          variant="ink"
-          size="lg"
-          radius="flush"
-          className={`${cell} ${clearSpan} ${still} active:bg-mode-panel active:text-mode-ink font-mono `}
-          icon={<X />}
-          ariaLabel={`Clear selection (${selection.count} selected)`}
-          onClick={() => clear(selection.onClear)}
-        >
-          {`${selection.count} selected`}
-        </Button>
-      ) : null}
-      {shown.map((verb, i) => (
-        <Fragment key={verb.id}>
-          {centred && i === 1 ? center : null}
-          <Button
-            variant={verb.primary ? 'primary' : 'secondary'}
-            size="lg"
-            radius="flush"
-            className={`${cell} ${verbSpan} ${press} ${shown.length === 1 && !selection ? 'font-bold' : ''}`}
-            icon={verb.icon}
-            disabled={verb.disabled}
-            loading={verb.loading}
-            onClick={() => fire(() => onVerb(verb.id))}
-            data-testid={verb.testId}
-          >
-            {verb.label}
-          </Button>
-        </Fragment>
-      ))}
-    </>
-  );
-
   // Float: the job CTA over a list — no bar, no rule, no ground; only the buttons take presses.
   if (placement === 'float') {
     return (
@@ -193,17 +139,31 @@ export function DetailDock<Id extends string>({
     );
   }
 
-  // Triage region (a FORM on the phone — `/m/orders/new`): mobile-first buttons
-  // with the region's control corner on the bar, not the terminal block. The
-  // selection state (`N SEL` clear cell) is industrial-only and keeps the block.
-  if (triage && !selection) {
-    const buttons = shown.map((verb, i) => (
+  const buttons = (
+    <>
+      {selection ? (
+        <Button
+          variant="secondary"
+          size="lg"
+          className="min-h-mode-hit-cta w-full"
+          icon={<X />}
+          ariaLabel={`Clear selection (${selection.count} selected)`}
+          onClick={() => clear(selection.onClear)}
+        >
+          {`${selection.count} selected`}
+        </Button>
+      ) : null}
+      {shown.map((verb, i) => (
       <Fragment key={verb.id}>
         {centred && i === 1 ? center : null}
         <Button
           variant={verb.primary ? 'primary' : 'secondary'}
           size="lg"
-          className={inline ? 'h-auto min-h-mode-hit w-full whitespace-normal leading-tight' : 'min-h-mode-hit-cta w-full'}
+          className={inline
+            ? 'h-auto min-h-mode-hit w-full whitespace-normal leading-tight'
+            : size === 'glove'
+              ? 'min-h-mode-hit-cta w-full whitespace-nowrap text-role-caption'
+              : 'min-h-mode-hit-cta w-full'}
           icon={verb.icon}
           disabled={verb.disabled}
           loading={verb.loading}
@@ -213,33 +173,21 @@ export function DetailDock<Id extends string>({
           {verb.label}
         </Button>
       </Fragment>
-    ));
-    if (inline) {
-      return (
-        <div role="group" aria-label={label} className={`grid gap-2 px-mode-page py-2 ${grid}`}>
-          {buttons}
-        </div>
-      );
-    }
-    return (
-      <nav aria-label={label} className="pb-safe sticky bottom-0 z-sticky border-t border-mode-rule bg-mode-bar px-mode-page py-2">
-        <div className={`grid gap-2 ${grid}`}>{buttons}</div>
-      </nav>
-    );
-  }
+      ))}
+    </>
+  );
 
   if (inline) {
-    // Rules between cells in both directions come from the 1 px gap over the rule colour.
     return (
-      <div role="group" aria-label={label} className={`grid gap-px border-t border-mode-rule bg-mode-rule ${grid}`}>
-        {cells}
+      <div role="group" aria-label={label} className={`grid gap-2 px-mode-page py-2 ${grid}`}>
+        {buttons}
       </div>
     );
   }
 
   return (
-    <nav aria-label={label} className="pb-safe sticky bottom-0 z-sticky border-t border-mode-rule bg-mode-bar">
-      <div className={`grid divide-x divide-mode-rule ${grid}`}>{cells}</div>
+    <nav aria-label={label} className="pb-safe sticky bottom-0 z-sticky border-t border-mode-rule bg-mode-bar px-mode-page py-2">
+      <div className={`grid gap-2 ${grid}`}>{buttons}</div>
     </nav>
   );
 }

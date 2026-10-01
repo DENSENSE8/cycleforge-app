@@ -8,6 +8,7 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Search } from '@/components/Icons';
+import { findHintTone, RollingHint, useHintActivity, type FindHint } from '@/design-system/components/FindField';
 import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { cn } from '@/utils/_cn';
@@ -30,23 +31,38 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
     /** Combobox header accessory (e.g. the roster-edit pencil). Never forwarded to the input. */
     trailing?: React.ReactNode;
+    /** Phrases that roll over an empty input. Same motion as FindField. */
+    hints?: readonly FindHint[];
   }
->(function CommandInput({ className, trailing, ...props }, ref) {
+>(function CommandInput({ className, trailing, hints, ...props }, ref) {
+  const look = useHintActivity();
+  const showHint = Boolean(hints && hints.length > 0 && !String(props.value ?? ''));
   return (
     <div
       data-slot="command-input-wrapper"
       className="flex h-9 items-center gap-2 border-b border-border-hairline px-3"
+      {...(showHint ? look.bind : {})}
     >
       <Search className="size-4 shrink-0 text-text-faint" />
-      <CommandPrimitive.Input
-        ref={ref}
-        data-slot="command-input"
-        className={cn(
-          'flex h-9 min-w-0 w-full flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-text-faint disabled:opacity-50',
-          className,
-        )}
-        {...props}
-      />
+      <div className="relative h-full min-w-0 flex-1">
+        <CommandPrimitive.Input
+          ref={ref}
+          data-slot="command-input"
+          className={cn(
+            'flex h-9 min-w-0 w-full flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-text-faint disabled:opacity-50',
+            showHint && 'placeholder:text-transparent',
+            className,
+          )}
+          {...props}
+        />
+        {showHint ? (
+          <RollingHint
+            hints={hints as readonly FindHint[]}
+            active={look.active}
+            className={cn('text-sm', findHintTone(look.active))}
+          />
+        ) : null}
+      </div>
       {trailing}
     </div>
   );
@@ -84,7 +100,7 @@ function CommandGroup({
         'overflow-hidden p-0 text-text-default',
         '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2',
         // The region's label VOICE (`mode-label-case`): sentence case in triage
-        // (the desk, where the palette lives), caps on the industrial floor.
+        // (the desk, where the palette lives).
         '[&_[cmdk-group-heading]]:text-role-caption [&_[cmdk-group-heading]]:font-medium',
         '[&_[cmdk-group-heading]]:mode-label-case',
         '[&_[cmdk-group-heading]]:text-text-muted',
@@ -148,7 +164,7 @@ function CommandDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Portals out of every page region; the palette is a desk surface, so it
-          declares triage itself (industrial when opened on a phone). */}
+          declares triage itself. */}
       <ModeRegion mode="triage" asChild>
         <DialogContent
           hideClose

@@ -10,7 +10,7 @@ import {
 import type { OrderImportRowView } from '@/lib/orders/order-import-descriptor';
 import { ORDERS_IMPORT_FIELD_CATALOG, ORDERS_IMPORT_PRODUCT_LAYOUT } from './orders-import';
 import { resolveOrdersImportSlotValue } from './orders-import-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<OrderImportRowView> = {}): OrderImportRowView {
   return {
@@ -44,7 +44,7 @@ describe('orders-import catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; the whole set)', () => {
-    const parsed = parseSlotLayout(ORDERS_IMPORT_PRODUCT_LAYOUT, ORDERS_IMPORT_FIELD_CATALOG);
+    const parsed = ORDERS_IMPORT_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'orders-import.order');
     assert.equal(parsed.statusBindings.length, 5);

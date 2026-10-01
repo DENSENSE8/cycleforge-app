@@ -20,9 +20,10 @@ import { useRouter } from 'next/navigation';
 import { Check, Link2 } from '@/components/Icons';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { Button } from '@/design-system/primitives';
+import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
 import { toast } from '@/lib/toast';
-import { useStockPlaceOptions } from './useStockPlaceOptions';
+import { useStockPlaceOptions } from '@/hooks/useStockPlaceOptions';
 
 /** The home is written verbatim (the barcode the pairing sent); a match is the same string, trimmed and case-folded. */
 function sameTote(a: string | null, b: string | null): boolean {
@@ -63,6 +64,8 @@ export function StockPairBin({
   onPaired?: () => void;
 }) {
   const router = useRouter();
+  // The phone reads the same verbs at the 44px touch rung.
+  const { isMobile } = useUIModeOptional();
   const [pairing, setPairing] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   // ~130 KB of locations: fetched when the picker first opens.
@@ -102,7 +105,7 @@ export function StockPairBin({
       {barcode != null && !homeIsThis ? (
         <Button
           variant="secondary"
-          size="sm"
+          size={isMobile ? 'lg' : 'sm'}
           radius="surface"
           icon={<Link2 aria-hidden />}
           onClick={() => void pair(barcode, face ?? barcode)}
@@ -138,7 +141,7 @@ export function StockPairBin({
         searchPlaceholder="Tote (H-12), bin code or room…"
         emptyMessage="No matching tote or location"
         ariaLabel={`Tote to pair ${sku} to`}
-        className="w-56"
+        className={isMobile ? 'h-11 w-56 max-w-full' : 'w-56'}
         testId="stock-pair-bin-picker"
       />
     </>

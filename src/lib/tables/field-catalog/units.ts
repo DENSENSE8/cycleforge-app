@@ -1,7 +1,7 @@
 /** Units field catalog — the bindable serialized-unit facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const UNITS_FIELD_CATALOG: FieldCatalog = [
   {
@@ -49,7 +49,7 @@ export const UNITS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default units layout — visual parity with the retired hand model (`serial · product · status · condition · location · updated`): */
-export const UNITS_PRODUCT_LAYOUT: SlotLayout = {
+export const UNITS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'units.serial',
   statusBindings: [
@@ -60,7 +60,7 @@ export const UNITS_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Inventory units entry. */
 export const UNITS_TABLE_LAYOUT_ID = 'inventory-units';

@@ -14,7 +14,7 @@ import {
   subscribeRecordCursor,
   updateRecordCursor,
 } from './store';
-import type { RecordCursorOpen } from './store';
+import type { RecordCursorKeyOrder, RecordCursorOpen } from './store';
 
 // ─── Publish ─────────────────────────────────────────────────────────────────
 
@@ -27,6 +27,8 @@ interface PublishRecordCursorArgs<T> {
   enabled: boolean;
   /** Defaults to the grid tier; a rail passes `RECORD_CURSOR_PRIORITY.rail`. */
   priority?: number;
+  /** Override only the J/K direction; arrow keys remain down=next, up=previous. */
+  keyOrder?: RecordCursorKeyOrder;
   order: GroupedRenderOrder<T>;
   folds?: FoldState;
   openId: RecordId | null;
@@ -47,6 +49,7 @@ export function usePublishRecordCursor<T>(args: PublishRecordCursorArgs<T>): Rec
     scope,
     enabled,
     priority = RECORD_CURSOR_PRIORITY.grid,
+    keyOrder,
     order,
     folds,
     openId,
@@ -117,18 +120,19 @@ export function usePublishRecordCursor<T>(args: PublishRecordCursorArgs<T>): Rec
       surfaceId,
       scope,
       priority,
+      keyOrder,
       cursor: cursorRef.current,
       open,
       close,
     });
-  }, [enabled, surfaceId, scope, priority, open, close]);
+  }, [enabled, surfaceId, scope, priority, keyOrder, open, close]);
 
   // 2. Refresh the content. `updateRecordCursor` no-ops when every field is
   //    equal and emits when any is, so this is safe to run on every render.
   useEffect(() => {
     if (!enabled) return;
-    updateRecordCursor({ surfaceId, scope, priority, cursor, open, close });
-  }, [enabled, surfaceId, scope, priority, cursor, open, close]);
+    updateRecordCursor({ surfaceId, scope, priority, keyOrder, cursor, open, close });
+  }, [enabled, surfaceId, scope, priority, keyOrder, cursor, open, close]);
 
   return cursor;
 }

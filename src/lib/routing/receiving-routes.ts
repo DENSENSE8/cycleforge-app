@@ -318,10 +318,12 @@ const REPAIR_ROUTE_PARAMS = defineRouteParams({
     [REPAIR_SORT_PARAM]: paramRoundTrip(parseRepairSort),
     /** Labels-to-print refine — `RepairCardList` reads exactly `1`. */
     needsLabel: paramEnum(['1'] as const),
-    /** Shared TriageCardList client page. */
+    /** Legacy page links remain accepted; the card list owns current paging in-session. */
     page: paramPositiveInt,
     /** Status chips right of the count (comma list, `REPAIR_STATUS_CHIP_KEYS`). */
     [REPAIR_STATUS_CHIP_PARAM]: paramText,
+    /** Shared client-side status exclusion cut (`?hide=`). */
+    hide: paramText,
     /** Sidebar view: All (bare) · Shipped in (`shipment`) · Dropped off (`pickup`) — `repair_service.intake_channel`. */
     [REPAIR_CHANNEL_PARAM]: paramEnum(REPAIR_CHANNELS),
   },

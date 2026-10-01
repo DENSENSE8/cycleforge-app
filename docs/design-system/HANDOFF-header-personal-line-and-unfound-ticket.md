@@ -70,10 +70,12 @@ message and the line returns to the page's next step. Same for a handed record
 ## 2. Unbox: unfound tracking → "Searching Zendesk…" → paired ticket feedback
 
 > **Built (2026-09-29), with the placement changed by the owner:** the ticket outcome shows
-> on the header's top-left line, with a scan-feedback history. See
-> `docs/performance/HANDOFF-unbox-speed-and-ticket-mirror.md` §4 for what exists and was
-> verified. The spec below is kept for reference. The carton-pane status line it describes
-> was not built.
+> on the header's top-left line, with a scan-feedback history. The active UX/UI
+> follow-up is `docs/design-system/HANDOFF-unbox-receiving-ux.md`; its “Existing
+> work” section records the result and prevents its regression. The older
+> `docs/performance/HANDOFF-unbox-speed-and-ticket-mirror.md` §4 is historical
+> implementation detail. The carton-pane status line this section describes was
+> not built.
 
 The owner will test this personally: scan a tracking number on the **Unbox** scan
 station (`/unbox`) that matches no PO. Today the carton is created as unfound and

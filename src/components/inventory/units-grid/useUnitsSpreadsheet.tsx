@@ -9,9 +9,7 @@ import type { RowGroup } from '@/lib/group-rows';
 import type { UnitsOverviewRow } from '@/hooks/useUnitsOverview';
 import { UnitsGridRow } from './UnitsGridRow';
 import { UNITS_TABLE_BINDING } from './units-table-definition';
-import { useUnitsTableLayout } from './useUnitsTableLayout';
 import {
-  unitsSheetColumnsFor,
   unitsSortFactFor,
   type UnitsGridColumn,
   type UnitsGridColumnKey,
@@ -80,8 +78,7 @@ export function useUnitsSpreadsheet({
   UnitsGridColumnKey,
   UnitsGridColumn
 > {
-  const { effectiveLayout: unitsLayout, fields } = useUnitsTableLayout();
-  const columns = useMemo(() => unitsSheetColumnsFor(unitsLayout), [unitsLayout]);
+  const columns = UNITS_TABLE_BINDING.columns;
   const sortFactByKey = useMemo(
     () => new Map(columns.map((c) => [c.key as string, unitsSortFactFor(c)])),
     [columns],
@@ -109,7 +106,6 @@ export function useUnitsSpreadsheet({
   return {
     binding: UNITS_TABLE_BINDING,
     columns,
-    fields,
     orderGroupsByDate,
     rows: [...rows],
     getRowId: (r) => String(r.id),

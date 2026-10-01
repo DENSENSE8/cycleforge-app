@@ -3,7 +3,7 @@ import { strictEqual } from 'node:assert';
 
 import { routeScan } from '../barcode-routing';
 import { dispatchScan, QC_SCAN_SESSION } from './dispatch-table';
-import { landScanIdentify } from './identify-land';
+import { landScanIdentify, viewOnlyIdentityHref } from './identify-land';
 
 const UPS = '1Z999AA10123454471';
 const LPN = 'H-12';
@@ -101,6 +101,7 @@ test('the kernel armed for QC lands a unit label on its checklist, a line on its
     ['(01)00012345678905(21)SER-9', '/m/u/SER-9/qc'],
     ['L-32545', '/m/qc/line/32545'],
     ['r/32545', '/m/r/32545/qc'],
+    ['H-12', '/m/qc/lpn/12'],
   ] as const) {
     const route = routeScan(raw);
     const land = landScanIdentify(dispatchScan({ scan: route!, armedSession: QC_SCAN_SESSION }), route);
@@ -128,4 +129,16 @@ test('the unbox carton label opens the carton QC from the plain scan button, eve
   // A line label outside QC still opens its line — only the carton sticker means QC.
   const line = landFor('L-32545');
   strictEqual(line.land.kind === 'identify' ? line.land.href : null, '/m/l/32545');
+});
+
+test('view mode strips receiving work from every printed carton label form', () => {
+  for (const raw of [
+    'R-53276',
+    'https://usav.app.cycleforge.ai/m/r/53276/qc',
+    'https://usav.app.cycleforge.ai/m/r/53276',
+    'HTTPSUSAVAPPCYCLEFORGEAIMR53276QC',
+  ]) {
+    strictEqual(viewOnlyIdentityHref(routeScan(raw)), '/m/r/53276', raw);
+  }
+  strictEqual(viewOnlyIdentityHref(routeScan('H-53276')), null);
 });

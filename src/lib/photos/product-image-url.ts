@@ -17,6 +17,9 @@ interface ProductImageSources {
   zohoItemId?: string | null;
   /** `items.image_document_id` — present only when the item HAS a photo. */
   zohoImageDocumentId?: string | null;
+  /** Provider-neutral aliases used after identity is resolved through catalog_external_ids. */
+  externalItemId?: string | null;
+  externalImageDocumentId?: string | null;
 }
 
 /**
@@ -30,7 +33,7 @@ export function productImageUrl(sources: ProductImageSources): string | null {
   if (catalog) return catalog;
   const cover = Number(sources.listingCoverPhotoId);
   if (Number.isInteger(cover) && cover > 0) return photoContentUrl(cover, 'thumb');
-  const zohoItemId = String(sources.zohoItemId ?? '').trim();
-  const documentId = String(sources.zohoImageDocumentId ?? '').trim();
+  const zohoItemId = String(sources.externalItemId ?? sources.zohoItemId ?? '').trim();
+  const documentId = String(sources.externalImageDocumentId ?? sources.zohoImageDocumentId ?? '').trim();
   return zohoItemId && documentId ? `/api/zoho/items/${encodeURIComponent(zohoItemId)}/image` : null;
 }

@@ -17,7 +17,6 @@ export const WARRANTY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

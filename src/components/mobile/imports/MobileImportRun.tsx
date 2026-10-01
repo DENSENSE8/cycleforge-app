@@ -35,7 +35,7 @@ import {
 } from '@/lib/imports/record-client';
 import { DetailRecordFrame } from '@/design-system/components/DetailHubScreen';
 import { Button } from '@/design-system/primitives';
-import { recordStateCodeClass } from '@/design-system/tokens/industrial-record';
+import { recordStateCodeClass } from '@/design-system/tokens/record';
 import type { ImportRunDetail, ImportRunRowItem } from '@/lib/imports/types';
 import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
 import { cn } from '@/utils/_cn';

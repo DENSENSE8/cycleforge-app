@@ -1,4 +1,4 @@
-/** Mode registry — web face of the four TASK modes and their job looks. */
+/** Mode registry — web face of task modes and their job looks. */
 import { modeRegistryCssText, stateCodeCssText, trialCssText } from '@cycleforge/design-tokens';
 
 export {
@@ -8,7 +8,6 @@ export {
   MODE_REGISTRY,
   NEUTRAL_SURFACES,
   SLATE_SURFACES,
-  WARM_SURFACES,
   modeRegistryCssText,
   type ModeLookName,
   type ModeMeasure,

@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Checkbox } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { rasterizeDocument, type LabelPages } from '@/lib/label-prints/label-raster';
 import type { DeskDocument } from '@/lib/label-prints/print-labels';
 import { STOCK_PAPER } from '@/lib/label-prints/print-route';

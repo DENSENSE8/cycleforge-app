@@ -42,7 +42,7 @@ const STATUS_MEANING: Readonly<Record<LifecycleState, string>> = {
   urgent: 'Urgent — ship this one first',
   packed: 'Packed — needs a label and scan out',
   outOfStock: 'Out of stock — an item on this order is short',
-  shipped: 'Shipped — scanned out',
+  shipped: 'Fulfilled — scanned out',
   onHold: 'On hold — cannot be picked yet',
 };
 

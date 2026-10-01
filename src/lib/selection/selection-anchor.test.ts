@@ -40,7 +40,7 @@ describe('toggleAt', () => {
 });
 
 describe('extendTo', () => {
-  it('supports string row ids used by junction slot tables', () => {
+  it('supports string row ids used by junction data tables', () => {
     const out = extendTo<string>({
       ids: ['loc-a|sku-1', 'loc-b|sku-2', 'loc-c|sku-3'],
       selected: new Set(['loc-a|sku-1']),

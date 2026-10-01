@@ -18,6 +18,7 @@ import { cartonRecordCard, type CartonCardModel } from './carton-card-model';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { platformMetaBrandDot } from '@/lib/source-platform';
+import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 
 /** Quick look (Space): only what the face leaves out — who did each step and when, the carton, full tracking. */
 function CartonCardPeek({ model }: { model: CartonCardModel }) {
@@ -26,8 +27,8 @@ function CartonCardPeek({ model }: { model: CartonCardModel }) {
     at ? `${fmtDate(at)}${by ? ` · ${by}` : ''}` : null;
   const carton = lead.receiving_id != null ? String(lead.receiving_id) : null;
   const facts: [string, string | null][] = [
-    // The face's id is the carton number only when it has no PO / order #.
-    ['Carton', carton === model.identity ? null : carton],
+    // Carton remains useful whether the face leads with an order or tracking.
+    ['Carton', carton],
     ['Scanned', stamp(lead.scanned_at, lead.scanned_by_name)],
     ['Unboxed', stamp(lead.unboxed_at, lead.unboxed_by_name)],
     ['Received', stamp(lead.received_done_at ?? lead.received_at, lead.received_by_name)],
@@ -97,21 +98,53 @@ export const ReceivingCartonCard = memo(function ReceivingCartonCard({
       identity={{
         role: 'identity',
         content: (
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="shrink-0">{model.identity}</span>
-            {model.tracking && model.tracking !== model.identity ? (
-              <span
-                data-testid={`${view.testIdPrefix}-tracking`}
-                className="min-w-0 truncate font-mono text-xs font-medium text-text-muted"
-                title={`Tracking ${model.tracking}`}
-              >
-                <span className="font-sans text-text-faint">Tracking</span> {model.tracking}
+          <span className="flex min-w-0 items-center gap-1">
+            {model.identityKind === 'order' ? (
+              <OrderIdChip
+                value={model.identity}
+                display={model.identity}
+                dense
+                plain
+                truncateDisplay={false}
+                fitDisplayWidth
+              />
+            ) : model.identityKind === 'tracking' && model.tracking ? (
+              <span data-testid={`${view.testIdPrefix}-tracking`}>
+                <TrackingChip value={model.tracking} carrierHint={model.lead.carrier} dense />
               </span>
+            ) : (
+              <span className="shrink-0 font-mono text-xs font-medium text-text-muted">Carton {model.identity}</span>
+            )}
+            {model.identityKind === 'order' && model.tracking ? (
+              <span data-testid={`${view.testIdPrefix}-tracking`}>
+                <TrackingChip value={model.tracking} carrierHint={model.lead.carrier} dense />
+              </span>
+            ) : null}
+            {model.identityKind !== 'order' && model.orderId ? (
+              <OrderIdChip
+                value={model.orderId}
+                display={model.orderId}
+                dense
+                plain
+                truncateDisplay={false}
+                fitDisplayWidth
+              />
             ) : null}
           </span>
         ),
       }}
-      trailing={null}
+      trailing={
+        model.topRight
+          ? {
+              role: 'trailing',
+              content: (
+                <span data-testid={`${view.testIdPrefix}-unboxed-by`} className="text-role-caption text-text-muted">
+                  {model.topRight.label} {model.topRight.value}
+                </span>
+              ),
+            }
+          : null
+      }
       quickLook={<CartonCardPeek key="peek" model={model} />}
       onOpenLine={(lineId, event) => {
         const row = model.rows.find((candidate) => candidate.id === lineId);

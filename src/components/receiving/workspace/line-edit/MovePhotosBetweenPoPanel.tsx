@@ -34,6 +34,7 @@ import {
 } from '@/lib/receiving/po-group-title';
 import { receivingHandle, scannedReceivingId } from '@/lib/barcode-routing';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
+import { cn } from '@/utils/_cn';
 
 /** What the operator put in the box, in the ONE vocabulary the API understands. */
 function poSearchNeedle(raw: string): string {
@@ -119,7 +120,7 @@ export function MovePhotosBetweenPoPanel({
   receivingId,
   onClose,
   onMoved,
-  /** `display` — Unbox Displays Photos→Move: */
+  /** `display` keeps the form mounted; `inline` closes back to its disclosure after success. */
   chrome = 'modal',
 }: {
   open: boolean;
@@ -128,7 +129,7 @@ export function MovePhotosBetweenPoPanel({
   onClose: () => void;
   /** Fired after at least one photo moved successfully (parents invalidate caches). */
   onMoved?: () => void;
-  chrome?: 'modal' | 'display';
+  chrome?: 'modal' | 'display' | 'inline';
 }) {
   const thisReceivingId = receivingId;
   const queryClient = useQueryClient();
@@ -273,7 +274,7 @@ export function MovePhotosBetweenPoPanel({
     photos.toggleSelectAll();
   }, [otherReceivingId, photos.photos.length, photos.selectedPhotoIds.size, photos.toggleSelectAll]);
 
-  /** After the success beat: modal dismisses; Displays chrome resets in place. */
+  /** After the success beat: Displays resets in place; modal/inline return to their opener. */
   const resetFormAfterSuccess = () => {
     setSuccess(null);
     setOtherRow(null);
@@ -496,10 +497,12 @@ export function MovePhotosBetweenPoPanel({
                       targetRows.map((r) => {
                         const isSel = otherRow?.receiving_id === r.receiving_id;
                         return (
-                          <button
-                            // ds-raw-button: full-row select target; CopyChips stopPropagation on copy
+                          <Button
                             key={r.receiving_id}
                             type="button"
+                            variant="ghost"
+                            size="sm"
+                            radius="flush"
                             data-testid="photo-move-target-row"
                             data-receiving-id={r.receiving_id}
                             data-selected={isSel ? 'true' : undefined}
@@ -516,14 +519,14 @@ export function MovePhotosBetweenPoPanel({
                               }
                               setOtherRow(r);
                             }}
-                            className={
-                              isSel
-                                ? 'flex w-full border-b border-border-hairline bg-surface-sunken px-3 py-2.5 text-left ring-1 ring-inset ring-accent-border transition-colors last:border-b-0 hover:bg-surface-hover'
-                                : 'flex w-full border-b border-border-hairline px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-hover'
-                            }
+                            className={cn(
+                              'h-auto w-full justify-start border-b border-border-hairline px-3 py-2.5 text-left font-normal last:border-b-0 hover:bg-surface-hover',
+                              isSel &&
+                                'bg-surface-sunken ring-1 ring-inset ring-accent-border',
+                            )}
                           >
                             <PhotoMoveTargetFace row={r} />
-                          </button>
+                          </Button>
                         );
                       })
                     )}

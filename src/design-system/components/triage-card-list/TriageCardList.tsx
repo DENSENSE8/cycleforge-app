@@ -32,15 +32,15 @@ import { useDismissedRecords, useReturningRecords } from './dismiss';
 import type { RecordOpenEvent } from '@/design-system/components/record-card/RecordCard';
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
-import { pageGroupedRenderOrder, pageIndexForRowId } from '@/lib/tables/slot-table-page';
-import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
+import { pageGroupedRenderOrder, pageIndexForRowId } from '@/lib/tables/data-table-pagination';
+import { dataTableFindHighlightId } from '@/lib/tables/data-table-find';
 import { flattenRenderOrder, type GroupedRenderOrder, type RowGroup } from '@/lib/group-rows';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { cn } from '@/utils/_cn';
 import { TriageSelectBar, type TriagePager } from './TriageSelectBar';
 import { TriageListBody, TriageSectionHeader, type TriageSectionTone } from './TriageListBody';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import {
   useHeldNewRecords,
   useTriageCardKeys,
@@ -344,7 +344,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
   const scrollToKey =
     openId != null
       ? String(openId)
-      : slotTableFindHighlightId({ query: searchValue, paintedRowIds: feed.painted.map((row) => String(rowId(row))) });
+      : dataTableFindHighlightId({ query: searchValue, paintedRowIds: feed.painted.map((row) => String(rowId(row))) });
   const getRowKey = useCallback((row: Row) => String(rowId(row)), [rowId]);
   useEffect(() => {
     if (!scrollToKey || onePage) return;

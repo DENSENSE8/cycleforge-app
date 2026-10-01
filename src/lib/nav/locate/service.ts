@@ -26,8 +26,9 @@ import { enrichIncomingTrackingIntegrity } from '@/lib/receiving/lines/incoming-
 import { fetchReceivingLinesPage, resolveReceivingLinesReadFlags } from '@/lib/receiving/lines/list-page';
 import { parseReceivingLinesQuery } from '@/lib/receiving/lines/query';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { reconcileListParams } from '@/lib/receiving/receiving-modes';
+import { reconcileListParams, awaitingTrackingListParams } from '@/lib/receiving/receiving-modes';
 import { parseRefList } from '@/lib/receiving/reconcile';
+import { isIncomingUniversal } from '@/lib/feature-flags';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getOrganization } from '@/lib/tenancy/organizations';
@@ -42,6 +43,8 @@ export interface NavLocateDeps {
   inboundCheck(orgId: OrgId, refs: readonly string[]): Promise<CheckZohoReceivedRow[]>;
   /** `GET /api/receiving-lines?view=reconcile&ref_in=…` rows. */
   inboundLines(orgId: OrgId, refs: readonly string[]): Promise<ReceivingLineRow[]>;
+  /** Incoming `?state=AWAITING_TRACKING` rows — the list that bucket opens. */
+  inboundAwaiting(orgId: OrgId, refs: readonly string[]): Promise<ReceivingLineRow[]>;
 }
 
 export const defaultNavLocateDeps: NavLocateDeps = {
@@ -69,6 +72,18 @@ export const defaultNavLocateDeps: NavLocateDeps = {
     ]);
     const warehousePostal = org?.settings?.shipFrom?.postalCode ?? '';
     for (const row of page.rows) enrichIncomingTrackingIntegrity(row as Record<string, unknown>, warehousePostal);
+    return page.rows as unknown as ReceivingLineRow[];
+  },
+  inboundAwaiting: async (orgId, refs) => {
+    if (refs.length === 0) return [];
+    const query = parseReceivingLinesQuery(awaitingTrackingListParams(refs));
+    const page = await fetchReceivingLinesPage({
+      query,
+      orgId,
+      viewerStaffId: Number.NaN,
+      universalIncoming: await isIncomingUniversal(orgId),
+      ...resolveReceivingLinesReadFlags(query),
+    });
     return page.rows as unknown as ReceivingLineRow[];
   },
 };
@@ -108,6 +123,7 @@ async function runLocator(
     const answer = await locateInbound(selection, {
       check: (refs) => deps.inboundCheck(orgId, refs),
       lines: (refs) => deps.inboundLines(orgId, refs),
+      awaiting: (refs) => deps.inboundAwaiting(orgId, refs),
     });
     return 'q' in input ? { buckets: answer.buckets, entries: [] } : answer;
   }

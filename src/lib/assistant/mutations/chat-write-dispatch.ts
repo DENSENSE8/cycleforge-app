@@ -16,7 +16,7 @@ import {
   upsertOrderLineShortage,
 } from '@/lib/orders/order-line-shortage';
 import { listingShortageIdentity } from '@/lib/orders/order-shortage-identity';
-import { scanOutLabel } from '@/lib/outbound/scan-out';
+import { scanOutKnownShipment } from '@/lib/outbound/scan-out';
 import { createTask } from '@/lib/tasks/create-task';
 import { createTaskLink } from '@/lib/tasks/task-links-db';
 import { patchTaskDeskRowInTx } from '@/lib/tasks/list-tasks';
@@ -151,12 +151,18 @@ export async function dispatchChatWrite(
     case 'order.scan_out': {
       const p = ScanOutPayload.safeParse(payload);
       if (!p.success) return invalid(kind, p.error);
-      // The dock path, per carton, on its own connections: idempotent (a
-      // carton already out reports duplicate), and a refusal (cancelled,
-      // delivered) is reported by the read-back, never forced.
+      // The proposal carries canonical shipment ids. Re-resolving an old
+      // routed/GS1 tracking value can select a different registry row.
       let confirmed = 0;
       for (const s of p.data.shipments) {
-        const r = await scanOutLabel({ organizationId: orgId, scan: s.tracking, actorStaffId: p.data.staffId, createdAt: null, origin: 'bulk' });
+        const r = await scanOutKnownShipment({
+          organizationId: orgId,
+          shipmentId: s.shipmentId,
+          scan: s.tracking,
+          actorStaffId: p.data.staffId,
+          createdAt: null,
+          origin: 'bulk',
+        });
         if (r.kind === 'confirmed') confirmed += 1;
       }
       return { ok: true, inverse: null, targetRef: `${confirmed} shipments` };

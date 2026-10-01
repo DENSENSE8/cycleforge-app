@@ -9,8 +9,8 @@ import {
   ORDERS_IMPORT_FIELD_CATALOG,
   ORDERS_IMPORT_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/orders-import';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -25,26 +25,24 @@ export type CsvImportStagingGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface CsvImportStagingGridColumn extends SlotTrackFields {
-  key: CsvImportStagingGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Drag-resize / drain floor in rem — see {@link LedgerGridColumnModel.minTrackRem}. */
-  minTrackRem?: number;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  /** Staff-preference key (`staff_preferences.tableColumns['orders-import']`). */
-  hideKey?: string;
-  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
-  tier?: 'core' | 'optional';
-  /** When false, header is not click-to-sort (gutter track). */
-  sortable?: boolean;
-}
+export interface CsvImportStagingGridColumn extends DataTableColumnFields { key: CsvImportStagingGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Drag-resize / drain floor in rem — see {@link LedgerGridColumnModel.minTrackRem}. */
+minTrackRem?: number;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+/** Staff-preference key (`staff_preferences.tableColumns['orders-import']`). */
+hideKey?: string;
+/** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
+tier?: 'core' | 'optional';
+/** When false, header is not click-to-sort (gutter track). */
+sortable?: boolean; }
 
 /** The structural sheet skeleton — what staging paints with ZERO bindings. */
 const CSV_IMPORT_STAGING_SHEET_BASE: readonly CsvImportStagingGridColumn[] = [
@@ -74,17 +72,13 @@ const CSV_IMPORT_STAGING_SHEET_BASE: readonly CsvImportStagingGridColumn[] = [
  * anchor on `status`, so the default plate reads sku · qty · customer ·
  * tracking · platform — the retired hand model's order — with `_fill` last.
  */
-export function csvImportStagingSheetColumnsFor(
-  layout: SlotLayout,
-): readonly CsvImportStagingGridColumn[] {
-  return materializeTracks<CsvImportStagingGridColumn>({
-    layout,
-    catalog: ORDERS_IMPORT_FIELD_CATALOG,
-    base: CSV_IMPORT_STAGING_SHEET_BASE,
-    statusAnchorKey: 'status',
-    subtitleAnchorKey: 'status',
-  });
-}
+export function csvImportStagingSheetColumnsFor(layout: DataTableColumnLayout): readonly CsvImportStagingGridColumn[] { return materializeTracks<CsvImportStagingGridColumn>({
+  layout,
+  catalog: ORDERS_IMPORT_FIELD_CATALOG,
+  base: CSV_IMPORT_STAGING_SHEET_BASE,
+  statusAnchorKey: 'status',
+  subtitleAnchorKey: 'status',
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts,

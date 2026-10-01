@@ -1,3 +1,5 @@
+import { SHIPPED_FILTER_COOKIE } from '@/lib/shipping/shipped-feed-config';
+
 type ShippedTypeFilterPreference = 'all' | 'orders' | 'sku' | 'fba';
 type ShippedSearchFieldPreference =
   | 'all'
@@ -10,7 +12,6 @@ export type DetailsOpenBehaviorPreference = 'auto' | 'side_panel';
 
 const PREF_SHIPPED_FILTER = 'dashboard:shipped-filter';
 const PREF_SHIPPED_SEARCH_FIELD = 'dashboard:shipped-search-field';
-const PREF_SHIPPED_WEEK_OFFSET = 'dashboard:shipped-week-offset';
 const PREF_DETAILS_OPEN_BEHAVIOR = 'dashboard:details-open-behavior';
 
 function canUseStorage() {
@@ -27,6 +28,7 @@ export function readShippedFilterPreference(): ShippedTypeFilterPreference | nul
 export function writeShippedFilterPreference(value: ShippedTypeFilterPreference): void {
   if (!canUseStorage()) return;
   window.localStorage.setItem(PREF_SHIPPED_FILTER, value);
+  document.cookie = `${SHIPPED_FILTER_COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=31536000; SameSite=Lax`;
 }
 
 export function readShippedSearchFieldPreference(): ShippedSearchFieldPreference | null {
@@ -48,20 +50,6 @@ export function writeShippedSearchFieldPreference(value: ShippedSearchFieldPrefe
   window.localStorage.setItem(PREF_SHIPPED_SEARCH_FIELD, value);
 }
 
-function readShippedWeekOffsetPreference(): number | null {
-  if (!canUseStorage()) return null;
-  const raw = String(window.localStorage.getItem(PREF_SHIPPED_WEEK_OFFSET) || '').trim();
-  if (!raw) return null;
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return n;
-}
-
-function writeShippedWeekOffsetPreference(value: number): void {
-  if (!canUseStorage()) return;
-  const normalized = Math.max(0, Number(value) || 0);
-  window.localStorage.setItem(PREF_SHIPPED_WEEK_OFFSET, String(normalized));
-}
 
 export function readDetailsOpenBehaviorPreference(): DetailsOpenBehaviorPreference {
   if (!canUseStorage()) return 'auto';

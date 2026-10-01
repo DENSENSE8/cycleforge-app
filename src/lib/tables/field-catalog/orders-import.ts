@@ -1,7 +1,7 @@
 /** Order-import-staging field catalog — the bindable staged-row facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const ORDERS_IMPORT_FIELD_CATALOG: FieldCatalog = [
   {
@@ -55,7 +55,7 @@ export const ORDERS_IMPORT_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default staging layout — visual parity with the retired hand model (`select · order · status · sku · qty · customer ·… */
-export const ORDERS_IMPORT_PRODUCT_LAYOUT: SlotLayout = {
+export const ORDERS_IMPORT_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'orders-import.order',
   statusBindings: [
@@ -67,7 +67,7 @@ export const ORDERS_IMPORT_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — the staging grid's own prefs bucket. */
 export const ORDERS_IMPORT_TABLE_LAYOUT_ID = 'orders-import';

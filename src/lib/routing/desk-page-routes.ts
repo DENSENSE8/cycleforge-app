@@ -96,6 +96,18 @@ const paramCsv = z
   .transform((raw) => raw.trim())
   .pipe(z.string().min(1).max(2000));
 
+/** `/stations/live` — additive phone-origin activity feed V2. */
+const STATION_LIVE_ROUTE_PARAMS = defineRouteParams({
+  route: '/stations/live',
+  owns: {
+    job: paramCsv,
+    outcome: paramCsv,
+    from: paramDateKey,
+    to: paramDateKey,
+    sort: paramEnum(['newest', 'oldest'] as const),
+  },
+  carries: ['staff'],
+});
 /**
  * `/operations/imports` — the import record (`src/lib/imports/params.ts`, handoff
  * import-history §6). Runs is the bare URL, Orders `?view=rows`.
@@ -179,6 +191,7 @@ export const DESK_PAGE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   COUNTER_ROUTE_PARAMS,
   STUDIO_ROUTE_PARAMS,
   STUDIO_CATALOG_ROUTE_PARAMS,
+  STATION_LIVE_ROUTE_PARAMS,
   IMPORTS_ROUTE_PARAMS,
   EXCEPTIONS_ROUTE_PARAMS,
   PRINT_STATION_ROUTE_PARAMS,

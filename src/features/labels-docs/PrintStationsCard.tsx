@@ -30,7 +30,7 @@ import {
   IconButton,
   TextField,
 } from '@/design-system/primitives';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import type { PrintStationEntry, PrintStations } from '@/hooks/usePrintStations';
 import type { PrintStock } from '@/lib/label-prints/print-route';
 import { UNNAMED_PRINT_STATION } from '@/lib/print/staff-print-bridge';

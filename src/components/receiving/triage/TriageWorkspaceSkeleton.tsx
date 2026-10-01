@@ -1,6 +1,6 @@
 'use client';
 
-/** Right-pane skeleton loader for the **Triage** surface — triage's own skeleton, never the unbox display. */
+/** Right-pane skeleton loader owned by Triage, independent of the Unbox work plane. */
 
 import {
   StationWorkspaceSkeleton,

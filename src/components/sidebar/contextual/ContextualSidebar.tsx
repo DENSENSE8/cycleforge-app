@@ -64,10 +64,10 @@ const SidebarContextPanel = dynamic(
  *   switcher (Exceptions · PO paired · …). Modes and views are changed
  *   rarely, so each is one block that opens on click (`NavSwitcherMenu`).
  *   Pinned so search never scrolls away or hides while a record is open;
- * - scrolling body: what you change often, as buttons — the saved views,
- *   then the closed filter rows. Raw operational records and queues never
- *   render here; those stay in the central workspace. Chat threads are the
- *   sole list exception because each row is a navigation destination. The view's verbs live in the page header,
+ * - scrolling body: filters and page controls. Saved views live in the global
+ *   header's centered switcher; raw operational records and queues never render
+ *   here. Chat threads are the sole list exception because each row is a
+ *   navigation destination. The view's verbs live in the page header,
  *   over the list they act on (`NavPageActions`). After `‹` the body shows
  *   the lane map (`?view=top`) with this page lit. `‹` is LOCAL state and
  *   never touches the URL; any URL change (links, back/forward) rebuilds
@@ -299,10 +299,11 @@ function SectionBody({ nav }: { nav: NavContext }) {
   // Modes and views paint as the pinned switchers in the head, not as rows here.
   const hasModes = nav.sections.some(isNavModeSection);
   const hasViews = nav.sections.some((section) => !isNavModeSection(section) && section.items.length > 0);
-  const hasFilters = Boolean(nav.filters || nav.controls || nav.savedViews);
+  const hasFilters = Boolean(nav.filters || nav.controls);
+  const hasHeaderSavedViews = Boolean(nav.savedViews);
   return (
     <>
-      {!hasModes && !hasViews && !hasFilters && !nav.recents ? (
+      {!hasModes && !hasViews && !hasFilters && !hasHeaderSavedViews && !nav.recents ? (
         <p className="px-4 py-2 text-role-caption text-text-faint">No views on this page</p>
       ) : null}
       {hasFilters ? (
@@ -310,7 +311,6 @@ function SectionBody({ nav }: { nav: NavContext }) {
           key={nav.filters?.facetContext ?? nav.page.id}
           filters={nav.filters}
           controls={nav.controls}
-          savedViews={nav.savedViews}
         />
       ) : null}
       {nav.actionsPlacement === 'sidebar' && nav.actions ? <NavSidebarActions actions={nav.actions} /> : null}

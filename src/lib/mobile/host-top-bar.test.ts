@@ -15,11 +15,11 @@ test('/m/pick owns its bar — the walk\'s scan card carries the scan seat', () 
   assert.equal(mobileRouteOwnsTopBar('/m/pick'), true);
 });
 
-test('a queue route keeps the host header — the trailing slash is the whole rule', () => {
+test('queue routes keep the host header except the immersive scan station', () => {
   // `/m/exceptions/` excludes the exception RECORD while `/m/exceptions` itself, the queue, still gets the host header.
   assert.equal(mobileRouteOwnsTopBar('/m/work'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/exceptions'), false);
-  assert.equal(mobileRouteOwnsTopBar('/m/scan'), false);
+  assert.equal(mobileRouteOwnsTopBar('/m/scan'), true);
 });
 
 test('pairing owns its back bar — two headers: back, then search', () => {

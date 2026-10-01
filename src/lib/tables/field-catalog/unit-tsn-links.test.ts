@@ -22,7 +22,7 @@ import {
   UNIT_TSN_LINKS_TABLE_LAYOUT_ID,
 } from './unit-tsn-links';
 import { resolveUnitTsnLinksSlotValue } from './unit-tsn-links-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<UnitTsnLinkTableRow> = {}): UnitTsnLinkTableRow {
   return {
@@ -77,7 +77,7 @@ describe('unit-tsn-links catalog', () => {
   });
 
   it('product default parses against the catalog — shipment then tester', () => {
-    const parsed = parseSlotLayout(UNIT_TSN_LINKS_PRODUCT_LAYOUT, UNIT_TSN_LINKS_FIELD_CATALOG);
+    const parsed = UNIT_TSN_LINKS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'unit-tsn-links.tsn');
     assert.deepEqual(parsed.statusBindings, [
@@ -127,7 +127,7 @@ describe('the mounted unit-tsn-links compound model', () => {
     const label = (key: string) =>
       UNIT_TSN_LINKS_COMPOUND_COLUMNS.find((c) => c.key === key)?.gridLabel;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
+    // 2026-09-15 (`data-table-family.ts`); this desk used to print
     // "TSN id", which is now the Fields-picker word and the cell's hover word.
     assert.equal(label('fulfillment'), 'Id');
     assert.equal(label('item'), 'Station');

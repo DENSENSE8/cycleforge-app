@@ -1,7 +1,6 @@
 'use client';
 
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
-import { cornerClass } from '@/design-system/tokens/radius';
 import {
   ITEM_RECORD_MOBILE_STAGE,
   ITEM_RECORD_MOBILE_STAGE_VERBS,
@@ -25,24 +24,21 @@ function StageMark({
   testId: string;
 }) {
   const assigned = slot.staffId != null || Boolean(slot.name);
+  if (!assigned) return null;
   return (
     <span
       data-testid={testId}
       className={ITEM_RECORD_MOBILE_STAGE.mark}
       aria-label={assigned && slot.name ? `${verb} ${slot.name}` : `${verb} unassigned`}
     >
-      {assigned ? (
-        <StaffAvatar
-          staffId={slot.staffId}
-          name={slot.name}
-          colorHex={slot.colorHex}
-          avatarPhotoId={null}
-          size="xs"
-          alt={slot.name ?? undefined}
-        />
-      ) : (
-        <span aria-hidden className={cn(ITEM_RECORD_MOBILE_STAGE.empty, cornerClass('pill'))} />
-      )}
+      <StaffAvatar
+        staffId={slot.staffId}
+        name={slot.name}
+        colorHex={slot.colorHex}
+        avatarPhotoId={null}
+        size="xs"
+        alt={slot.name ?? undefined}
+      />
       <span className={ITEM_RECORD_MOBILE_STAGE.verb}>{verb}</span>
     </span>
   );
@@ -52,7 +48,7 @@ function StageMark({
  * Phone Pick / Packed marks — staff colour + catalog verb. The person's name
  * belongs on the order sheet, not this row.
  */
-function ItemRecordMobileStage({
+export function ItemRecordMobileStage({
   pick,
   packed,
   className,
@@ -61,14 +57,18 @@ function ItemRecordMobileStage({
   packed: ItemRecordMobileStageSlot;
   className?: string;
 }) {
+  const hasPick = pick.staffId != null || Boolean(pick.name);
+  const hasPacked = packed.staffId != null || Boolean(packed.name);
+  if (!hasPick && !hasPacked) return null;
+
   return (
     <div
       data-item-record-mobile-stage
       className={cn(ITEM_RECORD_MOBILE_STAGE.cluster, className)}
       aria-label={[
-        pick.name ? `Pick ${pick.name}` : 'Pick unassigned',
-        packed.name ? `Packed ${packed.name}` : 'Packed unassigned',
-      ].join(', ')}
+        hasPick ? `Pick ${pick.name ?? 'assigned'}` : null,
+        hasPacked ? `Packed ${packed.name ?? 'assigned'}` : null,
+      ].filter(Boolean).join(', ')}
     >
       <StageMark
         slot={pick}

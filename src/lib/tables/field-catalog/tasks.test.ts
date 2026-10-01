@@ -3,13 +3,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { slotTableColumnsFor } from '@/components/tables/compound/slot-table-columns';
+import { dataTableCompoundColumnsFor } from '@/components/tables/compound/data-table-compound-columns';
 import { TASKS_COMPOUND_COLUMNS } from '@/features/tasks/grid/tasks-table-definition';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { DAILY_FIELD_CATALOG } from './daily';
 import { TASKS_FAMILY, TASKS_FIELD_CATALOG, TASKS_PRODUCT_LAYOUT } from './tasks';
 import { resolveTasksSlotValue, tasksSlotValuesFor } from './tasks-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<TaskDeskRow> = {}): TaskDeskRow {
   return {
@@ -61,7 +61,7 @@ describe('tasks catalog', () => {
   });
 
   it('product default parses against the catalog — compound morph, NOTHING bound', () => {
-    const parsed = parseSlotLayout(TASKS_PRODUCT_LAYOUT, TASKS_FIELD_CATALOG);
+    const parsed = TASKS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'tasks.task');
     assert.deepEqual(parsed.statusBindings, []);
@@ -95,7 +95,7 @@ describe('the engine materialization', () => {
   });
 
   it('binding Assignee opens a status track after the state pill', () => {
-    const columns = slotTableColumnsFor(TASKS_FAMILY, {
+    const columns = dataTableCompoundColumnsFor(TASKS_FAMILY, {
       ...TASKS_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'tasks.assignee' }, { fieldId: 'tasks.deadline' }],
     });
@@ -175,7 +175,7 @@ describe('resolveTasksSlotValue', () => {
 
 describe('tasksSlotValuesFor', () => {
   it('keys resolved values by TRACK key', () => {
-    const columns = slotTableColumnsFor(TASKS_FAMILY, {
+    const columns = dataTableCompoundColumnsFor(TASKS_FAMILY, {
       ...TASKS_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'tasks.priority' }],
     });

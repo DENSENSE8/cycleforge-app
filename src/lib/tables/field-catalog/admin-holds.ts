@@ -1,7 +1,7 @@
 /** Admin › Holds field catalog — the bindable facts of ONE quarantined unit. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const ADMINHOLDS_FIELD_CATALOG: FieldCatalog = [
   { id: 'admin-holds.unit', family: 'admin-holds', label: 'Unit', displayType: 'id', slotKinds: ['identity', 'status', 'subtitle'], paths: { value: 'id' } },
@@ -14,7 +14,7 @@ export const ADMINHOLDS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const ADMINHOLDS_PRODUCT_LAYOUT: SlotLayout = {
+export const ADMINHOLDS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'admin-holds.unit',
   statusBindings: [
@@ -23,6 +23,6 @@ export const ADMINHOLDS_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [{ fieldId: 'admin-holds.hold_reason' }],
   amountFieldId: null,
-};
+}
 
 export const ADMINHOLDS_TABLE_LAYOUT_ID = 'admin-holds';

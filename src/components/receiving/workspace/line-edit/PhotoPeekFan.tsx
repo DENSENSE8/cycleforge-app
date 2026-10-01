@@ -4,9 +4,8 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence, type Variants } from '@/design-system/motion';
+import { motion, AnimatePresence } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-presets';
-import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { useEscapeClose } from '@/design-system/hooks';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
@@ -20,47 +19,10 @@ import SocialCards, { type CardItem } from '@/components/ui/card-fan-carousel';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { MobileSwipePhotoViewer, type SwipePhotoSlide } from '@/components/mobile/station/MobileSwipePhotoViewer';
 import { type PeekCard } from './photo-peek-pending';
+import { PhotoPeekStack } from './PhotoPeekStack';
 
 export type { PeekCard };
 
-const PEEK_COUNT = 4; // cards in the corner/fan
-
-/** Tiny sunken tile for expanded SocialCards (avoids empty img + carousel SoT edits). */
-const PENDING_FAN_IMG =
-  'data:image/svg+xml,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560">' +
-      '<rect width="100%" height="100%" fill="#e8e8e8"/>' +
-      '<circle cx="200" cy="280" r="28" fill="#c8c8c8"/>' +
-      '</svg>',
-  );
-
-const FAN_SPRING = { type: 'spring', stiffness: 320, damping: 26 } as const;
-
-// Background set via inline style (not Tailwind) so brand-new arbitrary opacity
-// utilities don't silently no-op under the turbopack/JIT regen gotcha.
-const FAN_BG = 'rgba(78,78,78,0.95)'; // darker gray for viewing
-
-// Peek geometry (i = 0 is the front/newest card). Rest tucks all but a corner
-// past the right edge; fan pulls them in and spreads them into a small arc.
-const peekCardVariants: Variants = {
-  rest: (i: number) => ({
-    x: 64 + i * 7,
-    y: i * 3,
-    rotate: -5 - i * 2,
-    scale: 1 - i * 0.05,
-    opacity: i === 0 ? 1 : 0.85 - i * 0.18,
-    transition: FAN_SPRING,
-  }),
-  fan: (i: number) => ({
-    x: 12 - i * 12,
-    y: -i * 13,
-    rotate: -6 - i * 9,
-    scale: 1 - i * 0.03,
-    opacity: 1,
-    transition: FAN_SPRING,
-  }),
-};
 
 const CTRL_BTN =
   'grid place-items-center rounded-full bg-scrim/40 text-white backdrop-blur-md transition-colors hover:bg-scrim/65 disabled:opacity-30';
@@ -84,7 +46,7 @@ export function PhotoPeekFan({
   poRef?: string | null;
   /** Wired so the viewer's delete affordance can refresh the source list. */
   onPhotoDeleted?: (photoId: number) => void;
-  /** Unbox: open Move photos in the station tool push instead of a center overlay. */
+  /** Open Move photos in a caller-owned inline or rail surface. */
   onOpenMovePhotosExternal?: () => void;
   /**
    * `pane`: parks itself on the positioned pane's right edge, above the dock band.
@@ -92,21 +54,17 @@ export function PhotoPeekFan({
    */
   placement?: 'pane' | 'inline';
 }) {
-  const count = cards.length;
-  const pendingCount = useMemo(() => cards.filter((c) => c.pending).length, [cards]);
-  const peekCards = cards.slice(0, PEEK_COUNT);
-  // The expanded fan + the viewer both show ALL photos chronologically:
+  // Expanded and fullscreen views contain committed photos only. Pending cards
+  // remain visible in the compact peek until their durable image URL arrives.
   const chronoCards = useMemo(() => [...cards].reverse(), [cards]);
-  const fanItems = useMemo<CardItem[]>(
-    () =>
-      chronoCards.map((c) =>
-        c.pending
-          ? { imgUrl: PENDING_FAN_IMG, alt: c.alt || 'Uploading photo' }
-          : { imgUrl: c.imgUrl, alt: c.alt },
-      ),
+  const viewableCards = useMemo(
+    () => chronoCards.filter((card) => !card.pending && !!card.imgUrl),
     [chronoCards],
   );
-  const viewableCards = useMemo(() => chronoCards.filter((c) => !c.pending && !!c.imgUrl), [chronoCards]);
+  const fanItems = useMemo<CardItem[]>(
+    () => viewableCards.map((card) => ({ imgUrl: card.imgUrl, alt: card.alt })),
+    [viewableCards],
+  );
   // Build gallery inputs with numeric ids when available so the viewer's delete
   // affordance shows here too (parity with the top-bar ReceivingPhotoButton).
   // Demo cards use non-numeric ids → those stay read-only. Pending excluded.
@@ -193,7 +151,9 @@ export function PhotoPeekFan({
   const onPeekEnter = () => {
     setPeekState('fan');
     clearHold();
-    holdTimer.current = setTimeout(() => setExpanded(true), holdMs);
+    if (viewableCards.length > 0) {
+      holdTimer.current = setTimeout(() => setExpanded(true), holdMs);
+    }
   };
   const onPeekLeave = () => {
     setPeekState('rest');
@@ -201,7 +161,7 @@ export function PhotoPeekFan({
   };
   const openNow = () => {
     clearHold();
-    setExpanded(true);
+    if (viewableCards.length > 0) setExpanded(true);
   };
   const close = () => {
     setExpanded(false);
@@ -230,81 +190,19 @@ export function PhotoPeekFan({
     [gallery],
   );
 
-  if (count === 0) return null;
+  if (cards.length === 0) return null;
 
   return (
     <>
-      {/* Peek — right-edge corner → fan, parked just above the floating notes/send (OmnichannelComposerDock) / terminal dock band. */}
-      {!expanded ? (
-        <div className={placement === 'pane' ? 'pointer-events-none absolute inset-y-0 right-0 z-20 flex items-end' : 'contents'}>
-          <motion.div
-            data-testid="photo-peek"
-            className={cn(
-              'pointer-events-auto relative h-36 w-28',
-              placement === 'pane' && 'mb-[calc(env(safe-area-inset-bottom,0px)+10rem)]',
-            )}
-            initial="rest"
-            animate={peekState}
-            variants={{ rest: {}, fan: { transition: { staggerChildren: 0.04 } } }}
-            onHoverStart={onPeekEnter}
-            onHoverEnd={onPeekLeave}
-            onClick={openNow}
-            role="button"
-            tabIndex={0}
-            aria-label={
-              pendingCount > 0
-                ? `Photos ${count} · ${pendingCount} uploading`
-                : `Photos ${count}`
-            }
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                openNow();
-              }
-            }}
-          >
-            <span className="sr-only" aria-live="polite">
-              {pendingCount > 0 ? `Uploading ${pendingCount}…` : null}
-            </span>
-            {peekCards.map((card, i) => (
-              <motion.div
-                key={card.id}
-                custom={i}
-                variants={peekCardVariants}
-                style={{ zIndex: PEEK_COUNT - i }}
-                className="absolute inset-0 origin-top-left overflow-hidden rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.22)] ring-1 ring-black/10 will-change-transform"
-                data-pending={card.pending ? 'true' : undefined}
-              >
-                {card.pending ? (
-                  <div
-                    className="flex h-full w-full items-center justify-center bg-surface-sunken"
-                    data-testid="photo-peek-pending"
-                    aria-hidden
-                  >
-                    <span className="h-6 w-6 animate-pulse rounded-full bg-border-soft" />
-                  </div>
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={card.imgUrl}
-                    alt={card.alt}
-                    loading={i === 0 ? 'eager' : 'lazy'}
-                    fetchPriority={i === 0 ? 'high' : undefined}
-                    decoding="async"
-                    className="h-full w-full object-cover"
-                  />
-                )}
-                {/* Count badge rides the FRONT card's visible corner. */}
-                {i === 0 && count > 1 ? (
-                  <span className="absolute left-1.5 top-1.5 rounded-full bg-scrim/60 inset-chip text-role-micro leading-none text-white tabular-nums backdrop-blur-sm">
-                    {count}
-                  </span>
-                ) : null}
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      ) : null}
+      <PhotoPeekStack
+        cards={cards}
+        placement={placement}
+        hidden={expanded}
+        state={peekState}
+        onEnter={onPeekEnter}
+        onLeave={onPeekLeave}
+        onOpen={openNow}
+      />
 
       {/* Expanded display — a full-viewport overlay portaled to <body> (like the photo viewer), so the fan centers on the absolute middle of the… */}
       {gallery.mounted && typeof document !== 'undefined'
@@ -319,8 +217,10 @@ export function PhotoPeekFan({
                   exit={{ opacity: 0, pointerEvents: 'none' }}
                   transition={{ duration: 0.2, ease: motionBezier.easeOut }}
                   onClick={viewerOpen ? undefined : close}
-                  style={{ backgroundColor: FAN_BG, zIndex: zLayer.modalBackdrop }}
-                  className={`fixed inset-0 flex items-center justify-center overflow-hidden backdrop-blur-sm ${viewerOpen ? 'pointer-events-none' : ''}`}
+                  className={cn(
+                    'fixed inset-0 z-modalBackdrop flex items-center justify-center overflow-hidden bg-scrim/95 backdrop-blur-sm',
+                    viewerOpen && 'pointer-events-none',
+                  )}
                 >
                   {/* Fan's own close — hidden while the fullscreen viewer is open so
                       its button doesn't stack a second X above the viewer. */}

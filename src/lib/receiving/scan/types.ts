@@ -106,6 +106,9 @@ export interface LookupPoRequest {
   localOnly?: boolean;
   /** When `'unbox'`, stamps UNBOX_SCAN_OPENED so the carton lists in the Unbox rail. */
   intakeSurface?: ScanIntakeSurface;
+  /** Resolver intent correlation; never used for actor attribution. */
+  mobileScanEventId?: number | null;
+  clientEventId?: string | null;
 }
 
 /** Inputs for {@link resolveViaLookupPo}. */
@@ -119,6 +122,9 @@ export interface LookupPoInput {
   staffId: number;
   /** Unbox vs triage — forwarded to lookup-po for UNBOX_SCAN_OPENED stamping. */
   intakeSurface?: ScanIntakeSurface;
+  /** Resolver intent correlation; never used for actor attribution. */
+  mobileScanEventId?: number | null;
+  clientEventId?: string | null;
 }
 
 /** Injected collaborators for {@link resolveViaLookupPo}. */

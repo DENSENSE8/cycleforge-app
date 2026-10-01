@@ -8,8 +8,8 @@ Run: `pnpm run eval:cohort outbound-workflow`
 
 Scope: mobile Orders state vocabulary and its no-execution boundary; exact SLA,
 allocated storage path and pick-progress projections; physical dock staging;
-and semantic-token integrity. Station and slot-table visuals keep their own
-cohorts; this evaluator verifies their shared workflow law.
+and semantic-token integrity. Station and DataTable visuals keep their own
+contracts; this evaluator verifies their shared workflow law.
 
 ## Machine gates
 

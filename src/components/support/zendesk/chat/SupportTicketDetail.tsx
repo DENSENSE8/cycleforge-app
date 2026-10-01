@@ -16,7 +16,7 @@ import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useMeasuredHeight } from '@/hooks/useMeasuredHeight';
 import { useSupportContext } from '@/hooks/useSupportContext';
 import { capabilityTitle } from '@/lib/integrations/capability-labels';
-import type { ZendeskComment } from '@/lib/zendesk';
+import type { ZendeskComment, ZendeskTicket } from '@/lib/zendesk';
 import { EmptyState, Spinner } from '@/design-system/primitives';
 import { Link2, Upload } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
@@ -76,16 +76,11 @@ export function SupportTicketDetail({
   /** `inline` — sticky composer under the thread (default / console). */
   composerPlacement = 'inline',
   photoStaging,
-  /** Interleave warehouse / carrier spine with helpdesk messages. */
   mergeFloorTimeline = false,
-  /**
-   * Forwarded to {@link TicketComposer}. Unbox Ticket Displays passes
-   * `false`; Testing · `/support` keep the default on.
-   */
+  preview = null,
 }: {
   ticketId: number;
   onBack?: () => void;
-  /** Hide the in-header Zendesk link when the host already shows one. */
   hideExternalLink?: boolean;
   embedded?: boolean;
   hideRequesterBand?: boolean;
@@ -93,31 +88,28 @@ export function SupportTicketDetail({
   receivingId?: number;
   hideLinkedContext?: boolean;
   showRequesterDetail?: boolean;
-  /** Exposes the embedded composer to a station terminal dock. */
   onComposerBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
   composerPlacement?: 'inline' | 'host';
-  /**
-   * Host-owned staging (optional when a {@link TicketComposerStagingProvider}
-   * wraps the tree). Inline placement creates its own when neither is set.
-   */
   photoStaging?: TicketPhotoStaging;
   mergeFloorTimeline?: boolean;
+  preview?: { ticket: ZendeskTicket; comments: readonly ZendeskComment[] } | null;
 }) {
   const hideRequester = hideRequesterBand ?? embedded;
-  const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
-  const ticket = bundle?.ticket;
-  const commentsData = bundle
-    ? { comments: bundle.comments, count: bundle.commentsCount, next_page: bundle.commentsNextPage }
-    : undefined;
+  const { data: bundle, isLoading, error } = useZendeskTicketBundle(preview ? null : ticketId);
+  const ticket = preview?.ticket ?? bundle?.ticket;
+  const commentsData = preview
+    ? { comments: preview.comments, count: preview.comments.length, next_page: null }
+    : bundle
+      ? { comments: bundle.comments, count: bundle.commentsCount, next_page: bundle.commentsNextPage }
+      : undefined;
   const photosData = bundle ? { entity: bundle.entity, photos: bundle.photos } : undefined;
 
-  const showContext = !hideLinkedContext;
+  const showContext = !hideLinkedContext && !preview;
   const contextAnchor = useMemo(
-    () => ({ ticket: String(ticketId) }),
-    [ticketId],
+    () => ({ ticket: String(preview ? 0 : ticketId) }),
+    [preview, ticketId],
   );
-  // Always enabled — linkage / requester band / optional floor merge share one `SupportContextBundle` fetch (same key as Focus + Displays).
-  const { data: contextBundle } = useSupportContext(contextAnchor, true);
+  const { data: contextBundle } = useSupportContext(contextAnchor, !preview);
   const [contextOpen, setContextOpen] = useState(false);
 
   const photoUrls = useMemo(() => {
@@ -145,12 +137,13 @@ export function SupportTicketDetail({
   const localStaging = useTicketPhotoStaging(ticketId);
   const staging = photoStaging ?? contextStaging ?? localStaging;
   // Drag + pick only.
-  const dz = usePhotoDropzone(staging.addFiles, { paste: false });
+  const ignoreDrop = useCallback(() => undefined, []);
+  const dz = usePhotoDropzone(preview ? ignoreDrop : staging.addFiles, { paste: false });
   const hostOwnsComposer = composerPlacement === 'host';
   // Live height of the floating composer — the band the thread must keep clear.
   const [composerRef, composerHeight] = useMeasuredHeight<HTMLDivElement>();
 
-  if (isLoading) {
+  if (!preview && isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner />
@@ -158,7 +151,7 @@ export function SupportTicketDetail({
     );
   }
 
-  if (error || !ticket) {
+  if (!preview && (error || !ticket)) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
@@ -192,6 +185,8 @@ export function SupportTicketDetail({
     );
   }
 
+  if (!ticket) return null;
+
   const requester = requesterFrom(ticket);
 
   return (
@@ -212,19 +207,20 @@ export function SupportTicketDetail({
           compact={embedded}
           hideRequesterBand={hideRequester}
           hideTitle={hideTitle}
+          readOnly={Boolean(preview)}
         />
-        {/* Context FOR the conversation, so it lives in the conversation's own port and scrolls away with it — not pinned chrome. */}
         {showRequesterDetail ? (
           <RequesterDetailBand ticketId={ticketId} bundle={contextBundle} />
         ) : null}
         <MergedRecordStream
-          ticketId={ticketId}
+          ticketId={preview ? 0 : ticketId}
           requesterId={ticket.requester_id}
           requesterName={requesterLabel(ticket)}
           requesterEmail={requester.email}
           onOpenPhoto={onOpenPhoto}
           events={mergeFloorTimeline ? contextBundle?.timeline : undefined}
           bottomInsetPx={hostOwnsComposer ? 0 : composerHeight}
+          previewComments={preview?.comments}
         />
       </div>
       {/* AI suggested reply intentionally omitted for now (station + console). */}

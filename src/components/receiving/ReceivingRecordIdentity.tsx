@@ -4,7 +4,7 @@ import { useOrderChannel } from '@/hooks/useCatalog';
 import { receivingRecordIdentity } from '@/lib/receiving/record-identity';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { RecordPlatformFace, RecordListingLink } from '@/design-system/components/record-ledger/RecordIdentity';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { cn } from '@/utils/_cn';
 
 export function ReceivingRecordPlatform({ row }: { row: ReceivingLineRow }) {

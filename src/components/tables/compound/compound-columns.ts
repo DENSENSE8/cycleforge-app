@@ -4,7 +4,7 @@
  */
 
 import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
-import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-family';
+import { DATA_TABLE_ID_HEADER_WORD } from '@/lib/tables/data-table-family';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import {
   COMPOUND_GUTTER_TRACK_REM,
@@ -69,12 +69,12 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     key: 'fulfillment',
     // MEASURED, not guessed:
     width: 'minmax(6.5rem, 6.5rem)',
-    // The identity header is the ENGINE's word, in BOTH faces — the word lives in `slot-table-family.ts` and the families may not re-declare it
+    // The identity header is the ENGINE's word, in BOTH faces — the word lives in `data-table-family.ts` and the families may not re-declare it
     // (operator 2026-09-15: "the ID as the first column … instead of
-    label: SLOT_TABLE_ID_HEADER_WORD,
+    label: DATA_TABLE_ID_HEADER_WORD,
     // **Id, not Order** (operator 2026-09-14:
     // **Id, not Order** (operator 2026-09-14: "the slot data table displays as
-    gridLabel: SLOT_TABLE_ID_HEADER_WORD,
+    gridLabel: DATA_TABLE_ID_HEADER_WORD,
     type: 'id',
     align: 'start',
     frozen: true,

@@ -27,7 +27,7 @@ import { TriageAllClear } from '@/design-system/components/triage-card-list/Tria
 import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import type { RowGroup } from '@/lib/group-rows';
 import { useOptimisticMutation } from '@/lib/optimistic/useOptimisticMutation';
 import {

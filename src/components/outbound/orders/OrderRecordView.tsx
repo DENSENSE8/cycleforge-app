@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The outbound ORDER RECORD — one record view for every desk that shares the industrial ledger (To Ship, Pending, Exceptions, the Search…
+ * The outbound order record shared by To Ship, Pending, Exceptions and Search.
  * when the staffer chooses fullscreen (owner 2026-09-25,
  * (`OrderRecordActionStrip`, owner 2026-09-25).
  */
@@ -53,7 +53,7 @@ import { RecordSerials } from '@/design-system/components/record-ledger/RecordSe
 import { CarrierEventsRail } from '@/design-system/components/record-ledger/CarrierEventsRail';
 import { InlineStageAssign } from '@/design-system/components/record-ledger/InlineStageAssign';
 import { RecordItem, RecordItemCost, RecordItemValue } from '@/design-system/components/record-ledger/RecordItem';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { formatCurrency } from '@/utils/_number';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { recordState, worstState } from './outbound-orders-ledger-state';
@@ -99,7 +99,7 @@ import { orderCarrierEventsQuery, type CarrierEvent } from '@/lib/queries/carrie
 import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
 import { fulfillmentCurrentStatus, hasExternalFulfillmentHandoff } from '@/lib/orders/order-fulfillment-summary';
 
-/** One column of the record: the industrial panel its sections stack in. */
+/** One column of the record: the panel its sections stack in. */
 const COLUMN_CLASS = DESK_RECORD_COLUMN_CARD_CLASS;
 
 /** Which evidence stage each inline photo strip shows — packing under Packed, testing under QC, receiving on the item. */
@@ -491,7 +491,7 @@ export function OrderRecordView({
     : [];
 
   const left = (
-    <div className="flex flex-col gap-4 industrial:gap-0">
+    <div className="flex flex-col gap-4">
       {/* A second order from the same buyer for the same SKU — caught before it ships twice. */}
       <DuplicateOrderBanner orderId={Number(record.id)} />
       {shows.has('resolve') && resolve ? <div className={COLUMN_CLASS}>{resolve}</div> : null}
@@ -519,7 +519,7 @@ export function OrderRecordView({
           line prices read on the items). Off the Floor rail: price is noise
           during pick and pack (owner 2026-09-24). */}
       {!allocateDetail && shows.has('price') ? (
-        <div className={cn(COLUMN_CLASS, 'industrial:hidden')} data-testid="order-record-price">
+        <div className={COLUMN_CLASS} data-testid="order-record-price">
           <OrderPriceEvidence orderId={record.id} immediateTotal={immediateOrderTotal} />
         </div>
       ) : null}
@@ -646,7 +646,7 @@ export function OrderRecordView({
   // Details are for reading; Allocate combines buyer + destination into one
   // information category and sends its verbs to the header overflow.
   const right = (
-    <div className="flex flex-col gap-4 industrial:gap-0">
+    <div className="flex flex-col gap-4">
       {/* The evidence door — always here, above Shipping, so it is learnt. */}
       <OrderEvidencePhotosButton key={`photos:${record.id}`} orderId={Number(record.id)} packerPhotos={record.packer_photos_url} />
       {!allocateDetail && shows.has('customer') && buyer ? (
@@ -722,7 +722,7 @@ export function OrderRecordView({
 
   return (
     <div
-      className="flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0"
+      className="flex-1 bg-mode-canvas p-4 text-mode-ink"
       data-testid="order-record-view"
       data-order-view={viewKey}
     >
@@ -1143,7 +1143,7 @@ function OrderLineFulfilment({
       icon: <Truck aria-hidden />,
       state: stateOf(3),
       tone: LIFECYCLE.shipped.tone,
-      title: steps[3]!.facts ? 'Scanned out' : 'Scan out',
+      title: steps[3]!.facts ? 'Fulfilled' : 'Scan out',
       meta: steps[3]!.facts ? doneMeta(steps[3]!.facts) : 'Not yet',
       testId: 'order-record-scanned-out',
     },

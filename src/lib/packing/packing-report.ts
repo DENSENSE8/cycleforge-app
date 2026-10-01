@@ -86,7 +86,7 @@ export async function buildPackingReportRows(
       -- const below.
       NULLIF(TRIM(o.order_id), '') AS order_number,
       -- The facts the SHARED compound cells need to paint the way every other
-      -- slot table paints. See the note on the sql const.
+      -- data table paints. See the note on the sql const.
       sal.staff_id AS packer_staff_id,
       o.account_source AS platform,
       CASE

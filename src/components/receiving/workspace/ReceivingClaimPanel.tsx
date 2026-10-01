@@ -29,7 +29,7 @@ export function ReceivingClaimPanel({
   ...props
 }: ClaimModalProps & {
   className?: string;
-  /** See {@link ClaimModalHeader} — Displays omits the gray identity band. */
+  /** See {@link ClaimModalHeader} — embedded hosts omit the identity band. */
   chrome?: 'modal' | 'display';
 }) {
   const c = useReceivingClaimController(props);

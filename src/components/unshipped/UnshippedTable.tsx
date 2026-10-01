@@ -40,7 +40,7 @@ import {
   invalidateUnshippedCounts,
   insertUnshippedOrderIntoCache,
 } from '@/lib/queries/dashboard-cache-patch';
-import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
+import { SHIPPING_PATH } from '@/lib/outbound/route-contract';
 import { SHIPPING_ORDERS_PATH, ORDERS_DESK_CONTEXT_KEY, ORDERS_DESK_SUPPORT_CONTEXT, parseOrdersDeskContext } from '@/lib/shipping/orders-desk';
 import type { ShippedOrder } from '@/types/orders';
 import { useLabelsWalkShortcut } from '@/components/outbound/orders/paperwork/useLabelsWalkShortcut';

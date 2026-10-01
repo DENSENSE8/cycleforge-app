@@ -14,7 +14,7 @@ import { compoundIdentityFace } from '@/components/tables/compound/compound-row-
  */
 const VELOCITY_TONE: CompoundStateTone = 'neutral';
 
-/** Compact civil face for the Dates Hash line — no year (slot-table date law). */
+/** Compact civil face for the Dates Hash line — no year (DataTable date law). */
 function civilFace(iso: string | null): { label: string; dateKey: string } | null {
   if (!iso) return null;
   const moment = new Date(iso);

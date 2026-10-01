@@ -1,6 +1,5 @@
 /** FROZEN BASELINE — 2026-09-14 audit (C1). SHRINK-ONLY. */
 export const BOUNDARY_EXEMPTIONS: readonly string[] = [
-  "src/app/m/(shell)/h/[id]/page.tsx => src/components/receiving/HandlingUnitChip.tsx",
   "src/app/m/(shell)/id/[job]/[entityId]/page.tsx => src/components/identification/IdentificationJobFace.tsx",
   "src/app/m/(shell)/id/pick/[orderId]/page.tsx => src/components/identification/IdentificationJobFace.tsx",
   "src/app/m/(shell)/id/scan-out/[orderId]/page.tsx => src/components/identification/IdentificationJobFace.tsx",
@@ -24,24 +23,13 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/components/mobile/receiving/MobileArrivalClassifyFlow.tsx => src/components/receiving/workspace/line-edit/classify-pill-options.tsx",
   "src/components/mobile/receiving/PhotoUploadToaster.tsx => src/components/station/capture-upload/capture-upload-model.ts",
   "src/components/mobile/redesign/MobileSettingsList.tsx => src/components/settings/settings-sections.ts",
-  "src/components/mobile/redesign/MobileSidebarDrawer.tsx => src/components/icons/nav-weight.tsx",
-  "src/components/mobile/redesign/MobileSidebarDrawer.tsx => src/components/sidebar/sidebar-spine.ts",
-  "src/components/mobile/redesign/MobileToShipPickerSheet.tsx => src/components/auth/StaffChoiceRowButton.tsx",
-  "src/components/mobile/redesign/MobileToShipPickerSheet.tsx => src/components/tables/compound/staff-stage-lane.ts",
-  "src/components/mobile/redesign/MobileToShipQueue.tsx => src/components/work-orders/types.ts",
-  // Same edge as the six siblings below — the WorkOrderRow type the to-ship
-  // screens map onto the shared ItemCardRow. Moved into to-ship-faces when the
-  // faces were extracted out of MobileToShipRow (2026-09-15).
-  "src/components/mobile/redesign/to-ship-faces.tsx => src/components/work-orders/types.ts",
-  "src/components/mobile/redesign/MobileToShipRow.tsx => src/components/work-orders/types.ts",
-  "src/components/mobile/redesign/MobileToShipSheet.tsx => src/components/work-orders/types.ts",
   "src/components/mobile/redesign/ScanInput.tsx => src/components/station/scan-bar/index.ts",
   "src/components/mobile/redesign/useToShipOrders.ts => src/components/work-orders/types.ts",
   "src/components/mobile/scan/location-bind-api.ts => src/components/barcode/bin-label-printer/bin-printer-api.ts",
   "src/components/packer/PackerPageContent.tsx => src/components/mobile/packer/MobilePackingList.tsx",
   "src/components/receiving/workspace/line-edit/PhotoPeekFan.tsx => src/components/mobile/station/MobileSwipePhotoViewer.tsx",
   "src/components/shipped/PhotoGallery.tsx => src/components/mobile/station/MobileSwipePhotoViewer.tsx",
-  "src/components/sku/BinStockNumpadSheet.tsx => src/components/mobile/station/MobilePackerSpamCamera.tsx",
+  "src/components/sku/BinStockNumpadSheet.tsx => src/components/mobile/photos/MobileNativePhotoCapture.tsx",
   "src/components/station/capture-upload/useCaptureUploadStatus.ts => src/components/mobile/packer/PackerPhotoUploadQueue.ts",
   "src/components/station/capture-upload/useCaptureUploadStatus.ts => src/components/mobile/receiving/PhotoUploadQueue.ts",
   "src/components/station/capture-upload/useCaptureUploadStatus.ts => src/components/mobile/unit/UnitPhotoUploadQueue.ts",

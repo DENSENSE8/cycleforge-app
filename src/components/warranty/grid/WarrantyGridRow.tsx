@@ -29,7 +29,7 @@ const dataCell = (col: WarrantyGridColumn, rule = true) =>
 
 export { warrantyClaimItemLabel } from '@/lib/tables/field-catalog/warranty-resolve';
 
-/** One warranty claim — CSS-grid columns matching the MOUNTED model (a `SlotLayout` materialization since the wave 1.4 hand-model kill). */
+/** One warranty claim — CSS-grid columns matching the MOUNTED model (a `DataTableColumnLayout` materialization since the wave 1.4 hand-model kill). */
 export const WarrantyGridRow = memo(function WarrantyGridRow({
   claim,
   isSelected,

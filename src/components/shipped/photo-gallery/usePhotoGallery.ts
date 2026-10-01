@@ -74,10 +74,11 @@ export interface PhotoGalleryProps {
   launcherTitle?: string;
   /**
    * `toolbar` — slim row with download-all, optional copy links, fullscreen.
+   * `compact` — fixed-width thumbnails over the same shared action toolbar.
    * `thumbnails` — a clickable thumbnail strip (no launcher); each opens the
    * fullscreen viewer at that photo. `default` — the shipped launcher button.
    */
-  launcherLayout?: 'default' | 'toolbar' | 'thumbnails';
+  launcherLayout?: 'default' | 'toolbar' | 'compact' | 'thumbnails';
   /**
    * Default launcher card chrome. `accent` keeps the blue gradient (packing /
    * editable details). `neutral` is a white card surface for read inspectors.
@@ -282,7 +283,7 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
   /**
    * Soft-close the lightbox (if open), then open Move photos. Clicking again
    * while open soft-closes and reopens so picker state resets cleanly.
-   * When `onOpenMovePhotosExternal` is set (Unbox tool push), delegate there.
+   * When `onOpenMovePhotosExternal` is set, delegate to the caller-owned surface.
    */
   const openMovePhotos = useCallback(() => {
     if (viewerOpen || deferViewerClose) {

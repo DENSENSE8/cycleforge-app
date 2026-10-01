@@ -5,8 +5,8 @@ import {
   KIOSKSLOTEVENTS_FIELD_CATALOG,
   KIOSKSLOTEVENTS_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/kiosk-slot-events';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -21,39 +21,31 @@ export type KioskSlotEventsGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface KioskSlotEventsGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: KioskSlotEventsGridColumnKey;
-}
+export interface KioskSlotEventsGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: KioskSlotEventsGridColumnKey; }
 
-export function kioskSlotEventsCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly KioskSlotEventsGridColumn[] {
-  const base = compoundColumnsFor<KioskSlotEventsGridColumn>().filter(
-    c => c.key !== 'dates' && c.key !== 'select',
-  );
-  const tracks = materializeTracks<KioskSlotEventsGridColumn>({
-    layout,
-    catalog: KIOSKSLOTEVENTS_FIELD_CATALOG,
-    base,
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = KIOSKSLOTEVENTS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    return t;
-  });
-}
+export function kioskSlotEventsCompoundColumnsFor(layout: DataTableColumnLayout): readonly KioskSlotEventsGridColumn[] { const base = compoundColumnsFor<KioskSlotEventsGridColumn>().filter(
+  c => c.key !== 'dates' && c.key !== 'select',
+);
+const tracks = materializeTracks<KioskSlotEventsGridColumn>({
+  layout,
+  catalog: KIOSKSLOTEVENTS_FIELD_CATALOG,
+  base,
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = KIOSKSLOTEVENTS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  return t;
+}); }
 
 export const KIOSKSLOTEVENTS_COMPOUND_COLUMNS: readonly KioskSlotEventsGridColumn[] =
   kioskSlotEventsCompoundColumnsFor(KIOSKSLOTEVENTS_PRODUCT_LAYOUT);

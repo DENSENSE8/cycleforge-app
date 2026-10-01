@@ -59,10 +59,11 @@ Rulings: `docs/design-system/HANDOFF-triage-views.md` → "Owner rulings in forc
    - Outbound's `OrderAdminLinkAction` (`src/components/outbound/orders/order-link-editors.tsx`)
      + `OrderIdChip` (`src/components/ui/CopyChip.tsx`) — the reference behaviour.
    - Tickets: `zendeskTicketUrl` (`src/lib/zendesk-ticket-url.ts`).
-   - Zoho PO: the admin URL is hand-built in THREE places today — `ZohoSplitPane.tsx:17-22`,
-     `useReceivingLineCore.ts:585-588`, `api/admin/po-gmail/create-zoho-draft/[id]/route.ts:52`.
+   - Zoho PO: the admin URL is hand-built in two places today —
+     `useReceivingLineCore.ts:585-588` and
+     `api/admin/po-gmail/create-zoho-draft/[id]/route.ts:52`.
      Consolidate into one reader (`src/lib/zoho/po-admin-url.ts`: id → `#/purchaseorders/<id>`,
-     number → `?search_text=`), migrate all three callers, then use it on the card.
+     number → `?search_text=`), migrate both callers, then use it on the card.
    - Marketplace orders (eBay / Amazon source_order_id): `orderAdminUrl` (`src/utils/order-platform.ts`).
    - Decide with the owner: does a click copy the URL and ⌘/Ctrl-click open it, or is copy a
      separate chip action? Match whatever outbound does so the hand learns one gesture.

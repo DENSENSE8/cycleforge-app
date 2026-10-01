@@ -214,6 +214,8 @@ export interface ReceivingLineRow {
   testing_opened_at?: string | null;
   /** Staff who unboxed (receiving.unboxed_by → staff.name). */
   unboxed_by_name?: string | null;
+  /** Staff who first opened the carton in Unbox; fallback actor when completion did not stamp `unboxed_by`. */
+  unbox_opened_by_name?: string | null;
   /** First tracking scan time (receiving_scans, earliest). */
   scanned_at?: string | null;
   /** Staff who first scanned the tracking (receiving_scans.scanned_by → staff.name). */

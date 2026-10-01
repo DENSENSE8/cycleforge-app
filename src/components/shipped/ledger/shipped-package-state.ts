@@ -1,7 +1,7 @@
 /** A Shipped-desk package's state face — the ledger row's spine / code and the record header read the SAME face, so row and record… */
 
 import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import { deriveOutboundState, OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
 import { outboundSignals } from '@/lib/orders/outbound-signals';
 import type { ShipmentRecord } from '@/lib/shipments/shipment-record-types';

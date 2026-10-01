@@ -131,17 +131,15 @@ The missing hop is **marketplace string → `orders.id`**. Two candidate shapes:
   `receiving_carton.source_order_id`, `receiving_line.source_order_id` and
   `inbound_purchase_order_links.source_order_id` (`global-entity-search.ts:185-424`).
 
-Chip wiring: `IdentityLinkChip` already has the slot — `onDetails` / `detailsLabel`
-(`IdentityLinkChip.tsx:46,104-105,465-475`), the row `ReceivingTicketChip` and
-`LinkageDisplayHost` use for in-app jumps. Menu becomes
+Chip wiring: `IdentityLinkChip` already has the slot — `onDetails` /
+`detailsLabel` (`IdentityLinkChip.tsx:46,104-105,465-475`) — and
+`ReceivingTicketChip` demonstrates an in-app task jump. The menu becomes
 **Open · Open in search · Copy · Edit order** (`Pair package` when empty).
 
-**Do not** implement this as an Unbox right-rail display. That column is deliberately
-client-state only — `stripStaleUnboxRightEdgeParamsFromUrl` (`unbox-right-edge.ts:68-80`)
-erases `?display=` on mount — so it cannot be linked or shared. `/search?sel=` is
-bookmarkable and already has the dossier. An Unbox "Order" leaf is registerable later
-(`unbox-side-tabs.ts` → `unbox-tabs.tsx` → `unbox-display-index.ts`) if the operator wants
-the facts without leaving the bench; it is not the back-link.
+Do **not** implement this as an Unbox right-rail display. Unbox no longer owns a
+right rail, display registry or display URL state. `/search?sel=` is bookmarkable
+and already has the dossier; the identity chip links there rather than rebuilding
+order facts inside the carton work plane.
 
 **Acceptance:** chip menu row "Open in search" on a carton with a known order navigates to
 the order dossier showing status, tracking, lines and timeline. Hidden (not greyed) when no

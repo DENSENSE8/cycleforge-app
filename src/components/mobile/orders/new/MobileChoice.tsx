@@ -9,7 +9,7 @@
  * - {@link MobileChoiceGrid} — a small fact pick (tender, brand, entry):
  *   rounded touch cells in a gapped grid, the pick washed in accent.
  * Press washes (`active:bg-mode-hover`), never inverts — inversion is the
- * industrial floor's feedback, not a form's.
+ * execution feedback, not a form's.
  */
 
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';

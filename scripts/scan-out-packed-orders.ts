@@ -24,7 +24,7 @@
 import pool from '@/lib/db';
 import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import { loadPackedOnToShip, type PackedShipment } from '@/lib/outbound/packed-on-to-ship';
-import { scanOutLabel, type ScanOutResult } from '@/lib/outbound/scan-out';
+import { scanOutKnownShipment, type ScanOutResult } from '@/lib/outbound/scan-out';
 
 function arg(name: string): string | undefined {
   const prefix = `--${name}=`;
@@ -69,15 +69,18 @@ async function main(): Promise<void> {
   const shipments = (await loadPackedOnToShip(ORG)).filter((s) => !cutoff || new Date(s.packed_at) < cutoff);
   if (cutoff) console.log(`Packed before ${PACKED_BEFORE} (Pacific) = before ${cutoff.toISOString()}`);
   const orderCount = shipments.reduce((n, s) => n + s.order_row_ids.length, 0);
+  const unfoundCount = shipments.filter((s) => s.order_row_ids.length === 0).length;
   console.log(
     `${APPLY ? 'APPLY' : 'DRY RUN'} — org ${ORG}, as staff ${STAFF} (${staff.rows[0].name})`,
   );
-  console.log(`Packed on To ship: ${orderCount} order(s) on ${shipments.length} shipment(s)`);
-  console.table(tally(shipments, (s) => `${s.account_source ?? '(none)'} · ${s.status ?? '(none)'}`));
+  console.log(
+    `Packed on To ship: ${shipments.length} identification(s); ${orderCount} linked order row(s); ${unfoundCount} unfound/unmatched`,
+  );
+  console.table(tally(shipments, (s) => `${s.account_source ?? '(unfound)'} · ${s.status ?? '(none)'}`));
   console.table(
     shipments.slice(-10).map((s) => ({
       shipment: s.shipment_id,
-      orders: s.order_ids.join(','),
+      orders: s.order_ids.join(',') || '(unfound)',
       source: s.account_source,
       status: s.status,
       tracking: s.tracking,
@@ -93,8 +96,9 @@ async function main(): Promise<void> {
   const outcomes: Array<{ shipment: PackedShipment; kind: ScanOutResult['kind'] | 'error'; detail?: string }> = [];
   for (const shipment of shipments) {
     try {
-      const result = await scanOutLabel({
+      const result = await scanOutKnownShipment({
         organizationId: ORG,
+        shipmentId: Number(shipment.shipment_id),
         scan: shipment.tracking,
         actorStaffId: STAFF,
         createdAt: null,

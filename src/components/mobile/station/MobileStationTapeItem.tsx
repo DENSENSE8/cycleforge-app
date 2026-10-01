@@ -9,7 +9,7 @@ import { memo, useState } from 'react';
 import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
 import { INTAKE, type IntakeClass } from '@/design-system/tokens/intake';
 import { STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
-import { RECORD_LABEL_CLASS, RECORD_TITLE_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS, RECORD_TITLE_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { STATION_TONE_INK } from './station-chrome';

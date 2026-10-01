@@ -20,7 +20,7 @@ import { StatusBadge } from '@/design-system/components/StatusBadge';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { RecordFullId } from '@/design-system/components/record-ledger/RecordFullId';
 import { DESK_RECORD_COLUMN_CARD_CLASS, DESK_STAGE_FIXED_CLASS } from '@/design-system/tokens/desk-stage';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { PhotoPeekFan, type PeekCard } from '@/components/receiving/workspace/line-edit/PhotoPeekFan';
 import { initials } from '@/components/outbound/orders/outbound-orders-ledger-state';

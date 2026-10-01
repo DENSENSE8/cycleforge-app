@@ -6,7 +6,7 @@ import { COMPOUND_COLUMN_KEYS, COMPOUND_TRACKS } from '@/components/tables/compo
 import type { DeskPickRecord } from '@/hooks/useDeskPickLogs';
 import { techRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { materializeTracks } from '../materialize-tracks';
-import { parseSlotLayout } from '../slot-layout';
+
 import { PACKER_FIELD_CATALOG } from './packer';
 import { TECH_FIELD_CATALOG, TECH_PRODUCT_LAYOUT, TECH_TABLE_LAYOUT_ID } from './tech';
 import { resolveTechSlotValue, techSlotValuesFor } from './tech-resolve';
@@ -77,7 +77,7 @@ describe('tech catalog', () => {
   });
 
   it('product default parses against the catalog — the test step, no money', () => {
-    const parsed = parseSlotLayout(TECH_PRODUCT_LAYOUT, TECH_FIELD_CATALOG);
+    const parsed = TECH_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'tech.order_id');
     assert.deepEqual(

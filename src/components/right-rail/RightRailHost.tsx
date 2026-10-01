@@ -309,7 +309,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
             </HoverTooltip>
           </div>
         ) : null}
-        {/* Instant width snap — Unbox Displays / ContextPanelLayout twin. */}
+        {/* Instant width snap shared with push-column workspace hosts. */}
         {showPush && !isCollapsed ? (
           <aside
             role="region"

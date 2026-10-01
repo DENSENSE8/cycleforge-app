@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { emitSelection, emitSelectionTotal, onToggleAll } from '@/lib/selection/table-selection';
-import { slotTableSelectableIds } from '@/lib/tables/slot-table-visible';
+import { dataTableSelectableIds } from '@/lib/tables/data-table-visible-rows';
 import {
   dispatchSelectLine,
   RECEIVING_SELECTION_SCOPE,
@@ -188,7 +188,7 @@ export function useReceivingRowSelection({
 
   useEffect(() => {
     return onToggleAll(selectionScope, (toggle) => {
-      const ids = slotTableSelectableIds(
+      const ids = dataTableSelectableIds(
         selectionScope,
         orderedVisibleRows.map((r) => r.id),
       );
@@ -200,7 +200,7 @@ export function useReceivingRowSelection({
     emitSelectionTotal(
       selectionScope,
       selectMode
-        ? slotTableSelectableIds(
+        ? dataTableSelectableIds(
             selectionScope,
             orderedVisibleRows.map((r) => r.id),
           ).length

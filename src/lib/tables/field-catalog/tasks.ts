@@ -1,8 +1,8 @@
 /** Tasks field catalog — the bindable facts of an **assigned task**, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import type { SlotTableFamily } from '@/lib/tables/slot-table-family';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
+import type { DataTableFamily } from '@/lib/tables/data-table-family';
 
 export const TASKS_FIELD_CATALOG: FieldCatalog = [
   {
@@ -94,19 +94,19 @@ export const TASKS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default Tasks layout — COMPOUND morph, nothing bound. */
-export const TASKS_PRODUCT_LAYOUT: SlotLayout = {
+export const TASKS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'tasks.task',
   statusBindings: [],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Tasks entry. */
 export const TASKS_TABLE_LAYOUT_ID = 'tasks';
 
-/** The family RECORD — `tasks`' whole slot-table registration, as DATA. */
-export const TASKS_FAMILY: SlotTableFamily = {
+/** The family RECORD — `tasks`' whole data-table registration, as DATA. */
+export const TASKS_FAMILY: DataTableFamily = {
   tableId: TASKS_TABLE_LAYOUT_ID,
   catalog: TASKS_FIELD_CATALOG,
   productLayout: TASKS_PRODUCT_LAYOUT,

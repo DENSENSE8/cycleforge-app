@@ -15,7 +15,7 @@ import {
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { Button, SearchField } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { Label } from '@/components/ui/label';

@@ -21,6 +21,7 @@ import {
   shippedTimeWindow,
   type ShippedTimeParams,
 } from '@/lib/shipping/shipped-filter/shipped-filter-params';
+import { readShippedDeskFilters } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
 import { deriveShippedRecord } from '@/lib/shipped-records';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { OutboundState } from '@/lib/outbound-state';
@@ -39,12 +40,15 @@ export interface UseShippedTableFiltersOptions {
    * `?ostatus` is ignored so the list stays exact for that lifecycle stage.
    */
   lockedOutboundStatus?: OutboundState | null;
+  /** Server-resolved persisted filter, used when localStorage is unavailable during SSR. */
+  initialShippedFilter?: ShippedTypeFilter;
 }
 
 /** Derives every filter / week / staff / search value the shipped table reads from the URL search params (plus the persisted type-filter… */
 export function useShippedTableFilters({
   packedBy,
   lockedOutboundStatus = null,
+  initialShippedFilter = 'all',
 }: UseShippedTableFiltersOptions) {
   const pathname = usePathname();
   const router = useRouter();
@@ -58,16 +62,17 @@ export function useShippedTableFilters({
       return shippedFilterParam;
     }
     if (shippedFilterParam === 'all') return 'all';
-    return readShippedFilterPreference() ?? 'all';
-  }, [shippedFilterParam]);
+    return readShippedFilterPreference() ?? initialShippedFilter;
+  }, [initialShippedFilter, shippedFilterParam]);
 
   const weekOffset = readShippedWeekOffset(searchParams);
   const weekRange = getWeekRangeForOffset(weekOffset);
 
   const exceptionsOnly = readShippedExceptionsFilter(searchParams);
   const carrierFilter = readShippedCarrierFilter(searchParams);
+  const channelFilter = readShippedDeskFilters(searchParams).channels.join(',') || null;
   const statusFilter = readShippedStatusFilter(searchParams);
-  // Click-to-filter from the outbound status legend (`?ostatus`).
+  const sort = searchParams.get('sort') || 'ship_confirmed_at';
   const obStatus = lockedOutboundStatus
     ? lockedOutboundStatus
     : String(searchParams.get('ostatus') || '').trim().toUpperCase();
@@ -124,7 +129,7 @@ export function useShippedTableFilters({
 
   // Free-text search is desk-local (never navigates once per typed character):
   // one in-memory query per desk path, shared with the desk sidebar's input.
-  const [search, setSearchState] = useDeskSearch(pathname || '/shipping/shipped');
+  const [search, setSearchState] = useDeskSearch(pathname || '/fulfilled');
   const normalizedSearch = search.trim().toLowerCase();
 
   // Dashboard Shipped is list-only flat spreadsheet. Board layout URL is ignored.
@@ -230,8 +235,8 @@ export function useShippedTableFilters({
     weekRange,
     exceptionsOnly,
     carrierFilter,
+    channelFilter,
     statusFilter,
-    obStatus,
     matchesOutbound,
     effPackedBy,
     effStaffId,
@@ -243,6 +248,7 @@ export function useShippedTableFilters({
     effectiveWeekStart,
     effectiveWeekEnd,
     shippedTime,
+    sort,
     shippedInstantWindow,
     search,
     normalizedSearch,

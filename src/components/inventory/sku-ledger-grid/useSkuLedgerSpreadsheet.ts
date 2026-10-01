@@ -12,7 +12,6 @@ import { resolveSkuLedgerSlotValue } from '@/lib/tables/field-catalog/sku-ledger
 import type { SkuLedgerTableRow } from '@/lib/inventory/sku-ledger-row';
 import { skuLedgerCompoundView } from './sku-ledger-row-view';
 import {
-  skuLedgerCompoundColumnsFor,
   skuLedgerSortFactFor,
   type SkuLedgerGridColumn,
   type SkuLedgerGridColumnKey,
@@ -21,7 +20,6 @@ import {
   SKU_LEDGER_GRID_CAPABILITIES,
   SKU_LEDGER_TABLE_BINDING,
 } from './sku-ledger-table-definition';
-import { useSkuLedgerTableLayout } from './useSkuLedgerTableLayout';
 
 interface UseSkuLedgerSpreadsheetOptions {
   /** One server window (the last hundred movements), newest first. */
@@ -45,8 +43,8 @@ export function useSkuLedgerSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useSkuLedgerTableLayout();
-  const columns = useMemo(() => skuLedgerCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
+
+
 
   const onSortChange = useCallback((key: SkuLedgerGridColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
@@ -60,12 +58,10 @@ export function useSkuLedgerSpreadsheet({
 
   return useCompoundSpreadsheet<SkuLedgerTableRow, SkuLedgerGridColumnKey, SkuLedgerGridColumn>({
     binding: SKU_LEDGER_TABLE_BINDING,
-    columns,
-    fields,
+    columns: SKU_LEDGER_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: skuLedgerCompoundView,
-    subtitleFieldIds,
     resolve: resolveSkuLedgerSlotValue,
     sortFactFor: skuLedgerSortFactFor,
     capabilities: SKU_LEDGER_GRID_CAPABILITIES,

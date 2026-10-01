@@ -33,7 +33,6 @@ import {
   STATE_NAMES,
   STATE_TONES,
   TRIALS,
-  GRAIN_DEPTHS,
   baseColors,
   lightThemeCssText,
   modeRegistryCssText,
@@ -60,7 +59,6 @@ function resolveMode(spec: ModeSpec) {
     // Light scheme: the mode literal, else the theme's warning text.
     warnText: spec.warnText ?? LIGHT_THEME.vars['text-warning'],
     brand: spec.brand,
-    grain: spec.grain,
     radius: spec.radius,
     radiusControl: spec.radiusControl,
     radiusPill: spec.radiusPill,
@@ -120,12 +118,6 @@ function renderJson(): string {
     for (const key of SURFACE_KEYS) flat[`${p}.surface.${key}`] = m.surfaces[key];
     flat[`${p}.warnText`] = m.warnText;
     if (m.brand) flat[`${p}.brand`] = m.brand;
-    if (m.grain) {
-      for (const depth of GRAIN_DEPTHS) {
-        flat[`${p}.grain.${depth}.opacity`] = String(m.grain[depth].opacity);
-        flat[`${p}.grain.${depth}.frequency`] = String(m.grain[depth].frequency);
-      }
-    }
     flat[`${p}.radius`] = m.radius;
     flat[`${p}.radiusControl`] = m.radiusControl;
     flat[`${p}.radiusPill`] = m.radiusPill;

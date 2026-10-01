@@ -31,8 +31,8 @@ export interface ShipmentItemIdentitySources {
   zoho_item_title: string | null;
   catalog_product_title: string | null;
   sku: string | null;
-  zoho_item_id: string | null;
-  zoho_image_document_id: string | null;
+  external_item_id?: string | null;
+  external_image_document_id?: string | null;
   catalog_image_url: string | null;
 }
 
@@ -47,8 +47,8 @@ export function shipmentItemIdentity(line: ShipmentItemIdentitySources): { title
         sku: line.sku,
       }) || 'Unknown product',
     photoUrl: productImageUrl({
-      zohoItemId: line.zoho_item_id,
-      zohoImageDocumentId: line.zoho_image_document_id,
+      externalItemId: line.external_item_id,
+      externalImageDocumentId: line.external_image_document_id,
       catalogImageUrl: line.catalog_image_url,
     }),
   };

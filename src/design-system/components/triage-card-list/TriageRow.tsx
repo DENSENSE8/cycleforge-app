@@ -46,7 +46,7 @@ import { PhotoHoverPeek } from '@/design-system/components/PhotoHoverPeek';
 import { CARD_STAGGER_CAP, CARD_STAGGER_S, CardCheck } from '@/design-system/components/record-card/RecordCard';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import { LIFECYCLE, type LifecycleState } from '@/design-system/tokens/lifecycle';
 import { cn } from '@/utils/_cn';
 import { RecordFactPaint, type RecordFactFace } from '@/design-system/components/record-card/record-fact';

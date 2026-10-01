@@ -118,7 +118,7 @@ export function GlobalDetailStackHost() {
   if (loaded.kind === 'order') {
     // Non-desk opens: compact peek only. The full order record stays on the
     // shipping desks (`OrderRecordView` in the outbound ledger; the Shipped desk
-    // opens the package record, `ShipmentRecordView`).
+    // opens the package record through the shared shipment record slot).
     return <CompactOrderPeek order={loaded.order} onClose={handleClose} />;
   }
 

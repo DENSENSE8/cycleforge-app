@@ -2,24 +2,22 @@ import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter } from 'next/font/google'
 
 /**
  * Kinetic Ledger type — **Inter** for the sans cut, IBM Plex for the two specialist cuts.
- * **Exception — mono 700 (owner 2026-09-25, BRIEF §4 industrial):** industrial
+ * **Exception — mono 700:**
  */
 export const cfSans = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
+  // Normal AND italic in ONE query: a second Inter() call for the italic cut
+  // made Turbopack's font import map carry two entries for the family and the
+  // whole app failed to compile from a cold .next ("next/font/google queries
+  // have exactly one entry", 2026-09-30).
+  style: ['normal', 'italic'],
   variable: '--font-cf-sans',
   display: 'swap',
 });
 
-/** Inter's REAL italic cut, loaded for ONE consumer: */
-export const cfSansItalic = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  style: ['italic'],
-  variable: '--font-cf-sans-italic',
-  display: 'swap',
-  preload: false,
-});
+/** Kept as an alias: the italic cut now rides {@link cfSans}. */
+export const cfSansItalic = cfSans;
 
 export const ibmPlexSansCondensed = IBM_Plex_Sans_Condensed({
   subsets: ['latin'],

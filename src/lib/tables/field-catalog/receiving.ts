@@ -1,7 +1,7 @@
 /** Receiving field catalog — the bindable Unbox / History / Testing facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const RECEIVING_FIELD_CATALOG: FieldCatalog = [
   {
@@ -73,13 +73,13 @@ export const RECEIVING_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default receiving layout — the COMPOUND morph with **no bound fact tracks**, which is byte-for-byte what Unbox, History and… */
-export const RECEIVING_PRODUCT_LAYOUT: SlotLayout = {
+export const RECEIVING_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'receiving.order',
   statusBindings: [],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Receiving entry. */
 export const RECEIVING_TABLE_LAYOUT_ID = 'receiving';

@@ -6,7 +6,7 @@ import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@
 import { Button } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import type { PickedCustomer } from '@/lib/repair/repair-info-edit';
-import { CUSTOMER_SEARCH_MIN_CHARS, useCustomerSearch } from './useCustomerSearch';
+import { CUSTOMER_SEARCH_MIN_CHARS, useCustomerSearch } from '@/hooks/useRepairCustomerSearch';
 
 /**
  * Level-1 picker over `RepairInfoEditSheet`: search the org's customers (name,

@@ -9,7 +9,7 @@
 
 import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Button, Checkbox, TextField } from '@/design-system/primitives';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { useOrderLabelSummary } from '@/lib/orders/order-paperwork-client';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';

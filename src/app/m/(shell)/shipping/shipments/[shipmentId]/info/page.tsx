@@ -97,11 +97,21 @@ function ShipmentInfoInner() {
               />
               <DetailFact
                 label="Carrier sync"
-                value={d.sync.lastErrorCode || d.sync.lastErrorMessage ? 'Failing' : d.sync.lastCheckedAt ? 'OK' : 'Never checked'}
+                value={
+                  String(d.carrier ?? '').trim().toUpperCase() === 'USPS'
+                    ? 'Integration pending'
+                    : d.sync.lastErrorCode || d.sync.lastErrorMessage
+                      ? 'Failing'
+                      : d.sync.lastCheckedAt
+                        ? 'OK'
+                        : 'Never checked'
+                }
                 hint={
-                  [d.sync.lastErrorMessage ?? d.sync.lastErrorCode, d.sync.lastCheckedAt ? `checked ${stamp(d.sync.lastCheckedAt)}` : null]
-                    .filter(Boolean)
-                    .join(' · ') || undefined
+                  String(d.carrier ?? '').trim().toUpperCase() === 'USPS'
+                    ? 'Live carrier updates are not connected yet'
+                    : [d.sync.lastErrorMessage ?? d.sync.lastErrorCode, d.sync.lastCheckedAt ? `checked ${stamp(d.sync.lastCheckedAt)}` : null]
+                        .filter(Boolean)
+                        .join(' · ') || undefined
                 }
               />
             </DetailFacts>

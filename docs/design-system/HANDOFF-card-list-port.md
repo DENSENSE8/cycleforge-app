@@ -109,16 +109,15 @@ extracting.
    Example hierarchy: orders — status = SLA, subtitle = qty · condition · stock · bin · price;
    inventory — status = stock + location, subtitle = condition · received, no price.
    Steps:
-   1. **DONE 2026-09-27 — Map** → `docs/design-system/RESEARCH-record-card-foundation.md`. Key facts:
-      layouts are `SlotLayout` (`src/lib/tables/slot-layout-core.ts`, strict gate `slot-layout.ts`),
-      cascaded saved view → staff → org → product default (`resolve-effective-layout.ts`); saved views
-      store it in `saved_views.filters.layout` (`useSavedViews.ts`); tables register in
-      `SLOT_LAYOUT_TABLES` (`org-table-layouts.ts`); painters are `CompoundSlotCell` /
-      `CompoundStageStep` / `CompoundThumb` / `CompoundItem` (`tables/compound/CompoundCells.tsx`) +
-      `compound-slot-face.ts`. Gaps the card needs: lead item + sub-lines, photo field, stage summary
-      + ordering + assignable roles, rail field, disclosure priority, card-level actions.
-   2. Extend `SlotLayout` (not a new type) with `lead`, `stage`, `rail`, priority — through the strict
-      gate and the cascade — and fill the orders layout.
+   1. **DONE 2026-09-27 — Map.** Key facts:
+      layouts are `DataTableColumnLayout` (`src/lib/tables/data-table-column-layout.ts`),
+      product-owned constants consumed by each registered family. Painters are
+      `CompoundStageStep`, `CompoundThumb`, and `CompoundItem`
+      (`tables/compound/CompoundCells.tsx`). Gaps the card needs: lead item +
+      sub-lines, photo field, stage summary + ordering + assignable roles, rail
+      field, disclosure priority, and card-level actions.
+   2. Extend the card adapter with `lead`, `stage`, `rail`, and priority; do not
+      extend the DataTable column model to drive card hierarchy.
    3. Extract `RecordCard` + `TriageCardList`; move To-ship onto the orders layout with zero visual
       change (the proof). Reuse `FindField`; don't stretch the form-oriented `TriageSections` /
       `TriageScrollLayout` into a list.

@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Clock,
+  ClipboardList,
   Box,
   ChevronRight,
   Plus,
@@ -53,6 +54,7 @@ import {
   searchPageHrefForScanRoute,
 } from '@/lib/search/internal-id';
 import { looksLikeIdentifier } from '@/lib/search/search-hit';
+import { pastedRefList, pastedRefsHref } from '@/lib/search/pasted-refs';
 import {
   hrefForPreviewHit,
 } from '@/lib/search/commit-identifier-find';
@@ -94,6 +96,8 @@ interface SearchResult {
 
 
 const RECENT_KEY = 'command-bar-recent';
+/** Empty unscoped palette. Rests on Search; rolls only while looked at. */
+const PALETTE_HINTS = ['Search', 'Order #, serial, tracking', 'Paste a list', 'Jump to a page'] as const;
 /** How many hits the palette fetches AND shows. */
 const PALETTE_LIMIT = 12;
 const MAX_RECENT = 6;
@@ -563,7 +567,15 @@ export function CommandBar() {
           ref={inputRef}
           value={query}
           onValueChange={setQuery}
+          onPaste={(event) => {
+            const refs = pastedRefList(event.clipboardData.getData('text'));
+            if (!refs) return;
+            event.preventDefault();
+            setDialogOpen(false);
+            window.requestAnimationFrame(() => router.push(pastedRefsHref(refs)));
+          }}
           placeholder={axis ? searchByPlaceholder(axis) : 'Order #, serial, tracking…'}
+          hints={query || axis ? undefined : PALETTE_HINTS}
           data-testid="global-find-input"
         />
         {/* One control zone, ONE rule under it. */}
@@ -712,10 +724,33 @@ export function CommandBar() {
             </CommandGroup>
           ) : null}
           {open && !trimmedQuery ? (
-            // The contract hooks read the live URL (`useSearchParams`).
+            <>
+            <CommandGroup heading="Paste">
+              <CommandItem
+                value="paste a list"
+                onSelect={() => {
+                  void navigator.clipboard.readText().then(
+                    (text) => {
+                      const refs = pastedRefList(text);
+                      if (!refs) {
+                        inputRef.current?.focus();
+                        return;
+                      }
+                      setDialogOpen(false);
+                      window.requestAnimationFrame(() => router.push(pastedRefsHref(refs)));
+                    },
+                    () => inputRef.current?.focus(),
+                  );
+                }}
+              >
+                <ClipboardList className="size-4 text-text-faint" />
+                <span className="min-w-0 flex-1 truncate">Paste a list</span>
+              </CommandItem>
+            </CommandGroup>
             <Suspense fallback={null}>
               <CommandBarPageMap onHref={goHref} onIntent={goIntent} />
             </Suspense>
+            </>
           ) : null}
           {directOpen && trimmedQuery ? (
             <CommandGroup heading="Find">

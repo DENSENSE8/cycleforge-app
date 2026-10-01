@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executeWmsExecutionCommand } from './wms-execution-command';
 import { runWmsCommandOverHttp, type WmsCommandHttpIdentity } from './wms-command-http';
+import { signLocationScanProof } from '@/lib/inventory/location-scan-proof';
 
 const ORG = '00000000-0000-0000-0000-000000000002';
+const TEST_SECRET = 'test-wms-location-secret-at-least-thirty-two-chars';
+process.env.WMS_GATEWAY_SECRET = TEST_SECRET;
 
 function identity(overrides: Partial<WmsCommandHttpIdentity> = {}): WmsCommandHttpIdentity {
   return { organizationId: ORG, staffId: 67, can: () => true, ...overrides };
@@ -25,6 +28,7 @@ function take(commandId: string, staffId = 67) {
       reason: 'TAKE_FBA',
       reasonCodeId: null,
       notes: null,
+      locationVerificationToken: signLocationScanProof({ organizationId: ORG, staffId, locationCode: 'A-01-01' }, { secret: TEST_SECRET }).token,
     },
   };
 }

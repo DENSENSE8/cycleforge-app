@@ -11,7 +11,7 @@ import { unwrapScannedSerial } from '@/lib/barcode-routing';
 /** Rows painted per load; the footer says when the list is capped. */
 export const QC_LABEL_ROW_CAP = 500;
 
-/** The template the QC / pre-box unit sticker prints under (`post-multi-sn`, `PreboxWizard`). */
+/** Product template used by QC / pre-box unit stickers. */
 const QC_LABEL_TEMPLATE = 'product';
 
 type DbRow = Omit<QcLabelRow, 'title'> & { catalog_product_title: string | null; zoho_item_title: string | null };

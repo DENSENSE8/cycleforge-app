@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   STAFF_DIRECTORY_COMPOUND_COLUMNS,
   staffDirectoryCompoundColumnsFor,
@@ -26,7 +26,7 @@ import { STAFF_DIRECTORY_GRID_CAPABILITIES } from '@/components/settings/staff-d
 import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
 import { STAFF_DIRECTORY_FIELD_CATALOG, STAFF_DIRECTORY_PRODUCT_LAYOUT } from './staff-directory';
 import { resolveStaffDirectorySlotValue } from './staff-directory-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '../table-definition';
 
 /** Fetched by the desk's query, painted by nothing, and not facts until one paints them. */
@@ -111,7 +111,7 @@ describe('staff-directory catalog', () => {
   });
 
   it('product default parses, and the STAFF ID is the identity', () => {
-    const parsed = parseSlotLayout(STAFF_DIRECTORY_PRODUCT_LAYOUT, STAFF_DIRECTORY_FIELD_CATALOG);
+    const parsed = STAFF_DIRECTORY_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'staff-directory.staff_id');
     assert.deepEqual(
@@ -195,7 +195,7 @@ describe('staff-directory materialization', () => {
     const identity = STAFF_DIRECTORY_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'staff-directory.staff_id');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Staff #" is now the Fields-picker row
+    // (`data-table-family.ts`). "Staff #" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -216,7 +216,7 @@ describe('staff-directory materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of STAFF_DIRECTORY_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key) || col.key === '_fill') {
+      if (isDataTableChromeColumn(col.key) || col.key === '_fill') {
         assert.equal(staffDirectorySortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

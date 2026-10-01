@@ -1,13 +1,13 @@
-/** Unit-allocations column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
+/** Unit-allocations column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   UNIT_ALLOCATIONS_FIELD_CATALOG,
   UNIT_ALLOCATIONS_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/unit-allocations';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -28,43 +28,35 @@ export type UnitAllocationsGridColumnKey =
  * One column of the allocations pane. EXTENDS the house model rather than
  * re-declaring it — every shared field is inherited and only `key` narrows.
  */
-export interface UnitAllocationsGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: UnitAllocationsGridColumnKey;
-}
+export interface UnitAllocationsGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: UnitAllocationsGridColumnKey; }
 
 /** Materialize the mounted columns from an effective layout. */
-export function unitAllocationsCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly UnitAllocationsGridColumn[] {
-  const tracks = materializeTracks<UnitAllocationsGridColumn>({
-    layout,
-    catalog: UNIT_ALLOCATIONS_FIELD_CATALOG,
-    base: compoundColumnsFor<UnitAllocationsGridColumn>(),
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = UNIT_ALLOCATIONS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    // The title column is the UNIT under reservation, not a product.
-    if (t.key === 'item') return { ...t, label: 'Unit', gridLabel: 'Unit' };
-    // One temporal fact on the chrome: when the order took the unit.
-    if (t.key === 'dates') return { ...t, label: 'Allocated', gridLabel: 'Allocated' };
-    // The pill the retired `state` cell painted, in the pill's own track.
-    if (t.key === 'state') return { ...t, label: 'State', gridLabel: 'State' };
-    return t;
-  });
-}
+export function unitAllocationsCompoundColumnsFor(layout: DataTableColumnLayout): readonly UnitAllocationsGridColumn[] { const tracks = materializeTracks<UnitAllocationsGridColumn>({
+  layout,
+  catalog: UNIT_ALLOCATIONS_FIELD_CATALOG,
+  base: compoundColumnsFor<UnitAllocationsGridColumn>(),
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = UNIT_ALLOCATIONS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  // The title column is the UNIT under reservation, not a product.
+  if (t.key === 'item') return { ...t, label: 'Unit', gridLabel: 'Unit' };
+  // One temporal fact on the chrome: when the order took the unit.
+  if (t.key === 'dates') return { ...t, label: 'Allocated', gridLabel: 'Allocated' };
+  // The pill the retired `state` cell painted, in the pill's own track.
+  if (t.key === 'state') return { ...t, label: 'State', gridLabel: 'State' };
+  return t;
+}); }
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const UNIT_ALLOCATIONS_COMPOUND_COLUMNS: readonly UnitAllocationsGridColumn[] =
@@ -75,7 +67,7 @@ export function unitAllocationsSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {
   if (col.sortable === false) return null;
-  if (isSlotTableChromeTrack(col.key)) return null;
+  if (isDataTableChromeColumn(col.key)) return null;
   // The identity slot IS the shared fulfillment track on a compound row.
   if (col.key === 'fulfillment') return 'unit-allocations.order';
   if (col.key === 'item') return 'unit-allocations.unit';

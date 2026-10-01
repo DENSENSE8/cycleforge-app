@@ -601,12 +601,9 @@ export function useDashboardBulkSelection(
           const body = (await res.json()) as {
             matched?: boolean;
             blocked?: boolean;
-            alreadyDelivered?: boolean;
             message?: string;
           };
           if (body?.matched === false) throw new Error('no shipment for this label');
-          if (body?.blocked) throw new Error(body.message || 'cancelled — do not ship');
-          if (body?.alreadyDelivered) throw new Error(body.message || 'already delivered');
           return row;
         }),
       );

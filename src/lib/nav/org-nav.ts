@@ -25,8 +25,8 @@ export interface NavOverrideEntry {
   label?: string;
   /**
    * Suggestion sort for the Add catalog / merge helpers. Lower first.
-   * Unset items keep default relative order. Does **not** own the live spine
-   * (staff `spineSlots` do).
+   * Unset items keep default relative order. The live spine follows the
+   * product registry order and does not consume this value.
    */
   order?: number;
   /** Overrides for this page's declared children (desk tabs). */

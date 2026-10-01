@@ -1,12 +1,12 @@
-/** Staff-directory column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
+/** Staff-directory column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   STAFF_DIRECTORY_FIELD_CATALOG,
   STAFF_DIRECTORY_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/staff-directory';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -23,47 +23,39 @@ export type StaffDirectoryGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface StaffDirectoryGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: StaffDirectoryGridColumnKey;
-}
+export interface StaffDirectoryGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: StaffDirectoryGridColumnKey; }
 
 /**
  * Materialize the mounted columns from an effective layout. Tracks this family
  * has no fact for are filtered off the MOUNT — never removed from
  * `COMPOUND_TRACKS`.
  */
-export function staffDirectoryCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly StaffDirectoryGridColumn[] {
-  const tracks = materializeTracks<StaffDirectoryGridColumn>({
-    layout,
-    catalog: STAFF_DIRECTORY_FIELD_CATALOG,
-    base: compoundColumnsFor<StaffDirectoryGridColumn>(),
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = STAFF_DIRECTORY_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    // The title column is WHO the teammate is, not an item.
-    if (t.key === 'item') return { ...t, label: 'Name', gridLabel: 'Name' };
-    // One temporal fact on this desk: when they last signed in.
-    if (t.key === 'dates') return { ...t, label: 'Last login', gridLabel: 'Last login' };
-    // The pill the retired `StatusPill` cell painted, in the pill's own track.
-    if (t.key === 'state') return { ...t, label: 'Status', gridLabel: 'Status' };
-    return t;
-  });
-}
+export function staffDirectoryCompoundColumnsFor(layout: DataTableColumnLayout): readonly StaffDirectoryGridColumn[] { const tracks = materializeTracks<StaffDirectoryGridColumn>({
+  layout,
+  catalog: STAFF_DIRECTORY_FIELD_CATALOG,
+  base: compoundColumnsFor<StaffDirectoryGridColumn>(),
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = STAFF_DIRECTORY_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  // The title column is WHO the teammate is, not an item.
+  if (t.key === 'item') return { ...t, label: 'Name', gridLabel: 'Name' };
+  // One temporal fact on this desk: when they last signed in.
+  if (t.key === 'dates') return { ...t, label: 'Last login', gridLabel: 'Last login' };
+  // The pill the retired `StatusPill` cell painted, in the pill's own track.
+  if (t.key === 'state') return { ...t, label: 'Status', gridLabel: 'Status' };
+  return t;
+}); }
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const STAFF_DIRECTORY_COMPOUND_COLUMNS: readonly StaffDirectoryGridColumn[] =

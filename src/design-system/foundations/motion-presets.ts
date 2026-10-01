@@ -31,7 +31,7 @@ export const motionDuration = {
   captureStackRowExit: 0.18,
   /** Capture-stack fresh-arrival ring pulse (one shot, expanded row only) */
   captureStackFreshPulse: 1.8,
-  /** Slot-table edge-mark 1px traveler — slow ease-in-out bob. */
+  /** DataTable edge-mark 1px traveler — slow ease-in-out bob. */
   edgeMarkPulse: 4.2,
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
@@ -371,7 +371,7 @@ export const motionTransition = {
   } satisfies Transition,
 
   /**
-   * Slot-table edge-mark 1px traveler — slow ease-in-out bob with a trail.
+   * DataTable edge-mark 1px traveler — slow ease-in-out bob with a trail.
    * Transform-only (`y`). Pair with {@link CompoundEdgeRail} when `edgeMark.pulse`.
    */
   edgeMarkPulse: {

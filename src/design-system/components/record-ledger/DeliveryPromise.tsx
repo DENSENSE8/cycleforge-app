@@ -6,7 +6,7 @@
  * face for the outbound order and the inbound purchase.
  */
 
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { deliveryPromiseFace, type DeliveryPromiseInput } from '@/lib/shipping/delivery-promise';
 import { getCurrentPSTDateKey } from '@/utils/date';

@@ -105,57 +105,6 @@ public enum DesignTokens {
         /// Spacing intent `row-tight`.
         public let rowTight: CGFloat
 
-        /// Industrial: Phones and scan stations — dense: flush rows, square, 13px, no page padding, 0 ms.
-        public static let industrial = Mode(
-            canvas: Color(red: 250.0 / 255.0, green: 250.0 / 255.0, blue: 250.0 / 255.0), // #fafafa
-            bar: Color(red: 248.0 / 255.0, green: 248.0 / 255.0, blue: 244.0 / 255.0), // #f8f8f4
-            panel: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff
-            well: Color(red: 230.0 / 255.0, green: 231.0 / 255.0, blue: 225.0 / 255.0), // #e6e7e1
-            hover: Color(red: 244.0 / 255.0, green: 244.0 / 255.0, blue: 239.0 / 255.0), // #f4f4ef
-            ink: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
-            muted: Color(red: 83.0 / 255.0, green: 86.0 / 255.0, blue: 80.0 / 255.0), // #535650
-            faint: Color(red: 83.0 / 255.0, green: 86.0 / 255.0, blue: 80.0 / 255.0), // #535650
-            rule: Color(red: 202.0 / 255.0, green: 203.0 / 255.0, blue: 197.0 / 255.0), // #cacbc5
-            edge: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
-            control: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
-            divide: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
-            seam: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
-            frame: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
-            fact: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
-            mark: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
-            warnText: Color(red: 154.0 / 255.0, green: 52.0 / 255.0, blue: 18.0 / 255.0), // #9a3412
-            brand: nil,
-            radius: 0.0,
-            radiusControl: 0.0,
-            radiusPill: 0.0,
-            pagePad: 0.0,
-            pagePadTouch: 0.0,
-            hitMin: 32.0,
-            hitMinTouch: 48.0,
-            hitCta: 32.0,
-            hitCtaTouch: 48.0,
-            bodyText: 13.0,
-            bodyTextTouch: 13.0,
-            motionFeedback: 0.15,
-            motionPress: 0.15,
-            motionPulse: 0.0,
-            insetChipX: 6.0,
-            insetChipY: 2.0,
-            insetFieldX: 12.0,
-            insetFieldY: 8.0,
-            insetCozyX: 10.0,
-            insetCozyY: 6.0,
-            insetCardX: 16.0,
-            insetCardY: 16.0,
-            insetEmptyX: 16.0,
-            insetEmptyY: 24.0,
-            stackTight: 6.0,
-            stackRow: 8.0,
-            stackSection: 24.0,
-            rowGap: 8.0,
-            rowTight: 6.0
-        )
-
         /// Triage: Every desktop route — decide-and-route work: shadcn neutral, 10px cards, 8px controls, pill chips.
         public static let triage = Mode(
             canvas: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff

@@ -93,18 +93,21 @@ export async function GET(
     // organization_id predicates stay as a defense-in-depth backstop.
     const [stockResult, historyResult, catalogResult, photosResult, ledgerResult, transfers] =
       await Promise.all([
-        // 1. sku_stock row, with its home bin and its own cover (the first
-        //    SKU_STOCK photo — the cover every Stock card and record paints).
+        // 1. sku_stock row, with its home bin and its own cover (the main
+        //    SKU_STOCK photo: first by sort_order NULLS LAST, photo_id — the
+        //    cover every Stock card and record paints).
         tenantQuery(
           orgId,
           `SELECT ss.id, ss.sku, ss.product_title, ss.stock,
                   NULLIF(TRIM(ss.location), '') AS location,
-                  (SELECT MIN(pel.photo_id)
+                  (SELECT pel.photo_id
                      FROM photo_entity_links pel
                     WHERE pel.organization_id = ss.organization_id
                       AND pel.entity_type = 'SKU_STOCK'
                       AND pel.entity_id = ss.id
-                      AND pel.link_role = 'primary') AS cover_photo_id
+                      AND pel.link_role = 'primary'
+                    ORDER BY pel.sort_order ASC NULLS LAST, pel.photo_id ASC
+                    LIMIT 1) AS cover_photo_id
              FROM sku_stock ss
             WHERE ss.sku = $1 AND ss.organization_id = $2
             LIMIT 1`,
@@ -127,26 +130,42 @@ export async function GET(
            FROM sku_catalog WHERE sku = $1 AND organization_id = $2 LIMIT 1`,
           [skuValue, orgId],
         ),
-        // 4. Photos for SKU records with this static_sku
+        // 4. Every photo of this SKU, once, in display order: the SKU_STOCK
+        //    photos on its stock row first (sort_order NULLS LAST, photo_id —
+        //    index 0 is the main photo), then legacy SKU-record photos.
         tenantQuery(
           orgId,
-          `SELECT
-             p.id,
-             l.entity_id AS sku_id,
-             '/api/photos/' || p.id::text || '/content' AS url,
-             p.photo_type,
-             p.taken_by_staff_id,
-             p.created_at
-           FROM photos p
-           INNER JOIN photo_entity_links l
-             ON l.photo_id = p.id
-            AND l.organization_id = p.organization_id
-           JOIN sku s ON s.id = l.entity_id
-          WHERE l.entity_type = 'SKU'
-            AND l.link_role = 'primary'
-            AND s.static_sku = $1
-            AND p.organization_id = $2
-           ORDER BY p.created_at DESC`,
+          `SELECT id, sku_id, url, photo_type, taken_by_staff_id, created_at
+             FROM (
+               SELECT DISTINCT ON (p.id)
+                 p.id,
+                 l.entity_id AS sku_id,
+                 '/api/photos/' || p.id::text || '/content' AS url,
+                 p.photo_type,
+                 p.taken_by_staff_id,
+                 p.created_at,
+                 CASE WHEN l.entity_type = 'SKU_STOCK' THEN 0 ELSE 1 END AS grp,
+                 l.sort_order
+               FROM photos p
+               INNER JOIN photo_entity_links l
+                 ON l.photo_id = p.id
+                AND l.organization_id = p.organization_id
+                AND l.link_role = 'primary'
+               LEFT JOIN sku s
+                 ON l.entity_type = 'SKU'
+                AND s.id = l.entity_id
+               LEFT JOIN sku_stock ss
+                 ON l.entity_type = 'SKU_STOCK'
+                AND ss.id = l.entity_id
+                AND ss.organization_id = p.organization_id
+              WHERE p.organization_id = $2
+                AND (
+                  (l.entity_type = 'SKU' AND s.static_sku = $1)
+                  OR (l.entity_type = 'SKU_STOCK' AND ss.sku = $1)
+                )
+              ORDER BY p.id, CASE WHEN l.entity_type = 'SKU_STOCK' THEN 0 ELSE 1 END
+             ) combined
+           ORDER BY grp ASC, sort_order ASC NULLS LAST, id ASC`,
           [skuValue, orgId],
         ),
         // 5. Stock ledger (audit trail)

@@ -1,13 +1,20 @@
-# HANDOFF — Unbox speed (Lighthouse → 93) + local ticket mirror
+# HANDOFF — PARKED Unbox performance + local ticket mirror
+
+> **Owner instruction (2026-09-30):** do not run Lighthouse or pursue performance
+> measurement during the current Unbox display pass. The active receiving-Unbox
+> handoff is `docs/design-system/HANDOFF-unbox-receiving-ux.md`; it is UX/UI
+> only and explicitly excludes Lighthouse. This document preserves the old
+> performance record and its local-ticket-mirror work for a separately authorized
+> session.
 
 Paste everything below the rule into a fresh session at
 `/home/michaelgarisek/Projects/cycleforge-lanes/prod`.
 
 ---
 
-You are continuing CycleForge's Unbox performance work. Owner goals, in order:
+You are continuing CycleForge's **parked** Unbox performance work and local-ticket-mirror work only when the owner explicitly re-authorizes it. Owner goals, in order:
 1. **Found / unfound identification must be instant** at the Unbox scan (done — keep it that way).
-2. **`/unbox` Lighthouse ≥ 93** (desktop profile, production build). Currently **~88**.
+2. **PARKED:** `/unbox` Lighthouse ≥ 93. Do not run or measure this goal during the current UX/UI pass.
 3. **Ticket data lives in our DB**: ticket detail + full history render inline from our tables, no Zendesk round trip on the read path (in progress — see §3).
 4. **Unfound scan → ticket linked → operator told, with history** (BUILT — see §4): a tracking number scanned at Unbox that matches no order gets its Zendesk ticket number linked to that unfound carton, and the header's top-left line says so, with a history of recent scan feedback one click away.
 The owner has granted full authority to add and apply DB migrations for speed.

@@ -57,12 +57,6 @@ interface PhotosPayload {
 }
 
 const HOVER_LEAVE_MS = 140;
-/**
- * Delay before single-click → phone when {@link onOpenPhotosDisplay} is wired.
- * Long enough to absorb a double-click without sending; short enough that a
- * real phone tap still feels immediate.
- */
-const PHONE_CLICK_DEFER_MS = 280;
 /** Delay before the hover PhotoLauncher strip opens. */
 const GALLERY_OPEN_DELAY_MS = 420;
 /**
@@ -93,9 +87,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   galleryPlacement = 'below',
   appearance = 'pill',
   onSendToTicket,
-  onOpenMovePhotosExternal,
-  onOpenPhotosDisplay,
-  suppressHoverGallery = false,
 }: {
   receivingId: number;
   staffId: number;
@@ -118,18 +109,12 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   galleryPlacement?: 'below' | 'above' | 'right' | 'left';
   /**
    * `pill` — station identity / section chrome (camera + count, locked w-14).
-   * `flush` — square h-11 ghost cell for unit rows (Units Displays explosion).
+   * `flush` — square h-11 ghost cell for unit rows.
    * `chrome` — one-row carton bar: h-full cell, h-3.5 camera + count.
    */
   appearance?: 'pill' | 'flush' | 'chrome';
   /** Opens SendPhotoNoteRail — ticket icon in the photo dropdown toolbar. */
   onSendToTicket?: () => void;
-  /** Unbox: open Move photos in the station tool push instead of a center overlay. */
-  onOpenMovePhotosExternal?: () => void;
-  /** Unbox carton identity — double-click opens Displays → Photos (Actions). */
-  onOpenPhotosDisplay?: () => void;
-  /** Suppress the hover PhotoLauncher strip (rare). */
-  suppressHoverGallery?: boolean;
 }) {
   const { getClient } = useAblyClient();
   const { user } = useAuth();
@@ -245,7 +230,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   const [galleryMovePinned, setGalleryMovePinned] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
   const galleryOpenTimer = useRef<ReturnType<typeof setTimeout>>();
-  const phoneClickTimer = useRef<ReturnType<typeof setTimeout>>();
   const hostRef = useRef<HTMLDivElement | null>(null);
 
   // Hover peek is available with or without photos — empty cartons still get
@@ -293,7 +277,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     () => () => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
       if (galleryOpenTimer.current) clearTimeout(galleryOpenTimer.current);
-      if (phoneClickTimer.current) clearTimeout(phoneClickTimer.current);
     },
     [],
   );
@@ -310,53 +293,16 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         : STATION_CONTEXT_PHOTO_PILL_CLASS;
 
   const noun = isItemScope ? 'item' : 'carton';
-  const opensPhotosDisplay = typeof onOpenPhotosDisplay === 'function';
-
-  // Compact teaching tip — sits to the right of the pill (short copy so it
-  // never spills the viewport). Displays Photos wired → phone + dbl-click.
-  const title = opensPhotosDisplay
-    ? canSendToPhone
-      ? 'Phone · dbl-click details'
-      : `Upload ${noun} photos`
+  const title = canSendToPhone ? 'Send to phone' : `Upload ${noun} photos`;
+  const ariaLabel = hasGallery
+    ? `Photos ${count}; ${canSendToPhone ? 'send to phone' : 'upload'} or open gallery`
     : canSendToPhone
       ? 'Send to phone'
       : `Upload ${noun} photos`;
 
-  const ariaLabel = opensPhotosDisplay
-    ? hasGallery
-      ? `Photos ${count}; send to phone; double-click opens photo details`
-      : canSendToPhone
-        ? 'Send to phone; double-click opens photo details'
-        : `Upload ${noun} photos`
-    : hasGallery
-      ? suppressHoverGallery
-        ? `Photos ${count}; send to phone`
-        : `Photos ${count}; ${canSendToPhone ? 'send to phone' : 'upload'} or open gallery`
-      : canSendToPhone
-        ? 'Send to phone'
-        : `Upload ${noun} photos`;
-
   const handlePillClick = useCallback(() => {
-    if (!opensPhotosDisplay) {
-      void handleRequestOnPhone();
-      return;
-    }
-    // Defer phone so a double-click can cancel and open Displays instead.
-    if (phoneClickTimer.current) clearTimeout(phoneClickTimer.current);
-    phoneClickTimer.current = setTimeout(() => {
-      phoneClickTimer.current = undefined;
-      void handleRequestOnPhone();
-    }, PHONE_CLICK_DEFER_MS);
-  }, [handleRequestOnPhone, opensPhotosDisplay]);
-
-  const handlePillDoubleClick = useCallback(() => {
-    if (!onOpenPhotosDisplay) return;
-    if (phoneClickTimer.current) {
-      clearTimeout(phoneClickTimer.current);
-      phoneClickTimer.current = undefined;
-    }
-    onOpenPhotosDisplay();
-  }, [onOpenPhotosDisplay]);
+    void handleRequestOnPhone();
+  }, [handleRequestOnPhone]);
 
   // Carton chrome: raw button (not Button size=sm). The primitive's h-8 /
   // caption line-height sat the glyph and count off the row midline.
@@ -364,11 +310,10 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     <button
       type="button"
       onClick={handlePillClick}
-      onDoubleClick={opensPhotosDisplay ? handlePillDoubleClick : undefined}
       disabled={phone.pending}
       aria-disabled={!canSendToPhone || undefined}
       aria-label={ariaLabel}
-      aria-expanded={suppressHoverGallery ? undefined : showGalleryPeek}
+      aria-expanded={showGalleryPeek}
       className={STATION_CONTEXT_PHOTO_CHROME_CLASS}
     >
       <Camera className={STATION_CHROME_GLYPH_CLASS} aria-hidden />
@@ -380,11 +325,10 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       variant="ghost"
       size="sm"
       onClick={handlePillClick}
-      onDoubleClick={opensPhotosDisplay ? handlePillDoubleClick : undefined}
       disabled={phone.pending}
       aria-disabled={!canSendToPhone || undefined}
       ariaLabel={ariaLabel}
-      aria-expanded={suppressHoverGallery ? undefined : showGalleryPeek}
+      aria-expanded={showGalleryPeek}
       icon={<Camera className="h-4 w-4" />}
       iconRight={appearance === 'pill' && !hasGallery ? <Plus className="h-3 w-3" /> : undefined}
       className={btnClass}
@@ -393,16 +337,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     </Button>
   );
 
-  // Opt-out: phone-only face (no hover action dropdown).
-  if (suppressHoverGallery) {
-    return (
-      <div ref={hostRef} className="relative flex h-full min-h-0 shrink-0 self-stretch items-stretch">
-        <HoverTooltip label={title} placement="right" asChild>
-          {pillButton}
-        </HoverTooltip>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -451,7 +385,6 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
             onPhotoUploaded={() => refresh()}
             onUploadOverlayOpenChange={setGalleryUploadPinned}
             onMovePhotosOpenChange={setGalleryMovePinned}
-            onOpenMovePhotosExternal={onOpenMovePhotosExternal}
             onSendToTicket={onSendToTicket}
           />
         </div>

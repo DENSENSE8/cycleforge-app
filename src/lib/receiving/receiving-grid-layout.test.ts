@@ -6,7 +6,7 @@ import {
   isReceivingGridFrozen,
   isReceivingGridSortable,
 } from '@/lib/receiving/receiving-grid-layout';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 
 describe('isReceivingGridSortable — the one sortability answer', () => {
   it('keeps the fact words sortable and the chrome tracks not', () => {
@@ -21,7 +21,7 @@ describe('isReceivingGridSortable — the one sortability answer', () => {
     // to no fact would offer a click that sorts nothing. Chrome is exempt by
     // the engine's own predicate, not by a per-family flag.
     for (const col of RECEIVING_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key)) continue;
+      if (isDataTableChromeColumn(col.key)) continue;
       if (col.key === '_fill') continue;
       assert.equal(
         isReceivingGridSortable(col.key),

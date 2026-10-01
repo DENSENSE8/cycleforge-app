@@ -12,7 +12,7 @@ import {
 } from '@/lib/sidebar-navigation';
 import { buildCommandBarNavGroups } from './command-bar-nav-groups';
 import { LANE_MOBILE_FIRST, isLaneVisible } from './lanes';
-import { migrateSpineSlots, resolveSpineMapEntries } from './spine-slots';
+import { resolveSpineMapEntries } from './spine-slots';
 
 // Read from the ledger everywhere EXCEPT this constant, which names the set for readable failure messages.
 const HIDDEN_LANE_IDS = ['monitor', 'support'] as const;
@@ -106,12 +106,9 @@ test('the ⌘K palette reads the gate on BOTH paths — no-arg build included', 
   }
 });
 
-test('a stale saved spine order cannot resurrect a hidden lane', () => {
-  // `prefs.spineSlots` is persisted, so a staffer who arranged the spine before the gate landed still has `sales` / `support` / `monitor`…
+test('the fixed spine order cannot resurrect a hidden lane', () => {
   const items = getSidebarNavItems();
-  const stale = [...HIDDEN_LANE_IDS, 'sales', 'support', 'operations', ...items.map((i) => i.id)];
-  const { slots } = migrateSpineSlots(stale, items, null);
-  for (const entry of resolveSpineMapEntries(slots, items)) {
+  for (const entry of resolveSpineMapEntries(items)) {
     const lane = entry.kind === 'page' ? laneOf(entry.page.id) : entry.kind === 'lane' ? entry.id : null;
     assert.ok(
       lane === null || isLaneVisible(lane),

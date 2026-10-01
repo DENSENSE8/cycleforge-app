@@ -16,6 +16,7 @@ import { classifyInput, findSerialInCatalog, looksLikeFnsku } from '@/lib/scan-r
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { detectStationScanType, type StationScanType } from '@/lib/station-scan-routing';
 import { normalizeTrackingNumber } from '@/lib/tracking-format';
+import type { PhoneScanCorrelation } from '@/lib/scan/phone-scan-intent';
 import {
   appendSerialToSkuGroups,
   initSkuSerialGroups,
@@ -192,7 +193,7 @@ export function deskOrderFromQueueRow(row: ShippedOrder): ActiveStationOrder {
  */
 export function scanDeskTracking(
   input: string,
-  opts: { idempotencyKey: string; packLocationId?: number | null },
+  opts: { idempotencyKey: string; packLocationId?: number | null; correlation?: PhoneScanCorrelation },
 ): Promise<DeskTrackingResult> {
   return anchorDeskPick(
     {
@@ -200,6 +201,12 @@ export function scanDeskTracking(
       value: normalizeTrackingNumber(input),
       idempotencyKey: opts.idempotencyKey,
       ...(opts.packLocationId != null ? { packLocationId: opts.packLocationId } : {}),
+      ...(opts.correlation
+        ? {
+            mobileScanEventId: opts.correlation.mobileScanEventId,
+            scanClientEventId: opts.correlation.clientEventId,
+          }
+        : null),
     },
     'Tracking number not found — logged to exceptions queue.',
   );
@@ -210,8 +217,21 @@ export function scanDeskTracking(
  * {@link scanDeskTracking}, for orders with no label to scan (walk-in /
  * Pickup) and for a walk that already knows which order it opened.
  */
-export function scanDeskOrder(orderId: number, opts: { idempotencyKey: string }): Promise<DeskTrackingResult> {
-  return anchorDeskPick({ type: 'ORDER', orderId, idempotencyKey: opts.idempotencyKey }, 'Order not found.');
+export function scanDeskOrder(
+  orderId: number,
+  opts: { idempotencyKey: string; correlation?: PhoneScanCorrelation },
+): Promise<DeskTrackingResult> {
+  return anchorDeskPick({
+    type: 'ORDER',
+    orderId,
+    idempotencyKey: opts.idempotencyKey,
+    ...(opts.correlation
+      ? {
+          mobileScanEventId: opts.correlation.mobileScanEventId,
+          scanClientEventId: opts.correlation.clientEventId,
+        }
+      : null),
+  }, 'Order not found.');
 }
 
 async function anchorDeskPick(body: Record<string, unknown>, notFound: string): Promise<DeskTrackingResult> {
@@ -265,6 +285,7 @@ export async function addDeskSerial(opts: {
   contextOrder: ActiveStationOrder | null;
   scanSessionId: string | null;
   idempotencyKey: string;
+  correlation?: PhoneScanCorrelation | null;
 }): Promise<DeskSerialResult> {
   const { contextOrder } = opts;
   /** The serial as it should be STORED. */
@@ -296,12 +317,16 @@ export async function addDeskSerial(opts: {
             allowFbaDuplicates: looksLikeFnsku(trk) || /^FBA/i.test(trk),
             scanSessionId: sessionId,
             idempotencyKey: opts.idempotencyKey,
+            mobileScanEventId: opts.correlation?.mobileScanEventId ?? null,
+            scanClientEventId: opts.correlation?.clientEventId ?? null,
           }
         : {
             action: 'add-to-last',
             serial,
             scanSessionId: sessionId,
             idempotencyKey: opts.idempotencyKey,
+            mobileScanEventId: opts.correlation?.mobileScanEventId ?? null,
+            scanClientEventId: opts.correlation?.clientEventId ?? null,
           },
     );
     if (!data?.success) return { ok: false, error: data?.error || 'Failed to add serial' };
@@ -379,6 +404,7 @@ export async function scanDeskSku(opts: {
   contextOrder: ActiveStationOrder | null;
   scanSessionId: string | null;
   idempotencyKey: string;
+  correlation?: PhoneScanCorrelation | null;
 }): Promise<DeskSkuResult> {
   const { input, contextOrder } = opts;
   if (!contextOrder) {
@@ -391,6 +417,8 @@ export async function scanDeskSku(opts: {
       salId: contextOrder.salId ?? null,
       scanSessionId: (contextOrder.scanSessionId ?? opts.scanSessionId) || undefined,
       idempotencyKey: opts.idempotencyKey,
+      mobileScanEventId: opts.correlation?.mobileScanEventId ?? null,
+      scanClientEventId: opts.correlation?.clientEventId ?? null,
     });
     if (!data?.success) return { ok: false, error: data?.error || 'SKU not found' };
 

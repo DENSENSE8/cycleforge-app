@@ -21,7 +21,6 @@ import {
 import type { ThemeName } from '@/design-system/themes/registry';
 import type { StationDepthName } from '@/design-system/themes/station-depths';
 import type { StationSkinName } from '@/design-system/themes/station-skins';
-import { slotLayoutSchema } from '@/lib/tables/slot-layout';
 
 /** The constants live in `staff-preferences-constants.ts` — a module with no `zod` import — and are re-exported here so every existing… */
 export {
@@ -117,7 +116,7 @@ export const StaffPreferencesPutBody = z
       .nullable()
       .optional(),
     theme: z.enum(STAFF_THEMES as [ThemeName, ...ThemeName[]]).nullable().optional(),
-    /** Scan-station Color (industrial mill, packing bench, coal, catalog materials). */
+    /** Scan-station Color (porcelain, packing bench, coal, catalog materials). */
     stationSkin: z
       .enum(STAFF_STATION_SKINS as [StationSkinName, ...StationSkinName[]])
       .nullable()
@@ -255,20 +254,13 @@ export const StaffPreferencesPutBody = z
               )
               .optional(),
             /**
-             * Industrial ledger row zoom (BRIEF §4 industrial: row zoom per
-             * list, per staff). S = one 32px line, M = 3 × 32px bands
+             * Record row zoom per list and staff. S = one 32px line, M = 3 × 32px bands
              * (default), L = 3 × 36px bands.
              */
             rowZoom: z.enum(['S', 'M', 'L']).optional(),
           })
           .strict(),
       )
-      .nullable()
-      .optional(),
-    /** Per-staff SLOT LAYOUT override, keyed by TableId — the personal layer of the slot cascade (`resolveEffectiveLayout`: */
-    tableLayouts: z
-      .record(z.string().max(64), slotLayoutSchema)
-      .refine((map) => Object.keys(map).length <= 32, 'too many table layouts')
       .nullable()
       .optional(),
     /**
@@ -289,10 +281,6 @@ export const StaffPreferencesPutBody = z
       .max(UNBOX_PINNED_EXTRA_TABS_MAX)
       .nullable()
       .optional(),
-    /** Per-staff MasterNav order — ordered `SidebarNavItem.id`s. */
-    spineSlots: z.array(z.string().min(1).max(64)).max(40).nullable().optional(),
-    /** Generation of {@link spineSlots} this row was last rolled onto (`SPINE_SLOTS_VERSION`). */
-    spineSlotsVersion: z.number().int().min(0).max(999).nullable().optional(),
   })
   .strict();
 

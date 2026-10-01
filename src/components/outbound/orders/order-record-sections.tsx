@@ -17,7 +17,7 @@ import { EvidenceDisclosure } from '@/design-system/components/record-ledger/Evi
 import type { OrderLabelStatus } from '@/lib/shipping/order-label-summary';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_LABEL_CLASS, RECORD_TRAILING_ACTION_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS, RECORD_TRAILING_ACTION_CLASS } from '@/design-system/tokens/record';
 import { cn } from '@/utils/_cn';
 import { useOrderDocuments, useOrderLabelSummary } from '@/lib/orders/order-paperwork-client';
 import { OrderLabelEntries } from './OrderLabelEntries';

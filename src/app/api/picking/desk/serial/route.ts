@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { publishTechLogChanged } from '@/lib/realtime/publish';
+import { publishActivityLogged, publishTechLogChanged } from '@/lib/realtime/publish';
 import {
   getApiIdempotencyResponse,
   readIdempotencyKey,
@@ -75,6 +75,7 @@ type HandlerOutcome =
       attachedToOrder: boolean;
       /** The serial's allocated unit, picked for the desk order in the same transaction. */
       pick: DeskSerialPickResult;
+      stationActivityId: number | null;
     }
   /** `remove` / `update`: the units whose desk pick the dropped serials reverted. */
   | { kind: 'ok'; serialNumbers: string[]; orderId: number | null; unpicked: RevertedUnitPick[] }
@@ -206,6 +207,22 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             serial,
             source: 'tech.serial',
             sourceMethod: 'SCAN',
+            activityMetadata: ctx.session.deviceKind === 'phone'
+              ? {
+                  origin: 'phone',
+                  surface: '/m/pick',
+                  ...(String(body.scanClientEventId ?? idemKey ?? '').trim()
+                    ? { client_event_id: String(body.scanClientEventId ?? idemKey).trim() }
+                    : null),
+                  ...(Number.isSafeInteger(Number(body.mobileScanEventId)) && Number(body.mobileScanEventId) > 0
+                    ? { mobile_scan_event_id: Number(body.mobileScanEventId) }
+                    : null),
+                  order_row_id: salCtx.orderId,
+                  subject_entity_type: salCtx.orderId != null ? 'order' : 'scan',
+                  subject_id: String(salCtx.orderId ?? serial),
+                  subject_identifier: serial,
+                }
+              : undefined,
           });
           if (!ins.ok) {
             throw new HandlerError(ins.status, ins.error);
@@ -233,6 +250,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             ordersExceptionId: salCtx.ordersExceptionId,
             attachedToOrder: salCtx.ordersExceptionId == null,
             pick,
+            stationActivityId: ins.stationActivityId,
           };
         }
 
@@ -367,6 +385,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     await invalidateCacheTags(['desk-pick-logs', 'orders-next', 'orders']);
     await publishTechLogChanged({ organizationId: orgId, techId: staffId, action: logAction, source: 'tech.serial' });
+    if (outcome.kind === 'add' && outcome.stationActivityId != null) {
+      await publishActivityLogged({
+        organizationId: orgId,
+        id: outcome.stationActivityId,
+        station: 'TECH',
+        activityType: 'SERIAL_ADDED',
+        staffId,
+        scanRef: serial,
+        source: 'tech.serial',
+      }).catch(() => {});
+    }
     if (outcome.kind === 'add' && outcome.pick.kind === 'picked') {
       // A committed pick repaints the To-ship Pick column — same event as the unit scan.
       const pickedOrderId = outcome.pick.orderId;

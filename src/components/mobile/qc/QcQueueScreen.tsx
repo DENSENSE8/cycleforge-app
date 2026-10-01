@@ -21,7 +21,7 @@ import { DetailDock } from '@/design-system/components/DetailDock';
 import { RecordCardMobile } from '@/design-system/components/record-card/RecordCardMobile';
 import { Button } from '@/design-system/primitives';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { ITEM_RECORD_MOBILE_ROW } from '@/design-system/tokens/item-record-mobile';
 import { QC_QUEUE_TIER } from '@/design-system/tokens/qc-queue-tier';
 import { withJobReturn } from '@/lib/mobile/nav-trail';

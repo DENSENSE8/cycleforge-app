@@ -86,12 +86,12 @@ test('partial node index is present and scoped to non-null node ids', () => {
 // The writer is Deps-injectable (backend-patterns.md); a fake query captures
 // the INSERT text + params so no DB is touched.
 
-function fakeWriter() {
+function fakeWriter(rows: Array<{ id: number }> = []) {
   const calls: Array<{ text: string; params: unknown[] }> = [];
   const deps: OpsEventWriterDeps = {
     query: async (text, params) => {
       calls.push({ text, params });
-      return { rows: [] };
+      return { rows };
     },
   };
   return { deps, calls };
@@ -126,4 +126,12 @@ test('recordOpsEvent normalizes an explicit null workflowNodeId to NULL', async 
   const { deps, calls } = fakeWriter();
   await recordOpsEvent(baseInput({ workflowNodeId: null }), deps);
   assert.equal(calls[0].params[7], null);
+});
+
+test('recordOpsEvent returns the inserted id and reports an idempotent replay as null', async () => {
+  const inserted = fakeWriter([{ id: 41 }]);
+  assert.equal(await recordOpsEvent(baseInput(), inserted.deps), 41);
+
+  const replay = fakeWriter();
+  assert.equal(await recordOpsEvent(baseInput(), replay.deps), null);
 });

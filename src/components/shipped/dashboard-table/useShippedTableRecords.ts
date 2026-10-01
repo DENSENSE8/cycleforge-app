@@ -1,27 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useEventBridge } from '@/hooks';
-import { dashboardShippedQuery, dashboardShippedWeekQuery, SHIPPED_WEEK_PAGE_SIZE } from '@/lib/queries/dashboard-queries';
+import { dashboardShippedQuery } from '@/lib/queries/dashboard-queries';
 import { fetchShippedHydration } from '@/lib/dashboard-table-data';
 import { useShippedWeekBuckets } from './useShippedWeekBuckets';
-import { getRecentWeekBuckets } from '@/lib/dashboard-week-range';
+import { SHIPPED_FEED_PAGE_SIZE, SHIPPED_FEED_PHASE } from '@/lib/shipping/shipped-feed-config';
 import { toPSTDateKey } from '@/utils/date';
 import { shippedStampInWindow } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import {
   dedupeShippedRecords,
   deriveShippedRecord,
   isShippedDeskRow,
+  shippedRecordTimestamp,
   type DerivedPackerRecord,
 } from '@/lib/shipped-records';
 import type { ShippedTableFilters } from './useShippedTableFilters';
 
-// Spine-first render (immediate paint):
-const SPINE_FIRST = process.env.NEXT_PUBLIC_SHIPPED_SPINE_FIRST === 'true';
-const SHIPPED_PHASE: 'spine' | 'full' = SPINE_FIRST ? 'spine' : 'full';
 
-/** Fetches the shipped records (week buckets or all-time) with the view filters answered server-side, applies the outbound-state (`ostatus`) filter, and attaches… */
+/** Fetch the server-seeded first package page, then the selected period/filter pages. */
 export function useShippedTableRecords(filters: ShippedTableFilters) {
   const {
     effectiveWeekStart,
@@ -30,23 +28,35 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     effStaffId,
     effPickedBy,
     shippedTime,
-    shippedInstantWindow,
+    dateFrom,
+    dateTo,
+    hasDateRange,
     shippedFilter,
+    shippedInstantWindow,
     exceptionsOnly,
     carrierFilter,
+    channelFilter,
     statusFilter,
     matchesOutbound,
     normalizedSearch,
+    sort,
   } = filters;
 
-  const queryClient = useQueryClient();
 
   // Bucketed week cache:
   const allTimeMode = !effectiveWeekStart || !effectiveWeekEnd;
 
-  /* "Load more" paging: */
   const [pageMultiplier, setPageMultiplier] = useState(1);
-  const fetchLimit = pageMultiplier * SHIPPED_WEEK_PAGE_SIZE;
+  const fetchLimit = pageMultiplier * SHIPPED_FEED_PAGE_SIZE;
+  // A named day loads until the server returns a short page, cap 20 (2,000).
+  // A week loads 3 pages, then Load more. A fresh `{dateFrom,dateTo}` every
+  // render used to change the query key, drop settled data, and stop on page 1.
+  const namedDay = hasDateRange && dateFrom === dateTo;
+  const autoCap = namedDay ? 20 : 3;
+  const dayWindow = useMemo(
+    () => (hasDateRange ? { dateFrom, dateTo } : null),
+    [hasDateRange, dateFrom, dateTo],
+  );
   useEffect(() => {
     setPageMultiplier(1);
   }, [
@@ -56,9 +66,11 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     effStaffId,
     shippedFilter,
     carrierFilter,
+    channelFilter,
     statusFilter,
     exceptionsOnly,
     shippedTime,
+    dayWindow,
     effPickedBy,
     normalizedSearch,
   ]);
@@ -71,31 +83,32 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     staffId: effStaffId ?? undefined,
     shippedFilter,
     carrier: carrierFilter,
+    channel: channelFilter,
     statusCategory: statusFilter,
     exceptionsOnly,
-    shippedTime,
+    shippedTime: shippedTime ?? dayWindow,
+    sort,
     pickedBy: effPickedBy,
     searchTerm: normalizedSearch,
     enabled: !allTimeMode,
     limit: fetchLimit,
-    phase: SHIPPED_PHASE,
+    phase: SHIPPED_FEED_PHASE,
   });
 
   const allTimeQuery = useQuery({
     ...dashboardShippedQuery({
-      weekStart: '',
-      weekEnd: '',
       packedBy: effPackedBy,
       staffId: effStaffId ?? undefined,
       shippedFilter,
       carrier: carrierFilter,
+      channel: channelFilter,
       statusCategory: statusFilter,
       exceptionsOnly,
       shippedTime,
       pickedBy: effPickedBy,
       searchTerm: normalizedSearch,
       limit: fetchLimit,
-      phase: SHIPPED_PHASE,
+      phase: SHIPPED_FEED_PHASE,
     }),
     enabled: allTimeMode,
     placeholderData: (previousData) => previousData,
@@ -108,37 +121,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     isFetching: allTimeMode ? allTimeQuery.isFetching : weekBuckets.isFetching,
   };
 
-  // Warm the cache on idle so the common period presets (this/last week) resolve INSTANTLY instead of cold-fetching on click.
-  useEffect(() => {
-    const warm = () => {
-      for (const { weekStart, weekEnd } of getRecentWeekBuckets(2)) {
-        void queryClient.prefetchQuery(
-          dashboardShippedWeekQuery({
-            weekStart,
-            weekEnd,
-            packedBy: effPackedBy,
-            staffId: effStaffId ?? undefined,
-            shippedFilter,
-            carrier: carrierFilter,
-            statusCategory: statusFilter,
-            exceptionsOnly,
-            pickedBy: effPickedBy,
-            phase: SHIPPED_PHASE,
-          }),
-        );
-      }
-    };
-    const w = window as typeof window & {
-      requestIdleCallback?: (cb: () => void) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-    if (typeof w.requestIdleCallback === 'function') {
-      const id = w.requestIdleCallback(warm);
-      return () => w.cancelIdleCallback?.(id);
-    }
-    const id = window.setTimeout(warm, 300);
-    return () => window.clearTimeout(id);
-  }, [effPackedBy, effStaffId, effPickedBy, shippedFilter, carrierFilter, statusFilter, exceptionsOnly, queryClient]);
 
 
 
@@ -147,19 +129,18 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
 
   const fetchedRecords = allTimeMode ? allTimeQuery.data ?? [] : weekBuckets.rows;
 
-  // Clip the merged rows to the ACTIVE window — the selected week OR explicit calendar range (both surface as effectiveWeekStart/End).
-  // A time window clips on the SAME exact instants the server applied (never day keys), so rows cannot disagree.
+  // Clip on the dock handoff timestamp. `created_at` is the represented PACK
+  // row and can be days or months older than the SHIP_CONFIRM that moved the
+  // package onto this desk.
   const rawRecords = useMemo(() => {
     if (!effectiveWeekStart || !effectiveWeekEnd) return fetchedRecords;
     if (shippedInstantWindow) {
       return fetchedRecords.filter((r) => {
-        const src = r as { created_at?: string; effShipTime?: string };
-        return shippedStampInWindow(String(src.created_at || src.effShipTime || ''), shippedInstantWindow);
+        return shippedStampInWindow(shippedRecordTimestamp(r), shippedInstantWindow);
       });
     }
     return fetchedRecords.filter((r) => {
-      const src = r as { created_at?: string; effShipTime?: string };
-      const key = toPSTDateKey(String(src.created_at || src.effShipTime || ''));
+      const key = toPSTDateKey(shippedRecordTimestamp(r));
       return key !== '' && key >= effectiveWeekStart && key <= effectiveWeekEnd;
     });
   }, [fetchedRecords, effectiveWeekStart, effectiveWeekEnd, shippedInstantWindow]);
@@ -179,30 +160,27 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     () => records.map(deriveShippedRecord),
     [records],
   );
-
   // Spine-first hydration:
   const salIds = useMemo(
     () =>
-      SPINE_FIRST
-        ? derivedRecords
-            .map((r) => Number((r as { id?: unknown }).id))
-            .filter((id) => Number.isFinite(id))
-        : [],
+      derivedRecords
+        .map((record) => Number(record.id))
+        .filter((id) => Number.isFinite(id)),
     [derivedRecords],
   );
   const salIdsKey = useMemo(() => salIds.slice().sort((a, b) => a - b).join(','), [salIds]);
   const hydrationQuery = useQuery({
     queryKey: ['shipped-hydration', salIdsKey],
     queryFn: () => fetchShippedHydration(salIds),
-    enabled: SPINE_FIRST && salIds.length > 0,
+    enabled: salIds.length > 0,
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
   });
   const hydratedRecords = useMemo<DerivedPackerRecord[]>(() => {
     const map = hydrationQuery.data;
-    if (!SPINE_FIRST || !map) return derivedRecords;
+    if (!map) return derivedRecords;
     return derivedRecords.map((r) => {
-      const h = map[Number((r as { id?: unknown }).id)];
+      const h = map[Number(r.id)];
       return h ? ({ ...r, ...h } as DerivedPackerRecord) : r;
     });
   }, [derivedRecords, hydrationQuery.data]);
@@ -216,6 +194,10 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     : allTimeMode
       ? (allTimeQuery.data?.length ?? 0) >= fetchLimit
       : weekBuckets.truncated;
+  useEffect(() => {
+    if (normalizedSearch || query.isFetching || !isTruncated || pageMultiplier >= autoCap) return;
+    setPageMultiplier((m) => (m >= autoCap ? m : m + 1));
+  }, [normalizedSearch, query.isFetching, isTruncated, pageMultiplier, autoCap]);
   const pagination = {
     isTruncated,
     loadMore,

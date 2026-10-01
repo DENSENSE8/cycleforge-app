@@ -16,7 +16,7 @@ import { TrackingIdentity } from '@/components/ui/OrderIdentityChips';
 import type { RecordFact, RecordModel, RecordModelItem, RecordStep } from '@/design-system/components/record-ledger/record-model';
 import { RecordListingLink } from '@/design-system/components/record-ledger/RecordIdentity';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { ReceivingRecordPlatform } from '@/components/receiving/ReceivingRecordIdentity';
 import type { CartonRecord } from '@/components/receiving/history/use-carton-record';
 import { pastedNumberStatusFace } from '@/components/receiving/incoming/cards/PastedNumberCard';

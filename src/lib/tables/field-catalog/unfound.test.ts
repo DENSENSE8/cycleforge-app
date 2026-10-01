@@ -11,7 +11,7 @@ import {
 } from '@/components/receiving/unfound/grid/unfound-grid-layout';
 import { UNFOUND_FIELD_CATALOG, UNFOUND_PRODUCT_LAYOUT } from './unfound';
 import { resolveUnfoundSlotValue, unfoundItemHandle } from './unfound-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<QueueRow> = {}): QueueRow {
   return {
@@ -45,7 +45,7 @@ describe('unfound catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; the full ops set)', () => {
-    const parsed = parseSlotLayout(UNFOUND_PRODUCT_LAYOUT, UNFOUND_FIELD_CATALOG);
+    const parsed = UNFOUND_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'unfound.item');
     assert.deepEqual(parsed.statusBindings, [

@@ -55,6 +55,8 @@ interface FetchPackerLogRowsOptions {
   searchTerm?: string;
   /** Spine-first render (immediate paint). */
   spineOnly?: boolean;
+  /** Sidebar sort. Default is scanned-out, newest. */
+  sort?: string | null;
 }
 
 interface FetchPackerLogRowsResult {
@@ -71,8 +73,36 @@ interface FetchPackerLogRowsResult {
 // v11: rows carry the package's order lines (`package_lines`) — the Shipped
 // card's lines, read with the same title / photo joins as the package record.
 // v12: a line's photo is the Allocate precedence (`orderLineImageSql`), not the catalog image alone.
-const CACHE_NAMESPACE = 'api:packing-logs-v12';
+// v14: staff filter includes the latest SHIP_CONFIRM staffer, not only pack and test.
+// v17: staff 1 scan-out timestamps were moved onto the pack instant; drop the v16 page.
+const CACHE_NAMESPACE = 'api:packing-logs-v17';
 const CACHE_TAGS = ['packing-logs'];
+
+/** Sidebar sort → the page CTE's ORDER BY. Default is scanned-out, newest. */
+function shippedPageOrderSql(sort: string | null | undefined): string {
+  const scanned = 'COALESCE(ship_page.ship_confirmed_at, sal.created_at)';
+  const severity = `CASE UPPER(COALESCE(stn_sort.latest_status_category, ''))
+    WHEN 'EXCEPTION' THEN 1
+    WHEN 'RETURNED' THEN 2
+    WHEN 'OUT_FOR_DELIVERY' THEN 3
+    WHEN 'IN_TRANSIT' THEN 4
+    WHEN 'ACCEPTED' THEN 5
+    WHEN 'LABEL_CREATED' THEN 6
+    WHEN 'DELIVERED' THEN 7
+    ELSE 8 END`;
+  switch (sort) {
+    case 'ship_confirmed_at_asc':
+      return `${scanned} ASC NULLS LAST, sal.id ASC`;
+    case 'delivered_at':
+      return `stn_sort.delivered_at DESC NULLS LAST, ${scanned} DESC, sal.id DESC`;
+    case 'status':
+      return `${severity} ASC, ${scanned} DESC, sal.id DESC`;
+    case 'sale_amount':
+      return `(SELECT o_amt.sale_amount FROM orders o_amt WHERE o_amt.organization_id = sal.organization_id AND o_amt.shipment_id = sal.shipment_id ORDER BY o_amt.id LIMIT 1) DESC NULLS LAST, ${scanned} DESC, sal.id DESC`;
+    default:
+      return `${scanned} DESC NULLS LAST, sal.id DESC`;
+  }
+}
 
 // Hard ceiling for a SEARCHING read — the page bound `searchTerm` replaces.
 const SEARCH_ROW_CEILING = 5000;
@@ -168,6 +198,39 @@ export function packerLogOrderJoins(enriched: boolean): string {
 }
 
 /**
+ * Latest staffed dock handoff for the represented shipment. The fallback keeps
+ * this shared SQL safe for a non-Shipped consumer even though current callers
+ * also apply the staffed SHIP_CONFIRM membership predicate below.
+ */
+export function sqlLatestShipConfirmAt(alias = 'sal'): string {
+  return `COALESCE((
+      SELECT so_at.created_at
+      FROM station_activity_logs so_at
+      WHERE so_at.organization_id = ${alias}.organization_id
+        AND so_at.shipment_id = ${alias}.shipment_id
+        AND so_at.activity_type = 'SHIP_CONFIRM'
+        AND so_at.staff_id IS NOT NULL
+        AND so_at.staff_id > 0
+      ORDER BY so_at.created_at DESC, so_at.id DESC
+      LIMIT 1
+    ), ${alias}.created_at)`;
+}
+
+/** Latest staffed dock handoff's staffer. Same row as {@link sqlLatestShipConfirmAt}. */
+export function sqlLatestShipConfirmStaff(alias = 'sal'): string {
+  return `(
+      SELECT so_at.staff_id
+      FROM station_activity_logs so_at
+      WHERE so_at.organization_id = ${alias}.organization_id
+        AND so_at.shipment_id = ${alias}.shipment_id
+        AND so_at.activity_type = 'SHIP_CONFIRM'
+        AND so_at.staff_id IS NOT NULL
+        AND so_at.staff_id > 0
+      ORDER BY so_at.created_at DESC, so_at.id DESC
+      LIMIT 1
+    )`;
+}
+/**
  * The packer-log population every read shares — tenant, row population, the
  * Shipped-desk membership (a dock scan-out), staff and the padded date window —
  * over `station_activity_logs sal` + `packer_logs pl`. Appends its bind values
@@ -226,29 +289,33 @@ export function buildPackerLogBaseWhere(
     conditions.push(`(sal.station = 'PACK' AND sal.staff_id = $${params.length})`);
   }
 
-  // Universal staff filter: this person packed OR tested the row. References the
-  // order-derived test laterals, so it forces the page-filter joins on (below).
+  // Staff on this desk: who scanned it out, or packed it, or tested it.
+  // Scan-out staff is the dock handoff. Packed-only missed 1231 of staff 1's
+  // Sep 30 drop-offs.
   if (staffFilterId != null) {
     params.push(staffFilterId);
     const staffIdx = params.length;
     conditions.push(
       `((sal.station = 'PACK' AND sal.staff_id = $${staffIdx})`
-      + ` OR test_data.tested_by = $${staffIdx})`,
+      + ` OR test_data.tested_by = $${staffIdx}`
+      + ` OR ${sqlLatestShipConfirmStaff()} = $${staffIdx})`,
     );
   }
 
+  // A Shipped period is the dock handoff period, not the earlier pack-scan
+  // period. Keep the one-day padding used by the client-side PST boundary pass.
   if (weekStart && weekEnd) {
     params.push(weekStart, weekEnd);
     const ws = params.length - 1;
     const we = params.length;
-    conditions.push(`sal.created_at >= ($${ws}::date - interval '1 day')`);
-    conditions.push(`sal.created_at <  ($${we}::date + interval '2 days')`);
+    conditions.push(`${sqlLatestShipConfirmAt()} >= ($${ws}::date - interval '1 day')`);
+    conditions.push(`${sqlLatestShipConfirmAt()} <  ($${we}::date + interval '2 days')`);
   }
 
   if (opts.shippedFrom && opts.shippedTo) {
     params.push(opts.shippedFrom, opts.shippedTo);
-    conditions.push(`sal.created_at >= $${params.length - 1}::timestamptz`);
-    conditions.push(`sal.created_at <  $${params.length}::timestamptz`);
+    conditions.push(`${sqlLatestShipConfirmAt()} >= $${params.length - 1}::timestamptz`);
+    conditions.push(`${sqlLatestShipConfirmAt()} <  $${params.length}::timestamptz`);
   }
 
   const pickedBy =
@@ -354,6 +421,7 @@ export async function fetchPackerLogRows(
       opts.shippedFilters?.carrier ?? '',
       opts.shippedFilters?.statusCategory ?? '',
       opts.shippedFilters?.exceptionsOnly ? 'exceptions' : '',
+      (opts.shippedFilters?.channels ?? []).join(','),
     ].join('|'),
     // Exact shipped-instant window + picker — each narrows the answer.
     shippedWindow: opts.shippedFrom && opts.shippedTo ? `${opts.shippedFrom}|${opts.shippedTo}` : '',
@@ -365,6 +433,7 @@ export async function fetchPackerLogRows(
     // Spine and full responses have different column payloads — keep them in
     // separate cache entries so one can never be served for the other.
     phase: spineOnly ? 'spine' : 'full',
+    sort: opts.sort ?? '',
   });
 
   const today = getCurrentPSTDateKey();
@@ -425,14 +494,12 @@ export async function fetchPackerLogRows(
                    'account_source', o_pk.account_source,
                    'sku', o_pk.sku,
                    'product_title', o_pk.product_title,
-                   'zoho_item_title', zi_pk.name,
+                   'zoho_item_title', cxi_pk.external_name,
                    'catalog_product_title', sc_pk.product_title,
                    'quantity', o_pk.quantity,
                    'condition', o_pk.condition,
                    'sale_amount', o_pk.sale_amount,
                    'currency', o_pk.currency,
-                   'zoho_item_id', zi_pk.zoho_item_id,
-                   'zoho_image_document_id', zi_pk.image_document_id,
                    'catalog_image_url', ${orderLineImageSql('o_pk')}
                ) ORDER BY o_pk.id) AS lines
         FROM (
@@ -451,22 +518,42 @@ export async function fetchPackerLogRows(
         JOIN orders o_pk ON o_pk.id = pk_lines.id
         LEFT JOIN sku_catalog sc_pk ON sc_pk.sku = o_pk.sku AND sc_pk.organization_id = o_pk.organization_id
         LEFT JOIN LATERAL (
-            SELECT i.name, i.zoho_item_id, i.image_document_id
-            FROM items i
-            WHERE i.sku = o_pk.sku AND i.organization_id = o_pk.organization_id AND i.status = 'active'
-            ORDER BY i.id
+            SELECT x.external_name
+            FROM catalog_external_ids x
+            WHERE x.sku_catalog_id = sc_pk.id
+              AND x.organization_id = o_pk.organization_id
+              AND x.provider = 'zoho'
+            ORDER BY x.id
             LIMIT 1
-        ) zi_pk ON TRUE
+        ) cxi_pk ON TRUE
     ) package_lines ON sal.shipment_id IS NOT NULL`;
 
-  // Resolve the page of station_activity_logs rows BEFORE the expensive per-row product-title / serial / order-match laterals run.
+  // Resolve the page before the expensive per-row product-title / serial /
+  // order-match laterals run. Compute the latest handoff once per shipment so
+  // ordering does not execute a correlated aggregate for every candidate row.
+  const pageOrder = shippedPageOrderSql(opts.sort);
   const pageCteFor = (enriched: boolean) => `
-    WITH page AS MATERIALIZED (
-        SELECT sal.id
+    WITH latest_ship_confirm AS MATERIALIZED (
+        SELECT DISTINCT ON (so_page.shipment_id)
+               so_page.shipment_id,
+               so_page.created_at AS ship_confirmed_at,
+               so_page.staff_id AS shipped_out_by
+        FROM station_activity_logs so_page
+        WHERE so_page.organization_id = $1
+          AND so_page.activity_type = 'SHIP_CONFIRM'
+          AND so_page.staff_id IS NOT NULL
+          AND so_page.staff_id > 0
+          AND so_page.shipment_id IS NOT NULL
+        ORDER BY so_page.shipment_id, so_page.created_at DESC, so_page.id DESC
+    ),
+    page AS MATERIALIZED (
+        SELECT sal.id, row_number() OVER (ORDER BY ${pageOrder}) AS ord
         FROM station_activity_logs sal
-        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins ? packerLogOrderJoins(enriched) : ''}${shippedJoins ? shippedFilterJoins(enriched) : ''}
+        LEFT JOIN latest_ship_confirm ship_page ON ship_page.shipment_id = sal.shipment_id
+        LEFT JOIN shipping_tracking_numbers stn_sort ON stn_sort.id = sal.shipment_id
+        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins || shippedFilters.channels.length > 0 ? packerLogOrderJoins(enriched) : ''}${shippedJoins ? shippedFilterJoins(enriched) : ''}
         ${enriched ? enrichedWhere : legacyWhere}
-        ORDER BY sal.created_at DESC NULLS LAST
+        ORDER BY ${pageOrder}
         LIMIT $${limitIdx} OFFSET $${offsetIdx}
     )`;
 
@@ -537,9 +624,11 @@ export async function fetchPackerLogRows(
         stn.carrier                            AS carrier,
         stn.latest_status_code                 AS latest_status_code,
         stn.latest_status_label                AS latest_status_label,
-        stn.latest_status_description          AS latest_status_description,
         stn.latest_status_category             AS latest_status_category,
         stn.latest_event_at::text              AS latest_event_at,
+        stn.delivered_at::text                 AS delivered_at,
+        stn.estimated_delivery_at::text        AS estimated_delivery_at,
+        stn.is_delivered                       AS is_delivered,
         stn.has_exception                      AS has_exception,
         stn.exception_at::text                 AS exception_at,
         stn.is_terminal                        AS is_terminal,
@@ -581,17 +670,9 @@ export async function fetchPackerLogRows(
         LIMIT 1
     ) sku_lookup ON TRUE
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
-    -- Dock scan-out (SHIP_CONFIRM) for this package's shipment, if any. Bounded:
-    -- runs once per page row. This is the "left the warehouse" timestamp.
-    LEFT JOIN LATERAL (
-        SELECT
-            MAX(so.created_at) AS ship_confirmed_at,
-            (ARRAY_AGG(so.staff_id ORDER BY so.created_at DESC))[1] AS shipped_out_by
-        FROM station_activity_logs so
-        WHERE so.activity_type = 'SHIP_CONFIRM'
-          AND sal.shipment_id IS NOT NULL
-          AND so.shipment_id = sal.shipment_id
-    ) ship_out ON TRUE
+    -- Reuse the materialized latest handoff that ordered the page instead of
+    -- probing and aggregating station_activity_logs again for every result row.
+    LEFT JOIN latest_ship_confirm ship_out ON ship_out.shipment_id = sal.shipment_id
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by
     LEFT JOIN fba_fnskus ff ON ff.fnsku = sal.fnsku
     LEFT JOIN staff packed_staff ON packed_staff.id = sal.staff_id AND sal.station = 'PACK'
@@ -798,10 +879,12 @@ export async function fetchPackerLogRows(
           )
     ) test_data ON TRUE
     LEFT JOIN staff tested_staff ON tested_staff.id = test_data.tested_by
-    ORDER BY sal.created_at DESC NULLS LAST
+    ORDER BY page.ord
   `;
 
-  // Read-model path (PACKER_LOG_ENRICHMENT_READ):
+  // Read-model path (PACKER_LOG_ENRICHMENT_READ). The deadline lateral stays
+  // off the spine; hydration fills ship_by_date. delivered_at is on `stn`,
+  // which this query already joins.
   const deadlineCols = spineOnly
     ? `NULL::text AS ship_by_date,
         NULL::text AS deadline_at,`
@@ -894,6 +977,9 @@ export async function fetchPackerLogRows(
         stn.latest_status_description          AS latest_status_description,
         stn.latest_status_category             AS latest_status_category,
         stn.latest_event_at::text              AS latest_event_at,
+        stn.delivered_at::text                 AS delivered_at,
+        stn.estimated_delivery_at::text        AS estimated_delivery_at,
+        stn.is_delivered                       AS is_delivered,
         stn.has_exception                      AS has_exception,
         stn.exception_at::text                 AS exception_at,
         stn.is_terminal                        AS is_terminal,
@@ -908,15 +994,7 @@ export async function fetchPackerLogRows(
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
     ${sqlPackerOrderMatchLateral('order_match_fallback', "enr.sal_id IS NULL AND sal.station = 'PACK'")} ON TRUE
     ${PACKAGE_OWNER_LATERAL}
-    LEFT JOIN LATERAL (
-        SELECT
-            MAX(so.created_at) AS ship_confirmed_at,
-            (ARRAY_AGG(so.staff_id ORDER BY so.created_at DESC))[1] AS shipped_out_by
-        FROM station_activity_logs so
-        WHERE so.activity_type = 'SHIP_CONFIRM'
-          AND sal.shipment_id IS NOT NULL
-          AND so.shipment_id = sal.shipment_id
-    ) ship_out ON TRUE
+    LEFT JOIN latest_ship_confirm ship_out ON ship_out.shipment_id = sal.shipment_id
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by
     LEFT JOIN fba_fnskus ff ON ff.fnsku = sal.fnsku
     LEFT JOIN staff packed_staff ON packed_staff.id = sal.staff_id AND sal.station = 'PACK'
@@ -948,7 +1026,7 @@ export async function fetchPackerLogRows(
           )
     ) test_data ON TRUE
     LEFT JOIN staff tested_staff ON tested_staff.id = test_data.tested_by
-    ORDER BY sal.created_at DESC NULLS LAST
+    ORDER BY page.ord
   `;
 
   let usedEnriched = isPackerLogEnrichmentRead() && !enrichmentTableMissing;

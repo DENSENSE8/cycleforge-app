@@ -55,9 +55,13 @@ test('Exceptions is an L0 drawer row over every kind — not a row inside any la
   }
 });
 
-test('Products and Reports are permission-gated L0 mobile destinations', () => {
+test('Stock, Products and Reports are permission-gated L0 mobile destinations', () => {
+  const stock = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'stock');
   const products = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'products');
   const reports = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'reports');
+  assert.equal(stock?.kind, 'leaf');
+  assert.equal(stock?.href, '/m/stock');
+  assert.equal(stock?.requires, 'sku_stock.view');
   assert.equal(products?.kind, 'leaf');
   assert.equal(products?.href, '/m/products');
   assert.equal(products?.requires, 'sku_stock.view');

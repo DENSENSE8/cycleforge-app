@@ -36,7 +36,6 @@ import type { SectionTab } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
-import { yieldStationRightEdgeForDeskOccupant } from '@/components/receiving/workspace/line-edit/unbox-right-edge';
 import { STATION_DESK_OCCUPANT_CLOSE_EVENT } from '@/utils/events';
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
 import { openPanel } from '@/lib/right-rail/panel-store';
@@ -384,11 +383,7 @@ export function IncomingBulkTrackingPanel({
     setAction(checkOnly ? 'check' : initialAction);
     setDetailInspectorCollapsed(false);
     openPanel({ id: BULK_TRACKING_RAIL_ID });
-    yieldStationRightEdgeForDeskOccupant((qs) => {
-      const base = receivingSurfaceBasePath(pathname);
-      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
-    });
-  }, [open, initialAction, checkOnly, pathname, router]);
+  }, [open, initialAction, checkOnly]);
 
   useEffect(() => {
     if (!open) return;
@@ -396,8 +391,7 @@ export function IncomingBulkTrackingPanel({
     return () => window.clearTimeout(id);
   }, [open, initialAction, checkOnly]);
 
-  // The other half of the wrapper — Displays (or a peer desk occupant) opening
-  // takes the edge back.
+  // A peer desk occupant can take the shared inspector slot.
   useEffect(() => {
     if (!open) return;
     const onPeerOpen = () => onClose();

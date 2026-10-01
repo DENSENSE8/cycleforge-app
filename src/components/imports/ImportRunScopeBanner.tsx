@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { Button } from '@/design-system/primitives';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { IMPORTS_PATH, importStamp, importTriggerLabel } from '@/lib/imports/record-faces';
 import { useImportRun } from '@/lib/imports/record-client';
 import { cn } from '@/utils/_cn';

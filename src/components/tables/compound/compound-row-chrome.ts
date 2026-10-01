@@ -41,12 +41,12 @@ export const COMPOUND_GUTTER_PX = COMPOUND_ROW_PX;
  * more visible than the other bottom hairlines"* (operator 2026-09-14) —
  * existed. **That ruling is superseded (operator 2026-09-15: a softer mark,
  */
-export const SLOT_TABLE_GROUP_FOLD_INNER_CLASS =
+export const COMPOUND_GROUP_FOLD_INNER_CLASS =
   'pointer-events-none absolute inset-x-0 bottom-0 z-sticky h-px bg-border-default';
 
 /**
  * The CHILD RAIL — a 2px vertical hairline down a group child, on the IDENTITY
  * track's leading edge. This is how membership is spoken (operator 2026-09-15).
  */
-export const SLOT_TABLE_GROUP_CHILD_RAIL_CLASS =
+export const COMPOUND_GROUP_CHILD_RAIL_CLASS =
   'pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-border-default';

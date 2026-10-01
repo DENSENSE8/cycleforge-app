@@ -1,10 +1,10 @@
 'use client';
 
-/** @domain-job Unbox notes-footer putaway — the open line's bin face, a location-QR scan arm, and the Last entry · Move · New · Edit menu. */
+/** @domain-job Unbox notes-footer putaway — current bin, recent-bin shortcut, scanner arm and location management. */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { History, MapPin, Pencil, Plus } from '@/components/Icons';
+import { History, MapPin } from '@/components/Icons';
 import { LocationCrudDialog } from '@/components/locations/LocationCrudDialog';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { StationLocationPill } from '@/components/station/location';
@@ -23,18 +23,11 @@ export function UnboxNotesLocationControl({
   currentLocationName,
   currentLocationBarcode,
   currentLocationRoom,
-  onOpenLocations,
 }: {
   lineId: number | null | undefined;
-  currentLocationId?: number | null;
   currentLocationName?: string | null;
   currentLocationBarcode?: string | null;
   currentLocationRoom?: string | null;
-  /**
-   * Open Unbox Displays → Locations (list · print · mint). Absent → the menu
-   * says so rather than painting a verb that goes nowhere.
-   */
-  onOpenLocations?: () => void;
 }) {
   const { enabled, busy, applyStage } = useUnboxLinePlacement(lineId);
   const excludeLineId = enabled ? lineId! : null;
@@ -119,33 +112,14 @@ export function UnboxNotesLocationControl({
         onClick: applyLast,
       },
       {
-        label: 'Move',
-        title: menuState.moveTitle,
+        label: 'Locations…',
+        title: 'Browse, create, reprint, or edit locations',
         icon: <MapPin className="h-3.5 w-3.5 shrink-0" />,
-        disabled: !menuState.hasLast || busy,
-        onClick: applyLast,
-      },
-      {
-        label: 'New location',
-        title: onOpenLocations
-          ? 'Browse, reprint, or mint a shelf on Displays'
-          : 'Locations are not available on this surface',
-        icon: <Plus className="h-3.5 w-3.5 shrink-0" />,
-        disabled: !onOpenLocations,
         separatorBefore: true,
-        onClick: () => onOpenLocations?.(),
-      },
-      {
-        // The admin half of the job — rename / re-key / retire a bin. It is a
-        // DIALOG, not a Displays leaf, because editing is not a beat of the
-        // carton's procedure: it interrupts, commits, and hands the bench back.
-        label: 'Edit location…',
-        title: 'Rename, re-key, retire, or reprint a bin',
-        icon: <Pencil className="h-3.5 w-3.5 shrink-0" />,
         onClick: () => setEditOpen(true),
       },
     ],
-    [applyLast, busy, menuState, onOpenLocations],
+    [applyLast, busy, menuState],
   );
 
   return (

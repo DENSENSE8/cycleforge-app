@@ -1,11 +1,8 @@
 'use client';
 
 import { createContext, useContext, useMemo, type ComponentPropsWithoutRef } from 'react';
-import { usePathname } from 'next/navigation';
 import { Slot } from '@radix-ui/react-slot';
 import { MODE_LOOKS, type ModeLookName, type ModeName } from '@/design-system/modes/registry';
-import { modeRouteFor } from '@/lib/routing/mode-registry';
-import { resolveRegionMode } from './resolve-region-mode';
 
 /** ModeRegion — the ONE way a region declares its task mode. */
 
@@ -32,19 +29,12 @@ interface ModeRegionBaseProps extends ComponentPropsWithoutRef<'div'> {
    * corner and planes.
    */
   asChild?: boolean;
-  /** A form job: a requested `triage` holds on an `industrial` route instead of taking the route's mode. */
-  form?: boolean;
 }
 
 type ModeRegionProps = ModeRegionBaseProps &
   (
     | {
-        /**
-         * The job's mode. The route declares the mode on every device; a
-         * `triage` region on an `industrial` (`/m/*` operation) route paints
-         * `industrial` unless it is a `form`. `industrial` is explicit and
-         * never lifted (the phone floor, or Mode C: a desktop mirror of a live phone).
-         */
+        /** The job's mode. */
         mode: ModeName;
         look?: never;
       }
@@ -60,10 +50,9 @@ type ModeRegionProps = ModeRegionBaseProps &
       }
   );
 
-export function ModeRegion({ mode: requestedMode, look, asChild = false, form = false, children, ...rest }: ModeRegionProps) {
-  const requested = look ? MODE_LOOKS[look].mode : requestedMode;
+export function ModeRegion({ mode: requestedMode, look, asChild = false, children, ...rest }: ModeRegionProps) {
+  const mode = look ? MODE_LOOKS[look].mode : requestedMode;
   const parent = useContext(ModeContext);
-  const mode = resolveRegionMode(requested, modeRouteFor(usePathname())?.mode ?? null, { form });
   const redeclared = parent !== null && parent.mode === mode;
   const depth = redeclared ? parent.depth : (parent?.depth ?? 0) + 1;
   if (parent && depth > MAX_MODE_DEPTH && process.env.NODE_ENV !== 'production') {

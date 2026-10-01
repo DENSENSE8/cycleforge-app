@@ -13,7 +13,6 @@ import { resolveStaffDirectorySlotValue } from '@/lib/tables/field-catalog/staff
 import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
 import { staffDirectoryCompoundView } from './staff-directory-row-view';
 import {
-  staffDirectoryCompoundColumnsFor,
   staffDirectorySortFactFor,
   type StaffDirectoryGridColumn,
   type StaffDirectoryGridColumnKey,
@@ -22,7 +21,6 @@ import {
   STAFF_DIRECTORY_GRID_CAPABILITIES,
   STAFF_DIRECTORY_TABLE_BINDING,
 } from './staff-directory-table-definition';
-import { useStaffDirectoryTableLayout } from './useStaffDirectoryTableLayout';
 
 interface UseStaffDirectorySpreadsheetOptions {
   rows: readonly StaffDirectoryRow[];
@@ -51,11 +49,8 @@ export function useStaffDirectorySpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useStaffDirectoryTableLayout();
-  const columns = useMemo(
-    () => staffDirectoryCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: StaffDirectoryGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -76,12 +71,10 @@ export function useStaffDirectorySpreadsheet({
     StaffDirectoryGridColumn
   >({
     binding: STAFF_DIRECTORY_TABLE_BINDING,
-    columns,
-    fields,
+    columns: STAFF_DIRECTORY_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: staffDirectoryCompoundView,
-    subtitleFieldIds,
     resolve: resolveStaffDirectorySlotValue,
     sortFactFor: staffDirectorySortFactFor,
     capabilities: STAFF_DIRECTORY_GRID_CAPABILITIES,

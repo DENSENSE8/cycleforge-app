@@ -10,9 +10,9 @@ export {
   PaneHeaderIconBadge,
   PaneHeaderCloseButton,
   PaneHeaderStatusPill,
-  PaneHeaderTabs,
   PaneHeaderActionBar,
   PaneHeaderPagination,
   CursorPositionReadout,
 } from './blocks';
+export { PaneHeaderTabs } from './PaneHeaderTabs';
 export type { PaneHeaderActionBarAction } from './blocks';

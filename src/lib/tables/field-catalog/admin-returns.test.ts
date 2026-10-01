@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   ADMIN_RETURNS_COMPOUND_COLUMNS,
   adminReturnsCompoundColumnsFor,
@@ -15,7 +15,7 @@ import { readReturnOrderId, toRecentReturnRow } from '@/lib/inventory/returns-ro
 import { ADMIN_RETURNS_FIELD_CATALOG, ADMIN_RETURNS_PRODUCT_LAYOUT } from './admin-returns';
 import { resolveAdminReturnsSlotValue } from './admin-returns-resolve';
 import { INVENTORY_EVENTS_FIELD_CATALOG } from './inventory-events';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /** The facts this desk borrows from the Ledger rather than re-naming. */
 const REUSED_FIELD_IDS = [
@@ -80,7 +80,7 @@ describe('admin-returns catalog', () => {
   });
 
   it('product default parses against the catalog, and the unit is the identity', () => {
-    const parsed = parseSlotLayout(ADMIN_RETURNS_PRODUCT_LAYOUT, ADMIN_RETURNS_FIELD_CATALOG);
+    const parsed = ADMIN_RETURNS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'admin-returns.unit');
     // When + Who are tracks; reason + order ref ride the under-title line.
@@ -118,7 +118,7 @@ describe('admin-returns materialization', () => {
     const identity = ADMIN_RETURNS_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'admin-returns.unit');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Unit" is now the Fields-picker row
+    // (`data-table-family.ts`). "Unit" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -139,7 +139,7 @@ describe('admin-returns materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of ADMIN_RETURNS_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key) || col.key === '_fill') {
+      if (isDataTableChromeColumn(col.key) || col.key === '_fill') {
         assert.equal(adminReturnsSortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

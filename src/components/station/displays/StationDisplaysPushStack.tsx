@@ -52,7 +52,6 @@ import { resolveStationDepth } from '@/design-system/themes/station-depths';
 import { resolveStationSkin } from '@/design-system/themes/station-skins';
 import { StationLookDisplayHost } from './StationLookDisplayHost';
 
-const DISPLAYS_PUSH_STORAGE_KEY = 'unbox-displays-push-width';
 
 function tabLabel(tabs: SectionTab[], id: string): string {
   return tabs.find((t) => t.id === id)?.label ?? id;
@@ -70,28 +69,20 @@ export function StationDisplaysPushStack({
   rightSlot = null,
   headerActions = null,
   indexRows,
-  /**
-   * Current visit snapshot (tab + nest). When omitted, `{ tab: activeTab }`.
-   * Unbox passes photo/linkage/units/ticket nest so Forward restores verbs.
-   */
+  /** Current visit snapshot (tab + nest). Defaults to `{ tab: activeTab }`. */
   visitFrame,
-  /**
-   * Apply a history frame (Back / Forward). Default: `onTabChange(frame.tab)`.
-   * Unbox maps nest keys onto `setDisplay` opts.
-   */
+  /** Apply a history frame. Defaults to `onTabChange(frame.tab)`. */
   onVisitNavigate,
   /**
    * Clear visit + nested-forward stacks when this key changes (carton id).
    * Omit to keep history for the column mount only.
    */
   historyScopeKey = null,
-  // Defaults match Unbox so that call site stays thin; siblings pass their own
-  // storage key / aria / testids so prefs don't collide.
-  ariaLabel = 'Unbox displays',
-  storageKey = DISPLAYS_PUSH_STORAGE_KEY,
-  testId = 'receiving-displays-push',
+  ariaLabel,
+  storageKey,
+  testId,
   resizeLabel = 'Resize displays panel',
-  resizeTestId = 'unbox-displays-push-resize',
+  resizeTestId,
   resizeTooltip = 'Resize displays',
 }: {
   tabs: SectionTab[];
@@ -106,9 +97,8 @@ export function StationDisplaysPushStack({
    */
   rightSlot?: ReactNode;
   /**
-   * Carton Macro verbs in the top-band trailing cluster — Unbox golden:
-   * Refresh · Print · Edit · `⋯` (Resolve + Delete). Omit on stations that
-   * have not wired it yet.
+   * Optional macro verbs in the top-band trailing cluster. Omit on stations
+   * that have not wired them.
    */
   headerActions?: ReactNode;
   /**
@@ -119,11 +109,11 @@ export function StationDisplaysPushStack({
   visitFrame?: DisplaysVisitFrame;
   onVisitNavigate?: (frame: DisplaysVisitFrame) => void;
   historyScopeKey?: string | number | null;
-  ariaLabel?: string;
-  storageKey?: string;
-  testId?: string;
+  ariaLabel: string;
+  storageKey: string;
+  testId: string;
   resizeLabel?: string;
-  resizeTestId?: string;
+  resizeTestId: string;
   resizeTooltip?: string;
 }) {
   const [hostedLeaf, setHostedLeaf] = useState<string | null>(null);

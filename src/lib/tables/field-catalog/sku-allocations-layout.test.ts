@@ -8,7 +8,7 @@ import {
   SKU_ALLOCATIONS_PRODUCT_LAYOUT,
   SKU_ALLOCATIONS_TABLE_LAYOUT_ID,
 } from './sku-allocations-layout';
-import { parseSlotLayout } from '../slot-layout';
+
 import {
   SKU_ALLOCATIONS_COMPOUND_COLUMNS,
   SKU_ALLOCATIONS_TABLE_BINDING,
@@ -45,7 +45,7 @@ describe('sku-allocations layout document', () => {
   });
 
   it('parses against that catalog, and paints the five retired per-SKU cells', () => {
-    const parsed = parseSlotLayout(SKU_ALLOCATIONS_PRODUCT_LAYOUT, UNIT_ALLOCATIONS_FIELD_CATALOG);
+    const parsed = SKU_ALLOCATIONS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     // Order → identity chip, unit → item title, state → pill, allocated →
     // Dates chrome (all four from the shared adapter + materializer)…

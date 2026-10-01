@@ -27,10 +27,13 @@ const NO_USERS: Map<number, ZendeskUser> = new Map();
 export function MobileTicketThread({
   ticketId,
   handoff,
+  backHref,
 }: {
   ticketId: number | null;
   /** Prepared reply (`?draft=` / `?photos=` / `?visibility=`); editable, never auto-sent. */
   handoff?: TicketThreadHandoff;
+  /** Tickets opened from a record are a child page, so they use Back, not X. */
+  backHref?: string | null;
 }) {
   const { has, isLoaded } = useAuth();
   /** The same permission the read and write routes gate on (`integrations.zendesk`). */
@@ -74,6 +77,7 @@ export function MobileTicketThread({
       <MobileDetailTopBar
         subtitle={ticketId != null ? `Ticket #${ticketId}` : 'Ticket'}
         title={subject || (ticket.isLoading ? 'Loading…' : 'Untitled ticket')}
+        backHref={backHref ?? undefined}
         right={
           status ? (
             <span className="text-role-micro text-text-soft">{status}</span>

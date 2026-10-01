@@ -6,7 +6,7 @@ import { COMPOUND_COLUMN_KEYS, COMPOUND_TRACKS } from '@/components/tables/compo
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import { packerRecordToQueueRow } from '@/lib/station/record-to-queue-row';
 import { materializeTracks } from '../materialize-tracks';
-import { parseSlotLayout } from '../slot-layout';
+
 import {
   PACKER_FIELD_CATALOG,
   PACKER_PRODUCT_LAYOUT,
@@ -98,7 +98,7 @@ describe('packer catalog', () => {
   });
 
   it('product default parses — BOTH stamps, tester first, no money', () => {
-    const parsed = parseSlotLayout(PACKER_PRODUCT_LAYOUT, PACKER_FIELD_CATALOG);
+    const parsed = PACKER_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'packer.order_id');
     assert.deepEqual(

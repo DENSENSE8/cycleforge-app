@@ -10,6 +10,7 @@ import {
   readShippedPickedBy,
   readShippedTimeWindow,
   shippedStampInWindow,
+  shippedTimeWindow,
 } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import { fromZonedTime } from 'date-fns-tz';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
@@ -21,6 +22,7 @@ const noExceptions: NavFacetsDeps['exceptionCounts'] = async () => ({});
 
 const TYPES: ShippedTypeFilter[] = ['all', 'orders', 'sku', 'fba'];
 const CARRIERS = ['UPS', 'USPS', 'FEDEX', ''];
+const CHANNELS = ['', 'ebay', 'amazon', 'shopify'];
 const STATUSES = ['IN_TRANSIT', 'DELIVERED', 'EXCEPTION', ''];
 
 /** One package as the list sees it: its rows' type memberships, and its own tracking facts. */
@@ -28,6 +30,7 @@ interface FixturePackage {
   rows: Array<Record<ShippedTypeFilter, boolean>>;
   carrier: string;
   status: string;
+  channel: string;
   exception: boolean;
   /** The row's `created_at` as the list receives it: naive warehouse wall clock. */
   shippedAt: string;
@@ -55,7 +58,7 @@ function fixturePackages(): FixturePackage[] {
     [row('all', 'orders')],
     [row('all', 'fba')],
     [row('sku')],
-    [row()], // an unlinked scan: in no view
+    [row('all', 'orders')], // an unlinked ORDERS scan still belongs in Shipped for reconciliation
     [row('all', 'orders'), row('sku')], // re-packed as SKU: listed under both views, once each
   ];
   const out: FixturePackage[] = [];
@@ -68,7 +71,7 @@ function fixturePackages(): FixturePackage[] {
           const copies = i++ % 3;
           for (let k = 0; k < copies; k++) {
             out.push({
-              rows, carrier, status, exception,
+              rows, carrier, status, exception, channel: CHANNELS[(i + k) % CHANNELS.length],
               shippedAt: STAMPS[(i + k) % STAMPS.length],
               pickedBy: PICKERS[(i * 7 + k) % PICKERS.length],
             });
@@ -92,14 +95,20 @@ function listPackages(packages: FixturePackage[], params: Record<string, string>
   const status = (params.statusCategory ?? '').toUpperCase();
   const exceptions = ['1', 'true'].includes((params.exceptions ?? '').toLowerCase());
   const search = new URLSearchParams(params);
-  // The list's browser trim for a time window, and its picker filter.
-  const timeWindow = readShippedTimeWindow(search);
+  const dateFrom = (params.dateFrom ?? '').trim();
+  const dateTo = (params.dateTo ?? '').trim();
+  const timeWindow = readShippedTimeWindow(search)
+    ?? (/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)
+      ? shippedTimeWindow({ dateFrom, dateTo: /^\d{4}-\d{2}-\d{2}$/.test(dateTo) ? dateTo : dateFrom })
+      : null);
   const pickedBy = readShippedPickedBy(search);
   return packages.filter((p) => {
-    if (!p.rows.some((r) => r[type])) return false;
+    if (type !== 'all' && !p.rows.some((r) => r[type])) return false;
     if ((VALID_CARRIERS as Set<string>).has(carrier) && p.carrier !== carrier) return false;
     if ((VALID_STATUS as Set<string>).has(status) && p.status !== status) return false;
     if (exceptions && !p.exception) return false;
+    const channels = (params.channel ?? '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean);
+    if (channels.length > 0 && !channels.includes(p.channel)) return false;
     if (timeWindow && !shippedStampInWindow(p.shippedAt, timeWindow)) return false;
     if (pickedBy != null && p.pickedBy !== pickedBy) return false;
     return true;
@@ -119,9 +128,10 @@ function comboRunner(packages: FixturePackage[], captured: Array<{ sql: string; 
     exceptionCounts: noExceptions,
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
-      // The predicates the statement binds, evaluated as Postgres would.
-      const from = boundBy(sql, params, /sal\.created_at >= \$(\d+)::timestamptz/);
-      const to = boundBy(sql, params, /sal\.created_at <\s+\$(\d+)::timestamptz/);
+      // Exact time-window values are the ISO instants among the bound params.
+      const instants = params.filter((value): value is string =>
+        typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value));
+      const [from, to] = instants;
       // `sqlOrderPickedByStaff`: its last (Picker-desk scan) arm closes the COALESCE, then `= $n`.
       const picker = boundBy(sql, params, /pk_sal\.id DESC[\s\S]*?\)\s*\)\s*=\s*\$(\d+)/);
       const byKey = new Map<string, Record<string, unknown>>();
@@ -132,11 +142,12 @@ function comboRunner(packages: FixturePackage[], captured: Array<{ sql: string; 
         if (to !== undefined && shippedMs >= Date.parse(String(to))) continue;
         if (picker !== undefined && p.pickedBy !== picker) continue;
         const combo = {
-          t_all: p.rows.some((r) => r.all),
+          t_all: true,
           t_orders: p.rows.some((r) => r.orders),
           t_sku: p.rows.some((r) => r.sku),
           t_fba: p.rows.some((r) => r.fba),
           carrier: p.carrier,
+          channel: p.channel,
           status: p.status,
           exception: p.exception,
         };
@@ -175,6 +186,7 @@ const PARAM_CASES: Array<Record<string, string>> = [
   { pickedBy: '3', shippedFilter: 'orders', exceptions: '1' },
   { pickedBy: '5', dateFrom: '2026-09-20', dateTo: '2026-09-20', timeFrom: '09:00', timeTo: '11:30' },
   { pickedBy: 'x' }, // not a staff id: no narrowing
+  { channel: 'ebay,shopify' },
 ];
 
 test('outbound.shipped: total and every option count equal the Shipped list total for the same params', async () => {
@@ -182,7 +194,7 @@ test('outbound.shipped: total and every option count equal the Shipped list tota
   for (const params of PARAM_CASES) {
     const res = await facetsBody(new URLSearchParams(params), comboRunner(packages));
     assert.equal(res.total, listPackages(packages, params).length, `total for ${JSON.stringify(params)}`);
-    assert.deepEqual(res.groups.map((g) => g.param), ['shippedFilter', 'carrier', 'statusCategory', 'exceptions']);
+    assert.deepEqual(res.groups.map((g) => g.param), ['shippedFilter', 'channel', 'carrier', 'statusCategory', 'exceptions']);
     for (const group of res.groups) {
       for (const option of group.options) {
         const picked = { ...params, [group.param]: option.value };
@@ -205,14 +217,15 @@ test('outbound.shipped: picking a carrier keeps the sibling carrier counts', asy
   assert.equal(picked.total, carriers(unfiltered)?.find((o) => o.value === 'UPS')?.count);
 });
 
-test('outbound.shipped: the statement binds the list’s window (padded page + exact day clip) and staff filters', async () => {
+test('outbound.shipped: the statement binds the list’s warehouse instant window and staff filters', async () => {
   const captured: Array<{ sql: string; params: readonly unknown[] }> = [];
   const deps = comboRunner([], captured);
   await facetsBody(new URLSearchParams({ dateFrom: '2026-08-03', dateTo: '2026-08-07', staff: '7', carrier: 'UPS' }), deps);
   await facetsBody(new URLSearchParams({ allDates: '1', packedBy: '-2', pickedBy: 'x' }), deps);
   assert.equal(captured.length, 2, 'one statement per facet request');
   // Carrier is counted per option, never bound: the group must not narrow itself.
-  assert.deepEqual(captured[0].params, [ORG, 7, '2026-08-03', '2026-08-07', '2026-08-03', '2026-08-07']);
+  // Named days are the warehouse instant window, not a session-zone to_char clip.
+  assert.deepEqual(captured[0].params, [ORG, 7, '2026-08-03', '2026-08-07', '2026-08-03T07:00:00.000Z', '2026-08-08T07:00:00.000Z']);
   // All dates: no window; staff values the list rejects are not filters.
   assert.deepEqual(captured[1].params, [ORG]);
 });
@@ -226,7 +239,6 @@ test('outbound.shipped: a time window binds exact warehouse instants in place of
   );
   // 09:00 PDT = 16:00Z; 11:30 inclusive to the minute = < 11:31 PDT = 18:31Z.
   assert.deepEqual(captured[0].params, [ORG, '2026-09-20', '2026-09-20', '2026-09-20T16:00:00.000Z', '2026-09-20T18:31:00.000Z', 5]);
-  assert.ok(!captured[0].sql.includes('to_char(sal.created_at'), 'the time window replaces the day clip');
   // The picker reads the matched order, so the order joins ride along.
   assert.ok(captured[0].sql.includes('order_match'));
 });

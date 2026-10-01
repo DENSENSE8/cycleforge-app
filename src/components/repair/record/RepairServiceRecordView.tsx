@@ -21,6 +21,7 @@ import { StaffNotesEditor } from '@/components/sidebar/receiving/incoming-detail
 import { LedgerOpenAction } from '@/components/outbound/orders/outbound-orders-ledger-editors';
 import { CopyableCellValue } from '@/components/ui/CopyChip';
 import { RepairRecordPhotos } from './RepairRecordPhotos';
+import { RepairActivityLog } from './RepairActivityLog';
 import {
   RepairCarrierRail,
   RepairRecordAlerts,
@@ -35,7 +36,7 @@ import { RecordGroup } from '@/design-system/components/record-ledger/RecordGrou
 import { RecordItem } from '@/design-system/components/record-ledger/RecordItem';
 import { RecordSerials } from '@/design-system/components/record-ledger/RecordSerials';
 import { Button } from '@/design-system/primitives';
-import { RECORD_ID_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { RECORD_DEADLINE_DOT_CLASS, RECORD_DEADLINE_TONE_CLASS } from '@/design-system/tokens/record-card';
 import type { RepairRecordModel } from '@/lib/repair/repair-record-model';
@@ -92,7 +93,7 @@ export function RepairServiceRecordView({
 
   if (panel) {
     return (
-      <div className="flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0" data-testid="repair-record-view" data-panel="">
+      <div className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid="repair-record-view" data-panel="">
         <DeskRecordLayout
           main={
             <RecordGroup
@@ -112,7 +113,7 @@ export function RepairServiceRecordView({
     );
   }
 
-  const { device, customer } = model;
+  const { device } = model;
   const fulfillment = (
     <RecordGroup
       title="Fulfillment"
@@ -153,7 +154,7 @@ export function RepairServiceRecordView({
   const orderHref = device.orderId ? marketplaceOrderUrl(device.orderId, device.sourceSystem) : null;
   // Hard rule (owner 2026-09-30): the product lives in the 2/3 work column, never the aside.
   const left = (
-    <div className="flex flex-col gap-4 industrial:gap-0">
+    <div className="flex flex-col gap-4">
       {fulfillment}
       <RecordGroup title="Device" titleHidden testId="repair-record-device">
         <RecordItem
@@ -200,6 +201,9 @@ export function RepairServiceRecordView({
       <RecordGroup title="Status history" testId="repair-record-status-history">
         <RepairStatusHistory rows={model.history} />
       </RecordGroup>
+      <RecordGroup title="Activity" testId="repair-record-activity">
+        <RepairActivityLog repairId={model.id} />
+      </RecordGroup>
       <RecordGroup title="Staff notes" testId="repair-record-notes">
         <div className="px-4 pb-3">
           <StaffNotesEditor
@@ -216,7 +220,7 @@ export function RepairServiceRecordView({
   );
 
   const right = (
-    <div className="flex flex-col gap-4 industrial:gap-0">
+    <div className="flex flex-col gap-4">
       <RepairRecordPhotos key={`photos:${model.key}`} repairId={model.id} />
       <RepairRecordAlerts model={model} />
       <RepairRecordFlow model={model} />
@@ -224,7 +228,7 @@ export function RepairServiceRecordView({
   );
 
   return (
-    <div className="flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0" data-testid="repair-record-view">
+    <div className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid="repair-record-view">
       <DeskRecordLayout main={left} aside={right} />
     </div>
   );

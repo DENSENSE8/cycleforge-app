@@ -14,13 +14,11 @@ import { inventoryEventCompoundView } from '@/lib/inventory/inventory-events-row
 import type { PulseEventRow } from '@/components/inventory/types';
 import { INVENTORY_EVENTS_GRID_CAPABILITIES } from './inventory-events-grid-descriptor';
 import {
-  inventoryEventsCompoundColumnsFor,
   inventoryEventsSortFactFor,
   type InventoryEventsGridColumn,
   type InventoryEventsGridColumnKey,
 } from './inventory-events-grid-layout';
 import { INVENTORY_EVENTS_TABLE_BINDING } from './inventory-events-table-definition';
-import { useInventoryEventsTableLayout } from './useInventoryEventsTableLayout';
 
 interface UseInventoryEventsSpreadsheetOptions {
   /** The feed. Already ordered by the caller; a header click re-orders it. */
@@ -47,11 +45,8 @@ export function useInventoryEventsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useInventoryEventsTableLayout();
-  const columns = useMemo(
-    () => inventoryEventsCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: InventoryEventsGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -73,12 +68,10 @@ export function useInventoryEventsSpreadsheet({
     InventoryEventsGridColumn
   >({
     binding: INVENTORY_EVENTS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: INVENTORY_EVENTS_TABLE_BINDING.columns,
     rows: events,
     getRowId: (row) => String(row.id),
     adapter: inventoryEventCompoundView,
-    subtitleFieldIds,
     resolve: resolveInventoryEventsSlotValue,
     sortFactFor: inventoryEventsSortFactFor,
     capabilities: INVENTORY_EVENTS_GRID_CAPABILITIES,

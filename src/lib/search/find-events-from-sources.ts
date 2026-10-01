@@ -2,8 +2,6 @@
 
 import { photoStageLabel, stageFromPhotoType, type PhotoEvidenceStage } from '@/lib/photos/stages';
 import type { ReceivingPhotoRow } from '@/hooks/useReceivingPhotos';
-import { cartonEventTitle } from '@/components/receiving/inspector/carton-inspector-model';
-import type { CartonInspectorEvent, CartonInspectorTotals } from '@/components/receiving/inspector/carton-inspector-model';
 import type {
   CarrierEvent,
   InventoryTimelineRow,
@@ -399,24 +397,6 @@ export function findEventsFromReceivingPhotos(rows: readonly ReceivingPhotoRow[]
   return events;
 }
 
-function findEventsFromCartonEvents(rows: readonly CartonInspectorEvent[]): FindEvent[] {
-  const events: FindEvent[] = [];
-  for (const row of rows) {
-    const at = isoAt(row.occurred_at);
-    if (!at) continue;
-    const type = String(row.event_type ?? '').trim();
-    const kind = NOTE_TYPES.has(type) ? 'note' : EXCEPTION_TYPES.has(type) ? 'exception' : 'custody';
-    events.push({
-      id: `carton:${row.id}`,
-      kind,
-      at,
-      title: cartonEventTitle(row),
-      stationCaption: String(row.station ?? '').trim() || undefined,
-      bind: bindOf({ sku: row.sku ?? undefined, serial: row.serial_number ?? undefined }),
-    });
-  }
-  return events;
-}
 
 export function findEventsFromPackLedger(rows: readonly StationActivityRow[]): FindEvent[] {
   return findEventsFromStationActivity(rows).map((event) =>
@@ -527,39 +507,5 @@ export function presentOrderFindEvents(
     ...findEventsFromThreadMessages(payload.threadMessages ?? []),
     ...findEventsFromOrderNotes(payload.orderNotes ?? []),
     ...findEventsFromSignals(payload.signals ?? []),
-  ];
-}
-
-export function presentCartonFindEvents(input: {
-  events: readonly CartonInspectorEvent[];
-  totals: CartonInspectorTotals | null | undefined;
-  photos?: readonly ReceivingPhotoRow[];
-  createdAt?: string | null;
-  tracking?: string | null;
-  linkedOrderId?: string | null;
-}): FindEvent[] {
-  const qty = qtyLedgerEvent('qty:carton', input.createdAt, {
-    ordered: input.totals?.expected,
-    received: input.totals?.received,
-  });
-  const bindAt = isoAt(input.createdAt);
-  const bind =
-    bindAt && (input.linkedOrderId || input.tracking)
-      ? ([
-          {
-            id: 'bind:carton',
-            kind: 'bind' as const,
-            at: bindAt,
-            title: 'Linked',
-            bind: bindOf({ tracking: input.tracking ?? undefined }),
-            body: input.linkedOrderId ? `Order ${input.linkedOrderId}` : undefined,
-          },
-        ] satisfies FindEvent[])
-      : [];
-  return [
-    ...(qty ? [qty] : []),
-    ...findEventsFromCartonEvents(input.events),
-    ...findEventsFromReceivingPhotos(input.photos ?? []),
-    ...bind,
   ];
 }

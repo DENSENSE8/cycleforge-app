@@ -19,7 +19,7 @@ import {
   AUTHSESSIONS_TABLE_LAYOUT_ID,
 } from './auth-sessions';
 import { resolveAuthSessionsSlotValue } from './auth-sessions-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 const NOW = Date.parse('2026-09-11T18:00:00.000Z');
 
@@ -72,7 +72,7 @@ describe('auth-sessions catalog', () => {
   });
 
   it('product default parses against the catalog — IP on a track, device name under the title', () => {
-    const parsed = parseSlotLayout(AUTHSESSIONS_PRODUCT_LAYOUT, AUTHSESSIONS_FIELD_CATALOG);
+    const parsed = AUTHSESSIONS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'auth-sessions.session');
     assert.deepEqual(parsed.statusBindings, [{ fieldId: 'auth-sessions.ip' }]);
@@ -112,7 +112,7 @@ describe('the mounted auth-sessions compound model', () => {
   it('renames the chrome headers to this desk’s vocabulary', () => {
     const label = (key: string) => AUTHSESSIONS_COMPOUND_COLUMNS.find((c) => c.key === key)?.gridLabel;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
+    // 2026-09-15 (`data-table-family.ts`); this desk used to print
     // "Session", which is now the Fields-picker word and the cell's hover word.
     assert.equal(label('fulfillment'), 'Id');
     assert.equal(label('item'), 'Staff');

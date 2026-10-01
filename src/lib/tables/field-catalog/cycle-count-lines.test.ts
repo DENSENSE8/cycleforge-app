@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '@/lib/tables/table-definition';
 import {
   CYCLECOUNTLINES_COMPOUND_COLUMNS,
@@ -25,7 +25,7 @@ import {
   CYCLECOUNTLINES_PRODUCT_LAYOUT,
 } from './cycle-count-lines';
 import { resolveCycleCountLinesSlotValue } from './cycle-count-lines-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /** Selected by `loadLines`, painted by nothing, and not a fact until one paints it. */
 const UNPAINTED_LINE_COLUMNS = ['notes'] as const;
@@ -117,7 +117,7 @@ describe('cycle-count-lines catalog', () => {
   });
 
   it('product default parses, and the BIN is the identity', () => {
-    const parsed = parseSlotLayout(CYCLECOUNTLINES_PRODUCT_LAYOUT, CYCLECOUNTLINES_FIELD_CATALOG);
+    const parsed = CYCLECOUNTLINES_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'cycle-count-lines.bin');
     // The count arithmetic plus who produced it — the four data columns the
@@ -207,7 +207,7 @@ describe('cycle-count-lines materialization', () => {
     const identity = CYCLECOUNTLINES_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'cycle-count-lines.bin');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Bin" is now the Fields-picker row
+    // (`data-table-family.ts`). "Bin" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -228,7 +228,7 @@ describe('cycle-count-lines materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of CYCLECOUNTLINES_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key) || col.key === '_fill') {
+      if (isDataTableChromeColumn(col.key) || col.key === '_fill') {
         assert.equal(cycleCountLinesSortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

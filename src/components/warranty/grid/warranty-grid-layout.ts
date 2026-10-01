@@ -1,4 +1,4 @@
-/** Warranty claims spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array (the warranty-native sibling of… */
+/** Warranty claims spreadsheet column model — MATERIALIZED from a {@link DataTableColumnLayout}, never a hand array (the warranty-native sibling of shipped). */
 
 import {
   gridFrozenLeft,
@@ -8,8 +8,8 @@ import {
   WARRANTY_FIELD_CATALOG,
   WARRANTY_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/warranty';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -24,24 +24,22 @@ export type WarrantyGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface WarrantyGridColumn extends SlotTrackFields {
-  key: WarrantyGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  /** Staff-preference key (`staff_preferences.tableColumns.warranty`). */
-  hideKey?: string;
-  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
-  tier?: 'core' | 'optional';
-  /** When false, header is not click-to-sort (gutter / action tracks). Default true. */
-  sortable?: boolean;
-}
+export interface WarrantyGridColumn extends DataTableColumnFields { key: WarrantyGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+/** Staff-preference key (`staff_preferences.tableColumns.warranty`). */
+hideKey?: string;
+/** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
+tier?: 'core' | 'optional';
+/** When false, header is not click-to-sort (gutter / action tracks). Default true. */
+sortable?: boolean; }
 
 /**
  * The structural sheet skeleton — what Warranty paints with ZERO bindings.
@@ -76,17 +74,13 @@ const WARRANTY_SHEET_BASE: readonly WarrantyGridColumn[] = [
  * anchor on `claim`, so the default plate reads customer · status · warranty ·
  * logged — the retired hand model's core view — with `ticket` always last.
  */
-export function warrantySheetColumnsFor(
-  layout: SlotLayout,
-): readonly WarrantyGridColumn[] {
-  return materializeTracks<WarrantyGridColumn>({
-    layout,
-    catalog: WARRANTY_FIELD_CATALOG,
-    base: WARRANTY_SHEET_BASE,
-    statusAnchorKey: 'claim',
-    subtitleAnchorKey: 'claim',
-  });
-}
+export function warrantySheetColumnsFor(layout: DataTableColumnLayout): readonly WarrantyGridColumn[] { return materializeTracks<WarrantyGridColumn>({
+  layout,
+  catalog: WARRANTY_FIELD_CATALOG,
+  base: WARRANTY_SHEET_BASE,
+  statusAnchorKey: 'claim',
+  subtitleAnchorKey: 'claim',
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts,

@@ -13,13 +13,11 @@ import { kioskSlotEventCompoundView } from '@/lib/kiosk/kiosk-slot-event-row-ada
 import type { KioskSlotEventTableRow } from '@/lib/kiosk/kiosk-slot-event-row';
 import { KIOSKSLOTEVENTS_GRID_CAPABILITIES } from './kiosk-slot-events-grid-descriptor';
 import {
-  kioskSlotEventsCompoundColumnsFor,
   kioskSlotEventsSortFactFor,
   type KioskSlotEventsGridColumn,
   type KioskSlotEventsGridColumnKey,
 } from './kiosk-slot-events-grid-layout';
 import { KIOSKSLOTEVENTS_TABLE_BINDING } from './kiosk-slot-events-table-definition';
-import { useKioskSlotEventsTableLayout } from './useKioskSlotEventsTableLayout';
 
 interface UseKioskSlotEventsSpreadsheetOptions {
   events: readonly KioskSlotEventTableRow[];
@@ -42,11 +40,8 @@ export function useKioskSlotEventsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useKioskSlotEventsTableLayout();
-  const columns = useMemo(
-    () => kioskSlotEventsCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: KioskSlotEventsGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -67,12 +62,10 @@ export function useKioskSlotEventsSpreadsheet({
     KioskSlotEventsGridColumn
   >({
     binding: KIOSKSLOTEVENTS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: KIOSKSLOTEVENTS_TABLE_BINDING.columns,
     rows: events,
     getRowId: (row) => String(row.id),
     adapter: kioskSlotEventCompoundView,
-    subtitleFieldIds,
     resolve: resolveKioskSlotEventsSlotValue,
     sortFactFor: kioskSlotEventsSortFactFor,
     capabilities: KIOSKSLOTEVENTS_GRID_CAPABILITIES,

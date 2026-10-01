@@ -30,6 +30,8 @@ interface MobileDetailTopBarProps {
   close?: boolean;
   /** Slot at the right edge — status pill, network chip, print button. */
   right?: ReactNode;
+  /** Route for the bar's scan seat when this record owns a specialized job. */
+  scanHref?: string;
 }
 
 /** **The mobile detail bar** — the one top bar for every mobile screen that shows a single record: */
@@ -42,6 +44,7 @@ export function MobileDetailTopBar({
   backHref,
   close = false,
   right,
+  scanHref,
 }: MobileDetailTopBarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -61,8 +64,8 @@ export function MobileDetailTopBar({
     <header
       className={cn(
         'sticky top-0 z-header flex min-h-14 items-center gap-2 border-b border-border-hairline bg-surface-card/95 pl-2 backdrop-blur supports-[backdrop-filter]:bg-surface-card/80',
-        // The scan cell is square and flush to the outer edge (operator
-        // 2026-09-24); padding would float it off the corner.
+        // V2 chrome uses the same inset rounded control as the application
+        // header. The record identity keeps the remaining width.
         ownsScanSeat ? 'pr-0' : 'pr-4',
       )}
     >
@@ -97,9 +100,9 @@ export function MobileDetailTopBar({
       </div>
       <div className="flex shrink-0 items-center gap-1 self-stretch">
         {right}
-        {/* Same corner, same control as the host header — and only when that
-            header is absent. See {@link ownsScanSeat}. */}
-        {ownsScanSeat ? <MobileScanCta fill /> : null}
+        {/* Same V2 face as the host header — and only when that header is
+            absent. See {@link ownsScanSeat}. */}
+        {ownsScanSeat ? <MobileScanCta rounded destination={scanHref} /> : null}
       </div>
     </header>
   );

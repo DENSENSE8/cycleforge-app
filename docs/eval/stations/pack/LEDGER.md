@@ -2,7 +2,7 @@
 
 **Route:** `/pack`
 
-Run: `pnpm run eval:station pack` · Display SoT: `pnpm run eval:cohort slot-table`
+Run: `pnpm run eval:station pack`
 
 ---
 

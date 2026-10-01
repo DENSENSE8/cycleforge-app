@@ -10,7 +10,7 @@ import { ItemRecordThumb } from '@/design-system/components/item-record/ItemReco
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { formatRelativeTime } from '@/lib/search/search-recents';
 import { INTAKE } from '@/design-system/tokens/intake';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { cn } from '@/utils/_cn';
 import { STATION_TONE_INK } from './station-chrome';
 import type { StationItemAction, StationTapeEntry } from './station-tape';

@@ -40,12 +40,11 @@ export interface StationSkin {
   hint: string;
   group: StationSkinGroup;
   vars: StationSkinVars;
-  /** Swatches for the Appearance picker (resolved against light industrial). */
+  /** Swatches for the Appearance picker. */
   preview: { header: string; well: string; plate: string; slot: string };
 }
 
 export type StationSkinName =
-  | 'industrial'
   | 'bench'
   | 'coal'
   | 'porcelain'
@@ -65,20 +64,6 @@ export type StationSkinName =
 function hoverFrom(well: string): string {
   return `color-mix(in srgb, ${well} 40%, transparent)`;
 }
-
-const INDUSTRIAL_VARS: StationSkinVars = {
-  header: 'transparent',
-  well: 'var(--ds-color-surface-strong)',
-  plate: 'var(--ds-color-surface-accent)',
-  slot: 'var(--ds-color-surface-strong)',
-  bar: 'var(--ds-color-background-surface)',
-  'row-hover': 'var(--ds-color-surface-hover)',
-  'header-hover': 'var(--ds-color-surface-hover)',
-  'bevel-shadow': 'var(--ds-color-border-emphasis)',
-  'bevel-highlight': 'var(--ds-color-background-canvas)',
-  ink: 'var(--ds-color-text-primary)',
-  'ink-muted': 'var(--ds-color-text-secondary)',
-};
 
 const BENCH_VARS: StationSkinVars = {
   header: 'var(--ds-color-surface-bench)',
@@ -278,7 +263,7 @@ const STUDIO_VARS: StationSkinVars = {
 };
 
 const HOUSE_COLOR_VARS: StationSkinVars = {
-  ...INDUSTRIAL_VARS,
+  ...PORCELAIN_VARS,
   plate:
     'color-mix(in srgb, var(--ds-color-accent-bg) 35%, var(--ds-color-surface-accent))',
   'row-hover':
@@ -286,14 +271,6 @@ const HOUSE_COLOR_VARS: StationSkinVars = {
 };
 
 export const STATION_SKINS: Record<StationSkinName, StationSkin> = {
-  industrial: {
-    name: 'industrial',
-    label: 'Industrial',
-    hint: 'Carved mill — strong well, accent plate.',
-    group: 'mill',
-    vars: INDUSTRIAL_VARS,
-    preview: { header: '#ffffff', well: '#e2e8f0', plate: '#dbeafe', slot: '#e2e8f0' },
-  },
   bench: {
     name: 'bench',
     label: 'Packing bench',
@@ -409,7 +386,7 @@ export const STATION_SKINS: Record<StationSkinName, StationSkin> = {
   'house-color': {
     name: 'house-color',
     label: 'House color',
-    hint: 'Industrial mill — working plate tints from your accent.',
+    hint: 'Quiet working plate tinted from your accent.',
     group: 'tenant',
     vars: HOUSE_COLOR_VARS,
     preview: {
@@ -423,14 +400,14 @@ export const STATION_SKINS: Record<StationSkinName, StationSkin> = {
 
 /** Insertion order of {@link STATION_SKINS} — typed like THEME_NAMES for z.enum. */
 export const STATION_SKIN_NAMES = Object.keys(STATION_SKINS) as StationSkinName[];
-export const DEFAULT_STATION_SKIN: StationSkinName = 'industrial';
+export const DEFAULT_STATION_SKIN: StationSkinName = 'porcelain';
 
 export function isStationSkinName(value: unknown): value is StationSkinName {
   return typeof value === 'string' && value in STATION_SKINS;
 }
 
 export function resolveStationSkin(value: unknown): StationSkin {
-  return isStationSkinName(value) ? STATION_SKINS[value] : STATION_SKINS.industrial;
+  return isStationSkinName(value) ? STATION_SKINS[value] : STATION_SKINS[DEFAULT_STATION_SKIN];
 }
 
 function skinVarDeclarations(skin: StationSkin, indent = '  '): string {
@@ -457,9 +434,9 @@ const STATION_DISPLAYS_SCOPE_CSS = `[data-station-displays] {
 
 export function stationSkinCssText(): string {
   const blocks: string[] = [];
-  blocks.push(`:root {\n${skinVarDeclarations(STATION_SKINS.industrial)}\n}`);
+  blocks.push(`:root {\n${skinVarDeclarations(STATION_SKINS[DEFAULT_STATION_SKIN])}\n}`);
   for (const name of STATION_SKIN_NAMES) {
-    if (name === 'industrial') continue;
+    if (name === DEFAULT_STATION_SKIN) continue;
     blocks.push(
       `html[data-station-skin='${name}'] {\n${skinVarDeclarations(STATION_SKINS[name])}\n}`,
     );

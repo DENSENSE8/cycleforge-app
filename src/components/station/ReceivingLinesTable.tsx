@@ -22,7 +22,6 @@ import {
   useTableImportDraft,
 } from '@/lib/tables/import/staging-store';
 import {
-  receivingCompoundColumnsFor,
   defaultDirForIncomingGridSort,
   isIncomingGridSortable,
   type IncomingGridColumnKey,
@@ -46,8 +45,8 @@ import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek'
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { ReceivingSpreadsheet } from '@/components/station/receiving-grid/useReceivingSpreadsheet';
+import { RECEIVING_TABLE_BINDING } from '@/components/station/receiving-grid/receiving-table-definition';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
-import { useReceivingTableLayout } from '@/components/station/receiving-grid/useReceivingTableLayout';
 import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIncomingTableChrome';
 import { useReceivingTableChrome } from '@/components/station/receiving-grid/useReceivingTableChrome';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -598,16 +597,8 @@ export default function ReceivingLinesTable({
   // ReceivingSpreadsheet → DataTable. Date is a per-row column; no sticky day
   // bands.
   const weekCount = getWeekCount();
-  /** The one find field for every receiving body — session-local; typing never writes the URL. */
-  // The effective slot layout (staff ?? org ?? product) materialized into the
-  // compound tracks — one document for every receiving rail, because Unbox,
-  // History and Testing are the same table read at different moments.
-  const { effectiveLayout: receivingLayout, fields: receivingFields } =
-    useReceivingTableLayout();
-  const receivingColumns = useMemo(
-    () => receivingCompoundColumnsFor(receivingLayout),
-    [receivingLayout],
-  );
+  /** Canonical receiving columns shared by every receiving rail. */
+  const receivingColumns = RECEIVING_TABLE_BINDING.columns;
 
   const incomingChrome = useIncomingTableChrome();
   const receivingChrome = useReceivingTableChrome();
@@ -618,7 +609,6 @@ export default function ReceivingLinesTable({
       <ReceivingSpreadsheet
         filter={isUnboxWorkbench ? receivingChrome.filter : undefined}
         columns={receivingColumns}
-        fields={receivingFields}
         filteredGroupedRecords={filteredGroupedRecords}
         serverSorted={mode.serverSorted}
         loading={isLoading && localRows.length === 0}
@@ -668,7 +658,7 @@ export default function ReceivingLinesTable({
 
   // Record ledgers — Inbound deliveries, Docked packages, and Unboxed cartons.
   if (isLedgerHost) {
-    // The ledgers paint on the industrial record face (`mode-*` tokens). The
+    // The ledgers paint on the shared record face (`mode-*` tokens). The
     // Inbound desk page declares its triage region; the Unbox workbench does
     // not, so its History / Inbound tabs carry the same region here.
     const inTriageRegion = (body: ReactNode) =>

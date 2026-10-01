@@ -12,14 +12,12 @@ import { resolveUnitAllocationsSlotValue } from '@/lib/tables/field-catalog/unit
 import type { UnitAllocationTableRow } from '@/lib/inventory/unit-allocation-row';
 import { unitAllocationsCompoundView } from '@/components/inventory/allocations-grid/unit-allocations-row-view';
 import {
-  unitAllocationsCompoundColumnsFor,
   unitAllocationsSortFactFor,
   type UnitAllocationsGridColumn,
   type UnitAllocationsGridColumnKey,
 } from '@/components/inventory/allocations-grid/unit-allocations-grid-layout';
 import { UNIT_ALLOCATIONS_GRID_CAPABILITIES } from '@/components/inventory/allocations-grid/unit-allocations-table-definition';
 import { SKU_ALLOCATIONS_TABLE_BINDING } from './sku-allocations-table-definition';
-import { useSkuAllocationsTableLayout } from './useSkuAllocationsTableLayout';
 
 interface UseSkuAllocationsSpreadsheetOptions {
   /** The open holds on this SKU's units. Already ordered; a header click re-orders it. */
@@ -51,11 +49,8 @@ export function useSkuAllocationsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useSkuAllocationsTableLayout();
-  const columns = useMemo(
-    () => unitAllocationsCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: UnitAllocationsGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -76,12 +71,10 @@ export function useSkuAllocationsSpreadsheet({
     UnitAllocationsGridColumn
   >({
     binding: SKU_ALLOCATIONS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: SKU_ALLOCATIONS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: unitAllocationsCompoundView,
-    subtitleFieldIds,
     resolve: resolveUnitAllocationsSlotValue,
     sortFactFor: unitAllocationsSortFactFor,
     capabilities: UNIT_ALLOCATIONS_GRID_CAPABILITIES,

@@ -2,7 +2,7 @@
 
 import { Check } from '@/components/Icons';
 import { evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { displayCarrierFromHint } from '@/lib/carrier-brand';
 import { LABEL_PURPOSE_FACE } from '@/lib/shipping/label-purpose';

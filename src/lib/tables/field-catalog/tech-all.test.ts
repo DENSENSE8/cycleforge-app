@@ -11,7 +11,7 @@ import {
 import type { TechAllTriageRow } from '@/lib/tech/tech-all-triage';
 import { TECH_ALL_FIELD_CATALOG, TECH_ALL_PRODUCT_LAYOUT } from './tech-all';
 import { resolveTechAllSlotValue } from './tech-all-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<TechAllTriageRow> = {}): TechAllTriageRow {
   return {
@@ -40,7 +40,7 @@ describe('tech-all catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; the whole strip bound)', () => {
-    const parsed = parseSlotLayout(TECH_ALL_PRODUCT_LAYOUT, TECH_ALL_FIELD_CATALOG);
+    const parsed = TECH_ALL_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'tech-all.item');
     assert.deepEqual(parsed.statusBindings, [

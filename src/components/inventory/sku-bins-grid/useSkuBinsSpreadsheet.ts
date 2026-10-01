@@ -12,14 +12,19 @@ import { resolveSkuBinsSlotValue } from '@/lib/tables/field-catalog/sku-bins-res
 import type { SkuBinTableRow } from '@/lib/inventory/sku-bin-row';
 import { skuBinsCompoundView } from './sku-bins-row-view';
 import {
-  slotTableColumnsFor,
-  slotTableSortFactFor,
-  type SlotTableColumn,
-  type SlotTableColumnKey,
-} from '@/components/tables/compound/slot-table-columns';
-import { useSlotTableLayout } from '@/components/tables/useSlotTableLayout';
-import { SKU_BINS_FAMILY } from '@/lib/tables/field-catalog/sku-bins';
+  type DataTableCompoundColumn,
+  type DataTableCompoundColumnKey,
+} from '@/components/tables/compound/data-table-compound-columns';
 import { SKU_BINS_GRID_CAPABILITIES, SKU_BINS_TABLE_BINDING } from './sku-bins-table-definition';
+
+function skuBinsSortFact(col: { key: string; fieldId?: string; sortable?: boolean }): string | null {
+  if (col.sortable === false) return null;
+  if (col.key === 'fulfillment') return 'sku-bins.bin';
+  if (col.key === 'item') return 'sku-bins.item';
+  if (col.key === 'dates') return 'sku-bins.last_counted';
+  if (col.key === 'state') return 'sku-bins.level';
+  return col.fieldId ?? null;
+}
 
 interface UseSkuBinsSpreadsheetOptions {
   /** Every bin holding this SKU. Already ordered by qty; a header click re-orders it. */
@@ -36,20 +41,15 @@ export function useSkuBinsSpreadsheet({
   searchPlaceholder = 'Filter bins…',
 }: UseSkuBinsSpreadsheetOptions): CompoundSpreadsheetFeed<
   SkuBinTableRow,
-  SlotTableColumnKey,
-  SlotTableColumn
+  DataTableCompoundColumnKey,
+  DataTableCompoundColumn
 > {
-  const [sort, setSort] = useState<SlotTableColumnKey | null>(null);
+  const [sort, setSort] = useState<DataTableCompoundColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useSlotTableLayout(SKU_BINS_FAMILY);
-  const columns = useMemo(
-    () => slotTableColumnsFor(SKU_BINS_FAMILY, effectiveLayout),
-    [effectiveLayout],
-  );
 
-  const onSortChange = useCallback((key: SlotTableColumnKey, nextDir: 'asc' | 'desc') => {
+  const onSortChange = useCallback((key: DataTableCompoundColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
     setDir(nextDir);
   }, []);
@@ -59,16 +59,14 @@ export function useSkuBinsSpreadsheet({
     [query, searchPlaceholder],
   );
 
-  return useCompoundSpreadsheet<SkuBinTableRow, SlotTableColumnKey, SlotTableColumn>({
+  return useCompoundSpreadsheet<SkuBinTableRow, DataTableCompoundColumnKey, DataTableCompoundColumn>({
     binding: SKU_BINS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: SKU_BINS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.location_id),
     adapter: skuBinsCompoundView,
-    subtitleFieldIds,
     resolve: resolveSkuBinsSlotValue,
-    sortFactFor: (col) => slotTableSortFactFor(SKU_BINS_FAMILY, col),
+    sortFactFor: skuBinsSortFact,
     capabilities: SKU_BINS_GRID_CAPABILITIES,
     sort,
     dir,

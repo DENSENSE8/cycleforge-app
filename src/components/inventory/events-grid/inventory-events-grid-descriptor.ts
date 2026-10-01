@@ -1,4 +1,4 @@
-/** Inventory › Ledger activity grid surface descriptor — lifts the MOUNTED column model (a `SlotLayout` materialization) into the TanStack… */
+/** Inventory › Ledger activity grid surface descriptor — lifts the MOUNTED column model (a `DataTableColumnLayout` materialization) into the TanStack surface. */
 
 import {
   makeGridSurfaceDescriptor,
@@ -21,7 +21,6 @@ export const INVENTORY_EVENTS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

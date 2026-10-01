@@ -1,6 +1,6 @@
 'use client';
 
-/** STATUS cell peek — Center Lock L2 inset over the slot table. */
+/** STATUS cell peek — Center Lock L2 inset over the data table. */
 
 import {
   createContext,

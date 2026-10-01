@@ -1,8 +1,8 @@
-/** Local Pickup sheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
+/** Local Pickup sheet column model — MATERIALIZED from a {@link DataTableColumnLayout}, never a hand array. */
 
 import { PICKUP_FIELD_CATALOG, PICKUP_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/pickup';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -15,22 +15,20 @@ export type PickupGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface PickupGridColumn extends SlotTrackFields {
-  key: PickupGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  minTrackRem?: number;
-  resizable?: boolean;
-  /** When false, header is not click-to-sort (select gutter only). Default true. */
-  sortable?: boolean;
-}
+export interface PickupGridColumn extends DataTableColumnFields { key: PickupGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+minTrackRem?: number;
+resizable?: boolean;
+/** When false, header is not click-to-sort (select gutter only). Default true. */
+sortable?: boolean; }
 
 /**
  * The structural sheet skeleton — what pickup paints with ZERO bindings.
@@ -59,15 +57,13 @@ const PICKUP_SHEET_BASE: readonly PickupGridColumn[] = [
 ];
 
 /** Materialize the mounted pickup columns from an effective layout. */
-export function pickupSheetColumnsFor(layout: SlotLayout): readonly PickupGridColumn[] {
-  return materializeTracks<PickupGridColumn>({
-    layout,
-    catalog: PICKUP_FIELD_CATALOG,
-    base: PICKUP_SHEET_BASE,
-    statusAnchorKey: 'order',
-    subtitleAnchorKey: 'order',
-  });
-}
+export function pickupSheetColumnsFor(layout: DataTableColumnLayout): readonly PickupGridColumn[] { return materializeTracks<PickupGridColumn>({
+  layout,
+  catalog: PICKUP_FIELD_CATALOG,
+  base: PICKUP_SHEET_BASE,
+  statusAnchorKey: 'order',
+  subtitleAnchorKey: 'order',
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts

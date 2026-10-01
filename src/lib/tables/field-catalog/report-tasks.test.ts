@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { slotTableColumnsFor, slotTableSortFactFor } from '@/components/tables/compound/slot-table-columns';
+import { dataTableCompoundColumnsFor, dataTableCompoundSortFactFor } from '@/components/tables/compound/data-table-compound-columns';
 import { reportTasksCompoundView } from '@/components/reports/report-tasks-grid/report-tasks-row-view';
 import { parseTaskDeskReportRows } from '@/lib/reports/report-tasks-feed';
 import { TASK_PRIORITY } from '@/lib/tasks/task-vocabulary';
@@ -13,7 +13,7 @@ import {
   REPORT_TASKS_PRODUCT_LAYOUT,
 } from './report-tasks';
 import { resolveReportTasksSlotValue } from './report-tasks-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '../table-definition';
 
 /** The skeleton's six non-gutter chrome tracks leave this many status slots. */
@@ -69,7 +69,7 @@ describe('report-tasks catalog', () => {
   });
 
   it('product default parses, and the ASSIGNMENT ID is the identity', () => {
-    const parsed = parseSlotLayout(REPORT_TASKS_PRODUCT_LAYOUT, REPORT_TASKS_FIELD_CATALOG);
+    const parsed = REPORT_TASKS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     // Identity purity: neither person may occupy column one.
     assert.equal(parsed.identityFieldId, 'report-tasks.id');
@@ -114,17 +114,17 @@ describe('report-tasks catalog', () => {
 });
 
 describe('report-tasks materialization', () => {
-  const columns = slotTableColumnsFor(REPORT_TASKS_FAMILY, REPORT_TASKS_PRODUCT_LAYOUT);
+  const columns = dataTableCompoundColumnsFor(REPORT_TASKS_FAMILY, REPORT_TASKS_PRODUCT_LAYOUT);
   const col = (key: string) => columns.find((c) => String(c.key) === key);
 
   it('gives every painted chrome header a live sort over the fact behind it', () => {
-    assert.equal(slotTableSortFactFor(REPORT_TASKS_FAMILY, col('fulfillment')!), 'report-tasks.id');
-    assert.equal(slotTableSortFactFor(REPORT_TASKS_FAMILY, col('item')!), 'report-tasks.note');
+    assert.equal(dataTableCompoundSortFactFor(REPORT_TASKS_FAMILY, col('fulfillment')!), 'report-tasks.id');
+    assert.equal(dataTableCompoundSortFactFor(REPORT_TASKS_FAMILY, col('item')!), 'report-tasks.note');
     assert.equal(
-      slotTableSortFactFor(REPORT_TASKS_FAMILY, col('dates')!),
+      dataTableCompoundSortFactFor(REPORT_TASKS_FAMILY, col('dates')!),
       'report-tasks.completed',
     );
-    assert.equal(slotTableSortFactFor(REPORT_TASKS_FAMILY, col('state')!), 'report-tasks.status');
+    assert.equal(dataTableCompoundSortFactFor(REPORT_TASKS_FAMILY, col('state')!), 'report-tasks.status');
   });
 });
 

@@ -40,8 +40,7 @@ source of truth for OCR, pickups, units, QC results, labels, or tickets.
    face, or bypass print profiles.
 5. **One modern list grammar.** Pickup/Receiving work uses
    `TriageCardList` + `RecordCard`, with expandable item rows and a record
-   plane. Do not put pickup back on the legacy slot table and do not hand-roll
-   a second grid.
+   plane. Keep pickup on the card surface and do not hand-roll a second grid.
 6. **One ticket grammar.** `support_tickets` + `ticket_links` own CycleForge's
    ticket identity/linkage; the provider adapter owns provider synchronization
    while that integration remains external. Reuse `TicketComposer` and
@@ -319,7 +318,7 @@ mismatches, and the table has forced RLS. The indexed pending-QC read returned
 
 ## Phase 4 — Receiving display and triage controls
 
-Extend the existing modern card adapter, not the old slot table:
+Extend the existing modern card adapter, not the retired table:
 
 - `src/components/receiving/incoming/cards/receipt-card-model.ts`
 - `src/components/receiving/incoming/cards/IncomingDeliveryCard.tsx`
@@ -356,8 +355,8 @@ modern `TriageCardList` family already used by Incoming and Pickup.
 ### Phase 4 implementation checkpoint — 2026-09-29
 
 The local-pickup Receiving history now reads the unit-stage projection in one
-batched query and renders through `TriageCardList`; it does not use the retired
-slot table and does not issue a per-card event query. Each expanded product is
+batched query and renders through `TriageCardList`; it does not use a data table
+and does not issue a per-card event query. Each expanded product is
 split into its expected physical units and shows UID/serial, condition, QC,
 label, tester, price, and ticket context. Expected quantity without a durable
 unit is intentionally visible as pending work rather than disappearing.

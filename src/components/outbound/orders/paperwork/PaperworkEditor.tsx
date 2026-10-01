@@ -19,7 +19,7 @@ import { TriageScrollLayout } from '@/design-system/components/TriageScrollLayou
 import { Button, Checkbox, IconButton } from '@/design-system/primitives';
 import { LIFECYCLE, LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { TRIAGE_PANEL_INNER_CORNER, triagePanelControl } from '@/design-system/tokens/triage-panel';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { orderReleaseGatesQuery } from '@/lib/queries/caged-orders-queries';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';

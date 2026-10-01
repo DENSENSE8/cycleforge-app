@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { CheckCircle, ExternalLink, PackageOpen, RotateCcw, Star, Tag, Ticket, Warehouse, X } from '@/components/Icons';
 import type { RecordFact, RecordModel, RecordStep } from '@/design-system/components/record-ledger/record-model';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { QC_UNIT_LIFECYCLE, type QcUnitLifecycleState } from '@/design-system/tokens/lifecycle';
 import { conditionLabel } from '@/lib/conditions';
 import { qcLabelHandle, type QcLabelRow } from '@/lib/labels/qc-label-row';

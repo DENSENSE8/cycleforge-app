@@ -92,7 +92,7 @@ test('StaffPreferencesPutBody accepts quickAccess pins with label + exact href',
 });
 
 test('StaffPreferencesPutBody accepts scan-station skins', () => {
-  ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'industrial' }).success);
+  ok(!StaffPreferencesPutBody.safeParse({ stationSkin: 'industrial' }).success);
   ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'bench' }).success);
   ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'coal' }).success);
   ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'porcelain' }).success);
@@ -117,50 +117,7 @@ test('StaffPreferencesPutBody accepts product-update last-seen keys', () => {
   ok(StaffPreferencesPutBody.safeParse({ lastSeenBuildSha: null }).success);
 });
 
-test('StaffPreferencesPutBody accepts spineSlots id arrays', () => {
-  ok(StaffPreferencesPutBody.safeParse({ spineSlots: [] }).success);
-  ok(StaffPreferencesPutBody.safeParse({ spineSlots: ['outbound', 'pickup'] }).success);
-  ok(StaffPreferencesPutBody.safeParse({ spineSlots: null }).success);
-  ok(
-    !StaffPreferencesPutBody.safeParse({
-      spineSlots: Array.from({ length: 41 }, (_, i) => `id-${i}`),
-    }).success,
-    'more than 40 slots must be rejected',
-  );
-  ok(
-    !StaffPreferencesPutBody.safeParse({ spineSlots: [''] }).success,
-    'empty id must be rejected',
-  );
-});
-
-test('tableLayouts accepts whole SlotLayout documents keyed by tableId', () => {
-  const layout = {
-    morph: 'compound',
-    identityFieldId: 'orders.order_id',
-    statusBindings: [{ fieldId: 'orders.picked' }],
-    subtitleBindings: [],
-    amountFieldId: null,
-  };
-  ok(StaffPreferencesPutBody.safeParse({ tableLayouts: { orders: layout } }).success);
-  ok(StaffPreferencesPutBody.safeParse({ tableLayouts: {} }).success);
-  ok(StaffPreferencesPutBody.safeParse({ tableLayouts: null }).success);
-  // Structural gate: a legacy/hostile blob is rejected at the write boundary.
-  ok(!StaffPreferencesPutBody.safeParse({ tableLayouts: { orders: { columns: [] } } }).success);
-  ok(
-    !StaffPreferencesPutBody.safeParse({
-      tableLayouts: { orders: { ...layout, morph: 'board' } },
-    }).success,
-  );
-  // Budgets bite here too — an 11th status binding never persists.
-  ok(
-    !StaffPreferencesPutBody.safeParse({
-      tableLayouts: {
-        orders: {
-          ...layout,
-          statusBindings: Array.from({ length: 11 }, (_, i) => ({ fieldId: `orders.s${i}` })),
-        },
-      },
-    }).success,
-    'an 11th status binding must be rejected',
-  );
+test('StaffPreferencesPutBody rejects removed spine reordering preferences', () => {
+  ok(!StaffPreferencesPutBody.safeParse({ spineSlots: ['outbound', 'pickup'] }).success);
+  ok(!StaffPreferencesPutBody.safeParse({ spineSlotsVersion: 6 }).success);
 });

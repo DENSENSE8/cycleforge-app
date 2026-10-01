@@ -110,7 +110,7 @@ of truth — `resolveSkuIdentityTitle`, `SKU_CATALOG_JOIN_ON_SQL`).
    noun, test-id prefix, status keys, record params and storage keys. Records open in
    `DeskRecordPlane` like orders. Declare `cardStatus` / `page` in the route's param hygiene.
 6. **Delete the old mount and every helper only it used** (clean cutover — no shims, no dead exports).
-   Update `registered-bindings.ts` / `SLOT_LAYOUT_TABLES` if the binding is now dead.
+   Update `registered-bindings.ts` if the binding is now dead.
 7. **Verify**: `npx tsc --noEmit -p tsconfig.json` (filter touched), `npx eslint <touched> --quiet`,
    `pnpm verify:fast`; screenshots at 3 widths at `:3050`; J / K, Space, Enter, checkbox and shift
    range, `[` `]`, held-new pill, kept scroll across reload; a saved view loads; the `/m/*` twin
@@ -144,8 +144,8 @@ kinds rather than special cases.
   `TriageSelectBar` shows at 1 **and** N checked. `RecordCard` has no `menu` slot. Mount
   `useTriageCardKeys` so X checks, Space folds the quick look and Enter opens the focused card (else the card under the pointer; X falls back to the open record), and keep verb letters off `x`, `f`,
   `j`, `k`, `[`, `]`.
-- The hierarchy (`SlotLayout` `lead` / `lines` / `rail` / `priority`) is not driving cards yet:
-  adapters own the fact list. Keep it that way until the owner schedules the layout extension.
+- DataTable column layouts do not drive cards; adapters own the fact list.
+  Keep it that way unless the owner schedules a separate card-layout contract.
 
 ## Laws (enforce in review)
 1. Pages pass ids and data, never JSX branches; `RecordCard` never branches on family.

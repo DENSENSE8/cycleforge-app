@@ -21,7 +21,7 @@ import {
   importExceptionSlotValuesFor,
   resolveImportExceptionSlotValue,
 } from './import-exception-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<ImportExceptionRow> = {}): ImportExceptionRow {
   return {
@@ -63,10 +63,7 @@ describe('import-exception catalog', () => {
   });
 
   it('product default parses against the catalog — compound morph, NOTHING bound', () => {
-    const parsed = parseSlotLayout(
-      IMPORT_EXCEPTION_PRODUCT_LAYOUT,
-      IMPORT_EXCEPTION_FIELD_CATALOG,
-    );
+    const parsed = IMPORT_EXCEPTION_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'import-exception.order');
     assert.deepEqual(parsed.statusBindings, []);

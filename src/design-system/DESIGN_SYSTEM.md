@@ -41,8 +41,7 @@ A mode is what the operator is DOING in a region; it is orthogonal to theme.
 
 | Mode | Where | Feel |
 |---|---|---|
-| `industrial` | `/m/*` operation flows only (phone and iPad: scan, pack, scan-out, count — the route declares it); never a desk (owner 2026-09-28) | Canvas `#fafafa`, white rows, flush corners, 13px, 32px hit; motion only on the scan-status spot |
-| `triage` | every desktop route (In place / Split, no Floor), `/m/*` reading flows, right-rail detail occupants | Slate, 4px corners, 14px, 12px page pad |
+| `triage` | ordinary desktop and mobile routes, right-rail detail occupants | Neutral, 10px cards, 8px controls, 14px, 12px page pad |
 | `counter` | Kiosk shell (`/kiosk`, `/kiosk/v2`, `/m/consult`) | 12px corners + pill chips, 16px, 40px hit / 56px CTA, tenant `--mode-brand` |
 | `assistant` | Right-rail assistant dock, `/ai-chat` | 12px corners, 15px, 200ms enter + 1200ms pulse |
 
@@ -78,17 +77,16 @@ Coarse pointers raise hit floors to 48px, and page padding and body text where t
   a native desktop rhythm on Fluent 2's 4px ramp (2 · 4 · 8 · 12 · 16 · 20 ·
   24 · 32, 6 as the icon nudge): list/menu rows `inset-cozy` 12×8 so a 14px
   row lands on the 32px hit, facts `stack-tight` 8, rows `stack-row` 12,
-  sections `stack-section` 32. Industrial, counter and assistant stay on
+  sections `stack-section` 32. Counter and assistant use
   `DESK_SPACING` (the pre-mode values). A mode gets roomier or tighter by
   declaring its own scale — one edit re-pads every intent in that mode and
   nothing outside it. Components pick the intent, never a literal `p-*` for
   a recurring job, and never override an intent's value locally.
-- **Label voice follows the mode:** every mode declares a `labelVoice` (`mono` on
-  the floor, `sentence` on the desks) → `--mode-label-case` / `-tracking` / `-font`
+- **Label voice follows the mode:** every mode declares a `labelVoice` → `--mode-label-case` / `-tracking` / `-font`
   / `-weight` / `-size`. `text-role-eyebrow` / `text-role-micro` read the case and
   tracking intrinsically, `mode-label` / `mode-label-case` read the rest; labels
   never add `uppercase tracking-widest` — today every voice is sentence case
-  (owner 2026-09-28, the floor included). Caps-by-identity codes (SKU, lifecycle
+  Caps-by-identity codes (SKU, lifecycle
   code) keep an explicit `uppercase`.
 
 Density still applies inside a mode: `--cf-density` (`[data-density='compact']`
@@ -189,8 +187,9 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
     chrome is flush-square — solid CTAs, tab bands, selects, chips and toggle rows compose
     `cornerClass('flush')` (`rounded-none`); soft radius and horizontal pill bands are debt. Roles:
     `flush` (ops default) · `chip` · `row` · `control` · `field` · `card` · `canvas` · `pill` (status
-    dots / avatars / Switch only); `nestedCorner(outer, padStep)` for concentric nesting. Tab-band SoT
-    is `TabDisplay`; compose-field SoT is `DenseComposeFields` / `SearchableSelectField appearance="flush"`.
+    dots / avatars / Switch only); `nestedCorner(outer, padStep)` for concentric nesting. Record-task
+    tabs use `PaneHeaderTabs`; dense section selection uses `SectionTabsSlider` /
+    `SearchableSelectField appearance="flush"`.
   - `tokens/shadows.ts` — raw box-shadow CSS vars + elevation roles
     (`elevationClass('flat' | 'raised' | 'overlay')`; raised intensity `soft` | `default`)
   - `tokens/table-surface.ts` — ops table / spreadsheet shell
@@ -217,7 +216,7 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
 - Palettes: `themes/light.ts` (default; values from `LIGHT_THEME` in the
   token package), `themes/dark.ts`, `themes/mono.ts`
   (strict grayscale; collapses staff accents; keeps a muted
-  success/warning/danger safety triad), `themes/slate.ts` (cool industrial).
+  success/warning/danger safety triad), `themes/slate.ts` (cool slate).
 - Two `<html>` attributes, stamped by `src/lib/theme/theme.ts`:
   `data-theme="<name>"` selects the palette block; `data-color-scheme="dark"`
   (from `palette.scheme`) scopes the raw-neutral compatibility remap in
@@ -263,7 +262,7 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
   - `VirtualGroupedSections` — shared date→groups/rows virtualizer (LedgerGrid + station/receiving feeds).
   - **Column visibility (ONE rule, one place):** `useGridColumnVisibility({ columns, tableId, forceHidden })` resolves descriptor default tier + the staffer's persisted delta + ephemeral viewport collapse into the visible track list; the view passes that list to the header, rows, group summaries **and** its geometry fn, so a hidden column loses its TRACK. `useGridFields(tableId, columns)` backs `GridColumnDetailsPanel`, generated from the descriptor and opened from `GridColumnGutter`. **Portal or nothing — two hosts (2026-08-06, tightened 2026-08-08):** pass the Band-3 triage `controlsSlotRef` element (the norm) **or** the inspector View cluster's element (Unbox · To-ship) as `columnTriggerPortalTarget`, so ▦ sits resident beside filter / staff / week / sort. A table with neither host paints **no** ▦ — the card-corner hover-reveal float is deleted, and there is no `triggerPortalOnly` opt-out any more. Never page chrome (retired 2026-08-02 with `GridFieldsMenu`) and never a resident header track / `pr-9` (covered `TRACKING`). Column models carry `tier: 'core' | 'optional'` — `optional` ships OFF so grids open lean and staff opt in; prefs persist as a delta (`hidden`/`shown`) in `staff_preferences.tableColumns[tableId]`, never an absolute list. **Do not** call `useIsColumnHidden()` from a grid family — that is the retired cell-granularity path (it left an empty ruled band where the track should have gone) and now serves only the legacy `ChipColumns`/`RowMetaColumns` row primitives. Guard: `grid-column-tier.guard.test.ts` + `grid-column-visibility.test.ts` + `workbench-trailing-cluster.guard.test.ts`.
   - **Column width is a per-staff drag:** `ColumnResizeHandle` on each resizable header cell mutates only the surface's `--cf-col-<key>` var (so header, rows, summaries and the frozen pane's sticky-left `calc()` reflow together with no React render), committing once on drop through `useGridColumnWidths` → `staff_preferences.tableColumns[t].widths`, applied back via `LedgerGrid` `columnVars`. `isGridColumnResizable` is the one rule for who gets a grip: variable-content tracks yes; `select` and the fixed-format types (`number` · `id` · `location`) no — their cells render a last-8 chip or a short numeral run, so a drag only moves whitespace. Override with `resizable` on the column model.
-  - **Column sort is URL-durable:** `useUrlColumnSort({ isColumn, defaultDir })` owns `?colsort=`/`?coldir=` — deliberately NOT `?sort=`/`?dir=`, which are already taken by *server* ordering vocabularies on `/incoming` (`useIncomingFilters`) and History (`normalizeHistorySort`). Both params are registered in `MODE_SCOPED_PARAMS` + `stripCrossSurfaceParams`, so a column sort clears on mode/surface switch. Pending/Testing (`useQueueDisplaySort`) keep their composite wrapper. Repair is a card list (`RepairCardList`, owner 2026-09-29): its sort is the sidebar Sort control (`?sort=`, `src/lib/repair/repair-sort.ts`), no column headers.
+  - **Column sort is URL-durable:** `useUrlColumnSort({ isColumn, defaultDir })` owns `?colsort=`/`?coldir=` — deliberately NOT `?sort=`/`?dir=`, which are already taken by *server* ordering vocabularies on `/incoming` (`useIncomingFilters`) and History (`normalizeHistorySort`). Both params are registered in `MODE_SCOPED_PARAMS` + `stripCrossSurfaceParams`, so a column sort clears on mode/surface switch. Pending/Testing (`useQueueDisplaySort`) keep their composite wrapper.
   - **Headless state engine (TanStack Table v8 — state math ONLY):** `useGridSurface` (`"use no memo"` — React Compiler trap) owns column defs + sorting + visibility + column order; markup, virtualization, grouping/folds, fetch, and mutations stay house. `grid-surface-descriptor.ts` (`buildLedgerColumnDefs`, `makeGridSurfaceDescriptor`, `GridSurfaceDescriptor`) lifts a house column-model list (`ORDERS_QUEUE_COLUMNS` / `INCOMING_GRID_COLUMNS` / `RECEIVING_GRID_COLUMNS`) into TanStack defs carrying the house model on `meta.gridColumn`. **Never** mount a foreign UI grid (AG Grid / MUI / Glide) and never let TanStack own widths/markup — geometry stays on the house CSS-var templates.
   - `LedgerGridSurface` — descriptor-driven station composer (card shell + skeleton + teaching empty + TanStack sort surface + `LedgerGrid`). Adopters: `IncomingGridView`, `ReceivingGridHost`. Pending composes `LedgerGrid` directly (full-bleed ancestor scroll, URL `?sort=` SoT, force-hide, drag order).
   - Shared VALUE cells for grid rows/summaries: `@/components/ui/grid-cells` (`GridCellDash`, `GridDateCellValue`, `GridAgeCellValue`, `GridPlatformMarkValue`, `GridStaffCellValue`, `GridDateTimeCellValue`, `GridStatusCellValue`) — compose these, never re-type the em-dash / age-tone / date-tooltip / brand-mark markup per surface.
@@ -279,8 +278,8 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
 - **Re-exported from `components/ui/`:**
   - `CopyChip.tsx` — semantic chip family (TrackingChip, FnskuChip, SerialChip, OrderIdChip, TicketChip, SourceOrderChip)
   - `TabSwitch.tsx` — legacy soft-pill tab switcher with variant support
-  - `TabDisplay.tsx` — industrial SoT tab switcher (flush / zero radius; Displays nested verbs)
-- Sidebar intake chrome: `sidebar-intake/` (intakeFormClasses, SidebarIntakeFormShell) — **create / import / prefs only**. Record right-rail peeks use `PaneHeader` + `PaneHeaderLabel` (see `.claude/rules/display/right-rail-inspector.md`).
+- `SectionTabsSlider.tsx` — searchable selector for dense station timeline sections; no icon rail or overflow bucket.
+- Sidebar intake chrome: `sidebar-intake/` (intakeFormClasses, SidebarIntakeFormShell) — **create / import / prefs only.** Record right-rail peeks use `PaneHeader` + `PaneHeaderLabel`.
 
 ### Procedure & scan progress (`components/procedure/` + station chrome)
 
@@ -348,50 +347,36 @@ Plain full-string cells use `CopyableCellValue` (same `useCopyChip` behavior).
 
 ## Tab Switcher Rules
 
-**Industrial SoT (Displays nested verbs):** use `TabDisplay` from
-`src/design-system/components/TabDisplay.tsx` (barrel: `@/design-system/components`).
-Square / flush / zero corner radius — no soft pills. Densities: `nested` (shipped for
-Unbox Displays verb switchers), `band` / `icon` reserved for later migrations.
+**Record-task SoT:** use `PaneHeaderTabs` from
+`src/components/ui/pane-header/PaneHeaderTabs.tsx` for mutually exclusive tasks
+inside one open record, such as **Unbox · Ticket**. `appearance="soft"` is a
+rounded, mode-aware segmented control; `appearance="flush"` welds into an
+enclosing surface. It implements roving focus: one tab stop and
+ArrowLeft/ArrowRight/Home/End select and focus. It is not page navigation: page
+views belong in `ContextualSidebar`.
 
-**Legacy soft pills:** `TabSwitch` (`variant="solid"` etc.) remains for non-Displays
-call sites until they migrate to `TabDisplay`. Table and desk tab strips are NOT
-among them — those are `TableTabs` (`components/tables/TableStatusBar`), the one
-flush strip a table foots itself with. Custom pill buttons or ad-hoc toggle rows are not
-permitted. Wrap legacy `TabSwitch` in `SidebarTabSwitchChrome` when it sits in a
-sidebar header row.
+**Dense section selection:** use `SectionTabsSlider` when a compact record owns
+multiple named data sections and filtering the names is useful. It is a
+`SearchableSelectField appearance="flush"` plus one visible section body. The
+former icon rail, overflow bucket, hidden-strip tabs and density variants were
+deleted with their only Unbox Displays caller.
 
-**`TabDisplay` (industrial):**
+**Legacy soft pills:** `TabSwitch` (`variant="solid"` etc.) remains for existing
+non-record call sites until they migrate to the appropriate primitive. Table and
+desk tab strips are `TableTabs` (`components/tables/TableStatusBar`). Custom
+pill buttons or ad-hoc toggle rows are not permitted. Wrap legacy `TabSwitch` in
+`SidebarTabSwitchChrome` when it sits in a sidebar header row.
 
-| `density` | Geometry | Use for |
-|---|---|---|
-| `nested` | Displays verb / claim-mode switchers | Photos · Ticket · Linkage · Claim New/Link |
-| `band` | ~40px flush strip sizing | Workbench lifecycle (API ready; consumers still on TabSwitch) |
-| `icon` | Quiet topic strip | Owned by `SectionTabsSlider` `density="icon"` — SpaceX `h-10` edge-to-edge plate + underline active + trailing ⋮ |
-
-| `appearance` | Weight | Active treatment | Use for |
+| `TabSwitch` variant | Rail | Active pill | Use for |
 |---|---|---|---|
-| `underline` | **Parent** | Bottom rule + body type; no inverse fill | Displays nested verbs (Link·Note, Units·Prebox) |
-| `segment` | **Child** | Sunken rail + **flush** light face (no gutter); caption type | Local subset under a parent (Claim New ticket·Link existing; Photos Move·Send) |
-| `fill` | High-contrast | Inverse sliding rectangular face, inset by a `p-0.5` gutter | When a single-layer inverse switcher is required |
+| `default` | `bg-surface-sunken` | light `bg-surface-card` | existing local soft-pill rows |
+| `solid` | light card + default border | inverse face | existing headline lifecycle switchers |
+| `upNext` | tinted station rail | light station-outlined face | station up-next queues |
 
-Parent must sit above child and carry more weight — never stack two inverse fills.
-
-**`segment` carries no gutter** (2026-08-05). It shared `fill`'s `p-0.5` inset
-until then, which put 2px of sunken rail around a light face on a light rail —
-a floating capsule doing the job the rail's own hairline already does. `fill`
-keeps its gutter because an inverse face genuinely needs to read as inset.
-
-**`TabSwitch` `variant` (legacy soft pill — one sliding pill, always):**
-
-| `variant` | Rail | Active pill | Active text | Labels | Use for |
-|---|---|---|---|---|---|
-| `default` | `bg-surface-sunken` sunken track | light `bg-surface-card` pill | per-tab semantic hue (`color`) | sentence case, `font-semibold` | most in-app tab rows |
-| `solid` | light `bg-surface-card` + `border-border-default` | **dark `bg-surface-inverse` pill** | `text-text-inverse` (white) | title-case, `font-semibold` | headline lifecycle switchers (Dashboard · Outbound) — high-contrast Linear-style control **(legacy)** |
-| `upNext` | tinted station rail (`bg-surface-strong`) | light pill + station outline | semantic hue | sentence case | station up-next queue |
-
-- `TabSwitch` `countStyle`: `badge` (mini pill bubble, default) or `plain` (inline — preferred for dense ops headers). `TabDisplay` always uses plain tabular counts.
-- `solid` / `TabDisplay` labels come from the source string as-is (no CSS uppercasing) — store them title-case. All treatments are token-only so they flip under `data-theme` dark mode.
-- Don't hand-set rail colors at the call site — pick the SoT primitive (`TabDisplay` for Displays nested verbs; `TabSwitch` variant until migrated) rather than forking chrome via class overrides.
+`TabSwitch` `countStyle` is `badge` or `plain`. Labels come from the source
+string as-is; never CSS-uppercase them. Do not hand-set rail colors at a call
+site—choose `PaneHeaderTabs`, `SectionTabsSlider`, page navigation, table tabs or
+the retained legacy `TabSwitch` by job.
 
 ## Functional Color Mapping (the color story)
 
@@ -582,7 +567,7 @@ Desktop framing is `ResponsiveLayout` + the MasterNav spine.
 
 Migrate existing components to consume new design system primitives:
 
-1. **OrderCard / FbaItemCard / RepairCard** — replace inline `getConditionColor` helpers with `ConditionText` primitive
+1. **OrderCard / FbaItemCard** — replace inline `getConditionColor` helpers with `ConditionText` primitive
 2. **PackerTable** — replace inline sticky date headers with `DateGroupHeader` component
 3. **UpNextFilterBar** — replace inline AnimatePresence toggle with `OverlaySearch` component
 4. **Sidebar form sections** — replace inline label styling with `FormField` component

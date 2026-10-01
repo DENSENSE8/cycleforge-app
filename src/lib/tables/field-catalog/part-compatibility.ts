@@ -1,12 +1,12 @@
 /** Part-compatibility field catalog — the bindable facts of one model ↔ part edge. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const PART_COMPATIBILITY_FIELD_CATALOG: FieldCatalog = [
   /**
    * The IDENTITY fact — the part's SKU. `displayType: 'id'` is what
-   * `parseSlotLayout` requires of an identity, and it is what makes the
+   * the column materializer requires of an identity, and it is what makes the
    * fulfillment cell paint an ID face rather than prose.
    */
   {
@@ -92,7 +92,7 @@ export const PART_COMPATIBILITY_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default — byte-for-byte the facts the retired table painted, with the merged pill split in two. */
-export const PART_COMPATIBILITY_PRODUCT_LAYOUT: SlotLayout = {
+export const PART_COMPATIBILITY_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'part-compatibility.sku',
   statusBindings: [
@@ -103,7 +103,7 @@ export const PART_COMPATIBILITY_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [{ fieldId: 'part-compatibility.model' }],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Compatibility entry. */
 export const PART_COMPATIBILITY_TABLE_LAYOUT_ID = 'part-compatibility';

@@ -1,6 +1,6 @@
 'use client';
 
-/** Industrial ledger inline editors — ship-by, pick / pack assign, condition and quantity. */
+/** Record inline editors — ship-by, pick / pack assign, condition and quantity. */
 
 import {
   useCallback,
@@ -55,7 +55,7 @@ import {
   RECORD_RECESS_CLASS,
   RECORD_TRAILING_ACTION_CLASS,
   RECORD_TRAILING_GLYPH_INSET_CLASS,
-} from '@/design-system/tokens/industrial-record';
+} from '@/design-system/tokens/record';
 import { LEDGER_HIT_CLASS } from './outbound-orders-ledger-geometry';
 
 /** Stops a control's click from reaching the row's open target. */

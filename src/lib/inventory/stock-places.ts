@@ -28,25 +28,47 @@ export interface StockTote {
   status: string | null;
   /** The tote's stock location barcode once it has one (it has held stock). */
   locationBarcode: string | null;
+  /** The warehouse address where the physical tote is currently parked. */
+  physicalLocationId: number | null;
+  physicalLocationName: string | null;
 }
 
 type Db = Pick<PoolClient, 'query'>;
 
 /** Every open tote of the org, with its stock location when it has one. */
 export async function listStockTotes(db: Db, orgId: string): Promise<StockTote[]> {
-  const res = await db.query<{ id: string | number; code: string; status: string | null; barcode: string | null }>(
-    `SELECT hu.id, hu.code, hu.status, l.barcode
+  const res = await db.query<{
+    id: string | number;
+    code: string;
+    status: string | null;
+    barcode: string | null;
+    physical_location_id: string | number | null;
+    physical_location_name: string | null;
+  }>(
+    `SELECT hu.id, hu.code, hu.status, stock_place.barcode,
+            parked.id AS physical_location_id,
+            COALESCE(parked.display_name, parked.name, parked.barcode) AS physical_location_name
        FROM handling_units hu
-       LEFT JOIN locations l
-         ON l.organization_id = hu.organization_id
-        AND l.barcode = hu.code
+       LEFT JOIN locations stock_place
+         ON stock_place.organization_id = hu.organization_id
+        AND stock_place.barcode = hu.code
+       LEFT JOIN locations parked
+         ON parked.organization_id = hu.organization_id
+        AND parked.id = hu.location_id
       WHERE hu.organization_id = $1
         AND hu.closed_at IS NULL
         AND NULLIF(TRIM(hu.code), '') IS NOT NULL
       ORDER BY hu.id`,
     [orgId],
   );
-  return res.rows.map((row) => ({ id: Number(row.id), code: row.code, status: row.status, locationBarcode: row.barcode }));
+  return res.rows.map((row) => ({
+    id: Number(row.id),
+    code: row.code,
+    status: row.status,
+    locationBarcode: row.barcode,
+    physicalLocationId: row.physical_location_id == null ? null : Number(row.physical_location_id),
+    physicalLocationName: row.physical_location_name,
+  }));
 }
 
 /** `H-12`, `h12`, `12` or an external tote code → the tote reference the lookup takes. */

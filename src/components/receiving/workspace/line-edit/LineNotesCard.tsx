@@ -30,8 +30,7 @@ import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStr
 import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { useComposerTicketClaim } from './hooks/useComposerTicketClaim';
+import type { WorkspaceTicketDraftModel } from './hooks/useWorkspaceTicketDraft';
 import { useSupportReply } from '@/hooks/useSupportReply';
 import { zendeskKeys } from '@/hooks/useZendeskQueries';
 import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
@@ -61,8 +60,7 @@ import { ZohoReceiveSyncControl } from '@/components/zoho/ZohoReceiveSyncControl
 /** Item-note composer — the operator's durable note on this line (`receiving_line.notes`). */
 
 export function LineNotesCard({
-  row,
-  onTicketCreated,
+  ticketDraftModel,
   onNoteTyped,
   notes,
   overallZohoNotes,
@@ -81,7 +79,6 @@ export function LineNotesCard({
   chrome = 'raised',
   reaction,
   trailingAction,
-  onOpenLocations,
   onPrimaryAction,
   primaryActionDisabled = false,
   statusStamps,
@@ -94,13 +91,8 @@ export function LineNotesCard({
   progressTone = 'idle',
   onProgressClick,
 }: {
-  /**
-   * The line the composer is on. Ticket mode reads it to build the CLAIM the
-   * dock files when nothing is linked yet — see {@link useComposerTicketClaim}.
-   */
-  row?: ReceivingLineRow | null;
-  /** A claim filed from the dock — same handler the claim form used. */
-  onTicketCreated?: (ticketNumber: string) => void;
+  /** Shared claim/audience owner also painted by the center Ticket preview. */
+  ticketDraftModel: WorkspaceTicketDraftModel;
   /**
    * The operator typed into the note field. Unbox opens the Label band on this
    * so the sticker shows the note as it is written.
@@ -152,8 +144,6 @@ export function LineNotesCard({
    * fires {@link onPrimaryAction} (chat Send); blur still saves.
    */
   trailingAction?: ReactNode;
-  /** Footer location pill → this station's Displays → Locations leaf. */
-  onOpenLocations?: () => void;
   /**
    * Primary footer action for Enter when {@link trailingAction} is mounted
    * (print + receive). Empty notes still allow Enter — receive is not gated
@@ -186,9 +176,7 @@ export function LineNotesCard({
   onProgressClick?: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [savedFlash, setSavedFlash] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
-  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user, has, isLoaded } = useAuth();
 
   // DB SoT — sticker center from this operator's last scanned tracking (other
@@ -264,30 +252,13 @@ export function LineNotesCard({
   const paintMatchedPhrase = ghostPaint.matchedPhrase;
   const paintGhostSuffix = ghostPaint.ghostSuffix;
 
-  // DELETED 2026-08-02 — an auto-focus on the print step.
-
-  useEffect(
-    () => () => {
-      if (savedTimer.current) clearTimeout(savedTimer.current);
-    },
-    [],
-  );
-
-  const flashSaved = useCallback(() => {
-    setSavedFlash(true);
-    if (savedTimer.current) clearTimeout(savedTimer.current);
-    savedTimer.current = setTimeout(() => setSavedFlash(false), 1600);
-  }, []);
-
   const commitNotes = useCallback(
     (override?: string) => {
       const phrase = override ?? notes;
       const wrote = onSaveNotes(phrase);
       rememberIfWrote(phrase, wrote);
-      if (!wrote) return;
-      flashSaved();
     },
-    [notes, onSaveNotes, rememberIfWrote, flashSaved],
+    [notes, onSaveNotes, rememberIfWrote],
   );
 
   // Enter: with a trailing Receive CTA, behave like chat Send (save → receive).
@@ -363,27 +334,19 @@ export function LineNotesCard({
   const staffStamp = buildStaffStampText({ name: user?.name, staffId: user?.staffId });
   const numericTicketId = resolvedTicketId ? Number(resolvedTicketId) : null;
   const [ticketDraft, setTicketDraft] = useState('');
-  // PUBLIC by default (operator ruling 2026-08-31), for BOTH paths this dock drives — filing a new claim and replying on a linked ticket.
-  const [ticketPublic, setTicketPublic] = useState(true);
-  // CC is an AUDIENCE control: chips + the address still being typed. The draft
-  // is held here rather than inside the strip so send can fold a half-typed
-  // address in instead of dropping it (see resolveComposerCcPayload).
-  const [ticketCcs, setTicketCcs] = useState<string[]>([]);
-  const [ticketCcDraft, setTicketCcDraft] = useState('');
+  const {
+    claim,
+    isPublic: ticketPublic,
+    setIsPublic: setTicketPublic,
+    ccs: ticketCcs,
+    setCcs: setTicketCcs,
+    ccDraft: ticketCcDraft,
+    setCcDraft: setTicketCcDraft,
+  } = ticketDraftModel;
   const [photoLibraryOpen, setPhotoLibraryOpen] = useState(false);
   const reply = useSupportReply();
   const canPostTicket = !isLoaded || has('integrations.zendesk');
 
-  // No linked ticket → the Ticket tab IS the claim: the textarea holds the
-  // template body, the subject rides in the dock inset, and Enter files it.
-  // A linked ticket leaves this inert and the reply path below owns the draft.
-  const claim = useComposerTicketClaim({
-    row,
-    hasTicket,
-    notePublic: ticketPublic,
-    ccEmails: ticketCcs,
-    onTicketCreated,
-  });
   const canBrowsePhotoLibrary = isLoaded && has('photos.view');
   const staffName = user?.name?.trim() || '';
 
@@ -442,12 +405,6 @@ export function LineNotesCard({
     onTicketDraftFilledChange?.(ticketDraftFilled);
   }, [ticketDraftFilled, onTicketDraftFilledChange]);
 
-  // Reset the audience when the linked ticket identity changes — CCs belong to
-  // the ticket that was on screen, never to whichever line loads next.
-  useEffect(() => {
-    setTicketCcs([]);
-    setTicketCcDraft('');
-  }, [numericTicketId]);
 
   const ticketDrillNodes = useMemo(() => {
     const nodes = buildTicketComposerInsertTree({
@@ -642,11 +599,9 @@ export function LineNotesCard({
         locationAction={
           <UnboxNotesLocationControl
             lineId={lineId}
-            currentLocationId={statusStamps?.staged_location_id}
             currentLocationName={statusStamps?.staged_location_name}
             currentLocationBarcode={statusStamps?.staged_location_barcode}
             currentLocationRoom={statusStamps?.staged_location_room}
-            onOpenLocations={onOpenLocations}
           />
         }
         trailingAction={trailingAction}
@@ -682,8 +637,8 @@ export function LineNotesCard({
         progressPercent={progressPercent}
         progressTone={progressTone}
         onProgressClick={() => {
-          // Info folded into the procedure ring — same jobs the old ⓘ owned,
-          // then the Displays checklist / right rail.
+          // The ring opens the most local status or history owner; it never
+          // invents a second procedure destination.
           if (headerAction) {
             headerAction.onClick();
             return;

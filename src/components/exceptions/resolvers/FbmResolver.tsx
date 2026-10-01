@@ -16,7 +16,7 @@ import { resolveWith, useExceptionsChanged } from './resolve-feedback';
  * Out of Stock → back in stock; Buyer Request → the note acknowledged;
  * Shipping Issue → the order's parcel & label panel (rate-shop, buy, link).
  * The buyer's note reads like the Allocate record's (its "Customer note"
- * group, triage face) — never the Floor's industrial note block. A verb that
+ * group, triage face). A verb that
  * clears the exception clears it at once (`clears`), before the server answers.
  */
 export function FbmResolver({ row, facts }: { row: ExceptionRow; facts: FbmExceptionFacts }) {

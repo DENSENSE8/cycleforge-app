@@ -23,25 +23,25 @@ import {
 } from '@/lib/queries/receiving-queries';
 import { WorkspaceActionFeedbackSlot } from '../workspace/WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from '../workspace/InlineActionFeedbackCard';
-import { ReceivingPhotoPeek } from '../workspace/line-edit/ReceivingPhotoPeek';
 import { LineEditModals } from '../workspace/line-edit/LineEditModals';
 import { LineCartonContextSection } from '../workspace/line-edit/LineCartonContextSection';
 import { POUnboxingSection } from '../workspace/line-edit/POUnboxingSection';
-import type { ClaimModalMode } from '../workspace/claim/claim-types';
 import {
-  StationDisplaysParkedRail,
+  CartonDisplaysActionFloor,
   StationDisplaysPushStack,
-  StationDisplaysUtilityRail,
   STATION_DISPLAY_INDEX,
-  resolveDisplaysActiveTab,
 } from '@/components/station/displays';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
+import { useWorkspaceTicketDraft } from '../workspace/line-edit/hooks/useWorkspaceTicketDraft';
+import { StationTicketPane } from '@/components/composer';
+import { StationPhotosTask } from '@/components/station/StationPhotosTask';
+import { useStationTaskController } from '@/components/station/useStationTaskController';
+import { PackageCheck } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { markTriageCompleted, hasTriageBeenCompleted } from '@/lib/receiving/triage-complete-local';
 import { useTriageStaging } from './useTriageStaging';
 import { ArrivalCartonNotesEntry } from './ArrivalCartonNotesEntry';
-import { ArrivalDisplaysActionFloor } from './ArrivalDisplaysActionFloor';
 import { deriveTriageFocusFacts, resolveTriageFocus } from '@/lib/receiving/triage-focus';
 import { buildTriageDisplayTabs, type TriageDisplayTab } from './build-triage-displays';
 import { buildTriageDisplayIndexRows } from './triage-display-index';
@@ -71,10 +71,21 @@ export function TriagePanel({
   const [savingTriage, setSavingTriage] = useState(false);
   const [triageSaved, setTriageSaved] = useState(false);
 
-  // The right-edge Displays push (Ticket + Pairing). `null` IS closed; `index`
-  // is Root Index; a leaf id is the open body. No second `pairingOpen` flag.
-  const [activeSideTab, setActiveSideTab] = useState<string | null>(null);
-  const [claimMode, setClaimMode] = useState<ClaimModalMode>('link');
+  const {
+    activeTask,
+    activeDisplay: activeSideTab,
+    ticketActive,
+    photosActive,
+    displaysActive,
+    selectTask,
+    openDisplay,
+    closeDisplays,
+  } = useStationTaskController({
+    owner: 'arrival',
+    workLabel: 'Arrival',
+    workIcon: PackageCheck,
+    scopeKey: row.receiving_id ?? row.id,
+  });
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;
     requestId: number;
@@ -82,17 +93,15 @@ export function TriagePanel({
 
   const claimDisplays = useCallback(
     (tab: string) => {
-      // One right-edge wrapper — Add inbound (RightRailHost) yields to Displays.
       dispatchStationDeskOccupantClose();
-      setActiveSideTab(tab);
+      openDisplay(tab);
     },
-    [],
+    [openDisplay],
   );
   const openDisplays = useCallback(
     (tab: TriageDisplayTab) => claimDisplays(tab),
     [claimDisplays],
   );
-  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
 
   useEffect(() => {
     const onAddClaimsEdge = () => closeDisplays();
@@ -100,61 +109,40 @@ export function TriagePanel({
     return () => window.removeEventListener(STATION_DISPLAYS_CLOSE_EVENT, onAddClaimsEdge);
   }, [closeDisplays]);
 
-  // Wire before the line controller so `c.openClaimModal` opens Ticket Displays
-  // (Testing grain) instead of a no-op / modal.
   const onOpenClaim = useCallback(
-    (mode: ClaimModalMode = 'create') => {
-      setClaimMode(mode);
-      openDisplays('ticket');
+    (_mode: 'create' | 'link' = 'create') => {
+      selectTask('ticket');
     },
-    [openDisplays],
+    [selectTask],
   );
   const c = useUnboxLineController(row, staffId, { onOpenClaim });
   const claimTicketId = c.providerTicketId ?? null;
 
-  // The `# ----` PO chip → open Pairing on the PO avenue. The intent travels as
-  // DATA (`pairingFocus` → the hub's `focusTab`, read on mount); a dispatched
-  // event fires before the display's hub is listening (Unbox learned this).
   const openPoPairing = useCallback(() => {
     openDisplays('linkage');
     setPairingFocus((prev) => ({ tab: 'zoho_po', requestId: (prev?.requestId ?? 0) + 1 }));
   }, [openDisplays]);
 
-  // `←|` Open displays → Root Index (Ticket + Pairing). Contextual leaf opens
-  // (PO chip / Find ticket / identity ticket chip) skip the index.
   const openDisplaysIndex = useCallback(() => {
-    claimDisplays(STATION_DISPLAY_INDEX);
-  }, [claimDisplays]);
+    selectTask('displays');
+  }, [selectTask]);
 
   const toggleTicketView = useCallback(() => {
-    if (activeSideTab === 'ticket') closeDisplays();
-    else openDisplays('ticket');
-  }, [activeSideTab, closeDisplays, openDisplays]);
+    selectTask(ticketActive ? 'work' : 'ticket');
+  }, [selectTask, ticketActive]);
 
   const openClaimView = useCallback(() => {
-    if (activeSideTab === 'ticket' && claimTicketId == null) closeDisplays();
-    else onOpenClaim('create');
-  }, [activeSideTab, claimTicketId, closeDisplays, onOpenClaim]);
+    selectTask(ticketActive && claimTicketId == null ? 'work' : 'ticket');
+  }, [claimTicketId, selectTask, ticketActive]);
 
-  /**
-   * The notes header's ⓘ → Displays → Timeline. Contextual detail opens on the
-   * right edge, never as a dialog over the work the operator is doing.
-   */
   const openTimelineDisplay = useCallback(() => {
     openDisplays('timeline');
   }, [openDisplays]);
 
-  /** Auto-match Find ticket → Ticket display (link existing). */
   const openFindTicketDisplay = useCallback(() => {
-    if (claimTicketId != null) openDisplays('ticket');
-    else onOpenClaim('link');
-  }, [claimTicketId, openDisplays, onOpenClaim]);
+    selectTask('ticket');
+  }, [selectTask]);
 
-  const closeClaimView = useCallback(() => {
-    c.setReturnClaimPrefill(null);
-    if (claimTicketId != null) openDisplays('ticket');
-    else openDisplaysIndex();
-  }, [c, claimTicketId, openDisplays, openDisplaysIndex]);
 
   const onClaimTicketCreated = useCallback(
     (ticketNumber: string) => {
@@ -166,26 +154,19 @@ export function TriagePanel({
       }
       dispatchLineUpdated({ id: row.id, zendesk_ticket: ticketNumber, notes: row.notes });
       invalidateReceivingFeeds(queryClient);
-      openDisplays('ticket');
+      selectTask('ticket');
     },
-    [c, queryClient, row.id, row.notes, row.receiving_id, openDisplays],
+    [c, queryClient, row.id, row.notes, row.receiving_id, selectTask],
   );
-
-  const onClaimTicketUnlinked = useCallback(() => {
-    void c.invalidateSupportTicket();
-    invalidateSupportContextCaches(queryClient);
-    if (row.receiving_id != null) {
-      patchReceivingRailTicketByCarton(queryClient, row.receiving_id, null);
-    }
-    dispatchLineUpdated({ id: row.id, zendesk_ticket: null, notes: row.notes });
-    invalidateReceivingFeeds(queryClient);
-  }, [c, queryClient, row.id, row.notes, row.receiving_id]);
+  const ticketDraftModel = useWorkspaceTicketDraft({
+    row,
+    ticketId: claimTicketId,
+    onTicketCreated: onClaimTicketCreated,
+  });
 
   useEffect(() => {
     setActionFeedback(null);
     setTriageSaved(false);
-    setActiveSideTab(null);
-    setClaimMode('link');
     c.setReturnClaimPrefill(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset per carton open
   }, [row.id]);
@@ -255,22 +236,11 @@ export function TriagePanel({
         row,
         staffId,
         providerTicketId: claimTicketId,
-        returnClaimPrefill: c.returnClaimPrefill ?? null,
         pairingFocus,
-        claimMode,
-        onCloseClaim: closeClaimView,
-        onCloseTicket: openDisplaysIndex,
-        onClaimTicketCreated,
-        onClaimTicketUnlinked,
         onFindTicket: openFindTicketDisplay,
-        // The New location leaf mints a shelf and places THIS carton on it,
-        // through the same staging writer the dock and the <select> use.
         staging,
         onLocationPlaced: closeDisplays,
-        // Root Index is not a leaf — Timeline's audit read waits for the leaf
-        // itself, never paints behind the index.
         activeTab:
-          activeSideTab === 'ticket' ||
           activeSideTab === 'linkage' ||
           activeSideTab === 'location' ||
           activeSideTab === 'timeline'
@@ -282,14 +252,8 @@ export function TriagePanel({
       row,
       staffId,
       claimTicketId,
-      c.returnClaimPrefill,
       pairingFocus,
-      claimMode,
-      closeClaimView,
-      openDisplaysIndex,
       closeDisplays,
-      onClaimTicketCreated,
-      onClaimTicketUnlinked,
       openFindTicketDisplay,
       staging,
     ],
@@ -300,22 +264,13 @@ export function TriagePanel({
       buildTriageDisplayIndexRows(
         triageDisplayTabs.map((t) => t.id as TriageDisplayTab),
         {
-          hasTicketId: claimTicketId != null,
           linkagePaired: Boolean(String(row.zoho_purchaseorder_id ?? '').trim()),
           isUnfound: shouldUseUnmatchedItemsSurface(row),
         },
       ),
-    [triageDisplayTabs, claimTicketId, row],
+    [triageDisplayTabs, row],
   );
 
-  const resolvedSideTab = useMemo(
-    () =>
-      resolveDisplaysActiveTab(
-        activeSideTab,
-        triageDisplayTabs.map((t) => t.id),
-      ),
-    [activeSideTab, triageDisplayTabs],
-  );
 
   const buildTerminal = useCallback(
     (kind: string) =>
@@ -346,29 +301,13 @@ export function TriagePanel({
     </div>
   ) : null;
 
-  // Scan-station chrome: utility rail when Displays closed (`←|` bottom
-  // footer); ↑↓ on details panel top-right when open.
-  const utilityRailBody = !resolvedSideTab ? (
-    <StationDisplaysUtilityRail
-      onOpenDisplays={openDisplaysIndex}
-      indexRail={
-        <StationDisplaysParkedRail
-          rows={triageDisplayIndexRows}
-          tabs={triageDisplayTabs}
-          activeId={activeSideTab}
-          onOpenLeaf={setActiveSideTab}
-        />
-      }
-    />
-  ) : null;
 
   return (
     <>
       <StationScanPaneHost
-        displaysOpen={Boolean(resolvedSideTab)}
+        displaysOpen={displaysActive}
         hostDataAttrs={{ 'data-arrival-pane-host': true }}
         centerTestId="arrival-station-center"
-        utilityRail={utilityRailBody}
         center={
           <StationPanelRoot>
             <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
@@ -384,11 +323,12 @@ export function TriagePanel({
                     showClassifyControls
                     classifyInteractive
                     onEditPo={openPoPairing}
+                    onSendToTicketExternal={() => c.setPhotoNoteOpen(true)}
                     poEditOpen={activeSideTab === 'linkage'}
                     onToggleClaimView={openClaimView}
-                    claimViewActive={activeSideTab === 'ticket' && claimTicketId == null}
+                    claimViewActive={ticketActive && claimTicketId == null}
                     onToggleTicketView={toggleTicketView}
-                    ticketViewActive={activeSideTab === 'ticket'}
+                    ticketViewActive={ticketActive && claimTicketId != null}
                     // Triage is the ARRIVAL pass — the one surface that owns this
                     // stage. Explicit so its correctness doesn't ride on a default.
                     photoStage="arrival_package"
@@ -401,6 +341,7 @@ export function TriagePanel({
                 // Same dock as Unbox now (raised notes card, no staging band),
                 // so the same clearance: `pb-32`, not the `pb-56` pager reserve
                 // the two-band flush floor needed.
+                bodyFill={ticketActive || photosActive}
                 reserveScrollClearance
                 // Identity is in-flow (`StationContextBar placement="flow"`)
                 // above this workbench — no guessed stacked pt clearance.
@@ -434,6 +375,8 @@ export function TriagePanel({
                       {terminalVm ? (
                         <ArrivalCartonNotesEntry
                           row={row}
+                          ticketDraftModel={ticketDraftModel}
+                          providerTicketId={claimTicketId}
                           trailingAction={bubbleTerminal}
                           onPrimaryAction={() => void handleSaveForUnbox()}
                           primaryActionDisabled={Boolean(terminalVm.disabled)}
@@ -444,48 +387,52 @@ export function TriagePanel({
                   </div>
                 }
               >
-                <div
-                  className={cn(
-                    DISPLAYS_FLUSH_HOST,
-                    STATION_SCAN_WELL_CLASS,
-                    'min-h-0 flex-1 overflow-y-auto',
-                  )}
-                  data-testid="arrival-door-flow"
-                >
-                  <div className="space-y-0">
-                    <POUnboxingSection
-                      row={row}
-                      staffId={staffId}
-                      // Door-flow items:
-                      suppressItemsHeader
-                      poItems
-                      matching
-                      openInUnbox={false}
-                      editLines
-                      serialScan={false}
-                      unitsChrome={false}
-                      c={c}
-                    />
-                    {/* Nothing stacks under the items. */}
+                {ticketActive ? (
+                  <StationTicketPane
+                    row={row}
+                    ticketId={claimTicketId}
+                    draft={ticketDraftModel}
+                  />
+                ) : photosActive ? (
+                  <StationPhotosTask
+                    receivingId={row.receiving_id ?? null}
+                    staffId={staffId}
+                    poRef={row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || null}
+                    photoStage="arrival_package"
+                    onSendToTicket={() => c.setPhotoNoteOpen(true)}
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      DISPLAYS_FLUSH_HOST,
+                      STATION_SCAN_WELL_CLASS,
+                      'min-h-0 flex-1 overflow-y-auto',
+                    )}
+                    data-testid="arrival-door-flow"
+                    data-active-arrival-task={activeTask}
+                  >
+                    <div className="space-y-0">
+                      <POUnboxingSection
+                        row={row}
+                        staffId={staffId}
+                        suppressItemsHeader
+                        poItems
+                        matching
+                        openInUnbox={false}
+                        editLines
+                        serialScan={false}
+                        unitsChrome={false}
+                        c={c}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </StationWorkbench>
             </div>
-
-            {row.receiving_id != null ? (
-              /* Triage is the ARRIVAL pass — the peek shows package (door) evidence
-                 only; unbox carton/item shots belong to the unbox surfaces. */
-              <ReceivingPhotoPeek
-                receivingId={row.receiving_id}
-                staffId={Number(staffId) || 0}
-                poRef={row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || null}
-                photoIntent="package"
-              />
-            ) : null}
           </StationPanelRoot>
         }
         displays={
-          resolvedSideTab ? (
+          displaysActive ? (
             <StationDisplaysPushStack
               ariaLabel="Arrival displays"
               storageKey="arrival-displays-push-width"
@@ -493,32 +440,29 @@ export function TriagePanel({
               resizeTestId="arrival-displays-push-resize"
               tabs={triageDisplayTabs}
               indexRows={triageDisplayIndexRows}
-              activeTab={resolvedSideTab}
-              onTabChange={(id) => {
-                if (id === STATION_DISPLAY_INDEX) {
-                  claimDisplays(STATION_DISPLAY_INDEX);
-                  return;
-                }
-                claimDisplays(id);
-              }}
+              activeTab={activeSideTab ?? STATION_DISPLAY_INDEX}
+              onTabChange={claimDisplays}
               onClose={closeDisplays}
               headerActions={
-                <ArrivalDisplaysActionFloor
+                <CartonDisplaysActionFloor
+                  testIdPrefix="arrival"
                   receivingId={row.receiving_id}
                   isUnfound={shouldUseUnmatchedItemsSurface(row)}
-                  openDisplays={openDisplays}
                   onDeleted={closeDisplays}
                   editSelected={activeSideTab === 'linkage'}
                   deleteIdentity={{
                     tracking: row.tracking_number,
                     poNumber: row.zoho_purchaseorder_number,
                   }}
-                  onInventorySync={() => c.refreshInventoryDossier()}
-                  inventorySyncing={Boolean(c.inventoryRefreshing)}
-                  canInventorySync={
-                    row.receiving_id != null &&
-                    Boolean((row.zoho_purchaseorder_id || '').trim())
-                  }
+                  onEdit={() => openDisplays('linkage')}
+                  onLink={() => openDisplays('linkage')}
+                  sync={{
+                    onInventorySync: () => c.refreshInventoryDossier(),
+                    inventorySyncing: Boolean(c.inventoryRefreshing),
+                    canInventorySync:
+                      row.receiving_id != null &&
+                      Boolean((row.zoho_purchaseorder_id || '').trim()),
+                  }}
                 />
               }
             />

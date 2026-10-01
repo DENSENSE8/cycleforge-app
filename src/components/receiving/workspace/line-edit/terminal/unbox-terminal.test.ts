@@ -6,7 +6,6 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveTerminalKind } from '@/lib/station-terminal';
 import { resolveUnboxReceiveTerminal, resolveUnboxTerminal } from './unbox-terminal';
 import type { UnboxTerminalContext } from './types';
 
@@ -34,31 +33,6 @@ function mockCtx(overrides: Partial<UnboxTerminalContext> = {}): UnboxTerminalCo
   };
 }
 
-test('the unbox dock is carton-terminal — no tab changes it', () => {
-  // The whole point of Lane E: the displays moved to the right-edge Displays
-  // push column, so a selection there must NOT re-label the bottom primary.
-  // Every tab id (and none at all) resolves to the same kind.
-  for (const tabId of [
-    null,
-    'overview',
-    'classify',
-    'listings',
-    'units',
-    'po-note',
-    'checklist',
-    'support',
-    'tracking',
-    'timeline',
-    // even an id the registry never knew about
-    'not-a-tab',
-  ]) {
-    assert.equal(
-      resolveTerminalKind({ mode: 'unbox', tabId }),
-      'mode-default',
-      `unbox tabId=${String(tabId)} must stay on the carton terminal`,
-    );
-  }
-});
 
 test('resolveUnboxReceiveTerminal: primary label from controller', () => {
   const vm = resolveUnboxReceiveTerminal(

@@ -1,7 +1,7 @@
 /** Cycle-count LINES field catalog — the bindable facts of ONE `cycle_count_lines` row. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const CYCLECOUNTLINES_FIELD_CATALOG: FieldCatalog = [
   { id: 'cycle-count-lines.bin', family: 'cycle-count-lines', label: 'Bin', displayType: 'id', slotKinds: ['identity', 'status', 'subtitle'], paths: { value: 'binName', fallback: 'binId' } },
@@ -18,7 +18,7 @@ export const CYCLECOUNTLINES_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const CYCLECOUNTLINES_PRODUCT_LAYOUT: SlotLayout = {
+export const CYCLECOUNTLINES_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'cycle-count-lines.bin',
   statusBindings: [
@@ -29,6 +29,6 @@ export const CYCLECOUNTLINES_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [{ fieldId: 'cycle-count-lines.tolerance' }],
   amountFieldId: null,
-};
+}
 
 export const CYCLECOUNTLINES_TABLE_LAYOUT_ID = 'cycle-count-lines';

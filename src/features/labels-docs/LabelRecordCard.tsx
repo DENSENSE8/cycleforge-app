@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { LEDGER_ACTION_LABEL, ledgerStatus, quarantineCopy } from '@/lib/label-ingestions/ledger-view';
 import type { LabelPrintRow } from '@/lib/label-prints/contracts';
 import { fetchLabelPrintHistory, labelPrintHistoryKey } from '@/lib/label-prints/http-client';

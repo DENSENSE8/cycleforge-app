@@ -69,6 +69,7 @@ const KIND_VALUES = new Set<string>(DOCKED_KIND_OPTIONS.map((option) => option.v
 /** A Find naming exactly one carton — its PO / order #, carton #, or tracking — opens it. */
 const cartonExactFind = (query: string, card: CartonCardModel) =>
   card.identity.toLowerCase() === query ||
+  card.orderId?.toLowerCase() === query ||
   String(card.lead.receiving_id ?? '') === query.replace(/^#/, '') ||
   card.rows.some((row) => (row.tracking_number ?? '').toLowerCase() === query);
 

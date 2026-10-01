@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   AUDITLOG_COMPOUND_COLUMNS,
   auditLogCompoundColumnsFor,
@@ -16,7 +16,7 @@ import {
 import { toAuditLogRow, type AuditLogQueryRow, type AuditLogRow } from '@/lib/audit/audit-log-row';
 import { AUDITLOG_FIELD_CATALOG, AUDITLOG_PRODUCT_LAYOUT } from './audit-log';
 import { resolveAuditLogSlotValue } from './audit-log-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /** Fetched by the query, painted by nothing, and not a fact until one paints it. */
 const UNPAINTED_DIFF_COLUMNS = ['metadata', 'before_data', 'after_data'] as const;
@@ -85,7 +85,7 @@ describe('audit-log catalog', () => {
   });
 
   it('product default parses, and the ENTITY ID is the identity', () => {
-    const parsed = parseSlotLayout(AUDITLOG_PRODUCT_LAYOUT, AUDITLOG_FIELD_CATALOG);
+    const parsed = AUDITLOG_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'audit-log.entity_id');
     // Who + from where are the two tracks…
@@ -147,7 +147,7 @@ describe('audit-log materialization', () => {
     const identity = AUDITLOG_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'audit-log.entity_id');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "Entity id" is now the Fields-picker row
+    // (`data-table-family.ts`). "Entity id" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -168,7 +168,7 @@ describe('audit-log materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of AUDITLOG_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key) || col.key === '_fill') {
+      if (isDataTableChromeColumn(col.key) || col.key === '_fill') {
         assert.equal(auditLogSortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

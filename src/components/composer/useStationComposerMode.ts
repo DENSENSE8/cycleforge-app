@@ -7,7 +7,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   STATION_COMPOSER_MODE_DEFAULT,
   STATION_COMPOSER_MODE_PARAM,
-  cycleStationComposerMode,
   readStationComposerModeSession,
   resolveStationComposerMode,
   writeStationComposerModeSession,
@@ -18,7 +17,6 @@ import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 export function useStationComposerMode(): {
   mode: StationComposerMode;
   setMode: (next: StationComposerMode) => void;
-  cycleMode: () => void;
 } {
   const router = useRouter();
   const pathname = usePathname();
@@ -52,9 +50,6 @@ export function useStationComposerMode(): {
     [pathname, router, searchParams],
   );
 
-  const cycleMode = useCallback(() => {
-    setMode(cycleStationComposerMode(mode));
-  }, [mode, setMode]);
 
-  return { mode, setMode, cycleMode };
+  return { mode, setMode };
 }

@@ -182,7 +182,10 @@ export function TaskBulkBar({
                 </span>
               ) : null}
             </span>
-            <Segmented label="Whose work" layoutId="task-board-scope" options={SCOPE_OPTIONS} value={scope} onChange={onScope} />
+            {/* The checklist column is the shift's shared list — whose-work scope does not apply to it, so the segment stands down while it is open (owner 2026-09-30). */}
+            {checklistOn ? null : (
+              <Segmented label="Whose work" layoutId="task-board-scope" options={SCOPE_OPTIONS} value={scope} onChange={onScope} />
+            )}
             <span className="flex min-w-0 items-center justify-end gap-3 overflow-hidden whitespace-nowrap text-[11px] tabular-nums text-text-muted">
               <span>
                 <span className="font-semibold text-text-default">{openCount}</span> open

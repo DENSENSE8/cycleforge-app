@@ -2,7 +2,7 @@
 
 **Route:** `/unbox`
 
-Run: `pnpm run eval:station unbox` · Display SoT: `pnpm run eval:cohort slot-table`
+Run: `pnpm run eval:station unbox`
 
 ---
 

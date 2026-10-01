@@ -1,7 +1,7 @@
 /** Pickup field catalog — the bindable Local-pickup facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const PICKUP_FIELD_CATALOG: FieldCatalog = [
   {
@@ -73,13 +73,13 @@ export const PICKUP_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default pickup layout — visual parity with the retired hand model's CORE view (`select · title · order · date · status`): */
-export const PICKUP_PRODUCT_LAYOUT: SlotLayout = {
+export const PICKUP_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'pickup.order',
   statusBindings: [{ fieldId: 'pickup.date' }, { fieldId: 'pickup.status' }],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Local-pickup entry. */
 export const PICKUP_TABLE_LAYOUT_ID = 'pickup';

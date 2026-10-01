@@ -12,7 +12,6 @@ import { resolveReportBinUtilizationSlotValue } from '@/lib/tables/field-catalog
 import type { BinUtilizationReportRow } from '@/lib/reports/report-rows';
 import { reportBinUtilizationCompoundView } from './report-bin-utilization-row-view';
 import {
-  reportBinUtilizationCompoundColumnsFor,
   reportBinUtilizationSortFactFor,
   type ReportBinUtilizationGridColumn,
   type ReportBinUtilizationGridColumnKey,
@@ -21,7 +20,6 @@ import {
   REPORT_BIN_UTILIZATION_GRID_CAPABILITIES,
   REPORT_BIN_UTILIZATION_TABLE_BINDING,
 } from './report-bin-utilization-table-definition';
-import { useReportBinUtilizationTableLayout } from './useReportBinUtilizationTableLayout';
 
 interface UseReportBinUtilizationSpreadsheetOptions {
   /** One report page, already ordered by the route; a header click re-orders it. */
@@ -52,11 +50,8 @@ export function useReportBinUtilizationSpreadsheet({
   const [sort, setSort] = useState<ReportBinUtilizationGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useReportBinUtilizationTableLayout();
-  const columns = useMemo(
-    () => reportBinUtilizationCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: ReportBinUtilizationGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -83,12 +78,10 @@ export function useReportBinUtilizationSpreadsheet({
     ReportBinUtilizationGridColumn
   >({
     binding: REPORT_BIN_UTILIZATION_TABLE_BINDING,
-    columns,
-    fields,
+    columns: REPORT_BIN_UTILIZATION_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.bin_id),
     adapter: reportBinUtilizationCompoundView,
-    subtitleFieldIds,
     resolve: resolveReportBinUtilizationSlotValue,
     sortFactFor: reportBinUtilizationSortFactFor,
     capabilities: REPORT_BIN_UTILIZATION_GRID_CAPABILITIES,

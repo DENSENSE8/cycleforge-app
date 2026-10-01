@@ -6,9 +6,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { Button } from '@/design-system/primitives/Button';
 import { Checkbox } from '@/design-system/primitives/Checkbox';
+import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
 import { evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { useThrowTask } from '@/hooks/useThrowTask';
@@ -35,7 +36,6 @@ export function buildRecordTaskVerbs(target: RecordTaskTarget): RecordActionVerb
     id: `task-${kind}`,
     label: TASK_TITLE[kind],
     icon: <ClipboardList />,
-    placement: 'overflow',
     display: (done) => <RecordTaskForm key={`${kind}:${target.entityId ?? target.label}`} kind={kind} target={target} onDone={done} />,
   }));
 }
@@ -85,6 +85,8 @@ export function RecordTaskForm({
   const task = useThrowTask({ onThrown: () => onDone() });
   const { setPicked, setProjectName, staff, assignees, toggleAssigneeById } = task;
   const { entityType, entityId, label } = target;
+  // The phone reads Send at the 44px touch rung.
+  const { isMobile } = useUIModeOptional();
 
   // The record IS the task's target — no scan / resolve step on this surface.
   useEffect(() => {
@@ -141,7 +143,7 @@ export function RecordTaskForm({
       </label>
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 text-role-caption text-text-muted">{task.missing ?? ''}</span>
-        <Button type="submit" variant="ink" size="sm" disabled={!task.canThrow} loading={task.throwing} data-testid="record-task-submit">
+        <Button type="submit" variant="ink" size={isMobile ? 'lg' : 'sm'} disabled={!task.canThrow} loading={task.throwing} data-testid="record-task-submit">
           {kind === 'staff' ? 'Send task' : 'Add task'}
         </Button>
       </div>

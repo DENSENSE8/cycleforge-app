@@ -25,7 +25,7 @@ import { REPAIR_CHANNEL_LABEL, parseRepairChannel, type RepairChannel } from '@/
 import { REPAIR_SLA_BUSINESS_DAYS } from '@/lib/repair/repair-due-at';
 import { isRsDisplayCode } from '@/lib/repair/repair-paper-ticket';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
-import { repairPriceDisplay, repairPriceSortValue } from '@/lib/tables/field-catalog/repair-resolve';
+import { repairPriceDisplay, repairPriceSortValue } from '@/lib/repair/repair-queue-model';
 import type { RepairSort } from '@/lib/repair/repair-sort';
 import { diffDaysDateKey, formatDateKeyShort, formatMonthDayTimePST, toPSTDateKey } from '@/utils/date';
 

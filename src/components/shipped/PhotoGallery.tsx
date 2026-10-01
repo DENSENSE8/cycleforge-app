@@ -59,10 +59,10 @@ export function PhotoGallery(props: PhotoGalleryProps) {
     />
   ) : null;
 
-  // Toolbar layout keeps the action strip even with zero photos (upload /
-  // library / send-to-ticket stay available; view/download/move disable).
+  // Toolbar and compact layouts keep the action strip even with zero photos
+  // (upload / library / send-to-ticket stay available; the rest disable).
   // Other layouts keep the legacy empty card / Upload button.
-  if (g.photoItems.length === 0 && g.launcherLayout !== 'toolbar') {
+  if (g.photoItems.length === 0 && g.launcherLayout !== 'toolbar' && g.launcherLayout !== 'compact') {
     if (!g.canUpload) {
       return (
         <div

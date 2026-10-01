@@ -2,8 +2,8 @@
 
 /**
  * Local Pickup receiving history. This host intentionally wears the same
- * TriageCardList face as Incoming and FBM Allocate; the retired slot-table
- * pickup sheet is not part of this route.
+ * TriageCardList face as Incoming and FBM Allocate; the retired pickup sheet
+ * is not part of this route.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

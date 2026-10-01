@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Printer } from '@/components/Icons';
 import { evidenceVerbClass } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_TRAILING_CELL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_TRAILING_CELL_CLASS } from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { displayCarrierFromHint } from '@/lib/carrier-brand';
 import { printDocument, orderLabelSummaryKey } from '@/lib/orders/order-paperwork-client';

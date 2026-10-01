@@ -1,6 +1,8 @@
 import { repairHandle } from '@/lib/barcode-routing';
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
 import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
+import type { LabelFaceModel } from '@/lib/print/labelFace';
+import { printLabelFacesJob } from '@/lib/print/printLabelFacesJob';
 
 // Repair metadata laid out top/middle/bottom in the shared label's info column.
 const REPAIR_INFO_CSS = `
@@ -11,7 +13,7 @@ const REPAIR_INFO_CSS = `
   .po{font-size:11px;font-weight:700;letter-spacing:0.3px;line-height:1.05;color:#111;white-space:nowrap;font-variant-numeric:tabular-nums}
   .date{font-size:11px;font-weight:700;color:#4b5563;white-space:nowrap;font-variant-numeric:tabular-nums}`;
 
-interface RepairLabelPayload {
+export interface RepairLabelPayload {
   /** Numeric repair id — used to build the QR URL when qrValue is not provided. */
   repairId: number;
   /** Human-readable RS code, e.g. "RS-1234". Used as the bottom-right fallback when no ticket #. */
@@ -81,6 +83,27 @@ export function buildRepairLabelPayload(args: {
     date: labelDate(new Date()),
     dueDate: labelDate(due),
   };
+}
+/** Shared face model used by single and bulk repair-label jobs. */
+export function repairLabelFace(payload: RepairLabelPayload): LabelFaceModel {
+  return {
+    topLeft: (payload.firstName || 'Repair').trim(),
+    topRight: payload.date,
+    center: '',
+    bottomLeft: payload.dueDate,
+    bottomRight: repairLabelCornerDisplay(payload),
+    matrix: { value: resolveRepairQrValue(payload), symbology: 'datamatrix', scale: 4 },
+    hri: payload.rsCode,
+  };
+}
+
+/** Print a selected run as one multi-page job (or sequential silent USB jobs). */
+export async function printRepairLabels(payloads: readonly RepairLabelPayload[]): Promise<'usb' | 'iframe' | 'skipped'> {
+  return printLabelFacesJob({
+    faces: payloads.map(repairLabelFace),
+    name: 'Repair labels',
+    faceName: (face) => `Repair label ${face.hri ?? ''}`.trim(),
+  });
 }
 
 /**

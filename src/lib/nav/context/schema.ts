@@ -92,6 +92,8 @@ export const NavFilterGroupSchema = z
     /** URL param the group writes. */
     param: z.string().min(1),
     multi: z.boolean(),
+  /** Options render inline, always open (short ordered sets like aisles). */
+  inline: z.boolean().optional(),
   })
   .strict();
 export type NavFilterGroup = z.infer<typeof NavFilterGroupSchema>;
@@ -178,6 +180,29 @@ export const NavControlsSchema = z
       .strict()
       .optional(),
     /**
+     * Multi-select status exclusions. Options are published by the owning
+     * triage desk's status vocabulary and write one shared comma-list param.
+     */
+    exclude: z
+      .object({
+        id: z.string().min(1),
+        label: z.string().min(1),
+        param: z.string().min(1),
+        options: z
+          .array(
+            z
+              .object({
+                value: z.string().min(1),
+                label: z.string().min(1),
+                tone: z.enum(['neutral', 'info', 'success', 'warning', 'danger', 'fulfillment']).optional(),
+              })
+              .strict(),
+          )
+          .min(1),
+      })
+      .strict()
+      .optional(),
+    /**
      * Single-choice filters over a fixed vocabulary, with no counts — the
      * list narrows on the value itself (a client-side predicate, or a param
      * the list endpoint takes without a facet query). Picking an option
@@ -215,7 +240,7 @@ export function navControlParams(controls: NavControls | undefined): string[] {
       ...(range.toTimeParam ? [range.toTimeParam] : []),
     ]),
     ...(controls.sort ? [controls.sort.param, ...(controls.sort.dirParam ? [controls.sort.dirParam] : [])] : []),
-    // A choice's `clearParams` (a page number) are side effects, not filters: not counted, not reset.
+    ...(controls.exclude ? [controls.exclude.param] : []),
     ...(controls.choices ?? []).map((choice) => choice.param),
   ];
 }

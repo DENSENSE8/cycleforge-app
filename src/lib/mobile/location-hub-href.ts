@@ -13,6 +13,13 @@ export function locationHubHref(code: string): string {
   return withJobReturn(locationHubPath(code), '/m/scan');
 }
 
+/** Keep the short-lived scan proof in record-local navigation only. */
+export function withLocationScanProof(href: string, token: string): string {
+  const url = new URL(href, 'https://cycleforge.local');
+  url.searchParams.set('verified', token);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 /**
  * The take/put keypad for one SKU in a location. `returnTo` is where Back and
  * Confirm land (the hub); `mode: 'take'` opens on − TAKE.
@@ -20,9 +27,14 @@ export function locationHubHref(code: string): string {
 export function locationKeypadHref(
   code: string,
   sku: string,
-  { returnTo, mode }: { returnTo: string; mode?: 'take' | 'put' },
+  {
+    returnTo,
+    mode,
+    verificationToken,
+  }: { returnTo: string; mode?: 'take' | 'put'; verificationToken?: string | null },
 ): string {
   const params = new URLSearchParams({ return: returnTo });
   if (mode) params.set('mode', mode);
+  if (verificationToken) params.set('verified', verificationToken);
   return `/m/pair/${encodeURIComponent(code)}/${encodeURIComponent(sku)}?${params.toString()}`;
 }

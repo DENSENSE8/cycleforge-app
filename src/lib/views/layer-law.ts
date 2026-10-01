@@ -1,21 +1,19 @@
 /**
- * The layer laws that are cheap to read off source (`HANDOFF-view-spec-layers.md` §2):
+ * Layer laws that are cheap to read from source:
  *
  * - Law 3 — shared parts never branch on the page: no route or view-key
  *   comparison inside a shared part; the view spec tells it what to show.
- * - Law 4 — jobs hide things through disclosure, not paint: no
- *   `industrial:hidden` / `industrial:invisible` (restyling is fine).
  * - Law 5 — one reader per fact: no hand-rolled money / date formatting of
  *   order facts in components; read through the field catalog or the
  *   `src/utils` / `src/lib/*-format` helpers.
  *
  * ONE module, two consumers: `layer-law.test.ts` and `scripts/layer-law-guard.ts`
  * (the `Layer laws` verify gate). The allowlist is the burn-down seeded from
- * the census (`MODE-SPLIT-INVENTORY.md` → Layer census): an entry may only be
- * removed, and an entry whose file no longer violates fails the gate until it is.
+ * the initial census: an entry may only be removed, and an entry whose file no
+ * longer violates fails the gate until it is.
  */
 
-export type LayerLaw = 3 | 4 | 5;
+export type LayerLaw = 3 | 5;
 
 export interface LayerViolation {
   law: LayerLaw;
@@ -27,20 +25,17 @@ export interface LayerViolation {
 
 export const LAYER_LAW_TEXT: Readonly<Record<LayerLaw, string>> = {
   3: 'Shared parts never branch on the page — pass the view spec, never compare a route or a view key.',
-  4: 'Jobs hide things through disclosure, not paint — no industrial-variant hide on content (restyling is fine).',
   5: 'One reader per fact — format money / dates through the field catalog or src/utils, never by hand.',
 };
 
-/** Where each law is read. Law 4 is repo-wide: paint never knows a job anywhere. */
+/** Where each law is read. */
 const LAW_ROOTS: Readonly<Record<LayerLaw, readonly string[]>> = {
   3: ['src/design-system/components/', 'src/components/outbound/orders/', 'src/components/station/'],
-  4: ['src/'],
   5: ['src/components/outbound/', 'src/components/receiving/'],
 };
 
 const LAW_PATTERNS: Readonly<Record<LayerLaw, readonly RegExp[]>> = {
   3: [/\bviewKey\s*[!=]==/, /\bpathname\s*[!=]==/, /\bpathname\??\.startsWith\(/, /\buseActiveSidebarChild\(/],
-  4: [/\bindustrial:(?:hidden|invisible)\b/],
   5: [/\.toFixed\(2\)/, /\bnew Intl\.NumberFormat\(/, /\.toLocaleDateString\(/, /\.getMonth\(\)\s*\+\s*1\b/],
 };
 
@@ -57,12 +52,6 @@ export const LAYER_LAW_ALLOWLIST: Readonly<Record<LayerLaw, Readonly<Record<stri
     'src/components/station/useReceivingModeContext.ts':
       'route → receiving mode adapter read inside the shared station context',
   },
-  4: {
-    'src/components/outbound/orders/OrderRecordView.tsx':
-      'Payment group + line price hidden on the floor ("price is noise on the floor", owner decision pending → Dense-tier disclosure)',
-    'src/components/outbound/orders/record-keys/OrderRecordSummaryBar.tsx':
-      'the whole summary bar (order total, ship-by) hidden on the floor',
-  },
   5: {
     'src/components/outbound/label-intake/LabelIntakeRates.tsx': 'label ETA via toLocaleDateString',
     'src/components/outbound/label-intake/label-intake-client.ts': 'a third label-money formatter (Intl.NumberFormat)',
@@ -76,7 +65,7 @@ export const LAYER_LAW_ALLOWLIST: Readonly<Record<LayerLaw, Readonly<Record<stri
   },
 };
 
-const LAWS: readonly LayerLaw[] = [3, 4, 5];
+const LAWS: readonly LayerLaw[] = [3, 5];
 
 function isSource(file: string): boolean {
   return /\.(ts|tsx)$/.test(file) && !/\.(test|spec|stories)\.(ts|tsx)$/.test(file);

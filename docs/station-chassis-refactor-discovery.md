@@ -48,7 +48,7 @@ Stations found: **Receiving** (gold), **Tech/Testing**, **Packer**, **FBA** (Kan
 | Sidebar mode switch | custom pills | `HorizontalButtonSlider` | `HorizontalButtonSlider` | `HorizontalButtonSlider` | (sidebar) | `?mode=` |
 | Scan bar | `StationScanBar`+wrap | `TestingScanBar` (fork) | in `StationPacking` (fork) | `FbaWorkspaceScanField` (fork) | `ScanOutStationBar` (fork) | mobile QR |
 | Mode URL param | `?mode=` | `?view=` | `?packMode=` | `?mode=` | — | `?mode=` |
-| Row display | custom row | `TechRecordRow` | `PackerRecordRow` | Kanban cards | — | `RepairTable` |
+| Row display | custom row | `TechRecordRow` | `PackerRecordRow` | Kanban cards | — | `RepairCardList` |
 | Status dots | `receiving-constants` | `SOURCE_DOT_BG` (dup) | `SOURCE_DOT_BG` (dup) | — | `outbound-state` | — |
 | Crossfade host | `ReceivingRightPane` ✅ | none | none | slide panel | — | — |
 | Detail panel | `useReceivingDetailOverlays` | `useTechDetailOverlays` (fork) | `useStationDetailsSelection` ✅ | `useFbaDetailPanel` (fork) | — | custom |

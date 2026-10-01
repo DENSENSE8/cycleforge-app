@@ -1,8 +1,8 @@
 /** Completed-tasks report field catalog — the bindable facts of ONE finished `work_assignments` row (`work_type = 'FOLLOW_UP'`), as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotTableFamily } from '@/lib/tables/slot-table-family';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableFamily } from '@/lib/tables/data-table-family';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const REPORT_TASKS_FIELD_CATALOG: FieldCatalog = [
   /**
@@ -97,7 +97,7 @@ export const REPORT_TASKS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const REPORT_TASKS_PRODUCT_LAYOUT: SlotLayout = {
+export const REPORT_TASKS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'report-tasks.id',
   statusBindings: [
@@ -107,13 +107,13 @@ export const REPORT_TASKS_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Tasks report entry. */
 export const REPORT_TASKS_TABLE_LAYOUT_ID = 'report-tasks';
 
 /** The FAMILY RECORD — everything the engine needs to mount this tab, as data. */
-export const REPORT_TASKS_FAMILY: SlotTableFamily = {
+export const REPORT_TASKS_FAMILY: DataTableFamily = {
   tableId: REPORT_TASKS_TABLE_LAYOUT_ID,
   catalog: REPORT_TASKS_FIELD_CATALOG,
   productLayout: REPORT_TASKS_PRODUCT_LAYOUT,

@@ -34,6 +34,8 @@ import {
   Share2,
   ShieldCheck,
   ShoppingCart,
+  ShippingModeFba,
+  Tags,
   Star,
   TicketHelp,
   TrendingUp,
@@ -71,6 +73,12 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'outbound.exceptions': { icon: AlertTriangle, tone: 'text-amber-600', alertCount: true },
   'outbound.triage': { icon: Truck, tone: 'text-blue-600' },
   'outbound.shipped': { icon: PackageCheck, tone: 'text-emerald-600' },
+  // Fulfilled saved views — same glyphs the lane row's children wear.
+  'fulfilled.all': { icon: List, tone: 'text-emerald-600' },
+  'fulfilled.online': { icon: ShoppingCart, tone: 'text-emerald-700' },
+  'fulfilled.fba': { icon: ShippingModeFba, tone: 'text-purple-600' },
+  'fulfilled.sku': { icon: Tags, tone: 'text-teal-600' },
+  'fulfilled.delivered': { icon: Check, tone: 'text-emerald-500' },
   // Deliveries lifecycle: three distinct inks make the switcher scannable
   // before its label — inbound transit, docked package, opened carton.
   'incoming.pipeline': { icon: Truck, tone: 'text-blue-600' },

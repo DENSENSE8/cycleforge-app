@@ -1,6 +1,5 @@
 /**
- * Industrial record ledger — the To-ship row geometry, in ONE place.
- * BRIEF §4 industrial (desk): 5px state spine · square photo · three record
+ * To-ship row geometry in one place: 5px state spine · square photo · three record
  */
 
 import type { CSSProperties } from 'react';
@@ -97,7 +96,7 @@ export const LEDGER_TOOLBAR_CLASS =
   'flex min-h-mode-hit min-w-0 shrink-0 items-center gap-1 border-b border-mode-ink bg-mode-bar pr-0';
 
 /**
- * Lifts nested shared controls (toolbar menus drawn at the slot table's 28px
+ * Lifts nested shared controls (toolbar menus drawn at the DataTable's 28px
  * chrome face, the order-number chip) to the desk's 32px hit floor on this page
  * only, without forking them.
  */
@@ -108,7 +107,7 @@ export const LEDGER_HIT_CLASS = 'min-h-mode-hit';
 
 /**
  * Pins the type scale inside the ledger. Row heights are fixed for the
- * virtualizer, so the viewer's grid density (`--cf-density`, the slot table's
+ * virtualizer, so the viewer's grid density (`--cf-density`, the DataTable's
  * 100% zoom) must not grow text past its band; S / M / L is this list's zoom.
  */
 export const LEDGER_DENSITY_STYLE = { '--cf-density': '1' } as CSSProperties;

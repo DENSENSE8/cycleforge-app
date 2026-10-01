@@ -49,7 +49,7 @@ export function MobileTriagePage({
   dock?: ReactNode;
 }) {
   return (
-    <div className={cn('flex min-h-svh flex-col', appMobilePageGroundClass)}>
+    <div className={cn('flex h-full min-h-0 flex-col', appMobilePageGroundClass)}>
       {/* No `mono`. It used to be `mono={Boolean(subtitle)}` — "has an eyebrow" standing in for "the title is an identifier", which is true on a… */}
       <MobileDetailTopBar title={title} subtitle={subtitle} backHref={backHref} />
 
@@ -68,7 +68,7 @@ export function MobileTriagePage({
       </div>
 
       {/* `min-h-0` is load-bearing: */}
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         {sections.map((section, index) => {
           if (section.count === 0 && !section.empty) return null;
           return (

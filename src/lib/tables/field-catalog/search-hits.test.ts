@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import {
   SEARCH_HITS_COMPOUND_COLUMNS,
   searchHitsCompoundColumnsFor,
@@ -213,7 +213,7 @@ describe('search-hits materialization', () => {
   it('every painted DATA header click-sorts; chrome does not', () => {
     for (const col of SEARCH_HITS_COMPOUND_COLUMNS) {
       const fact = searchHitsSortFactFor(col);
-      if (isSlotTableChromeTrack(col.key)) {
+      if (isDataTableChromeColumn(col.key)) {
         assert.equal(fact, null, `${col.key} is chrome but offers a sort`);
       } else {
         assert.ok(fact, `${col.key} is a painted data track with a dead header`);

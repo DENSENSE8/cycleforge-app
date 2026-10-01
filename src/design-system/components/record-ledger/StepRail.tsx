@@ -9,7 +9,7 @@ import { STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifec
  * (`EventTimeline`) draw on these same tokens so the two read as one system.
  *
  * Two looks, one component: nodes take `rounded-mode-pill` (round in triage,
- * square on industrial); the hairline is `bg-mode-divide`. A step's state is
+ * follows `rounded-mode-pill`); the hairline is `bg-mode-divide`. A step's state is
  * colour only — a live update fills the node, it never moves the row.
  */
 

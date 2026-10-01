@@ -3,9 +3,9 @@
 import { Suspense, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
-  MobilePackerSpamCamera,
+  MobileNativePhotoCapture,
   type CapturedShot,
-} from '@/components/mobile/station/MobilePackerSpamCamera';
+} from '@/components/mobile/photos/MobileNativePhotoCapture';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
 
@@ -80,7 +80,7 @@ function StockPhotosPageInner() {
   }
 
   return (
-    <MobilePackerSpamCamera
+    <MobileNativePhotoCapture
       embedded
       onDone={handleDone}
       onCancel={returnToCaller}

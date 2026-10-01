@@ -21,7 +21,8 @@ import {
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives/IconButton';
+import { Button } from '@/design-system/primitives/Button';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { claimPhotoTileProps } from '../claim-helpers';
@@ -31,11 +32,6 @@ interface Props {
   photos: UseClaimPhotos;
   /** Carton receiving id — the photo request targets this carton. */
   receivingId: number | null | undefined;
-  /**
-   * `select` (default) — claim / Move / Send attachment picker (toggle + counts).
-   * `view` — Photos gallery: inspect + capture only; no orphan attach chrome.
-   */
-  mode?: 'select' | 'view';
 }
 
 /**
@@ -47,9 +43,11 @@ const CLAIM_CONTROL_GROUP = photoAttachControlGroupClass;
 const CLAIM_ICON_BUTTON = photoAttachIconButtonClass;
 const CLAIM_DENSITY_BUTTON = photoAttachDensityButtonClass;
 
-/** Photo grid for claim / Move / Send selection (`mode="select"`) and the Photos Displays gallery (`mode="view"`). */
-export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props) {
-  const selectable = mode === 'select';
+/** Attachment picker for claim and photo-move flows. */
+export function ClaimPhotoPicker({
+  photos,
+  receivingId,
+}: Props) {
   const { photos: list, selectedPhotoIds, togglePhoto, toggleSelectAll, refetch } = photos;
   // Item (line-scoped) evidence first; groups keep the API's stable id order.
   const ordered = useMemo(
@@ -110,40 +108,44 @@ export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props
 
   const sendToPhoneControl = (
     <HoverTooltip label="Send to phone" asChild>
-      <button
-        type="button"
+      <IconButton
         onClick={() => void handleSendToPhone()}
         disabled={sending || !receivingId}
-        aria-label="Send to phone"
-        className={cn(
-          'ds-raw-button relative flex items-center justify-center border border-border-soft bg-surface-card text-text-soft transition-colors',
-          CLAIM_ICON_BUTTON,
-          'hover:bg-surface-sunken hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-60',
-        )}
-      >
-        {sending ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <>
-            <Camera className="h-3.5 w-3.5" />
-            <span className="absolute -bottom-0.5 -right-0.5 grid h-3 w-3 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-border-hairline">
-              <Plus className="h-1.5 w-1.5" />
+        ariaLabel="Send to phone"
+        size="sm"
+        radius="flush"
+        tone="accent"
+        icon={
+          sending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <span className="relative">
+              <Camera className="h-3.5 w-3.5" />
+              <span className="absolute -bottom-0.5 -right-0.5 grid h-3 w-3 place-items-center rounded-full bg-blue-600 text-white ring-2 ring-border-hairline">
+                <Plus className="h-1.5 w-1.5" />
+              </span>
             </span>
-          </>
+          )
+        }
+        className={cn(
+          'relative border border-border-soft bg-surface-card',
+          CLAIM_ICON_BUTTON,
+          'hover:bg-surface-sunken',
         )}
-      </button>
+      />
     </HoverTooltip>
   );
 
   // ── Empty state — no photos yet: flush dashed send-to-phone band ──────────
   if (list.length === 0) {
     return (
-      // ds-raw-button: large multi-line dashed send-to-phone band, not a standard action button
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="md"
+        radius="flush"
         onClick={() => void handleSendToPhone()}
         disabled={sending || !receivingId}
-        className="group flex w-full flex-col items-center justify-center gap-1.5 rounded-none border border-dashed border-border-hairline bg-surface-sunken px-4 py-6 text-center transition-colors hover:border-blue-300 hover:bg-blue-50/60 disabled:cursor-not-allowed disabled:opacity-60"
+        className="group !h-auto w-full flex-col gap-1.5 border border-dashed border-border-hairline bg-surface-sunken px-4 py-6 text-center hover:border-blue-300 hover:bg-blue-50/60"
       >
         <span className="relative grid h-11 w-11 place-items-center rounded-none border border-border-hairline bg-surface-card text-text-faint transition-colors group-hover:border-blue-300 group-hover:text-blue-600">
           {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
@@ -161,7 +163,7 @@ export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props
             ? 'Opening the camera on your phone…'
             : 'Send to phone — they appear here.'}
         </span>
-      </button>
+      </Button>
     );
   }
 
@@ -178,9 +180,7 @@ export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props
             />
           </HoverTooltip>
           <p className="truncate text-role-micro text-text-soft">
-            {selectable
-              ? `Attach photos ${selectedPhotoIds.size}/${list.length}`
-              : `Photos ${list.length}`}
+            {`Attach photos ${selectedPhotoIds.size}/${list.length}`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-0">
@@ -195,36 +195,30 @@ export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props
             refreshClassName={CLAIM_ICON_BUTTON}
           />
           {sendToPhoneControl}
-          {selectable ? (
-            <HoverTooltip
-              label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
-              asChild
-            >
-              <div className={cn(photoLibraryControlGroupClass, 'shrink-0', CLAIM_CONTROL_GROUP)}>
-                <button
-                  type="button"
-                  onClick={toggleSelectAll}
-                  aria-label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
-                  aria-pressed={selectedPhotoIds.size === list.length}
-                  className={cn(
-                    'ds-raw-button',
-                    photoLibraryControlButtonClass(
-                      selectedPhotoIds.size === list.length,
-                      cn('w-7', CLAIM_DENSITY_BUTTON),
-                    ),
-                  )}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </HoverTooltip>
-          ) : null}
+          <HoverTooltip
+            label={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
+            asChild
+          >
+            <div className={cn(photoLibraryControlGroupClass, 'shrink-0', CLAIM_CONTROL_GROUP)}>
+              <IconButton
+                onClick={toggleSelectAll}
+                ariaLabel={selectedPhotoIds.size === list.length ? 'Clear all' : 'Select all'}
+                aria-pressed={selectedPhotoIds.size === list.length}
+                icon={<Pencil className="h-3.5 w-3.5" />}
+                radius="flush"
+                className={photoLibraryControlButtonClass(
+                  selectedPhotoIds.size === list.length,
+                  cn('w-7', CLAIM_DENSITY_BUTTON),
+                )}
+              />
+            </div>
+          </HoverTooltip>
         </div>
       </div>
 
       <div className={cn(photoGridLeafClass(gridDensity), 'gap-0')}>
-        {ordered.map((p, index) => {
-          const isSel = selectable && selectedPhotoIds.has(p.id);
+        {ordered.map((p) => {
+          const isSel = selectedPhotoIds.has(p.id);
           const tile = claimPhotoTileProps(p, gridDensity);
           return (
             <div
@@ -236,26 +230,20 @@ export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props
                   : 'border-border hover:border-border-default',
               )}
             >
-              {selectable ? (
-                <SelectionMark
-                  checked={isSel}
-                  active={false}
-                  onToggle={() => togglePhoto(p.id)}
-                />
-              ) : null}
+              <SelectionMark
+                checked={isSel}
+                active={false}
+                onToggle={() => togglePhoto(p.id)}
+              />
               <HoverTooltip
-                label={selectable ? (isSel ? 'Selected' : 'Attach') : 'View'}
+                label={isSel ? 'Selected' : 'Attach'}
                 asChild
               >
-                {/* ds-raw-button: photo thumbnail image tile (img selection / view target), not a standard action button */}
+                {/* ds-raw-button: photo thumbnail image tile (img selection target), not a standard action button */}
                 <button
                   type="button"
-                  onClick={() =>
-                    selectable ? togglePhoto(p.id) : g.openViewer(index)
-                  }
-                  aria-label={
-                    selectable ? (isSel ? 'Selected' : 'Attach') : 'View photo'
-                  }
+                  onClick={() => togglePhoto(p.id)}
+                  aria-label={isSel ? 'Selected' : 'Attach'}
                   className={cn(
                     'ds-raw-button block w-full rounded-none text-left',
                     tile.ratio === 'natural' ? '' : 'aspect-square',

@@ -10,7 +10,7 @@ import {
 import type { UnitsOverviewRow } from '@/hooks/useUnitsOverview';
 import { UNITS_FIELD_CATALOG, UNITS_PRODUCT_LAYOUT } from './units';
 import { resolveUnitsSlotValue } from './units-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<UnitsOverviewRow> = {}): UnitsOverviewRow {
   return {
@@ -38,7 +38,7 @@ describe('units catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; the full set bound)', () => {
-    const parsed = parseSlotLayout(UNITS_PRODUCT_LAYOUT, UNITS_FIELD_CATALOG);
+    const parsed = UNITS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'units.serial');
     assert.deepEqual(parsed.statusBindings, [

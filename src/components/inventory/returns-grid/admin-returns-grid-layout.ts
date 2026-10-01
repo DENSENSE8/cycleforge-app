@@ -1,12 +1,12 @@
-/** Admin › Returns column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
+/** Admin › Returns column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   ADMIN_RETURNS_FIELD_CATALOG,
   ADMIN_RETURNS_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/admin-returns';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -27,37 +27,29 @@ export type AdminReturnsGridColumnKey =
  * One column of the returns dock. EXTENDS the house model rather than
  * re-declaring it — every shared field is inherited and only `key` narrows.
  */
-export interface AdminReturnsGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: AdminReturnsGridColumnKey;
-}
+export interface AdminReturnsGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: AdminReturnsGridColumnKey; }
 
 /** Materialize the mounted columns from an effective layout. */
-export function adminReturnsCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly AdminReturnsGridColumn[] {
-  const tracks = materializeTracks<AdminReturnsGridColumn>({
-    layout,
-    catalog: ADMIN_RETURNS_FIELD_CATALOG,
-    base: compoundColumnsFor<AdminReturnsGridColumn>(),
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = ADMIN_RETURNS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    return t;
-  });
-}
+export function adminReturnsCompoundColumnsFor(layout: DataTableColumnLayout): readonly AdminReturnsGridColumn[] { const tracks = materializeTracks<AdminReturnsGridColumn>({
+  layout,
+  catalog: ADMIN_RETURNS_FIELD_CATALOG,
+  base: compoundColumnsFor<AdminReturnsGridColumn>(),
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = ADMIN_RETURNS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  return t;
+}); }
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const ADMIN_RETURNS_COMPOUND_COLUMNS: readonly AdminReturnsGridColumn[] =
@@ -74,7 +66,7 @@ export function adminReturnsSortFactFor(
   if (col.key === 'state') return 'inventory-events.status_change';
   // The Dates chrome paints the occurred stamp on its Hash line, so its header
   // sorts the same fact the bound `occurred` track does — a painted DATA track
-  // with a dead header fails SLOT_TABLE_PAINT_LAW.headerSort.
+  // with a dead header fails DATA_TABLE_PAINT_LAW.headerSort.
   if (col.key === 'dates') return 'inventory-events.occurred';
   return col.fieldId ?? null;
 }

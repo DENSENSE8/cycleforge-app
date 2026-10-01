@@ -1,7 +1,7 @@
 /** Search-hits field catalog — the bindable facts of ONE cross-entity find result, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const SEARCH_HITS_FIELD_CATALOG: FieldCatalog = [
   {
@@ -95,7 +95,7 @@ export const SEARCH_HITS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default — the operator's requested reading order, as far as the shared skeleton allows it. */
-export const SEARCH_HITS_PRODUCT_LAYOUT: SlotLayout = {
+export const SEARCH_HITS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'search-hits.identifier',
   statusBindings: [
@@ -108,7 +108,7 @@ export const SEARCH_HITS_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'search-hits.condition' },
   ],
   amountFieldId: null,
-};
+}
 
 /** The tableId this catalog serves — `PRODUCT_TABLES`' find-plane entry. */
 export const SEARCH_HITS_TABLE_LAYOUT_ID = 'search-hits';

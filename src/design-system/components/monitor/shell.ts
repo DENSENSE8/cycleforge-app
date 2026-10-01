@@ -19,7 +19,7 @@ export const MONITOR_SECTION_CARD_PADDED = `${MONITOR_SECTION_CARD_CLASS} p-5 sm
 export const MONITOR_KPI_TILE_CLASS = `${MONITOR_SECTION_CARD_CLASS} p-4`;
 
 /**
- * Workbench Band 2 KPI face — flush industrial instrument (no card island).
+ * Workbench Band 2 KPI face — compact instrument (no card island).
  * Compose via {@link KpiTile} `density="band"`; do not use inside Monitor dashboards.
  */
 export const MONITOR_KPI_BAND_CLASS = [

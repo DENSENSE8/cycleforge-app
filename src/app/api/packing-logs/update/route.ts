@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { publishPackerLogChanged, publishOrderChanged } from '@/lib/realtime/publish';
+import { publishActivityLogged, publishPackerLogChanged, publishOrderChanged } from '@/lib/realtime/publish';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { normalizePSTTimestamp } from '@/utils/date';
 import { createStationActivityLog } from '@/lib/station-activity';
@@ -96,6 +96,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           ledgerRows: Array<{ id: number; sku: string; delta: number }>;
           updatedRows: Array<{ id: number; order_id: string | number | null }>;
           photosCount: number;
+          stationActivityId: number | null;
         };
 
     const txResult = await withTenantTransaction<TxResult>(ctx.organizationId, async (client) => {
@@ -235,6 +236,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           source: 'packing-logs.update',
           tracking_type: trackingType,
           photos_count: photosCount,
+          ...(ctx.session.deviceKind === 'phone'
+            ? {
+                origin: 'phone',
+                surface: `/m/p/${packerLogId}/photos`,
+                client_event_id: idempotencyKey ?? (String(body.clientEventId ?? '').trim() || null),
+                ...(Number.isSafeInteger(Number(body.mobileScanEventId)) && Number(body.mobileScanEventId) > 0
+                  ? { mobile_scan_event_id: Number(body.mobileScanEventId) }
+                  : null),
+                subject_entity_type: 'shipment',
+                subject_id: String(resolvedShipmentId ?? packerLogId ?? shippingTrackingNumber),
+                subject_identifier: String(orderId ?? shippingTrackingNumber),
+              }
+            : null),
         },
         createdAt: canonicalPackDate,
       });
@@ -316,7 +330,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             shipmentId: resolvedShipmentId,
           }, client);
         }
-        return { deduplicated: false, packerLogId, ledgerRows: [], updatedRows: fallbackUpdate.rows, photosCount };
+        return { deduplicated: false, packerLogId, stationActivityId: salId, ledgerRows: [], updatedRows: fallbackUpdate.rows, photosCount };
       } else {
         const targetOrderId = updateResult.rows[0].id;
         await client.query(`
@@ -373,7 +387,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         ledgerRows.push(...ledgerResult.rows);
       }
 
-      return { deduplicated: false, packerLogId, ledgerRows, updatedRows: updateResult.rows, photosCount };
+      return { deduplicated: false, packerLogId, stationActivityId: salId, ledgerRows, updatedRows: updateResult.rows, photosCount };
     });
 
     if (txResult.deduplicated) {
@@ -389,7 +403,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       });
     }
 
-    const { packerLogId, ledgerRows, updatedRows, photosCount } = txResult;
+    const { packerLogId, stationActivityId, ledgerRows, updatedRows, photosCount } = txResult;
+    if (stationActivityId != null) {
+      await publishActivityLogged({
+        organizationId: ctx.organizationId,
+        id: stationActivityId,
+        station: 'PACK',
+        activityType: 'PACK_COMPLETED',
+        staffId,
+        scanRef: shippingTrackingNumber,
+        source: 'packing-logs.update',
+      }).catch(() => {});
+    }
 
     // Publish one Ably event per ledger row so ActivityFeed updates live.
     for (const row of ledgerRows) {

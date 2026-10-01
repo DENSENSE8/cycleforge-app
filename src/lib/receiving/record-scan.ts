@@ -8,19 +8,25 @@ import { NOTIFIABLE_EVENTS } from '@/lib/notifications/event-vocabulary';
 import { promoteWatchedArrival } from '@/lib/receiving/watched-arrival';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { UnboxScanKind } from '@/lib/receiving/unbox-scan-kind';
+import { publishOpsEventLogged } from '@/lib/realtime/publish';
 
 type ReceivingScanSource = 'zoho_po' | 'unmatched';
 
 /** Operator surface that issued the scan — drives independent triage vs unbox stamps. */
 export type ReceivingIntakeSurface = 'triage' | 'unbox';
 
-interface RecordReceivingScanOptions {
+export interface RecordReceivingScanOptions {
   /** Default `triage` — only triage (door) scans stamp received_at/received_by. */
   intakeSurface?: ReceivingIntakeSurface;
   /** Default `work`. */
   scanKind?: UnboxScanKind;
   /** Default `true`. */
   registerTracking?: boolean;
+  /** Authenticated phone intent correlation; actor still comes from the route session. */
+  phoneActivity?: {
+    mobileScanEventId?: number | null;
+    clientEventId?: string | null;
+  } | null;
 }
 
 /** Register the scanned tracking into the STN master and link it to the scan + carton. */
@@ -151,7 +157,7 @@ export async function recordReceivingScan(
 
     /* ARRIVAL — the event a pre-arrival tracking watch waits on. */
     try {
-      await recordOpsEvent({
+      const arrivalEventId = await recordOpsEvent({
         organizationId: orgId,
         entityType: 'receiving',
         entityId: receivingId,
@@ -164,8 +170,29 @@ export async function recordReceivingScan(
           source,
           receivingId,
           scanId,
+          ...(options.phoneActivity
+            ? {
+                origin: 'phone',
+                surface: '/m/scan',
+                client_event_id: options.phoneActivity.clientEventId ?? null,
+                mobile_scan_event_id: options.phoneActivity.mobileScanEventId ?? null,
+                subject_entity_type: 'receiving',
+                subject_id: String(receivingId),
+                subject_title: `Carton ${receivingId}`,
+                subject_identifier: trackingNumber,
+              }
+            : null),
         },
       });
+      if (arrivalEventId != null && options.phoneActivity) {
+        await publishOpsEventLogged({
+          organizationId: orgId,
+          id: arrivalEventId,
+          eventType: NOTIFIABLE_EVENTS['receiving.carton.arrived'].key,
+          actorStaffId: staffId,
+          source: 'receiving.arrival',
+        }).catch(() => {});
+      }
     } catch (err) {
       console.warn('[recordReceivingScan] arrival notification skipped:', err);
     }

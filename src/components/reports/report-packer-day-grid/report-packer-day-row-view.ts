@@ -49,7 +49,7 @@ export function reportPackerDayCompoundView(row: PackingReportRow): CompoundRowV
     identityFace: compoundIdentityFace(row.orderNumber, 'Order'),
     orderId: row.orderNumber,
     tracking: row.trackingOrScanRef,
-    /* PARITY with `ordersCompoundView` (src/lib/orders/orders-compound-view.ts), which is the canonical adapter every slot table follows: */
+    /* PARITY with `ordersCompoundView` (src/lib/orders/orders-compound-view.ts), which is the canonical adapter every compound data table follows: */
     platformValue: row.platform,
     carrier: null,
     stateLabel: packBasisLabel(row.tierSource),

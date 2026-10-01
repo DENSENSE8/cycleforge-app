@@ -5,8 +5,8 @@ import {
   RECEIVING_FIELD_CATALOG,
   RECEIVING_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/receiving';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -43,27 +43,19 @@ export type ReceivingGridColumnKey =
   | CustomFieldColumnKey;
 
 /** EXTENDS the house model — it does not re-declare it. */
-export interface ReceivingGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: ReceivingGridColumnKey;
-  /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
-  sortable?: boolean;
-}
+export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: ReceivingGridColumnKey;
+/** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
+sortable?: boolean; }
 
 
 /** COMPOUND (two-row) Unbox / History / Testing columns. */
-export function receivingCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly ReceivingGridColumn[] {
-  return materializeTracks<ReceivingGridColumn>({
-    layout,
-    catalog: RECEIVING_FIELD_CATALOG,
-    base: compoundColumnsFor<ReceivingGridColumn>(),
-    // The default anchor — the status band opens after the `state` pill, the
-    // position Orders' bound facts occupy on the same shared skeleton.
-  });
-}
+export function receivingCompoundColumnsFor(layout: DataTableColumnLayout): readonly ReceivingGridColumn[] { return materializeTracks<ReceivingGridColumn>({
+  layout,
+  catalog: RECEIVING_FIELD_CATALOG,
+  base: compoundColumnsFor<ReceivingGridColumn>(),
+  // The default anchor — the status band opens after the `state` pill, the
+  // position Orders' bound facts occupy on the same shared skeleton.
+}); }
 
 /** The PRODUCT-DEFAULT materialization — what an org with no override mounts. */
 export const RECEIVING_COMPOUND_COLUMNS: readonly ReceivingGridColumn[] =

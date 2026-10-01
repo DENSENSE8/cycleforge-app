@@ -4,7 +4,7 @@
 export const radius = {
   /**
    * Flush — data rows, table cells, solid {@link Button} CTAs
-   * (`cornerClass('flush')`), industrial instrument chrome.
+   * (`cornerClass('flush')`).
    */
   none: '0px',
   /** 2px — hairline softening, rarely the right call */
@@ -43,24 +43,19 @@ export type CornerRole =
   | 'card'
   /** Glass worksheets / large canvas containers */
   | 'canvas'
-  /**
-   * Grok-style triage panels — TriageScrollLayout right-pane cards only.
-   * Off the industrial ladder on purpose: remapping `card` would re-round every
-   * ops surface. Agents retrieve `cornerClass('surface')`, never a raw `rounded-*`.
-   */
+  /** Grok-style triage panels — TriageScrollLayout right-pane cards only. */
   | 'surface'
   /** Pills, dots, avatars */
   | 'pill';
 
-// Zero-radius industrial:
 const CORNER_CLASS: Record<CornerRole, string> = {
   flush: 'rounded-none',
-  chip: 'rounded-none',
-  row: 'rounded-none',
-  control: 'rounded-none',
-  field: 'rounded-none',
-  card: 'rounded-none',
-  canvas: 'rounded-none',
+  chip: 'rounded',
+  row: 'rounded-md',
+  control: 'rounded-lg',
+  field: 'rounded-xl',
+  card: 'rounded-2xl',
+  canvas: 'rounded-3xl',
   surface: 'rounded-xl',
   pill: 'rounded-full',
 };
@@ -86,8 +81,6 @@ export function cornerClass(role: CornerRole): string {
   return CORNER_CLASS[role];
 }
 
-/** The ONE soft corner on an ops surface: */
-const COMPOSER_SHELL_CORNER = 'rounded-2xl';
 
 /** Concentric inner corner: */
 export function nestedCorner(outer: CornerRole, padStep: number): CornerRole {

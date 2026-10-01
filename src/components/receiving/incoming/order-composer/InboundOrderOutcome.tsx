@@ -12,7 +12,7 @@ import { useState, type ReactNode } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { INBOUND_SOURCE_LABELS, type InboundSourceType } from '@/lib/inbound/source-registry';
 import {
   canonicalInboundTracking,

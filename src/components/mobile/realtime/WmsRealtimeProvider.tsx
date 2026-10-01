@@ -65,6 +65,7 @@ export type WmsExecutionCommand = {
         reason: string;
         reasonCodeId: number | null;
         notes: string | null;
+        locationVerificationToken: string;
       };
     }
   | {

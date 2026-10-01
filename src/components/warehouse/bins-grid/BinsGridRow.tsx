@@ -13,7 +13,7 @@ import {
   type BinsGridColumn,
 } from './bins-grid-layout';
 
-/** One warehouse bin — CSS-grid columns matching the MOUNTED model (a `SlotLayout` materialization since the wave 1.4 hand-model kill). */
+/** One warehouse bin — CSS-grid columns matching the MOUNTED model (a `DataTableColumnLayout` materialization since the wave 1.4 hand-model kill). */
 export const BinsGridRow = memo(function BinsGridRow({
   row,
   isChecked,

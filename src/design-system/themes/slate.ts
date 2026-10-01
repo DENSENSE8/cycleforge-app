@@ -1,10 +1,10 @@
 import type { ThemePalette } from './registry';
 
-/** Slate — cool industrial. */
+/** Slate — cool neutral. */
 export const slatePalette: ThemePalette = {
   name: 'slate',
   label: 'Slate',
-  hint: 'Cool industrial — steel canvas, crisp cards.',
+  hint: 'Cool slate — steel canvas, crisp cards.',
   scheme: 'light',
   preview: { canvas: '#e9eef4', card: '#fbfdfe', accent: '#1e3a5f', text: '#101c2c' },
   page: { background: '#e9eef4', foreground: '#101c2c' },

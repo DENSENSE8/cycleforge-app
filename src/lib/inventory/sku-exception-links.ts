@@ -1,4 +1,4 @@
-import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
+import { locationCode, parseLocationCodeFlat, rackCode } from '@/lib/barcode-routing';
 import { EXCEPTION_RECORD_PARAM, exceptionRowKey } from '@/lib/exceptions/types';
 
 /**
@@ -19,8 +19,13 @@ export function skuExceptionShareUrl(sku: string): string {
   return `${origin}${skuExceptionHref(sku)}`;
 }
 
-/** A location barcode in its segmented face (`C0409200` → `C-04-09-2-00`), else as scanned. */
+/**
+ * A location barcode in its segmented face (`C0409200` → `C-04-09-2-00`), else
+ * as scanned. A `00` position is the rack sentinel, not a slot — the face
+ * drops it (`C0409200` → `C-04-09-2`) instead of showing an empty zero.
+ */
 export function skuExceptionLocationFace(barcode: string): string {
   const segments = parseLocationCodeFlat(barcode);
-  return segments ? locationCode(segments) : barcode;
+  if (!segments) return barcode;
+  return Number(segments.position) === 0 ? rackCode(segments) : locationCode(segments);
 }

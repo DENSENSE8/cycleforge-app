@@ -19,7 +19,7 @@ export const STATION_SCAN_RAISED_BEVEL_CLASS =
 export const STATION_DISPLAYS_LEADING_BEVEL_CLASS =
   `border-l-[length:var(--ds-station-bevel-width)] border-l-border-station-shadow`;
 
-/** Band header strip. Industrial is transparent; character Color paints a face. */
+/** Band header strip. The default is transparent; character Color paints a face. */
 export const STATION_SCAN_BENCH_CLASS =
   `bg-surface-station-header ${STATION_SCAN_GRAIN_CLASS}`;
 

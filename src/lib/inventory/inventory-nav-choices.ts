@@ -6,11 +6,6 @@
 
 import { LOCATION_BAY_LABEL_PLURAL } from '@/lib/barcode-routing';
 
-/** Stock `?status=` — absent = all stock. `on-hold` is also the SKU Exceptions view. */
-export const STOCK_STATE_OPTIONS = [
-  { value: 'catalog', label: 'Catalog paired' },
-  { value: 'on-hold', label: 'On hold' },
-] as const;
 
 /** Locations `?tab=` — absent = Bin Tags. `bins` is reached from Map, not offered. */
 export const LOCATIONS_TAB_OPTIONS = [

@@ -400,7 +400,7 @@ function HoverTooltipBubble({
           : 'max-w-[15rem] whitespace-pre-line',
         // Same 8px popover rung as the cursor-follow chip — one corner for
         // the hover hint wherever it lands (operator 2026-09-15). The ROLE
-        // ladder renders rounded-none in this theme's industrial wave.
+        // ladder follows the active rounded theme.
         DROPDOWN_SHELL_CORNER,
       )}
     >

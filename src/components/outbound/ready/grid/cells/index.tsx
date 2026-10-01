@@ -76,7 +76,7 @@ function ReadyHitMetaTrail({ hit }: { hit: AllocationHit }) {
           <CopyableCellValue
             value={token.value}
             historyKind={token.kind}
-            className="min-w-0 truncate font-sans text-role-eyebrow text-text-faint industrial:font-mono"
+            className="min-w-0 truncate font-sans text-role-eyebrow text-text-faint"
             dense
           />
         </span>

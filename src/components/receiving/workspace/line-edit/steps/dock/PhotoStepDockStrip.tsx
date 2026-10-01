@@ -3,17 +3,17 @@
 /** Band 1 RIGHT recipe for every Unbox photo procedure step: */
 
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
-import { Camera, Images, Upload } from '@/components/Icons';
+import { Camera, Upload } from '@/components/Icons';
 import { STATION_CONTEXT_PHOTO_TONE } from '@/components/station/entity-context/station-context-action-pill';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { Button } from '@/design-system/primitives/Button';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-/** Shared face for each third — never content-sized chips in air. */
+/** Shared face for each segment — never content-sized chips in air. */
 const PHOTO_STEP_SEGMENT =
   'ds-raw-button inline-flex h-11 min-w-0 flex-1 items-center justify-center px-3 text-role-caption font-semibold transition-colors disabled:cursor-not-allowed disabled:text-text-faint';
 
-/** Send-to-phone third — same blue face as carton Photos chrome ({@link STATION_CONTEXT_PHOTO_FLUSH_CLASS}): */
+/** Send-to-phone segment — same blue face as carton Photos chrome: */
 const PHOTO_STEP_PHONE_FACE = `border ${STATION_CONTEXT_PHOTO_TONE} disabled:border-border-hairline disabled:bg-surface-sunken disabled:text-text-faint`;
 
 type PhotoStepSegmentProps = {
@@ -23,7 +23,7 @@ type PhotoStepSegmentProps = {
   label: string;
   busy?: boolean;
   buttonRef?: Ref<HTMLButtonElement>;
-  /** Extra attrs (e.g. aria-expanded for the Link popover trigger). */
+  /** Extra attrs such as aria-expanded or data markers. */
   buttonProps?: Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
     'onClick' | 'disabled' | 'aria-label' | 'type' | 'className' | 'children' | 'ref'
@@ -47,39 +47,37 @@ function SegmentButton({
   tone: 'card' | 'phone';
 }) {
   return (
-    // ds-raw-button: photo-step Band 1 equal third
-    <button
+    <Button
       ref={buttonRef}
       type="button"
+      variant="ghost"
+      size="lg"
+      radius="flush"
       onClick={onClick}
       disabled={disabled}
-      aria-label={ariaLabel}
+      ariaLabel={ariaLabel}
       data-testid={testId}
       {...buttonProps}
       className={cn(
         PHOTO_STEP_SEGMENT,
-        focusRing('control', tone === 'phone' ? 'accent' : 'neutral'),
         tone === 'phone'
           ? PHOTO_STEP_PHONE_FACE
           : 'bg-surface-card text-text-default hover:bg-surface-hover',
-        cornerClass('flush'),
       )}
     >
       {icon}
       <span className="truncate">{label}</span>
-    </button>
+    </Button>
   );
 }
 
 export function PhotoStepDockStrip({
-  link,
   upload,
   phone,
   fileInput,
   rootProps,
   hostMarker,
 }: {
-  link: PhotoStepSegmentProps;
   upload: PhotoStepSegmentProps;
   phone: PhotoStepSegmentProps;
   fileInput?: ReactNode;
@@ -103,16 +101,10 @@ export function PhotoStepDockStrip({
         cornerClass('flush'),
       )}
       data-unbox-photo-step-dock
-      data-unbox-photo-thirds="3"
+      data-unbox-photo-segments="2"
       {...(hostMarker ? { [hostMarker]: true } : {})}
       {...rootProps}
     >
-      <SegmentButton
-        {...link}
-        tone="card"
-        data-testid="unbox-photo-link"
-        icon={<Images className="mr-1.5 h-4 w-4 shrink-0" aria-hidden />}
-      />
       <SegmentButton
         {...upload}
         tone="card"
@@ -129,16 +121,3 @@ export function PhotoStepDockStrip({
     </div>
   );
 }
-
-/**
- * Procedure keys that mount {@link PhotoStepDockStrip} as the Band 1 **right**
- * segment beside the always-left procedure waist (`UnboxDockScanEntry`).
- */
-const UNBOX_PHOTO_STRIP_KEYS = new Set([
-  'arrival_label_photo',
-  'arrival_box_photo',
-  'shipping_label_photo',
-  'box_photo',
-  'packing_material',
-  'item_photos',
-]);

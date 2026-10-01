@@ -6,9 +6,12 @@ import {
   conditionLabel,
 } from '@/lib/conditions';
 import { resolveOutboundWorkflowFacts } from '@/lib/shipping/outbound-workflow-facts';
+import { orderLifecycleState } from '@/lib/order-lifecycle';
+import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
 
-type MobileOrderView =
+export type MobileOrderView =
   | 'all'
+  | 'to-pick'
   | 'must-go-today'
   | 'urgent'
   | 'blocked'
@@ -18,12 +21,28 @@ type MobileOrderView =
 
 export const MOBILE_ORDER_VIEWS: readonly { id: MobileOrderView; label: string }[] = [
   { id: 'all', label: 'All' },
+  { id: 'to-pick', label: 'To pick' },
   { id: 'must-go-today', label: 'Must go today' },
   { id: 'urgent', label: 'Urgent' },
   { id: 'blocked', label: 'Blocked' },
   { id: 'exceptions', label: 'Exceptions' },
   { id: 'ready-to-pack', label: 'Ready to pack' },
   { id: 'packed', label: 'Packed' },
+];
+
+export type MobileAllocateStatusView = Exclude<MobileOrderView, 'exceptions' | 'must-go-today'>;
+
+/** Allocate's one cross-platform status rail, in the desk's operational order. */
+export const MOBILE_ALLOCATE_STATUS_VIEWS: readonly {
+  id: MobileAllocateStatusView;
+  label: string;
+}[] = [
+  { id: 'all', label: 'All' },
+  { id: 'urgent', label: LIFECYCLE.urgent.label },
+  { id: 'to-pick', label: LIFECYCLE.toPick.label },
+  { id: 'ready-to-pack', label: LIFECYCLE.picked.label },
+  { id: 'packed', label: LIFECYCLE.packed.label },
+  { id: 'blocked', label: LIFECYCLE.outOfStock.label },
 ];
 
 export function parseMobileOrderView(raw: string | null | undefined): MobileOrderView {
@@ -51,13 +70,15 @@ export function filterToShipByOrderView(
       },
       { todayKey },
     );
+    const lifecycle = orderLifecycleState(facts.stage, { urgent: row.isUrgent });
+    if (view === 'to-pick') return lifecycle === 'toPick';
     if (view === 'must-go-today') {
       return facts.deadlineBand === 'today' || facts.deadlineBand === 'overdue';
     }
-    if (view === 'urgent') return row.isUrgent === true;
-    if (view === 'blocked') return facts.blocked;
-    if (view === 'ready-to-pack') return facts.stage === 'PICKED';
-    return facts.stage === 'PACKED_STAGED';
+    if (view === 'urgent') return lifecycle === 'urgent';
+    if (view === 'blocked') return lifecycle === 'outOfStock';
+    if (view === 'ready-to-pack') return lifecycle === 'picked';
+    return lifecycle === 'packed';
   });
 }
 

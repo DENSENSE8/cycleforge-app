@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * `/m/orders?display=ledger` — the industrial record at phone width (HANDOFF Step 3).
+ * `/m/orders?display=ledger` — the shared record at phone width.
  * F-pattern the owner set on 2026-09-24 (Context → Identity → Execution) with
  */
 
@@ -14,7 +14,7 @@ import {
   RECORD_QTY_BADGE_CLASS,
   RECORD_TITLE_CLASS,
   recordStateCodeClass,
-} from '@/design-system/tokens/industrial-record';
+} from '@/design-system/tokens/record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { conditionGradeTableLabel } from '@/lib/conditions';

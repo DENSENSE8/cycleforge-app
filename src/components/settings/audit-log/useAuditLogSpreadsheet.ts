@@ -2,7 +2,7 @@
 
 /** **Audit-log spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import {
   useCompoundSpreadsheet,
@@ -13,7 +13,6 @@ import { resolveAuditLogSlotValue } from '@/lib/tables/field-catalog/audit-log-r
 import type { AuditLogRow } from '@/lib/audit/audit-log-row';
 import { auditLogCompoundView } from './audit-log-row-view';
 import {
-  auditLogCompoundColumnsFor,
   auditLogSortFactFor,
   type AuditLogGridColumn,
   type AuditLogGridColumnKey,
@@ -22,7 +21,6 @@ import {
   AUDITLOG_GRID_CAPABILITIES,
   AUDITLOG_TABLE_BINDING,
 } from './audit-log-table-definition';
-import { useAuditLogTableLayout } from './useAuditLogTableLayout';
 
 interface UseAuditLogSpreadsheetOptions {
   /**
@@ -49,11 +47,8 @@ export function useAuditLogSpreadsheet({
   const [sort, setSort] = useState<AuditLogGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useAuditLogTableLayout();
-  const columns = useMemo(
-    () => auditLogCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: AuditLogGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -65,12 +60,10 @@ export function useAuditLogSpreadsheet({
 
   return useCompoundSpreadsheet<AuditLogRow, AuditLogGridColumnKey, AuditLogGridColumn>({
     binding: AUDITLOG_TABLE_BINDING,
-    columns,
-    fields,
+    columns: AUDITLOG_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: auditLogCompoundView,
-    subtitleFieldIds,
     resolve: resolveAuditLogSlotValue,
     sortFactFor: auditLogSortFactFor,
     capabilities: AUDITLOG_GRID_CAPABILITIES,

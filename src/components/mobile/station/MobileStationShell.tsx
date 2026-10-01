@@ -29,6 +29,8 @@ export function MobileStationShell({
   empty,
   /** The capture surface. Anchored to the bottom, owns its own height. */
   window: captureWindow,
+  /** Location identification is a V2 lookup: lens first, results below. */
+  windowPlacement = 'bottom',
 }: {
   tape: readonly StationTapeEntry[];
   itemActions?: (entry: StationTapeEntry) => readonly StationItemAction[] | null;
@@ -36,6 +38,7 @@ export function MobileStationShell({
   untitledLabel?: string;
   empty?: React.ReactNode;
   window: React.ReactNode;
+  windowPlacement?: 'top' | 'bottom';
 }) {
   const [now, setNow] = useState(() => Date.now());
   // The region's state-change duration (triage ≤120ms; 0 under reduced motion).
@@ -90,6 +93,7 @@ export function MobileStationShell({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
+      {windowPlacement === 'top' ? captureWindow : null}
       <div
         ref={tapeRef}
         className="flex min-h-0 flex-1 flex-col justify-end overflow-y-auto overscroll-contain"
@@ -147,7 +151,7 @@ export function MobileStationShell({
         )}
       </div>
 
-      {captureWindow}
+      {windowPlacement === 'bottom' ? captureWindow : null}
     </div>
   );
 }

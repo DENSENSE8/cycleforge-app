@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { DESK_RECORD_MEASURE_CLASS } from '@/design-system/tokens/desk-stage';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 
 export type TriageSectionSpec = {
   id: string;
@@ -14,7 +14,7 @@ export type TriageSectionSpec = {
 
 /**
  * Right pane of {@link TriageScrollLayout}.
- * The heading speaks the industrial LABEL voice (owner ruling 2026-09-24 —
+ * The heading speaks the shared label voice (owner ruling 2026-09-24 —
  */
 export function TriageSections({
   sections,

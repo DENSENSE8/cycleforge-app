@@ -14,6 +14,7 @@ import {
   trackingSeenFromPreview,
 } from '@/lib/scan/mobile-arrival-door';
 import { mobileFeedQueryKey } from '@/lib/receiving/mobile-feed-query-key';
+import type { PhoneScanCorrelation } from '@/lib/scan/phone-scan-intent';
 import type { SettledArrival } from './arrival-station-tape';
 
 interface PreviewHit {
@@ -72,7 +73,7 @@ export function useArrivalStation(options: ArrivalStationOptions = {}) {
   const seqRef = useRef(0);
 
   const submitRaw = useCallback(
-    (raw: string) => {
+    (raw: string, correlation?: PhoneScanCorrelation) => {
       const value = raw.trim();
       if (!value) return;
 
@@ -147,6 +148,8 @@ export function useArrivalStation(options: ArrivalStationOptions = {}) {
               originalMode: 'tracking',
               staffId,
               intakeSurface: 'triage',
+              mobileScanEventId: correlation?.mobileScanEventId ?? null,
+              clientEventId: correlation?.clientEventId ?? null,
             },
             {
               lookupPo: async (body) => {

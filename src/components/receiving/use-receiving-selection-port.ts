@@ -12,7 +12,7 @@ import { useMemo } from 'react';
 import type { TriageSelectionPort } from '@/design-system/components/triage-card-list/TriageCardList';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import { emitToggleAll } from '@/lib/selection/table-selection';
-import { clearSlotTableVisibleIds, publishSlotTableVisibleIds } from '@/lib/tables/slot-table-visible';
+import { clearDataTableVisibleIds, publishDataTableVisibleIds } from '@/lib/tables/data-table-visible-rows';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export function useReceivingSelectionPort(
@@ -30,8 +30,8 @@ export function useReceivingSelectionPort(
       },
       setAll: (on) => emitToggleAll(RECEIVING_SELECTION_SCOPE, on ? 'all' : 'none'),
       publishVisible: (ids) => {
-        publishSlotTableVisibleIds(RECEIVING_SELECTION_SCOPE, ids);
-        return () => clearSlotTableVisibleIds(RECEIVING_SELECTION_SCOPE);
+        publishDataTableVisibleIds(RECEIVING_SELECTION_SCOPE, ids);
+        return () => clearDataTableVisibleIds(RECEIVING_SELECTION_SCOPE);
       },
     }),
     [selectedIds, onToggleRow, rows],

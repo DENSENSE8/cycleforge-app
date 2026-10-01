@@ -3,12 +3,12 @@ import {
   RECORD_NOTE_ADD_CLASS,
   RECORD_NOTE_BADGE_CLASS,
   RECORD_NOTE_SLOT_CLASS,
-} from '@/design-system/tokens/industrial-record';
+} from '@/design-system/tokens/record';
 import { Plus } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 
 /**
- * The buyer-note slot on an industrial record's band 1, beside the state code
+ * The buyer-note slot on a record's band 1, beside the state code
  * — the left-side priority anchor (owner 2026-09-24). Shared by the desk
  */
 export function RecordNoteSlot({ note, empty = 'blank' }: { note: string | null; empty?: 'blank' | 'add' }) {

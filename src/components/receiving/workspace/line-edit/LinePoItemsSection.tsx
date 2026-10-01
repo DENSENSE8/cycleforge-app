@@ -63,7 +63,7 @@ interface LinePoItemsSectionProps {
     serial_number: string;
     condition_grade?: string | null;
   }) => void;
-  /** Serials cell click → Units Displays. */
+  /** Serials cell click → the caller-owned unit detail. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
   /**
    * When false (Arrival door flow), unit editors / serial stamp stay off;
@@ -227,8 +227,8 @@ export function LinePoItemsSection({
           ? {
               editingSerialId: c.headerSerialEdit?.id ?? null,
               onEdit: (s) => {
-                // Edit-in-Displays: seed the target serial, then open the Units
-                // Displays leaf for the active line — never the in-row/dock field.
+                // Seed the serial edit target, then let the caller reveal the
+                // active line's unit detail.
                 c.setHeaderSerialEdit(s);
                 onViewAllUnits?.(row);
               },

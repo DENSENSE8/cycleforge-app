@@ -62,9 +62,9 @@ export function ReceivingTicketChip({
   lineId: number | null;
   /** Called after a successful unlink so the parent can clear its ticket state. */
   onUnlinked: () => void;
-  /** Toggles the Unbox Ticket push column (`?ticketView=1`). Omit outside Unbox. */
+  /** Select the caller-owned Ticket task. Omit outside a ticket-capable record. */
   onOpenTicketView?: () => void;
-  /** True while the Ticket push column is open — History menu pressed state only (no face pulse). */
+  /** True while the Ticket task is selected; affects History pressed state only. */
   ticketViewActive?: boolean;
 }) {
   const [sellerOpen, setSellerOpen] = useState(false);

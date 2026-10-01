@@ -1,7 +1,7 @@
 /** Unit-allocations field catalog — the bindable facts of ONE `order_unit_allocations` reservation, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const UNIT_ALLOCATIONS_FIELD_CATALOG: FieldCatalog = [
   /** The IDENTITY fact — the ORDER holding the unit. */
@@ -71,13 +71,13 @@ export const UNIT_ALLOCATIONS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default — byte-for-byte the five facts the retired hand table painted, with three of them on the shared row chrome. */
-export const UNIT_ALLOCATIONS_PRODUCT_LAYOUT: SlotLayout = {
+export const UNIT_ALLOCATIONS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'unit-allocations.order',
   statusBindings: [{ fieldId: 'unit-allocations.released' }],
   subtitleBindings: [{ fieldId: 'unit-allocations.reason' }],
   amountFieldId: null,
-};
+}
 
 /** The tableId this catalog serves — `PRODUCT_TABLES`' allocations entry. */
 export const UNIT_ALLOCATIONS_TABLE_LAYOUT_ID = 'unit-allocations';

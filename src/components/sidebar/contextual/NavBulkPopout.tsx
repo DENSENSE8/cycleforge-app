@@ -22,6 +22,7 @@ import {
 import { setDeskSearch, useDeskSearch } from '@/lib/outbound/desk-search-store';
 import type { NavLocateBucket } from '@/lib/nav/context/schema';
 import { COPY_HOTKEY, COPY_SHOWN_HOTKEY, hotkeyFires } from '@/lib/keyboard/key-registry';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -89,7 +90,7 @@ function isCurrentView(
 }
 
 /** One bucket holding a row's number, and whether it is the list on screen. */
-interface RowBucket {
+export interface RowBucket {
   bucket: NavLocateBucket;
   /** The list on screen — Enter narrows it instead of navigating. */
   current: boolean;
@@ -245,6 +246,15 @@ export function NavBulkPopout({
     event.preventDefault();
     event.stopPropagation();
   };
+
+  useEffect(() => {
+    const onWindowKey = (event: KeyboardEvent) => {
+      if (isEditableKeyTarget(event.target) || listRef.current?.contains(event.target as Node)) return;
+      onKeyDown(event as unknown as ReactKeyboardEvent<HTMLDivElement>);
+    };
+    window.addEventListener('keydown', onWindowKey);
+    return () => window.removeEventListener('keydown', onWindowKey);
+  });
 
   const orderActive = sort === 'order-asc' || sort === 'order-desc';
   const OrderIcon = sort === 'order-asc' ? ArrowUp : sort === 'order-desc' ? ArrowDown : ArrowUpDown;
@@ -437,7 +447,7 @@ function SortChip({
   );
 }
 
-function Legend({ keys, label }: { keys: readonly string[]; label: string }) {
+export function Legend({ keys, label }: { keys: readonly string[]; label: string }) {
   return (
     <span className="inline-flex items-center gap-1">
       {keys.map((key) => (
@@ -449,8 +459,13 @@ function Legend({ keys, label }: { keys: readonly string[]; label: string }) {
     </span>
   );
 }
+/** Labelled status face. The miniature stays narrow; the desk asks for room so "Receiving · Received" is not cut. */
+function statusWidth(wide: boolean): string {
+  return wide ? 'w-[15rem]' : 'w-[6.5rem]';
+}
 
-function BulkRow({
+
+export function BulkRow({
   entry,
   buckets,
   index,
@@ -466,6 +481,7 @@ function BulkRow({
   onRemove,
   onOpenBucket,
   onOpenRecord,
+  wide = false,
 }: {
   entry: BulkEntry;
   buckets: readonly RowBucket[];
@@ -482,6 +498,8 @@ function BulkRow({
   onRemove: () => void;
   onOpenBucket: (bucket: NavLocateBucket) => void;
   onOpenRecord: (() => void) | undefined;
+  /** Desk only. The popout stays on the narrow face. */
+  wide?: boolean;
 }) {
   // The bucket the row reads as: the list on screen when it holds the number, else its first.
   const primary = buckets.find((row) => row.current) ?? buckets[0];
@@ -496,7 +514,6 @@ function BulkRow({
       onPointerEnter={onPoint}
       onClick={editing ? undefined : onOpen}
       className={cn(
-        // Pill hover: a capsule inset from the square panel edge.
         'group mx-1 flex h-7 cursor-default select-none items-center gap-2 rounded-full pl-1 pr-1',
         'transition-[background-color,transform,box-shadow] duration-100 ease-out',
         'hover:bg-surface-card hover:shadow-sm hover:ring-1 hover:ring-border-soft',
@@ -506,16 +523,16 @@ function BulkRow({
       )}
     >
       {entry.pending ? (
-        <span className="inline-flex h-5 w-[6.5rem] shrink-0 items-center gap-1 px-1.5 text-role-micro text-text-faint">
+        <span className={cn('inline-flex h-5 shrink-0 items-center gap-1 px-1.5 text-role-micro text-text-faint', statusWidth(wide))}>
           <Loader2 aria-hidden className="size-3 shrink-0 animate-spin" />
           Checking…
         </span>
       ) : primary ? (
-        <BucketChip row={primary} labelled onOpen={onOpenBucket} />
+        <BucketChip row={primary} labelled wide={wide} onOpen={onOpenBucket} />
       ) : (
         <span
           data-bulk-bucket="none"
-          className="inline-flex h-5 w-[6.5rem] shrink-0 items-center gap-1 px-1.5 text-role-micro font-semibold"
+          className={cn('inline-flex h-5 shrink-0 items-center gap-1 px-1.5 text-role-micro font-semibold', statusWidth(wide))}
           style={{ color: NAV_LOCATE_TONE_VAR.danger }}
         >
           <AlertCircle aria-hidden className="size-3 shrink-0" />
@@ -540,11 +557,11 @@ function BulkRow({
       ) : (
         <>
           {/* The number never yields its width; detail and title share what is left. */}
-          <span className="max-w-[10rem] shrink-0 truncate font-mono text-role-caption font-semibold text-text-default">
+          <span title={entry.ref} className="max-w-[10rem] shrink-0 truncate font-mono text-role-caption font-semibold text-text-default">
             {entry.ref}
           </span>
           <span className="flex min-w-0 flex-1 items-baseline gap-2 text-role-micro">
-            {entry.detail ? <span className="min-w-0 shrink truncate text-text-muted">{entry.detail}</span> : null}
+            {entry.detail ? <span title={entry.detail} className="min-w-0 shrink truncate text-text-muted">{entry.detail}</span> : null}
             {entry.title ? (
               <span className={cn('min-w-0 flex-1 truncate text-text-faint group-hover:hidden', lit && 'hidden')}>
                 {entry.title}
@@ -581,13 +598,16 @@ function BulkRow({
  * bucket's ink. A bucket that is not the list on screen links to its list,
  * narrowed to the number — how a row points at Exceptions, Shipped, ….
  */
-function BucketChip({
+export function BucketChip({
   row,
   labelled = false,
+  wide = false,
   onOpen,
 }: {
   row: RowBucket;
   labelled?: boolean;
+  /** Full status words. The miniature omits this and keeps the 6.5rem face. */
+  wide?: boolean;
   onOpen: (bucket: NavLocateBucket) => void;
 }) {
   const { bucket, current } = row;
@@ -600,7 +620,7 @@ function BucketChip({
   );
   const className = cn(
     'inline-flex h-5 shrink-0 items-center gap-1 text-role-micro font-semibold',
-    labelled ? 'w-[6.5rem] px-1.5' : 'size-5 justify-center',
+    labelled ? cn(statusWidth(wide), 'px-1.5') : 'size-5 justify-center',
     SIDEBAR_CHIP_CORNER,
   );
   const style = { color: NAV_LOCATE_TONE_VAR[bucket.tone] };
@@ -634,7 +654,7 @@ function BucketChip({
   );
 }
 
-function RowAction({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+export function RowAction({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"

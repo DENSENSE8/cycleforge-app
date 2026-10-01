@@ -79,6 +79,7 @@ export function useSkuStockSendToPhone(target: { stockId: number | null; sku: st
       router.refresh();
       onChanged?.();
       void invalidateSkuExceptions(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ['sku-stock-photos'] });
     },
     [onChanged, queryClient, router, validStockId],
   );

@@ -31,7 +31,12 @@ export function useCurrentNavPath(): string {
 
 export function useNavStaffKey(): string {
   const { user } = useAuth();
-  return user?.staffId != null ? String(user.staffId) : 'anon';
+  // Nav is resolved from both the active organization and the staff member.
+  // A staff-only key can reuse the previous tenant's React Query data after a
+  // workspace switch and briefly paint that tenant's sidebar/nav definition.
+  return user?.staffId != null && user.organizationId
+    ? `${user.organizationId}:${user.staffId}`
+    : 'anon';
 }
 
 const noopSubscribe = () => () => {};

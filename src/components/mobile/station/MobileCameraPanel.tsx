@@ -8,7 +8,8 @@
 
 import { useCallback, useEffect, useId, useRef } from 'react';
 import { Button } from '@/design-system/primitives/Button';
-import { ChevronUp } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives/IconButton';
+import { Check, ChevronUp } from '@/components/Icons';
 import { MOBILE_SCAN_WINDOW_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
@@ -39,8 +40,6 @@ export function MobileCameraPanel({
    * its cancel while that field is up. One slot, one place, both modes.
    */
   leading,
-  /** Right slot label. `Done` unless a station has a better word for leaving. */
-  doneLabel = 'Done',
   /** The stage holds a FORM, not a lens: */
   fitContent = false,
   /** Ground behind the stage. A lens wants the dark stage; a form does not. */
@@ -56,7 +55,6 @@ export function MobileCameraPanel({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   leading?: React.ReactNode;
-  doneLabel?: string;
   fitContent?: boolean;
   stageClass?: string;
   /**
@@ -157,18 +155,19 @@ export function MobileCameraPanel({
         {status ?? ''}
       </span>
 
-      {/* The labelled way out — what the drag gesture and the grab bar used to be. */}
-      <Button
-        variant={fitContent ? 'ghost' : 'glass'}
+      {/* The check is the universal "camera work is complete" face. The
+          accessible name retains the verb without spending visual width. */}
+      <IconButton
         size="sm"
+        tone={fitContent ? 'neutral' : 'glass'}
         radius="control"
+        icon={<Check className="h-4 w-4" />}
         onClick={done}
+        ariaLabel="Done scanning"
         aria-expanded
         aria-controls={panelId}
         className="relative shrink-0 before:absolute before:-inset-1.5 before:content-['']"
-      >
-        {doneLabel}
-      </Button>
+      />
     </div>
   );
 

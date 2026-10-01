@@ -1,4 +1,4 @@
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 import type { QcQueueTier } from '@/lib/qc/qc-queue-order';
 
 /**

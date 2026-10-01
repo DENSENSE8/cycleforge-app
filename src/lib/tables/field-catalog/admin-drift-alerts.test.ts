@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '@/lib/tables/table-definition';
 import {
   ADMIN_DRIFT_ALERTS_COMPOUND_COLUMNS,
@@ -20,7 +20,7 @@ import {
   ADMIN_DRIFT_ALERTS_PRODUCT_LAYOUT,
 } from './admin-drift-alerts';
 import { resolveAdminDriftAlertsSlotValue } from './admin-drift-alerts-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /** Columns `stock_alerts` HAS that this desk neither selects nor paints. */
 const UNPAINTED_ALERT_COLUMNS = [
@@ -88,10 +88,7 @@ describe('admin-drift-alerts catalog', () => {
   });
 
   it('product default parses, binds NO track, and makes the SKU the identity', () => {
-    const parsed = parseSlotLayout(
-      ADMIN_DRIFT_ALERTS_PRODUCT_LAYOUT,
-      ADMIN_DRIFT_ALERTS_FIELD_CATALOG,
-    );
+    const parsed = ADMIN_DRIFT_ALERTS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'admin-drift-alerts.sku');
     // All four facts ride the shared chrome, so nothing is bound as a track —
@@ -170,7 +167,7 @@ describe('admin-drift-alerts materialization', () => {
     const identity = ADMIN_DRIFT_ALERTS_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'admin-drift-alerts.sku');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "SKU" is now the Fields-picker row
+    // (`data-table-family.ts`). "SKU" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -191,7 +188,7 @@ describe('admin-drift-alerts materialization', () => {
 
   it('every painted DATA header sorts; chrome stays dead', () => {
     for (const col of ADMIN_DRIFT_ALERTS_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key)) {
+      if (isDataTableChromeColumn(col.key)) {
         assert.equal(adminDriftAlertsSortFactFor(col), null, `${col.key} is chrome`);
         continue;
       }

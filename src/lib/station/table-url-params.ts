@@ -102,10 +102,16 @@ export const SAVED_VIEW_PARAM_KEYS: Record<StationSurfaceKey, readonly string[]>
     INBOUND_FIND_PARAM,
   ],
   testing_history: [LAYOUT_PARAM, SCOPE_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM, 'view'],
-  // The repair cards (`/repair`, Sales › Repair service): Status (`tab`), the
-  // channel view, Sort, the status chips and the sidebar Find — the owner's
-  // 2026-09-29 list. The open record (`openRepair`) and `page` stay out.
-  repair_queue: ['tab', REPAIR_CHANNEL_PARAM, REPAIR_SORT_PARAM, REPAIR_STATUS_CHIP_PARAM, 'search'],
+  // Repair cards (`/repair`, Sales › Repair service): workflow scope, ingress,
+  // card order, status/exclusion facets and sidebar Find.
+  repair_queue: [
+    'tab',
+    REPAIR_CHANNEL_PARAM,
+    REPAIR_SORT_PARAM,
+    REPAIR_STATUS_CHIP_PARAM,
+    'hide',
+    'search',
+  ],
 };
 
 /** localStorage key holding a surface's saved views. */

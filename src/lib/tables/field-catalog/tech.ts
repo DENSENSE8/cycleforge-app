@@ -1,7 +1,7 @@
 /** Tech bench field catalog — the bindable facts of ONE test scan, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const TECH_FIELD_CATALOG: FieldCatalog = [
   {
@@ -76,7 +76,7 @@ export const TECH_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default tech-bench layout: */
-export const TECH_PRODUCT_LAYOUT: SlotLayout = {
+export const TECH_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'tech.order_id',
   statusBindings: [{ fieldId: 'tech.tested' }],
@@ -88,7 +88,7 @@ export const TECH_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'tech.item_number' },
   ],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Tech bench entry. */
 export const TECH_TABLE_LAYOUT_ID = 'tech';

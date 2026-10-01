@@ -23,6 +23,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
 import { formatCostCents } from '@/lib/inbound/po-import-draft';
 import { printReceivingLineLabelsByIds } from '@/lib/receiving/print-receiving-line-labels';
+import { MobileNativePhotoInput } from '@/components/mobile/photos/MobileNativePhotoCapture';
 
 interface Landed {
   orderNumber: string;
@@ -114,11 +115,8 @@ export function MobilePickupPaperworkScreen() {
   return (
     <div className="flex min-h-full flex-col">
       <MobileDetailTopBar title="Pickup paperwork" subtitle={draft?.orderNumber || 'Photograph the paperwork'} backHref="/m/receiving/pickup" />
-      <input
+      <MobileNativePhotoInput
         ref={fileRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
         multiple
         hidden
         onChange={(event) => {

@@ -8,12 +8,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { FieldCatalog } from './field-catalog/types';
 import {
-  isSlotTrackKey,
+  isDataTableBoundColumnKey,
   materializeTracks,
   trackGeometryFor,
   type MaterializableTrack,
 } from './materialize-tracks';
-import type { SlotLayout } from './slot-layout';
+import type { DataTableColumnLayout } from './data-table-column-layout';
 
 const CATALOG: FieldCatalog = [
   { id: 'orders.order_id', family: 'orders', label: 'Order', displayType: 'id', slotKinds: ['identity'] },
@@ -35,7 +35,7 @@ const BASE: readonly MaterializableTrack[] = [
   { key: '_fill', width: 'minmax(0rem, 1fr)' },
 ];
 
-function layout(overrides: Partial<SlotLayout> = {}): SlotLayout {
+function layout(overrides: Partial<DataTableColumnLayout> = {}): DataTableColumnLayout {
   return {
     morph: 'compound',
     identityFieldId: 'orders.order_id',
@@ -82,7 +82,7 @@ describe('materializeTracks — compound', () => {
       base: BASE,
     });
     assert.deepEqual(
-      tracks.filter((t) => isSlotTrackKey(t.key)).map((t) => [t.key, t.fieldId]),
+      tracks.filter((t) => isDataTableBoundColumnKey(t.key)).map((t) => [t.key, t.fieldId]),
       [
         ['status:1', 'orders.picked'],
         ['status:2', 'orders.packed'],
@@ -105,7 +105,7 @@ describe('materializeTracks — compound', () => {
       catalog: CATALOG,
       base: BASE,
     });
-    const slots = tracks.filter((t) => isSlotTrackKey(t.key));
+    const slots = tracks.filter((t) => isDataTableBoundColumnKey(t.key));
     assert.deepEqual(slots.map((t) => [t.key, t.fieldId]), [['status:1', 'orders.packed']]);
   });
 

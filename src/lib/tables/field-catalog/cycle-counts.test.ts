@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
 import type { CycleCountCampaignRow } from '@/lib/inventory/cycle-count-campaign-row';
 import { cycleCountsCompoundColumnsFor } from '@/components/inventory/cycle-counts/cycle-counts-grid-layout';
-import { parseSlotLayout } from '../slot-layout';
+
 import {
   CYCLECOUNTS_FIELD_CATALOG,
   CYCLECOUNTS_PRODUCT_LAYOUT,
@@ -41,7 +41,7 @@ describe('cycle-counts catalog', () => {
   });
 
   it('product default parses against the catalog — four counts, no money', () => {
-    const parsed = parseSlotLayout(CYCLECOUNTS_PRODUCT_LAYOUT, CYCLECOUNTS_FIELD_CATALOG);
+    const parsed = CYCLECOUNTS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'cycle-counts.id');
     // FOUR, not five: the skeleton mounts whole, so a fifth status track would

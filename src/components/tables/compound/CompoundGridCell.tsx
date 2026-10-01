@@ -30,7 +30,7 @@ import {
   COMPOUND_GUTTER_CHEVRON_GLYPH_CLASS,
   COMPOUND_GUTTER_RAIL_INSET_CLASS,
   COMPOUND_ROW_PX,
-  SLOT_TABLE_GROUP_CHILD_RAIL_CLASS,
+  COMPOUND_GROUP_CHILD_RAIL_CLASS,
 } from './compound-row-chrome';
 import type {
   CompoundRowAction,
@@ -360,7 +360,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
  * track's leading edge (operator 2026-09-15, replacing the black rule
  */}
           {view.quietIdentity ? (
-            <span aria-hidden data-group-child-rail="" className={SLOT_TABLE_GROUP_CHILD_RAIL_CLASS} />
+            <span aria-hidden data-group-child-rail="" className={COMPOUND_GROUP_CHILD_RAIL_CLASS} />
           ) : null}
           <CompoundFulfillment view={view} onOpenLabels={onOpenLabels} />
         </div>

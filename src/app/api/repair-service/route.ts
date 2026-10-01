@@ -4,6 +4,7 @@ import { createCrudHandler, ApiError } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
   appendRepairStatusHistory,
+  getRepairById,
   getAllRepairs,
   updateRepairStatus,
   updateRepairNotes,
@@ -127,25 +128,33 @@ const handler = createCrudHandler({
 
 // Override PATCH to include realtime publishing with the parsed body
 const originalPatch = handler.PATCH;
-async function patchWithRealtime(req: NextRequest, ctx: { organizationId: string }) {
-  // Clone the request so we can read body twice (once here for realtime, once in handler)
+async function patchWithRealtime(req: NextRequest, ctx: AuthContext) {
+  // Read one clone before the generic handler consumes the body. The same
+  // payload drives realtime publication and a before/after audit row.
   const clonedReq = req.clone();
+  const body = await clonedReq.json().catch(() => null);
+  const repairId = body?.id ? Number(body.id) : null;
+  const before = repairId ? await getRepairById(repairId, ctx.organizationId) : null;
   const response = await originalPatch(req, ctx);
 
-  // If successful, publish realtime event
-  if (response.status === 200) {
-    try {
-      const body = await clonedReq.json();
-      if (body?.id) {
-        await publishRepairChanged({
-          organizationId: ctx.organizationId,
-          repairIds: [Number(body.id)],
-          source: 'repair-service.patch',
-        });
-      }
-    } catch {
-      // Non-critical
-    }
+  if (response.status === 200 && repairId) {
+    await publishRepairChanged({
+      organizationId: ctx.organizationId,
+      repairIds: [repairId],
+      source: 'repair-service.patch',
+    });
+    const after = await getRepairById(repairId, ctx.organizationId);
+    await recordAudit(pool, ctx, req, {
+      source: 'repair-service-api',
+      action: AUDIT_ACTION.REPAIR_SERVICE_UPDATE,
+      entityType: AUDIT_ENTITY.REPAIR_SERVICE,
+      entityId: repairId,
+      before: before ? { ...before } : null,
+      after: after ? { ...after } : null,
+      extra: {
+        field: typeof body?.field === 'string' ? body.field : body?.status ? 'status' : body?.notes !== undefined ? 'notes' : null,
+      },
+    });
   }
 
   return response;

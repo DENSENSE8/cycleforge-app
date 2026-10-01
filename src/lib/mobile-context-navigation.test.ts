@@ -22,9 +22,10 @@ test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () =>
   // `/m/home` IS the shift checklist since 2026-09-14 (it stopped being a redirect stub), and since the 2026-09-15 deletion it is the ONLY…
   assert.equal(getMobileAppTitle('/m/home'), 'Daily');
   assert.equal(getMobileAppTitle('/m/settings'), 'Settings');
-  assert.equal(getMobileAppTitle('/m/work'), 'Order management');
-  assert.equal(getMobileAppTitle('/m/orders'), 'Order management');
-  assert.equal(getMobileAppTitle('/m/orders/42'), 'Order management');
+  assert.equal(getMobileAppTitle('/m/work'), 'Allocate');
+  assert.equal(getMobileAppTitle('/m/work/42'), 'Fulfill');
+  assert.equal(getMobileAppTitle('/m/orders'), 'Allocate');
+  assert.equal(getMobileAppTitle('/m/orders/42'), 'Fulfill');
   assert.equal(getMobileAppTitle('/m/exceptions'), 'Exceptions');
   assert.equal(getMobileAppTitle('/m/exceptions/42'), 'Exceptions');
   assert.equal(getMobileAppTitle('/m/exceptions/bins%3A9'), 'Exceptions');

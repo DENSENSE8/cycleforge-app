@@ -123,41 +123,6 @@ export default [
     },
   },
 
-  // ── Desk industrial-ledger guard (owner 2026-09-28, BRIEF §14) ─────────────
-  // The desktop is triage-only: a desk list is `TriageCardList` (card or
-  // `density="row"`), never the industrial `RecordLedger` / `IndustrialRecord`
-  // rows — those live only on `/m/*` operation flows (phone and iPad). The
-  // small shared helpers in `IndustrialRecord.tsx` (`RecordPhoto`,
-  // `recordInitials`, …) stay importable; only the ledger and the row component
-  // are banned. This block re-declares `no-restricted-imports`, so it repeats
-  // the framer-motion ban (a second block overrides, it does not merge).
-  {
-    files: ['src/app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'src/features/**/*.{ts,tsx}'],
-    ignores: ['src/app/m/**', 'src/components/mobile/**'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            { name: 'framer-motion', message: 'framer-motion is retired — import from motion/react.' },
-          ],
-          patterns: [
-            { regex: '^framer-motion/', message: 'framer-motion is retired — import from motion/react.' },
-            {
-              regex: 'record-ledger/RecordLedger$',
-              message: 'RecordLedger is the phone industrial ledger. A desk list is TriageCardList (density "card" or "row") — BRIEF §14.',
-            },
-            {
-              regex: 'record-ledger/IndustrialRecord$',
-              importNames: ['IndustrialRecord'],
-              message: 'IndustrialRecord rows are phone-only. A desk row is TriageCardList density="row" — BRIEF §14.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-
   {
     files: ['scripts/**/*', 'src/lib/pipeline/**/*'],
     rules: {
@@ -445,7 +410,7 @@ export default [
     files: [
       // Kept in-component / portal ModeRegions (reviewed exceptions, not debt):
       // a BottomSheet / Dialog / popover portals out of the route region, or a
-      // component owns a nested triage/industrial plane. New ones need review.
+      // component owns a nested mode plane. New ones need review.
       'src/components/assistant/ChatPrintJobCard.tsx',
       'src/components/mobile/fnsku/FnskuStationSheet.tsx',
       'src/components/mobile/orders/MobileOrderEvidenceSheet.tsx',
@@ -459,8 +424,6 @@ export default [
       'src/components/mobile/shipping/shipment/ShipmentResolveSheet.tsx',
       'src/components/mobile/unit/UnitLineSheets.tsx',
       'src/components/mobile/unit/UnitSheetParts.tsx',
-      // `/m/pick` order screen: triage route, flush industrial action dock (owner 2026-09-29, BRIEF §14).
-      'src/components/mobile/picker/PickOrderScreen.tsx',
       // Header chrome sits outside the page's RouteModeRegion; re-resolves it.
       'src/components/layout/LiveSyncIndicator.tsx',
       'src/components/outbound/label-intake/LabelIntakeDesk.tsx',
@@ -585,7 +548,6 @@ export default [
       'src/components/receiving/workspace/claim/components/ClaimPhotoPicker.tsx',
       'src/components/receiving/workspace/claim/components/ClaimTemplateEditor.tsx',
       'src/components/receiving/workspace/claim/components/ClaimTicketReply.tsx',
-      'src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx',
       'src/components/receiving/workspace/line-edit/NoSerialControl.tsx',
       'src/components/receiving/workspace/line-edit/UnfoundMatchStrip.tsx',
       'src/components/repair/ProductSelector.tsx',

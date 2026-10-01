@@ -23,7 +23,6 @@ export const TECH_ALL_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

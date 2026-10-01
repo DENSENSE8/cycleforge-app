@@ -4,7 +4,7 @@ import { ExternalLink } from '@/components/Icons';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { platformDisplayName, type PlatformDisplay } from '@/lib/platform-display';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '../../tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '../../tokens/record';
 import { focusRing } from '../../tokens/focus-ring';
 import { RECORD_HIT_CLASS } from './record-ledger-geometry';
 import { cn } from '@/utils/_cn';

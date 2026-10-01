@@ -1,6 +1,6 @@
 'use client';
 
-/** Print-run integer field — same Figma delta-X gesture as slot-table price. */
+/** Print-run integer field — same Figma delta-X gesture as DataTable price. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cursorResizeTarget, useCursorScrub } from '@/design-system/motion';

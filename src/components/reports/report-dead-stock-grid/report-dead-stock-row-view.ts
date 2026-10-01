@@ -21,7 +21,7 @@ const DEAD_STOCK_TONE: CompoundStateTone = 'neutral';
  */
 const NEVER_MOVED_LABEL = 'Never moved';
 
-/** Compact civil face for the Dates Hash line — no year (slot-table date law). */
+/** Compact civil face for the Dates Hash line — no year (DataTable date law). */
 function civilFace(iso: string | null): { label: string; dateKey: string } | null {
   if (!iso) return null;
   const moment = new Date(iso);

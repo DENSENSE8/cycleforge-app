@@ -14,10 +14,9 @@ import { repairStatusFace } from '@/design-system/tokens/repair-status';
 import type { RepairStatusHistoryEntry, RSRecord } from '@/lib/neon/repair-service-queries';
 import { canStartRepairPickup, isRepairClosed, repairStatusOperatorLabel } from '@/lib/repair-status';
 import { resolveRepairContact } from '@/lib/repair/contact-info';
-import { repairSla, repairTicketHandle, repairTitle } from '@/lib/repair/repair-card-model';
+import { repairPriceDisplay, repairSla, repairTicketHandle, repairTitle } from '@/lib/repair/repair-queue-model';
 import { REPAIR_CHANNEL_LABEL, parseRepairChannel, type RepairChannel } from '@/lib/repair/repair-channel';
 import { pickupEntry } from '@/lib/repair/repair-history';
-import { repairPriceDisplay } from '@/lib/tables/field-catalog/repair-resolve';
 import { formatDateKeyShort, toPSTDateKey } from '@/utils/date';
 
 /** Where a status point stands: stamped behind "now" but never recorded reads `skipped`. */
@@ -48,6 +47,9 @@ export type RepairVerbId =
   | 'label'
   | 'paperwork'
   | 'receipt'
+  | 'edit-info'
+  | 'work-log'
+  | 'triage-ticket'
   | 'link-ticket'
   | 'ticket-number'
   | 'create-ticket'
@@ -223,6 +225,9 @@ export function repairRecordVerbs(repair: RSRecord): Record<RepairVerbId, Repair
     label: shown(),
     paperwork: shown(),
     receipt: shown(repair.counter_transaction_id != null ? null : 'No counter visit — this ticket was not checked in at the counter'),
+    'edit-info': shown(),
+    'work-log': shown(),
+    'triage-ticket': shown(),
     'link-ticket': shown(),
     'ticket-number': shown(),
     'create-ticket': shown(),

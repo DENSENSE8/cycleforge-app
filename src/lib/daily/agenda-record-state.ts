@@ -1,7 +1,7 @@
 /** One agenda row's STATE, read once for the ledger record and the evidence column so the spine, the band-1 code and the evidence strip can… */
 
 import { AGENDA_LIFECYCLE, type AgendaStage } from '@/design-system/tokens/agenda-lifecycle';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import type { DailyAgendaRow } from './daily-agenda-row';
 

@@ -31,7 +31,7 @@ test('each view owns its path and its nav child, so resolving a location is unam
 
 test('operator params ride along without moving the selection', () => {
   assert.equal(at('/shipping/orders?stage=packed&staff=4&open=12'), 'triage');
-  assert.equal(at('/shipping/shipped?carrier=UPS'), 'shipped');
+  assert.equal(at('/fulfilled?carrier=UPS'), 'shipped');
 });
 
 test('the parked Shortage desk is on no FBM view', () => {
@@ -41,11 +41,11 @@ test('the parked Shortage desk is on no FBM view', () => {
 
 test('switching views drops the previous view\'s filters and record', () => {
   assert.equal(deskViewHref('triage'), '/shipping/orders');
-  assert.equal(deskViewHref('shipped'), '/shipping/shipped?shippedFilter=orders');
+  assert.equal(deskViewHref('shipped'), '/fulfilled?shippedFilter=all');
 });
 
 test('only the four desk paths mount the desk sidebar', () => {
-  for (const path of ['/shipping/exceptions', '/shipping/shortage', '/shipping/orders', '/shipping/shipped']) {
+  for (const path of ['/shipping/exceptions', '/shipping/shortage', '/shipping/orders', '/fulfilled']) {
     assert.equal(isOutboundDeskPath(path), true, path);
   }
   for (const path of ['/shipping/fba', '/shipping/labels', '/shipping/scan-out', '/shipping/label-intake', '/shipping', null]) {

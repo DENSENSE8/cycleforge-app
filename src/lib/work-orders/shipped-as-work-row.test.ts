@@ -57,6 +57,13 @@ describe('shippedOrderAsWorkRow', () => {
     assert.equal(row.imageUrl, 'https://cdn.example/bike.jpg');
   });
 
+  it('keeps the backend fulfillment channel for online versus physical routing', () => {
+    const pickup = shippedOrderAsWorkRow(order({ id: 44, fulfillment_channel: 'PICKUP' }));
+    const online = shippedOrderAsWorkRow(order({ id: 45, fulfillment_channel: 'MFN' }));
+    assert.equal(pickup.fulfillmentChannel, 'PICKUP');
+    assert.equal(online.fulfillmentChannel, 'MFN');
+  });
+
   it('maps server-derived allocation progress and every allocated location', () => {
     const row = shippedOrderAsWorkRow(
       order({

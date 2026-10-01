@@ -1,4 +1,4 @@
-/** Catalog spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
+/** Catalog spreadsheet column model — MATERIALIZED from a {@link DataTableColumnLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
@@ -9,8 +9,8 @@ import {
   CATALOG_FIELD_CATALOG,
   CATALOG_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/catalog';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -21,24 +21,22 @@ export type CatalogGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface CatalogGridColumn extends SlotTrackFields {
-  key: CatalogGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  /** Justification override — see {@link LedgerGridColumnModel.align}. */
-  align?: 'start' | 'end';
-  /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
-  frozen?: boolean;
-  /** Staff-preference key (`staff_preferences.tableColumns.catalog`). */
-  hideKey?: string;
-  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
-  tier?: 'core' | 'optional';
-  /** When false, the header is not click-to-sort (select gutter only). */
-  sortable?: boolean;
-}
+export interface CatalogGridColumn extends DataTableColumnFields { key: CatalogGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+/** Justification override — see {@link LedgerGridColumnModel.align}. */
+align?: 'start' | 'end';
+/** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
+frozen?: boolean;
+/** Staff-preference key (`staff_preferences.tableColumns.catalog`). */
+hideKey?: string;
+/** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
+tier?: 'core' | 'optional';
+/** When false, the header is not click-to-sort (select gutter only). */
+sortable?: boolean; }
 
 /**
  * The structural sheet skeleton — what Catalog paints with ZERO bindings.
@@ -62,15 +60,13 @@ const CATALOG_SHEET_BASE: readonly CatalogGridColumn[] = [
  * anchor on `title`, so the default plate reads sku · inventory · status —
  * the retired hand model's core view.
  */
-export function catalogSheetColumnsFor(layout: SlotLayout): readonly CatalogGridColumn[] {
-  return materializeTracks<CatalogGridColumn>({
-    layout,
-    catalog: CATALOG_FIELD_CATALOG,
-    base: CATALOG_SHEET_BASE,
-    statusAnchorKey: 'title',
-    subtitleAnchorKey: 'title',
-  });
-}
+export function catalogSheetColumnsFor(layout: DataTableColumnLayout): readonly CatalogGridColumn[] { return materializeTracks<CatalogGridColumn>({
+  layout,
+  catalog: CATALOG_FIELD_CATALOG,
+  base: CATALOG_SHEET_BASE,
+  statusAnchorKey: 'title',
+  subtitleAnchorKey: 'title',
+}); }
 
 /**
  * The PRODUCT-DEFAULT materialization — what an org with no override mounts,

@@ -1,6 +1,6 @@
 'use client';
 
-/** Unbox Displays → Ticket topic — presence-exclusive body. */
+/** Station Displays → Ticket topic for Arrival, Testing and other remaining hosts. */
 
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { useTicketThreadActivation } from '@/components/composer/useTicketThreadActivation';

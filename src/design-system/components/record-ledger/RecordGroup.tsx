@@ -14,7 +14,7 @@ export const RECORD_GROUP_TITLE_CLASS = 'min-w-0 truncate text-role-body font-me
  * per-row pencils of its own.
  *
  * Two looks, one component: triage lifts each group as its own rounded card;
- * industrial (the Floor rail) drops the card and runs the group edge to edge,
+ * the group remains a readable card,
  * closed by one hairline (`DESK_RECORD_COLUMN_CARD_CLASS`).
  */
 export function RecordGroup({

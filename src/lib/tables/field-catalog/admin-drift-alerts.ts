@@ -1,7 +1,7 @@
 /** Admin drift-alert field catalog — the bindable facts of ONE open `stock_alerts` DRIFT row. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const ADMIN_DRIFT_ALERTS_FIELD_CATALOG: FieldCatalog = [
   {
@@ -39,13 +39,13 @@ export const ADMIN_DRIFT_ALERTS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const ADMIN_DRIFT_ALERTS_PRODUCT_LAYOUT: SlotLayout = {
+export const ADMIN_DRIFT_ALERTS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'admin-drift-alerts.sku',
   statusBindings: [],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' drift-alerts entry. */
 export const ADMIN_DRIFT_ALERTS_TABLE_LAYOUT_ID = 'admin-drift-alerts';

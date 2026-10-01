@@ -1,7 +1,7 @@
 /** My-Day field catalog — the bindable Today-triage facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const MY_DAY_FIELD_CATALOG: FieldCatalog = [
   {
@@ -61,7 +61,7 @@ export const MY_DAY_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default My-Day layout — visual parity with the retired hand model's CORE view (`select · task · lane · record · due`): */
-export const MY_DAY_PRODUCT_LAYOUT: SlotLayout = {
+export const MY_DAY_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'sheet',
   identityFieldId: 'my-day.task',
   statusBindings: [
@@ -71,7 +71,7 @@ export const MY_DAY_PRODUCT_LAYOUT: SlotLayout = {
   ],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Home · Today entry. */
 export const MY_DAY_TABLE_LAYOUT_ID = 'my-day';

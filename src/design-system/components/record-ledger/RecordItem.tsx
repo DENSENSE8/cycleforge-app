@@ -26,10 +26,10 @@ import { ImagePlus, Loader2 } from '@/components/Icons';
 import { CopyableCellValue } from '@/components/ui/CopyChip';
 import { useAuth } from '@/contexts/AuthContext';
 import { PhotoHoverPeek } from '@/design-system/components/PhotoHoverPeek';
-import { recordInitials } from '@/design-system/components/record-ledger/IndustrialRecord';
+import { recordInitials } from '@/design-system/components/record-ledger/RecordPhoto';
 import { ItemIdentityRow, SkuOpenInMenu } from '@/design-system/components/record-ledger/RecordItemIdentity';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_ID_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/record';
 import { uploadSkuProductPhoto } from '@/lib/photos/sku-product-photo-upload';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -151,7 +151,7 @@ function RecordItemPhoto({
     : {};
 
   const initials = (
-    <span className="flex h-full w-full items-center justify-center text-role-title font-black text-mode-muted industrial:font-mono" aria-hidden>
+    <span className="flex h-full w-full items-center justify-center text-role-title font-black text-mode-muted" aria-hidden>
       {recordInitials(title)}
     </span>
   );

@@ -12,7 +12,6 @@ import type { CycleCountCampaignRow } from '@/lib/inventory/cycle-count-campaign
 import { resolveCycleCountsSlotValue } from '@/lib/tables/field-catalog/cycle-counts-resolve';
 import { cycleCountsCompoundView } from './cycle-counts-row-view';
 import {
-  cycleCountsCompoundColumnsFor,
   cycleCountsSortFactFor,
   type CycleCountsGridColumn,
   type CycleCountsGridColumnKey,
@@ -21,7 +20,6 @@ import {
   CYCLECOUNTS_GRID_CAPABILITIES,
   CYCLECOUNTS_TABLE_BINDING,
 } from './cycle-counts-table-definition';
-import { useCycleCountsTableLayout } from './useCycleCountsTableLayout';
 
 interface UseCycleCountsSpreadsheetOptions {
   rows: readonly CycleCountCampaignRow[];
@@ -47,8 +45,8 @@ export function useCycleCountsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useCycleCountsTableLayout();
-  const columns = useMemo(() => cycleCountsCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
+
+
 
   const onSortChange = useCallback((key: CycleCountsGridColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
@@ -66,12 +64,10 @@ export function useCycleCountsSpreadsheet({
     CycleCountsGridColumn
   >({
     binding: CYCLECOUNTS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: CYCLECOUNTS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: cycleCountsCompoundView,
-    subtitleFieldIds,
     resolve: resolveCycleCountsSlotValue,
     sortFactFor: cycleCountsSortFactFor,
     capabilities: CYCLECOUNTS_GRID_CAPABILITIES,

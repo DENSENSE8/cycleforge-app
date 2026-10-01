@@ -27,7 +27,6 @@ import { cn } from '@/utils/_cn';
 const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
   ok: 'bg-surface-success text-text-success ring-border-success',
   dup: 'bg-surface-warning text-text-warning ring-border-warning',
-  exc: 'bg-surface-warning text-text-warning ring-border-warning',
   blk: 'bg-surface-danger text-text-danger ring-border-danger',
   pending: 'bg-surface-canvas text-text-muted ring-border-soft',
   miss: 'bg-surface-danger text-text-danger ring-border-danger',
@@ -37,7 +36,7 @@ const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
 function ringProgressForStatus(status: ActiveScanOut['status'] | null): number {
   if (status === 'ok' || status === 'dup') return 100;
   if (status === 'pending') return 40;
-  if (status === 'exc' || status === 'err' || status === 'miss' || status === 'blk') return 15;
+  if (status === 'err' || status === 'miss' || status === 'blk') return 15;
   return 0;
 }
 
@@ -192,7 +191,6 @@ export function ScanOutComposerDock({
 
       <StationComposerHost
         showModeRow
-        showModeFaces={false}
         labelValue={draft}
         onLabelChange={setDraftTracked}
         onLabelCommit={(live) => {

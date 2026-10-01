@@ -12,7 +12,7 @@ import { useMemo } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { LIFECYCLE, type LifecycleState } from '@/design-system/tokens/lifecycle';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, recordStateCodeClass } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, recordStateCodeClass } from '@/design-system/tokens/record';
 import { cn } from '@/utils/_cn';
 import { QUEUE_STATUS_CHIPS, emptyQueueCounts } from '@/lib/orders/to-ship-queue';
 import { recordState } from './outbound-orders-ledger-state';

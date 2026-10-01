@@ -13,7 +13,6 @@ import { resolveAuthSessionsSlotValue } from '@/lib/tables/field-catalog/auth-se
 import type { AuthSessionTableRow } from '@/lib/auth/auth-session-row';
 import { authSessionsCompoundView } from './auth-sessions-row-view';
 import {
-  authSessionsCompoundColumnsFor,
   authSessionsSortFactFor,
   type AuthSessionsGridColumn,
   type AuthSessionsGridColumnKey,
@@ -22,7 +21,6 @@ import {
   AUTHSESSIONS_GRID_CAPABILITIES,
   AUTHSESSIONS_TABLE_BINDING,
 } from './auth-sessions-table-definition';
-import { useAuthSessionsTableLayout } from './useAuthSessionsTableLayout';
 
 interface UseAuthSessionsSpreadsheetOptions {
   rows: readonly AuthSessionTableRow[];
@@ -48,8 +46,8 @@ export function useAuthSessionsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useAuthSessionsTableLayout();
-  const columns = useMemo(() => authSessionsCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
+
+
 
   const onSortChange = useCallback((key: AuthSessionsGridColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
@@ -63,12 +61,10 @@ export function useAuthSessionsSpreadsheet({
 
   return useCompoundSpreadsheet<AuthSessionTableRow, AuthSessionsGridColumnKey, AuthSessionsGridColumn>({
     binding: AUTHSESSIONS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: AUTHSESSIONS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => row.sid,
     adapter: authSessionsCompoundView,
-    subtitleFieldIds,
     resolve: resolveAuthSessionsSlotValue,
     sortFactFor: authSessionsSortFactFor,
     capabilities: AUTHSESSIONS_GRID_CAPABILITIES,

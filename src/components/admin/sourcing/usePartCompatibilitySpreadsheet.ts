@@ -13,7 +13,6 @@ import { resolvePartCompatibilitySlotValue } from '@/lib/tables/field-catalog/pa
 import type { PartCompatibilityEdgeRow } from '@/lib/sourcing/part-compatibility-row';
 import { partCompatibilityCompoundView } from './part-compatibility-row-view';
 import {
-  partCompatibilityCompoundColumnsFor,
   partCompatibilitySortFactFor,
   type PartCompatibilityGridColumn,
   type PartCompatibilityGridColumnKey,
@@ -22,7 +21,6 @@ import {
   PART_COMPATIBILITY_GRID_CAPABILITIES,
   PART_COMPATIBILITY_TABLE_BINDING,
 } from './part-compatibility-table-definition';
-import { usePartCompatibilityTableLayout } from './usePartCompatibilityTableLayout';
 
 interface UsePartCompatibilitySpreadsheetOptions {
   rows: readonly PartCompatibilityEdgeRow[];
@@ -48,11 +46,8 @@ export function usePartCompatibilitySpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = usePartCompatibilityTableLayout();
-  const columns = useMemo(
-    () => partCompatibilityCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: PartCompatibilityGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -73,12 +68,10 @@ export function usePartCompatibilitySpreadsheet({
     PartCompatibilityGridColumn
   >({
     binding: PART_COMPATIBILITY_TABLE_BINDING,
-    columns,
-    fields,
+    columns: PART_COMPATIBILITY_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: partCompatibilityCompoundView,
-    subtitleFieldIds,
     resolve: resolvePartCompatibilitySlotValue,
     sortFactFor: partCompatibilitySortFactFor,
     capabilities: PART_COMPATIBILITY_GRID_CAPABILITIES,

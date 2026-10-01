@@ -1,12 +1,12 @@
-/** Audit-log column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
+/** Audit-log column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   AUDITLOG_FIELD_CATALOG,
   AUDITLOG_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/audit-log';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -23,49 +23,41 @@ export type AuditLogGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface AuditLogGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: AuditLogGridColumnKey;
-}
+export interface AuditLogGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: AuditLogGridColumnKey; }
 
 /**
  * Materialize the mounted columns from an effective layout. Tracks this family
  * has no fact for are filtered off the MOUNT — never removed from
  * `COMPOUND_TRACKS`.
  */
-export function auditLogCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly AuditLogGridColumn[] {
-  const tracks = materializeTracks<AuditLogGridColumn>({
-    layout,
-    catalog: AUDITLOG_FIELD_CATALOG,
-    base: compoundColumnsFor<AuditLogGridColumn>(),
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = AUDITLOG_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    // The title line is WHAT HAPPENED, not an item. (The retired header read
-    // "Source · Action" while the cell rendered action over source; the render
-    // order won — see the catalog docblock.)
-    if (t.key === 'item') return { ...t, label: 'Action', gridLabel: 'Action' };
-    // One temporal fact on this desk: when the write landed.
-    if (t.key === 'dates') return { ...t, label: 'When', gridLabel: 'When' };
-    // The pill the old two-line `entity` cell carried on its first line.
-    if (t.key === 'state') return { ...t, label: 'Entity', gridLabel: 'Entity' };
-    return t;
-  });
-}
+export function auditLogCompoundColumnsFor(layout: DataTableColumnLayout): readonly AuditLogGridColumn[] { const tracks = materializeTracks<AuditLogGridColumn>({
+  layout,
+  catalog: AUDITLOG_FIELD_CATALOG,
+  base: compoundColumnsFor<AuditLogGridColumn>(),
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = AUDITLOG_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  // The title line is WHAT HAPPENED, not an item. (The retired header read
+  // "Source · Action" while the cell rendered action over source; the render
+  // order won — see the catalog docblock.)
+  if (t.key === 'item') return { ...t, label: 'Action', gridLabel: 'Action' };
+  // One temporal fact on this desk: when the write landed.
+  if (t.key === 'dates') return { ...t, label: 'When', gridLabel: 'When' };
+  // The pill the old two-line `entity` cell carried on its first line.
+  if (t.key === 'state') return { ...t, label: 'Entity', gridLabel: 'Entity' };
+  return t;
+}); }
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const AUDITLOG_COMPOUND_COLUMNS: readonly AuditLogGridColumn[] =

@@ -1,5 +1,5 @@
 import { LIFECYCLE, type LifecycleState, type StateName } from '@cycleforge/design-tokens';
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 
 /**
  * Web face of the cross-platform lifecycle + state-tone registry (`packages/design-tokens/src/{lifecycle,state}.ts`).

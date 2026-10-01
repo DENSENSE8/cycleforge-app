@@ -1,4 +1,4 @@
-/** Inventory › Units grid surface descriptor — lifts the MOUNTED column model (a `SlotLayout` materialization since the wave 1.4 hand-model… */
+/** Inventory › Units grid surface descriptor — lifts the MOUNTED column model (a `DataTableColumnLayout` materialization since the wave 1.4 hand-model kill) into the TanStack surface. */
 
 import {
   makeGridSurfaceDescriptor,
@@ -17,7 +17,6 @@ export const UNITS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 

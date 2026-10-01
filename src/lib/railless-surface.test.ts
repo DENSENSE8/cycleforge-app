@@ -17,7 +17,7 @@ test('every Shipping desk segment is rail-less', () => {
   for (const path of [
     '/shipping/orders',
     '/shipping/fba',
-    '/shipping/shipped',
+    '/fulfilled',
     '/shipping/labels',
   ]) {
     assert.equal(isRaillessSurface(path, params()), true, `${path} must be rail-less`);
@@ -29,7 +29,7 @@ test('a desk segment stays rail-less with its own params attached', () => {
   assert.equal(isRaillessSurface('/shipping/fba', params('fbaMode=plan')), true);
   assert.equal(isRaillessSurface('/shipping/labels', params('open=42')), true);
   assert.equal(
-    isRaillessSurface('/shipping/shipped', params('shippedWeekOffset=2')),
+      isRaillessSurface('/fulfilled', params('shippedWeekOffset=2')),
     true,
   );
 });

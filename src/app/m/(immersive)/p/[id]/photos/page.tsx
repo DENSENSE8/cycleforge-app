@@ -10,6 +10,12 @@ function PhotoPageInner() {
   const packerLogId = Number(params?.id);
   const orderId = searchParams.get('orderId') || `PL-${packerLogId}`;
   const orderRowId = Number(searchParams.get('orderRowId'));
+  const scanClientEventId = searchParams.get('scanEvent')?.trim() || null;
+  const mobileScanEventIdRaw = Number(searchParams.get('mse'));
+  const mobileScanEventId =
+    Number.isSafeInteger(mobileScanEventIdRaw) && mobileScanEventIdRaw > 0
+      ? mobileScanEventIdRaw
+      : null;
   // Guided Review capture is the default for /m/p/{id}/photos (plan §2b).
   const stepParam = searchParams.get('step');
   const spamMode = searchParams.get('mode') === 'spam';
@@ -39,6 +45,8 @@ function PhotoPageInner() {
       guided={guided}
       initialStep={initialStep}
       completePacking={completePacking}
+      scanClientEventId={scanClientEventId}
+      mobileScanEventId={mobileScanEventId}
     />
   );
 }

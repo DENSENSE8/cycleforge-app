@@ -16,10 +16,9 @@ import { useUnitsSpreadsheet } from './units-grid/useUnitsSpreadsheet';
 import {
   defaultDirForUnitsColumn,
   isUnitsColumnSortable,
-  unitsSheetColumnsFor,
   type UnitsGridColumnKey,
 } from './units-grid/units-grid-layout';
-import { useUnitsTableLayout } from './units-grid/useUnitsTableLayout';
+import { UNITS_TABLE_BINDING } from './units-grid/units-table-definition';
 
 function parseList(raw: string | null): string[] {
   if (!raw) return [];
@@ -51,8 +50,7 @@ export function UnitsWorkspaceView() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { effectiveLayout: unitsLayout } = useUnitsTableLayout();
-  const columns = useMemo(() => unitsSheetColumnsFor(unitsLayout), [unitsLayout]);
+  const columns = UNITS_TABLE_BINDING.columns;
 
   const {
     sort: columnSort,

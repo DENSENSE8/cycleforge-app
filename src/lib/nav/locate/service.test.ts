@@ -99,6 +99,7 @@ function fakes() {
       return refs.flatMap((ref) => (CHECK[ref] ? [CHECK[ref]] : []));
     },
     inboundLines: async () => LINES,
+    inboundAwaiting: async () => [],
   };
   return { deps, cap };
 }
@@ -128,7 +129,7 @@ test('outbound text: one bucket per desk view in DESK_VIEW_ORDER, each counted b
   }
   const shippedUrl = new URL(body.buckets.find((b) => b.id === 'shipped')?.href ?? '', 'http://t');
   assert.deepEqual(readShippedDateWindow(shippedUrl.searchParams), { start: '', end: '' });
-  assert.deepEqual(body.buckets.map((b) => b.label), ['Allocate', 'Exceptions', 'Shipped']);
+  assert.deepEqual(body.buckets.map((b) => b.label), ['Allocate', 'Exceptions', 'Fulfilled']);
   assert.deepEqual(counts(body), { triage: 4, exceptions: 3, shipped: 5 });
   assert.deepEqual(body.entries, []);
   assert.equal(body.truncated, 0);
@@ -165,7 +166,7 @@ test('outbound needs orders.view; everywhere skips it silently', async () => {
   });
   assert.deepEqual(await getNavLocate(caller, 'inbound', { q: 'PO-1' }, deps).then((r) => r.ok), true);
   const everywhere = await ok(await getNavLocate(caller, 'everywhere', { refs: 'PO-1' }, deps));
-  assert.deepEqual(everywhere.buckets.map((b) => b.id), ['inbound:received', 'inbound:not_received', 'inbound:exceptions']);
+  assert.deepEqual(everywhere.buckets.map((b) => b.id), ['inbound:awaiting_tracking', 'inbound:received', 'inbound:not_received', 'inbound:exceptions']);
   assert.ok(cap.statements.length === 0, 'no outbound statement ran');
   const denied = await getNavLocate({ orgId: ORG, permissions: new Set(['orders.view']) }, 'inbound', { q: 'x' }, deps);
   assert.equal(denied.ok ? null : denied.permission, 'receiving.view');
@@ -220,10 +221,14 @@ test('inbound: the Check verdict per ref — received, not received, exceptions 
     ),
   );
   assert.deepEqual(body.buckets.map((b) => [b.id, b.href]), [
-    ['received', null],
-    ['not_received', null],
+    ['awaiting_tracking', '/incoming?state=AWAITING_TRACKING'],
+    ['received', '/incoming?recon=received'],
+    ['not_received', '/incoming?recon=not_received'],
     ['exceptions', '/incoming?lane=exceptions'],
   ]);
+  assert.equal(body.entries[0].recordHref, '/incoming?recon=received&ref_in=PO-1');
+  assert.equal(body.entries[1].recordHref, '/incoming?recon=not_received&ref_in=PO-2');
+  assert.equal(body.entries[4].recordHref, null);
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets]), [
     ['PO-1', ['received']],
     ['PO-2', ['not_received']],
@@ -233,15 +238,27 @@ test('inbound: the Check verdict per ref — received, not received, exceptions 
     ['NOPE', []],
     ['MANUAL-7', ['received']],
   ]);
-  assert.deepEqual(counts(body), { received: 2, not_received: 3, exceptions: 1 });
+  assert.deepEqual(counts(body), { awaiting_tracking: 0, received: 2, not_received: 3, exceptions: 1 });
   assert.equal(body.entries[0].title, 'PO PO-1 · Acme');
   assert.equal(body.entries[3].detail, 'Several POs match');
   assert.equal(body.entries[4].detail, null);
   assert.deepEqual(cap.checked, [['PO-1', 'PO-2', 'PO-3', 'PO-4', 'NOPE', 'MANUAL-7']]);
 
   const text = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { q: 'PO-3' }, deps));
-  assert.deepEqual(counts(text), { received: 0, not_received: 1, exceptions: 1 });
+  assert.deepEqual(counts(text), { awaiting_tracking: 0, received: 0, not_received: 1, exceptions: 1 });
   assert.deepEqual(text.entries, []);
+});
+
+test('awaiting tracking is the Incoming list, not the in_transit facet', async () => {
+  const { deps } = fakes();
+  deps.inboundAwaiting = async () => [{ zoho_purchaseorder_number: 'PO-2' } as ReceivingLineRow];
+  const body = await ok(
+    await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { refs: 'PO-1,PO-2,PO-3' }, deps),
+  );
+  const po2 = body.entries.find((entry) => entry.ref === 'PO-2');
+  assert.deepEqual(po2?.buckets, ['awaiting_tracking', 'not_received']);
+  assert.equal(body.buckets.find((bucket) => bucket.id === 'awaiting_tracking')?.count, 1);
+  assert.ok(!body.entries.find((entry) => entry.ref === 'PO-3')?.buckets.includes('awaiting_tracking'));
 });
 
 test('everywhere: every permitted locator, ids and labels prefixed, entries merged per ref', async () => {
@@ -252,6 +269,7 @@ test('everywhere: every permitted locator, ids and labels prefixed, entries merg
   assert.deepEqual(body.locator, 'everywhere');
   assert.deepEqual(body.buckets.map((b) => b.id), [
     ...DESK_VIEW_ORDER.map((id) => `outbound:${id}`),
+    'inbound:awaiting_tracking',
     'inbound:received',
     'inbound:not_received',
     'inbound:exceptions',

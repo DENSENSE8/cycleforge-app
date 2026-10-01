@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
-import { dedupeShippedRecords, deriveShippedRecord, isShippedDeskRow } from './shipped-records';
+import { dedupeShippedRecords, deriveShippedRecord, isShippedDeskRow, shippedRecordTimestamp } from './shipped-records';
 
 function row(over: Partial<PackerRecord> & Pick<PackerRecord, 'id'>): PackerRecord {
   return {
@@ -65,4 +65,16 @@ test('carrier delivery promotes a packed row into Shipped and overrides scan-out
 
 test('packed with no dock or carrier custody remains outside Shipped', () => {
   assert.equal(isShippedDeskRow(row({ id: 13, ship_confirmed_at: null, shipped_out_by: null })), false);
+});
+
+test('the dock handoff timestamp places a packed row in a Shipped period', () => {
+  assert.equal(
+    shippedRecordTimestamp(row({
+      id: 14,
+      created_at: '2026-01-10 08:00:00',
+      ship_confirmed_at: '2026-09-30 14:00:00',
+      shipped_out_by: 1,
+    })),
+    '2026-09-30 14:00:00',
+  );
 });

@@ -1,12 +1,12 @@
-/** Walk-in sales column model — MATERIALIZED from a SlotLayout onto the shared compound skeleton, never a hand array. */
+/** Walk-in sales column model — MATERIALIZED from a DataTableColumnLayout onto the shared compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   WALKINSALES_FIELD_CATALOG,
   WALKINSALES_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/walk-in-sales';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -21,44 +21,36 @@ export type WalkInSalesGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface WalkInSalesGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: WalkInSalesGridColumnKey;
-}
+export interface WalkInSalesGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: WalkInSalesGridColumnKey; }
 
-export function walkInSalesCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly WalkInSalesGridColumn[] {
-  const base = compoundColumnsFor<WalkInSalesGridColumn>();
-  const tracks = materializeTracks<WalkInSalesGridColumn>({
-    layout,
-    catalog: WALKINSALES_FIELD_CATALOG,
-    base,
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = WALKINSALES_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    if (t.key === 'dates') {
-      return {
-        ...t,
-        label: 'Completed',
-        gridLabel: 'Completed',
-      };
-    }
-    return t;
-  });
-}
+export function walkInSalesCompoundColumnsFor(layout: DataTableColumnLayout): readonly WalkInSalesGridColumn[] { const base = compoundColumnsFor<WalkInSalesGridColumn>();
+const tracks = materializeTracks<WalkInSalesGridColumn>({
+  layout,
+  catalog: WALKINSALES_FIELD_CATALOG,
+  base,
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = WALKINSALES_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  if (t.key === 'dates') {
+    return {
+      ...t,
+      label: 'Completed',
+      gridLabel: 'Completed',
+    };
+  }
+  return t;
+}); }
 
 export const WALKINSALES_COMPOUND_COLUMNS: readonly WalkInSalesGridColumn[] =
   walkInSalesCompoundColumnsFor(WALKINSALES_PRODUCT_LAYOUT);

@@ -42,8 +42,8 @@ export interface StaffPreferences {
   /** Color theme name from the theme registry (light | dark | mono | slate — see src/design-system/themes/registry.ts). */
   theme?: string | null;
   /**
-   * Scan-station Color from the station-skin registry (industrial | bench |
-   * coal | …). Absent = industrial. Drives `data-station-skin` on <html>.
+   * Scan-station Color from the station-skin registry. Absent = porcelain.
+   * Drives `data-station-skin` on <html>.
    */
   stationSkin?: string | null;
   /**
@@ -115,12 +115,10 @@ export interface StaffPreferences {
       >;
       /** Per-row fill hex / legacy wash, keyed by stringified row id. */
       rowFills?: Record<string, string>;
-      /** Industrial ledger row zoom — S / M (default) / L. */
+      /** Record row zoom — S / M (default) / L. */
       rowZoom?: 'S' | 'M' | 'L';
     }
   > | null;
-  /** Per-staff SLOT LAYOUT override keyed by TableId — the personal layer of the slot-table cascade (see… */
-  tableLayouts?: Record<string, unknown> | null;
   /**
    * GlobalHeader pin stations — ordered bookmarks with display label + exact
    * href. Mirrored to `cf.quickAccess` for flash-free chrome; this key is the
@@ -143,17 +141,6 @@ export interface StaffPreferences {
   kpiCollapsed?: Record<string, boolean> | null;
   /** Extra Unbox Band-1 tabs pinned via the Pin-list composer (catalog: */
   unboxPinnedExtraTabs?: Array<'incoming'> | null;
-  /**
-   * Per-staff MasterNav order — ordered nav item ids. Absent/`null` = full
-   * catalog in registry order. Hydrated in `src/lib/nav/spine-slots.ts`.
-   */
-  spineSlots?: string[] | null;
-  /**
-   * Generation {@link spineSlots} was last rolled onto (`SPINE_SLOTS_VERSION`).
-   * Absent = pre-v1. No SQL migration: `prefs` is a JSONB bag merged with `||`,
-   * so a new key costs nothing and old rows read as `undefined`.
-   */
-  spineSlotsVersion?: number | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

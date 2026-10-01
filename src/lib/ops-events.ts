@@ -37,14 +37,14 @@ const defaultDeps: OpsEventWriterDeps = {
 export async function recordOpsEvent(
   input: RecordOpsEventInput,
   deps: OpsEventWriterDeps = defaultDeps,
-): Promise<void> {
+): Promise<number | null> {
   const occurredAt = input.occurredAt ?? null;
   const actorStaffId = input.actorStaffId ?? null;
   const clientEventId = input.clientEventId ?? null;
   const workflowNodeId = input.workflowNodeId ?? null;
   const payload = input.payload ?? {};
 
-  await deps.query(
+  const result = await deps.query(
     `INSERT INTO ops_events (
        organization_id, occurred_at, event_type,
        entity_type, entity_id,
@@ -61,7 +61,8 @@ export async function recordOpsEvent(
        $8,
        $9::jsonb
      )
-     ON CONFLICT (client_event_id) DO NOTHING`,
+     ON CONFLICT (client_event_id) DO NOTHING
+     RETURNING id`,
     [
       input.organizationId,
       occurredAt,
@@ -74,4 +75,8 @@ export async function recordOpsEvent(
       JSON.stringify(payload),
     ],
   );
+
+  const rows = (result as { rows?: Array<{ id?: unknown }> } | null)?.rows ?? [];
+  const id = Number(rows[0]?.id);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
 }

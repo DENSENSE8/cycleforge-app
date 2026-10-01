@@ -1,15 +1,14 @@
 /**
  * Shipped — the package family's card model (layer 2 of the triage face): one
- * PACKAGE as the Allocate card (owner 2026-09-29). Line 1 reads like the order
- * card's — the order number, its channel, who packed it — with the carrier
- * status + tracking before the top-right stamp (when it left the dock). The
- * lines are the box's order lines, titled and pictured as the package record
- * does (`shipmentItemIdentity`), with the order card's facts (qty · condition
- * · price); a box of 2+ lines folds behind "+N items".
+ * PACKAGE on the Allocate card. Line 1 is the order number; the host paints the
+ * channel beside it. Top right is the order's SLA (`ship_by_date`), not the
+ * dock stamp. The lines are the box's order lines, titled and pictured as the
+ * package record does (`shipmentItemIdentity`), with the order card's facts
+ * (qty · condition · price); a box of 2+ lines folds behind "+N items".
  */
 
 import type { StateName } from '@/design-system/tokens/lifecycle';
-import type { RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
+import type { RecordCardLine, RecordCardModel, RecordCardStatus } from '@/design-system/components/record-card/record-card-types';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { TriageCardModelBase } from '@/design-system/components/triage-card-list/TriageCardList';
 import { lineCondition, linePrice, orderLineFacts } from '@/lib/orders/order-card-model';
@@ -90,36 +89,81 @@ export function shippedPackageOrder(row: DerivedPackerRecord): { orderId: string
   return { orderId: (line?.order_id || '').trim(), accountSource: line?.account_source ?? row.account_source ?? null };
 }
 
-/** The status pills, in order — the package's state face ids, plus the box nobody pack-scanned. */
+/** The status pills, in paint order. A package may light more than one. */
 export const SHIPPED_STATUS_CHIPS = [
-  'SCANNED_OUT',
-  'IN_CUSTODY',
+  'FULFILLED',
+  'LABEL_ONLY',
+  'ON_THE_WAY',
   'DELIVERED',
+  'LATE',
   'EXCEPTION',
-  'PROCESS_GAP',
-  'ORPHAN',
   'UNMATCHED',
   'NEVER_PACKED',
 ] as const;
 export type ShippedStatusChip = (typeof SHIPPED_STATUS_CHIPS)[number];
 
-/** Which pills a package lights (its state, and Never packed when no pack scan exists). */
-export function shippedStatusKeys(row: DerivedPackerRecord): ShippedStatusChip[] {
-  const state = shippedPackageFace(row.outboundState, isOpenUnmatchedScan(row)).id as ShippedStatusChip;
-  return row.packed_by == null ? [state, 'NEVER_PACKED'] : [state];
+
+function lateAgainstShipBy(row: DerivedPackerRecord): boolean {
+  const scanned = String(row.ship_confirmed_at ?? '').trim();
+  const by = String(row.ship_by_date ?? '').trim();
+  if (!scanned || scanned === '1' || !by) return false;
+  return scanned > by;
 }
 
-/** A pill's word and tone — the state face the cards wear, so a pill reads like the rails it narrows to. */
-export function shippedStatusChipFace(key: ShippedStatusChip): { label: string; tone: StateName } {
-  if (key === 'NEVER_PACKED') return { label: 'Never packed', tone: 'warning' };
-  const face = key === 'UNMATCHED' ? shippedPackageFace('ORPHAN', true) : shippedPackageFace(key, false);
-  return { label: face.label, tone: face.tone };
+/**
+ * Which pills a package lights. Fulfilled is every package on this page.
+ * A dock scan stays under Scanned out after the carrier marks it Delivered.
+ * The old words (In custody, Process gap, Orphan) fold into On the way,
+ * Exception, and Unmatched — they are not painted beside the new word.
+ */
+export function shippedStatusKeys(row: DerivedPackerRecord): ShippedStatusChip[] {
+  const category = String(row.latest_status_category ?? '').trim().toUpperCase();
+  const keys: ShippedStatusChip[] = ['FULFILLED'];
+  if (category === 'LABEL_CREATED') keys.push('LABEL_ONLY');
+  if (category === 'ACCEPTED' || category === 'IN_TRANSIT' || category === 'OUT_FOR_DELIVERY') keys.push('ON_THE_WAY');
+  if (category === 'DELIVERED' || row.is_delivered === true) keys.push('DELIVERED');
+  if (lateAgainstShipBy(row)) keys.push('LATE');
+  if (category === 'EXCEPTION' || category === 'RETURNED' || row.has_exception === true) keys.push('EXCEPTION');
+  if (isOpenUnmatchedScan(row)) keys.push('UNMATCHED');
+  if (row.packed_by == null) keys.push('NEVER_PACKED');
+  return keys;
 }
+
+/** A pill's word and tone. Exception is a count that opens Exceptions, not a filter. */
+export function shippedStatusChipFace(key: ShippedStatusChip): { label: string; tone: StateName } {
+  switch (key) {
+    case 'FULFILLED':
+      return { label: 'Scanned out', tone: 'success' };
+    case 'LABEL_ONLY':
+      return { label: 'Label only', tone: 'neutral' };
+    case 'ON_THE_WAY':
+      return { label: 'On the way', tone: 'info' };
+    case 'DELIVERED':
+      return { label: 'Delivered', tone: 'success' };
+    case 'LATE':
+      return { label: 'Late', tone: 'warning' };
+    case 'EXCEPTION':
+      return { label: 'Exception', tone: 'danger' };
+    case 'UNMATCHED':
+      return { label: 'Unmatched', tone: 'danger' };
+    case 'NEVER_PACKED':
+      return { label: 'Never packed', tone: 'warning' };
+  }
+}
+
 
 /** The packer as line 1 names them; null = the box was never pack-scanned. */
 export function shippedPackerName(row: DerivedPackerRecord): string | null {
   if (row.packed_by == null) return null;
   return (row.packed_by_name || '').trim() || `Staff #${row.packed_by}`;
+}
+
+
+/** Top-right of this table: when the package left the building. */
+function scanOutStatus(row: DerivedPackerRecord): RecordCardStatus {
+  const at = String(row.ship_confirmed_at ?? '').trim();
+  if (!at || at === '1') return { kind: 'date', face: 'Not scanned out', tip: null, alert: false };
+  return { kind: 'date', face: formatMonthDayTimePST(at), tip: `Scanned out ${formatDateTimePST(at)} PT`, alert: false };
 }
 
 /** The carrier's live word for the box; USPS has no live feed yet. */
@@ -132,9 +176,8 @@ export function shippedCarrierStatus(row: DerivedPackerRecord): { face: string |
 }
 
 /**
- * The card face. The header is the order number + tracking only (owner
- * 2026-09-29, Allocate's simplified face): channel, packer, "never packed"
- * and notes are Details facts, so line 1 carries none of them.
+ * The card face. Platform and order on line 1. Top right is the dock stamp
+ * (`ship_confirmed_at`), so a glance reads when it left. Ship-by stays in Details.
  */
 export function shippedRecordCard(model: ShippedCardModel): RecordCardModel {
   const row = model.lead;
@@ -143,7 +186,6 @@ export function shippedRecordCard(model: ShippedCardModel): RecordCardModel {
   const state = shippedPackageFace(row.outboundState, unmatched);
   const handle = shippedPackageHandle(row);
   const { orderId } = shippedPackageOrder(row);
-  const shippedAt = row.ship_confirmed_at ?? null;
   const lines = shippedCardLines(row, leadId, unmatched);
   const product = lines[0]!.title;
   return {
@@ -162,10 +204,10 @@ export function shippedRecordCard(model: ShippedCardModel): RecordCardModel {
     person: null,
     chips: [],
     notes: { fixed: null, own: null },
-    status: shippedAt
-      ? { kind: 'date', face: formatMonthDayTimePST(shippedAt), tip: `Shipped ${formatDateTimePST(shippedAt)} PT`, alert: false }
-      : { kind: 'date', face: 'Not scanned out', tip: null, alert: false },
-    // Bottom-right = the carrier's live word for the box (owner 2026-09-29), where Allocate paints its next step.
+    status: scanOutStatus(row),
+    // Bottom-right = the carrier's live word, else the outbound stage (the same
+    // vocabulary as the rail). A terminal flag with no delivered_at still reads
+    // Delivered; Details says the instant is unknown.
     next: unmatched
       ? { label: 'Resolve', tone: 'danger', tip: 'Next: match this box to its order line', blocked: true }
       : (() => {

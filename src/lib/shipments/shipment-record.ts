@@ -600,7 +600,11 @@ export function buildShipmentRecord(rows: ShipmentRecordRows): ShipmentRecord {
     orderRef: clean(o.order_id),
     channel: clean(o.account_source),
     sku: clean(o.sku),
-    ...shipmentItemIdentity(o),
+    ...shipmentItemIdentity({
+      ...o,
+      external_item_id: o.zoho_item_id,
+      external_image_document_id: o.zoho_image_document_id,
+    }),
     quantity: o.quantity == null || o.quantity === '' || !Number.isFinite(Number(o.quantity)) ? null : Number(o.quantity),
     condition: clean(o.condition),
     orderStatus: clean(o.status),

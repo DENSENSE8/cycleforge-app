@@ -3,7 +3,7 @@
 import { MessageSquare } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { cn } from '@/utils/_cn';
 import { requestOrderNoteFocus } from './order-note-focus';

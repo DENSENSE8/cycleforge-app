@@ -25,7 +25,7 @@ export const UNFOUND_TABLE_BINDING: TableSurfaceBinding<QueueRow, UnfoundGridCol
   makeDescriptor: makeUnfoundGridDescriptor,
   // No desk mounts this table since the PO Mailbox door was retired
   // (2026-09-25): its only host and its right-rail detail panel are gone. The
-  // family stays registered for its slot layout and field catalog.
+  // family stays registered for its data-table column layout and field catalog.
   recordPlane: {
     kind: 'none',
     reason:

@@ -1,23 +1,15 @@
-/** materializeTracks — SlotLayout + FieldCatalog → the grid's column tracks. */
+/** Build registered DataTable columns from a family's static fact bindings. */
 
 import type { ColumnType } from '@/lib/tables/table-columns';
 import { catalogById, type FieldCatalog, type FieldDef, type FieldDisplayType } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
-/**
- * The structural shape a materialized track adds to a family's column model.
- * Families extend their own `LedgerGridColumnModel`-derived interface with
- * {@link SlotTrackFields} so the row renderer can resolve the cell's facts.
- */
-export interface SlotTrackFields {
-  /**
-   * The catalog field bound into this slot — how the row resolver knows WHAT
-   * to paint in the track. The KEY stays the slot index; this is metadata.
-   */
+/** Fact metadata added to a family's concrete column model. */
+export interface DataTableColumnFields {
   fieldId?: string;
   /** Glyph key for `stage_event` cells, copied from the field. */
   slotIconKey?: string;
-  /** The bound field's display type — the cell branches on this, never on id. */
+  /** The bound field's display type. */
   slotDisplayType?: FieldDisplayType;
   /** `stage_event` verb faces (done/pending), copied from the field. */
   slotStageLabels?: Readonly<{ done: string; pending: string }>;
@@ -27,7 +19,7 @@ export interface SlotTrackFields {
  * The minimum column shape the materializer reads and writes. Every family
  * column interface in the repo satisfies it structurally.
  */
-export interface MaterializableTrack extends SlotTrackFields {
+export interface MaterializableTrack extends DataTableColumnFields {
   key: string;
   width: string;
   label?: string;
@@ -80,7 +72,7 @@ export function trackGeometryFor(displayType: FieldDisplayType): {
   }
 }
 
-function slotTrack<C extends MaterializableTrack>(key: string, field: FieldDef): C {
+function dataTableTrack<C extends MaterializableTrack>(key: string, field: FieldDef): C {
   const geometry = trackGeometryFor(field.displayType);
   return {
     key,
@@ -100,7 +92,7 @@ function slotTrack<C extends MaterializableTrack>(key: string, field: FieldDef):
 }
 
 interface MaterializeTracksArgs<C extends MaterializableTrack> {
-  layout: SlotLayout;
+  layout: DataTableColumnLayout;
   catalog: FieldCatalog;
   /** The family's structural skeleton for this morph, in paint order. */
   base: readonly C[];
@@ -115,8 +107,7 @@ function insertAfter<C extends MaterializableTrack>(
   anchorKey: string,
   band: readonly C[],
 ): readonly C[] {
-  // Empty band MUST return the same array reference so product-default
-  // compound mounts stay `=== COMPOUND_TRACKS` (compound-row-model guard).
+  // Empty bands preserve the base array reference for stable product defaults.
   if (band.length === 0) return tracks;
   const at = tracks.findIndex((t) => t.key === anchorKey);
   if (at < 0) {
@@ -141,35 +132,36 @@ export function materializeTracks<C extends MaterializableTrack>({
   );
   if (collision) {
     throw new Error(
-      `materializeTracks: base skeleton already carries slot track '${collision.key}' — ` +
-        'slot bands are materialized, never hand-spliced',
+      `materializeTracks: base skeleton already carries bound track '${collision.key}' — ` +
+        'bound bands are materialized, never hand-spliced',
     );
   }
 
   const bindingTracks = (
-    bindings: SlotLayout['statusBindings'],
+    bindings: DataTableColumnLayout['statusBindings'],
     prefix: 'status' | 'subtitle',
   ): C[] => {
     const tracks: C[] = [];
     for (const binding of bindings) {
       const field = byId.get(binding.fieldId);
       if (!field) continue; // stale binding — resolver normally drops these
-      // Slot index AFTER skips, so the painted band is dense and the keys
-      // stay `status:1..N` for the tracks that actually mounted.
-      tracks.push(slotTrack<C>(`${prefix}:${tracks.length + 1}`, field));
+      // Indices follow mounted columns after stale facts are skipped.
+      tracks.push(dataTableTrack<C>(`${prefix}:${tracks.length + 1}`, field));
     }
     return tracks;
   };
 
   const withStatus = insertAfter(base, statusAnchorKey, bindingTracks(layout.statusBindings, 'status'));
 
-  // Compound paints subtitles inside the item cell; only the sheet morph opens
-  // subtitle tracks.
+  // Contextual rows paint subtitles inside the item cell; sheets use columns.
   if (layout.morph !== 'sheet') return withStatus;
   return insertAfter(withStatus, subtitleAnchorKey, bindingTracks(layout.subtitleBindings, 'subtitle'));
 }
 
-/** Is this track key a materialized slot track? */
-export function isSlotTrackKey(key: string): boolean {
+/** Whether this key identifies a materialized fact column. */
+export function isDataTableBoundColumnKey(key: string): boolean {
   return key.startsWith('status:') || key.startsWith('subtitle:');
 }
+
+/** Grandfathered name for existing dogfood cell renderers. */
+export const isSlotTrackKey = isDataTableBoundColumnKey;

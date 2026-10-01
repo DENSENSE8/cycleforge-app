@@ -52,7 +52,7 @@ import {
   RECORD_ID_CLASS,
   RECORD_LABEL_CLASS,
   RECORD_TRAILING_ACTION_CLASS,
-} from '@/design-system/tokens/industrial-record';
+} from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { conditionGradeTone } from '@/lib/condition-tone';
@@ -314,10 +314,11 @@ function ModelItem({ item, model, prefix }: { item: RecordModelItem; model: Reco
 export function RecordView({ model, panel, testId = 'record' }: { model: RecordModel; panel: RecordPanel | null; testId?: string }) {
   const prefix = testId;
   const flow = recordFlowLabels(model.flow);
+  const statusTone = STATE_TONE_CLASSES[model.status.tone ?? 'warning'];
 
   if (panel) {
     return (
-      <div className="flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0" data-testid={`${prefix}-view`} data-panel="">
+      <div className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid={`${prefix}-view`} data-panel="">
         <DeskRecordLayout
           main={
             <RecordGroup
@@ -355,14 +356,14 @@ export function RecordView({ model, panel, testId = 'record' }: { model: RecordM
     <RecordGroup
       title={model.internalLabel}
       titleAccessory={
-        // Pinned orange (owner 2026-09-29): the current status reads in ONE tone, whatever the stage.
+        // One state face in the work band; the domain selects its lifecycle tone.
         <span
-          className={cn('inline-flex h-6 min-w-0 items-center gap-1.5 rounded-mode-pill px-2 text-role-data font-semibold', STATE_TONE_CLASSES.warning.pill)}
+          className={cn('inline-flex h-6 min-w-0 items-center gap-1.5 rounded-mode-pill px-2 text-role-data font-semibold', statusTone.pill)}
           title={model.status.detail ?? `Current status: ${model.status.label}`}
           aria-label={`Current status: ${model.status.label}`}
           data-testid={`${prefix}-current-status`}
         >
-          <span className={cn('size-1.5 shrink-0 rounded-full', STATE_TONE_CLASSES.warning.dot)} aria-hidden />
+          <span className={cn('size-1.5 shrink-0 rounded-full', statusTone.dot)} aria-hidden />
           <span className="truncate">{model.status.label}</span>
         </span>
       }
@@ -423,7 +424,7 @@ export function RecordView({ model, panel, testId = 'record' }: { model: RecordM
     ) : null;
 
   const main = (
-    <div className="flex flex-col gap-4 industrial:gap-0">
+    <div className="flex flex-col gap-4">
       {band}
       <RecordGroup
         title={[`Items${items && items.length > 1 ? ` · ${items.length}` : ''}`, model.itemsSummary].filter(Boolean).join(' · ')}
@@ -443,6 +444,11 @@ export function RecordView({ model, panel, testId = 'record' }: { model: RecordM
         ) : null}
       </RecordGroup>
       <RecordSerials rows={model.serials} expected={model.expectedUnits} testId={`${prefix}-serials`} />
+      {model.activity && model.activity.length > 0 ? (
+        <RecordGroup title={model.activityTitle ?? 'Activity'} testId={`${prefix}-activity`}>
+          <RecordFacts facts={model.activity} />
+        </RecordGroup>
+      ) : null}
       {model.staffNote || model.notes.length > 0 ? (
         <RecordGroup title="Staff notes" testId={`${prefix}-notes`}>
           {model.notes.length > 0 ? <RecordFacts facts={model.notes} /> : null}
@@ -453,7 +459,7 @@ export function RecordView({ model, panel, testId = 'record' }: { model: RecordM
   );
 
   const aside = (
-    <div className="flex flex-col gap-4 industrial:gap-0">
+    <div className="flex flex-col gap-4">
       {/* The evidence door — always here, above the facts, so it is learnt. */}
       {model.photos}
       {alerts}
@@ -477,7 +483,7 @@ export function RecordView({ model, panel, testId = 'record' }: { model: RecordM
   );
 
   return (
-    <div className="flex-1 bg-mode-canvas p-4 text-mode-ink industrial:p-0" data-testid={`${prefix}-view`}>
+    <div className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid={`${prefix}-view`}>
       <DeskRecordLayout main={main} aside={aside} />
     </div>
   );

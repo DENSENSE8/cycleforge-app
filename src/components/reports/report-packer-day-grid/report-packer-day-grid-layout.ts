@@ -1,13 +1,13 @@
-/** Packer-day column model — MATERIALIZED from a {@link SlotLayout} onto the shared compound skeleton, exactly as its three report siblings… */
+/** Packer-day column model — MATERIALIZED from a {@link DataTableColumnLayout} onto the shared compound skeleton, exactly as its three report siblings are. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
 import {
   REPORT_PACKER_DAY_FIELD_CATALOG,
   REPORT_PACKER_DAY_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/report-packer-day';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type ReportPackerDayGridColumnKey =
@@ -23,51 +23,43 @@ export type ReportPackerDayGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface ReportPackerDayGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: ReportPackerDayGridColumnKey;
-}
+export interface ReportPackerDayGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: ReportPackerDayGridColumnKey; }
 
 /** Materialize the mounted columns from an effective layout. */
-export function reportPackerDayCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly ReportPackerDayGridColumn[] {
-  const tracks = materializeTracks<ReportPackerDayGridColumn>({
-    layout,
-    catalog: REPORT_PACKER_DAY_FIELD_CATALOG,
-    base: compoundColumnsFor<ReportPackerDayGridColumn>(),
-  });
-  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-family.ts`); this
-  // family supplies only the FACT the chip paints and its header sorts by.
-  const identity = REPORT_PACKER_DAY_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
-  return tracks.map((t) => {
-    if (t.key === 'fulfillment' && identity) {
-      return {
-        ...t,
-        type: 'id' as const,
-        fieldId: identity.id,
-        slotDisplayType: identity.displayType,
-      };
-    }
-    if (t.key === 'item') return { ...t, label: 'Product', gridLabel: 'Product' };
-    // The one temporal fact: when the pack scan landed. Every row on one
-    // report shares a civil day, so the day adds nothing and the time is the
-    // fact a lead reads down the column.
-    if (t.key === 'dates') return { ...t, label: 'Packed at', gridLabel: 'Packed at' };
-    if (t.key === 'state') {
-      /* `slotDisplayType: */
-      return {
-        ...t,
-        label: 'Basis',
-        gridLabel: 'Basis',
-        slotDisplayType: 'text' as const,
-      };
-    }
-    return t;
-  });
-}
+export function reportPackerDayCompoundColumnsFor(layout: DataTableColumnLayout): readonly ReportPackerDayGridColumn[] { const tracks = materializeTracks<ReportPackerDayGridColumn>({
+  layout,
+  catalog: REPORT_PACKER_DAY_FIELD_CATALOG,
+  base: compoundColumnsFor<ReportPackerDayGridColumn>(),
+});
+// The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+// the engine's `Id` on every peer (`data-table-family.ts`); this
+// family supplies only the FACT the chip paints and its header sorts by.
+const identity = REPORT_PACKER_DAY_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
+return tracks.map((t) => {
+  if (t.key === 'fulfillment' && identity) {
+    return {
+      ...t,
+      type: 'id' as const,
+      fieldId: identity.id,
+      slotDisplayType: identity.displayType,
+    };
+  }
+  if (t.key === 'item') return { ...t, label: 'Product', gridLabel: 'Product' };
+  // The one temporal fact: when the pack scan landed. Every row on one
+  // report shares a civil day, so the day adds nothing and the time is the
+  // fact a lead reads down the column.
+  if (t.key === 'dates') return { ...t, label: 'Packed at', gridLabel: 'Packed at' };
+  if (t.key === 'state') {
+    /* `slotDisplayType: */
+    return {
+      ...t,
+      label: 'Basis',
+      gridLabel: 'Basis',
+      slotDisplayType: 'text' as const,
+    };
+  }
+  return t;
+}); }
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const REPORT_PACKER_DAY_COMPOUND_COLUMNS: readonly ReportPackerDayGridColumn[] =

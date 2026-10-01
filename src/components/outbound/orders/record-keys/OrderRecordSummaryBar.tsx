@@ -17,7 +17,7 @@ import { formatShipByFace } from '@/lib/orders/ship-by-face';
 import { useOrderPriceBreakdown } from '../order-labels-client';
 import { OrderRecordStatus } from '../OrderRecordView';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';
 
@@ -74,7 +74,7 @@ export function OrderRecordSummaryBar({
         inert={!stuck}
         data-testid="order-record-summary-bar"
         data-stuck={stuck || undefined}
-        className="sticky top-0 z-20 h-0 overflow-visible industrial:hidden"
+        className="sticky top-0 z-20 h-0 overflow-visible"
       >
         <div
           className={cn(

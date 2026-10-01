@@ -3,12 +3,12 @@ import { baseColors } from './primitives';
 /**
  * State / functional colours — mode-independent and platform-independent.
  * (3.56:1) fail the 4.5:1 text floor on white (BRIEF §8), so their TEXT ink is
- * industrial row (owner 2026-09-25): a fill dark enough that its `codeInk`
+ * a fill dark enough that its `codeInk`
  */
 export type StateName = 'neutral' | 'info' | 'warning' | 'fulfillment' | 'danger' | 'success';
 
 /**
- * One named operational state as painted by an industrial record. Registries
+ * One named operational state as painted by a record. Registries
  * such as outbound lifecycle and inbound delivery supply the vocabulary; the
  * record primitive only consumes this shape.
  */
@@ -54,14 +54,8 @@ export const STATE_NAMES = Object.keys(STATE_TONES) as StateName[];
  * Lifecycle code CSS. `.state-code-<tone>` is the tone's ink as bare text
  * (warning reads the mode's readable warn ink).
  *
- * `.state-badge-<tone>` has two faces, one class (owner 2026-09-28):
- * - **triage** (every desk, `/m/*` reading flows): a SOFT PILL — the tone's
- *   tint ground, a 1px tone outline (inset shadow, so no layout shift), tone
- *   ink, pill corner. Readable, not shouting.
- * - **industrial** (`/m/*` operation flows only): the SOLID code chip — `code`
- *   fill, `codeInk` text, the region's control corner.
- * The NEAREST `data-mode` decides, like the `industrial:` variant: a triage
- * region nested inside an industrial one gets the soft pill back.
+ * `.state-badge-<tone>` is a soft pill: the tone's tint ground, a 1px tone
+ * outline (inset shadow, so no layout shift), tone ink and a pill corner.
  */
 export function stateCodeCssText(): string {
   const ink: Record<StateName, string> = {
@@ -72,8 +66,6 @@ export function stateCodeCssText(): string {
     danger: 'var(--ds-color-text-danger)',
     success: 'var(--ds-color-text-success)',
   };
-  const industrial = ":where([data-mode='industrial'])";
-  const triageInIndustrial = ":where([data-mode='industrial'] [data-mode]:not([data-mode='industrial']))";
   return STATE_NAMES.flatMap((tone) => {
     const soft = [
       `  color: ${ink[tone]};`,
@@ -87,16 +79,6 @@ export function stateCodeCssText(): string {
       `  color: ${ink[tone]};`,
       `}`,
       `.state-badge-${tone} {`,
-      ...soft,
-      `}`,
-      `${industrial} .state-badge-${tone} {`,
-      `  color: ${STATE_TONES[tone].codeInk};`,
-      `  background-color: ${STATE_TONES[tone].code};`,
-      `  box-shadow: none;`,
-      `  border-radius: var(--mode-radius-control);`,
-      `  font-weight: 700;`,
-      `}`,
-      `${triageInIndustrial} .state-badge-${tone} {`,
       ...soft,
       `}`,
     ];

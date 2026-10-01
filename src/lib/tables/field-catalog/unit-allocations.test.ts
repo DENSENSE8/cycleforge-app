@@ -21,7 +21,7 @@ import {
 } from './unit-allocations';
 import { ALLOCATION_SYSTEM_ACTOR, resolveUnitAllocationsSlotValue } from './unit-allocations-resolve';
 import { UNIT_TSN_LINKS_FIELD_CATALOG } from './unit-tsn-links';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /** The unit-detail wire row — release facts, no `serial_unit_id`. */
 function unitFeedRow(overrides: Partial<UnitAllocationTableRow> = {}): UnitAllocationTableRow {
@@ -110,7 +110,7 @@ describe('unit-allocations catalog', () => {
   });
 
   it('product default parses against the catalog — released on a track, reason under the title', () => {
-    const parsed = parseSlotLayout(UNIT_ALLOCATIONS_PRODUCT_LAYOUT, UNIT_ALLOCATIONS_FIELD_CATALOG);
+    const parsed = UNIT_ALLOCATIONS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'unit-allocations.order');
     assert.deepEqual(parsed.statusBindings, [{ fieldId: 'unit-allocations.released' }]);
@@ -157,7 +157,7 @@ describe('the mounted unit-allocations compound model', () => {
     const label = (key: string) =>
       UNIT_ALLOCATIONS_COMPOUND_COLUMNS.find((c) => c.key === key)?.gridLabel;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
+    // 2026-09-15 (`data-table-family.ts`); this desk used to print
     // "Order", which is now the Fields-picker word and the cell's hover word.
     assert.equal(label('fulfillment'), 'Id');
     assert.equal(label('item'), 'Unit');

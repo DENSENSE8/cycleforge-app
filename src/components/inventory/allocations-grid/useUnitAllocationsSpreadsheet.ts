@@ -12,7 +12,6 @@ import { resolveUnitAllocationsSlotValue } from '@/lib/tables/field-catalog/unit
 import type { UnitAllocationTableRow } from '@/lib/inventory/unit-allocation-row';
 import { unitAllocationsCompoundView } from './unit-allocations-row-view';
 import {
-  unitAllocationsCompoundColumnsFor,
   unitAllocationsSortFactFor,
   type UnitAllocationsGridColumn,
   type UnitAllocationsGridColumnKey,
@@ -21,7 +20,6 @@ import {
   UNIT_ALLOCATIONS_GRID_CAPABILITIES,
   UNIT_ALLOCATIONS_TABLE_BINDING,
 } from './unit-allocations-table-definition';
-import { useUnitAllocationsTableLayout } from './useUnitAllocationsTableLayout';
 
 interface UseUnitAllocationsSpreadsheetOptions {
   /** The feed. Already ordered by the API; a header click re-orders it. */
@@ -50,11 +48,8 @@ export function useUnitAllocationsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useUnitAllocationsTableLayout();
-  const columns = useMemo(
-    () => unitAllocationsCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
-  );
+
+
 
   const onSortChange = useCallback(
     (key: UnitAllocationsGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -75,12 +70,10 @@ export function useUnitAllocationsSpreadsheet({
     UnitAllocationsGridColumn
   >({
     binding: UNIT_ALLOCATIONS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: UNIT_ALLOCATIONS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: unitAllocationsCompoundView,
-    subtitleFieldIds,
     resolve: resolveUnitAllocationsSlotValue,
     sortFactFor: unitAllocationsSortFactFor,
     capabilities: UNIT_ALLOCATIONS_GRID_CAPABILITIES,

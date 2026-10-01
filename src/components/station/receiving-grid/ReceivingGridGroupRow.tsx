@@ -9,10 +9,10 @@ import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-stage-stam
 import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import { ReceivingGridRow } from './ReceivingGridRow';
 import {
-  SlotTableGroupFold,
-  SlotTableGroupFoldBody,
-  SlotTableGroupParentRow,
-} from '@/components/tables/compound/SlotTableGroupParentRow';
+  CompoundGroupFold,
+  CompoundGroupFoldBody,
+  CompoundGroupParentRow,
+} from '@/components/tables/compound/CompoundGroupParentRow';
  import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
  import { receivingGroupIdentity } from '@/lib/receiving/receiving-group-identity';
 import { bandQtyRollupPart } from '@/lib/receiving/receiving-group-rollup';
@@ -144,9 +144,9 @@ export function ReceivingGridGroupRow({
   };
 
   return (
-    <SlotTableGroupFold multi={multi}>
+    <CompoundGroupFold multi={multi}>
       {multi && columns ? (
-        <SlotTableGroupParentRow
+        <CompoundGroupParentRow
           identity={identity}
           carriers={carriers}
           boxCount={boxCount}
@@ -168,10 +168,10 @@ export function ReceivingGridGroupRow({
         />
       ) : null}
       {folded ? null : (
-        <SlotTableGroupFoldBody multi={multi}>
+        <CompoundGroupFoldBody multi={multi}>
           {group.rows.map((row, i) => renderLeaf(row, baseStripeIndex + i))}
-        </SlotTableGroupFoldBody>
+        </CompoundGroupFoldBody>
       )}
-    </SlotTableGroupFold>
+    </CompoundGroupFold>
   );
 }

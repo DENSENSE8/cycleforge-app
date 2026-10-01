@@ -11,7 +11,6 @@ import {
   ExternalLink,
   History,
   Link2,
-  Ticket,
 } from '@/components/Icons';
 import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
@@ -23,7 +22,6 @@ import {
   TestingSkuManualsPanel,
   TestingSkuPairingPanel,
 } from '@/components/receiving/workspace/line-edit/LineTestingTabbedCard';
-import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { UseSkuTestingData } from '@/components/tech/sku-testing/useSkuTestingData';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
@@ -32,22 +30,14 @@ import type { TestingController } from './testing-panel-types';
 import { TestingListingVerifyHost } from './TestingListingVerifyHost';
 import type { SellerClaimedCondition } from '@/lib/receiving/seller-claimed-condition';
 
-const TicketDisplayHost = dynamic(
-  () =>
-    import('@/components/receiving/workspace/line-edit/TicketDisplayHost').then(
-      (m) => m.TicketDisplayHost,
-    ),
-  { loading: () => null },
-);
 const WorkspaceTimelineTab = dynamic(
   () =>
     import('@/components/station/workbench').then((m) => m.WorkspaceTimelineTab),
   { loading: () => null },
 );
 
-/** Testing Displays vocabulary — strip order (Ticket first for expand). */
+/** Testing display vocabulary. Ticket is a center task, not a leaf. */
 export type TestingDisplayTab =
-  | 'ticket'
   | 'units'
   | 'listing'
   | 'pairing'
@@ -69,15 +59,9 @@ interface BuildTestingDisplaysInput {
   trackingForTimeline: string;
   /** PO-avenue handoff — land Linkage on the PO tab (data, not a timed event). */
   pairingFocus: { tab: 'zoho_po' | null; requestId: number } | null;
-  /** Claim create/link mode while Ticket has no linked id. */
-  claimMode: ClaimModalMode;
   /** Seller-claimed condition for the Listing verify leaf. */
   sellerClaimed: SellerClaimedCondition;
-  onCloseClaim: () => void;
-  onCloseTicket: () => void;
-  onClaimTicketCreated: (ticketNumber: string) => void;
-  onClaimTicketUnlinked: () => void;
-  /** Auto-match Find ticket → Ticket Displays topic. */
+  /** Auto-match Find ticket → center Ticket task. */
   onFindTicket?: () => void;
 }
 
@@ -93,35 +77,12 @@ export function buildTestingDisplayTabs({
   poIdForTimeline,
   trackingForTimeline,
   pairingFocus,
-  claimMode,
   sellerClaimed,
-  onCloseClaim,
-  onCloseTicket,
-  onClaimTicketCreated,
-  onClaimTicketUnlinked,
   onFindTicket,
 }: BuildTestingDisplaysInput): SectionTab[] {
   const unfound = shouldUseUnmatchedItemsSurface(row);
-  const ticketId = c.providerTicketId as number | null | undefined;
 
   return buildSectionTabs([
-    {
-      id: 'ticket',
-      label: 'Ticket',
-      icon: Ticket,
-      content:
-        row.id != null || row.receiving_id != null ? (
-          <TicketDisplayHost
-            row={row}
-            ticketId={ticketId}
-            claimMode={claimMode}
-            onCloseClaim={onCloseClaim}
-            onCloseTicket={onCloseTicket}
-            onClaimTicketCreated={onClaimTicketCreated}
-            onClaimTicketUnlinked={onClaimTicketUnlinked}
-          />
-        ) : null,
-    },
     {
       id: 'units',
       // Per-unit verdict (serial · condition · pass/test-again/fail) — the

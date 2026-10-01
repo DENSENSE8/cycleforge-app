@@ -29,7 +29,7 @@ export function ThemeSync() {
 
   useEffect(() => {
     if (!prefsReady) return;
-    applyStationSkin(stationSkin ?? 'industrial');
+    applyStationSkin(stationSkin ?? 'porcelain');
   }, [prefsReady, stationSkin]);
 
   useEffect(() => {

@@ -14,7 +14,7 @@
 
 import type { ReactNode } from 'react';
 import { Package, Tag } from '@/components/Icons';
-import { RECORD_CONDITION_CHIP_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_CONDITION_CHIP_CLASS } from '@/design-system/tokens/record';
 import { conditionGradeTone } from '@/lib/condition-tone';
 import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';

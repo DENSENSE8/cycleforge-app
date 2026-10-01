@@ -1,6 +1,6 @@
 /**
  * A section heading inside the phone order FORM — sentence case, the triage
- * voice (a form is not floor execution; the industrial caps band is
+ * voice (a form uses the readable sentence-case band,
  * `DetailSectionHeading`, for records and operations).
  */
 

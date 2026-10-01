@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
+import { isDataTableChromeColumn } from '@/lib/tables/data-table-header-sort';
 import { MAX_DEFAULT_VISIBLE_TRACKS } from '@/lib/tables/table-definition';
 import {
   ADMIN_SKU_DRIFT_COMPOUND_COLUMNS,
@@ -17,7 +17,7 @@ import {
   ADMIN_SKU_DRIFT_PRODUCT_LAYOUT,
 } from './admin-sku-drift';
 import { resolveAdminSkuDriftSlotValue } from './admin-sku-drift-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 /** Selected by the view, scoped by the loader, painted by nothing. */
 const UNPAINTED_VIEW_COLUMNS = ['organization_id'] as const;
@@ -93,7 +93,7 @@ describe('admin-sku-drift catalog', () => {
   });
 
   it('product default parses, and the SKU is the identity', () => {
-    const parsed = parseSlotLayout(ADMIN_SKU_DRIFT_PRODUCT_LAYOUT, ADMIN_SKU_DRIFT_FIELD_CATALOG);
+    const parsed = ADMIN_SKU_DRIFT_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'admin-sku-drift.sku');
     // The four stored/ledger counters are the bound band…
@@ -163,7 +163,7 @@ describe('admin-sku-drift materialization', () => {
     const identity = col('fulfillment');
     assert.equal(identity?.fieldId, 'admin-sku-drift.sku');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-family.ts`). "SKU" is now the Fields-picker row
+    // (`data-table-family.ts`). "SKU" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -200,7 +200,7 @@ describe('admin-sku-drift materialization', () => {
 
   it('every painted DATA header sorts; chrome and the fact-free track stay dead', () => {
     for (const col of ADMIN_SKU_DRIFT_COMPOUND_COLUMNS) {
-      if (isSlotTableChromeTrack(col.key) || col.sortable === false) {
+      if (isDataTableChromeColumn(col.key) || col.sortable === false) {
         assert.equal(adminSkuDriftSortFactFor(col), null, `${col.key} carries no fact`);
         continue;
       }

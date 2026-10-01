@@ -21,6 +21,8 @@ interface Props {
   row: ReceivingLineRow;
   staffId: string;
   accordionBootstrap: 'default' | 'all';
+  /** True when a station scan, rather than browse navigation, opened the carton. */
+  scanDriven?: boolean;
   /** Nav state mirrored from the sidebar via `receiving-workspace-nav-state`. */
   nav: NavState | null;
   /** Which workspace mode — `triage` hides unbox-only sections (photos, claim,
@@ -36,14 +38,15 @@ export function ReceivingLineWorkspace({
   row,
   staffId,
   accordionBootstrap,
+  scanDriven = false,
   nav,
   variant = 'unbox',
   recordView,
   onClose,
 }: Props) {
   useSurfacePaintMark('unbox:workspace', variant === 'unbox');
-  // Middle carton is P1 LCP — release the SSR stand-in only once this panel
-  // mounts (after the dynamic chunk). Displays bodies stay P3 behind dynamic().
+  // Middle carton is P1 LCP. Release the SSR stand-in when this dynamic panel
+  // mounts; secondary data can settle behind the already-painted work plane.
   const unboxPrimaryPaint = useUnboxPrimaryPaintOptional();
   useEffect(() => {
     if (variant !== 'unbox') return;
@@ -86,6 +89,7 @@ export function ReceivingLineWorkspace({
             staffId={staffId}
             itemTotal={nav?.total}
             accordionBootstrap={accordionBootstrap}
+            scanDriven={scanDriven}
             // Carton cursor only.
           />
         )}

@@ -8,6 +8,7 @@ const trimmedStr = z.string().trim().min(1);
 const optTrim = z.string().trim().optional();
 const optStaffId = z.number().int().positive().optional();
 const optClientEventId = z.string().min(1).optional();
+const locationVerificationToken = z.string().min(20).max(4_000);
 
 // ─── PATCH /api/locations/[barcode] ─────────────────────────────────────────
 
@@ -16,15 +17,17 @@ const ActionTake = z.object({
   sku: trimmedStr,
   qty: positiveInt,
   staffId: optStaffId,
-  reason: optTrim,
+  reason: trimmedStr,
   reasonCodeId: positiveInt.optional(),
   notes: z.string().trim().nullable().optional(),
   clientEventId: optClientEventId,
   idempotencyKey: optClientEventId,
+  locationVerificationToken,
 });
 
 const ActionPut = ActionTake.extend({
   action: z.literal('put'),
+  reason: trimmedStr.default('BIN_ADD'),
 });
 
 const ActionSet = z.object({
@@ -35,6 +38,7 @@ const ActionSet = z.object({
   maxQty: nonNegInt.nullable().optional(),
   staffId: optStaffId,
   expectedUpdatedAt: optTrim,
+  reason: optTrim,
   reasonCodeId: positiveInt.optional(),
   notes: z.string().trim().nullable().optional(),
   clientEventId: optClientEventId,

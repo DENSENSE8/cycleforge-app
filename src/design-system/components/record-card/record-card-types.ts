@@ -5,7 +5,7 @@
  */
 
 import type { ComponentType, ReactNode } from 'react';
-import type { RecordStateFace } from '@/design-system/tokens/industrial-record';
+import type { RecordStateFace } from '@/design-system/tokens/record';
 import type { StateName } from '@/design-system/tokens/lifecycle';
 import type { RecordFactFace } from './record-fact';
 

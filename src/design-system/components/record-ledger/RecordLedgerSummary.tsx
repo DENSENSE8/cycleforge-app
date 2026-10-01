@@ -5,7 +5,7 @@
  * faces (operator 2026-09-25):
  */
 
-import { RECORD_LABEL_CLASS } from '../../tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '../../tokens/record';
 import { cn } from '@/utils/_cn';
 import { EvidenceNotice, EvidenceSection, EvidenceTitle } from './RecordEvidence';
 

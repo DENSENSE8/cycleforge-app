@@ -6,7 +6,6 @@ import type { DisplayIndexRow } from '@/components/station/displays';
 import type { TestingDisplayTab } from './build-testing-displays';
 
 interface TestingDisplayIndexSignals {
-  hasTicketId: boolean;
   hasSkuPairing: boolean;
   hasSkuTabs: boolean;
   hasTimeline: boolean;
@@ -16,7 +15,6 @@ interface TestingDisplayIndexSignals {
 }
 
 const LABELS: Record<Exclude<TestingDisplayTab, never>, string> = {
-  ticket: 'Ticket',
   units: 'Units',
   listing: 'Listing',
   pairing: 'SKU pairing',
@@ -31,12 +29,6 @@ function meta(
   signals: TestingDisplayIndexSignals,
 ): Pick<DisplayIndexRow, 'subtitle' | 'tone' | 'group'> {
   switch (id) {
-    case 'ticket':
-      return {
-        subtitle: signals.hasTicketId ? 'Linked ticket' : 'No ticket',
-        tone: signals.hasTicketId ? 'ok' : 'neutral',
-        group: 'context',
-      };
     case 'units':
       // Per-unit verdict work — the Action Display. Quiet by default; the
       // amber 'action' cue belongs to exceptions (claim / unpaired), not to

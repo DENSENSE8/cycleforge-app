@@ -1,4 +1,4 @@
-import type { RecordStateFace } from './industrial-record';
+import type { RecordStateFace } from './record';
 
 /** Where one Daily agenda card stands — a checklist item or a task. */
 export type AgendaStage = 'open' | 'active' | 'urgent' | 'late' | 'done' | 'withdrawn';

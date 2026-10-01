@@ -3,7 +3,7 @@
 /** "Complete carton" — the phone's receive action. */
 
 import { useCallback, useRef, useState } from 'react';
-import { safeRandomUUID } from '@/lib/safe-uuid';
+import { useSearchParams } from 'next/navigation';
 import {
   COMPLETE_CARTON_IDLE,
   completeCartonRequestBody,
@@ -13,8 +13,16 @@ import {
 } from '@/components/mobile/receiving/complete-carton';
 import { photoPolicyOverrideField } from '@/lib/receiving/photo-policy-override-wire';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 export function useCompleteCarton(row: CompleteCartonRow | null) {
+  const searchParams = useSearchParams();
+  const mobileScanEventIdRaw = Number(searchParams.get('mse'));
+  const mobileScanEventId =
+    Number.isSafeInteger(mobileScanEventIdRaw) && mobileScanEventIdRaw > 0
+      ? mobileScanEventIdRaw
+      : null;
+  const scanClientEventId = searchParams.get('scanEvent')?.trim() || null;
   const [state, setState] = useState<CompleteCartonOutcome>(COMPLETE_CARTON_IDLE);
   // Held across retries — see (1) in the module doc.
   const idempotencyKeyRef = useRef<string | null>(null);
@@ -36,6 +44,11 @@ export function useCompleteCarton(row: CompleteCartonRow | null) {
     // A waived retry is a genuinely different request from the blocked one, so
     // it must not replay the blocked attempt's cached response.
     if (photoPolicyOverride) idempotencyKeyRef.current = safeRandomUUID();
+    const idempotencyKey = idempotencyKeyRef.current;
+    if (!idempotencyKey) {
+      inFlightRef.current = false;
+      return;
+    }
 
     try {
       const res = await fetch('/api/receiving/mark-received-po', {
@@ -43,7 +56,9 @@ export function useCompleteCarton(row: CompleteCartonRow | null) {
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...completeCartonRequestBody(row, receivingId, idempotencyKeyRef.current),
+          ...completeCartonRequestBody(row, receivingId, idempotencyKey),
+          mobileScanEventId,
+          scanClientEventId,
           ...(photoPolicyOverride ? photoPolicyOverrideField(photoPolicyOverride) : null),
         }),
       });
@@ -62,7 +77,7 @@ export function useCompleteCarton(row: CompleteCartonRow | null) {
     } finally {
       inFlightRef.current = false;
     }
-  }, [row]);
+  }, [mobileScanEventId, row, scanClientEventId]);
 
   return { ...state, run, reset };
 }

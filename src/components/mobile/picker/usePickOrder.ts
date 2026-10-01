@@ -23,6 +23,7 @@ import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { playScanTone, vibrateScan, type ScanFeedbackKind } from '@/lib/scan-feedback/play';
+import { resolvePhoneScanIntent } from '@/lib/scan/phone-scan-intent';
 
 export interface PickOrderMessage {
   tone: 'error' | 'warning' | 'success' | 'info';
@@ -171,9 +172,13 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
       let context = card && !unanchored ? card : null;
       let type = card ? resolveDeskScanType(value, card) : 'TRACKING';
       const idempotencyKey = safeRandomUUID();
+      const correlation = await resolvePhoneScanIntent(value, idempotencyKey);
 
       if (unanchored && card && (type === 'SERIAL' || type === 'SKU')) {
-        const anchor = await scanDeskOrder(card.id ?? openOrderId, { idempotencyKey: safeRandomUUID() });
+        const anchor = await scanDeskOrder(card.id ?? openOrderId, {
+          idempotencyKey: safeRandomUUID(),
+          correlation,
+        });
         if (!anchor.ok) {
           feedback('reject');
           setMessage({ tone: 'error', text: anchor.error });
@@ -187,7 +192,7 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
       }
 
       if (type === 'TRACKING') {
-        const result = await scanDeskTracking(value, { idempotencyKey });
+        const result = await scanDeskTracking(value, { idempotencyKey, correlation });
         if (!result.ok) {
           feedback('reject');
           setMessage({ tone: 'error', text: result.error });
@@ -212,6 +217,7 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
           contextOrder: context,
           scanSessionId: context?.scanSessionId ?? null,
           idempotencyKey,
+          correlation,
         });
         if (!result.ok) {
           feedback('reject');
@@ -235,6 +241,7 @@ export function usePickOrder({ orderId: openOrderId, onPicked }: { orderId: numb
           contextOrder: context,
           scanSessionId: context?.scanSessionId ?? null,
           idempotencyKey,
+          correlation,
         });
         if (!result.ok) {
           feedback('reject');

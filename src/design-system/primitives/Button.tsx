@@ -40,7 +40,7 @@ export interface ButtonProps
   ariaLabel?: string;
   /**
    * Corner. Default `control` — the mode's control corner: 8px on a desktop
-   * (triage), square on the phone floor (industrial) (owner 2026-09-26).
+   * and follows the region's control radius.
    */
   radius?: 'flush' | 'composer' | 'surface' | 'pill' | 'mode' | 'control';
   /**

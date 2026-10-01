@@ -32,6 +32,7 @@ type InsertTechSerialForSalContextResult =
       techSerialId: number;
       serial: string;
       serialType: string;
+      stationActivityId: number | null;
     }
   | {
       ok: false;
@@ -168,6 +169,7 @@ export async function insertTechSerialForSalContext(
     sourceMethod?: 'SCAN' | 'SKU_PULL';
     sourceSkuId?: number | null;
     sourceSkuCode?: string | null;
+    activityMetadata?: Record<string, unknown>;
   },
 ): Promise<InsertTechSerialForSalContextResult> {
   const serial = normalizeTechSerial(params.serial);
@@ -221,7 +223,7 @@ export async function insertTechSerialForSalContext(
     return { ok: false, error: 'Failed to insert tech serial', status: 500 };
   }
 
-  await createStationActivityLog(db, {
+  const stationActivityId = await createStationActivityLog(db, {
     organizationId: params.organizationId,
     station: 'TECH',
     activityType: 'SERIAL_ADDED',
@@ -242,6 +244,7 @@ export async function insertTechSerialForSalContext(
       serial,
       serial_type: serialType,
       context_station_activity_log_id: params.salContext.salId,
+      ...(params.activityMetadata ?? {}),
     },
     createdAt: formatPSTTimestamp(),
   });
@@ -250,6 +253,7 @@ export async function insertTechSerialForSalContext(
     ok: true,
     techSerialId,
     serial,
+    stationActivityId,
     serialType,
   };
 }

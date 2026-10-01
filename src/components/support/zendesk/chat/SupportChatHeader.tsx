@@ -13,21 +13,15 @@ export function SupportChatHeader({
   compact = false,
   hideTitle = false,
   hideRequesterBand = false,
+  readOnly = false,
 }: {
   ticket: ZendeskTicket;
   onBack?: () => void;
-  /** Station ticket tab — tighter padding + smaller type. */
   compact?: boolean;
-  /**
-   * Hide the editable subject — for a host that already renders it.
-   * `/support` does: the thread's split header carries the subject.
-   */
   hideTitle?: boolean;
-  /**
-   * Kept so `/support` can hide this whole strip together with {@link hideTitle}.
-   * Requester chrome is gone from this header; the flag no longer changes layout.
-   */
   hideRequesterBand?: boolean;
+  /** Station preview — same title row, no subject editor. */
+  readOnly?: boolean;
 }) {
   if (hideRequesterBand && hideTitle) return null;
   if (hideTitle) return null;
@@ -47,11 +41,17 @@ export function SupportChatHeader({
           className="-ml-1 rounded-md p-1 hover:bg-surface-sunken lg:hidden"
         />
       ) : null}
-      <TicketSubjectField
-        ticketId={ticket.id}
-        subject={ticket.subject}
-        compact={compact}
-      />
+      {readOnly ? (
+        <h2 className="min-w-0 truncate text-role-body font-semibold text-text-default">
+          {ticket.subject?.trim() || 'New support ticket'}
+        </h2>
+      ) : (
+        <TicketSubjectField
+          ticketId={ticket.id}
+          subject={ticket.subject}
+          compact={compact}
+        />
+      )}
     </div>
   );
 }

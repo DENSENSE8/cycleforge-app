@@ -26,7 +26,7 @@ import { useSupportTicketClaimHost } from '@/components/support/service-workspac
 import { InlineStageAssign } from '@/design-system/components/record-ledger/InlineStageAssign';
 import type { RecordModel, RecordVerb } from '@/design-system/components/record-ledger/record-model';
 import { Button } from '@/design-system/primitives';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { useEntitySupportTicket } from '@/hooks/useEntitySupportTicket';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { conditionOptions } from '@/lib/conditions';
@@ -395,7 +395,6 @@ export function usePickupRecord(
         id: 'tickets',
         label: ticketUnits.length > 0 ? `Tickets (${ticketUnits.length})` : 'Tickets',
         icon: <Ticket aria-hidden />,
-        placement: 'overflow',
         disabled: ticketUnits.length === 0,
         disabledReason: 'No failed or ticketed unit',
         panel: () => <PickupTicketsPanel units={ticketUnits} />,

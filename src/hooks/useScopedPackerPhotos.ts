@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PriorPhoto } from '@/components/mobile/station/MobilePackerSpamCamera';
+import type { PriorPhoto } from '@/components/mobile/photos/MobileNativePhotoCapture';
 
 interface PackerPhotoRow {
   id: number;

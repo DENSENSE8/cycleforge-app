@@ -12,7 +12,6 @@ import { resolveSearchHitsSlotValue } from '@/lib/tables/field-catalog/search-hi
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { searchHitRowId, searchHitsCompoundView } from './search-hits-row-view';
 import {
-  searchHitsCompoundColumnsFor,
   searchHitsSortFactFor,
   type SearchHitsGridColumn,
   type SearchHitsGridColumnKey,
@@ -21,7 +20,6 @@ import {
   SEARCH_HITS_GRID_CAPABILITIES,
   SEARCH_HITS_TABLE_BINDING,
 } from './search-hits-table-definition';
-import { useSearchHitsTableLayout } from './useSearchHitsTableLayout';
 
 interface UseSearchHitsSpreadsheetOptions {
   /** The refined, ranked hit list. A header click re-orders it. */
@@ -48,8 +46,8 @@ export function useSearchHitsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useSearchHitsTableLayout();
-  const columns = useMemo(() => searchHitsCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
+
+
 
   const onSortChange = useCallback((key: SearchHitsGridColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
@@ -65,12 +63,10 @@ export function useSearchHitsSpreadsheet({
 
   return useCompoundSpreadsheet<AiSearchHit, SearchHitsGridColumnKey, SearchHitsGridColumn>({
     binding: SEARCH_HITS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: SEARCH_HITS_TABLE_BINDING.columns,
     rows,
     getRowId: searchHitRowId,
     adapter: searchHitsCompoundView,
-    subtitleFieldIds,
     resolve: resolveSearchHitsSlotValue,
     sortFactFor: searchHitsSortFactFor,
     capabilities: SEARCH_HITS_GRID_CAPABILITIES,

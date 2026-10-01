@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { focusWithinListKeyOwner, isListKeyRegionOpen } from '@/lib/keyboard/list-key-scope';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { getRecordCursorTop } from '@/lib/record-cursor/store';
+import { recordCursorKeyDirection } from '@/lib/record-cursor/keyboard-order';
 import type { CursorScope, CursorStep } from '@/lib/record-cursor/cursor-model';
 import type { RecordCursorPublication } from '@/lib/record-cursor/store';
 import { dispatchCloseShippedDetails } from '@/utils/events';
@@ -88,17 +89,11 @@ export function useRecordCursorKeyboard({
       // a capture listener must not swallow j/k/↓/↑ it cannot act on.
       if (!top) return;
 
-      if (code === 'KeyJ' || code === 'ArrowDown') {
+      const direction = recordCursorKeyDirection(code, top.keyOrder);
+      if (direction) {
         e.preventDefault();
         e.stopPropagation();
-        stepCursor(top, 'next');
-        return;
-      }
-
-      if (code === 'KeyK' || code === 'ArrowUp') {
-        e.preventDefault();
-        e.stopPropagation();
-        stepCursor(top, 'prev');
+        stepCursor(top, direction);
         return;
       }
 

@@ -5,6 +5,8 @@ import {
   elevationClass,
   type RaisedIntensity,
 } from '@/design-system/tokens/shadows';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 type WorkspaceCardTone = 'blue' | 'emerald' | 'orange' | 'violet' | 'red' | 'gray';
 
@@ -17,8 +19,9 @@ const GLASS_RAISED_DEFAULT: RaisedIntensity = 'default';
 type WorkspaceCardBodyDensity = 'default' | 'nested';
 
 /** White inset inside a glass worksheet — Notes textarea + Label face frame. */
-export const WORKSPACE_NESTED_FIELD =
-  'rounded-none border border-border-soft bg-surface-card';
+export const WORKSPACE_NESTED_FIELD = `${cornerClass(
+  'control',
+)} border border-border-soft bg-surface-card`;
 
 /** Padding for {@link WORKSPACE_NESTED_FIELD} — spacing intent `inset-field` (px-3 py-2). */
 export const WORKSPACE_NESTED_FIELD_PAD = 'inset-field';
@@ -33,6 +36,7 @@ const BODY_DENSITY_CLASS: Record<WorkspaceCardBodyDensity, string> = {
   default: 'px-5 py-4',
   nested: 'p-3',
 };
+const WORKSPACE_SURFACE_CORNER = cornerClass('surface');
 
 interface WorkspaceCardProps {
   /** Small uppercase tracking-wide label rendered in the card header. */
@@ -69,7 +73,7 @@ const TONE_RAIL: Record<WorkspaceCardTone, string> = {
   gray: 'bg-surface-strong',
 };
 
-/** Floating white card surface used across the receiving workspace. */
+/** Raised work-card surface used across receiving workspaces. */
 export function WorkspaceCard({
   label,
   actions,
@@ -84,23 +88,34 @@ export function WorkspaceCard({
 }: WorkspaceCardProps) {
   const overflowClass = overflow === 'visible' ? 'overflow-visible' : 'overflow-hidden';
   const glass = variant === 'glass';
-  // Glass keeps ring + shadow on the SECTION (an element's own overflow never
-  // clips its own box-shadow) and only the translucent fill + blur on the
-  // inset span below (so the section never becomes a stacking context).
+  // The surface role follows its enclosing mode: rounded on desktop triage,
+  // and inherits the active region's readable corner.
   const surfaceClass = glass
-    ? `rounded-none ${elevationClass('raised', elevation)} ring-1 ring-border-soft/60`
-    : 'rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60';
-  // Glass: header/body get `relative` (positioned, z-auto) so they paint above
-  // the inset glass span by DOM order — without introducing any z-index.
+    ? cn(
+        WORKSPACE_SURFACE_CORNER,
+        elevationClass('raised', elevation),
+        'ring-1 ring-border-soft/60',
+      )
+    : cn(
+        WORKSPACE_SURFACE_CORNER,
+        elevationClass('raised', 'soft'),
+        'bg-surface-card ring-1 ring-border-soft/60',
+      );
+  // Glass keeps ring + shadow on the SECTION and clips only its inset fill.
   const layerClass = glass ? 'relative' : '';
   const bodyPad = bodyClassName ?? BODY_DENSITY_CLASS[bodyDensity];
   return (
-    <section className={`relative ${overflowClass} ${surfaceClass} ${className ?? ''}`}>
+    <section
+      className={cn('relative', overflowClass, surfaceClass, className)}
+    >
       {glass ? (
         <>
           <span
             aria-hidden
-            className="absolute inset-0 rounded-none bg-surface-card/75 backdrop-blur-xl backdrop-saturate-150"
+            className={cn(
+              'absolute inset-0 bg-surface-card/75 backdrop-blur-xl backdrop-saturate-150',
+              WORKSPACE_SURFACE_CORNER,
+            )}
           />
           {/* Light-catch top hairline — the glass signature. `glass` is the
               scheme-independent white highlight token, correct on light and

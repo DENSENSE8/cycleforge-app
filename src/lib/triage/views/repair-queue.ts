@@ -1,11 +1,9 @@
 /**
- * Repair service — one card per repair ticket (`RepairCardList`), on the
- * Receiving › Repair service desk (`/repair`) and Sales › Repair service
- * (`/dashboard?mode=repairs`). Status (`?tab=`, what is loaded), channel
- * (`?channel=`) and Sort (`?sort=`) are the contextual sidebar's; the status
- * chips beside the count (`?repairStatus=`) narrow the loaded tickets. The SLA
- * (3 business days, `repair_service.due_at`) is the top-right status; the
- * serial sits bottom-right, so there is no next-step vocabulary.
+ * Repair service card-list declaration shared by `/repair` and
+ * `/dashboard?mode=repairs`. `?tab=` controls the loaded status set;
+ * `?repairStatus=` and exclusions narrow it. `?sort=` is the sidebar
+ * queue order. Current workflow status is a read-only card fact; changes
+ * operate on selected cards.
  */
 
 import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
@@ -28,9 +26,11 @@ export const REPAIR_QUEUE_VIEW: TriageViewDecl = {
   status: 'deadline',
   facts: [
     { id: 'issue', tier: 'always' },
+    { id: 'sku', tier: 'label' },
     { id: 'price', tier: 'always' },
     { id: 'date', tier: 'label' },
     { id: 'staff', tier: 'detail' },
+    { id: 'serial', tier: 'detail' },
   ],
   // The host bands dated sorts by the PT day the ticket was opened.
   sections: { order: [], labels: {}, tones: {}, when: 'default-sort' },

@@ -20,24 +20,21 @@ import {
   type CounterCornerRole,
 } from './kiosk-counter-surface';
 
-/** Every role except the two that are identical on both scales by design. */
-const SOFTENED_ROLES: CornerRole[] = ['chip', 'row', 'control', 'field', 'card', 'canvas'];
+/** Content roles are rounded on both ladders; the counter uses the softer scale. */
+const ROUNDED_CONTENT_ROLES: CornerRole[] = ['chip', 'row', 'control', 'field', 'card', 'canvas'];
 
 describe('kiosk counter scale — radius', () => {
-  it('softens every content role away from the flushed ops ladder', () => {
-    for (const role of SOFTENED_ROLES) {
-      assert.equal(cornerClass(role), 'rounded-none', `ops ${role} must stay flush`);
-      assert.notEqual(
-        counterCorner(role),
-        'rounded-none',
-        `counter ${role} must not be flush — that is the whole point of this module`,
-      );
+  it('rounds every content role on both ladders', () => {
+    for (const role of ROUNDED_CONTENT_ROLES) {
+      assert.notEqual(cornerClass(role), 'rounded-none', `ops ${role} must use its semantic corner`);
+      assert.notEqual(counterCorner(role), 'rounded-none', `counter ${role} must use its semantic corner`);
     }
   });
 
   it('keeps `flush` flush — column seams are structure, not components', () => {
     // Rounding the seams floats the columns and re-introduces the banned
     // "floating column islands".
+    assert.equal(cornerClass('flush'), 'rounded-none');
     assert.equal(counterCorner('flush'), 'rounded-none');
     assert.equal(counterCornerPx('flush'), 0);
   });
@@ -69,8 +66,7 @@ describe('kiosk counter scale — radius', () => {
   });
 
   it('nests concentrically — a padded card takes a smaller inner corner', () => {
-    // inner = outer − padding. Under the flushed ops ladder this math is a
-    // no-op; on the counter it is load-bearing again.
+    // inner = outer − padding on both rounded ladders.
     const inner = counterNestedCorner('card', COUNTER_CARD_PAD_STEP);
     assert.notEqual(inner, counterCorner('card'), 'inner must be tighter than its container');
     assert.match(inner, /^rounded-/);

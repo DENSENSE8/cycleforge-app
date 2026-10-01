@@ -114,6 +114,7 @@ export async function GET(
          r.zoho_purchaseorder_number,
          r.zoho_warehouse_id,
          r.support_notes,
+         r.zendesk_ticket,
          r.listing_url,
          -- Zoho PO header notes carry the buyer's listing links, one per line
          -- as "title: https://...". The read surface resolves them through
@@ -218,7 +219,9 @@ export async function GET(
          rl.intake_type,
          rl.source_platform_pill,
          rl.location_code,
+         rl.listing_url,
          rl.listing_reference,
+         rl.zendesk_ticket,
          stn_line.tracking_number_raw AS tracking_number,
          rl.notes,
          ${RECEIVING_LINE_IMAGE_URL_SQL},

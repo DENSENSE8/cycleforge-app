@@ -1,7 +1,7 @@
 /** Packer bench field catalog — the bindable facts of ONE pack scan, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const PACKER_FIELD_CATALOG: FieldCatalog = [
   {
@@ -100,7 +100,7 @@ export const PACKER_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default packer-bench layout: */
-export const PACKER_PRODUCT_LAYOUT: SlotLayout = {
+export const PACKER_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'packer.order_id',
   statusBindings: [{ fieldId: 'packer.tested' }, { fieldId: 'packer.packed' }],
@@ -112,7 +112,7 @@ export const PACKER_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'packer.item_number' },
   ],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Packer bench entry. */
 export const PACKER_TABLE_LAYOUT_ID = 'packer';

@@ -25,7 +25,7 @@ import { useDeskStageOptional } from '@/design-system/components/DeskStageContex
 import type { RecordOpenEvent } from '@/design-system/components/record-card/RecordCard';
 import { emitSelectionTotal, emitToggleAll } from '@/lib/selection/table-selection';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
-import { clearSlotTableVisibleIds, publishSlotTableVisibleIds } from '@/lib/tables/slot-table-visible';
+import { clearDataTableVisibleIds, publishDataTableVisibleIds } from '@/lib/tables/data-table-visible-rows';
 import type { GroupedRenderOrder, RowGroup } from '@/lib/group-rows';
 import {
   ORDER_SLA_SECTIONS,
@@ -184,9 +184,9 @@ export function OrderCardList({
       toggleGroup: plane.handleToggleGroup,
       setAll: (on) => emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, on ? 'all' : 'none'),
       publishVisible: (ids) => {
-        publishSlotTableVisibleIds(DASHBOARD_ORDERS_SELECTION_SCOPE, ids);
+        publishDataTableVisibleIds(DASHBOARD_ORDERS_SELECTION_SCOPE, ids);
         emitSelectionTotal(DASHBOARD_ORDERS_SELECTION_SCOPE, ids.length);
-        return () => clearSlotTableVisibleIds(DASHBOARD_ORDERS_SELECTION_SCOPE);
+        return () => clearDataTableVisibleIds(DASHBOARD_ORDERS_SELECTION_SCOPE);
       },
     }),
     [plane.selectedIds, plane.handleToggleSelect, plane.handleToggleGroup],

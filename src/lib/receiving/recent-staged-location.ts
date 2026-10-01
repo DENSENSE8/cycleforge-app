@@ -120,7 +120,7 @@ export function recentStagedLocationQueryKey(excludeLineId: number | null | unde
   return ['receiving', 'recent-staged-location', excludeLineId ?? null] as const;
 }
 
-/** Menu copy for Last entry / Move — disabled until another PO has a staged bin. */
+/** Menu copy for the recent-bin shortcut, disabled until another PO has a staged bin. */
 export function locationControlMenuState(opts: {
   lastLabel: string | null;
   lastLocationId: number | null;
@@ -128,7 +128,6 @@ export function locationControlMenuState(opts: {
   hasLast: boolean;
   lastEntryLabel: string;
   lastEntryTitle: string;
-  moveTitle: string;
 } {
   const hasLast =
     opts.lastLocationId != null &&
@@ -141,9 +140,6 @@ export function locationControlMenuState(opts: {
     lastEntryLabel: hasLast ? `Last entry · ${label}` : 'Last entry',
     lastEntryTitle: hasLast
       ? `Stage to ${label} from the last PO`
-      : 'No recent location from another PO yet',
-    moveTitle: hasLast
-      ? `Move to ${label} without scanning`
       : 'No recent location from another PO yet',
   };
 }

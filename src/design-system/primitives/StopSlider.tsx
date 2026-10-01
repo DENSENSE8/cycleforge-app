@@ -36,6 +36,7 @@ export interface StopSliderProps {
   showStops?: boolean;
   disabled?: boolean;
   className?: string;
+  compact?: boolean;
   'data-testid'?: string;
 }
 
@@ -60,6 +61,7 @@ export function StopSlider({
   showStops = stops.length <= MAX_STOP_CHIPS,
   disabled = false,
   className,
+  compact = false,
   'data-testid': testId,
 }: StopSliderProps) {
   const reduceMotion = useReducedMotion();
@@ -70,10 +72,15 @@ export function StopSlider({
 
   return (
     <div className={cn('group flex w-full min-w-0 flex-col', disabled && 'opacity-50', className)}>
-      <div className="relative h-11 w-full">
+      <div className={cn('relative w-full', compact ? 'h-7' : 'h-11')}>
         {/* Track + fill + thumb, inset by the thumb radius so the thumb's centre meets both ends. */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-3 top-1/2 -translate-y-1/2">
-          <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-fill-info/15 ring-1 ring-inset ring-fill-info/25">
+        <div aria-hidden className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2', compact ? 'inset-x-2' : 'inset-x-3')}>
+          <div
+            className={cn(
+              'relative w-full overflow-hidden rounded-full bg-fill-info/15 ring-1 ring-inset ring-fill-info/25',
+              compact ? 'h-1.5' : 'h-2.5',
+            )}
+          >
             <motion.div
               className="absolute inset-0 w-full origin-left rounded-full bg-fill-info"
               initial={false}
@@ -84,7 +91,8 @@ export function StopSlider({
           <motion.div className="absolute inset-0" initial={false} animate={{ x: `${fraction * 100}%` }} transition={travel}>
             <span
               className={cn(
-                'absolute left-0 top-1/2 block size-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface-card shadow-md ring-[3px] ring-fill-info transition-transform duration-100',
+                'absolute left-0 top-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface-card shadow-md ring-[3px] ring-fill-info transition-transform duration-100',
+                compact ? 'size-4' : 'size-6',
                 !disabled && 'group-hover:scale-110 group-active:scale-125',
                 'group-has-[input:focus-visible]:ring-[5px] group-has-[input:focus-visible]:ring-offset-2 group-has-[input:focus-visible]:ring-offset-surface-card',
               )}
@@ -107,7 +115,9 @@ export function StopSlider({
           }}
           className={cn(
             'absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 outline-none',
-            '[&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-moz-range-thumb]:size-6',
+            compact
+              ? '[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-moz-range-thumb]:size-4'
+              : '[&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-moz-range-thumb]:size-6',
             disabled && 'cursor-not-allowed',
           )}
           data-testid={testId}

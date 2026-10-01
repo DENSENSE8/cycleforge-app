@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { commitIsPhoneOrigin } from '@/lib/auth/phone-origin.server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
@@ -15,9 +16,13 @@ import {
   parseScanOutStaffId,
   scanOutMaxBackdateMs,
 } from '@/lib/outbound/scan-out-desk-stamp';
-import { blockedOrderStatus, scanOutLabel } from '@/lib/outbound/scan-out';
+import {
+  scanOutBlockedMessage,
+  scanOutBlockReason,
+  scanOutLabel,
+} from '@/lib/outbound/scan-out';
 import { productImageUrl } from '@/lib/photos/product-image-url';
-import { publishOrderChanged } from '@/lib/realtime/publish';
+import { publishActivityLogged, publishOrderChanged } from '@/lib/realtime/publish';
 
 function queueScanOutIdentificationCompleted(
   organizationId: string,
@@ -78,8 +83,17 @@ export const POST = withAuth(
     const requestedStaffId = parseScanOutStaffId(
       (body as { staffId?: unknown })?.staffId,
     );
+    const mobileScanEventId = Number.isSafeInteger(Number(body?.mobileScanEventId)) && Number(body.mobileScanEventId) > 0
+      ? Number(body.mobileScanEventId)
+      : null;
+    const phoneOrigin = await commitIsPhoneOrigin({
+      session: ctx.session,
+      organizationId: orgId,
+      staffId: ctx.staffId,
+      mobileScanEventId,
+    });
     let actorStaffId = ctx.staffId;
-    if (requestedStaffId != null && requestedStaffId !== ctx.staffId) {
+    if (!phoneOrigin && requestedStaffId != null && requestedStaffId !== ctx.staffId) {
       const staffRow = await tenantQuery(
         orgId,
         `SELECT id FROM staff WHERE id = $1 AND organization_id = $2 LIMIT 1`,
@@ -99,7 +113,18 @@ export const POST = withAuth(
       scan: raw,
       actorStaffId,
       createdAt,
-      origin: body?.source === 'desk-selection' ? 'desk-selection' : 'dock',
+      origin: phoneOrigin
+        ? 'phone'
+        : body?.source === 'desk-selection'
+          ? 'desk-selection'
+          : 'dock',
+      correlation: phoneOrigin
+        ? {
+            clientEventId: String(body?.clientEventId ?? '').trim() || null,
+            mobileScanEventId,
+            surface: String(body?.surface ?? '').trim() || `/m/id/scan-out/${encodeURIComponent(String(body?.orderId ?? ''))}`,
+          }
+        : undefined,
       auditRequest: { ctx, req },
     });
 
@@ -120,19 +145,28 @@ export const POST = withAuth(
             ...base,
             blocked: true,
             blockReason: result.blockReason,
-            message: 'Order is cancelled — do not ship. Pull this package.',
+            message: scanOutBlockedMessage(result.blockReason),
           }
-        : result.kind === 'already-delivered'
-          ? { ...base, alreadyDelivered: true, message: 'Already delivered — scan-out blocked' }
-          : result.kind === 'duplicate'
-            ? { ...base, duplicate: true, shipConfirmedAt: result.shipConfirmedAt }
-            : { ...base, duplicate: false, activityId: result.activityId };
+        : result.kind === 'duplicate'
+          ? { ...base, duplicate: true, shipConfirmedAt: result.shipConfirmedAt }
+          : { ...base, duplicate: false, activityId: result.activityId };
     queueScanOutIdentificationCompleted(
       orgId,
       result.kind === 'confirmed' ? actorStaffId : ctx.staffId,
       json,
       clientEventId,
     );
+    if (result.kind === 'confirmed' && result.activityId != null) {
+      await publishActivityLogged({
+        organizationId: orgId,
+        id: result.activityId,
+        station: 'OUTBOUND',
+        activityType: 'SHIP_CONFIRM',
+        staffId: actorStaffId,
+        scanRef: raw,
+        source: 'shipped-scan-out',
+      }).catch(() => {});
+    }
     return NextResponse.json(json);
   },
   { permission: 'shipping.mark_shipped' },
@@ -157,7 +191,7 @@ export const GET = withAuth(
                 o.quantity              AS quantity,
                 o.account_source        AS account_source,
                 o.status                AS order_status,
-                o.shipping_tracking_number AS tracking,
+                stn.tracking_number_raw AS tracking,
                 o.shipment_id           AS shipment_id,
                 sc.image_url            AS catalog_image_url,
                 zi.zoho_item_id         AS zoho_item_id,
@@ -173,8 +207,18 @@ export const GET = withAuth(
                    WHERE sal.activity_type = 'SHIP_CONFIRM'
                      AND sal.shipment_id = o.shipment_id
                      AND sal.organization_id = o.organization_id
-                ) AS already_confirmed
+                ) AS already_confirmed,
+                EXISTS (
+                  SELECT 1 FROM packer_logs pl
+                   WHERE pl.organization_id = o.organization_id
+                     AND pl.shipment_id = o.shipment_id
+                     AND pl.tracking_type = 'ORDERS'
+                     AND pl.completion_state = 'COMPLETED'
+                ) AS is_packed
            FROM orders o
+           LEFT JOIN shipping_tracking_numbers stn
+                  ON stn.id = o.shipment_id
+                 AND stn.organization_id = o.organization_id
            LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
            LEFT JOIN items zi
                   ON zi.sku = o.sku
@@ -204,7 +248,10 @@ export const GET = withAuth(
         });
       }
 
-      const blockReason = blockedOrderStatus(row.order_status);
+      const blockReason = scanOutBlockReason(
+        row.order_status,
+        row.is_packed === true || row.is_packed === 't',
+      );
       const blocked = blockReason != null;
       const alreadyConfirmed = row.already_confirmed === true || row.already_confirmed === 't';
       return NextResponse.json({
@@ -227,7 +274,7 @@ export const GET = withAuth(
         accountSource: (row.account_source as string | null) ?? null,
         imageUrl: scanOutImageUrl(row),
         orderStatus: (row.order_status as string | null) ?? null,
-        message: blocked ? 'Order is cancelled — do not ship. Pull this package.' : null,
+        message: blocked ? scanOutBlockedMessage(blockReason!) : null,
       });
     }
 

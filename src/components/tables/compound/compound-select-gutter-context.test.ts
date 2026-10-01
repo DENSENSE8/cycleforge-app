@@ -4,7 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { COMPOUND_TRACKS } from './compound-columns';
 import { renderCompoundGridCell } from './CompoundGridCell';
-import { SlotTableGroupFold, SlotTableGroupParentRow } from './SlotTableGroupParentRow';
+import { CompoundGroupFold, CompoundGroupParentRow } from './CompoundGroupParentRow';
 import type { CompoundRowView } from './compound-row-model';
 
 /** The CONTEXTUAL select gutter (operator 2026-09-15), asserted on the mounted cell rather than on the source: */
@@ -184,7 +184,7 @@ function paintParent(
   checked: boolean | 'mixed' = false,
 ): string {
   return renderToStaticMarkup(
-    React.createElement(SlotTableGroupParentRow, {
+    React.createElement(CompoundGroupParentRow, {
       identity: { kind: 'order', value: 'ORD-1', dot: null, href: null, platformLabel: null },
       carriers: [],
       boxCount: 2,
@@ -306,12 +306,12 @@ describe('a multi-line fold speaks with two soft marks', () => {
     // The 2026-09-14 "black and more visible" ruling is superseded:
     const html = renderToStaticMarkup(
       React.createElement(
-        SlotTableGroupFold,
+        CompoundGroupFold,
         { multi: true },
         React.createElement('div', null, 'leaves'),
       ),
     );
-    assert.match(html, /data-slot-table-fold-close/);
+    assert.match(html, /data-compound-group-fold-close/);
     assert.match(html, /bottom-0 z-sticky h-px bg-border-default/);
     assert.doesNotMatch(html, /h-px bg-text-default/);
   });
@@ -319,12 +319,12 @@ describe('a multi-line fold speaks with two soft marks', () => {
   it('never wraps a singleton in a fold close', () => {
     const html = renderToStaticMarkup(
       React.createElement(
-        SlotTableGroupFold,
+        CompoundGroupFold,
         { multi: false },
         React.createElement('div', null, 'one leaf'),
       ),
     );
-    assert.doesNotMatch(html, /data-slot-table-fold-close/);
+    assert.doesNotMatch(html, /data-compound-group-fold-close/);
   });
 });
 

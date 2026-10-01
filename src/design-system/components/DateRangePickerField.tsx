@@ -17,7 +17,7 @@ const DATE_RANGE_PICKER_VARIANTS = {
   range:
     'filter date range from-to period: presets + month grid + Clear/Apply; idle face includes the year; X clears',
   compact:
-    'ship-by due date single day in a cell: month grid only; click commits; no year; no X; face paints MMM d or -- unless the surface supplies faceLabel (slot-table ship-by paints its AGE); replace native input type=date',
+    'ship-by due date single day in a cell: month grid only; click commits; no year; no X; face paints MMM d or -- unless the surface supplies faceLabel (DataTable ship-by paints its AGE); replace native input type=date',
 } as const;
 
 type DateRangePickerVariant = keyof typeof DATE_RANGE_PICKER_VARIANTS;
@@ -57,7 +57,7 @@ type DateRangePickerCompactProps = SharedFieldProps & {
   /** Leading glyph. */
   leadingGlyph?: ComponentType<{ className?: string }>;
   /**
-   * Desk pointer: Chrome click glyph. Slot-table DATES opts in so hover rides
+   * Desk pointer: Chrome click glyph. DataTable DATES opts in so hover rides
    * MorphCursorLayer together with HoverTooltip's label chip.
    */
   clickCursor?: boolean;

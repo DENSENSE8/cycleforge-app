@@ -5,8 +5,8 @@
  */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import type { SlotTableFamily } from '@/lib/tables/slot-table-family';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
+import type { DataTableFamily } from '@/lib/tables/data-table-family';
 
 export const DAILY_FIELD_CATALOG: FieldCatalog = [
   {
@@ -20,7 +20,7 @@ export const DAILY_FIELD_CATALOG: FieldCatalog = [
   },
   // What the row is about — the structural title cell's own fact. Without it
   // the Item header would paint a title and click-sort nothing
-  // (`SLOT_TABLE_PAINT_LAW.headerSort`); `sku-bins.item` is the precedent.
+  // (`DATA_TABLE_PAINT_LAW.headerSort`); `sku-bins.item` is the precedent.
   {
     id: 'daily.title',
     family: 'daily',
@@ -137,19 +137,19 @@ export const DAILY_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default Daily layout — COMPOUND morph. */
-export const DAILY_PRODUCT_LAYOUT: SlotLayout = {
+export const DAILY_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'daily.item',
   statusBindings: [{ fieldId: 'daily.owner' }],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Daily entry. */
 export const DAILY_TABLE_LAYOUT_ID = 'daily';
 
-/** The family RECORD — `daily`'s whole slot-table registration, as DATA. */
-export const DAILY_FAMILY: SlotTableFamily = {
+/** The family RECORD — `daily`'s whole data-table registration, as DATA. */
+export const DAILY_FAMILY: DataTableFamily = {
   tableId: DAILY_TABLE_LAYOUT_ID,
   catalog: DAILY_FIELD_CATALOG,
   productLayout: DAILY_PRODUCT_LAYOUT,

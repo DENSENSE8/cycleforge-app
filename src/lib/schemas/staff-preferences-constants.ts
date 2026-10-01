@@ -59,7 +59,7 @@ export const DEFAULT_THEME: StaffTheme = 'light';
 
 /**
  * Scan-station skins — derived from the station-skin registry so a new skin
- * is valid here with zero schema edits. Industrial is the default (absence).
+ * is valid here with zero schema edits. Porcelain is the default (absence).
  */
 export const STAFF_STATION_SKINS = STATION_SKIN_NAMES;
 export type StaffStationSkin = StationSkinName;

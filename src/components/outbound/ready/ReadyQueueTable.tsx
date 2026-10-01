@@ -17,12 +17,10 @@ import { ReadyGridRow } from '@/components/outbound/ready/grid/ReadyGridRow';
 import {
   defaultDirForReadyColumn,
   isReadyColumnSortable,
-  readySheetColumnsFor,
   readySortFactFor,
   type ReadyGridColumn,
   type ReadyGridColumnKey,
 } from '@/components/outbound/ready/grid/ready-grid-layout';
-import { useReadyTableLayout } from '@/components/outbound/ready/grid/useReadyTableLayout';
 import {
   readyDestinationLabel,
   readyHitTitle,
@@ -91,9 +89,7 @@ export function ReadyQueueTable({
 }: ReadyQueueTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // The COLUMNS are the effective slot layout's materialization (staff ??
-  const { effectiveLayout, fields } = useReadyTableLayout();
-  const columns = useMemo(() => readySheetColumnsFor(effectiveLayout), [effectiveLayout]);
+  const columns = READY_TABLE_BINDING.columns;
   const sortFactByKey = useMemo(
     () => new Map(columns.map((c) => [c.key as string, readySortFactFor(c)])),
     [columns],
@@ -155,7 +151,6 @@ export function ReadyQueueTable({
       <DataTable<AllocationHit, ReadyGridColumnKey, ReadyGridColumn>
         binding={READY_TABLE_BINDING}
         columns={columns}
-        fields={fields}
         orderGroupsByDate={orderGroupsByDate}
         rows={hits}
         getRowId={(r) => String(r.testingResultId)}

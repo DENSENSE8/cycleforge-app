@@ -110,7 +110,7 @@ export interface CompoundRowView {
     kind: 'urgent' | 'attention';
     /** Solid background class for the 3px bar, from the family's SoT. */
     barClass: string;
-    /** Slow 1px traveler on `y`. Any slot-table family may set this. */
+    /** Slow 1px traveler on `y`. Any DataTable family may set this. */
     pulse?: boolean;
     /** Lighter fill for the 1px traveler. Required when `pulse`. */
     tickClass?: string;

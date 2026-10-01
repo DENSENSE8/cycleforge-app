@@ -7,11 +7,11 @@ interface Props {
   submitting: boolean;
   archiveSubmitting?: boolean;
   onClose: () => void;
-  /** `display` — Unbox Displays push: */
+  /** `display` — embedded host owns the heading. */
   chrome?: 'modal' | 'display';
 }
 
-/** Claim title chrome — modal only; Displays hosts omit this band. */
+/** Claim title chrome — modal only; embedded hosts omit this band. */
 export function ClaimModalHeader({
   row,
   submitting,

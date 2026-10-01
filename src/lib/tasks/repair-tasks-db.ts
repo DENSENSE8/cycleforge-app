@@ -81,11 +81,17 @@ function repairTaskSyncDeps(orgId: OrgId, repairId: number | null): RepairTaskSy
         status: string | null;
         issue: string | null;
         picked_up: boolean;
+        helpdesk_ticket_number: string | null;
       }>(
         orgId,
         `SELECT rs.id, rs.ticket_number, rs.product_title, rs.status, rs.issue,
-                rs.pickup_signed_at IS NOT NULL AS picked_up
+                rs.pickup_signed_at IS NOT NULL AS picked_up,
+                st.external_ticket_id AS helpdesk_ticket_number
            FROM repair_service rs
+           LEFT JOIN support_tickets st
+             ON st.organization_id = rs.organization_id
+            -- A leading hash on the slip ('#9977') is the counter's spelling of the same number.
+            AND st.external_ticket_id = regexp_replace(rs.ticket_number, '^#', '')
           WHERE rs.organization_id = $1::uuid
             AND ($2::int IS NULL OR rs.id = $2)
             AND (${repairOpenSql('rs')}
@@ -105,6 +111,7 @@ function repairTaskSyncDeps(orgId: OrgId, repairId: number | null): RepairTaskSy
         status: row.status,
         issue: row.issue,
         pickedUp: row.picked_up,
+        helpdeskTicketNumber: /^\d+$/.test(row.helpdesk_ticket_number ?? '') ? row.helpdesk_ticket_number : null,
       }));
     },
 
@@ -115,9 +122,15 @@ function repairTaskSyncDeps(orgId: OrgId, repairId: number | null): RepairTaskSy
         status: string;
         notes: string | null;
         closed_by_sync: boolean;
+        has_ticket_link: boolean;
       }>(
         orgId,
         `SELECT wa.id AS task_id, l.entity_id AS repair_id, wa.status::text AS status, wa.notes,
+                EXISTS (SELECT 1
+                          FROM work_assignment_links tl
+                         WHERE tl.organization_id = l.organization_id
+                           AND tl.assignment_id = wa.id
+                           AND tl.entity_type = 'SUPPORT_TICKET') AS has_ticket_link,
                 COALESCE(last_status.source = $3, false) AS closed_by_sync
            FROM work_assignment_links l
            JOIN work_assignments wa
@@ -150,6 +163,7 @@ function repairTaskSyncDeps(orgId: OrgId, repairId: number | null): RepairTaskSy
           status: row.status,
           note: row.notes,
           closedBySync: row.closed_by_sync,
+          hasTicketLink: row.has_ticket_link,
         });
       }
       return tasks;
@@ -206,6 +220,36 @@ function repairTaskSyncDeps(orgId: OrgId, repairId: number | null): RepairTaskSy
           entityId: result.task.id,
           after: { linkId: link.link.id, entityId: link.link.entityId },
           extra: { kind: link.link.kind, label: link.link.label, repairId: action.repairId },
+        });
+      }
+      if (action.ticketNumber != null) {
+        const ticket = await createTaskLink(orgId, null, result.task.id, { kind: 'ticket', value: action.ticketNumber });
+        if (ticket.ok && ticket.created) {
+          await audit({
+            action: AUDIT_ACTION.WORK_TASK_LINK_ADD,
+            entityType: AUDIT_ENTITY.WORK_ASSIGNMENT,
+            entityId: result.task.id,
+            after: { linkId: ticket.link.id, entityId: ticket.link.entityId },
+            extra: { kind: ticket.link.kind, label: ticket.link.label, repairId: action.repairId },
+          });
+        }
+      }
+      return true;
+    },
+
+    async linkTicket(action) {
+      const ticket = await createTaskLink(orgId, null, action.taskId, { kind: 'ticket', value: action.ticketNumber });
+      if (!ticket.ok) {
+        console.warn(`[repair-tasks] org ${orgId} task ${action.taskId}: ticket link refused (${ticket.reason})`);
+        return false;
+      }
+      if (ticket.created) {
+        await audit({
+          action: AUDIT_ACTION.WORK_TASK_LINK_ADD,
+          entityType: AUDIT_ENTITY.WORK_ASSIGNMENT,
+          entityId: action.taskId,
+          after: { linkId: ticket.link.id, entityId: ticket.link.entityId },
+          extra: { kind: ticket.link.kind, label: ticket.link.label, repairId: action.repairId },
         });
       }
       return true;

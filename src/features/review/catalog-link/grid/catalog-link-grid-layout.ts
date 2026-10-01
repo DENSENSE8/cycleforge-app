@@ -10,8 +10,8 @@ import {
   CATALOG_LINK_FIELD_CATALOG,
   CATALOG_LINK_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/catalog-link';
-import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
@@ -36,33 +36,27 @@ export type CatalogLinkGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-export interface CatalogLinkGridColumn extends SlotTrackFields {
-  key: CatalogLinkGridColumnKey;
-  width: string;
-  label?: string;
-  gridLabel?: string;
-  labelFitRem?: number;
-  type?: ColumnType;
-  dateFace?: 'day' | 'stamp' | 'duration';
-  align?: 'start' | 'end';
-  frozen?: boolean;
-  sortable?: boolean;
-  hideKey?: string;
-  tier?: 'core' | 'optional';
-  resizable?: boolean;
-  omitCellIcon?: boolean;
-}
+export interface CatalogLinkGridColumn extends DataTableColumnFields { key: CatalogLinkGridColumnKey;
+width: string;
+label?: string;
+gridLabel?: string;
+labelFitRem?: number;
+type?: ColumnType;
+dateFace?: 'day' | 'stamp' | 'duration';
+align?: 'start' | 'end';
+frozen?: boolean;
+sortable?: boolean;
+hideKey?: string;
+tier?: 'core' | 'optional';
+resizable?: boolean;
+omitCellIcon?: boolean; }
 
 /** Canonical Listing match columns, in scan order. */
-export function catalogLinkCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly CatalogLinkGridColumn[] {
-  return materializeTracks<CatalogLinkGridColumn>({
-    layout,
-    catalog: CATALOG_LINK_FIELD_CATALOG,
-    base: compoundColumnsFor<CatalogLinkGridColumn>(),
-  });
-}
+export function catalogLinkCompoundColumnsFor(layout: DataTableColumnLayout): readonly CatalogLinkGridColumn[] { return materializeTracks<CatalogLinkGridColumn>({
+  layout,
+  catalog: CATALOG_LINK_FIELD_CATALOG,
+  base: compoundColumnsFor<CatalogLinkGridColumn>(),
+}); }
 
 /** The PRODUCT-DEFAULT materialization — what an org with no override mounts. */
 export const CATALOG_LINK_COMPOUND_COLUMNS: readonly CatalogLinkGridColumn[] =

@@ -14,13 +14,6 @@ test('Law 3: a shared part comparing the route or a view key is flagged; buildin
   assert.deepEqual(laws('src/app/shipping/page.tsx', "if (pathname === '/x') redirect('/y');"), []);
 });
 
-test('Law 4: an industrial hide variant is flagged anywhere; an industrial restyle is not', () => {
-  assert.deepEqual(laws('src/features/a/B.tsx', `<div className="industrial:hidden" />`), [4]);
-  assert.deepEqual(laws('src/features/a/B.tsx', `<div className="industrial:invisible" />`), [4]);
-  assert.deepEqual(laws('src/features/a/B.tsx', `<div className="industrial:p-0 industrial:font-mono" />`), []);
-  assert.deepEqual(laws('src/features/a/B.test.tsx', `<div className="industrial:hidden" />`), []);
-});
-
 test('Law 5: hand-rolled money and dates in outbound / receiving components are flagged; comments are not', () => {
   const part = 'src/components/outbound/orders/X.tsx';
   assert.deepEqual(laws(part, 'const face = `$${total.toFixed(2)}`;'), [5]);
@@ -32,18 +25,18 @@ test('Law 5: hand-rolled money and dates in outbound / receiving components are 
 });
 
 test('the allowlist is a burn-down: allowlisted hits pass, a new file fails, a cleaned file goes stale', () => {
-  const [law4File] = Object.keys(LAYER_LAW_ALLOWLIST[4]);
+  const [law3File] = Object.keys(LAYER_LAW_ALLOWLIST[3]);
   const hits = [
-    { law: 4 as const, file: law4File!, line: 1, text: 'industrial:hidden' },
-    { law: 4 as const, file: 'src/components/new/Fresh.tsx', line: 3, text: 'industrial:hidden' },
+    { law: 3 as const, file: law3File!, line: 1, text: 'viewKey === "shipping.shipped"' },
+    { law: 3 as const, file: 'src/design-system/components/Fresh.tsx', line: 3, text: 'pathname === "/x"' },
   ];
   const { violations, allowed, stale } = judgeLayerLaws(hits);
-  assert.deepEqual(violations.map((v) => v.file), ['src/components/new/Fresh.tsx']);
-  assert.deepEqual(allowed.map((v) => v.file), [law4File]);
+  assert.deepEqual(violations.map((v) => v.file), ['src/design-system/components/Fresh.tsx']);
+  assert.deepEqual(allowed.map((v) => v.file), [law3File]);
   // Every OTHER allowlisted file had no hit in this run, so each is reported stale.
-  const expectedStale = ([3, 4, 5] as const).flatMap((law) =>
-    Object.keys(LAYER_LAW_ALLOWLIST[law]).filter((f) => !(law === 4 && f === law4File)),
+  const expectedStale = ([3, 5] as const).flatMap((law) =>
+    Object.keys(LAYER_LAW_ALLOWLIST[law]).filter((f) => !(law === 3 && f === law3File)),
   );
   assert.equal(stale.length, expectedStale.length);
-  assert.ok(!stale.some((s) => s.law === 4 && s.file === law4File));
+  assert.ok(!stale.some((s) => s.law === 3 && s.file === law3File));
 });

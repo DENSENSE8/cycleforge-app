@@ -1,7 +1,7 @@
 /** Import-exception field catalog — the bindable missing-item-number facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const IMPORT_EXCEPTION_FIELD_CATALOG: FieldCatalog = [
   {
@@ -71,13 +71,13 @@ export const IMPORT_EXCEPTION_FIELD_CATALOG: FieldCatalog = [
  * which is byte-for-byte what the queue paints today. Reproduce, then improve.
  * Guard: `import-exception.test.ts` parses this against the catalog.
  */
-export const IMPORT_EXCEPTION_PRODUCT_LAYOUT: SlotLayout = {
+export const IMPORT_EXCEPTION_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'import-exception.order',
   statusBindings: [],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — Review · Missing item number. */
 export const IMPORT_EXCEPTION_TABLE_LAYOUT_ID = 'import-exception';

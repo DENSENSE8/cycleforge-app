@@ -81,7 +81,7 @@ export const DETAIL_STACK_PUSH_COLUMN_CLASS = cn(
 export const DETAIL_STACK_PUSH_STRIP_CLASS =
   'relative flex h-full w-8 shrink-0 flex-col items-center border-l border-border-soft bg-surface-card pt-3';
 
-/** Right-rail **industrial flush** body host (Cybertruck / WMS instrument plane). */
+/** Right-rail flush body host. */
 export const DISPLAYS_FLUSH_HOST = cn(
   'flex h-full min-h-0 flex-col overflow-hidden px-0 pt-0',
 );

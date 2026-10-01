@@ -1,12 +1,12 @@
 /** Dead-stock report field catalog — the bindable facts of ONE dormant-SKU row (90 days or more without a ledger write). */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 export const REPORT_DEAD_STOCK_FIELD_CATALOG: FieldCatalog = [
   /**
-   * The IDENTITY fact. `displayType: 'id'` is what `parseSlotLayout` requires
-   * of an identity, and it is what makes the fulfillment cell paint an ID face
+   * The IDENTITY fact. `displayType: 'id'` is required for an identity and
+   * makes the fulfillment cell paint an ID face
    * rather than prose.
    */
   {
@@ -53,13 +53,13 @@ export const REPORT_DEAD_STOCK_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default: */
-export const REPORT_DEAD_STOCK_PRODUCT_LAYOUT: SlotLayout = {
+export const REPORT_DEAD_STOCK_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'report-dead-stock.sku',
   statusBindings: [{ fieldId: 'report-dead-stock.stock' }],
   subtitleBindings: [],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Dead stock entry. */
 export const REPORT_DEAD_STOCK_TABLE_LAYOUT_ID = 'report-dead-stock';

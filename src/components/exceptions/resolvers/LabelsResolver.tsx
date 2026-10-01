@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
-import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { useResolveLabelsException } from '@/hooks/exceptions';
 import type { LabelsExceptionFacts } from '@/lib/exceptions/facts';
 import type { ExceptionRow } from '@/lib/exceptions/types';

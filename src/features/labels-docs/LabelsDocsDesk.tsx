@@ -11,7 +11,7 @@
  *
  * A print-job view prints ONLY its own stock; the explicit "Print order
  * (labels + paperwork)" verb and the both-stocks bulk verbs still split by
- * station. Triage only: one job, so no Floor and no industrial face.
+ * station. Triage only: one job and one readable face.
  *
  * The HOST of the desk family on the shared triage face ({@link TriageCardList}):
  * the Shipping desk frame and contextual sidebar own the title, the views
@@ -23,9 +23,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Layers, Printer, RotateCcw } from '@/components/Icons';
+import { Layers, Printer, RotateCcw, Truck, Upload } from '@/components/Icons';
 import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
@@ -36,7 +36,7 @@ import { triageFamily } from '@/design-system/components/triage-card-list/triage
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { Button } from '@/design-system/primitives';
 import { HOTKEY_SCRIM_HOST_CLASS, HotkeyScrim } from '@/design-system/primitives/HotkeyScrim';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { usePrintStations } from '@/hooks/usePrintStations';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
@@ -130,6 +130,7 @@ export function LabelsDocsDesk() {
 
 function PrintQueueDesk({ view }: { view: LabelPrintView }) {
   const pathname = usePathname() || '/';
+  const router = useRouter();
   const apple = useApplePlatform();
   const labelPicker = useRef<HTMLInputElement>(null);
   const slipPicker = useRef<HTMLInputElement>(null);
@@ -617,6 +618,29 @@ function PrintQueueDesk({ view }: { view: LabelPrintView }) {
       }
       aside={
         <div className="flex min-w-0 flex-col gap-4" data-testid="print-rail">
+          {activeLabel ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              radius="control"
+              icon={<Upload />}
+              onClick={openLabelPicker}
+              data-testid="labels-docs-upload-inline"
+            >
+              Upload label PDF
+            </Button>
+          ) : (
+            <Button
+              variant="ink"
+              size="sm"
+              radius="control"
+              icon={<Truck />}
+              onClick={() => router.push('/shipping/buy-label')}
+              data-testid="labels-docs-buy-label"
+            >
+              Buy label
+            </Button>
+          )}
           {view === 'labels' && orderId != null ? (
             <Button
               variant="secondary"

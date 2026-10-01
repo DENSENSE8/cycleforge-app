@@ -2,11 +2,11 @@
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
-  defaultDirForSlotTableColumn,
-  isSlotTableColumnSortable,
-  slotTableColumnsFor,
-  type SlotTableColumn,
-} from '@/components/tables/compound/slot-table-columns';
+  defaultDirForDataTableCompoundColumn,
+  isDataTableCompoundColumnSortable,
+  dataTableCompoundColumnsFor,
+  type DataTableCompoundColumn,
+} from '@/components/tables/compound/data-table-compound-columns';
 import {
   makeGridSurfaceDescriptor,
   type GridSurfaceCapabilities,
@@ -17,7 +17,7 @@ import { DAILY_FAMILY, DAILY_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/d
 import type { DailyAgendaRow } from '@/lib/daily/daily-agenda-row';
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
-export const DAILY_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColumnsFor(
+export const DAILY_COMPOUND_COLUMNS: readonly DataTableCompoundColumn[] = dataTableCompoundColumnsFor(
   DAILY_FAMILY,
   DAILY_PRODUCT_LAYOUT,
 );
@@ -27,21 +27,20 @@ const DAILY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
   inCellEdit: false,
-  fieldsMenu: true,
   dayBands: false,
 };
 
 /** Build the descriptor from a RESOLVED column list (post-visibility), so a header's sortability is answered against the tracks actually… */
 function makeDailyGridDescriptor(
-  columns: readonly SlotTableColumn[],
-): GridSurfaceDescriptor<DailyAgendaRow, SlotTableColumn> {
-  return makeGridSurfaceDescriptor<DailyAgendaRow, SlotTableColumn>(
+  columns: readonly DataTableCompoundColumn[],
+): GridSurfaceDescriptor<DailyAgendaRow, DataTableCompoundColumn> {
+  return makeGridSurfaceDescriptor<DailyAgendaRow, DataTableCompoundColumn>(
     'home.daily',
     columns,
     {
-      isSortable: (key) => isSlotTableColumnSortable(DAILY_FAMILY, columns, key),
+      isSortable: (key) => isDataTableCompoundColumnSortable(DAILY_FAMILY, columns, key),
       sortDescFirst: (key) =>
-        defaultDirForSlotTableColumn(DAILY_FAMILY, columns, key) === 'desc',
+        defaultDirForDataTableCompoundColumn(DAILY_FAMILY, columns, key) === 'desc',
     },
     DAILY_GRID_CAPABILITIES,
   );
@@ -64,7 +63,7 @@ const DAILY_TABLE_DEFINITION = parseTableDefinition({
   columns: DAILY_COMPOUND_COLUMNS,
 });
 
-export const DAILY_TABLE_BINDING: TableSurfaceBinding<DailyAgendaRow, SlotTableColumn> = {
+export const DAILY_TABLE_BINDING: TableSurfaceBinding<DailyAgendaRow, DataTableCompoundColumn> = {
   definition: DAILY_TABLE_DEFINITION,
   columns: DAILY_COMPOUND_COLUMNS,
   makeDescriptor: makeDailyGridDescriptor,

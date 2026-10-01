@@ -2,7 +2,7 @@
 
 **Route:** `/shipping`
 
-Run: `pnpm run eval:station shipping` · Display SoT: `pnpm run eval:cohort slot-table`
+Run: `pnpm run eval:station shipping`
 
 ---
 

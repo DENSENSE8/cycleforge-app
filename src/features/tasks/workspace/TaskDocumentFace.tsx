@@ -8,7 +8,7 @@
 
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import { cn } from '@/utils/_cn';
 import { useTaskDocument } from '@/lib/tasks/use-task-workspace';
 

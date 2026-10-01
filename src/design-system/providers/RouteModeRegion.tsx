@@ -19,11 +19,11 @@ export function RouteModeRegion({ children }: { children: ReactNode }) {
   // `contents`: the region stamps `data-mode` and its vars without adding a
   // box between the frame's flex slot and the page.
   return entry.look ? (
-    <ModeRegion look={entry.look} form={entry.form === true} className="contents">
+    <ModeRegion look={entry.look} className="contents">
       {children}
     </ModeRegion>
   ) : (
-    <ModeRegion mode={entry.mode} form={entry.form === true} className="contents">
+    <ModeRegion mode={entry.mode} className="contents">
       {children}
     </ModeRegion>
   );
@@ -41,11 +41,11 @@ export function ChromeModeRegion({ children }: { children: ReactNode }) {
   const mode = entry?.mode ?? 'triage';
   const look = entry?.look;
   return look ? (
-    <ModeRegion look={look} form={entry?.form === true} className="contents">
+    <ModeRegion look={look} className="contents">
       {children}
     </ModeRegion>
   ) : (
-    <ModeRegion mode={mode} form={entry?.form === true} className="contents">
+    <ModeRegion mode={mode} className="contents">
       {children}
     </ModeRegion>
   );

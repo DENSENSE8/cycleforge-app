@@ -25,6 +25,9 @@ import { parseBody } from '@/lib/schemas/parse';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { errorResponse } from '@/lib/api';
 import { executeWmsPutawayAdjust } from '@/lib/realtime/wms-putaway-adjust';
+import { verifyLocationScanProof } from '@/lib/inventory/location-scan-proof';
+import { tenantQuery } from '@/lib/tenancy/db';
+import { photoContentUrl } from '@/lib/photos/display-url';
 
 const ROUTE_LOCATION_PATCH = 'locations.barcode.patch';
 
@@ -57,6 +60,39 @@ export async function GET(
       );
     }
 
+    // A location is an address. LPNs are movable containers parked at it and
+    // must remain distinct from fungible SKU counts. Read both through this one
+    // location projection so mobile and desktop cannot invent different stock.
+    const handlingUnits = await tenantQuery<{
+      id: number;
+      code: string;
+      status: 'OPEN' | 'STAGED' | 'IN_TEST' | 'CLOSED';
+      created_at: string;
+      paired_order_id: number | null;
+      total_units: number;
+      tested_units: number;
+      hold_units: number;
+    }>(orgId, `
+      SELECT hu.id,
+             hu.code,
+             hu.status,
+             hu.created_at::text AS created_at,
+             hu.paired_order_id,
+             COUNT(su.id)::int AS total_units,
+             COUNT(su.id) FILTER (
+               WHERE COALESCE(su.current_status::text, 'UNKNOWN') NOT IN ('UNKNOWN', 'RECEIVED')
+             )::int AS tested_units,
+             COUNT(su.id) FILTER (WHERE su.current_status::text = 'ON_HOLD')::int AS hold_units
+        FROM handling_units hu
+        LEFT JOIN serial_units su
+          ON su.handling_unit_id = hu.id
+         AND su.organization_id = hu.organization_id
+       WHERE hu.organization_id = $1
+         AND hu.location_id = $2
+       GROUP BY hu.id, hu.code, hu.status, hu.created_at, hu.paired_order_id
+       ORDER BY hu.created_at DESC, hu.id DESC
+    `, [orgId, result.location.id]);
+
     return NextResponse.json({
       location: {
         id: result.location.id,
@@ -70,15 +106,30 @@ export async function GET(
       },
       contents: result.contents.map((c: any) => ({
         id: c.id,
+        stockId: c.stock_id == null ? null : Number(c.stock_id),
         sku: c.sku,
         qty: c.qty,
         minQty: c.min_qty,
         maxQty: c.max_qty,
         lastCounted: c.last_counted,
         productTitle: c.product_title,
+        isProvisional: Boolean(c.is_provisional),
         displayNameOverride: c.display_name_override ?? null,
+        imageUrl: c.cover_photo_id != null
+          ? photoContentUrl(Number(c.cover_photo_id), 'thumb')
+          : c.catalog_image_url ?? null,
         // Version token for optimistic concurrency on `set` action.
         updatedAt: c.updated_at,
+      })),
+      handlingUnits: handlingUnits.rows.map((unit) => ({
+        id: Number(unit.id),
+        code: unit.code,
+        status: unit.status,
+        totalUnits: Number(unit.total_units) || 0,
+        testedUnits: Number(unit.tested_units) || 0,
+        holdUnits: Number(unit.hold_units) || 0,
+        pairedOrderId: unit.paired_order_id == null ? null : Number(unit.paired_order_id),
+        createdAt: unit.created_at,
       })),
     });
   } catch (err: any) {
@@ -126,6 +177,7 @@ export async function PATCH(
       minQty,
       maxQty,
       expectedUpdatedAt,
+      locationVerificationToken,
     } = body as {
       action: 'take' | 'put' | 'set' | 'count';
       sku?: string;
@@ -140,6 +192,7 @@ export async function PATCH(
       notes?: string;
       minQty?: number;
       maxQty?: number;
+      locationVerificationToken?: string;
     };
 
     if (!sku?.trim()) {
@@ -170,6 +223,17 @@ export async function PATCH(
     const trimmedSku = sku.trim();
 
     if ((action === 'take' || action === 'put') && typeof qty === 'number' && qty > 0) {
+      try {
+        verifyLocationScanProof(String(locationVerificationToken ?? ''), {
+          organizationId: orgId,
+          staffId: effectiveStaffId,
+          locationCode: code,
+        });
+      } catch (error) {
+        return NextResponse.json({
+          error: error instanceof Error ? error.message : 'Scan this location again to edit stock.',
+        }, { status: 403 });
+      }
       if (!idempotencyKey) {
         return NextResponse.json({ error: 'Idempotency-Key is required' }, { status: 400 });
       }
@@ -264,15 +328,14 @@ export async function PATCH(
         maxQty: maxQty ?? null,
       }, idempotencyOrgId);
       await recordAudit(pool, ctx, request, {
-        source: 'mobile-scanner',
+        source: 'inventory-count',
         action: AUDIT_ACTION.SKU_STOCK_ADJUST,
         entityType: AUDIT_ENTITY.BIN,
         entityId: loc.id,
         after: { qty, min_qty: minQty ?? null, max_qty: maxQty ?? null },
         binCode,
         locationCode: binLabel,
-        scanRef: code,
-        method: 'scan',
+        method: 'manual',
         reasonCode: reason || 'SET',
         note: notes ?? null,
         actorStaffIdOverride: effectiveStaffId,

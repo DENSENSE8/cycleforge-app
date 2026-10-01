@@ -13,7 +13,6 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import { TextField } from '@/design-system/primitives/TextField';
 import { Check, Type, X } from '@/components/Icons';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
-import { useKeyboard } from '@/hooks/useKeyboard';
 import { MobileCameraPanel } from './MobileCameraPanel';
 
 /** How long the same code is ignored after a read. */
@@ -83,10 +82,6 @@ export function MobileCaptureWindow({
   const [open, setOpen] = useState(initiallyArmed);
   /** The keyed fallback, for a label the lens cannot read. */
   const [manualOpen, setManualOpen] = useState(false);
-  // Threshold under the default 150: IP-address / remote-devtools phones often
-  // report a smaller inset while the OS keyboard is already covering the panel.
-  const { keyboardHeight } = useKeyboard({ threshold: 80 });
-
   // Each external re-arm request lifts the panel. A no-op when it is already
   // up — the lens was never interrupted.
   useEffect(() => {
@@ -188,10 +183,7 @@ export function MobileCaptureWindow({
   }, [manualOpen, dismissManual]);
 
   return (
-    <div
-      className="shrink-0"
-      style={manualOpen ? { marginBottom: keyboardHeight } : undefined}
-    >
+    <div className="shrink-0">
       <MobileCameraPanel
         label={label}
         collapsedLabel={collapsedLabel}

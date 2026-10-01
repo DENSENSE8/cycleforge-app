@@ -13,7 +13,7 @@ import {
   INVENTORY_EVENTS_PRODUCT_LAYOUT,
 } from './inventory-events';
 import { resolveInventoryEventsSlotValue } from './inventory-events-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function row(overrides: Partial<PulseEventRow> = {}): PulseEventRow {
   return {
@@ -56,10 +56,7 @@ describe('inventory-events catalog', () => {
   });
 
   it('product default parses against the catalog (compound morph; the full set bound)', () => {
-    const parsed = parseSlotLayout(
-      INVENTORY_EVENTS_PRODUCT_LAYOUT,
-      INVENTORY_EVENTS_FIELD_CATALOG,
-    );
+    const parsed = INVENTORY_EVENTS_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'inventory-events.sku');
     assert.equal(parsed.statusBindings.length, 5);

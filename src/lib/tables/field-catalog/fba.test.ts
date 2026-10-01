@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import type { FbaBoardItem } from '@/lib/fba/types';
 import { FBA_FIELD_CATALOG, FBA_PRODUCT_LAYOUT } from './fba';
 import { resolveFbaSlotValue } from './fba-resolve';
-import { parseSlotLayout } from '../slot-layout';
+
 
 function item(overrides: Partial<FbaBoardItem> = {}): FbaBoardItem {
   return {
@@ -41,7 +41,7 @@ describe('fba catalog', () => {
   });
 
   it('product default parses against the catalog (sheet morph; asin identity)', () => {
-    const parsed = parseSlotLayout(FBA_PRODUCT_LAYOUT, FBA_FIELD_CATALOG);
+    const parsed = FBA_PRODUCT_LAYOUT;
     assert.equal(parsed.morph, 'sheet');
     assert.equal(parsed.identityFieldId, 'fba.asin');
     assert.deepEqual(parsed.subtitleBindings, [

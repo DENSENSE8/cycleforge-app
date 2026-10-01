@@ -350,7 +350,7 @@ function buildKioskHistoryQuery(args: {
         visitProbes.push(...customerName);
         repairProbes.push(
           ...customerName,
-          // The repair table searches the ticket's own text, and so does this:
+          // The repair cards search the ticket's own text, and so does this:
           // "Bose Wave" is how an operator finds a drop-off whose owner they
           // cannot spell.
           `COALESCE(rs.contact_info, '') ILIKE ${q}`,

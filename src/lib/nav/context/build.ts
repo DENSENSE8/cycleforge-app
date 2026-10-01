@@ -237,10 +237,6 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
   const sections: NavSection[] = [];
   const topItems = rows.filter(isSpineMapTopRow).map(toItem).filter((item): item is NavItem => item !== null);
   if (topItems.length > 0) sections.push({ id: 'top', items: topItems });
-  const orderableTopItems = rows
-    .filter((row) => row.kind === 'top' && row.spineOrderable === true && row.spineBottom !== true)
-    .map(toItem)
-    .filter((item): item is NavItem => item !== null);
   const bottomItems = rows
     .filter((row) => row.kind === 'top' && row.spineBottom === true)
     .map(toItem)
@@ -278,7 +274,6 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
   };
   SPINE_SECTIONS.filter((lane) => isStationLane(lane.id)).forEach(appendLane);
   SPINE_SECTIONS.filter((lane) => businessLaneIds.has(lane.id)).forEach(appendLane);
-  if (orderableTopItems.length > 0) sections.push({ id: 'ordered-top', items: orderableTopItems });
   SPINE_SECTIONS.filter(
     (lane) => !businessLaneIds.has(lane.id) && !isStationLane(lane.id),
   ).forEach(appendLane);
@@ -374,22 +369,23 @@ function surfaceFor(pageId: string, activeId: string | null): NavSurfaceDecl {
   return { ...pageDecl, ...(activeId ? items?.[activeId] : undefined) };
 }
 
+const FULFILLED_PAGE_ID = 'fulfilled';
+const SHIPPED_FACET_CONTEXT = 'outbound.shipped';
+
 function searchFor(
   pageId: string,
   activeId: string | null,
   decl: NavSurfaceDecl,
   permissions: ReadonlySet<string>,
 ): NavSearch {
-  const scope = activeId ? `${pageId}.${activeId}` : pageId;
+  // The archive keeps the packer-log contract (`outbound.shipped`) even though
+  // it is its own page. A fresh scope would split the desk store and the facet counts.
+  const scope = pageId === FULFILLED_PAGE_ID ? SHIPPED_FACET_CONTEXT : activeId ? `${pageId}.${activeId}` : pageId;
   const deskView = DESK_VIEWS.find((view) => pageId === SHIPPING_PAGE_ID && view.id === activeId);
-  // The Shipping box is the in-memory desk store, keyed by the view's pathname
-  // (`useDeskSearch`) — it writes no URL param, so none is advertised. A pasted
-  // list is located across the desk's views (`GET /api/nav/locate`), offered
-  // only to a caller who can read the desk's lists.
-  if (deskView) {
+  if (pageId === FULFILLED_PAGE_ID || deskView) {
     return {
       scope,
-      placeholder: deskView.searchScope,
+      placeholder: pageId === FULFILLED_PAGE_ID ? 'Search shipments' : deskView!.searchScope,
       source: 'desk-store',
       ...(permissions.has(OUTBOUND_LOCATE_PERMISSION) ? { locate: { ...OUTBOUND_LOCATE } } : {}),
     };
@@ -429,7 +425,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   viewPathnames.add(pathname);
 
   const decl = surfaceFor(pageId, activeId);
-  const facetContext = activeId ? `${pageId}.${activeId}` : pageId;
+  const facetContext = pageId === FULFILLED_PAGE_ID ? SHIPPED_FACET_CONTEXT : activeId ? `${pageId}.${activeId}` : pageId;
   const actions = (decl.actions ?? [])
     .filter((entry) => !entry.requires || permissions.has(entry.requires))
     .map((entry) => entry.action);

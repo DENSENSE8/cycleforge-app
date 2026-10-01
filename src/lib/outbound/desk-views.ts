@@ -50,9 +50,10 @@ export interface DeskView {
 export const DESK_PAIR_PARAM = 'pair';
 
 /**
- * Paint order (owner 2026-09-29): Allocate · Exceptions · Shipped. Allocate
- * leads because it is where FBM lands — "the landing page for FBM should be
- * Allocate and the first thing the user drops onto when they click FBM".
+ * Paint order (owner 2026-09-29): Allocate · Exceptions. Allocate leads because
+ * it is where FBM lands. Fulfilled is its own L1 (`id: 'fulfilled'`), not a
+ * child of this list — the archive view stays here so identify and locate can
+ * still open a package, but it is not painted under FBM.
  */
 export const DESK_VIEWS: readonly DeskView[] = [
   {
@@ -82,14 +83,13 @@ export const DESK_VIEWS: readonly DeskView[] = [
   },
   {
     id: 'shipped',
-    label: 'Shipped',
+    label: 'Fulfilled',
     navChild: 'shipped',
     rows: 'shipments',
     pathname: SHIPPING_SHIPPED_PATH,
-    // FBM's Shipped is merchant-fulfilled only (owner 2026-09-28): FBA prep
-    // shipments live in FBA › Shipped, so the list, its counts and the URL all
-    // carry `shippedFilter=orders` (the `orders-queries` non-FBA predicate).
-    params: { shippedFilter: 'orders' },
+    // Parent list is every package that left. Saved views (Online, FBA, SKU)
+    // are the type facet, not a second desk.
+    params: { shippedFilter: 'all' },
     recordParam: 'openOrderId',
     // `packing.view` because the archive IS the packer log: `/api/packerlogs`
     // already enforces it, and a view that 403s is worse than an absent one.
@@ -98,6 +98,9 @@ export const DESK_VIEWS: readonly DeskView[] = [
     searchScope: 'Search shipments',
   },
 ];
+
+/** FBM's painted children. The archive view is not one of them. */
+export const FBM_PAINTED_VIEWS: readonly DeskView[] = DESK_VIEWS.filter((view) => view.id !== 'shipped');
 
 /** View ids in paint order. */
 export const DESK_VIEW_ORDER: readonly DeskViewId[] = DESK_VIEWS.map((view) => view.id);

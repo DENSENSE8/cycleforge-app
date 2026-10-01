@@ -9,13 +9,9 @@ import {
   type CompoundSpreadsheetFeed,
 } from '@/components/tables/useCompoundSpreadsheet';
 import {
-  slotTableColumnsFor,
-  slotTableSortFactFor,
-  type SlotTableColumn,
-  type SlotTableColumnKey,
-} from '@/components/tables/compound/slot-table-columns';
-import { useSlotTableLayout } from '@/components/tables/useSlotTableLayout';
-import { REPORT_TASKS_FAMILY } from '@/lib/tables/field-catalog/report-tasks';
+  type DataTableCompoundColumn,
+  type DataTableCompoundColumnKey,
+} from '@/components/tables/compound/data-table-compound-columns';
 import { resolveReportTasksSlotValue } from '@/lib/tables/field-catalog/report-tasks-resolve';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { reportTasksCompoundView } from './report-tasks-row-view';
@@ -23,6 +19,15 @@ import {
   REPORT_TASKS_GRID_CAPABILITIES,
   REPORT_TASKS_TABLE_BINDING,
 } from './report-tasks-table-definition';
+
+function reportTasksSortFact(col: { key: string; fieldId?: string; sortable?: boolean }): string | null {
+  if (col.sortable === false) return null;
+  if (col.key === 'fulfillment') return 'report-tasks.id';
+  if (col.key === 'item') return 'report-tasks.note';
+  if (col.key === 'dates') return 'report-tasks.completed';
+  if (col.key === 'state') return 'report-tasks.status';
+  return col.fieldId ?? null;
+}
 
 interface UseReportTasksSpreadsheetOptions {
   /** One page of finished tasks, already in desk order; a header click re-orders it. */
@@ -50,19 +55,14 @@ export function useReportTasksSpreadsheet({
   searchPending = false,
 }: UseReportTasksSpreadsheetOptions): CompoundSpreadsheetFeed<
   TaskDeskRow,
-  SlotTableColumnKey,
-  SlotTableColumn
+  DataTableCompoundColumnKey,
+  DataTableCompoundColumn
 > {
-  const [sort, setSort] = useState<SlotTableColumnKey | null>(null);
+  const [sort, setSort] = useState<DataTableCompoundColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
 
-  const { effectiveLayout, subtitleFieldIds, fields } = useSlotTableLayout(REPORT_TASKS_FAMILY);
-  const columns = useMemo(
-    () => slotTableColumnsFor(REPORT_TASKS_FAMILY, effectiveLayout),
-    [effectiveLayout],
-  );
 
-  const onSortChange = useCallback((key: SlotTableColumnKey, nextDir: 'asc' | 'desc') => {
+  const onSortChange = useCallback((key: DataTableCompoundColumnKey, nextDir: 'asc' | 'desc') => {
     setSort(key);
     setDir(nextDir);
   }, []);
@@ -78,16 +78,14 @@ export function useReportTasksSpreadsheet({
     [searchValue, onSearchChange, searchPlaceholder, searchPending],
   );
 
-  return useCompoundSpreadsheet<TaskDeskRow, SlotTableColumnKey, SlotTableColumn>({
+  return useCompoundSpreadsheet<TaskDeskRow, DataTableCompoundColumnKey, DataTableCompoundColumn>({
     binding: REPORT_TASKS_TABLE_BINDING,
-    columns,
-    fields,
+    columns: REPORT_TASKS_TABLE_BINDING.columns,
     rows,
     getRowId: (row) => String(row.id),
     adapter: reportTasksCompoundView,
-    subtitleFieldIds,
     resolve: resolveReportTasksSlotValue,
-    sortFactFor: (col) => slotTableSortFactFor(REPORT_TASKS_FAMILY, col),
+    sortFactFor: reportTasksSortFact,
     capabilities: REPORT_TASKS_GRID_CAPABILITIES,
     sort,
     dir,

@@ -10,6 +10,7 @@ import {
 import type { OrgId } from '@/lib/tenancy/constants';
 import { executeWmsPutawayAdjust } from '@/lib/realtime/wms-putaway-adjust';
 import { executeWmsPackVerification } from '@/lib/realtime/wms-pack-verification';
+import { verifyLocationScanProof } from '@/lib/inventory/location-scan-proof';
 
 const CommandBaseSchema = z.object({
   v: z.literal(1),
@@ -67,6 +68,7 @@ const PutawayAdjustCommandSchema = CommandBaseSchema.extend({
     reason: z.string().trim().min(1).max(200),
     reasonCodeId: z.number().int().positive().nullable().default(null),
     notes: z.string().trim().max(2_000).nullable().default(null),
+    locationVerificationToken: z.string().min(20).max(4_000),
   }).strict(),
 }).strict();
 
@@ -88,8 +90,6 @@ const WmsExecutionCommandSchema = z.discriminatedUnion('name', [
   PutawayAdjustCommandSchema,
   PackVerifyCommandSchema,
 ]);
-
-type WmsExecutionCommand = z.infer<typeof WmsExecutionCommandSchema>;
 
 export const WmsExecutionCommandReceiptSchema = z.object({
   commandId: z.string().min(1),
@@ -144,11 +144,22 @@ export async function executeWmsExecutionCommand(
   const clientEventId = `wms:${command.commandId}`;
 
   if (command.name === 'putaway.adjust') {
+    verifyLocationScanProof(command.input.locationVerificationToken, {
+      organizationId: identity.organizationId,
+      staffId: identity.staffId,
+      locationCode: command.input.barcode,
+    });
     const adjusted = await deps.executePutawayAdjust({
       commandId: command.commandId,
       organizationId: identity.organizationId,
       staffId: identity.staffId,
-      ...command.input,
+      barcode: command.input.barcode,
+      sku: command.input.sku,
+      direction: command.input.direction,
+      qty: command.input.qty,
+      reason: command.input.reason,
+      reasonCodeId: command.input.reasonCodeId,
+      notes: command.input.notes,
     });
     return WmsExecutionCommandReceiptSchema.parse({
       commandId: command.commandId,

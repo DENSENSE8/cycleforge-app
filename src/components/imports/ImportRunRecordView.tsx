@@ -15,7 +15,7 @@ import {
   EvidenceNotice,
   EvidenceSection,
 } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import type { OrderChannelResolver } from '@/lib/platform-display';
 import { cn } from '@/utils/_cn';
 import {

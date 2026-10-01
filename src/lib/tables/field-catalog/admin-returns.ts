@@ -4,7 +4,7 @@ import {
   INVENTORY_EVENTS_FIELD_CATALOG,
 } from '@/lib/tables/field-catalog/inventory-events';
 import type { FieldCatalog, FieldDef } from '@/lib/tables/field-catalog/types';
-import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
 
 /** One `inventory-events` field, BY REFERENCE. */
 function reuse(fieldId: string): FieldDef {
@@ -58,7 +58,7 @@ export const ADMIN_RETURNS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /** The PRODUCT default — what an org with no override mounts, and byte-for-byte the facts the retired table painted. */
-export const ADMIN_RETURNS_PRODUCT_LAYOUT: SlotLayout = {
+export const ADMIN_RETURNS_PRODUCT_LAYOUT: DataTableColumnLayout = {
   morph: 'compound',
   identityFieldId: 'admin-returns.unit',
   statusBindings: [
@@ -70,7 +70,7 @@ export const ADMIN_RETURNS_PRODUCT_LAYOUT: SlotLayout = {
     { fieldId: 'admin-returns.order_ref' },
   ],
   amountFieldId: null,
-};
+}
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Returns entry. */
 export const ADMIN_RETURNS_TABLE_LAYOUT_ID = 'admin-returns';
