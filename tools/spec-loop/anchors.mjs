@@ -369,5 +369,6 @@ export const ANCHORS = [
     run: smoke,
   },
   { id: 'contracts-live', placement: 'live', needs: [LANE], timeoutMs: TIMEOUT_MS, run: (ctx) => contracts(ctx, 'contracts-live', 'live') },
-  { id: 'gaps', placement: 'static', needs: ['design-guard-log'], gap: true, run: gaps },
+  // A host-local event stream (Avion's design-guard log), so it rides with the live sweep; a static-only host never runs it.
+  { id: 'gaps', placement: 'live', needs: ['design-guard-log'], gap: true, run: gaps },
 ];
