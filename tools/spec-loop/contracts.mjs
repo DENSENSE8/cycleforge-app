@@ -1,28 +1,33 @@
 /**
- * Contracts — the operator's rules as executable law. The single place the loop learns a rule.
+ * Contracts — the operator's rules as executable law (SpecRuleV1, Garisek-OS
+ * src/lib/loops/spec/types.ts). The single place the loop learns a rule; the CycleForge spec pack
+ * (tools/spec-loop/pack.mjs) hands this list to the spec kernel as its `rules`.
  *
  * First principles (read before adding one):
  *  1. A rule is not real until a probe can FAIL on it. Every contract has a deterministic probe:
  *     `static` (reads the judged checkout's own registries/source — runs in a sandbox copy) and/or
  *     `live` (Playwright at the dev origin :3050 — runs only against the served tree).
  *     Prefer a static twin: the fix loop can only verify what it can run in its sandbox.
+ *     An active rule with a probe lists the `mutants` (tools/spec-loop/mutants.mjs) that prove it fires.
  *  2. The operator's words are kept verbatim (`ruling.words`) next to the loop's reading of them
  *     (`interpretation`). When the reading is wrong, fix the interpretation and the probe — never
  *     the words.
- *  3. `fix` says who may change the code: `worker` (an omp worker in the sandbox, inside `lease`)
- *     or `ruling` (needs an operator decision first — the loop opens a gap, never guesses).
+ *  3. `fix` is the ordered ladder of who may change the code: `revert` (undo the change that broke
+ *     it), `autofix`, `worker` (a model worker in the sandbox, inside `lease`) or `ruling` (needs an
+ *     operator decision first — the loop opens a gap, never guesses).
  *  4. `lease` is the only set of files a worker may touch for this contract. A diff outside it is
  *     reverted. Leases make fixes reviewable and stop "fix one thing, move three".
- *  5. Contracts with `enforcedBy` carry law another anchor already checks (critique, routes); they
- *     exist so the worker and the verifier read the same sentence the operator said.
+ *  5. Contracts with `enforcedBy` carry law another anchor already checks (comma list of anchor /
+ *     unit-check ids); they exist so the worker and the verifier read the same sentence the operator said.
+ *  6. A violation whose message carries volatile text (lists, colours, labels) sets `fingerprint`,
+ *     so the finding keeps one identity while the text changes.
  *
- * Adding a rule: append an entry, run `node scripts/spec-sweep.mjs --only contracts`, and confirm
- * the probe fails on today's tree (or plant a mutant that makes it fail). Then
- * `node scripts/spec-loop.mjs --debt contract:<id>` hands it to the loop.
+ * Adding a rule: append an entry, plant a mutant that makes its probe fail, run
+ * `pnpm spec:sweep --only contracts`, then `pnpm spec:loop --debt contract:<id>` hands it to the loop.
  *
  * Probe API — static: async ({ repo, load }) => Violation[]   (load(rel) imports a module of the judged checkout)
- *             live:   { viewport: 'desktop' | 'mobile', run: async ({ page }) => Violation[] }
- *             Violation = { message: string, file?: string }
+ *             live:   { viewport: 'desktop' | 'mobile', run: async ({ page, origin, load }) => Violation[] }
+ *             Violation = { message: string, file?: string, fingerprint?: string }
  */
 
 const DESKTOP = 'desktop';
@@ -49,7 +54,7 @@ async function registeredDeskUrls(load) {
 /** A permission set that grants everything: contracts judge structure, not one staff's role. */
 const ALL_PERMISSIONS = new Proxy(new Set(), { get: (t, k) => (k === 'has' ? () => true : Reflect.get(t, k)) });
 
-/** @type {Contract[]} */
+/** @type {SpecRule[]} */
 export const CONTRACTS = [
   {
     id: 'nav.live-feed-under-operations',
@@ -58,7 +63,9 @@ export const CONTRACTS = [
     interpretation:
       'Two places: (a) the top map’s "Operations" band lists Live feed; (b) on /operations the view switcher of the Operations panel offers Live feed (opening /operations/live-feed). On 2026-10-03 (a) already held and (b) did not.',
     surface: DESKTOP,
-    fix: 'worker',
+    status: 'active',
+    fix: ['revert', 'worker'],
+    mutants: ['live-feed-row-dropped'],
     lease: ['src/lib/sidebar-navigation.ts', 'src/lib/nav/context/pages.ts', 'src/components/sidebar/contextual/nav-view-icons.ts'],
     static: async ({ load }) => {
       const nav = await load('src/lib/sidebar-navigation.ts');
@@ -66,7 +73,7 @@ export const CONTRACTS = [
       const ops = nav.SIDEBAR_PAGE_NAV.find((p) => p.id === 'operations');
       if (!ops) return [{ message: 'SIDEBAR_PAGE_NAV has no `operations` page', file: 'src/lib/sidebar-navigation.ts' }];
       const row = (ops.children ?? []).find((c) => c.to && c.to().pathname === LIVE_FEED_PATH);
-      return row ? [] : [{ message: `the Operations section has no row opening ${LIVE_FEED_PATH} (rows: ${(ops.children ?? []).map((c) => c.label).join(', ')})`, file: 'src/lib/sidebar-navigation.ts' }];
+      return row ? [] : [{ message: `the Operations section has no row opening ${LIVE_FEED_PATH} (rows: ${(ops.children ?? []).map((c) => c.label).join(', ')})`, file: 'src/lib/sidebar-navigation.ts', fingerprint: 'no-live-feed-row' }];
     },
     live: {
       viewport: DESKTOP,
@@ -92,7 +99,9 @@ export const CONTRACTS = [
     interpretation:
       'For every URL the page registry can open (each SIDEBAR_PAGE_NAV href and each view’s target), resolveNavContext answers scope "section" with rollout "contextual" — the same answer the shell paints. Live: the sidebar shows [data-nav-back]. On 2026-10-03 /pickup (Sales › Local Pickup) fell back to the top map.',
     surface: DESKTOP,
-    fix: 'worker',
+    status: 'active',
+    fix: ['revert', 'worker'],
+    mutants: ['pickup-rollout-legacy'],
     lease: ['src/lib/nav/context/pages.ts', 'src/lib/nav/context/parity.ts', 'src/lib/nav/context/rollout.ts', 'src/lib/sidebar-navigation.ts', 'src/components/sidebar/contextual/nav-view-icons.ts'],
     static: async ({ load }) => {
       const { resolveNavContext } = await load('src/lib/nav/context/resolve.ts');
@@ -136,7 +145,9 @@ export const CONTRACTS = [
     interpretation:
       'Static: the live-feed view tones in nav-view-icons are pairwise distinct. Live: (a) the sidebar direction switcher’s options and (b) the header key pills shown after pressing G ("G then O Outbound · I Inbound") paint pairwise-distinct icon colours; (c) no checked selection control in the sidebar paints the page orange. On 2026-10-03 all three held (Outbound orange, Inbound blue, selections ink) — the contract guards it; correct the interpretation if the operator meant another surface.',
     surface: DESKTOP,
-    fix: 'worker',
+    status: 'active',
+    fix: ['revert', 'worker'],
+    mutants: ['live-feed-tones-merged'],
     lease: ['src/components/sidebar/contextual/nav-view-icons.ts', 'src/components/sidebar/contextual/NavViewSwitcher.tsx', 'src/components/sidebar/contextual/NavKeyStrip.tsx', 'src/lib/sidebar-navigation.ts'],
     static: async ({ load }) => {
       const icons = await load('src/components/sidebar/contextual/nav-view-icons.ts');
@@ -144,7 +155,7 @@ export const CONTRACTS = [
       if (!table) return [{ message: 'nav-view-icons exports no table with live-feed.* views', file: 'src/components/sidebar/contextual/nav-view-icons.ts' }];
       const views = Object.entries(table).filter(([k]) => k.startsWith('live-feed.'));
       const tones = views.map(([, v]) => v.tone);
-      return new Set(tones).size === tones.length ? [] : [{ message: `live-feed views share a tone: ${views.map(([k, v]) => `${k}=${v.tone}`).join(', ')}`, file: 'src/components/sidebar/contextual/nav-view-icons.ts' }];
+      return new Set(tones).size === tones.length ? [] : [{ message: `live-feed views share a tone: ${views.map(([k, v]) => `${k}=${v.tone}`).join(', ')}`, file: 'src/components/sidebar/contextual/nav-view-icons.ts', fingerprint: 'view-tones-shared' }];
     },
     live: {
       viewport: DESKTOP,
@@ -155,7 +166,7 @@ export const CONTRACTS = [
         const colours = await page
           .locator('[data-nav-switcher-host] svg, [role=menu] svg')
           .evaluateAll((svgs) => svgs.map((s) => getComputedStyle(s).color));
-        if (colours.length >= 2 && new Set(colours).size < colours.length) out.push({ message: `direction tabs share an icon colour: ${colours.join(', ')}` });
+        if (colours.length >= 2 && new Set(colours).size < colours.length) out.push({ message: `direction tabs share an icon colour: ${colours.join(', ')}`, fingerprint: 'switcher-colours-shared' });
         await page.keyboard.press('Escape');
         // (b) The "G then" key pills: press G over the desk, read the header pills' icon colours.
         await page.locator('main').first().click({ position: { x: 900, y: 600 } }).catch(() => {});
@@ -163,7 +174,7 @@ export const CONTRACTS = [
         const pills = page.locator('main button, main a').filter({ hasText: /^\s*\S\s*(Outbound|Inbound)\s*$/ });
         await pills.first().waitFor({ timeout: 5_000 }).catch(() => {});
         const pillColours = await pills.locator('svg').evaluateAll((svgs) => svgs.map((s) => getComputedStyle(s).color));
-        if (pillColours.length >= 2 && new Set(pillColours).size < pillColours.length) out.push({ message: `"G then" key pills share an icon colour: ${pillColours.join(', ')}` });
+        if (pillColours.length >= 2 && new Set(pillColours).size < pillColours.length) out.push({ message: `"G then" key pills share an icon colour: ${pillColours.join(', ')}`, fingerprint: 'key-pill-colours-shared' });
         await page.keyboard.press('Escape');
         const orange = await page
           .locator('aside [aria-checked="true"], aside [data-state="checked"], aside [aria-pressed="true"]')
@@ -180,13 +191,15 @@ export const CONTRACTS = [
     interpretation:
       'DOMAIN_GROUPS `inventory` = label Warehouse + icon Warehouse (held on 2026-10-03). No APP_SIDEBAR_NAV or SIDEBAR_PAGE_NAV entry is labelled "Inventory"; the desktop row that was "Inventory" is "Locations" (route-tree note on lane `warehouse`). nav-name-guard stays green.',
     surface: 'both',
-    fix: 'worker',
+    status: 'active',
+    fix: ['revert', 'worker'],
+    mutants: ['warehouse-lane-renamed-inventory'],
     lease: ['src/lib/sidebar-navigation.ts', 'src/lib/nav/lanes.ts', 'src/lib/nav/context/pages.ts', 'src/components/mobile/v2/mobile-v2-destinations.tsx'],
     static: async ({ load }) => {
       const out = [];
       const [{ DOMAIN_GROUPS }, nav, icons] = await Promise.all([load('src/lib/nav/lanes.ts'), load('src/lib/sidebar-navigation.ts'), load('src/components/Icons.tsx')]);
       const lane = DOMAIN_GROUPS.find((g) => g.id === 'inventory');
-      if (lane?.label !== 'Warehouse') out.push({ message: `lane inventory is labelled "${lane?.label}"`, file: 'src/lib/nav/lanes.ts' });
+      if (lane?.label !== 'Warehouse') out.push({ message: `lane inventory is labelled "${lane?.label}"`, file: 'src/lib/nav/lanes.ts', fingerprint: 'lane-label' });
       if (lane && lane.icon !== icons.Warehouse) out.push({ message: 'lane inventory does not wear the Warehouse icon', file: 'src/lib/nav/lanes.ts' });
       for (const [name, list] of [['APP_SIDEBAR_NAV', nav.APP_SIDEBAR_NAV], ['SIDEBAR_PAGE_NAV', nav.SIDEBAR_PAGE_NAV]]) {
         for (const item of list) if (/^inventory$/i.test(item.label)) out.push({ message: `${name} row "${item.id}" is labelled "${item.label}" (must be Locations)`, file: 'src/lib/sidebar-navigation.ts' });
@@ -214,7 +227,9 @@ export const CONTRACTS = [
     interpretation:
       'Static twin of the live smoke’s foreign-door check, so the sandboxed fix loop can see it: no file the Stock page renders (its page plus the mobile components it imports, three levels deep) references a route-tree node of Location labels, Rack labels, Racks, New rack or Manage locations — by WAREHOUSE_PATHS key, builder, or literal path. Added 2026-10-04 after a worker kept Labels/Racks verbs on the stock list and only the live smoke (which does not run in the sandbox) would have caught it.',
     surface: 'mobile',
-    fix: 'worker',
+    status: 'active',
+    fix: ['revert', 'worker'],
+    mutants: ['hand-rolled-bottom-buttons', 'stock-rack-labels-door'],
     static: async ({ repo, load }) => {
       const fs = await import('node:fs');
       const path = await import('node:path');
@@ -256,7 +271,7 @@ export const CONTRACTS = [
           ...Object.keys(BUILDER_NODE).filter((b) => new RegExp(`\\b${b}\\s*\\(`).test(src)).map((b) => `${b}()`),
           ...literals.filter((p) => new RegExp(`['"\`]${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=['"\`?/])`).test(src)),
         ];
-        if (hits.length) out.push({ message: `the Stock list renders a door to another parent: ${hits.join(', ')}`, file });
+        if (hits.length) out.push({ message: `the Stock list renders a door to another parent: ${hits.join(', ')}`, file, fingerprint: 'foreign-door' });
       }
       return out;
     },
@@ -267,13 +282,18 @@ export const CONTRACTS = [
     statement: 'A hand-rolled control is ported onto the existing design-system primitive for its surface (mobile: DetailDock / MobileV2ActionSheet / Button; desktop: Button / StickyActionBar / DeskActionSlot), and the replacement renders the same verb. Never restyled in place, never deleted, never moved into a primitive folder.',
     ruling: { by: 'owner', at: '2026-10-03', words: 'fix the hand-rolled components and correctly port them onto the already existing design system primitives' },
     surface: 'both',
-    enforcedBy: 'critique + port contract (scripts/spec-loop.mjs)',
+    status: 'active',
+    fix: ['worker'],
+    enforcedBy: 'critique,port',
+    mutants: ['hand-rolled-bottom-buttons'],
   },
   {
     id: 'ds.surface-split',
     statement: 'Mobile and desktop never share rendered components: mobile code lives in src/components/mobile/** or src/app/m/**, desktop code elsewhere, and only primitives / logic cross (ARCHITECTURE.md Component split).',
     ruling: { by: 'owner', at: '2026-09-14', words: 'Component split (binding)' },
     surface: 'both',
+    status: 'active',
+    fix: ['revert', 'worker'],
     enforcedBy: 'gate:Boundary',
   },
   {
@@ -281,29 +301,23 @@ export const CONTRACTS = [
     statement: 'Every Warehouse URL — a path the route tree owns (/m/stock…, /m/loc/…, /m/labels, /m/racks…, /m/h/…) — is written with WAREHOUSE_PATHS or a builder from src/lib/nav/route-tree.ts, never a literal; URLs of other lanes (e.g. /m/scan) are out of scope. A page the tree does not own is removed, not registered (registering is an operator ruling).',
     ruling: { by: 'owner', at: '2026-10-03', words: 'one source of truth for routing and vocabulary' },
     surface: 'both',
-    enforcedBy: 'routes',
+    status: 'active',
+    fix: ['revert', 'worker'],
+    enforcedBy: 'routes,gate:Routes',
+    mutants: ['hand-rolled-bottom-buttons', 'unneeded-navigation-page'],
   },
 ];
 
 /** Contracts with a probe (the rest are law text for workers and the verifier). */
 export const PROBED = CONTRACTS.filter((c) => c.static || c.live);
 
-/** The law lines that apply to a set of findings: contract ids, plus the enforcing law for anchors. */
-export function lawFor(findings) {
-  const ids = new Set();
-  for (const f of findings) {
-    if (f.anchor === 'contracts') ids.add(f.rule);
-    if (f.anchor === 'critique' || f.anchor === 'port') ids.add('ds.port').add('ds.surface-split');
-    if (f.anchor === 'routes' || f.anchor === 'gate:Routes') ids.add('routes.from-tree');
-    if (f.anchor === 'gate:Boundary') ids.add('ds.surface-split');
-  }
-  return CONTRACTS.filter((c) => ids.has(c.id));
-}
-
 /**
- * @typedef {{ message: string, file?: string }} Violation
+ * SpecRuleV1 (Garisek-OS src/lib/loops/spec/types.ts) in JSDoc.
+ * @typedef {{ message: string, file?: string, fingerprint?: string }} Violation
+ * @typedef {(rel: string) => Promise<Record<string, unknown>>} Load
  * @typedef {{ id: string, statement: string, ruling: { by: string, at: string, words: string }, interpretation?: string,
- *   surface: 'desktop' | 'mobile' | 'both', fix?: 'worker' | 'ruling', lease?: string[], enforcedBy?: string,
- *   static?: (ctx: { repo: string, load: (rel: string) => Promise<any> }) => Promise<Violation[]>,
- *   live?: { viewport: 'desktop' | 'mobile', run: (ctx: { page: any, load: (rel: string) => Promise<any> }) => Promise<Violation[]> } }} Contract
+ *   surface: 'desktop' | 'mobile' | 'both', status: 'proposed' | 'active' | 'retired',
+ *   fix: Array<'revert' | 'autofix' | 'worker' | 'ruling'>, lease?: string[], enforcedBy?: string, mutants?: string[],
+ *   static?: (ctx: { repo: string, load: Load }) => Promise<Violation[]>,
+ *   live?: { viewport: 'desktop' | 'mobile', run: (ctx: { page: unknown, origin: string, load: Load }) => Promise<Violation[]> } }} SpecRule
  */

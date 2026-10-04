@@ -10,36 +10,39 @@ this tree concurrently — re-read before every edit, never revert what you did 
 
 ---
 
-## 0. Status — built 2026-10-03 (read this before §1–§6)
+## 0. Status — moved onto the Garisek spec kernel 2026-10-04 (read this before §1–§6)
 
 Operator rulings that supersede the sections below: **no Hermes anywhere** (§2 GE-B, §3 gateway,
-§4 L4 Hermes lanes are dead) and **no local models / prometheus** — the harness is headless
-`omp -p --mode json`. Writer `xai-oauth/grok-4.7`; verifier `google-antigravity/gemini-3.8-flash`
-(chosen by `scripts/spec-verifier-eval.mjs`, see below).
+§4 L4 Hermes lanes are dead), **no local models / prometheus**, and (2026-10-04) **the loop core lives
+in Garisek OS** with **GEX45 as the system of record**. The contract is Garisek-OS
+`docs/loops/SPEC-KERNEL.md`; this repo is a *pack*. Writer `xai-oauth/grok-4.7`, verifier
+`google-antigravity/gemini-3.8-flash` (16/16 on `tools/spec-loop/verifier-cases.json`), both through the
+`omp-headless` adapter; `pi-headless` is wired and selectable with `--harness`.
 
-**Adding a rule (the first-principles entry point):** append a contract to
+**Adding a rule (the first-principles entry point):** append a `SpecRuleV1` to
 `tools/spec-loop/contracts.mjs` — the operator's words verbatim, the loop's reading of them, a probe
 that can FAIL (static twin preferred: the fix loop can only verify what runs in its sandbox), the
-surface, and the lease of files a worker may touch. Then `node scripts/spec-sweep.mjs --only contracts`
-must show it red on today's tree, and `node scripts/spec-loop.mjs --debt contract:<id>` hands it to the loop.
+surface, the fix ladder, the lease — **and a mutant in `tools/spec-loop/mutants.mjs` that makes the probe
+fire** (an active rule without one fails pack validation). Then `pnpm spec:sweep --only contracts` must
+show it red when the mutant is planted, and `pnpm spec:loop --debt rule:<id>` hands it to the loop.
 
 | Piece | File | What it does |
 |---|---|---|
-| Sensor | `scripts/spec-sweep.mjs` | Anchors `routes · nav-names · disclosure · critique · verify-fast gates · smoke · contracts · gaps` (`--only`/`--skip`) → receipt `.garisek/spec-sweep/<ISO>.json`, diff vs `last-kept.json`, labels `seed · regression · anchor-changed · no_data · gap · shrink · improvement · steady`. Attribution `preexisting · dirty · committed`; per-error TS / ESLint findings; shrink-only check on every `scripts/*.baseline.json`; sha256 of the evaluator's files (an anchor change is never auto-kept — `--accept-anchors`). `--pin <pins.json>` upserts one Garisek pin. |
-| Contracts | `tools/spec-loop/contracts.mjs` + `live-contracts.mjs` | Operator rulings as probes. Static probes import the judged checkout's own registries (`resolveNavContext`, `SIDEBAR_PAGE_NAV`, `DOMAIN_GROUPS`, the Stock page's import closure); live probes drive :3050 (never a route crawl — a 145-URL walk OOM-killed the lane). Probed: Live feed under Operations · every desktop page has a contextual sidebar · Live feed distinct tones (switcher, "G then" pills, selections) · Inventory → Warehouse lane, row → Locations · Stock list has no Labels / Racks / Manage doors. |
-| Critique | `scripts/spec-sweep.mjs` `critiqueAnchor` + `tools/design-mcp/ds.mjs critique-batch` | Every feature UI file (1,733: 308 mobile, 1,425 desktop) in one engine, ~23 s; surface from `.dependency-cruiser.cjs` via `tools/spec-loop/surface.mjs`. Forks ratcheted per file by `scripts/ds-forks.baseline.json` (shrink-only, 407 forks / 345 files at seed): over baseline = `fork-grew` error. |
-| Live smoke | `tools/design-mcp/route-tree-smoke.mjs` | Every live ROUTE_TREE node at 430×932 on `:3050`; walks the whole stock drill (links and button choices such as `?side=`); every level renders choices, locations or an explicit empty state (`blank-level`); samples via pages + one read-only SELECT; exit 2 = `no_data`. |
-| Auth preflight | `tests/auth-preflight.mjs` | One `ensureSession()` for every probe (smoke, contracts, `tests/shot.mjs`); re-mints at :3050; failure = `no_data`. |
-| Fix loop | `scripts/spec-loop.mjs` | Modes: `--plant` (proof) · default (new regressions) · `--debt <contracts \| contract:<id> \| critique[:mobile\|:desktop] \| <anchor>>` (one unit = one contract or one file) · `--goal <handoff.md>`. Sandbox copy with private git; ESLint `--fix` before any model call; omp worker (file tools only) inside the unit's lease, else `src/**` only; tool-device artifacts (`xd:/…` files) dropped; tamper guard (evaluator, rulings, exemptions, `.omp/`, silencers); re-sweep; keep / revert; refute-first verifier on every green; `attempts.tsv`; `fix.patch`; `--apply` lands it only if `git apply --check` passes. |
-| Verifier | `tools/spec-loop/verifier.mjs` + `scripts/spec-verifier-eval.mjs` + `verifier-cases.json` | Fresh session, read-only tools, sees law + findings + diff only; can only veto. Model chosen by eval over 8 labelled cases (real loop diffs + adversarial variants, incl. a real gaming attempt and an edited operator quote): gemini-3.8-flash 16/16 · 6 s. grok-4.7 scored 12/12 on the first set but shares the writer's family; haiku-4-5 waved a deletion through. |
-| Port contract | `tools/spec-loop/port.mjs` | Every verb in a raw `<button>` of a fixed file must still render (JSX text / literal, comments stripped) from a design-system-importing file. |
-| Write-time rules | `.omp/rules/*.md` | omp TTSR for every session and worker: raw elements, token literals, route literals, `npx`, shared-tree git, dev origin (`omp ttsr list`). |
-| Proof harness | `tools/spec-loop/mutants.mjs` + `--plant` | Hand-rolled grounded bottom bar, unregistered `/m/stock/shortcuts` hub, unused import; kill-checks every detector, then runs the loop until green + verified. |
-| Schedule | `~/.config/systemd/user/cycleforge-spec-sweep.{service,timer}` | Every 2 h, `Nice=10`; watched by `~/.local/bin/timer-liveness-guard`. |
-| Gap queue | Garisek `tools/design-mcp/project-server.mjs` (`gapVerdict`) | `ds_route` / `ds_vocabulary` log `verdict` + `ask`; the sweep reads `ask-operator` / `not-found`. |
-| Detector fix | Garisek `tools/design-mcp/target-engine.mjs` | A primitive home with a `match` filter exempts only the files it indexes. |
+| Pack | `tools/spec-loop/pack.mjs` | `SpecPackV1` for repo `cycleforge-app`: anchors, rules, mutants, evaluator files, forbidden paths, worker scope, prompt law, roles, budgets ($3 unit / $10 run / $25 day), lane, `stateDir .garisek/spec`. |
+| Entry | `scripts/spec.mjs` (`pnpm spec:sweep`, `pnpm spec:loop`) | Resolves `GARISEK_OS_ROOT` and runs Garisek `scripts/spec-kernel/cli.ts` with this pack. |
+| Anchors | `tools/spec-loop/anchors.mjs` | Static: `routes · nav-names · disclosure · critique · gate:* (verify-fast) · contracts`. Live (`needs lane:cycleforge@avion`): `smoke` (retries a `page-error` once after a 300 s warm-up) · `contracts-live`. `gaps` needs `design-guard-log`. |
+| Contracts | `tools/spec-loop/contracts.mjs` + `live-contracts.mjs` | Operator rulings as probes (Live feed under Operations · every desktop page has a contextual sidebar · Live feed distinct tones · Inventory → Warehouse · Stock has no Labels / Racks / Manage doors) plus law-only rules (`ds.port`, `ds.surface-split`, `routes.from-tree`). |
+| Mutants | `tools/spec-loop/mutants.mjs` | One planted break per probed rule (8 total); `pnpm spec:loop --plant` kill-checks every detector, then fixes. |
+| Critique | `anchors.mjs` + `tools/design-mcp/ds.mjs critique-batch` | Every feature UI file, mobile/desktop from `.dependency-cruiser.cjs` (`surface.mjs`); forks ratcheted by `scripts/ds-forks.baseline.json` (shrink-only). |
+| Live smoke | `tools/design-mcp/route-tree-smoke.mjs` | Every live ROUTE_TREE node at 430×932 on `:3050`; walks the stock drill; exit 2 = `no_data`. |
+| Auth preflight | `tests/auth-preflight.mjs` | One `ensureSession()` for every live probe; failure = `no_data`. |
+| Port contract | `tools/spec-loop/port.mjs` (pack `unitChecks`) | Every verb in a raw `<button>` of a fixed file must still render from a design-system-importing file. |
+| Write-time rules | `.omp/rules/*.md` | Enforced by omp natively and by the kernel's pi guard extension for pi workers. |
+| Static schedule | GEX45 `cycleforge-spec-static.timer` (Garisek `deploy/gex45/`) | Sweeps the pushed branch whenever it moves; receipts to the GEX45 system of record. |
+| Live schedule | Avion `~/.config/systemd/user/cycleforge-spec-sweep.{service,timer}` | Live anchors only, every 2 h, against the `:3050` lane. |
+| Gap queue | Garisek `tools/design-mcp/project-server.mjs` (`gapVerdict`) | `ds_route` / `ds_vocabulary` log `verdict` + `ask`; the `gaps` anchor reads `ask-operator` / `not-found`. |
 
-Proven 2026-10-03/04 (all receipts under `.garisek/omp-work/`):
+Proven before the move (pre-kernel receipts under `.garisek/omp-work/`):
 - `loop_…08-51-49-547Z` `--plant`: every detector killed its mutant (4 + 1 + 1 expectations); ESLint `--fix`
   cleared the unused import without a model call (15 → 14); Grok ported the bar onto `DetailDock` (Scan item kept,
   doors and hub removed); verifier confirmed — 1 attempt.

@@ -9,6 +9,8 @@
     "debt": "node scripts/debt-ledger.mjs",
     "debt:surfaces": "node scripts/dead-surface-probe.mjs",
     "verify:fast": "node scripts/verify.mjs --fast",
+    "spec:sweep": "node scripts/spec.mjs sweep",
+    "spec:loop": "node scripts/spec.mjs loop",
     "motion:audit": "node scripts/motion-timer-audit.mjs",
     "motion:audit:strict": "node scripts/motion-timer-audit.mjs --strict",
     "tokens:build": "tsx packages/design-tokens/scripts/generate.ts",

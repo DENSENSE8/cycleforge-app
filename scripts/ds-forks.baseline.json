@@ -1,5 +1,5 @@
 {
-  "note": "FROZEN BASELINE — design-system forks (ds_critique `forks-the-system`) per feature UI file. SHRINK-ONLY: a file above its count fails the spec sweep (`fork-grew`); `spec-loop --debt critique` burns it down. Rewrite with `node scripts/spec-sweep.mjs --write-fork-baseline` (never grows an entry).",
+  "note": "FROZEN BASELINE — design-system forks (ds_critique `forks-the-system`) per feature UI file. SHRINK-ONLY: a file above its count fails the spec sweep (`fork-grew`); `pnpm spec:loop --debt critique` burns it down. Rewrite with `SPEC_WRITE_FORK_BASELINE=1 pnpm spec:sweep` (never grows an entry).",
   "files": {
     "src/app/global-error.tsx": 1,
     "src/app/invite/[token]/page.tsx": 1,

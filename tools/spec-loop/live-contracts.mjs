@@ -48,7 +48,7 @@ if (LIVE && contracts.some((c) => c.live)) {
       const context = await browser.newContext({ storageState: STORAGE, baseURL: BASE_URL, viewport: viewports[c.live.viewport] });
       const page = await context.newPage();
       page.setDefaultTimeout(20_000);
-      await probe(c, 'live', () => c.live.run({ page, load }));
+      await probe(c, 'live', () => c.live.run({ page, origin: BASE_URL, load }));
       await context.close();
     }
     await browser.close();

@@ -140,8 +140,9 @@ evals/assistant/
 # Obsidian vault UI state
 .obsidian/
 
-# Spec-loop receipts, omp worker runs and verifier evals (scripts/spec-sweep.mjs, spec-loop.mjs,
-# spec-verifier-eval.mjs). Only these subdirs: .garisek/eval-session.json and perf-session.json are tracked.
+# Spec kernel state (receipts mirror, runs, spool — tools/spec-loop/pack.mjs stateDir) and the
+# pre-kernel history it replaced. Only these subdirs: .garisek/eval-session.json and perf-session.json are tracked.
+.garisek/spec/
 .garisek/spec-sweep/
 .garisek/omp-work/
 .garisek/spec-verifier-eval/

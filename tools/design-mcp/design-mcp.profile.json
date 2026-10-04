@@ -1,1 +1,889 @@
-/home/michaelgarisek/Projects/cycleforge-app/tools/design-mcp/design-mcp.profile.json
+{
+  "$schema": "./design-mcp.profile.schema.json",
+  "v": "cf-design-profile:v1",
+  "serverName": "cycleforge-design-mcp",
+  "shadcnUi": "^(button|input|label|checkbox|badge|alert|skeleton|separator|dialog|command|popover|calendar)\\.tsx$",
+  "primitiveHomes": [
+    {
+      "dir": "src/design-system/primitives",
+      "label": "design-system primitive",
+      "alias": "@/design-system/primitives"
+    },
+    {
+      "dir": "src/design-system/components",
+      "label": "design-system component",
+      "alias": "@/design-system/components"
+    },
+    {
+      "dir": "src/components/ui",
+      "label": "shadcn primitive (new-york, house tokens)",
+      "alias": "@/components/ui",
+      "match": "$shadcnUi"
+    },
+    {
+      "dir": "src/components/ui",
+      "label": "ui composite (house)",
+      "alias": "@/components/ui",
+      "match": "\\.tsx$",
+      "exclude": "$shadcnUi"
+    },
+    {
+      "dir": "src/components/composer",
+      "label": "composer surface",
+      "alias": "@/components/composer",
+      "match": "\\.tsx$",
+      "exclude": "^WeldedFeedbackPanel\\.tsx$"
+    },
+    {
+      "dir": "src/components/composer",
+      "label": "staff mouth reaction",
+      "alias": "@/components/composer",
+      "match": "^(WeldedFeedbackPanel)\\.tsx$"
+    },
+    {
+      "dir": "src/components/sidebar/contextual",
+      "label": "contextual sidebar (house)",
+      "alias": "@/components/sidebar/contextual",
+      "match": "\\.tsx$"
+    },
+    {
+      "dir": "src/components/desk",
+      "label": "desk frame (app adapter)",
+      "alias": "@/components/desk",
+      "match": "^DeskPageLayout\\.tsx$"
+    },
+    {
+      "dir": "src/components/labels",
+      "label": "label face (house)",
+      "alias": "@/components/labels",
+      "match": "^(LabelFacePreview|LabelFaceSlotOverlay|LabelPlatformTypeMenu|LabelFaceReceivingSlots|LabelFaceProductSlots|WorkspaceLabelPreviewCard|LabelPreviewCard)\\.tsx$"
+    },
+    {
+      "dir": "src/lib/optimistic",
+      "label": "write primitive",
+      "alias": "@/lib/optimistic",
+      "match": "^useOptimisticMutation\\.ts$"
+    },
+    {
+      "dir": "src/design-system/motion",
+      "label": "motion roles (house)",
+      "alias": "@/design-system/motion",
+      "match": "^(roles|idle-overlay)\\.ts$"
+    },
+    {
+      "dir": "src/design-system/themes",
+      "label": "theme catalog (house)",
+      "alias": "@/design-system/themes",
+      "match": "^station-skins\\.ts$"
+    },
+    {
+      "dir": "src/design-system/themes",
+      "label": "theme catalog (house)",
+      "alias": "@/design-system/themes",
+      "match": "^station-depths\\.ts$"
+    },
+    {
+      "dir": "src/design-system/components/item-record",
+      "label": "item-record face (house)",
+      "alias": "@/design-system/components/item-record",
+      "match": "^(ItemRecordQtyBadge|ItemRecordThumb|ItemRecordMobileMeta|ItemRecordMobileStage)\\.tsx$"
+    },
+    {
+      "dir": "src/design-system/components/record-ledger",
+      "label": "record ledger (house)",
+      "alias": "@/design-system/components/record-ledger"
+    },
+    {
+      "dir": "src/design-system/components/triage-shelf",
+      "label": "triage shelf (house)",
+      "alias": "@/design-system/components/triage-shelf",
+      "match": "\\.tsx$"
+    },
+    {
+      "dir": "src/design-system/components/triage-card-list",
+      "label": "triage card list (house)",
+      "alias": "@/design-system/components/triage-card-list",
+      "match": "^(TriageCardList|TriageSelectBar|TriageListBody|TriageRow)\\.tsx$|^triage-view\\.ts$"
+    },
+    {
+      "dir": "src/design-system/components/record-card",
+      "label": "record card (house)",
+      "alias": "@/design-system/components/record-card",
+      "match": "^(RecordCard|RecordCardMobile)\\.tsx$"
+    },
+    {
+      "dir": "src/design-system/components/column-board",
+      "label": "column board (house)",
+      "alias": "@/design-system/components/column-board",
+      "match": "^ColumnBoard\\.tsx$"
+    },
+    {
+      "dir": "src/design-system/components/record-action-strip",
+      "label": "record action strip (house)",
+      "alias": "@/design-system/components/record-action-strip",
+      "match": "^RecordActionStrip\\.tsx$"
+    },
+    {
+      "dir": "src/design-system/components/AdminTable",
+      "label": "admin table (house)",
+      "alias": "@/design-system/components/AdminTable",
+      "match": "^AdminTable\\.tsx$"
+    },
+    {
+      "dir": "src/components/outbound/orders",
+      "label": "ledger editors (house)",
+      "alias": "@/components/outbound/orders",
+      "match": "^outbound-orders-ledger-editors\\.tsx$"
+    },
+    {
+      "dir": "src/components/outbound/orders/cards",
+      "label": "record card adapter (orders)",
+      "alias": "@/components/outbound/orders/cards",
+      "match": "^OrderCard\\.tsx$"
+    },
+    {
+      "dir": "src/components/identity",
+      "label": "identity mark (house)",
+      "alias": "@/components/identity",
+      "match": "^StaffAvatar\\.tsx$"
+    },
+    {
+      "dir": "src/lib/scan-feedback",
+      "label": "scan feedback (house)",
+      "alias": "@/lib/scan-feedback",
+      "match": "^useScanFeedback\\.ts$"
+    },
+    {
+      "dir": "src/components/mobile/station",
+      "label": "mobile capture and evidence (house)",
+      "alias": "@/components/mobile/station",
+      "match": "^(MobileCaptureWindow|MobileSwipePhotoViewer)\\.tsx$"
+    },
+    {
+      "dir": "src/components/mobile/ios",
+      "label": "mobile record chrome after Apple HIG (house)",
+      "alias": "@/components/mobile/ios",
+      "match": "^(IosBar|IosMoreMenu)\\.tsx$"
+    },
+    {
+      "dir": "src/components/mobile/v2",
+      "label": "mobile application architecture (house)",
+      "alias": "@/components/mobile/v2",
+      "match": "^(MobileV2Shell|MobileV2TopBar|MobileV2AppSwitcher|MobileV2DetailTopBar|MobileV2ActionSheet|MobileV2ScanCta)\\.tsx$"
+    },
+    {
+      "dir": "src/components/mobile/v2/fulfillment",
+      "label": "mobile fulfillment composition (house)",
+      "alias": "@/components/mobile/v2/fulfillment",
+      "match": "^(MobileV2FulfillmentPage|MobileV2FulfillmentOrders)\\.tsx$|^mobile-v2-allocate-layout\\.ts$"
+    },
+    {
+      "dir": "src/components/mobile/v2/stock",
+      "label": "mobile stock composition (house)",
+      "alias": "@/components/mobile/v2/stock",
+      "match": "^(MobileV2StockLocations|MobileV2LocationRecord)\\.tsx$"
+    },
+    {
+      "dir": "src/components/mobile/v2/scan",
+      "label": "mobile scan composition (house)",
+      "alias": "@/components/mobile/v2/scan",
+      "match": "^(MobileV2ScanStation|MobileV2ScanRecentList|MobileV2ScanRecentSheet|MobileV2ScanInput)\\.tsx$"
+    },
+    {
+      "dir": "src/components/mobile/v2/receiving",
+      "label": "mobile receiving composition (house)",
+      "alias": "@/components/mobile/v2/receiving",
+      "match": "^(MobileV2ReceivingCartonRecord|MobileV2ReceivingLive|MobileV2ArrivalPlacement|MobileV2UnboxNext)\\.tsx$"
+    },
+    {
+      "dir": "src/components/mobile/v2/orders",
+      "label": "mobile order disclosure (house)",
+      "alias": "@/components/mobile/v2/orders",
+      "match": "^MobileV2OrderPaperworkSheet\\.tsx$"
+    },
+    {
+      "dir": "src/components/mobile/v2/inbound",
+      "label": "mobile receiving intake composition (house)",
+      "alias": "@/components/mobile/v2/inbound",
+      "match": "^(MobileV2InboundNew|MobileV2InboundOrderComposer|MobileV2InboundFillSheet|MobileV2InboundLineSheet|MobileV2InboundTrackingSheet|MobileV2InboundParts|MobileV2InboundSections)\\.tsx$"
+    },
+    {
+      "dir": "src/components/mobile/photos",
+      "label": "mobile photo capture architecture (house)",
+      "alias": "@/components/mobile/photos",
+      "match": "^(MobileNativePhotoCapture|MobileContinuousPhotoCamera)\\.tsx$"
+    },
+    {
+      "dir": "src/lib/routing",
+      "label": "task-mode route registry",
+      "alias": "@/lib/routing",
+      "match": "^mode-registry\\.ts$"
+    },
+    {
+      "dir": "src/components/tables",
+      "label": "table engine (house)",
+      "alias": "@/components/tables",
+      "match": "^(DataTable|NonlinearTableHost|TableStatusBar|DataTableExportMenu)\\.tsx$|^table-surface-binding\\.ts$"
+    }
+  ],
+  "tokenSources": {
+    "radius": "src/design-system/tokens/radius.ts",
+    "themes": "src/design-system/themes/registry.ts",
+    "stationSkins": "src/design-system/themes/station-skins.ts",
+    "stationDepths": "src/design-system/themes/station-depths.ts",
+    "modes": "packages/design-tokens/src/modes.ts",
+    "spacing": "src/design-system/tokens/spacing.mjs",
+    "zIndex": "src/design-system/tokens/z-index.mjs",
+    "elevation": "src/design-system/tokens/shadows.ts",
+    "focus": "src/design-system/tokens/focus-ring.ts",
+    "border": "src/design-system/tokens/borders.ts",
+    "typePresets": "src/design-system/tokens/typography/presets.ts",
+    "typeSizes": "src/design-system/tokens/typography/sizes.ts",
+    "itemRecordFace": "src/design-system/components/item-record/item-record-face.ts",
+    "itemRecordMobile": "src/design-system/tokens/item-record-mobile.ts",
+    "deskStage": "src/design-system/tokens/desk-stage.ts",
+    "tailwind": "tailwind.config.mjs",
+    "kioskPos": "src/app/kiosk/kiosk-pos-surface.ts"
+  },
+  "overrides": "src/design-system/pinned.json",
+  "routerJson": "tools/design-mcp/router.json",
+  "cohortWorkspaces": [],
+  "themeCatalogDir": "src/design-system/themes/",
+  "triageLayoutFiles": [],
+  "centerLockXorDebt": [],
+  "adjudicator": {
+    "baseRules": [
+      "no-suppression"
+    ],
+    "note": "Garisek RULES[] ids adopted for this target. no-new-component is NOT adopted (gap report G.3); its escape is the cohort.append_row ask. Router refuse[] entries with a diffPattern become project rules automatically. `rules` are this target's own conjunctive rules (scripts/guard/adjudicate.mjs rulesFromProfile): every allOf pattern must match the inserted text; ds_critique runs them over the whole file.",
+    "rules": [
+      {
+        "id": "filter-controls-outside-sidebar",
+        "severity": "error",
+        "paths": ["src/app/**", "src/components/**"],
+        "exclude": [
+          "src/components/sidebar/contextual/**",
+          "src/components/mobile/**",
+          "src/app/m/**",
+          "**/*.test.*"
+        ],
+        "allOf": [
+          {
+            "what": "writes list filters to the URL",
+            "pattern": "\\buseReplaceSearchParams\\s*\\(|\\bsetSearchParams\\s*\\(|\\brouter\\.(?:replace|push)\\s*\\(\\s*(?:`[^`]*\\?|['\"][^'\"]*\\?|[^)]*(?:searchParams|URLSearchParams|params\\.toString))"
+          },
+          {
+            "what": "mounts a filter control",
+            "pattern": "<(?:DateRangePickerField|TimeField|StageStaffAssignPopover)\\b|aria-pressed="
+          }
+        ],
+        "message": "A page-body file mounts a filter control AND writes list filters to the URL. Filters, sort, date/time windows, staff, facets, views and modes live in the LEFT contextual sidebar: declare them as NavControls in NAV_PAGE_DECLS (src/lib/nav/context/pages.ts; NavControlsSchema in src/lib/nav/context/schema.ts) and NavFilters paints them. The page body shows records only",
+        "fix": "Delete the in-page bar. Declare NAV_PAGE_DECLS[page].controls (sort, staff[], dateRanges[] with fromTimeParam/toTimeParam), facets in NAV_FACET_GROUPS (src/lib/nav/facets/contexts.ts), views/modes as sidebar-navigation children with `group`; the list reads the same URL params. Reference: the Exceptions hub. Then run ds_contract \"where do filters and sorting go on a list page\" and ds_critique on the file.",
+        "allow": [
+          {
+            "file": "src/components/CommandBar.tsx",
+            "reason": "⌘K palette, not a list page: aria-pressed marks its search-method pills inside the dialog; router.push navigates to a destination (`/?compose=1`). No list filter is written to the URL."
+          },
+          {
+            "file": "src/components/live-feed/LiveFeedDateRange.tsx",
+            "reason": "operator 2026-10-03: live/monitor board date range is page chrome top-right (single exception)"
+          },
+          {
+            "file": "src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx",
+            "reason": "Row action menu: StageStaffAssignPopover ASSIGNS a stage owner to the order (a write, not a filter); router.replace navigates to the Shipping exceptions view."
+          },
+          {
+            "file": "src/components/support/orders/SupportOrdersFocusHost.tsx",
+            "reason": "Focused record host: aria-pressed toggles the record's composer input (notes / out of stock); the URL write carries the focused record, not list filters."
+          }
+        ]
+      }
+    ]
+  },
+  "placement": {
+    "_note": "Placement-first ds_contract (target-engine placementTriggers): when an intent contains any trigger phrase, the answer leads with `placement` { law, briefBlock, lead } — the `lead` pins regardless of score — ahead of the score-ranked `matches` for the job. Owner 2026-09-28 (Exceptions hub) / 2026-10-03 (Package feed: briefs told agents to build an in-page filter bar).",
+    "triggers": [
+      "filter", "filters", "filtering", "filter bar", "filter chip", "filter chips", "status chip", "status chips", "carrier chip", "carrier chips", "pill row", "chip row",
+      "sort", "sorting", "sort by", "toolbar", "facet", "facets", "time window", "time of day", "date range", "date window", "day picker",
+      "staff filter", "staff picker", "carrier filter", "status filter", "segmented", "toggle between views", "switch views", "view switcher",
+      "direction", "inbound outbound", "outbound inbound", "kanban", "board", "feed", "dashboard", "list page", "new page", "brief", "delegate"
+    ],
+    "lead": ["NavFilters", "ContextualSidebar", "ListPageRecipe"],
+    "law": "WHERE before WHAT (owner 2026-09-28, Exceptions hub): on a desk list page every control that changes which records show or in what order — filters, sort, date / day / time window, staff, facets (carrier, status, reason), views, modes, direction — is DECLARED in NAV_PAGE_DECLS (modes, controls: NavControls, search) plus sidebar-navigation children, and painted by the left contextual sidebar (ContextualSidebar → NavModeSwitcher / NavViewSwitcher / NavFilters). The page body renders records only, in the display method ds_display_method picks for THIS page (column board, card list, triage sections, data table, record ledger, admin table, detail hub); this law governs CONTROLS only, never the display. Phone surfaces (/m, src/components/mobile) follow MobileV2 law instead.",
+    "briefBlock": "PLACEMENT (binding — returned by ds_contract; paste verbatim, never restate a different placement):\n1. Every control that changes WHICH records show or IN WHAT ORDER — filters, sort, date / day / time-of-day window, staff, carrier / status / reason facets, views, modes, direction (inbound / outbound) — lives in the LEFT contextual sidebar. Declare it; never draw it in the page body.\n   - Modes (top tier, e.g. Direction): NAV_PAGE_DECLS[page].modes = { label } (src/lib/nav/context/pages.ts) + one SIDEBAR_PAGE_NAV child per mode (src/lib/sidebar-navigation.ts). No 'all' mode.\n   - Views (one list each, unfiltered count chip): sidebar-navigation children with `group: <modeId>`; counts via facet context `<pageId>.<viewId>` (NAV_FACET_CONTEXTS, src/lib/nav/facets/contexts.ts).\n   - Controls: NAV_PAGE_DECLS[page].controls or a view's `controls` (NavControlsSchema, src/lib/nav/context/schema.ts:115-227): sort { param, defaultValue, options }, staff[] { id, param, label }, dateRanges[] { id, label, fromParam, toParam, placeholder, fromTimeParam?, toTimeParam? } — one day + a time-of-day window IS one dateRange with fromTimeParam/toTimeParam (schema.ts:155-156; precedent SHIPPED_CONTROLS, pages.ts:397-415).\n   - Facets with counts (carrier, status, reason…): NAV_FACET_GROUPS['<pageId>.<viewId>'] = [{ id, label, param, multi }] (src/lib/nav/facets/contexts.ts); counts come from the SAME query builder the list uses — never a second predicate.\n   - Find: NAV_PAGE_DECLS[page].search = { source: 'url-param', param: 'q', placeholder } (NavFind). Never an in-page search field.\n   ContextualSidebar / NavModeSwitcher / NavViewSwitcher / NavFilters paint all of it from the declaration; the list reads the same URL params.\n   Exception (operator 2026-10-03): live/monitor boards keep their date range as page chrome top-right (the house header date control) and always apply it; every other control stays in the sidebar.\n2. The page body shows RECORDS ONLY, in the display method chosen PER PAGE by `ds_display_method` from THIS page's facts (column board | card list | triage sections | data table | record ledger | admin table | detail hub) — this block never fixes the display. The placement rule covers CONTROLS only: NO in-page filter bar, chip / pill row, aria-pressed toggle group, segmented control, tab row, date / time picker, staff picker or facet picker in the page body. Selection, `bulk` actions and the chosen display's own density stay with the records.\n3. 'The convention can't do X' is only valid with a citation of the missing field in src/lib/nav/context/schema.ts; then extend NavControlsSchema + NavFilters — never build the control in the page.\n4. Reference implementation: the Exceptions hub — NAV_PAGE_DECLS.exceptions.modes = { label: 'Domain' } (src/lib/nav/context/pages.ts:990-994); domain + kind children with `group` (src/lib/sidebar-navigation.ts, the `exceptions` entry ~1146-1185); facet contexts + counts (src/lib/nav/facets/contexts.ts, src/lib/nav/facets/exceptions.ts).\n5. Gate: run ds_critique on every touched UI file. Rule `filter-controls-outside-sidebar` blocks a page-body write that both writes list filters to the URL and mounts a filter control."
+  },
+  "contractPreflight": {
+    "receiptTtlMs": 1800000,
+    "rules": [
+      {
+        "id": "route-source",
+        "paths": [
+          "src/lib/nav/route-tree.ts",
+          "src/lib/nav/route-tree-law.ts"
+        ],
+        "intent": "canonical route tree and domain vocabulary source for {path}: ROUTE_TREE nodes carry live path, phase-2 target, page file and owner term; VOCABULARY terms carry label, segment, banned synonyms and the owner ruling with its date; a new node or term needs an operator ruling, never an invented path or synonym; PathChips, WAREHOUSE_PATHS and the builders read this file; verify Routes and ds_route read route-tree-law.ts",
+        "limit": 3
+      },
+      {
+        "id": "navigation-structure",
+        "paths": [
+          "src/lib/sidebar-navigation.ts",
+          "src/lib/nav/**",
+          "src/components/sidebar/**",
+          "src/components/desk/**"
+        ],
+        "intent": "navigation rail sidebar parent child views filters no raw operational data lists or queue rows in any left rail station intake only existing pattern for {path}",
+        "limit": 3
+      },
+      {
+        "id": "mobile-navigation",
+        "paths": [
+          "src/components/mobile/v2/MobileV2Shell.tsx",
+          "src/components/mobile/v2/MobileV2TopBar.tsx",
+          "src/components/mobile/v2/MobileV2AppSwitcher.tsx",
+          "src/components/mobile/v2/MobileV2DetailTopBar.tsx",
+          "src/components/mobile/v2/MobileV2ScanCta.tsx"
+        ],
+        "intent": "canonical mobile application architecture for {path}: MobileV2Shell is the current implementation of the mobile application shell; four-squares MobileV2AppSwitcher owns hierarchical global navigation and existing route contracts; MobileV2TopBar owns contextual search and exactly one top-right scan seat; MobileV2DetailTopBar chooses Back for hierarchy and Close for a presented interrupt; Fitts's Law Fits Law requires touch-sized targets near the task; do not mount a retired shell desktop sidebar permanent bottom navigation duplicate scanner or hard-coded route-local top bar; describe display roles normally and treat versioned filenames only as import addresses",
+        "limit": 6
+      },
+      {
+        "id": "mobile-receiving-intake",
+        "paths": [
+          "src/components/mobile/v2/inbound/**",
+          "src/app/m/**/receiving/new/**",
+          "src/app/m/**/receiving/order/**",
+          "src/app/m/**/receiving/import-csv/**",
+          "src/app/m/**/imports/**"
+        ],
+        "intent": "canonical mobile receiving purchase-order intake for {path}: MobileV2InboundOrderComposer is the current implementation and uses the same InboundOrderDraft validation and ingestInboundOrder writer as desktop; one order is one composer and paste photo typing and scan are acquisition methods inside that job, while CSV is the true separate many-order branch; hierarchy shows required platform and PO number first, item summaries second, optional vendor urgency tracking and notes progressively, one Add to Incoming commit in DetailDock; MobileV2InboundFillSheet owns whole-order paste or photo then explicit review before use; MobileV2InboundLineSheet owns one item; paste actions are first class only for high-entropy copied values (whole order text, PO number, tracking, SKU), use touch-size IconButton or labelled Button adjacent to the field, preserve native paste, report clipboard denial and never auto-submit; remove decorative hairlines inside a semantic group, retain one boundary at the top bar, between repeated tappable records, and above DetailDock; group with whitespace and sentence-case headings; missing requirements appear next to the affected section and as one concise commit summary, never as duplicate warning walls; records use MobileRecordCard with full wrapping identity, not a mobile DataTable or flat column row; Fitts's Law Fits Law keeps one primary bottom verb and large nearby paste/add targets; versioned filenames are import addresses, not product vocabulary",
+        "limit": 10
+      },
+      {
+        "id": "mobile-fulfillment",
+        "paths": [
+          "src/components/mobile/v2/fulfillment/**",
+          "src/app/m/**/orders/**",
+          "src/app/m/**/work/**"
+        ],
+        "intent": "canonical compact high-volume mobile allocate fulfillment queue for {path}: MobileV2FulfillmentOrders is the current implementation; transparent sticky rounded status controls above rows with z-sticky isolate, platform and SLA urgency at first fixation, image and unlabeled inline quantity condition price facts, no location or item number in the resting row, tap progressive detail, long-press selection, horizontal swipe actions, DetailDock bottom verbs, one primary next action, paperwork child disclosure; Fitts's Law Fits Law and no compressed desktop DataTable row or duplicate action bar; versioned filenames are import addresses, not display-method names",
+        "limit": 8
+      },
+      {
+        "id": "mobile-stock",
+        "paths": [
+          "src/components/mobile/v2/stock/**",
+          "src/components/mobile/location/**",
+          "src/components/mobile/pair/**",
+          "src/components/mobile/stock/**",
+          "src/app/m/**/stock/**",
+          "src/app/m/**/location/**"
+        ],
+        "intent": "canonical mobile warehouse stock display for {path}: /m/stock is a Rooms › Aisles › Bays › Locations drill of every place (empty ones read Empty; an aisle opens on two full-height buttons split down the middle labelled Odd bays Left side and Even bays Right side (?side=left|right, BAY_SIDE_FACE), then the chosen side lists its bays in number order in one column, never (Left) on every row; search lists stocked places), with PathChips for the walked path and contextual search, and no doors to location labels, racks or manage (those live in the menu); MobileV2LocationRecord is one scannable address with PathChips up the hierarchy and an ordinal title picker sideways to sibling locations; the stock-position sheet stages rest, adjust, move, more and photos inside ONE sheet; stock count edits require quantity and reason but scanning is not mandatory; moves prefer MobileCaptureWindow destination scan with typed fallback through the same validation path; linked photos preview then MobileSwipePhotoViewer with armed delete; actions stay in DetailDock verbs by Fitts's Law Fits Law; paths and words come from the route tree (ds_route, ds_vocabulary); no nested sheet, no inline destructive photo button, no retired full-page location form or hard-coded bottom CSS",
+        "limit": 8
+      },
+      {
+        "id": "mobile-scan",
+        "paths": [
+          "src/components/mobile/v2/scan/**",
+          "src/components/mobile/station/**",
+          "src/app/m/**/scan/**"
+        ],
+        "intent": "canonical mobile scan workspace for {path}: MobileV2ScanStation is the current implementation and composes newest-first MobileV2ScanRecentList above bottom-mounted MobileCaptureWindow; camera and manual entry share decode validation and history; a recent row opens scoped detail/actions; preserve scroll ownership and safe area without hard-coded bottom positioning; use Fitts's Law Fits Law and do not fork a scan feed scanner or recent list",
+        "limit": 7
+      },
+      {
+        "id": "mobile-photo",
+        "paths": [
+          "src/components/mobile/photos/**",
+          "src/components/mobile/**/*Photo*.tsx",
+          "src/app/m/**/photos/**"
+        ],
+        "intent": "mobile photo capture evidence for {path}: MobileNativePhotoCapture owns batching compression preview and upload handoff; MobileContinuousPhotoCamera keeps MediaStream mounted for multiple shutter presses before Done; operating-system capture input is the single-photo fallback and library input supports batching; camera chrome is close top-right, gallery bottom-left, large haptic shutter centre, green check Done bottom-right with no opaque bottom bar; MobileSwipePhotoViewer owns review and armed deletion after selection; Fitts's Law Fits Law and no one-photo-only custom fork or delete controls under resting thumbnails",
+        "limit": 7
+      },
+      {
+        "id": "mobile-receiving-record",
+        "paths": [
+          "src/components/mobile/v2/receiving/**",
+          "src/app/m/**/receiving/**",
+          "src/app/m/**/qc/**"
+        ],
+        "intent": "canonical mobile scanned receiving LPN R-number quality-control record for {path}: MobileV2ReceivingCartonRecord is the current implementation with view-only vs operate mode, ticket linkage, item rows, linked listing and photos, failed QC reason claim and label path, and bottom operational verbs; primary record stays a full scrollable route with MobileV2DetailTopBar while linked line quick looks stay scoped; use DetailDock and MobileCaptureWindow, not a retired scan header full-page form nested sheets or duplicate footer; record lists use MobileRecordCard cards with identity top-left, date top-right, full wrapping title, count bottom-left and money bottom-right, never truncated, line-clamped or ellipsized, and tap drills into detail; multi-step flows show MobileStepProgress with progressive disclosure and just-in-time steps",
+        "limit": 8
+      },
+      {
+        "id": "mobile-paperwork",
+        "paths": [
+          "src/components/mobile/v2/orders/**",
+          "src/app/m/**/paperwork/**"
+        ],
+        "intent": "mobile order paperwork for {path}: MobileV2OrderPaperworkSheet owns packing slip shipping label manual and kit insert progressive disclosure, preview open print pair and bundle printing; it is a child task from an order, not a second primary record or nested generic sheet; use BottomSheet and DetailDock action hierarchy with sentence-case labels and one primary verb",
+        "limit": 6
+      },
+      {
+        "id": "route-surface",
+        "paths": [
+          "src/app/m/**/page.tsx",
+          "src/lib/nav/route-tree.ts",
+          "src/components/mobile/v2/mobile-v2-destinations.tsx"
+        ],
+        "intent": "canonical route tree and domain vocabulary for {path}: src/lib/nav/route-tree.ts is the one source for every Warehouse URL, nav name and domain word; call ds_route before naming adding or moving a route and ds_vocabulary before writing a domain word; Rooms not Zone, Tote not LPN, Location labels belong to Locations; PathChips walk up the hierarchy; canonical paths come from WAREHOUSE_PATHS and the builders (locationPath, locationLabelsHref, containerPath), never a literal; every page is a ROUTE_TREE node in its lane's menu group; unsure ask the operator, never invent a path or synonym",
+        "limit": 3
+      },
+      {
+        "id": "mobile-surface",
+        "paths": [
+          "src/app/m/**/page.tsx",
+          "src/components/mobile/**"
+        ],
+        "intent": "mobile operational surface for {path}: first classify primary record vs linked-record quick look vs edit vs picker vs confirmation vs physical job; one object one job one primary thumb-zone verb; progressive disclosure and low-frequency overflow; DetailHubScreen and DetailRecordFrame for primary records; BottomSheet only for scoped linked quick look edit picker confirmation or verb form; DetailDock owns bottom actions; MobileCaptureWindow owns scan-first capture with keyed manual fallback; MobileSwipePhotoViewer owns full-screen evidence review and destructive photo management outside previews; safe edits autosave with visible saving failure state; reversible mutations use receipt and undo while irreversible mutations confirm; Fitts's Law (Fits Law) means make frequent targets large and close to the current task/thumb, keep icon hit areas at least the mobile touch floor, avoid tiny adjacent targets and do not make operators travel between top and bottom to complete one action; no nested sheets generic Sheet fixed viewport sheet height hand-built sticky footer duplicate action path or destructive control in evidence preview; record display law: records are grouped MobileRecordCard cards with identity top-left, date top-right, the full wrapping title, count bottom-left and money bottom-right, never truncated, line-clamped, ellipsized or abbreviated, and tap drills into a scrollable detail; multi-step flows show MobileStepProgress at the top with progressive disclosure and just-in-time steps; return existing canonical components before permitting a new one",
+        "limit": 6
+      },
+      {
+        "id": "products-surface",
+        "paths": [
+          "src/app/products/**",
+          "src/components/products/**"
+        ],
+        "intent": "Products catalog friendly fulfillment triage row list with contextual-sidebar controls, product form TriageScrollLayout, progressive disclosure and proper surface corners; use the existing non-spreadsheet pattern for {path}",
+        "limit": 4
+      },
+      {
+        "id": "inbound-receiving-surface",
+        "paths": [
+          "src/app/incoming/**",
+          "src/app/unbox/**",
+          "src/components/receiving/**",
+          "src/lib/receiving/**"
+        ],
+        "intent": "inbound Deliveries views: Inbound, Docked, Unboxed. Docked reads the Arrival scan feed and excludes Unbox-opened cartons; Docked and Unboxed use the shared multi-height RecordCard carton list, never an automatically selected density=row/TriageRow single-height table. Keep separate view membership and copy. Shared record detail starts with ReceivingFulfilment then Items then progressive EvidenceDisclosure; preserve the existing pattern for {path}",
+        "limit": 4
+      },
+      {
+        "id": "data-table-surface",
+        "paths": [
+          "src/components/tables/**",
+          "src/lib/tables/**",
+          "src/lib/triage/views/**",
+          "src/design-system/components/triage-card-list/**",
+          "src/design-system/components/record-card/**",
+          "src/design-system/components/record-action-strip/**",
+          "src/design-system/components/AdminTable/**",
+          "src/components/station/receiving-grid/**",
+          "src/**/*Table*.tsx",
+          "src/**/*CardList*.tsx",
+          "src/**/*Ledger*.tsx",
+          "src/**/cards/**"
+        ],
+        "intent": "data table vs card list display-method decision for {path}: score the page facts first (steady-state rows, compared columns, primary verb scan-and-act vs read-and-compare vs edit-in-place, desk vs phone surface) and code the winner, not the word table; work queues are TriageCardList with RecordCard declared by a TriageViewDecl view config (status kind, facts, next steps, chips, paging, Space quick look); keep-sheets are canonical DataTable with a direct TableSurfaceBinding; row checkbox select gutter is GridRowCheckbox; selection and record verbs are RecordActionStrip; never a compound grid; ports prove the canonical mobile card display first",
+        "limit": 6
+      },
+      {
+        "id": "desktop-page-surface",
+        "paths": [
+          "src/app/**/page.tsx",
+          "src/components/**/*Desk*.tsx",
+          "src/components/**/*Workspace*.tsx",
+          "src/components/**/*Sidebar*.tsx",
+          "src/components/**/*Rail*.tsx",
+          "src/components/**/*Nav*.tsx"
+        ],
+        "intent": "page workspace parent child navigation left contextual sidebar no raw operational data lists or queue rows in contextual or legacy route rails station intake only inline central data display existing pattern for {path}",
+        "limit": 3
+      }
+    ]
+  },
+  "gates": [
+    {
+      "name": "ds_boundary",
+      "description": "Adjudicate ONE file against the mobile\u2194desktop component boundary (ARCHITECTURE.md \"Component split (binding)\"): does it import across the surface line, or is it a desktop file importing mobile internals? Returns each crossing marked baseline (frozen debt, scripts/boundary-exemptions.ts \u2014 shrink-only) or NEW \u2014 a NEW crossing is exactly what fails the verify Boundary gate. Same rule module as the gate; call before writing an import that crosses surfaces.",
+      "argv": [
+        "scripts/boundary-guard.ts",
+        "--json"
+      ],
+      "fileArg": "--file",
+      "annotations": {
+        "law": "ARCHITECTURE.md \"Component split (binding)\" \u2014 verify Boundary gate enforces it; baseline crossings are frozen debt, NEW ones fail."
+      }
+    },
+    {
+      "name": "ds_nav_names",
+      "description": "Adjudicate the NAV NAME law: a parent and a child must never wear the same name (operator 2026-09-14 \u2014 the Inbound lane once printed \"Inbound\" as lane, row AND tab). Checks every PAINTED parent/child pairing across both surfaces \u2014 lane\u2192row, lane\u2192expanded child, page\u2192desk tab, and /m drawer group\u2192row \u2014 and names each clash with the altitude that produced it. Takes no arguments: the law is over the REGISTRIES (sidebar-navigation.ts + mobile/nav-registry.ts), not over one file, which is why no refuse-pattern could ever see it. Same rule module as the verify Unit-tests gate (src/lib/nav/nav-name-collisions.ts). Call before renaming or adding a lane, row or tab. Fix by renaming the CHILD: the lane names the direction, the row the object, the tab the state.",
+      "argv": [
+        "scripts/nav-name-guard.ts",
+        "--json"
+      ],
+      "annotations": {
+        "gate": "src/lib/nav/nav-name-collisions.test.ts \u2014 verify Unit tests. Same module; this tool cannot disagree with the gate."
+      }
+    },
+    {
+      "name": "ds_sku_identity",
+      "description": "Adjudicate the SKU IDENTITY law before reading or writing a product title, SKU or photo: one SKU, one title, one photo, and the ZOHO item governs (operator 2026-09-15 \u2014 \"it all needs to be ported under one source of truth which would be the ZOHOSKU\"). Takes no arguments: the law is over a SET of readers and writers, not one file. Returns every live violation in four kinds \u2014 a sku_catalog join that is not exact + org-scoped, a similarity(product_title) gate in a read path, a title ladder that reads catalog_product_title before zoho_item_title, and an UPDATE sku_catalog touching product_title/image_url with no Zoho-twin predicate. The fix is always the same three exports from src/lib/sku/sku-identity-law.ts: SKU_CATALOG_JOIN_ON_SQL, resolveSkuIdentityTitle, skuCatalogNoZohoTwinPredicateSql. Marketplace copy belongs in sku_platform_ids.display_name, never in the catalog title of a Zoho-owned row. Same rule module as the verify `Sku identity` gate and the Unit-tests gate.",
+      "argv": [
+        "scripts/sku-identity-guard.ts",
+        "--json"
+      ],
+      "annotations": {
+        "gate": "verify `Sku identity` + src/lib/sku/sku-identity-law.test.ts. Same module; this tool cannot disagree with the gate."
+      }
+    },
+    {
+      "name": "ds_ledger",
+      "description": "Adjudicate ONE file against the design consolidation ledger (docs/design-system/consolidation-ledger.json, the living delete/simplification list AGENTS.md says to read before adding a table action, destructive control or local wrapper). Returns findings: `retired-path` / `retired-source` VIOLATIONS (the file sits where a retired fork was deleted, or contains its forbiddenSource; this is exactly what fails verify:fast) and `on-delete-list` / `imports-delete-list` ADVISORIES (the file is, or imports, a currentPath of a queued or in-progress entry). Each finding includes the entry's problem, replacementPaths and exitCriteria, so the answer is which canonical source to reuse. Works for a file that does not exist yet (path-only). Call it before porting a table, adding selection or danger chrome, or creating a wrapper.",
+      "argv": [
+        "scripts/design-ledger-file-guard.mjs",
+        "--json"
+      ],
+      "fileArg": "--file",
+      "annotations": {
+        "gate": "scripts/design-consolidation-guard.mjs (verify:fast `Design consolidation`) reads the same ledger; a retired-source violation here is the same needle that fails the gate."
+      }
+    },
+    {
+      "name": "ds_display_method",
+      "description": "Score the DISPLAY-METHOD DECISION FORMULA (pinned DataTable law, owner 2026-09-29) for one page from its facts, deterministically, instead of doing the arithmetic in prose. Pass the facts you know about THIS page (never the word table/grid/list from the request). Returns every candidate (DataTable + TableSurfaceBinding, TriageCardList + RecordCard, RecordLedger, AdminTable, TriageSections / TriageScrollLayout, DetailHubScreen + DetailSummaryCard, Status column board = ColumnBoard) with its score and one-line reasons, the confidence (top score / 5 x facts gathered), the tier, and the decision: implement (HIGH), implement and name the runner-up (MEDIUM), or ask the operator with the ranked menu (LOW, or the top two in one tier). Same module as src/lib/tables/display-method.test.ts.",
+      "argv": [
+        "scripts/display-method-guard.ts",
+        "--json"
+      ],
+      "inputArg": "--input",
+      "input": {
+        "type": "object",
+        "properties": {
+          "steadyRows": { "type": "integer", "minimum": 0, "description": "Steady-state row count the operator sees on a normal day." },
+          "comparedFacts": { "type": "integer", "minimum": 0, "description": "Facts the operator compares side by side across rows (candidate columns)." },
+          "verb": { "type": "string", "enum": ["scan-and-act", "read-and-compare", "edit-in-place", "browse-and-drill", "monitor-pipeline"], "description": "The primary operator verb on this page. monitor-pipeline = watch counts and items across several statuses together." },
+          "surface": { "type": "string", "enum": ["desk", "phone", "kiosk"] },
+          "shape": { "type": "string", "enum": ["entity-per-row", "grouped", "append-history"], "description": "One entity per row, spanned/grouped rows (an order with lines), or an append-only history." },
+          "rowsPerScreen": { "type": "string", "enum": ["few", "many"], "description": "How many rows must be visible at once." },
+          "urgencyBands": { "type": "boolean", "description": "The queue is read in urgency bands (late / today / later)." },
+          "admin": { "type": "boolean", "description": "Small admin CRUD (settings-like), desk only." },
+          "statusGroups": { "type": "integer", "minimum": 0, "description": "How many statuses / groups the operator must see at once (the columns a board would draw)." }
+        },
+        "required": ["steadyRows", "comparedFacts", "verb", "surface"]
+      },
+      "annotations": {
+        "law": "src/lib/tables/display-method.ts is the formula; the DataTable pin in src/design-system/pinned.json names it."
+      }
+    },
+    {
+      "name": "ds_card_views",
+      "description": "Adjudicate the CARD VIEW CONTRACT across every triage view (ledger record-card-view-contract): each TriageViewDecl in src/lib/triage/views declares every RecordCard anatomy slot (identity, channel, person, top-right status kind, facts, Space quick look, with explicit 'none'), and the card its adapter paints must agree. Takes no arguments: the law is over the set of views and adapters. Returns each view, its declared slots, its adapter, and every disagreement. Same rule module as src/lib/triage/views/triage-views.test.ts. Call before adding a view, a card adapter, or porting a list to cards.",
+      "argv": [
+        "scripts/card-views-guard.ts",
+        "--json"
+      ],
+      "annotations": {
+        "gate": "src/lib/triage/views/triage-views.test.ts (verify Unit tests) uses the same module; this tool cannot disagree with the gate."
+      }
+    },
+    {
+      "name": "ds_disclosure",
+      "description": "Adjudicate the SCREEN BUDGET — just-in-time progressive disclosure (owner 2026-10-03: \"this amount of information at one time displayed at the screen\"). With no surface: checks every DECLARED first screen in src/lib/disclosure/surfaces.ts against the law (title … ✕ chrome row, one control per fact, every door opens from an L1 slot, max three dock verbs with exactly one primary). With {surface, params?, theme?}: opens that surface live at http://localhost:3050 at 390×844 (tests/.auth/admin.json), measures the first screen (data-disclosure-slot / data-disclosure-zone marks) and returns the DELETE · SIMPLIFY · MOVE · ENLARGE lists — duplicate text on L1, visible field labels, controls outside a declared slot, ✕ off the title row, status/time not in the corners, L1 taller than its viewport share, targets under 44px — each with its fix recipe. An owner instruction about what shows where is written into surfaces.ts FIRST; the composition follows. Same rule module as src/lib/disclosure/screen-budget.test.ts and verify `Disclosure`. The declutter skill (.claude/skills/declutter) drives a surface to zero findings.",
+      "argv": [
+        "scripts/disclosure-audit.ts",
+        "--json"
+      ],
+      "inputArg": "--input",
+      "input": {
+        "type": "object",
+        "properties": {
+          "surface": {
+            "type": "string",
+            "description": "A declared surface id from src/lib/disclosure/surfaces.ts (e.g. task-sheet). Omit for the static check of every surface."
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Probe placeholders, e.g. {\"id\":\"16127\"} for /m/home?task={id}."
+          },
+          "theme": {
+            "type": "string",
+            "enum": ["light", "dark"]
+          },
+          "screenshot": {
+            "type": "string",
+            "description": "Optional PNG path for the measured first screen."
+          }
+        }
+      },
+      "annotations": {
+        "gate": "verify `Disclosure` (static) + src/lib/disclosure/screen-budget.test.ts — same module; this tool cannot disagree with the gate."
+      }
+    },
+    {
+      "name": "ds_route",
+      "description": "Resolve WHERE a thing lives before you name, add, move or link a route — the ROUTE TREE (src/lib/nav/route-tree.ts, owner 2026-10-03) is the one source for every Warehouse URL and nav name. Pass {path} (a concrete pathname, e.g. /m/loc/C0310300), {file} (a src/app page file) or {intent} (plain words, e.g. \"print a bay sticker\"). Returns decision route | ask-operator, the matched node(s) with ancestry labels, the live path, the phase-2 target, the page file and the builder export to write instead of a literal (WAREHOUSE_PATHS / locationPath / locationLabelsHref / containerPath …), plus vocabulary corrections for any banned word in the intent. ask-operator means no node owns it or two tie: show the operator the returned menu and ASK — never invent a path, a page or a name. Same module as verify `Routes`; call it before writing any /m URL or adding a page.",
+      "argv": [
+        "scripts/route-tree-guard.ts",
+        "--json",
+        "--mode",
+        "route"
+      ],
+      "inputArg": "--input",
+      "input": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "A concrete pathname (query ignored), e.g. /m/stock or /m/loc/RK12-3." },
+          "file": { "type": "string", "description": "Repo-relative page file, e.g. src/app/m/(shell)/labels/page.tsx." },
+          "intent": { "type": "string", "description": "What the operator wants, in plain words, e.g. \"print a bay sticker\"." }
+        }
+      },
+      "annotations": {
+        "gate": "verify `Routes` — same module (src/lib/nav/route-tree-law.ts); this tool cannot disagree with the gate."
+      }
+    },
+    {
+      "name": "ds_vocabulary",
+      "description": "Look up a DOMAIN WORD before you write it in a label, heading, empty state, toast or URL segment. The vocabulary in src/lib/nav/route-tree.ts (owner rulings 2026-10-03: Rooms never Zone; a tote is a Container painted \"Tote\", never LPN; LPN = Receiving's R-* license plate, spelled \"license\"; Location labels belong to Locations) names one canonical label per thing and the banned synonyms. Pass {word}: returns the term (label, plural, definition, segment, banned, owner lane, routes that own it) and via term | banned — banned means paint the canonical label instead. An unknown word returns found:false — do not coin it; ask the operator. No word = every term. Same module as verify `Routes` (banned-word rule).",
+      "argv": [
+        "scripts/route-tree-guard.ts",
+        "--json",
+        "--mode",
+        "vocabulary"
+      ],
+      "inputArg": "--input",
+      "input": {
+        "type": "object",
+        "properties": {
+          "word": { "type": "string", "description": "The word you are about to write, e.g. zone, bin, tote, labels. Omit for the whole vocabulary." }
+        }
+      },
+      "annotations": {
+        "gate": "verify `Routes` — same module (src/lib/nav/route-tree-law.ts); this tool cannot disagree with the gate."
+      }
+    },
+    {
+      "name": "ds_route_tree",
+      "description": "Print the ROUTE TREE — lane › collection › record › task — with each node's id, label, kind, status (live | planned), live path, phase-2 target and page file. Call it before adding or moving a route to see where it belongs and what its parent and siblings are called (a child never wears its parent's name). Pass {lane} (e.g. warehouse) or nothing for every lane. Grow src/lib/nav/route-tree.ts; never re-declare a path elsewhere. Same module as verify `Routes`.",
+      "argv": [
+        "scripts/route-tree-guard.ts",
+        "--json",
+        "--mode",
+        "tree"
+      ],
+      "inputArg": "--input",
+      "input": {
+        "type": "object",
+        "properties": {
+          "lane": { "type": "string", "description": "Lane id or label, e.g. warehouse. Omit for every lane." }
+        }
+      },
+      "annotations": {
+        "gate": "verify `Routes` — same module (src/lib/nav/route-tree-law.ts); this tool cannot disagree with the gate."
+      }
+    }
+  ],
+  "extraAxes": [
+    {
+      "axis": "mode",
+      "source": "packages/design-tokens/src/modes.ts",
+      "consts": ["MODE_REGISTRY", "SLATE_SURFACES", "MODE_NEUTRAL_REMAP"],
+      "uses": {
+        "MODE_REGISTRY": "import { MODE_REGISTRY } from '@/design-system/modes'. The task modes are triage, counter and assistant. Declare a region's mode with <ModeRegion mode=\"\u2026\"> (`@/design-system/providers/ModeRegion`). Consume via utilities: rounded-mode, rounded-mode-pill, p-mode-page / px-mode-page, min-h-mode-hit (-cta), bg-mode-well, bg-mode-bar, border-mode-control, text-mode-warn, text-mode-body, duration-mode-feedback (-press, -pulse).",
+        "SLATE_SURFACES": "import { SLATE_SURFACES } from '@/design-system/modes'. The shared light palette for counter and assistant.",
+        "MODE_NEUTRAL_REMAP": "import { MODE_NEUTRAL_REMAP } from '@/design-system/modes'. Which neutral --ds-color-* vars a light-scheme mode region remaps to its palette \u2014 why bg-surface-* / text-text-* / border-border-* adopt the mode with no per-component change. Neutrals only: state/functional tones never change by mode."
+      }
+    },
+    {
+      "axis": "sku-identity",
+      "source": "src/lib/sku/sku-identity-law.ts",
+      "uses": {
+        "SKU_CATALOG_JOIN_ON_SQL": "import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law'. The ONLY `ON` predicate for a `sku_catalog` join off a receiving line. Aliases are fixed (`sc`, `rl`) because all ten call sites already use them; a fixed string is what lets the guard grep for compliance instead of re-parsing SQL.",
+        "ZOHO_ITEM_TITLE_SQL": "import { ZOHO_ITEM_TITLE_SQL } from '@/lib/sku/sku-identity-law'. The Zoho item title subquery \u2014 rule 2's winning arm. Correlated on `rz.zoho_item_id` (`receiving_line_zoho`), `status = 'active'`, so a retired Zoho item degrades to the marketplace title rather than blanking the row.",
+        "SKU_IDENTITY_TITLE_ORDER": "import { SKU_IDENTITY_TITLE_ORDER } from '@/lib/sku/sku-identity-law'. Title precedence, most authoritative first. Exported as data so the test can assert consumer ladders against it rather than restating the order.",
+        "UNFOUND_PO_TITLE_STUB": "import { UNFOUND_PO_TITLE_STUB } from '@/lib/sku/sku-identity-law'. The `'Unfound PO'` stub sentinel. A receiving line with no matched PO carries it in `item_name`; it is a placeholder, not a product, so it must never win the ladder ahead of a real later field.",
+        "SKU_IDENTITY_REFUSAL": "import { SKU_IDENTITY_REFUSAL } from '@/lib/sku/sku-identity-law'. The sentence a refusal prints \u2014 one place, so gate and tool agree.",
+        "SKU_IDENTITY_SCAN_EXEMPT": "import { SKU_IDENTITY_SCAN_EXEMPT } from '@/lib/sku/sku-identity-law'. Files that legitimately contain a pattern this scan otherwise refuses."
+      }
+    },
+    {
+      "axis": "kiosk",
+      "source": [
+        "src/app/kiosk/kiosk-chrome.ts",
+        "src/app/kiosk/kiosk-pos-surface.ts",
+        "src/app/kiosk/kiosk-counter-surface.ts"
+      ],
+      "uses": {
+        "KIOSK_PANE_HEADER_BAND": "import { KIOSK_PANE_HEADER_BAND } from '@/app/kiosk/kiosk-chrome'. Touch-friendly pane title row (~56px). Taller than desk `PRIMARY_CHROME_ROW_FACE` (`h-7`) \u2014 tablet counter, not ops densify. Upper band owns `border-b`; bodies never add a matching `border-t`.",
+        "KIOSK_PANE_FOOTER_BAND": "import { KIOSK_PANE_FOOTER_BAND } from '@/app/kiosk/kiosk-chrome'. Touch-friendly pane action floor (~56px) \u2014 twin of KIOSK_PANE_HEADER_BAND. Owns `border-t border-border-soft` so left (cart actions) and right (submit) hairlines share one continuous Y with the same token as the header seam. Never `border-border-hairline` here \u2014 that reads as a different weight from the top.",
+        "KIOSK_PANE_HEADER_TITLE": "import { KIOSK_PANE_HEADER_TITLE } from '@/app/kiosk/kiosk-chrome'. Pane title face inside KIOSK_PANE_HEADER_BAND.",
+        "KIOSK_SECTION_LABEL_ROW": "import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome'. In-body section label row \u2014 the `KIOSK_SECTION_LABEL` + divider + inset triple, which was hand-composed at eight sites (one of them at `px-6`, silently out of line with the other seven). The seam here is deliberately `border-border-hairline`, NOT the `border-border-soft` of a band: a divider *inside* a body is a lighter fact than the seam that closes a band. That distinction was the thing nothing wrote down, which is why the two weights had been used interchangeably.",
+        "KIOSK_BODY_INSET": "import { KIOSK_BODY_INSET } from '@/app/kiosk/kiosk-chrome'. The one horizontal inset for pane bodies. The surface carried four (`px-4` \u00d725, `px-6` \u00d77, `px-3` \u00d72, `px-8` \u00d71). Bands are full-bleed and their titles inset themselves; bodies use this.",
+        "KIOSK_META": "import { KIOSK_META } from '@/app/kiosk/kiosk-chrome'. Dense meta chrome \u2014 SKU, category row labels, quiet status (not form fields). Keep body/input type at tablet-readable size so iOS does not zoom.",
+        "KIOSK_TILE_TITLE": "import { KIOSK_TILE_TITLE } from '@/app/kiosk/kiosk-chrome'. Product tile title \u2014 arm\u2019s-length readable on iPad landscape. Clamped at two lines because a customer can drop off several devices, so a title is either ONE product or a summary of many \u2014 and the summary form is an unbounded concatenation a tablet tile cannot absorb. Two lines then an ellipsis keeps the grid on its rhythm. `line-clamp-2` brings its own `overflow-hidden` and needs normal wrapping; never add `truncate` here \u2014 its `whitespace-nowrap` would cancel the clamp (law: `src/components/search/search-result-faces.tsx:154-158`).",
+        "KIOSK_SECTION_LABEL": "import { KIOSK_SECTION_LABEL } from '@/app/kiosk/kiosk-chrome'. Checkout section micro label (repair / sales panes). Hairline border lives on the host when the section needs a divider.",
+        "KIOSK_PILL": "import { KIOSK_PILL } from '@/app/kiosk/kiosk-chrome'. Selectable pill chrome (repair issue chips). Only house use of `cornerClass('pill')` on the kiosk counter face. Category nav is flush in `kiosk-pos-surface`. Compose with KIOSK_PILL_ACTIVE / KIOSK_PILL_IDLE.",
+        "KIOSK_PILL_ACTIVE": "import { KIOSK_PILL_ACTIVE } from '@/app/kiosk/kiosk-chrome'. Selected pill \u2014 accent wash (Square chip selected). Pair with a trailing Check overlay.",
+        "KIOSK_PILL_IDLE": "import { KIOSK_PILL_IDLE } from '@/app/kiosk/kiosk-chrome'. Idle pill \u2014 quiet sunken chip, hover wash.",
+        "KIOSK_PILL_ACTIVE_ISSUE": "import { KIOSK_PILL_ACTIVE_ISSUE } from '@/app/kiosk/kiosk-chrome'. Issue/reason selected pill \u2014 warning wash so selected issues pop on intake. Still a KIOSK_PILL compose; categories keep KIOSK_PILL_ACTIVE.",
+        "KIOSK_CART_COUNT_BADGE": "import { KIOSK_CART_COUNT_BADGE } from '@/app/kiosk/kiosk-chrome'. Live line-count badge riding the cart glyph (one-symbol). Position against a button-sized `relative` wrap \u2014 not the trail\u2019s `HEADER_ICON_WRAP` (h-full), or -top-* parks in the band gutter. Callers: KioskTopChrome (~line 145). API: none. Schemas: none. User: \"ensure the qty for the cart is properly on the cart icon\" / \"cart glyph with a one-symbol count badge top-right\"",
+        "KIOSK_CENTRE_SURFACE": "import { KIOSK_CENTRE_SURFACE } from '@/app/kiosk/kiosk-chrome'. THE kiosk centre surface \u2014 one white, full-bleed plane per pane. This is the skeleton the repair service intake form established and the operator asked every kiosk form to inherit (2026-09-15): *\"it should be very similar to the repair service intake form with the stepper on top and its full width and then a fixed width in the middle. Why are you fixing width for the entire display? \u2026 There should be no reason why you're wrapping the cart form and then having another background for it. There should just be a white background.\"* The measure belongs to the BODY, not to the plane: `KioskPaneForm` puts `KIOSK_POS_FORM_MEASURE` on the scroll body while the step band and the action floor run edge to edge. A bounded, cornered card here fixes the width of the CHROME as well, which is what made the cart read as a popover. Mount: the outer element of a centre pane (cart, repair, buyback, pickup), with `KioskPaneForm` inside it.",
+        "KIOSK_UTILITY_SHEET": "import { KIOSK_UTILITY_SHEET } from '@/app/kiosk/kiosk-chrome'. Utility SHEET face \u2014 the bounded card the paperwork and triage panels still wear on the centre stage. Was `KIOSK_UTILITY_PANEL_FACE` (`h-full w-full` edge-to-edge), which painted a full-width slab across the glass. Operator 2026-09-14: *\"the cart icon brings up a full width popover component. This is a wrong display.\"* ## The CART left this face (2026-09-15) Bounding the whole panel was the wrong reading of that ruling: the cart is a FORM, and a form's measure belongs to its body, so the cart now mounts KIOSK_CENTRE_SURFACE \u2014 white, full-bleed, the repair intake skeleton. This token survives for the two read-mostly panels that are still a card on a stage; porting them is the next increment. FLAT either way: it composed `elevationClass('overlay')` for one session and the operator rejected the blur \u2014 *\"it should not display a depth drop shadow.\"* Separation is the plane behind it (KIOSK_UTILITY_STAGE) plus the `border-border-soft` hairline, never a shadow. Nothing inside may re-introduce one either \u2014 see `KioskCartLineCard`, which carried `elevationClass('raised','soft')` per line and is now hairline-only. `MOBILE_SCAN_CARD_CORNER` is the same corner the mobile scan cards wear: consume the `/m` SoT, never invent a kiosk radius.",
+        "KIOSK_UTILITY_STAGE": "import { KIOSK_UTILITY_STAGE } from '@/app/kiosk/kiosk-chrome'. The stage plane behind an open utility SHEET \u2014 the other half of the flat-sheet ruling above. Scoped to the sheet-wearing slots, never a permanent repaint and never behind the cart: `KIOSK_POS_CANVAS` is the ONE stage background (pinned by `kiosk-pos-surface.test.ts`), the product cards and the glass dock are all `bg-surface-card` over it, and sinking the stage for good would recolour the whole browse surface. The cart is a full-bleed white surface now, so there is nothing to contrast it against and it takes no second plane at all. `surface-sunken` is the neutral recessed rung. NOT `surface-bench` / `-trough` / `-plate` / `-slot`: those are the scan-station packing-bench family (birch on light, warm coal on dark) and borrowing one here would put an Unbox well behind a counter tablet.",
+        "KIOSK_CUSTOMER_FACE": "import { KIOSK_CUSTOMER_FACE } from '@/app/kiosk/kiosk-chrome'. Customer-face shell \u2014 same card plane, no operational chrome.",
+        "KIOSK_POS_AT_MD": "import { KIOSK_POS_AT_MD } from '@/app/kiosk/kiosk-pos-surface'. Tablet-measure mirrors of the token roles used below. A responsive variant CANNOT be composed: `md:${cornerClass('surface')}` builds the string at runtime and Tailwind's scanner only reads source text, so the utility is never emitted (the same trap `ELEVATION_HOVER_CLASS` documents). They are therefore literals \u2014 and `kiosk-pos-surface.test.ts` pins each one to the role it mirrors, so a theme that moves `surface` or the elevation ladder fails a test instead of silently drifting at `md:`.",
+        "KIOSK_POS_CANVAS": "import { KIOSK_POS_CANVAS } from '@/app/kiosk/kiosk-pos-surface'. Shared plane behind catalog + stage. The ONE SoT background (operator, 2026-09-14): `bg-surface-card` \u2014 the design-system surface token every other surface shares. The kiosk's former `#FAFAFA` ground (2026-09-13) is repealed: a page-local hex beside the fixed-width intake forms put two whites on one screen. Same token, every measure \u2014 phone and desk.",
+        "KIOSK_POS_SIDEBAR": "import { KIOSK_POS_SIDEBAR } from '@/app/kiosk/kiosk-pos-surface'. Landscape category column \u2014 fixed width, never flex leftover space. Portrait stays full-bleed above the product stage.",
+        "KIOSK_POS_SIDEBAR_BODY": "import { KIOSK_POS_SIDEBAR_BODY } from '@/app/kiosk/kiosk-pos-surface'. Category accordion scroll body \u2014 flush list, no inset pill padding.",
+        "KIOSK_POS_CATEGORY": "import { KIOSK_POS_CATEGORY } from '@/app/kiosk/kiosk-pos-surface'. Category nav item \u2014 flush row (no rounded-xl POS exception).",
+        "KIOSK_POS_CATEGORY_ACTIVE": "import { KIOSK_POS_CATEGORY_ACTIVE } from '@/app/kiosk/kiosk-pos-surface'.",
+        "KIOSK_POS_CATEGORY_IDLE": "import { KIOSK_POS_CATEGORY_IDLE } from '@/app/kiosk/kiosk-pos-surface'. Idle category \u2014 hairline hover wash on the shared card plane.",
+        "KIOSK_POS_CATEGORY_LABEL": "import { KIOSK_POS_CATEGORY_LABEL } from '@/app/kiosk/kiosk-pos-surface'. Wrapping category title \u2014 tight leading so long Bose names do not balloon.",
+        "KIOSK_POS_CATEGORY_STACK": "import { KIOSK_POS_CATEGORY_STACK } from '@/app/kiosk/kiosk-pos-surface'. Nested sibling stack \u2014 divide-y hairlines, not gap cards.",
+        "KIOSK_POS_GRID": "import { KIOSK_POS_GRID } from '@/app/kiosk/kiosk-pos-surface'. Product tile CSS grid \u2014 seam-separated on a phone, gapped from `md` up. The old note here said a gap would \"reveal a colored host\" and paint an unfilled trailing row as a gray block. That was true of the flush direction and is still true at the phone measure, which is why `gap-0` survives there; from `md` up the host colour IS the design, and a short final row simply shows more ground the way the last row of any card grid does.",
+        "KIOSK_EAGER_TILE_COUNT": "import { KIOSK_EAGER_TILE_COUNT } from '@/app/kiosk/kiosk-pos-surface'. How many catalog tiles load their photo EAGERLY, at high fetch priority. The LCP element on `/kiosk/v2` is a tile photo, and Lighthouse measured its resource-load DELAY at 4.2 s on a production build: the grid is fetched client-side, so no image is discoverable in the initial HTML, and every tile declared `loading=\"lazy\"` on top of that. The grid is `auto-fill minmax(148px, 1fr)`, so an iPad-landscape row holds at most ~8 tiles and this is one row \u2014 above the fold by definition. Everything past it stays lazy, which is what keeps a several-hundred-tile catalog from requesting several hundred photos on open. Raise this only with a Lighthouse number in hand: more eager images is more bandwidth competing with the LCP one, which is the trade this constant exists to make visible.",
+        "KIOSK_POS_CARD": "import { KIOSK_POS_CARD } from '@/app/kiosk/kiosk-pos-surface'. Product card \u2014 edge-separated cell on a phone, raised object from `md` up. Phone: hairline bottom/right seams on card white, square, flat (the FIND phone ruling \u2014 see KIOSK_POS_CANVAS). Tablet: full perimeter, `surface` corner, `raised`/`soft` at rest and full `raised` on hover \u2014 a 24-card grid all at full lift is noise, so rest is the quieter rung and the pointer picks one card out of the field. Press travel is NOT gated on the measure: the tactile lip is a control's own thickness rather than a plane above the page, so it reads at any width, and touch is the one input the phone definitely has. Transition is enumerated (never `transition-all`) and names `box-shadow` explicitly \u2014 without it the hover lift would snap while the colour eased.",
+        "KIOSK_POS_CARD_SELECTED": "import { KIOSK_POS_CARD_SELECTED } from '@/app/kiosk/kiosk-pos-surface'. Selected product cell \u2014 accent wash only. The wash lives on the CARD, so the image well and caption below must stay transparent; painting either `bg-surface-card` covers the wash. The blue perimeter is KIOSK_POS_CARD_SELECTED_FRAME.",
+        "KIOSK_POS_CARD_SELECTED_FRAME": "import { KIOSK_POS_CARD_SELECTED_FRAME } from '@/app/kiosk/kiosk-pos-surface'. Selection frame \u2014 inset ring following the card's own corner AT EACH MEASURE. Concentric with KIOSK_POS_CARD: a rounded frame inside a square phone cell would float off the corners, and a square frame inside a rounded tablet card gets its corners clipped. Both radii come from the same `surface` role (via KIOSK_POS_AT_MD), so the two can never disagree.",
+        "KIOSK_POS_CARD_SELECT_DOT": "import { KIOSK_POS_CARD_SELECT_DOT } from '@/app/kiosk/kiosk-pos-surface'. Circular selection dot \u2014 top-LEFT of the cell, rendered ONLY once picked. There is deliberately no idle/outline variant. An empty ring on every tile laid a decal over every product photo and reduced \"selected\" to a fill swap on an always-present dot; the accent wash (KIOSK_POS_CARD_SELECTED) plus KIOSK_POS_CARD_SELECTED_FRAME already carry selection, and a flush grid of photos reads as tappable without a permanent affordance marker on each cell. Sits above the selection frame so the check stays visible.",
+        "KIOSK_POS_CARD_SELECT_DOT_ON": "import { KIOSK_POS_CARD_SELECT_DOT_ON } from '@/app/kiosk/kiosk-pos-surface'.",
+        "KIOSK_POS_CARD_CELL": "import { KIOSK_POS_CARD_CELL } from '@/app/kiosk/kiosk-pos-surface'. Grid CELL \u2014 the wrapper that holds a card and its corner controls. The card itself is a `<button>` (tap = pick the product), so the favorite pip cannot live inside it: a button inside a button is invalid HTML and the inner control never receives the tap. The cell is therefore the positioning context, and `h-full` keeps the card stretched to the grid row the way it was when it WAS the grid child \u2014 without it, one long product title makes a short-captioned neighbour float at its own height.",
+        "KIOSK_POS_CARD_FAVORITE_PIP": "import { KIOSK_POS_CARD_FAVORITE_PIP } from '@/app/kiosk/kiosk-pos-surface'. Favorite pip \u2014 top-RIGHT of the cell, opposite the selection dot. Always mounted, unlike KIOSK_POS_CARD_SELECT_DOT, and that is not the decal the select dot's note rejects. A hover-revealed control does not exist on a counter tablet: there is no pointer to reveal it with, so \"pin this repair\" would be unreachable on the one surface that needs it. It earns the permanence by being QUIET when off \u2014 translucent card fill, faint ink \u2014 and amber only once the SKU is actually pinned. 32px face: a glove/thumb target on the same z-layer as the selection frame.",
+        "KIOSK_POS_CARD_FAVORITE_PIP_ON": "import { KIOSK_POS_CARD_FAVORITE_PIP_ON } from '@/app/kiosk/kiosk-pos-surface'. Pinned \u2014 amber, the house favorite ink (`Star` in the admin catalog).",
+        "KIOSK_POS_CARD_FAVORITE_PIP_OFF": "import { KIOSK_POS_CARD_FAVORITE_PIP_OFF } from '@/app/kiosk/kiosk-pos-surface'. Unpinned \u2014 present but recessive; the photo stays the loudest thing.",
+        "KIOSK_POS_CARD_CAPTION": "import { KIOSK_POS_CARD_CAPTION } from '@/app/kiosk/kiosk-pos-surface'. Caption band under the image well \u2014 tight, no card padding balloon. Transparent so KIOSK_POS_CARD_SELECTED shows through (see there).",
+        "KIOSK_POS_IMAGE_WELL": "import { KIOSK_POS_IMAGE_WELL } from '@/app/kiosk/kiosk-pos-surface'. Square image well \u2014 transparent, so the cell plane (white at rest, accent when selected) is what shows. Never a sunken grey box.",
+        "KIOSK_POS_BROWSE_SCROLL": "import { KIOSK_POS_BROWSE_SCROLL } from '@/app/kiosk/kiosk-pos-surface'. Browse stage scroll region. Horizontal + bottom padding only \u2014 the TOP is owned by KIOSK_POS_BROWSE_SCROLL_TOP_CLEARANCE and the BOTTOM by KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE. The axes are split because a shorthand (`p-0 md:p-3`) and a longhand clearance (`pt-24`) do not resolve by class order: responsive variants sort AFTER base utilities in the generated sheet, so `md:p-3` silently zeroed the tablet's top clearance while the phone kept it. One axis per token; no shorthand over a longhand. Phone: no gutter, hairline rows (the FIND phone ruling). `md` up: ground on every side of the raised cards.",
+        "KIOSK_POS_ACTION_BAR": "import { KIOSK_POS_ACTION_BAR } from '@/app/kiosk/kiosk-pos-surface'. Action footer that hosts KIOSK_POS_CTA \u2014 a TRANSPARENT float. ## No ground under the key, of any colour This was a card-white band with a top hairline, then briefly a canvas band. Both are wrong the same way: a fill plus a rule is a second SHEET, so the The answer is the one already shipped for the mobile print workspace (`components/mobile/print/MobilePrintWorkspace.tsx:512`): the dock is an absolutely-positioned, `bg-transparent`, `pointer-events-none` strip over the scroll region, and the BUTTON alone re-enables pointer events. Whatever plane the catalog is on shows straight through, and the content keeps scrolling underneath instead of being shortened by a band. Bottom pad mirrors that precedent's `max(0.75rem, safe-area)` so the key clears a home indicator \u2014 and the lip has somewhere to depress into, which a bottom-flush tactile button never does. Requires a `relative` ancestor, and KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE on the scroll region so the last row is not parked under the key.",
+        "KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE": "import { KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE } from '@/app/kiosk/kiosk-pos-surface'. Scroll clearance under a floating KIOSK_POS_CTA. Applied ONLY while the key is mounted: a permanent reserve would leave dead space at the bottom of every browse with nothing to continue to. Stated at BOTH the base and `md` variant: it must defeat the scroll region's own `pb-0` and `md:pb-3` on the same axis, and a base-only class loses to a responsive one at tablet regardless of class order.",
+        "KIOSK_POS_TOP_DOCK": "import { KIOSK_POS_TOP_DOCK } from '@/app/kiosk/kiosk-pos-surface'. Floating header dock \u2014 trail + search bands as ONE glass unit over the grid. ## Why glass and not collapsed The operator option on the table was collapsing search into an icon while scrolling. Rejected for this surface: the kiosk's one job is find-the- product, and that means typing is zero taps away at EVERY scroll position \u2014 an icon costs a tap plus a reflow animation on the exact action a waiting walk-in is watching. The cheaper win is transparency: the bands keep their controls but stop being opaque sheets, so the product field reads as one continuous surface with glass over it (the same ruling the mobile station shells took \u2014 see `CartonMobileOpsClient`'s `bg-surface-card/95 backdrop-blur-md` and `MobileCaptureWindow`'s \"ONE blurred bar floating on top\"). `backdrop-blur` rather than raw transparency: product photos scrolling under bare text destroy legibility exactly when it matters. Blur keeps the field visible without giving the text nothing to sit on. The dock itself is `pointer-events-none` so the grid stays scrollable through its margins; each band opts back in with KIOSK_POS_TOP_DOCK_INTERACTIVE. KIOSK_POS_BROWSE_SCROLL_TOP_CLEARANCE on the scroll region so the first row is not parked under the glass.",
+        "KIOSK_POS_TOP_DOCK_INTERACTIVE": "import { KIOSK_POS_TOP_DOCK_INTERACTIVE } from '@/app/kiosk/kiosk-pos-surface'.",
+        "KIOSK_POS_TRAIL_BAND": "import { KIOSK_POS_TRAIL_BAND } from '@/app/kiosk/kiosk-pos-surface'. The trail band as it renders INSIDE KIOSK_POS_TOP_DOCK. `KIOSK_PANE_HEADER_BAND` (its in-flow sibling) is an opaque card-white strip with a bottom seam \u2014 correct bolted to a pane, wrong here: inside the glass dock that fill defeats the translucency and the seam cuts the dock in two, which is exactly the \"old squared-off\" strip the operator was seeing. This variant carries NO paint of its own; the dock's glass is the background.",
+        "KIOSK_POS_TRAIL_CONTROL": "import { KIOSK_POS_TRAIL_CONTROL } from '@/app/kiosk/kiosk-pos-surface'. Visible rounded word-control chip for command, All products and stance controls. Use `h-9` for words and glyphs.",
+        "KIOSK_POS_TRAIL_ICON": "import { KIOSK_POS_TRAIL_ICON } from '@/app/kiosk/kiosk-pos-surface'. Glyph chip \u2014 icon buttons (search \u00b7 close \u00b7 back \u00b7 paperwork \u00b7 cart) wear the SAME container as the word chips: identical radius, border, fill AND height (`h-9 w-9` overrides HEADER_ICON_BTN_CLASS's h-7 w-7 \u2014 same conflict group, later class wins through cn()).",
+        "KIOSK_POS_ENTRY": "import { KIOSK_POS_ENTRY } from '@/app/kiosk/kiosk-pos-surface'. Entry field \u2014 the kiosk form control (mobile-native step path). No floating label, no entry divider: the prompt lives IN the entry as its placeholder, one radius for every control on the surface (`surface`, same as the cards), and the same border/fill vocabulary as the trail chips so the whole kiosk reads as one system. Operator ruling: \"removing the floating text label, entry divider and making it all in the entry \u2026 all aligned under one corner radius.\"",
+        "KIOSK_POS_ENTRY_AREA": "import { KIOSK_POS_ENTRY_AREA } from '@/app/kiosk/kiosk-pos-surface'. Multiline twin \u2014 notes and anything that wraps.",
+        "KIOSK_POS_ENTRY_ICON_HOST": "import { KIOSK_POS_ENTRY_ICON_HOST } from '@/app/kiosk/kiosk-pos-surface'. Leading-glyph slot for an entry \u2014 the money mark on the price field. Operator 2026-09-15 asked for \"a green price icon\" on the repair form's price, so the field states its KIND before anyone reads the placeholder. The glyph is the house money mark (`Receipt`, documented in `icons/commerce.tsx` as the price glyph \u2014 LedgerGrid's Price header and `CHIP_TONES.price` already use it), tinted `text-text-success`. NOT a new dollar glyph: a second money icon is the duplicate-glyph failure the icon SoT exists to prevent. Three parts because an inline sibling would have to re-derive the field's border and fill: the HOST is the positioning context, the GLYPH floats over the field's own left inset, and the field takes `_INSET` so its text clears the mark. `cn()` is tailwind-merge, so `_INSET`'s `pl-*` overrides the field's `px-4` on the left only.",
+        "KIOSK_POS_ENTRY_ICON": "import { KIOSK_POS_ENTRY_ICON } from '@/app/kiosk/kiosk-pos-surface'.",
+        "KIOSK_POS_ENTRY_ICON_INSET": "import { KIOSK_POS_ENTRY_ICON_INSET } from '@/app/kiosk/kiosk-pos-surface'.",
+        "KIOSK_POS_FORM_MEASURE": "import { KIOSK_POS_FORM_MEASURE } from '@/app/kiosk/kiosk-pos-surface'. Form measure \u2014 the fixed-width column every ENTRY surface renders in. Operator ruling 2026-09-13: the product field is full-bleed (it is a scanning surface \u2014 the more tiles on screen the better), but forms are typing surfaces and want a MEASURE: a 1366px-wide input is hard to type into and harder to proofread. `max-w-lg` (512px) keeps one-and-a-half hands of touch targets per row; on a 390px phone `w-full` wins and the same markup fills the screen exactly. Same move the desk took with `DESK_STAGE_FIXED_CLASS` \u2014 content gets a measure, chrome goes edge to edge.",
+        "KIOSK_POS_BROWSE_SCROLL_TOP_CLEARANCE": "import { KIOSK_POS_BROWSE_SCROLL_TOP_CLEARANCE } from '@/app/kiosk/kiosk-pos-surface'. Scroll clearance under the floating header (one 56px band + breathing room). Applied unconditionally (the dock is always mounted, unlike the CTA).",
+        "KIOSK_POS_CTA": "import { KIOSK_POS_CTA } from '@/app/kiosk/kiosk-pos-surface'. The primary kiosk CTA \u2014 centred key, no cast of any kind. ## Width `w-full` on a phone, capped and centred from `md` up. It used to be `w-full flex-1` at every measure: a 1366px-wide \"Continue\" is not a button, it is a coloured strip \u2014 no object to aim at, a label floating in a bar whose ends are unreachable, nothing marking it as the ONE next step. At 390px the opposite holds: the viewport IS the measure, so full width is the biggest thumb target available and a cap would only shrink it. ## No shadow \u2014 operator ruling This carried a hard 4px tactile lip. On the old opaque footer that read as a key sitting on a tray; once the dock went transparent the same ink fell across the product grid behind it, so it stopped reading as the button's own thickness and started reading as a drop shadow smeared over the catalog. Shadowless is the ruling: `shadow-none` is stated rather than merely omitted, because Button's own variant classes may carry one. ## The press Travel only \u2014 the face drops and returns. With no lip to collapse there is nothing for a scale to fight, so the primitive's `active:scale-[0.96]` is still neutralised via an identical-prefix `enabled:active:scale-100`: a simultaneous shrink and drop is two motions describing one press.",
+        "KIOSK_POS_CTA_SECONDARY": "import { KIOSK_POS_CTA_SECONDARY } from '@/app/kiosk/kiosk-pos-surface'. The secondary partner of KIOSK_POS_CTA \u2014 bounded and centred like the key, just narrower and quieter. Exists so a two-action footer (Save \u00b7 Pay, Add another \u00b7 Continue) is ONE decision expressed in two tokens, not a key next to an edge-to-edge strip button. Same press travel, so both controls in a pair answer identically.",
+        "KIOSK_POS_HISTORY_RAIL": "import { KIOSK_POS_HISTORY_RAIL } from '@/app/kiosk/kiosk-pos-surface'. The History face's master rail \u2014 the twin of KIOSK_POS_SIDEBAR, one step wider. A catalog category is one or two words, so 16rem fits it. A history row is four facts on two lines (ticket \u00b7 customer, then model \u00b7 when), and at `w-64` the customer name truncates on almost every real visit \u2014 the one field an operator scans the rail FOR. The rail stacks above the detail on a phone and becomes the left column from `md`, exactly like the catalog.",
+        "COUNTER_TOUCH": "import { COUNTER_TOUCH } from '@/app/kiosk/kiosk-counter-surface'. Minimum touch heights. Thumb targets at arm's length, not mouse targets. 48px is the floor every interactive element clears (WCAG 2.5.5 target size is 44; a mounted tablet used standing wants more). 56px for the primary action so it is unmissable, and 40px only for a chip the customer is *choosing among*, never for a commit.",
+        "COUNTER_TEXT": "import { COUNTER_TEXT } from '@/app/kiosk/kiosk-counter-surface'. Type sizes for the counter face. `field` is \u226516px for a hard technical reason, not taste: below 16px, iOS Safari zooms the whole page when an input takes focus and the customer has to pinch back out. It is the single most \"not-native\" thing a web form can do, and the kiosk ships `text-sm` (14px) everywhere today.",
+        "COUNTER_RHYTHM": "import { COUNTER_RHYTHM } from '@/app/kiosk/kiosk-counter-surface'. Vertical + horizontal rhythm. Sections are separated by GAP, never by a hairline on a full-bleed band \u2014 that is the ops density grammar, and it is what makes the current counter read as a spreadsheet.",
+        "COUNTER_CARD_PAD_STEP": "import { COUNTER_CARD_PAD_STEP } from '@/app/kiosk/kiosk-counter-surface'. The Tailwind step `COUNTER_RHYTHM.card` pads by \u2014 feeds concentric nesting.",
+        "COUNTER_SECTION": "import { COUNTER_SECTION } from '@/app/kiosk/kiosk-counter-surface'. A form section: soft card, own padding, its own rhythm inside.",
+        "COUNTER_FIELD": "import { COUNTER_FIELD } from '@/app/kiosk/kiosk-counter-surface'. A text field's shell \u2014 radius + touch + 16px value text.",
+        "COUNTER_CTA": "import { COUNTER_CTA } from '@/app/kiosk/kiosk-counter-surface'. A primary action.",
+        "COUNTER_ROW": "import { COUNTER_ROW } from '@/app/kiosk/kiosk-counter-surface'. A tappable list row / category row / cart line.",
+        "COUNTER_PANEL": "import { COUNTER_PANEL } from '@/app/kiosk/kiosk-counter-surface'. A panel or stage shell \u2014 the sheet the content sits on.",
+        "COUNTER_MIN_TARGET_PX": "import { COUNTER_MIN_TARGET_PX } from '@/app/kiosk/kiosk-counter-surface'. The px floor a counter target must clear, for tests that measure the rendered box rather than the class string (a class is not a pixel).",
+        "COUNTER_MIN_FIELD_TEXT_PX": "import { COUNTER_MIN_FIELD_TEXT_PX } from '@/app/kiosk/kiosk-counter-surface'. The px floor for input text \u2014 the iOS zoom threshold."
+      }
+    }
+  ],
+  "axisNotes": {
+    "mode": "Ordinary application routes use triage. Assistant is the assistant dock and /ai-chat; counter is the kiosk shell.",
+    "radius": "Prefer the ROLE (cornerClass('surface')) over a raw radius class. Composer chrome is COMPOSER_SHELL_CORNER.",
+    "sku-identity": "The IDENTITY axis \u2014 one SKU, one title, one photo, and the ZOHO item governs (operator 2026-09-15: 'it all needs to be ported under one source of truth which would be the ZOHOSKU'). Read a product title through resolveSkuIdentityTitle (zoho_item_title \u2192 catalog_product_title \u2192 item_name \u2192 sku \u2192 zoho_item_id); it returns '' when nothing is present and the CALLER keeps its own last resort. Reach sku_catalog with SKU_CATALOG_JOIN_ON_SQL \u2014 exact and org-scoped, never leading-zero-stripped, never similarity-gated. Photos run RECEIVING_LINE_IMAGE_URL_SQL: Zoho item photo when the item exists, catalog only when it does not \u2014 never bare sc.image_url beside a line. A platform sync may fill sku_catalog.product_title / image_url only behind skuCatalogNoZohoTwinPredicateSql(); marketplace copy belongs in sku_platform_ids.display_name / listing_title. The marketplace title is NOT the enemy \u2014 755 of 2862 receiving lines have no zoho_item_id and 315 catalog rows have no Zoho twin, and for those it IS the identity. Verdict: ds_sku_identity. Eval: pnpm run eval:cohort sku-identity.",
+    "kiosk": "Counter-tablet chrome. KIOSK_POS_CANVAS is the ONE stage background; KIOSK_UTILITY_SHEET is the cart / paperwork / triage face on it \u2014 bounded, cornered, FLAT (operator 2026-09-14: 'it should not display a depth drop shadow'; separation comes from two different planes, never a blur). A kiosk pane wears KioskPaneForm, and its header is StepProgressHeader or nothing \u2014 KIOSK_PANE_HEADER_BAND / _TITLE belong to the SHELL trail, never to a pane. Touch chips are KioskChip (KIOSK_PILL family), never a desk badge. COUNTER_* are the touch-target / legibility floors: 44px hit, 16px field text.",
+    "item-record": "Phone item-record queries: ds_tokens({ axis: 'item-record', query: 'row' | 'meta' | 'thumb' | 'stage' | 'title' })."
+  },
+  "tokenUses": {
+    "cornerClass('flush')": "cn(cornerClass('flush')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "cornerClass('chip')": "cn(cornerClass('chip')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "cornerClass('row')": "cn(cornerClass('row')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "cornerClass('control')": "cn(cornerClass('control')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "cornerClass('field')": "cn(cornerClass('field')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "cornerClass('card')": "cn(cornerClass('card')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "cornerClass('canvas')": "cn(cornerClass('canvas')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "cornerClass('surface')": "cn(cornerClass('surface')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "cornerClass('pill')": "cn(cornerClass('pill')) \u2014 import { cornerClass } from '@/design-system/tokens/radius'",
+    "COMPOSER_SHELL_CORNER": "Named exemption for the composer-shell family only \u2014 not a CornerRole. cornerClass() cannot express this: every ladder rung is rounded-none. Inner controls take SEGMENTED_CONTROL_CORNER (16px dock - p-1.5 -> rounded-lg track, then p-0.5 -> rounded-md faces). Never a hand-written rounded-* and never appearance=flush inside the dock. The station Unbox|Ticket caption uses the same constant on a FLAT plate; elevationClass(raised) stays on OmnichannelComposerDock (z-raised over z-base).",
+    "COMPOSER_MENU_ITEM_CORNER": "Named corner constant (COMPOSER_MENU_ITEM_CORNER) \u2014 an exemption from the flush-square ladder, not a CornerRole. cornerClass() cannot express it: every ladder rung is rounded-none. Import the constant; never re-type its class. No curated law for it yet \u2014 that means unwritten, not permitted.",
+    "SEGMENTED_CONTROL_CORNER": "Track of a pick-one segmented control inside a SOFT shell (VisibilityToggle appearance=default). Concentric with COMPOSER_SHELL_CORNER: 16px - p-1.5 = 10 -> the 8px rung. An ops-chrome segmented control stays square via appearance=flush instead.",
+    "SEGMENTED_CONTROL_FACE_CORNER": "The two faces inside SEGMENTED_CONTROL_CORNER: 8px track - p-0.5 = 6px. Import it; never hand-write rounded-md on a segmented face.",
+    "SPINE_ROW_CORNER": "MasterNav rows and open-spine labelled Search. Main uses cornerClass('chip') -> rounded (4px). Prod chip stays flush; SPINE_ROW_SHELL_CLASS imports this. Not a licence to round ops chips.",
+    "DROPDOWN_SHELL_CORNER": "Dropdown / popover SHELLS (kiosk command menu, consult stance, catalog picker). Prod control stays flush; this named 8px exemption is the shell rung. The GlobalHeader icon face is NOT this \u2014 it is flush/square as of 2026-09-22 (HEADER_ICON_BTN_CLASS + cornerClass('flush')), and the old HEADER_ICON_CORNER constant was retired with it.",
+    "DROPDOWN_ITEM_CORNER": "Named corner constant (DROPDOWN_ITEM_CORNER) \u2014 an exemption from the flush-square ladder, not a CornerRole. cornerClass() cannot express it: every ladder rung is rounded-none. Import the constant; never re-type its class. No curated law for it yet \u2014 that means unwritten, not permitted.",
+    "DATA_TABLE_TOOLBAR_CORNER": "Named corner constant (DATA_TABLE_TOOLBAR_CORNER) \u2014 an exemption from the flush-square ladder, not a CornerRole. cornerClass() cannot express it: every ladder rung is rounded-none. Import the constant; never re-type its class. No curated law for it yet \u2014 that means unwritten, not permitted.",
+    "TRIAGE_PANEL_INNER_CORNER": "Named corner constant (TRIAGE_PANEL_INNER_CORNER) \u2014 an exemption from the flush-square ladder, not a CornerRole. cornerClass() cannot express it: every ladder rung is rounded-none. Import the constant; never re-type its class. No curated law for it yet \u2014 that means unwritten, not permitted.",
+    "MOBILE_CARD_CORNER": "Named corner constant (MOBILE_CARD_CORNER) \u2014 an exemption from the flush-square ladder, not a CornerRole. cornerClass() cannot express it: every ladder rung is rounded-none. Import the constant; never re-type its class. No curated law for it yet \u2014 that means unwritten, not permitted.",
+    "MOBILE_ROW_CORNER": "Named corner constant (MOBILE_ROW_CORNER) \u2014 an exemption from the flush-square ladder, not a CornerRole. cornerClass() cannot express it: every ladder rung is rounded-none. Import the constant; never re-type its class. No curated law for it yet \u2014 that means unwritten, not permitted.",
+    "MOBILE_CONTROL_CORNER": "Named corner constant (MOBILE_CONTROL_CORNER) \u2014 an exemption from the flush-square ladder, not a CornerRole. cornerClass() cannot express it: every ladder rung is rounded-none. Import the constant; never re-type its class. No curated law for it yet \u2014 that means unwritten, not permitted.",
+    "MOBILE_SCAN_WINDOW_CORNER": "Named corner constant (MOBILE_SCAN_WINDOW_CORNER) \u2014 an exemption from the flush-square ladder, not a CornerRole. cornerClass() cannot express it: every ladder rung is rounded-none. Import the constant; never re-type its class. No curated law for it yet \u2014 that means unwritten, not permitted.",
+    "radius.none": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "radius.sm": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "radius.DEFAULT": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "radius.md": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "radius.lg": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "radius.xl": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "radius.2xl": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "radius.3xl": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "radius.full": "Typed mirror of the px scale. Prefer a cornerClass role over this \u2014 a role survives a scale change.",
+    "ITEM_RECORD_FACE.size": "Flush ledger thumb geometry (ItemRecordRow). Phone to-ship uses ITEM_RECORD_MOBILE_THUMB + ItemRecordThumb variant=padded. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_FACE.h": "Flush ledger thumb geometry (ItemRecordRow). Phone to-ship uses ITEM_RECORD_MOBILE_THUMB + ItemRecordThumb variant=padded. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_FACE.w": "Flush ledger thumb geometry (ItemRecordRow). Phone to-ship uses ITEM_RECORD_MOBILE_THUMB + ItemRecordThumb variant=padded. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_FACE.hw": "Flush ledger thumb geometry (ItemRecordRow). Phone to-ship uses ITEM_RECORD_MOBILE_THUMB + ItemRecordThumb variant=padded. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_FACE.minH": "Flush ledger thumb geometry (ItemRecordRow). Phone to-ship uses ITEM_RECORD_MOBILE_THUMB + ItemRecordThumb variant=padded. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_FACE.thumbGrid": "Flush ledger thumb geometry (ItemRecordRow). Phone to-ship uses ITEM_RECORD_MOBILE_THUMB + ItemRecordThumb variant=padded. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_FACE.packageIcon": "Flush ledger thumb geometry (ItemRecordRow). Phone to-ship uses ITEM_RECORD_MOBILE_THUMB + ItemRecordThumb variant=padded. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_ROW.shell": "Shared readable phone queue row shell.",
+    "ITEM_RECORD_MOBILE_ROW.actionCluster": "Action cluster for the shared phone queue row.",
+    "ITEM_RECORD_MOBILE_ROW.primaryReveal": "Primary reveal for the shared phone queue row.",
+    "ITEM_RECORD_MOBILE_ROW.triageReveal": "Triage reveal for the shared phone queue row.",
+    "ITEM_RECORD_MOBILE_THUMB.grid": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_THUMB.column": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_THUMB.face": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_THUMB.size": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_THUMB.activeSize": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_THUMB.corner": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_THUMB.packageIcon": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_THUMB.fallbackMark": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_THUMB.fallbackLabel": "Phone photo geometry. ItemRecordThumb inside ITEM_RECORD_MOBILE_THUMB.column; the row shell owns separation. Query ds_tokens({ axis: \"item-record\", query: \"thumb\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.band": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.context": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.locationContext": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.face": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.foot": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.skuTertiary": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.quantityAnchor": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.quantityLabel": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.quantityValue": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.quantityStatus": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_TITLE.conditionPill": "Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: \"item-record\", query: \"title\" }).",
+    "ITEM_RECORD_MOBILE_META.cluster": "Qty \u00b7 condition \u00b7 notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: \"item-record\", query: \"meta\" }).",
+    "ITEM_RECORD_MOBILE_META.corner": "Qty \u00b7 condition \u00b7 notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: \"item-record\", query: \"meta\" }).",
+    "ITEM_RECORD_MOBILE_META.itemNumber": "Qty \u00b7 condition \u00b7 notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: \"item-record\", query: \"meta\" }).",
+    "ITEM_RECORD_MOBILE_META.qty": "Qty \u00b7 condition \u00b7 notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: \"item-record\", query: \"meta\" }).",
+    "ITEM_RECORD_MOBILE_META.price": "Qty \u00b7 condition \u00b7 notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: \"item-record\", query: \"meta\" }).",
+    "ITEM_RECORD_MOBILE_META.condition": "Qty \u00b7 condition \u00b7 notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: \"item-record\", query: \"meta\" }).",
+    "ITEM_RECORD_MOBILE_META.notes": "Qty \u00b7 condition \u00b7 notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: \"item-record\", query: \"meta\" }).",
+    "ITEM_RECORD_MOBILE_META.notesIdle": "Qty \u00b7 condition \u00b7 notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: \"item-record\", query: \"meta\" }).",
+    "ITEM_RECORD_MOBILE_STAGE.cluster": "Phone Pick / Packed \u2014 same face as desk CompoundStageStep without the avatar. PackageSearch + Package glyphs; pending Assigned; done stamp. Names stay on the order sheet. Query ds_tokens({ axis: \"item-record\", query: \"stage\" }).",
+    "ITEM_RECORD_MOBILE_STAGE.mark": "Phone Pick / Packed \u2014 same face as desk CompoundStageStep without the avatar. PackageSearch + Package glyphs; pending Assigned; done stamp. Names stay on the order sheet. Query ds_tokens({ axis: \"item-record\", query: \"stage\" }).",
+    "ITEM_RECORD_MOBILE_STAGE.glyph": "Phone Pick / Packed \u2014 same face as desk CompoundStageStep without the avatar. PackageSearch + Package glyphs; pending Assigned; done stamp. Names stay on the order sheet. Query ds_tokens({ axis: \"item-record\", query: \"stage\" }).",
+    "ITEM_RECORD_MOBILE_STAGE.icon": "Phone Pick / Packed \u2014 same face as desk CompoundStageStep without the avatar. PackageSearch + Package glyphs; pending Assigned; done stamp. Names stay on the order sheet. Query ds_tokens({ axis: \"item-record\", query: \"stage\" }).",
+    "ITEM_RECORD_MOBILE_STAGE.verb": "Phone Pick / Packed \u2014 same face as desk CompoundStageStep without the avatar. PackageSearch + Package glyphs; pending Assigned; done stamp. Names stay on the order sheet. Query ds_tokens({ axis: \"item-record\", query: \"stage\" }).",
+    "ITEM_RECORD_MOBILE_STAGE.stamp": "Phone Pick / Packed \u2014 same face as desk CompoundStageStep without the avatar. PackageSearch + Package glyphs; pending Assigned; done stamp. Names stay on the order sheet. Query ds_tokens({ axis: \"item-record\", query: \"stage\" }).",
+    "ITEM_RECORD_MOBILE_STAGE.empty": "Phone Pick / Packed \u2014 same face as desk CompoundStageStep without the avatar. PackageSearch + Package glyphs; pending Assigned; done stamp. Names stay on the order sheet. Query ds_tokens({ axis: \"item-record\", query: \"stage\" }).",
+    "ITEM_RECORD_MOBILE_STAGE_VERBS.pick": "Done verbs Picked / Packed + pending Assigned. Never a staff name. Import from @/design-system/tokens/item-record-mobile.",
+    "ITEM_RECORD_MOBILE_STAGE_VERBS.packed": "Done verbs Picked / Packed + pending Assigned. Never a staff name. Import from @/design-system/tokens/item-record-mobile.",
+    "ITEM_RECORD_MOBILE_STAGE_VERBS.assigned": "Done verbs Picked / Packed + pending Assigned. Never a staff name. Import from @/design-system/tokens/item-record-mobile.",
+    "ITEM_RECORD_MOBILE_STAGE_ICONS.pick": "Pick = package-search (PackageSearch). Packed = package (Package). Same catalog iconKey as orders.picked / orders.packed.",
+    "ITEM_RECORD_MOBILE_STAGE_ICONS.packed": "Pick = package-search (PackageSearch). Packed = package (Package). Same catalog iconKey as orders.picked / orders.packed."
+  },
+  "extraAxisRows": {
+    "item-record": [
+      {
+        "source": "src/design-system/tokens/item-record-mobile.ts",
+        "consts": [
+          "ITEM_RECORD_MOBILE_ROW"
+        ],
+        "members": true,
+        "uses": {
+          "ITEM_RECORD_MOBILE_ROW.shell": "Shared readable phone queue row shell.",
+          "ITEM_RECORD_MOBILE_ROW.actionCluster": "Action cluster for the shared phone queue row.",
+          "ITEM_RECORD_MOBILE_ROW.primaryReveal": "Primary reveal for the shared phone queue row.",
+          "ITEM_RECORD_MOBILE_ROW.triageReveal": "Triage reveal for the shared phone queue row."
+        }
+      }
+    ]
+  }
+}
