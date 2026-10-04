@@ -364,7 +364,8 @@ export const ANCHORS = [
     id: 'smoke',
     placement: 'live',
     needs: [LANE],
-    retry: { attempts: 1, onlyRules: ['page-error'], warmupSec: 300 },
+    // Both seen once right after a lane restart and gone on the next run (2026-10-04); a real break fails twice.
+    retry: { attempts: 1, onlyRules: ['page-error', 'blank-level'], warmupSec: 300 },
     timeoutMs: TIMEOUT_MS,
     run: smoke,
   },
