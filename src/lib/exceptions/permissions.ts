@@ -1,7 +1,8 @@
 /**
  * Who may see each Exceptions kind — the SAME permission its source list is
  * served under today (`/api/orders/exceptions`, `/api/v1/label-ingestions`,
- * `/api/inventory/alerts`, `/api/tracking-exceptions`, `/api/receiving-lines`).
+ * `/api/orders-exceptions/unmatched`, `/api/inventory/alerts`,
+ * `/api/tracking-exceptions`, `/api/receiving-lines`).
  * Pure and client-safe: the hub route, the nav facets and the sidebar gate all
  * read this one map, so a hidden kind is absent from rows, counts and nav alike.
  */
@@ -13,6 +14,7 @@ export const EXCEPTION_KIND_PERMISSION: Readonly<Record<ExceptionKind, Permissio
   fbm: 'orders.view',
   labels: 'packing.review',
   paperwork: 'orders.view',
+  unmatched: 'packing.view',
   pairs: 'sku_stock.view',
   bins: 'sku_stock.view',
   tracking: 'receiving.view',

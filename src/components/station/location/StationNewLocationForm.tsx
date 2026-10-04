@@ -7,8 +7,8 @@ import { MapPin, Printer } from '@/components/Icons';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { SELECT_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { Button } from '@/design-system/primitives';
-import { FlushTerminalFooter } from '@/design-system/primitives/FlushTerminalFooter';
+import { Button, FloatingActionFooter } from '@/design-system/primitives';
+import { FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useLocations } from '@/hooks/useLocations';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
@@ -229,15 +229,13 @@ export function StationNewLocationForm({
         </div>
       </div>
 
-      <FlushTerminalFooter
-        leading={
-          null
-        }
-      >
+      <FloatingActionFooter>
         <Button
           // With no Create & place (pack desks), minting the sticker IS the
           // commit — it must not read as the quiet option next to nothing.
           variant={canPlaceMinted ? 'secondary' : 'primary'}
+          depth={!canPlaceMinted}
+          className={FLOATING_ACTION_DISABLED_FACE}
           onClick={() => void printSticker()}
           disabled={busy || !segments}
         >
@@ -247,6 +245,8 @@ export function StationNewLocationForm({
         {canPlaceMinted ? (
           <Button
             variant="primary"
+            depth
+            className={FLOATING_ACTION_DISABLED_FACE}
             onClick={() => void createAndPlace()}
             disabled={busy || !segments}
           >
@@ -254,7 +254,7 @@ export function StationNewLocationForm({
             Create &amp; place
           </Button>
         ) : null}
-      </FlushTerminalFooter>
+      </FloatingActionFooter>
     </div>
   );
 }

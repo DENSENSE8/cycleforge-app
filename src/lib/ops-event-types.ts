@@ -10,6 +10,7 @@ export const OPS_EVENT_ENTITY_TYPES = [
   'repair',
   'warranty_claim',
   'other',
+  'location',
 ] as const;
 
 export type OpsEntityType = (typeof OPS_EVENT_ENTITY_TYPES)[number];

@@ -109,6 +109,11 @@ export function CsvOrderImport() {
             <span className="text-role-caption font-semibold text-text-muted">{result.skipped}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
+            {/* Open unmatched pack / dock scans the imported tracking numbers matched. */}
+            <span className="text-role-eyebrow font-semibold text-text-soft">Unmatched scans resolved</span>
+            <span className="text-role-caption font-semibold text-text-muted">{result.resolvedExceptions}</span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-role-eyebrow font-semibold text-text-soft">Errors</span>
             <span className="text-role-caption font-semibold text-rose-700">{result.errors.length}</span>
           </div>

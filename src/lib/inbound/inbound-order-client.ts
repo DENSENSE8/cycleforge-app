@@ -10,6 +10,7 @@ import type {
   IngestInboundOrderResult,
   InboundOrderPreview,
 } from '@/lib/inbound/ingest-inbound-order';
+import type { CartonInboundOrder, InboundOrderEditRecord } from '@/lib/inbound/inbound-order-edit';
 import { compressPhotoForUpload } from '@/lib/image/compress-for-upload';
 
 export async function readFileAsDataUrl(file: File): Promise<string> {
@@ -84,4 +85,19 @@ export async function deleteInboundOrderRequest(inboundOrderId: number): Promise
     method: 'DELETE',
   });
   return data.result;
+}
+
+/** A landed order as the draft the form edits (its identity and line keys kept). */
+export async function fetchInboundOrderEdit(inboundOrderId: number, signal?: AbortSignal): Promise<InboundOrderEditRecord> {
+  const data = await call<{ record: InboundOrderEditRecord }>(`/api/receiving/inbound/orders/${inboundOrderId}`, { method: 'GET', signal });
+  return data.record;
+}
+
+/** The inbound orders a carton's lines belong to. */
+export async function fetchCartonInboundOrders(receivingId: number, signal?: AbortSignal): Promise<CartonInboundOrder[]> {
+  const data = await call<{ orders: CartonInboundOrder[] }>(
+    `/api/receiving/inbound/orders/for-carton?receivingId=${receivingId}`,
+    { method: 'GET', signal },
+  );
+  return data.orders;
 }

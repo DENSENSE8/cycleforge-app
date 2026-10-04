@@ -1,12 +1,12 @@
 import { ticketStatusFace } from '../tokens/ticket-status';
-import { chipLabel, microBadge } from '../tokens/typography/presets';
+import { chipLabel, statusPillLabel } from '../tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 
 /**
  * A helpdesk ticket's status as a colour pill — New sky, Open rose, Pending
  * amber, On-hold purple, Solved emerald, Closed neutral — so the status reads
- * by colour before its word (owner 2026-09-30). `sm` (the micro badge face)
- * sits on an 11px row line; `md` (the chip label face) on a record line.
+ * by colour before its word (owner 2026-09-30). `sm` (the status pill face —
+ * clean sans, never the condensed cut) sits on an 11px row line; `md` (the chip label face) on a record line.
  * Paints nothing when there is no status.
  */
 export function TicketStatusPill({
@@ -26,7 +26,7 @@ export function TicketStatusPill({
       data-ticket-status={status?.trim().toLowerCase()}
       className={cn(
         'inline-flex shrink-0 items-center whitespace-nowrap rounded-full ring-1 ring-inset',
-        size === 'sm' ? cn(microBadge, 'h-4 px-1.5 leading-none') : cn(chipLabel, 'h-5 px-2'),
+        size === 'sm' ? cn(statusPillLabel, 'h-4 px-1.5 leading-none') : cn(chipLabel, 'h-5 px-2'),
         face.pill,
         face.ring,
         className,

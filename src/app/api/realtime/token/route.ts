@@ -17,7 +17,6 @@ import {
   getPackerBridgeChannelName,
   getStaffPrintBridgeChannelName,
   getStaffStationBridgeChannelName,
-  getScanLogChannelName,
   getDbChannelPrefix,
   getMasterPlanChannel,
   getOpsPlansChannelName,
@@ -80,7 +79,6 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
   // channel (`printBridgeStaffId`), so any staffer can test one printer.
   const printOwn = getStaffPrintBridgeChannelName(orgId, printBridgeStaffId(staffId));
   const staffStationOwn = getStaffStationBridgeChannelName(orgId, staffId);
-  const scanLogOwn = getScanLogChannelName(orgId, staffId);
 
   const capability: Record<string, string[]> = {
     // Org-wide broadcast feeds — read-only for clients (servers publish via REST key).
@@ -104,7 +102,6 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
     [packerOwn]: ['subscribe', 'publish'],
     [printOwn]: ['subscribe', 'publish'],
     [staffStationOwn]: ['subscribe', 'publish'],
-    [scanLogOwn]: ['subscribe', 'publish'],
   };
 
   if (aiSessionChannel) {

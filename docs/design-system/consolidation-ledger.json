@@ -1,0 +1,561 @@
+{
+  "version": 1,
+  "updated": "2026-10-03",
+  "states": ["queued", "in_progress", "exception", "retired"],
+  "entries": [
+    {
+      "id": "locations-sticky-bulk-action-bar",
+      "state": "retired",
+      "category": "table-actions",
+      "problem": "Locations painted selection actions in a page-owned sticky footer instead of the DataTable header action plane.",
+      "replacementPaths": [
+        "src/components/warehouse/BinsSelectionActions.tsx",
+        "src/design-system/components/record-action-strip/RecordActionStrip.tsx"
+      ],
+      "deletedPaths": [
+        "src/components/warehouse/BinsBulkActionBar.tsx"
+      ],
+      "forbiddenSource": [
+        "BinsBulkActionBar"
+      ],
+      "exitCriteria": "The selected-row count, verbs, overflow and Clear control are all painted by DataTable's header plane."
+    },
+    {
+      "id": "table-selection-action-contracts",
+      "state": "queued",
+      "category": "table-actions",
+      "problem": "SelectionAction, RecordActionVerb and TableStatusSelectionAction describe overlapping verbs and allow different pages to paint different action chrome.",
+      "currentPaths": [
+        "src/lib/selection/selection-actions.tsx",
+        "src/design-system/components/record-action-strip/RecordActionStrip.tsx",
+        "src/components/tables/TableStatusBar.tsx"
+      ],
+      "replacementPaths": [
+        "src/design-system/components/record-action-strip/RecordActionStrip.tsx"
+      ],
+      "exitCriteria": "A page declares action facts once; the table engine resolves selection and RecordActionStrip paints the same partition on every page."
+    },
+    {
+      "id": "data-table-react-node-bulk-bar",
+      "state": "queued",
+      "category": "table-actions",
+      "problem": "DataTable bulkBar accepts arbitrary ReactNode content, so a port can silently introduce different selection chrome.",
+      "currentPaths": [
+        "src/components/tables/DataTable.tsx"
+      ],
+      "replacementPaths": [
+        "src/design-system/components/record-action-strip/RecordActionStrip.tsx"
+      ],
+      "exitCriteria": "DataTable accepts a typed contextual-action declaration and owns the RecordActionStrip header face; no page passes hand-painted bulk chrome."
+    },
+    {
+      "id": "danger-confirm-state-machine",
+      "state": "in_progress",
+      "category": "destructive-actions",
+      "problem": "InspectorFloorDelete and several feature controls keep independent armed/delete timers and labels.",
+      "currentPaths": [
+        "src/components/right-rail/InspectorFloorDelete.tsx"
+      ],
+      "replacementPaths": [
+        "src/design-system/components/ArmedDangerButton.tsx"
+      ],
+      "exitCriteria": "Every two-press destructive control consumes one shared armed state machine; face-specific components only choose icon/text layout."
+    },
+    {
+      "id": "location-deletion-manager-size",
+      "state": "queued",
+      "category": "component-boundaries",
+      "problem": "LocationDeletionManager owns orchestration, hierarchy selectors, exact-target rows and the action floor in one oversized file.",
+      "currentPaths": [
+        "src/features/locations/LocationDeletionManager.tsx"
+      ],
+      "replacementPaths": [
+        "src/features/locations/LocationDeletionManager.tsx"
+      ],
+      "exitCriteria": "The manager is the controller; scope controls and exact-target preview are leaf components with no duplicate mutation logic."
+    },
+    {
+      "id": "rail-selection-danger-renderer",
+      "state": "queued",
+      "category": "table-actions",
+      "problem": "RailActionRegion separately partitions and paints danger actions instead of consuming the shared action-strip partition.",
+      "currentPaths": [
+        "src/components/right-rail/RailSelectionActions.tsx"
+      ],
+      "replacementPaths": [
+        "src/design-system/components/record-action-strip/RecordActionStrip.tsx"
+      ],
+      "exitCriteria": "The rail adapts its action facts into the shared renderer and owns no separate danger-button ordering or paint."
+    },
+    {
+      "id": "stock-health-exception-exclusion",
+      "state": "in_progress",
+      "category": "data-accuracy",
+      "problem": "Zero-count provisional SKU rows are excluded from Out of stock in both the client facet resolver and the uncapped database count, so the chip is disabled while an out-of-stock row is visible.",
+      "currentPaths": [
+        "src/components/inventory/stock/StockLedger.tsx",
+        "src/lib/neon/location-stock-queries.ts"
+      ],
+      "replacementPaths": [
+        "src/components/inventory/stock/StockLedger.tsx",
+        "src/lib/neon/location-stock-queries.ts"
+      ],
+      "exitCriteria": "A zero-count provisional row belongs to both Out of stock and On hold; its uncapped chip counts and row filter agree, while positive on-hold stock remains In stock plus On hold."
+    },
+    {
+      "id": "compound-table-engine",
+      "state": "retired",
+      "category": "table-engine",
+      "problem": "A second table engine (compound row model + cells) shipped beside the card list and the canonical DataTable; its last live mounts were the /unbox lines grid (receiving-grid) and the TaskTable select face. Retired 2026-10-03: /unbox Queue · Recent are the receive.queue carton card list (UnboxCartonCards over ReceivingCartonCard), TaskTable selects through GridRowCheckbox. materialize-tracks.ts stays — it is the keep-sheet column materializer (bins, ready, CSV staging, tech-all). Plan: docs/refactors/DELETE-LIST.md §3.",
+      "replacementPaths": [
+        "src/design-system/components/triage-card-list/TriageCardList.tsx",
+        "src/components/receiving/unbox/UnboxCartonCards.tsx",
+        "src/lib/triage/views/receive-queue.ts",
+        "src/components/tables/DataTable.tsx",
+        "src/components/ui/GridRowCheckbox.tsx"
+      ],
+      "exitCriteria": "/unbox lines and TaskTable render without compound modules (TaskTable's select face is GridRowCheckbox); src/components/tables/compound and src/components/station/receiving-grid are deleted, their Compound* / compound-row-chrome pins leave src/design-system/pinned.json, and knip reports no orphan they left. A list that needs a job again returns as a TriageViewDecl card view, never a compound grid.",
+      "deletedPaths": [
+        "src/components/tables/compound",
+        "src/components/station/receiving-grid",
+        "src/lib/receiving/receiving-compound-view.ts",
+        "src/lib/receiving/receiving-group-rollup.ts",
+        "src/lib/receiving/receiving-group-identity.ts",
+        "src/lib/tables/field-catalog/receiving.ts",
+        "src/lib/tables/field-catalog/receiving-resolve.ts",
+        "src/lib/tables/data-table-line-qty.ts",
+        "src/lib/tables/data-table-line-money.ts",
+        "src/lib/orders/order-group-identity.ts",
+        "src/components/tables/CustomFieldCell.tsx",
+        "src/lib/custom-fields/column-model.ts"
+      ],
+      "forbiddenSource": [
+        "tables/compound/",
+        "station/receiving-grid",
+        "useReceivingSpreadsheet",
+        "ReceivingSpreadsheet",
+        "CompoundGroupParentRow",
+        "compoundColumnsFor",
+        "receivingCompoundView",
+        "CompoundSelectStatusFace"
+      ]
+    },
+    {
+      "id": "parked-compound-grids",
+      "state": "retired",
+      "category": "table-engine",
+      "problem": "Twenty-nine per-domain compound grid folders, their pages and 88 field-catalog files rendered only behind routes the proxy already redirected. Deleted 2026-10-03; the redirects stay as URL compatibility.",
+      "replacementPaths": [
+        "src/design-system/components/triage-card-list/TriageCardList.tsx",
+        "src/lib/routing/parked-slot-surfaces.ts"
+      ],
+      "exitCriteria": "No page, grid hook or field family exists behind a parked redirect; a job that needs a list again returns as a TriageViewDecl card view (mobile V2 first), never a compound grid.",
+      "deletedPaths": [
+        "src/components/tables/useCompoundSpreadsheet.tsx",
+        "src/components/tables/registered-bindings.ts",
+        "src/components/inventory/holds-grid",
+        "src/components/reports/report-velocity-grid",
+        "src/components/settings/staff-directory",
+        "src/components/settings/kiosk-devices",
+        "src/components/search/hits-grid",
+        "src/components/warranty/grid",
+        "src/features/review",
+        "src/app/review",
+        "src/app/search",
+        "src/app/warehouse/rma",
+        "src/app/settings/staff",
+        "src/app/settings/devices",
+        "src/app/inventory/holds",
+        "src/app/m/(shell)/pack/page.tsx"
+      ],
+      "forbiddenSource": [
+        "useCompoundSpreadsheet",
+        "useAdminHoldsSpreadsheet",
+        "useStaffDirectorySpreadsheet",
+        "useSearchHitsSpreadsheet",
+        "WarrantyClaimsTable",
+        "MobilePackingList",
+        "SearchFindSurface"
+      ]
+    },
+    {
+      "id": "record-card-view-contract",
+      "state": "in_progress",
+      "category": "table-display",
+      "problem": "Card adapters can ignore their view declaration: Stock declares a state status but paints none, passes quickLook={null} so Space shows nothing, and hides the rack total; imports, incoming pipeline and the FNSKU print desk declare state and paint none.",
+      "currentPaths": [
+        "src/components/inventory/stock/StockLedger.tsx",
+        "src/features/print-station/FnskuPrintDesk.tsx",
+        "src/components/imports/cards/ImportRowCard.tsx",
+        "src/components/imports/cards/ImportRunCard.tsx",
+        "src/components/receiving/incoming/cards/receipt-card-model.ts"
+      ],
+      "replacementPaths": [
+        "src/design-system/components/triage-card-list/triage-view.ts",
+        "src/design-system/components/record-card/record-card-types.ts",
+        "src/design-system/components/record-card/RecordCard.tsx",
+        "src/lib/triage/views/card-view-contract.ts",
+        "src/lib/triage/views/card-view-adapters.ts",
+        "scripts/card-views-guard.ts"
+      ],
+      "forbiddenSource": [
+        "quickLook={null}"
+      ],
+      "exitCriteria": "TriageViewDecl declares every anatomy slot (identity, channel, person, status, facts, quickLook, with explicit 'none'); a card whose status kind or quick look disagrees with its view fails tsc or triage-views.test.ts."
+    },
+    {
+      "id": "private-phone-scan-history",
+      "state": "retired",
+      "category": "phone-execution",
+      "problem": "The private scanlog:{staffId} channel, /api/scan/history and PhoneHistoryPopover duplicated the personal durable history that /stations/live (My history) owns.",
+      "replacementPaths": [
+        "src/app/stations/live/page.tsx",
+        "src/lib/station-feed/query.server.ts"
+      ],
+      "deletedPaths": [
+        "src/components/quick-access/PhoneHistoryPopover.tsx",
+        "src/app/api/scan/history/route.ts",
+        "src/lib/scan-history-route.ts"
+      ],
+      "forbiddenSource": [
+        "PhoneHistoryPopover",
+        "publishScanLog",
+        "getScanLogChannelName",
+        "/api/scan/history"
+      ],
+      "exitCriteria": "The quick-access history door opens My history; publishScanLog, getScanLogChannelName and the scanlog grant are gone; resolver-only scans still paint as Identified."
+    },
+    {
+      "id": "zoho-purchase-order-middleman",
+      "state": "queued",
+      "category": "zoho-middleman",
+      "problem": "Wave 1. Purchase orders (including the external Goodwill script) reach CycleForge by way of Zoho Inventory: PO mirror, incoming-PO sync, receive backfill/push, find-po, webhooks and the useZohoSync prefill. zoho-receiving-sync inserts receiving_line directly, bypassing ingestInboundOrder. Reorder suggestions are already native (replenishment.ts) and only carry an exportToZoho option.",
+      "currentPaths": [
+        "src/lib/zoho-receiving-sync.ts",
+        "src/lib/zoho-po-sync.ts",
+        "src/lib/zoho/po-mirror-sync.ts",
+        "src/lib/inbound/zoho-inbound-adapter.ts",
+        "src/app/api/cron/zoho/incoming-po-sync/route.ts",
+        "src/app/api/cron/zoho/po-sync/route.ts",
+        "src/app/api/cron/zoho/receive-backfill/route.ts",
+        "src/app/api/zoho/purchase-orders",
+        "src/app/api/zoho/find-po/route.ts",
+        "src/components/receiving/workspace/line-edit/hooks/useZohoSync.ts",
+        "src/lib/zoho/webhooks",
+        "src/app/api/zoho/webhooks"
+      ],
+      "replacementPaths": [
+        "src/lib/inbound/inbound-order-draft.ts",
+        "src/lib/inbound/ingest-inbound-order.ts"
+      ],
+      "exitCriteria": "Goodwill and every other PO source post InboundOrderDraft through the authenticated machine import API; no inbound_order row with source_type 'zoho' is created for 14 days; replenishment has no exportToZoho path; the three PO crons leave vercel.json and CRON_JOBS; Zoho-only PO tables drop in an owner-approved migration."
+    },
+    {
+      "id": "zoho-sales-order-mirror",
+      "state": "retired",
+      "category": "zoho-middleman",
+      "problem": "Channel orders were pushed into Zoho as sales orders (OrderSyncService, order_ingest_queue drain) and shipments/invoices pushed back (fulfillment-sync). Prod evidence 2026-10-03: 38,814 drain runs claimed 0 rows; sales_orders and order_ingest_queue were empty; every fulfillment-sync run was a dry run.",
+      "deletedPaths": [
+        "src/services/OrderSyncService.ts",
+        "src/lib/repositories/salesOrderRepository.ts",
+        "src/lib/repositories/customerRepository.ts",
+        "src/lib/zoho/fulfillment-sync.ts",
+        "src/lib/zoho/fulfillment-config.ts",
+        "src/lib/zoho/fulfillment-source.ts",
+        "src/app/api/cron/zoho/fulfillment-sync/route.ts",
+        "src/app/api/cron/zoho/orders-ingest-drain/route.ts",
+        "src/app/api/zoho/orders/ingest/route.ts",
+        "src/app/api/zoho/fulfillment-sync/route.ts"
+      ],
+      "forbiddenSource": [
+        "OrderSyncService",
+        "salesOrderRepository",
+        "customerRepository",
+        "orders-ingest-drain",
+        "zoho/fulfillment-sync"
+      ],
+      "replacementPaths": [
+        "src/lib/orders/create-order.ts"
+      ],
+      "exitCriteria": "Channel orders land only through createOrder; no code pushes sales orders, packages, shipments or invoices to Zoho; the empty sales_orders, packages, invoices and order_ingest_queue tables drop in an owner-approved migration."
+    },
+    {
+      "id": "zoho-item-stock-mirror",
+      "state": "queued",
+      "category": "zoho-middleman",
+      "problem": "Wave 2. Zoho items, item images and warehouse stock are mirrored and pushed (InventorySyncService, itemRepository, inventory zoho-adapter) although sku_catalog and bin_contents are the stated sources of truth.",
+      "currentPaths": [
+        "src/services/InventorySyncService.ts",
+        "src/lib/repositories/itemRepository.ts",
+        "src/lib/integrations/inventory/zoho-adapter.ts",
+        "src/app/api/zoho/items"
+      ],
+      "replacementPaths": [
+        "src/lib/sku/sku-identity-law.ts"
+      ],
+      "exitCriteria": "Titles, photos and stock read only sku_catalog, native photos and bin_contents; catalog_external_ids carries no zoho rows that any reader needs; items, zoho_item_images, item_location_stock and item_stock_cache drop in an owner-approved migration."
+    },
+    {
+      "id": "zoho-client-and-credentials",
+      "state": "queued",
+      "category": "zoho-middleman",
+      "problem": "Wave 3. The Zoho Inventory client, OAuth, token refresh and integration connector remain only to serve the three Zoho mirrors above.",
+      "currentPaths": [
+        "src/lib/zoho.ts",
+        "src/lib/zoho/httpClient.ts",
+        "src/lib/zoho/tenant-context.ts",
+        "src/lib/zoho/with-zoho-credential.ts",
+        "src/lib/integrations/connectors/zoho.ts",
+        "src/app/api/zoho/oauth",
+        "src/app/api/zoho/refresh-token/route.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/inbound/ingest-inbound-order.ts",
+        "src/lib/orders/create-order.ts"
+      ],
+      "exitCriteria": "zoho-purchase-order-middleman, zoho-sales-order-mirror and zoho-item-stock-mirror are retired; no source imports @/lib/zoho; integrations.zoho permission and Zoho-only columns are removed."
+    },
+    {
+      "id": "outbound-order-bypass-writers",
+      "state": "queued",
+      "category": "ingestion-writers",
+      "problem": "Wave 1. Two routes INSERT INTO orders directly beside the canonical createOrder writer.",
+      "currentPaths": [
+        "src/app/api/shipped/submit/route.ts",
+        "src/app/api/ecwid/sync-exception-tracking/route.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/orders/create-order.ts"
+      ],
+      "exitCriteria": "orders has one writer module; a label bought outside CycleForge is identified through the phone manual outbound sheet, which calls createOrder plus registerDraftTracking."
+    },
+    {
+      "id": "inbound-urgency-vocabulary",
+      "state": "queued",
+      "category": "urgency",
+      "problem": "Wave 2. Inbound urgency is spread over receiving_carton.is_priority, priority_tier, receiving_triage.priority_lane and a hardcoded platform rank; inbound_order.priority_tier is never copied to the carton at arrival, and staging shelves are operator-chosen.",
+      "currentPaths": [
+        "src/lib/receiving/triage-lane-policy.ts",
+        "src/components/receiving/triage/useTriageStaging.ts",
+        "src/lib/receiving/display/precedence.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/receiving/display/precedence.ts"
+      ],
+      "exitCriteria": "One urgency band is computed server-side from the tenant's per-platform default, the inbound order's priority and outbound demand; arrival returns the assigned slot; is_priority and priority_lane have no readers."
+    },
+    {
+      "id": "mobile-desk-rest-picker",
+      "state": "queued",
+      "category": "phone-execution",
+      "problem": "Wave 3. Phone picking has two step machines: /m/pick?order= drives desk REST endpoints with no tote and no bin_contents decrement; /m/pick/[orderId] drives the WMS pick.confirm command with tote binding and clientEventId replay.",
+      "currentPaths": [
+        "src/components/mobile/picker/usePickOrder.ts",
+        "src/components/mobile/picker/PickOrderScreen.tsx"
+      ],
+      "replacementPaths": [
+        "src/app/m/(shell)/pick/[orderId]/_picker/useMobilePicker.ts",
+        "src/lib/realtime/wms-execution-command.ts"
+      ],
+      "exitCriteria": "Owner amends SURFACE_LAW §8; Start picking walks through pick.confirm with a tote; picking decrements the source location; desk REST picking routes have no phone caller."
+    },
+    {
+      "id": "pack-by-outbound-tracking",
+      "state": "queued",
+      "category": "scan-identity",
+      "problem": "Wave 3. Pack resolution accepts outbound tracking, bins and unit serials besides the tote, so the outbound tracking number is scanned at Pick, Pack and Scan out. The phone pack-queue resolver (src/lib/packing/pack-scan.ts) was deleted with the /m/pack queue on 2026-10-03; the desk pack scan ladder remains.",
+      "currentPaths": [
+        "src/components/station/PackScanColumn.tsx"
+      ],
+      "replacementPaths": [
+        "src/lib/picking/tote-scan.ts"
+      ],
+      "exitCriteria": "Pack is entered only by tote; outbound tracking is owned only by Scan out; any other scan redirects to the job that owns it."
+    },
+    {
+      "id": "desktop-station-scan-classifiers",
+      "state": "queued",
+      "category": "scan-identity",
+      "problem": "Wave 4. Each desktop station classifies scans its own way (arrival command routing, unbox classifier, testing resolver, PackScanColumn ladder, scan-out commit predicate) beside the canonical routeScan/classifyInput/dispatch table.",
+      "currentPaths": [
+        "src/lib/receiving/arrival-command-routing.ts",
+        "src/lib/receiving/classify-unbox-scan.ts",
+        "src/lib/testing/resolve-testing-scan.ts",
+        "src/components/outbound/scan-out/scan-out-commit.ts",
+        "src/components/station/PackScanColumn.tsx"
+      ],
+      "replacementPaths": [
+        "src/lib/barcode-routing.ts",
+        "src/lib/scan-resolver.ts",
+        "src/lib/scan/dispatch-table.ts"
+      ],
+      "exitCriteria": "Retired with legacy-desktop-scan-stations; every scan resolves through the identification kernel by identifier class and entity state."
+    },
+    {
+      "id": "legacy-desktop-scan-stations",
+      "state": "queued",
+      "category": "station-retirement",
+      "problem": "Wave 4. Desktop Arrival, Unbox, Quality Control, Picker, Packing and Scan out execute the same jobs the phone owns, with their own step machines, scan sinks, phone bridges and right-rail displays.",
+      "currentPaths": [
+        "src/app/triage",
+        "src/app/unbox",
+        "src/app/test",
+        "src/app/tech",
+        "src/app/pick",
+        "src/app/pack",
+        "src/app/packer",
+        "src/app/shipping/scan-out",
+        "src/hooks/usePhoneScanBridge.ts",
+        "src/components/sidebar/receiving/usePhoneScanBridge.ts"
+      ],
+      "replacementPaths": [
+        "src/app/stations/live/page.tsx"
+      ],
+      "exitCriteria": "Gates 31-36 of docs/handoff/GOAL-phone-driven-scan-stations-v2-2026-10-01.md pass; desktop-only edit verbs live on canonical record pages."
+    },
+    {
+      "id": "mobile-touch-qty-stepper",
+      "state": "retired",
+      "category": "mobile-quantity",
+      "problem": "Phone quantity entry had three faces: the desk-dense StockQtySlider (32 px steppers + slider tunnel) on the stock sheet, LocationQtyStrip, and a one-off FnskuCopiesStepper.",
+      "replacementPaths": [
+        "src/design-system/components/TouchQtyStepper.tsx",
+        "src/components/mobile/scan/LocationQtyStrip.tsx"
+      ],
+      "exitCriteria": "Absolute counts, splits and label copies on /m use TouchQtyStepper; scan-backed ± bursts use LocationQtyStrip; StockQtySlider stays desk-only.",
+      "deletedPaths": [
+        "src/components/mobile/fnsku/FnskuCopiesStepper.tsx"
+      ],
+      "forbiddenSource": [
+        "FnskuCopiesStepper"
+      ]
+    },
+    {
+      "id": "location-label-builder-forks",
+      "state": "retired",
+      "category": "label-printing",
+      "problem": "Location (bin) and bay (rack) label printing ran two controller hooks, two Mobile/Desktop builder pairs mounted as lg:hidden + hidden lg:block dual trees, and byte-identical RoomPicker / StepPills / ZoneLetterTile copies; the phone had no route for the verb and printed only in its own browser. Retired 2026-10-03: one LocationLabelBuilder at /m/labels, mounted by the desk in MobileFirstFrame.",
+      "replacementPaths": [
+        "src/features/location-labels/LocationLabelBuilder.tsx",
+        "src/features/location-labels/useLocationLabelBuilder.ts",
+        "src/features/location-labels/LocationLabelRun.tsx",
+        "src/features/location-labels/RoomPicker.tsx",
+        "src/features/location-labels/StepPills.tsx",
+        "src/features/location-labels/ZoneLetterTile.tsx",
+        "src/design-system/components/MobileFirstFrame.tsx"
+      ],
+      "exitCriteria": "One LocationLabelBuilder step machine (variant bin | rack) over one controller hook, mounted at /m/labels and inside a phone-width MobileFirstFrame on /inventory/locations?tab=labels|bays; no lg:hidden / hidden lg:block under src/components/barcode; one RoomPicker, StepPills and ZoneLetterTile.",
+      "deletedPaths": [
+        "src/components/barcode/BinLabelPrinter.tsx",
+        "src/components/barcode/RackLabelPrinter.tsx",
+        "src/components/barcode/LabelRoomSidebar.tsx",
+        "src/components/barcode/LabelPrinterWorkHeader.tsx",
+        "src/components/barcode/bin-label-printer/BinBuilderMobile.tsx",
+        "src/components/barcode/bin-label-printer/BinBuilderDesktop.tsx",
+        "src/components/barcode/bin-label-printer/RoomPicker.tsx",
+        "src/components/barcode/bin-label-printer/StepPills.tsx",
+        "src/components/barcode/bin-label-printer/ZoneLetterTile.tsx",
+        "src/components/barcode/bin-label-printer/NumericStep.tsx",
+        "src/components/barcode/bin-label-printer/useBinLabelPrinter.ts",
+        "src/components/barcode/rack-printer/RackBuilderMobile.tsx",
+        "src/components/barcode/rack-printer/RackBuilderDesktop.tsx",
+        "src/components/barcode/rack-printer/RoomPicker.tsx",
+        "src/components/barcode/rack-printer/StepPills.tsx",
+        "src/components/barcode/rack-printer/ZoneLetterTile.tsx",
+        "src/components/barcode/rack-printer/useRackLabelPrinter.ts",
+        "src/components/labels/LabelPrintRunPanel.tsx",
+        "src/components/warehouse/LabelPrintWorkspace.tsx",
+        "src/components/warehouse/RackLabelWorkspace.tsx"
+      ],
+      "forbiddenSource": [
+        "BinBuilderMobile",
+        "BinBuilderDesktop",
+        "RackBuilderMobile",
+        "RackBuilderDesktop",
+        "useBinLabelPrinter",
+        "useRackLabelPrinter",
+        "LabelPrintRunPanel",
+        "bin-label-printer/RoomPicker",
+        "rack-printer/RoomPicker",
+        "bin-label-printer/StepPills",
+        "rack-printer/StepPills",
+        "bin-label-printer/ZoneLetterTile",
+        "rack-printer/ZoneLetterTile"
+      ]
+    },
+    {
+      "id": "mobile-sheet-systems",
+      "state": "retired",
+      "category": "mobile-sheets",
+      "problem": "Phones ran two sheet systems: Radix ui/sheet for V2 record sheets (fixed h-[82–92dvh] heights) and the house BottomSheet (43 consumers, no focus trap). Heights, dismissal and stacking differed by which one a page imported. Retired 2026-10-03 (owner ruling: Radix is THE sheet): all 43 consumers moved to @/components/ui/sheet (content-sized SheetContent side=\"bottom\", size=\"full\", SheetBody); ConfirmSheet lives at src/components/ui/ConfirmSheet.tsx.",
+      "replacementPaths": [
+        "src/components/ui/sheet.tsx",
+        "src/components/ui/ConfirmSheet.tsx",
+        "src/design-system/components/DetailDock.tsx"
+      ],
+      "exitCriteria": "One phone sheet primitive: content-sized, a DetailDock placement=\"sheet\" floor, focus trap, and no fixed dvh heights under src/components/mobile.",
+      "deletedPaths": [
+        "src/components/ui/BottomSheet.tsx"
+      ],
+      "forbiddenSource": [
+        "components/ui/BottomSheet"
+      ]
+    },
+    {
+      "id": "mobile-record-truncation-debt",
+      "state": "queued",
+      "category": "mobile-record-display",
+      "problem": "Owner 2026-10-03: no phone record text is truncated; records are grouped cards (identity top-left, date top-right, full title, count bottom-left, money bottom-right) that drill in. 69 mobile files still truncate or clamp record text and sit in eslint.config.mjs MOBILE_RECORD_TRUNCATION_FROZEN_DEBT. DetailSummaryCard (pinned 'one full-width title (truncate)') and LocationBadge (truncates bin paths) are design-system roots outside the lint scope that still truncate.",
+      "currentPaths": [
+        "src/components/mobile/v2/fulfillment/MobileV2FulfillmentOrders.tsx",
+        "src/components/mobile/v2/stock/MobileV2StockLocations.tsx",
+        "src/components/mobile/v2/stock/MobileV2LocationRecord.tsx",
+        "src/components/mobile/v2/receiving/MobileV2ReceivingCartonRecord.tsx",
+        "src/components/mobile/v2/scan/MobileV2ScanRecentList.tsx",
+        "src/design-system/components/DetailSummaryCard.tsx",
+        "src/design-system/components/LocationBadge.tsx"
+      ],
+      "replacementPaths": [
+        "src/design-system/components/MobileRecordCard.tsx",
+        "src/design-system/components/MobileStepProgress.tsx"
+      ],
+      "exitCriteria": "MOBILE_RECORD_TRUNCATION_FROZEN_DEBT is empty and the cf-mobile/no-truncated-record-text rule has no ignores beyond the three top-bar/switcher chrome files; DetailSummaryCard and LocationBadge wrap."
+    },
+    {
+      "id": "locations-room-text-readers",
+      "state": "in_progress",
+      "category": "location-identity",
+      "problem": "Room-agnostic racks handoff (2026-10-03) §4/§7: the room is derived by walking parent_id to the nearest ROOM, never copied. Rack/shelf/position rows leave locations.room NULL and adopted bay rows have it cleared, so any reader of the legacy room text shows no room (or groups wrongly) for a movable rack's shelves. Migrated to derived-room.ts: /api/locations?room= picker, /api/locations/[barcode] previous/next walk + room, pair-candidates room, cycle-count room scope + line order, stock ledger room filter/grouping/facets, bins overview room filter/search/order, bin-utilization report room. Still reading the text column (display or room admin only, no rack shelf hidden): getActiveLocations order + roomStructure grid (aisle-bay only), getBinContentsAtBarcode/getBinLocationsBySku/getLowStockBins, room admin by text (setRoomZoneLetter/renameRoom/reorderRooms/softDeleteRoom), legacy writers createLocation/bulkCreateBinRange/registerPrintedLocations; receiving detail/stage/recent-staged/returns-test-bin/staging-map displays; stock-alerts; sku-stock bins; listSkuStockedAt; assistant wms-tools; orders-list storage/home room; provisional-sku; pack-placement; printSpecialBinLabel; location-crud/location-deletion room text scope; mv_bin_utilization.room snapshot. Legacy room-coded builders still compose codes from the room zone letter: expand-print-run.ts and the bin-label/rack printers.",
+      "currentPaths": [
+        "src/lib/neon/location-queries.ts",
+        "src/app/api/locations/route.ts",
+        "src/app/api/receiving/[id]/route.ts",
+        "src/app/api/receiving/lines/[id]/stage/route.ts",
+        "src/app/api/receiving/recent-staged-location/route.ts",
+        "src/app/api/receiving/returns-test-bin/route.ts",
+        "src/app/api/receiving/triage/staging-map/route.ts",
+        "src/app/api/stock-alerts/route.ts",
+        "src/app/api/sku-stock/[sku]/bins/route.ts",
+        "src/lib/neon/pair-candidates-queries.ts",
+        "src/lib/assistant/tools/wms-tools.ts",
+        "src/lib/orders/orders-list.ts",
+        "src/lib/neon/provisional-sku-queries.ts",
+        "src/lib/packing/pack-placement.ts",
+        "src/lib/inventory/returns-test-bin.ts",
+        "src/lib/print/printSpecialBinLabel.ts",
+        "src/lib/locations/location-crud.ts",
+        "src/lib/inventory/location-deletion.ts",
+        "src/lib/migrations/2026-06-26_report_views_org_scope.sql",
+        "src/lib/locations/expand-print-run.ts",
+        "src/components/barcode/bin-label-printer",
+        "src/components/barcode/rack-printer"
+      ],
+      "replacementPaths": [
+        "src/lib/locations/derived-room.ts",
+        "src/lib/locations/rack-code.ts",
+        "src/lib/print/printLocationRows.ts"
+      ],
+      "exitCriteria": "Every location read derives its room from parent_id: no server reader selects, filters, groups or orders by locations.room (only derived-room.ts reads a ROOM row's own key), the room-coded builders compose no code from a room letter, and npm run verify:derived-room stays green until the column is dropped."
+    }
+  ]
+}

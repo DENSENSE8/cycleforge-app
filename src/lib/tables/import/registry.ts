@@ -9,6 +9,8 @@
 export const TABLE_IMPORT_LIVE_SURFACES = [
   'orders-import',
   'receiving-returns-import',
+  'receiving-po-import',
+  'products-catalog-import',
 ] as const;
 
 export function isTableImportLive(

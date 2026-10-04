@@ -15,7 +15,6 @@ export function SupportSidebarPanel() {
 
   const canTickets = !isLoaded || has('integrations.zendesk');
   const canOrders = !isLoaded || has('orders.view');
-  const canWarranty = !isLoaded || has('warranty.view');
   const canIssues = !isLoaded || has('support.issues.view');
 
   useEffect(() => {
@@ -39,19 +38,17 @@ export function SupportSidebarPanel() {
     if (mode === 'tickets' && !canTickets) {
       if (canOrders) updateMode('orders');
       else if (canIssues) updateMode('issues');
-      else if (canWarranty) updateMode('warranty');
     }
     if (mode === 'orders' && !canOrders) {
       if (canTickets) updateMode('tickets');
       else if (canIssues) updateMode('issues');
-      else if (canWarranty) updateMode('warranty');
     }
-  }, [canTickets, canOrders, canWarranty, canIssues, isLoaded, mode, updateMode]);
+  }, [canTickets, canOrders, canIssues, isLoaded, mode, updateMode]);
 
-  if (isLoaded && !canTickets && !canWarranty && !canIssues && !canOrders) {
+  if (isLoaded && !canTickets && !canIssues && !canOrders) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-center text-role-caption font-semibold text-text-soft">
-        Requires support tickets, orders, warranty, or reported-issues access.
+        Requires support tickets, orders, or reported-issues access.
       </div>
     );
   }

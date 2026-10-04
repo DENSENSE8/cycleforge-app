@@ -12,8 +12,8 @@
  *   (`GET /api/receiving-lines?view=reconcile`), painted in the ledger.
  *
  * Physical-first (the rule `deliveredUnscannedBaseSql` states): a dock scan or
- * an unbox is what makes a delivery received. A Zoho "received" with no scan
- * is the discrepancy worth a person — an exception, never a receipt.
+ * an unbox is what makes a delivery received. Zoho's PO status never decides
+ * or labels a number — one with nothing scanned reads its carrier/physical fact.
  */
 
 import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
@@ -66,7 +66,6 @@ export const RECON_REASONS = [
   'in_transit',
   'open_po',
   'warehouse_owed',
-  'erp_ahead',
   'no_match',
   'ambiguous',
   'lookup_failed',
@@ -80,9 +79,8 @@ export const RECON_REASON_LABELS: Readonly<Record<ReconReason, string>> = {
   received_here: 'Received here',
   delivered_not_scanned: 'Delivered · not scanned',
   in_transit: 'In transit',
-  open_po: 'Open PO',
+  open_po: 'Ordered · no tracking',
   warehouse_owed: 'Warehouse record · not received',
-  erp_ahead: 'Zoho received · never scanned',
   no_match: 'No match anywhere',
   ambiguous: 'Several POs match',
   lookup_failed: 'Lookup failed',
@@ -97,7 +95,6 @@ export const RECON_REASON_STATUS: Readonly<Record<ReconReason, ReconStatus>> = {
   in_transit: 'not_received',
   open_po: 'not_received',
   warehouse_owed: 'not_received',
-  erp_ahead: 'not_received',
   no_match: 'not_received',
   ambiguous: 'not_received',
   lookup_failed: 'not_received',
@@ -172,11 +169,13 @@ export interface ReconEntry {
 
 type Verdict = Pick<ReconEntry, 'status' | 'reasonCode' | 'detail' | 'pending' | 'exception'>;
 
-const verdict = (
-  reasonCode: ReconReason,
-  exception: ReconEntry['exception'] = null,
-  detail: string = RECON_REASON_LABELS[reasonCode],
-): Verdict => ({ status: RECON_REASON_STATUS[reasonCode], reasonCode, detail, pending: false, exception });
+const verdict = (reasonCode: ReconReason, exception: ReconEntry['exception'] = null): Verdict => ({
+  status: RECON_REASON_STATUS[reasonCode],
+  reasonCode,
+  detail: RECON_REASON_LABELS[reasonCode],
+  pending: false,
+  exception,
+});
 
 /** A reason that needs a person: its label is also the badge. */
 const badged = (reasonCode: ReconReason, inView: boolean): Verdict =>
@@ -206,22 +205,19 @@ function tablesDecide(row: CheckZohoReceivedRow): boolean {
 
 /**
  * One Check row → its status and reason. Received = the warehouse scanned or
- * unboxed it (physical-first). Everything else is still owed; the ERP saying
- * received with nothing opened here, or a number nothing identifies, is owed
- * AND an exception.
+ * unboxed it (physical-first). Everything else is still owed, by its physical
+ * or carrier fact; a number nothing identifies is owed AND an exception.
  */
 export function reconOfCheckRow(row: CheckZohoReceivedRow): Verdict {
   const local = row.local;
   if (local?.unboxed) return verdict('unboxed');
   if (local?.scanned) return verdict('scanned');
-  if (row.verdict === 'erp_ahead') return badged('erp_ahead', true);
   if (row.reason === 'ambiguous') return badged('ambiguous', false);
   if (row.reason === 'error') return badged('lookup_failed', false);
   if (tablesDecide(row) && !local?.known) return badged('no_match', false);
   if (local?.delivered) return verdict('delivered_not_scanned');
   if (local?.known) return verdict('in_transit');
-  // The PO's own Zoho status says more than "open" when it is known.
-  return verdict('open_po', null, row.status ? `PO ${row.status}` : RECON_REASON_LABELS.open_po);
+  return verdict('open_po');
 }
 
 /** Line delivery states the Exceptions view carries (`incomingExceptionCodeSql`). */

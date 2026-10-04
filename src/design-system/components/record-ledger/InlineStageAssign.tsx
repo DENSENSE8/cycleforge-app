@@ -10,8 +10,8 @@
 import { useRef, useState } from 'react';
 import { User } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
-import type { StageStaffLane } from '@/components/tables/compound/staff-stage-lane';
+import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
+import type { StageStaffLane } from '@/components/staff-assign/staff-stage-lane';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 

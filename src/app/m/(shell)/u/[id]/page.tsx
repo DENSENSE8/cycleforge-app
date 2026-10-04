@@ -9,7 +9,7 @@ import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { conditionLabel } from '@/lib/conditions';
 import { Button } from '@/design-system/primitives';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { DetailAck, DetailFact, DetailFacts, DetailNav, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { useSerialUnit } from '@/lib/serial/use-serial-unit';
 import { useUnitHubRows, type UnitHubVerb } from '@/components/mobile/unit/useUnitHubRows';
@@ -118,7 +118,7 @@ export default function MobileUnitPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         subtitle="Unit"
         title={unit?.serial_number ?? (isLoading ? 'Loading…' : 'Not found')}
         mono={Boolean(unit)}

@@ -1,29 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Cpu, Play, Plus, Sparkles, ThumbsDown, ThumbsUp } from '@/components/Icons';
+import { Cpu, Play, Plus } from '@/components/Icons';
 import { Badge } from '@/components/ui/badge';
-import { DetailAck, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
-import { UnitLineTestSheet } from '@/components/mobile/unit/UnitLineSheets';
+import { DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { Button } from '@/design-system/primitives';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { TextField } from '@/design-system/primitives/TextField';
 import { QC_OUTCOMES_BY_KIND, type DiagnosticSeverity, type QcSessionOutcome } from '@/lib/qc/contracts';
-import type { TriageSuggestion } from '@/lib/qc/triage/contracts';
 import {
   QC_OUTCOME_LABEL,
   QC_SESSION_KIND_LABEL,
   QC_SEVERITY_LABEL,
-  TRIAGE_KIND_LABEL,
   defaultQcSessionKind,
   qcBenchErrorText,
   qcReadingFace,
   qcSessionElapsedMs,
   qcSessionHubId,
-  triageConfidenceText,
   type ManualReadingDraft,
 } from '@/lib/qc/bench-client';
-import { useQcBench, useQcClock, useQcCodes, useQcTriage, type QcBench, type QcTriage } from '@/lib/qc/use-qc-bench';
+import { useQcBench, useQcClock, useQcCodes, type QcBench } from '@/lib/qc/use-qc-bench';
 import { formatBenchClock, formatBenchDuration } from '@/lib/repair/bench-session';
 import { formatMonthDayTimePST } from '@/utils/date';
 
@@ -46,12 +42,6 @@ const SEVERITY_BADGE: Record<DiagnosticSeverity, 'secondary' | 'warning' | 'dest
   INFO: 'secondary',
   WARNING: 'warning',
   CRITICAL: 'destructive',
-};
-
-const KIND_BADGE: Record<TriageSuggestion['kind'], 'secondary' | 'warning' | 'default'> = {
-  CHECK: 'secondary',
-  FIX: 'warning',
-  RETEST: 'default',
 };
 
 const EMPTY_DRAFT: ManualReadingDraft = { kind: '', code: '', value: '' };
@@ -272,148 +262,24 @@ function ReadingsSection({ bench }: { bench: QcBench }) {
   );
 }
 
-function NextStepsSection({ triage, onVerdict }: { triage: QcTriage; onVerdict: () => void }) {
-  const { result } = triage;
-  return (
-    <section aria-labelledby="qc-next" className="divide-y divide-mode-rule">
-      <DetailSectionHeading id="qc-next">
-        Next steps{result ? ` · ${result.rankedBy === 'AI' ? 'AI ranked' : 'history ranked'}` : ''}
-      </DetailSectionHeading>
-      {triage.askError ? (
-        <p role="alert" className={ERROR}>
-          {qcBenchErrorText(triage.askError)}
-        </p>
-      ) : null}
-      {result?.aiError ? (
-        <p className="bg-mode-panel px-mode-page py-2 text-role-caption text-mode-muted" data-testid="qc-triage-ai-note">
-          AI ranking unavailable — showing the history order.
-        </p>
-      ) : null}
-      {triage.decideError ? (
-        <p role="alert" className={ERROR}>
-          {qcBenchErrorText(triage.decideError)}
-        </p>
-      ) : null}
-      {result && result.steps.length === 0 ? <p className={MESSAGE}>No suggested steps for this unit.</p> : null}
-      {result && result.steps.length > 0 ? (
-        <ol aria-label="Ranked next steps" className="divide-y divide-mode-rule bg-mode-panel">
-          {result.steps.map((step) => {
-            const decided = triage.decisions[step.id] ?? null;
-            const busy = triage.deciding === step.id;
-            return (
-              <li
-                key={step.id}
-                className="flex flex-col gap-2 px-mode-page py-3"
-                data-testid="qc-triage-step"
-                data-decision={decided ?? undefined}
-              >
-                <div className="flex items-start gap-2">
-                  <span className="font-mono text-role-caption tabular-nums text-mode-muted">{step.rank}.</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge variant={KIND_BADGE[step.kind]}>{TRIAGE_KIND_LABEL[step.kind]}</Badge>
-                      <span className="text-mode-body font-semibold text-mode-ink">{step.step}</span>
-                    </div>
-                    <p className="mt-0.5 text-role-caption text-mode-muted">{step.why}</p>
-                  </div>
-                  <span className="font-mono text-role-caption tabular-nums text-mode-muted">
-                    {triageConfidenceText(step.confidence)}
-                  </span>
-                </div>
-                {step.evidence.length > 0 ? (
-                  <ul aria-label="Evidence" className="flex flex-wrap gap-1">
-                    {step.evidence.map((e) => (
-                      <li key={`${e.type}:${e.id}`}>
-                        <Badge variant="outline">{e.label}</Badge>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    variant={decided === 'ACCEPTED' ? 'success' : 'secondary'}
-                    icon={<ThumbsUp />}
-                    disabled={busy}
-                    aria-pressed={decided === 'ACCEPTED'}
-                    onClick={() => triage.decide(step.id, 'ACCEPTED')}
-                  >
-                    {decided === 'ACCEPTED' ? 'Accepted' : 'Accept'}
-                  </Button>
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    variant={decided === 'REJECTED' ? 'secondary' : 'ghost'}
-                    icon={<ThumbsDown />}
-                    disabled={busy}
-                    aria-pressed={decided === 'REJECTED'}
-                    onClick={() => triage.decide(step.id, 'REJECTED')}
-                  >
-                    {decided === 'REJECTED' ? 'Rejected' : 'Reject'}
-                  </Button>
-                </div>
-                {step.kind === 'RETEST' ? (
-                  <Button size="lg" variant="primarySoft" className="w-full" onClick={onVerdict}>
-                    Record verdict
-                  </Button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ol>
-      ) : null}
-      <div className="bg-mode-panel px-mode-page py-3">
-        <Button
-          size="lg"
-          variant={result ? 'secondary' : 'primary'}
-          icon={<Sparkles />}
-          className="w-full"
-          loading={triage.asking}
-          onClick={triage.ask}
-        >
-          {result ? 'Refresh next steps' : 'Get next steps'}
-        </Button>
-      </div>
-    </section>
-  );
-}
-
 /**
- * The phone's QC bench for one unit — the same verbs as the `/test` Units display (SURFACE_LAW):
- * start / end a session, the live readings list with manual entry, and next steps with Accept /
- * Reject. A RETEST step opens the unit's existing verdict sheet.
+ * The phone's QC bench for one unit: start / end a session and record live or
+ * manual readings. Product checklist execution and the bottom verdict dock are
+ * owned by UnitQcRunner; ranked "next steps" do not belong on the V2 phone job.
  */
 export function UnitQcBench({
   unitId,
   unitStatus,
-  onVerdictRecorded,
 }: {
   unitId: number;
   unitStatus: string;
-  onVerdictRecorded: () => void;
 }) {
   const bench = useQcBench(unitId);
-  const triage = useQcTriage(unitId, bench.open?.id ?? null);
-  const [verdictOpen, setVerdictOpen] = useState(false);
-  const [ack, setAck] = useState<string | null>(null);
 
   return (
     <>
       <SessionSection bench={bench} unitStatus={unitStatus} />
       <ReadingsSection bench={bench} />
-      <NextStepsSection triage={triage} onVerdict={() => setVerdictOpen(true)} />
-      {ack ? <DetailAck onDismiss={() => setAck(null)}>{ack}</DetailAck> : null}
-      <UnitLineTestSheet
-        open={verdictOpen}
-        unitId={unitId}
-        onClose={() => setVerdictOpen(false)}
-        onDone={(text) => {
-          setVerdictOpen(false);
-          setAck(text);
-          onVerdictRecorded();
-        }}
-      />
     </>
   );
 }

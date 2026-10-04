@@ -22,8 +22,8 @@ const sizeClassName: Record<IconButtonSize, string> = {
   /** 44px — mobile tap floor (iOS HIG). */
   touch: 'h-11 w-11',
   /**
-   * Macro spread peer — fills an equal column of {@link FlushTerminalFooter}
-   * `layout="spread"` (Station Displays carton Macro golden).
+   * Spread peer — fills an equal, gapped column of {@link FloatingActionFooter}
+   * `layout="spread"` (the floating icon action row).
    */
   fill: 'h-full min-h-0 w-full min-w-0 flex-1 self-stretch',
 };

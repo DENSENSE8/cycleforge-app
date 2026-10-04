@@ -6,6 +6,7 @@ import {
   CalendarClock as LucideCalendarClock,
   ChartPie as LucideChartPie,
   DoorOpen as LucideDoorOpen,
+  Radar as LucideRadar,
   ScanBarcode as LucideScanBarcode,
   ShelvingUnit as LucideShelvingUnit,
   Warehouse as LucideWarehouse,
@@ -214,6 +215,11 @@ export const ScanBarcode = ({ className = "w-6 h-6" }: { className?: string }) =
 /** Workflow graph — Workflow Studio spine section (lucide workflow). */
 export const Workflow = ({ className = "w-6 h-6" }: { className?: string }) => (
     <LucideWorkflow className={className} />
+);
+
+/** Radar sweep — the Live feed (`/operations/live-feed`; lucide radar; `Activity` is Live feed V2's). */
+export const Radar = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideRadar className={className} />
 );
 
 export const Smartphone = ({ className = "w-6 h-6" }: { className?: string }) => (

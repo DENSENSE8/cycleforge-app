@@ -17,6 +17,7 @@ import { cartMoneySplit, cartUnitCount } from '@/lib/kiosk/cart-money';
 import { formatCartCents } from '@/lib/kiosk/cart-card-view';
 import { keypadLine } from '@/lib/kiosk/keypad-line';
 import { KIOSK_POS_CTA } from '@/app/kiosk/kiosk-pos-surface';
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP } from '@/design-system/tokens/dock-clearance';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
@@ -84,7 +85,7 @@ export function KioskKeypadFace({
           ariaLabel="Current sale items"
           className="min-h-0 flex-1 overflow-y-auto px-3 pb-4"
         />
-        <div className="shrink-0 border-t border-border-hairline p-4">
+        <div className={cn('shrink-0 px-4', ACTION_DOCK_TOP_GAP, ACTION_DOCK_LIFT)}>
           <Button
             size="lg"
             className={cn(KIOSK_POS_CTA, 'md:max-w-none')}

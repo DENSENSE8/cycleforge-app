@@ -16,8 +16,8 @@ export const forestPalette: ThemePalette = {
     // Neutral chrome — green-cast
     'text-primary': '#ecf5ef',
     'text-secondary': '#c2d5c8',
-    'text-soft': '#93ac9c',
-    'text-faint': '#66816f',
+    'text-soft': '#94ad9d',
+    'text-faint': '#7f9787', // ≥4.5 on every surface (owner 2026-10-03)
     'background-canvas': '#0b1310',
     'background-surface': '#13201a',
     'surface-sunken': '#1c2d24',

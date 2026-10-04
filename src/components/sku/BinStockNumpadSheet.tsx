@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Layer } from '@/design-system';
 import { Panel, Button, IconButton } from '@/design-system/primitives';
-import { Check, Loader2, X } from '@/components/Icons';
+import { DetailDock } from '@/design-system/components/DetailDock';
+import { Check, X } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { ReasonCodePicker, type ReasonCode } from '@/components/sku/ReasonCodePicker';
 import { queueOrFetch } from '@/lib/offline/write-queue';
@@ -477,27 +478,23 @@ export function BinStockNumpadSheet({
         </div>
       )}
 
-      {/* ── Footer / confirm ── */}
-      <footer className="sticky bottom-0 border-t border-border-soft bg-surface-card px-4 py-3">
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          onClick={confirm}
-          disabled={busy || numericDraft <= 0}
-          className={`h-auto w-full justify-center rounded-lg py-4 text-lg font-semibold text-white shadow-md ${
-            mode === 'minus'
-              ? 'bg-rose-600 active:bg-rose-700'
-              : 'bg-emerald-600 active:bg-emerald-700'
-          }`}
-        >
-          {busy ? (
-            <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-          ) : (
-            <>Confirm {mode === 'minus' ? `−${numericDraft || 0}` : `+${numericDraft || 0}`}</>
-          )}
-        </Button>
-      </footer>
+      {/* ── Confirm — a floating verb on the sheet's floor, no bar behind it (owner 2026-10-03) ── */}
+      <DetailDock
+        label="Stock actions"
+        placement="sheet"
+        verbs={[
+          {
+            id: 'confirm',
+            label: `Confirm ${mode === 'minus' ? `−${numericDraft || 0}` : `+${numericDraft || 0}`}`,
+            icon: <Check />,
+            primary: true,
+            variant: mode === 'minus' ? 'danger' : 'success',
+            disabled: numericDraft <= 0,
+            loading: busy,
+          },
+        ]}
+        onVerb={() => confirm()}
+      />
 
       {cameraOpen && (
         <MobileNativePhotoCapture

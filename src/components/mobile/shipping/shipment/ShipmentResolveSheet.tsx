@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Check } from '@/components/Icons';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, SearchField, TextField } from '@/design-system/primitives';
@@ -103,97 +103,98 @@ export function ShipmentResolveSheet({
     .join(' · ');
 
   return (
-    <BottomSheet
-      open={open}
-      onClose={saving ? () => {} : onClose}
-      forceVariant="sheet"
-      scrollBody
-      title="Resolve unmatched scan"
-    >
-      {/* BottomSheet portals out of the page's ModeRegion; re-declare triage so
+    <Sheet open={open} onOpenChange={(next) => { if (!next && !saving) onClose(); }}>
+      {/* The sheet portals out of the page's ModeRegion; re-declare triage so
           the mode radius / padding / hit tokens resolve inside the sheet. */}
-      <ModeRegion mode="triage" className="flex flex-col gap-3 pb-2">
-        <p className="text-role-caption text-mode-muted">
-          Pack scan of <span className="font-mono text-mode-ink">{record.tracking}</span>
-          {scanned ? ` ${scanned}` : ''} matched no order
-          {exception.reason ? ` (${exception.reason.replace(/_/g, ' ')})` : ''}.
-        </p>
+      <ModeRegion mode="triage" asChild>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>Resolve unmatched scan</SheetTitle>
+          </SheetHeader>
+          <SheetBody className="flex flex-col gap-3">
+            <p className="text-role-caption text-mode-muted">
+              Pack scan of <span className="font-mono text-mode-ink">{record.tracking}</span>
+              {scanned ? ` ${scanned}` : ''} matched no order
+              {exception.reason ? ` (${exception.reason.replace(/_/g, ' ')})` : ''}.
+            </p>
 
-        <TabSwitch
-          tabs={MODES.map(({ id, label }) => ({ id, label }))}
-          activeTab={mode}
-          onTabChange={(id) => {
-            if (!saving) setMode(id as ResolveMode);
-          }}
-          size="sm"
-          fit="fill"
-        />
-        <p className="px-1 text-role-caption text-mode-muted">{MODES.find((option) => option.id === mode)?.hint}</p>
-
-        {mode === 'link-order' ? (
-          <div className="flex flex-col gap-1.5">
-            <SearchField
-              value={query}
-              onChange={setQuery}
-              placeholder="Order #, tracking or title…"
-              tone="neutral"
-              isSearching={orders.isFetching}
+            <TabSwitch
+              tabs={MODES.map(({ id, label }) => ({ id, label }))}
+              activeTab={mode}
+              onTabChange={(id) => {
+                if (!saving) setMode(id as ResolveMode);
+              }}
+              size="sm"
+              fit="fill"
             />
-            {debounced.length < 3 ? (
-              <p className="px-1 text-role-caption text-mode-muted">Type at least 3 characters to find the order.</p>
-            ) : orders.isError ? (
-              <p role="alert" className="px-1 text-role-caption font-semibold text-text-danger">
-                {orders.error instanceof Error ? orders.error.message : 'Order search failed'}
-              </p>
-            ) : orders.data && orders.data.length === 0 ? (
-              <p className="px-1 text-role-caption text-mode-muted">No order matched “{debounced}”.</p>
-            ) : (
-              <div role="radiogroup" aria-label="Orders" className="flex flex-col gap-1.5">
-                {(orders.data ?? []).map((order) => (
-                  // ds-raw-button: full-width radio row (order title + refs + trailing check), not an action button
-                  <button
-                    key={order.orderRowId}
-                    type="button"
-                    role="radio"
-                    aria-checked={orderRowId === order.orderRowId}
-                    disabled={saving}
-                    onClick={() => setOrderRowId(order.orderRowId)}
-                    className={rowClass(orderRowId === order.orderRowId)}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-mode-body font-semibold">{order.title || 'Untitled product'}</span>
-                      <span className="block truncate text-role-caption text-mode-muted">
-                        {[order.orderRef, order.sku, order.channel, order.status].filter(Boolean).join(' · ')}
-                      </span>
-                    </span>
-                    {orderRowId === order.orderRowId ? <Check className="h-4 w-4 shrink-0" /> : null}
-                  </button>
-                ))}
+            <p className="px-1 text-role-caption text-mode-muted">{MODES.find((option) => option.id === mode)?.hint}</p>
+
+            {mode === 'link-order' ? (
+              <div className="flex flex-col gap-1.5">
+                <SearchField
+                  value={query}
+                  onChange={setQuery}
+                  placeholder="Order #, tracking or title…"
+                  tone="neutral"
+                  isSearching={orders.isFetching}
+                />
+                {debounced.length < 3 ? (
+                  <p className="px-1 text-role-caption text-mode-muted">Type at least 3 characters to find the order.</p>
+                ) : orders.isError ? (
+                  <p role="alert" className="px-1 text-role-caption font-semibold text-text-danger">
+                    {orders.error instanceof Error ? orders.error.message : 'Order search failed'}
+                  </p>
+                ) : orders.data && orders.data.length === 0 ? (
+                  <p className="px-1 text-role-caption text-mode-muted">No order matched “{debounced}”.</p>
+                ) : (
+                  <div role="radiogroup" aria-label="Orders" className="flex flex-col gap-1.5">
+                    {(orders.data ?? []).map((order) => (
+                      // ds-raw-button: full-width radio row (order title + refs + trailing check), not an action button
+                      <button
+                        key={order.orderRowId}
+                        type="button"
+                        role="radio"
+                        aria-checked={orderRowId === order.orderRowId}
+                        disabled={saving}
+                        onClick={() => setOrderRowId(order.orderRowId)}
+                        className={rowClass(orderRowId === order.orderRowId)}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-mode-body font-semibold">{order.title || 'Untitled product'}</span>
+                          <span className="block truncate text-role-caption text-mode-muted">
+                            {[order.orderRef, order.sku, order.channel, order.status].filter(Boolean).join(' · ')}
+                          </span>
+                        </span>
+                        {orderRowId === order.orderRowId ? <Check className="h-4 w-4 shrink-0" /> : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+            ) : (
+              <TextField label="Reason (required)" value={reason} onChange={setReason} multiline rows={3} disabled={saving} />
             )}
-          </div>
-        ) : (
-          <TextField label="Reason (required)" value={reason} onChange={setReason} multiline rows={3} disabled={saving} />
-        )}
 
-        {resolve.error ? (
-          <p role="alert" className="rounded-mode border border-border-danger bg-surface-danger px-mode-page py-2.5 text-role-caption font-semibold text-text-danger">
-            Not resolved — {resolve.error.message}
-          </p>
-        ) : null}
+            {resolve.error ? (
+              <p role="alert" className="rounded-mode border border-border-danger bg-surface-danger px-mode-page py-2.5 text-role-caption font-semibold text-text-danger">
+                Not resolved — {resolve.error.message}
+              </p>
+            ) : null}
 
-        <Button variant="primary" size="lg" className="w-full rounded-mode" disabled={!ready} loading={saving} onClick={submit}>
-          {saving
-            ? 'Saving'
-            : mode === 'link-order'
-              ? picked
-                ? `Link to ${picked.orderRef ?? `order #${picked.orderRowId}`}`
-                : 'Pick the order in this box'
-              : ready
-                ? 'Close exception'
-                : 'Say why to close'}
-        </Button>
+            <Button variant="primary" size="lg" className="w-full rounded-mode" disabled={!ready} loading={saving} onClick={submit}>
+              {saving
+                ? 'Saving'
+                : mode === 'link-order'
+                  ? picked
+                    ? `Link to ${picked.orderRef ?? `order #${picked.orderRowId}`}`
+                    : 'Pick the order in this box'
+                  : ready
+                    ? 'Close exception'
+                    : 'Say why to close'}
+            </Button>
+          </SheetBody>
+        </SheetContent>
       </ModeRegion>
-    </BottomSheet>
+    </Sheet>
   );
 }

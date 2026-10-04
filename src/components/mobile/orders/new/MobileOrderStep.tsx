@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Check, ChevronRight } from '@/components/Icons';
 import { MobileFormHeading } from './MobileFormHeading';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
@@ -94,31 +94,38 @@ export function MobileOrderStep({
         />
       </label>
 
-      <BottomSheet open={channelOpen} onClose={() => setChannelOpen(false)} forceVariant="sheet" title="Channel" scrollBody level={1}>
-        <ul aria-label="Channels" data-testid="m-order-channel-sheet">
-          {channelOptions.map((o) => {
-            const selected = o.value === channel?.value;
-            return (
-              <li key={o.value}>
-                <button
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => {
-                    onChange({ channel: o.value });
-                    setChannelOpen(false);
-                  }}
-                  className={ROW_CLASS}
-                >
-                  <span className="min-w-0 flex-1 truncate text-mode-body font-semibold text-mode-ink">
-                    {o.label}
-                  </span>
-                  {selected ? <Check className="h-5 w-5 shrink-0 text-mode-ink" /> : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </BottomSheet>
+      <Sheet open={channelOpen} onOpenChange={(next) => { if (!next) setChannelOpen(false); }}>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>Channel</SheetTitle>
+          </SheetHeader>
+          <SheetBody className="px-0 pt-0">
+            <ul aria-label="Channels" data-testid="m-order-channel-sheet">
+              {channelOptions.map((o) => {
+                const selected = o.value === channel?.value;
+                return (
+                  <li key={o.value}>
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => {
+                        onChange({ channel: o.value });
+                        setChannelOpen(false);
+                      }}
+                      className={ROW_CLASS}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-mode-body font-semibold text-mode-ink">
+                        {o.label}
+                      </span>
+                      {selected ? <Check className="h-5 w-5 shrink-0 text-mode-ink" /> : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -213,7 +213,8 @@ function hydrateStaffColorCacheFromStorage(): void {
 }
 
 // Runs once on first client import, before any React render. Safe on the
-// server because the typeof window guard short-circuits.
+// server because the typeof window guard short-circuits. Hydrating marks read
+// the server's empty cache through `useStaffColorVersion` (version 0).
 hydrateStaffColorCacheFromStorage();
 
 interface StaffIdentityCacheEntry {

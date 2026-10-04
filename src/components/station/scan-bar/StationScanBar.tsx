@@ -20,6 +20,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterScanTarget } from '@/lib/scan-hotkey/useScanHotkey';
 import { useStationCommandScan } from '@/hooks/useStationCommandScan';
+import { useCommandAliasHydration } from '@/hooks/useCommandAliasHydration';
 import { detectStationScanType } from '@/lib/station-scan-routing';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { setScanSubject } from '@/lib/stations/scan-subject-store';
@@ -273,6 +274,8 @@ export function StationScanBar({
   }, [previewMode, runPreview]);
 
   const tryCommand = useStationCommandScan();
+  // A composer that reads commands holds the alias book from mount (shared cache).
+  useCommandAliasHydration(navCommands);
 
   const handleInternalSubmit = useCallback((e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();

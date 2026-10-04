@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     INVENTORY_DETAILS_EVENTS,
     getOpenInventoryDetailsPayload,
@@ -12,7 +12,6 @@ import { AlertDetailsPanel } from './AlertDetailsPanel';
 import { BinDetailsPanel } from './BinDetailsPanel';
 import { CountCampaignDetailsPanel } from './CountCampaignDetailsPanel';
 import { SkuDetailsPanel } from './SkuDetailsPanel';
-import { UnitDetailsPanel } from './UnitDetailsPanel';
 
 interface OverlaySelection {
     kind: InventoryDetailKind;
@@ -23,6 +22,7 @@ const SUPPORTED_KINDS: InventoryDetailKind[] = ['bin', 'sku', 'unit', 'alert', '
 
 /** Controller for the inventory detail view. */
 export function InventoryDetailsOverlay() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const openParam = searchParams.get('open');
 
@@ -62,6 +62,11 @@ export function InventoryDetailsOverlay() {
         };
     }, []);
 
+    // A unit's record is `/serial/[id]`; the inventory pane has no unit body.
+    useEffect(() => {
+        if (selection?.kind === 'unit') router.replace(`/serial/${encodeURIComponent(selection.ref)}`);
+    }, [router, selection]);
+
     if (!selection) return null;
 
     if (selection.kind === 'bin') {
@@ -78,15 +83,6 @@ export function InventoryDetailsOverlay() {
             <SkuDetailsPanel
                 key={`sku:${selection.ref}`}
                 sku={selection.ref}
-                onClose={() => setSelection(null)}
-            />
-        );
-    }
-    if (selection.kind === 'unit') {
-        return (
-            <UnitDetailsPanel
-                key={`unit:${selection.ref}`}
-                ref={selection.ref}
                 onClose={() => setSelection(null)}
             />
         );

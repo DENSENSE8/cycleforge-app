@@ -152,7 +152,6 @@ export function stockSummary(
     title: 'Stock',
     facts: [
       { label: 'Location × SKU pairs', value: pairs },
-      { label: 'Units on the shelves', value: counts.inStockUnits, toolbar: true },
       { label: 'Products in stock', value: counts.inStockProducts },
       { label: 'On hold (TMP)', value: counts.onHoldPairs, warn: counts.onHoldPairs > 0 },
       { label: 'At or below zero', value: counts.outPairs, warn: counts.outPairs > 0 },

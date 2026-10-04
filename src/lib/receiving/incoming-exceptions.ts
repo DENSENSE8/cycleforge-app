@@ -1,7 +1,7 @@
 /**
  * Inbound › Exceptions — the lines that need a PERSON, not time: the carrier
- * delivered it somewhere else, the ERP says received with nothing scanned
- * here, a box sat delivered past the dock SLA, or the carrier cannot track it.
+ * delivered it somewhere else, a box sat delivered past the dock SLA, or the
+ * carrier cannot track it.
  * Derived on read (`view=exceptions`, SQL in `incoming-exceptions-sql.ts`),
  * never stored. One code per line, the first that applies in
  * {@link INCOMING_EXCEPTION_CODES} order. Client-safe: codes and words only.
@@ -12,7 +12,6 @@ import { normalizePostalCode } from '@/lib/receiving/wrong-destination';
 /** Priority order: the first that applies is the line's reason. */
 export const INCOMING_EXCEPTION_CODES = [
   'WRONG_DESTINATION',
-  'ERP_AHEAD',
   'DELIVERED_OVERDUE',
   'STALLED',
   'TRACKING_UNAVAILABLE',
@@ -43,14 +42,12 @@ export interface IncomingExceptionFacts {
   shipment_latest_event_postal?: string | null;
   warehouse_postal?: string | null;
   shipment_latest_event_city?: string | null;
-  zoho_status?: string | null;
   delivered_at?: string | null;
   carrier?: string | null;
 }
 
 const LABEL: Readonly<Record<IncomingExceptionCode, string>> = {
   WRONG_DESTINATION: 'Wrong destination',
-  ERP_AHEAD: 'Zoho received · not scanned',
   DELIVERED_OVERDUE: `Delivered ${DELIVERED_OVERDUE_HOURS}h+ · not scanned`,
   STALLED: 'Stalled',
   TRACKING_UNAVAILABLE: 'Tracking unavailable',
@@ -64,7 +61,6 @@ export function incomingExceptionLabel(code: IncomingExceptionCode): string {
 /** The pill's verb — the next action in one or two words. */
 export const INCOMING_EXCEPTION_VERB: Readonly<Record<IncomingExceptionCode, string>> = {
   WRONG_DESTINATION: 'Investigate',
-  ERP_AHEAD: 'Find the box',
   DELIVERED_OVERDUE: 'Walk the dock',
   STALLED: 'Contact carrier',
   TRACKING_UNAVAILABLE: 'Check carrier',
@@ -88,13 +84,6 @@ export function incomingExceptionReason(row: IncomingExceptionFacts): IncomingEx
         next: 'Investigate with the carrier and the seller',
       };
     }
-    case 'ERP_AHEAD':
-      return {
-        code,
-        label,
-        why: `Zoho says ${String(row.zoho_status || 'received').toLowerCase()} — nobody scanned it here`,
-        next: 'Find the box on the dock, or correct the receipt in Zoho',
-      };
     case 'DELIVERED_OVERDUE':
       return {
         code,

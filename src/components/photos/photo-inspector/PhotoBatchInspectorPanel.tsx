@@ -16,12 +16,8 @@ import {
 import { Check, ChevronRight, Layers } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import {
-  FLOOR_DELETE_PEER_CLASS,
-  FloorIconButton,
-  InspectorActionFloor,
-} from '@/components/right-rail/InspectorActionFloor';
-import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
+import { FloorIconButton, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFloorDelete } from '@/components/right-rail/InspectorFloorDelete';
 import {
   ARMED_CURSOR_CHEVRON_CLASS,
   ARMED_CURSOR_TRACK_CLASS,
@@ -36,7 +32,7 @@ import {
 } from '@/lib/selection/selection-actions';
 import { cn } from '@/utils/_cn';
 
-/** Bulk verbs that leave the row list for the Macro floor. */
+/** Bulk verbs that leave the row list for the floating action floor. */
 const FLOOR_ACTION_KEYS: readonly string[] = ['download'];
 
 interface BatchRow {
@@ -123,7 +119,7 @@ export function PhotoBatchInspectorPanel<T>({
     }
 
     // NOTE: Download and Delete are deliberately NOT rows here — they are the
-    // Macro floor's two peers below. See the docblock.
+    // floating action floor's two peers below. See the docblock.
     return out;
   }, [
     allSelected,
@@ -279,10 +275,10 @@ export function PhotoBatchInspectorPanel<T>({
           }
         />
 
-        {/* Macro floor — the terminal pair, Download then Delete. Coplanar with
-            the panel (`surface="card"`); peers disabled, never unmounted, at
-            zero selected so the row above never shifts under a tick. */}
-        <InspectorActionFloor surface="card">
+        {/* Floating action floor — the terminal pair, Download then Delete.
+            Peers disabled, never unmounted, at zero selected so the row
+            above never shifts under a tick. */}
+        <InspectorActionFloor>
           {floorActions.map((action) => {
             const resolved = resolveSelectionAction(action, rows);
             return (
@@ -298,13 +294,12 @@ export function PhotoBatchInspectorPanel<T>({
               />
             );
           })}
-          <InspectorFlushDelete
+          <InspectorFloorDelete
             onConfirm={() => onDeleteSelected?.(rows)}
             label={shownCount > 0 ? `Delete ${shownCount}` : 'Delete selected'}
             confirmLabel={`Click again to delete ${shownCount}`}
             disabled={!onDeleteSelected || shownCount === 0}
             data-testid="photo-batch-delete"
-            className={FLOOR_DELETE_PEER_CLASS}
           />
         </InspectorActionFloor>
       </div>

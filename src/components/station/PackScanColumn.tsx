@@ -15,7 +15,7 @@ import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import { ScanBandShell } from '@/components/station/scan-bar';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
-import { scannedUnitKey } from '@/lib/barcode-routing';
+import { routeScan, scannedUnitKey } from '@/lib/barcode-routing';
 import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { useAssistantContext } from '@/hooks/useAssistantContext';
 import { STATION_SKILL } from '@/lib/assistant/page-skills';
@@ -147,6 +147,55 @@ export default function PackScanColumn({
     getAblyClient,
     stationChannelName: unitPhotoChannelName,
   });
+  // Prepack unit QR — a unit label on no open order: attach packing photos to the prepacked unit.
+  const startPrepackUnit = async (unitKey: string, priorPackerLogId: number | null) => {
+    const unitRes = await fetch(`/api/serial-units/${encodeURIComponent(unitKey)}`);
+    const unitData = await unitRes.json().catch(() => null);
+    if (!unitRes.ok || !unitData?.success || !unitData?.serial_unit) {
+      throw new Error(unitData?.error || 'Unit label not found');
+    }
+    const unit = unitData.serial_unit as {
+      id: number;
+      serial_number?: string;
+      unit_uid?: string | null;
+      sku?: string | null;
+      condition_grade?: string | null;
+      product_title?: string | null;
+    };
+    const serialUnitId = Number(unit.id);
+    const displayKey =
+      String(unit.unit_uid || unit.serial_number || unitKey).trim() || unitKey;
+    const sku = String(unit.sku || '').trim();
+
+    setActiveOrder({
+      orderRowId: null,
+      orderId: displayKey,
+      productTitle:
+        String(unit.product_title || '').trim() ||
+        (sku ? `Prepack · ${sku}` : `Unit ${displayKey}`),
+      qty: 1,
+      condition: String(unit.condition_grade || '—').trim() || '—',
+      tracking: '',
+      scanType: 'UNIT',
+      sku: sku || undefined,
+      serialUnitId,
+      unitKey: displayKey,
+      packerLogId: priorPackerLogId,
+    });
+
+    await publishUnitPhotoRequest({
+      serialUnitId,
+      unitKey: displayKey,
+      stage: 'packing',
+      packerLogId: priorPackerLogId,
+      poRef: sku || displayKey,
+    });
+    toast.success('Prepack unit ready', {
+      description: 'Phone camera opened for packing photos.',
+    });
+    onComplete?.();
+  };
+
   const handleSubmit = async (eventOrRaw?: React.FormEvent | string) => {
     if (eventOrRaw && typeof eventOrRaw !== 'string') eventOrRaw.preventDefault();
     const scan =
@@ -169,59 +218,12 @@ export default function PackScanColumn({
     dispatchPackPrintBundleUi(null);
 
     try {
-      // ── Prepack unit QR — attach packing photos to the prepacked unit ────
+      // A unit label (or a tote) first tries the order it is on: pack + print.
+      // Only a unit on no open order falls back to the prepack photo path.
       const unitKey = scannedUnitKey(scan);
-      if (unitKey) {
-        const unitRes = await fetch(`/api/serial-units/${encodeURIComponent(unitKey)}`);
-        const unitData = await unitRes.json().catch(() => null);
-        if (!unitRes.ok || !unitData?.success || !unitData?.serial_unit) {
-          throw new Error(unitData?.error || 'Unit label not found');
-        }
-        const unit = unitData.serial_unit as {
-          id: number;
-          serial_number?: string;
-          unit_uid?: string | null;
-          sku?: string | null;
-          condition_grade?: string | null;
-          product_title?: string | null;
-        };
-        const serialUnitId = Number(unit.id);
-        const displayKey =
-          String(unit.unit_uid || unit.serial_number || unitKey).trim() || unitKey;
-        const sku = String(unit.sku || '').trim();
-
-        setActiveOrder({
-          orderRowId: null,
-          orderId: displayKey,
-          productTitle:
-            String(unit.product_title || '').trim() ||
-            (sku ? `Prepack · ${sku}` : `Unit ${displayKey}`),
-          qty: 1,
-          condition: String(unit.condition_grade || '—').trim() || '—',
-          tracking: '',
-          scanType: 'UNIT',
-          sku: sku || undefined,
-          serialUnitId,
-          unitKey: displayKey,
-          packerLogId: priorPackerLogId,
-        });
-
-        await publishUnitPhotoRequest({
-          serialUnitId,
-          unitKey: displayKey,
-          stage: 'packing',
-          packerLogId: priorPackerLogId,
-          poRef: sku || displayKey,
-        });
-        toast.success('Prepack unit ready', {
-          description: 'Phone camera opened for packing photos.',
-        });
-        onComplete?.();
-        return;
-      }
 
       // ── FBA path: FNSKU detected ───────────────────────────────────────────
-      if (looksLikeFnsku(scan)) {
+      if (!unitKey && looksLikeFnsku(scan)) {
         const res = await fetch('/api/fba/items/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -252,8 +254,8 @@ export default function PackScanColumn({
         // SKU (has `:`) and special commands (clean/FBA-) pass through raw.
         const isTrackingInput = !scan.includes(':') && !/^(clean|fba-)/i.test(scan);
 
-        // FBA combined-shipment ship-on-scan:
-        if (isTrackingInput) {
+        // FBA combined-shipment ship-on-scan (never a unit label or a tote plate):
+        if (isTrackingInput && !unitKey && routeScan(scan)?.type !== 'handling-unit') {
           const shipRes = await fetch('/api/fba/shipments/mark-shipped', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -295,6 +297,8 @@ export default function PackScanColumn({
             },
             body: JSON.stringify({
               trackingNumber: normalizedScan,
+              // Tote codes and unit labels resolve on the scan as made.
+              rawScan: scan,
               photos: [],
               packerId: String(userId),
               packerName: userName,
@@ -304,6 +308,10 @@ export default function PackScanColumn({
           });
         });
         const data = await res.json();
+        if (unitKey && res.status === 404 && data?.unitNotOnOrder) {
+          await startPrepackUnit(unitKey, priorPackerLogId);
+          return;
+        }
         if (!res.ok) throw new Error(data?.error || 'Failed to save packing scan');
 
         const resolvedScanType = String(data?.trackingType || '').trim() || 'ORDERS';
@@ -408,7 +416,7 @@ export default function PackScanColumn({
             onSubmit={handleSubmit}
             inputRef={inputRef}
             staffId={staffId}
-            placeholder="Tracking · QR · SKU · Prep"
+            placeholder="Tracking · Tote · Serial · SKU"
             icon={<Barcode className="h-[17px] w-[17px]" />}
             iconClassName={activeColor.text}
             // Align icon/text to SIDEBAR_SCAN_DOCK_LEADING_ROW (Unbox/Testing SoT) — not MasterNav deep inset.

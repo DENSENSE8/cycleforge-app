@@ -11,7 +11,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { IdentificationJobFace } from '@/components/identification/IdentificationJobFace';
 import {
   identificationFromScanOut,
@@ -94,7 +94,7 @@ export default function MobileScanOutIdentificationPage() {
 
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref="/m/scan"
         subtitle="Scan out"
         title={title}

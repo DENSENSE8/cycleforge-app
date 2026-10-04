@@ -2,11 +2,14 @@ import 'server-only';
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { defaultGcsBucket, gcsAdapter } from '@/lib/photos/storage/gcs-adapter';
+import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { applyLabelIngestion } from './apply';
 import { MAX_LABEL_PDF_BYTES } from './contracts';
-import { resolveExactLabelOrder } from './exact-resolver';
+import { findBuyerOrders, normalizeBuyerName, resolveExactLabelOrder, sameBuyer, type BuyerOrderCandidate, type LabelOrderResolution } from './exact-resolver';
+import { orderLinesSql, toOrderLines, type RawOrderLine } from '@/lib/label-prints/print-queue';
+import type { LabelOrderLine } from '@/lib/label-prints/contracts';
 import { LabelPdfParseError, parseLabelPdf } from './pdf-parser';
 import { serverOrganizationId, type ApplyLabelIngestionResult, type ExactOrderIdentity, type LabelIngestionState, type LabelQuarantineReasonCode, type ParsedLabelEvidence } from './types';
 
@@ -31,10 +34,23 @@ interface LabelIngestionDependencies {
   query<T extends Record<string, unknown>>(organizationId: OrgId, text: string, values?: unknown[]): Promise<{ rows: T[] }>;
   store: LabelObjectStore;
   parse(bytes: Uint8Array): Promise<ParsedLabelEvidence>;
-  resolve(client: Queryable, organizationId: OrgId, evidence: ParsedLabelEvidence): ReturnType<typeof resolveExactLabelOrder>;
+  resolve(client: Queryable, organizationId: OrgId, evidence: ParsedLabelEvidence, ingestionId: number | null): Promise<LabelOrderResolution>;
+  /** Make a freshly paired label's tracking its order's tracking. */
+  attachTracking(input: { organizationId: OrgId; orderIds: number[]; trackingNumber: string; carrier: string | null }): Promise<void>;
 }
 
-const dependencies: LabelIngestionDependencies = { transaction: withTenantTransaction, query: tenantQuery, store: productionObjectStore, parse: parseLabelPdf, resolve: resolveExactLabelOrder };
+/**
+ * An order with no tracking takes the label's as its primary (what a
+ * ShipStation purchase does); an order that already ships on another label
+ * gets this one as an additional package.
+ */
+async function attachPairedTracking({ organizationId, orderIds, trackingNumber, carrier }: { organizationId: OrgId; orderIds: number[]; trackingNumber: string; carrier: string | null }): Promise<void> {
+  const tracked = await tenantQuery<{ id: number }>(organizationId, 'SELECT id FROM orders WHERE organization_id = $1 AND id = ANY($2::int[]) AND shipment_id IS NOT NULL', [organizationId, orderIds]);
+  if (tracked.rows.length === 0) await applyOrderTrackingOps({ organizationId, orderIds, primaryTrackingNumber: trackingNumber, primaryCarrier: carrier });
+  else await applyOrderTrackingOps({ organizationId, orderIds, creates: [{ trackingNumber, source: 'label-ingestion' }] });
+}
+
+const dependencies: LabelIngestionDependencies = { transaction: withTenantTransaction, query: tenantQuery, store: productionObjectStore, parse: parseLabelPdf, resolve: resolveExactLabelOrder, attachTracking: attachPairedTracking };
 
 export interface PublicLabelIngestion {
   id: number; clientEventId: string; state: LabelIngestionState; rowVersion: number; sha256: string; fileBasename: string; byteSize: number;
@@ -44,16 +60,18 @@ export interface PublicLabelIngestion {
   source: string; observedAt: string; accountSource: string | null; marketplaceOrderId: string | null; matchedOrderId: number | null; appliedAt: string | null;
   /** ShipStation identity of a SHIPSTATION_API row (null for file sources). */
   shipstationShipmentId: number | null; shipstationLabelId: string | null;
+  /** The recipient name read off the label (file uploads). */
+  shipToName: string | null;
 }
 
 interface LedgerRow extends Record<string, unknown> {
   id: number | string; client_event_id: string; state: LabelIngestionState; row_version: number | string; sha256: string; file_basename: string; byte_size: number | string;
   parser_version: string | null; match_method: string | null; tracking_number_raw: string | null; tracking_number_normalized: string | null; carrier: string | null; quarantine_reason_code: string | null; created_at: Date | string; updated_at: Date | string; staged_object_key: string | null;
   source: string; observed_at: Date | string; matched_account_source: string | null; matched_marketplace_order_id: string | null; matched_order_id: number | string | null; applied_at: Date | string | null;
-  shipstation_shipment_id?: number | string | null; shipstation_label_id?: string | null;
+  shipstation_shipment_id?: number | string | null; shipstation_label_id?: string | null; detected_ship_to_name?: string | null;
 }
-function publicRow(row: LedgerRow): PublicLabelIngestion { return { id: Number(row.id), clientEventId: row.client_event_id, state: row.state, rowVersion: Number(row.row_version), sha256: row.sha256, fileBasename: row.file_basename, byteSize: Number(row.byte_size), parserVersion: row.parser_version, matchMethod: row.match_method, trackingNumberRaw: row.tracking_number_raw, trackingNumberNormalized: row.tracking_number_normalized, carrier: row.carrier, quarantineReasonCode: row.quarantine_reason_code, createdAt: new Date(row.created_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString(), source: row.source, observedAt: new Date(row.observed_at).toISOString(), accountSource: row.matched_account_source, marketplaceOrderId: row.matched_marketplace_order_id, matchedOrderId: row.matched_order_id == null ? null : Number(row.matched_order_id), appliedAt: row.applied_at == null ? null : new Date(row.applied_at).toISOString(), shipstationShipmentId: row.shipstation_shipment_id == null ? null : Number(row.shipstation_shipment_id), shipstationLabelId: row.shipstation_label_id ?? null }; }
-const ledgerColumns = 'id, client_event_id, state, row_version, sha256, file_basename, byte_size, parser_version, match_method, tracking_number_raw, tracking_number_normalized, carrier, quarantine_reason_code, created_at, updated_at, staged_object_key, source, observed_at, matched_account_source, matched_marketplace_order_id, matched_order_id, applied_at, shipstation_shipment_id, shipstation_label_id';
+function publicRow(row: LedgerRow): PublicLabelIngestion { return { id: Number(row.id), clientEventId: row.client_event_id, state: row.state, rowVersion: Number(row.row_version), sha256: row.sha256, fileBasename: row.file_basename, byteSize: Number(row.byte_size), parserVersion: row.parser_version, matchMethod: row.match_method, trackingNumberRaw: row.tracking_number_raw, trackingNumberNormalized: row.tracking_number_normalized, carrier: row.carrier, quarantineReasonCode: row.quarantine_reason_code, createdAt: new Date(row.created_at).toISOString(), updatedAt: new Date(row.updated_at).toISOString(), source: row.source, observedAt: new Date(row.observed_at).toISOString(), accountSource: row.matched_account_source, marketplaceOrderId: row.matched_marketplace_order_id, matchedOrderId: row.matched_order_id == null ? null : Number(row.matched_order_id), appliedAt: row.applied_at == null ? null : new Date(row.applied_at).toISOString(), shipstationShipmentId: row.shipstation_shipment_id == null ? null : Number(row.shipstation_shipment_id), shipstationLabelId: row.shipstation_label_id ?? null, shipToName: row.detected_ship_to_name ?? null }; }
+const ledgerColumns = 'id, client_event_id, state, row_version, sha256, file_basename, byte_size, parser_version, match_method, tracking_number_raw, tracking_number_normalized, carrier, quarantine_reason_code, created_at, updated_at, staged_object_key, source, observed_at, matched_account_source, matched_marketplace_order_id, matched_order_id, applied_at, shipstation_shipment_id, shipstation_label_id, detected_ship_to_name';
 function basename(input: string): string { const value = input.trim(); if (!value || value.length > 255 || value.includes('/') || value.includes('\\')) throw new LabelIngestionServiceError('INVALID_PDF', 'A safe PDF filename is required.'); return value; }
 function key(org: OrgId, hash: string): string { return `label-ingestions/${org}/${hash.slice(0, 2)}/${hash}.pdf`; }
 
@@ -87,26 +105,42 @@ export async function createLabelIngestion(input: { organizationId: OrgId; actor
   return { ingestion: await processStagedLabel({ organizationId: input.organizationId, ingestionId: Number(received.row.id), bytes: input.bytes, deps, objectKey }), replayed: false };
 }
 
+/**
+ * Parse, resolve and settle in one transaction — the resolver's per-buyer
+ * lock holds until the MATCHED / QUARANTINED write commits. A paired label's
+ * tracking then becomes its order's tracking (after commit, best-effort: the
+ * pairing stands even if the carrier number is already claimed elsewhere).
+ */
 async function processStagedLabel({ organizationId, ingestionId, bytes, deps, objectKey }: { organizationId: OrgId; ingestionId: number; bytes: Buffer; deps: LabelIngestionDependencies; objectKey: string }): Promise<PublicLabelIngestion> {
   let evidence: ParsedLabelEvidence;
   try { evidence = await deps.parse(bytes); }
-  catch (error) { const reason: LabelQuarantineReasonCode = error instanceof LabelPdfParseError && error.code === 'PDF_LIMIT_EXCEEDED' ? 'PDF_LIMIT_EXCEEDED' : 'PARSE_FAILED'; return updateQuarantine(deps, organizationId, ingestionId, objectKey, reason); }
-  const resolution = await deps.transaction(organizationId, async (client) => deps.resolve(client, organizationId, evidence));
-  if (!resolution.exactOrder) return updateQuarantine(deps, organizationId, ingestionId, objectKey, resolution.quarantineReason ?? 'PARSE_FAILED', evidence);
-  const matched = await updateMatched(deps, organizationId, ingestionId, objectKey, evidence, resolution.exactOrder);
-  return publicRow(matched!);
+  catch (error) {
+    const reason: LabelQuarantineReasonCode = error instanceof LabelPdfParseError && error.code === 'PDF_LIMIT_EXCEEDED' ? 'PDF_LIMIT_EXCEEDED' : 'PARSE_FAILED';
+    return publicRow(await deps.transaction(organizationId, (client) => updateQuarantine(client, organizationId, ingestionId, objectKey, reason)));
+  }
+  const settled = await deps.transaction(organizationId, async (client) => {
+    const resolution = await deps.resolve(client, organizationId, evidence, ingestionId);
+    if (!resolution.exactOrder) return { row: await updateQuarantine(client, organizationId, ingestionId, objectKey, resolution.quarantineReason ?? 'PARSE_FAILED', evidence), orderIds: [] as number[] };
+    return { row: (await updateMatched(client, organizationId, ingestionId, objectKey, evidence, resolution.exactOrder, resolution.orderIds[0] ?? null))!, orderIds: resolution.orderIds };
+  });
+  // A TRACKING_NUMBER match found the tracking already on its order.
+  if (settled.orderIds.length && evidence.trackingNumberRaw && settled.row.match_method !== 'TRACKING_NUMBER') {
+    try { await deps.attachTracking({ organizationId, orderIds: settled.orderIds, trackingNumber: evidence.trackingNumberRaw, carrier: evidence.carrier }); }
+    catch (error) { console.warn(`[label-ingestion] ${ingestionId}: paired, tracking not attached:`, error); }
+  }
+  return publicRow(settled.row);
 }
 
-/** Settle an ingestion as MATCHED. `expected` guards a re-resolution: the row
+/** Settle an ingestion as MATCHED to its logical order (`matchedOrderId` = its lowest row). `expected` guards a re-resolution: the row
  *  must still be in that state/version, else nothing is written (null). */
-async function updateMatched(deps: LabelIngestionDependencies, organizationId: OrgId, ingestionId: number, objectKey: string, evidence: ParsedLabelEvidence, exactOrder: ExactOrderIdentity, expected?: { state: LabelIngestionState; rowVersion: number }): Promise<LedgerRow | null> {
-  const result = await deps.transaction(organizationId, async (client) => client.query<LedgerRow>(`UPDATE label_ingestions SET state='MATCHED', parser_version=$3, match_method=$4, detected_cycleforge_reference=$5, matched_account_source=$6, matched_marketplace_order_id=$7, tracking_number_raw=$8, tracking_number_normalized=$9, carrier=$10, staged_storage_provider='gcs', staged_object_key=$11, quarantine_reason_code=NULL, error_code=NULL, error_detail=NULL, attempt_count=attempt_count+1, row_version=row_version+1 WHERE organization_id=$1 AND id=$2 AND ($12::text IS NULL OR (state=$12 AND row_version=$13)) RETURNING ${ledgerColumns}`, [organizationId, ingestionId, evidence.parserVersion, exactOrder.matchMethod, exactOrder.cycleforgeReference, exactOrder.accountSource, exactOrder.marketplaceOrderId, evidence.trackingNumberRaw, evidence.trackingNumberNormalized, evidence.carrier, objectKey, expected?.state ?? null, expected?.rowVersion ?? null]));
+async function updateMatched(client: Queryable, organizationId: OrgId, ingestionId: number, objectKey: string, evidence: ParsedLabelEvidence, exactOrder: ExactOrderIdentity, matchedOrderId: number | null, expected?: { state: LabelIngestionState; rowVersion: number }): Promise<LedgerRow | null> {
+  const result = await client.query<LedgerRow>(`UPDATE label_ingestions SET state='MATCHED', parser_version=$3, match_method=$4, detected_cycleforge_reference=$5, matched_account_source=$6, matched_marketplace_order_id=$7, tracking_number_raw=$8, tracking_number_normalized=$9, carrier=$10, staged_storage_provider='gcs', staged_object_key=$11, matched_order_id=COALESCE($14::int, matched_order_id), detected_ship_to_name=COALESCE($15::text, detected_ship_to_name), quarantine_reason_code=NULL, error_code=NULL, error_detail=NULL, attempt_count=attempt_count+1, row_version=row_version+1 WHERE organization_id=$1 AND id=$2 AND ($12::text IS NULL OR (state=$12 AND row_version=$13)) RETURNING ${ledgerColumns}`, [organizationId, ingestionId, evidence.parserVersion, exactOrder.matchMethod, exactOrder.cycleforgeReference, exactOrder.accountSource, exactOrder.marketplaceOrderId, evidence.trackingNumberRaw, evidence.trackingNumberNormalized, evidence.carrier, objectKey, expected?.state ?? null, expected?.rowVersion ?? null, matchedOrderId, evidence.shipToName ?? null]);
   return result.rows[0] ?? null;
 }
 
-async function updateQuarantine(deps: LabelIngestionDependencies, organizationId: OrgId, ingestionId: number, objectKey: string, reason: LabelQuarantineReasonCode, evidence?: ParsedLabelEvidence): Promise<PublicLabelIngestion> {
-  const result = await deps.transaction(organizationId, async (client) => client.query<LedgerRow>(`UPDATE label_ingestions SET state='QUARANTINED', parser_version=$3, tracking_number_raw=$4, tracking_number_normalized=$5, carrier=$6, staged_storage_provider='gcs', staged_object_key=$7, quarantine_reason_code=$8, attempt_count=attempt_count+1, row_version=row_version+1 WHERE organization_id=$1 AND id=$2 RETURNING ${ledgerColumns}`, [organizationId, ingestionId, evidence?.parserVersion ?? null, evidence?.trackingNumberRaw ?? null, evidence?.trackingNumberNormalized ?? null, evidence?.carrier ?? null, objectKey, reason]));
-  return publicRow(result.rows[0]!);
+async function updateQuarantine(client: Queryable, organizationId: OrgId, ingestionId: number, objectKey: string, reason: LabelQuarantineReasonCode, evidence?: ParsedLabelEvidence): Promise<LedgerRow> {
+  const result = await client.query<LedgerRow>(`UPDATE label_ingestions SET state='QUARANTINED', parser_version=$3, tracking_number_raw=$4, tracking_number_normalized=$5, carrier=$6, staged_storage_provider='gcs', staged_object_key=$7, quarantine_reason_code=$8, detected_ship_to_name=$9, attempt_count=attempt_count+1, row_version=row_version+1 WHERE organization_id=$1 AND id=$2 RETURNING ${ledgerColumns}`, [organizationId, ingestionId, evidence?.parserVersion ?? null, evidence?.trackingNumberRaw ?? null, evidence?.trackingNumberNormalized ?? null, evidence?.carrier ?? null, objectKey, reason, evidence?.shipToName ?? null]);
+  return result.rows[0]!;
 }
 
 // ─── ShipStation API source ───────────────────────────────────────────────── Historical labels pulled from ShipStation…
@@ -189,7 +223,7 @@ async function resolveQuarantinedShipStationIngestion(organizationId: OrgId, ing
   const current = await deps.query<LedgerRow>(organizationId, `SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND id=$2`, [organizationId, ingestion.id]);
   const row = current.rows[0];
   if (!row || row.source !== 'SHIPSTATION_API' || row.state !== 'QUARANTINED' || !row.staged_object_key) return null;
-  const promoted = await updateMatched(deps, organizationId, ingestion.id, row.staged_object_key, evidence, exactOrder, { state: 'QUARANTINED', rowVersion: ingestion.rowVersion });
+  const promoted = await deps.transaction(organizationId, (client) => updateMatched(client, organizationId, ingestion.id, row.staged_object_key!, evidence, exactOrder, null, { state: 'QUARANTINED', rowVersion: ingestion.rowVersion }));
   return promoted ? publicRow(promoted) : null;
 }
 
@@ -226,3 +260,79 @@ export async function readLabelIngestionPdf(organizationId: OrgId, ingestionId: 
 }
 export async function retryLabelIngestion(organizationId: OrgId, ingestionId: number, overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion> { const deps = { ...dependencies, ...overrides }; const current = await getLabelIngestion(organizationId, ingestionId, deps); if (!['QUARANTINED', 'FAILED'].includes(current.state)) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'Only quarantined or failed ingestions can be retried.'); const source = await deps.query<LedgerRow>(organizationId, `SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND id=$2`, [organizationId, ingestionId]); const objectKey = source.rows[0]?.staged_object_key; if (!objectKey) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'This ingestion has no staged PDF.'); return processStagedLabel({ organizationId, ingestionId, bytes: await deps.store.get({ organizationId, objectKey }), deps, objectKey }); }
 export async function applyStoredLabelIngestion(input: { organizationId: OrgId; actorStaffId: number; ingestionId: number; expectedRowVersion: number }): Promise<ApplyLabelIngestionResult> { return applyLabelIngestion({ ...input, organizationId: serverOrganizationId(input.organizationId) }); }
+
+// ─── Operator pairing (the confirmation exception) ──────────────────────────
+
+/** One order an operator can pair a quarantined label to, with what it ships. */
+export interface LabelPairingCandidate extends BuyerOrderCandidate {
+  lines: LabelOrderLine[];
+}
+
+export interface LabelPairingCandidates {
+  /** The recipient read off the label; null when none was readable. */
+  shipToName: string | null;
+  candidates: LabelPairingCandidate[];
+}
+
+/** The open orders whose buyer is the label's ship-to name — what the confirmation exception chooses among. */
+export async function listLabelPairingCandidates(organizationId: OrgId, ingestionId: number): Promise<LabelPairingCandidates> {
+  const current = await getLabelIngestion(organizationId, ingestionId);
+  if (!current.shipToName) return { shipToName: null, candidates: [] };
+  const shipToName = current.shipToName;
+  return withTenantTransaction(organizationId, async (client) => {
+    const orders = await findBuyerOrders(client, organizationId, shipToName, ingestionId);
+    if (!orders.length) return { shipToName, candidates: [] };
+    const lines = await client.query<{ order_id: string; order_lines: RawOrderLine[] | null }>(
+      `SELECT o.order_id, ol.order_lines FROM unnest($2::text[]) AS o(order_id) LEFT JOIN LATERAL (${orderLinesSql('o.order_id')}) ol ON true`,
+      [organizationId, orders.map((order) => order.orderRef)],
+    );
+    const byRef = new Map(lines.rows.map((row) => [row.order_id, toOrderLines(row.order_lines)]));
+    const candidates = orders
+      .map((order) => ({ ...order, lines: byRef.get(order.orderRef) ?? [] }))
+      .sort((a, b) => Number(a.labeled) - Number(b.labeled) || (b.orderedAt ?? '').localeCompare(a.orderedAt ?? ''));
+    return { shipToName, candidates };
+  });
+}
+
+/**
+ * The operator answers a quarantined label's exception: this label ships
+ * `orderId`'s logical order. Settles MATCHED (`OPERATOR_CONFIRMED`) under the
+ * label's row version, attaches its tracking, then re-resolves the buyer's
+ * other BUYER_AMBIGUOUS labels — with one order now labeled, the buyer-name
+ * rule pairs them to the next most recent unlabeled order on its own.
+ */
+export async function confirmLabelIngestionOrder(input: { organizationId: OrgId; actorStaffId: number; ingestionId: number; orderId: number; expectedRowVersion: number }): Promise<{ ingestion: PublicLabelIngestion; repaired: PublicLabelIngestion[] }> {
+  const { organizationId, ingestionId } = input;
+  const settled = await withTenantTransaction(organizationId, async (client) => {
+    const locked = await client.query<LedgerRow>(`SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND id=$2 FOR UPDATE`, [organizationId, ingestionId]);
+    const row = locked.rows[0];
+    if (!row) throw new LabelIngestionServiceError('INGESTION_NOT_FOUND', 'Label ingestion was not found.');
+    if (row.state !== 'QUARANTINED' || Number(row.row_version) !== input.expectedRowVersion) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'This label changed or is no longer waiting for an order. Refresh and try again.');
+    if (!row.staged_object_key) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'This label has no stored PDF yet.');
+    if (!row.tracking_number_raw || !row.tracking_number_normalized) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'No tracking number was read from this label — print it unpaired instead.');
+    const order = await client.query<{ account_source: string | null; order_id: string | null }>(`SELECT account_source, order_id FROM orders WHERE organization_id=$1 AND id=$2`, [organizationId, input.orderId]);
+    const target = order.rows[0];
+    if (!target?.account_source?.trim() || !target.order_id?.trim()) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'That order has no channel and order number to pair to.');
+    const logical = await client.query<{ id: number }>(`SELECT id FROM orders WHERE organization_id=$1 AND account_source=$2 AND order_id=$3 ORDER BY id ASC`, [organizationId, target.account_source, target.order_id]);
+    const orderIds = logical.rows.map((entry) => Number(entry.id));
+    const evidence: ParsedLabelEvidence = { parserVersion: row.parser_version ?? 'operator', cycleforgeReference: null, marketplaceOrderId: target.order_id, accountSource: target.account_source, trackingNumberRaw: row.tracking_number_raw, trackingNumberNormalized: row.tracking_number_normalized, carrier: row.carrier, multiPackageEvidence: false, shipToName: row.detected_ship_to_name ?? null };
+    const matchedRow = await updateMatched(client, organizationId, ingestionId, row.staged_object_key, evidence, { accountSource: target.account_source, marketplaceOrderId: target.order_id, matchMethod: 'OPERATOR_CONFIRMED', cycleforgeReference: null }, orderIds[0]!, { state: 'QUARANTINED', rowVersion: input.expectedRowVersion });
+    if (!matchedRow) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'This label changed while pairing. Refresh and try again.');
+    await client.query(`INSERT INTO audit_logs (actor_staff_id, organization_id, source, action, entity_type, entity_id, after_data, metadata) VALUES ($1, $2, 'label-ingestion', 'label_ingestion.order_confirmed', 'label_ingestion', $3, $4::jsonb, $5::jsonb)`, [input.actorStaffId, organizationId, String(ingestionId), JSON.stringify({ state: 'MATCHED', matchMethod: 'OPERATOR_CONFIRMED', rowVersion: Number(matchedRow.row_version) }), JSON.stringify({ order_ids: orderIds, quarantine_reason_code: row.quarantine_reason_code, ship_to_name: row.detected_ship_to_name ?? null })]);
+    return { row: matchedRow, orderIds, tracking: row.tracking_number_raw, carrier: row.carrier, shipToName: row.detected_ship_to_name ?? null };
+  });
+  try { await dependencies.attachTracking({ organizationId, orderIds: settled.orderIds, trackingNumber: settled.tracking, carrier: settled.carrier }); }
+  catch (error) { console.warn(`[label-ingestion] ${ingestionId}: confirmed, tracking not attached:`, error); }
+
+  const repaired: PublicLabelIngestion[] = [];
+  if (settled.shipToName) {
+    const buyer = normalizeBuyerName(settled.shipToName);
+    const waiting = await tenantQuery<{ id: string; detected_ship_to_name: string }>(organizationId, `SELECT id, detected_ship_to_name FROM label_ingestions WHERE organization_id=$1 AND state='QUARANTINED' AND quarantine_reason_code='BUYER_AMBIGUOUS' AND detected_ship_to_name IS NOT NULL AND id <> $2 ORDER BY observed_at ASC, id ASC`, [organizationId, ingestionId]);
+    for (const sibling of waiting.rows) {
+      if (!sameBuyer(buyer, normalizeBuyerName(sibling.detected_ship_to_name))) continue;
+      const retried = await retryLabelIngestion(organizationId, Number(sibling.id));
+      if (retried.state === 'MATCHED') repaired.push(retried);
+    }
+  }
+  return { ingestion: publicRow(settled.row), repaired };
+}

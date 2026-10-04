@@ -22,7 +22,7 @@ import type { NavAction, NavContext, NavItem, NavSection } from '@/lib/nav/conte
 import { getNavIntentsVersion, hasNavIntent, subscribeNavIntents } from '@/lib/nav/intents';
 import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { CommandGroup, CommandItem, CommandSeparator } from '@/components/ui/command';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { navRowGlyph, type Glyph } from '@/components/sidebar/contextual/NavSectionList';
 import { NAV_ACTION_ICONS } from '@/components/sidebar/contextual/nav-view-icons';
@@ -152,31 +152,19 @@ function VerbItem({
 }) {
   const apple = useApplePlatform();
   const glyph = NAV_ACTION_ICONS[action.id] ?? null;
-  const keys = action.hotkey ? chordKeys(action.hotkey, apple) : [];
+  const shortcut = action.hotkey ? chordKeys(action.hotkey, apple).join(' + ') : undefined;
   return (
-    <CommandItem
-      value={`verb ${action.label}`}
-      className="group/verb"
-      onSelect={() => {
-        if (action.intent) onIntent(action.intent);
-        else if (action.href) onHref(action.href);
-      }}
-    >
-      <GlyphMark glyph={glyph} />
-      <span className="min-w-0 flex-1 truncate">{action.label}</span>
-      {keys.length > 0 ? (
-        // Disclosed on the selected row only (keyboard or pointer).
-        <span
-          aria-hidden
-          className="inline-flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-data-[selected=true]/verb:opacity-100"
-        >
-          {keys.map((key) => (
-            <KeyboardKey key={key} size="xs">
-              {key}
-            </KeyboardKey>
-          ))}
-        </span>
-      ) : null}
-    </CommandItem>
+    <HoverTooltip label={action.label} shortcut={shortcut} disabled={!shortcut} asChild>
+      <CommandItem
+        value={`verb ${action.label}`}
+        onSelect={() => {
+          if (action.intent) onIntent(action.intent);
+          else if (action.href) onHref(action.href);
+        }}
+      >
+        <GlyphMark glyph={glyph} />
+        <span className="min-w-0 flex-1 truncate">{action.label}</span>
+      </CommandItem>
+    </HoverTooltip>
   );
 }

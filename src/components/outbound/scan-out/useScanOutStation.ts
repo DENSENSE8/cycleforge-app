@@ -40,6 +40,8 @@ export interface ScanOutResult {
   accountSource?: string | null;
   imageUrl?: string | null;
   message?: string | null;
+  /** A miss held as an open unmatched scan on Fulfilled (`orders_exceptions.id`). */
+  exceptionId?: number | null;
 }
 
 export type ScanOutStatus = ScanOutFocusStatus;
@@ -57,7 +59,11 @@ export interface ActiveScanOut {
 function statusText(status: ScanOutStatus, result: ScanOutResult | null): string {
   if (status === 'pending') return 'Scanning…';
   if (status === 'blk') return result?.message || 'Do not ship';
-  if (status === 'miss') return result?.message || 'No shipment found for that label';
+  if (status === 'miss') {
+    return result?.exceptionId != null
+      ? 'No match — added to Fulfilled unmatched'
+      : result?.message || 'No shipment found for that label';
+  }
   if (status === 'dup') return 'Already fulfilled';
   if (status === 'err') return 'Scan-out failed — try again';
   if (status === 'ok' && result?.productTitle) return result.productTitle;

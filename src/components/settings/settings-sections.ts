@@ -12,11 +12,9 @@ import {
   Receipt,
   Settings,
   ShieldCheck,
-  Smartphone,
   Sparkles,
   Tags,
   Type,
-  User,
   Warehouse,
   Zap,
   Wrench,
@@ -158,12 +156,8 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   // Ex-Admin › Repair Issues: process master data, the Platforms & types
   // family — flow vocabulary the repair bench consumes but no desk owns.
   { id: 'repair-issues', label: 'Repair issues', description: 'Global repair issue checklist templates',           group: 'Organization', requires: 'repair.intake', href: '/settings/repair-issues', icon: Wrench, tone: 'warning' },
-  { id: 'team',          label: 'Team',          description: 'Invite teammates, roles, deactivate access',       group: 'Organization', requires: 'admin.manage_staff', href: '/settings/staff', icon: User, tone: 'success' },
   { id: 'roles',         label: 'Roles',         description: 'Define what each role can do',                     group: 'Organization', requires: 'admin.manage_roles', href: '/settings/roles', icon: ShieldCheck, tone: 'info' },
   { id: 'access',        label: 'Access',        description: 'Per-staff role + page-access matrix',              group: 'Organization', href: '/settings/access', icon: Lock, tone: 'danger' },
-  { id: 'sessions',      label: 'Active sessions', description: 'See and revoke devices',                         group: 'Organization', requires: 'admin.view_sessions', icon: Smartphone, tone: 'fulfillment' },
-  { id: 'devices',       label: 'Kiosk devices', description: 'Enroll & revoke customer intake tablets',          group: 'Organization', requires: 'walk_in.enroll_kiosk', icon: Smartphone, tone: 'accent' },
-  { id: 'audit',         label: 'Audit log',     description: 'Sign-ins, permission denials, role changes',       group: 'Organization', requires: 'admin.view_logs', href: '/settings/audit', icon: FileText, tone: 'danger' },
 ];
 
 export function getActiveSettingsSection(raw: string | null | undefined): SettingsSection {

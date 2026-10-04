@@ -21,7 +21,7 @@ import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers
 import { ordersCompoundView, ordersOrderedAt } from '@/lib/orders/orders-compound-view';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import { ORDER_STAGE_KINDS, orderStage } from '@/lib/orders/order-stages';
-import type { CompoundStageStepFacts } from '@/components/tables/compound/compound-row-model';
+import type { StageStepFacts } from '@/lib/tables/field-catalog/slot-value';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { orderAdminUrl } from '@/utils/order-platform';
 import { ListingLinkEditor, OrderAdminLinkAction } from './order-link-editors';
@@ -959,7 +959,7 @@ function OrderLineFulfilment({
   // The pack bench is the resolver's (orderStage carries no station).
   const packStep = resolveOrdersSlotValue(line, 'orders.packed', staff);
   const stages = ORDER_STAGE_KINDS.map((kind) => orderStage(line, kind, { todayKey, staffName: getStaffName }));
-  const factsFor = (kind: 'pick' | 'qc' | 'pack'): CompoundStageStepFacts | null => {
+  const factsFor = (kind: 'pick' | 'qc' | 'pack'): StageStepFacts | null => {
     const stage = stages.find((candidate) => candidate.kind === kind);
     if (!stage) return null;
     if (!stage.done) return null;
@@ -993,7 +993,7 @@ function OrderLineFulfilment({
   const preboxAt = line.pre_boxed_at ? formatMonthDayTimePST(line.pre_boxed_at) : null;
   const scanOutFacts = stageFacts(resolveOrdersSlotValue(line, 'orders.scanned_out', staff));
 
-  const steps: { kind: 'pick' | 'qc' | 'pack' | 'scan'; facts: CompoundStageStepFacts | null }[] = [
+  const steps: { kind: 'pick' | 'qc' | 'pack' | 'scan'; facts: StageStepFacts | null }[] = [
     { kind: 'qc', facts: qcFacts },
     { kind: 'pick', facts: pickFacts },
     { kind: 'pack', facts: packFacts },
@@ -1005,7 +1005,7 @@ function OrderLineFulfilment({
   const currentIndex = lastDone + 1;
   const stateOf = (index: number): StepState =>
     steps[index]!.facts != null ? 'done' : index === currentIndex ? 'current' : 'pending';
-  const doneMeta = (facts: CompoundStageStepFacts) =>
+  const doneMeta = (facts: StageStepFacts) =>
     [facts.who && facts.who !== '---' ? `By ${facts.who}` : null, facts.at].filter(Boolean).join(' · ') || 'Complete';
   const openMeta = (assignee: string | null) =>
     assignee && assignee !== '---' ? `Assigned to ${assignee}` : 'Awaiting assignment';

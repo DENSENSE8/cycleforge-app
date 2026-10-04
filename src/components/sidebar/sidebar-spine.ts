@@ -4,6 +4,12 @@ import {
   SPINE_ROW_CORNER,
 } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+export {
+  SPINE_NAVIGATION_BAND_ORDER,
+  spineNavigationBand,
+  spineNavigationBandTitle,
+  type SpineNavigationBand,
+} from '@/lib/nav/spine-navigation-band';
 
 /** Sidebar spine geometry — the ONE place the column width lives. */
 export const SIDEBAR_SPINE_WIDTH = 'w-[240px]';
@@ -95,39 +101,6 @@ export const SPINE_PARENT_MARKER_CLASS =
 /** Quiet hierarchy label used instead of horizontal rules between nav bands. */
 export const SPINE_NAV_GROUP_TITLE_CLASS =
   'h-auto shrink-0 px-4 pb-0.5 pt-2 text-role-micro font-medium tracking-normal text-text-faint';
-
-type SpineNavigationBand = 'utility' | 'business' | 'secondary' | 'bottom';
-
-const BUSINESS_NAV_IDS = new Set([
-  'sales',
-  'inbound',
-  'fulfillment',
-  'inventory',
-  'catalog',
-]);
-
-/** The visual family an L1 sidebar block belongs to. */
-export function spineNavigationBand(id: string): SpineNavigationBand {
-  if (id === 'top') return 'utility';
-  if (id === 'bottom' || id === 'print-station' || id === 'reports') return 'bottom';
-  if (id === 'floor') return 'business';
-  if (BUSINESS_NAV_IDS.has(id)) return 'business';
-  return 'secondary';
-}
-
-/** Compact visible heading for each family of navigation rows. */
-export function spineNavigationBandTitle(band: SpineNavigationBand): string {
-  switch (band) {
-    case 'utility':
-      return 'Workspace';
-    case 'business':
-      return 'Operations';
-    case 'secondary':
-      return 'Management';
-    case 'bottom':
-      return 'Utilities';
-  }
-}
 
 /**
  * Sticky section caption (Stations / Workspaces) — same plane as the spine

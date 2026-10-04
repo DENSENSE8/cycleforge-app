@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { ListChecks, Pencil, Ticket } from '@/components/Icons';
 import { DetailNavRow, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { SearchableSelectField } from '@/design-system/components';
 import { Button, TextField } from '@/design-system/primitives';
@@ -179,7 +179,6 @@ export function ShortResolver({ facts, onResolved }: PhoneResolverProps<CartonEx
           Changing counts or filing a claim needs receiving access (Mark received).
         </p>
       ) : null}
-      <div className="flex-1 bg-mode-panel" />
       <DetailDock
         label="Short exception actions"
         verbs={[
@@ -202,7 +201,12 @@ export function ShortResolver({ facts, onResolved }: PhoneResolverProps<CartonEx
         onVerb={onVerb}
       />
 
-      <BottomSheet open={countsLine != null} onClose={() => setCountsLine(null)} title="Set counts">
+      <Sheet open={countsLine != null} onOpenChange={(next) => { if (!next) setCountsLine(null); }}>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>Set counts</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
         {countsLine ? (
           <div className="flex flex-col gap-3">
             <p className="text-role-caption text-text-muted">{receivingProductTitle(countsLine)}</p>
@@ -232,9 +236,16 @@ export function ShortResolver({ facts, onResolved }: PhoneResolverProps<CartonEx
             </Button>
           </div>
         ) : null}
-      </BottomSheet>
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
 
-      <BottomSheet open={claimOpen} onClose={() => setClaimOpen(false)} title="File claim">
+      <Sheet open={claimOpen} onOpenChange={(next) => { if (!next) setClaimOpen(false); }}>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>File claim</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
         <div className="flex flex-col gap-3">
           <SearchableSelectField
             label="Claim type"
@@ -273,7 +284,9 @@ export function ShortResolver({ facts, onResolved }: PhoneResolverProps<CartonEx
             File claim
           </Button>
         </div>
-      </BottomSheet>
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

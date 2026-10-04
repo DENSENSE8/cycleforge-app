@@ -6,7 +6,7 @@ import { useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { IdentificationJobFace } from '@/components/identification/IdentificationJobFace';
 import {
   fillIdentificationPath,
@@ -97,7 +97,7 @@ export default function MobileTenantIdentificationPage() {
 
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
-      <MobileDetailTopBar backHref="/m/scan" subtitle="Identify" title={jobId || 'Identify'} mono />
+      <MobileV2DetailTopBar backHref="/m/scan" subtitle="Identify" title={jobId || 'Identify'} mono />
       <div className="flex flex-1 flex-col items-stretch px-4 pt-4 pb-8">
         {!isLoaded || !user ? (
           <p className="text-role-caption text-text-muted">Loading…</p>

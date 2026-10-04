@@ -8,7 +8,7 @@ import { PICKUP_HISTORY_VIEW } from '@/lib/triage/views';
 import { pickupMoney } from '@/lib/receiving/pickup/pickup-lines';
 import { pickupRecordCard, type PickupCardModel, type PickupOrderRecord } from '@/lib/receiving/pickup/pickup-card-model';
 
-function PickupCardPeek({ model }: { model: PickupCardModel }) {
+export function PickupCardPeek({ model }: { model: PickupCardModel }) {
   const lead = model.line;
   const facts: [string, string | null][] = [
     ['Customer', model.customer],
@@ -51,6 +51,7 @@ export const PickupCard = memo(function PickupCard({
   const record = useMemo(() => pickupRecordCard(model), [model]);
   return (
     <RecordCard
+      view={PICKUP_HISTORY_VIEW}
       model={record}
       factColumns={PICKUP_HISTORY_VIEW.facts}
       testIdPrefix={PICKUP_HISTORY_VIEW.testIdPrefix}

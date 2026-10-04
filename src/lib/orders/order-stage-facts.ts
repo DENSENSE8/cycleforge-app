@@ -214,5 +214,5 @@ export const ORDER_STAGE_FACTS_SIGNALS: OrderStageSignals = {
   hasPackScan: 'COALESCE(osf.has_pack_scan, false)',
   pickedBy: 'osf.picked_by',
   pickerId: 'osf.picker_id',
-  packerId: 'osf.packer_id',
+  packedBy: 'osf.packed_by',
 };

@@ -538,6 +538,7 @@ export function buildOrdersListSql(
       LEFT JOIN locations room
         ON room.id = location.parent_id
        AND room.organization_id = location.organization_id
+       AND room.location_kind = 'ROOM' /* a rack shelf's parent is its rack, not a room */
       WHERE allocation.order_id = o.id
         AND allocation.organization_id = o.organization_id
         AND allocation.state NOT IN ('RELEASED', 'RETURNED')
@@ -564,6 +565,7 @@ export function buildOrdersListSql(
         LEFT JOIN locations home_room
           ON home_room.id = home.parent_id
          AND home_room.organization_id = home.organization_id
+         AND home_room.location_kind = 'ROOM'
        WHERE stock.organization_id = o.organization_id
          /* CASE, not COALESCE: CoalesceExpr is never leakproof, so under
           * forced RLS the COALESCE form could not be an index condition and

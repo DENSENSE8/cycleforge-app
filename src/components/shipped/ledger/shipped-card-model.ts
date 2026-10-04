@@ -8,21 +8,29 @@
  */
 
 import type { StateName } from '@/design-system/tokens/lifecycle';
-import type { RecordCardLine, RecordCardModel, RecordCardStatus } from '@/design-system/components/record-card/record-card-types';
+import type { RecordCardLine } from '@/design-system/components/record-card/record-card-types';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
+import type { OUTBOUND_SHIPPED_VIEW } from '@/lib/triage/views/outbound-shipped';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { TriageCardModelBase } from '@/design-system/components/triage-card-list/TriageCardList';
 import { lineCondition, linePrice, orderLineFacts } from '@/lib/orders/order-card-model';
 import { marketplaceThumbUrl } from '@/lib/photos/marketplace-thumb-url';
 import { shipmentItemIdentity } from '@/lib/shipments/shipment-record-types';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { formatDateTimePST, formatMonthDayTimePST } from '@/utils/date';
 import { isOpenExceptionStatus, shippedPackageFace, shippedPackageTracking } from './shipped-package-state';
 
 export type ShippedCardModel = TriageCardModelBase<DerivedPackerRecord>;
 
-/** An open unmatched pack scan — no order line claims the box yet. */
+/** An open unmatched scan — a pack scan or a dock scan-out no order line claims yet. */
 export function isOpenUnmatchedScan(row: DerivedPackerRecord): boolean {
   return row.row_source === 'exception' && isOpenExceptionStatus(row.exception_status);
+}
+
+/** A dock scan-out that resolved no shipment (held as an `outbound` orders_exception, no pack scan behind it). */
+export function isUnmatchedScanOut(row: DerivedPackerRecord): boolean {
+  return row.exception_source_station === 'outbound';
 }
 
 function lineFacts(source: {
@@ -62,7 +70,9 @@ function shippedCardLines(row: DerivedPackerRecord, leadId: number, unmatched: b
   return [
     {
       id: leadId,
-      title: (row.product_title || '').trim() || (unmatched ? 'Unmatched pack scan' : 'No order line'),
+      title:
+        resolveSkuIdentityTitle({ item_name: row.product_title, sku: row.sku })
+        || (unmatched ? (isUnmatchedScanOut(row) ? 'Unmatched scan-out' : 'Unmatched pack scan') : 'No order line'),
       photoUrl: Array.isArray(row.packer_photos_url)
         ? ((row.packer_photos_url.find((p: { url?: unknown }) => typeof p?.url === 'string')?.url as string | undefined) ?? null)
         : null,
@@ -129,7 +139,7 @@ export function shippedStatusKeys(row: DerivedPackerRecord): ShippedStatusChip[]
   return keys;
 }
 
-/** A pill's word and tone. Exception is a count that opens Exceptions, not a filter. */
+/** A pill's word and tone. Every pill is a filter (`?cardStatus=`); Unmatched holds pack scans and dock scan-outs alike. */
 export function shippedStatusChipFace(key: ShippedStatusChip): { label: string; tone: StateName } {
   switch (key) {
     case 'FULFILLED':
@@ -160,7 +170,7 @@ export function shippedPackerName(row: DerivedPackerRecord): string | null {
 
 
 /** Top-right of this table: when the package left the building. */
-function scanOutStatus(row: DerivedPackerRecord): RecordCardStatus {
+function scanOutStatus(row: DerivedPackerRecord): ViewCardModel<typeof OUTBOUND_SHIPPED_VIEW>['status'] {
   const at = String(row.ship_confirmed_at ?? '').trim();
   if (!at || at === '1') return { kind: 'date', face: 'Not scanned out', tip: null, alert: false };
   return { kind: 'date', face: formatMonthDayTimePST(at), tip: `Scanned out ${formatDateTimePST(at)} PT`, alert: false };
@@ -179,7 +189,7 @@ export function shippedCarrierStatus(row: DerivedPackerRecord): { face: string |
  * The card face. Platform and order on line 1. Top right is the dock stamp
  * (`ship_confirmed_at`), so a glance reads when it left. Ship-by stays in Details.
  */
-export function shippedRecordCard(model: ShippedCardModel): RecordCardModel {
+export function shippedRecordCard(model: ShippedCardModel): ViewCardModel<typeof OUTBOUND_SHIPPED_VIEW> {
   const row = model.lead;
   const leadId = model.ids[0]!;
   const unmatched = isOpenUnmatchedScan(row);

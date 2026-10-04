@@ -10,7 +10,6 @@ import { SearchesPane } from './workspace/SearchesPane';
 import { SuppliersPane } from './workspace/SuppliersPane';
 import { SuppliersManagementTab } from '@/components/admin/sourcing/SuppliersManagementTab';
 import { BoseModelsManagementTab } from '@/components/admin/sourcing/BoseModelsManagementTab';
-import { CompatibilityManagementTab } from '@/components/admin/sourcing/CompatibilityManagementTab';
 import { BoseModelPickerPane } from '@/components/admin/sourcing/BoseModelPickerPane';
 import { WatchlistPane } from './workspace/WatchlistPane';
 import { AnalyticsPane } from './workspace/AnalyticsPane';
@@ -38,13 +37,6 @@ export function SourcingWorkspace() {
           <BoseModelPickerPane param="model" />
           <div className="min-w-0 flex-1 overflow-y-auto">
             <BoseModelsManagementTab />
-          </div>
-        </div>
-      ) : mode === 'compatibility' ? (
-        <div className="flex h-full min-h-0">
-          <BoseModelPickerPane param="boseModelId" allRow={{ title: 'All edges', subtitle: 'Every model' }} />
-          <div className="min-w-0 flex-1 overflow-y-auto">
-            <CompatibilityManagementTab />
           </div>
         </div>
       ) : mode === 'analytics' ? (

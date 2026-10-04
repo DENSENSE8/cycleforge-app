@@ -138,8 +138,9 @@ export const SLATE_SURFACES: ModeSurfaces = {
   well: '#f1f5f9',
   hover: '#f8fafc',
   ink: '#0f172a',
-  muted: '#475569',
-  faint: '#64748b',
+  // Ink floors on every surface (owner 2026-10-03: subtitles read easily): muted ≥9:1, faint ≥6:1.
+  muted: '#374457',
+  faint: '#505e74',
   rule: '#e2e8f0',
   edge: '#cbd5e1',
   control: '#7b8aa0',
@@ -155,8 +156,9 @@ export const SLATE_SURFACES: ModeSurfaces = {
  * BRIEF §12), laid out like a Shopify order list: rounded cards on a grey
  * canvas, horizontal hairlines only — no column seams, no box outlines (a
  * floating surface reads by its shadow). Departures from stock, for the §8
- * floor: `faint` #6b6b6b holds 4.5:1 on the canvas and the well; `control`
- * #8a8a8a holds 3:1 for an input border.
+ * floor: `muted` #434343 holds 9:1 and `faint` #5d5d5d 6:1 on the canvas and
+ * the well (owner 2026-10-03: subtitles read easily); `control` #8a8a8a holds
+ * 3:1 for an input border.
  */
 export const NEUTRAL_SURFACES: ModeSurfaces = {
   canvas: '#ffffff',
@@ -165,8 +167,8 @@ export const NEUTRAL_SURFACES: ModeSurfaces = {
   well: '#f5f5f5',
   hover: '#f7f7f7',
   ink: '#0a0a0a',
-  muted: '#525252',
-  faint: '#6b6b6b',
+  muted: '#434343',
+  faint: '#5d5d5d',
   rule: '#ebebeb',
   edge: '#d4d4d4',
   control: '#8a8a8a',
@@ -340,8 +342,8 @@ export const MODE_LOOKS = {
     refines: {
       // Desk: triage's floating cards (10px corner, 8px controls, 12px page
       // gutter) on an off-white canvas, so a white 4×6 label reads as paper;
-      // rows inside a card are divided by drawn seams. `faint` #5c5c58 holds
-      // 6.5:1 on the canvas.
+      // rows inside a card are divided by drawn seams. `faint` #5a5a56 holds
+      // 6:1 on every plane, the hover wash included (owner 2026-10-03).
       triage: {
         surfaces: {
           canvas: '#f3f3ef',
@@ -351,7 +353,7 @@ export const MODE_LOOKS = {
           hover: '#efefea',
           ink: '#0a0a0a',
           muted: '#3d3d3a',
-          faint: '#5c5c58',
+          faint: '#5a5a56',
           rule: '#e1e1db',
           edge: '#d6d6cf',
           control: '#7a7a74',

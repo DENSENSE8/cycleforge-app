@@ -5,11 +5,12 @@
  * expected → the delivery state top-right and the dock verb bottom-right.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 import { INCOMING_SECTION_LABELS, INCOMING_SECTIONS } from '@/lib/receiving/incoming-sections';
 import { INCOMING_EXCEPTION_VERB } from '@/lib/receiving/incoming-exceptions';
+import { INBOUND_FOLLOWUP_LABELS } from '@/lib/receiving/inbound-followups';
 
-export const INCOMING_PIPELINE_VIEW: TriageViewDecl = {
+export const INCOMING_PIPELINE_VIEW = triageView({
   id: 'incoming.pipeline',
   grain: 'purchase',
   noun: { one: 'delivery', many: 'deliveries' },
@@ -22,6 +23,7 @@ export const INCOMING_PIPELINE_VIEW: TriageViewDecl = {
   chips: { owner: 'host', param: 'state' },
   paging: 'server',
   status: 'state',
+  slots: { identity: 'PO number (a pasted number: the number as pasted)', channel: 'none', person: 'vendor', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'qty', tier: 'always' },
     { id: 'tracking', tier: 'always' },
@@ -43,5 +45,7 @@ export const INCOMING_PIPELINE_VIEW: TriageViewDecl = {
     'Investigate',
     'History',
     ...new Set(Object.values(INCOMING_EXCEPTION_VERB)),
+    // A pasted number's follow-up tag is its next step (PastedNumberCard / PastedNumberLine).
+    ...Object.values(INBOUND_FOLLOWUP_LABELS),
   ],
-};
+});

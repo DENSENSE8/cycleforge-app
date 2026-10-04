@@ -226,11 +226,6 @@ const config = {
             },
             fontFamily: {
                 sans: ['var(--ds-font-sans)', 'Inter', 'system-ui', 'sans-serif'],
-                // Dense-chrome cut. You should almost never write `font-condensed`
-                // by hand — `text-role-eyebrow` / `text-role-micro` bind it
-                // intrinsically (plugin below). Reach for the ROLE whose job is
-                // dense chrome, not for the family.
-                condensed: ['var(--ds-font-condensed)', 'IBM Plex Sans Condensed', 'Inter', 'system-ui', 'sans-serif'],
                 // Master-nav spine only (`font-spine` on MasterNavView). Not a
                 // fourth app cut — it resolves to the app sans (no Overpass load).
                 spine: ['var(--ds-font-sans)', 'Inter', 'system-ui', 'sans-serif'],
@@ -273,8 +268,8 @@ const config = {
                 // Eyebrow / micro tracking is the region's LABEL VOICE
                 // (`--mode-label-tracking`, modes.ts); the fallback is the
                 // unwrapped-route value. An explicit `tracking-*` still wins.
-                'role-eyebrow': ['calc(0.6875rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: 'var(--mode-label-tracking, 0.08em)', fontWeight: '600' }],
-                'role-micro': ['calc(0.625rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: 'var(--mode-label-tracking, 0.04em)', fontWeight: '600' }],
+                'role-eyebrow': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1.35', letterSpacing: 'var(--mode-label-tracking, 0.06em)', fontWeight: '600' }],
+                'role-micro': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1.4', letterSpacing: 'var(--mode-label-tracking, 0.02em)', fontWeight: '500' }],
                 // ── role-field: the TOUCH TEXT-ENTRY role ────────────────────
                 //
                 // 1rem = 16px, and it is the ONE role that deliberately does
@@ -424,10 +419,9 @@ const config = {
         // of emission order.
         //
         // WHY these two bindings are intrinsic rather than opt-in classes:
-        //   · Contextuality in this product is width, not face-swapping. The
-        //     eyebrow/micro roles ARE the dense-chrome job, so the condensed cut
-        //     belongs to the role — an opt-in `font-condensed` beside the role
-        //     would drift the moment someone forgets it.
+        //   · Contextuality in this product is width and hierarchy, not
+        //     face-swapping. Eyebrow and micro stay in the one readable Inter
+        //     family on both desktop and mobile.
         //   · Numerals in data/title/display sit in columns that must align. If
         //     tabular-ness is opt-in it is missing exactly where a scan-reading
         //     operator notices (a qty column that shimmies row to row).
@@ -438,12 +432,8 @@ const config = {
                 // Case is the region's LABEL VOICE (`--mode-label-case`): a
                 // label never hard-codes caps — the mode decides. Codes that are
                 // caps by identity (SKU, lifecycle code) add `uppercase`.
-                ".text-role-eyebrow": { fontFamily: "var(--ds-font-condensed)", textTransform: "var(--mode-label-case, none)" },
-                ".text-role-micro": { fontFamily: "var(--ds-font-condensed)", textTransform: "var(--mode-label-case, none)" },
-                // Spine-local: intrinsic eyebrow/micro family would otherwise
-                // keep Plex Condensed on search-result context inside the map.
-                ".font-spine .text-role-eyebrow": { fontFamily: "var(--ds-font-sans)" },
-                ".font-spine .text-role-micro": { fontFamily: "var(--ds-font-sans)" },
+                ".text-role-eyebrow": { fontFamily: "var(--ds-font-sans)", textTransform: "var(--mode-label-case, none)" },
+                ".text-role-micro": { fontFamily: "var(--ds-font-sans)", textTransform: "var(--mode-label-case, none)" },
                 ".text-role-display": { fontVariantNumeric: "tabular-nums" },
                 ".text-role-title": { fontVariantNumeric: "tabular-nums" },
                 ".text-role-data": { fontVariantNumeric: "tabular-nums" },

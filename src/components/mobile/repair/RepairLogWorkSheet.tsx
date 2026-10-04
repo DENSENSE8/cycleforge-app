@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { Button, Checkbox } from '@/design-system/primitives';
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP, FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { Check, ChevronLeft, Clock, RefreshCw, Tool, Wrench, X } from '@/components/Icons';
@@ -407,14 +408,13 @@ export function RepairLogWorkSheet({
       </div>
 
       {type ? (
-        <footer
-          className="shrink-0 border-t border-mode-rule bg-mode-bar px-mode-page pt-2"
-          style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
-        >
+        // The sheet's floor: one floating verb, no bar or rule behind it (owner 2026-10-03).
+        <footer className={cn('shrink-0 px-mode-page', ACTION_DOCK_TOP_GAP, ACTION_DOCK_LIFT)}>
           <Button
             variant="primary"
             size="lg"
-            className="min-h-mode-hit-cta w-full rounded-mode"
+            depth
+            className={cn('min-h-mode-hit-cta w-full rounded-mode', FLOATING_ACTION_DISABLED_FACE)}
             disabled={missing !== null}
             loading={submitting}
             onClick={() => void handleSave()}

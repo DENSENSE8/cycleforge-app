@@ -5,7 +5,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/lib/toast';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ProgressDots } from '@/components/mobile/ProgressDots';
 import { Button, IconButton } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
@@ -273,57 +273,58 @@ export function MobileArrivalClassifyFlow({
         </Button>
       </div>
 
-      <BottomSheet
-        open
-        onClose={goList}
-        title={STEP_TITLE[step]}
-        forceVariant="sheet"
-        dragDisabled={saving}
-      >
-        {/* BottomSheet portals out of the page's ModeRegion; re-declare triage so
-            the mode radius / padding / hit tokens resolve inside the sheet. */}
-        <ModeRegion mode="triage" className="space-y-3 px-1 pb-2">
-          <p className="text-role-caption text-text-muted">
-            Step {stepIndex + 1} of {ARRIVAL_CLASSIFY_STEPS.length} · tap to save and continue
-          </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {options.map((opt) => {
-              // The row verb's decision, marked as the selection: a 2px INK
-              // outline, never a coloured one (BRIEF §4/§5).
-              const hinted = step === 'type' && typeHint != null && opt.value.toUpperCase() === typeHint;
-              return (
-                // ds-allow-title — option face already shows the label; native title is the longer hint.
-                <button
-                  key={opt.value || opt.label}
-                  type="button"
-                  disabled={saving}
-                  onClick={() => void onPick(opt.value)}
-                  title={opt.title}
-                  aria-pressed={step === 'type' ? hinted : undefined}
-                  className={cn(
-                    'ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-mode border px-2 py-3 text-center transition-opacity duration-mode-feedback active:opacity-80 disabled:opacity-50',
-                    opt.inactiveClass,
-                    hinted && 'outline outline-2 -outline-offset-2 outline-text-default',
-                  )}
-                  style={opt.inactiveStyle}
-                >
-                  <span className="flex h-6 items-center justify-center">{opt.face}</span>
-                  <span className="text-role-caption font-semibold">{opt.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          {nextArrivalClassifyStep(step) ? (
-            <p className="text-center text-role-micro text-text-faint">
-              Next · {STEP_TITLE[nextArrivalClassifyStep(step)!]}
-            </p>
-          ) : (
-            <p className="text-center text-role-micro text-text-faint">
-              Finishes arrival for this carton
-            </p>
-          )}
-        </ModeRegion>
-      </BottomSheet>
+      <Sheet open onOpenChange={(next) => { if (!next) goList(); }}>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>{STEP_TITLE[step]}</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
+            {/* The sheet portals out of the page's ModeRegion; re-declare triage so
+                the mode radius / padding / hit tokens resolve inside the sheet. */}
+            <ModeRegion mode="triage" className="space-y-3 px-1 pb-2">
+              <p className="text-role-caption text-text-muted">
+                Step {stepIndex + 1} of {ARRIVAL_CLASSIFY_STEPS.length} · tap to save and continue
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {options.map((opt) => {
+                  // The row verb's decision, marked as the selection: a 2px INK
+                  // outline, never a coloured one (BRIEF §4/§5).
+                  const hinted = step === 'type' && typeHint != null && opt.value.toUpperCase() === typeHint;
+                  return (
+                    // ds-allow-title — option face already shows the label; native title is the longer hint.
+                    <button
+                      key={opt.value || opt.label}
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void onPick(opt.value)}
+                      title={opt.title}
+                      aria-pressed={step === 'type' ? hinted : undefined}
+                      className={cn(
+                        'ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-mode border px-2 py-3 text-center transition-opacity duration-mode-feedback active:opacity-80 disabled:opacity-50',
+                        opt.inactiveClass,
+                        hinted && 'outline outline-2 -outline-offset-2 outline-text-default',
+                      )}
+                      style={opt.inactiveStyle}
+                    >
+                      <span className="flex h-6 items-center justify-center">{opt.face}</span>
+                      <span className="text-role-caption font-semibold">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {nextArrivalClassifyStep(step) ? (
+                <p className="text-center text-role-micro text-text-faint">
+                  Next · {STEP_TITLE[nextArrivalClassifyStep(step)!]}
+                </p>
+              ) : (
+                <p className="text-center text-role-micro text-text-faint">
+                  Finishes arrival for this carton
+                </p>
+              )}
+            </ModeRegion>
+          </SheetBody>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

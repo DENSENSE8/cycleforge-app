@@ -25,6 +25,7 @@ export function MarkdownReaderSlideOver({
   meta,
   content,
   onEdit,
+  live,
 }: {
   open: boolean;
   onClose: () => void;
@@ -32,6 +33,8 @@ export function MarkdownReaderSlideOver({
   meta?: ReactNode;
   content: string;
   onEdit?: () => void;
+  /** A task Brief / document: live reference chips and ```tasks``` blocks (MarkdownRenderer `live`). */
+  live?: 'desk' | 'phone';
 }) {
   const titleId = useId();
   const [fullscreen, setFullscreen] = useState(false);
@@ -100,7 +103,7 @@ export function MarkdownReaderSlideOver({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-testid="markdown-reader-body">
         <article className="mx-auto w-full max-w-[70ch] px-6 py-5">
           {content.trim() ? (
-            <MarkdownRenderer content={content} />
+            <MarkdownRenderer content={content} live={live} />
           ) : (
             <p className="text-role-caption text-text-muted">Nothing written yet.</p>
           )}

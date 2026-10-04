@@ -113,7 +113,6 @@ export function PackerDayAnalyticsTable({
                         {row.orderNumber ? (
                           <OrderIdChip
                             value={row.orderNumber}
-                            display={row.orderNumber}
                             dense
                             plain
                             platformLabel={platformLabel}

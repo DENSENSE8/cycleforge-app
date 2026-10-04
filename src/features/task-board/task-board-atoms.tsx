@@ -15,18 +15,18 @@ import type { TaskDeskPerson } from '@/lib/tasks/task-desk-row';
 import {
   taskBoardDueFace,
   taskBoardFollowUpFace,
-  type DueTone,
   type TaskBoardRepair,
   type TaskBoardRow,
   type TaskBoardTicket,
 } from '@/lib/task-board/task-board-model';
+import { DUE_TONE_CLASS } from '@/design-system/tokens/task-due';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import type { IdentityMarkSize } from '@/components/identity/IdentityMark';
 import { StaffBadge } from '@/design-system/components/StaffBadge';
 import { TicketStatusPill } from '@/design-system/components/TicketStatusPill';
 import { repairStatusFace } from '@/design-system/tokens/repair-status';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
-import { microBadge } from '@/design-system/tokens/typography/presets';
+import { statusPillLabel } from '@/design-system/tokens/typography/presets';
 import { repairStatusOperatorLabel } from '@/lib/repair-status';
 import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
@@ -76,15 +76,6 @@ export function PeopleInline({ people }: { people: readonly TaskDeskPerson[] }) 
     </span>
   );
 }
-
-/** 11px due text at WCAG AA (≥4.5:1 on the card): -700 inks in light, -300 in dark. */
-const DUE_TONE_CLASS: Readonly<Record<DueTone, string>> = {
-  late: 'font-bold text-red-700 dark:text-red-300',
-  today: 'font-bold text-orange-700 dark:text-orange-300',
-  // Owner 2026-09-29: tomorrow is urgent too — orange, never a calm blue.
-  soon: 'font-semibold text-orange-700 dark:text-orange-300',
-  calm: 'font-medium text-text-default',
-};
 
 /** Nothing when there is no due date — an empty dash is noise on a dense list. */
 export function DueChip({ dueMs, nowMs, done }: { dueMs: number | null; nowMs: number; done: boolean }) {
@@ -150,14 +141,15 @@ export function RepairChip({ repair }: { repair: TaskBoardRepair }) {
   return (
     <span data-repair-id={repair.id} className="inline-flex min-w-0 items-center gap-1 text-[11px]">
       <span className="shrink-0 whitespace-nowrap font-bold tabular-nums text-orange-700 dark:text-orange-300">
-        Repair {/^\d+$/.test(stamped) ? `#${stamped}` : stamped}
+        {/* `RS-` already says repair; a bare slip number still needs the word to read apart from a ticket #. */}
+        {/^\d+$/.test(stamped) ? `Repair #${stamped}` : stamped}
       </span>
       <span
         data-repair-status={face.id}
         title={status}
         className={cn(
           'min-w-0 truncate rounded-full px-1.5 leading-4 ring-1 ring-inset',
-          microBadge,
+          statusPillLabel,
           tone.pill,
           tone.ring,
         )}

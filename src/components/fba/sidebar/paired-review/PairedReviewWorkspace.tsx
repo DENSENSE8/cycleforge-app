@@ -166,9 +166,8 @@ export function PairedReviewWorkspace({
         </AnimatePresence>
       </div>
 
-      {/* Bottom action bar — same StickyActionBar chrome as receiving / testing. */}
+      {/* Floating save buttons — same StickyActionBar as receiving / testing. */}
       <StickyActionBar
-        primaryFullWidth
         maxWidth="max-w-none"
         error={c.error || undefined}
         primary={{

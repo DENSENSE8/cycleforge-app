@@ -1,4 +1,5 @@
 import "./globals.css";
+import type { Viewport } from 'next';
 /** The shell branch (public chrome vs the warehouse client) lives in a CLIENT component on purpose: */
 import { AppShellSwitch } from "@/components/layout/AppShellSwitch";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
@@ -26,9 +27,14 @@ import {
 import { DeferredWebTelemetry } from "@/components/analytics/DeferredWebTelemetry";
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
+import { mergeShellSeeds, seedStaffPreferences } from "@/lib/queries/staff-preferences-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { cfSans, cfSansItalic, ibmPlexMono, ibmPlexSansCondensed } from "@/lib/fonts";
+import { cfSans, cfSansItalic, ibmPlexMono } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
+import { appViewport } from '@/design-system/tokens/mobile-viewport';
+
+/** Next owns the single viewport tag. A manual tag would duplicate its default. */
+export const viewport: Viewport = appViewport;
 
 export default async function RootLayout({
     children,
@@ -67,14 +73,24 @@ export default async function RootLayout({
             : Promise.resolve(false);
 
     // Paint seed for routes whose first-paint content lives in the SHELL rather than the page (Unbox recents rail; the Testing station's…
-    const [shellSeed, activationBlocked] = await Promise.all([shellSeedPromise, activationBlockedPromise]);
+    // Plus the staffer's prefs on every warehouse frame, so prefs-driven faces (triage density, column widths) hydrate as served.
+    const staffPrefsSeedPromise =
+        initialUser && !publicChrome && !kioskHost
+            ? seedStaffPreferences(initialUser)
+            : Promise.resolve(null);
+    const [stationSeed, staffPrefsSeed, activationBlocked] = await Promise.all([
+        shellSeedPromise,
+        staffPrefsSeedPromise,
+        activationBlockedPromise,
+    ]);
+    const shellSeed = mergeShellSeeds(stationSeed, staffPrefsSeed);
     if (activationBlocked) redirect(ACTIVATION_REDIRECT_HREF);
 
     // suppressHydrationWarning on <html>:
     return (
         <html
             lang="en"
-            className={`${cfSans.variable} ${cfSansItalic.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
+            className={`${cfSans.variable} ${cfSansItalic.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>
@@ -87,10 +103,7 @@ export default async function RootLayout({
                 <meta name="apple-mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
                 <meta name="apple-mobile-web-app-title" content={PRODUCT_NAME} />
-                <meta name="theme-color" content="#ffffff" />
                 <meta name="mobile-web-app-capable" content="yes" />
-                {/* Viewport — cover the notch. */}
-                <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
                 {/* URL-only design trial flags; never persisted. */}
                 <script dangerouslySetInnerHTML={{ __html: TRIAL_BOOT_SCRIPT }} />
                 <style id="app-design-tokens">{designTokenStyleText}</style>
@@ -121,7 +134,7 @@ export default async function RootLayout({
                   }}
                 />
             </head>
-            <body className={`${cfSans.className} antialiased m-0 overflow-hidden ${appChromeClass}`}>
+            <body className={`${cfSans.className} h-full w-full antialiased m-0 overflow-hidden ${appChromeClass}`}>
                 {/* Pin the app to the visual viewport. */}
                 <AppShellSwitch
                   publicChrome={publicChrome}

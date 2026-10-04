@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
-import { tenantQuery } from '@/lib/tenancy/db';
-import {
-  adjustBinQty,
-  getLocationByBarcode,
-} from '@/lib/neon/location-queries';
+import { publishTransferLedgerEvents, transferBinQty } from '@/lib/neon/location-queries';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import {
-  getApiIdempotencyResponse,
   readIdempotencyKey,
-  saveApiIdempotencyResponse,
+  withIdempotencyClaim,
 } from '@/lib/api-idempotency';
 import { TransfersBody } from '@/lib/schemas/locations';
 import { parseBody } from '@/lib/schemas/parse';
@@ -39,128 +34,100 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   // Server-trusted tenant — every read/write below is scoped to this org.
   const orgId = ctx.organizationId;
 
-  // ─── Idempotency: replay cached response for the same key ──────────────
   const idempotencyKey = readIdempotencyKey(
     request,
     body?.clientEventId ?? body?.idempotencyKey,
   );
-  if (idempotencyKey) {
-    const cached = await getApiIdempotencyResponse(pool, orgId, idempotencyKey, ROUTE_TRANSFERS);
-    if (cached) {
-      return NextResponse.json(cached.response_body, { status: cached.status_code });
-    }
+  if (!idempotencyKey) {
+    return NextResponse.json({ error: 'Idempotency-Key is required' }, { status: 400 });
   }
-  const respond = async (payload: Record<string, unknown>, status = 200) => {
-    if (idempotencyKey && status < 500) {
-      await saveApiIdempotencyResponse(pool, {
-        orgId,
-        idempotencyKey,
-        route: ROUTE_TRANSFERS,
-        staffId,
-        statusCode: status,
-        responseBody: payload,
-      }).catch((err) => {
-        console.warn('transfers POST: idempotency save failed (non-fatal)', err);
-      });
-    }
-    return NextResponse.json(payload, { status });
-  };
 
   // ─── Permission gate is handled by withAuth({ permission: 'bin.adjust' }) ─
 
   // ─── Validate ──────────────────────────────────────────────────────────
   if (!fromBarcode || !toBarcode) {
-    return respond({ error: 'fromBinBarcode and toBinBarcode are required' }, 400);
+    return NextResponse.json({ error: 'fromBinBarcode and toBinBarcode are required' }, { status: 400 });
   }
   if (fromBarcode.toUpperCase() === toBarcode.toUpperCase()) {
-    return respond({ error: 'fromBinBarcode and toBinBarcode must differ' }, 400);
+    return NextResponse.json({ error: 'fromBinBarcode and toBinBarcode must differ' }, { status: 400 });
   }
   if (!sku) {
-    return respond({ error: 'sku is required' }, 400);
+    return NextResponse.json({ error: 'sku is required' }, { status: 400 });
   }
   if (!Number.isFinite(qty) || qty <= 0) {
-    return respond({ error: 'qty must be a positive integer' }, 400);
+    return NextResponse.json({ error: 'qty must be a positive integer' }, { status: 400 });
   }
   const transferQty = Math.floor(qty);
 
-  const [fromLoc, toLoc] = await Promise.all([
-    getLocationByBarcode(fromBarcode, orgId),
-    getLocationByBarcode(toBarcode, orgId),
-  ]);
-  if (!fromLoc) return respond({ error: `From bin not found: ${fromBarcode}` }, 404);
-  if (!toLoc) return respond({ error: `To bin not found: ${toBarcode}` }, 404);
-
-  // Confirm the source has enough on hand. Negative results would be
-  // floored by adjustBinQty but the user expectation is that a short
-  // transfer fails up front.
-  const sourceQtyRes = await tenantQuery<{ qty: number }>(
+  const claimed = await withIdempotencyClaim<Record<string, unknown>>(pool, {
     orgId,
-    `SELECT qty FROM bin_contents
-         WHERE location_id = $1 AND sku = $2 AND organization_id = $3
-         LIMIT 1`,
-    [fromLoc.id, sku, orgId],
-  );
-  const sourceQty = Number(sourceQtyRes.rows[0]?.qty ?? 0);
-  if (sourceQty < transferQty) {
-    return respond(
-      {
-        error: 'INSUFFICIENT_QTY',
-        message: `Source bin only has ${sourceQty}; cannot move ${transferQty}.`,
-        available: sourceQty,
-        requested: transferQty,
-      },
-      409,
-    );
-  }
-
-  // 1. Take from source bin.
-  await adjustBinQty({
-    locationId: fromLoc.id,
-    sku,
-    delta: -transferQty,
+    idempotencyKey,
+    route: ROUTE_TRANSFERS,
     staffId,
-    reason: 'TRANSFER_OUT',
-    reasonCodeId,
-    notes,
-  }, orgId);
-
-  // 2. Put into destination bin.
-  await adjustBinQty({
-    locationId: toLoc.id,
-    sku,
-    delta: transferQty,
-    staffId,
-    reason: 'TRANSFER_IN',
-    reasonCodeId,
-    notes,
-  }, orgId);
-
-  // 3. Single lifecycle event linking the two legs.
-  try {
-    await recordInventoryEvent({
-      event_type: 'MOVED',
-      actor_staff_id: staffId,
-      station: 'MOBILE',
-      bin_id: toLoc.id,
-      prev_bin_id: fromLoc.id,
-      sku,
-      notes,
-      payload: {
-        action: 'bin_transfer',
-        from_bin: fromLoc.barcode ?? fromBarcode,
-        to_bin: toLoc.barcode ?? toBarcode,
+  }, async () => {
+    try {
+      const result = await transferBinQty({
+        fromBarcode,
+        toBarcode,
+        sku,
         qty: transferQty,
-      },
-    }, undefined, orgId);
-  } catch (err) {
-    console.warn('transfers: inventory_events insert failed (non-fatal)', err);
-  }
-
-  return respond({
-    success: true,
-    from_bin: { id: fromLoc.id, name: fromLoc.name, barcode: fromLoc.barcode },
-    to_bin: { id: toLoc.id, name: toLoc.name, barcode: toLoc.barcode },
-    sku,
-    qty: transferQty,
+        staffId,
+        reasonCodeId,
+        notes,
+      }, orgId);
+      // The move is committed: realtime fan-out and the activity event run
+      // after the response so the phone's receipt does not wait on them.
+      after(async () => {
+        await publishTransferLedgerEvents(result, { orgId, staffId });
+        await recordInventoryEvent({
+          event_type: 'MOVED',
+          actor_staff_id: staffId,
+          station: 'MOBILE',
+          bin_id: result.toBin.id,
+          prev_bin_id: result.fromBin.id,
+          sku: result.sku,
+          notes,
+          payload: {
+            action: 'bin_transfer',
+            from_bin: result.fromBin.barcode ?? fromBarcode,
+            to_bin: result.toBin.barcode ?? toBarcode,
+            qty: result.qty,
+          },
+        }, undefined, orgId).catch((err) => {
+          console.warn('transfers: inventory_events insert failed (non-fatal)', err);
+        });
+      });
+      return {
+        status: 200,
+        body: {
+          success: true,
+          from_bin: result.fromBin,
+          to_bin: result.toBin,
+          sku: result.sku,
+          qty: result.qty,
+          source_qty: result.sourceQty,
+          destination_qty: result.destinationQty,
+          receipt: { commandId: idempotencyKey },
+        },
+      };
+    } catch (error) {
+      const typed = error as Error & { code?: string; available?: number; requested?: number };
+      if (typed.code === 'INSUFFICIENT_QTY') {
+        return {
+          status: 409,
+          body: {
+            error: 'INSUFFICIENT_QTY',
+            message: typed.message,
+            available: typed.available,
+            requested: typed.requested,
+          },
+        };
+      }
+      if (/not found/i.test(typed.message)) {
+        return { status: 404, body: { error: typed.message } };
+      }
+      throw error;
+    }
   });
+  return NextResponse.json(claimed.body, { status: claimed.status });
 }, { permission: 'bin.adjust' });

@@ -49,7 +49,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { openKioskShellPreview } from '@/lib/kiosk/preview-url';
 import { cn } from '@/utils/_cn';
-import { KeyboardKey } from '@/design-system/primitives';
 
 type OpenMenu = 'none' | 'more' | 'feedback';
 
@@ -250,28 +249,27 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                       </button>
                     ) : null}
                     {/* The panel itself is owned by `ClipboardHistoryHost` — this row only asks it to open. */}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenu('none');
-                        openClipboardHistory();
-                      }}
-                      className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
-                    >
-                      <Clipboard className="h-3.5 w-3.5 shrink-0 text-text-muted" />
-                      <span
-                        className={cn(
-                          SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS,
-                          'min-w-0 flex-1 truncate',
-                        )}
+                    <HoverTooltip label="Clipboard history" shortcut={CLIPBOARD_HISTORY_HOTKEY_LABEL} asChild>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenu('none');
+                          openClipboardHistory();
+                        }}
+                        className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
                       >
-                        Clipboard history
-                      </span>
-                      <KeyboardKey size="xs">
-                        {CLIPBOARD_HISTORY_HOTKEY_LABEL}
-                      </KeyboardKey>
-                    </button>
+                        <Clipboard className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+                        <span
+                          className={cn(
+                            SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS,
+                            'min-w-0 flex-1 truncate',
+                          )}
+                        >
+                          Clipboard history
+                        </span>
+                      </button>
+                    </HoverTooltip>
                     <button
                       type="button"
                       role="menuitem"

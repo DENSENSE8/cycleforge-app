@@ -1,11 +1,13 @@
 import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
+import { RACK_FAMILY_KINDS } from '@/lib/locations/rack-types';
 import {
   applyRoomCreateToLocations,
   applyRoomDeleteToLocations,
   applyRoomPatchToLocations,
   applyRoomReorderToLocations,
+  isStockPlace,
   type LocationRecord,
   type LocationsListData,
   type RoomSnapshot,
@@ -69,13 +71,12 @@ export function locationsListQueryOptions() {
 
 /**
  * Scannable shelves only — a room/zone parent row carries no `row_label` /
- * `col_label` and is not a place a carton can be put. Applied as a `select` so
- * the filtered view costs a derivation, never a request.
+ * `col_label` and is not a place a carton can be put; a movable-rack shelf or
+ * position (also no row/col) is. Applied as a `select` so the filtered view
+ * costs a derivation, never a request.
  */
 export function selectScannableBins(data: LocationsListData): LocationRecord[] {
-  return (data.locations ?? []).filter(
-    (l) => l.row_label != null && l.col_label != null,
-  );
+  return (data.locations ?? []).filter(isStockPlace);
 }
 
 async function postLocation(payload: CreateLocationPayload): Promise<LocationRecord> {
@@ -464,14 +465,11 @@ export function useLocations(): UseLocationsResult {
   const roomStructure = data?.roomStructure ?? {};
 
   const rooms = useMemo(
-    () => locations.filter((l) => !l.row_label && !l.col_label),
+    () => locations.filter((l) => !l.row_label && !l.col_label && !RACK_FAMILY_KINDS.has(l.location_kind ?? '')),
     [locations],
   );
 
-  const bins = useMemo(
-    () => locations.filter((l) => l.row_label && l.col_label),
-    [locations],
-  );
+  const bins = useMemo(() => locations.filter(isStockPlace), [locations]);
 
   const roomNames = useMemo(
     () => [...new Set(locations.map((l) => l.room).filter(Boolean))] as string[],

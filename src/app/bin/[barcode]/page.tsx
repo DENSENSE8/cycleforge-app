@@ -108,7 +108,7 @@ function BinPageInner() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-3 space-y-3 pb-24">
+      <main className="flex-1 px-4 py-3 space-y-3">
         {loading && (
           <p className="text-center text-sm font-semibold text-text-soft py-10">
             Loading…
@@ -177,7 +177,8 @@ function BinPageInner() {
         )}
       </main>
 
-      <footer className="sticky bottom-0 bg-surface-card border-t border-border-soft px-4 py-3 text-role-caption font-semibold text-text-soft text-center">
+      {/* A caption, not an action: it rides the flow under the content, never a pinned grounded strip (owner 2026-10-03). */}
+      <footer className="px-4 pb-4 text-role-caption font-semibold text-text-soft text-center">
         Staff #{staffId}
       </footer>
     </div>

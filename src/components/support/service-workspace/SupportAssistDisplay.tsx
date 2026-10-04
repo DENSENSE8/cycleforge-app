@@ -16,7 +16,6 @@ import {
 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { useSupportSuggestion, type SupportSuggestionResult } from '@/hooks/useSupportSuggestion';
-import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import type { StagedPhoto } from '@/hooks/useTicketPhotoStaging';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import type { SuggestionSource } from '@/lib/support/suggest-reply-core';
@@ -79,23 +78,6 @@ export function SupportAssistDisplay({
   autoRunId?: number;
 }) {
   const suggest = useSupportSuggestion();
-  const { data: bundle } = useZendeskTicketBundle(ticketId);
-
-  // Draft a reply to the LAST thing the customer actually said. An internal
-  // note or our own reply is not the thing being answered, and drafting from
-  // one produces a model replying to itself.
-  const { question, subject } = useMemo(() => {
-    const comments = bundle?.comments ?? [];
-    const requesterId = bundle?.ticket?.requester_id;
-    const inbound = comments.filter(
-      (c) => c.public && (requesterId == null || c.author_id === requesterId),
-    );
-    const last = inbound[inbound.length - 1] ?? comments[comments.length - 1] ?? null;
-    return {
-      question: (last?.body ?? '').trim(),
-      subject: bundle?.ticket?.subject ?? undefined,
-    };
-  }, [bundle]);
 
   const photoIds = useMemo(
     () =>
@@ -106,15 +88,15 @@ export function SupportAssistDisplay({
   );
 
   const result = suggest.data;
-  // An image on its own is a question. Only a ticket with neither has nothing
-  // to draft from.
-  const canDraft = Boolean(question) || photoIds.length > 0;
 
+  // The server reads the thread and answers the latest CUSTOMER message; a
+  // ticket with no customer in it comes back as a 422 with the reason, shown
+  // in the error panel below.
   const runRef = useRef<() => void>(() => {});
   runRef.current = () => {
-    if (!canDraft || suggest.isPending) return;
+    if (suggest.isPending) return;
     suggest.mutate(
-      { ticketId, subject, question, stagedPhotoIds: photoIds },
+      { ticketId, stagedPhotoIds: photoIds },
       {
         // Failure never blocks the record: the image is already attached to the
         // ticket, so one toast and the agent carries on writing.
@@ -151,7 +133,7 @@ export function SupportAssistDisplay({
             variant="secondary"
             size="sm"
             loading={suggest.isPending}
-            disabled={!canDraft}
+            disabled={suggest.isPending}
             onClick={run}
             icon={<Sparkles className="h-3.5 w-3.5" />}
           >
@@ -159,13 +141,6 @@ export function SupportAssistDisplay({
           </Button>
         ) : null}
       </div>
-
-      {!canDraft ? (
-        <p className="text-role-caption text-text-faint">
-          No customer message or photo on this ticket yet, so there is nothing to draft a reply
-          to. Paste an image anywhere on the ticket and a draft is prepared from it.
-        </p>
-      ) : null}
 
       {photoIds.length && !result && !suggest.isPending ? (
         <p className="inline-flex items-center gap-1.5 text-role-caption text-text-soft">

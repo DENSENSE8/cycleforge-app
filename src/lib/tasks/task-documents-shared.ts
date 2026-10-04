@@ -18,6 +18,11 @@ export interface TaskDocumentMeta {
   /** Bytes of the stored text (`upload`), or of the file when last listed (`repo`); null when the file is gone. */
   sizeBytes: number | null;
   createdAt: string;
+  /**
+   * `updated_at` at full microsecond precision (built in SQL, not via JS Date)
+   * — the optimistic-concurrency token a PATCH sends back as `expectedUpdatedAt`.
+   */
+  updatedAt: string;
   createdBy: { id: number; name: string } | null;
 }
 
@@ -42,6 +47,17 @@ export type TaskDocumentCreateBody =
   | { source: 'upload'; title: string; content: string }
   | { source: 'repo'; path: string };
 
+/**
+ * `PATCH /api/tasks/[id]/documents?docId=` body — rewrite an `upload` in place.
+ * `expectedUpdatedAt` is the `updatedAt` the editor loaded; a different stored
+ * value means someone saved in between → 409 `stale_document`, nothing lands.
+ */
+export interface TaskDocumentPatchBody {
+  title?: string;
+  content?: string;
+  expectedUpdatedAt: string;
+}
+
 /** One linkable plan file — `GET /api/tasks/plan-files?q=`. */
 export interface PlanFileEntry {
   path: string;
@@ -63,4 +79,6 @@ export const TASK_DOCUMENT_REFUSAL_COPY: Readonly<Record<string, string>> = {
   file_not_found: 'That plan file does not exist.',
   content_too_long: 'That document is too long to attach — link it as a plan file instead.',
   empty_content: 'That document is empty.',
+  stale_document: 'Someone saved this document after you opened it. Copy your text, reload, and apply it again.',
+  not_editable: 'A linked plan file is edited in the codebase, not here.',
 };

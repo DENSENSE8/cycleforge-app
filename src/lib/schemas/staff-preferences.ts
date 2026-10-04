@@ -42,38 +42,6 @@ export type { StaffTheme, StaffStationDepth, StaffStationSkin, TimeFormat };
 import { MAX_PINS } from '@/lib/quick-access/types';
 import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
 
-/** ISO day-range filter — `null` clears it. Shared by board + per-lane prefs. */
-const BOARD_RANGE = z
-  .object({
-    from: z.string().nullable().optional(),
-    to: z.string().nullable().optional(),
-  })
-  .strict();
-
-/** Generic swimlane-board prefs — one shape reused by every board surface (Unshipped, Shipped, …) via {@link SwimlaneBoard}. */
-const BOARD_LANE_PREF = z
-  .object({
-    sort: z.string().max(40).optional(),
-    expanded: z.boolean().optional(),
-    /** Drag-resized body height (px). `null` clears it; absent leaves it unchanged
-     *  — both snap back to the expanded/collapsed preset. */
-    height: z.number().int().positive().max(4000).nullable().optional(),
-    /** Per-lane date-range filter (each table header owns its own picker). */
-    range: BOARD_RANGE.nullable().optional(),
-  })
-  .strict();
-
-const BOARD_PREFS = z
-  .object({
-    columns: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
-    /** Drag-reordered lane order (lane ids). Unknown/missing ids fall back to the
-     *  board's canonical order on hydrate, so a partial list is safe. */
-    order: z.array(z.string().max(40)).optional(),
-    range: BOARD_RANGE.nullable().optional(),
-    lanes: z.record(z.string().max(40), BOARD_LANE_PREF).optional(),
-  })
-  .strict();
-
 /**
  * Header pin stations — ordered bookmarks with display label + exact href
  * (path + search). Mirrored to localStorage `cf.quickAccess` for flash-free
@@ -166,10 +134,6 @@ export const StaffPreferencesPutBody = z
      * parse-compat reason as `lastSeenProductUpdateId`.
      */
     lastSeenBuildSha: z.string().nullable().optional(),
-    /** Per-board swimlane prefs. One generic shape ({@link BOARD_PREFS}) per
-     *  surface; add a key here when a new board surface ships. */
-    unshippedBoard: BOARD_PREFS.nullable().optional(),
-    shippedBoard: BOARD_PREFS.nullable().optional(),
     /** Per-staff list-table column config, keyed by TableId. */
     tableColumns: z
       .record(
@@ -281,6 +245,11 @@ export const StaffPreferencesPutBody = z
       .max(UNBOX_PINNED_EXTRA_TABS_MAX)
       .nullable()
       .optional(),
+    /**
+     * Triage list density per surface key (`useTriageDensity`): `card` = Full,
+     * `row` = Compact. Shallow JSONB merge — writers send the whole map.
+     */
+    triageDensity: z.record(z.string().max(64), z.enum(['card', 'row'])).nullable().optional(),
   })
   .strict();
 

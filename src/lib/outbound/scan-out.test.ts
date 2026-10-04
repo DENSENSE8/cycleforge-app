@@ -46,6 +46,7 @@ interface Captured {
   mirrored: Parameters<ScanOutDeps['mirrorAllocations']>[];
   published: Parameters<ScanOutDeps['publishOrderChanged']>[];
   invalidated: string[];
+  unmatched: Parameters<ScanOutDeps['recordUnmatched']>[0][];
 }
 
 function fakes(opts: {
@@ -53,8 +54,10 @@ function fakes(opts: {
   ctx?: ScanOutContext;
   existing?: { createdAt: string } | null;
   mirrorThrows?: boolean;
+  /** What `recordUnmatched` returns: the held exception id, or null when the label cannot be held. */
+  unmatchedId?: number | null;
 } = {}) {
-  const cap: Captured = { created: [], audits: [], mirrored: [], published: [], invalidated: [] };
+  const cap: Captured = { created: [], audits: [], mirrored: [], published: [], invalidated: [], unmatched: [] };
   const deps: ScanOutDeps = {
     resolveShipment: async () => (opts.shipmentId === undefined ? 77 : opts.shipmentId),
     loadContext: async () => opts.ctx ?? context(),
@@ -78,6 +81,10 @@ function fakes(opts: {
     publishOrderChanged: async (...args) => {
       cap.published.push(args);
     },
+    recordUnmatched: async (p) => {
+      cap.unmatched.push(p);
+      return opts.unmatchedId === undefined ? 3371 : opts.unmatchedId;
+    },
   };
   return { deps, cap };
 }
@@ -95,12 +102,47 @@ function assertNoWrites(cap: Captured) {
   assert.equal(cap.audits.length, 0);
   assert.equal(cap.mirrored.length, 0);
   assert.equal(cap.published.length, 0);
+  assert.equal(cap.unmatched.length, 0);
 }
 
-test('unresolvable label is unmatched and writes nothing', async () => {
+test('an unresolvable label is held as an outbound unmatched scan and audited, with no scan-out', async () => {
   const { deps, cap } = fakes({ shipmentId: null });
-  assert.deepEqual(await scanOutLabel(bulk, deps), { kind: 'unmatched' });
-  assertNoWrites(cap);
+  const reqCtx = { organizationId: ORG, staffId: 5 } as unknown as ScanOutAuditRequest['ctx'];
+  const out = await scanOutLabel(
+    { ...bulk, scan: 'X-UNKNOWN-1', origin: 'dock', actorStaffId: 8, auditRequest: { ctx: reqCtx, req: null } },
+    deps,
+  );
+
+  assert.deepEqual(out, { kind: 'unmatched', exceptionId: 3371 });
+  assert.deepEqual(cap.unmatched, [
+    { organizationId: ORG, scan: 'X-UNKNOWN-1', staffId: 8, notes: 'Scanned out at dock — no matching shipment' },
+  ]);
+  assert.equal(cap.audits.length, 1);
+  const [auditCtx, , audit] = cap.audits[0];
+  assert.equal(auditCtx, reqCtx);
+  assert.equal(audit.action, AUDIT_ACTION.SHIP_CONFIRM_UNMATCHED);
+  assert.equal(audit.entityId, '3371');
+  assert.equal(audit.actorStaffIdOverride, 8);
+  assert.equal(audit.organizationIdOverride, ORG);
+  assert.equal(cap.created.length, 0);
+  assert.equal(cap.mirrored.length, 0);
+  assert.equal(cap.published.length, 0);
+});
+
+test('a re-scanned miss returns the same held exception (the dep upserts one open row)', async () => {
+  const { deps, cap } = fakes({ shipmentId: null });
+  const first = await scanOutLabel({ ...bulk, origin: 'phone' }, deps);
+  const again = await scanOutLabel({ ...bulk, origin: 'phone' }, deps);
+  assert.deepEqual(first, again);
+  assert.equal(cap.unmatched[1]?.notes, 'Scanned out on phone — no matching shipment');
+});
+
+test('a miss that cannot be held is unmatched with no exception and no audit', async () => {
+  const { deps, cap } = fakes({ shipmentId: null, unmatchedId: null });
+  assert.deepEqual(await scanOutLabel(bulk, deps), { kind: 'unmatched', exceptionId: null });
+  assert.equal(cap.unmatched.length, 1);
+  assert.equal(cap.audits.length, 0);
+  assert.equal(cap.created.length, 0);
 });
 
 test('bulk known-shipment scan-out never re-resolves a legacy tracking value', async () => {
@@ -186,6 +228,7 @@ test('bulk origin writes SHIP_CONFIRM + system audit attributed to the actor and
   assert.deepEqual(cap.mirrored, [[ORG, { packerLogId: 9001, shipmentId: 77, actorStaffId: 1 }]]);
   assert.deepEqual(cap.published, [[ORG, 501]]);
   assert.deepEqual(cap.invalidated, [ORG]);
+  assert.equal(cap.unmatched.length, 0);
 });
 
 test('desk selection threads the request ctx into the audit and flags the event; a failing mirror does not fail the scan', async () => {
@@ -230,6 +273,28 @@ test('phone scan-out records resolver correlation and the canonical subject', as
     subject_id: '501',
     subject_identifier: 'A-1',
   });
+});
+
+test('a replayed dock miss records the scan-out though never pack-scanned, as its scanner at its instant', async () => {
+  const { deps, cap } = fakes({ ctx: context({}, { isPacked: false }) });
+  const out = await scanOutKnownShipment(
+    { ...bulk, origin: 'resolved-miss', actorStaffId: 8, createdAt: '2026-10-01 14:05:09', heldExceptionId: 3371, shipmentId: 77 },
+    deps,
+  );
+  assert.equal(out.kind, 'confirmed');
+  assert.equal(cap.created[0]?.staffId, 8);
+  assert.equal(cap.created[0]?.createdAt, '2026-10-01 14:05:09');
+  assert.equal(cap.created[0]?.metadata.source, 'unmatched-scan-out-replay');
+  assert.equal(cap.created[0]?.metadata.orders_exception_id, 3371);
+  assert.equal(cap.audits[0]?.[2].method, 'system');
+  assert.equal(cap.unmatched.length, 0);
+});
+
+test('a replayed dock miss on a cancelled order is still refused', async () => {
+  const { deps, cap } = fakes({ ctx: context({ orderStatus: 'cancelled' }, { isPacked: false }) });
+  const out = await scanOutKnownShipment({ ...bulk, origin: 'resolved-miss', shipmentId: 77 }, deps);
+  assert.equal(out.kind === 'blocked' && out.blockReason, 'cancelled');
+  assertNoWrites(cap);
 });
 
 test('scan-out preconditions name cancellation and missing pack records', () => {

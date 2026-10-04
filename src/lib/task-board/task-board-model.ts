@@ -34,7 +34,7 @@ import {
   type TaskDeskRow,
   type TaskDeskStatus,
 } from '@/lib/tasks/task-desk-row';
-import { isTaskHold, type TaskStatus } from '@/design-system/tokens/task-status';
+import { TASK_STATUSES, TASK_STATUS_FACE, isTaskHold, type TaskStatus } from '@/design-system/tokens/task-status';
 import { taskStatusOf } from '@/lib/tasks/task-status';
 import type { TaskTimelineKind } from '@/lib/tasks/task-timeline';
 
@@ -336,22 +336,206 @@ export function taskBoardActionMs(row: Pick<TaskBoardRow, 'dueMs' | 'nextFollowU
   return Math.min(row.dueMs, row.nextFollowUpMs);
 }
 
+/** The default order's key, open/closed aside: urgent first, then soonest action (none sinks), then the newest handoff. */
+function compareTaskBoardUrgency(a: TaskBoardRow, b: TaskBoardRow): number {
+  if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+  const ad = taskBoardActionMs(a) ?? Number.POSITIVE_INFINITY;
+  const bd = taskBoardActionMs(b) ?? Number.POSITIVE_INFINITY;
+  if (ad !== bd) return ad - bd;
+  return b.createdMs - a.createdMs;
+}
+
 /**
  * Board order: open before closed; then urgent; then soonest action first —
  * due or next follow-up, whichever comes first (none sinks); then the newest
  * handoff.
  */
 export function sortTaskBoardRows(rows: readonly TaskBoardRow[]): TaskBoardRow[] {
+  return sortTaskBoardRowsBy(rows, 'urgency');
+}
+
+// ── display options (`?group=` · `?sort=`) ─────────────────────────────────
+// P3 (Linear display options): Group by and Order by are two separate
+// controls, remembered per staffer. Grouping never re-sorts: every group
+// keeps the order its rows arrived in.
+
+export const TASK_BOARD_GROUP_BYS = ['type', 'status', 'urgency', 'project', 'none'] as const;
+export type TaskBoardGroupBy = (typeof TASK_BOARD_GROUP_BYS)[number];
+
+export const TASK_BOARD_GROUP_BY_LABEL: Readonly<Record<TaskBoardGroupBy, string>> = {
+  type: 'Type',
+  status: 'Status',
+  urgency: 'Urgency',
+  project: 'Project',
+  none: 'No grouping',
+};
+
+export const TASK_BOARD_SORTS = ['urgency', 'due', 'status', 'newest'] as const;
+export type TaskBoardSort = (typeof TASK_BOARD_SORTS)[number];
+
+export const TASK_BOARD_SORT_LABEL: Readonly<Record<TaskBoardSort, string>> = {
+  urgency: 'Urgency',
+  due: 'Due date',
+  status: 'Status',
+  newest: 'Newest',
+};
+
+/** `?group=` → grouping; null when absent or unknown (the staffer's remembered choice applies). */
+export function parseTaskBoardGroupBy(raw: unknown): TaskBoardGroupBy | null {
+  return typeof raw === 'string' && (TASK_BOARD_GROUP_BYS as readonly string[]).includes(raw) ? (raw as TaskBoardGroupBy) : null;
+}
+
+/** `?sort=` → order; null when absent or unknown (the staffer's remembered choice applies). */
+export function parseTaskBoardSort(raw: unknown): TaskBoardSort | null {
+  return typeof raw === 'string' && (TASK_BOARD_SORTS as readonly string[]).includes(raw) ? (raw as TaskBoardSort) : null;
+}
+
+/** The row's ONE status: a task's own, a checklist item's To do / Done. */
+export function taskBoardRowStatus(row: Pick<TaskBoardRow, 'taskStatus' | 'done'>): TaskStatus {
+  return row.taskStatus ?? (row.done ? 'DONE' : 'TODO');
+}
+
+const STATUS_RANK: Readonly<Record<TaskStatus, number>> = Object.fromEntries(
+  TASK_STATUSES.map((status, index) => [status, index]),
+) as Record<TaskStatus, number>;
+
+const SORT_KEY: Readonly<Record<TaskBoardSort, (a: TaskBoardRow, b: TaskBoardRow) => number>> = {
+  urgency: () => 0,
+  // Undated rows sink; two undated rows tie (never Infinity − Infinity = NaN).
+  due: (a, b) => (a.dueMs === b.dueMs ? 0 : a.dueMs == null ? 1 : b.dueMs == null ? -1 : a.dueMs - b.dueMs),
+  status: (a, b) => STATUS_RANK[taskBoardRowStatus(a)] - STATUS_RANK[taskBoardRowStatus(b)],
+  newest: (a, b) => b.createdMs - a.createdMs,
+};
+
+/**
+ * Order by: closed rows always sink (the board's rule), then the chosen key,
+ * then the urgency order as the tiebreak. `urgency` = urgent first, then the
+ * soonest action (P3: important-and-due first) — `sortTaskBoardRows`.
+ */
+export function sortTaskBoardRowsBy(rows: readonly TaskBoardRow[], sort: TaskBoardSort): TaskBoardRow[] {
+  const key = SORT_KEY[sort];
   return [...rows].sort((a, b) => {
     const ao = isTaskBoardOpen(a);
     const bo = isTaskBoardOpen(b);
     if (ao !== bo) return ao ? -1 : 1;
-    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-    const ad = taskBoardActionMs(a) ?? Number.POSITIVE_INFINITY;
-    const bd = taskBoardActionMs(b) ?? Number.POSITIVE_INFINITY;
-    if (ad !== bd) return ad - bd;
-    return b.createdMs - a.createdMs;
+    return key(a, b) || compareTaskBoardUrgency(a, b);
   });
+}
+
+/** Urgency is time (P3, Eisenhower): Overdue · Today · Tomorrow · This week · Later · No date; finished work is Closed. */
+export const TASK_BOARD_URGENCIES = ['overdue', 'today', 'tomorrow', 'week', 'later', 'none', 'closed'] as const;
+export type TaskBoardUrgency = (typeof TASK_BOARD_URGENCIES)[number];
+
+export const TASK_BOARD_URGENCY_LABEL: Readonly<Record<TaskBoardUrgency, string>> = {
+  overdue: 'Overdue',
+  today: 'Today',
+  tomorrow: 'Tomorrow',
+  week: 'This week',
+  later: 'Later',
+  none: 'No date',
+  closed: 'Closed',
+};
+
+/**
+ * The row's urgency bucket, on warehouse civil dates (never UTC): past its
+ * due instant = Overdue; else by the due's Pacific day against today's.
+ * "This week" = the next seven days, the same horizon the due face prints a
+ * weekday for. A closed row is never overdue.
+ */
+export function taskBoardUrgency(row: Pick<TaskBoardRow, 'dueMs' | 'done' | 'status'>, nowMs: number): TaskBoardUrgency {
+  if (!isTaskBoardOpen(row)) return 'closed';
+  if (row.dueMs == null) return 'none';
+  if (row.dueMs < nowMs) return 'overdue';
+  // `diffDaysDateKey(a, b)` is b − a: today → due, positive ahead.
+  const days = diffDaysDateKey(toPSTDateKey(new Date(nowMs)), toPSTDateKey(new Date(row.dueMs))) ?? 0;
+  if (days <= 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  return days < 7 ? 'week' : 'later';
+}
+
+/** One group of the list: the heading's facts and its rows, in arrival order. */
+export interface TaskBoardGroup {
+  key: string;
+  label: string;
+  /** group=type — the heading wears the type's glyph and ink. */
+  type?: TaskBoardRowType;
+  /** group=status — the heading wears the status pill. */
+  status?: TaskStatus;
+  /** group=urgency — the heading wears the due inks. */
+  urgency?: TaskBoardUrgency;
+  /** group=project — the project name; null on the No project group. */
+  project?: string | null;
+  rows: TaskBoardRow[];
+}
+
+/** Type group headings: the sidebar's names, except the ticket group reads as the work it is. */
+const TYPE_GROUP_LABEL: Readonly<Record<TaskBoardRowType, string>> = {
+  ...TASK_BOARD_VIEW_LABEL,
+  ticket: 'Support follow-ups',
+};
+
+function bucketed<K extends string>(
+  rows: readonly TaskBoardRow[],
+  order: readonly K[],
+  keyOf: (row: TaskBoardRow) => K,
+  face: (key: K) => Omit<TaskBoardGroup, 'rows'>,
+): TaskBoardGroup[] {
+  const byKey = new Map<K, TaskBoardRow[]>();
+  for (const row of rows) {
+    const key = keyOf(row);
+    const bucket = byKey.get(key);
+    if (bucket) bucket.push(row);
+    else byKey.set(key, [row]);
+  }
+  return order.flatMap((key) => {
+    const bucket = byKey.get(key);
+    return bucket ? [{ ...face(key), rows: bucket }] : [];
+  });
+}
+
+/**
+ * Group by: ordered groups over already-ordered rows; empty groups drop.
+ * Type in board order (checklist · Support follow-ups · Long-term projects ·
+ * Standalone tasks); status in `TASK_STATUSES` order; urgency in time order;
+ * project busiest first, then No project; none = one group.
+ */
+export function taskBoardGroups(rows: readonly TaskBoardRow[], group: TaskBoardGroupBy, nowMs: number): TaskBoardGroup[] {
+  switch (group) {
+    case 'none':
+      return rows.length > 0 ? [{ key: 'all', label: 'Tasks', rows: [...rows] }] : [];
+    case 'type':
+      return bucketed(rows, TASK_BOARD_ROW_TYPES, taskBoardRowType, (type) => ({ key: `type:${type}`, label: TYPE_GROUP_LABEL[type], type }));
+    case 'status':
+      return bucketed(rows, TASK_STATUSES, taskBoardRowStatus, (status) => ({
+        key: `status:${status}`,
+        label: TASK_STATUS_FACE[status].label,
+        status,
+      }));
+    case 'urgency':
+      return bucketed(
+        rows,
+        TASK_BOARD_URGENCIES,
+        (row) => taskBoardUrgency(row, nowMs),
+        (urgency) => ({ key: `urgency:${urgency}`, label: TASK_BOARD_URGENCY_LABEL[urgency], urgency }),
+      );
+    case 'project': {
+      const names = taskBoardProjects(rows).map((project) => project.name);
+      const seen = new Set(names);
+      for (const row of rows) {
+        if (row.project && !seen.has(row.project)) {
+          seen.add(row.project);
+          names.push(row.project);
+        }
+      }
+      names.push('');
+      return bucketed(
+        rows,
+        names,
+        (row) => row.project ?? '',
+        (name) => ({ key: `project:${name}`, label: name || 'No project', project: name || null }),
+      );
+    }
+  }
 }
 
 // ── filtering ──────────────────────────────────────────────────────────────
@@ -493,7 +677,8 @@ export function taskBoardDueFace(dueMs: number | null, nowMs: number): { label: 
   if (dueMs == null) return null;
   const today = toPSTDateKey(new Date(nowMs));
   const dueKey = toPSTDateKey(new Date(dueMs));
-  const days = diffDaysDateKey(dueKey, today) ?? 0;
+  // `diffDaysDateKey(a, b)` is b − a: today → due, positive ahead (the weekday face holds for the next 7 days only).
+  const days = diffDaysDateKey(today, dueKey) ?? 0;
   const time = new Date(dueMs).toLocaleTimeString('en-US', {
     timeZone: 'America/Los_Angeles',
     hour: 'numeric',

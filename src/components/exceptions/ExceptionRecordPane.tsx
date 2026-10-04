@@ -15,11 +15,13 @@ import { PaperworkResolver } from './resolvers/PaperworkResolver';
 import { ShortResolver } from './resolvers/ShortResolver';
 import { TrackingResolver } from './resolvers/TrackingResolver';
 import { UnfoundResolver } from './resolvers/UnfoundResolver';
+import { UnmatchedResolver } from './resolvers/UnmatchedResolver';
 
 /**
- * The open exception: left, its ONE resolver (per kind, in place — no
- * resolver navigates away); right, what made it an exception. A resolved
- * exception leaves the list and its record says so.
+ * The open exception: left, its ONE resolver (per kind, in place — only
+ * Unmatched scans opens its owning desk, Fulfilled's unmatched view); right,
+ * what made it an exception. A resolved exception leaves the list and its
+ * record says so.
  */
 export function ExceptionRecordPane({ recordKey }: { recordKey: string }) {
   const record = useException(recordKey);
@@ -70,6 +72,8 @@ function resolverFor(record: ExceptionRecordResponse): ReactNode {
       return <BinsResolver row={row} facts={facts} />;
     case 'tracking':
       return <TrackingResolver row={row} facts={facts} />;
+    case 'unmatched':
+      return <UnmatchedResolver row={row} facts={facts} />;
     case 'claim':
       return <ClaimResolver row={row} facts={facts} />;
     case 'short':

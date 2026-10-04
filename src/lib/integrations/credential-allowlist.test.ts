@@ -6,7 +6,9 @@ import { requireCredentialPermission, CredentialPermissionError } from './creden
 
 test('allowlisted Zoho operations pass', () => {
   assert.equal(isOperationAllowed('zoho', 'purchaseorders.read'), true);
-  assert.equal(isOperationAllowed('zoho', 'invoices.write'), true);
+  assert.equal(isOperationAllowed('zoho', 'purchasereceives.write'), true);
+  // The outbound sales-order/fulfillment push was retired; its ops are denied.
+  assert.equal(isOperationAllowed('zoho', 'invoices.write' as never), false);
 });
 
 test('non-allowlisted Zoho operation is denied (deny-by-default)', () => {

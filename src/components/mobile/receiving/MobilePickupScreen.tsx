@@ -13,7 +13,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Camera, ChevronRight } from '@/components/Icons';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { pickupCardModel, pickupOrderRecords, type PickupCardModel } from '@/lib/receiving/pickup/pickup-card-model';
 import { usePickupLines } from '@/lib/receiving/pickup/pickup-lines';
 import { pickupRecordModel } from '@/lib/receiving/pickup/pickup-record-model';
@@ -74,7 +74,7 @@ export function MobilePickupScreen() {
   if (openId != null) {
     return (
       <div className="flex min-h-full flex-col" data-testid="mobile-pickup-record">
-        <MobileDetailTopBar title={open?.identity ?? `LCPU-${openId}`} mono subtitle="Local pickup" meta={open?.customer ?? undefined} backHref={pathname} />
+        <MobileV2DetailTopBar title={open?.identity ?? `LCPU-${openId}`} mono subtitle="Local pickup" meta={open?.customer ?? undefined} backHref={pathname} />
         {slot ? (
           <div className="@container flex min-w-0 flex-1 flex-col">
             <div className="flex min-w-0 flex-col gap-2 border-b border-border-hairline px-4 py-2">
@@ -92,7 +92,7 @@ export function MobilePickupScreen() {
 
   return (
     <div className="flex min-h-full flex-col" data-testid="mobile-pickup-list">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         title="Local pickups"
         subtitle={isLoading ? 'Loading…' : `${orders.length} pickups`}
         backHref="/m/receiving"

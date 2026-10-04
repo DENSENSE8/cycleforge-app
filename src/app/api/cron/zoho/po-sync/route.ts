@@ -73,14 +73,13 @@ export async function GET(req: NextRequest) {
       );
 
       // Aggregate.
-      const totals = { pages: 0, fetched: 0, upserted: 0, reconciled: 0, autoResolved: 0 };
+      const totals = { pages: 0, fetched: 0, upserted: 0, autoResolved: 0 };
       const errors: string[] = [];
       for (const r of perOrg) {
         if (r.ok && r.result) {
           totals.pages += r.result.report.pages;
           totals.fetched += r.result.report.fetched;
           totals.upserted += r.result.report.upserted;
-          totals.reconciled += r.result.report.reconciled;
           totals.autoResolved += r.result.autoResolved;
           if (errors.length < 25) errors.push(...r.result.report.errors);
         } else if (errors.length < 25) {
@@ -114,7 +113,6 @@ export async function GET(req: NextRequest) {
       pages: summary.pages,
       fetched: summary.fetched,
       upserted: summary.upserted,
-      lines_marked_received: summary.reconciled,
     },
     autoResolved: summary.autoResolved,
     errors: summary.errors.slice(0, 25),

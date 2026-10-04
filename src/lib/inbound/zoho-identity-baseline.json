@@ -11,7 +11,6 @@
     "src/app/api/receiving-lines/route.ts",
     "src/app/api/receiving/[id]/route.ts",
     "src/app/api/receiving/lookup-po/route.ts",
-    "src/app/api/receiving/mark-received/route.ts",
     "src/app/api/receiving/match/route.ts",
     "src/app/api/receiving/pending-check/route.ts",
     "src/app/api/receiving/po-search/route.ts",
@@ -21,7 +20,6 @@
     "src/app/api/shipped/scan-out/route.ts",
     "src/app/api/sku-catalog/search/route.ts",
     "src/app/api/zoho/items/[id]/image/route.ts",
-    "src/app/api/zoho/purchase-orders/receive/route.ts",
     "src/app/m/(immersive)/r/[id]/photos/page.tsx",
     "src/components/admin/workflow/operations-catalog.ts",
     "src/components/outbound/orders/oos/OosProductCombobox.tsx",
@@ -92,7 +90,6 @@
     "src/lib/vision-identify.ts",
     "src/lib/zoho-receiving-sync.ts",
     "src/services/InventorySyncService.ts",
-    "src/services/OrderSyncService.ts",
     "src/types/orders.ts"
   ]
 }

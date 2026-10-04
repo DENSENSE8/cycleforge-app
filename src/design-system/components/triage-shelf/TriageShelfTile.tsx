@@ -8,12 +8,13 @@
  *
  * `option` — the tile is a row of a find listbox (↑/↓ + Enter from the field):
  * the `<li>` is the option (`id` for `aria-activedescendant`), the button is out
- * of the tab order, and `active` paints the highlight. Without it the tile is a
+ * of the tab order, and `active` paints the highlight; Enter (↵) rides the
+ * tile's hover tooltip, never painted on the card. Without it the tile is a
  * plain grid cell with a focusable button.
  */
 
 import { Package } from '@/components/Icons';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import {
@@ -62,6 +63,7 @@ export function TriageShelfTile({ title, imageUrl, price, sku, availability, tag
       className={TRIAGE_SHELF_CELL}
     >
       {/* ds-raw-button: the shelf tile — photo + caption card, not a Button shape */}
+      <HoverTooltip asChild focusable={false} label="Add to cart" shortcut="↵" disabled={!option}>
       <button
         type="button"
         tabIndex={option ? -1 : undefined}
@@ -105,15 +107,15 @@ export function TriageShelfTile({ title, imageUrl, price, sku, availability, tag
             <span className={price ? TRIAGE_SHELF_PRICE : cn(TRIAGE_SHELF_META, 'text-role-caption')}>{price ?? '—'}</span>
             {sku ? <span className={cn('max-w-[55%] truncate text-right', TRIAGE_SHELF_META)}>{sku}</span> : null}
           </div>
-          {availability || tag || option?.active ? (
+          {availability || tag ? (
             <span className={cn('flex items-center justify-between gap-1', TRIAGE_SHELF_META)}>
               <span className="truncate">{availability}</span>
               {tag ? <span className={TRIAGE_SHELF_TAG}>{tag}</span> : null}
-              {option?.active ? <KeyboardKey size="xs">↵</KeyboardKey> : null}
             </span>
           ) : null}
         </div>
       </button>
+      </HoverTooltip>
     </li>
   );
 }

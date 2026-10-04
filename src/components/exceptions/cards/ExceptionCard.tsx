@@ -38,7 +38,7 @@ const ENTITY_LABEL: Readonly<Record<ExceptionEntityType, string>> = {
 };
 
 /** Quick look (Space): what the face leaves out — the kind's rule, the entity's type, the full raised stamp. */
-function ExceptionCardPeek({ row }: { row: ExceptionRow }) {
+export function ExceptionCardPeek({ row }: { row: ExceptionRow }) {
   const kind = EXCEPTION_KIND_SPEC[row.kind];
   const facts: [string, string | null][] = [
     ['Kind', kind.label],
@@ -92,6 +92,7 @@ export const ExceptionCard = memo(function ExceptionCard({
   const record = useMemo(() => exceptionRecordCard(model, showKind, channel), [model, showKind, channel]);
   return (
     <RecordCard
+      view={EXCEPTIONS_VIEW}
       model={record}
       factColumns={EXCEPTIONS_VIEW.facts}
       testIdPrefix={EXCEPTIONS_VIEW.testIdPrefix}
@@ -109,7 +110,7 @@ export const ExceptionCard = memo(function ExceptionCard({
         role: 'identity',
         content: row.entity.type === 'order' ? (
           // The order number wears the Allocate card's chip: click copies it.
-          <OrderIdChip value={row.entity.label} display={row.entity.label} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
+          <OrderIdChip value={row.entity.label} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
         ) : (
           <span className="truncate" title={`${ENTITY_LABEL[row.entity.type]} ${row.entity.label}`}>
             {row.entity.label}

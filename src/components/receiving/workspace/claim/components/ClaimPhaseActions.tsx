@@ -1,40 +1,27 @@
 import type { ReactNode } from 'react';
 import { Copy, Link2, Loader2 } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button, FlushTerminalFooter } from '@/design-system/primitives';
+import { Button, FloatingActionFooter } from '@/design-system/primitives';
+import { FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import type { ReceivingClaimController } from '../hooks/useReceivingClaimController';
 import { ClaimBackupStep } from './ClaimBackupStep';
 
 function ActionsRow({
   children,
-  sticky,
   leading,
 }: {
   children: ReactNode;
-  sticky?: boolean;
   /** Left-side context (e.g. backup note beside File / Update). */
   leading?: ReactNode;
 }) {
-  if (sticky) {
-    return (
-      <FlushTerminalFooter
-        layout="cluster"
-        leading={leading}
-        data-testid="claim-phase-actions"
-      >
-        {children}
-      </FlushTerminalFooter>
-    );
-  }
   return (
-    <div
-      className="flex items-stretch justify-end gap-0 pt-0"
+    <FloatingActionFooter
+      layout="cluster"
+      leading={leading}
       data-testid="claim-phase-actions"
     >
-      <div className="flex shrink-0 items-stretch justify-end gap-0 [&_button]:h-full [&_button]:min-h-9">
-        {children}
-      </div>
-    </div>
+      {children}
+    </FloatingActionFooter>
   );
 }
 
@@ -46,6 +33,7 @@ function SellerActions({ c }: { c: ReceivingClaimController }) {
         type="button"
         variant="secondary"
         size="md"
+        className={FLOATING_ACTION_DISABLED_FACE}
         disabled={!seller.sellerMessage.trim()}
         onClick={() => void seller.handleCopySellerMessage()}
         icon={<Copy className="h-4 w-4" />}
@@ -56,6 +44,8 @@ function SellerActions({ c }: { c: ReceivingClaimController }) {
         type="button"
         variant="primary"
         size="md"
+        depth
+        className={FLOATING_ACTION_DISABLED_FACE}
         onClick={() => void seller.finishSellerStep()}
         disabled={
           seller.aiLoading ||
@@ -86,20 +76,15 @@ function resolveClaimFooterPhase(c: ReceivingClaimController): ClaimPhase | null
   return 'filed';
 }
 
-/**
- * Phase primary CTAs — sticky footer (default) or inline. No Cancel;
- * dismiss via header X / Displays →|.
- */
+/** Phase primary CTAs on the floating footer. No Cancel; dismiss via header X / Displays →|. */
 function ClaimPhaseActions({
   c,
   phase,
   onContinueToSeller,
-  sticky = false,
 }: {
   c: ReceivingClaimController;
   phase: ClaimPhase;
   onContinueToSeller?: () => void;
-  sticky?: boolean;
 }) {
   const { search } = c;
   const isCreate = c.mode === 'create';
@@ -115,6 +100,8 @@ function ClaimPhaseActions({
           type="button"
           variant="danger"
           size="md"
+          depth
+          className={FLOATING_ACTION_DISABLED_FACE}
           onClick={c.submitInternal}
           disabled={fileDisabled}
           icon={
@@ -133,7 +120,7 @@ function ClaimPhaseActions({
         </Button>
       );
       return (
-        <ActionsRow sticky={sticky} leading={backupLeading}>
+        <ActionsRow leading={backupLeading}>
           <HoverTooltip
             label="Add a subject and body first"
             asChild
@@ -158,6 +145,8 @@ function ClaimPhaseActions({
         type="button"
         variant={search.selectedTicket ? 'danger' : 'primary'}
         size="md"
+        depth
+        className={FLOATING_ACTION_DISABLED_FACE}
         onClick={() => void c.submitLinkAndUpdate()}
         disabled={linkDisabled}
         icon={
@@ -183,7 +172,7 @@ function ClaimPhaseActions({
         ? 'Add a subject and body first'
         : '';
     return (
-      <ActionsRow sticky={sticky} leading={backupLeading}>
+      <ActionsRow leading={backupLeading}>
         <HoverTooltip label={tip || 'Link & send'} asChild disabled={!tip}>
           {linkButton}
         </HoverTooltip>
@@ -194,11 +183,12 @@ function ClaimPhaseActions({
   if (phase === 'filed') {
     if (c.sellerStepApplicable) {
       return (
-        <ActionsRow sticky={sticky}>
+        <ActionsRow>
           <Button
             type="button"
             variant="primary"
             size="md"
+            depth
             onClick={() => {
               c.continueToSeller();
               onContinueToSeller?.();
@@ -210,8 +200,8 @@ function ClaimPhaseActions({
       );
     }
     return (
-      <ActionsRow sticky={sticky}>
-        <Button type="button" variant="primary" size="md" onClick={c.onClose}>
+      <ActionsRow>
+        <Button type="button" variant="primary" size="md" depth onClick={c.onClose}>
           Done
         </Button>
       </ActionsRow>
@@ -219,13 +209,13 @@ function ClaimPhaseActions({
   }
 
   return (
-    <ActionsRow sticky={sticky}>
+    <ActionsRow>
       <SellerActions c={c} />
     </ActionsRow>
   );
 }
 
-/** Sticky footer — backup note (ticket phase) + phase CTA (no Cancel). */
+/** Floating footer — backup note (ticket phase) + phase CTA (no Cancel). */
 export function ClaimActionFooter({
   c,
   onContinueToSeller,
@@ -239,7 +229,6 @@ export function ClaimActionFooter({
     <ClaimPhaseActions
       c={c}
       phase={phase}
-      sticky
       onContinueToSeller={onContinueToSeller}
     />
   );

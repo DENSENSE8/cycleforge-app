@@ -302,6 +302,7 @@ describe('postCsvOrderImport', () => {
           updated: 0,
           skipped: 0,
           errors: [],
+          resolvedExceptions: 2,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       )) as typeof fetch;
@@ -310,7 +311,7 @@ describe('postCsvOrderImport', () => {
       const result = await postCsvOrderImport({ rows: [], mapping: {} });
       assert.deepEqual(result, {
         ok: true,
-        result: { inserted: 1, insertedOrderIds: [42], updated: 0, skipped: 0, errors: [] },
+        result: { inserted: 1, insertedOrderIds: [42], updated: 0, skipped: 0, errors: [], resolvedExceptions: 2 },
       });
     } finally {
       globalThis.fetch = originalFetch;

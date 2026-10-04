@@ -42,7 +42,7 @@ interface UseBinsOverviewResult {
   counts: BinsOverviewCounts;
   loading: boolean;
   error: Error | null;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 }
 
 const EMPTY_COUNTS: BinsOverviewCounts = {

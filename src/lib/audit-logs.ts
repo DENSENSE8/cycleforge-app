@@ -81,6 +81,8 @@ export const AUDIT_ENTITY = {
   RECEIVING_LINE: 'receiving_line',
   /** An internal inbound order header (`inbound_order`). */
   INBOUND_ORDER: 'inbound_order',
+  /** A staff follow-up tag on pasted inbound numbers (`inbound_followups`); entityId = comma-joined canonical ref keys. */
+  INBOUND_FOLLOWUP: 'inbound_followup',
   // Incoming email worklist row (email_missing_purchase_orders to-do pile)
   EMAIL_MISSING_PO: 'email_missing_purchase_order',
   SERIAL_UNIT: 'serial_unit',
@@ -94,6 +96,8 @@ export const AUDIT_ENTITY = {
   ORDER_AMENDMENT: 'order_amendment',
   SKU_STOCK: 'sku_stock',
   BIN: 'bin',
+  /** Movable rack (`locations` row, location_kind RACK) — src/lib/locations/racks.ts. */
+  RACK: 'rack',
   SHIPMENT: 'shipment',
   ORDER: 'order',
   /** Hold-bucket row for unmatched outbound tracking (`orders_exceptions`). */
@@ -121,6 +125,8 @@ export const AUDIT_ENTITY = {
   ENTITY_THREAD: 'entity_thread',
   // Platform-agnostic support ticket registry row (support_tickets)
   SUPPORT_TICKET: 'support_ticket',
+  // What we sent the customer on a support ticket (support_ticket_items)
+  SUPPORT_TICKET_ITEM: 'support_ticket_item',
   STAFF_PREFERENCE: 'staff_preference',
   // Settings Registry — per-page org/staff configurable behavior (docs/settings-registry.md)
   SETTINGS: 'settings',
@@ -281,6 +287,10 @@ export const AUDIT_ACTION = {
    *  Zoho PO (incoming-todo Phase 4a) — records the PO# onto the
    *  email_missing_purchase_orders row and moves it to pile='done'. */
   RECEIVING_EMAIL_MATCHED:   'receiving.email.matched',
+  /** An operator tagged (need claim / double check / chasing seller / acknowledged)
+   *  or cleared pasted inbound numbers on the Incoming ledger (`inbound_followups`). */
+  INBOUND_FOLLOWUP_SET:      'inbound_followup.set',
+  INBOUND_FOLLOWUP_CLEAR:    'inbound_followup.clear',
   /** Per-staff rail dismiss / restore (universal-feed Phase 4) — writes/removes
    *  a staff_rail_exclusions row; hides an entity from THIS staffer's rail only
    *  (reversible, never a shared delete). */
@@ -295,6 +305,12 @@ export const AUDIT_ACTION = {
   BIN_MOVE:   'bin.move',
   BIN_SWAP:   'bin.swap',
   BIN_DELETE: 'bin.delete',
+  // Movable racks (src/lib/locations/racks.ts)
+  RACK_CREATE:        'rack.create',
+  RACK_MOVE:          'rack.move',
+  RACK_SHELVES_EDIT:  'rack.shelves.edit',
+  RACK_ADOPT:         'rack.adopt',
+  RACK_LABELS_PRINT:  'rack.labels.print',
   // Serial unit (scanner verbs)
   SERIAL_SCAN:   'serial.scan',
   SERIAL_CREATE: 'serial.create',
@@ -382,6 +398,14 @@ export const AUDIT_ACTION = {
   // (`work_assignment_documents`): uploaded text or a linked repo plan file.
   WORK_TASK_DOC_ADD:       'work_task.doc_add',
   WORK_TASK_DOC_REMOVE:    'work_task.doc_remove',
+  // An uploaded task document rewritten in place (title / markdown), guarded
+  // by its `updated_at` (stale writer → 409, nothing lands).
+  WORK_TASK_DOC_UPDATE:    'work_task.doc_update',
+  // A comment on a task document (entity_threads TASK_DOCUMENT thread; the
+  // quoted passage rides thread_messages.meta) posted / resolved / removed.
+  WORK_TASK_DOC_COMMENT_ADD:     'work_task.doc_comment_add',
+  WORK_TASK_DOC_COMMENT_RESOLVE: 'work_task.doc_comment_resolve',
+  WORK_TASK_DOC_COMMENT_REMOVE:  'work_task.doc_comment_remove',
   // A photo / video attached by URL to a thrown task (`work_assignment_media_links`):
   // YouTube / Vimeo / Loom / Drive or a direct https file — added, re-pointed or
   // re-titled, removed.
@@ -427,6 +451,9 @@ export const AUDIT_ACTION = {
   SUPPORT_TICKET_CREATE:   'support.ticket.create',
   // Minted the org's LOCAL mirror of a provider ticket (`support_tickets`) so a task could anchor to it.
   SUPPORT_TICKET_REGISTER: 'support.ticket.register',
+  // "Product sent to customer" logged on a ticket (support_ticket_items) / undone.
+  SUPPORT_TICKET_ITEM_ADD:    'support.ticket.item.add',
+  SUPPORT_TICKET_ITEM_REMOVE: 'support.ticket.item.remove',
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',
@@ -515,6 +542,8 @@ export const AUDIT_ACTION = {
   SKU_CATALOG_CREATE: 'sku_catalog.create',
   SKU_CATALOG_UPDATE: 'sku_catalog.update',
   SKU_CATALOG_DELETE: 'sku_catalog.delete',
+  // Products › Import products CSV: the batch of SKUs one import added (entityId = row count).
+  SKU_CATALOG_IMPORT: 'sku_catalog.import',
   // OCR local-pickup: item read off a label that isn't in the system yet was
   // flagged into the pending_skus "needs creating in Zoho" queue (P2-AI-01).
   SKU_CATALOG_FLAG_MISSING: 'sku_catalog.flag_missing',
@@ -667,6 +696,8 @@ export const AUDIT_ACTION = {
   SHIP_CONFIRM_SCAN: 'shipment.scan_out',
   /** Reversal of a scan-out. The commit is audited; so is taking it back. */
   SHIP_CONFIRM_UNDO: 'shipment.scan_out.undo',
+  /** A scan-out label matched no shipment — held as an open `outbound` orders_exception. */
+  SHIP_CONFIRM_UNMATCHED: 'shipment.scan_out.unmatched',
   // Bose Sourcing Engine — compatibility DB + alternative sourcing
   BOSE_MODEL_CREATE: 'bose_model.create',
   BOSE_MODEL_UPDATE: 'bose_model.update',

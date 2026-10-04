@@ -1,4 +1,3 @@
-import { deleteNasPhoto, isNasPhotoUrl } from '@/lib/nas-photos';
 import { photoContentUrl } from '@/lib/photos/display-url';
 import { buildPhotoZipDownloadUrl, triggerBrowserDownload } from '@/lib/photos/download-zip';
 import { safeZipDownloadBasename } from '@/lib/zip/safe-entry-name';
@@ -91,23 +90,6 @@ export function downloadPhotoZip(photoIds: number[], title?: string): void {
     console.warn('ZIP fetch download failed; falling back to navigation:', err);
     triggerBrowserDownload(url);
   });
-}
-
-/**
- * Delete a photo: remove the NAS-hosted original browser-direct over WebDAV
- * first (best-effort — a NAS failure still proceeds), then drop the DB row + any
- * Vercel-Blob files via the Vercel DELETE route. Throws if the DB delete fails.
- */
-export async function deletePhoto(photoId: number, url: string | undefined): Promise<void> {
-  if (url && isNasPhotoUrl(url)) {
-    const nasDel = await deleteNasPhoto(url);
-    if (!nasDel.ok) console.warn('NAS file delete failed:', nasDel.error);
-  }
-  const res = await fetch(`/api/photos/${photoId}`, { method: 'DELETE' });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body?.error || `HTTP ${res.status}`);
-  }
 }
 
 /** Move a receiving photo's primary link to another PO (carton). */

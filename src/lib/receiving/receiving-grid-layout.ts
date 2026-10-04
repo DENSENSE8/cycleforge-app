@@ -1,13 +1,5 @@
-/** Unbox / History / Testing spreadsheet column model — SoT for receiving-line LedgerGrid surfaces that are not Incoming POS. */
+/** Receiving-line sort vocabulary — the fact words Unbox, Docked, Unboxed and Incoming sort by (`?colsort=`). */
 
-import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
-import {
-  RECEIVING_FIELD_CATALOG,
-  RECEIVING_PRODUCT_LAYOUT,
-} from '@/lib/tables/field-catalog/receiving';
-import { materializeTracks, type DataTableColumnFields } from '@/lib/tables/materialize-tracks';
-import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import {
@@ -28,7 +20,7 @@ export type ReceivingGridColumnKey =
   | 'tracking'
   | 'serial'
   | 'zoho'
-  /** Compound (two-row) presentation tracks — see {@link RECEIVING_COMPOUND_COLUMNS}. */
+  /** Legacy two-row track names a saved `?colsort=` may still carry — sort as their fact word. */
   | 'thumb'
   | 'item'
   | 'fulfillment'
@@ -41,34 +33,6 @@ export type ReceivingGridColumnKey =
   | `subtitle:${number}`
   /** Org-defined custom columns (`custom:<defKey>`). */
   | CustomFieldColumnKey;
-
-/** EXTENDS the house model — it does not re-declare it. */
-export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'>, DataTableColumnFields { key: ReceivingGridColumnKey;
-/** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
-sortable?: boolean; }
-
-
-/** COMPOUND (two-row) Unbox / History / Testing columns. */
-export function receivingCompoundColumnsFor(layout: DataTableColumnLayout): readonly ReceivingGridColumn[] { return materializeTracks<ReceivingGridColumn>({
-  layout,
-  catalog: RECEIVING_FIELD_CATALOG,
-  base: compoundColumnsFor<ReceivingGridColumn>(),
-  // The default anchor — the status band opens after the `state` pill, the
-  // position Orders' bound facts occupy on the same shared skeleton.
-}); }
-
-/** The PRODUCT-DEFAULT materialization — what an org with no override mounts. */
-export const RECEIVING_COMPOUND_COLUMNS: readonly ReceivingGridColumn[] =
-  receivingCompoundColumnsFor(RECEIVING_PRODUCT_LAYOUT);
-
-/**
- * Frozen pane of the MOUNTED model — `select · order · thumb`. Derived from the
- * compound materialization because that is what every desk paints; the flat
- * spreadsheet array it used to read is deleted.
- */
-const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = gridFrozenKeys(
-  RECEIVING_COMPOUND_COLUMNS,
-);
 
 /** The fact words this family sorts by — declared, not derived. */
 const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = [
@@ -126,12 +90,6 @@ export function isReceivingGridSortable(key: string): key is ReceivingGridColumn
   return receivingSortFactFor(key) != null;
 }
 
-export function isReceivingGridFrozen(key: string): boolean {
-  return RECEIVING_GRID_LOCKED_KEYS.includes(key as ReceivingGridColumnKey);
-}
-
-
-
 /** Default direction when first activating a column sort. */
 export function defaultDirForReceivingGridSort(key: ReceivingGridColumnKey): GridSortDir {
   // Date: most recent first (ops scan). Price / qty: highest first.
@@ -141,13 +99,6 @@ export function defaultDirForReceivingGridSort(key: ReceivingGridColumnKey): Gri
 
 // (flipReceivingGridSortDir retired — the TanStack sort surface owns the
 //  asc ↔ desc cycle via LedgerGridSurface / useGridSurface.)
-
-// Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
-export {
-  LEDGER_GRID_FROZEN_CELL as RECEIVING_GRID_FROZEN_CELL,
-  ledgerGridCell as receivingGridCell,
-  ledgerGridRowShellClass as receivingGridRowShellClass,
-} from '@/design-system/components/grid/grid-cell-chrome';
 
 // --------------------------------------------------------------------------- Incoming POS — sort vocabulary only.
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown } from '@/components/Icons';
-import { MOBILE_GUTTER_X } from '@/components/mobile/redesign/DesignSystem';
+import { MOBILE_V2_GUTTER_X } from '@/components/mobile/v2/MobileV2Layout';
 import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 import { getLast8 } from '@/lib/copy-chip-format';
 import { MobileReceivingUnitRow } from '@/components/mobile/receiving/MobileReceivingUnitRow';
@@ -19,7 +19,7 @@ export interface ReceivingCardCallbacks {
   isExpanded: (row: ReceivingLineRow) => boolean;
 }
 
-const CARD_BASE = `${MOBILE_GUTTER_X} mb-3 overflow-hidden rounded-none shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]`;
+const CARD_BASE = `${MOBILE_V2_GUTTER_X} mb-3 overflow-hidden rounded-none shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]`;
 
 /** Standalone arrival — a white card holding a single unit (PO + tracking in its detail panel). */
 export function MobileReceivingUnitCard({

@@ -4,7 +4,7 @@ import test from 'node:test';
 import { mobileRouteOwnsTopBar } from './host-top-bar';
 
 test('a detail route owns its bar, and with it the scan seat', () => {
-  for (const path of ['/m/u/1', '/m/rs/RS-204', '/m/t/88', '/m/pick/9001', '/m/receiving/po/55', '/m/exceptions/42', '/m/products/SKU-42']) {
+  for (const path of ['/m/u/1', '/m/rs/RS-204', '/m/t/88', '/m/pick/9001', '/m/receiving/po/55', '/m/exceptions/42', '/m/products/SKU-42', '/m/stock/labels', '/m/labels', '/m/racks/new']) {
     assert.equal(mobileRouteOwnsTopBar(path), true, path);
   }
 });
@@ -19,6 +19,7 @@ test('queue routes keep the host header except the immersive scan station', () =
   // `/m/exceptions/` excludes the exception RECORD while `/m/exceptions` itself, the queue, still gets the host header.
   assert.equal(mobileRouteOwnsTopBar('/m/work'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/exceptions'), false);
+  assert.equal(mobileRouteOwnsTopBar('/m/racks'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/scan'), true);
 });
 

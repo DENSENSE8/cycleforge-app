@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   OPS_EVENT_ENTITY_TYPES,
@@ -40,8 +40,19 @@ function extractCheckValues(sql: string, constraintName: string): string[] {
   return m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, ''));
 }
 
-test('entity_type CHECK in the migration mirrors OPS_EVENT_ENTITY_TYPES exactly', () => {
-  const values = extractCheckValues(migrationSql(), 'ops_events_entity_type_chk');
+/** The newest migration whose DDL (re)defines the CHECK — the live definition. */
+function latestCheckMigrationSql(): string {
+  const dir = join(process.cwd(), 'src', 'lib', 'migrations');
+  const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort().reverse();
+  for (const f of files) {
+    const ddl = readFileSync(join(dir, f), 'utf8').replace(/--.*$/gm, '');
+    if (/ops_events_entity_type_chk\s+CHECK/.test(ddl)) return ddl;
+  }
+  assert.fail('no migration defines ops_events_entity_type_chk');
+}
+
+test('entity_type CHECK in the newest defining migration mirrors OPS_EVENT_ENTITY_TYPES exactly', () => {
+  const values = extractCheckValues(latestCheckMigrationSql(), 'ops_events_entity_type_chk');
   assert.deepEqual(values, [...OPS_EVENT_ENTITY_TYPES]);
 });
 

@@ -24,7 +24,7 @@ function definition(columns: TableDefinitionColumn[]) {
     entityFamily: 'receiving',
     cellMapKey: 'receiving',
     ariaLabel: 'Receiving carton lines',
-    testId: 'receiving-grid-body',
+    testId: 'receiving-sheet-body',
     surface: 'sheet',
     showDayHeaders: false,
     capabilities: CAPABILITIES,

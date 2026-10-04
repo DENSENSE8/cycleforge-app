@@ -410,7 +410,7 @@ const FLOWS: OpsFlow[] = [
     code: ['src/lib/rma/authorizations.ts', '/api/rma', 'return_dispositions table', 'src/lib/orders-exceptions.ts'],
     steps: [
       { stage: 'Authorized', key: 'AUTHORIZED', station: 'ADMIN', note: 'RMA number issued; return expected (INBOUND_FROM_CUSTOMER or OUTBOUND_TO_VENDOR)' },
-      { stage: 'Received', key: 'RECEIVED', station: 'RECEIVING', note: 'Return carton arrived at the warehouse', by: '/api/rma/[id]/mark-received' },
+      { stage: 'Received', key: 'RECEIVED', station: 'RECEIVING', note: 'Return carton arrived at the warehouse' },
       { stage: 'Dispositioned', key: 'DISPOSITIONED', station: 'TECH', note: 'Per-unit verdict recorded: ACCEPT / HOLD / RTV / REWORK / SCRAP' },
       { stage: 'Closed', key: 'CLOSED', station: 'ADMIN', note: 'All units dispositioned; RMA finalized' },
     ],

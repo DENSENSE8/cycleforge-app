@@ -5,7 +5,7 @@ import { densityScaledRem } from './grid-column-geometry';
 /** Horizontal (+ optional vertical) cell inset for LedgerGrid tracks. */
 export const LEDGER_GRID_CELL_INSET = 'px-1.5';
 /** Grid-skin cell pad — horizontal + vertical so the row shell can be `p-0`. */
-const LEDGER_GRID_GRID_CELL_INSET = 'px-1.5 py-1.5';
+const LEDGER_GRID_GRID_CELL_INSET = 'px-1.5 py-1';
 
 /** Chrome that pins a frozen cell during horizontal scroll — sticky position, a z above the scrolling cells, and the row's own background… */
 export const LEDGER_GRID_FROZEN_CELL = 'sticky z-raised bg-inherit';

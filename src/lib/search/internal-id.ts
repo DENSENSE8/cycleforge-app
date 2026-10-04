@@ -6,7 +6,6 @@ import {
   scannedUnitKey,
   type ScanRoute,
 } from '@/lib/barcode-routing';
-import { formatSearchSel } from '@/lib/search/search-selection';
 import { toteRecordHref } from '@/lib/search/search-hit';
 
 interface InternalIdKeys {
@@ -150,21 +149,21 @@ function pathnameOf(href: string): string {
 }
 
 /**
- * Desktop Search must never open a phone Digital Link (`/m/…`, `/01/…`).
- * Maps printed-handle redirects onto search / staff record URLs.
+ * Desktop Find must never open a phone Digital Link (`/m/…`, `/01/…`).
+ * Maps printed-handle redirects onto retained desktop record URLs.
  */
 export function desktopSearchHref(href: string): string {
   const path = pathOnly(href);
   const pathname = pathnameOf(href);
   if (!pathname.startsWith('/m/') && !pathname.startsWith('/01/')) {
-    return path || '/search';
+    return path || '/';
   }
 
   const receiving = /^\/m\/r\/(\d+)(?:\/|$)/.exec(pathname);
-  if (receiving) return `/search?sel=${formatSearchSel('receiving', Number(receiving[1]))}`;
+  if (receiving) return `/unbox?openReceivingId=${receiving[1]}`;
 
   const unitNum = /^\/m\/u\/(\d+)(?:\/|$)/.exec(pathname);
-  if (unitNum) return `/search?sel=${formatSearchSel('unit', Number(unitNum[1]))}`;
+  if (unitNum) return `/serial/${unitNum[1]}`;
   const unitAny = /^\/m\/u\/([^/]+)/.exec(pathname);
   if (unitAny) return `/serial/${encodeURIComponent(decodeURIComponent(unitAny[1]))}`;
 
@@ -172,7 +171,7 @@ export function desktopSearchHref(href: string): string {
   if (line) return `/receiving/lines/${line[1]}`;
 
   const repair = /^\/m\/rs\/(\d+)(?:\/|$)/.exec(pathname);
-  if (repair) return `/search?sel=${formatSearchSel('repair', Number(repair[1]))}`;
+  if (repair) return `/repair?openRepair=${repair[1]}`;
 
   const bin = /^\/m\/b\/([^/]+)/.exec(pathname);
   if (bin) return `/bin/${encodeURIComponent(decodeURIComponent(bin[1]))}`;
@@ -181,12 +180,8 @@ export function desktopSearchHref(href: string): string {
   if (box) return toteRecordHref(Number(box[1]));
 
   const gs1 = /^\/01\/\d+(?:\/21\/([^/]+))?/.exec(pathname);
-  if (gs1?.[1]) {
-    return `/search?q=${encodeURIComponent(decodeURIComponent(gs1[1]))}`;
-  }
-  if (pathname.startsWith('/01/')) return '/search';
-
-  return '/search';
+  if (gs1?.[1]) return `/serial/${encodeURIComponent(decodeURIComponent(gs1[1]))}`;
+  return '/';
 }
 
 /**

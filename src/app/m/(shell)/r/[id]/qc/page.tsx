@@ -70,7 +70,7 @@ function CartonQcInner() {
         return (
           <div className="flex-1">
             {units.length > 0 ? (
-              <nav aria-label={`Units to check on R-${id}`} className="bg-mode-panel">
+              <nav aria-label={`Units to check on R-${id}`} className="divide-y divide-mode-rule bg-mode-panel">
                 {units.map(({ line, unit }) => (
                   <QcUnitRecord
                     key={unit.id}

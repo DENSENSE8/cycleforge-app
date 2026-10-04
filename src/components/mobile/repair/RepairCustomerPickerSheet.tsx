@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Button } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
@@ -39,51 +39,59 @@ export function RepairCustomerPickerSheet({
   else if (error) status = `Search failed — ${error}`;
 
   return (
-    <BottomSheet open={open} onClose={onClose} forceVariant="sheet" title="Change customer" level={1} dragDisabled>
-      <ModeRegion mode="triage" className="flex min-h-0 flex-1 flex-col gap-3 pb-2 pt-2">
-        <Command shouldFilter={false} className="rounded-mode border border-mode-edge">
-          <CommandInput
-            value={query}
-            onValueChange={setQuery}
-            placeholder="Name, phone or email"
-            inputMode="search"
-            aria-label="Search customers"
-            className="h-11 text-base"
-          />
-          <CommandList className="max-h-[45vh]">
-            {status ? (
-              <p role={error ? 'alert' : 'status'} className="px-3 py-3 text-center text-role-caption text-mode-muted">
-                {status}
-              </p>
-            ) : (
-              <CommandEmpty>No customer matches “{query.trim()}”.</CommandEmpty>
-            )}
-            {results.map((customer) => {
-              const linked = customer.id === linkedCustomerId;
-              return (
-                <CommandItem
-                  key={customer.id}
-                  value={String(customer.id)}
-                  disabled={linked}
-                  onSelect={() => onPick(customer)}
-                  className="min-h-12 border-b border-mode-edge last:border-b-0"
-                >
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate font-semibold text-mode-ink">{customer.name}</span>
-                    <span className="truncate text-role-caption text-mode-muted">
-                      {[customer.phone, customer.email].filter(Boolean).join(' · ') || 'No phone or email'}
-                    </span>
-                  </span>
-                  {linked ? <span className="shrink-0 text-role-caption font-semibold text-mode-muted">Linked now</span> : null}
-                </CommandItem>
-              );
-            })}
-          </CommandList>
-        </Command>
-        <Button variant="secondary" size="lg" className="w-full rounded-mode" onClick={onCreate}>
-          New customer
-        </Button>
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      {/* The sheet portals out of the page's ModeRegion; re-declare triage. */}
+      <ModeRegion mode="triage" asChild>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>Change customer</SheetTitle>
+          </SheetHeader>
+          <SheetBody className="flex flex-col gap-3">
+            <Command shouldFilter={false} className="rounded-mode border border-mode-edge">
+              <CommandInput
+                value={query}
+                onValueChange={setQuery}
+                placeholder="Name, phone or email"
+                inputMode="search"
+                aria-label="Search customers"
+                className="h-11 text-base"
+              />
+              <CommandList className="max-h-[45vh]">
+                {status ? (
+                  <p role={error ? 'alert' : 'status'} className="px-3 py-3 text-center text-role-caption text-mode-muted">
+                    {status}
+                  </p>
+                ) : (
+                  <CommandEmpty>No customer matches “{query.trim()}”.</CommandEmpty>
+                )}
+                {results.map((customer) => {
+                  const linked = customer.id === linkedCustomerId;
+                  return (
+                    <CommandItem
+                      key={customer.id}
+                      value={String(customer.id)}
+                      disabled={linked}
+                      onSelect={() => onPick(customer)}
+                      className="min-h-12 border-b border-mode-edge last:border-b-0"
+                    >
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate font-semibold text-mode-ink">{customer.name}</span>
+                        <span className="truncate text-role-caption text-mode-muted">
+                          {[customer.phone, customer.email].filter(Boolean).join(' · ') || 'No phone or email'}
+                        </span>
+                      </span>
+                      {linked ? <span className="shrink-0 text-role-caption font-semibold text-mode-muted">Linked now</span> : null}
+                    </CommandItem>
+                  );
+                })}
+              </CommandList>
+            </Command>
+            <Button variant="secondary" size="lg" className="w-full rounded-mode" onClick={onCreate}>
+              New customer
+            </Button>
+          </SheetBody>
+        </SheetContent>
       </ModeRegion>
-    </BottomSheet>
+    </Sheet>
   );
 }

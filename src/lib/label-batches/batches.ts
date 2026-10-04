@@ -58,6 +58,7 @@ interface BatchSqlRow {
   print_count: number;
   last_printed_at: Date | null;
   paired_pages: number;
+  confirm_pages: number;
   [key: string]: unknown;
 }
 
@@ -65,14 +66,15 @@ interface BatchSqlRow {
 const BATCH_ROW_SQL = `SELECT b.id, b.file_name, b.sha256, b.page_count, b.byte_size, b.uploaded_at,
          s.name AS uploaded_by,
          COALESCE(st.printed_pages, 0) AS printed_pages, COALESCE(st.print_count, 0) AS print_count,
-         st.last_printed_at, COALESCE(st.paired_pages, 0) AS paired_pages
+         st.last_printed_at, COALESCE(st.paired_pages, 0) AS paired_pages, COALESCE(st.confirm_pages, 0) AS confirm_pages
     FROM label_batches b
     LEFT JOIN staff s ON s.organization_id = b.organization_id AND s.id = b.uploaded_by_staff_id
     LEFT JOIN LATERAL (
       SELECT count(*) FILTER (WHERE pe.n > 0)::int AS printed_pages,
              COALESCE(sum(pe.n), 0)::int AS print_count,
              max(pe.last_at) AS last_printed_at,
-             count(*) FILTER (WHERE li.matched_order_id IS NOT NULL)::int AS paired_pages
+             count(*) FILTER (WHERE li.matched_order_id IS NOT NULL)::int AS paired_pages,
+             count(*) FILTER (WHERE li.state = 'QUARANTINED' AND li.quarantine_reason_code = 'BUYER_AMBIGUOUS')::int AS confirm_pages
         FROM label_ingestions li
         CROSS JOIN LATERAL (
           SELECT count(*) AS n, max(e.printed_at) AS last_at
@@ -95,6 +97,7 @@ function toBatchRow(row: BatchSqlRow): LabelBatchRow {
     printCount: row.print_count,
     lastPrintedAt: row.last_printed_at ? row.last_printed_at.toISOString() : null,
     pairedPages: row.paired_pages,
+    confirmPages: row.confirm_pages,
   };
 }
 

@@ -18,12 +18,15 @@ import {
   LABEL_INTAKE_PRINTED_VIEW,
   LABEL_INTAKE_UPLOADS_VIEW,
 } from './label-intake';
+import { LOCATIONS_RACKS_VIEW } from './locations-racks';
 import { OUTBOUND_SHIPPED_VIEW } from './outbound-shipped';
 import { OUTBOUND_TRIAGE_VIEW } from './outbound-triage';
 import { PICKUP_HISTORY_VIEW } from './pickup-history';
 import { PRINT_STATION_FNSKU_VIEW } from './print-station-fnsku';
 import { PRODUCTS_CATALOG_VIEW } from './products-catalog';
+import { PRODUCTS_CATALOG_IMPORT_VIEW } from './products-catalog-import';
 import { QC_LABELS_VIEW } from './qc-labels';
+import { RECEIVE_QUEUE_VIEW } from './receive-queue';
 import { REPAIR_QUEUE_VIEW } from './repair-queue';
 
 export {
@@ -39,12 +42,15 @@ export {
   LABEL_INTAKE_PAPERWORK_VIEW,
   LABEL_INTAKE_PRINTED_VIEW,
   LABEL_INTAKE_UPLOADS_VIEW,
+  LOCATIONS_RACKS_VIEW,
   OUTBOUND_SHIPPED_VIEW,
   OUTBOUND_TRIAGE_VIEW,
   PICKUP_HISTORY_VIEW,
   PRINT_STATION_FNSKU_VIEW,
   PRODUCTS_CATALOG_VIEW,
+  PRODUCTS_CATALOG_IMPORT_VIEW,
   QC_LABELS_VIEW,
+  RECEIVE_QUEUE_VIEW,
   REPAIR_QUEUE_VIEW,
 };
 

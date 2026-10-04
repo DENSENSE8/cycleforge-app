@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { JobProgress } from '@/components/mobile/JobProgress';
+import { MobileV2AppSwitcher } from '@/components/mobile/v2/MobileV2AppSwitcher';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { RecordCardMobile } from '@/design-system/components/record-card/RecordCardMobile';
@@ -65,6 +66,12 @@ export function QcQueueScreen() {
 
   return (
     <div className={cn('flex h-full min-h-full flex-col', appMobilePageGroundClass)}>
+      <header className="sticky top-0 z-header flex h-[3.25rem] shrink-0 items-center border-b border-border-soft bg-surface-card/95 backdrop-blur-xl has-[[data-mobile-navigation-open=true]]:z-panel">
+        <MobileV2AppSwitcher />
+        <h1 className="min-w-0 flex-1 px-2 text-[15px] font-semibold tracking-[-0.01em] text-text-default">
+          Quality control
+        </h1>
+      </header>
       <JobProgress done={done} total={done + total} doneWord="tested" />
 
       <div className="flex flex-1 flex-col overflow-y-auto" data-testid="qc-queue">

@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth/permissions';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { derivedRoomLabelSql, derivedRoomSetJoinSql } from '@/lib/locations/derived-room';
 
 /** GET /api/cycle-counts/campaigns?status=open List campaigns with progress counters. */
 
@@ -90,9 +91,12 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     filterParams.push(binIds);
     filterClauses.push(`bc.location_id = ANY($${filterParams.length}::int[])`);
   }
-  if (rooms && rooms.length > 0) {
+  // Room scope reads the DERIVED room (nearest ROOM up parent_id), so a
+  // movable rack's shelves count with the room the rack stands in now.
+  const roomScoped = rooms != null && rooms.length > 0;
+  if (roomScoped) {
     filterParams.push(rooms);
-    filterClauses.push(`l.room = ANY($${filterParams.length}::text[])`);
+    filterClauses.push(`${derivedRoomLabelSql('l', 'room')} = ANY($${filterParams.length}::text[])`);
   }
   if (minAgeDays != null) {
     filterParams.push(minAgeDays);
@@ -122,6 +126,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
            SELECT bc.location_id, bc.sku, bc.qty
            FROM bin_contents bc
            JOIN locations l ON l.id = bc.location_id
+           ${roomScoped ? derivedRoomSetJoinSql('l', 'room', `$${orgIdx}`) : ''}
            WHERE ${filterClauses.join(' AND ').replace(/\$(\d+)/g, (_m, n) => `$${Number(n) + 1}`)}
              AND bc.organization_id = $${orgIdx}
          ),

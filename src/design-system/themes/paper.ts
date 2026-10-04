@@ -11,9 +11,9 @@ export const paperPalette: ThemePalette = {
   vars: {
     // Neutral chrome — warm stone
     'text-primary': '#292319',
-    'text-secondary': '#57503f',
-    'text-soft': '#6b6450', // ≥4.5 on card and the sunken wash
-    'text-faint': '#938b76',
+    'text-secondary': '#433c2e', // ≥9:1 on every surface (owner 2026-10-03: subtitles read easily)
+    'text-soft': '#5d5644', // ≥6:1 on every surface
+    'text-faint': '#6e6755', // ≥4.5 on every surface — text, never a sub-AA tier
     'background-canvas': '#f7f3ec',
     'background-surface': '#fffdf9',
     'surface-sunken': '#f0e9dd',

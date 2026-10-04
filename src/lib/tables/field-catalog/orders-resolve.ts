@@ -1,10 +1,10 @@
 /** Orders slot resolvers — row + fieldId → the resolved facts a slot cell paints. */
 
 import type {
-  CompoundDelay,
-  CompoundSlotValue,
-  CompoundSubtitlePart,
-} from '@/components/tables/compound/compound-row-model';
+  Delay,
+  SlotValue,
+  SubtitlePart,
+} from '@/lib/tables/field-catalog/slot-value';
 import {
   formatQueueRowDateCell,
   nonSentinelTimestamp,
@@ -85,7 +85,7 @@ function staffId(...candidates: unknown[]): number | null {
  * desk's PICK_SCANNED scan). Never QC facts, never the PICK assignee
  * (`picker_*` is who it is ASSIGNED to, not who picked it).
  */
-function pickedStep(row: OrdersRow): CompoundSlotValue {
+function pickedStep(row: OrdersRow): SlotValue {
   return {
     kind: 'stage_event',
     who: person(str(row, 'picked_by_name')),
@@ -97,7 +97,7 @@ function pickedStep(row: OrdersRow): CompoundSlotValue {
   };
 }
 
-function packedStep(row: OrdersRow, ctx: OrdersSlotContext): CompoundSlotValue {
+function packedStep(row: OrdersRow, ctx: OrdersSlotContext): SlotValue {
   const benchName = str(row, 'pack_location_name');
   return {
     kind: 'stage_event',
@@ -113,7 +113,7 @@ function packedStep(row: OrdersRow, ctx: OrdersSlotContext): CompoundSlotValue {
   };
 }
 
-function scannedOutStep(row: OrdersRow): CompoundSlotValue {
+function scannedOutStep(row: OrdersRow): SlotValue {
   return {
     kind: 'stage_event',
     who: person(str(row, 'shipped_out_by_name')),
@@ -137,7 +137,7 @@ export function resolveOrdersSlotValue(
   record: ShippedOrder,
   fieldId: string,
   ctx: OrdersSlotContext = {},
-): CompoundSlotValue | null {
+): SlotValue | null {
   const row = record as OrdersRow;
   switch (fieldId) {
     case 'orders.picked':
@@ -167,15 +167,15 @@ export function resolveOrdersSlotValue(
 
 /**
  * Resolve the slot values for every mounted slot TRACK of one row, keyed by
- * track key — the record `CompoundRowView.slots` carries. Non-slot columns and
+ * track key — the record `RowView.slots` carries. Non-slot columns and
  * unbound tracks contribute nothing.
  */
 export function ordersSlotValues(
   record: ShippedOrder,
   columns: readonly { key: string; fieldId?: string }[],
   ctx: OrdersSlotContext = {},
-): Readonly<Record<string, CompoundSlotValue>> | undefined {
-  let slots: Record<string, CompoundSlotValue> | undefined;
+): Readonly<Record<string, SlotValue>> | undefined {
+  let slots: Record<string, SlotValue> | undefined;
   for (const col of columns) {
     if (!col.fieldId || !col.key.startsWith('status:')) continue;
     const value = resolveOrdersSlotValue(record, col.fieldId, ctx);
@@ -190,9 +190,9 @@ export function ordersSubtitleParts(
   record: ShippedOrder,
   subtitleFieldIds: readonly string[],
   ctx: OrdersSlotContext = {},
-): CompoundSubtitlePart[] {
+): SubtitlePart[] {
   const row = record as OrdersRow;
-  const parts: CompoundSubtitlePart[] = [];
+  const parts: SubtitlePart[] = [];
   for (const fieldId of subtitleFieldIds) {
     const field: FieldDef | undefined = ORDERS_FIELDS_BY_ID.get(fieldId);
     if (!field) continue;
@@ -259,12 +259,12 @@ export type OrdersIndexValue =
   | { kind: 'channel'; orderId: string; accountSource: string | null; fba: boolean }
   | { kind: 'money'; text: string | null; estimate: boolean }
   | { kind: 'fulfillment'; badge: OrderFulfillmentBadge }
-  | { kind: 'deadline'; delay: CompoundDelay; tip: string | null }
+  | { kind: 'deadline'; delay: Delay; tip: string | null }
   | { kind: 'items'; face: string; lines: readonly string[] }
   | { kind: 'delivery'; carriers: readonly CarrierBrandMeta[] }
   | { kind: 'tags'; tags: readonly OrdersIndexTag[] }
   | { kind: 'bin'; path: string | null }
-  | CompoundSlotValue;
+  | SlotValue;
 
 interface OrdersIndexContext {
   /** Warehouse civil today (`YYYY-MM-DD`) — "Today" and due-today faces. */
@@ -333,7 +333,7 @@ function orderCustomer(lead: ShippedOrder): { name: string | null; place: string
 function orderDeadline(
   lines: readonly ShippedOrder[],
   todayKey: string,
-): { delay: CompoundDelay; tip: string | null } {
+): { delay: Delay; tip: string | null } {
   let raw: string | null = null;
   let lead: ShippedOrder = lines[0]!;
   for (const line of lines) {

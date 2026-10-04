@@ -17,7 +17,7 @@ export * from './DetailGrid';
 export * from './DropdownMenu';
 export * from './ExternalLinkButton';
 export * from './field-action';
-export * from './FlushTerminalFooter';
+export * from './FloatingActionFooter';
 export * from './SlicedActionDock';
 export * from './OmnichannelComposerDock';
 export * from './IconButton';

@@ -14,6 +14,8 @@ interface DateTimePickerFieldProps {
   onChange: (next: Date) => void;
   /** Trigger button label when no value is set. */
   placeholder?: string;
+  /** Accessible name when no visible label sits beside the field (value-led rows, P1). */
+  ariaLabel?: string;
   /** Disable the whole control. */
   disabled?: boolean;
   /** Earliest selectable day. */
@@ -42,6 +44,7 @@ export function DateTimePickerField({
   value,
   onChange,
   placeholder = 'Pick a date & time',
+  ariaLabel,
   disabled = false,
   fromDate,
   toDate,
@@ -77,6 +80,7 @@ export function DateTimePickerField({
         <button
           type="button"
           disabled={disabled}
+          aria-label={ariaLabel ? `${ariaLabel}: ${label}` : undefined}
           className={cn(
             'inline-flex h-8 w-full items-center gap-2 rounded-lg border bg-surface-card px-2.5 text-left text-role-micro transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
             TONE_TRIGGER[tone],

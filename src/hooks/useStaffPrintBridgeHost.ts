@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIdleReady } from '@/hooks/useIdleReady';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import {
@@ -90,6 +91,9 @@ function useStaffPrintBridgeHost() {
   // The org registry + per-station channel: anyone who may print reaches THIS
   // computer by its station id. The id is minted once per browser and never changes.
   const orgStations = staffId > 0 && has('print.label');
+  // The registry beat is not first-paint work: it waits for idle so it never
+  // races the route's own read, and runs once per mount (no Strict Mode replay).
+  const idleReady = useIdleReady();
   const [stationId] = useState(() => readPrintStation().id);
   const stationChannelName =
     orgStations && stationId ? safeChannelName(() => getPrintStationChannelName(orgId ?? '', stationId)) : '';
@@ -142,7 +146,7 @@ function useStaffPrintBridgeHost() {
   };
 
   useEffect(() => {
-    if (!orgStations) return;
+    if (!orgStations || !idleReady) return;
     const beat = () => void heartbeat();
     beat();
     window.addEventListener(SILENT_PRINT_CHANGED_EVENT, beat);
@@ -154,7 +158,7 @@ function useStaffPrintBridgeHost() {
       window.clearInterval(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgStations]);
+  }, [orgStations, idleReady]);
 
   useAblyChannel(
     channelName,

@@ -14,7 +14,7 @@ import {
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { Collapse } from '@/design-system/components/Collapse';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Check, ChevronRight, Clock, User } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -26,7 +26,7 @@ import { getCurrentPSTDateKey } from '@/utils/date';
 import { peekActiveStaff } from '@/lib/staffCache';
 import { cn } from '@/utils/_cn';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
-import { useNavStaffKey } from './useNavContext';
+import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { NavSlotError } from './NavSlotError';
 import { NAV_BLOCK_CLASS, NAV_CHOICE_PRESS_CLASS, NAV_CHOICE_SELECTED_CLASS } from './nav-block';
 
@@ -500,8 +500,8 @@ function DateRow({ spec }: { spec: NonNullable<NavControls['dateRanges']>[number
   );
 }
 
-/** A native `HH:mm` field; commits on blur / Enter so the URL is not rewritten per keystroke. */
-function TimeField({ label, value, onCommit }: { label: string; value: string; onCommit: (value: string) => void }) {
+/** A native `HH:mm` field; commits on blur / Enter so the URL is not rewritten per keystroke. Also the Live feed's time window. */
+export function TimeField({ label, value, onCommit }: { label: string; value: string; onCommit: (value: string) => void }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   return (

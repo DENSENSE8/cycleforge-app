@@ -33,6 +33,7 @@ import { PHOTO_VERB_NAV_KEY } from '@/components/receiving/workspace/line-edit/p
 import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import { NAV_REGIONS } from './nav-regions';
 import { getHotkey } from '@/lib/scan-hotkey/store';
+import { hotkeyKeys, PASTE_LIST_HOTKEY } from '@/lib/keyboard/key-registry';
 
 interface ShortcutRow {
   keys: string[];
@@ -79,6 +80,7 @@ function buildGroups(): { title: string; rows: ShortcutRow[] }[] {
         { keys: ['?'], label: 'Reveal hotkeys on buttons (or this sheet)' },
         { keys: ['⌘', '⇧', '?'], label: 'This sheet — anywhere, even while typing' },
         { keys: ['⌘', 'K'], label: 'Command palette' },
+        { keys: hotkeyKeys(PASTE_LIST_HOTKEY), label: 'Paste a list into Find — check each number' },
         { keys: ['⌘', ']'], label: 'Open / close Station Displays' },
         { keys: ['⌘', '.'], label: 'Next scan — clear + focus station scan bar' },
         { keys: [scanLabel], label: 'Focus scan bar (reclaim, keep text)' },

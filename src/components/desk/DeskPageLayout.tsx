@@ -35,6 +35,8 @@ export interface DeskPageLayoutProps {
    * desk's views live in the left contextual sidebar (owner 2026-09-28).
    */
   bare?: boolean;
+  /** The in-place stage's measure — `full` for a board (see `DeskPageChrome`). */
+  measure?: 'fixed' | 'full';
   className?: string;
 }
 
@@ -69,6 +71,7 @@ function DeskPageFrame({
   titleSlot,
   subtitle,
   headerCenter,
+  measure,
   className,
 }: DeskPageLayoutProps & DeskHeaderFaces) {
   const { pageId } = useActiveSidebarChild();
@@ -85,6 +88,7 @@ function DeskPageFrame({
       headerCenter={headerCenter}
       view={view}
       onViewChange={setView}
+      measure={measure}
       className={className}
     >
       {children}

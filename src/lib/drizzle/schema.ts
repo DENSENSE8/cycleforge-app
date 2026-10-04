@@ -2983,9 +2983,19 @@ export const locations = pgTable('locations', {
   binRole: text('bin_role').notNull().default('RESERVE'),
   lockedForCount: boolean('locked_for_count').notNull().default(false),
   warehouseId: integer('warehouse_id'),
+  /**
+   * Arrival urgency shelf tier 0..3 (0 = most urgent; the receiving_carton
+   * .priority_tier contract). NULL = not an arrival shelf. CHECK 0..3.
+   * Migration 2026-10-03_locations_arrival_priority_tier.sql.
+   */
+  arrivalPriorityTier: smallint('arrival_priority_tier'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  orgArrivalTierIdx: index('idx_locations_org_arrival_tier')
+    .on(table.organizationId, table.arrivalPriorityTier, table.sortOrder, table.id)
+    .where(sql`is_active = true AND arrival_priority_tier IS NOT NULL`),
+}));
 
 /**
  * order_pack_placements — current packing-station / staging place for an open
@@ -3173,6 +3183,8 @@ export const documentPrintJobs = pgTable('document_print_jobs', {
   documentId: integer('document_id'),
   /** Phase 2 bridge — product_manuals.id when document_type=manual. */
   productManualId: integer('product_manual_id'),
+  /** label_ingestions.id — a paired shipping label printed before it has a documents row (2026-10-03). */
+  labelIngestionId: bigint('label_ingestion_id', { mode: 'number' }),
   /** shipping_label | packing_slip | manual */
   documentType: text('document_type').notNull(),
   /** queued | dispatched | fallback_browser | failed | skipped */
@@ -4965,6 +4977,8 @@ export const labelIngestions = pgTable('label_ingestions', {
   shipstationShipmentId: bigint('shipstation_shipment_id', { mode: 'number' }),
   /** ShipStation v2 label id the PDF was fetched from (`se-<shipmentId>`). */
   shipstationLabelId: text('shipstation_label_id'),
+  /** Recipient name read off an uploaded label — the buyer-name pairing key (2026-10-03). */
+  detectedShipToName: text('detected_ship_to_name'),
 }, (table) => ({
   orgIdUniq: uniqueIndex('label_ingestions_org_id_uniq').on(table.organizationId, table.id),
   orgShaUniq: uniqueIndex('ux_label_ingestions_org_sha256').on(table.organizationId, table.sha256),

@@ -1,6 +1,6 @@
 # MINIATURE-CATALOG — mobile compact display primitives (UI/UX SoT inventory)
 
-**Date:** 2026-09-14 · **Track:** B of [`mobile-first-foundation-PLAN.md`](../../todo/mobile-first-foundation-PLAN.md)
+**Date:** 2026-10-01 · **Track:** Mobile V2
 **Operator directive (verbatim):** "what's most important for mobile is miniature and small detailed
 display logic" · "this plan is mainly focused on the UI and UX of the mobile app."
 **Laws:** [`SURFACE_LAW.md`](./SURFACE_LAW.md) §5–§6 · design-mcp pins
@@ -19,18 +19,17 @@ rows, tape items) that phone surfaces compose. NOT shells, sheets, or cameras.
 | `ItemRecordThumb` | `design-system/components/item-record/` | DS-pinned thumbnail | — | DS law (pinned) — consume, never fork |
 | `StaffAvatar` | `components/identity/` | staff color/initials avatar | — | used by tape item for scan attribution |
 | `CopyChip` family (`OrderIdChip`, `TrackingChip`, `SkuScanRefChip`, `getLast8`) | `components/ui/` | copy-on-tap identity chips (last-8) | — | shared ui-kit primitive (platform layer, sanctioned) |
-| `STATION_TONE_*` (`EDGE`/`GROUND`/`INK`/`RING`) | `mobile/station/station-chrome.ts` | outcome→tone vocabulary for tape rows | ✅ `station-chrome.test.ts` (9 contracts, 2026-09-14) | totality · semantic families · untinted ok · one hue family per tone — all pinned |
+| `STATE_TONE_CLASSES` | `design-system/tokens/lifecycle.ts` | cross-platform outcome→tone vocabulary | ✅ lifecycle token contracts | V2 scan rows consume semantic dot/text faces; no station-local color map |
 
 ## 2. Molecules (compact rows)
 
 | Component | Home | Responsibility | Tests | Gaps / law notes |
 |---|---|---|---|---|
-| `MobileStationTapeItem` | `mobile/station/` | one event on a station tape: tone edge/ground, title from record, `ItemRecordThumb`, staff attribution, relative stamp via injected `now`, optional reversal action, `untitledLabel` is the station's word | **none** (346 ln) | memoized for 30s shell re-render. Consumes atoms above. Untitled-absence wording is a per-station contract worth pinning |
+| `MobileV2ScanRecentList` | `mobile/v2/scan/` | newest-first scan history: state rail, title, identifier, outcome and relative time; tap opens V2 detail sheet | ✅ `v2-scan-recent.test.ts` | flat DTO maps directly to SwiftUI; no reversed tape or forced bottom scroll |
 | `MobileReceivingUnitRow` | `mobile/receiving/` | photo-first per-unit row: qty·price·ticket meta face (`chipText` — one size law), identity chips, expand-only-newest rule (`expanded`), package-header dedup (`headerSharesPoTracking`) | **none** | **boundary crossings:** `station/receiving-constants` (vocab), `receiving/ReceivingIdentityChips` (forward share) — close in C8/C9. **UX flag:** mounts `HoverTooltip` — hover-only affordance on a touch surface (SURFACE_LAW R5 review) |
 | `ScanResultRow` | `mobile/feed/rows/` | scan outcome row in feeds | **none** | composes `CaptureStackRow` (DS) + Icons |
 | `PendingOrderRow` | `mobile/feed/rows/` | to-ship order row (chips + days-late tone) | **none** | days-late tone from `lib/condition-tone` (logic layer, correct) |
-| `MobileToShipRow` | `mobile/redesign/` | queue row for to-ship list | **none** | redesign kit |
-| `MobileStationTapeItem`'s siblings (`MobileStationTapeItem` consumers) | `mobile/station/` | tape hosts (`MobileArrivalStation`, scan-out) | logic tested via `arrival-station-tape.test.ts` | rendering untested |
+| `MobileV2FulfillmentOrders` row | `mobile/v2/fulfillment/` | compact Allocate queue row with progressive detail | status/layout contracts | V2 is the only mobile fulfillment presentation root |
 
 ## 3. DS-pinned laws (consume, never fork)
 
@@ -41,11 +40,11 @@ rows, tape items) that phone surfaces compose. NOT shells, sheets, or cameras.
 
 ## 4. Ranked worklist (feeds increments B2…Bn)
 
-1. **B2 — tape tone contracts** ✅ *(2026-09-14)*: `station-chrome.test.ts` — 9 contracts; every documented regression in the maps is now a failing test.
+1. **B2 — scan tone contracts** ✅: V2 now consumes `STATE_TONE_CLASSES`; the station-local tone map and its test were deleted.
 2. **B3 — badge + dots contracts** ✅ *(2026-09-14)*: 17 contracts across `MobilePhotoCountBadge.test.tsx` (render-markup pattern per `tracking-chip-last8.test.tsx`) + `ProgressDots.test.tsx` (`buildDotRail` exported as the seam). Badge comment drift fixed. *(The earlier "in-flight badge state" note was a catalog error — the badge has no in-flight concept; that belongs to `PhotoUploadQueue`.)*
 3. **B4 — ProgressDots token fix:** `bg-emerald-500`/`bg-blue-500` → semantic status tokens (`ds_tokens({ axis: 'color' })`: `var(--ds-color-surface-success)` / info equivalents). One file, visual-verify.
 4. **B5 — UnitRow hover audit:** resolve `HoverTooltip` on touch (tap-to-reveal or move to sheet per SURFACE_LAW R5). Needs UX ruling: operator call.
-5. **B6+ — one face per increment** thereafter, priority: `ScanResultRow` → `PendingOrderRow` → `MobileToShipRow`.
+5. **B6+ — one face per increment** thereafter, priority: `ScanResultRow` → `PendingOrderRow` → V2 fulfillment row.
 
 ## 5. Rules for new miniatures
 

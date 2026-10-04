@@ -4,7 +4,6 @@
 
 import { usePhoneScanBridge } from '@/hooks/usePhoneScanBridge';
 import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
-import { useCommandAliasHydration } from '@/hooks/useCommandAliasHydration';
 
 export { StaffPrintBridgeMount } from '@/hooks/useStaffPrintBridgeHost';
 
@@ -21,12 +20,10 @@ export function PhoneScanBridgeMount() {
 /**
  * Listens for HID wedge / Bluetooth ring-scanner keystrokes anywhere in the app.
  * URL-shaped scans navigate; bare codes fire a `wedge-scan` CustomEvent for
- * page-level handlers.
+ * page-level handlers. The alias book is hydrated by the desk shell and station
+ * composers; elsewhere the first unknown `CMD-*` scan loads it.
  */
 export function GlobalWedgeScannerMount() {
   useGlobalWedgeScanner();
-  // Aliases must be resolvable in the same tick a trigger is pulled, so they
-  // hydrate here rather than being fetched on the scan path.
-  useCommandAliasHydration();
   return null;
 }

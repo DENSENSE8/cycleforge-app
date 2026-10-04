@@ -9,6 +9,7 @@ import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
+import { commitIsPhoneOrigin } from '@/lib/auth/phone-origin.server';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { mirrorLegacyPackingToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
@@ -80,6 +81,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (!staffId) {
       return NextResponse.json({ error: 'Invalid packer ID' }, { status: 400 });
     }
+
+    const bodyMobileScanEventId = Number(body.mobileScanEventId);
+    const mobileScanEventId = Number.isSafeInteger(bodyMobileScanEventId) && bodyMobileScanEventId > 0
+      ? bodyMobileScanEventId
+      : null;
+    const phoneOrigin = await commitIsPhoneOrigin({
+      session: ctx.session,
+      organizationId: ctx.organizationId,
+      staffId,
+      mobileScanEventId,
+    });
 
     const canonicalPackDate = normalizePSTTimestamp(packDateTime, { fallbackToNow: true })!;
 
@@ -236,14 +248,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           source: 'packing-logs.update',
           tracking_type: trackingType,
           photos_count: photosCount,
-          ...(ctx.session.deviceKind === 'phone'
+          ...(phoneOrigin
             ? {
                 origin: 'phone',
                 surface: `/m/p/${packerLogId}/photos`,
                 client_event_id: idempotencyKey ?? (String(body.clientEventId ?? '').trim() || null),
-                ...(Number.isSafeInteger(Number(body.mobileScanEventId)) && Number(body.mobileScanEventId) > 0
-                  ? { mobile_scan_event_id: Number(body.mobileScanEventId) }
-                  : null),
+                ...(mobileScanEventId != null ? { mobile_scan_event_id: mobileScanEventId } : null),
                 subject_entity_type: 'shipment',
                 subject_id: String(resolvedShipmentId ?? packerLogId ?? shippingTrackingNumber),
                 subject_identifier: String(orderId ?? shippingTrackingNumber),

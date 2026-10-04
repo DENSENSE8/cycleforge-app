@@ -26,6 +26,7 @@ import { PaperworkResolver } from '@/components/mobile/exceptions/resolvers/Pape
 import { ShortResolver } from '@/components/mobile/exceptions/resolvers/ShortResolver';
 import { TrackingResolver } from '@/components/mobile/exceptions/resolvers/TrackingResolver';
 import { UnfoundResolver } from '@/components/mobile/exceptions/resolvers/UnfoundResolver';
+import { UnmatchedResolver } from '@/components/mobile/exceptions/resolvers/UnmatchedResolver';
 import { DetailRecordFrame } from '@/design-system/components/DetailHubScreen';
 import { useException } from '@/hooks/exceptions';
 import type { ExceptionRecordResponse } from '@/lib/exceptions/facts';
@@ -92,6 +93,8 @@ function resolverFor(record: ExceptionRecordResponse, onResolved: (message: stri
       return <BinsResolver row={row} facts={facts} onResolved={onResolved} />;
     case 'tracking':
       return <TrackingResolver row={row} facts={facts} onResolved={onResolved} />;
+    case 'unmatched':
+      return <UnmatchedResolver row={row} facts={facts} onResolved={onResolved} />;
     case 'claim':
       return <ClaimResolver row={row} facts={facts} onResolved={onResolved} />;
     case 'short':

@@ -104,10 +104,9 @@ export function KioskPaneForm({
         {footer ? (
           <div
             className={cn(
-              // Step flows float their key; shell-titled panes carry the floor
-              // hairline. Derived from `progress`, never a per-pane flag.
-              !progress && KIOSK_PANE_FOOTER_BAND,
-              'flex flex-wrap items-center justify-center gap-2 px-4 py-4',
+              // Every pane floats its keys — no hairline or ground floor (owner 2026-10-03).
+              KIOSK_PANE_FOOTER_BAND,
+              'flex-wrap items-center justify-center',
             )}
             data-kiosk-footer-band
             style={keyboardHeight > 0 ? { marginBottom: keyboardHeight } : undefined}

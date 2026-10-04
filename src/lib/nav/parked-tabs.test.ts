@@ -20,8 +20,6 @@ import { PARKED_TABS, isTabParked } from './parked-tabs';
 const PARKED_TAB_KEYS = [
   'inventory:favorites',
   'inventory:graph',
-  'inventory:health',
-  'inventory:pulse',
   'inventory:reason-codes',
   'inventory:triage',
 ] as const;
@@ -81,10 +79,8 @@ test('the ROUTE survives the parked door — parking is not deleting', () => {
     params: new URLSearchParams(search),
   });
 
-  assert.equal(resolveSidebarChild('inventory', at('/inventory/pulse')), 'pulse');
   assert.equal(resolveSidebarChild('inventory', at('/inventory/graph')), 'graph');
   assert.equal(resolveSidebarChild('inventory', at('/inventory/triage')), 'triage');
-  assert.equal(resolveSidebarChild('inventory', at('/inventory/health')), 'health');
   assert.equal(resolveSidebarChild('inventory', at('/inventory/favorites')), 'favorites');
   assert.equal(
     resolveSidebarChild('inventory', at('/inventory/reason-codes')),
@@ -96,11 +92,10 @@ test('the ROUTE survives the parked door — parking is not deleting', () => {
   );
 });
 
-test('the Inventory tabs that work still display — parking is per tab, not per lane', () => {
-  // The lane gate (`LANE_MOBILE_FIRST`) could only have hidden Inventory whole, which is the wrong instrument:
+test('the retained Inventory tabs still display', () => {
   const inventory = filterPageChildren(getSidebarPageNav('inventory')!, ALL_PERMISSIONS);
   assert.deepEqual(
     inventory.children?.map((child) => child.id),
-    ['stock', 'sku-exceptions', 'ledger', 'replenish', 'locations'],
+    ['stock', 'sku-exceptions', 'replenish', 'locations'],
   );
 });

@@ -20,6 +20,7 @@ import {
   resolveStaff,
 } from '@/lib/picking/desk-scan';
 import { withAuth } from '@/lib/auth/withAuth';
+import { commitIsPhoneOrigin } from '@/lib/auth/phone-origin.server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { scheduleEnsureOutboundDocsOnPackReady } from '@/lib/documents/ensure-outbound-docs';
 import {
@@ -93,14 +94,22 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE);
     if (hit?.status_code === 200) return NextResponse.json(hit.response_body);
   }
-  const phoneMetadata = ctx.session.deviceKind === 'phone'
+  const bodyMobileScanEventId = Number(body.mobileScanEventId);
+  const mobileScanEventId = Number.isSafeInteger(bodyMobileScanEventId) && bodyMobileScanEventId > 0
+    ? bodyMobileScanEventId
+    : null;
+  const phoneOrigin = await commitIsPhoneOrigin({
+    session: ctx.session,
+    organizationId: ctx.organizationId,
+    staffId: techId,
+    mobileScanEventId,
+  });
+  const phoneMetadata = phoneOrigin
     ? {
         origin: 'phone',
         surface: '/m/pick',
         ...(idemKey ? { client_event_id: idemKey } : null),
-        ...(Number.isSafeInteger(Number(body.mobileScanEventId)) && Number(body.mobileScanEventId) > 0
-          ? { mobile_scan_event_id: Number(body.mobileScanEventId) }
-          : null),
+        ...(mobileScanEventId != null ? { mobile_scan_event_id: mobileScanEventId } : null),
         ...(String(body.scanClientEventId ?? '').trim()
           ? { scan_client_event_id: String(body.scanClientEventId).trim() }
           : null),

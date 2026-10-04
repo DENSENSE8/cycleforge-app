@@ -31,11 +31,10 @@ import { TriageShelfGrid } from '@/design-system/components/triage-shelf/TriageS
 import { TriageShelfTile } from '@/design-system/components/triage-shelf/TriageShelfTile';
 import { TriageShelfTrail } from '@/design-system/components/triage-shelf/TriageShelfTrail';
 import { TRIAGE_SHELF_TRAIL_ICON } from '@/design-system/components/triage-shelf/triage-shelf-tokens';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { CATALOG_PAGE_SIZE, useCatalogShelf, type CatalogShelfProduct, type CatalogShelfState } from '@/hooks/orders/useCatalogShelf';
-import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { CATALOG_SHELVES, type CatalogShelf } from '@/lib/orders/intake/catalog-shelf';
 import {
   cartUnits,
@@ -83,7 +82,6 @@ export const CheckoutProductSearch = forwardRef<
 >(function CheckoutProductSearch({ currency, lines, shelf, onShelf, onAdd, onAddListing }, ref) {
   const inputRef = useRef<HTMLInputElement>(null);
   useImperativeHandle(ref, () => inputRef.current!, []);
-  const apple = useApplePlatform();
   const sales = useCatalogShelf('sales');
   const repair = useCatalogShelf('repair');
   const active = shelf === 'sales' ? sales : repair;
@@ -223,24 +221,21 @@ export const CheckoutProductSearch = forwardRef<
   );
 
   const shelfSwitch = (
-    <div className="flex items-center gap-1.5" data-testid="checkout-shelf-switch">
-      <TabSwitch
-        tabs={CATALOG_SHELVES.map((s) => ({ id: s.id, label: s.label, count: byShelf[s.id] || undefined }))}
-        activeTab={shelf}
-        onTabChange={(id) => {
-          onShelf(id as CatalogShelf);
-          inputRef.current?.focus();
-        }}
-        fit="hug"
-        size="sm"
-        countStyle="plain"
-      />
-      <span className="inline-flex items-center gap-0.5" aria-hidden>
-        {chordKeys('alt+r', apple).map((k) => (
-          <KeyboardKey key={k} size="xs">{k}</KeyboardKey>
-        ))}
-      </span>
-    </div>
+    <HoverTooltip label="Switch Sales ↔ Repair service" shortcut="Alt + R" asChild>
+      <div className="flex items-center gap-1.5" data-testid="checkout-shelf-switch">
+        <TabSwitch
+          tabs={CATALOG_SHELVES.map((s) => ({ id: s.id, label: s.label, count: byShelf[s.id] || undefined }))}
+          activeTab={shelf}
+          onTabChange={(id) => {
+            onShelf(id as CatalogShelf);
+            inputRef.current?.focus();
+          }}
+          fit="hug"
+          size="sm"
+          countStyle="plain"
+        />
+      </div>
+    </HoverTooltip>
   );
 
   return (

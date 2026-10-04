@@ -18,7 +18,7 @@ import {
   type SelectionAnchorState,
 } from '@/lib/selection/selection-anchor';
 
-/** Table-side wiring for always-on multi-select (left-gutter checkboxes → act), factored out of {@link ReceivingLinesTable} so any list can… */
+/** Table-side wiring for always-on multi-select (left-gutter checkboxes → act), shared by any selectable list. */
 export function useTableSelectMode<T>({
   scope,
   selectMode,

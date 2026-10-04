@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ScanBarcode, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
 import { DetailDock } from '@/design-system/components/DetailDock';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { takeReasonPayload, type TakeReasonChoice } from '@/lib/inventory/take-reason';
 import { TakeReasonChooser } from './TakeReasonChooser';
 import { useAuth } from '@/contexts/AuthContext';
@@ -232,7 +232,7 @@ export function MobilePairQty({
     // confirm — is pinned to the bottom under the thumb (operator
     // 2026-09-25: "the keypad is not pinned to the bottom").
     <div className="flex h-full min-h-0 flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         title={title}
         subtitle={face}
         mono
@@ -301,7 +301,8 @@ export function MobilePairQty({
         )}
       </div>
 
-      <div className="sticky bottom-0 z-sticky bg-mode-panel">
+      {/* The keypad is an input surface (its cells are its face); the confirm verb floats below it, never inside a ground (owner 2026-10-03). */}
+      <div className="shrink-0">
         {!manualCount ? (
           <div
             role="group"
@@ -355,15 +356,15 @@ export function MobilePairQty({
             </Button>
           ))}
         </div>
-
-        <DetailDock
-          label="Count actions"
-          verbs={[
-            { id: 'confirm', label: confirmLabel, icon: <Check />, primary: true, disabled: busy || (manualCount ? draft === '' : numericDraft <= 0) },
-          ]}
-          onVerb={() => confirm()}
-        />
       </div>
+
+      <DetailDock
+        label="Count actions"
+        verbs={[
+          { id: 'confirm', label: confirmLabel, icon: <Check />, primary: true, disabled: busy || (manualCount ? draft === '' : numericDraft <= 0) },
+        ]}
+        onVerb={() => confirm()}
+      />
     </div>
   );
 }

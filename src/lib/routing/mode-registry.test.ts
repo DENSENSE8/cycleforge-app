@@ -65,7 +65,7 @@ test('no pathname resolves to nothing', () => {
 });
 
 test('phone operation and reading flows all inherit triage', () => {
-  const operations = ['/m/scan', '/m/pack', '/m/pack/start/7', '/m/id/scan-out/7', '/m/r/5', '/m/r/5/classify', '/m/loc/A-01', '/m/pair/A-01/SKU1', '/m/u/9'];
+  const operations = ['/m/scan', '/m/pack/start/7', '/m/id/scan-out/7', '/m/r/5', '/m/r/5/classify', '/m/loc/A-01', '/m/pair/A-01/SKU1', '/m/u/9'];
   for (const pathname of operations) assert.equal(modeRouteFor(pathname)?.mode, 'triage', pathname);
   const reading = ['/m', '/m/home', '/m/work', '/m/orders', '/m/orders/7/info', '/m/imports', '/m/exceptions', '/m/rs/3', '/m/pick', '/m/pick/42', '/m/id/pick/42', '/m/u/9/qc', '/m/r/5/qc', '/m/qc/line/3'];
   for (const pathname of reading) assert.equal(modeRouteFor(pathname)?.mode, 'triage', pathname);

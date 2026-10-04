@@ -29,7 +29,7 @@ the *faces* and *pickers* built on top of it:
 | **FBA** `src/lib/fba/fba-conditions.ts:20` (`FnskuConditionPicker`, `FbaQuickAddFnskuModal` native `<select>`) | Amazon's own words mapped to a grade | legitimately external — keep the words, share the picker |
 
 **Server validators repeat the list by hand:** `src/app/api/post-multi-sn/route.ts:16`,
-`src/app/api/receiving-lines/route.ts:54`, `src/app/api/zoho/purchase-orders/receive/route.ts:37`.
+`src/app/api/receiving-lines/route.ts:54`.
 **A non-canonical code exists in a fixture:** `USED_GOOD`
 (`src/lib/receiving/pickup/pickup-card-model.test.ts:17`) — check whether any live data
 or source writes it.

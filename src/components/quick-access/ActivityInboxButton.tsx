@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Inbox } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system/primitives';
 import { ActivityInboxPopover } from '@/components/quick-access/ActivityInboxPopover';
-import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
+import { useActivityInboxFeed } from '@/contexts/ActivityInboxContext';
 import { HEADER_PILL_CLASS, TOP_CHROME_ICON_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
@@ -15,7 +15,7 @@ import { cn } from '@/utils/_cn';
  */
 export function ActivityInboxButton() {
   const pathname = usePathname();
-  const inbox = useActivityInboxOptional();
+  const inbox = useActivityInboxFeed();
   const count = inbox?.items.length ?? 0;
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);

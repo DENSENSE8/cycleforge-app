@@ -1,7 +1,8 @@
 import 'server-only';
 import { queryNemoClawRag } from '@/lib/ai/nemoclaw-rag';
-import { aiRequestHeaders } from '@/lib/ai/provider';
+import { aiRequestHeaders, isSelfHostedAiRuntime } from '@/lib/ai/provider';
 import { resolveOrgAiConfig } from '@/lib/ai/org-provider';
+import { hybridSearch } from '@/lib/search/hybrid-retrieval';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   suggestSupportReplyCore,
@@ -36,6 +37,12 @@ async function postChatCompletion(args: {
       stream: false,
       temperature: 0.3,
       max_tokens: 700,
+      // A self-hosted reasoning model (gex45 vLLM Qwen3) otherwise spends the
+      // whole budget thinking: ~50 s and a truncated reply. Managed endpoints
+      // 400 on unknown params, so this rides ONLY to local runtimes.
+      ...(isSelfHostedAiRuntime({ baseURL: args.url })
+        ? { chat_template_kwargs: { enable_thinking: false } }
+        : {}),
     }),
     signal: AbortSignal.timeout(120_000),
   });
@@ -112,9 +119,14 @@ function makeReportedModel(orgId: OrgId) {
   };
 }
 
+/** The record kinds a customer question can be about; tickets (subject-only) and bins add noise. */
+const SUPPORT_RECORD_TYPES = ['ORDER', 'SERIAL_UNIT', 'SKU', 'REPAIR', 'WARRANTY_CLAIM', 'RECEIVING'] as const;
+
 function makeSuggestDeps(orgId: OrgId): SuggestDeps {
   return {
     queryRag: queryNemoClawRag,
+    searchRecords: async (query) =>
+      (await hybridSearch(orgId, query, { limit: 5, entityTypes: [...SUPPORT_RECORD_TYPES] })).hits,
     generate: makeDefaultGenerate(orgId),
     resolveModel: makeReportedModel(orgId),
   };

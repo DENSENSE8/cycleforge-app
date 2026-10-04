@@ -114,9 +114,8 @@ export interface ReceivingRowDisplay {
 }
 
 /**
- * Workflow status → its compact glyph + tone. Single source for the icon
- * mapping that desktop (ReceivingLinesTable) and mobile (MobileReceivingRow)
- * previously copy-pasted. `label` is the value from {@link workflowStatusTableLabel}.
+ * Workflow status → its compact glyph + tone (MobileReceivingRow). `label` is
+ * the value from {@link workflowStatusTableLabel}.
  */
 export function getWorkflowIconMeta(label: string): {
   Icon: ComponentType<{ className?: string }>;

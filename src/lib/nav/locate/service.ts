@@ -25,6 +25,8 @@ import { checkZohoReceived, type CheckZohoReceivedRow } from '@/lib/receiving/ch
 import { enrichIncomingTrackingIntegrity } from '@/lib/receiving/lines/incoming-integrity';
 import { fetchReceivingLinesPage, resolveReceivingLinesReadFlags } from '@/lib/receiving/lines/list-page';
 import { parseReceivingLinesQuery } from '@/lib/receiving/lines/query';
+import type { InboundFollowup } from '@/lib/receiving/inbound-followups';
+import { readInboundFollowups } from '@/lib/receiving/inbound-followups-store';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { reconcileListParams, awaitingTrackingListParams } from '@/lib/receiving/receiving-modes';
 import { parseRefList } from '@/lib/receiving/reconcile';
@@ -45,6 +47,8 @@ export interface NavLocateDeps {
   inboundLines(orgId: OrgId, refs: readonly string[]): Promise<ReceivingLineRow[]>;
   /** Incoming `?state=AWAITING_TRACKING` rows — the list that bucket opens. */
   inboundAwaiting(orgId: OrgId, refs: readonly string[]): Promise<ReceivingLineRow[]>;
+  /** `GET /api/receiving/inbound-followups?keys=…` — the follow-up tags on these keys. */
+  inboundFollowups(orgId: OrgId, keys: readonly string[]): Promise<InboundFollowup[]>;
 }
 
 export const defaultNavLocateDeps: NavLocateDeps = {
@@ -86,6 +90,7 @@ export const defaultNavLocateDeps: NavLocateDeps = {
     });
     return page.rows as unknown as ReceivingLineRow[];
   },
+  inboundFollowups: (orgId, keys) => readInboundFollowups(orgId, [...keys]),
 };
 
 export type NavLocateInput = { q: string } | { refs: string };
@@ -124,6 +129,8 @@ async function runLocator(
       check: (refs) => deps.inboundCheck(orgId, refs),
       lines: (refs) => deps.inboundLines(orgId, refs),
       awaiting: (refs) => deps.inboundAwaiting(orgId, refs),
+      // The field's answer is buckets only — no entry carries a tag.
+      followups: 'q' in input ? async () => [] : (keys) => deps.inboundFollowups(orgId, keys),
     });
     return 'q' in input ? { buckets: answer.buckets, entries: [] } : answer;
   }

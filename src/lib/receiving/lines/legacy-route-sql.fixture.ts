@@ -26,6 +26,10 @@ import {
   sqlReceivingZendeskTicketColumn,
 } from './sql-receiving-ticket';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from './sql-receiving-image';
+import {
+  SHIPMENT_DELIVERY_ATTEMPTS_SQL,
+  SHIPMENT_SIGNED_BY_SQL,
+} from './sql-shipment-carrier-facts';
 import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import { parseReceivingView } from '@/lib/receiving/receiving-views';
 
@@ -1030,6 +1034,9 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 stn.latest_event_at::text            AS shipment_latest_event_at,
                 stn.last_checked_at::text            AS shipment_last_checked_at,
                 stn.is_terminal                      AS shipment_is_terminal,
+                stn.estimated_delivery_at::text      AS shipment_estimated_delivery_at,
+                ${SHIPMENT_SIGNED_BY_SQL},
+                ${SHIPMENT_DELIVERY_ATTEMPTS_SQL},
                 stn_evt.event_city                   AS shipment_latest_event_city,
                 stn_evt.event_postal_code            AS shipment_latest_event_postal,
                 mirror.po_date::text                 AS po_date,
@@ -1369,6 +1376,9 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
                   stn.latest_status_category   AS shipment_status_category,
                   stn.is_delivered             AS shipment_is_delivered,
                   stn.delivered_at::text       AS shipment_delivered_at,
+                  stn.estimated_delivery_at::text AS shipment_estimated_delivery_at,
+                ${SHIPMENT_SIGNED_BY_SQL},
+                ${SHIPMENT_DELIVERY_ATTEMPTS_SQL},
                   COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                   COALESCE(ops_scan.last_scanned_at, rs_agg.last_scan)::text       AS last_scan_at,
                   COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,

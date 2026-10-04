@@ -48,9 +48,11 @@ try {
   assert.equal(await page.getByTestId('location-park-tote').count(), 1);
 
   await page.getByTestId('location-stock-row').first().click();
-  await page.getByTestId('location-manual-count').waitFor();
-  assert.equal(await page.getByTestId('location-manual-count-submit').isDisabled(), true);
-  assert.equal(await page.getByText('Manual reconciliation does not require a location scan.').count(), 1);
+  await page.getByTestId('stock-position-sheet').waitFor();
+  await page.waitForTimeout(650); // DetailDock ignores a second press inside 500 ms
+  await page.getByTestId('stock-adjust').click();
+  await page.getByTestId('stock-adjust-count').waitFor();
+  assert.equal(await page.getByTestId('stock-adjust-set').isDisabled(), true, 'an unchanged count must not commit');
   await page.screenshot({ path: '/tmp/cycleforge-v2-stock-manual-count.png', fullPage: false });
 
   await page.keyboard.press('Escape');
@@ -59,6 +61,7 @@ try {
   await page.screenshot({ path: '/tmp/cycleforge-v2-stock-park-tote.png', fullPage: false });
 
   await page.keyboard.press('Escape');
+  await page.waitForTimeout(650); // same dock: a press inside 500 ms of Park tote is a double-tap
   await page.getByTestId('location-pair-sku').click();
   await page.getByText('Pair location', { exact: true }).first().waitFor({ timeout: 20_000 });
   assert.match(page.url(), /\/m\/pair\//);

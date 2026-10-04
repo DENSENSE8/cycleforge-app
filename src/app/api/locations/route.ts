@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
+import { derivedRoomLabelSql, derivedRoomSetJoinSql, rackWalkOrderSql } from '@/lib/locations/derived-room';
 import {
   getActiveLocations,
   getRooms,
@@ -9,11 +12,58 @@ import {
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/** GET /api/locations — list active locations. ?type=zones for zone-only, ?type=low-stock for alerts */
+/**
+ * GET /api/locations — list active locations. ?type=zones for zone-only, ?type=low-stock for alerts.
+ * ?room=<room> — that room's scannable locations in physical walk order (the
+ * phone's ordinal location picker; same order and filter as the `walk` block
+ * of `GET /api/locations/[barcode]`), with a cheap occupancy summary. The room
+ * is DERIVED up `parent_id`, so a movable rack's shelves list in the room the
+ * rack stands in now.
+ */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const type = req.nextUrl.searchParams.get('type');
+  const room = req.nextUrl.searchParams.get('room')?.trim();
 
   const orgId = ctx.organizationId;
+
+  if (room) {
+    const result = await tenantQueryOneTrip<{ barcode: string; name: string; units: number; lpns: number }>(orgId, `
+      SELECT BTRIM(l.barcode) AS barcode,
+             l.name,
+             COALESCE(bc.units, 0)::int AS units,
+             COALESCE(hu.lpns, 0)::int AS lpns
+        FROM locations l
+        ${derivedRoomSetJoinSql('l', 'room', '$1')}
+        LEFT JOIN LATERAL (
+          SELECT SUM(b.qty) AS units
+            FROM bin_contents b
+           WHERE b.location_id = l.id AND b.organization_id = l.organization_id AND b.qty > 0
+        ) bc ON true
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS lpns
+            FROM handling_units h
+           WHERE h.location_id = l.id AND h.organization_id = l.organization_id
+        ) hu ON true
+       WHERE l.organization_id = $1
+         AND l.is_active = true
+         AND NULLIF(BTRIM(l.barcode), '') IS NOT NULL
+         AND ${derivedRoomLabelSql('l', 'room')} = $2
+       ORDER BY ${rackWalkOrderSql('l.barcode')}, l.sort_order, l.row_label, l.col_label, l.name
+    `, [orgId, room]);
+    return NextResponse.json({
+      room,
+      locations: result.rows.map((row) => {
+        const segments = parseLocationCodeFlat(row.barcode);
+        return {
+          barcode: row.barcode,
+          name: row.name,
+          face: segments ? locationCode(segments) : row.barcode,
+          units: row.units,
+          lpns: row.lpns,
+        };
+      }),
+    });
+  }
 
   if (type === 'rooms') {
     const rooms = await getRooms(orgId);

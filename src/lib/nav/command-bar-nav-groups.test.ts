@@ -13,17 +13,18 @@ import {
 import { isLaneVisible } from '@/lib/nav/lanes';
 import { SPINE_SECTIONS } from '@/lib/sidebar-navigation';
 
-test('buildCommandBarNavGroups order is Pin → SPINE_SECTIONS', () => {
+test('buildCommandBarNavGroups order is Pin → the spine order (fixedSpineOrder)', () => {
   const groups = buildCommandBarNavGroups();
   const ids = groups.map((g) => String(g.id));
 
   assert.equal(ids[0], 'pin');
   assert.equal(ids.includes('footer'), false, 'account pin band is gone from the default map');
 
-  // Section bands are a SUBSEQUENCE of SPINE_SECTIONS, not a copy of it: a
-  // section with no visible page is omitted (the hollow-domain ban), so
-  // asserting equality would make the palette contract depend on permissions.
-  const sectionIds = ids.slice(1);
+  // Operator 2026-10-03: "Operations → Live feed, Scan Stations, Receiving,
+  // Fulfillment, Inventory changed to Warehouse … and Products at the bottom."
+  // The palette reads the same composer as the spine and the page map.
+  assert.deepEqual(ids, ['pin', 'root', 'floor', 'inbound', 'fulfillment', 'inventory', 'sales', 'catalog']);
+  const sectionIds = ids.filter((id) => id !== 'pin' && id !== 'root');
   const order = SPINE_SECTIONS.map((s) => String(s.id));
   assert.deepEqual(
     sectionIds,
@@ -63,7 +64,7 @@ test('pin contains Chat Automations Home Exceptions Print station Search Media P
   // `reports` arrived 2026-09-15 with its promotion out of the Monitor lane to a parent-level spine row; the palette pin follows the…
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['ai-chat', 'home', 'studio', 'exceptions', 'print-station', 'search', 'ops-photos', 'plans-live', 'settings', 'reports'],
+    ['ai-chat', 'home', 'studio', 'exceptions', 'print-station', 'ops-photos', 'plans-live', 'settings', 'reports'],
   );
   // Monitor (Operations) stays PARKED 2026-09-16 — the door is withdrawn on every surface, so the palette emits no band.
   assert.equal(
@@ -71,6 +72,10 @@ test('pin contains Chat Automations Home Exceptions Print station Search Media P
     false,
     'parked lane "monitor" must not emit a ⌘K band',
   );
+  // The Live feed is a root page (no lane, operator 2026-10-03): its own band, titled like the desktop band.
+  const root = groups.find((g) => g.id === 'root');
+  assert.equal(root?.label, 'Operations');
+  assert.deepEqual(root?.rows.map((r) => r.id), ['live-feed']);
   // Automations (`studio`) is a top row under Chat since 2026-09-27, so it rides the pin — no lane band of its own.
   assert.equal(
     groups.some((g) => g.id === 'studio'),
@@ -146,7 +151,7 @@ test('domain bands own their pages; the desk / print grab-bags are gone', () => 
   assert.ok(idsIn('fulfillment').includes('outbound'), 'Outbound missing Shipping');
   // Support is HIDDEN by the mobile-first gate, so it owns no band. The ROUTE
   // and the registry row survive (`nav-mobile-first.test.ts`); the door does
-  // not. Same for `sales` and `monitor`.
+  // not.
   assert.equal(idsIn('support').length, 0, 'a hidden lane must own no palette rows');
   // Scan benches never appear under a domain band.
   for (const band of [
@@ -209,9 +214,9 @@ test('permission filter hides gated pages', () => {
   const pageIds = none.flatMap((g) =>
     g.rows.filter((r) => r.type === 'page').map((r) => r.id),
   );
-  // Ungated: home, search, settings
+  // Ungated: home, settings (the /search desk was deleted 2026-10-03)
   assert.ok(pageIds.includes('home'));
-  assert.ok(pageIds.includes('search'));
+  assert.equal(pageIds.includes('search'), false);
   assert.ok(pageIds.includes('settings'));
   assert.equal(pageIds.includes('operations'), false);
   assert.equal(pageIds.includes('admin'), false);

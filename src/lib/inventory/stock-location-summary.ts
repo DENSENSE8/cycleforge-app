@@ -11,11 +11,18 @@ export interface StockLocationSummary {
   routeCode: string | null;
   face: string;
   room: string | null;
+  /** Parsed from a room-coded address (`C-03-10-3-05`); null for racks, totes and free-written places. */
+  aisle: number | null;
+  bay: number | null;
+  level: number | null;
+  position: number | null;
   quantity: number;
   skuCount: number;
   empty: boolean;
   hasException: boolean;
   hasOnHold: boolean;
+  /** Zero-count provisional placement that needs cleanup, not active stock. */
+  hasCleanup: boolean;
   lastTouched: string | null;
   rows: LocationStockTableRow[];
 }
@@ -51,7 +58,8 @@ export function summarizeStockLocations(
   return locationStockWalkRows(rows, 'location-asc').map((anchor) => {
     const key = locationKey(anchor);
     const sourceRows = grouped.get(key) ?? [anchor];
-    const stockRows = sourceRows.filter((row) => row.source !== 'empty');
+    const inventoryRows = sourceRows.filter((row) => row.source !== 'empty');
+    const stockRows = inventoryRows.filter((row) => row.qty > 0);
     const skus = new Set(stockRows.map((row) => row.sku.trim()).filter(Boolean));
     const routeCode = anchor.location_barcode?.trim() || null;
     return {
@@ -60,11 +68,17 @@ export function summarizeStockLocations(
       routeCode,
       face: anchor.location_name?.trim() || routeCode || 'Unlocated',
       room: anchor.room?.trim() || null,
+      // A bay needs an aisle, a level a bay: a half-parsed address is not a place in the walk.
+      aisle: anchor.aisle,
+      bay: anchor.aisle != null ? anchor.bay : null,
+      level: anchor.aisle != null && anchor.bay != null ? anchor.level : null,
+      position: anchor.aisle != null && anchor.bay != null ? anchor.position : null,
       quantity: stockRows.reduce((sum, row) => sum + Math.max(0, row.qty), 0),
       skuCount: skus.size,
       empty: stockRows.length === 0,
       hasException: sourceRows.some((row) => row.source === 'exception') || anchor.location_id == null,
-      hasOnHold: sourceRows.some((row) => row.is_provisional),
+      hasOnHold: stockRows.some((row) => row.is_provisional),
+      hasCleanup: inventoryRows.some((row) => row.is_provisional && row.qty <= 0),
       lastTouched: newestInstant(sourceRows),
       rows: sourceRows,
     };

@@ -25,8 +25,8 @@ interface RefreshSummary {
   capped: boolean;   // true when more incoming shipments exist than BATCH_CAP
   throttled?: boolean;
   // Universal Incoming (plan §9.4): eBay buyer-purchase pull, when the flag is on.
-  ebay_ingested?: number;
-  ebay_created?: number;
+  ebay_landed?: number;
+  ebay_updated?: number;
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -61,13 +61,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const result = await syncShipmentsByIds(batch, { concurrency: 5 });
 
   // Universal Incoming (plan §9.4):
-  let ebayIngested = 0;
-  let ebayCreated = 0;
+  let ebayLanded = 0;
+  let ebayUpdated = 0;
   try {
     if (await isIncomingUniversal(ctx.organizationId)) {
       const ebay = await syncEbayPurchasesToReceiving(ctx.organizationId);
-      ebayIngested = ebay.ingested;
-      ebayCreated = ebay.created;
+      ebayLanded = ebay.landed;
+      ebayUpdated = ebay.updated;
     }
   } catch (e) {
     console.warn('[incoming/refresh] eBay purchase sync failed (non-fatal)', e);
@@ -75,7 +75,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   // Carrier statuses changed or new eBay lines landed → drop the row/summary
   // caches so the next refetch reflects freshly-delivered/imported purchases.
-  if (result.terminal > 0 || result.synced > 0 || ebayCreated > 0) {
+  if (result.terminal > 0 || result.synced > 0 || ebayLanded > 0 || ebayUpdated > 0) {
     try {
       await invalidateReceivingViews(ctx.organizationId);
     } catch { /* non-fatal */ }
@@ -88,8 +88,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     updated: result.synced,
     errors: result.errors,
     capped,
-    ebay_ingested: ebayIngested,
-    ebay_created: ebayCreated,
+    ebay_landed: ebayLanded,
+    ebay_updated: ebayUpdated,
   };
 
   await setCachedJson('incoming-refresh', cooldownKey, summary, COOLDOWN_SECONDS);

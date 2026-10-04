@@ -49,6 +49,8 @@ export interface ViewSpec<FactId extends string, SectionId extends string, VerbI
   rowFacts: readonly { fact: FactId; tier: DisclosureTier }[];
   /** Default + allowed densities for this view (the staffer picks within the range). */
   density: { default: Density; allowed: readonly Density[] };
+  /** The staffer may switch the list between Compact rows and Full cards (TriageCardList `densityControl`). */
+  faceSwitch?: true;
   sort: ViewSort;
   /** All-clear state for this job. */
   empty: { title: string; detail: string };
@@ -125,6 +127,7 @@ export const VIEW_SPECS: OrderViewSpecs = {
     lead: 'orders.fulfill_by',
     rowFacts: WORK_QUEUE_ROW,
     density: { default: 'M', allowed: DENSITIES },
+    faceSwitch: true,
     sort: 'ship-by',
     record: WORK_QUEUE_RECORD,
     verbs: WORK_QUEUE_VERBS,

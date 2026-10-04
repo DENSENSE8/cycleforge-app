@@ -1,7 +1,9 @@
 /** Pure Local Pickup adapter for the shared triage card family. */
 
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
-import type { RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
+import type { RecordCardLine } from '@/design-system/components/record-card/record-card-types';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
+import type { PICKUP_HISTORY_VIEW } from '@/lib/triage/views/pickup-history';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { RecordStateFace } from '@/design-system/tokens/record';
 import { conditionSentenceLabel, resolveConditionGrade } from '@/lib/conditions';
@@ -188,7 +190,7 @@ const QC_FACE: Readonly<Record<ReceivingUnitStageSummary['strongestQc'], RecordS
   PASSED: { id: 'PASSED', code: 'PASS', label: 'QC passed', tone: 'success', icon: 'package-check' },
 };
 
-export function pickupRecordCard(model: PickupCardModel): RecordCardModel {
+export function pickupRecordCard(model: PickupCardModel): ViewCardModel<typeof PICKUP_HISTORY_VIEW> {
   const lines = model.units.map(pickupLine);
   const processFirst = model.state.id === 'PROCESS';
   const state = processFirst ? model.state : QC_FACE[model.unitSummary.strongestQc];

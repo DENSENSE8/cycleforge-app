@@ -5,6 +5,12 @@ import { parsePhotoAspectList } from '@/lib/photos/photo-aspects';
 import { ALL_ROLES } from '@/lib/auth/permissions-shared';
 import type { SettingDef, SettingPage } from './types';
 import { ORDER_LIST_VIEW_KEYS, VIEW_SPECS, type Density, type OrderListViewKey } from '@/lib/views/view-specs';
+import {
+  TASK_BOARD_GROUP_BYS,
+  TASK_BOARD_GROUP_BY_LABEL,
+  TASK_BOARD_SORTS,
+  TASK_BOARD_SORT_LABEL,
+} from '@/lib/task-board/task-board-model';
 
 /** Per-role override of the Unbox Inbound pin default (Gemini D9). */
 const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) => ({
@@ -95,6 +101,9 @@ const VIEW_DENSITY_SETTINGS: readonly SettingDef[] = ORDER_LIST_VIEW_KEYS.map((v
 
 /** The Tasks board's pinned Daily checklist column, shown or hidden per staffer (`H` on `/`). */
 export const TASK_BOARD_CHECKLIST_COLUMN_SETTING = 'desk.home.checklistColumn';
+/** The Tasks board's Display menu — Group by and Order by, remembered per staffer (`?group=` / `?sort=` override). */
+export const TASK_BOARD_GROUP_SETTING = 'desk.home.group';
+export const TASK_BOARD_SORT_SETTING = 'desk.home.sort';
 
 export const SETTING_PAGES = [
   { id: 'receiving', label: 'Receiving', description: 'Unboxing & intake behavior' },
@@ -467,6 +476,28 @@ export const SETTINGS: readonly SettingDef[] = [
     description: 'Pin today’s checklist as the left-most column of the Tasks board. H on the board hides or shows it.',
     control: 'toggle',
     schema: z.boolean().default(true),
+  },
+  {
+    key: TASK_BOARD_GROUP_SETTING,
+    page: 'desk',
+    group: 'Tasks board',
+    scope: 'staff',
+    label: 'Tasks: group by',
+    description: 'How the Tasks list groups its rows (Display menu on the board). Long-term projects always group by project.',
+    control: 'select',
+    schema: z.enum(TASK_BOARD_GROUP_BYS).default('type'),
+    options: TASK_BOARD_GROUP_BYS.map((value) => ({ value, label: TASK_BOARD_GROUP_BY_LABEL[value] })),
+  },
+  {
+    key: TASK_BOARD_SORT_SETTING,
+    page: 'desk',
+    group: 'Tasks board',
+    scope: 'staff',
+    label: 'Tasks: order by',
+    description: 'How the Tasks list orders its rows (Display menu on the board). Finished work always sinks.',
+    control: 'select',
+    schema: z.enum(TASK_BOARD_SORTS).default('urgency'),
+    options: TASK_BOARD_SORTS.map((value) => ({ value, label: TASK_BOARD_SORT_LABEL[value] })),
   },
   ...DESK_VIEW_SETTINGS,
   ...VIEW_DENSITY_SETTINGS,

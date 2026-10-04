@@ -18,6 +18,15 @@
     @slot;
   }
 }
+/* `dark:` follows the APP theme, never the OS. The theme registry marks a
+   dark-family theme with `data-color-scheme="dark"` on <html>
+   (`src/lib/theme/theme.ts`); light is the absence of the attribute. Tailwind's
+   default `dark:` is `@media (prefers-color-scheme: dark)`, so a staffer whose
+   Mac/phone is in Dark appearance but whose app theme is Light got every
+   `dark:text-*-300` / `dark:bg-*-500/15` face painted on the light card —
+   washed-out orange/indigo/emerald inks and invisible tonal verbs (Prometheus,
+   2026-10-03). */
+@custom-variant dark (&:where([data-color-scheme='dark'], [data-color-scheme='dark'] *));
 /* Source discovery is deliberately bounded to application source. Automatic
    discovery can race Next's generated `.next` tree during a cold dev build,
    feeding compiled/binary fragments back into Tailwind's candidate scanner.
@@ -56,6 +65,8 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-sans);
+  height: 100%;
+  width: 100%;
   margin: 0;
   overflow: hidden;
 }
@@ -203,8 +214,7 @@ body {
     /* 3in × 2in thermal label stock — bin + rack labels share the same
      * media so a single label printer can drive both flows. Margin is
      * zero because the print card itself reserves padding inside the
-     * 3in × 2in box (see labelCardStyle in BinLabelPrinter /
-     * RackLabelPrinter). */
+     * 3in × 2in box. */
     size: 3in 2in;
     margin: 0;
   }
@@ -223,11 +233,16 @@ body {
   -webkit-touch-callout: none;
 }
 
-/* Safe area padding utility — apply on mobile chrome, not <body>. */
-.safe-area-padding {
+/*
+ * The mobile application frame owns the status-area and side cutouts. It does
+ * NOT own the home-indicator inset: bottom docks and sheets add that where a
+ * bottom control actually exists. This is paired with an in-flow percentage-
+ * height mobile root; never put the frame back inside `fixed inset-0` or give
+ * it an independent `dvh` measurement on iOS PWA.
+ */
+.mobile-safe-area-frame {
   padding-top: env(safe-area-inset-top, 0px);
   padding-right: env(safe-area-inset-right, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
 }
 .pb-safe {
@@ -243,6 +258,7 @@ body {
    input size (e.g. the text-xs station scan bar rendered at 16px), so scope it
    to coarse pointers and let the token sizes win everywhere else. */
 @media (pointer: coarse) {
+  input:not([type]),
   input[type='text'],
   input[type='search'],
   /* email/password/tel/number/url zoom exactly the same way, and `/signin` —
@@ -256,7 +272,8 @@ body {
   input[type='tel'],
   input[type='number'],
   input[type='url'],
-  textarea {
+  textarea,
+  select {
     font-size: max(16px, 1rem);
   }
 }

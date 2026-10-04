@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, ChevronLeft, ChevronRight, Clock, Plus, ScanBarcode, ShoppingCart, Zap } from '@/components/Icons';
-import { MobileActionSlotRegistrar, MobileTopBarAction } from '@/components/mobile/redesign/MobileActionSlot';
+import { MobileActionSlotRegistrar, MobileTopBarAction } from '@/components/mobile/v2/MobileV2ActionSlot';
 import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button } from '@/design-system/primitives/Button';

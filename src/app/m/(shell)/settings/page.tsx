@@ -3,8 +3,8 @@
  * Affected API: none. User: dedicated mobile settings display with log out last.
  */
 
-import { MobileSettingsList } from '@/components/mobile/redesign/MobileSettingsList';
+import { MobileV2SettingsList } from '@/components/mobile/v2/settings/MobileV2SettingsList';
 
 export default function MobileSettingsPage() {
-  return <MobileSettingsList />;
+  return <MobileV2SettingsList />;
 }

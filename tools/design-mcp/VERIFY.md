@@ -197,6 +197,93 @@ Confirm these are still true. If any now succeeds, the report is out of date:
   `"per theme"` / `"per staff accent"`, never `#1a1a1d`.
 - Cloud agents still cannot see this stdio server. Do not report that as fixed.
 
+## 9. Mobile operational routing and Fitts's Law
+
+Run all three probes; do not infer the result from `pinned.json`:
+
+```bash
+node tools/design-mcp/ds.mjs contract "Fitts law Fits Law mobile add photo camera icon bottom thumb target" --limit 8
+node tools/design-mcp/ds.mjs contract "mobile linked photos preview view all full screen delete photo evidence gallery" --limit 8
+node tools/design-mcp/ds.mjs contract "mobile scan destination manual fallback move stock location" --limit 8
+```
+
+Required evidence:
+
+- The Fitts/Fits query ranks `IconButton` first and returns `DetailDock`; its
+  law says a compact glyph still owns the mobile touch-floor hit area and that
+  frequent actions minimize travel distance.
+- The evidence query ranks `MobileSwipePhotoViewer` first and says destructive
+  photo controls do not appear in the resting preview.
+- The destination query ranks `MobileCaptureWindow` first and says camera and
+  keyed fallback share one decode/validation path.
+- The profile's `mobile-surface` preflight explicitly classifies primary record,
+  linked quick look, edit, picker, confirmation, and physical job before it
+  recommends components.
+
+Any missing component, empty curated law, or different first result is a
+`FAIL`, even when the component exists in the repository: undiscoverable design
+system code is not usable agent context.
+
+## 10. Replay the V2 product history end to end
+
+```bash
+node tools/design-mcp/mobile-operational-smoke.mjs
+```
+
+Expect nine prompt-replay `PASS` rows, one pre-write-routing `PASS`, one live
+pre-write-ping `PASS`, the final line
+`mobile operational MCP smoke: all good`, and exit 0. This replay must call
+`tools/design-mcp/ds.mjs`; a script that reads `pinned.json` directly is a
+vacuous test because it bypasses the MCP engine, project profile, catalog walk,
+pin merge and ranking.
+
+Required first results:
+
+- whole mobile application → `MobileV2Shell`
+- compact Allocate → `MobileV2FulfillmentOrders`
+- location-first stock → `MobileV2LocationRecord`
+- hierarchical mobile navigation → `MobileV2AppSwitcher`
+- continuous evidence capture → `MobileNativePhotoCapture`
+- receiving LPN / QC → `MobileV2ReceivingCartonRecord`
+- order paperwork → `MobileV2OrderPaperworkSheet`
+- recent scan history → `MobileV2ScanStation`
+- Fitts/Fits hierarchy → `DetailDock`
+
+Also inspect `contractPreflight`: navigation, fulfillment, stock, scan, photo,
+receiving and paperwork each need a domain-specific V2 rule before the generic
+`mobile-surface` fallback. The receipt must be no longer than 30 minutes. This
+is intentionally a refresh window, not a claim that an MCP process can force a
+client which exposes no pre-write hook.
+
+## 11. Data-table lane: decide, declare, ledger
+
+```bash
+node tools/design-mcp/data-table-smoke.mjs
+```
+
+Expect a `PASS` row per table job, plus `ds_ledger verdicts`,
+`ds_display_method`, `ds_card_views`, `pre-write routing` and
+`live pre-write ping`, then `data-table MCP smoke: all good` and exit 0. Like
+§10, it must go through `tools/design-mcp/ds.mjs`.
+
+Required results:
+
+- row checkbox / select gutter → `GridRowCheckbox` first
+- porting a scan-and-act list off a grid → `RecordCard` first
+- a new keep-sheet → `table-surface-binding` and `DataTable` in the top two
+- `ds_display_method` with desk + scan-and-act + 40 rows → card list on top;
+  a phone surface never ranks `DataTable` first
+- `ds_card_views` → `ok: true` and every view declares `slots`
+- `ds_ledger` on `src/app/warehouse/rma/page.tsx` → `violation` (retired path),
+  exit 1; on a canonical card list → `pass`
+- `src/components/tech/all/TechAllTriageTable.tsx` routes to the
+  `data-table-surface` preflight; `DockedPackagesLedger.tsx` still routes to
+  `inbound-receiving-surface`
+
+A component that exists in the repo but does not come back from `ds_contract`
+is a `FAIL`. That is exactly how `RecordCard` and `RecordActionStrip` went
+unseen before the 2026-10-03 catalog fix.
+
 ## Final report
 
 One table: item, `PASS`/`FAIL`/`UNVERIFIED`, and the single piece of evidence you

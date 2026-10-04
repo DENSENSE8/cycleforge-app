@@ -24,7 +24,8 @@ import { DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
 import { AssigneeComboboxPanel } from '@/design-system/components/AssigneeCombobox';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
-import { Button, KeyboardKey } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { TextField } from '@/design-system/primitives/TextField';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
@@ -81,27 +82,26 @@ export function TaskAlertButton({
           data-testid="task-alert-header"
         />
       ) : (
-        <Button
-          ref={anchorRef}
-          size="sm"
-          variant="secondary"
-          icon={<BellRing aria-hidden />}
-          onClick={(event) => {
-            // A row verb must not also open the row under it.
-            event.stopPropagation();
-            setOpen(!open);
-          }}
-          aria-expanded={open}
-          aria-haspopup="dialog"
-          ariaLabel="Alert someone to follow up"
-          className="h-6 px-2 text-[11px]"
-          data-testid="task-alert-row"
-        >
-          Alert
-          <KeyboardKey size="xs" className="ml-1">
-            {TASK_ALERT_KEY.toUpperCase()}
-          </KeyboardKey>
-        </Button>
+        <HoverTooltip label="Alert" shortcut={TASK_ALERT_KEY.toUpperCase()} placement="below" asChild>
+          <Button
+            ref={anchorRef}
+            size="sm"
+            variant="secondary"
+            icon={<BellRing aria-hidden />}
+            onClick={(event) => {
+              // A row verb must not also open the row under it.
+              event.stopPropagation();
+              setOpen(!open);
+            }}
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            ariaLabel="Alert someone to follow up"
+            className="h-6 px-2 text-[11px]"
+            data-testid="task-alert-row"
+          >
+            Alert
+          </Button>
+        </HoverTooltip>
       )}
       <AnchoredLayer
         open={open}
@@ -272,20 +272,19 @@ function TaskAlertPanel({
         <Button size="sm" variant="ghost" onClick={onDone}>
           Cancel
         </Button>
-        <Button
-          size="sm"
-          variant="primary"
-          icon={<BellRing aria-hidden />}
-          loading={send.isPending}
-          disabled={!canSend}
-          onClick={submit}
-          data-testid="task-alert-send"
-        >
-          Send
-          <KeyboardKey size="xs" tone="inverse" className="ml-1">
-            ⌘↵
-          </KeyboardKey>
-        </Button>
+        <HoverTooltip label="Send" shortcut="⌘↵" placement="above" asChild>
+          <Button
+            size="sm"
+            variant="primary"
+            icon={<BellRing aria-hidden />}
+            loading={send.isPending}
+            disabled={!canSend}
+            onClick={submit}
+            data-testid="task-alert-send"
+          >
+            Send
+          </Button>
+        </HoverTooltip>
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ phone↔desktop bridges, scan logs, and AI session streaming. **Live.**
   (priority alerts + staff messages), `phone:{staffId}` (photo bridge —
   `receiving_photo_taken` absolute in-flight count for desk peek placeholders;
   `receiving_photo_uploaded` when a shot commits),
-  `packer:{staffId}`, `staffstation:{staffId}`, `scanlog:{staffId}` (read-only).
+  `packer:{staffId}`, `staffstation:{staffId}`.
 - **AI sessions:** `ai:assist:{sessionId}`.
 
 ### Desk → phone handshake (`src/lib/realtime/device-handshake.ts`)

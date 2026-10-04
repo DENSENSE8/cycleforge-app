@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { use as useUnwrap } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Camera } from '@/components/Icons';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { PhotoFab } from '@/components/mobile/receiving/PhotoFab';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 import { receivingPhotosGalleryUrl } from '@/lib/photos/mobile-gallery-url';
@@ -95,7 +95,7 @@ export default function MobilePurchaseOrderItemDetailPage(
 
   return (
     <div className="min-h-screen bg-surface-card pb-24">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         title={item?.item_name || item?.sku || 'Purchase Order Item'}
         subtitle={header ? `PO ${header.po_number || header.po_id}` : ''}
         backHref={`/m/receiving/po/${encodeURIComponent(poId)}`}

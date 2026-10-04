@@ -12,6 +12,7 @@ import {
   ticketHandle,
   type LocationSegments,
 } from '@/lib/barcode-routing';
+import { rackLabelPayload, type RackAddress } from '@/lib/locations/rack-code';
 import { staffOriginForSlug } from '@/lib/tenancy/kiosk-host';
 
 /** Origin for printed QR codes for a tenant slug (no trailing slash). */
@@ -109,6 +110,13 @@ type PrintMatrixArgs =
       /** Zone / aisle / bay / level / position. */
       segments: LocationSegments;
       /** The tenant's GLN. Only a *licensed* one can name a GS1 location. */
+      gln?: string | null;
+    })
+  | (MatrixOverride & {
+      kind: 'rack';
+      /** Rack / shelf / position of a movable rack — no room in the identity. */
+      address: RackAddress;
+      /** The tenant's GLN. Only a *licensed* one adds the AI 414 + 254 frame. */
       gln?: string | null;
     });
 
@@ -218,6 +226,13 @@ export function encodePrintMatrix(args: PrintMatrixArgs): PrintMatrix {
       // Rung 2 (licensed, no host) or rung 4 (no licence) — decided already.
       // The flat code is typeable AND is what `routeScan` resolves, so it is
       // the honest HRI on every rung.
+      return { value: payload.value, symbology: payload.symbology, hri: payload.code };
+    }
+
+    case 'rack': {
+      // `(414)<GLN>(254)RK12-3` with a licensed GLN, else the bare code — the
+      // spelling `parseRackCode` / `routeScan` resolve. The code is the HRI.
+      const payload = rackLabelPayload(args.address, { gln: args.gln });
       return { value: payload.value, symbology: payload.symbology, hri: payload.code };
     }
   }

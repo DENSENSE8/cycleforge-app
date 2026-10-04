@@ -16,8 +16,8 @@ export const emberPalette: ThemePalette = {
     // Neutral chrome — warm coal
     'text-primary': '#f7ede4',
     'text-secondary': '#d8c7b8',
-    'text-soft': '#ab9887',
-    'text-faint': '#7d6c5b',
+    'text-soft': '#b2a08f',
+    'text-faint': '#9a8b7c', // ≥4.5 on every surface (owner 2026-10-03)
     'background-canvas': '#16100c',
     'background-surface': '#211913',
     'surface-sunken': '#2e231a',

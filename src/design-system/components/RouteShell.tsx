@@ -28,8 +28,6 @@ interface RouteShellProps {
   /** Optional label overrides for the Actions ↔ History tabs. */
   actionsLabel?: string;
   historyLabel?: string;
-  /** Pinned to bottom inside the active mobile pane (e.g., scan dock). Same slot on desktop renders below history. */
-  bottomDock?: ReactNode;
   className?: string;
   /** Optional initial pane when no `?view=` is in the URL. Defaults to `history`. */
   defaultView?: RouteShellView;
@@ -45,7 +43,6 @@ export function RouteShell({
   history,
   actionsLabel = 'Actions',
   historyLabel = 'History',
-  bottomDock,
   className,
   defaultView = 'history',
 }: RouteShellProps) {
@@ -90,7 +87,6 @@ export function RouteShell({
         >
           {history}
         </motion.div>
-        {bottomDock ? <div className="shrink-0 border-t border-border-hairline bg-surface-card">{bottomDock}</div> : null}
       </div>
     );
   }
@@ -131,8 +127,6 @@ export function RouteShell({
           </motion.div>
         )}
       </div>
-
-      {bottomDock ? <div className="shrink-0 border-t border-border-hairline bg-surface-card">{bottomDock}</div> : null}
     </div>
   );
 }

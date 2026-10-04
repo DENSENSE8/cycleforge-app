@@ -25,10 +25,18 @@ const LABEL_INGESTION_SOURCES = [
 
 type LabelIngestionSource = (typeof LABEL_INGESTION_SOURCES)[number];
 
-/** V1 deliberately has no fuzzy/AI/address match discriminator. */
+/** How a label reached its order. Auto methods only ever pick ONE logical order. */
 export const LABEL_MATCH_METHODS = [
   'CYCLEFORGE_REFERENCE',
   'MARKETPLACE_ORDER_ID',
+  /** The label's tracking is already on exactly one logical order. */
+  'TRACKING_NUMBER',
+  /** The ship-to name names exactly one open logical order. */
+  'BUYER_NAME',
+  /** The buyer has several open orders and the others already hold labels → the most recent unlabeled one. */
+  'BUYER_NAME_NEXT_UNLABELED',
+  /** An operator confirmed a buyer-name exception (or paired an unreadable label). */
+  'OPERATOR_CONFIRMED',
 ] as const;
 
 export type LabelMatchMethod = (typeof LABEL_MATCH_METHODS)[number];
@@ -44,6 +52,10 @@ export const LABEL_QUARANTINE_REASON_CODES = [
   'UNSUPPORTED_CARRIER',
   'MULTI_PACKAGE_EVIDENCE',
   'STAGING_FAILED',
+  /** A ship-to name was read, but no open order carries that buyer. */
+  'BUYER_NOT_FOUND',
+  /** Several open orders carry this buyer and none can be picked by rule — the confirmation exception. */
+  'BUYER_AMBIGUOUS',
 ] as const;
 
 export type LabelQuarantineReasonCode = (typeof LABEL_QUARANTINE_REASON_CODES)[number];
@@ -89,6 +101,8 @@ export interface ParsedLabelEvidence {
   trackingNumberNormalized: string | null;
   carrier: string | null;
   multiPackageEvidence: boolean;
+  /** The recipient name printed on the label (file uploads); absent for API sources. */
+  shipToName?: string | null;
 }
 
 interface LabelIngestionRecord {

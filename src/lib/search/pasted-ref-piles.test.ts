@@ -18,7 +18,7 @@ test('one pile, needs-a-person first, bucket labels only', () => {
   const rows = [
     entry('QUIET', ['inbound:received'], 'unboxed'),
     entry('SOLD', ['outbound:triage', 'outbound:exceptions'], 'no_match'),
-    entry('DIRT', ['inbound:not_received'], 'erp_ahead'),
+    entry('DIRT', ['inbound:not_received'], 'delivered_not_scanned'),
     entry('WAIT', ['inbound:awaiting_tracking', 'inbound:not_received'], 'in_transit'),
     entry('GONE', ['outbound:shipped']),
     entry('MISS', []),

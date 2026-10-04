@@ -61,9 +61,16 @@ purchase, one document, one tracking row.
 ## 2. Print when the packer print station is down — one file, one order, many orders (≈2 h)
 
 Today (`src/lib/documents/print-bundle.ts`, `POST /api/orders/[id]/documents/print`) the packer
-bundle goes to PrintNode when an outbound printer profile exists, else returns
-`browserFallbackDocs`; jobs are ledgered in `document_print_jobs`. Station hand-off is Ably
-(`useStaffPrintBridgeHost/Client`) with an offline timeout. **No server PDF merge exists.**
+bundle is EVERY shipping label on file, the newest packing slip, the manuals, and every label
+paired to the order before pack (label_ingestions MATCHED/LINKED with no documents row yet,
+ledgered by `document_print_jobs.label_ingestion_id`, browser-read from
+`GET /api/orders/[id]/documents/label-ingestions/[ingestionId]`). It goes to PrintNode when an
+outbound printer profile exists, else returns `browserFallbackDocs`. The pack scan
+(`POST /api/packing-logs`) also accepts a tote or a unit label / serial and packs that order on
+its primary tracking (`src/lib/packing/pack-scan-order.ts`); on a phone,
+`/api/packing/resolve-scan` hands `/m/pack/start/[orderId]?print=1`, which prints the bundle on
+entry. Station hand-off is Ably (`useStaffPrintBridgeHost/Client`) with an offline timeout.
+**No server PDF merge exists.**
 
 Lowest-cost path (recommended): reuse the existing browser fallback
 (`src/lib/print/printOutboundDocuments.ts`, `printPackBundleFallback.ts` — one full-bleed page

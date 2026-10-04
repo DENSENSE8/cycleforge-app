@@ -21,7 +21,7 @@ export function parseDeskPairParam(raw: string | null | undefined): DeskPairFilt
  * Dates are warehouse civil days (`YYYY-MM-DD`, inclusive).
  */
 export interface DeskRefinements {
-  /** `?packedBy=` — the latest live PACK assignee. */
+  /** `?packedBy=` — the staffer who actually packed the order (`order_stage_facts.packed_by`). */
   packedBy: number | null;
   /** `?pickerId=` — the latest live ORDER/PICK assignee (the order-desk operator). */
   pickerId: number | null;

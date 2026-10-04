@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Copy, RefreshCw, Trash2 } from '@/components/Icons';
+import { CheckCircle, Copy, Flag, Phone, RefreshCw, Search, Trash2, X } from '@/components/Icons';
 import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
 import {
   TriageCardList,
@@ -26,6 +26,7 @@ import {
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
+import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { RecordLedgerSummaryPane } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import type { RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { ReceivingSelectionVerbs } from '@/components/receiving/ReceivingSelectionVerbs';
@@ -38,7 +39,13 @@ import type { InboundCheck } from '@/lib/receiving/inbound-check-query';
 import { pastedNumberPlaceholderId, pastedNumbers, removePastedNumbers } from '@/lib/receiving/pasted-numbers';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
-import { filterEntriesByRecon, type ReconReason, type ReconStatus } from '@/lib/receiving/reconcile';
+import { filterEntriesByRecon, type ReconEntry, type ReconReason, type ReconStatus } from '@/lib/receiving/reconcile';
+import {
+  INBOUND_FOLLOWUP_LABELS,
+  inboundFollowupKey,
+  type InboundFollowupTag,
+} from '@/lib/receiving/inbound-followups';
+import { useInboundFollowups, useSetInboundFollowup } from '@/lib/receiving/inbound-followups-query';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { clearDataTableVisibleIds, publishDataTableVisibleIds } from '@/lib/tables/data-table-visible-rows';
@@ -46,13 +53,17 @@ import { INCOMING_PIPELINE_VIEW } from '@/lib/triage/views';
 import { toast } from '@/lib/toast';
 import { copyToClipboard } from '@/utils/_dom';
 import {
+  PastedNumberActionsContext,
   PastedNumberCard,
   pastedNumberCardModel,
   pastedNumberGroupKey,
   pastedNumberStatusFace,
+  type PastedNumberActions,
   type PastedNumberCardModel,
   type PastedNumberRow,
 } from './cards/PastedNumberCard';
+import { PastedNumberLine } from './cards/PastedNumberLine';
+import { FOLLOWUP_KEYS } from './cards/pasted-number-faces';
 import { useInboundDeliveryRecord } from '@/components/receiving/record/useInboundRecord';
 import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
 import { inboundPastedNumberModel } from '@/components/receiving/record/inbound-record-model';
@@ -69,6 +80,9 @@ const purchaseKey = (row: ReceivingLineRow): string =>
   (row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || row.source_order_id || '').trim();
 /** A Find naming exactly one pasted number opens it. */
 const numberExactFind = (query: string, card: PastedNumberCardModel) => card.number.entry.ref.toLowerCase() === query;
+/** The follow-up's key: the order when the Check named one, so a PO and its tracking share one tag. */
+const followupKeyOf = (entry: ReconEntry): string => inboundFollowupKey({ poNumber: entry.poNumber, ref: entry.ref });
+const FOLLOWUP_ICON = { need_claim: Flag, double_check: Search, chasing_seller: Phone, acknowledged: CheckCircle } as const;
 
 interface PastedNumbersLedgerProps {
   check: InboundCheck;
@@ -111,6 +125,11 @@ export function PastedNumbersLedger({
 
   // ── Numbers → groups (one card each) ──────────────────────────────────────
   const loading = check.loading || rowsLoading;
+  // Compact (one row) or Full (cards) — the operator's choice, Compact until picked.
+  const [density, setDensity] = useTriageDensity('incoming.pasted', 'row');
+  const followupKeys = useMemo(() => check.entries.map(followupKeyOf), [check.entries]);
+  const followups = useInboundFollowups(followupKeys);
+  const setFollowup = useSetInboundFollowup();
   const bands = useMemo((): [string, RowGroup<PastedNumberRow>[]][] => {
     if (loading) return [];
     const shown = status ? filterEntriesByRecon(check.entries, status, reason) : check.entries;
@@ -118,15 +137,18 @@ export function PastedNumbersLedger({
       query: findValue,
       matches: (row) => receivingLineMatchesQuery(row, findValue),
     });
-    const groups = numbers.map((number): RowGroup<PastedNumberRow> => ({
-      key: `num:${number.entry.key}`,
-      rows:
-        number.lines.length > 0
-          ? number.lines.map((line) => ({ id: line.id, number, line }))
-          : [{ id: pastedNumberPlaceholderId(number.entry.key), number, line: null }],
-    }));
+    const groups = numbers.map((number): RowGroup<PastedNumberRow> => {
+      const followup = followups.get(followupKeyOf(number.entry)) ?? null;
+      return {
+        key: `num:${number.entry.key}`,
+        rows:
+          number.lines.length > 0
+            ? number.lines.map((line) => ({ id: line.id, number, line, followup }))
+            : [{ id: pastedNumberPlaceholderId(number.entry.key), number, line: null, followup }],
+      };
+    });
     return [['', groups]];
-  }, [check.entries, findValue, loading, reason, rows, status]);
+  }, [check.entries, findValue, followups, loading, reason, rows, status]);
 
   const cut = useTriageCut({ statusKeys: NO_FACE_CHIPS, recordParams: VIEW.recordParams });
   const { filterBands } = cut;
@@ -283,18 +305,50 @@ export function PastedNumbersLedger({
     [cards, onToggleRow, openCard, pathname, rowById, router, selectedIds],
   );
 
+  // A tag lands on every number's order at once (a PO and its tracking share one key).
+  const tag = useCallback(
+    (tagged: readonly PastedNumberCardModel[], next: InboundFollowupTag | null) =>
+      setFollowup([...new Set(tagged.map((card) => followupKeyOf(card.number.entry)))], next),
+    [setFollowup],
+  );
+  const followupVerbs = useCallback(
+    (targets: readonly PastedNumberCardModel[], idPrefix: string): RecordActionVerb[] => [
+      ...(['need_claim', 'double_check', 'chasing_seller', 'acknowledged'] as const).map((id, index) => {
+        const Icon = FOLLOWUP_ICON[id];
+        return {
+          id: `${idPrefix}-${id}`,
+          label: `${INBOUND_FOLLOWUP_LABELS[id]} (${index + 1})`,
+          icon: <Icon aria-hidden />,
+          run: () => tag(targets, id),
+        };
+      }),
+      ...(targets.some((card) => card.followup)
+        ? [{ id: `${idPrefix}-clear`, label: 'Clear follow-up (0)', icon: <X aria-hidden />, run: () => tag(targets, null) }]
+        : []),
+    ],
+    [tag],
+  );
   const numberVerbs = useCallback(
     (card: PastedNumberCardModel): RecordActionVerb[] => [
+      ...followupVerbs([card], 'number'),
       { id: 'number-copy', label: 'Copy number', icon: <Copy aria-hidden />, run: () => void copyText(card.number.entry.ref, card.number.entry.ref) },
       { id: 'number-recheck', label: 'Recheck', icon: <RefreshCw aria-hidden />, run: () => recheck(card) },
       { id: 'number-remove', label: 'Remove from list', icon: <Trash2 aria-hidden />, run: () => remove([card]) },
     ],
-    [copyText, recheck, remove],
+    [copyText, followupVerbs, recheck, remove],
+  );
+  const actions = useMemo<PastedNumberActions>(
+    () => ({
+      // A note with no tag yet acknowledges the number: someone has looked at it.
+      saveNote: (card, text) =>
+        setFollowup([followupKeyOf(card.number.entry)], card.followup?.tag ?? 'acknowledged', text.trim() || null),
+    }),
+    [setFollowup],
   );
 
-  // ── Keys on the focused (else hovered, else open) number ──────────────────
-  const latest = useRef({ cardById, openCard, copyText, copyShown, recheck, remove });
-  latest.current = { cardById, openCard, copyText, copyShown, recheck, remove };
+  // ── Keys on the checked numbers, else the focused (else hovered, else open) one ──
+  const latest = useRef({ cardById, openCard, checkedCards, copyText, copyShown, recheck, remove, tag });
+  latest.current = { cardById, openCard, checkedCards, copyText, copyShown, recheck, remove, tag };
   useEffect(() => {
     const cardUnderCursor = (target: EventTarget | null): PastedNumberCardModel | null => {
       const root = rootRef.current;
@@ -308,7 +362,7 @@ export function PastedNumbersLedger({
       if (event.repeat || event.defaultPrevented) return;
       if (hasOpenOverlay() || isEditableKeyTarget(event.target)) return;
       const key = event.key;
-      const { copyText: copy, copyShown: copyAll, recheck: ask, remove: drop } = latest.current;
+      const { copyText: copy, copyShown: copyAll, recheck: ask, remove: drop, tag: mark, checkedCards: checked } = latest.current;
       // Copy is ⌘/Ctrl+C (⌘⌥C / Ctrl+Alt+C every shown number) — C is create app-wide (`key-registry`).
       if (hotkeyFires(COPY_SHOWN_HOTKEY, event)) {
         event.preventDefault();
@@ -317,6 +371,15 @@ export function PastedNumbersLedger({
       }
       const copying = hotkeyFires(COPY_HOTKEY, event);
       if (!copying && (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)) return;
+      // 1–4 tag, 0 clears — the checked numbers when any, else the one under the cursor.
+      if (!copying && key in FOLLOWUP_KEYS) {
+        const card = checked.length > 0 ? null : cardUnderCursor(event.target);
+        const targets = checked.length > 0 ? checked : card ? [card] : [];
+        if (targets.length === 0) return;
+        event.preventDefault();
+        mark(targets, FOLLOWUP_KEYS[key] ?? null);
+        return;
+      }
       const lower = key.toLowerCase();
       if (!copying && lower !== 'r' && key !== 'Backspace' && key !== 'Delete') return;
       const card = cardUnderCursor(event.target);
@@ -364,12 +427,12 @@ export function PastedNumbersLedger({
         groupKey: pastedNumberGroupKey,
         cardModel: pastedNumberCardModel,
         exactFind: numberExactFind,
-        renderCard: (props) => <PastedNumberCard {...props} />,
+        renderCard: (props) => (density === 'row' ? <PastedNumberLine {...props} /> : <PastedNumberCard {...props} />),
       }),
       noun: { one: 'number', many: 'numbers' },
       listLabel: 'Pasted numbers',
     }),
-    [],
+    [density],
   );
   const painted = useMemo(() => cardBands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [cardBands]);
   const feed: TriageFeed<PastedNumberRow> = {
@@ -391,6 +454,7 @@ export function PastedNumbersLedger({
       checkedCards.length === 0
         ? []
         : [
+            ...followupVerbs(checkedCards, 'numbers'),
             {
               id: 'numbers-copy',
               label: 'Copy numbers',
@@ -403,42 +467,45 @@ export function PastedNumbersLedger({
             },
             { id: 'numbers-remove', label: 'Remove from list', icon: <Trash2 aria-hidden />, run: () => remove(checkedCards) },
           ],
-    [checkedCards, copyText, remove],
+    [checkedCards, copyText, followupVerbs, remove],
   );
 
   return (
     <div ref={rootRef} data-testid="incoming-deliveries-ledger" data-face="numbers" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex min-h-0 min-w-0 flex-1">
-        <TriageCardList
-          family={family}
-          feed={feed}
-          cut={cut}
-          record={{
-            title: slot?.title ?? 'Number',
-            subtitle: recordSubtitle,
-            actions: slot?.actions,
-            noun: 'number',
-            showIndex: false,
-            testId: 'incoming-deliveries-ledger-record',
-            summary: <RecordLedgerSummaryPane summary={summary} />,
-            view: slot?.view ?? null,
-            strip: null,
-          }}
-          summary={statusChips ? <IncomingStatusChips set={statusChips} /> : null}
-          bulk={<ReceivingSelectionVerbs noun="numbers" lead={bulkLead} />}
-          banner={
-            <PastedNumbersBanner
-              reasons={statusChips?.reasons ?? null}
-              checking={check.checking}
-              pasted={check.entries.length}
-              answered={check.answered}
-              notice={notice}
-            />
-          }
-          searchEmpty={null}
-          allClear={<TriageAllClear title={emptyMessage} detail="No pasted number is in this status." />}
-        />
-      </div>
+      <PastedNumberActionsContext.Provider value={actions}>
+        <div className="flex min-h-0 min-w-0 flex-1">
+          <TriageCardList
+            densityControl={{ value: density, onChange: setDensity }}
+            family={family}
+            feed={feed}
+            cut={cut}
+            record={{
+              title: slot?.title ?? 'Number',
+              subtitle: recordSubtitle,
+              actions: slot?.actions,
+              noun: 'number',
+              showIndex: false,
+              testId: 'incoming-deliveries-ledger-record',
+              summary: <RecordLedgerSummaryPane summary={summary} />,
+              view: slot?.view ?? null,
+              strip: null,
+            }}
+            summary={statusChips ? <IncomingStatusChips set={statusChips} /> : null}
+            bulk={<ReceivingSelectionVerbs noun="numbers" lead={bulkLead} />}
+            banner={
+              <PastedNumbersBanner
+                reasons={statusChips?.reasons ?? null}
+                checking={check.checking}
+                pasted={check.entries.length}
+                answered={check.answered}
+                notice={notice}
+              />
+            }
+            searchEmpty={null}
+            allClear={<TriageAllClear title={emptyMessage} detail="No pasted number is in this status." />}
+          />
+        </div>
+      </PastedNumberActionsContext.Provider>
     </div>
   );
 }

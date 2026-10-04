@@ -1,11 +1,12 @@
 import { withJobReturn } from '@/lib/mobile/nav-trail';
+import { locationPath } from '@/lib/nav/route-tree';
 
 /**
  * `/m/loc/[code]` — a scanned location's full-screen record. Not `/m/b/` or
  * `/m/l/`: `src/proxy.ts` rewrites those to `/bin/` and `/receiving/lines/`.
  */
 export function locationHubPath(code: string): string {
-  return `/m/loc/${encodeURIComponent(code)}`;
+  return locationPath(code);
 }
 
 /** The hub as opened from the scan loop: its X returns to `/m/scan`. */

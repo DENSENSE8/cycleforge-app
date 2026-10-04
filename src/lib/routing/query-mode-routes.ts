@@ -10,7 +10,6 @@ import {
 import { parseSupportModeWire } from '@/components/sidebar/support/support-sidebar-shared';
 import { parseOperationsModeWire } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { parseHomeModeWire } from '@/features/home/home-modes';
-import { parseReviewModeWire } from '@/features/review/review-mode';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
 import { LOCATION_STOCK_SORTS } from '@/lib/inventory/location-stock-row';
@@ -24,18 +23,14 @@ import {
 import { parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
 import { REPAIR_CHANNELS, REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
-import { parseSearchEtypeWire } from '@/lib/search/search-refine';
-import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import {
   parsePickupTab,
   parseRepairTab,
   parseSalesTab,
   parseWalkInHistoryModeWire,
 } from '@/lib/walk-in/history-modes';
-import { parseReviewPackingTab } from '@/lib/packing/review-packing-tabs';
 import { parsePackScanModeWire, parsePackWorkspaceTab } from '@/utils/pack-workspace-state';
 import { parseShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
-import { parseTestingWorkspaceTab } from '@/utils/testing-workspace-state';
 import {
   defineRouteParams,
   paramDateKey,
@@ -278,6 +273,8 @@ export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
     /** Catalog-list controls live in the contextual sidebar. */
     catalogStatus: paramEnum(['active', 'inactive', 'attention', 'unlinked'] as const),
     catalogSort: paramEnum(['title', 'sku', 'channels', 'attention'] as const),
+    /** Import products CSV: the staged file's review stands in for the catalog list while set. */
+    import: paramEnum(['csv'] as const),
     /** Pairing backlog ordering. */
     sort: paramEnum(PAIRING_SORTS),
     /** Selected catalog row on QC Checklist. */
@@ -336,11 +333,9 @@ export const SOURCING_ROUTE_PARAMS = defineRouteParams({
 export const TEST_ROUTE_PARAMS = defineRouteParams({
   route: '/test',
   owns: {
-    /** Workspace search box (Testing history + the KPI strip both read it). */
+    /** Quality-control search. */
     q: paramText,
     search: paramText,
-    /** Workbench tab — composes the tab SoT, never a re-typed list. */
-    testTab: paramRoundTrip(parseTestingWorkspaceTab),
     /**
      * Station composer destination — `label` (default, omitted) · `ticket`.
      * Shared with Unbox / Arrival (`SHARED_OWNED_KEYS.composerMode`).
@@ -538,101 +533,11 @@ const SPECIAL_BIN_PRINT_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/** The ex-`/admin/inventory` operations desks, re-homed under the desk that owns their data (admin dissolution). */
-const INVENTORY_HEALTH_ROUTE_PARAMS = defineRouteParams({
-  route: '/inventory/health',
-  owns: {},
-  carries: WORKBENCH_CARRIES,
-});
-
-const INVENTORY_CYCLE_COUNTS_ROUTE_PARAMS = defineRouteParams({
-  route: '/inventory/cycle-counts',
-  owns: {
-    /** Server-action outcome flash (`missing_name` · `failed` · `invalid_qty`). */
-    error: paramText,
-    /** Line-status filter pills on the campaign detail page. */
-    status: paramText,
-  },
-  carries: WORKBENCH_CARRIES,
-});
-
-const INVENTORY_HOLDS_ROUTE_PARAMS = defineRouteParams({
-  route: '/inventory/holds',
-  owns: {
-    /** Hold / release action flash (`missing_input` · `not_found`). */
-    error: paramText,
-  },
-  carries: WORKBENCH_CARRIES,
-});
-
-const INVENTORY_RETURNS_ROUTE_PARAMS = defineRouteParams({
-  route: '/inventory/returns',
-  owns: {
-    /** Intake outcome flash + the serials the intake could not match. */
-    ok: paramFlag,
-    error: paramText,
-    missing: paramText,
-  },
-  carries: WORKBENCH_CARRIES,
-});
-
-const INVENTORY_BULK_ALLOCATE_ROUTE_PARAMS = defineRouteParams({
-  route: '/inventory/bulk-allocate',
-  owns: {
-    /** Zero-indexed offset page of allocation candidates. */
-    page: paramText,
-  },
-  carries: WORKBENCH_CARRIES,
-});
-
 const INVENTORY_THROUGHPUT_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/throughput',
   owns: {
     /** Rolling window (`24h` · `7d` · `30d`). */
     range: paramText,
-  },
-  carries: WORKBENCH_CARRIES,
-});
-
-export const INVENTORY_EVENTS_ROUTE_PARAMS = defineRouteParams({
-  route: '/inventory/events',
-  owns: {
-    event_type: paramText,
-    station: paramText,
-    sku: paramText,
-    unit: paramText,
-    actor: paramText,
-    since: paramDateKey,
-    until: paramDateKey,
-    /** The table's find box — the same "narrow this list" question `q` already answers on `/inventory/sku-exceptions`, over every fact an event… */
-    q: paramText,
-    /** Zero-indexed offset page. */
-    page: paramText,
-  },
-  carries: WORKBENCH_CARRIES,
-});
-
-/** `/review` — Packing · Pairing · Catalog link (the Packer Review Station). */
-const REVIEW_ROUTE_PARAMS = defineRouteParams({
-  route: '/review',
-  owns: {
-    /** Packing is the default and rides the bare URL, so only the other two. */
-    mode: paramRoundTrip(parseReviewModeWire),
-    /** Packing table tab — composes the tab SoT rather than re-listing it. */
-    rtab: paramRoundTrip(parseReviewPackingTab),
-    /** Focused record, one per mode; all three are `Number(...)`-parsed ids. */
-    packerLogId: paramPositiveInt,
-    orderId: paramPositiveInt,
-    choreId: paramPositiveInt,
-    /**
-     * Catalog-link in-mode tab. Default (`catalog-link`) is omitted; only the
-     * Missing item number section writes a value.
-     */
-    section: paramEnum(['missing-item-number'] as const),
-    /** Focused `order_import_exceptions` row on the Missing item number tab. */
-    exceptionId: paramPositiveInt,
-    /** Header Find, shared by all three modes' lists. */
-    q: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -653,7 +558,7 @@ const PACK_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/** `/warehouse` — orphan children only (`/warehouse/rma`, `/warehouse/replenishment`). */
+/** `/warehouse` — orphan child only (`/warehouse/replenishment`). */
 export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
   route: '/warehouse',
   owns: {
@@ -669,41 +574,6 @@ export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
     edit: paramFlag,
   },
   carries: WORKBENCH_CARRIES,
-});
-
-/** `/search` — the cross-entity results surface Phase 1 of the dashboard IA rework evicted out of `?mode=search`. */
-const SEARCH_ROUTE_PARAMS = defineRouteParams({
-  route: '/search',
-  owns: {
-    /** The query. Typing happens in the global header pill; this is the state. */
-    q: paramText,
-    /**
-     * Entry treatment for a named workflow. `label` keeps an owned order-number
-     * field visible on desktop instead of landing on the generic blank plane.
-     */
-    entry: paramText,
-    /**
-     * Durable selection on the search workbench — `order:123`, `receiving:50200`, …
-     * Parsed by {@link parseSearchSel}. Deliberately NOT `openOrderId` / entity
-     * open-params owned by other surfaces.
-     */
-    sel: paramText,
-    /**
-     * Client entity-type refine over the retrieved top-50.
-     * UI vocabulary (order | unit | receiving | sku | repair | fba).
-     * Deliberately NOT `type` — `/support` already owns that key.
-     */
-    etype: paramRoundTrip(parseSearchEtypeWire),
-    /**
-     * Client status refine against `facets.status`.
-     * Deliberately NOT `status` — `/support` (and others) already own that key.
-     */
-    hstat: paramText,
-    chan: paramText,
-    /** Pasted identifiers, comma-joined. Two or more lands the locate desk; hygiene must not strip it. */
-    refs: paramCanonical((raw) => serializeRefIn(parseRefInParam(raw).refs) || null),
-  },
-  carries: ['staff', 'colsort', 'coldir'],
 });
 
 /** Every still-query-mode surface with a declared spec. */
@@ -723,18 +593,10 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS,
   INVENTORY_TRACKING_EXCEPTIONS_ROUTE_PARAMS,
   INVENTORY_QC_LABELS_ROUTE_PARAMS,
-  // Ex-/admin/inventory desks, re-homed under the Inventory desk.
-  INVENTORY_HEALTH_ROUTE_PARAMS,
-  INVENTORY_CYCLE_COUNTS_ROUTE_PARAMS,
-  INVENTORY_HOLDS_ROUTE_PARAMS,
-  INVENTORY_RETURNS_ROUTE_PARAMS,
-  INVENTORY_BULK_ALLOCATE_ROUTE_PARAMS,
+  // Ex-/admin/inventory desk, re-homed under the Inventory desk.
   INVENTORY_THROUGHPUT_ROUTE_PARAMS,
-  INVENTORY_EVENTS_ROUTE_PARAMS,
-  REVIEW_ROUTE_PARAMS,
   PACK_ROUTE_PARAMS,
   WAREHOUSE_ROUTE_PARAMS,
-  SEARCH_ROUTE_PARAMS,
   FORGE_ROUTE_PARAMS,
   MEDIA_LIBRARY_ROUTE_PARAMS,
   // `/` is the shortest prefix in the registry, so it must never shadow another

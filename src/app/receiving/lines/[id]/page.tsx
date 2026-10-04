@@ -251,8 +251,8 @@ function LinePageInner() {
           <ScanAgainBar />
         </div>
 
-        {/* Slim identity row — mirrors the desktop ReceivingLineOrderRow:
-            status dot + title, then a color-coded status/condition/qty line. */}
+        {/* Slim identity row — status dot + title, then a color-coded
+            status/condition/qty line. */}
         <div className="mt-2 flex min-w-0 items-center gap-2">
           <HoverTooltip
             label={workflowStatusTableLabel(line?.workflow_status ?? 'EXPECTED')}

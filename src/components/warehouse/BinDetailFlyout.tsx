@@ -13,8 +13,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
 import { StatusChips } from './StatusChip';
 import { ExternalLink, Printer } from '@/components/Icons';
-import { FLOOR_DELETE_PEER_CLASS, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
-import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
+import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFloorDelete } from '@/components/right-rail/InspectorFloorDelete';
 import { Panel, IconButton } from '@/design-system/primitives';
 import {
   isSpecialBinBarcode,
@@ -49,7 +49,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
     setDeleteError(null);
   }, [row?.barcode]);
 
-  // Throws on failure so InspectorFlushDelete skips its onDeleted (close);
+  // Throws on failure so InspectorFloorDelete skips its onDeleted (close);
   // the 409 "bin not empty" message is shown inline.
   const handleDelete = async () => {
     if (!row?.barcode) return;
@@ -244,7 +244,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
               ) : undefined
             }
           >
-            <InspectorFlushDelete
+            <InspectorFloorDelete
               onConfirm={handleDelete}
               onDeleted={() => {
                 onDeleted?.();
@@ -253,7 +253,6 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
               label="Delete bin"
               confirmLabel="Click again to delete bin"
               data-testid="bin-details-delete"
-              className={FLOOR_DELETE_PEER_CLASS}
             />
           </InspectorActionFloor>
         ) : null}

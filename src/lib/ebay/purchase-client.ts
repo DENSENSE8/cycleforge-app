@@ -29,6 +29,14 @@ export interface BuyerPurchaseLine {
   carrierCode?: string | null;
   orderNumber?: string | null;
   vendorOrSellerName?: string | null;
+  /** eBay item number of the listing bought. */
+  itemId?: string | null;
+  /** Price paid per unit, integer cents. */
+  unitCostCents?: number | null;
+  /** ISO 4217 currency of `unitCostCents`. */
+  currency?: string | null;
+  /** Civil date the order was placed (YYYY-MM-DD, UTC). */
+  orderDate?: string | null;
 }
 
 /** A connected buyer account to pull purchases for. */
@@ -85,6 +93,22 @@ function listingUrlFromItem(item: Record<string, unknown> | null | undefined): s
   return itemId ? `https://www.ebay.com/itm/${itemId}` : null;
 }
 
+/** Trading money node (`<X currencyID="USD">12.50</X>`, parsed with attributes) → cents + currency. */
+export function tradingAmount(value: unknown): { cents: number | null; currency: string | null } {
+  const node = value != null && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+  const raw = node ? node['#text'] : value;
+  const amount = Number(str(raw));
+  return {
+    cents: str(raw) != null && Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : null,
+    currency: node ? str(node['@_currencyID'])?.toUpperCase() ?? null : null,
+  };
+}
+
+function civilDate(value: unknown): string | null {
+  const s = str(value);
+  return s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null;
+}
+
 /**
  * Map one Trading GetOrders Order node → BuyerPurchaseLine[] (one per
  * Transaction). Order-level tracking is the fallback when a transaction has none.
@@ -98,6 +122,7 @@ export function mapTradingOrderToBuyerLines(order: Record<string, unknown>): Buy
   const checkout = (order.CheckoutStatus ?? {}) as Record<string, unknown>;
   const paymentStatus = str(checkout.Status) ?? (order.PaidTime ? 'Paid' : null);
   const orderTracking = extractTradingShipmentTracking(order.ShippingDetails);
+  const orderDate = civilDate(order.CreatedTime);
 
   const transactions = asArray(
     (order.TransactionArray as { Transaction?: unknown } | undefined)?.Transaction as
@@ -116,6 +141,7 @@ export function mapTradingOrderToBuyerLines(order: Record<string, unknown>): Buy
       carrierCode: orderTracking.carrierCode,
       orderNumber: sourceOrderId,
       vendorOrSellerName: sellerUsername,
+      orderDate,
       quantity: 1,
     }];
   }
@@ -127,6 +153,7 @@ export function mapTradingOrderToBuyerLines(order: Record<string, unknown>): Buy
     const carrierCode = txTracking.carrierCode ?? orderTracking.carrierCode;
     const orderLineItemId = str(tx.OrderLineItemID);
     const legacyOrderId = orderLineItemId ?? str(order.ExtendedOrderID) ?? sourceOrderId;
+    const price = tradingAmount(tx.TransactionPrice);
 
     return {
       sourceOrderId,
@@ -144,6 +171,10 @@ export function mapTradingOrderToBuyerLines(order: Record<string, unknown>): Buy
       carrierCode,
       orderNumber: sourceOrderId,
       vendorOrSellerName: sellerUsername,
+      itemId: str(item.ItemID),
+      unitCostCents: price.cents,
+      currency: price.currency,
+      orderDate,
     };
   });
 }
@@ -285,7 +316,7 @@ export function mapBuyPurchaseOrderToBuyerLines(po: Record<string, unknown>): Bu
 const TRADING_COMPAT_LEVEL = '1113';
 const GET_ORDERS_PAGE_SIZE = 100;
 /** ModTimeFrom/To max window is 30 days; clamp delta cursors accordingly. */
-const MOD_TIME_MAX_MS = 30 * 24 * 60 * 60 * 1000;
+export const MOD_TIME_MAX_MS = 30 * 24 * 60 * 60 * 1000;
 /** First-pull lookback when no cursor exists. */
 const INITIAL_LOOKBACK_DAYS = 30;
 

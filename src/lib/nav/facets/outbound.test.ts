@@ -23,9 +23,11 @@ interface FixtureOrder {
   aging: DeskAgingBucket;
   urgent: boolean;
   blocked: boolean;
-  /** Latest live PACK / PICK assignee (`?packedBy` / `?pickerId`; `?staff` = either). */
+  /** Latest live PACK / PICK assignee (`?pickerId` = the pick one; `?staff` = either). */
   packer: number;
   pickAssignee: number;
+  /** Who actually packed it (`?packedBy`); null = not packed. */
+  packedBy: number | null;
   /** Who picked it (`?pickedBy`); null = not picked. */
   picker: number | null;
   /** Warehouse civil days. */
@@ -51,6 +53,7 @@ function fixtureOrders(): FixtureOrder[] {
               stage, aging, urgent, blocked,
               packer: 10 + (j % 3),
               pickAssignee: 20 + (j % 2),
+              packedBy: j % 5 === 0 ? null : 40 + (j % 3),
               picker: j % 4 === 0 ? null : 30 + (j % 3),
               orderDay: `2026-09-${String(10 + (j % 6))}`,
               shipByDay: aging === 'unscheduled' ? null : `2026-09-${String(20 + (j % 5))}`,
@@ -82,7 +85,7 @@ function listRows(orders: FixtureOrder[], params: Record<string, string>): Fixtu
     if (truthy(params.attention) && !o.urgent) return false;
     if ((params.ustatus ?? '').trim().toUpperCase() === 'BLOCKED' && !o.blocked) return false;
     if (staff != null && o.packer !== staff && o.pickAssignee !== staff) return false;
-    if (packedBy != null && o.packer !== packedBy) return false;
+    if (packedBy != null && o.packedBy !== packedBy) return false;
     if (pickerId != null && o.pickAssignee !== pickerId) return false;
     if (pickedBy != null && o.picker !== pickedBy) return false;
     if (orderFrom && o.orderDay < orderFrom) return false;
@@ -112,7 +115,7 @@ function refinementSql(one: Partial<DeskRefinements>, ref: string): string {
 /** Each SQL-bound predicate the facet statement may carry, and what it means for a fixture order. */
 const BOUND_FILTERS: Array<{ sql: (ref: string) => string; keep: (o: FixtureOrder, value: unknown) => boolean }> = [
   { sql: (ref) => sqlOrderAssignedToStaff(ref), keep: (o, v) => o.packer === v || o.pickAssignee === v },
-  { sql: (ref) => refinementSql({ packedBy: 1 }, ref), keep: (o, v) => o.packer === v },
+  { sql: (ref) => refinementSql({ packedBy: 1 }, ref), keep: (o, v) => o.packedBy === v },
   { sql: (ref) => refinementSql({ pickerId: 1 }, ref), keep: (o, v) => o.pickAssignee === v },
   { sql: (ref) => refinementSql({ pickedBy: 1 }, ref), keep: (o, v) => o.picker === v },
   { sql: (ref) => refinementSql({ orderFrom: 'x' }, ref), keep: (o, v) => o.orderDay >= String(v) },
@@ -130,6 +133,7 @@ function comboRunner(orders: FixtureOrder[], captured: Array<{ sql: string; para
   return {
     listLocalPickupLines: noPickup,
     exceptionCounts: noExceptions,
+    liveFeedCounts: async () => ({}),
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
       let scoped = orders;
@@ -153,7 +157,7 @@ function comboRunner(orders: FixtureOrder[], captured: Array<{ sql: string; para
 /** Sidebar refinements — each narrows the fixture (asserted below). */
 const REFINEMENT_CASES: Array<Record<string, string>> = [
   { staff: '11' },
-  { packedBy: '11' },
+  { packedBy: '41' },
   { pickerId: '20', stage: 'picked' },
   { pickedBy: '31' },
   { pickedBy: '32', late: '1' },
@@ -163,7 +167,7 @@ const REFINEMENT_CASES: Array<Record<string, string>> = [
   { shipByFrom: '2026-09-22' },
   { shipByTo: '2026-09-21' },
   { shipByFrom: '2026-09-20', shipByTo: '2026-09-20', ustatus: 'BLOCKED' },
-  { staff: '20', packedBy: '12', pickedBy: '32', orderFrom: '2026-09-11', shipByTo: '2026-09-23' },
+  { staff: '20', packedBy: '42', pickedBy: '32', orderFrom: '2026-09-11', shipByTo: '2026-09-23' },
 ];
 
 const PARAM_CASES: Array<Record<string, string>> = [
@@ -260,6 +264,7 @@ test('pickup: status counts are the workbench grid counts over the same line rea
     run: async () => { throw new Error('pickup facets read the line feed, not SQL'); },
     listLocalPickupLines: async (_org, query) => { reads.push(query); return lines; },
     exceptionCounts: noExceptions,
+    liveFeedCounts: async () => ({}),
   };
   const caller = { orgId: ORG, permissions: new Set(['walk_in.view']) };
   const all = await getNavFacets(caller, 'pickup', new URLSearchParams({ q: ' flip ' }), deps);

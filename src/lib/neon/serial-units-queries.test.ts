@@ -153,12 +153,3 @@ test('upsertSerialUnit mints unit_uid at birth (Phase 2) safely on the txn clien
   // Best-effort: a mint failure must never break the core upsert.
   ok(/mint unit_uid failed \(non-fatal\)/.test(src), 'minting must be wrapped non-fatally');
 });
-
-test('mark-received off-flag path routes through upsertSerialUnit (bypass removed)', () => {
-  const src = read('../../app/api/receiving/mark-received/route.ts');
-  ok(/upsertSerialUnit\(/.test(src), 'off-flag path must create serials via the canonical writer');
-  // Only the deliberate ON-flag v2 transaction (applyInventoryV2Effects) may
-  // keep a raw INSERT; the off-flag `else if (serialNumber)` bypass is gone.
-  const rawInserts = (src.match(/INSERT INTO serial_units/g) || []).length;
-  equal(rawInserts, 1, 'exactly one raw serial_units INSERT (the v2-effects txn) may remain');
-});

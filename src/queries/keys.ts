@@ -73,6 +73,10 @@ export const qk = {
      * refreshes it with the rest of the pipeline.
      */
     hub: (id: number, facet: string) => ['receiving', 'carton-hub', id, facet] as const,
+    /** One carton's urgency-shelf suggestion (`POST /api/receiving/[id]/placement` suggest). */
+    placement: (id: number) => ['receiving', 'placement', id] as const,
+    /** Arrived, unopened cartons in unbox order (`GET /api/receiving/unbox-next`). */
+    unboxNext: () => ['receiving', 'unbox-next'] as const,
   },
   orders: {
     /** One order's phone hub (`/m/orders/[orderId]`) and its doors share these reads. */
@@ -156,6 +160,8 @@ export const qk = {
     /** Broad invalidation prefix — matches every bins-admin query. */
     all: ['locations-admin'] as const,
     bins: () => ['locations-admin', 'bins'] as const,
+    /** The org's urgency shelves (`GET /api/receiving/arrival-shelves`). */
+    arrivalShelves: () => ['locations-admin', 'arrival-shelves'] as const,
   },
   triage: {
     /** Broad invalidation prefix — matches every PO-triage detail query. */

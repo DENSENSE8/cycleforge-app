@@ -6,6 +6,8 @@
 
 import type { TriageCardModelBase } from '@/design-system/components/triage-card-list/TriageCardList';
 import type { RecordCardModel } from '@/design-system/components/record-card/record-card-types';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
+import type { EXCEPTIONS_VIEW } from '@/lib/triage/views/exceptions';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { RowGroup } from '@/lib/group-rows';
 import { EXCEPTION_KIND_SPEC, type ExceptionRow } from '@/lib/exceptions/types';
@@ -77,7 +79,7 @@ export function exceptionRecordCard(
   model: ExceptionCardModel,
   showKind: boolean,
   channel: RecordCardModel['channel'],
-): RecordCardModel {
+): ViewCardModel<typeof EXCEPTIONS_VIEW> {
   const row = model.lead;
   const state = exceptionStateFace(row);
   const kind = EXCEPTION_KIND_SPEC[row.kind];

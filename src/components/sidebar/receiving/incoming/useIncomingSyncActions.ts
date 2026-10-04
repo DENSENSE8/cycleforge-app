@@ -130,35 +130,35 @@ export function useIncomingSyncActions() {
       if (!res.ok || !data) throw new Error(data?.error || `Marketplace refresh failed (${res.status})`);
       await invalidateIncoming();
       const ebay = data?.ebay ?? {};
-      const ingested = ebay.ingested ?? 0;
-      const created = ebay.created ?? 0;
+      const landed = ebay.landed ?? 0;
+      const updated = ebay.updated ?? 0;
+      const unchanged = ebay.unchanged ?? 0;
       const accounts = ebay.accounts ?? 0;
-      const linesFetched = ebay.linesFetched ?? 0;
+      const ordersFetched = ebay.ordersFetched ?? 0;
       const errors: string[] = Array.isArray(ebay.errors) ? ebay.errors : [];
       const notes: string[] = Array.isArray(data?.notes) ? data.notes : [];
-      const nothingChanged = ingested === 0 && created === 0 && errors.length === 0;
+      const nothingChanged = landed === 0 && updated === 0 && errors.length === 0;
       finishIncSync({
         ok: Boolean(data?.ok) || nothingChanged,
         tiles: [
           { label: 'Accounts', value: accounts, tone: 'gray' },
-          { label: 'Fetched', value: linesFetched, tone: 'blue' },
-          { label: 'Imported', value: ingested, tone: 'emerald' },
+          { label: 'Fetched', value: ordersFetched, tone: 'blue' },
+          { label: 'Imported', value: landed + updated, tone: 'emerald' },
           { label: 'Errors', value: errors.length, tone: 'red' },
         ],
         updated: [
-          created > 0 ? `${created} new purchase${created === 1 ? '' : 's'} added to Incoming` : null,
-          ingested > created
-            ? `${ingested - created} existing row${ingested - created === 1 ? '' : 's'} refreshed`
-            : null,
+          landed > 0 ? `${landed} new purchase${landed === 1 ? '' : 's'} added to Incoming` : null,
+          updated > 0 ? `${updated} existing purchase${updated === 1 ? '' : 's'} updated` : null,
         ].filter(Boolean) as string[],
         sections: [
           {
             label: 'eBay buyer accounts',
             rows: [
               { k: 'Accounts', v: accounts },
-              { k: 'Lines fetched', v: linesFetched },
-              { k: 'Ingested', v: ingested },
-              { k: 'Created', v: created },
+              { k: 'Orders fetched', v: ordersFetched },
+              { k: 'New', v: landed },
+              { k: 'Updated', v: updated },
+              { k: 'Unchanged', v: unchanged },
               { k: 'Errors', v: errors.length },
             ],
           },

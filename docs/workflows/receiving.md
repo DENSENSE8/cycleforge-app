@@ -45,6 +45,21 @@ triage `RecordLedger` frame over the existing receiving roots:
   (inventory item + return tracking; submits to `import-purchase`, which files the support
   ticket and carries the listing URL). Close/Cancel returns the ledger. CSV return intake
   remains a separate import path.
+- **Import purchase orders (CSV)** (Add menu; phone `/m/receiving/import-csv`) bulk-loads POs for
+  platforms without a purchase API (Goodwill). Columns bind by `identifyColumns`
+  (`src/lib/inbound/po-columns.ts`): platform-preset header words, registry header words, then
+  value shape (tracking numbers, money, dates, URLs, ids, titles); the AI header mapping runs only
+  when asked while required fields stay unmapped. The Goodwill preset stamps platform `goodwill`,
+  tier 3, vendor "Goodwill" and one item per row when the file has no quantity column (a blank
+  cell in a quantity column is flagged, never assumed). `POST /api/receiving/inbound/import-po-csv`
+  dry-runs (new / updated / unchanged by content hash, writes nothing) or lands every clean order
+  through `ingestInboundOrder`; an order with any problem row is held whole and named per row.
+  The phone runs it as four steps under `MobileStepProgress` — Choose file → Match columns (only
+  unmatched / weakly guessed / required-missing columns open) → Review orders (one
+  `MobileRecordCard` per order, grouped Needs fix first; a card opens the order's lines with file
+  row + field of each problem, `src/lib/inbound/po-csv-review.ts`) → Import (the result, grouped
+  the same way). Platform pickers show full names (`inboundPlatformOptions`), never catalog
+  abbreviations like "GW".
 - **Docked** (`/incoming?lane=docked`) is a separate warehouse-lifecycle ledger over the history
   feed. It presents `SCANNED`, `UNBOXED`, `RECEIVED`, `ON_HOLD`, and `EXCEPTION` without changing
   the triage/unbox timestamp laws above.
@@ -111,20 +126,6 @@ Simple wrapper rendering `ReceivingDashboard` in a gradient background.
 3. Generate synthetic tracking: `LOCAL-{sku}-{timestamp}`
 4. POST `/api/receiving-entry` + `/api/local-pickups`
 5. Condition selection + received-by staff selector
-
-### Zoho PO Manager (`ZohoPOManager.tsx`)
-**Purpose:** Match received items to Zoho Purchase Orders.
-
-**Layout:**
-- Left: PO list with status filter (issued, paid) + search
-- Right: PO detail with line items
-
-**Flow:**
-1. Browse/search Zoho POs
-2. Select PO → view line items
-3. Enter `quantity_received` + `condition_grade` per line
-4. Submit to `/api/zoho/purchase-orders/receive`
-5. Creates receiving_lines from PO data
 
 ### Zoho Inbound Status Banner (`ZohoInboundStatusBanner.tsx`)
 - Displays Zoho health (circuit breaker state)
@@ -359,13 +360,6 @@ When a tracking number is scanned:
 3. **Zoho PO search:** Broader search by tracking suffix
 4. If any match: sync PO line items into `receiving_lines` with `receiving_id` linked
 
-### PO Receive Flow (from Zoho PO Manager)
-1. User selects PO from Zoho list
-2. Enters quantity_received per line item
-3. POST `/api/zoho/purchase-orders/receive`
-4. Creates receiving_lines linked to Zoho PO
-5. Optionally creates receiving entry if tracking provided
-
 ---
 
 ## Caching
@@ -435,12 +429,6 @@ When a tracking number is scanned:
    │
    └─ REWORK → fix and re-assess
       └─ Cycles back to QA
-
-6. ZOHO PO MANAGER (Alternative Entry)
-   ├─ Browse Zoho POs → select one
-   ├─ Enter quantity_received per line
-   ├─ POST /api/zoho/purchase-orders/receive
-   └─ Creates receiving_lines with Zoho metadata
 ```
 
 ---

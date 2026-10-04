@@ -144,6 +144,9 @@ export function normalizeRow(row: Record<string, unknown>) {
     shipment_latest_event_city: (row.shipment_latest_event_city as string | null) ?? null,
     shipment_latest_event_postal: (row.shipment_latest_event_postal as string | null) ?? null,
     shipment_is_terminal:     row.shipment_is_terminal == null ? null : !!row.shipment_is_terminal,
+    shipment_estimated_delivery_at: (row.shipment_estimated_delivery_at as string | null) ?? null,
+    shipment_signed_by:       (row.shipment_signed_by as string | null) ?? null,
+    shipment_delivery_attempts: row.shipment_delivery_attempts == null ? null : Number(row.shipment_delivery_attempts),
     receiving_type:            (row.receiving_type as string | null) ?? 'PO',
     // Per-line unfound intake classification (override grain; null on Zoho lines).
     intake_type:               (row.intake_type as string | null) ?? null,
@@ -236,6 +239,9 @@ export function buildUnmatchedEmptyReceivingLine(pkg: Record<string, unknown>): 
     shipment_status_category: pkg.shipment_status_category,
     shipment_is_delivered: pkg.shipment_is_delivered,
     shipment_delivered_at: pkg.shipment_delivered_at,
+    shipment_estimated_delivery_at: pkg.shipment_estimated_delivery_at ?? null,
+    shipment_signed_by: pkg.shipment_signed_by ?? null,
+    shipment_delivery_attempts: pkg.shipment_delivery_attempts ?? null,
     item_name: isPickup
       ? String(pkg.receiving_tracking_number || 'Local pickup')
       : UNMATCHED_EMPTY_LINE_LABEL,

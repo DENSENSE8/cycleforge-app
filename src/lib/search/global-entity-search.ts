@@ -1023,7 +1023,7 @@ async function searchTrackingHolds(
       entityType: 'import_exception' as const,
       title,
       subtitle: [orderId, row.account_source, row.reason].filter(Boolean).join(' · '),
-      href: `/review?mode=catalog-link&section=missing-item-number&exceptionId=${Number(row.id)}`,
+      href: '/products?view=pairing',
       matchField: 'tracking',
       facets: {
         status: row.status != null ? String(row.status) : null,

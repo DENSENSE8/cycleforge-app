@@ -21,7 +21,9 @@
  *
  * Two densities, one face: `card` (default — the Allocate desk's multi-line
  * cards) and `row` (one full-bleed line per record, the family's
- * `renderCard` returning a `TriageRow`; API in `./TriageRow.tsx`).
+ * `renderCard` returning a `TriageRow`; API in `./TriageRow.tsx`). The face
+ * never picks one itself: the host fixes `density`, or offers the operator's
+ * Compact / Full switch with `densityControl` (`useTriageDensity`).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -38,7 +40,7 @@ import { flattenRenderOrder, type GroupedRenderOrder, type RowGroup } from '@/li
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { cn } from '@/utils/_cn';
-import { TriageSelectBar, type TriagePager } from './TriageSelectBar';
+import { TriageSelectBar, type TriageDensityControl, type TriagePager } from './TriageSelectBar';
 import { TriageListBody, TriageSectionHeader, type TriageSectionTone } from './TriageListBody';
 import type { RecordStateFace } from '@/design-system/tokens/record';
 import {
@@ -221,6 +223,14 @@ export interface TriageCardListProps<Row, Model extends TriageCardModelBase<Row>
    * `TriageRow`, which draws its own full-bleed hairline.
    */
   density?: 'card' | 'row';
+  /** Let an opt-in wide Compact face share one horizontal scroll plane. */
+  rowScroll?: boolean;
+  /**
+   * The operator's own pick (`useTriageDensity`): paints the Compact / Full
+   * switch in the bar and drives the density (`density` is then ignored).
+   * The family's `renderCard` switches its face on the same value.
+   */
+  densityControl?: TriageDensityControl;
   /** Replace host bands with stable first-seen state bands and derive their headers. */
   sections?: 'by-state';
 }
@@ -238,8 +248,11 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
   searchEmpty,
   allClear,
   sections,
-  density = 'card',
+  density: fixedDensity = 'card',
+  rowScroll = false,
+  densityControl,
 }: TriageCardListProps<Row, Model, K>) {
+  const density = densityControl?.value ?? fixedDensity;
   const { rowId, groupKey } = family;
   const { url } = cut;
   const { statusFilter } = url;
@@ -592,6 +605,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
       bulk={bulk}
       // A rail desk has one view — nothing to switch.
       viewControls={!railBar}
+      densityControl={densityControl}
     />
   );
   const list = (
@@ -610,6 +624,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
       <TriageListBody
         testIdPrefix={family.testIdPrefix}
         density={density}
+        rowScroll={density === 'row' && rowScroll}
         noun={family.noun}
         scrollRef={scrollRef}
         cardCount={cards.length}

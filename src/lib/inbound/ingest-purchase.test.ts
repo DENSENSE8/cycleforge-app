@@ -19,7 +19,7 @@ function fakes(opts: { existingLineId?: number | null; accountId?: number | null
       if (/FROM platform_accounts/.test(sql)) {
         return { rows: opts.accountId != null ? [{ id: opts.accountId }] : [], rowCount: opts.accountId != null ? 1 : 0 };
       }
-      if (/FROM inbound_purchase_order_links/.test(sql)) {
+      if (/FROM inbound_purchase_order_links/.test(sql) || /inbound_order_id = \$2 AND line_key = \$3/.test(sql)) {
         return { rows: opts.existingLineId != null ? [{ receiving_line_id: opts.existingLineId }] : [], rowCount: opts.existingLineId != null ? 1 : 0 };
       }
       if (/INSERT INTO receiving_line/.test(sql)) return { rows: [{ id: 100 }], rowCount: 1 };
@@ -97,6 +97,41 @@ test('existing order: reuses the spine row, no INSERT, no rlt re-birth', async (
   assert.ok(!calls.some((c) => /INSERT INTO receiving_line\s/.test(c.sql)), 'must not create a second spine row');
   assert.equal(testingCalls.length, 0, 'rlt birth only accompanies a spine birth');
   assert.equal(linkCalls[0].receivingLineId, 55);
+});
+
+const IDENTITY_OVERRIDE = /SET sku = COALESCE\(\$2, sku\)/;
+
+test('internal-order operator re-save: provided SKU / title / catalog / listing replace the line', async () => {
+  const { deps, calls } = fakes({ existingLineId: 55 });
+  await ingestPurchase(ORG, {
+    sourceType: 'manual',
+    sourceOrderId: 'PO-7',
+    inboundOrderId: 9,
+    lineKey: 'L1',
+    sku: ' FIXED-SKU ',
+    itemName: 'Corrected title',
+    skuCatalogId: 42,
+    listingUrl: 'https://example.com/listing',
+    operatorResave: true,
+  }, deps);
+  const override = calls.find((c) => IDENTITY_OVERRIDE.test(c.sql));
+  assert.ok(override, 'the re-save overwrites identity, not COALESCE-when-null');
+  assert.deepEqual(override.params, [55, 'FIXED-SKU', 'Corrected title', 42, 'https://example.com/listing', ORG]);
+});
+
+test('internal-order marketplace re-sync never overwrites line identity', async () => {
+  const { deps, calls } = fakes({ existingLineId: 55 });
+  await ingestPurchase(ORG, {
+    sourceType: 'ebay',
+    sourceOrderId: '12-345',
+    inboundOrderId: 9,
+    lineKey: '111-222',
+    sku: 'SELLER-SKU',
+    itemName: 'Seller title',
+    listingUrl: 'https://www.ebay.com/itm/111',
+  }, deps);
+  assert.ok(!calls.some((c) => IDENTITY_OVERRIDE.test(c.sql)), 'a sync only fills blanks');
+  assert.ok(calls.some((c) => /COALESCE\(NULLIF\(TRIM\(item_name\), ''\), \$5\)/.test(c.sql)), 'blank-fill still runs');
 });
 
 test('no account label → null platform account, no account SELECT', async () => {

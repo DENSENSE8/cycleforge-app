@@ -40,6 +40,7 @@ export async function PATCH(
       ...(parsed.binType !== undefined ? { binType: parsed.binType } : {}),
       ...(parsed.capacity !== undefined ? { capacity: parsed.capacity } : {}),
       ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
+      ...(parsed.arrivalPriorityTier !== undefined ? { arrivalPriorityTier: parsed.arrivalPriorityTier } : {}),
     }, orgId);
     if (!updated) {
       return NextResponse.json({ error: 'Bin not found' }, { status: 404 });

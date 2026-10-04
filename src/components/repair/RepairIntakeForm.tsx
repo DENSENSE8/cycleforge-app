@@ -19,6 +19,7 @@ import { useRepairIntakeData } from './useRepairIntakeData';
 import { useRepairCustomerSearch, type ExistingCustomer } from './useRepairCustomerSearch';
 import { buildRepairIntakeReceiptProps } from '@/lib/repair/repair-intake-receipt';
 import { formatRepairSubmittedChromeLabel } from '@/lib/repair/repair-paper-ticket';
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP } from '@/design-system/tokens/dock-clearance';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -307,8 +308,8 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
         );
 
         return (
-            <div className="relative flex h-full w-full flex-col bg-surface-card text-text-default">
-                <header className="shrink-0 border-b border-border-hairline">
+            <div className="relative flex h-full w-full flex-col bg-surface-sunken text-text-default">
+                <header className="shrink-0 border-b border-border-hairline bg-surface-card">
                     <div className={`${columnClass} flex items-center justify-between gap-3 px-6 py-3`}>
                         <div className="flex min-w-0 items-center gap-2.5">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-inverse text-white">
@@ -332,7 +333,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                     </div>
                 </header>
 
-                <main className="min-h-0 flex-1 overflow-y-auto bg-surface-sunken">
+                <main className="min-h-0 flex-1 overflow-y-auto">
                     <div className="px-4 py-4 sm:px-6 sm:py-5">
                         <RepairPaperworkCanvas>
                             <RepairServiceForm {...submittedReceiptProps} surface="screen" />
@@ -340,8 +341,9 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                     </div>
                 </main>
 
-                <div className="shrink-0 border-t border-border-hairline bg-surface-card">
-                    <div className={`${columnClass} flex items-center gap-3 px-6 py-3`}>
+                {/* Floating verbs on the receipt's own ground — no bar or rule behind them (owner 2026-10-03). */}
+                <div className={`shrink-0 ${ACTION_DOCK_TOP_GAP} ${ACTION_DOCK_LIFT}`}>
+                    <div className={`${columnClass} flex items-center gap-3 px-6`}>
                         {!kioskMode && submitted.zendeskTicketUrl ? (
                             <a
                                 href={submitted.zendeskTicketUrl}

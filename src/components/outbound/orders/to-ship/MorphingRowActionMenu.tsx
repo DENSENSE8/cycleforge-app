@@ -39,11 +39,11 @@ import {
   MORPHING_MORE_INFO_HOTKEY,
   MORPHING_NOTES_HOTKEY,
 } from '@/lib/outbound/morphing-row-action';
-import { rememberRowPlaneOpen } from '@/components/tables/compound/compound-row-plane';
+import { rememberRowPlaneOpen } from '@/lib/tables/row-plane';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { dispatchOpenShippedDetails, dispatchOpenListingStaffRules, dispatchOpenOrderPaperwork } from '@/utils/events';
 import { OrderNotesTrail } from '@/components/shipped/details-panel/OrderNotesTrail';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   GridRowCheckbox,
   type GridSelectGutterChrome,
@@ -58,7 +58,7 @@ import { DateTimePickerField } from '@/design-system/components/DateTimePickerFi
 import { useAuth } from '@/contexts/AuthContext';
 import { getStaffName } from '@/utils/staff';
 import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
 import { refreshDomain } from '@/lib/refresh/bus';
 import {
   SCAN_OUT_DESK_MAX_BACKDATE_MS,
@@ -1238,16 +1238,16 @@ function MorphingRowActionMenu({
         onDismiss={face === 'header' || selectedRows.length === 0 ? close : undefined}
       />
       {onMobileUrl ? (
-        <BottomSheet
-          open={notesOpen}
-          onClose={() => setNotesOpen(false)}
-          title="Notes"
-          forceVariant="sheet"
-          compact
-          maxWidth="22rem"
-        >
-          <OrderNotesTrail orderId={Number(record.id)} legacyNote={record.notes} autoFocus variant="compact" />
-        </BottomSheet>
+        <Sheet open={notesOpen} onOpenChange={(next) => { if (!next) setNotesOpen(false); }}>
+          <SheetContent side="bottom" aria-describedby={undefined}>
+            <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-2 pr-12">
+              <SheetTitle className="text-role-caption">Notes</SheetTitle>
+            </SheetHeader>
+            <SheetBody className="pt-2">
+              <OrderNotesTrail orderId={Number(record.id)} legacyNote={record.notes} autoFocus variant="compact" />
+            </SheetBody>
+          </SheetContent>
+        </Sheet>
       ) : null}
     </>
   );

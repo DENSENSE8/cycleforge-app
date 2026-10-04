@@ -1,6 +1,6 @@
 /** The LANE registry — one taxonomy, both surfaces. */
 
-import { AlertCircle, Inbox, SalesPrice, ShelvingUnit, Tags } from '@/components/Icons';
+import { AlertCircle, Inbox, SalesPrice, Tags, Warehouse } from '@/components/Icons';
 import { STATION_PAGE_ICONS } from '@/lib/nav/station-nav-icons';
 // Type-only, so it is ERASED at build time: the phone imports lanes without
 // pulling the desk registry into its bundle. The icon type stays where its
@@ -27,7 +27,8 @@ export const DOMAIN_GROUPS = [
   { id: 'sales', label: 'Sales', icon: SalesPrice },
   { id: 'inbound', label: 'Receiving', icon: Inbox, keywords: ['inbound'] },
   { id: 'fulfillment', label: 'Fulfillment', icon: STATION_PAGE_ICONS.outbound, keywords: ['outbound'] },
-  { id: 'inventory', label: 'Inventory', icon: ShelvingUnit },
+  // Warehouse (operator 2026-10-03: "Inventory changed to Warehouse with a warehouse icon"); aligns with route-tree's lane name.
+  { id: 'inventory', label: 'Warehouse', icon: Warehouse, keywords: ['inventory'] },
   { id: 'catalog', label: 'Products', icon: Tags },
   { id: 'support', label: 'Support', icon: AlertCircle },
 ] as const satisfies ReadonlyArray<{

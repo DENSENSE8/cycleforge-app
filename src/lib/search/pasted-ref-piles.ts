@@ -8,7 +8,7 @@ export const PASTED_REF_PILE_ORDER = ['awaiting_tracking', 'exceptions', 'triage
 export type PastedRefPile = (typeof PASTED_REF_PILE_ORDER)[number];
 
 /** Facets the Exceptions list's neighbours already use for "here, not clean". */
-const DIRTY_FACETS = new Set(['delivered_not_scanned', 'erp_ahead', 'warehouse_owed']);
+const DIRTY_FACETS = new Set(['delivered_not_scanned', 'warehouse_owed']);
 
 const RANK: Record<PastedRefPile | 'rest', number> = {
   awaiting_tracking: 0,

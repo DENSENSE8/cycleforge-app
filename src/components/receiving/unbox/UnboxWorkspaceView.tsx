@@ -1,6 +1,6 @@
 'use client';
 
-/** Unbox browse workbench — the desk frame over `ReceivingLinesTable` or the all-lines triage table; the view is `?unboxview=`. */
+/** Unbox browse workbench — the desk frame over `ReceivingLedgers` or the all-lines triage table; the view is `?unboxview=`. */
 
 import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -19,8 +19,8 @@ import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
 import { toast } from '@/lib/toast';
 
-const ReceivingLinesTable = dynamic(
-  () => import('@/components/station/ReceivingLinesTable'),
+const ReceivingLedgers = dynamic(
+  () => import('@/components/receiving/ReceivingLedgers').then((m) => m.ReceivingLedgers),
   { loading: () => <UnboxTableCardSkeleton /> },
 );
 
@@ -57,7 +57,7 @@ export function UnboxWorkspaceView(props: {
             {unboxView === 'all' ? (
               <TechAllTriageTable scope="unbox" />
             ) : (
-              <ReceivingLinesTable
+              <ReceivingLedgers
                 key={unboxView}
                 selectMode={selectMode}
                 embedded

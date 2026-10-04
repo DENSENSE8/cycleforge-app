@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Loader2, Printer } from '@/components/Icons';
-import { MobileOrderPaperworkSheet } from '@/components/mobile/orders/MobileOrderPaperworkSheet';
+import { MobileV2OrderPaperworkSheet } from '@/components/mobile/v2/orders/MobileV2OrderPaperworkSheet';
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
@@ -78,7 +78,7 @@ export function MobilePackerPhotoStudio({
   const { priorPhotos, deletePrior, queryKey, query } = useScopedPackerPhotos(packerLogId);
   const [paperworkOpen, setPaperworkOpen] = useState(false);
   const paperwork = orderRowId ? (
-    <MobileOrderPaperworkSheet
+    <MobileV2OrderPaperworkSheet
       open={paperworkOpen}
       onClose={() => setPaperworkOpen(false)}
       orderId={orderRowId}

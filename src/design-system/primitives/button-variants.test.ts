@@ -34,6 +34,21 @@ describe('Button semantic intents (2a)', () => {
     assert.match(BUTTON_VARIANTS.primarySoft, /ring-1/);
   });
 
+  it('successSoft and warningSoft are the tonal faces of success and warning (P2: a verb on every row is tonal)', () => {
+    for (const [name, hue] of [
+      ['successSoft', 'emerald'],
+      ['warningSoft', 'amber'],
+    ] as const) {
+      const face = BUTTON_VARIANTS[name];
+      assert.match(face, new RegExp(`(^|\\s)bg-${hue}-50(\\s|$)`), `${name} is a light ${hue} tint`);
+      // -800 ink: AA (≥4.5:1) on the rest, hover and pressed tints alike.
+      assert.match(face, new RegExp(`(^|\\s)text-${hue}-800(\\s|$)`), `${name} ink is dark ${hue}`);
+      assert.match(face, /ring-1/);
+      assert.match(face, new RegExp(`dark:text-${hue}-200`), `${name} keeps AA ink in dark mode`);
+      assert.doesNotMatch(face, /(^|\s)text-white(\s|$)/, `${name} is never a dark fill with white ink`);
+    }
+  });
+
   it('yellow is a filled yellow pill, not amber', () => {
     assert.ok('yellow' in BUTTON_VARIANTS);
     assert.match(BUTTON_VARIANTS.yellow, /bg-yellow-400/);

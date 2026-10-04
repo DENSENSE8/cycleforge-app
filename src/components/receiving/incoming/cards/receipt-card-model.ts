@@ -12,10 +12,12 @@
 import type { RowGroup } from '@/lib/group-rows';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { incomingExceptionReason } from '@/lib/receiving/incoming-exceptions';
-import type { RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
+import type { RecordCardLine } from '@/design-system/components/record-card/record-card-types';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
+import type { INCOMING_PIPELINE_VIEW } from '@/lib/triage/views/incoming-pipeline';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { RecordStateFace } from '@/design-system/tokens/record';
-import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { incomingDeliveryNextAction, purchaseDeliveryState, purchaseIdentity } from '../incoming-delivery-state';
 
@@ -69,7 +71,7 @@ function receiptLine(row: ReceivingLineRow): RecordCardLine {
   const expected = row.expected_delivery_date || row.po_date || row.created_at;
   return {
     id: row.id,
-    title: displayReceivingProductTitle(row),
+    title: resolveSkuIdentityTitle(row) || 'Unnamed inbound line',
     photoUrl: row.image_url,
     alert: reason != null,
     alertNote: reason ? `${reason.why} → ${reason.next}` : null,
@@ -84,8 +86,8 @@ function receiptLine(row: ReceivingLineRow): RecordCardLine {
 
 const needPerson = (count: number) => `${count} more need${count === 1 ? 's' : ''} a person`;
 
-/** The purchase as the shared card reads it. */
-export function receiptRecordCard(model: ReceiptCardModel): RecordCardModel {
+/** The purchase as the shared card reads it (`incoming.pipeline`: the delivery state top-right). */
+export function receiptRecordCard(model: ReceiptCardModel): ViewCardModel<typeof INCOMING_PIPELINE_VIEW> {
   const { state, identity, rows } = model;
   const lines = rows.map(receiptLine);
   const alertCount = lines.filter((line) => line.alert).length;
@@ -116,7 +118,7 @@ export function receiptRecordCard(model: ReceiptCardModel): RecordCardModel {
     chips: [],
     // Why this delivery needs a person, and what to do — read-only on line 1.
     notes: { fixed: reason ? { label: reason.label, text: `${reason.why} → ${reason.next}` } : null, own: null },
-    status: { kind: 'none' },
+    status: { kind: 'state', face: state.label, tone: state.tone, tip: reason ? `${state.label} — ${reason.why}` : null },
     next: {
       label: nextVerb,
       tone: state.tone,

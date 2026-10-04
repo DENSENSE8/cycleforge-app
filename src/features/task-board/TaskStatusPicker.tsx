@@ -18,9 +18,17 @@
 import { useId, useMemo, useRef, useState, type RefObject } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TaskStatusPill } from '@/design-system/components/TaskStatusPill';
-import { TASK_STATUSES, TASK_STATUS_FACE, matchTaskStatuses, type TaskStatus } from '@/design-system/tokens/task-status';
+import {
+  TASK_STATUSES,
+  TASK_STATUS_FACE,
+  TASK_STATUS_SLIDER_STOPS,
+  matchTaskStatuses,
+  taskStatusSliderIndex,
+  type TaskStatus,
+} from '@/design-system/tokens/task-status';
+import { StopSlider } from '@/design-system/primitives/StopSlider';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { isTaskStatusReachable } from '@/lib/tasks/task-status';
 import { cn } from '@/utils/_cn';
@@ -99,6 +107,7 @@ function TaskStatusMenu({
   const matches = useMemo(() => matchTaskStatuses(find), [find]);
   const [highlight, setHighlight] = useState(() => Math.max(0, TASK_STATUSES.indexOf(current)));
   const active = matches[Math.min(highlight, matches.length - 1)] ?? null;
+  const sliderIndex = taskStatusSliderIndex(current);
 
   const apply = (status: TaskStatus | null) => {
     if (!status || !isTaskStatusReachable(current, status)) return;
@@ -141,38 +150,53 @@ function TaskStatusMenu({
         placeholder="Set status… (type or press a letter)"
         className="mb-0.5 rounded-xl bg-surface-sunken px-2.5 py-1.5 text-xs text-text-default outline-none placeholder:text-text-muted"
       />
+      {/* The quick Not done · Pending · Done slider lives HERE, inside the status drop-down (owner 2026-10-03, M6 —
+          the phone status sheet's grammar, ported): never a second status control on the record's Overview. */}
+      {sliderIndex != null ? (
+        <StopSlider
+          stops={[0, 1, 2]}
+          value={sliderIndex}
+          onChange={(index) => apply(TASK_STATUS_SLIDER_STOPS[index]!.status)}
+          ariaLabel="Quick status"
+          formatValue={(index) => TASK_STATUS_SLIDER_STOPS[index]?.label ?? ''}
+          showStops={false}
+          compact
+          className="mx-1 mb-1"
+          data-testid="task-status-slider"
+        />
+      ) : null}
       <div id={listId} role="listbox" aria-label="Statuses" className="flex flex-col gap-0.5">
         {matches.map((status) => {
           const face = TASK_STATUS_FACE[status];
           const Icon = face.icon;
           const enabled = isTaskStatusReachable(current, status);
           return (
-            <button
-              key={status}
-              id={`${listId}-${status}`}
-              type="button"
-              role="option"
-              tabIndex={-1}
-              aria-selected={status === active}
-              aria-disabled={!enabled}
-              disabled={!enabled}
-              onPointerMove={() => setHighlight(matches.indexOf(status))}
-              onClick={() => apply(status)}
-              className={cn(
-                'flex items-center gap-2 rounded-xl px-2 py-1.5 text-left disabled:cursor-not-allowed disabled:opacity-60',
-                status === active && enabled ? 'bg-surface-hover' : null,
-              )}
-            >
-              <Icon className={cn('size-3.5 shrink-0', face.ink)} aria-hidden strokeWidth={2.25} />
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-text-default">
-                  {face.label}
-                  {status === current ? <span className="text-[10px] font-medium text-text-muted">· current</span> : null}
+            <HoverTooltip key={status} label={face.label} shortcut={face.letter.toUpperCase()} placement="auto" focusable={false} asChild>
+              <button
+                id={`${listId}-${status}`}
+                type="button"
+                role="option"
+                tabIndex={-1}
+                aria-selected={status === active}
+                aria-disabled={!enabled}
+                disabled={!enabled}
+                onPointerMove={() => setHighlight(matches.indexOf(status))}
+                onClick={() => apply(status)}
+                className={cn(
+                  'flex items-center gap-2 rounded-xl px-2 py-1.5 text-left disabled:cursor-not-allowed disabled:opacity-60',
+                  status === active && enabled ? 'bg-surface-hover' : null,
+                )}
+              >
+                <Icon className={cn('size-3.5 shrink-0', face.ink)} aria-hidden strokeWidth={2.25} />
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-text-default">
+                    {face.label}
+                    {status === current ? <span className="text-[10px] font-medium text-text-muted">· current</span> : null}
+                  </span>
+                  <span className="truncate text-[11px] text-text-muted">{face.hint}</span>
                 </span>
-                <span className="truncate text-[11px] text-text-muted">{face.hint}</span>
-              </span>
-              <KeyboardKey size="xs">{face.letter.toUpperCase()}</KeyboardKey>
-            </button>
+              </button>
+            </HoverTooltip>
           );
         })}
         {matches.length === 0 ? <p className="px-2 py-1 text-xs text-text-muted">No status matches</p> : null}

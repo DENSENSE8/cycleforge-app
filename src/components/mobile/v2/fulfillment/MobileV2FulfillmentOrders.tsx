@@ -13,16 +13,17 @@ import {
 } from 'react';
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowUp,
   Box,
   Check,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   ExternalLink,
+  FileText,
   ImagePlus,
   MapPin,
+  MoreHorizontal,
   Package,
   PackageCheck,
   SlidersHorizontal,
@@ -31,14 +32,23 @@ import {
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button, IconButton } from '@/design-system/primitives';
-import { useToShipOrders } from '@/components/mobile/redesign/useToShipOrders';
+import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
+import { RecordCursor } from '@/design-system/components/RecordCursor';
+import { MobileSwipePhotoViewer } from '@/components/mobile/station/MobileSwipePhotoViewer';
+import { MobileV2OrderPaperworkPanel } from '@/components/mobile/v2/orders/MobileV2OrderPaperworkSheet';
+import { useMobileV2FulfillmentOrders } from './useMobileV2FulfillmentOrders';
+import {
+  MOBILE_V2_ALLOCATE_FACT_LABEL_CLASS,
+  MOBILE_V2_ALLOCATE_FILTER_BAR_CLASS,
+  MOBILE_V2_ALLOCATE_SECTION_LABEL_CLASS,
+} from './mobile-v2-allocate-layout';
 import { EMPTY_META_DASH } from '@/lib/conditions';
 import {
   ALLOCATE_SORTS,
@@ -61,7 +71,10 @@ import { cn } from '@/utils/_cn';
 import { useMobileV2Search } from '../MobileV2SearchContext';
 
 type VisibleOrderView = MobileAllocateStatusView;
-type FulfillmentOrder = ReturnType<typeof useToShipOrders>['rows'][number];
+type FulfillmentOrder = ReturnType<typeof useMobileV2FulfillmentOrders>['rows'][number];
+/** One task at a time in ONE sheet (docs/mobile-first/V2_OBJECT_FIRST.md §5): nothing opens over the record. */
+type AllocateDetailStage = 'detail' | 'more' | 'paperwork';
+type AllocateDetailVerb = 'next' | 'listing' | 'paperwork' | 'back';
 
 const ORDER_VIEWS = MOBILE_ALLOCATE_STATUS_VIEWS;
 
@@ -386,6 +399,8 @@ function AllocateDetailSheet({
   nowMs: number;
   onOpenChange: (open: boolean) => void;
 }) {
+  const router = useRouter();
+  const [stage, setStage] = useState<AllocateDetailStage>('detail');
   const [photoOpen, setPhotoOpen] = useState(false);
   if (!row) return null;
   const model = resolveAllocatePresentation(row, nowMs);
@@ -401,121 +416,217 @@ function AllocateDetailSheet({
     ? `/m/scan?intent=location&pairSku=${encodeURIComponent(row.sku.trim())}&returnTo=${encodeURIComponent('/m/orders')}`
     : null;
 
+  const back: DetailDockVerb<AllocateDetailVerb> = { id: 'back', label: 'Back', icon: <ArrowLeft />, variant: 'secondary', testId: 'allocate-sheet-back' };
+  const verbs: readonly DetailDockVerb<AllocateDetailVerb>[] = stage === 'detail'
+    ? [
+        { id: 'next', label: model.primary.label, icon: <Check />, primary: true },
+        {
+          id: 'listing',
+          label: 'View listing',
+          icon: <ExternalLink />,
+          disabled: !model.listingUrl,
+        },
+        { id: 'paperwork', label: 'Paperwork', icon: <FileText /> },
+      ]
+    : [back];
+
   return (
-    <>
-      <Sheet open onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="flex max-h-[92dvh] flex-col rounded-t-2xl p-0">
-          <SheetHeader className="sticky top-0 z-content border-b border-border-soft bg-surface-card px-4 pb-3 pr-12 pt-4">
-            <div className="flex items-center justify-between gap-3 text-xs font-semibold">
-              <span className="flex min-w-0 items-center gap-1.5 text-text-default">
-                <PlatformMark meta={platform} />
-                {platform.label}
-                <span className="truncate font-normal tabular-nums text-text-muted">#{model.orderReference.replace(/^#/, '')}</span>
-              </span>
-              <span className={cn(
-                'shrink-0 tabular-nums',
-                model.workflow.deadlineBand === 'overdue' ? 'text-text-danger' : model.workflow.deadlineBand === 'today' ? 'text-text-warning' : 'text-text-muted',
-              )}>
-                {model.sla}
-              </span>
-            </div>
-            <div className="mt-1 flex items-center gap-2">
-              <StatusIcon stage={model.workflow.stage} label={model.state.label} className={model.state.pill} />
-              <SheetTitle className="line-clamp-2 text-left text-base">{row.title}</SheetTitle>
-            </div>
-            <SheetDescription className="sr-only">Allocate details and the next safe warehouse action.</SheetDescription>
-          </SheetHeader>
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          setStage('detail');
+          setPhotoOpen(false);
+        }
+        onOpenChange(open);
+      }}
+    >
+      <SheetContent
+        side="bottom"
+        data-testid="allocate-detail-sheet"
+        data-stage={stage}
+        // The photo viewer is a sibling layer, not an outside press.
+        onInteractOutside={(event) => { if (photoOpen) event.preventDefault(); }}
+        onEscapeKeyDown={(event) => { if (photoOpen) event.preventDefault(); }}
+      >
+        <SheetHeader className="shrink-0 border-b border-border-soft bg-surface-card px-4 pb-3 pr-12 pt-4">
+          <div className="flex items-center justify-between gap-3 text-xs font-semibold">
+            <span className="flex min-w-0 items-center gap-1.5 text-text-default">
+              <PlatformMark meta={platform} />
+              {platform.label}
+              <span className="truncate font-normal tabular-nums text-text-muted">#{model.orderReference.replace(/^#/, '')}</span>
+            </span>
+            <span className={cn(
+              'shrink-0 tabular-nums',
+              model.workflow.deadlineBand === 'overdue' ? 'text-text-danger' : model.workflow.deadlineBand === 'today' ? 'text-text-warning' : 'text-text-muted',
+            )}>
+              {model.sla}
+            </span>
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <StatusIcon stage={model.workflow.stage} label={model.state.label} className={model.state.pill} />
+            <SheetTitle className="line-clamp-2 min-w-0 flex-1 text-left text-base">{row.title}</SheetTitle>
+            <IconButton
+              size="touch"
+              icon={<MoreHorizontal className="h-5 w-5" />}
+              ariaLabel="More actions"
+              aria-pressed={stage === 'more'}
+              onClick={() => setStage(stage === 'more' ? 'detail' : 'more')}
+              data-testid="allocate-sheet-more"
+            />
+          </div>
+          <SheetDescription className="sr-only">Allocate details and the next safe warehouse action.</SheetDescription>
+        </SheetHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => row.imageUrl && setPhotoOpen(true)}
-                disabled={!row.imageUrl}
-                className="relative shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-accent disabled:cursor-default"
-                aria-label={row.imageUrl ? 'View product photo full screen' : 'No product photo'}
-              >
-                <OrderPhoto row={row} density="comfortable" />
-                {row.imageUrl ? <span className="absolute inset-x-1 bottom-1 rounded bg-black/65 px-1 py-0.5 text-[9px] font-bold text-white">View</span> : null}
-              </button>
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold tabular-nums">
-                  {model.quantityDisplay !== EMPTY_META_DASH ? <span className={model.quantityTone}>{model.quantityDisplay}</span> : null}
-                  {model.condition !== EMPTY_META_DASH ? <span className={model.conditionTone}>{model.condition}</span> : null}
-                  {model.price !== EMPTY_META_DASH ? <span className="text-text-success">{model.price}</span> : null}
-                </p>
-                <p className="mt-2 flex items-center gap-1 text-sm font-semibold text-text-default">
-                  <MapPin className="h-4 w-4 shrink-0 text-text-muted" />
-                  {model.location ?? 'Location not assigned'}
-                </p>
-                <p className="mt-1 text-xs text-text-muted">Next: {model.workflow.nextStep.label}</p>
-              </div>
-            </div>
-
-            <dl className="mt-4 grid grid-cols-4 divide-x divide-border-soft overflow-hidden rounded-xl border border-border-soft bg-surface-sunken">
-              {stockFacts.map((fact) => (
-                <div key={fact.label} className="min-w-0 px-2 py-2 text-center">
-                  <dt className="truncate text-[10px] font-semibold uppercase tracking-wide text-text-faint">{fact.label}</dt>
-                  <dd className="mt-0.5 text-sm font-bold tabular-nums text-text-default">{fact.value}</dd>
+        <SheetBody>
+          {stage === 'detail' ? (
+            <>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => row.imageUrl && setPhotoOpen(true)}
+                  disabled={!row.imageUrl}
+                  className="relative shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-accent disabled:cursor-default"
+                  aria-label={row.imageUrl ? 'View product photo full screen' : 'No product photo'}
+                >
+                  <OrderPhoto row={row} density="comfortable" />
+                  {row.imageUrl ? <span className="absolute inset-x-1 bottom-1 rounded bg-black/65 px-1 py-0.5 text-[9px] font-bold text-white">View</span> : null}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold tabular-nums">
+                    {model.quantityDisplay !== EMPTY_META_DASH ? <span className={model.quantityTone}>{model.quantityDisplay}</span> : null}
+                    {model.condition !== EMPTY_META_DASH ? <span className={model.conditionTone}>{model.condition}</span> : null}
+                    {model.price !== EMPTY_META_DASH ? <span className="text-text-success">{model.price}</span> : null}
+                  </p>
+                  <p className="mt-2 flex items-center gap-1 text-sm font-semibold text-text-default">
+                    <MapPin className="h-4 w-4 shrink-0 text-text-muted" />
+                    {model.location ?? 'Location not assigned'}
+                  </p>
+                  <p className="mt-1 text-xs text-text-muted">Next: {model.workflow.nextStep.label}</p>
                 </div>
-              ))}
-            </dl>
+              </div>
 
-            <section className="mt-4 space-y-2" aria-label="Location actions">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-faint">Location</p>
-              <Button href={model.processHref} variant="secondary" size="lg" radius="surface" icon={<MapPin />} className="w-full justify-start">
+              <dl className="mt-4 grid grid-cols-4 divide-x divide-border-soft overflow-hidden rounded-xl border border-border-soft bg-surface-sunken">
+                {stockFacts.map((fact) => (
+                  <div key={fact.label} className="min-w-0 px-2 py-2 text-center">
+                    <dt className={MOBILE_V2_ALLOCATE_FACT_LABEL_CLASS}>{fact.label}</dt>
+                    <dd className="mt-0.5 text-sm font-bold tabular-nums text-text-default">{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <section className="mt-4 space-y-2" aria-label="Location facts">
+                <p className={MOBILE_V2_ALLOCATE_SECTION_LABEL_CLASS}>Location</p>
+                <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border-soft px-3 text-sm text-text-default">
+                  <MapPin className="h-4 w-4 shrink-0 text-text-muted" />
+                  <span>{model.location ?? 'Not assigned'}</span>
+                </div>
+              </section>
+
+              <section className="mt-4 space-y-2" aria-label="Order ownership">
+                <p className={MOBILE_V2_ALLOCATE_SECTION_LABEL_CLASS}>Ownership</p>
+                <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border-soft px-3 text-sm text-text-default">
+                  <User className="h-4 w-4 text-text-muted" />
+                  <span>{model.picker ? `Picker: ${model.picker}` : 'Picker unassigned'}</span>
+                  {model.packer ? <span className="ml-auto text-text-muted">Packer: {model.packer}</span> : null}
+                </div>
+              </section>
+
+              <section className="mt-4 space-y-2" aria-label="Listing facts">
+                <p className={MOBILE_V2_ALLOCATE_SECTION_LABEL_CLASS}>Listing and media</p>
+                {model.listingUrl ? (
+                  <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border-soft px-3 text-sm text-text-default">
+                    <ExternalLink className="h-4 w-4 shrink-0 text-text-muted" />
+                    <span>Listing available in {listingPlatform}</span>
+                  </div>
+                ) : (
+                  <p className="rounded-xl bg-surface-sunken p-3 text-sm text-text-muted">No preferred marketplace link is stored.</p>
+                )}
+                {row.itemNumber?.trim() ? <p className="break-all px-1 font-mono text-xs text-text-muted">{row.itemNumber}</p> : null}
+              </section>
+            </>
+          ) : null}
+
+          {stage === 'more' ? (
+            <div className="grid gap-2" data-testid="allocate-more-commands">
+              <Button
+                variant="secondary"
+                size="lg"
+                radius="surface"
+                icon={<MapPin />}
+                className="w-full justify-start"
+                onClick={() => router.push(model.processHref)}
+              >
                 {model.location ? 'Verify or change pick location' : 'Assign pick location'}
               </Button>
               {pairHref ? (
-                <Button href={pairHref} variant="secondary" size="lg" radius="surface" className="w-full justify-start">
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  radius="surface"
+                  icon={<Package />}
+                  className="w-full justify-start"
+                  onClick={() => router.push(pairHref)}
+                >
                   Pair SKU to a home location
                 </Button>
               ) : null}
-            </section>
-
-            <section className="mt-4 space-y-2" aria-label="Order ownership">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-faint">Ownership</p>
-              <div className="flex min-h-11 items-center gap-2 rounded-xl border border-border-soft px-3 text-sm text-text-default">
-                <User className="h-4 w-4 text-text-muted" />
-                <span>{model.picker ? `Picker: ${model.picker}` : 'Picker unassigned'}</span>
-                {model.packer ? <span className="ml-auto text-text-muted">Packer: {model.packer}</span> : null}
-              </div>
-            </section>
-
-            <section className="mt-4 space-y-2" aria-label="Listing and media">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-faint">Listing and media</p>
               {row.imageUrl ? (
-                <Button variant="secondary" size="lg" radius="surface" icon={<ImagePlus />} className="w-full justify-start" onClick={() => setPhotoOpen(true)}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  radius="surface"
+                  icon={<ImagePlus />}
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setStage('detail');
+                    setPhotoOpen(true);
+                  }}
+                >
                   View photo
                 </Button>
               ) : null}
-              {model.listingUrl ? (
-                <Button href={model.listingUrl} variant="secondary" size="lg" radius="surface" icon={<ExternalLink />} className="w-full justify-start">
-                  Open listing in {listingPlatform}
-                </Button>
-              ) : (
-                <p className="rounded-xl bg-surface-sunken p-3 text-sm text-text-muted">No preferred marketplace link is stored.</p>
-              )}
-              {row.itemNumber?.trim() ? <p className="break-all px-1 font-mono text-xs text-text-muted">{row.itemNumber}</p> : null}
-            </section>
-          </div>
+              <Button
+                variant="secondary"
+                size="lg"
+                radius="surface"
+                icon={<ExternalLink />}
+                className="w-full justify-start"
+                onClick={() => router.push(model.fullRecordHref)}
+              >
+                Open order record
+              </Button>
+            </div>
+          ) : null}
 
-          <SheetFooter className="sticky bottom-0 border-t border-border-soft bg-surface-card px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-            <Button href={model.primary.href} variant="primary" size="lg" radius="surface" className="w-full">{model.primary.label}</Button>
-            <Button href={model.fullRecordHref} variant="ghost" size="lg" radius="surface" className="w-full">Full order record</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          {stage === 'paperwork' ? (
+            <MobileV2OrderPaperworkPanel orderId={row.entityId} orderRef={model.orderReference} />
+          ) : null}
+        </SheetBody>
 
-      <Sheet open={photoOpen} onOpenChange={setPhotoOpen}>
-        <SheetContent side="bottom" className="flex h-[100dvh] max-h-[100dvh] flex-col bg-black p-0">
-          <SheetHeader className="sr-only"><SheetTitle>{row.title} photo</SheetTitle></SheetHeader>
-          <div className="flex min-h-0 flex-1 items-center justify-center p-4">
-            {row.imageUrl ? <img src={row.imageUrl} alt={row.title} className="max-h-full max-w-full object-contain" /> : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+        <DetailDock
+          label="Allocate order actions"
+          placement="sheet"
+          verbs={verbs}
+          onVerb={(verb) => {
+            if (verb === 'back') setStage('detail');
+            else if (verb === 'next') router.push(model.primary.href);
+            else if (verb === 'listing' && model.listingUrl) {
+              window.open(model.listingUrl, '_blank', 'noopener,noreferrer');
+            }
+            else if (verb === 'paperwork') setStage('paperwork');
+          }}
+        />
+
+        {row.imageUrl ? (
+          <MobileSwipePhotoViewer
+            slides={[{ id: `allocate-photo:${row.entityId}`, previewUrl: row.imageUrl }]}
+            open={photoOpen}
+            onClose={() => setPhotoOpen(false)}
+          />
+        ) : null}
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -536,7 +647,6 @@ export function MobileV2FulfillmentOrders() {
   const [incomingIds, setIncomingIds] = useState<Set<string>>(() => new Set());
   const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(() => new Set());
   const [changedCounts, setChangedCounts] = useState<Set<VisibleOrderView>>(() => new Set());
-  const [scrollIndex, setScrollIndex] = useState(1);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const sectionRef = useRef<HTMLElement>(null);
   const previousRowsRef = useRef(new Map<string, FulfillmentOrder>());
@@ -544,7 +654,7 @@ export function MobileV2FulfillmentOrders() {
   const previousDeadlineBandsRef = useRef(new Map<string, string>());
   const interactionOrderRef = useRef<string[]>([]);
   const handledScanRef = useRef('');
-  const { rows, isPending, isError } = useToShipOrders({
+  const { rows, isPending, isError } = useMobileV2FulfillmentOrders({
     enabled: true,
     searchQuery: scanQuery || query,
   });
@@ -671,10 +781,6 @@ export function MobileV2FulfillmentOrders() {
     const onScroll = () => {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        const rowsOnPage = [...sectionRef.current?.querySelectorAll<HTMLElement>('[data-testid="mobile-v2-order-row"]') ?? []];
-        const boundary = host.getBoundingClientRect().top + 44;
-        const firstVisible = rowsOnPage.findIndex((row) => row.getBoundingClientRect().bottom > boundary);
-        setScrollIndex(firstVisible >= 0 ? safePage * PAGE_SIZE + firstVisible + 1 : 1);
         const current = readStoredAllocateState();
         window.sessionStorage.setItem(ALLOCATE_STATE_KEY, JSON.stringify({ ...current, scrollTop: host.scrollTop } satisfies StoredAllocateState));
       });
@@ -733,9 +839,9 @@ export function MobileV2FulfillmentOrders() {
 
   return (
     <section ref={sectionRef} className="flex min-h-full w-full flex-col bg-surface-canvas md:max-w-[36rem] md:border-r md:border-border-soft" aria-label="Fulfillment orders">
-      <div className="sticky top-0 z-content border-b border-border-soft bg-surface-card/95 backdrop-blur-xl">
+      <div className={MOBILE_V2_ALLOCATE_FILTER_BAR_CLASS}>
         {scanQuery ? (
-          <div className="flex min-h-9 items-center justify-between gap-2 border-b border-border-accent bg-surface-accent px-3 py-1.5 text-xs text-text-accent">
+          <div className="pointer-events-auto flex min-h-9 items-center justify-between gap-2 border-b border-border-accent bg-surface-accent px-3 py-1.5 text-xs text-text-accent">
             <span className="min-w-0 truncate font-bold">
               {isPending ? 'Finding scan…' : rows.length > 0 ? `Scan match · ${scanQuery}` : `No Allocate match · ${scanQuery}`}
             </span>
@@ -752,13 +858,13 @@ export function MobileV2FulfillmentOrders() {
           <button
             type="button"
             onClick={acknowledgeNewOrders}
-            className="flex h-9 w-full items-center justify-center gap-1.5 border-b border-border-accent bg-surface-accent text-xs font-bold text-text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-accent"
+            className="pointer-events-auto flex h-9 w-full items-center justify-center gap-1.5 border-b border-border-accent bg-surface-accent text-xs font-bold text-text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-accent"
           >
             <ArrowUp className="h-3.5 w-3.5" />
             {incomingCount} new {incomingCount === 1 ? 'order' : 'orders'}
           </button>
         ) : null}
-        <nav className="flex gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filter fulfillment orders">
+        <nav className="pointer-events-auto flex gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Filter fulfillment orders">
           {ORDER_VIEWS.map((option) => {
             const active = view === option.id;
             const count = viewCounts.get(option.id) ?? 0;
@@ -779,12 +885,16 @@ export function MobileV2FulfillmentOrders() {
                   });
                 }}
                 aria-pressed={active}
-                className={cn('shrink-0', changed && !active && 'ring-2 ring-border-warning')}
+                className={cn(
+                  'relative shrink-0 shadow-sm',
+                  changed && !active && 'ring-2 ring-border-warning',
+                )}
               >
                 {option.label}{' '}
                 <span data-count-changed={changed || undefined} className={cn('tabular-nums opacity-70', changed && 'font-bold opacity-100')}>
                   {count}
                 </span>
+                {changed && !active ? <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden /> : null}
               </Button>
             );
           })}
@@ -857,56 +967,36 @@ export function MobileV2FulfillmentOrders() {
         </ul>
       )}
 
-      {scrollIndex > 1 && visibleRows.length > 0 ? (
-        <div className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-2 z-header rounded-full border border-border-soft bg-surface-card/95 px-2.5 py-1 text-[11px] font-bold tabular-nums text-text-muted shadow-sm backdrop-blur-xl">
-          {ORDER_VIEWS.find((option) => option.id === view)?.label ?? 'Allocate'} · {Math.min(scrollIndex, visibleRows.length)} of {visibleRows.length}
-        </div>
-      ) : null}
-
       {pageCount > 1 ? (
-        <nav className="flex items-center justify-between border-b border-border-soft bg-surface-card px-3 py-2" aria-label="Fulfillment pages">
-          <IconButton
-            icon={<ChevronLeft className="h-4 w-4" />}
-            ariaLabel="Previous fulfillment page"
-            size="touch"
-            radius="surface"
-            disabled={safePage === 0}
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
-            className="border border-border-soft bg-surface-card"
-          />
-          <span className="text-xs font-semibold tabular-nums text-text-muted">
-            Page {safePage + 1} of {pageCount}
-          </span>
-          <IconButton
-            icon={<ChevronRight className="h-4 w-4" />}
-            ariaLabel="Next fulfillment page"
-            size="touch"
-            radius="surface"
-            disabled={safePage >= pageCount - 1}
-            onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
-            className="border border-border-soft bg-surface-card"
-          />
-        </nav>
+        <RecordCursor
+          cursor={{
+            label: `${ORDER_VIEWS.find((option) => option.id === view)?.label ?? 'Allocate'} · ${safePage * PAGE_SIZE + 1}–${Math.min((safePage + 1) * PAGE_SIZE, visibleRows.length)} of ${visibleRows.length}`,
+            previousLabel: 'Previous fulfillment page',
+            nextLabel: 'Next fulfillment page',
+            canPrevious: safePage > 0,
+            canNext: safePage < pageCount - 1,
+            onPrevious: () => setPage((current) => Math.max(0, current - 1)),
+            onNext: () => setPage((current) => Math.min(pageCount - 1, current + 1)),
+          }}
+          className="border-b border-border-soft bg-surface-card px-3"
+        />
       ) : null}
 
       {selectionMode ? (
-        <div className="sticky bottom-0 z-header mt-auto flex min-h-14 items-center justify-between gap-3 border-t border-border-soft bg-surface-card/95 px-3 py-2 backdrop-blur-xl">
-          <span className="text-sm font-semibold text-text-default">{selectedIds.size} selected</span>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              radius="surface"
-              variant="ghost"
-              onClick={() => {
-                interactionOrderRef.current = [];
-                setSelectedIds(new Set());
-              }}
-            >
-              Clear
-            </Button>
-            {onlySelected ? <Button size="sm" radius="surface" variant="primary" onClick={() => router.push(`/m/orders/${onlySelected.entityId}`)}>Open</Button> : null}
-          </div>
-        </div>
+        <DetailDock
+          label="Selected fulfillment actions"
+          selection={{
+            count: selectedIds.size,
+            onClear: () => {
+              interactionOrderRef.current = [];
+              setSelectedIds(new Set());
+            },
+          }}
+          verbs={onlySelected ? [{ id: 'open', label: 'Open order', icon: <ExternalLink />, primary: true }] as const : []}
+          onVerb={() => {
+            if (onlySelected) router.push(`/m/orders/${onlySelected.entityId}`);
+          }}
+        />
       ) : null}
 
       <AllocateDetailSheet row={detailRow} nowMs={nowMs} onOpenChange={(open) => { if (!open) setDetailRow(null); }} />

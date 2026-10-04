@@ -27,7 +27,17 @@ export interface DeskImportRow {
   lineItemId?: string | null;
   sku?: string | null;
   itemName?: string | null;
-  quantity?: number;
+  /** Null = the file had a quantity column whose cell was blank — asked for, never assumed. */
+  quantity?: number | null;
+  /** Line unit cost in cents (PO CSV). */
+  unitCostCents?: number | null;
+  /** Marketplace item / listing number (PO CSV); ASIN rows use `amazonAsin`. */
+  itemNumber?: string | null;
+  /** Civil dates YYYY-MM-DD (PO CSV) — the order's first row that has one wins. */
+  orderDate?: string | null;
+  expectedDate?: string | null;
+  /** Order-level note fragments (shipping, condition, notes); unique fragments are joined. */
+  notes?: string | null;
   trackingNumber?: string | null;
   carrierCode?: string | null;
   seller?: string | null;

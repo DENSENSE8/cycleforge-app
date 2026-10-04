@@ -13,6 +13,8 @@ export const LOCATIONS_TAB_OPTIONS = [
   { value: 'totes', label: 'Totes' },
   { value: 'rooms', label: 'Rooms' },
   { value: 'map', label: 'Map' },
+  // Movable racks (`RK12`). The wire id is `movable`: `racks` is the legacy bay alias.
+  { value: 'movable', label: 'Racks' },
   { value: 'manage', label: 'Manage' },
 ] as const;
 

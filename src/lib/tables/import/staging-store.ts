@@ -89,7 +89,7 @@ export function loadTableImportDraft<TField extends string, TRowView>(
     fileName: input.fileName,
     headers: input.headers,
     rows: input.rows,
-    mapping: input.mapping ?? descriptor.autoMap(input.headers),
+    mapping: input.mapping ?? descriptor.autoMapRows?.(input.headers, input.rows) ?? descriptor.autoMap(input.headers),
     focusRowIndex: null,
     selectedIndexes: new Set(),
     filter: 'all',

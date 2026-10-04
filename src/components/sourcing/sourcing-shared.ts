@@ -7,9 +7,9 @@
 
 type SourcingMode =
   | 'queue' | 'scout' | 'watchlist' | 'searches' | 'suppliers' | 'analytics'
-  // Sourcing master data (admin dissolution): the model catalog + its
-  // compatibility edges live on the desk that consumes them.
-  | 'models' | 'compatibility';
+  // Sourcing master data (admin dissolution): the model catalog lives on the
+  // desk that consumes it. `?mode=compatibility` is parked → `/sourcing`.
+  | 'models';
 
 /** Live + legacy wire tokens `?mode=` may carry on `/sourcing`. */
 const SOURCING_MODE_WIRE = [
@@ -20,7 +20,6 @@ const SOURCING_MODE_WIRE = [
   'suppliers',
   'analytics',
   'models',
-  'compatibility',
   /** Legacy → scout */
   'lookup',
   /** Legacy → queue */
@@ -34,7 +33,6 @@ export function resolveSourcingMode(raw: string | null): SourcingMode {
   if (raw === 'suppliers') return 'suppliers';
   if (raw === 'analytics') return 'analytics';
   if (raw === 'models') return 'models';
-  if (raw === 'compatibility') return 'compatibility';
   return 'queue'; // default; legacy 'alerts' lands here too
 }
 

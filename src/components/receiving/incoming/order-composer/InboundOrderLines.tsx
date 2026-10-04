@@ -31,8 +31,17 @@ import {
 } from '@/lib/inbound/inbound-order-draft';
 import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { cn } from '@/utils/_cn';
-import { centsToInputText } from '@/utils/money';
-import { formatInboundMoney, inboundLineTotalCents, inboundOrderCostTotal, openableListingUrl } from './composer-choices';
+import { centsToInputText, inputTextToCents } from '@/utils/money';
+import {
+  formatInboundMoney,
+  inboundLineCatalogPatch,
+  inboundLineSkuPatch,
+  inboundLineTotalCents,
+  inboundOrderCostTotal,
+  openableListingUrl,
+  parseInboundQuantityInput,
+  type InboundCatalogPick,
+} from '@/lib/inbound/inbound-order-compose';
 
 interface LinesProps {
   draft: InboundOrderDraft;
@@ -164,12 +173,8 @@ function LineRow({
         <SearchableSelectField
           value={line.skuCatalogId}
           onChange={(value, option) => {
-            if (value == null) {
-              onChange({ skuCatalogId: null });
-              return;
-            }
-            const item = option?.data as { id: number; sku: string; product_title: string } | undefined;
-            onChange({ skuCatalogId: Number(value), sku: item?.sku ?? line.sku, title: item?.product_title ?? line.title });
+            const item = option?.data as InboundCatalogPick | undefined;
+            onChange(inboundLineCatalogPatch(line, value == null ? null : { id: Number(value), sku: item?.sku ?? line.sku, product_title: item?.product_title ?? line.title }));
           }}
           options={options}
           filter={() => true}
@@ -183,17 +188,14 @@ function LineRow({
         />
       </FormField>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-[10rem_1fr_6rem_7rem]">
-        <TextField label="SKU" value={line.sku} mono onChange={(sku) => onChange({ sku, skuCatalogId: sku === line.sku ? line.skuCatalogId : null })} aria-invalid={identityMissing || undefined} />
+        <TextField label="SKU" value={line.sku} mono onChange={(sku) => onChange(inboundLineSkuPatch(line, sku))} aria-invalid={identityMissing || undefined} />
         <TextField label="Title" value={line.title} onChange={(title) => onChange({ title })} aria-invalid={identityMissing || undefined} />
         <TextField
           label="Qty *"
           value={line.quantity == null ? '' : String(line.quantity)}
           inputMode="numeric"
           aria-invalid={quantityMissing || undefined}
-          onChange={(raw) => {
-            const n = Number(raw.trim());
-            onChange({ quantity: raw.trim() && Number.isInteger(n) && n >= 1 && n <= 10_000 ? n : null });
-          }}
+          onChange={(raw) => onChange({ quantity: parseInboundQuantityInput(raw) })}
         />
         <TextField
           label="Unit cost"
@@ -201,8 +203,7 @@ function LineRow({
           inputMode="decimal"
           onChange={(raw) => {
             setCostText(raw);
-            const n = Number(raw.trim());
-            onChange({ unitCostCents: raw.trim() && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null });
+            onChange({ unitCostCents: inputTextToCents(raw) });
           }}
         />
       </div>

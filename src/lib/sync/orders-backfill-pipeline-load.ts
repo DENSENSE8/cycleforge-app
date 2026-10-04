@@ -7,7 +7,7 @@ import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import { listConnections } from '@/lib/integrations/connectors/connections';
 import { syncConnection } from '@/lib/integrations/connectors/orchestrator';
 import { listOrderSyncMenuSources } from '@/lib/integrations/order-sync-menu';
-import { syncOrderExceptionsToOrders } from '@/lib/orders-exceptions';
+import { syncOrderExceptionsWithScanOutReplay } from '@/lib/outbound/held-scan-out-replay';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { startImportRun } from './import-record';
 import { importRecordDeps } from './import-record-load';
@@ -25,7 +25,7 @@ const deps: OrdersBackfillDeps = {
   ],
   syncProvider: (orgId, provider, opts) => syncConnection(orgId, provider as IntegrationProvider, opts),
   resolveExceptions: async (orgId) => {
-    const result = await syncOrderExceptionsToOrders(undefined, orgId);
+    const result = await syncOrderExceptionsWithScanOutReplay(undefined, orgId);
     if (result.matched > 0) await invalidateAllOrdersApiCaches([], orgId);
     return result;
   },

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Barcode } from '@/components/Icons';
 import { ScanSurface } from '@/components/mobile/ScanSurface';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -116,18 +116,25 @@ export function ScanValueField({
         </p>
       ) : null}
 
-      <BottomSheet open={scanOpen} onClose={closeScan} forceVariant="sheet" level={1} title={`Scan ${label}`}>
-        {/* BottomSheet portals out of the page's ModeRegion; re-declare triage so
+      <Sheet open={scanOpen} onOpenChange={(next) => { if (!next) closeScan(); }}>
+        {/* The sheet portals out of the page's ModeRegion; re-declare triage so
             the mode radius / padding / hit tokens resolve inside the sheet. */}
-        <ModeRegion mode="triage" className="flex flex-col gap-3 pb-2">
-          {scanOpen ? (
-            <ScanSurface scanner={scanner} onDecode={handleDecode} manualPlaceholder={`Type ${label.toLowerCase()}…`} />
-          ) : null}
-          <Button variant="secondary" size="lg" className="w-full rounded-mode" onClick={closeScan}>
-            Cancel
-          </Button>
+        <ModeRegion mode="triage" asChild>
+          <SheetContent side="bottom" aria-describedby={undefined}>
+            <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+              <SheetTitle>{`Scan ${label}`}</SheetTitle>
+            </SheetHeader>
+            <SheetBody className="flex flex-col gap-3">
+              {scanOpen ? (
+                <ScanSurface scanner={scanner} onDecode={handleDecode} manualPlaceholder={`Type ${label.toLowerCase()}…`} />
+              ) : null}
+              <Button variant="secondary" size="lg" className="w-full rounded-mode" onClick={closeScan}>
+                Cancel
+              </Button>
+            </SheetBody>
+          </SheetContent>
         </ModeRegion>
-      </BottomSheet>
+      </Sheet>
     </div>
   );
 }

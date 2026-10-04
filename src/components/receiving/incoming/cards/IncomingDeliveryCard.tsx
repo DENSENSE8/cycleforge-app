@@ -61,6 +61,7 @@ export const IncomingDeliveryCard = memo(function IncomingDeliveryCard({
   const record = useMemo(() => receiptRecordCard(model), [model]);
   return (
     <RecordCard
+      view={INCOMING_PIPELINE_VIEW}
       model={record}
       factColumns={INCOMING_PIPELINE_VIEW.facts}
       testIdPrefix={INCOMING_PIPELINE_VIEW.testIdPrefix}

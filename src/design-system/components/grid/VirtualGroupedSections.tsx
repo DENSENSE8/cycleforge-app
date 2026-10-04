@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useVirtualizer, defaultRangeExtractor, type Range } from '@tanstack/react-virtual';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { GridSectionHeader } from '@/design-system/components/grid/GridSectionHeader';
@@ -21,10 +21,6 @@ import {
   LEDGER_GRID_ROW_ESTIMATE_PX,
 } from '@/design-system/components/grid/grid-paint';
 import { dataTableScrollItemMatches } from '@/lib/tables/data-table-find';
-import {
-  compoundRowDetailEstimatePx,
-  subscribeCompoundRowDetailOpen,
-} from '@/components/tables/compound/useCompoundRowDetail';
 
 /** `VirtualGroupedSections<T>` — DS SoT windowed renderer for date-ordered ledgers (optionally day-banded). */
 
@@ -224,10 +220,6 @@ export function VirtualGroupedSections<T>({
     [items],
   );
 
-  // Re-estimate when a compound leaf detail band opens/closes (48 → 96).
-  const [detailEpoch, setDetailEpoch] = useState(0);
-  useEffect(() => subscribeCompoundRowDetailOpen(() => setDetailEpoch((n) => n + 1)), []);
-
   // The header currently pinned to the top of the viewport, updated inside
   // `rangeExtractor` (runs on every scroll) so the visible day's label stays stuck.
   const activeStickyIndexRef = useRef(-1);
@@ -238,14 +230,13 @@ export function VirtualGroupedSections<T>({
     enabled: useAncestorScroll,
     scrollParentRef,
     innerRef,
-    deps: [items, detailEpoch],
+    deps: [items],
   });
 
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollParentRef.current,
     estimateSize: (index) => {
-      void detailEpoch;
       const item = items[index];
       if (estimateItemSize) {
         return estimateItemSize({
@@ -255,7 +246,7 @@ export function VirtualGroupedSections<T>({
         });
       }
       if (item.kind === 'header') return headerEstimate;
-      return compoundRowDetailEstimatePx(item.key, rowEstimate);
+      return rowEstimate;
     },
     overscan: LEDGER_GRID_OVERSCAN,
     getItemKey: (index) => items[index].key,
@@ -278,10 +269,6 @@ export function VirtualGroupedSections<T>({
     ),
     scrollMargin,
   });
-
-  useEffect(() => {
-    virtualizer.measure();
-  }, [detailEpoch, virtualizer]);
 
   // Deep-link / keyboard focus:
   useEffect(() => {

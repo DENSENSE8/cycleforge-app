@@ -7,22 +7,20 @@ import { cursorResizeTarget, useCursorScrub } from '@/design-system/motion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import type { CompoundSubtitleScrub } from '@/components/tables/compound/compound-row-model';
 import {
-  SUBTITLE_SCRUB_ATTR,
   applyScrubFrame,
-  formatScrubFace,
   nudgeScrubValue,
   parseScrubOrigin,
   scrubPointerMods,
+  scrubShouldArm,
   scrubTravel,
   startScrubFrame,
-  subtitleScrubShouldArm,
   type ScrubFrame,
   type ScrubPointerMods,
-} from '@/components/tables/compound/scrub-number';
+  type ScrubSpec,
+} from '@/components/labels/scrub-number';
 
-const PRINT_RUN_INT_SCRUB: CompoundSubtitleScrub = {
+const PRINT_RUN_INT_SCRUB: ScrubSpec = {
   step: 1,
   coarseStep: 10,
   fineStep: 1,
@@ -55,7 +53,7 @@ export function LabelPrintRunNumField({
 }) {
   const lo = clampInt(min, 1, 99);
   const hi = Math.max(lo, clampInt(max, 1, 99));
-  const scrub: CompoundSubtitleScrub = useMemo(
+  const scrub: ScrubSpec = useMemo(
     () => ({ ...PRINT_RUN_INT_SCRUB, min: lo, max: hi }),
     [lo, hi],
   );
@@ -109,7 +107,7 @@ export function LabelPrintRunNumField({
   };
 
   const shown = live ?? value;
-  const liveFace = live != null ? formatScrubFace(live, scrub) : null;
+  const liveFace = live != null ? live.toFixed(scrub.decimals) : null;
   const originNow = parseScrubOrigin(originRaw);
 
   useCursorScrub({
@@ -209,7 +207,6 @@ export function LabelPrintRunNumField({
         aria-valuemax={scrub.max}
         aria-valuetext={String(shown)}
         aria-disabled={disabled || undefined}
-        {...{ [SUBTITLE_SCRUB_ATTR]: '' }}
         {...(disabled ? {} : cursorResizeTarget('x'))}
         onClick={() => {
           if (disabled) return;
@@ -239,7 +236,7 @@ export function LabelPrintRunNumField({
           const drag = dragRef.current;
           if (!drag || disabled || event.pointerId !== drag.pointerId) return;
           if (!drag.armed) {
-            if (!subtitleScrubShouldArm(event.clientX - drag.downX)) return;
+            if (!scrubShouldArm(event.clientX - drag.downX)) return;
             drag.armed = true;
             event.preventDefault();
           }

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Unbox browse primary-paint handoff — lets `ReceivingLinesTable` (and carton
+ * Unbox browse primary-paint handoff — lets `ReceivingLedgers` (and carton
  * overlay) signal that the interactive primary surface is ready so
  * {@link UnboxBrowseShell} can drop the SSR stand-in.
  */

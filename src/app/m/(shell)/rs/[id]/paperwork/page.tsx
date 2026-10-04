@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { DetailAck, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { RepairDocumentRow, RepairPrintLogList } from '@/components/mobile/repair/RepairPaperworkParts';
 import { StaffPrintStationPicker } from '@/components/ui/StaffPrintStationPicker';
@@ -47,7 +47,7 @@ function RepairPaperworkInner() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref={`/m/rs/${repairId}`}
         subtitle="Paperwork"
         title={rsCode}

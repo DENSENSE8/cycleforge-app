@@ -12,7 +12,6 @@ const ReceivingSidebarPanel = dynamic(() => import('@/components/sidebar/Receivi
 const TestingSidebarPanel = dynamic(() => import('@/components/sidebar/TestingSidebarPanel').then((m) => m.TestingSidebarPanel));
 const PickSidebarPanel = dynamic(() => import('@/components/sidebar/PickSidebarPanel').then((m) => m.PickSidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
-const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
 
 /**
  * Route-key dispatcher rendered inside the master-nav as the per-page context
@@ -58,7 +57,6 @@ export function SidebarContextPanel() {
   // `outbound` has no branch: the Shipping desk's search · views · focus ·
   // saved views live IN the master nav (`OutboundDeskSpine`), not in a
   // second left column (operator 2026-09-26).
-  if (routeKey === 'review') return <ReviewSidebarPanel />;
   // `/search` has NO context rail.
 
   return null;

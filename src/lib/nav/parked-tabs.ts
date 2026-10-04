@@ -13,14 +13,12 @@ type ParkedTabKey = `${string}:${string}`;
  * operator reads when deciding whether to fix or retire.
  */
 export const PARKED_TABS: Readonly<Record<ParkedTabKey, string>> = {
-  // Inventory (operator 2026-09-15) — the whole ex-admin + analytics half of
-  // the desk. Ledger · Stock · Locations · Replenish stay: those are the tabs that work.
+  // Inventory (operator 2026-09-15) — unfinished non-table tools stay hidden.
+  // Retired compound-grid destinations are redirected at the route boundary instead.
   'inventory:triage': 'Tracking Exceptions — Zoho re-query path unreliable.',
-  'inventory:pulse': 'Pulse — throughput board not reading live movement.',
   'inventory:graph': 'Graph — stock-flow view incomplete.',
   'inventory:reason-codes': 'Reason Codes — ex-admin CRUD, unported to the desk frame.',
   'inventory:favorites': 'Quick Picks — ex-admin CRUD, unported to the desk frame.',
-  'inventory:health': 'Health — rollout/drift board, quick-links only.',
 };
 
 /** False when this tab has no door on any surface (the parked-tab gate). */

@@ -7,7 +7,7 @@
 
 import { Button, TextField } from '@/design-system/primitives';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import {
   DAILY_COMPOSER_SUBJECT,
   dailyComposerError,
@@ -44,14 +44,18 @@ export function MobileDailyComposerSheet({
   return (
     // NO TITLE (operator 2026-09-15:
     // NO TITLE (operator 2026-09-15: "remove the add a task below the swipe
-    <BottomSheet open={open} onClose={onClose} forceVariant="sheet" compact>
-      <div className="flex flex-col gap-3 px-1 pb-2 pt-1">
-        {/* The switcher decides what the ONE field below means (operator 2026-09-15). */}
-        <TabSwitch
-          tabs={SUBJECT_TABS}
-          activeTab={draft.subject}
-          onTabChange={(id) => onDraftChange(setComposerSubject(draft, id as DailyComposerSubject))}
-        />
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetTitle className="sr-only">Add a task</SheetTitle>
+        <SheetBody className="flex flex-col gap-3 pt-2">
+        {/* The switcher decides what the ONE field below means (operator 2026-09-15). Clear of the close X. */}
+        <div className="pr-10">
+          <TabSwitch
+            tabs={SUBJECT_TABS}
+            activeTab={draft.subject}
+            onTabChange={(id) => onDraftChange(setComposerSubject(draft, id as DailyComposerSubject))}
+          />
+        </div>
 
         {/*
  * The slider sits ABOVE the field (operator 2026-09-15:
@@ -121,7 +125,8 @@ export function MobileDailyComposerSheet({
         >
           {pending ? 'Adding…' : 'Add task'}
         </Button>
-      </div>
-    </BottomSheet>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

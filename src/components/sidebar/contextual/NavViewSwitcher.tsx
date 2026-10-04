@@ -16,7 +16,7 @@ import { cn } from '@/utils/_cn';
 import { navRowGlyph, type Glyph } from './NavSectionList';
 import { NavSwitcherMenu } from './NavSwitcherMenu';
 import { publishKeyPressed } from './go-keys-store';
-import { useNavStaffKey } from './useNavContext';
+import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 
 /** A view's unfiltered count revalidates at most this often. */
 const VIEW_COUNT_STALE_MS = 20_000;

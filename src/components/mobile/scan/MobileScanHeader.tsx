@@ -34,7 +34,7 @@ export function MobileScanHeader({
 
   return (
     <header
-      className="sticky top-0 z-header flex h-14 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card/95 pr-2 backdrop-blur-xl"
+      className="sticky top-0 z-header flex h-14 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card/95 pr-2 backdrop-blur-xl has-[[data-mobile-navigation-open=true]]:z-panel"
       data-testid="mobile-v2-scan-header"
     >
       {exitHref ? (

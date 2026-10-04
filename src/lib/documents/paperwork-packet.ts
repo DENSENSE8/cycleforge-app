@@ -2,18 +2,20 @@
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { recordDocumentPrintJob, type DocumentPrintJobType } from './document-print-jobs';
-import { resolvePrintBundle } from './print-bundle';
+import { labelIngestionContentPath, resolvePrintBundle } from './print-bundle';
 
 /** Upper bound on one request — a bulk run past this is split by the client. */
 const PAPERWORK_PACKET_MAX_ORDERS = 100;
 
 export interface PaperworkPacketItem {
-  kind: 'outbound' | 'manual';
+  kind: 'outbound' | 'label_ingestion' | 'manual';
   documentType: DocumentPrintJobType;
   /** Same-origin, session-authenticated content URL for the bytes. */
   src: string;
   documentId: number | null;
   productManualId: number | null;
+  /** A paired label printed before it has a documents row. */
+  labelIngestionId: number | null;
   name: string | null;
 }
 
@@ -56,7 +58,19 @@ export async function buildPaperworkPackets(
         src: `/api/documents/${doc.id}/content`,
         documentId: doc.id,
         productManualId: null,
+        labelIngestionId: null,
         name: doc.data.filename ?? null,
+      });
+    }
+    for (const li of resolved.labelIngestions) {
+      items.push({
+        kind: 'label_ingestion',
+        documentType: 'shipping_label',
+        src: labelIngestionContentPath(orderId, li.id),
+        documentId: null,
+        productManualId: null,
+        labelIngestionId: li.id,
+        name: li.fileBasename,
       });
     }
     for (const manual of resolved.manuals) {
@@ -67,6 +81,7 @@ export async function buildPaperworkPackets(
         src: documentId ? `/api/documents/${documentId}/content` : `/api/product-manuals/${manual.id}/content`,
         documentId,
         productManualId: manual.id,
+        labelIngestionId: null,
         name: manual.displayName ?? null,
       });
     }
@@ -74,12 +89,18 @@ export async function buildPaperworkPackets(
     // One ledger row per page source, keyed by the batch so a retried request
     // does not double-count what was sent to the browser once.
     for (const item of items) {
-      const key = item.documentId != null ? `doc:${item.documentId}` : `manual:${item.productManualId}`;
+      const key =
+        item.documentId != null
+          ? `doc:${item.documentId}`
+          : item.labelIngestionId != null
+            ? `ingestion:${item.labelIngestionId}`
+            : `manual:${item.productManualId}`;
       await deps.record(
         {
           orderId,
           documentId: item.documentId,
           productManualId: item.productManualId,
+          labelIngestionId: item.labelIngestionId,
           documentType: item.documentType,
           status: 'fallback_browser',
           actorStaffId: input.actorStaffId,

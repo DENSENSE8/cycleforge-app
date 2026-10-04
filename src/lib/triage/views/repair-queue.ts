@@ -6,10 +6,10 @@
  * operate on selected cards.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 
-export const REPAIR_QUEUE_VIEW: TriageViewDecl = {
+export const REPAIR_QUEUE_VIEW = triageView({
   id: 'repair.queue',
   grain: 'repair ticket',
   noun: { one: 'repair', many: 'repairs' },
@@ -24,6 +24,7 @@ export const REPAIR_QUEUE_VIEW: TriageViewDecl = {
   chips: { owner: 'face', param: REPAIR_STATUS_CHIP_PARAM },
   paging: 'client',
   status: 'deadline',
+  slots: { identity: 'ticket number · carton', channel: 'brand', person: 'customer', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'issue', tier: 'always' },
     { id: 'sku', tier: 'label' },
@@ -35,4 +36,4 @@ export const REPAIR_QUEUE_VIEW: TriageViewDecl = {
   // The host bands dated sorts by the PT day the ticket was opened.
   sections: { order: [], labels: {}, tones: {}, when: 'default-sort' },
   next: [],
-};
+});

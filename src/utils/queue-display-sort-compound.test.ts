@@ -7,7 +7,6 @@ import {
   isQueueSortableColumnKey,
   queueSortForColumnKey,
 } from './queue-display-sort';
-import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 
 /** The compound header keys are TRACKS; `?sort=` is written in FACTS. */
 
@@ -45,15 +44,6 @@ test('tracks with no sortable fact stay unsortable', () => {
   }
 });
 
-test('every mapped track is a real column of the mounted model', () => {
-  // A mapping naming a track the grid does not render is a header that can
-  // never be clicked — the same dead-locator failure this fixes, one level up.
-  const mounted = new Set(ORDERS_COMPOUND_COLUMNS.map((c) => c.key as string));
-  for (const track of Object.keys(COMPOUND_TRACK_SORT_KEYS)) {
-    assert.ok(mounted.has(track), `${track} is not a track of ORDERS_COMPOUND_COLUMNS`);
-  }
-});
-
 test('every mapped fact is a real sort value', () => {
   for (const fact of Object.values(COMPOUND_TRACK_SORT_KEYS)) {
     assert.ok(isQueueColumnSort(fact), `${fact} is not a QueueDisplaySortColumn`);
@@ -66,18 +56,4 @@ test('a slot field id maps onto the sort fact, so a rebind still sorts', () => {
   assert.equal(queueSortForColumnKey('status:1', 'orders.notes'), null);
   assert.equal(isQueueSortableColumnKey('status:1', 'orders.picked'), true);
   assert.equal(isQueueSortableColumnKey('status:1'), false);
-});
-
-test('the product-default Pick track is sortable through its bound field', () => {
-  const pick = ORDERS_COMPOUND_COLUMNS.find((c) => c.fieldId === 'orders.picked');
-  assert.ok(pick, 'product default must bind orders.picked');
-  assert.equal(queueSortForColumnKey(pick.key, pick.fieldId), 'picked');
-  assert.equal(isQueueSortableColumnKey(pick.key, pick.fieldId), true);
-});
-
-test('at least one visible track sorts — the desk is not inert', () => {
-  const sortable = ORDERS_COMPOUND_COLUMNS.filter((c) =>
-    isQueueSortableColumnKey(c.key, c.fieldId),
-  );
-  assert.ok(sortable.length > 0, 'no compound track sorts — header clicks are inert');
 });

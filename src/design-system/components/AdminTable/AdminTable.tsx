@@ -103,7 +103,7 @@ export function AdminTable<Row>({
             style={col.width ? { width: col.width } : undefined}
             className={cn(
               tableHeader,
-              'whitespace-nowrap border-b border-border-soft px-3 py-2.5',
+              'whitespace-nowrap border-b border-border-soft px-3 py-2',
               alignFor(col),
             )}
           >
@@ -125,7 +125,7 @@ export function AdminTable<Row>({
               {Array.from({ length: loadingRows }, (_, i) => (
                 <tr key={i} className="border-b border-border-soft last:border-b-0">
                   {columns.map((col) => (
-                    <td key={col.key} className={cn(tableCell, 'px-3 py-2.5 align-middle')}>
+                    <td key={col.key} className={cn(tableCell, 'px-3 py-1.5 align-middle')}>
                       <div className="h-3 w-full max-w-[10rem] animate-pulse rounded bg-surface-sunken" />
                     </td>
                   ))}
@@ -190,7 +190,7 @@ export function AdminTable<Row>({
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={cn(tableCell, 'px-3 py-2.5 align-middle', alignFor(col))}
+                      className={cn(tableCell, 'px-3 py-1.5 align-middle', alignFor(col))}
                     >
                       {col.cell(row)}
                     </td>

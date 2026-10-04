@@ -16,17 +16,15 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Package, Plus } from '@/components/Icons';
 import { FnskuChip } from '@/components/ui/CopyChip';
-import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
-import type { RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
-import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
+import { triageFamily, type ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
 import type { RecordStateFace } from '@/design-system/tokens/record';
 import type { RowGroup } from '@/lib/group-rows';
 import { useOptimisticMutation } from '@/lib/optimistic/useOptimisticMutation';
@@ -41,9 +39,9 @@ import {
 import { PRINT_STATION_FNSKU_PARAM, PRINT_STATION_FNSKU_ROW_CAP, PRINT_STATION_PATH, type PrintStationFnskuRow, type PrintStationFnskuView } from '@/lib/print-station/fnsku';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
-import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform';
 import { PRINT_STATION_FNSKU_VIEW } from '@/lib/triage/views';
 import { fbaCondition } from '@/lib/fba/fba-conditions';
+import { formatDateTimePST } from '@/utils/date';
 import { FnskuCreateForm, type CreatedFnsku } from './FnskuCreateForm';
 import { FNSKU_RECORD_ROOT_CLASS, FnskuPrintRecord } from './FnskuPrintRecord';
 
@@ -51,14 +49,17 @@ const VIEW = PRINT_STATION_FNSKU_VIEW;
 /** No chips: Find is the sidebar's, narrowed on the server. */
 const NO_CHIPS: readonly never[] = [];
 
+/**
+ * Every card here is an FBA FNSKU, so its state is constant: the rail and the
+ * at-rest glyph stay neutral ink — the FNSKU chip already wears the FBA colour.
+ */
 const FBA_STATE: RecordStateFace = {
   id: 'fba',
   code: 'FBA',
   label: 'Fulfilled by Amazon',
-  tone: 'fulfillment',
+  tone: 'neutral',
   icon: 'package',
 };
-const AMAZON = sourcePlatformMeta('amazon');
 
 /**
  * A loaded row. The list family keys records by number and the FBA catalog has
@@ -300,58 +301,65 @@ export function FnskuPrintDesk({
   );
 }
 
-/** One FNSKU as a three-row triage card: identity · title and condition → Print. */
+/** Its print state here: printed (the last job on hover) or not yet. */
+function fnskuPrintStatus(row: PrintStationFnskuRow): ViewCardModel<typeof VIEW>['status'] {
+  if (row.printJobs === 0) return { kind: 'state', face: 'Not printed', tone: 'neutral', tip: 'No print of this FNSKU is logged at the print station' };
+  const last = row.lastPrintedAt ? `Last printed ${formatDateTimePST(row.lastPrintedAt)} PT` : 'Printed';
+  const copies = row.lastCopies != null ? ` · ${row.lastCopies} sticker${row.lastCopies === 1 ? '' : 's'}` : '';
+  const by = row.lastPrintedBy ? ` by ${row.lastPrintedBy}` : '';
+  const total = `${row.printJobs} job${row.printJobs === 1 ? '' : 's'}, ${row.copiesPrinted} sticker${row.copiesPrinted === 1 ? '' : 's'} in all`;
+  return { kind: 'state', face: 'Printed', tone: 'success', tip: `${last}${copies}${by} · ${total}` };
+}
+
+/** One FNSKU as the shared card reads it (`print-station.fnsku`). */
+export function fnskuRecordCard(model: FnskuRowModel): ViewCardModel<typeof VIEW> {
+  const row = model.lead;
+  const condition = fbaCondition(row.condition);
+  return {
+    key: model.key,
+    leadId: row.ordinal,
+    state: FBA_STATE,
+    stateIcon: Package,
+    stateMeaning: FBA_STATE.label,
+    alert: null,
+    aria: {
+      card: `FNSKU ${row.fnsku}, ${row.title ?? 'no title'}`,
+      open: `Open FNSKU ${row.fnsku}`,
+      check: `Select FNSKU ${row.fnsku}`,
+    },
+    channel: null,
+    person: null,
+    chips: [],
+    notes: { fixed: null, own: null },
+    status: fnskuPrintStatus(row),
+    next: null,
+    lines: [
+      {
+        id: row.ordinal,
+        title: row.title ?? 'No title in the catalog',
+        photoUrl: null,
+        // Only what this record has: an unset condition or a missing ASIN paints nothing.
+        facts: {
+          asin: row.asin ? { kind: 'code', text: row.asin, title: `ASIN ${row.asin}` } : null,
+          condition: row.condition ? { kind: 'grade', label: condition?.label ?? row.condition, code: condition?.grade ?? null } : null,
+        },
+        alert: false,
+        alertNote: null,
+      },
+    ],
+    hiddenAlertLabel: () => '',
+  };
+}
+
+/** One FNSKU as a triage card: the FNSKU · title, ASIN and condition (when set); its print state top-right. */
 const FnskuCard = memo(function FnskuCard(props: TriageCardSlotProps<FnskuListItem, FnskuRowModel>) {
   const { model } = props;
   const row = model.lead;
-  const condition = fbaCondition(row.condition);
-  const record = useMemo<RecordCardModel>(
-    () => ({
-      key: model.key,
-      leadId: row.ordinal,
-      state: FBA_STATE,
-      stateIcon: Package,
-      stateMeaning: FBA_STATE.label,
-      alert: null,
-      aria: {
-        card: `FNSKU ${row.fnsku}, ${row.title ?? 'no title'}`,
-        open: `Open FNSKU ${row.fnsku}`,
-        check: `Select FNSKU ${row.fnsku}`,
-      },
-      channel: {
-        label: AMAZON.label,
-        tooltip: AMAZON.label,
-        dot: <BrandIdentityDot {...platformMetaBrandDot(AMAZON)} />,
-        badge: null,
-      },
-      person: null,
-      chips: [],
-      notes: { fixed: null, own: null },
-      status: { kind: 'none' },
-      next: { label: 'Print', tone: 'fulfillment', tip: `Print ${row.fnsku}`, blocked: false },
-      lines: [
-        {
-          id: row.ordinal,
-          title: row.title ?? 'No title in the catalog',
-          photoUrl: null,
-          facts: {
-            condition: {
-              kind: 'grade',
-              label: condition?.label ?? row.condition ?? 'Condition not set',
-              code: condition?.grade ?? null,
-            },
-          },
-          alert: false,
-          alertNote: null,
-        },
-      ],
-      hiddenAlertLabel: () => '',
-    }),
-    [condition, model.key, row],
-  );
+  const record = useMemo(() => fnskuRecordCard(model), [model]);
   return (
     <RecordCard
       {...props}
+      view={VIEW}
       model={record}
       factColumns={VIEW.facts}
       testIdPrefix={VIEW.testIdPrefix}
@@ -361,7 +369,6 @@ const FnskuCard = memo(function FnskuCard(props: TriageCardSlotProps<FnskuListIt
       onTogglePeek={() => props.onTogglePeek(model.key)}
       identity={{ role: 'identity', content: <FnskuChip value={row.fnsku} width="w-fit max-w-full" /> }}
       trailing={null}
-      quickLook={null}
     />
   );
 });

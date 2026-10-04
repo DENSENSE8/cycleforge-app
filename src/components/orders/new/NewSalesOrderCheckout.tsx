@@ -23,7 +23,7 @@ import { useSearchParams } from 'next/navigation';
 import { Check, ChevronLeft, Clock, Plus, Zap } from '@/components/Icons';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives/Button';
 import { Switch } from '@/design-system/primitives/Switch';
 import { TextField } from '@/design-system/primitives/TextField';
@@ -45,20 +45,10 @@ import { CheckoutProductSearch } from './CheckoutProductSearch';
 import { CheckoutSquareImport } from './CheckoutSquareImport';
 import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP, FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
-
-/** Keycaps for a declared chord, per platform (⌘/⌥ on Apple, Ctrl/Alt elsewhere). */
-function Chord({ chord, apple }: { chord: string; apple: boolean }) {
-  return (
-    <>
-      {chordKeys(chord, apple).map((k) => (
-        <KeyboardKey key={k} size="xs">{k}</KeyboardKey>
-      ))}
-    </>
-  );
-}
 
 /** Remounts the checkout for the next call once an order is released. */
 export function NewSalesOrderCheckout() {
@@ -203,35 +193,36 @@ function Checkout({ first, onNext }: { first: boolean; onNext: () => void }) {
             )}
           </h1>
           {!bound ? (
-            <div role="tablist" aria-label="How the order arrives" className="inline-flex items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5">
-              {CHECKOUT_MODES.map((m, index) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === m.value}
-                  tabIndex={mode === m.value ? 0 : -1}
-                  onClick={() => setMode(m.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                      e.preventDefault();
-                      const next = CHECKOUT_MODES[(index + (e.key === 'ArrowRight' ? 1 : CHECKOUT_MODES.length - 1)) % CHECKOUT_MODES.length]!;
-                      setMode(next.value);
-                      (e.currentTarget.parentElement?.querySelector(`[data-testid="checkout-mode-${next.value}"]`) as HTMLElement | null)?.focus();
-                    }
-                  }}
-                  className={cn(
-                    'inline-flex h-8 items-center gap-1.5 rounded-mode-control px-3 text-role-caption font-medium transition-colors',
-                    mode === m.value ? 'bg-surface-card text-text-default shadow-elev-soft' : 'text-text-muted hover:text-text-default',
-                    focusRing('control'),
-                  )}
-                  data-testid={`checkout-mode-${m.value}`}
-                >
-                  {m.label}
-                </button>
-              ))}
-              <span className="inline-flex items-center gap-0.5 px-1.5"><Chord chord="alt+i" apple={apple} /></span>
-            </div>
+            <HoverTooltip label="Switch New · Square invoice · Ecwid order" shortcut="Alt + I" asChild>
+              <div role="tablist" aria-label="How the order arrives" className="inline-flex items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5">
+                {CHECKOUT_MODES.map((m, index) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === m.value}
+                    tabIndex={mode === m.value ? 0 : -1}
+                    onClick={() => setMode(m.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        const next = CHECKOUT_MODES[(index + (e.key === 'ArrowRight' ? 1 : CHECKOUT_MODES.length - 1)) % CHECKOUT_MODES.length]!;
+                        setMode(next.value);
+                        (e.currentTarget.parentElement?.querySelector(`[data-testid="checkout-mode-${next.value}"]`) as HTMLElement | null)?.focus();
+                      }
+                    }}
+                    className={cn(
+                      'inline-flex h-8 items-center gap-1.5 rounded-mode-control px-3 text-role-caption font-medium transition-colors',
+                      mode === m.value ? 'bg-surface-card text-text-default shadow-elev-soft' : 'text-text-muted hover:text-text-default',
+                      focusRing('control'),
+                    )}
+                    data-testid={`checkout-mode-${m.value}`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </HoverTooltip>
           ) : null}
           {startedAt != null ? (
             <span
@@ -269,15 +260,6 @@ function Checkout({ first, onNext }: { first: boolean; onNext: () => void }) {
           {bound && testMode ? (
             <span className="rounded-mode-pill bg-surface-warning px-2.5 py-1 text-role-caption font-medium text-text-warning">Test order</span>
           ) : null}
-          <span className="ml-auto hidden items-center gap-3 text-role-caption text-text-muted md:flex">
-            <span className="inline-flex items-center gap-1" title="Outside a field, the step's number alone">
-              Step <Chord chord="alt+shift" apple={apple} /><KeyboardKey size="xs">1</KeyboardKey>–<KeyboardKey size="xs">{CHECKOUT_STEPS.length}</KeyboardKey>
-            </span>
-            <span className="inline-flex items-center gap-1">Back <Chord chord="alt+b" apple={apple} /></span>
-            <span className="inline-flex items-center gap-1">Continue <Chord chord="alt+n" apple={apple} /></span>
-            <span className="inline-flex items-center gap-1">Save <Chord chord="mod+s" apple={apple} /></span>
-            <span className="inline-flex items-center gap-1">Release <Chord chord="mod+↵" apple={apple} /></span>
-          </span>
         </header>
 
         <div className="min-w-0 space-y-3">
@@ -307,7 +289,9 @@ function Checkout({ first, onNext }: { first: boolean; onNext: () => void }) {
             </p>
           ) : null}
           <div ref={stepsRef} className={cn('space-y-3', choosingImport && 'hidden')}>
-          <CheckoutStepTrail current={step} done={stepDone} onGo={setStep} testIdPrefix="checkout-crumb-" className="-mx-1" />
+          <HoverTooltip label="Jump to a step" shortcut={`1–${CHECKOUT_STEPS.length} or Alt + Shift + 1–${CHECKOUT_STEPS.length}`} focusable={false} className="block">
+            <CheckoutStepTrail current={step} done={stepDone} onGo={setStep} testIdPrefix="checkout-crumb-" className="-mx-1" />
+          </HoverTooltip>
 
           <Step id="customer" current={step} summary={bound ? [state.customer.name, addressLine(state.customer.shipTo)].filter(Boolean).join(' · ') : null}>
             <IntakeCustomerFields customer={state.customer} onChange={(customer) => patch({ customer })} autoFocus />
@@ -395,37 +379,46 @@ function Checkout({ first, onNext }: { first: boolean; onNext: () => void }) {
             )}
           </Step>
 
-          {/* Back · where the order stands · Continue — docked to the bottom edge on a phone. */}
+          {/* Back · where the order stands · Continue — floating sticky buttons, no bar
+              behind them (owner 2026-10-03): only the buttons and the total chip take presses. */}
           <div
-            className="sticky bottom-0 z-10 -mx-4 flex items-center gap-2 border-t border-border-hairline bg-surface-card px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] lg:static lg:mx-0 lg:rounded-mode lg:border"
+            className={cn('pointer-events-none sticky bottom-0 z-10 flex items-center gap-2', ACTION_DOCK_TOP_GAP, ACTION_DOCK_LIFT)}
             data-testid="checkout-step-nav"
           >
             {prevStep ? (
-              <Button variant="secondary" icon={<ChevronLeft className="size-4" />} onClick={() => goStep(-1)} data-testid="checkout-back">
-                <span className="hidden sm:inline">{prevStep.title}</span>
-                <span className="sm:hidden">Back</span>
-              </Button>
+              <HoverTooltip label="Back a step" shortcut="Alt + B" asChild>
+                <Button variant="secondary" className="pointer-events-auto shadow-elev-soft" icon={<ChevronLeft className="size-4" />} onClick={() => goStep(-1)} data-testid="checkout-back">
+                  <span className="hidden sm:inline">{prevStep.title}</span>
+                  <span className="sm:hidden">Back</span>
+                </Button>
+              </HoverTooltip>
             ) : null}
-            <span className="flex min-w-0 flex-1 items-baseline gap-2 truncate text-role-caption tabular-nums text-text-muted">
-              <span>{itemCount} item{itemCount === 1 ? '' : 's'}</span>
-              <span className="text-text-success">{formatCents(totals.totalCents, state.currency)}</span>
+            <span className="flex min-w-0 flex-1 justify-center">
+              <span className="pointer-events-auto flex min-w-0 items-baseline gap-2 truncate rounded-mode-pill bg-surface-card px-3 py-1 text-role-caption tabular-nums text-text-muted shadow-elev-soft">
+                <span>{itemCount} item{itemCount === 1 ? '' : 's'}</span>
+                <span className="text-text-success">{formatCents(totals.totalCents, state.currency)}</span>
+              </span>
             </span>
             {nextStep ? (
-              <Button variant="ink" onClick={() => goStep(1)} data-testid="checkout-continue">
-                Continue
-                <span className="hidden sm:inline">to {nextStep.title}</span>
-                <span className="hidden items-center gap-0.5 md:inline-flex"><Chord chord="alt+n" apple={apple} /></span>
-              </Button>
+              <HoverTooltip label="Continue" shortcut="Alt + N" asChild>
+                <Button variant="ink" className="pointer-events-auto shadow-elev-soft" onClick={() => goStep(1)} data-testid="checkout-continue">
+                  Continue
+                  <span className="hidden sm:inline">to {nextStep.title}</span>
+                </Button>
+              </HoverTooltip>
             ) : (
-              <Button
-                variant="ink"
-                disabled={busy || (!bound && releaseBlockers.length > 0)}
-                loading={busy}
-                onClick={() => void submit('release')}
-                data-testid="checkout-continue-release"
-              >
-                Release to ship
-              </Button>
+              <HoverTooltip label="Release to ship" shortcut="Mod + ↵" asChild>
+                <Button
+                  variant="ink"
+                  className={cn('pointer-events-auto shadow-elev-soft', FLOATING_ACTION_DISABLED_FACE)}
+                  disabled={busy || (!bound && releaseBlockers.length > 0)}
+                  loading={busy}
+                  onClick={() => void submit('release')}
+                  data-testid="checkout-continue-release"
+                >
+                  Release to ship
+                </Button>
+              </HoverTooltip>
             )}
           </div>
           </div>
@@ -457,27 +450,31 @@ function Checkout({ first, onNext }: { first: boolean; onNext: () => void }) {
             ) : null}
             <div className="mt-4 flex gap-2">
               {!bound ? (
-                <Button
-                  variant="secondary"
-                  className="flex-1"
-                  disabled={busy || draftBlockers.length > 0}
-                  loading={triage.saving}
-                  onClick={() => void submit('draft')}
-                  data-testid="checkout-save-draft"
-                >
-                  Save draft
-                </Button>
+                <HoverTooltip label="Save draft" shortcut="Mod + S" asChild>
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    disabled={busy || draftBlockers.length > 0}
+                    loading={triage.saving}
+                    onClick={() => void submit('draft')}
+                    data-testid="checkout-save-draft"
+                  >
+                    Save draft
+                  </Button>
+                </HoverTooltip>
               ) : null}
-              <Button
-                variant="ink"
-                className="flex-1"
-                disabled={busy || (!bound && releaseBlockers.length > 0)}
-                loading={busy}
-                onClick={() => void submit('release')}
-                data-testid="checkout-release"
-              >
-                Release to ship
-              </Button>
+              <HoverTooltip label="Release to ship" shortcut="Mod + ↵" asChild>
+                <Button
+                  variant="ink"
+                  className="flex-1"
+                  disabled={busy || (!bound && releaseBlockers.length > 0)}
+                  loading={busy}
+                  onClick={() => void submit('release')}
+                  data-testid="checkout-release"
+                >
+                  Release to ship
+                </Button>
+              </HoverTooltip>
             </div>
           </section>
         </aside>

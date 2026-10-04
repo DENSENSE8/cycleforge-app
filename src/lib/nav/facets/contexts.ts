@@ -16,6 +16,15 @@
 
 import { EXCEPTION_KIND_PERMISSION } from '@/lib/exceptions/permissions';
 import { exceptionKindsOf } from '@/lib/exceptions/types';
+import { LIVE_FEED_DIRECTION_PERMISSION, type LiveFeedDirection } from '@/lib/live-feed/statuses';
+
+/**
+ * The Live feed (`/operations/live-feed`): one context per sidebar view —
+ * a direction's Board (`live-feed.outbound` / `live-feed.inbound`) —
+ * answered by `src/lib/nav/facets/live-feed.ts`.
+ */
+export const LIVE_FEED_FACET_PAGE = 'live-feed';
+export type LiveFeedFacetContext = `${typeof LIVE_FEED_FACET_PAGE}.${LiveFeedDirection}`;
 
 export const NAV_FACET_CONTEXTS = [
   'stations-live',
@@ -35,12 +44,17 @@ export const NAV_FACET_CONTEXTS = [
   'exceptions.fbm',
   'exceptions.labels',
   'exceptions.paperwork',
+  'exceptions.unmatched',
   'exceptions.pairs',
   'exceptions.bins',
   'exceptions.tracking',
   'exceptions.claim',
   'exceptions.short',
   'exceptions.unfound',
+  // The Live feed's direction views; totals, Channel and Carrier counts are
+  // the feed's own statement (`src/lib/nav/facets/live-feed.ts`).
+  'live-feed.outbound',
+  'live-feed.inbound',
 ] as const;
 export type NavFacetContext = (typeof NAV_FACET_CONTEXTS)[number];
 
@@ -64,6 +78,10 @@ const LATE: NavFacetGroupDecl = { id: 'late', label: 'Must ship', param: 'late',
 const URGENT: NavFacetGroupDecl = { id: 'attention', label: 'Urgent', param: 'attention', multi: false };
 const OUT_OF_STOCK: NavFacetGroupDecl = { id: 'ustatus', label: 'Stock', param: 'ustatus', multi: false };
 const IMPORT_SOURCE: NavFacetGroupDecl = { id: 'source', label: 'Source', param: 'source', multi: true };
+/** The Live feed's `?carrier=` (outbound), counted by the feed's own statement. */
+const LIVE_FEED_CARRIER: NavFacetGroupDecl = { id: 'carrier', label: 'Carrier', param: 'carrier', multi: false };
+/** The Live feed's `?channel=` (both directions; unset = both), counted by the feed's own statement. */
+const LIVE_FEED_CHANNEL: NavFacetGroupDecl = { id: 'channel', label: 'Channel', param: 'channel', multi: false };
 
 export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFacetGroupDecl[]>> = {
   'stations-live': [
@@ -112,12 +130,15 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
   'exceptions.fbm': [],
   'exceptions.labels': [],
   'exceptions.paperwork': [],
+  'exceptions.unmatched': [],
   'exceptions.pairs': [],
   'exceptions.bins': [],
   'exceptions.tracking': [],
   'exceptions.claim': [],
   'exceptions.short': [],
   'exceptions.unfound': [],
+  'live-feed.outbound': [LIVE_FEED_CHANNEL, LIVE_FEED_CARRIER],
+  'live-feed.inbound': [LIVE_FEED_CHANNEL],
 };
 
 /**
@@ -142,12 +163,15 @@ export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | rea
   'exceptions.fbm': EXCEPTION_KIND_PERMISSION.fbm,
   'exceptions.labels': EXCEPTION_KIND_PERMISSION.labels,
   'exceptions.paperwork': EXCEPTION_KIND_PERMISSION.paperwork,
+  'exceptions.unmatched': EXCEPTION_KIND_PERMISSION.unmatched,
   'exceptions.pairs': EXCEPTION_KIND_PERMISSION.pairs,
   'exceptions.bins': EXCEPTION_KIND_PERMISSION.bins,
   'exceptions.tracking': EXCEPTION_KIND_PERMISSION.tracking,
   'exceptions.claim': EXCEPTION_KIND_PERMISSION.claim,
   'exceptions.short': EXCEPTION_KIND_PERMISSION.short,
   'exceptions.unfound': EXCEPTION_KIND_PERMISSION.unfound,
+  'live-feed.outbound': LIVE_FEED_DIRECTION_PERMISSION.outbound,
+  'live-feed.inbound': LIVE_FEED_DIRECTION_PERMISSION.inbound,
 };
 
 /** May a caller holding `permissions` read `context`'s counts? */

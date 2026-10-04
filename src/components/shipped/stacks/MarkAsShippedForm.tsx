@@ -6,7 +6,7 @@ import { Button } from '@/design-system/primitives';
 import { FILTER_DROPDOWN_LABEL_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
 import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
 import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';

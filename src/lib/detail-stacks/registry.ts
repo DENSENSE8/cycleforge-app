@@ -3,11 +3,12 @@
 /** Detail-stack registry — the single source of truth mapping each right-side "detail stack" slide-over (ShippedDetailsPanel,… */
 
 import type { ComponentType } from 'react';
-import { Box, Camera, FileText, Layers, Package, Truck, Wrench } from '@/components/Icons';
+import { Barcode, Box, Camera, FileText, Layers, Package, Truck, Wrench } from '@/components/Icons';
 import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
 import { cartonReadHref } from '@/lib/receiving/surface-path';
 
-export type DetailStackKind = 'shipment' | 'receiving' | 'order' | 'claim' | 'photo' | 'plan' | 'po';
+/** `sku` — the product peek; its id is the SKU string (`/products/sku/<sku>`). */
+export type DetailStackKind = 'shipment' | 'receiving' | 'order' | 'claim' | 'photo' | 'plan' | 'po' | 'sku';
 
 interface DetailStackDef {
   kind: DetailStackKind;
@@ -26,6 +27,7 @@ export const DETAIL_STACK_DEFS: Record<DetailStackKind, DetailStackDef> = {
   photo: { kind: 'photo', param: 'openPhotoId', noun: 'Photo', Icon: Camera },
   plan: { kind: 'plan', param: 'openPlanId', noun: 'Plan', Icon: Layers },
   po: { kind: 'po', param: 'openPoId', noun: 'PO', Icon: FileText },
+  sku: { kind: 'sku', param: 'openSku', noun: 'Product', Icon: Barcode },
 };
 
 /** Flat list for URL-watching (the tracker iterates these every navigation). */
@@ -59,6 +61,9 @@ export function detailStackHref(entry: {
   if (entry.kind === 'receiving') {
     return cartonReadHref(Number(entry.id));
   }
+
+  // A product re-opens on its own record page, not as a peek on the old page.
+  if (entry.kind === 'sku') return `/products/sku/${encodeURIComponent(entry.id)}`;
 
   const def = DETAIL_STACK_DEFS[entry.kind];
   const basePath = DETAIL_STACK_CANONICAL_PATH[entry.kind] ?? entry.path;

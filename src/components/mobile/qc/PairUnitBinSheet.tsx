@@ -13,7 +13,7 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
 import { feedback } from '@/components/mobile/picker/usePickOrder';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
@@ -67,24 +67,29 @@ export function PairUnitBinSheet({ target, onClose }: { target: PairUnitBinTarge
   );
 
   return (
-    <BottomSheet open={target != null} onClose={close} forceVariant="sheet" title="Pair bin" dragDisabled>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 pb-2 pt-2" data-testid="pair-unit-bin-sheet">
-        <p className="truncate text-role-body text-text-muted">Scan the bin this unit sits on — {target?.name}</p>
-        {target ? (
-          <MobileCaptureWindow
-            label="Bin camera"
-            collapsedLabel={busy ? 'Pairing…' : 'Scan bin to pair'}
-            status={busy ? 'Pairing…' : 'Scan bin'}
-            onDecode={(value) => void pair(value)}
-            pending={busy ? 1 : 0}
-          />
-        ) : null}
-        {error ? (
-          <Alert variant="destructive" role="alert">
-            <AlertDescription className="text-role-data opacity-100">{error}</AlertDescription>
-          </Alert>
-        ) : null}
-      </div>
-    </BottomSheet>
+    <Sheet open={target != null} onOpenChange={(next) => { if (!next) close(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>Pair bin</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="flex flex-col gap-3" data-testid="pair-unit-bin-sheet">
+          <p className="truncate text-role-body text-text-muted">Scan the bin this unit sits on — {target?.name}</p>
+          {target ? (
+            <MobileCaptureWindow
+              label="Bin camera"
+              collapsedLabel={busy ? 'Pairing…' : 'Scan bin to pair'}
+              status={busy ? 'Pairing…' : 'Scan bin'}
+              onDecode={(value) => void pair(value)}
+              pending={busy ? 1 : 0}
+            />
+          ) : null}
+          {error ? (
+            <Alert variant="destructive" role="alert">
+              <AlertDescription className="text-role-data opacity-100">{error}</AlertDescription>
+            </Alert>
+          ) : null}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

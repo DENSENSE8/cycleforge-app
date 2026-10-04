@@ -73,8 +73,8 @@ orders that are in transit or **delivered but not yet unboxed**.
 |---|---|
 | Connect | Settings → Integrations → eBay → **Add purchasing** → `role=buyer` |
 | Flag | `incoming_universal` enabled for the org on successful buyer OAuth |
-| Sync | Cron `/api/cron/ebay/purchase-sync` (~30m) or Incoming **Marketplace** refresh |
-| Ingest | Trading `GetOrders` `OrderRole=Buyer` → `ingestPurchase` → `receiving_line` (`inbound_source_type='ebay'`, `EXPECTED`) |
+| Sync | Cron `/api/cron/ebay/purchase-sync` (every 30m) or Incoming **Marketplace** refresh. Each run reads a GetOrders modified-time window starting 6h before the last successful run (clamped to eBay's 30-day limit), so missed runs and late tracking are recovered; the cursor holds on a retryable order failure. The cron run summary records `landed` / `updated` / `unchanged` / `failed`. |
+| Ingest | Trading `GetOrders` `OrderRole=Buyer` → `ebayPurchaseToInboundOrderDraft` (one PO draft per eBay order, one line per transaction keyed by `OrderLineItemID`) → `ingestInboundOrder` (`inbound_order` identity + content hash: unchanged orders are no-ops, tracking added later updates in place). `POST /api/receiving/inbound/import-ebay` hand-imports one line through the same mapper (`dry_run: true` previews). |
 | Tracking | Tracking + carrier from Trading `ShippingDetails` → STN; carrier poll marks delivered |
 | UI | Main Incoming table + eBay details tab; facet **Delivered · not unboxed** for carrier-delivered, not-yet-opened packages |
 

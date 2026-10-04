@@ -22,6 +22,7 @@ import { revertDeskSerialPick, UnpickError, type RevertedUnitPick } from '@/lib/
 import { publishOrderPickFacts } from '@/lib/picking/pick-facts-publish';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { withAuth } from '@/lib/auth/withAuth';
+import { commitIsPhoneOrigin } from '@/lib/auth/phone-origin.server';
 
 /**
  * POST /api/picking/desk/serial — the Picker desk's one serial endpoint.
@@ -167,6 +168,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
   }
   const resolvedSalId = salId;
+  const bodyMobileScanEventId = Number(body.mobileScanEventId);
+  const mobileScanEventId = Number.isSafeInteger(bodyMobileScanEventId) && bodyMobileScanEventId > 0
+    ? bodyMobileScanEventId
+    : null;
+  // Only add/add-to-last write activity metadata; resolve outside the transaction.
+  const phoneOrigin = isAdd
+    && await commitIsPhoneOrigin({ session: ctx.session, organizationId: orgId, staffId, mobileScanEventId });
 
   // ── Apply the serial action (idempotent on body key / header) ──────────
   const serialResult = await (async (): Promise<{ status: number; body: Record<string, unknown> }> => {
@@ -207,16 +215,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             serial,
             source: 'tech.serial',
             sourceMethod: 'SCAN',
-            activityMetadata: ctx.session.deviceKind === 'phone'
+            activityMetadata: phoneOrigin
               ? {
                   origin: 'phone',
                   surface: '/m/pick',
                   ...(String(body.scanClientEventId ?? idemKey ?? '').trim()
                     ? { client_event_id: String(body.scanClientEventId ?? idemKey).trim() }
                     : null),
-                  ...(Number.isSafeInteger(Number(body.mobileScanEventId)) && Number(body.mobileScanEventId) > 0
-                    ? { mobile_scan_event_id: Number(body.mobileScanEventId) }
-                    : null),
+                  ...(mobileScanEventId != null ? { mobile_scan_event_id: mobileScanEventId } : null),
                   order_row_id: salCtx.orderId,
                   subject_entity_type: salCtx.orderId != null ? 'order' : 'scan',
                   subject_id: String(salCtx.orderId ?? serial),

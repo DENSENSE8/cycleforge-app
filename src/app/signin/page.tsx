@@ -421,26 +421,6 @@ export default function SignInPage() {
     }
   }, []);
 
-  const submitMagicLink = useCallback(async () => {
-    if (!email.trim()) { setError('Enter your email first.'); return; }
-    setBusy(true);
-    setError(null);
-    try {
-      await fetch('/api/auth/email-login/request', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      writeLastSigninMethod('magic-link');
-      setNotice('If that email is registered, we’ve sent a one-time sign-in link. Check your inbox.');
-    } catch {
-      setNotice('If that email is registered, we’ve sent a one-time sign-in link. Check your inbox.');
-    } finally {
-      setBusy(false);
-    }
-  }, [email]);
-
   // The finish half of the passkey ceremony, shared by the modal button and
   // the conditional-UI autofill bar: post the assertion, remember the method,
   // finish signing in. Throws on failure so each caller can react its own way.
@@ -682,21 +662,6 @@ export default function SignInPage() {
   // ── Tier 3: everything that isn't federated identity, QR, or the email form ─
   const extraOptions = useMemo(() => {
     const opts: { key: string; label: string; method?: SigninMethod; onSelect: () => void }[] = [
-      {
-        key: 'magic-link',
-        label: 'Email me a sign-in link',
-        method: 'magic-link',
-        // Needs an email address; from the chooser face there is no input on
-        // screen yet — open the credential face instead of erroring blind.
-        onSelect: () => {
-          if (!email.trim()) {
-            setAuthStep('credentials');
-            setError('Enter your email to continue.');
-            return;
-          }
-          void submitMagicLink();
-        },
-      },
       { key: 'passkey', label: 'Sign in with a passkey', method: 'passkey', onSelect: () => void submitAccountPasskey() },
     ];
     // Shared-station PIN entry — hidden when the org forces email-first login.
@@ -707,7 +672,7 @@ export default function SignInPage() {
     // Phone: Face ID is a primary row when available, so keep it out of More.
     if (!mobileSignInFace || platformPasskey) return opts.filter((o) => o.key !== 'passkey');
     return opts;
-  }, [submitMagicLink, submitAccountPasskey, workspace?.emailFirstSignin, email, platformPasskey, mobileSignInFace]);
+  }, [submitAccountPasskey, workspace?.emailFirstSignin, platformPasskey, mobileSignInFace]);
 
   // Exactly one option gets lifted out of the drawer — the one that worked here last.
   const promotedOption = useMemo(
@@ -1061,6 +1026,7 @@ export default function SignInPage() {
         {authStep === 'credentials' && (
           <form
             className="space-y-4"
+            autoComplete="on"
             onSubmit={(e) => {
               e.preventDefault();
               if (busy) return;
@@ -1080,7 +1046,8 @@ export default function SignInPage() {
               variant="primary"
               size="lg"
               className="w-full"
-              disabled={busy || !email.trim() || !password}
+              loading={busy}
+              disabled={!email.trim() || !password}
             >
               {busy ? 'Signing in…' : 'Sign in'}
             </Button>

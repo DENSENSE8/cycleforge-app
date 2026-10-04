@@ -181,8 +181,11 @@ export const POST = withAuth(
       );
       if (!updated) throw new ApiError(404, 'Ticket not found', `Ticket #${meta.ticketId} no longer exists.`);
 
+      // The posted comment's id lets the composer bind what rode on it (the
+      // "Product sent to customer" log, support_ticket_items) to this comment.
+      let commentId: number | null = null;
       try {
-        await recordStaffForPostedComment({
+        commentId = await recordStaffForPostedComment({
           orgId: ctx.organizationId,
           ticketId: meta.ticketId,
           staffId: ctx.staffId,
@@ -205,6 +208,7 @@ export const POST = withAuth(
         ticket: { id: meta.ticketId, number: `#${meta.ticketId}`, url: zendeskTicketUrl(meta.ticketId) },
         attached: uploadResult.attached,
         failed: uploadResult.failed,
+        commentId,
       });
     } catch (err) {
       return mapZendeskError(err, context);

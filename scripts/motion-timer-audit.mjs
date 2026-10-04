@@ -19,7 +19,6 @@ const DIRECT_MOTION_PLUS = /from\s+['"](?:motion-plus(?:\/[^'"]*)?|@motionplus(?
  * their filename resembles an existing surface.
  */
 const REVIEWED_TIMERS = {
-  'src/app/warehouse/rma/disposition/page.tsx': ['focus-handoff', 'next-task focus after lookup'],
   'src/components/boot/WelcomeAssembly.tsx': ['choreography', 'paced intro, holds, and hard safety cap'],
   'src/components/boot/WelcomeSimple.tsx': ['choreography', 'paced welcome sequence'],
   'src/components/demo/MotionPlusButtonDemo.tsx': ['demo', 'demo-only phase clock; production primitive owns no timer'],
@@ -28,10 +27,8 @@ const REVIEWED_TIMERS = {
   'src/components/layout/DesktopRouteShell.tsx': ['focus-handoff', 'post-layout focus handoff'],
   'src/components/layout/GlobalHeaderAdd.tsx': ['interaction-lifetime', 'two-step keyboard arming window'],
   'src/components/layout/GlobalHeaderSync.tsx': ['interaction-lifetime', 'two-step keyboard arming window'],
-  'src/components/mobile/redesign/ItemCardRow.tsx': ['direct-manipulation', 'release cleanup after drag settles'],
   'src/components/mobile/ScanSurface.tsx': ['mixed-lifecycle', 'scan acknowledgement and expanded-input focus'],
   'src/components/mobile/station/MobilePackerSpamCamera.tsx': ['acknowledgement', 'camera flash lifetime'],
-  'src/components/mobile/station/MobileStationShell.tsx': ['time-or-cooldown', 'visible station clock tick'],
   'src/components/mobile/station/MobileSwipePhotoViewer.tsx': ['interaction-lifetime', 'destructive-action arming window'],
   'src/components/receiving/workspace/LineEditPanel.tsx': ['focus-handoff', 'post-layout editor focus'],
   'src/components/receiving/workspace/PoLineRow.tsx': ['mixed-lifecycle', 'row pulse acknowledgement and scan-focus handoff'],
@@ -48,7 +45,6 @@ const REVIEWED_TIMERS = {
   'src/components/station/PackScanColumn.tsx': ['focus-handoff', 'restore scanner focus after work'],
   'src/components/station/scan-bar/ScanBandGlowHost.tsx': ['acknowledgement', 'scan glow lifetime'],
   'src/components/tech/shipping/ShippingCapturedUnits.tsx': ['acknowledgement', 'added/copied acknowledgement lifetime'],
-  'src/components/ui/BottomSheet.tsx': ['interaction-lifetime', 'sheet gesture and dismissal lifetime'],
   'src/components/ui/HoverTooltip.tsx': ['interaction-lifetime', 'tooltip enter and leave delays'],
   'src/components/ui/card-fan-carousel.tsx': ['interaction-lifetime', 'hover-leave stabilization'],
   'src/design-system/ai/AiTurnActions.tsx': ['acknowledgement', 'copied/action acknowledgement lifetime'],

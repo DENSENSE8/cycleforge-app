@@ -24,6 +24,7 @@ import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-in
 import { createOrderNote } from '@/lib/orders/order-notes';
 import { isLabelPurpose, type LabelPurpose } from '@/lib/shipping/label-purpose';
 import { labelTrailNote } from '@/lib/shipping/order-label-links';
+import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
 import { buildOrderShipmentSpec } from '@/lib/shipping/shipstation/order-shipment-spec';
 import { OrderRateDimensionsSchema } from '@/lib/shipping/shipstation/order-parcel';
 
@@ -243,6 +244,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             organizationId: orgId,
             shipmentId: primaryShipmentId,
             trackingNumber: label.trackingNumber,
+            carrier: shipStationCarrierToStored(label.carrierCode),
             source: 'outbound.buy-label',
           });
         }

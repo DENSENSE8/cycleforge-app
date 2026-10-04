@@ -8,9 +8,9 @@
  * The open request is host state (no URL param).
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 
-export const INVENTORY_REPLENISH_VIEW: TriageViewDecl = {
+export const INVENTORY_REPLENISH_VIEW = triageView({
   id: 'inventory.replenish',
   grain: 'purchasing request',
   noun: { one: 'request', many: 'requests' },
@@ -22,6 +22,7 @@ export const INVENTORY_REPLENISH_VIEW: TriageViewDecl = {
   chips: { owner: 'host', param: 'rstatus' },
   paging: 'client',
   status: 'state',
+  slots: { identity: 'SKU', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
   facts: [
     { id: 'vendor', tier: 'always' },
     { id: 'qty', tier: 'always' },
@@ -30,4 +31,4 @@ export const INVENTORY_REPLENISH_VIEW: TriageViewDecl = {
   ],
   sections: null,
   next: ['Review', 'Plan PO', 'Create PO', 'Await receipt', 'Receive', 'Complete', 'Closed'],
-};
+});

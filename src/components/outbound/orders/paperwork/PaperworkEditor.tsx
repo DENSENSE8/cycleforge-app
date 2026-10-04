@@ -9,7 +9,7 @@ import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
 import { OrderShippingPanel } from '@/components/outbound/labels/OrderShippingPanel';
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
-import type { CompoundStageStepFacts } from '@/components/tables/compound/compound-row-model';
+import type { StageStepFacts } from '@/lib/tables/field-catalog/slot-value';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { OrderNumberIdentity, TrackingIdentity } from '@/components/ui/OrderIdentityChips';
 import { useOrderChannel } from '@/hooks/useCatalog';
@@ -48,7 +48,7 @@ function StageStamp({
   testId,
 }: {
   doneVerb: string;
-  facts: CompoundStageStepFacts | null;
+  facts: StageStepFacts | null;
   testId: string;
 }) {
   const who = (facts?.who ?? '').trim() || null;

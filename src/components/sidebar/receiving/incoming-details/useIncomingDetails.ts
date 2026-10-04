@@ -115,19 +115,20 @@ export function useIncomingDetails({
       }
       if (isInboundOnly && body?.inbound) {
         const inbound = body.inbound as {
-          marketplace?: { ingested?: number; created?: number; errors?: string[] };
+          marketplace?: { landed?: number; updated?: number; unchanged?: number; errors?: string[] };
           shipment?: { polled?: boolean; status?: string | null };
           note?: string | null;
         };
-        const ingested = inbound.marketplace?.ingested ?? 0;
-        const created = inbound.marketplace?.created ?? 0;
+        const landed = inbound.marketplace?.landed ?? 0;
+        const updated = inbound.marketplace?.updated ?? 0;
+        const reached = landed + updated + (inbound.marketplace?.unchanged ?? 0);
         const polled = inbound.shipment?.polled;
         const firstErr = inbound.marketplace?.errors?.[0];
-        if (firstErr && ingested === 0) {
+        if (firstErr && reached === 0) {
           toast.error(firstErr);
         } else {
           toast.success(
-            `Resynced${created > 0 ? ` · ${created} new line${created === 1 ? '' : 's'}` : ingested > 0 ? ' · updated' : ''}${polled ? ' · carrier re-polled' : ''}`,
+            `Resynced${landed > 0 ? ` · ${landed} new order${landed === 1 ? '' : 's'}` : updated > 0 ? ' · updated' : ''}${polled ? ' · carrier re-polled' : ''}`,
           );
         }
         if (inbound.note) toast.success(inbound.note);

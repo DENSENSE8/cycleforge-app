@@ -2,20 +2,24 @@
 
 /**
  * The Tasks board's open record — placed by the board's `DeskRecordPlane`
- * (in place over the list, or split beside it). Tabs, most-used first:
+ * (in place over the list, or split beside it). Owner 2026-10-03: the record
+ * is the phone sheet's grammar on a desk — mobile first, no field labels, say
+ * each fact once, and only the chrome that acts on what is on screen.
  *
- *   Overview  — the featured media first (`TaskOverviewMedia`), then status
- *               (combobox + Not done · Pending · Done slider) and priority on
- *               one row, people, project, due, linked records, the
- *               Brief (`TaskBriefSection`: markdown, Write/Preview, a reader)
- *   Ticket    — the support ticket this task follows up: the house
- *               `SupportTicketDetail` (markdown thread + `TicketComposer`)
- *   Timeline  — the Log head and one stream: follow-ups, ticket comments,
- *               assign/status/due changes and alerts (`TaskRailTimeline`)
- *   Media     — videos and photos to review, by URL or upload (`TaskRailMedia`)
+ *   Overview  — EVERYTHING in one scroll, newest first, no labels: media,
+ *               WHEN (due · priority), WHO·WHERE (project · people · from),
+ *               the Brief (minus the title line), the ticket's newest
+ *               messages, the documents, the newest events, the links. Each
+ *               preview ends in a blue door to its tab.
+ *   Ticket    — the support ticket: `SupportTicketDetail` (thread + composer)
+ *   Docs      — long documents (`TaskDocsTab`); not offered on a support
+ *               follow-up unless it already has one
+ *   Timeline  — the Log head and the full stream (`TaskRailTimeline`)
+ *   Media     — videos and photos (`TaskRailMedia`)
  *   Links     — every record the task names, and the emails it cites
  *
- * Header verbs (`TaskRecordActions`): Done · Status (S) · Alert · Reply.
+ * Header verbs (`TaskRecordActions`): Done · Status (S) · Alert · Reply — Reply
+ * only while the composer is NOT on screen (the Ticket tab has its own).
  * `[` / `]` step the tabs; the plane owns Esc and ⌘/Ctrl+Shift+S.
  */
 
@@ -30,6 +34,7 @@ import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { useActiveStaffDirectory } from '@/components/sidebar/hooks';
 import { TaskBriefSection } from '@/features/tasks/workspace/TaskBriefSection';
+import { TaskDocsTab } from '@/features/tasks/workspace/TaskDocsTab';
 import { useTaskLinks } from '@/lib/tasks/use-task-workspace';
 import { useTaskEmailRefs } from '@/lib/tasks/use-task-email-refs';
 import { emailRefNumberFace, emailRefNumberPatch } from '@/lib/tasks/task-email-refs';
@@ -37,19 +42,15 @@ import { mailboxFace, type TaskEmailRef, type TaskEmailRefPatchBody } from '@/li
 import { taskLinkRepairHref, type TaskLink, type TaskLinkCreateBody, type TaskLinkKind } from '@/lib/tasks/task-links-shared';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/design-system/primitives/DropdownMenu';
 import type { TaskDeskPatch } from '@/features/tasks/useTaskDesk';
-import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
+import { taskBriefBody, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { taskStatusOf } from '@/lib/tasks/task-status';
 import { useTaskStatusCommit } from '@/lib/tasks/use-task-status-commit';
-import {
-  TASK_STATUS_FACE,
-  TASK_STATUS_SLIDER_STOPS,
-  taskStatusSliderIndex,
-
-} from '@/design-system/tokens/task-status';
-import { StopSlider } from '@/design-system/primitives/StopSlider';
+import { TASK_STATUS_FACE } from '@/design-system/tokens/task-status';
 import { TASK_PRIORITY } from '@/lib/tasks/task-vocabulary';
-import type { TaskBoardRow } from '@/lib/task-board/task-board-model';
-import { addDaysToDateKey, getCurrentPSTDateKey, warehouseCivilTimeToInstant } from '@/utils/date';
+import { TASK_BOARD_TYPE_FACE, taskBoardRowType, type TaskBoardRow } from '@/lib/task-board/task-board-model';
+import { Button } from '@/design-system/primitives/Button';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
+import { TASK_DUE_PRESETS, taskDueDay, taskDueInstantIso } from '@/lib/tasks/task-due';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { DueChip, PersonDot } from './task-board-atoms';
@@ -57,27 +58,38 @@ import { TaskAlertButton } from './TaskAlertButton';
 import { TaskOverviewMedia } from './TaskOverviewMedia';
 import { TaskRailMedia } from './TaskRailMedia';
 import { TaskRailTimeline } from './TaskRailTimeline';
+import { OVERVIEW_SECTION, TaskDocsPreview, TaskTicketPreview, TaskTimelinePreview } from './TaskOverviewSections';
 import { TaskStatusCombobox } from './TaskStatusPicker';
 
-export const RECORD_TABS = ['overview', 'ticket', 'timeline', 'media', 'links'] as const;
+export const RECORD_TABS = ['overview', 'ticket', 'docs', 'timeline', 'media', 'links'] as const;
 export type RecordTab = (typeof RECORD_TABS)[number];
 
 const RECORD_TAB_LABEL: Readonly<Record<RecordTab, string>> = {
   overview: 'Overview',
   ticket: 'Ticket',
+  docs: 'Docs',
   timeline: 'Timeline',
   media: 'Media',
   links: 'Links',
 };
 
 /** Tabs that need a real task (a checklist item has none). */
-const TASK_ONLY_TABS: Readonly<Partial<Record<RecordTab, true>>> = { timeline: true, media: true, links: true };
+const TASK_ONLY_TABS: Readonly<Partial<Record<RecordTab, true>>> = { docs: true, timeline: true, media: true, links: true };
 
-/** The tabs this row can show, in order — `[` / `]` walk exactly these. The ticket thread is always one
- *  tab away (owner 2026-09-30): every task row can link a ticket and reply inline; only a checklist item
- *  (no task to link from) omits it. */
+/**
+ * The tabs this row can show, in order — `[` / `]` walk exactly these. The ticket thread is always one tab
+ * away (owner 2026-09-30); only a checklist item (no task to link from) omits it. Docs follow the work
+ * (owner 2026-10-03: "removing docs for support"): a support follow-up answers a customer, it does not
+ * carry plan documents — the tab shows there only when one is already attached.
+ */
 export function recordTabsFor(row: TaskBoardRow, task: TaskDeskRow | null): RecordTab[] {
-  return RECORD_TABS.filter((t) => (TASK_ONLY_TABS[t] ? task != null : t === 'ticket' ? task != null : true));
+  const support = taskBoardRowType(row) === 'ticket';
+  return RECORD_TABS.filter((t) => {
+    if (TASK_ONLY_TABS[t] && task == null) return false;
+    if (t === 'ticket') return task != null;
+    if (t === 'docs') return !support || row.docCount > 0;
+    return true;
+  });
 }
 
 /** Marks the header's Status verb — the `S` picker anchors to it while a record is open. */
@@ -87,6 +99,7 @@ export const TASK_RECORD_STATUS_ANCHOR_ATTR = 'data-task-record-status';
 export function TaskRecordActions({
   row,
   task,
+  tab,
   onToggle,
   onStatus,
   onReply,
@@ -96,6 +109,8 @@ export function TaskRecordActions({
 }: {
   row: TaskBoardRow;
   task: TaskDeskRow | null;
+  /** The record's open tab — Reply hides on the Ticket tab, whose composer is already on screen. */
+  tab: RecordTab;
   onToggle: () => void;
   onStatus: (anchor: HTMLElement) => void;
   onReply: () => void;
@@ -105,11 +120,13 @@ export function TaskRecordActions({
   onAlertOpenChange: (open: boolean) => void;
 }) {
   const canceled = row.status === 'CANCELED';
+  // P2 — verbs repeated beside content are tonal (light tint, dark ink): Done is `successSoft`,
+  // Reply `warningSoft` (the ticket's orange family). No filled verb in this header.
   return (
     <>
       <DeskHeaderAction
         size="sm"
-        variant={row.done ? 'secondary' : 'success'}
+        variant={row.done ? 'secondary' : 'successSoft'}
         icon={row.done ? <RotateCcw /> : <Check />}
         label={row.done ? 'Reopen' : 'Done'}
         shortcut="D"
@@ -130,8 +147,8 @@ export function TaskRecordActions({
           onOpenChange={onAlertOpenChange}
         />
       ) : null}
-      {row.ticket ? (
-        <DeskHeaderAction size="sm" variant="primary" icon={<MessageSquareReply />} label="Reply" ariaLabel="Reply on the ticket" onClick={onReply} />
+      {row.ticket && tab !== 'ticket' ? (
+        <DeskHeaderAction size="sm" variant="warningSoft" icon={<MessageSquareReply />} label="Reply" ariaLabel="Reply on the ticket" onClick={onReply} />
       ) : null}
     </>
   );
@@ -181,8 +198,8 @@ export function TaskRecordBody({
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="task-record">
       <div className="shrink-0 px-4 pb-2 pt-3">
+        {/* The house TabSwitch at its full-height face (pill track, soft blue selected face — owner 2026-10-03). */}
         <TabSwitch
-          size="sm"
           scrollable
           tabs={tabs.map((t) => ({ id: t, label: RECORD_TAB_LABEL[t] }))}
           activeTab={active}
@@ -204,13 +221,15 @@ export function TaskRecordBody({
             <OverviewTab
               row={row}
               task={task}
+              tabs={tabs}
               nowMs={nowMs}
               onPatch={onPatch}
-              onOpenTicket={() => onTab('ticket')}
-              onOpenMedia={() => onTab('media')}
+              onTab={onTab}
               briefReaderOpen={briefReaderOpen}
               onBriefReaderOpenChange={onBriefReaderOpenChange}
             />
+          ) : active === 'docs' && task ? (
+            <TaskDocsTab task={task} title={row.title} />
           ) : active === 'timeline' && task ? (
             <TaskRailTimeline
               taskId={task.id}
@@ -246,167 +265,148 @@ function RecordStatusFooter({ task, onPatch }: { task: TaskDeskRow; onPatch: (pa
 
 // ── Overview ─────────────────────────────────────────────────────────────────
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-3 py-2.5">
-      <span className="pt-1 text-[11px] font-medium text-text-muted">{label}</span>
-      <div className="min-w-0">{children}</div>
-    </div>
-  );
-}
+/**
+ * The Overview reads as ONE phone-width column, centred in a wide record (mobile first, then the desk
+ * enhances — never a stretched phone layout: NN/g content dispersion). Media and text keep a reading measure.
+ */
+const OVERVIEW_COLUMN = 'mx-auto flex w-full max-w-2xl flex-col';
 
+/**
+ * Everything about the task in ONE scroll, phone grammar (owner 2026-10-03): no label column — each row
+ * leads with its value and glyph, sections split by a hairline, names only in `aria-label`. Status is not
+ * repeated here (the header verb and the footer hold it; the quick slider lives in the status drop-down).
+ * Each preview ends in a blue door to its tab, where the detail lives.
+ */
 function OverviewTab({
   row,
   task,
+  tabs,
   nowMs,
   onPatch,
-  onOpenTicket,
-  onOpenMedia,
+  onTab,
   briefReaderOpen,
   onBriefReaderOpenChange,
 }: {
   row: TaskBoardRow;
   task: TaskDeskRow | null;
+  /** The tabs this record offers — a preview only links to a tab that exists. */
+  tabs: readonly RecordTab[];
   nowMs: number;
   onPatch: (patch: TaskDeskPatch) => Promise<unknown>;
-  onOpenTicket: () => void;
-  onOpenMedia: () => void;
+  onTab: (tab: RecordTab) => void;
   briefReaderOpen: boolean;
   onBriefReaderOpenChange: (open: boolean) => void;
 }) {
   if (!task) {
     // A checklist item: the shift owes it; its words and schedule are org-managed.
     return (
-      <div className="flex flex-col divide-y divide-border-hairline">
-        <Field label="Cadence">
-          <span className="text-[13px] text-text-default">{row.cadence === 'recurring' ? 'Every day' : 'Today only'}</span>
-        </Field>
-        <Field label="Owner">
-          {row.people[0] ? (
-            <span className="flex items-center gap-2 text-[13px]">
-              <PersonDot person={row.people[0]} /> <StaffBadge staffId={row.people[0].id} name={row.people[0].name} />
-            </span>
-          ) : (
-            <span className="text-[13px] text-text-muted">Daily checklist</span>
-          )}
-        </Field>
-        {row.team ? (
-          <Field label="Shift">
-            <span className="text-[13px] tabular-nums text-text-default">
+      <div className={OVERVIEW_COLUMN}>
+        <section aria-label="When" className={cn(OVERVIEW_SECTION, 'flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]')}>
+          <DueChip dueMs={row.dueMs} nowMs={nowMs} done={row.done} />
+          <span className="text-text-default">{row.cadence === 'recurring' ? 'Every day' : 'Today only'}</span>
+          {row.team ? (
+            <span className="tabular-nums text-text-muted">
               {row.team.done} of {row.team.total} done
             </span>
-          </Field>
+          ) : null}
+        </section>
+        {row.people[0] ? (
+          <section aria-label="Owner" className={cn(OVERVIEW_SECTION, 'flex items-center gap-2 text-[13px]')}>
+            <PersonDot person={row.people[0]} /> <StaffBadge staffId={row.people[0].id} name={row.people[0].name} />
+          </section>
         ) : null}
-        <Field label="Due">
-          <DueChip dueMs={row.dueMs} nowMs={nowMs} done={row.done} />
-        </Field>
         {row.detail ? (
-          <Field label="Notes">
+          <section aria-label="Notes" className={OVERVIEW_SECTION}>
             <p className="whitespace-pre-wrap text-[13px] text-text-default">{row.detail}</p>
-          </Field>
+          </section>
         ) : null}
       </div>
     );
   }
 
+  const ticketNumber = row.ticket?.number ?? null;
   return (
-    <div className="flex flex-col divide-y divide-border-hairline">
+    <div className={OVERVIEW_COLUMN}>
       {/* Media first (owner 2026-09-30); mounted only when the row counts some, so a bare task never fetches. */}
       {task.videoCount + task.photoCount > 0 ? (
-        <TaskOverviewMedia key={task.id} taskId={task.id} expectVideo={task.videoCount > 0} onOpenMedia={onOpenMedia} />
+        <div className={OVERVIEW_SECTION}>
+          <TaskOverviewMedia key={task.id} taskId={task.id} expectVideo={task.videoCount > 0} onOpenMedia={() => onTab('media')} />
+        </div>
       ) : null}
-      <Field label="Status">
-        <StatusAndPriority row={row} task={task} onPatch={onPatch} />
-      </Field>
-      <Field label="People">
+      {/* WHEN: the due day far left (its urgency chip beside it), priority at the right. */}
+      <section aria-label="When" className={cn(OVERVIEW_SECTION, 'flex flex-wrap items-center gap-2')}>
+        <DueEditor dueMs={task.deadlineAtMs} done={row.done} nowMs={nowMs} onPatch={onPatch} />
+        <PriorityToggle row={row} onPatch={onPatch} />
+      </section>
+      {/* WHO · WHERE: the project (its glyph is the label), the people, who handed it over. */}
+      <section aria-label="Who and where" className={cn(OVERVIEW_SECTION, 'flex flex-wrap items-start gap-x-4 gap-y-2')}>
+        <ProjectField key={`project:${task.id}`} task={task} onPatch={onPatch} />
         <PeopleEditor task={task} onPatch={onPatch} />
-      </Field>
-      <Field label="Project">
-        <InlineText
-          key={`project:${task.id}`}
-          value={task.projectName ?? ''}
-          placeholder="Add to a project"
-          onCommit={(value) => onPatch({ projectName: value || null })}
-        />
-      </Field>
-      <Field label="Due">
-        <DueEditor dueMs={task.deadlineAtMs} nowMs={nowMs} onPatch={onPatch} />
-      </Field>
-      <LinkedList row={row} taskId={task.id} onOpenTicket={onOpenTicket} />
-      {task.assignedBy ? (
-        <Field label="From">
-          <span className="flex items-center gap-2 text-[13px] text-text-default">
-            <PersonDot person={task.assignedBy} />
-            <StaffBadge staffId={task.assignedBy.id} name={task.assignedBy.name} className="font-medium" />
-            <span className="text-[11px] text-text-muted">
-              · {new Date(task.assignedAtMs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
+        {task.assignedBy ? (
+          <span className="flex h-8 items-center gap-1.5 text-[12px] text-text-muted">
+            from
+            <StaffBadge staffId={task.assignedBy.id} name={task.assignedBy.name.split(' ')[0]} className="font-semibold" />
+            <span>· {new Date(task.assignedAtMs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
           </span>
-        </Field>
-      ) : null}
-      <div className="pt-4">
+        ) : null}
+      </section>
+      {/* The brief never restates the title (one fact, one place) — `taskBriefBody` drops that line; Edit opens it all. */}
+      <div className={OVERVIEW_SECTION}>
         <TaskBriefSection
           key={`note:${task.id}`}
           bare
           title={row.title}
-          note={task.note}
+          note={task.note ?? ''}
+          shown={taskBriefBody(task)}
           onSave={(next) => onPatch({ note: next })}
           readerOpen={briefReaderOpen}
           onReaderOpenChange={onBriefReaderOpenChange}
         />
       </div>
+      {ticketNumber != null ? (
+        <TaskTicketPreview ticketNumber={ticketNumber} status={row.ticket?.status ?? null} nowMs={nowMs} onOpen={() => onTab('ticket')} />
+      ) : null}
+      {tabs.includes('docs') ? <TaskDocsPreview taskId={task.id} onOpen={() => onTab('docs')} /> : null}
+      <TaskTimelinePreview taskId={task.id} nowMs={nowMs} onOpen={() => onTab('timeline')} />
+      <LinkedList row={row} taskId={task.id} ticketPreviewed={ticketNumber != null} onOpenTicket={() => onTab('ticket')} />
     </div>
   );
 }
 
-/**
- * Status and Priority on ONE row (owner 2026-09-30): the status combobox (`S`
- * opens it too), the three-stop slider — Not done · Pending · Done — for thumb /
- * drag triage, and Priority at the right. The combobox reaches every other state.
- */
-function StatusAndPriority({
-  row,
-  task,
-  onPatch,
-}: {
-  row: TaskBoardRow;
-  task: TaskDeskRow;
-  onPatch: (patch: TaskDeskPatch) => Promise<unknown>;
-}) {
-  const { current, setStatus } = useTaskStatusCommit(task, onPatch);
-  const sliderIndex = taskStatusSliderIndex(current);
-
+/** Priority as one tappable pill: the bolt and the word ARE the label. */
+function PriorityToggle({ row, onPatch }: { row: TaskBoardRow; onPatch: (patch: TaskDeskPatch) => Promise<unknown> }) {
   return (
-    <div className="flex min-w-0 flex-nowrap items-center gap-3">
-      <TaskStatusCombobox current={current} onPick={setStatus} />
-      {sliderIndex != null ? (
-        <StopSlider
-          stops={[0, 1, 2]}
-          value={sliderIndex}
-          onChange={(index) => setStatus(TASK_STATUS_SLIDER_STOPS[index]!.status)}
-          ariaLabel="Quick status"
-          formatValue={(index) => TASK_STATUS_SLIDER_STOPS[index]?.label ?? ''}
-          showStops={false}
-          compact
-          className="w-28 min-w-20 shrink"
-          data-testid="task-status-slider"
-        />
-      ) : null}
-      <button
-        type="button"
-        aria-label={`Priority: ${row.urgent ? 'Urgent' : 'Normal'}. Toggle`}
-        title="Priority"
-        onClick={() => void onPatch({ priority: row.urgent ? TASK_PRIORITY.normal : TASK_PRIORITY.urgent })}
-        className={cn(
-          'ml-auto inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors',
-          row.urgent ? 'bg-surface-card text-text-default ring-1 ring-inset ring-border-soft shadow-sm' : 'bg-surface-sunken text-text-muted hover:text-text-default',
-        )}
-        data-testid="task-priority-toggle"
-      >
-        <Zap className={cn('size-3.5', row.urgent ? 'text-text-warning' : 'text-text-muted')} />
-        {row.urgent ? 'Urgent' : 'Normal'}
-      </button>
-    </div>
+    <button
+      type="button"
+      aria-label={`Priority: ${row.urgent ? 'Urgent' : 'Normal'}. Toggle`}
+      onClick={() => void onPatch({ priority: row.urgent ? TASK_PRIORITY.normal : TASK_PRIORITY.urgent })}
+      className={cn(
+        'ml-auto inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 text-[12px] font-semibold transition-colors',
+        row.urgent ? 'bg-surface-card text-text-default ring-1 ring-inset ring-border-soft shadow-sm' : 'bg-surface-sunken text-text-muted hover:text-text-default',
+      )}
+      data-testid="task-priority-toggle"
+    >
+      <Zap className={cn('size-3.5', row.urgent ? 'text-text-warning' : 'text-text-muted')} />
+      {row.urgent ? 'Urgent' : 'Normal'}
+    </button>
+  );
+}
+
+/** The project, value-led: its glyph in the project ink, then the name (edit in place); "Add to a project" when none. */
+function ProjectField({ task, onPatch }: { task: TaskDeskRow; onPatch: (patch: TaskDeskPatch) => Promise<unknown> }) {
+  const face = TASK_BOARD_TYPE_FACE.project;
+  const Icon = face.icon;
+  return (
+    <span className="flex h-8 min-w-[10rem] max-w-[18rem] items-center gap-1.5">
+      <Icon aria-hidden className={cn('size-3.5 shrink-0', face.ink)} strokeWidth={2.25} />
+      <InlineText
+        value={task.projectName ?? ''}
+        placeholder="Add to a project"
+        ariaLabel="Project"
+        onCommit={(value) => onPatch({ projectName: value || null })}
+        className={cn('mx-0 font-semibold', face.text)}
+      />
+    </span>
   );
 }
 
@@ -535,48 +535,37 @@ function PeopleEditor({ task, onPatch }: { task: TaskDeskRow; onPatch: (patch: T
   );
 }
 
-/** End of the warehouse working day on `dateKey`. */
-function endOfDay(dateKey: string): string | null {
-  return warehouseCivilTimeToInstant(dateKey, '17:00')?.toISOString() ?? null;
-}
-
+/**
+ * Due — task principle P5: an exact value gets an exact control. The house date switcher
+ * (`DateRangePickerField variant="compact"`: Today · Tomorrow · Next week presets over the month,
+ * Clear in its footer) shows the day itself; the due chip beside it keeps the urgency ink.
+ * A day saves as 17:00 warehouse time (`taskDueInstantIso`).
+ */
 function DueEditor({
   dueMs,
+  done,
   nowMs,
   onPatch,
 }: {
   dueMs: number | null;
+  /** A finished task is never "late" — the chip goes quiet. */
+  done: boolean;
   nowMs: number;
   onPatch: (patch: TaskDeskPatch) => Promise<unknown>;
 }) {
-  const today = getCurrentPSTDateKey();
-  const quick: readonly { label: string; iso: string | null }[] = [
-    { label: 'Today', iso: endOfDay(today) },
-    { label: 'Tomorrow', iso: endOfDay(addDaysToDateKey(today, 1)) },
-    { label: 'Next week', iso: endOfDay(addDaysToDateKey(today, 7)) },
-  ];
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <DueChip dueMs={dueMs} nowMs={nowMs} done={false} />
-      {quick.map((option) => (
-        <button
-          key={option.label}
-          type="button"
-          onClick={() => void onPatch({ deadlineAt: option.iso })}
-          className="rounded-full bg-surface-sunken px-2.5 py-1 text-[11px] font-medium text-text-muted transition-colors hover:text-text-default"
-        >
-          {option.label}
-        </button>
-      ))}
-      {dueMs != null ? (
-        <button
-          type="button"
-          onClick={() => void onPatch({ deadlineAt: null })}
-          className="rounded-full px-2 py-1 text-[11px] text-text-muted hover:text-text-default"
-        >
-          Clear
-        </button>
-      ) : null}
+    <div className="flex flex-wrap items-center gap-2">
+      <DateRangePickerField
+        variant="compact"
+        value={taskDueDay(dueMs)}
+        onChange={(day) => void onPatch({ deadlineAt: taskDueInstantIso(day) })}
+        presets={TASK_DUE_PRESETS}
+        onClear={() => void onPatch({ deadlineAt: null })}
+        faceLabel={dueMs == null ? 'Set due date' : undefined}
+        ariaLabel="Due date"
+        className="h-8 w-auto min-w-28"
+      />
+      <DueChip dueMs={dueMs} nowMs={nowMs} done={done} />
     </div>
   );
 }
@@ -899,29 +888,39 @@ function TicketLinkPanel({ taskId }: { taskId: number }) {
   );
 }
 
-/** Overview's "Linked": the ticket this follows up, the record it is about, every link, then the customer emails — icon first. */
-function LinkedList({ row, taskId, onOpenTicket }: { row: TaskBoardRow; taskId: number; onOpenTicket: () => void }) {
+/**
+ * Overview's links, no "Linked" heading (the glyph tiles say what each is): the ticket (only when its thread is
+ * not already previewed above — one fact, one place), the record it is about, every link, the customer emails.
+ */
+function LinkedList({
+  row,
+  taskId,
+  ticketPreviewed,
+  onOpenTicket,
+}: {
+  row: TaskBoardRow;
+  taskId: number;
+  ticketPreviewed: boolean;
+  onOpenTicket: () => void;
+}) {
   const { links } = useTaskLinks(taskId);
   const { refs } = useTaskEmailRefs(taskId);
   const extra = links.filter((link) => !(row.ticket && link.kind === 'ticket' && link.label.replace(/\D/g, '') === String(row.ticket.number)));
-  if (!row.ticket && !row.record && extra.length === 0 && refs.length === 0) return null;
+  const ticketLine = row.ticket && !ticketPreviewed;
+  if (!ticketLine && !row.record && extra.length === 0 && refs.length === 0) return null;
   return (
-    <div className="flex flex-col gap-1 py-2.5">
-      <span className="text-[11px] font-medium text-text-muted">Linked</span>
+    <section aria-label="Links" className={OVERVIEW_SECTION} data-testid="task-overview-links">
       <ul className="-mx-2 flex flex-col gap-0.5">
-        {row.ticket ? (
+        {ticketLine && row.ticket ? (
           <LinkLine
             kind="ticket"
             label={row.ticket.number != null ? `Ticket #${row.ticket.number}` : 'Ticket'}
             detail={ticketLinkDetail(row.ticket.status, row.ticket.subject)}
             trailing={
-              <button
-                type="button"
-                onClick={onOpenTicket}
-                className="h-6 shrink-0 rounded-full bg-orange-700 px-2.5 text-[11px] font-semibold text-white shadow-sm shadow-orange-700/30 hover:bg-orange-800"
-              >
+              // P2 — a verb beside content is tonal: the house Button, `warningSoft` (ticket orange).
+              <Button size="sm" variant="warningSoft" radius="pill" className="shrink-0" onClick={onOpenTicket}>
                 Open thread
-              </button>
+              </Button>
             }
           />
         ) : null}
@@ -945,6 +944,6 @@ function LinkedList({ row, taskId, onOpenTicket }: { row: TaskBoardRow; taskId: 
           />
         ))}
       </ul>
-    </div>
+    </section>
   );
 }

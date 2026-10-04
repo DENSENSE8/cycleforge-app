@@ -32,6 +32,8 @@ export const SkuCatalogCreateBody = z
     upc: optNullableText,
     ean: optNullableText,
     imageUrl: optNullableText,
+    /** The item's Zoho id — recorded in `catalog_external_ids`, never as the key. */
+    zohoItemId: trimmed.regex(/^\d{10,}$/, 'zohoItemId must be the digits of a Zoho item id').nullable().optional(),
     isActive: z.boolean().optional(),
     // ─ Sourcing lifecycle (Bose engine opt-in; additive, all optional) ─
     lifecycleStatus: lifecycleStatusEnum.optional(),

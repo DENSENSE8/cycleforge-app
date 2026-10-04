@@ -11,9 +11,9 @@ export const slatePalette: ThemePalette = {
   vars: {
     // Neutral chrome — steel-shifted slate
     'text-primary': '#101c2c',
-    'text-secondary': '#40566e',
-    'text-soft': '#53687f', // ≥4.5 on card AND the sunken wash (contrast-audited)
-    'text-faint': '#7b91a7', // ≥3.0 on card (decorative tier)
+    'text-secondary': '#293a4e', // ≥9:1 on every surface (owner 2026-10-03: subtitles read easily)
+    'text-soft': '#42556a', // ≥6:1 on every surface
+    'text-faint': '#536679', // ≥4.5 on every surface — text, never a sub-AA tier
     'background-canvas': '#e9eef4',
     'background-surface': '#fbfdfe',
     'surface-sunken': '#dce5ed',

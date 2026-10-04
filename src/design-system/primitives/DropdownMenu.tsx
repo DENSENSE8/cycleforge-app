@@ -48,7 +48,7 @@ const DropdownMenuItem = React.forwardRef<
       DROPDOWN_ITEM_CORNER,
       'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       '[&>svg]:size-4 [&>svg]:shrink-0',
-      tone === 'danger' && 'text-rose-600 focus:bg-rose-50 focus:text-rose-700',
+      tone === 'danger' && 'bg-surface-danger text-text-danger focus:bg-rose-100 focus:text-rose-800',
       inset && 'pl-8',
       className,
     )}

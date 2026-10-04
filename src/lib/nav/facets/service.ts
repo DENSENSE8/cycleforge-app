@@ -4,6 +4,8 @@ import type { NavFacetsResponse } from '@/lib/nav/context/schema';
 import { NAV_FACET_PERMISSION, mayReadNavFacet, type NavFacetContext } from '@/lib/nav/facets/contexts';
 import { exceptionFacets, isExceptionFacetContext, type ExceptionCountReader } from '@/lib/nav/facets/exceptions';
 import { countExceptions } from '@/lib/exceptions/hub';
+import { isLiveFeedFacetContext, liveFeedFacets, type LiveFeedCountReader } from '@/lib/nav/facets/live-feed';
+import { countLiveFeedStatuses } from '@/lib/live-feed/load';
 import { importFacets } from '@/lib/nav/facets/imports';
 import { outboundFacets, type FacetSqlRunner } from '@/lib/nav/facets/outbound';
 import { pickupFacets } from '@/lib/nav/facets/pickup';
@@ -20,12 +22,15 @@ export interface NavFacetsDeps {
   listLocalPickupLines: typeof listLocalPickupLines;
   /** The Exceptions hub's per-kind totals (`countExceptions`). */
   exceptionCounts: ExceptionCountReader;
+  /** The Live feed's status counts and Carrier / Channel tallies (`countLiveFeedStatuses`). */
+  liveFeedCounts: LiveFeedCountReader;
 }
 
 export const defaultNavFacetsDeps: NavFacetsDeps = {
   run: async (orgId, sql, params) => (await tenantQuery(orgId, sql, params)).rows,
   listLocalPickupLines,
   exceptionCounts: (caller, kinds, q) => countExceptions(caller, kinds, q),
+  liveFeedCounts: countLiveFeedStatuses,
 };
 
 export async function getNavFacets(
@@ -41,6 +46,9 @@ export async function getNavFacets(
   if (isExceptionFacetContext(context)) {
     const has = (permission: string) => caller.permissions.has(permission);
     return { ok: true, body: await exceptionFacets(context, { orgId: caller.orgId, has }, params, deps.exceptionCounts) };
+  }
+  if (isLiveFeedFacetContext(context)) {
+    return { ok: true, body: await liveFeedFacets(context, caller, params, deps.liveFeedCounts) };
   }
   if (context === 'pickup') {
     return { ok: true, body: await pickupFacets(caller.orgId, params, deps.listLocalPickupLines) };

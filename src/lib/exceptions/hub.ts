@@ -18,6 +18,7 @@ import { labelsSource } from './sources/labels';
 import { pairsSource } from './sources/pairs';
 import { paperworkSource } from './sources/paperwork';
 import { trackingSource } from './sources/tracking';
+import { unmatchedSource } from './sources/unmatched';
 import {
   EXCEPTION_KIND_SPEC,
   parseExceptionRowKey,
@@ -33,6 +34,7 @@ export const EXCEPTION_SOURCES: ExceptionSources = {
   fbm: fbmSource,
   labels: labelsSource,
   paperwork: paperworkSource,
+  unmatched: unmatchedSource,
   pairs: pairsSource,
   bins: binsSource,
   tracking: trackingSource,

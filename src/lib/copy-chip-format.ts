@@ -59,6 +59,17 @@ export function getLast8(value: string | null | undefined): string {
 }
 
 /**
+ * The visible order-number face used by dense operational surfaces.
+ * The stored/copied value remains complete; only the face is abbreviated.
+ */
+export function formatOrderIdDisplay(value: string | null | undefined): string {
+  const raw = normalizeCopyText(value);
+  if (!raw) return '';
+  if (raw.length <= CHIP_DISPLAY_LEN) return raw.replace(LEADING_NON_ALNUM, '') || raw;
+  return abbreviateIdentifier(raw);
+}
+
+/**
  * serial_number may be a CSV string aggregated via STRING_AGG (e.g. "SN1, SN2").
  * Parses it, takes the last individual serial, then abbreviates that one.
  */

@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, Check, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { StepProgressHeader } from '@/design-system/primitives/StepProgressHeader';
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP } from '@/design-system/tokens/dock-clearance';
 import { microBadge, sectionLabel } from '@/design-system/tokens/typography/presets';
 import {
   syncRunProgress,
@@ -200,10 +201,11 @@ export function OrderSyncRunView({
       </div>
 
       {/*
-        One affirmative CTA, sticky at the thumb. While the run is in flight the
-        only thing to say is how far along it is — the header X is the abort.
+        One affirmative CTA at the thumb, floating — no bar or rule behind it
+        (owner 2026-10-03). While the run is in flight the only thing to say is
+        how far along it is — the header X is the abort.
       */}
-      <footer className="flex shrink-0 items-center gap-2 border-t border-border-soft px-4 py-3">
+      <footer className={`flex shrink-0 items-center gap-2 px-4 ${ACTION_DOCK_TOP_GAP} ${ACTION_DOCK_LIFT}`}>
         {isRunning ? (
           <>
             <p className="min-w-0 flex-1 text-role-caption text-text-muted">

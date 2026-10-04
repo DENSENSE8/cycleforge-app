@@ -4,6 +4,8 @@
  * dirty/canSave rules without mounting hooks.
  */
 
+import { RACK_FAMILY_KINDS, RACK_STOCK_KINDS } from '@/lib/locations/rack-types';
+
 export interface LocationRecord {
   id: number;
   name: string;
@@ -35,8 +37,14 @@ export interface LocationsListData {
 
 export type RoomSnapshot = LocationRecord;
 
+/** A room/zone parent: no row/col — and not a movable-rack row, which has none either. */
 function isParentRow(loc: LocationRecord): boolean {
-  return !loc.row_label && !loc.col_label;
+  return !loc.row_label && !loc.col_label && !RACK_FAMILY_KINDS.has(loc.location_kind ?? '');
+}
+
+/** A place stock and cartons go: a legacy aisle-bay row (row+col) or a rack shelf/position. */
+export function isStockPlace(loc: LocationRecord): boolean {
+  return (loc.row_label != null && loc.col_label != null) || RACK_STOCK_KINDS.has(loc.location_kind ?? '');
 }
 
 /** Insert a newly created room parent into the list cache. */

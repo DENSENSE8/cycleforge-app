@@ -8,24 +8,25 @@
  * pair (`?open=<loc:sku:source>`) reads in the record plane.
  */
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { format } from 'date-fns';
 import { Plus } from '@/components/Icons';
 import { CopyChip } from '@/components/ui/CopyChip';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import { RecordLedgerSummaryPane, RecordLedgerTally } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
-import type { RecordCardModel } from '@/design-system/components/record-card/record-card-types';
-import { LIFECYCLE_GLYPH } from '@/design-system/components/record-ledger/LifecycleCode';
+import { RecordFactPaint } from '@/design-system/components/record-card/record-fact';
 import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
+import { recordRowFace } from '@/design-system/components/triage-card-list/record-row-face';
+import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
+import { TriageRow } from '@/design-system/components/triage-card-list/TriageRow';
 import { Button } from '@/design-system/primitives';
-import { STOCK_LIFECYCLE } from '@/design-system/tokens/stock-lifecycle';
+import { CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { StockRecordView } from '@/features/stock-record/StockRecordView';
@@ -35,7 +36,6 @@ import { isStockDeltaActivity } from '@/lib/inventory/stock-live-refresh';
 import {
   locationStockRowId,
   resolveLocationStockRow,
-  locationStockPositionFace,
   locationStockRackFace,
   locationStockRackGroups,
   parseLocationStockAisles,
@@ -55,11 +55,13 @@ import { parseRouteParams } from '@/lib/routing/route-params';
 import type { StockScopeCounts } from '@/lib/neon/location-stock-queries';
 import { INVENTORY_STOCK_VIEW } from '@/lib/triage/views';
 import { stockLocationFace, stockRecordState, stockRecordTitle } from './stock-record';
-import { commitStockRequest, stockAdjustRequest } from '@/lib/inventory/stock-bin-verb-writes';
+import { postStockTransfer } from '@/lib/inventory/stock-transfer-client';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { recallStockPlace, rememberStockPlace, useStockPlaceOptions } from '@/hooks/useStockPlaceOptions';
 import { StockAddForm } from './StockAddForm';
 import { stockSummary } from './StockEvidence';
+import { StockRackPeek } from './StockRackPeek';
+import { stockRackTotal, stockRecordCard, type StockRowModel } from './stock-card-model';
 import { cn } from '@/utils/_cn';
 
 const VIEW = INVENTORY_STOCK_VIEW;
@@ -78,8 +80,14 @@ const STOCK_HEALTH_CHIPS: readonly Omit<StatusChip<StockHealth>, 'count'>[] = [
 const STOCK_HEALTH_KEYS = STOCK_HEALTH_CHIPS.map((chip) => chip.id);
 
 export function stockHealth(row: LocationStockTableRow): readonly StockHealth[] {
+  // An empty address is capacity, not an item. It stays in the location walk
+  // but must not inflate or appear under an item-health chip.
+  if (row.source === 'empty') return [];
   const state = stockRecordState(row);
-  if (state === 'onHold') return row.qty > 0 ? ['in-stock', 'on-hold'] : ['on-hold'];
+  // On hold is an exception facet, not a third inventory quantity state.
+  // A TMP row is still either physically present or out of stock, so operators
+  // can reach zero-count exceptions from either relevant chip.
+  if (state === 'onHold') return row.qty > 0 ? ['in-stock', 'on-hold'] : ['out-of-stock', 'on-hold'];
   return [state === 'outOfStock' ? 'out-of-stock' : 'in-stock'];
 }
 
@@ -104,8 +112,6 @@ function stockPairId(key: string): number {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0) || 1;
 }
 const stockRowId = (row: LocationStockTableRow): number => stockPairId(locationStockRowId(row));
-
-type StockRowModel = { key: string; ids: readonly number[]; lead: LocationStockTableRow; rows: readonly LocationStockTableRow[] };
 
 interface StockLedgerProps {
   /** Pairs loaded for the selected server-side room/aisle scope. */
@@ -376,6 +382,7 @@ export function StockLedger({
     }),
     [localSelection, painted],
   );
+  const [density, setDensity] = useTriageDensity('inventory.stock');
   const family = useMemo(
     () =>
       triageFamily(VIEW, {
@@ -391,9 +398,10 @@ export function StockLedger({
           stockLocationFace(row)?.toLowerCase() === query ||
           locationStockRackFace(row)?.toLowerCase() === query
         ),
-        renderCard: (props: TriageCardSlotProps<LocationStockTableRow, StockRowModel>) => <StockRow {...props} />,
+        renderCard: (props: TriageCardSlotProps<LocationStockTableRow, StockRowModel>) =>
+          density === 'row' ? <StockCompactRow {...props} /> : <StockRow {...props} />,
       }),
-    [],
+    [density],
   );
 
   const feed: TriageFeed<LocationStockTableRow> = {
@@ -475,15 +483,13 @@ export function StockLedger({
       const target = await placePicker.resolve(moveChoice);
       for (const row of movable) {
         try {
-          const staff = user?.staffId;
-          await commitStockRequest(stockAdjustRequest(
-            { rowId: `${row.location_barcode}:${row.sku}`, barcode: row.location_barcode!, sku: row.sku!, qty: row.qty, face: '' },
-            { direction: 'out', qty: row.qty, staffId: staff, notes: `Bulk move to ${face}` },
-          ));
-          await commitStockRequest(stockAdjustRequest(
-            { rowId: `${target}:${row.sku}`, barcode: target, sku: row.sku!, qty: row.qty, face: '' },
-            { direction: 'in', qty: row.qty, staffId: staff, notes: `Bulk move from ${stockLocationFace(row) ?? row.location_barcode}` },
-          ));
+          await postStockTransfer({
+            fromBarcode: row.location_barcode ?? '',
+            toBarcode: target,
+            sku: row.sku,
+            qty: row.qty,
+            notes: `Bulk move to ${face}`,
+          });
         } catch {
           failed += 1;
         }
@@ -502,7 +508,7 @@ export function StockLedger({
     setMoveArmed(false);
     selection.setAll(false);
     router.refresh();
-  }, [bulkBusy, movable, moveChoice, placePicker, router, selection, user]);
+  }, [bulkBusy, movable, moveChoice, placePicker, router, selection]);
 
   const bulkDelete = useCallback(async () => {
     if (bulkBusy || deletable.length === 0) return;
@@ -572,6 +578,7 @@ export function StockLedger({
       <DeskActionSlotRegistrar role="primary">{createAction}</DeskActionSlotRegistrar>
       <TriageCardList
         family={family}
+        densityControl={{ value: density, onChange: setDensity }}
         feed={feed}
         cut={cut}
         summary={
@@ -758,67 +765,13 @@ export function StockLedger({
 const StockRow = memo(function StockRow(props: TriageCardSlotProps<LocationStockTableRow, StockRowModel>) {
   const { model } = props;
   const row = model.lead;
-  const title = row.source === 'empty' ? 'Empty location' : stockRecordTitle(row);
   const bin = locationStockRackFace(row);
-  const groupStates = model.rows.map(stockRecordState);
-  const groupState = groupStates.includes('onHold')
-    ? 'onHold'
-    : groupStates.includes('inStock')
-      ? 'inStock'
-      : 'outOfStock';
-  const state = STOCK_LIFECYCLE[groupState];
-  const totalQty = model.rows.reduce((sum, item) => sum + Math.max(0, item.qty), 0);
-  // A bin's last count is the number the floor trusts; a unit placement has none, so its last move stands in.
-  const touchedIso = model.rows
-    .flatMap((item) => [item.last_counted, item.last_moved])
-    .filter((value): value is string => Boolean(value))
-    .sort()
-    .at(-1) ?? null;
-  const touched = touchedIso ? new Date(touchedIso) : null;
-  const touchedVerb = model.rows.some((item) => item.last_counted === touchedIso) ? 'Counted' : 'Moved';
-  const record = useMemo<RecordCardModel>(
-    () => ({
-      key: model.key,
-      leadId: stockRowId(row),
-      state,
-      stateIcon: LIFECYCLE_GLYPH[state.icon as keyof typeof LIFECYCLE_GLYPH],
-      stateMeaning: state.label,
-      alert: null,
-      aria: {
-        card: `${model.rows.length} product position${model.rows.length === 1 ? '' : 's'} at ${bin ?? 'no location'}, ${totalQty} on hand`,
-        open: row.source === 'empty' ? `Add SKU at ${bin ?? 'no location'}` : `Open ${title} at ${bin ?? 'no location'}`,
-        check: `Select ${model.rows.length} product position${model.rows.length === 1 ? '' : 's'} at ${bin ?? 'no location'}`,
-      },
-      channel: null,
-      person: null,
-      chips: [],
-      notes: { fixed: null, own: null },
-      status: { kind: 'none' },
-      next: null,
-      lines: model.rows.map((item) => {
-        const position = locationStockPositionFace(item);
-        return {
-          id: stockRowId(item),
-          title: item.source === 'empty' ? 'Empty location' : stockRecordTitle(item),
-          photoUrl: item.image_url,
-          facts: {
-            qty: { kind: 'count', value: item.qty },
-            // The rack face already appears once in the identity. Only a
-            // numbered child position adds a second address on its line.
-            position: position && position !== bin ? { kind: 'place', path: position, empty: 'No position' } : null,
-            sku: { kind: 'code', text: item.sku || 'Add SKU', title: item.sku ? `SKU ${item.sku}` : 'Add a SKU' },
-          },
-          alert: false,
-          alertNote: null,
-        };
-      }),
-      hiddenAlertLabel: () => '',
-    }),
-    [bin, model.key, model.rows, row, state, title, totalQty],
-  );
+  const totalQty = stockRackTotal(model.rows);
+  const record = useMemo(() => stockRecordCard(model, stockRowId), [model]);
   return (
     <RecordCard
       {...props}
+      view={VIEW}
       model={record}
       factColumns={VIEW.facts}
       testIdPrefix={VIEW.testIdPrefix}
@@ -845,35 +798,44 @@ const StockRow = memo(function StockRow(props: TriageCardSlotProps<LocationStock
           </span>
         ),
       }}
-      trailing={
-        touched && !Number.isNaN(touched.getTime())
-          ? {
-              role: 'trailing',
-              content: (
-                <span
-                  className="shrink-0 text-xs tabular-nums text-text-muted"
-                  title={`${touchedVerb} ${format(touched, 'MMM d, yyyy · h:mm a')}`}
-                  data-testid={`${VIEW.testIdPrefix}-touched`}
-                >
-                  {/* The date is formatted in the VIEWER's timezone after
-                      hydration — the server's UTC pass would paint a different
-                      day around midnight (React #418 text mismatch). */}
-                  <LocalDay iso={touched.toISOString()} verb={touchedVerb} />
-                </span>
-              ),
-            }
-          : null
-      }
-      quickLook={null}
+      // The rack's total on hand across its positions, before the last-counted date (the status).
+      trailing={{
+        role: 'trailing',
+        content: (
+          <span
+            className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto gap-1 whitespace-nowrap text-[13px] text-text-muted')}
+            title={`${totalQty} on hand across ${model.rows.length} position${model.rows.length === 1 ? '' : 's'}`}
+            data-testid={`${VIEW.testIdPrefix}-total`}
+          >
+            <RecordFactPaint face={{ kind: 'count', value: totalQty }} />
+            on hand
+          </span>
+        ),
+      }}
+      quickLook={<StockRackPeek key="peek" model={model} testIdPrefix={VIEW.testIdPrefix} />}
     />
   );
 });
 
-const subscribeNever = () => () => undefined;
-
-/** `Moved Oct 1` in the viewer's timezone; `…` until hydration commits. */
-function LocalDay({ iso, verb }: { iso: string; verb: string }) {
-  const hydrated = useSyncExternalStore(subscribeNever, () => true, () => false);
-  const at = new Date(iso);
-  return <>{hydrated && !Number.isNaN(at.getTime()) ? `${verb} ${format(at, 'MMM d')}` : '…'}</>;
-}
+/**
+ * One rack on ONE line — the Compact face of the stock list (Full is
+ * {@link StockRow}). Built from the card's own `stockRecordCard` model, so both
+ * densities paint one truth; identity is the room · rack handle the card shows.
+ */
+const StockCompactRow = memo(function StockCompactRow(props: TriageCardSlotProps<LocationStockTableRow, StockRowModel>) {
+  const { model } = props;
+  const face = useMemo(() => {
+    const row = model.lead;
+    const bin = locationStockRackFace(row);
+    const identity = `${row.room ?? 'No room'} · ${bin ?? 'No location'}`;
+    return recordRowFace(stockRecordCard(model, stockRowId), VIEW, { identity, identityWidth: 'long' });
+  }, [model]);
+  return (
+    <TriageRow
+      {...props}
+      face={face}
+      testIdPrefix={VIEW.testIdPrefix}
+      quickLook={<StockRackPeek key="peek" model={model} testIdPrefix={VIEW.testIdPrefix} />}
+    />
+  );
+});

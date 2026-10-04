@@ -10,7 +10,7 @@
  * open card's documents fill the rest (`record.rail`).
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView, type TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
 
 /** The desk's views, bare route first (`?view=`; `uploads` also rides the bare URL). */
 export const LABEL_INTAKE_VIEWS = ['uploads', 'labels', 'paperwork', 'printed'] as const;
@@ -35,7 +35,9 @@ const SHARED = {
   recordParams: [],
   chips: { owner: 'face', param: LABEL_PAIRING_PARAM },
   paging: 'client',
-  status: 'date',
+  // No status on a print card (owner 2026-09-27, `LabelCard`): the order and its products, nothing else.
+  status: 'none',
+  slots: { identity: 'order number', channel: 'brand', person: 'none', quickLook: 'none', photo: 'none' },
   // A line reads ×quantity · product title; carrier, tracking and prints live on the open record.
   facts: [{ id: 'qty', tier: 'always' }],
   sections: null,
@@ -43,8 +45,12 @@ const SHARED = {
   next: [],
 } as const satisfies Omit<TriageViewDecl, 'id' | 'listLabel' | 'testIdPrefix' | 'bodyTestId' | 'storageKeys'>;
 
-/** One card per uploaded PDF; the top-right is its upload date, the open batch is `?batch=`. */
-export const LABEL_INTAKE_UPLOADS_VIEW: TriageViewDecl = {
+/**
+ * One card per uploaded PDF (`BatchCard`): the top-right is its print state
+ * ("12 to print" / "All printed"), the upload date reads on line 2; the open
+ * batch is `?batch=`.
+ */
+export const LABEL_INTAKE_UPLOADS_VIEW = triageView({
   ...SHARED,
   id: 'label-intake.uploads',
   grain: 'batch',
@@ -55,33 +61,35 @@ export const LABEL_INTAKE_UPLOADS_VIEW: TriageViewDecl = {
   storageKeys: { pageMode: 'cf:batch-cards:scroll', scrollTop: 'cf:batch-cards:scroll-top' },
   recordParams: [LABEL_BATCH_PARAM],
   chips: { owner: 'face', param: LABEL_BATCH_PRINTING_PARAM },
+  status: 'state',
+  slots: { identity: 'PDF file name', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
   // A batch has no product lines; its pages and print state live on the open record.
   facts: [],
-};
+});
 
-export const LABEL_INTAKE_LABELS_VIEW: TriageViewDecl = {
+export const LABEL_INTAKE_LABELS_VIEW = triageView({
   ...SHARED,
   id: 'label-intake.labels',
   listLabel: 'Labels to print',
   testIdPrefix: 'label-card',
   bodyTestId: 'label-cards',
   storageKeys: { pageMode: 'cf:label-cards:scroll', scrollTop: 'cf:label-cards:scroll-top' },
-};
+});
 
-export const LABEL_INTAKE_PAPERWORK_VIEW: TriageViewDecl = {
+export const LABEL_INTAKE_PAPERWORK_VIEW = triageView({
   ...SHARED,
   id: 'label-intake.paperwork',
   listLabel: 'Paperwork to print',
   testIdPrefix: 'paperwork-card',
   bodyTestId: 'paperwork-cards',
   storageKeys: { pageMode: 'cf:paperwork-cards:scroll', scrollTop: 'cf:paperwork-cards:scroll-top' },
-};
+});
 
-export const LABEL_INTAKE_PRINTED_VIEW: TriageViewDecl = {
+export const LABEL_INTAKE_PRINTED_VIEW = triageView({
   ...SHARED,
   id: 'label-intake.printed',
   listLabel: 'Printed labels and paperwork',
   testIdPrefix: 'printed-card',
   bodyTestId: 'printed-cards',
   storageKeys: { pageMode: 'cf:printed-cards:scroll', scrollTop: 'cf:printed-cards:scroll-top' },
-};
+});

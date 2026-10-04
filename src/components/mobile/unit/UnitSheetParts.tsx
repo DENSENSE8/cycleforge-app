@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/design-system/primitives';
 import { TextField } from '@/design-system/primitives/TextField';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
@@ -65,45 +65,52 @@ export function UnitRefSheet({
   onClose: () => void;
 }) {
   return (
-    <BottomSheet open={open} onClose={busy ? () => {} : onClose} forceVariant="sheet" title={title}>
-      {/* BottomSheet portals out of the page's ModeRegion; re-declare triage so
+    <Sheet open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
+      {/* The sheet portals out of the page's ModeRegion; re-declare triage so
           the mode radius / padding / hit tokens resolve inside the sheet. */}
-      <ModeRegion mode="triage" className="pb-2">
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(e: FormEvent) => {
-            e.preventDefault();
-            onSubmit();
-          }}
-        >
-          <TextField
-            label={label}
-            value={value}
-            onChange={onChange}
-            mono
-            autoFocus
-            autoComplete="off"
-            spellCheck={false}
-            disabled={busy}
-          />
-          {note ? (
-            <TextField label="Note (optional)" value={note.value} onChange={note.onChange} multiline rows={2} disabled={busy} />
-          ) : null}
-          <SheetAlerts notice={notice} error={error} />
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            className="w-full rounded-mode"
-            icon={<Check />}
-            loading={busy}
-            disabled={busy || !value.trim()}
-          >
-            {submitLabel}
-          </Button>
-        </form>
+      <ModeRegion mode="triage" asChild>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>{title}</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(e: FormEvent) => {
+                e.preventDefault();
+                onSubmit();
+              }}
+            >
+              <TextField
+                label={label}
+                value={value}
+                onChange={onChange}
+                mono
+                autoFocus
+                autoComplete="off"
+                spellCheck={false}
+                disabled={busy}
+              />
+              {note ? (
+                <TextField label="Note (optional)" value={note.value} onChange={note.onChange} multiline rows={2} disabled={busy} />
+              ) : null}
+              <SheetAlerts notice={notice} error={error} />
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                className="w-full rounded-mode"
+                icon={<Check />}
+                loading={busy}
+                disabled={busy || !value.trim()}
+              >
+                {submitLabel}
+              </Button>
+            </form>
+          </SheetBody>
+        </SheetContent>
       </ModeRegion>
-    </BottomSheet>
+    </Sheet>
   );
 }
 

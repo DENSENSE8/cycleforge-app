@@ -42,14 +42,19 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
 
     const amazonEnabled = isInboundSourceEnabled(settings, 'amazon');
 
-    let ebay = { accounts: 0, linesFetched: 0, ingested: 0, created: 0, errors: [] as string[] };
+    let ebay = {
+      accounts: 0, ordersFetched: 0, linesFetched: 0, landed: 0, updated: 0, unchanged: 0, failed: 0, errors: [] as string[],
+    };
     if (ebayEnabled) {
       const r = await syncEbayPurchasesToReceiving(ctx.organizationId);
       ebay = {
         accounts: r.accounts,
+        ordersFetched: r.ordersFetched,
         linesFetched: r.linesFetched,
-        ingested: r.ingested,
-        created: r.created,
+        landed: r.landed,
+        updated: r.updated,
+        unchanged: r.unchanged,
+        failed: r.failed,
         errors: r.errors,
       };
     }
@@ -61,11 +66,11 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
       );
     }
     if (amazonEnabled) notes.push('Amazon inbound sync is not available yet.');
-    if (ebayEnabled && ebay.linesFetched === 0 && ebay.ingested === 0 && ebay.errors.length === 0) {
+    if (ebayEnabled && ebay.ordersFetched === 0 && ebay.errors.length === 0) {
       notes.push('No new eBay purchases found for connected buyer accounts.');
     }
 
-    if (ebay.created > 0 || ebay.ingested > 0) {
+    if (ebay.landed > 0 || ebay.updated > 0) {
       try {
         await invalidateReceivingViews(ctx.organizationId);
       } catch (err) {

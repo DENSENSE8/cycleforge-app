@@ -4,7 +4,88 @@ import { tenantQuery, tenantQueryOneTrip, withTenantTransaction } from '@/lib/te
 import type { OrgId } from '@/lib/tenancy/constants';
 import { sqlOrderOwnsShipment } from '@/lib/search/order-tracking-match-sql';
 
-export type ExceptionSourceStation = 'tech' | 'packer' | 'verify' | 'mobile' | 'fba';
+export type ExceptionSourceStation = 'tech' | 'packer' | 'verify' | 'mobile' | 'fba' | 'outbound';
+
+/**
+ * The stations whose open misses are the Fulfilled desk's "unmatched scans":
+ * a pack scan (`packer`) or a dock scan-out (`outbound`) that matched no order.
+ */
+export const OPEN_UNMATCHED_SOURCE_STATIONS = ['packer', 'outbound'] as const;
+export type UnmatchedScanSourceStation = (typeof OPEN_UNMATCHED_SOURCE_STATIONS)[number];
+
+/** Membership of an open unmatched scan over `orders_exceptions <alias>`. The org filter is the caller's. */
+export function sqlOpenUnmatchedScan(alias = 'oe'): string {
+  if (!/^[a-z_][a-z0-9_]*$/i.test(alias)) throw new Error(`invalid SQL alias: ${alias}`);
+  return `(${alias}.status = 'open' AND ${alias}.source_station IN (${OPEN_UNMATCHED_SOURCE_STATIONS.map((s) => `'${s}'`).join(', ')}))`;
+}
+
+/** One open unmatched scan — what Fulfilled copies and paints for a dock miss. */
+export interface OpenUnmatchedScan {
+  id: number;
+  tracking: string;
+  sourceStation: UnmatchedScanSourceStation;
+  staffId: number | null;
+  staffName: string | null;
+  /** PST wall clock, `YYYY-MM-DD HH24:MI:SS`. */
+  createdAt: string;
+  notes: string | null;
+}
+
+/** `GET /api/orders-exceptions/unmatched` response. */
+export interface OpenUnmatchedScansResponse {
+  count: number;
+  scans: OpenUnmatchedScan[];
+}
+
+/** Every open unmatched scan in the org, newest first. */
+export async function listOpenUnmatchedScans(orgId: OrgId): Promise<OpenUnmatchedScan[]> {
+  const result = await tenantQuery<{
+    id: number | string;
+    tracking: string;
+    source_station: UnmatchedScanSourceStation;
+    staff_id: number | null;
+    staff_name: string | null;
+    created_at: string;
+    notes: string | null;
+  }>(
+    orgId,
+    `SELECT oe.id,
+            oe.shipping_tracking_number AS tracking,
+            oe.source_station,
+            oe.staff_id,
+            COALESCE(s.name, oe.staff_name) AS staff_name,
+            to_char(oe.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS created_at,
+            oe.notes
+       FROM orders_exceptions oe
+       LEFT JOIN staff s ON s.id = oe.staff_id AND s.organization_id = oe.organization_id
+      WHERE oe.organization_id = $1
+        AND ${sqlOpenUnmatchedScan('oe')}
+      ORDER BY oe.created_at DESC, oe.id DESC`,
+    [orgId],
+  );
+  return result.rows.map((row) => ({
+    id: Number(row.id),
+    tracking: String(row.tracking ?? '').trim(),
+    sourceStation: row.source_station,
+    staffId: row.staff_id != null ? Number(row.staff_id) : null,
+    staffName: row.staff_name ?? null,
+    createdAt: String(row.created_at ?? ''),
+    notes: row.notes ?? null,
+  }));
+}
+
+/** How many open unmatched scans the org holds — the count {@link listOpenUnmatchedScans} returns. */
+export async function countOpenUnmatchedScans(orgId: OrgId): Promise<number> {
+  const result = await tenantQuery<{ count: string | number }>(
+    orgId,
+    `SELECT COUNT(*)::int AS count
+       FROM orders_exceptions oe
+      WHERE oe.organization_id = $1
+        AND ${sqlOpenUnmatchedScan('oe')}`,
+    [orgId],
+  );
+  return Number(result.rows[0]?.count ?? 0);
+}
 
 export interface OrdersExceptionRecord {
   id: number;
@@ -451,16 +532,24 @@ import type { OrderExceptionResolutionDetail, SyncProgress } from '@/lib/orders-
 
 const noopProgress: SyncProgress = () => {};
 
-export async function syncOrderExceptionsToOrders(
-  progress: SyncProgress = noopProgress,
-  orgId?: OrgId,
-): Promise<{
+/** What one exception sweep did. */
+export interface OrderExceptionSyncResult {
   scanned: number;
   matched: number;
   deleted: number;
   resolved: OrderExceptionResolutionDetail[];
   stillOpen: OrderExceptionResolutionDetail[];
-}> {
+}
+
+/**
+ * Resolve open exceptions to the orders that now carry their tracking. Callers
+ * go through `syncOrderExceptionsWithScanOutReplay` (`@/lib/outbound/held-scan-out-replay`),
+ * which also completes the scan-out of each resolved dock miss.
+ */
+export async function syncOrderExceptionsToOrders(
+  progress: SyncProgress = noopProgress,
+  orgId?: OrgId,
+): Promise<OrderExceptionSyncResult> {
   _tableEnsured = true;
 
   // Hard cap so a single sync doesn't churn through thousands of stale rows.

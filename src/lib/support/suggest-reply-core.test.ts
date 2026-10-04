@@ -43,6 +43,7 @@ function fakes(over: Partial<SuggestDeps> = {}) {
   const calls: Array<{ system: string; user: string; images?: string[] }> = [];
   const deps: SuggestDeps = {
     queryRag: async () => ({ answer: '', sources: [], chunks: [] }),
+    searchRecords: async () => [],
     generate: async (p) => {
       calls.push({ system: p.system, user: p.user, images: p.images });
       return 'Here is your draft.';
@@ -152,6 +153,53 @@ test('a RAG failure degrades to an ungrounded draft, never a failed request', as
   );
   assert.equal(result.grounded, false);
   assert.equal(result.suggestion, 'Here is your draft.');
+});
+
+test('service docs down still drafts from OUR records — and a record search failure never fails the draft', async () => {
+  const order = hit({ entityType: 'order', id: 4989, title: 'Order 02-14684-13689', subtitle: 'Shipped' });
+  const { deps, calls } = fakes({
+    queryRag: async () => {
+      throw new Error('rag down');
+    },
+    searchRecords: async () => [order],
+  });
+  const result = await suggestSupportReplyCore(
+    { ticketId: 1, question: 'Where is order 02-14684-13689?', vision: 'local-only' },
+    deps,
+  );
+  assert.match(calls[0].user, /Order 02-14684-13689 \(Shipped\)/);
+  assert.deepEqual(result.searchHits.map((h) => h.id), [4989]);
+
+  const failing = fakes({
+    searchRecords: async () => {
+      throw new Error('db down');
+    },
+  });
+  const fallback = await suggestSupportReplyCore(
+    { ticketId: 1, question: 'Is this covered?', vision: 'local-only' },
+    failing.deps,
+  );
+  assert.equal(fallback.suggestion, 'Here is your draft.');
+});
+
+test('the conversation reaches the model, and the message being answered appears once', async () => {
+  const { deps, calls } = fakes();
+  await suggestSupportReplyCore(
+    {
+      ticketId: 1,
+      question: 'Still no tracking?',
+      thread: [
+        { role: 'customer', text: 'Where is my radio?' },
+        { role: 'agent', text: 'It ships Monday.' },
+        { role: 'customer', text: 'Still no tracking?' },
+      ],
+      vision: 'local-only',
+    },
+    deps,
+  );
+  const user = calls[0].user;
+  assert.match(user, /Customer: Where is my radio\?\n\nUs: It ships Monday\./);
+  assert.equal(user.split('Still no tracking?').length - 1, 1);
 });
 
 test('an empty generation is a 502, not a blank draft handed to an agent', async () => {

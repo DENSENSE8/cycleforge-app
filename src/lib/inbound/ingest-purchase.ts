@@ -1,4 +1,4 @@
-/** ingest-purchase — the ONE UPSERT that lands an external purchase onto the Incoming spine, shared by the Phase 2 manual bridge import AND… */
+/** ingest-purchase — the line-level UPSERT under `ingestInboundOrder` (its only caller): one purchase line onto the Incoming spine on the order's transaction. Order sources (form, CSV, chat, eBay sync) build an `InboundOrderDraft` and call `ingestInboundOrder`, never this. */
 
 import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -59,6 +59,13 @@ interface IngestPurchaseInput {
   receivingType?: string | null;
   unitCostCents?: number | null;
   currency?: string | null;
+  /**
+   * The operator's own re-save of an internal order (form · CSV · chat): a
+   * provided SKU / title / catalog item / listing replaces the line's, so a
+   * corrected re-submit fixes a wrong one. Marketplace re-syncs leave it unset
+   * and only fill blanks, so they never clobber an operator correction.
+   */
+  operatorResave?: boolean;
   /**
    * The tracking number's shipment, registered by the caller BEFORE its
    * transaction. Registration runs on its own connection, so a multi-line
@@ -311,6 +318,18 @@ export async function ingestPurchase(
           WHERE id = $1 AND organization_id = $8::uuid`,
         [receivingLineId, inboundOrderId, lineKey, quantityExpected, unitCostCents, currency, receivingType, orgId],
       );
+      if (input.operatorResave) {
+        await client.query(
+          `UPDATE receiving_line
+              SET sku = COALESCE($2, sku),
+                  item_name = COALESCE($3, item_name),
+                  sku_catalog_id = COALESCE($4, sku_catalog_id),
+                  listing_url = COALESCE($5, listing_url),
+                  updated_at = NOW()
+            WHERE id = $1 AND organization_id = $6::uuid`,
+          [receivingLineId, input.sku?.trim() || null, input.itemName?.trim() || null, skuCatalogId, listingUrl, orgId],
+        );
+      }
     }
 
     // Primary purchase-identity link + spine-cache dual-write + marketplace facts,

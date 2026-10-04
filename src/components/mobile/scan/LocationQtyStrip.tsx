@@ -1,13 +1,12 @@
 'use client';
 
-/** One paired SKU on a scanned location: */
+/**
+ * The ± counter for one paired SKU on a scanned location. Identity belongs to
+ * the host record (the stock position sheet header), never repeated here.
+ */
 
 import { Minus, Plus, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
-import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
-import { ITEM_RECORD_MOBILE_TITLE } from '@/design-system/tokens/item-record-mobile';
-import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import type { LocationBindContent } from './location-bind-types';
 
@@ -27,44 +26,10 @@ export function LocationQtyStrip({
   onOpenKeypad: () => void;
 }) {
   const live = Math.max(0, content.qty + pendingDelta);
-  const title = content.productTitle?.trim() || content.sku;
   const hasPending = pendingDelta !== 0;
 
   return (
-    <div
-      className={cn(
-        'flex flex-col gap-2 border border-border-soft bg-surface-card p-2',
-        cornerClass('surface'),
-      )}
-    >
-      {/* Identity band: */}
-      <div className="flex items-start gap-3">
-        <ItemRecordThumb
-          imageUrl={content.imageUrl}
-          plainEmpty
-          className={cn('self-start', cornerClass('field'))}
-        />
-        <div className={cn(ITEM_RECORD_MOBILE_TITLE.band, 'flex-1 justify-start')}>
-          <p className={ITEM_RECORD_MOBILE_TITLE.face}>{title}</p>
-          <div className={ITEM_RECORD_MOBILE_TITLE.foot}>
-            <span className="min-w-0 truncate font-mono text-role-caption text-text-soft">
-              {content.sku}
-            </span>
-            {/* An unreconciled placeholder is real stock that CANNOT be sold. */}
-            {isProvisionalSku(content.sku) && (
-              <span
-                className={cn(
-                  'shrink-0 bg-amber-100 px-1.5 text-role-micro font-semibold text-amber-800',
-                  cornerClass('chip'),
-                )}
-              >
-                On hold
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
+    <div className="flex flex-col gap-2">
       {/* The pending line only exists while a burst is uncommitted. */}
       {hasPending && (
         <div className="flex items-center gap-2">

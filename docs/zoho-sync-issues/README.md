@@ -27,7 +27,6 @@ Three independent code paths call `updatePurchaseOrder` with line-item descripti
 |------|---------|-------|
 | **Serial scan** | `POST /api/receiving/scan-serial` → `syncSerialToZohoPo` | `src/app/api/receiving/scan-serial/route.ts`, `src/lib/receiving/zoho-serial-sync.ts` |
 | **Carton receive** | `POST /api/receiving/mark-received-po` (background `after()`) | `src/app/api/receiving/mark-received-po/route.ts` |
-| **Single-line receive (mobile)** | `POST /api/receiving/mark-received` | `src/app/api/receiving/mark-received/route.ts` |
 
 Shared merge helper:
 
@@ -119,10 +118,6 @@ Each scan does its own `GET` → merge → `PUT` of the **full** `line_items` ar
 - Lose another line’s prior merge on PUT
 - Re-apply merges and produce duplicate-looking description segments under race
 
-### 5. Mobile path: one POST per line
-
-`ReceivingQaActionSheet` calls `POST /api/receiving/mark-received` **once per line**. Each call can PATCH description + notes for the same Zoho PO when multiple lines share one PO.
-
 ### 6. Minor: serial note format inconsistency
 
 - `syncSerialToZohoPo` passes raw serial into `lineItemIdToSerialNote` (e.g. `ABC123`)
@@ -159,7 +154,7 @@ Pick **one source of truth** for when Zoho is updated. Do not patch from both sc
 ### Option A — Receive-only Zoho writes (recommended for consistency)
 
 - Remove or gate `syncSerialToZohoPo` in `scan-serial` `after()` block
-- Keep all description + notes updates in `mark-received-po` (and `mark-received` for mobile if still needed)
+- Keep all description + notes updates in `mark-received-po`
 - **Pros:** One batch per carton; serials already in `serial_units` before receive
 - **Cons:** Zoho lags until Receive; operators who scan but never receive see no Zoho update
 
@@ -189,7 +184,7 @@ If both paths must remain:
 ## Suggested implementation order
 
 1. **Confirm with ops** — Should Zoho update on scan, on receive, or both?
-2. **Quick win** — Fix notes dedupe in `mark-received-po` (and `mark-received`) to key off serials, not full timestamped line
+2. **Quick win** — Fix notes dedupe in `mark-received-po` to key off serials, not full timestamped line
 3. **Structural** — Disable duplicate writer (Option A or B)
 4. **Hardening** — Per-PO mutex or queue if concurrent scans stay
 5. **Tests** — E2E or integration: multi-line PO, scan A + scan B + receive → assert single notes append per serial set and idempotent description
@@ -202,7 +197,6 @@ If both paths must remain:
 |---------|------|
 | Scan → Zoho | `src/lib/receiving/zoho-serial-sync.ts` |
 | Receive → Zoho (batch) | `src/app/api/receiving/mark-received-po/route.ts` (~679–898) |
-| Mobile receive → Zoho | `src/app/api/receiving/mark-received/route.ts` (~680–724) |
 | Description merge | `src/lib/zoho.ts` → `mergeSerialNoteIntoLineDescription`, `buildPurchaseOrderLineItemsForDescriptionPut` |
 | Receive UI entry | `src/components/receiving/workspace/line-edit/hooks/useReceiveAction.tsx` |
 | Scan API entry | `src/app/api/receiving/scan-serial/route.ts` |

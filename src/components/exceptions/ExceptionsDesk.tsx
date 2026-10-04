@@ -26,6 +26,7 @@ import {
   type TriageSelectionPort,
 } from '@/design-system/components/triage-card-list/TriageCardList';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
+import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import type { StateName } from '@/design-system/tokens/lifecycle';
@@ -48,6 +49,7 @@ import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { EXCEPTIONS_VIEW } from '@/lib/triage/views';
 import { ExceptionCard } from './cards/ExceptionCard';
+import { ExceptionCompactRow } from './cards/ExceptionCompactRow';
 import {
   exceptionBands,
   exceptionCardId,
@@ -70,6 +72,7 @@ const KIND_TONE: Readonly<Record<ExceptionKind, StateName>> = {
   fbm: 'danger',
   labels: 'danger',
   paperwork: 'warning',
+  unmatched: 'warning',
   pairs: 'danger',
   bins: 'danger',
   tracking: 'warning',
@@ -230,6 +233,8 @@ export function ExceptionsDesk({ basePath, lock, query }: ExceptionsDeskProps) {
     [writeNote],
   );
   const showKind = !kind;
+  // Compact | Full, saved per person.
+  const [density, setDensity] = useTriageDensity('exceptions.list');
   const family = useMemo(
     () => ({
       ...triageFamily(VIEW, {
@@ -237,12 +242,17 @@ export function ExceptionsDesk({ basePath, lock, query }: ExceptionsDeskProps) {
         groupKey: exceptionCardKey,
         cardModel: exceptionCardModel,
         exactFind: exceptionExactFind,
-        renderCard: (props) => <ExceptionCard {...props} showKind={showKind} onSaveNote={saveNote} />,
+        renderCard: (props) =>
+          density === 'row' ? (
+            <ExceptionCompactRow {...props} />
+          ) : (
+            <ExceptionCard {...props} showKind={showKind} onSaveNote={saveNote} />
+          ),
       }),
       // One section per status tag: the word once, with its count.
       section: exceptionSection(rows),
     }),
-    [showKind, saveNote, rows],
+    [showKind, saveNote, rows, density],
   );
 
   // The scope's total from the hub's counts — the same predicate as its rows.
@@ -287,6 +297,7 @@ export function ExceptionsDesk({ basePath, lock, query }: ExceptionsDeskProps) {
   return (
     <TriageCardList
       family={family}
+      densityControl={{ value: density, onChange: setDensity }}
       feed={feed}
       cut={cut}
       summary={

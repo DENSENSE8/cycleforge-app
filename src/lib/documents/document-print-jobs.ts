@@ -33,6 +33,8 @@ export interface DocumentPrintJobInput {
   packerLogId?: number | null;
   documentId?: number | null;
   productManualId?: number | null;
+  /** A paired shipping label printed before it has a documents row. */
+  labelIngestionId?: number | null;
   documentType: DocumentPrintJobType;
   status: DocumentPrintJobStatus;
   printerProfileId?: number | null;
@@ -50,6 +52,7 @@ export interface DocumentPrintJobRow {
   packer_log_id: number | null;
   document_id: number | null;
   product_manual_id: number | null;
+  label_ingestion_id: number | null;
   document_type: string;
   status: string;
   printer_profile_id: number | null;
@@ -70,9 +73,9 @@ export async function recordDocumentPrintJob(
     orgId,
     `INSERT INTO document_print_jobs
        (organization_id, order_id, packer_log_id, document_id, product_manual_id,
-        document_type, status, printer_profile_id, printnode_job_id, is_reprint,
-        reprint_of_id, actor_staff_id, client_event_id, error)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, false), $11, $12, $13, $14)
+        label_ingestion_id, document_type, status, printer_profile_id, printnode_job_id,
+        is_reprint, reprint_of_id, actor_staff_id, client_event_id, error)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11, false), $12, $13, $14, $15)
      ON CONFLICT (organization_id, client_event_id) WHERE client_event_id IS NOT NULL
        DO NOTHING
      RETURNING *`,
@@ -82,6 +85,7 @@ export async function recordDocumentPrintJob(
       input.packerLogId ?? null,
       input.documentId ?? null,
       input.productManualId ?? null,
+      input.labelIngestionId ?? null,
       input.documentType,
       input.status,
       input.printerProfileId ?? null,

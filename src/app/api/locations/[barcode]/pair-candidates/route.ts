@@ -4,6 +4,7 @@ import { getLocationByBarcode } from '@/lib/neon/location-queries';
 import {
   listRoomPairCandidates,
   listSkuStockedAt,
+  listSkuStockPhotoIds,
 } from '@/lib/neon/pair-candidates-queries';
 
 /** GET /api/locations/[barcode]/pair-candidates → products already stocked in this location's ROOM (the idle list on the pairing screen —… */
@@ -20,8 +21,11 @@ export async function GET(
 
   const sku = new URL(req.url).searchParams.get('sku')?.trim();
   if (sku) {
-    const stockedAt = await listSkuStockedAt(sku, orgId);
-    return NextResponse.json({ success: true, stockedAt });
+    const [stockedAt, photoIds] = await Promise.all([
+      listSkuStockedAt(sku, orgId),
+      listSkuStockPhotoIds(sku, orgId),
+    ]);
+    return NextResponse.json({ success: true, stockedAt, photoIds });
   }
 
   const location = await getLocationByBarcode(code, orgId);
@@ -32,10 +36,7 @@ export async function GET(
     return NextResponse.json({ success: true, candidates: [], room: null });
   }
 
-  const candidates = await listRoomPairCandidates(
-    { locationId: location.id, room: location.room ?? null },
-    orgId,
-  );
+  const { room, candidates } = await listRoomPairCandidates({ locationId: location.id }, orgId);
 
-  return NextResponse.json({ success: true, candidates, room: location.room ?? null });
+  return NextResponse.json({ success: true, candidates, room });
 }

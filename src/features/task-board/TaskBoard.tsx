@@ -20,11 +20,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { motion } from '@/design-system/motion';
-import { DESK_RECORD_ANCHOR_ATTR, DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
+import { DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import { TICKET_STATUSES, TICKET_STATUS_FACE, type TicketStatus } from '@/design-system/tokens/ticket-status';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { registerNavIntent } from '@/lib/nav/intents';
@@ -41,6 +41,7 @@ import { getCurrentPSTDateKey, warehouseCivilTimeToInstant } from '@/utils/date'
 import {
   TASK_BOARD_VIEW_LABEL,
   isTaskBoardOpen,
+  taskBoardGroups,
   taskBoardNextStep,
   taskBoardStatusMatches,
   type TaskBoardRow,
@@ -99,6 +100,7 @@ export function TaskBoard() {
   useSurfacePaintMark(TASK_BOARD_PRIMARY_PAINT_MARK, !board.loading);
 
   const { visible, projects, view, layout, openKey, composing, nowMs, setOpen, setParams, toggleDone, patchTask } = board;
+  const { group, sort, setGroup, setSort } = board;
   const { checklist, checklistPinned, checklistColumnOn, setChecklistColumn } = board;
   const [recordTab, setRecordTab] = useState<RecordTab>('overview');
   const [briefReaderOpen, setBriefReaderOpen] = useState(false);
@@ -107,13 +109,20 @@ export function TaskBoard() {
   const [selection, setSelection] = useState<ReadonlySet<string>>(EMPTY_SELECTION);
   const anchorKey = useRef<string | null>(null);
 
-  // Projects view: one section per project, busiest first. Otherwise one flat section.
+  // P3 Group by (`taskBoardGroups`): each group a sticky heading under a hairline, keeping the board's
+  // order inside it (owner 2026-10-03). Type is the default — checklist · Support follow-ups · Long-term
+  // projects · Standalone tasks; a single type IS the view, so it stays one flat list, as does No grouping.
+  // A project group's heading paints that project's roll-up (progress, people, next due).
   const sections = useMemo<TaskTableSection[]>(() => {
-    if (view !== 'project') return [{ key: 'all', project: null, rows: visible }];
-    return projects
-      .map((project) => ({ key: project.name, project, rows: visible.filter((row) => row.project === project.name) }))
-      .filter((section) => section.rows.length > 0);
-  }, [view, visible, projects]);
+    const groups = taskBoardGroups(visible, group, nowMs);
+    if (group === 'none' || (group === 'type' && groups.length < 2)) return [{ key: 'all', project: null, rows: visible }];
+    return groups.map(({ rows, ...heading }) => ({
+      key: heading.key,
+      group: heading,
+      project: heading.project ? (projects.find((project) => project.name === heading.project) ?? null) : null,
+      rows,
+    }));
+  }, [group, nowMs, visible, projects]);
   // J / K read the screen left → right, top → bottom: the pinned checklist, then the list or each column.
   const mainOrder = useMemo(
     () => (layout === 'columns' ? board.columns.flatMap((c) => c.rows) : sections.flatMap((s) => s.rows)),
@@ -358,13 +367,12 @@ export function TaskBoard() {
   return (
     <DeskPageLayout bare className="h-full">
       <DeskActionSlotRegistrar>
-        <DeskHeaderAction variant="primary" size="sm" onClick={() => setComposing(true)} data-testid="task-board-new-task">
-          <Plus className="size-3.5" />
-          New task
-          <KeyboardKey size="xs" tone="inverse" className="ml-1">
-            N
-          </KeyboardKey>
-        </DeskHeaderAction>
+        <HoverTooltip label="New task" shortcut="N" placement="below" asChild>
+          <DeskHeaderAction variant="primary" size="sm" onClick={() => setComposing(true)} data-testid="task-board-new-task">
+            <Plus className="size-3.5" />
+            New task
+          </DeskHeaderAction>
+        </HoverTooltip>
       </DeskActionSlotRegistrar>
 
       <div className="flex h-full min-h-0 w-full min-w-0 bg-surface-canvas p-3" {...{ [LIST_KEY_OWNER_ATTR]: '' }}>
@@ -382,6 +390,7 @@ export function TaskBoard() {
               <TaskRecordActions
                 row={openRecord}
                 task={openTask}
+                tab={recordTab}
                 onToggle={() => toggleDone(openRecord)}
                 onStatus={(anchor) => openStatusPicker(openRecord, anchor)}
                 onReply={() => setRecordTab('ticket')}
@@ -393,7 +402,10 @@ export function TaskBoard() {
           }
           list={
             <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <div className="shrink-0" {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }}>
+              {/* No DESK_RECORD_ANCHOR_ATTR here (owner 2026-10-03): every control in this strip — scope, status, ticket
+                  status chips, select-all, layout — acts on the LIST. In place the list is not on screen, so the record
+                  covers the strip from the top; in Split the list is beside the record and keeps its controls. */}
+              <div className="shrink-0">
                 <TaskBulkBar
                   selectedCount={selected.size}
                   totalCount={order.length}
@@ -416,6 +428,14 @@ export function TaskBoard() {
                   onLayout={setLayout}
                   checklistOn={checklistColumnOn}
                   onChecklist={setChecklistColumn}
+                  display={{
+                    group,
+                    sort,
+                    // Lit off the house default: Type (Long-term projects: Project) · Urgency.
+                    hot: sort !== 'urgency' || group !== (view === 'project' ? 'project' : 'type'),
+                    onGroup: setGroup,
+                    onSort: setSort,
+                  }}
                   error={board.error}
                 />
                 {showTicketRail ? (

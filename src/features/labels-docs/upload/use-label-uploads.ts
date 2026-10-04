@@ -10,6 +10,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import { uploadLabelBatch } from '@/lib/label-batches/http-client';
+import type { LabelBatchRow } from '@/lib/label-batches/contracts';
 
 export type UploadStatus = 'uploading' | 'added' | 'replayed' | 'failed';
 
@@ -26,10 +27,16 @@ export interface LabelUploadItem {
   summary: string | null;
 }
 
-function pagesSummary(added: number, alreadyOnFile: number, pageCount: number, replayed: boolean): string {
-  if (replayed) return `Already uploaded · ${pageCount} label${pageCount === 1 ? '' : 's'}`;
-  const parts = [`${added} label${added === 1 ? '' : 's'} added`];
-  if (alreadyOnFile > 0) parts.push(`${alreadyOnFile} already on file`);
+/** "38 labels added · 31 paired · 5 to confirm · 2 unpaired" — what landed, and where each page went. */
+function pagesSummary(added: number, alreadyOnFile: number, batch: LabelBatchRow, replayed: boolean): string {
+  const { pageCount, pairedPages, confirmPages } = batch;
+  const parts = replayed
+    ? [`Already uploaded · ${pageCount} label${pageCount === 1 ? '' : 's'}`]
+    : [`${added} label${added === 1 ? '' : 's'} added`, ...(alreadyOnFile > 0 ? [`${alreadyOnFile} already on file`] : [])];
+  parts.push(`${pairedPages} paired`);
+  if (confirmPages > 0) parts.push(`${confirmPages} to confirm`);
+  const unpaired = pageCount - pairedPages - confirmPages;
+  if (unpaired > 0) parts.push(`${unpaired} unpaired`);
   return parts.join(' · ');
 }
 
@@ -84,7 +91,7 @@ export function useLabelUploads({
               patch(key, {
                 status: result.replayed ? 'replayed' : 'added',
                 batchId: result.batch.id,
-                summary: pagesSummary(added, alreadyOnFile, result.batch.pageCount, result.replayed),
+                summary: pagesSummary(added, alreadyOnFile, result.batch, result.replayed),
                 reason: failed.length > 0 ? `${failed.length} page(s) failed — p${failed[0]!.pageNumber}: ${failed[0]!.reason}` : null,
               });
               uploaded.current?.(result.batch.id);

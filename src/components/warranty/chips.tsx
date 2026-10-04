@@ -8,9 +8,17 @@ import {
   type WarrantyClaimStatus,
 } from '@/lib/warranty/types';
 import type { WarrantyClockBasis } from '@/lib/warranty/clock';
-// One SoT for the countdown face — a bound Warranty column and this chip must
-// never disagree about what "14d left" means.
-import { warrantyClockLabel } from '@/lib/tables/field-catalog/warranty-resolve';
+
+/**
+ * The countdown face. `null` days is "No date" rather than a blank: a claim
+ * whose clock has not started is a different thing from one with no cover left.
+ */
+function warrantyClockLabel(daysRemaining: number | null): string {
+  if (daysRemaining == null) return 'No date';
+  if (daysRemaining < 0) return 'Expired';
+  if (daysRemaining === 0) return 'Last day';
+  return `${daysRemaining}d left`;
+}
 
 /** Tone token → slim chip classes (mirrors the receiving display-primitive tone maps). */
 const TONE_CLASSES: Record<string, string> = {

@@ -16,6 +16,8 @@ import { useReceivingSelectionPort } from '@/components/receiving/use-receiving-
 import { ReceivingSelectionVerbs } from '@/components/receiving/ReceivingSelectionVerbs';
 import { INCOMING_PIPELINE_VIEW } from '@/lib/triage/views';
 import { IncomingDeliveryCard } from './cards/IncomingDeliveryCard';
+import { IncomingDeliveryRow } from './cards/IncomingDeliveryRow';
+import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { receiptCardKey, receiptCardModel, type ReceiptCardModel } from './cards/receipt-card-model';
 import { IncomingStatusChips, type IncomingStatusChipSet } from './IncomingStatusChips';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -265,6 +267,7 @@ function IncomingDeliveryCards({
   notice: string | null;
   record: TriageRecordSlot;
 }) {
+  const [density, setDensity] = useTriageDensity('incoming.pipeline');
   const family = useMemo(() => {
     const base = triageFamily(VIEW, {
       rowId: receivingLineId,
@@ -272,11 +275,11 @@ function IncomingDeliveryCards({
       cardModel: receiptCardModel,
       state: (group) => purchaseDeliveryState(group.rows),
       exactFind: receiptExactFind,
-      renderCard: (props) => <IncomingDeliveryCard {...props} />,
+      renderCard: (props) => (density === 'row' ? <IncomingDeliveryRow {...props} /> : <IncomingDeliveryCard {...props} />),
     });
     // The Exceptions lane wears this view until it is a nav view of its own.
     return lane === 'exceptions' ? { ...base, listLabel: 'Deliveries that need a person' } : base;
-  }, [lane]);
+  }, [lane, density]);
 
   const selection = useReceivingSelectionPort(selectedIds, onToggleRow, rows);
 
@@ -302,6 +305,7 @@ function IncomingDeliveryCards({
       feed={feed}
       cut={cut}
       record={record}
+      densityControl={{ value: density, onChange: setDensity }}
       summary={statusChips}
       bulk={<ReceivingSelectionVerbs noun="deliveries" />}
       banner={

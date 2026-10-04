@@ -291,6 +291,8 @@ const LABEL_INTAKE_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_LABEL_INTAKE_PATH,
   owns: {
     view: paramEnum(LABEL_INTAKE_VIEWS),
+    /** The Buy a label compose record (owner 2026-10-01) — `?buy=1` swaps the record plane. */
+    buy: paramFlag,
     /** Uploads: the Uploaded window (warehouse civil days, inclusive). */
     from: paramDateKey,
     to: paramDateKey,

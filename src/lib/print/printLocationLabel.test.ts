@@ -47,3 +47,16 @@ test('rack sticker uses rack code and still omits room / kicker', () => {
   assert.equal(face.hri, undefined);
   assert.doesNotMatch(buildFaceInfoHtml(face).infoHtml, /RACK|BIN|Lv /);
 });
+
+test('caption paints bottom-left under the code; blank caption paints nothing', () => {
+  const face = locationLabelToFace({ segments: BIN, gln: GLN, caption: '  Arrival · Priority ' });
+  assert.equal(face.bottomLeft, 'Arrival · Priority');
+  assert.equal(face.center, locationCode(BIN));
+  const html = buildFaceInfoHtml(face);
+  assert.match(html.infoHtml, /<div class="lcode">[^<]+<\/div><div class="lcap">Arrival · Priority<\/div>/);
+  assert.match(html.infoCss, /\.lcap:empty\{display:none\}/);
+
+  const bare = locationLabelToFace({ segments: BIN, gln: GLN, caption: null });
+  assert.equal(bare.bottomLeft, '');
+  assert.match(buildFaceInfoHtml(bare).infoHtml, /<div class="lcap"><\/div>/);
+});

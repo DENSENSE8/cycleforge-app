@@ -20,9 +20,11 @@ import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview'
 import { navGoDestinations } from '@/lib/nav/go-keys';
 import { applyChildTarget, filterPageChildren, getSidebarPageNav } from '@/lib/sidebar-navigation';
 import { KeyboardKey } from '@/design-system/primitives';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { aiTransition } from '@/design-system/ai';
+import { motionDuration, motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
@@ -207,6 +209,8 @@ export type KeyHintRow = {
   current?: boolean;
   /** Optional category label ("Outbound", "Inbound"): painted once, muted, above the first row of each run. */
   group?: string;
+  /** A live count the row's verb holds (the pasted list's size) — ticks with AnimatedStat. */
+  count?: number;
 };
 
 /**
@@ -237,10 +241,22 @@ export const GO_HINT_LEAD = (
  * The key hint card — HOTKEY FIRST: each row's key sits at the far left,
  * flush against its icon (`[S]⌂ Shipping`, `[4]⌂ To ship`), one row per
  * choice. It teaches, it is never pressed: the sidebar switchers paint it on
- * hover, the go HUD while `G` is armed with no header strip.
+ * hover, the go HUD while `G` is armed with no header strip. `cascade`: the
+ * rows settle top → bottom, each row as ONE unit (the search well's card).
  */
-export function KeyHintCard({ rows, lead }: { rows: readonly KeyHintRow[]; lead?: ReactNode }) {
+export function KeyHintCard({
+  rows,
+  lead,
+  cascade = false,
+}: {
+  rows: readonly KeyHintRow[];
+  lead?: ReactNode;
+  cascade?: boolean;
+}) {
   const { pressed } = useGoKeys();
+  const rowPresence = useMotionPresence(motionPresence.findKeyRow);
+  const rowTransition = useMotionTransition(motionTransition.findKeyRow);
+  const reduce = useReducedMotion();
   return (
     <div className={cn('min-w-56 border border-border-soft bg-surface-card p-1 text-text-default', DROPDOWN_SHELL_CORNER, elevationClass('overlay'))}>
       {lead ? <p className="flex items-center gap-1.5 px-2 pb-1 pt-0.5 text-role-caption text-text-muted">{lead}</p> : null}
@@ -257,8 +273,17 @@ export function KeyHintCard({ rows, lead }: { rows: readonly KeyHintRow[]; lead?
               {row.group}
             </p>
           ) : null}
-          <div
+          <motion.div
             data-nav-key-hint-row={row.id}
+            {...(cascade
+              ? {
+                  initial: rowPresence.initial,
+                  animate: rowPresence.animate,
+                  transition: reduce
+                    ? rowTransition
+                    : { ...rowTransition, delay: (rowIndex + 1) * motionDuration.findKeyRowStagger },
+                }
+              : {})}
             className={cn('flex items-center gap-2 px-2 py-1.5 text-role-body', row.current && 'bg-surface-sunken font-medium', DROPDOWN_SHELL_CORNER)}
           >
             <span className="flex shrink-0 items-center gap-1">
@@ -274,7 +299,8 @@ export function KeyHintCard({ rows, lead }: { rows: readonly KeyHintRow[]; lead?
               {Icon ? <Icon aria-hidden className={navIconStrokeClass(cn('size-4 shrink-0', row.iconTone ?? 'text-text-default'))} /> : null}
             </span>
             <span className="min-w-0 flex-1 truncate">{row.label}</span>
-          </div>
+            {row.count !== undefined ? <AnimatedStat value={row.count} className="shrink-0 text-role-caption text-text-muted" /> : null}
+          </motion.div>
           </Fragment>
         );
       })}
@@ -326,21 +352,32 @@ export function useKeyHintAnchor(enabled: boolean) {
  * and out exactly like the AI chat's context ring card (`KEY_HINT_POP` ·
  * `aiTransition.morph`), growing from its top-left corner — the edge it
  * hangs from. `at = null` plays the exit. Never pressed.
+ *
+ * `enter="drop"` (the search well's card, hung under the well): it drops
+ * out of a soft blur instead (`motionPresence.findKeyCard`, ease-in-out,
+ * leaving faster than it came) and its rows cascade top → bottom.
  */
 export function KeyHintPopover({
   at,
   rows,
   lead,
   id,
+  enter = 'pop',
 }: {
   at: KeyHintAt | null;
   rows: readonly KeyHintRow[];
   lead?: ReactNode;
   /** `data-nav-key-hint` value, for probes. */
   id: string;
+  enter?: 'pop' | 'drop';
 }) {
-  const presence = useMotionPresence(KEY_HINT_POP);
-  const transition = useMotionTransition(aiTransition.morph);
+  const drop = enter === 'drop';
+  const pop = useMotionPresence(KEY_HINT_POP);
+  const dropped = useMotionPresence(motionPresence.findKeyCard);
+  const popTransition = useMotionTransition(aiTransition.morph);
+  const dropIn = useMotionTransition(motionTransition.findKeyCardIn);
+  const dropOut = useMotionTransition(motionTransition.findKeyCardOut);
+  const presence = drop ? dropped : pop;
   if (typeof document === 'undefined') return null;
   return createPortal(
     <AnimatePresence>
@@ -351,8 +388,8 @@ export function KeyHintPopover({
           data-nav-key-hint={id}
           initial={presence.initial}
           animate={presence.animate}
-          exit={presence.exit}
-          transition={transition}
+          exit={drop ? { ...presence.exit, transition: dropOut } : presence.exit}
+          transition={drop ? dropIn : popTransition}
           style={
             'right' in at
               ? { position: 'fixed', right: at.right, top: at.top, transformOrigin: 'right top' }
@@ -362,7 +399,7 @@ export function KeyHintPopover({
           }
           className="pointer-events-none z-panelPopover"
         >
-          <KeyHintCard rows={rows} lead={lead} />
+          <KeyHintCard rows={rows} lead={lead} cascade={drop} />
         </motion.div>
       ) : null}
     </AnimatePresence>,

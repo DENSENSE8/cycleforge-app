@@ -52,11 +52,7 @@ import {
 import { formatDateTimePST } from '@/utils/date';
 import { toast } from '@/lib/toast';
 import { resolveCheckRowCarrierTracking } from '@/lib/receiving/check-zoho-received-carrier';
-import type {
-  CheckZohoReceivedRow,
-  CheckZohoReceivedStats,
-  CheckZohoReceivedVerdict,
-} from '@/lib/receiving/check-zoho-received';
+import type { CheckZohoReceivedRow, CheckZohoReceivedStats } from '@/lib/receiving/check-zoho-received';
 import type { CheckZohoReceivedWatchState } from '@/lib/receiving/watch-state';
 import type { TrackingRemovalStatusResult } from '@/lib/receiving/tracking-removal-status';
 
@@ -99,27 +95,10 @@ const WATCH_LABEL: Record<CheckZohoReceivedWatchState, string> = {
   unknown: 'No local record',
 };
 
-/**
- * The reconciliation verdicts worth a chip. `open` and `settled` are the two
- * normal outcomes and say nothing an operator must act on, so they stay quiet —
- * a chip on every row is a chip on no row.
- */
-const VERDICT_CHIP: Partial<
-  Record<CheckZohoReceivedVerdict, { label: string; className: string; title: string }>
-> = {
-  erp_ahead: {
-    label: 'No warehouse record',
-    className: 'bg-rose-50 text-rose-700 ring-rose-200',
-    title:
-      'The vendor side considers this PO received, but nothing here has been unboxed against it. No continuous feed reports this state — a Zoho-received PO is filtered out of Incoming and out of Delivered · not unboxed.',
-  },
-  warehouse_ahead: {
-    label: 'Zoho behind',
-    className: 'bg-amber-50 text-amber-800 ring-amber-200',
-    title:
-      'The warehouse has already received this, but the vendor side has not caught up. Push to the purchasing source or re-sync.',
-  },
-};
+/** Physical receipt only — a dock scan or an unbox here. The ERP's status never decides it. */
+function physicallyReceived(row: CheckZohoReceivedRow): boolean {
+  return Boolean(row.local?.scanned || row.local?.unboxed);
+}
 
 const CHIP_CLASS =
   'inset-chip rounded text-role-micro ring-1 ring-inset';
@@ -176,7 +155,6 @@ function checkCopyBlock(rows: CheckZohoReceivedRow[]): string[] {
     const bits = [carrier ?? r.tracking];
     if (r.po_number) bits.push(`PO ${r.po_number}`);
     if (r.vendor_name) bits.push(r.vendor_name);
-    if (r.status) bits.push(r.status);
     if (r.reason !== 'matched') bits.push(reasonLabel(r.reason));
     if (r.local) bits.push(WATCH_LABEL[r.local.watch]);
     return bits.join('\t');
@@ -225,13 +203,9 @@ function CheckResultRow({
   row: CheckZohoReceivedRow;
   onFocusTracking: (tracking: string) => void;
 }) {
-  const verdict = VERDICT_CHIP[row.verdict];
   const carrierTracking = resolveCheckRowCarrierTracking(row);
-  // Status / reason only — never "ref …" (reference_number is the tracking chip).
-  const meta = [
-    row.status ?? null,
-    row.reason === 'matched' ? null : reasonLabel(row.reason),
-  ].filter(Boolean);
+  // Reason only — never the ERP's PO status, never "ref …" (reference_number is the tracking chip).
+  const meta = row.reason === 'matched' ? null : reasonLabel(row.reason);
 
   return (
     <li className="rounded-none bg-surface-card px-2 py-1.5 ring-1 ring-inset ring-border-soft">
@@ -253,9 +227,7 @@ function CheckResultRow({
           </HoverTooltip>
         ) : null}
       </div>
-      {meta.length > 0 ? (
-        <p className="mt-1 text-role-micro text-text-muted">{meta.join(' · ')}</p>
-      ) : null}
+      {meta ? <p className="mt-1 text-role-micro text-text-muted">{meta}</p> : null}
       <div className="mt-1 flex items-end justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1">
           {row.local ? (
@@ -264,11 +236,6 @@ function CheckResultRow({
             >
               {WATCH_LABEL[row.local.watch]}
             </span>
-          ) : null}
-          {verdict ? (
-            <HoverTooltip label={verdict.title} focusable={false}>
-              <span className={`${CHIP_CLASS} ${verdict.className}`}>{verdict.label}</span>
-            </HoverTooltip>
           ) : null}
         </div>
         {row.synced_at ? (
@@ -618,22 +585,23 @@ export function IncomingBulkTrackingPanel({
         ),
       });
 
+      const owed = [...checkResult.received_in_zoho, ...checkResult.not_received_in_zoho];
       return [
         section(
           'received',
           'Received',
           PackageCheck,
-          'The purchasing source reports these POs received.',
-          'None of these are received yet.',
-          checkResult.received_in_zoho,
+          'Scanned at the dock or unboxed here.',
+          'None of these are scanned or unboxed yet.',
+          [...owed, ...checkResult.undetermined].filter(physicallyReceived),
         ),
         section(
           'not-received',
           'Not received',
           Clock,
-          'Still open on the purchasing source.',
-          'None are still open.',
-          checkResult.not_received_in_zoho,
+          'Not scanned or unboxed here yet. Each row says where it is.',
+          'Every one is scanned or unboxed.',
+          owed.filter((row) => !physicallyReceived(row)),
         ),
         section(
           'unclear',
@@ -641,7 +609,7 @@ export function IncomingBulkTrackingPanel({
           AlertTriangle,
           'No matching PO, an ambiguous match, a failed lookup, or past the live-lookup cap. These are unknown — not open.',
           'Every tracking gave a clear answer.',
-          checkResult.undetermined,
+          checkResult.undetermined.filter((row) => !physicallyReceived(row)),
         ),
       ];
     }
@@ -712,17 +680,6 @@ export function IncomingBulkTrackingPanel({
               {checkResult.stats.zoho_lookups} live
               {checkResult.stats.errors > 0 ? ` · ${checkResult.stats.errors} failed` : ''}
             </p>
-            {checkResult.stats.erp_ahead > 0 ? (
-              <p className="rounded-none bg-rose-50 px-2 py-1.5 text-role-caption text-rose-700 ring-1 ring-inset ring-rose-200">
-                {checkResult.stats.erp_ahead} received upstream with no warehouse record — these
-                appear on no watch list today.
-              </p>
-            ) : null}
-            {checkResult.stats.warehouse_ahead > 0 ? (
-              <p className="rounded-none bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
-                {checkResult.stats.warehouse_ahead} received here but not upstream.
-              </p>
-            ) : null}
           </div>
         ) : null}
 

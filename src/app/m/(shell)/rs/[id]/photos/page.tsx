@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import {
   MobileNativePhotoCapture,
   type CapturedShot,
@@ -165,7 +165,7 @@ function RepairPhotosInner() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref={`/m/rs/${repairId}`}
         subtitle="Photos"
         title={rsCode}

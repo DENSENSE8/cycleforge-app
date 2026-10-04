@@ -152,15 +152,17 @@ test('Fulfillment is a lane door: one map row, the lane name on its panel, its p
   ]);
   assert.ok(modes?.items.every((item) => !item.active), 'a mode row never lights a view');
 
-  // Scan Stations opens Operations immediately above Sales; fixed utilities close the map.
-  const stations = map.sections[1];
+  // Operator 2026-10-03: the Live feed opens Operations, Scan Stations right
+  // under it and above Receiving; fixed utilities close the map.
+  assert.equal(map.sections[1]?.id, 'live-feed');
+  const stations = map.sections[2];
   assert.equal(stations?.id, 'floor');
   assert.deepEqual(stations?.items.map((item) => [item.id, item.label, item.kind]), [
     ['receive', 'Scan Stations', 'drill'],
   ]);
   assert.ok(
     map.sections.findIndex((section) => section.id === 'floor') <
-      map.sections.findIndex((section) => section.id === 'sales'),
+      map.sections.findIndex((section) => section.id === 'inbound'),
   );
   assert.equal(map.sections.at(-1)?.id, 'bottom');
 });
@@ -242,7 +244,8 @@ test('permission filtering removes the rows a role cannot reach', () => {
     'exceptions',
   ]);
 
-  // Only the archive door: Fulfilled's saved views, not an FBM child.
+  // Packing-only roles reach one Fulfillment door (Fulfilled): one page is no
+  // choice, so no lane rows paint — only Fulfilled's saved views.
   const shippedOnly = new Set(['shipping.view', 'packing.view']);
   const archive = at('/fulfilled', { permissions: shippedOnly });
   assert.equal(archive.scope, 'section');
@@ -704,21 +707,25 @@ test('Chat is the first row of the page map for every permission set that can op
   assert.ok(!itemIds(at('/', { permissions: noChat })).includes('ai-chat'));
 });
 
-test('the parent map places Scan Stations above Sales and closes with Print station and Reports', () => {
+test('the parent map paints the Operations band in the ruled order and closes with Print station and Reports', () => {
   const map = at('/', { permissions: ALL, view: 'top' });
+  // Operator 2026-10-03: "Operations → Live feed, Scan Stations, Receiving,
+  // Fulfillment, Inventory changed to Warehouse … and Products at the bottom."
+  // Unnamed rows (Sales) keep their relative order between Warehouse and Products.
   assert.deepEqual(
-    items(map).slice(0, 11).map((item) => item.label),
+    items(map).slice(0, 12).map((item) => item.label),
     [
       'Chat',
       'Tasks',
       'Automations',
       'Exceptions',
       'Media Library',
+      'Live feed',
       'Scan Stations',
-      'Sales',
       'Receiving',
       'Fulfillment',
-      'Inventory',
+      'Warehouse',
+      'Sales',
       'Products',
     ],
   );
@@ -820,7 +827,7 @@ test('/exceptions wears a mode card like Fulfillment: Fulfillment · Inventory �
 
   // A mode opens its FIRST kind — never a blanket domain list; its secondary line names its kinds.
   assert.deepEqual(modes(bins)?.items.map((item) => [item.href, item.description]), [
-    ['/exceptions?domain=fulfillment&kind=fbm', 'FBM · Labels & docs · Paperwork'],
+    ['/exceptions?domain=fulfillment&kind=fbm', 'FBM · Labels & docs · Paperwork · Unmatched scans'],
     ['/exceptions?domain=inventory&kind=pairs', 'Missing pairs · Bin errors · Tracking'],
     ['/exceptions?domain=receiving&kind=claim', 'Claim · Short · Unfound'],
   ]);
@@ -842,13 +849,78 @@ test('/exceptions wears a mode card like Fulfillment: Fulfillment · Inventory �
   assert.deepEqual(parityGaps('exceptions'), []);
 });
 
+test('/operations/live-feed is one root row under the Operations band with its own panel: Outbound · Inbound views, no statuses, no Sort, no date range', () => {
+  // The map: one row, its own section after the lanes; no lane, no door, no mode card.
+  const map = at('/operations/live-feed', { view: 'top' });
+  const row = map.sections.find((section) => section.id === 'live-feed');
+  assert.deepEqual(row?.items.map((item) => [item.id, item.label, item.active]), [['live-feed', 'Live feed', true]]);
+  assert.equal(map.sections.some((section) => section.id === 'monitor'), false, 'the Monitor lane stays parked');
+
+  const views = (ctx: NavContext) => ctx.sections.flatMap((section) => section.items).map((item) => [item.id, item.active]);
+  const outbound = at('/operations/live-feed?lens=packed&from=2026-09-30&to=2026-09-30');
+  assert.equal(outbound.rollout, 'contextual');
+  assert.equal(outbound.scope, 'section');
+  assert.equal(outbound.page.id, 'live-feed');
+  assert.deepEqual(outbound.back, { label: 'Live feed', mode: 'local' });
+  assert.equal(outbound.sections.some(isLanePageSection), false, 'no lane mode card');
+  assert.equal(outbound.sections.some(isPageModeSection(outbound)), false, 'no page modes');
+  // The views: the two directions, outbound current; never a lane / status, never a Board view.
+  assert.deepEqual(views(outbound), [
+    ['outbound', true],
+    ['inbound', false],
+  ]);
+  for (const section of outbound.sections.filter((s) => !isLanePageSection(s))) {
+    for (const item of section.items) {
+      const url = new URL(item.href, 'http://x');
+      assert.equal(url.pathname, '/operations/live-feed');
+      assert.equal(url.searchParams.get('dir'), item.id);
+      assert.equal(url.searchParams.get('status'), null);
+    }
+  }
+  assert.equal(outbound.viewKeys, true);
+  assert.equal(outbound.search.param, 'q');
+  // Controls: Date by (the direction's lenses) and Handled by; no Sort, no sidebar date range (page chrome).
+  assert.deepEqual(outbound.controls?.choices?.map((choice) => [choice.label, choice.param, choice.options.map((o) => o.value)]), [
+    ['Date by', 'lens', ['entered', 'packed', 'scanned_out', 'delivered']],
+  ]);
+  assert.deepEqual(outbound.controls?.staff, [{ id: 'staff', param: 'staff', label: 'Handled by' }]);
+  assert.equal(outbound.controls?.sort, undefined);
+  assert.equal(outbound.controls?.dateRanges, undefined);
+  // Channel and Carrier facets, counted per direction.
+  assert.equal(outbound.filters?.facetContext, 'live-feed.outbound');
+  assert.deepEqual(outbound.filters?.groups.map((group) => [group.id, group.param, group.multi]), [
+    ['channel', 'channel', false],
+    ['carrier', 'carrier', false],
+  ]);
+  // The range survives (the header writes it); a lane param is not a page param.
+  assert.ok(outbound.params.includes('from') && outbound.params.includes('lens') && outbound.params.includes('carry'));
+  assert.ok(!outbound.params.includes('status') && !outbound.params.includes('sort'));
+
+  // Inbound: its own lenses; Channel only.
+  const inbound = at('/operations/live-feed?dir=inbound');
+  assert.deepEqual(views(inbound), [
+    ['outbound', false],
+    ['inbound', true],
+  ]);
+  assert.deepEqual(inbound.controls?.choices?.[0]?.options.map((o) => o.value), ['entered', 'received', 'unboxed']);
+  assert.deepEqual(inbound.filters?.groups.map((group) => group.id), ['channel']);
+
+  // A receiving-only caller keeps the panel: Inbound alone, with its controls and facets.
+  const receivingOnly = at('/operations/live-feed?dir=inbound', { permissions: new Set(['receiving.view']) });
+  assert.equal(receivingOnly.scope, 'section');
+  assert.deepEqual(views(receivingOnly), [['inbound', true]]);
+  assert.equal(receivingOnly.controls?.choices?.[0]?.label, 'Date by');
+  assert.equal(receivingOnly.filters?.facetContext, 'live-feed.inbound');
+  assert.deepEqual(parityGaps('live-feed'), []);
+});
+
 test('Reports is a top-level parent whose report types and controls live in the contextual sidebar', () => {
   const report = at('/reports?tab=packer&date=2026-09-29&staffId=4&q=adapter');
   assert.equal(report.rollout, 'contextual');
   assert.equal(report.scope, 'section');
   assert.equal(report.search.source, 'url-param');
   assert.equal(report.search.param, 'q');
-  assert.deepEqual(itemIds(report), ['staff-day', 'packer-day', 'utilization', 'velocity', 'dead-stock', 'tasks', 'activity']);
+  assert.deepEqual(itemIds(report), ['packer-day', 'activity']);
   assert.deepEqual(activeIds(report), ['packer-day']);
   assert.deepEqual(navControlParams(report.controls), ['staffId', 'date']);
   assert.equal(report.actionsPlacement, 'sidebar');

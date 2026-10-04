@@ -14,8 +14,11 @@ import { cn } from '@/utils/_cn';
  * `default` — soft card field (`rounded-xl` + border).
  * `flush` — joined bar cell (`rounded-none`, no outer border); host
  * owns the shared hairline. Floating label stays inside the field cell width.
+ * `auth` — credential field with a persistent label notch in the hairline and
+ * an accent-blue focus state. Kept opt-in so operational forms retain their
+ * denser in-field labels.
  */
-type TextFieldAppearance = 'default' | 'flush';
+type TextFieldAppearance = 'default' | 'flush' | 'auth';
 
 const defaultFieldClass = {
   input: 'border-border-soft focus:border-border-strong focus:ring-border-strong/10',
@@ -27,6 +30,13 @@ const flushFieldClass = {
   input: 'border-0 focus:ring-inset focus:ring-border-strong/15',
   floatLabel: 'text-text-soft',
   focusLabel: 'peer-focus:text-text-default',
+};
+
+const authFieldClass = {
+  input:
+    'border-border-soft hover:border-blue-300 focus:border-blue-600 focus:ring-blue-600/20',
+  floatLabel: 'text-text-muted',
+  focusLabel: 'peer-focus:text-blue-600',
 };
 
 interface TextFieldProps
@@ -80,7 +90,8 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
     const fieldId = id ?? autoId;
     const float = value.length > 0;
     const flush = appearance === 'flush';
-    const t = flush ? flushFieldClass : defaultFieldClass;
+    const auth = appearance === 'auth';
+    const t = flush ? flushFieldClass : auth ? authFieldClass : defaultFieldClass;
 
     // Shared chrome — flush joins a host bar (no own radius/border); default keeps soft card.
     const sharedClass = cn(
@@ -103,7 +114,10 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             // floating <label> owns the empty-state text.
             placeholder=" "
             rows={rows}
-            className={cn(sharedClass, 'resize-none pb-2 pt-5 leading-snug')}
+            className={cn(
+              sharedClass,
+              auth ? 'resize-none px-4 pb-3 pt-4 leading-snug' : 'resize-none pb-2 pt-5 leading-snug',
+            )}
             {...(inputProps as unknown as TextareaHTMLAttributes<HTMLTextAreaElement>)}
           />
         ) : (
@@ -114,19 +128,31 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
             placeholder=" "
-            className={cn(sharedClass, 'h-11 pb-1 pt-5', trailing && 'pr-9')}
+            className={cn(
+              sharedClass,
+              auth ? 'h-12 px-4 py-3' : 'h-11 pb-1 pt-5',
+              trailing && (auth ? 'pr-12' : 'pr-9'),
+            )}
             {...inputProps}
           />
         )}
         <label
           htmlFor={fieldId}
           className={cn(
-            'pointer-events-none absolute left-3.5 origin-left transition-all duration-150',
-            float
-              ? cn('top-1.5 text-role-micro font-semibold mode-label-case', t.floatLabel)
-              : cn(multiline ? 'top-5' : 'top-3', 'text-sm text-text-faint'),
-            // Label case follows the region's mode: sentence case on a desk, caps on the floor.
-            'peer-focus:top-1.5 peer-focus:text-role-micro peer-focus:font-semibold peer-focus:mode-label-case',
+            'pointer-events-none absolute origin-left transition-all duration-150',
+            auth
+              ? cn(
+                  '-top-2 left-3 bg-surface-card px-1.5 text-role-caption font-semibold leading-4',
+                  t.floatLabel,
+                )
+              : cn(
+                  'left-3.5',
+                  float
+                    ? cn('top-1.5 text-role-micro font-semibold mode-label-case', t.floatLabel)
+                    : cn(multiline ? 'top-5' : 'top-3', 'text-sm text-text-faint'),
+                  // Label case follows the region's mode: sentence case on a desk, caps on the floor.
+                  'peer-focus:top-1.5 peer-focus:text-role-micro peer-focus:font-semibold peer-focus:mode-label-case',
+                ),
             t.focusLabel,
           )}
         >

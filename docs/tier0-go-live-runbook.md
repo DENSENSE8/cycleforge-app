@@ -83,7 +83,7 @@ All additive + idempotent. Apply via `npm run db:migrate`. **Ordering matters fo
 | `2026-06-20_zoho_webhook_org_resolution.sql` | webhook pipeline + dedupe | **Apply BEFORE deploy** — the dedupe writers reference `zoho_webhook_events.organization_id`; adds `organization_integrations.webhook_token`. |
 | `2026-06-20_integration_credential_audit.sql` | credential-scope | Audit writer is best-effort (swallows a missing table), so order-independent. |
 
-After applying: `npm run tenancy:guard:check` and a smoke POST to `/api/zoho/purchase-receives/sync` (USAV) should still succeed.
+After applying: `npm run tenancy:guard:check` should still succeed.
 
 ### C2 — provision per-tenant Zoho webhooks (per org that connects Zoho)
 The tokenless endpoint `/api/zoho/webhooks` is retired and returns `410`. For **each tenant**:

@@ -1,4 +1,4 @@
-/** AI-assisted column mapping for order-list import — a thin adapter over the existing engine, NOT a second import path. */
+/** AI-assisted column mapping for CSV import (orders, inbound POs) — a thin adapter over the existing engine, NOT a second import path. */
 
 import { hermesToolCall, type HermesTool } from '@/lib/ai/hermes-tool-call';
 import {
@@ -7,8 +7,8 @@ import {
 } from '@/lib/orders/csv-order-import';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-interface ColumnMappingSuggestion {
-  field: CsvOrderCanonicalKey;
+interface ColumnMappingSuggestion<K extends string> {
+  field: K;
   /** A header that EXISTS in the uploaded file (verified before returning). */
   header: string;
   confidence: 'high' | 'medium' | 'low';
@@ -16,10 +16,10 @@ interface ColumnMappingSuggestion {
   reason: string;
 }
 
-interface ColumnMappingProposal {
-  suggestions: ColumnMappingSuggestion[];
+interface ColumnMappingProposal<K extends string> {
+  suggestions: ColumnMappingSuggestion<K>[];
   /** Fields still unmapped after the proposal — stated, never implied. */
-  stillUnmapped: CsvOrderCanonicalKey[];
+  stillUnmapped: K[];
   model: string;
   source: string;
   /**
@@ -67,27 +67,30 @@ const SYSTEM_PROMPT = [
 ].join('\n');
 
 /** Headers already claimed by the deterministic alias map. */
-function claimedHeaders(mapping: Record<string, string>): Set<string> {
-  return new Set(Object.values(mapping));
+function claimedHeaders(mapping: Partial<Record<string, string>>): Set<string> {
+  return new Set(Object.values(mapping).filter((h): h is string => Boolean(h)));
 }
 
-interface ProposeColumnMappingInput {
+interface ProposeColumnMappingInput<K extends string> {
   headers: string[];
   /** A few rows of values, to disambiguate headers that names alone cannot. */
   sampleRows: Record<string, string>[];
-  /** What `autoMapCsvOrderHeaders` already resolved — these are off-limits. */
-  deterministicMapping: Record<string, string>;
+  /** What the deterministic pass already resolved (field → header) — these are off-limits. */
+  deterministicMapping: Partial<Record<string, string>>;
+  /** Canonical fields to map; defaults to the order-list import's. */
+  fields?: ReadonlyArray<{ key: K; label: string; required: boolean }>;
 }
 
-export async function proposeColumnMapping(
+export async function proposeColumnMapping<K extends string = CsvOrderCanonicalKey>(
   /** Whose AI provider serves this call — required, never defaulted. */
   orgId: OrgId,
-  input: ProposeColumnMappingInput,
+  input: ProposeColumnMappingInput<K>,
   deps: { toolCall?: typeof hermesToolCall } = {},
-): Promise<ColumnMappingProposal> {
+): Promise<ColumnMappingProposal<K>> {
   const toolCall = deps.toolCall ?? hermesToolCall;
+  const fields = (input.fields ?? CSV_ORDER_CANONICAL_FIELDS) as ReadonlyArray<{ key: K; label: string; required: boolean }>;
 
-  const unmappedFields = CSV_ORDER_CANONICAL_FIELDS.filter(
+  const unmappedFields = fields.filter(
     (f) => !input.deterministicMapping[f.key],
   );
   const taken = claimedHeaders(input.deterministicMapping);
@@ -126,7 +129,7 @@ export async function proposeColumnMapping(
 
   const validFields = new Set<string>(unmappedFields.map((f) => f.key));
   const freeSet = new Set(freeHeaders);
-  const suggestions: ColumnMappingSuggestion[] = [];
+  const suggestions: ColumnMappingSuggestion<K>[] = [];
   const rejectedHallucinations: string[] = [];
   const usedHeaders = new Set<string>();
 
@@ -145,7 +148,7 @@ export async function proposeColumnMapping(
     usedHeaders.add(header);
     const confidence = raw?.confidence;
     suggestions.push({
-      field: field as CsvOrderCanonicalKey,
+      field: field as K,
       header,
       confidence:
         confidence === 'high' || confidence === 'medium' || confidence === 'low'

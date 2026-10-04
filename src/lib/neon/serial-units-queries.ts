@@ -289,6 +289,70 @@ export async function findShippedOrderForSerialUnit(
   return result.rows[0] ?? null;
 }
 
+/** A pack scan's unit and the open order it is on (`orderId` null = on none). */
+export interface OpenOrderForUnitScan {
+  serialUnitId: number;
+  orderId: number | null;
+}
+
+/**
+ * Pack scan → unit → the NOT-shipped order it is on. The unit is matched the
+ * way a pick locks it (`lockUnitForPickScan`): a numeric id only from a label
+ * handle, else serial or unit_uid. Its order is the open allocation
+ * (ALLOCATED / PICKED / PACKED), else the order its serial was bound to at
+ * pick (`tech_serial_numbers.order_id`). Unlike
+ * {@link findShippedOrderForSerialUnit}, a shipped order never answers.
+ */
+export async function findOpenOrderForUnitScan(
+  client: Queryable,
+  orgId: OrgId,
+  scan: { kind: 'label' | 'raw'; key: string },
+): Promise<OpenOrderForUnitScan | null> {
+  const idParam = scan.kind === 'label' && /^\d+$/.test(scan.key) ? Number(scan.key) : null;
+  const { rows } = await client.query<{ serial_unit_id: number; order_id: number | null }>(
+    `WITH unit AS (
+       SELECT su.id, su.serial_number
+         FROM serial_units su
+        WHERE su.organization_id = $1
+          AND (su.id = $2 OR su.normalized_serial = UPPER(BTRIM($3)) OR su.unit_uid = BTRIM($3))
+        ORDER BY (su.id = $2) DESC NULLS LAST, (su.normalized_serial = UPPER(BTRIM($3))) DESC
+        LIMIT 1
+     )
+     SELECT u.id AS serial_unit_id,
+            COALESCE(
+              (SELECT o.id
+                 FROM order_unit_allocations oua
+                 JOIN orders o ON o.id = oua.order_id AND o.organization_id = $1
+                WHERE oua.organization_id = $1
+                  AND oua.serial_unit_id = u.id
+                  AND oua.state IN ('ALLOCATED', 'PICKED', 'PACKED')
+                  AND COALESCE(o.status, '') <> 'shipped'
+                ORDER BY oua.allocated_at DESC NULLS LAST, o.id ASC
+                LIMIT 1),
+              (SELECT o.id
+                 FROM tech_serial_numbers t
+                 JOIN orders o ON o.id = t.order_id AND o.organization_id = $1
+                WHERE t.organization_id = $1
+                  AND (
+                    t.serial_unit_id = u.id
+                    OR (BTRIM(COALESCE(u.serial_number, '')) <> ''
+                        AND UPPER(BTRIM(t.serial_number)) = UPPER(BTRIM(u.serial_number)))
+                  )
+                  AND COALESCE(o.status, '') <> 'shipped'
+                ORDER BY t.created_at DESC, t.id DESC
+                LIMIT 1)
+            ) AS order_id
+       FROM unit u`,
+    [orgId, idParam, scan.key],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    serialUnitId: Number(row.serial_unit_id),
+    orderId: row.order_id == null ? null : Number(row.order_id),
+  };
+}
+
 /** Legacy ship path: */
 async function findShippedOrderByTsnSerial(
   serial: string,

@@ -11,12 +11,10 @@ import {
 import { DELIVERED_OVERDUE_HOURS } from '@/lib/receiving/incoming-exceptions';
 import { ZOHO_RECEIVED_LIKE_STATUSES, ZOHO_TERMINAL_STATUSES } from '@/lib/receiving/zoho-received-status';
 
-const RECEIVED_LIKE_SQL = ZOHO_RECEIVED_LIKE_STATUSES.map((s) => `'${s}'`).join(',');
-
 /**
- * A Zoho PO that is still somebody's problem: open, OR received-like (billed,
- * closed, received — the ERP-ahead case). Cancelled / rejected POs are not
- * inbound work and never an exception. References `mirror`.
+ * A Zoho PO that is still somebody's problem: anything but cancelled /
+ * rejected. A received-like status (billed, closed, received) does NOT drop a
+ * line — physical facts decide receipt, never Zoho. References `mirror`.
  */
 export const EXCEPTION_PO_LIVE_SQL = `COALESCE(mirror.status, '') NOT IN (${ZOHO_TERMINAL_STATUSES
   .filter((status) => !(ZOHO_RECEIVED_LIKE_STATUSES as readonly string[]).includes(status))
@@ -30,7 +28,7 @@ function zip5Sql(expr: string): string {
 
 /**
  * The line's exception code, or NULL. References `rl`, `ru`, `rt`, `stn`,
- * `stn_evt`, `mirror`, `rz`. `warehouseZipParam` is the `$n` holding the
+ * `stn_evt`. `warehouseZipParam` is the `$n` holding the
  * org's ship-from ZIP5; null when unset, and then wrong-destination never
  * fires (no crying wolf).
  *
@@ -56,20 +54,6 @@ export function incomingExceptionCodeSql(warehouseZipParam: string | null): stri
               OR rt.door_received_at IS NOT NULL
             THEN NULL
             ${wrongDestination}
-            WHEN rz.zoho_purchaseorder_id IS NOT NULL
-             AND COALESCE(mirror.status, '') IN (${RECEIVED_LIKE_SQL})
-             -- The Check judges the PO, not the line: one received line means
-             -- the warehouse DID take this PO in, so a leftover line is not the
-             -- ERP running ahead (it falls through to its own carrier reason).
-             AND NOT EXISTS (
-               SELECT 1 FROM receiving_line_zoho rz_po
-                 JOIN receiving_line rl_po ON rl_po.id = rz_po.receiving_line_id
-                                          AND rl_po.organization_id = rz_po.organization_id
-                WHERE rz_po.organization_id = rl.organization_id
-                  AND rz_po.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
-                  AND (COALESCE(rl_po.quantity_received, 0) > 0 OR rl_po.workflow_status <> 'EXPECTED')
-             )
-            THEN 'ERP_AHEAD'
             WHEN COALESCE(stn.is_delivered, false) = true
              AND stn.delivered_at < NOW() - interval '${DELIVERED_OVERDUE_HOURS} hours'
              AND stn.delivered_at > NOW() - interval '${DELIVERED_UNSCANNED_WINDOW_DAYS} days'

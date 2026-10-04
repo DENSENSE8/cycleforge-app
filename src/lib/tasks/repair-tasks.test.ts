@@ -7,8 +7,11 @@ import assert from 'node:assert/strict';
 
 import {
   isRepairOpen,
+  isRepairOwnTicket,
   isSyncOwnedNote,
+  paperworkTicketNumber,
   planRepairTaskSync,
+  repairIdInTicketSubject,
   repairOpenSql,
   repairTaskNote,
   runRepairTaskSync,
@@ -41,7 +44,8 @@ function task(overrides: Partial<RepairSyncTask> = {}): RepairSyncTask {
     status: 'OPEN',
     note: repairTaskNote(repair()),
     closedBySync: false,
-    hasTicketLink: false,
+    // Linked by default so each test pins one concern; the ticket tests below unlink it.
+    hasTicketLink: true,
     ...overrides,
   };
 }
@@ -153,7 +157,7 @@ test('run: dry-run counts the plan without writing; apply counts refusals as fai
       writes.push(`create:${a.repairId}`);
       return a.repairId !== refuse;
     },
-    updateTask: async (a: Exclude<RepairTaskAction, { kind: 'create' } | { kind: 'linkTicket' }>) => {
+    updateTask: async (a: Exclude<RepairTaskAction, { kind: 'create' } | { kind: 'linkTicket' } | { kind: 'findTicket' }>) => {
       writes.push(`${a.kind}:${a.taskId}`);
       return true;
     },
@@ -161,27 +165,83 @@ test('run: dry-run counts the plan without writing; apply counts refusals as fai
       writes.push(`linkTicket:${a.taskId}:${a.ticketNumber}`);
       return true;
     },
+    findTicket: async () => 'linked' as const,
   });
 
   const dry = await runRepairTaskSync(OWNERS, deps(null), { dryRun: true });
-  assert.deepEqual(dry.summary, { repairs: 3, created: 2, closed: 1, reopened: 0, refreshed: 0, ticketLinked: 0, failed: 0 });
+  assert.deepEqual(dry.summary, { repairs: 3, created: 2, closed: 1, reopened: 0, refreshed: 0, ticketLinked: 0, ticketUnmatched: 0, failed: 0 });
   assert.deepEqual(writes, []);
 
   const applied = await runRepairTaskSync(OWNERS, deps(2));
-  assert.deepEqual(applied.summary, { repairs: 3, created: 1, closed: 1, reopened: 0, refreshed: 0, ticketLinked: 0, failed: 1 });
+  assert.deepEqual(applied.summary, { repairs: 3, created: 1, closed: 1, reopened: 0, refreshed: 0, ticketLinked: 0, ticketUnmatched: 0, failed: 1 });
   assert.deepEqual(writes, ['create:1', 'create:2', 'close:900']);
 });
 
-test('a paperwork number that is a real helpdesk thread is linked once, never for a withdrawn task', () => {
-  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [task()], OWNERS), [
+test('a mirrored paperwork number is linked once, never for a withdrawn task', () => {
+  const unlinked = task({ hasTicketLink: false });
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [unlinked], OWNERS), [
     { kind: 'linkTicket', taskId: 900, repairId: 53, ticketNumber: '10089' },
   ]);
-  // Already linked, or the number matches no helpdesk thread: nothing to do.
-  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [task({ hasTicketLink: true })], OWNERS), []);
-  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: 'RS-0053' })], [task()], OWNERS), []);
-  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [task({ status: 'CANCELED' })], OWNERS), []);
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [task()], OWNERS), []);
+  assert.deepEqual(
+    planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [task({ hasTicketLink: false, status: 'CANCELED' })], OWNERS),
+    [],
+  );
   // A fresh create carries the number so the link lands with the task.
   assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '10089', helpdeskTicketNumber: '10089' })], [], OWNERS), [
     { kind: 'create', repairId: 53, note: repairTaskNote(repair({ ticketNumber: '10089' })), assigneeStaffIds: OWNERS, ticketNumber: '10089' },
   ]);
+});
+
+test('an unmirrored open repair asks the helpdesk live — with the slip number when it is one; a closed repair never does', () => {
+  const unlinked = task({ hasTicketLink: false });
+  // RS-77's slip says #9431, a Zendesk number the mirror had never seen (the Ticket tab read "not linked").
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '#9431' })], [unlinked], OWNERS), [
+    { kind: 'findTicket', taskId: 900, repairId: 53, paperworkNumber: 9431 },
+  ]);
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: 'RS-0053' })], [unlinked], OWNERS), [
+    { kind: 'findTicket', taskId: 900, repairId: 53, paperworkNumber: null },
+  ]);
+  assert.deepEqual(planRepairTaskSync([repair({ ticketNumber: '#9431', status: 'Done' })], [task({ hasTicketLink: false, status: 'DONE' })], OWNERS), []);
+});
+
+test('slip numbers: only a bare or #-led number is a helpdesk number', () => {
+  assert.equal(paperworkTicketNumber('#9431'), 9431);
+  assert.equal(paperworkTicketNumber(' 10089 '), 10089);
+  assert.equal(paperworkTicketNumber('RS-0053'), null);
+  assert.equal(paperworkTicketNumber('NA'), null);
+  assert.equal(paperworkTicketNumber(null), null);
+});
+
+test('a helpdesk ticket is the repair’s own only when its subject proves it', () => {
+  // Real subjects (Zendesk, 2026-10-03).
+  assert.equal(repairIdInTicketSubject('Repair RS 77: Walk-in Royce Ann Young - 949-646-4990'), 77);
+  assert.equal(repairIdInTicketSubject('RS-4894 — REPAIR SERVICE  for Bose Wave® music system IV'), 4894);
+  assert.equal(repairIdInTicketSubject('RS-0053 follow-up'), 53);
+  // The product word "REPAIRS"/"REPAIR SERVICE" is not an RS id.
+  assert.equal(repairIdInTicketSubject('REPAIR SERVICE for Bose Wave Radio'), null);
+
+  assert.equal(isRepairOwnTicket(77, 'Repair RS 77: Walk-in Royce Ann Young'), true);
+  assert.equal(isRepairOwnTicket(77, 'Repair RS 770: Walk-in someone else'), false);
+  assert.equal(isRepairOwnTicket(77, 'Repair RS 78: Walk-in Mike Dunphy'), false);
+  // An older slip whose subject predates the RS id (RS-3 → #8192) is still a repair intake.
+  assert.equal(isRepairOwnTicket(3, 'Repair: Walk-in Allan Hinton - 760-518-1504'), true);
+  // A stale in-store number that lands on an unrelated helpdesk ticket is never linked.
+  assert.equal(isRepairOwnTicket(3, 'Where is my order #4412?'), false);
+  assert.equal(isRepairOwnTicket(3, null), false);
+});
+
+test('run: an unproven helpdesk thread is counted unmatched, not failed; an unreachable helpdesk is a failure', async () => {
+  const deps = (found: () => Promise<'linked' | 'unmatched' | 'refused'>) => ({
+    listRepairs: async () => [repair({ ticketNumber: '#9431' })],
+    listRepairTasks: async () => [task({ hasTicketLink: false })],
+    createTask: async () => true,
+    updateTask: async () => true,
+    linkTicket: async () => true,
+    findTicket: found,
+  });
+  const base = { repairs: 1, created: 0, closed: 0, reopened: 0, refreshed: 0 };
+  assert.deepEqual((await runRepairTaskSync(OWNERS, deps(async () => 'linked'))).summary, { ...base, ticketLinked: 1, ticketUnmatched: 0, failed: 0 });
+  assert.deepEqual((await runRepairTaskSync(OWNERS, deps(async () => 'unmatched'))).summary, { ...base, ticketLinked: 0, ticketUnmatched: 1, failed: 0 });
+  assert.deepEqual((await runRepairTaskSync(OWNERS, deps(async () => { throw new Error('zendesk 503'); }))).summary, { ...base, ticketLinked: 0, ticketUnmatched: 0, failed: 1 });
 });

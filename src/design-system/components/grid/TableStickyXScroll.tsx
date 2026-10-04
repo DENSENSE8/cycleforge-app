@@ -12,7 +12,7 @@ import { GridStickyXScrollbar } from '@/design-system/components/grid/GridSticky
 import { useSyncedHorizontalScrollbar } from '@/design-system/components/grid/useSyncedHorizontalScrollbar';
 import { cn } from '@/utils/_cn';
 
-/** RSC-safe sticky bottom X scrollbar wrapper for non-virtualized tables (dense {@link StationListTable} bodies). */
+/** RSC-safe sticky bottom X scrollbar wrapper for non-virtualized tables (e.g. `AdminTable` bodies). */
 export function TableStickyXScroll({
   children,
   className,

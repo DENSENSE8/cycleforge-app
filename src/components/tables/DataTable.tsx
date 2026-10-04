@@ -288,6 +288,14 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
     testId?: string;
     /** Menu alignment to the trigger; `end` for a trigger at a row's right edge. */
     align?: 'start' | 'end';
+    /**
+     * One check per band when the menu answers more than one question — a
+     * Display menu: Group by and Order by, each a `group` band. Defaults to
+     * `[active]`. Set, the menu stays open across picks (one pick per band).
+     */
+    selected?: readonly string[];
+    /** The control's accessible name (trigger + list). Default `Sort`. */
+    label?: string;
   };
 
   /** Named saved views for this surface — data, never a ReactNode slot. */
@@ -654,7 +662,11 @@ export function DataTableSortMenu({
   activeFace,
   testId = 'data-table-sort',
   align = 'start',
+  selected,
+  label,
 }: NonNullable<DataTableProps<unknown, string, LedgerGridColumnModel>['sortMenu']>) {
+  const name = label ?? 'Sort';
+  const checked = selected ?? (active ? [active] : []);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const listRef = useRef<HTMLUListElement | null>(null);
@@ -678,7 +690,8 @@ export function DataTableSortMenu({
   }, [options]);
 
   const grouped = bands.length > 1 && bands.some((b) => b.key !== '');
-  const showFilter = options.length >= 8;
+  // A multi-question menu (Group by · Order by) is a few short settings, never a list to search.
+  const showFilter = !selected && options.length >= 8;
   const filteredBands = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return bands;
@@ -726,7 +739,7 @@ export function DataTableSortMenu({
           aria-haspopup="listbox"
           aria-controls={open ? listId : undefined}
           aria-label={
-            triggerLabel ? `Sort, ${triggerLabel}` : hot ? 'Sort, custom' : 'Sort'
+            triggerLabel ? `${name}, ${triggerLabel}` : hot ? `${name}, custom` : name
           }
           aria-pressed={hot}
           aria-expanded={open}
@@ -808,7 +821,8 @@ export function DataTableSortMenu({
           ref={listRef}
           id={listId}
           role="listbox"
-          aria-label="Sort"
+          aria-label={name}
+          aria-multiselectable={selected ? true : undefined}
           className="min-h-0 flex-1 overflow-y-auto py-0.5"
         >
           {filteredOptions.length === 0 ? (
@@ -844,7 +858,7 @@ export function DataTableSortMenu({
                       <li key={option.id}>
                         <ToolbarListboxOption
                           index={index}
-                          selected={option.id === active}
+                          selected={checked.includes(option.id)}
                           checkAlign="end"
                           leading={
                             option.identity ? (
@@ -853,7 +867,7 @@ export function DataTableSortMenu({
                           }
                           onClick={() => {
                             onSelect(option.id);
-                            closeMenu();
+                            if (!selected) closeMenu();
                           }}
                           onKeyDown={(event) =>
                             toolbarListboxOptionKeyDown(
@@ -866,7 +880,7 @@ export function DataTableSortMenu({
                           }
                           dataAttrs={{
                             'data-testid': `data-table-sort-${option.id.replace(/:/g, '-')}`,
-                            ...(option.id === active ? { 'data-active': '' } : {}),
+                            ...(checked.includes(option.id) ? { 'data-active': '' } : {}),
                           }}
                         >
                           {option.label}

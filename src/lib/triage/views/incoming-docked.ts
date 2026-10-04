@@ -4,11 +4,11 @@
  * grammar; membership and copy remain Docked-specific and end when Unbox opens.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 import { DOCKED_FLAG_PARAM } from '@/lib/receiving/inbound-lane';
 import { DOCKED_PACKAGE_NEXT_STEPS } from '@/lib/receiving/docked-record-state';
 
-export const INCOMING_DOCKED_VIEW: TriageViewDecl = {
+export const INCOMING_DOCKED_VIEW = triageView({
   id: 'incoming.docked',
   grain: 'carton',
   noun: { one: 'carton', many: 'cartons' },
@@ -20,7 +20,9 @@ export const INCOMING_DOCKED_VIEW: TriageViewDecl = {
   // The attention cut: Claim · Short · Unfound pills (comma list) — the face owns it; no sidebar twin.
   chips: { owner: 'face', param: DOCKED_FLAG_PARAM },
   paging: 'client',
-  status: 'date',
+  // The vendor's promised arrival is the sealed package's SLA; no promise → the arrival stamp, untoned.
+  status: 'deadline',
+  slots: { identity: 'tracking number, else carton number', channel: 'brand', person: 'vendor', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'qty', tier: 'always' },
     { id: 'condition', tier: 'always' },
@@ -35,4 +37,4 @@ export const INCOMING_DOCKED_VIEW: TriageViewDecl = {
     when: 'default-sort',
   },
   next: [...DOCKED_PACKAGE_NEXT_STEPS],
-};
+});

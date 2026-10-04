@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/contexts/AuthContext';
+import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { fetchNavContext } from '@/lib/nav/context/http-client';
 import type { NavContext } from '@/lib/nav/context/schema';
 import { readNavContextSnapshot, writeNavContextSnapshot } from './nav-context-snapshot';
@@ -27,16 +27,6 @@ export function useCurrentNavPath(): string {
   params.sort();
   const search = params.toString();
   return search ? `${pathname}?${search}` : pathname;
-}
-
-export function useNavStaffKey(): string {
-  const { user } = useAuth();
-  // Nav is resolved from both the active organization and the staff member.
-  // A staff-only key can reuse the previous tenant's React Query data after a
-  // workspace switch and briefly paint that tenant's sidebar/nav definition.
-  return user?.staffId != null && user.organizationId
-    ? `${user.organizationId}:${user.staffId}`
-    : 'anon';
 }
 
 const noopSubscribe = () => () => {};

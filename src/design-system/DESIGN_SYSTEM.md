@@ -135,6 +135,28 @@ closed by Esc back to the layer above:
 Runtime focus behaviour has no DOM test stack yet (`skill://add-guard` Tier 4)
 — it is enforced by the two primitives above, not by a source regex.
 
+#### Screen budget — the phone's first screen, measured (owner 2026-10-03)
+
+The ladder above, applied to a phone record and enforced by measurement instead of taste:
+`src/lib/disclosure/screen-budget.ts` holds the rules and owner-tunable budgets;
+`src/lib/disclosure/surfaces.ts` declares each surface's first screen — the **chrome row**
+(title … ✕, ✕ last and top-right), the **corners** (status top-left, time top-right), the other
+L1 rows, the one-primary **dock**, and the **doors** (what lives one tap behind each L1 slot).
+A composition marks `data-disclosure-slot` / `data-disclosure-zone`; `ds_disclosure`
+(`node tools/design-mcp/ds.mjs disclosure <surface> id=<n>`) measures it live at :3050 and
+answers in four lists — DELETE (title painted twice, field labels, a second control for one fact),
+SIMPLIFY (over budget, L1 taller than its share, a control in no slot), MOVE (✕ off the title
+row, state/time off the corners), ENLARGE (<44px). verify `Disclosure` re-checks every
+declaration. Owner instructions are written into the declaration first — skill `declutter`.
+
+Record chrome after Apple's HIG (Toolbars · Pull-down buttons · Menus · Sheets, researched
+2026-10-03): `IosBar` (title leading, borderless 44px `IosBarButton`s trailing in two groups:
+tools, then ✕) and `IosMoreMenu` (the ⋯ More pull-down: up to three quick tiles, then grouped
+title-case verbs, `…` when the verb opens another view, destructive items red and confirmed in
+`ConfirmSheet`). Secondary verbs — adding a person, alerting, logging, linking media/email,
+the timer — live behind ⋯; the screen keeps the facts and ONE primary. Reference:
+`src/components/mobile/daily/MobileTaskSheet.tsx`.
+
 ### AI surfaces are a separate system (`ai/`)
 
 AI surfaces (`/ai-chat` first) do NOT use Kinetic Ledger chrome. They mount
@@ -179,7 +201,7 @@ usage: [`ai/README.md`](./ai/README.md) (values in `ai/tokens.ts`).
   - `tokens/typography/families.ts`
   - `tokens/typography/sizes.ts`
   - `tokens/typography/weights.ts`
-  - `tokens/typography/presets.ts` — composed Tailwind class presets (`sectionLabel`, `fieldLabel`, `dataValue`, `monoValue`, `chipText`, `cardTitle`, `tableHeader`, `tableCell`, `microBadge`). Every preset is sentence case — no CSS `uppercase` anywhere on screen (owner 2026-09-28); eyebrows / chips / field·section labels stay small micro chrome, not caps.
+  - `tokens/typography/presets.ts` — composed Tailwind class presets (`sectionLabel`, `fieldLabel`, `dataValue`, `monoValue`, `chipText`, `cardTitle`, `tableHeader`, `tableCell`, `microBadge`, `statusPillLabel`). Every preset is sentence case — no CSS `uppercase` anywhere on screen (owner 2026-09-28); eyebrows / chips / field·section labels stay small micro chrome, not caps. Status pills (`TaskStatusPill`, `TicketStatusPill`, the board's repair chip) use `statusPillLabel`: micro size in Inter, never the condensed cut (owner 2026-10-03).
 - Density and structure:
   - `tokens/spacing.ts` — includes `density` presets (compact/standard/spacious)
   - `tokens/borders.ts`
@@ -449,9 +471,9 @@ Detection priority:
 
 | Desktop | Mobile |
 |---------|--------|
-| MasterNav push spine + `ResponsiveLayout` | `RedesignedMobileShell` (`@/components/mobile/redesign/MobileShell`) |
-| Left context rail via `ContextPanelLayout` | `MobileTopBar` with title + trailing actions |
-| Collapsible rails (resize + park) | `MobileSidebarDrawer` for deep navigation |
+| MasterNav push spine + `ResponsiveLayout` | `MobileV2Shell` (`@/components/mobile/v2/MobileV2Shell`) |
+| Left context rail via `ContextPanelLayout` | `MobileV2TopBar` with title + trailing actions |
+| Collapsible rails (resize + park) | `MobileV2AppSwitcher` for top-level navigation |
 
 ### Lists / Tables
 
@@ -475,10 +497,10 @@ Detection priority:
 
 | Desktop | Mobile |
 |---------|--------|
-| `StationScanBar` (`@/components/station/scan-bar`): focus-locked wedge input | `ScanInput` (`@/components/mobile/redesign/ScanInput`) — the same bar plus a ZXing camera toggle |
+| `StationScanBar` (`@/components/station/scan-bar`): focus-locked wedge input | `MobileV2ScanInput` (`@/components/mobile/v2/scan/MobileV2ScanInput`) — the same bar plus a ZXing camera toggle |
 | Auto-focused, always ready, Enter to confirm | Auto-scan or tap capture, manual entry fallback |
 | Inline success/error feedback (ring + shake) | Viewfinder ring color + success checkmark / error X |
-| Results appear inline below input | Results appear as cards, camera closes on success |
+| Results appear inline below input | `MobileV2ScanRecentList`: newest-first compact rows, details on tap |
 
 Tone + buzz on a scan go through `useScanFeedback()` (`src/lib/scan-feedback`):
 `playScanFeedback('success' | 'warn' | 'reject')` — `warn` = landed, but look (a duplicate
@@ -505,7 +527,7 @@ directly from a station — that skips the switches.
   `control-size-tokens.guard.test.ts`).
 - `Button` promotes its own sizes on mobile via `useUIModeOptional()`.
 - Safe-area insets are applied by the shell that owns the edge
-  (`RedesignedMobileShell` / `MobileTopBar`), not by a shared token module.
+  (`MobileV2Shell` / `MobileV2TopBar`), not by a shared token module.
 - Spacing is the density-aware scale (`tokens/spacing.mjs`, `calc(rem × var(--cf-density))`),
   so mobile rows tighten through `data-density` rather than a parallel `mobileDensity.*` map.
 
@@ -528,9 +550,9 @@ Mobile-specific additions to the existing motion system:
 
 **Mobile-specific:**
 - All tappable elements meet 44px minimum (enforced by `mobileDensity` and `PrimaryButton` size promotion)
-- Safe-area-inset handling in `RedesignedMobileShell` / `MobileTopBar`
+- Safe-area-inset handling in `MobileV2Shell` / `MobileV2TopBar`
 - `prefers-reduced-motion` respected: app-wide `<MotionConfig reducedMotion="user">` (`ReducedMotionProvider`)
-- Camera permission denied: graceful fallback to manual text entry in `ScanInput`
+- Camera permission denied: graceful fallback to manual text entry in `MobileV2ScanInput`
 
 **Desktop scanning:**
 - `StationScanBar` auto-focuses on mount, window refocus, and after each scan submission; the global focus hotkey is `DEFAULT_FOCUS_SCAN_HOTKEY`
@@ -553,9 +575,10 @@ design-system/
     └── RouteShell.tsx        — Mode-aware route frame
 ```
 
-The mobile app shell is **not** in the design system — it lives with its routes at
-`@/components/mobile/redesign/` (`RedesignedMobileShell` · `MobileTopBar` ·
-`MobileSidebarDrawer` · `ScanInput`), mounted by `src/app/m/(shell)/layout.tsx`.
+The mobile app shell is **not** in the design system — V2 lives with its routes at
+`@/components/mobile/v2/` (`MobileV2Shell` · `MobileV2TopBar` ·
+`MobileV2AppSwitcher` · `MobileV2ScanInput`), mounted by `src/app/m/(shell)/layout.tsx`.
+There is no `mobile/redesign` compatibility layer; V2 is the source of truth.
 Desktop framing is `ResponsiveLayout` + the MasterNav spine.
 
 > **Retired 2026-08-07.** The `ResponsiveShell` / `desktop/` / `mobile/` shell family

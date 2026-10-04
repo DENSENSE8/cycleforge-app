@@ -24,6 +24,7 @@ import { sendEmailBestEffort } from '@/lib/email/send';
 import { readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 import { createOrderNote } from '@/lib/orders/order-notes';
 import { labelTrailNote } from '@/lib/shipping/order-label-links';
+import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
 import { LABEL_PURPOSES, type LabelPurpose } from '@/lib/shipping/label-purpose';
 import { purchaseLabelOnce } from '@/lib/shipping/label-purchase-ledger';
 import {
@@ -265,7 +266,7 @@ export async function buyChatLabel(orgId: OrgId, p: ChatLabelBuyPayload): Promis
         await invalidateCacheTags(['orders', 'shipped', 'orders-next']);
         await publishOrderChanged({ organizationId: orgId, orderIds: [p.orderId], source: 'assistant.buy-label' });
         if (finished.shipmentId) {
-          await publishShipmentChanged({ organizationId: orgId, shipmentId: finished.shipmentId, trackingNumber: label.trackingNumber, source: 'assistant.buy-label' });
+          await publishShipmentChanged({ organizationId: orgId, shipmentId: finished.shipmentId, trackingNumber: label.trackingNumber, carrier: shipStationCarrierToStored(label.carrierCode), source: 'assistant.buy-label' });
         }
       } catch (e) {
         console.warn('[chat-buy-label] realtime/cache failed', e);

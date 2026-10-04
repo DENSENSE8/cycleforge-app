@@ -12,6 +12,7 @@ import {
   QUIET_CHIP_EMPTY,
   abbreviateIdentifier,
   disambiguateSerialDisplays,
+  formatOrderIdDisplay,
   getLast8,
   getLast8Serial,
   resolveChipDisplay,
@@ -35,6 +36,13 @@ test('abbreviateIdentifier: cuts on the last delimiter, never at a blind offset'
   // Underscore / slash / dot / colon are identifier delimiters too.
   assert.equal(abbreviateIdentifier('RMA_2026_884213'), '884213');
   assert.equal(abbreviateIdentifier('ORD/2026/0041'), '0041');
+});
+
+test('formatOrderIdDisplay: one compact order face for every operational surface', () => {
+  assert.equal(formatOrderIdDisplay('114-3096070-7490631'), '7490631');
+  assert.equal(formatOrderIdDisplay('EBAY-12345678'), '12345678');
+  assert.equal(formatOrderIdDisplay('-1234567'), '1234567');
+  assert.equal(formatOrderIdDisplay('CF-5043'), 'CF-5043');
 });
 
 test('abbreviateIdentifier: never pads — a padded id is a wrong id', () => {

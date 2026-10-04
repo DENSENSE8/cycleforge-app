@@ -1,65 +1,66 @@
 'use client';
 
 /**
- * The phone's Alert verb (R7) — the desk's `TaskAlertButton` twin: "Alert
- * <people> to follow up" (default the owners other than me; any other active
- * staffer can be added — owner 2026-09-30: "I should not be able to alert
- * myself"), optional note + follow-up-by, and a preview of the contacts the
- * task links, which ride on every recipient's inbox row.
+ * The phone's Alert sheet (R7) — the desk's `TaskAlertButton` twin, opened from the record's ⋯ menu
+ * ("Send Alert…", owner 2026-10-03: secondary verbs live behind the three dots). "Alert <people> to
+ * follow up" (default the owners other than me; any other active staffer can be added — owner
+ * 2026-09-30: "I should not be able to alert myself"), optional note + follow-up-by, and a preview
+ * of the contacts the task links, which ride on every recipient's inbox row.
  *
- * The phone list has no Everyone view (it reads MY tasks), so the verb shows
- * only when the task has an owner other than me — never a self-alert.
+ * `taskAlertRecipients` decides whether the menu offers it: only when someone other than me owns it.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { Bell, Plus, X } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { InboxContactLinks } from '@/components/ui/InboxContactLinks';
 import { AssigneeComboboxPanel } from '@/design-system/components/AssigneeCombobox';
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
 import { StaffBadge } from '@/design-system/components/StaffBadge';
 import { Button } from '@/design-system/primitives';
 import { TextField } from '@/design-system/primitives/TextField';
-import { useAuth } from '@/contexts/AuthContext';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { TASK_ALERT_NOTE_MAX } from '@/lib/tasks/task-alerts';
 import type { TaskDeskPerson } from '@/lib/tasks/task-desk-row';
 import { taskAlertDueChoices, taskAlertHeadline, useSendTaskAlert, useTaskAlertContacts } from '@/lib/tasks/use-task-alert';
 import { toast } from '@/lib/toast';
 
+/** The owners an alert goes to by default — everyone on the task but me. */
+export function taskAlertRecipients(people: readonly TaskDeskPerson[], selfId: number | null): TaskDeskPerson[] {
+  return people.filter((person) => person.id !== selfId);
+}
+
 export function MobileTaskAlert({
   taskId,
-  people,
+  recipients,
+  selfId,
   ticketNumber,
+  open,
+  onOpenChange,
 }: {
   taskId: number;
-  people: TaskDeskPerson[];
+  /** `taskAlertRecipients(row.assignees, selfId)` — non-empty, or the menu never offers it. */
+  recipients: TaskDeskPerson[];
+  selfId: number | null;
   ticketNumber: number | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const { user } = useAuth();
-  const selfId = user?.staffId ?? null;
-  const others = useMemo(() => people.filter((person) => person.id !== selfId), [people, selfId]);
-  const [open, setOpen] = useState(false);
-  if (others.length === 0) return null;
-  const headline = taskAlertHeadline(others.map((person) => person.name));
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="md"
-        className="w-full justify-start"
-        icon={<Bell aria-hidden className="h-4 w-4" />}
-        onClick={() => setOpen(true)}
-        data-testid="mobile-task-alert"
-      >
-        {headline}
-      </Button>
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Alert to follow up" forceVariant="sheet" level={1}>
-        {/* Remounted per open: recipients, note and due time start fresh every time. */}
-        {open ? <AlertForm taskId={taskId} people={others} selfId={selfId} ticketNumber={ticketNumber} onDone={() => setOpen(false)} /> : null}
-      </BottomSheet>
-    </>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>Send Alert</SheetTitle>
+        </SheetHeader>
+        <SheetBody>
+          {/* Remounted per open: recipients, note and due time start fresh every time. */}
+          {open ? (
+            <AlertForm taskId={taskId} people={recipients} selfId={selfId} ticketNumber={ticketNumber} onDone={() => onOpenChange(false)} />
+          ) : null}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -13,6 +13,7 @@ import { focusRing } from '../../tokens/focus-ring';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP, FLOATING_ACTION_DISABLED_FACE } from '../../tokens/dock-clearance';
 import { RECORD_HIT_CLASS } from './record-ledger-geometry';
 import { EvidenceDisclosure } from './EvidenceDisclosure';
 
@@ -198,33 +199,36 @@ export function EvidenceDecisionBar({ verbs }: { verbs: readonly EvidenceVerb[] 
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [shown]);
 
+  // Bottom verbs float (owner 2026-10-03): no bar behind them. Each verb sits on
+  // its own opaque panel so a tinted face never shows the evidence scrolling under it.
   return (
     <div
       role="group"
       aria-label="Decisions"
-      className="sticky bottom-0 mt-auto grid gap-2 border-t border-mode-divide bg-mode-bar p-3"
+      className={cn('pointer-events-none sticky bottom-0 mt-auto grid gap-2 px-3', ACTION_DOCK_TOP_GAP, ACTION_DOCK_LIFT)}
       style={{ gridTemplateColumns: `repeat(${Math.min(shown.length, 2)}, minmax(0, 1fr))` }}
     >
       {shown.map((verb, index) => (
-        <button
-          key={verb.label}
-          type="button"
-          disabled={verb.disabled}
-          onClick={verb.onPress}
-          data-testid={verb.testId}
-          aria-keyshortcuts={String(index + 1)}
-          className={evidenceVerbClass(verb.primary, verb.tone)}
-        >
-          {verb.icon ? (
-            <span aria-hidden className="flex shrink-0 [&_svg]:h-3.5 [&_svg]:w-3.5">
-              {verb.icon}
+        <span key={verb.label} className="pointer-events-auto flex rounded-mode bg-mode-panel shadow-md">
+          <button
+            type="button"
+            disabled={verb.disabled}
+            onClick={verb.onPress}
+            data-testid={verb.testId}
+            aria-keyshortcuts={String(index + 1)}
+            className={cn(evidenceVerbClass(verb.primary, verb.tone), 'w-full', FLOATING_ACTION_DISABLED_FACE)}
+          >
+            {verb.icon ? (
+              <span aria-hidden className="flex shrink-0 [&_svg]:h-3.5 [&_svg]:w-3.5">
+                {verb.icon}
+              </span>
+            ) : null}
+            <span className="truncate">{verb.label}</span>
+            <span aria-hidden className="opacity-60">
+              {index + 1}
             </span>
-          ) : null}
-          <span className="truncate">{verb.label}</span>
-          <span aria-hidden className="opacity-60">
-            {index + 1}
-          </span>
-        </button>
+          </button>
+        </span>
       ))}
     </div>
   );

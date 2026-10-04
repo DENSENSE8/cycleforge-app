@@ -9,7 +9,9 @@
  * is looking at the field — pointer over it, or it has focus (`F`, a click) —
  * the later phrases roll in top → bottom one after another, each held long
  * enough to read. Leaving rolls back to the rest phrase; the next look
- * resumes at the phrase after the last one shown.
+ * resumes at the phrase after the last one shown. Keys are never painted in
+ * the well: the field's `F`, ⌘K and the paste-a-list chord ride the caller's
+ * hover key card (NavFind), the escalate / clear chords their tooltips.
  *
  * Two scopes, one field: typing narrows the list on screen; `escalate` hands
  * the same text to the palette ("Search everywhere", ⌘↵ / Ctrl+↵).
@@ -19,16 +21,15 @@ import { useCallback, useEffect, useRef, useState, type FocusEvent, type Keyboar
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SEARCH_WELL_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { ClipboardPaste, Search, X } from '@/components/Icons';
-import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
-/** Hover intent: a pointer just passing through never starts a roll. */
-const HINT_INTENT_MS = 180;
+/** Hover intent: a pointer just passing through never starts a roll (or the well's key card). */
+export const HINT_INTENT_MS = 180;
 /** Each phrase holds this long — the eye is already on it, short phrases read fast. */
 const HINT_HOLD_MS = 1_800;
 /** Soft top/bottom edges: the line rolls in and out THROUGH the field's edge, not past a hard clip. */
@@ -57,21 +58,14 @@ export function useHintActivity() {
 }
 
 /**
- * One rolling phrase: plain words, or words led by the keys that do them
- * (HOTKEY FIRST — `F` Find orders to ship, `⌘ K` Search everywhere), so a
- * field that does two jobs teaches both in the same line.
- */
-export type FindHint = string | { keys: readonly string[]; text: string };
-
-/**
  * The rolling phrase, absolutely filling its (relative) parent. `hints[0]` is
  * the rest face; `hints[1…]` roll while `active`.
  *
  * Motion: the whole phrase moves as ONE LINE — it drops in from above while
  * the outgoing phrase drops out below (critically damped spring, no
  * overshoot), both through a soft masked edge — so it reads in one glance,
- * never word by word. A keyed phrase rolls WITH its keys. A hover shorter
- * than the intent delay never rolls. Reduced motion keeps the swap as a
+ * never word by word. A hover shorter than the intent delay never rolls.
+ * Reduced motion keeps the swap as a
  * plain fade (`useMotionPresence` strips the travel).
  */
 export function RollingHint({
@@ -79,7 +73,7 @@ export function RollingHint({
   active,
   className,
 }: {
-  hints: readonly FindHint[];
+  hints: readonly string[];
   active: boolean;
   className?: string;
 }) {
@@ -90,7 +84,7 @@ export function RollingHint({
   const [turn, setTurn] = useState(0);
   const line = useMotionPresence(motionPresence.findHintRoll);
   const transition = useMotionTransition(motionTransition.findHintRoll);
-  const key = hints.map((hint) => (typeof hint === 'string' ? hint : `${hint.keys.join('+')} ${hint.text}`)).join('|');
+  const key = hints.join('|');
   const hint = hints[showing] ?? hints[0] ?? '';
 
   useEffect(() => {
@@ -130,20 +124,7 @@ export function RollingHint({
           transition={transition}
           className={cn('absolute inset-0 flex items-center overflow-hidden whitespace-pre', className)}
         >
-          {typeof hint === 'string' ? (
-            hint
-          ) : (
-            <>
-              <span className="mr-1.5 inline-flex shrink-0 items-center gap-0.5">
-                {hint.keys.map((k) => (
-                  <KeyboardKey key={k} size="xs">
-                    {k}
-                  </KeyboardKey>
-                ))}
-              </span>
-              <span className="min-w-0 truncate">{hint.text}</span>
-            </>
-          )}
+          {hint}
         </motion.span>
       </AnimatePresence>
     </span>
@@ -158,10 +139,10 @@ const FIELD_SIZE = {
 } as const;
 
 /**
- * Search icon · `F` keycap · field (rolling hint while empty) · paste key ·
- * clear (far right, expanded or not). The field keeps a local draft and commits after
- * `debounceMs`; a committed value coming back never overwrites keys typed
- * since.
+ * Search icon · `lead` (a held token) · field (rolling hint while empty) ·
+ * paste key · clear (far right, expanded or not). The field keeps a local
+ * draft and commits after `debounceMs`; a committed value coming back never
+ * overwrites keys typed since.
  *
  * `overflowRight`: the operator's words outrank the layout — while the field
  * has focus the well grows RIGHT past its slot (over whatever sits beside
@@ -169,9 +150,10 @@ const FIELD_SIZE = {
  * the rows under it are all readable. The slot keeps its 32px, so nothing
  * around it moves; blur returns the well to the slot.
  *
- * While it has focus and text, a panel hangs under the well: `below` (the
- * caller's answer, e.g. where the text lives) then, with `escalate`, the
- * "Search everywhere" row (⌘↵ / Ctrl+↵).
+ * The panel under the well ({@link FindPanel}) holds, top to bottom: `drop`
+ * while `dropOpen` (what the caller holds — a pasted list), then, while it
+ * has focus and text, `below` (the caller's answer, e.g. where the text
+ * lives) and, with `escalate`, the "Search everywhere" row (⌘↵ / Ctrl+↵).
  *
  * `onClear`: the caller holds something the field's text does not (a pasted
  * list), so the clear key shows without text. One click clears both: the
@@ -190,6 +172,10 @@ export function FindField({
   testId,
   escalate,
   below,
+  lead,
+  drop,
+  dropOpen = false,
+  keyShortcuts,
   onClear,
   overflowRight = false,
 }: {
@@ -211,12 +197,18 @@ export function FindField({
   escalate?: (query: string) => void;
   /** Painted in the panel under the well while it has focus and text. */
   below?: ReactNode;
+  /** A held token left of the text ({@link FindToken}, keyed) — enters and leaves with a blur. */
+  lead?: ReactNode;
+  /** Painted at the top of the panel while `dropOpen` (see above). */
+  drop?: ReactNode;
+  dropOpen?: boolean;
+  /** More `aria-keyshortcuts` that land in this field (a chord the caller owns). */
+  keyShortcuts?: string;
   /** Grow right past the slot while focused (see above). */
   overflowRight?: boolean;
   /** The caller has something to clear beyond the text (see above). */
   onClear?: () => void;
 }) {
-  const apple = useApplePlatform();
   const [draft, setDraft] = useState(value);
   const committed = useRef(value);
   const look = useHintActivity();
@@ -249,20 +241,15 @@ export function FindField({
   }, [inputRef, interceptPaste]);
 
   const sized = FIELD_SIZE[size];
-  // A field that also escalates teaches both jobs in one roll: `F` finds on
-  // this page, ⌘K / Ctrl K searches everywhere. The keys ride in the phrase,
-  // so no separate keycap sits in front of it.
-  const rolled: readonly FindHint[] = escalate
-    ? [
-        hints[0] ?? 'Find',
-        { keys: ['F'], text: hints[1] ?? 'Find' },
-        { keys: chordKeys('mod+k', apple), text: 'Everywhere' },
-        { keys: chordKeys('mod+shift+f', apple), text: 'Clear' },
-        ...hints.slice(2),
-      ]
+  // A field that also escalates teaches both jobs in one roll: find on this
+  // page, then search everywhere.
+  const rolled: readonly string[] = escalate
+    ? [hints[0] ?? 'Find', hints[1] ?? 'Find', 'Search everywhere', ...hints.slice(2)]
     : hints;
   const query = look.focused ? draft.trim() : '';
-  const panel = query && (below || escalate);
+  const held = Boolean(dropOpen && drop);
+  const answered = Boolean(query && (below || escalate));
+  const shortcuts = [escalate ? 'F Meta+Enter Control+Enter' : 'F', keyShortcuts].filter(Boolean).join(' ');
   const well = (
     <div
       data-find-field
@@ -276,7 +263,7 @@ export function FindField({
       )}
     >
       <Search aria-hidden className="size-3.5 shrink-0 text-text-muted" />
-      {escalate ? null : <HoverKeycaps keys={['F']} shown={look.active} />}
+      <FindLead>{lead}</FindLead>
       <span className="relative flex h-full min-w-0 flex-1">
         {draft ? null : <RollingHint hints={rolled} active={look.active} className={cn(sized.text, findHintTone(look.active))} />}
         <input
@@ -284,7 +271,9 @@ export function FindField({
           type="search"
           value={draft}
           aria-label={label}
-          aria-keyshortcuts={escalate ? 'F Meta+Enter Control+Enter' : 'F'}
+          aria-keyshortcuts={shortcuts}
+          aria-haspopup={drop ? 'listbox' : undefined}
+          aria-expanded={drop ? held : undefined}
           spellCheck={false}
           autoComplete="off"
           data-testid={testId}
@@ -313,11 +302,11 @@ export function FindField({
       </span>
       <PasteKey label="Paste to find" shown={look.active} onPaste={() => void pasteClipboard()} />
       {draft || onClear ? (
+        <HoverTooltip asChild label="Clear" shortcut={escalate ? 'mod + Shift + F' : undefined}>
         <button
           type="button"
           data-find-clear
           aria-label="Clear"
-          title="Clear"
           // Same rule as the paste key: taking focus would grow a collapsed
           // `overflowRight` well mid-click and slide the key out from under the pointer.
           onPointerDown={(event) => event.preventDefault()}
@@ -334,42 +323,29 @@ export function FindField({
         >
           <X aria-hidden className="size-3.5" />
         </button>
+        </HoverTooltip>
       ) : null}
-      {panel ? (
-        <div
-          data-find-panel
-          // Keep focus in the field: the panel is part of it, not a new stop.
-          onPointerDown={(event) => event.preventDefault()}
-          className={cn(
-            'absolute inset-x-0 top-full z-50 mt-1 flex flex-col gap-1 bg-surface-card p-1 shadow-lg ring-1 ring-inset ring-border-hairline',
-            SIDEBAR_CONTROL_CORNER,
-          )}
-        >
-          {below}
-          {escalate ? (
-            <button
-              type="button"
-              data-find-escalate
-              aria-label={`Search everywhere for “${query}”`}
-              onClick={() => escalate(query)}
-              className={cn(
-                'ds-raw-button flex h-7 min-w-0 items-center gap-1.5 px-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken active:translate-y-px',
-                SIDEBAR_CONTROL_CORNER,
-              )}
-            >
-              <span aria-hidden className="inline-flex shrink-0 items-center gap-0.5">
-                {chordKeys('mod+↵', apple).map((key) => (
-                  <KeyboardKey key={key} size="xs">
-                    {key}
-                  </KeyboardKey>
-                ))}
-              </span>
-              <span className="shrink-0">Search everywhere for</span>
-              <span className="min-w-0 flex-1 truncate font-semibold">“{query}”</span>
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      <FindPanel open={held || answered}>
+        {held ? drop : null}
+        {answered ? below : null}
+        {answered && escalate ? (
+          <HoverTooltip asChild focusable={false} label="Search everywhere" shortcut="mod + ↵">
+          <button
+            type="button"
+            data-find-escalate
+            aria-label={`Search everywhere for “${query}”`}
+            onClick={() => escalate(query)}
+            className={cn(
+              'ds-raw-button flex h-7 min-w-0 shrink-0 items-center gap-1.5 px-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken active:translate-y-px',
+              SIDEBAR_CONTROL_CORNER,
+            )}
+          >
+            <span className="shrink-0">Search everywhere for</span>
+            <span className="min-w-0 flex-1 truncate font-semibold">“{query}”</span>
+          </button>
+          </HoverTooltip>
+        ) : null}
+      </FindPanel>
     </div>
   );
   // The slot holds the layout's 32px; the well may leave it to the right.
@@ -379,6 +355,115 @@ export function FindField({
     </div>
   ) : (
     well
+  );
+}
+
+/** The well's held-token slot: a keyed {@link FindToken} enters and leaves with its blur (never on first paint). */
+export function FindLead({ children }: { children: ReactNode }) {
+  return <AnimatePresence initial={false}>{children}</AnimatePresence>;
+}
+
+/**
+ * The panel hanging under a find well (FindField's, the everywhere face's):
+ * at least 28rem wide from the well's left edge, so its rows read at the
+ * width the grown well has. Its height opens and closes with a fade
+ * (`motionPresence.findListPanel`, ease-in-out; the close is the reverse,
+ * faster); reduced motion keeps it a plain swap. Pointer presses keep focus
+ * where it is — the panel is part of the field, not a new tab stop.
+ */
+export function FindPanel({ open, children }: { open: boolean; children: ReactNode }) {
+  const presence = useMotionPresence(motionPresence.findListPanel);
+  const opening = useMotionTransition(motionTransition.findListPanelOpen);
+  const closing = useMotionTransition(motionTransition.findListPanelClose);
+  return (
+    <AnimatePresence initial={false}>
+      {open ? (
+        <motion.div
+          key="find-panel"
+          data-find-panel
+          onPointerDown={(event) => {
+            // A row's own edit box still takes the pointer.
+            if (!(event.target as HTMLElement).closest('input, textarea')) event.preventDefault();
+          }}
+          initial={presence.initial}
+          animate={presence.animate}
+          exit={{ ...presence.exit, transition: closing }}
+          transition={opening}
+          className={cn(
+            'absolute left-0 top-full z-50 mt-1 w-[max(100%,28rem)] cursor-default overflow-hidden bg-surface-card shadow-lg ring-1 ring-inset ring-border-hairline',
+            SIDEBAR_CONTROL_CORNER,
+          )}
+        >
+          <div className="flex max-h-[min(34rem,calc(100vh-6rem))] flex-col gap-1 p-1">{children}</div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+/**
+ * A held thing inside the well, left of the text (a pasted list: `40
+ * numbers`): pressing it opens what it holds, its own × lets it go. It
+ * enters with a short blur-in and leaves the same way
+ * (`motionPresence.findListToken`). Render it keyed, as FindField's `lead`.
+ */
+export function FindToken({
+  children,
+  label,
+  clearLabel,
+  onOpen,
+  onClear,
+}: {
+  children: ReactNode;
+  /** Accessible name of the token's press (`Open the 40 pasted numbers`). */
+  label: string;
+  clearLabel: string;
+  onOpen: () => void;
+  onClear: () => void;
+}) {
+  const presence = useMotionPresence(motionPresence.findListToken);
+  const transition = useMotionTransition(motionTransition.findListToken);
+  return (
+    <motion.span
+      data-find-token
+      initial={presence.initial}
+      animate={presence.animate}
+      exit={presence.exit}
+      transition={transition}
+      className={cn(
+        'inline-flex h-6 shrink-0 items-center bg-surface-sunken text-text-default ring-1 ring-inset ring-border-soft',
+        SIDEBAR_CONTROL_CORNER,
+      )}
+    >
+      <button
+        type="button"
+        aria-label={label}
+        // Keep focus where it is: the press opens the panel and lands in the field.
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={onOpen}
+        className={cn(
+          'ds-raw-button inline-flex h-full items-center gap-1 whitespace-nowrap pl-1.5 pr-1 text-role-caption font-semibold tabular-nums hover:bg-surface-card active:translate-y-px',
+          SIDEBAR_CONTROL_CORNER,
+          focusRing('control', 'accent'),
+        )}
+      >
+        {children}
+      </button>
+      <button
+        type="button"
+        aria-label={clearLabel}
+        title={clearLabel}
+        onPointerDown={(event) => event.preventDefault()}
+        onClick={onClear}
+        className={cn(
+          'ds-raw-button grid size-5 shrink-0 place-content-center text-text-faint hover:bg-surface-card hover:text-text-default active:translate-y-px',
+          SIDEBAR_CONTROL_CORNER,
+          focusRing('control', 'accent'),
+        )}
+      >
+        <X aria-hidden className="size-3" />
+      </button>
+    </motion.span>
   );
 }
 
@@ -416,31 +501,6 @@ export function findHintTone(active: boolean): string {
 }
 
 /**
- * A well's hotkey, disclosed progressively: no room and no ink at rest,
- * slides open while the operator looks at the well. HOTKEY FIRST — it sits
- * between the glyph and the words. The negative margin cancels the well's
- * gap so the words do not start indented at rest.
- */
-export function HoverKeycaps({ keys, shown }: { keys: readonly string[]; shown: boolean }) {
-  return (
-    <span
-      aria-hidden
-      data-hover-keycaps={shown ? 'shown' : 'hidden'}
-      className={cn(
-        'inline-flex shrink-0 items-center gap-0.5 overflow-hidden transition-[max-width,opacity,margin] duration-150',
-        shown ? 'mr-0 max-w-24 opacity-100' : '-mr-1.5 max-w-0 opacity-0',
-      )}
-    >
-      {keys.map((key) => (
-        <KeyboardKey key={key} size="xs">
-          {key}
-        </KeyboardKey>
-      ))}
-    </span>
-  );
-}
-
-/**
  * The well's paste key, just left of the clear key (far right when there is
  * nothing to clear) — shown while the operator looks at the well. Still in
  * the tab order: focusing it is looking, so it shows.
@@ -456,7 +516,7 @@ export function PasteKey({ label, shown, onPaste }: { label: string; shown: bool
       // Keep focus where it is: focusing the key would grow a `overflowRight`
       // well mid-click and slide the key out from under the pointer.
       onPointerDown={(event) => event.preventDefault()}
-      // Hidden at rest it takes no room (like `HoverKeycaps`): the narrow
+      // Hidden at rest it takes no room: the narrow
       // sidebar well keeps its words, and the clear key stays far right.
       className={cn(
         'ds-raw-button grid h-6 shrink-0 place-content-center overflow-hidden text-text-faint transition-[width,margin,color,background-color,transform,opacity]',

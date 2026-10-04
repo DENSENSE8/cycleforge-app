@@ -10,18 +10,17 @@ import { memo, useMemo } from 'react';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import { CollapseItem } from '@/design-system/components/Collapse';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { INCOMING_UNBOXED_VIEW } from '@/lib/triage/views';
-import { cartonRecordCard, type CartonCardModel } from './carton-card-model';
+import { cartonRecordCard, type CartonCardModel, type CartonCardView } from './carton-card-model';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 
 /** Quick look (Space): only what the face leaves out — who did each step and when, the carton, full tracking. */
-function CartonCardPeek({ model }: { model: CartonCardModel }) {
+export function CartonCardPeek({ model }: { model: CartonCardModel }) {
   const lead = model.lead;
   const stamp = (at: string | null | undefined, by: string | null | undefined) =>
     at ? `${fmtDate(at)}${by ? ` · ${by}` : ''}` : null;
@@ -52,7 +51,7 @@ function CartonCardPeek({ model }: { model: CartonCardModel }) {
 }
 
 type ReceivingCartonCardProps = TriageCardSlotProps<ReceivingLineRow, CartonCardModel> & {
-  view?: TriageViewDecl;
+  view?: CartonCardView;
 };
 
 /** Shared multi-height carton face. The view supplies only its semantic contract/test ids. */
@@ -73,16 +72,15 @@ export const ReceivingCartonCard = memo(function ReceivingCartonCard({
   const platformMeta = usePlatformMeta();
   const record = useMemo(() => {
     const meta = model.platform ? platformMeta(model.platform) : null;
-    return {
-      ...cartonRecordCard(model),
-      // Same face as the outbound cards: brand dot + the catalog's platform name.
-      channel: meta?.value
-        ? { label: meta.label, tooltip: meta.label, dot: <BrandIdentityDot {...platformMetaBrandDot(meta)} />, badge: null }
-        : null,
-    };
+    // Same face as the outbound cards: brand dot + the catalog's platform name.
+    const channel = meta?.value
+      ? { label: meta.label, tooltip: meta.label, dot: <BrandIdentityDot {...platformMetaBrandDot(meta)} />, badge: null }
+      : null;
+    return cartonRecordCard(model, channel);
   }, [model, platformMeta]);
   return (
     <RecordCard
+      view={view}
       model={record}
       factColumns={view.facts}
       testIdPrefix={view.testIdPrefix}
@@ -102,7 +100,6 @@ export const ReceivingCartonCard = memo(function ReceivingCartonCard({
             {model.identityKind === 'order' ? (
               <OrderIdChip
                 value={model.identity}
-                display={model.identity}
                 dense
                 plain
                 truncateDisplay={false}
@@ -123,7 +120,6 @@ export const ReceivingCartonCard = memo(function ReceivingCartonCard({
             {model.identityKind !== 'order' && model.orderId ? (
               <OrderIdChip
                 value={model.orderId}
-                display={model.orderId}
                 dense
                 plain
                 truncateDisplay={false}

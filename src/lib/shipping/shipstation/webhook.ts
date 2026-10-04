@@ -218,8 +218,8 @@ export async function applyShipStationTrackEvent(
     events,
     payload: data,
   };
-  await updateShipmentSummary(stn.id, result, orgId);
-  await publishShipmentStatusChange(stn.id, 'shipstation.webhook', normalized, orgId);
+  const statusCategory = await updateShipmentSummary(stn.id, result, orgId);
+  await publishShipmentStatusChange({ shipmentId: stn.id, source: 'shipstation.webhook', trackingNumber: normalized, carrier: stn.carrier, statusCategory, orgId });
 
   return { matched: true, shipmentId: stn.id };
 }

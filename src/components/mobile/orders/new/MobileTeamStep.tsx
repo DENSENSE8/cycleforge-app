@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Check, ChevronRight } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
 import { MobileFormHeading } from './MobileFormHeading';
@@ -164,42 +164,47 @@ function MobileStaffChooserSheet({
   }, [chooser, roster]);
 
   return (
-    <BottomSheet open={open} onClose={onClose} forceVariant="sheet" title={chooser?.title} scrollBody level={1}>
-      <div data-testid="m-order-team-chooser">
-        {roster == null ? (
-          <p className="px-mode-page py-3 text-role-caption text-mode-muted">Loading staff…</p>
-        ) : rows.length === 0 ? (
-          <p className="px-mode-page py-3 text-role-caption text-mode-muted">
-            {chooser?.lane === 'packer' ? 'No packers on the roster.' : 'No pickers on the roster.'}
-          </p>
-        ) : (
-          <ul aria-label={chooser ? `${LANE_LABEL[chooser.lane]} staff` : undefined}>
-            {rows.map((m) => {
-              const selected = m.id === chooser?.selected;
-              return (
-                <li key={m.id}>
-                  <button
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => (selected ? onPick(null, null) : onPick(m.id, m.name))}
-                    className={ROW_CLASS}
-                    data-testid="m-order-team-staff"
-                  >
-                    <StaffAvatar staffId={m.id} name={m.name} size="sm" colorRing alt="" />
-                    <span className="min-w-0 flex-1 truncate text-mode-body font-semibold text-mode-ink">{m.name}</span>
-                    {selected ? (
-                      <span className="flex shrink-0 items-center gap-1 text-role-caption text-text-accent">
-                        <Check className="h-4 w-4" />
-                        Tap to clear
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-    </BottomSheet>
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>{chooser?.title}</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="px-0 pt-0" data-testid="m-order-team-chooser">
+          {roster == null ? (
+            <p className="px-mode-page py-3 text-role-caption text-mode-muted">Loading staff…</p>
+          ) : rows.length === 0 ? (
+            <p className="px-mode-page py-3 text-role-caption text-mode-muted">
+              {chooser?.lane === 'packer' ? 'No packers on the roster.' : 'No pickers on the roster.'}
+            </p>
+          ) : (
+            <ul aria-label={chooser ? `${LANE_LABEL[chooser.lane]} staff` : undefined}>
+              {rows.map((m) => {
+                const selected = m.id === chooser?.selected;
+                return (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => (selected ? onPick(null, null) : onPick(m.id, m.name))}
+                      className={ROW_CLASS}
+                      data-testid="m-order-team-staff"
+                    >
+                      <StaffAvatar staffId={m.id} name={m.name} size="sm" colorRing alt="" />
+                      <span className="min-w-0 flex-1 truncate text-mode-body font-semibold text-mode-ink">{m.name}</span>
+                      {selected ? (
+                        <span className="flex shrink-0 items-center gap-1 text-role-caption text-text-accent">
+                          <Check className="h-4 w-4" />
+                          Tap to clear
+                        </span>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

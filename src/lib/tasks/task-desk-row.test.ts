@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  taskBriefBody,
   taskDeskRecordHref,
   taskDeskRecordLabel,
   taskDeskTitle,
@@ -114,4 +115,17 @@ test('project label titles the shared work; instructions remain the fallback', (
   assert.equal(taskDeskTitle(row({ projectName: '  Returns launch  ', note: '# Check packaging' })),
     'Returns launch');
   assert.equal(taskDeskTitle(row({ note: '# Check packaging' })), 'Check packaging');
+});
+
+test('the brief never restates the title it sits under', () => {
+  // Title derived from the note's first line → the brief starts after it.
+  assert.equal(taskBriefBody(row({ note: '# Reship steps\n\n1. Pull unit\n2. Pack' })), '1. Pull unit\n2. Pack');
+  // The note IS the title → there is no brief at all.
+  assert.equal(taskBriefBody(row({ note: 'Customer Support | Repeat Repair' })), null);
+  // A project titles the record → the whole note is the brief, first line included.
+  assert.equal(
+    taskBriefBody(row({ projectName: 'Sales follow-ups', note: 'Email follow-up: quote\nHold 20 units' })),
+    'Email follow-up: quote\nHold 20 units',
+  );
+  assert.equal(taskBriefBody(row({ note: '   ' })), null);
 });

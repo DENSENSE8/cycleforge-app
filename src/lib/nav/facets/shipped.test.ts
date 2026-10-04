@@ -126,6 +126,7 @@ function comboRunner(packages: FixturePackage[], captured: Array<{ sql: string; 
   return {
     listLocalPickupLines: noPickup,
     exceptionCounts: noExceptions,
+    liveFeedCounts: async () => ({}),
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
       // Exact time-window values are the ISO instants among the bound params.
@@ -251,6 +252,7 @@ test('outbound.shipped: a DB without packer_log_enrichment falls back to the leg
     const deps: NavFacetsDeps = {
       listLocalPickupLines: noPickup,
       exceptionCounts: noExceptions,
+      liveFeedCounts: async () => ({}),
       run: async (_orgId, sql) => {
         captured.push(sql);
         if (sql.includes('packer_log_enrichment')) throw Object.assign(new Error('relation missing'), { code: '42P01' });

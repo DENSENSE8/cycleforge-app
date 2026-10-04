@@ -1,4 +1,4 @@
-/** Order-import-staging catalog guards + resolver behaviour — wave 1.4's tenth family and the last of the wave. */
+/** Order-import-staging catalog guards + sheet materialization — wave 1.4's tenth family and the last of the wave. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -7,30 +7,7 @@ import {
   csvImportStagingSheetColumnsFor,
   csvImportStagingSortFactFor,
 } from '@/components/outbound/orders/import-staging/csv-import-staging-grid-layout';
-import type { OrderImportRowView } from '@/lib/orders/order-import-descriptor';
 import { ORDERS_IMPORT_FIELD_CATALOG, ORDERS_IMPORT_PRODUCT_LAYOUT } from './orders-import';
-import { resolveOrdersImportSlotValue } from './orders-import-resolve';
-
-
-function row(overrides: Partial<OrderImportRowView> = {}): OrderImportRowView {
-  return {
-    index: 0,
-    status: 'ready',
-    missing: [],
-    orderNumber: '09-88231-44120',
-    sku: 'BOSE-WAVE-IV',
-    itemNumber: '9M52B2C4',
-    itemTitle: 'Bose Wave Radio IV',
-    quantity: '02',
-    customerName: 'Dana Vo',
-    trackingNumber: '1Z999AA10123456784',
-    platform: 'ebay',
-    weightOz: '',
-    assigneeTech: '',
-    assigneePacker: '',
-    ...overrides,
-  } as OrderImportRowView;
-}
 
 describe('orders-import catalog', () => {
   it('has unique ids, all family-qualified, each bindable somewhere', () => {
@@ -114,51 +91,5 @@ describe('csvImportStagingSheetColumnsFor — the sheet materialization', () => 
       statusBindings: [{ fieldId: 'orders-import.sku' }],
     });
     assert.equal(columns.at(-1)?.key, '_fill');
-  });
-});
-
-describe('resolveOrdersImportSlotValue', () => {
-  it('shows what the FILE said — no coercion on a staging surface', () => {
-    // `02` stays `02`. The row that would silently become `2` is exactly the
-    // bug staging exists to catch.
-    assert.deepEqual(resolveOrdersImportSlotValue(row(), 'orders-import.qty'), {
-      kind: 'value',
-      text: '02',
-    });
-  });
-
-  it('resolves each catalog field off the staged row', () => {
-    const r = row();
-    assert.deepEqual(resolveOrdersImportSlotValue(r, 'orders-import.order'), {
-      kind: 'value',
-      text: '09-88231-44120',
-    });
-    assert.deepEqual(resolveOrdersImportSlotValue(r, 'orders-import.customer'), {
-      kind: 'value',
-      text: 'Dana Vo',
-    });
-    assert.ok(
-      (resolveOrdersImportSlotValue(r, 'orders-import.platform') as { text: string | null }).text,
-    );
-  });
-
-  it('an unrecognised channel reads back what the file said, never a blank', () => {
-    const odd = resolveOrdersImportSlotValue(
-      row({ platform: 'some-marketplace' }),
-      'orders-import.platform',
-    );
-    assert.equal(odd?.kind, 'value');
-    assert.ok((odd as { text: string | null }).text);
-  });
-
-  it('honest absence: an empty cell in the file resolves null', () => {
-    const bare = row({ sku: '', trackingNumber: '', platform: '' });
-    for (const id of ['orders-import.sku', 'orders-import.tracking', 'orders-import.platform']) {
-      assert.deepEqual(resolveOrdersImportSlotValue(bare, id), { kind: 'value', text: null }, id);
-    }
-  });
-
-  it('unknown field id resolves null, never throws', () => {
-    assert.equal(resolveOrdersImportSlotValue(row(), 'orders-import.ghost'), null);
   });
 });

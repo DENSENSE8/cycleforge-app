@@ -8,6 +8,8 @@ export type LocationBindContent = {
   productTitle: string | null;
   isProvisional?: boolean;
   imageUrl?: string | null;
+  /** SKU_STOCK photo ids in display order (`[0]` = cover); empty when none. */
+  photoIds: number[];
 };
 
 /** A movable, licence-plated container currently parked at this address. */
@@ -34,4 +36,14 @@ export type LocationRecord = {
   room: string | null;
   contents: LocationBindContent[];
   handlingUnits: LocationHandlingUnit[];
+  /** This location's place in its room's physical walk; null for a just-registered code. */
+  walk: LocationWalkStep | null;
+};
+
+export type LocationWalkStep = {
+  /** 1-based. */
+  position: number;
+  total: number;
+  previous: string | null;
+  next: string | null;
 };

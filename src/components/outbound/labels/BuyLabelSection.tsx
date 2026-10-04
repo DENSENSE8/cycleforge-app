@@ -5,13 +5,16 @@ import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-sys
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Truck, Check, Loader2, RefreshCw, Clock, AlertTriangle, Trash2, Printer } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
+import type { ShipAddress, ShippingRateOption } from '@/lib/shipping/shipstation/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { LABEL_PURPOSES, LABEL_PURPOSE_FACE, type LabelPurpose } from '@/lib/shipping/label-purpose';
 import { orderLabelPdfSrc, orderPriceBreakdownKey } from '@/components/outbound/orders/order-labels-client';
-import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
+import { sendWithBuyerNoteAck, acknowledgeBuyerNote } from '@/lib/orders/buyer-note-ack-client';
+import { BUYER_NOTE_HOLD_CODE } from '@/lib/orders/buyer-note-interlock';
+import { V1RequestError } from '@/lib/api/v1-client';
+import { buyLabel, fetchLabelBuyRates } from '@/lib/label-buys/http-client';
 import { outboundDocumentContentSrc } from '@/lib/documents/outbound-document-display';
 import {
   orderLabelSummaryKey,
@@ -43,9 +46,10 @@ interface BuyResponse {
   idempotent?: boolean;
   purpose?: LabelPurpose;
   purchaseId?: number;
+  /** MANUAL buys: the `label_ingestions.id` the label landed under (the Labels queue row). */
+  labelIngestionId?: number | null;
   error?: string;
 }
-
 function money(amount: number | undefined, currency = 'USD'): string {
   if (typeof amount !== 'number') return '—';
   const symbol = currency === 'USD' ? '$' : `${currency} `;
@@ -64,6 +68,18 @@ function eta(rate: ShippingRateOption): string {
   return '—';
 }
 
+/** A v1 rate-shop failure → the host's `onRatesError` shape (code first). */
+function v1RatesError(error: unknown): { code: string | null; message: string } {
+  if (error instanceof V1RequestError) return { code: error.code ?? null, message: error.message };
+  return { code: null, message: error instanceof Error ? error.message : 'Could not fetch rates.' };
+}
+
+/** The buyer-note hold a MANUAL buy answered with, when its reference names an order with an unread note. */
+function labelBuyNoteHold(error: unknown): { orderRowId: number; buyerNote: string } | null {
+  if (!(error instanceof V1RequestError) || error.code !== BUYER_NOTE_HOLD_CODE) return null;
+  const { orderRowId, buyerNote } = error.details as { orderRowId?: unknown; buyerNote?: unknown };
+  return typeof orderRowId === 'number' && typeof buyerNote === 'string' && buyerNote ? { orderRowId, buyerNote } : null;
+}
 interface BuyLabelSectionProps {
   orderId: number;
   orderRef: string;
@@ -93,6 +109,27 @@ interface BuyLabelSectionProps {
    * To-ship label run). Omit everywhere else.
    */
   onPurchased?: (info: BuyResponse) => void;
+  /**
+   * MANUAL source (owner 2026-10-01): buy with NO order — the Labels desk's
+   * Buy card. When set, `orderId`/`orderRef` are ignored and the section
+   * rate-shops + buys through `/api/v1/label-buys`; the bought label lands in
+   * the Labels queue (no order documents, no void pane — print from the rail).
+   */
+  manual?: LabelBuyManualSource | null;
+}
+
+/** The no-order buy: a typed address and parcel, an optional reference/product link. */
+export interface LabelBuyManualSource {
+  shipTo: ShipAddress;
+  parcel: {
+    weight: { value: number; unit: 'ounce' };
+    dimensions: { length: number; width: number; height: number; unit: 'inch' } | null;
+  };
+  reference?: string | null;
+  product?: { skuCatalogId: number | null; sku: string | null } | null;
+  rememberParcel?: boolean;
+  /** A manual buy committed — the host refreshes the Labels queue. */
+  onBought?: (result: { labelIngestionId: number | null; tracking: string | null; carrier: string | null }) => void;
 }
 
 /** Buy Label — the ShipStation rate-shop → purchase → print flow for the Outbound · Labels order panel. */
@@ -104,6 +141,7 @@ export function BuyLabelSection({
   dimensions = null,
   onRatesError,
   onPurchased,
+  manual = null,
 }: BuyLabelSectionProps) {
   // Mode corners: a card / a control in triage, square on the floor.
   const face = 'rounded-mode';
@@ -133,6 +171,17 @@ export function BuyLabelSection({
 
   const ratesMutation = useMutation<RatesResponse, Error, void>({
     mutationFn: async () => {
+      if (manual) {
+        // MANUAL: the v1 label-buys rate shop — a typed address + parcel, no order.
+        try {
+          const data = await fetchLabelBuyRates({ purpose, shipTo: manual.shipTo, parcel: manual.parcel });
+          return { ok: true, rates: data.rates } satisfies RatesResponse;
+        } catch (error) {
+          const info = v1RatesError(error);
+          onRatesError?.(info);
+          throw new Error(info.message);
+        }
+      }
       const res = await fetch('/api/shipping/order-rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,6 +209,45 @@ export function BuyLabelSection({
 
   const buyMutation = useMutation<BuyResponse, Error, ShippingRateOption>({
     mutationFn: async (rate) => {
+      if (manual) {
+        // MANUAL: v1 label-buys — one idempotency key per intended purchase;
+        // a buyer-note hold on the reference is acknowledged and resent with
+        // the SAME key (nothing was charged), like the order path.
+        const send = async (): Promise<BuyResponse> => {
+          const r = await buyLabel({
+            purpose,
+            shipTo: manual.shipTo,
+            parcel: manual.parcel,
+            clientEventId: purchaseKey(),
+            rateId: rate.rateId,
+            carrierId: rate.carrierId,
+            serviceCode: rate.serviceCode,
+            reference: manual.reference ?? null,
+            product: manual.product ?? null,
+            rememberParcel: Boolean(manual.product) && Boolean(manual.rememberParcel),
+          });
+          return {
+            ok: true,
+            tracking: r.tracking ?? undefined,
+            carrier: r.carrier ?? undefined,
+            service: r.service ?? undefined,
+            cost: r.cost ?? undefined,
+            currency: r.currency ?? undefined,
+            warning: r.warning,
+            idempotent: r.replayed,
+            purpose,
+            purchaseId: r.purchaseId,
+            labelIngestionId: r.labelIngestionId,
+          };
+        };
+        try {
+          return await send();
+        } catch (error) {
+          const hold = labelBuyNoteHold(error);
+          if (!hold || !(await acknowledgeBuyerNote(hold))) throw error;
+          return await send();
+        }
+      }
       // A held order (buyer note) opens the note before the irreversible
       // purchase; the clientEventId is reused on retry — the route claims it
       // before charging, so a retry replays instead of buying again.
@@ -192,10 +280,21 @@ export function BuyLabelSection({
     },
     onSuccess: (data) => {
       setBought(data);
-      void queryClient.invalidateQueries({ queryKey: orderLabelSummaryKey(orderId) });
-      void queryClient.invalidateQueries({ queryKey: orderPriceBreakdownKey(orderId) });
+      if (!manual) {
+        void queryClient.invalidateQueries({ queryKey: orderLabelSummaryKey(orderId) });
+        void queryClient.invalidateQueries({ queryKey: orderPriceBreakdownKey(orderId) });
+      }
       setConfirming(false);
       onChange();
+      if (manual) {
+        // A manual buy lands in the Labels queue — the host refreshes the rail.
+        manual.onBought?.({
+          labelIngestionId: data.labelIngestionId ?? null,
+          tracking: data.tracking ?? null,
+          carrier: data.carrier ?? null,
+        });
+        return;
+      }
       // The label run advances on the order's shipment — a return or a
       // replacement bought mid-run is a side story on the same order.
       if ((data.purpose ?? purpose) === 'outbound') onPurchased?.(data);
@@ -341,80 +440,88 @@ export function BuyLabelSection({
               </div>
             ) : null}
 
-            <div className="flex items-center gap-1.5" data-testid="buy-label-print-actions">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="flex-1"
-                icon={<Printer className="h-3.5 w-3.5" />}
-                disabled={!labelSrc}
-                data-testid="buy-label-print-label"
-                onClick={() => labelSrc && printDocument(labelSrc)}
-              >
-                Print label
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="flex-1"
-                icon={<Printer className="h-3.5 w-3.5" />}
-                disabled={!slipSrc}
-                data-testid="buy-label-print-slip"
-                onClick={() => slipSrc && printDocument(slipSrc)}
-              >
-                Print slip
-              </Button>
-            </div>
-            {!labelSrc && documentsQuery.isFetching ? (
-              <p className="text-role-eyebrow text-text-faint">Loading the stored label…</p>
-            ) : null}
-
-            {/* Void / refund */}
-            {voidOpen ? (
-              <div className={`space-y-1.5 ${faceSm} border border-border-danger bg-surface-danger px-3 py-2.5`}>
-                <label className="mode-label block text-text-danger">Reason to void</label>
-                <input
-                  value={voidReason}
-                  onChange={(e) => setVoidReason(e.target.value)}
-                  placeholder="e.g. wrong service selected"
-                  className={cn('w-full', faceSm, 'border border-border-danger bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none', focusRing('field', 'danger'))}
-                />
-                {voidMutation.isError ? (
-                  <p className="text-role-eyebrow text-text-danger">{voidMutation.error.message}</p>
-                ) : null}
-                <div className="flex items-center gap-1.5">
+            {manual ? (
+              <p className="text-role-eyebrow text-text-soft" data-testid="buy-label-manual-queued">
+                Landed in the Labels queue — print it from the rail.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5" data-testid="buy-label-print-actions">
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="secondary"
                     size="sm"
-                    onClick={() => { setVoidOpen(false); setVoidReason(''); }}
                     className="flex-1"
+                    icon={<Printer className="h-3.5 w-3.5" />}
+                    disabled={!labelSrc}
+                    data-testid="buy-label-print-label"
+                    onClick={() => labelSrc && printDocument(labelSrc)}
                   >
-                    Cancel
+                    Print label
                   </Button>
                   <Button
                     type="button"
-                    variant="danger"
+                    variant="secondary"
                     size="sm"
-                    disabled={!voidReason.trim() || voidMutation.isPending}
-                    icon={voidMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    onClick={() => voidMutation.mutate()}
                     className="flex-1"
+                    icon={<Printer className="h-3.5 w-3.5" />}
+                    disabled={!slipSrc}
+                    data-testid="buy-label-print-slip"
+                    onClick={() => slipSrc && printDocument(slipSrc)}
                   >
-                    Void label
+                    Print slip
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
-                type="button"
-                onClick={() => setVoidOpen(true)}
-                className="flex items-center gap-1 text-role-caption text-text-faint hover:text-text-danger"
-              >
-                <Trash2 className="h-3 w-3" /> Void / refund this label
-              </button>
+                {!labelSrc && documentsQuery.isFetching ? (
+                  <p className="text-role-eyebrow text-text-faint">Loading the stored label…</p>
+                ) : null}
+
+                {/* Void / refund */}
+                {voidOpen ? (
+                  <div className={`space-y-1.5 ${faceSm} border border-border-danger bg-surface-danger px-3 py-2.5`}>
+                    <label className="mode-label block text-text-danger">Reason to void</label>
+                    <input
+                      value={voidReason}
+                      onChange={(e) => setVoidReason(e.target.value)}
+                      placeholder="e.g. wrong service selected"
+                      className={cn('w-full', faceSm, 'border border-border-danger bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none', focusRing('field', 'danger'))}
+                    />
+                    {voidMutation.isError ? (
+                      <p className="text-role-eyebrow text-text-danger">{voidMutation.error.message}</p>
+                    ) : null}
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setVoidOpen(false); setVoidReason(''); }}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        disabled={!voidReason.trim() || voidMutation.isPending}
+                        icon={voidMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        onClick={() => voidMutation.mutate()}
+                        className="flex-1"
+                      >
+                        Void label
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
+                    type="button"
+                    onClick={() => setVoidOpen(true)}
+                    className="flex items-center gap-1 text-role-caption text-text-faint hover:text-text-danger"
+                  >
+                    <Trash2 className="h-3 w-3" /> Void / refund this label
+                  </button>
+                )}
+              </>
             )}
           </motion.div>
         ) : ratesMutation.isPending ? (

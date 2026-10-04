@@ -13,8 +13,9 @@
  * code) and the due date (right), no state rail. A family MAY add its state
  * code and the handle the operator holds after the location (QC queue:
  * `[📍 No bin] RET R-51815 …… 3D`). The BODY ROW: the square photo (no
- * corner) at the far left, exactly as tall as its two rows — the title (one
- * line) over the subtitle: the family's facts, then the channel (dot + name)
+ * corner) at the far left — the title (full, WRAPPING: owner 2026-10-03, no
+ * record title is ever truncated on a phone; supersedes the 2026-09-29 one-line
+ * title) over the subtitle: the family's facts, then the channel (dot + name)
  * and, when the family names one, the next step ("→ Test"). No checkbox, no
  * hover peek, no chips, no notes, no verbs. The whole card is the open
  * target; the location badge and "+N items" are the only other presses.
@@ -69,7 +70,7 @@ export function RecordSquarePhoto({ url, size, alt = '' }: { url: string | null;
   );
 }
 
-/** One line: square photo · title (one line) over facts, then — on the lead only — the channel and the next step. */
+/** One line: square photo · title (full, wraps) over facts, then — on the lead only — the channel and the next step. */
 function CardLine({
   line,
   factColumns,
@@ -87,17 +88,17 @@ function CardLine({
     <div className="flex min-w-0 items-start gap-3">
       <RecordSquarePhoto url={line.photoUrl} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col">
-        <p data-testid={testId?.('title')} className="truncate text-role-body font-medium text-text-default" title={line.title}>
+        <p data-testid={testId?.('title')} className="break-words text-role-body font-medium text-text-default">
           {line.title}
         </p>
-        <div data-testid={testId?.('facts')} className="flex min-w-0 items-center gap-x-1.5 overflow-hidden text-role-caption text-text-muted">
+        <div data-testid={testId?.('facts')} className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-role-caption text-text-muted">
           <RecordLineFacts line={line} columns={factColumns} className="shrink-0 flex-nowrap text-role-caption" />
           {channel ? (
             <>
               <RecordFactSep />
-              <span data-testid={testId?.('platform')} className="flex min-w-0 items-center gap-1 font-medium text-text-default" title={channel.label}>
+              <span data-testid={testId?.('platform')} className="flex min-w-0 items-center gap-1 font-medium text-text-default">
                 {channel.dot}
-                <span className="min-w-0 truncate">{channel.label}</span>
+                <span className="min-w-0 break-words">{channel.label}</span>
                 {channel.badge ? <span className="shrink-0 rounded-md bg-surface-sunken px-1 text-text-muted">{channel.badge}</span> : null}
               </span>
             </>

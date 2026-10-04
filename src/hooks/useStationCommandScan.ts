@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { flashScanBand } from '@/lib/scan-feedback/visual';
@@ -12,7 +13,8 @@ import {
   type NavCommandDef,
 } from '@/lib/stations/nav-command-codes';
 import { parseActionCommand } from '@/lib/stations/action-command-codes';
-import { resolveCommandAlias } from '@/lib/stations/command-alias-store';
+import { areCommandAliasesHydrated, resolveCommandAlias } from '@/lib/stations/command-alias-store';
+import { loadCommandAliases } from '@/hooks/useCommandAliasHydration';
 import {
   isAlreadyAtNavCommand,
   navCommandPermission,
@@ -27,6 +29,7 @@ import {
 export function useStationCommandScan(): (raw: string) => boolean {
   const router = useRouter();
   const { has } = useAuth();
+  const queryClient = useQueryClient();
   // Guards a double trigger-pull: a scanner that fires twice must not submit
   // two verdicts. `clientEventId` makes the SERVER idempotent; this keeps the
   // second pull from even leaving the bench.
@@ -51,7 +54,7 @@ export function useStationCommandScan(): (raw: string) => boolean {
   );
 
   return useCallback(
-    (raw: string): boolean => {
+    function readCommand(raw: string): boolean {
       // A tenant alias resolves to its TARGET first, and everything below then behaves exactly as if the built-in sticker had been scanned.
       const canonical = resolveCommandAlias(raw) ?? raw;
 
@@ -148,6 +151,21 @@ export function useStationCommandScan(): (raw: string) => boolean {
 
       // ── Unregistered command ────────────────────────────────────────────── Still CLAIMED.
       if (isCommandNamespace(canonical)) {
+        // A surface that never hydrated the alias book (the phone shell has no
+        // composer at mount) loads it now and reads the scan once more.
+        if (!areCommandAliasesHydrated()) {
+          void loadCommandAliases(queryClient)
+            .catch(() => undefined)
+            .then(() => {
+              if (areCommandAliasesHydrated()) {
+                readCommand(raw);
+                return;
+              }
+              flashScanBand('reject');
+              toast.error(`Unknown command ${String(raw).trim().toUpperCase()}`);
+            });
+          return true;
+        }
         flashScanBand('reject');
         toast.error(`Unknown command ${String(raw).trim().toUpperCase()}`);
         return true;
@@ -155,6 +173,6 @@ export function useStationCommandScan(): (raw: string) => boolean {
 
       return false;
     },
-    [goTo, has],
+    [goTo, has, queryClient],
   );
 }

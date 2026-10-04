@@ -3,7 +3,8 @@
  * Operator ruling 2026-09-14: *"There should never be something like a display
  */
 
-import { MOBILE_NAV_DESTINATIONS } from '@/lib/mobile/nav-registry';
+import { MOBILE_V2_FULFILLMENT_DESTINATIONS } from '@/components/mobile/v2/mobile-v2-destinations';
+import { domainLane } from '@/lib/nav/lanes';
 import {
   APP_SIDEBAR_NAV,
   DESK_SPINE_SECTIONS,
@@ -19,7 +20,7 @@ interface NavNameCollision {
     | 'lane → row'
     | 'lane → expanded child'
     | 'page → tab'
-    | 'drawer group → row';
+    | 'mobile application → destination';
   /** The parent's id (lane id / page id / group id). */
   parentId: string;
   parentLabel: string;
@@ -79,17 +80,15 @@ function paintedPairs(): Array<Omit<NavNameCollision, 'where'> & { where: NavNam
     }
   }
 
-  for (const item of MOBILE_NAV_DESTINATIONS) {
-    if (item.kind !== 'group') continue;
-    for (const child of item.children) {
-      pairs.push({
-        where: 'drawer group → row',
-        parentId: item.id,
-        parentLabel: item.label,
-        childId: child.id,
-        childLabel: child.label,
-      });
-    }
+  const fulfillment = domainLane('fulfillment');
+  for (const child of MOBILE_V2_FULFILLMENT_DESTINATIONS) {
+    pairs.push({
+      where: 'mobile application → destination',
+      parentId: fulfillment.id,
+      parentLabel: fulfillment.label,
+      childId: child.id,
+      childLabel: child.label,
+    });
   }
 
   return pairs;

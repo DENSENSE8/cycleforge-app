@@ -18,7 +18,7 @@ import { brandsForSkus, type SkuBrandFact } from '@/lib/brands/lookup';
 import { query } from '@/lib/neon-client';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
-import { publishMobileScanLogged, publishScanLog } from '@/lib/realtime/publish';
+import { publishMobileScanLogged } from '@/lib/realtime/publish';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
@@ -365,12 +365,6 @@ async function resolve(input: string, organizationId: string, staffId: number, d
       matches: [], outcome: 'single', routedTo: handleRoute.redirect,
       parsedAis: null, device,
     });
-    // Push the receiving scan to the signed-in staff's desktop phone-history
-    // popover (scanlog:{staffId}). Read-only history feed — never touches
-    // receiving_* or the receiving-station `phone:{staffId}` bridge.
-    void publishScanLog({
-      organizationId, staffId, rawValue: trimmed, kind, routedTo: handleRoute.redirect,
-    });
     return { ...result, mobileScanEventId };
   }
 
@@ -397,9 +391,6 @@ async function resolve(input: string, organizationId: string, staffId: number, d
           carrier: null, matches: [], outcome: 'single', routedTo: route,
           parsedAis: null, device,
         });
-        void publishScanLog({
-          organizationId, staffId, rawValue: trimmed, kind: 'order', routedTo: route,
-        });
         return { ...result, mobileScanEventId };
       }
     }
@@ -425,7 +416,6 @@ async function resolve(input: string, organizationId: string, staffId: number, d
         carrier: null, matches: [], outcome: 'single', routedTo: route,
         parsedAis: null, device,
       });
-      void publishScanLog({ organizationId, staffId, rawValue: trimmed, kind: 'package', routedTo: route });
       return { ...result, mobileScanEventId };
     }
   }

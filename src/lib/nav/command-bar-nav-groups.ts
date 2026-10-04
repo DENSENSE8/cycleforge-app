@@ -1,10 +1,12 @@
-/** ⌘K palette page buckets — Pin → SPINE_SECTIONS. */
+/** ⌘K palette page buckets — Pin → the spine order (`fixedSpineOrder`). */
 
 import { searchNav } from '@/lib/nav/nav-search';
 import {
   spineAccentFor,
   type SpineAccentClasses,
 } from '@/lib/nav/spine-section-accent';
+import { spineNavigationBandTitle } from '@/lib/nav/spine-navigation-band';
+import { fixedSpineOrder } from '@/lib/nav/spine-slots';
 import {
   filterPageChildren,
   getSidebarNavItems,
@@ -17,7 +19,8 @@ import {
   type SpineSectionId,
 } from '@/lib/sidebar-navigation';
 
-type CommandBarNavBandId = SpineSectionId | 'pin' | 'footer';
+/** `root`: pages in no lane (the Live feed) — one "Operations" band, at the Live feed's spine slot (first, operator 2026-10-03). */
+type CommandBarNavBandId = SpineSectionId | 'pin' | 'root' | 'footer';
 
 type CommandBarNavPageRow = {
   type: 'page';
@@ -88,18 +91,38 @@ export function buildCommandBarNavGroups(
     });
   }
 
-  for (const section of SPINE_SECTIONS) {
-    const sectionItems = items.filter(
-      (i) => spineSectionIdForPage(i) === section.id,
-    );
-    if (sectionItems.length === 0) continue;
-    groups.push({
-      id: section.id,
-      label: section.label,
-      sectionIcon: section.icon,
-      accent: spineAccentFor(section.id),
-      rows: sectionItems.map((i) => toPageRow(i)),
-    });
+  // Bands in the ONE spine order (operator 2026-10-03, `fixedSpineOrder`):
+  // Live feed · Scan Stations · Receiving · Fulfillment · Warehouse · … ·
+  // Products. Root pages share one 'Operations' band, placed where the first
+  // of them sits.
+  let rootGroup: CommandBarNavGroup | null = null;
+  for (const id of fixedSpineOrder(items)) {
+    const section = SPINE_SECTIONS.find((s) => s.id === id);
+    if (section) {
+      const sectionItems = items.filter((i) => spineSectionIdForPage(i) === section.id);
+      if (sectionItems.length === 0) continue;
+      groups.push({
+        id: section.id,
+        label: section.label,
+        sectionIcon: section.icon,
+        accent: spineAccentFor(section.id),
+        rows: sectionItems.map((i) => toPageRow(i)),
+      });
+      continue;
+    }
+    const item = items.find((i) => i.id === id);
+    if (!item || item.kind !== undefined) continue;
+    if (!rootGroup) {
+      rootGroup = {
+        id: 'root',
+        label: spineNavigationBandTitle('business'),
+        sectionIcon: null,
+        accent: spineAccentFor(null),
+        rows: [],
+      };
+      groups.push(rootGroup);
+    }
+    rootGroup.rows.push(toPageRow(item));
   }
 
   const footerItems = items.filter((i) => i.kind === 'bottom');

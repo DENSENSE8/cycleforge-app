@@ -11,12 +11,8 @@ import {
   DESK_INSPECTOR_INDEX,
   DeskInspectorIndexShell,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import {
-  FLOOR_DELETE_PEER_CLASS,
-  FloorIconButton,
-  InspectorActionFloor,
-} from '@/components/right-rail/InspectorActionFloor';
-import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
+import { FloorIconButton, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFloorDelete } from '@/components/right-rail/InspectorFloorDelete';
 import { Button } from '@/design-system/primitives';
 import { ClipboardList, ColumnsThree, Pencil, X } from '@/components/Icons';
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
@@ -333,11 +329,10 @@ export function IncomingReturnsImportStagingRail() {
               label="Clear selection"
               onClick={() => clearTableImportSelection(SURFACE)}
             />
-            <InspectorFlushDelete
+            <InspectorFloorDelete
               label={`Discard ${selectedCount} selected row${selectedCount === 1 ? '' : 's'}`}
               confirmLabel="Click again to discard"
               onConfirm={() => discardTableImportSelected(SURFACE)}
-              className={FLOOR_DELETE_PEER_CLASS}
             />
           </InspectorActionFloor>
         ) : null}

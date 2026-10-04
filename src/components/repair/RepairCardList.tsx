@@ -26,6 +26,7 @@ import { RecordActionStrip, type RecordActionVerb } from '@/design-system/compon
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { TriageCardList, type TriageFeed, type TriageSelectionPort } from '@/design-system/components/triage-card-list/TriageCardList';
+import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { useRepairsTable } from '@/hooks/useRepairs';
@@ -45,6 +46,7 @@ import { formatDateKeyMedium, getCurrentPSTDateKey } from '@/utils/date';
 import { qk } from '@/queries/keys';
 import { useRepairRecordSlot } from './record/useRepairRecordSlot';
 import { RepairCard } from './cards/RepairCard';
+import { RepairRow } from './cards/RepairRow';
 import { RepairStatusList } from './cards/RepairStatusControl';
 import { useRepairStatusChange } from './useRepairStatusChange';
 
@@ -206,6 +208,8 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
     onClose: close,
   });
 
+  // Compact | Full — one line per ticket or the full card; saved per person (both repair pages share it).
+  const [density, setDensity] = useTriageDensity('repair.queue');
   const family = useMemo(
     () =>
       triageFamily(VIEW, {
@@ -213,9 +217,10 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
         groupKey: cardKey,
         cardModel: (group) => repairCardModel(group.rows[0]!, todayKey, getStaffName),
         exactFind,
-        renderCard: (props) => <RepairCard {...props} onChangeStatus={changeStatus} />,
+        renderCard: (props) =>
+          density === 'row' ? <RepairRow {...props} /> : <RepairCard {...props} onChangeStatus={changeStatus} />,
       }),
-    [todayKey, getStaffName, changeStatus],
+    [todayKey, getStaffName, changeStatus, density],
   );
 
   const selection = useRepairSelection(painted, `${search}|${searchParams.toString()}`);
@@ -297,6 +302,7 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
         family={family}
         feed={feed}
         cut={cut}
+        densityControl={{ value: density, onChange: setDensity }}
         record={{
           title: slot?.title ?? 'Repair',
           subtitle: slot?.subtitle || undefined,

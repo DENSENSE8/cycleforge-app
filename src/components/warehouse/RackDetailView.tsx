@@ -1,15 +1,23 @@
 'use client';
 
-/** Mobile-first rack detail view. */
+/**
+ * Mobile-first legacy aisle-bay detail view. The room shown is DERIVED by
+ * walking the bay rows' `parent_id` up to the nearest ROOM — never read off the
+ * code letter. A bay can be adopted into a movable rack (Make movable rack);
+ * once adopted, its shelves hang off the rack and the view links to it.
+ */
 
 import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import type { LocationRecord } from '@/hooks/locations-cache';
 import { useBinsOverview, type BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { useLocations } from '@/hooks/useLocations';
 import { BinDetailFlyout } from './BinDetailFlyout';
-import { ChevronDown, ChevronLeft, Layers, Printer } from '@/components/Icons';
+import { ChevronDown, ChevronLeft, Layers, Printer, Warehouse } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { PaneHeader, PaneHeaderStatusPill } from '@/components/ui/pane-header';
+import { inventoryLocationsHref } from '@/lib/inventory/locations-path';
+import { AdoptBayPanel } from './racks/AdoptBayPanel';
 import {
   LOCATION_BAY_LABEL,
   bayHand,
@@ -34,16 +42,10 @@ export function RackDetailView({ code }: RackDetailViewProps) {
   const [mode, setMode] = useState<ViewMode>('face');
   const [neighborsOpen, setNeighborsOpen] = useState(false);
   const [flyoutRow, setFlyoutRow] = useState<BinsOverviewRow | null>(null);
+  const [adopting, setAdopting] = useState(false);
 
-  const { rooms } = useLocations();
+  const { locations } = useLocations();
   const { rows, loading, refetch } = useBinsOverview({ pollMs: 30_000 });
-
-  // Resolve the room name from the zone letter (server-of-record map).
-  const roomName = useMemo(() => {
-    if (!segments) return null;
-    const hit = rooms.find((r) => r.zone_letter === segments.zone);
-    return (hit?.room || hit?.name) ?? null;
-  }, [rooms, segments]);
 
   // Bins that live on this aisle/bay (any level). row_label is stored
   // as "AA-BB"; col_label as "L-PP" (L unpadded, PP 2-digit). The rack
@@ -53,6 +55,10 @@ export function RackDetailView({ code }: RackDetailViewProps) {
     const rowKey = `${pad2(segments.aisle)}-${pad2(segments.bay)}`;
     return rows.filter((r) => r.row_label === rowKey && !!r.col_label);
   }, [rows, segments]);
+
+  // Where the bay stands: up `parent_id` from one of its rows to the nearest
+  // ROOM, noting the movable rack on the way when the bay was adopted.
+  const placement = useMemo(() => bayPlacement(locations, bayRows[0]?.id ?? null), [locations, bayRows]);
 
   // Group bins by level → array of positions sorted ascending.
   const byLevel = useMemo(() => {
@@ -128,10 +134,42 @@ export function RackDetailView({ code }: RackDetailViewProps) {
             </p>
           </>
         }
-        rightSlot={<ViewToggle mode={mode} onChange={setMode} />}
+        rightSlot={
+          <div className="flex items-center gap-2">
+            {placement.rack?.barcode ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Warehouse aria-hidden />}
+                onClick={() => router.push(inventoryLocationsHref({ tab: 'movable', extra: { code: placement.rack!.barcode } }))}
+                data-testid="bay-open-rack"
+              >
+                Open {placement.rack.name}
+              </Button>
+            ) : (
+              <Button
+                variant={adopting ? 'secondary' : 'ghost'}
+                size="sm"
+                icon={<Warehouse aria-hidden />}
+                aria-expanded={adopting}
+                disabled={bayRows.length === 0}
+                onClick={() => setAdopting((v) => !v)}
+                data-testid="bay-make-movable"
+              >
+                Make movable rack
+              </Button>
+            )}
+            <ViewToggle mode={mode} onChange={setMode} />
+          </div>
+        }
         belowSlot={
           <div className="flex flex-wrap items-center gap-1.5 border-t border-border-hairline px-3 py-2 sm:px-5">
-            {roomName && <PaneHeaderStatusPill tone="neutral">{roomName}</PaneHeaderStatusPill>}
+            {placement.room ? (
+              <PaneHeaderStatusPill tone="neutral">{placement.room.display_name || placement.room.name}</PaneHeaderStatusPill>
+            ) : null}
+            {placement.rack?.barcode ? (
+              <PaneHeaderStatusPill tone="blue">On {placement.rack.name} · {placement.rack.barcode}</PaneHeaderStatusPill>
+            ) : null}
             <PaneHeaderStatusPill tone="neutral">Aisle {pad2(segments.aisle)}</PaneHeaderStatusPill>
             <PaneHeaderStatusPill tone="neutral">{LOCATION_BAY_LABEL} {pad2(segments.bay)}</PaneHeaderStatusPill>
             <PaneHeaderStatusPill tone={bayHand(segments.bay) === 'Left' ? 'blue' : 'purple'}>
@@ -141,6 +179,17 @@ export function RackDetailView({ code }: RackDetailViewProps) {
           </div>
         }
       />
+
+      {adopting && !placement.rack ? (
+        <section className="rounded-none border border-border-soft bg-surface-card p-4" aria-label="Make movable rack">
+          <div className="mx-auto w-full max-w-md">
+            <AdoptBayPanel
+              bayCode={dashedCode}
+              onAdopted={(rackCode) => router.push(inventoryLocationsHref({ tab: 'movable', extra: { code: rackCode } }))}
+            />
+          </div>
+        </section>
+      ) : null}
 
       {/* ─── Body ──────────────────────────────────────────────────── */}
       {mode === 'face' ? (
@@ -472,6 +521,28 @@ function formatAgo(iso: string): string {
   if (days < 30) return `${days}d ago`;
   if (days < 365) return `${Math.floor(days / 30)}mo ago`;
   return `${Math.floor(days / 365)}y ago`;
+}
+
+/**
+ * The bay's placement from the parent chain: up `parent_id` from one of its
+ * rows, the first RACK met (an adopted bay) and the nearest ROOM. Bounded so a
+ * malformed cycle cannot hang the view.
+ */
+function bayPlacement(
+  locations: readonly LocationRecord[],
+  rowId: number | null,
+): { room: LocationRecord | null; rack: LocationRecord | null } {
+  const byId = new Map(locations.map((l) => [l.id, l]));
+  let rack: LocationRecord | null = null;
+  let parentId = rowId != null ? (byId.get(rowId)?.parent_id ?? null) : null;
+  for (let hops = 0; parentId != null && hops < 16; hops += 1) {
+    const parent = byId.get(parentId);
+    if (!parent) break;
+    if (parent.location_kind === 'ROOM') return { room: parent, rack };
+    if (parent.location_kind === 'RACK' && !rack) rack = parent;
+    parentId = parent.parent_id;
+  }
+  return { room: null, rack };
 }
 
 // ─── Re-export segment type for callers that need it ────────────────────

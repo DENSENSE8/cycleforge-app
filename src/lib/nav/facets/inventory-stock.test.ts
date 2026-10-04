@@ -58,6 +58,7 @@ test('inventory stock facets require sku_stock.view', async () => {
     run: async () => [],
     listLocalPickupLines: async () => [],
     exceptionCounts: async () => ({}),
+    liveFeedCounts: async () => ({}),
   };
   const result = await getNavFacets(
     { orgId: ORG, permissions: new Set(['orders.view']) },

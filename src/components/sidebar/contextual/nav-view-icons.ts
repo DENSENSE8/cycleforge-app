@@ -25,6 +25,7 @@ import {
   Phone,
   Plus,
   Printer,
+  Radar,
   RefreshCw,
   ScanBarcode,
   SalesModeCounter,
@@ -113,6 +114,7 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   // Operations (Monitor): the pulse, the rounds, the past, the alarms, the
   // links, the targets, the bar, the people, the plumbing, the paper trail.
   'operations.live': { icon: Activity, tone: 'text-emerald-600' },
+  'operations.live-feed': { icon: Radar, tone: 'text-orange-600' },
   'operations.checks': { icon: ClipboardList, tone: 'text-blue-600' },
   'operations.packing-review': { icon: Clipboard, tone: 'text-amber-600' },
   'operations.history': { icon: History, tone: 'text-indigo-600' },
@@ -187,12 +189,17 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'exceptions.fbm': { icon: Truck, tone: 'text-blue-600', alertCount: true },
   'exceptions.labels': { icon: Printer, tone: 'text-teal-600', alertCount: true },
   'exceptions.paperwork': { icon: FileText, tone: 'text-teal-600', alertCount: true },
+  'exceptions.unmatched': { icon: ScanBarcode, tone: 'text-teal-600', alertCount: true },
   'exceptions.pairs': { icon: Link2, tone: 'text-emerald-600', alertCount: true },
   'exceptions.bins': { icon: Warehouse, tone: 'text-emerald-700', alertCount: true },
   'exceptions.tracking': { icon: Barcode, tone: 'text-emerald-600', alertCount: true },
   'exceptions.claim': { icon: AlertCircle, tone: 'text-blue-600', alertCount: true },
   'exceptions.short': { icon: PackageOpen, tone: 'text-blue-600', alertCount: true },
   'exceptions.unfound': { icon: Search, tone: 'text-blue-600', alertCount: true },
+  // Live feed: each direction view wears its lane's glyph, outbound in orange (the row's ink), inbound in blue
+  // (Deliveries'). The lanes are the board's columns, never views.
+  'live-feed.outbound': { icon: Truck, tone: 'text-orange-600' },
+  'live-feed.inbound': { icon: domainLane('inbound').icon, tone: 'text-blue-600' },
   // Tasks (owner 2026-09-29): each PARENT wears its row-type glyph and hue
   // (`TASK_BOARD_TYPE_FACE`, the same mark every board row leads with; All
   // tasks the stack); the views under it say state, never the parent's glyph
@@ -229,6 +236,8 @@ export const NAV_ACTION_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'labels-docs.upload-slips': { icon: Upload, tone: 'text-text-muted' },
   'labels-docs.buy-label': { icon: Truck, tone: 'text-text-muted' },
   'sourcing.add-model': { icon: Plus, tone: 'text-text-muted' },
+  'catalog.add-product': { icon: Plus, tone: 'text-text-muted' },
+  'catalog.import-csv': { icon: Upload, tone: 'text-text-muted' },
   'qc-labels.print': { icon: Printer, tone: 'text-text-muted' },
   'reports.refresh': { icon: RefreshCw, tone: 'text-text-muted' },
   'reports.export-packing': { icon: Download, tone: 'text-text-muted' },

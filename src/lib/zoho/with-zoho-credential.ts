@@ -12,12 +12,7 @@ type ZohoOperation =
   | 'purchasereceives.read'
   | 'purchasereceives.write'
   | 'bills.read'
-  | 'organizations.read'
-  | 'salesorders.read'
-  | 'salesorders.write'
-  | 'packages.write'
-  | 'shipments.write'
-  | 'invoices.write';
+  | 'organizations.read';
 
 export function withZohoCredential<T>(
   orgId: OrgId,

@@ -43,6 +43,12 @@ export interface TableImportDescriptor<TField extends string, TRowView> {
   fields: readonly TableImportFieldSpec<TField>[];
   /** Best-effort header → canonical binding on load. */
   autoMap(headers: string[]): Record<string, string>;
+  /**
+   * Optional value-aware binding on load — wins over `autoMap` when present,
+   * for families whose columns are identified by their cells as well as their
+   * header (inbound PO CSV: tracking numbers, money, dates).
+   */
+  autoMapRows?(headers: string[], rows: Record<string, string>[]): Record<string, string>;
   /** Ready vs Action required, and why. */
   classify(
     row: Record<string, string>,

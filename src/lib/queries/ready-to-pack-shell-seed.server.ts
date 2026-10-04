@@ -29,7 +29,6 @@ const UNSHIPPED_COUNTS_KEY = ['dashboard-table', 'unshipped-counts', { staffId: 
 const PACK_PLACEMENT_KEY = ['orders', 'pack-placement', null] as const; // packPlacementQuery
 const UNIT_PLACEMENT_KEY = ['units', 'pack-placement'] as const; // unitPackPlacementQuery
 const OPS_ROI_KEY = ['ops-roi'] as const; // useOperationsRoi
-const STAFF_PREFERENCES_KEY = ['staff-preferences'] as const; // useStaffPreferences
 
 async function getJson(path: string): Promise<unknown | null> {
   try {
@@ -49,14 +48,15 @@ async function getJson(path: string): Promise<unknown | null> {
 }
 
 /**
- * Warm the Ready-to-Pack grid + Band-2 chrome + the staffer's column widths.
- * All six reads are issued together — they are independent, and in series they
- * would each land on TTFB.
+ * Warm the Ready-to-Pack grid + Band-2 chrome. The staffer's prefs (column
+ * widths) ride the universal shell seed (`staff-preferences-seed.server.ts`).
+ * All five reads are issued together — they are independent, and in series
+ * they would each land on TTFB.
  */
 export async function seedReadyToPackStation(): Promise<DehydratedState> {
   const queryClient = new QueryClient();
 
-  const [orders, counts, placement, units, roi, prefs] = await Promise.all([
+  const [orders, counts, placement, units, roi] = await Promise.all([
     getJson(
       `/api/orders?${new URLSearchParams({
         fulfillmentScope: 'true',
@@ -68,7 +68,6 @@ export async function seedReadyToPackStation(): Promise<DehydratedState> {
     getJson('/api/orders/pack-placement'),
     getJson('/api/units/pack-placement'),
     getJson('/api/operations/roi'),
-    getJson('/api/staff-preferences'),
   ]);
 
   if (orders != null) {
@@ -90,13 +89,6 @@ export async function seedReadyToPackStation(): Promise<DehydratedState> {
   if (roi != null) {
     const ok = (roi as { success?: boolean }).success === true;
     queryClient.setQueryData(OPS_ROI_KEY, ok ? roi : null);
-  }
-  // The staffer's saved column widths — **this is the CLS**, and it is not a KPI-band problem the way it first looked.
-  if (prefs != null) {
-    queryClient.setQueryData(
-      STAFF_PREFERENCES_KEY,
-      (prefs as { prefs?: unknown }).prefs ?? {},
-    );
   }
 
   return dehydrate(queryClient);

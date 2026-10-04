@@ -168,7 +168,6 @@ export function PairsOrderResolver({ facts, onResolved }: PhoneResolverProps<Ord
           <Link2 className="mr-1 inline h-3.5 w-3.5" /> Picking an item pairs it now; the same item-number mapping the desk uses.
         </p>
       </section>
-      <div className="flex-1 bg-mode-panel" />
       <DetailDock
         label="Missing pair actions"
         verbs={[
@@ -263,7 +262,6 @@ export function PairsPlaceholderResolver({ facts, onResolved }: PhoneResolverPro
             : 'Merging moves the placeholder’s stock, photos and locations onto the real SKU.'}
         </p>
       </section>
-      <div className="flex-1 bg-mode-panel" />
       <DetailDock
         label="Placeholder actions"
         verbs={[

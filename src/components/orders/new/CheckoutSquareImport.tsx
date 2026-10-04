@@ -10,7 +10,7 @@
 
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useSquareInvoiceImports } from '@/hooks/orders/useIntakeImports';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TextField } from '@/design-system/primitives/TextField';
 import { TriageImportRowFace } from '@/design-system/components/triage-shelf/TriageImportRow';
 import { squareInvoiceRow } from '@/lib/orders/intake/import-rows';
@@ -19,15 +19,6 @@ import { cn } from '@/utils/_cn';
 
 /** One wire shape, server → form: prefill, `hasShipTo` (none = walk-in / pickup), and the Square card facts. */
 export type { SquareInvoiceImport };
-
-/** Enter imports the highlighted row — taught on that row only. */
-export function ImportKeyHint() {
-  return (
-    <span className="inline-flex items-center gap-1">
-      Import <KeyboardKey size="xs">↵</KeyboardKey>
-    </span>
-  );
-}
 
 export function CheckoutSquareImport({
   onImport,
@@ -88,23 +79,24 @@ export function CheckoutSquareImport({
           {shown.map((inv, index) => {
             const done = inv.importedAs != null && !allowImported;
             return (
-              <li
-                key={inv.invoiceId}
-                id={`checkout-invoice-${inv.invoiceId}`}
-                role="option"
-                aria-selected={index === active}
-                aria-disabled={done}
-                onMouseEnter={() => setActive(index)}
-                onClick={() => !done && onImport(inv)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5',
-                  done ? 'cursor-default opacity-60' : 'cursor-pointer',
-                  index === active && !done && 'bg-surface-hover',
-                )}
-                data-testid="checkout-invoice-row"
-              >
-                <TriageImportRowFace row={squareInvoiceRow(inv)} hint={index === active ? <ImportKeyHint /> : null} />
-              </li>
+              <HoverTooltip key={inv.invoiceId} label="Import" shortcut="↵" focusable={false} disabled={done} asChild>
+                <li
+                  id={`checkout-invoice-${inv.invoiceId}`}
+                  role="option"
+                  aria-selected={index === active}
+                  aria-disabled={done}
+                  onMouseEnter={() => setActive(index)}
+                  onClick={() => !done && onImport(inv)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5',
+                    done ? 'cursor-default opacity-60' : 'cursor-pointer',
+                    index === active && !done && 'bg-surface-hover',
+                  )}
+                  data-testid="checkout-invoice-row"
+                >
+                  <TriageImportRowFace row={squareInvoiceRow(inv)} />
+                </li>
+              </HoverTooltip>
             );
           })}
         </ul>

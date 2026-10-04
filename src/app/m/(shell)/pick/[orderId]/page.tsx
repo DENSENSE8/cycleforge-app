@@ -4,9 +4,10 @@
 
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { ProgressDots } from '@/components/mobile/ProgressDots';
-import { ConfirmDock } from '@/components/mobile/ConfirmDock';
+import { Check, PackageX } from '@/components/Icons';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { ShortPickSheet } from '@/components/mobile/picker/ShortPickSheet';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { useMobilePicker } from './_picker/useMobilePicker';
@@ -42,7 +43,7 @@ function PickerInner() {
   if (!order) {
     return (
       <div className="flex h-full flex-col bg-surface-canvas">
-        <MobileDetailTopBar backHref="/m/pick" subtitle="Order" title="Loading…" />
+        <MobileV2DetailTopBar backHref="/m/pick" subtitle="Order" title="Loading…" />
         <LoadingShell label="Loading tasks…" />
       </div>
     );
@@ -53,7 +54,7 @@ function PickerInner() {
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
       {/* ─── Status strip ──────────────────────────────────────────────── */}
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref="/m/pick"
         lead={
           <span className={`${cornerClass('pill')} grid h-9 w-9 shrink-0 place-items-center bg-surface-sunken text-sm font-semibold text-text-default`}>
@@ -106,22 +107,23 @@ function PickerInner() {
         )}
       </div>
 
-      {/* ─── Bottom dock ───────────────────────────────────────────────── */}
+      {/* ─── Bottom verbs — floating, no bar behind them (owner 2026-10-03) ─── */}
       {!allDone && currentTask && (
-        <ConfirmDock
-          label={
-            currentIndex >= totalTasks - 1
-              ? `Confirm pick · ${doneCount + 1}/${totalTasks}`
-              : 'Confirm pick'
-          }
-          onConfirm={() => void handleConfirmPick()}
-          disabled={(scanRequired && !scanMatched) || !toteRef}
-          loading={confirming}
-          tone={currentIndex >= totalTasks - 1 ? 'success' : 'primary'}
-          secondary={{
-            label: 'Short pick…',
-            onPress: () => setShortSheetOpen(true),
-          }}
+        <DetailDock<'short' | 'confirm'>
+          label="Pick actions"
+          verbs={[
+            { id: 'short', label: 'Short pick…', icon: <PackageX />, disabled: confirming },
+            {
+              id: 'confirm',
+              label: currentIndex >= totalTasks - 1 ? `Confirm pick · ${doneCount + 1}/${totalTasks}` : 'Confirm pick',
+              icon: <Check />,
+              primary: true,
+              variant: currentIndex >= totalTasks - 1 ? 'success' : undefined,
+              disabled: (scanRequired && !scanMatched) || !toteRef,
+              loading: confirming,
+            },
+          ]}
+          onVerb={(verb) => (verb === 'short' ? setShortSheetOpen(true) : handleConfirmPick())}
         />
       )}
 

@@ -21,7 +21,8 @@ describe('parseSupportMode', () => {
   it('accepts known modes including orders', () => {
     assert.equal(parseSupportMode('voicemail'), 'voicemail');
     assert.equal(parseSupportMode('calls'), 'calls');
-    assert.equal(parseSupportMode('warranty'), 'warranty');
+    // Warranty was deleted with its claims table (2026-10-03); the proxy strips the wire.
+    assert.equal(parseSupportMode('warranty'), 'tickets');
     assert.equal(parseSupportMode('issues'), 'issues');
     assert.equal(parseSupportMode('orders'), 'orders');
   });

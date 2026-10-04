@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
-import { MOBILE_GUTTER, MOBILE_GUTTER_X } from '@/components/mobile/redesign/DesignSystem';
+import { MOBILE_V2_GUTTER, MOBILE_V2_GUTTER_X } from '@/components/mobile/v2/MobileV2Layout';
 
 /** Shared chrome for a {@link CaptureStack} row — the collapsed one-line record vs. */
 export function CaptureStackRow({
@@ -30,8 +30,8 @@ export function CaptureStackRow({
       {...dataProps}
       className={`relative max-w-full overflow-x-hidden transition-all ${
         isExpanded
-          ? `${MOBILE_GUTTER_X} mb-3 mt-2 border border-border-emphasis bg-surface-card p-4`
-          : `flex w-full max-w-full flex-col border-b border-border-hairline bg-surface-card ${MOBILE_GUTTER} py-3 transition-colors active:bg-surface-sunken`
+          ? `${MOBILE_V2_GUTTER_X} mb-3 mt-2 border border-border-emphasis bg-surface-card p-4`
+          : `flex w-full max-w-full flex-col border-b border-border-hairline bg-surface-card ${MOBILE_V2_GUTTER} py-3 transition-colors active:bg-surface-sunken`
       }`}
     >
       {/* Tap target for the row sheet / action. ds-raw-button: full-bleed row tap target, not a Button shape */}

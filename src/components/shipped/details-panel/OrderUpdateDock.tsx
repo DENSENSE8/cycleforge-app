@@ -1,6 +1,6 @@
 'use client';
 
-/** Order-tab bottom update dock — labelled update CTAs + flush trailing Delete. */
+/** Order-tab bottom update dock — floating icon update peers + trailing floor Delete (no ground, no rule). */
 
 import {
   AlertTriangle,
@@ -9,12 +9,8 @@ import {
   Truck,
   User,
 } from '@/components/Icons';
-import {
-  FLOOR_DELETE_PEER_CLASS,
-  FloorIconButton,
-  InspectorActionFloor,
-} from '@/components/right-rail/InspectorActionFloor';
-import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
+import { FloorIconButton, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
+import { InspectorFloorDelete } from '@/components/right-rail/InspectorFloorDelete';
 import { OrderAssignDisplayHost } from '@/components/shipped/details-panel/OrderAssignDisplayHost';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
@@ -121,14 +117,13 @@ export function OrderUpdateDock({
             />
           ))}
           {showDelete ? (
-            <InspectorFlushDelete
+            <InspectorFloorDelete
               isArmed={isDeleteArmed}
               isDeleting={isDeleting}
               onClick={onDelete}
               label="Delete order"
               confirmLabel="Click again to confirm delete"
               data-testid="order-update-delete"
-              className={FLOOR_DELETE_PEER_CLASS}
             />
           ) : null}
         </>

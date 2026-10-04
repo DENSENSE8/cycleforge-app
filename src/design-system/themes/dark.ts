@@ -12,8 +12,8 @@ export const darkPalette: ThemePalette = {
     // Neutral chrome
     'text-primary': '#f8fafc',
     'text-secondary': '#cbd5e1',
-    'text-soft': '#94a3b8',
-    'text-faint': '#64748b',
+    'text-soft': '#9aa8bc',
+    'text-faint': '#8693a5', // ≥4.5 on every surface (owner 2026-10-03)
     'background-canvas': '#020617',
     'background-surface': '#0f172a',
     'surface-sunken': '#1e293b',

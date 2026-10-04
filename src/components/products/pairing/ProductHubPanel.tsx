@@ -70,7 +70,7 @@ export function ProductHubPanel({ skuCatalogId, allowManualPair = false, headerT
     <div className="flex h-full min-h-0 flex-col">
       <ProductHubHeader sku={snapshot.canonicalSku} title={headerTitle?.trim() || snapshot.canonicalTitle} />
 
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-3">
         {allowManualPair ? <ManualPairForm skuCatalogId={skuCatalogId} onAdded={hub.refresh} /> : null}
         <div className="divide-y divide-border-hairline">
           {PRODUCT_HUB_PLATFORMS.map((platform) => (
@@ -91,17 +91,17 @@ export function ProductHubPanel({ skuCatalogId, allowManualPair = false, headerT
             />
           ))}
         </div>
+        {/* The decision buttons float over the list's end — the scroller's last child. */}
+        <PendingFooter
+          selectedCount={hub.acceptCount}
+          unselectedCount={Math.max(0, hub.suggestionTotal - hub.acceptCount)}
+          unpairCount={hub.unpairCount}
+          saving={hub.saving}
+          saveError={hub.saveError}
+          onCommit={hub.commitDecisive}
+          onDiscard={hub.clearPending}
+        />
       </div>
-
-      <PendingFooter
-        selectedCount={hub.acceptCount}
-        unselectedCount={Math.max(0, hub.suggestionTotal - hub.acceptCount)}
-        unpairCount={hub.unpairCount}
-        saving={hub.saving}
-        saveError={hub.saveError}
-        onCommit={hub.commitDecisive}
-        onDiscard={hub.clearPending}
-      />
 
       {preview ? (
         <ListingResizePanel

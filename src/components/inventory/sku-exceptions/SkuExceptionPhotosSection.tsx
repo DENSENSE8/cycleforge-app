@@ -15,7 +15,7 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Star, Trash2 } from '@/components/Icons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
-import { deletePhoto } from '@/components/shipped/photo-gallery/photo-gallery-api';
+import { deletePhoto } from '@/lib/photos/delete-photo-client';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { IconButton } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';

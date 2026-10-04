@@ -20,12 +20,8 @@ import { TOP_CHROME_BAND_CLASS } from '@/components/layout/header-shell';
 import { SPINE_SCROLLPORT_SCROLLBAR_CLASS } from '@/components/sidebar/sidebar-spine';
 import { StaffAccountFooter } from '@/components/sidebar/master-nav/StaffAccountFooter';
 import { cn } from '@/utils/_cn';
-import {
-  navContextQueryKey,
-  useCurrentNavPath,
-  useNavContext,
-  useNavStaffKey,
-} from './useNavContext';
+import { navContextQueryKey, useCurrentNavPath, useNavContext } from './useNavContext';
+import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { NavSectionList } from './NavSectionList';
 import { NavFilters } from './NavFilters';
 import { NAV_BLOCK_CLASS } from './nav-block';

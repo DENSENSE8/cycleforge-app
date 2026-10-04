@@ -1,6 +1,7 @@
 /** Warehouse-wide stock-by-location read — the feed behind Inventory › Stock. */
 
 import { tenantQuery } from '../tenancy/db';
+import { derivedRoomLabelSql, derivedRoomSetJoinSql, rackWalkOrderSql } from '../locations/derived-room';
 import type { OrgId } from '../tenancy/constants';
 import { productImageUrl } from '../photos/product-image-url';
 import { resolveSkuIdentityTitle } from '../sku/sku-identity-law';
@@ -115,17 +116,26 @@ export async function getStockByLocation(args: {
   const sql = `
     WITH placed_bins AS NOT MATERIALIZED (
       -- A zero-count TMP row is a deliberate placement (empty-location photo
-      -- capture); every other zero row is just an emptied bin.
+      -- capture) while its location is live; every other zero row is just an
+      -- emptied bin, and a placeholder left at a deleted location is neither.
       SELECT bc.*
       FROM bin_contents bc
       WHERE bc.organization_id = $1
         AND (
           bc.qty <> 0
-          OR EXISTS (
-            SELECT 1 FROM sku_stock ps
-            WHERE ps.organization_id = bc.organization_id
-              AND ps.sku = bc.sku
-              AND ps.is_provisional = true
+          OR (
+            EXISTS (
+              SELECT 1 FROM sku_stock ps
+              WHERE ps.organization_id = bc.organization_id
+                AND ps.sku = bc.sku
+                AND ps.is_provisional = true
+            )
+            AND EXISTS (
+              SELECT 1 FROM locations pl
+              WHERE pl.organization_id = bc.organization_id
+                AND pl.id = bc.location_id
+                AND pl.is_active = true
+            )
           )
         )
     ),
@@ -208,6 +218,14 @@ export async function getStockByLocation(args: {
             AND COALESCE(su.current_status::text, '') <> $3
             AND su.current_location IN (l.barcode, l.name, l.display_name)
         )
+        -- A location other locations hang under (a room node such as Zone 3's
+        -- "RECEIVING", a movable rack) is the container, not an empty place.
+        AND NOT EXISTS (
+          SELECT 1 FROM locations child
+          WHERE child.organization_id = l.organization_id
+            AND child.parent_id = l.id
+            AND child.is_active = true
+        )
     ),
     pairs AS (
       SELECT * FROM bin_pairs
@@ -223,7 +241,9 @@ export async function getStockByLocation(args: {
         p.location_id,
         COALESCE(l.name, p.written_location)   AS location_name,
         l.barcode                              AS location_barcode,
-        l.room,
+        -- The room is DERIVED up parent_id (a movable rack's shelves group,
+        -- filter and facet under the room the rack stands in now).
+        ${derivedRoomLabelSql('l', 'droom')}   AS room,
         l.row_label,
         l.col_label,
         p.sku,
@@ -247,6 +267,7 @@ export async function getStockByLocation(args: {
       LEFT JOIN locations l
         ON l.id = p.location_id
        AND l.organization_id = $1
+      ${derivedRoomSetJoinSql('l', 'droom', '$1')}
       LEFT JOIN sku_stock ss
         ON ss.sku = p.sku
        AND p.sku <> ''
@@ -317,15 +338,15 @@ export async function getStockByLocation(args: {
     ),
     -- The bullet train: ONE uncapped aggregate over the same matched set —
     -- the pills and the tally read exact numbers even when the row page is
-    -- capped. Physical stock and exception health intentionally overlap: a
-    -- positive on-hold/TMP count is still a unit present in the warehouse.
+    -- capped. Physical stock and exception health intentionally overlap: an
+    -- on-hold/TMP pair remains in its quantity state as well as On hold.
     counts AS (
       SELECT
         COUNT(*) FILTER (WHERE m.qty > 0)::int                                                          AS in_stock_pairs,
         COUNT(DISTINCT m.sku) FILTER (WHERE m.qty > 0)::int                                             AS in_stock_products,
         COALESCE(SUM(m.qty) FILTER (WHERE m.qty > 0), 0)::int                                           AS in_stock_units,
         COUNT(*) FILTER (WHERE COALESCE(m.is_provisional, false))::int                                   AS on_hold_pairs,
-        COUNT(*) FILTER (WHERE NOT COALESCE(m.is_provisional, false) AND m.qty <= 0 AND m.source <> 'empty')::int AS out_pairs
+        COUNT(*) FILTER (WHERE m.qty <= 0 AND m.source <> 'empty')::int                                  AS out_pairs
       FROM scoped_matches m
     )
     SELECT
@@ -369,6 +390,7 @@ export async function getStockByLocation(args: {
         ELSE 1
       END ASC,
       m.room NULLS LAST,
+      ${rackWalkOrderSql('m.location_barcode')},
       CASE
         WHEN m.row_label ~ '^[0-9]+-[0-9]+$' THEN split_part(m.row_label, '-', 1)::int
         ELSE NULL
@@ -458,15 +480,20 @@ export async function getStockByLocation(args: {
   };
 }
 
-/** Every active warehouse room, independent of the pair cap and current cut. */
+/** Every active warehouse room (DERIVED up parent_id), independent of the pair cap and current cut. */
 export async function getStockRoomFacets(orgId: OrgId): Promise<LocationStockRoomFacet[]> {
   const result = await tenantQuery<StockRoomFacetDbRow>(
     orgId,
     `
       SELECT
-        COALESCE(NULLIF(TRIM(l.room), ''), '(none)') AS id,
-        COUNT(*)::int                                AS count
+        COALESCE(${derivedRoomLabelSql('l', 'droom')}, '(none)') AS id,
+        -- Count places, not the container nodes they hang under (same rule as empty_locations).
+        (COUNT(*) FILTER (WHERE NOT EXISTS (
+          SELECT 1 FROM locations child
+          WHERE child.organization_id = l.organization_id AND child.parent_id = l.id AND child.is_active = true
+        )))::int                                     AS count
       FROM locations l
+      ${derivedRoomSetJoinSql('l', 'droom', '$1')}
       WHERE l.organization_id = $1
         AND l.is_active = true
         AND NULLIF(TRIM(l.barcode), '') IS NOT NULL

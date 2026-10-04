@@ -33,6 +33,9 @@
  *   qty, place, date, … — the ONE painter the cards use, Law 2) or plain
  *   text; `label` is a muted lead word (`SN`, `SKU`, `Qty`) for a value that
  *   does not read alone.
+ * - A high-information desk queue may opt into `wide`: up to eight facts stay
+ *   visible on one shared horizontal scroll plane, and `endFact` + `next` pin
+ *   at the right edge. The list host must pair it with `rowScroll`.
  * - Keys: the whole row is the open target (Enter opens, focus lands back on
  *   it when Esc closes the record); the checkbox is the only check; Space
  *   folds `quickLook` when the family passes one.
@@ -46,6 +49,7 @@ import { PhotoHoverPeek } from '@/design-system/components/PhotoHoverPeek';
 import { CARD_STAGGER_CAP, CARD_STAGGER_S, CardCheck } from '@/design-system/components/record-card/RecordCard';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { denseRecordTitle } from '@/design-system/tokens/typography/presets';
 import type { RecordStateFace } from '@/design-system/tokens/record';
 import { LIFECYCLE, type LifecycleState } from '@/design-system/tokens/lifecycle';
 import { cn } from '@/utils/_cn';
@@ -90,6 +94,8 @@ export interface TriageRowFace {
   state: RecordStateFace | LifecycleState;
   /** The record's handle — bin, unit id, order number. */
   identity: string;
+  /** Short visual handle; `identity` remains the full accessible/title value. */
+  identityDisplay?: string;
   /** The handle's column (default `code`); `long` for a unit id / tracking-length handle. */
   identityWidth?: TriageRowFactWidth;
   title: string;
@@ -97,8 +103,16 @@ export interface TriageRowFace {
   photo?: { url: string | null };
   /** 2–4, most needed first. */
   facts: readonly TriageRowFact[];
+  /** Keep every fact visible and make the row wide enough for shared horizontal scrolling. */
+  wide?: boolean;
+  /** A deadline or similarly decisive fact pinned immediately before `next`. */
+  endFact?: TriageRowFact;
+  /** Pin `endFact` + `next` to the right edge of the shared scrollport. */
+  stickyEnd?: boolean;
   /** The step opening this record leads to (`Count`, `Pick`), or null. `blocked` tints it. */
   next: { label: string; blocked?: boolean } | null;
+  /** The next step's column (default `w-20`, sized for one-word verbs); `code` for two-word steps or tags. */
+  nextWidth?: TriageRowFactWidth;
   aria: { row: string; open: string; check: string };
 }
 
@@ -106,6 +120,8 @@ export interface TriageRowProps<Row, Model extends TriageCardModelBase<Row>> ext
   face: TriageRowFace;
   /** The view's prefix: `<prefix>` on the row, `-open`, `-check`, `-next`, `-fact-<id>`. */
   testIdPrefix: string;
+  /** Extra `data-*` attributes the family's readers use — the same ones its card carries (`RecordCard` `rowAttrs`). */
+  rowAttrs?: Readonly<Record<`data-${string}`, string | number>>;
   /** Space's fold under the row — a keyed node (it animates its own height). */
   quickLook?: ReactNode;
 }
@@ -122,6 +138,7 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
   face,
   testIdPrefix,
   quickLook,
+  rowAttrs,
 }: TriageRowProps<Row, Model>) {
   const openRef = useRef<HTMLButtonElement>(null);
   const id = (part: string) => `${testIdPrefix}-${part}`;
@@ -133,6 +150,7 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
 
   return (
     <motion.article
+      {...rowAttrs}
       {...{ [DESK_RECORD_KEY_ATTR]: model.ids[0] }}
       data-state={stateId}
       data-testid={testIdPrefix}
@@ -143,6 +161,7 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
       className={cn(
         // Full bleed: the wash and the hairline run the list's whole width.
         'group/row @container/row relative isolate flex flex-col border-b border-mode-rule transition-colors duration-100',
+        face.wide && 'min-w-[88rem]',
         selected ? 'bg-surface-accent' : open ? 'bg-mode-well' : 'hover:bg-mode-hover',
       )}
     >
@@ -166,7 +185,14 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
       {/* Open = a left mark as well as the wash, so it reads under a check too. */}
       {open ? <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-mode-ink" /> : null}
 
-      <div className="pointer-events-none relative z-10 flex min-h-11 min-w-0 items-center gap-3 overflow-hidden py-1.5 pl-4 pr-4">
+      <div
+        className={cn(
+          'pointer-events-none relative z-10 flex min-w-0 items-center gap-1.5 pr-3',
+          // The select bar is inset 4px, then padded 16px. Wide rows have no
+          // list inset, so 20px lands their 28px check column on the same axis.
+          face.wide ? 'min-h-9 py-0.5 pl-5' : 'min-h-10 overflow-hidden py-1 pl-4',
+        )}
+      >
         {/* The check column — the select bar's check axis. */}
         <span className="flex w-7 shrink-0 justify-center">
           <CardCheck
@@ -207,25 +233,25 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
         <span
           className={cn(
             WIDTH_CLASS[face.identityWidth ?? 'code'],
-            'shrink-0 truncate font-sans text-role-data font-semibold tabular-nums text-mode-ink',
+            'flex h-8 shrink-0 items-center truncate font-sans text-role-body font-semibold leading-none tabular-nums text-mode-ink',
           )}
           title={face.identity}
           data-testid={id('identity')}
         >
-          {face.identity}
+          {face.identityDisplay ?? face.identity}
         </span>
-        <span className="min-w-32 flex-1 truncate text-role-body text-mode-ink" title={face.title}>
+        <span className={cn(denseRecordTitle, 'truncate text-mode-ink', face.wide ? 'w-80 shrink-0' : 'min-w-32 flex-1')} title={face.title}>
           {face.title}
         </span>
-        {face.facts.slice(0, 4).map((fact, i) => (
+        {face.facts.slice(0, face.wide ? 8 : 4).map((fact, i) => (
           <span
             key={fact.id}
             data-testid={id(`fact-${fact.id}`)}
             title={fact.tip}
             className={cn(
-              FACT_TIER_CLASS[i],
+              face.wide ? 'flex' : FACT_TIER_CLASS[i],
               WIDTH_CLASS[fact.width],
-              'min-w-0 shrink-0 items-baseline gap-1.5 text-role-data tabular-nums',
+              'min-w-0 shrink-0 items-baseline gap-1 text-role-data tabular-nums',
               FACT_TONE_CLASS[fact.tone ?? 'default'],
             )}
           >
@@ -235,18 +261,44 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
             </span>
           </span>
         ))}
-        {/* The next step, right-aligned — its column holds even when empty. */}
-        <span className="flex w-20 shrink-0 justify-end">
-          {face.next ? (
+        {/* The decisive deadline + next step stay reachable while a wide row scrolls. */}
+        <span
+          className={cn(
+            'flex shrink-0 items-center justify-end gap-2',
+            face.stickyEnd && [
+              'sticky right-0 z-20 self-stretch border-l border-mode-rule pl-2',
+              selected ? 'bg-surface-accent' : open ? 'bg-mode-well' : 'bg-surface-canvas group-hover/row:bg-mode-hover',
+            ],
+          )}
+        >
+          {face.endFact ? (
             <span
-              data-testid={id('next')}
-              aria-label={`Next step: ${face.next.label}`}
-              className={cn('inline-flex items-center gap-1 whitespace-nowrap text-role-data font-semibold', face.next.blocked ? 'text-mode-warn' : 'text-mode-ink')}
+              data-testid={id(`fact-${face.endFact.id}`)}
+              title={face.endFact.tip}
+              className={cn(
+                WIDTH_CLASS[face.endFact.width],
+                'flex min-w-0 shrink-0 items-baseline gap-1 text-role-data tabular-nums',
+                FACT_TONE_CLASS[face.endFact.tone ?? 'default'],
+              )}
             >
-              <ArrowRight className="size-3.5 text-mode-faint" aria-hidden />
-              {face.next.label}
+              {face.endFact.label ? <span className="shrink-0 text-role-caption text-mode-muted">{face.endFact.label}</span> : null}
+              <span className="min-w-0 truncate">
+                {face.endFact.value == null || typeof face.endFact.value === 'string' ? face.endFact.value : <RecordFactPaint face={face.endFact.value} />}
+              </span>
             </span>
           ) : null}
+          <span className={cn('flex shrink-0 justify-end', face.nextWidth ? WIDTH_CLASS[face.nextWidth] : 'w-20')}>
+            {face.next ? (
+              <span
+                data-testid={id('next')}
+                aria-label={`Next step: ${face.next.label}`}
+                className={cn('inline-flex items-center gap-1 whitespace-nowrap text-role-body font-semibold', face.next.blocked ? 'text-mode-warn' : 'text-mode-ink')}
+              >
+                <ArrowRight className="size-3.5 text-mode-faint" aria-hidden />
+                {face.next.label}
+              </span>
+            ) : null}
+          </span>
         </span>
       </div>
       {quickLook ? <AnimatePresence initial={false}>{peekOpen ? quickLook : null}</AnimatePresence> : null}

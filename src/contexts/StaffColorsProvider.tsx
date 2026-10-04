@@ -2,7 +2,7 @@
 
 /** Populates the module-level staff identity cache in @/utils/staff-colors so the synchronous resolvers (getStaffThemeById,… */
 
-import { useEffect, useReducer } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,9 +56,11 @@ export function StaffColorsProvider({ children }: { children: React.ReactNode })
   return <>{children}</>;
 }
 
-/** Subscribes to the module-level color cache version. */
+/**
+ * Subscribes to the module-level color cache version. Every cache write bumps
+ * it, so 0 = empty cache. Hydration reads the server's 0 (its cache is always
+ * empty), then re-renders with the client's version.
+ */
 export function useStaffColorVersion(): number {
-  const [, force] = useReducer((x: number) => x + 1, 0);
-  useEffect(() => _subscribeStaffColorCache(force), []);
-  return _getStaffColorVersion();
+  return useSyncExternalStore(_subscribeStaffColorCache, _getStaffColorVersion, () => 0);
 }

@@ -131,7 +131,7 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      */
     priority_only: paramFlag,
     /**
-     * KPI-tile row filter (`UnboxChromeKpiCluster` ↔ `ReceivingLinesTable`).
+     * KPI-tile row filter (`UnboxChromeKpiCluster` ↔ `ReceivingLedgers`).
      * Values match filterable metric ids in `unbox-metrics.ts` — informational
      * tiles (`queue-depth`, `oldest-wait`) never write this param.
      */

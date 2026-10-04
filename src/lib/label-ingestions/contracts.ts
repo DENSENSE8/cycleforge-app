@@ -10,7 +10,7 @@ export const MAX_LABEL_PDF_BYTES = 5 * 1024 * 1024;
 export const MAX_LABEL_PDF_PAGES = 10;
 export const MAX_LABEL_EXTRACTED_TEXT_CHARS = 32 * 1024;
 export const MAX_LABEL_PARSE_MS = 5_000;
-export const LABEL_PARSER_VERSION = 'v1.0.0';
+export const LABEL_PARSER_VERSION = 'v2.0.0';
 
 export const labelIngestionUploadFieldsSchema = z.object({
   clientEventId: z.uuid(),
@@ -19,6 +19,12 @@ export const labelIngestionUploadFieldsSchema = z.object({
 }).strict();
 
 export const labelIngestionApplyBodySchema = z.object({
+  expectedRowVersion: z.number().int().min(0).max(2_147_483_647),
+}).strict();
+
+/** `POST /api/v1/label-ingestions/{id}/confirm-order` — the operator's answer to a quarantined label. */
+export const labelIngestionConfirmOrderBodySchema = z.object({
+  orderId: z.number().int().positive().max(2_147_483_647),
   expectedRowVersion: z.number().int().min(0).max(2_147_483_647),
 }).strict();
 
@@ -66,5 +72,7 @@ export function buildLabelIngestionOpenApi(): Record<string, unknown> {
     '/api/v1/label-ingestions/{id}': { get: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], responses: { '200': { description: 'Tenant-scoped ledger resource' }, '404': { description: 'Not found', content: { 'application/json': { schema: error } } } } } },
     '/api/v1/label-ingestions/{id}/apply': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['expectedRowVersion'], properties: { expectedRowVersion: { type: 'integer', minimum: 0 } } } } } }, responses: { '200': { description: 'Applied or idempotent replay' }, '409': { description: 'State or row-version conflict', content: { 'application/json': { schema: error } } } } } },
     '/api/v1/label-ingestions/{id}/retry': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], responses: { '200': { description: 'Reprocessed staged PDF' }, '409': { description: 'Not retryable', content: { 'application/json': { schema: error } } } } } },
+    '/api/v1/label-ingestions/{id}/candidates': { get: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], responses: { '200': { description: "The ship-to name read off the label and the open orders whose buyer it names (unlabeled first), each with its product lines" }, '404': { description: 'Not found', content: { 'application/json': { schema: error } } } } } },
+    '/api/v1/label-ingestions/{id}/confirm-order': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['orderId', 'expectedRowVersion'], properties: { orderId: { type: 'integer', minimum: 1 }, expectedRowVersion: { type: 'integer', minimum: 0 } } } } } }, responses: { '200': { description: "Paired MATCHED (OPERATOR_CONFIRMED); `repaired` lists the buyer's other waiting labels the buyer-name rule then paired" }, '404': { description: 'Not found', content: { 'application/json': { schema: error } } }, '409': { description: 'Not quarantined, stale row version, no tracking, or order without channel/number', content: { 'application/json': { schema: error } } } } } },
   };
 }

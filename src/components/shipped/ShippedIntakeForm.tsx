@@ -7,7 +7,8 @@ import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/
 import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
 import { normalizeCondition } from '@/components/tech/StationConditionEditor';
 import { SearchableSelectField } from '@/design-system/components';
-import { Button, FlushTerminalFooter, IconButton, TextField } from '@/design-system/primitives';
+import { Button, FloatingActionFooter, IconButton, TextField } from '@/design-system/primitives';
+import { FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import { parseTrackingPaste } from '@/lib/receiving/tracking-paste';
 
@@ -480,19 +481,21 @@ export function ShippedIntakeForm({
         )}
       </div>
 
-      <FlushTerminalFooter layout="bleed">
+      <FloatingActionFooter layout="bleed">
         <Button
           type="button"
           variant="primary"
+          size="lg"
+          depth
           onClick={() => void handleSubmit()}
           loading={isSubmitting}
           disabled={!canSubmit}
-          className="min-h-9 w-full flex-1"
+          className={`flex-1 ${FLOATING_ACTION_DISABLED_FACE}`}
           data-testid="shipped-intake-submit"
         >
           {isSubmitting ? 'Submitting…' : activeTab === 'replacement' ? 'Submit order' : 'Add order'}
         </Button>
-      </FlushTerminalFooter>
+      </FloatingActionFooter>
     </div>
   );
 }

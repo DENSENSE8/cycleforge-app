@@ -30,10 +30,10 @@ import type {
  * per order.
  */
 
-type RawOrderLine = { catalog_title: string | null; product_title: string | null; sku: string | null; quantity: number };
+export type RawOrderLine = { catalog_title: string | null; product_title: string | null; sku: string | null; quantity: number };
 
-/** The product lines of the order number `orderNumberSql` names — every `orders` row sharing it, one per line. */
-function orderLinesSql(orderNumberSql: string): string {
+/** The product lines of the order number `orderNumberSql` names — every `orders` row sharing it, one per line. `$1` = org. */
+export function orderLinesSql(orderNumberSql: string): string {
   return `SELECT json_agg(json_build_object(
                   'catalog_title', sc.product_title,
                   'product_title', rl.product_title,
@@ -48,7 +48,7 @@ function orderLinesSql(orderNumberSql: string): string {
 }
 
 /** Titles through the SKU identity law: the catalog's own title, then the order line's, then the SKU. */
-function toOrderLines(lines: RawOrderLine[] | null): LabelOrderLine[] {
+export function toOrderLines(lines: RawOrderLine[] | null): LabelOrderLine[] {
   return (lines ?? []).map((line) => ({
     title: resolveSkuIdentityTitle({ catalog_product_title: line.catalog_title, item_name: line.product_title, sku: line.sku }) || 'Untitled item',
     quantity: line.quantity,

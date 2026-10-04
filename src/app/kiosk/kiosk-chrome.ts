@@ -1,5 +1,6 @@
 /** Kiosk V2 pane chrome — shared header hairline Y on one trail row. */
 
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP } from '@/design-system/tokens/dock-clearance';
 import { cornerClass, MOBILE_SCAN_CARD_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
@@ -16,10 +17,15 @@ export const KIOSK_PANE_HEADER_BAND = cn(
   'border-b border-border-soft',
 );
 
-/** Touch-friendly pane action floor (~56px) — twin of {@link KIOSK_PANE_HEADER_BAND}. */
+/**
+ * Kiosk pane action floor — floating keys, never a bar (owner 2026-10-03): no
+ * ground fill, no `border-t` seam; air above (`ACTION_DOCK_TOP_GAP`) and a
+ * lift off the bottom edge (`ACTION_DOCK_LIFT`). The pane is the only ground.
+ */
 export const KIOSK_PANE_FOOTER_BAND = cn(
-  'flex h-14 shrink-0 items-stretch bg-surface-card p-0',
-  'border-t border-border-soft',
+  'flex shrink-0 items-stretch gap-2 px-4',
+  ACTION_DOCK_TOP_GAP,
+  ACTION_DOCK_LIFT,
 );
 
 // (KIOSK_PANE_HEADER_TITLE deleted 2026-09-23 — its last mounts were the Buyback / Pickup band titles and the Paperwork / customer-face…

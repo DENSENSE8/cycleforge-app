@@ -8,6 +8,7 @@ import { publishOrderChanged, publishShipmentChanged } from '@/lib/realtime/publ
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { createOrderNote } from '@/lib/orders/order-notes';
 import { labelTrailNote } from '@/lib/shipping/order-label-links';
+import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
 import { labelBuyBodySchema } from '@/lib/label-buys/contracts';
 import { buyLabelOutright, labelBuyErrorResponse } from '@/lib/label-buys/buy';
 
@@ -105,6 +106,7 @@ export const POST = withAuth(async (req, ctx) => {
                 organizationId: orgId,
                 shipmentId,
                 trackingNumber: label.trackingNumber,
+                carrier: shipStationCarrierToStored(label.carrierCode),
                 source: 'label-buys',
               });
             }

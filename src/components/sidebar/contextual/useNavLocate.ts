@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { fetchNavLocate } from '@/lib/nav/context/http-client';
 import type { NavLocateScope } from '@/lib/nav/context/schema';
-import { useNavStaffKey } from './useNavContext';
+import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 
 /** Shortest text worth locating — one or two characters match half the section. */
 export const NAV_LOCATE_MIN_QUERY = 3;

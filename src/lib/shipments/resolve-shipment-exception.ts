@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { withIdempotencyClaim } from '@/lib/api-idempotency';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
+import { replayResolvedScanOut } from '@/lib/outbound/held-scan-out-replay';
 import { linkShipment } from '@/lib/shipping/shipment-links';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -67,6 +68,11 @@ export interface ResolveShipmentExceptionDeps {
   linkOrder: (orgId: OrgId, input: LinkOrderInput) => Promise<ApplyResult>;
   close: (orgId: OrgId, input: CloseInput) => Promise<ApplyResult>;
   getRecord: (orgId: OrgId, shipmentId: number) => Promise<ShipmentRecord | null>;
+  /**
+   * After a link: a resolved dock miss (`outbound`) gets its scan-out recorded on
+   * this package as its original scanner; any other exception is left alone.
+   */
+  replayScanOut: (orgId: OrgId, exceptionId: number, shipmentId: number) => Promise<unknown>;
 }
 
 type ResolveShipmentExceptionOutcome =
@@ -121,6 +127,13 @@ export async function resolveShipmentException(
           : { status: 409, body: { error: 'The exception is no longer open' } };
       }
       applied = res.applied;
+      if (res.applied.kind === 'link-order') {
+        // The link is already committed; a failed replay is logged, never turned into a failed resolve.
+        const exceptionId = res.applied.exceptionId;
+        await deps.replayScanOut(orgId, exceptionId, shipmentId).catch((error: unknown) => {
+          console.error('[resolve-shipment-exception] scan-out replay failed', exceptionId, error);
+        });
+      }
       return { status: 200, body: { ok: true, exceptionId: res.applied.exceptionId, kind: res.applied.kind } };
     },
   );
@@ -333,4 +346,5 @@ const defaultDeps: ResolveShipmentExceptionDeps = {
   linkOrder: (orgId, input) => withTenantTransaction(orgId, (client) => linkOrderInTx(client, orgId, input)),
   close: (orgId, input) => withTenantTransaction(orgId, (client) => closeExceptionInTx(client, orgId, input)),
   getRecord: getShipmentRecord,
+  replayScanOut: replayResolvedScanOut,
 };

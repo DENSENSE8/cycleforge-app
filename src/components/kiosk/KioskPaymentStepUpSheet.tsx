@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { StaffPinPad } from '@/components/auth/StaffPinPad';
 import {
   StaffPickerList,
@@ -57,41 +57,47 @@ export function KioskPaymentStepUpSheet({
   );
 
   return (
-    <BottomSheet
-      open={open}
-      onClose={onClose}
-      title={picked ? undefined : title}
-      maxWidth="28rem"
-    >
-      {picked ? (
-        <StaffPinPad
-          staff={picked}
-          onSubmit={submitPin}
-          onBack={() => setPicked(null)}
-          submitLabel="Authorize"
-        />
-      ) : (
-        <div className="space-y-4" data-testid="kiosk-stepup-roster">
-          <p className="text-center text-role-caption text-text-soft">{blurb}</p>
-          {/* Bounded + scrollable: the picker carries no height of its own, so
-              on a tablet a long roster pushes rows below the viewport where
-              they cannot be tapped. */}
-          <div className="max-h-[55vh] min-h-0 overflow-y-auto overscroll-contain p-0.5">
-            {/* `flat`: the sheet IS the card, so the picker's Panel would be a
-                second outline. `open` keys the list so re-opening the sheet
-                re-reads the roster rather than painting a stale one. */}
-            <StaffPickerList
-              key={open ? 'open' : 'closed'}
-              endpoint={`/api/kiosk/staff-for-stepup?scope=${scope}`}
-              fetcher={kioskFetchHealed}
-              emptyMessage="No staff with a PIN are available. Ask a manager."
-              pickVerb="Continue as"
-              flat
-              onPick={setPicked}
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        {picked ? (
+          <SheetTitle className="sr-only">{title}</SheetTitle>
+        ) : (
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>{title}</SheetTitle>
+          </SheetHeader>
+        )}
+        <SheetBody>
+          {picked ? (
+            <StaffPinPad
+              staff={picked}
+              onSubmit={submitPin}
+              onBack={() => setPicked(null)}
+              submitLabel="Authorize"
             />
-          </div>
-        </div>
-      )}
-    </BottomSheet>
+          ) : (
+            <div className="space-y-4" data-testid="kiosk-stepup-roster">
+              <p className="text-center text-role-caption text-text-soft">{blurb}</p>
+              {/* Bounded + scrollable: the picker carries no height of its own, so
+                  on a tablet a long roster pushes rows below the viewport where
+                  they cannot be tapped. */}
+              <div className="max-h-[55vh] min-h-0 overflow-y-auto overscroll-contain p-0.5">
+                {/* `flat`: the sheet IS the card, so the picker's Panel would be a
+                    second outline. `open` keys the list so re-opening the sheet
+                    re-reads the roster rather than painting a stale one. */}
+                <StaffPickerList
+                  key={open ? 'open' : 'closed'}
+                  endpoint={`/api/kiosk/staff-for-stepup?scope=${scope}`}
+                  fetcher={kioskFetchHealed}
+                  emptyMessage="No staff with a PIN are available. Ask a manager."
+                  pickVerb="Continue as"
+                  flat
+                  onPick={setPicked}
+                />
+              </div>
+            </div>
+          )}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

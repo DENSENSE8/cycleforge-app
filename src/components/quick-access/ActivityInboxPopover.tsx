@@ -142,7 +142,6 @@ function metaFactFor(
         <OrderIdChip
           key="order"
           value={it.orderNumber}
-          display={getLast8(it.orderNumber)}
           dense
           platformLabel={platformLabel}
           iconClass={platformIconTone?.className}
@@ -302,7 +301,7 @@ function DurableInboxRow({
                 <span className="pointer-events-auto relative z-10 min-w-0 truncate text-text-soft">
                   {item.orderNumber ? (
                     <span className="inline-flex min-w-0 items-center gap-1">
-                      <OrderIdChip value={item.orderNumber} display={item.orderNumber} dense />
+                      <OrderIdChip value={item.orderNumber} dense />
                       {item.carrierStatus ? (
                         <span className="truncate">· {item.carrierStatus}</span>
                       ) : null}

@@ -12,7 +12,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Camera, Check } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import {
   inboundOrderMissing,
   inboundOrderMissingSentence,
@@ -114,7 +114,7 @@ export function MobilePickupPaperworkScreen() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <MobileDetailTopBar title="Pickup paperwork" subtitle={draft?.orderNumber || 'Photograph the paperwork'} backHref="/m/receiving/pickup" />
+      <MobileV2DetailTopBar title="Pickup paperwork" subtitle={draft?.orderNumber || 'Photograph the paperwork'} backHref="/m/receiving/pickup" />
       <MobileNativePhotoInput
         ref={fileRef}
         multiple

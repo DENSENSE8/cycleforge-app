@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { TriageShelfGrid } from '@/design-system/components/triage-shelf/TriageShelfGrid';
 import { TriageShelfTile } from '@/design-system/components/triage-shelf/TriageShelfTile';
 import { TextField } from '@/design-system/primitives/TextField';
@@ -64,52 +64,57 @@ export function MobileLinePairSheet({
   }, [line, q]);
 
   return (
-    <BottomSheet open={line != null} onClose={onClose} title="Pair to a catalog product" scrollBody level={1}>
-      <div data-testid="m-order-pair">
-        <div className="px-mode-page py-3">
-          <TextField
-            label="Find the catalog product — title, SKU, item #, UPC"
-            placeholder={seed || 'Title, SKU, item #, UPC'}
-            value={query}
-            onChange={setQuery}
-            inputMode="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            inputClassName="text-base"
-            data-testid="m-order-pair-query"
-          />
-        </div>
-        <TriageShelfGrid
-          label="Catalog products"
-          count={hits.length}
-          loading={loading}
-          error={null}
-          empty="No catalog product matches — try the SKU or item #."
-          testId="m-order-pair-hits"
-        >
-          {hits.map((hit, index) => (
-            <TriageShelfTile
-              key={hit.skuCatalogId}
-              title={hit.title}
-              imageUrl={hit.imageUrl}
-              price={hit.suggestedUnitCents != null ? formatCents(hit.suggestedUnitCents, currency) : null}
-              sku={hit.sku}
-              availability={hitAvailability(hit)}
-              inCart={0}
-              index={index}
-              onAdd={() => {
-                if (!line) return;
-                onPair(line.key, pairLineToHit(line, hit));
-                onClose();
-              }}
-              testId="m-order-pair-hit"
+    <Sheet open={line != null} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>Pair to a catalog product</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="px-0 pt-0" data-testid="m-order-pair">
+          <div className="px-mode-page py-3">
+            <TextField
+              label="Find the catalog product — title, SKU, item #, UPC"
+              placeholder={seed || 'Title, SKU, item #, UPC'}
+              value={query}
+              onChange={setQuery}
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              inputClassName="text-base"
+              data-testid="m-order-pair-query"
             />
-          ))}
-        </TriageShelfGrid>
-      </div>
-    </BottomSheet>
+          </div>
+          <TriageShelfGrid
+            label="Catalog products"
+            count={hits.length}
+            loading={loading}
+            error={null}
+            empty="No catalog product matches — try the SKU or item #."
+            testId="m-order-pair-hits"
+          >
+            {hits.map((hit, index) => (
+              <TriageShelfTile
+                key={hit.skuCatalogId}
+                title={hit.title}
+                imageUrl={hit.imageUrl}
+                price={hit.suggestedUnitCents != null ? formatCents(hit.suggestedUnitCents, currency) : null}
+                sku={hit.sku}
+                availability={hitAvailability(hit)}
+                inCart={0}
+                index={index}
+                onAdd={() => {
+                  if (!line) return;
+                  onPair(line.key, pairLineToHit(line, hit));
+                  onClose();
+                }}
+                testId="m-order-pair-hit"
+              />
+            ))}
+          </TriageShelfGrid>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

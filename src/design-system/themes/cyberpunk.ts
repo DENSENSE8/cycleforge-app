@@ -12,8 +12,8 @@ export const cyberpunkPalette: ThemePalette = {
     // Neutral chrome — violet-cast
     'text-primary': '#f2ecff',
     'text-secondary': '#c9bfe8',
-    'text-soft': '#9d8fd0',
-    'text-faint': '#746799',
+    'text-soft': '#9f91d1',
+    'text-faint': '#8b7fab', // ≥4.5 on every surface (owner 2026-10-03)
     'background-canvas': '#0a0716',
     'background-surface': '#140f26',
     'surface-sunken': '#1e1836',

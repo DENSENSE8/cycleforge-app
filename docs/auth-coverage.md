@@ -38,7 +38,7 @@ Legend: ✅ wired · ⚠️ partial · ❌ missing · ⛔ trust-client identity
 | **Admin (`/api/admin/**`)** | ~22 | ✅ all | ✅ all | ❌ none | ❌ none | The gold standard — already on the new model. Only one (`admin/staff/[id]/set-pin`) wires `stepUp:true`. |
 | **Audit-log (`/api/audit-log/**`)** | 7 | ✅ all | ✅ `admin.view_logs` | n/a (read-only) | ❌ | Fully migrated. |
 | **Auth (`/api/auth/**`)** | ~15 | ❌ direct | n/a (own gate) | ❌ none | ❌ | signin/pin/passkey routes implement their own auth flow; correct. `auth/switch` and `auth/staff-picker` need review. |
-| **Receiving (`/api/receiving/**`)** | ~12 | ⚠️ 2/12 | ❌ 0/12 | ⚠️ 2/12 | ⛔ many | Only `mark-received` + `mark-received-po` are wrapped — but with NO `permission:` set; just session check. Other routes still read `body.staffId`/`body.unboxedBy`/etc. |
+| **Receiving (`/api/receiving/**`)** | ~12 | ⚠️ 1/12 | ❌ 0/12 | ⚠️ 1/12 | ⛔ many | Only `mark-received-po` is wrapped — but with NO `permission:` set; just session check. Other routes still read `body.staffId`/`body.unboxedBy`/etc. |
 | **Receiving-lines / receiving-photos / receiving-tasks / receiving-entry / receiving-logs** | ~8 | ❌ none | ❌ none | ⚠️ a few | ⛔ all | Sibling tables to /receiving; same gap. |
 | **Packing (`/api/packing-logs/**`, `/api/packerlogs`)** | ~9 | ❌ none | ❌ none | ⚠️ packing-logs, packerlogs (2) | ⛔ all | Critical for "who packed this order" attribution — currently all client-supplied. |
 | **Tech (`/api/tech/**`)** | ~14 | ❌ none | ❌ none | ⚠️ tech/scan, tech/serial (2) | ⛔ most | Same model: client sends techId. |
@@ -93,11 +93,10 @@ These are the only routes currently enforcing role-based access:
 | `audit-log/staff` | GET | `admin.view_logs` | ❌ |
 | `audit-log/staff-directory` | GET | `admin.view_logs` | ❌ |
 | `audit-log/tech` | GET | `admin.view_logs` | ❌ |
-| `receiving/mark-received` | POST | ⚠️ NONE | ❌ |
 | `receiving/mark-received-po` | POST | ⚠️ NONE | ❌ |
 | `sku-stock/[sku]` | PATCH | ⚠️ NONE | ❌ |
 
-**Observation:** The three non-admin routes (`receiving/mark-received`, `receiving/mark-received-po`, `sku-stock/[sku]`) are wrapped in `withAuth` but pass NO `permission:` option — they just confirm the caller is authenticated. They should declare `receiving.mark_received` / `sku_stock.adjust` respectively.
+**Observation:** The two non-admin routes (`receiving/mark-received-po`, `sku-stock/[sku]`) are wrapped in `withAuth` but pass NO `permission:` option — they just confirm the caller is authenticated. They should declare `receiving.mark_received` / `sku_stock.adjust` respectively.
 
 ---
 
@@ -106,7 +105,6 @@ These are the only routes currently enforcing role-based access:
 | Route | Audit verb |
 |---|---|
 | `sku-stock/[sku]` | sku_stock.adjust + bin assigns |
-| `receiving/mark-received` | po.receive |
 | `receiving/mark-received-po` | po.receive |
 | `locations/[barcode]/swap` | bin.swap |
 | `locations/route.ts` (POST) | bin.create / bin.rename |
@@ -125,7 +123,7 @@ These are the only routes currently enforcing role-based access:
 (Identity-from-client — needs to migrate to `ctx.staffId` via `withAuth`. Pattern: `body.staffId | body.staff_id | body.techId | body.tech_id | body.packerId | body.packer_id`.)
 
 Receiving cluster:
-- `receiving/mark-received`, `mark-received-po` (already withAuth — handler still reads body for legacy compat; drop)
+- `receiving/mark-received-po` (already withAuth — handler still reads body for legacy compat; drop)
 - `receiving/scan-serial`, `receiving/serials`, `receiving/lookup-po`, `receiving/match`
 - `receiving/lines/[id]/move`, `receiving/lines/[id]/putaway`, `receiving/lines/[id]/status`
 - `receiving-lines/route.ts`, `receiving-entry/route.ts`, `receiving-logs/route.ts`, `receiving-photos/route.ts`, `receiving-tasks/route.ts`
@@ -388,7 +386,7 @@ ORDER BY grants DESC;
 Ordered by risk × ease:
 
 1. (Resolved) Legacy setup routes removed in hygiene cleanup. Modern DB migrations use the pending-migrations runner and `npm run db:migrate`.
-2. **P0 — Wire `permission:` on the 3 non-admin routes already using `withAuth`** (`receiving/mark-received`, `receiving/mark-received-po`, `sku-stock/[sku]`). One-line change each, immediate enforcement.
+2. **P0 — Wire `permission:` on the 2 non-admin routes already using `withAuth`** (`receiving/mark-received-po`, `sku-stock/[sku]`). One-line change each, immediate enforcement.
 3. **P0 — `/admin/page.tsx` `requirePermission('admin.view')`** — defense in depth for the admin UI.
 4. **P1 — Receiving feature area** (Phase 3 area #1 per MIGRATION_GUIDE): wrap all 12 receiving routes, drop body.staffId reads. Largest single-area mutation surface after FBA.
 5. **P1 — FBA feature area**: 28 routes, including step-up-eligible `mark-shipped` and `close`. Big surface; one PR per sub-area.

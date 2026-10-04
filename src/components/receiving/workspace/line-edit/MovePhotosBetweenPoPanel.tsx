@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { ArrowLeftRight, Package, X } from '@/components/Icons';
-import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';
+import { Button, FloatingActionFooter, IconButton } from '@/design-system/primitives';
+import { FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { SearchableSelectField } from '@/design-system/components';
 import {
   DenseComposeLabel,
@@ -553,14 +554,16 @@ export function MovePhotosBetweenPoPanel({
             </div>
 
             {/*
-              Macro floor — full-bleed primary pinned to the panel bottom.
-              Compose FlushTerminalFooter (Claim golden); never inset px/py.
+              Floating action floor (owner 2026-10-03) — one full-width primary
+              floating at the panel bottom: compose FloatingActionFooter (no
+              ground, no rule; it owns the air above and the lift below).
             */}
-            <FlushTerminalFooter layout="bleed">
+            <FloatingActionFooter layout="bleed">
               <Button
                 variant="primary"
-                size="md"
-                className="w-full justify-center"
+                size="lg"
+                depth
+                className={cn('justify-center', FLOATING_ACTION_DISABLED_FACE)}
                 loading={busy}
                 disabled={!canMove}
                 onClick={() => void move()}
@@ -570,7 +573,7 @@ export function MovePhotosBetweenPoPanel({
                   ? `Move ${photos.selectedPhotoIds.size || ''}`.trim()
                   : `Pull ${photos.selectedPhotoIds.size || ''}`.trim()}
               </Button>
-            </FlushTerminalFooter>
+            </FloatingActionFooter>
           </motion.div>
         )}
       </AnimatePresence>

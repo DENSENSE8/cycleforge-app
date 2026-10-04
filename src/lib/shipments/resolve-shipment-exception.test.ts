@@ -19,6 +19,7 @@ interface Captured {
   links: LinkOrderInput[];
   closes: CloseInput[];
   recordReads: number;
+  replays: Array<[OrgId, number, number]>;
 }
 
 const RECORD = { shipmentId: SHIPMENT, tracking: '1Z23A1E90383534572' } as ShipmentRecord;
@@ -44,7 +45,7 @@ function fakes(opts: {
   link?: ApplyResult;
   close?: ApplyResult;
 } = {}) {
-  const cap: Captured = { claimKeys: [], links: [], closes: [], recordReads: 0 };
+  const cap: Captured = { claimKeys: [], links: [], closes: [], recordReads: 0, replays: [] };
   const store = new Map<string, { status: number; body: Record<string, unknown> }>();
   const target = opts.target === undefined ? { tracking: RECORD.tracking, openExceptionId: 3371 } : opts.target;
   const deps: ResolveShipmentExceptionDeps = {
@@ -76,6 +77,10 @@ function fakes(opts: {
       cap.recordReads += 1;
       return RECORD;
     },
+    replayScanOut: async (...args) => {
+      cap.replays.push(args);
+      return null;
+    },
   };
   return { deps, cap };
 }
@@ -96,6 +101,8 @@ test('link-order links the open exception to the order and returns the fresh rec
   ]);
   assert.equal(cap.closes.length, 0);
   assert.deepEqual(cap.claimKeys, [`${SHIPMENT}:evt-1`]);
+  // The linked exception is offered for a scan-out replay onto this package.
+  assert.deepEqual(cap.replays, [[ORG, 3371, SHIPMENT]]);
 });
 
 test('close resolves the open exception with the operator reason and links nothing', async () => {
@@ -109,6 +116,7 @@ test('close resolves the open exception with the operator reason and links nothi
     { shipmentId: SHIPMENT, exceptionId: 3371, reason: 'Duplicate label, box never left', staffId: 1 },
   ]);
   assert.equal(cap.links.length, 0);
+  assert.equal(cap.replays.length, 0);
 });
 
 test('a package with no open exception is a 409 and writes nothing', async () => {
@@ -118,6 +126,7 @@ test('a package with no open exception is a 409 and writes nothing', async () =>
   assert.deepEqual(out, { status: 409, error: 'This package has no open exception' });
   assert.equal(cap.links.length, 0);
   assert.equal(cap.closes.length, 0);
+  assert.equal(cap.replays.length, 0);
   assert.equal(cap.recordReads, 0);
 });
 
@@ -156,6 +165,7 @@ test('replaying the same clientEventId does not write again and reports idempote
   assert.equal(replay.result.idempotent, true);
   assert.equal(replay.applied, null);
   assert.equal(cap.links.length, 1);
+  assert.equal(cap.replays.length, 1);
   assert.equal(cap.recordReads, 2);
 });
 

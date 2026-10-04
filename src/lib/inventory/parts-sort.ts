@@ -66,8 +66,7 @@ interface PartsBin {
   barcode: string | null;
 }
 
-// Cached per Function instance (mirrors resolveDefaultPutawayBinId in
-// receiving/mark-received). `undefined` = not looked up yet; `null` = looked
+// Cached per Function instance. `undefined` = not looked up yet; `null` = looked
 // up and missing (so we don't hammer the DB on every grade).
 let cachedPartsBin: PartsBin | null | undefined;
 

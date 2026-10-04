@@ -1,27 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { resolvePackScan } from '@/lib/packing/pack-scan';
+import { resolvePackScan } from '@/lib/packing/pack-scan-order';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 
 /**
- * GET /api/packing/resolve-scan?scan= — what a pack-station scan is: a tote
- * (→ its pack job), a paired bin (→ its SKUs), or a unit serial / tracking
- * (→ its order). Read-only; see {@link resolvePackScan}.
+ * GET /api/packing/resolve-scan?scan= — which order a tote or unit scan packs.
+ * A read-only dispatch: resolving never changes the tote, the unit or the
+ * order. The hub href asks the pack hub to print the order's bundle on entry.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const scan = req.nextUrl.searchParams.get('scan')?.trim();
   if (!scan || scan.length > 512) {
-    return NextResponse.json({ success: false, error: 'Scan a serial, bin or tote' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Scan a tote or unit label to start packing' }, { status: 400 });
   }
 
-  const result = await resolvePackScan(ctx.organizationId, scan);
-  if (!result) {
-    return NextResponse.json(
-      { success: false, error: `Nothing matches "${scan}" — scan a unit serial, its bin or its tote` },
-      { status: 404 },
-    );
+  const target = await withTenantTransaction(ctx.organizationId, (client) =>
+    resolvePackScan(client, ctx.organizationId, scan),
+  );
+  if (!target) {
+    return NextResponse.json({ success: false, error: 'No tote or unit matches this scan' }, { status: 404 });
   }
-  if (result.kind === 'refused') {
-    return NextResponse.json({ success: false, error: result.error }, { status: 409 });
+  if (target.kind === 'refused') {
+    return NextResponse.json({ success: false, error: target.error }, { status: 409 });
   }
-  return NextResponse.json({ success: true, result });
+  if (target.kind === 'unit-not-on-order') {
+    return NextResponse.json({ success: false, error: target.error }, { status: 404 });
+  }
+  return NextResponse.json({
+    success: true,
+    via: target.via,
+    orderId: target.orderId,
+    toteCode: target.via === 'tote' ? target.toteCode : null,
+    serialUnitId: target.via === 'unit' ? target.serialUnitId : null,
+    packHref: `/m/pack/start/${target.orderId}?print=1`,
+  });
 }, { permission: 'packing.view' });

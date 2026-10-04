@@ -153,10 +153,10 @@ export async function POST(req: NextRequest) {
       result.events,
       shipmentOrgId
     );
-    await updateShipmentSummary(shipment.id, result, shipmentOrgId);
+    const statusCategory = await updateShipmentSummary(shipment.id, result, shipmentOrgId);
     // Pass trackingNumber=null to preserve the pre-migration published payload
     // shape (it was undefined before); only orgId scoping is added here.
-    await publishShipmentStatusChange(shipment.id, 'ups-webhook', null, shipmentOrgId);
+    await publishShipmentStatusChange({ shipmentId: shipment.id, source: 'ups-webhook', trackingNumber: null, carrier: shipment.carrier, statusCategory, orgId: shipmentOrgId });
 
     processed += 1;
     trackingNumbers.push(result.trackingNumberNormalized);

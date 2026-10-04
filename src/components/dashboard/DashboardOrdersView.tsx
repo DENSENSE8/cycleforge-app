@@ -89,9 +89,8 @@ export function DashboardOrdersView({
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       {/*
- * No status strip above the queue (operator ruling 2026-08-31).
- * No status strip above the queue (operator ruling 2026-08-31). Open /
- */}
+       * No status strip above the queue (operator ruling 2026-08-31).
+       */}
       {body}
       {overlays}
     </div>

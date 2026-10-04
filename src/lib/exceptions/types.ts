@@ -21,6 +21,7 @@ export const EXCEPTION_KINDS = [
   'fbm',
   'labels',
   'paperwork',
+  'unmatched',
   'pairs',
   'bins',
   'tracking',
@@ -53,6 +54,11 @@ export const EXCEPTION_KIND_SPEC: Readonly<Record<ExceptionKind, ExceptionKindSp
     domain: 'fulfillment',
     label: 'Paperwork',
     membership: 'An open (not scanned out) order fails release gate G2 Documents (no manual / document linked and not exempt) or G3 Shipping label (no label linked or bought).',
+  },
+  unmatched: {
+    domain: 'fulfillment',
+    label: 'Unmatched scans',
+    membership: 'An open `orders_exceptions` pack or dock scan-out that matched no order (`sqlOpenUnmatchedScan`: status open, source station packer or outbound).',
   },
   pairs: {
     domain: 'inventory',

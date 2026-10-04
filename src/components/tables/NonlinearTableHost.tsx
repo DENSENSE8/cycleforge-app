@@ -7,7 +7,6 @@ import {
   type LedgerGridColumnModel,
 } from '@/design-system/components/grid';
 import type { RowGroup } from '@/lib/group-rows';
-import { compoundRowEstimateFor } from './compound/compound-columns';
 import type { TableSurfaceBinding } from './table-surface-binding';
 
 /** `NonlinearTableHost` — mount a Workbench spreadsheet from a **table definition** instead of from a page-local wiring block. */
@@ -113,8 +112,6 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
     <LedgerGridSurface<Row, K, C>
       ariaLabel={ariaLabel ?? definition.ariaLabel}
       columns={mounted}
-      // The row box is a property of the MODEL, not of the mount.
-      rowEstimate={compoundRowEstimateFor(mounted)}
       makeDescriptor={binding.makeDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}

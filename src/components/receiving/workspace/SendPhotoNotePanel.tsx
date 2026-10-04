@@ -3,7 +3,8 @@
 /** Send-photos-to-ticket — chrome-free panel body. */
 
 import { useEffect, useState } from 'react';
-import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';
+import { Button, FloatingActionFooter, IconButton } from '@/design-system/primitives';
+import { FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { X, Send } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import {
@@ -192,29 +193,31 @@ export function SendPhotoNotePanel({
       </div>
 
       {/*
-        Macro floor — consequence line sits above the FlushTerminalFooter so
-        padding belongs to the text, never to the container holding the CTA.
+        Floating action floor (owner 2026-10-03) — the consequence line sits
+        above the FloatingActionFooter with no rule; the footer owns the air
+        above / lift below the CTA.
       */}
       <div className="shrink-0">
-        <p className="min-w-0 border-t border-border-hairline px-3 py-2 text-role-micro font-medium text-text-faint">
+        <p className="min-w-0 px-4 pt-2 text-role-micro font-medium text-text-faint">
           {isPublic ? 'Emails customer' : 'Internal · not emailed'}
           {selectedTicket ? ` · #${selectedTicket.id}` : ' · pick a ticket'}
           {isPublic && ccs.length ? ` · ${ccs.length} cc` : ''}
           {photoCount ? ` · ${photoCount} photos` : ''}
         </p>
-        <FlushTerminalFooter layout="bleed">
+        <FloatingActionFooter layout="bleed">
           <Button
             variant="primary"
-            size="md"
+            size="lg"
+            depth
             icon={<Send />}
             loading={sending}
             onClick={handleSend}
             disabled={!canSend}
-            className="w-full justify-center"
+            className={`justify-center ${FLOATING_ACTION_DISABLED_FACE}`}
           >
             {isPublic ? 'Send' : 'Add note'}
           </Button>
-        </FlushTerminalFooter>
+        </FloatingActionFooter>
       </div>
     </div>
   );

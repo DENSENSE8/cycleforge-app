@@ -5,7 +5,8 @@
  * chat prefill (`?prefill=`) and a staged CSV row. Triage face
  * (`HANDOFF-manual-phone-order.md`): Customer · Items · Order · Payment ·
  * Shipping · Review, each a `rounded-mode` card that folds to a summary line
- * once filled; a sticky footer with the total left and the decision right.
+ * once filled; floating sticky buttons with the total chip left and the
+ * decision right — no bar behind them (owner 2026-10-03).
  *
  * Save draft creates the order caged (every line under one number); Release
  * saves and lets it into To ship when the gates are green. A saved order stays
@@ -14,12 +15,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react';
 import { ClipboardPaste, Plus } from '@/components/Icons';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { Checkbox } from '@/design-system/primitives';
 import { Button } from '@/design-system/primitives/Button';
 import { TextField } from '@/design-system/primitives/TextField';
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP, FLOATING_ACTION_DISABLED_FACE } from '@/design-system/tokens/dock-clearance';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { usePlatformAccountCatalog, usePlatformCatalog, useStoreLinks } from '@/hooks/useCatalog';
 import { requestOrderCapture } from '@/hooks/useOrderPasteIntake';
@@ -63,6 +65,12 @@ const EXACT_MATCH: Record<string, true> = { sku: true, item_number: true, gtin: 
 
 /** Debounce for the inline order-number uniqueness check. */
 const ORDER_NUMBER_CHECK_MS = 350;
+
+/** The footer's opaque summary chip — its own face, never a strip across the form. */
+const INTAKE_FOOTER_CHIP = 'pointer-events-auto min-w-0 rounded-mode border border-border-hairline bg-surface-card px-3 py-1.5 shadow-elev-soft';
+
+/** A floating footer verb: takes presses, lifted off the form, opaque when disabled. */
+const INTAKE_FOOTER_BUTTON = cn('pointer-events-auto shadow-elev-soft', FLOATING_ACTION_DISABLED_FACE);
 
 interface OrderIntakeFormProps {
   /** Order under triage, or `null` to start a new one. */
@@ -561,29 +569,35 @@ export function OrderIntakeForm({
         />
       </div>
 
-      <footer className="sticky bottom-0 z-10 mt-3 flex items-center gap-2 rounded-mode border border-border-hairline bg-surface-card px-4 py-3 shadow-elev-soft" data-testid="intake-footer">
+      {/* Floating sticky buttons, no card or bar behind them (owner 2026-10-03): only the
+          buttons and the opaque summary chip take presses; the form scrolls under the gutters. */}
+      <footer className={cn('pointer-events-none sticky bottom-0 z-10 mt-3 flex items-center gap-2', ACTION_DOCK_TOP_GAP, ACTION_DOCK_LIFT)} data-testid="intake-footer">
         {confirmDiscard ? (
           <>
-            <p className="min-w-0 flex-1 text-role-body text-text-default">Discard this order? Nothing has been saved.</p>
-            <Button variant="ghost" size="sm" onClick={() => setConfirmDiscard(false)}>Keep editing</Button>
-            <Button variant="danger" size="sm" onClick={() => onCancel?.()} data-testid="intake-discard">Discard</Button>
+            <div className="flex min-w-0 flex-1">
+              <p className={cn(INTAKE_FOOTER_CHIP, 'text-role-body text-text-default')}>Discard this order? Nothing has been saved.</p>
+            </div>
+            <Button variant="secondary" size="sm" className={INTAKE_FOOTER_BUTTON} onClick={() => setConfirmDiscard(false)}>Keep editing</Button>
+            <Button variant="danger" size="sm" className={INTAKE_FOOTER_BUTTON} onClick={() => onCancel?.()} data-testid="intake-discard">Discard</Button>
           </>
         ) : (
           <>
-            <div className="min-w-0 flex-1">
-              <p className="text-role-body font-semibold tabular-nums text-text-default" data-testid="intake-total">
-                {formatCents(totals.totalCents, state.currency)}
-              </p>
-              <p className="truncate text-role-caption text-text-muted">
-                {itemCount} item{itemCount === 1 ? '' : 's'}
-                {(bound ? [] : draftBlockers)[0] ? ` · ${draftBlockers[0]}` : ''}
-              </p>
+            <div className="flex min-w-0 flex-1">
+              <div className={INTAKE_FOOTER_CHIP}>
+                <p className="text-role-body font-semibold tabular-nums text-text-default" data-testid="intake-total">
+                  {formatCents(totals.totalCents, state.currency)}
+                </p>
+                <p className="truncate text-role-caption text-text-muted">
+                  {itemCount} item{itemCount === 1 ? '' : 's'}
+                  {(bound ? [] : draftBlockers)[0] ? ` · ${draftBlockers[0]}` : ''}
+                </p>
+              </div>
             </div>
             {onCancel ? (
-              <Button variant="ghost" size="sm" onClick={leave} data-testid="intake-cancel">{bound ? 'Close' : 'Cancel'}</Button>
+              <Button variant="secondary" size="sm" className={INTAKE_FOOTER_BUTTON} onClick={leave} data-testid="intake-cancel">{bound ? 'Close' : 'Cancel'}</Button>
             ) : null}
             {!bound ? (
-              <Button variant="secondary" size="sm" disabled={busy || draftBlockers.length > 0} loading={triage.saving} onClick={() => void submit('draft')} data-testid="intake-save-draft">
+              <Button variant="secondary" size="sm" className={INTAKE_FOOTER_BUTTON} disabled={busy || draftBlockers.length > 0} loading={triage.saving} onClick={() => void submit('draft')} data-testid="intake-save-draft">
                 Save draft
               </Button>
             ) : null}
@@ -591,6 +605,7 @@ export function OrderIntakeForm({
               <Button
                 variant="ink"
                 size="sm"
+                className={INTAKE_FOOTER_BUTTON}
                 disabled={busy || (bound ? false : releaseBlockers.length > 0)}
                 loading={busy}
                 onClick={() => void submit('release')}

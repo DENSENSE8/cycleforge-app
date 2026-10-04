@@ -70,7 +70,6 @@ export function BinsResolver({ facts, onResolved }: PhoneResolverProps<BinsExcep
           Acknowledging a bin alert needs the stock-alert permission.
         </p>
       ) : null}
-      <div className="flex-1 bg-mode-panel" />
       <DetailDock
         label="Bin error actions"
         verbs={[{ id: 'ack', label: 'Acknowledge', icon: <Check />, primary: true, disabled: !canAck, loading: resolve.isPending }]}

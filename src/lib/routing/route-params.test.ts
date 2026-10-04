@@ -31,7 +31,6 @@ import {
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
 import { SUPPORT_MODES } from '@/components/sidebar/support/support-sidebar-shared';
-import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import {
   applyToShipTriageFacet,
   getToShipTriageFacetFromSearch,
@@ -184,12 +183,11 @@ test('Support mode=tickets survives the route registry (default deep-link wire)'
   assert.equal(parseRouteParams(spec, new URLSearchParams('mode=nonsense')).get('mode'), null);
 });
 
-test('default-omit mode wires survive hygiene (review/pack/locations/sourcing/home/ops)', () => {
+test('default-omit mode wires survive hygiene (pack/locations/sourcing/home/ops)', () => {
   // Same class as support `tickets`: defaults usually omitted from the URL, but
   // deep links / assistant copy write them. Hand-copied enums that forgot the
   // default token stripped them on the next hygiene pass.
   const cases: Array<{ path: string; key: string; wire: string }> = [
-    { path: '/review', key: 'mode', wire: 'packer' },
     { path: '/pack', key: 'packMode', wire: 'standard' },
     { path: '/inventory/locations', key: 'tab', wire: 'labels' },
     { path: '/warehouse', key: 'tab', wire: 'labels' },
@@ -235,7 +233,7 @@ test('special-bin print page keeps barcode + count', () => {
   assert.equal(kept.get('tab'), null);
 });
 
-test('closed outbound vocabularies survive hygiene (fbaMode / rtab / etype)', () => {
+test('closed outbound vocabularies survive hygiene (fbaMode / rtab)', () => {
   const fba = routeParamsFor('/shipping/fba');
   assert.ok(fba);
   for (const mode of ['ready', 'plan', 'combine', 'shipped']) {
@@ -260,20 +258,8 @@ test('closed outbound vocabularies survive hygiene (fbaMode / rtab / etype)', ()
     'a deleted route owns no params',
   );
 
-  const search = routeParamsFor('/search');
-  assert.ok(search);
-  assert.equal(
-    parseRouteParams(search!, new URLSearchParams('etype=order')).get('etype'),
-    'order',
-  );
-  assert.equal(
-    parseRouteParams(search!, new URLSearchParams('etype=nonsense')).get('etype'),
-    null,
-  );
-  assert.equal(
-    parseRouteParams(search!, new URLSearchParams('refs=SO-1, 1Z999')).get('refs'),
-    serializeRefIn(parseRefInParam('SO-1, 1Z999').refs),
-  );
+  // `/review` and `/search` were DELETED (2026-10-03) — the proxy redirects them.
+  assert.equal(routeParamsFor('/search'), null, 'a deleted route owns no params');
 });
 
 test('Unbox History search triple survives surface hygiene', () => {
@@ -406,7 +392,7 @@ test('routeParamsFor resolves the longest route first', () => {
   // normalizes, so it deliberately has no spec of its own.
   assert.equal(routeParamsFor('/pack')?.route, '/pack');
   assert.equal(routeParamsFor('/packer'), null);
-  assert.equal(routeParamsFor('/review')?.route, '/review');
+  assert.equal(routeParamsFor('/review'), null);
   assert.equal(routeParamsFor('/warehouse')?.route, '/warehouse');
   // `/inventory` owns its sub-routes by prefix — they share one param set via
   // `useInventoryUrlState`, so one spec is correct rather than four.
@@ -432,17 +418,16 @@ test('/sourcing owns the two keys both of its clear lists forgot', () => {
   assert.equal(parse('mode=alerts'), 'mode=alerts');
 });
 
-test('/test (Quality Control) and /pick (Picker desk) each own their tab param, read through a CONSTANT', () => {
-  // `ship` / `testTab` are read as `searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM)` from `@/utils/*-workspace-state` — outside any surface folder, so the owners are asserted here.
+test('/test (Quality Control) owns search/composer state while /pick owns its workspace tab', () => {
   const test_ = routeParamsFor('/test')!;
   assert.equal(test_.route, '/test');
   const parseTest = (qs: string) => parseRouteParams(test_, new URLSearchParams(qs)).toString();
-  assert.equal(parseTest('testTab=returns'), 'testTab=returns');
+  assert.equal(parseTest('search=BOSE'), 'search=BOSE');
   // The desk left `/test` (owner 2026-09-27): its params die at the QC boundary.
   assert.equal(parseTest('ship=history'), '');
   assert.equal(parseTest('attention=1&packStation=4&new=true'), '');
-  // A legacy `?view=testing` link still lands — the one-mode bench ignores it.
-  assert.equal(parseTest('view=testing&testTab=returns'), 'testTab=returns');
+  // Legacy testing-workspace state is no longer part of the one-mode bench.
+  assert.equal(parseTest('view=testing&testTab=returns'), '');
 
   const pick = routeParamsFor('/pick')!;
   assert.equal(pick.route, '/pick');
@@ -600,9 +585,11 @@ test('/reports keeps a known tab, civil date, staff filter and Find', () => {
   assert.equal(spec.route, '/reports');
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
 
-  for (const tab of ['staff', 'packer', 'utilization', 'velocity', 'dead', 'tasks', 'activity']) {
+  for (const tab of ['packer', 'activity']) {
     assert.equal(parse(`tab=${tab}`), `tab=${tab}`);
   }
+  // The compound-grid tabs were deleted with their grids (2026-10-03).
+  assert.equal(parse('tab=staff'), '');
   assert.equal(parse('tab=bogus'), '');
   assert.equal(parse('date=2026-09-25'), 'date=2026-09-25');
   assert.equal(parse('date=yesterday'), '');

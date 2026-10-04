@@ -1,5 +1,6 @@
 /**
- * Browser transport for `/api/v1/label-buys` (the `/shipping/buy-label` page).
+ * Browser transport for `/api/v1/label-buys` (the Labels desk's Buy a label
+ * compose, `?buy=1`).
  * Same-origin, session cookie only; it never sends a tenant or an actor.
  * Failures throw `V1RequestError` carrying the server's `code`
  * (`LABEL_BUY_ERROR_CODES` + the v1 base codes).

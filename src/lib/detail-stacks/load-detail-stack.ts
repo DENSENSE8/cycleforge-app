@@ -19,6 +19,8 @@ export type LoadedDetailStack =
   | { kind: 'receiving'; log: ReceivingDetailsLog }
   | { kind: 'plan'; item: FbaBoardItem }
   | { kind: 'claim'; repair: RSRecord }
+  /** The peek reads its own live face by SKU (`useSupportProductBySku`). */
+  | { kind: 'sku'; sku: string }
   | { kind: 'missing' };
 
 export async function loadDetailStack(stack: {
@@ -63,6 +65,8 @@ export async function loadDetailStack(stack: {
       if (!repair?.id) return { kind: 'missing' };
       return { kind: 'claim', repair };
     }
+    case 'sku':
+      return { kind: 'sku', sku: id };
     default:
       return { kind: 'missing' };
   }

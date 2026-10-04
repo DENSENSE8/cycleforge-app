@@ -7,8 +7,25 @@ const row = (state: string, extra: Record<string, unknown> = {}) => ({ id: 7, cl
 test('ingestion stages before parsing and persists the resolver result', async () => {
   const calls: string[] = []; const result = await createLabelIngestion({ organizationId: org, actorStaffId: 2, clientEventId: '00000000-0000-4000-8000-000000000007', observedAt: '2026-09-18T00:00:00.000Z', fileBasename: 'label.pdf', bytes: Buffer.from('%PDF-x') }, {
     query: async () => ({ rows: [] }), transaction: async (_org, fn) => fn({ query: async (sql: string) => { calls.push(sql); return { rows: [row(sql.includes("state='MATCHED'") ? 'MATCHED' : 'RECEIVED')] }; } }), store: { put: async () => { calls.push('store'); }, get: async () => Buffer.from('%PDF-x') }, parse: async () => ({ parserVersion: 'v1', cycleforgeReference: null, marketplaceOrderId: 'ORDER-1', accountSource: 'ebay', trackingNumberRaw: '1Z999AA10123456784', trackingNumberNormalized: '1Z999AA10123456784', carrier: 'UPS', multiPackageEvidence: false }), resolve: async () => ({ exactOrder: { accountSource: 'ebay', marketplaceOrderId: 'ORDER-1', matchMethod: 'MARKETPLACE_ORDER_ID', cycleforgeReference: null }, orderIds: [12], quarantineReason: null }),
+    attachTracking: async () => { calls.push('attach'); },
   });
   assert.equal(result.ingestion.state, 'MATCHED'); assert.equal(calls.indexOf('store') < calls.findIndex((call) => call.includes("state='MATCHED'")), true);
+});
+test('a paired label hands its tracking to every row of its order; a failed attach leaves the pairing standing', async () => {
+  const attached: unknown[] = [];
+  const deps = (attach: (input: unknown) => Promise<void>) => ({
+    query: async () => ({ rows: [] }),
+    transaction: async (_org: unknown, fn: (client: never) => unknown) => fn({ query: async (sql: string) => ({ rows: [row(sql.includes("state='MATCHED'") ? 'MATCHED' : 'RECEIVED', { match_method: sql.includes("state='MATCHED'") ? 'BUYER_NAME' : null })] }) } as never),
+    store: { put: async () => {}, get: async () => Buffer.from('%PDF-x') },
+    parse: async () => ({ parserVersion: 'v2', cycleforgeReference: null, marketplaceOrderId: null, accountSource: null, trackingNumberRaw: '9400 1502 0621 7932 8307 94', trackingNumberNormalized: '9400150206217932830794', carrier: 'USPS', multiPackageEvidence: false, shipToName: 'KATHARINE K. DORAN' }),
+    resolve: async () => ({ exactOrder: { accountSource: 'eBay', marketplaceOrderId: '02-1', matchMethod: 'BUYER_NAME' as const, cycleforgeReference: null }, orderIds: [7, 8], quarantineReason: null }),
+    attachTracking: attach,
+  }) as never;
+  const input = { organizationId: org, actorStaffId: 2, clientEventId: '00000000-0000-4000-8000-000000000008', observedAt: '2026-10-03T00:00:00.000Z', fileBasename: 'label.pdf', bytes: Buffer.from('%PDF-y') };
+  await createLabelIngestion(input, deps(async (value) => { attached.push(value); }));
+  assert.deepEqual(attached, [{ organizationId: org, orderIds: [7, 8], trackingNumber: '9400 1502 0621 7932 8307 94', carrier: 'USPS' }]);
+  const stillPaired = await createLabelIngestion({ ...input, bytes: Buffer.from('%PDF-z') }, deps(async () => { throw new Error('tracking owned by another order'); }));
+  assert.equal(stillPaired.ingestion.state, 'MATCHED');
 });
 test('a client-event reusing different bytes is rejected before staging', async () => {
   await assert.rejects(() => createLabelIngestion({ organizationId: org, actorStaffId: 2, clientEventId: '00000000-0000-4000-8000-000000000007', observedAt: '2026-09-18T00:00:00.000Z', fileBasename: 'label.pdf', bytes: Buffer.from('%PDF-x') }, { query: async () => ({ rows: [row('RECEIVED', { sha256: 'b'.repeat(64) })] }), store: { put: async () => { throw new Error('must not stage'); }, get: async () => Buffer.alloc(0) } }), (error: unknown) => error instanceof LabelIngestionServiceError && error.code === 'CLIENT_EVENT_PAYLOAD_MISMATCH');

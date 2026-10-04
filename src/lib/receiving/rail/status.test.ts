@@ -63,7 +63,7 @@ test('getReceivingStatusDotLabel — Zoho issued + local DONE reads Received; ti
   assert.equal(getReceivingStatusDotTip(r, 'Zoho Inventory'), 'Awaiting confirmation in Zoho Inventory');
 });
 
-test('getReceivingStatusDotLabel — Zoho received + local DONE still reads Received', () => {
+test('getReceivingStatusDotLabel — local DONE reads Received whatever Zoho says', () => {
   const r = row({
     workflow_status: 'DONE',
     zoho_status: 'received',
@@ -72,6 +72,18 @@ test('getReceivingStatusDotLabel — Zoho received + local DONE still reads Rece
   });
   assert.equal(getReceivingStatusDotLabel(r), 'Received');
   assert.equal(getReceivingStatusDot(r), 'bg-emerald-500');
+});
+
+test('getReceivingStatusDotLabel — an ERP received status never turns an unscanned line Received', () => {
+  const r = row({
+    workflow_status: 'EXPECTED',
+    zoho_status: 'received',
+    zoho_purchaseorder_id: 'PO-1',
+    quantity_received: 0,
+  });
+  assert.equal(getReceivingStatusDotLabel(r), 'Incoming');
+  assert.equal(getReceivingStatusDot(r), 'bg-amber-400');
+  assert.equal(getReceivingStatusDotTip(r, 'Zoho Inventory'), null);
 });
 
 test('getReceivingStatusPillClass — tracks the same coarse stage as the rail dot', () => {

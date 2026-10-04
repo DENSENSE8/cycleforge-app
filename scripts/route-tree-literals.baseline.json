@@ -1,0 +1,15 @@
+{
+  "note": "FROZEN BASELINE — Warehouse path literals outside src/lib/nav/route-tree.ts. SHRINK-ONLY: use WAREHOUSE_PATHS / the builders. Rewrite with `tsx scripts/route-tree-guard.ts --write-baseline`.",
+  "files": {
+    "src/components/mobile/exceptions/resolvers/BinsResolver.tsx": 1,
+    "src/components/mobile/pair/MobilePairLocation.tsx": 1,
+    "src/components/mobile/pair/MobilePairQty.tsx": 1,
+    "src/components/mobile/scan/MobileScanIdentify.tsx": 1,
+    "src/components/mobile/v2/MobileV2ScanCta.tsx": 1,
+    "src/components/mobile/v2/MobileV2TopBar.tsx": 1,
+    "src/lib/barcode-routing.ts": 2,
+    "src/lib/mobile-context-navigation.ts": 3,
+    "src/lib/mobile/host-top-bar.ts": 5,
+    "src/lib/realtime/sku-stock-photo-request.ts": 1
+  }
+}

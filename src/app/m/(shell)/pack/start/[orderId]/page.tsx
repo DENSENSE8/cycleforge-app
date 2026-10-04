@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Camera, Printer } from '@/components/Icons';
-import { MobileOrderPaperworkSheet } from '@/components/mobile/orders/MobileOrderPaperworkSheet';
+import { MobileV2OrderPaperworkSheet } from '@/components/mobile/v2/orders/MobileV2OrderPaperworkSheet';
 import { OrderInfoCard } from '@/components/mobile/orders/OrderInfoCard';
 import { orderDoors } from '@/components/mobile/orders/order-doors';
 import { useOrderHub } from '@/components/mobile/orders/useOrderHub';
@@ -12,6 +12,7 @@ import { DetailHubScreen } from '@/design-system/components/DetailHubScreen';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
 import type { OrderHubData } from '@/lib/orders/order-hub';
+import { triggerPackPrintBundle, type PrintBundleUiState } from '@/lib/print/pack-print-bundle-client';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
 
@@ -30,14 +31,39 @@ function startFailureMessage(value: unknown): string {
   return 'Could not start packing.';
 }
 
-/** `/m/pack/start/[orderId]` (`orders.id`) — the pack JOB for one order, on {@link DetailHubScreen}: */
+/** One toast per print outcome — the phone has no pack status rail. */
+function announcePrint(result: PrintBundleUiState): void {
+  if (result.status === 'failed' || result.status === 'missing') toast.error(result.message);
+  else if (result.status === 'partial') toast.warning(result.message);
+  else toast.success(result.message);
+}
+
+/**
+ * `/m/pack/start/[orderId]` (`orders.id`) — the pack JOB for one order, on {@link DetailHubScreen}.
+ * `?print=1` (a tote / unit pack scan, `/api/packing/resolve-scan`) prints the
+ * order's whole bundle — every label, the slip, manuals — once on entry.
+ */
 function PackJobInner() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const hub = useOrderHub({ byId: true });
   const [paperworkOpen, setPaperworkOpen] = useState(false);
   const [starting, setStarting] = useState(false);
   const link = (href: string) => withJobReturn(hub.link(href), pathname);
+
+  const printOnEntry = searchParams.get('print') === '1';
+  const orderRowId = hub.data?.order.id ?? null;
+  const entryPrinted = useRef(false);
+  useEffect(() => {
+    if (!printOnEntry || orderRowId == null || entryPrinted.current) return;
+    entryPrinted.current = true;
+    // Drop the flag so a reload or back-navigation does not print again.
+    const rest = new URLSearchParams(searchParams.toString());
+    rest.delete('print');
+    router.replace(rest.size > 0 ? `${pathname}?${rest}` : pathname);
+    void triggerPackPrintBundle({ orderRowId, packerLogId: null }).then(announcePrint);
+  }, [printOnEntry, orderRowId, searchParams, pathname, router]);
 
   const startCapture = async (order: OrderHubData['order']) => {
     if (starting) return;
@@ -70,7 +96,7 @@ function PackJobInner() {
         title: hub.data?.order.order_id ?? hub.param,
         mono: true,
         subtitle: 'Pack',
-        backHref: '/m/pack',
+        backHref: '/m/pick',
         close: true,
       }}
       card={(d) => <OrderInfoCard data={d} href={link(`${hub.base}/info`)} stagePending={hub.workPending} />}
@@ -91,7 +117,7 @@ function PackJobInner() {
       )}
     >
       {(d) => (
-        <MobileOrderPaperworkSheet
+        <MobileV2OrderPaperworkSheet
           open={paperworkOpen}
           onClose={() => setPaperworkOpen(false)}
           orderId={d.order.id}

@@ -43,9 +43,10 @@ export function StaffAvatar({
   alt,
 }: StaffAvatarProps) {
   // Re-render when the cache lands / an admin recolours / a photo is replaced.
-  useStaffColorVersion();
+  // 0 = the server's empty cache (hydration included): resolve as the server did.
+  const cacheReady = useStaffColorVersion() > 0;
 
-  const photoId = avatarPhotoId === undefined ? getStaffAvatarPhotoId(staffId) : avatarPhotoId;
+  const photoId = avatarPhotoId === undefined ? (cacheReady ? getStaffAvatarPhotoId(staffId) : null) : avatarPhotoId;
   // Assigned marks must never paint a lone middle-dot when the feed omitted
   // the display name — resolve the dogfood map, then fall back to id digits.
   const parsedId = Number(staffId);
@@ -57,7 +58,7 @@ export function StaffAvatar({
     : hasId
       ? String(parsedId).slice(-2)
       : '·';
-  const resolvedColor = colorHex ?? getStaffColorHex({ id: staffId ?? null, color_hex: colorHex });
+  const resolvedColor = colorHex ?? getStaffColorHex({ id: cacheReady ? (staffId ?? null) : null, color_hex: colorHex });
 
   return (
     <IdentityMark

@@ -91,7 +91,6 @@ export function TrackingResolver({ facts, onResolved }: PhoneResolverProps<Track
           Closing a tracking exception needs the receiving permission.
         </p>
       ) : null}
-      <div className="flex-1 bg-mode-panel" />
       <DetailDock
         label="Tracking exception actions"
         verbs={[

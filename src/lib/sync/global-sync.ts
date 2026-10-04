@@ -53,8 +53,6 @@ export const ORDERS_PIPELINE_RUN_JOB = 'orders.backfill_pipeline';
 const JOBS: readonly JobDef[] = [
   { id: PIPELINE_JOB_ID, label: 'Orders — all linked platforms', direction: 'outbound', permission: 'orders.import' },
   { id: 'cron:shipping.sync_due', cronJob: 'shipping.sync_due', label: 'Carrier tracking', direction: 'outbound', permission: 'orders.import' },
-  { id: 'cron:zoho.fulfillment_sync', cronJob: 'zoho.fulfillment_sync', label: 'Zoho fulfillment', direction: 'outbound', permission: 'orders.import' },
-  { id: 'cron:zoho.orders_ingest_drain', cronJob: 'zoho.orders_ingest_drain', label: 'Order ingest queue', direction: 'outbound', permission: 'orders.import' },
   { id: 'cron:zoho.incoming_po_sync', cronJob: 'zoho.incoming_po_sync', label: 'Zoho issued POs', direction: 'inbound', permission: 'receiving.view' },
   { id: 'cron:zoho.po_sync', cronJob: 'zoho.po_sync', label: 'Zoho PO mirror', direction: 'inbound', permission: 'receiving.view' },
   { id: 'cron:zoho.receive_backfill', cronJob: 'zoho.receive_backfill', label: 'Zoho purchase receives', direction: 'inbound', permission: 'receiving.view' },

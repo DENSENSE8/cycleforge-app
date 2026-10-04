@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/design-system/primitives';
 import { Check } from '@/components/Icons';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
@@ -39,62 +39,69 @@ export function RepairStatusSheet({
   const dirty = selected !== null && selected !== current;
 
   return (
-    <BottomSheet open={open} onClose={saving ? () => {} : onClose} forceVariant="sheet" title="Repair status">
-      {/* BottomSheet portals out of the page's ModeRegion; re-declare triage so
+    <Sheet open={open} onOpenChange={(next) => { if (!next && !saving) onClose(); }}>
+      {/* The sheet portals out of the page's ModeRegion; re-declare triage so
           the mode radius / padding / hit tokens resolve inside the sheet. */}
-      <ModeRegion mode="triage" className="flex flex-col gap-3 pb-2">
-        <div role="radiogroup" aria-label="Repair status" className="flex flex-col gap-1.5">
-          {REPAIR_WORKBENCH_STATUSES.map((value) => {
-            const isSelected = value === selected;
-            return (
-              // ds-raw-button: full-width radio row (label + trailing check), not an action button
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={isSelected}
-                disabled={saving}
-                onClick={() => setSelected(value)}
-                className={cn(
-                  'flex min-h-mode-hit items-center justify-between gap-3 rounded-mode border px-mode-page text-left text-mode-body font-semibold transition-colors disabled:opacity-60',
-                  isSelected ? repairStatusBadgeClass(value) : 'border-mode-edge bg-mode-panel text-mode-ink active:bg-mode-hover',
-                )}
-              >
-                <span>{repairStatusOperatorLabel(value)}</span>
-                {value === current ? (
-                  <span className="text-role-caption">Current</span>
-                ) : isSelected ? (
-                  <Check className="h-4 w-4 shrink-0" />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+      <ModeRegion mode="triage" asChild>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>Repair status</SheetTitle>
+          </SheetHeader>
+          <SheetBody className="flex flex-col gap-3">
+            <div role="radiogroup" aria-label="Repair status" className="flex flex-col gap-1.5">
+              {REPAIR_WORKBENCH_STATUSES.map((value) => {
+                const isSelected = value === selected;
+                return (
+                  // ds-raw-button: full-width radio row (label + trailing check), not an action button
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    disabled={saving}
+                    onClick={() => setSelected(value)}
+                    className={cn(
+                      'flex min-h-mode-hit items-center justify-between gap-3 rounded-mode border px-mode-page text-left text-mode-body font-semibold transition-colors disabled:opacity-60',
+                      isSelected ? repairStatusBadgeClass(value) : 'border-mode-edge bg-mode-panel text-mode-ink active:bg-mode-hover',
+                    )}
+                  >
+                    <span>{repairStatusOperatorLabel(value)}</span>
+                    {value === current ? (
+                      <span className="text-role-caption">Current</span>
+                    ) : isSelected ? (
+                      <Check className="h-4 w-4 shrink-0" />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
 
-        {error ? (
-          <p role="alert" className="rounded-mode border border-rose-200 bg-rose-50 px-mode-page py-2.5 text-role-caption font-semibold text-rose-700">
-            Not saved — {error}. The previous status is back.
-          </p>
-        ) : null}
+            {error ? (
+              <p role="alert" className="rounded-mode border border-rose-200 bg-rose-50 px-mode-page py-2.5 text-role-caption font-semibold text-rose-700">
+                Not saved — {error}. The previous status is back.
+              </p>
+            ) : null}
 
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full rounded-mode"
-          disabled={!dirty}
-          loading={saving}
-          onClick={() => selected && onSave(selected)}
-        >
-          {saving
-            ? 'Saving'
-            : dirty
-              ? `Save — ${repairStatusOperatorLabel(selected)}`
-              : 'Choose a new status'}
-        </Button>
-        <p className="text-center text-role-caption text-mode-muted">
-          Saving changes the repair only. No customer message is sent.
-        </p>
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full rounded-mode"
+              disabled={!dirty}
+              loading={saving}
+              onClick={() => selected && onSave(selected)}
+            >
+              {saving
+                ? 'Saving'
+                : dirty
+                  ? `Save — ${repairStatusOperatorLabel(selected)}`
+                  : 'Choose a new status'}
+            </Button>
+            <p className="text-center text-role-caption text-mode-muted">
+              Saving changes the repair only. No customer message is sent.
+            </p>
+          </SheetBody>
+        </SheetContent>
       </ModeRegion>
-    </BottomSheet>
+    </Sheet>
   );
 }

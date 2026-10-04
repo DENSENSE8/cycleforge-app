@@ -10,14 +10,21 @@ import {
   deleteTaskDocument as deleteTaskDocumentCore,
   getTaskDocument as getTaskDocumentCore,
   listTaskDocuments as listTaskDocumentsCore,
+  updateTaskDocument as updateTaskDocumentCore,
   mapTaskDocumentRow,
   type CreateTaskDocumentResult,
   type GetTaskDocumentResult,
+  type UpdateTaskDocumentResult,
   type RemovedTaskDocument,
   type TaskDocumentRecord,
   type TaskDocumentsDeps,
 } from './task-documents';
-import type { TaskDocumentCreateBody, TaskDocumentMeta, TaskDocumentSource } from './task-documents-shared';
+import type {
+  TaskDocumentCreateBody,
+  TaskDocumentMeta,
+  TaskDocumentPatchBody,
+  TaskDocumentSource,
+} from './task-documents-shared';
 import { findTaskAnchor } from './task-links-db';
 
 /**
@@ -34,6 +41,8 @@ const TASK_DOCUMENTS_SQL = `
          CASE WHEN d.source = 'upload' THEN octet_length(d.content) END AS size_bytes,
          CASE WHEN $4::boolean THEN d.content END AS content,
          d.created_at,
+         -- µs-exact text, the optimistic-concurrency token (a JS Date drops µs).
+         to_char(d.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS updated_at,
          d.created_by_staff_id,
          s.name AS created_by_name
     FROM work_assignment_documents d
@@ -105,6 +114,32 @@ function taskDocumentsDbDeps(orgId: OrgId): TaskDocumentsDeps {
       const row = res.rows[0];
       return row ? { source: row.source, title: row.title, repoPath: row.repo_path } : null;
     },
+
+    async updateDocument(taskId, docId, patch) {
+      const res = await tenantQuery(
+        orgId,
+        `UPDATE work_assignment_documents
+            SET title = COALESCE($4, title),
+                content = COALESCE($5, content),
+                updated_at = clock_timestamp()
+          WHERE organization_id = $1::uuid AND assignment_id = $2 AND id = $3
+            AND source = 'upload'
+            AND updated_at = $6::timestamptz
+          RETURNING id`,
+        [orgId, taskId, docId, patch.title, patch.content, patch.expectedUpdatedAt],
+      );
+      if (res.rows[0]) return 'updated';
+      // Nothing matched: say why, from the row as it is now.
+      const why = await tenantQuery<{ source: string }>(
+        orgId,
+        `SELECT source FROM work_assignment_documents
+          WHERE organization_id = $1::uuid AND assignment_id = $2 AND id = $3`,
+        [orgId, taskId, docId],
+      );
+      const row = why.rows[0];
+      if (!row) return 'missing';
+      return row.source === 'upload' ? 'stale' : 'repo';
+    },
   };
 }
 
@@ -132,4 +167,13 @@ export function deleteTaskDocument(
   docId: number,
 ): Promise<{ changed: boolean; removed: RemovedTaskDocument | null } | null> {
   return deleteTaskDocumentCore(taskId, docId, taskDocumentsDbDeps(orgId));
+}
+
+export function updateTaskDocument(
+  orgId: OrgId,
+  taskId: number,
+  docId: number,
+  body: TaskDocumentPatchBody,
+): Promise<UpdateTaskDocumentResult> {
+  return updateTaskDocumentCore(taskId, docId, body, taskDocumentsDbDeps(orgId));
 }

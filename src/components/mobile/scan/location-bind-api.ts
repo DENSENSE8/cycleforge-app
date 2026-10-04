@@ -26,7 +26,7 @@ export async function fetchLocationRecord(
   if (res.status === 404) {
     if (!segs) throw new Error(`No location ${code}. Location stickers read zone-aisle-bay-level-position (e.g. C-01-01-1-01).`);
     await registerLocations(`Zone ${segs.zone}`, [segs]);
-    return { id: null, code, face, room: `Zone ${segs.zone}`, contents: [], handlingUnits: [] };
+    return { id: null, code, face, room: `Zone ${segs.zone}`, contents: [], handlingUnits: [], walk: null };
   }
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -41,6 +41,7 @@ export async function fetchLocationRecord(
       productTitle?: string | null;
       isProvisional?: boolean;
       imageUrl?: string | null;
+      photoIds?: number[];
     }>;
     handlingUnits?: Array<{
       id?: number;
@@ -52,6 +53,7 @@ export async function fetchLocationRecord(
       pairedOrderId?: number | null;
       createdAt?: string;
     }>;
+    walk?: { position?: number; total?: number; previous?: string | null; next?: string | null } | null;
   };
   return {
     id: json.location?.id == null ? null : Number(json.location.id),
@@ -67,6 +69,7 @@ export async function fetchLocationRecord(
         productTitle: c.productTitle ?? null,
         isProvisional: c.isProvisional === true,
         imageUrl: c.imageUrl?.trim() || null,
+        photoIds: (c.photoIds ?? []).map(Number).filter((id) => Number.isSafeInteger(id) && id > 0),
       })),
     handlingUnits: (json.handlingUnits ?? [])
       .filter((unit) => Number(unit.id) > 0 && unit.code)
@@ -80,5 +83,13 @@ export async function fetchLocationRecord(
         pairedOrderId: unit.pairedOrderId == null ? null : Number(unit.pairedOrderId),
         createdAt: String(unit.createdAt || ''),
       })),
+    walk: json.walk && Number(json.walk.position) > 0
+      ? {
+          position: Number(json.walk.position),
+          total: Number(json.walk.total) || 0,
+          previous: json.walk.previous?.trim() || null,
+          next: json.walk.next?.trim() || null,
+        }
+      : null,
   };
 }

@@ -12,7 +12,6 @@ import type {
   updatePurchaseOrder,
 } from '@/lib/zoho';
 import type { ZohoInventoryClient } from '@/lib/zoho/ZohoInventoryClient';
-import type { SyncRunOptions, SyncRunReport } from '@/lib/zoho/fulfillment-sync';
 
 /** In-process client circuit state (rate-limit breaker) — cheap, no network. */
 export interface InventoryProviderClientStatus {
@@ -63,7 +62,4 @@ export interface InventoryProvider {
   updateItem: ZohoInventoryClient['updateItem'];
   paginateItems: ZohoInventoryClient['paginateItems'];
   paginateWarehouses: ZohoInventoryClient['paginateWarehouses'];
-
-  // ── Fulfillment push (shipped orders → provider accounting chain) ─────────
-  syncShippedOrders(opts?: Omit<SyncRunOptions, 'orgId'>): Promise<SyncRunReport>;
 }

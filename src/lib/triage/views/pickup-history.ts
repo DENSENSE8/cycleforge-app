@@ -4,9 +4,9 @@
  * and exposes the order's item lines through the shared card disclosure.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 
-export const PICKUP_HISTORY_VIEW: TriageViewDecl = {
+export const PICKUP_HISTORY_VIEW = triageView({
   id: 'pickup.history',
   grain: 'local pickup',
   noun: { one: 'pickup', many: 'pickups' },
@@ -22,7 +22,9 @@ export const PICKUP_HISTORY_VIEW: TriageViewDecl = {
   // reads the already-narrowed feed.
   chips: { owner: 'host', param: 'status' },
   paging: 'client',
-  status: 'date',
+  // The pickup ladder's state ("Picked up", …); the pickup day is its tooltip and the section band.
+  status: 'state',
+  slots: { identity: 'PO number, else LCPU order number', channel: 'none', person: 'customer', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'unit', tier: 'always' },
     { id: 'condition', tier: 'always' },
@@ -34,4 +36,4 @@ export const PICKUP_HISTORY_VIEW: TriageViewDecl = {
   // The host supplies exact pickup-date labels as band ids.
   sections: { order: [], labels: {}, tones: {}, when: 'default-sort' },
   next: ['Process', 'Triage', 'Print labels', 'Test', 'Retest', 'Resolve failure', 'Put away'],
-};
+});

@@ -287,17 +287,38 @@ export function taskDeskRecordHref(row: TaskRecordRef, surface: TaskDeskSurface)
 /** Leading markdown block syntax: heading, quote, bullet / task box, ordered item. */
 const MARKDOWN_LINE_LEAD = /^\s*(#{1,6}\s+|>\s*|[-*+]\s+(\[[ xX]\]\s+)?|\d+[.)]\s+)/;
 
+/** One note line as plain text: markdown block lead, links and emphasis removed. */
+function noteLineFace(raw: string): string {
+  return raw
+    .replace(MARKDOWN_LINE_LEAD, '')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[*_`~]+/g, '')
+    .trim();
+}
+
 /** A task's ONE-LINE face — its human project label when present, otherwise the first line of its instructions with markdown syntax removed… */
 export function taskDeskTitle(row: TaskRecordRef & { note: string | null; projectName?: string | null }): string {
   const projectName = row.projectName?.trim();
   if (projectName) return projectName;
   for (const raw of (row.note ?? '').split('\n')) {
-    const line = raw
-      .replace(MARKDOWN_LINE_LEAD, '')
-      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-      .replace(/[*_`~]+/g, '')
-      .trim();
+    const line = noteLineFace(raw);
     if (line) return line;
   }
   return taskDeskRecordLabel(row) ?? 'Untitled task';
+}
+
+/**
+ * The brief UNDER the title — the note without the line the title already
+ * shows (one fact, one place: a record never repeats its own title as its
+ * body). Null when nothing is left.
+ */
+export function taskBriefBody(row: TaskRecordRef & { note: string | null; projectName?: string | null }): string | null {
+  const note = row.note?.trim();
+  if (!note) return null;
+  const title = taskDeskTitle(row);
+  const lines = note.split('\n');
+  const first = lines.findIndex((raw) => noteLineFace(raw) !== '');
+  if (first < 0 || noteLineFace(lines[first]) !== title) return note;
+  const rest = lines.slice(first + 1).join('\n').trim();
+  return rest || null;
 }

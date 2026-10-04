@@ -65,18 +65,6 @@
       "schedule": "30 3 * * *"
     },
     {
-      "path": "/api/cron/zoho/fulfillment-sync?mode=delta",
-      "schedule": "15 */4 * * *"
-    },
-    {
-      "path": "/api/cron/zoho/fulfillment-sync?mode=full",
-      "schedule": "45 3 * * *"
-    },
-    {
-      "path": "/api/cron/zoho/orders-ingest-drain",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/cron/zoho/receive-backfill",
       "schedule": "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
     },

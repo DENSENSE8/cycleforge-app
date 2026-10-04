@@ -3,7 +3,7 @@
 import type { DeskRefinements } from '@/lib/orders/desk-view-filters';
 import type { DeskQueueViewId } from '@/lib/outbound/desk-views';
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan, sqlStationActivityMatchesOrder } from '@/lib/orders/order-grain-sql';
-import { ORDER_PICK_SCAN_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { ORDER_PICK_SCAN_ACTIVITY_TYPES, PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
@@ -81,8 +81,8 @@ export interface OrderStageSignals {
   pickedBy: string;
   /** Live ORDER/PICK assignee (`?pickerId=`). */
   pickerId: string;
-  /** Live ORDER/PACK assignee (`?packedBy=`). */
-  packerId: string;
+  /** Who actually packed (`?packedBy=`). */
+  packedBy: string;
 }
 
 /**
@@ -180,20 +180,36 @@ function paramRef(value: string): string {
   return value;
 }
 
-/** `?packedBy=` subject: the latest live PACK assignee (the list's `wa_p` lateral), as a scalar subquery. */
-export function sqlOrderPackAssigneeId(orderAlias = 'o'): string {
+/**
+ * `?packedBy=` subject: who actually packed the order, as a scalar — the
+ * latest PACK-station pack event on its shipment, else the latest COMPLETED
+ * packer_log's packer. Same sources and priority as `order_stage_facts.packed_by`
+ * (`PACK_LATERALS` in order-stage-facts.ts); keep the two in step.
+ */
+export function sqlOrderPackedByStaffId(orderAlias = 'o'): string {
   const o = alias(orderAlias);
-  return `(
-      SELECT wa_pk.assigned_packer_id
-        FROM work_assignments wa_pk
-       WHERE wa_pk.organization_id = ${o}.organization_id
-         AND wa_pk.entity_type = 'ORDER'
-         AND wa_pk.entity_id = ${o}.id
-         AND wa_pk.work_type = 'PACK'
-         AND wa_pk.assigned_packer_id IS NOT NULL
-         AND wa_pk.status <> 'CANCELED'
-       ORDER BY wa_pk.updated_at DESC, wa_pk.id DESC
-       LIMIT 1
+  return `COALESCE(
+      (
+        SELECT pk_sal.staff_id
+          FROM station_activity_logs pk_sal
+         WHERE ${o}.shipment_id IS NOT NULL
+           AND pk_sal.shipment_id = ${o}.shipment_id
+           AND pk_sal.organization_id = ${o}.organization_id
+           AND pk_sal.station = 'PACK'
+           AND pk_sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
+         ORDER BY pk_sal.created_at DESC NULLS LAST, pk_sal.id DESC
+         LIMIT 1
+      ),
+      (
+        SELECT pk_pl.packed_by
+          FROM packer_logs pk_pl
+         WHERE ${o}.shipment_id IS NOT NULL
+           AND pk_pl.shipment_id = ${o}.shipment_id
+           AND pk_pl.organization_id = ${o}.organization_id
+           AND pk_pl.completion_state = 'COMPLETED'
+         ORDER BY pk_pl.created_at DESC NULLS LAST, pk_pl.id DESC
+         LIMIT 1
+      )
     )`;
 }
 
@@ -298,11 +314,11 @@ export function sqlDeskRefinementClauses(
   bind: (value: unknown) => string,
   orderAlias = 'o',
   deadlineSql = sqlOrderTestDeadlineAt(orderAlias),
-  signals?: Pick<OrderStageSignals, 'pickedBy' | 'pickerId' | 'packerId'>,
+  signals?: Pick<OrderStageSignals, 'pickedBy' | 'pickerId' | 'packedBy'>,
 ): string[] {
   const o = alias(orderAlias);
   const out: string[] = [];
-  if (r.packedBy != null) out.push(`${signals?.packerId ?? sqlOrderPackAssigneeId(o)} = ${paramRef(bind(r.packedBy))}`);
+  if (r.packedBy != null) out.push(`${signals?.packedBy ?? sqlOrderPackedByStaffId(o)} = ${paramRef(bind(r.packedBy))}`);
   if (r.pickerId != null) out.push(`${signals?.pickerId ?? sqlOrderPickAssigneeId(o)} = ${paramRef(bind(r.pickerId))}`);
   if (r.pickedBy != null) out.push(`${signals?.pickedBy ?? sqlOrderPickedByStaffId(o)} = ${paramRef(bind(r.pickedBy))}`);
   if (r.orderFrom) out.push(sqlWarehouseDayOnOrAfter(`${o}.order_date`, bind(r.orderFrom)));

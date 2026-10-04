@@ -11,9 +11,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/app/serial/[id]/page.tsx => src/components/mobile/receiving/ScanAgainBar.tsx",
   "src/components/auth/SignInQrScanDialog.tsx => src/components/mobile/ScanSurface.tsx",
   "src/components/layout/MobileRouteShell.tsx => src/components/mobile/receiving/ReceivingPhoneBridgeMount.tsx",
-  "src/components/mobile/packer/MobilePackingRow.tsx => src/components/receiving/ReceivingIdentityChips.tsx",
-  "src/components/mobile/packer/MobilePackingSheet.tsx => src/components/packing/OrderPackChecklist.tsx",
-  "src/components/mobile/packer/MobilePackingSheet.tsx => src/components/shipped/PhotoGallery.tsx",
   // Operator 2026-09-15: Inventory › Locations › Totes consumes the /m tote
   // printer chrome. Copies is LabelPrintRunNumField, same field as other 2×1
   // printers — do not fork a second stepper.
@@ -22,11 +19,10 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/components/mobile/receiving/MobileArrivalClassifyFlow.tsx => src/components/receiving/workspace/line-edit/InlinePillPicker.tsx",
   "src/components/mobile/receiving/MobileArrivalClassifyFlow.tsx => src/components/receiving/workspace/line-edit/classify-pill-options.tsx",
   "src/components/mobile/receiving/PhotoUploadToaster.tsx => src/components/station/capture-upload/capture-upload-model.ts",
-  "src/components/mobile/redesign/MobileSettingsList.tsx => src/components/settings/settings-sections.ts",
-  "src/components/mobile/redesign/ScanInput.tsx => src/components/station/scan-bar/index.ts",
-  "src/components/mobile/redesign/useToShipOrders.ts => src/components/work-orders/types.ts",
+  "src/components/mobile/v2/settings/MobileV2SettingsList.tsx => src/components/settings/settings-sections.ts",
+  "src/components/mobile/v2/scan/MobileV2ScanInput.tsx => src/components/station/scan-bar/index.ts",
+  "src/components/mobile/v2/fulfillment/useMobileV2FulfillmentOrders.ts => src/components/work-orders/types.ts",
   "src/components/mobile/scan/location-bind-api.ts => src/components/barcode/bin-label-printer/bin-printer-api.ts",
-  "src/components/packer/PackerPageContent.tsx => src/components/mobile/packer/MobilePackingList.tsx",
   "src/components/receiving/workspace/line-edit/PhotoPeekFan.tsx => src/components/mobile/station/MobileSwipePhotoViewer.tsx",
   "src/components/shipped/PhotoGallery.tsx => src/components/mobile/station/MobileSwipePhotoViewer.tsx",
   "src/components/sku/BinStockNumpadSheet.tsx => src/components/mobile/photos/MobileNativePhotoCapture.tsx",

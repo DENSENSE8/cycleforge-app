@@ -2,17 +2,22 @@
  * Inventory › Locations — canonical path after folding `/warehouse` under Inventory.
  * Nested facets still use `?tab=` (Bin Tags default = omit).
  *
- * The bay-printer facet is `bays`. Legacy `?tab=racks` still parses as `bays`.
+ * The bay-printer facet is `bays`. Legacy `?tab=racks` still parses as `bays`:
+ * printed bay QR links and old redirects carry it, so it can never be reused.
+ * Movable racks (`RK12`) are therefore the `movable` tab, labelled Racks.
  */
 
 const INVENTORY_LOCATIONS_PATH = '/inventory/locations' as const;
 
-export type LocationsTab = 'labels' | 'bays' | 'totes' | 'rooms' | 'bins' | 'map' | 'manage';
+export type LocationsTab = 'labels' | 'bays' | 'movable' | 'totes' | 'rooms' | 'bins' | 'map' | 'manage';
 
 /** Live Locations tabs — includes default `labels` (usually omitted). */
 export const LOCATIONS_TABS = [
   'labels',
   'bays',
+  // Movable racks (`RK12`): list, record, New rack, Move. Labelled "Racks";
+  // the wire id is not `racks` because that word is the legacy bay alias.
+  'movable',
   // Tote plates. A tote is a CONTAINER, not a place — it sits here because
   // this page is where the warehouse prints its 2×1 stock, not because a box
   // is a location. It owns no row in `locations` and never will.
@@ -31,7 +36,7 @@ export const LOCATIONS_BAY_CODE_RE =
 
 export function parseLocationsTab(raw: string | null | undefined): LocationsTab {
   if (raw === 'racks' || raw === 'bays') return 'bays';
-  if (raw === 'rooms' || raw === 'bins' || raw === 'map' || raw === 'manage') return raw;
+  if (raw === 'rooms' || raw === 'bins' || raw === 'map' || raw === 'manage' || raw === 'movable') return raw;
   if (raw === 'totes') return 'totes';
   return 'labels';
 }

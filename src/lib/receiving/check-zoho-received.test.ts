@@ -15,7 +15,6 @@ import {
   isZohoReceivedLikeStatus,
   parseTrackingPaste,
   resolveCheckRowCarrierTracking,
-  resolveVerdict,
   resolveWatchState,
   type CheckZohoReceivedDeps,
   type CheckZohoReceivedLocal,
@@ -200,7 +199,6 @@ test('a Zoho outage reports UNDETERMINED, never "not received"', async () => {
   assert.equal(result.undetermined.find((r) => r.tracking === 'ERR1')?.reason, 'error');
   assert.equal(result.stats.errors, 1);
   assert.equal(result.stats.undetermined, 2);
-  for (const row of result.undetermined) assert.equal(row.verdict, 'unknown');
 });
 
 test('checkZohoReceived: zoho_cap is undetermined, not not-received', async () => {
@@ -254,27 +252,7 @@ test('resolveWatchState maps to the lane that owns the tracking today', () => {
   );
 });
 
-test('resolveVerdict: the ERP × warehouse cross-product', () => {
-  const done = local({ unboxed: true, watch: 'done' });
-  const notDone = local({ delivered: true, watch: 'delivered_unscanned' });
-
-  assert.equal(resolveVerdict({ reason: 'matched', status: 'received', local: done }), 'settled');
-  // The state no continuous feed reports.
-  assert.equal(
-    resolveVerdict({ reason: 'matched', status: 'billed', local: notDone }),
-    'erp_ahead',
-  );
-  assert.equal(
-    resolveVerdict({ reason: 'matched', status: 'issued', local: done }),
-    'warehouse_ahead',
-  );
-  assert.equal(resolveVerdict({ reason: 'matched', status: 'issued', local: notDone }), 'open');
-  // An undetermined ERP answer can never yield a verdict, whatever the warehouse says.
-  assert.equal(resolveVerdict({ reason: 'error', status: null, local: done }), 'unknown');
-  assert.equal(resolveVerdict({ reason: 'zoho_cap', status: null, local: notDone }), 'unknown');
-});
-
-test('checkZohoReceived: local state joins onto rows and drives the verdict', async () => {
+test('checkZohoReceived: local state joins onto rows', async () => {
   const result = await checkZohoReceived(ORG, 'RECV1\nRECV2', {
     lookupMirror: async () =>
       new Map([
@@ -310,16 +288,14 @@ test('checkZohoReceived: local state joins onto rows and drives the verdict', as
   assert.ok(!('error' in result));
   if ('error' in result) return;
 
-  // Both are "received in Zoho" — the bucket is unchanged. What separates them
-  // is the warehouse half, which is exactly the unification this check adds.
+  // The warehouse half rides each row as physical facts — never a Zoho verdict.
   assert.equal(result.received_in_zoho.length, 2);
-  const settled = result.received_in_zoho.find((r) => r.tracking === 'RECV1')!;
-  const orphan = result.received_in_zoho.find((r) => r.tracking === 'RECV2')!;
-  assert.equal(settled.verdict, 'settled');
-  assert.equal(orphan.verdict, 'erp_ahead');
-  assert.equal(orphan.local?.watch, 'delivered_unscanned');
-  assert.equal(result.stats.erp_ahead, 1);
-  assert.equal(result.stats.warehouse_ahead, 0);
+  const unboxed = result.received_in_zoho.find((r) => r.tracking === 'RECV1')!;
+  const delivered = result.received_in_zoho.find((r) => r.tracking === 'RECV2')!;
+  assert.equal(unboxed.local?.unboxed, true);
+  assert.equal(delivered.local?.scanned, false);
+  assert.equal(delivered.local?.watch, 'delivered_unscanned');
+  assert.ok(!('verdict' in delivered));
 });
 
 test('a failing local lookup degrades to unknown — it never fails the check', async () => {
@@ -346,10 +322,8 @@ test('a failing local lookup degrades to unknown — it never fails the check', 
   if ('error' in result) return;
   assert.equal(result.received_in_zoho.length, 1);
   // A failed lookup is NOT "no warehouse record" — it is no answer at all, so
-  // the row carries a null local half and no verdict is claimed.
+  // the row carries a null local half.
   assert.equal(result.received_in_zoho[0]!.local, null);
-  assert.equal(result.received_in_zoho[0]!.verdict, 'unknown');
-  assert.equal(result.stats.erp_ahead, 0);
 });
 
 test('looked-up-and-absent DOES resolve — it is evidence, unlike a failed lookup', async () => {
@@ -374,8 +348,7 @@ test('looked-up-and-absent DOES resolve — it is evidence, unlike a failed look
   assert.ok(!('error' in result));
   if ('error' in result) return;
   assert.equal(result.received_in_zoho[0]!.local?.known, false);
-  assert.equal(result.received_in_zoho[0]!.verdict, 'erp_ahead');
-  assert.equal(result.stats.erp_ahead, 1);
+  assert.equal(result.received_in_zoho[0]!.local?.watch, 'unknown');
 });
 
 test('checkZohoReceived: order/PO numbers resolve via mirror by purchaseorder_number', async () => {
@@ -562,6 +535,5 @@ test('checkZohoReceived: local state falls back to PO# key when paste was an ord
   });
   assert.ok(!('error' in result));
   if ('error' in result) return;
-  assert.equal(result.received_in_zoho[0]!.verdict, 'settled');
   assert.equal(result.received_in_zoho[0]!.local?.unboxed, true);
 });

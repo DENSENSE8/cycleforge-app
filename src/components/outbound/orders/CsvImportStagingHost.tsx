@@ -204,7 +204,7 @@ export function CsvImportStagingHost() {
     exitStaging();
   }, [confirmTargets, draft, exitStaging, queryClient]);
 
-  // Arming lives on the rail's flush Delete; the last row leaving takes the
+  // Arming lives on the rail's floor Delete; the last row leaving takes the
   // (now empty) draft with it rather than stranding an empty sheet.
   const handleDiscardSelected = useCallback(() => {
     discardTableImportSelected(SURFACE);

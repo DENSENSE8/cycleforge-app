@@ -653,8 +653,6 @@ export function inboundPastedNumberModel(number: PastedNumber, check: CheckZohoR
       ...(check
         ? [
             { label: 'Reason', value: check.reason },
-            { label: 'Verdict', value: check.verdict },
-            ...(check.status ? [{ label: 'PO status', value: check.status }] : []),
             ...(check.po_number ? [{ label: 'PO', value: id(check.po_number) }] : []),
           ]
         : [{ label: 'Check', value: entry.detail }]),

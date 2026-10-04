@@ -1,6 +1,6 @@
 'use client';
 
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { StaffPrintStationPicker } from '@/components/ui/StaffPrintStationPicker';
 import type { StaffPrintStation } from '@/lib/print/staff-print-bridge';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
@@ -26,21 +26,28 @@ export function FnskuStationSheet({
   onPick: (stationId: string) => void;
 }) {
   return (
-    <BottomSheet open={open} onClose={onClose} forceVariant="sheet" title="Printer">
-      {/* BottomSheet portals out of the hub's ModeRegion; re-declare triage. */}
-      <ModeRegion mode="triage" className="pb-2">
-        <StaffPrintStationPicker
-          stations={stations}
-          target={target}
-          now={now}
-          role="label"
-          onPick={(id) => {
-            if (!id) return;
-            onPick(id);
-            onClose();
-          }}
-        />
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      {/* The sheet portals out of the hub's ModeRegion; re-declare triage. */}
+      <ModeRegion mode="triage" asChild>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>Printer</SheetTitle>
+          </SheetHeader>
+          <SheetBody>
+            <StaffPrintStationPicker
+              stations={stations}
+              target={target}
+              now={now}
+              role="label"
+              onPick={(id) => {
+                if (!id) return;
+                onPick(id);
+                onClose();
+              }}
+            />
+          </SheetBody>
+        </SheetContent>
       </ModeRegion>
-    </BottomSheet>
+    </Sheet>
   );
 }

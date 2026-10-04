@@ -258,20 +258,29 @@ export function RecordActionStrip({
             </HoverTooltip>
             <DropdownMenuContent align="end" side="bottom">
               {overflow.map((verb) => (
-                <DropdownMenuItem
+                // Hotkeys are disclosed on hover, never painted inline (owner 2026-10-03); `?` still reveals them.
+                <HoverTooltip
                   key={verb.id}
-                  disabled={verb.disabled}
-                  title={verb.disabled ? verb.disabledReason : undefined}
-                  data-testid={`${testId}-${verb.id}`}
-                  className={verb.tone === 'danger' ? 'text-text-danger' : undefined}
-                  onSelect={() => press(verb)}
+                  label={verb.disabled ? (verb.disabledReason ?? verb.label) : verb.label}
+                  shortcut={verb.hotkey ? hotkeyChord(verb.hotkey) : undefined}
+                  asChild
+                  placement="left"
+                  focusable={false}
                 >
-                  {verb.icon}
-                  {verb.label}
-                  {verb.hotkey ? (
-                    <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
-                  ) : null}
-                </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={verb.disabled}
+                    title={verb.disabled ? verb.disabledReason : undefined}
+                    data-testid={`${testId}-${verb.id}`}
+                    tone={verb.tone === 'danger' ? 'danger' : 'default'}
+                    onSelect={() => press(verb)}
+                  >
+                    {verb.icon}
+                    {verb.label}
+                    {showHotkeys && verb.hotkey ? (
+                      <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
+                    ) : null}
+                  </DropdownMenuItem>
+                </HoverTooltip>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>

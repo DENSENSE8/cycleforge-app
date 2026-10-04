@@ -20,10 +20,11 @@ import {
   type DockedTicketLabel,
 } from '@/lib/receiving/docked-record-state';
 import type { RecordCardLine, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
-import { INCOMING_UNBOXED_VIEW } from '@/lib/triage/views';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
+import { INCOMING_UNBOXED_VIEW, type INCOMING_DOCKED_VIEW, type RECEIVE_QUEUE_VIEW } from '@/lib/triage/views';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { RecordStateFace } from '@/design-system/tokens/record';
-import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { fmtMoney } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { diffDaysDateKey, formatDateKeyShort, formatDateTimePST, formatMonthDayTimePST, getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import {
@@ -227,7 +228,7 @@ function cartonLine(row: ReceivingLineRow, surface: CartonCardModel['surface']):
   const dockedQty = row.quantity_expected ?? row.quantity_received ?? 0;
   return {
     id: row.id,
-    title: displayReceivingProductTitle(row),
+    title: resolveSkuIdentityTitle(row) || 'Unnamed inbound line',
     photoUrl: row.image_url,
     alert: surface === 'unboxed' && state.id === 'EXCEPTION',
     alertNote: surface === 'unboxed' && state.id === 'EXCEPTION' ? `${state.label} · ${workflowStageLabel(row.workflow_status)}` : null,
@@ -284,7 +285,11 @@ function cartonTicketLabels(rows: readonly ReceivingLineRow[]): DockedTicketLabe
   return [...byTicket.values()].sort((a, b) => rank(a) - rank(b));
 }
 
-export function cartonRecordCard(model: CartonCardModel): RecordCardModel {
+/** Every view that wears the carton card: Docked (arrival SLA top-right), Unboxed and Unbox (no status; the unboxer far right). */
+export type CartonCardView = typeof INCOMING_DOCKED_VIEW | typeof INCOMING_UNBOXED_VIEW | typeof RECEIVE_QUEUE_VIEW;
+
+/** The carton as the shared card reads it; `channel` is the adapter's catalog-resolved brand (null = none known). */
+export function cartonRecordCard(model: CartonCardModel, channel: RecordCardModel['channel'] = null): ViewCardModel<CartonCardView> {
   const { state, identity, activity } = model;
   const lines = model.rows.map((row) => cartonLine(row, model.surface));
   const alertCount = lines.filter((line) => line.alert).length;
@@ -295,7 +300,8 @@ export function cartonRecordCard(model: CartonCardModel): RecordCardModel {
   const tickets = cartonTicketLabels(model.rows);
   // Unboxed owns a historical record: its mandatory far-right fact is
   // `topRight` (the unboxer). Arrival SLA remains the status of a still-sealed
-  // Docked package; unpack timestamps remain in the quick look.
+  // Docked package — with no vendor promise, the arrival stamp untoned;
+  // unpack timestamps remain in the quick look.
   const corner = model.unboxedAt ? { label: 'Unboxed', instant: model.unboxedAt } : activity ? { label: activity.label, instant: activity.instant } : null;
   const expectedSla = model.surface === 'docked' ? expectedArrivalSla(model.rows) : null;
   const note = (model.lead.notes ?? '').trim();
@@ -318,8 +324,8 @@ export function cartonRecordCard(model: CartonCardModel): RecordCardModel {
       open: `Open ${identity}`,
       check: `Select ${identity}`,
     },
-    // Line 1's channel is painted by the adapter (catalog-aware brand dot); the vendor is the person.
-    channel: null,
+    // The catalog-aware brand dot is resolved by the adapter (a hook); the vendor is the person.
+    channel,
     person: model.vendor,
     // Each filed ticket on line 1 with what it is for — "Investigating #10066",
     // "Damaged #10066", or "Ticket #…" when it carries no reason.
@@ -337,14 +343,12 @@ export function cartonRecordCard(model: CartonCardModel): RecordCardModel {
         ? { kind: 'none' }
         : expectedSla
           ? { kind: 'deadline', ...expectedSla }
-          : corner
-            ? {
-                kind: 'date',
-                face: formatMonthDayTimePST(corner.instant),
-                tip: `${corner.label} · ${formatDateTimePST(corner.instant)} PT`,
-                alert: alertCount > 0,
-              }
-            : { kind: 'date', face: 'No date', tip: null, alert: alertCount > 0 },
+          : {
+              kind: 'deadline',
+              face: corner ? formatMonthDayTimePST(corner.instant) : 'No date',
+              tone: 'none',
+              tip: corner ? `${corner.label} · ${formatDateTimePST(corner.instant)} PT` : null,
+            },
     next: next ? { label: next, tone: state.tone, tip: `Next: ${next.toLowerCase()}`, blocked: false } : null,
     lines,
     hiddenAlertLabel: moreExceptions,

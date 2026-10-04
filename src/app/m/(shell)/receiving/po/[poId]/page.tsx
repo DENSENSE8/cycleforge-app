@@ -6,7 +6,7 @@ import { useMemo, useState, use as useUnwrap } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChevronRight, Camera } from '@/components/Icons';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { PhotoFab } from '@/components/mobile/receiving/PhotoFab';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { poHeaderStatusChipClass } from '@/lib/po-header-status';
@@ -84,7 +84,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
 
   return (
     <div className="min-h-screen bg-surface-card pb-24">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         title={header?.po_number ? `PO ${header.po_number}` : 'Purchase Order'}
         subtitle={header ? `${header.item_count} items · ${header.qty_received}/${header.qty_expected || '?'} received` : 'Loading…'}
         backHref="/m/scan"

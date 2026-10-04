@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { DetailAck, DetailFact, DetailFacts } from '@/components/mobile/detail/DetailParts';
 import { RepairInfoEditSheet } from '@/components/mobile/repair/RepairInfoEditSheet';
 import { useRepairInfoSave } from '@/components/mobile/repair/useRepairInfoSave';
@@ -44,7 +44,7 @@ function RepairInfoInner() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref={`/m/rs/${repairId}`}
         subtitle="Details"
         title={`RS-${repairId}`}

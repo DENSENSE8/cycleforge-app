@@ -13,9 +13,9 @@ import { Store, Truck } from '@/components/Icons';
 import { TicketChip } from '@/components/ui/CopyChip';
 import { CollapseItem } from '@/design-system/components/Collapse';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
-import type { RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import { RecordFactPaint } from '@/design-system/components/record-card/record-fact';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
 import { CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { resolveRepairContact } from '@/lib/repair/contact-info';
@@ -26,7 +26,7 @@ import { formatPhoneNumber } from '@/utils/phone';
 import { RepairStatusControl } from './RepairStatusControl';
 
 /** Quick look (Space): what the face leaves out — contact, links, the full issue. */
-function RepairCardPeek({ model }: { model: RepairCardModel }) {
+export function RepairCardPeek({ model }: { model: RepairCardModel }) {
   const lead = model.lead;
   const contact = resolveRepairContact(lead);
   const facts: [string, string | null][] = [
@@ -72,7 +72,7 @@ export const RepairCard = memo(function RepairCard({
   onTogglePeek,
   onChangeStatus,
 }: RepairCardProps) {
-  const record = useMemo<RecordCardModel>(() => {
+  const record = useMemo<ViewCardModel<typeof REPAIR_QUEUE_VIEW>>(() => {
     const channel = model.record.channel;
     if (!channel) return model.record;
     const Glyph = model.channel === 'shipment' ? Truck : Store;
@@ -108,6 +108,7 @@ export const RepairCard = memo(function RepairCard({
   );
   return (
     <RecordCard
+      view={REPAIR_QUEUE_VIEW}
       model={record}
       factColumns={REPAIR_QUEUE_VIEW.facts}
       testIdPrefix={REPAIR_QUEUE_VIEW.testIdPrefix}

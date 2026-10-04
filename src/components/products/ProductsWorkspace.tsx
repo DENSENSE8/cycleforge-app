@@ -3,7 +3,9 @@
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ManualLibrary } from '@/components/manuals/ManualLibrary';
-import { parseProductsView } from '@/components/products/products-view';
+import { parseProductsView, type ProductsView } from '@/components/products/products-view';
+import { NavPageActions } from '@/components/desk/NavPageActions';
+import { useCurrentNavPath, useNavContext } from '@/components/sidebar/contextual/useNavContext';
 
 // Lazy-load the labels workbench — pulls in the DataMatrix renderer + barcode
 // helpers + catalog list; not needed for the default Manuals view.
@@ -48,7 +50,17 @@ const QcChecklistWorkspace = dynamic(
 export function ProductsWorkspace() {
   const searchParams = useSearchParams();
   const view = parseProductsView(searchParams.get('view'));
+  // The view's declared header verbs (Catalog: Add product · Import products CSV), top-right.
+  const nav = useNavContext(useCurrentNavPath()).data;
+  return (
+    <>
+      <NavPageActions actions={nav?.actions} />
+      <ProductsViewBody view={view} />
+    </>
+  );
+}
 
+function ProductsViewBody({ view }: { view: ProductsView }) {
   switch (view) {
     case 'catalog':
       return <ProductCatalogWorkspace />;

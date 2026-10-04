@@ -1,6 +1,7 @@
 import pool from '../db';
-import { tenantQuery, withTenantTransaction } from '../tenancy/db';
+import { tenantQuery, tenantQueryOneTrip, withTenantTransaction } from '../tenancy/db';
 import type { OrgId } from '../tenancy/constants';
+import { derivedRoomLabelSql, derivedRoomSetJoinSql, rackWalkOrderSql } from '../locations/derived-room';
 import { writeLedgerDelta } from '../inventory/write-ledger-delta';
 import { publishStockLedgerEvent } from '../realtime/publish';
 import {
@@ -10,6 +11,13 @@ import {
   pad2,
   type LocationSegments,
 } from '../barcode-routing';
+import {
+  hasLocationDeleteScope,
+  locationDeleteFace,
+  locationHierarchy,
+  locationMatchesDeleteScope,
+  type LocationDeleteScope,
+} from '../inventory/location-deletion';
 
 /** Tenancy migration note ────────────────────── Every exported query here takes an OPTIONAL `orgId`. */
 
@@ -32,6 +40,31 @@ export interface Location {
   parent_id: number | null;
   /** A-Z, set on parent rows only. Drives the printed label and GS1 QR. */
   zone_letter: string | null;
+  /** Typed hierarchy — ROOM / RACK / SHELF / POSITION / BIN / … Selected by the list reads. */
+  location_kind?: string | null;
+}
+
+export interface LocationDeleteTarget {
+  id: number;
+  barcode: string | null;
+  name: string;
+  room: string | null;
+  rowLabel: string | null;
+  colLabel: string | null;
+  face: string;
+  zone: string | null;
+  aisle: number | null;
+  bay: number | null;
+  level: number | null;
+  position: number | null;
+  quantity: number;
+  skuCount: number;
+  handlingUnitCount: number;
+  orderPlacementCount: number;
+  unitPlacementCount: number;
+  lockedForCount: boolean;
+  deletable: boolean;
+  blockedReasons: string[];
 }
 
 interface BinContent {
@@ -55,6 +88,8 @@ interface BinContent {
   product_title?: string;
   is_provisional?: boolean;
   cover_photo_id?: number | null;
+  /** SKU_STOCK photo ids in display order; `[0]` is the cover. */
+  photo_ids?: number[];
   catalog_image_url?: string | null;
 }
 
@@ -74,7 +109,7 @@ interface LocationTransfer {
 
 export async function getActiveLocations(orgId?: OrgId): Promise<Location[]> {
   const sql = `SELECT id, name, room, description, barcode, is_active, sort_order,
-            row_label, col_label, bin_type, capacity, parent_id, zone_letter
+            row_label, col_label, bin_type, capacity, parent_id, zone_letter, location_kind
      FROM locations
      WHERE is_active = true${orgId ? ' AND organization_id = $1' : ''}
      ORDER BY room, sort_order, row_label, col_label, name`;
@@ -84,12 +119,13 @@ export async function getActiveLocations(orgId?: OrgId): Promise<Location[]> {
   return result.rows;
 }
 
-/** Get only room-level parents (no row/col) for the room picker. */
+/** Get only room-level parents (no row/col) for the room picker. Rack-family rows (no row/col either) are never rooms. */
 export async function getRooms(orgId?: OrgId): Promise<Location[]> {
   const sql = `SELECT id, name, room, description, barcode, is_active, sort_order,
             row_label, col_label, bin_type, capacity, parent_id, zone_letter
      FROM locations
-     WHERE is_active = true AND row_label IS NULL AND col_label IS NULL${orgId ? ' AND organization_id = $1' : ''}
+     WHERE is_active = true AND row_label IS NULL AND col_label IS NULL
+       AND location_kind NOT IN ('RACK', 'SHELF', 'POSITION')${orgId ? ' AND organization_id = $1' : ''}
      ORDER BY sort_order, name`;
   const result = orgId
     ? await tenantQuery<Location>(orgId, sql, [orgId])
@@ -229,7 +265,9 @@ const STALE_DAYS = 90;
 /**
  * Pure WHERE-clause builder for {@link getBinsOverview} — exported for unit
  * tests. Special bare-barcode bins (RETURNS-TEST / TECH-PARTS / UNSORTED) have
- * null row/col labels and must still appear via `specialBarcodes`.
+ * null row/col labels and must still appear via `specialBarcodes`. The room
+ * filter and search read the DERIVED room, so the FROM must carry
+ * `derivedRoomSetJoinSql('l', 'room', …)`.
  */
 export function buildBinsOverviewWhere(args: {
   /** 1-based param indices already reserved ahead of this builder (stale days = 1). */
@@ -248,15 +286,16 @@ export function buildBinsOverviewWhere(args: {
 
   const where: string[] = ['l.is_active = true'];
 
+  // A stock place is a legacy aisle-bay row (row+col), a movable-rack shelf or
+  // position (no row/col; parented to a rack), or a named special bin.
+  const stockPlace = `(l.row_label IS NOT NULL AND l.col_label IS NOT NULL) OR l.location_kind IN ('SHELF', 'POSITION')`;
   let specialParamIdx = 0;
   if (specials.length > 0) {
     args.params.push(specials);
     specialParamIdx = args.params.length;
-    where.push(
-      `((l.row_label IS NOT NULL AND l.col_label IS NOT NULL) OR l.barcode = ANY($${specialParamIdx}))`,
-    );
+    where.push(`(${stockPlace} OR l.barcode = ANY($${specialParamIdx}))`);
   } else {
-    where.push('l.row_label IS NOT NULL', 'l.col_label IS NOT NULL');
+    where.push(`(${stockPlace})`);
   }
 
   let orgParamIdx = 0;
@@ -268,7 +307,7 @@ export function buildBinsOverviewWhere(args: {
 
   if (room) {
     args.params.push(room);
-    where.push(`l.room = $${args.params.length}`);
+    where.push(`${derivedRoomLabelSql('l', 'room')} = $${args.params.length}`);
   }
   if (q) {
     args.params.push(`%${q}%`);
@@ -277,7 +316,7 @@ export function buildBinsOverviewWhere(args: {
       `(
         l.barcode ILIKE $${idx}
         OR l.name ILIKE $${idx}
-        OR l.room ILIKE $${idx}
+        OR ${derivedRoomLabelSql('l', 'room')} ILIKE $${idx}
         OR l.row_label ILIKE $${idx}
         OR l.col_label ILIKE $${idx}
         OR EXISTS (
@@ -339,7 +378,7 @@ export async function getBinsOverview(filter?: {
       GROUP BY bc.location_id
     )
     SELECT
-      l.id, l.barcode, l.name, l.room, l.row_label, l.col_label,
+      l.id, l.barcode, l.name, ${derivedRoomLabelSql('l', 'room')} AS room, l.row_label, l.col_label,
       l.capacity, l.bin_type, l.zone_letter,
       COALESCE(agg.total_qty, 0)::int           AS total_qty,
       COALESCE(agg.sku_count, 0)::int           AS sku_count,
@@ -356,9 +395,10 @@ export async function getBinsOverview(filter?: {
       COALESCE(agg.has_low_stock, false)        AS has_low_stock,
       (l.capacity IS NOT NULL AND COALESCE(agg.total_qty, 0) > l.capacity) AS is_over_capacity
     FROM locations l
+    ${derivedRoomSetJoinSql('l', 'room', orgParamIdx > 0 ? `$${orgParamIdx}` : undefined)}
     LEFT JOIN agg ON agg.location_id = l.id
     WHERE ${where.join(' AND ')}
-    ORDER BY ${specialOrder} l.sort_order ASC, l.room NULLS LAST, l.row_label NULLS LAST, l.col_label NULLS LAST, l.id
+    ORDER BY ${specialOrder} l.sort_order ASC, ${derivedRoomLabelSql('l', 'room')} NULLS LAST, ${rackWalkOrderSql('l.barcode')}, l.row_label NULLS LAST, l.col_label NULLS LAST, l.id
   `;
 
   const result = orgId
@@ -384,9 +424,28 @@ export async function getLocationByBarcode(barcode: string, orgId?: OrgId): Prom
   const sql = `SELECT * FROM locations WHERE barcode = $1 AND is_active = true${orgId ? ' AND organization_id = $2' : ''} LIMIT 1`;
   const params = orgId ? [barcode.trim(), orgId] : [barcode.trim()];
   const result = orgId
-    ? await tenantQuery<Location>(orgId, sql, params)
+    ? await tenantQueryOneTrip<Location>(orgId, sql, params)
     : await pool.query<Location>(sql, params);
   return result.rows[0] ?? null;
+}
+
+/**
+ * The barcode of the place a stock row key names (`<location_id|name>:<sku>:<source>`,
+ * `locationStockRowId`) — one indexed point read instead of loading a room.
+ */
+export async function getLocationBarcodeForStockRowKey(key: string, orgId: OrgId): Promise<string | null> {
+  const place = key.split(':', 1)[0]?.trim() ?? '';
+  if (!place || place === '?') return null;
+  const id = /^\d+$/.test(place) ? Number(place) : null;
+  const result = await tenantQueryOneTrip<{ barcode: string | null }>(
+    orgId,
+    `SELECT barcode FROM locations
+      WHERE organization_id = $1 AND is_active = true
+        AND ${id != null ? 'id = $2' : 'name = $2'}
+      LIMIT 1`,
+    [orgId, id ?? place],
+  );
+  return result.rows[0]?.barcode?.trim() || null;
 }
 
 export async function createLocation(data: {
@@ -441,7 +500,7 @@ export async function createLocation(data: {
 
 export async function updateLocation(
   id: number,
-  data: Partial<{ name: string; displayName: string | null; room: string | null; description: string | null; barcode: string | null; binType: string | null; capacity: number | null; isActive: boolean; sortOrder: number }>,
+  data: Partial<{ name: string; displayName: string | null; room: string | null; description: string | null; barcode: string | null; binType: string | null; capacity: number | null; isActive: boolean; sortOrder: number; arrivalPriorityTier: number | null }>,
   orgId?: OrgId,
 ): Promise<Location | null> {
   const sets: string[] = ['updated_at = NOW()'];
@@ -459,6 +518,8 @@ export async function updateLocation(
   if (data.capacity !== undefined) { sets.push(`capacity = $${idx++}`); params.push(data.capacity); }
   if (data.isActive !== undefined) { sets.push(`is_active = $${idx++}`); params.push(data.isActive); }
   if (data.sortOrder !== undefined) { sets.push(`sort_order = $${idx++}`); params.push(data.sortOrder); }
+  // Arrival urgency shelf tier (0..3, null clears it).
+  if (data.arrivalPriorityTier !== undefined) { sets.push(`arrival_priority_tier = $${idx++}`); params.push(data.arrivalPriorityTier); }
 
   params.push(id);
   const idIdx = idx++;
@@ -661,6 +722,144 @@ export async function softDeleteLocation(id: number, orgId?: OrgId): Promise<boo
   return (r.rowCount ?? 0) > 0;
 }
 
+type LocationDeleteBaseRow = {
+  id: number;
+  barcode: string | null;
+  name: string;
+  room: string | null;
+  row_label: string | null;
+  col_label: string | null;
+  locked_for_count: boolean | null;
+};
+
+type LocationDeleteOccupancyRow = {
+  location_id: number;
+  quantity: number;
+  sku_count: number;
+  handling_unit_count: number;
+  order_placement_count: number;
+  unit_placement_count: number;
+};
+
+async function locationDeleteTargetsWith(
+  db: { query: typeof pool.query },
+  scope: LocationDeleteScope,
+  orgId: OrgId,
+  lock: boolean,
+): Promise<LocationDeleteTarget[]> {
+  if (!hasLocationDeleteScope(scope)) throw new Error('Choose at least one location or hierarchy scope.');
+
+  const base = await db.query<LocationDeleteBaseRow>(
+    `SELECT id, barcode, name, room, row_label, col_label, locked_for_count
+       FROM locations
+      WHERE organization_id = $1 AND is_active = true
+      ORDER BY room, row_label, col_label, name, id${lock ? ' FOR UPDATE' : ''}`,
+    [orgId],
+  );
+  const selected = base.rows.filter((row) => locationMatchesDeleteScope(row, scope));
+  if (selected.length === 0) return [];
+  if (selected.length > 2_000) throw new Error('Location deletion scope is too large (maximum 2,000 at once).');
+
+  const ids = selected.map((row) => Number(row.id));
+  const occupancy = await db.query<LocationDeleteOccupancyRow>(
+    `SELECT target.id AS location_id,
+            COALESCE(stock.quantity, 0)::int AS quantity,
+            COALESCE(stock.sku_count, 0)::int AS sku_count,
+            COALESCE(hu.n, 0)::int AS handling_unit_count,
+            COALESCE(op.n, 0)::int AS order_placement_count,
+            COALESCE(up.n, 0)::int AS unit_placement_count
+       FROM unnest($2::int[]) AS target(id)
+       LEFT JOIN LATERAL (
+         SELECT COALESCE(SUM(GREATEST(bc.qty, 0)), 0) AS quantity,
+                COUNT(*) FILTER (WHERE bc.qty > 0) AS sku_count
+           FROM bin_contents bc
+          WHERE bc.organization_id = $1 AND bc.location_id = target.id
+       ) stock ON true
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*) AS n FROM handling_units h
+          WHERE h.organization_id = $1 AND h.location_id = target.id
+       ) hu ON true
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*) AS n FROM order_pack_placements p
+          WHERE p.organization_id = $1 AND p.location_id = target.id
+       ) op ON true
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*) AS n FROM unit_pack_placements p
+          WHERE p.organization_id = $1 AND p.location_id = target.id
+       ) up ON true`,
+    [orgId, ids],
+  );
+  const occupancyById = new Map(occupancy.rows.map((row) => [Number(row.location_id), row]));
+
+  return selected.map((row) => {
+    const counts = occupancyById.get(Number(row.id));
+    const quantity = Number(counts?.quantity ?? 0);
+    const skuCount = Number(counts?.sku_count ?? 0);
+    const handlingUnitCount = Number(counts?.handling_unit_count ?? 0);
+    const orderPlacementCount = Number(counts?.order_placement_count ?? 0);
+    const unitPlacementCount = Number(counts?.unit_placement_count ?? 0);
+    const blockedReasons: string[] = [];
+    if (quantity > 0) blockedReasons.push(`${quantity} stock unit${quantity === 1 ? '' : 's'}`);
+    if (handlingUnitCount > 0) blockedReasons.push(`${handlingUnitCount} parked LPN${handlingUnitCount === 1 ? '' : 's'}`);
+    if (orderPlacementCount > 0) blockedReasons.push(`${orderPlacementCount} staged order${orderPlacementCount === 1 ? '' : 's'}`);
+    if (unitPlacementCount > 0) blockedReasons.push(`${unitPlacementCount} staged unit${unitPlacementCount === 1 ? '' : 's'}`);
+    if (row.locked_for_count) blockedReasons.push('locked for cycle count');
+    const hierarchy = locationHierarchy(row);
+    return {
+      id: Number(row.id),
+      barcode: row.barcode,
+      name: row.name,
+      room: row.room,
+      rowLabel: row.row_label,
+      colLabel: row.col_label,
+      face: locationDeleteFace(row),
+      ...hierarchy,
+      quantity,
+      skuCount,
+      handlingUnitCount,
+      orderPlacementCount,
+      unitPlacementCount,
+      lockedForCount: Boolean(row.locked_for_count),
+      deletable: blockedReasons.length === 0,
+      blockedReasons,
+    };
+  });
+}
+
+/** Resolve a hierarchy or explicit IDs into the exact physical locations and their blockers. */
+export async function previewLocationDeletion(
+  scope: LocationDeleteScope,
+  orgId: OrgId,
+): Promise<LocationDeleteTarget[]> {
+  return withTenantTransaction(orgId, (db) => locationDeleteTargetsWith(db, scope, orgId, false));
+}
+
+/** Atomically soft-delete an explicit, already-previewed set. Any newly occupied row refuses the whole write. */
+export async function bulkSoftDeleteLocations(
+  locationIds: number[],
+  orgId: OrgId,
+): Promise<{ deactivated: number; targets: LocationDeleteTarget[] }> {
+  const ids = Array.from(new Set(locationIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)));
+  if (ids.length === 0) throw new Error('Choose at least one location to delete.');
+  return withTenantTransaction(orgId, async (db) => {
+    const targets = await locationDeleteTargetsWith(db, { locationIds: ids }, orgId, true);
+    if (targets.length !== ids.length) throw new Error('One or more locations are missing or already inactive. Refresh the preview.');
+    const blocked = targets.filter((target) => !target.deletable);
+    if (blocked.length > 0) {
+      const error = new Error('One or more locations became occupied. Refresh the preview.');
+      Object.assign(error, { code: 'LOCATION_DELETE_BLOCKED', targets });
+      throw error;
+    }
+    const result = await db.query(
+      `UPDATE locations
+          SET is_active = false, updated_at = NOW()
+        WHERE organization_id = $1 AND id = ANY($2::int[]) AND is_active = true`,
+      [orgId, ids],
+    );
+    return { deactivated: result.rowCount ?? 0, targets };
+  });
+}
+
 /** Soft-delete a room and every bin under it (sets is_active = false). */
 export async function softDeleteRoom(name: string, orgId?: OrgId): Promise<{ deactivated: number }> {
   const room = name.trim();
@@ -850,13 +1049,14 @@ export async function registerPrintedLocations(input: {
         continue;
       }
 
-      // 2. Insert a fresh row. UNIQUE(name) protects against manual dupes.
-      //    Stamp organization_id when threaded.
+      // 2. Insert a fresh row. UNIQUE(organization_id, barcode) protects
+      //    against manual dupes. Stamp organization_id when threaded (else
+      //    the GUC default supplies it).
       const insert = await db.query(
         `INSERT INTO locations
            (name, room, barcode, row_label, col_label, bin_type, capacity, parent_id, sort_order${orgId ? ', organization_id' : ''})
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0${orgId ? ', $9' : ''})
-         ON CONFLICT (barcode) DO UPDATE
+         ON CONFLICT (organization_id, barcode) DO UPDATE
             SET room = EXCLUDED.room,
                 row_label = EXCLUDED.row_label,
                 col_label = EXCLUDED.col_label,
@@ -930,9 +1130,13 @@ export async function getTransfersForSku(sku: string, limit = 25, orgId: OrgId):
 
 // ─── Bin Contents ───────────────────────────────────────────────────────────
 
-/** Get all SKUs stored in a specific bin (by location_id). */
-async function getBinContents(locationId: number, orgId?: OrgId): Promise<BinContent[]> {
-  // The locations join is on a globally-unique integer PK (safe bare).
+/**
+ * Every SKU stored at one active location, keyed by its barcode so it runs in
+ * parallel with the location read. `photo_ids` is the SKU_STOCK evidence in
+ * display order (index 0 = cover); the phone's preview and viewer read it, so
+ * opening a stock row costs no second request.
+ */
+async function getBinContentsAtBarcode(barcode: string, orgId: OrgId): Promise<BinContent[]> {
   const sql = `SELECT bc.*, l.name AS location_name, l.room, l.row_label, l.col_label, l.barcode,
             ss.id AS stock_id,
             COALESCE(
@@ -941,27 +1145,24 @@ async function getBinContents(locationId: number, orgId?: OrgId): Promise<BinCon
             ) AS product_title,
             COALESCE(ss.is_provisional, false) AS is_provisional,
             ss.display_name_override,
-            ph.cover_photo_id,
+            COALESCE(ph.photo_ids, '{}') AS photo_ids,
+            ph.photo_ids[1] AS cover_photo_id,
             NULLIF(sc.image_url, '') AS catalog_image_url
-     FROM bin_contents bc
-     JOIN locations l ON l.id = bc.location_id
-     LEFT JOIN sku_stock ss ON ss.sku = bc.sku${orgId ? ' AND ss.organization_id = bc.organization_id' : ''}
-     LEFT JOIN sku_catalog sc ON sc.sku = bc.sku${orgId ? ' AND sc.organization_id = bc.organization_id' : ''}
+     FROM locations l
+     JOIN bin_contents bc ON bc.location_id = l.id AND bc.organization_id = l.organization_id
+     LEFT JOIN sku_stock ss ON ss.sku = bc.sku AND ss.organization_id = bc.organization_id
+     LEFT JOIN sku_catalog sc ON sc.sku = bc.sku AND sc.organization_id = bc.organization_id
      LEFT JOIN LATERAL (
-       SELECT pel.photo_id AS cover_photo_id
+       SELECT array_agg(pel.photo_id ORDER BY pel.sort_order ASC NULLS LAST, pel.photo_id ASC) AS photo_ids
          FROM photo_entity_links pel
-        WHERE pel.entity_type = 'SKU_STOCK'
-          AND pel.entity_id = ss.id${orgId ? ' AND pel.organization_id = bc.organization_id' : ''}
+        WHERE pel.organization_id = bc.organization_id
+          AND pel.entity_type = 'SKU_STOCK'
+          AND pel.entity_id = ss.id
           AND pel.link_role = 'primary'
-        ORDER BY pel.sort_order ASC NULLS LAST, pel.photo_id ASC
-        LIMIT 1
      ) ph ON true
-     WHERE bc.location_id = $1${orgId ? ' AND bc.organization_id = $2' : ''}
+     WHERE l.barcode = $1 AND l.is_active = true AND l.organization_id = $2
      ORDER BY bc.sku`;
-  const params = orgId ? [locationId, orgId] : [locationId];
-  const result = orgId
-    ? await tenantQuery<BinContent>(orgId, sql, params)
-    : await pool.query<BinContent>(sql, params);
+  const result = await tenantQueryOneTrip<BinContent>(orgId, sql, [barcode.trim(), orgId]);
   return result.rows;
 }
 
@@ -988,15 +1189,16 @@ export async function getBinLocationsBySku(sku: string, orgId?: OrgId): Promise<
   return result.rows;
 }
 
-/** Get bin contents by scanning a bin barcode. */
-export async function getBinContentsByBarcode(barcode: string, orgId?: OrgId): Promise<{
+/** Get bin contents by scanning a bin barcode: location and contents in one round trip of latency. */
+export async function getBinContentsByBarcode(barcode: string, orgId: OrgId): Promise<{
   location: Location;
   contents: BinContent[];
 } | null> {
-  const loc = await getLocationByBarcode(barcode, orgId);
-  if (!loc) return null;
-  const contents = await getBinContents(loc.id, orgId);
-  return { location: loc, contents };
+  const [loc, contents] = await Promise.all([
+    getLocationByBarcode(barcode, orgId),
+    getBinContentsAtBarcode(barcode, orgId),
+  ]);
+  return loc ? { location: loc, contents } : null;
 }
 
 /** Add or update SKU quantity in a bin. */
@@ -1163,6 +1365,132 @@ export async function adjustBinQty(data: {
   }
 
   return result;
+}
+
+export interface BinTransferResult {
+  fromBin: { id: number; name: string; barcode: string | null };
+  toBin: { id: number; name: string; barcode: string | null };
+  sku: string;
+  qty: number;
+  sourceQty: number;
+  destinationQty: number;
+  ledgerIds: number[];
+}
+
+/**
+ * One atomic stock move: lock source, validate quantity, write both bin legs and both ledger legs.
+ * Realtime fan-out is the caller's, after the response (`publishTransferLedgerEvents`).
+ */
+export async function transferBinQty(data: {
+  fromBarcode: string;
+  toBarcode: string;
+  sku: string;
+  qty: number;
+  staffId?: number | null;
+  reasonCodeId?: number | null;
+  notes?: string | null;
+}, orgId: OrgId): Promise<BinTransferResult> {
+  const fromBarcode = data.fromBarcode.trim();
+  const toBarcode = data.toBarcode.trim();
+  const rawSku = data.sku.trim();
+  const sku = rawSku.includes(':') ? rawSku.split(':')[0]!.trim() : rawSku;
+  const qty = Math.floor(Number(data.qty));
+  if (!fromBarcode || !toBarcode || !sku || !Number.isSafeInteger(qty) || qty <= 0) {
+    throw new Error('A source, destination, SKU and positive quantity are required.');
+  }
+  if (fromBarcode.toUpperCase() === toBarcode.toUpperCase()) {
+    throw new Error('Source and destination locations must differ.');
+  }
+
+  // ONE data-modifying statement inside the tenant transaction (3 round trips,
+  // was 8): every sub-statement sees the same snapshot, and the source UPDATE's
+  // `qty >= n` guard is re-checked under the row lock, so two concurrent moves
+  // can never take the same unit. No `moved` row → nothing was written.
+  const from = fromBarcode.toUpperCase();
+  const to = toBarcode.toUpperCase();
+  const row = await withTenantTransaction(orgId, async (db) => (await db.query<{
+    from_bin: { id: number; name: string; barcode: string | null } | null;
+    to_bin: { id: number; name: string; barcode: string | null } | null;
+    available: number | null;
+    source_qty: number | null;
+    destination_qty: number | null;
+    out_ledger_id: number | null;
+    in_ledger_id: number | null;
+  }>(
+    `WITH bins AS (
+       SELECT id, name, barcode, UPPER(barcode) AS code
+         FROM locations
+        WHERE organization_id = $1 AND is_active = true
+          AND UPPER(barcode) IN ($2, $3)
+        FOR UPDATE
+     ),
+     f AS (SELECT id, name, barcode FROM bins WHERE code = $2),
+     t AS (SELECT id, name, barcode FROM bins WHERE code = $3),
+     moved AS (
+       UPDATE bin_contents bc
+          SET qty = bc.qty - $5, updated_at = NOW()
+         FROM f, t
+        WHERE bc.organization_id = $1 AND bc.location_id = f.id AND bc.sku = $4 AND bc.qty >= $5
+        RETURNING bc.qty AS source_qty
+     ),
+     landed AS (
+       INSERT INTO bin_contents (organization_id, location_id, sku, qty)
+       SELECT $1::uuid, t.id, $4::text, $5::int FROM t, moved
+       ON CONFLICT (location_id, sku)
+       DO UPDATE SET qty = bin_contents.qty + EXCLUDED.qty, updated_at = NOW()
+       RETURNING qty AS destination_qty
+     ),
+     ledger AS (
+       INSERT INTO sku_stock_ledger (organization_id, sku, delta, reason, dimension, staff_id, reason_code_id, notes)
+       SELECT $1::uuid, $4::text, leg.delta, leg.reason, 'WAREHOUSE', $6::int, $7::int, $8::text
+         FROM moved, (VALUES (-$5::int, 'TRANSFER_OUT'), ($5::int, 'TRANSFER_IN')) AS leg(delta, reason)
+       RETURNING id, reason
+     )
+     SELECT (SELECT row_to_json(f) FROM f) AS from_bin,
+            (SELECT row_to_json(t) FROM t) AS to_bin,
+            (SELECT bc.qty FROM bin_contents bc, f
+              WHERE bc.organization_id = $1 AND bc.location_id = f.id AND bc.sku = $4) AS available,
+            (SELECT source_qty FROM moved) AS source_qty,
+            (SELECT destination_qty FROM landed) AS destination_qty,
+            (SELECT id FROM ledger WHERE reason = 'TRANSFER_OUT') AS out_ledger_id,
+            (SELECT id FROM ledger WHERE reason = 'TRANSFER_IN') AS in_ledger_id`,
+    [orgId, from, to, sku, qty, data.staffId ?? null, data.reasonCodeId ?? null, data.notes ?? null],
+  )).rows[0]);
+
+  if (!row?.from_bin) throw new Error(`From bin not found: ${fromBarcode}`);
+  if (!row.to_bin) throw new Error(`To bin not found: ${toBarcode}`);
+  if (row.source_qty == null) {
+    const sourceQty = Number(row.available ?? 0);
+    const error = new Error(`Source bin only has ${sourceQty}; cannot move ${qty}.`);
+    Object.assign(error, { code: 'INSUFFICIENT_QTY', available: sourceQty, requested: qty });
+    throw error;
+  }
+  return {
+    fromBin: row.from_bin,
+    toBin: row.to_bin,
+    sku,
+    qty,
+    sourceQty: Number(row.source_qty),
+    destinationQty: Number(row.destination_qty ?? 0),
+    ledgerIds: [row.out_ledger_id, row.in_ledger_id].filter((id): id is number => id != null),
+  };
+}
+
+/** Realtime fan-out for a committed {@link transferBinQty}; never blocks or fails the move. */
+export async function publishTransferLedgerEvents(
+  result: Pick<BinTransferResult, 'ledgerIds' | 'sku' | 'qty'>,
+  { orgId, staffId }: { orgId: OrgId; staffId?: number | null },
+): Promise<void> {
+  await Promise.all(result.ledgerIds.map((ledgerId, index) => publishStockLedgerEvent({
+    organizationId: orgId,
+    ledgerId,
+    sku: result.sku,
+    delta: index === 0 ? -result.qty : result.qty,
+    reason: index === 0 ? 'TRANSFER_OUT' : 'TRANSFER_IN',
+    dimension: 'WAREHOUSE',
+    staffId: staffId ?? null,
+    source: 'wms.command.transfer',
+  }).catch((error) => console.warn('[transferBinQty] realtime publish failed', error))));
 }
 
 /** Mark a bin as physically counted (cycle count). */

@@ -11,9 +11,9 @@ export const monoPalette: ThemePalette = {
   vars: {
     // Neutral chrome (zinc — a true gray, distinct from light's cool slate)
     'text-primary': '#18181b',
-    'text-secondary': '#52525b',
-    'text-soft': '#6b6b74', // ≥4.5 on card AND the sunken wash (contrast-audited)
-    'text-faint': '#82828b', // ≥3.0 on card (decorative tier)
+    'text-secondary': '#42424a', // ≥9:1 on every surface (owner 2026-10-03: subtitles read easily)
+    'text-soft': '#5c5c64', // ≥6:1 on every surface
+    'text-faint': '#6d6d75', // ≥4.5 on every surface — text, never a sub-AA tier
     'background-canvas': '#fafafa',
     'background-surface': '#ffffff',
     'surface-sunken': '#f4f4f5',

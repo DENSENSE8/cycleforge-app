@@ -78,9 +78,7 @@ test('regression: rma.view/rma.manage gate the RMA routes (not orders.view)', ()
   assert.ok(allRmaPaths.includes('/api/rma/route.ts'), 'rma.* should gate /api/rma');
   assert.ok(allRmaPaths.includes('/api/rma/[id]/route.ts'), 'rma.* should gate /api/rma/[id]');
   assert.ok(allRmaPaths.includes('/api/rma/by-number/[number]/route.ts'), 'rma.* should gate the by-number lookup');
-  assert.ok(managePaths.includes('/api/rma/[id]/close/route.ts'), 'rma.manage should gate close');
   assert.ok(managePaths.includes('/api/rma/[id]/disposition/route.ts'), 'rma.manage should gate disposition');
-  assert.ok(managePaths.includes('/api/rma/[id]/mark-received/route.ts'), 'rma.manage should gate mark-received');
   assert.ok(!routesGatedBy('orders.view').some((r) => r.path.startsWith('/api/rma/')), 'no RMA route should still be on orders.view');
 });
 
@@ -925,4 +923,54 @@ test('regression: integrations.zendesk gates the support ticket link + create wa
     assert.equal(r.permission, 'integrations.zendesk', path);
     assert.deepEqual(r.methods, methods, path);
   }
+});
+
+test('regression: inbound follow-ups read on receiving.view, write on the carton staff-notes permission', () => {
+  const path = '/api/receiving/inbound-followups/route.ts';
+  const r = routeByPath(path);
+  assert.ok(r, `${path} should be in the manifest`);
+  assert.equal(r.gate, 'withAuth');
+  assert.equal(r.permission, 'receiving.view');
+  assert.deepEqual(r.methods, ['GET', 'POST']);
+  // The manifest records one permission per file; pin the POST gate from source.
+  const source = readFileSync(join(process.cwd(), 'src/app', path), 'utf8');
+  assert.match(source, /export const POST = withAuth\([^]*?permission: 'receiving\.mark_received'/);
+});
+
+test('regression: integrations.zendesk gates "Product sent to customer" (support_ticket_items + support product search)', () => {
+  // The same permission that posts the reply the picks ride on; support staff
+  // may lack orders.create, so the product search is NOT the intake route.
+  const pinned: Array<[string, string, string[]]> = [
+    ['/api/support/products/route.ts', 'withAuth', ['GET']],
+    ['/api/support/tickets/[ticketId]/items/route.ts', 'requireRoutePerm', ['GET', 'POST']],
+    ['/api/support/tickets/[ticketId]/items/[itemId]/route.ts', 'requireRoutePerm', ['DELETE']],
+  ];
+  for (const [path, gate, methods] of pinned) {
+    const r = routeByPath(path);
+    assert.ok(r, `${path} should be in the manifest`);
+    assert.equal(r.gate, gate, path);
+    assert.equal(r.permission, 'integrations.zendesk', path);
+    assert.deepEqual(r.methods, methods, path);
+  }
+});
+
+test('regression: movable racks read on sku_stock.view, write on sku_stock.manage (labels-printed is a view-level report)', () => {
+  const pinned: Array<[string, string, string, string[]]> = [
+    ['/api/racks/route.ts', 'withAuth', 'sku_stock.view', ['GET', 'POST']],
+    ['/api/racks/[code]/route.ts', 'requireRoutePerm', 'sku_stock.view', ['GET']],
+    ['/api/racks/[code]/move/route.ts', 'requireRoutePerm', 'sku_stock.manage', ['POST']],
+    ['/api/racks/[code]/shelves/route.ts', 'requireRoutePerm', 'sku_stock.manage', ['POST']],
+    ['/api/racks/[code]/labels-printed/route.ts', 'requireRoutePerm', 'sku_stock.view', ['POST']],
+    ['/api/racks/adopt/route.ts', 'withAuth', 'sku_stock.manage', ['POST']],
+  ];
+  for (const [path, gate, permission, methods] of pinned) {
+    const r = routeByPath(path);
+    assert.ok(r, `${path} should be in the manifest`);
+    assert.equal(r.gate, gate, path);
+    assert.equal(r.permission, permission, path);
+    assert.deepEqual(r.methods, methods, path);
+  }
+  // The manifest records one permission per file; pin the create gate from source.
+  const source = readFileSync(join(process.cwd(), 'src/app/api/racks/route.ts'), 'utf8');
+  assert.match(source, /export const POST = withAuth\([^]*?permission: 'sku_stock\.manage'/);
 });

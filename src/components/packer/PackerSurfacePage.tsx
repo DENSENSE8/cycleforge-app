@@ -52,7 +52,7 @@ export async function PackerSurfacePage({
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <SurfaceGate surfaceKey="pack">
-        <PackerPageContent packerId={String(user.staffId)} />
+        <PackerPageContent />
       </SurfaceGate>
     </HydrationBoundary>
   );

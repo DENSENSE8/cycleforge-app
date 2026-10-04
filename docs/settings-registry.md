@@ -70,7 +70,7 @@ operator, which is a **shallow** merge. A deeply-nested page namespace
 This makes `||` per-key safe (each setting is an independent top-level key), keeps registry-key ===
 storage-key (no path math), and reads trivially. `OrgSettingsSchema.passthrough()` already tolerates
 these keys on old rows, so growth is migration-free. The existing typed keys (`timezone`,
-`warrantyDays`, `theme`, `unshippedBoard`) are untouched and keep their dedicated accessors.
+`warrantyDays`, `theme`) are untouched and keep their dedicated accessors.
 
 Because `StaffPreferencesPutBody` is `.strict()`, the framework does **not** write through the old
 `/api/staff-preferences` route. It writes top-level namespaced keys through dedicated raw writers
@@ -93,8 +93,8 @@ Stored values are `safeParse`d against the registry schema; an invalid stored va
 default rather than crashing the read. A locked setting always resolves to its free default
 regardless of any stale stored value — entitlement is enforced at read time, not just in the UI.
 
-Case 3 (**org sets the default, staff may override**) is the SaaS-grade behavior. The working
-precedent is `staff_preferences.unshippedBoard`; this generalizes it to every page.
+Case 3 (**org sets the default, staff may override**) is the SaaS-grade behavior; this generalizes
+it to every page.
 
 ## Read path
 
@@ -107,7 +107,7 @@ precedent is `staff_preferences.unshippedBoard`; this generalizes it to every pa
   ```
 
   These return a fully-typed, defaulted value and are what gets threaded into decision points
-  (e.g. the photo gate in `api/receiving/mark-received`).
+  (e.g. the photo gate in `api/receiving/mark-received-po`).
 
 - **Client UI** reads effective values (with org→staff layering applied server-side) via
   `usePageSettings('receiving')` / `useSetting(key)` in `src/hooks/useSettings.ts`. Non-admins can't
@@ -181,10 +181,10 @@ UI, storage, validation, audit, permission gating, and plan-gating are automatic
 
 | key | control | entitlement | decision point |
 |---|---|---|---|
-| `receiving.photoPolicy` | segmented (optional / require_one / require_per_item) | — | `api/receiving/mark-received` (**wired**: 409 + structured blockers; unbox receive-bar preflight mirrors it) |
+| `receiving.photoPolicy` | segmented (optional / require_one / require_per_item) | — | `api/receiving/mark-received-po` (**wired**: 409 + structured blockers; unbox receive-bar preflight mirrors it) |
 | `receiving.nasBackup` | segmented (off / mirror / direct) | direct → `nasArchive` | `lib/photos/mirror-nas.ts` |
 | `receiving.autoTicket` | segmented (off / on_qa_fail / on_unfound) | `automations` | **new** trigger (deferred) |
-| `receiving.defaultPutawayBin` | text | — | `mark-received` (replaces env) |
+| `receiving.defaultPutawayBin` | text | — | **unwired** (its only reader, the deleted `mark-received` route, is gone) |
 | `receiving.returnsTestBin` | text | — | return-carton auto-stage + 2×1 special-bin label |
 | `receiving.autoPrintLabel` | toggle | — | label helpers |
 | `receiving.confirmSerialRemoval` | toggle | — | `ActiveLineConditionSerial` |
@@ -255,11 +255,11 @@ value; writes always land on `key`. `desk.<deskId>.view` reads the old boolean
 ## Phased rollout
 
 - **Phase 1 (done):** framework core + full receiving catalog declared/rendered/plan-gated +
-  settings-page home. Behaviorally wired into decision points: `defaultPutawayBin` (server,
-  mark-received), `confirmSerialRemoval` (client, ActiveLineConditionSerial), `autoFocusSerial` +
+  settings-page home. Behaviorally wired into decision points: `confirmSerialRemoval` (client,
+  ActiveLineConditionSerial), `autoFocusSerial` +
   `autoPushPhoneCamera` + `accordionExpand` (client, `useTrackingScan` via stable refs synced by
   effect), `nasBackup` (server, mirror-selection SQL gate), `photoPolicy` (server 409 photo gate in
-  mark-received via `evaluateReceivingPhotoPolicy` + stage-aware counts, mirrored by the unbox
+  mark-received-po via `evaluateReceivingPhotoPolicy` + stage-aware counts, mirrored by the unbox
   receive preflight — WS-PHOTO Wave 2).
 - **Deferred (need a product call, not just plumbing):** `defaultScanMode` (arming a mode would
   override the dash→PO# auto-detect), `defaultLandingMode` (sync-hook would flicker — wants a

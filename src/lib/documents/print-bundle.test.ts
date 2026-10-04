@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  assemblePrintBundle,
   resolvePrintBundle,
   dispatchPrintBundle,
+  type PairedLabelIngestion,
   type PrintBundleDeps,
 } from './print-bundle';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { OutboundDocument } from './types';
-import type { DocumentPrintJobRow } from './document-print-jobs';
+import type { DocumentPrintJobInput, DocumentPrintJobRow } from './document-print-jobs';
 import type { PackBundleManual } from './pack-bundle-manuals';
 
 const ORG = '11111111-1111-1111-1111-111111111111' as OrgId;
@@ -16,6 +18,7 @@ function doc(
   id: number,
   documentType: 'shipping_label' | 'packing_slip',
   createdAt = '2026-07-30T12:00:00Z',
+  tracking: string | null = null,
 ): OutboundDocument {
   return {
     id,
@@ -25,11 +28,16 @@ function doc(
       source: 'manual_upload',
       platform: null,
       mimeType: 'application/pdf',
+      tracking,
     },
     links: [{ entityType: 'ORDER', entityId: 42, linkRole: 'primary' }],
     createdAt,
     updatedAt: createdAt,
   };
+}
+
+function ingestion(id: number, tracking: string | null = null): PairedLabelIngestion {
+  return { id, fileBasename: `label-${id}.pdf`, trackingNumberNormalized: tracking };
 }
 
 function manual(id: number, sourceUrl: string | null = 'https://blob.example/m.pdf'): PackBundleManual {
@@ -52,6 +60,7 @@ function fakeJob(
     packer_log_id: partial.packer_log_id ?? 9,
     document_id: partial.document_id ?? null,
     product_manual_id: partial.product_manual_id ?? null,
+    label_ingestion_id: partial.label_ingestion_id ?? null,
     document_type: partial.document_type ?? 'shipping_label',
     status: partial.status,
     printer_profile_id: partial.printer_profile_id ?? null,
@@ -67,13 +76,14 @@ function fakeJob(
 
 interface Captured {
   printCalls: unknown[];
-  recorded: unknown[];
+  recorded: DocumentPrintJobInput[];
 }
 
 function fakes(opts: {
   orderDocs?: OutboundDocument[];
   shipmentDocs?: OutboundDocument[];
   manuals?: PackBundleManual[];
+  ingestions?: PairedLabelIngestion[];
   existingByEvent?: Record<string, DocumentPrintJobRow>;
   printer?: { id: number; name: string; external_id: string; vendor: string } | null;
   printNodeOk?: boolean;
@@ -87,6 +97,7 @@ function fakes(opts: {
     listDocumentsForOrder: async () => opts.orderDocs ?? [],
     listDocumentsForShipment: async () => opts.shipmentDocs ?? [],
     listAssignedManualsForOrder: async () => opts.manuals ?? [],
+    listPairedLabelIngestionsForOrder: async () => opts.ingestions ?? [],
     readOutboundDocumentBytes: async () =>
       opts.bytesNull
         ? null
@@ -95,6 +106,7 @@ function fakes(opts: {
             contentType: 'application/pdf',
             filename: 'label.pdf',
           },
+    readLabelIngestionPdf: async (_org, id) => ({ bytes: Buffer.from('%PDF-ingestion'), fileBasename: `label-${id}.pdf` }),
     readProductManualBytes: async () =>
       opts.manualBytesNull
         ? null
@@ -115,6 +127,7 @@ function fakes(opts: {
       const row = fakeJob({
         document_id: input.documentId ?? null,
         product_manual_id: input.productManualId ?? null,
+        label_ingestion_id: input.labelIngestionId ?? null,
         document_type: input.documentType,
         status: input.status,
         client_event_id: input.clientEventId ?? null,
@@ -134,7 +147,7 @@ function fakes(opts: {
   return { deps, cap };
 }
 
-test('resolvePrintBundle: newest per type; reports missing slip', async () => {
+test('resolvePrintBundle: every shipping label, newest first; reports missing slip', async () => {
   const { deps } = fakes({
     orderDocs: [
       doc(2, 'shipping_label', '2026-07-30T13:00:00Z'),
@@ -144,8 +157,73 @@ test('resolvePrintBundle: newest per type; reports missing slip', async () => {
   const out = await resolvePrintBundle(ORG, { orderId: 42 }, deps);
   assert.equal(out.byType.shipping_label?.id, 2);
   assert.deepEqual(out.missingTypes, ['packing_slip']);
-  assert.equal(out.documents.length, 1);
+  assert.deepEqual(out.documents.map((d) => d.id), [2, 1]);
   assert.equal(out.manuals.length, 0);
+});
+
+test('assemblePrintBundle: every label, then the newest slip only', () => {
+  const out = assemblePrintBundle(
+    [doc(5, 'packing_slip'), doc(4, 'shipping_label'), doc(3, 'packing_slip'), doc(2, 'shipping_label')],
+    [],
+    [],
+  );
+  assert.deepEqual(out.documents.map((d) => d.id), [4, 2, 5]);
+  assert.deepEqual(out.missingTypes, []);
+});
+
+test('assemblePrintBundle: a paired label counts as the label; one already on file is not printed twice', () => {
+  const onlyPaired = assemblePrintBundle([doc(5, 'packing_slip')], [ingestion(7, '9400111')], []);
+  assert.deepEqual(onlyPaired.labelIngestions.map((li) => li.id), [7]);
+  assert.deepEqual(onlyPaired.missingTypes, []);
+
+  const both = assemblePrintBundle(
+    [doc(4, 'shipping_label', undefined, '9400 111')],
+    [ingestion(7, '9400111'), ingestion(8, '1Z999'), ingestion(9, null)],
+    [],
+  );
+  assert.deepEqual(both.labelIngestions.map((li) => li.id), [8, 9]);
+  assert.deepEqual(both.missingTypes, ['packing_slip']);
+});
+
+test('dispatchPrintBundle: paired label ledgers by ingestion; browser fallback carries its src', async () => {
+  const { deps, cap } = fakes({
+    orderDocs: [doc(10, 'shipping_label'), doc(11, 'packing_slip')],
+    ingestions: [ingestion(7)],
+    printNodeConfigured: false,
+  });
+  const out = await dispatchPrintBundle(ORG, { orderId: 42, packerLogId: 9 }, deps);
+  assert.equal(out.status, 'fallback_browser');
+  assert.equal(out.jobs.length, 3);
+  const recorded = cap.recorded.find((r) => r.labelIngestionId === 7);
+  assert.equal(recorded?.documentType, 'shipping_label');
+  assert.equal(recorded?.documentId, null);
+  assert.equal(recorded?.clientEventId, 'pack:9:ingestion:7');
+  assert.deepEqual(
+    out.browserFallbackDocs.find((d) => d.kind === 'label_ingestion'),
+    {
+      kind: 'label_ingestion',
+      labelIngestionId: 7,
+      src: '/api/orders/42/documents/label-ingestions/7',
+      documentType: 'shipping_label',
+      isPdf: true,
+    },
+  );
+});
+
+test('dispatchPrintBundle: PrintNode prints a paired label; a slip-only request leaves it out', async () => {
+  const { deps, cap } = fakes({ orderDocs: [doc(11, 'packing_slip')], ingestions: [ingestion(7)] });
+  const all = await dispatchPrintBundle(ORG, { orderId: 42, packerLogId: 9 }, deps);
+  assert.equal(all.status, 'dispatched');
+  assert.equal(cap.printCalls.length, 2);
+
+  const slip = fakes({ orderDocs: [doc(11, 'packing_slip')], ingestions: [ingestion(7)] });
+  const out = await dispatchPrintBundle(
+    ORG,
+    { orderId: 42, packerLogId: 9, documentTypes: ['packing_slip'] },
+    slip.deps,
+  );
+  assert.equal(out.jobs.length, 1);
+  assert.deepEqual(slip.cap.recorded.map((r) => r.documentId), [11]);
 });
 
 test('dispatchPrintBundle: missing when no docs and no manuals', async () => {

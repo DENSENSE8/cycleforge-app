@@ -1,5 +1,5 @@
 import pool from '../db';
-import type { CarrierCode, CarrierTrackingEvent, CarrierTrackingResult, ShipmentRow, TrackingEventRow } from './types';
+import type { CarrierCode, CarrierTrackingEvent, CarrierTrackingResult, NormalizedShipmentStatus, ShipmentRow, TrackingEventRow } from './types';
 import { computeNextCheckAt } from './normalize';
 import { ENABLED_SYNC_CARRIERS } from './enabled-carriers';
 import type { PoolClient } from 'pg';
@@ -165,7 +165,7 @@ export async function getDueShipments(
   // NEEDS-COL: GUC-wrap only when orgId present; no org predicate possible.
   const run = async (client: PoolClient): Promise<ShipmentRow[]> => {
     const params: Array<number | string[]> = [];
-    // Only carriers we actively poll (USPS is disabled pending OAuth — see
+    // Only carriers we actively poll (USPS is disabled pending its IP Agreement — see
     // enabled-carriers.ts). Also excludes UNKNOWN, which has no API to call.
     params.push([...ENABLED_SYNC_CARRIERS]);
     const enabledCarrierParam = `$${params.length}::text[]`;
@@ -334,15 +334,16 @@ export async function upsertTrackingEvents(
 
 // ─── Update shipment after a successful sync ──────────────────────────────────
 
+/** Writes the carrier result onto the shipment; returns the `latest_status_category` it stored (A5-coherent, so a delivered package stays DELIVERED). */
 export async function updateShipmentSummary(
   shipmentId: number,
   result: CarrierTrackingResult,
   orgId?: OrgId,
-): Promise<void> {
+): Promise<NormalizedShipmentStatus> {
   const { emitShippedLedgerForShipment } = await import('@/lib/neon/stock-ledger-helpers');
   const resolvedOrgId = orgId ?? (await resolveShipmentOrgId(shipmentId));
 
-  const run = async (client: PoolClient): Promise<void> => {
+  const run = async (client: PoolClient): Promise<NormalizedShipmentStatus> => {
     const status = result.latestStatusCategory;
 
     // ─── A1: derive milestones from the append-only event log, not the latest snapshot.
@@ -490,15 +491,15 @@ export async function updateShipmentSummary(
         console.warn('[updateShipmentSummary] SHIPPED ledger emit failed', err);
       }
     }
+    return storedStatus;
   };
 
   if (resolvedOrgId) {
-    await withTenantTransaction(resolvedOrgId, (client) => run(client));
-    return;
+    return withTenantTransaction(resolvedOrgId, (client) => run(client));
   }
   const client = await pool.connect();
   try {
-    await run(client);
+    return await run(client);
   } finally {
     client.release();
   }

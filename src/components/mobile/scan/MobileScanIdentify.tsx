@@ -9,13 +9,13 @@ import { useNetworkOnline } from '@/hooks/useConnectionHealth';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { MobileScanHeader, type MobileScanMode } from '@/components/mobile/scan/MobileScanHeader';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
-import { MobileStationShell } from '@/components/mobile/station/MobileStationShell';
+import { MobileV2ScanStation } from '@/components/mobile/v2/scan/MobileV2ScanStation';
 import {
   pushStationTape,
   stationDedupeId,
   STATION_TAPE_LIMIT,
   type StationTapeEntry,
-} from '@/components/mobile/station/station-tape';
+} from '@/lib/mobile/station-tape';
 import {
   parseArrivalClassifyStep,
   parseArrivalReceivingId,
@@ -36,7 +36,10 @@ import { MobileArrivalClassifyFlow } from '@/components/mobile/receiving/MobileA
 import { ARRIVAL_DEDUPE_KIND, arrivalTapeEntry, type SettledArrival } from '@/components/mobile/receiving/arrival-station-tape';
 import { useArrivalHistory } from '@/components/mobile/receiving/useArrivalHistory';
 import { useArrivalStation } from '@/components/mobile/receiving/useArrivalStation';
+import { useArrivalPlacementHandoff } from '@/components/mobile/v2/receiving/useArrivalPlacementHandoff';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { announceStockTransfer, postStockTransfer } from '@/lib/inventory/stock-transfer-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { fetchLocationRecord } from '@/components/mobile/scan/location-bind-api';
 import {
   resolvePhoneScanIntent,
@@ -119,6 +122,9 @@ function MobileScanIdentifyInner() {
   const [arrived, setArrived] = useState(0);
   const { playScanFeedback } = useScanFeedback();
   const online = useNetworkOnline();
+  const queryClient = useQueryClient();
+  // A new carton → walk the operator to its urgency shelf (`/m/r/[id]/place`).
+  const handOffToShelf = useArrivalPlacementHandoff('/m/scan');
 
   const onSettled = useCallback(
     (settled: SettledArrival) => {
@@ -136,8 +142,9 @@ function MobileScanIdentifyInner() {
       });
       if (settled.status === 'arrived') setArrived((n) => n + 1);
       playScanFeedback(settled.status === 'arrived' ? 'success' : 'reject');
+      handOffToShelf(settled);
     },
-    [playScanFeedback],
+    [playScanFeedback, handOffToShelf],
   );
 
   const { submitRaw, inFlight } = useArrivalStation({ onSettled });
@@ -188,6 +195,9 @@ function MobileScanIdentifyInner() {
             const returnTo = mobileJobReturn(searchParams.get('returnTo')) ?? '/m/stock';
             const pairSku = searchParams.get('pairSku')?.trim();
             const moveLpn = searchParams.get('moveLpn')?.trim();
+            const moveSku = searchParams.get('moveSku')?.trim();
+            const moveFrom = searchParams.get('moveFrom')?.trim();
+            const moveQty = Number(searchParams.get('moveQty'));
             if (moveLpn) {
               const commandId = safeRandomUUID();
               const response = await fetch(`/api/handling-units/${encodeURIComponent(moveLpn)}`, {
@@ -208,6 +218,22 @@ function MobileScanIdentifyInner() {
                 return;
               }
               playScanFeedback('success');
+              router.replace(returnTo);
+              return;
+            }
+            if (moveSku && moveFrom && Number.isSafeInteger(moveQty) && moveQty > 0) {
+              let receipt;
+              try {
+                receipt = await postStockTransfer({ fromBarcode: moveFrom, toBarcode: code, sku: moveSku, qty: moveQty });
+              } catch (error) {
+                setLocationError(error instanceof Error ? error.message : 'Could not move the stock');
+                playScanFeedback('reject');
+                return;
+              }
+              playScanFeedback('success');
+              announceStockTransfer(receipt, {
+                onSettled: () => queryClient.invalidateQueries({ queryKey: ['mobile-location-bind'] }),
+              });
               router.replace(returnTo);
               return;
             }
@@ -332,7 +358,7 @@ function MobileScanIdentifyInner() {
         }
       })();
     },
-    [resolve, qcArmed, locationOnly, router, searchParams, submitRaw, playScanFeedback, applyLocationTape, scanMode, lpnTarget],
+    [resolve, qcArmed, locationOnly, router, searchParams, submitRaw, playScanFeedback, applyLocationTape, scanMode, lpnTarget, queryClient],
   );
 
   // The kernel owns hardware scans on this screen.
@@ -413,9 +439,8 @@ function MobileScanIdentifyInner() {
         exitHref={exitHref}
       />
       <div className="min-h-0 flex-1">
-        <MobileStationShell
-          tape={tape}
-          windowPlacement="bottom"
+        <MobileV2ScanStation
+          entries={tape}
           untitledLabel="Package"
           empty={
             <div className="flex flex-col items-center gap-3 px-8 pb-6 text-center">
@@ -450,7 +475,7 @@ function MobileScanIdentifyInner() {
             </div>
           }
           itemOpen={itemOpen}
-          window={
+          captureWindow={
             <MobileCaptureWindow
               label="Scan camera"
               collapsedLabel={

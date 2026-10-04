@@ -25,37 +25,38 @@ export interface ClaimZohoPoShellDeps {
   isShellBusy: (client: TxClient, shellReceivingId: number, orgId: string) => Promise<boolean>;
 }
 
+/**
+ * True when carton `alias` has physical progress — a door scan, an opened /
+ * unboxed box, or units received — and so must never be stolen or absorbed.
+ * The one definition: {@link isShellBusyImpl} and the orphan claim
+ * (`link-pending-identifier.ts`) both read it.
+ */
+export function cartonHasPhysicalProgressSql(alias: string): string {
+  return `(
+    EXISTS (SELECT 1 FROM receiving_triage t
+             WHERE t.receiving_id = ${alias}.id AND t.organization_id = ${alias}.organization_id
+               AND t.door_received_at IS NOT NULL)
+    OR EXISTS (SELECT 1 FROM receiving_line l
+                WHERE l.receiving_id = ${alias}.id AND l.organization_id = ${alias}.organization_id
+                  AND COALESCE(l.quantity_received, 0) > 0)
+    OR EXISTS (SELECT 1 FROM receiving_unbox u
+                WHERE u.receiving_id = ${alias}.id AND u.organization_id = ${alias}.organization_id
+                  AND (u.unboxed_at IS NOT NULL OR u.opened_at IS NOT NULL))
+  )`;
+}
+
 async function isShellBusyImpl(
   client: TxClient,
   shellReceivingId: number,
   orgId: string,
 ): Promise<boolean> {
-  const door = await client.query(
-    `SELECT 1 FROM receiving_triage
-      WHERE receiving_id = $1 AND organization_id = $2
-        AND door_received_at IS NOT NULL
-      LIMIT 1`,
+  const res = await client.query(
+    `SELECT ${cartonHasPhysicalProgressSql('s')} AS busy
+       FROM receiving_carton s
+      WHERE s.id = $1 AND s.organization_id = $2`,
     [shellReceivingId, orgId],
   );
-  if ((door.rowCount ?? 0) > 0) return true;
-
-  const qty = await client.query(
-    `SELECT 1 FROM receiving_line
-      WHERE receiving_id = $1 AND organization_id = $2
-        AND COALESCE(quantity_received, 0) > 0
-      LIMIT 1`,
-    [shellReceivingId, orgId],
-  );
-  if ((qty.rowCount ?? 0) > 0) return true;
-
-  const unbox = await client.query(
-    `SELECT 1 FROM receiving_unbox
-      WHERE receiving_id = $1 AND organization_id = $2
-        AND (unboxed_at IS NOT NULL OR opened_at IS NOT NULL)
-      LIMIT 1`,
-    [shellReceivingId, orgId],
-  );
-  return (unbox.rowCount ?? 0) > 0;
+  return Boolean(res.rows[0]?.busy);
 }
 
 const defaultDeps: ClaimZohoPoShellDeps = {

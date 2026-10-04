@@ -1,20 +1,25 @@
 'use client';
 
-/** Workbench inspector action floor — the ONE icons-first Macro floor for desk triage RightRailHost record peeks (History · Orders ·… */
+/**
+ * Workbench inspector action floor — the ONE icons-first bottom action row for
+ * desk triage RightRailHost record peeks. Floats (owner 2026-10-03): no ground,
+ * no rule; air above via ACTION_DOCK_TOP_GAP, lift below via ACTION_DOCK_LIFT;
+ * opaque raised icon peers with gaps between them (see `IconActionFloor`).
+ */
 
 import type { MouseEvent, ReactNode } from 'react';
 import { Loader2, MoreHorizontal } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton, KeyboardKey } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import {
   ICON_ACTION_FLOOR_CELL_ACTIVE_CLASS,
   ICON_ACTION_FLOOR_CELL_CLASS,
   IconActionFloor,
 } from '@/design-system/primitives/IconActionFloor';
 import {
-  FLUSH_TERMINAL_SPREAD_GLYPH_CLASS,
-  FLUSH_TERMINAL_SPREAD_PEER_CLASS,
-} from '@/design-system/primitives/FlushTerminalFooter';
+  FLOATING_FOOTER_SPREAD_GLYPH_CLASS,
+  FLOATING_FOOTER_SPREAD_PEER_CLASS,
+} from '@/design-system/primitives/FloatingActionFooter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,40 +29,31 @@ import {
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
-/** Fill-width Macro spread peer face (hit target IS the column). */
 /** Glyph size for a spread peer, applied by the CELL rather than by each caller. */
-const FLOOR_GLYPH_CLASS = FLUSH_TERMINAL_SPREAD_GLYPH_CLASS.split(' ')
+const FLOOR_GLYPH_CLASS = FLOATING_FOOTER_SPREAD_GLYPH_CLASS.split(' ')
   .map((c) => `[&_svg]:${c}`)
   .join(' ');
 
+/** Fill-width spread peer with its own opaque raised face (gapped from its neighbours). */
 const FLOOR_CELL = cn(
-  FLUSH_TERMINAL_SPREAD_PEER_CLASS,
+  FLOATING_FOOTER_SPREAD_PEER_CLASS,
   FLOOR_GLYPH_CLASS,
   ICON_ACTION_FLOOR_CELL_CLASS,
 );
 
-/** Class every trailing `<InspectorFlushDelete />` peer must carry (no left rule). */
-export const FLOOR_DELETE_PEER_CLASS = cn(FLUSH_TERMINAL_SPREAD_PEER_CLASS, 'border-l-0');
-
 export function InspectorActionFloor({
   above,
   children,
-  surface = 'canvas',
   className,
   'data-testid': testId = 'inspector-action-floor',
 }: {
-  /** Expand host / notes composer / error / teaching text seated above the bar. */
+  /** Expand host / notes composer / error / teaching text seated above the buttons (no ground, no rule). */
   above?: ReactNode;
   /**
    * Equal fill-width icon peers — `<FloorOverflowButton>` (leading) ·
-   * `<FloorIconButton>` verbs · trailing `<InspectorFlushDelete>`.
+   * `<FloorIconButton>` verbs · trailing `<InspectorFloorDelete>`.
    */
   children?: ReactNode;
-  /**
-   * Plane paint. `canvas` (default) is the desk floor's own step below the card — the depth cue that separates a Macro floor from the record…
-   * operator-ruled 2026-08-10). Hairline + `border-t` still carry the seam
-   */
-  surface?: 'card' | 'canvas';
   className?: string;
   'data-testid'?: string;
 }) {
@@ -66,18 +62,9 @@ export function InspectorActionFloor({
 
   return (
     <div className={cn('shrink-0', className)} data-testid={testId}>
-      {above != null ? (
-        <div
-          className={cn(
-            'border-t border-border-hairline',
-            surface === 'card' ? 'bg-surface-card' : 'bg-surface-canvas',
-          )}
-        >
-          {above}
-        </div>
-      ) : null}
+      {above}
       {hasRow ? (
-        <IconActionFloor surface={surface} data-testid={`${testId}-bar`}>
+        <IconActionFloor data-testid={`${testId}-bar`}>
           {children}
         </IconActionFloor>
       ) : null}
@@ -157,6 +144,7 @@ export function FloorIconButton({
 type FloorOverflowItem = {
   key: string;
   label: string;
+  /** Alt-chord letter — taught in the row's hover tooltip (`Alt + <letter>`), never painted on the row. */
   shortcut?: string;
   onSelect: () => void;
   disabled?: boolean;
@@ -193,19 +181,17 @@ function FloorOverflowButton({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {items.map((item) => (
-          <DropdownMenuItem
+          <HoverTooltip
             key={item.key}
-            disabled={item.disabled}
-            onSelect={item.onSelect}
-            className="justify-between gap-4"
+            asChild
+            label={item.label}
+            shortcut={item.shortcut ? `Alt + ${item.shortcut}` : undefined}
+            disabled={!item.shortcut}
           >
-            <span>{item.label}</span>
-            {item.shortcut ? (
-              <KeyboardKey size="xs">
-                ⌥{item.shortcut}
-              </KeyboardKey>
-            ) : null}
-          </DropdownMenuItem>
+            <DropdownMenuItem disabled={item.disabled} onSelect={item.onSelect}>
+              {item.label}
+            </DropdownMenuItem>
+          </HoverTooltip>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

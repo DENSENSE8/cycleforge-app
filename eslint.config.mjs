@@ -5,6 +5,7 @@ import tsPlugin from '@typescript-eslint/eslint-plugin';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import nextPlugin from '@next/eslint-plugin-next';
 import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
+import { builtinRules } from 'eslint/use-at-your-own-risk';
 
 /**
  * Minimal flat ESLint config focused on dead code hygiene.
@@ -25,6 +26,83 @@ import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
  * sequence it contains closes the comment early and makes the whole config
  * unparseable (Node ESM "Unexpected token"). Describe paths in prose instead.
  */
+
+// FROZEN DEBT — SHRINK-ONLY (cf-mobile/no-truncated-record-text, owner
+// 2026-10-03). Phone files that truncated record text when the guard landed;
+// this list IS the baseline (the repo has no guard:accept). Fix a file (move
+// it onto MobileRecordCard / wrapping text) → delete its entry. Never add an
+// entry to dodge the rule.
+const MOBILE_RECORD_TRUNCATION_FROZEN_DEBT = [
+  'src/app/m/\\(immersive\\)/stock/\\[stockId\\]/photos/page.tsx',
+  'src/app/m/\\(shell\\)/pick/\\[orderId\\]/_picker/PickerTaskCard.tsx',
+  'src/app/m/\\(shell\\)/receiving/po/\\[poId\\]/item/\\[itemId\\]/page.tsx',
+  'src/app/m/\\(shell\\)/receiving/po/\\[poId\\]/page.tsx',
+  'src/app/m/\\(shell\\)/rs/\\[id\\]/photos/page.tsx',
+  'src/app/m/\\(shell\\)/shipping/shipments/\\[shipmentId\\]/boxes/page.tsx',
+  'src/components/mobile/customers/CustomerProfileScreen.tsx',
+  'src/components/mobile/customers/CustomersScreen.tsx',
+  'src/components/mobile/daily/MobileDailyRow.tsx',
+  'src/components/mobile/daily/MobileDailyTicketSlider.tsx',
+  'src/components/mobile/daily/MobileSharedTaskComposerSheet.tsx',
+  'src/components/mobile/daily/MobileTaskFollowUps.tsx',
+  'src/components/mobile/daily/MobileTaskMedia.tsx',
+  'src/components/mobile/daily/MobileTaskMediaFeature.tsx',
+  'src/components/mobile/daily/MobileTaskSections.tsx',
+  'src/components/mobile/daily/MobileTaskSheet.tsx',
+  'src/components/mobile/exceptions/MobileExceptionsHub.tsx',
+  'src/components/mobile/exceptions/resolvers/PaperworkResolver.tsx',
+  'src/components/mobile/exceptions/resolvers/ShipStationLabelSheet.tsx',
+  'src/components/mobile/handling-units/HandlingUnitMemberRow.tsx',
+  'src/components/mobile/handling-units/HandlingUnitV2Record.tsx',
+  'src/components/mobile/location/LocationStockPositions.tsx',
+  'src/components/mobile/orders/new/MobileCustomerStep.tsx',
+  'src/components/mobile/orders/new/MobileOrderStep.tsx',
+  'src/components/mobile/orders/new/MobileShippingStep.tsx',
+  'src/components/mobile/orders/new/MobileTeamStep.tsx',
+  'src/components/mobile/pair/MobilePairLocation.tsx',
+  'src/components/mobile/pair/MobilePairQty.tsx',
+  'src/components/mobile/pair/PairDetailSheet.tsx',
+  'src/components/mobile/photos/MobilePackerPhotoStudio.tsx',
+  'src/components/mobile/photos/MobileReceivingPhotoStudio.tsx',
+  'src/components/mobile/photos/MobileUnitPhotoStudio.tsx',
+  'src/components/mobile/picker/SetBinSheet.tsx',
+  'src/components/mobile/picker/ShortPickSheet.tsx',
+  'src/components/mobile/print/TotePrintRunFields.tsx',
+  'src/components/mobile/products/MobileProductParcelCard.tsx',
+  'src/components/mobile/products/MobileProductProfile.tsx',
+  'src/components/mobile/products/MobileProducts.tsx',
+  'src/components/mobile/products/MobileSkuLocations.tsx',
+  'src/components/mobile/qc/PairUnitBinSheet.tsx',
+  'src/components/mobile/qc/QcUnitRecord.tsx',
+  'src/components/mobile/qc/UnitQcBench.tsx',
+  'src/components/mobile/receiving/MobileArrivalClassifyFlow.tsx',
+  'src/components/mobile/receiving/MobileCartonSheet.tsx',
+  'src/components/mobile/receiving/MobilePickupPaperworkScreen.tsx',
+  'src/components/mobile/receiving/MobilePickupScreen.tsx',
+  'src/components/mobile/receiving/MobileReceivingUnitRow.tsx',
+  'src/components/mobile/repair/RepairBenchTimer.tsx',
+  'src/components/mobile/repair/RepairCustomerPickerSheet.tsx',
+  'src/components/mobile/repair/RepairLogWorkSheet.tsx',
+  'src/components/mobile/repair/RepairPartField.tsx',
+  'src/components/mobile/repair/RepairPickupSheet.tsx',
+  'src/components/mobile/repair/RepairScanCompanion.tsx',
+  'src/components/mobile/repair/RepairScanReadNotice.tsx',
+  'src/components/mobile/repair/RepairStockBinPicker.tsx',
+  'src/components/mobile/reports/MobilePackerReport.tsx',
+  'src/components/mobile/scan/MobileScanHeader.tsx',
+  'src/components/mobile/session/MobileCurrentSession.tsx',
+  'src/components/mobile/shipping/shipment/ShipmentResolveSheet.tsx',
+  'src/components/mobile/station/MobileCameraPanel.tsx',
+  'src/components/mobile/triage/TriageRow.tsx',
+  'src/components/mobile/v2/MobileV2ActionSheet.tsx',
+  'src/components/mobile/v2/fulfillment/MobileV2FulfillmentOrders.tsx',
+  'src/components/mobile/v2/orders/MobileV2OrderPaperworkSheet.tsx',
+  'src/components/mobile/v2/receiving/MobileV2ReceivingCartonRecord.tsx',
+  'src/components/mobile/v2/scan/MobileV2ScanRecentList.tsx',
+  'src/components/mobile/v2/settings/MobileV2SettingsList.tsx',
+  'src/components/mobile/v2/stock/MobileV2LocationRecord.tsx',
+  'src/components/mobile/v2/stock/MobileV2StockLocations.tsx',
+];
 
 export default [
   // Registering react-hooks/@next/next/jsx-a11y below (so their rule names
@@ -225,7 +303,7 @@ export default [
           selector:
             "ImportDeclaration[source.value='react-dom'] > ImportSpecifier[imported.name='createPortal'], MemberExpression[object.name='ReactDOM'][property.name='createPortal']",
           message:
-            'Raw portals escape the mode region and the overlay stack. Use a design-system layer (`AnchoredLayer`, `BottomSheet`, `RightPaneOverlay`, Dialog) — portals live only in src/design-system and src/components/ui.',
+            'Raw portals escape the mode region and the overlay stack. Use a design-system layer (`AnchoredLayer`, the Radix `Sheet`, `RightPaneOverlay`, Dialog) — portals live only in src/design-system and src/components/ui.',
         },
         {
           selector:
@@ -273,10 +351,8 @@ export default [
       'src/lib/ebay/browse-client.ts',
       'src/lib/integrations/credentials.ts',
       'src/app/api/auth/staff-picker/route.ts',
-      'src/app/api/cron/zoho/orders-ingest-drain/route.ts',
       'src/lib/pipeline/orchestrator.ts',
       'src/lib/pipeline/collect.ts',
-      'src/lib/zoho/fulfillment-sync.ts',
       'src/lib/realtime/publish.ts',
       'src/lib/jobs/google-sheets-transfer-orders.ts',
       // RELOCATED debt, not new debt: the order-ingest pipeline was extracted
@@ -287,7 +363,6 @@ export default [
       // un-migrated cron callers. Making `orgId` REQUIRED is the burn-down step
       // that retires this entry; it needs those callers migrated first.
       'src/lib/orders/ingest-canonical-orders.ts',
-      'src/services/OrderSyncService.ts',
       // D1 (Ably org-namespacing) session-less integration publishers — these
       // carrier/Square/shipping-sync paths have no request org yet (single-tenant
       // USAV today); they resolve org from the row's organization_id post-Phase-B.
@@ -334,8 +409,6 @@ export default [
       'src/app/api/webhooks/fedex/route.ts',
       'src/app/api/webhooks/usps/route.ts',
       'src/app/api/webhooks/zoho/orders/route.ts',
-      'src/app/api/zoho/orders/ingest/route.ts',
-      'src/app/api/zoho/purchase-orders/receive/route.ts',
       'src/lib/billing/plan-feature-gate.ts',
       'src/lib/billing/studio-gate.ts',
       'src/lib/cron/for-each-org.ts',
@@ -409,7 +482,7 @@ export default [
   {
     files: [
       // Kept in-component / portal ModeRegions (reviewed exceptions, not debt):
-      // a BottomSheet / Dialog / popover portals out of the route region, or a
+      // a Sheet / Dialog / popover portals out of the route region, or a
       // component owns a nested mode plane. New ones need review.
       'src/components/assistant/ChatPrintJobCard.tsx',
       'src/components/mobile/fnsku/FnskuStationSheet.tsx',
@@ -425,18 +498,15 @@ export default [
       'src/components/mobile/unit/UnitLineSheets.tsx',
       'src/components/mobile/unit/UnitSheetParts.tsx',
       // Header chrome sits outside the page's RouteModeRegion; re-resolves it.
-      'src/components/layout/LiveSyncIndicator.tsx',
-      'src/components/outbound/label-intake/LabelIntakeDesk.tsx',
       'src/components/outbound/orders/LinkLabelDialog.tsx',
       'src/components/outbound/orders/OrderLabelEntries.tsx',
       'src/components/outbound/orders/paperwork/PaperworkWalkHost.tsx',
       'src/components/right-rail/RightRailHost.tsx',
+      'src/components/receiving/ReceivingLedgers.tsx',
       'src/components/shipped/ledger/ResolveShipmentExceptionDialog.tsx',
-      'src/components/station/ReceivingLinesTable.tsx',
       'src/components/ui/command.tsx',
       // Raw `createPortal` outside src/design-system + src/components/ui.
       'src/components/admin/access/AddRolePopover.tsx',
-      'src/components/board/SwimlaneBoard.tsx',
       'src/components/boot/WelcomeHost.tsx',
       'src/components/boot/WelcomeReplayButton.tsx',
       'src/components/kiosk/KioskFloatingPhoneKeypad.tsx',
@@ -453,11 +523,8 @@ export default [
       'src/components/shipped/photo-gallery/PhotoViewerPortal.tsx',
       'src/components/sidebar/contextual/NavGoKeys.tsx',
       'src/components/sidebar/rail-shell/RailPopover.tsx',
-      'src/components/station/StationHistoryTable.tsx',
       'src/features/operations/components/DataSourcePopover.tsx',
       // Direct Radix popover / dropdown-menu / hover-card / tooltip imports.
-      'src/components/board/SwimlaneBoard.tsx',
-      'src/components/outbound/labels/AddTrackingPopover.tsx',
       'src/components/photos/PhotoLibraryFindRow.tsx',
       'src/components/receiving/workspace/line-edit/LabelEditPopover.tsx',
       'src/components/session/composer/AccessModeSwitch.tsx',
@@ -471,11 +538,9 @@ export default [
       'src/app/m/\\(shell\\)/receiving/po/\\[poId\\]/item/\\[itemId\\]/page.tsx',
       'src/app/m/\\(shell\\)/receiving/po/\\[poId\\]/page.tsx',
       'src/app/settings/ai/page.tsx',
-      'src/app/settings/audit/page.tsx',
       'src/app/settings/integrations/IntegrationCard.tsx',
       'src/app/settings/integrations/\\[provider\\]/IntegrationDetailClient.tsx',
       'src/app/settings/integrations/diagnostics/page.tsx',
-      'src/app/settings/staff/StaffTable.tsx',
       'src/components/admin/AccessSidebarPanel.tsx',
       'src/components/admin/AdminLogsTab.tsx',
       'src/components/admin/FBAManagementTab.tsx',
@@ -495,21 +560,16 @@ export default [
       'src/components/admin/sourcing/BoseModelsManagementTab.tsx',
       'src/components/admin/staff-management/AvailabilityRulesSection.tsx',
       'src/components/barcode/multi-sku/MultiSkuWorkspaceCards.tsx',
-      'src/components/dashboard/GettingStartedChecklist.tsx',
       'src/components/fba/FbaBoardDetailPanel.tsx',
       'src/components/fba/FbaStateShells.tsx',
-      'src/components/fba/StationFbaInput.tsx',
       'src/components/fba/board-detail/FbaDeleteControl.tsx',
       'src/components/fba/board-detail/PlanEntryCard.tsx',
       'src/components/fba/shared/FbaStatusBadge.tsx',
-      'src/components/fba/sidebar/FbaCatalogSidebar.tsx',
-      'src/components/fba/sidebar/FbaFnskuScanToast.tsx',
       'src/components/fba/sidebar/FbaQtySplitPopover.tsx',
       'src/components/fba/sidebar/FbaSidebarRails.tsx',
       'src/components/fba/sidebar/FbaTrackingBucket.tsx',
       'src/components/fba/sidebar/FbaTrackingBundleCard.tsx',
       'src/components/fba/sidebar/FbaUnallocatedBucket.tsx',
-      'src/components/fba/sidebar/FbaWorkspaceSidebar.tsx',
       'src/components/fba/sidebar/active-shipments/ActiveShipmentCard.tsx',
       'src/components/fba/sidebar/shipment-editor/FnskuSearchModal.tsx',
       'src/components/fba/sidebar/shipment-editor/UnallocatedDropZone.tsx',
@@ -521,8 +581,6 @@ export default [
       'src/components/layout/goal-chip/TaskList.tsx',
       'src/components/layout/goal-chip/ThrowTaskRow.tsx',
       'src/components/mobile/ScanSurface.tsx',
-      'src/components/mobile/packer/MobilePackingRow.tsx',
-      'src/components/mobile/packer/MobilePackingSheet.tsx',
       'src/components/mobile/photos/MobilePackerPhotoStudio.tsx',
       'src/components/mobile/picker/ShortPickSheet.tsx',
       'src/components/mobile/picker/directed/DirectedPickNotesSheet.tsx',
@@ -559,7 +617,6 @@ export default [
       'src/components/settings/sections/AppearanceSection.tsx',
       'src/components/settings/sections/CatalogSection.tsx',
       'src/components/settings/sections/KioskAttractMediaCard.tsx',
-      'src/components/settings/sections/KioskDevicesSection.tsx',
       'src/components/settings/sections/OrganizationSection.tsx',
       'src/components/settings/sections/QuickAccessSection.tsx',
       'src/components/settings/sections/SecuritySection.tsx',
@@ -571,7 +628,6 @@ export default [
       'src/components/shipping/ShipmentStatusBadge.tsx',
       'src/components/shipping/shipped-filter/ShippedCarrierFilters.tsx',
       'src/components/shipping/shipped-filter/ShippedFilterControls.tsx',
-      'src/components/sidebar/OperationsSidebarPanel.tsx',
       'src/components/sidebar/receiving/incoming-details/EbayTab.tsx',
       'src/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel.tsx',
       'src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx',
@@ -595,16 +651,10 @@ export default [
       'src/components/tech/sku-testing/ManualsSection.tsx',
       'src/components/tech/sku-testing/NoCatalogNotice.tsx',
       'src/components/tech/testing-panel/TestingScanSessionFeedback.tsx',
-      'src/components/walk-in/SalesHistoryTable.tsx',
       'src/components/walk-in/WalkInHistoryHub.tsx',
-      'src/components/warehouse/LabelPrintWorkspace.tsx',
       'src/components/warehouse/RackDetailView.tsx',
       'src/components/warehouse/WarehouseFloorPlan.tsx',
       'src/components/warehouse/room-detail/RoomDetailPieces.tsx',
-      'src/components/warranty/WarrantyClaimsTable.tsx',
-      'src/components/warranty/WarrantyCoverageCard.tsx',
-      'src/components/warranty/WarrantyQuotesSection.tsx',
-      'src/features/review/packer/PackerReviewMode.tsx',
     ],
     rules: {
       'no-restricted-syntax': 'off',
@@ -638,6 +688,170 @@ export default [
     files: ['src/lib/ai/provider.ts'],
     rules: {
       'no-restricted-syntax': 'off',
+    },
+  },
+
+  // ── Mobile record text never truncates (owner 2026-10-03) ─────────────────
+  // Nothing that identifies or describes a record is truncated, clamped or
+  // ellipsized on a phone: records are MobileRecordCard cards whose text
+  // wraps. This is the core no-restricted-syntax implementation registered
+  // under its OWN name (`cf-mobile/no-truncated-record-text`) on purpose:
+  // re-declaring `no-restricted-syntax` for these files would OVERRIDE the
+  // merged block above (the trap its header describes), and the rule-OFF
+  // burn-down blocks for that rule would silently switch this guard off too.
+  {
+    files: ['src/components/mobile/**/*.tsx', 'src/app/m/**/*.tsx'],
+    ignores: [
+      '**/*.test.*',
+      // PERMANENT: top-bar / app-switcher chrome titles are the only owner
+      // exemption — a one-line chrome title is navigation, not a record.
+      'src/components/mobile/v2/MobileV2TopBar.tsx',
+      'src/components/mobile/v2/MobileV2DetailTopBar.tsx',
+      'src/components/mobile/v2/MobileV2AppSwitcher.tsx',
+      ...MOBILE_RECORD_TRUNCATION_FROZEN_DEBT,
+    ],
+    plugins: {
+      'cf-mobile': { rules: { 'no-truncated-record-text': builtinRules.get('no-restricted-syntax') } },
+    },
+    rules: {
+      'cf-mobile/no-truncated-record-text': [
+        'error',
+        {
+          selector:
+            "JSXAttribute[name.name='className'] Literal[value=/(^|[\\s:!])(truncate|text-ellipsis|line-clamp-(?!none))/]",
+          message:
+            'Mobile record text never truncates (owner 2026-10-03): no truncate / line-clamp-* / text-ellipsis. Show records as MobileRecordCard (src/design-system/components/MobileRecordCard.tsx) — every slot wraps; tap drills into the detail. See docs/mobile-first/V2_ARCHITECTURE.md "Record display law".',
+        },
+        {
+          selector:
+            "JSXAttribute[name.name='className'] TemplateElement[value.raw=/(^|[\\s:!])(truncate|text-ellipsis|line-clamp-(?!none))/]",
+          message:
+            'Mobile record text never truncates (owner 2026-10-03): no truncate / line-clamp-* / text-ellipsis. Show records as MobileRecordCard (src/design-system/components/MobileRecordCard.tsx) — every slot wraps; tap drills into the detail. See docs/mobile-first/V2_ARCHITECTURE.md "Record display law".',
+        },
+      ],
+    },
+  },
+
+  // ── Bottom action buttons float (owner 2026-10-03) ────────────────────────
+  // "Bottom buttons ... should have bottom padding. It should never display
+  // with a white background. It should just be floating sticky buttons." A
+  // class string that pins a band to the bottom edge (`sticky`/`fixed` +
+  // `bottom-0`) AND paints a ground under it (`bg-*` other than transparent,
+  // or a `border-t` rule) is the banned grounded bar. Verbs ride DetailDock
+  // (phone) / StickyActionBar (desk); a bespoke band composes ACTION_DOCK_TOP_GAP
+  // + ACTION_DOCK_LIFT with opaque buttons. Matches Literal AND TemplateElement
+  // anywhere (class constants live in .ts files). Own plugin name so the merged
+  // no-restricted-syntax block above is not overridden. The ignores are
+  // PERMANENT and only for pinned surfaces that are NOT verb bands; never add
+  // a file to dodge the law — the primitives pass with no ignore.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      '**/*.test.*',
+      // INPUT SURFACE: the ticket reply composer (textarea + send) — a mouth, not a verb band.
+      'src/components/mobile/ticket/MobileTicketReplyDock.tsx',
+      // INPUT SURFACE: the AI composer dock's fade-to-canvas behind the prompt field.
+      'src/design-system/ai/classes.ts',
+      // NON-ACTION CHROME: a report table's pinned totals row (tfoot).
+      'src/components/session/artifacts/ReportArtifact.tsx',
+    ],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    plugins: {
+      'cf-ui': { rules: { 'no-grounded-bottom-bar': builtinRules.get('no-restricted-syntax') } },
+    },
+    rules: {
+      'cf-ui/no-grounded-bottom-bar': [
+        'error',
+        {
+          selector:
+            "Literal[value=/^(?=.*(^|\\s)(sticky|fixed)(\\s|$))(?=.*(^|\\s)bottom-0(\\s|$))(?=.*(^|\\s)(bg-(?!transparent)|border-t(\\s|$|-)))/]",
+          message:
+            'Bottom action buttons float (owner 2026-10-03): never a grounded bottom bar — no bg fill, no border-t rule under sticky/fixed bottom-0. Use DetailDock (phone) or StickyActionBar (desk); a bespoke band composes ACTION_DOCK_TOP_GAP + ACTION_DOCK_LIFT (src/design-system/tokens/dock-clearance.ts) with opaque buttons and FLOATING_ACTION_DISABLED_FACE.',
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/^(?=.*(^|\\s)(sticky|fixed)(\\s|$))(?=.*(^|\\s)bottom-0(\\s|$))(?=.*(^|\\s)(bg-(?!transparent)|border-t(\\s|$|-)))/]",
+          message:
+            'Bottom action buttons float (owner 2026-10-03): never a grounded bottom bar — no bg fill, no border-t rule under sticky/fixed bottom-0. Use DetailDock (phone) or StickyActionBar (desk); a bespoke band composes ACTION_DOCK_TOP_GAP + ACTION_DOCK_LIFT (src/design-system/tokens/dock-clearance.ts) with opaque buttons and FLOATING_ACTION_DISABLED_FACE.',
+        },
+      ],
+    },
+  },
+
+  // ── Hotkeys are disclosed on HOVER, never painted inline (owner 2026-10-03) ─
+  // "The D for done, the A for alert must not be displayed in line — it must be
+  // displayed [as a] hotkey on hover." A control's key shows only in its hover
+  // tooltip (`HoverTooltip shortcut`, `DeskHeaderAction label shortcut`), a
+  // hover key card (`KeyHintPopover`), or a surface the staffer SUMMONS to
+  // learn keys (`?` cheat sheet / `?` reveal, HotkeyScrim, Settings › Keyboard,
+  // the G-leader HUD). Only those owners may import a keycap face. Own rule
+  // names (not no-restricted-imports / no-restricted-syntax) so the global
+  // framer-motion and tenancy blocks are not overridden. Never add a file to
+  // this list to dodge the law: route the key into a tooltip instead.
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      '**/*.test.*',
+      // The keycap faces themselves + the barrels that re-export them.
+      'src/design-system/primitives/KeyboardKey.tsx',
+      'src/design-system/primitives/ChordKeys.tsx',
+      'src/design-system/primitives/index.ts',
+      'src/design-system/index.ts',
+      // Hover: the tooltip chip and its hotkey variant; the hover key card + G HUD.
+      'src/design-system/primitives/TooltipChip.tsx',
+      'src/components/ui/HotkeyTooltip.tsx',
+      'src/components/sidebar/contextual/NavGoKeys.tsx',
+      // Summoned to learn keys: `?` cheat sheet, `?` reveal overlays, the scrim, Settings › Keyboard.
+      'src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx',
+      'src/design-system/primitives/HotkeyScrim.tsx',
+      'src/components/tables/TableStatusBar.tsx',
+      'src/design-system/components/record-action-strip/RecordActionStrip.tsx',
+      'src/components/settings/sections/KeyboardSection.tsx',
+      // Leader HUDs painted only after the staffer presses the leader (C, Y, held Shift, G) — summoned, never at rest.
+      'src/components/layout/GlobalHeaderAdd.tsx',
+      'src/components/layout/GlobalHeaderSync.tsx',
+      'src/components/layout/HeaderCenter.tsx',
+      'src/components/sidebar/contextual/NavKeyStrip.tsx',
+      // A key-binding editor: the bound key is the control's VALUE, not a hint.
+      'src/components/scan/ScanHotkeyControl.tsx',
+    ],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    plugins: {
+      'cf-keys': {
+        rules: {
+          'hotkey-on-hover': builtinRules.get('no-restricted-imports'),
+          'no-raw-kbd': builtinRules.get('no-restricted-syntax'),
+        },
+      },
+    },
+    rules: {
+      'cf-keys/hotkey-on-hover': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '(^@/design-system/primitives|/primitives)(/(index|KeyboardKey|ChordKeys))?$',
+              importNames: ['KeyboardKey', 'KeyboardChord', 'ChordKeys'],
+              message:
+                'Hotkeys are disclosed on hover, never painted inline (owner 2026-10-03). Put the key in the control\'s HoverTooltip `shortcut` (or DeskHeaderAction `label` + `shortcut`, or KeyHintPopover) — see design-system/pinned.json "KeyboardKey".',
+            },
+          ],
+        },
+      ],
+      'cf-keys/no-raw-kbd': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='kbd']",
+          message:
+            'No hand-rolled <kbd>: hotkeys are disclosed on hover (HoverTooltip `shortcut`), never painted inline (owner 2026-10-03).',
+        },
+      ],
     },
   },
 

@@ -130,7 +130,6 @@ export function LabelsResolver({ facts, onResolved }: PhoneResolverProps<LabelsE
           icon={<ClipboardList />}
         />
       </nav>
-      <div className="flex-1 bg-mode-panel" />
       <DetailDock label="Label exception actions" verbs={verbs} onVerb={onVerb} />
 
       {linkOpen ? (

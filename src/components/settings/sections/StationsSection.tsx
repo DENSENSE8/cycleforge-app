@@ -149,7 +149,7 @@ export function StationsSection() {
             No stations yet. Add a desk or staging location to create one.
           </p>
           <Link
-            href={inventoryLocationsHref({ tab: 'bins' })}
+            href={inventoryLocationsHref({ tab: 'manage' })}
             className={cn(
               'mt-2 inline-block text-role-caption font-semibold text-blue-700',
               'underline-offset-2 hover:underline',
@@ -226,7 +226,7 @@ export function StationsSection() {
                     </button>
                   ) : (
                     <Link
-                      href={inventoryLocationsHref({ tab: 'bins', extra: { q: row.name } })}
+                      href={inventoryLocationsHref({ tab: 'manage' })}
                       title={`Create a barcode for ${row.name}`}
                       className={PRINT_BTN_CLS}
                       data-testid={`station-barcode-link-${row.id}`}

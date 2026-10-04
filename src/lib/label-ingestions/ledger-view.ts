@@ -44,6 +44,8 @@ const QUARANTINE_COPY: Record<LabelQuarantineReasonCode, string> = {
   UNSUPPORTED_CARRIER: 'The carrier on this label is not supported.',
   MULTI_PACKAGE_EVIDENCE: 'The label shows more than one package.',
   STAGING_FAILED: 'The PDF could not be stored. Reprocess to try again.',
+  BUYER_NOT_FOUND: 'No open order has the buyer named on this label.',
+  BUYER_AMBIGUOUS: 'This buyer has several open orders — confirm which one this label ships.',
 };
 
 /**

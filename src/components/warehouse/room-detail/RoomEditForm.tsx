@@ -2,7 +2,7 @@
 
 import { WorkspaceCard, StickyActionBar } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
-import { ConfirmSheet } from '@/components/ui/BottomSheet';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Check, Plus, Trash2, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -191,6 +191,8 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
           title: saveDisabledReason,
           tone: 'blue',
           icon: creating ? <Plus className="h-4 w-4" /> : <Check className="h-4 w-4" />,
+          // Hotkeys on hover, never inline (owner 2026-10-03): ⏎ is taught in the CTA's tooltip.
+          shortcut: '⏎',
         }}
         secondary={
           isDirty
@@ -201,10 +203,6 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
               }
             : undefined
         }
-        hints={[
-          { key: '⏎', label: creating ? 'Create' : 'Save' },
-          { key: 'Esc', label: 'Close' },
-        ]}
       />
       </div>
     </div>

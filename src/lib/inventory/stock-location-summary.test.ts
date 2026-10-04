@@ -60,3 +60,15 @@ test('contextual search finds faces without punctuation, SKU and title', () => {
   assert.equal(stockLocationMatches(summary, 'brake'), true);
   assert.equal(stockLocationMatches(summary, 'unrelated'), false);
 });
+
+test('zero-count placeholders are cleanup, not active stock', () => {
+  const [summary] = summarizeStockLocations([
+    row({ sku: 'TMP-EMPTY', qty: 0, source: 'exception', is_provisional: true }),
+  ]);
+
+  assert.equal(summary?.quantity, 0);
+  assert.equal(summary?.skuCount, 0);
+  assert.equal(summary?.empty, true);
+  assert.equal(summary?.hasOnHold, false);
+  assert.equal(summary?.hasCleanup, true);
+});

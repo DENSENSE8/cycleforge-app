@@ -100,7 +100,7 @@ export async function syncShipment(
 
   const carrier = shipment.carrier as CarrierCode;
 
-  // USPS is disabled pending OAuth (see enabled-carriers.ts). Skip without
+  // USPS is disabled pending its IP Agreement (see enabled-carriers.ts). Skip without
   // calling the provider or recording an error so disabled-carrier shipments
   // never count against the consecutive-error cap or surface as sync failures.
   if (!isCarrierSyncEnabled(carrier)) {
@@ -125,7 +125,7 @@ export async function syncShipment(
       effectiveOrgId,
     );
 
-    await updateShipmentSummary(shipment.id, result, effectiveOrgId);
+    const statusCategory = await updateShipmentSummary(shipment.id, result, effectiveOrgId);
     // A summary can advance even when its carrier event was already present
     // (reconcile/backfill race). Publish that transition too so queue caches do
     // not keep a delivered order until their TTL expires.
@@ -136,12 +136,14 @@ export async function syncShipment(
       deliveredAt: result.deliveredAt,
       eventsInserted: inserted,
     })) {
-      await publishShipmentStatusChange(
-        shipment.id,
-        'shipping-sync',
-        shipment.tracking_number_normalized,
-        effectiveOrgId,
-      );
+      await publishShipmentStatusChange({
+        shipmentId: shipment.id,
+        source: 'shipping-sync',
+        trackingNumber: shipment.tracking_number_normalized,
+        carrier: shipment.carrier,
+        statusCategory,
+        orgId: effectiveOrgId,
+      });
     }
 
     return {

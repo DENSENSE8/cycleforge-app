@@ -10,9 +10,9 @@
  * `?view=` ladder is a server scope), so there is no `page.view` id to check.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 
-export const QC_LABELS_VIEW: TriageViewDecl = {
+export const QC_LABELS_VIEW = triageView({
   id: 'qc-labels.list',
   grain: 'QC label',
   noun: { one: 'label', many: 'labels' },
@@ -24,6 +24,7 @@ export const QC_LABELS_VIEW: TriageViewDecl = {
   chips: { owner: 'face', param: 'cardStatus' },
   paging: 'client',
   status: 'state',
+  slots: { identity: 'unit id', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
   facts: [
     { id: 'serial', tier: 'always' },
     { id: 'sku', tier: 'always' },
@@ -32,4 +33,4 @@ export const QC_LABELS_VIEW: TriageViewDecl = {
   ],
   sections: null,
   next: ['Pick', 'Pack'],
-};
+});

@@ -1,11 +1,23 @@
 'use client';
 
-import { useEffect, useRef, useState, type ClipboardEvent, type RefObject } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type FocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { NavLocateBucket, NavLocateScope, NavSearch } from '@/lib/nav/context/schema';
 import {
   FindField,
-  HoverKeycaps,
+  FindLead,
+  FindPanel,
+  HINT_INTENT_MS,
   PasteKey,
   RollingHint,
   findHintTone,
@@ -15,21 +27,27 @@ import {
 } from '@/design-system/components/FindField';
 import { Search } from '@/components/Icons';
 import { COMMAND_BAR_OPEN_CHANGE_EVENT, openCommandBar } from '@/lib/app-events';
-import { chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { hotkeyAriaShortcuts, hotkeyKeys, hotkeyMatches, PASTE_LIST_HOTKEY } from '@/lib/keyboard/key-registry';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
+import { useLocalBulkList, type BulkList } from '@/lib/nav/locate/use-bulk-list';
 import { setDeskSearch, subscribeDeskSearchFocus, useDeskSearch } from '@/lib/outbound/desk-search-store';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { NAV_CHOICE_SELECTED_CLASS } from './nav-block';
 import { SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { NAV_CHOICE_SELECTED_CLASS } from './nav-block';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
-import { NavBulkPasteKey, NavBulkToggle, useLocalBulkList, useNavBulkList, type BulkList } from './NavBulkList';
+import { BulkListToken, NavBulkDrop, useNavBulkList, usePasteListHotkey } from './NavBulkList';
+import { KeyHintPopover, type KeyHintAt, type KeyHintRow } from './NavGoKeys';
+import { PRESS_BEAT_MS, publishKeyPressed } from './go-keys-store';
 import { NAV_LOCATE_MIN_QUERY, useNavLocate } from './useNavLocate';
 import { NAV_LOCATE_TONE_VAR } from './nav-locate-tone';
 
 /** The one hotkey that lands in the field. Bare `F`, never while typing. */
 const FIND_KEY = 'f';
+/** The palette's chord, taught by the key card (`CommandBar` owns it). */
+const EVERYWHERE_HOTKEY = 'mod+k';
+const PASTE_LIST_ARIA = hotkeyAriaShortcuts(PASTE_LIST_HOTKEY);
 
 /**
  * ⌘/Ctrl+Shift+F — clear the page's Find from anywhere, in one press, and
@@ -60,7 +78,7 @@ function useClearFindChord(inputRef: RefObject<HTMLInputElement>, clear: () => v
       title: 'Find',
       rows: [
         { keys: ['F'], label: 'Find on this page' },
-        { keys: ['mod', 'Shift', 'F'], label: 'Clear the find' },
+        { keys: ['mod', 'Shift', 'F'], label: 'Clear the find and the pasted list' },
       ],
     });
     return () => {
@@ -86,11 +104,25 @@ const searchEverywhere = (query: string) => openCommandBar({ query: query || und
  *   words and the panel under it are readable (`FindField overflowRight`).
  * - CONTEXTUAL — the page declares `search.locate`: the panel under the field
  *   shows where the text lives in the section (one pill per bucket with
- *   matches; a click opens that view with the text kept), and a pasted list
- *   of 2+ numbers becomes the located list (NavBulkList, `[›] [B] N`).
+ *   matches; a click opens that view with the text kept).
  * - GLOBAL — "Search everywhere" / ⌘↵ hands the text to the ⌘K palette.
  *   A page without a list (identify, the page map, the header) shows the
- *   palette's face instead; a list pasted there is located everywhere.
+ *   palette's face instead.
+ *
+ * PASTE A LIST (owner 2026-10-04: the list lives IN the bar) — on every
+ * face, a paste of 2+ numbers (⌘V in the field, the well's paste key, or
+ * ⌘⌥V / Ctrl+Alt+V from anywhere outside a text field) becomes the HELD
+ * list: one token inside the well (`40 numbers ×`), the list itself in the
+ * well's own dropdown panel (NavBulkPanel). A page that locates keeps it in
+ * its URL (`useNavBulkList`, so the page body's ledger agrees); any other
+ * face holds it in memory, located everywhere (`useLocalBulkList`). One
+ * number stays a Find (or the palette's query). Nothing hangs right of
+ * the field.
+ *
+ * Hover the well (mouse, ~180ms intent) and a key card drops under it:
+ * `F` + the page's Find (only where `F` is armed), ⌘K Search everywhere,
+ * ⌘⌥V Paste a list. It is the field's only hint and hides while the field
+ * has focus or its panel is open.
  *
  * The scope is never painted inside the field: the view switcher under it
  * already names the list.
@@ -147,6 +179,169 @@ export function NavFind({ search }: { search?: NavSearch }) {
   );
 }
 
+/** The key card's rows, hotkey first. `findLabel` null = `F` is not armed on this face. */
+function findKeyRows(findLabel: string | null, held: number): KeyHintRow[] {
+  const rows: KeyHintRow[] = [];
+  if (findLabel) rows.push({ id: 'find', keys: ['F'], pressedId: 'find:f', label: findLabel });
+  rows.push(
+    { id: 'everywhere', keys: hotkeyKeys(EVERYWHERE_HOTKEY), pressedId: 'find:k', label: 'Search everywhere' },
+    {
+      id: 'paste',
+      keys: hotkeyKeys(PASTE_LIST_HOTKEY),
+      pressedId: 'find:paste',
+      label: 'Paste a list — check each number',
+      count: held > 0 ? held : undefined,
+    },
+  );
+  return rows;
+}
+
+/** Which taught row this keydown presses, if any. */
+function taughtPress(event: KeyboardEvent, rows: readonly KeyHintRow[]): string | null {
+  const id = hotkeyMatches(PASTE_LIST_HOTKEY, event)
+    ? 'find:paste'
+    : hotkeyMatches(EVERYWHERE_HOTKEY, event)
+      ? 'find:k'
+      : !event.metaKey && !event.ctrlKey && !event.altKey && !isEditableKeyTarget(event.target) && hotkeyMatches(FIND_KEY, event)
+        ? 'find:f'
+        : null;
+  return id && rows.some((row) => row.pressedId === id) ? id : null;
+}
+
+/** The card hangs this far under the well. */
+const KEY_CARD_GAP_PX = 6;
+
+/**
+ * The search well's hover key card: mouse on the well for HINT_INTENT_MS →
+ * the card drops under it, left-aligned (measured then, so collapse and
+ * resize never leave it stale); pointer off → it leaves. Hidden while
+ * `suppressed` (the field has focus or its panel is open) — except for one
+ * beat after a taught key fires while it is up: that cap sinks
+ * (`publishKeyPressed`), then the card leaves.
+ */
+function useFindKeyCard(rows: readonly KeyHintRow[], suppressed: boolean) {
+  const [at, setAt] = useState<KeyHintAt | null>(null);
+  const [beat, setBeat] = useState(false);
+  const intent = useRef<number | undefined>(undefined);
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const shown = at !== null && (!suppressed || beat);
+
+  useEffect(() => () => window.clearTimeout(intent.current), []);
+  useEffect(() => {
+    if (!shown) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      const id = taughtPress(event, rowsRef.current);
+      if (!id) return;
+      publishKeyPressed(id);
+      setBeat(true);
+      window.setTimeout(() => {
+        setBeat(false);
+        setAt(null);
+      }, PRESS_BEAT_MS);
+    };
+    // Capture: the key's own owner may stop it before it bubbles.
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [shown]);
+
+  return {
+    at: shown ? at : null,
+    pointer: {
+      onPointerEnter: (event: ReactPointerEvent<HTMLElement>) => {
+        if (event.pointerType !== 'mouse') return;
+        const well = event.currentTarget;
+        window.clearTimeout(intent.current);
+        intent.current = window.setTimeout(() => {
+          const rect = well.getBoundingClientRect();
+          setAt({ left: rect.left, top: rect.bottom + KEY_CARD_GAP_PX });
+        }, HINT_INTENT_MS);
+      },
+      onPointerLeave: () => {
+        window.clearTimeout(intent.current);
+        setAt(null);
+      },
+    },
+  };
+}
+
+/**
+ * Everything a face wraps its well in: the held list (token, panel, the
+ * focus rules that open and close it, the chord) and the hover key card.
+ * The panel opens on focus from outside, ↓, the token or the chord while a
+ * list is held; it closes on Esc and when focus leaves the face.
+ * `focusField` lands in the face's field (the input, or the everywhere
+ * face's button).
+ */
+function useSearchFace(list: BulkList, findLabel: string | null, focusField: () => void) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const held = list.selection.refs.length;
+  const card = useFindKeyCard(findKeyRows(findLabel, held), focused || open);
+
+  usePasteListHotkey(list, wrapRef, () => {
+    focusField();
+    setOpen(true);
+  });
+  const show = () => {
+    setOpen(true);
+    focusField();
+  };
+  // Focus first: landing in the field from inside the face never reopens it.
+  const close = () => {
+    focusField();
+    setOpen(false);
+  };
+  const clear = () => {
+    list.clear();
+    setOpen(false);
+  };
+
+  return {
+    hasList: held > 0,
+    open,
+    clear,
+    /** A paste (⌘V, the paste key, a typed list + ↵): 2+ numbers become the list and it opens. */
+    take: (text: string): boolean => {
+      if (!list.paste(text)) return false;
+      setOpen(true);
+      return true;
+    },
+    /** ↓ opens the list, a second ↓ walks into it; Esc closes it before it clears or leaves the field. */
+    fieldKey: (event: ReactKeyboardEvent): boolean => {
+      if (event.key === 'Escape' && open) {
+        setOpen(false);
+        return true;
+      }
+      if (event.key !== 'ArrowDown' || event.metaKey || event.ctrlKey || event.altKey || held === 0) return false;
+      if (open) listboxRef.current?.focus({ preventScroll: true });
+      else setOpen(true);
+      return true;
+    },
+    token: held > 0 ? <BulkListToken key="bulk-list" list={list} onOpen={show} /> : null,
+    drop: (find?: PageFind) => (
+      <NavBulkDrop list={list} find={find} onClose={close} onLeave={focusField} listboxRef={listboxRef} />
+    ),
+    card: <KeyHintPopover id="find" enter="drop" at={card.at} rows={findKeyRows(findLabel, held)} />,
+    bind: {
+      ref: wrapRef,
+      ...card.pointer,
+      onFocusCapture: (event: FocusEvent<HTMLDivElement>) => {
+        setFocused(true);
+        if (held > 0 && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(true);
+      },
+      onBlurCapture: (event: FocusEvent<HTMLDivElement>) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        setFocused(false);
+        setOpen(false);
+      },
+    },
+  };
+}
+
 type PageFieldProps = { search: NavSearch; label: string; inputRef: RefObject<HTMLInputElement> };
 
 /**
@@ -187,109 +382,76 @@ function usePageFind(search: NavSearch): [PageFind, number] {
   return [{ value: urlValue, set, open }, 250];
 }
 
-function PlainFind({ search, label, inputRef }: PageFieldProps) {
-  const [find, debounceMs] = usePageFind(search);
-  useClearFindChord(inputRef, () => find.set(''));
-  return (
-    <div data-nav-search-well data-nav-find>
-      <FindField
-        value={find.value}
-        onChange={find.set}
-        label={label}
-        hints={findHints(label)}
-        inputRef={inputRef}
-        debounceMs={debounceMs}
-        escalate={searchEverywhere}
-        overflowRight
-      />
-    </div>
-  );
+/** A page list with no locator: a pasted list is held in memory and located everywhere. */
+function PlainFind(props: PageFieldProps) {
+  const list = useLocalBulkList('everywhere');
+  return <PageFace {...props} list={list} />;
 }
 
 /**
  * Find + locate: the panel under the field says where the text lives in the
- * section (pills), and a multi-number paste becomes the located list — the
- * `[›] [B] N` key right of the well opens it. A single number stays a plain
- * Find over the list on screen.
+ * section (pills), and a multi-number paste becomes the page's located list
+ * (in its URL, so the page body's own list follows it).
  */
-function LocatedFind({ search, locate, label, inputRef }: PageFieldProps & { locate: NonNullable<NavSearch['locate']> }) {
-  const [find, debounceMs] = usePageFind(search);
+function LocatedFind({ locate, ...props }: PageFieldProps & { locate: NonNullable<NavSearch['locate']> }) {
   const list = useNavBulkList(locate);
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const hasList = list.selection.refs.length > 0;
-  useClearFindChord(inputRef, () => {
-    find.set('');
-    list.clear();
-    setOpen(false);
-  });
-  const fieldLabel = hasList ? 'Find in the pasted list' : label;
   return (
-    <div ref={rowRef} data-nav-find-row className="flex min-w-0 items-center gap-1">
-      <div data-nav-search-well data-nav-find className="min-w-0 flex-1">
-        <FindField
-          value={find.value}
-          onChange={find.set}
-          label={fieldLabel}
-          hints={findHints(fieldLabel)}
-          inputRef={inputRef}
-          // A pasted list opens at once: while focused the grown well covers the `[›]` key.
-          interceptPaste={(text) => {
-            const took = list.paste(text);
-            if (took) setOpen(true);
-            return took;
-          }}
-          debounceMs={debounceMs}
-          escalate={searchEverywhere}
-          overflowRight
-          below={<NavLocatePills scope={locate.locator} query={find.value} find={find} />}
-          onClear={
-            hasList
-              ? () => {
-                  list.clear();
-                  setOpen(false);
-                }
-              : undefined
-          }
-          onKeyDown={(event, draft, clear) => {
-            // A typed "A, B, C" + Enter is a list too.
-            if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && list.paste(draft)) {
-              event.preventDefault();
-              clear();
-              setOpen(true);
-            } else if (event.key === 'ArrowDown' && hasList) {
-              event.preventDefault();
-              setOpen(true);
-            }
-          }}
-        />
-      </div>
-      <BulkKey list={list} anchorRef={rowRef} open={open} setOpen={setOpen} find={find} pasteBox />
-    </div>
+    <PageFace
+      {...props}
+      list={list}
+      below={(find, query) => <NavLocatePills scope={locate.locator} query={query} find={find} />}
+    />
   );
 }
 
-function BulkKey({
+/** A page's Find well: its text narrows the list on screen; a held list rides it as a token + panel. */
+function PageFace({
+  search,
+  label,
+  inputRef,
   list,
-  anchorRef,
-  open,
-  setOpen,
-  find,
-  pasteBox = false,
-}: {
-  list: BulkList;
-  anchorRef: RefObject<HTMLDivElement>;
-  open: boolean;
-  setOpen: (open: boolean) => void;
-  find?: PageFind;
-  /** With no list, the key opens an empty paste box (the page list's Find only). */
-  pasteBox?: boolean;
-}) {
-  const hasList = list.selection.refs.length > 0;
-  if (!hasList && pasteBox && find) {
-    return <NavBulkPasteKey list={list} anchorRef={anchorRef} find={find} onListed={() => setOpen(true)} />;
-  }
-  return <NavBulkToggle list={list} anchorRef={anchorRef} open={open && hasList} onOpenChange={setOpen} find={find} />;
+  below,
+}: PageFieldProps & { list: BulkList; below?: (find: PageFind, query: string) => ReactNode }) {
+  const [find, debounceMs] = usePageFind(search);
+  const face = useSearchFace(list, label, () => inputRef.current?.focus());
+  useClearFindChord(inputRef, () => {
+    find.set('');
+    face.clear();
+  });
+  const fieldLabel = face.hasList ? 'Find in the pasted list' : label;
+  return (
+    <div {...face.bind} data-nav-search-well data-nav-find className="min-w-0">
+      <FindField
+        value={find.value}
+        onChange={find.set}
+        label={fieldLabel}
+        hints={findHints(fieldLabel)}
+        inputRef={inputRef}
+        interceptPaste={face.take}
+        debounceMs={debounceMs}
+        escalate={searchEverywhere}
+        overflowRight
+        lead={face.token}
+        drop={face.drop(find)}
+        dropOpen={face.open}
+        keyShortcuts={PASTE_LIST_ARIA}
+        below={below?.(find, find.value)}
+        onClear={face.hasList ? face.clear : undefined}
+        onKeyDown={(event, draft, clear) => {
+          if (face.fieldKey(event)) {
+            event.preventDefault();
+            return;
+          }
+          // A typed "A, B, C" + Enter is a list too.
+          if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && face.take(draft)) {
+            event.preventDefault();
+            clear();
+          }
+        }}
+      />
+      {face.card}
+    </div>
+  );
 }
 
 /**
@@ -362,29 +524,28 @@ function currentBucketId(
  * The everywhere face — the palette's clickable face (`CommandBar` owns the
  * chord). The SAME sunken well as the page field (`findWellClass`): words
  * rest gray on "Search" and turn black and roll what it finds while you look
- * at it (hover / focus); the ⌘K keycaps and the paste key show only then.
- * A paste (the key, or ⌘V while it has focus) of 2+ numbers is located
- * everywhere (NavBulkList, `[›] [B] N`); anything else opens the palette
- * already searching it.
+ * at it (hover / focus); the paste key shows only then. A paste (the key, or
+ * ⌘V while it has focus) of 2+ numbers is held and located everywhere, in
+ * the panel under the well; anything else opens the palette already
+ * searching it.
  */
 function EverywhereFace() {
-  const apple = useApplePlatform();
   const look = useHintActivity();
-  const [open, setOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const list = useLocalBulkList('everywhere');
-  const rowRef = useRef<HTMLDivElement>(null);
-  const [listOpen, setListOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const face = useSearchFace(list, null, () => buttonRef.current?.focus());
   useEffect(() => {
     const onChange = (event: Event) => {
       const detail = (event as CustomEvent<{ open?: boolean }>).detail;
-      if (typeof detail?.open === 'boolean') setOpen(detail.open);
+      if (typeof detail?.open === 'boolean') setPaletteOpen(detail.open);
     };
     window.addEventListener(COMMAND_BAR_OPEN_CHANGE_EVENT, onChange);
     return () => window.removeEventListener(COMMAND_BAR_OPEN_CHANGE_EVENT, onChange);
   }, []);
   const take = (text: string) => {
-    if (list.paste(text)) {
-      setListOpen(true);
+    if (face.take(text)) {
+      buttonRef.current?.focus();
       return;
     }
     openCommandBar({ query: text.trim() || undefined, scope: 'everywhere' });
@@ -399,9 +560,10 @@ function EverywhereFace() {
     take(text);
   };
   return (
-    <div ref={rowRef} className="flex min-w-0 flex-1 items-center gap-1">
+    <div {...face.bind} className="relative flex min-w-0 flex-1">
       <div
         data-nav-search-well
+        data-find-expanded={face.open ? '' : undefined}
         {...look.bind}
         onPaste={(event: ClipboardEvent<HTMLDivElement>) => {
           event.preventDefault();
@@ -409,32 +571,37 @@ function EverywhereFace() {
         }}
         className={cn(findWellClass('sidebar'), 'flex-1')}
       >
+        <Search aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+        <FindLead>{face.token}</FindLead>
         <button
+          ref={buttonRef}
           type="button"
           data-nav-search-everywhere
           aria-label="Search"
-          aria-keyshortcuts="Meta+K Control+K"
-          aria-expanded={open}
+          aria-keyshortcuts={`Meta+K Control+K ${PASTE_LIST_ARIA}`}
+          aria-expanded={paletteOpen}
           onClick={() => openCommandBar({ scope: 'everywhere' })}
+          onKeyDown={(event) => {
+            if (face.fieldKey(event)) event.preventDefault();
+          }}
           className={cn(
-            'ds-raw-button flex h-full min-w-0 flex-1 items-center gap-1.5 text-left active:translate-y-px',
+            'ds-raw-button flex h-full min-w-0 flex-1 items-center text-left active:translate-y-px',
             SIDEBAR_CONTROL_CORNER,
             focusRing('control', 'accent'),
           )}
         >
-          <Search aria-hidden className="size-3.5 shrink-0 text-text-muted" />
-          <HoverKeycaps keys={chordKeys('mod+k', apple)} shown={look.active} />
           <span className="relative h-full min-w-0 flex-1">
             <RollingHint
               hints={EVERYWHERE_HINTS}
               active={look.active}
-              className={cn('text-role-caption font-medium', findHintTone(look.active || open))}
+              className={cn('text-role-caption font-medium', findHintTone(look.active || paletteOpen))}
             />
           </span>
         </button>
         <PasteKey label="Paste to search or locate a list" shown={look.active} onPaste={() => void pasteKey()} />
       </div>
-      <BulkKey list={list} anchorRef={rowRef} open={listOpen} setOpen={setListOpen} />
+      <FindPanel open={face.open}>{face.drop()}</FindPanel>
+      {face.card}
     </div>
   );
 }

@@ -7,12 +7,31 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportReply } from '@/hooks/useSupportReply';
+import { useSupportSuggestion } from '@/hooks/useSupportSuggestion';
+import { postSupportTicketItems, supportTicketItemKeys } from '@/hooks/useSupportTicketItems';
 import { useTicketPhotoStaging, type TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { zendeskKeys } from '@/hooks/useZendeskQueries';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
 import { photoContentUrl } from '@/lib/photos/display-url';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { seedComposerDraft } from '@/lib/threads/composer-draft';
+import { requestConfirm } from '@/design-system/components/confirm';
+import type { TicketItemRole } from '@/lib/support/product-token';
+import type { SupportProductFace } from '@/lib/support/ticket-items-shared';
+import { toast } from '@/lib/toast';
 import type { ComposerDrillNode } from '@/components/composer/ComposerDrillMenu';
+
+/**
+ * One "Product sent to customer" pick waiting in the composer tray. The
+ * `clientEventId` is minted at pick time so a retried log write is a no-op.
+ */
+export interface ComposerProductPick {
+  clientEventId: string;
+  product: SupportProductFace;
+  role: TicketItemRole;
+  qty: number;
+}
 
 export type UseTicketComposerOptions = {
   /** Live ticket id. `null` on an unlinked carton — the draft is a claim body. */
@@ -26,7 +45,11 @@ export type UseTicketComposerOptions = {
    */
   staging?: TicketPhotoStaging;
   /** Icons for the `+` rows — the host owns glyph sizing. */
-  insertIcons?: { browse?: ComposerDrillNode['icon']; upload?: ComposerDrillNode['icon'] };
+  insertIcons?: {
+    browse?: ComposerDrillNode['icon'];
+    upload?: ComposerDrillNode['icon'];
+    product?: ComposerDrillNode['icon'];
+  };
   onSent?: () => void;
   /**
    * Editable first draft (e.g. a repair status update handed over from
@@ -63,6 +86,10 @@ export function useTicketComposer({
   // rather than dropping it.
   const [ccDraft, setCcDraft] = useState('');
   const [libraryOpen, setLibraryOpen] = useState(false);
+  // "Product sent to customer" (owner 2026-10-03): picks ride the next send as
+  // tokens and land in support_ticket_items once the comment is posted (P7).
+  const [products, setProducts] = useState<ComposerProductPick[]>([]);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const reply = useSupportReply();
@@ -101,17 +128,27 @@ export function useTicketComposer({
     );
   }, [ticketId, initialPhotoIds, addLibraryPhotos]);
 
-  // A new ticket is a new audience. CCs belong to the thread that was on
-  // screen, never to whichever one loads next.
+  // A new ticket is a new audience. CCs and picked products belong to the
+  // thread that was on screen, never to whichever one loads next.
   useEffect(() => {
     setCcs([]);
     setCcDraft('');
+    setProducts([]);
+    setProductPickerOpen(false);
   }, [ticketId]);
+
+  const addProduct = useCallback((product: SupportProductFace, role: TicketItemRole, qty: number) => {
+    setProducts((prev) => [...prev, { clientEventId: `sti:${safeRandomUUID()}`, product, role, qty }]);
+  }, []);
+  const removeProduct = useCallback((clientEventId: string) => {
+    setProducts((prev) => prev.filter((p) => p.clientEventId !== clientEventId));
+  }, []);
 
   const busy = !canPost || reply.isPending || staging.uploading;
 
   const send = useCallback(() => {
     if (ticketId == null || busy) return;
+    const picks = products;
     const vars = buildComposerReplyVars({
       ticketId,
       body,
@@ -122,18 +159,71 @@ export function useTicketComposer({
       ccDraft,
       photoIds: stagedDone.map((s) => s.photoId!),
       attachmentPreviews: stagedDone.map((s) => ({ url: s.url!, thumbUrl: s.thumbUrl })),
+      products: picks.map((p) => ({
+        skuCatalogId: p.product.skuCatalogId,
+        role: p.role,
+        qty: p.qty,
+        title: p.product.title,
+        sku: p.product.sku,
+      })),
     });
     if (!vars) return;
     reply.mutate(vars, {
-      onSuccess: () => {
+      onSuccess: (sent) => {
         setBody('');
         setCcs([]);
         setCcDraft('');
+        setProducts([]);
         staging.clear();
         onSent?.();
+        if (picks.length === 0) return;
+        // The comment is out; the log row is the system of record (P7).
+        postSupportTicketItems({
+          ticketId,
+          zendeskCommentId: sent.commentId,
+          items: picks.map((p) => ({
+            skuCatalogId: p.product.skuCatalogId,
+            role: p.role,
+            qty: p.qty,
+            clientEventId: p.clientEventId,
+          })),
+        })
+          .catch((err: Error) => toast.error(`Sent, but the product log failed: ${err.message}`))
+          .finally(() => void queryClient.invalidateQueries({ queryKey: supportTicketItemKeys.list(ticketId) }));
       },
     });
-  }, [ticketId, busy, body, isPublic, user, ccs, ccDraft, stagedDone, reply, staging, onSent]);
+  }, [ticketId, busy, products, body, isPublic, user, ccs, ccDraft, stagedDone, reply, staging, onSent, queryClient]);
+
+  // Draft with AI: the server reads the thread, answers the latest customer
+  // message, and refuses (with the reason) when no customer wrote. The draft
+  // lands through the ONE overwrite rule and never sends itself.
+  const aiDraft = useSupportSuggestion();
+  const bodyRef = useRef(body);
+  useEffect(() => {
+    bodyRef.current = body;
+  });
+  const draftWithAi = useCallback(
+    (opts?: { onApplied?: () => void }) => {
+      if (ticketId == null || aiDraft.isPending) return;
+      aiDraft.mutate(
+        { ticketId, stagedPhotoIds: stagedDone.map((s) => s.photoId!) },
+        {
+          onSuccess: (draft) =>
+            void seedComposerDraft({
+              currentBody: bodyRef.current,
+              text: draft.suggestion,
+              mode: 'public',
+              applyBody: setBody,
+              applyMode: setIsPublic,
+              confirm: requestConfirm,
+              onApplied: opts?.onApplied,
+            }),
+          onError: (err) => toast.error(err.message),
+        },
+      );
+    },
+    [ticketId, aiDraft, stagedDone],
+  );
 
   const insertNodes = useMemo(
     () =>
@@ -145,9 +235,10 @@ export function useTicketComposer({
                 onUpload: picker.openPicker,
               }
             : undefined,
+        product: ticketId != null ? { onPick: canPost ? () => setProductPickerOpen(true) : undefined } : undefined,
         icons: insertIcons,
       }),
-    [ticketId, canBrowseLibrary, picker.openPicker, insertIcons],
+    [ticketId, canBrowseLibrary, canPost, picker.openPicker, insertIcons],
   );
 
   const onLibrarySelect = useCallback(
@@ -175,15 +266,22 @@ export function useTicketComposer({
     insertNodes,
     libraryOpen,
     setLibraryOpen,
+    products,
+    addProduct,
+    removeProduct,
+    productPickerOpen,
+    setProductPickerOpen,
     canBrowseLibrary,
     canPost,
     onLibrarySelect,
     receivingId: receivingId ?? undefined,
     busy,
-    /** Enter is live only with something to send. */
-    canSend: !busy && body.trim().length > 0,
+    /** Enter is live only with something to send (text or a picked product). */
+    canSend: !busy && (body.trim().length > 0 || products.length > 0),
     send,
     reply,
+    draftWithAi,
+    drafting: aiDraft.isPending,
   };
 }
 

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, Package, ScanBarcode } from '@/components/Icons';
 import { HandlingUnitMemberRow } from '@/components/mobile/handling-units/HandlingUnitMemberRow';
 import { useHandlingUnit } from '@/components/mobile/handling-units/useHandlingUnit';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { Button } from '@/design-system/primitives';
 import { handlingUnitQcFace } from '@/lib/handling-unit-presentation';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
@@ -41,7 +41,7 @@ export function QcLpnWorkSurface({ lpnRef }: { lpnRef: string }) {
 
   return (
     <div className="flex min-h-full flex-col bg-mode-panel" data-testid="qc-lpn-work-surface">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref="/m/qc"
         title={box.code}
         subtitle="Quality control"

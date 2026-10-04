@@ -1,12 +1,8 @@
-/** Orders row → {@link CompoundRowView}. */
+/** Orders row → {@link RowView}. */
 
 import { SERVICE_LEVEL, type LifecycleState } from '@cycleforge/design-tokens';
-import {
-  firstNote,
-  type CompoundDelay,
-  type CompoundRowView,
-  type CompoundStateTone,
-} from '@/components/tables/compound/compound-row-model';
+import type { Delay, StateTone } from '@/lib/tables/field-catalog/slot-value';
+import { firstNote, type RowView } from '@/lib/tables/row-view';
 import { ordersNextStep } from '@/lib/orders/orders-next-step';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import type { ShippedOrder } from '@/types/orders';
@@ -28,7 +24,7 @@ import { shortagePipelineFrom } from '@/lib/orders/shortage-pipeline';
 import { marketplaceThumbUrl } from '@/lib/photos/marketplace-thumb-url';
 
 /** Fulfillment lane → the three-tone vocabulary. */
-export function ordersStateTone(stateLabel: string | null | undefined): CompoundStateTone {
+export function ordersStateTone(stateLabel: string | null | undefined): StateTone {
   const s = String(stateLabel || '').toUpperCase();
   if (!s) return 'neutral';
   if (s.includes('BLOCK') || s.includes('OUT OF STOCK') || s.includes('EXCEPTION') || s.includes('HOLD')) {
@@ -79,14 +75,14 @@ interface OrdersCompoundParts {
    * Org triage flag mark — shown next to the title so the wash has a
    * non-colour carrier on the dense compound grid (selection still wins fill).
    */
-  flagMark?: CompoundRowView['flagMark'];
+  flagMark?: RowView['flagMark'];
   /**
    * Resolved slot values keyed by mounted TRACK key (`status:1`, …) — built
    * once per row from the materialized columns (`ordersSlotValues`).
    */
-  slots?: CompoundRowView['slots'];
+  slots?: RowView['slots'];
   /** Bound-subtitle parts for the item cell (`ordersSubtitleParts`). */
-  subtitleParts?: CompoundRowView['subtitleParts'];
+  subtitleParts?: RowView['subtitleParts'];
   /**
    * True when a multi-line order parent already owns the ids — the leaf
    * fulfillment cell stays quiet so the same order # is not reprinted per SKU.
@@ -101,7 +97,7 @@ interface OrdersCompoundParts {
    * Bundle / kit chip under the item title (from batch composition map).
    * Absent / null ⇒ flat listing title only.
    */
-  kitFace?: CompoundRowView['kitFace'];
+  kitFace?: RowView['kitFace'];
 }
 
 /**
@@ -163,7 +159,7 @@ export function ordersShipByDelay(
   record: Pick<ShippedOrder, 'deadline_at' | 'ship_by_date'>,
   delayDays: number | null,
   todayKey: string,
-): CompoundDelay {
+): Delay {
   const raw = ordersShipByRaw(record);
   const parsed = raw ? toPSTDateKey(raw) : '';
   const dateKey = parsed && parsed !== 'Unknown' ? parsed : null;
@@ -195,7 +191,7 @@ function civilDaysBetween(fromKey: string, toKey: string | null): number | null 
 /** DATES column, top — WHEN THE ORDER WAS PLACED, with the import stamp as the honest fallback. */
 export function ordersOrderedAt(
   record: Pick<ShippedOrder, 'created_at' | 'order_date'>,
-): NonNullable<CompoundRowView['orderedAt']> | null {
+): NonNullable<RowView['orderedAt']> | null {
   const placedRaw = nonSentinelTimestamp(record.order_date);
   const placedKey = placedRaw ? toPSTDateKey(placedRaw) : '';
   if (placedKey && placedKey !== 'Unknown') {
@@ -244,7 +240,7 @@ export function ordersUrgentLabel(
  */
 export function ordersEdgeMark(
   record: Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock' | 'has_exception' | 'service_level' | 'label_service_code'>,
-): CompoundRowView['edgeMark'] {
+): RowView['edgeMark'] {
   const urgentLabel = ordersUrgentLabel(record);
   if (urgentLabel) {
     return {
@@ -279,7 +275,7 @@ export function ordersEdgeMark(
 /** A multi-line order's band rail: the hottest fact any of its lines carries. */
 export function ordersGroupEdgeMark(
   rows: ReadonlyArray<Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock' | 'has_exception' | 'service_level' | 'label_service_code'>>,
-): CompoundRowView['edgeMark'] {
+): RowView['edgeMark'] {
   const downgraded = rows.find((row) => serviceDowngrade(asServiceLevel(row.service_level), row.label_service_code));
   return ordersEdgeMark({
     has_exception: rows.some((row) => Boolean(row.has_exception)),
@@ -293,7 +289,7 @@ export function ordersGroupEdgeMark(
 /**
  * PRODUCT-LEVEL mark on the item track. Exception wins over out of stock.
  * The cell paints an alert icon; this only names the fact. OOS tip is a
- * product-card fact blob — CompoundCells mounts the hover card from `card`.
+ * product-card fact blob carried on `card`.
  */
 export function ordersItemStatus(
   record: Pick<
@@ -313,7 +309,7 @@ export function ordersItemStatus(
     | 'replenishment_po_number'
     | 'shortage_link_status'
   >,
-): CompoundRowView['itemStatus'] {
+): RowView['itemStatus'] {
   if (record.has_exception) {
     return {
       label: 'Exception',
@@ -372,7 +368,7 @@ export function ordersGroupItemStatus(
     | 'replenishment_po_number'
     | 'shortage_link_status'
   >[],
-): CompoundRowView['itemStatus'] {
+): RowView['itemStatus'] {
   if (rows.some((row) => Boolean(row.has_exception))) {
     return {
       label: 'Exception',
@@ -418,7 +414,7 @@ export function ordersGroupItemStatus(
 export function ordersCompoundView(
   record: ShippedOrder,
   parts: OrdersCompoundParts,
-): CompoundRowView {
+): RowView {
   const row = record as ShippedOrder & {
     tracking_number?: string | null;
     account_source?: string | null;

@@ -36,11 +36,12 @@ export const NAV_COMMAND_CODES: readonly NavCommandDef[] = [
   { code: 'CMD-GO-ORDERS',   label: 'Go · Orders',     pageId: 'outbound',  childId: 'orders',  sortOrder: 130 },
   // FBA became its OWN Outbound lane row (`fba`, `/shipping/fba`) when the tab left the To-ship band, so `outbound/fba` named a child that…
   { code: 'CMD-GO-FBA',      label: 'Go · Amazon prep',pageId: 'fba',       childId: 'plan',    sortOrder: 140 },
-  { code: 'CMD-GO-INVENTORY',label: 'Go · Inventory',  pageId: 'inventory', childId: 'ledger',  sortOrder: 150 },
+  // `ledger` left the Warehouse page with the inventory-pages cut (2026-10-03); Stock is the desk's inventory face.
+  { code: 'CMD-GO-INVENTORY',label: 'Go · Inventory',  pageId: 'inventory', childId: 'stock',   sortOrder: 150 },
   { code: 'CMD-GO-LOCATIONS',label: 'Go · Locations',  pageId: 'inventory', childId: 'locations', sortOrder: 160 },
   // Was `catalog` (Reference) until 2026-09-15, when that tab was removed. The
   // sticker names the DESK, so it lands on the desk's default mode — Manuals —
-  // the same shape as CMD-GO-INVENTORY → `ledger`.
+  // the same shape as CMD-GO-INVENTORY → `stock`.
   { code: 'CMD-GO-PRODUCTS', label: 'Go · Products',   pageId: 'products',  childId: 'manuals', sortOrder: 170 },
   { code: 'CMD-GO-SUPPORT',  label: 'Go · Support',    pageId: 'support',   childId: 'tickets', sortOrder: 180 },
   { code: 'CMD-GO-OPS',      label: 'Go · Operations', pageId: 'operations',childId: 'live',    sortOrder: 190 },

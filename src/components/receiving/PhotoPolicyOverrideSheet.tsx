@@ -3,7 +3,7 @@
 /** PhotoPolicyOverrideSheet — the conscious acknowledgement in front of a receiving photo-policy waiver (WS-PHOTO §4). */
 
 import { useMemo, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ReasonChipPicker } from '@/components/ui/ReasonChipPicker';
 import { Button } from '@/design-system/primitives';
 import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
@@ -29,8 +29,6 @@ interface PhotoPolicyOverrideSheetProps {
   blockers: readonly string[];
   /** Fires with the chosen code; the caller re-runs the receive with it. */
   onConfirm: (code: PhotoPolicyOverrideCode) => void;
-  /** Stack above an already-open sheet (the phone's carton sheet). */
-  level?: number;
   /** True while the re-run is in flight. */
   busy?: boolean;
 }
@@ -40,7 +38,6 @@ export function PhotoPolicyOverrideSheet({
   onClose,
   blockers,
   onConfirm,
-  level = 0,
   busy = false,
 }: PhotoPolicyOverrideSheetProps) {
   const options = usePhotoPolicyOverrideOptions();
@@ -54,69 +51,70 @@ export function PhotoPolicyOverrideSheet({
   };
 
   return (
-    <BottomSheet
-      open={open}
-      onClose={close}
-      title="Receive without the required photos?"
-      dragDisabled
-      level={level}
-    >
-      <div className="stack-section">
-        <div className="rounded-xl bg-amber-50 inset-card ring-1 ring-inset ring-amber-200">
-          <p className="text-role-eyebrow text-amber-700">
-            Photo policy not met
-          </p>
-          <ul className="mt-1.5 space-y-1">
-            {blockers.length > 0 ? (
-              blockers.map((b) => (
-                <li key={b} className="text-role-caption font-semibold text-amber-800">
-                  {b}
-                </li>
-              ))
-            ) : (
-              <li className="text-role-caption font-semibold text-amber-800">
-                This carton is missing the photos your org requires at receive.
-              </li>
-            )}
-          </ul>
-        </div>
+    <Sheet open={open} onOpenChange={(next) => { if (!next) close(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>Receive without the required photos?</SheetTitle>
+        </SheetHeader>
+        <SheetBody>
+          <div className="stack-section">
+            <div className="rounded-xl bg-amber-50 inset-card ring-1 ring-inset ring-amber-200">
+              <p className="text-role-eyebrow text-amber-700">
+                Photo policy not met
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {blockers.length > 0 ? (
+                  blockers.map((b) => (
+                    <li key={b} className="text-role-caption font-semibold text-amber-800">
+                      {b}
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-role-caption font-semibold text-amber-800">
+                    This carton is missing the photos your org requires at receive.
+                  </li>
+                )}
+              </ul>
+            </div>
 
-        <div className="stack-tight">
-          <p className="text-role-eyebrow text-text-soft">
-            Why are you receiving it anyway?
-          </p>
-          <ReasonChipPicker
-            value={code}
-            onChange={(next) => setCode(next as PhotoPolicyOverrideCode)}
-            options={options.map((o) => ({ code: o.code, label: o.label, tone: 'warning' as const }))}
-            ariaLabel="Photo policy override reason"
-            size="touch"
-          />
-          {/* The description is the claim being made — show it only once the
-              operator has chosen, so it reads as confirmation, not as a hint
-              they can skim past. */}
-          <p className="min-h-8 text-role-caption text-text-muted" aria-live="polite">
-            {selected
-              ? selected.description
-              : 'Pick a reason to continue. It is recorded against this carton and shows on the exception list.'}
-          </p>
-        </div>
+            <div className="stack-tight">
+              <p className="text-role-eyebrow text-text-soft">
+                Why are you receiving it anyway?
+              </p>
+              <ReasonChipPicker
+                value={code}
+                onChange={(next) => setCode(next as PhotoPolicyOverrideCode)}
+                options={options.map((o) => ({ code: o.code, label: o.label, tone: 'warning' as const }))}
+                ariaLabel="Photo policy override reason"
+                size="touch"
+              />
+              {/* The description is the claim being made — show it only once the
+                  operator has chosen, so it reads as confirmation, not as a hint
+                  they can skim past. */}
+              <p className="min-h-8 text-role-caption text-text-muted" aria-live="polite">
+                {selected
+                  ? selected.description
+                  : 'Pick a reason to continue. It is recorded against this carton and shows on the exception list.'}
+              </p>
+            </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row-reverse">
-          <Button
-            variant="danger"
-            size="lg"
-            disabled={!code || busy}
-            onClick={() => code && onConfirm(code)}
-            className="w-full sm:w-auto"
-          >
-            {busy ? 'Receiving…' : 'Receive without photos'}
-          </Button>
-          <Button variant="ghost" size="lg" onClick={close} className="w-full sm:w-auto">
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </BottomSheet>
+            <div className="flex flex-col gap-2 sm:flex-row-reverse">
+              <Button
+                variant="danger"
+                size="lg"
+                disabled={!code || busy}
+                onClick={() => code && onConfirm(code)}
+                className="w-full sm:w-auto"
+              >
+                {busy ? 'Receiving…' : 'Receive without photos'}
+              </Button>
+              <Button variant="ghost" size="lg" onClick={close} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

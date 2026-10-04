@@ -1,6 +1,7 @@
 /** SSR first-paint stand-in for the To-ship / Picking order card lists (triage card anatomy). */
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import { formatOrderIdDisplay } from '@/lib/copy-chip-format';
 import { linePrice } from '@/lib/orders/order-card-model';
 import { cn } from '@/utils/_cn';
 
@@ -32,17 +33,17 @@ export function OrdersQueueFirstPaint({
       <ul className="flex flex-col">
         {visible.length === 0
           ? Array.from({ length: 8 }, (_, i) => (
-              <li key={i} aria-hidden className="flex gap-3 rounded-2xl px-4 py-3">
+              <li key={i} aria-hidden className="flex gap-3 rounded-2xl px-4 py-2">
                 <span className="w-7 shrink-0 space-y-3 pt-0.5">
                   <span className="block size-[18px] animate-pulse rounded-[5px] bg-surface-sunken" />
                   <span className="block size-4 animate-pulse rounded-md bg-surface-sunken" />
                 </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-2.5">
+                <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="flex justify-between">
                     <span className="h-3.5 w-56 animate-pulse rounded-md bg-surface-sunken" />
                     <span className="h-3.5 w-20 animate-pulse rounded-md bg-surface-sunken" />
                   </span>
-                  <span className="flex gap-3">
+                  <span className="flex gap-2">
                     <span className="size-12 shrink-0 animate-pulse rounded-xl bg-surface-sunken" />
                     <span className="flex flex-1 flex-col gap-2 pt-1">
                       <span className="h-4 w-3/4 animate-pulse rounded-md bg-surface-sunken" />
@@ -58,17 +59,19 @@ export function OrdersQueueFirstPaint({
               const tracking = String(row.shipping_tracking_number || '').trim();
               const price = linePrice(row).text;
               return (
-                <li key={`${row.id}-${orderId}`} className="flex gap-3 rounded-2xl px-4 py-3">
+                <li key={`${row.id}-${orderId}`} className="flex gap-3 rounded-2xl px-4 py-2">
                   <span className="w-7 shrink-0 space-y-3 pt-0.5" aria-hidden>
                     <span className="block size-[18px] rounded-[5px] border border-border-soft" />
                     <span className="block size-4 rounded-md bg-surface-sunken" />
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-2.5">
+                  <span className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <span className="flex min-w-0 items-baseline justify-between gap-3 text-role-caption">
-                      <span className="min-w-0 truncate font-mono tabular-nums text-text-muted">{orderId || '—'}</span>
+                      <span className="min-w-0 truncate font-mono tabular-nums text-text-muted" title={orderId || undefined}>
+                        {formatOrderIdDisplay(orderId) || '—'}
+                      </span>
                       {price ? <span className="shrink-0 tabular-nums text-text-default">{price}</span> : null}
                     </span>
-                    <span className="flex min-w-0 gap-3">
+                    <span className="flex min-w-0 gap-2">
                       <span className="size-12 shrink-0 rounded-xl bg-surface-sunken" aria-hidden />
                       <span className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
                         <span className="truncate font-medium text-text-default">{title}</span>

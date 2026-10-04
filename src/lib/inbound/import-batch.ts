@@ -3,12 +3,15 @@
  *
  *   1. rows are grouped into InboundOrderDrafts — one per (source, platform,
  *      order number), each row one line;
- *   2. the batch is recorded (`inbound_import_batch`) and every order gets a
- *      ledger row keyed by (batch content hash, order) — a re-posted file is
- *      recognised, an unchanged order is skipped;
- *   3. dry run: every order is previewed (nothing lands); commit: every order
- *      lands in its own transaction through `ingestInboundOrder`, so one bad
- *      order never takes the batch down and never lands half-written.
+ *   2. dry run: every order is previewed (nothing is written — not even the
+ *      batch row) and reported new / updated / unchanged by content hash;
+ *   3. commit: the batch is recorded (`inbound_import_batch`), every order
+ *      lands in its own transaction through `ingestInboundOrder` (its ledger
+ *      row keyed by (file hash, order)), so one bad order never takes the
+ *      batch down and never lands half-written; an unchanged order is skipped.
+ *
+ * An order the caller already found problems on (`problems`) is held whole —
+ * reported, never previewed or landed.
  *
  * Also: `reconcileInboundSpine`, the drift check between the ledger, the
  * order headers and the spine lines.
@@ -39,15 +42,19 @@ import { tagInboundAsReturn } from './tag-inbound-return';
 import { receiveImportedLineIfCartonUnboxed } from './receive-if-carton-unboxed';
 
 export interface BatchOrderDraft {
-  /** Row indexes (into the input) that became this order's lines. */
+  /** Row indexes (into the input) that became this order's lines, in line order. */
   rows: number[];
   draft: InboundOrderDraft;
+  /** Blocking problems found before the writer — the order is held, not landed. */
+  problems?: string[];
 }
 
 export interface BatchSkippedRow {
   row: number;
   reason: string;
 }
+
+const NOTES_MAX = 2000;
 
 /** Group desk rows into order drafts. Amazon native returns resolve their catalog item by SKU, then ASIN. */
 export async function draftsFromDeskRows(
@@ -56,6 +63,7 @@ export async function draftsFromDeskRows(
   resolveCatalog: typeof resolveCatalogByAsinSku = resolveCatalogByAsinSku,
 ): Promise<{ orders: BatchOrderDraft[]; skipped: BatchSkippedRow[] }> {
   const byKey = new Map<string, BatchOrderDraft>();
+  const notesByKey = new Map<string, string[]>();
   const skipped: BatchSkippedRow[] = [];
 
   for (const [index, row] of rows.entries()) {
@@ -102,6 +110,8 @@ export async function draftsFromDeskRows(
           vendor: row.seller?.trim() ?? '',
           accountName: row.accountName?.trim() ?? '',
           priority: row.priorityTier != null ? (String(row.priorityTier) as InboundOrderDraft['priority']) : INBOUND_PRIORITY_AUTO,
+          orderDate: row.orderDate ?? null,
+          expectedDate: row.expectedDate ?? null,
           tracking: [],
           lines: [],
           returnReason: row.returnReason?.trim() ?? '',
@@ -109,6 +119,13 @@ export async function draftsFromDeskRows(
         },
       };
       byKey.set(key, order);
+      notesByKey.set(key, []);
+    }
+    order.draft.orderDate ??= row.orderDate ?? null;
+    order.draft.expectedDate ??= row.expectedDate ?? null;
+    const notes = notesByKey.get(key)!;
+    for (const fragment of (row.notes ?? '').split('\n').map((s) => s.trim())) {
+      if (fragment && !notes.includes(fragment)) notes.push(fragment);
     }
     order.rows.push(index);
     order.draft.lines.push({
@@ -117,17 +134,20 @@ export async function draftsFromDeskRows(
       skuCatalogId,
       sku,
       title,
-      quantity: row.quantity ?? 1,
+      // Absent (legacy desk rows) = one; null = the file left it blank — kept null so the order asks.
+      quantity: row.quantity === undefined ? 1 : row.quantity,
+      unitCostCents: row.unitCostCents ?? null,
       listingUrl: row.listingUrl?.trim() ?? '',
-      itemNumber: row.amazonAsin?.trim() ?? '',
+      itemNumber: row.itemNumber?.trim() || row.amazonAsin?.trim() || '',
     });
     const tracking = row.trackingNumber?.trim();
     if (tracking && !order.draft.tracking.some((t) => t.number === tracking) && order.draft.tracking.length < 10) {
       order.draft.tracking.push({ number: tracking, carrier: row.carrierCode?.trim() ?? '' });
     }
   }
-  for (const order of byKey.values()) {
+  for (const [key, order] of byKey) {
     if (order.draft.tracking.length === 0) order.draft.tracking = [{ number: '', carrier: '' }];
+    order.draft.notes = notesByKey.get(key)!.join('\n').slice(0, NOTES_MAX);
   }
   return { orders: [...byKey.values()], skipped };
 }
@@ -136,14 +156,21 @@ export interface BatchOrderOutcome {
   orderNumber: string;
   rows: number[];
   status: 'valid' | 'invalid' | 'landed' | 'unchanged' | 'failed';
+  /** By content hash against the order already on file. */
+  change?: 'new' | 'updated' | 'unchanged';
   created?: boolean;
   inboundOrderId?: number;
   lines?: number;
+  /** Urgency tier the order lands with ('auto' = the platform's default). */
+  tier?: InboundOrderDraft['priority'];
+  /** Everything that holds the order, one entry each. */
+  problems?: string[];
   error?: string;
 }
 
 export interface InboundImportBatchResult {
-  batchId: number;
+  /** Null on a dry run — nothing is written. */
+  batchId: number | null;
   dryRun: boolean;
   total: number;
   orders: BatchOrderOutcome[];
@@ -165,66 +192,105 @@ async function finishReturn(orgId: OrgId, result: IngestInboundOrderResult, draf
   }
 }
 
-export async function runInboundImportBatch(
-  orgId: OrgId,
-  input: {
-    rows: ReadonlyArray<Record<string, string>>;
-    origin: Exclude<InboundOrderOrigin, 'manual'>;
-    source: string;
-    staffId: number | null;
-    label?: string | null;
-    dryRun: boolean;
-  },
-): Promise<InboundImportBatchResult> {
-  const deskRows = input.rows.map((record) => deskRowFromCsvRecord(record));
-  const { orders, skipped } = await draftsFromDeskRows(orgId, deskRows);
-  const fileHash = createHash('sha256').update(JSON.stringify(input.rows)).digest('hex').slice(0, 24);
+/** The writer seams — real by default, faked in tests. */
+export interface InboundBatchDeps {
+  query: typeof tenantQuery;
+  preview: typeof previewInboundOrder;
+  ingest: typeof ingestInboundOrder;
+}
 
-  const batch = await tenantQuery<{ id: number }>(
-    orgId,
-    `INSERT INTO inbound_import_batch (organization_id, origin, source, label, status, total, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-    [orgId, input.origin, input.source, input.label ?? null, input.dryRun ? 'staged' : 'committing', orders.length, input.staffId],
-  );
-  const batchId = Number(batch.rows[0].id);
+const defaultBatchDeps: InboundBatchDeps = { query: tenantQuery, preview: previewInboundOrder, ingest: ingestInboundOrder };
+
+export interface InboundDraftBatchInput {
+  orders: readonly BatchOrderDraft[];
+  skipped: readonly BatchSkippedRow[];
+  /** Input rows the orders came from. */
+  total: number;
+  /** Stable hash of the file — part of every order's ledger key. */
+  fileHash: string;
+  origin: Exclude<InboundOrderOrigin, 'manual'>;
+  source: string;
+  staffId: number | null;
+  label?: string | null;
+  dryRun: boolean;
+}
+
+/** Grouped orders → preview (dry run) or the one writer (commit). */
+export async function runInboundDraftBatch(
+  orgId: OrgId,
+  input: InboundDraftBatchInput,
+  deps: InboundBatchDeps = defaultBatchDeps,
+): Promise<InboundImportBatchResult> {
+  const { orders, skipped } = input;
+  const landable = orders.filter((o) => !o.problems?.length).length;
+  let batchId: number | null = null;
+  if (!input.dryRun) {
+    const batch = await deps.query<{ id: number }>(
+      orgId,
+      `INSERT INTO inbound_import_batch (organization_id, origin, source, label, status, total, created_by)
+       VALUES ($1, $2, $3, $4, 'committing', $5, $6) RETURNING id`,
+      [orgId, input.origin, input.source, input.label ?? null, landable, input.staffId],
+    );
+    batchId = Number(batch.rows[0].id);
+  }
 
   const outcomes: BatchOrderOutcome[] = [];
   for (const order of orders) {
-    const base = { orderNumber: order.draft.orderNumber, rows: order.rows };
+    const base = {
+      orderNumber: order.draft.orderNumber,
+      rows: order.rows,
+      tier: order.draft.priority,
+      lines: order.draft.lines.length,
+    };
+    if (order.problems?.length) {
+      outcomes.push({ ...base, status: 'invalid', problems: order.problems, error: order.problems.join('; ') });
+      continue;
+    }
     if (input.dryRun) {
       try {
-        const preview = await previewInboundOrder(orgId, order.draft, { returnClaim: false });
-        outcomes.push(
-          preview.missing.length
-            ? { ...base, status: 'invalid', error: preview.missing.map((m) => m.label).join('; ') }
-            : { ...base, status: preview.unchanged ? 'unchanged' : 'valid', inboundOrderId: preview.existing?.inboundOrderId, lines: preview.lines.length },
-        );
+        const preview = await deps.preview(orgId, order.draft, { returnClaim: false });
+        if (preview.missing.length) {
+          const problems = preview.missing.map((m) => m.label);
+          outcomes.push({ ...base, status: 'invalid', problems, error: problems.join('; ') });
+        } else {
+          outcomes.push({
+            ...base,
+            status: preview.unchanged ? 'unchanged' : 'valid',
+            change: preview.existing ? (preview.unchanged ? 'unchanged' : 'updated') : 'new',
+            inboundOrderId: preview.existing?.inboundOrderId,
+            lines: preview.lines.length,
+          });
+        }
       } catch (err) {
-        outcomes.push({ ...base, status: 'invalid', error: err instanceof Error ? err.message : 'invalid' });
+        const message = err instanceof Error ? err.message : 'invalid';
+        outcomes.push({ ...base, status: 'invalid', problems: [message], error: message });
       }
       continue;
     }
     try {
-      const result = await ingestInboundOrder(orgId, order.draft, {
+      const result = await deps.ingest(orgId, order.draft, {
         origin: input.origin,
         source: input.source,
         staffId: input.staffId,
         batchId,
-        sourceEventId: `${input.source}:${fileHash}:${normalizeInboundOrderNumber(order.draft.orderNumber)}:${order.draft.platform}`,
+        sourceEventId: `${input.source}:${input.fileHash}:${normalizeInboundOrderNumber(order.draft.orderNumber)}:${order.draft.platform}`,
       });
       if (order.draft.type === 'RETURN' && !result.unchanged) await finishReturn(orgId, result, order.draft);
       outcomes.push({
         ...base,
         status: result.unchanged ? 'unchanged' : 'landed',
+        change: result.unchanged ? 'unchanged' : result.created ? 'new' : 'updated',
         created: result.created,
         inboundOrderId: result.inboundOrderId,
         lines: result.lines.length,
       });
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'import failed';
       outcomes.push({
         ...base,
         status: err instanceof InboundOrderRefused ? 'invalid' : 'failed',
-        error: err instanceof Error ? err.message : 'import failed',
+        problems: [message],
+        error: message,
       });
     }
   }
@@ -238,23 +304,57 @@ export async function runInboundImportBatch(
     failed: count('failed'),
     skipped: skipped.length,
   };
-  await tenantQuery(
-    orgId,
-    `UPDATE inbound_import_batch
-        SET status = $2, valid = $3, landed = $4, failed = $5,
-            committed_at = CASE WHEN $2 = 'committed' THEN now() END, updated_at = now()
-      WHERE organization_id = $1 AND id = $6`,
-    [
+  if (batchId != null) {
+    await deps.query(
       orgId,
-      input.dryRun ? 'validated' : counts.failed + counts.invalid > 0 && counts.landed + counts.unchanged === 0 ? 'failed' : 'committed',
-      counts.valid + counts.landed + counts.unchanged,
-      counts.landed,
-      counts.failed + counts.invalid,
-      batchId,
-    ],
-  );
+      `UPDATE inbound_import_batch
+          SET status = $2, valid = $3, landed = $4, failed = $5,
+              committed_at = CASE WHEN $2 = 'committed' THEN now() END, updated_at = now()
+        WHERE organization_id = $1 AND id = $6`,
+      [
+        orgId,
+        counts.failed + counts.invalid > 0 && counts.landed + counts.unchanged === 0 ? 'failed' : 'committed',
+        counts.valid + counts.landed + counts.unchanged,
+        counts.landed,
+        counts.failed + counts.invalid,
+        batchId,
+      ],
+    );
+  }
 
-  return { batchId, dryRun: input.dryRun, total: deskRows.length, orders: outcomes, skipped, counts };
+  return { batchId, dryRun: input.dryRun, total: input.total, orders: outcomes, skipped: [...skipped], counts };
+}
+
+/** Stable hash of an uploaded file's rows — the ledger's re-post key. */
+export function inboundFileHash(rows: unknown): string {
+  return createHash('sha256').update(JSON.stringify(rows)).digest('hex').slice(0, 24);
+}
+
+/** Desk-shaped CSV records (returns import, legacy desk CSV) → orders → the writer. */
+export async function runInboundImportBatch(
+  orgId: OrgId,
+  input: {
+    rows: ReadonlyArray<Record<string, string>>;
+    origin: Exclude<InboundOrderOrigin, 'manual'>;
+    source: string;
+    staffId: number | null;
+    label?: string | null;
+    dryRun: boolean;
+  },
+): Promise<InboundImportBatchResult> {
+  const deskRows = input.rows.map((record) => deskRowFromCsvRecord(record));
+  const { orders, skipped } = await draftsFromDeskRows(orgId, deskRows);
+  return runInboundDraftBatch(orgId, {
+    orders,
+    skipped,
+    total: deskRows.length,
+    fileHash: inboundFileHash(input.rows),
+    origin: input.origin,
+    source: input.source,
+    staffId: input.staffId,
+    label: input.label,
+    dryRun: input.dryRun,
+  });
 }
 
 // ─── reconciliation ──────────────────────────────────────────────────────────

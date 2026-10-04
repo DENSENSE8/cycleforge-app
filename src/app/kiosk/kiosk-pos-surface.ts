@@ -1,5 +1,6 @@
 /** Kiosk V2 POS catalog surface — RAISED product cards on a ground plane. */
 
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP } from '@/design-system/tokens/dock-clearance';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { TACTILE_PRESS_TRAVEL_CLASS } from '@/design-system/tokens/shadows';
 import { KIOSK_PILL_ACTIVE } from '@/app/kiosk/kiosk-chrome';
@@ -106,10 +107,12 @@ export const KIOSK_POS_IMAGE_WELL =
 
 /** Browse stage scroll region. */
 export const KIOSK_POS_BROWSE_SCROLL = 'min-h-0 flex-1 overflow-y-auto px-0 md:px-3 pb-0 md:pb-3';
-/** Action footer that hosts {@link KIOSK_POS_CTA} — a TRANSPARENT float. */
+/** Action footer that hosts {@link KIOSK_POS_CTA} — a TRANSPARENT float, lifted off the edge by the shared dock tokens (owner 2026-10-03). */
 export const KIOSK_POS_ACTION_BAR = cn(
   'pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center',
-  'bg-transparent px-4 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]',
+  'bg-transparent px-4',
+  ACTION_DOCK_TOP_GAP,
+  ACTION_DOCK_LIFT,
 );
 
 /** Scroll clearance under a floating {@link KIOSK_POS_CTA}. */
@@ -119,7 +122,7 @@ export const KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE = 'pb-24 md:pb-24';
 export const KIOSK_POS_TOP_DOCK = cn(
   'pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col',
   // Same surface token as the canvas beneath, in the codebase's glass form
-  // (`bg-surface-card/…` — the StaffPickerList / SwimlaneBoard vocabulary).
+  // (`bg-surface-card/…` — the StaffPickerList vocabulary).
   'bg-surface-card/70 backdrop-blur-lg',
 );
 export const KIOSK_POS_TOP_DOCK_INTERACTIVE = 'pointer-events-auto';

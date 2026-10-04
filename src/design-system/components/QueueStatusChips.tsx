@@ -15,6 +15,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import { LIFECYCLE, STATE_TONE_CLASSES, type LifecycleState, type StateName } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 
 const CHIP_SPRING = { type: 'spring', stiffness: 520, damping: 34 } as const;
@@ -95,8 +96,8 @@ export function StatusChipRail<K extends string>({
       })}
       <AnimatePresence initial={false}>
         {active.size > 0 ? (
+          <HoverTooltip key="reset" asChild label="Reset filters" shortcut="Esc">
           <motion.button
-            key="reset"
             type="button"
             data-testid="status-filter-reset"
             onClick={onReset}
@@ -106,13 +107,13 @@ export function StatusChipRail<K extends string>({
             whileTap={{ scale: 0.94 }}
             transition={CHIP_SPRING}
             className={cn(
-              'inline-flex h-8 shrink-0 snap-start items-center gap-1.5 rounded-full bg-text-default pl-3 pr-1.5 text-xs font-semibold text-surface-card shadow-elev-raised',
+              'inline-flex h-8 shrink-0 snap-start items-center gap-1.5 rounded-full bg-text-default px-3 text-xs font-semibold text-surface-card shadow-elev-raised',
               focusRing('control'),
             )}
           >
             Reset filters
-            <kbd className="rounded-[4px] bg-white/20 px-1 font-sans text-[10px] font-medium">Esc</kbd>
           </motion.button>
+          </HoverTooltip>
         ) : null}
       </AnimatePresence>
     </span>

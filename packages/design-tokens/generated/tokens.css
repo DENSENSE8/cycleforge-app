@@ -2,9 +2,9 @@
 
 :root {
   --ds-color-text-primary: #0f172a;
-  --ds-color-text-secondary: #475569;
-  --ds-color-text-soft: #64748b;
-  --ds-color-text-faint: #94a3b8;
+  --ds-color-text-secondary: #374457;
+  --ds-color-text-soft: #505e74;
+  --ds-color-text-faint: #636f83;
   --ds-color-background-canvas: #fafafa;
   --ds-color-background-surface: #ffffff;
   --ds-color-surface-sunken: #f1f5f9;
@@ -108,9 +108,9 @@ html:not([data-color-scheme='dark']) [data-mode='triage'] {
   --ds-color-surface-sunken: #f5f5f5;
   --ds-color-surface-hover: #f7f7f7;
   --ds-color-text-primary: #0a0a0a;
-  --ds-color-text-secondary: #525252;
-  --ds-color-text-soft: #6b6b6b;
-  --ds-color-text-faint: #6b6b6b;
+  --ds-color-text-secondary: #434343;
+  --ds-color-text-soft: #5d5d5d;
+  --ds-color-text-faint: #5d5d5d;
   --ds-color-border-hairline: #ebebeb;
   --ds-color-border-subtle: #ebebeb;
   --ds-color-border-default: #d4d4d4;
@@ -182,9 +182,9 @@ html:not([data-color-scheme='dark']) [data-mode='counter'] {
   --ds-color-surface-sunken: #f1f5f9;
   --ds-color-surface-hover: #f8fafc;
   --ds-color-text-primary: #0f172a;
-  --ds-color-text-secondary: #475569;
-  --ds-color-text-soft: #64748b;
-  --ds-color-text-faint: #64748b;
+  --ds-color-text-secondary: #374457;
+  --ds-color-text-soft: #505e74;
+  --ds-color-text-faint: #505e74;
   --ds-color-border-hairline: #e2e8f0;
   --ds-color-border-subtle: #e2e8f0;
   --ds-color-border-default: #cbd5e1;
@@ -254,9 +254,9 @@ html:not([data-color-scheme='dark']) [data-mode='assistant'] {
   --ds-color-surface-sunken: #f1f5f9;
   --ds-color-surface-hover: #f8fafc;
   --ds-color-text-primary: #0f172a;
-  --ds-color-text-secondary: #475569;
-  --ds-color-text-soft: #64748b;
-  --ds-color-text-faint: #64748b;
+  --ds-color-text-secondary: #374457;
+  --ds-color-text-soft: #505e74;
+  --ds-color-text-faint: #505e74;
   --ds-color-border-hairline: #e2e8f0;
   --ds-color-border-subtle: #e2e8f0;
   --ds-color-border-default: #cbd5e1;
@@ -348,8 +348,8 @@ html:not([data-color-scheme='dark']) [data-mode='triage'][data-look='labels-docu
   --ds-color-surface-hover: #efefea;
   --ds-color-text-primary: #0a0a0a;
   --ds-color-text-secondary: #3d3d3a;
-  --ds-color-text-soft: #5c5c58;
-  --ds-color-text-faint: #5c5c58;
+  --ds-color-text-soft: #5a5a56;
+  --ds-color-text-faint: #5a5a56;
   --ds-color-border-hairline: #e1e1db;
   --ds-color-border-subtle: #e1e1db;
   --ds-color-border-default: #d6d6cf;
@@ -429,8 +429,8 @@ html:not([data-color-scheme='dark']) {
   --mode-well: #f5f5f5;
   --mode-hover: #f7f7f7;
   --mode-ink: #0a0a0a;
-  --mode-muted: #525252;
-  --mode-faint: #6b6b6b;
+  --mode-muted: #434343;
+  --mode-faint: #5d5d5d;
   --mode-rule: #ebebeb;
   --mode-edge: #d4d4d4;
   --mode-control: #8a8a8a;

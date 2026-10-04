@@ -114,7 +114,6 @@ export function UnfoundResolver({ facts, onResolved }: PhoneResolverProps<Carton
       {blockedReason ? (
         <p className="bg-mode-panel px-mode-page py-3 text-role-caption text-text-muted">{blockedReason}</p>
       ) : null}
-      <div className="flex-1 bg-mode-panel" />
       <DetailDock
         label="Unfound exception actions"
         verbs={[

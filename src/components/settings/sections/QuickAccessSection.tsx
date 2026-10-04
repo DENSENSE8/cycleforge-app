@@ -111,8 +111,8 @@ export function QuickAccessSection() {
         <p className="mb-2 text-role-caption text-text-soft">Shown at the bottom of the account menu when enabled.</p>
         <div className="divide-y divide-border-hairline">
           <ToggleRow
-            label="Phone history"
-            description="Resume recent packed orders from the account menu."
+            label="My history"
+            description="Link to your durable scan history at /stations/live from the account menu."
             checked={settings.actions.phoneHistory}
             onChange={(v) => patchActions({ phoneHistory: v })}
           />

@@ -13,7 +13,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ClipboardList, FileText, Link2, Upload } from '@/components/Icons';
 import { DetailFact, DetailFacts, DetailNavRow, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
-import { ConfirmSheet } from '@/components/ui/BottomSheet';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
 import { Button, SearchField } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
@@ -254,8 +254,6 @@ export function PaperworkResolver({ facts, onResolved }: PhoneResolverProps<Pape
           icon={<ClipboardList />}
         />
       </nav>
-      <div className="flex-1 bg-mode-panel" />
-      {verbs.length > 0 ? <DetailDock label="Paperwork exception actions" verbs={verbs} onVerb={onVerb} /> : null}
 
       {/* The OS file chooser behind the dock's Upload verb — never painted, not a text field. */}
       <input
@@ -271,6 +269,7 @@ export function PaperworkResolver({ facts, onResolved }: PhoneResolverProps<Pape
           if (file) uploadFile(file);
         }}
       />
+      {verbs.length > 0 ? <DetailDock label="Paperwork exception actions" verbs={verbs} onVerb={onVerb} /> : null}
       <ConfirmSheet
         open={confirmExempt}
         onClose={() => setConfirmExempt(false)}

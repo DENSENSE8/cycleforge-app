@@ -49,9 +49,7 @@ const ALLOWLIST = new Set([
   // Session-less service-org bridge (transitionalDogfoodOrgId) — no request ctx.
   'src/app/api/need-to-order/create-po/route.ts',
   'src/app/api/need-to-order/recalculate/route.ts',
-  'src/app/api/cron/zoho/orders-ingest-drain/route.ts',
   'src/app/api/orders/import-csv/route.ts',
-  'src/app/api/zoho/fulfillment-sync/route.ts',
   // Cron-or-dogfood authorization gate (not a scoping fallback).
   'src/app/api/ebay/refresh-tokens/route.ts',
   // Comment-only references to the token (no runtime fallback).

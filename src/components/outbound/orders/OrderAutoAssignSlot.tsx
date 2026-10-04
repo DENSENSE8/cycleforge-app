@@ -9,7 +9,7 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives/Button';
 import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';

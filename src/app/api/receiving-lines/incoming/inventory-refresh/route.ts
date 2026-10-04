@@ -61,7 +61,6 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
         mode: mirror.mode,
         fetched: mirror.fetched,
         upserted: mirror.upserted,
-        lines_marked_received: mirror.reconciled,
         errors: mirror.errors.slice(0, 5),
       },
       elapsedMs: Date.now() - startedAt,

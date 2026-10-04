@@ -3,38 +3,6 @@
 import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Per-lane prefs inside a swimlane board. Lane ids and `sort` are open strings:
- * the valid set is owned by each board surface (which validates + falls back on
- * hydrate), so one shape serves every board. See {@link SwimlaneBoard}.
- */
-export interface BoardLanePref {
-  sort?: string;
-  expanded?: boolean;
-  /** Drag-resized body height (px); `null`/absent → expanded/collapsed preset. */
-  height?: number | null;
-  /** Per-lane date-range filter (each lane header owns its own picker). */
-  range?: { from?: string | null; to?: string | null } | null;
-}
-
-/** Generic swimlane-board layout prefs (cross-device), reused per surface. */
-export interface BoardPrefs {
-  columns?: 1 | 2 | 3;
-  order?: string[];
-  range?: { from?: string | null; to?: string | null } | null;
-  lanes?: Record<string, BoardLanePref>;
-}
-
-/** Top-level prefs keys that hold a {@link BoardPrefs} bag (one per board surface). */
-export type BoardPrefsKey =
-  | 'unshippedBoard'
-  | 'shippedBoard'
-  | 'techHistoryBoard'
-  | 'packerHistoryBoard'
-  | 'receivingHistoryBoard'
-  | 'receivingIncomingBoard'
-  | 'testingHistoryBoard';
-
 /** Known, typed preference keys. The column is open JSONB; this is the contract. */
 export interface StaffPreferences {
   /** Insert / ScrollLock / F1–F12 that focuses the active scan bar. Absent = default (Insert). */
@@ -72,27 +40,6 @@ export interface StaffPreferences {
   lastSeenProductUpdateId?: string | null;
   /** Last catalog buildSha dismissed with the update id. Parse-compat only. */
   lastSeenBuildSha?: string | null;
-  /**
-   * Unshipped · Shelf-board layout prefs (cross-device). Lanes are PENDING /
-   * PICKED / BLOCKED; see {@link BoardPrefs} for the shape. One board surface =
-   * one key; the generic {@link SwimlaneBoard} reads/writes `prefs[prefsKey]`.
-   */
-  unshippedBoard?: BoardPrefs | null;
-  /**
-   * Dashboard · Shipped board layout prefs (cross-device). Lanes are the
-   * outbound states (`OUTBOUND_STATE_META`); same shape as {@link BoardPrefs}.
-   */
-  shippedBoard?: BoardPrefs | null;
-  /**
-   * Station history Pipeline-board layout prefs (cross-device), one bag per
-   * station surface — same {@link BoardPrefs} shape as the dashboard boards.
-   * Lanes come from the station lane SoT modules (`tech-board-lanes.ts`, …).
-   */
-  techHistoryBoard?: BoardPrefs | null;
-  packerHistoryBoard?: BoardPrefs | null;
-  receivingHistoryBoard?: BoardPrefs | null;
-  receivingIncomingBoard?: BoardPrefs | null;
-  testingHistoryBoard?: BoardPrefs | null;
   /** Per-staff column config for the shared list tables, keyed by TableId (see src/lib/tables/table-columns.ts). */
   tableColumns?: Record<
     string,
@@ -141,6 +88,12 @@ export interface StaffPreferences {
   kpiCollapsed?: Record<string, boolean> | null;
   /** Extra Unbox Band-1 tabs pinned via the Pin-list composer (catalog: */
   unboxPinnedExtraTabs?: Array<'incoming'> | null;
+  /**
+   * Triage list density per surface (`outbound.allocate`, `outbound.fulfilled`,
+   * `incoming.pasted`, `live-feed`): `card` = Full, `row` = Compact — the operator's own pick
+   * (`useTriageDensity`). Shallow JSONB merge — writers send the whole map.
+   */
+  triageDensity?: Record<string, 'card' | 'row'> | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */
@@ -159,7 +112,9 @@ export async function getStaffPreferences(staffId: number, orgId: OrgId): Promis
 /**
  * Merge a partial patch into the staffer's prefs bag (upsert). The JSONB `||`
  * merge means callers only send the keys they're changing; everything else is
- * preserved. Returns the full, merged prefs.
+ * preserved. `triageDensity` merges one level deeper (per surface), so a tab
+ * that sets one list's density cannot put back a stale value for another list
+ * (two tabs, two devices). Returns the full, merged prefs.
  */
 export async function updateStaffPreferences(
   staffId: number,
@@ -171,7 +126,14 @@ export async function updateStaffPreferences(
     `INSERT INTO staff_preferences (organization_id, staff_id, prefs)
      VALUES ($1, $2, $3::jsonb)
      ON CONFLICT (organization_id, staff_id)
-     DO UPDATE SET prefs = staff_preferences.prefs || EXCLUDED.prefs,
+     DO UPDATE SET prefs = (staff_preferences.prefs || EXCLUDED.prefs)
+                   || CASE
+                        WHEN jsonb_typeof(EXCLUDED.prefs -> 'triageDensity') = 'object'
+                         AND jsonb_typeof(staff_preferences.prefs -> 'triageDensity') = 'object'
+                        THEN jsonb_build_object('triageDensity',
+                               (staff_preferences.prefs -> 'triageDensity') || (EXCLUDED.prefs -> 'triageDensity'))
+                        ELSE '{}'::jsonb
+                      END,
                    updated_at = now()
      RETURNING prefs`,
     [orgId, staffId, JSON.stringify(patch)],

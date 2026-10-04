@@ -55,7 +55,7 @@ export interface QueueFacetCombo {
   n: number;
 }
 
-const STAGE_LABEL: Record<DeskStage, string> = { pending: 'Not picked', picked: 'Picked', packed: 'Packed' };
+const STAGE_LABEL: Record<DeskStage, string> = { pending: 'Not picked', picked: 'Picked', packed: 'Packed · waiting' };
 const AGING_LABEL: Record<DeskAgingBucket, string> = {
   overdue: 'Overdue',
   today: 'Due today',

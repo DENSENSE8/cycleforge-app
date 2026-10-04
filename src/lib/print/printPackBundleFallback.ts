@@ -1,10 +1,11 @@
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
-import { printOutboundDocuments } from '@/lib/print/printOutboundDocuments';
+import { printOutboundDocuments, type PrintableOutboundDocument } from '@/lib/print/printOutboundDocuments';
 
 /**
  * Pack-bundle browser fallback (JIT Phase 2–3).
  * Manuals prefer `/api/documents/[id]/content` when promoted; else product-manuals proxy.
- * Outbound docs reuse printOutboundDocuments (document ids).
+ * Labels + slip print in ONE dialog: documents by id, paired labels (no documents
+ * row yet) by the `src` the server sent.
  */
 
 export function printPackBundleFallback(
@@ -12,28 +13,25 @@ export function printPackBundleFallback(
     kind?: string;
     documentId?: number;
     productManualId?: number;
+    src?: string;
     isPdf?: boolean;
   }>,
 ): boolean {
-  const outbound = items.filter(
-    (i) => i.kind !== 'manual' && Number(i.documentId) > 0,
-  );
+  const papers: PrintableOutboundDocument[] = [];
+  for (const item of items) {
+    if (item.kind === 'manual') continue;
+    if (item.kind === 'label_ingestion') {
+      if (item.src?.startsWith('/') && !item.src.startsWith('//')) papers.push({ src: item.src, isPdf: true });
+    } else if (Number(item.documentId) > 0) {
+      papers.push({ id: Number(item.documentId), isPdf: item.isPdf !== false });
+    }
+  }
   const manuals = items.filter((i) => {
     if (i.kind !== 'manual') return false;
     return Number(i.documentId) > 0 || Number(i.productManualId) > 0;
   });
 
-  let printed = false;
-  if (outbound.length > 0) {
-    printed =
-      printOutboundDocuments(
-        outbound.map((d) => ({
-          id: Number(d.documentId),
-          isPdf: d.isPdf !== false,
-        })),
-      ) || printed;
-  }
-
+  const printed = printOutboundDocuments(papers);
   if (manuals.length === 0) return printed;
 
   const pages = manuals

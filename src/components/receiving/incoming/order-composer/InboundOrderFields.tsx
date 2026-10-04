@@ -7,7 +7,7 @@
  * for, RMA, the original sale — then the one returned item and its listing.
  */
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2 } from '@/components/Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
@@ -28,7 +28,8 @@ import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { cn } from '@/utils/_cn';
 import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import { centsToInputText, inputTextToCents } from '@/utils/money';
-import { orderNumberLabel, RETURN_REASON_CHOICES, usePlatformChoices, usePriorityChoices } from './composer-choices';
+import { inboundPriorityChoices, orderNumberLabel, RETURN_REASON_CHOICES } from '@/lib/inbound/inbound-order-compose';
+import { useInboundPlatformChoices } from '@/lib/inbound/use-inbound-platform-choices';
 import { InboundOrderLines } from './InboundOrderLines';
 import { OrderDocumentFill } from './OrderDocumentFill';
 
@@ -63,11 +64,11 @@ function DateField({ label, value, onChange }: { label: string; value: string | 
   );
 }
 
+const PRIORITY_CHOICES = inboundPriorityChoices();
+
 export function useInboundOrderSections({ draft, missing, preview, onChange, onReplace }: SectionsArgs): TriageSectionSpec[] {
-  const platforms = usePlatformChoices();
-  const priorities = usePriorityChoices();
   // Zoho orders arrive by sync; a hand-entered order names the seller platform.
-  const platformOptions = useMemo(() => platforms.filter((p) => p.value !== 'zoho'), [platforms]);
+  const platformOptions = useInboundPlatformChoices();
   const isReturn = draft.type === 'RETURN';
   const isPo = draft.type === 'PO';
   const isPickup = draft.type === 'PICKUP';
@@ -128,7 +129,7 @@ export function useInboundOrderSections({ draft, missing, preview, onChange, onR
       <SearchableSelectField
         value={draft.priority}
         onChange={(value) => onChange({ priority: (value == null ? 'auto' : String(value)) as InboundOrderDraft['priority'] })}
-        options={priorities}
+        options={PRIORITY_CHOICES}
         ariaLabel="Priority"
         className={TRIAGE_PANEL_INNER_CORNER}
       />

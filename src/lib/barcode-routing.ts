@@ -34,6 +34,7 @@ export interface ScanRoute {
 // The one shared answer to "is this GLN real?" — see the note where
 // DEFAULT_GLN used to live. Pure + client-safe, so this stays a client module.
 import { isLicensedGln } from '@/lib/interop/gs1-keys';
+import { canonicalRackCode } from '@/lib/locations/rack-code';
 
 const MOBILE_PATH_RE = /\/m\/(r|l|u|h)\/([^/?#\s]+)/i;
 const SKU_STOCK_LOCATION_RE = /\/sku-stock\/location\/([^/?#\s]+)/i;
@@ -124,6 +125,8 @@ function pathToRoute(path: string, value: string): ScanRoute | null {
   const gs1Loc = GS1_LOCATION_RE.exec(path);
   if (gs1Loc) {
     const code = decodeURIComponent(gs1Loc[2]).toUpperCase();
+    const rack = canonicalRackCode(code);
+    if (rack) return { type: 'bin', value: rack, redirect: `/inventory?bin=${rack}` };
     // position=00 means this label identifies a whole rack (zone/aisle/
     // bay/level), not a single bin slot. Route to the rack-detail view.
     if (isRackCode(code)) {
@@ -150,6 +153,9 @@ function pathToRoute(path: string, value: string): ScanRoute | null {
 
 /** Route a raw GS1 location code (the flat A0101101 form) to the right view. */
 function routeLocationCode(value: string, code: string): ScanRoute {
+  // A movable-rack code (`RK12-3`) carried in a GS1 AI 254 payload.
+  const rack = canonicalRackCode(code);
+  if (rack) return { type: 'bin', value: rack, redirect: `/inventory?bin=${rack}` };
   const normalized = code.toUpperCase();
   // position=00 means this label identifies a whole rack (zone/aisle/bay/
   // level), not a single bin slot. Route to the rack-detail view.
@@ -277,6 +283,12 @@ export function routeScan(raw: string): ScanRoute | null {
   if (LOCATION_FLAT_RE.test(value)) {
     return routeLocationCode(value, value.toUpperCase());
   }
+
+  // 5c. Movable rack / shelf / position — `RK12`, `RK12-3`, `RK12-3-2`.
+  //     Canonicalized here so every location field (`unwrapScannedLocation`)
+  //     and arrival-shelf match sees one spelling. Must stay above step 6.
+  const rack = canonicalRackCode(value);
+  if (rack) return { type: 'bin', value: rack, redirect: `/inventory?bin=${rack}` };
 
   // 6. Bin (legacy fallback): starts with a letter.
   if (/^[A-Za-z]/.test(value)) return { type: 'bin', value };
@@ -519,6 +531,16 @@ export function bayHand(bay: number | string): 'Left' | 'Right' {
   const n = typeof bay === 'string' ? parseInt(bay, 10) : bay;
   return Number.isFinite(n) && n % 2 === 0 ? 'Right' : 'Left';
 }
+
+/**
+ * The two sides of an aisle as the operator reads them (owner 2026-10-03):
+ * pick a side first, then that side's bays — the side is never repeated as
+ * `(Left)` / `(Right)` on every bay.
+ */
+export const BAY_SIDE_FACE = {
+  left: { bays: 'Odd bays', side: 'Left side', short: 'Odd · left' },
+  right: { bays: 'Even bays', side: 'Right side', short: 'Even · right' },
+} as const;
 
 /**
  * Operator face for the bay segment (internal UI + printed stickers).

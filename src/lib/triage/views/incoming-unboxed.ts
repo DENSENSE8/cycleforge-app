@@ -1,10 +1,10 @@
 /** Deliveries › Unboxed — cartons opened or completed at the Unbox station. */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 import { DOCKED_FLAG_PARAM } from '@/lib/receiving/inbound-lane';
 import { DOCKED_NEXT_STEPS } from '@/lib/receiving/docked-record-state';
 
-export const INCOMING_UNBOXED_VIEW: TriageViewDecl = {
+export const INCOMING_UNBOXED_VIEW = triageView({
   id: 'incoming.unboxed',
   grain: 'carton',
   noun: { one: 'carton', many: 'cartons' },
@@ -15,7 +15,9 @@ export const INCOMING_UNBOXED_VIEW: TriageViewDecl = {
   recordParams: ['openLine'],
   chips: { owner: 'face', param: DOCKED_FLAG_PARAM },
   paging: 'client',
-  status: 'date',
+  // The far right is "Unboxed by <staff>" (owner 2026-09-30), a trailing fact — no status painter.
+  status: 'none',
+  slots: { identity: 'order / PO number, else carton number', channel: 'brand', person: 'vendor', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'qty', tier: 'always' },
     { id: 'condition', tier: 'always' },
@@ -30,4 +32,4 @@ export const INCOMING_UNBOXED_VIEW: TriageViewDecl = {
     when: 'default-sort',
   },
   next: [...DOCKED_NEXT_STEPS],
-};
+});

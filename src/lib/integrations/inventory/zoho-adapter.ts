@@ -109,12 +109,4 @@ export class ZohoInventoryProviderAdapter implements InventoryProvider {
 
   paginateWarehouses: InventoryProvider['paginateWarehouses'] = (params) =>
     this.paginate((c) => c.paginateWarehouses(params));
-
-  // ── Fulfillment push ──────────────────────────────────────────────────────
-  syncShippedOrders: InventoryProvider['syncShippedOrders'] = async (opts = {}) => {
-    const { syncShippedOrdersToZoho } = await import('@/lib/zoho/fulfillment-sync');
-    // The batch runner binds withZohoCredential(orgId, 'salesorders.write', …)
-    // internally — orgId is forced to the provider's bound tenant here.
-    return syncShippedOrdersToZoho({ ...opts, orgId: this.orgId });
-  };
 }

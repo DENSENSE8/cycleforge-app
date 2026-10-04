@@ -14,6 +14,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY, type RecordAuditArgs } from '@
 import { scheduleAfterResponse } from '@/lib/next/schedule-after-response';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { getTicket, searchTickets } from '@/lib/zendesk';
 
 import { createTask } from './create-task';
 import { createTaskDeps } from './create-task-deps';
@@ -23,6 +24,8 @@ import { createTaskLink } from './task-links-db';
 import { isTaskDeskStatus } from './task-desk-row';
 import {
   REPAIR_TASK_OWNER_IDS,
+  isRepairOwnTicket,
+  repairIdInTicketSubject,
   repairOpenSql,
   runRepairTaskSync,
   type RepairSyncTask,
@@ -237,22 +240,21 @@ function repairTaskSyncDeps(orgId: OrgId, repairId: number | null): RepairTaskSy
       return true;
     },
 
-    async linkTicket(action) {
-      const ticket = await createTaskLink(orgId, null, action.taskId, { kind: 'ticket', value: action.ticketNumber });
-      if (!ticket.ok) {
-        console.warn(`[repair-tasks] org ${orgId} task ${action.taskId}: ticket link refused (${ticket.reason})`);
-        return false;
+    linkTicket: (action) => linkHelpdeskTicket(action.taskId, action.repairId, action.ticketNumber),
+
+    async findTicket(action) {
+      // The slip's number first: one GET, kept only if the subject proves it is this repair's thread.
+      if (action.paperworkNumber != null) {
+        const ticket = await getTicket(action.paperworkNumber, orgId);
+        if (ticket && isRepairOwnTicket(action.repairId, ticket.subject)) {
+          return (await linkHelpdeskTicket(action.taskId, action.repairId, String(ticket.id))) ? 'linked' : 'refused';
+        }
       }
-      if (ticket.created) {
-        await audit({
-          action: AUDIT_ACTION.WORK_TASK_LINK_ADD,
-          entityType: AUDIT_ENTITY.WORK_ASSIGNMENT,
-          entityId: action.taskId,
-          after: { linkId: ticket.link.id, entityId: ticket.link.entityId },
-          extra: { kind: ticket.link.kind, label: ticket.link.label, repairId: action.repairId },
-        });
-      }
-      return true;
+      // No usable number on the slip (`RS-0053`): the helpdesk subject names the repair (`Repair RS 53: …`).
+      const { results } = await searchTickets(`"RS ${action.repairId}"`, { perPage: 10 }, orgId);
+      const own = results.filter((ticket) => repairIdInTicketSubject(ticket.subject) === action.repairId);
+      if (own.length !== 1) return 'unmatched';
+      return (await linkHelpdeskTicket(action.taskId, action.repairId, String(own[0].id))) ? 'linked' : 'refused';
     },
 
     async updateTask(action) {
@@ -263,6 +265,25 @@ function repairTaskSyncDeps(orgId: OrgId, repairId: number | null): RepairTaskSy
       return patchAudited(action.taskId, patch, action.repairId, action.kind);
     },
   };
+
+  /** House ticket-link writer (mints the `support_tickets` mirror when the helpdesk confirms the number), audited. */
+  async function linkHelpdeskTicket(taskId: number, repairId: number, ticketNumber: string): Promise<boolean> {
+    const ticket = await createTaskLink(orgId, null, taskId, { kind: 'ticket', value: ticketNumber });
+    if (!ticket.ok) {
+      console.warn(`[repair-tasks] org ${orgId} task ${taskId}: ticket ${ticketNumber} link refused (${ticket.reason})`);
+      return false;
+    }
+    if (ticket.created) {
+      await audit({
+        action: AUDIT_ACTION.WORK_TASK_LINK_ADD,
+        entityType: AUDIT_ENTITY.WORK_ASSIGNMENT,
+        entityId: taskId,
+        after: { linkId: ticket.link.id, entityId: ticket.link.entityId },
+        extra: { kind: ticket.link.kind, label: ticket.link.label, repairId },
+      });
+    }
+    return true;
+  }
 
   /** The desk's own patch + the route's audit shape, as the system actor. */
   async function patchAudited(

@@ -25,18 +25,18 @@ const DELIVERY_RISK: Record<string, number> = {
   RECEIVED: 10,
 };
 
-/** Exception reasons with no carrier-state twin in `INBOUND_DELIVERY`. */
-const EXCEPTION_ONLY_FACE: Readonly<Record<'ERP_AHEAD' | 'DELIVERED_OVERDUE', Omit<RecordStateFace, 'id'>>> = {
-  ERP_AHEAD: { code: 'ERP', label: incomingExceptionLabel('ERP_AHEAD'), tone: 'danger', icon: 'package-open' },
-  DELIVERED_OVERDUE: { code: 'OVD', label: incomingExceptionLabel('DELIVERED_OVERDUE'), tone: 'danger', icon: 'inbox' },
+/** The exception reason with no carrier-state twin in `INBOUND_DELIVERY`. */
+const DELIVERED_OVERDUE_FACE: Omit<RecordStateFace, 'id'> = {
+  code: 'OVD',
+  label: incomingExceptionLabel('DELIVERED_OVERDUE'),
+  tone: 'danger',
+  icon: 'inbox',
 };
 
 /** A row's face: its exception reason (Exceptions view) outranks its carrier state. */
 export function incomingDeliveryRecordState(row: ReceivingLineRow): RecordStateFace {
   const exception = parseIncomingExceptionCode(row.exception_code);
-  if (exception === 'ERP_AHEAD' || exception === 'DELIVERED_OVERDUE') {
-    return { id: exception, ...EXCEPTION_ONLY_FACE[exception] };
-  }
+  if (exception === 'DELIVERED_OVERDUE') return { id: exception, ...DELIVERED_OVERDUE_FACE };
   if (exception) return { ...resolveInboundDeliveryRecordState(exception), tone: 'danger' };
   return resolveInboundDeliveryRecordState(row.delivery_state);
 }
@@ -66,7 +66,7 @@ export function purchaseIdentity(row: ReceivingLineRow): string {
 
 export function incomingDeliveryNextAction(state: string | null | undefined): string {
   const exception = parseIncomingExceptionCode(state);
-  if (exception === 'ERP_AHEAD' || exception === 'DELIVERED_OVERDUE') return INCOMING_EXCEPTION_VERB[exception];
+  if (exception === 'DELIVERED_OVERDUE') return INCOMING_EXCEPTION_VERB[exception];
   switch (state) {
     case 'AWAITING_TRACKING': return 'Attach tracking';
     case 'DELIVERED_UNOPENED': return 'Receive';

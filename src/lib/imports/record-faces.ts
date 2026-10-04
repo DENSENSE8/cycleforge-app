@@ -117,9 +117,9 @@ export function importOrderHref(orderRowId: number | null): string | null {
   return orderRowId != null ? `/shipping/orders?openOrderId=${orderRowId}` : null;
 }
 
-/** Review · Missing item number, focused on the parked row. */
-export function importReviewHref(importExceptionId: number): string {
-  return `/review?mode=catalog-link&section=missing-item-number&exceptionId=${importExceptionId}`;
+/** Retained product-pairing door while the import-exception table is parked. */
+export function importReviewHref(_importExceptionId: number): string {
+  return '/products?view=pairing';
 }
 
 /** One step's counts as a sentence of the non-zero facts (`3 new · 2 updated`). */

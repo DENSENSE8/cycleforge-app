@@ -52,6 +52,17 @@ const COUNTER_ROUTE_PARAMS = defineRouteParams({
   carries: ['pane'],
 });
 
+/** `/customers` — the shared customer book; Find plus the open desktop record. */
+const CUSTOMERS_ROUTE_PARAMS = defineRouteParams({
+  route: '/customers',
+  owns: {
+    /** Name, phone, email or customer identity. */
+    q: paramText,
+    /** The customer open in the desk record plane. */
+    customer: paramPositiveInt,
+  },
+});
+
 /** `/studio` — the Operations Studio canvas (`useStudioViewState`). */
 const STUDIO_ROUTE_PARAMS = defineRouteParams({
   route: '/studio',
@@ -189,6 +200,7 @@ const PRINT_STATION_ROUTE_PARAMS = defineRouteParams({
 export const DESK_PAGE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   REPORTS_ROUTE_PARAMS,
   COUNTER_ROUTE_PARAMS,
+  CUSTOMERS_ROUTE_PARAMS,
   STUDIO_ROUTE_PARAMS,
   STUDIO_CATALOG_ROUTE_PARAMS,
   STATION_LIVE_ROUTE_PARAMS,

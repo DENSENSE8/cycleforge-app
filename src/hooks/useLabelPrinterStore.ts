@@ -1,13 +1,11 @@
 'use client';
 
-/** Shared state for the bin- and rack-label printers. */
+/** The location / bay label builder's picked address, kept per browser (`LocationLabelBuilder`). */
 
 import { useSyncExternalStore } from 'react';
 
 const LABEL_KEY = 'binPrinter.state.v4';
-const RACK_KEY = 'rackPrinter.state.v1';
 const LABEL_EVENT = 'labelPrinter:state-changed';
-const RACK_EVENT = 'rackPrinter:state-changed';
 
 interface LabelPrinterState {
   room?: string;
@@ -15,13 +13,6 @@ interface LabelPrinterState {
   bay?: number;
   level?: number;
   position?: number;
-}
-
-interface RackPrinterState {
-  room?: string;
-  aisle?: number;
-  bay?: number;
-  level?: number;
 }
 
 // ─── Generic store factory ────────────────────────────────────────────────
@@ -58,8 +49,10 @@ function createStore<T extends object>(key: string, eventName: string) {
     return cached;
   }
 
+  // One stable empty snapshot: a fresh object per call loops useSyncExternalStore.
+  const serverSnapshot = {} as T;
   function getServerSnapshot(): T {
-    return {} as T;
+    return serverSnapshot;
   }
 
   function subscribe(cb: () => void): () => void {
@@ -119,22 +112,5 @@ export function useLabelPrinterStore(): LabelPrinterState {
   );
 }
 
-const setLabelPrinterState = labelStore.setState;
 export const patchLabelPrinterState = labelStore.patch;
 export const resetLabelPrinterState = labelStore.reset;
-
-// ─── Rack printer store ───────────────────────────────────────────────────
-
-const rackStore = createStore<RackPrinterState>(RACK_KEY, RACK_EVENT);
-
-export function useRackPrinterStore(): RackPrinterState {
-  return useSyncExternalStore(
-    rackStore.subscribe,
-    rackStore.getSnapshot,
-    rackStore.getServerSnapshot,
-  );
-}
-
-const setRackPrinterState = rackStore.setState;
-export const patchRackPrinterState = rackStore.patch;
-export const resetRackPrinterState = rackStore.reset;

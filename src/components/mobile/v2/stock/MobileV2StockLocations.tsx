@@ -1,193 +1,276 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ChevronLeft, ChevronRight, MapPin } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
-import type { LocationStockRoomFacet, LocationStockTableRow } from '@/lib/inventory/location-stock-row';
+/**
+ * `/m/stock` — the warehouse walked the way it stands: Rooms › Aisles › Side ›
+ * Bays › Locations (owner 2026-10-03: no long monolithic list). An aisle opens
+ * on two full-height choices — odd bays on the left side, even bays on the
+ * right — and the chosen side lists its bays in number order. Every place stays
+ * in the walk, empty ones say Empty. Path chips jump back up; a location opens
+ * its record (`/m/loc/…`), whose X returns to the bay it came from. The shell's
+ * search escapes the hierarchy: it lists the room's stocked places, and a typed
+ * or scanned code opens that location directly.
+ */
+
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useMemo, type ReactNode } from 'react';
+import { AlertTriangle, MapPin, Warehouse } from '@/components/Icons';
+import { DetailNav, type DetailNavItem } from '@/components/mobile/detail/DetailParts';
+import { PathChips, type PathChip } from '@/design-system/components/PathChips';
+import { Button } from '@/design-system/primitives/Button';
+import { EmptyState } from '@/design-system/primitives/EmptyState';
+import { BAY_SIDE_FACE, locationCodeFlat, pad2 } from '@/lib/barcode-routing';
+import { labelFace, parseLabelCode } from '@/features/location-labels/location-label-model';
+import { UNROOMED_FACET_ID, type LocationStockRoomFacet, type LocationStockTableRow } from '@/lib/inventory/location-stock-row';
 import {
-  stockLocationMatches,
-  summarizeStockLocations,
-  type StockLocationSummary,
-} from '@/lib/inventory/stock-location-summary';
+  STOCK_DRILL_OTHER,
+  stockDrillAisles,
+  stockDrillBays,
+  stockDrillHref,
+  stockDrillLocations,
+  stockDrillSides,
+  type StockDrillGroup,
+  type StockDrillScope,
+  type StockDrillSide,
+} from '@/lib/inventory/stock-drill';
+import { stockLocationMatches, summarizeStockLocations, type StockLocationSummary } from '@/lib/inventory/stock-location-summary';
 import { locationHubPath } from '@/lib/mobile/location-hub-href';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { cn } from '@/utils/_cn';
 import { useMobileV2Search } from '../MobileV2SearchContext';
 
-const PAGE_SIZE = 50;
-
-function countLabel(value: number, singular: string): string {
-  return `${value} ${value === 1 ? singular : `${singular}s`}`;
+function count(value: number, singular: string, plural = `${singular}s`): string {
+  return `${value} ${value === 1 ? singular : plural}`;
 }
 
-function roomHref(room: string, legacyQuery: string): string {
-  const params = new URLSearchParams({ room });
-  if (legacyQuery) params.set('q', legacyQuery);
-  return `/m/stock?${params.toString()}`;
-}
-
-function LocationRow({ summary, returnTo }: { summary: StockLocationSummary; returnTo: string }) {
-  const href = summary.routeCode
-    ? withJobReturn(locationHubPath(summary.routeCode), returnTo)
-    : null;
-  const className = cn(
-    'grid min-h-14 w-full grid-cols-[1.25rem_minmax(0,1fr)_auto_1rem] items-center gap-2 border-b border-border-soft px-3 py-2 text-left',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-accent',
-    href ? 'bg-surface-card active:bg-surface-selected' : 'cursor-not-allowed bg-surface-sunken',
-  );
-  const content = (
-    <>
-      <span
-        className={cn(
-          'h-2.5 w-2.5 justify-self-center rounded-full',
-          summary.hasException || summary.hasOnHold
-            ? 'bg-amber-500'
-            : summary.empty
-              ? 'border border-border-strong bg-transparent'
-              : 'bg-emerald-500',
-        )}
-        aria-hidden
-      />
-      <span className="min-w-0">
-        <span className="flex items-center gap-1.5">
-          <span className="truncate font-mono text-sm font-semibold text-text-default">{summary.face}</span>
-          {summary.hasOnHold ? (
-            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-800">Hold</span>
-          ) : null}
-        </span>
-        <span className="block truncate text-[11px] leading-4 text-text-soft">
-          {summary.room ?? (summary.hasException ? 'Needs a location' : 'No room')}
-        </span>
-      </span>
-      <span className="text-right">
-        <span className="block text-sm font-bold tabular-nums text-text-default">{summary.quantity}</span>
-        <span className="block whitespace-nowrap text-[10px] leading-4 text-text-soft">
-          {summary.empty ? 'Empty' : countLabel(summary.skuCount, 'SKU')}
-        </span>
-      </span>
-      {href ? <ChevronRight className="h-4 w-4 text-text-faint" /> : <AlertTriangle className="h-4 w-4 text-amber-600" />}
-    </>
-  );
-
-  if (!href) {
-    return (
-      <div aria-label={`${summary.face} has no scannable location`} aria-disabled="true" className={className} data-testid="stock-location-row">
-        {content}
-      </div>
-    );
-  }
-  return (
-    <Link href={href} aria-label={`Open location ${summary.face}`} className={className} data-testid="stock-location-row">
-      {content}
-    </Link>
+function flags(item: Pick<StockDrillGroup, 'hasOnHold' | 'hasCleanup' | 'hasException'>): string[] {
+  return [item.hasOnHold ? 'On hold' : null, item.hasCleanup ? 'Cleanup' : null, item.hasException ? 'Needs a location' : null].filter(
+    (flag): flag is string => flag != null,
   );
 }
 
-/** Location-first stock for phones, tablets and narrow desktop windows. */
+/** What is under a group, at a glance. An empty group says so instead of `0 units · 0 SKUs`. */
+function groupMeta(group: StockDrillGroup, childNoun: string | null): string {
+  return [
+    childNoun ? count(group.children, childNoun) : null,
+    ...(group.quantity > 0 ? [count(group.quantity, 'unit'), count(group.skuCount, 'SKU')] : ['Empty']),
+    ...flags(group),
+  ]
+    .filter((part): part is string => part != null)
+    .join(' · ');
+}
+
+function groupIcon(group: Pick<StockDrillGroup, 'hasOnHold' | 'hasCleanup' | 'hasException'>, icon: ReactNode) {
+  return group.hasOnHold || group.hasCleanup || group.hasException ? <AlertTriangle className="text-amber-600" /> : icon;
+}
+
+function locationRow(summary: StockLocationSummary, returnTo: string): DetailNavItem {
+  return {
+    id: summary.key,
+    title: summary.face,
+    icon: groupIcon(summary, <MapPin />),
+    meta: [
+      summary.empty ? 'Empty' : `${count(summary.quantity, 'unit')} · ${count(summary.skuCount, 'SKU')}`,
+      ...flags(summary),
+    ].join(' · '),
+    href: summary.routeCode ? withJobReturn(locationHubPath(summary.routeCode), returnTo) : null,
+  };
+}
+
 export function MobileV2StockLocations({
   rows,
   rooms,
-  activeRoom,
+  scope,
   legacyQuery,
-  requestedPage,
   capped,
 }: {
+  /** The open room's locations (empty at the room level). */
   rows: LocationStockTableRow[];
   rooms: LocationStockRoomFacet[];
-  activeRoom: string | null;
+  scope: StockDrillScope;
   legacyQuery: string;
-  requestedPage: string | null;
   capped: boolean;
 }) {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const contextualSearch = useMobileV2Search();
-  const query = contextualSearch.query.trim() || legacyQuery.trim();
-  const summaries = useMemo(
-    () => summarizeStockLocations(rows).filter((summary) => stockLocationMatches(summary, query)),
-    [query, rows],
-  );
-  const requested = Number.parseInt(requestedPage ?? '', 10);
-  const [page, setPage] = useState(Number.isFinite(requested) && requested > 0 ? requested : 1);
-  const pageCount = Math.max(1, Math.ceil(summaries.length / PAGE_SIZE));
-  const livePage = Math.min(page, pageCount);
-  const visible = summaries.slice((livePage - 1) * PAGE_SIZE, livePage * PAGE_SIZE);
-  const currentUrl = `${pathname}?${searchParams.toString()}`.replace(/\?$/, '');
+  const query = useMobileV2Search().query.trim() || legacyQuery;
+  const returnTo = `${pathname}?${searchParams.toString()}`.replace(/\?$/, '');
+  // The walk is the building: every aisle, bay and level stays in place, empty or not, so a
+  // side of the aisle never disappears (owner 2026-10-03). Search lists stocked places only.
+  const summaries = useMemo(() => summarizeStockLocations(rows), [rows]);
+  const stocked = useMemo(() => summaries.filter((summary) => !summary.empty), [summaries]);
+  const room = rooms.find((facet) => facet.id === scope.room) ?? null;
+  const numericAisle = typeof scope.aisle === 'number' ? scope.aisle : null;
 
-  useEffect(() => setPage(1), [activeRoom, query]);
+  const chips: PathChip[] = [{ id: 'rooms', value: 'Rooms', href: stockDrillHref({}), testId: 'stock-path-rooms' }];
+  if (room) chips.push({ id: 'room', value: room.label, href: stockDrillHref({ room: room.id }), testId: 'stock-path-room' });
+  if (room && scope.aisle != null) {
+    chips.push(
+      scope.aisle === STOCK_DRILL_OTHER
+        ? { id: 'aisle', value: 'Other locations', testId: 'stock-path-aisle' }
+        : { id: 'aisle', label: 'Aisle', value: pad2(scope.aisle), href: stockDrillHref({ room: room.id, aisle: scope.aisle }), testId: 'stock-path-aisle' },
+    );
+  }
+  if (room && numericAisle != null && scope.side) {
+    chips.push({
+      id: 'side',
+      value: BAY_SIDE_FACE[scope.side].short,
+      href: stockDrillHref({ room: room.id, aisle: numericAisle, side: scope.side }),
+      testId: 'stock-path-side',
+    });
+  }
+  if (room && numericAisle != null && scope.bay != null) {
+    chips.push({ id: 'bay', label: 'Bay', value: pad2(scope.bay), testId: 'stock-path-bay' });
+  }
+  const currentChip = chips[chips.length - 1]!.id;
+
+  type SideChoice = { side: StockDrillSide; group: StockDrillGroup | null; href: string };
+  type Listing = {
+    label: string;
+    rows: DetailNavItem[];
+    /** The aisle level: two full-height choices (odd bays left | even bays right) instead of a list. */
+    sides?: readonly [SideChoice, SideChoice];
+    empty: string;
+  };
+  const listing = ((): Listing => {
+    if (query) {
+      // A code always offers its place first — at every level, so an empty place stays reachable.
+      const segments = parseLabelCode(query);
+      const codeRows: DetailNavItem[] = segments
+        ? [{ id: 'code', title: `Open ${labelFace(segments)}`, icon: <MapPin />, meta: 'Location record', href: withJobReturn(locationHubPath(locationCodeFlat(segments)), returnTo) }]
+        : [];
+      if (!room) {
+        // The room level holds no stock: a code opens its place; words narrow the rooms.
+        const words = query.toLocaleLowerCase();
+        return {
+          label: 'Search results',
+          rows: [
+            ...codeRows,
+            ...rooms
+              .filter((facet) => facet.label.toLocaleLowerCase().includes(words))
+              .map((facet) => ({ id: facet.id, title: facet.label, icon: <Warehouse />, meta: count(facet.count, 'location'), href: stockDrillHref({ room: facet.id }) })),
+          ],
+          empty: 'Type a location code, or pick a room to search its stock.',
+        };
+      }
+      return {
+        label: 'Search results',
+        rows: [...codeRows, ...stocked.filter((summary) => stockLocationMatches(summary, query)).map((summary) => locationRow(summary, returnTo))],
+        empty: `Nothing in ${room.label} matches “${query}”.`,
+      };
+    }
+    if (!room) {
+      return {
+        label: 'Rooms',
+        // Places with no room are a repair queue, not a room: last.
+        rows: [...rooms]
+          .sort((a, b) => Number(a.id === UNROOMED_FACET_ID) - Number(b.id === UNROOMED_FACET_ID))
+          .map((facet) => ({ id: facet.id, title: facet.label, icon: <Warehouse />, meta: count(facet.count, 'location'), href: stockDrillHref({ room: facet.id }) })),
+        empty: 'No rooms yet.',
+      };
+    }
+    if (scope.aisle == null) {
+      const { aisles, other } = stockDrillAisles(summaries);
+      return {
+        label: `Aisles in ${room.label}`,
+        rows: [
+          ...aisles.map((aisle) => ({
+            id: `aisle-${aisle.key}`,
+            title: `Aisle ${pad2(aisle.key)}`,
+            icon: groupIcon(aisle, <MapPin />),
+            meta: groupMeta(aisle, 'bay'),
+            href: stockDrillHref({ room: room.id, aisle: aisle.key }),
+          })),
+          ...(other > 0
+            ? [{ id: 'other', title: 'Other locations', icon: <Warehouse />, meta: `${other} without an aisle`, href: stockDrillHref({ room: room.id, aisle: STOCK_DRILL_OTHER }) }]
+            : []),
+        ],
+        empty: `${room.label} has no locations yet.`,
+      };
+    }
+    if (numericAisle != null && !scope.side) {
+      // Stand in the aisle, pick the side you face, then its bays (owner 2026-10-03).
+      const sides = stockDrillSides(summaries, numericAisle);
+      const choice = (side: StockDrillSide): SideChoice => ({
+        side,
+        group: sides[side],
+        href: stockDrillHref({ room: room.id, aisle: numericAisle, side }),
+      });
+      return {
+        label: `Aisle ${pad2(numericAisle)} · pick a side`,
+        rows: [],
+        sides: [choice('left'), choice('right')],
+        empty: `Aisle ${pad2(numericAisle)} has no bays in ${room.label}.`,
+      };
+    }
+    if (numericAisle != null && scope.side && scope.bay == null) {
+      const face = BAY_SIDE_FACE[scope.side];
+      return {
+        label: `${face.bays} · ${face.side}`,
+        // One list in bay order on the chosen side; the side is the heading, never repeated per bay.
+        rows: stockDrillBays(summaries, numericAisle, scope.side).map((bay) => ({
+          id: `bay-${bay.key}`,
+          title: `Bay ${pad2(bay.key)}`,
+          icon: groupIcon(bay, <MapPin />),
+          meta: groupMeta(bay, null),
+          href: stockDrillHref({ room: room.id, aisle: numericAisle, bay: bay.key }),
+        })),
+        empty: `No ${face.bays.toLocaleLowerCase()} in aisle ${pad2(numericAisle)}.`,
+      };
+    }
+    return {
+      label: scope.aisle === STOCK_DRILL_OTHER ? 'Other locations' : `Locations in bay ${pad2(scope.bay ?? 0)}`,
+      rows: stockDrillLocations(summaries, scope).map((summary) => locationRow(summary, returnTo)),
+      empty: 'No locations here.',
+    };
+  })();
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col bg-surface-card" data-testid="mobile-v2-stock">
-      <div className="sticky top-0 z-sticky border-b border-border-soft bg-surface-card/95 backdrop-blur">
-        <nav className="flex gap-2 overflow-x-auto px-3 py-2" aria-label="Warehouse rooms">
-          {rooms.map((room) => {
-            const active = room.id === activeRoom;
-            return (
-              <Link
-                key={room.id}
-                href={roomHref(room.id, legacyQuery)}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold',
-                  active
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-border-soft bg-surface-card text-text-default',
-                )}
-              >
-                {room.label}
-                <span className={cn('tabular-nums', active ? 'text-white/75' : 'text-text-soft')}>{room.count}</span>
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="flex h-8 items-center justify-between px-3 text-[11px] text-text-soft">
-          <span className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5" />
-            {countLabel(summaries.length, 'location')}
-          </span>
-          {query ? <span className="max-w-[55%] truncate">Matching “{query}”</span> : null}
-        </div>
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col bg-mode-panel" data-testid="mobile-v2-stock" data-level={currentChip}>
+      <div className="sticky top-0 z-sticky border-b border-mode-rule bg-mode-panel">
+        <PathChips chips={chips} currentId={currentChip} ariaLabel="Warehouse path" testId="stock-path" />
       </div>
 
-      <div className="flex-1">
-        {visible.length > 0 ? visible.map((summary) => (
-          <LocationRow key={summary.key} summary={summary} returnTo={currentUrl} />
-        )) : (
-          <div className="px-6 py-16 text-center">
-            <MapPin className="mx-auto h-6 w-6 text-text-faint" />
-            <p className="mt-2 text-sm font-semibold text-text-default">No locations found</p>
-            <p className="mt-1 text-xs text-text-soft">Try another room or clear search.</p>
-          </div>
-        )}
-      </div>
+      <h2 className="px-mode-page pb-1 pt-3 text-role-caption font-semibold text-text-muted" data-testid="stock-level-heading">
+        {listing.label}
+      </h2>
+      {listing.sides ? (
+        // The two choices fill what is left of the screen, split down the middle.
+        <div className="grid flex-1 grid-cols-2 border-t border-mode-rule" data-testid="stock-side-choice">
+          {listing.sides.map(({ side, group, href }) => (
+            <Button
+              key={side}
+              variant="secondary"
+              size="xl"
+              radius="flush"
+              className={cn(
+                'h-full w-full flex-col gap-1 whitespace-normal border-0 px-3 text-center',
+                side === 'right' && 'border-l border-mode-rule',
+              )}
+              disabled={!group}
+              onClick={() => router.push(href)}
+              data-testid={`stock-side-${side}`}
+            >
+              <span className="text-role-title font-semibold">{BAY_SIDE_FACE[side].bays}</span>
+              <span className="text-mode-body">{BAY_SIDE_FACE[side].side}</span>
+              <span className="text-role-caption font-normal text-mode-muted">
+                {group ? groupMeta(group, 'bay') : 'No bays on this side'}
+              </span>
+            </Button>
+          ))}
+        </div>
+      ) : listing.rows.length > 0 ? (
+        <div data-testid="stock-level-rows">
+          <DetailNav label={listing.label} rows={listing.rows} />
+        </div>
+      ) : (
+        <EmptyState title={listing.empty} />
+      )}
 
       {capped ? (
-        <p className="border-t border-border-soft bg-surface-warning px-3 py-2 text-xs text-text-warning">
-          This room is larger than the live feed. Search to narrow it.
+        <p className="border-t border-mode-rule bg-surface-warning px-mode-page py-2 text-role-caption text-text-warning">
+          This room is larger than the live feed. Open an aisle or search to narrow it.
         </p>
-      ) : null}
-      {pageCount > 1 ? (
-        <nav className="sticky bottom-0 grid grid-cols-[2.75rem_1fr_2.75rem] items-center border-t border-border-soft bg-surface-card p-2" aria-label="Stock pages">
-          <IconButton
-            size="touch"
-            radius="surface"
-            ariaLabel="Previous stock page"
-            icon={<ChevronLeft className="h-5 w-5" />}
-            disabled={livePage <= 1}
-            onClick={() => setPage((value) => Math.max(1, value - 1))}
-          />
-          <span className="text-center text-xs font-semibold tabular-nums text-text-soft">{livePage} / {pageCount}</span>
-          <IconButton
-            size="touch"
-            radius="surface"
-            ariaLabel="Next stock page"
-            icon={<ChevronRight className="h-5 w-5" />}
-            disabled={livePage >= pageCount}
-            onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
-          />
-        </nav>
       ) : null}
     </div>
   );

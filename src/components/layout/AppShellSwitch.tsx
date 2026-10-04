@@ -9,6 +9,7 @@ import Providers from '@/components/Providers';
 import { WarehouseShell } from '@/components/layout/WarehouseShell';
 import type { AuthSessionUser } from '@/contexts/AuthContext';
 import { RouteModeRegion } from '@/design-system/providers/RouteModeRegion';
+import { appRootClass } from '@/design-system/tokens/mobile-viewport';
 
 /**
  * The counter tablet's floor — its own chunk for the same reason as the
@@ -41,7 +42,10 @@ export function AppShellSwitch({
   if (publicChrome) {
     /* PUBLIC CHROME — signed-out entry surfaces only. */
     return (
-      <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
+      <div
+        id="app-root"
+        className={appRootClass(mobileTree)}
+      >
         <Providers publicChrome>{page}</Providers>
       </div>
     );

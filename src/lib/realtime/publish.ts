@@ -12,7 +12,6 @@ import {
   getOpsPlansChannelName,
   getPackerBridgeChannelName,
   getRepairsChannelName,
-  getScanLogChannelName,
   getStaffChannelName,
   getStationChannelName,
   getKioskBridgeChannelName,
@@ -24,7 +23,7 @@ import { formatPSTTimestamp } from '@/utils/date';
 
 // Every payload carries `organizationId` so the channel it publishes to is
 // org-namespaced. Route handlers pass `ctx.organizationId`; the transitional
-// jobs (orders-ingest-drain, fulfillment-sync, …) pass `transitionalDogfoodOrgId()`.
+// jobs (pipeline, google-sheets transfer-orders, …) pass `transitionalDogfoodOrgId()`.
 
 type OrderChangedPayload = {
   organizationId: string;
@@ -805,31 +804,6 @@ export async function publishPackerScanReady(payload: PackerScanReadyPayload) {
   });
 }
 
-// ─── Phone → desktop scan-history feed ──────────────────────────────────── Fired when a phone scans a receiving Data Matrix label…
-
-interface ScanLoggedPayload {
-  organizationId: string;
-  staffId: number;
-  rawValue: string;
-  kind: string;
-  /** Mobile route the scan resolved to, e.g. /m/r/123, /m/l/45, /m/u/7. */
-  routedTo: string;
-}
-
-export async function publishScanLog(payload: ScanLoggedPayload) {
-  const staffId = Number(payload.staffId);
-  if (!Number.isFinite(staffId) || staffId <= 0) return;
-
-  await publishEvent(getScanLogChannelName(payload.organizationId, staffId), 'scan_logged', {
-    type: 'scan.logged',
-    staffId,
-    rawValue: payload.rawValue,
-    kind: payload.kind,
-    routedTo: payload.routedTo,
-    timestamp: formatPSTTimestamp(),
-  });
-}
-
 /** Resolver-only phone scan wakeup for the organization-wide station ledger. */
 export async function publishMobileScanLogged(payload: { organizationId: string; id: number }) {
   const id = Number(payload.id);
@@ -944,6 +918,10 @@ type ShipmentChangedPayload = {
   organizationId: string;
   shipmentId: number;
   trackingNumber?: string | null;
+  /** The shipment's carrier code (`shipping_tracking_numbers.carrier`), when the publisher holds it. */
+  carrier?: string | null;
+  /** The `latest_status_category` the update just stored, when the publisher holds it. */
+  statusCategory?: string | null;
   source: string;
 };
 
@@ -953,6 +931,8 @@ export async function publishShipmentChanged(payload: ShipmentChangedPayload) {
     type: 'shipment.changed',
     shipmentId: payload.shipmentId,
     trackingNumber: payload.trackingNumber ?? null,
+    carrier: payload.carrier ?? null,
+    statusCategory: payload.statusCategory ?? null,
     source: payload.source,
     timestamp: formatPSTTimestamp(),
   });

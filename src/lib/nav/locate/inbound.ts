@@ -8,11 +8,15 @@
  * (`ReconEntry.exception.inView`); it keeps its status bucket too. A badge
  * with nothing in that view (several POs, lookup failed) stays in `detail`:
  * the Exceptions list would not show it. Each answered ref carries its
- * reason as the entry's `facet` (`?recon_reason=`).
+ * reason as the entry's `facet` (`?recon_reason=`). `detail` also says the
+ * carrier's last word and the number's follow-up tag — the same words the
+ * pasted ledger's row shows, so the popout and the list never disagree.
  */
 
 import type { NavLocateBucket, NavLocateEntry } from '@/lib/nav/context/schema';
 import type { CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
+import { INBOUND_FOLLOWUP_LABELS, inboundFollowupKey, type InboundFollowup } from '@/lib/receiving/inbound-followups';
+import { carrierFactOf, carrierFactText } from '@/lib/receiving/pasted-number-facts';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   RECON_PARAM,
@@ -52,14 +56,16 @@ const INBOUND_BUCKETS: Readonly<Record<InboundBucketId, Omit<NavLocateBucket, 'i
   exceptions: { label: 'Exceptions', tone: 'danger', href: `${INCOMING_SURFACE_ROUTE}?lane=exceptions` },
 };
 
- export interface InboundLocateDeps {
-   /** The Unbox Check rows for these refs (every bucket of its answer). */
-   check(refs: readonly string[]): Promise<CheckZohoReceivedRow[]>;
-   /** `GET /api/receiving-lines?view=reconcile&ref_in=…` rows. */
-   lines(refs: readonly string[]): Promise<ReceivingLineRow[]>;
-   /** Incoming `?state=AWAITING_TRACKING` rows for these refs — the list the bucket opens. */
-   awaiting(refs: readonly string[]): Promise<ReceivingLineRow[]>;
- }
+export interface InboundLocateDeps {
+  /** The Unbox Check rows for these refs (every bucket of its answer). */
+  check(refs: readonly string[]): Promise<CheckZohoReceivedRow[]>;
+  /** `GET /api/receiving-lines?view=reconcile&ref_in=…` rows. */
+  lines(refs: readonly string[]): Promise<ReceivingLineRow[]>;
+  /** Incoming `?state=AWAITING_TRACKING` rows for these refs — the list the bucket opens. */
+  awaiting(refs: readonly string[]): Promise<ReceivingLineRow[]>;
+  /** The follow-up tags set on these canonical keys (`inboundFollowupKey`). */
+  followups(keys: readonly string[]): Promise<InboundFollowup[]>;
+}
 
 export async function locateInbound(
   selection: Pick<RefSelection, 'refs' | 'keys'>,
@@ -74,13 +80,25 @@ export async function locateInbound(
   // no Check row, or no ERP answer and nothing in our tables.
   const checked = new Set(checkRows.map((row) => canonicalizeTrackingKey(row.tracking)));
   const awaitingKeys = new Set(awaitingRows.flatMap((row) => rowRefKeys(row)));
+  // The ledger's lines per number — by every key a line answers to, as `reconcileCheck` reads them.
+  const linesByKey = new Map<string, ReceivingLineRow[]>();
+  for (const line of lineRows) {
+    for (const key of rowRefKeys(line)) {
+      const bucket = linesByKey.get(key);
+      if (bucket) bucket.push(line);
+      else linesByKey.set(key, [line]);
+    }
+  }
+  const followupKeys = recon.map((entry) => inboundFollowupKey({ poNumber: entry.poNumber, ref: entry.ref }));
+  const followups = followupKeys.length > 0 ? await deps.followups([...new Set(followupKeys)]) : [];
+  const followupByKey = new Map(followups.map((followup) => [followup.key, followup]));
   const counts: Record<InboundBucketId, number> = {
     awaiting_tracking: 0,
     received: 0,
     not_received: 0,
     exceptions: 0,
   };
-  const entries = recon.map((entry): NavLocateEntry => {
+  const entries = recon.map((entry, index): NavLocateEntry => {
     const nowhere = !checked.has(entry.key) || entry.reasonCode === 'no_match';
     const buckets: InboundBucketId[] = [];
     // The list, not the in_transit facet. A ref the list holds is found.
@@ -94,11 +112,22 @@ export async function locateInbound(
       ? [`PO ${entry.poNumber}`, entry.vendor].filter(Boolean).join(' · ')
       : entry.vendor;
     const reason = entry.exception?.reason;
+    const carrierWord = carrierFactText(carrierFactOf(linesByKey.get(entry.key) ?? []), true);
+    const followup = followupByKey.get(followupKeys[index]!);
+    const words = nowhere
+      ? []
+      : [
+          entry.detail,
+          reason && reason !== entry.detail ? reason : null,
+          // "Ordered · no tracking" / "In transit" already say it.
+          carrierWord && !entry.detail.toLowerCase().includes(carrierWord.toLowerCase()) ? carrierWord : null,
+          followup ? INBOUND_FOLLOWUP_LABELS[followup.tag] : null,
+        ];
     return {
       ref: entry.ref,
       buckets,
       title: title || null,
-      detail: nowhere ? null : reason && reason !== entry.detail ? `${entry.detail} · ${reason}` : entry.detail,
+      detail: words.filter(Boolean).join(' · ') || null,
       recordHref: nowhere ? null : inboundLedgerHref(entry.status, entry.ref),
       facet: entry.reasonCode ? { id: entry.reasonCode, label: RECON_REASON_LABELS[entry.reasonCode] } : null,
     };

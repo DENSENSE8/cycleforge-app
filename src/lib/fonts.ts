@@ -1,7 +1,8 @@
-import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter } from 'next/font/google';
+import { IBM_Plex_Mono, Inter } from 'next/font/google';
 
 /**
- * Kinetic Ledger type — **Inter** for the sans cut, IBM Plex for the two specialist cuts.
+ * CycleForge type — Inter for interface language and IBM Plex Mono only for
+ * exact identifiers (SKU, serial, tracking and order numbers).
  * **Exception — mono 700:**
  */
 export const cfSans = Inter({
@@ -18,13 +19,6 @@ export const cfSans = Inter({
 
 /** Kept as an alias: the italic cut now rides {@link cfSans}. */
 export const cfSansItalic = cfSans;
-
-export const ibmPlexSansCondensed = IBM_Plex_Sans_Condensed({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-ibm-plex-condensed',
-  display: 'swap',
-});
 
 export const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],

@@ -13,7 +13,7 @@ import { useEcwidOrderSearch } from '@/hooks/orders/useIntakeImports';
 import { TextField } from '@/design-system/primitives/TextField';
 import { TriageImportRowFace } from '@/design-system/components/triage-shelf/TriageImportRow';
 import { ecwidOrderRow } from '@/lib/orders/intake/import-rows';
-import { ImportKeyHint } from './CheckoutSquareImport';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { EcwidOrderImport } from '@/lib/orders/ecwid-order-import';
 import { cn } from '@/utils/_cn';
 
@@ -79,23 +79,24 @@ export function CheckoutEcwidImport({
           {shown.map((order, index) => {
             const done = order.importedAs != null && !allowImported;
             return (
-              <li
-                key={order.orderNumber}
-                id={`checkout-ecwid-${order.orderNumber}`}
-                role="option"
-                aria-selected={index === active}
-                aria-disabled={done}
-                onMouseEnter={() => setActive(index)}
-                onClick={() => !done && onImport(order)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5',
-                  done ? 'cursor-default opacity-60' : 'cursor-pointer',
-                  index === active && !done && 'bg-surface-hover',
-                )}
-                data-testid="checkout-ecwid-row"
-              >
-                <TriageImportRowFace row={ecwidOrderRow(order, 'USD')} hint={index === active ? <ImportKeyHint /> : null} />
-              </li>
+              <HoverTooltip key={order.orderNumber} label="Import" shortcut="↵" focusable={false} disabled={done} asChild>
+                <li
+                  id={`checkout-ecwid-${order.orderNumber}`}
+                  role="option"
+                  aria-selected={index === active}
+                  aria-disabled={done}
+                  onMouseEnter={() => setActive(index)}
+                  onClick={() => !done && onImport(order)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5',
+                    done ? 'cursor-default opacity-60' : 'cursor-pointer',
+                    index === active && !done && 'bg-surface-hover',
+                  )}
+                  data-testid="checkout-ecwid-row"
+                >
+                  <TriageImportRowFace row={ecwidOrderRow(order, 'USD')} />
+                </li>
+              </HoverTooltip>
             );
           })}
         </ul>

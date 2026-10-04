@@ -40,7 +40,7 @@ function PhotoPageInner() {
       orderId={orderId}
       orderRowId={Number.isSafeInteger(orderRowId) && orderRowId > 0 ? orderRowId : null}
       headerLabel={headerLabel}
-      returnHref={completePacking ? '/m/pack' : '/m/work'}
+      returnHref={completePacking ? '/m/pick' : '/m/work'}
       maxPhotos={10}
       guided={guided}
       initialStep={initialStep}

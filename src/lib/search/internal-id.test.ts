@@ -78,23 +78,20 @@ describe('isPrintedHandlePayload', () => {
 });
 
 describe('searchPageHrefForScanRoute', () => {
-  it('sends carton QR / R-id to search receiving, never /m/r', () => {
+  it('sends carton and unit handles to retained record surfaces', () => {
     const route = decodedHandle('https://usav.app.cycleforge.ai/m/r/99');
     assert.ok(route);
     assert.equal(route.redirect, '/m/r/99');
-    assert.equal(searchPageHrefForScanRoute(route), '/search?sel=receiving:99');
-    assert.equal(searchPageHrefForScanRoute(decodedHandle('R-99')!), '/search?sel=receiving:99');
+    assert.equal(searchPageHrefForScanRoute(route), '/unbox?openReceivingId=99');
+    assert.equal(searchPageHrefForScanRoute(decodedHandle('R-99')!), '/unbox?openReceivingId=99');
+    assert.equal(searchPageHrefForScanRoute(decodedHandle('U-451')!), '/serial/451');
   });
 
-  it('sends numeric unit handles to search unit', () => {
-    assert.equal(searchPageHrefForScanRoute(decodedHandle('U-451')!), '/search?sel=unit:451');
-  });
-
-  it('does not send GS1 serial URLs to /01 or /m — desktop search query instead', () => {
+  it('sends GS1 serial URLs to the retained serial record', () => {
     const route = decodedHandle('https://usav.app.cycleforge.ai/01/00012345678905/21/ABC');
     assert.ok(route);
     assert.match(route.redirect ?? '', /^\/01\//);
-    assert.equal(searchPageHrefForScanRoute(route), '/search?q=ABC');
+    assert.equal(searchPageHrefForScanRoute(route), '/serial/ABC');
   });
 
   it('maps every /m/ class onto a desktop path — never returns /m/', () => {
@@ -102,8 +99,8 @@ describe('searchPageHrefForScanRoute', () => {
     assert.equal(desktopSearchHref('/m/u/CN1A2B3'), '/serial/CN1A2B3');
     assert.equal(desktopSearchHref('/m/b/A0101101'), '/bin/A0101101');
     assert.equal(desktopSearchHref('/m/h/12'), '/tote/12');
-    assert.equal(desktopSearchHref('/m/rs/33'), '/search?sel=repair:33');
-    assert.equal(desktopSearchHref('/m/scan'), '/search');
+    assert.equal(desktopSearchHref('/m/rs/33'), '/repair?openRepair=33');
+    assert.equal(desktopSearchHref('/m/scan'), '/');
     assert.ok(!desktopSearchHref('/m/r/99').startsWith('/m/'));
     assert.ok(!desktopSearchHref('/01/00012345678905/21/ABC').startsWith('/01/'));
   });
@@ -124,10 +121,10 @@ describe('directOpenForTypedHandle', () => {
     assert.match(rack.href, /code=A0101100/);
   });
 
-  it('stays quiet for handles whose record hit answers them (/search records, the tote record)', () => {
-    assert.equal(directOpenForTypedHandle('R-99'), null);
-    assert.equal(directOpenForTypedHandle('U-451'), null);
-    assert.equal(directOpenForTypedHandle('REP-33'), null);
+  it('opens retained records directly and stays quiet for the tote record', () => {
+    assert.equal(directOpenForTypedHandle('R-99')?.href, '/unbox?openReceivingId=99');
+    assert.equal(directOpenForTypedHandle('U-451')?.href, '/serial/451');
+    assert.equal(directOpenForTypedHandle('REP-33')?.href, '/repair?openRepair=33');
     assert.equal(directOpenForTypedHandle('H-12'), null);
   });
 

@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useParams } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { DetailFact, DetailFacts, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { useRepairRecord, useRepairTicketLink } from '@/components/mobile/repair/useRepairWorkbench';
 import { repairStatusOperatorLabel } from '@/lib/repair-status';
@@ -41,7 +41,7 @@ function RepairRecordInner() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar backHref={`/m/rs/${repairId}`} subtitle="Record" title={rsCode} mono />
+      <MobileV2DetailTopBar backHref={`/m/rs/${repairId}`} subtitle="Record" title={rsCode} mono />
 
       <div className="flex-1 divide-y divide-mode-rule">
         {loading && <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>}

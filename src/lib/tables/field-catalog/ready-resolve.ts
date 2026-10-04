@@ -1,6 +1,6 @@
 /** Ready slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
-import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
+import type { SlotValue } from '@/lib/tables/field-catalog/slot-value';
 import {
   ALLOCATION_REASON_LABELS,
   CHANNEL_DISPOSITION_LABELS,
@@ -67,7 +67,7 @@ function readyUnitHandle(hit: AllocationHit): string {
 export function resolveReadySlotValue(
   hit: AllocationHit,
   fieldId: string,
-): CompoundSlotValue | null {
+): SlotValue | null {
   switch (fieldId) {
     case 'ready.unit':
       return { kind: 'value', text: readyUnitHandle(hit) };

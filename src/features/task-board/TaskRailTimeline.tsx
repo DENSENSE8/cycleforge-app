@@ -116,7 +116,8 @@ export function TaskRailTimeline({
   );
 }
 
-function TimelineRow({
+/** One timeline entry — the Timeline tab's row, reused by the Overview's newest-events preview. */
+export function TimelineRow({
   item,
   nowMs,
   first,

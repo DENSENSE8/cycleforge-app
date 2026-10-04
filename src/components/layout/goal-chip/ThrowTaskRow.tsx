@@ -9,30 +9,29 @@ import {
 } from '@/components/quick-access/ThrowTaskHost';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 export function ThrowTaskRow({ onOpen }: { onOpen?: () => void }) {
   return (
     <div className="border-b border-border-hairline">
-      <button
-        type="button"
-        onClick={() => {
-          onOpen?.();
-          openThrowTask();
-        }}
-        className={cn(
-          'ds-raw-button group flex w-full items-center gap-2 rounded-none px-3.5 py-2.5 text-left transition-colors hover:bg-surface-hover',
-          focusRing('control', 'accent'),
-        )}
-      >
-        <Send className="h-3.5 w-3.5 shrink-0 text-text-muted" />
-        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
-          Throw a task
-        </span>
-        <KeyboardKey size="xs">
-          {THROW_TASK_HOTKEY_LABEL}
-        </KeyboardKey>
-      </button>
+      <HoverTooltip label="Throw a task" shortcut={THROW_TASK_HOTKEY_LABEL} asChild>
+        <button
+          type="button"
+          onClick={() => {
+            onOpen?.();
+            openThrowTask();
+          }}
+          className={cn(
+            'ds-raw-button group flex w-full items-center gap-2 rounded-none px-3.5 py-2.5 text-left transition-colors hover:bg-surface-hover',
+            focusRing('control', 'accent'),
+          )}
+        >
+          <Send className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+          <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
+            Throw a task
+          </span>
+        </button>
+      </HoverTooltip>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { StaffPickerList, type StaffPickerRow } from '@/components/auth/StaffPickerList';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { readRecentSignins, writeRecentSignin } from '@/lib/auth/recent-signins';
 
@@ -90,47 +90,44 @@ export function SwitchStaffSheet() {
       : 'Choose a staff member';
 
   return (
-    <BottomSheet
-      open={isOpen}
-      onClose={closeSwitcher}
-      title="Switch staff"
-      maxWidth="28rem"
-      fixedWidth
-      scrollBody
-      // Phones get the whole viewport:
-      fullScreen
-    >
-      <div className="flex min-h-0 flex-1 flex-col">
-        <p className="shrink-0 text-center text-role-caption text-text-soft">{statusLabel}</p>
-        <div className="mt-3 shrink-0">
-          <SearchField
-            value={query}
-            onChange={setQuery}
-            onClear={() => setQuery('')}
-            placeholder="Search staff"
-            tone="neutral"
-            size="compact"
-            debounceMs={0}
-            autoFocus
-          />
-        </div>
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain p-0.5 [scrollbar-gutter:stable]">
-          <StaffPickerList
-            recent={recent}
-            recentReady={recentReady}
-            query={query}
-            onPick={(s) => { void switchTo(s); }}
-            onMessage={setPickerMessage}
-            flat
-            excludeStaffId={user?.staffId}
-          />
-          {pickerMessage && (
-            <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
-              {pickerMessage}
-            </div>
-          )}
-        </div>
-      </div>
-    </BottomSheet>
+    <Sheet open={isOpen} onOpenChange={(next) => { if (!next) closeSwitcher(); }}>
+      {/* Phones get the whole viewport: */}
+      <SheetContent side="bottom" size="full" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>Switch staff</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="flex flex-col">
+          <p className="shrink-0 text-center text-role-caption text-text-soft">{statusLabel}</p>
+          <div className="mt-3 shrink-0">
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              onClear={() => setQuery('')}
+              placeholder="Search staff"
+              tone="neutral"
+              size="compact"
+              debounceMs={0}
+              autoFocus
+            />
+          </div>
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain p-0.5 [scrollbar-gutter:stable]">
+            <StaffPickerList
+              recent={recent}
+              recentReady={recentReady}
+              query={query}
+              onPick={(s) => { void switchTo(s); }}
+              onMessage={setPickerMessage}
+              flat
+              excludeStaffId={user?.staffId}
+            />
+            {pickerMessage && (
+              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                {pickerMessage}
+              </div>
+            )}
+          </div>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

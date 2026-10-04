@@ -46,9 +46,9 @@ Owner rulings 2026-09-30, shipped:
 - Recorded-video upload from the phone failed: the lane is reached over the tailnet
   (`http://avion:3050` etc.), which the bucket CORS did not allow. Origins added in `scripts/gcs-bucket-cors.mjs`.
 - "Delegate" → **New task** everywhere (`NewTaskSheet.tsx`, board `N`, ⌘K `New task “<query>”`).
-+- Ticket thread: always a tab on every task row — with no ticket linked it shows a paste-a-number panel;
-+  the repair sync resolves a repair's paperwork number against `support_tickets` (exact org-scoped match)
-+  and links the thread, so repair rows carry "Support #10089" and reply inline.
+- Ticket thread: always a tab on every task row — with no ticket linked it shows a paste-a-number panel;
+  the repair sync resolves a repair's paperwork number against `support_tickets` (exact org-scoped match)
+  and links the thread, so repair rows carry "Support #10089" and reply inline.
 - Alerts: never to yourself (server `cannot_alert_self`; owners default minus sender); the Alert verb/`A` key
   only under scope Everyone. Media tab fills the record width.
 - Repairs are Support rows: every open repair (not Done / Picked Up / Shipped / Cancelled, no pickup
@@ -79,12 +79,61 @@ Owner rulings 2026-09-30, shipped:
   snapshots were flipping the slider by itself). External edits still land after the window.
   During the rewrite the write step was briefly dropped (face moved, nothing saved) — the drift test now
   asserts PATCH 200s AND zero idle flips.
+- 2026-10-03 ticket linkage: the mirror-only match missed every slip number the `support_tickets` mirror had
+  never seen (RS-77 `#9431` showed "Support Repair #9431" on the row but the Ticket tab's link panel).
+  The sync now plans `findTicket` for each OPEN repair whose task has no ticket link: GET the slip number
+  live, else Zendesk search `"RS <id>"`, and link only when the subject proves it is that repair's
+  (`repairIdInTicketSubject` / `isRepairOwnTicket`, `src/lib/tasks/repair-tasks.ts`; a subject naming
+  another RS id is refused). Linked 28, `ticketUnmatched` 7 (RS-37, 60, 102, 4547, 4548, 4780, 4798 —
+  no helpdesk thread names them); steady-state pass 24s, 0 failed.
+- Status pills (`TaskStatusPill`, `TicketStatusPill`, board `RepairChip`) read in Inter, sentence case,
+  no tracking (`statusPillLabel` preset) — not the condensed `text-role-micro` cut (owner 2026-10-03).
+- Subtitle inks, at the source (owner 2026-10-03: "the subtitle … must be increased contrast"): every theme
+  and mode now floors secondary/muted ≥9:1 (light schemes), soft ≥6:1, faint ≥4.5:1 on card, canvas, hover
+  AND sunken. Default light was faint #94a3b8 = 2.56:1 on white (1,574 `text-text-faint` uses in 569 files);
+  now secondary #374457 · soft #505e74 · faint #636f83; neutral mode muted #434343 · faint #5d5d5d.
+  Guard `src/design-system/themes/ink-floors.test.ts`; artifacts regenerated (`pnpm tokens:build`).
+  Board line 2 is medium weight; the phone row caption and band labels moved off the 10px condensed
+  micro cut to `text-role-caption` sans.
+- Everything view groups by type — Daily checklist · Support · Long-term projects · Standalone tasks
+  (`TASK_BOARD_ROW_TYPES` order), each group in board order under a sticky type heading (glyph, sidebar
+  name, count), split by a `border-border-default` hairline; one type present = one flat list. Phone
+  `/m/home` "Assigned to me" groups the same way. J/K walks the grouped order.
+- 2026-10-03 (mobile-first, `docs/HANDOFF-tasks-mobile-first.md` M1–M3): the phone task sheet is label-free
+  and smoked at 390×844 (tasks 16012, 15994, 16127 repair, 14091 docs): WHEN·STATE = due far left · status
+  pill (· reminder only while it is still ahead and the task is open); WHO·WHERE = project (truncates first) ·
+  lead with name + "lead" · other owners as faces · add · bell, one 44px row; Docs inline with comments;
+  0 targets under 44px (`StopSlider` stop chips gained a 44px `before:` hit area, all callers); contrast 0
+  fails light and dark. Removed: "Followed up" (now `DateTimePickerField ariaLabel`, new optional prop),
+  "Videos · N"/"Photos · N", Pomodoro "Focus"/"Spent" (now `25:00  0:00 spent`). `MobileTaskSections`
+  imported a non-exported `TaskEntityType` and used `IconButton` unimported (the email-link unlink row
+  would have thrown) — fixed. Desktop port waits for the owner's look at the phone (M1).
+- 2026-10-03 (M9, owner: "the D for done, the A for alert must not be displayed in line — hotkey on hover"):
+  every inline keycap on the board is gone — row verb Done/Reply, Alert, Send, New task, Clear, Hide,
+  checklist Enter, Log, status-picker letters, record header verbs (`DeskHeaderAction` no longer paints a
+  keycap at any band width; `shortcut` = tooltip only). Repo-wide law in `pinned.json` "KeyboardKey",
+  guarded by eslint `cf-keys/hotkey-on-hover` + `cf-keys/no-raw-kbd`. Smoked at :3050 1440px: 0 keycaps
+  at rest on `/?task=16012`; hovering Done shows the tooltip "Done [D]".
+- 2026-10-03 (owner: "at maximum width it should display the people involved on the second row, not the
+  third"; "Incoming Shipment … overflow on the bottom"): rows are 2 lines when wide, 3 when narrow.
+  `TaskTable.tsx` lines 2–3 are ONE `flex-wrap` band of two items — WHEN·STATE and WHO·WHERE — so WHO·WHERE
+  shares line 2 when it fits the row's own width and drops whole to line 3 when it does not (no viewport
+  breakpoint). Band height 20px (was 16px with `overflow-hidden`, which cut the 17px ringed repair chip's
+  bottom and the 20px avatars). Link/photo/doc counts moved to the right edge (they used to wrap onto a
+  line of their own). Measured at :3050 (50 rows): 1920 and 1920 + record pane = 50/50 two-line, people
+  on line 2 in 47/47; 1024 + pane = 21 on line 2 / 26 on line 3; 900 = 45 on line 3; 0 clipped elements.
 
 Open:
 - Recorded video upload is ONE XHR PUT of the whole file: on cellular a large recording can still die
   mid-transfer. Remedy: GCS resumable session + chunked PUTs with retry (`Location` must then be added to
   the CORS `responseHeader` list).
 - Repair task notes are single-newline lines, so the Brief shows them as one paragraph.
+- 20 repairs are open ("Pending Repair" etc.) while their Zendesk thread is Closed — e.g. RS-77/#9431 has
+  "Customer picked up on 7.27, Mike charged $168". The repair records are stale, not the tasks; the owner
+  decides whether to mark them Picked Up. Their rows say "Follow up on the ticket", and a public reply on
+  a Closed Zendesk ticket is refused by Zendesk.
+- Phone port (owner 2026-10-03): ranked plan in this session's report — triage order + "Do now" band,
+  row WHY line, row-opens-sheet, DetailDock with next-step primary, phone priority/due/chase, one status store.
 
 ## 1. Owner rulings (2026-09-29, verbatim intent → decision)
 

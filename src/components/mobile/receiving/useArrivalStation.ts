@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveViaLookupPo } from '@/lib/receiving/scan';
 import type { LookupPoData } from '@/lib/receiving/scan';
-import { buildScanVerdict, scanFailureVerdict } from '@/components/mobile/redesign/scan-verdict';
+import { buildScanVerdict, scanFailureVerdict } from '@/lib/mobile/scan-verdict';
 import {
   arrivalScanIntent,
   planDoorScan,

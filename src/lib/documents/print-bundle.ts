@@ -16,11 +16,14 @@ import {
 import {
   recordDocumentPrintJob,
   getDocumentPrintJobByEventId,
+  type DocumentPrintJobInput,
   type DocumentPrintJobRow,
   type DocumentPrintJobStatus,
   type DocumentPrintJobType,
 } from '@/lib/documents/document-print-jobs';
 import { dispatchPrintNodePdf } from '@/lib/print/dispatchPrintNodePdf';
+import { readLabelIngestionPdf } from '@/lib/label-ingestions/ingestion-service';
+import { normalizeTrackingNumber } from '@/lib/tracking-format';
 
 const BUNDLE_TYPES: OutboundDocumentType[] = ['shipping_label', 'packing_slip'];
 
@@ -32,19 +35,37 @@ type PrintBundleStatus =
   | 'failed'
   | 'idempotent_replay';
 
+/**
+ * A bulk-uploaded label already paired to the order (label_ingestions
+ * MATCHED / LINKED with a staged PDF) that has no `documents` row until it is
+ * applied. It prints as a shipping label.
+ */
+export interface PairedLabelIngestion {
+  id: number;
+  fileBasename: string;
+  trackingNumberNormalized: string | null;
+}
+
 interface PrintableBundleItem {
-  kind: 'outbound' | 'manual';
+  kind: 'outbound' | 'manual' | 'label_ingestion';
   /** documents.id when kind=outbound, or manual documents row when promoted */
   documentId?: number;
   /** product_manuals.id when kind=manual (bridge / dual-write) */
   productManualId?: number;
+  /** label_ingestions.id when kind=label_ingestion */
+  labelIngestionId?: number;
+  /** Same-origin content URL when the item has no documents row (label_ingestion). */
+  src?: string;
   documentType: DocumentPrintJobType;
   isPdf: boolean;
 }
 
 interface ResolvePrintBundleResult {
+  /** Every shipping label (newest first), then the newest packing slip. */
   documents: OutboundDocument[];
   manuals: PackBundleManual[];
+  /** Paired labels with no documents row yet — printed with the labels. */
+  labelIngestions: PairedLabelIngestion[];
   byType: Partial<Record<OutboundDocumentType, OutboundDocument>>;
   missingTypes: OutboundDocumentType[];
 }
@@ -56,13 +77,14 @@ interface DispatchPrintBundleInput {
   actorStaffId?: number | null;
   reprint?: boolean;
   clientEventIdPrefix?: string;
-  /** Print only these papers; absent = the whole bundle (label + slip + manuals). */
+  /** Print only these papers; absent = the whole bundle (labels + slip + manuals). */
   documentTypes?: readonly DocumentPrintJobType[];
 }
 
 interface DispatchPrintBundleJobResult {
   documentId?: number;
   productManualId?: number;
+  labelIngestionId?: number;
   documentType: DocumentPrintJobType;
   status: DocumentPrintJobStatus;
   jobRow: DocumentPrintJobRow | null;
@@ -90,8 +112,10 @@ export interface PrintBundleDeps {
   listDocumentsForOrder: typeof listDocumentsForOrder;
   listDocumentsForShipment: typeof listDocumentsForShipment;
   listAssignedManualsForOrder: typeof listAssignedManualsForOrder;
+  listPairedLabelIngestionsForOrder: typeof listPairedLabelIngestionsForOrder;
   readOutboundDocumentBytes: typeof readOutboundDocumentBytes;
   readProductManualBytes: typeof readProductManualBytes;
+  readLabelIngestionPdf: (orgId: OrgId, ingestionId: number) => Promise<{ bytes: Buffer; fileBasename: string }>;
   dispatchPrintNodePdf: typeof dispatchPrintNodePdf;
   recordDocumentPrintJob: typeof recordDocumentPrintJob;
   getDocumentPrintJobByEventId: typeof getDocumentPrintJobByEventId;
@@ -114,18 +138,111 @@ async function defaultResolveOutboundPrinter(orgId: OrgId): Promise<PrinterProfi
   return r.rows[0] ?? null;
 }
 
+/**
+ * Paired labels of the order's logical order (every `orders` row sharing
+ * account_source + order_id) that are not applied yet: MATCHED / LINKED, a
+ * staged PDF, no documents row. Applied labels are documents rows already.
+ */
+export async function listPairedLabelIngestionsForOrder(
+  orgId: OrgId,
+  orderId: number,
+): Promise<PairedLabelIngestion[]> {
+  const r = await tenantQuery<{
+    id: string | number;
+    file_basename: string;
+    tracking_number_normalized: string | null;
+  }>(
+    orgId,
+    `SELECT li.id, li.file_basename, li.tracking_number_normalized
+       FROM orders base
+       JOIN orders sibling
+         ON sibling.organization_id = base.organization_id
+        AND (
+              sibling.id = base.id
+              OR (
+                base.order_id IS NOT NULL
+                AND sibling.order_id = base.order_id
+                AND sibling.account_source IS NOT DISTINCT FROM base.account_source
+              )
+            )
+       JOIN label_ingestions li
+         ON li.organization_id = base.organization_id
+        AND li.matched_order_id = sibling.id
+      WHERE base.organization_id = $1
+        AND base.id = $2
+        AND li.state IN ('MATCHED', 'LINKED')
+        AND li.staged_object_key IS NOT NULL
+        AND li.document_id IS NULL
+      ORDER BY li.observed_at DESC, li.id DESC`,
+    [orgId, orderId],
+  );
+  return r.rows.map((row) => ({
+    id: Number(row.id),
+    fileBasename: row.file_basename,
+    trackingNumberNormalized: row.tracking_number_normalized,
+  }));
+}
+
+/** Where the browser fallback reads a paired label's PDF (order-scoped, `orders.view`). */
+export function labelIngestionContentPath(orderId: number, ingestionId: number): string {
+  return `/api/orders/${orderId}/documents/label-ingestions/${ingestionId}`;
+}
+
 const defaultDeps: PrintBundleDeps = {
   listDocumentsForOrder,
   listDocumentsForShipment,
   listAssignedManualsForOrder,
+  listPairedLabelIngestionsForOrder,
   readOutboundDocumentBytes,
   readProductManualBytes,
+  readLabelIngestionPdf: (orgId, ingestionId) => readLabelIngestionPdf(orgId, ingestionId),
   dispatchPrintNodePdf,
   recordDocumentPrintJob,
   getDocumentPrintJobByEventId,
   resolveOutboundPrinter: defaultResolveOutboundPrinter,
   isPrintNodeConfigured: () => Boolean(process.env.PRINTNODE_API_KEY),
 };
+
+function trackingKey(value: string | null | undefined): string | null {
+  const key = value ? normalizeTrackingNumber(value) : '';
+  return key || null;
+}
+
+/**
+ * The pack bundle from what is on file: EVERY shipping label (a multi-box
+ * order has several), the newest packing slip, the manuals, and every paired
+ * label that has no documents row yet. A paired label whose tracking already
+ * prints from a documents row is not printed twice. `docs` is newest first.
+ */
+export function assemblePrintBundle(
+  docs: readonly OutboundDocument[],
+  labelIngestions: readonly PairedLabelIngestion[],
+  manuals: PackBundleManual[],
+): ResolvePrintBundleResult {
+  const byType: Partial<Record<OutboundDocumentType, OutboundDocument>> = {};
+  for (const doc of docs) {
+    if (!BUNDLE_TYPES.includes(doc.documentType)) continue;
+    if (!byType[doc.documentType]) byType[doc.documentType] = doc;
+  }
+  const labels = docs.filter((d) => d.documentType === 'shipping_label');
+  const printedTracking = new Set(
+    labels.map((d) => trackingKey(d.data.tracking)).filter((k): k is string => k != null),
+  );
+  const paired = labelIngestions.filter((li) => {
+    const key = trackingKey(li.trackingNumberNormalized);
+    return key == null || !printedTracking.has(key);
+  });
+  const missingTypes = BUNDLE_TYPES.filter(
+    (t) => !byType[t] && !(t === 'shipping_label' && paired.length > 0),
+  );
+  return {
+    documents: byType.packing_slip ? [...labels, byType.packing_slip] : labels,
+    manuals,
+    labelIngestions: paired,
+    byType,
+    missingTypes,
+  };
+}
 
 export async function resolvePrintBundle(
   orgId: OrgId,
@@ -144,78 +261,11 @@ export async function resolvePrintBundle(
     }
   }
 
-  const byType: Partial<Record<OutboundDocumentType, OutboundDocument>> = {};
-  for (const doc of docs) {
-    if (!BUNDLE_TYPES.includes(doc.documentType)) continue;
-    if (!byType[doc.documentType]) byType[doc.documentType] = doc;
-  }
-
-  const manuals = await deps.listAssignedManualsForOrder(orgId, input.orderId);
-  const missingTypes = BUNDLE_TYPES.filter((t) => !byType[t]);
-
-  return {
-    documents: BUNDLE_TYPES.map((t) => byType[t]).filter(Boolean) as OutboundDocument[],
-    manuals,
-    byType,
-    missingTypes,
-  };
-}
-
-function eventIdForDoc(prefix: string, documentId: number, reprint: boolean): string {
-  if (reprint) return `${prefix}:reprint:${documentId}:${Date.now()}`;
-  return `${prefix}:${documentId}`;
-}
-
-function eventIdForManual(
-  prefix: string,
-  manual: PackBundleManual,
-  reprint: boolean,
-): string {
-  const key =
-    manual.documentId != null && manual.documentId > 0
-      ? `doc:${manual.documentId}`
-      : String(manual.id);
-  if (reprint) return `${prefix}:manual:reprint:${key}:${Date.now()}`;
-  return `${prefix}:manual:${key}`;
-}
-
-function pushOutboundFallback(
-  list: PrintableBundleItem[],
-  doc: OutboundDocument,
-  isPdf: boolean,
-): void {
-  if (list.some((d) => d.kind === 'outbound' && d.documentId === doc.id)) return;
-  list.push({
-    kind: 'outbound',
-    documentId: doc.id,
-    documentType: doc.documentType,
-    isPdf,
-  });
-}
-
-function pushManualFallback(
-  list: PrintableBundleItem[],
-  manual: PackBundleManual,
-  isPdf: boolean,
-): void {
-  const docId = manual.documentId != null && manual.documentId > 0 ? manual.documentId : undefined;
-  if (
-    list.some(
-      (d) =>
-        d.kind === 'manual' &&
-        ((docId != null && d.documentId === docId) ||
-          (docId == null && d.productManualId === manual.id)),
-    )
-  ) {
-    return;
-  }
-  list.push({
-    kind: 'manual',
-    documentId: docId,
-    productManualId: manual.id,
-    documentType: 'manual',
-    isPdf,
-  });
+  const [manuals, labelIngestions] = await Promise.all([
+    deps.listAssignedManualsForOrder(orgId, input.orderId),
+    deps.listPairedLabelIngestionsForOrder(orgId, input.orderId),
+  ]);
+  return assemblePrintBundle(docs, labelIngestions, manuals);
 }
 
 /** The bundle narrowed to the papers the sender asked for; `missingTypes` names only asked-for types. */
@@ -227,11 +277,108 @@ function pickBundleTypes(
   return {
     documents: bundle.documents.filter((d) => wanted.has(d.documentType)),
     manuals: wanted.has('manual') ? bundle.manuals : [],
+    labelIngestions: wanted.has('shipping_label') ? bundle.labelIngestions : [],
     byType: Object.fromEntries(
       Object.entries(bundle.byType).filter(([t]) => wanted.has(t as DocumentPrintJobType)),
     ),
     missingTypes: bundle.missingTypes.filter((t) => wanted.has(t)),
   };
+}
+
+/** One paper of the bundle, whatever it is stored as. */
+interface BundlePrintItem {
+  /** Ledger key namespace: '' (documents row) | 'manual' | 'ingestion'. */
+  ns: '' | 'manual' | 'ingestion';
+  key: string;
+  title: string;
+  printNodeSource: string;
+  ledger: Pick<DocumentPrintJobInput, 'documentId' | 'productManualId' | 'labelIngestionId' | 'documentType'>;
+  fallback: (isPdf: boolean) => PrintableBundleItem;
+  /** `null` → bytes unavailable (`missing` decides failed vs skipped). */
+  load: () => Promise<{ bytes: Buffer; isPdf: boolean } | null>;
+  missing: { status: 'failed' | 'skipped'; error: string };
+}
+
+function eventIdFor(prefix: string, item: BundlePrintItem, reprint: boolean): string {
+  const ns = item.ns ? `${item.ns}:` : '';
+  if (reprint) return `${prefix}:${ns}reprint:${item.key}:${Date.now()}`;
+  return `${prefix}:${ns}${item.key}`;
+}
+
+function bundlePrintItems(
+  orgId: OrgId,
+  orderId: number,
+  resolved: ResolvePrintBundleResult,
+  deps: PrintBundleDeps,
+): BundlePrintItem[] {
+  const items: BundlePrintItem[] = [];
+  for (const doc of resolved.documents) {
+    items.push({
+      ns: '',
+      key: String(doc.id),
+      title: `${doc.documentType} · order ${orderId}`,
+      printNodeSource: 'cycleforge.pack-bundle',
+      ledger: { documentId: doc.id, documentType: doc.documentType },
+      fallback: (isPdf) => ({ kind: 'outbound', documentId: doc.id, documentType: doc.documentType, isPdf }),
+      load: async () => {
+        const loaded = await deps.readOutboundDocumentBytes(orgId, doc.id);
+        if (!loaded) return null;
+        const ct = (loaded.contentType || '').toLowerCase();
+        return {
+          bytes: loaded.bytes,
+          isPdf: ct.includes('pdf') || loaded.filename.toLowerCase().endsWith('.pdf'),
+        };
+      },
+      missing: { status: 'failed', error: `Document ${doc.id} bytes unavailable` },
+    });
+  }
+  for (const li of resolved.labelIngestions) {
+    items.push({
+      ns: 'ingestion',
+      key: String(li.id),
+      title: `shipping_label · order ${orderId}`,
+      printNodeSource: 'cycleforge.pack-bundle',
+      ledger: { labelIngestionId: li.id, documentType: 'shipping_label' },
+      fallback: () => ({
+        kind: 'label_ingestion',
+        labelIngestionId: li.id,
+        src: labelIngestionContentPath(orderId, li.id),
+        documentType: 'shipping_label',
+        isPdf: true,
+      }),
+      load: async () => ({ bytes: (await deps.readLabelIngestionPdf(orgId, li.id)).bytes, isPdf: true }),
+      missing: { status: 'failed', error: `Label ingestion ${li.id} bytes unavailable` },
+    });
+  }
+  for (const manual of resolved.manuals) {
+    const documentId = manual.documentId != null && manual.documentId > 0 ? manual.documentId : undefined;
+    items.push({
+      ns: 'manual',
+      key: documentId != null ? `doc:${documentId}` : String(manual.id),
+      title: `manual · ${manual.displayName}`,
+      printNodeSource: 'cycleforge.pack-bundle.manual',
+      ledger: { documentId, productManualId: manual.id, documentType: 'manual' },
+      fallback: (isPdf) => ({ kind: 'manual', documentId, productManualId: manual.id, documentType: 'manual', isPdf }),
+      load: async () => {
+        const loaded = await deps.readProductManualBytes(manual);
+        if (!loaded) return null;
+        const ct = (loaded.contentType || '').toLowerCase();
+        return {
+          bytes: loaded.bytes,
+          isPdf:
+            ct.includes('pdf') ||
+            loaded.filename.toLowerCase().endsWith('.pdf') ||
+            (manual.sourceUrl || '').toLowerCase().includes('.pdf'),
+        };
+      },
+      // Google Docs / missing URL — skip rather than fail the whole pack bundle.
+      missing: {
+        status: 'skipped',
+        error: manual.sourceUrl ? `Manual ${manual.id} bytes unavailable` : `Manual ${manual.id} has no source_url`,
+      },
+    });
+  }
+  return items;
 }
 
 export async function dispatchPrintBundle(
@@ -245,8 +392,9 @@ export async function dispatchPrintBundle(
     deps,
   );
   const resolved = input.documentTypes ? pickBundleTypes(bundle, input.documentTypes) : bundle;
+  const items = bundlePrintItems(orgId, input.orderId, resolved, deps);
 
-  if (resolved.documents.length === 0 && resolved.manuals.length === 0) {
+  if (items.length === 0) {
     return {
       status: 'missing',
       missingTypes: resolved.missingTypes,
@@ -265,32 +413,38 @@ export async function dispatchPrintBundle(
 
   const jobs: DispatchPrintBundleJobResult[] = [];
   const browserFallbackDocs: PrintableBundleItem[] = [];
+  const fallbackKeys = new Set<string>();
   let anyIdempotent = false;
   let anyDispatched = false;
   let anyFailed = false;
   let anyFallback = false;
 
-  for (const doc of resolved.documents) {
-    const clientEventId = eventIdForDoc(prefix, doc.id, reprint);
+  const pushFallback = (item: BundlePrintItem, isPdf: boolean) => {
+    anyFallback = true;
+    const dedupe = `${item.ns}:${item.key}`;
+    if (fallbackKeys.has(dedupe)) return;
+    fallbackKeys.add(dedupe);
+    browserFallbackDocs.push(item.fallback(isPdf));
+  };
+  const jobIds = (item: BundlePrintItem) => ({
+    documentId: item.ledger.documentId ?? undefined,
+    productManualId: item.ledger.productManualId ?? undefined,
+    labelIngestionId: item.ledger.labelIngestionId ?? undefined,
+    documentType: item.ledger.documentType,
+  });
+
+  for (const item of items) {
+    const clientEventId = eventIdFor(prefix, item, reprint);
 
     if (!reprint) {
       const existing = await deps.getDocumentPrintJobByEventId(orgId, clientEventId);
       if (existing) {
         anyIdempotent = true;
         const st = existing.status as DocumentPrintJobStatus;
-        if (st === 'fallback_browser') {
-          anyFallback = true;
-          pushOutboundFallback(browserFallbackDocs, doc, true);
-        }
+        if (st === 'fallback_browser') pushFallback(item, true);
         if (st === 'dispatched') anyDispatched = true;
         if (st === 'failed') anyFailed = true;
-        jobs.push({
-          documentId: doc.id,
-          documentType: doc.documentType,
-          status: st,
-          jobRow: existing,
-          isPdf: true,
-        });
+        jobs.push({ ...jobIds(item), status: st, jobRow: existing, isPdf: true });
         continue;
       }
     }
@@ -301,29 +455,24 @@ export async function dispatchPrintBundle(
     let printnodeJobId: number | null = null;
 
     try {
-      const loaded = await deps.readOutboundDocumentBytes(orgId, doc.id);
+      const loaded = await item.load();
       if (!loaded) {
-        status = 'failed';
-        anyFailed = true;
-        error = `Document ${doc.id} bytes unavailable`;
+        status = item.missing.status;
+        error = item.missing.error;
       } else {
-        const ct = (loaded.contentType || '').toLowerCase();
-        isPdf = ct.includes('pdf') || loaded.filename.toLowerCase().endsWith('.pdf');
-
+        isPdf = loaded.isPdf;
         if (!isPdf) {
           status = 'fallback_browser';
-          anyFallback = true;
-          pushOutboundFallback(browserFallbackDocs, doc, false);
+          pushFallback(item, false);
         } else if (!profile || profile.vendor !== 'printnode' || !printNodeConfigured) {
           status = 'fallback_browser';
-          anyFallback = true;
-          pushOutboundFallback(browserFallbackDocs, doc, true);
+          pushFallback(item, true);
         } else {
           const pn = await deps.dispatchPrintNodePdf({
             printerExternalId: profile.external_id,
-            title: `${doc.documentType} · order ${input.orderId}`,
+            title: item.title,
             pdfBase64: loaded.bytes.toString('base64'),
-            source: 'cycleforge.pack-bundle',
+            source: item.printNodeSource,
           });
           if (pn.ok && pn.dispatched) {
             status = 'dispatched';
@@ -332,123 +481,13 @@ export async function dispatchPrintBundle(
           } else {
             status = 'fallback_browser';
             error = pn.error;
-            anyFallback = true;
-            pushOutboundFallback(browserFallbackDocs, doc, true);
+            pushFallback(item, true);
           }
         }
       }
     } catch (err) {
       status = 'failed';
-      anyFailed = true;
       error = err instanceof Error ? err.message : 'load/dispatch failed';
-    }
-
-    const jobRow = await deps.recordDocumentPrintJob(
-      {
-        orderId: input.orderId,
-        packerLogId: input.packerLogId,
-        documentId: doc.id,
-        documentType: doc.documentType,
-        status,
-        printerProfileId: profile?.id ?? null,
-        printnodeJobId,
-        isReprint: reprint,
-        actorStaffId: input.actorStaffId,
-        clientEventId,
-        error: error ?? null,
-      },
-      orgId,
-    );
-
-    jobs.push({
-      documentId: doc.id,
-      documentType: doc.documentType,
-      status,
-      jobRow,
-      error,
-      isPdf,
-    });
-  }
-
-  for (const manual of resolved.manuals) {
-    const clientEventId = eventIdForManual(prefix, manual, reprint);
-    const manualDocumentId =
-      manual.documentId != null && manual.documentId > 0 ? manual.documentId : undefined;
-
-    if (!reprint) {
-      const existing = await deps.getDocumentPrintJobByEventId(orgId, clientEventId);
-      if (existing) {
-        anyIdempotent = true;
-        const st = existing.status as DocumentPrintJobStatus;
-        if (st === 'fallback_browser') {
-          anyFallback = true;
-          pushManualFallback(browserFallbackDocs, manual, true);
-        }
-        if (st === 'dispatched') anyDispatched = true;
-        if (st === 'failed' || st === 'skipped') anyFailed = st === 'failed';
-        jobs.push({
-          documentId: manualDocumentId,
-          productManualId: manual.id,
-          documentType: 'manual',
-          status: st,
-          jobRow: existing,
-          isPdf: true,
-        });
-        continue;
-      }
-    }
-
-    let isPdf = true;
-    let status: DocumentPrintJobStatus = 'failed';
-    let error: string | undefined;
-    let printnodeJobId: number | null = null;
-
-    try {
-      const loaded = await deps.readProductManualBytes(manual);
-      if (!loaded) {
-        // Google Docs / missing URL — skip rather than fail the whole pack bundle.
-        status = 'skipped';
-        error = manual.sourceUrl
-          ? `Manual ${manual.id} bytes unavailable`
-          : `Manual ${manual.id} has no source_url`;
-      } else {
-        const ct = (loaded.contentType || '').toLowerCase();
-        isPdf =
-          ct.includes('pdf') ||
-          loaded.filename.toLowerCase().endsWith('.pdf') ||
-          (manual.sourceUrl || '').toLowerCase().includes('.pdf');
-
-        if (!isPdf) {
-          status = 'fallback_browser';
-          anyFallback = true;
-          pushManualFallback(browserFallbackDocs, manual, false);
-        } else if (!profile || profile.vendor !== 'printnode' || !printNodeConfigured) {
-          status = 'fallback_browser';
-          anyFallback = true;
-          pushManualFallback(browserFallbackDocs, manual, true);
-        } else {
-          const pn = await deps.dispatchPrintNodePdf({
-            printerExternalId: profile.external_id,
-            title: `manual · ${manual.displayName}`,
-            pdfBase64: loaded.bytes.toString('base64'),
-            source: 'cycleforge.pack-bundle.manual',
-          });
-          if (pn.ok && pn.dispatched) {
-            status = 'dispatched';
-            printnodeJobId = pn.jobId ?? null;
-            anyDispatched = true;
-          } else {
-            status = 'fallback_browser';
-            error = pn.error;
-            anyFallback = true;
-            pushManualFallback(browserFallbackDocs, manual, true);
-          }
-        }
-      }
-    } catch (err) {
-      status = 'failed';
-      anyFailed = true;
-      error = err instanceof Error ? err.message : 'manual load/dispatch failed';
     }
 
     if (status === 'failed') anyFailed = true;
@@ -457,9 +496,10 @@ export async function dispatchPrintBundle(
       {
         orderId: input.orderId,
         packerLogId: input.packerLogId,
-        documentId: manualDocumentId ?? null,
-        productManualId: manual.id,
-        documentType: 'manual',
+        documentId: item.ledger.documentId ?? null,
+        productManualId: item.ledger.productManualId ?? null,
+        labelIngestionId: item.ledger.labelIngestionId ?? null,
+        documentType: item.ledger.documentType,
         status,
         printerProfileId: profile?.id ?? null,
         printnodeJobId,
@@ -471,15 +511,7 @@ export async function dispatchPrintBundle(
       orgId,
     );
 
-    jobs.push({
-      documentId: manualDocumentId,
-      productManualId: manual.id,
-      documentType: 'manual',
-      status,
-      jobRow,
-      error,
-      isPdf,
-    });
+    jobs.push({ ...jobIds(item), status, jobRow, error, isPdf });
   }
 
   let status: PrintBundleStatus;
@@ -494,7 +526,7 @@ export async function dispatchPrintBundle(
   } else if (anyFallback) {
     status = 'fallback_browser';
   } else if (jobs.every((j) => j.status === 'skipped')) {
-    status = resolved.documents.length === 0 ? 'missing' : 'partial';
+    status = resolved.documents.length + resolved.labelIngestions.length === 0 ? 'missing' : 'partial';
   } else {
     status = 'partial';
   }

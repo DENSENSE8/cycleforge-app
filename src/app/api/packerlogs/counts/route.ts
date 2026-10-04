@@ -1,39 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
-import { toPSTDateKey } from '@/utils/date';
+import { countPackerLogsByDay } from '@/lib/fulfillment/packer-log-counts';
 
-/** Packer-logs COUNTS sibling (station-table-unification-plan §5 / §7.2). */
+/** Positive integer param, else unset. */
+function staffIdParam(raw: string | null): number | null {
+  const n = Number(raw);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * Packer-logs COUNTS sibling (station-table-unification-plan §5 / §7.2):
+ * Fulfilled packages per warehouse day, counted in SQL (no row cap).
+ * `truncated` stays in the payload for its readers; a SQL count never is.
+ */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
-  const packerIdParam = searchParams.get('packerId') || searchParams.get('packedBy');
-  const staffParam = searchParams.get('staff');
-  const weekStart = searchParams.get('weekStart') || '';
-  const weekEnd = searchParams.get('weekEnd') || '';
-
-  const packerIdNum = packerIdParam ? parseInt(packerIdParam) : null;
-  const staffNum = staffParam ? parseInt(staffParam) : null;
-
-  const { rows } = await fetchPackerLogRows({
-    organizationId: ctx.organizationId,
-    packerId: packerIdNum != null && !Number.isNaN(packerIdNum) ? packerIdNum : null,
-    staffId: staffNum != null && !Number.isNaN(staffNum) ? staffNum : null,
-    limit: 500,
-    offset: 0,
-    weekStart,
-    weekEnd,
+  const { total, byDay } = await countPackerLogsByDay(ctx.organizationId, {
+    packerId: staffIdParam(searchParams.get('packerId') || searchParams.get('packedBy')),
+    staffId: staffIdParam(searchParams.get('staff')),
+    weekStart: searchParams.get('weekStart') || '',
+    weekEnd: searchParams.get('weekEnd') || '',
   });
-
-  const byDay: Record<string, number> = {};
-  for (const r of rows) {
-    let day = 'Unknown';
-    try {
-      day = toPSTDateKey(r.created_at) || 'Unknown';
-    } catch {
-      day = 'Unknown';
-    }
-    byDay[day] = (byDay[day] ?? 0) + 1;
-  }
-
-  return NextResponse.json({ total: rows.length, byDay, truncated: rows.length >= 500 });
+  return NextResponse.json({ total, byDay, truncated: false });
 }, { permission: 'packing.view' });

@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check } from '@/components/Icons';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, SearchField } from '@/design-system/primitives';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -133,8 +133,12 @@ export function ShipStationLabelSheet({
       : 'No ShipStation labels for this order and none waiting in quarantine. Search a tracking # or order #.';
 
   return (
-    <BottomSheet open={open} onClose={close} forceVariant="sheet" scrollBody title={`Link label · ${orderRef}`}>
-      <div className="flex flex-col gap-3 pb-2">
+    <Sheet open={open} onOpenChange={(next) => { if (!next) close(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>{`Link label · ${orderRef}`}</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="flex flex-col gap-3">
         <SearchField
           value={query}
           onChange={(value) => {
@@ -227,7 +231,8 @@ export function ShipStationLabelSheet({
         >
           {pickedCandidate ? `Link as ${LABEL_PURPOSE_FACE[effectivePurpose].label.toLowerCase()}` : 'Pick a label'}
         </Button>
-      </div>
-    </BottomSheet>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

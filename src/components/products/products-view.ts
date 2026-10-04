@@ -2,7 +2,7 @@
 
 const PRODUCTS_VIEWS = ['catalog', 'manuals', 'labels', 'pairing', 'qc'] as const;
 
-type ProductsView = (typeof PRODUCTS_VIEWS)[number];
+export type ProductsView = (typeof PRODUCTS_VIEWS)[number];
 
 const PRODUCTS_VIEW_SET = new Set<string>(PRODUCTS_VIEWS);
 

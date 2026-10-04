@@ -96,6 +96,46 @@ export function useSetTaskOwners() {
   });
 }
 
+/**
+ * Set or clear a task's due instant — the phone sheet's due field (task principle P5: the
+ * same house date switcher as the desk record). `deadlineAt` is the 17:00-warehouse ISO from
+ * `taskDueInstantIso`, or null to clear. Optimistic, like the status verbs.
+ */
+export function useSetTaskDeadline() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskId, deadlineAt }: { taskId: number; deadlineAt: string | null }) => {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        ...FRESH,
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ deadlineAt }),
+      });
+      if (res.ok) return;
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error || `Could not change the due date (${res.status})`);
+    },
+    onMutate: async ({ taskId, deadlineAt }) => {
+      await queryClient.cancelQueries({ queryKey: MY_TASKS_QUERY_KEY });
+      const previous = queryClient.getQueryData<TaskDeskRow[]>(MY_TASKS_QUERY_KEY);
+      if (previous) {
+        const deadlineAtMs = deadlineAt == null ? null : Date.parse(deadlineAt);
+        queryClient.setQueryData<TaskDeskRow[]>(
+          MY_TASKS_QUERY_KEY,
+          previous.map((row) => (row.id === taskId ? { ...row, deadlineAtMs } : row)),
+        );
+      }
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(MY_TASKS_QUERY_KEY, context.previous);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}
+
 /** Tick / untick an assigned task, optimistically — the same feel as ticking a daily check, because on this list they are the same gesture. */
 export function useToggleTaskDone() {
   const queryClient = useQueryClient();

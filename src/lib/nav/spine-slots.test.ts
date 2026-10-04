@@ -26,13 +26,17 @@ const catalog: SidebarNavItem[] = [
   { id: 'studio', label: 'Operations Studio', href: '/studio', icon: Icon, kind: 'main', mainGroup: 'studio' },
 ];
 
+// Operator 2026-10-03: Products (catalog) closes the Operations band — after
+// every root page — and a leading root page (Live feed) opens it.
 test('the product registry supplies one fixed root order', () => {
   assert.deepEqual(fixedSpineOrder(catalog), [
     SPINE_STATIONS_SLOT_ID,
     'fulfillment',
-    'catalog',
     'studio',
+    'catalog',
   ]);
+  const liveFeed: SidebarNavItem = { id: 'live-feed', label: 'Live feed', href: '/operations/live-feed', icon: Icon };
+  assert.equal(fixedSpineOrder([...catalog, liveFeed])[0], 'live-feed');
 });
 
 test('a catalog with only benches yields one Scan Stations door', () => {
@@ -46,11 +50,11 @@ test('fixed order resolves to the exact painted map entries', () => {
   const entries = resolveSpineMapEntries(catalog);
   assert.deepEqual(
     entries.map((entry) => (entry.kind === 'page' ? entry.page.id : entry.id)),
-    [SPINE_STATIONS_SLOT_ID, 'fulfillment', 'catalog', 'studio'],
+    [SPINE_STATIONS_SLOT_ID, 'fulfillment', 'studio', 'catalog'],
   );
   assert.deepEqual(
     entries.map((entry) => entry.kind),
-    ['stations', 'lane', 'lane', 'page'],
+    ['stations', 'lane', 'page', 'lane'],
   );
 });
 

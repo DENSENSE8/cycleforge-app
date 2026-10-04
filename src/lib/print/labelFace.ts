@@ -3,7 +3,7 @@ import { escapeLabelHtml } from '@/lib/print/labelHtml';
 /** One model for the printed 2×1" label *face*, shared by every label in the app — receiving/PO cartons, testing/unit stickers,… */
 export interface LabelFaceModel {
   /** Layout family. */
-  kind?: 'receiving' | 'product' | 'location' | 'lpn';
+  kind?: 'receiving' | 'product' | 'location' | 'lpn' | 'rack';
   /** Top-left (receiving: platform/type). For `product`, holds the full-top-row title. */
   topLeft: string;
   /** Top-right — date (receiving). Unused by `product`. */
@@ -51,9 +51,29 @@ const LABEL_FACE_CSS =
   '.bl{flex:1 1 auto;min-width:0;font-size:9px;font-weight:900;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
   '.br{flex:0 0 auto;font-size:9px;font-weight:900;letter-spacing:0.3px;line-height:1.05;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}';
 
-/** Coordinate-only location sticker — large code, no room / zone / level gloss. */
+/**
+ * Location sticker — large code, no room / zone / level gloss. `.lcap` is the
+ * one optional caption (bottom-left, e.g. `Arrival · Priority` on an urgency
+ * shelf): bold 9px under the code, wrapping rather than clipping so the words
+ * are never cut off on the ~1in info column. Empty → not painted.
+ */
 const LOCATION_LABEL_FACE_CSS =
-  '.lcode{flex:1 1 auto;width:100%;min-width:0;font-size:16px;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:-0.04em;line-height:1.05;color:#000;overflow-wrap:anywhere;word-break:break-word;display:flex;align-items:center}';
+  '.lcode{flex:1 1 auto;width:100%;min-width:0;font-size:16px;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:-0.04em;line-height:1.05;color:#000;overflow-wrap:anywhere;word-break:break-word;display:flex;align-items:center}' +
+  '.lcap{flex:0 0 auto;width:100%;font-size:9px;font-weight:800;line-height:1.1;color:#000;overflow-wrap:anywhere}' +
+  '.lcap:empty{display:none}';
+
+/**
+ * Movable-rack sticker (rack placard, shelf, position) — words, never a room.
+ * `.rkick` is the parent line (`RACK 12` on a shelf, `RACK 12 · SHELF 3` on a
+ * position); the headline is the sticker's own level (`SHELF 3`). A placard
+ * has no parent line, so its `RACK 12` headline steps up to placard size.
+ * `.lcap` (shared with the location face) carries the arrival tier caption.
+ */
+const RACK_LABEL_FACE_CSS =
+  '.rkick{flex:0 0 auto;width:100%;font-size:10px;font-weight:800;letter-spacing:0.3px;line-height:1.1;color:#000;overflow-wrap:anywhere}' +
+  '.rkick:empty{display:none}' +
+  '.rhead{flex:1 1 auto;min-height:0;width:100%;font-size:20px;font-weight:900;line-height:1.05;color:#000;font-variant-numeric:tabular-nums;display:flex;align-items:center}' +
+  '.rkick:empty+.rhead{font-size:24px}';
 
 /**
  * Handling-unit (box / tote) licence plate.
@@ -74,8 +94,21 @@ export function buildFaceInfoHtml(model: LabelFaceModel): {
 } {
   if (model.kind === 'location') {
     return {
-      infoHtml: `<div class="lcode">${escapeLabelHtml(model.center)}</div>`,
+      infoHtml:
+        `<div class="lcode">${escapeLabelHtml(model.center)}</div>` +
+        `<div class="lcap">${escapeLabelHtml(model.bottomLeft)}</div>`,
       infoCss: LABEL_FACE_CSS + LOCATION_LABEL_FACE_CSS,
+      infoAlign: 'center',
+    };
+  }
+  if (model.kind === 'rack') {
+    // `topLeft` parent line, `center` headline, `bottomLeft` tier caption.
+    return {
+      infoHtml:
+        `<div class="rkick">${escapeLabelHtml(model.topLeft)}</div>` +
+        `<div class="rhead">${escapeLabelHtml(model.center)}</div>` +
+        `<div class="lcap">${escapeLabelHtml(model.bottomLeft)}</div>`,
+      infoCss: LABEL_FACE_CSS + LOCATION_LABEL_FACE_CSS + RACK_LABEL_FACE_CSS,
       infoAlign: 'center',
     };
   }
@@ -122,6 +155,11 @@ export function patchLabelFaceDocument(
 
   if (model.kind === 'location') {
     setText('.lcode', model.center);
+    setText('.lcap', model.bottomLeft);
+  } else if (model.kind === 'rack') {
+    setText('.rkick', model.topLeft);
+    setText('.rhead', model.center);
+    setText('.lcap', model.bottomLeft);
   } else if (model.kind === 'lpn') {
     setText('.hu-kicker', model.topLeft);
     setText('.hu-code', model.center);

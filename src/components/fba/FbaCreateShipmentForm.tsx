@@ -4,7 +4,7 @@
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Package, Plus, Trash2 } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
 import { Button, DeferredQtyInput, IconButton, TextField } from '@/design-system/primitives';
 import { buildFbaPlanRefFromIsoDate } from '@/lib/fba/plan-ref';
 import type { StationTheme } from '@/utils/staff-colors';

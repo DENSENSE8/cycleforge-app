@@ -58,23 +58,6 @@ export function isUndeterminedReason(reason: CheckZohoReceivedReason): boolean {
   return UNDETERMINED_REASONS.has(reason);
 }
 
-/**
- * The reconciliation verdict — the cross-product of the ERP answer and the
- * warehouse answer. This is what turns the check from a report into a work
- * list: three of the five values are states no continuous feed surfaces today.
- */
-export type CheckZohoReceivedVerdict =
-  /** ERP received AND the warehouse opened it. Nothing to do. */
-  | 'settled'
-  /** ERP says received; the warehouse has no record of opening it. */
-  | 'erp_ahead'
-  /** The warehouse received it; the ERP has not caught up. */
-  | 'warehouse_ahead'
-  /** Neither side is done — normal in-flight work. */
-  | 'open'
-  /** The ERP answer was undetermined, so no verdict is possible. */
-  | 'unknown';
-
 export interface CheckZohoReceivedLocal {
   /** An inbound shipment row exists in this org for the tracking. */
   known: boolean;
@@ -113,7 +96,6 @@ export interface CheckZohoReceivedRow {
   synced_at: string | null;
   /** Local warehouse state for the same tracking; null when not looked up. */
   local: CheckZohoReceivedLocal | null;
-  verdict: CheckZohoReceivedVerdict;
 }
 
 export interface CheckZohoReceivedStats {
@@ -124,10 +106,6 @@ export interface CheckZohoReceivedStats {
   errors: number;
   /** Rows whose ERP answer could not be established. */
   undetermined: number;
-  /** Rows where the ERP says received but the warehouse never opened it. */
-  erp_ahead: number;
-  /** Rows the warehouse completed that the ERP has not caught up with. */
-  warehouse_ahead: number;
 }
 
 interface CheckZohoReceivedResult {
@@ -302,6 +280,8 @@ async function lookupLocalByTrackings(
 
   type LocalRow = {
     canon: string;
+    /** A carrier shipment backs it — never just a PO's carton with no tracking. */
+    known: boolean;
     delivered: boolean;
     delivered_at: string | null;
     scanned: boolean;
@@ -310,14 +290,15 @@ async function lookupLocalByTrackings(
 
   const putRow = (row: LocalRow) => {
     if (out.has(row.canon)) return;
+    const known = Boolean(row.known);
     out.set(row.canon, {
-      known: true,
+      known,
       delivered: Boolean(row.delivered),
       delivered_at: row.delivered_at ?? null,
       scanned: Boolean(row.scanned),
       unboxed: Boolean(row.unboxed),
       watch: resolveWatchState({
-        known: true,
+        known,
         delivered: Boolean(row.delivered),
         scanned: Boolean(row.scanned),
         unboxed: Boolean(row.unboxed),
@@ -330,6 +311,7 @@ async function lookupLocalByTrackings(
     `WITH keys AS (SELECT DISTINCT unnest($1::text[]) AS canon)
      SELECT DISTINCT ON (k.canon)
             k.canon,
+            true                                                 AS known,
             COALESCE(stn.is_delivered, false)                    AS delivered,
             stn.delivered_at::text                               AS delivered_at,
             EXISTS (
@@ -379,6 +361,7 @@ async function lookupLocalByTrackings(
           linked AS (
             SELECT k.canon,
                    r.id AS receiving_id,
+                   stn.id AS shipment_id,
                    stn.is_delivered,
                    stn.delivered_at
               FROM keys k
@@ -391,6 +374,7 @@ async function lookupLocalByTrackings(
                 ON stn.id = r.shipment_id
           )
      SELECT l.canon,
+            bool_or(l.shipment_id IS NOT NULL)                   AS known,
             COALESCE(bool_or(l.is_delivered), false)             AS delivered,
             MAX(l.delivered_at)::text                            AS delivered_at,
             bool_or(EXISTS (
@@ -432,23 +416,6 @@ const UNKNOWN_LOCAL: CheckZohoReceivedLocal = {
   watch: 'unknown',
 };
 
-/** The reconciliation verdict for one row — ERP answer × warehouse answer. */
-export function resolveVerdict(args: {
-  reason: CheckZohoReceivedReason;
-  status: string | null;
-  /** `null` means the warehouse half could not be looked up at all (the query failed) — NOT that the warehouse has no record. */
-  local: CheckZohoReceivedLocal | null;
-}): CheckZohoReceivedVerdict {
-  if (isUndeterminedReason(args.reason)) return 'unknown';
-  if (!args.local) return 'unknown';
-  const erpReceived = isZohoReceivedLikeStatus(args.status);
-  const warehouseDone = args.local.unboxed;
-  if (erpReceived && warehouseDone) return 'settled';
-  if (erpReceived) return 'erp_ahead';
-  if (warehouseDone) return 'warehouse_ahead';
-  return 'open';
-}
-
 function rowFromMirror(tracking: string, hit: MirrorHit): CheckZohoReceivedRow {
   return {
     tracking,
@@ -460,7 +427,6 @@ function rowFromMirror(tracking: string, hit: MirrorHit): CheckZohoReceivedRow {
     source: 'mirror',
     synced_at: hit.last_synced_at ?? null,
     local: null,
-    verdict: 'open',
   };
 }
 
@@ -497,7 +463,6 @@ function rowFromZoho(tracking: string, po: CheckZohoPoHit): CheckZohoReceivedRow
     // A live Zoho answer is current by construction — no cache age to disclose.
     synced_at: null,
     local: null,
-    verdict: 'open',
   };
 }
 
@@ -517,7 +482,6 @@ function unresolvedRow(
     source,
     synced_at: null,
     local: null,
-    verdict: 'unknown',
   };
 }
 
@@ -629,8 +593,6 @@ export async function checkZohoReceived(
   const received_in_zoho: CheckZohoReceivedRow[] = [];
   const not_received_in_zoho: CheckZohoReceivedRow[] = [];
   const undetermined: CheckZohoReceivedRow[] = [];
-  let erp_ahead = 0;
-  let warehouse_ahead = 0;
 
   for (const row of rows) {
     if (localMap) {
@@ -643,10 +605,6 @@ export async function checkZohoReceived(
     } else {
       row.local = null;
     }
-    row.verdict = resolveVerdict({ reason: row.reason, status: row.status, local: row.local });
-    if (row.verdict === 'erp_ahead') erp_ahead += 1;
-    if (row.verdict === 'warehouse_ahead') warehouse_ahead += 1;
-
     if (isUndeterminedReason(row.reason)) undetermined.push(row);
     else if (isZohoReceivedLikeStatus(row.status)) received_in_zoho.push(row);
     else not_received_in_zoho.push(row);
@@ -663,8 +621,6 @@ export async function checkZohoReceived(
       zoho_lookups,
       errors,
       undetermined: undetermined.length,
-      erp_ahead,
-      warehouse_ahead,
     },
   };
 }

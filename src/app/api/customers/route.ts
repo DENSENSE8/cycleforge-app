@@ -5,8 +5,17 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { createCustomer } from '@/lib/neon/customer-queries';
 import { CustomerCreateBody } from '@/lib/schemas/customers';
+import { listCustomerDirectory } from '@/lib/customers/customer-throughput-query';
 
 export const dynamic = 'force-dynamic';
+
+/** GET /api/customers — recent customer book, optionally filtered by contact identity. */
+export const GET = withAuth(async (req, ctx) => {
+  const query = req.nextUrl.searchParams.get('q') ?? '';
+  const limit = Number(req.nextUrl.searchParams.get('limit'));
+  const customers = await listCustomerDirectory(ctx.organizationId as OrgId, { query, limit });
+  return NextResponse.json({ ok: true, customers });
+}, { permission: 'orders.view' });
 
 /** POST /api/customers — create a customer typed on the phone (manual phone order), in the caller's org. */
 export const POST = withAuth(async (req, ctx) => {

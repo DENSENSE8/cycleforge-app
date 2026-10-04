@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { NavContext } from '@/lib/nav/context/schema';
-import { useNavStaffKey } from './useNavContext';
+import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { isNavModeSection } from './NavModeSwitcher';
 
 /**

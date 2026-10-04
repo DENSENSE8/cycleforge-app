@@ -2,7 +2,7 @@
 
 /** Enriched bin table for the inventory hub main area — the data host that mounts the Workbench spreadsheet SoT (`NonlinearTableHost` + the… */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
@@ -31,6 +31,7 @@ interface Props {
   selected: Set<number>;
   onSelectChange: (next: Set<number>) => void;
   onRowClick: (row: BinsOverviewRow) => void;
+  bulkBar?: ReactNode;
 }
 
 /**
@@ -82,6 +83,7 @@ export function BinsTable({
   selected,
   onSelectChange,
   onRowClick,
+  bulkBar,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -184,6 +186,7 @@ export function BinsTable({
         emptyMessage="No bins match the current filters."
         scrollRef={scrollRef}
         selectionScope={BINS_SELECTION_SCOPE}
+        bulkBar={bulkBar}
         renderGroup={(group, _stripe, { columns: visible }) => (
           <>{group.rows.map((row) => renderLeaf(row, visible))}</>
         )}

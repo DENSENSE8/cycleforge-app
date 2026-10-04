@@ -50,7 +50,7 @@ test('isRefListPaste: a list with a header passes; a question, one line, or a PO
 });
 
 function entry(ref: string, patch: Partial<ReconEntry>): ReconEntry {
-  return { ref, key: ref.replace(/[^A-Za-z0-9]/g, '').toUpperCase(), status: 'not_received', detail: 'Open PO', poNumber: null, vendor: null, exception: null, ...patch };
+  return { ref, key: ref.replace(/[^A-Za-z0-9]/g, '').toUpperCase(), status: 'not_received', detail: 'Ordered · no tracking', poNumber: null, vendor: null, exception: null, ...patch };
 }
 
 function line(input: string, candidates: Array<Partial<IdentifyLine['candidates'][number]>>): IdentifyLine {

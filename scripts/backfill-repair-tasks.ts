@@ -33,7 +33,9 @@ async function main() {
         ? ` · "${(action.note ?? '').split('\n')[0]}"`
         : action.kind === 'linkTicket'
           ? ` · Ticket ${action.ticketNumber}`
-          : '';
+          : action.kind === 'findTicket'
+            ? ` · ask the helpdesk (${action.paperworkNumber != null ? `slip #${action.paperworkNumber}` : `subject "RS ${action.repairId}"`})`
+            : '';
     console.log(`  ${action.kind.padEnd(7)} RS-${action.repairId} · ${target}${headline}`);
   }
   console.log(JSON.stringify(result.summary));

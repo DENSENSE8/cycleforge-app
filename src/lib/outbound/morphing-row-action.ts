@@ -128,8 +128,8 @@ export function morphingAssignedName(
   return name.length > 0 ? name : null;
 }
 
-/** CYC-82 gutter click — **the rule now lives in the engine.** */
+/** CYC-82 gutter click — the rule lives in the shared row plane. */
 export {
-  compoundRowPlaneGutterClick as morphingGutterClick,
-  applyCompoundRowPlaneGutterClick as applyMorphingGutterClick,
-} from '@/components/tables/compound/compound-row-plane';
+  rowPlaneGutterClick as morphingGutterClick,
+  applyRowPlaneGutterClick as applyMorphingGutterClick,
+} from '@/lib/tables/row-plane';

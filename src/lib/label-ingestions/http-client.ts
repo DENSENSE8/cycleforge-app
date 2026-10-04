@@ -4,7 +4,7 @@
  * never sends a tenant — the session cookie is the only authority.
  */
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import type { PublicLabelIngestion } from './ingestion-service';
+import type { LabelPairingCandidates, PublicLabelIngestion } from './ingestion-service';
 
 export type LabelIngestionDto = PublicLabelIngestion;
 
@@ -66,4 +66,20 @@ export async function applyLabelIngestionHttp(id: number, expectedRowVersion: nu
     body: JSON.stringify({ expectedRowVersion }),
   });
   await readEnvelope<unknown>(response);
+}
+
+export async function fetchLabelPairingCandidates(id: number, signal?: AbortSignal): Promise<LabelPairingCandidates> {
+  const response = await fetch(`${ENDPOINT}/${id}/candidates`, { credentials: 'same-origin', cache: 'no-store', signal });
+  return (await readEnvelope<LabelPairingCandidates>(response)).data;
+}
+
+/** Pair a quarantined label to an order; `repaired` = the buyer's other waiting labels that paired on their own as a result. */
+export async function confirmLabelOrderHttp(id: number, orderId: number, expectedRowVersion: number): Promise<{ ingestion: LabelIngestionDto; repaired: LabelIngestionDto[] }> {
+  const response = await fetch(`${ENDPOINT}/${id}/confirm-order`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ orderId, expectedRowVersion }),
+  });
+  return (await readEnvelope<{ ingestion: LabelIngestionDto; repaired: LabelIngestionDto[] }>(response)).data;
 }

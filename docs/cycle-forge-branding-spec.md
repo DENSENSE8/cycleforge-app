@@ -190,10 +190,6 @@ Add blanks to `.env.example`; never commit real secrets.
 | `src/components/repair/RepairServiceForm.tsx` | Hardcoded header | Org name + letterhead from session/API |
 | `src/components/repair/RepairAgreement.tsx` | Hardcoded header | Same |
 | `src/app/api/walk-in/receipt/[id]/route.tsx` | Hardcoded footer | Org name + letterhead |
-| `src/components/barcode/bin-label-printer/PrintLabel.tsx` | USAV Warehouse Location | `{org.name} Warehouse Location` |
-| `src/components/barcode/bin-label-printer/GiantPreviewPanel.tsx` | same | same |
-| `src/components/barcode/rack-printer/RackPrintLabel.tsx` | USAV Warehouse Rack | `{org.name} Warehouse Rack` |
-| `src/components/barcode/rack-printer/GiantRackPreviewPanel.tsx` | same | same |
 | `src/components/sidebar/WarehouseSidebarPanel.tsx` | USAV INV | Derive from org or generic “Inventory” |
 | `src/components/inventory/sidebar/InventorySidebarFooter.tsx` | USAV INVENTORY | `{org.name}` or shortened brand |
 | `src/components/settings/sections/OrganizationSection.tsx` | brand placeholder `USAV` | `USAV Solutions` or empty |

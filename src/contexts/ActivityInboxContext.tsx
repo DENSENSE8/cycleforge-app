@@ -145,6 +145,8 @@ interface ActivityInboxContextValue {
   /** Mark a received staff message read (clears it from the bell). */
   markStaffMessageRead: (messageId: number) => Promise<void>;
   clear: () => void;
+  /** A surface that SHOWS the items (badge / panel) mounted — the durable backlog seeds from then on. */
+  watchFeed: () => void;
 }
 
 const ActivityInboxContext = createContext<ActivityInboxContextValue | null>(
@@ -180,6 +182,10 @@ export function ActivityInboxProvider({
   const inboxFetchGenRef = useRef(0);
   // Seed fetches (tech queue / support followups / staff messages) are not first-paint critical — defer them past idle so they never compete…
   const idleReady = useIdleReady();
+  // …and only once a surface that shows them (the desk header's Inbox badge) has mounted:
+  // the phone shell renders no inbox, so it never pays for these reads.
+  const [feedWatched, setFeedWatched] = useState(false);
+  const watchFeed = useCallback(() => setFeedWatched(true), []);
 
   useEffect(() => {
     if (!user) {
@@ -194,7 +200,7 @@ export function ActivityInboxProvider({
   // each push (the publishers fan out to primary techs only; non-techs get an
   // empty queue server-side). Survives reload, shows the true backlog.
   const refreshTechQueue = useCallback(async () => {
-    if (inboxSuppressedRef.current) return;
+    if (!feedWatched || inboxSuppressedRef.current) return;
     if (!user?.staffId) {
       setTechQueueItems([]);
       return;
@@ -242,7 +248,7 @@ export function ActivityInboxProvider({
     } catch {
       /* best-effort — next push or reload retries */
     }
-  }, [user?.staffId]);
+  }, [user?.staffId, feedWatched]);
 
   useEffect(() => {
     if (!idleReady) return;
@@ -250,7 +256,7 @@ export function ActivityInboxProvider({
   }, [idleReady, refreshTechQueue]);
 
   const refreshSupportFollowups = useCallback(async () => {
-    if (inboxSuppressedRef.current) return;
+    if (!feedWatched || inboxSuppressedRef.current) return;
     if (!user?.staffId) {
       setSupportFollowupItems([]);
       return;
@@ -289,7 +295,7 @@ export function ActivityInboxProvider({
     } catch {
       /* best-effort — next push or reload retries */
     }
-  }, [user?.staffId]);
+  }, [user?.staffId, feedWatched]);
 
   useEffect(() => {
     if (!idleReady) return;
@@ -299,7 +305,7 @@ export function ActivityInboxProvider({
   // Persisted unread staff messages. Seeded on mount and refetched whenever a
   // staff_message push lands (authoritative read model, like the tech queue).
   const refreshStaffMessages = useCallback(async () => {
-    if (inboxSuppressedRef.current) return;
+    if (!feedWatched || inboxSuppressedRef.current) return;
     if (!user?.staffId) {
       setStaffMessageItems([]);
       return;
@@ -355,7 +361,7 @@ export function ActivityInboxProvider({
     } catch {
       /* best-effort — next push or reload retries */
     }
-  }, [user?.staffId]);
+  }, [user?.staffId, feedWatched]);
 
   useEffect(() => {
     if (!idleReady) return;
@@ -725,6 +731,7 @@ export function ActivityInboxProvider({
       dismissItem,
       markStaffMessageRead,
       clear,
+      watchFeed,
     }),
     [
       mergedItems,
@@ -736,6 +743,7 @@ export function ActivityInboxProvider({
       dismissItem,
       markStaffMessageRead,
       clear,
+      watchFeed,
     ],
   );
 
@@ -786,4 +794,14 @@ export function useActivityInbox(): ActivityInboxContextValue {
 /** Safe for optional UI — returns no-ops when provider missing (tests / storybook). */
 export function useActivityInboxOptional(): ActivityInboxContextValue | null {
   return useContext(ActivityInboxContext);
+}
+
+/** For a surface that SHOWS the inbox items: registers it so the provider seeds the durable backlog. */
+export function useActivityInboxFeed(): ActivityInboxContextValue | null {
+  const ctx = useContext(ActivityInboxContext);
+  const watchFeed = ctx?.watchFeed;
+  useEffect(() => {
+    watchFeed?.();
+  }, [watchFeed]);
+  return ctx;
 }

@@ -18,13 +18,14 @@ interface PageGuardOpts {
 }
 
 /**
- * Returns the current user if they have the permission; redirects otherwise.
+ * Returns the current user if they have the permission (any one of them, given
+ * a list); redirects otherwise.
  *
  * Unauthenticated → `/signin?next=<current path>`
  * Authenticated but lacks `perm` → `/not-authorized`
  */
 export async function requirePermission(
-  perm: PermissionString,
+  perm: PermissionString | readonly PermissionString[],
   _opts: PageGuardOpts = {},
 ): Promise<CurrentUser> {
   const user = await getCurrentUser();
@@ -35,7 +36,8 @@ export async function requirePermission(
     redirect(`/signin?next=${encodeURIComponent(path)}`);
   }
 
-  if (!user.permissions.has(perm)) {
+  const anyOf: readonly PermissionString[] = typeof perm === 'string' ? [perm] : perm;
+  if (!anyOf.some((p) => user.permissions.has(p))) {
     await audit({
       staffId: user.staffId,
       event: 'permission.denied',

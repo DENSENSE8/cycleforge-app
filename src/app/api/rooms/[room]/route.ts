@@ -3,7 +3,8 @@ import {
   getRooms,
   renameRoom,
   setRoomZoneLetter,
-  softDeleteRoom,
+  bulkSoftDeleteLocations,
+  previewLocationDeletion,
   type Location,
 } from '@/lib/neon/location-queries';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
@@ -114,12 +115,19 @@ export async function DELETE(
     return NextResponse.json({ error: 'Room name required' }, { status: 400 });
   }
   try {
-    // Tenant-scoped destructive write:
-    const result = await softDeleteRoom(name, orgId);
-    if (result.deactivated === 0) {
+    const targets = await previewLocationDeletion({ room: name }, orgId);
+    if (targets.length === 0) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, ...result });
+    const blocked = targets.filter((target) => !target.deletable);
+    if (blocked.length > 0) {
+      return NextResponse.json({
+        error: 'Room still contains active stock, LPNs or staged work',
+        blocked: blocked.map((target) => ({ id: target.id, face: target.face, reasons: target.blockedReasons })),
+      }, { status: 409 });
+    }
+    const result = await bulkSoftDeleteLocations(targets.map((target) => target.id), orgId);
+    return NextResponse.json({ success: true, deactivated: result.deactivated });
   } catch (err: any) {
     console.error('[DELETE /api/rooms/[room]] error:', err);
     return NextResponse.json({ error: 'Failed', details: err?.message }, { status: 500 });

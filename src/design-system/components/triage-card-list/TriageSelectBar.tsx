@@ -3,8 +3,9 @@
 /**
  * The bar above a TriageCardList (owner 2026-09-27): select-all · record count
  * (or "N selected") · status chips (or, with anything checked, the
- * selection's verbs) · pager · per-page · view switch (In place · Split)
- * (always last). No Find: the page has ONE field — the sidebar's, or
+ * selection's verbs) · pager · per-page · density (Compact · Full switch, where
+ * the host offers it) · view switch (In place · Split) · fullscreen (always
+ * last). No Find: the page has ONE field — the sidebar's, or
  * the global header's while the sidebar is closed (owner 2026-09-28). Law 5:
  * the verbs live ONLY here, the same list in the same order at 1 or N checked.
  * Mobile first: under @3xl the chips / verbs take their own full-width row and
@@ -17,11 +18,13 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewSwitch';
 import { DeskFullscreenToggle } from '@/design-system/components/DeskFullscreenToggle';
+import { SegmentedGlyphSwitch, type SegmentedGlyphOption } from '@/design-system/components/SegmentedGlyphSwitch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { DATA_TABLE_PAGE_SIZES } from '@/lib/tables/data-table-pagination';
 import { cn } from '@/utils/_cn';
 import type { TriagePageMode } from './triage-list-state';
+import type { TriageDensity } from './triage-density';
 import { CARD_LIST_SETTLE_S } from '../record-card/RecordCard';
 
 const SPRING = { type: 'spring', stiffness: 480, damping: 36, mass: 0.8 } as const;
@@ -40,6 +43,34 @@ const ICON_BUTTON_CLASS = cn(
   focusRing('control'),
 );
 
+/** Compact: one line per record — three ruled rows. */
+function CompactGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 16" fill="none" aria-hidden className={className}>
+      <rect x="1" y="1" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M4 5h12M4 8h12M4 11h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Full: each record a card — two blocks, a photo and two lines each. */
+function FullGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 16" fill="none" aria-hidden className={className}>
+      <rect x="1" y="1" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="3.5" y="3.5" width="3.5" height="3.5" rx="0.75" fill="currentColor" opacity="0.35" />
+      <rect x="3.5" y="9" width="3.5" height="3.5" rx="0.75" fill="currentColor" opacity="0.35" />
+      <path d="M9 4.5h7M9 6.5h4M9 10h7M9 12h4" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** The operator's density pick — `useTriageDensity`'s pair. */
+export interface TriageDensityControl {
+  value: TriageDensity;
+  onChange: (density: TriageDensity) => void;
+}
+
 function Pager({ pager, testId }: { pager: TriagePager; testId: string }) {
   return (
     <span className="flex items-center gap-0.5" data-testid={testId}>
@@ -52,6 +83,15 @@ function Pager({ pager, testId }: { pager: TriagePager; testId: string }) {
       </button>
     </span>
   );
+}
+
+/** List view — Compact (rows) | Full (cards), one click, the same switch grammar as In place · Split. */
+function DensitySwitch({ control, testId }: { control: TriageDensityControl; testId: string }) {
+  const options: readonly SegmentedGlyphOption<TriageDensity>[] = [
+    { value: 'row', label: 'Compact', Glyph: CompactGlyph, testId: `${testId}-row` },
+    { value: 'card', label: 'Full', Glyph: FullGlyph, testId: `${testId}-card` },
+  ];
+  return <SegmentedGlyphSwitch options={options} value={control.value} onChange={control.onChange} ariaLabel="List view" testId={testId} />;
 }
 
 /** Per page: 20 · 50 · 100 · 200, or Scroll (every loaded card, the next chunk loading near the end). */
@@ -120,6 +160,7 @@ export function TriageSelectBar({
   bulk,
   viewControls = true,
   summaryInline = false,
+  densityControl,
 }: {
   /** What the list holds ("order" / "orders") — aria labels. */
   noun: { one: string; many: string };
@@ -145,6 +186,8 @@ export function TriageSelectBar({
    * its one view is the fixed-width rail + record, so there is nothing to pick.
    */
   viewControls?: boolean;
+  /** The Compact / Full switch — painted before the fullscreen toggle when the host offers the choice. */
+  densityControl?: TriageDensityControl;
   /**
    * Keep the chips on the bar's one line at every width — between the count
    * and the pager, scrolling sideways — instead of wrapping under it below
@@ -292,6 +335,8 @@ export function TriageSelectBar({
                   testId={`${testIdPrefix}-page-mode`}
                 />
               ) : null}
+              {/* List view — Compact | Full, one click — sits just left of the view switch. */}
+              {densityControl ? <DensitySwitch control={densityControl} testId={`${testIdPrefix}-density`} /> : null}
               {/* How a record opens — In place or Split — seen and switched before one is open. */}
               {viewControls ? <DeskRecordViewSwitch /> : null}
               {/* ⤢ always the bar's last, top-right-most control (owner 2026-09-27). */}

@@ -23,6 +23,7 @@ import { TriageCardList, type TriageFamily, type TriageFeed } from '@/design-sys
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut, useTriagePageMode } from '@/design-system/components/triage-card-list/triage-list-state';
+import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { IMPORT_RUN_LIFECYCLE } from '@/design-system/tokens/import-record-lifecycle';
 import { writeClipboardText } from '@/lib/clipboard';
@@ -34,6 +35,7 @@ import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { toast } from '@/lib/toast';
 import { IMPORT_RUNS_VIEW } from '@/lib/triage/views';
 import { ImportRunCard, type ImportRunCardModel } from './cards/ImportRunCard';
+import { ImportRunRow } from './cards/ImportRunRow';
 import {
   ImportListSummary,
   REVIEW_PERMISSION,
@@ -66,6 +68,7 @@ export function ImportRunsList() {
   const cut = useTriageCut({ statusKeys: NO_FACE_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   // One page of cards is one API page: the per-page menu's size is the request's.
   const pageMode = useTriagePageMode(VIEW.storageKeys.pageMode);
+  const [density, setDensity] = useTriageDensity('imports.runs');
   const runs = useImportRuns(
     importListQuery(searchParams, 'runs'),
     pageMode.resolved,
@@ -173,10 +176,11 @@ export function ImportRunsList() {
         cardModel: (group) => ({ key: group.key, ids: group.rows.map(runId), lead: group.rows[0]! }),
         state: (group) => IMPORT_RUN_LIFECYCLE[group.rows[0]!.status],
         exactFind: runExactFind,
-        renderCard: (props) => <ImportRunCard {...props} dayShown={false} />,
+        renderCard: (props) =>
+          density === 'row' ? <ImportRunRow {...props} /> : <ImportRunCard {...props} dayShown={false} />,
       }),
     }),
-    [],
+    [density],
   );
 
   const q = searchParams.get('q') ?? '';
@@ -212,6 +216,7 @@ export function ImportRunsList() {
       <TriageCardList
         sections="by-state"
         family={family}
+        densityControl={{ value: density, onChange: setDensity }}
         feed={feed}
         cut={cut}
         summary={<IncomingStatusChips set={chipSet} />}

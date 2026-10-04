@@ -1,6 +1,6 @@
 /** Bins slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
-import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
+import type { SlotValue } from '@/lib/tables/field-catalog/slot-value';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { formatDateKeyShort } from '@/utils/date';
 
@@ -44,7 +44,7 @@ function statusText(row: BinsOverviewRow): string | null {
 export function resolveBinsSlotValue(
   row: BinsOverviewRow,
   fieldId: string,
-): CompoundSlotValue | null {
+): SlotValue | null {
   switch (fieldId) {
     case 'bins.barcode':
       return { kind: 'value', text: str(row.barcode) };

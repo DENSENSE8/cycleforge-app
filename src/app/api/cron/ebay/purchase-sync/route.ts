@@ -9,7 +9,12 @@ import { isIncomingUniversal } from '@/lib/feature-flags';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/** GET /api/cron/ebay/purchase-sync (Vercel cron, ~30–60 min) Universal Incoming Track A: */
+/**
+ * GET /api/cron/ebay/purchase-sync (Vercel cron, every 30 min) — Universal
+ * Incoming Track A. Each run re-reads an overlapping modified-time window (see
+ * `syncEbayPurchasesToReceiving`), so missed runs and late tracking are
+ * recovered; the cron_runs summary records landed / updated / unchanged / failed.
+ */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {
@@ -19,18 +24,21 @@ export async function GET(request: NextRequest) {
           if (!(await isIncomingUniversal(orgId))) return { skipped: 'flag_off' as const };
           return syncEbayPurchasesToReceiving(orgId);
         });
-        let ingested = 0;
-        let orgsRun = 0;
+        const totals = { orgs: results.length, orgsRun: 0, ordersFetched: 0, landed: 0, updated: 0, unchanged: 0, failed: 0 };
         const errors: string[] = [];
         for (const r of results) {
           if (!r.ok) { errors.push(`${r.orgId}: ${r.error instanceof Error ? r.error.message : String(r.error)}`); continue; }
-          if (r.result && 'ingested' in r.result) {
-            orgsRun += 1;
-            ingested += r.result.ingested;
+          if (r.result && 'landed' in r.result) {
+            totals.orgsRun += 1;
+            totals.ordersFetched += r.result.ordersFetched;
+            totals.landed += r.result.landed;
+            totals.updated += r.result.updated;
+            totals.unchanged += r.result.unchanged;
+            totals.failed += r.result.failed;
             if (r.result.errors.length) errors.push(...r.result.errors.map((e) => `${r.orgId}: ${e}`));
           }
         }
-        return { orgs: results.length, orgsRun, ingested, errors };
+        return { ...totals, errors };
       }),
     );
     if (!locked.ran) {

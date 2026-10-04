@@ -4,9 +4,9 @@
  * title, the most useful product facts, and the next step without table chrome.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 
-export const PRODUCTS_CATALOG_VIEW: TriageViewDecl = {
+export const PRODUCTS_CATALOG_VIEW = triageView({
   id: 'products.catalog',
   grain: 'catalog product',
   noun: { one: 'product', many: 'products' },
@@ -21,6 +21,7 @@ export const PRODUCTS_CATALOG_VIEW: TriageViewDecl = {
   chips: { owner: 'face', param: 'catalogCardStatus' },
   paging: 'client',
   status: 'state',
+  slots: { identity: 'SKU', channel: 'none', person: 'none', quickLook: 'none', photo: 'line' },
   facts: [
     { id: 'item', tier: 'always' },
     { id: 'category', tier: 'always' },
@@ -29,4 +30,4 @@ export const PRODUCTS_CATALOG_VIEW: TriageViewDecl = {
   ],
   sections: null,
   next: ['Open'],
-};
+});

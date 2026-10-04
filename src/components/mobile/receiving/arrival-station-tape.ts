@@ -7,7 +7,7 @@ import {
   STATION_TAPE_LIMIT,
   type StationTapeEntry,
   type StationTapeLabel,
-} from '@/components/mobile/station/station-tape';
+} from '@/lib/mobile/station-tape';
 
 /** What the door decided about one scan. */
 export type ArrivalScanStatus = 'arrived' | 'known' | 'refused' | 'err';

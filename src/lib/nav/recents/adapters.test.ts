@@ -80,12 +80,12 @@ test('a bench scan links to its order, else its FNSKU, else the Picker history s
   assert.deepEqual([raw?.entityType, raw?.href], ['tech_scan', '/pick?ship=history&search=9400+1111']);
 });
 
-test('a pack opens on Packing Review (with its order when known)', () => {
+test('a pack opens its retained order record when known', () => {
   const row = packerLogRecentRow({
     id: 77, packer_log_id: 501, created_at: '2026-09-26T11:00:00Z', order_row_id: 4411,
     order_id: '114-22', product_title: 'JBL Flip 6', shipping_tracking_number: '1ZXYZ', tracking_type: 'ORDERS',
   });
-  assert.equal(row?.href, '/review?packerLogId=501&orderId=4411');
+  assert.equal(row?.href, '/shipping/orders?openOrderId=4411');
   assert.deepEqual([row?.entityType, row?.entityId, row?.subtitle], ['packer_log', '501', '#114-22 · 1ZXYZ']);
 });
 

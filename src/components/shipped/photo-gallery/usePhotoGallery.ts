@@ -7,8 +7,8 @@ import {
   downloadPhotoBlob,
   downloadPhotoById,
   downloadPhotoZip,
-  deletePhoto,
 } from './photo-gallery-api';
+import { deletePhoto } from '@/lib/photos/delete-photo-client';
 import { usePhotoItems } from './usePhotoItems';
 import { useImageZoom } from './useImageZoom';
 import {

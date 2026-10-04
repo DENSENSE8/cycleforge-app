@@ -13,7 +13,7 @@
 
 import { useState, type ComponentProps } from 'react';
 import { EyeOff } from 'lucide-react';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useItemActions } from '@/lib/daily-checks/use-daily-checks';
 import { TASK_BOARD_TYPE_FACE, type TaskBoardRow } from '@/lib/task-board/task-board-model';
 import { toast } from '@/lib/toast';
@@ -53,16 +53,16 @@ export function TaskChecklistColumn({
         <span className="text-[11px] tabular-nums text-text-muted">
           {done}/{rows.length}
         </span>
-        <button
-          type="button"
-          onClick={onHide}
-          title="Hide the Daily checklist column"
-          className="ml-auto inline-flex h-6 items-center gap-1 rounded-full pl-2 pr-1 text-[11px] font-medium text-text-muted hover:bg-surface-hover hover:text-text-default"
-        >
-          <EyeOff className="size-3" aria-hidden />
-          Hide
-          <KeyboardKey size="xs">H</KeyboardKey>
-        </button>
+        <HoverTooltip label="Hide the Daily checklist column" shortcut="H" placement="below" asChild>
+          <button
+            type="button"
+            onClick={onHide}
+            className="ml-auto inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11px] font-medium text-text-muted hover:bg-surface-hover hover:text-text-default"
+          >
+            <EyeOff className="size-3" aria-hidden />
+            Hide
+          </button>
+        </HoverTooltip>
       </header>
       {canAdd ? <QuickAdd /> : null}
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -93,24 +93,25 @@ function QuickAdd() {
 
   return (
     <div className="mx-3 mb-1 flex shrink-0 items-center gap-2 rounded-xl bg-surface-sunken px-2.5">
-      <input
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            submit();
-          } else if (event.key === 'Escape' && title === '') {
-            event.currentTarget.blur();
-          }
-        }}
-        disabled={addItem.isPending}
-        aria-label="Add to the daily checklist"
-        placeholder="Add to the checklist — every day"
-        data-testid="task-board-checklist-add"
-        className="h-8 min-w-0 flex-1 bg-transparent text-xs text-text-default outline-none placeholder:text-text-muted"
-      />
-      {title.trim() ? <KeyboardKey size="xs">Enter</KeyboardKey> : null}
+      <HoverTooltip label="Add to the checklist" shortcut="Enter" placement="below" focusable={false} asChild>
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              submit();
+            } else if (event.key === 'Escape' && title === '') {
+              event.currentTarget.blur();
+            }
+          }}
+          disabled={addItem.isPending}
+          aria-label="Add to the daily checklist"
+          placeholder="Add to the checklist — every day"
+          data-testid="task-board-checklist-add"
+          className="h-8 min-w-0 flex-1 bg-transparent text-xs text-text-default outline-none placeholder:text-text-muted"
+        />
+      </HoverTooltip>
     </div>
   );
 }

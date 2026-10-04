@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/design-system/primitives';
 import { TextField } from '@/design-system/primitives/TextField';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
@@ -82,28 +82,35 @@ export function UnitLineTestSheet({ open, unitId, onClose, onDone }: UnitTestShe
   };
 
   return (
-    <BottomSheet open={open} onClose={busy ? () => {} : onClose} forceVariant="sheet" title="Line test">
+    <Sheet open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
       {/* Portals out of the page's ModeRegion; re-declare triage. */}
-      <ModeRegion mode="triage" className="flex flex-col gap-3 pb-2">
-        <TextField label="Note (optional)" value={note} onChange={setNote} multiline rows={2} disabled={!!busy} />
-        <SheetAlerts notice={null} error={error} />
-        <div className="grid grid-cols-3 gap-2">
-          {UNIT_TEST_VERBS.map((verb) => (
-            <Button
-              key={verb.verdict}
-              variant={verb.variant}
-              size="lg"
-              className="w-full rounded-mode"
-              loading={busy === verb.verdict}
-              disabled={!!busy}
-              onClick={() => void record(verb)}
-            >
-              {verb.label}
-            </Button>
-          ))}
-        </div>
+      <ModeRegion mode="triage" asChild>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>Line test</SheetTitle>
+          </SheetHeader>
+          <SheetBody className="flex flex-col gap-3">
+            <TextField label="Note (optional)" value={note} onChange={setNote} multiline rows={2} disabled={!!busy} />
+            <SheetAlerts notice={null} error={error} />
+            <div className="grid grid-cols-3 gap-2">
+              {UNIT_TEST_VERBS.map((verb) => (
+                <Button
+                  key={verb.verdict}
+                  variant={verb.variant}
+                  size="lg"
+                  className="w-full rounded-mode"
+                  loading={busy === verb.verdict}
+                  disabled={!!busy}
+                  onClick={() => void record(verb)}
+                >
+                  {verb.label}
+                </Button>
+              ))}
+            </div>
+          </SheetBody>
+        </SheetContent>
       </ModeRegion>
-    </BottomSheet>
+    </Sheet>
   );
 }
 

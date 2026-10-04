@@ -3,7 +3,7 @@
 /** One CSV staging row — the parsed record's REAL details in the data table, with its triage state in the `status` column. */
 
 import { memo } from 'react';
-import { CopyableCellValue } from '@/components/ui/CopyChip';
+import { CopyableCellValue, OrderIdChip } from '@/components/ui/CopyChip';
 import { GridCellDash, GridPlatformMarkValue, GridStatusCellValue } from '@/components/ui/grid-cells';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
@@ -86,7 +86,7 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
     switch (key) {
       case 'orders-import.order':
         return row.orderNumber ? (
-          <CopyableCellValue value={row.orderNumber} dense />
+          <OrderIdChip value={row.orderNumber} plain dense fitDisplayWidth truncateDisplay={false} />
         ) : (
           <GridCellDash />
         );

@@ -1,6 +1,7 @@
 /** The ONE builder for a Zendesk comment posted from a composer. */
 
 import { markdownToHtml } from '@/lib/support/markdown';
+import { appendProductTokens, type ProductTokenFace, type ProductTokenRef } from '@/lib/support/product-token';
 import { resolveComposerCcPayload } from './ticket-cc';
 import type { SupportReplyVars } from '@/hooks/useSupportReply';
 
@@ -37,8 +38,15 @@ export function buildComposerReplyVars(opts: {
   ccDraft?: string;
   photoIds?: readonly number[];
   attachmentPreviews?: ReadonlyArray<{ url: string; thumbUrl?: string }>;
+  /**
+   * "Product sent to customer" picks. Each rides the comment as a
+   * `[[product:…]]` token (the thread paints its card) and reads as
+   * "Replacement × 1 — Title (SKU …)" in the customer email.
+   */
+  products?: ReadonlyArray<ProductTokenRef & ProductTokenFace>;
 }): SupportReplyVars | null {
-  const text = opts.body.trim();
+  const products = opts.products ?? [];
+  const text = appendProductTokens(opts.body.trim(), products).trim();
   if (!text) return null;
   const finalText = signComposerInternalNote(text, {
     isPublic: opts.isPublic,
@@ -57,7 +65,9 @@ export function buildComposerReplyVars(opts: {
     ticketId: opts.ticketId,
     body: finalText,
     isPublic: opts.isPublic,
-    htmlBody: markdownToHtml(finalText),
+    htmlBody: markdownToHtml(finalText, {
+      productFace: (id) => products.find((p) => p.skuCatalogId === id) ?? null,
+    }),
     ...(opts.staffId != null && opts.staffId > 0 ? { staffId: opts.staffId, staffName: opts.staffName } : {}),
     ...(emailCcs ? { emailCcs } : {}),
     ...(photoIds ? { photoIds } : {}),

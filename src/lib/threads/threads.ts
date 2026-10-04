@@ -31,10 +31,12 @@ const defaultDeps: ThreadsDeps = {
 // ─── Row shapes (client-safe wire types live in ./types) ────────────────────
 
 import {
+  THREAD_ANCHOR_EXTRA,
   THREAD_MESSAGE_PROVIDERS,
   THREAD_MESSAGE_VISIBILITIES,
   THREAD_STATUSES,
   type EntityThread,
+  type ThreadAnchorExtraType,
   type ThreadMessage,
   type ThreadMessageProvider,
   type ThreadMessageVisibility,
@@ -42,6 +44,16 @@ import {
 } from './types';
 
 export * from './types';
+
+/** Every entity_threads anchor: the surface registry plus the thread-only extras (TASK_DOCUMENT). */
+export type ThreadAnchorType = SurfaceEntityType | ThreadAnchorExtraType;
+
+/** The anchor's parent table + spine vocab, or null for a type entity_threads does not accept. */
+function threadAnchor(entityType: string): { parentTable: string; opsEventEntityType: string } | null {
+  if (isSurfaceEntityType(entityType)) return SURFACE_ENTITY_TYPES[entityType];
+  if (Object.hasOwn(THREAD_ANCHOR_EXTRA, entityType)) return THREAD_ANCHOR_EXTRA[entityType as ThreadAnchorExtraType];
+  return null;
+}
 
 function toIso(v: unknown): string {
   return v instanceof Date ? v.toISOString() : String(v);
@@ -85,7 +97,7 @@ const MESSAGE_COLS =
 
 interface ResolveThreadInput {
   orgId: OrgId;
-  entityType: SurfaceEntityType | (string & {});
+  entityType: ThreadAnchorType | (string & {});
   entityId: number;
 }
 
@@ -93,7 +105,7 @@ export async function resolveThreadForEntity(
   input: ResolveThreadInput,
   deps: ThreadsDeps = defaultDeps,
 ): Promise<EntityThread | null> {
-  if (!isSurfaceEntityType(input.entityType)) return null;
+  if (!threadAnchor(input.entityType)) return null;
   if (!Number.isSafeInteger(input.entityId) || input.entityId <= 0) return null;
   return deps.runQuery(input.orgId, async (client) => {
     const res = await client.query(
@@ -128,7 +140,7 @@ export async function getThread(
 
 interface GetOrCreateThreadInput {
   orgId: OrgId;
-  entityType: SurfaceEntityType | (string & {});
+  entityType: ThreadAnchorType | (string & {});
   entityId: number;
   createdBy?: number | null;
 }
@@ -141,14 +153,15 @@ export async function getOrCreateThread(
   input: GetOrCreateThreadInput,
   deps: ThreadsDeps = defaultDeps,
 ): Promise<GetOrCreateThreadResult> {
-  if (!isSurfaceEntityType(input.entityType)) {
+  const anchor = threadAnchor(input.entityType);
+  if (!anchor) {
     return { ok: false, status: 400, error: `unknown entity_type "${input.entityType}"` };
   }
   if (!Number.isSafeInteger(input.entityId) || input.entityId <= 0) {
     return { ok: false, status: 400, error: `invalid entityId ${input.entityId}` };
   }
   const entityType = input.entityType;
-  const parentTable = SURFACE_ENTITY_TYPES[entityType].parentTable;
+  const parentTable = anchor.parentTable;
 
   return deps.runTransaction(input.orgId, async (client) => {
     // App-side parent-existence validation (polymorphic contract point 6).
@@ -228,7 +241,7 @@ export async function postThreadMessage(
     if (threadRes.rows.length === 0) {
       return { ok: false as const, status: 404 as const, error: `thread ${input.threadId} not found` };
     }
-    const thread = threadRes.rows[0] as { entity_type: SurfaceEntityType; entity_id: number };
+    const thread = threadRes.rows[0] as { entity_type: string; entity_id: number };
 
     const clientEventId = input.clientEventId ?? null;
     const inserted = await client.query(
@@ -273,7 +286,7 @@ export async function postThreadMessage(
     // Same-transaction ops_events emission (D3) — the spine stays the SoT
     // timeline; rolls back with the message if the transaction aborts.
     // UPPERCASE anchor vocab → the spine's lowercase vocab via the registry.
-    const opsEntityType = SURFACE_ENTITY_TYPES[thread.entity_type].opsEventEntityType;
+    const opsEntityType = threadAnchor(thread.entity_type)?.opsEventEntityType ?? 'other';
     await client.query(
       `INSERT INTO ops_events (
          organization_id, occurred_at, event_type, entity_type, entity_id,
@@ -528,6 +541,42 @@ export async function editThreadMessage(
         RETURNING ${MESSAGE_COLS}`,
       [input.messageId, input.threadId, input.orgId, body],
     );
+    return { ok: true as const, message: mapMessage(updated.rows[0]) };
+  });
+}
+
+interface PatchThreadMessageMetaInput {
+  orgId: OrgId;
+  threadId: number;
+  messageId: number;
+  /** Shallow-merged into `meta` (jsonb `||`). */
+  patch: Record<string, unknown>;
+}
+
+type PatchThreadMessageMetaResult =
+  | { ok: true; message: ThreadMessage }
+  | { ok: false; status: 404; error: string };
+
+/**
+ * Merge keys into one live message's `meta` — state that rides the message
+ * (a document comment's resolvedAt/resolvedBy) without rewriting its body.
+ */
+export async function patchThreadMessageMeta(
+  input: PatchThreadMessageMetaInput,
+  deps: ThreadsDeps = defaultDeps,
+): Promise<PatchThreadMessageMetaResult> {
+  return deps.runTransaction(input.orgId, async (client) => {
+    const updated = await client.query(
+      `UPDATE thread_messages
+          SET meta = COALESCE(meta, '{}'::jsonb) || $4::jsonb
+        WHERE id = $1::bigint AND thread_id = $2::bigint AND organization_id = $3::uuid
+          AND deleted_at IS NULL
+        RETURNING ${MESSAGE_COLS}`,
+      [input.messageId, input.threadId, input.orgId, JSON.stringify(input.patch)],
+    );
+    if (updated.rows.length === 0) {
+      return { ok: false as const, status: 404 as const, error: `message ${input.messageId} not found` };
+    }
     return { ok: true as const, message: mapMessage(updated.rows[0]) };
   });
 }

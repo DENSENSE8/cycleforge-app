@@ -183,7 +183,7 @@ export function ProcedureChecklist({
   const sortable = !!onReorderSteps;
   const sortableIds = useMemo(() => steps.map((s) => s.key), [steps]);
 
-  // House 6px pointer threshold (SwimlaneBoard / OrdersQueue) disambiguates
+  // House 6px pointer threshold (OrdersQueue) disambiguates
   // click vs drag; KeyboardSensor gives Space/arrows reorder.
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),

@@ -4,11 +4,13 @@ import { STATE_TONES } from './state';
 export const LIGHT_THEME = {
   page: { background: '#ffffff', foreground: '#171717' },
   vars: {
-    // Neutral chrome (slate family)
+    // Neutral chrome (slate family). Ink ladder floors on card, canvas, hover AND
+    // sunken (owner 2026-10-03: subtitles must read easily): secondary ≥9:1,
+    // soft ≥6:1, faint ≥4.5:1 — faint is text too, never a sub-AA decorative tier.
     'text-primary': '#0f172a',
-    'text-secondary': '#475569',
-    'text-soft': '#64748b',
-    'text-faint': '#94a3b8',
+    'text-secondary': '#374457',
+    'text-soft': '#505e74',
+    'text-faint': '#636f83',
     // ── The page plane:
     // Operator ruling 2026-09-15: *"ensure that the FAFAFA token is pinned for
     'background-canvas': '#fafafa',

@@ -40,6 +40,11 @@ const TRACKING_REASON_LABEL: Readonly<Record<string, string>> = {
   zoho_unreachable: 'Zoho unreachable',
 };
 
+/** An open tracking exception's tag: its reason's words. */
+export function trackingExceptionTagLabel(reason: string | null): string {
+  return (reason && TRACKING_REASON_LABEL[reason]) ?? (reason ? reason.replace(/_/g, ' ') : 'Tracking exception');
+}
+
 export function trackingRow(row: TrackingSqlRow): ExceptionRow {
   const sourceId = String(row.id);
   const reason = text(row.exception_reason);
@@ -49,7 +54,7 @@ export function trackingRow(row: TrackingSqlRow): ExceptionRow {
     domain: 'inventory',
     sourceId,
     tag: {
-      label: (reason && TRACKING_REASON_LABEL[reason]) ?? (reason ? reason.replace(/_/g, ' ') : 'Tracking exception'),
+      label: trackingExceptionTagLabel(reason),
       tone: 'warning',
     },
     entity: { type: 'tracking', id: sourceId, label: row.tracking_number },

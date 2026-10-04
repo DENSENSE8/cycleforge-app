@@ -73,7 +73,7 @@ describe('isCarrierSyncEnabled', () => {
   });
 
   it('still refuses carriers with no live integration', () => {
-    assert.equal(isCarrierSyncEnabled('USPS'), false, 'disabled pending OAuth');
+    assert.equal(isCarrierSyncEnabled('USPS'), false, 'disabled pending the USPS IP Agreement');
     assert.equal(isCarrierSyncEnabled('AMAZON'), false);
     assert.equal(isCarrierSyncEnabled('UNKNOWN'), false);
     assert.equal(isCarrierSyncEnabled(''), false);

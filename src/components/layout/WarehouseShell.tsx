@@ -33,6 +33,7 @@ import { UserIssueResolvedToaster } from '@/components/providers/UserIssueResolv
 import { WatchedArrivalToaster } from '@/components/providers/WatchedArrivalToaster';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
+import { appRootClass } from '@/design-system/tokens/mobile-viewport';
 
 export function WarehouseShell({
   initialUser,
@@ -47,7 +48,10 @@ export function WarehouseShell({
 }) {
   return (
     <ReducedMotionProvider>
-      <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
+      <div
+        id="app-root"
+        className={appRootClass(mobileTree)}
+      >
         <PostHogProvider>
           <Providers>
             <AuthProvider initial={initialUser}>

@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { DetailAck, DetailNav } from '@/components/mobile/detail/DetailParts';
 import { Button } from '@/design-system/primitives';
 import type { DetailDoor } from '@/lib/mobile/detail-door';
@@ -53,7 +53,7 @@ export function DetailRecordFrame<T>({
   const live = record ?? null;
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         title={bar.title}
         mono={bar.mono}
         subtitle={bar.subtitle}

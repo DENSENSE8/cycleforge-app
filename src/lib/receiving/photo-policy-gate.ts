@@ -80,18 +80,6 @@ const defaultReceivingPhotoPolicyGateDeps: ReceivingPhotoPolicyGateDeps = {
   loadEvidenceCounts: loadEvidenceCountsFromDb,
 };
 
-/** `inbound_workflow_status_enum` values a line holds BEFORE its first receive. */
-const PRE_RECEIVE_WORKFLOW_STATUSES: ReadonlySet<string> = new Set([
-  '',
-  'EXPECTED',
-  'ARRIVED',
-  'MATCHED',
-]);
-
-export function isPreReceiveWorkflowStatus(status: string | null | undefined): boolean {
-  return PRE_RECEIVE_WORKFLOW_STATUSES.has(String(status ?? '').trim().toUpperCase());
-}
-
 /**
  * Assemble evidence counts (when the policy demands them) and judge them.
  * Returns the evaluator verdict; `!ok` maps to the route's 409

@@ -4,7 +4,7 @@
 
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { deletePhoto } from '@/components/shipped/photo-gallery/photo-gallery-api';
+import { deletePhoto } from '@/lib/photos/delete-photo-client';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { uploadVideoClient } from '@/lib/photos/video-upload-client';
 import { screenTaskMediaFiles } from '@/lib/tasks/task-media-lessons';
@@ -30,9 +30,16 @@ import {
   type TaskDocument,
   type TaskDocumentCreateBody,
   type TaskDocumentMeta,
+  type TaskDocumentPatchBody,
   type TaskDocumentPayload,
   type TaskDocumentsPayload,
 } from '@/lib/tasks/task-documents-shared';
+import {
+  TASK_DOC_COMMENT_REFUSAL_COPY,
+  type TaskDocComment,
+  type TaskDocCommentCreateBody,
+  type TaskDocCommentsPayload,
+} from '@/lib/tasks/task-document-comments-shared';
 import {
   MEDIA_LINK_REFUSAL_COPY,
   type TaskMediaLink,
@@ -320,6 +327,84 @@ export function useTaskDocument(taskId: number, docId: number | null) {
       return (await readJson<TaskDocumentPayload>(res, TASK_DOCUMENT_REFUSAL_COPY)).document;
     },
   });
+}
+
+/**
+ * Save one document (`PATCH …?docId=`), guarded by the `updatedAt` the editor
+ * loaded. A 409 throws `TASK_DOCUMENT_REFUSAL_COPY.stale_document` and leaves
+ * the cache alone, so the editor keeps the unsaved draft on screen.
+ */
+export function useSaveTaskDocument(taskId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ docId, body }: { docId: number; body: TaskDocumentPatchBody }): Promise<TaskDocument> => {
+      const res = await fetch(`/api/tasks/${taskId}/documents?docId=${docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return (await readJson<TaskDocumentPayload>(res, TASK_DOCUMENT_REFUSAL_COPY)).document;
+    },
+    onSuccess: (document) => {
+      queryClient.setQueryData(['tasks', 'documents', taskId, document.id], document);
+      void queryClient.invalidateQueries({ queryKey: ['tasks', 'documents', taskId], exact: true });
+    },
+  });
+}
+
+/** Comments on one document, oldest first, with post / resolve / remove. */
+export function useTaskDocComments(taskId: number, docId: number | null) {
+  const queryClient = useQueryClient();
+  const key = ['tasks', 'documents', taskId, docId, 'comments'] as const;
+  const query = useQuery({
+    queryKey: key,
+    enabled: docId != null,
+    queryFn: async (): Promise<TaskDocComment[]> => {
+      const res = await fetch(`/api/tasks/${taskId}/documents/comments?docId=${docId}`, { cache: 'no-store' });
+      return (await readJson<TaskDocCommentsPayload>(res, TASK_DOC_COMMENT_REFUSAL_COPY)).comments;
+    },
+  });
+  const settle = () => void queryClient.invalidateQueries({ queryKey: key });
+  const onError = (err: unknown) => toast.error(err instanceof Error ? err.message : 'Could not update the comment.');
+
+  const post = useMutation({
+    mutationFn: async (body: Omit<TaskDocCommentCreateBody, 'docId'>): Promise<TaskDocComment> => {
+      const res = await fetch(`/api/tasks/${taskId}/documents/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, docId }),
+      });
+      return (await readJson<{ comment: TaskDocComment }>(res, TASK_DOC_COMMENT_REFUSAL_COPY)).comment;
+    },
+    onSettled: settle,
+    onError,
+  });
+
+  const resolve = useMutation({
+    mutationFn: async ({ commentId, resolved }: { commentId: number; resolved: boolean }) => {
+      const res = await fetch(`/api/tasks/${taskId}/documents/comments`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId, commentId, resolved }),
+      });
+      await readJson(res, TASK_DOC_COMMENT_REFUSAL_COPY);
+    },
+    onSettled: settle,
+    onError,
+  });
+
+  const remove = useMutation({
+    mutationFn: async (commentId: number) => {
+      const res = await fetch(`/api/tasks/${taskId}/documents/comments?docId=${docId}&commentId=${commentId}`, {
+        method: 'DELETE',
+      });
+      await readJson(res, TASK_DOC_COMMENT_REFUSAL_COPY);
+    },
+    onSettled: settle,
+    onError,
+  });
+
+  return { comments: query.data ?? [], loading: query.isLoading, error: query.error, post, resolve, remove };
 }
 
 /** The codebase's plan files, searched on the server (the catalog is hundreds of files). */

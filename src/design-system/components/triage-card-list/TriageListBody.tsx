@@ -8,7 +8,7 @@
  * already-keyed `<CollapseItem as="li">` / {@link TriageSectionHeader} items.
  */
 
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, type WheelEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowUp } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -50,7 +50,7 @@ export function TriageSectionHeader({
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...SPRING, delay: CARD_LIST_SETTLE_S }}
       data-testid={testId}
-      className="sticky top-0 z-20 -mx-1 flex items-center gap-2 bg-surface-card/90 pb-1.5 pl-5 pr-4 pt-3 backdrop-blur-sm"
+      className="sticky left-0 top-0 z-20 -mx-1 flex items-center gap-2 bg-surface-card/90 pb-1.5 pl-5 pr-4 pt-3 backdrop-blur-sm"
     >
       <span className={cn('text-xs font-semibold', SECTION_TONE_CLASS[tone])}>{label}</span>
       <span className="rounded-full bg-surface-sunken px-1.5 text-[11px] font-semibold tabular-nums text-text-muted">{count}</span>
@@ -144,6 +144,8 @@ export interface TriageListBodyProps {
   testIdPrefix: string;
   /** `row`: the one-row density — rows draw their own full-bleed hairline; the list opens with one. */
   density: 'card' | 'row';
+  /** One shared horizontal scroll plane for opt-in wide Compact rows. */
+  rowScroll?: boolean;
   noun: { one: string; many: string };
   /** The list's scroller — shared with the held-new hold and the page / find scroll. */
   scrollRef: RefObject<HTMLDivElement>;
@@ -183,6 +185,7 @@ export interface TriageListBodyProps {
 export function TriageListBody({
   testIdPrefix,
   density,
+  rowScroll = false,
   noun,
   scrollRef,
   cardCount,
@@ -212,6 +215,16 @@ export function TriageListBody({
     measureEdges();
     keepScroll();
   }, [measureEdges, keepScroll]);
+  const onWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (!rowScroll || !event.shiftKey || event.deltaX !== 0 || event.deltaY === 0) return;
+      const el = event.currentTarget;
+      if (el.scrollWidth <= el.clientWidth) return;
+      el.scrollLeft += event.deltaY;
+      event.preventDefault();
+    },
+    [rowScroll],
+  );
   useEffect(() => {
     const el = scrollRef.current;
     const content = contentRef.current;
@@ -264,7 +277,15 @@ export function TriageListBody({
         ) : null}
       </AnimatePresence>
 
-      <div ref={scrollRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        onWheel={onWheel}
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto',
+          rowScroll ? 'overflow-x-auto overscroll-x-none cf-grid-scrollbar' : 'overflow-x-hidden',
+        )}
+      >
         <div ref={contentRef} className="pb-6 pt-1">
           {leadSlot}
           {cardCount === 0 ? (

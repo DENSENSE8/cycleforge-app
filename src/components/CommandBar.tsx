@@ -6,11 +6,8 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Clock,
-  ClipboardList,
   Box,
-  ChevronRight,
   Plus,
-  Search,
 } from '@/components/Icons';
 import {
   Command,
@@ -54,7 +51,6 @@ import {
   searchPageHrefForScanRoute,
 } from '@/lib/search/internal-id';
 import { looksLikeIdentifier } from '@/lib/search/search-hit';
-import { pastedRefList, pastedRefsHref } from '@/lib/search/pasted-refs';
 import {
   hrefForPreviewHit,
 } from '@/lib/search/commit-identifier-find';
@@ -97,7 +93,7 @@ interface SearchResult {
 
 const RECENT_KEY = 'command-bar-recent';
 /** Empty unscoped palette. Rests on Search; rolls only while looked at. */
-const PALETTE_HINTS = ['Search', 'Order #, serial, tracking', 'Paste a list', 'Jump to a page'] as const;
+const PALETTE_HINTS = ['Search', 'Order #, serial, tracking', 'Jump to a page'] as const;
 /** How many hits the palette fetches AND shows. */
 const PALETTE_LIMIT = 12;
 const MAX_RECENT = 6;
@@ -472,16 +468,6 @@ export function CommandBar() {
     [navigate],
   );
 
-  /** Hand the typed query to the full find surface. */
-  const seeAllResults = useCallback(() => {
-    const href = `/search?q=${encodeURIComponent(trimmedQuery)}`;
-    setDialogOpen(false);
-    // Same ordering as every other exit from this palette: unmount the portal
-    // first, then push, or React 19 races removeChild on the overlay.
-    window.requestAnimationFrame(() => {
-      router.push(href);
-    });
-  }, [router, setDialogOpen, trimmedQuery]);
 
 
   useFindFieldScan(inputRef, {
@@ -535,9 +521,6 @@ export function CommandBar() {
   );
   const showIdentifierMiss =
     findMode && trimmedQuery && !searching && previewHits.length === 0;
-  /** The fetch came back FULL, so the server had at least one more it was not asked for. */
-  const showAllResultsRow =
-    Boolean(trimmedQuery) && !searching && searchResults.length >= PALETTE_LIMIT;
   /**
    * Create-on-miss: typed words that found no record (none, or only the
    * server's broadened set) can become a task. Not for an identifier — a
@@ -567,13 +550,6 @@ export function CommandBar() {
           ref={inputRef}
           value={query}
           onValueChange={setQuery}
-          onPaste={(event) => {
-            const refs = pastedRefList(event.clipboardData.getData('text'));
-            if (!refs) return;
-            event.preventDefault();
-            setDialogOpen(false);
-            window.requestAnimationFrame(() => router.push(pastedRefsHref(refs)));
-          }}
           placeholder={axis ? searchByPlaceholder(axis) : 'Order #, serial, tracking…'}
           hints={query || axis ? undefined : PALETTE_HINTS}
           data-testid="global-find-input"
@@ -724,33 +700,9 @@ export function CommandBar() {
             </CommandGroup>
           ) : null}
           {open && !trimmedQuery ? (
-            <>
-            <CommandGroup heading="Paste">
-              <CommandItem
-                value="paste a list"
-                onSelect={() => {
-                  void navigator.clipboard.readText().then(
-                    (text) => {
-                      const refs = pastedRefList(text);
-                      if (!refs) {
-                        inputRef.current?.focus();
-                        return;
-                      }
-                      setDialogOpen(false);
-                      window.requestAnimationFrame(() => router.push(pastedRefsHref(refs)));
-                    },
-                    () => inputRef.current?.focus(),
-                  );
-                }}
-              >
-                <ClipboardList className="size-4 text-text-faint" />
-                <span className="min-w-0 flex-1 truncate">Paste a list</span>
-              </CommandItem>
-            </CommandGroup>
             <Suspense fallback={null}>
               <CommandBarPageMap onHref={goHref} onIntent={goIntent} />
             </Suspense>
-            </>
           ) : null}
           {directOpen && trimmedQuery ? (
             <CommandGroup heading="Find">
@@ -803,25 +755,6 @@ export function CommandBar() {
                 <span className="min-w-0 flex-1 truncate">
                   New task &ldquo;{trimmedQuery}&rdquo;
                 </span>
-              </CommandItem>
-            </CommandGroup>
-          ) : null}
-          {/* Overflow exit. */}
-          {showAllResultsRow ? (
-            <CommandGroup>
-              <CommandItem
-                value={`see-all ${trimmedQuery}`}
-                onSelect={seeAllResults}
-                data-testid="palette-see-all-results"
-              >
-                <Search className="size-4 text-text-faint" />
-                <span className="min-w-0 flex-1 truncate text-text-muted">
-                  See all results for{' '}
-                  <span className="text-text-default">
-                    &ldquo;{trimmedQuery}&rdquo;
-                  </span>
-                </span>
-                <ChevronRight className="size-4 text-text-faint" />
               </CommandItem>
             </CommandGroup>
           ) : null}

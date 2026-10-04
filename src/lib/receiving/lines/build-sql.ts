@@ -25,6 +25,10 @@ import {
 } from './sql-receiving-ticket';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from './sql-receiving-image';
 import {
+  SHIPMENT_DELIVERY_ATTEMPTS_SQL,
+  SHIPMENT_SIGNED_BY_SQL,
+} from './sql-shipment-carrier-facts';
+import {
   EXCEPTION_PO_LIVE_SQL,
   incomingExceptionCodeSql,
   incomingExceptionMembershipSql,
@@ -506,7 +510,7 @@ const INCOMING_URGENCY_RANK_SQL = `(CASE
          END)`;
 
 /** `view=scanned` membership — door-scanned and physically in, but NOT yet unboxed: */
-function scannedViewPredicateSql(unboxOpenedPredicate: string): string {
+export function scannedViewPredicateSql(unboxOpenedPredicate: string): string {
   return `(rt.door_received_at IS NOT NULL
           OR EXISTS (SELECT 1 FROM receiving_scans rs_scanned WHERE rs_scanned.receiving_id = r.id))
          AND ru.unboxed_at IS NULL
@@ -537,6 +541,67 @@ function scannedViewPredicateSql(unboxOpenedPredicate: string): string {
          )
          -- Unbox-surface scans belong in view=unbox_opened only — never triage.
          AND NOT ${unboxOpenedPredicate}`;
+}
+
+/** `view=activity` ("Unboxed") membership: the carton was opened on Unbox. A door-scan-only carton belongs to Deliveries › Docked instead. */
+export const ACTIVITY_VIEW_PREDICATE_SQL = `(
+           rl.workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE')
+           OR COALESCE(rl.quantity_received, 0) > 0
+           OR ru.unboxed_at IS NOT NULL
+         )
+         AND (ru.unboxed_at IS NOT NULL OR ru.opened_at IS NOT NULL)`;
+
+/**
+ * `view=incoming` membership — on a PO (Zoho, or a marketplace purchase under
+ * Universal Incoming), nothing received, no dock scan. `trackingInActive`
+ * (pasted trackings) drops the vendor-received guards.
+ */
+export function incomingViewPredicateSql(universalIncoming: boolean, trackingInActive: boolean): string {
+  if (!universalIncoming) {
+    // Legacy Zoho-only Incoming (unchanged):
+    return `rl.workflow_status = 'EXPECTED'
+           AND COALESCE(rl.quantity_received, 0) = 0
+           AND rz.zoho_purchaseorder_id IS NOT NULL
+           -- Hide POs Zoho now reports received/closed/cancelled (mirror status),
+           -- so a received order drops off Incoming after a Refresh-Zoho sync.
+           ${trackingInActive ? '' : `AND ${NOT_ZOHO_RECEIVED_PREDICATE}`}
+           -- Honor this view's contract: a row drops off "the instant the operator
+           -- scans". A door scan writes receiving_scans against the carton's
+           -- receiving row but never advances this Zoho-PO line's workflow_status /
+           -- quantity_received (the line's receiving_id is often NULL), so without
+           -- this guard a scanned/unboxed box stays stuck in Incoming and renders
+           -- as delivery_state='UNKNOWN'. Shipment-anchored so it agrees with the
+           -- delivered-unscanned tile count (count === rows).
+           AND NOT ${SHIPMENT_SCANNED_PREDICATE}`;
+  }
+  // Universal Incoming (plan §6.1):
+  return `rl.workflow_status = 'EXPECTED'
+           AND COALESCE(rl.quantity_received, 0) = 0
+           AND (
+             (rz.zoho_purchaseorder_id IS NOT NULL${trackingInActive ? '' : ` AND ${NOT_ZOHO_RECEIVED_PREDICATE}`})
+             OR
+             (rz.zoho_purchaseorder_id IS NULL
+              AND ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}${trackingInActive ? '' : `
+              AND ${notLineInboundMirrorTerminalPredicate()}`})
+           )
+           AND NOT ${SHIPMENT_SCANNED_PREDICATE}`;
+}
+
+/**
+ * `view=exceptions` membership — Incoming's population (on a PO, nothing
+ * received, no dock scan) EXCEPT the vendor-received guard, with an exception
+ * code. `exceptionZipParam` binds the org's ship-from ZIP5, or null.
+ */
+export function exceptionsViewPredicateSql(universalIncoming: boolean, exceptionZipParam: string | null): string {
+  return `rl.workflow_status = 'EXPECTED'
+         AND COALESCE(rl.quantity_received, 0) = 0
+         AND (
+           (rz.zoho_purchaseorder_id IS NOT NULL AND ${EXCEPTION_PO_LIVE_SQL})${universalIncoming ? `
+           OR (rz.zoho_purchaseorder_id IS NULL
+               AND ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}
+               AND ${notLineInboundMirrorTerminalPredicate()})` : ''}
+         )
+         AND ${incomingExceptionMembershipSql(exceptionZipParam)}`;
 }
 
 /** Gate-before-decorate candidate ranking for `view=scanned&sort=priority` — the /triage rail's cold-load shape. */
@@ -821,16 +886,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       `(rl.workflow_status IS NULL OR rl.workflow_status IN ('EXPECTED','ARRIVED','MATCHED','UNBOXED','AWAITING_TEST','IN_TEST','PASSED','FAILED','RTV','SCRAP','DONE'))`,
     );
   } else if (view === 'activity') {
-    // "Activity" = Unboxed membership: the carton was opened on Unbox. A
-    // door-scan-only carton belongs to Deliveries › Docked instead.
-    conditions.push(
-      `(
-           rl.workflow_status IN ('UNBOXED','AWAITING_TEST','IN_TEST','PASSED','DONE')
-           OR COALESCE(rl.quantity_received, 0) > 0
-           OR ru.unboxed_at IS NOT NULL
-         )
-         AND (ru.unboxed_at IS NOT NULL OR ru.opened_at IS NOT NULL)`,
-    );
+    // "Activity" = Unboxed membership (ACTIVITY_VIEW_PREDICATE_SQL).
+    conditions.push(ACTIVITY_VIEW_PREDICATE_SQL);
   } else if (view === 'scanned') {
     // "Scanned" = door-scanned and physically in, but NOT yet unboxed — the triage to-do between the door scan and the unbox step.
     conditions.push(scannedViewPredicateSql(unboxOpenedPredicate));
@@ -931,38 +988,8 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     }
   } else if (view === 'incoming') {
     // "Incoming" = on a Zoho PO, vendor has issued it, warehouse hasn't touched it yet.
-    if (!universalIncoming) {
-      // Legacy Zoho-only Incoming (unchanged):
-      conditions.push(
-        `rl.workflow_status = 'EXPECTED'
-           AND COALESCE(rl.quantity_received, 0) = 0
-           AND rz.zoho_purchaseorder_id IS NOT NULL
-           -- Hide POs Zoho now reports received/closed/cancelled (mirror status),
-           -- so a received order drops off Incoming after a Refresh-Zoho sync.
-           ${trackingInActive ? '' : `AND ${NOT_ZOHO_RECEIVED_PREDICATE}`}
-           -- Honor this view's contract: a row drops off "the instant the operator
-           -- scans". A door scan writes receiving_scans against the carton's
-           -- receiving row but never advances this Zoho-PO line's workflow_status /
-           -- quantity_received (the line's receiving_id is often NULL), so without
-           -- this guard a scanned/unboxed box stays stuck in Incoming and renders
-           -- as delivery_state='UNKNOWN'. Shipment-anchored so it agrees with the
-           -- delivered-unscanned tile count (count === rows).
-           AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
-      );
-    } else {
-      // Universal Incoming (plan §6.1):
-      conditions.push(
-        `rl.workflow_status = 'EXPECTED'
-           AND COALESCE(rl.quantity_received, 0) = 0
-           AND (
-             (rz.zoho_purchaseorder_id IS NOT NULL${trackingInActive ? '' : ` AND ${NOT_ZOHO_RECEIVED_PREDICATE}`})
-             OR
-             (rz.zoho_purchaseorder_id IS NULL
-              AND ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}${trackingInActive ? '' : `
-              AND ${notLineInboundMirrorTerminalPredicate()}`})
-           )
-           AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
-      );
+    conditions.push(incomingViewPredicateSql(universalIncoming, trackingInActive));
+    if (universalIncoming) {
       // ?inbound facet — filter by PRIMARY source (merged lines keep marketplace type).
       if (
         inboundSourceParam === 'ebay'
@@ -1110,17 +1137,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       exceptionZipParam = `$${idx++}`;
       values.push(warehouseZip);
     }
-    conditions.push(
-      `rl.workflow_status = 'EXPECTED'
-         AND COALESCE(rl.quantity_received, 0) = 0
-         AND (
-           (rz.zoho_purchaseorder_id IS NOT NULL AND ${EXCEPTION_PO_LIVE_SQL})${universalIncoming ? `
-           OR (rz.zoho_purchaseorder_id IS NULL
-               AND ${INBOUND_MARKETPLACE_LINE_SOURCES_SQL}
-               AND ${notLineInboundMirrorTerminalPredicate()})` : ''}
-         )
-         AND ${incomingExceptionMembershipSql(exceptionZipParam)}`,
-    );
+    conditions.push(exceptionsViewPredicateSql(universalIncoming, exceptionZipParam));
   } else if (view === 'reconcile') {
     // No lane: a pasted number is about THAT delivery wherever it is now —
     // on its way, docked, tested or failed. No list, no rows.
@@ -1332,6 +1349,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 stn.latest_event_at::text            AS shipment_latest_event_at,
                 stn.last_checked_at::text            AS shipment_last_checked_at,
                 stn.is_terminal                      AS shipment_is_terminal,
+                stn.estimated_delivery_at::text      AS shipment_estimated_delivery_at,
+                ${SHIPMENT_SIGNED_BY_SQL},
+                ${SHIPMENT_DELIVERY_ATTEMPTS_SQL},
                 stn_evt.event_city                   AS shipment_latest_event_city,
                 stn_evt.event_postal_code            AS shipment_latest_event_postal,
                 mirror.po_date::text                 AS po_date,
@@ -1629,15 +1649,18 @@ export function shouldIncludeUnmatchedPlaceholders(query: ReceivingLinesQuery): 
   );
 }
 
-/** Unboxed (`view=activity`) membership for lineless cartons. */
-const ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL = ` AND (
+/** The lineless cartons Docked / Unboxed append as placeholders (no `receiving_line` yet): unmatched + local pickup. References `r`. */
+export const LINELESS_CARTON_SOURCE_SQL = `r.source IN ('unmatched', 'local_pickup')`;
+
+/** Unboxed (`view=activity`) membership for lineless cartons. References `ru` and the `unbox_open` lateral. */
+export const ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL = ` AND (
               ru.unboxed_at IS NOT NULL
               OR ru.opened_at IS NOT NULL
               OR unbox_open.unbox_opened_at IS NOT NULL
             )`;
 
 /** Docked (`view=scanned`) lineless cartons: arrived physically, not opened on Unbox. */
-const SCANNED_UNMATCHED_DOCK_TOUCH_SQL = ` AND (
+export const SCANNED_UNMATCHED_DOCK_TOUCH_SQL = ` AND (
               EXISTS (
                 SELECT 1 FROM receiving_triage rt_docked
                 WHERE rt_docked.receiving_id = r.id
@@ -1714,7 +1737,7 @@ export function buildUnmatchedPlaceholdersSql(
     ? ''
     : searchActive
       ? `AND r.source IN ('unmatched', 'local_pickup', 'zoho_po')`
-      : `AND r.source IN ('unmatched', 'local_pickup')`;
+      : `AND ${LINELESS_CARTON_SOURCE_SQL}`;
   const activityGatesMembership = query.view === 'activity' && !searchActive;
   const activityUnboxTouchSql = activityGatesMembership
     ? ACTIVITY_UNMATCHED_UNBOX_TOUCH_SQL
@@ -1757,6 +1780,9 @@ export function buildUnmatchedPlaceholdersSql(
                   stn.latest_status_category   AS shipment_status_category,
                   stn.is_delivered             AS shipment_is_delivered,
                   stn.delivered_at::text       AS shipment_delivered_at,
+                  stn.estimated_delivery_at::text AS shipment_estimated_delivery_at,
+                ${SHIPMENT_SIGNED_BY_SQL},
+                ${SHIPMENT_DELIVERY_ATTEMPTS_SQL},
                   COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                   COALESCE(ops_scan.last_scanned_at, rs_agg.last_scan)::text       AS last_scan_at,
                   COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,

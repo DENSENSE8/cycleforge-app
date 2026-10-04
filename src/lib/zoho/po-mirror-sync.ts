@@ -2,7 +2,6 @@
 
 import { paginateZohoList, getPurchaseOrderById } from '@/lib/zoho';
 import type { ZohoPurchaseOrder } from '@/lib/zoho';
-import { reconcileZohoReceivedLines } from '@/lib/receiving/zoho-received-reconcile';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withZohoCredential } from '@/lib/zoho/with-zoho-credential';
@@ -12,8 +11,6 @@ interface SyncReport {
   pages: number;
   fetched: number;
   upserted: number;
-  /** receiving_lines marked received because Zoho now reports their PO received/billed/closed. */
-  reconciled: number;
   errors: string[];
   elapsedMs: number;
 }
@@ -131,13 +128,6 @@ export async function syncOnePoMirror(
   const po = res?.purchaseorder;
   if (!po) return { found: false, status: null };
   const ok = await upsertOne(po, orgId);
-  if (ok) {
-    try {
-      await reconcileZohoReceivedLines(orgId, { zohoPurchaseOrderId: id });
-    } catch (err) {
-      console.warn('syncOnePoMirror: received-reconcile failed (non-fatal)', err);
-    }
-  }
   return { found: ok, status: asString(po.status) };
 }
 
@@ -148,7 +138,6 @@ export async function syncZohoPoMirror(opts: SyncOptions, orgId: OrgId): Promise
     pages: 0,
     fetched: 0,
     upserted: 0,
-    reconciled: 0,
     errors: [],
     elapsedMs: 0,
   };
@@ -186,14 +175,6 @@ export async function syncZohoPoMirror(opts: SyncOptions, orgId: OrgId): Promise
     });
   } catch (err) {
     report.errors.push(`fetch: ${err instanceof Error ? err.message : String(err)}`);
-  }
-
-  // Propagate fresh terminal statuses onto the local queue.
-  try {
-    const { updated } = await reconcileZohoReceivedLines(orgId);
-    report.reconciled = updated;
-  } catch (err) {
-    console.warn('syncZohoPoMirror: received-reconcile failed (non-fatal)', err);
   }
 
   report.elapsedMs = Date.now() - start;

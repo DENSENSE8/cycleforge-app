@@ -8,7 +8,7 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Search } from '@/components/Icons';
-import { findHintTone, RollingHint, useHintActivity, type FindHint } from '@/design-system/components/FindField';
+import { findHintTone, RollingHint, useHintActivity } from '@/design-system/components/FindField';
 import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { cn } from '@/utils/_cn';
@@ -32,7 +32,7 @@ const CommandInput = React.forwardRef<
     /** Combobox header accessory (e.g. the roster-edit pencil). Never forwarded to the input. */
     trailing?: React.ReactNode;
     /** Phrases that roll over an empty input. Same motion as FindField. */
-    hints?: readonly FindHint[];
+    hints?: readonly string[];
   }
 >(function CommandInput({ className, trailing, hints, ...props }, ref) {
   const look = useHintActivity();
@@ -57,7 +57,7 @@ const CommandInput = React.forwardRef<
         />
         {showHint ? (
           <RollingHint
-            hints={hints as readonly FindHint[]}
+            hints={hints as readonly string[]}
             active={look.active}
             className={cn('text-sm', findHintTone(look.active))}
           />

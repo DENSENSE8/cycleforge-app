@@ -26,7 +26,6 @@ function railCoarseStatus(row: ReceivingLineRow): ReceivingLineStatus {
   if (row.receiving_source === 'unmatched') {
     return row.unboxed_at || (row.quantity_received ?? 0) > 0 ? 'RECEIVED' : 'SCANNED';
   }
-  if (isZohoReceivedLikeStatus(row.zoho_status)) return 'RECEIVED';
   return deriveReceivingLineStatus(row.workflow_status);
 }
 

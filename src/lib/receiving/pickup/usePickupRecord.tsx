@@ -224,7 +224,7 @@ function PickupTicketsPanel({ units }: { units: readonly { unit: PickupUnitView;
                   </Button>
                 </>
               )}
-              <Button type="button" variant="ghost" size="sm" icon={<ExternalLink aria-hidden />} onClick={() => router.push(`/inventory/units?unit=${serialUnitId}`)}>
+              <Button type="button" variant="ghost" size="sm" icon={<ExternalLink aria-hidden />} onClick={() => router.push(`/serial/${serialUnitId}`)}>
                 Open unit
               </Button>
             </div>

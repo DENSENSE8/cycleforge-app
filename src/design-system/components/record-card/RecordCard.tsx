@@ -30,10 +30,12 @@ import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { CARD_DISCLOSE, CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import { RECORD_DEADLINE_DOT_CLASS, RECORD_DEADLINE_TONE_CLASS, RECORD_RAIL_HATCH_STYLE } from '@/design-system/tokens/record-card';
+import { denseRecordTitle } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import { RecordFactPaint, RecordFactSep, RecordLineFacts, type RecordFactColumn } from './record-fact';
 import type { CardDisclosureTier, RecordCardChip, RecordCardLine, RecordCardModel, RecordCardSlotFact } from './record-card-types';
 import { recordCardOutlineClass } from './record-card-outline';
+import type { CardViewDecl, ViewCardModel, ViewQuickLookProps } from '../triage-card-list/triage-view';
 
 const SPRING = { type: 'spring', stiffness: 460, damping: 34, mass: 0.8 } as const;
 const SOFT_SPRING = { type: 'spring', stiffness: 260, damping: 30 } as const;
@@ -62,17 +64,28 @@ const CHIP_TONE_CLASS: Readonly<Record<RecordCardChip['tone'], string>> = {
  * The unfolded lines' grid: photo · title · one column per fact · slack. The
  * title column sizes to the longest title (truncating when the card runs
  * out), so the facts start right after the titles and line up row to row.
- * Literal per fact count — Tailwind only generates classes it can read.
+ * Literal per fact count — Tailwind only generates classes it can read. A view
+ * that declares no photo (`slots.photo: 'none'`) drops the photo column.
  */
 const MORE_LINES_GRID_BY_FACTS: Readonly<Record<number, string>> = {
-  1: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(1,auto)_1fr] items-center gap-x-3',
-  2: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(2,auto)_1fr] items-center gap-x-3',
-  3: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(3,auto)_1fr] items-center gap-x-3',
-  4: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(4,auto)_1fr] items-center gap-x-3',
-  5: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(5,auto)_1fr] items-center gap-x-3',
-  6: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(6,auto)_1fr] items-center gap-x-3',
-  7: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(7,auto)_1fr] items-center gap-x-3',
-  8: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(8,auto)_1fr] items-center gap-x-3',
+  1: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(1,auto)_1fr] items-center gap-x-2',
+  2: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(2,auto)_1fr] items-center gap-x-2',
+  3: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(3,auto)_1fr] items-center gap-x-2',
+  4: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(4,auto)_1fr] items-center gap-x-2',
+  5: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(5,auto)_1fr] items-center gap-x-2',
+  6: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(6,auto)_1fr] items-center gap-x-2',
+  7: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(7,auto)_1fr] items-center gap-x-2',
+  8: 'grid min-w-0 grid-cols-[auto_minmax(0,max-content)_repeat(8,auto)_1fr] items-center gap-x-2',
+};
+const MORE_LINES_GRID_NO_PHOTO_BY_FACTS: Readonly<Record<number, string>> = {
+  1: 'grid min-w-0 grid-cols-[minmax(0,max-content)_repeat(1,auto)_1fr] items-center gap-x-2',
+  2: 'grid min-w-0 grid-cols-[minmax(0,max-content)_repeat(2,auto)_1fr] items-center gap-x-2',
+  3: 'grid min-w-0 grid-cols-[minmax(0,max-content)_repeat(3,auto)_1fr] items-center gap-x-2',
+  4: 'grid min-w-0 grid-cols-[minmax(0,max-content)_repeat(4,auto)_1fr] items-center gap-x-2',
+  5: 'grid min-w-0 grid-cols-[minmax(0,max-content)_repeat(5,auto)_1fr] items-center gap-x-2',
+  6: 'grid min-w-0 grid-cols-[minmax(0,max-content)_repeat(6,auto)_1fr] items-center gap-x-2',
+  7: 'grid min-w-0 grid-cols-[minmax(0,max-content)_repeat(7,auto)_1fr] items-center gap-x-2',
+  8: 'grid min-w-0 grid-cols-[minmax(0,max-content)_repeat(8,auto)_1fr] items-center gap-x-2',
 };
 
 /** An unfolded column below its tier keeps its cell but empties it. */
@@ -218,15 +231,17 @@ function CardPhoto({ line, size }: { line: RecordCardLine; size: 'lg' | 'sm' }) 
   );
 }
 
-/** One unfolded line: small photo · title · one cell per fact column, on the parent's subgrid. */
+/** One unfolded line: small photo (when the view declares one) · title · one cell per fact column, on the parent's subgrid. */
 function MoreLineRow({
   line,
+  photo,
   columns,
   testId,
   current,
   onOpen,
 }: {
   line: RecordCardLine;
+  photo: boolean;
   columns: readonly RecordFactColumn[];
   testId: string;
   /** This line is the open record (a family whose lines open on their own). */
@@ -238,11 +253,13 @@ function MoreLineRow({
       role="listitem"
       aria-current={current || undefined}
       data-testid={testId}
-      className={cn('col-span-full grid min-h-9 grid-cols-subgrid items-center text-[13px] text-text-muted', current && 'rounded-lg bg-surface-sunken')}
+      className={cn('col-span-full grid min-h-9 grid-cols-subgrid items-center text-role-body text-text-muted', current && 'rounded-lg bg-surface-sunken')}
     >
-      <span className="pointer-events-auto">
-        <CardPhoto line={line} size="sm" />
-      </span>
+      {photo ? (
+        <span className="pointer-events-auto">
+          <CardPhoto line={line} size="sm" />
+        </span>
+      ) : null}
       <HoverTooltip label={line.title} asChild>
         <span onClick={onOpen} className="pointer-events-auto min-w-0 cursor-pointer truncate text-sm font-medium text-text-default">
           {line.title}
@@ -551,14 +568,22 @@ function Chip({ chip }: { chip: RecordCardChip }) {
 
 // ── Card ────────────────────────────────────────────────────────────────────
 
-export interface RecordCardProps {
-  model: RecordCardModel;
+interface RecordCardOwnProps<V extends CardViewDecl> {
+  /**
+   * The view this card paints (`TriageViewDecl`): its `status` and `slots`
+   * type `model` and `quickLook`, so a card cannot paint a status kind, a
+   * channel, a person or a quick look its view does not declare.
+   */
+  view: V;
+  model: ViewCardModel<V>;
   /** The family's fact columns, in order. */
   factColumns: readonly RecordFactColumn[];
   /** Prefix of every test id (`order-card` → `order-card-open`, `order-card-check`, …). */
   testIdPrefix: string;
   /** Extra `data-*` attributes on the card that the family's readers use. */
   rowAttrs?: Readonly<Record<`data-${string}`, string | number>>;
+  /** Internal vertical rhythm. Dense keeps the same anatomy and selection axis with less air. */
+  spacing?: 'default' | 'dense';
   /** Every line checked → true; some → 'mixed'. */
   checked: boolean | 'mixed';
   /** This record is the open one. */
@@ -584,8 +609,6 @@ export interface RecordCardProps {
    * lands after reading the card, never beside its identity.
    */
   action?: ReactNode;
-  /** Family slot under the lines while `peekOpen` — a `CollapseItem`. */
-  quickLook: ReactNode;
   /** Saves the team's note from line 1 (`notes.own`); absent = notes are read-only. */
   onSaveNote?: (text: string) => void;
   /**
@@ -597,11 +620,16 @@ export interface RecordCardProps {
   openLineId?: number | null;
 }
 
-export function RecordCard({
-  model,
+/** `quickLook` — the family slot under the lines while `peekOpen` (a `CollapseItem`) — is required iff the view declares a peek. */
+export type RecordCardProps<V extends CardViewDecl = CardViewDecl> = RecordCardOwnProps<V> & ViewQuickLookProps<V>;
+
+export function RecordCard<V extends CardViewDecl>({
+  view,
+  model: viewModel,
   factColumns,
   testIdPrefix,
   rowAttrs,
+  spacing = 'default',
   checked,
   open,
   expanded,
@@ -618,7 +646,8 @@ export function RecordCard({
   onSaveNote,
   onOpenLine,
   openLineId = null,
-}: RecordCardProps) {
+}: RecordCardProps<V>) {
+  const model: RecordCardModel = viewModel;
   // The whole-card open target. Inner controls hand focus back to it after a
   // click, so the card's keys stay the card's: Enter opens, Space = quick look.
   const openRef = useRef<HTMLButtonElement>(null);
@@ -627,6 +656,7 @@ export function RecordCard({
   const tone = STATE_TONE_CLASSES[model.state.tone];
   const selected = checked !== false;
   const id = (part: string) => `${testIdPrefix}-${part}`;
+  const photo = view.slots.photo === 'line';
 
   // The card body's open — the full-card target, and the facts whose hover
   // tooltip needs the pointer (a click on them still opens the record).
@@ -674,7 +704,7 @@ export function RecordCard({
         <span
           data-testid={id('state')}
           onClick={openRecord}
-          className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 whitespace-nowrap text-[13px] font-medium', STATE_TONE_CLASSES[status.tone].text)}
+          className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 whitespace-nowrap text-role-data font-medium', STATE_TONE_CLASSES[status.tone].text)}
         >
           <span aria-hidden className={cn('size-2 shrink-0 rounded-full', STATE_TONE_CLASSES[status.tone].dot)} />
           {status.face}
@@ -762,7 +792,8 @@ export function RecordCard({
         // that is animating (`CollapseItem`): its clip hides the card, and a
         // skipped card measures as the 92px placeholder, so the height would
         // grow to the guess and snap to the real size at the end.
-        'group/card @container/card relative isolate flex w-full max-w-full box-border overflow-clip rounded-2xl bg-surface-card py-3 pl-4 pr-4 transition-shadow duration-150 [contain-intrinsic-size:auto_92px] [content-visibility:auto] [[data-collapse-clip]_&]:[content-visibility:visible]',
+        'group/card @container/card relative isolate flex w-full max-w-full box-border overflow-clip rounded-2xl bg-surface-card pl-4 pr-4 transition-shadow duration-150 [content-visibility:auto] [[data-collapse-clip]_&]:[content-visibility:visible]',
+        spacing === 'dense' ? 'py-1.5 [contain-intrinsic-size:auto_72px]' : 'py-2.5 [contain-intrinsic-size:auto_86px]',
       )}
     >
       <span
@@ -794,11 +825,15 @@ export function RecordCard({
         initial="rest"
         transition={SOFT_SPRING}
         style={model.state.hatched ? RECORD_RAIL_HATCH_STYLE : undefined}
-        className={cn('pointer-events-none absolute bottom-3 left-1.5 top-3 w-[3px] origin-left rounded-full', tone.dot)}
+        className={cn(
+          'pointer-events-none absolute left-1.5 w-[3px] origin-left rounded-full',
+          spacing === 'dense' ? 'bottom-1.5 top-1.5' : 'bottom-2.5 top-2.5',
+          tone.dot,
+        )}
       />
 
       {/* Top-left: status at rest, the checkbox on hover / focus / touch / check — one slot. */}
-      <div className="pointer-events-none relative z-10 flex w-7 shrink-0 justify-center pt-px">
+      <div className="pointer-events-none relative z-10 flex h-6 w-7 shrink-0 items-center justify-center">
         <CheckStatusSlot
           model={model}
           columns={factColumns}
@@ -809,12 +844,16 @@ export function RecordCard({
       </div>
 
       {/* Record facts */}
-      <div className="pointer-events-none relative z-10 ml-3 flex min-w-0 flex-1 flex-col gap-2">
+      <div className="pointer-events-none relative z-10 ml-2 flex min-w-0 flex-1 flex-col gap-1">
         {/* Line 1 — identity · channel · person · chips · note …… trailing · status. On a
             very narrow card (the split's list on a small screen) the right end wraps under
             instead of the order number running into the channel. */}
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <span className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto min-w-0 shrink gap-0.5 text-sm font-semibold tabular-nums text-text-default')} onClick={stop} onPointerDown={stop}>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <span
+            className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto min-w-0 shrink items-center gap-0.5 text-sm font-semibold tabular-nums text-text-default')}
+            onClick={stop}
+            onPointerDown={stop}
+          >
             {identity.content}
           </span>
           {/* Channel: brand dot, medium-weight ink. Person: regular weight, muted, after a faint
@@ -824,7 +863,7 @@ export function RecordCard({
               <span
                 data-testid={id('platform')}
                 onClick={openRecord}
-                className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1.5 whitespace-nowrap text-[13px] font-medium text-text-default')}
+                className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1 whitespace-nowrap text-role-data font-normal text-text-muted')}
               >
                 {model.channel.dot}
                 {/* Under the `brand` tier the dot carries the channel; the name is in the tooltip and the quick look. */}
@@ -839,7 +878,7 @@ export function RecordCard({
               <span
                 data-testid={id('buyer')}
                 onClick={openRecord}
-                className={cn('pointer-events-auto h-6 min-w-0 shrink-[100] cursor-pointer items-center gap-2 text-[13px] font-normal text-text-muted', CARD_DISCLOSE.detail.inlineFlex)}
+                className={cn('pointer-events-auto h-6 min-w-0 shrink-[100] cursor-pointer items-center gap-1.5 text-role-data font-normal text-text-muted', CARD_DISCLOSE.detail.inlineFlex)}
               >
                 {model.channel ? <span aria-hidden className="text-text-faint">·</span> : null}
                 <span className="min-w-0 truncate">{model.person}</span>
@@ -856,20 +895,22 @@ export function RecordCard({
         </div>
 
         {/* The lead line — the one face every card wears: photo spans title + facts; Details ends the facts row. */}
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="pointer-events-auto">
-            <CardPhoto line={lead} size="lg" />
-          </span>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <p className="line-clamp-2 break-words text-[15px] font-medium leading-snug text-text-default @xl/card:line-clamp-1" title={lead.title}>
+        <div className={cn('flex min-w-0 items-center', spacing === 'dense' ? 'gap-1.5' : 'gap-2')}>
+          {photo ? (
+            <span className="pointer-events-auto">
+              <CardPhoto line={lead} size="lg" />
+            </span>
+          ) : null}
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className={cn(denseRecordTitle, 'line-clamp-2 break-words text-text-default @xl/card:line-clamp-1')} title={lead.title}>
               {lead.title}
             </p>
             {/* items-end: Details and the next step sit on the facts' last line — the card's
                 bottom-right. The facts keep ≥ 8rem; with less room the next step wraps under
                 them (still right-aligned) instead of crushing them one per line. */}
-            <div className="flex min-w-0 flex-wrap items-end gap-x-3 gap-y-1">
+            <div className="flex min-w-0 flex-wrap items-end gap-x-2 gap-y-0.5">
               <RecordLineFacts line={lead} columns={factColumns} className="min-w-32 flex-1" />
-              <span className="ml-auto flex shrink-0 items-center gap-3">
+              <span className="ml-auto flex shrink-0 items-center gap-2">
                 {detailsToggle}
                 {moreCount ? null : nextNode}
                 {moreCount ? null : action}
@@ -880,13 +921,19 @@ export function RecordCard({
 
         {moreCount ? (
           // 2+ lines: the other lines fold behind one row; unfolded, they are columns.
-          <div role="list" aria-label="More items" data-testid={id('lines')} className={MORE_LINES_GRID_BY_FACTS[factColumns.length]}>
+          <div
+            role="list"
+            aria-label="More items"
+            data-testid={id('lines')}
+            className={(photo ? MORE_LINES_GRID_BY_FACTS : MORE_LINES_GRID_NO_PHOTO_BY_FACTS)[factColumns.length]}
+          >
             <AnimatePresence initial={false}>
               {expanded
                 ? moreLines.map((line, i) => (
                     <CollapseItem key={line.id} subgrid delay={0.04 * i}>
                       <MoreLineRow
                         line={line}
+                        photo={photo}
                         columns={factColumns}
                         testId={id('line')}
                         current={openLineId === line.id}

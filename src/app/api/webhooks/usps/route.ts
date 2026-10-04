@@ -125,8 +125,8 @@ export async function POST(req: NextRequest) {
       result.events,
       shipmentOrgId,
     );
-    await updateShipmentSummary(shipment.id, result, shipmentOrgId);
-    await publishShipmentStatusChange(shipment.id, 'usps-webhook', null, shipmentOrgId);
+    const statusCategory = await updateShipmentSummary(shipment.id, result, shipmentOrgId);
+    await publishShipmentStatusChange({ shipmentId: shipment.id, source: 'usps-webhook', trackingNumber: null, carrier: shipment.carrier, statusCategory, orgId: shipmentOrgId });
 
     processed += 1;
     trackingNumbers.push(result.trackingNumberNormalized);

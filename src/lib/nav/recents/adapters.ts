@@ -189,7 +189,7 @@ export interface PackerRecentFields {
   tracking_type: string | null;
 }
 
-/** One pack as a recent — opens the pack on Packing Review. */
+/** One pack as a recent — opens its retained order record or Packing history. */
 export function packerLogRecentRow(row: PackerRecentFields): NavRecentRow | null {
   const at = isoOrNull(row.created_at);
   if (!at) return null;
@@ -197,14 +197,9 @@ export function packerLogRecentRow(row: PackerRecentFields): NavRecentRow | null
   const orderRowId = Number(row.order_row_id);
   const hasLog = Number.isFinite(logId) && logId > 0;
   const hasOrder = Number.isFinite(orderRowId) && orderRowId > 0;
-  let href: string;
-  if (hasLog) {
-    const params = new URLSearchParams({ packerLogId: String(logId) });
-    if (hasOrder) params.set('orderId', String(orderRowId));
-    href = `/review?${params}`;
-  } else {
-    href = hasOrder ? shippingOrdersHref({ openOrderId: orderRowId }) : '/pack?packview=history';
-  }
+  const href = hasOrder
+    ? shippingOrdersHref({ openOrderId: orderRowId })
+    : '/pack?packview=history';
   return {
     id: `pack:${row.id}`,
     entityType: hasLog ? 'packer_log' : hasOrder ? 'order' : 'pack_scan',

@@ -109,7 +109,6 @@ export function FbmResolver({ facts, onResolved }: PhoneResolverProps<FbmExcepti
           icon={<ClipboardList />}
         />
       </nav>
-      <div className="flex-1 bg-mode-panel" />
       {verbs.length > 0 ? <DetailDock label="FBM exception actions" verbs={verbs} onVerb={onVerb} /> : null}
     </>
   );

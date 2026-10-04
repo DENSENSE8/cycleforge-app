@@ -6,6 +6,8 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { Button } from '@/design-system/primitives/Button';
+import { TextField } from '@/design-system/primitives/TextField';
 import { AssigneeComboboxPanel } from '@/design-system/components/AssigneeCombobox';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { MOBILE_CONTROL_CORNER } from '@/design-system/tokens/radius';
@@ -13,14 +15,6 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { type DailyComposerDraft } from '@/lib/daily-checks/composer';
-
-/** Both input faces wear `text-role-field` — 16px, density-proof. */
-const LINK_INPUT_CLASS = cn(
-  'min-h-12 w-full border border-border-hairline bg-surface-card px-3',
-  'text-role-field text-text-default placeholder:text-text-faint',
-  MOBILE_CONTROL_CORNER,
-  focusRing('field', 'accent'),
-);
 
 export const TITLE_INPUT_CLASS = cn(
   'min-h-12 w-full border border-border-hairline bg-surface-card px-3',
@@ -85,13 +79,15 @@ export function OwnerStep({
           onPick(member);
         }}
       />
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
+        className="self-start"
         onClick={() => onPick(null)}
-        className="self-start px-1 text-role-micro text-text-muted hover:text-text-default"
       >
         Whole shift instead
-      </button>
+      </Button>
     </div>
   );
 }
@@ -106,28 +102,25 @@ function LinkFields({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <input
+      <TextField
+        label="Ticket #"
         value={draft.ticketId}
-        onChange={(e) => onChange({ ticketId: e.target.value })}
-        placeholder="Ticket #"
+        onChange={(ticketId) => onChange({ ticketId })}
         inputMode="numeric"
         aria-label="Link a Zendesk ticket"
-        className={LINK_INPUT_CLASS}
       />
-      <input
+      <TextField
+        label="Work order #"
         value={draft.workOrderId}
-        onChange={(e) => onChange({ workOrderId: e.target.value })}
-        placeholder="Work order #"
+        onChange={(workOrderId) => onChange({ workOrderId })}
         inputMode="numeric"
         aria-label="Link a work order"
-        className={LINK_INPUT_CLASS}
       />
-      <input
+      <TextField
+        label="Tracking"
         value={draft.tracking}
-        onChange={(e) => onChange({ tracking: e.target.value })}
-        placeholder="Tracking"
+        onChange={(tracking) => onChange({ tracking })}
         aria-label="Link a tracking number"
-        className={LINK_INPUT_CLASS}
       />
     </div>
   );

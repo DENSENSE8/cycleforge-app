@@ -29,6 +29,7 @@ describe('buildBinsOverviewWhere', () => {
     assert.equal(specialParamIdx, 0);
     assert.ok(where.some((w) => w.includes('row_label IS NOT NULL')));
     assert.ok(where.some((w) => w.includes('col_label IS NOT NULL')));
+    assert.ok(where.some((w) => w.includes("location_kind IN ('SHELF', 'POSITION')")), 'rack shelves/positions are stock places');
   });
 
   it('allows special barcodes without row/col', () => {
@@ -42,5 +43,14 @@ describe('buildBinsOverviewWhere', () => {
     assert.ok(where.some((w) => w.includes('barcode = ANY')));
     assert.ok(where.some((w) => w.includes('organization_id')));
     assert.deepEqual(params[1], ['RETURNS-TEST', 'TECH-PARTS']);
+  });
+
+  it('filters and searches by the DERIVED room, never the copied text column', () => {
+    const params: unknown[] = [90];
+    const { where } = buildBinsOverviewWhere({ params, room: ' Zone 1 - New ', q: 'zone' });
+    assert.ok(where.includes("COALESCE(room.label, NULLIF(BTRIM(l.room), '')) = $2"), 'room filter reads the derived room');
+    assert.ok(where.some((w) => w.includes("COALESCE(room.label, NULLIF(BTRIM(l.room), '')) ILIKE $3")), 'search reads the derived room');
+    assert.ok(!where.some((w) => /(?<!BTRIM\()l\.room\b/.test(w)), 'no bare l.room predicate remains');
+    assert.deepEqual(params.slice(1), ['Zone 1 - New', '%zone%']);
   });
 });

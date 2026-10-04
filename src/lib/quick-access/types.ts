@@ -5,7 +5,7 @@
  */
 
 export interface ActionToggles {
-  /** Open the phone-history popover (recent packed orders, tap to resume). */
+  /** Show the "My history" row linking to the durable personal history at /stations/live. */
   phoneHistory: boolean;
   /** Show "Switch staff" in the popover action list. Default true. */
   switchStaff?: boolean;

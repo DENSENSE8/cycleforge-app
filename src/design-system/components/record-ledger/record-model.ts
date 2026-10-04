@@ -8,7 +8,7 @@
  */
 
 import type { ReactNode } from 'react';
-import type { StageStaffLane } from '@/components/tables/compound/staff-stage-lane';
+import type { StageStaffLane } from '@/components/staff-assign/staff-stage-lane';
 import type { RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import type { RecordPriceRow } from '@/design-system/components/record-ledger/RecordPriceBreakdown';
 import type { StateName } from '@/design-system/tokens/lifecycle';

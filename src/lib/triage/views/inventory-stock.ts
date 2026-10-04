@@ -1,14 +1,15 @@
 /**
  * Inventory › Stock — `inventory.stock`, one expandable card per rack level:
- * line 1 = room · rack (top-left) … last counted / moved (top-right); the
- * lead product, then +N product positions using Allocate's disclosure. Stock-health
- * chips write `?status=` in the middle bar; Room and Aisle live in the
- * contextual sidebar.
+ * line 1 = room · rack (top-left) … the rack's total on hand, then when it was
+ * last counted / moved (top-right date); the lead product, then +N product
+ * positions using Allocate's disclosure; Space folds every position with its
+ * last count and move. Stock-health chips write `?status=` in the middle bar;
+ * Room and Aisle live in the contextual sidebar.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 
-export const INVENTORY_STOCK_VIEW: TriageViewDecl = {
+export const INVENTORY_STOCK_VIEW = triageView({
   id: 'inventory.stock',
   grain: 'stock rack',
   noun: { one: 'stock rack', many: 'stock racks' },
@@ -19,7 +20,8 @@ export const INVENTORY_STOCK_VIEW: TriageViewDecl = {
   recordParams: ['open', 'sku'],
   chips: { owner: 'face', param: 'status' },
   paging: 'client',
-  status: 'state',
+  status: 'date',
+  slots: { identity: 'room · rack', channel: 'none', person: 'none', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'qty', tier: 'always' },
     { id: 'position', tier: 'always' },
@@ -27,4 +29,4 @@ export const INVENTORY_STOCK_VIEW: TriageViewDecl = {
   ],
   sections: null,
   next: [],
-};
+});

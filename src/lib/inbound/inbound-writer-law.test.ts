@@ -35,7 +35,6 @@ const RECEIVING_LINE_BIRTH_WRITERS = [
   'src/app/api/receiving-lines/route.ts',
   'src/app/api/receiving/add-unmatched-line/route.ts',
   'src/app/api/receiving/lookup-po/route.ts',
-  'src/app/api/zoho/purchase-orders/receive/route.ts',
 ];
 
 test('only the known writers insert a receiving_line (orders land through ingestInboundOrder)', () => {
@@ -44,6 +43,16 @@ test('only the known writers insert a receiving_line (orders land through ingest
     births.filter((f) => !RECEIVING_LINE_BIRTH_WRITERS.includes(f)),
     [],
     'a new receiving_line writer — land orders through ingestInboundOrder (src/lib/inbound/ingest-inbound-order.ts)',
+  );
+});
+
+test('only ingestInboundOrder calls the per-line writer ingestPurchase', () => {
+  const callers = SOURCES.filter((f) => /\bingestPurchase\s*\(/.test(f.text) && f.rel !== 'src/lib/inbound/ingest-purchase.ts')
+    .map((f) => f.rel);
+  assert.deepEqual(
+    callers,
+    ['src/lib/inbound/ingest-inbound-order.ts'],
+    'build an InboundOrderDraft and land it through ingestInboundOrder; never call ingestPurchase directly',
   );
 });
 

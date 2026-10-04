@@ -107,9 +107,27 @@ test('a recurring row paints no caption — only the exception is marked', () =>
   assert.doesNotMatch(html, /data-once="true"/);
 });
 
-test('a held task row wears its status pill; a To do row wears none', () => {
-  const held = paint(false, { rowKey: 'task-7', detail: 'record', taskStatus: 'PENDING', subtitle: 'Due today' });
+test('every open task row wears its status pill, To do included; a done row wears none (P1: the column aligns)', () => {
+  const held = paint(false, { rowKey: 'task-7', detail: 'record', taskStatus: 'PENDING', due: 'Due today' });
   assert.match(held, /data-task-status="PENDING"[^>]*>.*Pending/);
-  const todo = paint(false, { rowKey: 'task-7', detail: 'record', taskStatus: 'TODO', subtitle: 'Due today' });
-  assert.doesNotMatch(todo, /data-task-status=/, 'To do is the default — no pill');
+  const todo = paint(false, { rowKey: 'task-7', detail: 'record', taskStatus: 'TODO', due: 'Due today' });
+  assert.match(todo, /data-task-status="TODO"/, 'To do paints too — the status column never jumps');
+  const done = paint(true, { rowKey: 'task-7', detail: 'record', taskStatus: 'DONE', due: 'Due today' });
+  assert.doesNotMatch(done, /data-task-status=/, 'Done is the strike, not a pill');
+});
+
+test('the caption reads WHEN, then the task status, then the ticket, then the record', () => {
+  const html = paint(false, {
+    rowKey: 'task-7',
+    detail: 'record',
+    due: 'Overdue',
+    dueTone: 'danger',
+    taskStatus: 'IN_PROGRESS',
+    ticketStatus: 'open',
+    subtitle: 'Carton 4471',
+  });
+  const at = (needle: RegExp) => html.search(needle);
+  assert.ok(at(/Overdue/) >= 0 && at(/Overdue/) < at(/data-task-status=/), 'due leads the caption');
+  assert.ok(at(/data-task-status=/) < at(/Carton 4471/), 'the record trails');
+  assert.match(html, /text-text-danger[^"]*">Overdue/, 'only the due wears the overdue ink');
 });

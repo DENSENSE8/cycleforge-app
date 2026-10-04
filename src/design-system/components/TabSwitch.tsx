@@ -2,15 +2,19 @@
 
 /**
  * TabSwitch — the segmented tab box (one face only).
- * The corner follows the region's concentric segmented pair. Never hard-flush
- * a face.
+ * Owner 2026-10-03 ("upgrading the tab slider to be more mobile … a friendly
+ * colour like blue and/or corner radius for a clickable action"): a pill
+ * track with a pill face; the selected tab is a raised card face (the iOS
+ * segmented control) with blue ink and a blue hairline — blue says "you can
+ * tap this". A blue TINT under blue ink fell to 3.9:1, so the face stays the
+ * card and the colour lives in the ink (≥4.5:1). Never hard-flush a face.
  */
 
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-presets';
-import { SEGMENTED_CONTROL_CORNER, SEGMENTED_CONTROL_FACE_CORNER } from '@/design-system/tokens/radius';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { cn } from '@/utils/_cn';
 
@@ -26,6 +30,8 @@ interface Tab {
    * button so the sliding pill measurement stays aligned.
    */
   dividerBefore?: boolean;
+  /** Probe id on the tab's button (smoke tests address one face). */
+  testId?: string;
 }
 
 interface TabSwitchProps {
@@ -41,8 +47,8 @@ interface TabSwitchProps {
    * `plain` = same size/weight as the label (no bubble) — preferred for dense ops headers.
    */
   countStyle?: 'badge' | 'plain';
-  /** Active-face fill. */
-  solidTone?: 'inverse' | 'accent';
+  /** Active face: `info` (default) = raised card face, blue ink + blue hairline; `accent` = the staffer's solid accent. */
+  solidTone?: 'info' | 'accent';
   /**
    * `fill` (default) — track stretches; tabs share width (`flex-1`).
    * `hug` — rail sizes to content; tabs stay intrinsic width.
@@ -74,7 +80,7 @@ export function TabSwitch({
   railClassName,
   scrollable = false,
   countStyle = 'badge',
-  solidTone = 'inverse',
+  solidTone = 'info',
   fit = 'fill',
   size = 'md',
   trailing,
@@ -83,7 +89,7 @@ export function TabSwitch({
   const hug = fit === 'hug';
   const compact = size === 'sm';
   const defaultRailClass = cn(
-    SEGMENTED_CONTROL_CORNER,
+    cornerClass('pill'),
     'border border-border-soft bg-surface-sunken',
     compact ? 'h-8 p-0.5' : 'p-1',
   );
@@ -101,8 +107,8 @@ export function TabSwitch({
   // {left:0,width:0}. Snap once, then spring on every later tab change.
   const hasPlacedPillRef = useRef(false);
   const prefersReducedMotion = useReducedMotion();
-  // The corner follows the region's concentric pair.
-  const faceCorner = SEGMENTED_CONTROL_FACE_CORNER;
+  // Pill track, pill face — concentric at any height.
+  const faceCorner = cornerClass('pill');
 
   const measurePill = useCallback(() => {
     const track = trackRef.current;
@@ -162,6 +168,7 @@ export function TabSwitch({
     });
   }, [activeTab, scrollable, tabs]);
 
+  // Both faces are raised — the selected tab lifts out of the sunken track.
   const pillShadow = solidAccent
     ? '0 1px 3px 0 rgb(0 0 0 / 0.12), 0 1px 2px 0 rgb(0 0 0 / 0.06)'
     : '0 1px 2px 0 rgb(0 0 0 / 0.08), 0 1px 3px 0 rgb(0 0 0 / 0.04)';
@@ -199,7 +206,7 @@ export function TabSwitch({
           className={cn(
             'pointer-events-none absolute z-0',
             faceCorner,
-            solidAccent ? 'bg-accent-bg' : 'bg-surface-inverse',
+            solidAccent ? 'bg-accent-bg' : 'bg-surface-card ring-1 ring-inset ring-fill-info/40',
           )}
           style={{
             top: 0,
@@ -231,6 +238,7 @@ export function TabSwitch({
                   buttonRefs.current[tab.id] = node;
                 }}
                 onClick={() => onTabChange(tab.id)}
+                data-testid={tab.testId}
                 className={cn(
                   'relative z-10 min-w-[2.5rem] whitespace-nowrap font-medium tracking-normal transition-colors duration-150',
                   tabFlexClass,
@@ -240,8 +248,10 @@ export function TabSwitch({
                     ? 'flex h-full items-center justify-center px-2.5 text-role-caption'
                     : 'px-3.5 py-1.5 text-role-caption',
                   isActive
-                    ? 'text-text-inverse'
-                    : 'text-text-soft hover:text-text-default',
+                    ? solidAccent
+                      ? 'text-text-inverse'
+                      : 'font-semibold text-text-info'
+                    : 'text-text-soft hover:text-text-info',
                 )}
               >
                 <motion.span

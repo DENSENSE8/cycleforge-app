@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { QcLinePicker } from '@/components/mobile/qc/QcLinePicker';
 import { QC_SCAN_HREF } from '@/lib/scan/identify-land';
 
@@ -18,7 +18,7 @@ function QcLineInner() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar backHref={QC_SCAN_HREF} subtitle="Quality control" title={`L-${lineId}`} mono />
+      <MobileV2DetailTopBar backHref={QC_SCAN_HREF} subtitle="Quality control" title={`L-${lineId}`} mono />
       <QcLinePicker
         lineId={lineId}
         onPick={(unitRef) => router.push(`/m/u/${encodeURIComponent(unitRef)}/qc`)}

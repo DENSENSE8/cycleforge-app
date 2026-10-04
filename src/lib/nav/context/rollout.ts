@@ -40,6 +40,8 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   // App-wide (owner 2026-09-29): dogfooded contextual by the org-1 owner, parity gaps empty — every org gets it.
   outbound: 'contextual',
   fulfilled: 'contextual',
+  // Born contextual (2026-10-03): Direction modes, Board + status views, every control and Find in the sidebar; no old panel.
+  'live-feed': 'contextual',
   'scan-out': 'contextual',
   packer: 'contextual',
   products: 'contextual',

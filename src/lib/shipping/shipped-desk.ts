@@ -1,5 +1,7 @@
 /** Fulfillment · Fulfilled — `/fulfilled`. `/shipping/shipped` redirects here. */
 
+import { OUTBOUND_SHIPPED_VIEW } from '@/lib/triage/views/outbound-shipped';
+
 export const SHIPPING_SHIPPED_PATH = '/fulfilled';
 
 /** Saved views of this page. Presets of the sidebar params, never a second desk. */
@@ -107,4 +109,13 @@ export function shippingShippedHref(opts: ShippedDeskHrefOptions = {}): string {
 /** Today's window on the Shipped desk — where To-ship's "Shipped today" count hands off. */
 export function shippedTodayHref(todayDateKey: string): string {
   return shippingShippedHref({ dateFrom: todayDateKey, dateTo: todayDateKey });
+}
+
+/**
+ * Every open unmatched scan on the Fulfilled desk — a pack scan or a dock
+ * scan-out that matched no order — across all dates (the Unmatched status pill).
+ */
+export function shippedUnmatchedHref(): string {
+  const params = new URLSearchParams({ allDates: '1', [OUTBOUND_SHIPPED_VIEW.chips.param]: 'UNMATCHED' });
+  return `${SHIPPING_SHIPPED_PATH}?${params.toString()}`;
 }

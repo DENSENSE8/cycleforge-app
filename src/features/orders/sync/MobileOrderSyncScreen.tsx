@@ -8,7 +8,7 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Play, RefreshCw, X } from '@/components/Icons';
-import { Button } from '@/design-system/primitives/Button';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,33 +122,19 @@ export function MobileOrderSyncScreen() {
       </div>
 
       {/*
-        Sticky floor: the primary verb sits under the thumb, full width, one
-        line of label. Demo is the quiet twin beside it — same run surface,
-        sample rows, no network and no writes.
+        The floor: floating verbs, no bar or rule behind them (owner 2026-10-03).
+        Sync now is the full-width primary under the thumb; Demo is the quiet
+        twin above it — same run surface, sample rows, no network and no writes.
       */}
-      <footer className="flex shrink-0 flex-col gap-2 border-t border-border-soft px-4 py-4">
-        <Button
-          variant="primary"
-          size="lg"
-          className="w-full"
-          disabled={!canImportOrders}
-          onClick={() => void sync.handleTransfer()}
-          data-testid="mobile-order-sync-start"
-        >
-          <RefreshCw className="h-4 w-4" aria-hidden />
-          Sync now
-        </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          className="w-full"
-          onClick={demo.start}
-          data-testid="mobile-order-sync-demo"
-        >
-          <Play className="h-4 w-4" aria-hidden />
-          Demo sync (sample data)
-        </Button>
-      </footer>
+      <DetailDock<'demo' | 'sync'>
+        label="Order import actions"
+        placement="sheet"
+        verbs={[
+          { id: 'demo', label: 'Demo sync (sample data)', icon: <Play />, testId: 'mobile-order-sync-demo' },
+          { id: 'sync', label: 'Sync now', icon: <RefreshCw />, primary: true, disabled: !canImportOrders, testId: 'mobile-order-sync-start' },
+        ]}
+        onVerb={(verb) => (verb === 'demo' ? demo.start() : sync.handleTransfer())}
+      />
     </section>
   );
 }

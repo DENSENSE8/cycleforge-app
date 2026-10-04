@@ -3,7 +3,7 @@
 /** Phone "New task" — the words first, then who, then (optionally) a record. */
 
 import { useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Check, Loader2, Search } from '@/components/Icons';
 import { Button, TextField } from '@/design-system/primitives';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
@@ -28,9 +28,12 @@ export function MobileSharedTaskComposerSheet({ onClose, onCreated, onAddCheckli
   const showLink = ticketMode || linkOpen || picked != null;
 
   return (
-    <BottomSheet open onClose={onClose} forceVariant="sheet" compact scrollBody scrollBodyMaxHeightClass="max-h-[75svh]">
-      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain px-1 pb-2 pt-1" data-testid="mobile-task-composer">
-        <h2 className="text-role-data font-semibold text-text-default">New task</h2>
+    <Sheet open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle className="text-role-data">New task</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="flex flex-col gap-4 pt-2" data-testid="mobile-task-composer">
         <TextField
           label="What needs doing?"
           value={note}
@@ -110,7 +113,8 @@ export function MobileSharedTaskComposerSheet({ onClose, onCreated, onAddCheckli
         {onAddChecklist ? (
           <Button variant="ghost" size="lg" onClick={onAddChecklist}>Add a daily checklist item instead</Button>
         ) : null}
-      </div>
-    </BottomSheet>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

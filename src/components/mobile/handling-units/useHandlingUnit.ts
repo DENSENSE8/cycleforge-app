@@ -43,7 +43,7 @@ export function useHandlingUnit(ref: string) {
       const response = await fetch(`/api/handling-units/${encodeURIComponent(ref)}`, { cache: 'no-store', credentials: 'include' });
       const body = (await response.json().catch(() => null)) as (HandlingUnitResponse & { error?: string }) | null;
       if (!response.ok || !body?.success || !body.handling_unit) {
-        throw new Error(body?.error || `Could not load LPN (${response.status})`);
+        throw new Error(body?.error || `Could not load tote (${response.status})`);
       }
       return body;
     },

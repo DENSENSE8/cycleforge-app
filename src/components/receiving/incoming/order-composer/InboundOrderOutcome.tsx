@@ -26,7 +26,7 @@ import { deleteInboundOrderRequest } from '@/lib/inbound/inbound-order-client';
 import type { InboundOrderPreview } from '@/lib/inbound/ingest-inbound-order';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-import { formatInboundMoney, inboundOrderCostTotal, openableListingUrl } from './composer-choices';
+import { formatInboundMoney, inboundOrderCostTotal, openableListingUrl } from '@/lib/inbound/inbound-order-compose';
 
 interface OutcomeProps {
   draft: InboundOrderDraft;

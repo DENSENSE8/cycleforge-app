@@ -68,7 +68,6 @@ interface UpsertItemLocationStockInput {
 interface ItemRepository {
   findById(id: string): Promise<typeof items.$inferSelect | null>;
   findByZohoId(zohoId: string): Promise<typeof items.$inferSelect | null>;
-  findBySku(sku: string): Promise<typeof items.$inferSelect | null>;
   upsertMany(rows: InsertItem[]): Promise<void>;
   listActive(pagination: PaginationParams): Promise<PaginatedResult<typeof items.$inferSelect>>;
   upsertLocations(orgId: string, rows: UpsertLocationInput[]): Promise<void>;
@@ -87,11 +86,6 @@ class DrizzleItemRepository implements ItemRepository {
 
   async findByZohoId(zohoId: string) {
     const rows = await db.select().from(items).where(eq(items.zohoItemId, zohoId)).limit(1);
-    return rows[0] ?? null;
-  }
-
-  async findBySku(sku: string) {
-    const rows = await db.select().from(items).where(eq(items.sku, sku)).limit(1);
     return rows[0] ?? null;
   }
 

@@ -5,7 +5,7 @@ import { Button } from '@/design-system/primitives';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
 import { WmsRealtimeStatus } from '@/components/mobile/realtime/WmsRealtimeStatus';
-import { MobileActionSlotProvider } from '@/components/mobile/redesign/MobileActionSlot';
+import { MobileActionSlotProvider } from './MobileV2ActionSlot';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { mobileRouteOwnsTopBar } from '@/lib/mobile/host-top-bar';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
@@ -39,7 +39,7 @@ export function MobileV2Shell({ children }: { children: React.ReactNode }) {
   if (pathname && isClientPublicPath(pathname)) {
     return (
       <div
-        className={`flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased safe-area-padding ${appMobilePageGroundClass}`}
+        className={`relative flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased mobile-safe-area-frame ${appMobilePageGroundClass}`}
       >
         <ErrorBoundary label="mobile-v2-public-page" fallback={MobileV2PageError}>
           {children}
@@ -52,7 +52,7 @@ export function MobileV2Shell({ children }: { children: React.ReactNode }) {
     <MobileV2SearchProvider>
       <MobileActionSlotProvider>
         <div
-          className={`relative flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased safe-area-padding ${appMobilePageGroundClass}`}
+          className={`relative flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased mobile-safe-area-frame ${appMobilePageGroundClass}`}
           data-mobile-shell="v2"
         >
           {showHeader ? <MobileV2TopBar /> : null}

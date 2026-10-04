@@ -16,7 +16,7 @@ fixes have shipped; the rest is the streamline backlog. The newest section
 | Incoming "delivered · not scanned" tile | `IncomingSidebarPanel` count + `delivery_state` badge | `delivered-unscanned.ts` (shipment-anchored) | `stn.is_delivered` + inbound + no `receiving_scans` + 30-day window |
 | Triage → Unfound | `TriageUnfoundList` | `/api/receiving/unfound-queue` (`v_unfound_queue`) | unmatched cartons, `checked=false` |
 | Triage → Prioritize | `ReceivingScannedRail` → `RecentActivityRailBase` | `/api/receiving-lines?view=scanned&sort=priority` | `received_at IS NOT NULL` AND `unboxed_at IS NULL` AND `qty_received=0` AND status in (EXPECTED/ARRIVED/MATCHED) AND not Zoho-terminal |
-| Unbox mode | `ReceivingDashboard` workspace | `lookup-po` + `mark-received` | active line under edit |
+| Unbox mode | `ReceivingDashboard` workspace | `lookup-po` + `mark-received-po` | active line under edit |
 
 State machine (`src/lib/receiving/workflow-stages.ts`): `EXPECTED → ARRIVED →
 MATCHED → UNBOXED → AWAITING_TEST → … → DONE`. Table-chip collapse

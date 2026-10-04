@@ -6,11 +6,11 @@
  * sit beside the count. The open package is `?shipment=`.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 import { OUTBOUND_STATE_META } from '@/lib/outbound-state';
 import { SHIPMENT_RECORD_PARAM } from '@/lib/shipments/shipment-record-types';
 
-export const OUTBOUND_SHIPPED_VIEW: TriageViewDecl = {
+export const OUTBOUND_SHIPPED_VIEW = triageView({
   id: 'fulfilled.all',
   grain: 'package',
   noun: { one: 'package', many: 'packages' },
@@ -22,6 +22,7 @@ export const OUTBOUND_SHIPPED_VIEW: TriageViewDecl = {
   chips: { owner: 'face', param: 'cardStatus' },
   paging: 'client',
   status: 'date',
+  slots: { identity: 'order number · tracking', channel: 'none', person: 'none', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'qty', tier: 'always' },
     { id: 'condition', tier: 'always' },
@@ -29,4 +30,4 @@ export const OUTBOUND_SHIPPED_VIEW: TriageViewDecl = {
   ],
   sections: null,
   next: ['Resolve', ...Object.values(OUTBOUND_STATE_META).map((meta) => meta.label)],
-};
+});

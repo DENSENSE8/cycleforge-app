@@ -34,6 +34,7 @@ function harness(rows: Array<Record<string, unknown>>) {
     },
     listLocalPickupLines: noPickup,
     exceptionCounts: noExceptions,
+    liveFeedCounts: async () => ({}),
   };
   return { calls, deps };
 }

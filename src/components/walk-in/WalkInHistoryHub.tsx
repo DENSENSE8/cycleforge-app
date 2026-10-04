@@ -1,14 +1,12 @@
 'use client';
 
-/** Sales hub — front-desk history surface: */
+/** Sales hub — front-desk history surface: `?mode=pickup` and `?mode=repairs` (`?mode=sales` is parked → `/counter`). */
 
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
-import { SalesHistoryTable } from '@/components/walk-in/SalesHistoryTable';
 import {
   DEFAULT_SALES_REPAIR_TAB,
   parsePickupTab,
-  parseSalesTab,
   parseWalkInHistoryMode,
 } from '@/lib/walk-in/history-modes';
 
@@ -39,7 +37,6 @@ export function WalkInHistoryHub() {
   const mode = parseWalkInHistoryMode(searchParams.get('mode'));
   const tabRaw = searchParams.get('tab');
   const isRepairs = mode === 'repairs';
-  const feedMode: 'pickup' | 'sales' = mode === 'pickup' ? 'pickup' : 'sales';
 
   // The repair cards take every control from the contextual sidebar; the page adds no chrome band.
   if (isRepairs) {
@@ -53,11 +50,7 @@ export function WalkInHistoryHub() {
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-      {feedMode === 'pickup' ? (
-        <PickupOrdersTable tab={parsePickupTab(tabRaw)} />
-      ) : (
-        <SalesHistoryTable tab={parseSalesTab(tabRaw)} />
-      )}
+      <PickupOrdersTable tab={parsePickupTab(tabRaw)} />
     </div>
   );
 }

@@ -18,9 +18,9 @@
  * host labels them (`sections: null` here; see `importDaySection`).
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 
-export const IMPORT_RUNS_VIEW: TriageViewDecl = {
+export const IMPORT_RUNS_VIEW = triageView({
   id: 'imports.runs',
   grain: 'import run',
   noun: { one: 'run', many: 'runs' },
@@ -32,12 +32,13 @@ export const IMPORT_RUNS_VIEW: TriageViewDecl = {
   chips: { owner: 'host', param: 'status' },
   paging: 'client',
   status: 'state',
+  slots: { identity: 'run number · trigger', channel: 'brand', person: 'none', quickLook: 'peek', photo: 'none' },
   facts: [{ id: 'error', tier: 'always' }],
   sections: null,
   next: ['Review'],
-};
+});
 
-export const IMPORT_ROWS_VIEW: TriageViewDecl = {
+export const IMPORT_ROWS_VIEW = triageView({
   id: 'imports.rows',
   grain: 'imported order',
   noun: { one: 'order', many: 'orders' },
@@ -49,6 +50,7 @@ export const IMPORT_ROWS_VIEW: TriageViewDecl = {
   chips: { owner: 'host', param: 'outcome' },
   paging: 'client',
   status: 'state',
+  slots: { identity: 'order number', channel: 'brand', person: 'source', quickLook: 'peek', photo: 'none' },
   facts: [
     { id: 'tracking', tier: 'always' },
     { id: 'locator', tier: 'always' },
@@ -56,4 +58,4 @@ export const IMPORT_ROWS_VIEW: TriageViewDecl = {
   ],
   sections: null,
   next: [],
-};
+});

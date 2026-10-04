@@ -6,6 +6,8 @@ import {
   upsertSkuCatalog,
   type SkuCatalogLinkFilter,
 } from '@/lib/neon/sku-catalog-queries';
+import { normalizeCatalogSku } from '@/lib/sku/catalog-import';
+import { linkCatalogZohoItem, readCatalogImportContext } from '@/lib/sku/catalog-import-store';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseBody } from '@/lib/schemas/parse';
 import { SkuCatalogCreateBody } from '@/lib/schemas/sku-catalog';
@@ -78,18 +80,22 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
+    // Leading zeros restored (`1113` → `01113`) unless the SKU exists as written — the import's rule.
+    const known = await readCatalogImportContext(ctx.organizationId, [parsed.sku]);
+    const sku = normalizeCatalogSku(parsed.sku, (s) => known.catalogTitles.has(s) || known.mirrorItemIds.has(s));
+
     // True create semantics: reject if an active row already owns this sku.
-    const existing = await getSkuCatalogBySku(parsed.sku, ctx.organizationId);
+    const existing = await getSkuCatalogBySku(sku, ctx.organizationId);
     if (existing && existing.is_active) {
       return NextResponse.json(
-        { success: false, error: 'A SKU catalog entry with that sku already exists', id: existing.id },
+        { success: false, error: `SKU ${sku} is already in the catalog`, id: existing.id, sku },
         { status: 409 },
       );
     }
 
     // upsert reactivates a previously soft-deleted row or inserts a new one.
     const catalog = await upsertSkuCatalog({
-      sku: parsed.sku,
+      sku,
       productTitle: parsed.productTitle,
       category: parsed.category ?? null,
       upc: parsed.upc ?? null,
@@ -109,7 +115,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (!catalogWithHandling) {
       return NextResponse.json({ success: false, error: 'Could not save handling facts' }, { status: 500 });
     }
-
+    if (parsed.zohoItemId) {
+      await linkCatalogZohoItem(ctx.organizationId, {
+        skuCatalogId: catalogWithHandling.id,
+        sku: catalogWithHandling.sku,
+        title: catalogWithHandling.product_title,
+        zohoItemId: parsed.zohoItemId,
+      });
+    }
     if (parsed.packTier !== undefined || parsed.estimatedPackMinutes !== undefined) {
       await upsertSkuPackProfileLink(
         {
@@ -128,7 +141,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       entityType: AUDIT_ENTITY.SKU,
       entityId: catalogWithHandling.id,
       before: existing ? { ...existing } : null,
-      after: { ...catalogWithHandling },
+      after: { ...catalogWithHandling, zohoItemId: parsed.zohoItemId ?? null },
     });
 
     const responseBody = { success: true, catalog: catalogWithHandling };

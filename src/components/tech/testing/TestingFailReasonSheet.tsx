@@ -3,7 +3,7 @@
 /** @domain-job Name WHAT IS WRONG with a unit before its TESTING_FAILED verdict is recorded at the Testing bench. */
 
 import { useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ReasonChipPicker } from '@/components/ui/ReasonChipPicker';
 import { Button } from '@/design-system/primitives';
 import { useFailureModes, failureModeTone } from '@/hooks/useFailureModes';
@@ -41,57 +41,64 @@ export function TestingFailReasonSheet({
   };
 
   return (
-    <BottomSheet open={open} onClose={close} title={`Fail ${unitLabel}`} dragDisabled>
-      <div className="stack-section">
-        <p className="text-role-caption text-text-muted">
-          The unit goes on hold and the fault is tagged against it. A later pass on
-          the same fault resolves the tag, so this is reversible.
-        </p>
-
-        <div className="stack-tight">
-          <p className="text-role-eyebrow text-text-soft">
-            What is wrong with it?
-          </p>
-          {modes != null && options.length === 0 ? (
-            <p className="text-role-caption font-semibold text-amber-700">
-              No failure modes are set up for this workspace yet — an admin adds them
-              under Admin → Failure modes.
+    <Sheet open={open} onOpenChange={(next) => { if (!next) close(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>{`Fail ${unitLabel}`}</SheetTitle>
+        </SheetHeader>
+        <SheetBody>
+          <div className="stack-section">
+            <p className="text-role-caption text-text-muted">
+              The unit goes on hold and the fault is tagged against it. A later pass on
+              the same fault resolves the tag, so this is reversible.
             </p>
-          ) : (
-            <ReasonChipPicker
-              value={modeId == null ? null : String(modeId)}
-              onChange={(next) => setModeId(Number(next))}
-              options={options}
-              ariaLabel="Failure mode"
-              size="touch"
-            />
-          )}
-          {/* Shown only once chosen, so it reads as confirmation of the claim
-              being made rather than a hint the operator skims past. */}
-          <p className="min-h-8 text-role-caption text-text-muted" aria-live="polite">
-            {selected
-              ? `${selected.severity}${selected.category ? ` · ${selected.category}` : ''}${
-                  selected.is_repairable === false ? ' · not repairable' : ''
-                }`
-              : 'Pick a fault to continue. It is tagged on the unit and shows on its quality record.'}
-          </p>
-        </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row-reverse">
-          <Button
-            variant="danger"
-            size="lg"
-            disabled={modeId == null || busy}
-            onClick={() => modeId != null && onConfirm(modeId)}
-            className="w-full sm:w-auto"
-          >
-            {busy ? 'Working…' : 'Fail this unit'}
-          </Button>
-          <Button variant="ghost" size="lg" onClick={close} className="w-full sm:w-auto">
-            Cancel
-          </Button>
-        </div>
-      </div>
-    </BottomSheet>
+            <div className="stack-tight">
+              <p className="text-role-eyebrow text-text-soft">
+                What is wrong with it?
+              </p>
+              {modes != null && options.length === 0 ? (
+                <p className="text-role-caption font-semibold text-amber-700">
+                  No failure modes are set up for this workspace yet — an admin adds them
+                  under Admin → Failure modes.
+                </p>
+              ) : (
+                <ReasonChipPicker
+                  value={modeId == null ? null : String(modeId)}
+                  onChange={(next) => setModeId(Number(next))}
+                  options={options}
+                  ariaLabel="Failure mode"
+                  size="touch"
+                />
+              )}
+              {/* Shown only once chosen, so it reads as confirmation of the claim
+                  being made rather than a hint the operator skims past. */}
+              <p className="min-h-8 text-role-caption text-text-muted" aria-live="polite">
+                {selected
+                  ? `${selected.severity}${selected.category ? ` · ${selected.category}` : ''}${
+                      selected.is_repairable === false ? ' · not repairable' : ''
+                    }`
+                  : 'Pick a fault to continue. It is tagged on the unit and shows on its quality record.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row-reverse">
+              <Button
+                variant="danger"
+                size="lg"
+                disabled={modeId == null || busy}
+                onClick={() => modeId != null && onConfirm(modeId)}
+                className="w-full sm:w-auto"
+              >
+                {busy ? 'Working…' : 'Fail this unit'}
+              </Button>
+              <Button variant="ghost" size="lg" onClick={close} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

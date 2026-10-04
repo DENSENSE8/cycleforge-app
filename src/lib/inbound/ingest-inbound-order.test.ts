@@ -202,3 +202,29 @@ test('a REPAIR drop-off from any source but its repair ticket is refused before 
   assert.equal(f.sql.length, 0);
   assert.equal(f.ingested.length, 0);
 });
+
+test('operator re-saves (form · CSV · chat) may correct line identity; syncs may not', async () => {
+  for (const origin of ['manual', 'csv', 'chat'] as const) {
+    const f = fakes();
+    await ingestInboundOrderInTx(f.client, ORG, draft(), { ...CTX, origin }, f.deps);
+    assert.ok(f.ingested.every((i) => i.operatorResave === true), `${origin} re-save wins`);
+  }
+  const sync = fakes();
+  await ingestInboundOrderInTx(sync.client, ORG, draft({ platform: 'ebay' }), { origin: 'sync', source: 'ebay', staffId: null }, sync.deps);
+  assert.ok(sync.ingested.every((i) => i.operatorResave === false), 'a marketplace re-sync only fills blanks');
+});
+
+test('a synced order carries its marketplace status to the mirror and line facts', async () => {
+  const f = fakes();
+  await ingestInboundOrderInTx(
+    f.client,
+    ORG,
+    draft({ platform: 'ebay', sourceStatus: { order: 'Completed', payment: 'Complete' } }),
+    { origin: 'sync', source: 'ebay', staffId: null },
+    f.deps,
+  );
+  assert.ok(f.ingested.every((i) => i.status === 'Completed' && i.purchaseOrderStatus === 'Completed' && i.paymentStatus === 'Complete'));
+  const plain = fakes();
+  await ingestInboundOrderInTx(plain.client, ORG, draft(), CTX, plain.deps);
+  assert.ok(plain.ingested.every((i) => i.status === 'ISSUED' && i.paymentStatus === null), 'an authored order stays ISSUED');
+});

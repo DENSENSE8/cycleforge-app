@@ -1,7 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { PickupLine } from './pickup-lines';
 import { pickupBands } from '@/components/receiving/pickup/PickupWorkspace';
 import { pickupCardModel, pickupOrderRecords, pickupRecordCard } from './pickup-card-model';
@@ -110,12 +108,4 @@ test('pickup-date sorting orders whole orders and keeps undated records last', (
     pickupBands(rows, 'oldest').flatMap(([, groups]) => groups.map((group) => group.rows[0]!.orderId)),
     [1, 2, 3],
   );
-});
-
-test('the live pickup workspace cannot regress to the retired slot DataTable', () => {
-  const source = readFileSync(join(process.cwd(), 'src/components/receiving/pickup/PickupWorkspace.tsx'), 'utf8');
-  const registry = readFileSync(join(process.cwd(), 'src/components/tables/registered-bindings.ts'), 'utf8');
-  assert.match(source, /TriageCardList/);
-  assert.doesNotMatch(source, /PICKUP_TABLE_BINDING|usePickupTableLayout|<DataTable/);
-  assert.doesNotMatch(registry, /PICKUP_TABLE_BINDING/);
 });

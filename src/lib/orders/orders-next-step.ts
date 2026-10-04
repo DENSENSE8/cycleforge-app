@@ -1,6 +1,6 @@
 /** Where an order goes NEXT — the compound STATUS cell's second line. */
 
-import type { CompoundNextStep } from '@/components/tables/compound/compound-row-model';
+import type { NextStep } from '@/lib/tables/field-catalog/slot-value';
 import {
   hasLeftWarehouse,
   resolveOrderLifecycleStage,
@@ -37,7 +37,7 @@ const HEADED = '→';
  * After leave-the-building, the second line is the next *carrier* word —
  * EasyPost / AfterShip / UPS pipeline, not a warehouse "Completed".
  */
-const NEXT_BY_CARRIER: Readonly<Record<string, CompoundNextStep>> = {
+const NEXT_BY_CARRIER: Readonly<Record<string, NextStep>> = {
   LABEL_CREATED: { label: `${HEADED} In Transit`, tip: 'Next: first network scan (in transit)' },
   ACCEPTED: { label: `${HEADED} In Transit`, tip: 'Next: moving through the carrier network' },
   IN_TRANSIT: { label: `${HEADED} Out for delivery`, tip: 'Next: out for delivery' },
@@ -62,7 +62,7 @@ const NEXT_BY_STAGE: Readonly<
 };
 
 /** Map an already-resolved pre-dock stage onto its next operator step. */
-export function nextStepForLifecycleStage(stage: OrderLifecycleStage): CompoundNextStep {
+export function nextStepForLifecycleStage(stage: OrderLifecycleStage): NextStep {
   const next = NEXT_BY_STAGE[stage];
   return {
     label: `${HEADED} ${next.label}`,
@@ -76,7 +76,7 @@ export function ordersNextStep(
   record: OrdersNextStepRecord,
   /** Injectable clock for the stall rule — tests pin it; surfaces omit it. */
   opts: { now?: number } = {},
-): CompoundNextStep {
+): NextStep {
   // One builder, so this line cannot resolve a different stage than the STATUS
   // chip above it. Hand-building the bag here dropped `stalled`, and a stalled
   // IN_TRANSIT row printed "→ Out for delivery" under a red EXCEPTION pill.

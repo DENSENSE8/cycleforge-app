@@ -17,7 +17,7 @@ const DATE_RANGE_PICKER_VARIANTS = {
   range:
     'filter date range from-to period: presets + month grid + Clear/Apply; idle face includes the year; X clears',
   compact:
-    'ship-by due date single day in a cell: month grid only; click commits; no year; no X; face paints MMM d or -- unless the surface supplies faceLabel (DataTable ship-by paints its AGE); replace native input type=date',
+    'ship-by due date single day in a cell: month grid; click commits; no year; no X on the face; optional day presets above the month and an optional Clear footer (a due date); face paints MMM d or -- unless the surface supplies faceLabel (DataTable ship-by paints its AGE); replace native input type=date',
 } as const;
 
 type DateRangePickerVariant = keyof typeof DATE_RANGE_PICKER_VARIANTS;
@@ -42,8 +42,16 @@ type DateRangePickerCompactProps = SharedFieldProps & {
   variant: 'compact';
   /** Civil day on the trigger. `undefined` still paints `--` — never a blank. */
   value: Date | undefined;
-  /** Always a day. Compact cannot clear. */
+  /** Always a day. Clearing is {@link onClear}'s job, never `onChange`. */
   onChange: (next: Date) => void;
+  /**
+   * Quick days above the month (a due date's Today · Tomorrow · Next week —
+   * task principle P5: presets + calendar, never chips-only). A pick commits
+   * through `onChange`, same as a day in the grid.
+   */
+  presets?: ReadonlyArray<{ label: string; day: () => Date }>;
+  /** When given and a day is set, the popover ends in a Clear footer that calls it. */
+  onClear?: () => void;
   /**
    * Override the trigger WORD when the surface has a truer face for this day than the day itself.
    * tooltip (operator 2026-09-04). The CONTROL is unchanged — same month grid,
@@ -114,10 +122,20 @@ const DEFAULT_PRESETS: ReadonlyArray<{ label: string; range: () => DateRange }> 
 const TRIGGER_CLASS =
   'inline-flex h-9 w-full items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 text-left text-role-caption font-semibold text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50';
 
-const POPOVER_CLASS = cn(
-  'z-dropdown border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none',
+const POPOVER_SHELL = cn(
+  'border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none',
   DROPDOWN_SHELL_CORNER,
 );
+
+const POPOVER_CLASS = cn('z-dropdown', POPOVER_SHELL);
+
+/**
+ * A day field also lives inside phone sheets / modals (z-modal and up): its portal must outrank
+ * the surface that holds its trigger — the house `ui/popover` layer, z-command — and take pointer
+ * events back from the modal's `body { pointer-events: none }` (the sheet's Radix dialog runs a
+ * different dismissable-layer build than this popover, so they don't share a layer stack).
+ */
+const COMPACT_POPOVER_CLASS = cn('pointer-events-auto z-command', POPOVER_SHELL);
 
 /** Trigger + popover over the house calendar. */
 export function DateRangePickerField(props: DateRangePickerFieldProps) {
@@ -138,6 +156,8 @@ function CompactDatePickerField({
   ariaLabel,
   leadingGlyph: LeadingGlyph,
   clickCursor = false,
+  presets,
+  onClear,
 }: DateRangePickerCompactProps) {
   const [open, setOpen] = useState(false);
   // Paint the picked day immediately; the parent cache is the source of truth
@@ -151,6 +171,11 @@ function CompactDatePickerField({
   // The surface's face wins when it has one (ship-by paints its age); the day
   // itself is the default, and `--` is the never-blank floor.
   const label = faceLabel?.trim() || (selected ? format(selected, 'MMM d') : '--');
+  const commit = (day: Date) => {
+    setSelected(day);
+    onChange(day);
+    setOpen(false);
+  };
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -172,7 +197,30 @@ function CompactDatePickerField({
       </Popover.Trigger>
 
       <Popover.Portal>
-        <Popover.Content align="start" sideOffset={6} className={POPOVER_CLASS}>
+        <Popover.Content align="start" sideOffset={6} className={COMPACT_POPOVER_CLASS}>
+          {presets && presets.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 border-b border-border-hairline p-2">
+              {presets.map((preset) => {
+                const day = preset.day();
+                const on = selected != null && selected.toDateString() === day.toDateString();
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => commit(day)}
+                    className={cn(
+                      'h-7 rounded-full px-3 text-role-caption font-semibold transition-colors',
+                      on ? 'bg-fill-info/15 text-text-info' : 'bg-surface-sunken text-text-muted hover:text-text-default',
+                      focusRing('control'),
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           <Calendar
             mode="single"
             selected={selected}
@@ -181,9 +229,7 @@ function CompactDatePickerField({
                 setOpen(false);
                 return;
               }
-              setSelected(day);
-              onChange(day);
-              setOpen(false);
+              commit(day);
             }}
             numberOfMonths={1}
             defaultMonth={selected ?? new Date()}
@@ -193,6 +239,21 @@ function CompactDatePickerField({
                 : undefined
             }
           />
+          {onClear && selected ? (
+            <div className="flex items-center border-t border-border-hairline px-3 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelected(undefined);
+                  onClear();
+                  setOpen(false);
+                }}
+                className={cn('text-role-eyebrow text-text-soft hover:text-text-default', focusRing('control'))}
+              >
+                Clear
+              </button>
+            </div>
+          ) : null}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>

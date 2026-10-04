@@ -106,7 +106,7 @@ export function ProductDetail({ sku }: { sku: string }) {
           {
             id: 'product-operations',
             label: 'Operations',
-            children: <p className="text-xs text-text-soft">Looking for stock-health controls? <Link href={`/inventory/health/sku/${encodeURIComponent(product.sku)}`} className="text-blue-600 underline">Open admin drill-down</Link></p>,
+            children: <p className="text-xs text-text-soft">Looking for stock details? <Link href={`/inventory?sku=${encodeURIComponent(product.sku)}`} className="text-blue-600 underline">Open stock record</Link></p>,
           },
         ]}
       />

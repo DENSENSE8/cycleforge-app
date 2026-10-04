@@ -25,7 +25,7 @@ different cookie namespace than the operator's browser.
 `pnpm verify:fast` (~60s: lint, typecheck, plus sub-second source-law gates).
 `pnpm verify` for cross-cutting refactors. Fix or report — do not claim done on red.
 
-## 3. Design system — opt-in, not a gate
+## 3. Design system — primitives opt-in, placement binding
 
 `ds_contract` / `ds_tokens <axis>` / `ds_critique <file>` (MCP `design-mcp`, or
 `node tools/design-mcp/ds.mjs <cmd>`) answer "does this primitive already exist"
@@ -34,6 +34,23 @@ They no longer block writes — the PreToolUse stamp gate is removed.
 
 Promotion path: build the component fast, prove it in the app, then pin it into
 the design system when it is actually good.
+
+**Placement is binding.** Before building or delegating any UI, run
+`ds_contract '<the job>'` and paste its `placement.briefBlock` verbatim into the
+brief; never specify a placement the contract did not return. Filters, sort,
+date/time, staff, facets, views and modes live in the left contextual sidebar,
+declared in `NAV_PAGE_DECLS` (NavControls); the page body shows records only.
+Placement governs controls only: the display method (column board, card list,
+triage sections, data table, …) is chosen per page by `ds_display_method`.
+Run `ds_critique` on every touched UI file.
+
+Before adding a table action, destructive control, or local component wrapper,
+read `docs/design-system/CONSOLIDATION_LEDGER.md`. Its JSON ledger is the living
+delete/simplification list: reuse the named replacement, or add a queued entry
+with an exit criterion before creating a fork. Retired forks fail `verify:fast`.
+
+- **Routes and domain words** come from `src/lib/nav/route-tree.ts` via `ds_route` / `ds_vocabulary` /
+  `ds_route_tree` (verify `Routes`). Unsure → ask them; no answer → ask the operator. Never invent a path or synonym.
 
 ## 4. Product facts worth remembering
 

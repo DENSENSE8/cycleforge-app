@@ -2,7 +2,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   evaluateReceivingPhotoPolicyGate,
-  isPreReceiveWorkflowStatus,
   receivingPhotoEvidenceCountsSql,
   type ReceivingPhotoEvidenceCounts,
   type ReceivingPhotoPolicyGateDeps,
@@ -169,27 +168,6 @@ describe('evaluateReceivingPhotoPolicyGate · gated paths', () => {
       deps,
     );
     assert.deepEqual(calls, [{ organizationId: ORG, receivingId: 42 }]);
-  });
-});
-
-describe('isPreReceiveWorkflowStatus', () => {
-  it('pre-receive stages (and blank/unknown) gate; post-receive stages skip', () => {
-    for (const status of ['EXPECTED', 'ARRIVED', 'MATCHED', ' matched ', '', null, undefined]) {
-      assert.equal(isPreReceiveWorkflowStatus(status), true, `expected pre-receive: ${status}`);
-    }
-    for (const status of [
-      'UNBOXED',
-      'DONE',
-      'AWAITING_TEST',
-      'IN_TEST',
-      'PASSED',
-      'FAILED',
-      'RTV',
-      'SCRAP',
-      'done',
-    ]) {
-      assert.equal(isPreReceiveWorkflowStatus(status), false, `expected already-received: ${status}`);
-    }
   });
 });
 

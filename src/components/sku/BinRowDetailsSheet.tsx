@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { postStockTransfer } from '@/lib/inventory/stock-transfer-client';
 
 
 
@@ -186,28 +187,14 @@ export function BinRowDetailsSheet({
     setBusy('transfer');
     setError(null);
     try {
-      const idempotencyKey = randomId();
-      const res = await fetch('/api/transfers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify({
-          fromBinBarcode: binBarcode,
-          toBinBarcode: toBin,
-          sku: row.sku,
-          qty: Math.floor(qtyNum),
-          staffId,
-          clientEventId: idempotencyKey,
-        }),
+      const receipt = await postStockTransfer({
+        fromBarcode: binBarcode,
+        toBarcode: toBin,
+        sku: row.sku,
+        qty: qtyNum,
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || data?.success === false) {
-        throw new Error(data?.error || `HTTP ${res.status}`);
-      }
       await invalidate();
-      setInfo(`Moved ${data.qty} → ${toBin}`);
+      setInfo(`Moved ${receipt.qty} → ${receipt.toBarcode}`);
       setTransferToDraft('');
       setTransferQtyDraft('');
       onClose();
@@ -216,7 +203,7 @@ export function BinRowDetailsSheet({
     } finally {
       setBusy(null);
     }
-  }, [binBarcode, busy, invalidate, onClose, row, staffId, transferQtyDraft, transferToDraft]);
+  }, [binBarcode, busy, invalidate, onClose, row, transferQtyDraft, transferToDraft]);
 
   const saveLimits = useCallback(async () => {
     if (!row || busy) return;

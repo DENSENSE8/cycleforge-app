@@ -762,11 +762,11 @@ const exceptionsFor = (warehousePostal?: string, universalIncoming = false) =>
     warehousePostal,
   });
 
-test('exceptions keeps the Zoho-received-never-scanned lines Incoming hides, but never a cancelled PO', () => {
+test('exceptions never judges by the ERP received status — only a cancelled PO drops out', () => {
   const sql = exceptionsFor('92647').list.sql;
-  assert.ok(!sql.includes(NOT_ZOHO_RECEIVED), 'the vendor-received guard is the ERP_AHEAD reason, not an exclusion');
+  assert.ok(!sql.includes(NOT_ZOHO_RECEIVED), 'a Zoho-received PO is not excluded — physical facts decide');
   assert.ok(sql.includes(`COALESCE(mirror.status, '') NOT IN ('cancelled','rejected')`), 'a dead PO is nobody’s problem');
-  assert.ok(sql.includes(`COALESCE(mirror.status, '') IN ('received','billed','closed')`), 'ERP_AHEAD reads received-like only');
+  assert.ok(!sql.includes(`IN ('received','billed','closed')`), 'no exception reads the ERP received status');
   // Physical-first: a received line never labels, and a tracking scan keeps it out.
   assert.ok(sql.includes(`rl.workflow_status = 'EXPECTED'`));
   assert.ok(sql.includes('ru.unboxed_at IS NOT NULL') && sql.includes('rt.door_received_at IS NOT NULL'));
@@ -800,4 +800,22 @@ test('exceptions joins every alias its CASE reads in the COUNT too', () => {
     built.list.sql.includes(`rl.inbound_source_type IN ('ebay', 'amazon', 'manual')`),
     'Universal Incoming marketplace lines can be exceptions too',
   );
+});
+
+test('Incoming + reconcile project the carrier facts the sheet carried (signer, attempts, ETA)', () => {
+  for (const qs of ['view=incoming', 'view=reconcile&ref_in=PO-7']) {
+    const { sql } = listFor(qs).list;
+    assert.ok(sql.includes(`->> 'receivedByName'`) && sql.includes(`->> 'receivedBy'`), `${qs}: FedEx + UPS signer paths`);
+    assert.ok(sql.includes('AS shipment_signed_by'), `${qs}: signer column`);
+    assert.ok(sql.includes('AS shipment_delivery_attempts'), `${qs}: attempts column`);
+    assert.ok(sql.includes('stn.estimated_delivery_at::text      AS shipment_estimated_delivery_at'), `${qs}: ETA column`);
+  }
+  assert.equal(listFor('view=all').list.sql.includes('AS shipment_signed_by'), false, 'history views stay lean');
+});
+
+test('unmatched placeholders carry the same carrier facts — a pasted line-less carton still shows its signer', () => {
+  const built = buildUnmatchedPlaceholdersSql(parseReceivingLinesQuery(new URLSearchParams('view=reconcile&ref_in=PO-7')), ORG);
+  for (const column of ['shipment_signed_by', 'shipment_delivery_attempts', 'shipment_estimated_delivery_at']) {
+    assert.ok(built.list.sql.includes(`AS ${column}`), column);
+  }
 });

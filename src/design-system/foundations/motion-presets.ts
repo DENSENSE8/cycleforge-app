@@ -13,6 +13,11 @@ export const motionBezier = {
   layout: [0.25, 0.1, 0.25, 1] as const,
   /** Slow in, slow out — edge-mark traveler */
   easeInOut: [0.42, 0, 0.58, 1] as const,
+  /**
+   * Smooth in, smooth out, no overshoot (easeInOutCubic) — the search bar's
+   * key card and pasted list (owner 2026-10-04: "smooth ease-in / ease-out").
+   */
+  easeInOutCubic: [0.65, 0, 0.35, 1] as const,
 };
 
 /** Durations in seconds — pair with `motionBezier` */
@@ -31,8 +36,6 @@ export const motionDuration = {
   captureStackRowExit: 0.18,
   /** Capture-stack fresh-arrival ring pulse (one shot, expanded row only) */
   captureStackFreshPulse: 1.8,
-  /** DataTable edge-mark 1px traveler — slow ease-in-out bob. */
-  edgeMarkPulse: 4.2,
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
   /** Progress-meter fill settle — a VALUE changed, so it is a state transition and takes the shortest token the house ships… */
@@ -69,6 +72,25 @@ export const motionDuration = {
   sidebarScopeSwap: 0.13,
   /** Find / ⌘K hint roll — perceived settle of the whole line's spring (hover-only, read at a glance) */
   findHintRoll: 0.22,
+  /** Search well's hover key card — drops in under the well; leaves faster than it came. */
+  findKeyCardIn: 0.3,
+  findKeyCardOut: 0.18,
+  /** Key card row: one row's own settle, and the beat between rows (top → bottom). */
+  findKeyRow: 0.26,
+  findKeyRowStagger: 0.04,
+  /** Pasted-list token blur-in inside the well. */
+  findListToken: 0.24,
+  /** Pasted-list panel height open / close (close is the reverse, faster). */
+  findListPanelOpen: 0.32,
+  findListPanelClose: 0.2,
+  /** Pasted-list row settle, and the beat between rows (top → bottom). */
+  findListRow: 0.24,
+  findListRowStagger: 0.03,
+  /** A pending row's breath — one half-cycle of the opacity mirror loop. */
+  findListPending: 0.9,
+  /** Pending → verdict crossfade; chip pill glide; filter reflow. */
+  findListVerdict: 0.22,
+  findListGlide: 0.28,
   /** Dropdown menu open/close */
   dropdownOpen: 0.18,
   /** Overlay search bar toggle */
@@ -370,16 +392,6 @@ export const motionTransition = {
     times: [0, 0.4, 1],
   } satisfies Transition,
 
-  /**
-   * DataTable edge-mark 1px traveler — slow ease-in-out bob with a trail.
-   * Transform-only (`y`). Pair with {@link CompoundEdgeRail} when `edgeMark.pulse`.
-   */
-  edgeMarkPulse: {
-    duration: motionDuration.edgeMarkPulse,
-    ease: motionBezier.easeInOut,
-    repeat: Infinity,
-  } satisfies Transition,
-
   /** Auth card shell mount — pair with `motionPresence.signInCard` */
   signInCardMount: {
     duration: motionDuration.signInCardMount,
@@ -411,6 +423,67 @@ export const motionTransition = {
     type: 'spring',
     visualDuration: motionDuration.findHintRoll,
     bounce: 0,
+  } satisfies Transition,
+
+  /** Search well hover key card — pair with `motionPresence.findKeyCard` (exit pairs with `findKeyCardOut`). */
+  findKeyCardIn: {
+    type: 'tween' as const,
+    duration: motionDuration.findKeyCardIn,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  findKeyCardOut: {
+    type: 'tween' as const,
+    duration: motionDuration.findKeyCardOut,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  /** One key card row — pair with `motionPresence.findKeyRow`; rows cascade by `findKeyRowStagger`. */
+  findKeyRow: {
+    type: 'tween' as const,
+    duration: motionDuration.findKeyRow,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  /** Pasted-list token in the well — pair with `motionPresence.findListToken`. */
+  findListToken: {
+    type: 'tween' as const,
+    duration: motionDuration.findListToken,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  /** Search well dropdown panel height + fade — pair with `motionPresence.findListPanel`. */
+  findListPanelOpen: {
+    type: 'tween' as const,
+    duration: motionDuration.findListPanelOpen,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  findListPanelClose: {
+    type: 'tween' as const,
+    duration: motionDuration.findListPanelClose,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  /** One pasted-list row — pair with `motionPresence.findListRow`; rows cascade by `findListRowStagger`. */
+  findListRow: {
+    type: 'tween' as const,
+    duration: motionDuration.findListRow,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  /** A pending row breathes (opacity mirror loop) until its answer lands — pair with `motionPresence.findListPending`. */
+  findListPending: {
+    type: 'tween' as const,
+    duration: motionDuration.findListPending,
+    ease: motionBezier.easeInOut,
+    repeat: Infinity,
+    repeatType: 'mirror' as const,
+  } satisfies Transition,
+  /** Pending → verdict crossfade on a row — pair with `motionPresence.findListVerdict`. */
+  findListVerdict: {
+    type: 'tween' as const,
+    duration: motionDuration.findListVerdict,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  /** Status chip `layoutId` pill glide + row `layout` reflow while filtering. */
+  findListGlide: {
+    type: 'tween' as const,
+    duration: motionDuration.findListGlide,
+    ease: motionBezier.easeInOutCubic,
   } satisfies Transition,
 
   /** Identity chip on password step — pair with `motionPresence.signInIdentityChip` */
@@ -730,6 +803,49 @@ export const motionPresence = {
     animate: { opacity: 1, y: '0%' },
     exit: { opacity: 0, y: '70%' },
   },
+  /**
+   * Search well hover key card: drops from under the well, out of a soft
+   * blur into focus. Blur ≤ 8px and tween-only, so it never goes negative.
+   */
+  findKeyCard: {
+    initial: { opacity: 0, y: -8, scale: 0.985, filter: 'blur(8px)' },
+    animate: { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' },
+    exit: { opacity: 0, y: -6, scale: 0.985, filter: 'blur(6px)' },
+  },
+  /** One key card row, as ONE unit (keys + words), never word by word. */
+  findKeyRow: {
+    initial: { opacity: 0, y: 4, filter: 'blur(3px)' },
+    animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+  },
+  /** The pasted list's token in the well — a short blur-in. */
+  findListToken: {
+    initial: { opacity: 0, scale: 0.96, filter: 'blur(6px)' },
+    animate: { opacity: 1, scale: 1, filter: 'blur(0px)' },
+    exit: { opacity: 0, scale: 0.96, filter: 'blur(4px)' },
+  },
+  /** The well's dropdown panel: height opens with a fade; close is the reverse. */
+  findListPanel: {
+    initial: { opacity: 0, height: 0 },
+    animate: { opacity: 1, height: 'auto' },
+    exit: { opacity: 0, height: 0 },
+  },
+  /** One pasted-list row: rises a hair out of a light blur. */
+  findListRow: {
+    initial: { opacity: 0, y: 4, filter: 'blur(2px)' },
+    animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+    exit: { opacity: 0, y: -2, filter: 'blur(2px)' },
+  },
+  /** A pending row's breath (loops with `motionTransition.findListPending`). */
+  findListPending: {
+    initial: { opacity: 1 },
+    animate: { opacity: 0.45 },
+  },
+  /** Pending → verdict: the verdict fades in where the pending face fades out. */
+  findListVerdict: {
+    initial: { opacity: 0, filter: 'blur(2px)' },
+    animate: { opacity: 1, filter: 'blur(0px)' },
+    exit: { opacity: 0 },
+  },
 } as const;
 
 /** Tech / packer grid chips — shared `whileTap` target */
@@ -815,7 +931,16 @@ const motionDurationMobile = {
   confirmationSlideUp: 0.35,
   /** Search bar expand/collapse in action bar */
   searchExpand: 0.28,
+  /** Paste-a-list sheet row / chip settle — slow in, slow out, never a spring */
+  pasteListRow: 0.32,
+  /** One breath of a pasted number still being located */
+  pasteListBreathe: 1.6,
 } as const;
+
+/** Paste-a-list rows cascade one after another by this step (seconds). */
+export const MOBILE_PASTE_LIST_ROW_STAGGER = 0.04;
+/** The cascade stops growing after this many rows — row 40 never waits 1.6s. */
+export const MOBILE_PASTE_LIST_STAGGER_CAP = 10;
 
 // ─── Mobile-specific transitions ─────────────────────────────────────────────
 
@@ -888,6 +1013,21 @@ export const motionTransitionMobile = {
 
   /** Search bar expand in bottom action bar — `springSnappy` */
   searchExpand: springSnappy,
+
+  /** Paste-a-list row / chip enter + exit — ease-in-out tween, no overshoot (the blur never goes negative) */
+  pasteListRow: {
+    type: 'tween' as const,
+    duration: motionDurationMobile.pasteListRow,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+
+  /** A pending pasted number breathes until the locator answers */
+  pasteListBreathe: {
+    type: 'tween' as const,
+    duration: motionDurationMobile.pasteListBreathe,
+    ease: motionBezier.easeInOutCubic,
+    repeat: Infinity,
+  } satisfies Transition,
 } as const;
 
 // ─── Mobile-specific presence shapes ─────────────────────────────────────────
@@ -950,6 +1090,25 @@ export const motionPresenceMobile = {
     initial: { width: 0, opacity: 0 },
     animate: { width: 'auto', opacity: 1 },
     exit: { width: 0, opacity: 0 },
+  },
+  /** Paste-a-list row — rises out of a soft blur; leaves upward */
+  pasteListRow: {
+    initial: { opacity: 0, y: 10, filter: 'blur(6px)' },
+    animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+    exit: { opacity: 0, y: -6, filter: 'blur(4px)' },
+  },
+  /** Paste-a-list status chip — settles in from a hair smaller */
+  pasteListChip: {
+    initial: { opacity: 0, scale: 0.94, filter: 'blur(4px)' },
+    animate: { opacity: 1, scale: 1, filter: 'blur(0px)' },
+    exit: { opacity: 0, scale: 0.94, filter: 'blur(4px)' },
+  },
+  /** Paste-a-list pending verdict — an opacity breath (survives reduced motion: it is not movement) */
+  pasteListPending: {
+    initial: { opacity: 0.45 },
+    // Keyframes stay a plain array: motion's `animate` refuses the readonly tuple `as const` would make.
+    animate: { opacity: [0.45, 1, 0.45] as number[] },
+    exit: { opacity: 0 },
   },
 } as const;
 

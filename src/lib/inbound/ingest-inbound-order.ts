@@ -482,7 +482,9 @@ export async function ingestInboundOrderInTx(
     sellerUsername: draft.vendor.trim() || null,
     orderNumber: identity.externalOrderId,
     vendorOrSellerName: draft.vendor.trim() || null,
-    status: 'ISSUED',
+    status: draft.sourceStatus?.order.trim() || 'ISSUED',
+    purchaseOrderStatus: draft.sourceStatus?.order.trim() || null,
+    paymentStatus: draft.sourceStatus?.payment.trim() || null,
     poDate: draft.orderDate,
     expectedDeliveryDate: draft.expectedDate,
     lineItems: mirrorLines,
@@ -490,6 +492,8 @@ export async function ingestInboundOrderInTx(
     inboundOrderId,
     receivingType: draft.type,
     currency: draft.currency.toUpperCase(),
+    // Hand / CSV / chat re-saves correct a line's identity; syncs only fill blanks.
+    operatorResave: ctx.origin === 'manual' || ctx.origin === 'csv' || ctx.origin === 'chat',
   };
 
   // Every tracking number is registered ONCE, before any line touches its

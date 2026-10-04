@@ -113,8 +113,8 @@ public enum DesignTokens {
             well: Color(red: 245.0 / 255.0, green: 245.0 / 255.0, blue: 245.0 / 255.0), // #f5f5f5
             hover: Color(red: 247.0 / 255.0, green: 247.0 / 255.0, blue: 247.0 / 255.0), // #f7f7f7
             ink: Color(red: 10.0 / 255.0, green: 10.0 / 255.0, blue: 10.0 / 255.0), // #0a0a0a
-            muted: Color(red: 82.0 / 255.0, green: 82.0 / 255.0, blue: 82.0 / 255.0), // #525252
-            faint: Color(red: 107.0 / 255.0, green: 107.0 / 255.0, blue: 107.0 / 255.0), // #6b6b6b
+            muted: Color(red: 67.0 / 255.0, green: 67.0 / 255.0, blue: 67.0 / 255.0), // #434343
+            faint: Color(red: 93.0 / 255.0, green: 93.0 / 255.0, blue: 93.0 / 255.0), // #5d5d5d
             rule: Color(red: 235.0 / 255.0, green: 235.0 / 255.0, blue: 235.0 / 255.0), // #ebebeb
             edge: Color(red: 212.0 / 255.0, green: 212.0 / 255.0, blue: 212.0 / 255.0), // #d4d4d4
             control: Color(red: 138.0 / 255.0, green: 138.0 / 255.0, blue: 138.0 / 255.0), // #8a8a8a
@@ -164,8 +164,8 @@ public enum DesignTokens {
             well: Color(red: 241.0 / 255.0, green: 245.0 / 255.0, blue: 249.0 / 255.0), // #f1f5f9
             hover: Color(red: 248.0 / 255.0, green: 250.0 / 255.0, blue: 252.0 / 255.0), // #f8fafc
             ink: Color(red: 15.0 / 255.0, green: 23.0 / 255.0, blue: 42.0 / 255.0), // #0f172a
-            muted: Color(red: 71.0 / 255.0, green: 85.0 / 255.0, blue: 105.0 / 255.0), // #475569
-            faint: Color(red: 100.0 / 255.0, green: 116.0 / 255.0, blue: 139.0 / 255.0), // #64748b
+            muted: Color(red: 55.0 / 255.0, green: 68.0 / 255.0, blue: 87.0 / 255.0), // #374457
+            faint: Color(red: 80.0 / 255.0, green: 94.0 / 255.0, blue: 116.0 / 255.0), // #505e74
             rule: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
             edge: Color(red: 203.0 / 255.0, green: 213.0 / 255.0, blue: 225.0 / 255.0), // #cbd5e1
             control: Color(red: 123.0 / 255.0, green: 138.0 / 255.0, blue: 160.0 / 255.0), // #7b8aa0
@@ -215,8 +215,8 @@ public enum DesignTokens {
             well: Color(red: 241.0 / 255.0, green: 245.0 / 255.0, blue: 249.0 / 255.0), // #f1f5f9
             hover: Color(red: 248.0 / 255.0, green: 250.0 / 255.0, blue: 252.0 / 255.0), // #f8fafc
             ink: Color(red: 15.0 / 255.0, green: 23.0 / 255.0, blue: 42.0 / 255.0), // #0f172a
-            muted: Color(red: 71.0 / 255.0, green: 85.0 / 255.0, blue: 105.0 / 255.0), // #475569
-            faint: Color(red: 100.0 / 255.0, green: 116.0 / 255.0, blue: 139.0 / 255.0), // #64748b
+            muted: Color(red: 55.0 / 255.0, green: 68.0 / 255.0, blue: 87.0 / 255.0), // #374457
+            faint: Color(red: 80.0 / 255.0, green: 94.0 / 255.0, blue: 116.0 / 255.0), // #505e74
             rule: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
             edge: Color(red: 203.0 / 255.0, green: 213.0 / 255.0, blue: 225.0 / 255.0), // #cbd5e1
             control: Color(red: 123.0 / 255.0, green: 138.0 / 255.0, blue: 160.0 / 255.0), // #7b8aa0

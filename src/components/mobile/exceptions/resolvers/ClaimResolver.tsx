@@ -83,7 +83,6 @@ export function ClaimResolver({ facts, onResolved }: PhoneResolverProps<CartonEx
           Resolving a claim needs receiving access (Mark received).
         </p>
       ) : null}
-      <div className="flex-1 bg-mode-panel" />
       {single ? (
         <DetailDock
           label="Claim exception actions"

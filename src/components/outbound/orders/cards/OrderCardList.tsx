@@ -46,10 +46,12 @@ import { OrderQueueSummary, queueRowStatusKeys } from '../OrderQueueSummary';
 import { QUEUE_STATUS_CHIPS, queueOrdersOf, queueStatusCounts } from '@/lib/orders/to-ship-queue';
 import { QueueStatusChips } from '@/design-system/components/QueueStatusChips';
 import { OrderCard } from './OrderCard';
+import { OrderRow } from './OrderRow';
 import { TriageCardList, type TriageFeed, type TriageSelectionPort } from '@/design-system/components/triage-card-list/TriageCardList';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
+import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 
 const VIEW = OUTBOUND_TRIAGE_VIEW;
 const orderRowId = (row: ShippedOrder) => Number(row.id);
@@ -163,6 +165,12 @@ export function OrderCardList({
   // Documents (the bar's verb): the order's label · slip · manuals open in the
   // split pane — the list stays on the left to keep triaging (owner 2026-09-27).
   const stage = useDeskStageOptional();
+  // Compact / Full is offered where the view spec allows it (Allocate) and only
+  // on the desk stage; Shortage and station embeds keep the card.
+  const [chosenDensity, setDensity] = useTriageDensity('outbound.allocate');
+  const densityControl =
+    viewSpec.faceSwitch && stage != null ? { value: chosenDensity, onChange: setDensity } : undefined;
+  const density = densityControl?.value ?? 'card';
   const [documentsRequest, setDocumentsRequest] = useState<{ orderId: number; nonce: number } | null>(null);
   const documentsSeen = useRef(false);
   const setStageView = stage?.setView;
@@ -268,9 +276,10 @@ export function OrderCardList({
         groupKey: cardKeyOf,
         cardModel,
         exactFind: orderExactFind,
-        renderCard: (props) => <OrderCard {...props} todayKey={todayKey} onSaveNote={saveNote} />,
+        renderCard: (props) =>
+          density === 'row' ? <OrderRow {...props} /> : <OrderCard {...props} todayKey={todayKey} onSaveNote={saveNote} />,
       }),
-    [cardModel, todayKey, saveNote],
+    [cardModel, todayKey, saveNote, density],
   );
 
   const triageFeed: TriageFeed<ShippedOrder> = {
@@ -293,6 +302,8 @@ export function OrderCardList({
   return (
     <TriageCardList
       family={family}
+      densityControl={densityControl}
+      rowScroll
       feed={triageFeed}
       cut={cut}
       summary={

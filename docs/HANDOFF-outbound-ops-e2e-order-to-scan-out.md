@@ -38,7 +38,7 @@ start URLs `/m/pick`, `/m/work`).
   (`work_type 'TEST'`, `assigned_tech_id NULL`, `status 'OPEN'`, deadline = ship-by). The picker comes
   later, through `/api/orders/assign` (`src/app/api/orders/assign/route.ts`).
 - Assignment reads: `src/lib/orders/desk-view-sql.ts` (`sqlOrderAssignedToStaff`,
-  `sqlOrderPickAssigneeId` = latest live ORDER/PICK `assigned_tech_id`, `sqlOrderPackAssigneeId`).
+  `sqlOrderPickAssigneeId` = latest live ORDER/PICK `assigned_tech_id`; `?packedBy=` reads who actually packed, via `sqlOrderPackedByStaffId` / `order_stage_facts.packed_by`).
 - Test Fill (`testOrderFill`, `src/lib/orders/intake/intake-model.ts`) picks a real catalog product
   (qty 1, $5, REFURBISHED), ship-by today, **Pickup**. Saves as `CF-TEST-<n>`.
   - Verified: release → To ship live in ~5 s.

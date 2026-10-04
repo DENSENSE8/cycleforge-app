@@ -16,7 +16,7 @@ import type {
   ImportExceptionReason,
   ImportExceptionRow,
   ImportExceptionStatus,
-} from '@/features/review/catalog-link/import-exception-types';
+} from '@/lib/inventory/catalog-link-types';
 
 /** Injectable collaborators (real impls by default; fakes in tests). */
 export type ImportExceptionDeps = {

@@ -16,11 +16,23 @@ export const BUTTON_VARIANTS = {
   /** White on amber-600 / -500 read 3.2 / 2.2:1 — the fill starts at -700 (≥4.5:1) and only deepens on hover/press. */
   warning:
     'bg-amber-700 text-white shadow-sm shadow-amber-700/25 hover:bg-amber-800 active:bg-amber-900',
+  /**
+   * The tonal face of `warning` (M3 tonal — a verb repeated on every row, e.g. Reply): amber tint, dark ink.
+   * amber-800 ink reads ≥6:1 on the -50 / -100 / -200 tints; dark mode -200 ink on a 15–25% wash, ≥8:1.
+   */
+  warningSoft:
+    'bg-amber-50 text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100 active:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-400/30 dark:hover:bg-amber-500/25 dark:active:bg-amber-500/30',
   yellow:
     'bg-yellow-400 text-yellow-950 shadow-sm shadow-yellow-400/30 hover:bg-yellow-300 active:bg-yellow-500',
   /** White on emerald-600 / -500 read 3.8 / 2.5:1 — the fill starts at -700 (≥4.5:1) and only deepens on hover/press. */
   success:
     'bg-emerald-700 text-white shadow-sm shadow-emerald-700/25 hover:bg-emerald-800 active:bg-emerald-900',
+  /**
+   * The tonal face of `success` (M3 tonal — a verb repeated on every row, e.g. Done): emerald tint, dark ink.
+   * emerald-800 ink reads ≥6:1 on the -50 / -100 / -200 tints; dark mode -200 ink on a 15–25% wash, ≥8:1.
+   */
+  successSoft:
+    'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100 active:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-400/30 dark:hover:bg-emerald-500/25 dark:active:bg-emerald-500/30',
   execute:
     'bg-surface-hover text-text-default hover:bg-surface-sunken active:bg-surface-sunken',
   /** `glass` is chrome ON LIVE MEDIA — a control riding a blurred bar over a camera feed or a photo. */

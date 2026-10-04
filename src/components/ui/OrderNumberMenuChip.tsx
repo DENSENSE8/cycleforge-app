@@ -3,7 +3,7 @@
 /** SoT for a filled order / PO identity chip with hover secondary actions. */
 
 import { ExternalLink, Pencil } from '@/components/Icons';
-import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
+import { OrderIdChip } from '@/components/ui/CopyChip';
 import { CopyChipHoverMenu, type CopyChipHoverMenuItem } from '@/components/ui/CopyChipHoverMenu';
 
 interface OrderNumberMenuChipProps {
@@ -68,7 +68,7 @@ export function OrderNumberMenuChip({
   const chip = (
     <OrderIdChip
       value={raw}
-      display={face === 'full' ? raw : getLast8(raw)}
+      displayMode={face === 'full' ? 'full' : 'compact'}
       platformLabel={platformLabel}
       plain={plain}
       dense={dense}

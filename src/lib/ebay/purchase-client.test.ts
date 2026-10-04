@@ -44,6 +44,7 @@ test('mapTradingOrderToBuyerLines maps transactions + order-level tracking fallb
     OrderStatus: 'Completed',
     SellerUserID: 'parts_seller',
     PaidTime: '2026-07-01T12:00:00.000Z',
+    CreatedTime: '2026-07-01T11:58:00.000Z',
     CheckoutStatus: { Status: 'Complete' },
     ShippingDetails: {
       ShipmentTrackingDetails: {
@@ -56,6 +57,7 @@ test('mapTradingOrderToBuyerLines maps transactions + order-level tracking fallb
         OrderLineItemID: '111222333-444555666',
         TransactionID: '444555666',
         QuantityPurchased: 2,
+        TransactionPrice: { '#text': '24.99', '@_currencyID': 'usd' },
         Item: {
           ItemID: '111222333',
           Title: 'Bose SoundLink',
@@ -84,6 +86,10 @@ test('mapTradingOrderToBuyerLines maps transactions + order-level tracking fallb
     carrierCode: 'FedEx',
     orderNumber: '12-34567-89012',
     vendorOrSellerName: 'parts_seller',
+    itemId: '111222333',
+    unitCostCents: 2499,
+    currency: 'USD',
+    orderDate: '2026-07-01',
   });
 });
 
@@ -136,6 +142,7 @@ test('parseTradingGetOrdersXml + mapTradingOrdersToBuyerLines round-trip', () =>
         <Transaction>
           <OrderLineItemID>100-200</OrderLineItemID>
           <QuantityPurchased>1</QuantityPurchased>
+          <TransactionPrice currencyID="USD">12.5</TransactionPrice>
           <Item>
             <ItemID>100</ItemID>
             <Title>Widget</Title>
@@ -168,6 +175,9 @@ test('parseTradingGetOrdersXml + mapTradingOrdersToBuyerLines round-trip', () =>
   assert.equal(lines[0].trackingNumber, '1ZAAA');
   assert.equal(lines[1].quantity, 3);
   assert.equal(lines[1].itemName, 'Gadget');
+  assert.equal(lines[0].unitCostCents, 1250);
+  assert.equal(lines[0].currency, 'USD');
+  assert.equal(lines[1].unitCostCents, null);
 });
 
 test('parseTradingGetOrdersXml surfaces Failure Ack + Errors', () => {

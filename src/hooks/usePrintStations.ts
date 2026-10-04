@@ -45,6 +45,7 @@ import {
   type StaffPrintJob,
   type StaffPrintJobBody,
   type StationDocumentRef,
+  type StaffPrintLocationPayload,
 } from '@/lib/print/staff-print-bridge';
 import { getPrintStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { sendToDevice } from '@/lib/realtime/device-handshake';
@@ -111,6 +112,8 @@ export interface PrintStations {
   sendFnsku: (stationId: string, fnsku: string, copies: number, options?: { test?: boolean }) => Promise<boolean>;
   /** One unit's QC label (`unitKey` = `qcLabelWireKey`) at a named station; resolves true when it acked. */
   sendQcLabel: (stationId: string, unitKey: string) => Promise<boolean>;
+  /** Location (`bin`) or bay (`rack`) stickers at a named station — it registers and prints them; true when it acked. */
+  sendLocationLabels: (stationId: string, grain: 'bin' | 'rack', location: StaffPrintLocationPayload) => Promise<boolean>;
 }
 
 /** @param active poll the org registry and the staff roster while true. */
@@ -313,13 +316,17 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
               : 'FNSKU labels'
             : body.grain === 'qc_label'
               ? 'QC label'
-              : 'Print job';
+              : body.grain === 'bin'
+                ? 'Location labels'
+                : body.grain === 'rack'
+                  ? 'Bay labels'
+                  : 'Print job';
       // Documents and FNSKU runs print unit by unit at the station, so they tick back and obey pause / cancel.
       const reportsProgress = body.grain === 'documents' || body.grain === 'fnsku';
       const work = beginWork({
         kind: 'print',
         label: `${what} → ${stationName}`,
-        total: body.documents?.items.length ?? body.fnsku?.copies,
+        total: body.documents?.items.length ?? body.fnsku?.copies ?? body.location?.segments.length,
         target: stationName,
         ...(body.fnsku ? { detail: body.fnsku.fnsku } : {}),
         ...(reportsProgress
@@ -436,6 +443,12 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     [sendStationJob],
   );
 
+  const sendLocationLabels = useCallback(
+    (stationId: string, grain: 'bin' | 'rack', location: StaffPrintLocationPayload): Promise<boolean> =>
+      sendStationJob(stationId, { grain, role: 'label', location }),
+    [sendStationJob],
+  );
+
   return {
     stations,
     thisStationId: self.id,
@@ -449,5 +462,6 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     sendDocuments,
     sendFnsku,
     sendQcLabel,
+    sendLocationLabels,
   };
 }

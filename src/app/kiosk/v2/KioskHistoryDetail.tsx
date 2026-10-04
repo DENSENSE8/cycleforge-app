@@ -32,6 +32,7 @@ import { buildRepairLabelPayload, printRepairLabel } from '@/lib/print/printRepa
 import { toast } from '@/lib/toast';
 import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import { KIOSK_POS_CTA, KIOSK_POS_CTA_SECONDARY } from '@/app/kiosk/kiosk-pos-surface';
+import { ACTION_DOCK_LIFT, ACTION_DOCK_TOP_GAP } from '@/design-system/tokens/dock-clearance';
 import { useAddLinkedRepair } from '@/components/kiosk/KioskLinkRepair';
 import { linkableRepairFromHistory } from '@/lib/kiosk/linked-repair-line';
 import type {
@@ -720,8 +721,8 @@ export function KioskHistoryDetail({
         })}
       </div>
 
-      {/* Fixed-width keys, seated in the RECORD's column. */}
-      <div className="shrink-0 border-t border-border-soft px-4 py-3">
+      {/* Fixed-width keys, seated in the RECORD's column — floating, no rule above them (owner 2026-10-03). */}
+      <div className={cn('shrink-0 px-4', ACTION_DOCK_TOP_GAP, ACTION_DOCK_LIFT)}>
         <div className={cn(RECEIPT_MEASURE, 'flex items-center justify-end gap-2')}>
         {editing ? (
           <>

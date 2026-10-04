@@ -45,6 +45,9 @@ Nothing overflows at zoom 1; the fixed insets (96 px left of Take, 33 px in the 
    same flush cells, 1 px rules, radius 0, double-tap lock and haptic, but rendered in-flow
    (not sticky, no safe-area pad) and allowing 4 verbs as a flush 2×2. One face for every
    touch verb band — no second convention. Labels never truncate (full text, wrap if needed).
+   **Superseded 2026-10-03 (owner):** the dock is no longer flush cells with rules — every
+   placement is floating opaque buttons with gaps, no ground or rule (`ACTION_DOCK_TOP_GAP` /
+   `ACTION_DOCK_LIFT`); see `docs/mobile-first/SURFACE_LAW.md` §7.
 2. **Board row** — content (thumb + facts) keeps its band padding; Take / `Pass to picker`
    become an inline dock spanning the full row width under it (`border-t`), rush spine kept.
 3. **Directed location band** — full width: location face big, plus barcode and room on

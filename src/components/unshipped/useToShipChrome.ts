@@ -33,7 +33,7 @@ const TRIAGE_FACETS = [
 const STAGE_OPTIONS = [
   { id: 'pending', label: 'Pending' },
   { id: 'picked', label: 'Picked' },
-  { id: 'packed', label: 'Packed' },
+  { id: 'packed', label: 'Packed · waiting' },
 ] as const;
 const AGING_OPTIONS = [
   { id: 'overdue', label: 'Overdue' },

@@ -4,6 +4,8 @@ import { LabelBatchError, listLabelBatches, uploadLabelBatch } from '@/lib/label
 import { labelBatchListQuerySchema, labelBatchUploadFieldsSchema } from '@/lib/label-batches/contracts';
 
 export const runtime = 'nodejs';
+/** Every page is parsed (an image-only label also has its barcode decoded) before the answer — up to 500 pages. */
+export const maxDuration = 300;
 
 const ALLOWED_FIELDS = new Set(['file', 'clientEventId']);
 

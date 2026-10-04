@@ -6,7 +6,8 @@ import {
   upsertBinContent,
   upsertBinContentIfVersion,
   markBinCounted,
-  softDeleteLocation,
+  bulkSoftDeleteLocations,
+  previewLocationDeletion,
 } from '@/lib/neon/location-queries';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import {
@@ -26,7 +27,8 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { errorResponse } from '@/lib/api';
 import { executeWmsPutawayAdjust } from '@/lib/realtime/wms-putaway-adjust';
 import { verifyLocationScanProof } from '@/lib/inventory/location-scan-proof';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
+import { derivedRoomJoinSql, derivedRoomLabelSql, derivedRoomSetJoinSql, rackWalkOrderSql } from '@/lib/locations/derived-room';
 import { photoContentUrl } from '@/lib/photos/display-url';
 
 const ROUTE_LOCATION_PATCH = 'locations.barcode.patch';
@@ -51,7 +53,77 @@ export async function GET(
   }
 
   try {
-    const result = await getBinContentsByBarcode(code, orgId);
+    // A location is an address. LPNs are movable containers parked at it and
+    // must remain distinct from fungible SKU counts. Read both through this one
+    // location projection so mobile and desktop cannot invent different stock.
+    // Every read is keyed by barcode, so all three travel in parallel, one
+    // round trip each.
+    const [result, handlingUnits, walk] = await Promise.all([
+      getBinContentsByBarcode(code, orgId),
+      tenantQueryOneTrip<{
+        id: number;
+        code: string;
+        status: 'OPEN' | 'STAGED' | 'IN_TEST' | 'CLOSED';
+        created_at: string;
+        paired_order_id: number | null;
+        total_units: number;
+        tested_units: number;
+        hold_units: number;
+      }>(orgId, `
+        SELECT hu.id,
+               hu.code,
+               hu.status,
+               hu.created_at::text AS created_at,
+               hu.paired_order_id,
+               COUNT(su.id)::int AS total_units,
+               COUNT(su.id) FILTER (
+                 WHERE COALESCE(su.current_status::text, 'UNKNOWN') NOT IN ('UNKNOWN', 'RECEIVED')
+               )::int AS tested_units,
+               COUNT(su.id) FILTER (WHERE su.current_status::text = 'ON_HOLD')::int AS hold_units
+          FROM locations l
+          JOIN handling_units hu
+            ON hu.location_id = l.id
+           AND hu.organization_id = l.organization_id
+          LEFT JOIN serial_units su
+            ON su.handling_unit_id = hu.id
+           AND su.organization_id = hu.organization_id
+         WHERE l.organization_id = $1
+           AND l.barcode = $2
+           AND l.is_active = true
+         GROUP BY hu.id, hu.code, hu.status, hu.created_at, hu.paired_order_id
+         ORDER BY hu.created_at DESC, hu.id DESC
+      `, [orgId, code]),
+      // The room's physical walk (same order and room as `GET /api/locations?room=`):
+      // the phone's Previous / Next without downloading the building. The
+      // room is DERIVED up `parent_id`, so a rack shelf walks with the room
+      // its rack stands in now; `room` is that derived room for the record.
+      tenantQueryOneTrip<{ position: number; total: number; previous: string | null; next: string | null; room: string | null }>(orgId, `
+        WITH here AS (
+          SELECT ${derivedRoomLabelSql('l', 'room')} AS room
+            FROM locations l
+            ${derivedRoomJoinSql('l', 'room')}
+           WHERE l.organization_id = $1 AND l.barcode = $2 AND l.is_active = true
+           LIMIT 1
+        ), walk AS (
+          SELECT l.barcode,
+                 ROW_NUMBER() OVER w AS position,
+                 COUNT(*) OVER () AS total,
+                 LAG(l.barcode) OVER w AS previous,
+                 LEAD(l.barcode) OVER w AS next
+            FROM locations l
+            ${derivedRoomSetJoinSql('l', 'room', '$1')}
+            CROSS JOIN here
+           WHERE l.organization_id = $1
+             AND l.is_active = true
+             AND NULLIF(BTRIM(l.barcode), '') IS NOT NULL
+             AND ${derivedRoomLabelSql('l', 'room')} IS NOT DISTINCT FROM here.room
+          WINDOW w AS (ORDER BY ${rackWalkOrderSql('l.barcode')}, l.sort_order, l.row_label, l.col_label, l.name)
+        )
+        SELECT walk.position::int, walk.total::int, walk.previous, walk.next, here.room
+          FROM walk CROSS JOIN here
+         WHERE walk.barcode = $2
+      `, [orgId, code]),
+    ]);
 
     if (!result) {
       return NextResponse.json(
@@ -59,45 +131,13 @@ export async function GET(
         { status: 404 },
       );
     }
-
-    // A location is an address. LPNs are movable containers parked at it and
-    // must remain distinct from fungible SKU counts. Read both through this one
-    // location projection so mobile and desktop cannot invent different stock.
-    const handlingUnits = await tenantQuery<{
-      id: number;
-      code: string;
-      status: 'OPEN' | 'STAGED' | 'IN_TEST' | 'CLOSED';
-      created_at: string;
-      paired_order_id: number | null;
-      total_units: number;
-      tested_units: number;
-      hold_units: number;
-    }>(orgId, `
-      SELECT hu.id,
-             hu.code,
-             hu.status,
-             hu.created_at::text AS created_at,
-             hu.paired_order_id,
-             COUNT(su.id)::int AS total_units,
-             COUNT(su.id) FILTER (
-               WHERE COALESCE(su.current_status::text, 'UNKNOWN') NOT IN ('UNKNOWN', 'RECEIVED')
-             )::int AS tested_units,
-             COUNT(su.id) FILTER (WHERE su.current_status::text = 'ON_HOLD')::int AS hold_units
-        FROM handling_units hu
-        LEFT JOIN serial_units su
-          ON su.handling_unit_id = hu.id
-         AND su.organization_id = hu.organization_id
-       WHERE hu.organization_id = $1
-         AND hu.location_id = $2
-       GROUP BY hu.id, hu.code, hu.status, hu.created_at, hu.paired_order_id
-       ORDER BY hu.created_at DESC, hu.id DESC
-    `, [orgId, result.location.id]);
+    const step = walk.rows[0] ?? null;
 
     return NextResponse.json({
       location: {
         id: result.location.id,
         name: result.location.name,
-        room: result.location.room,
+        room: step ? step.room : result.location.room,
         rowLabel: result.location.row_label,
         colLabel: result.location.col_label,
         barcode: result.location.barcode,
@@ -118,6 +158,8 @@ export async function GET(
         imageUrl: c.cover_photo_id != null
           ? photoContentUrl(Number(c.cover_photo_id), 'thumb')
           : c.catalog_image_url ?? null,
+        /** SKU_STOCK photos in display order (`[0]` = cover). */
+        photoIds: (c.photo_ids ?? []).map(Number),
         // Version token for optimistic concurrency on `set` action.
         updatedAt: c.updated_at,
       })),
@@ -131,6 +173,9 @@ export async function GET(
         pairedOrderId: unit.paired_order_id == null ? null : Number(unit.paired_order_id),
         createdAt: unit.created_at,
       })),
+      walk: step
+        ? { position: step.position, total: step.total, previous: step.previous, next: step.next }
+        : null,
     });
   } catch (err: any) {
     console.error('[GET /api/locations/[barcode]] error:', err);
@@ -390,19 +435,20 @@ export async function DELETE(
       return NextResponse.json({ error: 'Bin not found' }, { status: 404 });
     }
 
-    const remaining = bin.contents.filter((c) => Number(c.qty) > 0);
-    if (remaining.length > 0) {
+    const [target] = await previewLocationDeletion({ locationIds: [bin.location.id] }, orgId);
+    if (!target?.deletable) {
       return NextResponse.json(
         {
-          error: 'Bin is not empty — move or remove its stock before deleting',
-          skus: remaining.map((c) => c.sku),
+          error: 'Location is in use — move its stock, LPNs or staged work before deleting',
+          skus: bin.contents.filter((c) => Number(c.qty) > 0).map((c) => c.sku),
+          blockedReasons: target?.blockedReasons ?? ['location is in use'],
         },
         { status: 409 },
       );
     }
 
-    const deleted = await softDeleteLocation(bin.location.id, orgId);
-    if (!deleted) {
+    const deleted = await bulkSoftDeleteLocations([bin.location.id], orgId);
+    if (deleted.deactivated !== 1) {
       return NextResponse.json({ error: 'Bin not found' }, { status: 404 });
     }
 

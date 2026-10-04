@@ -2,7 +2,7 @@
 
 /** Which rows — the run's per-row record, one tap from the result. */
 
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import type {
   SyncRunDetail,
@@ -61,25 +61,25 @@ export function OrderSyncRunDetailSheet({
   detail: SyncRunDetail;
 }) {
   return (
-    <BottomSheet
-      open={open}
-      onClose={onClose}
-      title="What this run did"
-      scrollBody
-      maxWidth="34rem"
-      fixedWidth
-    >
-      {detail.groups.length === 0 ? (
-        <p className="text-role-caption text-text-muted">
-          This run reported no per-row detail — nothing was inserted or updated.
-        </p>
-      ) : (
-        <div className="flex flex-col">
-          {detail.groups.map((group) => (
-            <DetailGroup key={group.id} group={group} />
-          ))}
-        </div>
-      )}
-    </BottomSheet>
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined} className="md:max-w-lg">
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>What this run did</SheetTitle>
+        </SheetHeader>
+        <SheetBody>
+          {detail.groups.length === 0 ? (
+            <p className="text-role-caption text-text-muted">
+              This run reported no per-row detail — nothing was inserted or updated.
+            </p>
+          ) : (
+            <div className="flex flex-col">
+              {detail.groups.map((group) => (
+                <DetailGroup key={group.id} group={group} />
+              ))}
+            </div>
+          )}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

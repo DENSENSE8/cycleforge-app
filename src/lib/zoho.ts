@@ -730,32 +730,6 @@ export function catalogItemIdFromZohoPoLineItem(li: unknown): string | null {
   return null;
 }
 
-/**
- * Fill missing `item_id` on receive lines from GET /purchaseorders/:id `line_items`
- * (same row as `line_item_id`).
- */
-export function mergeCatalogItemIdsFromPurchaseOrder(
-  poDetail: { purchaseorder?: { line_items?: unknown[] } } | null | undefined,
-  lineItems: ZohoPurchaseReceiveLine[],
-): ZohoPurchaseReceiveLine[] {
-  const items = poDetail?.purchaseorder?.line_items;
-  if (!Array.isArray(items)) return lineItems;
-  const byLineId = new Map<string, unknown>();
-  for (const raw of items) {
-    if (!raw || typeof raw !== 'object') continue;
-    const rec = raw as Record<string, unknown>;
-    const id = String(rec.line_item_id ?? rec.id ?? '').trim();
-    if (id) byLineId.set(id, raw);
-  }
-  return lineItems.map((line) => {
-    const existing = String(line.item_id ?? '').trim();
-    if (existing) return line;
-    const raw = byLineId.get(line.line_item_id);
-    const resolved = raw ? catalogItemIdFromZohoPoLineItem(raw) : null;
-    return resolved ? { ...line, item_id: resolved } : line;
-  });
-}
-
 function resolveBillIdForPurchaseReceive(
   bills: Array<{ bill_id?: string; bill_number?: string; status?: string }> | undefined,
   opts?: { explicitBillId?: string; billNumberHint?: string },

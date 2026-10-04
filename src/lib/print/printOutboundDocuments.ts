@@ -2,14 +2,14 @@ import { printHtmlInIframe } from '@/lib/print/iframePrint';
 
 /** Combine shipping label + packing slip into ONE print job (docs/outbound-documents-plan.md Phase 2 — "Print Both"). */
 
-export interface PrintableOutboundDocument {
-  id: number;
+/** A page by documents id (`/api/documents/{id}/content`) or by an explicit same-origin `src`. */
+export type PrintableOutboundDocument = ({ id: number } | { src: string }) & {
   /** True → render via <embed type="application/pdf">; false → <img>. */
   isPdf: boolean;
-}
+};
 
 function docPageHtml(doc: PrintableOutboundDocument): string {
-  const src = `/api/documents/${doc.id}/content`;
+  const src = 'src' in doc ? doc.src : `/api/documents/${doc.id}/content`;
   const body = doc.isPdf
     ? `<embed src="${src}" type="application/pdf" />`
     : `<img src="${src}" alt="" />`;

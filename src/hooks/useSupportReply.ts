@@ -27,7 +27,8 @@ export interface SupportReplyVars {
 export function useSupportReply() {
   const qc = useQueryClient();
   return useMutation<
-    { attached: number },
+    /** `commentId` — the posted helpdesk comment, when the server could resolve it. */
+    { attached: number; commentId: number | null },
     Error,
     SupportReplyVars,
     { prev?: CommentsResult; tempId: number }
@@ -49,12 +50,12 @@ export function useSupportReply() {
       files.forEach((f) => fd.append('files', f, f.name));
       const res = await fetch('/api/zendesk/photo-ticket', { method: 'POST', body: fd });
       const data = (await res.json().catch(() => null)) as
-        | { success?: boolean; error?: string; message?: string; attached?: number }
+        | { success?: boolean; error?: string; message?: string; attached?: number; commentId?: number | null }
         | null;
       if (!res.ok || !data?.success) {
         throw new Error(data?.error || data?.message || `Failed to send (${res.status})`);
       }
-      return { attached: data.attached ?? 0 };
+      return { attached: data.attached ?? 0, commentId: data.commentId ?? null };
     },
     onMutate: async ({ ticketId, body, isPublic, htmlBody, attachmentPreviews, staffId, staffName }) => {
       await qc.cancelQueries({ queryKey: zendeskKeys.comments(ticketId) });

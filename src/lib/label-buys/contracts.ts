@@ -1,6 +1,7 @@
 /**
  * `/api/v1/label-buys` — buy ONE ShipStation label outright, no order required
- * (the `/shipping/buy-label` page). Ship-to + parcel → rates → buy. An optional
+ * (the Labels desk's Buy a label compose, `?buy=1` — owner 2026-10-01, was the
+ * `/shipping/buy-label` page). Ship-to + parcel → rates → buy. An optional
  * free-text reference rides on the purchase; an optional linked product fills
  * the parcel from `product_parcel_dims` and can remember it back.
  * Framework-free: the wire types, the body/query schemas and the pure rules

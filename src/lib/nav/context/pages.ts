@@ -46,6 +46,8 @@ import { DEFAULT_REPAIR_SORT, REPAIR_SORT_OPTIONS, REPAIR_SORT_PARAM } from '@/l
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
 import { QUEUE_STATUS_CHIPS } from '@/lib/orders/to-ship-queue';
+import { LIVE_FEED_DIRECTIONS, LIVE_FEED_PARAMS } from '@/lib/live-feed/route';
+import { LIVE_FEED_LENS_LABEL, liveFeedLensesOf, type LiveFeedDirection } from '@/lib/live-feed/statuses';
 
 /**
  * The import record (`/operations/imports`, `src/lib/imports/params.ts`) —
@@ -294,8 +296,8 @@ const PIPELINE_CONTROLS: NavControls = {
 /**
  * FBM's queue list (Allocate). Staff roles: the
  * universal `?staff=` assignee filter (`STAFF_FILTER_PARAM`, `sqlOrderAssignedToStaff`)
- * and `?pickedBy=` — who ACTUALLY picked (`PICK_FACTS_LATERALS`), plus the
- * pick / pack assignees the list already reads (`?pickerId=` / `?packedBy=`). Dates: order date and ship-by
+ * and `?pickedBy=` / `?packedBy=` — who ACTUALLY picked (`PICK_FACTS_LATERALS`) and
+ * packed (`order_stage_facts.packed_by`), plus the pick assignee (`?pickerId=`). Dates: order date and ship-by
  * (PT civil days). Sort: the queue's own `?sort=`/`?dir=` alphabet
  * (`queue-display-sort.ts`), ship-by soonest first by default — every view
  * and column order the list header's retired ⇅ menu offered (2026-09-27);
@@ -305,7 +307,7 @@ const QUEUE_CONTROLS: NavControls = {
   staff: [
     { id: 'assigned', param: 'staff', label: 'Assigned' },
     { id: 'picked-by', param: 'pickedBy', label: 'Picked by' },
-    { id: 'packer', param: 'packedBy', label: 'Packer' },
+    { id: 'packer', param: 'packedBy', label: 'Packed by' },
     { id: 'picker', param: 'pickerId', label: 'Picker' },
   ],
   dateRanges: [
@@ -426,6 +428,30 @@ const SHIPPED_CONTROLS: NavControls = {
   },
 };
 
+/**
+ * One Live feed direction view's controls (`/operations/live-feed`,
+ * `src/lib/live-feed/route.ts`): Date by — which instant the header's range
+ * reads (`entered` = when the package entered its current lane, then the
+ * direction's pipeline events) — and Handled by (each lane's own staff
+ * role). No Sort: lanes order by urgency and age. The date range itself is
+ * page chrome top-right (operator 2026-10-03), never a sidebar control.
+ */
+function liveFeedControls(dir: LiveFeedDirection): NavControls {
+  const p = LIVE_FEED_PARAMS;
+  return {
+    choices: [
+      {
+        id: 'lens',
+        label: 'Date by',
+        param: p.lens,
+        options: liveFeedLensesOf(dir).map((lens) => ({ value: lens, label: LIVE_FEED_LENS_LABEL[lens] })),
+        clearParams: [],
+      },
+    ],
+    staff: [{ id: 'staff', param: p.staff, label: 'Handled by' }],
+  };
+}
+
 /** The To-ship desk header (OrdersDeskAddAction · Past imports · Labels walk), removed 2026-09-26. */
 const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
   // Face = the page's manual verb (owner 2026-09-28). Syncing, demo sync, test
@@ -453,8 +479,9 @@ function labelsDocsActions(view: 'uploads' | 'labels' | 'paperwork' | 'printed')
   const printAll: NavAction = { id: 'labels-docs.print-all', label: 'Print all (labels + paperwork)', intent: 'labels-docs:print-all' };
   const upload: NavAction = { id: 'labels-docs.upload', label: 'Upload label PDFs', intent: 'labels-docs:upload', hotkey: 'mod+o' };
   const uploadSlips: NavAction = { id: 'labels-docs.upload-slips', label: 'Upload packing slips', intent: 'labels-docs:upload-slips' };
-  // In-app ShipStation buying (owner 2026-09-28): the Labels view's face opens the focused Buy a label page — no order required.
-  const buyLabel: NavAction = { id: 'labels-docs.buy-label', label: 'Buy label', href: '/shipping/buy-label' };
+  // In-app ShipStation buying (owner 2026-10-01): the Labels view's face opens
+  // the desk's OWN Buy a label compose record — no order required.
+  const buyLabel: NavAction = { id: 'labels-docs.buy-label', label: 'Buy label', href: '/shipping/label-intake?view=labels&buy=1' };
   const order =
     view === 'uploads' ? [upload, printLabels, printPaperwork, printAll, uploadSlips]
     : view === 'paperwork' ? [uploadSlips, printPaperwork, printLabels, printAll, upload]
@@ -626,18 +653,17 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
             ],
           },
         },
+        // The two ways a product enters the catalog from the desk (ProductCatalogWorkspace binds both).
+        actions: [
+          { action: { id: 'catalog.add-product', label: 'Add product', intent: 'catalog:add-product' }, requires: 'sku_stock.manage' },
+          { action: { id: 'catalog.import-csv', label: 'Import products CSV', intent: 'catalog:import-csv' }, requires: 'sku_stock.manage' },
+        ],
       },
       manuals: { search: { placeholder: 'Search manuals', source: 'url-param', param: 'q' } },
       labels: {
         search: { placeholder: 'Search the catalog', source: 'url-param', param: 'q' },
       },
-      pairing: {
-        search: { placeholder: 'Filter SKU, title, or any platform ID…', source: 'url-param', param: 'q' },
-        actions: [
-          { action: { id: 'pairing.pair-identifier', label: 'Pair identifier', intent: 'pairing:pair-identifier' } },
-          { action: { id: 'pairing.add-sku', label: 'Add SKU', intent: 'pairing:add-sku' } },
-        ],
-      },
+      pairing: { search: { placeholder: 'Filter SKU, title, or any platform ID…', source: 'url-param', param: 'q' } },
       qc: { search: { placeholder: 'Filter products…', source: 'url-param', param: 'q' } },
     },
   },
@@ -698,6 +724,16 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   'print-station': {
     viewKeys: true,
     search: { placeholder: 'FNSKU, ASIN, SKU or title…', source: 'url-param', param: 'q' },
+  },
+  // Live feed (operator 2026-10-03): the Operations lane's landing page (its door). Views = the directions, Outbound ·
+  // Inbound (`?dir=`, a required single choice, never an "all"), bare 1–2, counted by the facet contexts
+  // `live-feed.<dir>`. The board shows the lanes, so the sidebar lists no statuses. Controls: Date by, Handled by,
+  // and the Channel (online / in person) and Carrier facets; no Sort. The date range is page chrome top-right, not
+  // a sidebar control. Find (`?q=`) narrows every lane.
+  'live-feed': {
+    viewKeys: true,
+    search: { placeholder: 'Tracking, order, SKU or PO…', source: 'url-param', param: LIVE_FEED_PARAMS.q },
+    items: Object.fromEntries(LIVE_FEED_DIRECTIONS.map((dir) => [dir, { controls: liveFeedControls(dir) }] as const)),
   },
   support: {
     items: {
@@ -830,6 +866,10 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     ],
     items: {
       counter: { actions: [] },
+      customers: {
+        actions: [],
+        search: { placeholder: 'Search customers…', source: 'url-param', param: 'q' },
+      },
       sales: { search: { placeholder: 'Search sales…', source: 'url-param', param: 'sq' } },
       'repairs-all': {
         actions: [],
@@ -865,7 +905,11 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       { action: { id: 'unbox.add-po', label: 'Add purchase order', intent: 'receiving-composer:purchase' } },
     ],
   },
+  // No view rows: status is the Order status facet, not a child. `recentsPanel`
+  // is the resolver's switch for a view-less page that still opens a section
+  // panel (‹ Receiving, the inbound modes, Find, scan, filters) — never the top map.
   pickup: {
+    recentsPanel: true,
     search: { placeholder: 'Order, seller, SKU or item…', source: 'url-param', param: 'q' },
     controls: {
       sort: {

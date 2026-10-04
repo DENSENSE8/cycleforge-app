@@ -14,6 +14,7 @@ import {
   deleteTaskDocument,
   getTaskDocument,
   listTaskDocuments,
+  updateTaskDocument,
 } from '@/lib/tasks/task-documents-db';
 import {
   TASK_DOCUMENT_TITLE_MAX,
@@ -33,6 +34,18 @@ const CreateBody = z.discriminatedUnion('source', [
   z.object({ source: z.literal('repo'), path: z.string().min(1).max(500) }),
 ]);
 
+/** At least one of title / content, plus the `updatedAt` the editor loaded (the optimistic guard). */
+const PatchBody = z
+  .object({
+    title: z.string().trim().min(1).max(TASK_DOCUMENT_TITLE_MAX).optional(),
+    /** Length is the domain's call (`content_too_long` 413), not a schema 400. */
+    content: z.string().optional(),
+    expectedUpdatedAt: z.string().min(1).max(64),
+  })
+  .refine((body) => body.title !== undefined || body.content !== undefined, {
+    message: 'title or content is required',
+  });
+
 /** Domain refusal → HTTP. Each one is something the operator can act on. */
 const REFUSAL_STATUS: Record<TaskDocumentRefusal, number> = {
   task_not_found: 404,
@@ -41,6 +54,8 @@ const REFUSAL_STATUS: Record<TaskDocumentRefusal, number> = {
   file_not_found: 404,
   content_too_long: 413,
   empty_content: 400,
+  stale_document: 409,
+  not_editable: 409,
 };
 
 /** `/api/tasks/:id/documents` — withAuth does not forward route params. */
@@ -128,6 +143,49 @@ export const POST = withAuth(
       );
     } catch (error) {
       return errorResponse(error, 'POST /api/tasks/[id]/documents');
+    }
+  },
+  { permission: 'work_orders.claim' },
+);
+
+export const PATCH = withAuth(
+  async (req: NextRequest, ctx) => {
+    try {
+      const taskId = taskIdFromPath(req);
+      const docId = Number(req.nextUrl.searchParams.get('docId'));
+      if (taskId === null || !Number.isInteger(docId) || docId <= 0) {
+        return NextResponse.json(
+          { error: 'task id and docId must be positive integers' },
+          { status: 400 },
+        );
+      }
+      const parsed = PatchBody.safeParse(await req.json().catch(() => null));
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: 'Invalid body', details: parsed.error.flatten() },
+          { status: 400 },
+        );
+      }
+
+      const result = await updateTaskDocument(ctx.organizationId, taskId, docId, parsed.data);
+      if (!result.ok) {
+        return NextResponse.json({ error: result.reason }, { status: REFUSAL_STATUS[result.reason] });
+      }
+
+      await recordAudit(pool, ctx, req, {
+        source: 'api',
+        action: AUDIT_ACTION.WORK_TASK_DOC_UPDATE,
+        entityType: AUDIT_ENTITY.WORK_ASSIGNMENT,
+        entityId: taskId,
+        before: { documentId: docId, title: result.before.title, sizeBytes: result.before.sizeBytes },
+        after: { documentId: docId, title: result.document.title, sizeBytes: result.document.sizeBytes },
+        extra: { updatedAt: result.document.updatedAt },
+      });
+
+      const payload: TaskDocumentPayload = { ok: true, document: result.document };
+      return NextResponse.json(payload);
+    } catch (error) {
+      return errorResponse(error, 'PATCH /api/tasks/[id]/documents');
     }
   },
   { permission: 'work_orders.claim' },

@@ -128,6 +128,12 @@ export const DESK_STAGE_FULLSCREEN_CLASS = 'w-full';
 export const DESK_STAGE_GUTTER_CLASS = 'px-4';
 
 /**
+ * Gutter of a FULL-measure desk (`DeskPageChrome measure="full"`, a column
+ * board): no cap, the mode's page pad (12px in triage) on each side.
+ */
+export const DESK_STAGE_BOARD_GUTTER_CLASS = 'px-mode-page';
+
+/**
  * Desk **corner + inset** grammar — the deliberate split from the scan-station
  * chrome (operator ruling 2026-08-30).
  */

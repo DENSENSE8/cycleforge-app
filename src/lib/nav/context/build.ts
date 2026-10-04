@@ -41,6 +41,7 @@ import {
 } from '@/lib/sidebar-navigation';
 import { applyOrgNavToPage, mergeOrgNav, type NavDefinition } from '@/lib/nav/org-nav';
 import { LANE_DOORS } from '@/lib/nav/lanes';
+import { fixedSpineOrder } from '@/lib/nav/spine-slots';
 import { NAV_FACET_GROUPS, isNavFacetContext, mayReadNavFacet } from '@/lib/nav/facets/contexts';
 import { getNavRecentSurface } from '@/lib/nav/recents/surfaces';
 import { OUTBOUND_LOCATE, OUTBOUND_LOCATE_PERMISSION } from '@/lib/nav/locate/outbound-params';
@@ -155,11 +156,16 @@ function sectionRows(page: SidebarPageNav): SectionRow[] {
 
 /**
  * A page draws a section panel when it has ≥2 views to switch between
- * (Shipping: any), or when its navigation list is its panel (`recentsPanel`, Chat).
+ * (Shipping: any), when its navigation list is its panel (`recentsPanel`,
+ * Chat), or when the one view a caller may open still carries sidebar
+ * controls (a receiving-only caller on the Live feed keeps Inbound's Date by
+ * and Handled by — the panel is where those controls live).
  */
 function hasSectionPanel(page: SidebarPageNav, rows: readonly SectionRow[]): boolean {
-  if (NAV_PAGE_DECLS[page.id]?.recentsPanel) return true;
-  return page.id === SHIPPING_PAGE_ID ? rows.length > 0 : rows.length >= 2;
+  const decl = NAV_PAGE_DECLS[page.id];
+  if (decl?.recentsPanel) return true;
+  if (page.id === SHIPPING_PAGE_ID) return rows.length > 0;
+  return rows.length >= 2 || (rows.length === 1 && (decl?.controls ?? decl?.items?.[rows[0]!.id]?.controls) != null);
 }
 
 function activeRowId(page: SidebarPageNav, pathname: string, params: URLSearchParams): string | null {
@@ -241,9 +247,7 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
     .filter((row) => row.kind === 'top' && row.spineBottom === true)
     .map(toItem)
     .filter((item): item is NavItem => item !== null);
-  // Scan Stations opens the operating run, immediately above Sales.
   const isStationLane = (id: string) => STATION_GROUPS.some((group) => group.id === id);
-  const businessLaneIds = new Set(['sales', 'inbound', 'fulfillment', 'inventory', 'catalog']);
   const appendLane = (lane: (typeof SPINE_SECTIONS)[number]) => {
     const items = rows
       .filter((row) => spineSectionIdForPage(row) === lane.id)
@@ -272,11 +276,21 @@ function laneMap(input: PipelineInput, activePageId: string): NavSection[] {
     }
     sections.push(items.length > 1 ? { id: lane.id, label: lane.label, items } : { id: lane.id, items });
   };
-  SPINE_SECTIONS.filter((lane) => isStationLane(lane.id)).forEach(appendLane);
-  SPINE_SECTIONS.filter((lane) => businessLaneIds.has(lane.id)).forEach(appendLane);
-  SPINE_SECTIONS.filter(
-    (lane) => !businessLaneIds.has(lane.id) && !isStationLane(lane.id),
-  ).forEach(appendLane);
+  // ONE order (operator 2026-10-03): Live feed · Scan Stations · Receiving ·
+  // Fulfillment · Warehouse · the unnamed rows · Products — `fixedSpineOrder`,
+  // the same composer MasterNav and ⌘K read. Root pages (no lane) are one
+  // section each, under the "Operations" band subtitle (`spineNavigationBand`).
+  const rowById = new Map(rows.map((row) => [row.id, row]));
+  for (const id of fixedSpineOrder(rows)) {
+    const lane = SPINE_SECTIONS.find((section) => section.id === id);
+    if (lane) {
+      appendLane(lane);
+      continue;
+    }
+    const row = rowById.get(id);
+    const item = row ? toItem(row) : null;
+    if (item) sections.push({ id, items: [item] });
+  }
   if (bottomItems.length > 0) sections.push({ id: 'bottom', items: bottomItems });
   return sections;
 }

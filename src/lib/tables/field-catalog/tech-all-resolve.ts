@@ -1,6 +1,6 @@
 /** Tech-All slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
-import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
+import type { SlotValue } from '@/lib/tables/field-catalog/slot-value';
 import type { TechAllTriageRow } from '@/lib/tech/tech-all-triage';
 
 function str(value: string | null | undefined): string | null {
@@ -15,7 +15,7 @@ function str(value: string | null | undefined): string | null {
 export function resolveTechAllSlotValue(
   row: TechAllTriageRow,
   fieldId: string,
-): CompoundSlotValue | null {
+): SlotValue | null {
   switch (fieldId) {
     case 'tech-all.item':
       return { kind: 'value', text: str(row.id) };

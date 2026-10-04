@@ -251,7 +251,6 @@ export function IdentityCell({
       {kind === 'order' ? (
         <OrderIdChip
           value={orderId}
-          display={getLast8(orderId)}
           dense
           platformLabel={platformLabel ?? null}
           truncateDisplay={false}

@@ -5,10 +5,10 @@
  * top-right is the ship-by deadline; sections are the SLA under the default sort.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 import { ORDER_NOUN, ORDER_SLA_SECTIONS } from '@/lib/orders/order-card-model';
 
-export const OUTBOUND_TRIAGE_VIEW: TriageViewDecl = {
+export const OUTBOUND_TRIAGE_VIEW = triageView({
   id: 'outbound.triage',
   grain: 'order',
   noun: ORDER_NOUN,
@@ -21,6 +21,7 @@ export const OUTBOUND_TRIAGE_VIEW: TriageViewDecl = {
   chips: { owner: 'face', param: 'cardStatus' },
   paging: 'client',
   status: 'deadline',
+  slots: { identity: 'order number', channel: 'brand', person: 'buyer', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'qty', tier: 'always' },
     { id: 'condition', tier: 'always' },
@@ -33,4 +34,4 @@ export const OUTBOUND_TRIAGE_VIEW: TriageViewDecl = {
     when: 'default-sort',
   },
   next: ['Pick', 'Pack', 'Scan out', 'Hand over'],
-};
+});

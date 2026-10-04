@@ -7,6 +7,9 @@ import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
 import { resolveSpreadsheetShipByDate } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
+import { syncOrderExceptionsWithScanOutReplay } from '@/lib/outbound/held-scan-out-replay';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 /** POST /api/orders/import-csv */
 
@@ -152,6 +155,17 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     });
   }
 
+  // 4. Unmatched pack / dock scans whose tracking the file just brought in resolve now, not on the
+  // next sweep — and a resolved dock miss gets the scan-out it was denied, as its original scanner.
+  let resolvedExceptions = 0;
+  let scanOutsRecorded = 0;
+  if (inserted + updated > 0) {
+    const sync = await syncOrderExceptionsWithScanOutReplay(undefined, ctx.organizationId as OrgId);
+    resolvedExceptions = sync.matched;
+    scanOutsRecorded = sync.scanOutReplays.filter((r) => r.kind === 'replayed' && r.outcome === 'confirmed').length;
+    if (sync.matched > 0) await invalidateAllOrdersApiCaches(['packing-logs', 'shipped'], ctx.organizationId);
+  }
+
   await recordAudit(pool, ctx, request, {
     source: 'orders-import-csv',
     action: 'orders.import',
@@ -164,8 +178,10 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       skipped,
       errorCount: errors.length,
       rowCount: rows.length,
+      resolvedExceptions,
+      scanOutsRecorded,
     },
   });
 
-  return NextResponse.json({ inserted, insertedOrderIds, updated, skipped, errors });
+  return NextResponse.json({ inserted, insertedOrderIds, updated, skipped, errors, resolvedExceptions, scanOutsRecorded });
 }, { permission: 'orders.import' });

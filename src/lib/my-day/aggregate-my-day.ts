@@ -87,7 +87,7 @@ const QUEUE_SURFACE_LINKS: Array<{
     key: 'catalog_link',
     label: 'Needs item number',
     permission: 'packing.review',
-    href: '/review?mode=catalog-link',
+    href: '/products?view=pairing',
     match: () => false,
     countFrom: 'external',
   },

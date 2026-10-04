@@ -21,7 +21,6 @@ export type SupportMode =
   | 'tickets'
   | 'voicemail'
   | 'calls'
-  | 'warranty'
   | 'issues'
   | 'orders';
 
@@ -34,7 +33,6 @@ export const SUPPORT_MODES = [
   'tickets',
   'voicemail',
   'calls',
-  'warranty',
   'issues',
   'orders',
 ] as const satisfies readonly SupportMode[];
@@ -42,7 +40,6 @@ export const SUPPORT_MODES = [
 export function parseSupportMode(raw: string | null | undefined): SupportMode {
   return raw === 'voicemail' ||
     raw === 'calls' ||
-    raw === 'warranty' ||
     raw === 'issues' ||
     raw === 'orders'
     ? raw

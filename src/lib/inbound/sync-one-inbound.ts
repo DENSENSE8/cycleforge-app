@@ -6,15 +6,20 @@ import { isIncomingUniversal } from '@/lib/feature-flags';
 import { syncShipment } from '@/lib/shipping/sync-shipment';
 import { resolveInboundSettings, isInboundSourceEnabled } from './org-settings';
 import {
+  ebayPurchaseCursorResource,
+  ebayPurchaseWindowStart,
+  landEbayPurchases,
+  listEbayBuyerAccounts,
   syncEbayPurchasesToReceiving,
-  type SyncEbayPurchasesResult,
+  type EbayIngest,
+  type EbayPurchaseSyncCounts,
 } from './sync-ebay-purchases';
 import {
   fetchBuyerPurchaseOrders,
   type BuyerAccountRef,
   type BuyerPurchaseLine,
 } from '@/lib/ebay/purchase-client';
-import { ingestPurchase } from './ingest-purchase';
+import { ingestInboundOrder } from './ingest-inbound-order';
 import { getSyncCursor } from '@/lib/sync-cursors';
 import { assertRegisteredInboundSource } from './source-registry';
 
@@ -25,9 +30,7 @@ interface SyncOneInboundInput {
   accountLabel?: string | null;
 }
 
-interface SyncOneInboundMarketplaceResult {
-  ingested: number;
-  created: number;
+interface SyncOneInboundMarketplaceResult extends EbayPurchaseSyncCounts {
   linesFetched: number;
   accounts: number;
   errors: string[];
@@ -55,26 +58,12 @@ export interface SyncOneInboundDeps {
   resolveSettings: typeof resolveInboundSettings;
   listBuyerAccounts: (orgId: OrgId) => Promise<BuyerAccountRef[]>;
   fetchPurchases: typeof fetchBuyerPurchaseOrders;
-  ingest: typeof ingestPurchase;
+  ingest: EbayIngest;
   getCursor: typeof getSyncCursor;
   syncAllEbay: typeof syncEbayPurchasesToReceiving;
   findShipmentId: (orgId: OrgId, sourceType: string, sourceOrderId: string) => Promise<number | null>;
   pollShipment: typeof syncShipment;
-}
-
-async function defaultListBuyerAccounts(orgId: OrgId): Promise<BuyerAccountRef[]> {
-  const r = await tenantQuery<{ account_name: string }>(
-    orgId,
-    `SELECT account_name
-       FROM ebay_accounts
-      WHERE organization_id = $1
-        AND account_role = 'buyer'
-        AND is_active = true
-        AND (platform = 'EBAY' OR platform IS NULL)
-      ORDER BY account_name`,
-    [orgId],
-  );
-  return r.rows.map((row) => ({ accountName: row.account_name }));
+  now: () => number;
 }
 
 async function defaultFindShipmentId(
@@ -112,13 +101,14 @@ function lineMatchesOrder(line: BuyerPurchaseLine, orderId: string): boolean {
 const defaultDeps: SyncOneInboundDeps = {
   isUniversalEnabled: isIncomingUniversal,
   resolveSettings: resolveInboundSettings,
-  listBuyerAccounts: defaultListBuyerAccounts,
+  listBuyerAccounts: listEbayBuyerAccounts,
   fetchPurchases: fetchBuyerPurchaseOrders,
-  ingest: ingestPurchase,
+  ingest: ingestInboundOrder,
   getCursor: getSyncCursor,
   syncAllEbay: syncEbayPurchasesToReceiving,
   findShipmentId: defaultFindShipmentId,
   pollShipment: syncShipment,
+  now: () => Date.now(),
 };
 
 function msg(e: unknown): string {
@@ -138,8 +128,10 @@ async function syncEbayOrderTargeted(
   const out: SyncOneInboundMarketplaceResult = {
     accounts: accounts.length,
     linesFetched: 0,
-    ingested: 0,
-    created: 0,
+    landed: 0,
+    updated: 0,
+    unchanged: 0,
+    failed: 0,
     errors: [],
   };
 
@@ -153,54 +145,40 @@ async function syncEbayOrderTargeted(
   }
 
   for (const account of accounts) {
-    const resource = `ebay_purchases:${orgId}:${account.accountName}`;
-    const since = await deps.getCursor(resource);
+    // Same overlapping window the scheduled sync reads; the cursor is the cron's to advance.
+    const since = ebayPurchaseWindowStart(
+      await deps.getCursor(ebayPurchaseCursorResource(orgId, account.accountName)),
+      deps.now(),
+    );
     let lines: BuyerPurchaseLine[];
     try {
-      lines = await deps.fetchPurchases(orgId, account, since ? since.toISOString() : null);
+      lines = await deps.fetchPurchases(orgId, account, since);
     } catch (e) {
       out.errors.push(`${account.accountName}: fetch failed: ${msg(e)}`);
       continue;
     }
-    const matches = lines.filter((l) => lineMatchesOrder(l, orderId));
+    // Every line of a matched order lands, so the draft is the whole order.
+    const orderIds = new Set(lines.filter((l) => lineMatchesOrder(l, orderId)).map((l) => l.sourceOrderId));
+    const matches = lines.filter((l) => orderIds.has(l.sourceOrderId));
     out.linesFetched += matches.length;
 
-    for (const line of matches) {
-      try {
-        const res = await deps.ingest(orgId, {
-          sourceType: 'ebay',
-          accountLabel: account.accountName,
-          sourceOrderId: line.sourceOrderId,
-          sourceLineItemId: line.sourceLineItemId ?? null,
-          sku: line.sku ?? null,
-          itemName: line.itemName ?? null,
-          quantityExpected: line.quantity ?? 1,
-          conditionGrade: line.conditionGrade ?? undefined,
-          legacyOrderId: line.legacyOrderId ?? null,
-          sellerUsername: line.sellerUsername ?? null,
-          purchaseOrderStatus: line.purchaseOrderStatus ?? null,
-          paymentStatus: line.paymentStatus ?? null,
-          listingUrl: line.listingUrl ?? null,
-          orderNumber: line.orderNumber ?? line.sourceOrderId,
-          vendorOrSellerName: line.vendorOrSellerName ?? line.sellerUsername ?? null,
-          trackingNumber: line.trackingNumber ?? null,
-          carrierCode: line.carrierCode ?? null,
-        });
-        out.ingested += 1;
-        if (res.created) out.created += 1;
-      } catch (e) {
-        out.errors.push(`${account.accountName}/${line.sourceOrderId}: ${msg(e)}`);
-      }
-    }
+    const landed = await landEbayPurchases(orgId, account, matches, deps.ingest);
+    out.landed += landed.landed;
+    out.updated += landed.updated;
+    out.unchanged += landed.unchanged;
+    out.failed += landed.failed;
+    out.errors.push(...landed.errors);
   }
 
-  // When the Buy API is still a no-op, fall back to the org-wide delta sync so
-  // the operator's click still runs the same pipeline the cron uses.
-  if (out.linesFetched === 0 && out.ingested === 0) {
-    const bulk: SyncEbayPurchasesResult = await deps.syncAllEbay(orgId);
+  // The order is outside the window (unmodified since the last run): fall back
+  // to the org-wide sync so the operator's click still runs the cron's pipeline.
+  if (out.linesFetched === 0) {
+    const bulk = await deps.syncAllEbay(orgId);
     out.linesFetched = bulk.linesFetched;
-    out.ingested = bulk.ingested;
-    out.created = bulk.created;
+    out.landed = bulk.landed;
+    out.updated = bulk.updated;
+    out.unchanged = bulk.unchanged;
+    out.failed = bulk.failed;
     if (bulk.errors.length) out.errors.push(...bulk.errors);
   }
 
@@ -275,7 +253,7 @@ export async function syncOneInboundPurchase(
 
   if (sourceType === 'ebay') {
     marketplace = await syncEbayOrderTargeted(orgId, input, deps);
-    if (marketplace.linesFetched === 0 && marketplace.ingested === 0) {
+    if (marketplace.linesFetched === 0) {
       note = 'No new marketplace lines for this order — tracking was re-polled if present.';
     }
   } else if (sourceType === 'amazon') {
@@ -316,7 +294,8 @@ export async function syncOneInboundPurchase(
   const hardError = marketplace.errors.find((e) => /No connected eBay buyer/.test(e))
     ?? (marketplace.accounts === 0 ? marketplace.errors[0] : null);
 
-  const ok = !hardError && (marketplace.ingested > 0 || shipment.polled || Boolean(note));
+  const reached = marketplace.landed + marketplace.updated + marketplace.unchanged;
+  const ok = !hardError && (reached > 0 || shipment.polled || Boolean(note));
 
   return {
     ok,

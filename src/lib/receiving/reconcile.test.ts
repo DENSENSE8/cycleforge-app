@@ -10,6 +10,7 @@ import {
   reconOfCheckRow,
   reconReasonCounts,
   reconcileCheck,
+  RECON_REASON_LABELS,
   RECON_REASON_STATUS,
   type ReconReason,
   type ReconStatus,
@@ -26,7 +27,6 @@ function checkRow(overrides: Partial<CheckZohoReceivedRow> = {}): CheckZohoRecei
     source: 'mirror',
     synced_at: null,
     local: { known: true, delivered: false, delivered_at: null, scanned: false, unboxed: false, watch: 'in_flight' },
-    verdict: 'open',
     ...overrides,
   };
 }
@@ -43,19 +43,28 @@ const local = (patch: Partial<NonNullable<CheckZohoReceivedRow['local']>>) => ({
 
 test('a dock scan or an unbox is a receipt, whatever the ERP says', () => {
   assert.equal(reconOfCheckRow(checkRow({ local: local({ scanned: true }) })).status, 'received');
-  assert.equal(reconOfCheckRow(checkRow({ local: local({ unboxed: true }), verdict: 'warehouse_ahead' })).status, 'received');
+  assert.equal(reconOfCheckRow(checkRow({ local: local({ unboxed: true }) })).status, 'received');
 });
 
-test('the ERP saying received with nothing scanned is owed, never a receipt — and an Exceptions-view badge', () => {
-  const recon = reconOfCheckRow(checkRow({ status: 'received', verdict: 'erp_ahead', local: local({ delivered: true }) }));
-  assert.equal(recon.status, 'not_received');
-  assert.deepEqual(recon.exception, { reason: 'Zoho received · never scanned', inView: true });
+test('the ERP saying received with nothing scanned reads its carrier fact — never a Zoho label', () => {
+  const delivered = reconOfCheckRow(checkRow({ status: 'received', local: local({ delivered: true }) }));
+  assert.deepEqual([delivered.status, delivered.reasonCode, delivered.detail, delivered.exception], [
+    'not_received',
+    'delivered_not_scanned',
+    'Delivered · not scanned',
+    null,
+  ]);
+  const moving = reconOfCheckRow(checkRow({ status: 'received' }));
+  assert.deepEqual([moving.reasonCode, moving.detail], ['in_transit', 'In transit']);
+  const ordered = reconOfCheckRow(checkRow({ status: 'received', local: local({ known: false }) }));
+  assert.deepEqual([ordered.reasonCode, ordered.detail], ['open_po', 'Ordered · no tracking']);
+  for (const label of Object.values(RECON_REASON_LABELS)) assert.ok(!label.includes('Zoho'), label);
 });
 
 test('a number nothing identifies is owed with an unlinked badge; one the carrier knows is plainly owed', () => {
-  const nothing = reconOfCheckRow(checkRow({ reason: 'no_match', verdict: 'unknown', local: local({ known: false }) }));
+  const nothing = reconOfCheckRow(checkRow({ reason: 'no_match', local: local({ known: false }) }));
   assert.deepEqual([nothing.status, nothing.exception], ['not_received', { reason: 'No match anywhere', inView: false }]);
-  const delivered = reconOfCheckRow(checkRow({ reason: 'no_match', verdict: 'unknown', local: local({ delivered: true }) }));
+  const delivered = reconOfCheckRow(checkRow({ reason: 'no_match', local: local({ delivered: true }) }));
   assert.deepEqual(delivered, {
     status: 'not_received',
     reasonCode: 'delivered_not_scanned',
@@ -63,18 +72,18 @@ test('a number nothing identifies is owed with an unlinked badge; one the carrie
     pending: false,
     exception: null,
   });
-  assert.deepEqual(reconOfCheckRow(checkRow({ reason: 'error', verdict: 'unknown' })).exception, { reason: 'Lookup failed', inView: false });
+  assert.deepEqual(reconOfCheckRow(checkRow({ reason: 'error' })).exception, { reason: 'Lookup failed', inView: false });
 });
 
 test('entries keep the paste order and match the Check by canonical key', () => {
   const selection = parseRefList('po-2\n1z999-aa1-0123456784\nNOPE-1');
   const entries = reconcileCheck(selection, [
     checkRow({ tracking: '1Z999AA10123456784', local: local({ scanned: true }) }),
-    checkRow({ tracking: 'PO-2', po_number: 'PO-2', verdict: 'erp_ahead', status: 'received' }),
-    checkRow({ tracking: 'NOPE-1', reason: 'no_match', verdict: 'unknown', local: null }),
+    checkRow({ tracking: 'PO-2', po_number: 'PO-2', status: 'received' }),
+    checkRow({ tracking: 'NOPE-1', reason: 'no_match', local: null }),
   ]);
   assert.deepEqual(entries.map((e) => [e.ref, e.status, e.exception?.reason ?? null]), [
-    ['po-2', 'not_received', 'Zoho received · never scanned'],
+    ['po-2', 'not_received', null],
     ['1z999-aa1-0123456784', 'received', null],
     ['NOPE-1', 'not_received', 'No match anywhere'],
   ]);
@@ -102,7 +111,7 @@ test('a status filter keeps every line of the numbers in that bucket, by PO or t
 test('a number only the warehouse knows reads its status from its lines', () => {
   const line = (patch: Partial<ReceivingLineRow>) =>
     ({ id: 1, tracking_number: null, zoho_purchaseorder_number: null, quantity_received: 0, ...patch }) as ReceivingLineRow;
-  const unknownToCheck = checkRow({ reason: 'no_match', verdict: 'unknown', po_number: null, local: local({ known: false }) });
+  const unknownToCheck = checkRow({ reason: 'no_match', po_number: null, local: local({ known: false }) });
   const cases: [string, Partial<ReceivingLineRow> | null, ReconStatus, string][] = [
     ['unboxed manual receipt', { unboxed_at: '2026-09-20T10:00:00Z' }, 'received', 'Unboxed'],
     ['dock-scanned carton', { received_at: '2026-09-20T10:00:00Z' }, 'received', 'Scanned at dock'],
@@ -128,13 +137,16 @@ test('warehouse lines never override a number the Check resolved', () => {
   const entries = reconcileCheck(
     selection,
     [
-      checkRow({ tracking: 'PO-5', po_number: 'PO-5', verdict: 'erp_ahead', status: 'received', local: local({ known: true }) }),
-      checkRow({ tracking: 'NOPE-9', reason: 'no_match', verdict: 'unknown', local: local({ known: false }) }),
+      checkRow({ tracking: 'PO-5', po_number: 'PO-5', status: 'received', local: local({ known: true }) }),
+      checkRow({ tracking: 'NOPE-9', reason: 'no_match', local: local({ known: false }) }),
     ],
     [scanned],
   );
   // The Check owns PO-5 (its local facts said nothing scanned); NOPE-9 has no lines.
-  assert.deepEqual(entries.map((e) => [e.status, e.exception?.inView]), [['not_received', true], ['not_received', false]]);
+  assert.deepEqual(entries.map((e) => [e.status, e.reasonCode, e.exception?.inView]), [
+    ['not_received', 'in_transit', undefined],
+    ['not_received', 'no_match', false],
+  ]);
 });
 
 test('an owed number whose lines sit in an exception state links to the Exceptions view', () => {
@@ -165,10 +177,10 @@ test('every Check answer carries the reason its status came from', () => {
     ['carrier delivered', { local: local({ delivered: true }) }, 'delivered_not_scanned'],
     ['carrier knows it', {}, 'in_transit'],
     ['only Zoho knows it', { local: local({ known: false }) }, 'open_po'],
-    ['Zoho received, never scanned', { verdict: 'erp_ahead', status: 'received' }, 'erp_ahead'],
-    ['nothing knows it', { reason: 'no_match', verdict: 'unknown', local: local({ known: false }) }, 'no_match'],
-    ['several POs', { reason: 'ambiguous', verdict: 'unknown' }, 'ambiguous'],
-    ['lookup threw', { reason: 'error', verdict: 'unknown' }, 'lookup_failed'],
+    ['ERP status received, nothing scanned', { status: 'received' }, 'in_transit'],
+    ['nothing knows it', { reason: 'no_match', local: local({ known: false }) }, 'no_match'],
+    ['several POs', { reason: 'ambiguous' }, 'ambiguous'],
+    ['lookup threw', { reason: 'error' }, 'lookup_failed'],
   ];
   for (const [name, patch, reason] of cases) {
     const recon = reconOfCheckRow(checkRow(patch));
@@ -179,7 +191,7 @@ test('every Check answer carries the reason its status came from', () => {
 test('a number live Zoho was never asked about is decided by our own tables', () => {
   const selection = parseRefList('CAP-LINE\nCAP-SHIP\nCAP-NONE\nUNASKED');
   const cap = (tracking: string, known: boolean) =>
-    checkRow({ tracking, reason: 'zoho_cap', verdict: 'unknown', po_number: null, status: null, local: local({ known }) });
+    checkRow({ tracking, reason: 'zoho_cap', po_number: null, status: null, local: local({ known }) });
   const unboxed = { id: 9, tracking_number: 'CAP-LINE', zoho_purchaseorder_number: null, unboxed_at: '2026-09-20T10:00:00Z' } as ReceivingLineRow;
   const entries = reconcileCheck(selection, [cap('CAP-LINE', false), cap('CAP-SHIP', true), cap('CAP-NONE', false)], [unboxed]);
   assert.deepEqual(entries.map((e) => [e.pending, e.status, e.reasonCode]), [

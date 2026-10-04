@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
-import { MobileScanCta } from '@/components/mobile/redesign/mobile-scan-cta';
+import { MobileV2ScanCta } from '@/components/mobile/v2/MobileV2ScanCta';
 
 /** Header control cluster for any page reached by scanning a Data Matrix on the phone (scanned receiving line, receipt, or serial unit): */
 export function ScanAgainBar({ className = '' }: { className?: string }) {
@@ -18,7 +18,7 @@ export function ScanAgainBar({ className = '' }: { className?: string }) {
         onClick={() => router.push('/m/work')}
         className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-sunken text-text-soft active:bg-surface-strong"
       />
-      <MobileScanCta />
+      <MobileV2ScanCta />
     </div>
   );
 }

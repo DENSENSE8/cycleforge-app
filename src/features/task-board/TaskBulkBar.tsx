@@ -4,29 +4,77 @@
  * The list's top strip. Idle: the select-all box, Open · Waiting · Done · All and the
  * project in focus on the left; WHOSE work — Mine · Handed off · Everyone —
  * dead centre for triage (owner 2026-09-29, moved out of the sidebar), never
- * overlapped; on the right the tally, then List · Columns (`V`) and the
- * checklist column switch (`H`) as icons (hover names them). With a
+ * overlapped; on the right the tally, then Display (Group by · Order by, the
+ * house sort menu), List · Columns (`V`) and the
+ * checklist column switch (`H`) as icons (hover names them). As the strip
+ * narrows (split view) the tally hides, then Whose work, then Status fold
+ * into one compact menu each; the right icons never clip. With a
  * selection it becomes the bulk verbs — Done, Reopen, Urgent,
  * Due today, Add person — over exactly the selected rows (a checklist item
  * takes Done / Reopen only).
  */
 
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { CalendarClock, CircleCheck, Columns3, List, ListChecks, RotateCcw, UserPlus, X, type LucideIcon } from 'lucide-react';
+import {
+  CalendarClock,
+  Check,
+  ChevronDown,
+  CircleCheck,
+  Columns3,
+  List,
+  ListChecks,
+  RotateCcw,
+  UserPlus,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button as ChromeButton } from '@/components/ui/button';
 import { Zap } from '@/components/Icons';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
-import { KeyboardKey } from '@/design-system/primitives';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/design-system/primitives/DropdownMenu';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { useActiveStaffDirectory } from '@/components/sidebar/hooks';
-import type { TaskBoardStatus } from '@/lib/task-board/task-board-model';
+import {
+  TASK_BOARD_GROUP_BYS,
+  TASK_BOARD_GROUP_BY_LABEL,
+  TASK_BOARD_SORTS,
+  TASK_BOARD_SORT_LABEL,
+  parseTaskBoardGroupBy,
+  parseTaskBoardSort,
+  type TaskBoardGroupBy,
+  type TaskBoardSort,
+  type TaskBoardStatus,
+} from '@/lib/task-board/task-board-model';
+import { DataTableSortMenu, type DataTableSortOption } from '@/components/tables/DataTable';
 import { TASK_STATUS_FACE } from '@/design-system/tokens/task-status';
 import type { TaskDeskScope } from '@/features/tasks/useTaskDesk';
 import type { TaskBoardLayout } from './useTaskBoard';
 import { cn } from '@/utils/_cn';
 import { PersonDot } from './task-board-atoms';
+
+/** P3 (Linear display options): Group by and Order by, two questions in one Display menu. */
+const GROUP_OPTIONS: readonly DataTableSortOption[] = TASK_BOARD_GROUP_BYS.map((id) => ({
+  id: `group:${id}`,
+  label: TASK_BOARD_GROUP_BY_LABEL[id],
+  group: 'Group by',
+}));
+const SORT_OPTIONS: readonly DataTableSortOption[] = TASK_BOARD_SORTS.map((id) => ({
+  id: `sort:${id}`,
+  label: TASK_BOARD_SORT_LABEL[id],
+  group: 'Order by',
+}));
+
+/** The Display menu's state: what the list groups and orders by, and whether either left the house default. */
+export interface TaskBoardDisplay {
+  group: TaskBoardGroupBy;
+  sort: TaskBoardSort;
+  /** Either choice is off the default — the trigger lights. */
+  hot: boolean;
+  onGroup: (group: TaskBoardGroupBy) => void;
+  onSort: (sort: TaskBoardSort) => void;
+}
 
 const STATUS_OPTIONS: readonly { id: TaskBoardStatus; label: string }[] = [
   { id: 'open', label: 'Open' },
@@ -78,6 +126,7 @@ export function TaskBulkBar({
   onLayout,
   checklistOn,
   onChecklist,
+  display,
   error,
 }: {
   selectedCount: number;
@@ -104,13 +153,23 @@ export function TaskBulkBar({
   /** The pinned Daily checklist column is on (the staffer's remembered choice). */
   checklistOn: boolean;
   onChecklist: (on: boolean) => void;
+  /** Group by / Order by (`?group=` / `?sort=`, remembered per staffer). */
+  display: TaskBoardDisplay;
   error: string | null;
 }) {
   const selecting = selectedCount > 0;
   const all = selecting && selectedCount === totalCount;
+  const grouping =
+    layout === 'columns' ? '' : display.group === 'none' ? 'no grouping, ' : `group by ${TASK_BOARD_GROUP_BY_LABEL[display.group].toLowerCase()}, `;
+  const displayHint = `Display — ${grouping}order by ${TASK_BOARD_SORT_LABEL[display.sort].toLowerCase()}`;
 
   return (
-    <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border-hairline px-3" data-testid="task-board-toolbar">
+    // One container for the whole strip: as it narrows (split view), the controls collapse in a fixed order —
+    // the tally hides, then Whose work, then Status fold into one compact menu each (P1/P3: the most-used
+    // stays visible); the right icons never clip. Tiers measured on the live strip (2026-10-03):
+    // full segments need ≥42.5rem, a compact scope ≥36rem, both compact keep the scope centred ≥27.5rem,
+    // below that the right column is pinned to the icons' own width.
+    <div className="@container/taskbar flex h-11 shrink-0 items-center gap-2 border-b border-border-hairline px-3" data-testid="task-board-toolbar">
       {/* The same square, in the same column, as every row's gutter below it. */}
       <span className="relative ml-[2px] flex h-[18px] w-4 shrink-0 items-center">
         <GridRowCheckbox
@@ -144,15 +203,16 @@ export function TaskBulkBar({
             <BulkButton icon={<Zap className="size-3.5 text-text-warning" />} label="Urgent" onClick={verbs.urgent} disabled={!hasTasks} />
             <BulkButton icon={<CalendarClock className="size-3.5" />} label="Due today" onClick={verbs.dueToday} disabled={!hasTasks} />
             <AddPersonButton disabled={!hasTasks} onPick={verbs.addPerson} />
-            <button
-              type="button"
-              onClick={onClear}
-              className="ml-auto inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11px] font-medium text-text-muted hover:bg-surface-hover hover:text-text-default"
-            >
-              <X className="size-3" />
-              Clear
-              <KeyboardKey size="xs">Esc</KeyboardKey>
-            </button>
+            <HoverTooltip label="Clear selection" shortcut="Esc" placement="below" asChild>
+              <button
+                type="button"
+                onClick={onClear}
+                className="ml-auto inline-flex h-6 items-center gap-1 rounded-full px-2 text-[11px] font-medium text-text-muted hover:bg-surface-hover hover:text-text-default"
+              >
+                <X className="size-3" />
+                Clear
+              </button>
+            </HoverTooltip>
           </motion.div>
         ) : (
           <motion.div
@@ -161,11 +221,19 @@ export function TaskBulkBar({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ type: 'spring', stiffness: 520, damping: 38 }}
-            className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2"
+            className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto_8.5rem] items-center gap-2 @[27.5rem]/taskbar:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
           >
             {/* overflow-hidden on both flanks: whatever the width, neither can reach the centred scope. */}
             <span className="flex min-w-0 items-center gap-2 overflow-hidden">
-              <Segmented label="Status" layoutId="task-board-status" options={STATUS_OPTIONS} value={status} onChange={onStatus} />
+              <Segmented
+                label="Status"
+                layoutId="task-board-status"
+                options={STATUS_OPTIONS}
+                value={status}
+                onChange={onStatus}
+                className="hidden @[36rem]/taskbar:inline-flex"
+                compact="@[36rem]/taskbar:hidden"
+              />
               {project ? (
                 <button
                   type="button"
@@ -184,22 +252,61 @@ export function TaskBulkBar({
             </span>
             {/* The checklist column is the shift's shared list — whose-work scope does not apply to it, so the segment stands down while it is open (owner 2026-09-30). */}
             {checklistOn ? null : (
-              <Segmented label="Whose work" layoutId="task-board-scope" options={SCOPE_OPTIONS} value={scope} onChange={onScope} />
+              <Segmented
+                label="Whose work"
+                layoutId="task-board-scope"
+                options={SCOPE_OPTIONS}
+                value={scope}
+                onChange={onScope}
+                className="hidden @[42.5rem]/taskbar:inline-flex"
+                compact="@[42.5rem]/taskbar:hidden"
+              />
             )}
-            <span className="flex min-w-0 items-center justify-end gap-3 overflow-hidden whitespace-nowrap text-[11px] tabular-nums text-text-muted">
-              <span>
-                <span className="font-semibold text-text-default">{openCount}</span> open
+            <span className="@container flex min-w-0 items-center justify-end gap-3 overflow-hidden whitespace-nowrap text-[11px] tabular-nums text-text-muted">
+              {/* The tally steps aside whole when the flank is too narrow for it AND the controls (split view; 20rem
+                  fits a three-digit open count with waiting and late) — never clipped mid-word; the controls stay. */}
+              <span className="hidden items-center gap-3 @[20rem]:flex">
+                <span>
+                  <span className="font-semibold text-text-default">{openCount}</span> open
+                </span>
+                {waitingCount > 0 ? (
+                  <span className={TASK_STATUS_FACE.PENDING.ink}>
+                    <span className="font-semibold">{waitingCount}</span> waiting
+                  </span>
+                ) : null}
+                {lateCount > 0 ? (
+                  <span className="text-text-danger">
+                    <span className="font-semibold">{lateCount}</span> late
+                  </span>
+                ) : null}
               </span>
-              {waitingCount > 0 ? (
-                <span className={TASK_STATUS_FACE.PENDING.ink}>
-                  <span className="font-semibold">{waitingCount}</span> waiting
-                </span>
-              ) : null}
-              {lateCount > 0 ? (
-                <span className="text-text-danger">
-                  <span className="font-semibold">{lateCount}</span> late
-                </span>
-              ) : null}
+              {/* An icon like its neighbours (hover names it and what it holds). Columns are the type split already: only Order by applies there. */}
+              <HoverTooltip
+                label={displayHint}
+                placement="below"
+                focusable={false}
+                className="inline-flex shrink-0"
+              >
+                <DataTableSortMenu
+                  options={layout === 'columns' ? SORT_OPTIONS : [...GROUP_OPTIONS, ...SORT_OPTIONS]}
+                  active={null}
+                  hot={display.hot}
+                  selected={[`group:${display.group}`, `sort:${display.sort}`]}
+                  label="Display"
+                  align="end"
+                  testId="task-board-display"
+                  onSelect={(id) => {
+                    const [question, value] = id.split(':');
+                    if (question === 'group') {
+                      const next = parseTaskBoardGroupBy(value);
+                      if (next) display.onGroup(next);
+                    } else {
+                      const next = parseTaskBoardSort(value);
+                      if (next) display.onSort(next);
+                    }
+                  }}
+                />
+              </HoverTooltip>
               <Segmented label="Layout" layoutId="task-board-layout" options={LAYOUT_OPTIONS} value={layout} onChange={onLayout} shortcut="V" />
               {/* The house toggle faces: `active` = pressed (sunken fill, full ink), `ghost` = off — never a pale tint. */}
               <HoverTooltip
@@ -229,7 +336,12 @@ export function TaskBulkBar({
   );
 }
 
-/** One sunken pill track; the current option rides a sliding card. An option with an icon paints only the icon; the hover names it. */
+/**
+ * One sunken pill track; the current option rides a sliding card. An option with an icon paints only the icon; the hover names it.
+ * With `compact`, the same choice also paints as one pill showing the current option that opens the house
+ * DropdownMenu (the TriageSelectBar pattern: items, a check on the current) — the caller's container query
+ * (`className` / `compact`) decides which face shows, so a narrow strip folds the track instead of clipping it.
+ */
 function Segmented<T extends string>({
   label,
   layoutId,
@@ -237,6 +349,8 @@ function Segmented<T extends string>({
   value,
   onChange,
   shortcut,
+  className,
+  compact,
 }: {
   label: string;
   layoutId: string;
@@ -245,44 +359,76 @@ function Segmented<T extends string>({
   onChange: (value: T) => void;
   /** The key that cycles the options — shown in each icon option's hover. */
   shortcut?: string;
+  /** The track's visibility (container-query classes). */
+  className?: string;
+  /** Set: also paint the compact menu face, with these visibility classes. */
+  compact?: string;
 }) {
+  const current = options.find((option) => option.id === value) ?? options[0]!;
   return (
-    <div role="radiogroup" aria-label={label} className="relative inline-flex shrink-0 rounded-full bg-surface-sunken p-0.5">
-      {options.map((option) => {
-        const Icon = option.icon;
-        const button = (
-          <button
-            key={option.id}
-            type="button"
-            role="radio"
-            aria-checked={value === option.id}
-            aria-label={Icon ? option.label : undefined}
-            onClick={() => onChange(option.id)}
-            className={cn(
-              'relative z-0 whitespace-nowrap rounded-full py-0.5 text-[11px] font-semibold transition-colors',
-              Icon ? 'px-1.5' : 'px-2.5',
-              value === option.id ? 'text-text-default' : 'text-text-muted hover:text-text-default',
-            )}
-          >
-            {value === option.id ? (
-              <motion.span
-                layoutId={layoutId}
-                className="absolute inset-0 -z-10 rounded-full bg-surface-card shadow-sm"
-                transition={{ type: 'spring', stiffness: 500, damping: 38 }}
-              />
-            ) : null}
-            {Icon ? <Icon className="size-3.5" aria-hidden /> : option.label}
-          </button>
-        );
-        return Icon ? (
-          <HoverTooltip key={option.id} label={option.label} shortcut={shortcut} placement="below" focusable={false} asChild>
-            {button}
-          </HoverTooltip>
-        ) : (
-          button
-        );
-      })}
-    </div>
+    <>
+      {compact != null ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`${label}: ${current.label}`}
+              className={cn(
+                'inline-flex h-[22px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-surface-sunken pl-2.5 pr-1.5 text-[11px] font-semibold text-text-default hover:bg-surface-hover',
+                compact,
+              )}
+            >
+              {current.label}
+              <ChevronDown aria-hidden className="size-3 text-text-muted" strokeWidth={2.5} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-36">
+            {options.map((option) => (
+              <DropdownMenuItem key={option.id} onSelect={() => onChange(option.id)} className="justify-between text-xs">
+                {option.label}
+                {option.id === value ? <Check aria-hidden /> : null}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+      <div role="radiogroup" aria-label={label} className={cn('relative inline-flex shrink-0 rounded-full bg-surface-sunken p-0.5', className)}>
+        {options.map((option) => {
+          const Icon = option.icon;
+          const button = (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={value === option.id}
+              aria-label={Icon ? option.label : undefined}
+              onClick={() => onChange(option.id)}
+              className={cn(
+                'relative z-0 whitespace-nowrap rounded-full py-0.5 text-[11px] font-semibold transition-colors',
+                Icon ? 'px-1.5' : 'px-2.5',
+                value === option.id ? 'text-text-default' : 'text-text-muted hover:text-text-default',
+              )}
+            >
+              {value === option.id ? (
+                <motion.span
+                  layoutId={layoutId}
+                  className="absolute inset-0 -z-10 rounded-full bg-surface-card shadow-sm"
+                  transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+                />
+              ) : null}
+              {Icon ? <Icon className="size-3.5" aria-hidden /> : option.label}
+            </button>
+          );
+          return Icon ? (
+            <HoverTooltip key={option.id} label={option.label} shortcut={shortcut} placement="below" focusable={false} asChild>
+              {button}
+            </HoverTooltip>
+          ) : (
+            button
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -301,7 +447,7 @@ function BulkButton({
   disabled?: boolean;
   tone?: 'soft' | 'done';
 }) {
-  return (
+  const button = (
     <button
       type="button"
       onClick={onClick}
@@ -309,18 +455,20 @@ function BulkButton({
       className={cn(
         'inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold transition-colors disabled:opacity-35',
         tone === 'done'
-          ? 'bg-emerald-700 pr-1 text-white shadow-sm shadow-emerald-700/30 hover:bg-emerald-800'
+          ? 'bg-emerald-700 text-white shadow-sm shadow-emerald-700/30 hover:bg-emerald-800'
           : 'bg-surface-sunken text-text-default hover:bg-surface-hover',
       )}
     >
       {icon}
       {label}
-      {hint ? (
-        <KeyboardKey size="xs" tone={tone === 'done' ? 'inverse' : 'default'}>
-          {hint}
-        </KeyboardKey>
-      ) : null}
     </button>
+  );
+  return hint ? (
+    <HoverTooltip label={label} shortcut={hint} placement="below" asChild>
+      {button}
+    </HoverTooltip>
+  ) : (
+    button
   );
 }
 

@@ -51,7 +51,6 @@ function checkRow(tracking: string, patch: Partial<CheckZohoReceivedRow>): Check
     source: 'mirror',
     synced_at: null,
     local: LOCAL,
-    verdict: 'settled' as CheckZohoReceivedRow['verdict'],
     ...patch,
   };
 }
@@ -60,7 +59,8 @@ function checkRow(tracking: string, patch: Partial<CheckZohoReceivedRow>): Check
 const CHECK: Record<string, CheckZohoReceivedRow> = {
   'PO-1': checkRow('PO-1', { po_number: 'PO-1', vendor_name: 'Acme', local: { ...LOCAL, unboxed: true } }),
   'PO-2': checkRow('PO-2', { po_number: 'PO-2', vendor_name: 'Acme' }),
-  'PO-3': checkRow('PO-3', { po_number: 'PO-3', status: 'received', verdict: 'erp_ahead' }),
+  // Zoho says received, nothing scanned: the carrier fact decides (in transit), never a Zoho label.
+  'PO-3': checkRow('PO-3', { po_number: 'PO-3', status: 'received' }),
   'PO-4': checkRow('PO-4', { reason: 'ambiguous', local: { ...LOCAL, known: false } }),
   NOPE: checkRow('NOPE', { reason: 'no_match', status: null, local: { ...LOCAL, known: false } }),
   'MANUAL-7': checkRow('MANUAL-7', { reason: 'no_match', status: null, local: { ...LOCAL, known: false } }),
@@ -100,6 +100,7 @@ function fakes() {
     },
     inboundLines: async () => LINES,
     inboundAwaiting: async () => [],
+    inboundFollowups: async () => [],
   };
   return { deps, cap };
 }
@@ -210,7 +211,7 @@ test('refs past the cap are dropped and reported; duplicates collapse', async ()
   assert.deepEqual(cap.statements[0].params[1], pasted.slice(0, NAV_LOCATE_MAX_REFS));
 });
 
-test('inbound: the Check verdict per ref — received, not received, exceptions (status kept), nowhere', async () => {
+test('inbound: the Check answer per ref — received, not received, nowhere', async () => {
   const { deps, cap } = fakes();
   const body = await ok(
     await getNavLocate(
@@ -232,20 +233,21 @@ test('inbound: the Check verdict per ref — received, not received, exceptions 
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets]), [
     ['PO-1', ['received']],
     ['PO-2', ['not_received']],
-    ['PO-3', ['not_received', 'exceptions']],
+    ['PO-3', ['not_received']],
     // A badge with nothing in the Exceptions view stays owed, reason in detail.
     ['PO-4', ['not_received']],
     ['NOPE', []],
     ['MANUAL-7', ['received']],
   ]);
-  assert.deepEqual(counts(body), { awaiting_tracking: 0, received: 2, not_received: 3, exceptions: 1 });
+  assert.deepEqual(counts(body), { awaiting_tracking: 0, received: 2, not_received: 3, exceptions: 0 });
   assert.equal(body.entries[0].title, 'PO PO-1 · Acme');
   assert.equal(body.entries[3].detail, 'Several POs match');
   assert.equal(body.entries[4].detail, null);
   assert.deepEqual(cap.checked, [['PO-1', 'PO-2', 'PO-3', 'PO-4', 'NOPE', 'MANUAL-7']]);
 
   const text = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { q: 'PO-3' }, deps));
-  assert.deepEqual(counts(text), { awaiting_tracking: 0, received: 0, not_received: 1, exceptions: 1 });
+  assert.deepEqual(counts(text), { awaiting_tracking: 0, received: 0, not_received: 1, exceptions: 0 });
+  assert.equal(body.entries[2].detail, 'In transit');
   assert.deepEqual(text.entries, []);
 });
 
@@ -259,6 +261,28 @@ test('awaiting tracking is the Incoming list, not the in_transit facet', async (
   assert.deepEqual(po2?.buckets, ['awaiting_tracking', 'not_received']);
   assert.equal(body.buckets.find((bucket) => bucket.id === 'awaiting_tracking')?.count, 1);
   assert.ok(!body.entries.find((entry) => entry.ref === 'PO-3')?.buckets.includes('awaiting_tracking'));
+});
+
+test("inbound detail says the carrier's last word and the number's follow-up tag, keyed by its PO", async () => {
+  const { deps } = fakes();
+  deps.inboundLines = async () => [
+    ...LINES,
+    { zoho_purchaseorder_number: 'PO-2', tracking_number: '1ZA677K10318827054', shipment_estimated_delivery_at: '2026-10-05' } as unknown as ReceivingLineRow,
+  ];
+  const asked: string[][] = [];
+  deps.inboundFollowups = async (_orgId, keys) => {
+    asked.push([...keys]);
+    return [{ key: 'PO2', tag: 'need_claim', note: null, setBy: 1, setByName: 'Ana', setAt: '2026-10-03T18:00:00Z' }];
+  };
+  const body = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { refs: 'PO-1,PO-2' }, deps));
+  assert.deepEqual(asked, [['PO1', 'PO2']]);
+  assert.equal(body.entries[1].detail, 'In transit · ETA Oct 5 · Need claim');
+  assert.equal(body.entries[0].detail, 'Unboxed');
+
+  // The typed field answers buckets only — it never reads tags.
+  asked.length = 0;
+  await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { q: 'PO-2' }, deps));
+  assert.deepEqual(asked, []);
 });
 
 test('everywhere: every permitted locator, ids and labels prefixed, entries merged per ref', async () => {

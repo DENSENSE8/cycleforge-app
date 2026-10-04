@@ -1,17 +1,22 @@
-/** POST /api/support/suggest — draft an AI support reply for a helpdesk ticket. */
+/**
+ * POST /api/support/suggest — draft an AI support reply for a helpdesk ticket.
+ *
+ * Body `{ ticketId, stagedPhotoIds? }`. The thread is read HERE, from the local
+ * mirror, never trusted from the client: the latest customer message is what
+ * gets answered, and a ticket with no customer in it (staff-opened, automated
+ * sender) is refused with a reason instead of drafted.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
-import {
-  getHelpdeskProvider,
-  HELPDESK_CONNECT_HINT,
-  HELPDESK_NOT_CONNECTED_MESSAGE,
-} from '@/lib/integrations/helpdesk';
+import { HELPDESK_CONNECT_HINT, HELPDESK_NOT_CONNECTED_MESSAGE } from '@/lib/integrations/helpdesk';
 import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { suggestSupportReply, SupportSuggestError } from '@/lib/support/suggest-reply';
 import { resolveSupportReplyPersona } from '@/lib/support/reply-persona-deps';
 import { collectPhotoEvidence, type PhotoEvidence } from '@/lib/support/photo-evidence';
 import { supportPhotoEvidenceDeps } from '@/lib/support/photo-evidence-deps';
+import { readSupportThread, type SupportThreadComment } from '@/lib/support/support-thread';
+import { loadTicketMirror } from '@/lib/support/ticket-mirror';
 import { resolveSupportVisionLaneForOrg } from '@/lib/support/vision-lane-deps';
 
 export const runtime = 'nodejs';
@@ -21,8 +26,6 @@ const MAX_STAGED_PHOTOS = 6;
 
 type SuggestBody = {
   ticketId?: number;
-  subject?: string;
-  question?: string;
   stagedPhotoIds?: unknown;
 };
 
@@ -54,26 +57,36 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   const body = (await req.json().catch(() => ({}))) as SuggestBody;
   const ticketId = Number(body.ticketId);
-  const question = typeof body.question === 'string' ? body.question.trim() : '';
   const stagedPhotoIds = readPhotoIds(body.stagedPhotoIds);
 
   if (!Number.isFinite(ticketId) || ticketId <= 0) {
     return NextResponse.json({ error: 'ticketId is required' }, { status: 400 });
   }
-  // An image on its own IS a question ("what is this / is it covered"), so the
-  // text is only required when nothing was attached.
-  if (!question && !stagedPhotoIds.length) {
-    return NextResponse.json({ error: 'question is required' }, { status: 400 });
-  }
 
   // Drafting a reply only makes sense against a connected helpdesk (the
   // capability gate, not a vendor check). Same 503 language as /api/zendesk/*.
-  const helpdesk = await getHelpdeskProvider(ctx.organizationId);
-  if (!helpdesk || !(await helpdesk.isConfigured())) {
+  const loaded = await loadTicketMirror(ctx.organizationId, ticketId);
+  if (loaded.status === 'not_configured') {
     return NextResponse.json(
       { error: `${HELPDESK_NOT_CONNECTED_MESSAGE} — ${HELPDESK_CONNECT_HINT}` },
       { status: 503 },
     );
+  }
+  if (loaded.status === 'not_found') {
+    return NextResponse.json({ error: `Ticket #${ticketId} not found` }, { status: 404 });
+  }
+
+  const { mirror } = loaded;
+  const read = readSupportThread({
+    comments: mirror.comments as SupportThreadComment[],
+    agentIds: mirror.agents.map((a) => a.id),
+    requesterEmail: mirror.requester?.email,
+    tags: mirror.ticket.tags,
+  });
+  // An image on its own IS a question ("what is this / is it covered"), so a
+  // staged photo drafts even where no customer has written.
+  if (!read.supportOriented && !stagedPhotoIds.length) {
+    return NextResponse.json({ error: read.message, reason: read.reason }, { status: 422 });
   }
 
   try {
@@ -118,8 +131,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     const result = await suggestSupportReply(ctx.organizationId, {
       ticketId,
-      subject: typeof body.subject === 'string' ? body.subject : undefined,
-      question,
+      subject: mirror.ticket.subject ?? undefined,
+      question: read.supportOriented ? read.customerMessage : '',
+      thread: read.supportOriented ? read.thread : [],
+      today: new Date().toISOString().slice(0, 10),
       persona,
       vision,
       photos: evidence,

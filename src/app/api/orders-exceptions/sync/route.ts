@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import pool from '@/lib/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
-import { syncOrderExceptionsToOrders } from '@/lib/orders-exceptions';
+import { syncOrderExceptionsWithScanOutReplay } from '@/lib/outbound/held-scan-out-replay';
 import { formatPSTTimestamp } from '@/utils/date';
 import { createNdjsonStream, ndjsonResponseHeaders } from '@/lib/orders-sync/streaming';
 
@@ -39,7 +39,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
   (async () => {
     try {
-      const result = await syncOrderExceptionsToOrders(stream.emit, orgId);
+      const result = await syncOrderExceptionsWithScanOutReplay(stream.emit, orgId);
       if (result.matched > 0) {
         await invalidateAllOrdersApiCaches([], orgId);
       }

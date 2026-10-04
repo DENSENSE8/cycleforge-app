@@ -20,6 +20,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderIdChip } from '@/components/ui/CopyChip';
 import { RecordCard, type RecordOpenEvent } from '@/design-system/components/record-card/RecordCard';
 import type { RecordCardChip, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
 import { OUTBOUND_TRIAGE_VIEW } from '@/lib/triage/views';
 import { LIFECYCLE_GLYPH } from '@/design-system/components/record-ledger/LifecycleCode';
 import { LIFECYCLE, lifecycleRecordState, type LifecycleState } from '@/design-system/tokens/lifecycle';
@@ -48,6 +49,53 @@ const STATUS_MEANING: Readonly<Record<LifecycleState, string>> = {
 
 const moreOutOfStock = (count: number) => `${count} more out of stock`;
 
+/** The order as the shared card reads it (`outbound.triage`); `channel` is the catalog-resolved storefront (a hook's, so the adapter's). */
+export function orderRecordCard(model: OrderCardModel, channel: RecordCardModel['channel']): ViewCardModel<typeof OUTBOUND_TRIAGE_VIEW> {
+  const spec = LIFECYCLE[model.state];
+  const chips: RecordCardChip[] = [];
+  const urgentWord = model.urgentLabel ?? 'Urgent';
+  // The chip names a paid-for service ("Expedited") even on an urgent-state card; a plain
+  // operator Urgent is already the state icon there, so it needs no chip.
+  if (model.urgent && (model.state !== 'urgent' || urgentWord !== 'Urgent')) {
+    chips.push({ id: 'urgent', tone: 'warning', short: urgentWord });
+  }
+  return {
+    key: model.key,
+    leadId: model.lead.id,
+    state: lifecycleRecordState(model.state),
+    stateIcon: LIFECYCLE_GLYPH[spec.icon],
+    stateMeaning:
+      model.state === 'urgent' && urgentWord !== 'Urgent'
+        ? `${urgentWord} — ship this one first`
+        : STATUS_MEANING[model.state],
+    alert:
+      model.outOfStockCount > 0
+        ? {
+            count: model.outOfStockCount,
+            summary: `${model.outOfStockCount} of ${model.lines.length} out of stock`,
+            ariaLabel: `${spec.label}, ${model.outOfStockCount} of ${model.lines.length} lines out of stock`,
+          }
+        : null,
+    aria: {
+      card: `Order ${model.orderId}, ${spec.label}, ${model.lines[0]?.title ?? ''}`,
+      open: `Open order ${model.orderId}`,
+      check: `Select order ${model.orderId}`,
+    },
+    channel,
+    person: model.buyerName,
+    chips,
+    // The buyer's words read-only; the team's latest note edited in line (the notes trail keeps history).
+    notes: {
+      fixed: model.buyerNote ? { label: 'Buyer note', text: model.buyerNote } : null,
+      own: model.staffNote,
+    },
+    status: { kind: 'deadline', ...model.sla },
+    next: model.next,
+    lines: model.lines.map(orderRecordLine),
+    hiddenAlertLabel: moreOutOfStock,
+  };
+}
+
 /** The face's slot props (state + its handlers) plus what only an order card reads. */
 export interface OrderCardProps extends TriageCardSlotProps<ShippedOrder, OrderCardModel> {
   todayKey: string;
@@ -73,58 +121,21 @@ export const OrderCard = memo(function OrderCard({
   const channelName = platformDisplayName(channel);
   const lead = model.lines[0];
 
-  const record = useMemo<RecordCardModel>(() => {
-    const spec = LIFECYCLE[model.state];
-    const chips: RecordCardChip[] = [];
-    const urgentWord = model.urgentLabel ?? 'Urgent';
-    // The chip names a paid-for service ("Expedited") even on an urgent-state card; a plain
-    // operator Urgent is already the state icon there, so it needs no chip.
-    if (model.urgent && (model.state !== 'urgent' || urgentWord !== 'Urgent')) {
-      chips.push({ id: 'urgent', tone: 'warning', short: urgentWord });
-    }
-    return {
-      key: model.key,
-      leadId: model.lead.id,
-      state: lifecycleRecordState(model.state),
-      stateIcon: LIFECYCLE_GLYPH[spec.icon],
-      stateMeaning:
-        model.state === 'urgent' && urgentWord !== 'Urgent'
-          ? `${urgentWord} — ship this one first`
-          : STATUS_MEANING[model.state],
-      alert:
-        model.outOfStockCount > 0
+  const record = useMemo(
+    () =>
+      orderRecordCard(
+        model,
+        channelName
           ? {
-              count: model.outOfStockCount,
-              summary: `${model.outOfStockCount} of ${model.lines.length} out of stock`,
-              ariaLabel: `${spec.label}, ${model.outOfStockCount} of ${model.lines.length} lines out of stock`,
+              label: channelName,
+              tooltip: channelName,
+              dot: <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />,
+              badge: model.fba ? 'FBA' : model.pickup ? 'Pickup' : null,
             }
           : null,
-      aria: {
-        card: `Order ${model.orderId}, ${spec.label}, ${model.lines[0]?.title ?? ''}`,
-        open: `Open order ${model.orderId}`,
-        check: `Select order ${model.orderId}`,
-      },
-      channel: channelName
-        ? {
-            label: channelName,
-            tooltip: channelName,
-            dot: <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />,
-            badge: model.fba ? 'FBA' : model.pickup ? 'Pickup' : null,
-          }
-          : null,
-      person: model.buyerName,
-      chips,
-      // The buyer's words read-only; the team's latest note edited in line (the notes trail keeps history).
-      notes: {
-        fixed: model.buyerNote ? { label: 'Buyer note', text: model.buyerNote } : null,
-        own: model.staffNote,
-      },
-      status: { kind: 'deadline', ...model.sla },
-      next: model.next,
-      lines: model.lines.map(orderRecordLine),
-      hiddenAlertLabel: moreOutOfStock,
-    };
-  }, [model, channel, channelName]);
+      ),
+    [model, channel, channelName],
+  );
 
   if (!lead) return null;
 
@@ -141,7 +152,7 @@ export const OrderCard = memo(function OrderCard({
       platformLabel={channelName}
       showInlineOpen={false}
     >
-      <OrderIdChip value={model.orderId} display={model.orderId} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
+      <OrderIdChip value={model.orderId} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
     </OrderAdminLinkAction>
   );
 
@@ -181,7 +192,9 @@ export const OrderCard = memo(function OrderCard({
   );
 
   return (
-    <RecordCard
+      <RecordCard
+        view={OUTBOUND_TRIAGE_VIEW}
+        spacing="dense"
       model={record}
       factColumns={OUTBOUND_TRIAGE_VIEW.facts}
       testIdPrefix={OUTBOUND_TRIAGE_VIEW.testIdPrefix}

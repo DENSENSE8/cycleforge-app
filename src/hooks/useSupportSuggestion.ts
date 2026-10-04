@@ -22,10 +22,8 @@ export interface SupportSuggestionResult {
 }
 
 interface SupportSuggestionVars {
+  /** The server reads the thread itself and answers the latest customer message. */
   ticketId: number;
-  subject?: string;
-  /** May be empty when photos carry the question. */
-  question: string;
   /** Photo IDs, never URLs — see {@link SupportSuggestionResult}. */
   stagedPhotoIds?: number[];
 }

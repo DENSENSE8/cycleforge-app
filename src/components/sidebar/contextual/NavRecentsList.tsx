@@ -11,7 +11,7 @@ import { useNavLiveRecent } from '@/lib/nav/recents/live';
 import { groupByRecency } from '@/lib/assistant/session-groups';
 import { useDeskSearch } from '@/lib/outbound/desk-search-store';
 import { altDigitChord, altDigitSlot, chordKeys, useApplePlatform } from '@/lib/keyboard/chord-keys';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LayoutGroup, motion } from '@/design-system/motion';
 import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
@@ -266,7 +266,7 @@ function RecentRow({
 }: {
   row: NavRecentRow;
   lit: boolean;
-  /** The row's ⌥-digit keycaps, when it is one of the first ten on a `chords` surface. */
+  /** The row's ⌥-digit chord, when it is one of the first ten on a `chords` surface — taught in the row's hover tooltip. */
   chord: string[] | null;
   /** Absent on a row the feed has not listed yet: there is nothing to rename or delete. */
   rowActions: RowActions | undefined;
@@ -328,42 +328,26 @@ function RecentRow({
   const menu = canRename || canDelete;
   return (
     <SidebarMenuItem className="group/recent">
-      <Link
-        href={row.href}
-        prefetch={false}
-        aria-current={lit ? 'page' : undefined}
-        aria-keyshortcuts={chord ? chord.join('+') : undefined}
-        data-nav-recent={row.entityId}
-        data-sidebar-nav-item
-        onClick={onOpen}
-        className={cn(NAV_BLOCK_CLASS, 'h-8 text-role-body', lit && 'font-medium', menu && 'pr-8')}
-      >
-        {lit ? (
-          <motion.span aria-hidden layoutId="nav-recent-plate" transition={plateTransition} className={NAV_BLOCK_PLATE_CLASS} />
-        ) : null}
-        {chord ? (
-          // HOTKEY FIRST, shown only while the row is hovered or focused.
-          <span
-            aria-hidden
-            data-nav-recent-chord
-            className={cn(
-              '-mr-2 inline-flex max-w-0 shrink-0 items-center gap-0.5 overflow-hidden opacity-0 transition-[max-width,opacity,margin] duration-150',
-              'group-hover/recent:mr-0 group-hover/recent:max-w-16 group-hover/recent:opacity-100',
-              'group-focus-within/recent:mr-0 group-focus-within/recent:max-w-16 group-focus-within/recent:opacity-100',
-            )}
-          >
-            {chord.map((key) => (
-              <KeyboardKey key={key} size="xs">
-                {key}
-              </KeyboardKey>
-            ))}
+      <HoverTooltip label={row.title} shortcut={chord ? chord.join(' + ') : undefined} disabled={!chord} asChild>
+        <Link
+          href={row.href}
+          prefetch={false}
+          aria-current={lit ? 'page' : undefined}
+          aria-keyshortcuts={chord ? chord.join('+') : undefined}
+          data-nav-recent={row.entityId}
+          data-sidebar-nav-item
+          onClick={onOpen}
+          className={cn(NAV_BLOCK_CLASS, 'h-8 text-role-body', lit && 'font-medium', menu && 'pr-8')}
+        >
+          {lit ? (
+            <motion.span aria-hidden layoutId="nav-recent-plate" transition={plateTransition} className={NAV_BLOCK_PLATE_CLASS} />
+          ) : null}
+          <span className="min-w-0 flex-1 truncate" title={chord ? undefined : row.title}>
+            {row.title}
           </span>
-        ) : null}
-        <span className="min-w-0 flex-1 truncate" title={row.title}>
-          {row.title}
-        </span>
-        {row.subtitle ? <span className="shrink-0 truncate text-role-micro text-text-faint">{row.subtitle}</span> : null}
-      </Link>
+          {row.subtitle ? <span className="shrink-0 truncate text-role-micro text-text-faint">{row.subtitle}</span> : null}
+        </Link>
+      </HoverTooltip>
       {menu ? (
         // Outside the link so opening the menu never opens the record.
         <div

@@ -4,8 +4,9 @@
  * The Tasks board's state: the two feeds (tasks + today's checklist) and the
  * URL (`?tab=` view, `?filter=` status, `?scope=` whose, `?q=` find,
  * `?project=` one project, `?layout=` list or columns, `?ticket=` helpdesk
- * statuses, `?task=` / `?check=` the open row), plus the staffer's remembered
- * checklist column. React Query dedupes the fetches, so the sidebar counts and
+ * statuses, `?group=` / `?sort=` the Display menu, `?task=` / `?check=` the
+ * open row), plus the staffer's remembered checklist column and Display
+ * choice. React Query dedupes the fetches, so the sidebar counts and
  * the table read the same rows.
  */
 
@@ -17,7 +18,11 @@ import { useDailyChecks, useToggleCheck } from '@/lib/daily-checks/use-daily-che
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { taskDeskQueryOptions, useTaskDesk, type TaskDeskPatch, type TaskDeskScope } from '@/features/tasks/useTaskDesk';
 import { useSetting } from '@/hooks/useSettings';
-import { TASK_BOARD_CHECKLIST_COLUMN_SETTING } from '@/lib/settings/registry';
+import {
+  TASK_BOARD_CHECKLIST_COLUMN_SETTING,
+  TASK_BOARD_GROUP_SETTING,
+  TASK_BOARD_SORT_SETTING,
+} from '@/lib/settings/registry';
 import { toast } from '@/lib/toast';
 import { buildDailyTaskRows } from '@/features/home/grid/daily-task-row';
 import { sortTaskDeskRows, taskDeskRowFromWire, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
@@ -29,9 +34,12 @@ import {
 } from '@/lib/tasks/ticket-status-filter';
 import type { TicketStatus } from '@/design-system/tokens/ticket-status';
 import {
+  parseTaskBoardGroupBy,
+  parseTaskBoardSort,
   parseTaskBoardStatus,
   parseTaskBoardView,
   sortTaskBoardRows,
+  sortTaskBoardRowsBy,
   taskBoardFindMatches,
   taskBoardProjects,
   taskBoardRowFromChecklist,
@@ -40,8 +48,10 @@ import {
   taskBoardStatusMatches,
   taskBoardViewCounts,
   taskBoardViewMatches,
+  type TaskBoardGroupBy,
   type TaskBoardProject,
   type TaskBoardRow,
+  type TaskBoardSort,
   type TaskBoardStatus,
   type TaskBoardView,
 } from '@/lib/task-board/task-board-model';
@@ -81,6 +91,14 @@ export interface TaskBoardState {
   /** `?project=` — one project's tasks, or null. */
   project: string | null;
   layout: TaskBoardLayout;
+  /** Display · Group by (P3): `?group=`, else the staffer's remembered choice, else Type (Long-term projects: Project). */
+  group: TaskBoardGroupBy;
+  /** Display · Order by (P3): `?sort=`, else the staffer's remembered choice, else Urgency. */
+  sort: TaskBoardSort;
+  /** Pick a grouping: the URL carries it and the staffer's setting remembers it. */
+  setGroup: (group: TaskBoardGroupBy) => void;
+  /** Pick an order: the URL carries it and the staffer's setting remembers it. */
+  setSort: (sort: TaskBoardSort) => void;
   /** `?compose=1` — the New task sheet is open. */
   composing: boolean;
   /** `?note=` — the headline ⌘K's New task "<query>" carried in from another page. Read once, then stripped. */
@@ -143,6 +161,18 @@ export function useTaskBoard(): TaskBoardState {
   const rawCheck = searchParams.get('check');
   const openKey =
     rawTask && /^\d+$/.test(rawTask) ? `task:${rawTask}` : rawCheck && /^\d+$/.test(rawCheck) ? `checklist:${rawCheck}` : null;
+  // P3 Display: `?group=` / `?sort=` win (a shared link), else the staffer's remembered choice (the click answers
+  // before the write lands), else the house default — Type · Urgency, today's board. A single-type view has no type
+  // split, so Type there reads as the view's own shape: Long-term projects groups by project, the rest stay flat.
+  const groupSetting = useSetting<TaskBoardGroupBy>('desk', TASK_BOARD_GROUP_SETTING);
+  const sortSetting = useSetting<TaskBoardSort>('desk', TASK_BOARD_SORT_SETTING);
+  const [groupLocal, setGroupLocal] = useState<TaskBoardGroupBy | null>(null);
+  const [sortLocal, setSortLocal] = useState<TaskBoardSort | null>(null);
+  const groupPicked =
+    parseTaskBoardGroupBy(searchParams.get('group')) ?? groupLocal ?? parseTaskBoardGroupBy(groupSetting.value) ?? 'type';
+  const group: TaskBoardGroupBy = view === 'project' && groupPicked === 'type' ? 'project' : groupPicked;
+  const sort: TaskBoardSort =
+    parseTaskBoardSort(searchParams.get('sort')) ?? sortLocal ?? parseTaskBoardSort(sortSetting.value) ?? 'urgency';
 
   const checks = useDailyChecks(dateKey);
   const tasks = useTaskDesk('all', scope);
@@ -173,8 +203,9 @@ export function useTaskBoard(): TaskBoardState {
   // The checklist is the viewer's own shift; it has no "handed off" half,
   // and no helpdesk status either: a ticket filter leaves tasks only.
   const rows = useMemo<TaskBoardRow[]>(
-    () => sortTaskBoardRows([...(scope === 'mine' && !ticketActive ? checklistAll : []), ...taskRows.map(taskBoardRowFromTask)]),
-    [checklistAll, scope, taskRows, ticketActive],
+    () =>
+      sortTaskBoardRowsBy([...(scope === 'mine' && !ticketActive ? checklistAll : []), ...taskRows.map(taskBoardRowFromTask)], sort),
+    [checklistAll, scope, taskRows, ticketActive, sort],
   );
 
   // The pinned column is remembered per staffer; the click answers before the write lands.
@@ -256,6 +287,35 @@ export function useTaskBoard(): TaskBoardState {
     [setParams],
   );
 
+  // A pick is remembered per staffer (the checklist-column pattern) and drops any `?group=` / `?sort=` link
+  // override, so the remembered choice governs every view from here on.
+  const writeGroup = useRef(groupSetting.set);
+  writeGroup.current = groupSetting.set;
+  const writeSort = useRef(sortSetting.set);
+  writeSort.current = sortSetting.set;
+  const setGroup = useCallback(
+    (next: TaskBoardGroupBy) => {
+      setGroupLocal(next);
+      if (searchParams.has('group')) setParams({ group: null });
+      writeGroup.current(next, 'staff').catch(() => {
+        setGroupLocal(null);
+        toast.error('Could not remember the grouping.');
+      });
+    },
+    [searchParams, setParams],
+  );
+  const setSort = useCallback(
+    (next: TaskBoardSort) => {
+      setSortLocal(next);
+      if (searchParams.has('sort')) setParams({ sort: null });
+      writeSort.current(next, 'staff').catch(() => {
+        setSortLocal(null);
+        toast.error('Could not remember the order.');
+      });
+    },
+    [searchParams, setParams],
+  );
+
   /** The open row moves without a server round-trip: J / K stay instant. */
   const setOpen = useCallback(
     (key: string | null) => {
@@ -308,6 +368,10 @@ export function useTaskBoard(): TaskBoardState {
     query,
     project,
     layout,
+    group,
+    sort,
+    setGroup,
+    setSort,
     composing,
     composeNote,
     ticketStatuses,

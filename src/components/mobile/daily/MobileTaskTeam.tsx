@@ -1,30 +1,58 @@
 'use client';
 
 /**
- * The task sheet's TEAM row — who is on it (lead first), and the phone's way
- * to add another owner (DoD 2026-09-29: several owners on a ticket follow-up,
- * desktop AND phone). The picker is the house `AssigneeComboboxPanel`, rows
- * painted with `StaffAvatar` — the same panel the phone composer's owner step
- * uses. Writes `PATCH /api/tasks/[id] { assigneeStaffIds }`.
+ * WHO is on the task — read-only on the record (owner 2026-10-03: "adding staff must be behind the
+ * three dots"). `MobileTaskPeople` paints the faces: the lead wears a name (+ "lead" when there are
+ * others), everyone else a face. `MobileTaskAddPerson` is the ⋯ menu's "Add Person…" sheet: the
+ * house `AssigneeComboboxPanel`, rows painted with `StaffAvatar`. Writes
+ * `PATCH /api/tasks/[id] { assigneeStaffIds }`.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Plus } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { StaffBadge } from '@/design-system/components/StaffBadge';
 import { AssigneeComboboxPanel } from '@/design-system/components/AssigneeCombobox';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import type { TaskDeskPerson } from '@/lib/tasks/task-desk-row';
 import { useSetTaskOwners } from '@/lib/tasks/use-my-tasks';
 
-export function MobileTaskTeam({ taskId, people }: { taskId: number; people: readonly TaskDeskPerson[] }) {
+export function MobileTaskPeople({ people }: { people: readonly TaskDeskPerson[] }) {
+  if (people.length === 0) return null;
+  return (
+    <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-role-caption" data-disclosure-slot="people">
+      {people.map((person, index) =>
+        index === 0 ? (
+          <span key={person.id} className="inline-flex shrink-0 items-center gap-1 text-text-default">
+            <StaffAvatar staffId={person.id} name={person.name} size="xs" alt="" />
+            <StaffBadge staffId={person.id} name={person.name} />
+            {people.length > 1 ? <span className="text-text-muted">lead</span> : null}
+          </span>
+        ) : (
+          <StaffAvatar key={person.id} staffId={person.id} name={person.name} size="xs" alt={person.name} className="shrink-0" />
+        ),
+      )}
+    </span>
+  );
+}
+
+export function MobileTaskAddPerson({
+  taskId,
+  people,
+  open,
+  onOpenChange,
+}: {
+  taskId: number;
+  people: readonly TaskDeskPerson[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const setOwners = useSetTaskOwners();
-  const [adding, setAdding] = useState(false);
   const [query, setQuery] = useState('');
   const [staff, setStaff] = useState<StaffMember[] | null>(null);
 
   useEffect(() => {
-    if (!adding || staff) return;
+    if (!open || staff) return;
     let active = true;
     getActiveStaff()
       .then((rows) => active && setStaff([...rows].sort((a, b) => a.name.localeCompare(b.name))))
@@ -32,9 +60,9 @@ export function MobileTaskTeam({ taskId, people }: { taskId: number; people: rea
     return () => {
       active = false;
     };
-  }, [adding, staff]);
+  }, [open, staff]);
 
-  const memberIds = people.map((p) => p.id);
+  const memberIds = useMemo(() => people.map((p) => p.id), [people]);
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return (staff ?? [])
@@ -48,28 +76,12 @@ export function MobileTaskTeam({ taskId, people }: { taskId: number; people: rea
   }, [memberIds, query, staff]);
 
   return (
-    <div className="border-b border-border-hairline px-1 py-2" data-testid="mobile-task-team">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-role-caption text-text-muted">
-        <span className="font-semibold text-text-default">Team:</span>
-        {people.map((person, index) => (
-          <span key={person.id} className="inline-flex items-center gap-1 text-text-default">
-            <StaffAvatar staffId={person.id} name={person.name} size="xs" alt="" />
-            <StaffBadge staffId={person.id} name={person.name} />
-            {index === 0 ? <span className="text-text-muted">(lead)</span> : null}
-          </span>
-        ))}
-        <button
-          type="button"
-          onClick={() => setAdding((v) => !v)}
-          aria-expanded={adding}
-          className="ml-auto inline-flex min-h-11 items-center gap-1 px-2 font-semibold text-text-default"
-        >
-          <Plus aria-hidden className="h-4 w-4" />
-          Add person
-        </button>
-      </div>
-      {adding ? (
-        <div className="pt-1">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" aria-describedby={undefined} data-testid="mobile-task-add-person">
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>Add Person</SheetTitle>
+        </SheetHeader>
+        <SheetBody>
           <AssigneeComboboxPanel
             query={query}
             onQueryChange={setQuery}
@@ -78,18 +90,20 @@ export function MobileTaskTeam({ taskId, people }: { taskId: number; people: rea
             emptyMessage={staff == null ? 'Loading staff…' : 'Everyone is already on it'}
             roster={false}
             onSelect={(row) => {
-              setOwners.mutate({ taskId, assigneeStaffIds: [...memberIds, row.id] });
-              setAdding(false);
+              setOwners.mutate(
+                { taskId, assigneeStaffIds: [...memberIds, row.id] },
+                { onSuccess: () => onOpenChange(false) },
+              );
               setQuery('');
             }}
           />
-        </div>
-      ) : null}
-      {setOwners.error ? (
-        <p role="alert" className="pt-1 text-role-micro text-text-danger">
-          {setOwners.error.message}
-        </p>
-      ) : null}
-    </div>
+          {setOwners.error ? (
+            <p role="alert" className="pt-2 text-role-micro text-text-danger">
+              {setOwners.error.message}
+            </p>
+          ) : null}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

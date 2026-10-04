@@ -13,6 +13,19 @@ export type ThreadMessageProvider = (typeof THREAD_MESSAGE_PROVIDERS)[number];
 export const THREAD_MESSAGE_VISIBILITIES = ['internal', 'public'] as const;
 export type ThreadMessageVisibility = (typeof THREAD_MESSAGE_VISIBILITIES)[number];
 
+/**
+ * Thread-only anchors — entity_threads accepts these beyond SURFACE_ENTITY_TYPES
+ * (they are not feed/signal anchors, so they stay out of that registry and its
+ * pinned CHECKs). Mirrors `entity_threads_entity_type_chk`
+ * (2026-10-03_entity_threads_task_document_anchor.sql). `opsEventEntityType`
+ * is the spine vocab the THREAD_MESSAGE ops_events row is stamped with.
+ */
+export const THREAD_ANCHOR_EXTRA = {
+  /** One thread per task document; each message's meta carries the quoted passage. */
+  TASK_DOCUMENT: { parentTable: 'work_assignment_documents', opsEventEntityType: 'other' },
+} as const;
+export type ThreadAnchorExtraType = keyof typeof THREAD_ANCHOR_EXTRA;
+
 /** thread_links discriminator — the 7 anchors + SKU (entity_id = sku_catalog.id). */
 export const THREAD_LINK_ENTITY_TYPES = [
   'RECEIVING', 'RECEIVING_LINE', 'SERIAL_UNIT', 'ORDER',

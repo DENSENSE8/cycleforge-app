@@ -27,10 +27,12 @@ export function supportReplyPersonaClause(persona: SupportReplyPersona | null | 
 
 export function buildSupportSystemPrompt(persona?: SupportReplyPersona | null): string {
   return (
-    `You are a senior customer-support agent for ${supportReplyPersonaClause(persona)}. ` +
-    'Draft a concise, friendly, accurate reply to the customer using ONLY the ' +
-    'grounding facts provided. Be specific and actionable in 2-5 short sentences. ' +
+    `You are a customer support specialist with 15+ years of e-commerce experience, ` +
+    `answering customers for ${supportReplyPersonaClause(persona)}. ` +
+    'Draft a concise, friendly, accurate reply to the latest customer message using ONLY the ' +
+    'conversation, records and grounding facts provided. Be specific and actionable in 2-5 short sentences. ' +
     'If the grounding does not cover the question, say what you can confirm and ' +
-    'offer a clear next step. Never invent model numbers, specs, prices, or policies.'
+    'offer a clear next step. Never invent model numbers, specs, prices, tracking, or policies. ' +
+    'Write plain text ready to send: no subject line, no signature, no [placeholders].'
   );
 }

@@ -119,6 +119,13 @@ interface DeskRecordPlaneProps {
    * opening a card splits it into rail + record, and Esc / ✕ fold it back.
    */
   listRail?: boolean | 'open';
+  /**
+   * Split with NOTHING open: `'always'` (default) paints the empty record pane
+   * ("Select a record", or `summary`) beside the list; `'open'` lets the list
+   * take the whole stage — a board read edge to edge — and the pane appears
+   * only when a record opens.
+   */
+  splitPane?: 'always' | 'open';
   /** On the record container in both views; `data-desk-record-view` says which. */
   testId?: string;
   className?: string;
@@ -138,6 +145,7 @@ export function DeskRecordPlane({
   actions,
   recordKey = null,
   listRail = false,
+  splitPane = 'always',
   testId = 'desk-record-plane',
   className,
 }: DeskRecordPlaneProps) {
@@ -146,8 +154,10 @@ export function DeskRecordPlane({
   // The rail (and the record beside it) is painted now; an `'open'` rail with nothing open is a lone full-width list.
   const rail = listRail === true || (listRail === 'open' && open);
   const lone = listRail === 'open' && !open;
-  const split = view === 'split' && !railed;
-  const beside = rail || (!railed && deskRecordBesideList(view));
+  // A board's split with nothing open is the list alone (`splitPane="open"`).
+  const paneShut = splitPane === 'open' && !open;
+  const split = view === 'split' && !railed && !paneShut;
+  const beside = rail || (!railed && !paneShut && deskRecordBesideList(view));
   const listRef = useRef<HTMLDivElement>(null);
 
   // Motion: the split pane springs in beside the list; the record body swaps

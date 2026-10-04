@@ -5,7 +5,7 @@ import {
   arrivalTapeEntry,
   type SettledArrival,
 } from '@/components/mobile/receiving/arrival-station-tape';
-import { pushStationTape } from '@/components/mobile/station/station-tape';
+import { pushStationTape } from '@/lib/mobile/station-tape';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 const NOW = Date.UTC(2026, 8, 5, 17, 0, 0);

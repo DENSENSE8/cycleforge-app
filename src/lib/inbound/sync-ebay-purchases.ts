@@ -1,34 +1,79 @@
-/** eBay buyer purchase → Incoming sync orchestration (Universal Incoming Track A, plan §5.3). */
+/**
+ * eBay buyer purchase → Incoming sync (Universal Incoming Track A, plan §5.3).
+ *
+ * Every connected buyer account's GetOrders (OrderRole=Buyer) pull is grouped
+ * into one `InboundOrderDraft` per eBay order (`ebayPurchaseDrafts`) and
+ * landed through `ingestInboundOrder` — the one inbound writer, so the order
+ * carries `inbound_order` identity and content-hash idempotency.
+ *
+ * Redundancy: each run reads a modified-time window that starts
+ * `EBAY_PURCHASE_SYNC_OVERLAP_MS` before the last successful run, so missed
+ * runs, eBay's modified-time lag and tracking added after the first landing
+ * are all re-read. Re-reads cost nothing: an unchanged order is a content-hash
+ * no-op, a changed one (tracking appeared, status moved) updates in place. The
+ * cursor only advances when the fetch succeeded and no order failed for a
+ * retryable reason; a refused (invalid) order never pins it.
+ */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
-import { ingestPurchase } from './ingest-purchase';
 import {
   fetchBuyerPurchaseOrders,
+  MOD_TIME_MAX_MS,
   type BuyerAccountRef,
   type BuyerPurchaseLine,
 } from '@/lib/ebay/purchase-client';
+import { ingestInboundOrder, InboundOrderRefused, type IngestInboundOrderContext } from './ingest-inbound-order';
+import { ebayPurchaseDrafts } from './ebay-purchase-draft';
 
-export interface SyncEbayPurchasesResult {
+/** How far before the last successful run each window starts (12 missed 30-min runs + eBay mod-time lag). */
+export const EBAY_PURCHASE_SYNC_OVERLAP_MS = 6 * 60 * 60 * 1000;
+
+const SYNC_CONTEXT: IngestInboundOrderContext = { origin: 'sync', source: 'ebay', staffId: null };
+
+/**
+ * ModTimeFrom for this run: the last successful run minus the overlap, never
+ * older than eBay's 30-day mod-time limit. No cursor → null (first pull, the
+ * client's 30-day NumberOfDays).
+ */
+export function ebayPurchaseWindowStart(cursor: Date | null, nowMs: number): string | null {
+  if (!cursor || !Number.isFinite(cursor.getTime())) return null;
+  const from = Math.min(cursor.getTime(), nowMs) - EBAY_PURCHASE_SYNC_OVERLAP_MS;
+  return new Date(Math.max(from, nowMs - MOD_TIME_MAX_MS)).toISOString();
+}
+
+/** Per-order outcome counts — what the cron run summary and the refresh buttons report. */
+export interface EbayPurchaseSyncCounts {
+  /** New orders landed. */
+  landed: number;
+  /** Known orders whose content changed (tracking appeared, status moved, lines changed). */
+  updated: number;
+  /** Re-read inside the overlap window with the same content — no write. */
+  unchanged: number;
+  failed: number;
+}
+
+export interface SyncEbayPurchasesResult extends EbayPurchaseSyncCounts {
   orgId: OrgId;
   accounts: number;
+  ordersFetched: number;
   linesFetched: number;
-  ingested: number;
-  created: number;
   errors: string[];
 }
+
+export type EbayIngest = typeof ingestInboundOrder;
 
 export interface SyncEbayPurchasesDeps {
   listBuyerAccounts: (orgId: OrgId) => Promise<BuyerAccountRef[]>;
   fetchPurchases: (orgId: OrgId, account: BuyerAccountRef, sinceIso: string | null) => Promise<BuyerPurchaseLine[]>;
-  ingest: typeof ingestPurchase;
+  ingest: EbayIngest;
   getCursor: (resource: string) => Promise<Date | null>;
   setCursor: (resource: string, at: Date) => Promise<void>;
   now: () => number;
 }
 
-async function defaultListBuyerAccounts(orgId: OrgId): Promise<BuyerAccountRef[]> {
+export async function listEbayBuyerAccounts(orgId: OrgId): Promise<BuyerAccountRef[]> {
   const r = await tenantQuery<{ account_name: string }>(
     orgId,
     `SELECT account_name
@@ -43,10 +88,14 @@ async function defaultListBuyerAccounts(orgId: OrgId): Promise<BuyerAccountRef[]
   return r.rows.map((row) => ({ accountName: row.account_name }));
 }
 
+export function ebayPurchaseCursorResource(orgId: OrgId, accountName: string): string {
+  return `ebay_purchases:${orgId}:${accountName}`;
+}
+
 const defaultDeps: SyncEbayPurchasesDeps = {
-  listBuyerAccounts: defaultListBuyerAccounts,
+  listBuyerAccounts: listEbayBuyerAccounts,
   fetchPurchases: fetchBuyerPurchaseOrders,
-  ingest: ingestPurchase,
+  ingest: ingestInboundOrder,
   getCursor: getSyncCursor,
   setCursor: updateSyncCursor,
   now: () => Date.now(),
@@ -56,70 +105,91 @@ function msg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+export interface LandEbayPurchasesResult extends EbayPurchaseSyncCounts {
+  orders: number;
+  errors: string[];
+  /** A failure a re-run could fix (not a refused draft) — the caller must not advance its cursor. */
+  retryable: boolean;
+}
+
+/** Map one account's fetched lines to drafts and land each order through the one inbound writer. */
+export async function landEbayPurchases(
+  orgId: OrgId,
+  account: BuyerAccountRef,
+  lines: readonly BuyerPurchaseLine[],
+  ingest: EbayIngest,
+): Promise<LandEbayPurchasesResult> {
+  const out: LandEbayPurchasesResult = { orders: 0, landed: 0, updated: 0, unchanged: 0, failed: 0, errors: [], retryable: false };
+  const skipped = lines.filter((l) => !l.sourceOrderId?.trim()).length;
+  if (skipped > 0) out.errors.push(`${account.accountName}: skipped ${skipped} line(s) with no order id`);
+
+  for (const { orderId, draft } of ebayPurchaseDrafts(lines, account.accountName)) {
+    out.orders += 1;
+    try {
+      const r = await ingest(orgId, draft, SYNC_CONTEXT);
+      if (r.unchanged) out.unchanged += 1;
+      else if (r.created) out.landed += 1;
+      else out.updated += 1;
+    } catch (e) {
+      out.failed += 1;
+      if (!(e instanceof InboundOrderRefused)) out.retryable = true;
+      out.errors.push(`${account.accountName}/${orderId}: ${msg(e)}`);
+    }
+  }
+  return out;
+}
+
 /** Sync every connected buyer account's purchases into Incoming for one org. */
 export async function syncEbayPurchasesToReceiving(
   orgId: OrgId,
   deps: SyncEbayPurchasesDeps = defaultDeps,
 ): Promise<SyncEbayPurchasesResult> {
   const accounts = await deps.listBuyerAccounts(orgId);
-  let linesFetched = 0;
-  let ingested = 0;
-  let created = 0;
-  const errors: string[] = [];
+  const result: SyncEbayPurchasesResult = {
+    orgId,
+    accounts: accounts.length,
+    ordersFetched: 0,
+    linesFetched: 0,
+    landed: 0,
+    updated: 0,
+    unchanged: 0,
+    failed: 0,
+    errors: [],
+  };
 
   for (const account of accounts) {
-    const resource = `ebay_purchases:${orgId}:${account.accountName}`;
-    const since = await deps.getCursor(resource);
+    const resource = ebayPurchaseCursorResource(orgId, account.accountName);
+    // The next window is anchored on this run's START, so an order modified
+    // while this run pages through GetOrders is re-read next time.
+    const runStartedAt = deps.now();
+    const since = ebayPurchaseWindowStart(await deps.getCursor(resource), runStartedAt);
 
     let lines: BuyerPurchaseLine[];
     try {
-      lines = await deps.fetchPurchases(orgId, account, since ? since.toISOString() : null);
+      lines = await deps.fetchPurchases(orgId, account, since);
     } catch (e) {
-      errors.push(`${account.accountName}: fetch failed: ${msg(e)}`);
+      result.errors.push(`${account.accountName}: fetch failed: ${msg(e)}`);
       continue;
     }
-    linesFetched += lines.length;
+    result.linesFetched += lines.length;
 
-    for (const line of lines) {
-      if (!line.sourceOrderId) {
-        errors.push(`${account.accountName}: skipped a line with no order id`);
-        continue;
-      }
-      try {
-        const res = await deps.ingest(orgId, {
-          sourceType: 'ebay',
-          accountLabel: account.accountName,
-          sourceOrderId: line.sourceOrderId,
-          sourceLineItemId: line.sourceLineItemId ?? null,
-          sku: line.sku ?? null,
-          itemName: line.itemName ?? null,
-          quantityExpected: line.quantity ?? 1,
-          conditionGrade: line.conditionGrade ?? undefined,
-          legacyOrderId: line.legacyOrderId ?? null,
-          sellerUsername: line.sellerUsername ?? null,
-          purchaseOrderStatus: line.purchaseOrderStatus ?? null,
-          paymentStatus: line.paymentStatus ?? null,
-          listingUrl: line.listingUrl ?? null,
-          orderNumber: line.orderNumber ?? line.sourceOrderId,
-          vendorOrSellerName: line.vendorOrSellerName ?? line.sellerUsername ?? null,
-          trackingNumber: line.trackingNumber ?? null,
-          carrierCode: line.carrierCode ?? null,
-        });
-        ingested += 1;
-        if (res.created) created += 1;
-      } catch (e) {
-        errors.push(`${account.accountName}/${line.sourceOrderId}: ${msg(e)}`);
-      }
-    }
+    const landed = await landEbayPurchases(orgId, account, lines, deps.ingest);
+    result.ordersFetched += landed.orders;
+    result.landed += landed.landed;
+    result.updated += landed.updated;
+    result.unchanged += landed.unchanged;
+    result.failed += landed.failed;
+    result.errors.push(...landed.errors);
 
-    // Advance the cursor only after a successful fetch (including empty pulls).
-    // Failed fetches `continue` above without moving `since`.
+    // A retryable failure keeps the old cursor: the next run re-reads the same
+    // window (plus the overlap) and the orders that did land are no-ops.
+    if (landed.retryable) continue;
     try {
-      await deps.setCursor(resource, new Date(deps.now()));
+      await deps.setCursor(resource, new Date(runStartedAt));
     } catch (e) {
-      errors.push(`${account.accountName}: cursor update failed: ${msg(e)}`);
+      result.errors.push(`${account.accountName}: cursor update failed: ${msg(e)}`);
     }
   }
 
-  return { orgId, accounts: accounts.length, linesFetched, ingested, created, errors };
+  return result;
 }

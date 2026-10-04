@@ -39,6 +39,8 @@ export type CsvOrderImportResult = {
   /** In-batch duplicate order numbers, first occurrence wins. */
   skipped: number;
   errors: Array<{ row: number; reason: string }>;
+  /** Open unmatched pack / dock scans the imported tracking numbers resolved. */
+  resolvedExceptions: number;
 };
 
 export type CsvOrderRowStatus = 'ready' | 'action_required';
@@ -186,6 +188,7 @@ export async function postCsvOrderImport(body: {
         updated: json.updated ?? 0,
         skipped: json.skipped ?? 0,
         errors: Array.isArray(json.errors) ? json.errors : [],
+        resolvedExceptions: Number(json.resolvedExceptions) || 0,
       },
     };
   } catch {

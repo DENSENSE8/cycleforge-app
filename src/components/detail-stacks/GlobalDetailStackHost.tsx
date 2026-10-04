@@ -23,6 +23,10 @@ const CompactOrderPeek = dynamic(
   () => import('@/components/order-record/CompactOrderPeek').then((m) => m.CompactOrderPeek),
   { ssr: false },
 );
+const ProductPeek = dynamic(
+  () => import('@/components/detail-stacks/ProductPeek').then((m) => m.ProductPeek),
+  { ssr: false },
+);
 const FbaBoardDetailPanel = dynamic(
   () => import('@/components/fba/FbaBoardDetailPanel').then((m) => m.FbaBoardDetailPanel),
   { ssr: false },
@@ -133,6 +137,10 @@ export function GlobalDetailStackHost() {
         disableMoveDown
       />
     );
+  }
+
+  if (loaded.kind === 'sku') {
+    return <ProductPeek sku={loaded.sku} onClose={handleClose} />;
   }
 
   return null;

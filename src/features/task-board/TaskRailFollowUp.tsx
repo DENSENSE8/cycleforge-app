@@ -24,7 +24,7 @@ import { useState } from 'react';
 import { NotebookPen, Phone, Send, type LucideIcon } from 'lucide-react';
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
 import { TextField } from '@/design-system/primitives/TextField';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useTaskFollowUps } from '@/lib/tasks/use-task-workspace';
 import type { TaskDeskPatch } from '@/features/tasks/useTaskDesk';
 import { addDaysToDateKey, getCurrentPSTDateKey, warehouseCivilTimeToInstant } from '@/utils/date';
@@ -188,19 +188,18 @@ export function TaskRailFollowUp({
                 Now
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={submit}
-              disabled={!canLog}
-              data-testid="task-follow-up-log"
-              className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-full bg-surface-inverse pl-3.5 pr-1.5 text-[11px] font-semibold text-text-inverse transition-opacity disabled:opacity-40"
-            >
-              <Send aria-hidden className="size-3.5" />
-              {log.isPending ? 'Logging…' : 'Log'}
-              <KeyboardKey size="xs" tone="inverse">
-                Ctrl ↵
-              </KeyboardKey>
-            </button>
+            <HoverTooltip label="Log" shortcut="Ctrl ↵" placement="above" asChild>
+              <button
+                type="button"
+                onClick={submit}
+                disabled={!canLog}
+                data-testid="task-follow-up-log"
+                className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-full bg-surface-inverse px-3.5 text-[11px] font-semibold text-text-inverse transition-opacity disabled:opacity-40"
+              >
+                <Send aria-hidden className="size-3.5" />
+                {log.isPending ? 'Logging…' : 'Log'}
+              </button>
+            </HoverTooltip>
           </div>
         </section>
       ) : null}

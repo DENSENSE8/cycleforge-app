@@ -5,7 +5,7 @@ import { unboxKpiFeedTab } from '@/utils/unbox-workspace-state';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { toPSTDateKey } from '@/utils/date';
 
-/** URL param a clicked KPI tile toggles; `ReceivingLinesTable` reads it to narrow rows on Unbox. */
+/** URL param a clicked KPI tile toggles; `ReceivingLedgers` reads it to narrow rows on Unbox. */
 export const UNBOX_KPI_FILTER_PARAM = 'ukpi';
 
 /** URL time window for the Band 2 KPI canvas (`?urange=`). */

@@ -11,10 +11,10 @@
  * this one list (`?domain=&kind=`), not views of a page.
  */
 
-import type { TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
 import { EXCEPTION_KIND_PARAM, EXCEPTION_RECORD_PARAM } from '@/lib/exceptions/types';
 
-export const EXCEPTIONS_VIEW: TriageViewDecl = {
+export const EXCEPTIONS_VIEW = triageView({
   id: 'exceptions.list',
   grain: 'exception',
   noun: { one: 'exception', many: 'exceptions' },
@@ -26,7 +26,8 @@ export const EXCEPTIONS_VIEW: TriageViewDecl = {
   chips: { owner: 'face', param: EXCEPTION_KIND_PARAM },
   paging: 'client',
   status: 'date',
+  slots: { identity: 'the blocked record (order number, PO, carton…)', channel: 'brand', person: 'kind', quickLook: 'peek', photo: 'none' },
   facts: [{ id: 'detail', tier: 'always' }],
   sections: null,
   next: [],
-};
+});

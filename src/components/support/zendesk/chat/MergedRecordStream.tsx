@@ -24,6 +24,14 @@ import { CONVERSATION_INSET } from '@/design-system/primitives/conversation-chro
 import { formatDateTimePST, formatDateWithOrdinal, toPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { renderBlockMarkdown } from '@/lib/support/markdown';
+import {
+  ticketItemsForComment,
+  type SupportProductFace,
+  type SupportTicketItem,
+} from '@/lib/support/ticket-items-shared';
+import { useSupportTicketItems } from '@/hooks/useSupportTicketItems';
+import { openDetailStack } from '@/lib/detail-stacks/open-store';
+import { TicketProductCard } from '@/components/ui/TicketProductCard';
 import { ConversationMessageCard } from '@/design-system/primitives/ConversationMessageCard';
 import { isConversationAtEnd, resolveAuthor } from './support-chat-utils';
 import {
@@ -38,6 +46,7 @@ import {
 
 /** Rows rendered before the "Show earlier" control appears, and the size of one page of history. */
 const STREAM_PAGE = 60;
+const NO_TICKET_ITEMS: SupportTicketItem[] = [];
 
 interface ZAttachmentWire {
   id: number;
@@ -188,17 +197,50 @@ function MessageMedia({
   );
 }
 
+/** Desk: a product card opens the `sku` peek in the right rail (P7). */
+function openProductPeek(face: SupportProductFace) {
+  openDetailStack({ kind: 'sku', id: face.sku });
+}
+
 function MessageCopy({
   msg,
   item,
+  commentId,
+  ticketItems,
   onOpenPhoto,
 }: {
   msg: TicketMessageDetail | undefined;
   item: MergedRecordItem;
+  /** Helpdesk comment id; `null` for optimistic echoes (they carry raw tokens). */
+  commentId: number | null;
+  ticketItems: readonly SupportTicketItem[];
   onOpenPhoto?: (url: string) => void;
 }) {
   if (msg) {
-    return <>{renderBlockMarkdown(msg.body, { onOpenPhoto })}</>;
+    // The ticket is the system of record for what we sent (P7): a mirrored
+    // comment's cards come from the log rows bound to it, and its readable
+    // email line is dropped so the product paints once.
+    const { body, items } = ticketItemsForComment(msg.body, commentId, ticketItems);
+    return (
+      <>
+        {renderBlockMarkdown(body, {
+          onOpenPhoto,
+          renderProduct: (ref, key) => (
+            <TicketProductCard key={key} {...ref} onOpen={openProductPeek} />
+          ),
+        })}
+        {items.map((it) => (
+          <TicketProductCard
+            key={it.id}
+            skuCatalogId={it.product.skuCatalogId}
+            role={it.role}
+            qty={it.qty}
+            product={it.product}
+            onOpen={openProductPeek}
+          />
+        ))}
+      </>
+    );
   }
   return (
     <>
@@ -212,9 +254,13 @@ function MessageCopy({
 
 function StreamRow({
   item,
+  commentId,
+  ticketItems,
   onOpenPhoto,
 }: {
   item: MergedRecordItem;
+  commentId: number | null;
+  ticketItems: readonly SupportTicketItem[];
   onOpenPhoto?: (url: string) => void;
 }) {
   const msg: TicketMessageDetail | undefined = item.message;
@@ -232,7 +278,13 @@ function StreamRow({
         data-testid={ours ? 'ticket-message-ours' : 'ticket-message'}
         footer={<MessageMedia msg={msg} item={item} onOpenPhoto={onOpenPhoto} />}
       >
-        <MessageCopy msg={msg} item={item} onOpenPhoto={onOpenPhoto} />
+        <MessageCopy
+          msg={msg}
+          item={item}
+          commentId={commentId}
+          ticketItems={ticketItems}
+          onOpenPhoto={onOpenPhoto}
+        />
       </ConversationMessageCard>
     );
   }
@@ -248,7 +300,13 @@ function StreamRow({
       data-testid="ticket-stream-event"
       footer={<MessageMedia msg={undefined} item={item} onOpenPhoto={onOpenPhoto} />}
     >
-      <MessageCopy msg={undefined} item={item} onOpenPhoto={onOpenPhoto} />
+      <MessageCopy
+        msg={undefined}
+        item={item}
+        commentId={null}
+        ticketItems={ticketItems}
+        onOpenPhoto={onOpenPhoto}
+      />
     </ConversationMessageCard>
   );
 }
@@ -329,6 +387,17 @@ export function MergedRecordStream({
     );
   }, [comments, agentsById, usersById, requesterId, requesterName, requesterEmail, events]);
 
+  // One read of what was sent on this ticket for the whole thread, not one per message.
+  const { data: ticketItems = NO_TICKET_ITEMS } = useSupportTicketItems(
+    previewComments || ticketId <= 0 ? null : ticketId,
+  );
+  /** Row id → helpdesk comment id. Optimistic echoes carry negative temp ids: no binding. */
+  const commentIdByRow = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of comments) if (c.id > 0) map.set(`ticket-comment:${c.id}`, c.id);
+    return map;
+  }, [comments]);
+
   const [windowSize, setWindowSize] = useState(STREAM_PAGE);
   useEffect(() => setWindowSize(STREAM_PAGE), [ticketId]);
 
@@ -408,7 +477,12 @@ export function MergedRecordStream({
                 </span>
               </div>
             ) : null}
-            <StreamRow item={item} onOpenPhoto={onOpenPhoto} />
+            <StreamRow
+              item={item}
+              commentId={commentIdByRow.get(String(item.id)) ?? null}
+              ticketItems={ticketItems}
+              onOpenPhoto={onOpenPhoto}
+            />
           </Fragment>
         );
       })}

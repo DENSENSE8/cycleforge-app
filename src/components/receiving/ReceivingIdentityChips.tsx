@@ -60,7 +60,7 @@ export function FulfillmentPickupPill({
   );
 }
 
-/** The slim, color-coded, last-8 chip cluster shared by the desktop receiving table row ({@link ReceivingLineOrderRow}) and the… */
+/** The slim, color-coded, last-8 chip cluster for a desktop receiving line (PO · SKU · tracking · serial). */
 interface ReceivingIdentityChipsProps {
   po?: string | null;
   sku?: string | null;

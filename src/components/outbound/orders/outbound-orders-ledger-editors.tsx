@@ -27,13 +27,13 @@ import { DateRangePickerField } from '@/design-system/components/DateRangePicker
 import { ExternalLinkActionIcon } from '@/design-system/components/ExternalLinkActionIcon';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
-import type { StageStaffLane } from '@/components/tables/compound/staff-stage-lane';
+import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
+import type { StageStaffLane } from '@/components/staff-assign/staff-stage-lane';
 import {
-  formatCompoundStageStepLine,
-  type CompoundSlotValue,
-  type CompoundStageStepFacts,
-} from '@/components/tables/compound/compound-row-model';
+  formatStageStepLine,
+  type SlotValue,
+  type StageStepFacts,
+} from '@/lib/tables/field-catalog/slot-value';
 import { Check, Copy, Pencil, ResizeCorner, Tag } from '@/components/Icons';
 import { conditionGradeTextClass, conditionGradeTone, orderRowQtyTone } from '@/lib/condition-tone';
 import {
@@ -76,7 +76,7 @@ const CONDITION_OPTIONS = conditionOptions('table').map((opt) => ({
   toneClass: conditionGradeTextClass(opt.value),
 }));
 
-export function stageFacts(value: CompoundSlotValue | null): CompoundStageStepFacts | null {
+export function stageFacts(value: SlotValue | null): StageStepFacts | null {
   return value && value.kind === 'stage_event' ? value : null;
 }
 
@@ -144,7 +144,7 @@ export function LedgerStageAssign({
   doneVerb: string;
   /** Staff list lane: Pick / Pack functional roles, or `all` (QC — no floor role). */
   role: StageStaffLane;
-  facts: CompoundStageStepFacts | null;
+  facts: StageStepFacts | null;
   selectedStaffId: number | null;
   /** Assignee face (`---` = nobody) — shown until the step is stamped. */
   assignedName: string;
@@ -159,7 +159,7 @@ export function LedgerStageAssign({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const done = Boolean(facts?.at);
-  // Assign chrome only while armed and unstamped (`canAssignCompoundStage`).
+  // Assign chrome only while armed and unstamped.
   const assignable = Boolean(onCommit) && !done;
   const actorId = facts?.whoStaffId ?? selectedStaffId;
   const actorName =
@@ -167,7 +167,7 @@ export function LedgerStageAssign({
     (selectedStaffId && assignedName !== '---' ? assignedName : '') ||
     null;
   const hasActor = Boolean(actorId || actorName);
-  const tip = formatCompoundStageStepLine(facts);
+  const tip = formatStageStepLine(facts);
 
   // Label muted, value ink (BRIEF §4): the verb is the label; the operator's
   // name is the value, so it reads in ink. Only the empty `—` stays muted.

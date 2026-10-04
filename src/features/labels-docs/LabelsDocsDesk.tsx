@@ -25,7 +25,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Layers, Printer, RotateCcw, Truck, Upload } from '@/components/Icons';
+import { Layers, MoreVertical, Printer, RotateCcw, Truck, Upload, X } from '@/components/Icons';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/design-system/primitives/DropdownMenu';
+import { IconButton } from '@/design-system/primitives';
 import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
@@ -62,6 +64,7 @@ import {
 import { cn } from '@/utils/_cn';
 import { marryByCardOrder, PRINT_STOCKS } from './desk-press';
 import { LabelBatchesDesk } from './LabelBatchesDesk';
+import { LabelBuyCard } from './buy/LabelBuyCard';
 import { reprintWarning, stockCount, useDeskPress, type PrintedLabelFace } from './use-desk-press';
 import {
   deskBands,
@@ -124,11 +127,14 @@ function ownsEnter(target: EventTarget | null): boolean {
  * print-job views. `?view=` picks; the sidebar owns the switch.
  */
 export function LabelsDocsDesk() {
-  const view = readDeskView(useSearchParams().get('view'));
-  return view === 'uploads' ? <LabelBatchesDesk /> : <PrintQueueDesk view={view} />;
+  const searchParams = useSearchParams();
+  const view = readDeskView(searchParams.get('view'));
+  // `?buy=1` — the Buy a label compose record (owner 2026-10-01, replaces the
+  // old `/shipping/buy-label` focus page; the rail stays the labels display).
+  return view === 'uploads' ? <LabelBatchesDesk /> : <PrintQueueDesk view={view} buyOpen={searchParams.get('buy') === '1'} />;
 }
 
-function PrintQueueDesk({ view }: { view: LabelPrintView }) {
+function PrintQueueDesk({ view, buyOpen }: { view: LabelPrintView; buyOpen: boolean }) {
   const pathname = usePathname() || '/';
   const router = useRouter();
   const apple = useApplePlatform();
@@ -556,21 +562,49 @@ function PrintQueueDesk({ view }: { view: LabelPrintView }) {
   const checkedStocks = PRINT_STOCKS.filter((stock) => checkedDocs.some((doc) => doc.stock === stock));
   const printWhere = checkedStocks.map((stock) => (stock === 'label' ? `labels → ${labelFace}` : `paperwork → ${paperFace}`)).join(' · ');
   const recordActions = openCard ? (
-    <Button
-      variant="ink"
-      size="sm"
-      radius="control"
-      className={HOTKEY_SCRIM_HOST_CLASS}
-      icon={reprint ? <RotateCcw /> : <Printer />}
-      loading={print.isPending}
-      disabled={checkedDocs.length === 0}
-      onClick={printChecked}
-      aria-keyshortcuts="Enter"
-      data-testid="labels-docs-print"
-    >
-      {checkedDocs.length === 0 ? 'Check a document' : `${reprint ? 'Reprint' : 'Print'} ${checkedDocs.length}`}
-      <HotkeyScrim keys={['Enter']} action={printWhere ? `Print ${printWhere}` : 'Print checked documents'} />
-    </Button>
+    <>
+      <Button
+        variant="ink"
+        size="sm"
+        radius="control"
+        className={HOTKEY_SCRIM_HOST_CLASS}
+        icon={reprint ? <RotateCcw /> : <Printer />}
+        loading={print.isPending}
+        disabled={checkedDocs.length === 0}
+        onClick={printChecked}
+        aria-keyshortcuts="Enter"
+        data-testid="labels-docs-print"
+      >
+        {checkedDocs.length === 0 ? 'Check a document' : `${reprint ? 'Reprint' : 'Print'} ${checkedDocs.length}`}
+        <HotkeyScrim keys={['Enter']} action={printWhere ? `Print ${printWhere}` : 'Print checked documents'} />
+      </Button>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <IconButton
+            icon={<MoreVertical className="size-3.5" />}
+            ariaLabel="More label actions"
+            size="xs"
+            radius="pill"
+            tone="neutral"
+            data-testid="labels-docs-record-more"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="bottom">
+          <DropdownMenuItem onSelect={openLabelPicker} data-testid="labels-docs-record-upload">
+            <Upload className="size-3.5" aria-hidden />
+            Upload replacement label PDF
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push('/shipping/label-intake?view=labels&buy=1')} data-testid="labels-docs-record-buy">
+            <Truck className="size-3.5" aria-hidden />
+            Buy another label
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled={print.isPending || docs.loading} onSelect={printOrder} data-testid="labels-docs-record-reprint">
+            <RotateCcw className="size-3.5" aria-hidden />
+            Reprint order (labels + paperwork)
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   ) : undefined;
 
   const summaryFacts: [string, string][] = [
@@ -635,7 +669,7 @@ function PrintQueueDesk({ view }: { view: LabelPrintView }) {
               size="sm"
               radius="control"
               icon={<Truck />}
-              onClick={() => router.push('/shipping/buy-label')}
+              onClick={() => router.push('/shipping/label-intake?view=labels&buy=1')}
               data-testid="labels-docs-buy-label"
             >
               Buy label
@@ -660,8 +694,12 @@ function PrintQueueDesk({ view }: { view: LabelPrintView }) {
             <PairOrderCard
               key={activeLabel.id}
               row={activeLabel}
-              onPaired={(orderRef) => {
-                setNotice(`Paired to ${orderRef ?? 'the order'} — its packing slip and manuals now ride with the label.`);
+              onPaired={(orderRef, alsoPaired) => {
+                setNotice(
+                  `Paired to ${orderRef ?? 'the order'} — its packing slip and manuals now ride with the label.${
+                    alsoPaired > 0 ? ` ${alsoPaired} more label${alsoPaired === 1 ? '' : 's'} for this buyer paired too.` : ''
+                  }`,
+                );
                 void refresh();
               }}
             />
@@ -721,7 +759,35 @@ function PrintQueueDesk({ view }: { view: LabelPrintView }) {
         family={family}
         feed={feed}
         cut={cut}
-        record={{
+        record={buyOpen ? {
+          title: 'Buy a label',
+          subtitle: 'For an order with no label, or a typed address',
+          actions: (
+            <Button
+              variant="secondary"
+              size="sm"
+              radius="control"
+              icon={<X aria-hidden />}
+              onClick={() => router.push('/shipping/label-intake?view=labels')}
+              data-testid="label-buy-close-header"
+            >
+              Close
+            </Button>
+          ),
+          noun: 'label buy',
+          testId: 'label-buy-record',
+          summary,
+          view: (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4">
+              <LabelBuyCard
+                onClose={() => router.push('/shipping/label-intake?view=labels')}
+                onChanged={() => void refresh()}
+              />
+            </div>
+          ),
+          strip: null,
+          rail: true,
+        } : {
           // The open card in the rail already names the order — the header only adds what the card does not say.
           title: <span className="sr-only">{openCard ? (openCard.orderRef ?? 'No order') : 'Order'}</span>,
           subtitle: openCard

@@ -8,11 +8,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Camera, Loader2 } from '@/components/Icons';
+import { Camera, Check, X } from '@/components/Icons';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { Button } from '@/design-system/primitives/Button';
 import { TextField } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStrip';
 import { DetailFact, DetailFacts, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { ScanValueField } from '@/components/mobile/repair/ScanValueField';
@@ -37,9 +38,6 @@ function looksLikeBarcode(value: string): boolean {
   const compact = value.trim().replace(/[\s-]/g, '');
   return compact.length >= 8 && /^[0-9]+$/.test(compact);
 }
-
-/** Flush sheet cells: instant ink press, no scale (the dock's press law). */
-const CELL = 'min-h-18 w-full shadow-none ring-0 transition-none enabled:active:scale-100';
 
 export function ProvisionalCreateSheet({
   open,
@@ -186,114 +184,106 @@ export function ProvisionalCreateSheet({
     });
   }, [barcode, busy, description, hasBarcode, onCreated, queryClient, ready, sourceRef, staffId, staged, title]);
 
-  const close = busy ? () => {} : onCancel;
-
   return (
-    <BottomSheet open={open} onClose={close} title="New SKU exception" scrollBody dragDisabled={busy}>
-      {/* BottomSheet portals out of the page's region; re-declare triage. The
-          negative margin cancels the sheet body's inset so the bands and the
-          footer cells run the full width of the panel, like every flat screen. */}
-      <ModeRegion mode="triage" className="-mx-6 -mb-6 flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 divide-y divide-mode-rule overflow-y-auto border-t border-mode-rule">
-          <DetailSectionHeading id="exception-identify">Identify · what is it</DetailSectionHeading>
-          <div className="space-y-3 bg-mode-panel px-mode-page py-3">
-            <TextField
-              value={title}
-              onChange={setTitle}
-              label="What is it? (required)"
-              inputMode="text"
-              autoComplete="off"
-              autoFocus={seedIsBarcode}
-            />
-            <ScanValueField
-              id="exception-barcode"
-              label="Barcode / UPC (optional)"
-              value={barcode}
-              onChange={setBarcode}
-              mono
-              helper={hasBarcode ? undefined : 'No barcode? Leave it empty — scan one on later from its details.'}
-            />
-          </div>
+    <Sheet open={open} onOpenChange={(next) => { if (!next && !busy) onCancel(); }}>
+      {/* The sheet portals out of the page's region; re-declare triage. The
+          body drops its inset so the bands and the footer cells run the full
+          width of the panel, like every flat screen. */}
+      <ModeRegion mode="triage" asChild>
+        <SheetContent side="bottom" aria-describedby={undefined}>
+          <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+            <SheetTitle>New SKU exception</SheetTitle>
+          </SheetHeader>
+          <SheetBody className="divide-y divide-mode-rule px-0 pt-0 pb-0">
+            <DetailSectionHeading id="exception-identify">Identify · what is it</DetailSectionHeading>
+            <div className="space-y-3 bg-mode-panel px-mode-page py-3">
+              <TextField
+                value={title}
+                onChange={setTitle}
+                label="What is it? (required)"
+                inputMode="text"
+                autoComplete="off"
+                autoFocus={seedIsBarcode}
+              />
+              <ScanValueField
+                id="exception-barcode"
+                label="Barcode / UPC (optional)"
+                value={barcode}
+                onChange={setBarcode}
+                mono
+                helper={hasBarcode ? undefined : 'No barcode? Leave it empty — scan one on later from its details.'}
+              />
+            </div>
 
-          <DetailSectionHeading id="exception-triage">Triage · for whoever merges it</DetailSectionHeading>
-          <div className="space-y-3 bg-mode-panel px-mode-page py-3">
-            <TextField
-              value={description}
-              onChange={(next) => setDescription(next.slice(0, DESCRIPTION_MAX))}
-              label="Notes — model, colour, markings, damage"
-              multiline
-              rows={3}
-              maxLength={DESCRIPTION_MAX}
-              autoComplete="off"
-            />
-            <MobileNativePhotoInput
-              ref={fileInput}
-              multiple
-              className="hidden"
-              onChange={(event) => {
-                addFiles(event.target.files);
-                event.target.value = '';
-              }}
-            />
-            <ComposerStagedPhotoStrip staged={staged} onRemove={busy ? () => {} : removeStaged} />
-            <Button
-              variant="secondary"
-              size="lg"
-              radius="flush"
-              className="w-full"
-              icon={<Camera />}
-              disabled={busy}
-              onClick={() => fileInput.current?.click()}
-            >
-              {staged.length > 0 ? `Add photos (${staged.length})` : 'Add photos'}
-            </Button>
-          </div>
+            <DetailSectionHeading id="exception-triage">Triage · for whoever merges it</DetailSectionHeading>
+            <div className="space-y-3 bg-mode-panel px-mode-page py-3">
+              <TextField
+                value={description}
+                onChange={(next) => setDescription(next.slice(0, DESCRIPTION_MAX))}
+                label="Notes — model, colour, markings, damage"
+                multiline
+                rows={3}
+                maxLength={DESCRIPTION_MAX}
+                autoComplete="off"
+              />
+              <MobileNativePhotoInput
+                ref={fileInput}
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  addFiles(event.target.files);
+                  event.target.value = '';
+                }}
+              />
+              <ComposerStagedPhotoStrip staged={staged} onRemove={busy ? () => {} : removeStaged} />
+              <Button
+                variant="secondary"
+                size="lg"
+                radius="flush"
+                className="w-full"
+                icon={<Camera />}
+                disabled={busy}
+                onClick={() => fileInput.current?.click()}
+              >
+                {staged.length > 0 ? `Add photos (${staged.length})` : 'Add photos'}
+              </Button>
+            </div>
 
-          <DetailSectionHeading id="exception-put-away">Put away</DetailSectionHeading>
-          <DetailFacts label="Put away">
-            <DetailFact label="Location" value={locationFace} mono />
-            <DetailFact label="Next" value="Count how many" />
-            <DetailFact
-              label="Status"
-              value="On hold — stock counts now, not sellable until it is merged into a real SKU"
-            />
-          </DetailFacts>
+            <DetailSectionHeading id="exception-put-away">Put away</DetailSectionHeading>
+            <DetailFacts label="Put away">
+              <DetailFact label="Location" value={locationFace} mono />
+              <DetailFact label="Next" value="Count how many" />
+              <DetailFact
+                label="Status"
+                value="On hold — stock counts now, not sellable until it is merged into a real SKU"
+              />
+            </DetailFacts>
 
-          {error ? (
-            <p role="alert" className="bg-rose-50 px-mode-page py-3 text-role-caption font-semibold text-rose-700">
-              {error}
-            </p>
-          ) : null}
-        </div>
+            {error ? (
+              <p role="alert" className="bg-rose-50 px-mode-page py-3 text-role-caption font-semibold text-rose-700">
+                {error}
+              </p>
+            ) : null}
+          </SheetBody>
 
-        <div className="grid grid-cols-10 divide-x divide-mode-rule border-t border-mode-rule bg-mode-bar">
-          <Button
-            variant="secondary"
-            size="lg"
-            radius="flush"
-            className={`${CELL} col-span-3 active:bg-mode-ink active:text-mode-panel`}
-            disabled={busy}
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            size="lg"
-            radius="flush"
-            className={`${CELL} col-span-7 font-bold active:bg-mode-ink`}
-            disabled={!ready || busy}
-            icon={busy ? <Loader2 className="animate-spin" /> : undefined}
-            onClick={() => void submit()}
-          >
-            {phase === 'creating'
-              ? 'Creating…'
-              : phase === 'uploading'
-                ? 'Uploading photos…'
-                : 'Create & count'}
-          </Button>
-        </div>
+          <DetailDock<'cancel' | 'create'>
+            label="SKU exception actions"
+            placement="sheet"
+            verbs={[
+              { id: 'cancel', label: 'Cancel', icon: <X />, disabled: busy },
+              {
+                id: 'create',
+                label: phase === 'creating' ? 'Creating…' : phase === 'uploading' ? 'Uploading photos…' : 'Create & count',
+                icon: <Check />,
+                primary: true,
+                disabled: !ready,
+                loading: busy,
+              },
+            ]}
+            onVerb={(verb) => (verb === 'cancel' ? onCancel() : submit())}
+          />
+        </SheetContent>
       </ModeRegion>
-    </BottomSheet>
+    </Sheet>
   );
 }

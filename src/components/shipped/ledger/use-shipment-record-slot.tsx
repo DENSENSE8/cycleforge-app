@@ -12,6 +12,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { useShipmentRecord } from '@/lib/shipments/shipment-record-client';
 import type { ShipmentRecord } from '@/lib/shipments/shipment-record-types';
+import { writeClipboardText } from '@/lib/clipboard';
 import { toast } from '@/lib/toast';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
@@ -199,11 +200,10 @@ export function useShipmentRecordSlot(
       id: 'copy-tracking',
       label: 'Copy tracking',
       icon: <Copy className={ICON_CLASS} />,
-      run: () =>
-        void navigator.clipboard?.writeText(record.tracking).then(
-          () => toast.success(`Copied ${record.tracking}`),
-          () => toast.error('Copy failed'),
-        ),
+      run: () => {
+        if (writeClipboardText(record.tracking)) toast.success(`Copied ${record.tracking}`);
+        else toast.error('Copy failed');
+      },
     });
     if (record.trackingUrl) {
       const url = record.trackingUrl;

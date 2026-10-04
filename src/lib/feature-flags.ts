@@ -177,11 +177,6 @@ export function isPlacementStranglePartsSort(): boolean {
   return readBoolEnv('PLACEMENT_STRANGLE_PARTS_SORT');
 }
 
-/** Placement-strangle CUTOVER for receiving default-putaway (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x — second live site). */
-export function isPlacementStrangleReceivingPutaway(): boolean {
-  return readBoolEnv('PLACEMENT_STRANGLE_RECEIVING_PUTAWAY');
-}
-
 /** Config-driven RMA restock placement (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x — third site). */
 export function isPlacementStrangleRmaRestock(): boolean {
   return readBoolEnv('PLACEMENT_STRANGLE_RMA_RESTOCK');

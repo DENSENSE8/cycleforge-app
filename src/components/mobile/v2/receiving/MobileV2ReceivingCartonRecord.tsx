@@ -15,9 +15,11 @@ import {
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { useCartonHub } from '@/components/mobile/receiving/useCartonHub';
 import { useCompleteCarton } from '@/components/mobile/receiving/useCompleteCarton';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
-import { ConfirmSheet } from '@/components/ui/BottomSheet';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
+import { MobileV2InboundOrderDoor } from '@/components/mobile/v2/inbound/MobileV2InboundOrderDoor';
+import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,6 +42,7 @@ import { sourcePlatformLabel } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 
 type SheetTab = 'details' | 'photos';
+type CartonVerb = 'photo' | 'scan' | 'photos' | 'unbox' | 'qc';
 
 function ticketId(raw: string | null | undefined): number | null {
   const digits = String(raw ?? '').replace(/\D/g, '');
@@ -100,7 +103,7 @@ export function MobileV2ReceivingCartonRecord() {
   if (loading || error || !data) {
     return (
       <div className="flex min-h-full flex-col bg-mode-panel">
-        <MobileDetailTopBar
+        <MobileV2DetailTopBar
           title={`R-${Number.isFinite(id) ? id : ''}`}
           subtitle="Receiving licence plate"
           backHref={back ?? '/m/receiving'}
@@ -139,7 +142,7 @@ export function MobileV2ReceivingCartonRecord() {
 
   return (
     <div className="flex min-h-full flex-col bg-mode-panel" data-testid="mobile-v2-receiving-carton">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         title={`R-${id}`}
         subtitle={`${platform} · Receiving`}
         meta={`${carton.tracking || 'No tracking'}${unboxedAt ? ` · ${unboxedAt}` : ''}`}
@@ -180,29 +183,38 @@ export function MobileV2ReceivingCartonRecord() {
       <div className="flex-1">
         {data.lines.map((line) => <CartonLineRow key={line.id} line={line} onOpen={() => { setSheetTab('details'); setSelected(line); }} />)}
         {data.lines.length === 0 ? <p className="px-6 py-16 text-center text-sm font-semibold text-text-soft">No items are linked to this receiving label.</p> : null}
+        {viewOnly ? null : <MobileV2InboundOrderDoor receivingId={id} returnTo={recordHref} />}
       </div>
 
-      <footer className="sticky bottom-0 z-sticky grid grid-cols-3 gap-2 border-t border-mode-rule bg-mode-panel p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        <Button variant="secondary" size="md" radius="surface" icon={<Camera />} onClick={() => router.push(photosHref)}>Photo</Button>
-        <Button variant="secondary" size="md" radius="surface" icon={<ScanBarcode />} onClick={() => router.replace(`/m/scan?mode=${viewOnly ? 'view' : 'operate'}`)}>Scan</Button>
-        {viewOnly ? (
-          <Button variant="secondary" size="md" radius="surface" icon={<Images />} onClick={() => router.push(`${photosHref}&mode=gallery`)}>Photos</Button>
-        ) : canUnbox ? (
-          <Button variant="primary" size="md" radius="surface" icon={<PackageCheck />} loading={unbox.phase === 'working'} onClick={() => setConfirmUnbox(true)}>Unbox</Button>
-        ) : (
-          <Button variant="primary" size="md" radius="surface" icon={<ListChecks />} onClick={() => router.push(`/m/r/${id}/qc`)}>QC</Button>
-        )}
-      </footer>
+      <DetailDock<CartonVerb>
+        label="Receiving actions"
+        verbs={[
+          { id: 'photo', label: 'Photo', icon: <Camera /> },
+          { id: 'scan', label: 'Scan', icon: <ScanBarcode /> },
+          viewOnly
+            ? { id: 'photos', label: 'Photos', icon: <Images /> }
+            : canUnbox
+              ? { id: 'unbox', label: 'Unbox', icon: <PackageCheck />, primary: true, loading: unbox.phase === 'working' }
+              : { id: 'qc', label: 'QC', icon: <ListChecks />, primary: true },
+        ]}
+        onVerb={(verb) => {
+          if (verb === 'photo') router.push(photosHref);
+          else if (verb === 'scan') router.replace(`/m/scan?mode=${viewOnly ? 'view' : 'operate'}`);
+          else if (verb === 'photos') router.push(`${photosHref}&mode=gallery`);
+          else if (verb === 'unbox') setConfirmUnbox(true);
+          else router.push(`/m/r/${id}/qc`);
+        }}
+      />
 
       <Sheet open={selected != null} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-        <SheetContent side="bottom" className="max-h-[88dvh] rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <SheetContent side="bottom">
           {selected ? (
             <>
-              <SheetHeader className="border-b border-border-soft pr-12">
+              <SheetHeader className="shrink-0 border-b border-border-soft pr-12">
                 <SheetTitle className="line-clamp-2">{cartonLineTitle(selected)}</SheetTitle>
                 <SheetDescription className="font-mono">{selected.sku || `L-${selected.id}`} · {selected.quantity_received}/{selected.quantity_expected ?? '?'}</SheetDescription>
               </SheetHeader>
-              <div className="p-4 pb-2">
+              <div className="shrink-0 p-4 pb-2">
                 <TabSwitch
                   tabs={[{ id: 'details', label: 'Details' }, { id: 'photos', label: 'Photos' }]}
                   activeTab={sheetTab}
@@ -211,7 +223,7 @@ export function MobileV2ReceivingCartonRecord() {
                 />
               </div>
               {sheetTab === 'details' ? (
-                <div className="grid gap-3 overflow-y-auto p-4 pt-2">
+                <SheetBody className="grid content-start gap-3 pt-2">
                   <div className="grid grid-cols-3 border border-border-soft bg-surface-card text-center">
                     <div className="border-r border-border-soft px-2 py-2"><strong className="block text-sm">{selected.quantity_received}/{selected.quantity_expected ?? '?'}</strong><span className="text-[10px] text-text-muted">Quantity</span></div>
                     <div className="border-r border-border-soft px-2 py-2"><strong className={cn('block truncate text-sm', conditionGradeTextClass(selected.condition_grade || ''))}>{conditionGradeTableLabel(selected.condition_grade || '')}</strong><span className="text-[10px] text-text-muted">Condition</span></div>
@@ -231,12 +243,12 @@ export function MobileV2ReceivingCartonRecord() {
 
                   {listingHref ? <Button variant="secondary" size="lg" radius="surface" icon={<ExternalLink />} onClick={() => window.open(listingHref, '_blank', 'noopener,noreferrer')}>Open listing</Button> : null}
                   {currentSheetTicket ? <Button variant="secondary" size="lg" radius="surface" icon={<Ticket />} onClick={() => router.push(withJobReturn(`/m/t/${currentSheetTicket}`, recordHref))}>Open ticket #{currentSheetTicket}</Button> : null}
-                </div>
+                </SheetBody>
               ) : (
-                <div className="grid gap-3 overflow-y-auto p-4 pt-2">
+                <SheetBody className="grid content-start gap-3 pt-2">
                   {linePhotos?.captureHref && linePhotos.captureHref !== '#' ? <Button variant="primary" size="lg" radius="surface" icon={<Camera />} onClick={() => router.push(linePhotos.captureHref)}>Add photo</Button> : null}
                   <MobileReceivingPhotoStrip receivingId={id} staffId={user?.staffId ?? 0} galleryHref={linePhotos?.galleryHref || '#'} />
-                </div>
+                </SheetBody>
               )}
             </>
           ) : null}

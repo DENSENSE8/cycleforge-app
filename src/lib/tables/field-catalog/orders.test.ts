@@ -17,7 +17,6 @@ import {
   resolveOrdersIndexValue,
   resolveOrdersSlotValue,
 } from './orders-resolve';
-import { ordersIndexColumnsFor } from '@/lib/dashboard-order-row-layout';
 
 
 function row(overrides: Record<string, unknown> = {}): ShippedOrder {
@@ -350,12 +349,7 @@ describe('orders INDEX face — one row per order', () => {
     assert.deepEqual(ORDERS_INDEX_LAYOUT.subtitleBindings, []);
   });
 
-  it('Order is the first column after the select gutter; Bin · Pick · Pack are offered but unbound', () => {
-    const columns = ordersIndexColumnsFor(ORDERS_INDEX_LAYOUT);
-    assert.deepEqual(
-      columns.map((c) => (c.key === 'select' || c.key === '_fill' ? c.key : c.label)),
-      ['select', 'Order', 'Date', 'Customer', 'Channel', 'Total', 'Fulfillment', 'Fulfill by', 'Items', 'Delivery', 'Tags', '_fill'],
-    );
+  it('Bin · Pick · Pack are offered but unbound', () => {
     const bound = new Set(ORDERS_INDEX_LAYOUT.statusBindings.map((b) => b.fieldId));
     for (const id of ['orders.bin', 'orders.picked', 'orders.packed']) {
       assert.ok(ORDERS_INDEX_FIELD_CATALOG.some((f) => f.id === id), `${id} not offered`);
@@ -414,7 +408,7 @@ describe('orders INDEX face — one row per order', () => {
   });
 
   it('a group resolves one fulfillment badge over all its lines', () => {
-    const columns = ordersIndexColumnsFor(ORDERS_INDEX_LAYOUT);
+    const columns = [{ key: 'status:1', fieldId: 'orders.fulfillment' }];
     const values = ordersIndexValues(
       [row({ id: 1, packed_at: '2026-09-25T10:00:00Z' }), row({ id: 2 })],
       columns,

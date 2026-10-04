@@ -94,6 +94,15 @@ export const inboundOrderDraftSchema = z.object({
     paymentMethod: text(40),
     paidCents: z.number().int().min(0).max(1_000_000_000).nullable(),
   }).optional(),
+  /**
+   * The status a marketplace sync reports for the order (eBay OrderStatus and
+   * checkout status). Sync-only, never authored; part of the content hash so a
+   * status change re-lands the order.
+   */
+  sourceStatus: z.object({
+    order: text(80),
+    payment: text(80),
+  }).optional(),
 });
 export type InboundOrderDraft = z.infer<typeof inboundOrderDraftSchema>;
 

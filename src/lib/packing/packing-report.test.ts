@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   mapPackingReportDbRow,
+  packingPerformanceSnapshot,
   packingReportMatchesQuery,
   resolvePackTierSource,
 } from './packing-report-shared';
@@ -83,4 +84,40 @@ test('mapPackingReportDbRow marks COALESCE small as default when raw tier null',
   assert.equal(row.skuCatalogId, null);
   assert.equal(row.packerLogId, null);
   assert.equal(row.quantity, 1);
+});
+
+test('packingPerformanceSnapshot keeps standards separate from observed time', () => {
+  const base = mapPackingReportDbRow({
+    packed_at: '2026-08-03T12:00:00.000Z',
+    pack_duration_seconds: 90,
+    next_pack_seconds: 180,
+    packer_name: 'Koh',
+    sku: 'SKU-1',
+    product_title: 'Wave Radio',
+    pack_tier: 'SMALL',
+    raw_pack_tier: 'SMALL',
+    estimated_minutes: 5,
+    tracking_type: null,
+    tracking_or_scan_ref: null,
+    quantity: 2,
+    image_url: null,
+    item_number: null,
+    sku_catalog_id: 42,
+    tier_source: 'profile',
+    packer_log_id: 7,
+    sal_id: 100,
+  });
+  const snapshot = packingPerformanceSnapshot([
+    base,
+    { ...base, salId: 101, quantity: 1, estimatedMinutes: 10, packDurationSeconds: 150, nextPackSeconds: null },
+    { ...base, salId: 102, quantity: 3, packDurationSeconds: null, nextPackSeconds: 240 },
+  ]);
+  assert.deepEqual(snapshot, {
+    units: 6,
+    standardMinutes: 20,
+    medianPackSeconds: 120,
+    medianNextPackSeconds: 210,
+    measuredPackCount: 2,
+    measurementCoverage: 2 / 3,
+  });
 });

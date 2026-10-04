@@ -9,16 +9,9 @@ import type { LabelFaceModel } from '@/lib/print/labelFace';
 import { printLabelFacesJob } from '@/lib/print/printLabelFacesJob';
 import { encodePrintMatrix } from '@/lib/qr/platform-link';
 
-export function locationLabelToFace(input: {
-  segments: LocationSegments;
-  roomName?: string | null;
-  gln: string;
-  orgSlug?: string | null;
-}): LabelFaceModel {
-  void input.roomName;
-  const { segments } = input;
-  const rack = segments.position === 0;
-  const code = rack
+/** The code a location sticker prints: the 4-segment rack code at position 0, else the full bin code. */
+export function locationFaceCode(segments: LocationSegments): string {
+  return segments.position === 0
     ? rackCode({
         zone: segments.zone,
         aisle: segments.aisle,
@@ -26,6 +19,23 @@ export function locationLabelToFace(input: {
         level: segments.level,
       })
     : locationCode(segments);
+}
+
+export function locationLabelToFace(input: {
+  segments: LocationSegments;
+  roomName?: string | null;
+  gln: string;
+  orgSlug?: string | null;
+  /**
+   * One short line under the code, painted bottom-left (e.g. `Arrival ·
+   * Priority` on an urgency shelf). The bottom line keeps the code the first
+   * thing read and stays legible on 2×1 stock; blank → coordinate-only face.
+   */
+  caption?: string | null;
+}): LabelFaceModel {
+  void input.roomName;
+  const { segments } = input;
+  const code = locationFaceCode(segments);
   const matrix = encodePrintMatrix({
     kind: 'location',
     segments,
@@ -37,7 +47,7 @@ export function locationLabelToFace(input: {
     topLeft: '',
     topRight: '',
     center: code,
-    bottomLeft: '',
+    bottomLeft: (input.caption ?? '').trim(),
     bottomRight: '',
     matrix: { value: matrix.value, symbology: matrix.symbology, scale: 4 },
   };

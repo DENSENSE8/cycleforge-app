@@ -44,11 +44,15 @@ import {
 } from '@/lib/tasks/task-desk-row';
 import { taskMatchesTicketStatuses, ticketStatusCounts } from '@/lib/tasks/ticket-status-filter';
 import { taskStatusOf } from '@/lib/tasks/task-status';
+import { TASK_BOARD_ROW_TYPES, TASK_BOARD_TYPE_FACE, TASK_BOARD_VIEW_LABEL, taskBoardRowFromTask, taskBoardRowType } from '@/lib/task-board/task-board-model';
 
 /** One assigned task, reduced to what the shared row paints. */
 interface MobileAgendaTask {
   row: TaskDeskRow;
   title: string;
+  /** The caption's far-left WHEN (`Due today`, `Overdue`). */
+  due: string | null;
+  /** The caption's trailing record context, when the title does not already name it. */
   subtitle: string | null;
   overdue: boolean;
   /** Due today or tomorrow, not yet late — the caption paints orange. */
@@ -173,12 +177,12 @@ export function MobileDailyChecklist() {
         // text, and a handoff with no words still names its record — never a
         // blank line with a checkbox, never a raw `# **…`.
         const title = taskDeskTitle(row);
-        const captionParts = [due?.text, title === record ? null : record].filter(Boolean);
         return {
           row,
           done,
           title,
-          subtitle: captionParts.length > 0 ? captionParts.join(' · ') : null,
+          due: due?.text ?? null,
+          subtitle: title === record ? null : record || null,
           overdue: Boolean(due?.overdue) && !done,
           urgent: Boolean(due?.urgent) && !done,
           ticketId: taskDeskTicketNumber(row),
@@ -196,6 +200,13 @@ export function MobileDailyChecklist() {
     () => (ticketActive ? listedTasks.filter((task) => taskMatchesTicketStatuses(task.row, ticketFilter)) : listedTasks),
     [listedTasks, ticketActive, ticketFilter],
   );
+  /** The board's type groups (Support · Long-term projects · Standalone tasks), each in list order — a hairline splits them. */
+  const taskGroups = useMemo(() => {
+    const typed = taskRows.map((task) => ({ task, type: taskBoardRowType(taskBoardRowFromTask(task.row)) }));
+    return TASK_BOARD_ROW_TYPES.map((type) => ({ type, tasks: typed.filter((t) => t.type === type).map((t) => t.task) })).filter(
+      (group) => group.tasks.length > 0,
+    );
+  }, [taskRows]);
   const ticketChips = useMemo<StatusChip<TicketStatus>[]>(() => {
     const counts = ticketStatusCounts(listedTasks.map((task) => task.row));
     return TICKET_STATUSES.map((id) => ({ id, label: TICKET_STATUS_FACE[id].label, tone: TICKET_STATUS_FACE[id], count: counts[id] }));
@@ -275,8 +286,9 @@ export function MobileDailyChecklist() {
       rowKey={`task-${task.row.id}`}
       title={task.title}
       done={task.done}
+      due={task.due}
+      dueTone={task.overdue ? 'danger' : task.urgent ? 'urgent' : 'muted'}
       subtitle={task.subtitle}
-      subtitleTone={task.overdue ? 'danger' : task.urgent ? 'urgent' : 'muted'}
       ticketId={task.ticketId}
       ticketStatus={task.ticketStatus}
       taskStatus={taskStatusOf(task.row)}
@@ -304,7 +316,7 @@ export function MobileDailyChecklist() {
       <ul className="flex flex-col gap-2 pt-3">{recurring.map(renderRow)}</ul>
       {onceItems.length > 0 ? (
         <>
-          <p className="pb-2 pt-5 text-role-micro font-semibold text-text-muted">
+          <p className="pb-2 pt-5 text-role-caption font-semibold text-text-muted">
             Today only
           </p>
           <ul className="flex flex-col gap-2">{onceItems.map(renderRow)}</ul>
@@ -314,10 +326,32 @@ export function MobileDailyChecklist() {
   );
   const assignedSection = (
     <>
-      <p className="pb-2 pt-5 text-role-micro font-semibold text-text-muted">
+      <p className="pb-2 pt-5 text-role-caption font-semibold text-text-muted">
         Assigned to me
       </p>
-      <ul className="flex flex-col gap-2">{taskRows.map(renderTaskRow)}</ul>
+      {taskGroups.length > 1 ? (
+        taskGroups.map((group, index) => {
+          const face = TASK_BOARD_TYPE_FACE[group.type];
+          const Icon = face.icon;
+          return (
+            <section
+              key={group.type}
+              data-task-group={group.type}
+              aria-label={TASK_BOARD_VIEW_LABEL[group.type]}
+              className={cn(index > 0 && 'mt-4 border-t border-border-default pt-3')}
+            >
+              <h3 className="flex items-center gap-1.5 pb-2 text-role-caption font-semibold">
+                <Icon aria-hidden className={cn('size-4 shrink-0', face.ink)} strokeWidth={2.25} />
+                <span className={face.text}>{TASK_BOARD_VIEW_LABEL[group.type]}</span>
+                <span className="tabular-nums text-text-muted">{group.tasks.length}</span>
+              </h3>
+              <ul className="flex flex-col gap-2">{group.tasks.map(renderTaskRow)}</ul>
+            </section>
+          );
+        })
+      ) : (
+        <ul className="flex flex-col gap-2">{taskRows.map(renderTaskRow)}</ul>
+      )}
     </>
   );
 

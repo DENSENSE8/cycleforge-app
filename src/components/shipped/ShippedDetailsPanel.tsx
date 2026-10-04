@@ -9,7 +9,8 @@ import {
   DeskInspectorIndexShell,
 } from '@/components/right-rail/DeskInspectorIndexShell';
 import { MoreHorizontal } from '@/components/Icons';
-import { IconButton, KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -265,16 +266,15 @@ export function ShippedDetailsPanel({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {moreItems.map((item) => (
-            <DropdownMenuItem
+            <HoverTooltip
               key={item.key}
-              onSelect={() => runMoreItem(item.key)}
-              className="justify-between gap-4"
+              asChild
+              label={item.label}
+              shortcut={item.shortcut}
+              disabled={!item.shortcut}
             >
-              <span>{item.label}</span>
-              {item.shortcut ? (
-                <KeyboardKey size="xs">{item.shortcut}</KeyboardKey>
-              ) : null}
-            </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => runMoreItem(item.key)}>{item.label}</DropdownMenuItem>
+            </HoverTooltip>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>

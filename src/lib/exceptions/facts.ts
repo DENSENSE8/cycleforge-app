@@ -10,6 +10,7 @@ import type { LabelIngestionDto } from '@/lib/label-ingestions/http-client';
 import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
 import type { PaperworkSource } from '@/lib/manuals/paperwork-pairing';
+import type { UnmatchedScanSourceStation } from '@/lib/orders-exceptions';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ClaimType } from '@/lib/receiving-claim-type';
 import type { LabelPurpose } from '@/lib/shipping/label-purpose';
@@ -104,6 +105,20 @@ export interface TrackingExceptionFacts {
   };
 }
 
+/** An open unmatched pack / dock scan (`orders_exceptions`, `sqlOpenUnmatchedScan`) — the Fulfilled desk's dock miss. */
+export interface UnmatchedScanExceptionFacts {
+  kind: 'unmatched';
+  scan: {
+    id: number;
+    tracking: string;
+    sourceStation: UnmatchedScanSourceStation;
+    staffName: string | null;
+    notes: string | null;
+    /** ISO. */
+    createdAt: string;
+  };
+}
+
 /** A received carton (Claim · Short · Unfound) — its lines as the Unboxed ledger reads them. */
 export interface CartonExceptionFacts {
   kind: 'claim' | 'short' | 'unfound';
@@ -129,6 +144,7 @@ export type ExceptionFacts =
   | LabelsExceptionFacts
   | BinsExceptionFacts
   | TrackingExceptionFacts
+  | UnmatchedScanExceptionFacts
   | CartonExceptionFacts;
 
 /** `GET /api/exceptions/[key]` response. */

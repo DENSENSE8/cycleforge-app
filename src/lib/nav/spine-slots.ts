@@ -2,6 +2,8 @@
 
 import {
   DESK_SPINE_SECTIONS,
+  SPINE_LEADING_PAGE_IDS,
+  SPINE_TRAILING_SECTION_IDS,
   isSpineBottomRow,
   isSpineDeskItem,
   isSpineMapTopRow,
@@ -50,16 +52,23 @@ function laneIdsPresent(allowed: readonly FixedSpineItem[]): SpineSectionId[] {
 }
 
 /**
- * One stable order for every operator: Scan Stations, the registered lane
- * sequence, then remaining root pages in registry order.
+ * THE one order for the Operations band (operator 2026-10-03): leading root
+ * pages (Live feed), Scan Stations, the lanes in `SPINE_SECTIONS` order, the
+ * remaining root pages in registry order, then the trailing lanes (Products).
+ * The spine, the page-map resolver and the ⌘K palette all read this.
  */
 export function fixedSpineOrder<T extends FixedSpineItem>(allowed: readonly T[]): string[] {
+  const lanes = laneIdsPresent(allowed);
+  const rootPages = allowed.filter(isFixedMapPage).map((item) => item.id);
+  const leading = SPINE_LEADING_PAGE_IDS.filter((id) => rootPages.includes(id));
   return [
+    ...leading,
     ...(allowed.some((item) => item.kind === 'station')
       ? [SPINE_STATIONS_SLOT_ID]
       : []),
-    ...laneIdsPresent(allowed),
-    ...allowed.filter(isFixedMapPage).map((item) => item.id),
+    ...lanes.filter((lane) => !SPINE_TRAILING_SECTION_IDS.includes(lane)),
+    ...rootPages.filter((id) => !leading.includes(id)),
+    ...lanes.filter((lane) => SPINE_TRAILING_SECTION_IDS.includes(lane)),
   ];
 }
 

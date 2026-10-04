@@ -121,17 +121,49 @@ function drawFace(face: LabelFaceModel, size: PaperSize): HTMLCanvasElement {
 
   if (face.kind === 'location') {
     const locSize = Math.round((16 * DPI) / 96);
+    const caption = face.bottomLeft.trim();
+    // The optional caption (bottom-left) takes the bottom line; the code
+    // centres in what is left above it — same order as the `.lcap` HTML face.
+    const captionTop = caption ? height - paddingY - LABEL_FACE_FONT_SIZE : height;
     context.textBaseline = 'middle';
     drawFittedText(
       context,
       face.center,
       paddingX,
-      Math.round(height / 2),
+      Math.round(captionTop / 2),
       infoWidth,
       locSize,
       800,
     );
     context.textBaseline = 'top';
+    if (caption) {
+      drawFittedText(context, caption, paddingX, captionTop, infoWidth, LABEL_FACE_FONT_SIZE, 800);
+    }
+  } else if (face.kind === 'rack') {
+    // Same order as the `.rkick` / `.rhead` / `.lcap` HTML face: parent line
+    // on top, headline centred in what is left, tier caption on the bottom.
+    const kicker = face.topLeft.trim();
+    const caption = face.bottomLeft.trim();
+    const kickerSize = cssPxToDots(10);
+    const headSize = cssPxToDots(kicker ? 20 : 24);
+    const headTop = kicker ? paddingY + kickerSize : 0;
+    const headBottom = caption ? height - paddingY - LABEL_FACE_FONT_SIZE : height;
+    context.textBaseline = 'top';
+    if (kicker) drawFittedText(context, kicker, paddingX, paddingY, infoWidth, kickerSize, 800);
+    context.textBaseline = 'middle';
+    drawFittedText(
+      context,
+      face.center,
+      paddingX,
+      Math.round((headTop + headBottom) / 2),
+      infoWidth,
+      headSize,
+      900,
+    );
+    context.textBaseline = 'top';
+    if (caption) {
+      drawFittedText(context, caption, paddingX, headBottom, infoWidth, LABEL_FACE_FONT_SIZE, 800);
+    }
   } else if (face.kind === 'lpn') {
     // Match the print-HTML LPN face:
     const kickerSize = cssPxToDots(LPN_LABEL_FACE_LAYOUT.kickerFontCssPx);

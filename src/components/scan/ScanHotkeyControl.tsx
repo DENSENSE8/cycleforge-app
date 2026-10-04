@@ -165,15 +165,11 @@ export function ScanHotkeyControl({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          onSelect={() => requestScanFocus()}
-          className="justify-between"
-        >
-          <span className="text-role-caption font-semibold">Focus scan bar</span>
-          <KeyboardKey size="xs">
-            {hotkey}
-          </KeyboardKey>
-        </DropdownMenuItem>
+        <HoverTooltip asChild label="Focus scan bar" shortcut={hotkey}>
+          <DropdownMenuItem onSelect={() => requestScanFocus()}>
+            <span className="text-role-caption font-semibold">Focus scan bar</span>
+          </DropdownMenuItem>
+        </HoverTooltip>
 
         <DropdownMenuItem
           // Stay open — the row becomes the capture surface.
@@ -185,11 +181,14 @@ export function ScanHotkeyControl({
           className="justify-between"
         >
           <span className="text-role-caption font-semibold">Edit hotkey</span>
+          {/* The binding editor's VALUE (the key being set), not a hint for a verb. */}
           {rebinding ? (
             <span className="text-role-caption font-semibold text-blue-600">
               Press a key…
             </span>
-          ) : null}
+          ) : (
+            <KeyboardKey size="xs">{hotkey}</KeyboardKey>
+          )}
         </DropdownMenuItem>
 
         {rebinding ? (
@@ -203,15 +202,11 @@ export function ScanHotkeyControl({
           </p>
         ) : null}
 
-        <DropdownMenuItem
-          onSelect={() => requestScanNext()}
-          className="justify-between"
-        >
-          <span className="text-role-caption font-semibold">Next scan</span>
-          <KeyboardKey size="xs">
-            {NEXT_SCAN_CHORD_LABEL}
-          </KeyboardKey>
-        </DropdownMenuItem>
+        <HoverTooltip asChild label="Next scan" shortcut={NEXT_SCAN_CHORD_LABEL}>
+          <DropdownMenuItem onSelect={() => requestScanNext()}>
+            <span className="text-role-caption font-semibold">Next scan</span>
+          </DropdownMenuItem>
+        </HoverTooltip>
       </DropdownMenuContent>
     </DropdownMenu>
   );

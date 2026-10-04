@@ -6,7 +6,7 @@ import { isEmptyDisplayValue } from '@/utils/empty-display-value';
 import { ExternalLink, MapPin, Package, Pencil, Receipt, ScanBarcode, Tags, Ticket } from '../Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { chipText, monoValue } from '@/design-system/tokens/typography/presets';
+import { chipText, identityChipText, monoValue } from '@/design-system/tokens/typography/presets';
 import type { OptimisticSerialFlag } from '@/lib/receiving/optimistic-serials';
 import { useChipTooltip, useCopyChip } from '@/hooks';
 import { conditionGradeChipStyleOrPending } from '@/lib/condition-tone';
@@ -15,6 +15,7 @@ import { skuScanPrefixBeforeColon, getExternalUrlByItemNumber } from '@/hooks/us
 import {
   EMPTY_CHIP_DISPLAY,
   QUIET_CHIP_EMPTY,
+  formatOrderIdDisplay,
   getLast8,
   getLast8Serial,
   isEmptyChipDisplay,
@@ -30,6 +31,7 @@ import { resolveMarketplaceChipIdentity } from '@/lib/marketplace-order-id';
 export {
   getLast8,
   getLast8Serial,
+  formatOrderIdDisplay,
   isEmptyChipDisplay,
   isSkuFormattedScanRef,
   resolveChipDisplay,
@@ -118,6 +120,8 @@ const CHIP_FACE_ATTR = { 'data-chip-face': '' } as const;
 interface CopyChipProps {
   value: string;
   display: string;
+  /** Complete semantic label when the visible face is abbreviated. */
+  ariaLabel?: string;
   /** Pulls icon/icon color from {@link CHIP_TONES}; individual props below override. */
   tone?: ChipTone;
   /** `undefined` falls back to the tone's icon; pass `null` for no icon (e.g. icon lives in another column). */
@@ -174,6 +178,7 @@ interface CopyChipProps {
 export function CopyChip({
   value,
   display,
+  ariaLabel,
   tone,
   icon,
   iconClass,
@@ -247,6 +252,7 @@ export function CopyChip({
     fitDisplayWidth && width === 'w-auto' ? 'w-fit max-w-full' : width;
 
   const normalizedDisplay = normalizeCopyText(faceDisplay);
+  const denseTextClass = tone === 'id' ? identityChipText : chipText;
   /** A last-8 face is a FIXED-CHARACTER footprint, and `getLast8` caps the value at eight characters — so it can never legitimately overflow… */
   const isLastEight = displayWidth === 'last8';
   const isPriceFace = displayWidth === 'price';
@@ -292,7 +298,7 @@ export function CopyChip({
             ? 'Editing — open field below'
             : onActivate
               ? activationLabel
-              : undefined
+              : ariaLabel
         }
         aria-busy={editing || undefined}
         title={
@@ -325,7 +331,7 @@ export function CopyChip({
           </span>
         ) : null}
         <span
-          className={`${dense ? chipText : `${monoValue} tracking-tight leading-none`} ${displayWidthClass} text-left ${displayOverflowClass} ${
+          className={`${dense ? denseTextClass : `${monoValue} tracking-tight leading-none`} ${displayWidthClass} text-left ${displayOverflowClass} ${
             isLastEight || isPriceFace ? '' : fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
           } ${
             isEmptyChipDisplay(faceDisplay) ? 'text-text-faint' : dense ? 'text-text-default' : ''
@@ -344,6 +350,7 @@ export function CopyChip({
 export const OrderIdChip = ({
   value,
   display,
+  displayMode = 'compact',
   dense,
   plain,
   platformLabel,
@@ -355,7 +362,10 @@ export const OrderIdChip = ({
   disableTooltip = false,
 }: {
   value: string;
-  display: string;
+  /** Optional exceptional face. Standard order surfaces should use `displayMode`. */
+  display?: string;
+  /** Operational lists are compact by default; detail/audit surfaces opt into the complete face. */
+  displayMode?: 'compact' | 'full';
   dense?: boolean;
   /** Omit the leading hash icon — used by the quiet queue-grid identity cells. */
   plain?: boolean;
@@ -374,7 +384,8 @@ export const OrderIdChip = ({
 }) => (
   <CopyChip
     value={value}
-    display={resolveChipDisplay(display)}
+    display={resolveChipDisplay(display ?? (displayMode === 'full' ? value : formatOrderIdDisplay(value)))}
+    ariaLabel={value.trim() ? `Copy complete order ID ${value.trim()}` : 'No order ID'}
     tone="id"
     icon={plain ? null : undefined}
     iconClass={plain ? undefined : iconClass}

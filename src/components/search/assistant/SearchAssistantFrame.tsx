@@ -56,7 +56,7 @@ import {
   searchAssistantPrompt,
   type SearchAssistantRecord,
 } from './search-assistant-context';
-import { KeyboardKey } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   SEARCH_ASSISTANT_COMPOSER_LAYOUT_ID,
   SEARCH_ASSISTANT_CONTRACT,
@@ -275,6 +275,7 @@ export function SearchAssistantFrame({
                   {composer}
                 </motion.div>
               ) : (
+                <HoverTooltip asChild label={chat.messages.length > 0 ? 'Resume the assistant' : 'Open the assistant'} shortcut="mod + J">
                 <motion.button
                   type="button"
                   layoutId={SEARCH_ASSISTANT_COMPOSER_LAYOUT_ID}
@@ -296,8 +297,8 @@ export function SearchAssistantFrame({
                     {reduced ? prompt : <Typewriter speed="fast">{prompt}</Typewriter>}
                   </span>
                   {chat.messages.length > 0 ? <span className={AI_LABEL_CLASS}>Resume</span> : null}
-                  <KeyboardKey size="xs">⌘J</KeyboardKey>
                 </motion.button>
+                </HoverTooltip>
               )}
             </div>
           ) : null}

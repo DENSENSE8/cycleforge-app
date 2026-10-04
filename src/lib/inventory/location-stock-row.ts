@@ -220,7 +220,7 @@ export function locationStockRackGroups(
 }
 
 /** Rows with no room collapse into one honest bucket keyed this. */
-const UNROOMED_FACET_ID = '(none)' as const;
+export const UNROOMED_FACET_ID = '(none)' as const;
 const UNROOMED_FACET_LABEL = 'No room' as const;
 
 export interface LocationStockRoomFacet {

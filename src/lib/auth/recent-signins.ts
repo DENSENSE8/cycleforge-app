@@ -33,7 +33,6 @@ export type SigninMethod =
   | 'apple'
   | 'microsoft'
   | 'sso'
-  | 'magic-link'
   | 'passkey';
 
 const LAST_SIGNIN_METHOD_KEY = 'cf.lastSigninMethod';
@@ -44,7 +43,6 @@ const SIGNIN_METHODS: readonly SigninMethod[] = [
   'apple',
   'microsoft',
   'sso',
-  'magic-link',
   'passkey',
 ];
 

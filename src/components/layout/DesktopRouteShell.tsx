@@ -16,6 +16,7 @@ import { SIDEBAR_SPINE_WIDTH } from '@/components/sidebar/sidebar-spine';
 import { ContextPanelLayout } from '@/components/sidebar/ContextPanelLayout';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
 import { GlobalWedgeScannerMount, PhoneScanBridgeMount, StaffPrintBridgeMount } from '@/components/layout/scan-mounts';
+import { useCommandAliasHydration } from '@/hooks/useCommandAliasHydration';
 import { setRightRailFrameWidth } from '@/lib/right-rail/frame';
 import { setSidebarColumnOpen } from '@/lib/nav/sidebar-column-store';
 import { useSidebarToggleHotkey } from '@/lib/nav/sidebar-toggle-hotkey';
@@ -47,9 +48,10 @@ const DashboardSidebar = dynamic(
 /**
  * Focus routes: a signed-in page about ONE task, with its own header whose ✕
  * (top-right-most on the screen) and Esc go back. No nav column, no global
- * header (owner 2026-09-29, "Buy a label").
+ * header (owner 2026-09-29). EMPTY since the Buy a label page retired into the
+ * Labels desk (owner 2026-10-01) — the mechanism stays for the next one.
  */
-const FOCUS_ROUTE_PATHS: ReadonlyArray<RegExp> = [/^\/shipping\/buy-label(?:$|\/)/];
+const FOCUS_ROUTE_PATHS: ReadonlyArray<RegExp> = [];
 
 function isFocusRoutePath(pathname: string | null): boolean {
   return !!pathname && FOCUS_ROUTE_PATHS.some((re) => re.test(pathname));
@@ -197,6 +199,8 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
 
   // `/m/*` routes are inherently mobile — the edge proxy only ever serves them to phones.
   const onMobileRoute = !!pathname && pathname.startsWith('/m');
+  // Every desk route is a scan surface: the alias book is resolvable the tick a trigger is pulled.
+  useCommandAliasHydration(!onMobileRoute);
   /** Auth / enroll / offline — no permanent sidebar; page owns full-bleed chrome.
    *  (Kiosk paths never reach this shell: `AppShellSwitch` gives them `KioskAppShell`.)
    *  FOCUS routes (signed-in, one task, their own ✕ back) are chromeless too. */

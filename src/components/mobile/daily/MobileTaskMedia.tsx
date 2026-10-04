@@ -3,11 +3,12 @@
 /**
  * The task sheet's **Media** — the phone twin of the desk rail's Media tab
  * (owner 2026-09-29: staff learn a skill from the walkthrough attached to the
- * task). Same anatomy: paste a link or Upload from the camera roll, the
- * videos as two-line rows (tap = play; the playing row shows its verbs),
- * photos as a thumb strip that opens the swipe viewer. The ONE player is not
- * here: it leads the sheet (`MobileTaskMediaFeature`), and these rows drive
- * it. The shared shape lives in `@/lib/tasks/task-media-lessons`.
+ * task). The record shows the media only: videos as two-line rows (tap = play;
+ * the playing row shows its verbs), photos as a thumb strip that opens the
+ * swipe viewer. Adding is a ⋯ menu verb (owner 2026-10-03): "Add Video Link…"
+ * opens `MobileMediaAddBar` in a sheet. The ONE player is not here: it leads
+ * the sheet (`MobileTaskMediaFeature`), and these rows drive it. The shared
+ * shape lives in `@/lib/tasks/task-media-lessons`.
  */
 
 import { useMemo, useState } from 'react';
@@ -34,19 +35,13 @@ import { cn } from '@/utils/_cn';
 /** Media's hue — the desk rail's, AA at micro size in both themes. */
 const GLYPH_INK = 'text-fuchsia-600 dark:text-fuchsia-400';
 const WORD_INK = 'text-fuchsia-700 dark:text-fuchsia-300';
-const LABEL = 'text-role-micro font-semibold text-text-muted';
 
 export function MobileTaskMedia({
   lessons,
   stills,
   playingKey,
   loading,
-  uploading,
-  problems,
-  onDismissProblems,
-  onPick,
   onPlay,
-  onAddLink,
   onRenameLink,
   onRemoveLink,
   onRemoveVideo,
@@ -58,14 +53,8 @@ export function MobileTaskMedia({
   /** The lesson the sheet's player shows; its row reads Playing. */
   playingKey: string | null;
   loading: boolean;
-  uploading: TaskMediaUploadState | null;
-  problems: readonly string[];
-  onDismissProblems: () => void;
-  /** Open the sheet's native picker (camera roll photos and videos). */
-  onPick: () => void;
   /** Play a lesson in the sheet's player (and bring it into view). */
   onPlay: (lessonKey: string) => void;
-  onAddLink: (body: TaskMediaLinkCreateBody) => Promise<unknown>;
   onRenameLink: (linkId: number, title: string | null) => Promise<unknown>;
   onRemoveLink: (linkId: number) => void;
   onRemoveVideo: (videoId: number) => void;
@@ -78,25 +67,10 @@ export function MobileTaskMedia({
 
   return (
     <div className="flex flex-col gap-3" data-testid="mobile-task-media">
-      <MobileMediaAddBar
-        onAdd={onAddLink}
-        onPick={onPick}
-        uploading={uploading}
-        problems={problems}
-        onDismissProblems={onDismissProblems}
-      />
-
-      {loading ? (
-        <div className={cn('h-14 w-full animate-pulse bg-surface-sunken', MOBILE_ROW_CORNER)} />
-      ) : lessons.length === 0 && stills.length === 0 ? (
-        <p className="text-role-caption text-text-muted" data-testid="task-media-empty">
-          Attach a walkthrough: paste an unlisted YouTube link or upload a recording.
-        </p>
-      ) : null}
+      {loading ? <div className={cn('h-14 w-full animate-pulse bg-surface-sunken', MOBILE_ROW_CORNER)} /> : null}
 
       {lessons.length > 0 ? (
         <section aria-label="Videos" className="flex flex-col gap-1.5">
-          <span className={LABEL}>Videos · {lessons.length}</span>
           <ul className="flex flex-col gap-1.5">
             {lessons.map((lesson) => {
               const { link, video } = lesson;
@@ -121,7 +95,6 @@ export function MobileTaskMedia({
 
       {stills.length > 0 ? (
         <section aria-label="Photos" className="flex flex-col gap-1.5">
-          <span className={LABEL}>Photos · {stills.length}</span>
           <ul className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
             {stills.map((still, index) => (
               <li key={still.key} className="shrink-0">
@@ -151,7 +124,8 @@ export function MobileTaskMedia({
   );
 }
 
-function MobileMediaAddBar({
+/** Paste a video link or upload from the camera roll — the "Add Video Link…" sheet's body. */
+export function MobileMediaAddBar({
   onAdd,
   onPick,
   uploading,

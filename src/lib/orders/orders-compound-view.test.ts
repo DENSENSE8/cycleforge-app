@@ -12,7 +12,7 @@ import {
   ordersItemStatus,
   ordersStateTone,
 } from '@/lib/orders/orders-compound-view';
-import { formatCompoundStageStepLine } from '@/components/tables/compound/compound-row-model';
+import { formatStageStepLine } from '@/lib/tables/field-catalog/slot-value';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import type { ShippedOrder } from '@/types/orders';
 
@@ -74,7 +74,7 @@ describe('the pick step (absorbed into the slot resolver)', () => {
     assert.equal(step.who, null);
     assert.equal(step.at, null);
     assert.equal(step.station, null);
-    assert.equal(formatCompoundStageStepLine(step), null);
+    assert.equal(formatStageStepLine(step), null);
   });
 
   it('fills who and time when a pick scan exists; station stays null', () => {
@@ -86,7 +86,7 @@ describe('the pick step (absorbed into the slot resolver)', () => {
     assert.equal(step.who, 'Alex');
     assert.ok(step.at);
     assert.equal(step.station, null);
-    const line = formatCompoundStageStepLine(step);
+    const line = formatStageStepLine(step);
     assert.ok(line);
     assert.match(line!, /^Alex · /);
     assert.doesNotMatch(line!, / · $/);

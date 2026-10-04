@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
-import { Edit, Trash2, X } from '@/components/Icons';
+import { Edit, Printer, Trash2, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
   Dialog,
@@ -17,6 +17,10 @@ import { toast } from '@/lib/toast';
 import { sectionLabel, fieldLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { ARRIVAL_TIERS, arrivalTierLabel } from '@/lib/receiving/arrival-tier';
+import { useArrivalShelfTiers } from '@/lib/receiving/arrival-shelves-client';
+import { useLocationLabelPrint } from '@/hooks/useLocationLabelPrint';
+import { locationLabelPrintSummary, type PrintableLocationRow } from '@/lib/print/printLocationRows';
 
 
 /** Mirrors a row from GET /api/inventory/bins-overview (BinsOverviewRow). */
@@ -43,7 +47,11 @@ interface BinFormState {
   barcode: string;
   binType: string;
   capacity: string;
+  /** Arrival urgency shelf tier, '' = not an arrival shelf. */
+  arrivalTier: string;
 }
+
+const EMPTY_FORM: BinFormState = { name: '', barcode: '', binType: '', capacity: '', arrivalTier: '' };
 
 const inputClass =
   cn('h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default transition-colors', focusRing('field', 'neutral'));
@@ -73,7 +81,7 @@ export function LocationsManagementTab() {
   const [room, setRoom] = useState<string>(ALL_ROOMS);
   const [filter, setFilter] = useState('');
   const [editing, setEditing] = useState<BinRow | null>(null);
-  const [form, setForm] = useState<BinFormState>({ name: '', barcode: '', binType: '', capacity: '' });
+  const [form, setForm] = useState<BinFormState>(EMPTY_FORM);
 
   const { data, isLoading } = useQuery<{ rows: BinRow[] }>({
     queryKey: qk.locationsAdmin.bins(),
@@ -85,6 +93,12 @@ export function LocationsManagementTab() {
     },
     staleTime: 30_000,
   });
+
+  // Arrival urgency shelves: one-time rack setup (mark a shelf "Priority" …
+  // "Low"), read beside the bins overview.
+  const { data: arrival } = useArrivalShelfTiers();
+  const arrivalShelves = arrival?.shelves ?? [];
+  const printLocationLabels = useLocationLabelPrint();
 
   const allRows = data?.rows ?? [];
 
@@ -110,7 +124,12 @@ export function LocationsManagementTab() {
   }, [allRows, room, filter]);
 
   const updateMutation = useMutation({
-    mutationFn: async ({ barcode, payload }: { barcode: string; payload: BinFormState }) => {
+    mutationFn: async ({ barcode, payload, arrivalPriorityTier }: {
+      barcode: string;
+      payload: BinFormState;
+      /** Sent only when the operator changed it (`undefined` = untouched). */
+      arrivalPriorityTier: number | null | undefined;
+    }) => {
       const capTrim = payload.capacity.trim();
       const res = await fetch(`/api/locations/${encodeURIComponent(barcode)}/properties`, {
         method: 'PATCH',
@@ -120,6 +139,7 @@ export function LocationsManagementTab() {
           barcode: payload.barcode.trim() || null,
           binType: payload.binType.trim() || null,
           capacity: capTrim === '' ? null : Number(capTrim),
+          ...(arrivalPriorityTier !== undefined ? { arrivalPriorityTier } : {}),
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -159,7 +179,7 @@ export function LocationsManagementTab() {
 
   const closeForm = () => {
     setEditing(null);
-    setForm({ name: '', barcode: '', binType: '', capacity: '' });
+    setForm(EMPTY_FORM);
   };
 
   const openEdit = (row: BinRow) => {
@@ -169,6 +189,7 @@ export function LocationsManagementTab() {
       barcode: row.barcode ?? '',
       binType: row.bin_type ?? '',
       capacity: row.capacity == null ? '' : String(row.capacity),
+      arrivalTier: arrival?.tierById.has(row.id) ? String(arrival.tierById.get(row.id)) : '',
     });
   };
 
@@ -179,7 +200,14 @@ export function LocationsManagementTab() {
     if (capTrim !== '' && (!Number.isFinite(Number(capTrim)) || Number(capTrim) < 0)) {
       return toast.error('Capacity must be a non-negative number');
     }
-    updateMutation.mutate({ barcode: editing.barcode, payload: form });
+    const originalTier = arrival?.tierById.has(editing.id) ? String(arrival.tierById.get(editing.id)) : '';
+    updateMutation.mutate({
+      barcode: editing.barcode,
+      payload: form,
+      arrivalPriorityTier: form.arrivalTier === originalTier
+        ? undefined
+        : form.arrivalTier === '' ? null : Number(form.arrivalTier),
+    });
   };
 
   const handleDelete = async (row: BinRow) => {
@@ -193,8 +221,49 @@ export function LocationsManagementTab() {
     deleteMutation.mutate(row.barcode);
   };
 
+  const runPrint = (rows: PrintableLocationRow[]) => {
+    void printLocationLabels(rows).then(
+      (result) => {
+        const message = locationLabelPrintSummary(result);
+        if (result.transport === 'skipped') toast.error(message);
+        else toast.success(message);
+      },
+      (err: unknown) => toast.error(err instanceof Error ? err.message : 'Print failed'),
+    );
+  };
+
+  const toPrintable = (row: BinRow): PrintableLocationRow => ({
+    id: row.id,
+    name: row.name,
+    barcode: row.barcode,
+    roomName: row.room,
+    arrivalPriorityTier: arrival?.tierById.get(row.id) ?? null,
+  });
+
+  const printRow = (row: BinRow) => runPrint([toPrintable(row)]);
+
+  // Bulk print = the rows the room / filter narrowed to (a rack's shelves:
+  // filter `RK12`). Never the whole warehouse by accident — it needs a narrowing.
+  const narrowed = room !== ALL_ROOMS || filter.trim() !== '';
+  const shownPrintable = filtered.filter((r) => r.barcode);
+
+  /** Every active urgency shelf, most urgent tier first (the server's order), captioned with its tier. */
+  const printArrivalShelves = () => {
+    const rowById = new Map(allRows.map((r) => [r.id, r]));
+    runPrint(arrivalShelves.map((shelf) => {
+      const row = rowById.get(shelf.id);
+      return {
+        id: shelf.id,
+        name: row?.name ?? shelf.face,
+        barcode: shelf.barcode,
+        roomName: row?.room ?? null,
+        arrivalPriorityTier: shelf.tier,
+      };
+    }));
+  };
+
   const tableGridClass =
-    'grid grid-cols-[150px_minmax(160px,1.5fr)_130px_90px_120px_80px_70px_70px_90px_96px] gap-x-3';
+    'grid grid-cols-[150px_minmax(160px,1.5fr)_130px_90px_120px_80px_70px_70px_90px_90px_136px] gap-x-3';
 
   return (
     <section className={cn('flex h-full min-h-0 w-full flex-col',)}>
@@ -215,6 +284,42 @@ export function LocationsManagementTab() {
           </div>
           <div className={`${sectionLabel} flex flex-wrap items-center gap-4`}>
             <span>{filtered.length} bins</span>
+            <HoverTooltip
+              label={arrivalShelves.length > 0
+                ? `Print all ${arrivalShelves.length} urgency shelf labels, most urgent first`
+                : 'No urgency shelves configured — set one in Edit bin › Arrival urgency shelf'}
+              asChild
+            >
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Printer />}
+                onClick={printArrivalShelves}
+                disabled={arrivalShelves.length === 0}
+                data-testid="print-arrival-shelves"
+              >
+                Print arrival shelves
+              </Button>
+            </HoverTooltip>
+            <HoverTooltip
+              label={!narrowed
+                ? 'Filter by room, rack code (RK12) or barcode first, then print what is shown'
+                : shownPrintable.length > 0
+                  ? `Print the ${shownPrintable.length} labels shown`
+                  : 'Nothing shown has a barcode to print'}
+              asChild
+            >
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Printer />}
+                onClick={() => runPrint(shownPrintable.map(toPrintable))}
+                disabled={!narrowed || shownPrintable.length === 0}
+                data-testid="print-shown-locations"
+              >
+                {narrowed && shownPrintable.length > 0 ? `Print ${shownPrintable.length} shown` : 'Print shown'}
+              </Button>
+            </HoverTooltip>
             <input
               type="text"
               value={filter}
@@ -240,6 +345,7 @@ export function LocationsManagementTab() {
                 <p>Qty</p>
                 <p>Fill</p>
                 <p>Status</p>
+                <p>Arrival</p>
                 <p className="text-right">Actions</p>
               </div>
 
@@ -269,7 +375,20 @@ export function LocationsManagementTab() {
                       <p className={`${tableCell} text-text-muted`}>{row.total_qty}</p>
                       <p className={`${tableCell} text-text-muted`}>{fillLabel(row)}</p>
                       <p className={`${tableHeader} ${status.cls}`}>{status.label}</p>
+                      <p className={`${tableCell} text-text-muted`}>
+                        {arrival?.tierById.has(row.id) ? arrivalTierLabel(arrival.tierById.get(row.id) ?? 0) : '-'}
+                      </p>
                       <div className="flex items-center justify-end gap-2">
+                        <HoverTooltip label={row.barcode ? 'Print label' : 'Bin has no barcode — nothing to print'} asChild>
+                          <IconButton
+                            icon={<Printer className="h-3.5 w-3.5" />}
+                            ariaLabel={`Print label for ${row.name}`}
+                            onClick={() => printRow(row)}
+                            disabled={!row.barcode}
+                            data-testid="manage-print-label"
+                            className="inline-flex h-8 w-8 items-center justify-center border border-border-soft text-text-muted hover:bg-surface-hover hover:text-text-default disabled:opacity-40"
+                          />
+                        </HoverTooltip>
                         <HoverTooltip label={row.barcode ? 'Edit bin' : 'Bin has no barcode — cannot edit here'} asChild>
                           <IconButton
                             icon={<Edit className="h-3.5 w-3.5" />}
@@ -363,6 +482,23 @@ export function LocationsManagementTab() {
                   placeholder="Blank = no limit"
                   className={inputClass}
                 />
+              </label>
+
+              <label className="space-y-1 md:col-span-2">
+                <span className={`block ${sectionLabel}`}>Arrival urgency shelf</span>
+                <select
+                  value={form.arrivalTier}
+                  onChange={(e) => setForm((c) => ({ ...c, arrivalTier: e.target.value }))}
+                  className={inputClass}
+                >
+                  <option value="">Not an arrival shelf</option>
+                  {ARRIVAL_TIERS.map((tier) => (
+                    <option key={tier} value={String(tier)}>{arrivalTierLabel(tier)}</option>
+                  ))}
+                </select>
+                <span className={`block ${fieldLabel} text-text-faint`}>
+                  Arrival tells the operator to place cartons of this urgency here; Unbox works the most urgent shelf first. Capacity = cartons.
+                </span>
               </label>
 
               <p className={`md:col-span-2 ${fieldLabel} text-text-faint`}>

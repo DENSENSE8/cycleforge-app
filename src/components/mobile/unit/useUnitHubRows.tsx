@@ -1,11 +1,19 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import type { DetailNavItem } from '@/components/mobile/detail/DetailParts';
 import { useUnitQcRow } from '@/components/mobile/qc/useUnitQc';
-import { Activity, Archive, History, Inbox, ListChecks, MapPin, ShoppingCart } from '@/components/Icons';
+import { Activity, Archive, History, Inbox, ListChecks, MapPin, Package, ShoppingCart } from '@/components/Icons';
 import { timeAgo } from '@/utils/_date';
 import { newestUnitEvents, unitEventLabel } from './unitTimeline';
 import type { SerialUnitResponse } from '@/lib/serial/use-serial-unit';
+
+interface PackScanResponse {
+  success: boolean;
+  error?: string;
+  /** The pack hub for the unit's open order; it prints the order's bundle on entry. */
+  packHref?: string;
+}
 
 export type UnitHubVerb = 'pair' | 'move' | 'line-test' | 'stash';
 
@@ -25,6 +33,16 @@ export function useUnitHubRows(
   const qc = useUnitQcRow(unit);
   const events = newestUnitEvents(data?.events ?? []);
   const latest = events[0] ?? null;
+  // The unit's open order, resolved exactly as a pack-station scan of its label.
+  const pack = useQuery<PackScanResponse>({
+    queryKey: ['unit-hub.pack-order', unit?.id],
+    enabled: unit != null,
+    queryFn: async () => {
+      const response = await fetch(`/api/packing/resolve-scan?scan=${encodeURIComponent(`U-${unit!.id}`)}`, { cache: 'no-store' });
+      return response.json() as Promise<PackScanResponse>;
+    },
+    refetchOnWindowFocus: false,
+  });
 
   // The allocate route keeps current_status in lockstep with the open
   // allocation, so only an ALLOCATED unit names its order — read off the
@@ -58,6 +76,13 @@ export function useUnitHubRows(
       icon: <ShoppingCart />,
       onSelect: () => openVerb('pair'),
       meta: pairedRef ? `Paired with ${String(pairedRef)}` : 'Scan an order to pair',
+    },
+    {
+      id: 'pack',
+      title: 'Pack order',
+      icon: <Package />,
+      href: pack.data?.packHref ?? null,
+      meta: pack.data?.packHref ? 'Pack and print its papers' : pack.data?.error || 'Not on an open order',
     },
     {
       id: 'move',

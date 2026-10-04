@@ -3,7 +3,7 @@
 /** The `/receiving` right-pane column. */
 
 import { useSearchParams } from 'next/navigation';
-import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
+import { ReceivingLedgers } from '@/components/receiving/ReceivingLedgers';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
@@ -121,9 +121,7 @@ export function ReceivingRightPane({
         style={{ display: showTable ? 'flex' : 'none' }}
         aria-hidden={!showTable}
       >
-        <ReceivingLinesTable
-          selectMode={selectMode}
-        />
+        <ReceivingLedgers selectMode={selectMode} />
       </div>
       {showTable ? (
         <ReceivingLineRailShell surface={isIncomingMode ? 'incoming' : 'lines'} />

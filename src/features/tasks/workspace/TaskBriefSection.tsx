@@ -1,6 +1,6 @@
 'use client';
 
-/** Task evidence — the **Brief**: markdown instructions with Write/Preview editing and a read-only full-screen reader. */
+/** Task evidence — the **Brief**: markdown instructions with Write/Preview editing and a read-only full-screen reader. Renders live (reference chips, ```tasks``` blocks, diagrams) through the shared `MarkdownRenderer`. */
 
 import { useId, useState } from 'react';
 import { ClipboardList, Maximize2 } from '@/components/Icons';
@@ -28,6 +28,7 @@ export function TaskBriefSection({
   readerOpen: readerOpenProp,
   onReaderOpenChange,
   bare = false,
+  shown,
 }: {
   note: string;
   /** Resolves once the PATCH lands; throws the refusal otherwise. */
@@ -37,8 +38,13 @@ export function TaskBriefSection({
   /** Controlled reader state (a board key opens it); omit to let the Expand verb own it. */
   readerOpen?: boolean;
   onReaderOpenChange?: (open: boolean) => void;
-  /** No evidence-card chrome — a plain labelled field for the rail's Overview stack. */
+  /** No evidence-card chrome and no "Brief" heading (owner 2026-10-03, M2: the words are their own label) — the Overview stack. */
   bare?: boolean;
+  /**
+   * What the view and the reader SHOW, when it differs from the stored note — the note without the line the
+   * record title already shows (`taskBriefBody`: one fact, one place). Edit always opens the whole note.
+   */
+  shown?: string | null;
 }) {
   const fieldId = useId();
   const [draft, setDraft] = useState<string | null>(null);
@@ -53,6 +59,8 @@ export function TaskBriefSection({
   const editing = draft !== null;
   const value = draft ?? note;
   const changed = editing && draft.trim() !== note.trim();
+  // What the view and the reader paint: the de-duped body when the caller hands one, else the note.
+  const visible = shown === undefined ? note : (shown ?? '');
 
   const save = async () => {
     if (!changed || saving) return;
@@ -75,7 +83,7 @@ export function TaskBriefSection({
   // The reader shows what is SAVED — a half-typed draft is not the brief yet.
   const action = editing ? null : (
     <div className="flex shrink-0 items-center gap-1">
-      {note ? (
+      {visible ? (
         <HoverTooltip label="Read full screen" asChild>
           <button
             type="button"
@@ -134,7 +142,7 @@ export function TaskBriefSection({
         </>
       ) : (
         <div className="min-h-24 border border-mode-rule px-3 py-2">
-          {value.trim() ? <MarkdownRenderer content={value} /> : <p className="text-role-data text-mode-muted">Nothing to preview.</p>}
+          {value.trim() ? <MarkdownRenderer content={value} live="desk" /> : <p className="text-role-data text-mode-muted">Nothing to preview.</p>}
         </div>
       )}
       <div className="flex items-center gap-2">
@@ -155,11 +163,11 @@ export function TaskBriefSection({
         </button>
       </div>
     </div>
-  ) : note ? (
+  ) : visible ? (
     <div className="max-w-none" data-testid="task-brief-view">
-      <MarkdownRenderer content={note} />
+      <MarkdownRenderer content={visible} live="desk" />
     </div>
-  ) : (
+  ) : note ? null : (
     <button
       type="button"
       onClick={startEditing}
@@ -179,7 +187,8 @@ export function TaskBriefSection({
       onClose={() => setReaderOpen(false)}
       title={title ?? LABEL}
       meta={title ? LABEL : undefined}
-      content={note}
+      content={visible}
+      live="desk"
       onEdit={() => {
         setReaderOpen(false);
         startEditing();
@@ -188,12 +197,10 @@ export function TaskBriefSection({
   );
 
   return bare ? (
-    <section aria-label={LABEL} data-testid="task-brief" className="flex flex-col gap-2">
-      <div className="flex min-h-7 items-center gap-2">
-        <h3 className="flex-1 text-role-micro font-medium text-text-muted">{LABEL}</h3>
-        {action}
-      </div>
-      {body}
+    // No heading: the words are their own label; Expand / Edit sit at the top-right of the text.
+    <section aria-label={LABEL} data-testid="task-brief" className="flex items-start gap-2">
+      <div className="min-w-0 flex-1">{body}</div>
+      {action}
       {reader}
     </section>
   ) : (

@@ -1,15 +1,20 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-presets';
-import { Barcode, Package, Wrench, Activity } from '@/components/Icons';
+import { Barcode, Package, Wrench, Activity, Radar } from '@/components/Icons';
 import type { DashboardData } from '@/features/operations/types';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { Button } from '@/design-system/primitives';
 import { StaffAvatar } from '@/components/identity';
-import { getStaffColorHex } from '@/utils/staff-colors';
+import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
+import { useAuthPermissions } from '@/components/sidebar/dashboard-sidebar-hooks';
+import { LIVE_FEED_PATH } from '@/lib/live-feed/route';
+import { LIVE_FEED_PERMISSIONS } from '@/lib/live-feed/statuses';
 import { cn } from '@/utils/_cn';
 
 interface LiveFeedCardProps {
@@ -62,32 +67,49 @@ function timeAgo(iso: string): string {
 export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: LiveFeedCardProps) {
   const rows = (feed ?? []).slice(0, 12);
   useStaffColorVersion();
+  const router = useRouter();
+  // The feed's own page gate (either direction) — never offer a door that lands on Not authorized.
+  const permissions = useAuthPermissions();
+  const canOpenFeed = LIVE_FEED_PERMISSIONS.some((permission) => permissions?.has(permission) === true);
 
   return (
     <section>
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <span className={`${sectionLabel} !text-text-muted`}>
-            Live feed
+            Recent activity
           </span>
           <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-text-default mt-1">
             What’s happening on the floor
           </h2>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-card border border-border-soft shrink-0">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping ${
-              ablyStatus === 'connected' ? 'bg-emerald-500' :
-              ablyStatus === 'connecting' ? 'bg-amber-400' : 'bg-rose-400'
-            }`} />
-            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
-              ablyStatus === 'connected' ? 'bg-emerald-500' :
-              ablyStatus === 'connecting' ? 'bg-amber-500' : 'bg-rose-500'
-            }`} />
-          </span>
-          <span className="text-role-micro text-text-muted">
-            {ablyStatus === 'connected' ? 'Live' : ablyStatus}
-          </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {canOpenFeed ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Radar />}
+              onClick={() => router.push(LIVE_FEED_PATH)}
+              data-testid="operations-live-feed-link"
+            >
+              Live feed
+            </Button>
+          ) : null}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-card border border-border-soft">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping ${
+                ablyStatus === 'connected' ? 'bg-emerald-500' :
+                ablyStatus === 'connecting' ? 'bg-amber-400' : 'bg-rose-400'
+              }`} />
+              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
+                ablyStatus === 'connected' ? 'bg-emerald-500' :
+                ablyStatus === 'connecting' ? 'bg-amber-500' : 'bg-rose-500'
+              }`} />
+            </span>
+            <span className="text-role-micro text-text-muted">
+              {ablyStatus === 'connected' ? 'Live' : ablyStatus}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -151,10 +173,7 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                               ring={false}
                             />
                           ) : null}
-                          <span
-                            className="truncate font-semibold"
-                            style={{ color: getStaffColorHex({ id: row.staff_id ?? null }) }}
-                          >
+                          <span className={cn('truncate font-semibold', stationThemeColors[getStaffThemeById(row.staff_id ?? null)].text)}>
                             {row.actor_name}
                           </span>
                         </p>

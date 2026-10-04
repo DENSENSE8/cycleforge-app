@@ -2,19 +2,18 @@
 
 /**
  * The task sheet's FOLLOW-UPS — the phone twin of the desk rail's Timeline
- * tab (SURFACE_LAW: every operator verb completable on `/m/*`). Phase 1 is
- * free text (owner 2026-09-29): write the call / note, set when it happened
- * (defaults to now), Log. Emails are not typed here (owner 2026-09-30) — they
- * are linked under the sheet's Linked records. Same route, same hook
- * (`useTaskFollowUps` → `POST /api/tasks/[id]/follow-ups`). Below it, the same
+ * tab (SURFACE_LAW: every operator verb completable on `/m/*`). Logging a call
+ * or note is a ⋯ menu verb (`MobileTaskLogSheet`, owner 2026-10-03); emails are
+ * linked, not typed (owner 2026-09-30). Same route, same hook
+ * (`useTaskFollowUps` → `POST /api/tasks/[id]/follow-ups`). The record shows the
  * merged stream the desk paints (`useTaskTimeline`: follow-ups, ticket
- * comments, task edits, alerts), newest 5 first, in the desk rail's row
- * anatomy: kind glyph + what happened; kind word · staffer · how long ago ·
- * detail; a hairline joining the glyphs. Tap a row to read it in full.
+ * comments unless the thread is in line, task edits, alerts), newest 5 first:
+ * kind glyph + what happened; kind word · staffer · how long ago · detail; a
+ * hairline joining the glyphs. Tap a row to read it in full.
  */
 
 import { useState } from 'react';
-import { NotebookPen, Phone, type LucideIcon } from 'lucide-react';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { StaffBadge } from '@/design-system/components/StaffBadge';
 import { Button } from '@/design-system/primitives';
@@ -27,34 +26,30 @@ import { TASK_TIMELINE_INITIAL_LIMIT, taskTimelineDetail, type TaskTimelineItem 
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
-type HandChannel = 'call' | 'note';
+export type TaskLogChannel = 'call' | 'note';
 
-const CHANNELS: readonly { id: HandChannel; label: string; icon: LucideIcon }[] = [
-  { id: 'call', label: 'Call', icon: Phone },
-  { id: 'note', label: 'Note', icon: NotebookPen },
-];
+const CHANNEL_TITLE: Readonly<Record<TaskLogChannel, string>> = { call: 'Log Call', note: 'Log Note' };
 
-export function MobileTaskFollowUps({
+/**
+ * "Log Call…" / "Log Note…" from the record's ⋯ menu (owner 2026-10-03: adding lives behind the
+ * three dots). Free text + when it happened (defaults to now), then Log.
+ */
+export function MobileTaskLogSheet({
   taskId,
-  ticketNumber,
+  channel,
   nowMs,
+  onClose,
 }: {
   taskId: number;
-  ticketNumber: number | null;
+  /** Null = closed. */
+  channel: TaskLogChannel | null;
   nowMs: number;
+  onClose: () => void;
 }) {
   const { log } = useTaskFollowUps(taskId);
-  const { items, loading } = useTaskTimeline(taskId, ticketNumber);
-  const [showAllFor, setShowAllFor] = useState<number | null>(null);
-  const hidden = showAllFor === taskId ? 0 : Math.max(0, items.length - TASK_TIMELINE_INITIAL_LIMIT);
-  const visible = hidden > 0 ? items.slice(0, TASK_TIMELINE_INITIAL_LIMIT) : items;
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
-  /** Null = folded to the verbs; a channel = that channel's form is open. */
-  const [channel, setChannel] = useState<HandChannel | null>(null);
   const [body, setBody] = useState('');
   const [occurredAt, setOccurredAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
-
   const canLog = channel != null && !log.isPending && Boolean(body.trim());
 
   const submit = () => {
@@ -66,7 +61,7 @@ export function MobileTaskFollowUps({
         onSuccess: () => {
           setBody('');
           setOccurredAt(null);
-          setChannel(null);
+          onClose();
         },
         onError: (err: unknown) => setError(err instanceof Error ? err.message : 'Could not log the follow-up.'),
       },
@@ -74,30 +69,14 @@ export function MobileTaskFollowUps({
   };
 
   return (
-    <div className="flex flex-col gap-2 pt-1" data-testid="mobile-task-follow-ups">
-      <div role="group" aria-label="Log a follow-up" className="grid grid-cols-2 gap-1">
-        {CHANNELS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={channel === id}
-            aria-expanded={channel === id}
-            onClick={() => setChannel((open) => (open === id ? null : id))}
-            data-testid={`mobile-task-follow-up-open-${id}`}
-            className={cn(
-              'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full text-role-caption font-semibold transition-colors',
-              channel === id ? 'bg-surface-selected text-text-default ring-1 ring-border-soft' : 'bg-surface-sunken text-text-muted',
-            )}
-          >
-            <Icon aria-hidden className="size-4" />
-            {label}
-          </button>
-        ))}
-      </div>
-      {channel != null ? (
-        <>
+    <Sheet open={channel != null} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined} data-testid="mobile-task-log-sheet">
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>{channel ? CHANNEL_TITLE[channel] : ''}</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="flex flex-col gap-2">
           <TextField
-            key={channel}
+            key={channel ?? 'closed'}
             label={channel === 'call' ? 'What was said on the call' : 'What happened'}
             value={body}
             onChange={setBody}
@@ -105,32 +84,53 @@ export function MobileTaskFollowUps({
             rows={3}
             autoFocus
           />
-          <div className="flex items-center gap-2">
-            <span className="shrink-0 text-role-caption font-semibold text-text-muted">Followed up</span>
-            <DateTimePickerField
-              value={occurredAt ?? undefined}
-              onChange={setOccurredAt}
-              placeholder="Now"
-              toDate={new Date(nowMs)}
-              className="min-h-11 flex-1"
-            />
-          </div>
+          {/* P1 — no "Followed up" label: the calendar glyph and its value ("Now" until picked) lead. */}
+          <DateTimePickerField
+            value={occurredAt ?? undefined}
+            onChange={setOccurredAt}
+            placeholder="Now"
+            ariaLabel="Followed up"
+            toDate={new Date(nowMs)}
+            className="min-h-11"
+          />
           {error ? (
             <p role="alert" className="text-role-micro text-text-danger">
               {error}
             </p>
           ) : null}
-          <Button variant="secondary" size="lg" className="min-h-12" disabled={!canLog} onClick={submit}>
-            {log.isPending ? 'Logging…' : 'Log follow-up'}
+          <Button variant="primary" size="lg" className="min-h-12" disabled={!canLog} onClick={submit}>
+            {log.isPending ? 'Logging…' : 'Log'}
           </Button>
-        </>
-      ) : null}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
+/** The task's merged activity stream, read-only (logging lives in `MobileTaskLogSheet`). */
+export function MobileTaskFollowUps({
+  taskId,
+  ticketNumber,
+  nowMs,
+}: {
+  taskId: number;
+  /** Null when the ticket thread is painted in line — its comments are not repeated here. */
+  ticketNumber: number | null;
+  nowMs: number;
+}) {
+  const { items, loading } = useTaskTimeline(taskId, ticketNumber);
+  const [showAllFor, setShowAllFor] = useState<number | null>(null);
+  const hidden = showAllFor === taskId ? 0 : Math.max(0, items.length - TASK_TIMELINE_INITIAL_LIMIT);
+  const visible = hidden > 0 ? items.slice(0, TASK_TIMELINE_INITIAL_LIMIT) : items;
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  // An empty stream is absent, not announced — the record only shows what exists (P1).
+  if (!loading && items.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2 pt-1" data-testid="mobile-task-follow-ups">
       <div className="pt-2" data-testid="mobile-task-timeline">
         {loading ? (
           <p className="text-role-caption text-text-muted">Loading the timeline…</p>
-        ) : items.length === 0 ? (
-          <p className="text-role-caption text-text-muted">Nothing logged on this task yet.</p>
         ) : (
           <ol className="flex flex-col">
             {visible.map((item, index) => {

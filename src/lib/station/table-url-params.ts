@@ -28,21 +28,14 @@ export function parseStaffParam(raw: string | null | undefined): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Pipeline (board) ⇄ All (dense list) view toggle. */
-export const LAYOUT_PARAM = 'layout';
+/** Pipeline (board) ⇄ All (dense list) view toggle — still captured by the tech / packer / testing saved views. */
+const LAYOUT_PARAM = 'layout';
 /** My work (signed-in) ⇄ All staff scope. */
 const SCOPE_PARAM = 'scope';
 /** Shared week navigation offset (0 = current week). */
 export const WEEK_OFFSET_PARAM = 'weekOffset';
 
-export type StationLayout = 'board' | 'all';
 type StationScope = 'mine' | 'all';
-
-const DEFAULT_STATION_LAYOUT: StationLayout = 'all';
-
-export function parseLayout(raw: string | null | undefined): StationLayout {
-  return raw === 'board' ? 'board' : 'all';
-}
 
 function parseScope(raw: string | null | undefined, fallback: StationScope): StationScope {
   return raw === 'mine' || raw === 'all' ? raw : fallback;
@@ -75,7 +68,6 @@ export const SAVED_VIEW_PARAM_KEYS: Record<StationSurfaceKey, readonly string[]>
   // server axis `sort`, the ledger's column sort, the week, who handled it, the
   // attention pills and intake kind, the desk Find. Server search (`rh_*`) stays out.
   receiving_history: [
-    LAYOUT_PARAM,
     STAFF_FILTER_PARAM,
     WEEK_OFFSET_PARAM,
     'sort',
@@ -91,7 +83,6 @@ export const SAVED_VIEW_PARAM_KEYS: Record<StationSurfaceKey, readonly string[]>
   // the ledger's column sort): delivery state, server order, PO date range,
   // purchasing source, the desk Find. The pasted list (`ref_in`) and `page` stay out.
   receiving_incoming: [
-    LAYOUT_PARAM,
     'state',
     'sort',
     'po_from',

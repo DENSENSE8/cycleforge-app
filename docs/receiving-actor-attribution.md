@@ -21,7 +21,6 @@ Display names for external integrations (Zoho notes) are resolved **server-side*
 | `POST /api/receiving/lines/[id]/putaway` | Was accepting `body.staff_id` |
 | `POST /api/receiving/lines/[id]/putaway/reverse` | Was accepting `body.staff_id` |
 | `POST /api/receiving/lines/[id]/move` | Was accepting `body.staff_id` |
-| `POST /api/receiving/mark-received` | Was preferring `body.staff_name` |
 | `POST /api/receiving/mark-received-po` | Was preferring `body.staff_name` |
 | `POST /api/receiving/touch-scan` | Already uses `ctx.staffId` |
 | `POST /api/receiving/lookup-po` | Already uses `ctx.staffId` |

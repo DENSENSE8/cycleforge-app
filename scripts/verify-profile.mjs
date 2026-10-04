@@ -156,6 +156,19 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
+    name: 'Routes',
+    // Every Warehouse URL, nav name and domain word comes from the route tree
+    // (owner 2026-10-03, src/lib/nav/route-tree.ts). `always`: a registry and
+    // source read (~1s), and the increments that break it — a new /m page, a
+    // menu row, a label, a hand-written `/m/stock…` literal — run `verify:fast`.
+    // Same rule module (src/lib/nav/route-tree-law.ts) as the ds_route /
+    // ds_vocabulary / ds_route_tree MCP faces. Literal-path baseline is
+    // shrink-only: scripts/route-tree-literals.baseline.json.
+    cmd: localBin('tsx'),
+    args: ['scripts/route-tree-guard.ts'],
+    profiles: 'always',
+  },
+  {
     name: 'Sku identity',
     // One SKU, one title, one photo — the Zoho item governs (operator
     // 2026-09-15). `always`: a
@@ -187,6 +200,25 @@ export const ALL_GATES = [
     // without `pnpm tokens:build` — is exactly a `verify:fast` increment.
     cmd: localBin('tsx'),
     args: ['packages/design-tokens/scripts/generate.ts', '--check'],
+    profiles: 'always',
+  },
+  {
+    name: 'Design consolidation',
+    // The living delete/simplification ledger: retired component forks stay
+    // deleted, active entries keep concrete sources and replacement paths.
+    cmd: 'node',
+    args: ['scripts/design-consolidation-guard.mjs'],
+    profiles: 'always',
+  },
+  {
+    name: 'Disclosure',
+    // The screen budget (owner 2026-10-03, just-in-time progressive disclosure):
+    // every DECLARED first screen (src/lib/disclosure/surfaces.ts) obeys the law —
+    // title … ✕ chrome row, one control per fact, doors open from L1, one primary.
+    // `always`: an in-memory check (<1s). The LIVE measure of a rendered screen
+    // needs the lane, so it is the ds_disclosure tool / declutter skill, not a gate.
+    cmd: localBin('tsx'),
+    args: ['scripts/disclosure-audit.ts'],
     profiles: 'always',
   },
   {

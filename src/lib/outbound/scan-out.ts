@@ -13,6 +13,7 @@ import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { productImageUrl } from '@/lib/photos/product-image-url';
 import { publishOrderChanged } from '@/lib/realtime/publish';
+import { upsertOpenOrderException } from '@/lib/orders-exceptions';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Reasons the dock must refuse a physical handoff. */
@@ -42,15 +43,18 @@ export function scanOutBlockedMessage(reason: ScanOutBlockReason): string {
 
 /**
  * Who pressed it. `dock` = the gun; `desk-selection` = the Scan out verb on a
- * desk selection; `bulk` = an operator-authorized backlog clear run as a script.
+ * desk selection; `bulk` = an operator-authorized backlog clear run as a script;
+ * `resolved-miss` = a held unmatched dock scan replayed once its order resolved
+ * (the box already left — {@link replayHeldScanOut}).
  */
-export type ScanOutOrigin = 'dock' | 'desk-selection' | 'phone' | 'bulk';
+export type ScanOutOrigin = 'dock' | 'desk-selection' | 'phone' | 'bulk' | 'resolved-miss';
 
 const ORIGIN_NOTES: Record<ScanOutOrigin, string> = {
   dock: 'Scanned out at dock',
   'desk-selection': 'Marked as shipped from selection',
   phone: 'Scanned out on phone',
   bulk: 'Bulk scanned out (operator-authorized backlog clear)',
+  'resolved-miss': 'Scanned out unmatched; recorded when its order resolved',
 };
 
 const ORIGIN_AUDIT_SOURCE: Record<ScanOutOrigin, string> = {
@@ -58,7 +62,11 @@ const ORIGIN_AUDIT_SOURCE: Record<ScanOutOrigin, string> = {
   'desk-selection': 'api.shipped.scan-out',
   phone: 'api.shipped.scan-out',
   bulk: 'scripts.scan-out-packed-orders',
+  'resolved-miss': 'orders-exceptions.scan-out-replay',
 };
+
+/** Origins with no person at a screen: the audit row is `method: 'system'`. */
+const SYSTEM_ORIGINS: Readonly<Partial<Record<ScanOutOrigin, true>>> = { bulk: true, 'resolved-miss': true };
 
 /** The carton a scan resolved to — the toast / running-list context. */
 export interface ScanOutCarton {
@@ -87,7 +95,8 @@ export interface ScanOutContext {
 }
 
 export type ScanOutResult =
-  | { kind: 'unmatched' }
+  /** No shipment: the miss is held as an open `outbound` orders_exception (`exceptionId`, null when not persistable). */
+  | { kind: 'unmatched'; exceptionId: number | null }
   | { kind: 'blocked'; blockReason: ScanOutBlockReason; carton: ScanOutCarton }
   | { kind: 'duplicate'; shipConfirmedAt: string; carton: ScanOutCarton }
   | { kind: 'confirmed'; activityId: number | null; carton: ScanOutCarton };
@@ -112,6 +121,8 @@ export interface ScanOutInput {
    * scripts omit it and the audit falls back to `actorStaffId` + org override.
    */
   auditRequest?: ScanOutAuditRequest;
+  /** The held unmatched scan (`orders_exceptions.id`) a `resolved-miss` scan-out replays. */
+  heldExceptionId?: number | null;
 }
 
 /** The request identity an audit row is attributed to. */
@@ -144,6 +155,17 @@ export interface ScanOutDeps {
   ) => Promise<unknown>;
   invalidateCaches: (organizationId: string) => Promise<unknown>;
   publishOrderChanged: (organizationId: string, orderRowId: number) => Promise<unknown>;
+  /**
+   * Hold a dock miss as an open `outbound` orders_exception (idempotent: a re-scan
+   * updates the same open row). Returns the exception id, null when the label
+   * cannot be held (e.g. a `SKU:QTY` scan) or now matches an order.
+   */
+  recordUnmatched: (params: {
+    organizationId: string;
+    scan: string;
+    staffId: number | null;
+    notes: string;
+  }) => Promise<number | null>;
 }
 
 
@@ -152,8 +174,41 @@ export async function scanOutLabel(
   deps: ScanOutDeps = defaultScanOutDeps,
 ): Promise<ScanOutResult> {
   const shipmentId = await deps.resolveShipment(input.scan, input.organizationId);
-  if (shipmentId == null) return { kind: 'unmatched' };
+  if (shipmentId == null) return recordUnmatchedScan(input, deps);
   return scanOutResolvedShipment(input, shipmentId, deps);
+}
+
+/** Notes on the held miss: where the label was scanned. */
+const ORIGIN_UNMATCHED_NOTES: Record<ScanOutOrigin, string> = {
+  dock: 'Scanned out at dock — no matching shipment',
+  'desk-selection': 'Marked as shipped from selection — no matching shipment',
+  phone: 'Scanned out on phone — no matching shipment',
+  bulk: 'Bulk scan-out — no matching shipment',
+  'resolved-miss': 'Replayed scan-out — no matching shipment',
+};
+
+/** A scan-out that resolved no shipment: hold it on Fulfilled's unmatched list and audit the miss. */
+async function recordUnmatchedScan(input: ScanOutInput, deps: ScanOutDeps): Promise<ScanOutResult> {
+  const { organizationId, scan, origin } = input;
+  const exceptionId = await deps.recordUnmatched({
+    organizationId,
+    scan,
+    staffId: input.actorStaffId,
+    notes: ORIGIN_UNMATCHED_NOTES[origin],
+  });
+  if (exceptionId != null) {
+    await deps.recordAudit(input.auditRequest?.ctx ?? null, input.auditRequest?.req ?? null, {
+      source: ORIGIN_AUDIT_SOURCE[origin],
+      action: AUDIT_ACTION.SHIP_CONFIRM_UNMATCHED,
+      entityType: AUDIT_ENTITY.ORDERS_EXCEPTION,
+      entityId: String(exceptionId),
+      ...(SYSTEM_ORIGINS[origin] ? { method: 'system' as const } : null),
+      actorStaffIdOverride: input.actorStaffId,
+      organizationIdOverride: organizationId,
+      extra: { tracking: scan },
+    });
+  }
+  return { kind: 'unmatched', exceptionId };
 }
 
 /**
@@ -181,8 +236,15 @@ async function scanOutResolvedShipment(
   const context = await deps.loadContext(organizationId, shipmentId, scan);
   const { carton } = context;
 
-  /* Preconditions: cancellation and an absent completed pack both fail closed. */
-  const blockReason = scanOutBlockReason(carton.orderStatus, context.isPacked);
+  /*
+   * Preconditions: cancellation and an absent completed pack both fail closed.
+   * A replayed miss already left the building, so only a cancellation refuses
+   * to record it — a missing pack scan is exactly why it was held.
+   */
+  const blockReason =
+    origin === 'resolved-miss'
+      ? blockedOrderStatus(carton.orderStatus)
+      : scanOutBlockReason(carton.orderStatus, context.isPacked);
   if (blockReason) return { kind: 'blocked', blockReason, carton };
 
 
@@ -197,8 +259,9 @@ async function scanOutResolvedShipment(
     scanRef: scan,
     notes: ORIGIN_NOTES[origin],
     metadata: {
-      source: origin === 'bulk' ? 'bulk-scan-out' : 'shipped-scan-out',
+      source: origin === 'bulk' ? 'bulk-scan-out' : origin === 'resolved-miss' ? 'unmatched-scan-out-replay' : 'shipped-scan-out',
       ...(origin === 'desk-selection' ? { deskSelection: true } : null),
+      ...(input.heldExceptionId != null ? { orders_exception_id: input.heldExceptionId } : null),
       ...(origin === 'phone'
         ? {
             origin: 'phone',
@@ -226,7 +289,7 @@ async function scanOutResolvedShipment(
     entityType: AUDIT_ENTITY.SHIPMENT,
     entityId: String(shipmentId),
     stationActivityLogId: activityId,
-    ...(origin === 'bulk' ? { method: 'system' as const } : null),
+    ...(SYSTEM_ORIGINS[origin] ? { method: 'system' as const } : null),
     actorStaffIdOverride: input.actorStaffId,
     organizationIdOverride: organizationId,
     extra: { tracking: carton.tracking, order_id: carton.orderId },
@@ -407,16 +470,21 @@ async function loadScanOutContext(
   };
 }
 
+/**
+ * The dock's label → shipment resolution: the registry first (registers/syncs a
+ * recognized carrier tracking the same way the pack station does), then the
+ * orders / exception fallback. Null = unmatched.
+ */
+export async function resolveScanOutShipment(scan: string, organizationId: string): Promise<number | null> {
+  const id =
+    (await resolveShipmentId(scan, organizationId)).shipmentId ??
+    (await resolveShipmentViaOrderOrException(scan, organizationId));
+  // pg hands bigint ids back as strings despite the declared `number`.
+  return id == null ? null : Number(id);
+}
+
 const defaultScanOutDeps: ScanOutDeps = {
-  resolveShipment: async (scan, organizationId) => {
-    // Registry first (registers/syncs a recognized carrier tracking the same
-    // way the pack station does), then the orders / exception fallback.
-    const id =
-      (await resolveShipmentId(scan, organizationId)).shipmentId ??
-      (await resolveShipmentViaOrderOrException(scan, organizationId));
-    // pg hands bigint ids back as strings despite the declared `number`.
-    return id == null ? null : Number(id);
-  },
+  resolveShipment: resolveScanOutShipment,
   loadContext: loadScanOutContext,
   findShipConfirm: async (organizationId, shipmentId) => {
     const existing = await tenantQuery(
@@ -448,4 +516,27 @@ const defaultScanOutDeps: ScanOutDeps = {
       orderIds: [orderRowId],
       source: 'shipping.scan-out',
     }),
+  recordUnmatched: async ({ organizationId, scan, staffId, notes }) => {
+    const staffName = staffId != null
+      ? await tenantQuery<{ name: string | null }>(
+          organizationId,
+          `SELECT name FROM staff WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+          [staffId, organizationId],
+        ).then((r) => r.rows[0]?.name ?? null)
+      : null;
+    const { exception } = await upsertOpenOrderException(
+      {
+        organizationId,
+        shippingTrackingNumber: scan,
+        sourceStation: 'outbound',
+        staffId,
+        staffName,
+        reason: 'not_found',
+        notes,
+      },
+      pool,
+      organizationId as OrgId,
+    );
+    return exception?.id != null ? Number(exception.id) : null;
+  },
 };

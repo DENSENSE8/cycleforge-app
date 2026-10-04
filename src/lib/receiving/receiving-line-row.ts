@@ -149,6 +149,12 @@ export interface ReceivingLineRow {
   shipment_latest_event_city?: string | null;
   /** Latest carrier event postal (Incoming) — wrong-destination compare. */
   shipment_latest_event_postal?: string | null;
+  /** Carrier ETA (`shipping_tracking_numbers.estimated_delivery_at`); cleared once delivered (Incoming views). */
+  shipment_estimated_delivery_at?: string | null;
+  /** Who the carrier says received the package — FedEx receivedByName / UPS receivedBy (Incoming views). */
+  shipment_signed_by?: string | null;
+  /** Failed delivery attempts the carrier reported (Incoming views); null without a shipment. */
+  shipment_delivery_attempts?: number | null;
   /** True when delivered event postal ≠ warehouse ship-from. */
   wrong_destination?: boolean;
   /**

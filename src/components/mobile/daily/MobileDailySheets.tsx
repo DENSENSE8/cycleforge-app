@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { PomodoroTimer } from '@/components/ui/PomodoroTimer';
 import { Button } from '@/design-system/primitives';
 import { getCurrentPSTDateKey } from '@/utils/date';
@@ -63,34 +63,27 @@ export function MobileDailyDetailSheet({
   const canSave = trimmed.length > 0 && trimmed !== item?.title && !saving;
 
   return (
-    /* `scrollBody` is load-bearing now that the field and the facts share one surface. */
-    <BottomSheet
-      open={item !== null}
-      onClose={onClose}
-      forceVariant="sheet"
-      compact
-      scrollBody
-      scrollBodyMaxHeightClass="max-h-[70svh]"
-    >
+    /* The body is a flex column so `MobileDailyFacts` stays the one scroller: field above, verbs below. */
+    <Sheet open={item !== null} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
       {/*
- * The sheet paints its OWN header rather than passing `title`:
+ * The sheet paints its OWN header rather than a plain title:
  * (operator 2026-09-15 — *"within the edit it can display the ID top
  */}
-      <div className="flex shrink-0 items-baseline justify-between gap-3 px-1 pb-2">
-        <span className="text-role-micro text-text-faint">
+      <SheetHeader className="shrink-0 flex-row items-center justify-between gap-3 px-mode-page pb-0 pt-3 pr-12">
+        <SheetTitle className="text-role-micro font-normal text-text-faint">
           {canManage ? 'Edit task' : 'Task'}
-        </span>
+        </SheetTitle>
         {item ? (
-          <span className="shrink-0 text-role-micro tabular-nums text-text-faint">
-            {item.id}
+          <span className="flex shrink-0 items-center gap-1">
+            <span className="text-role-micro tabular-nums text-text-faint">{item.id}</span>
+            {/* The timer is a glyph in the header; the full timer is one tap away (L2). */}
+            <PomodoroTimer kind="checklist" id={item.id} date={getCurrentPSTDateKey()} canRun={!report?.mine.doneItemIds.includes(item.id)} />
           </span>
         ) : null}
-      </div>
-      {item ? (
-        <PomodoroTimer kind="checklist" id={item.id} date={getCurrentPSTDateKey()} canRun={!report?.mine.doneItemIds.includes(item.id)} className="px-1" />
-      ) : null}
-
-      {/* The title field follows the timer, focused with the keyboard up. */}
+      </SheetHeader>
+      <SheetBody className="flex flex-col pt-2">
+      {/* The title field leads the body, focused with the keyboard up. */}
       {item && canManage ? (
         <input
           value={draftTitle}
@@ -179,6 +172,8 @@ export function MobileDailyDetailSheet({
           </div>
         )
       ) : null}
-    </BottomSheet>
+      </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

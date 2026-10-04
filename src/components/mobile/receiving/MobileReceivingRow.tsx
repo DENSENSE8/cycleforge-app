@@ -52,8 +52,8 @@ interface MobileReceivingRowProps {
 }
 
 /**
- * Mobile receiving row — the phone mirror of a {@link ReceivingLinesTable} row.
- * Uses the SAME primitives so the two can't drift: {@link RowTitle} (status dot
+ * Mobile receiving row — one receiving line on a phone. Composed from the shared
+ * row primitives: {@link RowTitle} (status dot
  * + product title), {@link RowMetaColumns} (qty · condition · stage clock),
  * and {@link MobileReceivingIdentityChips} (PO / SKU / tracking / serial, always
  * rendered as fixed columns — empties read as '--------'). The bottom-pinned
@@ -81,7 +81,7 @@ export function MobileReceivingRow({
       workflowStatus: row.workflow_status,
       inventoryProviderLabel,
     }) ?? workflowLabel;
-  // Icon mapping + show/hide are the SAME shared decision the desktop table uses.
+  // Icon mapping + show/hide come from the shared receiving-constants decision.
   const { Icon: WorkflowIcon, tone: workflowIconTone } = getWorkflowIconMeta(workflowLabel);
   const showWorkflowIcon = shouldShowWorkflowStatusIcon(display);
   const stageStamp = resolveReceivingRowStageStamp(row, activityAxis);
@@ -117,7 +117,7 @@ export function MobileReceivingRow({
           className="!mt-0 shrink-0"
           indent={META_COL.indentWide}
           qtyCol={META_COL.qtyColWide}
-          // Same PARTS / L-New grades as desktop ReceivingLineOrderRow.
+          // PARTS / L-New grades sit in the wide PO condition column.
           condCol={META_COL.poCondCol}
           qty={
             <span

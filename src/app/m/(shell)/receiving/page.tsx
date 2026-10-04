@@ -6,8 +6,8 @@
  * the feed is the whole surface, so there is no sub-surface left to select.
  */
 
-import RedesignedMobileReceivingLive from '@/components/mobile/redesign/ReceivingLive';
+import MobileV2ReceivingLive from '@/components/mobile/v2/receiving/MobileV2ReceivingLive';
 
 export default function MobileReceivingLivePage() {
-  return <RedesignedMobileReceivingLive />;
+  return <MobileV2ReceivingLive />;
 }

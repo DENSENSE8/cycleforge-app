@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Camera, Monitor } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -79,26 +79,31 @@ export function ReceivingShareToPhoneSheet() {
   }, [router, shared]);
 
   return (
-    <BottomSheet open={shared != null} onClose={close} title="Shared from computer">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-sunken text-text-muted">
-          <Monitor className="h-7 w-7" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-text-default">{shared?.label}</p>
-          <p className="mt-1 text-role-caption font-medium leading-snug text-text-soft">
-            Sent from the receiving workstation. Take photos for this package on your phone.
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          onClick={takePhotos}
-          icon={<Camera className="h-5 w-5" />}
-          className="h-12 w-full rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-600/30"
-        >
-          Take photos
-        </Button>
-      </div>
-    </BottomSheet>
+    <Sheet open={shared != null} onOpenChange={(next) => { if (!next) close(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
+          <SheetTitle>Shared from computer</SheetTitle>
+        </SheetHeader>
+        <SheetBody className="flex flex-col items-center gap-4 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-sunken text-text-muted">
+            <Monitor className="h-7 w-7" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-text-default">{shared?.label}</p>
+            <p className="mt-1 text-role-caption font-medium leading-snug text-text-soft">
+              Sent from the receiving workstation. Take photos for this package on your phone.
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            onClick={takePhotos}
+            icon={<Camera className="h-5 w-5" />}
+            className="h-12 w-full rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-600/30"
+          >
+            Take photos
+          </Button>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

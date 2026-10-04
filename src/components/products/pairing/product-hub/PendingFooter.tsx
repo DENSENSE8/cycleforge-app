@@ -1,7 +1,11 @@
-import { AlertCircle, Link2 } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Link2 } from '@/components/Icons';
+import { StickyActionBar } from '@/design-system/components/StickyActionBar';
 
-/** Sticky pending-action bar — commit (pair/reject/unpair) or discard. */
+/**
+ * Pending pair decisions — commit (pair/reject/unpair) or discard, as the
+ * desk's floating sticky buttons (`StickyActionBar`, owner 2026-10-03: no bar
+ * behind them). Mount as the last child of the hub's scrolling body.
+ */
 export function PendingFooter({
   selectedCount,
   unselectedCount,
@@ -27,38 +31,16 @@ export function PendingFooter({
   if (actionable === 0 && !saveError) return null;
 
   return (
-    <div className="sticky bottom-0 z-10 border-t border-border-soft bg-surface-card/90 py-3 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-2 px-4 sm:px-6">
-        {saveError ? (
-          <div className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-role-caption font-semibold text-red-700">
-            <AlertCircle className="h-3.5 w-3.5" />
-            {saveError}
-          </div>
-        ) : null}
-
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="secondary"
-            size="md"
-            type="button"
-            onClick={onDiscard}
-            disabled={saving || actionable === 0}
-          >
-            Discard
-          </Button>
-          <Button
-            variant="brand"
-            size="md"
-            type="button"
-            onClick={onCommit}
-            disabled={saving || actionable === 0}
-            loading={saving}
-            icon={<Link2 />}
-          >
-            Pair {selectedCount} · Reject {unselectedCount}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <StickyActionBar
+      error={saveError ?? undefined}
+      secondary={{ label: 'Discard', onClick: onDiscard, disabled: saving || actionable === 0 }}
+      primary={{
+        label: `Pair ${selectedCount} · Reject ${unselectedCount}`,
+        onClick: onCommit,
+        disabled: actionable === 0,
+        isLoading: saving,
+        icon: <Link2 className="h-4 w-4" />,
+      }}
+    />
   );
 }

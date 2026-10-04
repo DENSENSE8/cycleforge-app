@@ -36,7 +36,8 @@ type GoKeysSnapshot = {
   peek: boolean;
 };
 
-const PRESS_BEAT_MS = 220;
+/** How long a fired key's cap stays pressed in. */
+export const PRESS_BEAT_MS = 220;
 
 let snapshot: GoKeysSnapshot = { targets: [], armed: false, pressed: null, strips: 0, peek: false };
 const SERVER_SNAPSHOT = snapshot;

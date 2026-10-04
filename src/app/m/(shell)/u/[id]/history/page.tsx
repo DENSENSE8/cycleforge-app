@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { useSerialUnit } from '@/lib/serial/use-serial-unit';
 import { newestUnitEvents, unitEventLabel } from '@/components/mobile/unit/unitTimeline';
@@ -21,7 +21,7 @@ export default function MobileUnitHistoryPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref={`/m/u/${rawParam}`}
         subtitle="History"
         title={unit?.serial_number ?? (isLoading ? 'Loading…' : 'Not found')}

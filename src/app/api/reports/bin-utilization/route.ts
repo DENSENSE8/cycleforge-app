@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { derivedRoomLabelSql, derivedRoomSetJoinSql } from '@/lib/locations/derived-room';
 
 // `mv_bin_utilization` is a cross-tenant materialized view (it has no organization_id column).
+// Its `room` column is a snapshot of the legacy text; the room shown, filtered
+// and searched here is DERIVED live up `loc.parent_id` (a moved rack's shelves
+// report the room the rack stands in now).
+const ROOM = derivedRoomLabelSql('loc', 'room');
+
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const limit = Math.min(
@@ -21,7 +27,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const clauses: string[] = [];
   if (room) {
     params.push(room);
-    clauses.push(`mv.room = $${params.length}`);
+    clauses.push(`${ROOM} = $${params.length}`);
   }
   if (minFill) {
     const v = Number(minFill);
@@ -34,7 +40,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     params.push(`%${q}%`);
     const qIdx = params.length;
     clauses.push(
-      `(mv.bin_name ILIKE $${qIdx} OR mv.barcode ILIKE $${qIdx} OR mv.room ILIKE $${qIdx})`,
+      `(mv.bin_name ILIKE $${qIdx} OR mv.barcode ILIKE $${qIdx} OR ${ROOM} ILIKE $${qIdx})`,
     );
   }
   // A SEARCH IS NOT A PAGE: honouring `?limit=` while `q` narrows would
@@ -45,10 +51,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   const r = await tenantQuery(
     ctx.organizationId,
-    `SELECT mv.bin_id, mv.bin_name, mv.barcode, mv.room, mv.row_label, mv.col_label,
+    `SELECT mv.bin_id, mv.bin_name, mv.barcode, ${ROOM} AS room, mv.row_label, mv.col_label,
               mv.capacity, mv.in_bin, mv.fill_ratio, mv.sku_count
          FROM mv_bin_utilization mv
          JOIN locations loc ON loc.id = mv.bin_id
+         ${derivedRoomSetJoinSql('loc', 'room', `$${orgIdx}`)}
         WHERE loc.organization_id = $${orgIdx}
           ${where}
         ORDER BY mv.fill_ratio DESC NULLS LAST, mv.in_bin DESC

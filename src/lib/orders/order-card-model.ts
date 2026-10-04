@@ -13,7 +13,7 @@ import { LIFECYCLE, type LifecycleState, type StateName } from '@/design-system/
 import { recordState, worstState } from '@/components/outbound/orders/outbound-orders-ledger-state';
 import { conditionSentenceLabel } from '@/lib/conditions';
 import { ordersLineTitle, resolveOrdersIndexValue } from '@/lib/tables/field-catalog/orders-resolve';
-import type { CompoundDelay } from '@/components/tables/compound/compound-row-model';
+import type { Delay } from '@/lib/tables/field-catalog/slot-value';
 import { formatCurrency } from '@/utils/_number';
 import { getExternalUrlByItemNumber, listingMatchesOrderPlatform } from '@/utils/external-item-url';
 import { getOrderPlatformLabel, orderAdminUrl } from '@/utils/order-platform';
@@ -186,7 +186,7 @@ export function orderLineFacts(
   line: Pick<OrderCardLine, 'qty' | 'condition' | 'conditionCode' | 'price' | 'priceEstimate'>,
 ): RecordCardLine['facts'] {
   return {
-    qty: { kind: 'qty', value: line.qty },
+    qty: { kind: 'qty', value: line.qty, multiplier: 'multiple' },
     condition: line.condition ? { kind: 'grade', label: line.condition, code: line.conditionCode } : null,
     price: line.price ? { kind: 'money', text: line.price, estimate: line.priceEstimate, estimateTitle: 'Estimate from the listing price' } : null,
   };
@@ -205,7 +205,7 @@ export function orderRecordLine(line: OrderCardLine): RecordCardLine {
 }
 
 /** The deadline, worded for the card's top-right corner. */
-export function orderCardSla(delay: CompoundDelay, tip: string | null): OrderCardSla {
+export function orderCardSla(delay: Delay, tip: string | null): OrderCardSla {
   const day = delay.dateLabel ?? null;
   if (!day) return { face: 'No ship-by', tone: 'none', tip };
   if (delay.overdue && delay.days > 0) {

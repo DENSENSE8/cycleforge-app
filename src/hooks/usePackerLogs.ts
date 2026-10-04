@@ -79,6 +79,8 @@ export interface PackerRecord {
   orders_exception_id?: number | null;
   exception_reason?: string | null;
   exception_status?: string | null;
+  /** `orders_exceptions.source_station` — `'outbound'` on a dock scan-out miss (Fulfilled's held unmatched scan-outs). */
+  exception_source_station?: string | null;
   /** Carrier columns sourced from `shipping_tracking_numbers stn` via sal.shipment_id. */
   carrier?: string | null;
   latest_status_code?: string | null;

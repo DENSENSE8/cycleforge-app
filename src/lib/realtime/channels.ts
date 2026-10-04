@@ -156,7 +156,3 @@ export const getStaffStationBridgeChannelName = (orgId: string, staffId: number 
 /** Desk↔tablet counter-session bridge, keyed by the KIOSK DEVICE — the one channel family in this file that is not per-staff. */
 export const getKioskBridgeChannelName = (orgId: string, deviceId: number | string) =>
   `${orgChannelPrefix(orgId)}:kiosk:${normalizeChannelName(String(deviceId), 'none')}`;
-
-/** Phone→desktop scan-history feed (read-only; never writes receiving_*). */
-export const getScanLogChannelName = (orgId: string, staffId: number | string) =>
-  `${orgChannelPrefix(orgId)}:scanlog:${normalizeChannelName(String(staffId), 'none')}`;

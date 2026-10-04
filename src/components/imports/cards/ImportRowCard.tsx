@@ -15,6 +15,7 @@ import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import type { RecordCardChip, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import type { TriageCardModelBase, TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
 import { IMPORT_ROW_OUTCOME_LIFECYCLE } from '@/design-system/tokens/import-record-lifecycle';
 import { CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import { useOrderChannel } from '@/hooks/useCatalog';
@@ -36,6 +37,61 @@ import { ImportCardPeek } from './ImportCardPeek';
 /** One imported order per card. */
 export type ImportRowCardModel = TriageCardModelBase<ImportRunRowItem>;
 
+/** The imported order as the shared card reads it (`imports.rows`: the outcome face top-right); `channel` is the catalog-resolved storefront (a hook's). */
+export function importRowRecordCard(model: ImportRowCardModel, channel: RecordCardModel['channel']): ViewCardModel<typeof IMPORT_ROWS_VIEW> {
+  const row = model.lead;
+  const state = IMPORT_ROW_OUTCOME_LIFECYCLE[row.outcome];
+  const source = importSourceLabel(row.source);
+  const locator = importRowLocator(row);
+  const filled = row.filledFields.map(filledFieldLabel);
+  const chips: RecordCardChip[] =
+    filled.length > 0
+      ? [
+          {
+            id: 'filled',
+            tone: 'info',
+            short: `${filled.length} filled`,
+            long: `Filled ${filled.join(' · ')}`,
+            tooltip: `This import filled ${filled.join(', ')}`,
+          },
+        ]
+      : [];
+  return {
+    key: model.key,
+    leadId: row.id,
+    state,
+    stateIcon: recordStateGlyph(state),
+    stateMeaning: `${state.label} by ${source} in run ${row.runId}`,
+    alert: null,
+    aria: {
+      card: `Order ${row.externalOrderId}, ${state.label} by ${source}, ${row.title ?? ''}`,
+      open: `Open the import record of order ${row.externalOrderId}`,
+      check: `Select order ${row.externalOrderId}`,
+    },
+    channel,
+    person: source,
+    chips,
+    notes: { fixed: null, own: null },
+    status: { kind: 'state', face: state.label, tone: state.tone, tip: `${state.label} by ${source} in run ${row.runId}` },
+    next: null,
+    lines: [
+      {
+        id: row.id,
+        title: row.title ?? IMPORT_ROW_UNTITLED,
+        photoUrl: null,
+        facts: {
+          tracking: row.trackingNumber ? { kind: 'code', text: row.trackingNumber, title: 'Tracking number' } : null,
+          locator: locator ? { kind: 'code', text: locator, title: `Where in ${source} it came from` } : null,
+          reason: row.reason ? { kind: 'missing', text: importRowReasonLabel(row.reason) } : null,
+        },
+        alert: false,
+        alertNote: null,
+      },
+    ],
+    hiddenAlertLabel: () => '',
+  };
+}
+
 export const ImportRowCard = memo(function ImportRowCard({
   model,
   checked,
@@ -52,70 +108,27 @@ export const ImportRowCard = memo(function ImportRowCard({
   const row = model.lead;
   const channel = useOrderChannel()(row.externalOrderId, row.accountSource);
 
-  const record = useMemo<RecordCardModel>(() => {
-    const state = IMPORT_ROW_OUTCOME_LIFECYCLE[row.outcome];
-    const source = importSourceLabel(row.source);
-    const locator = importRowLocator(row);
-    const filled = row.filledFields.map(filledFieldLabel);
-    const chips: RecordCardChip[] =
-      filled.length > 0
-        ? [
-            {
-              id: 'filled',
-              tone: 'info',
-              short: `${filled.length} filled`,
-              long: `Filled ${filled.join(' · ')}`,
-              tooltip: `This import filled ${filled.join(', ')}`,
-            },
-          ]
-        : [];
-    return {
-      key: model.key,
-      leadId: row.id,
-      state,
-      stateIcon: recordStateGlyph(state),
-      stateMeaning: `${state.label} by ${source} in run ${row.runId}`,
-      alert: null,
-      aria: {
-        card: `Order ${row.externalOrderId}, ${state.label} by ${source}, ${row.title ?? ''}`,
-        open: `Open the import record of order ${row.externalOrderId}`,
-        check: `Select order ${row.externalOrderId}`,
-      },
-      channel: channel.label
-        ? {
-            label: channel.label,
-            tooltip: [channel.connectionName ?? channel.label, row.accountSource].filter(Boolean).join(' · '),
-            dot: <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />,
-            badge: null,
-          }
-        : null,
-      person: source,
-      chips,
-      notes: { fixed: null, own: null },
-      status: { kind: 'none' },
-      next: null,
-      lines: [
-        {
-          id: row.id,
-          title: row.title ?? IMPORT_ROW_UNTITLED,
-          photoUrl: null,
-          facts: {
-            tracking: row.trackingNumber ? { kind: 'code', text: row.trackingNumber, title: 'Tracking number' } : null,
-            locator: locator ? { kind: 'code', text: locator, title: `Where in ${source} it came from` } : null,
-            reason: row.reason ? { kind: 'missing', text: importRowReasonLabel(row.reason) } : null,
-          },
-          alert: false,
-          alertNote: null,
-        },
-      ],
-      hiddenAlertLabel: () => '',
-    };
-  }, [model.key, row, channel]);
+  const record = useMemo(
+    () =>
+      importRowRecordCard(
+        model,
+        channel.label
+          ? {
+              label: channel.label,
+              tooltip: [channel.connectionName ?? channel.label, row.accountSource].filter(Boolean).join(' · '),
+              dot: <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />,
+              badge: null,
+            }
+          : null,
+      ),
+    [model, row.accountSource, channel],
+  );
 
   const review = <ImportReviewDoor importExceptionId={row.importExceptionId} canReview={canReview} />;
 
   return (
     <RecordCard
+      view={IMPORT_ROWS_VIEW}
       model={record}
       factColumns={IMPORT_ROWS_VIEW.facts}
       testIdPrefix={IMPORT_ROWS_VIEW.testIdPrefix}

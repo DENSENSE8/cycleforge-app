@@ -19,6 +19,7 @@ import { identify } from '@/lib/identify/identify';
 import { resolveCatalogByItemNumber } from '@/lib/packing/resolve-catalog-by-item-number';
 import { findRecords } from '@/lib/search/find-records';
 import { looksLikeIdentifier } from '@/lib/search/search-hit';
+import { productImageUrl } from '@/lib/photos/product-image-url';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -47,7 +48,12 @@ type Found = { id: number; matchedOn: string; itemNumber: string | null };
 const ORDER_PRODUCT_SQL = `SELECT id, sku_catalog_id, item_number FROM orders
  WHERE organization_id = $1 AND id = ANY($2::int[]) AND sku_catalog_id IS NOT NULL`;
 
+// Photo sources for `productImageUrl` (catalog photo → listing cover → Zoho item image).
 const PRODUCTS_SQL = `SELECT sc.id, sc.sku, sc.image_url,
+       (SELECT lp.photo_id FROM listing_photos lp
+         WHERE lp.organization_id = sc.organization_id AND lp.sku_catalog_id = sc.id AND lp.is_cover
+         LIMIT 1) AS listing_cover_photo_id,
+       i.zoho_item_id, i.image_document_id,
        i.name AS zoho_item_title, sc.product_title AS catalog_product_title,
        (SELECT COALESCE(sum(bc.qty), 0)::int FROM bin_contents bc
          WHERE ${skuCatalogJoinOnSql('bc')} AND bc.qty > 0) AS on_hand,
@@ -110,7 +116,21 @@ export async function searchIntakeProducts(orgId: OrgId, raw: string, limit = 8)
     for (const row of records?.rows ?? []) if (row.entityType === 'sku') add(row.id, 'semantic');
   }
 
-  const ranked = [...found.values()].slice(0, limit);
+  return paintIntakeProducts(orgId, [...found.values()].slice(0, limit));
+}
+
+/**
+ * Paint known catalog ids with the same face the search returns (identity
+ * title, photo, on hand, bin), in the order given. The support ticket's
+ * "Product sent to customer" picker and its thread cards read products here so
+ * a product looks the same wherever it is picked.
+ */
+export async function readIntakeProductsByIds(orgId: OrgId, ids: readonly number[]): Promise<IntakeProductHit[]> {
+  const unique = [...new Set(ids.filter((id) => Number.isSafeInteger(id) && id > 0))];
+  return paintIntakeProducts(orgId, unique.map((id) => ({ id, matchedOn: 'id', itemNumber: null })));
+}
+
+async function paintIntakeProducts(orgId: OrgId, ranked: Found[]): Promise<IntakeProductHit[]> {
   if (ranked.length === 0) return [];
   const { rows } = await tenantQuery(orgId, PRODUCTS_SQL, [orgId, ranked.map((f) => f.id)]);
   const byId = new Map(rows.map((row) => [Number(row.id), row]));
@@ -128,7 +148,12 @@ export async function searchIntakeProducts(orgId: OrgId, raw: string, limit = 8)
           sku,
         }) || sku,
       itemNumber: hit.itemNumber ?? (str(row.item_number) || null),
-      imageUrl: str(row.image_url) || null,
+      imageUrl: productImageUrl({
+        catalogImageUrl: str(row.image_url),
+        listingCoverPhotoId: row.listing_cover_photo_id == null ? null : Number(row.listing_cover_photo_id),
+        zohoItemId: str(row.zoho_item_id),
+        zohoImageDocumentId: str(row.image_document_id),
+      }),
       onHand: Number(row.on_hand ?? 0),
       bin: str(row.bin) || null,
       matchedOn: hit.matchedOn,

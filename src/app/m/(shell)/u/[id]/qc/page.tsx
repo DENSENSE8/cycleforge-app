@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { UnitQcRunner } from '@/components/mobile/qc/UnitQcRunner';
 import { useSerialUnit } from '@/lib/serial/use-serial-unit';
 import { mobileJobReturn } from '@/lib/mobile/nav-trail';
@@ -18,7 +18,7 @@ function UnitQcInner() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref={back ?? `/m/u/${rawParam}`}
         subtitle="Quality control"
         title={data?.serial_unit.serial_number ?? rawParam}

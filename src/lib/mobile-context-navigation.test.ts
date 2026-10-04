@@ -1,9 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  getMobileAppTitle,
-  routeHasMobileContextRow,
-} from '@/lib/mobile-context-navigation';
+import { getMobileAppTitle } from '@/lib/mobile-context-navigation';
 
 test('getMobileAppTitle resolves receiving-family route labels', () => {
   // Legacy `/receiving` lands on Unbox; graduated surfaces use their L1 labels.
@@ -22,6 +19,9 @@ test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () =>
   // `/m/home` IS the shift checklist since 2026-09-14 (it stopped being a redirect stub), and since the 2026-09-15 deletion it is the ONLY…
   assert.equal(getMobileAppTitle('/m/home'), 'Daily');
   assert.equal(getMobileAppTitle('/m/settings'), 'Settings');
+  assert.equal(getMobileAppTitle('/m/customers'), 'Customers');
+  assert.equal(getMobileAppTitle('/m/customers/42'), 'Customers');
+  assert.equal(getMobileAppTitle('/m/qc'), 'Quality control');
   assert.equal(getMobileAppTitle('/m/work'), 'Allocate');
   assert.equal(getMobileAppTitle('/m/work/42'), 'Fulfill');
   assert.equal(getMobileAppTitle('/m/orders'), 'Allocate');
@@ -40,10 +40,4 @@ test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () =>
   assert.notEqual(getMobileAppTitle('/m/checklist'), 'Checklists');
   // Precedence: the new-order job is not swallowed by the '/m/orders/' queue prefix.
   assert.notEqual(getMobileAppTitle('/m/orders/new'), getMobileAppTitle('/m/orders'));
-});
-
-test('routeHasMobileContextRow includes receiving', () => {
-  assert.equal(routeHasMobileContextRow('receiving'), true);
-  assert.equal(routeHasMobileContextRow('dashboard'), true);
-  assert.equal(routeHasMobileContextRow('tech'), false);
 });

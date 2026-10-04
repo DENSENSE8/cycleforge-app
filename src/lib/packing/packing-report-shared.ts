@@ -37,6 +37,39 @@ export type PackingReportRow = {
   salId: number;
 };
 
+/** One computation shared by the desk and phone report faces. */
+export interface PackingPerformanceSnapshot {
+  units: number;
+  standardMinutes: number;
+  medianPackSeconds: number | null;
+  medianNextPackSeconds: number | null;
+  measuredPackCount: number;
+  measurementCoverage: number;
+}
+
+function median(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const ordered = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2 === 0
+    ? Math.round((ordered[middle - 1] + ordered[middle]) / 2)
+    : ordered[middle];
+}
+
+/** Standards describe planned effort; observed seconds describe the measured pack/cycle. */
+export function packingPerformanceSnapshot(rows: readonly PackingReportRow[]): PackingPerformanceSnapshot {
+  const measured = rows.flatMap((row) => row.packDurationSeconds == null ? [] : [row.packDurationSeconds]);
+  const next = rows.flatMap((row) => row.nextPackSeconds == null ? [] : [row.nextPackSeconds]);
+  return {
+    units: rows.reduce((sum, row) => sum + row.quantity, 0),
+    standardMinutes: rows.reduce((sum, row) => sum + row.estimatedMinutes, 0),
+    medianPackSeconds: median(measured),
+    medianNextPackSeconds: median(next),
+    measuredPackCount: measured.length,
+    measurementCoverage: rows.length > 0 ? measured.length / rows.length : 0,
+  };
+}
+
 /** Global-header Find over every operator-facing packing report identity/fact. */
 export function packingReportMatchesQuery(row: PackingReportRow, rawQuery: string): boolean {
   const tokens = rawQuery

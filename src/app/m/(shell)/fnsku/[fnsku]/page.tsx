@@ -6,7 +6,8 @@ import { Printer, ScanBarcode } from '@/components/Icons';
 import { printStationState } from '@/components/ui/StaffPrintStationPicker';
 import { FnskuStationSheet } from '@/components/mobile/fnsku/FnskuStationSheet';
 import { FnskuSummaryCard } from '@/components/mobile/fnsku/FnskuSummaryCard';
-import { FnskuCopiesStepper } from '@/components/mobile/fnsku/FnskuCopiesStepper';
+import { TouchQtyStepper } from '@/design-system/components/TouchQtyStepper';
+import { MAX_LABEL_COPIES } from '@/lib/print/labelCopies';
 import { useFnskuRecord } from '@/components/mobile/fnsku/useFnskuRecord';
 import type { FnskuRecord } from '@/components/mobile/fnsku/useFnskuRecord';
 import { DetailDock } from '@/design-system/components/DetailDock';
@@ -60,7 +61,9 @@ function FnskuHubInner() {
       card={(r) => <FnskuSummaryCard record={r} href={rec.link(`${rec.base}/info`)} />}
       ack={sent}
       onAckDismiss={() => setSent(null)}
-      content={() => <FnskuCopiesStepper copies={copies} onCopies={setCopies} />}
+      content={() => (
+        <TouchQtyStepper value={copies} onChange={setCopies} min={1} max={MAX_LABEL_COPIES} unit={['label', 'labels']} label="Labels to print" />
+      )}
       rowsLabel="FBA label screens"
       rows={() => [
         {

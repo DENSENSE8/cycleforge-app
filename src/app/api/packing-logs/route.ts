@@ -23,6 +23,21 @@ import { writeLedgerDelta } from '@/lib/inventory/write-ledger-delta';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import type { ScanClassification } from '@/utils/packer';
 import { createPackerLog, touchPackerLog } from '@/lib/packing/packer-log-writer';
+import { packScanNoTrackingError, resolvePackScan } from '@/lib/packing/pack-scan-order';
+import { releasePackedTotes } from '@/lib/picking/tote-scan';
+import { scannedUnitKey } from '@/lib/barcode-routing';
+
+/** The order a tote / unit pack scan named, in the tracking ladder's row shape. */
+interface PackScanOrderRow {
+    id: number;
+    order_id: string | null;
+    tracking_number: string | null;
+    shipment_id: number | null;
+    product_title: string | null;
+    condition: string | null;
+    quantity: number | string | null;
+    sku: string | null;
+}
 
 /** LEGACY packer aliases — the old station UI sent packer "1/2/3", which meant staff 4/5/6. */
 const LEGACY_PACKER_ALIAS_TO_STAFF_ID: Record<string, number> = {
@@ -176,7 +191,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }, async () => {
         const res = await (async (): Promise<NextResponse> => {
     try {
-        const { trackingNumber, photos, createdAt, timestamp, packerName } = body;
+        const { trackingNumber, rawScan, photos, createdAt, timestamp, packerName } = body;
         // Server-trusted actor — body.packerId is ignored, and the session id is
         // NEVER run through the legacy alias map (that stamped staff 1/2/3's
         // scans as 4/5/6 and hid them from Pack → History).
@@ -184,6 +199,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         if (!scanInput) {
             return NextResponse.json({ error: 'trackingNumber is required' }, { status: 400 });
         }
+        // The scan as the operator made it — the station normalizes tracking
+        // input, which would mangle a tote code or a unit label.
+        const packScanInput = String(rawScan || '').trim() || scanInput;
 
         const staffId = sessionStaffId(ctx.staffId);
 
@@ -197,7 +215,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const photoUrls: string[] = Array.isArray(photos) ? photos.filter((u: any) => typeof u === 'string' && u.trim()) : [];
 
         
-        const classification = classifyScan(scanInput);
+        const scanClassification = classifyScan(scanInput);
 
         return await withTenantTransaction(ctx.organizationId, async (client) => {
         const staffNameResult = await client.query(
@@ -207,6 +225,44 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const fallbackPackerName = String(packerName || '').trim() || null;
         const staffName = staffNameResult.rows[0]?.name || fallbackPackerName;
 
+        // A tote or a unit (label / serial) names the order to pack; the pack
+        // then runs on that order's primary tracking exactly like a label scan.
+        const packScan =
+            scanClassification.trackingType === 'ORDERS' || scannedUnitKey(packScanInput)
+                ? await resolvePackScan(client, ctx.organizationId, packScanInput)
+                : null;
+        if (packScan?.kind === 'refused') {
+            return NextResponse.json({ error: packScan.error }, { status: 409 });
+        }
+        if (packScan?.kind === 'unit-not-on-order') {
+            return NextResponse.json({ error: packScan.error, unitNotOnOrder: true }, { status: 404 });
+        }
+        let scannedOrder: PackScanOrderRow | null = null;
+        if (packScan?.kind === 'order') {
+            const scanned = await client.query<PackScanOrderRow>(
+                `SELECT o.id, o.order_id, stn.tracking_number_raw AS tracking_number, o.shipment_id,
+                        o.product_title, o.condition, o.quantity, o.sku
+                 FROM   orders o
+                 LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+                 WHERE  o.id = $1
+                   AND  o.organization_id = $2`,
+                [packScan.orderId, ctx.organizationId],
+            );
+            scannedOrder = scanned.rows[0] ?? null;
+            if (!scannedOrder) {
+                return NextResponse.json({ error: `The order for ${packScanInput} was not found` }, { status: 404 });
+            }
+            if (!String(scannedOrder.tracking_number ?? '').trim()) {
+                return NextResponse.json({
+                    error: packScanNoTrackingError(String(scannedOrder.order_id || `#${scannedOrder.id}`)),
+                    orderRowId: Number(scannedOrder.id),
+                }, { status: 409 });
+            }
+        }
+        const classification: ScanClassification = scannedOrder
+            ? { ...classifyScan(String(scannedOrder.tracking_number)), trackingType: 'ORDERS' }
+            : scanClassification;
+
         if (classification.trackingType === 'ORDERS') {
             // FedEx GS1 SoT: unwrap gun-scanned 96… envelopes to the short human
             // STN so exact join matches sheet/transfer rows (same as receiving).
@@ -215,11 +271,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               key18: trackingKey18,
               last8: trackingLast8,
             } = orderTrackingMatchKeys(scanInput);
-            if (!trackingLast8 || trackingLast8.length < 8) {
+            if (!scannedOrder && (!trackingLast8 || trackingLast8.length < 8)) {
                 return NextResponse.json({ error: 'Invalid tracking number' }, { status: 400 });
             }
-            // Primary: exact normalized match via shipment_id FK (fast)
-            let orderLookup = await client.query(
+            // Primary: the order a tote / unit scan named; else exact normalized
+            // match via shipment_id FK (fast)
+            let orderLookup = scannedOrder ? { rows: [scannedOrder] } : await client.query(
                 `SELECT o.id, o.order_id, stn.tracking_number_raw AS tracking_number, o.shipment_id,
                         o.product_title, o.condition, o.quantity, o.sku
                  FROM   orders o
@@ -655,6 +712,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 }
             }
 
+            // A tote pack closes the pick → pack loop: the tote goes back to OPEN.
+            const releasedTotes = packScan?.kind === 'order' && packScan.via === 'tote'
+                ? await releasePackedTotes(ctx.organizationId, { orderId: Number(order.id), shipmentId: orderShipmentId }, client)
+                : [];
+
             const foundRecord = {
                 id: foundPackerLogId,
                 created_at: foundCreatedAt,
@@ -762,6 +824,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 packerRecord: foundRecord,
                 photosCount: Array.isArray(photos) ? photos.length : 0,
                 message: 'Order packed successfully',
+                /** How the order was named when not by its label: 'tote' | 'unit'. */
+                packedFrom: packScan?.kind === 'order' ? packScan.via : null,
+                releasedTotes,
                 /** Station triggers PoPC via POST .../documents/print (keeps this txn short). */
                 printBundleSuggested: true,
             });

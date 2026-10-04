@@ -93,7 +93,7 @@ export const CAPABILITIES: readonly CapabilityDef[] = [
     id: 'outbound_orders',
     label: 'Outbound orders',
     blurb: 'Record customer orders, then pick, pack and ship them with labels.',
-    navItemIds: ['outbound', 'fulfilled', 'label-intake', 'ready-to-pack', 'packer', 'scan-out', 'print-station', 'exceptions'],
+    navItemIds: ['outbound', 'fulfilled', 'live-feed', 'label-intake', 'ready-to-pack', 'packer', 'scan-out', 'print-station', 'exceptions'],
     tools: ['draft_manual_order', 'create_manual_order'],
     chatAbility: 'Record orders from chat',
     landingPath: '/shipping/orders',

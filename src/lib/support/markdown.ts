@@ -1,6 +1,13 @@
 /** Lightweight, dependency-free markdown for the support console. */
 
 import React from 'react';
+import {
+  PRODUCT_TOKEN_SOURCE,
+  parseProductToken,
+  productTokenReadable,
+  type ProductTokenFace,
+  type ProductTokenRef,
+} from './product-token';
 
 type Token =
   | { kind: 'text'; value: string }
@@ -8,16 +15,25 @@ type Token =
   | { kind: 'italic'; value: string }
   | { kind: 'code'; value: string }
   | { kind: 'image'; alt: string; url: string }
-  | { kind: 'link'; value: string };
+  | { kind: 'link'; value: string }
+  | { kind: 'product'; ref: ProductTokenRef };
 
 type RenderInlineMarkdownOptions = {
   /** When set, image markdown opens the in-app photo viewer instead of a new tab. */
   onOpenPhoto?: (url: string) => void;
+  /**
+   * Paints a `[[product:…]]` token (the "Product sent to customer" card). The
+   * surface owns the card so desk and phone each open their own peek; without
+   * it the token reads as its role line, never as raw grammar.
+   */
+  renderProduct?: (ref: ProductTokenRef, key: string) => React.ReactNode;
 };
 
-// Order matters:
-const INLINE_RE =
-  /(`[^`\n]+`)|(!\[([^\]]*)\]\s*\(([^)\s]+)\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)])/g;
+// Order matters: the product token first (its `[[` would otherwise read as text).
+const INLINE_RE = new RegExp(
+  `(${PRODUCT_TOKEN_SOURCE})|(\`[^\`\\n]+\`)|(!\\[([^\\]]*)\\]\\s*\\(([^)\\s]+)\\))|(\\*\\*[^*\\n]+\\*\\*)|(\\*[^*\\n]+\\*)|((?:https?:\\/\\/|www\\.)[^\\s<]+[^\\s<.,;:!?)])`,
+  'g',
+);
 
 /** Split one line of source text into typed inline tokens. */
 function tokenizeLine(line: string): Token[] {
@@ -27,11 +43,13 @@ function tokenizeLine(line: string): Token[] {
   INLINE_RE.lastIndex = 0;
   while ((m = INLINE_RE.exec(line)) !== null) {
     if (m.index > last) tokens.push({ kind: 'text', value: line.slice(last, m.index) });
-    if (m[1]) tokens.push({ kind: 'code', value: m[1].slice(1, -1) });
-    else if (m[2]) tokens.push({ kind: 'image', alt: m[3] ?? '', url: m[4] ?? '' });
-    else if (m[5]) tokens.push({ kind: 'bold', value: m[5].slice(2, -2) });
-    else if (m[6]) tokens.push({ kind: 'italic', value: m[6].slice(1, -1) });
-    else if (m[7]) tokens.push({ kind: 'link', value: m[7] });
+    const product = m[1] ? parseProductToken(m[1]) : null;
+    if (m[1]) tokens.push(product ? { kind: 'product', ref: product } : { kind: 'text', value: m[1] });
+    else if (m[5]) tokens.push({ kind: 'code', value: m[5].slice(1, -1) });
+    else if (m[6]) tokens.push({ kind: 'image', alt: m[7] ?? '', url: m[8] ?? '' });
+    else if (m[9]) tokens.push({ kind: 'bold', value: m[9].slice(2, -2) });
+    else if (m[10]) tokens.push({ kind: 'italic', value: m[10].slice(1, -1) });
+    else if (m[11]) tokens.push({ kind: 'link', value: m[11] });
     last = m.index + m[0].length;
   }
   if (last < line.length) tokens.push({ kind: 'text', value: line.slice(last) });
@@ -111,6 +129,13 @@ export function renderInlineMarkdown(
               className: 'break-all underline underline-offset-2',
             },
             t.value,
+          );
+        case 'product':
+          // Without a surface card the token still reads as words, never as grammar.
+          return React.createElement(
+            React.Fragment,
+            { key },
+            options?.renderProduct ? options.renderProduct(t.ref, key) : productTokenReadable(t.ref, null),
           );
         default:
           return React.createElement(React.Fragment, { key }, t.value);
@@ -234,14 +259,14 @@ const BLOCK_CLASS = {
 } as const;
 
 /** Inline nodes for one source line (no trailing `<br/>` — blocks own spacing). */
-function inlineNodes(line: string, key: string, onOpenPhoto?: (url: string) => void) {
-  return React.createElement(React.Fragment, { key }, renderInlineMarkdown(line, { onOpenPhoto }));
+function inlineNodes(line: string, key: string, options?: RenderInlineMarkdownOptions) {
+  return React.createElement(React.Fragment, { key }, renderInlineMarkdown(line, options));
 }
 
 /** Join a run of soft-wrapped lines with `<br/>` inside one paragraph. */
-function softWrapped(lines: string[], keyPrefix: string, onOpenPhoto?: (url: string) => void) {
+function softWrapped(lines: string[], keyPrefix: string, options?: RenderInlineMarkdownOptions) {
   return lines.flatMap((l, idx) => {
-    const node = inlineNodes(l, `${keyPrefix}-${idx}`, onOpenPhoto);
+    const node = inlineNodes(l, `${keyPrefix}-${idx}`, options);
     return idx < lines.length - 1
       ? [node, React.createElement('br', { key: `${keyPrefix}-br-${idx}` })]
       : [node];
@@ -253,7 +278,6 @@ export function renderBlockMarkdown(
   text: string,
   options?: RenderInlineMarkdownOptions,
 ): React.ReactNode {
-  const onOpenPhoto = options?.onOpenPhoto;
   const blocks = parseMarkdownBlocks(text);
   if (!blocks.length) return null;
 
@@ -269,13 +293,13 @@ export function renderBlockMarkdown(
           return React.createElement(
             `h${b.level}`,
             { key, className: BLOCK_CLASS[`h${b.level}` as 'h1' | 'h2' | 'h3'] },
-            inlineNodes(b.text, `${key}-t`, onOpenPhoto),
+            inlineNodes(b.text, `${key}-t`, options),
           );
         case 'quote':
           return React.createElement(
             'blockquote',
             { key, className: BLOCK_CLASS.quote },
-            ...softWrapped(b.lines, `${key}-q`, onOpenPhoto),
+            ...softWrapped(b.lines, `${key}-q`, options),
           );
         case 'list':
           return React.createElement(
@@ -285,7 +309,7 @@ export function renderBlockMarkdown(
               React.createElement(
                 'li',
                 { key: `${key}-i-${ii}` },
-                inlineNodes(item, `${key}-i-${ii}-t`, onOpenPhoto),
+                inlineNodes(item, `${key}-i-${ii}-t`, options),
               ),
             ),
           );
@@ -293,7 +317,7 @@ export function renderBlockMarkdown(
           return React.createElement(
             'p',
             { key },
-            ...softWrapped(b.lines, `${key}-p`, onOpenPhoto),
+            ...softWrapped(b.lines, `${key}-p`, options),
           );
       }
     }),
@@ -308,8 +332,11 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/** Who a product token names, for the readable email line (identity title + SKU). */
+type ProductFaceLookup = (skuCatalogId: number) => ProductTokenFace | null;
+
 /** One source line → sanitized inline HTML. Tokenize, then escape every value. */
-function inlineHtml(line: string): string {
+function inlineHtml(line: string, productFace?: ProductFaceLookup): string {
   return tokenizeLine(line)
     .map((t) => {
       switch (t.kind) {
@@ -328,6 +355,10 @@ function inlineHtml(line: string): string {
           const href = escapeHtml(linkHref(t.value));
           return `<a href="${href}" target="_blank" rel="noopener noreferrer">${escapeHtml(t.value)}</a>`;
         }
+        case 'product':
+          // The customer reads title + SKU as plain words — never the raw token,
+          // never a link into our staff app.
+          return escapeHtml(productTokenReadable(t.ref, productFace?.(t.ref.skuCatalogId) ?? null));
         default:
           return escapeHtml(t.value);
       }
@@ -335,23 +366,28 @@ function inlineHtml(line: string): string {
     .join('');
 }
 
-/** Render markdown to a sanitized HTML string (used for the Zendesk `html_body`). */
-export function markdownToHtml(text: string): string {
+/**
+ * Render markdown to a sanitized HTML string (used for the Zendesk `html_body`).
+ * `productFace` names each `[[product:…]]` token's product for the email; the
+ * composer passes its picks.
+ */
+export function markdownToHtml(text: string, options?: { productFace?: ProductFaceLookup }): string {
+  const line = (l: string) => inlineHtml(l, options?.productFace);
   return parseMarkdownBlocks(text)
     .map((b) => {
       switch (b.kind) {
         case 'rule':
           return '<hr>';
         case 'heading':
-          return `<h${b.level}>${inlineHtml(b.text)}</h${b.level}>`;
+          return `<h${b.level}>${line(b.text)}</h${b.level}>`;
         case 'quote':
-          return `<blockquote>${b.lines.map(inlineHtml).join('<br>')}</blockquote>`;
+          return `<blockquote>${b.lines.map(line).join('<br>')}</blockquote>`;
         case 'list': {
           const tag = b.ordered ? 'ol' : 'ul';
-          return `<${tag}>${b.items.map((i) => `<li>${inlineHtml(i)}</li>`).join('')}</${tag}>`;
+          return `<${tag}>${b.items.map((i) => `<li>${line(i)}</li>`).join('')}</${tag}>`;
         }
         default:
-          return `<p>${b.lines.map(inlineHtml).join('<br>')}</p>`;
+          return `<p>${b.lines.map(line).join('<br>')}</p>`;
       }
     })
     .join('');

@@ -1,6 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,14 +15,6 @@ import { SupportOrdersWorkspace } from '@/components/support/orders/SupportOrder
 import { useSupportVmParam } from '@/hooks/useSupportVmParam';
 import { SupportTicketsWorkspace } from './SupportTicketsWorkspace';
 
-const WarrantyWorkspace = dynamic(
-  () => import('@/components/warranty/WarrantyWorkspace').then((m) => m.WarrantyWorkspace),
-  {
-    ssr: false,
-    loading: () => <div className="flex-1 bg-surface-canvas" aria-hidden />,
-  },
-);
-
 /** /support page body. */
 export function SupportWorkspace() {
   const { has, isLoaded } = useAuth();
@@ -33,19 +24,18 @@ export function SupportWorkspace() {
 
   const canTickets = !isLoaded || has('integrations.zendesk');
   const canOrders = !isLoaded || has('orders.view');
-  const canWarranty = !isLoaded || has('warranty.view');
   const canIssues = !isLoaded || has('support.issues.view');
 
   // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
   // one pair so the presence can never drift onto another job's timing.
   const { presence: paneMotion, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
 
-  if (isLoaded && !canTickets && !canWarranty && !canIssues && !canOrders) {
+  if (isLoaded && !canTickets && !canIssues && !canOrders) {
     return (
       <div className="flex h-full items-center justify-center p-6">
         <EmptyState
           title="No access to Support"
-          description={`You need ${capabilityNoun('helpdesk')} ticket access, orders, warranty, or reported-issues permissions to use the support console.`}
+          description={`You need ${capabilityNoun('helpdesk')} ticket access, orders, or reported-issues permissions to use the support console.`}
         />
       </div>
     );
@@ -85,25 +75,6 @@ export function SupportWorkspace() {
     return (
       <div className="flex h-full min-h-0 w-full bg-surface-canvas">
         <IssuesWorkspace />
-      </div>
-    );
-  }
-
-  // ── Warranty — Workbench (coverage lookup + claims + detail) ───────────────
-  if (mode === 'warranty') {
-    if (isLoaded && !canWarranty) {
-      return (
-        <div className="flex h-full items-center justify-center p-6">
-          <EmptyState
-            title="No access to Warranty"
-            description="You need the “View warranty claims” permission to open the warranty logger."
-          />
-        </div>
-      );
-    }
-    return (
-      <div className="flex h-full min-h-0 w-full bg-surface-canvas">
-        <WarrantyWorkspace />
       </div>
     );
   }

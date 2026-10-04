@@ -12,6 +12,7 @@ import {
   type DeskStageView,
 } from './DeskStageContext';
 import {
+  DESK_STAGE_BOARD_GUTTER_CLASS,
   DESK_CHROME_STAGE_BODY_CLASS,
   DESK_PAGE_HEADER_ROW_CLASS,
   DESK_STAGE_DETACH_CLASS,
@@ -47,6 +48,13 @@ interface DeskPageChromeProps {
   /** The stage's ONE state — see {@link DeskStageView}. */
   view: DeskStageView;
   onViewChange: (view: DeskStageView) => void;
+  /**
+   * The in-place stage's measure: `fixed` (default) centres the desk at
+   * {@link DESK_STAGE_FIXED_CLASS}; `full` runs a board edge to edge with the
+   * mode's 12px page gutters ({@link DESK_STAGE_BOARD_GUTTER_CLASS}).
+   * Fullscreen is flush either way.
+   */
+  measure?: 'fixed' | 'full';
   /** The desk body — a grid, a board, a form host. Mounted inside the card. */
   children: ReactNode;
   className?: string;
@@ -62,9 +70,12 @@ export function DeskPageChrome({
   onViewChange,
   children,
   className,
+  measure: measureKind = 'fixed',
 }: DeskPageChromeProps) {
   const fullscreen = view !== 'in-place';
-  const measure = fullscreen ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
+  const full = fullscreen || measureKind === 'full';
+  const measure = full ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
+  const gutter = measureKind === 'full' ? DESK_STAGE_BOARD_GUTTER_CLASS : DESK_STAGE_GUTTER_CLASS;
 
   // Escape is the keyboard half of the one-click-out budget: one exit per
   // press — the record (DeskRecordPlane, document) and a check-set (window
@@ -108,7 +119,7 @@ export function DeskPageChrome({
         className={cn(
           'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
           // Gutters wrap every row so they cannot drift apart.
-          !fullscreen && DESK_STAGE_GUTTER_CLASS,
+          !fullscreen && gutter,
           !fullscreen && DESK_STAGE_GROUND_CLASS,
           !fullscreen && 'pt-2',
           className,

@@ -1,7 +1,8 @@
 # Zoho Inventory
 
 The **operations backbone** — Zoho is USAV's system of record for purchase orders,
-purchase receives, items, and (outbound) sales-order fulfillment. This is the most
+purchase receives, and items. (The outbound sales-order/fulfillment push was retired
+2026-10 — it never ran live.) This is the most
 mature integration in the repo: rate-limited HTTP client, circuit breaker, webhook
 ingestion, a local PO **mirror**, and a delta/full cron schedule. Fully built and live.
 
@@ -104,7 +105,7 @@ A hardened wrapper around the Zoho Inventory REST API: **80 req/min rate limiter
 - Tracking / PO-number search filters run sequentially and stop on the first hit.
 - Scan-serial does **not** write Zoho — Receive owns the single PO description/notes PUT.
 
-## The two sync directions
+## Sync direction (inbound only)
 
 ### Inbound — PO mirror + reconcile (`src/lib/zoho/po-mirror-sync.ts`)
 `syncZohoPoMirror({ mode, lastModifiedTime?, maxPages?, maxItems? })` pulls POs and
@@ -112,13 +113,6 @@ UPSERTs one header row each into **`zoho_po_mirror`** (with the full Zoho body i
 then **reconciles** door-scanned `receiving_lines` against Zoho status — marking a line
 received once Zoho shows received/billed/closed. This is what clears the receiving
 "Prioritize" queue. (See the receiving-triage memories.)
-
-### Outbound — fulfillment (`src/lib/zoho/fulfillment-sync.ts`)
-`syncShippedOrdersToZoho({ reference?, dryRun?, force?, limit?, mode? })` walks shipped
-internal orders and, in Zoho, ensures a sales order → creates a package → a shipment →
-marks delivered (when tracking confirms) → creates an invoice. **Dry-run by default**
-(`ZOHO_FULFILLMENT_DRY_RUN`). Config in `fulfillment-config.ts`. See
-`docs/zoho-fulfillment-sync.md`.
 
 ## Webhooks — `src/lib/zoho/webhooks/`
 
@@ -136,9 +130,6 @@ The tokenless endpoint is retired and returns `410`.
 | `*/15 * * * *` | `/api/cron/zoho/incoming-po-sync` (Incoming "Sync Zoho" button = this) |
 | `7,22,37,52 * * * *` | `/api/cron/zoho/po-sync?mode=delta` |
 | `30 3 * * *` | `/api/cron/zoho/po-sync?mode=full` (nightly full refresh) |
-| `15 */4 * * *` | `/api/cron/zoho/fulfillment-sync?mode=delta` |
-| `45 3 * * *` | `/api/cron/zoho/fulfillment-sync?mode=full` |
-| `* * * * *` | `/api/cron/zoho/orders-ingest-drain` (drains the ingest queue) |
 
 > Crons need `CRON_SECRET` (a Vercel **Sensitive** var — pulls as `""`, not empty; env
 > changes require a redeploy or the crons 401). See the CRON_SECRET memory.
@@ -153,8 +144,6 @@ The tokenless endpoint is retired and returns `410`.
 | `ZOHO_DOMAIN` | Accounts domain (default `accounts.zoho.com`; `.eu/.in/.com.au/.ca/.jp`). |
 | `ZOHO_WEBHOOK_SIGNATURE_HEADER` | Default `x-zoho-webhook-signature`. |
 | `ZOHO_WEBHOOK_SIGNATURE_ENCODING` | `hex` (default) or `base64`. |
-| `ZOHO_FULFILLMENT_DRY_RUN` | Default `true` — outbound fulfillment is read-only until flipped. |
-| `ZOHO_FULFILLMENT_INVOICE_MODE` / `ZOHO_FULFILLMENT_PAYMENT_MODE` | Invoice/payment behavior. |
 | `RECEIVING_MOCK_ZOHO` | `1` → use `mock.ts` fixtures instead of live Zoho (local dev). |
 
 ## DB tables

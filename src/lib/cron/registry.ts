@@ -31,8 +31,6 @@ export const CRON_JOBS: CronJobDef[] = [
   // Zoho
   { job: 'zoho.incoming_po_sync', label: 'Zoho issued-PO sync', category: 'Zoho', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
   { job: 'zoho.po_sync', label: 'Zoho PO-mirror sync', category: 'Zoho', schedule: 'every 15 min + nightly full', expectedEveryMs: 15 * MIN },
-  { job: 'zoho.fulfillment_sync', label: 'Zoho fulfillment sync', category: 'Zoho', schedule: 'every 4h + nightly full', expectedEveryMs: 4 * HOUR },
-  { job: 'zoho.orders_ingest_drain', label: 'Order ingest queue drain', category: 'Zoho', schedule: 'every minute', expectedEveryMs: 1 * MIN },
   { job: 'zoho.receive_backfill', label: 'Zoho purchase-receive backfill', category: 'Zoho', schedule: 'every 5 min', expectedEveryMs: 5 * MIN },
   // Shipping
   { job: 'shipping.sync_due', label: 'Carrier tracking sweep', category: 'Shipping', schedule: 'every ~15 min (staggered) + nightly deep 03:30', expectedEveryMs: 15 * MIN },
@@ -91,8 +89,6 @@ export const CRON_JOB_TRIGGER_PATH: Record<string, string> = {
   'receiving.incoming_tracking': '/api/cron/receiving/incoming-tracking-sync',
   'zoho.incoming_po_sync': '/api/cron/zoho/incoming-po-sync',
   'zoho.po_sync': '/api/cron/zoho/po-sync?mode=delta',
-  'zoho.fulfillment_sync': '/api/cron/zoho/fulfillment-sync?mode=delta',
-  'zoho.orders_ingest_drain': '/api/cron/zoho/orders-ingest-drain',
   'zoho.receive_backfill': '/api/cron/zoho/receive-backfill',
   'shipping.sync_due': '/api/cron/shipping/sync-due',
   'shipping.reconcile_delivered': '/api/cron/shipping/reconcile-delivered',

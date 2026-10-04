@@ -81,6 +81,8 @@ export const LocationPropertiesPatchBody = z
     binType: z.string().trim().min(1).nullable().optional(),
     capacity: nonNegInt.nullable().optional(),
     sortOrder: nonNegInt.optional(),
+    /** Arrival urgency shelf tier 0..3 (0 = most urgent); null = not an arrival shelf. */
+    arrivalPriorityTier: z.number().int().min(0).max(3).nullable().optional(),
   })
   .strict()
   .refine((b) => Object.keys(b).length > 0, {

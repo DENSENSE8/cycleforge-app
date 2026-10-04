@@ -4,12 +4,12 @@
  * One SHIPPED PACKAGE CARD — the package family's adapter over the shared
  * {@link RecordCard}. Same hierarchy as Allocate: status, platform, order
  * number, SLA at the top right, photo, one-line title, qty · condition ·
- * price, next action at the bottom right. Tracking and the dock stamp live
- * in Details.
+ * price, next action at the bottom right. The tracking number is a copy chip
+ * beside the order number; the dock stamp lives in Details.
  */
 
 import { memo, useMemo } from 'react';
-import { OrderIdChip } from '@/components/ui/CopyChip';
+import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { CollapseItem } from '@/design-system/components/Collapse';
@@ -30,7 +30,7 @@ const VIEW = OUTBOUND_SHIPPED_VIEW;
 const stamp = (value: string | null | undefined) => (value ? `${formatDateTimePST(value)} PT` : null);
 
 /** Details: every fact, empty as an em dash, never a hidden row. */
-function ShippedCardPeek({ row }: { row: DerivedPackerRecord }) {
+export function ShippedCardPeek({ row }: { row: DerivedPackerRecord }) {
   const status = shippedCarrierStatus(row);
   const packer = shippedPackerName(row);
   const shippedBy = (row.shipped_out_by_name || '').trim();
@@ -102,12 +102,14 @@ export const ShippedPackageCard = memo(function ShippedPackageCard({
 }: TriageCardSlotProps<DerivedPackerRecord, ShippedCardModel>) {
   const row = model.lead;
   const { orderId, accountSource } = shippedPackageOrder(row);
+  const tracking = shippedPackageTracking(row);
   const resolved = useOrderChannel()(orderId, accountSource);
   const channelName = platformDisplayName(resolved);
   const record = useMemo(() => shippedRecordCard(model), [model]);
 
   return (
     <RecordCard
+      view={VIEW}
       model={record}
       factColumns={VIEW.facts}
       testIdPrefix={VIEW.testIdPrefix}
@@ -127,10 +129,11 @@ export const ShippedPackageCard = memo(function ShippedPackageCard({
           <span className="inline-flex min-w-0 items-center gap-1.5" data-testid={`${VIEW.testIdPrefix}-identity`}>
             {channelName ? <BrandIdentityDot {...platformMetaBrandDot(resolved.meta)} /> : null}
             {orderId ? (
-              <OrderIdChip value={orderId} display={orderId} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
+              <OrderIdChip value={orderId} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
             ) : (
               <span className="font-medium text-text-muted">No order</span>
             )}
+            {tracking ? <TrackingChip value={tracking} carrierHint={row.carrier ?? null} dense /> : null}
           </span>
         ),
       }}

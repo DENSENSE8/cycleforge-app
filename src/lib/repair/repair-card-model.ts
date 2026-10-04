@@ -12,7 +12,9 @@
  * bottom-right, where the orders' next step sits.
  */
 
-import type { RecordCardDeadline, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
+import type { RecordCardDeadline } from '@/design-system/components/record-card/record-card-types';
+import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
+import type { REPAIR_QUEUE_VIEW } from '@/lib/triage/views/repair-queue';
 import type { RecordFactFace } from '@/design-system/components/record-card/record-fact';
 import { recordStateGlyph } from '@/design-system/components/record-card/record-state-glyph';
 import { repairStatusFace } from '@/design-system/tokens/repair-status';
@@ -50,7 +52,7 @@ export interface RepairCardModel {
   channel: RepairChannel | null;
   /** The serial — a code fact at the card's bottom-right. */
   serial: RecordFactFace;
-  record: RecordCardModel;
+  record: ViewCardModel<typeof REPAIR_QUEUE_VIEW>;
 }
 
 /** Ticket without `#`, or null for an empty / internal RS- code. */

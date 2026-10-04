@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { Wrench } from '@/components/Icons';
 import { RepairActionTimeline } from '@/components/mobile/repair/RepairActionTimeline';
@@ -76,7 +76,7 @@ function RepairWorkInner() {
 
   return (
     <div className="flex min-h-screen flex-col bg-mode-panel">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         backHref={`/m/rs/${repairId}`}
         subtitle="Bench log"
         title={rsCode}

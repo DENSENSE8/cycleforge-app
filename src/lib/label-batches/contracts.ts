@@ -29,6 +29,8 @@ export interface LabelBatchRow {
   lastPrintedAt: string | null;
   /** Pages matched to an order. */
   pairedPages: number;
+  /** Pages waiting on an operator: the buyer has several open orders (the confirmation exception). */
+  confirmPages: number;
 }
 
 export interface LabelBatchList {

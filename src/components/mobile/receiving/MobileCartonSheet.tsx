@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Camera } from '@/components/Icons';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Sheet, SheetBody, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
@@ -86,102 +86,105 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
   });
 
   return (
-    <BottomSheet open={open} onClose={onClose} maxWidth="32rem">
-      <div className="flex flex-col gap-4">
-        {/* Header — StackedRowIdentity: title → qty/condition · PO · tracking. */}
-        <div className="flex items-start gap-2">
-          <HoverTooltip label={statusDotTip} asChild>
-            <span
-              className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${getStatusDotBg(row.workflow_status, qtyReceived, row.quantity_expected)}`}
-            />
-          </HoverTooltip>
-          <StackedRowIdentity
-            className="min-w-0 flex-1"
-            title={
-              <div className="line-clamp-2 text-sm font-semibold text-text-default">
-                {productTitle}
-              </div>
-            }
-            keys={joinStackedIdentityKeys([
+    <Sheet open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <SheetContent side="bottom" aria-describedby={undefined}>
+        <SheetTitle className="sr-only">{productTitle}</SheetTitle>
+        <SheetBody className="flex flex-col gap-4">
+          {/* Header — StackedRowIdentity: title → qty/condition · PO · tracking; pr-10 clears the sheet's close button. */}
+          <div className="flex items-start gap-2 pr-10">
+            <HoverTooltip label={statusDotTip} asChild>
               <span
-                key="qty-cond"
-                className="flex shrink-0 items-center gap-1 text-role-caption font-semibold uppercase tracking-widest"
-              >
+                className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${getStatusDotBg(row.workflow_status, qtyReceived, row.quantity_expected)}`}
+              />
+            </HoverTooltip>
+            <StackedRowIdentity
+              className="min-w-0 flex-1"
+              title={
+                <div className="line-clamp-2 text-sm font-semibold text-text-default">
+                  {productTitle}
+                </div>
+              }
+              keys={joinStackedIdentityKeys([
                 <span
-                  className={
-                    qtyExpected > 1 && qtyReceived < qtyExpected
-                      ? 'text-text-warning'
-                      : row.quantity_expected && qtyReceived >= row.quantity_expected
-                        ? 'text-emerald-600'
-                        : 'text-text-muted'
-                  }
+                  key="qty-cond"
+                  className="flex shrink-0 items-center gap-1 text-role-caption font-semibold uppercase tracking-widest"
                 >
-                  {quantityText}
-                </span>
-                <span className="text-text-faint">•</span>
-                <span
-                  className={cn(
-                    conditionGradeTextClass(condGrade),
-                    conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
-                  )}
-                >
-                  {conditionLabel}
-                </span>
-              </span>,
-              platformMeta.value ? (
-                <HoverTooltip key="platform" label={platformMeta.label} asChild focusable={false}>
-                  <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
-                    <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+                  <span
+                    className={
+                      qtyExpected > 1 && qtyReceived < qtyExpected
+                        ? 'text-text-warning'
+                        : row.quantity_expected && qtyReceived >= row.quantity_expected
+                          ? 'text-emerald-600'
+                          : 'text-text-muted'
+                    }
+                  >
+                    {quantityText}
                   </span>
-                </HoverTooltip>
-              ) : null,
-              <OrderIdChip
-                key="po"
-                value={poValue}
-                display={getLast8(poValue)}
-                platformLabel={platformLabel}
-                iconClass={platformIconTone?.className}
-                iconStyle={platformIconTone?.style}
-                dense
-              />,
-              <TrackingChip
-                key="tracking"
-                value={trackingValue}
-                display={getLast8(trackingValue)}
-                dense
-              />,
-            ])}
-          />
-        </div>
+                  <span className="text-text-faint">•</span>
+                  <span
+                    className={cn(
+                      conditionGradeTextClass(condGrade),
+                      conditionLabel === EMPTY_META_DASH && EMPTY_META_DASH_ALIGN_CLASS,
+                    )}
+                  >
+                    {conditionLabel}
+                  </span>
+                </span>,
+                platformMeta.value ? (
+                  <HoverTooltip key="platform" label={platformMeta.label} asChild focusable={false}>
+                    <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+                      <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+                    </span>
+                  </HoverTooltip>
+                ) : null,
+                <OrderIdChip
+                  key="po"
+                  value={poValue}
+                  display={getLast8(poValue)}
+                  platformLabel={platformLabel}
+                  iconClass={platformIconTone?.className}
+                  iconStyle={platformIconTone?.style}
+                  dense
+                />,
+                <TrackingChip
+                  key="tracking"
+                  value={trackingValue}
+                  display={getLast8(trackingValue)}
+                  dense
+                />,
+              ])}
+            />
+          </div>
 
-        {/* Existing photos */}
-        {receivingId && galleryHref !== '#' ? (
-          <MobileReceivingPhotoStrip
-            receivingId={receivingId}
-            staffId={staffId}
-            galleryHref={galleryHref}
-            countHint={photoCount}
-            onNavigate={onClose}
-          />
-        ) : receivingId ? null : (
-          <p className="rounded-mode bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
-            No package id yet — scan tracking from desktop first.
-          </p>
-        )}
+          {/* Existing photos */}
+          {receivingId && galleryHref !== '#' ? (
+            <MobileReceivingPhotoStrip
+              receivingId={receivingId}
+              staffId={staffId}
+              galleryHref={galleryHref}
+              countHint={photoCount}
+              onNavigate={onClose}
+            />
+          ) : receivingId ? null : (
+            <p className="rounded-mode bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
+              No package id yet — scan tracking from desktop first.
+            </p>
+          )}
 
-        {/* Primary CTA — hands off to dedicated capture surface */}
-        {photosHref !== '#' ? (
-          <Link
-            href={photosHref}
-            prefetch={false}
-            onClick={onClose}
-            aria-label={`Take photos (${photoCount} so far)`}
-            className="flex h-14 w-full items-center justify-center rounded-mode-control bg-blue-600 text-white shadow-sm transition-colors active:bg-blue-700"
-          >
-            <Camera className="h-6 w-6" />
-          </Link>
-        ) : null}
-      </div>
-    </BottomSheet>
+          {/* Primary CTA — hands off to dedicated capture surface */}
+          {photosHref !== '#' ? (
+            <Link
+              href={photosHref}
+              prefetch={false}
+              onClick={onClose}
+              aria-label={`Take photos (${photoCount} so far)`}
+              className="flex h-14 w-full items-center justify-center rounded-mode-control bg-blue-600 text-white shadow-sm transition-colors active:bg-blue-700"
+            >
+              <Camera className="h-6 w-6" />
+            </Link>
+          ) : null}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

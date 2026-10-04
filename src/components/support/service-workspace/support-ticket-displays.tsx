@@ -15,7 +15,15 @@ import { useSupportContext, type SupportContextAnchor } from '@/hooks/useSupport
 import type { StagedPhoto } from '@/hooks/useTicketPhotoStaging';
 import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
+import { SentToCustomerStrip } from '@/components/ui/SentToCustomerStrip';
+import { openDetailStack } from '@/lib/detail-stacks/open-store';
+import type { SupportProductFace } from '@/lib/support/ticket-items-shared';
 import { SupportAssistDisplay } from './SupportAssistDisplay';
+
+/** A strip row opens the product peek in the right rail (P7). */
+function openProductPeek(face: SupportProductFace) {
+  openDetailStack({ kind: 'sku', id: face.sku });
+}
 
 /** The rail's displays for one ticket. */
 export function useSupportTicketDisplays(
@@ -82,6 +90,14 @@ export function useSupportTicketDisplays(
                   <TicketAssignmentFields ticket={liveTicket} />
                 </div>
               </section>
+            ) : null}
+            {/* What we sent the customer — the ticket's structured record (P7). */}
+            {providerTicketId != null ? (
+              <SentToCustomerStrip
+                ticketId={providerTicketId}
+                onOpenProduct={openProductPeek}
+                className="border-b border-border-hairline px-3 py-2.5"
+              />
             ) : null}
             <SupportContextHub
               anchor={anchor}

@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { NAV_PAGE_DECLS } from '@/lib/nav/context/pages';
 import { TRIAGE_VIEWS } from './index';
+import { allTriageViews, checkCardViews } from './card-view-adapters';
+import { cardViewMismatches } from './card-view-contract';
 
 const views = Object.values(TRIAGE_VIEWS);
 
@@ -33,4 +35,33 @@ test('views never share test ids or remembered prefs', () => {
   }
   const storage = views.flatMap((view) => [view.storageKeys.pageMode, view.storageKeys.scrollTop]);
   assert.equal(new Set(storage).size, storage.length, 'duplicate storage key');
+});
+
+test("every view's card paints exactly the slots its view declares (status, channel, person, quick look, photo)", () => {
+  const reports = checkCardViews();
+  assert.equal(reports.length, allTriageViews().length);
+  for (const report of reports) {
+    assert.deepEqual(report.mismatches, [], `${report.id} (${report.adapter ?? 'no adapter'}) disagrees with its view`);
+  }
+});
+
+test('the contract catches a card that drifts from its view', () => {
+  const stock = allTriageViews().find((view) => view.id === 'inventory.stock')!;
+  const painted = { status: 'date', channel: false, person: false, quickLook: true, photo: true } as const;
+  assert.deepEqual(cardViewMismatches(stock, painted), []);
+  assert.deepEqual(cardViewMismatches(stock, { ...painted, quickLook: false }), [
+    "quick look: the view declares 'peek', the card folds none",
+  ]);
+  assert.deepEqual(cardViewMismatches(stock, { ...painted, status: 'state' }), [
+    "status: the view declares 'date', the card paints 'state'",
+  ]);
+  assert.deepEqual(cardViewMismatches(stock, { ...painted, channel: true }), [
+    "channel: the view declares 'none', the card paints one",
+  ]);
+  // A `line` view may carry a record without a photo; a `none` view handed one would silently drop it.
+  assert.deepEqual(cardViewMismatches(stock, { ...painted, photo: false }), []);
+  const racks = allTriageViews().find((view) => view.id === 'locations.racks')!;
+  assert.deepEqual(cardViewMismatches(racks, { status: 'date', channel: false, person: false, quickLook: false, photo: true }), [
+    "photo: the view declares 'none', the card is handed a line photo",
+  ]);
 });

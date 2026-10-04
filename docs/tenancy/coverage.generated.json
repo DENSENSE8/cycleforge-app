@@ -1,12 +1,12 @@
 {
   "generatedFrom": "live DB (pg_catalog)",
   "summary": {
-    "total": 396,
-    "with_org": 352,
-    "org_not_null": 337,
-    "rls_enabled": 347,
-    "rls_forced": 343,
-    "has_iso_policy": 347,
+    "total": 398,
+    "with_org": 354,
+    "org_not_null": 339,
+    "rls_enabled": 349,
+    "rls_forced": 345,
+    "has_iso_policy": 349,
     "needs_col": 3,
     "platform_identity": 10,
     "child_scoped": 23,
@@ -40,7 +40,7 @@
       "rls_forced": false,
       "has_iso_policy": false,
       "hermes_read": false,
-      "approx_rows": -1,
+      "approx_rows": 7,
       "fk_parents": [
         "accounts"
       ]
@@ -88,7 +88,7 @@
       "rls_forced": false,
       "has_iso_policy": false,
       "hermes_read": false,
-      "approx_rows": 21,
+      "approx_rows": 22,
       "fk_parents": []
     },
     {
@@ -232,7 +232,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 784,
+      "approx_rows": 730,
       "fk_parents": []
     },
     {
@@ -264,7 +264,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 26841,
+      "approx_rows": 29638,
       "fk_parents": [
         "staff"
       ]
@@ -401,7 +401,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 172,
+      "approx_rows": 537,
       "fk_parents": [
         "locations",
         "sku_catalog",
@@ -692,7 +692,7 @@
       "rls_forced": false,
       "has_iso_policy": false,
       "hermes_read": false,
-      "approx_rows": 78052,
+      "approx_rows": 85609,
       "fk_parents": []
     },
     {
@@ -736,7 +736,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 1425,
+      "approx_rows": 1472,
       "fk_parents": []
     },
     {
@@ -931,7 +931,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 1952,
+      "approx_rows": 2088,
       "fk_parents": [
         "documents"
       ]
@@ -1068,7 +1068,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 14353,
+      "approx_rows": 14601,
       "fk_parents": [
         "product_brands"
       ]
@@ -1084,7 +1084,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 11251,
+      "approx_rows": 11848,
       "fk_parents": []
     },
     {
@@ -1114,7 +1114,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 569,
+      "approx_rows": 586,
       "fk_parents": [
         "support_tickets",
         "staff"
@@ -1214,7 +1214,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 245,
+      "approx_rows": 246,
       "fk_parents": [
         "sku_catalog"
       ]
@@ -1248,7 +1248,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 87,
+      "approx_rows": 93,
       "fk_parents": [
         "fba_shipments",
         "staff",
@@ -1317,7 +1317,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 2787,
+      "approx_rows": 2845,
       "fk_parents": [
         "workflow_definitions"
       ]
@@ -1489,6 +1489,22 @@
       "fk_parents": []
     },
     {
+      "table": "inbound_followups",
+      "classification": "tenant-owned",
+      "has_org": true,
+      "not_null": true,
+      "default_kind": "loud-fail",
+      "fk_to_orgs": false,
+      "rls_enabled": true,
+      "rls_forced": true,
+      "has_iso_policy": true,
+      "hermes_read": true,
+      "approx_rows": -1,
+      "fk_parents": [
+        "staff"
+      ]
+    },
+    {
       "table": "inbound_import_batch",
       "classification": "tenant-owned",
       "has_org": true,
@@ -1515,7 +1531,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 36,
+      "approx_rows": 147,
       "fk_parents": [
         "inbound_import_batch",
         "inbound_order"
@@ -1551,7 +1567,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 55,
+      "approx_rows": 111,
       "fk_parents": [
         "receiving_line",
         "staff"
@@ -1617,7 +1633,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 9,
+      "approx_rows": 10,
       "fk_parents": []
     },
     {
@@ -1747,7 +1763,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 1191,
+      "approx_rows": 1212,
       "fk_parents": [
         "serial_units",
         "workflow_definitions"
@@ -2044,7 +2060,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 46,
+      "approx_rows": 50,
       "fk_parents": [
         "staff",
         "receiving_carton",
@@ -2076,7 +2092,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 612,
+      "approx_rows": 613,
       "fk_parents": [
         "warehouses"
       ]
@@ -2092,7 +2108,7 @@
       "rls_forced": false,
       "has_iso_policy": false,
       "hermes_read": false,
-      "approx_rows": -1,
+      "approx_rows": 24,
       "fk_parents": [
         "accounts"
       ]
@@ -2122,7 +2138,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 18079,
+      "approx_rows": 18445,
       "fk_parents": [
         "staff"
       ]
@@ -2202,7 +2218,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 17639,
+      "approx_rows": 18827,
       "fk_parents": []
     },
     {
@@ -2262,7 +2278,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 24455,
+      "approx_rows": 25607,
       "fk_parents": [
         "staff",
         "work_sessions"
@@ -2361,7 +2377,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 1046,
+      "approx_rows": 1054,
       "fk_parents": [
         "sku_catalog"
       ]
@@ -2410,7 +2426,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 220,
+      "approx_rows": 415,
       "fk_parents": [
         "order_import_runs",
         "order_import_run_steps"
@@ -2427,7 +2443,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": -1,
+      "approx_rows": 53,
       "fk_parents": [
         "order_import_runs"
       ]
@@ -2443,7 +2459,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": -1,
+      "approx_rows": 26,
       "fk_parents": [
         "cron_runs"
       ]
@@ -2492,7 +2508,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": -1,
+      "approx_rows": 27,
       "fk_parents": [
         "staff",
         "orders"
@@ -2771,7 +2787,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 566,
+      "approx_rows": 573,
       "fk_parents": [
         "orders",
         "documents"
@@ -3069,7 +3085,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 15569,
+      "approx_rows": 16672,
       "fk_parents": [
         "photos"
       ]
@@ -3180,7 +3196,7 @@
       "rls_forced": false,
       "has_iso_policy": false,
       "hermes_read": false,
-      "approx_rows": 2344,
+      "approx_rows": 2717,
       "fk_parents": [
         "photo_share_packs",
         "photos"
@@ -3213,7 +3229,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 322,
+      "approx_rows": 364,
       "fk_parents": [
         "staff"
       ]
@@ -3229,7 +3245,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 10071,
+      "approx_rows": 11121,
       "fk_parents": [
         "photos"
       ]
@@ -3259,7 +3275,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 9366,
+      "approx_rows": 10339,
       "fk_parents": [
         "staff"
       ]
@@ -3398,7 +3414,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 156,
+      "approx_rows": 224,
       "fk_parents": []
     },
     {
@@ -3444,7 +3460,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 738,
+      "approx_rows": 1530,
       "fk_parents": [
         "staff"
       ]
@@ -3725,7 +3741,7 @@
       "rls_forced": false,
       "has_iso_policy": false,
       "hermes_read": false,
-      "approx_rows": 2299,
+      "approx_rows": 2552,
       "fk_parents": [
         "staff"
       ]
@@ -3785,7 +3801,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 4215,
+      "approx_rows": 4263,
       "fk_parents": [
         "staff",
         "shipping_tracking_numbers",
@@ -3838,7 +3854,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 3468,
+      "approx_rows": 3877,
       "fk_parents": [
         "receiving_carton",
         "sku_catalog",
@@ -3910,7 +3926,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 3376,
+      "approx_rows": 3538,
       "fk_parents": [
         "receiving_line",
         "staff"
@@ -3961,7 +3977,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 2736,
+      "approx_rows": 2796,
       "fk_parents": [
         "staff",
         "receiving_line"
@@ -3978,7 +3994,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 2494,
+      "approx_rows": 2526,
       "fk_parents": [
         "receiving_line"
       ]
@@ -4031,7 +4047,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 4032,
+      "approx_rows": 4065,
       "fk_parents": [
         "receiving_carton",
         "staff",
@@ -4067,7 +4083,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 3114,
+      "approx_rows": 3157,
       "fk_parents": [
         "receiving_carton",
         "staff"
@@ -4084,7 +4100,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 3366,
+      "approx_rows": 3664,
       "fk_parents": [
         "receiving_line_unit",
         "receiving_line",
@@ -4214,7 +4230,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 10,
+      "approx_rows": 61,
       "fk_parents": [
         "replenishment_requests"
       ]
@@ -4315,7 +4331,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 1,
+      "approx_rows": 0,
       "fk_parents": [
         "staff"
       ]
@@ -4367,7 +4383,7 @@
       "rls_forced": false,
       "has_iso_policy": false,
       "hermes_read": false,
-      "approx_rows": 666,
+      "approx_rows": 784,
       "fk_parents": []
     },
     {
@@ -4381,7 +4397,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 4701,
+      "approx_rows": 5205,
       "fk_parents": [
         "staff"
       ]
@@ -4463,7 +4479,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 2079,
+      "approx_rows": 2204,
       "fk_parents": [
         "sku_catalog",
         "handling_units",
@@ -4516,7 +4532,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 6616,
+      "approx_rows": 6660,
       "fk_parents": [
         "shipping_tracking_numbers"
       ]
@@ -4532,7 +4548,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": false,
-      "approx_rows": 27558,
+      "approx_rows": 38486,
       "fk_parents": [
         "shipping_tracking_numbers"
       ]
@@ -4567,7 +4583,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": false,
-      "approx_rows": 12194,
+      "approx_rows": 12678,
       "fk_parents": []
     },
     {
@@ -4581,7 +4597,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 623,
+      "approx_rows": 690,
       "fk_parents": [
         "orders"
       ]
@@ -4597,7 +4613,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 89,
+      "approx_rows": 102,
       "fk_parents": [
         "orders"
       ]
@@ -4664,7 +4680,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 1684,
+      "approx_rows": 2559,
       "fk_parents": [
         "product_brands"
       ]
@@ -4745,7 +4761,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 6553,
+      "approx_rows": 6567,
       "fk_parents": [
         "sku_catalog",
         "staff"
@@ -4792,7 +4808,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 3013,
+      "approx_rows": 3461,
       "fk_parents": [
         "warehouses"
       ]
@@ -4808,7 +4824,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 5876,
+      "approx_rows": 6378,
       "fk_parents": [
         "reason_codes",
         "warehouses"
@@ -4896,7 +4912,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 40,
+      "approx_rows": 41,
       "fk_parents": [
         "warehouses",
         "accounts",
@@ -5009,7 +5025,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 628,
+      "approx_rows": 12536,
       "fk_parents": [
         "staff",
         "staff_subscriptions"
@@ -5106,7 +5122,7 @@
       "rls_forced": false,
       "has_iso_policy": false,
       "hermes_read": false,
-      "approx_rows": 44,
+      "approx_rows": 57,
       "fk_parents": [
         "staff",
         "roles"
@@ -5139,7 +5155,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 2327,
+      "approx_rows": 2345,
       "fk_parents": [
         "staff"
       ]
@@ -5268,7 +5284,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 43719,
+      "approx_rows": 45573,
       "fk_parents": [
         "shipping_tracking_numbers",
         "fba_fnskus",
@@ -5355,7 +5371,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 605,
+      "approx_rows": 691,
       "fk_parents": [
         "locations"
       ]
@@ -5385,7 +5401,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": -1,
+      "approx_rows": 51,
       "fk_parents": [
         "suppliers"
       ]
@@ -5401,7 +5417,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 46,
+      "approx_rows": 93,
       "fk_parents": []
     },
     {
@@ -5465,9 +5481,29 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": -1,
+      "approx_rows": 171,
       "fk_parents": [
         "support_tickets"
+      ]
+    },
+    {
+      "table": "support_ticket_items",
+      "classification": "tenant-owned",
+      "has_org": true,
+      "not_null": true,
+      "default_kind": "loud-fail",
+      "fk_to_orgs": false,
+      "rls_enabled": true,
+      "rls_forced": true,
+      "has_iso_policy": true,
+      "hermes_read": true,
+      "approx_rows": -1,
+      "fk_parents": [
+        "support_tickets",
+        "sku_catalog",
+        "orders",
+        "shipping_label_purchases",
+        "staff"
       ]
     },
     {
@@ -5481,7 +5517,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 433,
+      "approx_rows": 494,
       "fk_parents": [
         "staff"
       ]
@@ -5527,7 +5563,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 4117,
+      "approx_rows": 4330,
       "fk_parents": [
         "shipping_tracking_numbers",
         "fba_fnsku_logs",
@@ -5571,7 +5607,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 224,
+      "approx_rows": 271,
       "fk_parents": [
         "serial_units",
         "receiving_line",
@@ -5801,7 +5837,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 28,
+      "approx_rows": 78,
       "fk_parents": [
         "staff"
       ]
@@ -5837,7 +5873,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 251,
+      "approx_rows": 255,
       "fk_parents": [
         "sku_catalog"
       ]
@@ -6113,7 +6149,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 23,
+      "approx_rows": 166,
       "fk_parents": [
         "work_assignments",
         "staff"
@@ -6181,7 +6217,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": -1,
+      "approx_rows": 53,
       "fk_parents": [
         "work_assignments",
         "orders",
@@ -6313,7 +6349,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 372,
+      "approx_rows": 451,
       "fk_parents": [
         "workflow_definitions"
       ]
@@ -6345,7 +6381,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 1282,
+      "approx_rows": 1461,
       "fk_parents": []
     },
     {
@@ -6389,7 +6425,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 15,
+      "approx_rows": 25,
       "fk_parents": []
     },
     {
@@ -6403,7 +6439,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 914,
+      "approx_rows": 994,
       "fk_parents": []
     },
     {
@@ -6445,7 +6481,7 @@
       "rls_forced": true,
       "has_iso_policy": true,
       "hermes_read": true,
-      "approx_rows": 4671,
+      "approx_rows": 4693,
       "fk_parents": []
     },
     {

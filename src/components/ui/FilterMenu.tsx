@@ -11,7 +11,6 @@ import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cornerClass, DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import { KeyboardKey } from '@/design-system/primitives';
 
 interface FilterMenuProps {
   open: boolean;
@@ -149,7 +148,6 @@ export function FilterMenuRow({
   active,
   onClick,
   leading,
-  shortcut,
   sectionHeader = false,
 }: {
   label: string;
@@ -157,7 +155,6 @@ export function FilterMenuRow({
   active: boolean;
   onClick: () => void;
   leading?: ReactNode;
-  shortcut?: string;
   /**
    * Clickable default for an icon-bearing section (e.g. All types/platforms).
    * It replaces the separate eyebrow and starts flush: no check gutter,
@@ -176,18 +173,9 @@ export function FilterMenuRow({
       }
       className={cn(DROPDOWN_ITEM_CORNER, sectionHeader && 'px-0')}
       trailing={
-        count === undefined && !shortcut ? null : (
-          <span className="flex shrink-0 items-center gap-2">
-            {typeof count === 'number' ? (
-              <span className={cn('tabular-nums', active ? 'text-text-soft' : 'text-text-faint')}>
-                {count > 99 ? '99+' : count}
-              </span>
-            ) : null}
-            {shortcut ? (
-              <KeyboardKey size="xs" className="hidden sm:inline-flex">
-                {shortcut}
-              </KeyboardKey>
-            ) : null}
+        count === undefined ? null : (
+          <span className={cn('shrink-0 tabular-nums', active ? 'text-text-soft' : 'text-text-faint')}>
+            {count > 99 ? '99+' : count}
           </span>
         )
       }

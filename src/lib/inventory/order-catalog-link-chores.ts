@@ -16,7 +16,7 @@ import {
 import type {
   CatalogLinkChoreRow,
   CatalogLinkChoreStatus,
-} from '@/features/review/catalog-link/types';
+} from '@/lib/inventory/catalog-link-types';
 
 export type EnqueueCatalogLinkChoreInput = {
   itemNumber: string;

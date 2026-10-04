@@ -373,7 +373,7 @@ Every file from the publisher grep must supply `orgId` to its `publish*` call. R
 - `src/components/sku/LocationDetailView.tsx` — **note this is a client component** that imports `getStationChannelName`; see §4 (it must use the org-aware client builder, not call a server publisher).
 
 **Receiving:**
-- `src/app/api/receiving-entry/route.ts`, `receiving-lines/route.ts`, `receiving-logs/route.ts`, `receiving-tasks/route.ts`, `receiving/[id]/attach-box/route.ts`, `receiving/[id]/route.ts`, `receiving/add-unmatched-line/route.ts`, `receiving/lines/[id]/condition/route.ts`, `receiving/lines/[id]/putaway/route.ts`, `receiving/lines/[id]/status/route.ts`, `receiving/lookup-po/route.ts`, `receiving/mark-received-po/route.ts`, `receiving/mark-received/route.ts`, `receiving/match/route.ts`, `receiving/po/[poId]/attach-box/route.ts`, `receiving/scan-serial/route.ts`, `receiving/serials/route.ts`, `zoho/purchase-orders/receive/route.ts`
+- `src/app/api/receiving-entry/route.ts`, `receiving-lines/route.ts`, `receiving-logs/route.ts`, `receiving-tasks/route.ts`, `receiving/[id]/attach-box/route.ts`, `receiving/[id]/route.ts`, `receiving/add-unmatched-line/route.ts`, `receiving/lines/[id]/condition/route.ts`, `receiving/lines/[id]/putaway/route.ts`, `receiving/lines/[id]/status/route.ts`, `receiving/lookup-po/route.ts`, `receiving/mark-received-po/route.ts`, `receiving/match/route.ts`, `receiving/po/[poId]/attach-box/route.ts`, `receiving/scan-serial/route.ts`, `receiving/serials/route.ts`
 - `src/lib/receiving/receive-line.ts` (shared — add `orgId` param)
 
 **Packing:**

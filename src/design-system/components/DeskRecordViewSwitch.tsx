@@ -22,14 +22,10 @@
  * modal host): a dead switch is worse than none.
  */
 
-import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { HotkeyTooltip } from '@/components/ui/HotkeyTooltip';
-import { AnimatePresence, LayoutGroup, motion, motionRole, useReducedMotion } from '@/design-system/motion';
-import { AnimateText } from '@/design-system/motion/plus';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { useEffect } from 'react';
 import { cn } from '@/utils/_cn';
-import { DESK_RECORD_HEAD_LABEL_CLASS, DeskRecordHeadContext } from './DeskActionSlot';
 import { DESK_SPLIT_SHORTCUT_HINT, useDeskStageOptional, type DeskStageView } from './DeskStageContext';
+import { SegmentedGlyphSwitch, type SegmentedGlyphOption } from './SegmentedGlyphSwitch';
 
 /** In place: the record fills the stage where the list was. */
 function InPlaceGlyph({ className }: { className?: string }) {
@@ -57,20 +53,13 @@ function SplitGlyph({ className }: { className?: string }) {
  * every control wears ({@link HotkeyTooltip} → keycaps). In place and Split
  * share ⌘/Ctrl+Shift+S — the chord flips between them.
  */
-const VIEWS: readonly { view: DeskStageView; label: string; action: string; chord: string; Glyph: typeof InPlaceGlyph }[] = [
-  { view: 'in-place', label: 'In place', action: 'Open records over the list, full width', chord: DESK_SPLIT_SHORTCUT_HINT, Glyph: InPlaceGlyph },
-  { view: 'split', label: 'Split', action: 'Keep the list, open records beside it', chord: DESK_SPLIT_SHORTCUT_HINT, Glyph: SplitGlyph },
+const VIEWS: readonly SegmentedGlyphOption<DeskStageView>[] = [
+  { value: 'in-place', label: 'In place', hotkey: { action: 'Open records over the list, full width', chord: DESK_SPLIT_SHORTCUT_HINT }, Glyph: InPlaceGlyph, testId: 'desk-record-view-in-place' },
+  { value: 'split', label: 'Split', hotkey: { action: 'Keep the list, open records beside it', chord: DESK_SPLIT_SHORTCUT_HINT }, Glyph: SplitGlyph, testId: 'desk-record-view-split' },
 ];
 
 export function DeskRecordViewSwitch({ className }: { className?: string }) {
   const stage = useDeskStageOptional();
-  // On a record header band the words give way to the title while the band is compact.
-  const inRecordHead = useContext(DeskRecordHeadContext);
-  const groupId = useId();
-  const reduce = useReducedMotion();
-  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
-  // The option under the pointer / keyboard focus — it spells itself out like the selected one.
-  const [peeked, setPeeked] = useState<DeskStageView | null>(null);
   // A split pane below this measure cannot preserve both a useful list and a
   // readable record. Collapse to the full-width record as the viewport crosses
   // the phone/tablet boundary; the remembered desktop control remains explicit.
@@ -86,100 +75,14 @@ export function DeskRecordViewSwitch({ className }: { className?: string }) {
   }, [stage]);
   if (!stage) return null;
 
-  const transition = reduce ? { duration: 0 } : motionRole.record.pane.transition;
-  const options = VIEWS;
-  const activeIndex = Math.max(0, options.findIndex((v) => v.view === stage.view));
-
-  // Radiogroup keys: arrows move AND select (WAI-ARIA radio pattern), Home/End jump.
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const last = options.length - 1;
-    let next: number;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = activeIndex === last ? 0 : activeIndex + 1;
-    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = activeIndex === 0 ? last : activeIndex - 1;
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = last;
-    else return;
-    event.preventDefault();
-    stage.setView(options[next].view);
-    buttons.current[next]?.focus();
-  };
-
   return (
-    <LayoutGroup id={groupId}>
-      <div
-        role="radiogroup"
-        aria-label="Record view"
-        data-testid="desk-record-view-switch"
-        onKeyDown={onKeyDown}
-        className={cn('hidden shrink-0 items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5 min-[900px]:inline-flex', className)}
-      >
-        {options.map(({ view, label, action, chord, Glyph }, index) => {
-          const active = stage.view === view;
-          // Expanded vs collapsed (owner 2026-09-29): the selected view wears its
-          // word; the other is its drawing alone until hovered or focused.
-          const expanded = active || peeked === view;
-          return (
-            <HotkeyTooltip key={view} action={action} chord={chord} placement="above">
-            <motion.button
-              ref={(el: HTMLButtonElement | null) => {
-                buttons.current[index] = el;
-              }}
-              layout
-              transition={transition}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              aria-label={label}
-              tabIndex={index === activeIndex ? 0 : -1}
-              data-testid={`desk-record-view-${view}`}
-              data-expanded={expanded ? '' : undefined}
-              onClick={active ? undefined : () => stage.setView(view)}
-              onPointerEnter={() => setPeeked(view)}
-              onPointerLeave={() => setPeeked(null)}
-              onFocus={() => setPeeked(view)}
-              onBlur={() => setPeeked(null)}
-              className={cn(
-                'relative inline-flex h-7 items-center rounded-mode-control px-2 text-role-caption font-medium transition-colors duration-mode-feedback',
-                active ? 'text-text-default' : 'text-text-muted hover:text-text-default',
-                focusRing('control'),
-              )}
-            >
-              {active ? (
-                // The face slides between the two options — the choice reads as
-                // one object moving, not two buttons repainting.
-                <motion.span
-                  layoutId="desk-record-view-face"
-                  transition={transition}
-                  className="absolute inset-0 rounded-mode-control bg-surface-card shadow-elev-soft"
-                  aria-hidden
-                />
-              ) : null}
-              <motion.span layout="position" transition={transition} className="relative inline-flex">
-                <Glyph className={cn('h-3.5 w-[18px]', active && 'text-text-info')} />
-              </motion.span>
-              <AnimatePresence initial={false}>
-                {expanded ? (
-                  <motion.span
-                    key="label"
-                    initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 'auto', opacity: 1 }}
-                    exit={{ width: 0, opacity: 0 }}
-                    transition={transition}
-                    className={cn('relative overflow-hidden whitespace-nowrap', inRecordHead && DESK_RECORD_HEAD_LABEL_CLASS)}
-                    aria-hidden
-                  >
-                    {/* Motion+ spells the word in as the option opens. */}
-                    <span className="inline-block pl-1.5">
-                      {reduce ? label : <AnimateText type="char">{label}</AnimateText>}
-                    </span>
-                  </motion.span>
-                ) : null}
-              </AnimatePresence>
-            </motion.button>
-            </HotkeyTooltip>
-          );
-        })}
-      </div>
-    </LayoutGroup>
+    <SegmentedGlyphSwitch
+      options={VIEWS}
+      value={stage.view}
+      onChange={stage.setView}
+      ariaLabel="Record view"
+      testId="desk-record-view-switch"
+      className={cn('hidden min-[900px]:inline-flex', className)}
+    />
   );
 }

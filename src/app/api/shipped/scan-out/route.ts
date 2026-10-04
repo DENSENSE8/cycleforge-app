@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { commitIsPhoneOrigin } from '@/lib/auth/phone-origin.server';
@@ -129,8 +129,31 @@ export const POST = withAuth(
     });
 
     if (result.kind === 'unmatched') {
+      if (result.exceptionId != null) {
+        const exceptionId = result.exceptionId;
+        // No SAL row: wake the station feed with the held exception (negative id never collides with SAL).
+        after(() =>
+          publishActivityLogged({
+            organizationId: orgId,
+            id: -exceptionId,
+            station: 'OUTBOUND',
+            activityType: 'SHIP_CONFIRM_MISS',
+            staffId: actorStaffId,
+            scanRef: raw,
+            source: 'shipped-scan-out',
+          }).catch(() => {}),
+        );
+      }
       return NextResponse.json(
-        { ok: true, matched: false, message: 'No shipment found for this label' },
+        {
+          ok: true,
+          matched: false,
+          exceptionId: result.exceptionId,
+          message:
+            result.exceptionId != null
+              ? 'No match — added to Fulfilled unmatched'
+              : 'No shipment found for this label',
+        },
         { status: 200 },
       );
     }

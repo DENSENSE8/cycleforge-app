@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ListChecks, ListTodo, Search, Ticket, X } from 'lucide-react';
 import { Zap } from '@/components/Icons';
-import { ChordKeys, chordKeys } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { motion } from '@/design-system/motion';
 import { useRegisterOverlay } from '@/design-system/hooks/useOverlayStack';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -384,16 +384,17 @@ function NewTaskSurface({
         {/* Footer */}
         <div className="mt-5 flex items-center gap-3 border-t border-border-hairline bg-surface-sunken/50 px-5 py-3">
           <span className="text-xs text-text-muted">{missing ?? (kind === 'checklist' ? 'Adds to everyone’s list' : `${draft.assignees.length} ${draft.assignees.length === 1 ? 'person' : 'people'}`)}</span>
-          <button
-            type="button"
-            disabled={!ready}
-            onClick={submit}
-            data-testid="task-new-submit"
-            className="ml-auto inline-flex h-9 items-center gap-2 rounded-full bg-surface-inverse px-4 text-sm font-semibold text-text-inverse transition-opacity disabled:opacity-40"
-          >
-            {draft.throwing || addItem.isPending ? 'Sending…' : kind === 'checklist' ? 'Add to checklist' : 'Create task'}
-            <ChordKeys keys={chordKeys('Cmd + Enter')} tone="inverse" />
-          </button>
+          <HoverTooltip label={kind === 'checklist' ? 'Add to checklist' : 'Create task'} shortcut="Cmd + Enter" placement="above" asChild>
+            <button
+              type="button"
+              disabled={!ready}
+              onClick={submit}
+              data-testid="task-new-submit"
+              className="ml-auto inline-flex h-9 items-center gap-2 rounded-full bg-surface-inverse px-4 text-sm font-semibold text-text-inverse transition-opacity disabled:opacity-40"
+            >
+              {draft.throwing || addItem.isPending ? 'Sending…' : kind === 'checklist' ? 'Add to checklist' : 'Create task'}
+            </button>
+          </HoverTooltip>
         </div>
     </motion.div>
   );

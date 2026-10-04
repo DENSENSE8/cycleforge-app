@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth/permissions';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { derivedRoomLabelSql, derivedRoomSetJoinSql, rackWalkOrderSql } from '@/lib/locations/derived-room';
 
 /** GET /api/cycle-counts/campaigns/[id]?bin_id= Campaign header + filtered lines. */
 
@@ -51,16 +52,17 @@ export async function GET(
               ccl.variance, ccl.status, ccl.counted_by, ccl.counted_at,
               ccl.approved_by, ccl.approved_at, ccl.notes, ccl.updated_at,
               l.barcode AS bin_barcode, l.name AS bin_name,
-              l.row_label, l.col_label, l.room,
+              l.row_label, l.col_label, ${derivedRoomLabelSql('l', 'room')} AS room,
               COALESCE(
                 NULLIF(ss.display_name_override, ''),
                 NULLIF(ss.product_title, '')
               ) AS product_title
        FROM cycle_count_lines ccl
        JOIN locations l ON l.id = ccl.bin_id
+       ${derivedRoomSetJoinSql('l', 'room', '$2')}
        LEFT JOIN sku_stock ss ON ss.sku = ccl.sku AND ss.organization_id = ccl.organization_id
        WHERE ccl.campaign_id = $1 AND ccl.organization_id = $2 ${binFilter}
-       ORDER BY l.room NULLS LAST, l.row_label NULLS LAST, l.col_label NULLS LAST, ccl.sku`,
+       ORDER BY ${derivedRoomLabelSql('l', 'room')} NULLS LAST, ${rackWalkOrderSql('l.barcode')}, l.row_label NULLS LAST, l.col_label NULLS LAST, ccl.sku`,
       lineParams,
     );
 

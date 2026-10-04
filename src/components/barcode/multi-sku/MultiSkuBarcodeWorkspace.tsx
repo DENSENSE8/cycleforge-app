@@ -149,7 +149,6 @@ export function MultiSkuBarcodeWorkspace({ b }: { b: MultiSkuBarcodeController }
 
       {/* Floating action bar — same primitive as the receiving unbox bar. */}
       <StickyActionBar
-        floating
         maxWidth="max-w-[720px]"
         primary={{
           label: primaryLabel,

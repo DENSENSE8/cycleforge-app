@@ -1365,14 +1365,14 @@ export function ProductSelector({
         )}
         {opts?.withActions && (
           kioskActions ? (
-            // One h-14 floor — same seam token as KIOSK_PANE_HEADER_BAND (border-border-soft).
+            // The kiosk pane's floating keys — no seam or ground floor (owner 2026-10-03).
             <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
               <Button
                 type="button"
                 variant="secondary"
                 size="lg"
                 onClick={handleAddAnotherItem}
-                className={cn('h-full min-h-0 flex-1 rounded-none', cornerClass('flush'))}
+                className="flex-1"
                 data-kiosk-add-another
               >
                 Add another item
@@ -1384,7 +1384,7 @@ export function ProductSelector({
                   size="lg"
                   onClick={() => onContinue?.()}
                   disabled={catalogPhase === 'checkout'}
-                  className={cn('h-full min-h-0 flex-1 rounded-none', cornerClass('flush'))}
+                  className="flex-1"
                   data-kiosk-continue
                 >
                   Continue

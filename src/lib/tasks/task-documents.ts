@@ -7,6 +7,7 @@ import {
   type TaskDocument,
   type TaskDocumentCreateBody,
   type TaskDocumentMeta,
+  type TaskDocumentPatchBody,
   type TaskDocumentSource,
 } from './task-documents-shared';
 
@@ -16,7 +17,9 @@ export type TaskDocumentRefusal =
   | 'invalid_path'
   | 'file_not_found'
   | 'content_too_long'
-  | 'empty_content';
+  | 'empty_content'
+  | 'stale_document'
+  | 'not_editable';
 
 export interface NewTaskDocumentRow {
   taskId: number;
@@ -64,6 +67,16 @@ export interface TaskDocumentsDeps {
   ): Promise<TaskDocumentRecord[]>;
   /** DELETE … RETURNING; the removed row's face, or null when nothing matched. */
   deleteDocument(taskId: number, docId: number): Promise<RemovedTaskDocument | null>;
+  /**
+   * UPDATE an `upload` row WHERE its `updated_at` still equals
+   * `expectedUpdatedAt`, bumping it. `updated` when it landed; otherwise why not:
+   * `missing` (no such row on this task), `repo` (not editable), `stale`.
+   */
+  updateDocument(
+    taskId: number,
+    docId: number,
+    patch: { title: string | null; content: string | null; expectedUpdatedAt: string },
+  ): Promise<'updated' | 'missing' | 'repo' | 'stale'>;
 }
 
 export type CreateTaskDocumentResult =
@@ -215,6 +228,54 @@ export async function deleteTaskDocument(
   return { changed: removed != null, removed };
 }
 
+export type UpdateTaskDocumentResult =
+  | { ok: true; document: TaskDocument; before: { title: string; sizeBytes: number | null } }
+  | { ok: false; reason: TaskDocumentRefusal };
+
+/**
+ * Rewrite an `upload` document's title and/or markdown in place. Optimistic:
+ * the write lands only when the stored `updated_at` still equals the one the
+ * editor loaded, so two people saving the same doc never silently overwrite
+ * each other — the second gets `stale_document` (409) and keeps their draft.
+ */
+export async function updateTaskDocument(
+  taskId: number,
+  docId: number,
+  body: TaskDocumentPatchBody,
+  deps: TaskDocumentsDeps,
+): Promise<UpdateTaskDocumentResult> {
+  if (!(await deps.taskExists(taskId))) return { ok: false, reason: 'task_not_found' };
+  const [current] = await deps.readDocuments(taskId, { docId });
+  if (!current) return { ok: false, reason: 'document_not_found' };
+  if (current.meta.source !== 'upload') return { ok: false, reason: 'not_editable' };
+
+  const content = body.content ?? null;
+  if (content != null) {
+    if (content.trim().length === 0) return { ok: false, reason: 'empty_content' };
+    if (content.length > TASK_DOCUMENT_CONTENT_MAX && codePointLength(content) > TASK_DOCUMENT_CONTENT_MAX) {
+      return { ok: false, reason: 'content_too_long' };
+    }
+  }
+  const title = body.title?.trim() || null;
+
+  const outcome = await deps.updateDocument(taskId, docId, {
+    title,
+    content,
+    expectedUpdatedAt: body.expectedUpdatedAt,
+  });
+  if (outcome === 'missing') return { ok: false, reason: 'document_not_found' };
+  if (outcome === 'repo') return { ok: false, reason: 'not_editable' };
+  if (outcome === 'stale') return { ok: false, reason: 'stale_document' };
+
+  const [record] = await deps.readDocuments(taskId, { docId, withContent: true });
+  if (!record) return { ok: false, reason: 'document_not_found' };
+  return {
+    ok: true,
+    document: { ...record.meta, content: record.content ?? '' },
+    before: { title: current.meta.title, sizeBytes: current.meta.sizeBytes },
+  };
+}
+
 // ── row mapping ─────────────────────────────────────────────────────────────
 
 /** The columns `task-documents-db.ts` selects. Kept here so the mapper is testable. */
@@ -229,6 +290,8 @@ interface TaskDocumentSqlRow {
   /** Only when read `withContent`. */
   content: unknown;
   created_at: unknown;
+  /** `updated_at` as a µs-precision ISO string (to_char in SQL). */
+  updated_at: unknown;
   created_by_staff_id: unknown;
   created_by_name: unknown;
 }
@@ -261,6 +324,7 @@ export function mapTaskDocumentRow(raw: Record<string, unknown>): TaskDocumentRe
       repoPath: source === 'repo' && row.repo_path != null ? String(row.repo_path) : null,
       sizeBytes: source === 'upload' ? intOrNull(row.size_bytes) : null,
       createdAt,
+      updatedAt: row.updated_at == null ? createdAt : String(row.updated_at),
       createdBy: createdById == null ? null : { id: createdById, name: createdByName || `Staff #${createdById}` },
     },
     content: source === 'upload' && row.content != null ? String(row.content) : null,

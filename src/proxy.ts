@@ -21,6 +21,7 @@ import {
   skewPinDecision,
 } from '@/lib/vercel/skew-pin';
 import { extractStaffTenantSlug } from '@/lib/tenancy/staff-host';
+import { parkedSlotSurfaceDestination } from '@/lib/routing/parked-slot-surfaces';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
 const SESSION_COOKIE_NAME = 'cf_sid';
@@ -101,10 +102,6 @@ const REWRITES: ReadonlyArray<{ prefix: string; target: string }> = [
 
 // Dual-route pages that have a dedicated mobile counterpart.
 const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
-  // Packing has a dedicated phone history and capture-evidence face. It stays
-  // a partial completion path until mobile pack confirmation is implemented.
-  ['/pack', '/m/pack'],
-  ['/pack/', '/m/pack'],
   ['/signin', '/m/signin'],
   ['/signin/', '/m/signin'],
 ]);
@@ -136,6 +133,12 @@ function resolveMobileUaRewrite(pathname: string, ua: string | null): string | n
   // Don't double-rewrite if the client already navigated to /m/*.
   if (pathname.startsWith('/m/')) return null;
   return MOBILE_UA_REWRITES.get(pathname) ?? null;
+}
+
+/** Redirect the retired compound-grid URLs to their retained surfaces. */
+function resolveParkedSlotSurfaceRedirect(url: NextRequest['nextUrl']): URL | null {
+  const destination = parkedSlotSurfaceDestination(url.pathname, url.searchParams);
+  return destination ? new URL(destination, url) : null;
 }
 
 /** Surface-migration redirect (Studio-driven operator surfaces refactor). */
@@ -578,6 +581,7 @@ export function proxy(req: NextRequest): NextResponse {
   // phones fall through to the `/m/*` rewrite computed above (rewriteTarget set).
   if (!rewriteTarget) {
     const surfaceRedirect =
+      resolveParkedSlotSurfaceRedirect(req.nextUrl) ??
       resolveAuditLogRedirect(req.nextUrl) ??
       resolveReceivingSurfaceRedirect(req.nextUrl) ??
       resolveReceivingHistoryRedirect(req.nextUrl) ??

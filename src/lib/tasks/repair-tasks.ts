@@ -46,9 +46,9 @@ export interface RepairTaskSource {
   /** `pickup_signed_at` — a signed pickup ends the repair whatever its status says. */
   pickedUp: boolean;
   /**
-   * The helpdesk thread behind the paperwork number: `support_tickets` only,
-   * exact org-scoped match on the number. `Ticket 10089` on a task row is
-   * otherwise just words — the inline reply tab needs this to mount.
+   * The helpdesk thread behind the paperwork number, already mirrored in
+   * `support_tickets` (exact org-scoped match). A number the mirror has not
+   * seen yet is found live by the `findTicket` pass instead.
    */
   helpdeskTicketNumber: string | null;
 }
@@ -113,14 +113,45 @@ export function isSyncOwnedNote(note: string | null, repair: RepairTaskSource): 
   );
 }
 
+/** `Repair RS 77: Walk-in …` / `RS-4894 — …` / `RS-0053` → the repair id the helpdesk subject names, else null. */
+export function repairIdInTicketSubject(subject: string | null | undefined): number | null {
+  const match = /\bRS[\s#-]*0*(\d{1,9})\b/i.exec(subject ?? '');
+  return match ? Number(match[1]) : null;
+}
+
+/**
+ * Is the ticket the paperwork number points at this repair's own thread? Its
+ * subject names this repair, or — an older slip whose subject predates the RS
+ * id (`Repair: Walk-in …`) — names no repair and opens as a repair intake. A
+ * subject naming ANOTHER repair is never this one's.
+ */
+export function isRepairOwnTicket(repairId: number, subject: string | null | undefined): boolean {
+  const named = repairIdInTicketSubject(subject);
+  if (named != null) return named === repairId;
+  return /^\s*repair\b/i.test(subject ?? '');
+}
+
+/** `#9431` / `9431` on the slip → the helpdesk number to try; `RS-0053`, `NA`, blank → null. */
+export function paperworkTicketNumber(ticketNumber: string | null | undefined): number | null {
+  const match = /^#?\s*(\d{1,9})$/.exec((ticketNumber ?? '').trim());
+  return match ? Number(match[1]) : null;
+}
+
 export type RepairTaskAction =
   | { kind: 'create'; repairId: number; note: string; assigneeStaffIds: readonly number[]; ticketNumber: string | null }
   /** `note` is set only when the task still wears the sync's words and they changed. */
   | { kind: 'close'; taskId: number; repairId: number; note: string | null }
   | { kind: 'reopen'; taskId: number; repairId: number; note: string | null }
   | { kind: 'refresh'; taskId: number; repairId: number; note: string }
-  /** The repair's paperwork number is a real helpdesk thread: link it so the record's Ticket tab replies inline. */
-  | { kind: 'linkTicket'; taskId: number; repairId: number; ticketNumber: string };
+  /** The repair's paperwork number is a mirrored helpdesk thread: link it so the record's Ticket tab replies inline. */
+  | { kind: 'linkTicket'; taskId: number; repairId: number; ticketNumber: string }
+  /**
+   * Open repair, no thread linked and none mirrored: ask the helpdesk live —
+   * the slip's number (`paperworkNumber`) when it is one, else a subject search
+   * for `RS <id>` — and link the ticket only when its subject proves it is this
+   * repair's (`isRepairOwnTicket` / `repairIdInTicketSubject`).
+   */
+  | { kind: 'findTicket'; taskId: number; repairId: number; paperworkNumber: number | null };
 
 /**
  * Decide, per repair, what its task needs. Repairs with no task that are
@@ -153,8 +184,12 @@ export function planRepairTaskSync(
     if (task.status === 'CANCELED') continue;
 
     // The paperwork number is a real helpdesk thread: link it so the record's Ticket tab replies inline.
-    if (repair.helpdeskTicketNumber && !task.hasTicketLink) {
-      actions.push({ kind: 'linkTicket', taskId: task.taskId, repairId: repair.id, ticketNumber: repair.helpdeskTicketNumber });
+    if (!task.hasTicketLink) {
+      if (repair.helpdeskTicketNumber) {
+        actions.push({ kind: 'linkTicket', taskId: task.taskId, repairId: repair.id, ticketNumber: repair.helpdeskTicketNumber });
+      } else if (open) {
+        actions.push({ kind: 'findTicket', taskId: task.taskId, repairId: repair.id, paperworkNumber: paperworkTicketNumber(repair.ticketNumber) });
+      }
     }
 
     const refreshed = task.note !== note && isSyncOwnedNote(task.note, repair) ? note : null;
@@ -183,10 +218,15 @@ export interface RepairTaskSyncDeps {
   createTask(action: Extract<RepairTaskAction, { kind: 'create' }>): Promise<boolean>;
   /** House status/note writer, audited. False when refused. */
   updateTask(
-    action: Exclude<RepairTaskAction, { kind: 'create' } | { kind: 'linkTicket' }>,
+    action: Exclude<RepairTaskAction, { kind: 'create' } | { kind: 'linkTicket' } | { kind: 'findTicket' }>,
   ): Promise<boolean>;
   /** House ticket-link writer, audited. False when refused (a duplicate counts as done). */
   linkTicket(action: Extract<RepairTaskAction, { kind: 'linkTicket' }>): Promise<boolean>;
+  /**
+   * Live helpdesk lookup + the same link writer. `unmatched` = no ticket proves
+   * itself this repair's (not a failure); THROWS when the helpdesk is unreachable.
+   */
+  findTicket(action: Extract<RepairTaskAction, { kind: 'findTicket' }>): Promise<'linked' | 'unmatched' | 'refused'>;
 }
 
 export interface RepairTaskSyncSummary {
@@ -196,6 +236,8 @@ export interface RepairTaskSyncSummary {
   reopened: number;
   refreshed: number;
   ticketLinked: number;
+  /** Open repairs whose helpdesk thread could not be proven (left unlinked, retried next pass). */
+  ticketUnmatched: number;
   failed: number;
 }
 
@@ -212,26 +254,42 @@ export async function runRepairTaskSync(
 ): Promise<RepairTaskSyncResult> {
   const [repairs, tasks] = await Promise.all([deps.listRepairs(), deps.listRepairTasks()]);
   const actions = planRepairTaskSync(repairs, tasks, owners);
-  const summary: RepairTaskSyncSummary = { repairs: repairs.length, created: 0, closed: 0, reopened: 0, refreshed: 0, ticketLinked: 0, failed: 0 };
-  const counter = { create: 'created', close: 'closed', reopen: 'reopened', refresh: 'refreshed', linkTicket: 'ticketLinked' } as const;
+  const summary: RepairTaskSyncSummary = {
+    repairs: repairs.length,
+    created: 0,
+    closed: 0,
+    reopened: 0,
+    refreshed: 0,
+    ticketLinked: 0,
+    ticketUnmatched: 0,
+    failed: 0,
+  };
+  const counter = { create: 'created', close: 'closed', reopen: 'reopened', refresh: 'refreshed', linkTicket: 'ticketLinked', findTicket: 'ticketLinked' } as const;
 
   for (const action of actions) {
     if (opts.dryRun) {
       summary[counter[action.kind]] += 1;
       continue;
     }
-    let ok = false;
+    let outcome: 'ok' | 'unmatched' | 'failed' = 'failed';
     try {
-      ok =
-        action.kind === 'create'
-          ? await deps.createTask(action)
-          : action.kind === 'linkTicket'
-            ? await deps.linkTicket(action)
-            : await deps.updateTask(action);
+      if (action.kind === 'findTicket') {
+        const found = await deps.findTicket(action);
+        outcome = found === 'linked' ? 'ok' : found === 'unmatched' ? 'unmatched' : 'failed';
+      } else {
+        const ok =
+          action.kind === 'create'
+            ? await deps.createTask(action)
+            : action.kind === 'linkTicket'
+              ? await deps.linkTicket(action)
+              : await deps.updateTask(action);
+        outcome = ok ? 'ok' : 'failed';
+      }
     } catch (error) {
       console.warn(`[repair-tasks] ${action.kind} RS-${action.repairId} failed:`, error instanceof Error ? error.message : error);
     }
-    if (ok) summary[counter[action.kind]] += 1;
+    if (outcome === 'ok') summary[counter[action.kind]] += 1;
+    else if (outcome === 'unmatched') summary.ticketUnmatched += 1;
     else summary.failed += 1;
   }
   return { summary, actions };

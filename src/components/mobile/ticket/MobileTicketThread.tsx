@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { IdentityMark } from '@/components/identity/IdentityMark';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import {
   ConversationMessageCard,
   CONVERSATION_MARK_BOX,
@@ -14,6 +14,14 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { isNotConfigured, useTicketComments, useZendeskTicket } from '@/hooks/useZendeskQueries';
 import { renderBlockMarkdown } from '@/lib/support/markdown';
+import {
+  ticketItemsForComment,
+  type SupportProductFace,
+  type SupportTicketItem,
+} from '@/lib/support/ticket-items-shared';
+import { useSupportTicketItems } from '@/hooks/useSupportTicketItems';
+import { TicketProductCard } from '@/components/ui/TicketProductCard';
+import { SentToCustomerStrip } from '@/components/ui/SentToCustomerStrip';
 import { initials, requesterFrom, resolveAuthor } from '@/lib/support/support-chat-utils';
 import type { ZendeskAgent, ZendeskUser } from '@/lib/zendesk';
 import { cn } from '@/utils/_cn';
@@ -23,6 +31,12 @@ import { MobileTicketReplyDock } from './MobileTicketReplyDock';
 /** The comments route already resolves author identity server-side (the ticket mirror read → `author_name` / `author_photo`), so the phone… */
 const NO_AGENTS: Map<number, ZendeskAgent> = new Map();
 const NO_USERS: Map<number, ZendeskUser> = new Map();
+const NO_TICKET_ITEMS: SupportTicketItem[] = [];
+
+/** Phone: a product card is a link to the phone product page — no desk peek here. */
+function phoneProductHref(face: SupportProductFace): string {
+  return `/m/products/${encodeURIComponent(face.sku)}`;
+}
 
 export function MobileTicketThread({
   ticketId,
@@ -42,6 +56,8 @@ export function MobileTicketThread({
 
   const ticket = useZendeskTicket(liveId);
   const comments = useTicketComments(liveId);
+  // One read of what was sent on this ticket for the whole thread (P7).
+  const { data: ticketItems = NO_TICKET_ITEMS } = useSupportTicketItems(liveId);
 
   const requester = ticket.data ? requesterFrom(ticket.data) : { name: null, email: null };
   const rows = useMemo(() => {
@@ -74,7 +90,7 @@ export function MobileTicketThread({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
-      <MobileDetailTopBar
+      <MobileV2DetailTopBar
         subtitle={ticketId != null ? `Ticket #${ticketId}` : 'Ticket'}
         title={subject || (ticket.isLoading ? 'Loading…' : 'Untitled ticket')}
         backHref={backHref ?? undefined}
@@ -84,6 +100,14 @@ export function MobileTicketThread({
           ) : null
         }
       />
+      {canRead && ticketId != null ? (
+        <SentToCustomerStrip
+          ticketId={ticketId}
+          productHref={phoneProductHref}
+          touch
+          className="shrink-0 border-b border-border-hairline px-4 py-2.5"
+        />
+      ) : null}
 
       {/* The stream hugs the COMPOSER, not the top bar: */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain py-3">
@@ -107,28 +131,51 @@ export function MobileTicketThread({
           <p className="px-4 text-role-caption text-text-muted">No messages on this ticket yet.</p>
         ) : (
           <div className={cn(CONVERSATION_STREAM, 'mt-auto')}>
-            {rows.map(({ comment, author }) => (
-              <ConversationMessageCard
-                key={comment.id}
-                internal={comment.public === false}
-                mark={
-                  <div className={CONVERSATION_MARK_BOX}>
-                    <IdentityMark
-                      initials={initials(author.name)}
-                      src={author.photo}
-                      size="sm"
-                      ring={false}
-                      alt={author.name}
-                      className={CONVERSATION_MARK_PLACEHOLDER}
+            {rows.map(({ comment, author }) => {
+              // Optimistic echoes carry negative temp ids and raw tokens; only a
+              // mirrored comment binds log rows by its helpdesk id.
+              const { body, items } = ticketItemsForComment(
+                comment.body,
+                comment.id > 0 ? comment.id : null,
+                ticketItems,
+              );
+              return (
+                <ConversationMessageCard
+                  key={comment.id}
+                  internal={comment.public === false}
+                  mark={
+                    <div className={CONVERSATION_MARK_BOX}>
+                      <IdentityMark
+                        initials={initials(author.name)}
+                        src={author.photo}
+                        size="sm"
+                        ring={false}
+                        alt={author.name}
+                        className={CONVERSATION_MARK_PLACEHOLDER}
+                      />
+                    </div>
+                  }
+                  author={author.name}
+                  at={comment.created_at}
+                >
+                  {renderBlockMarkdown(body, {
+                    renderProduct: (ref, key) => (
+                      <TicketProductCard key={key} {...ref} href={phoneProductHref} />
+                    ),
+                  })}
+                  {items.map((it) => (
+                    <TicketProductCard
+                      key={it.id}
+                      skuCatalogId={it.product.skuCatalogId}
+                      role={it.role}
+                      qty={it.qty}
+                      product={it.product}
+                      href={phoneProductHref}
                     />
-                  </div>
-                }
-                author={author.name}
-                at={comment.created_at}
-              >
-                {renderBlockMarkdown(comment.body)}
-              </ConversationMessageCard>
-            ))}
+                  ))}
+                </ConversationMessageCard>
+              );
+            })}
             <div ref={streamEnd} />
           </div>
         )}

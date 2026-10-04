@@ -7,7 +7,7 @@
 
 import type { ReactNode } from 'react';
 import { SearchField } from '@/design-system/primitives/SearchField';
-import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
+import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -51,7 +51,7 @@ export function MobileTriagePage({
   return (
     <div className={cn('flex h-full min-h-0 flex-col', appMobilePageGroundClass)}>
       {/* No `mono`. It used to be `mono={Boolean(subtitle)}` — "has an eyebrow" standing in for "the title is an identifier", which is true on a… */}
-      <MobileDetailTopBar title={title} subtitle={subtitle} backHref={backHref} />
+      <MobileV2DetailTopBar title={title} subtitle={subtitle} backHref={backHref} />
 
       {/* `z-sticky`, NOT `z-base`. */}
       <div className="sticky top-14 z-sticky border-b border-border-hairline bg-surface-card px-3 py-2">
