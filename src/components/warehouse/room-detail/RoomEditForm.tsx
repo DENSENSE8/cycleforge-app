@@ -1,21 +1,17 @@
 'use client';
 
 import { WorkspaceCard, StickyActionBar } from '@/design-system/components';
-import { Button } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
+import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
-import { PageHeader } from '@/components/ui/pane-header';
-import { Check, Plus, Trash2, X } from '@/components/Icons';
+import { Check, ChevronDown, ChevronLeft, Plus, Trash2, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LETTERS } from './room-detail-shared';
-import { BigZoneTile } from './RoomDetailPieces';
 import { RoomStatsCard } from './RoomStatsCard';
 import type { RoomDetailController } from './useRoomDetailForm';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-
-
-
-/** The room edit / create form body (shown when `?room=` or `?new=1`). */
+/** The room edit / create form body (shown when `?room=` or `?new=true`). */
 export function RoomEditForm({ c }: { c: RoomDetailController }) {
   const {
     creating, selectedRoom, form, setForm, confirmDelete, setConfirmDelete,
@@ -31,28 +27,58 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
 
   return (
     <div className="flex flex-col pb-28">
-      <PageHeader
-        eyebrow={creating ? 'New room' : 'Editing room'}
-        value={trimmedName || title || 'Untitled room'}
-        valueTitle={trimmedName || title || undefined}
-        onClose={() => setParam((p) => { p.delete('room'); p.delete('new'); })}
-      />
-
-      {/* Hero: zone tile + subtitle */}
-      <div className="flex items-start gap-3 px-4 py-4">
-        <BigZoneTile letter={trimmedLetter} placeholder={creating && !trimmedLetter} />
-        <p className="max-w-[60ch] text-role-caption leading-snug text-text-soft">
-          {subtitle}
-        </p>
+      <div className="border-b border-border-soft px-4 py-3">
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<ChevronLeft className="h-3.5 w-3.5" />}
+          onClick={() => setParam((p) => { p.delete('room'); p.delete('new'); })}
+        >
+          Rooms
+        </Button>
+        <div className="mt-3 flex min-w-0 items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-role-eyebrow text-text-soft">
+              {creating ? 'New room' : 'Editing room'}
+            </p>
+            <h1 className="truncate text-lg font-semibold text-text-default" title={trimmedName || title || undefined}>
+              {trimmedName || title || 'Untitled room'}
+            </h1>
+            <p className="mt-1 max-w-[60ch] text-role-caption leading-snug text-text-soft">
+              {subtitle}
+            </p>
+          </div>
+          <label className="shrink-0">
+            <span className="mb-1 block text-role-eyebrow text-text-soft">Zone</span>
+            <span className="relative block">
+              <select
+                aria-label="Zone letter"
+                value={trimmedLetter}
+                onChange={(event) => setForm((current) => ({ ...current, letter: event.target.value }))}
+                className={cn(FILTER_DROPDOWN_SELECT_CLASS, 'w-[5.25rem] font-mono text-base')}
+              >
+                <option value="">—</option>
+                {LETTERS.map((letter) => (
+                  <option
+                    key={letter}
+                    value={letter}
+                    disabled={usedLetters.has(letter) && trimmedLetter !== letter}
+                  >
+                    {letter}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
+            </span>
+          </label>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-4 px-4">
-      {/* Hero block ends; below is the original form structure */}
-
-      {/* Stats card (only when editing an existing room with data) */}
-      {!creating && stats && (
-        <RoomStatsCard stats={stats} selectedRoom={selectedRoom} onOpenBins={goToBins} />
-      )}
+      <div className="flex flex-col gap-4 px-4 py-4">
+        {/* Stats card (only when editing an existing room with data) */}
+        {!creating && stats && (
+          <RoomStatsCard stats={stats} selectedRoom={selectedRoom} onOpenBins={goToBins} />
+        )}
 
       {/* Name field */}
       <WorkspaceCard label="Room name">
@@ -78,50 +104,6 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
         )}
       </WorkspaceCard>
 
-      {/* Zone letter picker */}
-      <WorkspaceCard
-        label="Zone letter"
-        actions={
-          <span className="rounded-full bg-blue-50 px-2 py-0.5 font-mono text-role-caption font-semibold text-blue-700 ring-1 ring-blue-200">
-            {trimmedLetter || '—'}
-          </span>
-        }
-      >
-        <p className="mb-3 text-role-caption text-text-soft">
-          One A–Z letter per room. Locked letters are already in use by
-          another room.
-        </p>
-        <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-9 md:grid-cols-13">
-          {LETTERS.map((l) => {
-            const isLocked = usedLetters.has(l);
-            const isSelected = trimmedLetter === l;
-            const showLocked = isLocked && !isSelected;
-            const btn = (
-              <button
-                key={l}
-                type="button"
-                disabled={isLocked && !isSelected}
-                onClick={() => setForm((f) => ({ ...f, letter: l }))}
-                className={`ds-raw-button relative flex h-10 items-center justify-center rounded-xl text-sm font-semibold tabular-nums transition-all active:scale-[0.95] ${
-                  isSelected
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-md shadow-blue-600/30'
-                    : isLocked
-                      ? 'bg-surface-sunken text-text-faint'
-                      : 'border border-border-soft bg-surface-card text-text-muted hover:border-blue-300 hover:bg-blue-50'
-                }`}
-              >
-                {l}
-              </button>
-            );
-            return showLocked ? (
-              <HoverTooltip key={l} label="Already used by another room" asChild>
-                {btn}
-              </HoverTooltip>
-            ) : btn;
-          })}
-        </div>
-      </WorkspaceCard>
-
       {/* Description */}
       <WorkspaceCard label="Notes (optional)">
         <p className="mb-2 text-role-caption text-text-soft">
@@ -134,12 +116,6 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
           placeholder="Add a short note…"
           className={cn("w-full resize-none rounded-2xl border border-border-soft bg-surface-canvas px-4 py-3 text-role-body text-text-default transition-colors focus:bg-surface-card", focusRing('field', 'accent'))}
         />
-        {!creating && (
-          <p className="mt-1 text-role-micro text-text-faint">
-            Note storage lands in the next update — name + zone letter save
-            today.
-          </p>
-        )}
       </WorkspaceCard>
 
       {/* Destructive zone */}
@@ -155,15 +131,18 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
                 room by printing labels under that name again.
               </p>
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => setConfirmDelete(true)}
-              disabled={roomMutating}
-              icon={<Trash2 className="h-3.5 w-3.5" />}
-              className="h-10 shrink-0 rounded-full bg-red-50 px-3 text-role-caption text-red-700 ring-red-200 hover:bg-red-100 hover:text-red-700"
-            >
-              Delete
-            </Button>
+            <HoverTooltip label="Delete room" asChild>
+              <IconButton
+                ariaLabel="Delete room"
+                title="Delete room"
+                size="lg"
+                radius="pill"
+                icon={<Trash2 className="h-4 w-4" />}
+                onClick={() => setConfirmDelete(true)}
+                disabled={roomMutating}
+                className="border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-700"
+              />
+            </HoverTooltip>
           </div>
         </WorkspaceCard>
       )}

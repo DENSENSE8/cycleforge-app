@@ -3,7 +3,7 @@
  * the entire security boundary of a realtime channel — Ably enforces exactly
  */
 
-import { getKioskBridgeChannelName, orgChannelPrefix } from './channels';
+import { getKioskBridgeChannelName, getPrintStationChannelName, orgChannelPrefix } from './channels';
 
 /** Ably capability map: channel name → allowed operations. */
 export type AblyCapability = Record<string, string[]>;
@@ -14,6 +14,11 @@ const BRIDGE_OPS = ['subscribe', 'publish'] as const;
 /** What a tablet may reach: */
 export function kioskDeviceCapability(orgId: string, deviceId: number): AblyCapability {
   return { [getKioskBridgeChannelName(orgId, deviceId)]: [...BRIDGE_OPS] };
+}
+
+/** What an enrolled print station may reach: its own station channel (jobs in; acks, progress out), nothing else. */
+export function printStationDeviceCapability(orgId: string, stationId: string): AblyCapability {
+  return { [getPrintStationChannelName(orgId, stationId)]: [...BRIDGE_OPS] };
 }
 
 /**
@@ -42,4 +47,9 @@ export function capabilityLeaksOutsideOrg(orgId: string, capability: AblyCapabil
 /** The Ably `clientId` stamped on every message a tablet publishes. */
 export function kioskClientId(orgId: string, deviceId: number): string {
   return `org:${String(orgId).trim().toLowerCase()}:kiosk:${deviceId}`;
+}
+
+/** The Ably `clientId` stamped on every message an enrolled print station publishes. */
+export function printStationDeviceClientId(orgId: string, stationId: string): string {
+  return `org:${String(orgId).trim().toLowerCase()}:printstation:${stationId}`;
 }

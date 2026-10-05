@@ -8,6 +8,7 @@ import { X } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { useKeyboard } from '@/hooks/useKeyboard';
 
 function Sheet(props: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -67,6 +68,7 @@ function SheetContent({
   side = 'right',
   size = 'content',
   showCloseButton = true,
+  style,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: SheetSide;
@@ -75,6 +77,14 @@ function SheetContent({
   showCloseButton?: boolean;
 }) {
   const full = side === 'bottom' && size === 'full';
+  // F10 (V2_OBJECT_FIRST §4): an overlay keyboard (iOS) covers a fixed bottom
+  // sheet instead of moving it, hiding the field being typed in. Ride the keys
+  // and cap the sheet to what is still visible above them.
+  const { keyboardHeight, visibleHeight } = useKeyboard();
+  const lift: React.CSSProperties | undefined =
+    side === 'bottom' && keyboardHeight > 0
+      ? { bottom: keyboardHeight, maxHeight: full ? undefined : `calc(${visibleHeight}px - 2.5rem)` }
+      : undefined;
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -87,6 +97,7 @@ function SheetContent({
           elevationClass('overlay'),
           className,
         )}
+        style={lift ? { ...style, ...lift } : style}
         {...props}
       >
         {children}

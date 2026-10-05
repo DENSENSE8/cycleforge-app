@@ -16,7 +16,7 @@ export function SupportContextCustomer({
   receivingId,
   onBridgeChange,
   onRequestLinkTicket,
-  /** Station host owns floating {@link SupportTicketComposerDock}. */
+  /** Station host owns the floating ticket composer. */
   hostComposer = false,
   /**
    * Floor spine in the ticket stream. Station Ticket Displays leave this

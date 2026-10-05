@@ -8,6 +8,7 @@ import {
   formatSupportTicketLabel,
   resolveSupportTicketToReceiving,
 } from '@/lib/support/tickets';
+import { supportHref } from '@/lib/nav/route-tree';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from './types';
 
@@ -191,8 +192,11 @@ export const getUnitJourney: AssistantToolDef<
       receivingRow?.ticket_provider === 'zendesk' && receivingRow.external_ticket_id != null
         ? Number(receivingRow.external_ticket_id)
         : null;
+    const supportItemId = Number(receivingRow?.primary_support_ticket_id);
     const ticketHref = providerTicketId != null && Number.isFinite(providerTicketId) && providerTicketId > 0
-      ? `/support?ticket=${providerTicketId}`
+      ? Number.isInteger(supportItemId) && supportItemId > 0
+        ? supportHref({ item: supportItemId })
+        : supportHref({ q: providerTicketId })
       : undefined;
     const serial = String(unitRow.serial_number ?? '').trim();
     const unitUid = String(receivingRow?.unit_uid ?? '').trim();

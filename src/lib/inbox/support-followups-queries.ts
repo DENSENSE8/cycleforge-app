@@ -1,12 +1,19 @@
 /**
- * Support follow-up inbox — tickets assigned to a staffer in-app (distinct from
- * the Zendesk assignee). Backs GET /api/inbox/support for the notifications bell.
+ * Support follow-up inbox — open Support items whose PRIMARY TASK the staffer
+ * is an assignee of (task assignees are the one ownership source; the
+ * deprecated support_ticket_assignments table is never read). Backs
+ * GET /api/inbox/support for the notifications bell, the My Day interrupts
+ * and the assistant's list_support_followups.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-type SupportFollowupInboxRow = {
+export type SupportFollowupInboxRow = {
+  supportItemId: number;
+  /** work_assignments.id — the Tasks → Support record to open. */
+  taskId: number;
+  /** The number an operator reads: the Zendesk ticket number when bound, else the local item number. */
   ticketId: number;
   subject: string | null;
   assignedStaffId: number;
@@ -16,44 +23,56 @@ type SupportFollowupInboxRow = {
   updatedAtMs: number;
 };
 
-/** Open in-website ticket assignments owned by `staffId`, newest first. */
+/** Open Support items whose primary task `staffId` owns, newest activity first. */
 export async function listSupportFollowupsForStaff(
   organizationId: OrgId,
   staffId: number,
 ): Promise<SupportFollowupInboxRow[]> {
   const r = await tenantQuery<{
-    ticket_id: string;
+    support_item_id: string;
+    task_id: number;
+    ticket_number: string;
     subject: string | null;
     assigned_staff_id: number;
-    assigned_staff_name: string;
+    assigned_staff_name: string | null;
     assigned_by_staff_id: number | null;
     assigned_by_staff_name: string | null;
     updated_at_ms: string;
   }>(
     organizationId,
-    `SELECT a.zendesk_ticket_id::bigint AS ticket_id,
+    `SELECT st.id AS support_item_id,
+            wa.id AS task_id,
+            CASE WHEN st.provider = 'zendesk' AND st.external_ticket_id ~ '^[0-9]{1,15}$'
+                 THEN st.external_ticket_id
+                 ELSE st.id::text END AS ticket_number,
             st.subject_cache AS subject,
-            a.assigned_staff_id::int AS assigned_staff_id,
+            waa.staff_id::int AS assigned_staff_id,
             assignee.name AS assigned_staff_name,
-            a.assigned_by::int AS assigned_by_staff_id,
+            wa.assigned_by_staff_id::int AS assigned_by_staff_id,
             assigner.name AS assigned_by_staff_name,
-            (EXTRACT(EPOCH FROM a.updated_at) * 1000)::bigint AS updated_at_ms
-       FROM support_ticket_assignments a
-       JOIN staff assignee ON assignee.id = a.assigned_staff_id
-       LEFT JOIN staff assigner ON assigner.id = a.assigned_by
-       LEFT JOIN support_tickets st
-         ON st.organization_id = a.organization_id
-        AND st.provider = 'zendesk'
-        AND st.external_ticket_id = a.zendesk_ticket_id::text
-      WHERE a.organization_id = $1
-        AND a.assigned_staff_id = $2
-      ORDER BY a.updated_at DESC
+            (EXTRACT(EPOCH FROM GREATEST(wa.updated_at, st.updated_at)) * 1000)::bigint AS updated_at_ms
+       FROM support_tickets st
+       JOIN work_assignments wa
+         ON wa.organization_id = st.organization_id
+        AND wa.id = st.primary_task_id
+       JOIN work_assignment_assignees waa
+         ON waa.organization_id = wa.organization_id
+        AND waa.assignment_id = wa.id
+        AND waa.staff_id = $2
+       JOIN staff assignee ON assignee.id = waa.staff_id
+       LEFT JOIN staff assigner ON assigner.id = wa.assigned_by_staff_id
+      WHERE st.organization_id = $1
+        AND st.lifecycle <> 'resolved'
+        AND wa.status NOT IN ('DONE', 'CANCELED')
+      ORDER BY GREATEST(wa.updated_at, st.updated_at) DESC, st.id DESC
       LIMIT 50`,
     [organizationId, staffId],
   );
 
   return r.rows.map((row) => ({
-    ticketId: Number(row.ticket_id),
+    supportItemId: Number(row.support_item_id),
+    taskId: Number(row.task_id),
+    ticketId: Number(row.ticket_number),
     subject: row.subject,
     assignedStaffId: Number(row.assigned_staff_id),
     assignedStaffName: String(row.assigned_staff_name ?? `Staff #${row.assigned_staff_id}`),

@@ -13,6 +13,7 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import { TextField } from '@/design-system/primitives/TextField';
 import { Check, Type, X } from '@/components/Icons';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import type { ScanInputSource } from '@/lib/scan/mobile-arrival-door';
 import { MobileCameraPanel } from './MobileCameraPanel';
 
 /** How long the same code is ignored after a read. */
@@ -61,8 +62,11 @@ export function MobileCaptureWindow({
   initiallyArmed = true,
   /** Seats the collapsed Scan bar in the screen's dock — see `MobileCameraPanel`. */
   collapsedFrame,
+  /** The keyed fallback's field label — a station that takes a short form says so. */
+  manualLabel = 'Label',
 }: {
-  onDecode: (value: string) => void;
+  /** `source` says whether the lens read it or the operator keyed it. */
+  onDecode: (value: string, source: ScanInputSource) => void;
   label: string;
   collapsedLabel?: string;
   status?: string;
@@ -73,6 +77,7 @@ export function MobileCaptureWindow({
   armRequest?: number;
   dedupMs?: number;
   initiallyArmed?: boolean;
+  manualLabel?: string;
   collapsedFrame?: (scan: React.ReactNode) => React.ReactNode;
 }) {
   const scanner = useBarcodeScanner({ dedupMs });
@@ -117,7 +122,7 @@ export function MobileCaptureWindow({
 
   useEffect(() => {
     if (!lastScannedValue) return;
-    onDecodeRef.current(lastScannedValue.trim());
+    onDecodeRef.current(lastScannedValue.trim(), 'scanned');
     // Accept first (arms the cooldown), then clear the value so the NEXT read of this same label is a fresh state transition.
     acceptRef.current();
     resetRef.current({ keepDedup: true });
@@ -151,7 +156,7 @@ export function MobileCaptureWindow({
     if (!value) return;
     setManual('');
     setManualOpen(false);
-    onDecodeRef.current(value);
+    onDecodeRef.current(value, 'typed');
   }, [manual]);
 
   // Back to the lens without putting the camera away — typing is a mode swap,
@@ -260,7 +265,7 @@ export function MobileCaptureWindow({
             <TextField
               value={manual}
               onChange={setManual}
-              label="Label"
+              label={manualLabel}
               autoFocus
               mono
               inputMode="text"

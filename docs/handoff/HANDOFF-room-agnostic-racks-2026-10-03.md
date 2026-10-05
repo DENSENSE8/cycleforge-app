@@ -4,6 +4,11 @@ Pin this. Build the phone job first on Mobile V2 and the design-system roots, th
 same job tree to desktop. Do not start from the desktop label builders, and do not start from
 the room.
 
+> **2026-10-05 ruling:** locations (racks, shelves, bins, totes) are urgency-agnostic — a location
+> label or record is identification only. The per-shelf arrival tier this handoff once described
+> (shelf tier, tier captions on labels, arrival-only print toggle, placement suggestion) is
+> removed end to end; urgency lives on the package (`receiving_carton.priority_tier`) only.
+
 ## 0. Owner decisions (defaults — confirm before printing production labels)
 
 | # | Decision | Default in this handoff | Override changes |
@@ -25,8 +30,8 @@ A rack is a physical object on wheels. It moves between rooms. Its labels never 
 - **Move a rack:** scan the rack placard, scan the destination (a room label or a floor spot)
   → only the rack's placement changes. No reprint.
 - **Print/reprint:** pick a rack → pick shelves (all by default) → print.
-- **Urgency shelves:** a shelf on any rack can carry `arrival_priority_tier` (already live);
-  its label shows `Arrival · <tier>`. Arrival placement and `/m/unbox` keep working unchanged.
+- **Urgency:** none on any location (2026-10-05 ruling above). Arrival placement pairs a
+  package to any active location; `/m/unbox` orders by the package's own urgency.
 
 ## 2. First principles
 
@@ -57,7 +62,7 @@ A rack is a physical object on wheels. It moves between rooms. Its labels never 
 | 527 active BIN rows, all `parent_id` = a ROOM; 0 RACK rows (kind allowed, unused) | live DB |
 | `locations_barcode_key` and `locations_name_key` are **global** unique indexes | live DB |
 | `ops_events.entity_type` CHECK has no `location` value | `src/lib/ops-event-types.ts`, `ops_events_entity_type_chk` |
-| Printing: one entry point, faces with optional caption | `src/lib/print/printLocationRows.ts` (`printLocationRowLabels`, `planLocationRowFaces`, `arrivalShelfCaption`), `src/lib/print/printLocationLabel.ts` (`locationLabelToFace`), `src/lib/print/labelFace.ts`, `labelFaceBitmap.ts`, hook `src/hooks/useLocationLabelPrint.ts` |
+| Printing: one entry point, coordinate-only faces | `src/lib/print/printLocationRows.ts` (`printLocationRowLabels`, `planLocationRowFaces`), `src/lib/print/printLocationLabel.ts` (`locationLabelToFace`), `src/lib/print/labelFace.ts`, `labelFaceBitmap.ts`, hook `src/hooks/useLocationLabelPrint.ts` |
 | Phone label flow starts from the **room** (owner rejected) | `src/components/mobile/v2/stock/MobileV2LocationLabelFlow.tsx`, `MobileV2LocationLabelSteps.tsx`, `location-label-flow-model.ts`, route `/m/stock/labels` |
 | Prefixes already taken | `R-` carton, `L-` line, `U-` unit, `H-` tote/LPN, `KIT-`, `T-`, `REP-` |
 
@@ -68,7 +73,7 @@ A rack is a physical object on wheels. It moves between rooms. Its labels never 
 - Rack = `locations` row, `location_kind = 'RACK'`, `parent_id` = its current placement
   (a ROOM, or a STAGING/floor spot), `barcode = 'RK0012'`, `name = 'Rack 12'`.
 - Shelf = `locations` row, `location_kind = 'SHELF'`, `parent_id` = rack,
-  `barcode = 'RK0012-03'`, plus the existing `arrival_priority_tier`, `capacity`, `sort_order`.
+  `barcode = 'RK0012-03'`, plus the existing `capacity`, `sort_order`.
 - Position (only when subdivided) = `location_kind = 'POSITION'`, `parent_id` = shelf.
 - Rack number: per-org next number, allocated under `pg_advisory_xact_lock` inside the create
   transaction. No sequence object per org.
@@ -113,19 +118,19 @@ request for idempotent retries on warehouse Wi-Fi.
 | Route | Permission | Does |
 |---|---|---|
 | `POST /api/racks` | `sku_stock.manage` | create rack + N shelves (+ positions), returns rows; `dryRun` returns the planned codes |
-| `GET /api/racks?placement=` | `sku_stock.view` | racks with derived room, shelf count, tiered-shelf count |
+| `GET /api/racks?placement=` | `sku_stock.view` | racks with derived room and shelf count |
 | `GET /api/racks/[code]` | `sku_stock.view` | rack + shelves + derived room/placement |
 | `POST /api/racks/[code]/move` | `sku_stock.manage` | body `{ destinationCode, clientEventId }`; validates destination is a ROOM/STAGING/floor spot in the org; updates rack `parent_id`; one event |
 | `POST /api/racks/[code]/shelves` | `sku_stock.manage` | add/remove shelves (remove refused when stock or cartons exist) |
 
 Business logic lives in `src/lib/locations/racks.ts` with injectable deps; routes are thin.
-Reuse `PATCH /api/locations/[barcode]/properties` for shelf tier/capacity; do not fork it.
+Reuse `PATCH /api/locations/[barcode]/properties` for shelf capacity; do not fork it.
 
 ### Printing
 
 - Extend `planLocationRowFaces` / `printLocationRowLabels` in `src/lib/print/printLocationRows.ts`:
   rack codes produce a **rack placard** face (large `RACK 12`, matrix) and **shelf** faces
-  (`RACK 12 · SHELF 3`, matrix, `arrivalShelfCaption` when tiered). No room text on any face.
+  (`RACK 12 · SHELF 3`, matrix). No room text and no urgency on any face.
 - Payload through `encodePrintMatrix` / `locationLabelPayload` (GLN + AI 254 when licensed).
 - Same transport as today (`printLabelFacesJob`; phone route via the existing print path).
   No new transport.
@@ -139,15 +144,15 @@ exemptions.
 
 | Screen | Route | Components |
 |---|---|---|
-| Racks list (door from `/m/stock`, replaces the room-first labels door) | `/m/racks` | `MobileV2Shell` host bar; `MobileRecordCardList` of `MobileRecordCard` (identity `Rack 12`, timestamp = last moved, title = derived room/placement, detail = `5 shelves · 2 arrival`, status = tier summary); floating primary `New rack` (`DetailDock placement="float"`); room only as a filter chip, never a step |
-| Rack record | `/m/loc/RK0012` (reuse `MobileV2LocationRecord`, rack branch) | `MobileV2DetailTopBar`; shelves as `MobileRecordCard` (identity `Shelf 3`, status tier with tone); `DetailDock` ≤3 verbs: primary `Print labels`, secondary `Move rack`, overflow `Add shelf`; tap shelf → shelf record (existing urgency fact + `LocationUrgencySheet`) |
-| New rack | `/m/racks/new` | `MobileStepProgress`: **Place → Shelves → Review → Print**. Place = scan a room/floor label (`MobileV2ScanInput`) with manual pick fallback; Shelves = count stepper + optional per-shelf urgency; Review = `dryRun` codes as `MobileRecordCard`s; Print = progress + result. One primary verb in `DetailDock`, disabled label names what is missing |
+| Racks list (door from `/m/stock`, replaces the room-first labels door) | `/m/racks` | `MobileV2Shell` host bar; `MobileRecordCardList` of `MobileRecordCard` (identity `Rack 12`, timestamp = last moved, title = derived room/placement, detail = `5 shelves`); floating primary `New rack` (`DetailDock placement="float"`); room only as a filter chip, never a step |
+| Rack record | `/m/loc/RK0012` (reuse `MobileV2LocationRecord`, rack branch) | `MobileV2DetailTopBar`; shelves as `MobileRecordCard` (identity `Shelf 3`); `DetailDock` ≤3 verbs: primary `Print labels`, secondary `Move rack`, overflow `Add shelf`; tap shelf → shelf record |
+| New rack | `/m/racks/new` | `MobileStepProgress`: **Place → Shelves → Review → Print**. Place = scan a room/floor label (`MobileV2ScanInput`) with manual pick fallback; Shelves = count stepper; Review = `dryRun` codes as `MobileRecordCard`s; Print = progress + result. One primary verb in `DetailDock`, disabled label names what is missing |
 | Move rack | `MobileV2ActionSheet` from the rack record (or scan a placard from `/m/scan` → record → Move) | Step 1 shows the rack + current placement; scan destination with `MobileV2ScanInput` (manual fallback through the same validation); result receipt with Undo (reversible move = receipt + undo, per SURFACE_LAW) |
-| Print labels | reshape `/m/stock/labels` to **Rack → Shelves → Print** | reuse `MobileV2LocationLabelSteps` patterns: rack cards → selectable shelf cards (all selected; "Arrival shelves only") → print via `useLocationLabelPrint` |
+| Print labels | reshape `/m/stock/labels` to **Rack → Shelves → Print** | reuse `MobileV2LocationLabelSteps` patterns: rack cards → selectable shelf cards (all selected) → print via `useLocationLabelPrint` |
 
 Scan routing: a scanned `RK…` placard opens the rack record; a scanned shelf opens the shelf.
 Arrival placement (`/m/r/[id]/place`) matches a scanned shelf through `normalizeShelfCode`
-(`src/lib/receiving/arrival-shelves.ts`), which canonicalizes only the room-coded grammar and
+(`src/lib/barcode-routing.ts`), which canonicalizes only the room-coded grammar and
 otherwise compares the unwrapped code. Rack shelves therefore match once `routeScan` returns the
 canonical `RK0012-03` for every spelling (dashed, undashed, GS1). Add a test for `RK001203` →
 `RK0012-03`.
@@ -160,7 +165,7 @@ the phone lacks (SURFACE_LAW §1, §4).
 | Phone | Desktop |
 |---|---|
 | Racks list | Inventory › Locations: a `Racks` tool beside Manage, using the shared desk `RecordCard` (`src/design-system/components/record-card/RecordCard.tsx`) multi-height list, not a `DataTable` density=row grid |
-| Rack record | desk record plane (`DeskRecordPlane`) showing the same shelves, tiers, placement and the same three verbs |
+| Rack record | desk record plane (`DeskRecordPlane`) showing the same shelves, placement and the same three verbs |
 | New rack | the same four steps in a phone-width center column (SURFACE_LAW §4 frame law), or the desk form wrapping the same step model (`src/lib/locations/racks.ts`) |
 | Move rack | same two-scan flow; desk adds keyboard/wedge entry of the destination |
 | Print | `LocationsManagementTab` per-row Print + bulk print through `printLocationRowLabels` |
@@ -194,7 +199,7 @@ placement.
 
 1. A rack is created on a phone, its placard and shelf labels print, and no label contains a room.
 2. Moving the rack to another room with two scans changes only the rack's placement; scanning a
-   shelf afterwards shows the new room; stock and urgency tiers are unchanged; no reprint.
+   shelf afterwards shows the new room; stock is unchanged; no reprint.
 3. `RK` codes route from raw, dashed, GS1 AI and Digital Link scans; existing `C0407300` /
    `C-04-07-3` labels still route; collision tests pass both ways.
 4. Two organizations can each own `RK0001` (per-org uniqueness proven by a test against the
@@ -211,7 +216,7 @@ placement.
 
 - Unit (node:test, `--import ./scripts/register-server-only-shim.cjs`): rack-code grammar and
   collisions, routeScan rack branch, rack number allocation, move validation (destination kinds,
-  cross-org refusal, idempotent `clientEventId`), face planning (placard vs shelf, tier caption).
+  cross-org refusal, idempotent `clientEventId`), face planning (placard vs shelf).
 - Live at `http://localhost:3050` with `tests/.auth/admin.json` (`cf_sid`), 390×844: screenshots of
   every §5 screen. Writes against the lane DB only inside a transaction that rolls back, or on
   explicitly synthetic rows that are deleted afterward and reported.

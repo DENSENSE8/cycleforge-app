@@ -41,14 +41,17 @@ export const NavFacetsQuery = z.object({
 export type NavFacetsQuery = z.infer<typeof NavFacetsQuery>;
 
 /**
- * `GET /api/nav/locate?locator=&(q=|refs=)` — exactly one of the field's text
- * (`q`) or a pasted list (`refs`, split and capped server-side).
+ * `GET /api/nav/locate?locator=&(q=|refs=)` and `POST /api/nav/locate`
+ * `{ locator, q | refs }` (a long list, past what a URL carries; `refs` may be
+ * an array there, read as one ref per line) — exactly one of the field's text
+ * (`q`) or a pasted list (`refs`, split, deduped and capped server-side, so
+ * repeats and blank lines never count against the cap).
  */
 export const NavLocateQuery = z
   .object({
     locator: z.enum(NAV_LOCATE_SCOPES),
     q: z.string().trim().min(1).max(200).optional(),
-    refs: z.string().trim().min(1).max(10_000).optional(),
+    refs: z.string().trim().min(1).max(64_000).optional(),
   })
   .refine((query) => (query.q === undefined) !== (query.refs === undefined), {
     message: 'Pass exactly one of q or refs',

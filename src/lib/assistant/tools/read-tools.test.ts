@@ -341,7 +341,7 @@ test('get_unit_journey renders the Receiving projection and truthful pickup/tick
   if (carried.artifact.kind !== 'record') return;
   assert.deepEqual(
     carried.artifact.fields.find((field) => field.label === 'Ticket'),
-    { label: 'Ticket', value: '#42 · open · No audio', href: '/support?ticket=9395' },
+    { label: 'Ticket', value: '#42 · open · No audio', href: '/support?item=42' },
   );
   assert.match(carried.modelData.summary, /QC failed · label printed · ticket #42/);
 });

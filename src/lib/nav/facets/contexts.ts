@@ -17,7 +17,6 @@
 import { EXCEPTION_KIND_PERMISSION } from '@/lib/exceptions/permissions';
 import { exceptionKindsOf } from '@/lib/exceptions/types';
 import { DOCKED_FLAG_PARAM } from '@/lib/receiving/inbound-lane';
-import { UNBOX_KPI_FILTER_PARAM } from '@/lib/receiving/unbox-metrics';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 import { SUPPORT_LIST_VIEWS } from '@/lib/support/list/support-list';
 
@@ -45,6 +44,8 @@ export type RepairFacetContextId = (typeof REPAIR_FACET_CONTEXTS)[number];
 
 export const NAV_FACET_CONTEXTS = [
   'stations-live',
+  // The Live feed (`/operations/live-feed`): the outbound package board, one context (`live-feed.ts`).
+  'live-feed',
   'outbound.orders',
   'outbound.shipped',
   'pickup',
@@ -114,6 +115,11 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     { id: 'job', label: 'Job', param: 'job', multi: true },
     { id: 'outcome', label: 'Outcome', param: 'outcome', multi: true },
   ],
+  // The board's own params (`LIVE_FEED_PARAMS`, `readLiveFeedFilters`): comma lists of carrier / channel keys.
+  'live-feed': [
+    { id: 'carrier', label: 'Carrier', param: 'carrier', multi: true },
+    { id: 'channel', label: 'Channel', param: 'channel', multi: true },
+  ],
   'stock.all': [
     { id: 'room', label: 'Room', param: 'room', multi: false },
     { id: 'aisle', label: 'Aisle', param: 'aisle', multi: true, inline: true },
@@ -125,10 +131,10 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
   'incoming.pipeline': [{ id: 'state', label: 'Delivery status', param: 'state', multi: false, inline: true }],
   // Inbound › Docked: the list's status cut (`?dflag=`, `INCOMING_DOCKED_VIEW.chips`, `incoming-docked.ts`) — the body's chips, moved here.
   'incoming.docked': [{ id: 'status', label: 'Status', param: DOCKED_FLAG_PARAM, multi: true, inline: true }],
-  // Inbound › Unboxed and the Unbox station: the body's pills, moved here (`unbox.ts`). The
-  // station's KPI cut (`?ukpi=`, one) is the Unbox tab's own (`unboxKpiRowFilter`).
+  // Inbound › Unboxed and the Unbox station: the body's attention pills,
+  // declared once for the shared collection (`unbox.ts`).
   'incoming.unboxed': [UNBOXED_STATUS],
-  receive: [UNBOXED_STATUS, { id: 'kpi', label: 'KPI', param: UNBOX_KPI_FILTER_PARAM, multi: false, inline: true }],
+  receive: [UNBOXED_STATUS],
   'outbound.orders': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
   // The Shipped list's own params (`useShippedTableFilters`), answered in
   // `fetchPackerLogRows`' WHERE — `src/lib/shipping/shipped-filter/shipped-filter-sql.ts`.
@@ -186,6 +192,8 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
  */
 export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | readonly string[]>> = {
   'stations-live': 'operations.view',
+  // The board's own read (`LIVE_FEED_PERMISSION`).
+  'live-feed': 'packing.view',
   'outbound.orders': 'orders.view',
   'stock.all': 'sku_stock.view',
   'inventory.racks': 'sku_stock.view',

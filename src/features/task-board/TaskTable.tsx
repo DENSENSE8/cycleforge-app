@@ -128,7 +128,7 @@ export function TaskTable({
                 open={row.key === openKey}
                 selected={selected.has(row.key)}
                 selecting={selecting}
-                // Say a fact once (owner 2026-10-03): under a type heading ("Support follow-ups") or in a type
+                // Say a fact once (owner 2026-10-03): under a type heading ("Long-term projects") or in a type
                 // column every row is that type, so the per-row type glyph would repeat it. Other groupings keep it.
                 typeShown={!(section.type ?? section.group?.type)}
                 canAlert={canAlert}
@@ -252,7 +252,6 @@ const TaskTableRow = forwardRef<
 ) {
   const [alertOpen, setAlertOpen] = useState(false);
   const step = taskBoardNextStep(row, nowMs);
-  const type = taskBoardRowType(row);
   // P1 level 2: the record context and the note remainder (pasted `To:` / buyer / `Subject:` headers live
   // here) never print on the row — the title's hover card discloses them, the record holds them in full.
   const disclosure = taskTableDisclosure(row);
@@ -339,9 +338,11 @@ const TaskTableRow = forwardRef<
             ) : (
               <DueChip dueMs={row.dueMs} nowMs={nowMs} done={row.done} />
             )}
-            <TypeWord row={row} type={type} />
+            <TicketWord row={row} />
             <FollowUpFace row={row} nowMs={nowMs} />
-            {step ? <span className={cn('shrink-0 font-semibold', NEXT_STEP_TONE[step.tone])}>{step.label}</span> : null}
+            {step ? (
+              <span className={cn('shrink-0 font-semibold', NEXT_STEP_TONE[step.tone])}>{step.label}</span>
+            ) : null}
           </span>
 
           {/* WHO + WHERE, only when there is one: the project and the people on one line. */}
@@ -405,7 +406,6 @@ function typeHint(row: TaskBoardRow, type: TaskBoardRowType): string {
   const face = TASK_BOARD_TYPE_FACE[type];
   if (type === 'checklist') return `${face.hint} · ${row.cadence === 'recurring' ? 'every day' : 'today only'}`;
   if (type === 'project' && row.project) return `${face.hint} · ${row.project}`;
-  if (type === 'ticket' && row.repair && !row.ticket) return 'Repair service ticket — a customer’s device is with us';
   return face.hint;
 }
 
@@ -425,25 +425,29 @@ function TypeGlyph({ row }: { row: TaskBoardRow }) {
 
 /**
  * Line 2's ticket: `#10025 Open` · `RS-0037 Pending Repair` — the number in the ticket ink and its status
- * pill. No "Support" word (owner 2026-10-03: it was said three times — group heading, glyph, word); the
- * glyph or the heading says the type, and hover names it.
+ * pill; hover names it.
  */
-function TypeWord({ row, type }: { row: TaskBoardRow; type: TaskBoardRowType }) {
-  if (type !== 'ticket' || (!row.ticket && !row.repair)) return null;
-  const face = TASK_BOARD_TYPE_FACE[type];
+function TicketWord({ row }: { row: TaskBoardRow }) {
+  if (!row.ticket && !row.repair) return null;
+  const repairOnly = row.repair != null && !row.ticket;
   return (
-    <HoverTooltip label={typeHint(row, type)} placement="above" focusable={false} asChild>
+    <HoverTooltip
+      label={repairOnly ? 'Repair service ticket — a customer’s device is with us' : 'Helpdesk ticket linked to this task'}
+      placement="above"
+      focusable={false}
+      asChild
+    >
       <span
-        data-task-type-word={type}
+        data-task-ticket-word=""
         className={cn(
           'inline-flex min-w-0 shrink-0 cursor-help items-center gap-1 rounded px-0.5 -mx-0.5 font-semibold hover:bg-surface-sunken',
           // A repair line carries a number AND a worded status pill; the pill truncates past this.
-          row.repair && !row.ticket ? 'max-w-[20rem] overflow-hidden' : 'max-w-[16rem]',
-          face.text,
+          repairOnly ? 'max-w-[20rem] overflow-hidden' : 'max-w-[16rem]',
+          'text-orange-700 dark:text-orange-300',
         )}
       >
         {row.ticket ? <TicketChip ticket={row.ticket} glyph={false} /> : null}
-        {row.repair && !row.ticket ? <RepairChip repair={row.repair} /> : null}
+        {repairOnly && row.repair ? <RepairChip repair={row.repair} /> : null}
       </span>
     </HoverTooltip>
   );

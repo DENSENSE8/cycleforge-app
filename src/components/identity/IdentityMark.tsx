@@ -4,13 +4,13 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/utils/_cn';
-import { blackOrWhiteInk } from '@/lib/color-contrast';
+import { avatarInitialsPaint } from '@/lib/color-contrast';
 
 export type IdentityMarkSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 /** Box + type role per size. */
 const SIZE_CLASS: Record<IdentityMarkSize, string> = {
-  xs: 'h-5 w-5 text-role-micro',
+  xs: 'h-5 w-5 text-role-avatar',
   sm: 'h-7 w-7 text-role-micro',
   md: 'h-9 w-9 text-role-caption',
   lg: 'h-11 w-11 text-sm',
@@ -71,8 +71,9 @@ export function IdentityMark({
 
   const showPhoto = !!src && !failed;
   const a11y = alt ? { role: 'img' as const, 'aria-label': alt } : { 'aria-hidden': true };
-  // Preserve the saved staff colour; only initials switch to black or white.
-  const initialsInk = !showPhoto && colorHex ? blackOrWhiteInk(colorHex) : null;
+  // Preserve the assigned hue, but move a mid-tone fill just enough to make
+  // tiny initials genuinely legible. Photo faces keep the saved ring intact.
+  const initialsPaint = !showPhoto && colorHex ? avatarInitialsPaint(colorHex) : null;
   const record = face === 'record';
 
   return (
@@ -89,8 +90,8 @@ export function IdentityMark({
         className,
       )}
       style={{
-        ...(!showPhoto && colorHex ? { backgroundColor: colorHex } : null),
-        ...(initialsInk ? { color: initialsInk } : null),
+        ...(!showPhoto && colorHex ? { backgroundColor: initialsPaint?.fill ?? colorHex } : null),
+        ...(initialsPaint ? { color: initialsPaint.ink } : null),
         // box-shadow, not border: it paints outside the box, so the photo
         // keeps its full diameter and nothing reflows between the two states.
         ...(showPhoto && ringHex ? { boxShadow: `0 0 0 2px ${ringHex}` } : null),

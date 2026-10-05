@@ -10,8 +10,16 @@ import type { StockLocationSummary } from './stock-location-summary';
 import { bayHand } from '@/lib/barcode-routing';
 import { WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
 
-/** `aisle=other`: the room's places that are not room-coded (racks, totes, free-written). */
+/** `aisle=other`: the room's places that are not room-coded (rack shelves, desks, named bins). */
 export const STOCK_DRILL_OTHER = 'other';
+
+/**
+ * A stockable place off the aisle grid. An unresolved placement (no
+ * `locations` row) is repair work with no address to walk to, never Other.
+ */
+function isOtherPlace(summary: StockLocationSummary): boolean {
+  return summary.aisle == null && summary.locationId != null;
+}
 
 export type StockDrillAisle = number | typeof STOCK_DRILL_OTHER;
 
@@ -114,11 +122,11 @@ function groupBy(
   return [...groups.entries()].sort(([a], [b]) => a - b).map(([k, members]) => fold(k, members, child));
 }
 
-/** A room's aisles in order, plus how many of its places are not room-coded. */
+/** A room's aisles in order, plus how many of its places stand off the aisle grid. */
 export function stockDrillAisles(summaries: readonly StockLocationSummary[]): { aisles: StockDrillGroup[]; other: number } {
   return {
     aisles: groupBy(summaries, (s) => s.aisle, (s) => s.bay),
-    other: summaries.filter((s) => s.aisle == null).length,
+    other: summaries.filter(isOtherPlace).length,
   };
 }
 
@@ -146,7 +154,7 @@ export function stockDrillSides(
 
 /** The places at one level of the walk, in walk order (level, then position). */
 export function stockDrillLocations(summaries: readonly StockLocationSummary[], scope: StockDrillScope): StockLocationSummary[] {
-  if (scope.aisle === STOCK_DRILL_OTHER) return summaries.filter((s) => s.aisle == null);
+  if (scope.aisle === STOCK_DRILL_OTHER) return summaries.filter(isOtherPlace);
   if (typeof scope.aisle !== 'number' || scope.bay == null) return [];
   return summaries
     .filter((s) => s.aisle === scope.aisle && s.bay === scope.bay)

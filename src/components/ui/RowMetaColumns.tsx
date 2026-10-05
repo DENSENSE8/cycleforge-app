@@ -165,7 +165,7 @@ export function RowTitle({
       <div
         className={cn(
           // Role utilities already bake weight (500); avoid stacking semibold —
-          // at dense sizes extra weight blooms and fights IBM Plex’s clarity.
+          // at dense sizes extra weight blooms and fights Inter’s clarity.
           'truncate text-text-default',
           small ? 'text-role-caption' : 'text-role-data',
           titleClassName,

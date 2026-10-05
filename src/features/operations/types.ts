@@ -21,5 +21,7 @@ export interface DashboardData {
     summary: string;
     staff_id?: number;
     actor_name?: string;
+    /** The actor's saved identity colour, carried with the feed row. */
+    actor_color_hex?: string | null;
   }[];
 }

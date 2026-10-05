@@ -5,8 +5,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ScanBarcode, X } from '@/components/Icons';
+import { Check, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
+import { MOBILE_DATA_LIST_ROW_INTERACTION_CLASS } from '@/design-system/components/MobileDataListRow';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { takeReasonPayload, type TakeReasonChoice } from '@/lib/inventory/take-reason';
@@ -26,8 +27,15 @@ type Mode = 'minus' | 'plus';
 
 const KEYS: ReadonlyArray<string | number> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 'clear', 0, 'back'];
 
-/** Flush keypad / toggle cell: square, no gap, instant ink press, no scale or transition. */
-const CELL = 'h-auto w-full justify-center shadow-none ring-0 transition-none enabled:active:scale-100';
+/** Flush keypad / toggle cell: square, no gap, no scale. */
+const CELL = 'h-auto w-full justify-center shadow-none ring-0 enabled:active:scale-100';
+
+/**
+ * Press for a neutral cell: the house quiet wash (owner 2026-10-05: never a
+ * black flash). The chosen Take / Put cell keeps its own rose / emerald
+ * variant's hover and press instead, so nothing paints over that fill.
+ */
+const QUIET_CELL = cn(CELL, MOBILE_DATA_LIST_ROW_INTERACTION_CLASS);
 
 /** The tally's mono micro-label — the same face as `DetailFact`. */
 const TALLY_LABEL = 'font-mono text-role-eyebrow text-mode-muted';
@@ -36,6 +44,8 @@ interface LocationContents {
   sku: string;
   qty: number;
   productTitle: string | null;
+  /** Version token of the pair: a write computed from a stale on-hand is refused. */
+  updatedAt?: string | null;
 }
 
 export function MobilePairQty({
@@ -90,6 +100,8 @@ export function MobilePairQty({
 
   const onHand = Number(current?.qty) || 0;
   const title = current?.productTitle?.trim() || sku;
+  // Without a fresh location scan a Take / Put lands as the resulting count
+  // (the manual count door) — the same keypad, never a claim to stand here.
   const manualCount = !verificationToken;
 
   // Puts carry no reason; leaving TAKE drops the take reason with it.
@@ -103,9 +115,7 @@ export function MobilePairQty({
     return Number.isFinite(parsed) ? parsed : 0;
   }, [draft]);
 
-  const projected = manualCount
-    ? numericDraft
-    : Math.max(0, onHand + (mode === 'minus' ? -numericDraft : numericDraft));
+  const projected = Math.max(0, onHand + (mode === 'minus' ? -numericDraft : numericDraft));
 
   const pressKey = useCallback((key: string | number) => {
     setError(null);
@@ -125,12 +135,19 @@ export function MobilePairQty({
 
   const confirm = useCallback(async () => {
     if (busy) return;
-    if ((manualCount && draft === '') || (!manualCount && numericDraft <= 0)) {
+    if (numericDraft <= 0) {
       setError('Tap a number first');
       return;
     }
     if (!user) {
       setError('Sign in before changing location stock.');
+      return;
+    }
+    const reason = mode === 'minus'
+      ? takeReasonPayload(takeReason)
+      : { ok: true as const, reason: 'BIN_ADD', notes: null };
+    if (!reason.ok) {
+      setError(reason.error);
       return;
     }
     if (manualCount) {
@@ -140,8 +157,8 @@ export function MobilePairQty({
         await commitStockRequest(
           stockSetRequest(
             { rowId: `${code}:${sku}`, barcode: code, sku, qty: onHand, face: `${face} · ${sku}` },
-            numericDraft,
-            { staffId: user.staffId, reason: onHand === 0 ? 'BIN_ADD' : 'MANUAL_COUNT' },
+            projected,
+            { staffId: user.staffId, reason: reason.reason, notes: reason.notes ?? undefined, expectedUpdatedAt: current?.updatedAt ?? undefined },
           ),
         );
         await queryClient.invalidateQueries({ queryKey: invalidateKey });
@@ -153,13 +170,6 @@ export function MobilePairQty({
         setError(err instanceof Error ? err.message : 'Update failed');
         setBusy(false);
       }
-      return;
-    }
-    const reason = mode === 'minus'
-      ? takeReasonPayload(takeReason)
-      : { ok: true as const, reason: 'BIN_ADD', notes: null };
-    if (!reason.ok) {
-      setError(reason.error);
       return;
     }
     setBusy(true);
@@ -201,13 +211,14 @@ export function MobilePairQty({
   }, [
     busy,
     code,
-    draft,
+    current?.updatedAt,
     face,
     invalidateKey,
     manualCount,
     mode,
     numericDraft,
     onHand,
+    projected,
     queryClient,
     returnHref,
     router,
@@ -220,9 +231,7 @@ export function MobilePairQty({
 
   const confirmLabel = busy
     ? 'Saving…'
-    : manualCount
-      ? `Set ${numericDraft || 0}`
-      : `${mode === 'minus' ? 'Take' : 'Add'} ${numericDraft || 0} · after ${projected}`;
+    : `${mode === 'minus' ? 'Take' : 'Put'} ${numericDraft || 0} · after ${projected}`;
   const pairBackHref = verificationToken
     ? withLocationScanProof(`/m/pair/${encodeURIComponent(code)}`, verificationToken)
     : `/m/pair/${encodeURIComponent(code)}`;
@@ -247,52 +256,29 @@ export function MobilePairQty({
           </div>
         )}
 
-        <dl className={cn('grid divide-x divide-mode-rule', manualCount ? 'grid-cols-2' : 'grid-cols-3')}>
+        <dl className="grid grid-cols-3 divide-x divide-mode-rule">
           <div className="px-mode-page py-3">
             <dt className={TALLY_LABEL}>On hand</dt>
             <dd className="mt-1 font-mono text-role-title font-semibold tabular-nums text-mode-ink">{onHand}</dd>
           </div>
           <div className="px-mode-page py-3">
-            <dt className={TALLY_LABEL}>{manualCount ? 'New count' : 'Change'}</dt>
-            <dd
-              className={cn(
-                'mt-1 font-mono text-role-title font-semibold tabular-nums',
-                manualCount ? 'text-mode-ink' : mode === 'minus' ? 'text-rose-600' : 'text-emerald-600',
-              )}
-            >
-              {!manualCount ? (mode === 'minus' ? '−' : '+') : null}
+            <dt className={TALLY_LABEL}>Change</dt>
+            <dd className={cn('mt-1 font-mono text-role-title font-semibold tabular-nums', mode === 'minus' ? 'text-rose-600' : 'text-emerald-600')}>
+              {mode === 'minus' ? '−' : '+'}
               {numericDraft || 0}
             </dd>
           </div>
-          {!manualCount ? (
-            <div className="px-mode-page py-3">
-              <dt className={TALLY_LABEL}>After</dt>
-              <dd className="mt-1 font-mono text-role-title font-semibold tabular-nums text-mode-ink">{projected}</dd>
-            </div>
-          ) : null}
+          <div className="px-mode-page py-3">
+            <dt className={TALLY_LABEL}>After</dt>
+            <dd className="mt-1 font-mono text-role-title font-semibold tabular-nums text-mode-ink">{projected}</dd>
+          </div>
         </dl>
 
-        {!manualCount && mode === 'minus' && (
+        {mode === 'minus' && (
           <div className="px-mode-page py-3">
             <TakeReasonChooser value={takeReason} onChange={setTakeReason} />
           </div>
         )}
-
-        {manualCount ? (
-          <div className="space-y-2 bg-blue-50 px-mode-page py-3 text-blue-900">
-            <p className="text-role-caption font-semibold">Manual count · set the exact quantity at this location.</p>
-            <Button
-              href={`/m/scan?intent=location&returnTo=${encodeURIComponent('/m/stock')}`}
-              variant="ghost"
-              size="md"
-              radius="mode"
-              icon={<ScanBarcode />}
-              className="w-full"
-            >
-              Scan for rapid put / take
-            </Button>
-          </div>
-        ) : null}
 
         {error && (
           <p role="alert" className="bg-rose-50 px-mode-page py-3 text-role-caption font-semibold text-rose-700">
@@ -303,40 +289,29 @@ export function MobilePairQty({
 
       {/* The keypad is an input surface (its cells are its face); the confirm verb floats below it, never inside a ground (owner 2026-10-03). */}
       <div className="shrink-0">
-        {!manualCount ? (
-          <div
-            role="group"
-            aria-label="Direction"
-            className="grid grid-cols-2 divide-x divide-mode-rule border-t border-mode-rule"
+        <div role="group" aria-label="Direction" className="grid grid-cols-2 divide-x divide-mode-rule border-t border-mode-rule">
+          {/* The chosen direction wears its own fill variant (hover and press stay rose / emerald); the other is a quiet cell. */}
+          <Button
+            variant={mode === 'minus' ? 'danger' : 'secondary'}
+            radius="flush"
+            aria-pressed={mode === 'minus'}
+            onClick={() => setMode('minus')}
+            className={cn(mode === 'minus' ? CELL : cn(QUIET_CELL, 'bg-mode-panel text-mode-muted'), 'min-h-14 font-mono text-base')}
+            data-testid="pair-qty-take"
           >
-            <Button
-              variant="secondary"
-              radius="flush"
-              aria-pressed={mode === 'minus'}
-              onClick={() => setMode('minus')}
-              className={cn(
-                CELL,
-                'min-h-14 font-mono text-base',
-                mode === 'minus' ? 'bg-rose-600 text-white active:bg-rose-700' : 'bg-mode-panel text-mode-muted active:bg-mode-ink active:text-mode-panel',
-              )}
-            >
-              − Take
-            </Button>
-            <Button
-              variant="secondary"
-              radius="flush"
-              aria-pressed={mode === 'plus'}
-              onClick={() => setMode('plus')}
-              className={cn(
-                CELL,
-                'min-h-14 font-mono text-base',
-                mode === 'plus' ? 'bg-emerald-600 text-white active:bg-emerald-700' : 'bg-mode-panel text-mode-muted active:bg-mode-ink active:text-mode-panel',
-              )}
-            >
-              + Put
-            </Button>
-          </div>
-        ) : null}
+            − Take
+          </Button>
+          <Button
+            variant={mode === 'plus' ? 'success' : 'secondary'}
+            radius="flush"
+            aria-pressed={mode === 'plus'}
+            onClick={() => setMode('plus')}
+            className={cn(mode === 'plus' ? CELL : cn(QUIET_CELL, 'bg-mode-panel text-mode-muted'), 'min-h-14 font-mono text-base')}
+            data-testid="pair-qty-put"
+          >
+            + Put
+          </Button>
+        </div>
 
         <div className="grid grid-cols-3 gap-px border-t border-mode-rule bg-mode-rule">
           {KEYS.map((key) => (
@@ -347,8 +322,8 @@ export function MobilePairQty({
               ariaLabel={typeof key === 'string' ? key : `digit ${key}`}
               onClick={() => pressKey(key)}
               className={cn(
-                CELL,
-                'min-h-16 font-mono text-2xl active:bg-mode-ink active:text-mode-panel',
+                QUIET_CELL,
+                'min-h-16 font-mono text-2xl',
                 key === 'clear' || key === 'back' ? 'bg-mode-well text-mode-muted' : 'bg-mode-panel text-mode-ink',
               )}
             >
@@ -361,7 +336,7 @@ export function MobilePairQty({
       <DetailDock
         label="Count actions"
         verbs={[
-          { id: 'confirm', label: confirmLabel, icon: <Check />, primary: true, disabled: busy || (manualCount ? draft === '' : numericDraft <= 0) },
+          { id: 'confirm', label: confirmLabel, icon: <Check />, primary: true, variant: mode === 'minus' ? 'danger' : 'success', disabled: busy || numericDraft <= 0 },
         ]}
         onVerb={() => confirm()}
       />

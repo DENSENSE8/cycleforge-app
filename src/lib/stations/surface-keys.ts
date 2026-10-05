@@ -8,7 +8,6 @@ export const WORKBENCH_BRANCH_IDS = [
   'master-detail',
   'board',
   'fact-stack',
-  'service-workspace',
 ] as const;
 
 export type WorkbenchBranchId = (typeof WORKBENCH_BRANCH_IDS)[number];
@@ -30,7 +29,6 @@ export const SURFACE_KEYS = [
   'pack',
   'test',
   'outbound',
-  'support',
 ] as const;
 
 export type SurfaceKey = (typeof SURFACE_KEYS)[number];
@@ -213,19 +211,6 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     workflowNodeType: 'ship',
     // Key stays `outbound` for composition stability; URL graduated to `/shipping`.
     legacy: { pathname: '/outbound', bareResolves: true },
-  },
-  // Support — the helpdesk/ticket console.
-  support: {
-    key: 'support',
-    label: 'Support',
-    route: '/support',
-    archetype: 'workbench',
-    workbenchBranch: 'service-workspace',
-    permission: 'integrations.zendesk',
-    pageKey: 'support',
-    modeKey: 'tickets',
-    scan: null,
-    // `/support` is already the canonical URL — no legacy alias to redirect from.
   },
 };
 

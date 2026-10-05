@@ -32,7 +32,7 @@ import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { DueChip } from './task-board-atoms';
 
-/** The channels an operator logs by hand; `ticket` replies log themselves from the Ticket tab later. */
+/** The channels an operator logs by hand; customer replies log themselves from the Conversation tab. */
 type LogChannel = 'call' | 'note';
 const CHANNELS: readonly { id: LogChannel; label: string; icon: LucideIcon }[] = [
   { id: 'call', label: 'Call', icon: Phone },

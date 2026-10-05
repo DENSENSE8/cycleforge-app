@@ -11,24 +11,31 @@
  * reason as the entry's `facet` (`?recon_reason=`). `detail` also says the
  * carrier's last word and the number's follow-up tag — the same words the
  * pasted ledger's row shows, so the popout and the list never disagree.
+ * `facts` is the pasted list page's row (item, vendor, delivered, unboxed +
+ * who by staff id, units) off the SAME reconcile lines — `pastedNumberFacts`,
+ * the ledger's own reading — so the page needs no second read. `recordHref`
+ * opens the number the way its Incoming card does (`recordDetailsHref`:
+ * `/incoming?ref_in=<number>&openLine=<its line>`), never the carton's scan
+ * station. A number found nowhere has no record (`null`).
  */
 
-import type { NavLocateBucket, NavLocateEntry } from '@/lib/nav/context/schema';
+import type { NavLocateBucket, NavLocateEntry, NavLocateFacts, NavLocateStaff } from '@/lib/nav/context/schema';
 import type { CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
 import { INBOUND_FOLLOWUP_LABELS, inboundFollowupKey, type InboundFollowup } from '@/lib/receiving/inbound-followups';
-import { carrierFactOf, carrierFactText } from '@/lib/receiving/pasted-number-facts';
+import { carrierFactOf, carrierFactText, duplicatePurchaseLineIds, pastedNumberFacts } from '@/lib/receiving/pasted-number-facts';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   RECON_PARAM,
   RECON_REASON_LABELS,
   RECON_STATUS_LABELS,
-  REF_IN_PARAM,
   reconcileCheck,
   rowRefKeys,
+  type ReconEntry,
   type ReconStatus,
   type RefSelection,
 } from '@/lib/receiving/reconcile';
 import { INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
+import { recordDetailsHref } from '@/lib/records/record-details';
 import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 
 /** The Check's own gate (`POST …/check-zoho-received`) and the ledger's. */
@@ -37,10 +44,8 @@ export const INBOUND_LOCATE_PERMISSION = 'receiving.view';
 export const INBOUND_BUCKET_IDS = ['awaiting_tracking', 'received', 'not_received', 'exceptions'] as const;
 type InboundBucketId = (typeof INBOUND_BUCKET_IDS)[number];
 
-function inboundLedgerHref(status: ReconStatus, ref?: string): string {
-  const params = new URLSearchParams({ [RECON_PARAM]: status });
-  if (ref) params.set(REF_IN_PARAM, ref);
-  return `${INCOMING_SURFACE_ROUTE}?${params.toString()}`;
+function inboundLedgerHref(status: ReconStatus): string {
+  return `${INCOMING_SURFACE_ROUTE}?${new URLSearchParams({ [RECON_PARAM]: status }).toString()}`;
 }
 
 const INBOUND_BUCKETS: Readonly<Record<InboundBucketId, Omit<NavLocateBucket, 'id' | 'count'>>> = {
@@ -55,6 +60,69 @@ const INBOUND_BUCKETS: Readonly<Record<InboundBucketId, Omit<NavLocateBucket, 'i
   not_received: { label: RECON_STATUS_LABELS.not_received, tone: 'warning', href: inboundLedgerHref('not_received') },
   exceptions: { label: 'Exceptions', tone: 'danger', href: `${INCOMING_SURFACE_ROUTE}?lane=exceptions` },
 };
+
+/** Postgres `timestamptz::text` (`2026-08-24 16:00:42.771872-07`) — not a shape `Date.parse` is specified to read. */
+const PG_TIMESTAMPTZ = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(\.\d+)?([+-]\d{2})(?::?(\d{2}))?$/;
+
+/**
+ * A fact's instant as ISO-8601 UTC (`2026-08-24T23:00:42.771Z`). The line feed
+ * hands stamps over as Postgres text, ISO, or a stringified `Date`
+ * (`carrierFactOf` reads them through `String()`); the wire speaks one form.
+ */
+function isoInstant(value: string | null | undefined): string | null {
+  const text = value?.trim();
+  if (!text) return null;
+  const pg = PG_TIMESTAMPTZ.exec(text);
+  const ms = pg
+    ? Date.parse(`${pg[1]}T${pg[2]}${(pg[3] ?? '').slice(0, 4)}${pg[4]}:${pg[5] ?? '00'}`)
+    : Date.parse(text);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+/** The latest unbox across a number's lines (ISO), and who did it — completion actor first, else who opened the carton. */
+function latestUnbox(lines: readonly ReceivingLineRow[]): { at: string; by: NavLocateStaff | null } | null {
+  let best: { at: string; by: NavLocateStaff | null } | null = null;
+  for (const line of lines) {
+    const at = isoInstant(line.unboxed_at);
+    // ISO-8601 UTC strings order as their instants.
+    if (!at || (best && at <= best.at)) continue;
+    const doneName = line.unboxed_by_name?.trim() || null;
+    const done = doneName || line.unboxed_by_id ? { id: line.unboxed_by_id ?? null, name: doneName } : null;
+    const openedName = line.unbox_opened_by_name?.trim() || null;
+    const opened = openedName || line.unbox_opened_by_id ? { id: line.unbox_opened_by_id ?? null, name: openedName } : null;
+    best = { at, by: done ?? opened };
+  }
+  return best;
+}
+
+/**
+ * A number's row facts off its reconcile lines (`pastedNumberFacts`, the
+ * pasted ledger's reading). `lines` = the number's counted lines; `duplicates`
+ * = the line ids left out as another line's twin of the same purchase.
+ */
+function inboundFacts(lines: readonly ReceivingLineRow[], duplicates: readonly number[], entry: ReconEntry, now: Date): NavLocateFacts {
+  const sheet = lines.length > 0 ? pastedNumberFacts(lines, entry, now) : null;
+  const unbox = latestUnbox(lines);
+  return {
+    section: 'inbound',
+    title: sheet?.item.title ?? null,
+    sku: sheet?.item.sku ?? null,
+    tracking: sheet?.tracking ?? null,
+    deliveredAt: sheet?.carrier.kind === 'delivered' ? isoInstant(sheet.carrier.at) : null,
+    channelStatus: null,
+    shipBy: null,
+    packedAt: null,
+    shippedAt: null,
+    packer: null,
+    po: entry.poNumber?.trim() || null,
+    vendor: sheet?.vendor ?? (entry.vendor?.trim() || null),
+    lines: lines.length,
+    duplicates: [...duplicates],
+    unboxedAt: unbox?.at ?? null,
+    unboxedBy: unbox?.by ?? null,
+    units: sheet && (sheet.units.expected != null || sheet.units.received > 0) ? sheet.units : null,
+  };
+}
 
 export interface InboundLocateDeps {
   /** The Unbox Check rows for these refs (every bucket of its answer). */
@@ -71,10 +139,28 @@ export async function locateInbound(
   selection: Pick<RefSelection, 'refs' | 'keys'>,
   deps: InboundLocateDeps,
 ): Promise<{ buckets: NavLocateBucket[]; entries: NavLocateEntry[] }> {
-  const [checkRows, lineRows, awaitingRows] =
+  // A follow-up is keyed by the number's PO# or the ref itself
+  // (`inboundFollowupKey`). The Check names the PO#s, so those tags are read
+  // the moment it answers — alongside the line reads, not after them. Only a
+  // PO# that the lines alone name is asked for afterwards.
+  const asked = new Set<string>();
+  const readFollowups = (keys: readonly string[]) => {
+    const fresh = [...new Set(keys)].filter((key) => key && !asked.has(key));
+    for (const key of fresh) asked.add(key);
+    return fresh.length > 0 ? deps.followups(fresh) : Promise.resolve([]);
+  };
+  const checking = selection.refs.length > 0 ? deps.check(selection.refs) : Promise.resolve([]);
+  const [checkRows, lineRows, awaitingRows, earlyFollowups] =
     selection.refs.length > 0
-      ? await Promise.all([deps.check(selection.refs), deps.lines(selection.refs), deps.awaiting(selection.refs)])
-      : [[], [], []];
+      ? await Promise.all([
+          checking,
+          deps.lines(selection.refs),
+          deps.awaiting(selection.refs),
+          checking.then((rows) =>
+            readFollowups([...selection.keys, ...rows.map((row) => canonicalizeTrackingKey(row.po_number))]),
+          ),
+        ])
+      : [[], [], [], []];
   const recon = reconcileCheck({ ...selection, truncated: 0 }, checkRows, lineRows);
   // Found nowhere = the branch `reconcileCheck` answers "No match anywhere":
   // no Check row, or no ERP answer and nothing in our tables.
@@ -90,7 +176,7 @@ export async function locateInbound(
     }
   }
   const followupKeys = recon.map((entry) => inboundFollowupKey({ poNumber: entry.poNumber, ref: entry.ref }));
-  const followups = followupKeys.length > 0 ? await deps.followups([...new Set(followupKeys)]) : [];
+  const followups = [...earlyFollowups, ...(await readFollowups(followupKeys))];
   const followupByKey = new Map(followups.map((followup) => [followup.key, followup]));
   const counts: Record<InboundBucketId, number> = {
     awaiting_tracking: 0,
@@ -98,6 +184,7 @@ export async function locateInbound(
     not_received: 0,
     exceptions: 0,
   };
+  const now = new Date();
   const entries = recon.map((entry, index): NavLocateEntry => {
     const nowhere = !checked.has(entry.key) || entry.reasonCode === 'no_match';
     const buckets: InboundBucketId[] = [];
@@ -112,7 +199,11 @@ export async function locateInbound(
       ? [`PO ${entry.poNumber}`, entry.vendor].filter(Boolean).join(' · ')
       : entry.vendor;
     const reason = entry.exception?.reason;
-    const carrierWord = carrierFactText(carrierFactOf(linesByKey.get(entry.key) ?? []), true);
+    // A purchase counts once: a twin line of the same purchase (`duplicatePurchaseLineIds`) is named, never read.
+    const allLines = linesByKey.get(entry.key) ?? [];
+    const duplicates = duplicatePurchaseLineIds(allLines);
+    const lines = duplicates.size > 0 ? allLines.filter((line) => !duplicates.has(line.id)) : allLines;
+    const carrierWord = carrierFactText(carrierFactOf(lines), true);
     const followup = followupByKey.get(followupKeys[index]!);
     const words = nowhere
       ? []
@@ -128,8 +219,9 @@ export async function locateInbound(
       buckets,
       title: title || null,
       detail: words.filter(Boolean).join(' · ') || null,
-      recordHref: nowhere ? null : inboundLedgerHref(entry.status, entry.ref),
+      recordHref: nowhere ? null : recordDetailsHref({ kind: 'receiving-number', ref: entry.ref, lineId: lines[0]?.id ?? null }),
       facet: entry.reasonCode ? { id: entry.reasonCode, label: RECON_REASON_LABELS[entry.reasonCode] } : null,
+      facts: nowhere && lines.length === 0 ? null : inboundFacts(lines, [...duplicates], entry, now),
     };
   });
   return {

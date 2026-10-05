@@ -21,7 +21,6 @@ export function PaperworkWalkHost({
   loading = false,
   onSelect,
   onAdvance,
-  onPrev,
   onExit,
   onFactsChanged,
 }: {
@@ -30,7 +29,6 @@ export function PaperworkWalkHost({
   loading?: boolean;
   onSelect: (id: number) => void;
   onAdvance: () => void;
-  onPrev: () => void;
   onExit: () => void;
   onFactsChanged: () => void;
 }) {
@@ -78,7 +76,6 @@ export function PaperworkWalkHost({
         index={index}
         total={rows.length}
         onAdvance={onAdvance}
-        onPrev={index > 1 ? onPrev : undefined}
         onExit={onExit}
         onFactsChanged={onFactsChanged}
       />

@@ -82,8 +82,11 @@ export interface ActivityInboxItem {
   senderName?: string;
   /** Raw copied text — used for the "copy back" affordance in the popover. */
   body?: string;
-  // support_followup (in-website Zendesk ticket assignment)
+  // support_followup (a Support item whose primary task you are assigned to)
+  /** The number an operator reads: Zendesk ticket number when bound, else the local item number. */
   ticketId?: number;
+  /** The Support item (support_tickets.id) — the /support record to open. */
+  supportItemId?: number;
   ticketSubject?: string;
   assignedStaffId?: number;
   assignedStaffName?: string;
@@ -169,8 +172,9 @@ export function ActivityInboxProvider({
   // ready to ship). Kept separate from the ephemeral push items so a refetch
   // replaces it wholesale without wiping repair/warranty/priority-unbox toasts.
   const [techQueueItems, setTechQueueItems] = useState<ActivityInboxItem[]>([]);
-  // In-website Zendesk ticket assignments (support_ticket_assignments). Seeded on
-  // mount and refetched when a support_assignment staff_message push lands.
+  // Support items whose primary task you are assigned to (task assignees own
+  // Support work). Seeded on mount; refetched when a task is handed to you or a
+  // support_assignment staff_message push (ticket-watch update) lands.
   const [supportFollowupItems, setSupportFollowupItems] = useState<ActivityInboxItem[]>([]);
   // Persisted staff-to-staff messages (clipboard "send to staff"). Like the
   // tech backlog, seeded from the DB on mount and refetched on each push so it
@@ -267,6 +271,8 @@ export function ActivityInboxProvider({
       if (!res.ok || fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       const data = (await res.json()) as {
         items?: Array<{
+          supportItemId: number;
+          taskId: number;
           ticketId: number;
           subject: string | null;
           assignedStaffId: number;
@@ -277,13 +283,14 @@ export function ActivityInboxProvider({
         }>;
       };
       const mapped: ActivityInboxItem[] = (data.items ?? []).map((it) => ({
-        id: `support-${it.ticketId}`,
+        id: `support-${it.supportItemId}`,
         kind: 'support_followup' as const,
         title: it.subject?.trim() || `Ticket #${it.ticketId}`,
         subtitle: `Follow up · assigned to ${it.assignedStaffName}`,
         createdAt: Number.isFinite(it.updatedAtMs) ? it.updatedAtMs : Date.now(),
         undoUntil: 0,
         ticketId: it.ticketId,
+        supportItemId: it.supportItemId,
         ticketSubject: it.subject ?? undefined,
         assignedStaffId: it.assignedStaffId,
         assignedStaffName: it.assignedStaffName,
@@ -544,6 +551,8 @@ export function ActivityInboxProvider({
       if (d.eventKey !== 'work_task.assigned') return;
 
       inboxSuppressedRef.current = false;
+      // A handed-over Support task changes who owns which Support item.
+      void refreshSupportFollowups();
       const itemId = Number(d.itemId);
       const entityId = Number(d.entityId);
       if (!Number.isFinite(itemId) || !Number.isFinite(entityId)) return;
@@ -601,7 +610,7 @@ export function ActivityInboxProvider({
       const sender = typeof msg?.data?.senderName === 'string' ? msg.data.senderName : 'A teammate';
       const kind = typeof msg?.data?.kind === 'string' ? msg.data.kind : '';
       if (kind === 'support_assignment') {
-        toast.success('Support ticket assigned to you');
+        toast.success('A Support ticket you own was updated');
         void refreshSupportFollowups();
       } else {
         toast.success(`New message from ${sender}`);

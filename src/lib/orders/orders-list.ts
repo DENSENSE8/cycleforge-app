@@ -150,8 +150,8 @@ const SS_IMAGE_LATERAL = `LEFT JOIN LATERAL (
                 line.ordinal
        LIMIT 1
     ) shipstation_image ON TRUE`;
-/** The row's ship-by deadline — the list's sort key and the shipBy filters' operand. */
-const WA_DEADLINE_LATERAL = `LEFT JOIN LATERAL (
+/** The row's ship-by deadline — the list's sort key and the shipBy filters' operand (alias `wa_deadline`; also the locate's `shipBy`). */
+export const WA_DEADLINE_LATERAL = `LEFT JOIN LATERAL (
       SELECT wa.deadline_at
         FROM work_assignments wa
        WHERE wa.organization_id = o.organization_id

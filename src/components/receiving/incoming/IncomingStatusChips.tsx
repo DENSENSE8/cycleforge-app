@@ -3,7 +3,7 @@
 /**
  * A rail of rounded status chips over a triage list (`IncomingStatusChipSet`:
  * label, counts, tone, one pressed). Inbound's own statuses left it for the
- * sidebar (ruling A4: the `incoming.pipeline` facet and `pastedListBuckets`;
+ * sidebar (ruling A4: the `incoming.pipeline` facet; a pasted list's statuses are the ledger's `PastedListStatusRow`;
  * their ⌥ keys are `useIncomingStatusChords`).
  */
 

@@ -1,20 +1,20 @@
 /**
  * A task's **Timeline** (owner 2026-09-29, R6): one newest-first stream that
  * merges what was done to chase the task — logged follow-ups (email / call /
- * note, at the operator-set `occurredAt`), the linked ticket's comments, the
+ * note, at the operator-set `occurredAt`), the
  * task's own audit (created, owners, status, due) and the follow-up alerts
  * staff sent. Each row carries its `kind` (the board model's glyph + ink) and
  * the staffer who acted. Pure and client-safe: the route and the hooks feed
  * it; the rail (`TaskRailTimeline`) and the phone sheet paint what it returns.
  */
 
-import type { ZendeskComment } from '@/lib/zendesk';
 import type { TimelineChange, TimelineItem } from '@/lib/timeline/types';
-import { zendeskCommentsToTimeline, type TicketCommentRow } from '@/lib/timeline/zendesk-comment-events';
 import { formatMonthDayTimePST } from '@/utils/date';
 import type { TaskFollowUp } from './task-follow-ups-shared';
 import { TASK_STATUS_FACE, type TaskStatus } from '@/design-system/tokens/task-status';
 import { taskStatusFromStored } from './task-status';
+import { isSupportTimelineAction, supportTimelineFace, type SupportTimelineFace } from '@/lib/support/conversation/timeline-events';
+import { scrubRelayAddresses, supportContactFace } from '@/lib/support/contact-face';
 
 /** Newest rows painted before "Show N earlier events" — the house record limit. */
 export const TASK_TIMELINE_INITIAL_LIMIT = 5;
@@ -26,8 +26,8 @@ export interface TaskAuditEntry {
   /** ISO instant the write landed. */
   at: string;
   actorStaffId: number | null;
-  /** `created` = the throw; `updated` = a desk edit. */
-  kind: 'created' | 'updated';
+  /** `created` = the throw; `updated` = a desk edit; `support` = a Support loop event (`support.*`). */
+  kind: 'created' | 'updated' | 'support';
   /** The fields the edit carried (`metadata.changed`); empty for a throw. */
   changed: readonly string[];
   /** The task's ONE status before / after (`taskStatusFromStored`); null when the row does not say. */
@@ -37,6 +37,8 @@ export interface TaskAuditEntry {
   assigneesAfter: readonly number[] | null;
   /** The task's due instant after this write; `undefined` when the row does not say. */
   deadlineAfter?: string | null;
+  /** A `support` row's painted words (`supportTimelineFace`). */
+  support?: SupportTimelineFace;
 }
 
 /** One follow-up alert sent from the task (`work_task.follow_up_alert` audit row). */
@@ -60,7 +62,6 @@ export interface TaskTimelinePayload {
 
 export interface TaskTimelineInput {
   followUps: readonly TaskFollowUp[];
-  ticketComments: readonly TicketCommentRow[];
   audit: readonly TaskAuditEntry[];
   alerts: readonly TaskAlertEntry[];
   staffNames?: Readonly<Record<number, string>>;
@@ -74,7 +75,7 @@ export type TaskTimelineKind = (typeof TASK_TIMELINE_KINDS)[number];
 export type TaskTimelineItem = TimelineItem & { kind: TaskTimelineKind };
 
 /** Tie-break when two rows share an instant: the alert reads first, the audit last. */
-const SOURCE_RANK = { alert: 0, followUp: 1, ticket: 2, audit: 3 } as const;
+const SOURCE_RANK = { alert: 0, followUp: 1, audit: 2 } as const;
 
 /** The words as written (trimmed, blank-line runs folded); the row truncates them, the expanded row wraps them. */
 function words(text: string | null | undefined): string | undefined {
@@ -107,7 +108,8 @@ function sameMembers(a: readonly number[], b: readonly number[]): boolean {
 
 function followUpItem(entry: TaskFollowUp): TaskTimelineItem {
   const inbound = entry.direction === 'inbound';
-  const to = entry.emailTo?.trim();
+  // A relay address (`…@members.ebay.com`) paints as its label, never the address.
+  const to = supportContactFace({ email: entry.emailTo }).label;
   let title: string;
   let sourceEventType: string;
   switch (entry.channel) {
@@ -127,13 +129,19 @@ function followUpItem(entry: TaskFollowUp): TaskTimelineItem {
       title = 'Note';
       sourceEventType = 'NOTE';
       break;
+    case 'message':
+      title = inbound ? 'Customer message' : 'Replied to customer';
+      sourceEventType = 'THREAD_MESSAGE';
+      break;
   }
   const subject = entry.emailSubject?.trim();
   const body = words(entry.body);
-  const subtitle = subject && body ? `${subject} — ${body}` : subject || body;
+  const joined = subject && body ? `${subject} — ${body}` : subject || body;
+  const subtitle = joined ? scrubRelayAddresses(joined) : joined;
   return {
     id: `follow-up:${entry.id}`,
-    kind: entry.channel,
+    // A Support message wears the ticket glyph — the conversation it belongs to.
+    kind: entry.channel === 'message' ? 'ticket' : entry.channel,
     at: entry.occurredAt,
     title,
     ...(subtitle ? { subtitle } : {}),
@@ -142,15 +150,6 @@ function followUpItem(entry: TaskFollowUp): TaskTimelineItem {
       : {}),
     sourceEventType,
   };
-}
-
-/** The comment adapter titles a row by its author; on the task hairline the author is the actor and the words are the row. */
-function ticketItems(rows: readonly TicketCommentRow[]): TaskTimelineItem[] {
-  return zendeskCommentsToTimeline([...rows]).map(({ message, ...item }) => {
-    const title = message?.internal ? 'Internal note' : message?.ours ? 'Replied on the ticket' : 'Customer wrote';
-    const subtitle = words(message?.body);
-    return { ...item, kind: 'ticket' as const, title, ...(subtitle ? { subtitle } : {}) };
-  });
 }
 
 /**
@@ -179,6 +178,18 @@ function auditItems(
         kind: 'created',
         title: owners.length > 0 ? `Created for ${namesOf(owners, names)}` : 'Created',
         sourceEventType: 'work_task.throw',
+      });
+      continue;
+    }
+
+    if (entry.kind === 'support') {
+      if (!entry.support) continue;
+      items.push({
+        ...base,
+        kind: 'ticket',
+        title: entry.support.title,
+        ...(entry.support.detail ? { subtitle: entry.support.detail } : {}),
+        sourceEventType: 'support',
       });
       continue;
     }
@@ -255,7 +266,7 @@ function instantMs(at: string | null): number {
 
 /**
  * The merged stream, newest first. Ties on the same instant break by source
- * (alert · follow-up · ticket · audit), then by the source's own order (newer
+ * (alert · follow-up · audit), then by the source's own order (newer
  * id first), so the order never depends on the input arrays' order. A row with
  * no parseable instant sinks to the bottom.
  */
@@ -270,10 +281,6 @@ export function taskTimelineItems(input: TaskTimelineInput): TaskTimelineItem[] 
   push(
     [...input.followUps].sort((a, b) => a.id - b.id).map(followUpItem),
     SOURCE_RANK.followUp,
-  );
-  push(
-    ticketItems([...input.ticketComments].sort((a, b) => String(a.id).localeCompare(String(b.id), 'en', { numeric: true }))),
-    SOURCE_RANK.ticket,
   );
   push(auditItems([...input.audit].sort((a, b) => a.id - b.id), names), SOURCE_RANK.audit);
   push(
@@ -300,33 +307,6 @@ export function taskTimelineDetail(item: TimelineItem): string | null {
   return item.subtitle ?? null;
 }
 
-/**
- * Helpdesk comments (the bundle / comments route rows) → the timeline's comment
- * rows. The route already resolved each author server-side (`author_name`,
- * `author_staff_id`, …); an unresolved author reads as the customer.
- */
-export function ticketCommentRowsFromZendesk(comments: readonly ZendeskComment[]): TicketCommentRow[] {
-  return comments.map((comment) => {
-    const server = comment as ZendeskComment & {
-      author_name?: string;
-      author_email?: string | null;
-      author_is_agent?: boolean;
-      author_staff_id?: number | null;
-    };
-    const staffId =
-      typeof server.author_staff_id === 'number' && server.author_staff_id > 0 ? server.author_staff_id : null;
-    return {
-      id: comment.id,
-      at: comment.created_at ?? null,
-      body: comment.body ?? '',
-      internal: comment.public === false,
-      authorName: server.author_name?.trim() || 'Customer',
-      authorEmail: server.author_email ?? null,
-      authorStaffId: staffId,
-      ours: Boolean(server.author_is_agent) || staffId != null || comment.public === false,
-    };
-  });
-}
 
 /** Raw `audit_logs` row → {@link TaskAuditEntry}; null for a row the timeline cannot read. */
 export function taskAuditEntryFromRow(row: {
@@ -375,6 +355,22 @@ export function taskAuditEntryFromRow(row: {
       assigneesBefore: ids(before.assigneeStaffIds),
       assigneesAfter: ids(after.assigneeStaffIds),
       ...('deadlineAt' in after ? { deadlineAfter: str(after.deadlineAt) } : {}),
+    };
+  }
+  if (isSupportTimelineAction(row.action)) {
+    const face = supportTimelineFace(row.action, row.after_data);
+    if (!face) return null;
+    return {
+      id,
+      at,
+      actorStaffId: row.actor_staff_id,
+      kind: 'support',
+      changed: [],
+      statusBefore: null,
+      statusAfter: null,
+      assigneesBefore: null,
+      assigneesAfter: null,
+      support: face,
     };
   }
   return null;

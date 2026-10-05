@@ -45,7 +45,7 @@ import {
 import { looksLikeTrackingIdentifier } from '@/lib/search/global-entity-search';
 import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
 import { sqlOrderOwnsShipment, sqlTrackingNumberMatches } from '@/lib/search/order-tracking-match-sql';
-import { searchHitHref } from '@/lib/search/search-hit';
+import { recordDetailsHref } from '@/lib/records/record-details';
 import { escapeLike } from '@/lib/sql-like';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { orderTrackingMatchKeys, trackingDigitsLast8Strict } from '@/lib/tracking-format';
@@ -366,7 +366,15 @@ export async function locateOutboundRefs(
         ? [lead.order_id, lead.product_title].filter((part) => part != null && String(part).trim() !== '').join(' · ') || null
         : null,
       detail: hits.length > 1 ? `${hits.length} order lines` : null,
-      recordHref: hits.length === 1 ? searchHitHref('ORDER', Number(lead.id)) : null,
+      // The order card's own open (`/shipping/orders?openOrderId=`); a package that left opens on Fulfilled.
+      recordHref:
+        hits.length === 1
+          ? recordDetailsHref({
+              kind: 'order',
+              orderId: Number(lead.id),
+              shipped: buckets.length > 0 && buckets.every((id) => id === 'shipped'),
+            })
+          : null,
       facts: lead ? outboundFacts(lead, hits.length) : null,
     };
   });

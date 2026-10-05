@@ -6,8 +6,8 @@
  * parented to the rack, optional positions are POSITION rows parented to a
  * shelf. Codes are permanent and never encode a room (`rack-code.ts`); the
  * room is derived by walking `parent_id` (`derived-room.ts`). Moving a rack is
- * one UPDATE of the rack row; shelves, stock (`bin_contents.location_id`) and
- * urgency tiers follow untouched.
+ * one UPDATE of the rack row; shelves and stock (`bin_contents.location_id`)
+ * follow untouched.
  *
  * Every write runs in ONE tenant transaction (`deps.withTx`) and records one
  * `ops_events` row (entity `location`) idempotent on the client's
@@ -18,7 +18,6 @@
  */
 
 import { parseLocationCodeFlat, pad2, unwrapScannedLocation } from '@/lib/barcode-routing';
-import { asArrivalTier, type ArrivalTier } from '@/lib/receiving/arrival-tier';
 import { canonicalRackCode, parseRackCode, rackCode, rackName, type RackAddress } from '@/lib/locations/rack-code';
 import { RACK_EVENT } from '@/lib/locations/rack-events';
 import type { RecordOpsEventInput } from '@/lib/ops-events';
@@ -31,6 +30,8 @@ import type {
   AdoptBayResponse,
   CreateRackBody,
   CreateRackResponse,
+  DeleteRackBody,
+  DeleteRackResponse,
   EditRackShelvesBody,
   EditRackShelvesResponse,
   GetRackResponse,
@@ -59,7 +60,6 @@ export interface LocationRow {
   parentId: number | null;
   isActive: boolean;
   sortOrder: number;
-  tier: number | null;
   capacity: number | null;
 }
 
@@ -69,7 +69,6 @@ export interface NewLocationRow {
   kind: 'RACK' | 'SHELF' | 'POSITION';
   parentId: number;
   sortOrder: number;
-  tier?: ArrivalTier | null;
 }
 
 export interface LocationPatch {
@@ -177,6 +176,7 @@ const STATUS_BY_CODE: Record<RackErrorBody['code'], 400 | 404 | 409> = {
   destination_kind: 400,
   same_placement: 409,
   shelf_has_stock: 409,
+  rack_in_use: 409,
   not_a_rack: 400,
   bay_not_found: 404,
   bay_already_adopted: 409,
@@ -258,7 +258,6 @@ export function assembleRackDetail(row: RackSummaryRow, children: readonly RackC
         code: s.barcode ?? '',
         name: s.name,
         shelf: shelfNumberOf(s),
-        tier: asArrivalTier(s.tier),
         capacity: s.capacity,
         sortOrder: s.sortOrder,
         stockQty: s.stockQty + positions.reduce((n, p) => n + p.stockQty, 0),
@@ -266,13 +265,6 @@ export function assembleRackDetail(row: RackSummaryRow, children: readonly RackC
       };
     })
     .sort((a, b) => a.shelf - b.shelf || a.id - b.id);
-
-  const tierTally = new Map<ArrivalTier, number>();
-  for (const s of shelves) if (s.tier != null) tierTally.set(s.tier, (tierTally.get(s.tier) ?? 0) + 1);
-  const tierCounts = [...tierTally.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([tier, count]) => ({ tier, count }));
-
   return {
     id: row.id,
     code: row.barcode,
@@ -281,8 +273,6 @@ export function assembleRackDetail(row: RackSummaryRow, children: readonly RackC
     placement: placementRef(row.placement),
     room: row.room,
     shelfCount: shelves.length,
-    tieredShelfCount: shelves.filter((s) => s.tier != null).length,
-    tierCounts,
     lastMovedAt: row.lastEventAt ?? row.createdAt,
     shelves,
   };
@@ -292,24 +282,22 @@ function shelfAddress(rack: number, shelf: number, position: number | null = nul
   return { rack, shelf, position };
 }
 
-/** Plan a new rack's rows: codes, names, tiers, positions. Pure. */
+/** Plan a new rack's rows: codes, names, positions. Pure. */
 export function planRack(input: {
   rackNumber: number;
   shelves: number;
-  shelfTiers?: ReadonlyArray<{ shelf: number; tier: ArrivalTier }>;
   positionsPerShelf?: number;
   placement: RackPlacementRef;
   room: RackRoomRef | null;
 }): PlannedRack {
   const rackAddr: RackAddress = { rack: input.rackNumber, shelf: null, position: null };
-  const tierByShelf = new Map((input.shelfTiers ?? []).map((t) => [t.shelf, t.tier] as const));
   const perShelf = input.positionsPerShelf ?? 0;
   const shelves: PlannedRack['shelves'] = [];
   for (let n = 1; n <= input.shelves; n++) {
     const addr = shelfAddress(input.rackNumber, n);
     const positions: string[] = [];
     for (let p = 1; p <= perShelf; p++) positions.push(rackCode(shelfAddress(input.rackNumber, n, p)));
-    shelves.push({ code: rackCode(addr), name: rackName(addr), shelf: n, tier: tierByShelf.get(n) ?? null, positions });
+    shelves.push({ code: rackCode(addr), name: rackName(addr), shelf: n, positions });
   }
   return {
     code: rackCode(rackAddr),
@@ -530,15 +518,6 @@ export async function createRack(
   if (!Number.isInteger(perShelf) || perShelf < 0 || perShelf > RACK_MAX_POSITIONS_PER_SHELF) {
     return fail('invalid', `Positions per shelf must be 0–${RACK_MAX_POSITIONS_PER_SHELF}`);
   }
-  const seen = new Set<number>();
-  for (const t of body.shelfTiers ?? []) {
-    if (!Number.isInteger(t.shelf) || t.shelf < 1 || t.shelf > body.shelves || seen.has(t.shelf)) {
-      return fail('invalid', `Shelf tier for shelf ${t.shelf} is out of range or repeated`);
-    }
-    if (asArrivalTier(t.tier) == null) return fail('invalid', `Tier ${t.tier} is not an arrival tier`);
-    seen.add(t.shelf);
-  }
-
   return runTx(deps, orgId, async (db) => {
     const p = await resolvePlacement(db, orgId, { code: body.placementCode, id: body.placementId });
     if ('error' in p) return p.error;
@@ -559,7 +538,6 @@ export async function createRack(
     const planned = planRack({
       rackNumber,
       shelves: body.shelves,
-      shelfTiers: body.shelfTiers,
       positionsPerShelf: perShelf,
       placement,
       room,
@@ -580,7 +558,6 @@ export async function createRack(
         kind: 'SHELF',
         parentId: rackId,
         sortOrder: s.shelf,
-        tier: s.tier,
       });
       for (let i = 0; i < s.positions.length; i++) {
         const addr = shelfAddress(rackNumber, s.shelf, i + 1);
@@ -665,6 +642,47 @@ export async function moveRack(
     );
     const detail = await mustReadDetail(db, orgId, rack.id);
     return ok({ rack: detail, from, to, idempotent: false });
+  });
+}
+
+/** Retire one empty rack and every active shelf/position beneath it. */
+export async function deleteRack(
+  actor: RackActor,
+  code: string,
+  body: DeleteRackBody,
+  deps: RacksDeps = defaultDeps,
+): Promise<RackOutcome<DeleteRackResponse>> {
+  const orgId = actor.organizationId;
+  return runTx(deps, orgId, async (db) => {
+    const prior = await replayed(db, orgId, body.clientEventId, RACK_EVENT.deleted);
+    if (prior && 'error' in prior) return prior.error;
+    if (prior) {
+      const priorCode = typeof prior.hit.payload.rack_code === 'string' ? prior.hit.payload.rack_code : lookupCode(code);
+      const retired = Array.isArray(prior.hit.payload.retired) ? prior.hit.payload.retired.map(String) : [priorCode];
+      return ok({ rackId: prior.hit.entityId, code: priorCode, retired, idempotent: true });
+    }
+
+    const r = await resolveRack(db, orgId, code);
+    if ('error' in r) return r.error;
+    const rack = r.rack;
+    const shelves = (await db.childrenOf(orgId, [rack.id])).filter((row) => row.kind === 'SHELF');
+    const positions = shelves.length
+      ? (await db.childrenOf(orgId, shelves.map((shelf) => shelf.id))).filter((row) => row.kind === 'POSITION')
+      : [];
+    const rows = [rack, ...shelves, ...positions];
+    const ids = rows.map((row) => row.id);
+    const occupied = await db.occupiedIds(orgId, ids);
+    if (occupied.length > 0) {
+      return fail('rack_in_use', `${rack.barcode ?? rack.name} still holds stock, cartons, totes, or staged work`);
+    }
+
+    await db.setActive(orgId, ids, false);
+    const retired = rows.map((row) => row.barcode ?? row.name);
+    await db.recordEvent(event(actor, RACK_EVENT.deleted, rack.id, body.clientEventId, {
+      rack_code: rack.barcode,
+      retired,
+    }));
+    return ok({ rackId: rack.id, code: rack.barcode ?? rack.name, retired, idempotent: false });
   });
 }
 

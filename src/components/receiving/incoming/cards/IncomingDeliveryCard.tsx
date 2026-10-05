@@ -4,7 +4,7 @@
  * One DELIVERY CARD on the Inbound triage list — the receiving family's
  * adapter over the shared {@link RecordCard} (the To-ship order card's twin).
  * The anatomy, motion and disclosure are RecordCard's; this file only hands
- * it the purchase ({@link receiptRecordCard}), the PO handle and the quick look.
+ * it the purchase ({@link receiptRecordCard}), its `OperationalIdentity` and the quick look.
  * A line inside an unfolded card opens that line; the check selects every line.
  */
 
@@ -16,14 +16,24 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { INCOMING_PIPELINE_VIEW } from '@/lib/triage/views';
 import { receiptRecordCard, type ReceiptCardModel } from './receipt-card-model';
+import { OperationalIdentityChip } from '@/design-system/components/OperationalIdentityChip';
+import { INBOUND_SOURCE_LABELS, isRegisteredInboundSource } from '@/lib/inbound/source-registry';
 
-/** Quick look (Space): what the card leaves out — the full tracking, carrier, source and dates. */
+/**
+ * Quick look (Space): what the card leaves out — the PO behind a marketplace order (detail-only),
+ * platform · vendor · account · source type as separate facts, the full tracking, carrier and dates.
+ */
 export function ReceiptCardPeek({ model }: { model: ReceiptCardModel }) {
   const lead = model.lead;
+  const sourceType = String(lead.inbound_source_type ?? '').trim().toLowerCase();
   const facts: [string, string | null][] = [
+    ['PO', model.identity.fallback?.value ?? null],
+    ['Platform', model.identity.platform?.label ?? null],
+    ['Vendor', model.vendor],
+    ['Account', lead.platform_account_label ?? null],
+    ['Source', isRegisteredInboundSource(sourceType) ? INBOUND_SOURCE_LABELS[sourceType] : null],
     ['Tracking', lead.tracking_number],
     ['Carrier', lead.carrier],
-    ['Source', model.source],
     ['Zoho status', lead.zoho_status ?? null],
     ['PO date', lead.po_date ? fmtDate(lead.po_date) : null],
     ['Expected', lead.expected_delivery_date ? fmtDate(lead.expected_delivery_date) : null],
@@ -74,7 +84,7 @@ export const IncomingDeliveryCard = memo(function IncomingDeliveryCard({
       onToggleCheck={(event) => onToggleCheck(model, event)}
       onToggleExpand={() => onToggleExpand(model.key)}
       onTogglePeek={() => onTogglePeek(model.key)}
-      identity={{ role: 'identity', content: <span className="truncate" title={model.identity}>PO {model.identity}</span> }}
+      identity={{ role: 'identity', content: <OperationalIdentityChip identity={model.identity} presentation="full" /> }}
       trailing={null}
       quickLook={<ReceiptCardPeek key="peek" model={model} />}
       // Each line of a purchase is a record of its own: it opens alone.

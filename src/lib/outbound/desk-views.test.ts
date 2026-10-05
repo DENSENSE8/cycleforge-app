@@ -12,9 +12,11 @@ import {
 const at = (href: string) => resolveDeskView(new URL(href, 'http://x').pathname);
 
 test('every view href resolves back to that view (cold load paints the selection)', () => {
-  for (const id of DESK_VIEW_ORDER) {
+  for (const id of DESK_VIEW_ORDER.filter((view) => view !== 'exceptions')) {
     assert.equal(at(deskViewHref(id)), id, `${deskViewHref(id)} must light ${id}`);
   }
+  assert.equal(deskViewHref('exceptions'), '/exceptions?domain=fulfillment&kind=fbm');
+  assert.equal(at(deskViewHref('exceptions')), null, 'Exceptions belongs to the global page, never FBM');
 });
 
 test('FBM lands on Allocate, painted first — exactly one landing view', () => {
@@ -44,7 +46,7 @@ test('switching views drops the previous view\'s filters and record', () => {
   assert.equal(deskViewHref('shipped'), '/fulfilled?shippedFilter=all');
 });
 
-test('only the four desk paths mount the desk sidebar', () => {
+test('legacy exceptions and shortage URLs still mount long enough to redirect', () => {
   for (const path of ['/shipping/exceptions', '/shipping/shortage', '/shipping/orders', '/fulfilled']) {
     assert.equal(isOutboundDeskPath(path), true, path);
   }

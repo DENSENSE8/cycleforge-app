@@ -535,7 +535,7 @@ const defaultSupportFollowupsDeps: SupportFollowupsDeps = {
 export const listSupportFollowups: AssistantToolDef<z.ZodObject<Record<string, never>>> = {
   name: 'list_support_followups',
   description:
-    "Support tickets assigned to the signed-in staff for follow-up (same as /api/inbox/support). Uses ctx.staffId.",
+    "Open Support items whose task the signed-in staff is assigned to (same as /api/inbox/support). Uses ctx.staffId.",
   permission: 'dashboard.view',
   inputSchema: z.object({}),
   run: async (_input, ctx, deps) => {

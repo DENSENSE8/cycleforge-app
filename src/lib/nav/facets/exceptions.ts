@@ -6,9 +6,7 @@
  *
  * - `exceptions.<kind>`: that kind (`/exceptions?kind=<kind>`);
  * - `exceptions.<domain>`: that domain's kinds (Fulfillment · Inventory · Receiving);
- * - `exceptions` (the bare page id): every visible kind (bare `/exceptions`, no active view);
- * - `outbound.exceptions`: the Fulfillment kinds — FBM › Exceptions renders
- *   the hub list locked to `domain=fulfillment`.
+ * - `exceptions` (the bare page id): every visible kind (bare `/exceptions`, no active view).
  *
  * No option groups: the hub's kind / domain rows ARE its filters. `?q=`
  * narrows like the list's search.
@@ -25,15 +23,14 @@ export type ExceptionCountReader = (
   q: string | null,
 ) => Promise<Partial<Record<ExceptionKind, number>>>;
 
-export type ExceptionFacetContext = Extract<NavFacetContext, 'exceptions' | `exceptions.${string}` | 'outbound.exceptions'>;
+export type ExceptionFacetContext = Extract<NavFacetContext, 'exceptions' | `exceptions.${string}`>;
 
 export function isExceptionFacetContext(context: NavFacetContext): context is ExceptionFacetContext {
-  return context === 'exceptions' || context === 'outbound.exceptions' || context.startsWith('exceptions.');
+  return context === 'exceptions' || context.startsWith('exceptions.');
 }
 
 /** The kinds a context totals; null = every kind the caller may see. */
 export function exceptionFacetKinds(context: ExceptionFacetContext): readonly ExceptionKind[] | null {
-  if (context === 'outbound.exceptions') return exceptionKindsOf('fulfillment');
   if (context === 'exceptions') return null;
   const id = context.slice('exceptions.'.length);
   const domain = parseExceptionDomain(id);

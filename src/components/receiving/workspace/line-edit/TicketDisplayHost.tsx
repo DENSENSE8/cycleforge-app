@@ -59,7 +59,6 @@ export function TicketDisplayHost({
               onBack={onCloseTicket}
               receivingId={receivingId ?? row?.receiving_id ?? undefined}
               embedded
-              hideRequesterBand={false}
               // Ticket chat is messages-only (no floor timeline merge).
               mergeFloorTimeline={false}
               composerPlacement="host"

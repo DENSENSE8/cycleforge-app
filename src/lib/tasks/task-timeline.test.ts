@@ -1,14 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import type { ZendeskComment } from '@/lib/zendesk';
-import type { TicketCommentRow } from '@/lib/timeline/zendesk-comment-events';
 import type { TaskFollowUp } from './task-follow-ups-shared';
 import {
   taskAlertEntryFromRow,
   taskAuditEntryFromRow,
   taskTimelineItems,
-  ticketCommentRowsFromZendesk,
   type TaskAlertEntry,
   type TaskAuditEntry,
 } from './task-timeline';
@@ -30,10 +27,6 @@ function followUp(over: Partial<TaskFollowUp> & Pick<TaskFollowUp, 'id' | 'occur
   };
 }
 
-function comment(over: Partial<TicketCommentRow> & Pick<TicketCommentRow, 'id' | 'at'>): TicketCommentRow {
-  return { body: 'Any update?', internal: false, authorName: 'Buyer', ours: false, ...over };
-}
-
 function update(over: Partial<TaskAuditEntry> & Pick<TaskAuditEntry, 'id' | 'at'>): TaskAuditEntry {
   return {
     actorStaffId: 1,
@@ -51,7 +44,7 @@ function alert(over: Partial<TaskAlertEntry> & Pick<TaskAlertEntry, 'id' | 'at'>
   return { actorStaffId: 1, staffIds: [3], note: null, dueAt: null, ...over };
 }
 
-const NONE = { followUps: [], ticketComments: [], audit: [], alerts: [] };
+const NONE = { followUps: [], audit: [], alerts: [] };
 
 test('no sources → an empty stream', () => {
   assert.deepEqual(taskTimelineItems(NONE), []);
@@ -63,7 +56,6 @@ test('merges every source newest first, a follow-up at its operator-set instant 
       // Logged on the 30th about a call on the 27th: it sits on the 27th.
       followUp({ id: 1, occurredAt: '2026-09-27T17:00:00.000Z', createdAt: '2026-09-30T09:00:00.000Z' }),
     ],
-    ticketComments: [comment({ id: 900, at: '2026-09-28T17:00:00.000Z' })],
     audit: [
       { ...update({ id: 50, at: '2026-09-26T17:00:00.000Z' }), kind: 'created', assigneesBefore: null, assigneesAfter: [1, 3] },
       update({ id: 51, at: '2026-09-29T17:00:00.000Z', changed: ['status'], statusAfter: 'IN_PROGRESS' }),
@@ -73,23 +65,22 @@ test('merges every source newest first, a follow-up at its operator-set instant 
   });
   assert.deepEqual(
     items.map((item) => item.id),
-    ['alert:70', 'audit:51', 'ticket-comment:900', 'follow-up:1', 'audit:50'],
+    ['alert:70', 'audit:51', 'follow-up:1', 'audit:50'],
   );
   assert.deepEqual(
     items.map((item) => item.title),
-    ['Alerted Sam to follow up', 'Moved to In progress', 'Customer wrote', 'Called', 'Created for Michael, Sam'],
+    ['Alerted Sam to follow up', 'Moved to In progress', 'Called', 'Created for Michael, Sam'],
   );
   assert.deepEqual(
     items.map((item) => item.kind),
-    ['alert', 'status', 'ticket', 'call', 'created'],
+    ['alert', 'status', 'call', 'created'],
   );
 });
 
-test('rows on the same instant: alert · follow-up · ticket · audit, then newer id first — whatever the input order', () => {
+test('rows on the same instant: alert · follow-up · audit, then newer id first — whatever the input order', () => {
   const at = '2026-09-29T17:00:00.000Z';
   const input = {
     followUps: [followUp({ id: 1, occurredAt: at }), followUp({ id: 2, occurredAt: at })],
-    ticketComments: [comment({ id: 49082103055629, at }), comment({ id: 49112646023437, at })],
     audit: [update({ id: 9, at, changed: ['status'], statusAfter: 'DONE' })],
     alerts: [alert({ id: 4, at })],
   };
@@ -97,14 +88,11 @@ test('rows on the same instant: alert · follow-up · ticket · audit, then newe
     'alert:4',
     'follow-up:2',
     'follow-up:1',
-    'ticket-comment:49112646023437',
-    'ticket-comment:49082103055629',
     'audit:9',
   ];
   assert.deepEqual(taskTimelineItems(input).map((item) => item.id), expected);
   const reversed = {
     followUps: [...input.followUps].reverse(),
-    ticketComments: [...input.ticketComments].reverse(),
     audit: input.audit,
     alerts: input.alerts,
   };
@@ -114,22 +102,21 @@ test('rows on the same instant: alert · follow-up · ticket · audit, then newe
 test('a row without a readable instant sinks below every dated row', () => {
   const items = taskTimelineItems({
     ...NONE,
-    ticketComments: [comment({ id: 1, at: null }), comment({ id: 2, at: '2020-01-01T00:00:00.000Z' })],
+    followUps: [followUp({ id: 1, occurredAt: '' }), followUp({ id: 2, occurredAt: '2020-01-01T00:00:00.000Z' })],
   });
-  assert.deepEqual(items.map((item) => item.id), ['ticket-comment:2', 'ticket-comment:1']);
+  assert.deepEqual(items.map((item) => item.id), ['follow-up:2', 'follow-up:1']);
 });
 
 test('every row carries the staffer who acted, so the hairline can draw their avatar', () => {
   const items = taskTimelineItems({
     followUps: [followUp({ id: 1, occurredAt: '2026-09-29T10:00:00.000Z', staffId: 3, staffName: 'Sam' })],
-    ticketComments: [comment({ id: 5, at: '2026-09-29T11:00:00.000Z', authorName: 'Lee', authorStaffId: 2, ours: true })],
     audit: [update({ id: 6, at: '2026-09-29T12:00:00.000Z', actorStaffId: 3, changed: ['status'], statusAfter: 'DONE' })],
     alerts: [alert({ id: 7, at: '2026-09-29T13:00:00.000Z', actorStaffId: 2 })],
     staffNames: NAMES,
   });
   assert.deepEqual(
     items.map(({ actor, actorStaffId }) => [actor, actorStaffId]),
-    [['Lee', 2], ['Sam', 3], ['Lee', 2], ['Sam', 3]],
+    [['Lee', 2], ['Sam', 3], ['Sam', 3]],
   );
 });
 
@@ -197,21 +184,6 @@ test('follow-up rows: who was emailed, subject — the words as written, and the
   assert.equal(note?.kind, 'note');
   // What was said is never cut short by the adapter; the row truncates it visually.
   assert.equal(note?.subtitle?.length, 4000);
-});
-
-test('ticket rows read as the act (internal note / our reply / the customer) with the words beneath', () => {
-  const items = taskTimelineItems({
-    ...NONE,
-    ticketComments: [
-      comment({ id: 1, at: '2026-09-29T10:00:00.000Z', internal: true, ours: true, body: 'Checked stock' }),
-      comment({ id: 2, at: '2026-09-29T11:00:00.000Z', ours: true, body: 'Shipping today' }),
-      comment({ id: 3, at: '2026-09-29T12:00:00.000Z', body: 'Where is it?' }),
-    ],
-  });
-  assert.deepEqual(
-    items.map(({ title, subtitle }) => [title, subtitle]),
-    [['Customer wrote', 'Where is it?'], ['Replied on the ticket', 'Shipping today'], ['Internal note', 'Checked stock']],
-  );
 });
 
 test('alert rows name the recipients, the note and the due instant', () => {
@@ -282,16 +254,4 @@ test('a hold reads as its own status step; OPEN → ASSIGNED is no status change
 
   const reassigned = row({ status: 'OPEN' }, { status: 'ASSIGNED' });
   assert.equal(reassigned.statusBefore, reassigned.statusAfter);
-});
-
-test('helpdesk comments keep the server-resolved author; an unresolved one reads as the customer', () => {
-  const rows = ticketCommentRowsFromZendesk([
-    { id: 1, author_id: 9, body: 'Hi', public: true, created_at: '2026-09-22T17:36:25Z', author_name: 'Manager', author_is_agent: true, author_staff_id: 2 },
-    { id: 2, author_id: 10, body: 'Help', public: true, created_at: '2026-09-22T18:00:00Z' },
-    { id: 3, author_id: 11, body: 'fyi', public: false, created_at: '2026-09-22T19:00:00Z', author_name: 'Sales Support' },
-  ] as ZendeskComment[]);
-  assert.deepEqual(
-    rows.map(({ authorName, authorStaffId, ours, internal }) => [authorName, authorStaffId, ours, internal]),
-    [['Manager', 2, true, false], ['Customer', null, false, false], ['Sales Support', null, true, true]],
-  );
 });

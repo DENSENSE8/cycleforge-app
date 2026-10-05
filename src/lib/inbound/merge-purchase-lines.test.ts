@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { matchZohoPo, mergeEbayLinesIntoZohoPo, type MergeDeps, type EbayCandidate } from './merge-purchase-lines';
+import { mergeEbayLinesIntoZohoPo, type MergeDeps } from './merge-purchase-lines';
+import { matchZohoPo, type EbayCandidate } from './purchase-match';
 import type { TxClient } from './purchase-links';
 import type { OrgId } from '@/lib/tenancy/constants';
 

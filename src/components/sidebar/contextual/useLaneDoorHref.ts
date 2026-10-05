@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { NavContext } from '@/lib/nav/context/schema';
 import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
+import { fulfillmentVisiblePageId } from '@/lib/nav/fbm-destinations';
+import { SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import { isNavModeSection } from './NavModeSwitcher';
 
 /**
@@ -11,7 +13,7 @@ import { isNavModeSection } from './NavModeSwitcher';
  * and the legacy spine door (`SidebarNavList.renderLane`) both read it.
  */
 const LANE_DOOR_FIRST_VIEW: Readonly<Record<string, string>> = {
-  outbound: '/shipping/exceptions',
+  outbound: SHIPPING_ORDERS_PATH,
   // Inbound: On the way (bare `/incoming`); History is `?lane=docked`.
   incoming: '/incoming',
 };
@@ -33,7 +35,14 @@ function readStored(pageId: string, staffKey: string): string | null {
   try {
     const href = window.localStorage.getItem(storageKey(pageId, staffKey));
     // Only an in-app path; anything else falls back to the first view.
-    return href && href.startsWith('/') && !href.startsWith('//') ? href : null;
+    if (!href || !href.startsWith('/') || href.startsWith('//')) return null;
+    // Exceptions owns one global surface. Never resurrect the retired FBM
+    // destination from an older browser's remembered lane value.
+    if (pageId === 'outbound') {
+      const pathname = href.split('?')[0];
+      if (pathname !== SHIPPING_ORDERS_PATH && pathname !== SHIPPING_LABEL_INTAKE_PATH) return null;
+    }
+    return href;
   } catch {
     return null;
   }
@@ -72,7 +81,8 @@ export function useLaneDoorHref(): (pageId: string) => string | null {
 /** Records the lit view of a remembering door's page panel as its last view. */
 export function useRememberLaneView(nav: NavContext | undefined): void {
   const staffKey = useNavStaffKey();
-  const pageId = nav?.scope === 'section' ? nav.page.id : undefined;
+  const rawPageId = nav?.scope === 'section' ? nav.page.id : undefined;
+  const pageId = rawPageId ? fulfillmentVisiblePageId(rawPageId) : undefined;
   const href =
     pageId !== undefined && LANE_DOOR_FIRST_VIEW[pageId] !== undefined
       ? nav?.sections.filter((section) => !isNavModeSection(section)).flatMap((section) => section.items).find((item) => item.active)?.href

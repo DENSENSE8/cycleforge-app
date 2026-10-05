@@ -10,16 +10,13 @@
  * move; Enter applies; a digit applies straight away; Esc hands focus back
  * (`AnchoredLayer`). Canceled is final (`isTaskStatusReachable`).
  *
- * Two doors, one panel: `TaskStatusCombobox` is the record's Status control,
- * and `TaskStatusPicker` is the board's `S` (anchored under the cursor row,
- * or on the record's Status control when that record is open).
+ * `TaskStatusPicker` is the board's `S` (anchored under the cursor row, or on
+ * the open record's header Status verb).
  */
 
-import { useId, useMemo, useRef, useState, type RefObject } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useId, useMemo, useState, type RefObject } from 'react';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { TaskStatusPill } from '@/design-system/components/TaskStatusPill';
 import {
   TASK_STATUSES,
   TASK_STATUS_FACE,
@@ -29,12 +26,8 @@ import {
   type TaskStatus,
 } from '@/design-system/tokens/task-status';
 import { StopSlider } from '@/design-system/primitives/StopSlider';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 import { isTaskStatusReachable } from '@/lib/tasks/task-status';
 import { cn } from '@/utils/_cn';
-
-/** Marks the record's Status control — `S` anchors there while that record is open. */
-export const TASK_RECORD_STATUS_FIELD_ATTR = 'data-task-record-status-field';
 
 /** The board's `S`: the panel, anchored to whatever the board points at. */
 export function TaskStatusPicker({
@@ -56,40 +49,6 @@ export function TaskStatusPicker({
       {/* Remounted per open: the filter and highlight start fresh every time. */}
       {open ? <TaskStatusMenu current={current} onPick={onPick} onClose={onClose} /> : null}
     </AnchoredLayer>
-  );
-}
-
-/** The record's Status control: the current status as its pill; click (or `S`) opens the combobox. */
-export function TaskStatusCombobox({
-  current,
-  onPick,
-  disabled = false,
-}: {
-  current: TaskStatus;
-  onPick: (status: TaskStatus) => void;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const anchor = useRef<HTMLButtonElement>(null);
-  return (
-    <>
-      <button
-        ref={anchor}
-        type="button"
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={`Status: ${TASK_STATUS_FACE[current].label}. Change status (S)`}
-        onClick={() => setOpen((v) => !v)}
-        className={cn('group/status inline-flex items-center gap-1 rounded-full disabled:cursor-not-allowed', focusRing('control'))}
-        data-testid="task-status-combobox"
-        {...{ [TASK_RECORD_STATUS_FIELD_ATTR]: '' }}
-      >
-        <TaskStatusPill status={current} size="sm" />
-        <ChevronDown aria-hidden className="size-3.5 text-text-muted transition-colors group-hover/status:text-text-default" />
-      </button>
-      <TaskStatusPicker open={open} anchorRef={anchor} current={current} onPick={onPick} onClose={() => setOpen(false)} />
-    </>
   );
 }
 

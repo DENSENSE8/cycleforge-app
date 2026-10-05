@@ -73,6 +73,7 @@ import { cutIncomingSections } from '@/lib/receiving/incoming-sections';
 import { parseWeekOffset, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { cartonReadHref, INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
+import { setRecordDetailsParam } from '@/lib/records/record-details';
 import { toast } from '@/lib/toast';
 import { poGroupAnchorMs } from '@/components/station/receiving-lines-table-helpers';
 import { INBOUND_FIND_PARAM, parseInboundLane } from '@/lib/receiving/inbound-lane';
@@ -237,9 +238,8 @@ export function ReceivingLedgers({
   // re-renders, and a stale snapshot would drop the other params.
   const setOpenLine = useCallback(
     (lineId: number | null) => {
-      const params = new URLSearchParams(window.location.search);
-      if (lineId == null) params.delete('openLine');
-      else params.set('openLine', String(lineId));
+      // The card's open record — the same writer the pasted list's opener uses (`recordDetailsHref`).
+      const params = setRecordDetailsParam(new URLSearchParams(window.location.search), 'receiving-number', lineId);
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
     },
@@ -286,7 +286,7 @@ export function ReceivingLedgers({
   // Exceptions lane keeps its own population.
   const numbersLedger = reconciling && !isInboundExceptions;
   // Inbound's statuses are the sidebar's (`incoming.pipeline` facet `?state=`;
-  // a pasted list's `pastedListBuckets` `?recon=` / `?recon_reason=`); their
+  // a pasted list's `?recon=` / `?recon_reason=` are its ledger's status row); their
   // ⌥1–⌥N keys live here. Exceptions is its own population: neither.
   useIncomingStatusChords({
     enabled: isIncomingMode && !isInboundExceptions,

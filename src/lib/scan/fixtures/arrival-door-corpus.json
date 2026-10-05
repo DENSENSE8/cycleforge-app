@@ -1,0 +1,1765 @@
+{
+ "note": "Phase 1 door-rule fixture: a deterministic sample of docs/handoff/ios-parity/corpus/scan-corpus.json (real scans, SELECT-only, PII-dropped) — up to 10 carrier rows per envelope pattern, 6 house rows per pattern×old route, 4 multi-line pack-slip reads, plus every documented exception. expect = arrivalScanIntent kind; tracking = the unwrapped value; before = the house outcome prior to Phase 1.",
+ "rows": [
+  {
+   "value": "1Z1789958595615058",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z1789958595615058",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z999AA10123456784",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z999AA10123456784",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1ZJ22B100308753951",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1ZJ22B100308753951",
+   "carrier": "UPS"
+  },
+  {
+   "value": "9400150106151402340943",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9400150106151402340943",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9434650206217291098004",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9434650206217291098004",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9449050206217046491111",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9449050206217046491111",
+   "carrier": "USPS"
+  },
+  {
+   "value": "(01)02000000000275",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "(01)02000000000633",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "(01)02000000001340",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "(01)02000000001388",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "(01)02000000001685",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "(01)02000000001951",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "(414)0614141000005(254)A0101101",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "/414/0614141000005/254/A0101100",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "00016-GR",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "00042",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "00045",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "00047",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "00060",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "00065",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a product label",
+   "before": "refused"
+  },
+  {
+   "value": "001463319159",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "001463319159",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "001910072859",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "001910072859",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "001910073214",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "001910073214",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "012300782456",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "012300782456",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "012303982723",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "012303982723",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "012505525650",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "012505525650",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "012541223312",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "012541223312",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "012588132219",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "012588132219",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "013964585438",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "013964585438",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "014633159110",
+   "class": "carrier",
+   "pattern": "FedEx 12",
+   "expect": "tracking",
+   "tracking": "014633159110",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "04-14902-05990",
+   "class": "house",
+   "pattern": "eBay order no. (NN-NNNNN-NNNNN)",
+   "expect": "refused",
+   "noun": "an order number",
+   "before": "tracking"
+  },
+  {
+   "value": "06-14730-92535",
+   "class": "house",
+   "pattern": "eBay order no. (NN-NNNNN-NNNNN)",
+   "expect": "refused",
+   "noun": "an order number",
+   "before": "tracking"
+  },
+  {
+   "value": "07-14606-66972",
+   "class": "house",
+   "pattern": "eBay order no. (NN-NNNNN-NNNNN)",
+   "expect": "refused",
+   "noun": "an order number",
+   "before": "tracking"
+  },
+  {
+   "value": "08-14669-82072",
+   "class": "house",
+   "pattern": "eBay order no. (NN-NNNNN-NNNNN)",
+   "expect": "refused",
+   "noun": "an order number",
+   "before": "tracking"
+  },
+  {
+   "value": "08-14681-85770",
+   "class": "house",
+   "pattern": "eBay order no. (NN-NNNNN-NNNNN)",
+   "expect": "refused",
+   "noun": "an order number",
+   "before": "tracking"
+  },
+  {
+   "value": "09-14693-39484",
+   "class": "house",
+   "pattern": "eBay order no. (NN-NNNNN-NNNNN)",
+   "expect": "refused",
+   "noun": "an order number",
+   "before": "tracking"
+  },
+  {
+   "value": "1Z035CX1YW02917197\n113-1528397-8163447\n00016-GR",
+   "class": "noise",
+   "pattern": "multiline-packslip",
+   "expect": "tracking",
+   "tracking": "1Z035CX1YW02917197",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z999AA10123456785",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z999AA10123456785",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z999AA10123456786",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z999AA10123456786",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1ZJ22B100302248437\n113-7796771-5871435\n00179",
+   "class": "noise",
+   "pattern": "multiline-packslip",
+   "expect": "tracking",
+   "tracking": "1ZJ22B100302248437",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1ZJ22B100332986379\n111-6425553-1385804\n00220-P-2-BK",
+   "class": "noise",
+   "pattern": "multiline-packslip",
+   "expect": "tracking",
+   "tracking": "1ZJ22B100332986379",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1ZJ22B104222265576\n113-4638555-9983448\n00096",
+   "class": "noise",
+   "pattern": "multiline-packslip",
+   "expect": "tracking",
+   "tracking": "1ZJ22B104222265576",
+   "carrier": "UPS"
+  },
+  {
+   "value": "4140614141000005\u001d254A0101100",
+   "class": "house",
+   "pattern": "house-gs1",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "420926479261299998825436746874",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP5+IMpb",
+   "expect": "tracking",
+   "tracking": "9261299998825436746874",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9361289711068322544977",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9361289711068322544977",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9621091390008524261900383932059740",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "383932059740",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "9622001900001802153700877998505403",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "877998505403",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "A0101100",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "A0101101",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "A12",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "AV3-2-1",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "AWRC1G",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "AWRCC1",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a bin label",
+   "before": "refused"
+  },
+  {
+   "value": "R-1024",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "carton",
+   "before": "carton"
+  },
+  {
+   "value": "R-1234",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "carton",
+   "before": "carton"
+  },
+  {
+   "value": "R-1970",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "carton",
+   "before": "carton"
+  },
+  {
+   "value": "R-1994",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "carton",
+   "before": "carton"
+  },
+  {
+   "value": "R-2045",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "carton",
+   "before": "carton"
+  },
+  {
+   "value": "R-2081",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "carton",
+   "before": "carton"
+  },
+  {
+   "value": "U-1024",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a unit label",
+   "before": "refused"
+  },
+  {
+   "value": "U-1164",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a unit label",
+   "before": "refused"
+  },
+  {
+   "value": "U-1195",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a unit label",
+   "before": "refused"
+  },
+  {
+   "value": "U-1283",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a unit label",
+   "before": "refused"
+  },
+  {
+   "value": "U-1329",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a unit label",
+   "before": "refused"
+  },
+  {
+   "value": "U-1457",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "a unit label",
+   "before": "refused"
+  },
+  {
+   "value": "X001PBX2XL",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "an FBA label",
+   "before": "refused"
+  },
+  {
+   "value": "X0028BQDHJ",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "an FBA label",
+   "before": "refused"
+  },
+  {
+   "value": "X002MLY7R3",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "an FBA label",
+   "before": "refused"
+  },
+  {
+   "value": "X002N6TT4N",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "an FBA label",
+   "before": "refused"
+  },
+  {
+   "value": "X002NZ0IXZ",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "an FBA label",
+   "before": "refused"
+  },
+  {
+   "value": "X002YKEMDL",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "refused",
+   "noun": "an FBA label",
+   "before": "refused"
+  },
+  {
+   "value": "00000178172525030166",
+   "class": "carrier",
+   "pattern": "20-digit",
+   "expect": "tracking",
+   "tracking": "00000178172525030166",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "000382266276865",
+   "class": "carrier",
+   "pattern": "FedEx 15",
+   "expect": "tracking",
+   "tracking": "000382266276865",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "000852261900399810616491",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "000852261900399810616491",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "00108106244960785477",
+   "class": "carrier",
+   "pattern": "20-digit",
+   "expect": "tracking",
+   "tracking": "00108106244960785477",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647360373840019873660110790FDEG183130218155LBN16161GOTHARDSTHUNTINGTONBEACHCALONGTRAN0610ZGD00911ZLONGTRAN14ZSTEA12Z714596688831Z9622001900001831302200873660110790",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "873660110790",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647360373840019874388531540FDEG8524261199300LBN16161GOTHARDSTHUNTINGTONBEACHCALONGTRAN0610ZGD00911ZLONGTRAN14ZSTEA12Z714815868631Z9622001900008524261900874388531540",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "874388531540",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647840019383424971640FDEG198084924011400BN16161GOTHARDSTSTEAHUNTINGTONBEACHCALONGTRAN010ZGD01012Z714596688820Z31Z96220019000019808490003832497164032Z0234Z019KORDER23679024",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "383424971640",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647840019873883694201FDEG1669812183113025LBN16161GOTHARDSTSTEAHUNTINGTONBEACHCACHILE0610ZGD00912Z714872948620Z31Z962200190000166981200087388369420134Z019KORDER22671822",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "873883694201",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647840019873920576470FDEG327300490184113354LBN16161GOTHARDSTSTEAHUNTINGTONBEACHCALONGTRAN0610ZGD00912Z714596688820Z5231Z963200196032730049000087392057647034Z01",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "873920576470",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647840019875108027066FDEG263075221111509LBN16161GOTHARDSTSTEAHUNTINGTONBEACHCALONGTRAN0610ZGD00912Z714596688820Z31Z962200190000263075290087510802706634Z01",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "875108027066",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647840019876438824890FDEG6617517382401170LBN16161GOTHARDSTSTEAHUNTINGTONBEACHCACHILE061ZGD01012Z714872948620Z31Z96320019606617517385008764382489032Z0234Z01",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "876438824890",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647840019877355693939FDEG73058349426011705BN16161GOTHARDSTSTEAHUNTINGTONBEACHCACHILE0610ZGD01012Z714872948620Z31Z96320019607305834943008773556939393Z0234Z01",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "877355693939",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647840019877732128459FDEG8524261267111200LBN16161GOTHARDSTSTEAHUNTINGTACHCALONGTRAN0610ZGD01012Z714815868620Z31Z962200190000852426190087773212845932Z0234Z019K8153972464ONBE",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "877732128459",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "010292647840137528858590278FDEG985276825011050LN16161GOTHARDSTHUNTINGTONBEACHCAUSAVSOLUTIONS060ZGD01011ZWMTMPRETURNS12Z800966654614ZSTEA20Z31Z92201370000985276830052885859027832Z025734Z01",
+   "class": "carrier",
+   "pattern": "fedex-2d-payload",
+   "expect": "tracking",
+   "tracking": "528858590278",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "051121901650626",
+   "class": "carrier",
+   "pattern": "FedEx 15",
+   "expect": "tracking",
+   "tracking": "051121901650626",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "1000260197",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "1000260197",
+   "carrier": "DHL"
+  },
+  {
+   "value": "1001901772440009264700522300969633",
+   "class": "carrier",
+   "pattern": "FedEx 34 (other prefix)",
+   "expect": "tracking",
+   "tracking": "522300969633",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "1021376564",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "1021376564",
+   "carrier": "DHL"
+  },
+  {
+   "value": "1072277311220009264700381880166063",
+   "class": "carrier",
+   "pattern": "FedEx 34 (other prefix)",
+   "expect": "tracking",
+   "tracking": "381880166063",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "1225049814090009264700873651711560",
+   "class": "carrier",
+   "pattern": "FedEx 34 (other prefix)",
+   "expect": "tracking",
+   "tracking": "873651711560",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "1859426751710009264700888681987224",
+   "class": "carrier",
+   "pattern": "FedEx 34 (other prefix)",
+   "expect": "tracking",
+   "tracking": "888681987224",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "185942675710009264700888681987235",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "185942675710009264700888681987235",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "1Z06K75J03265312361ZR096K99014528578",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z06K75J0326531236",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z070745654653643465",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z070745654653643465",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z0R98790340724561",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z0R98790340724561",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z123E89041605868",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z123E89041605868",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z1A375J0311562432",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z1A375J0311562432",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z1Y01W039282033",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z1Y01W039282033",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z23452314636",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z23452314636",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z2346345738495695843",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z2346345738495695843",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z2573434939",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z2573434939",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z2X1G940327360187",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z2X1G940327360187",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z34572340786",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z34572340786",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z346237348",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z346237348",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z3523623626",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "tracking",
+   "tracking": "1Z3523623626",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z3XF6020314087444",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z3XF6020314087444",
+   "carrier": "UPS"
+  },
+  {
+   "value": "1Z4E2W090305123673",
+   "class": "carrier",
+   "pattern": "UPS 1Z (18)",
+   "expect": "tracking",
+   "tracking": "1Z4E2W090305123673",
+   "carrier": "UPS"
+  },
+  {
+   "value": "2066441241",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "2066441241",
+   "carrier": "DHL"
+  },
+  {
+   "value": "2092479261299998825433899931",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "2092479261299998825433899931",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "209264736039434608106244012152402",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "209264736039434608106244012152402",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "2092647360394346081062450325843034209264736039434608106245027205282",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "2092647360394346081062450325843034209264736039434608106245027205282",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "20926473603943460810624503258430342092647360394346081062450272052824209264736039505511593366098751538",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "20926473603943460810624503258430342092647360394346081062450272052824209264736039505511593366098751538",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "20926473603943460810624503258430342092647360394346081062450272052824209264736039505511593366098751538420926479302010623390235528885",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "20926473603943460810624503258430342092647360394346081062450272052824209264736039505511593366098751538420926479302010623390235528885",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "20926479434636106196304474927",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "20926479434636106196304474927",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "22001900008524261900398909327379",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "22001900008524261900398909327379",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "24493395412",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "tracking",
+   "tracking": "24493395412",
+   "carrier": "Unknown",
+   "note": "11 digits is not a confirmed house shape (DHL Express also prints 11) — the server last-8 resolver decides",
+   "before": "refused"
+  },
+  {
+   "value": "300399795542404",
+   "class": "carrier",
+   "pattern": "FedEx 15",
+   "expect": "tracking",
+   "tracking": "300399795542404",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "3100399913214158",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "3100399913214158",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "34608106244942155573",
+   "class": "carrier",
+   "pattern": "20-digit",
+   "expect": "tracking",
+   "tracking": "34608106244942155573",
+   "carrier": "USPS"
+  },
+  {
+   "value": "3813441985",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "3813441985",
+   "carrier": "DHL"
+  },
+  {
+   "value": "42092647",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "refused",
+   "noun": "a product label",
+   "exception": "420 + ZIP5 only — a ZIP routing frame with no tracking digits"
+  },
+  {
+   "value": "420926470000",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "420926470000",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "420926470299434636106196338333054",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "9434636106196338333054",
+   "carrier": "USPS"
+  },
+  {
+   "value": "4209264736030299434608106244194257131",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "9434608106244194257131",
+   "carrier": "USPS"
+  },
+  {
+   "value": "4209264736039434608106245263389937",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP9+IMpb",
+   "expect": "tracking",
+   "tracking": "9434608106245263389937",
+   "carrier": "USPS"
+  },
+  {
+   "value": "42092647360394360816245945184812",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP9+IMpb",
+   "expect": "tracking",
+   "tracking": "94360816245945184812",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420926473603]9434608106244898410160",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "9434608106244898410160",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420926479214490407314819163965",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP5+IMpb",
+   "expect": "tracking",
+   "tracking": "9214490407314819163965",
+   "carrier": "USPS"
+  },
+  {
+   "value": "42092647943465206217184272023",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP5+IMpb",
+   "expect": "tracking",
+   "tracking": "943465206217184272023",
+   "carrier": "USPS"
+  },
+  {
+   "value": "7004009001",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "7004009001",
+   "carrier": "DHL"
+  },
+  {
+   "value": "700874566988130",
+   "class": "carrier",
+   "pattern": "FedEx 15",
+   "expect": "tracking",
+   "tracking": "700874566988130",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "70834790234790254709",
+   "class": "carrier",
+   "pattern": "20-digit",
+   "expect": "tracking",
+   "tracking": "70834790234790254709",
+   "carrier": "USPS"
+  },
+  {
+   "value": "7973581678",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "7973581678",
+   "carrier": "DHL"
+  },
+  {
+   "value": "7998089041",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "7998089041",
+   "carrier": "DHL"
+  },
+  {
+   "value": "8055286482",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "8055286482",
+   "carrier": "DHL"
+  },
+  {
+   "value": "8074850446",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "8074850446",
+   "carrier": "DHL"
+  },
+  {
+   "value": "8094704321",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "8094704321",
+   "carrier": "DHL"
+  },
+  {
+   "value": "9200190105244354616880",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9200190105244354616880",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9218490105244354634334",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9218490105244354634334",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9234690324992839453639",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9234690324992839453639",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9261299998825457375947",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9261299998825457375947",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9302011047800002788853",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9302011047800002788853",
+   "carrier": "USPS"
+  },
+  {
+   "value": "93020818308342005039",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "93020818308342005039",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9334610990370309634346",
+   "class": "carrier",
+   "pattern": "USPS IMpb 22",
+   "expect": "tracking",
+   "tracking": "9334610990370309634346",
+   "carrier": "USPS"
+  },
+  {
+   "value": "94346081062451705830",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "94346081062451705830",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9622013700009852768300797969414912",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "797969414912",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "9632001960203305182000381759816184",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "381759816184",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "9641001960534711766300874749067508",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "874749067508",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "9940150106151365085271",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "9940150106151365085271",
+   "carrier": "USPS"
+  },
+  {
+   "value": "ALS01435887784",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "ALS01435887784",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "AP00818347027872",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "AP00818347027872",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "BBY01-807197148090",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "BBY01807197148090",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "BBY01807207567530",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "BBY01807207567530",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "D10017167784892",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "D10017167784892",
+   "carrier": "OnTrac"
+  },
+  {
+   "value": "EM1013096206592FE06020059B0N",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "EM1013096206592FE06020059B0N",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "ES1003257834802UN0101240400N",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "ES1003257834802UN0101240400N",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "FBA178G5LJCPU000186",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "FBA178G5LJCPU000186",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "GFUS01069501215169",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "GFUS01069501215169",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "JJD014600012662687192",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "JJD014600012662687192",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "LM221449617CA",
+   "class": "carrier",
+   "pattern": "UPU S10 intl",
+   "expect": "tracking",
+   "tracking": "LM221449617CA",
+   "carrier": "USPS"
+  },
+  {
+   "value": "LX088692799IL",
+   "class": "carrier",
+   "pattern": "UPU S10 intl",
+   "expect": "tracking",
+   "tracking": "LX088692799IL",
+   "carrier": "USPS"
+  },
+  {
+   "value": "M420926479212490416420900004366",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "tracking",
+   "tracking": "M420926479212490416420900004366",
+   "carrier": "Unknown",
+   "note": "USPS 420 label read with a stray leading M — not a house shape",
+   "before": "refused"
+  },
+  {
+   "value": "SPXSNA039708475305",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "tracking",
+   "tracking": "SPXSNA039708475305",
+   "carrier": "Unknown",
+   "note": "SpeedX tracking — not a house shape",
+   "before": "refused"
+  },
+  {
+   "value": "SWX651500000135095953",
+   "class": "carrier",
+   "pattern": "regional/3PL (UniUni/Yun/GoFo/etc)",
+   "expect": "tracking",
+   "tracking": "SWX651500000135095953",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "TBA32558704939",
+   "class": "carrier",
+   "pattern": "Amazon TBA",
+   "expect": "tracking",
+   "tracking": "TBA32558704939",
+   "carrier": "Amazon"
+  },
+  {
+   "value": "TBA333313894804",
+   "class": "carrier",
+   "pattern": "Amazon TBA",
+   "expect": "tracking",
+   "tracking": "TBA333313894804",
+   "carrier": "Amazon"
+  },
+  {
+   "value": "ZA8335G0316469375",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "tracking",
+   "tracking": "ZA8335G0316469375",
+   "carrier": "Unknown",
+   "note": "UPS 1Z read without its leading 1 — not a house shape",
+   "before": "refused"
+  },
+  {
+   "value": "00004000000089719563",
+   "class": "carrier",
+   "pattern": "20-digit",
+   "expect": "tracking",
+   "tracking": "00004000000089719563",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "000873468596108",
+   "class": "carrier",
+   "pattern": "FedEx 15",
+   "expect": "tracking",
+   "tracking": "000873468596108",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "42001464\u001d9434650106151038378107",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "9434650106151038378107",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420119674141",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "420119674141",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "42033259300110990513556425161",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "42033259300110990513556425161",
+   "carrier": "USPS"
+  },
+  {
+   "value": "4204542438039400108106244770571499",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP9+IMpb",
+   "expect": "tracking",
+   "tracking": "9400108106244770571499",
+   "carrier": "USPS"
+  },
+  {
+   "value": "42060137",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "refused",
+   "noun": "a product label",
+   "exception": "420 + ZIP5 only — a ZIP routing frame with no tracking digits"
+  },
+  {
+   "value": "42075081209400108106244030383398",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "42075081209400108106244030383398",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420908059400150206217528518884",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP5+IMpb",
+   "expect": "tracking",
+   "tracking": "9400150206217528518884",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420926470299261299998825469149758",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "9261299998825469149758",
+   "carrier": "USPS"
+  },
+  {
+   "value": "4209264736030299505510052546153793128",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "9505510052546153793128",
+   "carrier": "USPS"
+  },
+  {
+   "value": "4209521094012345678901234567",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP5+IMpb",
+   "expect": "tracking",
+   "tracking": "94012345678901234567",
+   "carrier": "USPS"
+  },
+  {
+   "value": "61299998825427281186",
+   "class": "carrier",
+   "pattern": "20-digit",
+   "expect": "tracking",
+   "tracking": "61299998825427281186",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "700873454060335",
+   "class": "carrier",
+   "pattern": "FedEx 15",
+   "expect": "tracking",
+   "tracking": "700873454060335",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "720572057202076",
+   "class": "carrier",
+   "pattern": "FedEx 15",
+   "expect": "tracking",
+   "tracking": "720572057202076",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "8768 8563 5720",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "tracking",
+   "tracking": "876885635720",
+   "carrier": "FedEx",
+   "before": "tracking"
+  },
+  {
+   "value": "921849028494 0701565684",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "tracking",
+   "tracking": "9218490284940701565684",
+   "carrier": "USPS",
+   "before": "tracking"
+  },
+  {
+   "value": "92346902673388000095297453",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "92346902673388000095297453",
+   "carrier": "USPS"
+  },
+  {
+   "value": "930011099051354526615",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "930011099051354526615",
+   "carrier": "USPS"
+  },
+  {
+   "value": "93001109905153409121",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "93001109905153409121",
+   "carrier": "USPS"
+  },
+  {
+   "value": "931081098991123028999",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "931081098991123028999",
+   "carrier": "USPS"
+  },
+  {
+   "value": "933610990370287309014",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "933610990370287309014",
+   "carrier": "USPS"
+  },
+  {
+   "value": "934610990370287313837",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "934610990370287313837",
+   "carrier": "USPS"
+  },
+  {
+   "value": "940010810624568470478",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "940010810624568470478",
+   "carrier": "USPS"
+  },
+  {
+   "value": "94001118992233445501",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "94001118992233445501",
+   "carrier": "USPS"
+  },
+  {
+   "value": "943465020621722469686",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "943465020621722469686",
+   "carrier": "USPS"
+  },
+  {
+   "value": "944650106151057177941",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "944650106151057177941",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9621091390006094377900399419001878",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "399419001878",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "9632001960813668068200872473682324",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "872473682324",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "9999999999999999999999",
+   "class": "carrier",
+   "pattern": "concatenated/truncated digits",
+   "expect": "tracking",
+   "tracking": "9999999999999999999999",
+   "carrier": "USPS"
+  },
+  {
+   "value": "JJD014600012700891944",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "JJD014600012700891944",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "LX08869279IL",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "tracking",
+   "tracking": "LX08869279IL",
+   "carrier": "Unknown",
+   "note": "UPU S10 read one digit short — not a house shape",
+   "before": "refused"
+  },
+  {
+   "value": "TBA334518688254",
+   "class": "carrier",
+   "pattern": "Amazon TBA",
+   "expect": "tracking",
+   "tracking": "TBA334518688254",
+   "carrier": "Amazon"
+  },
+  {
+   "value": "TBA5317991003",
+   "class": "carrier",
+   "pattern": "Amazon TBA",
+   "expect": "tracking",
+   "tracking": "TBA5317991003",
+   "carrier": "Amazon"
+  },
+  {
+   "value": "1027597410170006004600872497245440",
+   "class": "carrier",
+   "pattern": "FedEx 34 (other prefix)",
+   "expect": "tracking",
+   "tracking": "872497245440",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "1311308824370001956700875052173201",
+   "class": "carrier",
+   "pattern": "FedEx 34 (other prefix)",
+   "expect": "tracking",
+   "tracking": "875052173201",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "4200688059309400108106245985024343",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP9+IMpb",
+   "expect": "tracking",
+   "tracking": "9400108106245985024343",
+   "carrier": "USPS"
+  },
+  {
+   "value": "4200736930011099051331987473",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "4200736930011099051331987473",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420119379334610990370278033454",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP5+IMpb",
+   "expect": "tracking",
+   "tracking": "9334610990370278033454",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420601320809400108106245016623217",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "420601320809400108106245016623217",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420924082805",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP (other)",
+   "expect": "tracking",
+   "tracking": "420924082805",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "943608106245144250868",
+   "class": "carrier",
+   "pattern": "USPS IMpb 20/21/26/30",
+   "expect": "tracking",
+   "tracking": "943608106245144250868",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9621091390006094377900383130594637",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "383130594637",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "C4206013920809434608106244376360727",
+   "class": "house",
+   "pattern": "house-sku/bin/serial",
+   "expect": "tracking",
+   "tracking": "C4206013920809434608106244376360727",
+   "carrier": "Unknown",
+   "note": "USPS 420 label read with a stray leading C — not a house shape",
+   "before": "refused"
+  },
+  {
+   "value": "JJD014600012672884533",
+   "class": "carrier",
+   "pattern": "DHL 10 / J&T JJD",
+   "expect": "tracking",
+   "tracking": "JJD014600012672884533",
+   "carrier": "Unknown"
+  },
+  {
+   "value": "TBA334819342243",
+   "class": "carrier",
+   "pattern": "Amazon TBA",
+   "expect": "tracking",
+   "tracking": "TBA334819342243",
+   "carrier": "Amazon"
+  },
+  {
+   "value": "1Z",
+   "class": "carrier",
+   "pattern": "UPS 1Z malformed/typed",
+   "expect": "refused",
+   "noun": "a product label",
+   "exception": "bare UPS prefix, no tracking digits"
+  },
+  {
+   "value": "4201896620419400108106245260536202",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP9+IMpb",
+   "expect": "tracking",
+   "tracking": "9400108106245260536202",
+   "carrier": "USPS"
+  },
+  {
+   "value": "420926479302010623390248068934",
+   "class": "carrier",
+   "pattern": "USPS 420+ZIP5+IMpb",
+   "expect": "tracking",
+   "tracking": "9302010623390248068934",
+   "carrier": "USPS"
+  },
+  {
+   "value": "9622001900004476226800872738060650",
+   "class": "carrier",
+   "pattern": "FedEx 34 (96 prefix)",
+   "expect": "tracking",
+   "tracking": "872738060650",
+   "carrier": "FedEx"
+  },
+  {
+   "value": "TBA331813952254",
+   "class": "carrier",
+   "pattern": "Amazon TBA",
+   "expect": "tracking",
+   "tracking": "TBA331813952254",
+   "carrier": "Amazon"
+  }
+ ]
+}

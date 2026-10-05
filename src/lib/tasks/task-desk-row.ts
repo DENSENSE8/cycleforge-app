@@ -7,6 +7,7 @@ import {
 } from './task-vocabulary';
 import { parseTaskHold, type TaskHold } from '@/design-system/tokens/task-status';
 import type { TaskLinkFace } from './task-links-shared';
+import { supportHref } from '@/lib/nav/route-tree';
 
 /**
  * `assignment_status_enum`, verbatim. Re-spelled here (not imported from the
@@ -277,7 +278,7 @@ export function taskDeskRecordHref(row: TaskRecordRef, surface: TaskDeskSurface)
     case 'support_ticket': {
       const ticketNumber = taskDeskTicketNumber(row);
       if (ticketNumber == null) return null;
-      return surface === 'phone' ? `/m/t/${ticketNumber}` : `/support?ticket=${ticketNumber}`;
+      return surface === 'phone' ? `/m/t/${ticketNumber}` : supportHref({ q: ticketNumber });
     }
     default:
       return null;

@@ -11,6 +11,7 @@ import {
   receivingSourceForScope,
   type PhotoLibraryFilterState,
 } from '@/lib/photos/library-filter-state';
+import { TASK_MEDIA_ENTITY_TYPE } from '@/lib/tasks/task-links-shared';
 
 /** Map UI filter state → `/api/photos/library` query params. */
 export function photoLibraryFilterParams(filters: PhotoLibraryFilterState): URLSearchParams {
@@ -43,7 +44,11 @@ export function photoLibraryFilterParams(filters: PhotoLibraryFilterState): URLS
   params.delete('outboundMedia');
 
   const entityType = filters.sourceScope ? entityTypeForSourceScope(filters.sourceScope) : undefined;
-  if (entityType) params.set('entityType', entityType);
+  if (filters.taskId) {
+    // One task's media: the server's (entityType, entityId) link filter.
+    params.set('entityType', TASK_MEDIA_ENTITY_TYPE);
+    params.set('entityId', filters.taskId);
+  } else if (entityType) params.set('entityType', entityType);
   else params.delete('entityType');
 
   if (filters.sourceScope) {

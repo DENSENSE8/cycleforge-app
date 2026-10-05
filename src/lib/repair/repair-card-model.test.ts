@@ -50,10 +50,11 @@ test('the carton handle R-{id} shows only when the ticket is linked to a receivi
   assert.equal(repairCardModel(repair({ receiving_line_id: 77, receiving_id: null }), TODAY).handles.carton, null);
 });
 
-test('the channel slot names how the device reached us', () => {
+test('the channel slot names how the device reached us, unless the page is already that channel', () => {
   assert.equal(repairCardModel(repair({ intake_channel: 'pickup' }), TODAY).record.channel?.label, 'Dropped off');
   assert.equal(repairCardModel(repair({ intake_channel: 'shipment' }), TODAY).record.channel?.label, 'Shipped in');
   assert.equal(repairCardModel(repair({ intake_channel: null }), TODAY).record.channel, null);
+  assert.equal(repairCardModel(repair({ intake_channel: 'pickup' }), TODAY, { channelPinned: true }).record.channel, null);
 });
 
 test('top-right is the SLA on the orders ladder: late · due today · tomorrow · later', () => {
@@ -82,20 +83,24 @@ test('the rail keeps the status tone; the status is no longer a top-right face',
   assert.equal(repairCardModel(repair({ status: 'On hold (legacy)' }), TODAY).record.state.tone, 'neutral');
 });
 
-test('line 3: the issue leads, then price, date and receiver; the serial is its own bottom-right fact', () => {
-  const card = repairCardModel(repair({ received_by_staff_id: 7, received_at: '2026-09-29T16:00:00.000Z' }), TODAY, (id) => (id === 7 ? 'Michael' : null));
-  const facts = card.record.lines[0]!.facts;
-  assert.deepEqual(Object.keys(facts), ['issue', 'price', 'date', 'staff']);
-  assert.deepEqual(facts.issue, { kind: 'text', text: 'Left channel crackles' });
-  assert.equal(facts.price?.kind === 'money' && facts.price.text, '$168.00');
-  assert.match(facts.date?.kind === 'date' ? facts.date.text : '', /^Received /);
-  assert.deepEqual(facts.staff, { kind: 'text', text: 'By Michael' });
-  assert.deepEqual(card.serial, { kind: 'code', text: 'SN-251-7788', title: 'Serial number' });
+test('the issue is the headline; the device, date and receiver sit under it; the serial is line-1 identification', () => {
+  const card = repairCardModel(repair({ received_by_staff_id: 7, received_at: '2026-09-29T16:00:00.000Z' }), TODAY, {
+    staffName: (id) => (id === 7 ? 'Michael' : null),
+  });
+  const line = card.record.lines[0]!;
+  assert.equal(line.title, 'Left channel crackles');
+  assert.deepEqual(Object.keys(line.facts), ['product', 'date', 'staff']);
+  assert.deepEqual(line.facts.product, { kind: 'text', text: 'Bose 251 speaker' });
+  assert.match(line.facts.date?.kind === 'date' ? line.facts.date.text : '', /^Received /);
+  assert.deepEqual(line.facts.staff, { kind: 'text', text: 'By Michael' });
+  assert.equal(card.serial, 'SN-251-7788');
   assert.equal(card.record.next, null);
 
-  const bare = repairCardModel(repair({ serial_number: '', price: '', issue: '' }), TODAY);
-  assert.equal(bare.serial.kind, 'missing');
-  assert.equal(bare.record.lines[0]!.facts.issue, null);
+  // No issue: the device holds the headline and is not said twice.
+  const bare = repairCardModel(repair({ serial_number: '', issue: '' }), TODAY);
+  assert.equal(bare.serial, null);
+  assert.equal(bare.record.lines[0]!.title, 'Bose 251 speaker');
+  assert.equal(bare.record.lines[0]!.facts.product, null);
   assert.equal(bare.record.lines[0]!.facts.staff, null);
 });
 

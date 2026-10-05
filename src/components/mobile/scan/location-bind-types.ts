@@ -10,6 +10,12 @@ export type LocationBindContent = {
   imageUrl?: string | null;
   /** SKU_STOCK photo ids in display order (`[0]` = cover); empty when none. */
   photoIds: number[];
+  /** ISO instant of the last cycle count of this pair; null when never counted. */
+  lastCounted?: string | null;
+  /** ISO instant this pair last changed (put, take, count or move). */
+  lastMoved?: string | null;
+  /** Reorder threshold for this pair; null when none is set. */
+  minQty?: number | null;
 };
 
 /** A movable, licence-plated container currently parked at this address. */

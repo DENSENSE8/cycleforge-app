@@ -186,8 +186,8 @@ async function clearExceptionNow(queryClient: QueryClient, key: string): Promise
     keep(queryKey, data);
     queryClient.setQueryData(queryKey, dropRow(data, key, kind, true));
   }
-  // The sidebar counts that include this kind: the kind, its domain, the hub, and FBM › Exceptions (the Fulfillment kinds).
-  const facetContexts = new Set([`exceptions.${kind}`, `exceptions.${domain}`, 'exceptions', ...(domain === 'fulfillment' ? ['outbound.exceptions'] : [])]);
+  // Every exception count lives under the global Exceptions page.
+  const facetContexts = new Set([`exceptions.${kind}`, `exceptions.${domain}`, 'exceptions']);
   for (const [queryKey, data] of queryClient.getQueriesData<{ total?: number }>({ queryKey: ['nav-facets'] })) {
     if (!data || typeof data.total !== 'number' || !facetContexts.has(String(queryKey[1]))) continue;
     keep(queryKey, data);

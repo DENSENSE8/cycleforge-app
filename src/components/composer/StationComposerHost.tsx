@@ -101,6 +101,8 @@ export type StationComposerHostProps = {
   insertActions?: NoteComposerInsertAction[];
   ticketLabel?: string | null;
   hasTicket?: boolean;
+  /** The ticket channel toggle's state — the commit reads "Send public reply" or "Add internal note". Public-first default (ruling 2026-08-31). */
+  ticketIsPublic?: boolean;
   ticketDraft?: string;
   onTicketDraftChange?: (next: string) => void;
   onTicketCommit?: () => void;
@@ -232,6 +234,7 @@ export function StationComposerHost({
   insertActions = [],
   ticketLabel = null,
   hasTicket = false,
+  ticketIsPublic = true,
   ticketDraft: ticketDraftProp,
   onTicketDraftChange,
   onTicketCommit,
@@ -482,7 +485,7 @@ export function StationComposerHost({
           isAsk
             ? 'Ask'
             : isTicket
-              ? (ticketCommitLabel ?? stationComposerTicketCommitLabel(hasTicket))
+              ? (ticketCommitLabel ?? stationComposerTicketCommitLabel(hasTicket, ticketIsPublic))
               : undefined
         }
         commitIcon={
@@ -588,7 +591,7 @@ export function StationComposerHost({
             ? labelCommitAriaLabel
             : isAsk
               ? 'Send Ask'
-              : (ticketCommitLabel ?? stationComposerTicketCommitLabel(hasTicket))
+              : (ticketCommitLabel ?? stationComposerTicketCommitLabel(hasTicket, ticketIsPublic))
         }
         commitTooltip={
           onLabelField
@@ -598,7 +601,7 @@ export function StationComposerHost({
               : ticketCommitLabel
                 ? `${ticketCommitLabel} (Enter)`
                 : hasTicket
-                  ? 'Update ticket (Enter) · Shift+Enter for newline'
+                  ? `${stationComposerTicketCommitLabel(true, ticketIsPublic)} (Enter) · Shift+Enter for newline`
                   : 'Create ticket (Enter)'
         }
         ghostSuffix={isTicket || isAsk ? undefined : ghostSuffix}

@@ -70,6 +70,7 @@ const PHOTO_SOURCE_STATION: Record<UnitTimelinePhotoRowSource, OrderStationSecti
   unbox_carton: 'unbox',
   unbox_item: 'unbox',
   testing: 'testing',
+  prepack: 'shipping',
   packing: 'shipping',
 };
 
@@ -78,6 +79,7 @@ const PHOTO_EVENT_STATION: Record<string, OrderStationSectionId> = {
   ARRIVAL_PHOTOS: 'receiving',
   UNBOX_PHOTOS: 'unbox',
   TEST_PHOTOS: 'testing',
+  PREPACK_PHOTOS: 'shipping',
   PACK_PHOTOS: 'shipping',
 };
 

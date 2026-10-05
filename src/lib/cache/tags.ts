@@ -71,7 +71,7 @@ export const CACHE_NS = {
   fbaDashboard: 'fba-dashboard',
   /** `/api/sku-catalog/search` — reference catalog search (debounced per-keystroke). */
   skuCatalogSearch: 'sku-catalog-search',
-  /** `/api/receiving-lines/incoming/summary` — receiving KPI aggregate (30s poll). */
+  /** `getIncomingSummary` — Inbound's delivery-state aggregate (the `incoming.pipeline` sidebar facet). */
   receivingIncomingSummary: 'receiving-incoming-summary',
   /** `/api/receiving-lines/incoming/details` — per-line drill (60s poll per drawer). */
   receivingIncomingDetails: 'receiving-incoming-details',

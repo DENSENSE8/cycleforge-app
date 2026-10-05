@@ -29,15 +29,18 @@ export function PickerTaskCard({
   detailsExpanded: boolean;
   onToggleDetails: () => void;
 }) {
+  // The scanner sits OUTSIDE the per-task keyed block: its <video> must stay the
+  // same element across tasks, or the camera (ZXing stream / the iOS app's lens)
+  // stays bound to the previous task's unmounted box.
   return (
-    <AnimatePresence mode="wait">
-      <motion.section
+    <section className={`${cornerClass('surface')} border border-border-soft bg-surface-card p-5`}>
+      <AnimatePresence mode="wait">
+      <motion.div
         key={currentTask.allocationId}
         initial={motionPresenceMobile.mobileCard.initial}
         animate={motionPresenceMobile.mobileCard.animate}
         exit={motionPresenceMobile.mobileCard.exit}
         transition={motionTransitionMobile.mobileCardMount}
-        className={`${cornerClass('surface')} border border-border-soft bg-surface-card p-5`}
       >
         {/* Bin chip — the thing the worker looks for. */}
         <p className="text-xs font-semibold text-text-soft">Pick from bin</p>
@@ -74,6 +77,8 @@ export function PickerTaskCard({
             </div>
           </dl>
         </Collapse>
+      </motion.div>
+      </AnimatePresence>
 
         {/* Scanner — gated. Hint above tells the picker exactly what to
             aim at; the in-place error appears if a wrong code decodes. */}
@@ -96,7 +101,6 @@ export function PickerTaskCard({
             </div>
           )}
         </div>
-      </motion.section>
-    </AnimatePresence>
+    </section>
   );
 }

@@ -1,5 +1,7 @@
 # HANDOFF: Live feed (Operations) + fulfillment UX, 2026-10-03
 
+> **Superseded 2026-10-04.** The Live feed was rebuilt as an outbound-only package triage board: four stages (To pick → Picked → Packed → Scanned out) matching Allocate's `?stage=` partition, a Day | Week window in the board header, cards that open to a journey timeline, tags (`order_tags`) and comments (`order_notes`), and a phone surface at `/m/live-feed` (stage tabs over one column). Code: `src/lib/live-feed/*`, `src/features/live-feed/*`. The inbound direction, lenses, channels, carrier facets and the sidebar controls below no longer exist; read this file as history only.
+
 Repo: /home/michaelgarisek/Projects/cycleforge-lanes/prod · dev origin http://localhost:3050 only (lane `cycleforge-lane@prod`; never start servers).
 Auth for probes/browser: cookie `cf_sid` from `tests/.auth/admin.json` on localhost.
 **Another session edits this tree concurrently** (location-labels, racks, Sales "Customers", mobile/v2). Re-read before every edit; never revert others' changes. Their red gates are not ours: lint in src/features/location-labels/*, tenancy on /api/racks/*, ledger `location-label-builder-forks`, missing NAV_VIEW_ICONS key `sales.customers`.

@@ -30,7 +30,7 @@ import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { CARD_DISCLOSE, CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import { RECORD_DEADLINE_DOT_CLASS, RECORD_DEADLINE_TONE_CLASS, RECORD_RAIL_HATCH_STYLE } from '@/design-system/tokens/record-card';
-import { denseRecordTitle } from '@/design-system/tokens/typography/presets';
+import { denseRecordTitle, recordNote, recordPerson, recordPlatform } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import { RecordFactPaint, RecordFactSep, RecordLineFacts, type RecordFactColumn } from './record-fact';
 import type { CardDisclosureTier, RecordCardChip, RecordCardLine, RecordCardModel, RecordCardSlotFact } from './record-card-types';
@@ -281,10 +281,10 @@ function MoreLineRow({
 
 // ── Check + status — one slot ───────────────────────────────────────────────
 
-/** At rest the status icon holds the slot; card hover / focus hands it to the checkbox. */
-const SLOT_REST_CLASS =
+/** At rest the status icon holds the slot; card hover / focus hands it to the checkbox. Shared with the bespoke cards (Labels & docs) that keep the gutter law. */
+export const SLOT_REST_CLASS =
   'flex transition-opacity duration-150 group-hover/card:opacity-0 group-focus-within/card:opacity-0 [@media(hover:none)]:opacity-0';
-const SLOT_HOVER_CLASS =
+export const SLOT_HOVER_CLASS =
   'absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover/card:opacity-100 group-focus-within/card:opacity-100 [@media(hover:none)]:opacity-100';
 
 /**
@@ -455,7 +455,7 @@ function CardNotes({
   };
 
   return (
-    <span className="pointer-events-auto flex h-6 min-w-4 flex-1 items-center gap-2 text-xs font-medium text-text-muted" onClick={stop} onPointerDown={stop}>
+    <span className={cn('pointer-events-auto flex h-6 min-w-4 flex-1 items-center gap-2 text-text-muted', recordNote)} onClick={stop} onPointerDown={stop}>
       {notes.fixed ? (
         <HoverTooltip label={`${notes.fixed.label}: ${notes.fixed.text}`} asChild>
           <span data-testid={testId('note-fixed')} className="inline-flex min-w-4 max-w-full shrink items-center gap-1">
@@ -485,7 +485,8 @@ function CardNotes({
           aria-label="Note"
           data-testid={testId('note-input')}
           className={cn(
-            'h-6 min-w-40 flex-1 rounded-md bg-surface-card px-1.5 text-xs font-medium text-text-default ring-1 ring-border-default placeholder:text-text-faint',
+            'h-6 min-w-40 flex-1 rounded-md bg-surface-card px-1.5 text-text-default ring-1 ring-border-default placeholder:text-text-faint',
+            recordNote,
             focusRing('field'),
           )}
         />
@@ -856,14 +857,14 @@ export function RecordCard<V extends CardViewDecl>({
           >
             {identity.content}
           </span>
-          {/* Channel: brand dot, medium-weight ink. Person: regular weight, muted, after a faint
-              separator — two faces so the two names never read as one. */}
+          {/* Platform is the compact label voice; buyer is a larger person voice. The faint
+              separator and distinct weights keep the two names from reading as one. */}
           {model.channel ? (
             <HoverTooltip label={model.channel.tooltip} asChild>
               <span
                 data-testid={id('platform')}
                 onClick={openRecord}
-                className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1 whitespace-nowrap text-role-data font-normal text-text-muted')}
+                className={cn(CARD_FACT_BOX_CLASS, 'pointer-events-auto cursor-pointer gap-1 whitespace-nowrap text-text-muted', recordPlatform)}
               >
                 {model.channel.dot}
                 {/* Under the `brand` tier the dot carries the channel; the name is in the tooltip and the quick look. */}
@@ -878,7 +879,7 @@ export function RecordCard<V extends CardViewDecl>({
               <span
                 data-testid={id('buyer')}
                 onClick={openRecord}
-                className={cn('pointer-events-auto h-6 min-w-0 shrink-[100] cursor-pointer items-center gap-1.5 text-role-data font-normal text-text-muted', CARD_DISCLOSE.detail.inlineFlex)}
+                className={cn('pointer-events-auto h-6 min-w-0 shrink-[100] cursor-pointer items-center gap-1.5 text-text-muted', recordPerson, CARD_DISCLOSE.detail.inlineFlex)}
               >
                 {model.channel ? <span aria-hidden className="text-text-faint">·</span> : null}
                 <span className="min-w-0 truncate">{model.person}</span>

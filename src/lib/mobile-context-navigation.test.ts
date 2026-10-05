@@ -29,6 +29,7 @@ test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () =>
   assert.equal(getMobileAppTitle('/m/exceptions'), 'Exceptions');
   assert.equal(getMobileAppTitle('/m/exceptions/42'), 'Exceptions');
   assert.equal(getMobileAppTitle('/m/exceptions/bins%3A9'), 'Exceptions');
+  assert.equal(getMobileAppTitle('/m/support'), 'Support');
   assert.equal(getMobileAppTitle('/m/products'), 'Products');
   assert.equal(getMobileAppTitle('/m/products/SKU-42'), 'Products');
   assert.equal(getMobileAppTitle('/m/reports'), 'Reports');

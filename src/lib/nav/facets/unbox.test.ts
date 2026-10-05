@@ -32,9 +32,9 @@ function facets(context: UnboxFacetContext, query: Record<string, string>) {
 const counts = (group: { options: readonly { value: string; count: number }[] } | undefined) =>
   Object.fromEntries((group?.options ?? []).map((option) => [option.value, option.count]));
 
-test('Unboxed declares its pills as one Status group; the Unbox station adds its KPI cut', () => {
+test('Unboxed and the Unbox station expose only the shared Status pills', () => {
   assert.deepEqual(NAV_FACET_GROUPS['incoming.unboxed'], [{ id: 'status', label: 'Status', param: 'dflag', multi: true, inline: true }]);
-  assert.deepEqual(NAV_FACET_GROUPS.receive.map((group) => [group.param, group.multi]), [['dflag', true], ['ukpi', false]]);
+  assert.deepEqual(NAV_FACET_GROUPS.receive.map((group) => [group.param, group.multi]), [['dflag', true]]);
 });
 
 test('reads the Unboxed list query and counts cartons per pill', async () => {
@@ -70,33 +70,25 @@ test('Find, Kind and the unboxed-date window narrow like the ledger', async () =
   assert.equal((await facets('incoming.unboxed', { lane: 'unboxed', dateTo: '2026-10-01' }).body).total, 4);
 });
 
-test('Unbox History: pills over the KPI cut, KPI options under the picked pills', async () => {
+test('Unbox History exposes only its Status pills', async () => {
   const res = await facets('receive', { unboxview: 'history' }).body;
   assert.equal(res.context, 'receive');
   assert.deepEqual(counts(res.groups[0]), { UNFOUND: 1, CLAIM: 1, SHORT: 2 });
-  const kpi = res.groups[1]!;
-  assert.deepEqual(kpi.options.map((option) => option.value), ['opened-today', 'awaiting-test', 'stuck']);
-  assert.equal(counts(kpi)['awaiting-test'], 2);
-  // A KPI keeps only its own lines, so carton 20 is just its clean stuck line.
-  assert.equal(counts(kpi).stuck, 1);
   const short = await facets('receive', { unboxview: 'history', dflag: 'SHORT' }).body;
-  assert.equal(counts(short.groups[1])['awaiting-test'], 1);
-  assert.equal(counts(short.groups[1]).stuck, 0);
-  const awaiting = await facets('receive', { unboxview: 'history', ukpi: 'awaiting-test' }).body;
-  assert.equal(awaiting.total, 2);
-  assert.deepEqual(counts(awaiting.groups[0]), { UNFOUND: 1, CLAIM: 0, SHORT: 1 });
+  assert.deepEqual(counts(short.groups[0]), { UNFOUND: 1, CLAIM: 1, SHORT: 2 });
+  assert.equal(res.groups.length, 1);
 });
 
-test('Unbox Queue reads its own list and offers only its KPI; Inbound offers nothing and reads nothing', async () => {
+test('Unbox Queue and Inbound expose no KPI-priority facet', async () => {
   const { body, asked } = facets('receive', {});
   const queue = await body;
   assert.equal(asked[0]!.get('view'), 'scanned');
   assert.equal(asked[0]!.get('sort'), 'priority');
   assert.deepEqual(queue.groups[0]!.options, [], 'the cards do not cut by the pills');
-  assert.deepEqual(counts(queue.groups[1]), { priority: 1 });
+  assert.equal(queue.groups.length, 1);
   assert.equal(queue.total, 4);
   const inbound = facets('receive', { unboxview: 'incoming' });
   const res = await inbound.body;
   assert.equal(inbound.asked.length, 0);
-  assert.deepEqual(res.groups.map((group) => group.options), [[], []]);
+  assert.deepEqual(res.groups.map((group) => group.options), [[]]);
 });

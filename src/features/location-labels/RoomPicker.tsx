@@ -35,7 +35,7 @@ export function RoomPicker({
             id: room,
             title: room,
             icon: selectedRoom === room ? <Check /> : <ZoneLetterTile letter={letter} />,
-            meta: letter ? `Zone ${letter}` : 'No zone letter',
+            meta: letter ? `Zone ${letter}` : 'Assigning zone…',
             onSelect: () => onSelect(room),
           };
         })}

@@ -5,8 +5,6 @@
  * never copied onto a rack/shelf row and never printed.
  */
 
-import type { ArrivalTier } from '@/lib/receiving/arrival-tier';
-
 /** Where a rack can stand: a room, or a floor/staging spot inside one. */
 export type RackPlacementKind = 'ROOM' | 'STAGING';
 
@@ -31,7 +29,6 @@ export interface RackShelf {
   name: string;
   /** Shelf number on the rack (1-based). */
   shelf: number;
-  tier: ArrivalTier | null;
   capacity: number | null;
   sortOrder: number | null;
   /** Units held (sum of `bin_contents.qty`); remove is refused while > 0. */
@@ -50,9 +47,6 @@ export interface RackSummary {
   /** Nearest ROOM up the parent chain; null when the chain reaches none. */
   room: RackRoomRef | null;
   shelfCount: number;
-  tieredShelfCount: number;
-  /** Count of shelves per arrival tier, most urgent first; only tiers present. */
-  tierCounts: Array<{ tier: ArrivalTier; count: number }>;
   /** Last `location.rack.moved` (or creation) instant, ISO. */
   lastMovedAt: string;
 }
@@ -78,8 +72,6 @@ export interface CreateRackBody {
   placementId?: number;
   /** 1..50 shelves. */
   shelves: number;
-  /** Optional per-shelf urgency tier (shelf number → tier). */
-  shelfTiers?: Array<{ shelf: number; tier: ArrivalTier }>;
   /** Positions per shelf; omit/0 for shelf-level only (D2 default). */
   positionsPerShelf?: number;
   dryRun?: boolean;
@@ -92,7 +84,7 @@ export interface PlannedRack {
   rackNumber: number;
   placement: RackPlacementRef;
   room: RackRoomRef | null;
-  shelves: Array<{ code: string; name: string; shelf: number; tier: ArrivalTier | null; positions: string[] }>;
+  shelves: Array<{ code: string; name: string; shelf: number; positions: string[] }>;
 }
 
 export type CreateRackResponse =
@@ -107,6 +99,18 @@ export interface ListRacksResponse {
 /** GET /api/racks/[code] — `code` is any rack spelling; shelf codes resolve to their rack. */
 export interface GetRackResponse {
   rack: RackDetail;
+}
+
+/** DELETE /api/racks/[code] — soft-delete an empty rack and its descendants. */
+export interface DeleteRackBody {
+  clientEventId: string;
+}
+
+export interface DeleteRackResponse {
+  rackId: number;
+  code: string;
+  retired: string[];
+  idempotent: boolean;
 }
 
 /** POST /api/racks/[code]/move */
@@ -190,6 +194,7 @@ export const RACK_ERROR_CODES = [
   'destination_kind',
   'same_placement',
   'shelf_has_stock',
+  'rack_in_use',
   'not_a_rack',
   'bay_not_found',
   'bay_already_adopted',

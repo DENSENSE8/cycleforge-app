@@ -179,6 +179,7 @@ export function labelDocuments(labels: readonly LabelPrintRow[]): DeskDocument[]
     key: `label:${row.id}`,
     kind: 'label',
     title: labelTitle(row, several),
+    associationLabel: row.orderRef ? `Order ${row.orderRef}` : 'No order paired',
     src: labelPdfSrc(row.id),
     stock: 'label',
     ingestionId: row.id,
@@ -191,20 +192,28 @@ export function labelDocuments(labels: readonly LabelPrintRow[]): DeskDocument[]
 /** An order's paperwork as printable documents; Drive-only manuals (no bytes) come back as `unprintable`. */
 export function paperworkDocuments(rows: readonly PaperworkPrintRow[]): {
   documents: DeskDocument[];
-  unprintable: Array<{ key: string; title: string }>;
+  unprintable: Array<{ key: string; title: string; associationLabel: string }>;
 } {
   const documents: DeskDocument[] = [];
-  const unprintable: Array<{ key: string; title: string }> = [];
+  const unprintable: Array<{ key: string; title: string; associationLabel: string }> = [];
   for (const row of rows) {
     for (const doc of row.documents) {
+      const associationLabel = doc.kind === 'packing_slip' || doc.association.source === 'order'
+        ? `Order ${row.orderRef}`
+        : doc.association.source === 'item_number' && doc.association.itemNumber
+          ? `Item # ${doc.association.itemNumber}`
+          : doc.association.sku
+            ? `SKU ${doc.association.sku}`
+            : `${doc.association.orderLineIds.length} order line${doc.association.orderLineIds.length === 1 ? '' : 's'}`;
       if (!doc.src) {
-        unprintable.push({ key: doc.key, title: doc.title });
+        unprintable.push({ key: doc.key, title: doc.title, associationLabel });
         continue;
       }
       documents.push({
         key: doc.key,
         kind: doc.kind,
         title: doc.title,
+        associationLabel,
         src: doc.src,
         stock: 'paper',
         ingestionId: null,

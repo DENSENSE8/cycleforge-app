@@ -15,6 +15,7 @@ import {
   Sparkles,
   Tags,
   Type,
+  Truck,
   Warehouse,
   Zap,
   Wrench,
@@ -29,7 +30,9 @@ export type SettingsSection =
   // that no desk owns.
   | 'photos' | 'repair-issues'
   // SIMPLE-FIRST: what the org has switched on + its build history.
-  | 'capabilities';
+  | 'capabilities'
+  // Carrier pickup cutoffs — the Live feed's per-carrier countdowns.
+  | 'pickup-cutoffs';
 
 export type SettingsGroup = 'Personal' | 'Organization';
 
@@ -110,6 +113,7 @@ export const SETTINGS_SECTION_CATEGORY: Partial<Record<SettingsSection, Settings
   receiving: 'data',
   photos: 'data',
   'repair-issues': 'data',
+  'pickup-cutoffs': 'data',
   devices: 'devices',
   audit: 'developer',
 };
@@ -156,6 +160,8 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   // Ex-Admin › Repair Issues: process master data, the Platforms & types
   // family — flow vocabulary the repair bench consumes but no desk owns.
   { id: 'repair-issues', label: 'Repair issues', description: 'Global repair issue checklist templates',           group: 'Organization', requires: 'repair.intake', href: '/settings/repair-issues', icon: Wrench, tone: 'warning' },
+  // carrier_pickup_cutoffs — the Live feed counts down to each carrier's pickup.
+  { id: 'pickup-cutoffs', label: 'Carrier pickups', description: 'Pickup time per carrier, each weekday',            group: 'Organization', requires: 'admin.manage_features', href: '/settings/pickup-cutoffs', icon: Truck, tone: 'fulfillment' },
   { id: 'roles',         label: 'Roles',         description: 'Define what each role can do',                     group: 'Organization', requires: 'admin.manage_roles', href: '/settings/roles', icon: ShieldCheck, tone: 'info' },
   { id: 'access',        label: 'Access',        description: 'Per-staff role + page-access matrix',              group: 'Organization', href: '/settings/access', icon: Lock, tone: 'danger' },
 ];

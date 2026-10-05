@@ -1,38 +1,15 @@
 /**
  * Phone-only words of the rack screens (`/m/racks`, the rack and shelf
- * records, New rack, Move rack, Make movable rack): card status + tone and
+ * records, New rack, Move rack, Make movable rack): card detail lines and
  * operator sentences for rack-route failures. Placement text and print rows
  * are the shared `@/lib/locations/rack-display` helpers.
  */
 
 import { RackRequestError } from '@/lib/locations/racks-client';
-import type { RackErrorCode, RackSummary } from '@/lib/locations/rack-types';
-import { arrivalTierLabel } from '@/lib/receiving/arrival-tier';
-import { arrivalTierTone } from '@/lib/receiving/arrival-shelves-client';
+import type { RackErrorCode } from '@/lib/locations/rack-types';
 
 export function plural(count: number, noun: string, nouns = `${noun}s`): string {
   return `${count} ${count === 1 ? noun : nouns}`;
-}
-
-/** `5 shelves · 2 arrival` — the list card's detail line. */
-export function rackShelvesLine(rack: Pick<RackSummary, 'shelfCount' | 'tieredShelfCount'>): string {
-  const shelves = plural(rack.shelfCount, 'shelf', 'shelves');
-  return rack.tieredShelfCount > 0 ? `${shelves} · ${rack.tieredShelfCount} arrival` : shelves;
-}
-
-/** The card status: the most urgent tier the rack carries, toned like the shelf it names. */
-export function rackTierStatus(rack: Pick<RackSummary, 'tierCounts'>): { status: string | null; tone: 'neutral' | 'ok' | 'warn' | 'bad' } {
-  const top = rack.tierCounts[0];
-  if (!top) return { status: null, tone: 'neutral' };
-  return {
-    status: rack.tierCounts.length > 1 ? `${arrivalTierLabel(top.tier)} +${rack.tierCounts.length - 1}` : arrivalTierLabel(top.tier),
-    tone: arrivalTierTone(top.tier),
-  };
-}
-
-/** A shelf card's status: `Arrival · Priority` toned by tier, or none. */
-export function shelfTierStatus(tier: number | null): { status: string | null; tone: 'neutral' | 'ok' | 'warn' | 'bad' } {
-  return tier == null ? { status: null, tone: 'neutral' } : { status: `Arrival · ${arrivalTierLabel(tier)}`, tone: arrivalTierTone(tier) };
 }
 
 const RACK_ERROR_SENTENCES: Readonly<Record<RackErrorCode, string>> = {
@@ -42,6 +19,7 @@ const RACK_ERROR_SENTENCES: Readonly<Record<RackErrorCode, string>> = {
   destination_kind: 'That label is not a room or a floor spot. A rack can only stand in a room or on a floor spot.',
   same_placement: 'The rack is already there.',
   shelf_has_stock: 'That shelf still holds stock or cartons. Move them off before removing it.',
+  rack_in_use: 'That rack still holds stock, cartons, totes, or staged work. Move them off before deleting it.',
   not_a_rack: 'That label is not a rack. Scan the rack placard.',
   bay_not_found: 'No bay has that code.',
   bay_already_adopted: 'That bay is already a movable rack.',

@@ -23,7 +23,10 @@ import { ensureReceivingForInboundOrder } from '@/lib/receiving/attach-box';
 import { ingestPurchase, type IngestPurchaseDeps } from './ingest-purchase';
 import { upsertInboundMirror } from './mirror';
 import { upsertPurchaseLink, type TxClient } from './purchase-links';
+import { recordEquivalence } from './equivalence';
+import { matchZohoPo, type MergeMatchReason } from './purchase-match';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
+import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 import {
   assignInboundLineKeys,
   canonicalInboundTracking,
@@ -81,6 +84,8 @@ export interface IngestInboundOrderResult {
   receivingId: number | null;
   /** Receiving/Sales pickup projection created by the same transaction. */
   localPickupOrderId: number | null;
+  /** An eBay order that IS a Zoho PO on the spine: linked to its lines, no line of its own minted. */
+  attachedTo?: { zohoPurchaseOrderId: string; reason: MergeMatchReason };
 }
 
 /** One query surface for the tx client and the tenant pool (preview / ledger-failure paths). */
@@ -189,13 +194,97 @@ async function recordLedger(
 export interface IngestInboundOrderDeps {
   ingestPurchase: typeof ingestPurchase;
   registerShipment: (trackingNumber: string, sourceSystem: string, orgId: OrgId) => Promise<number | null>;
+  upsertPurchaseLink: typeof upsertPurchaseLink;
+  recordEquivalence: typeof recordEquivalence;
 }
 
 const defaultDeps: IngestInboundOrderDeps = {
   ingestPurchase,
   registerShipment: async (trackingNumber, sourceSystem, orgId) =>
     (await registerShipmentPermissive({ trackingNumber, sourceSystem }, orgId))?.id ?? null,
+  upsertPurchaseLink,
+  recordEquivalence,
 };
+
+interface ZohoTwinLine {
+  id: number;
+  receiving_id: number | null;
+  zoho_purchaseorder_id: string;
+  zoho_purchaseorder_number: string | null;
+  tracking: string | null;
+}
+
+/** The Zoho PO an eBay buyer order already IS on the spine, and that PO's lines (id order). */
+export interface ZohoTwin {
+  zohoPurchaseOrderId: string;
+  reason: MergeMatchReason;
+  lines: ZohoTwinLine[];
+}
+
+/**
+ * Find the Zoho PO this eBay order is (`matchZohoPo`): candidates by the PO#
+ * index (`zoho_purchaseorder_number_norm` = the eBay order id) or a carton
+ * on one of the order's tracking numbers; the shared rule decides. Null when
+ * not eBay, when this order already has lines of its own (a twin landed
+ * before this writer existed — the repair retires it, never this writer), or
+ * when the order matches more than one PO (ambiguous — it lands as itself).
+ */
+export async function findZohoTwin(
+  query: Query,
+  orgId: OrgId,
+  identity: InboundOrderIdentity,
+  tracking: readonly { number: string }[],
+  inboundOrderId: number,
+): Promise<ZohoTwin | null> {
+  if (identity.sourceType !== 'ebay') return null;
+  const own = await query(
+    `SELECT 1 FROM receiving_line WHERE organization_id = $1 AND inbound_order_id = $2 LIMIT 1`,
+    [orgId, inboundOrderId],
+  );
+  if (own.rows.length > 0) return null;
+  const candidates = await query<ZohoTwinLine>(
+    `WITH cand AS (
+       SELECT rz.receiving_line_id AS id
+         FROM receiving_line_zoho rz
+        WHERE rz.organization_id = $1 AND rz.zoho_purchaseorder_number_norm = $2
+       UNION
+       SELECT rl.id
+         FROM shipping_tracking_numbers stn
+         JOIN receiving_carton rc ON rc.organization_id = $1 AND rc.shipment_id = stn.id
+         JOIN receiving_line rl ON rl.organization_id = $1 AND rl.receiving_id = rc.id
+        WHERE stn.tracking_number_normalized = ANY($3::text[])
+     )
+     SELECT rl.id, rl.receiving_id, rz.zoho_purchaseorder_id, rz.zoho_purchaseorder_number,
+            stn.tracking_number_raw AS tracking
+       FROM cand
+       JOIN receiving_line rl ON rl.id = cand.id AND rl.organization_id = $1
+       JOIN receiving_line_zoho rz
+         ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+        AND rz.zoho_purchaseorder_id IS NOT NULL
+       LEFT JOIN receiving_carton rc ON rc.id = rl.receiving_id AND rc.organization_id = rl.organization_id
+       LEFT JOIN shipping_tracking_numbers stn ON stn.id = rc.shipment_id
+      WHERE COALESCE(rl.inbound_source_type, 'zoho') <> 'ebay'
+      ORDER BY rl.id`,
+    [orgId, canonicalizeTrackingKey(identity.externalOrderId), tracking.map((t) => t.number)],
+  );
+  const byPo = new Map<string, ZohoTwin>();
+  for (const row of candidates.rows) {
+    const po = { zohoPurchaseOrderId: row.zoho_purchaseorder_id, poNumber: row.zoho_purchaseorder_number, tracking: row.tracking };
+    const asks = tracking.length > 0 ? tracking.map((t) => t.number) : [null];
+    const reason = asks
+      .map((number) => matchZohoPo({ receivingLineId: 0, sourceOrderId: identity.externalOrderId, sku: null, tracking: number }, po))
+      .find((r) => r != null);
+    if (!reason) continue;
+    const twin = byPo.get(row.zoho_purchaseorder_id);
+    if (twin) {
+      twin.lines.push(row);
+      if (reason === 'tracking') twin.reason = 'tracking';
+    } else {
+      byPo.set(row.zoho_purchaseorder_id, { zohoPurchaseOrderId: row.zoho_purchaseorder_id, reason, lines: [row] });
+    }
+  }
+  return byPo.size === 1 ? [...byPo.values()][0]! : null;
+}
 
 const SHIPMENT_SOURCE: Record<string, string> = { ebay: 'ebay_purchase', amazon: 'amazon_purchase', manual: 'manual_inbound' };
 
@@ -496,6 +585,77 @@ export async function ingestInboundOrderInTx(
     operatorResave: ctx.origin === 'manual' || ctx.origin === 'csv' || ctx.origin === 'chat',
   };
 
+  // One purchase = one spine line: an eBay buyer order that IS a Zoho PO
+  // already on the spine (`matchZohoPo` — the eBay ↔ Zoho merge's rule) links
+  // to that PO's lines instead of minting a twin line + carton. The merge
+  // (`mergeEbayLinesIntoZohoPo`) covers the other order of arrival.
+  const twin = await findZohoTwin(query, orgId, identity, tracking, inboundOrderId);
+  if (twin) {
+    await upsertInboundMirror(
+      orgId,
+      {
+        sourceType: identity.sourceType,
+        sourceOrderId: identity.externalOrderId,
+        orderNumber: identity.externalOrderId,
+        vendorOrSellerName: shared.vendorOrSellerName,
+        status: shared.status,
+        paymentStatus: shared.paymentStatus,
+        poDate: draft.orderDate,
+        expectedDeliveryDate: draft.expectedDate,
+        trackingNumber: firstTracking?.number ?? null,
+        carrierCode: firstTracking?.carrier || null,
+        lineItems: mirrorLines,
+        rawPayload: shared.rawPayload,
+      },
+      { query: (async (_o: OrgId, sql: string, params?: ReadonlyArray<unknown>) => client.query(sql, params)) as never },
+    );
+    // Positional when the order and the PO carry the same number of lines; else every line names the PO's lead line.
+    const attached: IngestedInboundLine[] = keys.map((lineKey, i) => ({
+      lineKey,
+      receivingLineId: (keys.length === twin.lines.length ? twin.lines[i]! : twin.lines[0]!).id,
+      created: false,
+    }));
+    for (const line of attached) {
+      await deps.upsertPurchaseLink(
+        orgId,
+        {
+          receivingLineId: line.receivingLineId,
+          sourceType: identity.sourceType,
+          sourceOrderId: identity.externalOrderId,
+          sourceLineItemId: line.lineKey,
+          isPrimary: false,
+        },
+        { withTx: (_o, fn) => fn(client) },
+      );
+    }
+    await deps.recordEquivalence(
+      orgId,
+      {
+        sourceTypeA: identity.sourceType,
+        sourceOrderIdA: identity.externalOrderId,
+        sourceTypeB: 'zoho',
+        sourceOrderIdB: twin.zohoPurchaseOrderId,
+        linkReason: twin.reason,
+      },
+      { query: (async (_o: OrgId, sql: string, params?: ReadonlyArray<unknown>) => client.query(sql, params)) as never },
+    );
+    const result: IngestInboundOrderResult = {
+      inboundOrderId,
+      created: Boolean(header.rows[0].created),
+      unchanged: false,
+      identity,
+      lines: attached,
+      receivingId: twin.lines.find((l) => l.receiving_id != null)?.receiving_id ?? null,
+      localPickupOrderId: null,
+      attachedTo: { zohoPurchaseOrderId: twin.zohoPurchaseOrderId, reason: twin.reason },
+    };
+    await recordLedger(query, orgId, {
+      ctx, sourceEventId, payload: draft, payloadHash: contentHash, status: 'landed',
+      inboundOrderId, outcome: { attachedTo: result.attachedTo, lines: attached }, error: null,
+    });
+    return result;
+  }
+
   // Every tracking number is registered ONCE, before any line touches its
   // shipment row inside this transaction (see IngestPurchaseInput.shipmentId).
   const shipmentIds = new Map<string, number | null>();
@@ -774,6 +934,91 @@ export interface DeleteInboundOrderResult {
 }
 
 /**
+ * What happened to a spine line that deleting it would erase (null = nothing):
+ * units counted, unit facts (a serial / waiver / grade on a unit slot — an
+ * empty slot is only the line having been opened), serials, tests, inventory
+ * events, an exception or claim, putaway, a return, a pickup or repair tie.
+ * Alias `rl`. Every reference that CASCADEs or SET NULLs off receiving_line.
+ */
+export const INBOUND_LINE_HISTORY_SQL = `CASE
+                WHEN COALESCE(rl.quantity_received, 0) > 0 THEN 'units received'
+                WHEN EXISTS (SELECT 1 FROM receiving_line_unit u WHERE u.receiving_line_id = rl.id
+                               AND (u.serial_unit_id IS NOT NULL OR u.serial_absent OR u.condition_grade IS NOT NULL)) THEN 'unit facts recorded'
+                WHEN EXISTS (SELECT 1 FROM tech_serial_numbers t WHERE t.receiving_line_id = rl.id) THEN 'serials attached'
+                WHEN EXISTS (SELECT 1 FROM testing_results t WHERE t.receiving_line_id = rl.id) THEN 'test results recorded'
+                WHEN EXISTS (SELECT 1 FROM inventory_events e WHERE e.receiving_line_id = rl.id) THEN 'inventory moved'
+                WHEN EXISTS (SELECT 1 FROM receiving_exceptions x WHERE x.receiving_line_id = rl.id) THEN 'exception recorded'
+                WHEN EXISTS (SELECT 1 FROM receiving_claim_seller_messages m WHERE m.receiving_line_id = rl.id) THEN 'claim messages'
+                WHEN EXISTS (SELECT 1 FROM receiving_line_putaway p WHERE p.receiving_line_id = rl.id) THEN 'put away'
+                WHEN EXISTS (SELECT 1 FROM receiving_line_return r WHERE r.receiving_line_id = rl.id) THEN 'return recorded'
+                WHEN EXISTS (SELECT 1 FROM local_pickup_order_items i WHERE i.receiving_line_id = rl.id) THEN 'pickup item'
+                WHEN EXISTS (SELECT 1 FROM repair_service s WHERE s.receiving_line_id = rl.id) THEN 'repair ticket'
+              END`;
+
+/**
+ * Why a spine line may not be deleted by hand (null = nothing physical happened
+ * to it): a door / unbox / receive stamp, any unit slot, or its history
+ * ({@link INBOUND_LINE_HISTORY_SQL}). Alias `rl`.
+ */
+export const INBOUND_LINE_DELETE_BLOCKER_SQL = `CASE
+                WHEN rl.scanned_at IS NOT NULL OR rl.unboxed_at IS NOT NULL OR rl.received_at IS NOT NULL
+                  OR rl.received_done_at IS NOT NULL THEN 'already scanned at the door'
+                WHEN EXISTS (SELECT 1 FROM receiving_line_unit u WHERE u.receiving_line_id = rl.id) THEN 'units attached'
+                ELSE ${INBOUND_LINE_HISTORY_SQL}
+              END`;
+
+/**
+ * Delete spine lines already cleared by {@link INBOUND_LINE_DELETE_BLOCKER_SQL}
+ * (or, for a duplicate whose purchase another line keeps, {@link INBOUND_LINE_HISTORY_SQL}),
+ * with their dependents; then each of `cartonIds` that ends up empty and was
+ * never door-scanned / unboxed. Returns the cartons deleted. On the caller's tx.
+ */
+export async function deleteInboundLinesInTx(
+  client: Pick<TxClient, 'query'>,
+  orgId: OrgId,
+  lineIds: readonly number[],
+  cartonIds: readonly number[],
+): Promise<number[]> {
+  if (lineIds.length > 0) {
+    // Dependents without ON DELETE CASCADE.
+    await client.query(`DELETE FROM receiving_listing_links WHERE organization_id = $1 AND receiving_line_id = ANY($2::int[])`, [orgId, lineIds]);
+    await client.query(
+      `UPDATE shortage_inbound_links SET receiving_line_id = NULL, link_status = 'released', updated_at = now()
+        WHERE organization_id = $1 AND receiving_line_id = ANY($2::int[])`,
+      [orgId, lineIds],
+    );
+    await client.query(`UPDATE inbound_purchase_merge_log SET loser_line_id = NULL WHERE organization_id = $1 AND loser_line_id = ANY($2::int[])`, [orgId, lineIds]);
+    await client.query(`DELETE FROM receiving_line WHERE organization_id = $1 AND id = ANY($2::int[])`, [orgId, lineIds]);
+  }
+  const deletedCartons: number[] = [];
+  for (const cartonId of cartonIds) {
+    const gone = await client.query<{ id: number }>(
+      `DELETE FROM receiving_carton rc
+        WHERE rc.organization_id = $1 AND rc.id = $2
+          AND NOT EXISTS (SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = rc.id)
+          AND NOT EXISTS (SELECT 1 FROM receiving_scans s WHERE s.receiving_id = rc.id)
+          AND NOT EXISTS (SELECT 1 FROM receiving_unbox u WHERE u.receiving_id = rc.id)
+          AND NOT EXISTS (SELECT 1 FROM receiving_triage t
+                           WHERE t.receiving_id = rc.id AND t.door_received_at IS NOT NULL)
+          -- Carton history that would CASCADE away with it.
+          AND NOT EXISTS (SELECT 1 FROM receiving_exceptions x WHERE x.receiving_id = rc.id)
+          AND NOT EXISTS (SELECT 1 FROM receiving_claim_seller_messages m WHERE m.receiving_id = rc.id)
+          AND NOT EXISTS (SELECT 1 FROM local_pickup_items i WHERE i.receiving_id = rc.id)
+        RETURNING id`,
+      [orgId, cartonId],
+    );
+    if (gone.rows[0]) {
+      deletedCartons.push(cartonId);
+      await client.query(
+        `DELETE FROM shipment_links WHERE organization_id = $1 AND owner_type = 'RECEIVING' AND owner_id = $2`,
+        [orgId, cartonId],
+      );
+    }
+  }
+  return deletedCartons;
+}
+
+/**
  * Delete an order entered by mistake — only while nothing about it is
  * physical: no quantity received, no scan / unbox / receive stamp, no units,
  * tests or inventory events on any line. Cartons the order minted go with it
@@ -789,15 +1034,7 @@ export async function deleteInboundOrder(orgId: OrgId, inboundOrderId: number): 
 
     const lines = await client.query<{ id: number; receiving_id: number | null; blocker: string | null }>(
       `SELECT rl.id, rl.receiving_id,
-              CASE
-                WHEN COALESCE(rl.quantity_received, 0) > 0 THEN 'units received'
-                WHEN rl.scanned_at IS NOT NULL OR rl.unboxed_at IS NOT NULL OR rl.received_at IS NOT NULL
-                  OR rl.received_done_at IS NOT NULL THEN 'already scanned at the door'
-                WHEN EXISTS (SELECT 1 FROM receiving_line_unit u WHERE u.receiving_line_id = rl.id) THEN 'units attached'
-                WHEN EXISTS (SELECT 1 FROM tech_serial_numbers t WHERE t.receiving_line_id = rl.id) THEN 'serials attached'
-                WHEN EXISTS (SELECT 1 FROM testing_results t WHERE t.receiving_line_id = rl.id) THEN 'test results recorded'
-                WHEN EXISTS (SELECT 1 FROM inventory_events e WHERE e.receiving_line_id = rl.id) THEN 'inventory moved'
-              END AS blocker
+              ${INBOUND_LINE_DELETE_BLOCKER_SQL} AS blocker
          FROM receiving_line rl
         WHERE rl.organization_id = $1 AND rl.inbound_order_id = $2
         FOR UPDATE OF rl`,
@@ -812,40 +1049,7 @@ export async function deleteInboundOrder(orgId: OrgId, inboundOrderId: number): 
     }
     const lineIds = lines.rows.map((l) => Number(l.id));
     const cartonIds = [...new Set(lines.rows.flatMap((l) => (l.receiving_id != null ? [Number(l.receiving_id)] : [])))];
-
-    if (lineIds.length > 0) {
-      // Dependents without ON DELETE CASCADE.
-      await client.query(`DELETE FROM receiving_listing_links WHERE organization_id = $1 AND receiving_line_id = ANY($2::int[])`, [orgId, lineIds]);
-      await client.query(
-        `UPDATE shortage_inbound_links SET receiving_line_id = NULL, link_status = 'released', updated_at = now()
-          WHERE organization_id = $1 AND receiving_line_id = ANY($2::int[])`,
-        [orgId, lineIds],
-      );
-      await client.query(`UPDATE inbound_purchase_merge_log SET loser_line_id = NULL WHERE organization_id = $1 AND loser_line_id = ANY($2::int[])`, [orgId, lineIds]);
-      await client.query(`DELETE FROM receiving_line WHERE organization_id = $1 AND id = ANY($2::int[])`, [orgId, lineIds]);
-    }
-
-    const deletedCartons: number[] = [];
-    for (const cartonId of cartonIds) {
-      const gone = await client.query<{ id: number }>(
-        `DELETE FROM receiving_carton rc
-          WHERE rc.organization_id = $1 AND rc.id = $2
-            AND NOT EXISTS (SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = rc.id)
-            AND NOT EXISTS (SELECT 1 FROM receiving_scans s WHERE s.receiving_id = rc.id)
-            AND NOT EXISTS (SELECT 1 FROM receiving_unbox u WHERE u.receiving_id = rc.id)
-            AND NOT EXISTS (SELECT 1 FROM receiving_triage t
-                             WHERE t.receiving_id = rc.id AND t.door_received_at IS NOT NULL)
-          RETURNING id`,
-        [orgId, cartonId],
-      );
-      if (gone.rows[0]) {
-        deletedCartons.push(cartonId);
-        await client.query(
-          `DELETE FROM shipment_links WHERE organization_id = $1 AND owner_type = 'RECEIVING' AND owner_id = $2`,
-          [orgId, cartonId],
-        );
-      }
-    }
+    const deletedCartons = await deleteInboundLinesInTx(client as unknown as TxClient, orgId, lineIds, cartonIds);
 
     await client.query(
       `DELETE FROM inbound_purchase_order_mirror m

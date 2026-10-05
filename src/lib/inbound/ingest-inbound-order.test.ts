@@ -7,7 +7,13 @@ import {
   REPAIR_DROP_OFF_SOURCE,
   type IngestInboundOrderDeps,
 } from './ingest-inbound-order';
-import { assignInboundLineKeys, emptyInboundOrderDraft, emptyInboundOrderLine, type InboundOrderDraft } from './inbound-order-draft';
+import {
+  assignInboundLineKeys,
+  emptyInboundOrderDraft,
+  emptyInboundOrderLine,
+  isScientificNotationTracking,
+  type InboundOrderDraft,
+} from './inbound-order-draft';
 import type { TxClient } from './purchase-links';
 
 const ORG = '00000000-0000-0000-0000-00000000aaaa' as OrgId;
@@ -29,7 +35,10 @@ function draft(over: Partial<InboundOrderDraft> = {}): InboundOrderDraft {
   };
 }
 
-function fakes(opts: { priorHash?: string | null } = {}) {
+/** A Zoho PO line already on the spine — what an eBay order may BE (`twins`). */
+interface TwinRow { id: number; receiving_id: number | null; zoho_purchaseorder_id: string; zoho_purchaseorder_number: string | null; tracking: string | null }
+
+function fakes(opts: { priorHash?: string | null; twins?: TwinRow[]; ownLines?: boolean } = {}) {
   const sql: Array<{ text: string; params: ReadonlyArray<unknown> }> = [];
   const client: TxClient = {
     query: (async (text: string, params: ReadonlyArray<unknown> = []) => {
@@ -37,6 +46,10 @@ function fakes(opts: { priorHash?: string | null } = {}) {
       if (/FROM inbound_order\s+WHERE/.test(text)) {
         return { rows: opts.priorHash === undefined ? [] : [{ id: 5, content_hash: opts.priorHash }], rowCount: 1 };
       }
+      if (/^SELECT 1 FROM receiving_line WHERE organization_id = \$1 AND inbound_order_id/.test(text)) {
+        return { rows: opts.ownLines ? [{ one: 1 }] : [], rowCount: opts.ownLines ? 1 : 0 };
+      }
+      if (/WITH cand AS/.test(text)) return { rows: opts.twins ?? [], rowCount: opts.twins?.length ?? 0 };
       if (/INSERT INTO suppliers/.test(text)) return { rows: [{ id: 3 }], rowCount: 1 };
       if (/INSERT INTO inbound_order/.test(text)) return { rows: [{ id: 5, created: true }], rowCount: 1 };
       if (/INSERT INTO local_pickup_orders/.test(text)) return { rows: [{ id: 44 }], rowCount: 1 };
@@ -50,6 +63,8 @@ function fakes(opts: { priorHash?: string | null } = {}) {
   };
   const ingested: Array<Record<string, unknown>> = [];
   const registered: string[] = [];
+  const links: Array<Record<string, unknown>> = [];
+  const equivalences: Array<Record<string, unknown>> = [];
   const deps: IngestInboundOrderDeps = {
     registerShipment: async (tracking) => {
       registered.push(tracking);
@@ -59,8 +74,16 @@ function fakes(opts: { priorHash?: string | null } = {}) {
       ingested.push(input);
       return { receivingLineId: 100 + ingested.length, receivingId: 12, created: true, platformAccountId: null, sourceType: 'manual', sourceOrderId: String(input.sourceOrderId) };
     }) as unknown as IngestInboundOrderDeps['ingestPurchase'],
+    upsertPurchaseLink: (async (_org: OrgId, input: Record<string, unknown>) => {
+      links.push(input);
+      return {};
+    }) as unknown as IngestInboundOrderDeps['upsertPurchaseLink'],
+    recordEquivalence: (async (_org: OrgId, input: Record<string, unknown>) => {
+      equivalences.push(input);
+      return {};
+    }) as unknown as IngestInboundOrderDeps['recordEquivalence'],
   };
-  return { client, sql, ingested, registered, deps };
+  return { client, sql, ingested, registered, links, equivalences, deps };
 }
 
 test('a 3-line order with no typed line ids lands 3 distinct lines (L1..L3), one order', async () => {
@@ -227,4 +250,78 @@ test('a synced order carries its marketplace status to the mirror and line facts
   const plain = fakes();
   await ingestInboundOrderInTx(plain.client, ORG, draft(), CTX, plain.deps);
   assert.ok(plain.ingested.every((i) => i.status === 'ISSUED' && i.paymentStatus === null), 'an authored order stays ISSUED');
+});
+
+// ── one purchase = one spine line (2026-10-04, 15-15078-20314) ───────────────
+const SYNC = { origin: 'sync' as const, source: 'ebay', staffId: null };
+const ebayOrder = (over: Partial<InboundOrderDraft> = {}) =>
+  draft({
+    platform: 'ebay',
+    orderNumber: '15-15078-20314',
+    vendor: 'seller_x',
+    tracking: [{ number: '9434608106245533522453', carrier: 'USPS' }],
+    lines: [{ ...emptyInboundOrderLine(), lineKey: '267768290542-10084426338515', title: 'Bose Companion 2 Series III', quantity: 1 }],
+    ...over,
+  });
+const zohoLine = (over: Partial<TwinRow> = {}): TwinRow => ({
+  id: 31872, receiving_id: 52156, zoho_purchaseorder_id: '5623409000003428382', zoho_purchaseorder_number: '15-15078-20314', tracking: '9434608106245533522453', ...over,
+});
+
+test('an eBay order that IS a Zoho PO on the spine links to its line — no twin line, no carton', async () => {
+  const f = fakes({ twins: [zohoLine()] });
+  const r = await ingestInboundOrderInTx(f.client, ORG, ebayOrder(), SYNC, f.deps);
+  assert.equal(f.ingested.length, 0, 'no receiving_line minted');
+  assert.deepEqual(f.registered, [], 'no shipment / carton registered for a twin');
+  assert.deepEqual(r.attachedTo, { zohoPurchaseOrderId: '5623409000003428382', reason: 'tracking' });
+  assert.deepEqual(r.lines, [{ lineKey: '267768290542-10084426338515', receivingLineId: 31872, created: false }]);
+  assert.equal(r.receivingId, 52156);
+  assert.deepEqual(f.links, [
+    { receivingLineId: 31872, sourceType: 'ebay', sourceOrderId: '15-15078-20314', sourceLineItemId: '267768290542-10084426338515', isPrimary: false },
+  ]);
+  assert.deepEqual(f.equivalences, [
+    { sourceTypeA: 'ebay', sourceOrderIdA: '15-15078-20314', sourceTypeB: 'zoho', sourceOrderIdB: '5623409000003428382', linkReason: 'tracking' },
+  ]);
+  // The candidate probe asks the PO# index by the eBay order id, normalized like zoho_purchaseorder_number_norm.
+  const probe = f.sql.find((s) => /WITH cand AS/.test(s.text))!;
+  assert.deepEqual(probe.params.slice(1), ['151507820314', ['9434608106245533522453']]);
+  assert.ok(f.sql.some((s) => /INSERT INTO inbound_ingest_event/.test(s.text) && s.params[7] === 'landed'));
+});
+
+test('the order-number arm alone attaches (a lost tracking number still finds its PO)', async () => {
+  const f = fakes({ twins: [zohoLine({ tracking: null })] });
+  const r = await ingestInboundOrderInTx(f.client, ORG, ebayOrder({ tracking: [] }), SYNC, f.deps);
+  assert.equal(r.attachedTo?.reason, 'order_number');
+  assert.equal(f.ingested.length, 0);
+});
+
+test('an eBay order lands as itself when no PO matches, the PO match is ambiguous, or it already has lines', async () => {
+  // A candidate the shared rule rejects (another order's PO#, another tracking).
+  const other = fakes({ twins: [zohoLine({ zoho_purchaseorder_number: '16-15107-26018', tracking: '9400111899223456784' })] });
+  assert.equal((await ingestInboundOrderInTx(other.client, ORG, ebayOrder(), SYNC, other.deps)).attachedTo, undefined);
+  assert.equal(other.ingested.length, 1);
+  // Two different POs both match: never guess.
+  const two = fakes({ twins: [zohoLine(), zohoLine({ id: 40001, zoho_purchaseorder_id: 'OTHER-PO' })] });
+  assert.equal((await ingestInboundOrderInTx(two.client, ORG, ebayOrder(), SYNC, two.deps)).attachedTo, undefined);
+  assert.equal(two.ingested.length, 1);
+  // Lines of its own already (a twin from before this writer): the repair retires it, the writer never re-points it.
+  const landed = fakes({ twins: [zohoLine()], ownLines: true });
+  assert.equal((await ingestInboundOrderInTx(landed.client, ORG, ebayOrder(), SYNC, landed.deps)).attachedTo, undefined);
+  assert.ok(!landed.sql.some((s) => /WITH cand AS/.test(s.text)));
+  // Not eBay: never probed.
+  const manual = fakes({ twins: [zohoLine()] });
+  await ingestInboundOrderInTx(manual.client, ORG, draft(), CTX, manual.deps);
+  assert.ok(!manual.sql.some((s) => /WITH cand AS/.test(s.text)));
+});
+
+test('a tracking number in scientific notation is refused at the boundary, before any write', async () => {
+  const f = fakes();
+  await assert.rejects(
+    () => ingestInboundOrderInTx(f.client, ORG, ebayOrder({ tracking: [{ number: '9.434608106245533e+21', carrier: '' }] }), SYNC, f.deps),
+    (err: unknown) => err instanceof InboundOrderRefused && err.status === 400 && /scientific notation/.test(err.message),
+  );
+  assert.equal(f.sql.length, 0);
+  assert.equal(isScientificNotationTracking('9.434608106245533E+21'), true);
+  assert.equal(isScientificNotationTracking('9E21'), true);
+  assert.equal(isScientificNotationTracking('9434608106245533522453'), false);
+  assert.equal(isScientificNotationTracking('1Z999AA10123456784'), false);
 });

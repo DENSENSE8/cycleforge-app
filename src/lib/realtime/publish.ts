@@ -17,6 +17,7 @@ import {
   getKioskBridgeChannelName,
 } from '@/lib/realtime/channels';
 import { SKU_STOCK_PHOTO_CHANGED_EVENT } from '@/lib/realtime/sku-stock-photo-request';
+import { SKU_PHOTO_CHANGED_EVENT } from '@/lib/realtime/sku-photo-events';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { getPrimaryTechStaffIds } from '@/lib/neon/staff-stations-queries';
 import { formatPSTTimestamp } from '@/utils/date';
@@ -888,6 +889,25 @@ export async function publishUnitPhotoChanged(payload: UnitPhotoChangedPayload) 
     photo_id: photoId != null && Number.isFinite(photoId) ? photoId : null,
     total_photo_count:
       totalPhotoCount != null && Number.isFinite(totalPhotoCount) ? totalPhotoCount : null,
+    source: payload.source,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
+/** A catalog SKU's (`sku_catalog`) photos changed — the prepack desk's reply to a phone catalog-photo capture. */
+export async function publishSkuPhotoChanged(payload: {
+  organizationId: string;
+  action: 'insert' | 'delete';
+  skuCatalogId: number;
+  source: string;
+}) {
+  const skuCatalogId = Number(payload.skuCatalogId);
+  if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) return;
+
+  await publishEvent(getStationChannelName(payload.organizationId), SKU_PHOTO_CHANGED_EVENT, {
+    type: SKU_PHOTO_CHANGED_EVENT,
+    action: payload.action,
+    sku_catalog_id: skuCatalogId,
     source: payload.source,
     timestamp: formatPSTTimestamp(),
   });

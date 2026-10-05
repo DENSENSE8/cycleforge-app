@@ -8,7 +8,7 @@ import {
 } from '@/design-system/components';
 import { IconButton } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
-import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { useLabelFaceProductSlots } from '@/components/labels/LabelFaceProductSlots';
 import {
   ProductLabelEditPopover,

@@ -34,10 +34,19 @@ export async function fetchLabelBatch(id: number): Promise<LabelBatchDetail> {
   return readData(await fetch(`${ENDPOINT}/${id}`, { credentials: 'same-origin', cache: 'no-store' }));
 }
 
+export async function deleteLabelBatch(id: number): Promise<void> {
+  await readData(await fetch(`${ENDPOINT}/${id}`, { method: 'DELETE', credentials: 'same-origin' }));
+}
+
 /** Upload one label PDF. Pass the same `clientEventId` to retry an upload idempotently. */
-export async function uploadLabelBatch(file: File, clientEventId: string = safeRandomUUID()): Promise<LabelBatchUploadResult> {
+export async function uploadLabelBatch(
+  file: File,
+  clientEventId: string = safeRandomUUID(),
+  options: { matchOrder?: boolean } = {},
+): Promise<LabelBatchUploadResult> {
   const form = new FormData();
   form.set('file', file);
   form.set('clientEventId', clientEventId);
+  if (options.matchOrder === false) form.set('matchOrder', 'false');
   return readData(await fetch(ENDPOINT, { method: 'POST', body: form, credentials: 'same-origin' }));
 }

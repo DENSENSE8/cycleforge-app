@@ -6,6 +6,9 @@ import {
   emptyInboundOrderLine,
   inboundOrderMissing,
   INBOUND_RETURN_REASONS,
+  isScientificRenderingOf,
+  scientificTrackingProbe,
+  trueTrackingFor,
   parseInboundReturnReason,
   type InboundOrderDraft,
 } from './inbound-order-draft';
@@ -91,5 +94,33 @@ describe('return reason round-trip', () => {
   it('a detail that itself carries the separator survives', () => {
     const raw = composeInboundReturnReason('Other', 'box — crushed — wet');
     assert.deepEqual(parseInboundReturnReason(raw), { reason: 'Other', detail: 'box — crushed — wet' });
+  });
+});
+
+describe('scientific-notation tracking (2026-09 eBay imports)', () => {
+  it('recovers the true number exactly from a row that kept it, by the same rendering', () => {
+    const sci = '9.434608106245533e+21';
+    assert.deepEqual(scientificTrackingProbe(sci), { prefix: '943460810624553', length: 22 });
+    assert.equal(isScientificRenderingOf(sci, '9434608106245533522453'), true);
+    // Rounded mantissa: the probe drops its last digit so the true number still matches.
+    assert.equal(isScientificRenderingOf('9.400111899223457e+21', '9400111899223456784123'), true);
+    // A neighbour that rounds to another float is not it (several that round alike: the repair requires one).
+    assert.equal(isScientificRenderingOf(sci, '9434608106245533999999'), false);
+    assert.equal(isScientificRenderingOf(sci, '1Z999AA10123456784'), false);
+    assert.equal(scientificTrackingProbe('9434608106245533522453'), null);
+  });
+});
+
+describe('trueTrackingFor — the refetch verify step', () => {
+  it('accepts the one refetched number the stored value was rounded from', () => {
+    const sci = '9.434608106245533e+21';
+    assert.equal(trueTrackingFor(sci, ['1Z999AA10123456784', '9434608106245533522453', null]), '9434608106245533522453');
+    // eBay answered with a different package's number: nothing is written.
+    assert.equal(trueTrackingFor(sci, ['9400111899223456784123']), null);
+    // Two different numbers that both render to it: ambiguous, nothing is written.
+    assert.equal(trueTrackingFor(sci, ['9434608106245533522453', '9434608106245533522400']), null);
+    // The same number twice (two lines of one order) is one answer.
+    assert.equal(trueTrackingFor(sci, ['9434608106245533522453', '9434608106245533522453']), '9434608106245533522453');
+    assert.equal(trueTrackingFor(sci, []), null);
   });
 });

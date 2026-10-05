@@ -19,7 +19,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const parsed = parseBody(NavFacetsQuery, { context: searchParams.get('context') });
     if (parsed instanceof NextResponse) return parsed;
     const result = await getNavFacets(
-      { orgId: ctx.organizationId, permissions: ctx.permissions },
+      { orgId: ctx.organizationId, staffId: ctx.staffId ?? null, permissions: ctx.permissions },
       parsed.context,
       searchParams,
     );

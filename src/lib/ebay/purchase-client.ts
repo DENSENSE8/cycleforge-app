@@ -200,9 +200,11 @@ interface ParsedGetOrdersResponse {
 const tradingXmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '@_',
-  // Keep numeric-looking IDs as strings when possible — ItemID etc. can exceed
-  // JS safe integers; text nodes that look like numbers still parse as numbers
-  // for small values, so mappers always coerce via str().
+  // Every tag's text stays the string eBay sent. The default numeric coercion
+  // turned a 22-digit USPS tracking number into a float — String() of it read
+  // "9.434608106245533e+21", digits lost, so the carton never paired with the
+  // real package (the 2026-09 eBay buyer imports). Mappers coerce via str()/num().
+  parseTagValue: false,
   isArray: (name) =>
     name === 'Order'
     || name === 'Transaction'
@@ -359,15 +361,32 @@ export function buildGetOrdersDateFilter(sinceIso: string | null, nowMs = Date.n
   return { modTimeFrom: toEbayIso(new Date(fromMs)) };
 }
 
+/** Most order ids one GetOrders OrderIDArray call names (eBay's page size). */
+export const GET_ORDERS_MAX_ORDER_IDS = 100;
+
+/**
+ * GetOrders request XML. `orderIds` asks for those orders by id (OrderIDArray
+ * — eBay then ignores date filters; buyer orders up to 90 days old); else the
+ * mod-time / lookback window.
+ */
 export function buildGetOrdersRequestXml(opts: {
   pageNumber: number;
   sinceIso: string | null;
   nowMs?: number;
+  orderIds?: readonly string[];
 }): string {
-  const filter = buildGetOrdersDateFilter(opts.sinceIso, opts.nowMs);
-  const dateXml = filter.modTimeFrom
-    ? `<ModTimeFrom>${escapeXml(filter.modTimeFrom)}</ModTimeFrom>`
-    : `<NumberOfDays>${filter.numberOfDays ?? INITIAL_LOOKBACK_DAYS}</NumberOfDays>`;
+  let selectXml: string;
+  if (opts.orderIds && opts.orderIds.length > 0) {
+    if (opts.orderIds.length > GET_ORDERS_MAX_ORDER_IDS) {
+      throw new Error(`GetOrders names at most ${GET_ORDERS_MAX_ORDER_IDS} order ids per call (got ${opts.orderIds.length})`);
+    }
+    selectXml = `<OrderIDArray>${opts.orderIds.map((id) => `<OrderID>${escapeXml(id)}</OrderID>`).join('')}</OrderIDArray>`;
+  } else {
+    const filter = buildGetOrdersDateFilter(opts.sinceIso, opts.nowMs);
+    selectXml = filter.modTimeFrom
+      ? `<ModTimeFrom>${escapeXml(filter.modTimeFrom)}</ModTimeFrom>`
+      : `<NumberOfDays>${filter.numberOfDays ?? INITIAL_LOOKBACK_DAYS}</NumberOfDays>`;
+  }
 
   return `<?xml version="1.0" encoding="utf-8"?>
 <GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
@@ -375,7 +394,7 @@ export function buildGetOrdersRequestXml(opts: {
   <WarningLevel>High</WarningLevel>
   <OrderRole>Buyer</OrderRole>
   <OrderStatus>All</OrderStatus>
-  ${dateXml}
+  ${selectXml}
   <Pagination>
     <EntriesPerPage>${GET_ORDERS_PAGE_SIZE}</EntriesPerPage>
     <PageNumber>${Math.max(1, opts.pageNumber)}</PageNumber>
@@ -389,9 +408,13 @@ interface BuyerTokenContext {
   environment: EbayEnvironment;
 }
 
+/** The buyer token is expired and refreshing it would write the account row — refused when the caller forbids writes. */
+export class EbayBuyerTokenRefreshRequired extends Error {}
+
 async function getValidBuyerAccessToken(
   orgId: OrgId,
   accountName: string,
+  opts: { allowRefresh?: boolean } = {},
 ): Promise<BuyerTokenContext> {
   const {
     getEbayAppCreds,
@@ -427,7 +450,11 @@ async function getValidBuyerAccessToken(
   if (tokens.tokenExpiresAt >= fiveMinutesFromNow && tokens.accessToken) {
     return { accessToken: tokens.accessToken, sandbox, environment: creds.environment };
   }
-
+  if (opts.allowRefresh === false) {
+    throw new EbayBuyerTokenRefreshRequired(
+      `eBay buyer token for "${accountName}" expires ${tokens.tokenExpiresAt.toISOString()} — refreshing it writes the account row`,
+    );
+  }
   const { accessToken: fresh, expiresIn } = await refreshEbayAccessToken(
     creds.appId,
     creds.certId,
@@ -453,12 +480,14 @@ async function callTradingGetOrdersPage(opts: {
   sandbox: boolean;
   pageNumber: number;
   sinceIso: string | null;
+  orderIds?: readonly string[];
   fetchImpl?: typeof fetch;
 }): Promise<ParsedGetOrdersResponse> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const body = buildGetOrdersRequestXml({
     pageNumber: opts.pageNumber,
     sinceIso: opts.sinceIso,
+    orderIds: opts.orderIds,
   });
 
   const res = await fetchImpl(tradingEndpoint(opts.sandbox), {
@@ -515,6 +544,34 @@ export async function fetchBuyerPurchaseOrders(
     if (pageNumber > 50) break;
   }
 
+  return lines;
+}
+
+/**
+ * Fetch these buyer orders by id (Trading GetOrders OrderIDArray, OrderRole
+ * Buyer — orders up to 90 days old, whatever their mod time), in batches of
+ * {@link GET_ORDERS_MAX_ORDER_IDS}. Orders the account did not buy come back
+ * absent, not as errors. `allowRefresh: false` never refreshes the token (a
+ * write): an expiring token throws {@link EbayBuyerTokenRefreshRequired}.
+ */
+export async function fetchBuyerPurchaseOrdersByIds(
+  orgId: OrgId,
+  account: BuyerAccountRef,
+  orderIds: readonly string[],
+  opts: { allowRefresh?: boolean } = {},
+): Promise<BuyerPurchaseLine[]> {
+  const ids = [...new Set(orderIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return [];
+  const { accessToken, sandbox } = await getValidBuyerAccessToken(orgId, account.accountName, opts);
+  const lines: BuyerPurchaseLine[] = [];
+  for (let start = 0; start < ids.length; start += GET_ORDERS_MAX_ORDER_IDS) {
+    const batch = ids.slice(start, start + GET_ORDERS_MAX_ORDER_IDS);
+    for (let pageNumber = 1, hasMore = true; hasMore && pageNumber <= 50; pageNumber += 1) {
+      const page = await callTradingGetOrdersPage({ accessToken, sandbox, pageNumber, sinceIso: null, orderIds: batch });
+      lines.push(...mapTradingOrdersToBuyerLines(page.orders));
+      hasMore = page.hasMoreOrders;
+    }
+  }
   return lines;
 }
 

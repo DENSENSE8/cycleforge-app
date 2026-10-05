@@ -56,6 +56,7 @@ export function ProductCatalogWorkspace() {
     setImportActive(false);
     clearTableImportDraft(CATALOG_IMPORT_DESCRIPTOR.surfaceId);
   }, [setImportActive]);
+  const reloadCatalog = useCallback(() => setReload((n) => n + 1), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -107,7 +108,7 @@ export function ProductCatalogWorkspace() {
       ) : (
         <>
           {error ? <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p> : null}
-          {!error ? <ProductCatalogList rows={rows} loading={loading} /> : null}
+          {!error ? <ProductCatalogList rows={rows} loading={loading} onChanged={reloadCatalog} /> : null}
         </>
       )}
       <AddProductOverlay

@@ -17,6 +17,8 @@ import { copyToClipboard } from '@/utils/_dom';
 // Compose the inbox's own deep-link resolver rather than re-deriving routes —
 // a second href map is the drift the notification waist exists to prevent.
 import { notificationHref } from '@/lib/notifications/notification-href';
+import { supportHref } from '@/lib/nav/route-tree';
+import { scrubRelayAddresses } from '@/lib/support/contact-face';
 import {
   INBOX_ENTITY_NOUN,
   isNotifiableEntityType,
@@ -95,11 +97,14 @@ function primaryFor(it: ActivityInboxItem): string {
     case 'return_pending_test':
       return it.productTitle?.trim() || 'Needs testing';
     case 'support_followup':
-      return it.ticketSubject?.trim() || (it.ticketId ? `Ticket #${it.ticketId}` : 'Support follow-up');
+      return (
+        (it.ticketSubject?.trim() && scrubRelayAddresses(it.ticketSubject.trim())) ||
+        (it.supportItemId != null ? `Support #${it.supportItemId}` : 'Support follow-up')
+      );
     case 'priority_unbox':
       return 'Unbox this first';
     case 'work_task':
-      return afterSep(it.title) || 'Handed to you';
+      return scrubRelayAddresses(afterSep(it.title)) || 'Handed to you';
     case 'warranty_claim':
       return it.claimNumber || afterSep(it.title);
     case 'repair_status':
@@ -114,9 +119,9 @@ function hrefFor(it: ActivityInboxItem): string | null {
     return notificationHref(it.entityType, it.entityId);
   }
   if (it.kind === 'support_followup' && it.ticketId) {
-    return `/support?ticket=${it.ticketId}`;
+    return it.supportItemId != null ? supportHref({ item: it.supportItemId }) : supportHref({ q: it.ticketId });
   }
-  if (it.kind === 'warranty_claim' && it.claimId) return `/support?mode=warranty&open=${it.claimId}`;
+  if (it.kind === 'warranty_claim' && it.claimId) return supportHref();
   if (
     (it.kind === 'order_ready_ship' ||
       it.kind === 'return_pending_test' ||
@@ -183,7 +188,7 @@ function metaFactFor(
   if (it.kind === 'support_followup' && it.ticketId) return `#${it.ticketId}`;
   if (it.kind === 'staff_message' && it.body) return it.body;
   if (it.kind === 'work_task' && it.urgent) return 'Urgent';
-  return it.subtitle?.trim() || KIND_LABEL[it.kind];
+  return (it.subtitle?.trim() && scrubRelayAddresses(it.subtitle.trim())) || KIND_LABEL[it.kind];
 }
 
 /** The Inbox's tabs. Every row lands in All; the rest are derived from what a row IS (event key / reason / session kind). */
@@ -247,7 +252,7 @@ function DurableInboxRow({
   const occurredMs = new Date(item.lastEventAt || item.occurredAt).getTime();
   const tab = durableTab(item);
   const face = DURABLE_FACE[tab];
-  const title = item.title ? `${item.eventLabel}: ${item.title}` : item.eventLabel;
+  const title = item.title ? `${item.eventLabel}: ${scrubRelayAddresses(item.title)}` : item.eventLabel;
   const { getStaffName } = useStaffNameMap();
   const sender = tab === 'alerts' && item.actorStaffId ? item.actorStaffId : null;
   return (
@@ -324,7 +329,7 @@ function DurableInboxRow({
                           item.ticketNumber ?? item.entityId
                         }`,
                         tab === 'alerts' ? followUpDueLabel(item.dueAt) : null,
-                        tab === 'alerts' ? item.note : null,
+                        tab === 'alerts' && item.note ? scrubRelayAddresses(item.note) : null,
                       ]
                         .filter(Boolean)
                         .join(' · ')}

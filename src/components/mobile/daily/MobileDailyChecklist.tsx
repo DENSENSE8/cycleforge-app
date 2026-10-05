@@ -200,7 +200,7 @@ export function MobileDailyChecklist() {
     () => (ticketActive ? listedTasks.filter((task) => taskMatchesTicketStatuses(task.row, ticketFilter)) : listedTasks),
     [listedTasks, ticketActive, ticketFilter],
   );
-  /** The board's type groups (Support · Long-term projects · Standalone tasks), each in list order — a hairline splits them. */
+  /** The board's type groups (Long-term projects · Standalone tasks), each in list order — a hairline splits them. */
   const taskGroups = useMemo(() => {
     const typed = taskRows.map((task) => ({ task, type: taskBoardRowType(taskBoardRowFromTask(task.row)) }));
     return TASK_BOARD_ROW_TYPES.map((type) => ({ type, tasks: typed.filter((t) => t.type === type).map((t) => t.task) })).filter(

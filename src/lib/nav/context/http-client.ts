@@ -28,11 +28,14 @@ export class NavHttpError extends Error {
   }
 }
 
-async function getJson(url: string, signal?: AbortSignal): Promise<unknown> {
-  const res = await fetch(url, { credentials: 'same-origin', signal });
+async function getJson(url: string, signal?: AbortSignal, init: RequestInit = {}): Promise<unknown> {
+  const res = await fetch(url, { credentials: 'same-origin', signal, ...init });
   if (!res.ok) throw new NavHttpError(res.status, url.split('?')[0] ?? url);
   return res.json();
 }
+
+/** Past this many characters a pasted list leaves the URL for a POST body (cookies + request line stay well under the 16KB header cap). */
+const NAV_LOCATE_GET_MAX_REFS_CHARS = 2048;
 
 /** `GET /api/nav/context?path=` — `view: 'top'` is the `‹` peek. */
 export async function fetchNavContext(
@@ -61,8 +64,9 @@ export async function fetchNavFacets(
 }
 
 /**
- * `GET /api/nav/locate` — where identifiers live. `q` = the field's text
- * (bucket counts only); `refs` = a pasted list (one entry per ref).
+ * `/api/nav/locate` — where identifiers live. `q` = the field's text (bucket
+ * counts only); `refs` = a pasted list (one entry per ref). A long list is a
+ * POST (same answer, same gate) so it never outgrows the URL.
  */
 export async function fetchNavLocate(
   scope: NavLocateScope,
@@ -71,7 +75,19 @@ export async function fetchNavLocate(
 ): Promise<NavLocateResponse> {
   const qs = new URLSearchParams({ locator: scope });
   if ('q' in input) qs.set('q', input.q);
-  else qs.set('refs', input.refs.join(','));
+  else {
+    const refs = input.refs.join(',');
+    if (refs.length > NAV_LOCATE_GET_MAX_REFS_CHARS) {
+      return NavLocateResponseSchema.parse(
+        await getJson('/api/nav/locate', signal, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locator: scope, refs: input.refs }),
+        }),
+      );
+    }
+    qs.set('refs', refs);
+  }
   return NavLocateResponseSchema.parse(await getJson(`/api/nav/locate?${qs}`, signal));
 }
 

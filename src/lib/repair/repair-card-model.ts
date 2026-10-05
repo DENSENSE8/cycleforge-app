@@ -1,15 +1,16 @@
 /**
  * The REPAIR CARD's facts — one repair ticket (`RSRecord`) → what the triage
- * card paints (`RecordCardModel`, owner 2026-09-29). Pure: the host
- * (`RepairCardList`) hands the result to the house `RecordCard` face.
+ * card paints (`RecordCardModel`, owner 2026-09-29; retailored 2026-10-04).
+ * Pure: the host (`RepairCardList`) hands the result to the house
+ * `RecordCard` face.
  *
  * Line 1 — identity: the Zendesk ticket (the one identifier; the internal
- * `RS-{id}` never paints) and the carton `R-{id}` when the drop-off ticket was
- * received, the channel it came through, the customer; the status (the
- * card's inline status control) and the SLA top-right, in the orders' ladder.
- * Line 2 — the product (title, catalog photo when there is one).
- * Line 3 — facts: issue · price · received / opened · received by; the serial
- * bottom-right, where the orders' next step sits.
+ * `RS-{id}` never paints), the carton `R-{id}` when the drop-off ticket was
+ * received, the device's serial; the channel it came through (unless the
+ * page is already that channel's view) and the customer; the SLA top-right.
+ * The status is the rail + glyph only.
+ * Line 2 — the issue as the headline (the device's title when there is none).
+ * Line 3 — facts: the device · received / opened · received by.
  */
 
 import type { RecordCardDeadline } from '@/design-system/components/record-card/record-card-types';
@@ -27,7 +28,7 @@ import { REPAIR_CHANNEL_LABEL, parseRepairChannel, type RepairChannel } from '@/
 import { REPAIR_SLA_BUSINESS_DAYS } from '@/lib/repair/repair-due-at';
 import { isRsDisplayCode } from '@/lib/repair/repair-paper-ticket';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
-import { repairPriceDisplay, repairPriceSortValue } from '@/lib/repair/repair-queue-model';
+import { repairPriceSortValue } from '@/lib/repair/repair-queue-model';
 import type { RepairSort } from '@/lib/repair/repair-sort';
 import { diffDaysDateKey, formatDateKeyShort, formatMonthDayTimePST, toPSTDateKey } from '@/utils/date';
 
@@ -50,8 +51,8 @@ export interface RepairCardModel {
   handles: RepairHandles;
   customer: string | null;
   channel: RepairChannel | null;
-  /** The serial — a code fact at the card's bottom-right. */
-  serial: RecordFactFace;
+  /** The device's serial — its identification on line 1; null = not on the ticket. */
+  serial: string | null;
   record: ViewCardModel<typeof REPAIR_QUEUE_VIEW>;
 }
 
@@ -127,35 +128,37 @@ function repairDateFact(repair: RSRecord): RecordFactFace | null {
   return { kind: 'date', text: `${verb} ${formatDateKeyShort(key)}`, title: `${verb} ${formatMonthDayTimePST(source)}` };
 }
 
-/** The fact columns the repair card's line reads, in order (`REPAIR_QUEUE_VIEW.facts`): the issue leads. */
-export function repairLineFacts(
+/** The line under the issue (`REPAIR_QUEUE_VIEW.facts`): the device, when the issue holds the headline; the date; the receiver. */
+function repairLineFacts(
   repair: RSRecord,
+  issueLeads: boolean,
   staffName?: (id: number) => string | null,
 ): Readonly<Record<string, RecordFactFace | null>> {
-  const issue = String(repair.issue ?? '').replace(/\s+/g, ' ').trim();
-  const price = repairPriceDisplay(repair);
   const receiver = repair.received_by_staff_id != null ? staffName?.(repair.received_by_staff_id) ?? null : null;
   return {
-    issue: issue ? { kind: 'text', text: issue.length > 80 ? `${issue.slice(0, 79)}…` : issue } : null,
-    price: { kind: 'money', text: price, estimate: false, estimateTitle: '' },
+    product: issueLeads ? { kind: 'text', text: repairTitle(repair) } : null,
     date: repairDateFact(repair),
     staff: receiver ? { kind: 'text', text: `By ${receiver}` } : null,
   };
 }
 
-/**
- * One repair's card. `todayKey` is the warehouse's PT day the SLA reads
- * against; `staffName` names the staffer who received it (the wire sends only
- * the id) — null / absent = the fact is left off.
- */
-export function repairCardModel(repair: RSRecord, todayKey: string, staffName?: (id: number) => string | null): RepairCardModel {
+export interface RepairCardOptions {
+  /** Names the staffer who received it (the wire sends only the id); absent = the fact is left off. */
+  staffName?: (id: number) => string | null;
+  /** The page is one channel's view (`?channel=`): the channel is the page's, so no card repeats it. */
+  channelPinned?: boolean;
+}
+
+/** One repair's card. `todayKey` is the warehouse's PT day the SLA reads against. */
+export function repairCardModel(repair: RSRecord, todayKey: string, { staffName, channelPinned = false }: RepairCardOptions = {}): RepairCardModel {
   const handles = repairHandles(repair);
   const customer = resolveRepairContact(repair).name;
   const channel = parseRepairChannel(repair.intake_channel);
   const state = repairStatusFace(repair.status);
   const statusFace = repairStatusOperatorLabel(state.label);
   const title = repairTitle(repair);
-  const serial = String(repair.serial_number ?? '').trim();
+  const issue = String(repair.issue ?? '').replace(/\s+/g, ' ').trim();
+  const serial = String(repair.serial_number ?? '').trim() || null;
   // "#10089 · R-812" — the card's accessible / spoken name.
   const name = [handles.ticket ? `#${handles.ticket}` : null, handles.carton].filter(Boolean).join(' · ') || title;
   return {
@@ -165,7 +168,7 @@ export function repairCardModel(repair: RSRecord, todayKey: string, staffName?: 
     handles,
     customer,
     channel,
-    serial: serial ? { kind: 'code', text: serial, title: 'Serial number' } : { kind: 'missing', text: 'No serial' },
+    serial,
     record: {
       key: `repair:${repair.id}`,
       leadId: repair.id,
@@ -179,21 +182,21 @@ export function repairCardModel(repair: RSRecord, todayKey: string, staffName?: 
         check: `Select repair ${name}`,
       },
       // The dot is the host's (a glyph node); the adapter stays pure data.
-      channel: channel
-        ? { label: REPAIR_CHANNEL_LABEL[channel], tooltip: `${REPAIR_CHANNEL_LABEL[channel]} — how the device reached us`, dot: null, badge: null }
-        : null,
+      channel:
+        channel && !channelPinned
+          ? { label: REPAIR_CHANNEL_LABEL[channel], tooltip: `${REPAIR_CHANNEL_LABEL[channel]} — how the device reached us`, dot: null, badge: null }
+          : null,
       person: customer,
       chips: [],
       notes: { fixed: null, own: null },
       status: { kind: 'deadline', ...repairSla(repair, todayKey) },
-      // The serial holds the bottom-right; the status control says where the ticket stands.
       next: null,
       lines: [
         {
           id: repair.id,
-          title,
-          photoUrl: (repair.image_url || '').trim() || null,
-          facts: repairLineFacts(repair, staffName),
+          title: issue || title,
+          photoUrl: null,
+          facts: repairLineFacts(repair, Boolean(issue), staffName),
           alert: false,
           alertNote: null,
         },

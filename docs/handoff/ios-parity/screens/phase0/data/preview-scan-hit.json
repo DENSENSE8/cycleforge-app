@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "matched": true,
+  "resolvedMode": "tracking",
+  "value": "1Z999AA10123456784",
+  "hit": {
+    "receivingId": 48213,
+    "idKind": "tracking",
+    "idValue": "1Z999AA10123456784",
+    "poNumber": "PO-00412",
+    "ticketNumber": null,
+    "status": "ARRIVED",
+    "lineCount": 2,
+    "unitCount": 2,
+    "title": "Sony WH-1000XM4 Headphones",
+    "sourcePlatform": "ebay",
+    "openedAt": null
+  }
+}

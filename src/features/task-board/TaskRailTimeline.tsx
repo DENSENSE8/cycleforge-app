@@ -4,7 +4,7 @@
  * The record's **Timeline** tab (owner 2026-09-29, R6: "what was said on the
  * call as a timeline with a vertical hairline of staff records"). Head = the
  * compact Log composer (`TaskRailFollowUp`); body = one merged stream —
- * follow-ups, ticket comments, created / owners / status / due edits and
+ * follow-ups, created / owners / status / due edits and
  * alerts sent — newest 5, then "Show N earlier events".
  *
  * Each entry reads like a board row (TaskTable), in the board's own voice:
@@ -34,18 +34,16 @@ import { TaskRailFollowUp } from './TaskRailFollowUp';
 
 export function TaskRailTimeline({
   taskId,
-  ticketNumber,
   nextFollowUpMs,
   nowMs,
   onPatch,
 }: {
   taskId: number;
-  ticketNumber: number | null;
   nextFollowUpMs: number | null;
   nowMs: number;
   onPatch: (patch: TaskDeskPatch) => Promise<unknown>;
 }) {
-  const { items, loading } = useTaskTimeline(taskId, ticketNumber);
+  const { items, loading } = useTaskTimeline(taskId);
   // Keyed to the task: walking J/K to the next record starts it collapsed again.
   const [showAllFor, setShowAllFor] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());

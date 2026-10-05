@@ -12,10 +12,11 @@ import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
 import { StatusChips } from './StatusChip';
-import { ExternalLink, Printer } from '@/components/Icons';
+import { Edit, ExternalLink, Printer } from '@/components/Icons';
 import { InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFloorDelete } from '@/components/right-rail/InspectorFloorDelete';
-import { Panel, IconButton } from '@/design-system/primitives';
+import { Button, Panel, IconButton } from '@/design-system/primitives';
+import { LocationCrudDialog } from '@/components/locations/LocationCrudDialog';
 import {
   isSpecialBinBarcode,
   printSpecialBinLabelFromRow,
@@ -42,6 +43,7 @@ interface Props {
 export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
   const [contents, setContents] = useState<BinContentRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   // Soft-delete; endpoint refuses non-empty bins (409) — surfaced inline.
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -244,18 +246,37 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
               ) : undefined
             }
           >
-            <InspectorFloorDelete
-              onConfirm={handleDelete}
-              onDeleted={() => {
-                onDeleted?.();
-                onClose();
-              }}
-              label="Delete bin"
-              confirmLabel="Click again to delete bin"
-              data-testid="bin-details-delete"
-            />
+            <div className="flex w-full items-center justify-between gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Edit aria-hidden />}
+                onClick={() => setEditOpen(true)}
+                data-testid="bin-details-edit"
+              >
+                Edit location
+              </Button>
+              <InspectorFloorDelete
+                onConfirm={handleDelete}
+                onDeleted={() => {
+                  onDeleted?.();
+                  onClose();
+                }}
+                label="Delete location"
+                confirmLabel="Click again to delete location"
+                data-testid="bin-details-delete"
+              />
+            </div>
           </InspectorActionFloor>
         ) : null}
+        <LocationCrudDialog
+          open={editOpen}
+          onOpenChange={(next) => {
+            setEditOpen(next);
+            if (!next) onDeleted?.();
+          }}
+          initialBarcode={row.barcode}
+        />
       </div>
     </DetailStackRailRegistrar>
   );

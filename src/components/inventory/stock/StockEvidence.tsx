@@ -153,6 +153,7 @@ export function stockSummary(
     facts: [
       { label: 'Location × SKU pairs', value: pairs },
       { label: 'Products in stock', value: counts.inStockProducts },
+      { label: 'Low stock', value: counts.lowStockPairs, warn: counts.lowStockPairs > 0 },
       { label: 'On hold (TMP)', value: counts.onHoldPairs, warn: counts.onHoldPairs > 0 },
       { label: 'At or below zero', value: counts.outPairs, warn: counts.outPairs > 0 },
       { label: 'Rooms', value: rooms.length },

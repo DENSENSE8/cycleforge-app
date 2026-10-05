@@ -7,7 +7,7 @@ import {
 import { parseReceivingView, RECEIVING_VIEWS } from '@/lib/receiving/receiving-views';
 import { RECEIVING_HISTORY_LIMIT } from '@/lib/receiving/receiving-modes';
 import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
-import { parseRefInParam, REF_IN_PARAM } from '@/lib/receiving/reconcile';
+import { parseRefInParam, RECONCILE_ROW_LIMIT, REF_IN_PARAM } from '@/lib/receiving/reconcile';
 
 /**
  * Filter vocabularies shared by the GET filters (build-sql) and the POST/PATCH
@@ -118,9 +118,10 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
     ),
   ).slice(0, 500);
   // view=activity is History — the ENTIRE timeline (operator 2026-09-14),
-  // fetched in one long scroll; every other view stays a funnel page at the
+  // fetched in one long scroll; view=reconcile is a pasted list's every line
+  // (its verdict reads them all); every other view stays a funnel page at the
   // 500 ceiling. RECEIVING_HISTORY_LIMIT keeps client and server in step.
-  const limitCap = viewRaw === 'activity' ? RECEIVING_HISTORY_LIMIT : 500;
+  const limitCap = viewRaw === 'activity' ? RECEIVING_HISTORY_LIMIT : viewRaw === 'reconcile' ? RECONCILE_ROW_LIMIT : 500;
   const limit       = Math.min(Number(searchParams.get('limit') || 200), limitCap);
   const offset      = Math.max(Number(searchParams.get('offset') || 0), 0);
   const search      = String(searchParams.get('search') || '').trim();

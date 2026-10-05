@@ -107,6 +107,7 @@ function productFieldsFor(input: PrintProductLabelInput): ProductLabelFields {
     serialNumber: input.serialNumber,
     condition: input.condition,
     color: input.color,
+    serialCount: input.serialCount,
     matrix,
   });
   const title = sanitize(face.topLeft || sku);

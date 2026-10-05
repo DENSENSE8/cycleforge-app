@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-types';
 import { MediaLibraryPickerModal } from '@/components/photos/MediaLibraryPickerModal';
+import type { TicketPhotoTarget } from '@/hooks/useTicketPhotoStaging';
 
 interface SupportPhotoLibraryPickerProps {
-  ticketId: number;
+  /** A helpdesk ticket ("This ticket" tab) or a Support item's primary task ("This support item" tab). */
+  target: TicketPhotoTarget;
   receivingId?: number;
   open: boolean;
   onClose: () => void;
@@ -14,11 +16,11 @@ interface SupportPhotoLibraryPickerProps {
 }
 
 /**
- * Browse the internal media library from the support console — pick photos to
- * link to the open ticket and stage for the next reply / customer send.
+ * Browse the internal media library from a ticket or Support-item composer —
+ * pick photos to link to the open ticket / item and stage them in the composer.
  */
 export function SupportPhotoLibraryPicker({
-  ticketId,
+  target,
   receivingId,
   open,
   onClose,
@@ -26,24 +28,27 @@ export function SupportPhotoLibraryPicker({
   onSelect,
 }: SupportPhotoLibraryPickerProps) {
   const [selected, setSelected] = useState<ClaimPhotoInput[]>([]);
+  const ticketId = target.kind === 'ticket' ? target.ticketId : undefined;
+  const supportTaskId = target.kind === 'support' ? target.taskId : undefined;
 
   useEffect(() => {
     if (!open) return;
     setSelected([]);
-  }, [open, ticketId, receivingId]);
+  }, [open, ticketId, supportTaskId, receivingId]);
 
   return (
     <MediaLibraryPickerModal
       open={open}
       onClose={onClose}
       ticketId={ticketId}
+      supportTaskId={supportTaskId}
       receivingId={receivingId}
-      defaultTab="ticket"
-      subtitle={`Link photos · #${ticketId}`}
+      defaultTab={supportTaskId ? 'support' : 'ticket'}
+      subtitle={ticketId ? `Link photos · #${ticketId}` : 'Link photos to this support item'}
       selected={selected}
       onSelectedChange={setSelected}
       excludePhotoIds={excludePhotoIds}
-      confirmLabel="Add to reply"
+      confirmLabel={ticketId ? 'Add to reply' : 'Add to support item'}
       onConfirm={(photos) => {
         onSelect(
           photos.map((p) => ({

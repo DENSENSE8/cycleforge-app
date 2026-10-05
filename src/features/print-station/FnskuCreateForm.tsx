@@ -1,9 +1,17 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+/**
+ * Print station › **Add FNSKU** (owner 2026-10-04): a popover anchored right
+ * under the page header's Add FNSKU button (top right) — never inline in the
+ * list. FNSKU and Condition are required (the label prints the condition);
+ * Label, ASIN and SKU are optional. Saving opens the new FNSKU.
+ */
+
+import { useMemo, useState, type FormEvent, type RefObject } from 'react';
 import { Plus } from '@/components/Icons';
 import { FormField } from '@/design-system/components';
 import { Button, Panel, TextField } from '@/design-system/primitives';
+import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 import { FnskuConditionPicker } from './FnskuConditionPicker';
 
@@ -15,7 +23,16 @@ export interface CreatedFnsku {
   condition: string | null;
 }
 
-export function FnskuCreateForm({ onCancel, onCreated }: { onCancel: () => void; onCreated: (row: CreatedFnsku) => void }) {
+export function FnskuCreatePopover({
+  anchorRef,
+  onClose,
+  onCreated,
+}: {
+  /** The header's Add FNSKU button: the popover hangs right under it, right-aligned. */
+  anchorRef: RefObject<HTMLElement | null>;
+  onClose: () => void;
+  onCreated: (row: CreatedFnsku) => void;
+}) {
   const [fnsku, setFnsku] = useState('');
   const [productTitle, setProductTitle] = useState('');
   const [asin, setAsin] = useState('');
@@ -24,10 +41,11 @@ export function FnskuCreateForm({ onCancel, onCreated }: { onCancel: () => void;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const normalizedFnsku = useMemo(() => normalizeTrackingCanonical(fnsku), [fnsku]);
+  const ready = Boolean(normalizedFnsku && condition);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!normalizedFnsku || saving) return;
+    if (!ready || saving) return;
     setSaving(true);
     setError(null);
     try {
@@ -56,35 +74,33 @@ export function FnskuCreateForm({ onCancel, onCreated }: { onCancel: () => void;
   };
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 pb-4" data-testid="fnsku-create-form">
-      <Panel radius="lg" padding="none" elevation="none" className="overflow-hidden border border-border-hairline bg-surface-card">
+    // The condition picker's menu portals outside the panel (Radix): a press there must not close the popover.
+    <AnchoredLayer open onClose={onClose} anchorRef={anchorRef} placement="bottom-end" level="panelPopover" gap={6} ignoreClickSelector="[data-radix-popper-content-wrapper]">
+      <Panel
+        padding="none"
+        radius="xl"
+        elevation="overlay"
+        aria-label="Add FNSKU"
+        data-testid="fnsku-create-form"
+        className="flex max-h-[var(--anchored-available-height,none)] w-[28rem] flex-col overflow-y-auto"
+      >
         <form onSubmit={(event) => void submit(event)}>
-          <div className="border-b border-border-hairline px-4 py-3">
-            <p className="mode-label text-mode-muted">New catalog label</p>
-            <h2 className="text-role-title text-mode-ink">Add FNSKU</h2>
-          </div>
-
           <div className="grid gap-4 px-4 py-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <TextField
-                label="FNSKU"
-                value={fnsku}
-                onChange={(next) => setFnsku(normalizeTrackingCanonical(next))}
-                required
-                mono
-                autoFocus
-              />
+              <TextField label="FNSKU" value={fnsku} onChange={(next) => setFnsku(normalizeTrackingCanonical(next))} required mono autoFocus />
+            </div>
+            <div className="sm:col-span-2">
+              <FormField label="Condition" required>
+                <div className="flex">
+                  <FnskuConditionPicker value={condition} onChange={setCondition} disabled={saving} testId="fnsku-create-condition" />
+                </div>
+              </FormField>
             </div>
             <div className="sm:col-span-2">
               <TextField label="Label" value={productTitle} onChange={setProductTitle} />
             </div>
             <TextField label="ASIN (optional)" value={asin} onChange={(next) => setAsin(next.toUpperCase())} mono />
             <TextField label="SKU (optional)" value={sku} onChange={setSku} mono />
-            <div className="sm:col-span-2">
-              <FormField label="Condition" optionalHint="optional">
-                <FnskuConditionPicker value={condition} onChange={setCondition} disabled={saving} testId="fnsku-create-condition" />
-              </FormField>
-            </div>
             {error ? (
               <p role="alert" className="text-role-caption text-text-danger sm:col-span-2">
                 {error}
@@ -93,15 +109,16 @@ export function FnskuCreateForm({ onCancel, onCreated }: { onCancel: () => void;
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-border-hairline px-4 py-3">
-            <Button type="button" variant="secondary" disabled={saving} onClick={onCancel}>
+            {normalizedFnsku && !condition ? <p className="mr-auto text-role-caption text-text-warning">Choose a condition</p> : null}
+            <Button type="button" variant="secondary" disabled={saving} onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" loading={saving} disabled={!normalizedFnsku} icon={<Plus aria-hidden />} data-testid="fnsku-create-save">
+            <Button type="submit" variant="primary" loading={saving} disabled={!ready} icon={<Plus aria-hidden />} data-testid="fnsku-create-save">
               Add FNSKU
             </Button>
           </div>
         </form>
       </Panel>
-    </div>
+    </AnchoredLayer>
   );
 }

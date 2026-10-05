@@ -11,33 +11,53 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /**
- * `default` — soft card field (`rounded-xl` + border).
- * `flush` — joined bar cell (`rounded-none`, no outer border); host
- * owns the shared hairline. Floating label stays inside the field cell width.
- * `auth` — credential field with a persistent label notch in the hairline and
- * an accent-blue focus state. Kept opt-in so operational forms retain their
- * denser in-field labels.
+ * `default` — the card field: a hairline box with the sign-in floating label
+ * notched into its top edge (accent-blue on focus).
+ * `flush` — joined bar cell (`rounded-none`, no outer border); host owns the
+ * shared hairline. Same label.
  */
-type TextFieldAppearance = 'default' | 'flush' | 'auth';
+type TextFieldAppearance = 'default' | 'flush';
 
-const defaultFieldClass = {
-  input: 'border-border-soft focus:border-border-strong focus:ring-border-strong/10',
-  floatLabel: 'text-text-soft',
-  focusLabel: 'peer-focus:text-text-default',
-};
+/**
+ * THE floating field label — the one on sign-in (owner 2026-10-04: one
+ * floating label everywhere, blue, never the old in-field black one). Muted
+ * caption type that turns accent-blue while the field it labels has focus:
+ * put it AFTER a `peer` control inside a `relative` box.
+ *
+ * It never leaves its host's box, so no `overflow-hidden` parent can clip it:
+ * - `notch` (a boxed field) — sits on the field's top hairline; the host box
+ *   carries `FLOATING_LABEL_NOTCH_ROOM` (pt-2) so the notch is inside it.
+ * - `inset` (a flush joined-bar cell, which has no hairline of its own and
+ *   abuts its neighbours) — sits inside the cell's top edge.
+ */
+export function FloatingFieldLabel({
+  htmlFor,
+  id,
+  placement = 'notch',
+  children,
+}: {
+  htmlFor?: string;
+  id?: string;
+  placement?: 'notch' | 'inset';
+  children: ReactNode;
+}) {
+  const Tag = htmlFor ? 'label' : 'span';
+  return (
+    <Tag
+      {...(htmlFor ? { htmlFor } : {})}
+      id={id}
+      className={cn(
+        'pointer-events-none absolute text-role-caption font-semibold leading-4 text-text-muted transition-colors duration-150 peer-focus:text-blue-600 peer-focus-visible:text-blue-600',
+        placement === 'notch' ? 'left-3 top-0 bg-surface-card px-1.5' : 'left-3.5 top-1',
+      )}
+    >
+      {children}
+    </Tag>
+  );
+}
 
-const flushFieldClass = {
-  input: 'border-0 focus:ring-inset focus:ring-border-strong/15',
-  floatLabel: 'text-text-soft',
-  focusLabel: 'peer-focus:text-text-default',
-};
-
-const authFieldClass = {
-  input:
-    'border-border-soft hover:border-blue-300 focus:border-blue-600 focus:ring-blue-600/20',
-  floatLabel: 'text-text-muted',
-  focusLabel: 'peer-focus:text-blue-600',
-};
+/** The room a notched label needs above its field, inside the host box (half the label's 16px line). */
+export const FLOATING_LABEL_NOTCH_ROOM = 'pt-2';
 
 interface TextFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'size'> {
@@ -88,22 +108,20 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
   ) {
     const autoId = useId();
     const fieldId = id ?? autoId;
-    const float = value.length > 0;
     const flush = appearance === 'flush';
-    const auth = appearance === 'auth';
-    const t = flush ? flushFieldClass : auth ? authFieldClass : defaultFieldClass;
 
-    // Shared chrome — flush joins a host bar (no own radius/border); default keeps soft card.
+    // Shared chrome — flush joins a host bar (no own radius/border); default keeps the sign-in field box.
     const sharedClass = cn(
-      'peer block w-full bg-surface-card px-3.5 text-sm text-text-default outline-none transition-[box-shadow,border-color] duration-150 placeholder:text-transparent focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-faint',
-      flush ? cornerClass('flush') : 'rounded-mode-control border',
+      'peer block w-full bg-surface-card text-sm text-text-default outline-none transition-[box-shadow,border-color] duration-150 placeholder:text-transparent focus:ring-2 disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-faint',
+      flush
+        ? cn(cornerClass('flush'), 'border-0 px-3.5 focus:ring-inset focus:ring-blue-600/20')
+        : 'rounded-mode-control border border-border-soft px-4 hover:border-blue-300 focus:border-blue-600 focus:ring-blue-600/20',
       mono && 'font-mono',
-      t.input,
       inputClassName,
     );
 
     return (
-      <div className={cn('relative w-full min-w-0', flush && 'h-11', className)}>
+      <div className={cn('relative w-full min-w-0', flush ? 'h-11' : FLOATING_LABEL_NOTCH_ROOM, className)}>
         {multiline ? (
           <textarea
             id={fieldId}
@@ -114,10 +132,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             // floating <label> owns the empty-state text.
             placeholder=" "
             rows={rows}
-            className={cn(
-              sharedClass,
-              auth ? 'resize-none px-4 pb-3 pt-4 leading-snug' : 'resize-none pb-2 pt-5 leading-snug',
-            )}
+            className={cn(sharedClass, flush ? 'resize-none pb-2 pt-5 leading-snug' : 'resize-none pb-3 pt-4 leading-snug')}
             {...(inputProps as unknown as TextareaHTMLAttributes<HTMLTextAreaElement>)}
           />
         ) : (
@@ -128,38 +143,13 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
             disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
             placeholder=" "
-            className={cn(
-              sharedClass,
-              auth ? 'h-12 px-4 py-3' : 'h-11 pb-1 pt-5',
-              trailing && (auth ? 'pr-12' : 'pr-9'),
-            )}
+            className={cn(sharedClass, flush ? 'h-11 pb-1 pt-5' : 'h-12 py-3', trailing && 'pr-12')}
             {...inputProps}
           />
         )}
-        <label
-          htmlFor={fieldId}
-          className={cn(
-            'pointer-events-none absolute origin-left transition-all duration-150',
-            auth
-              ? cn(
-                  '-top-2 left-3 bg-surface-card px-1.5 text-role-caption font-semibold leading-4',
-                  t.floatLabel,
-                )
-              : cn(
-                  'left-3.5',
-                  float
-                    ? cn('top-1.5 text-role-micro font-semibold mode-label-case', t.floatLabel)
-                    : cn(multiline ? 'top-5' : 'top-3', 'text-sm text-text-faint'),
-                  // Label case follows the region's mode: sentence case on a desk, caps on the floor.
-                  'peer-focus:top-1.5 peer-focus:text-role-micro peer-focus:font-semibold peer-focus:mode-label-case',
-                ),
-            t.focusLabel,
-          )}
-        >
-          {label}
-        </label>
+        <FloatingFieldLabel htmlFor={fieldId} placement={flush ? 'inset' : 'notch'}>{label}</FloatingFieldLabel>
         {trailing && !multiline ? (
-          <div className="absolute right-1.5 top-1/2 -translate-y-1/2">{trailing}</div>
+          <div className={cn('absolute bottom-0 right-1.5 flex items-center', flush ? 'top-0' : 'top-2')}>{trailing}</div>
         ) : null}
       </div>
     );

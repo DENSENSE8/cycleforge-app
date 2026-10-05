@@ -239,7 +239,7 @@ export function LocationLabelRun({
               min={1}
               max={through}
               unit={[AXIS_NOUN[freeze.rack ? 'level' : vary], AXIS_NOUN[freeze.rack ? 'level' : vary]]}
-              label="Run starts at"
+              label="Starts at"
               disabled={disabled}
               testId="label-run-from"
             />
@@ -247,7 +247,7 @@ export function LocationLabelRun({
           <p className="px-mode-page pt-3 text-role-caption font-semibold text-text-muted">Through</p>
           <NumberTiles
             key={`${vary}-${freezeKey}`}
-            label="Run ends at"
+            label="Ends at"
             value={through}
             onPick={(n) => setThrough(n)}
             count={Math.max(10, SEED_THROUGH[freeze.rack ? 'level' : vary])}

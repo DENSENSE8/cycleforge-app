@@ -13,8 +13,6 @@ import {
   type TaskDeskStatus,
   type TaskDeskWireRow,
 } from '@/lib/tasks/task-desk-row';
-import { ticketStatusParam } from '@/lib/tasks/ticket-status-filter';
-import type { TicketStatus } from '@/design-system/tokens/ticket-status';
 import type { TaskHold } from '@/design-system/tokens/task-status';
 
 /** Lateness moves in minutes, not seconds — the old chip's cadence. */
@@ -60,15 +58,14 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
 }
 
 /**
- * Key + fetcher for one lane × scope of the desk — shared by the hook and WelcomeGate's welcome warm-up.
- * `ticketStatuses` narrows in SQL (`?ticketStatus=`); its own cache entry, under the same `['tasks', 'desk']` prefix every write invalidates.
+ * Key + fetcher for one lane × scope of the desk — shared by the hook and WelcomeGate's welcome warm-up,
+ * under the `['tasks', 'desk']` prefix every write invalidates.
  */
-export function taskDeskQueryOptions(lane: TaskDeskLane, scope: TaskDeskScope = 'mine', ticketStatuses: readonly TicketStatus[] = []) {
-  const ticketStatus = ticketStatusParam(ticketStatuses);
+export function taskDeskQueryOptions(lane: TaskDeskLane, scope: TaskDeskScope = 'mine') {
   return queryOptions({
-    queryKey: ticketStatus ? (['tasks', 'desk', lane, scope, ticketStatus] as const) : (['tasks', 'desk', lane, scope] as const),
+    queryKey: ['tasks', 'desk', lane, scope] as const,
     queryFn: async (): Promise<TaskDeskWireRow[]> => {
-      const params = new URLSearchParams({ lane, ...SCOPE_PARAMS[scope], ...(ticketStatus ? { ticketStatus } : {}) });
+      const params = new URLSearchParams({ lane, ...SCOPE_PARAMS[scope] });
       const res = await fetch(`/api/tasks?${params}`, { credentials: 'same-origin' });
       const data = (await readJson(res)) as unknown as TaskDeskListPayload;
       return data.tasks ?? [];

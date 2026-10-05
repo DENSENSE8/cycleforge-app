@@ -22,6 +22,7 @@ import { toDbEntityType, toUiEntityType } from '@/lib/search/search-hit';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
+import { supportHref } from '@/lib/nav/route-tree';
 import { identifyActions } from './actions';
 import {
   classifyIdentifyLine,
@@ -258,21 +259,22 @@ function exactCandidates(line: ClassifiedLine, rows: IdentifyRow[]): Scored[] {
       matchedOn: { field: probe.field, token: probe.token },
     });
   }
-  // A printed ticket handle IS the ticket id — nothing to look up.
+  // A printed ticket handle (T-9395) names the PROVIDER ticket number, not the
+  // local Support item id — /support finds its item by `q`.
   for (const p of line.probes) {
     const id = Number(p.value);
     if (p.kind !== 'ticket' || !Number.isSafeInteger(id) || id <= 0) continue;
     const facts: Facts = {
       kind: 'ticket',
       entityId: id,
-      title: `Support ticket #${id}`,
+      title: `Support item for ticket #${id}`,
       subtitle: null,
       brand: null,
       stage: null,
       deskView: null,
       condition: null,
       happenedAt: null,
-      href: recordHref({ kind: 'ticket', entityId: id }),
+      href: supportHref({ q: id }),
       actions: [{ id: 'open', label: 'Open' }],
     };
     out.set(`ticket:${id}`, {

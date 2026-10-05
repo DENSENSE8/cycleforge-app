@@ -9,6 +9,8 @@ import { IconButton } from '@/design-system/primitives';
 import { previousMobilePath } from '@/lib/mobile/nav-trail';
 
 export type MobileScanMode = 'view' | 'operate';
+/** Which way packages go at this phone: Inbound = arrival door loop, Outbound = scan out. */
+export type MobileScanDirection = 'in' | 'out';
 
 /** Scan owns this bar. The app shell must never paint a second scan button. */
 export function MobileScanHeader({
@@ -17,6 +19,8 @@ export function MobileScanHeader({
   onModeChange,
   operationLocked = false,
   exitHref,
+  direction,
+  onDirectionChange,
 }: {
   title: string;
   mode: MobileScanMode;
@@ -24,6 +28,9 @@ export function MobileScanHeader({
   operationLocked?: boolean;
   /** A contextual scan is a temporary full-screen task, so it closes with X. */
   exitHref?: string | null;
+  /** Inbound | Outbound — painted only when the owner passes both. */
+  direction?: MobileScanDirection;
+  onDirectionChange?: (direction: MobileScanDirection) => void;
 }) {
   const router = useRouter();
   const close = useCallback(() => {
@@ -53,6 +60,18 @@ export function MobileScanHeader({
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-semibold tracking-[-0.01em] text-text-default">{title}</p>
       </div>
+
+      {direction && onDirectionChange ? (
+        <IdentifierToggle
+          value={direction}
+          onChange={onDirectionChange}
+          ariaLabel="Scan direction"
+          options={[
+            { value: 'in', label: 'Inbound' },
+            { value: 'out', label: 'Outbound' },
+          ]}
+        />
+      ) : null}
 
       {operationLocked ? (
         <span className="rounded-mode-pill bg-surface-sunken px-2.5 py-1 text-role-caption font-semibold text-text-muted">

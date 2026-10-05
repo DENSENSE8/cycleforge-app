@@ -1,9 +1,9 @@
 /**
- * Arrival urgency tier — which urgency shelf a carton belongs on at the door.
+ * Package urgency tier at arrival — how urgent a package is at the door.
  *
  * One vocabulary: the 0..3 tier of `receiving_carton.priority_tier`,
  * `inbound_order.priority_tier` and `InboundOrderDraft.priority`
- * (0 = most urgent; labels in {@link PRIORITY_OVERRIDE_TIERS}). Pure — the
+ * (0 = most urgent; labels in `PRIORITY_OVERRIDE_TIERS`). Pure — the
  * placement route gathers the facts, this decides.
  *
  * Precedence (first hit wins):
@@ -17,7 +17,7 @@
  *   6. {@link ARRIVAL_FALLBACK_TIER}.
  */
 
-import { priorityOverrideTier, PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
+import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 
 export type ArrivalTier = 0 | 1 | 2 | 3;
 
@@ -118,8 +118,3 @@ export function arrivalTierReason(source: ArrivalTierSource, platform?: string |
       return 'Default';
   }
 }
-
-/** Every tier, most urgent first — the editor's option list. */
-export const ARRIVAL_TIERS: readonly ArrivalTier[] = PRIORITY_OVERRIDE_TIERS.map(
-  (t) => t.value as ArrivalTier,
-);

@@ -46,6 +46,8 @@ export interface PhotoLibraryFilterState {
   sku?: string;
   /** Zendesk claim ticket number (photo_entity_links ZENDESK_TICKET.entity_id). */
   ticketId?: string;
+  /** A task's media (`photo_entity_links` WORK_ASSIGNMENT.entity_id) — a Support item's primary task in the composer picker. */
+  taskId?: string;
   /** Local pickup order id (local_pickup_orders.id). */
   pickupId?: string;
   /** Returns RMA number (rma_authorizations.rma_number). */

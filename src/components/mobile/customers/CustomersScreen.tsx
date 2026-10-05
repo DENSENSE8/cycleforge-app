@@ -8,6 +8,7 @@ import { MobileDataListRow } from '@/design-system/components/MobileDataListRow'
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import type { CustomerDirectoryPayload } from '@/lib/customers/customer-throughput';
+import { customerMobilePath } from '@/lib/nav/route-tree';
 
 async function loadCustomers(query: string): Promise<CustomerDirectoryPayload> {
   const params = new URLSearchParams({ limit: '50' });
@@ -62,7 +63,7 @@ export function CustomersScreen() {
             return (
               <li key={customer.id}>
                 <MobileDataListRow
-                  href={`/m/customers/${customer.id}`}
+                  href={customerMobilePath(customer.id)}
                   className="flex items-center gap-3 px-mode-page py-2.5"
                   ariaLabel={`Open ${customer.name}, ${customer.orderCount} orders`}
                   testId="mobile-customer-row"
@@ -73,9 +74,6 @@ export function CustomersScreen() {
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline gap-2">
                       <span className="truncate text-role-data font-semibold text-text-default">{customer.name}</span>
-                      <span className="shrink-0 font-mono text-role-micro font-bold text-mode-muted">
-                        C-{customer.id}
-                      </span>
                     </span>
                     <span className="mt-0.5 block truncate text-role-caption text-mode-muted">{contact}</span>
                     <span className="mt-1 flex min-w-0 items-center gap-1.5 text-role-micro font-semibold text-mode-muted">

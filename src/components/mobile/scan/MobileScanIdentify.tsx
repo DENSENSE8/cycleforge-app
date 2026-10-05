@@ -7,13 +7,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/design-system/primitives';
 import { useNetworkOnline } from '@/hooks/useConnectionHealth';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
-import { MobileScanHeader, type MobileScanMode } from '@/components/mobile/scan/MobileScanHeader';
+import { MobileScanHeader, type MobileScanDirection, type MobileScanMode } from '@/components/mobile/scan/MobileScanHeader';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
 import { MobileV2ScanStation } from '@/components/mobile/v2/scan/MobileV2ScanStation';
 import {
   pushStationTape,
   stationDedupeId,
   STATION_TAPE_LIMIT,
+  type StationItemAction,
   type StationTapeEntry,
 } from '@/lib/mobile/station-tape';
 import {
@@ -27,8 +28,9 @@ import { fnskuHubHref } from '@/lib/mobile/fnsku-hub-href';
 import { routeScan, unwrapScannedLocation, locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { fnskuFromTail } from '@/lib/scan-resolver';
 import { fetchFnskuRecord } from '@/components/mobile/fnsku/useFnskuRecord';
-import { landOutboundTracking } from '@/components/mobile/shipping/shipment/outbound-scan-land';
+import { postScanOut, undoScanOut } from '@/lib/outbound/scan-out-client';
 import { landScanIdentify, viewOnlyIdentityHref } from '@/lib/scan/identify-land';
+import { arrivalScanIntent, type ScanInputSource } from '@/lib/scan/mobile-arrival-door';
 import { QC_SCAN_SESSION } from '@/lib/scan/dispatch-table';
 import { useScanDispatch } from '@/hooks/useScanDispatch';
 import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
@@ -89,6 +91,9 @@ async function authorizeScannedLocation(code: string): Promise<string> {
   return body.token;
 }
 
+/** Per-device In | Out choice on `/m/scan`. */
+const SCAN_DIRECTION_KEY = 'cf.mobile.scan.direction';
+
 function MobileScanIdentifyInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -102,6 +107,25 @@ function MobileScanIdentifyInner() {
   const [scanMode, setScanMode] = useState<MobileScanMode>(() =>
     operationLocked || searchParams.get('mode') !== 'view' ? 'operate' : 'view',
   );
+  // In | Out is per device: a door phone stays In, a shipping-bench phone stays Out.
+  const [direction, setDirection] = useState<MobileScanDirection>('in');
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(SCAN_DIRECTION_KEY) === 'out') setDirection('out');
+    } catch {
+      // Storage blocked — stay In.
+    }
+  }, []);
+  const changeDirection = useCallback((next: MobileScanDirection) => {
+    setDirection(next);
+    try {
+      window.localStorage.setItem(SCAN_DIRECTION_KEY, next);
+    } catch {
+      // Storage blocked — the choice holds for this visit only.
+    }
+  }, []);
+  // View never writes: the direction toggle is hidden there, so a stored Out must not scan anything out.
+  const outbound = direction === 'out' && !operationLocked && scanMode === 'operate';
 
   const [tape, setTape] = useState<StationTapeEntry[]>([]);
   const { history, isError: historyFailed, retry: retryHistory } = useArrivalHistory();
@@ -123,8 +147,8 @@ function MobileScanIdentifyInner() {
   const { playScanFeedback } = useScanFeedback();
   const online = useNetworkOnline();
   const queryClient = useQueryClient();
-  // A new carton → walk the operator to its urgency shelf (`/m/r/[id]/place`).
-  const handOffToShelf = useArrivalPlacementHandoff('/m/scan');
+  // A package at the door → walk the operator to its pairing step (`/m/r/[id]/place`).
+  const handOffToPlace = useArrivalPlacementHandoff('/m/scan');
 
   const onSettled = useCallback(
     (settled: SettledArrival) => {
@@ -142,15 +166,19 @@ function MobileScanIdentifyInner() {
       });
       if (settled.status === 'arrived') setArrived((n) => n + 1);
       playScanFeedback(settled.status === 'arrived' ? 'success' : 'reject');
-      handOffToShelf(settled);
+      handOffToPlace(settled);
     },
-    [playScanFeedback, handOffToShelf],
+    [playScanFeedback, handOffToPlace],
   );
 
   const { submitRaw, inFlight } = useArrivalStation({ onSettled });
   const { resolve } = useScanDispatch();
   const [dispatching, setDispatching] = useState(0);
   const [locationError, setLocationError] = useState<string | null>(null);
+  /** Out: the last confirm's words, and its undoable handle (station rule: live until the next scan). */
+  const [outNotice, setOutNotice] = useState<string | null>(null);
+  const [outUndo, setOutUndo] = useState<{ entryId: string; shipmentId: number } | null>(null);
+  const [outUndoing, setOutUndoing] = useState(false);
   const locationSeqRef = useRef(0);
 
   const applyLocationTape = useCallback((entry: StationTapeEntry, href: string) => {
@@ -169,10 +197,12 @@ function MobileScanIdentifyInner() {
   }, []);
 
   const onDecode = useCallback(
-    (raw: string) => {
+    (raw: string, source: ScanInputSource) => {
       const value = raw.trim();
       if (!value) return;
       setLocationError(null);
+      setOutNotice(null);
+      setOutUndo(null);
       setDispatching((n) => n + 1);
       void (async () => {
         try {
@@ -262,13 +292,57 @@ function MobileScanIdentifyInner() {
             router.push(withPhoneScanCorrelation(`/m/orders/new?scan=${encodeURIComponent(value)}`, correlation));
             return;
           }
-          if (!dispatch) {
-            if (scanMode === 'view') {
-              setLocationError('No saved record found · switch to Operate to intake');
+          if (outbound && route?.type === 'carrier-tracking') {
+            // Out: the real dock scan-out — the same POST the desk scan-out station sends.
+            const result = await postScanOut(value).catch(() => null);
+            if (!result) {
+              setLocationError('Scan-out failed — try again');
               playScanFeedback('reject');
               return;
             }
-            submitRaw(value, correlation);
+            if (!result.matched) {
+              setLocationError('Not a package we shipped · switch to Inbound to receive it');
+              playScanFeedback('reject');
+              return;
+            }
+            if (result.blocked) {
+              setLocationError(result.message || 'Do not ship');
+              playScanFeedback('reject');
+              return;
+            }
+            const name = result.orderId || result.tracking || value;
+            const entryId = `scan-out-${safeRandomUUID()}`;
+            setTape((prev) =>
+              pushStationTape(prev, {
+                id: entryId,
+                tone: result.duplicate ? 'warn' : 'ok',
+                verb: result.duplicate ? 'Already scanned out' : 'Scanned out',
+                title: result.productTitle ?? null,
+                identifier: result.tracking || value,
+                recordId: result.orderId ?? null,
+                conditionGrade: result.condition ?? null,
+                imageUrl: result.imageUrl ?? null,
+                actor: null,
+                actorId: null,
+                message: null,
+                at: new Date().toISOString(),
+                dedupeKey: result.shipmentId ? `scan-out:${result.shipmentId}` : null,
+                live: true,
+              }),
+            );
+            // Undo matches the station: only a fresh confirm, only until the next scan.
+            if (!result.duplicate && result.shipmentId) setOutUndo({ entryId, shipmentId: result.shipmentId });
+            setOutNotice(`${result.duplicate ? 'Already scanned out' : 'Scanned out'} · ${name}`);
+            playScanFeedback(result.duplicate ? 'warn' : 'success');
+            return;
+          }
+          if (!dispatch) {
+            if (scanMode === 'view' || outbound) {
+              setLocationError(outbound ? 'Nothing to scan out · switch to Inbound to receive' : 'No saved record found · switch to Operate to intake');
+              playScanFeedback('reject');
+              return;
+            }
+            submitRaw(value, source, correlation);
             return;
           }
           if (qcArmed && lpnTarget) {
@@ -309,6 +383,15 @@ function MobileScanIdentifyInner() {
               return;
             }
           }
+          // Inbound: whatever the door would treat as a tracking is the door
+          // loop — the station previews it, settles it `known` or opens the
+          // arrival. The door rule, not the route type, decides — and a typed
+          // last 8 is a tracking even though its bytes route as a product.
+          const inboundDoor = !outbound && !qcArmed && scanMode === 'operate';
+          if (inboundDoor && arrivalScanIntent(value, source).kind === 'tracking') {
+            submitRaw(value, source, correlation);
+            return;
+          }
           const land = landScanIdentify(dispatch, route);
           if (land.kind === 'identify') {
             const receivingRecord = !qcArmed && route?.type === 'receiving' && land.href.startsWith('/m/r/');
@@ -321,44 +404,41 @@ function MobileScanIdentifyInner() {
             return;
           }
           if (land.kind === 'intake') {
-            if (scanMode === 'view') {
-              setLocationError('No saved record found · switch to Operate to intake');
+            if (scanMode === 'view' || outbound) {
+              setLocationError(outbound ? 'Nothing to scan out · switch to Inbound to receive' : 'No saved record found · switch to Operate to intake');
               playScanFeedback('reject');
               return;
             }
-            // A never-seen tracking may be a box WE packed or shipped — that
-            // is its package (or its order), not an inbound arrival.
-            const outbound = route?.type === 'carrier-tracking' ? await landOutboundTracking(value, '/m/scan') : null;
-            if (outbound) {
-              router.push(withPhoneScanCorrelation(outbound, correlation));
-              return;
-            }
-            submitRaw(value, correlation);
+            submitRaw(value, source, correlation);
             return;
           }
-          if (route?.type === 'bin' || route?.type === 'bin-paired-order') {
-            // A location is a full-screen record with an X back here, never
-            // a sheet over the camera (operator 2026-09-25).
-            const code = unwrapScannedLocation(value);
-            let proof: string;
-            try {
-              proof = await authorizeScannedLocation(code);
-            } catch (error) {
-              setLocationError(error instanceof Error ? error.message : 'Could not verify location');
-              playScanFeedback('reject');
-              return;
-            }
-            const href = withLocationScanProof(locationHubHref(code), proof);
-            applyLocationTape(locationTapeEntry(code, ++locationSeqRef.current), href);
-            playScanFeedback('success');
-            router.push(withPhoneScanCorrelation(href, correlation));
+          if (route?.type !== 'bin' && route?.type !== 'bin-paired-order') {
+            // No Inbound scan is silent: a label with nowhere to go settles a
+            // tape row ("Not an arrival") through the door's own refusal.
+            if (inboundDoor) submitRaw(value, source, correlation);
+            return;
           }
+          // A location is a full-screen record with an X back here, never
+          // a sheet over the camera (operator 2026-09-25).
+          const code = unwrapScannedLocation(value);
+          let proof: string;
+          try {
+            proof = await authorizeScannedLocation(code);
+          } catch (error) {
+            setLocationError(error instanceof Error ? error.message : 'Could not verify location');
+            playScanFeedback('reject');
+            return;
+          }
+          const href = withLocationScanProof(locationHubHref(code), proof);
+          applyLocationTape(locationTapeEntry(code, ++locationSeqRef.current), href);
+          playScanFeedback('success');
+          router.push(withPhoneScanCorrelation(href, correlation));
         } finally {
           setDispatching((n) => Math.max(0, n - 1));
         }
       })();
     },
-    [resolve, qcArmed, locationOnly, router, searchParams, submitRaw, playScanFeedback, applyLocationTape, scanMode, lpnTarget, queryClient],
+    [resolve, qcArmed, locationOnly, router, searchParams, submitRaw, playScanFeedback, applyLocationTape, scanMode, lpnTarget, queryClient, outbound],
   );
 
   // The kernel owns hardware scans on this screen.
@@ -367,7 +447,7 @@ function MobileScanIdentifyInner() {
       const raw = (event as CustomEvent<{ value?: string }>).detail?.value;
       if (!raw?.trim()) return;
       event.preventDefault();
-      onDecode(raw);
+      onDecode(raw, 'scanned');
     };
     window.addEventListener('wedge-scan', onWedge);
     return () => window.removeEventListener('wedge-scan', onWedge);
@@ -399,6 +479,32 @@ function MobileScanIdentifyInner() {
     [opens],
   );
 
+  const undoOut = useCallback(() => {
+    if (!outUndo || outUndoing) return;
+    const { entryId, shipmentId } = outUndo;
+    setOutUndoing(true);
+    void undoScanOut(shipmentId)
+      .then(() => {
+        setOutUndo(null);
+        setOutNotice('Scan-out undone');
+        setTape((prev) => prev.filter((row) => row.id !== entryId));
+        playScanFeedback('success');
+      })
+      .catch(() => {
+        setLocationError('Undo failed — try again');
+        playScanFeedback('reject');
+      })
+      .finally(() => setOutUndoing(false));
+  }, [outUndo, outUndoing, playScanFeedback]);
+
+  const itemActions = useCallback(
+    (entry: StationTapeEntry): readonly StationItemAction[] | null =>
+      outUndo && entry.id === outUndo.entryId
+        ? [{ label: 'Undo scan-out', pendingLabel: 'Undoing…', run: undoOut, pending: outUndoing }]
+        : null,
+    [outUndo, outUndoing, undoOut],
+  );
+
   /**
    * Unsettled commits — the lip lane's input, and the only thing on the panel
    * that animates. Zero means the server has answered everything.
@@ -408,13 +514,15 @@ function MobileScanIdentifyInner() {
   /** The middle slot, as a COUNT. */
   const status = useMemo(() => {
     if (!online) return 'Offline';
-    if (cameraOff) return 'Camera off';
+    // The latest scan's words outrank a standing camera fault — a typed label still scans.
     if (locationError) return locationError;
+    if (outbound && outNotice && pending === 0) return outNotice;
+    if (cameraOff) return 'Camera off';
     if (locationOnly) return pending > 0 ? 'Checking location…' : 'Location scan';
     if (pending > 0) return `${pending} pending · ${arrived} in`;
     if (scanMode === 'view') return 'View only';
-    return `${arrived} in`;
-  }, [online, cameraOff, locationError, locationOnly, pending, arrived, scanMode]);
+    return outbound ? 'Out' : `${arrived} in`;
+  }, [online, cameraOff, locationError, locationOnly, pending, arrived, scanMode, outbound, outNotice]);
 
   if (classifyRid != null) {
     return (
@@ -435,6 +543,8 @@ function MobileScanIdentifyInner() {
         title={scanTitle}
         mode={operationLocked ? 'operate' : scanMode}
         onModeChange={setScanMode}
+        direction={operationLocked || scanMode === 'view' ? undefined : direction}
+        onDirectionChange={changeDirection}
         operationLocked={operationLocked}
         exitHref={exitHref}
       />
@@ -442,6 +552,7 @@ function MobileScanIdentifyInner() {
         <MobileV2ScanStation
           entries={tape}
           untitledLabel="Package"
+          itemActions={itemActions}
           empty={
             <div className="flex flex-col items-center gap-3 px-8 pb-6 text-center">
               {historyFailed ? (
@@ -469,7 +580,9 @@ function MobileScanIdentifyInner() {
                 <p className="text-role-eyebrow text-text-soft">
                   {scanMode === 'view'
                     ? 'View records without changing them'
-                    : 'Scan a tracking number or location code'}
+                    : outbound
+                      ? 'Scan a shipping label to scan it out'
+                      : 'Scan a tracking number or location code'}
                 </p>
               )}
             </div>
@@ -486,6 +599,9 @@ function MobileScanIdentifyInner() {
               pending={pending}
               onDecode={onDecode}
               onErrorChange={setCameraOff}
+              // The Inbound door takes a tracking number's last 8 when the
+              // carrier label will not scan (operator 2026-10-04).
+              manualLabel={!locationOnly && !outbound && !qcArmed && scanMode === 'operate' ? 'Tracking or last 8 digits' : undefined}
             />
           }
         />

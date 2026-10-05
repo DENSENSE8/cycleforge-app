@@ -50,6 +50,16 @@ export async function fetchAwaitingLabelsData({
   );
 }
 
+/** The same unshipped order population as FBM › Allocate, for sibling order rails. */
+export async function fetchAllocateOrdersData(): Promise<ShippedOrder[]> {
+  const params = new URLSearchParams();
+  params.set('limit', '500');
+  const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
+  if (!res.ok) throw new Error('Failed to fetch Allocate orders');
+  const data = await res.json();
+  return ((data.orders || []).map(mapApiOrder) as ShippedOrder[]).filter(isNonFbaRecord);
+}
+
 /** Packed + staged at the dock, not yet scanned out — Outbound · Scan-out + Dashboard · Packed. */
 export async function fetchStagedOrdersData({
   searchQuery = '',

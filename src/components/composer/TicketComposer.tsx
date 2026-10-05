@@ -1,9 +1,9 @@
 'use client';
 
-/** The ONE ticket composer. */
+/** The ONE ticket composer — a helpdesk ticket, or (Support-item mode) a local Support item. */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CornerDownLeft, Images, Package, Sparkles, Upload } from '@/components/Icons';
+import { CornerDownLeft, Copy, Images, Package, Sparkles, Upload } from '@/components/Icons';
 import { Button, OmnichannelComposerDock } from '@/design-system/primitives';
 import { Popover } from '@/design-system/primitives/Popover';
 import { SupportPhotoLibraryPicker } from '@/components/support/zendesk/chat/SupportPhotoLibraryPicker';
@@ -19,7 +19,8 @@ import { ComposerProductChips } from '@/components/ui/ComposerProductChip';
 import { SupportProductPicker } from '@/components/ui/SupportProductPicker';
 import { ComposerTicketChannelToggle } from './ComposerTicketChannelToggle';
 import { ComposerTicketInsetChrome } from './ComposerTicketInsetChrome';
-import { useTicketComposer } from '@/lib/composer/use-ticket-composer';
+import { useTicketComposer, type TicketComposerSupportItem } from '@/lib/composer/use-ticket-composer';
+import type { SupportComposerCommit } from '@/lib/support/record/support-record-model';
 
 const INSERT_ICONS = {
   browse: <Images className="h-3.5 w-3.5" />,
@@ -27,8 +28,16 @@ const INSERT_ICONS = {
   product: <Package className="h-3.5 w-3.5" />,
 } as const;
 
+/** Support-item placeholders: what Enter does, in the composer's own words. */
+function supportPlaceholder(commit: SupportComposerCommit, transportLabel: string): string {
+  if (commit.kind === 'send') return 'Reply to the customer… (Enter to send)';
+  if (commit.kind === 'copy_open') return `Reply to the customer… (Enter copies it and opens ${transportLabel})`;
+  return commit.label === 'Add internal update' ? 'Internal update… (Enter to add)' : 'Internal note… (Enter to add)';
+}
+
 export function TicketComposer({
   ticketId,
+  supportItem,
   requesterEmail,
   staging,
   receivingId,
@@ -36,7 +45,15 @@ export function TicketComposer({
   trailingAction,
   className,
 }: {
-  ticketId: number;
+  /** The live helpdesk ticket. Omitted in Support-item mode. */
+  ticketId?: number;
+  /**
+   * Support-item mode (Tasks → Support record): commits go to the local
+   * Support item — Send public reply · Copy & open <transport> · Log as sent ·
+   * Add internal note — never to a helpdesk ticket. No `+` attach and no Cc
+   * here: the Support reply carries neither.
+   */
+  supportItem?: TicketComposerSupportItem;
   requesterEmail?: string | null;
   /** Host-owned staging when the host also owns a drop overlay. */
   staging?: TicketPhotoStaging;
@@ -47,7 +64,8 @@ export function TicketComposer({
   trailingAction?: ReactNode;
   className?: string;
 }) {
-  const c = useTicketComposer({ ticketId, receivingId, staging, insertIcons: INSERT_ICONS });
+  const helpdeskTicketId = supportItem ? null : (ticketId ?? null);
+  const c = useTicketComposer({ ticketId: helpdeskTicketId, supportItem, receivingId, staging, insertIcons: INSERT_ICONS });
   const [plusOpen, setPlusOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -62,8 +80,8 @@ export function TicketComposer({
   // `c.send` is a new function every render (it closes over the mutation
   // object, which TanStack rebuilds per render). Publishing it in the bridge
   // re-ran the effect below on every render, and a host that keeps the bridge
-  // in state (SupportTicketsWorkspace) re-rendered us right back — "Maximum
-  // update depth exceeded" on /support?ticket=N. The bridge calls the latest
+  // in state (the task ticket host) re-rendered us right back — "Maximum
+  // update depth exceeded" on the task ticket record. The bridge calls the latest
   // send through this ref instead.
   const sendRef = useRef(c.send);
   useEffect(() => {
@@ -94,6 +112,7 @@ export function TicketComposer({
           applyMode: c.setIsPublic,
           confirm: requestConfirm,
           onApplied: () => {
+            if (opts?.draftId != null) c.noteSeededDraft(opts.draftId);
             textareaRef.current?.focus();
             textareaRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           },
@@ -103,6 +122,9 @@ export function TicketComposer({
     // `submit` reads the latest send through `sendRef`; `setDraft` closes over the body.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onBridgeChange, c.body, c.products.length, c.isPublic, c.busy, c.canPost]);
+
+  // A public comment reaches the customer and says so; a Support item names its own commit (Copy & open eBay …).
+  const commitLabel = c.supportCommit?.label ?? stationComposerTicketCommitLabel(true, c.isPublic);
 
   return (
     <div
@@ -131,104 +153,146 @@ export function TicketComposer({
           if (c.canSend) c.send();
           return true;
         }}
-        placeholder={c.isPublic ? 'Reply… (Enter to send)' : 'Internal note… (Enter to send)'}
+        placeholder={
+          c.supportCommit && supportItem
+            ? supportPlaceholder(c.supportCommit, supportItem.transport.label)
+            : c.isPublic
+              ? 'Reply… (Enter to send)'
+              : 'Internal note… (Enter to send)'
+        }
         ariaLabel={c.isPublic ? 'Public reply' : 'Internal note'}
         commitGlyph="action"
-        commitLabel={stationComposerTicketCommitLabel(true)}
-        commitIcon={<CornerDownLeft className="h-3.5 w-3.5" />}
-        commitAriaLabel={stationComposerTicketCommitLabel(true)}
-        commitTooltip="Update ticket (Enter) · Shift+Enter for newline"
+        commitLabel={commitLabel}
+        commitIcon={
+          c.supportCommit?.kind === 'copy_open' ? <Copy className="h-3.5 w-3.5" /> : <CornerDownLeft className="h-3.5 w-3.5" />
+        }
+        commitAriaLabel={commitLabel}
+        commitTooltip={`${commitLabel} (Enter) · Shift+Enter for newline`}
+        commitTestId={c.supportCommit?.testId}
         leadingStart={
-          <ComposerDrillMenu
-            nodes={c.insertNodes}
-            open={plusOpen}
-            onOpenChange={setPlusOpen}
-            triggerAriaLabel="Attach a photo or product"
-          />
+          c.insertNodes.length > 0 ? (
+            <ComposerDrillMenu
+              nodes={c.insertNodes}
+              open={plusOpen}
+              onOpenChange={setPlusOpen}
+              triggerAriaLabel={helpdeskTicketId != null ? 'Attach a photo or product' : 'Attach a photo'}
+            />
+          ) : undefined
         }
         footerStart={
-          <ComposerTicketChannelToggle isPublic={c.isPublic} onIsPublicChange={c.setIsPublic} />
+          // An internal record or unclassified Support item has no Public channel to choose.
+          c.supportMode == null || c.supportMode === 'customer' ? (
+            <ComposerTicketChannelToggle isPublic={c.isPublic} onIsPublicChange={c.setIsPublic} />
+          ) : undefined
         }
         footerEnd={
-          <Button
-            variant="ghost"
-            size="sm"
-            loading={c.drafting}
-            disabled={!c.canPost}
-            onClick={() =>
-              c.draftWithAi({
-                onApplied: () => {
-                  textareaRef.current?.focus();
-                  textareaRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-                },
-              })
-            }
-            icon={<Sparkles className="h-3.5 w-3.5" />}
-            data-testid="composer-draft-with-ai"
-          >
-            Draft with AI
-          </Button>
+          c.supportMode != null && c.supportMode !== 'customer' ? undefined : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                loading={c.drafting}
+                disabled={!c.canPost}
+                onClick={() =>
+                  c.draftWithAi({
+                    onApplied: () => {
+                      textareaRef.current?.focus();
+                      textareaRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    },
+                  })
+                }
+                icon={<Sparkles className="h-3.5 w-3.5" />}
+                data-testid={c.supportMode ? 'support-draft-with-ai' : 'composer-draft-with-ai'}
+              >
+                Draft with AI
+              </Button>
+              {c.supportMode === 'customer' && c.isPublic ? (
+                // A reply already sent elsewhere (phone, marketplace page, email) is recorded, not re-sent.
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!c.canSend}
+                  onClick={c.logSent}
+                  icon={<CornerDownLeft className="h-3.5 w-3.5" />}
+                  data-testid="support-log-sent"
+                >
+                  Log as sent
+                </Button>
+              ) : null}
+            </>
+          )
         }
         insetTop={
-          <ComposerTicketInsetChrome
-            isPublic={c.isPublic}
-            ccs={c.ccs}
-            onCcsChange={c.setCcs}
-            ccDraft={c.ccDraft}
-            onCcDraftChange={c.setCcDraft}
-            requesterEmail={requesterEmail ?? null}
-            ticketId={ticketId}
-            trailing={
-              c.products.length > 0 || c.staging.staged.length > 0 ? (
-                <div className="flex min-w-0 flex-col gap-1">
-                  <ComposerProductChips picks={c.products} onRemove={c.removeProduct} />
-                  <ComposerStagedPhotoStrip
-                    staged={c.staging.staged}
-                    onRemove={c.staging.remove}
-                    size="compact"
-                  />
-                </div>
-              ) : null
-            }
-          />
+          helpdeskTicketId != null ? (
+            <ComposerTicketInsetChrome
+              isPublic={c.isPublic}
+              ccs={c.ccs}
+              onCcsChange={c.setCcs}
+              ccDraft={c.ccDraft}
+              onCcDraftChange={c.setCcDraft}
+              requesterEmail={requesterEmail ?? null}
+              ticketId={helpdeskTicketId}
+              trailing={
+                c.products.length > 0 || c.staging.staged.length > 0 ? (
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <ComposerProductChips picks={c.products} onRemove={c.removeProduct} />
+                    <ComposerStagedPhotoStrip
+                      staged={c.staging.staged}
+                      onRemove={c.staging.remove}
+                      size="compact"
+                    />
+                  </div>
+                ) : null
+              }
+            />
+          ) : c.staging.staged.length > 0 ? (
+            // A Support item's photos: already on its task (Media tab) as they land.
+            <ComposerStagedPhotoStrip staged={c.staging.staged} onRemove={c.staging.remove} size="compact" />
+          ) : undefined
         }
         trailingAction={trailingAction}
         textareaRef={textareaRef}
         className="shadow-none"
       />
-      {/* `+` → Product sent to customer: rises from the composer's bottom-left edge, above it. */}
-      <Popover
-        open={c.productPickerOpen}
-        onClose={() => c.setProductPickerOpen(false)}
-        anchorRef={rootRef}
-        placement="top-start"
-        gap={4}
-        level="panelOverlay"
-        closeOnEscape={false}
-        role="dialog"
-        aria-label="Product sent to customer"
-      >
-        <SupportProductPicker
-          variant="desk"
-          ticketId={ticketId}
-          onClose={closeProductPicker}
-          onPick={(face, role, qty) => {
-            c.addProduct(face, role, qty);
-            closeProductPicker();
-          }}
-        />
-      </Popover>
-      {/* `+` → Upload file. */}
-      <input ref={c.picker.inputRef} {...c.picker.inputProps} />
-      {c.canBrowseLibrary ? (
-        <SupportPhotoLibraryPicker
-          ticketId={ticketId}
-          receivingId={c.receivingId}
-          open={c.libraryOpen}
-          onClose={() => c.setLibraryOpen(false)}
-          excludePhotoIds={c.stagedPhotoIds}
-          onSelect={c.onLibrarySelect}
-        />
+      {helpdeskTicketId != null ? (
+        // `+` → Product sent to customer: rises from the composer's bottom-left edge, above it.
+        <Popover
+          open={c.productPickerOpen}
+          onClose={() => c.setProductPickerOpen(false)}
+          anchorRef={rootRef}
+          placement="top-start"
+          gap={4}
+          level="panelOverlay"
+          closeOnEscape={false}
+          role="dialog"
+          aria-label="Product sent to customer"
+        >
+          <SupportProductPicker
+            variant="desk"
+            ticketId={helpdeskTicketId}
+            onClose={closeProductPicker}
+            onPick={(face, role, qty) => {
+              c.addProduct(face, role, qty);
+              closeProductPicker();
+            }}
+          />
+        </Popover>
+      ) : null}
+      {c.photoTarget ? (
+        <>
+          {/* `+` → Upload file. */}
+          <input ref={c.picker.inputRef} {...c.picker.inputProps} />
+          {c.canBrowseLibrary ? (
+            <SupportPhotoLibraryPicker
+              target={c.photoTarget}
+              receivingId={c.receivingId}
+              open={c.libraryOpen}
+              onClose={() => c.setLibraryOpen(false)}
+              excludePhotoIds={c.stagedPhotoIds}
+              onSelect={c.onLibrarySelect}
+            />
+          ) : null}
+        </>
       ) : null}
     </div>
   );

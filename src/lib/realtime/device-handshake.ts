@@ -25,7 +25,9 @@ export type DeviceAckKind =
   | 'pack_scan'
   | 'unit_photo'
   | 'stock_photo'
-  | 'print_job';
+  | 'print_job'
+  | 'prepack_serial'
+  | 'catalog_photo';
 
 /** `idle → request_sent → peer_active | timed_out`. */
 export type SendToDeviceState = 'idle' | 'request_sent' | 'peer_active' | 'timed_out';

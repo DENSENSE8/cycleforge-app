@@ -57,7 +57,6 @@ export function CustomerDirectoryList({
                 <span className="min-w-0 flex-1">
                   <span className="flex min-w-0 items-baseline gap-2">
                     <span className="truncate text-role-data font-semibold text-mode-ink">{customer.name}</span>
-                    <span className="shrink-0 text-role-micro font-semibold tabular-nums text-mode-muted">C-{customer.id}</span>
                   </span>
                   <span className="mt-0.5 block truncate text-role-caption font-normal text-mode-muted">{contact}</span>
                   <span className="mt-1 flex flex-wrap gap-x-1.5 text-role-micro font-medium text-mode-muted">

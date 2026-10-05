@@ -4,6 +4,7 @@ import {
   RACK_MAX_SHELVES,
   type AdoptBayBody,
   type CreateRackBody,
+  type DeleteRackBody,
   type EditRackShelvesBody,
   type MoveRackBody,
   type RackErrorBody,
@@ -15,7 +16,6 @@ import {
 const clientEventId = z.string().trim().min(8, 'clientEventId is required').max(120);
 const code = z.string().trim().min(1).max(200);
 const id = z.number().int().positive();
-const tier = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
 
 const exactlyOne = (a: unknown, b: unknown) => (a !== undefined) !== (b !== undefined);
 
@@ -24,7 +24,6 @@ export const CreateRackBodySchema = z
     placementCode: code.optional(),
     placementId: id.optional(),
     shelves: z.number().int().min(1).max(RACK_MAX_SHELVES),
-    shelfTiers: z.array(z.object({ shelf: z.number().int().min(1).max(RACK_MAX_SHELVES), tier }).strict()).max(RACK_MAX_SHELVES).optional(),
     positionsPerShelf: z.number().int().min(0).max(RACK_MAX_POSITIONS_PER_SHELF).optional(),
     dryRun: z.boolean().optional(),
     clientEventId,
@@ -40,6 +39,8 @@ export const MoveRackBodySchema = z
   })
   .strict()
   .refine((b) => exactlyOne(b.destinationCode, b.destinationId), { message: 'Give exactly one of destinationCode or destinationId' });
+
+export const DeleteRackBodySchema = z.object({ clientEventId }).strict();
 
 export const EditRackShelvesBodySchema = z
   .object({
@@ -83,6 +84,7 @@ type Assert<T extends true> = T;
 export type _RackSchemaPins = [
   Assert<z.output<typeof CreateRackBodySchema> extends CreateRackBody ? true : false>,
   Assert<z.output<typeof MoveRackBodySchema> extends MoveRackBody ? true : false>,
+  Assert<z.output<typeof DeleteRackBodySchema> extends DeleteRackBody ? true : false>,
   Assert<z.output<typeof EditRackShelvesBodySchema> extends EditRackShelvesBody ? true : false>,
   Assert<z.output<typeof RackLabelsPrintedBodySchema> extends RackLabelsPrintedBody ? true : false>,
   Assert<z.output<typeof AdoptBayBodySchema> extends AdoptBayBody ? true : false>,

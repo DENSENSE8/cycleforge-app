@@ -1,8 +1,9 @@
 import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
 import { requirePermission } from '@/lib/auth/page-guard';
 import { getStockByLocation, getStockRoomFacets, LOCATION_STOCK_ROW_CAP } from '@/lib/neon/location-stock-queries';
 import { StockLedger } from '@/components/inventory/stock/StockLedger';
+import { ReplenishWorkspace } from '@/components/replenish/ReplenishWorkspace';
+import { resolveExplicitStockRoom } from '@/lib/inventory/location-stock-row';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,29 +20,27 @@ export default async function InventoryStockPage({
     sort?: string;
     open?: string;
     page?: string;
+    view?: string;
+    rsku?: string;
+    rtab?: string;
+    rstatus?: string;
   }>;
 }) {
   // Same permission as the desk's own nav row (`sku_stock.view`).
   const user = await requirePermission('sku_stock.view');
   const params = await searchParams;
-  const rooms = await getStockRoomFacets(user.organizationId);
-  const requestedRoom = params.room?.trim() || null;
-  const matchedRoom = requestedRoom
-    ? rooms.find((facet) => facet.id === requestedRoom || facet.label === requestedRoom)
-    : null;
-  const defaultRoom = rooms.length > 0
-    ? rooms.reduce((best, facet) => (facet.count > best.count ? facet : best))
-    : null;
-  const room = (matchedRoom ?? defaultRoom)?.id ?? null;
-  if (room && requestedRoom !== room) {
-    const canonical = new URLSearchParams();
-    for (const key of ['q', 'aisle', 'status', 'sku', 'sort', 'open', 'page'] as const) {
-      const value = params[key]?.trim();
-      if (value) canonical.set(key, value);
-    }
-    canonical.set('room', room);
-    redirect(`/inventory/stock?${canonical}`);
+  if (params.view === 'replenish') {
+    return (
+      <Suspense fallback={null}>
+        <ReplenishWorkspace />
+      </Suspense>
+    );
   }
+  const rooms = await getStockRoomFacets(user.organizationId);
+  // Bare Stock means the complete warehouse. A room is applied only when the
+  // operator explicitly chooses a valid room; the server must never inject a
+  // convenient default because that turns "All stock" into a hidden filter.
+  const room = resolveExplicitStockRoom(rooms, params.room);
   const { rows, totalCount, counts } = await getStockByLocation({
     orgId: user.organizationId,
     query: params.q ?? null,

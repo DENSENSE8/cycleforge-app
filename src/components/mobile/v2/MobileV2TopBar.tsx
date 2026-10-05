@@ -40,6 +40,12 @@ const CONTEXTUAL_SEARCH_FACES: Readonly<Record<string, ContextualSearchFace>> = 
     placeholder: 'Search location, SKU or product',
     triggerLabel: 'Search stock',
   },
+  '/m/support': {
+    closeLabel: 'Close Support search',
+    inputLabel: 'Search Support items',
+    placeholder: 'Search order, customer, SKU or Support #',
+    triggerLabel: 'Search Support items',
+  },
   '/m/work': {
     closeLabel: 'Close order search',
     inputLabel: 'Search fulfillment orders',

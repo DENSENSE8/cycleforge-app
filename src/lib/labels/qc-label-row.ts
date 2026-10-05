@@ -8,6 +8,8 @@ export interface QcLabelRow {
   unit_uid: string | null;
   serial_number: string | null;
   sku: string | null;
+  /** `su.sku_catalog_id`, else the identity-law join's catalog row. */
+  sku_catalog_id: number | null;
   /** Resolved through `resolveSkuIdentityTitle` by the loader. */
   title: string;
   condition_grade: string | null;
@@ -27,6 +29,12 @@ export interface QcLabelRow {
   allocation_state: string | null;
   /** The order carries this serial (`tech_serial_numbers.order_id`) — the loop closed at pick. */
   serial_on_order: boolean;
+  /** The SEALED PREBOX package (`label_manifests`) this unit rides in, else null. */
+  package_uid: string | null;
+  /** Serial units in that package; null when the unit is not packaged. */
+  package_serial_count: number | null;
+  /** The product photo (`skuCatalogImageUrlSql`); null paints initials. */
+  image_url: string | null;
 }
 
 /** Where the labelled unit is in the outbound loop. */
@@ -46,7 +54,23 @@ export function qcLabelHandle(row: Pick<QcLabelRow, 'unit_uid' | 'serial_number'
   return row.unit_uid?.trim() || (row.serial_number?.trim() ? `U-${row.serial_number.trim()}` : `U-${row.serial_unit_id}`);
 }
 
-/** A unit the desk can print a QC label for — resolved from a scan or a typed serial (`findQcLabelPrintUnit`). */
+/** Legacy storage surrogate for a physical unit whose maker supplied no serial. */
+export function qcLabelUsesInternalSerial(serial: string | null): boolean {
+  return /^AUTO-RLU-/i.test(serial?.trim() ?? '');
+}
+
+/** A prepacked package (SEALED PREBOX `label_manifests` row) carrying N≥2 serial units under one label. */
+export interface QcLabelPackage {
+  id: number;
+  uid: string;
+  serial_count: number;
+}
+
+/**
+ * A unit the desk can print a QC label for — resolved from a scan or a typed
+ * serial (`findQcLabelPrintUnit`). A package scan resolves to its lead member
+ * with `package` set; the label then names the package, not the unit.
+ */
 export interface QcLabelPrintUnit {
   serial_unit_id: number;
   unit_uid: string | null;
@@ -56,4 +80,6 @@ export interface QcLabelPrintUnit {
   condition_grade: string | null;
   /** A QC label was printed before — the next print is a reprint. */
   printed: boolean;
+  /** The package this label names; null for a single unit's label. */
+  package: QcLabelPackage | null;
 }

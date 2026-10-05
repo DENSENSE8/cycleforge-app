@@ -13,7 +13,7 @@ test('ticketLinkEventsToTimeline maps linked/unlinked rows', () => {
       kind: 'linked',
       ticketLabel: '#4821',
       actorName: 'Riley',
-      href: '/support?ticket=4821',
+      href: '/support?q=4821',
     },
   ]);
   assert.equal(items.length, 1);
@@ -21,7 +21,7 @@ test('ticketLinkEventsToTimeline maps linked/unlinked rows', () => {
   assert.equal(items[0].subtitle, undefined);
   assert.equal(items[0].ref?.kind, 'ticket');
   assert.equal(items[0].ref?.value, '#4821');
-  assert.equal(items[0].href, '/support?ticket=4821');
+  assert.equal(items[0].href, '/support?q=4821');
   assert.equal(items[0].tone, 'success');
 });
 

@@ -231,6 +231,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 staff_rb.name                AS received_by_name,
                 staff_ub.name                AS unboxed_by_name,
                 staff_uo.name                AS unbox_opened_by_name,
+                ru.opened_by                 AS receiving_unbox_opened_by,
                 COALESCE(ops_scan.first_scanned_at, scan_first.scanned_at)::text  AS first_scanned_at,
                 scan_first.scanned_by        AS first_scanned_by,
                 staff_sb.name                AS scanned_by_name,
@@ -1485,6 +1486,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 staff_rb.name                AS received_by_name,
                 staff_ub.name                AS unboxed_by_name,
                 staff_uo.name                AS unbox_opened_by_name,
+                ru.opened_by                 AS receiving_unbox_opened_by,
                 -- first_scanned_at is the genuine door/tracking scan ONLY. It feeds
                 -- the "Scanned" display (row.scanned_at → tracking_scanned_at), which
                 -- is triage-owned — never fold unbox_opened_at in here or opening a
@@ -1788,6 +1790,8 @@ export function buildUnmatchedPlaceholdersSql(
                   COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
                   staff_ub.name AS unboxed_by_name,
                   staff_uo.name AS unbox_opened_by_name,
+                  ru.unboxed_by AS receiving_unboxed_by,
+                  ru.opened_by AS receiving_unbox_opened_by,
                 ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count,
                 ${sqlReceivingCartonZendeskTicketColumn()}
            FROM receiving_carton r
@@ -1937,6 +1941,8 @@ export function buildUnboxOpenedPlaceholdersSql(
                   COALESCE(ru.opened_at::text, unbox_open.unbox_opened_at::text) AS unbox_opened_at,
                   staff_ub.name AS unboxed_by_name,
                   staff_uo.name AS unbox_opened_by_name,
+                  ru.unboxed_by AS receiving_unboxed_by,
+                  ru.opened_by AS receiving_unbox_opened_by,
                   ${sqlReceivingPhotoCount('r.id', 'r.organization_id')} AS photo_count,
                   ${sqlReceivingCartonZendeskTicketColumn()}
            FROM receiving_carton r

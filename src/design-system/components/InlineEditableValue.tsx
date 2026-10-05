@@ -34,6 +34,8 @@ interface InlineEditableValueProps {
   showEditIcon?: boolean;
   /** Where the pencil sits; `start` keeps it left of the value (e.g. UPS row). */
   editIconPosition?: 'start' | 'end';
+  /** Extra classes on the pencil — e.g. reveal it on its row's hover. */
+  editIconClassName?: string;
   ariaLabel?: string;
 }
 
@@ -54,6 +56,7 @@ export function InlineEditableValue({
   accessory,
   showEditIcon = true,
   editIconPosition = 'end',
+  editIconClassName = '',
   ariaLabel = 'Edit value',
 }: InlineEditableValueProps) {
   const [isEditing, setIsEditing] = useState(autoFocus);
@@ -80,7 +83,7 @@ export function InlineEditableValue({
     <button
       type="button"
       onClick={() => setIsEditing((prev) => !prev)}
-      className="shrink-0 text-text-soft transition-colors duration-100 ease-out hover:text-text-default active:scale-95"
+      className={`shrink-0 text-text-soft transition-colors duration-100 ease-out hover:text-text-default active:scale-95 ${editIconClassName}`.trim()}
       aria-label={ariaLabel}
       title={ariaLabel}
     >

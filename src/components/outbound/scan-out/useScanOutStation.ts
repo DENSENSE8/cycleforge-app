@@ -18,31 +18,7 @@ import {
   type ScanOutFocusStatus,
 } from '@/components/outbound/scan-out/scan-out-active';
 
-export interface ScanOutResult {
-  ok: boolean;
-  matched: boolean;
-  duplicate?: boolean;
-  /** Order is in a state that must never leave (`canceled` / `cancelled`). */
-  blocked?: boolean;
-  blockReason?: string | null;
-  orderStatus?: string | null;
-  shipConfirmedAt?: string | null;
-  shipmentId?: number;
-  tracking?: string | null;
-  receivingId?: number | null;
-  orderRowId?: number | null;
-  orderId?: string | null;
-  productTitle?: string | null;
-  sku?: string | null;
-  itemNumber?: string | null;
-  condition?: string | null;
-  quantity?: number | null;
-  accountSource?: string | null;
-  imageUrl?: string | null;
-  message?: string | null;
-  /** A miss held as an open unmatched scan on Fulfilled (`orders_exceptions.id`). */
-  exceptionId?: number | null;
-}
+import { postScanOut, undoScanOut, type ScanOutResult } from '@/lib/outbound/scan-out-client';
 
 export type ScanOutStatus = ScanOutFocusStatus;
 
@@ -68,16 +44,6 @@ function statusText(status: ScanOutStatus, result: ScanOutResult | null): string
   if (status === 'err') return 'Scan-out failed — try again';
   if (status === 'ok' && result?.productTitle) return result.productTitle;
   return 'Fulfilled';
-}
-
-async function postScanOut(tracking: string): Promise<ScanOutResult> {
-  const res = await fetch('/api/shipped/scan-out', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ trackingNumber: tracking }),
-  });
-  if (!res.ok) throw new Error(`scan-out failed (${res.status})`);
-  return res.json();
 }
 
 /**
@@ -226,13 +192,8 @@ export function useScanOutStation() {
     if (!undoable || isUndoing) return;
     const { shipmentId } = undoable;
     setIsUndoing(true);
-    void fetch('/api/shipped/scan-out', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shipmentId }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`undo failed (${res.status})`);
+    void undoScanOut(shipmentId)
+      .then(() => {
         setUndoable(null);
         setActive(null);
         setNoteOrderRowId(null);

@@ -1,26 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { readLiveFeedRequest } from '@/lib/live-feed/api-gate';
 import { loadLiveFeedBoard } from '@/lib/live-feed/load';
+import { readLiveFeedFilters } from '@/lib/live-feed/route';
+import { LIVE_FEED_PERMISSION } from '@/lib/live-feed/stages';
 
 /**
- * GET /api/live-feed/board?dir=&channel=&staff=&lens=&from=&to=&timeFrom=&timeTo=&carrier=&q=&carry=
+ * GET /api/live-feed/board[?carrier=USPS,UPS&channel=amazon&staff=12]
  *
- * The Live feed Board (`/operations/live-feed`): every lane of the direction
- * inside the channel pick, in pipeline order — each package in exactly one
- * lane, its current state. Each column: `applicable` (can the lane have had
- * the lens event), exact `count`, `lateCount`, `oldestAt`, `carriedOver` (open
- * lanes) or `previousCount` (done lanes), top `LIVE_FEED_BOARD_GROUP_CAP`
- * `groups` (+ `groupsMore`) and its first `LIVE_FEED_BOARD_COLUMN_CAP` items,
- * late first. The range always applies (default: today). `status` and `page`
- * are ignored. Same gate as `/api/live-feed`; a direction the caller lacks is
- * a 403.
+ * Today's Live feed board, narrowed by the sidebar's facets / staff filter:
+ * each stage's exact count (open stages = the whole backlog still in the
+ * building, with how many entered before today, are past ship-by or are
+ * stalled; Scanned out = first dock scan-out today, plus yesterday's count),
+ * its first page of cards, the hourly pace, each carrier's load, today's
+ * pickup countdowns and the facet counts.
  */
-export const GET = withAuth(async (req: NextRequest, ctx) => {
-  const filters = await readLiveFeedRequest(req, ctx);
-  if (filters instanceof NextResponse) return filters;
-
-  const board = await loadLiveFeedBoard(ctx.organizationId, filters, ctx.permissions);
-  if (!board) return NextResponse.json({ error: 'FORBIDDEN', dir: filters.dir, role: ctx.role }, { status: 403 });
-  return NextResponse.json(board, { headers: { 'Cache-Control': 'no-store' } });
-});
+export const GET = withAuth(
+  async (req: NextRequest, ctx) => {
+    const board = await loadLiveFeedBoard(ctx.organizationId, readLiveFeedFilters(req.nextUrl.searchParams));
+    return NextResponse.json(board, { headers: { 'Cache-Control': 'no-store' } });
+  },
+  { permission: LIVE_FEED_PERMISSION },
+);

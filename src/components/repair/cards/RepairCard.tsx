@@ -2,36 +2,35 @@
 
 /**
  * One REPAIR CARD — the repair family's face over the shared {@link RecordCard}
- * (owner 2026-09-29): the ticket (and carton) · channel · customer on line 1,
- * the inline status control and the SLA top-right; the device on line 2; the
- * issue leading line 3 (· price · date · receiver) and the serial at the
- * card's bottom-right. Facts come from `repairCardModel`.
+ * (owner 2026-09-29; retailored 2026-10-04): the ticket, carton and serial ·
+ * channel · customer on line 1 and the SLA top-right; the issue as the
+ * headline; the device, date and receiver under it. The status is the rail and
+ * glyph only — it changes on the open record, never on the card. Facts come
+ * from `repairCardModel`.
  */
 
 import { memo, useMemo } from 'react';
 import { Store, Truck } from '@/components/Icons';
-import { TicketChip } from '@/components/ui/CopyChip';
+import { SerialChip, TicketChip } from '@/components/ui/CopyChip';
 import { CollapseItem } from '@/design-system/components/Collapse';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
-import { RecordFactPaint } from '@/design-system/components/record-card/record-fact';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
 import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
-import { CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-stage';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { resolveRepairContact } from '@/lib/repair/contact-info';
 import type { RepairCardModel } from '@/lib/repair/repair-card-model';
+import { repairPriceDisplay } from '@/lib/repair/repair-queue-model';
 import { REPAIR_QUEUE_VIEW } from '@/lib/triage/views';
-import { cn } from '@/utils/_cn';
 import { formatPhoneNumber } from '@/utils/phone';
-import { RepairStatusControl } from './RepairStatusControl';
 
-/** Quick look (Space): what the face leaves out — contact, links, the full issue. */
+/** Quick look (Space): what the face leaves out — contact, price, links, the full issue. */
 export function RepairCardPeek({ model }: { model: RepairCardModel }) {
   const lead = model.lead;
   const contact = resolveRepairContact(lead);
   const facts: [string, string | null][] = [
     ['Phone', contact.phone ? formatPhoneNumber(contact.phone) : null],
     ['Email', contact.email],
+    ['Price', repairPriceDisplay(lead)],
     ['SKU', lead.source_sku?.trim() || null],
     ['Order', lead.source_order_id?.trim() || null],
     ['Tracking', lead.source_tracking_number?.trim() || null],
@@ -54,11 +53,6 @@ export function RepairCardPeek({ model }: { model: RepairCardModel }) {
   );
 }
 
-/** The face's slot props plus the card's one write: its status. */
-export interface RepairCardProps extends TriageCardSlotProps<RSRecord, RepairCardModel> {
-  onChangeStatus: (repair: RSRecord, next: string) => void;
-}
-
 export const RepairCard = memo(function RepairCard({
   model,
   checked,
@@ -70,8 +64,7 @@ export const RepairCard = memo(function RepairCard({
   onToggleCheck,
   onToggleExpand,
   onTogglePeek,
-  onChangeStatus,
-}: RepairCardProps) {
+}: TriageCardSlotProps<RSRecord, RepairCardModel>) {
   const record = useMemo<ViewCardModel<typeof REPAIR_QUEUE_VIEW>>(() => {
     const channel = model.record.channel;
     if (!channel) return model.record;
@@ -91,19 +84,7 @@ export const RepairCard = memo(function RepairCard({
           {carton}
         </span>
       ) : null}
-    </span>
-  );
-  const status = (
-    <RepairStatusControl
-      status={model.lead.status}
-      onPick={(next) => onChangeStatus(model.lead, next)}
-      testId={`${REPAIR_QUEUE_VIEW.testIdPrefix}-status-control`}
-    />
-  );
-  // Bottom-right, where the orders' next step sits: the serial the bench reads off the device.
-  const serial = (
-    <span className={cn(CARD_FACT_BOX_CLASS, 'whitespace-nowrap text-[13px]')} data-testid={`${REPAIR_QUEUE_VIEW.testIdPrefix}-serial`}>
-      <RecordFactPaint face={model.serial} />
+      {model.serial ? <SerialChip value={model.serial} width="w-fit shrink-0" dense /> : null}
     </span>
   );
   return (
@@ -123,8 +104,7 @@ export const RepairCard = memo(function RepairCard({
       onToggleExpand={() => onToggleExpand(model.key)}
       onTogglePeek={() => onTogglePeek(model.key)}
       identity={{ role: 'identity', content: identity }}
-      trailing={{ role: 'trailing', content: status }}
-      action={serial}
+      trailing={null}
       quickLook={<RepairCardPeek key="peek" model={model} />}
     />
   );

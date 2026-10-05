@@ -31,7 +31,7 @@ import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTi
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { buildRepairLabelPayload, printRepairLabel } from '@/lib/print/printRepairLabel';
 import type { RepairRecordModel, RepairVerbId } from '@/lib/repair/repair-record-model';
-import { RepairStatusList } from '../cards/RepairStatusControl';
+import { RepairStatusList } from '../cards/RepairStatusList';
 import { useRepairStatusChange } from '../useRepairStatusChange';
 import { RepairInfoEditor } from './RepairInfoEditor';
 import { RepairBenchPanel } from './RepairBenchPanel';

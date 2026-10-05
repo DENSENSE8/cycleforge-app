@@ -2,54 +2,9 @@
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { normalizeTrackingLast8 } from '@/lib/tracking-format';
-import { normalizeOrderNumber } from '@/lib/po-gmail/reconcile';
 import { recordEquivalence } from './equivalence';
+import { matchZohoPo, type EbayCandidate, type MergeMatchReason, type ZohoPoSignals } from './purchase-match';
 import { upsertPurchaseLink, type TxClient } from './purchase-links';
-
-/** An eBay-primary Incoming line that might be the same purchase as a Zoho PO. */
-export interface EbayCandidate {
-  receivingLineId: number;
-  sourceOrderId: string; // eBay order id
-  sku: string | null;
-  tracking: string | null; // from the eBay reconcile mirror, if any
-}
-
-/** The signals that identify a Zoho PO for matching. */
-interface ZohoPoSignals {
-  zohoPurchaseOrderId: string;
-  poNumber?: string | null;
-  tracking?: string | null; // Zoho PO reference# carries tracking (this repo's inbound contract)
-  referenceNumber?: string | null;
-  notes?: string | null;
-}
-
-type MergeMatchReason = 'tracking' | 'order_number';
-
-/** eBay order ids are long; guard the order#-substring path against short collisions. */
-const MIN_ORDER_NUMBER_MATCH_LEN = 8;
-
-/**
- * Pure: does this eBay candidate refer to the same real purchase as the Zoho PO?
- * Returns the strong match reason, or null. Tracking beats order#.
- */
-export function matchZohoPo(candidate: EbayCandidate, po: ZohoPoSignals): MergeMatchReason | null {
-  const cTrack = candidate.tracking ? normalizeTrackingLast8(candidate.tracking) : '';
-  const pTrack = po.tracking ? normalizeTrackingLast8(po.tracking) : '';
-  if (cTrack && pTrack && cTrack === pTrack) return 'tracking';
-
-  const needle = normalizeOrderNumber(candidate.sourceOrderId);
-  if (needle.length >= MIN_ORDER_NUMBER_MATCH_LEN) {
-    // Exact against the structured PO#/reference; substring against free-text notes.
-    const exact = [po.poNumber, po.referenceNumber]
-      .filter(Boolean)
-      .map((s) => normalizeOrderNumber(String(s)));
-    if (exact.some((h) => h === needle)) return 'order_number';
-    const notes = po.notes ? normalizeOrderNumber(po.notes) : '';
-    if (notes && notes.includes(needle)) return 'order_number';
-  }
-  return null;
-}
 
 export interface MergeDeps {
   withTx: <T>(orgId: OrgId, fn: (client: TxClient) => Promise<T>) => Promise<T>;

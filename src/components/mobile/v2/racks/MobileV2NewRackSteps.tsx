@@ -2,24 +2,20 @@
 
 /**
  * The four step bodies of New rack (`MobileV2NewRackFlow`): Place (scan a room
- * or floor label, manual pick below), Shelves (count stepper + optional
- * per-shelf urgency), Review (the server's dry-run codes as cards), Print
+ * or floor label, manual pick below), Shelves (count stepper), Review (the
+ * server's dry-run codes as cards), Print
  * (progress and result). Text wraps, never truncates.
  */
 
-import { useState } from 'react';
 import { Minus, Plus } from '@/components/Icons';
-import { MobileV2ActionSheet } from '@/components/mobile/v2/MobileV2ActionSheet';
 import { MobileV2ScanInput } from '@/components/mobile/v2/scan/MobileV2ScanInput';
 import { MobileRecordCard, MobileRecordCardList } from '@/design-system/components/MobileRecordCard';
 import { IconButton, ProgressBar } from '@/design-system/primitives';
 import type { RackCreateState } from '@/lib/locations/rack-create-model';
 import { RACK_MAX_SHELVES, type PlannedRack, type RackDetail } from '@/lib/locations/rack-types';
 import { locationLabelPrintSummary, type PrintLocationRowsResult } from '@/lib/print/printLocationRows';
-import type { ArrivalTier } from '@/lib/receiving/arrival-tier';
-import { ARRIVAL_TIER_CHOICES } from '@/lib/receiving/arrival-shelves-client';
 import { rackPlacementText } from '@/lib/locations/rack-display';
-import { plural, shelfTierStatus } from './rack-presentation';
+import { plural } from './rack-presentation';
 import { RackPlacementChoices, type RackPlacementChoice } from './RackPlacementChoices';
 
 function Line({ children, tone = 'muted' }: { children: string; tone?: 'muted' | 'alert' | 'ink' }) {
@@ -76,86 +72,37 @@ export function NewRackPlaceStep({
 export function NewRackShelvesStep({
   state,
   onCount,
-  onTier,
 }: {
   state: RackCreateState;
   onCount: (count: number) => void;
-  onTier: (shelf: number, tier: ArrivalTier | null) => void;
 }) {
-  const [tiering, setTiering] = useState<number | null>(null);
-  const shelves = Array.from({ length: state.shelves }, (_, index) => index + 1);
   return (
-    <>
-      <div className="flex items-center justify-between gap-3 border-b border-mode-rule px-mode-page py-3">
-        <span className="break-words text-mode-body text-mode-ink">Shelves on this rack</span>
-        <span className="flex items-center gap-3">
-          <IconButton
-            icon={<Minus />}
-            ariaLabel="One shelf fewer"
-            size="touch"
-            radius="pill"
-            onClick={() => onCount(state.shelves - 1)}
-            disabled={state.shelves <= 1}
-            data-testid="new-rack-shelves-minus"
-          />
-          <span className="min-w-8 text-center text-role-title font-semibold tabular-nums text-mode-ink" data-testid="new-rack-shelf-count">
-            {state.shelves}
-          </span>
-          <IconButton
-            icon={<Plus />}
-            ariaLabel="One shelf more"
-            size="touch"
-            radius="pill"
-            onClick={() => onCount(state.shelves + 1)}
-            disabled={state.shelves >= RACK_MAX_SHELVES}
-            data-testid="new-rack-shelves-plus"
-          />
+    <div className="flex items-center justify-between gap-3 border-b border-mode-rule px-mode-page py-3">
+      <span className="break-words text-mode-body text-mode-ink">Shelves on this rack</span>
+      <span className="flex items-center gap-3">
+        <IconButton
+          icon={<Minus />}
+          ariaLabel="One shelf fewer"
+          size="touch"
+          radius="pill"
+          onClick={() => onCount(state.shelves - 1)}
+          disabled={state.shelves <= 1}
+          data-testid="new-rack-shelves-minus"
+        />
+        <span className="min-w-8 text-center text-role-title font-semibold tabular-nums text-mode-ink" data-testid="new-rack-shelf-count">
+          {state.shelves}
         </span>
-      </div>
-      <MobileRecordCardList label="Arrival urgency (optional)">
-        {shelves.map((shelf) => {
-          const tier = state.tiers[shelf] ?? null;
-          const face = shelfTierStatus(tier);
-          return (
-            <MobileRecordCard
-              key={shelf}
-              identity={`Shelf ${shelf}`}
-              title={tier == null ? 'Not an arrival shelf' : 'Arrival shelf'}
-              status={face.status}
-              tone={face.tone}
-              onOpen={() => setTiering(shelf)}
-              testId="new-rack-shelf"
-            />
-          );
-        })}
-      </MobileRecordCardList>
-      <MobileV2ActionSheet
-        open={tiering != null}
-        onClose={() => setTiering(null)}
-        eyebrow="New rack"
-        title={`Shelf ${tiering ?? ''} arrival urgency`}
-        verbs={[]}
-        onVerb={() => undefined}
-        dockLabel="Arrival urgency"
-        testId="new-rack-tier-sheet"
-      >
-        <MobileRecordCardList>
-          {ARRIVAL_TIER_CHOICES.map((choice) => (
-            <MobileRecordCard
-              key={choice.value || 'none'}
-              identity={choice.label}
-              title={choice.tier == null ? 'Cartons are not placed here at arrival' : `Cartons of ${choice.label} urgency go here at arrival`}
-              selected={tiering != null && (state.tiers[tiering] ?? null) === choice.tier}
-              onOpen={() => {
-                if (tiering != null) onTier(tiering, choice.tier);
-                setTiering(null);
-              }}
-              testId="new-rack-tier-choice"
-            />
-          ))}
-        </MobileRecordCardList>
-      </MobileV2ActionSheet>
-    </>
+        <IconButton
+          icon={<Plus />}
+          ariaLabel="One shelf more"
+          size="touch"
+          radius="pill"
+          onClick={() => onCount(state.shelves + 1)}
+          disabled={state.shelves >= RACK_MAX_SHELVES}
+          data-testid="new-rack-shelves-plus"
+        />
+      </span>
+    </div>
   );
 }
 
@@ -174,19 +121,14 @@ export function NewRackReviewStep({ planned, loading, error }: { planned: Planne
         />
       </MobileRecordCardList>
       <MobileRecordCardList label={`${plural(planned.shelves.length + 1, 'label')} will print`}>
-        {planned.shelves.map((shelf) => {
-          const face = shelfTierStatus(shelf.tier);
-          return (
-            <MobileRecordCard
-              key={shelf.code}
-              identity={`Shelf ${shelf.shelf}`}
-              title={shelf.code}
-              status={face.status}
-              tone={face.tone}
-              testId="new-rack-review-shelf"
-            />
-          );
-        })}
+        {planned.shelves.map((shelf) => (
+          <MobileRecordCard
+            key={shelf.code}
+            identity={`Shelf ${shelf.shelf}`}
+            title={shelf.code}
+            testId="new-rack-review-shelf"
+          />
+        ))}
       </MobileRecordCardList>
     </>
   );

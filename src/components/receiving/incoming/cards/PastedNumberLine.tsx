@@ -44,6 +44,7 @@ export const PastedNumberLine = memo(function PastedNumberLine(props: TriageCard
     return {
       state,
       identity: entry.ref,
+      identityCopy: { value: entry.ref, tone: 'id' },
       identityWidth: 'long',
       title,
       facts: [

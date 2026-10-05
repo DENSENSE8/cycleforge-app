@@ -2,8 +2,8 @@
 
 /** Inventory › Locations workspace — Receiving Sheets flush recipe: */
 
-import { useMemo, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 
 import { useBinsOverview, type BinsOverviewRow } from '@/hooks/useBinsOverview';
@@ -23,16 +23,27 @@ import { RacksDesk } from './racks/RacksDesk';
 import { WarehouseMap, type MapViewMode } from './WarehouseMap';
 import { WarehouseFloorPlan } from './WarehouseFloorPlan';
 import { parseLocationsTab } from '@/lib/inventory/locations-path';
-import { LocationsManagementTab } from '@/components/admin/LocationsManagementTab';
 import { LocationDeletionManager } from '@/features/locations/LocationDeletionManager';
 import { Button } from '@/design-system/primitives';
 import { Trash2 } from '@/components/Icons';
 
 /** The tool (`?tab=`) is chosen in the sidebar — Inventory › Locations › Tool (2026-09-28). */
 export function LocationsWorkspace() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const tab = parseLocationsTab(searchParams.get('tab'));
   const rackCodeParam = searchParams.get('code');
+  const locationSearch = searchParams.toString();
+
+  // Bay labels used to be a sibling view. Keep old plain bookmarks useful,
+  // but canonicalize them onto the one Labels workflow. A bay code still owns
+  // its rack detail route below.
+  useEffect(() => {
+    if (tab !== 'bays' || rackCodeParam) return;
+    const params = new URLSearchParams(locationSearch);
+    params.set('tab', 'labels');
+    router.replace(`/inventory/locations?${params.toString()}`, { scroll: false });
+  }, [locationSearch, rackCodeParam, router, tab]);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
@@ -40,15 +51,14 @@ export function LocationsWorkspace() {
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {tab === 'rooms' ? <RoomDetailForm /> : null}
           {tab === 'labels' || (tab === 'bays' && !rackCodeParam) ? (
-            <MobileFirstFrame testId="location-labels-frame">
-              <LocationLabelBuilder key={tab} initialKind={tab === 'bays' ? 'rack' : 'bin'} dock="float" />
+            <MobileFirstFrame testId="location-labels-frame" width="workspace">
+              <LocationLabelBuilder initialKind="bin" dock="float" />
             </MobileFirstFrame>
           ) : null}
           {tab === 'totes' ? <TotePlateWorkspace /> : null}
           {tab === 'bays' && rackCodeParam ? <RackDetailView code={rackCodeParam} /> : null}
           {tab === 'map' ? <MapTabBody /> : null}
           {tab === 'movable' ? <RacksDesk /> : null}
-          {tab === 'manage' ? <LocationsManagementTab /> : null}
           {tab === 'bins' ? (
             <BinsTabSheet />
           ) : null}
@@ -156,38 +166,14 @@ function BinsTabSheet() {
 }
 
 function MapTabBody() {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const view = parseMapView(searchParams.get('view'));
   const showEmpty = searchParams.get('showEmpty') === '1';
   const { rows, loading, error, refetch } = useBinsOverview({ pollMs: 60_000 });
   const [flyoutRow, setFlyoutRow] = useState<BinsOverviewRow | null>(null);
 
-  const toggleEmpty = () => {
-    const sp = new URLSearchParams(searchParams.toString());
-    if (showEmpty) sp.delete('showEmpty');
-    else sp.set('showEmpty', '1');
-    const qs = sp.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname);
-  };
-
   return (
     <>
-      <div className="flex justify-end border-b border-border-soft px-3 py-2">
-        <button
-          type="button"
-          onClick={toggleEmpty}
-          className={`ds-raw-button rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-            showEmpty
-              ? 'border-blue-500 bg-blue-50 text-blue-700'
-              : 'border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover'
-          }`}
-          aria-pressed={showEmpty}
-        >
-          {showEmpty ? 'Hide' : 'Show'} empty bins
-        </button>
-      </div>
       {view === 'floorplan' ? (
         <WarehouseFloorPlan
           rows={rows}

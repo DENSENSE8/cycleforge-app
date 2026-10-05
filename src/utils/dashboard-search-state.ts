@@ -45,26 +45,6 @@ interface DashboardAssignmentUpdateDetail {
   condition?: string | null;
 }
 
-/** Params the legacy `?warranty=` redirect forwards to Support. */
-export const SUPPORT_WARRANTY_FORWARDED_PARAMS = [
-  'open',
-  'wstatus',
-  'wexp',
-  'search',
-] as const;
-
-export function buildSupportWarrantyRedirectSearch(
-  searchParams: Pick<URLSearchParams, 'get'>
-): string {
-  const next = new URLSearchParams();
-  next.set('mode', 'warranty');
-  for (const key of SUPPORT_WARRANTY_FORWARDED_PARAMS) {
-    const value = searchParams.get(key);
-    if (value) next.set(key, value);
-  }
-  return next.toString();
-}
-
 /**
  * Resolve the desk view from the URL. Legacy `?tested` / `?packed` / `?shipped`
  * presence flags collapse to the single in-warehouse desk (`unshipped`); stage

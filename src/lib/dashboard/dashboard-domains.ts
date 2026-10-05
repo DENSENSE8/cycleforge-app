@@ -70,7 +70,7 @@ export function isDashboardRepairsMode(
 
 /**
  * True when the URL still carries the retired Search mode. `/dashboard` client-
- * redirects these (the `?warranty=` → `/support` precedent); Next `redirects()`
+ * redirects these (the retired `?warranty=` handoff precedent); Next `redirects()`
  * emits 308 and cannot cleanly drop one param while preserving `q`.
  */
 export function isRetiredSearchMode(

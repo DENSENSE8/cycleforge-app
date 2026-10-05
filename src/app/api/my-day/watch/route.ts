@@ -1,4 +1,4 @@
-/** /api/my-day/watch — Today Watch rail (ticket + tracking). */
+/** /api/my-day/watch — Today Watch rail. Tracking watches are written here; ticket ownership is the Support item's task assignees (PATCH /api/tasks/[id]), listed read-only. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -8,17 +8,13 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 import { isHomeInbox } from '@/lib/feature-flags';
 import { listSupportFollowupsForStaff } from '@/lib/inbox/support-followups-queries';
-import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import { listReceivingWatchesForStaff } from '@/lib/notifications/subscriptions';
 import { setTrackingWatch } from '@/lib/notifications/tracking-watch';
-import { parseTicketScanValue } from '@/lib/support/ticket-scan';
-import { syncZendeskTicketRegistryCaches } from '@/lib/support/tickets';
-import { upsertTicketAssignment } from '@/lib/zendesk-assignments';
 
 export const dynamic = 'force-dynamic';
 
 const Body = z.object({
-  kind: z.enum(['ticket', 'tracking']),
+  kind: z.literal('tracking'),
   value: z.string().trim().min(1).max(128),
   clientEventId: z.string().uuid().optional(),
   /**
@@ -35,6 +31,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     const tickets = ctx.permissions.has('integrations.zendesk')
       ? (await listSupportFollowupsForStaff(ctx.organizationId, ctx.staffId)).map((row) => ({
           ticketId: row.ticketId,
+          taskId: row.taskId,
           subject: row.subject,
           updatedAtMs: row.updatedAtMs,
         }))
@@ -72,66 +69,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         { status: 400 },
       );
     }
-    const { kind, value, clientEventId, desired = 'subscribed' } = parsed.data;
+    const { value, clientEventId, desired = 'subscribed' } = parsed.data;
 
-    if (kind === 'ticket') {
-      if (!ctx.permissions.has('integrations.zendesk')) {
-        throw new ApiError(403, 'Helpdesk permission required to watch a ticket');
-      }
-      const ticketId = parseTicketScanValue(value);
-      if (ticketId == null) {
-        throw ApiError.badRequest('Enter a ticket number (e.g. 8192 or #8192)');
-      }
-
-      const helpdesk = await getHelpdeskProvider(ctx.organizationId);
-      let subject: string | null = null;
-      if (helpdesk && (await helpdesk.isConfigured())) {
-        const ticket = await helpdesk.getTicket(ticketId).catch(() => null);
-        if (!ticket) throw ApiError.notFound('Ticket', ticketId);
-        subject = ticket.subject?.trim() || null;
-        await syncZendeskTicketRegistryCaches({
-          orgId: ctx.organizationId,
-          zendeskTicketId: ticketId,
-          subject,
-          status: ticket.status ? String(ticket.status) : null,
-          staffId: ctx.staffId,
-        });
-      } else {
-        await syncZendeskTicketRegistryCaches({
-          orgId: ctx.organizationId,
-          zendeskTicketId: ticketId,
-          subject: null,
-          status: null,
-          staffId: ctx.staffId,
-        });
-      }
-
-      await upsertTicketAssignment({
-        organizationId: ctx.organizationId,
-        ticketId,
-        staffId: ctx.staffId,
-        assignedBy: ctx.staffId,
-      });
-
-      await recordAudit(pool, ctx, req, {
-        source: 'my-day-watch',
-        action: AUDIT_ACTION.SUBSCRIPTION_TOGGLE,
-        entityType: AUDIT_ENTITY.STAFF,
-        entityId: String(ctx.staffId),
-        extra: { kind: 'ticket', ticketId },
-      });
-      ctx.markAuditWritten();
-
-      return NextResponse.json({
-        ok: true,
-        kind: 'ticket',
-        ticketId,
-        subject,
-        taskId: `support-${ticketId}`,
-      });
-    }
-
-    // ── tracking ──────────────────────────────────────────────────────────
     if (!ctx.permissions.has('home.subscriptions.manage')) {
       throw new ApiError(403, 'Subscription permission required to watch tracking');
     }

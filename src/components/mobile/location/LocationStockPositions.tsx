@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -9,12 +9,10 @@ import {
   Camera,
   Check,
   ChevronRight,
-  Copy,
   ExternalLink,
   Images,
-  MoreHorizontal,
+  MoreVertical,
   Package,
-  Pencil,
   ScanBarcode,
   SlidersHorizontal,
   Trash2,
@@ -33,29 +31,38 @@ import { announceStockTransfer, postStockTransfer } from '@/lib/inventory/stock-
 import { takeReasonPayload, type TakeReasonChoice } from '@/lib/inventory/take-reason';
 import { locationHubPath, locationKeypadHref } from '@/lib/mobile/location-hub-href';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
-import { stockPhotosHref } from '@/lib/nav/route-tree';
+import { photoContentUrl } from '@/lib/photos/display-url';
+import { uploadSkuStockShots } from '@/lib/photos/sku-stock-photo-upload';
 import { vibrateScan } from '@/lib/scan-feedback/play';
 import { toast } from '@/lib/toast';
-import { copyToClipboard } from '@/utils/_dom';
 import { cn } from '@/utils/_cn';
+import { formatMonthDayTimePST } from '@/utils/date';
+import { DetailFact, DetailFacts } from '@/components/mobile/detail/DetailParts';
 import { TakeReasonChooser } from '@/components/mobile/pair/TakeReasonChooser';
 import { LocationQtyStrip } from '@/components/mobile/scan/LocationQtyStrip';
 import { useBinQtyCommit } from '@/components/mobile/scan/use-bin-qty-commit';
 import { locationRecordQueryKey } from '@/components/mobile/scan/location-bind-api';
 import type { LocationBindContent, LocationRecord } from '@/components/mobile/scan/location-bind-types';
 import { SkuLinkedPhotoStrip } from '@/components/mobile/stock/SkuLinkedPhotoStrip';
+import {
+  MobileNativePhotoCapture,
+  MobilePhotoLibraryInput,
+  type CapturedShot,
+} from '@/components/mobile/photos/MobileNativePhotoCapture';
 
 /** One task at a time in ONE sheet (docs/mobile-first/V2_OBJECT_FIRST.md §5). */
 type Stage = 'rest' | 'adjust' | 'move' | 'more' | 'photos';
 type TitleSave = { state: 'idle' | 'saving' | 'saved' } | { state: 'error'; message: string };
-type StageVerb = 'camera' | 'adjust' | 'move' | 'back' | 'done' | 'set' | 'commit';
+type StageVerb = 'adjust' | 'move' | 'back' | 'done' | 'count' | 'commit';
 
 const MORE_ROW_CLASS = 'w-full justify-start';
 
 /**
- * Stock at one location as flat rows; a tap opens the stock position sheet:
- * identity → evidence → next verb (Camera · Adjust · Move). Counting, moving
- * and record management are stages of that sheet, never a resting form.
+ * Stock at one location as flat rows; a tap opens the stock position bottom
+ * sheet: identity → evidence → next verb (Adjust · Move); the header owns Camera
+ * and the exact count. Adjust is ±1 first; the keypad lives under More.
+ * Counting, moving and record management are stages of that sheet, never a
+ * resting form. The sheet has no X: it dismisses by swipe or an outside tap.
  */
 export function LocationStockPositions({
   record,
@@ -74,16 +81,18 @@ export function LocationStockPositions({
   const [stage, setStage] = useState<Stage>('rest');
   const [error, setError] = useState<string | null>(null);
   const [takeReason, setTakeReason] = useState<TakeReasonChoice>(null);
-  const [manualQty, setManualQty] = useState(0);
-  const [manualBusy, setManualBusy] = useState(false);
   const [moveQty, setMoveQty] = useState(1);
   const [splitting, setSplitting] = useState(false);
   const [destination, setDestination] = useState('');
   const [titleDraft, setTitleDraft] = useState('');
   const [titleSave, setTitleSave] = useState<TitleSave>({ state: 'idle' });
-  const [titleEditKey, setTitleEditKey] = useState(0);
-  const [actionBusy, setActionBusy] = useState<'move' | 'delete' | null>(null);
+  const [actionBusy, setActionBusy] = useState<'move' | 'delete' | 'count' | null>(null);
+  /** The ±1 draft while adjusting without a location scan; null otherwise. */
+  const [countDraft, setCountDraft] = useState<number | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  /** The house photo capture, open over the page (the sheet steps aside); `files` = picked from the library first. */
+  const [capture, setCapture] = useState<{ files: File[] } | null>(null);
+  const libraryInput = useRef<HTMLInputElement>(null);
   const selected = record.contents.find((row) => row.sku === selectedSku) ?? null;
   const takePayload = useMemo(() => takeReasonPayload(takeReason), [takeReason]);
   const commitReason = useMemo(
@@ -136,9 +145,9 @@ export function LocationStockPositions({
   const open = (row: LocationBindContent) => {
     setError(null);
     setStage('rest');
-    setManualQty(row.qty);
     setMoveQty(Math.max(1, row.qty));
     setSplitting(false);
+    setCountDraft(null);
     setDestination('');
     setTitleDraft(row.productTitle?.trim() || '');
     setTitleSave({ state: 'idle' });
@@ -172,9 +181,39 @@ export function LocationStockPositions({
     }
   }, [patchRow, refresh, selected, titleDraft, titleSave.state]);
 
+  /**
+   * Without a fresh location scan the shelf takes an exact count (the manual
+   * count door, recorded as a count with its actor), never a put/take that
+   * would claim the operator stood at this location.
+   */
+  const commitCount = async (row: LocationBindContent, qty: number) => {
+    if (!user || actionBusy) return;
+    setActionBusy('count');
+    try {
+      await commitStockRequest(
+        stockSetRequest(
+          { rowId: `${record.code}:${row.sku}`, barcode: record.code, sku: row.sku, qty: row.qty, face: `${record.face} · ${row.sku}` },
+          qty,
+          // Versioned: a count changed on another device since this sheet loaded is refused, not overwritten.
+          { staffId: user.staffId, reason: row.qty === 0 ? 'BIN_ADD' : 'MANUAL_COUNT', expectedUpdatedAt: row.lastMoved ?? undefined },
+        ),
+      );
+      applyQty(row.sku, () => qty);
+      vibrateScan('success');
+      setCountDraft(null);
+      setStage('rest');
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save the count');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
   const close = () => {
     void quick.flush();
-    // Dismissal is a save gesture for the title, never a discard.
+    // Dismissal is a save gesture for the title, never a discard. An unset
+    // manual count is a draft: only its own Set verb writes it.
     void saveTitle();
     setSelectedSku(null);
     setViewerOpen(false);
@@ -194,35 +233,6 @@ export function LocationStockPositions({
     const accepted = quick.bump(row.sku, step, row.qty);
     vibrateScan(accepted ? 'success' : 'reject');
     return accepted;
-  };
-
-  const setExactCount = async (row: LocationBindContent) => {
-    if (manualBusy || manualQty === row.qty) return;
-    setManualBusy(true);
-    setError(null);
-    try {
-      await commitStockRequest(
-        stockSetRequest(
-          {
-            rowId: `${record.code}:${row.sku}`,
-            barcode: record.code,
-            sku: row.sku,
-            qty: row.qty,
-            face: `${record.face} · ${row.sku}`,
-          },
-          manualQty,
-          { staffId: user?.staffId, reason: 'MANUAL_COUNT' },
-        ),
-      );
-      applyQty(row.sku, () => manualQty);
-      toast.success(`${record.face}: ${row.qty} → ${manualQty}`);
-      setStage('rest');
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not set the count');
-    } finally {
-      setManualBusy(false);
-    }
   };
 
   const qtyToMove = (row: LocationBindContent) => (splitting ? Math.min(row.qty, Math.max(1, moveQty)) : row.qty);
@@ -280,34 +290,38 @@ export function LocationStockPositions({
     }
   };
 
-  const copy = async (text: string, what: string) => {
-    if (await copyToClipboard(text)) toast.success(`Copied ${what}`);
-    else toast.error(`Could not copy the ${what}`);
-  };
-
   if (record.contents.length === 0) return null;
 
-  const live = selected ? Math.max(0, selected.qty + (quick.pending[selected.sku] ?? 0)) : 0;
+  const live = selected ? countDraft ?? Math.max(0, selected.qty + (quick.pending[selected.sku] ?? 0)) : 0;
   const onHold = selected ? isProvisionalSku(selected.sku) : false;
-  const photoHref = selected?.stockId ? stockPhotosHref(selected.stockId, { sku: selected.sku, back: returnTo }) : null;
+  const canAddPhotos = selected?.stockId != null;
+
+  const finishCapture = async (shots: CapturedShot[]) => {
+    setCapture(null);
+    if (!selected?.stockId || shots.length === 0) return;
+    if (await uploadSkuStockShots(selected.stockId, shots)) await refresh();
+  };
 
   const verbs = ((): readonly DetailDockVerb<StageVerb>[] => {
     if (!selected) return [];
     const back: DetailDockVerb<StageVerb> = { id: 'back', label: 'Back', icon: <ArrowLeft />, testId: 'stock-sheet-back' };
-    if (stage === 'adjust') {
-      if (verificationToken) return [{ id: 'done', label: 'Done', icon: <Check />, primary: true, testId: 'stock-adjust-done' }];
+    if (stage === 'adjust' && countDraft != null) {
+      const unchanged = countDraft === selected.qty;
       return [
         back,
         {
-          id: 'set',
-          label: manualQty === selected.qty ? `Count is ${selected.qty}` : `Set count to ${manualQty}`,
+          id: 'count',
+          label: unchanged ? `Count is ${countDraft}` : `Set count to ${countDraft}`,
           icon: <Check />,
           primary: true,
-          disabled: manualQty === selected.qty,
-          loading: manualBusy,
+          disabled: unchanged,
+          loading: actionBusy === 'count',
           testId: 'stock-adjust-set',
         },
       ];
+    }
+    if (stage === 'adjust') {
+      return [{ id: 'done', label: 'Done', icon: <Check />, primary: true, testId: 'stock-adjust-done' }];
     }
     if (stage === 'move') {
       const qty = qtyToMove(selected);
@@ -319,32 +333,44 @@ export function LocationStockPositions({
           : { id: 'move', label: 'Scan destination', icon: <ScanBarcode />, primary: true, testId: 'stock-move-scan' },
       ];
     }
-    if (stage === 'more') return [{ ...back, variant: 'secondary' }];
-    if (stage === 'photos') {
-      return [back, { id: 'camera', label: 'Add photos', icon: <Camera />, primary: true, disabled: !photoHref, testId: 'stock-photos-camera' }];
-    }
-    const camera: DetailDockVerb<StageVerb> = { id: 'camera', label: 'Camera', icon: <Camera />, disabled: !photoHref, testId: 'stock-camera' };
-    const adjust: DetailDockVerb<StageVerb> = { id: 'adjust', label: 'Adjust', icon: <SlidersHorizontal />, testId: 'stock-adjust' };
-    // Nothing on the shelf → nothing to move; the camera becomes the next verb.
-    if (selected.qty <= 0) return [{ ...camera, primary: true }, adjust];
-    return [camera, adjust, { id: 'move', label: 'Move', icon: <ArrowRight />, primary: true, testId: 'stock-move' }];
+    if (stage === 'more' || stage === 'photos') return [{ ...back, variant: 'secondary' }];
+    const adjust: DetailDockVerb<StageVerb> = { id: 'adjust', label: 'Adjust', icon: <SlidersHorizontal />, primary: true, testId: 'stock-adjust' };
+    if (selected.qty <= 0) return [adjust];
+    return [{ id: 'move', label: 'Move', icon: <ArrowRight />, testId: 'stock-move' }, adjust];
   })();
+
+  const startAdjust = (row: LocationBindContent) => {
+    // ±1 first, on the shelf; the number between − and + opens the Take / Put keypad.
+    if (!verificationToken) setCountDraft(row.qty);
+    setStage('adjust');
+  };
+
+  /** A manual ±1 moves the draft count; it never goes below zero. */
+  const bumpCount = (step: number) => {
+    if (countDraft == null || countDraft + step < 0) {
+      vibrateScan('reject');
+      return false;
+    }
+    setCountDraft(countDraft + step);
+    vibrateScan('success');
+    return true;
+  };
 
   const onVerb = (verb: StageVerb) => {
     if (!selected) return;
     setError(null);
     if (verb === 'back' || verb === 'done') {
       if (verb === 'done') void quick.flush();
+      setCountDraft(null);
       setStage('rest');
-    } else if (verb === 'camera' && photoHref) navigateAfterFlush(photoHref);
-    else if (verb === 'adjust') {
-      setManualQty(selected.qty);
-      setStage('adjust');
+    } else if (verb === 'count') {
+      if (countDraft != null) return commitCount(selected, countDraft);
+    } else if (verb === 'adjust') {
+      startAdjust(selected);
     } else if (verb === 'move') {
       if (stage === 'move') scanDestination(selected);
       else setStage('move');
-    } else if (verb === 'set') return setExactCount(selected);
-    else if (verb === 'commit') return moveToTyped(selected);
+    } else if (verb === 'commit') return moveToTyped(selected);
   };
 
   return (
@@ -370,10 +396,12 @@ export function LocationStockPositions({
         </button>
       ))}
 
-      <Sheet open={selected != null} onOpenChange={(next) => { if (!next) close(); }}>
+      {/* The sheet steps aside while the photo capture owns the screen: never a sheet over a sheet. */}
+      <Sheet open={selected != null && capture == null} onOpenChange={(next) => { if (!next) close(); }}>
         <SheetContent
           side="bottom"
           className="p-0"
+          showCloseButton={false}
           data-testid="stock-position-sheet"
           data-stage={stage}
           // Land on the record itself: no keyboard, no accidental verb.
@@ -387,14 +415,13 @@ export function LocationStockPositions({
         >
           {selected ? (
             <>
-              <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
-                <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto_auto] items-center gap-3">
+              <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3">
+                <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto_auto] items-center gap-2">
                   <ItemRecordThumb imageUrl={selected.imageUrl} plainEmpty className="h-12 min-h-12 w-12 rounded-lg" iconClassName="h-5 w-5" />
                   <div className="min-w-0">
                     <SheetTitle className="text-left text-base">
                       {onHold ? (
                         <InlineEditableValue
-                          key={titleEditKey}
                           value={titleDraft}
                           placeholder={selected.sku}
                           onChange={(value) => {
@@ -403,10 +430,10 @@ export function LocationStockPositions({
                           }}
                           onSubmit={() => void saveTitle()}
                           onCancel={() => setTitleDraft(selected.productTitle?.trim() || '')}
-                          autoFocus={titleEditKey > 0}
                           ariaLabel="Product title"
                           valueClassName="text-base"
                           inputClassName="h-11 text-base"
+                          showEditIcon={false}
                         />
                       ) : (
                         <span className="line-clamp-2">{selected.productTitle?.trim() || selected.sku}</span>
@@ -420,12 +447,19 @@ export function LocationStockPositions({
                     </p>
                     <SheetDescription className="sr-only">{selected.sku} at {record.face}</SheetDescription>
                   </div>
-                  <span className="font-mono text-role-title font-semibold tabular-nums text-mode-ink" aria-label={`${live} on hand`} data-testid="stock-sheet-qty">
+                  {/* ds-raw-button: the on-hand number is its own control; it opens the inline ±1 Adjust stage, never a full-screen keypad */}
+                  <button
+                    type="button"
+                    className="min-h-11 rounded-lg px-1 font-mono text-role-title font-semibold tabular-nums text-mode-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-accent"
+                    aria-label={`Adjust; ${live} on hand`}
+                    onClick={() => { if (stage !== 'adjust') startAdjust(selected); }}
+                    data-testid="stock-sheet-qty"
+                  >
                     {live}
-                  </span>
+                  </button>
                   <IconButton
                     size="touch"
-                    icon={<MoreHorizontal className="h-5 w-5" />}
+                    icon={<MoreVertical className="h-5 w-5" />}
                     ariaLabel="More actions"
                     aria-pressed={stage === 'more'}
                     onClick={() => setStage(stage === 'more' ? 'rest' : 'more')}
@@ -433,6 +467,24 @@ export function LocationStockPositions({
                   />
                 </div>
               </SheetHeader>
+
+              {stage === 'rest' ? (
+                <div className="shrink-0 border-b border-mode-rule" data-testid="stock-sheet-facts">
+                  <DetailFacts label="Stock position">
+                    <DetailFact label="SKU" value={selected.sku} mono copy={selected.sku} />
+                    <DetailFact label="Location" value={record.face} hint={record.room} mono copy={record.code} />
+                    <DetailFact label="Last counted" value={selected.lastCounted ? formatMonthDayTimePST(selected.lastCounted) : null} />
+                    <DetailFact label="Last moved" value={selected.lastMoved ? formatMonthDayTimePST(selected.lastMoved) : null} />
+                    {selected.minQty != null ? (
+                      <DetailFact
+                        label="Reorder at"
+                        value={selected.minQty}
+                        hint={live <= selected.minQty ? <span className="font-semibold text-text-warning">Low stock</span> : null}
+                      />
+                    ) : null}
+                  </DetailFacts>
+                </div>
+              ) : null}
 
               <SheetBody>
                 {stage === 'rest' || stage === 'photos' ? (
@@ -451,15 +503,53 @@ export function LocationStockPositions({
                     {stage === 'photos' && selected.photoIds.length === 0 ? (
                       <p className="text-role-caption text-text-muted">No photos yet.</p>
                     ) : null}
-                    {!photoHref ? (
+                    {stage === 'rest' ? (
+                      <div className="grid grid-cols-2 gap-2" data-testid="stock-photo-actions">
+                        <MobilePhotoLibraryInput
+                          ref={libraryInput}
+                          tabIndex={-1}
+                          aria-hidden
+                          onChange={(event) => {
+                            const files = Array.from(event.target.files ?? []);
+                            event.target.value = '';
+                            if (files.length > 0) setCapture({ files });
+                          }}
+                          data-testid="stock-photo-library-input"
+                        />
+                        <Button
+                          variant="secondary"
+                          size="lg"
+                          radius="surface"
+                          icon={<Camera />}
+                          disabled={!canAddPhotos}
+                          onClick={() => setCapture({ files: [] })}
+                          data-testid="stock-camera"
+                        >
+                          Camera
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="lg"
+                          radius="surface"
+                          icon={<Images />}
+                          disabled={!canAddPhotos}
+                          // Clicked inside this tap: iOS opens the picker only from a user gesture.
+                          onClick={() => libraryInput.current?.click()}
+                          data-testid="stock-choose-photos"
+                        >
+                          Choose photos
+                        </Button>
+                      </div>
+                    ) : null}
+                    {!canAddPhotos ? (
                       <p className="text-role-caption text-text-muted">Pair this SKU to stock to add photos.</p>
                     ) : null}
                   </>
                 ) : null}
 
                 {stage === 'adjust' ? (
-                  verificationToken ? (
-                    <div className="grid gap-3">
+                  <div className="grid gap-3">
+                    {countDraft == null ? (
                       <TakeReasonChooser
                         value={takeReason}
                         onChange={(next) => {
@@ -468,24 +558,17 @@ export function LocationStockPositions({
                         }}
                         label="Required when removing stock"
                       />
-                      <LocationQtyStrip
-                        content={selected}
-                        pendingDelta={quick.pending[selected.sku] ?? 0}
-                        onBump={(step) => bump(selected, step)}
-                        onCancelPending={() => quick.cancel(selected.sku)}
-                        onOpenKeypad={() => navigateAfterFlush(locationKeypadHref(record.code, selected.sku, { returnTo, verificationToken }))}
-                      />
-                    </div>
-                  ) : (
-                    <TouchQtyStepper
-                      value={manualQty}
-                      onChange={setManualQty}
-                      unit={['unit', 'units']}
-                      label={`Count of ${selected.sku} at ${record.face}`}
-                      disabled={manualBusy}
-                      testId="stock-adjust-count"
+                    ) : null}
+                    {/* One ±1 face for both paths: a scan-backed burst writes put/take; a manual
+                        draft is set as a count by its own verb. */}
+                    <LocationQtyStrip
+                      content={selected}
+                      pendingDelta={countDraft == null ? quick.pending[selected.sku] ?? 0 : countDraft - selected.qty}
+                      onBump={(step) => (countDraft == null ? bump(selected, step) : bumpCount(step))}
+                      onCancelPending={() => (countDraft == null ? quick.cancel(selected.sku) : setCountDraft(selected.qty))}
+                      onOpenKeypad={() => navigateAfterFlush(locationKeypadHref(record.code, selected.sku, { returnTo, verificationToken }))}
                     />
-                  )
+                  </div>
                 ) : null}
 
                 {stage === 'move' ? (
@@ -543,14 +626,6 @@ export function LocationStockPositions({
                         Split quantity
                       </Button>
                     ) : null}
-                    {onHold ? (
-                      <Button variant="secondary" size="lg" radius="surface" icon={<Pencil />} className={MORE_ROW_CLASS} onClick={() => {
-                        setStage('rest');
-                        setTitleEditKey((n) => n + 1);
-                      }}>
-                        Edit title
-                      </Button>
-                    ) : null}
                     {selected.photoIds.length > 0 ? (
                       <Button
                         variant="secondary"
@@ -564,12 +639,6 @@ export function LocationStockPositions({
                         Manage photos <span className="ml-auto tabular-nums text-role-caption text-text-muted">{selected.photoIds.length}</span>
                       </Button>
                     ) : null}
-                    <Button variant="secondary" size="lg" radius="surface" icon={<Copy />} className={MORE_ROW_CLASS} onClick={() => void copy(selected.sku, 'SKU')}>
-                      Copy SKU <span className="ml-auto font-mono text-role-caption text-text-muted">{selected.sku}</span>
-                    </Button>
-                    <Button variant="secondary" size="lg" radius="surface" icon={<Copy />} className={MORE_ROW_CLASS} onClick={() => void copy(record.code, 'location')}>
-                      Copy location <span className="ml-auto font-mono text-role-caption text-text-muted">{record.face}</span>
-                    </Button>
                     <Button
                       variant="secondary"
                       size="lg"
@@ -610,6 +679,33 @@ export function LocationStockPositions({
           ) : null}
         </SheetContent>
       </Sheet>
+
+      {capture && selected?.stockId ? (
+        <MobileNativePhotoCapture
+          maxPhotos={10}
+          initialFiles={capture.files}
+          priorPhotos={
+            selected.photoIds.length > 0
+              ? selected.photoIds.map((photoId) => ({
+                  id: `prior-${photoId}`,
+                  previewUrl: photoContentUrl(photoId, 'thumb'),
+                  fullUrl: photoContentUrl(photoId),
+                  photoId,
+                }))
+              : selected.imageUrl
+                ? [{ id: 'prior-cover', previewUrl: selected.imageUrl }]
+                : []
+          }
+          header={
+            <div className="min-w-0">
+              <p className="text-role-micro text-white/60">{record.face}</p>
+              <p className="break-words text-sm font-semibold text-white">{selected.productTitle?.trim() || selected.sku}</p>
+            </div>
+          }
+          onDone={(shots) => void finishCapture(shots)}
+          onCancel={() => setCapture(null)}
+        />
+      ) : null}
     </section>
   );
 }

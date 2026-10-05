@@ -2,7 +2,7 @@
  * Inventory › Locations › Racks — movable racks as multi-height record cards
  * (the desk face of the phone's `/m/racks`). One card per rack: `Rack 12 ·
  * RK12` → where it stands now (the room derived up `parent_id`, never printed)
- * · shelf count · arrival shelves; the top-right is when it last moved. Racks
+ * · shelf count; the top-right is when it last moved. Racks
  * carry no workflow, so no next step. The room filter is the sidebar's Room facet (`inventory.racks`).
  *
  * Not in `TRIAGE_VIEWS`: the Racks tool is a `?tab=` of Locations, not a nav
@@ -26,7 +26,6 @@ export const LOCATIONS_RACKS_VIEW = triageView({
   slots: { identity: 'rack number · code', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
   facts: [
     { id: 'shelves', tier: 'always' },
-    { id: 'arrival', tier: 'always' },
   ],
   sections: null,
   next: [],

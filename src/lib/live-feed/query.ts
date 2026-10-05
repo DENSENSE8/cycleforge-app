@@ -1,65 +1,82 @@
-import { queryOptions } from '@tanstack/react-query';
+/** The Live feed's client reads (TanStack Query). Client-safe. */
+
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import {
   LIVE_FEED_BOARD_API,
-  LIVE_FEED_TRACKING_API,
-  liveFeedApiHref,
-  liveFeedBoardHref,
-  liveFeedSearchParams,
-  liveFeedTrackingHref,
+  LIVE_FEED_LANE_API,
+  LIVE_FEED_PACKAGES_API,
+  LIVE_FEED_PAGE_SIZE,
+  LIVE_FEED_PARAMS,
+  liveFeedFilterParams,
+  type LiveFeedFilters,
 } from '@/lib/live-feed/route';
-import type {
-  LiveFeedBoard,
-  LiveFeedFilters,
-  LiveFeedPage,
-  LiveFeedStatusFilters,
-  LiveFeedTracking,
-} from '@/lib/live-feed/types';
+import type { PackageStage } from '@/lib/live-feed/stages';
+import type { PackageBoard, PackageCard, PackageLanePage } from '@/lib/live-feed/types';
 
-/** Broad prefix — realtime invalidates every feed read (lists, Board, Copy all) at once. */
+/** Broad prefix — a realtime event or a tag write refreshes every feed read at once. */
 export const LIVE_FEED_QUERY_ROOT = ['live-feed'] as const;
 
-/** A status list's filters as their canonical query string — one key per distinct read, the same string the API takes. */
-export function liveFeedQueryKey(filters: LiveFeedStatusFilters) {
-  return [...LIVE_FEED_QUERY_ROOT, liveFeedSearchParams(filters).toString()] as const;
-}
-
-/** The Board's key: its filters without status / page. */
-export function liveFeedBoardQueryKey(filters: LiveFeedFilters) {
-  return [...LIVE_FEED_QUERY_ROOT, LIVE_FEED_BOARD_API, liveFeedBoardHref(filters)] as const;
-}
-
-async function fetchJson<T>(href: string, what: string, signal: AbortSignal): Promise<T> {
+async function fetchJson<T>(href: string, signal: AbortSignal): Promise<T> {
   const res = await fetch(href, { signal, cache: 'no-store' });
-  if (!res.ok) throw new Error(`${what} failed (${res.status})`);
+  if (!res.ok) throw new Error(`Live feed request failed (${res.status})`);
   return (await res.json()) as T;
 }
 
-/** One status, one server page. */
-export function liveFeedQuery(filters: LiveFeedStatusFilters) {
-  return queryOptions({
-    queryKey: liveFeedQueryKey(filters),
-    queryFn: ({ signal }) => fetchJson<LiveFeedPage>(liveFeedApiHref(filters), 'Live feed', signal),
-    staleTime: 15_000,
-    placeholderData: (previous) => previous,
-  });
+/**
+ * The board's key — the page seeds it on the server. Today is the server's,
+ * so the key carries no day; it carries the sidebar filters' query string.
+ */
+export function liveFeedBoardQueryKey(filters: LiveFeedFilters) {
+  return [...LIVE_FEED_QUERY_ROOT, 'board', liveFeedFilterParams(filters).toString()] as const;
 }
 
-/** Every status of the direction (and channel), one capped column each. */
+/** Counts plus every stage's first page, the pace, carrier loads, pickups and facets. */
 export function liveFeedBoardQuery(filters: LiveFeedFilters) {
+  const query = liveFeedFilterParams(filters).toString();
   return queryOptions({
     queryKey: liveFeedBoardQueryKey(filters),
-    queryFn: ({ signal }) => fetchJson<LiveFeedBoard>(liveFeedBoardHref(filters), 'Live feed board', signal),
+    queryFn: ({ signal }) => fetchJson<PackageBoard>(query ? `${LIVE_FEED_BOARD_API}?${query}` : LIVE_FEED_BOARD_API, signal),
     staleTime: 15_000,
     placeholderData: (previous) => previous,
   });
 }
 
-/** Every tracking number of one status under the filters (unpaged) — a list's or a Board column's Copy all. */
-export function liveFeedTrackingQuery(filters: LiveFeedStatusFilters) {
-  const href = liveFeedTrackingHref(filters);
+/** A stage's pages AFTER the board's first one — fetched only when the column asks for more. */
+export function liveFeedLaneQuery(stage: PackageStage, filters: LiveFeedFilters) {
+  const filterQuery = liveFeedFilterParams(filters).toString();
+  return infiniteQueryOptions({
+    queryKey: [...LIVE_FEED_QUERY_ROOT, 'lane', stage, filterQuery] as const,
+    queryFn: ({ signal, pageParam }) => {
+      const params = liveFeedFilterParams(filters);
+      params.set(LIVE_FEED_PARAMS.stage, stage);
+      params.set(LIVE_FEED_PARAMS.offset, String(pageParam));
+      return fetchJson<PackageLanePage>(`${LIVE_FEED_LANE_API}?${params}`, signal);
+    },
+    initialPageParam: LIVE_FEED_PAGE_SIZE,
+    getNextPageParam: (last) => (last.hasMore ? last.offset + LIVE_FEED_PAGE_SIZE : undefined),
+    staleTime: 15_000,
+  });
+}
+
+/** Find: the board's packages a scan / typed text names (tracking, order number, SKU). */
+export function liveFeedFindQuery(q: string) {
   return queryOptions({
-    queryKey: [...LIVE_FEED_QUERY_ROOT, LIVE_FEED_TRACKING_API, href] as const,
-    queryFn: ({ signal }) => fetchJson<LiveFeedTracking>(href, 'Live feed tracking', signal),
+    queryKey: [...LIVE_FEED_QUERY_ROOT, 'find', q] as const,
+    queryFn: ({ signal }) =>
+      fetchJson<{ packages: PackageCard[] }>(`${LIVE_FEED_PACKAGES_API}?${new URLSearchParams({ [LIVE_FEED_PARAMS.q]: q })}`, signal),
+    enabled: q.trim().length >= 3,
+    staleTime: 15_000,
+  });
+}
+
+/** Packages by order row id — a deep link or a box mate that is not on a loaded page. */
+export function liveFeedPackagesQuery(ids: readonly number[]) {
+  const key = [...ids].sort((a, b) => a - b).join(',');
+  return queryOptions({
+    queryKey: [...LIVE_FEED_QUERY_ROOT, 'packages', key] as const,
+    queryFn: ({ signal }) =>
+      fetchJson<{ packages: PackageCard[] }>(`${LIVE_FEED_PACKAGES_API}?${new URLSearchParams({ [LIVE_FEED_PARAMS.ids]: key })}`, signal),
+    enabled: ids.length > 0,
     staleTime: 15_000,
   });
 }

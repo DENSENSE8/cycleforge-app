@@ -1,6 +1,6 @@
 /**
  * Inventory › Locations — canonical path after folding `/warehouse` under Inventory.
- * Nested facets still use `?tab=` (Bin Tags default = omit).
+ * Nested facets still use `?tab=` (All locations / bins default = omit).
  *
  * The bay-printer facet is `bays`. Legacy `?tab=racks` still parses as `bays`:
  * printed bay QR links and old redirects carry it, so it can never be reused.
@@ -11,7 +11,7 @@ const INVENTORY_LOCATIONS_PATH = '/inventory/locations' as const;
 
 export type LocationsTab = 'labels' | 'bays' | 'movable' | 'totes' | 'rooms' | 'bins' | 'map' | 'manage';
 
-/** Live Locations tabs — includes default `labels` (usually omitted). */
+/** Live Locations tabs — includes default `bins` (usually omitted). */
 export const LOCATIONS_TABS = [
   'labels',
   'bays',
@@ -38,7 +38,8 @@ export function parseLocationsTab(raw: string | null | undefined): LocationsTab 
   if (raw === 'racks' || raw === 'bays') return 'bays';
   if (raw === 'rooms' || raw === 'bins' || raw === 'map' || raw === 'manage' || raw === 'movable') return raw;
   if (raw === 'totes') return 'totes';
-  return 'labels';
+  if (raw === 'labels') return 'labels';
+  return 'bins';
 }
 
 /**
@@ -51,7 +52,7 @@ function isLocationsRaillessTab(tab: LocationsTab): boolean {
 
 /**
  * Wire tokens `?tab=` may carry on `/inventory/locations` (route-param hygiene).
- * Includes `labels`. Legacy `racks` round-trips to `bays`.
+ * Includes `bins`. Legacy `racks` round-trips to `bays`.
  */
 export function parseLocationsTabWire(raw: string): string | null {
   const v = raw.trim().toLowerCase();
@@ -66,7 +67,7 @@ export function inventoryLocationsHref(opts?: {
 }): string {
   const params = new URLSearchParams();
   const tab = opts?.tab;
-  if (tab && tab !== 'labels') params.set('tab', tab);
+  if (tab && tab !== 'bins') params.set('tab', tab);
   if (opts?.extra) {
     for (const [k, v] of Object.entries(opts.extra)) {
       if (v == null || v === '') params.delete(k);

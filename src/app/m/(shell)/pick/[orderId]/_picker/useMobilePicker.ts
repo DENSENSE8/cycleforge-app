@@ -46,16 +46,6 @@ export function useMobilePicker() {
     }
   }, [isLoaded, user, router, orderIdParam]);
 
-  // ── Camera lifecycle
-  useEffect(() => {
-    if (!user) return;
-    void scanner.startScanning();
-    return () => {
-      void scanner.stopScanning();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
   // ── Bootstrap: fetch tasks + open session
   useEffect(() => {
     if (!user) return;
@@ -107,6 +97,18 @@ export function useMobilePicker() {
   const totalTasks = order?.tasks.length ?? 0;
   const doneCount = pickedAllocations.size;
   const allDone = totalTasks > 0 && doneCount >= totalTasks;
+
+  // ── Camera lifecycle — runs while the task card (and its scanner <video>) is
+  // on screen: started before the order loads there is no box to bind to.
+  const cardShown = Boolean(user && currentTask && !allDone);
+  const { startScanning, stopScanning } = scanner;
+  useEffect(() => {
+    if (!cardShown) return;
+    void startScanning();
+    return () => {
+      void stopScanning();
+    };
+  }, [cardShown, startScanning, stopScanning]);
 
   const advance = useCallback(() => {
     if (!order) return;

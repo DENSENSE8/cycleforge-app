@@ -90,7 +90,7 @@ test('a carton task still bands as Task', () => {
 test('a ticket row carries the helpdesk door, not the registry id', () => {
   const row = dailyAgendaFromTask(ticketTask());
   assert.equal(row.recordLabel, 'Ticket 48120');
-  assert.equal(row.recordHref, '/support?ticket=48120');
+  assert.equal(row.recordHref, '/support?q=48120');
 });
 
 test('both work bands answer isDailyAgendaWork; the checklist does not', () => {

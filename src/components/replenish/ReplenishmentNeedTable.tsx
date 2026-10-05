@@ -315,6 +315,7 @@ const ReplenishRow = memo(function ReplenishRow(props: TriageCardSlotProps<NeedT
     return {
       state,
       identity: handle,
+      identityCopy: row.sku ? { value: row.sku, tone: 'sku' } : undefined,
       title,
       facts: [
         { id: 'vendor', value: row.vendor_name || 'No vendor', width: 'code', tone: row.vendor_name ? 'default' : 'muted', tip: row.vendor_name ?? undefined },

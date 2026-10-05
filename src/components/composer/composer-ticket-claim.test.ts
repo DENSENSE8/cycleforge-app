@@ -10,14 +10,20 @@ import {
 } from '@/lib/composer/station-composer-mode';
 import { ComposerTicketInsetChrome } from './ComposerTicketInsetChrome';
 
-test('the commit CTA names the OUTCOME, on both faces', () => {
+test('the commit CTA names the OUTCOME, on every face', () => {
   // It is a labelled button in the dock now, not a bare return arrow, so the
   // words are what the operator reads before the most consequential press on
   // the bench (ruling 2026-08-31).
-  assert.equal(stationComposerTicketCommitLabel(false), 'File ticket →');
-  assert.equal(stationComposerTicketCommitLabel(true), 'Update ticket');
-  // "Send" is gone: it named the keystroke, not what happens to the ticket.
-  assert.doesNotMatch(stationComposerTicketCommitLabel(true), /^Send$/);
+  assert.equal(stationComposerTicketCommitLabel(false, true), 'File ticket →');
+  assert.equal(stationComposerTicketCommitLabel(false, false), 'File ticket →');
+  // A public comment reaches the customer; the label says so (operator 2026-10-04).
+  assert.equal(stationComposerTicketCommitLabel(true, true), 'Send public reply');
+  assert.equal(stationComposerTicketCommitLabel(true, false), 'Add internal note');
+  // Never the neutral verb that hid a customer-visible send.
+  assert.doesNotMatch(stationComposerTicketCommitLabel(true, true), /Update ticket/);
+  assert.doesNotMatch(stationComposerTicketCommitLabel(true, false), /Update ticket/);
+  // A bare "Send" names the keystroke, not what happens to the ticket.
+  assert.doesNotMatch(stationComposerTicketCommitLabel(true, true), /^Send$/);
 });
 
 test('an unlinked carton prompts for the claim body, not for a form above it', () => {

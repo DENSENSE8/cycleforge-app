@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isFnskuCopyRange } from '@/lib/print/labelCopies';
 import {
   ACCENT_HEX_RE,
   DEFAULT_FOCUS_SCAN_HOTKEY,
@@ -250,6 +251,12 @@ export const StaffPreferencesPutBody = z
      * `row` = Compact. Shallow JSONB merge — writers send the whole map.
      */
     triageDensity: z.record(z.string().max(64), z.enum(['card', 'row'])).nullable().optional(),
+    /** FNSKU quantity slider scale (`useFnskuCopyRange`): 20, 30 or 99. A UI scale, not a print limit. */
+    fnskuCopyRange: z
+      .number()
+      .refine(isFnskuCopyRange, { message: 'fnskuCopyRange must be 20, 30 or 99' })
+      .nullable()
+      .optional(),
   })
   .strict();
 

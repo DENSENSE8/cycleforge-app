@@ -135,33 +135,44 @@ async function detailTx(
   return { ...manifest, items: items.rows };
 }
 
+/** Insert one manifest row inside the caller's transaction, minting its KIT- uid. */
+async function insertManifestTx(
+  client: PoolClient,
+  orgId: OrgId,
+  input: CreateManifestInput,
+  status: 'OPEN' | 'SEALED',
+): Promise<ManifestRow> {
+  const year = new Date().getUTCFullYear();
+  const seq = await allocateManifestSeq(client, orgId, year);
+  const manifestUid = buildManifestUid(input.sku, seq);
+  const ins = await client.query<ManifestRow>(
+    `INSERT INTO label_manifests
+       (organization_id, manifest_uid, manifest_type, sku, sku_catalog_id,
+        condition_grade, status, notes, created_by, sealed_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CASE WHEN $7 = 'SEALED' THEN now() END)
+     RETURNING *`,
+    [
+      orgId,
+      manifestUid,
+      input.manifestType ?? 'PREBOX',
+      input.sku ?? null,
+      input.skuCatalogId ?? null,
+      input.conditionGrade ?? null,
+      status,
+      input.notes ?? null,
+      input.createdBy ?? null,
+    ],
+  );
+  return ins.rows[0];
+}
+
 /** Create an OPEN manifest, optionally seeded with units. */
 export async function createManifest(
   input: CreateManifestInput,
   orgId: OrgId,
 ): Promise<{ manifest: ManifestDetail; conflicts: number[] }> {
   return withTenantTransaction(orgId, async (client) => {
-    const year = new Date().getUTCFullYear();
-    const seq = await allocateManifestSeq(client, orgId, year);
-    const manifestUid = buildManifestUid(input.sku, seq);
-    const ins = await client.query<ManifestRow>(
-      `INSERT INTO label_manifests
-         (organization_id, manifest_uid, manifest_type, sku, sku_catalog_id,
-          condition_grade, status, notes, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, 'OPEN', $7, $8)
-       RETURNING *`,
-      [
-        orgId,
-        manifestUid,
-        input.manifestType ?? 'PREBOX',
-        input.sku ?? null,
-        input.skuCatalogId ?? null,
-        input.conditionGrade ?? null,
-        input.notes ?? null,
-        input.createdBy ?? null,
-      ],
-    );
-    const manifestId = ins.rows[0].id;
+    const manifestId = (await insertManifestTx(client, orgId, input, 'OPEN')).id;
     let conflicts: number[] = [];
     if (input.serialUnitIds?.length) {
       ({ conflicts } = await addItemsTx(client, orgId, manifestId, input.serialUnitIds));
@@ -169,6 +180,22 @@ export async function createManifest(
     const detail = await detailTx(client, orgId, manifestId);
     return { manifest: detail as ManifestDetail, conflicts };
   });
+}
+
+/**
+ * Prepack Finish, inside its transaction: a SEALED PREBOX package holding
+ * exactly `serialUnitIds` (in that order). The caller has already refused any
+ * unit packed elsewhere, so a membership conflict here is a race and throws.
+ */
+export async function createSealedPackageTx(
+  client: PoolClient,
+  orgId: OrgId,
+  input: Omit<CreateManifestInput, 'manifestType'> & { serialUnitIds: number[] },
+): Promise<{ id: number; manifest_uid: string }> {
+  const manifest = await insertManifestTx(client, orgId, { ...input, manifestType: 'PREBOX' }, 'SEALED');
+  const { conflicts } = await addItemsTx(client, orgId, manifest.id, input.serialUnitIds);
+  if (conflicts.length > 0) throw new Error(`Units ${conflicts.join(', ')} joined another package meanwhile`);
+  return { id: Number(manifest.id), manifest_uid: manifest.manifest_uid };
 }
 
 async function getManifestDetail(

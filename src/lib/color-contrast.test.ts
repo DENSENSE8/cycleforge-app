@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 import {
   INK_DARK,
   INK_LIGHT,
+  avatarInitialsPaint,
   blackOrWhiteInk,
   contrastRatio,
   inkForBackground,
@@ -30,6 +31,15 @@ describe('color-contrast', () => {
         }
       }
     }
+  });
+
+  it('staff avatar initials clear 7:1, adapting only a middle-luminance fill', () => {
+    for (const fill of ['#10b981', '#3b82f6', '#a855f7', '#ef4444', '#777777', '#293568']) {
+      const paint = avatarInitialsPaint(fill);
+      assert.ok(paint, fill);
+      assert.ok((contrastRatio(paint.fill, paint.ink) ?? 0) >= 7, `${fill} → ${paint.fill} / ${paint.ink}`);
+    }
+    assert.deepEqual(avatarInitialsPaint('invalid'), null);
   });
 
   it('parseHex / normalizeHex accept #RRGGBB and lowercase', () => {

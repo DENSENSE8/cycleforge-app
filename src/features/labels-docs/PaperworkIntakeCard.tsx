@@ -9,31 +9,51 @@
  * the document strip at once (the same queries).
  */
 
-import { useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
+import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { Button } from '@/design-system/primitives';
 import { FileText, Upload } from '@/components/Icons';
 import { useOrderPaperworkActions } from '@/lib/orders/order-paperwork-client';
+import type { LabelOrderLine } from '@/lib/label-prints/contracts';
 
 const ACCEPT = 'application/pdf,image/*';
 
 export function PaperworkIntakeCard({
   orderId,
   orderRef,
+  lines,
   onFiled,
 }: {
   orderId: number;
   orderRef: string | null;
+  lines: readonly LabelOrderLine[];
   /** Filed or fetched paperwork changes the desk's Paperwork queue — the host re-reads it. */
   onFiled: () => void;
 }) {
-  const actions = useOrderPaperworkActions(orderId, orderRef ?? String(orderId), onFiled);
+  const defaultLineId = lines.find((line) => line.orderLineId === orderId)?.orderLineId ?? lines[0]?.orderLineId ?? orderId;
+  const [lineId, setLineId] = useState(defaultLineId);
+  useEffect(() => setLineId(defaultLineId), [defaultLineId]);
+  const orderActions = useOrderPaperworkActions(orderId, orderRef ?? String(orderId), onFiled);
+  const manualActions = useOrderPaperworkActions(lineId, orderRef ?? String(orderId), onFiled);
   const slipPicker = useRef<HTMLInputElement>(null);
   const manualPicker = useRef<HTMLInputElement>(null);
-  const busy = actions.upload.isPending || actions.fetchFromPlatform.isPending;
+  const lineOptions = useMemo(
+    () => lines.map((line) => ({
+      value: line.orderLineId,
+      label: line.itemNumber ? `Item # ${line.itemNumber}` : line.sku ? `SKU ${line.sku}` : line.title,
+      meta: line.title,
+    })),
+    [lines],
+  );
+  const busy = orderActions.upload.isPending || manualActions.upload.isPending || orderActions.fetchFromPlatform.isPending;
 
   const file = (kind: 'packing_slip' | 'manual', list: FileList | null) => {
-    for (const picked of list ?? []) actions.upload.mutate({ kind, file: picked, ...(kind === 'manual' ? { pairTo: 'order' as const } : {}) });
+    // Manuals default to the order's item number, then catalog SKU, and only
+    // fall back to the order. Packing slips remain order documents.
+    for (const picked of list ?? []) {
+      (kind === 'manual' ? manualActions : orderActions).upload.mutate({ kind, file: picked });
+    }
   };
 
   return (
@@ -47,15 +67,28 @@ export function PaperworkIntakeCard({
         <Button variant="secondary" size="sm" radius="control" icon={<Upload />} disabled={busy} onClick={() => manualPicker.current?.click()}>
           Manual
         </Button>
+        {lineOptions.length > 1 ? (
+          <div className="col-span-2">
+            <SearchableSelectField
+              value={lineId}
+              onChange={(value) => typeof value === 'number' && setLineId(value)}
+              options={lineOptions}
+              label="Manual belongs to"
+              searchPlaceholder="Find an item number or product"
+              ariaLabel="Product for this manual"
+              appearance="flush"
+            />
+          </div>
+        ) : null}
         <Button
           variant="ghost"
           size="sm"
           radius="control"
           className="col-span-2"
           icon={<FileText />}
-          loading={actions.fetchFromPlatform.isPending}
+          loading={orderActions.fetchFromPlatform.isPending}
           disabled={busy}
-          onClick={() => actions.fetchFromPlatform.mutate(['packing_slip'])}
+          onClick={() => orderActions.fetchFromPlatform.mutate(['packing_slip'])}
         >
           Fetch packing slip from the channel
         </Button>

@@ -6,14 +6,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnchoredLayer } from '@/design-system';
 import { useAuth } from '@/contexts/AuthContext';
 import { CLIPBOARD_HISTORY_OPEN_EVENT } from '@/lib/app-events';
+import { CLIPBOARD_HISTORY_HOTKEY, hotkeyChord, hotkeyMatches } from '@/lib/keyboard/key-registry';
 import { ClipboardHistoryPopover } from './ClipboardHistoryPopover';
 
 /**
- * The chord, as one declaration. The label rendered in the ⋯ menu imports this
- * so a rebinding cannot leave a stale hint behind — a false shortcut hint is
- * worse than none.
+ * The chord as a tooltip `shortcut` (⌘⌥V / Ctrl+Alt+V, `CLIPBOARD_HISTORY_HOTKEY`).
+ * The ⋯ menu row imports this so a rebinding cannot leave a stale hint
+ * behind — a false shortcut hint is worse than none.
  */
-export const CLIPBOARD_HISTORY_HOTKEY_LABEL = '⌘⇧V';
+export const CLIPBOARD_HISTORY_HOTKEY_LABEL = hotkeyChord(CLIPBOARD_HISTORY_HOTKEY);
 
 /** Ask the host to open the clipboard panel. Safe to call from any client handler. */
 export function openClipboardHistory(): void {
@@ -21,7 +22,7 @@ export function openClipboardHistory(): void {
   window.dispatchEvent(new Event(CLIPBOARD_HISTORY_OPEN_EVENT));
 }
 
-/** True when the chord's native meaning (paste-and-match-style) should win. */
+/** True when the chord must stand down: inside a field AltGr layouts type characters with Ctrl+Alt. */
 function isEditableTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el || typeof el.closest !== 'function') return false;
@@ -42,10 +43,8 @@ export function ClipboardHistoryHost() {
   }, []);
 
   const handleKeyDown = useCallback((e: globalThis.KeyboardEvent) => {
-    if (!(e.metaKey || e.ctrlKey) || !e.shiftKey) return;
-    // `toLowerCase` so Shift/Caps still resolve to the same chord.
-    if (e.key.toLowerCase() !== 'v') return;
-    // Paste-without-formatting belongs to the field the operator is typing in.
+    if (e.repeat || !hotkeyMatches(CLIPBOARD_HISTORY_HOTKEY, e)) return;
+    // A text field keeps its keys.
     if (isEditableTarget(e.target)) return;
     e.preventDefault();
     setOpen((v) => !v);

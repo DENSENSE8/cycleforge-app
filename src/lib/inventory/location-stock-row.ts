@@ -62,6 +62,8 @@ export interface LocationStockTableRow {
   source: LocationStockSource;
   /** How much of this SKU is here — a counted bin qty, or a count of units. */
   qty: number;
+  /** Reorder threshold for a counted bin pair; null for units and locations without one. */
+  min_qty: number | null;
   /** ISO instant the pair last moved (bin write, or the newest unit placement). */
   last_moved: string | null;
   /** ISO instant of the last cycle count. `null` for a unit placement. */
@@ -228,6 +230,16 @@ export interface LocationStockRoomFacet {
   id: string;
   label: string;
   count: number;
+}
+
+/** Resolve only an explicit valid room; bare Stock must remain warehouse-wide. */
+export function resolveExplicitStockRoom(
+  rooms: readonly LocationStockRoomFacet[],
+  requestedRoom: string | null | undefined,
+): string | null {
+  const requested = requestedRoom?.trim();
+  if (!requested) return null;
+  return rooms.find((room) => room.id === requested || room.label === requested)?.id ?? null;
 }
 
 /** The row's ROOM facet id — comma-bearing names use a comma-safe wire id. */

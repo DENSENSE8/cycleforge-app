@@ -36,14 +36,33 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid document id' }, { status: 400 });
   }
 
-  const parsed = parseBody(OutboundDocumentReplaceBody, await req.json().catch(() => ({})));
-  if (parsed instanceof NextResponse) return parsed;
-
   try {
+    const contentType = req.headers.get('content-type') ?? '';
+    let replacement;
+    if (contentType.includes('multipart/form-data')) {
+      const form = await req.formData();
+      const file = form.get('file');
+      if (!(file instanceof File) || file.size === 0) {
+        return NextResponse.json({ error: 'file is required' }, { status: 400 });
+      }
+      const mimeType = file.type || 'application/octet-stream';
+      const fromName = file.name.split('.').pop()?.trim().toLowerCase();
+      replacement = {
+        buffer: Buffer.from(await file.arrayBuffer()),
+        contentType: mimeType,
+        filename: file.name,
+        extension: fromName && fromName.length <= 5 ? fromName : undefined,
+        uploadedBy: gate.ctx.staffId ?? null,
+      };
+    } else {
+      const parsed = parseBody(OutboundDocumentReplaceBody, await req.json().catch(() => ({})));
+      if (parsed instanceof NextResponse) return parsed;
+      replacement = parsed;
+    }
     const document = await replaceOutboundDocument(
       gate.ctx.organizationId as OrgId,
       documentId,
-      parsed,
+      replacement,
     );
     await recordAudit(pool, gate.ctx, req, {
       source: 'orders-documents-api',
@@ -87,7 +106,11 @@ export async function DELETE(
       action: AUDIT_ACTION.ORDER_DOCUMENT_DELETE,
       entityType: AUDIT_ENTITY.ORDER,
       entityId: deleted.orderId ?? documentId,
-      before: { documentId: deleted.id, documentType: deleted.documentType },
+      before: {
+        documentId: deleted.id,
+        documentType: deleted.documentType,
+        ingestionIds: deleted.ingestionIds,
+      },
     });
 
     return NextResponse.json({ success: true, id: documentId });

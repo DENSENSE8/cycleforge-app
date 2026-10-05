@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "package": {
+    "receivingId": 48214,
+    "tracking": "9400111899223197428490",
+    "carrier": "USPS",
+    "found": false,
+    "platform": null,
+    "platformLabel": null,
+    "orderNumber": null,
+    "vendor": null,
+    "doorReceivedAt": "2026-10-04T15:12:09.481Z",
+    "items": [],
+    "urgency": {
+      "urgent": false,
+      "tier": 2,
+      "source": "default",
+      "reason": "Nothing marks it urgent"
+    },
+    "location": null
+  }
+}

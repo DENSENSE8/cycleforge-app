@@ -10,7 +10,7 @@ import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import {
   RedirectDashboardOutboundToShippingOrders,
 } from '@/components/outbound/orders/OutboundOrdersDesk';
-import { buildSupportWarrantyRedirectSearch } from '@/utils/dashboard-search-state';
+import { supportHref } from '@/lib/nav/route-tree';
 import {
   getDashboardDomainFromSearch,
   isRetiredFbaView,
@@ -26,12 +26,10 @@ function DashboardPageContent() {
   const searchModeRetired = isRetiredSearchMode(searchParams);
   const fbaViewRetired = isRetiredFbaView(searchParams);
 
-  // Legacy Warranty Logger lived on `/dashboard?warranty=` — permanent home is
-  // Support › Warranty. Preserve open claim + filters for bookmarks / e2e.
+  // The retired warranty console no longer has a parallel support surface.
   useEffect(() => {
     if (!searchParams.has('warranty')) return;
-    const qs = buildSupportWarrantyRedirectSearch(searchParams);
-    router.replace(qs ? `/support?${qs}` : '/support?mode=warranty');
+    router.replace(supportHref());
   }, [router, searchParams]);
 
   // Retired `?fba` lifecycle tab — FBA's home is `/shipping/fba`.

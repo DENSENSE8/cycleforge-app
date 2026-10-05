@@ -6,13 +6,14 @@
    dark-scheme raw-neutral compatibility remap below. */
 :root {
   /* ── Typeface chain — this block is the SoT ──────────────────────────────
-     `next/font` sets `--font-cf-sans` / `--font-ibm-plex-mono` on <html>
-     (`src/lib/fonts.ts`); these resolve them
+     `next/font` sets `--font-cf-sans` on <html>
+     (`src/lib/fonts.ts`); these resolve it
      into full stacks. Stacks mirror
      `src/design-system/tokens/typography/families.ts` byte-for-byte.
 
-     Inter owns all readable interface language on mobile and desktop. IBM
-     Plex Mono is reserved for exact identifiers; it is not a metric face.
+     Inter is the only family on mobile and desktop (ruling 2026-10-04). The
+     mono token is the same Inter stack; identifier treatment (tabular
+     figures, no ligatures) lives on `.font-mono` in src/app/globals.css.
 
      Both spellings are load-bearing and NEITHER has a fallback at its reader:
        --font-sans     → `body` + `.font-dm-sans` (src/app/globals.css)
@@ -33,7 +34,7 @@
      always beats this one at equal specificity. Pinned by
      `src/app/head-token-order.guard.test.ts`. */
   --font-sans: var(--font-cf-sans), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: var(--font-ibm-plex-mono), 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-mono: var(--font-cf-sans), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ds-font-sans: var(--font-sans);
   --ds-font-mono: var(--font-mono);
   /* CF Type density (search-and-dense-ui-refactor plan §2.3). Scales every
@@ -913,6 +914,14 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   border-right-width: 0;
   border-left-width: 0;
   border-top-width: 0;
+}
+
+/* Sheet column rules — the ONE opt-in exception to 1B (owner 2026-10-04, the
+   Pasted list's Google-Sheets read): under `[data-grid-col-rules]` each cell
+   but the last draws the same hairline on its right, header and body alike. */
+[data-grid-col-rules] [data-grid-skin='airtable'] [data-grid-col-header] [role='row'] > :not(:last-child),
+[data-grid-col-rules] [data-grid-skin='airtable'] [data-grid-row] > :not(:last-child) {
+  border-right: var(--cf-grid-line-w) solid var(--cf-grid-line);
 }
 
 /* Drop React container hairlines so cell bottom rules are the only seams (no doubles). */

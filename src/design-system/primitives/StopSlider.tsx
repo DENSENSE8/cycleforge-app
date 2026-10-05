@@ -7,11 +7,17 @@
  *
  * P5 (owner 2026-10-03, NN/g sliders + Material discrete sliders): a slider is
  * for coarse, few-step choices, so
- *  - the track is large and neutral (`bg-surface-sunken`), with a dot at every
- *    stop — the snap points are visible before you drag; dots the value has
- *    reached take the fill colour;
- *  - the thumb is a flat solid fill (no ring, no shadow, no scale jump that
- *    would cover the dots); pressing and holding paints a flat darker face;
+ *  - the shared blue rail (`bg-fill-info`) makes its editable progress clear;
+ *    a dot at every stop keeps the snap points visible before a drag;
+ *  - dots are deliberately smaller than the rail (6px on the 20px default
+ *    rail; 4px on the compact 12px rail), so increments read as markers rather
+ *    than a dashed track; hovering the rail grows the markers slightly through
+ *    Motion without shifting their snapped positions;
+ *    than a dashed track;
+ *  - the completed rail and selected chip use the semantic info fill; reached
+ *    dots are light and future dots remain blue for legibility on either rail;
+ *  - the thumb is a high-contrast neutral-gray disc with a quiet lift, large enough
+ *    to grab without obscuring the increment markers;
  *  - the focus ring is keyboard-only (`:focus-visible` on the native input) —
  *    a click never paints it;
  *  - the stop labels sit ABOVE the track, never under the thumb (a finger on
@@ -83,13 +89,16 @@ export function StopSlider({
   const last = Math.max(stops.length - 1, 0);
   const index = nearestStopIndex(stops, value);
   const fraction = last === 0 ? 1 : index / last;
-  const at = (i: number) => `${(last === 0 ? 1 : i / last) * 100}%`;
-  /** Thumb radius in px — the track's inset, so a label's centre meets its dot. */
-  const inset = compact ? 10 : 14;
+  /** Keep endpoints fully inside the rail instead of hanging half a dot over either end. */
+  const dotInset = compact ? 2 : 3;
+  const at = (i: number) => `calc(${dotInset}px + (100% - ${dotInset * 2}px) * ${last === 0 ? 1 : i / last})`;
+  /** Thumb radius in px — the track's inset, so both endpoint thumbs stay inside the interaction band. */
+  const inset = compact ? 16 : 20;
   const travel = reduceMotion ? { duration: 0 } : { duration: motionDuration.progressFill, ease: motionBezier.easeOut };
+  const dotMotion = reduceMotion ? { duration: 0 } : { duration: motionDuration.progressFill, ease: motionBezier.easeOut };
 
   return (
-    <div className={cn('group flex w-full min-w-0 flex-col', disabled && 'opacity-50', className)}>
+    <div className={cn('group flex w-full min-w-56 flex-col', disabled && 'opacity-50', className)}>
       {/* P5 — labels above the track, so the thumb (and the finger on it) never covers them. The
           end labels anchor to the band's edges so a long word ("Done") never spills out of it. */}
       {showStops && stops.length > 1 ? (
@@ -110,7 +119,7 @@ export function StopSlider({
                   "absolute top-0 flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-role-caption tabular-nums transition-colors before:absolute before:-inset-2 before:content-['']",
                   !edge && '-translate-x-1/2',
                   chosen
-                    ? 'bg-fill-info/15 font-semibold text-text-info'
+                    ? 'bg-fill-info font-semibold text-text-inverse'
                     : i < index
                       ? 'text-text-default hover:bg-surface-sunken'
                       : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
@@ -125,13 +134,13 @@ export function StopSlider({
         </div>
       ) : null}
 
-      <div className={cn('relative w-full', compact ? 'h-8' : 'h-12')}>
+      <motion.div className={cn('relative w-full', compact ? 'h-12' : 'h-16')} initial="rest" animate="rest" whileHover="hover">
         {/* Track + dots + fill + thumb, inset by the thumb radius so the thumb's centre meets both ends. */}
-        <div aria-hidden className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2', compact ? 'inset-x-2.5' : 'inset-x-3.5')}>
+        <div aria-hidden className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2', compact ? 'inset-x-4' : 'inset-x-5')}>
           <div
             className={cn(
-              'relative w-full overflow-hidden rounded-full bg-surface-sunken ring-1 ring-inset ring-border-default',
-              compact ? 'h-2' : 'h-3',
+              'relative w-full overflow-hidden rounded-full bg-fill-info/35 ring-1 ring-inset ring-fill-info/40',
+              compact ? 'h-3' : 'h-5',
             )}
           >
             <motion.div
@@ -141,17 +150,19 @@ export function StopSlider({
               transition={travel}
             />
           </div>
-          {/* P5 — a dot per stop: gray ahead of the value, the fill colour once reached. Beads stand
-              proud of the track so a reached dot still reads on the fill. */}
+          {/* P5 — a dot per stop, smaller than the rail: light markers remain visible on the filled
+              portion, while future stops stay a deeper blue against the quieter blue rail. */}
           {stops.length > 1 && stops.length <= MAX_STOP_DOTS
             ? stops.map((stop, i) => (
-                <span
+                <motion.span
                   key={stop}
                   style={{ left: at(i) }}
+                  variants={{ rest: { scale: 1 }, hover: { scale: 1.35 } }}
+                  transition={dotMotion}
                   className={cn(
                     'absolute top-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors',
-                    compact ? 'size-2.5' : 'size-4',
-                    i <= index ? 'bg-fill-info' : 'bg-border-emphasis',
+                    compact ? 'size-1' : 'size-1.5',
+                    i <= index ? 'bg-text-inverse/70' : 'bg-fill-info',
                   )}
                 />
               ))
@@ -159,12 +170,12 @@ export function StopSlider({
           <motion.div className="absolute inset-0" initial={false} animate={{ x: `${fraction * 100}%` }} transition={travel}>
             <span
               className={cn(
-                // P5 — flat solid thumb; press-and-hold darkens the face (colour only, no geometry);
-                // the ring is keyboard focus only.
-                'absolute left-0 top-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full bg-fill-info transition-[filter] duration-100',
-                compact ? 'size-5' : 'size-7',
-                !disabled && 'group-has-[input:active]:brightness-75',
-                'group-has-[input:focus-visible]:ring-2 group-has-[input:focus-visible]:ring-fill-info/50 group-has-[input:focus-visible]:ring-offset-2 group-has-[input:focus-visible]:ring-offset-surface-card',
+                // P5 — neutral-gray, lifted grab target; press-and-hold darkens the face (colour only, no
+                // geometry); the ring is keyboard focus only.
+                'absolute left-0 top-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface-strong shadow-sm ring-1 ring-inset ring-border-emphasis transition-[filter] duration-100',
+                compact ? 'size-8' : 'size-10',
+                !disabled && 'group-has-[input:active]:brightness-95',
+                'group-has-[input:focus-visible]:ring-2 group-has-[input:focus-visible]:ring-fill-info group-has-[input:focus-visible]:ring-offset-2 group-has-[input:focus-visible]:ring-offset-surface-card',
               )}
             />
           </motion.div>
@@ -186,13 +197,13 @@ export function StopSlider({
           className={cn(
             'absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none bg-transparent opacity-0 outline-none',
             compact
-              ? '[&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none [&::-moz-range-thumb]:size-5'
-              : '[&::-webkit-slider-thumb]:size-7 [&::-webkit-slider-thumb]:appearance-none [&::-moz-range-thumb]:size-7',
+              ? '[&::-webkit-slider-thumb]:size-8 [&::-webkit-slider-thumb]:appearance-none [&::-moz-range-thumb]:size-8'
+              : '[&::-webkit-slider-thumb]:size-10 [&::-webkit-slider-thumb]:appearance-none [&::-moz-range-thumb]:size-10',
             disabled && 'cursor-not-allowed',
           )}
           data-testid={testId}
         />
-      </div>
+      </motion.div>
     </div>
   );
 }

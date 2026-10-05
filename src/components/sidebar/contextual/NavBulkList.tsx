@@ -8,11 +8,13 @@ import { FindToken } from '@/design-system/components/FindField';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { hotkeyMatches, PASTE_LIST_HOTKEY } from '@/lib/keyboard/key-registry';
-import { useApplePlatform } from '@/lib/keyboard/chord-keys';
+import type { RecentList } from '@/lib/nav/locate/recent-lists';
 import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import { CHECK_ZOHO_RECEIVED_MAX_INPUTS } from '@/lib/receiving/tracking-paste';
 import { NavBulkPanel } from './NavBulkPanel';
+import { NavRecentLists } from './NavRecentLists';
 import type { PageFind } from './NavFind';
+import type { BulkListSort } from './bulk-list-view';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
 
 type NavLocate = NonNullable<NavSearch['locate']>;
@@ -69,7 +71,7 @@ async function readClipboardText(): Promise<string> {
 }
 
 /**
- * `PASTE_LIST_HOTKEY` (⌘⌥V / Ctrl+Alt+V) from any page, outside a text
+ * `PASTE_LIST_HOTKEY` (⌘⇧V / Ctrl+Shift+V) from any page, outside a text
  * field: the clipboard's 2+ numbers become the list (`listed`), then
  * `onChord` lands the operator in the search field with its panel open (the
  * list, or the line that teaches ⌘V when the clipboard held none or could
@@ -88,8 +90,7 @@ export function usePasteListHotkey(
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.repeat || event.defaultPrevented || !hotkeyMatches(PASTE_LIST_HOTKEY, event)) return;
       if (isEditableKeyTarget(event.target)) return;
-      const anchor = anchorRef.current;
-      if (!anchor || anchor.offsetWidth === 0 || anchor.getClientRects().length === 0) return;
+      if (!isOnScreen(anchorRef.current)) return;
       event.preventDefault();
       void readClipboardText().then((text) => {
         const current = latest.current;
@@ -101,14 +102,28 @@ export function usePasteListHotkey(
   }, [anchorRef]);
 }
 
-/** The held list inside the well: `40 numbers` (a press opens it) and its own × (lets it go). */
-export function BulkListToken({ list, onOpen }: { list: BulkList; onOpen: () => void }) {
+/**
+ * The field the operator can see: its middle is hit by the pointer. A
+ * collapsed sidebar keeps its field mounted, sliver-wide and clipped by the
+ * column, so a width check alone would let both fields answer.
+ */
+function isOnScreen(element: HTMLElement | null): boolean {
+  if (!element) return false;
+  const rect = element.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return false;
+  const hit = document.elementFromPoint(rect.left + Math.min(rect.width / 2, 24), rect.top + rect.height / 2);
+  return hit != null && element.contains(hit);
+}
+
+/** The held list inside the well: `40 numbers` (a press opens it; ↵ opens it full screen) and its own × (lets it go). */
+export function BulkListToken({ list, onOpen, onExpand }: { list: BulkList; onOpen: () => void; onExpand: () => void }) {
   const count = list.selection.refs.length;
   return (
     <FindToken
       label={`Open the ${count} pasted numbers`}
       clearLabel="Clear the pasted list"
       onOpen={onOpen}
+      onExpand={onExpand}
       onClear={list.clear}
     >
       <AnimatedStat value={count} />
@@ -118,31 +133,65 @@ export function BulkListToken({ list, onOpen }: { list: BulkList; onOpen: () => 
 }
 
 /**
- * What the search well's panel holds for a paste: the list (NavBulkPanel)
- * while one is held, else — the chord opened an empty panel — the line that
- * says what to paste and how.
+ * What the search well's panel holds: the list (NavBulkPanel, with a short
+ * Recent lists section under its header) while one is held, else the
+ * staffer's recent lists and the line that says what to paste.
  */
 export function NavBulkDrop({
   list,
   find,
+  sort,
+  onSort,
   onClose,
   onLeave,
+  onOpenFull,
+  onRestore,
+  onOpenRecentFull,
   listboxRef,
 }: {
   list: BulkList;
   find?: PageFind;
+  sort: BulkListSort;
+  onSort: (next: BulkListSort) => void;
   onClose: () => void;
   onLeave: () => void;
+  /** The list's own full-screen page. */
+  onOpenFull: () => void;
+  /** Hold a recent list again (the face's paste path). */
+  onRestore: (item: RecentList) => void;
+  onOpenRecentFull: (item: RecentList) => void;
   listboxRef: RefObject<HTMLDivElement>;
 }) {
-  const apple = useApplePlatform();
   if (list.selection.refs.length > 0) {
-    return <NavBulkPanel list={list} find={find} onClose={onClose} onLeave={onLeave} listboxRef={listboxRef} />;
+    return (
+      <NavBulkPanel
+        list={list}
+        find={find}
+        sort={sort}
+        onSort={onSort}
+        onClose={onClose}
+        onLeave={onLeave}
+        onOpenFull={onOpenFull}
+        listboxRef={listboxRef}
+        recent={
+          <NavRecentLists
+            limit={3}
+            heldId={list.selection.refs.join('\n')}
+            onRestore={onRestore}
+            onOpenFull={onOpenRecentFull}
+            className="border-b border-border-hairline pb-1"
+          />
+        }
+      />
+    );
   }
   return (
-    <p data-nav-bulk-empty className="px-2 py-1.5 text-role-caption text-text-muted">
-      Paste a list here with {apple ? '⌘V' : 'Ctrl+V'} — 2 to {CHECK_ZOHO_RECEIVED_MAX_INPUTS} order or tracking numbers, one per
-      line or comma-separated. Each one is checked.
-    </p>
+    <div data-nav-bulk-empty className="flex flex-col gap-1">
+      <NavRecentLists onRestore={onRestore} onOpenFull={onOpenRecentFull} />
+      <p className="px-2 py-1.5 text-role-caption text-text-muted">
+        Paste a list here — 2 to {CHECK_ZOHO_RECEIVED_MAX_INPUTS} order or tracking numbers, one per line or
+        comma-separated. Each one is checked.
+      </p>
+    </div>
   );
 }

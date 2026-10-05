@@ -29,18 +29,39 @@ export interface LockedPickUnit {
 }
 
 /**
- * Resolve + lock the unit a pick scan names — a printed unit label (unit_uid,
- * GS1 `(01)(21)`, Digital Link, `U-` handle) or a typed serial. A numeric id
- * is honoured only from an explicit handle (`U-{id}`, `/m/u/{id}`), never from
- * a bare scan, so an all-digit serial cannot lock the wrong unit.
+ * Resolve + lock the units a pick scan names. A unit scan — a printed unit
+ * label (unit_uid, GS1 `(01)(21)`, Digital Link, `U-` handle) or a typed
+ * serial — locks exactly one unit; a numeric id is honoured only from an
+ * explicit handle (`U-{id}`, `/m/u/{id}`), never from a bare scan, so an
+ * all-digit serial cannot lock the wrong unit. A package scan (`KIT-…`)
+ * locks every member of its SEALED PREBOX manifest, in package order.
+ * `null` = the scan names no unit.
  */
-export async function lockUnitForPickScan(
+export async function lockUnitsForPickScan(
   client: Client,
   orgId: OrgId,
   raw: string,
-): Promise<{ unit: LockedPickUnit; scanToken: string } | null> {
+): Promise<{ units: LockedPickUnit[]; scanToken: string } | null> {
   const scan = pickScanKey(raw);
   if (!scan) return null;
+  if (scan.kind === 'package') {
+    const { rows } = await client.query<LockedPickUnit>(
+      `SELECT su.id, su.sku, su.current_status::text AS current_status, su.serial_number
+         FROM label_manifests lm
+         JOIN label_manifest_items lmi ON lmi.manifest_id = lm.id
+                                      AND lmi.organization_id = lm.organization_id
+         JOIN serial_units su ON su.id = lmi.serial_unit_id
+                             AND su.organization_id = lmi.organization_id
+        WHERE lm.organization_id = $1
+          AND UPPER(lm.manifest_uid) = UPPER(BTRIM($2))
+          AND lm.manifest_type = 'PREBOX'
+          AND lm.status = 'SEALED'
+        ORDER BY lmi.ordinal, su.id
+        FOR UPDATE OF su`,
+      [orgId, scan.key],
+    );
+    return rows.length > 0 ? { units: rows, scanToken: scan.key.toUpperCase() } : null;
+  }
   const idParam = scan.kind === 'label' && /^\d+$/.test(scan.key) ? Number(scan.key) : null;
   const { rows } = await client.query<LockedPickUnit>(
     `SELECT id, sku, current_status::text AS current_status, serial_number
@@ -53,7 +74,7 @@ export async function lockUnitForPickScan(
     [orgId, idParam, scan.key],
   );
   const unit = rows[0];
-  return unit ? { unit, scanToken: scan.key.toUpperCase() } : null;
+  return unit ? { units: [unit], scanToken: scan.key.toUpperCase() } : null;
 }
 
 /**

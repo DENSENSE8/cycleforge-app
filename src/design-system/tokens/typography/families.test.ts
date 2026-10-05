@@ -14,6 +14,9 @@ test('the interface has one readable sans family and no condensed fork', () => {
   ].map((url) => readFileSync(url, 'utf8')).join('\n');
 
   assert.doesNotMatch(sources, /IBM_Plex_Sans_Condensed|font-condensed|ds-font-condensed|ibm-plex-condensed/);
+  // Inter is the only family (ruling 2026-10-04): no Plex Mono load, variable or stack.
+  assert.doesNotMatch(sources, /IBM_Plex|IBM Plex|ibm-plex/i);
+  assert.equal(fontFamilies.mono, fontFamilies.sans);
   assert.match(sources, /\.text-role-eyebrow.+var\(--ds-font-sans\)/);
   assert.match(sources, /\.text-role-micro.+var\(--ds-font-sans\)/);
 });

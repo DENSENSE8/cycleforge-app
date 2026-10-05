@@ -45,8 +45,11 @@ export interface ThreadComposerBridge {
   canPost: boolean;
   focus: () => void;
   submit: () => void;
-  /** Insert a drafted body into the composer. */
-  setDraft: (text: string, opts?: { mode?: ComposerDraftMode }) => void | Promise<unknown>;
+  /**
+   * Insert a drafted body into the composer. `draftId` names the stored Support draft it came from
+   * (a Support-item composer marks that draft used when the reply goes out); other composers ignore it.
+   */
+  setDraft: (text: string, opts?: { mode?: ComposerDraftMode; draftId?: number }) => void | Promise<unknown>;
 }
 
 /** Status → dot + text tones (semantic; never ad-hoc hues). */

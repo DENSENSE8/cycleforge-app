@@ -20,7 +20,7 @@ import {
 } from '@/lib/receiving/unbox-scan-feedback';
 import { pairUnboxTicketChoice } from '@/lib/receiving/unbox-scan-feedback-store';
 import { applyUnboxDeskParam, applyUnboxOpenReceivingParams } from '@/lib/receiving/unbox-selection-url';
-import { searchHitHref } from '@/lib/search/search-hit';
+import { supportHref } from '@/lib/nav/route-tree';
 import { formatLaneAgeCompact } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { TOP_CHROME_ICON_FACE } from './header-shell';
@@ -121,7 +121,7 @@ export function UnboxScanHistory({
               </button>
               {ticket?.state === 'paired' ? (
                 <Link
-                  href={searchHitHref('SUPPORT_TICKET', ticket.ticketId)}
+                  href={supportHref({ q: ticket.ticketId })}
                   onClick={onNavigate}
                   title={ticket.subject ?? undefined}
                   className={cn(

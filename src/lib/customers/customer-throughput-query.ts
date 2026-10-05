@@ -107,7 +107,7 @@ export async function listCustomerDirectory(
 
   return rows.map((row) => ({
     id: Number(row.id),
-    name: customerFullName(row) || `Customer ${row.id}`,
+    name: customerFullName(row) || 'Unnamed customer',
     phone: customerPhone(row) || null,
     email: String(row.email ?? '').trim() || null,
     place: customerPlace(row) || null,

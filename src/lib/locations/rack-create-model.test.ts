@@ -10,7 +10,6 @@ import {
   previousRackCreateStep,
   toCreateRackBody,
   withShelfCount,
-  withShelfTier,
 } from './rack-create-model';
 import { RACK_MAX_SHELVES } from './rack-types';
 
@@ -34,29 +33,22 @@ test('blockedReason names what is missing', () => {
   assert.equal(blockedReason({ ...placed, placement: { ...room, id: null, code: '  ' } }, 'place'), 'Choose where the rack stands');
 });
 
-test('withShelfCount clamps and drops tiers above the count', () => {
-  let s = withShelfTier({ ...initialRackCreateState('e'), shelves: 5 }, 5, 0);
-  s = withShelfTier(s, 2, 1);
-  s = withShelfCount(s, 3);
+test('withShelfCount clamps into 1..RACK_MAX_SHELVES', () => {
+  const s = withShelfCount({ ...initialRackCreateState('e'), shelves: 5 }, 3);
   assert.equal(s.shelves, 3);
-  assert.deepEqual(s.tiers, { 2: 1 });
   assert.equal(withShelfCount(s, 0).shelves, 1);
   assert.equal(withShelfCount(s, 999).shelves, RACK_MAX_SHELVES);
-  assert.deepEqual(withShelfTier(s, 2, null).tiers, {});
-  assert.equal(withShelfTier(s, 9, 0), s);
 });
 
-test('toCreateRackBody prefers the placement id and sorts tiers', () => {
-  let s = { ...initialRackCreateState('evt-9'), placement: room, shelves: 4 };
-  s = withShelfTier(withShelfTier(s, 3, 2), 1, 0);
+test('toCreateRackBody prefers the placement id; the body carries no shelf urgency', () => {
+  const s = { ...initialRackCreateState('evt-9'), placement: room, shelves: 4 };
   assert.deepEqual(toCreateRackBody(s, true), {
     placementId: 7,
     shelves: 4,
-    shelfTiers: [{ shelf: 1, tier: 0 }, { shelf: 3, tier: 2 }],
     dryRun: true,
     clientEventId: 'evt-9',
   });
-  const scanned = { ...s, tiers: {}, placement: { ...room, id: null, code: ' C-FLOOR ' } };
+  const scanned = { ...s, placement: { ...room, id: null, code: ' C-FLOOR ' } };
   assert.deepEqual(toCreateRackBody(scanned, false), {
     placementCode: 'C-FLOOR',
     shelves: 4,

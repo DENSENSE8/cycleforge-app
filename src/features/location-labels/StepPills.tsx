@@ -34,6 +34,7 @@ export function StepPills({
       ariaLabel="Location address"
       testId="label-step-pills"
       currentId={step}
+      density="compact"
       chips={labelSteps(kind).map(({ id, label }) => {
         const open = values[id] != null || (id === 'position' && selection.level != null);
         return { id, label, value: values[id], onSelect: open ? () => onOpen(id) : undefined, testId: `label-step-${id}` };

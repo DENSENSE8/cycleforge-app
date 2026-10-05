@@ -26,12 +26,6 @@ export function locationLabelToFace(input: {
   roomName?: string | null;
   gln: string;
   orgSlug?: string | null;
-  /**
-   * One short line under the code, painted bottom-left (e.g. `Arrival ·
-   * Priority` on an urgency shelf). The bottom line keeps the code the first
-   * thing read and stays legible on 2×1 stock; blank → coordinate-only face.
-   */
-  caption?: string | null;
 }): LabelFaceModel {
   void input.roomName;
   const { segments } = input;
@@ -47,7 +41,7 @@ export function locationLabelToFace(input: {
     topLeft: '',
     topRight: '',
     center: code,
-    bottomLeft: (input.caption ?? '').trim(),
+    bottomLeft: '',
     bottomRight: '',
     matrix: { value: matrix.value, symbology: matrix.symbology, scale: 4 },
   };

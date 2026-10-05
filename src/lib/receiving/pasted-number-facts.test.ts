@@ -4,6 +4,7 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReconEntry, ReconReason } from '@/lib/receiving/reconcile';
 import {
   carrierFactText,
+  duplicatePurchaseLineIds,
   pastedNumberFacts,
   pastedNumberNextStep,
   pastedNumberStateFace,
@@ -58,6 +59,41 @@ test('units: none, partial and all are the only receipt words', () => {
   assert.equal(unitsState({ received: 2, expected: 3 }), 'partial');
   assert.equal(unitsState({ received: 3, expected: 3 }), 'all');
   assert.equal(unitsState({ received: 4, expected: 3 }), 'all');
+});
+
+// Real data (2026-10-04, 15-15078-20314): the Zoho PO line was received; an eBay
+// import of the SAME purchase landed days later (its own carton, tracking mangled
+// to "9.434608106245533e+21"), EXPECTED, never received. It read "1 of 2".
+const zohoLine = (patch: Partial<ReceivingLineRow> = {}) =>
+  line({ id: 31872, receiving_id: 52156, zoho_purchaseorder_number: '15-15078-20314', tracking_number: '9434608106245533522453', quantity_received: 1, quantity_expected: 1, sku: '00072-BK', ...patch });
+const ebayTwin = (patch: Partial<ReceivingLineRow> = {}) =>
+  line({ id: 32100, receiving_id: 52465, inbound_source_type: 'ebay', source_order_id: '15-15078-20314', zoho_purchaseorder_number: null, tracking_number: '9.434608106245533e+21', quantity_received: 0, quantity_expected: 1, sku: null, item_name: 'Bose Companion 2 Series III', ...patch });
+
+test('a purchase counts once: an unreceived eBay twin of a Zoho PO line is named, never units', () => {
+  const lines = [ebayTwin(), zohoLine()];
+  assert.deepEqual([...duplicatePurchaseLineIds(lines)], [32100]);
+  const facts = pastedNumberFacts(lines, entry('unboxed', { poNumber: '15-15078-20314' }), NOW);
+  assert.deepEqual(facts.units, { received: 1, expected: 1 });
+  assert.equal(unitsState(facts.units), 'all');
+  assert.deepEqual(facts.duplicates, [32100]);
+  // The facts read the counted line — never the twin's blank SKU or mangled tracking.
+  assert.equal(facts.item.lines, 1);
+  assert.equal(facts.item.sku, '00072-BK');
+  assert.equal(facts.tracking, '9434608106245533522453');
+});
+
+test('a twin is a duplicate only by the merge rule: same purchase, eBay import, nothing received', () => {
+  // Received on its own line: two receive events, not a phantom — kept, so the double count shows.
+  assert.equal(duplicatePurchaseLineIds([ebayTwin({ quantity_received: 1 }), zohoLine()]).size, 0);
+  // Another eBay order in the same carton is its own purchase.
+  assert.equal(duplicatePurchaseLineIds([ebayTwin({ source_order_id: '16-15107-26018' }), zohoLine()]).size, 0);
+  // No Zoho PO line in the number: nothing to be a twin of.
+  assert.equal(duplicatePurchaseLineIds([ebayTwin()]).size, 0);
+  // A Zoho line never counts as anyone's twin.
+  assert.equal(duplicatePurchaseLineIds([zohoLine({ id: 1, quantity_received: 0 }), zohoLine()]).size, 0);
+  // A real short (no twin) still reads short.
+  const short = pastedNumberFacts([zohoLine({ quantity_received: 1, quantity_expected: 2 })], entry('unboxed'), NOW);
+  assert.deepEqual([short.units, short.duplicates], [{ received: 1, expected: 2 }, []]);
 });
 
 test('age counts whole days from the earliest purchase date', () => {

@@ -63,6 +63,12 @@ const tones: Readonly<Record<string, SpineParentTone>> = {
     row: `${sharedRow} data-[active=true]:bg-indigo-50/35 data-[active=true]:ring-indigo-200/60 data-[active=true]:hover:bg-indigo-50/45`,
     section: `${sharedSection} data-[owns-current=true]:bg-indigo-50/35 data-[owns-current=true]:ring-indigo-200/60`,
   },
+  // Support (owner 2026-10-04): painted orange — the house orange family the Live feed row above it wears.
+  support: {
+    icon: 'text-orange-700/85', marker: 'bg-orange-600/80',
+    row: `${sharedRow} data-[active=true]:bg-orange-50/35 data-[active=true]:ring-orange-200/60 data-[active=true]:hover:bg-orange-50/45`,
+    section: `${sharedSection} data-[owns-current=true]:bg-orange-50/35 data-[owns-current=true]:ring-orange-200/60`,
+  },
   reports: {
     icon: 'text-cyan-700/85', marker: 'bg-cyan-600/80',
     row: `${sharedRow} data-[active=true]:bg-cyan-50/35 data-[active=true]:ring-cyan-200/60 data-[active=true]:hover:bg-cyan-50/45`,

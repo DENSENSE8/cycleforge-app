@@ -8,6 +8,7 @@ import {
   locationStockWalkRows,
   parseLocationStockAisles,
   parseLocationStockRoomIds,
+  resolveExplicitStockRoom,
   type LocationStockTableRow,
 } from './location-stock-row';
 
@@ -39,6 +40,7 @@ function row(
     is_provisional: false,
     source: 'bin',
     qty,
+    min_qty: null,
     last_moved: null,
     last_counted: null,
   };
@@ -95,4 +97,15 @@ test('an empty aisle filter selects no aisles instead of aisle zero', () => {
   assert.deepEqual(parseLocationStockAisles(''), []);
   assert.deepEqual(parseLocationStockAisles('  '), []);
   assert.deepEqual(parseLocationStockAisles('2, 1,2'), [2, 1]);
+});
+
+test('bare Stock has no implicit room while explicit room labels canonicalize to ids', () => {
+  const rooms = [
+    { id: 'Zone%204%2C%20Claims', label: 'Zone 4, Claims', count: 30 },
+    { id: 'Zone 3 - Parts', label: 'Zone 3 - Parts', count: 120 },
+  ];
+  assert.equal(resolveExplicitStockRoom(rooms, undefined), null);
+  assert.equal(resolveExplicitStockRoom(rooms, ''), null);
+  assert.equal(resolveExplicitStockRoom(rooms, 'Zone 4, Claims'), 'Zone%204%2C%20Claims');
+  assert.equal(resolveExplicitStockRoom(rooms, 'Unknown'), null);
 });

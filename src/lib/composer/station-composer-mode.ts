@@ -106,9 +106,15 @@ export function stationComposerModePlaceholder(
   return 'Note for this item — shows on the sticker center';
 }
 
-/** Words on the composer's commit CTA in Ticket mode. */
-export function stationComposerTicketCommitLabel(hasTicket: boolean): string {
-  return hasTicket ? 'Update ticket' : 'File ticket →';
+/**
+ * Words on the composer's commit CTA in Ticket mode. A comment on a live ticket
+ * says what reaches whom: a public commit reaches the customer ("Send public
+ * reply"), an internal one stays with staff ("Add internal note"). Never
+ * "Update ticket" — that hid a customer-visible send behind a neutral verb.
+ */
+export function stationComposerTicketCommitLabel(hasTicket: boolean, isPublic: boolean): string {
+  if (!hasTicket) return 'File ticket →';
+  return isPublic ? 'Send public reply' : 'Add internal note';
 }
 
 

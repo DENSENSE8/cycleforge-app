@@ -23,6 +23,7 @@ import {
 } from '@/lib/support/context-anchor';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
+import { supportHref } from '@/lib/nav/route-tree';
 import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';
 import { getOrCreateThread, listThreadMessages } from '@/lib/threads/threads';
 import {
@@ -182,7 +183,7 @@ function ticketLinkOpsToTimelineRows(rows: TicketLinkOpsRow[]): TicketLinkTimeli
         | 'unlinked',
       ticketLabel: ticketId ? `#${ticketId}` : '#—',
       actorName: r.actor_name,
-      href: ticketId ? `/support?ticket=${ticketId}` : null,
+      href: ticketId ? supportHref({ q: ticketId }) : null,
     };
   });
 }
@@ -292,7 +293,7 @@ async function fetchTimelineSpines(args: {
         kind: 'linked' as const,
         ticketLabel: ticketId ? `#${ticketId}` : '#—',
         actorName: r.actor_name,
-        href: ticketId ? `/support?ticket=${ticketId}` : null,
+        href: ticketId ? supportHref({ q: ticketId }) : null,
       };
     }),
     ...ticketLinkOpsToTimelineRows(shipLinkRes),

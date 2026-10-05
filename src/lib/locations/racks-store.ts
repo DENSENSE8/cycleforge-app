@@ -33,12 +33,11 @@ interface RawLocation {
   parent_id: number | string | null;
   is_active: boolean;
   sort_order: number | string | null;
-  arrival_priority_tier: number | string | null;
   capacity: number | string | null;
 }
 
 const LOCATION_COLUMNS = `id, barcode, name, display_name, location_kind, parent_id, is_active,
-  sort_order, arrival_priority_tier, capacity`;
+  sort_order, capacity`;
 
 function num(v: unknown): number | null {
   if (v == null) return null;
@@ -56,7 +55,6 @@ function toLocation(r: RawLocation): LocationRow {
     parentId: num(r.parent_id),
     isActive: r.is_active !== false,
     sortOrder: num(r.sort_order) ?? 0,
-    tier: num(r.arrival_priority_tier),
     capacity: num(r.capacity),
   };
 }
@@ -176,11 +174,10 @@ export function createRackDb(db: Db): RackDb {
     async insertLocation(orgId, row: NewLocationRow) {
       const res = await db.query<{ id: number | string }>(
         `INSERT INTO locations
-           (organization_id, name, barcode, location_kind, parent_id, sort_order,
-            arrival_priority_tier, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+           (organization_id, name, barcode, location_kind, parent_id, sort_order, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, true)
          RETURNING id`,
-        [orgId, row.name, row.barcode, row.kind, row.parentId, row.sortOrder, row.tier ?? null],
+        [orgId, row.name, row.barcode, row.kind, row.parentId, row.sortOrder],
       );
       return Number(res.rows[0]!.id);
     },
@@ -311,7 +308,7 @@ export function createRackDb(db: Db): RackDb {
            SELECT * FROM shelves UNION ALL SELECT * FROM positions
          )
          SELECT f.id, f.barcode, f.name, f.display_name, f.location_kind, f.parent_id, f.is_active,
-                f.sort_order, f.arrival_priority_tier, f.capacity, f.rack_id,
+                f.sort_order, f.capacity, f.rack_id,
                 COALESCE((SELECT SUM(bc.qty) FROM bin_contents bc
                            WHERE bc.organization_id = $1 AND bc.location_id = f.id AND bc.qty > 0), 0) AS stock_qty
            FROM fam f

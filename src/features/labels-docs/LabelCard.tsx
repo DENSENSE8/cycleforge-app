@@ -15,15 +15,20 @@
  * step, no carrier line, no details disclosure (owner 2026-09-27) — carrier,
  * tracking and the print log live on the open record. An unpaired label reads
  * "No order" with its tracking; a label the ledger could not resolve says why
- * in one danger line.
+ * in one danger line, and wears the danger glyph in the top-left slot at rest
+ * (the gutter law: status at rest — nothing when there is none — the house
+ * check on hover / focus / touch / once checked).
  */
 
 import { memo, type MouseEvent } from 'react';
+import { AlertTriangle } from '@/components/Icons';
 import { OrderNumberIdentity } from '@/components/ui/OrderIdentityChips';
 import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
+import { CardCheck, SLOT_HOVER_CLASS, SLOT_REST_CLASS } from '@/design-system/components/record-card/RecordCard';
+import { recordCardOutlineClass } from '@/design-system/components/record-card/record-card-outline';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
-import { Checkbox } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { resolveMarketplaceChipIdentity } from '@/lib/marketplace-order-id';
 import { cn } from '@/utils/_cn';
@@ -33,6 +38,12 @@ const stop = (event: { stopPropagation: () => void }) => event.stopPropagation()
 
 /** Lines the card shows before "+N more" — the record lists them all. */
 const LINES_SHOWN = 3;
+
+function lineIdentity(line: DeskCardModel['lines'][number]): string | null {
+  if (line.itemNumber) return `Item # ${line.itemNumber}`;
+  if (line.sku) return `SKU ${line.sku}`;
+  return line.skuCatalogId != null ? `Product #${line.skuCatalogId}` : null;
+}
 
 export const LabelCard = memo(function LabelCard({
   model,
@@ -51,6 +62,7 @@ export const LabelCard = memo(function LabelCard({
   const tracking = lead?.trackingNumber ?? null;
   const shown = model.lines.slice(0, LINES_SHOWN);
   const more = model.lines.length - shown.length;
+  const resting = checked === false;
   const openCard = (event: MouseEvent) =>
     onOpen(model.lead, { shiftKey: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, detail: event.detail, target: event.target });
 
@@ -59,16 +71,12 @@ export const LabelCard = memo(function LabelCard({
       {...{ [DESK_RECORD_KEY_ATTR]: model.lead.id }}
       data-testid={testIdPrefix}
       aria-label={model.orderRef ? `Order ${name}` : `Label ${tracking ?? lead?.fileBasename ?? ''}, no order`}
-      className={cn(
-        'relative isolate flex gap-3 rounded-2xl bg-surface-card px-4 py-3 transition-shadow duration-150',
-        checked !== false
-          ? 'ring-2 ring-inset ring-fill-info'
-          : open
-            ? 'ring-1 ring-inset ring-border-strong'
-            : 'hover:ring-1 hover:ring-inset hover:ring-border-soft',
-      )}
+      className="group/card relative isolate flex gap-3 rounded-2xl bg-surface-card px-4 py-3"
     >
+      {/* Always a white card: state reads as a real border, never a ring (RecordCard's outline). */}
+      <span aria-hidden className={recordCardOutlineClass({ selected: !resting, open })} />
       {/* The whole card opens the label's documents; only the checkbox checks. */}
+      {/* ds-raw-button: the whole-card open target under the content, as RecordCard's — not a visible control. */}
       <button
         type="button"
         aria-label={`Open ${model.orderRef ? `order ${name}` : 'label'}`}
@@ -77,13 +85,27 @@ export const LabelCard = memo(function LabelCard({
         onClick={openCard}
         className={cn('absolute inset-0 z-0 cursor-pointer rounded-2xl', focusRing('control'))}
       />
-      <span className="relative z-10 flex h-6 items-center">
-        <Checkbox
-          checked={checked === 'mixed' ? 'indeterminate' : checked}
-          onCheckedChange={() => onToggleCheck(model, { shiftKey: false })}
-          aria-label={`Select ${model.orderRef ? `order ${name}` : 'label'}`}
-          data-testid={`${testIdPrefix}-check`}
-        />
+      <span className="pointer-events-none relative z-10 flex h-6 items-center">
+        <span className="relative flex size-[18px] items-center justify-center">
+          {resting && model.problem ? (
+            <span
+              role="img"
+              aria-label={model.problem}
+              data-testid={`${testIdPrefix}-status`}
+              className={cn(SLOT_REST_CLASS, 'items-center justify-center', STATE_TONE_CLASSES.danger.text)}
+            >
+              <AlertTriangle className="size-4" />
+            </span>
+          ) : null}
+          <span className={resting ? SLOT_HOVER_CLASS : 'flex'}>
+            <CardCheck
+              checked={checked}
+              label={`Select ${model.orderRef ? `order ${name}` : 'label'}`}
+              testId={`${testIdPrefix}-check`}
+              onToggle={(event) => onToggleCheck(model, event)}
+            />
+          </span>
+        </span>
       </span>
       <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex h-6 min-w-0 items-center gap-2">
@@ -102,18 +124,19 @@ export const LabelCard = memo(function LabelCard({
             <span className="min-w-0 truncate text-sm font-semibold text-text-muted">No order</span>
           )}
           {model.labels.length > 1 ? (
-            <span className="ml-auto shrink-0 rounded-md bg-surface-sunken px-1.5 text-[11px] font-medium tabular-nums text-text-muted">
+            <span className="ml-auto shrink-0 rounded-md bg-surface-sunken px-1.5 text-role-micro font-medium tabular-nums text-text-muted">
               {model.labels.length} labels
             </span>
           ) : null}
         </div>
         {shown.map((line, index) => (
-          <div key={index} className="flex min-w-0 items-baseline gap-2 text-[13px]">
+          <div key={line.orderLineId || index} className="grid min-w-0 grid-cols-[1.5rem_minmax(0,1fr)] items-baseline gap-x-2 text-role-caption">
             <span className={cn('w-6 shrink-0 font-semibold tabular-nums', line.quantity > 1 ? 'text-text-warning' : 'text-text-muted')}>
               ×{line.quantity}
             </span>
-            <span className="min-w-0 truncate text-text-default" title={line.title}>
-              {line.title}
+            <span className="min-w-0">
+              <span className="block truncate text-text-default" title={line.title}>{line.title}</span>
+              {lineIdentity(line) ? <span className="block font-mono text-role-micro text-text-muted">{lineIdentity(line)}</span> : null}
             </span>
           </div>
         ))}

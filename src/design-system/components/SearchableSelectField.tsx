@@ -10,10 +10,11 @@ import {
   type ReactNode,
 } from 'react';
 import { Command } from 'cmdk';
-import { ChevronDown, Search, Check, Loader2 } from '@/components/Icons';
+import { ChevronDown, Search, Check, Loader2, Plus } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { Popover } from '../primitives/Popover';
+import { FLOATING_LABEL_NOTCH_ROOM, FloatingFieldLabel } from '../primitives/TextField';
 import type { AnchoredPlacement } from '../primitives/AnchoredLayer';
 
 interface SearchableSelectOption<T = unknown> {
@@ -80,6 +81,12 @@ interface SearchableSelectFieldProps<T = unknown> {
   testId?: string;
   /** The list opened / closed — hosts load their options just in time on the first open. */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Inline create (e.g. "Add platform"): a trailing row, always visible, that hands the
+   * typed name to the host — the host creates the row and selects it. Hidden while the
+   * query already names an option exactly. Empty query: the row asks for a name.
+   */
+  create?: { label: string; onCreate: (name: string) => void };
 }
 
 const TONE_TRIGGER: Record<NonNullable<SearchableSelectFieldProps['tone']>, string> = {
@@ -99,12 +106,7 @@ const TONE_ACTIVE: Record<NonNullable<SearchableSelectFieldProps['tone']>, strin
   emerald: 'bg-emerald-50 text-emerald-700',
 };
 
-const TONE_FLOAT: Record<NonNullable<SearchableSelectFieldProps['tone']>, string> = {
-  default: 'text-text-soft',
-  emerald: 'text-emerald-600',
-};
-
-function defaultFilter(opt: SearchableSelectOption, query: string): boolean {
+export function defaultFilter(opt: SearchableSelectOption, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   if (opt.label.toLowerCase().includes(q) || (opt.meta?.toLowerCase().includes(q) ?? false)) return true;
@@ -115,9 +117,9 @@ function defaultFilter(opt: SearchableSelectOption, query: string): boolean {
   const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const qs = squash(q);
   if (!qs) return false;
-  const ls = squash(opt.label);
-  const ms = squash(opt.meta ?? '');
-  return ls.includes(qs) || qs.includes(ls) || ms.includes(qs) || qs.includes(ms);
+  // An empty face (no meta) must not match: `qs.includes('')` is always true.
+  const covers = (face: string) => face !== '' && (face.includes(qs) || qs.includes(face));
+  return covers(squash(opt.label)) || covers(squash(opt.meta ?? ''));
 }
 
 function groupOptions<T>(options: ReadonlyArray<SearchableSelectOption<T>>) {
@@ -184,6 +186,7 @@ export function SearchableSelectField<T = unknown>({
   loading = false,
   testId,
   onOpenChange,
+  create,
 }: SearchableSelectFieldProps<T>) {
   const [open, setOpenState] = useState(false);
   const setOpen = (next: boolean) => {
@@ -192,6 +195,9 @@ export function SearchableSelectField<T = unknown>({
   };
   const [query, setQuery] = useState('');
   const triggerRef = useRef<HTMLButtonElement>(null);
+  // A labelled field anchors its list to the whole box (notched label included), so a list
+  // that flips above the field never paints over the label.
+  const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const labelId = useId();
   const flush = appearance === 'flush';
@@ -215,6 +221,9 @@ export function SearchableSelectField<T = unknown>({
   }, [remote, options, query, filter]);
 
   const groups = useMemo(() => groupOptions(filtered), [filtered]);
+  const createName = query.trim();
+  const createTaken = createName !== '' && options.some((o) => o.label.trim().toLowerCase() === createName.toLowerCase());
+  const showCreate = create != null && !createTaken;
 
   const close = (restoreFocus = true) => {
     setOpen(false);
@@ -289,64 +298,67 @@ export function SearchableSelectField<T = unknown>({
     }
   };
 
+  const trigger = (
+    // ds-raw-button: field-style combobox trigger; Popover owns dismissal
+    <button
+      ref={triggerRef}
+      type="button"
+      role="combobox"
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      aria-controls={open ? `${labelId}-listbox` : undefined}
+      aria-labelledby={hasLabel ? labelId : undefined}
+      disabled={disabled}
+      autoFocus={autoFocus}
+      aria-label={ariaLabel ?? label ?? placeholder}
+      data-testid={testId}
+      onClick={() => (open ? close(true) : openList())}
+      onKeyDown={onTriggerKeyDown}
+      className={cn(
+        'peer relative inline-flex w-full items-center gap-2 border bg-surface-card text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+        focusRing('control', 'accent'),
+        flush
+          ? cn(
+              'rounded-none border-x-0 border-t-0 border-b px-3.5 text-role-caption font-semibold',
+              hasLabel ? 'h-11 pb-1 pt-5' : 'h-9',
+              TONE_TRIGGER_FLUSH[tone],
+            )
+          : cn('rounded-lg px-2.5 text-role-micro focus:ring-2', hasLabel ? 'h-10' : 'h-8', TONE_TRIGGER[tone]),
+        selected ? 'text-text-default' : 'text-text-faint',
+        className,
+      )}
+    >
+      <span className="min-w-0 flex-1 truncate">
+        {selected ? selected.label : placeholder}
+      </span>
+      <ChevronDown
+        className={cn(
+          'h-3.5 w-3.5 shrink-0 text-text-faint transition-transform',
+          open && 'rotate-180',
+        )}
+        aria-hidden
+      />
+    </button>
+  );
+
   return (
     <>
-      {/* ds-raw-button: field-style combobox trigger; Popover owns dismissal */}
-      <button
-        ref={triggerRef}
-        type="button"
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={open ? `${labelId}-listbox` : undefined}
-        aria-labelledby={hasLabel ? labelId : undefined}
-        disabled={disabled}
-        autoFocus={autoFocus}
-        aria-label={ariaLabel ?? label ?? placeholder}
-        data-testid={testId}
-        onClick={() => (open ? close(true) : openList())}
-        onKeyDown={onTriggerKeyDown}
-        className={cn(
-          'relative inline-flex w-full items-center gap-2 border bg-surface-card text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-          focusRing('control', 'accent'),
-          flush
-            ? cn(
-                'rounded-none border-x-0 border-t-0 border-b px-3.5 text-role-caption font-semibold',
-                hasLabel ? 'h-11 pb-1 pt-5' : 'h-9',
-                TONE_TRIGGER_FLUSH[tone],
-              )
-            : cn('h-8 rounded-lg px-2.5 text-role-micro focus:ring-2', TONE_TRIGGER[tone]),
-          selected ? 'text-text-default' : 'text-text-faint',
-          className,
-        )}
-      >
-        {hasLabel ? (
-          <span
-            id={labelId}
-            className={cn(
-              'pointer-events-none absolute left-3.5 top-1.5 text-role-micro font-semibold mode-label-case',
-              TONE_FLOAT[tone],
-            )}
-          >
+      {hasLabel ? (
+        // The one floating label (sign-in's), kept inside this box: notched on a boxed trigger, inset in a flush cell.
+        <div ref={boxRef} className={cn('relative w-full min-w-0', !flush && FLOATING_LABEL_NOTCH_ROOM)}>
+          {trigger}
+          <FloatingFieldLabel id={labelId} placement={flush ? 'inset' : 'notch'}>
             {label}
-          </span>
-        ) : null}
-        <span className="min-w-0 flex-1 truncate">
-          {selected ? selected.label : placeholder}
-        </span>
-        <ChevronDown
-          className={cn(
-            'h-3.5 w-3.5 shrink-0 text-text-faint transition-transform',
-            open && 'rotate-180',
-          )}
-          aria-hidden
-        />
-      </button>
+          </FloatingFieldLabel>
+        </div>
+      ) : (
+        trigger
+      )}
 
       <Popover
         open={open}
         onClose={() => close(true)}
-        anchorRef={triggerRef}
+        anchorRef={hasLabel ? boxRef : triggerRef}
         placement={placement}
         matchWidth
         padded={false}
@@ -470,6 +482,36 @@ export function SearchableSelectField<T = unknown>({
                 })}
               </Command.Group>
             ))}
+
+            {showCreate && create ? (
+              <Command.Group className="border-t border-border-hairline">
+                <Command.Item
+                  value="__searchable-select-create__"
+                  onSelect={() => {
+                    if (!createName) {
+                      inputRef.current?.focus();
+                      return;
+                    }
+                    create.onCreate(createName);
+                    close(true);
+                  }}
+                  className={cn(
+                    'flex w-full cursor-pointer items-center gap-2 text-left text-blue-700 outline-none transition-colors',
+                    'data-[selected=true]:bg-surface-hover',
+                    flush ? 'rounded-none px-3.5 py-2' : 'px-3 py-1.5',
+                  )}
+                  data-testid={testId ? `${testId}-create` : undefined}
+                >
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <span className={cn('min-w-0 flex-1 truncate font-semibold', flush ? 'text-role-caption' : 'text-role-micro')}>
+                    {createName ? `${create.label} “${createName}”` : create.label}
+                  </span>
+                  {createName ? null : (
+                    <span className="shrink-0 text-role-eyebrow mode-label-case text-text-faint">Type its name</span>
+                  )}
+                </Command.Item>
+              </Command.Group>
+            ) : null}
           </Command.List>
         </Command>
       </Popover>

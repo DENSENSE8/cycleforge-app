@@ -10,6 +10,7 @@ import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
 import {
   APP_SIDEBAR_NAV,
+  CONTEXTUAL_SCAN_STATION_PAGE_IDS,
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
   spineSectionIdForPage,
@@ -432,8 +433,8 @@ test('a 150-number pasted list and its status + reason filters survive the Inbou
   const refs = Array.from({ length: 150 }, (_, i) => `1Z999AA1${String(10_000_000 + i)}`).join(',');
   const locate = at('/incoming').search.locate;
   assert.ok(locate?.facetParam, '/incoming locates a pasted list with a reason filter');
-  // The sidebar's bucket + reason rows write the params the search's pasted list reads.
-  assert.deepEqual(at('/incoming').controls?.pastedListBuckets, { param: locate.statusParam, facetParam: locate.facetParam });
+  // The status + reason chips are the ledger body's (operator 2026-10-04): the sidebar carries no status control.
+  assert.equal(Object.keys(at('/incoming').controls ?? {}).some((key) => /bucket|status/i.test(key)), false);
   const spec = routeParamsFor('/incoming');
   assert.ok(spec);
   const kept = parseRouteParams(
@@ -532,18 +533,22 @@ test('each Inbound view carries the filters and controls its own list reads, and
   assert.ok(unboxed.savedViews?.paramKeys.includes('dflag'));
 });
 
-test('the Unbox station: one context for every tab — its status cuts are facets, its Sort only what every tab sorts by', () => {
+test('the Unbox station has no Sort-by or KPI-priority control', () => {
   const station = at('/unbox');
   assert.equal(station.filters?.facetContext, 'receive');
-  assert.deepEqual(station.filters?.groups.map((group) => group.param), ['dflag', 'ukpi']);
-  const sort = station.controls?.sort;
-  assert.ok(sort);
-  // Unset is each tab's own order; every other option is a column the cards, the Unboxed and the Inbound ledgers sort by.
-  for (const option of sort.options) {
-    if (option.value === sort.defaultValue) continue;
-    assert.ok(isReceivingGridSortable(option.value) && isIncomingGridSortable(option.value), `sort ${option.value}`);
-  }
+  assert.deepEqual(station.filters?.groups.map((group) => group.param), ['dflag']);
+  assert.equal(station.controls?.sort, undefined);
   assert.deepEqual(station.controls?.choices ?? [], [], 'Inbound’s Source is no /unbox param');
+});
+
+test('no Scan Station exposes Sort-by or a KPI-priority facet', () => {
+  for (const pageId of CONTEXTUAL_SCAN_STATION_PAGE_IDS) {
+    const page = getSidebarPageNav(pageId);
+    assert.ok(page, pageId);
+    const station = at(page.href);
+    assert.equal(station.controls?.sort, undefined, `${pageId} Sort-by`);
+    assert.ok(!station.filters?.groups.some((group) => group.param === 'ukpi'), `${pageId} KPI priority`);
+  }
 });
 
 test('every facet context names a real page or section view, and every recents surface exists', () => {
@@ -906,19 +911,23 @@ test('/exceptions wears a mode card like Fulfillment: Fulfillment · Inventory �
   assert.deepEqual(parityGaps('exceptions'), []);
 });
 
-test('/operations/live-feed is one root row under the Operations band: no views, no controls, no facets; window params survive', () => {
+test('/operations/live-feed is one root row under the Operations band: Find, Carrier · Channel facets and Staff in the sidebar', () => {
   // The map: one row, its own section after the lanes; no lane, no door, no mode card.
   const map = at('/operations/live-feed', { view: 'top' });
   const row = map.sections.find((section) => section.id === 'live-feed');
   assert.deepEqual(row?.items.map((item) => [item.id, item.label, item.active]), [['live-feed', 'Live feed', true]]);
   assert.equal(map.sections.some((section) => section.id === 'monitor'), false, 'the Monitor lane stays parked');
 
-  const feed = at('/operations/live-feed?window=week&date=2026-09-30');
+  const feed = at('/operations/live-feed?carrier=USPS&staff=4');
   assert.equal(feed.rollout, 'contextual');
+  // View-less, but its Staff control needs a panel: section scope, so ContextualSidebar paints Find + NavFilters.
+  assert.equal(feed.scope, 'section');
   assert.equal(feed.page.id, 'live-feed');
-  assert.equal(feed.controls, undefined);
-  assert.equal(feed.filters, undefined);
-  assert.deepEqual([...feed.params].sort(), ['date', 'open', 'window']);
+  assert.equal(feed.search?.param, 'q');
+  assert.equal(feed.filters?.facetContext, 'live-feed');
+  assert.deepEqual(feed.filters?.groups.map((group) => [group.id, group.param, group.multi]), [['carrier', 'carrier', true], ['channel', 'channel', true]]);
+  assert.deepEqual(feed.controls?.staff?.map((staff) => [staff.param, staff.label]), [['staff', 'Staff']]);
+  assert.deepEqual([...feed.params].sort(), ['carrier', 'channel', 'open', 'q', 'staff']);
   assert.deepEqual(parityGaps('live-feed'), []);
 });
 

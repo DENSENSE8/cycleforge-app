@@ -1,45 +1,38 @@
-'use client';
-
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { RouteShell } from '@/design-system/components/RouteShell';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { SupportSidebarPanel } from '@/components/sidebar/SupportSidebarPanel';
-import { SupportWorkspace } from '@/components/support/zendesk/SupportWorkspace';
-import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
-import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { RouteShell } from '@/design-system/components/RouteShell';
+import { SupportDesk } from '@/features/support/SupportDesk';
 
-/** `/support` — the Support operator Station (promoted More → Stations). */
-function SupportPageContent() {
+export const metadata: Metadata = {
+  title: 'Support items',
+};
+
+/**
+ * `/support` — the Support workspace (owner 2026-10-04): every Support item on
+ * the local model. The left contextual sidebar carries the views, Sort, Group
+ * by, the Platform / Account / Assignee facets and Find; the body is the
+ * Support items list with its local status chips, and `?item=` opens one.
+ * Phone twin: `/m/support`.
+ */
+export default function SupportPage() {
   return (
-    <SurfaceGate surfaceKey="support">
+    <>
+      <SurfaceParamHygiene />
       <div className="hidden h-full w-full overflow-hidden bg-surface-card md:flex">
         <RouteShell
-          actions={<SupportSidebarPanel />}
+          actions={null}
           history={(
-            <RightPaneOverlayHost className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              {/* The one page frame (2026-08-31) — inside the RouteShell's content pane, not around it, so the ticket rail keeps its own column. */}
-              <DeskPageLayout className="h-full">
-                <SupportWorkspace />
-              </DeskPageLayout>
-            </RightPaneOverlayHost>
+            <DeskPageLayout bare className="h-full">
+              <Suspense fallback={<div className="flex h-full w-full items-center justify-center"><LoadingSpinner size="lg" /></div>}>
+                <SupportDesk />
+              </Suspense>
+            </DeskPageLayout>
           )}
         />
       </div>
-    </SurfaceGate>
-  );
-}
-
-export default function SupportPage() {
-  return (
-    <Suspense
-      fallback={(
-        <div className="flex h-full w-full items-center justify-center bg-surface-card">
-          <LoadingSpinner size="lg" className="text-violet-600" />
-        </div>
-      )}
-    >
-      <SupportPageContent />
-    </Suspense>
+    </>
   );
 }

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { RackDetail, RackShelf } from '@/lib/locations/rack-types';
-import { allLabelKeys, labelChoices, labelRows, PLACARD_KEY, shownLabelKeys } from './location-label-flow-model';
+import { allLabelKeys, labelRows, labelShelves, PLACARD_KEY, shownLabelKeys } from './location-label-flow-model';
 
-function shelf(n: number, tier: RackShelf['tier'] = null): RackShelf {
-  return { id: 100 + n, code: `RK12-${n}`, name: `Rack 12 Shelf ${n}`, shelf: n, tier, capacity: null, sortOrder: n, stockQty: 0, positions: [] };
+function shelf(n: number): RackShelf {
+  return { id: 100 + n, code: `RK12-${n}`, name: `Rack 12 Shelf ${n}`, shelf: n, capacity: null, sortOrder: n, stockQty: 0, positions: [] };
 }
 
 const RACK: Pick<RackDetail, 'id' | 'code' | 'name' | 'shelves'> = {
@@ -12,32 +12,25 @@ const RACK: Pick<RackDetail, 'id' | 'code' | 'name' | 'shelves'> = {
   code: 'RK12',
   name: 'Rack 12',
   // Out of shelf order on purpose: the flow always prints shelf order.
-  shelves: [shelf(3), shelf(1, 0), shelf(2, 2)],
+  shelves: [shelf(3), shelf(1), shelf(2)],
 };
 
 test('Shelves opens with the placard and every shelf selected', () => {
   assert.deepEqual([...allLabelKeys(RACK)].sort(), [PLACARD_KEY, 'RK12-1', 'RK12-2', 'RK12-3'].sort());
 });
 
-test('labelChoices lists the placard then shelves in shelf order; arrival-only keeps tiered shelves and drops the placard', () => {
-  const all = labelChoices(RACK, false);
-  assert.equal(all.placard, true);
-  assert.deepEqual(all.shelves.map((s) => s.code), ['RK12-1', 'RK12-2', 'RK12-3']);
-  assert.deepEqual(shownLabelKeys(all), [PLACARD_KEY, 'RK12-1', 'RK12-2', 'RK12-3']);
-  const arrival = labelChoices(RACK, true);
-  assert.equal(arrival.placard, false);
-  assert.deepEqual(shownLabelKeys(arrival), ['RK12-1', 'RK12-2']);
+test('the Shelves step lists the placard then shelves in shelf order', () => {
+  assert.deepEqual(labelShelves(RACK).map((s) => s.code), ['RK12-1', 'RK12-2', 'RK12-3']);
+  assert.deepEqual(shownLabelKeys(RACK), [PLACARD_KEY, 'RK12-1', 'RK12-2', 'RK12-3']);
 });
 
-test('labelRows prints selected AND shown rows, placard first, with no room and the shelf tier', () => {
-  const rows = labelRows(RACK, allLabelKeys(RACK), false);
-  assert.deepEqual(rows.map((r) => [r.barcode, r.roomName, r.arrivalPriorityTier]), [
-    ['RK12', null, null],
-    ['RK12-1', null, 0],
-    ['RK12-2', null, 2],
-    ['RK12-3', null, null],
+test('labelRows prints the selected rows, placard first, with no room and nothing but identification', () => {
+  const rows = labelRows(RACK, allLabelKeys(RACK));
+  assert.deepEqual(rows, [
+    { id: 12, name: 'Rack 12', barcode: 'RK12', roomName: null },
+    { id: 101, name: 'Rack 12 Shelf 1', barcode: 'RK12-1', roomName: null },
+    { id: 102, name: 'Rack 12 Shelf 2', barcode: 'RK12-2', roomName: null },
+    { id: 103, name: 'Rack 12 Shelf 3', barcode: 'RK12-3', roomName: null },
   ]);
-  // Arrival-only hides the placard and the untiered shelf even though they stay selected.
-  assert.deepEqual(labelRows(RACK, allLabelKeys(RACK), true).map((r) => r.barcode), ['RK12-1', 'RK12-2']);
-  assert.deepEqual(labelRows(RACK, new Set(['RK12-3']), false).map((r) => r.barcode), ['RK12-3']);
+  assert.deepEqual(labelRows(RACK, new Set(['RK12-3'])).map((r) => r.barcode), ['RK12-3']);
 });

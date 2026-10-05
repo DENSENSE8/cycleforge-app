@@ -91,6 +91,8 @@ export const motionDuration = {
   /** Pending → verdict crossfade; chip pill glide; filter reflow. */
   findListVerdict: 0.22,
   findListGlide: 0.28,
+  /** A copied sheet cell's wash fading out (the Pasted list's click-to-copy). */
+  findCellCopied: 0.6,
   /** Dropdown menu open/close */
   dropdownOpen: 0.18,
   /** Overlay search bar toggle */
@@ -448,7 +450,7 @@ export const motionTransition = {
     duration: motionDuration.findListToken,
     ease: motionBezier.easeInOutCubic,
   } satisfies Transition,
-  /** Search well dropdown panel height + fade — pair with `motionPresence.findListPanel`. */
+  /** Search well dropdown panel open / close — the timing `CollapseItem` runs its height on (`timing`). */
   findListPanelOpen: {
     type: 'tween' as const,
     duration: motionDuration.findListPanelOpen,
@@ -477,6 +479,12 @@ export const motionTransition = {
   findListVerdict: {
     type: 'tween' as const,
     duration: motionDuration.findListVerdict,
+    ease: motionBezier.easeInOutCubic,
+  } satisfies Transition,
+  /** A copied cell's wash fades out — pair with `motionPresence.findCellCopied`. */
+  findCellCopied: {
+    type: 'tween' as const,
+    duration: motionDuration.findCellCopied,
     ease: motionBezier.easeInOutCubic,
   } satisfies Transition,
   /** Status chip `layoutId` pill glide + row `layout` reflow while filtering. */
@@ -823,12 +831,6 @@ export const motionPresence = {
     animate: { opacity: 1, scale: 1, filter: 'blur(0px)' },
     exit: { opacity: 0, scale: 0.96, filter: 'blur(4px)' },
   },
-  /** The well's dropdown panel: height opens with a fade; close is the reverse. */
-  findListPanel: {
-    initial: { opacity: 0, height: 0 },
-    animate: { opacity: 1, height: 'auto' },
-    exit: { opacity: 0, height: 0 },
-  },
   /** One pasted-list row: rises a hair out of a light blur. */
   findListRow: {
     initial: { opacity: 0, y: 4, filter: 'blur(2px)' },
@@ -844,6 +846,12 @@ export const motionPresence = {
   findListVerdict: {
     initial: { opacity: 0, filter: 'blur(2px)' },
     animate: { opacity: 1, filter: 'blur(0px)' },
+    exit: { opacity: 0 },
+  },
+  /** A copied cell: an accent wash that fades — opacity only, so reduced motion keeps it. */
+  findCellCopied: {
+    initial: { opacity: 0.55 },
+    animate: { opacity: 0 },
     exit: { opacity: 0 },
   },
 } as const;

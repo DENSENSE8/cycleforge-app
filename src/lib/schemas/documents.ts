@@ -6,7 +6,9 @@ const outboundDocumentType = z.enum(['shipping_label', 'packing_slip']);
 export const OutboundDocumentAttachBody = z
   .object({
     documentType: outboundDocumentType,
-    url: z.string().trim().min(1, 'url is required'),
+    /** Existing row to pair/re-pair without copying bytes. */
+    documentId: z.number().int().positive().optional(),
+    url: z.string().trim().min(1, 'url is required').optional(),
     platform: z.string().trim().nullable().optional(),
     source: z.string().trim().optional(),
     carrier: z.string().trim().nullable().optional(),
@@ -14,7 +16,10 @@ export const OutboundDocumentAttachBody = z
     mimeType: z.string().trim().nullable().optional(),
     filename: z.string().trim().nullable().optional(),
   })
-  .strict();
+  .strict()
+  .refine((value) => value.documentId != null || value.url != null, {
+    message: 'url or documentId is required',
+  });
 
 /** PATCH /api/documents/[id] — atomically point an existing outbound document at new bytes. */
 export const OutboundDocumentReplaceBody = z

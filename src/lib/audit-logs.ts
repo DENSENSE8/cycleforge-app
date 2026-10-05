@@ -106,6 +106,8 @@ export const AUDIT_ENTITY = {
   STAFF: 'staff',
   // Enrolled customer-facing kiosk tablet (device principal — kiosk_devices).
   KIOSK_DEVICE: 'kiosk_device',
+  // Org print station (`print_stations`); an enrolled one is a device principal (kiosk_devices kind print_station).
+  PRINT_STATION: 'print_station',
   PHOTO: 'photo',
   PHOTO_FOLDER: 'photo_folder',
   PHOTO_IMAGE_TYPE: 'photo_image_type',
@@ -206,6 +208,9 @@ export const AUDIT_ENTITY = {
   AUTHORIZATION_POLICY: 'authorization_policy',
   // ── Brands (sidebar Phase 1) — product_brands + aliases ──────────────────
   PRODUCT_BRAND: 'product_brand',
+  // ── Carrier pickup cutoffs (carrier_pickup_cutoffs; Live feed countdowns) ─
+  /** The org's whole carrier × weekday pickup-cutoff set. */
+  CARRIER_PICKUP_CUTOFFS: 'carrier_pickup_cutoffs',
 } as const;
 
 export const AUDIT_ACTION = {
@@ -216,6 +221,13 @@ export const AUDIT_ACTION = {
   KIOSK_TERMINAL_PAIRED: 'kiosk.terminal_paired', // a Square Terminal was paired to / cleared from a lane
   KIOSK_INTAKE:   'kiosk.intake',     // an intake was created from the kiosk device principal
   KIOSK_PICKUP_COLLECT: 'kiosk.pickup_collect', // customer collected a ready repair via order pickup
+  // Org print stations (Print station › Stations control plane)
+  PRINT_STATION_ENROLLED: 'print_station.enrolled', // Hardware settings minted a station + its pairing code
+  PRINT_STATION_REPAIRED: 'print_station.repaired', // Hardware settings replaced a station credential in place
+  PRINT_STATION_PAIRED:   'print_station.paired',   // the station computer exchanged its code for a device token
+  PRINT_STATION_PAUSED:   'print_station.paused',   // a station was paused (refuses jobs)
+  PRINT_STATION_RESUMED:  'print_station.resumed',  // a paused station was resumed
+  PRINT_STATION_REVOKED:  'print_station.revoked',  // an enrolled station revoked / a browser station forgotten
   // History face on the tablet (PIN step-up). PRINT covers both papers the
   // face can re-emit; the `kind` in metadata says which.
   KIOSK_VISIT_PRINT: 'kiosk.visit_print',
@@ -307,6 +319,7 @@ export const AUDIT_ACTION = {
   BIN_DELETE: 'bin.delete',
   // Movable racks (src/lib/locations/racks.ts)
   RACK_CREATE:        'rack.create',
+  RACK_DELETE:        'rack.delete',
   RACK_MOVE:          'rack.move',
   RACK_SHELVES_EDIT:  'rack.shelves.edit',
   RACK_ADOPT:         'rack.adopt',
@@ -454,6 +467,33 @@ export const AUDIT_ACTION = {
   // "Product sent to customer" logged on a ticket (support_ticket_items) / undone.
   SUPPORT_TICKET_ITEM_ADD:    'support.ticket.item.add',
   SUPPORT_TICKET_ITEM_REMOVE: 'support.ticket.item.remove',
+  // ── Support closed loop (src/lib/support/conversation, 2026-10-04) ───────
+  // Request audit rows (entity support_ticket) AND task-Timeline rows (entity
+  // work_assignment = the item's primary task; TaskRailTimeline reads them).
+  // A Support item opened by staff (POST /api/support/items).
+  SUPPORT_ITEM_CREATE:         'support.item.create',
+  // A customer message pasted / an internal update logged on a Support item.
+  SUPPORT_MESSAGE_LOG:         'support.message.log',
+  // A reply sent / copied / logged (POST /api/support/items/[id]/replies).
+  SUPPORT_REPLY:               'support.reply',
+  // A copied reply confirmed sent (Mark sent) — it answers from this instant.
+  SUPPORT_REPLY_MARK_SENT:     'support.reply.mark_sent',
+  // An inbound message marked "no reply required" (staff + reason).
+  SUPPORT_MESSAGE_NO_REPLY:    'support.message.no_reply',
+  // Staff acknowledged who the item is for (customer conversation / internal record).
+  SUPPORT_ITEM_PURPOSE:        'support.item.purpose',
+  // Waiting on customer / follow up later chosen without a reply.
+  SUPPORT_ITEM_NEXT_STEP:      'support.item.next_step',
+  // Snoozed / reopened by staff.
+  SUPPORT_ITEM_LIFECYCLE:      'support.item.lifecycle',
+  // A later customer message reopened resolved work.
+  SUPPORT_ITEM_REOPEN:         'support.item.reopen',
+  // Resolved with nothing unanswered.
+  SUPPORT_ITEM_RESOLVE:        'support.item.resolve',
+  // Resolved past blockers — always carries the staff reason.
+  SUPPORT_ITEM_RESOLVE_OVERRIDE: 'support.item.resolve_override',
+  // An AI draft generated on request (POST /api/support/items/[id]/drafts). Never sent.
+  SUPPORT_DRAFT_GENERATE:      'support.draft.generate',
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',
@@ -674,6 +714,8 @@ export const AUDIT_ACTION = {
   CUSTOMER_CONTACT_UPDATE: 'customer.contact_update',
   // A customer typed on the phone (POST /api/customers, manual phone orders)
   CUSTOMER_CREATE: 'customer.create',
+  // An order summary invoice emailed from a customer's order history.
+  CUSTOMER_INVOICE_EMAIL_SENT: 'customer.invoice_email_sent',
   REPAIR_SERVICE_LABEL_PRINTED: 'repair_service.label_printed',
   // A station printed the repair paper or a manual for a repair (phone → station job).
   REPAIR_SERVICE_DOCUMENT_PRINTED: 'repair_service.document_printed',
@@ -771,6 +813,9 @@ export const AUDIT_ACTION = {
   AGENT_MUTATION_REJECT: 'agent_mutation.reject',
   /** Non-blocking rehearsal signal emitted when stored permissions would deny a dogfood request. */
   AUTHORIZATION_PROSPECTIVE_DENIAL: 'authorization.prospective_denial',
+  // ── Carrier pickup cutoffs ──────────────────────────────────────────────
+  /** The org's whole pickup-cutoff set replaced (before/after carry both sets). */
+  CARRIER_PICKUP_CUTOFFS_REPLACE: 'carrier_pickup_cutoffs.replace',
 } as const;
 
 export type AuditEntity = (typeof AUDIT_ENTITY)[keyof typeof AUDIT_ENTITY];
@@ -800,6 +845,9 @@ const AUDIT_REASON_REQUIRED: ReadonlySet<string> = new Set([
   AUDIT_ACTION.RECEIVING_LOSS_WRITE_OFF,
   // Closing an unmatched pack scan with no order ends its trail — say why.
   AUDIT_ACTION.ORDERS_EXCEPTION_CLOSE,
+  // Resolving a Support item past its blockers / waiving a reply — say why.
+  AUDIT_ACTION.SUPPORT_ITEM_RESOLVE_OVERRIDE,
+  AUDIT_ACTION.SUPPORT_MESSAGE_NO_REPLY,
 ]);
 
 // ── Server-trusted wrapper ─────────────────────────────────────────────────

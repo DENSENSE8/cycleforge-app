@@ -18,6 +18,7 @@ import {
   locationMatchesDeleteScope,
   type LocationDeleteScope,
 } from '../inventory/location-deletion';
+import { nextAvailableRoomZoneLetter } from '../inventory/room-zone-letter';
 
 /** Tenancy migration note ────────────────────── Every exported query here takes an OPTIONAL `orgId`. */
 
@@ -131,6 +132,62 @@ export async function getRooms(orgId?: OrgId): Promise<Location[]> {
     ? await tenantQuery<Location>(orgId, sql, [orgId])
     : await pool.query<Location>(sql);
   return result.rows;
+}
+
+/**
+ * Give every active room parent a stable A–Z zone letter. This is the repair
+ * path for legacy rooms and the default for newly created rooms. One advisory
+ * lock per organization makes two simultaneous label screens deterministic.
+ */
+export async function ensureRoomZoneLetters(
+  orgId: OrgId,
+): Promise<{ zoneMap: Record<string, string>; unassigned: string[] }> {
+  return withTenantTransaction(orgId, async (client) => {
+    await client.query(
+      `SELECT pg_advisory_xact_lock(hashtext($1::text), hashtext('room-zone-letter'))`,
+      [String(orgId)],
+    );
+    const result = await client.query<Location>(
+      `SELECT id, name, room, description, barcode, is_active, sort_order,
+              row_label, col_label, bin_type, capacity, parent_id, zone_letter
+         FROM locations
+        WHERE organization_id = $1
+          AND is_active = true
+          AND row_label IS NULL
+          AND col_label IS NULL
+          AND location_kind NOT IN ('RACK', 'SHELF', 'POSITION')
+        ORDER BY sort_order, id
+        FOR UPDATE`,
+      [orgId],
+    );
+
+    const used = new Set(result.rows.map((row) => row.zone_letter).filter((letter): letter is string => !!letter));
+    const zoneMap: Record<string, string> = {};
+    const unassigned: string[] = [];
+
+    for (const row of result.rows) {
+      const room = (row.room || row.name).trim();
+      if (!room || zoneMap[room]) continue;
+      let letter = row.zone_letter?.trim().toUpperCase() || null;
+      if (!letter) {
+        letter = nextAvailableRoomZoneLetter(used);
+        if (!letter) {
+          unassigned.push(room);
+          continue;
+        }
+        await client.query(
+          `UPDATE locations
+              SET zone_letter = $2, updated_at = NOW()
+            WHERE id = $1 AND organization_id = $3`,
+          [row.id, letter, orgId],
+        );
+        used.add(letter);
+      }
+      zoneMap[room] = letter;
+    }
+
+    return { zoneMap, unassigned };
+  });
 }
 
 /** Upsert the zone-letter for a room. */
@@ -500,7 +557,7 @@ export async function createLocation(data: {
 
 export async function updateLocation(
   id: number,
-  data: Partial<{ name: string; displayName: string | null; room: string | null; description: string | null; barcode: string | null; binType: string | null; capacity: number | null; isActive: boolean; sortOrder: number; arrivalPriorityTier: number | null }>,
+  data: Partial<{ name: string; displayName: string | null; room: string | null; description: string | null; barcode: string | null; binType: string | null; capacity: number | null; isActive: boolean; sortOrder: number }>,
   orgId?: OrgId,
 ): Promise<Location | null> {
   const sets: string[] = ['updated_at = NOW()'];
@@ -518,8 +575,6 @@ export async function updateLocation(
   if (data.capacity !== undefined) { sets.push(`capacity = $${idx++}`); params.push(data.capacity); }
   if (data.isActive !== undefined) { sets.push(`is_active = $${idx++}`); params.push(data.isActive); }
   if (data.sortOrder !== undefined) { sets.push(`sort_order = $${idx++}`); params.push(data.sortOrder); }
-  // Arrival urgency shelf tier (0..3, null clears it).
-  if (data.arrivalPriorityTier !== undefined) { sets.push(`arrival_priority_tier = $${idx++}`); params.push(data.arrivalPriorityTier); }
 
   params.push(id);
   const idIdx = idx++;

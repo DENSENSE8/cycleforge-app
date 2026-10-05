@@ -19,6 +19,10 @@ import { fetchReceivingLinesPage, resolveReceivingLinesReadFlags } from '@/lib/r
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isRepairFacetContext, repairFacets } from '@/lib/nav/facets/repair';
 import { stationLiveFacets } from '@/lib/nav/facets/station-live';
+import { liveFeedFacets } from '@/lib/nav/facets/live-feed';
+import type { LiveFeedFilters } from '@/lib/live-feed/route';
+import type { LiveFeedFacets } from '@/lib/live-feed/types';
+import { loadLiveFeedFacets } from '@/lib/live-feed/load';
 import { isSupportFacetContext, supportFacets } from '@/lib/nav/facets/support';
 import type { SupportListRow } from '@/lib/support/list/support-list';
 import { listSupportRows } from '@/lib/support/list/support-list-db';
@@ -34,6 +38,8 @@ export interface NavFacetsDeps {
   exceptionCounts: ExceptionCountReader;
   /** The Support list's rows (`listSupportRows`), cut by the list's own predicates. */
   supportRows: (orgId: OrgId, q: string | null, nowMs: number) => Promise<SupportListRow[]>;
+  /** The Live feed board's own facet read (`loadLiveFeedFacets`). */
+  liveFeedFacets: (orgId: OrgId, filters: LiveFeedFilters) => Promise<LiveFeedFacets>;
 }
 
 export const defaultNavFacetsDeps: NavFacetsDeps = {
@@ -41,6 +47,7 @@ export const defaultNavFacetsDeps: NavFacetsDeps = {
   listLocalPickupLines,
   exceptionCounts: (caller, kinds, q) => countExceptions(caller, kinds, q),
   supportRows: (orgId, q, nowMs) => sharedSupportRows(orgId, q, nowMs),
+  liveFeedFacets: loadLiveFeedFacets,
 };
 
 /**
@@ -95,6 +102,9 @@ export async function getNavFacets(
   }
   if (context === 'pickup') {
     return { ok: true, body: await pickupFacets(caller.orgId, params, deps.listLocalPickupLines) };
+  }
+  if (context === 'live-feed') {
+    return { ok: true, body: await liveFeedFacets(params, (filters) => deps.liveFeedFacets(caller.orgId, filters)) };
   }
   const run: FacetSqlRunner = (sql, bind) => deps.run(caller.orgId, sql, bind);
   if (context === 'stations-live') return { ok: true, body: await stationLiveFacets(caller.orgId, params, run) };

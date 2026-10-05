@@ -7,7 +7,7 @@
  * The address lives in the per-browser store (`useLabelPrinterStore`) so the
  * desk tab and the phone pick up where the operator left off. Printing goes to
  * the label station this staffer picked (`usePrintStations().target.label`):
- * this computer prints here through `printBinLabelRun` / `printRackLabelRun`
+ * this computer prints here through `printLocationLabelRun` / `printRackLabelRun`
  * (registration included); any other station is sent the job after this screen
  * registers the stickers itself, so a refused code reads here, not over there.
  */
@@ -19,7 +19,7 @@ import { useOrgGs1 } from '@/hooks/useOrgGs1';
 import { patchLabelPrinterState, resetLabelPrinterState, useLabelPrinterStore } from '@/hooks/useLabelPrinterStore';
 import { usePrintStations, type PrintStationEntry, type PrintStations } from '@/hooks/usePrintStations';
 import type { LocationSegments } from '@/lib/barcode-routing';
-import { printBinLabelRun, printRackLabelRun } from '@/lib/print/printLabelRun';
+import { printLocationLabelRun, printRackLabelRun } from '@/lib/print/printLabelRun';
 import { toast } from '@/lib/toast';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import { registerRackLocations } from '@/components/barcode/rack-printer/rack-printer-api';
@@ -56,7 +56,6 @@ function plural(n: number): string {
 /** What the builder reads and drives. */
 export interface LocationLabelBuilderController {
   kind: LabelKind;
-  setKind: (kind: LabelKind) => void;
   loading: boolean;
   /** Room names in room order. */
   rooms: string[];
@@ -103,14 +102,16 @@ export function useLocationLabelBuilder({
   const stations = usePrintStations();
   const selection = useLabelPrinterStore();
 
-  const [kind, setKind] = useState<LabelKind>(initialKind);
+  const kind = initialKind;
   const [overrideStep, setOverrideStep] = useState<LabelStep | null>(null);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scanNote, setScanNote] = useState<string | null>(null);
+  const [automaticallyAssignedZones, setAutomaticallyAssignedZones] = useState<Record<string, string>>({});
+  const zoneRepairAttempted = useRef(false);
 
   // Server-of-record zone letters, keyed by room name.
-  const zoneMap = useMemo(() => {
+  const storedZoneMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const r of rooms) {
       const key = (r.room || r.name)?.trim();
@@ -128,6 +129,37 @@ export function useLocationLabelBuilder({
     for (const n of roomNames) if (n && !order.has(n)) order.set(n, 0);
     return [...order.keys()].sort((a, b) => (order.get(a)! - order.get(b)!) || a.localeCompare(b));
   }, [rooms, roomNames]);
+
+  const zoneMap = useMemo(
+    () => ({ ...storedZoneMap, ...automaticallyAssignedZones }),
+    [automaticallyAssignedZones, storedZoneMap],
+  );
+
+  // Legacy rooms are repaired as one idempotent server operation. New rooms
+  // receive a letter at creation, so this normally makes no request at all.
+  useEffect(() => {
+    if (loading || zoneRepairAttempted.current || !roomList.some((room) => !zoneMap[room])) return;
+    zoneRepairAttempted.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch('/api/rooms/ensure-zone-letters', { method: 'POST' });
+        const data = await response.json().catch(() => ({}));
+        if (cancelled) return;
+        if (data?.zoneMap && typeof data.zoneMap === 'object') {
+          setAutomaticallyAssignedZones(data.zoneMap as Record<string, string>);
+        }
+        if (!response.ok) {
+          setError(data?.error || 'Could not assign room zones automatically.');
+        }
+      } catch {
+        if (!cancelled) setError('Could not assign room zones automatically.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, roomList, zoneMap]);
 
   const zoneLetter = selection.room ? zoneMap[selection.room] : undefined;
   const missingLetter = !!selection.room && !zoneLetter;
@@ -247,7 +279,7 @@ export function useLocationLabelBuilder({
                   racks: labels.map(({ zone, aisle, bay, level }) => ({ zone, aisle, bay, level })),
                   register: registerRackLocations,
                 })
-              : await printBinLabelRun({ ...common, segments: labels, register: registerLocations });
+              : await printLocationLabelRun({ ...common, segments: labels, register: registerLocations });
           if (result.status === 'register_failed' || result.status === 'mint_failed') {
             setError(result.error || 'Could not register these locations for printing.');
             return false;
@@ -284,7 +316,6 @@ export function useLocationLabelBuilder({
 
   return {
     kind,
-    setKind,
     loading,
     rooms: roomList,
     zoneMap,

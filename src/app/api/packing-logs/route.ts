@@ -25,7 +25,6 @@ import type { ScanClassification } from '@/utils/packer';
 import { createPackerLog, touchPackerLog } from '@/lib/packing/packer-log-writer';
 import { packScanNoTrackingError, resolvePackScan } from '@/lib/packing/pack-scan-order';
 import { releasePackedTotes } from '@/lib/picking/tote-scan';
-import { scannedUnitKey } from '@/lib/barcode-routing';
 
 /** The order a tote / unit pack scan named, in the tracking ladder's row shape. */
 interface PackScanOrderRow {
@@ -227,15 +226,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         // A tote or a unit (label / serial) names the order to pack; the pack
         // then runs on that order's primary tracking exactly like a label scan.
-        const packScan =
-            scanClassification.trackingType === 'ORDERS' || scannedUnitKey(packScanInput)
-                ? await resolvePackScan(client, ctx.organizationId, packScanInput)
-                : null;
+        const packScan = await resolvePackScan(client, ctx.organizationId, packScanInput);
         if (packScan?.kind === 'refused') {
             return NextResponse.json({ error: packScan.error }, { status: 409 });
         }
         if (packScan?.kind === 'unit-not-on-order') {
-            return NextResponse.json({ error: packScan.error, unitNotOnOrder: true }, { status: 404 });
+            return NextResponse.json({
+                error: packScan.error,
+                unitNotOnOrder: true,
+                serialUnitId: packScan.serialUnitId,
+                unitKey: packScan.unitKey,
+            }, { status: 404 });
         }
         let scannedOrder: PackScanOrderRow | null = null;
         if (packScan?.kind === 'order') {

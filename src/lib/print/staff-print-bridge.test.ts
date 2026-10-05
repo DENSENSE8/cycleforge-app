@@ -190,10 +190,15 @@ describe('parseStaffPrintJob', () => {
     assert.equal(parseStaffPrintJob(base), null);
   });
 
-  it('qcLabelWireKey prefers the minted unit id, falls back to the serial, refuses what cannot ride', () => {
+  it('qcLabelWireKey prefers the package uid, then the minted unit id, falls back to the serial, refuses what cannot ride', () => {
     assert.equal(qcLabelWireKey({ unit_uid: 'APL-2639-000123', serial_number: 'C02X' }), 'APL-2639-000123');
     assert.equal(qcLabelWireKey({ unit_uid: null, serial_number: ' C02X1 ' }), 'C02X1');
     assert.equal(qcLabelWireKey({ unit_uid: null, serial_number: 'SN 1/2' }), null);
+    assert.equal(
+      qcLabelWireKey({ unit_uid: 'APL-2639-000123', serial_number: 'C02X', package: { uid: 'KIT-APL-2639-000007' } }),
+      'KIT-APL-2639-000007',
+    );
+    assert.equal(qcLabelWireKey({ unit_uid: 'APL-2639-000123', serial_number: 'C02X', package: null }), 'APL-2639-000123');
   });
 
   describe('documents grain', () => {

@@ -116,8 +116,26 @@ export interface LabelPrintRow {
 
 /** One product line of the order a label ships. */
 export interface LabelOrderLine {
+  /** Exact `orders.id` for this product line. */
+  orderLineId: number;
+  /** Marketplace item/listing number when present. */
+  itemNumber: string | null;
+  /** CycleForge catalog identity for the product, when resolved. */
+  skuCatalogId: number | null;
+  /** Human-readable SKU paired with the catalog id. */
+  sku: string | null;
   title: string;
   quantity: number;
+}
+
+export interface PaperworkAssociation {
+  /** The key that caused this document to resolve onto the order. */
+  source: 'order' | 'item_number' | 'sku';
+  /** Exact order-line records this document applies to. */
+  orderLineIds: number[];
+  itemNumber: string | null;
+  sku: string | null;
+  skuCatalogId: number | null;
 }
 
 /** One paperwork document of an order — a packing slip or a manual resolved for it (order › item # › SKU). */
@@ -135,6 +153,7 @@ export interface PaperworkDocumentRow {
   /** Prints of this document for this order. */
   printCount: number;
   lastPrintedAt: string | null;
+  association: PaperworkAssociation;
 }
 
 /** One order's paperwork — one card per order. */

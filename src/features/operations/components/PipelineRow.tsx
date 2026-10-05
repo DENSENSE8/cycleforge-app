@@ -7,6 +7,7 @@ import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { cn } from '@/utils/_cn';
+import { supportHref } from '@/lib/nav/route-tree';
 
 interface FbaStageCountsResponse {
   success?: boolean;
@@ -156,7 +157,7 @@ export function PipelineRow() {
         />
         <StageBar
           title="RMA pipeline"
-          href="/support"
+          href={supportHref()}
           stages={rmaStages}
           isLoading={rma.isLoading}
           empty={rma.data === null}

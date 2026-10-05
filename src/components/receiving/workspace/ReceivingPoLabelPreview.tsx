@@ -1,6 +1,6 @@
 'use client';
 
-import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { receivingPayloadToFace, type ReceivingLabelPayload } from '@/lib/print/printReceivingLabel';
 
 /** On-screen render of the printed PO / carton label. */

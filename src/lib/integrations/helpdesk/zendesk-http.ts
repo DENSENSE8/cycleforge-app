@@ -2,6 +2,7 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { isRedisConfigured, redisCmd } from '@/lib/redis/client';
+import { logger } from '@/lib/observability/logger';
 
 export const ZENDESK_HTTP_CONFIG = {
   /** In-process token bucket per org (per minute). */
@@ -336,6 +337,12 @@ async function performZendeskRequest<T>(
     await awaitDistributedBudget(orgKey);
 
     let response: Response;
+    // One `support.provider_call` line per upstream HTTP attempt — the proof
+    // that local Support reads make none. Path only (no query: it can carry
+    // search text).
+    const startedAt = Date.now();
+    let endedAt = startedAt;
+    let status: number | null = null;
     try {
       const headers: Record<string, string> = {
         Authorization: `Basic ${auth}`,
@@ -357,10 +364,27 @@ async function performZendeskRequest<T>(
               ? JSON.stringify(init.body)
               : undefined,
       });
+      endedAt = Date.now();
+      status = response.status;
     } catch (error: unknown) {
+      endedAt = Date.now();
       if (attempt === ZENDESK_HTTP_CONFIG.maxRetries) throw error;
       await sleep(1000 * 2 ** attempt);
       continue;
+    } finally {
+      logger.info(
+        {
+          event: 'support.provider_call',
+          provider: 'zendesk',
+          org: orgKey,
+          method,
+          path: path.split('?')[0],
+          status,
+          ms: endedAt - startedAt,
+          attempt,
+        },
+        'support.provider_call',
+      );
     }
 
     rememberRateHeaders(orgKey, response);

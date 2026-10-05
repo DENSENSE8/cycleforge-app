@@ -29,6 +29,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useBackgroundWork, type WorkItem } from '@/lib/background-work/store';
 import { DURABLE_INBOX_QUERY_KEY, followUpDueLabel, useFollowUpAlerts } from '@/lib/notifications/use-durable-inbox';
 import { inboxContactsLine } from '@/lib/notifications/inbox-contacts';
+import { scrubRelayAddresses } from '@/lib/support/contact-face';
 import type { InboxItemDto } from '@/lib/notifications/types';
 import { pageNextActions } from '@/lib/nav/next-actions';
 import { unboxFeedbackFace, unboxFeedbackLine } from '@/lib/receiving/unbox-scan-feedback';
@@ -104,7 +105,7 @@ export function HeaderNextAction() {
   // it on the bench.
   const alert = useFollowUpAlerts({ enabled: Boolean(user?.staffId) })[0] ?? null;
   const alertLine = alert
-    ? `${alert.eventLabel}: ${[inboxContactsLine(alert.contacts), alert.title ?? `Task ${alert.entityId}`, followUpDueLabel(alert.dueAt)]
+    ? `${alert.eventLabel}: ${[inboxContactsLine(alert.contacts), alert.title ? scrubRelayAddresses(alert.title) : `Task ${alert.entityId}`, followUpDueLabel(alert.dueAt)]
         .filter(Boolean)
         .join(' · ')}`
     : null;

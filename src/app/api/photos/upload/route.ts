@@ -13,7 +13,7 @@ import type { PhotoLinkRole } from '@/lib/photos/types';
 import { PHOTO_LINK_ROLES } from '@/lib/photos/types';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import { isAspectLegalForStage, parsePhotoAspect } from '@/lib/photos/photo-aspects';
-import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
+import { stageFromPhotoType } from '@/lib/photos/stages';
 import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { publishEntityMediaInsert } from '@/lib/photos/publish-entity-media';
 import { assertTaskInOrg } from '@/lib/tasks/task-links-db';
@@ -77,10 +77,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (!photoAspect) {
         throw ApiError.badRequest(`photoAspect '${rawAspect}' is not a known photo aspect`);
       }
-      const stage = receivingStageFromPhotoType(entityType, photoType);
+      const stage = stageFromPhotoType(entityType, photoType);
       if (!stage) {
         throw ApiError.badRequest(
-          `photoAspect cannot be recorded: (${entityType}, ${photoType}) resolves to no evidence stage`,
+          `photoAspect cannot be recorded: (${entityType}, ${photoType}) has no evidence stage that carries aspects`,
         );
       }
       if (!isAspectLegalForStage(photoAspect, stage)) {

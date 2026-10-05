@@ -10,7 +10,7 @@ describe('order dossier findings', () => {
     const findings = orderDossierFindings({ id: 77, item_number: null, sku: 'ABC', sku_catalog_id: null });
     assert.equal(findings.some((f) => f.key === 'unpaired'), true);
     assert.equal(findings.some((f) => f.key === 'no_item_number'), true);
-    assert.equal(findings[0]?.href, '/shipping/exceptions?order=77');
+    assert.equal(findings[0]?.href, '/exceptions?order=77');
   });
 
   it('makes exceptions the primary handoff when findings exist', () => {

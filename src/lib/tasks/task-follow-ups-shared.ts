@@ -4,9 +4,13 @@
  * Every channel a row may carry. `email` stays readable (append-only history)
  * but is no longer LOGGED here — owner 2026-09-30: an email is linked under the
  * task's Links (`work_assignment_email_refs`), not typed into the chase log.
+ * `message` = a Support conversation message (the row carries
+ * `thread_message_id`; written only by the Support loop, never typed).
  */
-export const TASK_FOLLOW_UP_CHANNELS = ['email', 'call', 'ticket', 'note'] as const;
+export const TASK_FOLLOW_UP_CHANNELS = ['email', 'call', 'ticket', 'note', 'message'] as const;
 export type TaskFollowUpChannel = (typeof TASK_FOLLOW_UP_CHANNELS)[number];
+/** What `POST /api/tasks/[id]/follow-ups` accepts — every stored value but `message`. */
+export const TASK_FOLLOW_UP_LOG_CHANNELS = ['email', 'call', 'ticket', 'note'] as const satisfies readonly TaskFollowUpChannel[];
 
 export const TASK_FOLLOW_UP_DIRECTIONS = ['outbound', 'inbound'] as const;
 export type TaskFollowUpDirection = (typeof TASK_FOLLOW_UP_DIRECTIONS)[number];

@@ -31,6 +31,7 @@ import { parseUnboxKpiFilterWire } from '@/lib/receiving/unbox-metrics';
 import { parseTriageLaneWire } from '@/lib/receiving/triage-lane-policy';
 import { RECON_REASONS, parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import { parseTrackingInParam, serializeTrackingIn } from '@/lib/receiving/tracking-paste';
+import { paramLocateBucket } from './locate-bucket-param';
 import { parsePickupStatusTabWire } from '@/lib/local-pickup/order-status';
 import { parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
 import { REPAIR_CHANNELS, REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
@@ -81,7 +82,7 @@ const SCAN_SURFACE_CARRIES = [
 ] as const;
 
 /** Ambient set for the browse surfaces — a grid, no scan-selected carton. */
-const BROWSE_SURFACE_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
+const BROWSE_SURFACE_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset', 'recordBack'] as const;
 
 /** Server ORDER BY for the two feeds that share the History vocabulary — the `/receiving/history` table and the Unbox workbench's History… */
 const historySortParam = () =>
@@ -222,11 +223,13 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
      */
     ref_in: paramRefList,
     /**
-     * Bucket filter over `ref_in` (`RECON_PARAM`) — the inbound locator's
-     * bucket ids. The ledger narrows on received / not_received only;
-     * `exceptions` narrows the pasted-list popout.
+     * Bucket filter over `ref_in` (`RECON_PARAM`) — any bucket the inbound
+     * locator answers with: its own ids (awaiting_tracking · received ·
+     * not_received · exceptions) or another section's `<locator>:<id>`
+     * (`paramLocateBucket`). The ledger narrows on received / not_received;
+     * the bar's pasted list narrows on every one.
      */
-    recon: paramEnum(['received', 'not_received', 'exceptions'] as const),
+    recon: paramLocateBucket('inbound'),
     /**
      * Reason filter inside `recon` (`RECON_REASON_PARAM`) — why each pasted
      * number sits in its status. Only applies with a status set whose reason it is.

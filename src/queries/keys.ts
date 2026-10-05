@@ -73,8 +73,8 @@ export const qk = {
      * refreshes it with the rest of the pipeline.
      */
     hub: (id: number, facet: string) => ['receiving', 'carton-hub', id, facet] as const,
-    /** One carton's urgency-shelf suggestion (`POST /api/receiving/[id]/placement` suggest). */
-    placement: (id: number) => ['receiving', 'placement', id] as const,
+    /** One package's arrival read — urgency, location, items (`GET /api/receiving/[id]/arrival`). */
+    arrival: (id: number) => ['receiving', 'arrival', id] as const,
     /** Arrived, unopened cartons in unbox order (`GET /api/receiving/unbox-next`). */
     unboxNext: () => ['receiving', 'unbox-next'] as const,
   },
@@ -160,8 +160,6 @@ export const qk = {
     /** Broad invalidation prefix — matches every bins-admin query. */
     all: ['locations-admin'] as const,
     bins: () => ['locations-admin', 'bins'] as const,
-    /** The org's urgency shelves (`GET /api/receiving/arrival-shelves`). */
-    arrivalShelves: () => ['locations-admin', 'arrival-shelves'] as const,
   },
   triage: {
     /** Broad invalidation prefix — matches every PO-triage detail query. */
@@ -186,5 +184,11 @@ export const qk = {
     codes: ['qc', 'codes'] as const,
     /** A SKU's procedure versions (`GET /api/qc/procedures?skuCatalogId=`). */
     procedures: (skuCatalogId: number) => ['qc', 'procedures', skuCatalogId] as const,
+  },
+  supportItems: {
+    /** Every local Support item read — invalidate after any Support write. */
+    all: ['support-items'] as const,
+    /** One Support item's bundle (`GET /api/support/items/[id]`): item, messages, drafts. */
+    bundle: (supportItemId: number) => ['support-items', supportItemId, 'bundle'] as const,
   },
 } as const;

@@ -28,8 +28,13 @@ before you change behaviour near it. Laws beat this brief; this brief beats your
    (`src/lib/repair/walk-in-receiving.ts`).
 6. Sellable = `STOCKED` in a pickable location, never in a STAGING / DOCK / QUARANTINE / DAMAGED /
    RETURNS / RECEIVING bin (`pickableSerialUnitsWhereClause`, `src/lib/inventory/pickability.ts`).
-7. FBA: units are prepacked per unit (kit Included / Missing, `serial_unit_prepack_contents`,
-   `/m/prepack` = `PREPACK_PATHS`) and get FNSKU labels at the Print station
+7. Prepack is per physical unit (`prepackHref`: `/m/prepack` on the phone, QC labels
+   `?task=prepack` on the desk). The unit (OEM serial or `unit_uid`) is the key; its product comes
+   from the unit and a mismatch is refused. Condition (`condition_grade`) and refurbishment
+   provenance (`serial_units.refurb_provenance`, Amazon Renewed is provenance, never a grade) are
+   separate. Finish requires typed unit evidence (photo_aspect serial / condition / included on
+   `prepack` photos), kit Included / Missing (`serial_unit_prepack_contents`), and stores the unit
+   through the PUTAWAY / MOVED ledger. FBA units then get FNSKU labels at the Print station
    (`PRINT_STATION_PATHS.fnskuLabels`; tables `fba_fnskus`, `fba_shipments`).
 8. Channels: Amazon, eBay (several stores), Walmart, Ecwid, FBA (`return_platform_enum`,
    `src/lib/migrations/0000_baseline_through_2026-03.sql`) plus a walk-in counter. Marketplace
@@ -49,8 +54,9 @@ Format: wrong instinct → the law → where it is enforced.
    by binding arriving unit ids (`allocateShortageUnits`, `src/lib/orders/shortage-inbound.ts`).
    Never a bare quantity counter.
 2. **"Scan the SKU/UPC barcode to pick."** → A pick scan must name exactly one unit (serial,
-   `unit_uid`, `U-{id}`); a label for a different box is refused, never swapped:
-   `unitForScan` / `wrongUnitLabelRefusal` (`src/lib/picking/pick-scan-unit.ts`), then
+   `unit_uid`, `U-{id}`) or one sealed package (`KIT-…`, naming each member); a label for a
+   different box is refused, never swapped: `unitsForScan` / `wrongUnitLabelRefusal`
+   (`src/lib/picking/pick-scan-unit.ts`), then
    `linkPickedSerialToOrder` (`src/lib/picking/pick-serial-link.ts`).
 3. **"`UPDATE serial_units SET current_status = …`."** → Every status change goes through
    `transition()` / pre-flight `guard()` (`src/lib/inventory/state-machine.ts`), which records the

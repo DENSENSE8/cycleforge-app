@@ -1,6 +1,6 @@
 /** The LANE registry — one taxonomy, both surfaces. */
 
-import { AlertCircle, Inbox, SalesPrice, Tags, Warehouse } from '@/components/Icons';
+import { Inbox, SalesPrice, Tags, TicketHelp, Warehouse } from '@/components/Icons';
 import { STATION_PAGE_ICONS } from '@/lib/nav/station-nav-icons';
 // Type-only, so it is ERASED at build time: the phone imports lanes without
 // pulling the desk registry into its bundle. The icon type stays where its
@@ -30,7 +30,8 @@ export const DOMAIN_GROUPS = [
   // Warehouse (operator 2026-10-03: "Inventory changed to Warehouse with a warehouse icon"); aligns with route-tree's lane name.
   { id: 'inventory', label: 'Warehouse', icon: Warehouse, keywords: ['inventory'] },
   { id: 'catalog', label: 'Products', icon: Tags },
-  { id: 'support', label: 'Support', icon: AlertCircle },
+  // Support (owner 2026-10-04): its own Workspaces lane — the `/support` workspace on the local model.
+  { id: 'support', label: 'Support', icon: TicketHelp },
 ] as const satisfies ReadonlyArray<{
   id: DomainGroupId;
   label: string;
@@ -49,13 +50,18 @@ export const DOMAIN_GROUPS = [
  * its landing page's contextual panel reaches every page of the lane.
  */
 export const LANE_DOORS: Readonly<Partial<Record<string, string>>> = {
+  // Sales: Front desk is the landing page; its mode switcher reaches the
+  // first-class Customers page on desktop just as the phone map does.
+  sales: 'sales',
   fulfillment: 'outbound',
   // Inbound (operator 2026-09-27): Deliveries is the landing page; its mode
   // switcher reaches Sourcing.
   inbound: 'incoming',
-  // Inventory (owner 2026-09-28): Inventory is the landing page; its mode
-  // switcher reaches QC labels.
-  inventory: 'inventory',
+  // Warehouse lands on the stock ledger; its mode switcher reaches Locations
+  // and QC labels.
+  inventory: 'stock',
+  // Support lands on its one page (`/support`, row "Support items"); views live in its sidebar.
+  support: 'support',
 };
 
 /** Look a lane up BY ID. */
@@ -88,7 +94,9 @@ export const LANE_MOBILE_FIRST: Readonly<Record<GatedLaneId, LaneMobileFirstStat
   // Operator 2026-09-16: restore the Sales desk door only; its phone route is
   // still absent from the mobile registry, so this does not create a mobile row.
   sales: 'desk-only',
-  support: 'hidden',
+  // Owner 2026-10-04: Support is its own workspace; the phone runs it at /m/support
+  // (list, record, internal note, Log customer message).
+  support: 'ported',
   /* PARKED 2026-09-16, operator ruling: */
   monitor: 'hidden',
 };

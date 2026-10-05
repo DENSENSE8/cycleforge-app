@@ -360,22 +360,24 @@ class FakeHarness {
             && row.owner_id === input.ownerId
             && row.shipment_id === input.shipmentId,
         );
-        for (const row of working.shipmentLinks) {
-          if (row.organization_id === orgId && row.owner_id === input.ownerId) row.is_primary = false;
+        if (input.isPrimary) {
+          for (const row of working.shipmentLinks) {
+            if (row.organization_id === orgId && row.owner_id === input.ownerId) row.is_primary = false;
+          }
         }
         if (existing) {
-          existing.is_primary = true;
-          return { id: existing.id, box_seq: 1, is_primary: true };
+          existing.is_primary = input.isPrimary ?? false;
+          return { id: existing.id, box_seq: 1, is_primary: existing.is_primary };
         }
         const row = {
           id: working.shipmentLinks.length + 1,
           organization_id: orgId,
           owner_id: input.ownerId,
           shipment_id: input.shipmentId,
-          is_primary: true,
+          is_primary: input.isPrimary ?? false,
         };
         working.shipmentLinks.push(row);
-        return { id: row.id, box_seq: 1, is_primary: true };
+        return { id: row.id, box_seq: 1, is_primary: row.is_primary };
       },
       createDocumentLink: async (orgId, input, client) => {
         const working = (client as unknown as FakeClient).state;
@@ -553,6 +555,27 @@ describe('applyLabelIngestion', () => {
     assert.deepEqual(state, before);
   });
 
+  test('applies to an unassigned Allocate order with no unit transition', async () => {
+    const state = seedState();
+    state.orders = [state.orders[0]!];
+    state.orders[0]!.status = 'unassigned';
+    state.allocations = [];
+    state.units = [];
+    const harness = new FakeHarness(state);
+
+    const result = await applyLabelIngestion(applyInput, harness.dependencies());
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.deepEqual(result.orderIds, [101]);
+    assert.deepEqual(result.serialUnitIds, []);
+    assert.deepEqual(result.inventoryEventIds, []);
+    assert.equal(state.ingestions[0]!.state, 'APPLIED');
+    assert.equal(state.documents.length, 1);
+    assert.equal(state.shipments.length, 1);
+    assert.equal(state.inventoryEvents.length, 0);
+    assert.equal(state.audits.length, 1);
+  });
+
   test('rejects any allocated unit whose starting state is not PACKED', async () => {
     const state = seedState();
     state.units[1].current_status = 'INSPECTED';
@@ -566,7 +589,7 @@ describe('applyLabelIngestion', () => {
     assert.deepEqual(state, before);
   });
 
-  test('rejects an existing different package under the V1 single-package rule', async () => {
+  test('adds a different tracking number as a non-primary package', async () => {
     const state = seedState();
     state.shipments.push({
       id: 800,
@@ -576,13 +599,22 @@ describe('applyLabelIngestion', () => {
       carrier: 'USPS',
     });
     state.orders[0].shipment_id = 800;
-    const before = structuredClone(state);
+    state.shipmentLinks.push({
+      id: 1,
+      organization_id: ORG_A,
+      owner_id: 101,
+      shipment_id: 800,
+      is_primary: true,
+    });
     const harness = new FakeHarness(state);
 
     const result = await applyLabelIngestion(applyInput, harness.dependencies());
-    assert.equal(result.ok, false);
-    if (result.ok) return;
-    assert.equal(result.code, 'MULTI_PACKAGE_CONFLICT');
-    assert.deepEqual(state, before);
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(state.orders[0]!.shipment_id, 800);
+    assert.equal(state.shipments.length, 2);
+    const links = state.shipmentLinks.filter((row) => row.owner_id === 101);
+    assert.equal(links.find((row) => row.shipment_id === 800)?.is_primary, true);
+    assert.equal(links.find((row) => row.shipment_id === result.shipmentId)?.is_primary, false);
   });
 });

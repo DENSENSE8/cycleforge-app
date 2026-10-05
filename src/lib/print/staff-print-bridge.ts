@@ -81,7 +81,7 @@ export function repairDocumentRole(document: StaffPrintRepairDocument): StaffPri
 
 /**
  * Amazon FBA unit labels (Code 128 FNSKU · title · condition) on the station's label printer.
- * `test`: a test print — the condition line reads `TEST PRINT · <time>` and no reprint is logged.
+ * `test`: a test print — the same face; no reprint is logged.
  */
 export type StaffPrintFnskuPayload = { fnsku: string; copies: number; test?: true };
 
@@ -99,12 +99,17 @@ export type StaffPrintQcLabelPayload = { unitKey: string };
 const QC_UNIT_KEY_WIRE_RE = /^[A-Za-z0-9._-]{1,100}$/;
 
 /**
- * The key a `qc_label` job names a unit by: its minted `unit_uid`, else its
- * serial — or null when neither can ride the wire (the sender says so instead
- * of sending a job every station would drop).
+ * The key a `qc_label` job names a label by: its package uid when the label
+ * names a package, else the unit's minted `unit_uid`, else its serial — or
+ * null when none can ride the wire (the sender says so instead of sending a
+ * job every station would drop).
  */
-export function qcLabelWireKey(unit: { unit_uid: string | null; serial_number: string | null }): string | null {
-  for (const raw of [unit.unit_uid, unit.serial_number]) {
+export function qcLabelWireKey(unit: {
+  unit_uid: string | null;
+  serial_number: string | null;
+  package?: { uid: string } | null;
+}): string | null {
+  for (const raw of [unit.package?.uid, unit.unit_uid, unit.serial_number]) {
     const key = (raw ?? '').trim();
     if (QC_UNIT_KEY_WIRE_RE.test(key)) return key;
   }

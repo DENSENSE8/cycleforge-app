@@ -3,7 +3,7 @@
 /**
  * Wide triage (`?layout=columns`, owner 2026-09-29: "several task columns side
  * by side, horizontal scroll, complete inline"). One column per type —
- * Support tickets · Tasks · Projects — on the shared {@link ColumnBoard}.
+ * Tasks · Projects — on the shared {@link ColumnBoard}.
  * Each column is a `TaskTable`, so Done, Reply, select and the cursor behave
  * exactly as in the list, and J / K walk the columns in reading order.
  *

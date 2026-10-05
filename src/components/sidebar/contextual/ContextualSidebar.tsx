@@ -313,12 +313,7 @@ function SectionBody({ nav }: { nav: NavContext }) {
         <p className="px-4 py-2 text-role-caption text-text-faint">No views on this page</p>
       ) : null}
       {hasFilters ? (
-        <NavFilters
-          key={nav.filters?.facetContext ?? nav.page.id}
-          filters={nav.filters}
-          controls={nav.controls}
-          locate={nav.search?.locate}
-        />
+        <NavFilters key={nav.filters?.facetContext ?? nav.page.id} filters={nav.filters} controls={nav.controls} />
       ) : null}
       {nav.actionsPlacement === 'sidebar' && nav.actions ? <NavSidebarActions actions={nav.actions} /> : null}
       {/* Navigation destinations only. The resolver rejects operational data

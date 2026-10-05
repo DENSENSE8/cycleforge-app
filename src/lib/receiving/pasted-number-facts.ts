@@ -14,6 +14,7 @@ import type { StateName } from '@/design-system/tokens/lifecycle';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReconEntry, ReconReason } from '@/lib/receiving/reconcile';
 import { STATUS_CATEGORIES } from '@/lib/shipping/shipped-filter/shipped-filter-constants';
+import { matchZohoPo } from '@/lib/inbound/purchase-match';
 
 const STATUS_WORD = new Map<string, string>(STATUS_CATEGORIES.map((status) => [status.value, status.label]));
 
@@ -43,6 +44,8 @@ export interface PastedNumberFacts {
   /** The number the carrier tracks, when one is on file. */
   tracking: string | null;
   carrier: PastedCarrierFact;
+  /** Line ids left out as another line's duplicate of the same purchase ({@link duplicatePurchaseLineIds}) — a data defect to fix, never units. */
+  duplicates: number[];
 }
 
 const trimmed = (value: string | null | undefined): string | null => {
@@ -118,8 +121,45 @@ export function carrierFactText(fact: PastedCarrierFact, brief = false): string 
   }
 }
 
-/** The number's lines → its sheet row. `now` is injected so the age is testable. */
-export function pastedNumberFacts(lines: readonly ReceivingLineRow[], entry: ReconEntry, now: Date): PastedNumberFacts {
+/**
+ * Lines that DUPLICATE another line of the same number: an eBay-imported
+ * line nobody received whose purchase IS a Zoho PO line here (`matchZohoPo`,
+ * the eBay ↔ Zoho merge's own rule — eBay order# = PO#, or tracking). The
+ * merge (`mergeEbayLinesIntoZohoPo`) collapses such twins when the Zoho PO
+ * syncs AFTER the eBay import; when the eBay import lands after the PO was
+ * already received, nothing collapses them and the purchase reads twice —
+ * "1 of 2" for one unit. These are data defects (a second carton for one
+ * purchase), named by id, never counted as units bought.
+ */
+export function duplicatePurchaseLineIds(lines: readonly ReceivingLineRow[]): Set<number> {
+  const zohoLines = lines.filter((line) => line.inbound_source_type !== 'ebay' && trimmed(line.zoho_purchaseorder_number));
+  const duplicates = new Set<number>();
+  if (zohoLines.length === 0) return duplicates;
+  for (const line of lines) {
+    const sourceOrderId = trimmed(line.source_order_id);
+    if (line.inbound_source_type !== 'ebay' || !sourceOrderId || (Number(line.quantity_received) || 0) > 0) continue;
+    const candidate = { receivingLineId: line.id, sourceOrderId, sku: line.sku ?? null, tracking: trimmed(line.tracking_number) };
+    const twin = zohoLines.some(
+      (zoho) =>
+        matchZohoPo(candidate, {
+          zohoPurchaseOrderId: zoho.zoho_purchaseorder_id ?? '',
+          poNumber: zoho.zoho_purchaseorder_number,
+          tracking: zoho.tracking_number,
+        }) != null,
+    );
+    if (twin) duplicates.add(line.id);
+  }
+  return duplicates;
+}
+
+/**
+ * The number's lines → its sheet row. `now` is injected so the age is testable.
+ * A purchase counts once: {@link duplicatePurchaseLineIds} lines are left out
+ * of every fact (units, total, item, carrier) and reported in `duplicates`.
+ */
+export function pastedNumberFacts(allLines: readonly ReceivingLineRow[], entry: ReconEntry, now: Date): PastedNumberFacts {
+  const duplicateIds = duplicatePurchaseLineIds(allLines);
+  const lines = duplicateIds.size > 0 ? allLines.filter((line) => !duplicateIds.has(line.id)) : allLines;
   const lead = lines[0] ?? null;
   const orderedAt = earliest(lines.map((line) => line.po_date));
   let received = 0;
@@ -150,6 +190,7 @@ export function pastedNumberFacts(lines: readonly ReceivingLineRow[], entry: Rec
     total: priced > 0 ? { dollars: Math.round(dollars * 100) / 100, partial: priced < lines.length } : null,
     tracking: lines.map((line) => trimmed(line.tracking_number)).find(Boolean) ?? null,
     carrier: carrierFactOf(lines),
+    duplicates: [...duplicateIds],
   };
 }
 

@@ -1,6 +1,7 @@
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import { buildSourceHref } from '@/components/work-orders/types';
 import type { MyDayInterrupt } from './my-day-types';
+import { supportHref } from '@/lib/nav/route-tree';
 
 export function workOrderHref(row: WorkOrderRow): string {
   if (row.entityType === 'ORDER' && row.orderId) {
@@ -13,9 +14,7 @@ export function workOrderHref(row: WorkOrderRow): string {
 
 export function interruptHref(item: Pick<MyDayInterrupt, 'kind' | 'ticketId' | 'receivingId' | 'lineId'>): string {
   if (item.kind === 'support_followup' && item.ticketId != null) {
-    const params = new URLSearchParams();
-    params.set('ticketId', String(item.ticketId));
-    return `/support?${params.toString()}`;
+    return supportHref({ q: item.ticketId });
   }
   if (item.lineId != null) {
     return `/triage?lineId=${item.lineId}`;

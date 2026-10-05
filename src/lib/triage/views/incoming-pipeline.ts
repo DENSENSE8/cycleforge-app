@@ -1,7 +1,7 @@
 /**
  * Inbound › Deliveries › On the way — `incoming.pipeline` (the Exceptions lane,
  * `?lane=exceptions`, wears it too until it is a nav view of its own). Goal:
- * get it to the dock. One card per purchase; the eye reads PO → tracking →
+ * get it to the dock. One card per purchase; the eye reads order → tracking →
  * expected → the delivery state top-right and the dock verb bottom-right.
  */
 
@@ -19,11 +19,11 @@ export const INCOMING_PIPELINE_VIEW = triageView({
   bodyTestId: 'incoming-delivery-cards',
   storageKeys: { pageMode: 'cf:incoming-cards:scroll', scrollTop: 'cf:incoming-cards:scroll-top' },
   recordParams: ['openLine'],
-  // Delivery-state buckets are server counts (`IncomingStatusChips`, `?state=`).
+  // Delivery-state buckets are server counts, the sidebar's `incoming.pipeline` facet (`?state=`).
   chips: { owner: 'host', param: 'state' },
   paging: 'server',
   status: 'state',
-  slots: { identity: 'PO number (a pasted number: the number as pasted)', channel: 'none', person: 'vendor', quickLook: 'peek', photo: 'line' },
+  slots: { identity: 'marketplace / source order number, else PO number (a pasted number: the number as pasted)', channel: 'none', person: 'vendor', quickLook: 'peek', photo: 'line' },
   facts: [
     { id: 'qty', tier: 'always' },
     { id: 'tracking', tier: 'always' },

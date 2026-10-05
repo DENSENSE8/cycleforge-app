@@ -1,9 +1,10 @@
-import { IBM_Plex_Mono, Inter } from 'next/font/google';
+import { Inter } from 'next/font/google';
 
 /**
- * CycleForge type — Inter for interface language and IBM Plex Mono only for
- * exact identifiers (SKU, serial, tracking and order numbers).
- * **Exception — mono 700:**
+ * CycleForge type — Inter is the only family (operator ruling 2026-10-04).
+ * Exact identifiers (SKU, serial, tracking and order numbers) wear the `mono`
+ * token, which resolves to this same Inter stack with tabular figures and no
+ * ligatures (src/app/globals.css `.font-mono`).
  */
 export const cfSans = Inter({
   subsets: ['latin'],
@@ -19,12 +20,5 @@ export const cfSans = Inter({
 
 /** Kept as an alias: the italic cut now rides {@link cfSans}. */
 export const cfSansItalic = cfSans;
-
-export const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-ibm-plex-mono',
-  display: 'swap',
-});
 
 /** ## The spine has no cut of its own */

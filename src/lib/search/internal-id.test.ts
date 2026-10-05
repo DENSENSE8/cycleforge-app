@@ -109,7 +109,7 @@ describe('searchPageHrefForScanRoute', () => {
 describe('directOpenForTypedHandle', () => {
   it('offers non-/search landings: line QC, support ticket, locations', () => {
     assert.equal(directOpenForTypedHandle('L-900')?.href, '/receiving/lines/900');
-    assert.equal(directOpenForTypedHandle('T-9395')?.href, '/support?ticket=9395');
+    assert.equal(directOpenForTypedHandle('T-9395')?.href, '/support?q=9395');
     assert.equal(directOpenForTypedHandle('A0101101')?.href, '/inventory?bin=A0101101');
     assert.equal(directOpenForTypedHandle('A-01-01-1-01')?.href, '/inventory?bin=A0101101');
   });

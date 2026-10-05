@@ -150,6 +150,10 @@ export type TableId =
   | 'daily'
   /** My Tasks (`staff_todos`) — one staffer's own list. */
   | 'tasks'
+  /** Search › Pasted list — its OWN bucket; structural columns only, nothing to hide. */
+  | 'pasted-list'
+  /** Support › Support items — its OWN bucket; three structural columns, nothing to hide. */
+  | 'support'
   /**
    * Amazon Prep › shipment board. The KEY stays because `TableId`'s runtime
    * vocabulary derives from this record — the display is being rebuilt.
@@ -227,6 +231,10 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   tasks: [],
   /** Order import staging — **deliberately empty** since the wave 1.4 slot port. */
   'orders-import': [],
+  /** Search › Pasted list — **deliberately empty**: structural columns, no field catalog. */
+  'pasted-list': [],
+  /** Support items — **deliberately empty**: Order ID · Platform · Customer question are structural. */
+  support: [],
   // Keys are the `hideKey`s in
   // `src/components/receiving/unfound/grid/unfound-grid-layout.ts`. The `action`
   // track (Push / Synced) has no `hideKey` — structural, never offered.

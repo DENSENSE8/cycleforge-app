@@ -13,6 +13,7 @@ export type UnitTimelinePhotoRowSource =
   | 'unbox_carton'
   | 'unbox_item'
   | 'testing'
+  | 'prepack'
   | 'packing';
 
 export interface UnitTimelinePhotoRow {
@@ -32,6 +33,7 @@ export const UNIT_PHOTO_SOURCE_STAGE: Record<UnitTimelinePhotoRowSource, PhotoEv
   unbox_carton: 'unbox_carton',
   unbox_item: 'unbox_item',
   testing: 'testing',
+  prepack: 'packing',
   packing: 'packing',
 };
 
@@ -40,6 +42,7 @@ const SOURCE_TONE: Record<UnitTimelinePhotoRowSource, TimelineItem['tone']> = {
   unbox_carton: 'muted',
   unbox_item: 'muted',
   testing: 'info',
+  prepack: 'info',
   packing: 'success',
 };
 
@@ -53,6 +56,7 @@ const SOURCE_EVENT_TYPE: Record<UnitTimelinePhotoRowSource, string> = {
   unbox_carton: 'UNBOX_PHOTOS',
   unbox_item: 'UNBOX_PHOTOS',
   testing: 'TEST_PHOTOS',
+  prepack: 'PREPACK_PHOTOS',
   packing: 'PACK_PHOTOS',
 };
 
@@ -62,6 +66,7 @@ const SOURCE_ORDER: UnitTimelinePhotoRowSource[] = [
   'unbox_carton',
   'unbox_item',
   'testing',
+  'prepack',
   'packing',
 ];
 
@@ -78,7 +83,7 @@ export function unitPhotosToTimeline(rows: UnitTimelinePhotoRow[]): TimelineItem
     const list = bySource.get(source);
     if (!list || list.length === 0) continue;
     const sorted = [...list].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
-    const stageLabel = photoStageLabel(UNIT_PHOTO_SOURCE_STAGE[source]);
+    const stageLabel = source === 'prepack' ? 'Prepack' : photoStageLabel(UNIT_PHOTO_SOURCE_STAGE[source]);
     items.push({
       id: `unit-photos-${source}`,
       at: sorted[0]?.at ?? null,

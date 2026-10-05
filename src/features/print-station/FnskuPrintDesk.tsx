@@ -1,31 +1,42 @@
 'use client';
 
 /**
- * Print station › **FNSKU labels** (owner 2026-09-29). The manager's path when a
- * packer's FBA unit label is damaged and they cannot reprint it themselves:
+ * Print station › **FNSKU labels** (owner 2026-09-29; reshaped 2026-10-04).
+ * The station's whole job is find a label, then print it:
  *
  *   sidebar Find (`?q=`, FNSKU / ASIN / SKU / title — an exact FNSKU opens it)
  *   → the FNSKU (`?fnsku=`) → the station at the packer's table → how many
  *   → Print: the label prints THERE, silently (the `fnsku` station job).
  *
- * One row per catalog FNSKU; the most recently reprinted lead with no Find.
+ * One record per catalog FNSKU, read in the station's order: the FNSKU (last
+ * 8), title, condition, then ASIN · SKU at the right. Compact (the default) is
+ * one line; Full puts the FNSKU top-left with ASIN · SKU at that row's right
+ * and the title · condition under it. Hovering a row reveals **Print** at its
+ * right edge: the print popover for that FNSKU, no record open needed. No
+ * print history, no count banner (the select bar already says how many and
+ * `100 / page`).
  */
 
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus } from '@/components/Icons';
-import { FnskuChip } from '@/components/ui/CopyChip';
+import { Copy, Package, Plus, Printer } from '@/components/Icons';
+import { CopyChip, FnskuChip, SkuScanRefChip } from '@/components/ui/CopyChip';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
+import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
+import { TriageRow, type TriageRowFace } from '@/design-system/components/triage-card-list/TriageRow';
 import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
+import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { triageFamily, type ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
+import type { RecordFactFace } from '@/design-system/components/record-card/record-fact';
 import type { RecordStateFace } from '@/design-system/tokens/record';
+import { getLast8 } from '@/lib/copy-chip-format';
 import type { RowGroup } from '@/lib/group-rows';
 import { useOptimisticMutation } from '@/lib/optimistic/useOptimisticMutation';
 import {
@@ -41,8 +52,9 @@ import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { PRINT_STATION_FNSKU_VIEW } from '@/lib/triage/views';
 import { fbaCondition } from '@/lib/fba/fba-conditions';
-import { formatDateTimePST } from '@/utils/date';
-import { FnskuCreateForm, type CreatedFnsku } from './FnskuCreateForm';
+import { toast } from '@/lib/toast';
+import { FnskuBulkPrint, FnskuRowPrint } from './FnskuBulkPrint';
+import { FnskuCreatePopover, type CreatedFnsku } from './FnskuCreateForm';
 import { FNSKU_RECORD_ROOT_CLASS, FnskuPrintRecord } from './FnskuPrintRecord';
 
 const VIEW = PRINT_STATION_FNSKU_VIEW;
@@ -68,22 +80,14 @@ const FBA_STATE: RecordStateFace = {
  */
 type FnskuListItem = PrintStationFnskuRow & { ordinal: number };
 type FnskuRowModel = { key: string; ids: readonly number[]; lead: FnskuListItem };
+/** A face's slot props plus the list re-read after a row's Print sends labels. */
+type FnskuFaceProps = TriageCardSlotProps<FnskuListItem, FnskuRowModel> & { onPrinted: () => void };
 
 const fnskuRowId = (row: FnskuListItem): number => row.ordinal;
 /** The open FNSKU is not in this load (a stale link or a narrower Find): the plane shows why. */
 const NOT_LOADED_ID = -1;
 
-export function FnskuPrintDesk({
-  rows: initialRows,
-  total: initialTotal,
-  capped,
-  view,
-}: {
-  rows: PrintStationFnskuRow[];
-  total: number;
-  capped: boolean;
-  view: PrintStationFnskuView;
-}) {
+export function FnskuPrintDesk({ rows: initialRows, view }: { rows: PrintStationFnskuRow[]; view: PrintStationFnskuView }) {
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
   const queryClient = useQueryClient();
@@ -91,11 +95,10 @@ export function FnskuPrintDesk({
   const list = useQuery({
     queryKey: printStationFnskusKey(query, view),
     queryFn: ({ signal }) => fetchPrintStationFnskus(query, view, signal),
-    initialData: { rows: initialRows, total: initialTotal },
+    initialData: { rows: initialRows },
     staleTime: 15_000,
   });
   const rows = list.data.rows;
-  const total = list.data.total;
   const labelMutation = useOptimisticMutation<void, { fnsku: string; patch: PrintStationFnskuPatch }>({
     mutationFn: ({ fnsku, patch }) => savePrintStationFnsku(fnsku, patch),
     caches: [
@@ -170,8 +173,39 @@ export function FnskuPrintDesk({
     onOpen: openRow,
     onClose: closeRecord,
   });
-
   const selection = useLocalTriageSelection(fnskuRowId);
+  const checked = useMemo(() => items.filter((row) => selection.ids.has(row.ordinal)), [items, selection.ids]);
+  // A print re-reads the list (Reprinted view / recency order).
+  const refreshList = useCallback(() => void queryClient.invalidateQueries({ queryKey: PRINT_STATION_FNSKUS_KEY }), [queryClient]);
+  // The check-set's verbs (owner 2026-10-04): the station's job is find, then print — so Print the checked labels, or copy their FNSKUs.
+  const bulkVerbs = useMemo<RecordActionVerb[]>(
+    () => [
+      {
+        id: 'print',
+        label: 'Print labels',
+        icon: <Printer className="size-4" aria-hidden />,
+        display: (done) => (
+          <FnskuBulkPrint rows={checked} done={done} onPrinted={refreshList} />
+        ),
+      },
+      {
+        id: 'copy',
+        label: 'Copy FNSKUs',
+        icon: <Copy className="size-4" aria-hidden />,
+        run: async () => {
+          try {
+            await navigator.clipboard.writeText(checked.map((row) => row.fnsku).join('\n'));
+            toast.success(`Copied ${checked.length} ${checked.length === 1 ? 'FNSKU' : 'FNSKUs'}`);
+          } catch {
+            toast.error('Failed to copy');
+          }
+        },
+      },
+    ],
+    [checked, refreshList],
+  );
+  // Compact (one line per FNSKU) unless the operator picks Full — the station reads identifiers, not cards.
+  const [density, setDensity] = useTriageDensity('print-station.fnsku', 'row');
   const family = useMemo(
     () =>
       triageFamily(VIEW, {
@@ -184,9 +218,10 @@ export function FnskuPrintDesk({
         // A Find naming exactly one FNSKU (or its catalog aliases) opens it.
         exactFind: (text: string, model: FnskuRowModel) =>
           [model.lead.fnsku, model.lead.asin, model.lead.sku].some((key) => key?.toLowerCase() === text),
-        renderCard: (props: TriageCardSlotProps<FnskuListItem, FnskuRowModel>) => <FnskuCard {...props} />,
+        renderCard: (props: TriageCardSlotProps<FnskuListItem, FnskuRowModel>) =>
+          density === 'row' ? <FnskuRow {...props} onPrinted={refreshList} /> : <FnskuCard {...props} onPrinted={refreshList} />,
       }),
-    [],
+    [density, refreshList],
   );
 
   const feed: TriageFeed<FnskuListItem> = {
@@ -201,18 +236,18 @@ export function FnskuPrintDesk({
     open: { id: openId, open: openRow, close: closeRecord },
   };
 
-  const toggleCreate = useCallback(() => {
-    if (!creating) writeOpen(null);
-    setCreating((open) => !open);
-  }, [creating, writeOpen]);
+  const addRef = useRef<HTMLButtonElement>(null);
+  const toggleCreate = useCallback(() => setCreating((open) => !open), []);
   const createAction = useMemo(
     () => (
       <DeskHeaderAction
+        ref={addRef}
         type="button"
         variant="primary"
         size="md"
         icon={<Plus aria-hidden />}
-        aria-pressed={creating}
+        aria-haspopup="dialog"
+        aria-expanded={creating}
         onClick={toggleCreate}
         data-testid="fnsku-add"
       >
@@ -231,15 +266,9 @@ export function FnskuPrintDesk({
           asin: row.asin,
           sku: row.sku,
           condition: row.condition,
-          printJobs: 0,
-          copiesPrinted: 0,
-          lastPrintedAt: null,
-          lastCopies: null,
-          lastPrintedBy: null,
         };
         const exists = current.rows.some((item) => item.fnsku === row.fnsku);
         return {
-          total: current.total + (exists ? 0 : 1),
           rows: exists
             ? current.rows.map((item) => (item.fnsku === row.fnsku ? { ...item, ...added } : item))
             : [added, ...current.rows].slice(0, PRINT_STATION_FNSKU_ROW_CAP),
@@ -255,24 +284,18 @@ export function FnskuPrintDesk({
   return (
     <>
       <DeskActionSlotRegistrar role="primary">{createAction}</DeskActionSlotRegistrar>
+      {creating ? <FnskuCreatePopover anchorRef={addRef} onClose={() => setCreating(false)} onCreated={created} /> : null}
       <TriageCardList
         family={family}
         feed={feed}
         cut={cut}
+        // Compact FNSKU rows are a real catalog table: title, condition, ASIN and SKU
+        // keep their fixed columns on one shared scroll plane instead of squeezing a
+        // different subset into every available width.
+        rowScroll
+        densityControl={{ value: density, onChange: setDensity }}
         summary={null}
-        bulk={<span className="truncate text-sm text-text-muted">Open one to print its label at any station</span>}
-        banner={
-          <div className="flex min-w-0 items-center gap-3 pb-2 pl-4" data-testid="fnsku-print-tally">
-            <p className="truncate text-sm text-text-muted">
-              {capped || total > PRINT_STATION_FNSKU_ROW_CAP
-                ? `First ${rows.length} of ${total} FNSKUs — narrow the search`
-                : query
-                  ? `${total} ${total === 1 ? 'FNSKU' : 'FNSKUs'} match`
-                  : `${total} ${total === 1 ? 'FNSKU' : 'FNSKUs'} ready to print`}
-            </p>
-          </div>
-        }
-        leadSlot={creating ? <FnskuCreateForm onCancel={() => setCreating(false)} onCreated={created} /> : null}
+        bulk={<RecordActionStrip verbs={bulkVerbs} label="Checked FNSKU actions" testId="fnsku-bulk" face="header" />}
         searchEmpty={query ? <p className="text-sm text-text-muted">No FNSKU matches “{query}” — try the FNSKU or part of the title.</p> : null}
         allClear={<TriageAllClear title="No FNSKUs in the FBA catalog yet" detail="Add the first FNSKU from the page action." />}
         record={{
@@ -288,7 +311,7 @@ export function FnskuPrintDesk({
               row={openRecord}
               onSaveLabel={(patch) => saveLabel(openRecord.fnsku, patch)}
               labelSaving={labelMutation.isPending && labelMutation.variables?.fnsku === openRecord.fnsku}
-              onPrinted={() => void queryClient.invalidateQueries({ queryKey: PRINT_STATION_FNSKUS_KEY })}
+              onPrinted={refreshList}
             />
           ) : openKey ? (
             <div className={FNSKU_RECORD_ROOT_CLASS}>
@@ -301,20 +324,16 @@ export function FnskuPrintDesk({
   );
 }
 
-/** Its print state here: printed (the last job on hover) or not yet. */
-function fnskuPrintStatus(row: PrintStationFnskuRow): ViewCardModel<typeof VIEW>['status'] {
-  if (row.printJobs === 0) return { kind: 'state', face: 'Not printed', tone: 'neutral', tip: 'No print of this FNSKU is logged at the print station' };
-  const last = row.lastPrintedAt ? `Last printed ${formatDateTimePST(row.lastPrintedAt)} PT` : 'Printed';
-  const copies = row.lastCopies != null ? ` · ${row.lastCopies} sticker${row.lastCopies === 1 ? '' : 's'}` : '';
-  const by = row.lastPrintedBy ? ` by ${row.lastPrintedBy}` : '';
-  const total = `${row.printJobs} job${row.printJobs === 1 ? '' : 's'}, ${row.copiesPrinted} sticker${row.copiesPrinted === 1 ? '' : 's'} in all`;
-  return { kind: 'state', face: 'Printed', tone: 'success', tip: `${last}${copies}${by} · ${total}` };
+/** The condition as the label prints it, painted the same on both faces; unset = nothing. */
+function fnskuConditionFace(row: PrintStationFnskuRow): RecordFactFace | null {
+  if (!row.condition) return null;
+  const condition = fbaCondition(row.condition);
+  return { kind: 'grade', label: condition?.label ?? row.condition, code: condition?.grade ?? null };
 }
 
-/** One FNSKU as the shared card reads it (`print-station.fnsku`). */
+/** One FNSKU as the shared card reads it (`print-station.fnsku`): identification above, the label's text below. */
 export function fnskuRecordCard(model: FnskuRowModel): ViewCardModel<typeof VIEW> {
   const row = model.lead;
-  const condition = fbaCondition(row.condition);
   return {
     key: model.key,
     leadId: row.ordinal,
@@ -331,18 +350,14 @@ export function fnskuRecordCard(model: FnskuRowModel): ViewCardModel<typeof VIEW
     person: null,
     chips: [],
     notes: { fixed: null, own: null },
-    status: fnskuPrintStatus(row),
+    status: { kind: 'none' },
     next: null,
     lines: [
       {
         id: row.ordinal,
         title: row.title ?? 'No title in the catalog',
         photoUrl: null,
-        // Only what this record has: an unset condition or a missing ASIN paints nothing.
-        facts: {
-          asin: row.asin ? { kind: 'code', text: row.asin, title: `ASIN ${row.asin}` } : null,
-          condition: row.condition ? { kind: 'grade', label: condition?.label ?? row.condition, code: condition?.grade ?? null } : null,
-        },
+        facts: { condition: fnskuConditionFace(row) },
         alert: false,
         alertNote: null,
       },
@@ -351,11 +366,18 @@ export function fnskuRecordCard(model: FnskuRowModel): ViewCardModel<typeof VIEW
   };
 }
 
-/** One FNSKU as a triage card: the FNSKU · title, ASIN and condition (when set); its print state top-right. */
-const FnskuCard = memo(function FnskuCard(props: TriageCardSlotProps<FnskuListItem, FnskuRowModel>) {
+/** Full: the FNSKU top-left, ASIN · SKU to the far right of that row; the title · condition under it. */
+const FnskuCard = memo(function FnskuCard({ onPrinted, ...props }: FnskuFaceProps) {
   const { model } = props;
   const row = model.lead;
   const record = useMemo(() => fnskuRecordCard(model), [model]);
+  const aliases =
+    row.asin || row.sku ? (
+      <span className="flex min-w-0 flex-wrap items-center gap-1.5" data-testid={`${VIEW.testIdPrefix}-aliases`}>
+        {row.asin ? <CopyChip value={row.asin} display={row.asin} ariaLabel={`ASIN ${row.asin}`} tone="id" /> : null}
+        {row.sku ? <SkuScanRefChip value={row.sku} display={row.sku} /> : null}
+      </span>
+    ) : null;
   return (
     <RecordCard
       {...props}
@@ -368,7 +390,46 @@ const FnskuCard = memo(function FnskuCard(props: TriageCardSlotProps<FnskuListIt
       onToggleExpand={() => props.onToggleExpand(model.key)}
       onTogglePeek={() => props.onTogglePeek(model.key)}
       identity={{ role: 'identity', content: <FnskuChip value={row.fnsku} width="w-fit max-w-full" /> }}
-      trailing={null}
+      trailing={aliases ? { role: 'trailing', content: aliases } : null}
+      action={
+        // The card's Print, revealed like the row's (hover / focus / touch, or while its popover is open).
+        <span className="pointer-events-auto flex shrink-0 opacity-0 transition-opacity duration-150 group-hover/card:opacity-100 group-focus-within/card:opacity-100 has-[[aria-expanded=true]]:opacity-100 [@media(hover:none)]:opacity-100">
+          <FnskuRowPrint row={row} onPrinted={onPrinted} />
+        </span>
+      }
     />
   );
+});
+
+/**
+ * Compact: one line in the order the station reads it — the FNSKU (last 8: the
+ * `X00` lead is the same on almost every label) · title · condition, then the
+ * ASIN and SKU at the right. Every identifier is a CopyChip (click copies,
+ * hover shows the whole value). No lead words: a SKU has dashes, an ASIN does
+ * not. No state badge: every row is the same FBA label.
+ */
+const FnskuRow = memo(function FnskuRow({ onPrinted, ...props }: FnskuFaceProps) {
+  const row = props.model.lead;
+  const face = useMemo<TriageRowFace>(
+    () => ({
+      state: null,
+      identity: row.fnsku,
+      identityDisplay: getLast8(row.fnsku),
+      identityCopy: { value: row.fnsku, tone: 'fnsku' },
+      title: row.title ?? 'No title in the catalog',
+      // This is a catalog row rather than a responsive summary. Its fixed title
+      // and identifier columns are shared by every FNSKU, with one scroll plane
+      // supplied by the host above.
+      wide: true,
+      facts: [
+        { id: 'condition', value: fnskuConditionFace(row), width: 'long' },
+        { id: 'asin', value: row.asin, width: 'code', copy: row.asin ? { value: row.asin, tone: 'id' } : undefined },
+        { id: 'sku', value: row.sku, width: 'code', copy: row.sku ? { value: row.sku, tone: 'sku' } : undefined },
+      ],
+      next: null,
+      aria: { row: `FNSKU ${row.fnsku}, ${row.title ?? 'no title'}`, open: `Open FNSKU ${row.fnsku}`, check: `Select FNSKU ${row.fnsku}` },
+    }),
+    [row],
+  );
+  return <TriageRow {...props} face={face} testIdPrefix={VIEW.testIdPrefix} trailingAction={<FnskuRowPrint row={row} onPrinted={onPrinted} />} />;
 });

@@ -3,17 +3,16 @@
 /**
  * RecordItem — ONE item row for every desk record (owner 2026-09-29): the
  * inbound receiving record, the outbound order record, pickup, repair and QC.
- * One ruler:
+ * One responsive identity strip:
  *
  *   [photo 112²] title ................................. count
- *                SKU  <value>        [actions] | Item # <value>        [actions]
- *                Cond <chip>                   | Qty    <value>
- *                Serial <chips>                | Cost   <unit × n = total>
+ *                SKU <value> | Item # <value> | Cond <chip> | Qty <value>
+ *                Serial <chips>                | Cost <unit × n = total>
  *
- * Every row is an {@link ItemIdentityRow} — the same label width, the same
- * height, the actions in the same fixed slot — so SKU and Item # values start
- * on the same x in every record. Values are plain values; links and menus live
- * in the actions slot, never inside the value.
+ * The four common facts stay on one row when the item has desktop width and
+ * fold to a 2×2 strip, then one column, as the record pane narrows. Additional
+ * facts take a second two-column ruler. Values are plain values; links and
+ * menus live in the actions slot, never inside the value.
  *
  * The photo tile takes a product photo (click, drag-drop, paste; the camera
  * when `capture`) for anyone with `receiving.upload_photo`: it lands on the
@@ -265,11 +264,16 @@ export function RecordItem({
   /** Root test id; `-photo`, `-ids`, `-count` derive from it. */
   testId?: string;
 }) {
-  const row = (fact: RecordItemFact) => (
-    <ItemIdentityRow key={fact.label} label={fact.label} actions={fact.actions ?? null} testId={fact.testId} wrap={fact.wrap}>
+  const row = (fact: RecordItemFact, layout: 'ruler' | 'cell' = 'ruler') => (
+    <ItemIdentityRow key={fact.label} label={fact.label} actions={fact.actions ?? null} testId={fact.testId} wrap={fact.wrap} layout={layout}>
       {fact.value}
     </ItemIdentityRow>
   );
+  const primaryLeft = left[0] ?? null;
+  const primaryRight = right[0] ?? null;
+  const secondary = Array.from({ length: Math.max(0, Math.max(left.length, right.length) - 1) }, (_, index) => [left[index + 1], right[index + 1]])
+    .flat()
+    .filter((fact): fact is RecordItemFact => fact != null);
   return (
     <article
       data-testid={testId}
@@ -279,7 +283,7 @@ export function RecordItem({
     >
       <div className="flex gap-3 px-4 py-3">
         <RecordItemPhoto src={photo.src} title={title} onOpen={photo.onOpen} upload={photo.upload ?? null} testId={testId} />
-        {/* Its own container: the ruler goes two-column on the ITEM's width, not the page's (phones stack it). */}
+        {/* Its own container: identity responds to the ITEM's width, not the page's. */}
         <div className="@container flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex min-w-0 items-start gap-2">
             <p className="line-clamp-3 min-w-0 flex-1 text-role-body font-bold" title={title}>
@@ -292,20 +296,24 @@ export function RecordItem({
               </span>
             ) : null}
           </div>
-          <div className="grid min-w-0 grid-cols-1 gap-x-4 @sm:grid-cols-2" data-testid={`${testId}-ids`}>
-            <div className="flex min-w-0 flex-col">
-              <ItemIdentityRow label="SKU" actions={skuActions !== undefined ? skuActions : sku ? <SkuOpenInMenu sku={sku} /> : null}>
-                <RecordItemValue value={sku} historyKind="SKU" />
-              </ItemIdentityRow>
-              {left.map(row)}
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <ItemIdentityRow label={item.label ?? 'Item #'} actions={item.actions ?? null} testId={item.testId}>
-                {item.value}
-              </ItemIdentityRow>
-              {right.map(row)}
-            </div>
+          <div
+            className="grid min-w-0 grid-cols-1 gap-x-4 @xs:grid-cols-2 @lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)_minmax(0,1.05fr)_minmax(0,0.65fr)]"
+            data-testid={`${testId}-ids`}
+          >
+            <ItemIdentityRow layout="cell" label="SKU" actions={skuActions !== undefined ? skuActions : sku ? <SkuOpenInMenu sku={sku} /> : null}>
+              <RecordItemValue value={sku} historyKind="SKU" />
+            </ItemIdentityRow>
+            <ItemIdentityRow layout="cell" label={item.label ?? 'Item #'} actions={item.actions ?? null} testId={item.testId}>
+              {item.value}
+            </ItemIdentityRow>
+            {primaryLeft ? row(primaryLeft, 'cell') : null}
+            {primaryRight ? row(primaryRight, 'cell') : null}
           </div>
+          {secondary.length > 0 ? (
+            <div className="grid min-w-0 grid-cols-1 gap-x-4 @sm:grid-cols-2">
+              {secondary.map((fact) => row(fact))}
+            </div>
+          ) : null}
           {children}
         </div>
       </div>

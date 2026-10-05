@@ -21,8 +21,8 @@ import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
 import { cn } from '@/utils/_cn';
 import { formatMonthDayTimePST } from '@/utils/date';
-import { rackPlacementText } from '@/lib/locations/rack-display';
-import { plural, rackErrorSentence, rackShelvesLine, rackTierStatus } from './rack-presentation';
+import { rackPlacementText, rackShelfCountText } from '@/lib/locations/rack-display';
+import { plural, rackErrorSentence } from './rack-presentation';
 
 const RACKS_HREF = WAREHOUSE_PATHS.racks;
 const ALL_ROOMS = 'all';
@@ -88,22 +88,17 @@ export function MobileV2RackList() {
           </p>
         ) : (
           <MobileRecordCardList label={plural(shown.length, 'rack')}>
-            {shown.map((rack) => {
-              const tier = rackTierStatus(rack);
-              return (
-                <MobileRecordCard
-                  key={rack.id}
-                  identity={rack.name}
-                  timestamp={formatMonthDayTimePST(rack.lastMovedAt)}
-                  title={rackPlacementText(rack)}
-                  detail={rackShelvesLine(rack)}
-                  status={tier.status}
-                  tone={tier.tone}
-                  onOpen={() => router.push(withJobReturn(locationHubPath(rack.code), RACKS_HREF))}
-                  testId="rack-card"
-                />
-              );
-            })}
+            {shown.map((rack) => (
+              <MobileRecordCard
+                key={rack.id}
+                identity={rack.name}
+                timestamp={formatMonthDayTimePST(rack.lastMovedAt)}
+                title={rackPlacementText(rack)}
+                detail={rackShelfCountText(rack.shelfCount)}
+                onOpen={() => router.push(withJobReturn(locationHubPath(rack.code), RACKS_HREF))}
+                testId="rack-card"
+              />
+            ))}
           </MobileRecordCardList>
         )}
       </div>

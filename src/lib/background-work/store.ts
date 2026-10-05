@@ -30,7 +30,7 @@ export interface WorkControls {
 export interface WorkItem {
   readonly id: string;
   readonly kind: WorkKind;
-  /** What is being worked on, as a noun phrase: "Zoho POs", "Bin labels". */
+  /** What is being worked on, as a noun phrase: "Zoho POs", "Location labels". */
   readonly label: string;
   readonly status: WorkStatus;
   readonly done?: number;

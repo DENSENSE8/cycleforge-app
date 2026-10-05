@@ -4,7 +4,10 @@
  * the nav registry, the route spec and the page all read these.
  */
 
-export const QC_LABELS_PATH = '/inventory/qc-labels' as const;
+import { PREPACK_PATHS } from '@/lib/nav/route-tree';
+
+/** The QC labels ledger also hosts the desk prepack task, so the route tree owns its path. */
+export const QC_LABELS_PATH = PREPACK_PATHS.desktop;
 
 /** `?view=` — absent = every labelled unit. */
 export type QcLabelView = 'all' | 'stock' | 'order';

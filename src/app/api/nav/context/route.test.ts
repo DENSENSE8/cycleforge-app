@@ -56,7 +56,7 @@ test('the body is a valid NavContext, loaded for the session org', async () => {
 
 test('Warehouse Stock has one runtime sidebar rollout', async () => {
   const nav = await getNavContextForStaff(request('/inventory/stock'), fakes().deps);
-  assert.equal(nav.page.id, 'inventory');
+  assert.equal(nav.page.id, 'stock');
   assert.equal(nav.rollout, 'contextual');
   assert.equal(nav.scope, 'section');
 });

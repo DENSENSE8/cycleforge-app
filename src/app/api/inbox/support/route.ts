@@ -1,7 +1,7 @@
 /**
- * GET /api/inbox/support — Zendesk tickets assigned to the logged-in staffer for
- * in-app follow-up (support_ticket_assignments). Own-data read; no special
- * permission (mirrors /api/inbox/tech-queue).
+ * GET /api/inbox/support — open Support items whose primary task the logged-in
+ * staffer is assigned to (task assignees are the ownership source). Own-data
+ * read; no special permission (mirrors /api/inbox/tech-queue).
  */
 
 import { NextResponse } from 'next/server';

@@ -17,7 +17,8 @@ export function useRoomDetailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedRoom = searchParams.get('room') ?? null;
-  const creating = searchParams.get('new') === '1';
+  const creating = searchParams.get('new') === 'true';
+  const query = (searchParams.get('q') ?? '').trim().toLocaleLowerCase();
 
   const {
     rooms,
@@ -55,6 +56,29 @@ export function useRoomDetailForm() {
     for (const n of roomNames) if (n) set.add(n);
     return Array.from(set);
   }, [rooms, roomNames]);
+
+  const roomRows = useMemo(
+    () =>
+      allRoomNames
+        .filter((name) => !query || name.toLocaleLowerCase().includes(query))
+        .map((name) => {
+          const roomBins = bins.filter((bin) => (bin.room || '').trim() === name);
+          const record = rooms.find((room) => (room.room || room.name)?.trim() === name) ?? null;
+          return {
+            name,
+            zoneLetter: zoneMap[name] ?? record?.zone_letter ?? '',
+            description: record?.description ?? '',
+            binCount: roomBins.length,
+            totalQty: roomBins.reduce((sum, bin) => sum + bin.total_qty, 0),
+            emptyCount: roomBins.filter((bin) => bin.is_empty).length,
+            attentionCount: roomBins.filter(
+              (bin) => bin.has_low_stock || bin.is_over_capacity || bin.is_stale,
+            ).length,
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [allRoomNames, bins, query, rooms, zoneMap],
+  );
 
   const currentRecord = useMemo(() => {
     if (!selectedRoom) return null;
@@ -163,12 +187,15 @@ export function useRoomDetailForm() {
     renameTaken,
   });
   const baselineLetter = selectedRoom ? (zoneMap[selectedRoom] ?? '') : '';
+  const baselineDescription = currentRecord?.description ?? '';
   const isDirty = roomFormIsDirty({
     creating,
     selectedRoom,
     trimmedName,
     trimmedLetter,
     baselineLetter,
+    description: form.description,
+    baselineDescription,
   });
   const saveDisabledReason = roomSaveDisabledReason({
     creating,
@@ -182,7 +209,7 @@ export function useRoomDetailForm() {
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', 'rooms');
       mutate(params);
-      router.replace(`/warehouse?${params.toString()}`);
+      router.replace(`/inventory/locations?${params.toString()}`);
     },
     [router, searchParams],
   );
@@ -201,7 +228,7 @@ export function useRoomDetailForm() {
     if (!canSave) return;
     try {
       if (creating) {
-        const result = await createRoom(trimmedName, trimmedLetter);
+        const result = await createRoom(trimmedName, trimmedLetter, form.description);
         if (!result) throw new Error('Create failed');
         toast.success(`Room "${trimmedName}" added (Zone ${trimmedLetter})`);
         // Mark seeded for the new name so the create→edit transition does not
@@ -222,6 +249,7 @@ export function useRoomDetailForm() {
           selectedRoom,
           isRename ? trimmedName : undefined,
           trimmedLetter,
+          form.description,
         );
         if (!result) throw new Error('Save failed');
         toast.success(
@@ -278,6 +306,25 @@ export function useRoomDetailForm() {
     }
   }, [selectedRoom, removeRoom, setParam]);
 
+  const deleteRoomByName = useCallback(async (name: string) => {
+    try {
+      const result = await removeRoom(name);
+      if (!result) throw new Error('Delete failed');
+      toast.success(`Room "${name}" deleted`);
+      if (selectedRoom === name) {
+        seededForRef.current = null;
+        setParam((params) => {
+          params.delete('room');
+          params.delete('new');
+        });
+      }
+      return true;
+    } catch (err: any) {
+      toast.error(err?.message || 'Could not delete room');
+      return false;
+    }
+  }, [removeRoom, selectedRoom, setParam]);
+
   const handleDiscard = useCallback(() => {
     if (creating) {
       seededForRef.current = null;
@@ -296,14 +343,14 @@ export function useRoomDetailForm() {
   return {
     creating, selectedRoom,
     roomsLoading, binsLoading,
-    allRoomNames,
+    allRoomNames, roomRows,
     form, setForm,
     confirmDelete, setConfirmDelete,
     stats, usedLetters,
     trimmedName, trimmedLetter,
     nameTaken, renameTaken, canSave, isDirty, saveDisabledReason,
     roomMutating,
-    setParam, goToBins, handleSave, handleDelete, handleDiscard,
+    setParam, goToBins, handleSave, handleDelete, deleteRoomByName, handleDiscard,
   };
 }
 

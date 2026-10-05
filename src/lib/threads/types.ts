@@ -17,12 +17,14 @@ export type ThreadMessageVisibility = (typeof THREAD_MESSAGE_VISIBILITIES)[numbe
  * Thread-only anchors — entity_threads accepts these beyond SURFACE_ENTITY_TYPES
  * (they are not feed/signal anchors, so they stay out of that registry and its
  * pinned CHECKs). Mirrors `entity_threads_entity_type_chk`
- * (2026-10-03_entity_threads_task_document_anchor.sql). `opsEventEntityType`
- * is the spine vocab the THREAD_MESSAGE ops_events row is stamped with.
+ * (2026-10-03_entity_threads_task_document_anchor.sql, 2026-10-04d_support_closed_loop.sql).
+ * `opsEventEntityType` is the spine vocab the THREAD_MESSAGE ops_events row is stamped with.
  */
 export const THREAD_ANCHOR_EXTRA = {
   /** One thread per task document; each message's meta carries the quoted passage. */
   TASK_DOCUMENT: { parentTable: 'work_assignment_documents', opsEventEntityType: 'other' },
+  /** The canonical conversation of a Support item (support_tickets.id); writer waist ingestSupportMessage. */
+  SUPPORT_TICKET: { parentTable: 'support_tickets', opsEventEntityType: 'other' },
 } as const;
 export type ThreadAnchorExtraType = keyof typeof THREAD_ANCHOR_EXTRA;
 

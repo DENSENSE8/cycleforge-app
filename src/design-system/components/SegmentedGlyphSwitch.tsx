@@ -26,6 +26,8 @@ export interface SegmentedGlyphOption<V extends string> {
   /** The hotkey tooltip — what choosing it does and its chord — when the choice has one. */
   hotkey?: { action: string; chord: string };
   Glyph: ComponentType<{ className?: string }>;
+  /** The glyph already reads as the word (a number, `20 · 30 · 99`): the word stays the accessible name only. */
+  wordless?: boolean;
   testId: string;
 }
 
@@ -79,7 +81,7 @@ export function SegmentedGlyphSwitch<V extends string>({
         {options.map((option, index) => {
           const { value: optionValue, label, hotkey, Glyph } = option;
           const active = optionValue === value;
-          const expanded = active || peeked === optionValue;
+          const expanded = !option.wordless && (active || peeked === optionValue);
           const button = (
             <motion.button
               key={optionValue}

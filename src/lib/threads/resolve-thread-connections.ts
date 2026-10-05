@@ -5,6 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveEntity } from '@/lib/operations/journey';
 import { listThreadLinks } from './thread-links';
 import type { ThreadConnection } from './types';
+import { supportHref } from '@/lib/nav/route-tree';
 
 interface ThreadAnchor {
   entityType: string;
@@ -71,7 +72,11 @@ export async function resolveThreadConnections(
       origin: 'derived',
       hint: 'ticket',
       href:
-        trow.provider === 'zendesk' && ext ? `/support?ticket=${ext.replace(/^#/, '')}` : null,
+        trow.support_ticket_id != null
+          ? supportHref({ item: Number(trow.support_ticket_id) })
+          : trow.provider === 'zendesk' && ext
+            ? supportHref({ q: ext })
+            : null,
     });
   };
 

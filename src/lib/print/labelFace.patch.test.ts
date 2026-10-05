@@ -95,12 +95,10 @@ test('patchLabelFaceDocument updates product title slot', () => {
   assert.equal(ptitle.textContent, 'New title');
 });
 
-test('patchLabelFaceDocument updates location code and caption slots', () => {
+test('patchLabelFaceDocument updates the location code slot', () => {
   const lcode = stubNode('C-01-01-1');
-  const lcap = stubNode('');
   const doc = makeDoc({
     '.lcode': lcode,
-    '.lcap': lcap,
     '.hri': stubNode('C-01-01-1'),
   });
 
@@ -109,14 +107,13 @@ test('patchLabelFaceDocument updates location code and caption slots', () => {
     topLeft: '',
     topRight: '',
     center: 'C-01-01-1-01',
-    bottomLeft: 'Arrival · High',
+    bottomLeft: '',
     bottomRight: '',
     matrix: { value: 'loc', symbology: 'gs1datamatrix' },
     hri: 'C-01-01-1-01',
   });
 
   assert.equal(lcode.textContent, 'C-01-01-1-01');
-  assert.equal(lcap.textContent, 'Arrival · High');
 });
 
 test('patchLabelFaceDocument creates HRI when it appears', () => {

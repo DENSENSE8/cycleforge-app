@@ -2,10 +2,11 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { NavLocateBucket, NavLocateEntry, NavLocateResponse, NavLocateScope } from '@/lib/nav/context/schema';
+import { NAV_LOCATE_NOWHERE, type NavLocateBucket, type NavLocateEntry, type NavLocateResponse, type NavLocateScope } from '@/lib/nav/context/schema';
 import { fetchNavLocate } from '@/lib/nav/context/http-client';
 import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { parseRefInParam, parseRefList, serializeRefIn, type RefSelection } from '@/lib/receiving/reconcile';
+import { recordRecentList } from '@/lib/nav/locate/recent-lists';
 import { toast } from '@/lib/toast';
 
 /** One pasted number: the locator's answer, or a placeholder while it is asked. */
@@ -26,7 +27,7 @@ export interface BulkList {
   entries: BulkEntry[];
   /** The locator's buckets, in its order — counts are pasted numbers found in each. */
   buckets: NavLocateBucket[];
-  /** The bucket filter (a bucket id), or null for every number. */
+  /** The bucket filter (a bucket id, or {@link NAV_LOCATE_NOWHERE}), or null for every number. */
   status: string | null;
   setStatus: (status: string | null) => void;
   /** The facet filter inside {@link status} (an entry's `facet.id`), or null. */
@@ -39,6 +40,30 @@ export interface BulkList {
   /** Ask the locator again for one number alone; the rest keep their answers. */
   recheck: (ref: string) => void;
   clear: () => void;
+  /** Numbers the paste carried more than once (ref → times pasted); the list itself keeps one. */
+  repeats: ReadonlyMap<string, number>;
+}
+
+const NO_REPEATS: ReadonlyMap<string, number> = new Map();
+
+/**
+ * How many times a paste carried each number, for the ones it carried more
+ * than once. Each separated piece (newline / comma / semicolon / tab) is read
+ * by the SAME parse as the list, so a number counts under the key it dedupes by.
+ */
+export function pasteRepeats(text: string): ReadonlyMap<string, number> {
+  const byKey = new Map<string, { ref: string; times: number }>();
+  for (const piece of text.split(/[\n,;\t]+/)) {
+    const one = parseRefList(piece);
+    one.keys.forEach((key, index) => {
+      const seen = byKey.get(key);
+      if (seen) seen.times += 1;
+      else byKey.set(key, { ref: one.refs[index]!, times: 1 });
+    });
+  }
+  const repeats = new Map<string, number>();
+  for (const { ref, times } of byKey.values()) if (times > 1) repeats.set(ref, times);
+  return repeats.size > 0 ? repeats : NO_REPEATS;
 }
 
 /** Bucket counts are the pasted numbers in each — recounted after answers merge. */
@@ -123,7 +148,11 @@ export function useBulkList(
   rawFacet: string | null,
   writeRefs: (refs: readonly string[]) => void,
   setStatus: (status: string | null) => void,
+  /** Repeats carried in from elsewhere (the full list page's URL) until this face pastes its own. */
+  seedRepeats: ReadonlyMap<string, number> = NO_REPEATS,
 ): BulkList {
+  const staffKey = useNavStaffKey();
+  const [pasted, setPasted] = useState<ReadonlyMap<string, number> | null>(null);
   const located = useLocatedList(scope, selection.refs);
   const response = located.query.data;
   const buckets = useMemo(() => response?.buckets ?? [], [response]);
@@ -136,8 +165,10 @@ export function useBulkList(
         : { ref, buckets: [], title: null, detail: null, recordHref: null, pending: true };
     });
   }, [response, selection.refs]);
-  // A filter naming no bucket this locator declares filters nothing.
-  const status = rawStatus && buckets.some((bucket) => bucket.id === rawStatus) ? rawStatus : null;
+  const repeats = pasted ?? seedRepeats;
+  // A filter naming no bucket this locator declares filters nothing; Not found is always a filter.
+  const status =
+    rawStatus && (rawStatus === NAV_LOCATE_NOWHERE || buckets.some((bucket) => bucket.id === rawStatus)) ? rawStatus : null;
   // A facet only narrows inside a status, and only one some number wears.
   const facet = status && rawFacet && entries.some((entry) => entry.facet?.id === rawFacet) ? rawFacet : null;
 
@@ -157,6 +188,8 @@ export function useBulkList(
       const next = parseRefList(text);
       if (next.refs.length < 2) return false;
       writeRefs(next.refs);
+      setPasted(pasteRepeats(text));
+      recordRecentList(staffKey, next.refs, scope, window.location.pathname);
       if (next.truncated > 0) toast.message(`Checking the first ${next.refs.length} — ${next.truncated} more were dropped`);
       return true;
     },
@@ -169,7 +202,11 @@ export function useBulkList(
       writeRefs(parseRefList(next.join('\n')).refs);
     },
     recheck: located.recheck,
-    clear: () => writeRefs([]),
+    clear: () => {
+      writeRefs([]);
+      setPasted(NO_REPEATS);
+    },
+    repeats,
   };
 }
 

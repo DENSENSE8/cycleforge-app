@@ -11,7 +11,7 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { Pencil, Printer, X } from '@/components/Icons';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
-import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { useLabelDraft } from '@/components/labels/useLabelDraft';
 import {
   asListedPayloadToFace,

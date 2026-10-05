@@ -27,6 +27,7 @@ import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
 import { LABEL_CREATION_FACE, LABEL_PURPOSE_FACE } from '@/lib/shipping/label-purpose';
 import type { OrderLabelEntry } from '@/lib/shipping/order-label-links';
 import { toast } from '@/lib/toast';
+import { supportHref } from '@/lib/nav/route-tree';
 import { formatCurrency } from '@/utils/_number';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
@@ -171,7 +172,7 @@ export function OrderLabelEntries({
                           className="inline-flex items-stretch border border-mode-ink"
                         >
                           <a
-                            href={t.zendeskTicketId ? `/support?ticket=${t.zendeskTicketId}` : undefined}
+                            href={t.zendeskTicketId ? supportHref({ q: t.zendeskTicketId }) : undefined}
                             title={[t.subject, t.status].filter(Boolean).join(' · ') || 'Support ticket'}
                             className={cn(RECORD_ID_CLASS, 'px-1.5 leading-6 hover:bg-mode-hover', focusRing('control'))}
                           >

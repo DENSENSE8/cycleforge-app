@@ -351,7 +351,7 @@ export function LineNotesCard({
   const staffName = user?.name?.trim() || '';
 
   // Photos ride the same staging pipeline as the console composer:
-  const photoStaging = useTicketPhotoStaging(numericTicketId ?? 0);
+  const photoStaging = useTicketPhotoStaging({ kind: 'ticket', ticketId: numericTicketId ?? 0 });
   const photoPicker = usePhotoDropzone(photoStaging.addFiles);
   const stagedDone = photoStaging.staged.filter(
     (s) => s.status === 'done' && typeof s.photoId === 'number',
@@ -630,6 +630,7 @@ export function LineNotesCard({
         insertActions={insertActions}
         ticketLabel={zendeskTicket}
         hasTicket={hasTicket}
+        ticketIsPublic={ticketPublic}
         onModeChange={onComposerModeChange}
         // Sync to Zoho, inline at the foot of the composer (owner 2026-09-29):
         // the receive push for every unboxed line Zoho has not recorded yet.
@@ -658,7 +659,7 @@ export function LineNotesCard({
       <input ref={photoPicker.inputRef} {...photoPicker.inputProps} />
       {canBrowsePhotoLibrary && numericTicketId != null ? (
         <SupportPhotoLibraryPicker
-          ticketId={numericTicketId}
+          target={{ kind: 'ticket', ticketId: numericTicketId }}
           receivingId={receivingId ?? undefined}
           open={photoLibraryOpen}
           onClose={() => setPhotoLibraryOpen(false)}

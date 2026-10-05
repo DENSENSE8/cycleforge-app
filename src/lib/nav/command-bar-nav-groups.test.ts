@@ -22,8 +22,9 @@ test('buildCommandBarNavGroups order is Pin → the spine order (fixedSpineOrder
 
   // Operator 2026-10-03: "Operations → Live feed, Scan Stations, Receiving,
   // Fulfillment, Inventory changed to Warehouse … and Products at the bottom."
+  // Owner 2026-10-04: Support sits between the Live feed and Scan Stations.
   // The palette reads the same composer as the spine and the page map.
-  assert.deepEqual(ids, ['pin', 'root', 'floor', 'inbound', 'fulfillment', 'inventory', 'sales', 'catalog']);
+  assert.deepEqual(ids, ['pin', 'root', 'support', 'floor', 'inbound', 'fulfillment', 'inventory', 'sales', 'catalog']);
   const sectionIds = ids.filter((id) => id !== 'pin' && id !== 'root');
   const order = SPINE_SECTIONS.map((s) => String(s.id));
   assert.deepEqual(
@@ -149,10 +150,8 @@ test('domain bands own their pages; the desk / print grab-bags are gone', () => 
   assert.ok(idsIn('inbound').includes('sourcing'), 'Inbound missing the Sourcing page');
   assert.equal(idsIn('sourcing').length, 0, 'the sourcing band must stay retired');
   assert.ok(idsIn('fulfillment').includes('outbound'), 'Outbound missing Shipping');
-  // Support is HIDDEN by the mobile-first gate, so it owns no band. The ROUTE
-  // and the registry row survive (`nav-mobile-first.test.ts`); the door does
-  // not.
-  assert.equal(idsIn('support').length, 0, 'a hidden lane must own no palette rows');
+  // Support is its own lane (owner 2026-10-04): its band holds the one workspace row.
+  assert.deepEqual(idsIn('support'), ['support'], 'the Support band holds /support');
   // Scan benches never appear under a domain band.
   for (const band of [
     'inbound',

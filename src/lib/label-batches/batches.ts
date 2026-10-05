@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
 import { PDFDocument } from 'pdf-lib';
-import { createLabelIngestion } from '@/lib/label-ingestions/ingestion-service';
+import { createLabelIngestion, deleteUnlinkedLabelIngestion } from '@/lib/label-ingestions/ingestion-service';
 import { labelRowSelectSql, listOrderPaperwork, toLabelRow, type LabelQueueRow } from '@/lib/label-prints/print-queue';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -177,6 +177,43 @@ export async function getLabelBatch(organizationId: OrgId, batchId: number): Pro
   return { batch, pages, paperwork };
 }
 
+/** Delete one Bulk label batch. Every page is rechecked by the ingestion writer, so a page paired meanwhile refuses deletion. */
+export async function deleteLabelBatch(
+  organizationId: OrgId,
+  actorStaffId: number,
+  batchId: number,
+): Promise<{ batchId: number; deletedIngestionIds: number[] }> {
+  const found = await tenantQuery<{ id: number }>(
+    organizationId,
+    `SELECT li.id
+       FROM label_ingestions li
+       JOIN label_batches b ON b.organization_id = li.organization_id AND b.id = li.batch_id
+      WHERE b.organization_id = $1 AND b.id = $2
+      ORDER BY li.page_number ASC NULLS LAST, li.id ASC`,
+    [organizationId, batchId],
+  );
+  if (found.rows.length === 0) {
+    const batch = await readBatchRow(organizationId, batchId);
+    if (!batch) throw new LabelBatchError('INVALID_PDF', 'Upload was not found.');
+  }
+  const deletedIngestionIds: number[] = [];
+  for (const row of found.rows) {
+    await deleteUnlinkedLabelIngestion({ organizationId, actorStaffId, ingestionId: Number(row.id) });
+    deletedIngestionIds.push(Number(row.id));
+  }
+  await tenantQuery(
+    organizationId,
+    `DELETE FROM label_batches
+      WHERE organization_id = $1 AND id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM label_ingestions li
+           WHERE li.organization_id = $1 AND li.batch_id = $2
+        )`,
+    [organizationId, batchId],
+  );
+  return { batchId, deletedIngestionIds };
+}
+
 // ── Upload ─────────────────────────────────────────────────────────────────
 
 async function loadPdf(bytes: Buffer): Promise<PDFDocument> {
@@ -211,6 +248,8 @@ export async function uploadLabelBatch(input: {
   clientEventId: string;
   fileName: string;
   bytes: Buffer;
+  /** Bulk upload must never infer an order from PDF content. */
+  matchOrder?: boolean;
 }): Promise<LabelBatchUploadResult> {
   const { organizationId, bytes } = input;
   if (!bytes.length || bytes.length > MAX_LABEL_BATCH_BYTES) throw new LabelBatchError('PAYLOAD_TOO_LARGE', 'PDF exceeds the permitted size.');
@@ -258,6 +297,7 @@ export async function uploadLabelBatch(input: {
           observedAt,
           fileBasename: labelBatchPageFileName(fileName, pageNumber, pageCount),
           bytes: pageBytes,
+          matchOrder: input.matchOrder,
         });
         if (result.replayed) pages.alreadyOnFile += 1;
         else pages.added += 1;

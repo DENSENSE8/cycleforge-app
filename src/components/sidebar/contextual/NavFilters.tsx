@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { navControlParams, type NavContext, type NavFilters as NavFiltersSpec, type NavSearch } from '@/lib/nav/context/schema';
+import { navControlParams, type NavContext, type NavFilters as NavFiltersSpec } from '@/lib/nav/context/schema';
 import { fetchNavFacets } from '@/lib/nav/context/http-client';
-import { AnimatePresence, LayoutGroup, motion } from '@/design-system/motion';
+import { AnimatePresence, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
@@ -29,15 +29,10 @@ import { useReplaceSearchParams } from './useReplaceSearchParams';
 import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { NavSlotError } from './NavSlotError';
 import { NAV_BLOCK_CLASS, NAV_CHOICE_PRESS_CLASS, NAV_CHOICE_SELECTED_CLASS } from './nav-block';
-import { BulkStatusChips, PillChip } from './NavBulkChips';
-import { useNavBulkList } from './NavBulkList';
-import { useUrlBulkList } from './use-url-bulk-list';
-import type { BulkList } from '@/lib/nav/locate/use-bulk-list';
 
 const FACETS_STALE_MS = 15_000;
 
 type NavControls = NonNullable<NavContext['controls']>;
-type NavLocate = NonNullable<NavSearch['locate']>;
 
 /** Every row in the panel: the sidebar's pressable block at 32px. */
 const ROW_CLASS = cn(NAV_BLOCK_CLASS, 'h-8 text-role-caption');
@@ -64,12 +59,9 @@ function readValues(raw: string | null, multi: boolean): string[] {
 export function NavFilters({
   filters,
   controls,
-  locate,
 }: {
   filters: NavFiltersSpec | undefined;
   controls: NavControls | undefined;
-  /** The page search's pasted-list locate — the list `controls.pastedListBuckets` reads. */
-  locate?: NavLocate;
 }) {
   const searchParams = useSearchParams();
   const search = searchParams?.toString() ?? '';
@@ -178,7 +170,6 @@ export function NavFilters({
             onToggle={toggleOpen}
           />
         ) : null}
-        {controls?.pastedListBuckets ? <PastedListBucketsRow spec={controls.pastedListBuckets} locate={locate} /> : null}
         {filters
           ? filters.groups.map((declared) => {
               const group = facets.data?.groups.find((g) => g.id === declared.id);
@@ -670,84 +661,6 @@ function ExcludeRow({
       </div>
     </Disclosure>
   );
-}
-
-/**
- * The pasted list's bucket facet (`controls.pastedListBuckets`): where the
- * list's numbers live, with how many each holds — the list's own
- * `BulkStatusChips`, over the same `useBulkList` query the page body reads —
- * and, with `facetParam`, the pressed bucket's reasons under it. The list is
- * the page's located one (`locate`, e.g. `/incoming` `?ref_in=`) or, on a
- * page that locates nothing, the full list page's `?refs=`.
- */
-function PastedListBucketsRow({ spec, locate }: { spec: NonNullable<NavControls['pastedListBuckets']>; locate: NavLocate | undefined }) {
-  return locate ? <LocatedListBuckets spec={spec} locate={locate} /> : <UrlListBuckets />;
-}
-
-function LocatedListBuckets({ spec, locate }: { spec: NonNullable<NavControls['pastedListBuckets']>; locate: NavLocate }) {
-  const list = useNavBulkList({
-    locator: locate.locator,
-    param: locate.param,
-    statusParam: spec.param,
-    ...(spec.facetParam ? { facetParam: spec.facetParam } : {}),
-  });
-  return <PastedListBuckets list={list} facetParam={spec.facetParam ?? null} />;
-}
-
-function UrlListBuckets() {
-  return <PastedListBuckets list={useUrlBulkList()} facetParam={null} />;
-}
-
-function PastedListBuckets({ list, facetParam }: { list: BulkList; facetParam: string | null }) {
-  const pillScope = useId();
-  const replace = useReplaceSearchParams();
-  if (list.selection.refs.length === 0) return null;
-  const nowhere = list.entries.filter((entry) => !entry.pending && entry.buckets.length === 0).length;
-  const reasons = facetParam ? bucketReasons(list) : [];
-  const toggleReason = (id: string) =>
-    replace((params) => {
-      params.delete('page');
-      if (list.facet === id) params.delete(facetParam!);
-      else params.set(facetParam!, id);
-    });
-  return (
-    <div data-nav-pasted-list-buckets className="py-px">
-      <span className="flex h-7 items-center gap-1.5 px-2 text-role-micro font-semibold uppercase tracking-wide text-text-faint">
-        Status
-      </span>
-      <LayoutGroup id={pillScope}>
-        <BulkStatusChips list={list} nowhere={nowhere} className="px-2 pb-1" />
-        {reasons.length > 0 ? (
-          <div data-nav-pasted-list-reasons role="group" aria-label="Reasons" className="flex flex-wrap items-center gap-1 px-2 pb-1">
-            {reasons.map((reason) => (
-              <PillChip
-                key={reason.id}
-                pill="reason"
-                active={list.facet === reason.id}
-                onClick={() => toggleReason(reason.id)}
-                label={reason.label}
-                count={reason.count}
-              />
-            ))}
-          </div>
-        ) : null}
-      </LayoutGroup>
-    </div>
-  );
-}
-
-/** Why the pressed bucket's numbers sit there — each entry's `facet`, counted, in answer order. */
-function bucketReasons(list: BulkList): { id: string; label: string; count: number }[] {
-  const status = list.status;
-  if (!status) return [];
-  const byId = new Map<string, { id: string; label: string; count: number }>();
-  for (const entry of list.entries) {
-    if (!entry.facet || !entry.buckets.includes(status)) continue;
-    const seen = byId.get(entry.facet.id);
-    if (seen) seen.count += 1;
-    else byId.set(entry.facet.id, { id: entry.facet.id, label: entry.facet.label, count: 1 });
-  }
-  return [...byId.values()];
 }
 
 function ChoiceRow({

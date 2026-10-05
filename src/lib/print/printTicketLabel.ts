@@ -5,7 +5,7 @@ import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 /**
  * Minimal ticket scan sticker — same corner grammar as the carton face
  * (platform top-left · `#ticket` bottom-right) + DataMatrix carrying
- * `T-{providerTicketId}` (routeScan → `/support?ticket=…`).
+ * `T-{providerTicketId}` (routeScan → Tasks › Support Find).
  */
 export interface TicketLabelPayload {
   /** Provider ticket digits (Zendesk id), no `#`. */
@@ -19,7 +19,7 @@ export interface TicketLabelPayload {
   platform?: string | null;
   /**
    * Tenant slug, carried for the encode SoT. Unused today — a ticket resolves
-   * to `/support?ticket=`, which is staff-only, so there is nothing for an
+   * to the staff-only Tasks › Support view, so there is nothing for an
    * anonymous phone to land on and the bare `T-` handle stays correct.
    */
   orgSlug?: string | null;

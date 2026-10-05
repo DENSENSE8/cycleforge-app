@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { IconButton } from '@/design-system/primitives';
+import { MOBILE_DATA_LIST_ROW_INTERACTION_CLASS } from '@/design-system/components/MobileDataListRow';
 import { ChevronRight, X } from '@/components/Icons';
 import { usePressHaptic } from '@/lib/scan-feedback/useScanFeedback';
 import { copyToClipboard } from '@/utils/_dom';
@@ -65,18 +66,14 @@ export function DetailFact({
   return (
     <div
       className={`relative flex items-baseline justify-between gap-3 px-mode-page py-2.5 ${
-        copyText ? 'group has-[button:active]:bg-mode-ink' : ''
+        copyText ? 'transition-colors duration-150 ease-out has-[button:active]:bg-surface-selected' : ''
       }`}
     >
-      <dt
-        className={`shrink-0 font-mono text-role-caption ${
-          copied ? 'text-mode-ink' : 'text-mode-muted'
-        } group-has-[button:active]:text-mode-panel`}
-      >
+      <dt className={`shrink-0 font-mono text-role-caption ${copied ? 'text-mode-ink' : 'text-mode-muted'}`}>
         {copied ? 'Copied' : label}
       </dt>
       <dd
-        className={`min-w-0 break-words text-right text-mode-body font-semibold text-mode-ink group-has-[button:active]:text-mode-panel ${
+        className={`min-w-0 break-words text-right text-mode-body font-semibold text-mode-ink ${
           mono && !empty ? 'font-mono' : ''
         }`}
       >
@@ -84,7 +81,7 @@ export function DetailFact({
             it carries no data, so it recedes (operator 2026-09-25). */}
         {empty ? <span className="font-normal text-mode-edge">—</span> : value}
         {hint ? (
-          <span className="mt-0.5 block font-sans text-role-caption font-normal text-mode-muted group-has-[button:active]:text-mode-panel">
+          <span className="mt-0.5 block font-sans text-role-caption font-normal text-mode-muted">
             {hint}
           </span>
         ) : null}
@@ -149,36 +146,37 @@ const ROW_CLASS =
   'flex min-h-mode-hit-cta w-full items-center gap-3 border-b border-mode-rule px-mode-page py-2.5 text-left';
 
 /**
- * Press = inversion (operator 2026-09-25): the whole row goes ink the instant
- * the thumb lands, with no transition, so a tap on a slow network is never in
- * doubt. `group-active` flips each child because each sets its own colour.
+ * Press stays readable (owner 2026-10-01: no black flash on V2 mobile rows):
+ * the shared quiet wash — hover `surface-hover`, press `surface-selected` —
+ * instead of inverting the row to ink.
  */
-const ROW_PRESS = 'group active:bg-mode-ink';
+const LIVE_ROW_CLASS = `${ROW_CLASS} ${MOBILE_DATA_LIST_ROW_INTERACTION_CLASS}`;
 
 export function DetailNavRow({ href, onSelect, title, meta, icon }: Omit<DetailNavItem, 'id'>) {
   const live = Boolean(href || onSelect);
   const body = (
     <>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-mode bg-mode-well text-mode-muted group-active:bg-mode-panel group-active:text-mode-ink [&>svg]:h-5 [&>svg]:w-5">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-mode bg-mode-well text-mode-muted [&>svg]:h-5 [&>svg]:w-5">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-mode-body font-semibold text-mode-ink group-active:text-mode-panel">{title}</span>
-        <span className="block text-role-caption text-mode-muted group-active:text-mode-panel">{meta}</span>
+        <span className="block text-mode-body font-semibold text-mode-ink">{title}</span>
+        <span className="block text-role-caption text-mode-muted">{meta}</span>
       </span>
-      {live ? <ChevronRight className="h-5 w-5 shrink-0 text-mode-muted group-active:text-mode-panel" /> : null}
+      {live ? <ChevronRight className="h-5 w-5 shrink-0 text-mode-muted" /> : null}
     </>
   );
   if (href) {
     return (
-      <Link href={href} className={`${ROW_CLASS} ${ROW_PRESS}`}>
+      <Link href={href} className={LIVE_ROW_CLASS}>
         {body}
       </Link>
     );
   }
   if (onSelect) {
     return (
-      <button type="button" onClick={onSelect} className={`${ROW_CLASS} ${ROW_PRESS}`}>
+      // ds-raw-button: full-width two-line door row (icon well, title over meta, chevron), not an action button
+      <button type="button" onClick={onSelect} className={LIVE_ROW_CLASS}>
         {body}
       </button>
     );

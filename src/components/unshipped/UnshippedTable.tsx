@@ -660,15 +660,6 @@ export function UnshippedTable({
     patchPaperwork(orderIdOf(next));
   }, [closePaperworkWalk, paperworkId, patchPaperwork, records, walkRows]);
 
-  const retreatPaperworkWalk = useCallback(() => {
-    const list = walkRows.length > 0 ? walkRows : records;
-    const current = Number(paperworkId);
-    const idx = list.findIndex((r) => orderIdOf(r) === current);
-    const prev = idx > 0 ? list[idx - 1] : null;
-    if (!prev) return;
-    patchPaperwork(orderIdOf(prev));
-  }, [paperworkId, patchPaperwork, records, walkRows]);
-
   const handlePaperworkFactsChanged = useCallback(() => {
     invalidateUnshippedCounts(queryClient);
   }, [queryClient]);
@@ -823,7 +814,6 @@ export function UnshippedTable({
             loading={query.isLoading}
             onSelect={patchPaperwork}
             onAdvance={advancePaperworkWalk}
-            onPrev={retreatPaperworkWalk}
             onExit={closePaperworkWalk}
             onFactsChanged={handlePaperworkFactsChanged}
           />

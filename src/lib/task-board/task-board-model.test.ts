@@ -16,6 +16,7 @@ import {
   taskBoardStatusMatches,
   taskBoardUrgency,
   taskBoardViewCounts,
+  taskBoardViewMatches,
   type TaskBoardRow,
 } from './task-board-model';
 
@@ -98,15 +99,15 @@ describe('status and view membership', () => {
     assert.equal(parseTaskBoardStatus('pending'), 'open', 'an unknown filter reads as the default');
   });
 
-  it('a ticket or repair task counts as Support, not a plain task; closed rows never count', () => {
+  it('a ticket or repair task is a plain task; closed rows never count', () => {
     const counts = taskBoardViewCounts([
       row({ key: 'plain' }),
-      row({ key: 'ticket', ticket: { number: 48120, subject: null, status: null } }),
+      row({ key: 'linked', ticket: { number: 48120, subject: null, status: null } }),
       row({ key: 'repair', repair: { id: 53, ticketNumber: 'RS-0053', status: 'Pending Repair' } }),
       row({ key: 'check', source: 'checklist', status: null, ticket: { number: 7, subject: null, status: null } }),
       row({ key: 'closed-ticket', status: 'DONE', done: true, ticket: { number: 1, subject: null, status: null } }),
     ]);
-    assert.deepEqual(counts, { all: 4, task: 1, ticket: 3, checklist: 1, project: 0 });
+    assert.deepEqual(counts, { all: 4, task: 3, checklist: 1, project: 0 });
   });
 });
 
@@ -201,11 +202,11 @@ describe('taskBoardGroups', () => {
     assert.ok(!groups.some((g) => g.urgency === 'tomorrow' || g.urgency === 'week'), 'empty buckets never paint');
   });
 
-  it('type: board order; the ticket group is Support follow-ups', () => {
+  it('type: board order; a ticket-linked task is a task', () => {
     const groups = taskBoardGroups(
       [
         row({ key: 'plain' }),
-        row({ key: 'ticket', ticket: { number: 1, subject: null, status: 'open' } }),
+        row({ key: 'linked', ticket: { number: 1, subject: null, status: 'open' } }),
         row({ key: 'proj', project: 'Relist' }),
         row({ key: 'check', source: 'checklist', status: null, taskStatus: null }),
       ],
@@ -216,7 +217,6 @@ describe('taskBoardGroups', () => {
       groups.map((g) => [g.type, g.label]),
       [
         ['checklist', 'Daily checklist'],
-        ['ticket', 'Support follow-ups'],
         ['project', 'Long-term projects'],
         ['task', 'Standalone tasks'],
       ],

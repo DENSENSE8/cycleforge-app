@@ -4,18 +4,12 @@
  * re-tap clears — so a row never offers the state the list is already in.
  */
 
-import { LOCATION_BAY_LABEL_PLURAL } from '@/lib/barcode-routing';
-
-
-/** Locations `?tab=` — absent = Bin Tags. `bins` is reached from Map, not offered. */
+/** Legacy Locations tool choices. The current navigation uses explicit destinations; absent = All. */
 export const LOCATIONS_TAB_OPTIONS = [
-  { value: 'bays', label: LOCATION_BAY_LABEL_PLURAL },
-  { value: 'totes', label: 'Totes' },
   { value: 'rooms', label: 'Rooms' },
   { value: 'map', label: 'Map' },
   // Movable racks (`RK12`). The wire id is `movable`: `racks` is the legacy bay alias.
   { value: 'movable', label: 'Racks' },
-  { value: 'manage', label: 'Manage' },
 ] as const;
 
 /** Replenish `?rtab=` — two lists, so both are named (a one-option choice cannot render); absent = Need to order. */

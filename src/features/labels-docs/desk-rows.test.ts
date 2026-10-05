@@ -29,7 +29,7 @@ const paperwork = (orderId: number, orderRef: string, over: Partial<PaperworkPri
   orderId,
   orderRef,
   orderAccountSource: 'ebay',
-  orderLines: [{ title: 'Brake pads', quantity: 1 }],
+  orderLines: [{ orderLineId: orderId, itemNumber: '5076', skuCatalogId: 42, sku: 'BP-1', title: 'Brake pads', quantity: 1 }],
   documents: [],
   printCount: 0,
   lastPrintedAt: null,
@@ -95,7 +95,7 @@ test('find ignores case, spaces and dashes across tracking, order, file, carrier
     ],
     paperwork: [
       paperwork(40, '6000', {
-        documents: [{ key: 'doc:7', kind: 'packing_slip', documentId: 7, manualId: null, title: 'Packing slip · invoice-5076.pdf', src: '/x', printCount: 0, lastPrintedAt: null }],
+        documents: [{ key: 'doc:7', kind: 'packing_slip', documentId: 7, manualId: null, title: 'Packing slip · invoice-5076.pdf', src: '/x', printCount: 0, lastPrintedAt: null, association: { source: 'order', orderLineIds: [40], itemNumber: null, sku: null, skuCatalogId: null } }],
       }),
     ],
     counts: { labels: 0, paperwork: 0, printed: 4 },
@@ -113,13 +113,16 @@ test('find ignores case, spaces and dashes across tracking, order, file, carrier
 test('a Drive-only manual is listed but never printed, and a printed slip is not taken by default', () => {
   const row = paperwork(10, '5010', {
     documents: [
-      { key: 'doc:1', kind: 'packing_slip', documentId: 1, manualId: null, title: 'Slip', src: '/api/documents/1/content', printCount: 1, lastPrintedAt: '2026-09-27T09:00:00.000Z' },
-      { key: 'manual:2', kind: 'manual', documentId: null, manualId: 2, title: 'Manual', src: '/m/2', printCount: 0, lastPrintedAt: null },
-      { key: 'manual:3', kind: 'manual', documentId: null, manualId: 3, title: 'Drive manual', src: null, printCount: 0, lastPrintedAt: null },
+      { key: 'doc:1', kind: 'packing_slip', documentId: 1, manualId: null, title: 'Slip', src: '/api/documents/1/content', printCount: 1, lastPrintedAt: '2026-09-27T09:00:00.000Z', association: { source: 'order', orderLineIds: [10], itemNumber: null, sku: null, skuCatalogId: null } },
+      { key: 'manual:2', kind: 'manual', documentId: null, manualId: 2, title: 'Manual', src: '/m/2', printCount: 0, lastPrintedAt: null, association: { source: 'item_number', orderLineIds: [10], itemNumber: '5076', sku: null, skuCatalogId: null } },
+      { key: 'manual:3', kind: 'manual', documentId: null, manualId: 3, title: 'Drive manual', src: null, printCount: 0, lastPrintedAt: null, association: { source: 'sku', orderLineIds: [10], itemNumber: null, sku: 'BP-1', skuCatalogId: 42 } },
     ],
   });
   const { documents, unprintable } = paperworkDocuments([row]);
   assert.deepEqual(documents.map((doc) => [doc.key, doc.stock, doc.orderId]), [['doc:1', 'paper', 10], ['manual:2', 'paper', 10]]);
   assert.deepEqual(unprintable.map((doc) => doc.key), ['manual:3']);
+  assert.equal(documents[0]?.associationLabel, 'Order 5010');
+  assert.equal(documents[1]?.associationLabel, 'Item # 5076');
+  assert.equal(unprintable[0]?.associationLabel, 'SKU BP-1');
   assert.deepEqual([...unprintedPaperworkKeys([row])], ['manual:2']);
 });

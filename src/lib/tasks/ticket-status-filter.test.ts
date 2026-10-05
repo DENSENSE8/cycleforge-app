@@ -1,36 +1,8 @@
-/** The task desk's ticket-status filter: the API's strict parser, the board's lenient one, and the task match the chip counts share. */
+/** The phone task list's ticket-status filter: the task match the chip counts share. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  parseTicketStatusParam,
-  parseTicketStatusQuery,
-  taskMatchesTicketStatuses,
-  ticketStatusCounts,
-  ticketStatusParam,
-  type TicketStatusSource,
-} from './ticket-status-filter';
-
-test('absent or blank ticketStatus means no filter at all', () => {
-  assert.deepEqual(parseTicketStatusQuery(undefined), { ok: true, statuses: null });
-  assert.deepEqual(parseTicketStatusQuery(''), { ok: true, statuses: null });
-  assert.deepEqual(parseTicketStatusQuery(' , '), { ok: true, statuses: null });
-});
-
-test('a multi-select is case-insensitive, deduped and in vocabulary order', () => {
-  assert.deepEqual(parseTicketStatusQuery('Pending, open,NEW,open'), { ok: true, statuses: ['new', 'open', 'pending'] });
-});
-
-test('one unknown value refuses the whole query and names it', () => {
-  assert.deepEqual(parseTicketStatusQuery('open,waiting,pendng'), { ok: false, unknown: ['waiting', 'pendng'] });
-});
-
-test('the board URL keeps the statuses it spells right and round-trips canonically', () => {
-  assert.deepEqual(parseTicketStatusParam('solved,bogus,New'), ['new', 'solved']);
-  assert.deepEqual(parseTicketStatusParam(null), []);
-  assert.equal(ticketStatusParam(['pending', 'new', 'pending']), 'new,pending');
-  assert.equal(ticketStatusParam([]), null, 'an empty set leaves the URL');
-});
+import { taskMatchesTicketStatuses, ticketStatusCounts, type TicketStatusSource } from './ticket-status-filter';
 
 const anchoredPending: TicketStatusSource = { ticket: { status: 'Pending' }, links: [] };
 const linkedOpen: TicketStatusSource = {

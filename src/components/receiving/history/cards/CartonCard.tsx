@@ -6,7 +6,8 @@
  * "+N items", each line opening on its own in the carton record.
  */
 
-import { memo, useMemo } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
+import { StaffCell } from '@/components/identity/StaffCell';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import { CollapseItem } from '@/design-system/components/Collapse';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
@@ -22,15 +23,21 @@ import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 /** Quick look (Space): only what the face leaves out — who did each step and when, the carton, full tracking. */
 export function CartonCardPeek({ model }: { model: CartonCardModel }) {
   const lead = model.lead;
-  const stamp = (at: string | null | undefined, by: string | null | undefined) =>
-    at ? `${fmtDate(at)}${by ? ` · ${by}` : ''}` : null;
+  // Who did a step, in their colour: the stamp's staff id + name (`StaffCell`).
+  const stamp = (at: string | null | undefined, staffId: number | null | undefined, name: string | null | undefined): ReactNode =>
+    at ? (
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="shrink-0">{fmtDate(at)}</span>
+        <StaffCell staffId={staffId} name={name} />
+      </span>
+    ) : null;
   const carton = lead.receiving_id != null ? String(lead.receiving_id) : null;
-  const facts: [string, string | null][] = [
+  const facts: [string, ReactNode][] = [
     // Carton remains useful whether the face leads with an order or tracking.
     ['Carton', carton],
-    ['Scanned', stamp(lead.scanned_at, lead.scanned_by_name)],
-    ['Unboxed', stamp(lead.unboxed_at, lead.unboxed_by_name)],
-    ['Received', stamp(lead.received_done_at ?? lead.received_at, lead.received_by_name)],
+    ['Scanned', stamp(lead.scanned_at, lead.scanned_by_id, lead.scanned_by_name)],
+    ['Unboxed', stamp(lead.unboxed_at, lead.unboxed_by_id, lead.unboxed_by_name)],
+    ['Received', stamp(lead.received_done_at ?? lead.received_at, lead.received_by_id, lead.received_by_name)],
     ['Tracking', lead.tracking_number],
     ['Carrier', lead.carrier],
   ];
@@ -38,7 +45,7 @@ export function CartonCardPeek({ model }: { model: CartonCardModel }) {
     <CollapseItem>
       <dl data-testid="receipt-card-peek" className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 pt-2 text-role-data">
         {facts
-          .filter((fact): fact is [string, string] => Boolean(fact[1]))
+          .filter(([, value]) => Boolean(value))
           .map(([label, value]) => (
             <div key={label} className="contents">
               <dt className="text-text-muted">{label}</dt>
@@ -134,8 +141,13 @@ export const ReceivingCartonCard = memo(function ReceivingCartonCard({
           ? {
               role: 'trailing',
               content: (
-                <span data-testid={`${view.testIdPrefix}-unboxed-by`} className="text-role-caption text-text-muted">
-                  {model.topRight.label} {model.topRight.value}
+                <span data-testid={`${view.testIdPrefix}-unboxed-by`} className="flex min-w-0 items-center gap-1.5 text-role-caption text-text-muted">
+                  <span className="shrink-0">{model.topRight.label}</span>
+                  {model.topRight.staffId != null || model.unboxedBy ? (
+                    <StaffCell staffId={model.topRight.staffId} name={model.unboxedBy?.name} />
+                  ) : (
+                    model.topRight.value
+                  )}
                 </span>
               ),
             }

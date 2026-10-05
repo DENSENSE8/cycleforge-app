@@ -9,6 +9,8 @@ export interface PickTask {
   serialNumber: string | null;
   /** Minted unit id the QC / pre-box label encodes. */
   unitUid: string | null;
+  /** The SEALED PREBOX package (`KIT-…`) the unit is boxed in — its label names every member. */
+  packageUid: string | null;
   lineId: number;
   sku: string;
   productTitle: string | null;
@@ -29,8 +31,9 @@ export interface PickOrder {
 
 /**
  * Scan-gate validator. `serial` = the QC / pre-box unit label (unit_uid, GS1
- * `(01)(21)`, Digital Link, `U-`/`/m/u/` handle) or the typed serial of THIS
- * task's unit — the only proof that pins the order's serial.
+ * `(01)(21)`, Digital Link, `U-`/`/m/u/` handle), the package label (`KIT-…`)
+ * the unit is boxed in, or the typed serial of THIS task's unit — the only
+ * proof that pins the order's serial.
  */
 export function matchScanToTask(
   rawScan: string,

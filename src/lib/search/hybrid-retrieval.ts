@@ -35,6 +35,7 @@ export interface DocHitRow {
   happened_at: Date | string | null;
 }
 
+
 export interface HybridSearchDeps {
   exactSearch(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]>;
   keywordSearch(
@@ -113,7 +114,7 @@ async function keywordSearchImpl(
     `SELECT entity_type, entity_id, title, subtitle, status, condition_grade,
             source_platform, tracking_number, carrier, serial_number, happened_at,
             ${rankClause} AS rank
-     FROM entity_search_docs
+     FROM entity_search_docs d
      WHERE organization_id = $1${entityFilter}
        AND (${whereClause})
      ORDER BY rank DESC, happened_at DESC NULLS LAST, entity_type ASC, entity_id ASC
@@ -141,7 +142,7 @@ async function vectorSearchImpl(
     orgId,
     `SELECT entity_type, entity_id, title, subtitle, status, condition_grade,
             source_platform, tracking_number, carrier, serial_number, happened_at
-     FROM entity_search_docs
+     FROM entity_search_docs d
      WHERE organization_id = $1${entityFilter}
        AND embedding IS NOT NULL
      ORDER BY embedding <=> $2::vector(${EMBEDDING_DIMS})

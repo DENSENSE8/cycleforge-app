@@ -23,6 +23,8 @@ export interface DeskDocument {
   key: string;
   kind: 'label' | 'packing_slip' | 'manual';
   title: string;
+  /** Exact order/item/SKU relationship shown beside the document in the desk. */
+  associationLabel?: string | null;
   /** Same-origin bytes (PDF or image). */
   src: string;
   stock: PrintStock;

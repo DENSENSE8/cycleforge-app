@@ -22,6 +22,7 @@ import {
   Package,
   PackageCheck,
   PackageOpen,
+  PackageX,
   Phone,
   Plus,
   Printer,
@@ -48,6 +49,7 @@ import {
   Zap,
 } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
+import { SUPPORT_VIEW_ICONS } from '@/lib/sidebar-navigation';
 import { TASK_BOARD_TYPE_FACE } from '@/lib/task-board/task-board-model';
 import { TASK_STATUS_FACE } from '@/design-system/tokens/task-status';
 
@@ -62,7 +64,7 @@ type NavViewIcon = {
 /**
  * Page-panel view glyphs, keyed `<pageId>.<itemId>` (operator 2026-09-27:
  * "identify and click without even reading the text"). One glyph per job:
- * Exceptions warns, Allocate is the carrier, Shipped is the closed box.
+ * Allocate is the carrier; Labels & docs is the printable paperwork surface.
  *
  * COMPLETENESS LAW (owner 2026-09-29): every unparked child of every page
  * gets an entry in the same change that adds the view — the test beside this
@@ -71,9 +73,14 @@ type NavViewIcon = {
  * each view a distinct tone so the switcher scans before its words.
  */
 export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
-  'outbound.exceptions': { icon: AlertTriangle, tone: 'text-amber-600', alertCount: true },
+  'outbound.orders': { icon: Truck, tone: 'text-indigo-600' },
+  'outbound.label-intake': { icon: Printer, tone: 'text-teal-600' },
+  // Compatibility glyphs are retained even after a route/view stops painting.
+  // Removing a destination must never also erase the visual vocabulary that
+  // identifies it in history, extensions or a temporarily stale nav payload.
   'outbound.triage': { icon: Truck, tone: 'text-blue-600' },
   'outbound.shipped': { icon: PackageCheck, tone: 'text-emerald-600' },
+  'outbound.exceptions': { icon: AlertTriangle, tone: 'text-amber-600', alertCount: true },
   // Fulfilled saved views — same glyphs the lane row's children wear.
   'fulfilled.all': { icon: List, tone: 'text-emerald-600' },
   'fulfilled.online': { icon: ShoppingCart, tone: 'text-emerald-700' },
@@ -148,11 +155,14 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'fba.combine': { icon: Package, tone: 'text-purple-600' },
   'fba.shipped': { icon: PackageCheck, tone: 'text-purple-700' },
   'fba.catalog': { icon: Barcode, tone: 'text-violet-700' },
-  // Labels & docs wears its lane row's teal.
-  'label-intake.uploads': { icon: Upload, tone: 'text-teal-600' },
+  // Labels & docs: every terminal job has its own ink so the switcher scans
+  // by icon before text — Allocate, intake, label, document, history.
+  'label-intake.uploads': { icon: Upload, tone: 'text-cyan-600' },
+  'label-intake.orders': { icon: Truck, tone: 'text-indigo-600' },
+  'label-intake.label-intake': { icon: Printer, tone: 'text-teal-600' },
   'label-intake.labels': { icon: Printer, tone: 'text-teal-600' },
-  'label-intake.paperwork': { icon: FileText, tone: 'text-teal-600' },
-  'label-intake.printed': { icon: History, tone: 'text-teal-700' },
+  'label-intake.paperwork': { icon: FileText, tone: 'text-amber-600' },
+  'label-intake.printed': { icon: History, tone: 'text-violet-600' },
   // Sourcing wears its lane row's indigo; the same glyphs as its nav children.
   'sourcing.queue': { icon: AlertCircle, tone: 'text-amber-600' },
   'sourcing.scout': { icon: Search, tone: 'text-indigo-600' },
@@ -167,19 +177,38 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'products.labels': { icon: Barcode, tone: 'text-teal-600' },
   'products.pairing': { icon: Link2, tone: 'text-indigo-600' },
   'products.qc': { icon: Check, tone: 'text-amber-600' },
+  // Stock: five jobs, five glyphs and five inks. None repeats the blue parent.
+  'stock.all': { icon: Package, tone: 'text-sky-600' },
+  'stock.replenish': { icon: History, tone: 'text-emerald-600' },
+  'stock.fifo': { icon: Truck, tone: 'text-indigo-600' },
+  'stock.low-stock': { icon: AlertTriangle, tone: 'text-amber-600', alertCount: true },
+  'stock.out-of-stock': { icon: PackageX, tone: 'text-rose-600', alertCount: true },
+  // Compatibility glyphs for retired stock destinations.
+  'stock.graph': { icon: Layers, tone: 'text-indigo-600' },
+  'stock.reason-codes': { icon: Tags, tone: 'text-amber-600' },
+  'stock.favorites': { icon: Star, tone: 'text-rose-600' },
   // Inventory wears its lane row's emerald; the same glyphs as its nav children.
   'inventory.stock': { icon: Package, tone: 'text-emerald-600' },
-  'inventory.sku-exceptions': { icon: AlertTriangle, tone: 'text-amber-600' },
+  'inventory.sku-exceptions': { icon: AlertTriangle, tone: 'text-amber-600', alertCount: true },
   'inventory.ledger': { icon: Clipboard, tone: 'text-emerald-700' },
   'inventory.replenish': { icon: History, tone: 'text-emerald-600' },
   'inventory.locations': { icon: Warehouse, tone: 'text-emerald-700' },
+  'inventory.rooms': { icon: Warehouse, tone: 'text-sky-600' },
+  'inventory.racks': { icon: Layers, tone: 'text-violet-600' },
+  'inventory.map': { icon: Radar, tone: 'text-indigo-600' },
+  'inventory.labels': { icon: Barcode, tone: 'text-teal-600' },
+  'inventory.bays': { icon: Printer, tone: 'text-orange-600' },
+  'inventory.totes': { icon: Package, tone: 'text-rose-600' },
   // QC labels wears its mode's amber.
   'qc-labels.all': { icon: ScanBarcode, tone: 'text-amber-600' },
-  'qc-labels.stock': { icon: Package, tone: 'text-amber-600' },
-  'qc-labels.order': { icon: PackageCheck, tone: 'text-amber-700' },
+  'qc-labels.stock': { icon: Package, tone: 'text-emerald-600' },
+  'qc-labels.order': { icon: PackageCheck, tone: 'text-violet-600' },
   // Print station wears its row's sky; Reprinted is the damage history.
+  'print-station.fnsku-labels': { icon: ScanBarcode, tone: 'text-sky-600' },
   'print-station.fnsku': { icon: ScanBarcode, tone: 'text-sky-600' },
   'print-station.fnsku-reprinted': { icon: History, tone: 'text-sky-700' },
+  'print-station.stations': { icon: Printer, tone: 'text-violet-600' },
+  'print-station.stations-all': { icon: Printer, tone: 'text-violet-600' },
   // Exceptions: every domain and kind is a worklist of problems (amber count
   // while > 0); a domain wears its lane's glyph, a kind the glyph of the
   // surface its source lives on.
@@ -196,29 +225,34 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'exceptions.claim': { icon: AlertCircle, tone: 'text-blue-600', alertCount: true },
   'exceptions.short': { icon: PackageOpen, tone: 'text-blue-600', alertCount: true },
   'exceptions.unfound': { icon: Search, tone: 'text-blue-600', alertCount: true },
-  // Live feed: each direction view wears its lane's glyph, outbound in orange (the row's ink), inbound in blue
-  // (Deliveries'). The lanes are the board's columns, never views.
-  'live-feed.outbound': { icon: Truck, tone: 'text-orange-600' },
-  'live-feed.inbound': { icon: domainLane('inbound').icon, tone: 'text-blue-600' },
   // Tasks (owner 2026-09-29): each PARENT wears its row-type glyph and hue
   // (`TASK_BOARD_TYPE_FACE`, the same mark every board row leads with; All
   // tasks the stack); the views under it say state, never the parent's glyph
   // again — open work is the clock, finished work the check.
   'home.tasks': { icon: Layers, tone: 'text-sky-600' },
-  'home.support': { icon: TASK_BOARD_TYPE_FACE.ticket.icon, tone: TASK_BOARD_TYPE_FACE.ticket.ink },
   'home.daily': { icon: TASK_BOARD_TYPE_FACE.checklist.icon, tone: TASK_BOARD_TYPE_FACE.checklist.ink },
   'home.projects': { icon: TASK_BOARD_TYPE_FACE.project.icon, tone: TASK_BOARD_TYPE_FACE.project.ink },
   'home.all': { icon: Clock, tone: 'text-sky-700' },
   'home.task': { icon: TASK_BOARD_TYPE_FACE.task.icon, tone: TASK_BOARD_TYPE_FACE.task.ink },
-  'home.ticket': { icon: Clock, tone: 'text-orange-700' },
   'home.checklist': { icon: Clock, tone: 'text-emerald-700' },
   'home.project': { icon: Clock, tone: 'text-indigo-700' },
   'home.all-done': { icon: Check, tone: 'text-emerald-700' },
   // Held work (Pending · Follow-up · Blocked) wears the Pending face (`TASK_STATUS_FACE`).
   'home.all-waiting': { icon: TASK_STATUS_FACE.PENDING.icon, tone: TASK_STATUS_FACE.PENDING.ink },
-  'home.ticket-done': { icon: Check, tone: 'text-emerald-700' },
   'home.checklist-done': { icon: Check, tone: 'text-emerald-700' },
   'home.project-done': { icon: Check, tone: 'text-emerald-700' },
+  // Support (owner 2026-10-04): each view wears its job's glyph (`SUPPORT_VIEW_ICONS`, the same mark the
+  // child row carries) in a distinct ink; the worklists of owed work count amber while above zero.
+  'support.queue': { icon: SUPPORT_VIEW_ICONS.queue, tone: 'text-sky-600' },
+  'support.needs-reply': { icon: SUPPORT_VIEW_ICONS['needs-reply'], tone: 'text-rose-600', alertCount: true },
+  'support.followed-up': { icon: SUPPORT_VIEW_ICONS['followed-up'], tone: 'text-orange-600', alertCount: true },
+  'support.draft-ready': { icon: SUPPORT_VIEW_ICONS['draft-ready'], tone: 'text-violet-600' },
+  'support.follow-up-due': { icon: SUPPORT_VIEW_ICONS['follow-up-due'], tone: 'text-amber-600', alertCount: true },
+  'support.unclassified': { icon: SUPPORT_VIEW_ICONS.unclassified, tone: 'text-yellow-700' },
+  'support.internal': { icon: SUPPORT_VIEW_ICONS.internal, tone: 'text-indigo-600' },
+  'support.unassigned': { icon: SUPPORT_VIEW_ICONS.unassigned, tone: 'text-teal-600' },
+  'support.sync-failed': { icon: SUPPORT_VIEW_ICONS['sync-failed'], tone: 'text-red-600', alertCount: true },
+  'support.check-ins': { icon: SUPPORT_VIEW_ICONS['check-ins'], tone: 'text-emerald-600' },
 };
 
 /**
@@ -244,4 +278,5 @@ export const NAV_ACTION_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'reports.export-inbound': { icon: Download, tone: 'text-text-muted' },
   'reports.export-outbound': { icon: Download, tone: 'text-text-muted' },
   'studio.library': { icon: Layers, tone: 'text-text-muted' },
+  'support.new-item': { icon: Plus, tone: 'text-text-muted' },
 };

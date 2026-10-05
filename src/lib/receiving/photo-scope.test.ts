@@ -8,7 +8,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   effectiveReceivingPhotoStage,
-  mobileArrivalGuidedPhotosHref,
   mobileCaptureHrefForRequest,
   mobileUnboxPhotoReturnHref,
   normalizeReceivingPhotoRequest,
@@ -232,17 +231,6 @@ test('mobileUnboxPhotoReturnHref never implicitly opens carton rows', () => {
   assert.equal(mobileUnboxPhotoReturnHref(null), '/m/receiving');
   assert.equal(mobileUnboxPhotoReturnHref('  '), '/m/receiving');
   assert.equal(mobileUnboxPhotoReturnHref('/m/r/9'), '/m/r/9');
-});
-
-test('mobileArrivalGuidedPhotosHref always stamps arrival_package + guided', () => {
-  assert.equal(
-    mobileArrivalGuidedPhotosHref(42, { back: '/m/scan', title: '1Z999' }),
-    '/m/r/42/photos?stage=arrival_package&guided=1&back=%2Fm%2Fscan&title=1Z999',
-  );
-  assert.equal(
-    mobileArrivalGuidedPhotosHref(7),
-    '/m/r/7/photos?stage=arrival_package&guided=1',
-  );
 });
 
 test('parseArrivalGuidedStep accepts box_exterior and defaults to shipping_label', () => {

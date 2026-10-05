@@ -19,7 +19,6 @@ import {
   MessageSquareText,
   NotebookPen,
   Phone,
-  Ticket,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -40,30 +39,29 @@ import type { TaskTimelineKind } from '@/lib/tasks/task-timeline';
 
 // ── views (the left pills, `?tab=`) ─────────────────────────────────────────
 
-export const TASK_BOARD_VIEWS = ['all', 'task', 'ticket', 'checklist', 'project'] as const;
+export const TASK_BOARD_VIEWS = ['all', 'task', 'checklist', 'project'] as const;
 export type TaskBoardView = (typeof TASK_BOARD_VIEWS)[number];
 
 /**
- * Owner 2026-09-29: four parents in the house sidebar — All tasks · Support ·
- * Daily checklist · Long-term projects (`sidebar-navigation.ts` home). `task`
- * (standalone work, no ticket) is a saved view under All tasks.
+ * The house sidebar's parents — All tasks · Daily checklist · Long-term
+ * projects (`sidebar-navigation.ts` home). `task` (handed-over work, not the
+ * checklist) is a saved view under All tasks. Support lives on /support.
  */
 export const TASK_BOARD_VIEW_LABEL: Readonly<Record<TaskBoardView, string>> = {
   all: 'All tasks',
   task: 'Standalone tasks',
-  ticket: 'Support',
   checklist: 'Daily checklist',
   project: 'Long-term projects',
 };
 
 // ── row type (the glyph each row leads with) ───────────────────────────────
 
-export const TASK_BOARD_ROW_TYPES = ['checklist', 'ticket', 'project', 'task'] as const;
+export const TASK_BOARD_ROW_TYPES = ['checklist', 'project', 'task'] as const;
 export type TaskBoardRowType = (typeof TASK_BOARD_ROW_TYPES)[number];
 
 /**
  * The ONE type → face map: the row glyph and the sidebar wear the same hue,
- * so Everything sorts checklist vs ticket vs project vs task by colour.
+ * so Everything sorts checklist vs project vs task by colour.
  * `ink` paints the glyph (≥3:1 as a graphic); `text` paints the type WORD on
  * line 2 (≥4.5:1 on the card, WCAG AA for 11px text); `hint` is the hover.
  */
@@ -76,13 +74,6 @@ export const TASK_BOARD_TYPE_FACE: Readonly<
     text: 'text-emerald-700 dark:text-emerald-300',
     label: 'Daily checklist',
     hint: 'Daily checklist — the team ticks it off each day',
-  },
-  ticket: {
-    icon: Ticket,
-    ink: 'text-orange-600 dark:text-orange-400',
-    text: 'text-orange-700 dark:text-orange-300',
-    label: 'Support',
-    hint: 'Support ticket follow-up — a customer is waiting on us',
   },
   project: {
     icon: FolderKanban,
@@ -100,10 +91,9 @@ export const TASK_BOARD_TYPE_FACE: Readonly<
   },
 };
 
-/** Checklist first (its store), then support work (a ticket or a repair ticket — owner 2026-09-30: repairs are support tickets), then project work, else a task. */
-export function taskBoardRowType(row: Pick<TaskBoardRow, 'source' | 'ticket' | 'repair' | 'project'>): TaskBoardRowType {
+/** Checklist first (its store), then project work, else a task. */
+export function taskBoardRowType(row: Pick<TaskBoardRow, 'source' | 'project'>): TaskBoardRowType {
   if (row.source === 'checklist') return 'checklist';
-  if (row.ticket != null || row.repair != null) return 'ticket';
   if (row.project != null) return 'project';
   return 'task';
 }
@@ -112,7 +102,7 @@ export function taskBoardRowType(row: Pick<TaskBoardRow, 'source' | 'ticket' | '
  * The record's Timeline rows wear the same face grammar as the board rows:
  * `ink` paints the glyph (≥3:1), `text` the kind WORD on line 2 (≥4.5:1 on the
  * card and the cursor fill, both themes), `label` is that word. A ticket
- * comment wears the board's own ticket face; a created row the task face.
+ * comment wears orange; a created row the task face.
  */
 export const TASK_TIMELINE_KIND_FACE: Readonly<
   Record<TaskTimelineKind, { icon: LucideIcon; ink: string; text: string; label: string }>
@@ -122,8 +112,8 @@ export const TASK_TIMELINE_KIND_FACE: Readonly<
   note: { icon: NotebookPen, ink: 'text-slate-600 dark:text-slate-400', text: 'text-slate-700 dark:text-slate-300', label: 'Note' },
   ticket: {
     icon: MessageSquareText,
-    ink: TASK_BOARD_TYPE_FACE.ticket.ink,
-    text: TASK_BOARD_TYPE_FACE.ticket.text,
+    ink: 'text-orange-600 dark:text-orange-400',
+    text: 'text-orange-700 dark:text-orange-300',
     label: 'Ticket',
   },
   created: { icon: CirclePlus, ink: TASK_BOARD_TYPE_FACE.task.ink, text: TASK_BOARD_TYPE_FACE.task.text, label: 'Created' },
@@ -133,7 +123,7 @@ export const TASK_TIMELINE_KIND_FACE: Readonly<
   alert: { icon: BellRing, ink: 'text-fuchsia-600 dark:text-fuchsia-400', text: 'text-fuchsia-700 dark:text-fuchsia-300', label: 'Alert' },
 };
 
-/** `?tab=` → view. Unknown (and the retired `task_ticket`) read as Everything. */
+/** `?tab=` → view. Unknown (and the retired `task_ticket`) read as Everything; `ticket` forwards to /support at `/` before the board mounts. */
 export function parseTaskBoardView(raw: string | null | undefined): TaskBoardView {
   return (TASK_BOARD_VIEWS as readonly string[]).includes(raw ?? '') ? (raw as TaskBoardView) : 'all';
 }
@@ -468,11 +458,8 @@ export interface TaskBoardGroup {
   rows: TaskBoardRow[];
 }
 
-/** Type group headings: the sidebar's names, except the ticket group reads as the work it is. */
-const TYPE_GROUP_LABEL: Readonly<Record<TaskBoardRowType, string>> = {
-  ...TASK_BOARD_VIEW_LABEL,
-  ticket: 'Support follow-ups',
-};
+/** Type group headings: the sidebar's names. */
+const TYPE_GROUP_LABEL: Readonly<Record<TaskBoardRowType, string>> = TASK_BOARD_VIEW_LABEL;
 
 function bucketed<K extends string>(
   rows: readonly TaskBoardRow[],
@@ -495,7 +482,7 @@ function bucketed<K extends string>(
 
 /**
  * Group by: ordered groups over already-ordered rows; empty groups drop.
- * Type in board order (checklist · Support follow-ups · Long-term projects ·
+ * Type in board order (checklist · Long-term projects ·
  * Standalone tasks); status in `TASK_STATUSES` order; urgency in time order;
  * project busiest first, then No project; none = one group.
  */
@@ -547,9 +534,7 @@ export function taskBoardViewMatches(row: TaskBoardRow, view: TaskBoardView): bo
     case 'checklist':
       return row.source === 'checklist';
     case 'task':
-      return row.source === 'task' && row.ticket == null && row.repair == null;
-    case 'ticket':
-      return row.ticket != null || row.repair != null;
+      return row.source === 'task';
     case 'project':
       return row.project != null;
   }
@@ -584,7 +569,7 @@ export function taskBoardFindMatches(row: TaskBoardRow, query: string): boolean 
 
 /** Open count per view — what each sidebar pill promises a click would show. */
 export function taskBoardViewCounts(rows: readonly TaskBoardRow[]): Record<TaskBoardView, number> {
-  const counts = { all: 0, task: 0, ticket: 0, checklist: 0, project: 0 } satisfies Record<TaskBoardView, number>;
+  const counts = { all: 0, task: 0, checklist: 0, project: 0 } satisfies Record<TaskBoardView, number>;
   for (const row of rows) {
     if (!isTaskBoardOpen(row)) continue;
     for (const view of TASK_BOARD_VIEWS) if (taskBoardViewMatches(row, view)) counts[view] += 1;

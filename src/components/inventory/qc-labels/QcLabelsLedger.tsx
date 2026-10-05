@@ -2,9 +2,9 @@
 
 /**
  * Inventory › **QC labels** — one record per serial unit carrying a printed QC
- * / pre-box label (template `product`), as the one-row triage list
- * (`TriageCardList density="row"`, owner 2026-09-28): state · unit id · title
- * · SN · SKU · order · reprints → Pick / Pack. The sticker's DataMatrix is the
+ * / pre-box label (template `product`), as the canonical spreadsheet:
+ * status · label id · product · serial · SKU · location · order · print facts.
+ * The sticker's DataMatrix is the
  * unit's `unit_uid` (else `U-{serial}`); the picker scans it and the pick
  * binds that serial to the order (`linkPickedSerialToOrder`), which the record
  * shows as "Serial on order". Print = a unit's label, from a scan or a typed
@@ -13,55 +13,61 @@
  * sticker is a `label_print_jobs` row.
  */
 
-import { memo, useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
+import { DataTable } from '@/components/tables/DataTable';
+import { PrepackFlow } from '@/features/prepack/PrepackFlow';
+import { DeskRecordLayout, DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
+import { MobileFirstFrame } from '@/design-system/components/MobileFirstFrame';
 import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
 import { useQcUnitRecord } from '@/components/qc/qc-unit-record';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import {
   RecordLedgerSummaryPane,
-  RecordLedgerTally,
   type RecordLedgerSummary,
 } from '@/design-system/components/record-ledger/RecordLedgerSummary';
-import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
-import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
-import { TriageRow, type TriageRowFace } from '@/design-system/components/triage-card-list/TriageRow';
-import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
-import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
-import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
-import { QC_LABEL_LIFECYCLE } from '@/design-system/tokens/qc-label-lifecycle';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { RowGroup } from '@/lib/group-rows';
-import { qcLabelHandle, qcLabelStage, type QcLabelRow } from '@/lib/labels/qc-label-row';
+import { qcLabelHandle, qcLabelStage, qcLabelUsesInternalSerial, type QcLabelRow } from '@/lib/labels/qc-label-row';
 import { QC_LABELS_PATH } from '@/lib/labels/qc-label-views';
+import { PREPACK_QUERY_KEYS, prepackHref } from '@/lib/nav/route-tree';
 import { useNavIntent } from '@/lib/nav/use-nav-intent';
+import { parsePrepackRouteState } from '@/lib/prepack/url';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
-import { QC_LABELS_VIEW } from '@/lib/triage/views';
-import { QC_LABEL_NEXT, QcLabelPrintForm, RECORD_ROOT_CLASS, qcLabelReprintVerb, stamp } from './QcLabelRecord';
-
-const VIEW = QC_LABELS_VIEW;
-
-/** The plane's record id while it holds the Print form (no unit carries it). */
-const PRINT_ID = -1;
-
-/** No chips: the view (`?view=`) and Find are the sidebar's, narrowed on the server. */
-const NO_CHIPS: readonly never[] = [];
+import { RECORD_ROOT_CLASS, qcLabelReprintVerb } from './QcLabelRecord';
+import { QcLabelGridRow } from './grid/QcLabelGridRow';
+import { QC_LABELS_TABLE_BINDING } from './grid/qc-labels-table-definition';
+import type { QcLabelsGridColumn, QcLabelsGridColumnKey } from './grid/qc-labels-grid-layout';
+import { PrepackProductsColumn } from './PrepackProductsColumn';
+import { PrepackPrintedColumn } from './PrepackPrintedColumn';
+import { PrepackSerialField } from './PrepackSerialField';
 
 const qcRowId = (row: QcLabelRow): number => row.serial_unit_id;
-
-type QcRowModel = { key: string; ids: readonly number[]; lead: QcLabelRow };
 
 export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[]; totalCount: number; capped: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [printing, setPrinting] = useState(false);
+  const taskIsPrepack = searchParams.get('task') === 'prepack';
+  const [printing, setPrinting] = useState(taskIsPrepack);
+  /** A side-pane click asks the form to load a product; `seq` makes a repeat click a new request. */
+  const [productRequest, setProductRequest] = useState<{ catalogId: number; seq: number } | null>(null);
 
-  /** The open record moves within the loaded list: History API, no server round-trip (J / K stay instant). */
-  const writeOpen = useCallback(
-    (key: string | null) => {
+  useEffect(() => {
+    setPrinting(taskIsPrepack);
+  }, [taskIsPrepack]);
+
+  /** Records and the full-canvas prepack task share one URL state writer; leaving the task drops every prepack key. */
+  const writeSurface = useCallback(
+    ({ open, task }: { open?: string | null; task?: 'prepack' | null }) => {
       const params = readLiveSearchParams(searchParams.toString());
-      if (key) params.set('open', key);
+      if (task) {
+        params.delete('open');
+        window.history.replaceState(null, '', prepackHref('desktop', {}, params));
+        return;
+      }
+      for (const key of PREPACK_QUERY_KEYS) params.delete(key);
+      if (open) params.set('open', open);
       else params.delete('open');
       const qs = params.toString();
       window.history.replaceState(null, '', qs ? `${QC_LABELS_PATH}?${qs}` : QC_LABELS_PATH);
@@ -69,14 +75,16 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
     [searchParams],
   );
 
-  const cut = useTriageCut({ statusKeys: NO_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
-  const { filterBands } = cut;
-  const allBands = useMemo<[string, RowGroup<QcLabelRow>[]][]>(
-    () => (rows.length ? [['labels', rows.map((row) => ({ key: String(row.serial_unit_id), rows: [row] }))]] : []),
-    [rows],
+  const [sort, setSort] = useState<QcLabelsGridColumnKey>('last-printed');
+  const [dir, setDir] = useState<GridSortDir>('desc');
+  const orderedRows = useMemo(
+    () => [...rows].sort((a, b) => compareQcLabelRows(a, b, sort, dir)),
+    [rows, sort, dir],
   );
-  const bands = useMemo(() => filterBands(allBands, (group) => group.key, () => NO_CHIPS), [filterBands, allBands]);
-  const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
+  const bands = useMemo<[string, RowGroup<QcLabelRow>[]][]>(
+    () => (orderedRows.length ? [['labels', orderedRows.map((row) => ({ key: String(row.serial_unit_id), rows: [row] }))]] : []),
+    [orderedRows],
+  );
 
   const openKey = searchParams.get('open')?.trim() || null;
   const openUnitId = openKey && /^\d+$/.test(openKey) ? Number(openKey) : null;
@@ -87,14 +95,14 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
   const openRow = useCallback(
     (row: QcLabelRow) => {
       setPrinting(false);
-      writeOpen(String(row.serial_unit_id));
+      writeSurface({ open: String(row.serial_unit_id) });
     },
-    [writeOpen],
+    [writeSurface],
   );
   const closeRecord = useCallback(() => {
     setPrinting(false);
-    writeOpen(null);
-  }, [writeOpen]);
+    writeSurface({});
+  }, [writeSurface]);
 
   usePublishRecordCursor({
     surfaceId: 'qc-label-rows',
@@ -107,41 +115,11 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
     onClose: closeRecord,
   });
 
-  // The sidebar's Print verb (`qc-labels.print`) opens the Print form.
+  // The sidebar's Print verb opens the complete shared prepack + print task on the desk.
   useNavIntent('qc-labels:print', () => {
     setPrinting(true);
-    writeOpen(null);
+    writeSurface({ task: 'prepack' });
   });
-
-  const selection = useLocalTriageSelection(qcRowId);
-  const family = useMemo(
-    () =>
-      triageFamily(VIEW, {
-        rowId: qcRowId,
-        groupKey: (group: RowGroup<QcLabelRow>) => group.key,
-        cardModel: (group: RowGroup<QcLabelRow>): QcRowModel => {
-          const lead = group.rows[0]!;
-          return { key: group.key, ids: [lead.serial_unit_id], lead };
-        },
-        // A Find naming exactly one sticker (unit id) or serial opens it.
-        exactFind: (query: string, model: QcRowModel) =>
-          qcLabelHandle(model.lead).toLowerCase() === query || model.lead.serial_number?.toLowerCase() === query,
-        renderCard: (props: TriageCardSlotProps<QcLabelRow, QcRowModel>) => <QcLabelListRow {...props} />,
-      }),
-    [],
-  );
-
-  const feed: TriageFeed<QcLabelRow> = {
-    bands,
-    allBands,
-    painted,
-    sectioned: false,
-    loading: false,
-    fetching: false,
-    search: { value: searchParams.get('q') ?? '', pending: false },
-    selection,
-    open: { id: printing ? PRINT_ID : openUnitId, open: openRow, close: closeRecord },
-  };
 
   const summary = useMemo(() => qcLabelSummary(rows), [rows]);
   const qc = useQcUnitRecord(printing ? null : (openRecord?.serial_unit_id ?? null), {
@@ -156,65 +134,118 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
   );
   const narrowed = Boolean(searchParams.get('q')?.trim()) || Boolean(searchParams.get('view'));
 
-  return (
-    <TriageCardList
-      density="row"
-      family={family}
-      feed={feed}
-      cut={cut}
-      // No chips: the view and Find are the sidebar's.
-      summary={null}
-      bulk={<span className="truncate text-sm text-text-muted">Open one to reprint it</span>}
-      // The list's tally rides one line under the bar (the Stock desk's shape).
-      banner={
-        <div className="flex min-w-0 items-center gap-3 pb-2 pl-4" data-testid="qc-labels-tally">
-          {capped ? (
-            <p className="truncate text-sm text-text-warning" data-testid="qc-labels-capped">
-              First {rows.length} of {totalCount} labels — narrow the search
-            </p>
-          ) : null}
-          <span className="ml-auto flex">
-            <RecordLedgerTally summary={summary} />
-          </span>
-        </div>
-      }
-      searchEmpty={narrowed ? <p className="text-sm text-text-muted">No QC labels match — clear the search or pick All labels.</p> : null}
-      allClear={<TriageAllClear title="No QC labels printed yet" detail="Print one from a scanned serial." />}
-      record={{
-        // The record is the UNIT: `# SN … · SKU · tested`; its sticker identity reads under Label.
-        title: printing ? 'Print QC label' : (slot?.title ?? (openRecord ? qcLabelHandle(openRecord) : 'Not in this list')),
-        actions: printing ? undefined : slot?.actions,
-        noun: printing ? 'print form' : 'QC label',
-        testId: 'qc-label-record',
-        summary: <RecordLedgerSummaryPane summary={summary} />,
-        strip: null,
-        view: printing ? (
-          <QcLabelPrintForm
-            onPrinted={() => {
-              setPrinting(false);
-              router.refresh();
-            }}
-          />
-        ) : slot ? (
-          slot.view
-        ) : openRecord || openKey ? (
-          <div className={RECORD_ROOT_CLASS}>
-            <DeskRecordLayout
-              main={
-                <EvidenceNotice tone={openRecord && !qc.error ? undefined : 'warn'}>
-                  {!openRecord
-                    ? 'This label is not in the current list.'
-                    : qc.error
-                      ? `The unit could not be read — ${qc.error}`
-                      : 'Reading the unit…'}
-                </EvidenceNotice>
-              }
+  if (printing) {
+    const activeCatalogId = Number(searchParams.get('catalogId')) || null;
+    const loadProduct = (catalogId: number) => setProductRequest((current) => ({ catalogId, seq: (current?.seq ?? 0) + 1 }));
+    return (
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col" data-testid="qc-labels-prepack-task">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 xl:grid-cols-[minmax(16rem,1fr)_minmax(25rem,34rem)_minmax(16rem,1fr)]">
+          <PrepackProductsColumn activeCatalogId={activeCatalogId} onChoose={(product) => loadProduct(product.id)} />
+          <MobileFirstFrame testId="qc-labels-prepack-frame" width="column">
+            <PrepackFlow
+              surface="desktop"
+              initial={parsePrepackRouteState(searchParams)}
+              serialEntry={PrepackSerialField}
+              productRequest={productRequest}
+              onExit={closeRecord}
+              onPrinted={() => router.refresh()}
             />
-          </div>
-        ) : null,
+          </MobileFirstFrame>
+          <PrepackPrintedColumn rows={rows} onChoose={loadProduct} />
+        </div>
+      </div>
+    );
+  }
+
+  const list = (
+    <DataTable<QcLabelRow, QcLabelsGridColumnKey, QcLabelsGridColumn>
+      binding={QC_LABELS_TABLE_BINDING}
+      rows={orderedRows}
+      orderGroupsByDate={bands}
+      getRowId={(row) => String(row.serial_unit_id)}
+      loading={false}
+      emptyMessage="No QC labels have been printed yet. Print one from a scanned unit label."
+      searchEmptyMessage="No QC labels match. Clear Find or choose All."
+      isNarrowed={narrowed}
+      totalCount={totalCount}
+      sort={sort}
+      dir={dir}
+      onSortChange={(key, nextDir) => {
+        setSort(key);
+        setDir(nextDir);
       }}
+      testId="qc-labels-table"
+      ariaLabel="QC product labels"
+      bodyPrefix={capped ? (
+        <p className="border-b border-border-soft px-3 py-2 text-role-caption text-text-warning" data-testid="qc-labels-capped">
+          Showing the first {rows.length} of {totalCount} labels. Narrow Find to load a specific label.
+        </p>
+      ) : null}
+      renderGroup={(group, _stripe, { columns }) => (
+        <>{group.rows.map((row) => <QcLabelGridRow key={row.serial_unit_id} row={row} columns={columns} onOpen={openRow} />)}</>
+      )}
+      renderRow={(row, _stripe, { columns }) => (
+        <QcLabelGridRow key={row.serial_unit_id} row={row} columns={columns} onOpen={openRow} />
+      )}
     />
   );
+
+  const recordView = slot ? slot.view : openRecord || openKey ? (
+    <div className={RECORD_ROOT_CLASS}>
+      <DeskRecordLayout
+        main={
+          <EvidenceNotice tone={openRecord && !qc.error ? undefined : 'warn'}>
+            {!openRecord
+              ? 'This label is not in the current list.'
+              : qc.error
+                ? `The unit could not be read — ${qc.error}`
+                : 'Reading the unit…'}
+          </EvidenceNotice>
+        }
+      />
+    </div>
+  ) : null;
+
+  return (
+    <DeskRecordPlane
+      open={openUnitId != null}
+      onClose={closeRecord}
+      title={slot?.title ?? (openRecord ? qcLabelHandle(openRecord) : 'QC label')}
+      actions={slot?.actions}
+      recordNoun="QC label"
+      recordKey={openUnitId == null ? null : String(openUnitId)}
+      testId="qc-label-record"
+      list={list}
+      summary={<RecordLedgerSummaryPane summary={summary} />}
+      splitPane="open"
+    >
+      {recordView}
+    </DeskRecordPlane>
+  );
+}
+
+function compareQcLabelRows(
+  a: QcLabelRow,
+  b: QcLabelRow,
+  sort: QcLabelsGridColumnKey,
+  dir: GridSortDir,
+): number {
+  const sign = dir === 'asc' ? 1 : -1;
+  const text = (left: string | null | undefined, right: string | null | undefined) =>
+    String(left ?? '').localeCompare(String(right ?? ''), undefined, { numeric: true, sensitivity: 'base' });
+  let value = 0;
+  switch (sort) {
+    case 'status': value = text(qcLabelStage(a), qcLabelStage(b)); break;
+    case 'label': value = text(qcLabelHandle(a), qcLabelHandle(b)); break;
+    case 'product': value = text(a.title, b.title); break;
+    case 'serial': value = text(qcLabelUsesInternalSerial(a.serial_number) ? '' : a.serial_number, qcLabelUsesInternalSerial(b.serial_number) ? '' : b.serial_number); break;
+    case 'sku': value = text(a.sku, b.sku); break;
+    case 'location': value = text(a.location, b.location); break;
+    case 'order': value = text(a.order_label ?? String(a.order_id ?? ''), b.order_label ?? String(b.order_id ?? '')); break;
+    case 'prints': value = a.print_count - b.print_count; break;
+    case 'last-printed': value = text(a.last_printed_at, b.last_printed_at); break;
+  }
+  return sign * (value || b.serial_unit_id - a.serial_unit_id);
 }
 
 function qcLabelSummary(rows: readonly QcLabelRow[]): RecordLedgerSummary {
@@ -237,46 +268,3 @@ function qcLabelSummary(rows: readonly QcLabelRow[]): RecordLedgerSummary {
     ],
   };
 }
-
-/** One labelled unit as a row: state · unit id · title · SN · SKU · order · reprints → Pick / Pack. */
-const QcLabelListRow = memo(function QcLabelListRow(props: TriageCardSlotProps<QcLabelRow, QcRowModel>) {
-  const row = props.model.lead;
-  const face = useMemo<TriageRowFace>(() => {
-    const stage = qcLabelStage(row);
-    const handle = qcLabelHandle(row);
-    const order = row.order_label ?? (row.order_id != null ? String(row.order_id) : null);
-    const next = QC_LABEL_NEXT[stage] ?? null;
-    return {
-      state: QC_LABEL_LIFECYCLE[stage],
-      identity: handle,
-      identityWidth: 'long',
-      title: row.title,
-      facts: [
-        { id: 'serial', label: 'SN', value: row.serial_number ? { kind: 'code', text: row.serial_number, title: `SN ${row.serial_number}` } : null, width: 'code' },
-        { id: 'sku', label: 'SKU', value: row.sku ? { kind: 'code', text: row.sku, title: `SKU ${row.sku}` } : null, width: 'code' },
-        {
-          id: 'order',
-          value: order ? `#${order}` : null,
-          width: 'short',
-          // Held for the order, serial not bound yet: the pick scan of this label closes the loop.
-          tone: row.serial_on_order ? 'default' : 'warn',
-          tip: order ? (row.serial_on_order ? `Serial on order #${order}` : `Held for #${order} — joins when picked`) : undefined,
-        },
-        {
-          id: 'prints',
-          value: row.reprint_count > 0 ? `Printed ${row.print_count}×` : null,
-          width: 'short',
-          tone: 'muted',
-          tip: row.reprint_count > 0 ? `Reprinted ${row.reprint_count}×, last ${stamp(row.last_printed_at) ?? '—'}` : undefined,
-        },
-      ],
-      next: next ? { label: next } : null,
-      aria: {
-        row: `QC label ${handle}, serial ${row.serial_number ?? 'none'}, ${row.title}`,
-        open: `Open QC label ${handle}`,
-        check: `Select QC label ${handle}`,
-      },
-    };
-  }, [row]);
-  return <TriageRow {...props} face={face} testIdPrefix={VIEW.testIdPrefix} />;
-});

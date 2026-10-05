@@ -3,6 +3,7 @@ import { publishOrderChanged, publishShipmentChanged } from '@/lib/realtime/publ
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { tenantQuery, transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { recordOrderCheckInMilestonesForShipment } from '@/lib/support/check-ins/milestones-db';
 
 /** After a shipment tracking status is updated (webhook or sync job), notify all clients so the UI live-updates like the carrier's own website. */
 export async function publishShipmentStatusChange({
@@ -30,6 +31,13 @@ export async function publishShipmentStatusChange({
     await publishShipmentChanged({ organizationId: publishOrgId, shipmentId, trackingNumber, carrier, statusCategory, source });
   } catch (error) {
     console.error('[publish-on-status-change] shipment publish failed:', error);
+  }
+
+  // (1b) Post-purchase check-in milestone: a delivery projects the owning
+  // orders' check-in (tenant-explicit only — never the transitional org).
+  // Never throws; the sweep re-projects anything a failure here missed.
+  if (orgId && statusCategory === 'DELIVERED') {
+    await recordOrderCheckInMilestonesForShipment(orgId, shipmentId);
   }
 
   // (2) Order-linked views.

@@ -10,11 +10,10 @@ import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
 import { Button } from '@/design-system/primitives';
 import { StaffAvatar } from '@/components/identity';
-import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
-import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
+import { StaffBadge } from '@/design-system/components/StaffBadge';
 import { useAuthPermissions } from '@/components/sidebar/dashboard-sidebar-hooks';
 import { LIVE_FEED_PATH } from '@/lib/live-feed/route';
-import { LIVE_FEED_PERMISSIONS } from '@/lib/live-feed/statuses';
+import { LIVE_FEED_PERMISSION } from '@/lib/live-feed/stages';
 import { cn } from '@/utils/_cn';
 
 interface LiveFeedCardProps {
@@ -66,11 +65,10 @@ function timeAgo(iso: string): string {
 
 export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: LiveFeedCardProps) {
   const rows = (feed ?? []).slice(0, 12);
-  useStaffColorVersion();
   const router = useRouter();
-  // The feed's own page gate (either direction) — never offer a door that lands on Not authorized.
+  // The feed's own page gate — never offer a door that lands on Not authorized.
   const permissions = useAuthPermissions();
-  const canOpenFeed = LIVE_FEED_PERMISSIONS.some((permission) => permissions?.has(permission) === true);
+  const canOpenFeed = permissions?.has(LIVE_FEED_PERMISSION) === true;
 
   return (
     <section>
@@ -169,13 +167,12 @@ export function LiveFeedCard({ feed, isLoading, ablyStatus = 'connected' }: Live
                             <StaffAvatar
                               staffId={row.staff_id}
                               name={row.actor_name}
+                              colorHex={row.actor_color_hex}
                               size="xs"
                               ring={false}
                             />
                           ) : null}
-                          <span className={cn('truncate font-semibold', stationThemeColors[getStaffThemeById(row.staff_id ?? null)].text)}>
-                            {row.actor_name}
-                          </span>
+                          <StaffBadge staffId={row.staff_id ?? null} name={row.actor_name} colorHex={row.actor_color_hex} className="truncate font-semibold" />
                         </p>
                       )}
                     </div>

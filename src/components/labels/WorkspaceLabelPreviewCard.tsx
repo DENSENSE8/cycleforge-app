@@ -3,7 +3,7 @@
 /** Headerless workspace label preview — shared by Unbox and Testing. */
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { useLabelFaceProductSlots } from '@/components/labels/LabelFaceProductSlots';
 import type { LabelFaceSlotHandlers } from '@/components/labels/LabelFaceSlotOverlay';
 import {

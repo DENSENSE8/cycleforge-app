@@ -56,7 +56,7 @@ import {
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { conditionGradeTone } from '@/lib/condition-tone';
-import { platformMetaIconTone, sourcePlatformMeta } from '@/lib/source-platform';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import { toast } from '@/lib/toast';
 import { formatDateKeyShort, formatMonthDayTimePST, toPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
@@ -64,23 +64,15 @@ import { cn } from '@/utils/_cn';
 const dot = <span className="size-1 shrink-0 rounded-mode-pill bg-mode-edge" aria-hidden />;
 
 /**
- * The record header's title — `# number · platform or channel · date` (+ the
- * ticket chip), like `OrderRecordTitle`: the `#` in the platform's tint.
+ * The record header's title — `number · platform or channel · date` (+ the
+ * ticket chip), like `OrderRecordTitle`.
  * An exception is a state (status pill, alerts), never a header word.
  */
 export function RecordTitle({ title, testId = 'record-title' }: { title: RecordModel['title']; testId?: string }) {
   const meta = sourcePlatformMeta(title.platform);
-  const tone = platformMetaIconTone(meta);
   const channel = meta.value ? meta.label : (title.channel ?? null);
   return (
     <span className="flex min-w-max flex-nowrap items-center gap-1 whitespace-nowrap" data-testid={testId}>
-      <span
-        className={cn('shrink-0', meta.value ? tone.className : STATE_TONE_CLASSES.info.text)}
-        style={meta.value ? tone.style : undefined}
-        aria-hidden
-      >
-        #
-      </span>
       <span className="shrink-0 select-all">{title.ref}</span>
       {channel ? (
         <>

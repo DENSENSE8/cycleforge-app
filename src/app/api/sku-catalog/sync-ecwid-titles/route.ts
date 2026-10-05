@@ -65,9 +65,6 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
     return NextResponse.json({ success: true, matched: 0, updated: 0, message: 'No Ecwid products found' });
   }
 
-  // Build set of Ecwid SKUs for deactivation check
-  const ecwidSkus = new Set(allProducts.map((p) => p.sku));
-
   // Batch update sku_catalog where SKU matches AND Zoho does not own the row
   let updated = 0;
   for (const product of allProducts) {
@@ -88,19 +85,11 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
     if (result.rowCount && result.rowCount > 0) updated++;
   }
 
-  // Deactivate sku_catalog entries that don't exist in Ecwid — THIS org only,
-  // otherwise the sku-string set would deactivate other tenants' catalogs.
-  const skuArray = Array.from(ecwidSkus);
-  const deactivated = await tenantQuery(
-    ctx.organizationId,
-    `UPDATE sku_catalog
-       SET is_active = false, updated_at = NOW()
-       WHERE is_active = true
-         AND organization_id = $2
-         AND sku != ALL($1::text[])`,
-    [skuArray, ctx.organizationId],
-  );
-  const deactivatedCount = deactivated.rowCount || 0;
+  // `sku_catalog` is the shared internal catalog, not an Ecwid mirror. A SKU
+  // absent from one sales channel can still be an active Zoho / warehouse
+  // identity, so this sync may never deactivate it. Ecwid liveness belongs on
+  // its own `sku_platform_ids` mapping.
+  const deactivatedCount: number = 0;
 
   // Titles/images changed → bust cached get-title-by-sku bundles for this org.
   await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.skuCatalog]);

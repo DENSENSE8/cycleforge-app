@@ -46,7 +46,7 @@ const WHEN = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-di
 /** What the card reads and writes of `usePrintStations`. */
 export type PrintStationsPort = Pick<
   PrintStations,
-  'stations' | 'target' | 'orgAssignment' | 'pick' | 'setOrgAssignment' | 'canRenameOthers' | 'rename'
+  'stations' | 'target' | 'orgAssignment' | 'pick' | 'setOrgAssignment' | 'canManage' | 'rename'
 >;
 
 /** Online / offline / never heard — the dot and its words agree. */
@@ -82,7 +82,7 @@ function StationName({ station, port, testId }: { station: PrintStationEntry; po
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const canRename = station.thisComputer || port.canRenameOthers;
+  const canRename = station.thisComputer || port.canManage;
   const unnamed = station.stationName === UNNAMED_PRINT_STATION;
 
   const save = async () => {
@@ -232,7 +232,7 @@ export function PrintStationsCard({ port }: { port: PrintStationsPort }) {
         ) : null}
         <StationRow stock="label" port={port} />
         <StationRow stock="paper" port={port} />
-        {port.canRenameOthers
+        {port.canManage
           ? remote.map((station) => (
               <div key={station.stationId} className="flex min-w-0 items-center gap-2">
                 <span className={cn(RECORD_LABEL_CLASS, 'w-[5.5rem] shrink-0 text-mode-faint')}>Station</span>

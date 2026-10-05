@@ -25,6 +25,14 @@ export const LOCATION_STOCK_ROW_CAP = 5000;
 /** The unit status that means "gone": its last placement is history, not stock. */
 const DEPARTED_UNIT_STATUS = 'SHIPPED';
 
+/**
+ * A ROOM or RACK row is the container places hang under, never an empty place
+ * of its own — even before anything hangs under it (`Zone 5` with no aisles,
+ * a rack with no shelves yet) — and never home to a zero-count placeholder.
+ * Real stock written onto one still shows.
+ */
+const CONTAINER_KIND_SQL = `('ROOM', 'RACK')`;
+
 interface StockByLocationDbRow {
   location_id: number | null;
   location_name: string | null;
@@ -46,6 +54,7 @@ interface StockByLocationDbRow {
   zoho_image_document_id: string | null;
   source: 'bin' | 'unit' | 'exception' | 'empty';
   qty: number;
+  min_qty: number | null;
   last_moved: Date | string | null;
   last_counted: Date | string | null;
   total_count: number;
@@ -53,6 +62,7 @@ interface StockByLocationDbRow {
   in_stock_products: number;
   in_stock_units: number;
   on_hold_pairs: number;
+  low_stock_pairs: number;
   out_pairs: number;
 }
 
@@ -62,6 +72,7 @@ export interface StockScopeCounts {
   inStockProducts: number;
   inStockUnits: number;
   onHoldPairs: number;
+  lowStockPairs: number;
   outPairs: number;
 }
 
@@ -115,14 +126,17 @@ export async function getStockByLocation(args: {
 
   const sql = `
     WITH placed_bins AS NOT MATERIALIZED (
-      -- A zero-count TMP row is a deliberate placement (empty-location photo
-      -- capture) while its location is live; every other zero row is just an
-      -- emptied bin, and a placeholder left at a deleted location is neither.
+      -- A below-threshold row remains operational stock even at zero: it must
+      -- be reachable from Low stock / Out of stock. A zero-count TMP row is
+      -- also a deliberate placement (empty-location photo capture) while its
+      -- location is a live place; one left at a deleted location or on a room
+      -- / rack container is neither, and surfaces as an unlocated placeholder.
       SELECT bc.*
       FROM bin_contents bc
       WHERE bc.organization_id = $1
         AND (
           bc.qty <> 0
+          OR (bc.min_qty IS NOT NULL AND bc.qty <= bc.min_qty)
           OR (
             EXISTS (
               SELECT 1 FROM sku_stock ps
@@ -135,6 +149,7 @@ export async function getStockByLocation(args: {
               WHERE pl.organization_id = bc.organization_id
                 AND pl.id = bc.location_id
                 AND pl.is_active = true
+                AND pl.location_kind NOT IN ${CONTAINER_KIND_SQL}
             )
           )
         )
@@ -146,6 +161,7 @@ export async function getStockByLocation(args: {
         bc.sku                                 AS sku,
         'bin'::text                            AS source,
         bc.qty::int                            AS qty,
+        bc.min_qty::int                        AS min_qty,
         bc.updated_at                          AS last_moved,
         bc.last_counted                        AS last_counted
       FROM placed_bins bc
@@ -157,6 +173,7 @@ export async function getStockByLocation(args: {
         su.sku                                 AS sku,
         'unit'::text                           AS source,
         COUNT(*)::int                          AS qty,
+        NULL::int                              AS min_qty,
         MAX(su.updated_at)                     AS last_moved,
         NULL::timestamptz                      AS last_counted
       FROM serial_units su
@@ -185,6 +202,7 @@ export async function getStockByLocation(args: {
         ss.sku                                 AS sku,
         'exception'::text                      AS source,
         COALESCE(ss.stock, 0)::int             AS qty,
+        NULL::int                              AS min_qty,
         ss.updated_at                          AS last_moved,
         NULL::timestamptz                      AS last_counted
       FROM sku_stock ss
@@ -202,6 +220,7 @@ export async function getStockByLocation(args: {
         ''::text                               AS sku,
         'empty'::text                          AS source,
         0::int                                 AS qty,
+        NULL::int                              AS min_qty,
         NULL::timestamptz                      AS last_moved,
         NULL::timestamptz                      AS last_counted
       FROM locations l
@@ -220,6 +239,7 @@ export async function getStockByLocation(args: {
         )
         -- A location other locations hang under (a room node such as Zone 3's
         -- "RECEIVING", a movable rack) is the container, not an empty place.
+        AND l.location_kind NOT IN ${CONTAINER_KIND_SQL}
         AND NOT EXISTS (
           SELECT 1 FROM locations child
           WHERE child.organization_id = l.organization_id
@@ -260,6 +280,7 @@ export async function getStockByLocation(args: {
         zi.image_document_id                   AS zoho_image_document_id,
         p.source,
         p.qty,
+        p.min_qty,
         p.last_moved,
         p.last_counted,
         l.sort_order                           AS location_sort_order
@@ -346,6 +367,7 @@ export async function getStockByLocation(args: {
         COUNT(DISTINCT m.sku) FILTER (WHERE m.qty > 0)::int                                             AS in_stock_products,
         COALESCE(SUM(m.qty) FILTER (WHERE m.qty > 0), 0)::int                                           AS in_stock_units,
         COUNT(*) FILTER (WHERE COALESCE(m.is_provisional, false))::int                                   AS on_hold_pairs,
+        COUNT(*) FILTER (WHERE m.min_qty IS NOT NULL AND m.qty <= m.min_qty)::int                         AS low_stock_pairs,
         COUNT(*) FILTER (WHERE m.qty <= 0 AND m.source <> 'empty')::int                                  AS out_pairs
       FROM scoped_matches m
     )
@@ -370,12 +392,14 @@ export async function getStockByLocation(args: {
       m.zoho_image_document_id,
       m.source,
       m.qty,
+      m.min_qty,
       m.last_moved,
       m.last_counted,
       c.in_stock_pairs,
       c.in_stock_products,
       c.in_stock_units,
       c.on_hold_pairs,
+      c.low_stock_pairs,
       c.out_pairs,
       COUNT(*) OVER ()::int                    AS total_count
     FROM scoped_matches m
@@ -465,6 +489,7 @@ export async function getStockByLocation(args: {
         row.cover_photo_id != null ? photoContentUrl(Number(row.cover_photo_id)) : null,
       source: row.source,
       qty: Number(row.qty) || 0,
+      min_qty: row.min_qty == null ? null : Number(row.min_qty),
       last_moved: isoOrNull(row.last_moved),
       last_counted: isoOrNull(row.last_counted),
       };
@@ -475,6 +500,7 @@ export async function getStockByLocation(args: {
       inStockProducts: Number(result.rows[0]?.in_stock_products) || 0,
       inStockUnits: Number(result.rows[0]?.in_stock_units) || 0,
       onHoldPairs: Number(result.rows[0]?.on_hold_pairs) || 0,
+      lowStockPairs: Number(result.rows[0]?.low_stock_pairs) || 0,
       outPairs: Number(result.rows[0]?.out_pairs) || 0,
     },
   };
@@ -488,7 +514,7 @@ export async function getStockRoomFacets(orgId: OrgId): Promise<LocationStockRoo
       SELECT
         COALESCE(${derivedRoomLabelSql('l', 'droom')}, '(none)') AS id,
         -- Count places, not the container nodes they hang under (same rule as empty_locations).
-        (COUNT(*) FILTER (WHERE NOT EXISTS (
+        (COUNT(*) FILTER (WHERE l.location_kind NOT IN ${CONTAINER_KIND_SQL} AND NOT EXISTS (
           SELECT 1 FROM locations child
           WHERE child.organization_id = l.organization_id AND child.parent_id = l.id AND child.is_active = true
         )))::int                                     AS count

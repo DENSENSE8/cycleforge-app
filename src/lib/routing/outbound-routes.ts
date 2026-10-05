@@ -8,11 +8,8 @@ import { parseFbaModeWire } from '@/lib/fba/fba-modes';
 import { EXCEPTION_KIND_PARAM, EXCEPTION_KINDS } from '@/lib/exceptions/types';
 import { EXCEPTION_RECORD_ROUTE_PARAMS } from './desk-page-routes';
 import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
-import {
-  OUTBOUND_LOCATE_REFS_PARAM,
-  OUTBOUND_LOCATE_STATUSES,
-  OUTBOUND_LOCATE_STATUS_PARAM,
-} from '@/lib/nav/locate/outbound-params';
+import { OUTBOUND_LOCATE_REFS_PARAM, OUTBOUND_LOCATE_STATUS_PARAM } from '@/lib/nav/locate/outbound-params';
+import { paramLocateBucket } from './locate-bucket-param';
 import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
 import {
   SHIPPING_EXCEPTIONS_PATH,
@@ -61,15 +58,16 @@ const QUEUE_TRIAGE_PARAMS = {
 /**
  * The sidebar's paste-a-list on every desk view (`NavSearch.locate`,
  * `GET /api/nav/locate`): the pasted refs (deduped + capped, the Check's
- * splitter) and the bucket filter over them (a desk view id).
+ * splitter) and the bucket filter over them (a desk view id, or another
+ * section's `<locator>:<id>` for a ref found elsewhere — `paramLocateBucket`).
  */
 const DESK_LOCATE_PARAMS = {
   [OUTBOUND_LOCATE_REFS_PARAM]: paramCanonical((raw) => serializeRefIn(parseRefInParam(raw).refs) || null),
-  [OUTBOUND_LOCATE_STATUS_PARAM]: paramEnum(OUTBOUND_LOCATE_STATUSES),
+  [OUTBOUND_LOCATE_STATUS_PARAM]: paramLocateBucket('outbound'),
 } as const;
 
 /** Every shipping mode reads the same operator-level bits. */
-const SHIPPING_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
+const SHIPPING_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset', 'recordBack'] as const;
 
 /** Search box + display sort are the same question on all shipping modes. */
 const SHIPPING_COMMON = {
@@ -229,10 +227,9 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/shipping/exceptions` — FBM › Exceptions: the Exceptions hub list locked
- * to Fulfillment (`FulfillmentExceptionsDoor`). Search is desk-local
- * (`useDeskSearch`), never a URL param. `order` is the legacy deep link the
- * page redirects to its exception's `record` before anything paints.
+ * `/shipping/exceptions` — compatibility-only redirect to the global
+ * Exceptions page. `order` is retained long enough for the server redirect to
+ * resolve the exact global exception record; no Exceptions UI mounts here.
  */
 const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_EXCEPTIONS_PATH,

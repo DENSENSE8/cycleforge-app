@@ -52,10 +52,15 @@ export function GlobalDesktopSkuScanner() {
     goToSku(lastScannedValue);
   }, [lastScannedValue, acceptScan, stopScanning, goToSku]);
 
-  const handleOpenScanner = useCallback(async () => {
+  // Started from the effect below, once the overlay's <video> has mounted —
+  // calling startScanning in the same tick as setShowScanner finds no video.
+  const handleOpenScanner = useCallback(() => {
     setShowScanner(true);
-    await startScanning();
-  }, [startScanning]);
+  }, []);
+
+  useEffect(() => {
+    if (showScanner) void startScanning();
+  }, [showScanner, startScanning]);
 
   const handleCloseScanner = useCallback(async () => {
     setShowScanner(false);

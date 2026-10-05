@@ -1,5 +1,5 @@
 /**
- * Arrival mobile flow — classify URLs + photo handoff.
+ * Arrival mobile flow — classify URLs.
  */
 
 import test from 'node:test';
@@ -8,7 +8,6 @@ import {
   ARRIVAL_CLASSIFY_STEPS,
   arrivalClassifyStepIndex,
   mobileArrivalClassifyHref,
-  mobileArrivalPhotosThenClassifyHref,
   nextArrivalClassifyStep,
   parseArrivalClassifyStep,
   parseArrivalReceivingId,
@@ -32,16 +31,11 @@ test('parseArrivalReceivingId', () => {
   assert.equal(parseArrivalReceivingId('x'), null);
 });
 
-test('mobileArrivalClassifyHref + photos handoff land on platform', () => {
+test('mobileArrivalClassifyHref lands on platform', () => {
   assert.equal(
     mobileArrivalClassifyHref(7, 'platform'),
     '/m/scan?rid=7&step=platform',
   );
-  const photos = mobileArrivalPhotosThenClassifyHref(7, { title: '1Z' });
-  assert.match(photos, /\/m\/r\/7\/photos\?/);
-  assert.match(photos, /stage=arrival_package/);
-  assert.match(photos, /guided=1/);
-  assert.match(photos, /back=%2Fm%2Fscan%3Frid%3D7%26step%3Dplatform/);
 });
 
 test('next / prev classify steps', () => {

@@ -117,7 +117,7 @@ strip collapses to icons by container width):
 | Print receipt | `GET /api/counter/visit/[id]/receipt` (`buildVisitReceipt`) ✅ only when `counter_transaction_id` is set | For tickets without a counter visit there is NO receipt writer. Either build a repair receipt from `repair_service` (price, customer, issue, ticket) reusing `visit-receipt-html.ts`'s renderer, or disable with a reason — pick and justify. |
 | Link ticket | `linkTicketToAnchor({type:'repair'})` exists in `src/lib/support/ticket-link.ts:143`, but `POST /api/support/tickets/link` Zod `LinkBody` (route.ts:72) lacks `repair` ❌ | Add the `repair` anchor to the route schema (+ manifest regression test). Keep `ticket_number` (Zendesk #) edit as the existing `PATCH … field:'ticket_number'`. |
 | Create ticket | `createSupportTicket` (`src/lib/support/create-ticket.ts:121`), route `POST /api/support/tickets` Zod (route.ts:13) lacks `repair` ❌ | Add the anchor. Reuse the existing support create-ticket panel used by inbound/outbound records (find it in their verbs), never a new form. |
-| Change status | `RepairStatusControl` / `useRepairStatusChange` ✅ | Same writer as the card. |
+| Change status | `RepairStatusList` / `useRepairStatusChange` ✅ | The one status writer; the card has no status control (owner 2026-10-04). |
 | Start pickup | `RepairPickupFlow` as a panel → `POST /api/repair-service/pickup` ✅ | Only when Awaiting Pickup / Repaired. |
 | Square checkout | `POST /api/repair/square-payment-link` ✅ | Overflow. |
 | Cancel repair | `DELETE /api/repair-service/[id]` ✅ | Overflow, destructive, asks for a reason as today. |

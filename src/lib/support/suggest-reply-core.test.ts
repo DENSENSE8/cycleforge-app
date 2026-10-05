@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { applyMarketplacePolicy } from '@/lib/support/conversation/marketplace-policy';
 import type { SearchHit } from '@/lib/search/search-hit';
+import { draftContext, draftMessage } from './drafts/fixtures';
 import type { PhotoEvidence } from './photo-evidence';
 import {
-  buildSources,
   resolveConfidence,
   suggestSupportReplyCore,
   SupportSuggestError,
@@ -39,16 +40,16 @@ function photo(over: Partial<PhotoEvidence> = {}): PhotoEvidence {
 }
 
 /** Captures what the model was actually handed. Zero network. */
-function fakes(over: Partial<SuggestDeps> = {}) {
-  const calls: Array<{ system: string; user: string; images?: string[] }> = [];
+function fakes(over: Partial<SuggestDeps> = {}, reply = 'It is in final testing and has not left us yet.') {
+  const calls: Array<{ system: string; user: string; images?: string[]; sessionTag: string }> = [];
   const deps: SuggestDeps = {
     queryRag: async () => ({ answer: '', sources: [], chunks: [] }),
     searchRecords: async () => [],
     generate: async (p) => {
-      calls.push({ system: p.system, user: p.user, images: p.images });
-      return 'Here is your draft.';
+      calls.push({ system: p.system, user: p.user, images: p.images, sessionTag: p.sessionTag });
+      return { text: reply, model: p.images?.length ? 'cloud-model' : 'local-model' };
     },
-    resolveModel: (usedImages) => (usedImages ? 'cloud-model' : 'local-model'),
+    applyChannelPolicy: applyMarketplacePolicy,
     ...over,
   };
   return { deps, calls };
@@ -56,208 +57,132 @@ function fakes(over: Partial<SuggestDeps> = {}) {
 
 // ── the safety classification ───────────────────────────────────────────────
 
-/**
- * The load-bearing test of this phase. `local-only` must never put an image URL
- * in front of a model, however many the route resolved — and the caller cannot
- * opt out by omission, because `vision` has no default.
- */
 test('local-only NEVER sends an image, even when URLs were supplied', async () => {
   const { deps, calls } = fakes();
   const result = await suggestSupportReplyCore(
-    {
-      ticketId: 1,
-      question: 'Is this covered?',
-      vision: 'local-only',
-      photos: [photo()],
-      imageUrls: ['https://storage.example/signed/abc'],
-    },
+    { context: draftContext({ photos: [photo()] }), kind: 'reply', vision: 'local-only', imageUrls: ['https://signed/1.jpg'] },
     deps,
   );
   assert.equal(calls[0].images, undefined);
   assert.equal(result.mode, 'local-only');
   assert.equal(result.model, 'local-model');
+  // The model still reasons over the deterministic image facts.
+  assert.match(calls[0].user, /Text read: SN1234/);
 });
 
-test('cloud-multimodal sends the signed URLs it was given', async () => {
+test('cloud-multimodal sends the signed URLs and reports the lane that ran', async () => {
   const { deps, calls } = fakes();
   const result = await suggestSupportReplyCore(
-    {
-      ticketId: 1,
-      question: 'Is this covered?',
-      vision: 'cloud-multimodal',
-      photos: [photo()],
-      imageUrls: ['https://storage.example/signed/abc'],
-    },
+    { context: draftContext({ photos: [photo()] }), kind: 'reply', vision: 'cloud-multimodal', imageUrls: ['https://signed/1.jpg'] },
     deps,
   );
-  assert.deepEqual(calls[0].images, ['https://storage.example/signed/abc']);
+  assert.deepEqual(calls[0].images, ['https://signed/1.jpg']);
   assert.equal(result.mode, 'cloud-multimodal');
   assert.equal(result.model, 'cloud-model');
 });
 
-/**
- * Asking for the cloud lane and sending nothing IS the local lane. Reporting
- * otherwise would tell the operator a customer's photo left the building.
- */
-test('cloud lane with no resolvable URL reports the lane that actually ran', async () => {
-  const { deps, calls } = fakes();
+test('asking for the cloud lane with no URL is the local lane — reported honestly', async () => {
+  const { deps } = fakes();
   const result = await suggestSupportReplyCore(
-    { ticketId: 1, question: 'hi', vision: 'cloud-multimodal', photos: [photo()], imageUrls: [] },
+    { context: draftContext({ photos: [photo()] }), kind: 'reply', vision: 'cloud-multimodal', imageUrls: [] },
     deps,
   );
-  assert.equal(calls[0].images, undefined);
   assert.equal(result.mode, 'local-only');
 });
 
-// ── the deterministic evidence reaches the model ────────────────────────────
+// ── grounding, local context, failure modes ────────────────────────────────
 
-test('the prompt carries the image facts AND the matched row — on both lanes', async () => {
+test('no provider ticket id reaches the model: the session is keyed by the local item', async () => {
   const { deps, calls } = fakes();
-  await suggestSupportReplyCore(
-    { ticketId: 1, question: 'Is this covered?', vision: 'local-only', photos: [photo()] },
-    deps,
-  );
-  assert.match(calls[0].user, /A dented amplifier/);
-  assert.match(calls[0].user, /Visible damage: yes — dent on the faceplate/);
-  assert.match(calls[0].user, /Matches our record: unit — Unit SN1234/);
+  await suggestSupportReplyCore({ context: draftContext(), kind: 'reply', vision: 'local-only' }, deps);
+  assert.equal(calls[0].sessionTag, 'support-item-77');
 });
 
-test('a photo with no message still drafts — an image IS a question', async () => {
-  const { deps } = fakes();
-  const result = await suggestSupportReplyCore(
-    { ticketId: 1, question: '   ', vision: 'local-only', photos: [photo()] },
-    deps,
-  );
-  assert.equal(result.suggestion, 'Here is your draft.');
-  // …and the thread contributed nothing, so it is not claimed as a source.
-  assert.ok(!result.sources.some((s) => s.type === 'thread'));
+test('a RAG outage still drafts from the linked local records', async () => {
+  const { deps } = fakes({
+    queryRag: async () => {
+      throw new Error('NemoClaw down');
+    },
+    searchRecords: async () => {
+      throw new Error('search down');
+    },
+  });
+  const result = await suggestSupportReplyCore({ context: draftContext(), kind: 'reply', vision: 'local-only' }, deps);
+  assert.equal(result.grounded, false);
+  assert.equal(result.confidence, 'medium');
+  assert.ok(result.sources.some((s) => s.type === 'order' && s.ref === 'orders:501'));
 });
 
-test('neither a message nor a photo is a 400, not an empty draft', async () => {
+test('a reply with nothing to answer is a 400', async () => {
   const { deps } = fakes();
   await assert.rejects(
-    () => suggestSupportReplyCore({ ticketId: 1, question: '', vision: 'local-only' }, deps),
+    () => suggestSupportReplyCore({ context: draftContext({ messages: [] }), kind: 'reply', vision: 'local-only' }, deps),
     (err: unknown) => err instanceof SupportSuggestError && err.status === 400,
   );
 });
 
-test('a RAG failure degrades to an ungrounded draft, never a failed request', async () => {
-  const { deps } = fakes({
-    queryRag: async () => {
-      throw new Error('rag down');
-    },
-  });
-  const result = await suggestSupportReplyCore(
-    { ticketId: 1, question: 'Is this covered?', vision: 'local-only' },
-    deps,
-  );
-  assert.equal(result.grounded, false);
-  assert.equal(result.suggestion, 'Here is your draft.');
+test('an empty or signature-only generation is a 502, not a blank draft', async () => {
+  for (const reply of ['   ', 'Best regards,\nMike']) {
+    const { deps } = fakes({}, reply);
+    await assert.rejects(
+      () => suggestSupportReplyCore({ context: draftContext(), kind: 'reply', vision: 'local-only' }, deps),
+      (err: unknown) => err instanceof SupportSuggestError && err.status === 502,
+    );
+  }
 });
 
-test('service docs down still drafts from OUR records — and a record search failure never fails the draft', async () => {
-  const order = hit({ entityType: 'order', id: 4989, title: 'Order 02-14684-13689', subtitle: 'Shipped' });
-  const { deps, calls } = fakes({
-    queryRag: async () => {
-      throw new Error('rag down');
-    },
-    searchRecords: async () => [order],
-  });
-  const result = await suggestSupportReplyCore(
-    { ticketId: 1, question: 'Where is order 02-14684-13689?', vision: 'local-only' },
-    deps,
-  );
-  assert.match(calls[0].user, /Order 02-14684-13689 \(Shipped\)/);
-  assert.deepEqual(result.searchHits.map((h) => h.id), [4989]);
+// ── validators + policy applied before the draft is returned ───────────────
 
-  const failing = fakes({
-    searchRecords: async () => {
-      throw new Error('db down');
-    },
-  });
-  const fallback = await suggestSupportReplyCore(
-    { ticketId: 1, question: 'Is this covered?', vision: 'local-only' },
-    failing.deps,
-  );
-  assert.equal(fallback.suggestion, 'Here is your draft.');
+test('validators run on the generation: a wrong weekday and an unproven shipment lower confidence to low', async () => {
+  const { deps } = fakes({}, 'Your order has shipped and arrives Monday, October 6.');
+  const result = await suggestSupportReplyCore({ context: draftContext(), kind: 'reply', vision: 'local-only' }, deps);
+  assert.equal(result.confidence, 'low');
+  assert.match(result.warnings.join(' '), /Tuesday, not a Monday/);
+  assert.match(result.warnings.join(' '), /Says the item shipped/);
 });
 
-test('the conversation reaches the model, and the message being answered appears once', async () => {
-  const { deps, calls } = fakes();
+test('marketplace policy is applied to the stored body: an eBay draft never carries a link', async () => {
+  const { deps } = fakes({}, 'The manual is at https://example.com/amp.pdf if you need it.\n\nBest regards,\nMike');
+  const result = await suggestSupportReplyCore({ context: draftContext(), kind: 'reply', vision: 'local-only' }, deps);
+  assert.doesNotMatch(result.suggestion, /https?:|Best regards/);
+  assert.ok(result.warnings.includes('Removed links (marketplace policy).'));
+});
+
+test('the same link survives on an email conversation', async () => {
+  const { deps } = fakes({}, 'The manual is at https://example.com/amp.pdf if you need it.');
+  const result = await suggestSupportReplyCore(
+    { context: draftContext({ item: { channel: 'email' } }), kind: 'reply', vision: 'local-only' },
+    deps,
+  );
+  assert.match(result.suggestion, /https:\/\/example\.com\/amp\.pdf/);
+});
+
+test('a staff-logged case (no inbound) still drafts from the log', async () => {
+  const { deps, calls } = fakes({}, 'We have your amplifier on the bench and will update you Monday, October 5.');
   await suggestSupportReplyCore(
     {
-      ticketId: 1,
-      question: 'Still no tracking?',
-      thread: [
-        { role: 'customer', text: 'Where is my radio?' },
-        { role: 'agent', text: 'It ships Monday.' },
-        { role: 'customer', text: 'Still no tracking?' },
-      ],
+      context: draftContext({ messages: [draftMessage({ direction: 'internal', body: 'Customer called about a hum.' })] }),
+      kind: 'reply',
       vision: 'local-only',
     },
     deps,
   );
-  const user = calls[0].user;
-  assert.match(user, /Customer: Where is my radio\?\n\nUs: It ships Monday\./);
-  assert.equal(user.split('Still no tracking?').length - 1, 1);
+  assert.match(calls[0].user, /case was logged by our staff/);
 });
 
-test('an empty generation is a 502, not a blank draft handed to an agent', async () => {
-  const { deps } = fakes({ generate: async () => '   ' });
-  await assert.rejects(
-    () => suggestSupportReplyCore({ ticketId: 1, question: 'hi', vision: 'local-only' }, deps),
-    (err: unknown) => err instanceof SupportSuggestError && err.status === 502,
-  );
-});
+// ── confidence ─────────────────────────────────────────────────────────────
 
-// ── confidence + typed sources ──────────────────────────────────────────────
-
-/** A photo whose identifiers matched NOTHING caps the draft at `low` however well the docs answered: */
 test('an unmatched photo caps confidence at low', () => {
-  assert.equal(
-    resolveConfidence({
-      grounded: true,
-      ragTopScore: 0.9,
-      photos: [photo({ matches: [] })],
-      matchCount: 0,
-    }),
-    'low',
-  );
+  assert.equal(resolveConfidence({ grounded: true, ragTopScore: 0.9, localFacts: 1, photos: [photo({ matches: [] })], matchCount: 0 }), 'low');
 });
 
-test('a matched photo plus doc grounding is the strongest answer this loop makes', () => {
-  assert.equal(
-    resolveConfidence({ grounded: true, ragTopScore: 0.5, photos: [photo()], matchCount: 1 }),
-    'high',
-  );
-  assert.equal(
-    resolveConfidence({ grounded: false, ragTopScore: undefined, photos: [photo()], matchCount: 1 }),
-    'medium',
-  );
+test('a matched photo plus grounding is the strongest answer this loop makes', () => {
+  assert.equal(resolveConfidence({ grounded: true, ragTopScore: 0.5, localFacts: 0, photos: [photo()], matchCount: 1 }), 'high');
+  assert.equal(resolveConfidence({ grounded: false, ragTopScore: undefined, localFacts: 0, photos: [photo()], matchCount: 1 }), 'medium');
 });
 
-test('with no photos the doc score still decides', () => {
-  assert.equal(
-    resolveConfidence({ grounded: true, ragTopScore: 0.8, photos: [], matchCount: 0 }),
-    'high',
-  );
-  assert.equal(
-    resolveConfidence({ grounded: false, ragTopScore: 0.8, photos: [], matchCount: 0 }),
-    'low',
-  );
-});
-
-test('every source says WHICH KIND it is — a bare string could not', () => {
-  const sources = buildSources({
-    rag: { answer: 'a', sources: ['warranty.pdf'], chunks: [] },
-    photos: [photo()],
-    matches: [hit()],
-    hasQuestion: true,
-  });
-  assert.deepEqual(sources, [
-    { type: 'thread', label: 'Customer message' },
-    { type: 'rag', label: 'warranty.pdf' },
-    { type: 'ocr', label: 'SN1234' },
-    { type: 'catalog', label: 'unit · Unit SN1234' },
-  ]);
+test('with no photos: doc score decides; linked records lift an ungrounded draft to medium', () => {
+  assert.equal(resolveConfidence({ grounded: true, ragTopScore: 0.8, localFacts: 0, photos: [], matchCount: 0 }), 'high');
+  assert.equal(resolveConfidence({ grounded: false, ragTopScore: 0.8, localFacts: 0, photos: [], matchCount: 0 }), 'low');
+  assert.equal(resolveConfidence({ grounded: false, ragTopScore: undefined, localFacts: 2, photos: [], matchCount: 0 }), 'medium');
 });

@@ -15,7 +15,7 @@ import { ThemedStationScanBar } from '@/components/station/scan-bar';
 import { ScanBandShell } from '@/components/station/scan-bar';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
-import { routeScan, scannedUnitKey } from '@/lib/barcode-routing';
+import { routeScan, scannedUnitKey, unwrapScannedSerial } from '@/lib/barcode-routing';
 import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { useAssistantContext } from '@/hooks/useAssistantContext';
 import { STATION_SKILL } from '@/lib/assistant/page-skills';
@@ -31,7 +31,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
-import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
+import { useUnitPhotoRequestPublisher } from '@/hooks/useUnitPhotoRequestPublisher';
 import { toast } from '@/lib/toast';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
@@ -308,8 +308,8 @@ export default function PackScanColumn({
           });
         });
         const data = await res.json();
-        if (unitKey && res.status === 404 && data?.unitNotOnOrder) {
-          await startPrepackUnit(unitKey, priorPackerLogId);
+        if (res.status === 404 && data?.unitNotOnOrder) {
+          await startPrepackUnit(String(data?.unitKey || unitKey || unwrapScannedSerial(scan)), priorPackerLogId);
           return;
         }
         if (!res.ok) throw new Error(data?.error || 'Failed to save packing scan');

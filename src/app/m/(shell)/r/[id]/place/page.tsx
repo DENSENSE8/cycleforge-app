@@ -4,12 +4,12 @@ import { Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import { MobileV2ArrivalPlacement } from '@/components/mobile/v2/receiving/MobileV2ArrivalPlacement';
 
-/** `/m/r/[id]/place` — put the just-arrived carton on its urgency shelf. */
+/** `/m/r/[id]/place` — pair the just-arrived package to any location, with its urgency. */
 function CartonPlaceInner() {
   const params = useParams<{ id: string }>();
   const id = Number(params?.id);
   if (!Number.isSafeInteger(id) || id <= 0) {
-    return <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Not a carton id.</p>;
+    return <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Not a package id.</p>;
   }
   return <MobileV2ArrivalPlacement receivingId={id} />;
 }

@@ -11,21 +11,14 @@ export function SupportChatHeader({
   ticket,
   onBack,
   compact = false,
-  hideTitle = false,
-  hideRequesterBand = false,
   readOnly = false,
 }: {
   ticket: ZendeskTicket;
   onBack?: () => void;
   compact?: boolean;
-  hideTitle?: boolean;
-  hideRequesterBand?: boolean;
   /** Station preview — same title row, no subject editor. */
   readOnly?: boolean;
 }) {
-  if (hideRequesterBand && hideTitle) return null;
-  if (hideTitle) return null;
-
   return (
     <div
       className={cn(

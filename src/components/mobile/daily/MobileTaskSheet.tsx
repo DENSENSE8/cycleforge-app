@@ -202,11 +202,13 @@ function MobileTaskBody({
   const reminder =
     row.remindAtMs == null || !open || row.remindAtMs <= nowMs ? null : format(new Date(row.remindAtMs), 'MMM d · h:mm a');
 
-  // The ticket read in line: the task's own ticket, else the first linked one (repairs link theirs).
+  // The helpdesk ticket read in line: the task's own ticket, else the first linked one (repairs link theirs).
+  // Support items live on /m/support, never in a task sheet.
   const linkedTicket = links.links.find((link) => link.kind === 'ticket');
   const anchorTicket = taskDeskTicketNumber(row);
   const inlineTicket = canOpenTickets ? (anchorTicket ?? (linkedTicket ? Number(linkedTicket.label) || null : null)) : null;
   const inlineTicketStatus = anchorTicket != null ? (row.ticket?.status ?? null) : (linkedTicket?.ticket?.status ?? null);
+  const hasInlineThread = inlineTicket != null;
 
   const setTo = (target: TaskStatus) => {
     // A canceled task leaves the viewer's list, so the sheet goes with it.
@@ -366,12 +368,14 @@ function MobileTaskBody({
           />
         )}
 
-        {/* The ticket, in line (owner 2026-10-03) — its conversation, not a door to it. */}
-        {inlineTicket != null ? <TaskTicketInline ticketNumber={inlineTicket} status={inlineTicketStatus} nowMs={nowMs} /> : null}
+        {/* The conversation, in line (owner 2026-10-03) — its messages, not a door to them. */}
+        {inlineTicket != null ? (
+          <TaskTicketInline ticketNumber={inlineTicket} status={inlineTicketStatus} nowMs={nowMs} />
+        ) : null}
 
         {/* The brief never restates the title (one fact, one place) — `taskBriefBody` drops that line. */}
         {brief ? (
-          <section aria-label="Brief" className={cn('relative', inlineTicket != null ? SECTION : 'pt-3')}>
+          <section aria-label="Brief" className={cn('relative', hasInlineThread ? SECTION : 'pt-3')}>
             <IconButton
               onClick={() => setPanel('brief')}
               ariaLabel="Read the brief full screen"
@@ -393,8 +397,8 @@ function MobileTaskBody({
         {docs.loading ? <p className={cn(QUIET, 'pt-3')}>Loading documents…</p> : null}
 
         <section aria-label="Activity" className={cn(SECTION, 'empty:hidden')}>
-          {/* The thread above already shows the ticket's comments; the stream does not repeat them. */}
-          <MobileTaskFollowUps taskId={row.id} ticketNumber={inlineTicket != null ? null : anchorTicket} nowMs={nowMs} />
+          {/* The thread above already shows the conversation; the stream does not repeat it. */}
+          <MobileTaskFollowUps taskId={row.id} nowMs={nowMs} />
         </section>
 
         {hasMedia ? (

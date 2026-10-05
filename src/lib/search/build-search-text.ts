@@ -413,25 +413,55 @@ function buildWarrantyClaimDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/** Loader row contract: */
+/** Space-separated loader aggregate → its tokens. */
+function words(value: unknown): string[] {
+  return str(value).split(/\s+/).filter(Boolean);
+}
+
+/**
+ * Loader row contract: support_tickets (+ lifecycle, requester, account) and
+ * the aggregates LOADER_SQL.SUPPORT_TICKET joins — linked orders (numbers,
+ * ids, SKUs, tracking), repairs (ids, ticket numbers, source order / SKU /
+ * tracking), linked shipments' tracking, ticket items' SKUs, pasted external
+ * references. Short identifiers lead so they survive MAX_SEARCH_TEXT.
+ */
 function buildSupportTicketDoc(row: SearchSourceRow): BuiltSearchDoc {
   const number = `#${str(row.id)}`;
   const title = str(row.subject_cache) || `Ticket ${number}`;
+  // Local lifecycle is the truth; the provider status is mirror metadata.
+  const status = strOrNull(row.lifecycle) ?? strOrNull(row.status_cache);
+  const requester = str(row.requester_name) || str(row.requester_email) || str(row.requester_handle);
+  const trackings = [...words(row.order_trackings), ...words(row.shipment_trackings), ...words(row.repair_trackings)];
   return {
     title,
-    subtitle: subtitleOf([number, row.status_cache]),
+    subtitle: subtitleOf([number, requester, status]),
     searchText: joinSearchText([
       ...ticketTokens(row.id),
       ...ticketTokens(row.external_ticket_id),
+      row.requester_email,
+      row.requester_handle,
+      row.requester_name,
+      row.order_numbers,
+      row.order_ids,
+      row.repair_order_numbers,
+      ...words(row.repair_ids).map((id) => `RS-${id}`),
+      row.repair_numbers,
+      trackings.join(' '),
+      row.order_skus,
+      row.repair_skus,
+      row.item_skus,
+      row.external_refs,
       row.subject_cache,
+      row.account_label,
+      status,
       row.status_cache,
       row.provider,
     ]),
     facets: {
-      status: strOrNull(row.status_cache),
+      status,
       conditionGrade: null,
       sourcePlatform: strOrNull(row.provider),
-      trackingNumber: null,
+      trackingNumber: trackings[0] ?? null,
       carrier: null,
       serialNumber: null,
       happenedAt: dateOrNull(row.updated_at, row.created_at),

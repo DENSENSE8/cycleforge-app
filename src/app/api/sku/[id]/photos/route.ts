@@ -5,6 +5,7 @@ import { photoContentUrl } from '@/lib/photos/display-url';
 import { attachPhotoWithLegacyUrl, listPhotosForEntity, uploadPhoto } from '@/lib/photos/service';
 import { addPhotosToListing, setListingCover } from '@/lib/photos/listing-photos';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { publishEntityMediaInsert } from '@/lib/photos/publish-entity-media';
 
 /**
  * GET  /api/sku/[id]/photos        — list photos for a catalog SKU (`sku_catalog.id`, entity `SKU`)
@@ -100,6 +101,7 @@ export async function POST(
         poRef: String(skuId),
       });
       const cover = primary ? await makeListingCover(orgId, skuId, uploaded.id) : false;
+      await announceSkuPhoto(orgId, skuId, uploaded.id);
       return NextResponse.json({
         success: true,
         photo: {
@@ -129,6 +131,7 @@ export async function POST(
     });
 
     const cover = primary ? await makeListingCover(orgId, skuId, attached.id) : false;
+    if (attached.created) await announceSkuPhoto(orgId, skuId, attached.id);
     return NextResponse.json({
       success: true,
       photo: attached.created
@@ -150,6 +153,15 @@ export async function POST(
 }
 
 /** Append the photo to the SKU's listing gallery and promote it to cover. */
+/** Best-effort realtime reply; a publish failure never fails the save. */
+async function announceSkuPhoto(orgId: OrgId, skuId: number, photoId: number): Promise<void> {
+  try {
+    await publishEntityMediaInsert({ organizationId: orgId, entityType: 'SKU', entityId: skuId, photoId, source: 'sku.photos' });
+  } catch (err) {
+    console.warn('[sku/[id]/photos POST] sku-photo.changed publish failed:', err);
+  }
+}
+
 async function makeListingCover(orgId: OrgId, skuCatalogId: number, photoId: number): Promise<boolean> {
   const target = { kind: 'sku', id: skuCatalogId } as const;
   await addPhotosToListing(orgId, target, [photoId]);

@@ -6,7 +6,7 @@
  * rail and its sidebar recents list can never disagree on membership or order.
  */
 
-import { tenantQuery, withTenantConnection } from '@/lib/tenancy/db';
+import { tenantQueriesOneTrip, tenantQuery, withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   buildUnmatchedEmptyReceivingLine,
@@ -53,6 +53,41 @@ export interface ReceivingLinesPageInput {
   unboxRailColumnRead: boolean;
   /** Org ship-from postal — `view=exceptions` only. */
   warehousePostal?: string;
+  /**
+   * `false` = rows only (a caller that never shows a total, e.g. the paste
+   * locate): the COUNT statements are skipped, `total` is the rows' length,
+   * and every statement travels in ONE round trip.
+   */
+  countTotal?: boolean;
+  /**
+   * Keep only these raw list columns (names `normalizeRow` reads). The list's
+   * per-row decorations a caller never reads are then pruned by the planner
+   * and never cross the wire. Absent = every column.
+   */
+  columns?: readonly string[];
+}
+
+interface PageStatement {
+  sql: string;
+  params: unknown[];
+}
+
+/** The page's independent reads, in order. `withTotal` = one tenant transaction; else one round trip, no COUNTs. */
+async function runPageStatements(
+  orgId: OrgId,
+  statements: ReadonlyArray<PageStatement | null>,
+  withTotal: boolean,
+): Promise<Array<Array<Record<string, unknown>> | null>> {
+  const live = statements.filter((s): s is PageStatement => s !== null);
+  const results = withTotal
+    ? await withTenantConnection(orgId, async (client) => {
+        const out: Array<Array<Record<string, unknown>>> = [];
+        for (const s of live) out.push((await client.query(s.sql, s.params)).rows);
+        return out;
+      })
+    : (await tenantQueriesOneTrip(orgId, live.map((s) => ({ text: s.sql, params: s.params })))).map((r) => r.rows);
+  let next = 0;
+  return statements.map((s) => (s === null ? null : results[next++]!));
 }
 
 export async function fetchReceivingLinesPage(
@@ -85,13 +120,30 @@ export async function fetchReceivingLinesPage(
     warehousePostal: input.warehousePostal,
     ...(scannedLineIdIn ? { scannedLineIdIn } : {}),
   });
-  const [rowsRes, countRes] = await withTenantConnection(orgId, (client) => Promise.all([
-    client.query(built.list.sql, built.list.params),
-    client.query(built.count.sql, built.count.params),
-  ]));
+  // The list, the lineless-carton placeholders and their counts do not
+  // depend on each other: they are read together, not one after another.
+  const withTotal = input.countTotal !== false;
+  const unmatched = shouldIncludeUnmatchedPlaceholders(query) ? buildUnmatchedPlaceholdersSql(query, orgId) : null;
+  const unboxOpened = shouldIncludeUnboxOpenedPlaceholders(query)
+    ? buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead)
+    : null;
+  const [listRows, countRows, unmatchedRows, unmatchedCountRows, unboxRows, unboxCountRows] = await runPageStatements(
+    orgId,
+    [
+      input.columns
+        ? { sql: `SELECT ${input.columns.map((c) => `l.${c}`).join(', ')} FROM (${built.list.sql}) l`, params: built.list.params }
+        : built.list,
+      withTotal ? built.count : null,
+      unmatched?.list ?? null,
+      unmatched && withTotal ? unmatched.count : null,
+      unboxOpened?.list ?? null,
+      unboxOpened && withTotal ? unboxOpened.count : null,
+    ],
+    withTotal,
+  );
 
-  let normalizedList = rowsRes.rows.map(normalizeRow);
-  let total = Number(countRes.rows[0]?.total ?? 0);
+  let normalizedList = listRows!.map(normalizeRow);
+  let total = withTotal ? Number(countRows?.[0]?.total ?? 0) : normalizedList.length;
   if (includeSerials) {
     const serialsByLine = await fetchSerialsForLines(normalizedList.map((r) => r.id), orgId);
     // Free drift probe:
@@ -122,14 +174,9 @@ export async function fetchReceivingLinesPage(
   }
 
   // Unmatched/unfound cartons live in the `receiving_carton` table with no `receiving_line` row yet, so they never come back from the main…
-  if (shouldIncludeUnmatchedPlaceholders(query)) {
-    const placeholders = buildUnmatchedPlaceholdersSql(query, orgId);
-    const [unmatchedPkgsRes, unmatchedCntRes] = await withTenantConnection(orgId, (client) => Promise.all([
-      client.query(placeholders.list.sql, placeholders.list.params),
-      client.query(placeholders.count.sql, placeholders.count.params),
-    ]));
-    total += Number(unmatchedCntRes.rows[0]?.n ?? 0);
-    const placeholderNorm = unmatchedPkgsRes.rows.map((pkg) =>
+  if (unmatchedRows) {
+    total += withTotal ? Number(unmatchedCountRows?.[0]?.n ?? 0) : unmatchedRows.length;
+    const placeholderNorm = unmatchedRows.map((pkg) =>
       normalizeRow(buildUnmatchedEmptyReceivingLine(pkg as Record<string, unknown>)),
     );
     for (const row of placeholderNorm) {
@@ -171,14 +218,9 @@ export async function fetchReceivingLinesPage(
   // Lineless cartons opened on the Unbox surface (any source — incl. ghost
   // zoho_po rows after the operator typed a PO#) never appear in the lines
   // query above; append them as placeholders keyed on UNBOX_SCAN_OPENED.
-  if (shouldIncludeUnboxOpenedPlaceholders(query)) {
-    const placeholders = buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead);
-    const [unboxPkgsRes, unboxCntRes] = await withTenantConnection(orgId, (client) => Promise.all([
-      client.query(placeholders.list.sql, placeholders.list.params),
-      client.query(placeholders.count.sql, placeholders.count.params),
-    ]));
-    total += Number(unboxCntRes.rows[0]?.n ?? 0);
-    const unboxPlaceholderNorm = unboxPkgsRes.rows.map((pkg) =>
+  if (unboxRows) {
+    total += withTotal ? Number(unboxCountRows?.[0]?.n ?? 0) : unboxRows.length;
+    const unboxPlaceholderNorm = unboxRows.map((pkg) =>
       normalizeRow(buildUnmatchedEmptyReceivingLine(pkg as Record<string, unknown>)),
     );
     for (const row of unboxPlaceholderNorm) {

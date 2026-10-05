@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/zendesk/tickets/:id/bundle[?refresh=1] — ticket + full thread +
- * agents + assignment + entity/photos from the local ticket mirror (one DB
+ * agents + entity/photos from the local ticket mirror (one DB
  * round trip warm; `refresh=1` re-mirrors live first).
  */
 
@@ -66,7 +66,6 @@ export const GET = withAuth(
         commentsCount: mirror.comments.length,
         commentsNextPage: null,
         agents: mirror.agents,
-        assignment: mirror.assignment,
         entity: mirror.entity,
         photos: mirror.photos,
       });

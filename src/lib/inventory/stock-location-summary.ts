@@ -1,3 +1,4 @@
+import { parseLocationCodeFlat } from '@/lib/barcode-routing';
 import {
   locationStockWalkRows,
   type LocationStockTableRow,
@@ -62,6 +63,13 @@ export function summarizeStockLocations(
     const stockRows = inventoryRows.filter((row) => row.qty > 0);
     const skus = new Set(stockRows.map((row) => row.sku.trim()).filter(Boolean));
     const routeCode = anchor.location_barcode?.trim() || null;
+    // The scannable code is the place's identity: its coordinates win over the
+    // legacy row/col labels, which only stand in for a place without a code.
+    const coded = routeCode ? parseLocationCodeFlat(routeCode) : null;
+    const aisle = coded ? Number(coded.aisle) : anchor.aisle;
+    const bay = coded ? Number(coded.bay) : anchor.bay;
+    const level = coded ? Number(coded.level) : anchor.level;
+    const position = coded ? Number(coded.position) : anchor.position;
     return {
       key,
       locationId: anchor.location_id,
@@ -69,10 +77,10 @@ export function summarizeStockLocations(
       face: anchor.location_name?.trim() || routeCode || 'Unlocated',
       room: anchor.room?.trim() || null,
       // A bay needs an aisle, a level a bay: a half-parsed address is not a place in the walk.
-      aisle: anchor.aisle,
-      bay: anchor.aisle != null ? anchor.bay : null,
-      level: anchor.aisle != null && anchor.bay != null ? anchor.level : null,
-      position: anchor.aisle != null && anchor.bay != null ? anchor.position : null,
+      aisle,
+      bay: aisle != null ? bay : null,
+      level: aisle != null && bay != null ? level : null,
+      position: aisle != null && bay != null ? position : null,
       quantity: stockRows.reduce((sum, row) => sum + Math.max(0, row.qty), 0),
       skuCount: skus.size,
       empty: stockRows.length === 0,

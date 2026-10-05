@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-04T22:56:05Z",
-  "totalRoutes": 1201,
+  "generatedAt": "2026-10-05T08:54:22Z",
+  "totalRoutes": 1204,
   "summary": {
-    "permissionGated": 977,
-    "authenticatedNoPermission": 138,
+    "permissionGated": 979,
+    "authenticatedNoPermission": 139,
     "anonymousIntentional": 37,
     "serviceToService": 49,
     "ungatedRead": 0,
@@ -3834,6 +3834,25 @@
       "exemptReason": null
     },
     {
+      "path": "/api/live-feed/packages/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/live-feed/pickup-cutoffs/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/local-pickup-orders/[id]/complete/route.ts",
       "methods": [
         "POST"
@@ -4323,6 +4342,15 @@
       ],
       "gate": "withAuth",
       "permission": "operations.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/operations/tv-board/live-feed/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.tv.view",
       "exemptReason": null
     },
     {
@@ -5939,7 +5967,8 @@
     {
       "path": "/api/prepack/catalog/[id]/route.ts",
       "methods": [
-        "GET"
+        "GET",
+        "PATCH"
       ],
       "gate": "requireRoutePerm",
       "permission": "sku_stock.view",
@@ -6814,15 +6843,6 @@
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/arrival-shelves/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
       "exemptReason": null
     },
     {
@@ -8075,6 +8095,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "sku_stock.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/rooms/ensure-zone-letters/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
       "exemptReason": null
     },
     {

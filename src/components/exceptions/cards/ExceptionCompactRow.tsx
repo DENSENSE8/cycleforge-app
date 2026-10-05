@@ -11,11 +11,23 @@
 import { memo, useMemo } from 'react';
 import { recordRowFace } from '@/design-system/components/triage-card-list/record-row-face';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
+import type { ChipTone } from '@/components/ui/CopyChip';
 import { TriageRow } from '@/design-system/components/triage-card-list/TriageRow';
-import type { ExceptionRow } from '@/lib/exceptions/types';
+import type { ExceptionEntityType, ExceptionRow } from '@/lib/exceptions/types';
 import { EXCEPTIONS_VIEW } from '@/lib/triage/views';
 import { ExceptionCardPeek } from './ExceptionCard';
 import { exceptionRecordCard, type ExceptionCardModel } from './exception-card-model';
+
+/** The blocked entity's chip tone — the same family the Full card and the rest of the house chip it with. */
+const ENTITY_TONE: Record<ExceptionEntityType, ChipTone> = {
+  order: 'id',
+  po: 'id',
+  sku: 'sku',
+  tracking: 'tracking',
+  location: 'bin',
+  carton: 'id',
+  label: 'id',
+};
 
 export const ExceptionCompactRow = memo(function ExceptionCompactRow(props: TriageCardSlotProps<ExceptionRow, ExceptionCardModel>) {
   const { model } = props;
@@ -25,6 +37,7 @@ export const ExceptionCompactRow = memo(function ExceptionCompactRow(props: Tria
     () =>
       recordRowFace(exceptionRecordCard(model, false, null), EXCEPTIONS_VIEW, {
         identity: model.lead.entity.label,
+        identityCopy: { value: model.lead.entity.label, tone: ENTITY_TONE[model.lead.entity.type] },
         identityWidth: 'long',
       }),
     [model],

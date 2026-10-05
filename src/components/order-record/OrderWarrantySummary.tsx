@@ -17,6 +17,7 @@ import {
   type WarrantyCoverageResult,
 } from '@/lib/warranty/types';
 import type { ShippedOrder } from '@/types/orders';
+import { supportHref } from '@/lib/nav/route-tree';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
@@ -69,14 +70,14 @@ export function OrderWarrantySummary({
   }, [claims, order.id]);
 
   const listedClaims = pane ? orderClaims : orderClaims.slice(0, 3);
-  const loggerHref = `/support?mode=warranty${claimsSearch ? `&search=${encodeURIComponent(claimsSearch)}` : ''}`;
+  const loggerHref = supportHref({ q: claimsSearch });
 
   const dialog = (
     <WarrantyLogClaimDialog
       open={logOpen}
       onClose={() => setLogOpen(false)}
-      onCreated={(id) => {
-        router.push(`/support?mode=warranty&open=${id}`);
+      onCreated={() => {
+        router.push(supportHref());
       }}
       initial={{
         orderId: Number(order.id) || undefined,
@@ -205,7 +206,7 @@ function ClaimsBody({
       {claims.map((claim) => (
         <li key={claim.id}>
           <Link
-            href={`/support?mode=warranty&open=${claim.id}`}
+            href={supportHref()}
             className={cn(
               'flex items-center justify-between gap-2 transition hover:bg-surface-hover',
               pane ? 'gap-3 px-4 py-2.5' : 'px-3 py-2',
@@ -404,7 +405,7 @@ function CoverageVerdict({
           {coverage.existingClaim ? (
             pane ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Link href={`/support?mode=warranty&open=${coverage.existingClaim.id}`}>
+                <Link href={supportHref()}>
                   <Button variant="primary" size="sm" className="text-xs">
                     View claim {coverage.existingClaim.claimNumber}
                   </Button>
@@ -415,7 +416,7 @@ function CoverageVerdict({
               </div>
             ) : (
               <Link
-                href={`/support?mode=warranty&open=${coverage.existingClaim.id}`}
+                href={supportHref()}
                 className="text-role-caption font-semibold text-blue-600 hover:text-blue-800"
               >
                 View claim {coverage.existingClaim.claimNumber}

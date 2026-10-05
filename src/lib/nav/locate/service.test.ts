@@ -363,8 +363,19 @@ test('inbound: the Check answer per ref — received, not received, nowhere', as
     ['not_received', '/incoming?recon=not_received'],
     ['exceptions', '/incoming?lane=exceptions'],
   ]);
-  // A number with no carton line has no record — and never the ledger's `?ref_in=` list URL.
-  assert.deepEqual(body.entries.map((e) => e.recordHref), [null, null, null, null, null, null]);
+  // A number with no carton line opens its Incoming card all the same — the card's placeholder row
+  // (`pastedNumberPlaceholderId`) on a list of just that number; one found nowhere has no record.
+  assert.deepEqual(
+    body.entries.map((e) => e.recordHref?.replace(/openLine=-\d+$/, 'openLine=<placeholder>') ?? null),
+    [
+      '/incoming?ref_in=PO-1&openLine=<placeholder>',
+      '/incoming?ref_in=PO-2&openLine=<placeholder>',
+      '/incoming?ref_in=PO-3&openLine=<placeholder>',
+      '/incoming?ref_in=PO-4&openLine=<placeholder>',
+      null,
+      '/incoming?ref_in=MANUAL-7&openLine=<placeholder>',
+    ],
+  );
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets]), [
     ['PO-1', ['received']],
     ['PO-2', ['not_received']],
@@ -471,16 +482,16 @@ test('inbound facts: the pasted page row off the reconcile lines — unboxer by 
     unboxedBy: { id: 9, name: 'Lin' },
     units: { received: 2, expected: 3 },
   });
-  // Its own record — the lead line's carton — so opening it never rewrites a held `/incoming` list.
-  assert.equal(po1.recordHref, '/search?sel=receiving:501');
+  // Its record opens the way its Incoming card does — never a scan station.
+  assert.equal(po1.recordHref, '/incoming?ref_in=PO-1&openLine=1');
   assert.equal(nope.facts, null);
   assert.equal(nope.recordHref, null);
 
   // Under `everywhere` (and any fall-through) the facts merge with the entry.
   const merged = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'everywhere', { refs: '02-15212-00001,PO-1' }, deps));
   assert.deepEqual(merged.entries.map((e) => [e.ref, e.facts?.section, e.recordHref]), [
-    ['02-15212-00001', 'outbound', '/search?sel=order:11'],
-    ['PO-1', 'inbound', '/search?sel=receiving:501'],
+    ['02-15212-00001', 'outbound', '/shipping/orders?openOrderId=11'],
+    ['PO-1', 'inbound', '/incoming?ref_in=PO-1&openLine=1'],
   ]);
   assert.deepEqual(merged.entries[1].facts?.unboxedBy, { id: 9, name: 'Lin' });
 });

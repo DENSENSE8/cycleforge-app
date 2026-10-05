@@ -300,12 +300,74 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
      AND c.organization_id = wc.organization_id
     WHERE wc.organization_id = $1 AND wc.id = ANY($2::bigint[])
       AND wc.deleted_at IS NULL`,
+  // A Support item is found by whatever the customer quoted: their email or
+  // handle, the provider ticket number, a linked order's number / id /
+  // tracking / SKU, a linked repair (RS-<id> or its ticket number), a pasted
+  // external reference. Every 1:many edge is an aggregating LATERAL, so the
+  // outer SELECT stays GROUP-BY-free. ticket_links rows written before the
+  // support_ticket_id seam match by the Zendesk number.
   SUPPORT_TICKET: `
-    SELECT id, provider, external_ticket_id,
-           LEFT(subject_cache, 400) AS subject_cache,
-           status_cache, created_at, updated_at
-    FROM support_tickets
-    WHERE organization_id = $1 AND id = ANY($2::bigint[])`,
+    SELECT st.id, st.provider, st.external_ticket_id,
+           LEFT(st.subject_cache, 400) AS subject_cache,
+           st.status_cache, st.lifecycle, st.created_at, st.updated_at,
+           st.requester_name, st.requester_email, st.requester_handle, st.account_label,
+           links.external_refs,
+           ord.order_numbers, ord.order_ids, ord.order_skus, ord.order_trackings,
+           rep.repair_ids, rep.repair_numbers, rep.repair_order_numbers,
+           rep.repair_skus, rep.repair_trackings,
+           ship.shipment_trackings,
+           items.item_skus
+    FROM support_tickets st
+    LEFT JOIN LATERAL (
+      SELECT ARRAY_AGG(tl.entity_id) FILTER (WHERE tl.entity_type = 'ORDER')    AS order_ids,
+             ARRAY_AGG(tl.entity_id) FILTER (WHERE tl.entity_type = 'REPAIR')   AS repair_ids,
+             ARRAY_AGG(tl.entity_id) FILTER (WHERE tl.entity_type = 'SHIPMENT') AS shipment_ids,
+             LEFT(COALESCE(STRING_AGG(DISTINCT tl.external_reference, ' '), ''), 300) AS external_refs
+      FROM ticket_links tl
+      WHERE tl.organization_id = st.organization_id
+        AND (tl.support_ticket_id = st.id
+             OR (tl.support_ticket_id IS NULL
+                 AND st.provider = 'zendesk'
+                 AND tl.zendesk_ticket_id::text = st.external_ticket_id))
+    ) links ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT LEFT(COALESCE(STRING_AGG(DISTINCT o.order_id, ' '), ''), 300)             AS order_numbers,
+             COALESCE(STRING_AGG(DISTINCT o.id::text, ' '), '')                         AS order_ids,
+             LEFT(COALESCE(STRING_AGG(DISTINCT o.sku, ' '), ''), 300)                  AS order_skus,
+             LEFT(COALESCE(STRING_AGG(DISTINCT stn.tracking_number_raw, ' '), ''), 300) AS order_trackings
+      FROM orders o
+      LEFT JOIN shipping_tracking_numbers stn
+        ON stn.id = o.shipment_id
+       AND stn.organization_id = o.organization_id
+      WHERE o.organization_id = st.organization_id
+        AND (o.id = st.primary_order_id OR o.id = ANY(links.order_ids))
+    ) ord ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(STRING_AGG(DISTINCT rs.id::text, ' '), '')                        AS repair_ids,
+             COALESCE(STRING_AGG(DISTINCT rs.ticket_number, ' '), '')                  AS repair_numbers,
+             COALESCE(STRING_AGG(DISTINCT rs.source_order_id, ' '), '')                AS repair_order_numbers,
+             COALESCE(STRING_AGG(DISTINCT rs.source_sku, ' '), '')                     AS repair_skus,
+             COALESCE(STRING_AGG(DISTINCT rs.source_tracking_number, ' '), '')         AS repair_trackings
+      FROM repair_service rs
+      WHERE rs.organization_id = st.organization_id
+        AND rs.id = ANY(links.repair_ids)
+    ) rep ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(STRING_AGG(DISTINCT stn.tracking_number_raw, ' '), '') AS shipment_trackings
+      FROM shipping_tracking_numbers stn
+      WHERE stn.organization_id = st.organization_id
+        AND stn.id = ANY(links.shipment_ids)
+    ) ship ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(STRING_AGG(DISTINCT sc.sku, ' '), '') AS item_skus
+      FROM support_ticket_items sti
+      JOIN sku_catalog sc
+        ON sc.id = sti.sku_catalog_id
+       AND sc.organization_id = sti.organization_id
+      WHERE sti.organization_id = st.organization_id
+        AND sti.support_ticket_id = st.id
+    ) items ON TRUE
+    WHERE st.organization_id = $1 AND st.id = ANY($2::bigint[])`,
   // `bin_contents` is the only 1:many edge, so it is a LEFT-bounded LATERAL and the outer SELECT stays GROUP-BY-free.
   LOCATION: `
     SELECT l.id, l.barcode, l.name, l.display_name, l.room,

@@ -20,7 +20,6 @@ import {
 } from './task-vocabulary';
 import { isTaskLinkKind, TASK_MEDIA_ENTITY_TYPE, type TaskLinkFace } from './task-links-shared';
 import type { OrgId } from '@/lib/tenancy/constants';
-import type { TicketStatus } from '@/design-system/tokens/ticket-status';
 
 /**
  * Tenant-scoped query seam. The real bindings live in `list-tasks-db.ts` —
@@ -68,12 +67,6 @@ interface ListTaskDeskOptions {
   q?: string | null;
   /** Narrow to one row — how the patch re-reads its own result. */
   taskId?: number | null;
-  /**
-   * Helpdesk statuses (`support_tickets.status_cache`, case-insensitive) —
-   * a task passes when its anchor ticket OR any linked ticket is in one of
-   * them (several OR together). Empty / absent = no filter.
-   */
-  ticketStatuses?: readonly TicketStatus[] | null;
 }
 
 interface TaskDeskSqlRow {
@@ -107,6 +100,25 @@ interface TaskDeskSqlRow {
   cover_photo_id: unknown;
   video_count: unknown;
   doc_count: unknown;
+}
+
+
+/** The find text as the statement binds it: `$10` the ILIKE pattern, `$13` an exact task id. */
+export interface TaskDeskSearchTerms {
+  /** `%text%` — a leading `#` dropped, so `#48120` finds the provider number too. */
+  pattern: string;
+  /** `#812` / `812` → 812: the task id, exactly. */
+  exactId: number | null;
+}
+
+/** Free text → the find's bind values; null when there is nothing to find. */
+export function taskDeskSearchTerms(raw: string | null | undefined): TaskDeskSearchTerms | null {
+  const text = raw?.trim() ?? '';
+  if (!text) return null;
+  const bare = text.replace(/^#\s*/, '').trim();
+  if (!bare) return null;
+  const exactId = /^\d{1,15}$/.test(bare) && Number(bare) > 0 && Number.isSafeInteger(Number(bare)) ? Number(bare) : null;
+  return { pattern: `%${bare}%`, exactId };
 }
 
 /** ONE statement. */
@@ -229,19 +241,13 @@ const TASK_DESK_SQL = `
      AND ($6::int IS NULL OR wa.priority <= $6)
      AND ($7::int IS NULL OR wa.priority > $7)
      AND ($8::bigint IS NULL OR wa.id = $8)
-     AND ($13::text[] IS NULL
-          OR LOWER(BTRIM(st.status_cache)) = ANY($13::text[])
-          OR EXISTS (
-               SELECT 1
-                 FROM work_assignment_links tl
-                 JOIN support_tickets tt
-                   ON tt.organization_id = tl.organization_id
-                  AND tt.id = tl.entity_id
-                WHERE tl.organization_id = wa.organization_id
-                  AND tl.assignment_id = wa.id
-                  AND tl.entity_type = 'SUPPORT_TICKET'
-                  AND LOWER(BTRIM(tt.status_cache)) = ANY($13::text[])))
-     AND ($10::text IS NULL OR (
+     -- A Support item's primary task lives on /support, never on the Tasks board.
+     -- The single-row re-read ($8) still answers it so a patch can echo its row.
+     AND ($8::bigint IS NOT NULL OR NOT EXISTS (
+       SELECT 1 FROM support_tickets s
+        WHERE s.organization_id = wa.organization_id
+          AND s.primary_task_id = wa.id))
+     AND ($10::text IS NULL OR ($13::bigint IS NOT NULL AND wa.id = $13) OR (
             wa.id::text ILIKE $10
          OR wa.notes ILIKE $10
          OR wa.project_name ILIKE $10
@@ -440,8 +446,7 @@ export async function listTaskDeskRows(
   const assignedByStaffId = positiveIntOrNull(opts.assignedByStaffId);
   const taskId = positiveIntOrNull(opts.taskId);
   const { atMost, above } = priorityBounds(opts.urgency ?? null);
-  const q = opts.q?.trim() || null;
-  const ticketStatuses = opts.ticketStatuses?.length ? [...opts.ticketStatuses] : null;
+  const search = taskDeskSearchTerms(opts.q);
 
   // A SEARCH IS NOT A PAGE.
   const result = await deps.query(orgId, TASK_DESK_SQL, [
@@ -453,11 +458,11 @@ export async function listTaskDeskRows(
     atMost,
     above,
     taskId,
-    clampTaskDeskLimit(q ? TASK_DESK_MAX_LIMIT : opts.limit),
-    q ? `%${q}%` : null,
+    clampTaskDeskLimit(search ? TASK_DESK_MAX_LIMIT : opts.limit),
+    search?.pattern ?? null,
     TASK_MEDIA_ENTITY_TYPE,
     assignedByStaffId,
-    ticketStatuses,
+    search?.exactId ?? null,
   ]);
 
   const rows: TaskDeskWireRow[] = [];

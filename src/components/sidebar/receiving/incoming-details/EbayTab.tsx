@@ -101,7 +101,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
       }
       toast.success(body.merged ? `Merged into purchase order ${poLabel}` : `Linked purchase order ${poLabel}`);
       queryClient.invalidateQueries({ queryKey: ['incoming-details'] });
-      queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['nav-facets'] });
       invalidateReceivingFeeds(queryClient);
       setQuery('');
     } catch (err) {
@@ -150,7 +150,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
           : `Linked ${trimmed} — not imported yet`,
       );
       queryClient.invalidateQueries({ queryKey: ['incoming-details'] });
-      queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['nav-facets'] });
       void queryClient.invalidateQueries({ queryKey: ['po-search'] });
       invalidateReceivingFeeds(queryClient);
       setQuery('');

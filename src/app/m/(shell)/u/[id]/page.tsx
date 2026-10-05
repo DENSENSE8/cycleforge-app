@@ -15,6 +15,7 @@ import { useSerialUnit } from '@/lib/serial/use-serial-unit';
 import { useUnitHubRows, type UnitHubVerb } from '@/components/mobile/unit/useUnitHubRows';
 import { UnitLineTestSheet, UnitStashSheet } from '@/components/mobile/unit/UnitLineSheets';
 import { UnitMoveSheet, UnitPairSheet } from '@/components/mobile/unit/UnitVerbSheets';
+import { PrepackUnitFacts } from '@/features/prepack/PrepackUnitFacts';
 
 // Mirror of /m/scan's RecentScan — kept loose so we don't crash on shape drift.
 interface ScanContext {
@@ -155,6 +156,8 @@ export default function MobileUnitPage() {
                 copy={unit.current_location}
               />
             </DetailFacts>
+
+            <PrepackUnitFacts unitRef={unit.serial_number} />
 
             {ack ? <DetailAck onDismiss={() => setAck(null)}>{ack}</DetailAck> : null}
 

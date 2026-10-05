@@ -9,6 +9,7 @@ import {
   buildUnitJourneyHref,
 } from '@/lib/serial/serial-journey';
 import { orderNumberEqualsQuery } from '@/lib/search/order-number-match';
+import { supportHref } from '@/lib/nav/route-tree';
 
 export type SearchHitEntityType =
   | 'order'
@@ -131,7 +132,14 @@ export function toteRecordHref(id: number): string {
   return `/tote/${id}`;
 }
 
-export function searchHitHref(dbType: SearchEntityType, entityId: number): string {
+/**
+ * The record surface a hit opens. SUPPORT_TICKET hits open the Support item
+ * (`entityId` = support_tickets.id) on /support.
+ */
+export function searchHitHref(
+  dbType: SearchEntityType,
+  entityId: number,
+): string {
   switch (dbType) {
     case 'ORDER':
       // Search feedback shell. Keep in sync with global-entity-search.ts.
@@ -147,12 +155,9 @@ export function searchHitHref(dbType: SearchEntityType, entityId: number): strin
     case 'FBA_SHIPMENT':
       return `/fba?openShipmentId=${entityId}`;
     case 'WARRANTY_CLAIM':
-      // Support ▸ Warranty reads the claim id off `?open=`
-      // (query-mode-routes.ts:151, useWarrantyClaims.ts:36).
-      return `/support?mode=warranty&open=${entityId}`;
+      return supportHref();
     case 'SUPPORT_TICKET':
-      // Tickets is Support's DEFAULT mode, so `?ticket=` alone lands there (useSupportTicketParam.ts:29,37).
-      return `/support?ticket=${entityId}`;
+      return supportHref({ item: entityId });
     case 'LOCATION':
       // Inventory ▸ Locations ▸ Bins — the live list surface (locations-path.ts:10-19, INVENTORY_LOCATIONS_ROUTE_PARAMS…
       return '/inventory/locations?tab=bins';
@@ -237,12 +242,14 @@ export function shouldAutoOpenSearchOrder(
 
 /** Sole-result auto-open, ANY entity type — the destination for a settled list of exactly one hit. */
 export function soleHitHref(
-  hits: ReadonlyArray<{ id: number; entityType: string }>,
+  hits: ReadonlyArray<{ id: number; entityType: string; href?: string }>,
 ): string | null {
   if (hits.length !== 1) return null;
   const hit = hits[0];
   if (!hit || !Number.isFinite(hit.id) || hit.id <= 0) return null;
   if (!isUiEntityType(hit.entityType)) return null;
+  // A Support hit's href carries its task (looked up at retrieval); the id alone cannot.
+  if (hit.entityType === 'ticket' && hit.href) return hit.href;
   return searchHitHref(toDbEntityType(hit.entityType), hit.id);
 }
 
@@ -306,9 +313,7 @@ export function searchScopeHref(dbType: SearchEntityType, query: string): string
     case 'SKU':
       return `/inventory/skus?q=${q}`;
     case 'SUPPORT_TICKET':
-      // Tickets is Support's default mode; the board reads its OWN search key
-      // off the URL (SupportTicketsBoard.tsx:98 `searchParams.get('tq')`).
-      return `/support?tq=${q}`;
+      return supportHref({ q: query });
     case 'LOCATION':
       // `/inventory/locations` owns `q` on its own longer-prefix route spec
       // (query-mode-routes.ts:512-525), and the Bins tab filters on it — so

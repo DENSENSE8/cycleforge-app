@@ -85,7 +85,7 @@ function RepairPhotosInner() {
     [items],
   );
   const priorPhotos = useMemo<PriorPhoto[]>(
-    () => photos.map((p) => ({ id: String(p.id), previewUrl: p.thumbUrl })),
+    () => photos.map((p) => ({ id: String(p.id), previewUrl: p.thumbUrl, fullUrl: p.url })),
     [photos],
   );
 

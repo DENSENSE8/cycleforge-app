@@ -37,6 +37,8 @@ export interface DeskPageLayoutProps {
   bare?: boolean;
   /** The in-place stage's measure — `full` for a board (see `DeskPageChrome`). */
   measure?: 'fixed' | 'full';
+  /** Something that leads the title on its line (a full-screen page's Back) — the title's first element. */
+  titleLead?: ReactNode;
   className?: string;
 }
 
@@ -69,6 +71,7 @@ function DeskPageFrame({
   children,
   title: titleOverride,
   titleSlot,
+  titleLead,
   subtitle,
   headerCenter,
   measure,
@@ -82,7 +85,16 @@ function DeskPageFrame({
   return (
     <DeskPageChrome
       title={title}
-      titleSlot={titleSlot}
+      titleSlot={
+        titleLead ? (
+          <span className="flex min-w-0 items-center gap-1">
+            {titleLead}
+            <span className="truncate">{titleSlot ?? title}</span>
+          </span>
+        ) : (
+          titleSlot
+        )
+      }
       subtitle={subtitle}
       addSlot={addSlot}
       headerCenter={headerCenter}

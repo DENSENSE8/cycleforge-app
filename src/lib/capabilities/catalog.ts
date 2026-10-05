@@ -163,7 +163,7 @@ export const CAPABILITIES: readonly CapabilityDef[] = [
     id: 'support',
     label: 'Customer support',
     blurb: 'Support tickets and follow-ups next to the orders they are about.',
-    navItemIds: ['support'],
+    navItemIds: ['home'],
     tools: [],
     landingPath: '/support',
     prerequisites: [],

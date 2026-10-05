@@ -180,10 +180,10 @@ export const QA_FIXTURE_MY_DAY = {
     title: QA_FIXTURE_ORDER_TITLES.pendingThird,
     dueInDays: 3,
   },
-  /** An UNDATED interrupt — a support follow-up assigned to the QA admin. */
+  /** An UNDATED interrupt — a Support item whose primary task the QA admin owns. */
   interruptTicketId: 9100,
-  /** `listSupportFollowupsForStaff` LEFT-JOINs `support_tickets`, so with no
-   *  cached subject the row titles itself from the ticket id. */
+  /** `listSupportFollowupsForStaff` reads the item's cached subject; the fixture
+   *  caches none, so the row titles itself from the ticket number. */
   interruptTitle: 'Ticket #9100',
   /** Lower than the default 100 so the fixtures outrank any incidental row. */
   priority: 10,

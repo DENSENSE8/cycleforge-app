@@ -6,10 +6,10 @@ export function recordInitials(title: string): string {
   return (words.slice(0, 2).map((word) => word[0]).join('') || '—').toUpperCase();
 }
 
-/** The record photo, or the title's initials when no image is known. */
-export function RecordPhoto({ src, fallback }: { src: string | null; fallback: string }) {
+/** The record photo, or the title's initials when no image is known. `onError` lets the host drop a URL that fails to load. */
+export function RecordPhoto({ src, fallback, onError }: { src: string | null; fallback: string; onError?: () => void }) {
   if (src) {
-    return <Image src={src} alt="" fill unoptimized sizes="96px" className="object-cover" />;
+    return <Image src={src} alt="" fill unoptimized sizes="96px" className="object-cover" onError={onError} />;
   }
   return (
     <span

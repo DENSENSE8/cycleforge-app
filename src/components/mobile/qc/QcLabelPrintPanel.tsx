@@ -17,6 +17,7 @@ type LabelDockVerb = 'print' | 'next';
 /** Why a station cannot take a label right now; null when it can. */
 function stationBlocked(station: PrintStationEntry): string | null {
   if (station.thisComputer) return null;
+  if (station.paused) return 'Paused';
   if (!station.live) return 'Offline';
   if (!station.label.ready) return 'No label printer';
   return null;
@@ -84,13 +85,13 @@ export function QcLabelPrintPanel({
       }
       return;
     }
-    const acked = await stations.sendQcLabel(chosen.stationId, unitKey);
+    const failure = await stations.sendQcLabel(chosen.stationId, unitKey);
     setSending(false);
-    if (acked) {
+    if (!failure) {
       setPrinted(true);
-      setSent(`${chosen.stationName} is printing the QC label — stick it on the unit to prepack.`);
+      setSent(`${chosen.stationName} printed the QC label — stick it on the unit to prepack.`);
     }
-    else setError(`${chosen.stationName} did not answer — is CycleForge open there? Nothing was printed.`);
+    else setError(failure);
   };
 
   return (

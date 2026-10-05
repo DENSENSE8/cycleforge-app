@@ -8,7 +8,6 @@
  * plan; Print commits the create and prints the returned rows.
  */
 
-import type { ArrivalTier } from '@/lib/receiving/arrival-tier';
 import {
   RACK_MAX_SHELVES,
   type CreateRackBody,
@@ -38,8 +37,6 @@ export interface RackCreatePlacement {
 export interface RackCreateState {
   placement: RackCreatePlacement | null;
   shelves: number;
-  /** Shelf number → urgency tier (null / absent = no tier). */
-  tiers: Readonly<Record<number, ArrivalTier | null>>;
   /** One per create attempt — the server's idempotency key. */
   clientEventId: string;
 }
@@ -48,26 +45,13 @@ export interface RackCreateState {
 export const RACK_CREATE_DEFAULT_SHELVES = 5;
 
 export function initialRackCreateState(clientEventId: string): RackCreateState {
-  return { placement: null, shelves: RACK_CREATE_DEFAULT_SHELVES, tiers: {}, clientEventId };
+  return { placement: null, shelves: RACK_CREATE_DEFAULT_SHELVES, clientEventId };
 }
 
-/** Clamp a shelf count into 1..{@link RACK_MAX_SHELVES}; tiers above the count are dropped. */
+/** Clamp a shelf count into 1..{@link RACK_MAX_SHELVES}. */
 export function withShelfCount(state: RackCreateState, shelves: number): RackCreateState {
   const n = Math.min(RACK_MAX_SHELVES, Math.max(1, Math.trunc(Number.isFinite(shelves) ? shelves : 1)));
-  const tiers: Record<number, ArrivalTier | null> = {};
-  for (const [k, v] of Object.entries(state.tiers)) {
-    const shelf = Number(k);
-    if (shelf <= n && v != null) tiers[shelf] = v;
-  }
-  return { ...state, shelves: n, tiers };
-}
-
-export function withShelfTier(state: RackCreateState, shelf: number, tier: ArrivalTier | null): RackCreateState {
-  if (!Number.isInteger(shelf) || shelf < 1 || shelf > state.shelves) return state;
-  const tiers: Record<number, ArrivalTier | null> = { ...state.tiers };
-  if (tier == null) delete tiers[shelf];
-  else tiers[shelf] = tier;
-  return { ...state, tiers };
+  return { ...state, shelves: n };
 }
 
 /**
@@ -103,16 +87,11 @@ export function previousRackCreateStep(step: RackCreateStep): RackCreateStep | n
 export function toCreateRackBody(state: RackCreateState, dryRun: boolean): CreateRackBody {
   const blocked = blockedReason(state, 'review');
   if (blocked || !state.placement) throw new Error(blocked ?? 'Choose where the rack stands');
-  const shelfTiers = Object.entries(state.tiers)
-    .map(([k, tier]) => ({ shelf: Number(k), tier }))
-    .filter((t): t is { shelf: number; tier: ArrivalTier } => t.tier != null && t.shelf >= 1 && t.shelf <= state.shelves)
-    .sort((a, b) => a.shelf - b.shelf);
   return {
     ...(state.placement.id != null
       ? { placementId: state.placement.id }
       : { placementCode: state.placement.code!.trim() }),
     shelves: state.shelves,
-    ...(shelfTiers.length > 0 ? { shelfTiers } : {}),
     dryRun,
     clientEventId: state.clientEventId,
   };

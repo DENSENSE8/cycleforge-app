@@ -32,6 +32,7 @@ import { PackLocationsLeaf } from '@/components/tech/shipping/PackLocationsLeaf'
 import { usePackOrderPlacement } from '@/components/tech/shipping/usePackOrderPlacement';
 import { buildPackDisplayIndexRows } from '@/components/packer/pack-display-index';
 import { packListingIdentity } from '@/components/packer/pack-listing-identity';
+import { PrepackUnitFacts } from '@/features/prepack/PrepackUnitFacts';
 
 /** Scan/pack Displays only — no Ticket · Support hubs. */
 type PackDisplayTab = 'photos' | 'timeline' | 'listings';
@@ -259,16 +260,8 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 <div className={STATION_SCAN_WELL_CLASS}>
                 {isUnitScan ? (
                   <div className="space-y-3">
-                    <p className="text-role-caption font-semibold text-text-muted">
-                      Packing photos for this prepacked unit — linked to the unit
-                      label and visible on the timeline.
-                    </p>
-                    {hasUnitPhotos ? (
-                      <UnitPackPhotoPeek
-                        serialUnitId={Number(activeOrder.serialUnitId)}
-                        preferSource="packing"
-                      />
-                    ) : null}
+                    <PrepackUnitFacts unitRef={String(activeOrder.unitKey || '')} compact />
+                    {hasUnitPhotos ? <UnitPackPhotoPeek serialUnitId={Number(activeOrder.serialUnitId)} preferSource="packing" /> : null}
                   </div>
                 ) : (
                   <OrderPackChecklist

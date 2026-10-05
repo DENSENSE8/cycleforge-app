@@ -4,8 +4,8 @@ import 'server-only';
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { mapTaskFollowUpRow, normalizeTaskFollowUp } from './task-follow-ups';
-import type { TaskFollowUp, TaskFollowUpCreateBody, TaskFollowUpRefusal } from './task-follow-ups-shared';
+import { mapTaskFollowUpRow, normalizeTaskFollowUp, type NormalizedTaskFollowUp } from './task-follow-ups';
+import type { TaskFollowUp, TaskFollowUpChannel, TaskFollowUpCreateBody, TaskFollowUpRefusal } from './task-follow-ups-shared';
 import { findTaskAnchor } from './task-links-db';
 
 const FOLLOW_UP_COLUMNS = `
@@ -41,11 +41,77 @@ export type LogTaskFollowUpResult =
   | { ok: true; followUp: TaskFollowUp; nextFollowUpAt: string | null | undefined }
   | { ok: false; reason: TaskFollowUpRefusal };
 
+/** The executor `logTaskFollowUpInTx` writes on — a tenant-scoped transaction client. */
+export interface TaskFollowUpTx {
+  query(text: string, params?: unknown[]): Promise<{ rows: Array<Record<string, unknown>> }>;
+}
+
+export interface TaskFollowUpWrite extends Omit<NormalizedTaskFollowUp, 'channel'> {
+  /** Any stored channel — the Support loop logs `message` (and a logged reply's own channel). */
+  channel: TaskFollowUpChannel;
+  /** The Support message this row records — one row per message (unique), so a replay logs nothing. */
+  threadMessageId?: number | null;
+  /**
+   * Move `last_follow_up_at` (default true). A customer message or an internal
+   * note is on the record but is not US chasing, so the Support loop passes false.
+   */
+  stampLastFollowUp?: boolean;
+}
+
 /**
- * Insert one follow-up and move the task's denormalised instants in ONE
- * transaction: `last_follow_up_at` only ever moves forward (a back-dated log
- * never un-chases a task); `next_follow_up_at` moves only when the body names it.
+ * The ONE follow-up writer, on a transaction the caller owns: insert the row
+ * and move the task's denormalised instants — `last_follow_up_at` only ever
+ * moves forward (a back-dated log never un-chases a task). `next_follow_up_at`
+ * is set / cleared when the write names it; otherwise an OUTBOUND chase that
+ * stamps clears a chase that is already due (≤ now) — the due chase just
+ * happened — and keeps a future one. Null when `threadMessageId` was already
+ * logged (nothing written).
  */
+export async function logTaskFollowUpInTx(
+  client: TaskFollowUpTx,
+  orgId: OrgId,
+  staffId: number | null,
+  taskId: number,
+  v: TaskFollowUpWrite,
+): Promise<TaskFollowUp | null> {
+  // A typed chase has no message; only a message-backed row names (and dedupes on) thread_message_id.
+  const byMessage = v.threadMessageId != null;
+  const inserted = await client.query(
+    `WITH f AS (
+       INSERT INTO work_assignment_follow_ups
+         (organization_id, assignment_id, channel, direction, occurred_at, staff_id, body${byMessage ? ', thread_message_id' : ''})
+       VALUES ($1::uuid, $2, $3, $4, $5::timestamptz, $6, $7${byMessage ? ', $8::bigint' : ''})
+       ${byMessage ? 'ON CONFLICT (organization_id, thread_message_id) WHERE thread_message_id IS NOT NULL DO NOTHING' : ''}
+       RETURNING *
+     )
+     SELECT ${FOLLOW_UP_COLUMNS} FROM f ${STAFF_JOIN}`,
+    [orgId, taskId, v.channel, v.direction, v.occurredAt, staffId, v.body, ...(byMessage ? [v.threadMessageId] : [])],
+  );
+  const row = inserted.rows[0];
+  if (!row) return null;
+  const stampLast = v.stampLastFollowUp !== false;
+  const keepNext = v.nextFollowUpAt === undefined;
+  const satisfiesDue = stampLast && v.direction === 'outbound';
+  if (stampLast || !keepNext) {
+    await client.query(
+      `UPDATE work_assignments
+          SET last_follow_up_at = CASE WHEN $6::boolean
+                                       THEN GREATEST(COALESCE(last_follow_up_at, $3::timestamptz), $3::timestamptz)
+                                       ELSE last_follow_up_at END,
+              next_follow_up_at = CASE WHEN NOT $4::boolean THEN $5::timestamptz
+                                       WHEN $7::boolean AND next_follow_up_at <= now() THEN NULL
+                                       ELSE next_follow_up_at END,
+              updated_at = now()
+        WHERE organization_id = $1::uuid AND id = $2`,
+      [orgId, taskId, v.occurredAt, keepNext, keepNext ? null : v.nextFollowUpAt, stampLast, satisfiesDue],
+    );
+  }
+  const followUp = mapTaskFollowUpRow(row);
+  if (!followUp) throw new Error('work_assignment_follow_ups insert returned no mappable row');
+  return followUp;
+}
+
+/** Normalise, gate on the task, then {@link logTaskFollowUpInTx} in ONE transaction. */
 export async function logTaskFollowUp(
   orgId: OrgId,
   staffId: number | null,
@@ -57,28 +123,7 @@ export async function logTaskFollowUp(
   const v = normalized.value;
   if (!(await findTaskAnchor(orgId, taskId))) return { ok: false, reason: 'task_not_found' };
 
-  const followUp = await withTenantTransaction(orgId, async (client) => {
-    const inserted = await client.query(
-      `WITH f AS (
-         INSERT INTO work_assignment_follow_ups
-           (organization_id, assignment_id, channel, direction, occurred_at, staff_id, body)
-         VALUES ($1::uuid, $2, $3, $4, $5::timestamptz, $6, $7)
-         RETURNING *
-       )
-       SELECT ${FOLLOW_UP_COLUMNS} FROM f ${STAFF_JOIN}`,
-      [orgId, taskId, v.channel, v.direction, v.occurredAt, staffId, v.body],
-    );
-    const keepNext = v.nextFollowUpAt === undefined;
-    await client.query(
-      `UPDATE work_assignments
-          SET last_follow_up_at = GREATEST(COALESCE(last_follow_up_at, $3::timestamptz), $3::timestamptz),
-              next_follow_up_at = CASE WHEN $4::boolean THEN next_follow_up_at ELSE $5::timestamptz END,
-              updated_at = now()
-        WHERE organization_id = $1::uuid AND id = $2`,
-      [orgId, taskId, v.occurredAt, keepNext, keepNext ? null : v.nextFollowUpAt],
-    );
-    return mapTaskFollowUpRow(inserted.rows[0] as Record<string, unknown>);
-  });
+  const followUp = await withTenantTransaction(orgId, (client) => logTaskFollowUpInTx(client, orgId, staffId, taskId, v));
   if (!followUp) throw new Error('work_assignment_follow_ups insert returned no mappable row');
   return { ok: true, followUp, nextFollowUpAt: v.nextFollowUpAt };
 }

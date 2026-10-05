@@ -1,13 +1,12 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import { LiveFeedView } from '@/components/live-feed/LiveFeedBoard';
+import { LiveFeedBoard } from '@/features/live-feed/LiveFeedBoard';
 import { requirePermission } from '@/lib/auth/page-guard';
 import { loadLiveFeedBoard } from '@/lib/live-feed/load';
 import { liveFeedBoardQueryKey } from '@/lib/live-feed/query';
-import { defaultLiveFeedFilters, liveFeedHref, readLiveFeedFilters } from '@/lib/live-feed/route';
-import { LIVE_FEED_PERMISSIONS, liveFeedAccess } from '@/lib/live-feed/statuses';
+import { readLiveFeedFilters } from '@/lib/live-feed/route';
+import { LIVE_FEED_PERMISSION } from '@/lib/live-feed/stages';
 
 export const metadata: Metadata = {
   title: 'Live feed',
@@ -16,44 +15,31 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 /**
- * `/operations/live-feed` — Operations › Live feed: every package, pickup and
- * counter sale by status, online and in person, inbound and outbound, as the
- * direction's board (one lane per status). The date range sits top-right in
- * the header; every other control is in the contextual sidebar (direction
- * views, Date by, staff, time of day, Channel, Carrier, Find). Open to
- * whoever sees either direction (packing.view outbound, receiving.view
- * inbound); a direction the viewer may not see lands on the other's board.
+ * `/operations/live-feed` — Operations › Live feed: every outbound carrier
+ * package by stage (To pick → Picked → Packed → Scanned out), live, for today.
+ * The sidebar's facets / staff filter narrow it (URL params). The server seeds
+ * the board so it paints with its first load.
  */
 export default async function LiveFeedPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const user = await requirePermission(LIVE_FEED_PERMISSIONS);
+  const user = await requirePermission([LIVE_FEED_PERMISSION]);
   const raw = await searchParams;
-  const filters = readLiveFeedFilters({
-    get: (name) => {
-      const value = raw[name];
-      return (Array.isArray(value) ? value[0] : value) ?? null;
-    },
-  });
-  if (!liveFeedAccess(user.permissions)[filters.dir]) {
-    redirect(liveFeedHref(defaultLiveFeedFilters(filters.dir === 'outbound' ? 'inbound' : 'outbound')));
-  }
+  const filters = readLiveFeedFilters({ get: (name) => [raw[name]].flat()[0] ?? null });
 
   const queryClient = new QueryClient();
   try {
-    const board = await loadLiveFeedBoard(user.organizationId, filters, user.permissions);
-    if (board) queryClient.setQueryData(liveFeedBoardQueryKey(filters), board);
+    queryClient.setQueryData(liveFeedBoardQueryKey(filters), await loadLiveFeedBoard(user.organizationId, filters));
   } catch (error) {
     console.error('LiveFeedPage seed failed; client will fetch', error);
   }
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      {/* The board runs edge to edge — the desk's full measure. */}
       <DeskPageLayout bare measure="full" className="h-full min-h-0">
-        <LiveFeedView />
+        <LiveFeedBoard surface="desk" viewerStaffId={user.staffId} />
       </DeskPageLayout>
     </HydrationBoundary>
   );

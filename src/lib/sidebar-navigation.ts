@@ -1550,7 +1550,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'qc-labels', label: 'QC labels', href: QC_LABELS_PATH, icon: ScanBarcode, tone: 'text-amber-600', kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
     railless: true,
     children: [
-      { id: 'all',   label: 'All labels', icon: ScanBarcode,  to: () => ({ pathname: QC_LABELS_PATH, params: { view: null } }) },
+      { id: 'all',   label: 'All',        icon: ScanBarcode,  to: () => ({ pathname: QC_LABELS_PATH, params: { view: null } }) },
       { id: 'stock', label: 'In stock',   icon: Package,      to: () => ({ pathname: QC_LABELS_PATH, params: { view: 'stock' } }) },
       { id: 'order', label: 'On orders',  icon: PackageCheck, to: () => ({ pathname: QC_LABELS_PATH, params: { view: 'order' } }) },
     ],

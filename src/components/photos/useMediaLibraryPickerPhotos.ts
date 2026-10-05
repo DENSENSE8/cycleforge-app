@@ -21,8 +21,12 @@ interface BuildMediaLibraryPickerFiltersArgs {
   ticketTab: boolean;
   /** Carton-scoped tab — filters by receivingId. */
   cartonTab: boolean;
+  /** Support-item tab — the item's primary task media (WORK_ASSIGNMENT). */
+  supportTab?: boolean;
   ticketId?: number;
   receivingId?: number;
+  /** The Support item's primary task (`work_assignments.id`). */
+  supportTaskId?: number;
   dateNav: PhotoDateNav;
   search?: string;
 }
@@ -45,8 +49,10 @@ export function buildMediaLibraryPickerFilters({
   mediaType,
   ticketTab,
   cartonTab,
+  supportTab,
   ticketId,
   receivingId,
+  supportTaskId,
   dateNav,
   search,
 }: BuildMediaLibraryPickerFiltersArgs): PhotoLibraryFilterState | null {
@@ -73,6 +79,16 @@ export function buildMediaLibraryPickerFilters({
       base.dateTo = dateNav.dateTo;
     }
     if (dateNav.poRef) base.poRef = dateNav.poRef;
+    return base;
+  }
+
+  if (supportTab) {
+    if (!supportTaskId) return null;
+    const base: PhotoLibraryFilterState = { taskId: String(supportTaskId) };
+    if (dateNav.dateFrom && dateNav.dateTo) {
+      base.dateFrom = dateNav.dateFrom;
+      base.dateTo = dateNav.dateTo;
+    }
     return base;
   }
 
@@ -125,8 +141,10 @@ export function useMediaLibraryPickerPhotos(args: UseMediaLibraryPickerPhotosArg
       args.mediaType,
       args.ticketTab,
       args.cartonTab,
+      args.supportTab,
       args.ticketId,
       args.receivingId,
+      args.supportTaskId,
       args.dateNav,
       args.search,
     ],

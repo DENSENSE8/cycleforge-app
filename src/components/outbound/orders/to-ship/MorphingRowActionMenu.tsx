@@ -51,7 +51,7 @@ import {
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { TableRowPlaneProps } from '@/components/tables/table-surface-binding';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
-import { SHIPPING_EXCEPTIONS_PATH } from '@/lib/shipping/orders-desk';
+import { EXCEPTIONS_PATH } from '@/lib/exceptions/types';
 import { commitExceptionsItemPaste } from '@/lib/orders/exceptions-cta';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
@@ -87,7 +87,7 @@ import type { KitComposition } from '@/lib/orders/order-kit-composition';
 import { VIEW_SPECS, viewOffersVerb, type OrderViewKey } from '@/lib/views/view-specs';
 import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
 import { buildRecordTaskVerbs } from '@/components/tasks/RecordTaskActions';
-import { supportCreateTicketHref } from '@/lib/support/support-sidebar-shared';
+import { supportCreateTicketHref } from '@/lib/support/order-support-routes';
 import { COPY_HOTKEY } from '@/lib/keyboard/key-registry';
 
 function orderIdOf(row: unknown): number | null {
@@ -414,7 +414,7 @@ function useOrderActionVerbs({
     if (stage && stage.view === 'in-place') stage.setView('split');
     const params = new URLSearchParams(searchParams.toString());
     params.set('order', String(record.id));
-    router.replace(`${SHIPPING_EXCEPTIONS_PATH}?${params.toString()}`, { scroll: false });
+    router.replace(`${EXCEPTIONS_PATH}?${params.toString()}`, { scroll: false });
   };
 
   /**

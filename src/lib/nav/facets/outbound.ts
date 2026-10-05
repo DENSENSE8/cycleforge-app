@@ -177,7 +177,7 @@ function toQueueCombo(row: Record<string, unknown>): QueueFacetCombo {
 // ── entry ────────────────────────────────────────────────────────────────────
 
 const QUEUE_VIEW: Partial<Record<NavFacetContext, DeskQueueView>> = {
-  'outbound.triage': 'triage',
+  'outbound.orders': 'triage',
 };
 
 /** Keep only the groups the context declares, in its declared order. */

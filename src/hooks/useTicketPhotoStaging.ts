@@ -3,9 +3,17 @@
 import { useCallback, useMemo, useState } from 'react';
 import { captureTimeFromFile } from '@/lib/photos/capture-time';
 import { uploadPhotoClient, linkPhotoClient } from '@/lib/photos/upload-client';
+import { TASK_MEDIA_ENTITY_TYPE } from '@/lib/tasks/task-links-shared';
 import { toast } from '@/lib/toast';
 
-/** Staged photos for a support ticket. */
+/**
+ * Where staged photos land: a helpdesk ticket's claim evidence, or a local
+ * Support item's primary task media (the record's Media tab — the same photos
+ * the composer's library reads under "This support item").
+ */
+export type TicketPhotoTarget = { kind: 'ticket'; ticketId: number } | { kind: 'support'; taskId: number };
+
+/** Staged photos for a support ticket or Support item. */
 export interface StagedPhoto {
   tempId: string;
   name: string;
@@ -20,8 +28,14 @@ export interface StagedPhoto {
 
 let seq = 0;
 
-export function useTicketPhotoStaging(ticketId: number) {
+export function useTicketPhotoStaging(target: TicketPhotoTarget) {
   const [staged, setStaged] = useState<StagedPhoto[]>([]);
+  const support = target.kind === 'support';
+  const entityId = support ? target.taskId : target.ticketId;
+  // A ticket's photos are claim evidence; a Support item's are its task's primary media.
+  const link = support
+    ? ({ entityType: TASK_MEDIA_ENTITY_TYPE, linkRole: 'primary' } as const)
+    : ({ entityType: 'ZENDESK_TICKET', linkRole: 'claim_evidence' } as const);
 
   const addFiles = useCallback(
     (files: File[]) => {
@@ -32,12 +46,11 @@ export function useTicketPhotoStaging(ticketId: number) {
         setStaged((prev) => [...prev, { tempId, name: file.name, previewUrl, status: 'uploading' }]);
         uploadPhotoClient({
           file,
-          entityType: 'ZENDESK_TICKET',
-          entityId: ticketId,
-          linkRole: 'claim_evidence',
-          // Claim evidence is the surface most likely to be argued over, so the
-          // File's own timestamp travels with it rather than collapsing into the
-          // server-insert instant. Null when it fails the shared bounds.
+          entityType: link.entityType,
+          entityId,
+          linkRole: link.linkRole,
+          // The File's own timestamp travels with it rather than collapsing into
+          // the server-insert instant. Null when it fails the shared bounds.
           clientCapturedAtMs: captureTimeFromFile(file),
         })
           .then((res) => {
@@ -56,10 +69,10 @@ export function useTicketPhotoStaging(ticketId: number) {
           });
       }
     },
-    [ticketId],
+    [link.entityType, link.linkRole, entityId],
   );
 
-  /** Link existing library photos to this ticket and stage them for the next reply. */
+  /** Link existing library photos to the target and stage them for the next reply. */
   const addLibraryPhotos = useCallback(
     (photos: { id: number; url: string; thumbUrl: string; caption?: string | null }[]) => {
       for (const photo of photos) {
@@ -81,21 +94,21 @@ export function useTicketPhotoStaging(ticketId: number) {
         });
         void linkPhotoClient({
           photoId: photo.id,
-          entityType: 'ZENDESK_TICKET',
-          entityId: ticketId,
-          linkRole: 'claim_evidence',
+          entityType: link.entityType,
+          entityId,
+          linkRole: link.linkRole,
         })
           .then(() => {
             setStaged((prev) => prev.map((s) => (s.tempId === tempId ? { ...s, status: 'done' } : s)));
           })
           .catch((err) => {
-            // Already linked to this ticket — still stage for Zendesk attach.
+            // Already linked to this target — still stage it.
             console.warn('[ticket-photo-staging] linkPhoto failed (may already be linked)', err);
             setStaged((prev) => prev.map((s) => (s.tempId === tempId ? { ...s, status: 'done' } : s)));
           });
       }
     },
-    [ticketId],
+    [link.entityType, link.linkRole, entityId],
   );
 
   const remove = useCallback((tempId: string) => {

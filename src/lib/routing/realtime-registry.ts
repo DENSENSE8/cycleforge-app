@@ -10,7 +10,7 @@
  *   `queue.assignments` / `order.picked`).
  * - `receiving` — the receiving feeds, lines, PO + photo reads (station
  *   channel: `receiving-log.changed` / `receiving-photo.changed` /
- *   `shipment.changed` / `email-signal.changed`).
+ *   `shipment.changed`).
  * - `repair` — `qk.repairs.*` (repairs channel: `repair.changed`).
  * - `walkIn` — `qk.walkInSales.*` (walk-in channel: `sale.completed`).
  *

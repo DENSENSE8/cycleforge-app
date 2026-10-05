@@ -3,13 +3,18 @@
 import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 
 /**
- * Cap on unique trackings per paste — shared by the ERP check and the list
- * filters (`?tracking_in=`, `?ref_in=`), because they are the same paste.
- * 150 keys is ~3KB of query string, which every browser and proxy carries
- * comfortably. Live Zoho stays capped per Check (`zoho_cap`); a pasted list
- * decides those numbers from our own tables (`reconcileCheck`).
+ * Cap on unique trackings per paste — shared by the ERP check, the paste-a-list
+ * locate and the list filters (`?tracking_in=`, `?ref_in=`), because they are
+ * the same paste. Blank lines and repeats never count (the parser dedupes on
+ * the canonical key first). 300 is set by the URL, not the database: the list
+ * rides the page URL and, re-encoded, `/api/nav/context?path=` — 300 numbers
+ * is ~7–10KB there, under the 16KB request-header ceiling Node enforces. The
+ * locate itself answers 300 refs in one round trip per arm (~0.5 s measured
+ * on a dev box 85 ms from the database for 213 refs). Live Zoho stays capped
+ * per Check (`zoho_cap`); a pasted list decides those numbers from our own
+ * tables (`reconcileCheck`).
  */
-export const CHECK_ZOHO_RECEIVED_MAX_INPUTS = 150;
+export const CHECK_ZOHO_RECEIVED_MAX_INPUTS = 300;
 
 /** The list-filter URL param. One name, imported — never re-typed at a call site. */
 export const TRACKING_IN_PARAM = 'tracking_in';

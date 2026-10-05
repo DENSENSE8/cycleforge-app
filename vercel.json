@@ -85,6 +85,10 @@
       "schedule": "*/10 * * * *"
     },
     {
+      "path": "/api/cron/support/loop",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/catalog-projection",
       "schedule": "20 * * * *"
     },

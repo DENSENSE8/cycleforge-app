@@ -1,5 +1,5 @@
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
-import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
+import { getStaffTheme, getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
 
 interface StaffBadgeProps {
@@ -7,6 +7,8 @@ interface StaffBadgeProps {
   staffId: number | null | undefined;
   /** Display name. Defaults to '---' when empty. */
   name?: string | null;
+  /** Explicit saved colour when the row already carries it; avoids a cache-dependent first paint. */
+  colorHex?: string | null;
   /** Additional Tailwind classes. */
   className?: string;
 }
@@ -17,15 +19,16 @@ interface StaffBadgeProps {
  * `StaffAvatar` for the mark. `stationThemeColors[*].text` carries light and
  * dark inks that clear 4.5:1 on card, hover and selected fills.
  */
-export function StaffBadge({ staffId, name, className = '' }: StaffBadgeProps) {
+export function StaffBadge({ staffId, name, colorHex, className = '' }: StaffBadgeProps) {
   // Re-paint when the staff colour cache lands or an admin recolours someone.
   useStaffColorVersion();
   const display = name?.trim() || '---';
-  return <span className={cn(getStaffTextColor(staffId), className)}>{display}</span>;
+  return <span className={cn(getStaffTextColor(staffId, colorHex), className)}>{display}</span>;
 }
 
 /** The station-colour text class for a staff id (undefined when there is none). */
-export function getStaffTextColor(staffId: number | null | undefined): string | undefined {
+export function getStaffTextColor(staffId: number | null | undefined, colorHex?: string | null): string | undefined {
+  if (colorHex) return stationThemeColors[getStaffTheme({ id: staffId, color_hex: colorHex })].text;
   if (!staffId) return undefined;
   return stationThemeColors[getStaffThemeById(staffId)].text;
 }

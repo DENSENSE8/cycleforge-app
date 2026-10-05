@@ -9,7 +9,7 @@ import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportReply } from '@/hooks/useSupportReply';
 import { useSupportSuggestion } from '@/hooks/useSupportSuggestion';
 import { postSupportTicketItems, supportTicketItemKeys } from '@/hooks/useSupportTicketItems';
-import { useTicketPhotoStaging, type TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
+import { useTicketPhotoStaging, type TicketPhotoStaging, type TicketPhotoTarget } from '@/hooks/useTicketPhotoStaging';
 import { zendeskKeys } from '@/hooks/useZendeskQueries';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
@@ -19,8 +19,37 @@ import { seedComposerDraft } from '@/lib/threads/composer-draft';
 import { requestConfirm } from '@/design-system/components/confirm';
 import type { TicketItemRole } from '@/lib/support/product-token';
 import type { SupportProductFace } from '@/lib/support/ticket-items-shared';
+import type { SupportPurpose, SupportTransportView } from '@/lib/support/conversation/model';
+import { applyMarketplacePolicy } from '@/lib/support/conversation/marketplace-policy';
+import { useSupportItemActions, type SupportReplyAction } from '@/lib/support/record/use-support-item';
+import {
+  supportComposerCommit,
+  supportComposerMode,
+  type SupportComposerCommit,
+  type SupportComposerMode,
+} from '@/lib/support/record/support-record-model';
+import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
 import type { ComposerDrillNode } from '@/components/composer/ComposerDrillMenu';
+
+/**
+ * Support-item mode (Tasks → Support record, operator 2026-10-04): the same
+ * mouth talks to the LOCAL Support item instead of a helpdesk ticket. A
+ * customer conversation sends (connected transport) or copies & opens the
+ * transport, logs replies sent elsewhere, and drafts with AI; an internal
+ * record or an unclassified item takes internal notes only. The next-step
+ * choice after an answering reply is owed through `next-step-store`, keyed by
+ * the item — the record reads it from there, not from this composer. Photos
+ * stage onto the item's primary task (its Media tab), and the `+` library opens
+ * on "This support item" — the same task media.
+ */
+export interface TicketComposerSupportItem {
+  id: number;
+  purpose: SupportPurpose;
+  transport: SupportTransportView;
+  /** The item's primary task (`work_assignments.id`) — where its photos live; null before it has one. */
+  taskId: number | null;
+}
 
 /**
  * One "Product sent to customer" pick waiting in the composer tray. The
@@ -64,6 +93,11 @@ export type UseTicketComposerOptions = {
   initialPhotoIds?: readonly number[];
   /** Starting channel; omitted keeps the PUBLIC-first default. */
   initialIsPublic?: boolean;
+  /**
+   * Support-item mode: commits go to the local Support item (`/api/support/items/[id]/…`),
+   * never to a helpdesk ticket. Pass `ticketId: null` with it.
+   */
+  supportItem?: TicketComposerSupportItem | null;
 };
 
 export function useTicketComposer({
@@ -75,6 +109,7 @@ export function useTicketComposer({
   initialBody,
   initialPhotoIds,
   initialIsPublic,
+  supportItem = null,
 }: UseTicketComposerOptions) {
   const [body, setBody] = useState(initialBody ?? '');
   // PUBLIC first (operator ruling 2026-08-31). Ticket work is outbound: a claim
@@ -94,13 +129,54 @@ export function useTicketComposer({
   const queryClient = useQueryClient();
   const reply = useSupportReply();
   const { user, has, isLoaded } = useAuth();
-  const canPost = !isLoaded || has('integrations.zendesk');
+  // The text the in-flight Support write carries — cleared from the box only if the box still holds it,
+  // so words typed while the request was out are never lost.
+  const sentTextRef = useRef<string | null>(null);
+  const clearSent = () => {
+    const sent = sentTextRef.current;
+    sentTextRef.current = null;
+    seededDraftIdRef.current = null;
+    setBody((current) => (sent != null && current.trim() !== sent ? current : ''));
+    setCcs([]);
+    setCcDraft('');
+    setProducts([]);
+    staging.clear();
+    onSent?.();
+  };
+  // Hook-level handlers: they run when the write lands even if this render is long gone.
+  const support = useSupportItemActions(supportItem?.id ?? null, { onReplied: clearSent, onInternalAdded: clearSent });
+  const supportMode: SupportComposerMode | null = supportItem ? supportComposerMode(supportItem.purpose) : null;
+  // A Support item posts under the thread permission; a helpdesk ticket under the Zendesk gate.
+  const canPost = !isLoaded || has(supportItem ? 'support.thread.manage' : 'integrations.zendesk');
   const canBrowseLibrary = isLoaded && has('photos.view');
+  // Only an acknowledged customer conversation has a Public channel; everything else is internal.
+  const effectiveIsPublic = supportMode == null || supportMode === 'customer' ? isPublic : false;
+  const supportCommit: SupportComposerCommit | null =
+    supportItem && supportMode
+      ? supportComposerCommit({ mode: supportMode, isPublic: effectiveIsPublic, transport: supportItem.transport })
+      : null;
+  // The draft that seeded this reply (Use draft / Draft with AI) — the reply marks it used.
+  // An emptied composer forgets it: what is typed next is the staffer's own words.
+  const seededDraftIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!body.trim()) seededDraftIdRef.current = null;
+  }, [body]);
 
-  // Unconditional: the hook only reads `ticketId` inside its callbacks, so an
-  // unlinked carton (id 0) costs nothing and the Photos rows stay hidden.
-  const ownStaging = useTicketPhotoStaging(ticketId ?? 0);
+  // Where photos land: the helpdesk ticket's claim evidence, or the Support item's
+  // primary task media. None (unlinked carton, task-less item) hides the Photos rows.
+  const supportTaskId = supportItem?.taskId ?? null;
+  const photoTarget: TicketPhotoTarget | null = supportItem
+    ? supportTaskId != null
+      ? { kind: 'support', taskId: supportTaskId }
+      : null
+    : ticketId != null
+      ? { kind: 'ticket', ticketId }
+      : null;
+  // Unconditional: the hook only reads its target inside its callbacks, so the
+  // `0` stand-in costs nothing while the Photos rows stay hidden.
+  const ownStaging = useTicketPhotoStaging(photoTarget ?? { kind: 'ticket', ticketId: 0 });
   const staging = hostStaging ?? ownStaging;
+  const hasPhotoTarget = photoTarget != null;
   const picker = usePhotoDropzone(staging.addFiles);
 
   const stagedDone = staging.staged.filter(
@@ -110,6 +186,13 @@ export function useTicketComposer({
     () => new Set(stagedDone.map((s) => s.photoId!)),
     [stagedDone],
   );
+
+  // A Support item's staged photos are already its task media: refresh the record's Media tab as each lands.
+  const stagedDoneCount = stagedDone.length;
+  useEffect(() => {
+    if (supportTaskId == null || stagedDoneCount === 0) return;
+    void queryClient.invalidateQueries({ queryKey: ['tasks', 'media', supportTaskId] });
+  }, [queryClient, supportTaskId, stagedDoneCount]);
 
   // Hand-over photos stage exactly once per ticket, through the same library
   // path as the `+` → Browse picker (link to the ticket, ride the next reply).
@@ -144,9 +227,62 @@ export function useTicketComposer({
     setProducts((prev) => prev.filter((p) => p.clientEventId !== clientEventId));
   }, []);
 
-  const busy = !canPost || reply.isPending || staging.uploading;
+  const busy = !canPost || reply.isPending || staging.uploading || support.reply.isPending || support.addInternal.isPending;
+
+  /**
+   * One Support commit. Copy & open copies the policy-applied reply and opens
+   * the transport INSIDE the press (clipboard + popup need the user gesture),
+   * then records it; Log as sent records a reply already sent elsewhere. A
+   * landed write clears the composer and (when it answered the customer) owes
+   * the next step — both in the hook-level handlers, never in per-call callbacks.
+   */
+  const commitSupport = useCallback(
+    (kind: SupportComposerCommit['kind'] | 'log') => {
+      if (!supportItem || busy) return;
+      const text = body.trim();
+      if (!text) return;
+      const onError = (err: Error) => {
+        sentTextRef.current = null;
+        toast.error(err.message);
+      };
+      sentTextRef.current = text;
+      if (kind === 'internal') {
+        support.addInternal.mutate(text, { onError });
+        return;
+      }
+      const { transport } = supportItem;
+      let outBody = text;
+      if (kind === 'copy_open') {
+        const applied = applyMarketplacePolicy(transport.channel, text);
+        outBody = applied.body;
+        const copying = copyToClipboard(outBody, { historyKind: 'support-reply' });
+        if (transport.openUrl) window.open(transport.openUrl, '_blank', 'noopener,noreferrer');
+        void copying.then((ok) =>
+          ok
+            ? toast.success(`Copied — paste it in ${transport.label}, then Mark sent.`)
+            : toast.error('Could not copy — select the reply and copy it by hand.'),
+        );
+        if (applied.changes.length > 0) toast.info(`Adjusted for ${transport.label}: ${applied.changes.join(', ').replaceAll('_', ' ')}.`);
+      }
+      const action: SupportReplyAction = kind === 'send' ? 'send' : kind === 'copy_open' ? 'copy_open' : 'log';
+      support.reply.mutate(
+        {
+          action,
+          body: outBody,
+          ...(seededDraftIdRef.current != null ? { draftId: seededDraftIdRef.current } : {}),
+          ...(action === 'log' ? { contactChannel: 'message' as const } : {}),
+        },
+        { onError },
+      );
+    },
+    [supportItem, busy, body, support.addInternal, support.reply],
+  );
 
   const send = useCallback(() => {
+    if (supportCommit) {
+      commitSupport(supportCommit.kind);
+      return;
+    }
     if (ticketId == null || busy) return;
     const picks = products;
     const vars = buildComposerReplyVars({
@@ -192,7 +328,7 @@ export function useTicketComposer({
           .finally(() => void queryClient.invalidateQueries({ queryKey: supportTicketItemKeys.list(ticketId) }));
       },
     });
-  }, [ticketId, busy, products, body, isPublic, user, ccs, ccDraft, stagedDone, reply, staging, onSent, queryClient]);
+  }, [supportCommit, commitSupport, ticketId, busy, products, body, isPublic, user, ccs, ccDraft, stagedDone, reply, staging, onSent, queryClient]);
 
   // Draft with AI: the server reads the thread, answers the latest customer
   // message, and refuses (with the reason) when no customer wrote. The draft
@@ -204,6 +340,32 @@ export function useTicketComposer({
   });
   const draftWithAi = useCallback(
     (opts?: { onApplied?: () => void }) => {
+      if (supportItem) {
+        // A Support item drafts through its own grounded draft store (customer conversations only — the server refuses otherwise).
+        if (support.draftNow.isPending || supportMode !== 'customer') return;
+        support.draftNow.mutate(undefined, {
+          onSuccess: ({ draft }) => {
+            if (!draft.body) {
+              toast.error(draft.error ?? 'The draft came back empty.');
+              return;
+            }
+            void seedComposerDraft({
+              currentBody: bodyRef.current,
+              text: draft.body,
+              mode: 'public',
+              applyBody: setBody,
+              applyMode: setIsPublic,
+              confirm: requestConfirm,
+              onApplied: () => {
+                seededDraftIdRef.current = draft.id;
+                opts?.onApplied?.();
+              },
+            });
+          },
+          onError: (err) => toast.error(err.message),
+        });
+        return;
+      }
       if (ticketId == null || aiDraft.isPending) return;
       aiDraft.mutate(
         { ticketId, stagedPhotoIds: stagedDone.map((s) => s.photoId!) },
@@ -222,23 +384,24 @@ export function useTicketComposer({
         },
       );
     },
-    [ticketId, aiDraft, stagedDone],
+    [supportItem, supportMode, support.draftNow, ticketId, aiDraft, stagedDone],
   );
 
   const insertNodes = useMemo(
     () =>
       buildTicketComposerInsertTree({
         photos:
-          ticketId != null
+          hasPhotoTarget
             ? {
                 onBrowse: canBrowseLibrary ? () => setLibraryOpen(true) : undefined,
                 onUpload: picker.openPicker,
               }
             : undefined,
+        // Product logs ride a helpdesk comment (P7) — a Support item has none.
         product: ticketId != null ? { onPick: canPost ? () => setProductPickerOpen(true) : undefined } : undefined,
         icons: insertIcons,
       }),
-    [ticketId, canBrowseLibrary, canPost, picker.openPicker, insertIcons],
+    [hasPhotoTarget, ticketId, canBrowseLibrary, canPost, picker.openPicker, insertIcons],
   );
 
   const onLibrarySelect = useCallback(
@@ -254,7 +417,8 @@ export function useTicketComposer({
   return {
     body,
     setBody,
-    isPublic,
+    /** In Support-item mode only a customer conversation can be Public. */
+    isPublic: effectiveIsPublic,
     setIsPublic,
     ccs,
     setCcs,
@@ -275,13 +439,24 @@ export function useTicketComposer({
     canPost,
     onLibrarySelect,
     receivingId: receivingId ?? undefined,
+    /** Where staged / library photos land — null hides every photo door. */
+    photoTarget,
     busy,
     /** Enter is live only with something to send (text or a picked product). */
     canSend: !busy && (body.trim().length > 0 || products.length > 0),
     send,
     reply,
     draftWithAi,
-    drafting: aiDraft.isPending,
+    drafting: aiDraft.isPending || support.draftNow.isPending,
+    /** Support-item mode: who the composer talks to, and its labelled commit. */
+    supportMode,
+    supportCommit,
+    /** Support-item mode: record a reply already sent elsewhere (phone, marketplace page, email). */
+    logSent: () => commitSupport('log'),
+    /** Support-item mode: a draft card's text landed through the bridge — the next reply marks that draft used. */
+    noteSeededDraft: (draftId: number) => {
+      seededDraftIdRef.current = draftId;
+    },
   };
 }
 

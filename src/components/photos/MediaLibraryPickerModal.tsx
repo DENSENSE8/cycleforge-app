@@ -4,14 +4,16 @@ import { ExternalLink, Image as ImageIcon, X } from '@/components/Icons';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-types';
 import { Button, IconButton } from '@/design-system/primitives';
-import { MediaLibraryPickerContent } from './MediaLibraryPickerContent';
+import { MediaLibraryPickerContent, type MediaLibraryPickerTab } from './MediaLibraryPickerContent';
 
 interface MediaLibraryPickerModalProps {
   open: boolean;
   onClose: () => void;
   ticketId?: number;
   receivingId?: number;
-  defaultTab?: 'browse' | 'ticket' | 'carton';
+  /** A Support item's primary task — enables the “This support item” tab. */
+  supportTaskId?: number;
+  defaultTab?: MediaLibraryPickerTab;
   title?: string;
   subtitle?: string;
   selected: ClaimPhotoInput[];
@@ -31,6 +33,7 @@ export function MediaLibraryPickerModal({
   onClose,
   ticketId,
   receivingId,
+  supportTaskId,
   defaultTab,
   title = 'Media',
   subtitle,
@@ -81,6 +84,7 @@ export function MediaLibraryPickerModal({
       <MediaLibraryPickerContent
         ticketId={ticketId}
         receivingId={receivingId}
+        supportTaskId={supportTaskId}
         defaultTab={defaultTab}
         selected={selected}
         onSelectedChange={onSelectedChange}

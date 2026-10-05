@@ -6,7 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Panel, Button, IconButton, DeferredQtyInput } from '@/design-system/primitives';
-import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { Minus, Plus } from '@/components/Icons';
 import { useSetting } from '@/hooks/useSettings';
 import { DEFAULT_RETURNS_TEST_BIN_BARCODE } from '@/lib/inventory/returns-test-bin-symbol';

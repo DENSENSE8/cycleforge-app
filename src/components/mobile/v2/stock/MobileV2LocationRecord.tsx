@@ -9,7 +9,6 @@ import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBa
 import { fetchLocationRecord, locationRecordQueryKey } from '@/components/mobile/scan/location-bind-api';
 import type { LocationHandlingUnit, LocationRecord } from '@/components/mobile/scan/location-bind-types';
 import { InboundPickerRow } from '@/components/mobile/v2/inbound/MobileV2InboundParts';
-import { MobileV2AdoptBaySheet } from '@/components/mobile/v2/racks/MobileV2AdoptBaySheet';
 import { MobileV2RackRecord } from '@/components/mobile/v2/racks/MobileV2RackRecord';
 import { rackErrorSentence } from '@/components/mobile/v2/racks/rack-presentation';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
@@ -23,7 +22,7 @@ import { BAY_SIDE_FACE, locationCode, noPad, pad2, parseLocationCodeFlat } from 
 import { stockDrillHref, stockDrillSideOf } from '@/lib/inventory/stock-drill';
 import { parseRackCode, rackLevel } from '@/lib/locations/rack-code';
 import { rackPlacementText } from '@/lib/locations/rack-display';
-import { editRackShelves, getRack, rackQueryKey, RackRequestError } from '@/lib/locations/racks-client';
+import { editRackShelves, getRack, rackQueryKey } from '@/lib/locations/racks-client';
 import { handlingUnitQcFace } from '@/lib/handling-unit-presentation';
 import type { StockTote } from '@/lib/inventory/stock-places';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
@@ -32,10 +31,8 @@ import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { locationHubPath } from '@/lib/mobile/location-hub-href';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
-import { containerPath, locationLabelsHref } from '@/lib/nav/route-tree';
+import { containerPath } from '@/lib/nav/route-tree';
 import { useAuth } from '@/contexts/AuthContext';
-import { useArrivalShelfTiers } from '@/lib/receiving/arrival-shelves-client';
-import { LocationUrgencyFact, LocationUrgencySheet } from './LocationArrivalUrgency';
 import { useLocationLabelPrint } from '@/hooks/useLocationLabelPrint';
 import { locationLabelPrintSummary } from '@/lib/print/printLocationRows';
 import { MobileV2LocationPicker, rememberLocationVisit } from './MobileV2LocationPicker';
@@ -341,7 +338,6 @@ function StockLocationRecord({
   const [selected, setSelected] = useState<LocationHandlingUnit | null>(null);
   const [parkingTote, setParkingTote] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [adopting, setAdopting] = useState(false);
   const [removingShelf, setRemovingShelf] = useState(false);
   const rackAddress = useMemo(() => parseRackCode(record.code), [record.code]);
   const legacyBay = useMemo(() => (rackAddress ? null : parseLocationCodeFlat(record.code)), [rackAddress, record.code]);
@@ -355,7 +351,6 @@ function StockLocationRecord({
   });
   const rack = rackQuery.data?.rack ?? null;
   const rackShelf = rack?.shelves.find((shelf) => shelf.code === record.code) ?? null;
-  const canAdopt = legacyBay != null && rackQuery.error instanceof RackRequestError && rackQuery.error.code === 'not_a_rack';
   // A rack's shelves walk shelf to shelf; the room walk reads `locations.room`, which rack rows do not carry.
   const walk = useMemo(() => {
     if (!rack) return rackAddress ? null : record.walk;
@@ -466,19 +461,15 @@ function StockLocationRecord({
   if (verificationToken) pairParams.set('verified', verificationToken);
   const pairHref = `/m/pair/${encodeURIComponent(record.code)}?${pairParams.toString()}`;
   const { has } = useAuth();
-  const arrival = useArrivalShelfTiers();
-  const urgencyTier = record.id != null ? arrival.data?.tierById.get(record.id) ?? null : null;
-  const [urgencyOpen, setUrgencyOpen] = useState(false);
   const printLabels = useLocationLabelPrint();
-  /** This location's own sticker, captioned with its arrival urgency when it has one. */
-  const printOwnLabel = async (tier: number | null) => {
+  /** Print this location's own sticker from the record's single Print label action. */
+  const printOwnLabel = async () => {
     try {
       const result = await printLabels([{
         id: record.id ?? 0,
         name: record.face,
         barcode: record.code,
         roomName: record.room,
-        arrivalPriorityTier: tier,
       }]);
       const summary = locationLabelPrintSummary(result);
       if (result.transport === 'skipped') toast.error(summary);
@@ -613,10 +604,6 @@ function StockLocationRecord({
         />
       ) : null}
 
-      {arrival.data && record.id != null ? (
-        <LocationUrgencyFact tier={urgencyTier} canEdit={has('sku_stock.manage')} onOpen={() => setUrgencyOpen(true)} />
-      ) : null}
-
       {rack ? (
         <InboundPickerRow
           label="Rack"
@@ -636,25 +623,6 @@ function StockLocationRecord({
           testId="location-remove-shelf"
         />
       ) : null}
-      {canAdopt && has('sku_stock.manage') ? (
-        <InboundPickerRow
-          label="Movable rack"
-          value={null}
-          placeholder="Make movable rack"
-          onOpen={() => setAdopting(true)}
-          testId="location-make-rack"
-        />
-      ) : null}
-      {legacyBay && has('print.label') ? (
-        <InboundPickerRow
-          label="Labels"
-          value={null}
-          placeholder="Print this location's stickers or a run"
-          onOpen={() => router.push(withJobReturn(locationLabelsHref({ code: record.code }), returnTo))}
-          testId="location-print-labels"
-        />
-      ) : null}
-
       <nav className="sticky top-14 z-sticky flex gap-2 overflow-x-auto border-b border-mode-rule bg-mode-panel/95 px-mode-page py-2 backdrop-blur" aria-label="Location contents">
         {FILTERS.map((item) => (
           <button
@@ -698,7 +666,7 @@ function StockLocationRecord({
         ] as const}
         onVerb={(verb) => {
           if (verb === 'pair') router.push(pairHref);
-          else if (verb === 'print') return printOwnLabel(urgencyTier);
+          else if (verb === 'print') return printOwnLabel();
           else setParkingTote(true);
         }}
       />
@@ -746,17 +714,6 @@ function StockLocationRecord({
         record={record}
         verificationToken={verificationToken}
       />
-
-      <LocationUrgencySheet
-        open={urgencyOpen}
-        onClose={() => setUrgencyOpen(false)}
-        barcode={record.code}
-        face={record.face}
-        tier={urgencyTier}
-        onPrint={printOwnLabel}
-      />
-
-      {legacyBay ? <MobileV2AdoptBaySheet bayCode={record.code} open={adopting} onClose={() => setAdopting(false)} /> : null}
 
       <ConfirmSheet
         open={removingShelf}

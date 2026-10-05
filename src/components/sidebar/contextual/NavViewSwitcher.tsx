@@ -84,8 +84,8 @@ export function useViewHotkeys(items: readonly NavItem[], enabled: boolean) {
 }
 
 /**
- * The page's VIEW (Allocate · Exceptions · Shipped on
- * FBM; any page's views elsewhere) — the CHILD tier, pinned in the
+ * The page's VIEW (Allocate · Labels & docs on FBM; any page's views
+ * elsewhere) — the CHILD tier, pinned in the
  * sidebar head under the mode. At rest one block naming the view you are on
  * and its count (an alerting view beacons on it). Hover shows every view's
  * digit beside the sidebar when the page binds them (`viewKeys`, from its
@@ -119,14 +119,13 @@ export function NavViewSwitcher({
         label: current?.label ?? 'View',
         icon: currentGlyph?.icon,
         iconTone: currentGlyph?.tone,
-        trailing: (
-          <>
-            {alerts.map((item) => (
+        // Other views' alerts only use the room the name leaves — the view you are on always reads.
+        aside: alerts.length
+          ? alerts.map((item) => (
               <AlertBeacon key={item.id} id={item.id} glyph={navRowGlyph(item, pageId)} count={counts[item.id] ?? 0} />
-            ))}
-            {current && current.id in counts ? <CountChip id={current.id} count={counts[current.id]} alert={currentGlyph?.alertCount} /> : null}
-          </>
-        ),
+            ))
+          : undefined,
+        trailing: current && current.id in counts ? <CountChip id={current.id} count={counts[current.id]} alert={currentGlyph?.alertCount} /> : null,
       }}
       // The view you are on is the block itself — never listed twice (the
       // parent card follows the same rule).

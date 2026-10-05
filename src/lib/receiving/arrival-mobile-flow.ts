@@ -1,11 +1,9 @@
 /**
  * Arrival mobile flow SoT — classify step URLs + parse helpers for the door
- * Station (`/m/scan`): scan → guided photos → Platform → Type → Priority.
+ * Station (`/m/scan`): scan → Platform → Type → Priority.
  *
- * Pure + client-safe. Photos deep-links compose {@link mobileArrivalGuidedPhotosHref}.
+ * Pure + client-safe.
  */
-
-import { mobileArrivalGuidedPhotosHref } from '@/lib/receiving/photo-scope';
 
 export const ARRIVAL_CLASSIFY_STEPS = ['platform', 'type', 'priority'] as const;
 export type ArrivalClassifyStep = (typeof ARRIVAL_CLASSIFY_STEPS)[number];
@@ -54,20 +52,6 @@ export function mobileArrivalClassifyHref(
   });
   if (opts.type) params.set('type', opts.type);
   return `/m/scan?${params.toString()}`;
-}
-
-/**
- * Guided arrival photos whose Done lands on Platform classify.
- * `back` always points at the classify entry (not the bare list).
- */
-export function mobileArrivalPhotosThenClassifyHref(
-  receivingId: number,
-  opts: { title?: string | null } = {},
-): string {
-  return mobileArrivalGuidedPhotosHref(receivingId, {
-    back: mobileArrivalClassifyHref(receivingId, 'platform'),
-    title: opts.title,
-  });
 }
 
 export function nextArrivalClassifyStep(

@@ -12,7 +12,7 @@ const SECTION_HOMES: Record<string, string> = {
   suppliers: '/sourcing?mode=suppliers',
   bose_models: '/sourcing?mode=models',
   compatibility: '/sourcing?mode=compatibility',
-  locations: '/inventory/locations?tab=manage',
+  locations: '/inventory/locations',
   reason_codes: '/inventory/reason-codes',
   favorites: '/inventory/favorites',
   fba: '/shipping/fba?fbaMode=catalog',

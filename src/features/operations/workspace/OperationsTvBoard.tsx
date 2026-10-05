@@ -20,6 +20,7 @@ import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { formatDateKeyShort, formatTime12hPST } from '@/utils/date';
 import type { TvBoard, TvBoardPlan, TvBoardStation, TvBoardTask, TvPlanSource } from '@/lib/ops-plans/tv-board';
 import { useOperationsTvBoard } from './useOperationsTvBoard';
+import { TvLiveFeedPanel } from './TvLiveFeedPanel';
 import { Panel } from '@/design-system/primitives';
 import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
@@ -185,6 +186,8 @@ function TvBoardBody({
   return (
     <TvFrame header={header}>
       <KpiStrip items={kpis} size="wall" stagger />
+
+      <TvLiveFeedPanel />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard stagger icon={AlertTriangle} eyebrow="Slipping" title="Overdue" headline={board.counts.overdue}>

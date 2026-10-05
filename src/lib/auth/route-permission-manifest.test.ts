@@ -525,6 +525,8 @@ test('regression: operations.tv.view gates the unattended TV wall board (read-on
   // board feed must be gated by it and NOT by the broader operations.view.
   const tvPaths = routesGatedBy('operations.tv.view').map((r) => r.path);
   assert.ok(tvPaths.includes('/api/operations/tv-board/route.ts'));
+  // The wall's Live feed panel reads its own sibling route — the kiosk lacks the feed's packing.view.
+  assert.ok(tvPaths.includes('/api/operations/tv-board/live-feed/route.ts'));
 });
 
 test('regression: beta.review gates the beta-applications review queue; the public apply route stays exempt', () => {
@@ -973,4 +975,17 @@ test('regression: movable racks read on sku_stock.view, write on sku_stock.manag
   // The manifest records one permission per file; pin the create gate from source.
   const source = readFileSync(join(process.cwd(), 'src/app/api/racks/route.ts'), 'utf8');
   assert.match(source, /export const POST = withAuth\([^]*?permission: 'sku_stock\.manage'/);
+});
+
+test('regression: carrier pickup cutoffs read on packing.view, replace on admin.manage_features', () => {
+  // The Live feed's pickup countdowns read the set; changing it is org configuration.
+  const paths = routesGatedBy('packing.view').map((r) => r.path);
+  assert.ok(paths.includes('/api/live-feed/pickup-cutoffs/route.ts'), 'packing.view should gate the pickup-cutoffs read');
+  const r = routeByPath('/api/live-feed/pickup-cutoffs/route.ts');
+  assert.ok(r);
+  assert.equal(r.gate, 'withAuth');
+  assert.deepEqual(r.methods, ['GET', 'PUT']);
+  // The manifest records one permission per file; pin the replace gate from source.
+  const source = readFileSync(join(process.cwd(), 'src/app/api/live-feed/pickup-cutoffs/route.ts'), 'utf8');
+  assert.match(source, /export const PUT = withAuth\([^]*?permission: 'admin\.manage_features'/);
 });

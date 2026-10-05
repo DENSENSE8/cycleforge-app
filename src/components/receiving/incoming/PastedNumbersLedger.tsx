@@ -69,6 +69,9 @@ import { useRecordSlot } from '@/design-system/components/record-ledger/useRecor
 import { inboundPastedNumberModel } from '@/components/receiving/record/inbound-record-model';
 import { incomingDeliverySummary } from './incoming-delivery-state';
 import { PastedNumbersBanner } from './PastedNumbersBanner';
+import { INBOUND_LOCATE } from '@/lib/nav/locate/inbound-params';
+import { useNavBulkList } from '@/components/sidebar/contextual/NavBulkList';
+import { PastedListStatusRow } from '@/components/sidebar/contextual/PastedListStatusRow';
 
 const VIEW = INCOMING_PIPELINE_VIEW;
 const NO_FACE_CHIPS: readonly never[] = [];
@@ -85,7 +88,7 @@ const FOLLOWUP_ICON = { need_claim: Flag, double_check: Search, chasing_seller: 
 
 interface PastedNumbersLedgerProps {
   check: InboundCheck;
-  /** `?recon=` / `?recon_reason=` (the sidebar's `pastedListBuckets`) — null when they cannot filter honestly (the cap). */
+  /** `?recon=` / `?recon_reason=` (the status row over the list) — null when they cannot filter honestly (the cap). */
   status: ReconStatus | null;
   reason: ReconReason | null;
   /** Every loaded line of the pasted list (`view=reconcile`), before any filter. */
@@ -119,6 +122,8 @@ export function PastedNumbersLedger({
   const router = useRouter();
   const pathname = usePathname() || '/';
   const rootRef = useRef<HTMLDivElement>(null);
+  // The status row over the numbers: the search bar's located list (same query, same `?recon=`).
+  const statusList = useNavBulkList(INBOUND_LOCATE);
 
   // ── Numbers → groups (one card each) ──────────────────────────────────────
   const loading = check.loading || rowsLoading;
@@ -487,8 +492,8 @@ export function PastedNumbersLedger({
               view: slot?.view ?? null,
               strip: null,
             }}
-            // No chips: the buckets and their reasons are the sidebar's (`pastedListBuckets`).
-            summary={null}
+            // The statuses and their reasons, left-aligned over the list (operator 2026-10-04).
+            summary={<PastedListStatusRow list={statusList} facetParam={INBOUND_LOCATE.facetParam} className="px-3 py-1" />}
             bulk={<ReceivingSelectionVerbs noun="numbers" lead={bulkLead} />}
             banner={
               <PastedNumbersBanner

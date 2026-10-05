@@ -124,6 +124,8 @@ function store() {
       lineIds.set(key, id);
       return { receivingLineId: id, receivingId: input.shipmentId ? 12 : null, created: prior == null, platformAccountId: null, sourceType: 'ebay', sourceOrderId: String(input.sourceOrderId) };
     }) as unknown as IngestInboundOrderDeps['ingestPurchase'],
+    upsertPurchaseLink: (async () => ({})) as unknown as IngestInboundOrderDeps['upsertPurchaseLink'],
+    recordEquivalence: (async () => ({})) as unknown as IngestInboundOrderDeps['recordEquivalence'],
   };
   return { client, deps, orders, lineIds, registered, ingested };
 }

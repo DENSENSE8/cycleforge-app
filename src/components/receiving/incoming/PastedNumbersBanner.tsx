@@ -3,7 +3,7 @@
 /**
  * The band above the pasted numbers: the honest progress line while the
  * Check is still answering and the row-cap note. The statuses and their
- * reasons are the sidebar's (`pastedListBuckets`). The triage keys are never
+ * reasons are the status row over the list (`PastedListStatusRow`). The triage keys are never
  * painted here — they live in the `?` sheet while the ledger is mounted.
  */
 

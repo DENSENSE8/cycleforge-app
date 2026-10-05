@@ -58,7 +58,7 @@ export function useIncomingDetails({
   const invalidateIncoming = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['incoming-details', detailsKey, focusKey] });
     queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
-    queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['nav-facets'] });
     queryClient.invalidateQueries({ queryKey: ['incoming-delivered-unscanned'] });
   }, [queryClient, detailsKey, focusKey]);
 
@@ -198,7 +198,7 @@ export function useIncomingDetails({
   useAblyChannel(stationChannel, 'shipment.changed', () => {
     queryClient.invalidateQueries({ queryKey: ['incoming-details', detailsKey, focusKey] });
     queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
-    queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['nav-facets'] });
   }, !!stationChannel);
 
   const headerPo = poNumberHint || data?.po?.zoho_purchaseorder_number || '';

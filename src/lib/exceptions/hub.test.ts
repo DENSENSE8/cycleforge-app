@@ -129,7 +129,8 @@ test('a kind the caller may not see is absent from rows, counts, facet totals an
     run: async () => { throw new Error('exceptions facets read the hub, not SQL'); },
     listLocalPickupLines: async () => [],
     exceptionCounts: (caller, kinds, q) => countExceptions(caller, kinds, q, sources),
-    liveFeedCounts: async () => ({}),
+    supportRows: async () => [],
+    liveFeedFacets: async () => ({ carrier: [], channel: [] }),
   };
   const facetCaller = { orgId: ORG, permissions: new Set(['receiving.view']) };
   const allFacet = await getNavFacets(facetCaller, 'exceptions', new URLSearchParams(), deps);

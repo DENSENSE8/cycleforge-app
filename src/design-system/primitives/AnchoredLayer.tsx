@@ -78,6 +78,13 @@ interface AnchoredLayerProps {
    * popper / calendar rendered inside the menu).
    */
   ignoreClickSelector?: string;
+  /**
+   * Hand focus back to the opener when the close dropped it. Default true.
+   * False for a panel that IS part of a still-mounted field (FindField's
+   * dropdown): the field owns its focus, and a press on the page must leave
+   * it there, not pull it back into the field.
+   */
+  restoreFocus?: boolean;
   /** Classes on the portaled positioning wrapper. */
   className?: string;
   style?: CSSProperties;
@@ -226,6 +233,7 @@ export function AnchoredLayer({
   edgeAlign = 'anchor',
   closeOnEscape = true,
   ignoreClickSelector,
+  restoreFocus = true,
   className,
   style,
   children,
@@ -273,11 +281,11 @@ export function AnchoredLayer({
     }
     const opener = openerRef.current;
     openerRef.current = null;
-    if (!opener?.isConnected) return;
+    if (!restoreFocus || !opener?.isConnected) return;
     const active = document.activeElement;
     if (active && active !== document.body) return;
     opener.focus({ preventScroll: true });
-  }, [open, anchorRef]);
+  }, [open, anchorRef, restoreFocus]);
 
   // Track the trigger rect so the portaled panel follows it. useLayoutEffect
   // measures before paint so the panel never flashes at (0,0) first.

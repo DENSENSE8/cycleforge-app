@@ -18,11 +18,6 @@ export type LabelKind = 'bin' | 'rack';
 
 export type LabelStep = 'zone' | 'aisle' | 'bay' | 'level' | 'position';
 
-export const LABEL_KIND_TABS: readonly { id: LabelKind; label: string }[] = [
-  { id: 'bin', label: 'Location label' },
-  { id: 'rack', label: `${LOCATION_BAY_LABEL} label` },
-];
-
 const STEP_LABEL: Record<LabelStep, string> = {
   zone: 'Zone',
   aisle: 'Aisle',
@@ -109,7 +104,7 @@ export function printVerb(s: PrintVerbState): PrintVerb {
   const missing = (label: string): PrintVerb => ({ label, ready: false, needsPrinter: false });
   if (s.printing) return missing('Printing…');
   if (!s.selection.room) return missing('Pick a room');
-  if (s.missingLetter) return missing('Give this room a zone letter');
+  if (s.missingLetter) return missing('Assigning zone…');
   if (s.selection.aisle == null) return missing('Pick an aisle');
   if (!s.run) {
     if (s.selection.bay == null) return missing(`Pick a ${LOCATION_BAY_LABEL.toLowerCase()}`);

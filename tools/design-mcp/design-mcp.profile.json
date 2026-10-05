@@ -285,10 +285,6 @@
             "reason": "⌘K palette, not a list page: aria-pressed marks its search-method pills inside the dialog; router.push navigates to a destination (`/?compose=1`). No list filter is written to the URL."
           },
           {
-            "file": "src/components/live-feed/LiveFeedDateRange.tsx",
-            "reason": "operator 2026-10-03: live/monitor board date range is page chrome top-right (single exception)"
-          },
-          {
             "file": "src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx",
             "reason": "Row action menu: StageStaffAssignPopover ASSIGNS a stage owner to the order (a write, not a filter); router.replace navigates to the Shipping exceptions view."
           },

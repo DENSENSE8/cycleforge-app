@@ -11,6 +11,7 @@ export const PHOTO_ASPECTS = [
   // item-stage shots
   'included',
   'serial',
+  'condition',
   'front',
   'back',
   'side',
@@ -25,7 +26,7 @@ export const ASPECTS_BY_STAGE: Record<PhotoEvidenceStage, readonly PhotoAspect[]
   unbox_carton: ['shipping_label', 'box_exterior', 'box_interior', 'packing_material'],
   unbox_item: ['included', 'serial', 'front', 'back', 'side', 'bottom'],
   testing: [],
-  packing: [],
+  packing: ['serial', 'condition', 'front', 'back', 'side', 'bottom', 'included'],
 };
 
 const PHOTO_ASPECT_LABELS: Record<PhotoAspect, string> = {
@@ -35,6 +36,7 @@ const PHOTO_ASPECT_LABELS: Record<PhotoAspect, string> = {
   packing_material: 'Packing material',
   included: "What's included",
   serial: 'Serial',
+  condition: 'Condition',
   front: 'Front',
   back: 'Back',
   side: 'Side',

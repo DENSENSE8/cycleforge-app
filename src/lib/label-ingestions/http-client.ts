@@ -68,6 +68,11 @@ export async function applyLabelIngestionHttp(id: number, expectedRowVersion: nu
   await readEnvelope<unknown>(response);
 }
 
+export async function deleteUnlinkedLabelIngestionHttp(id: number): Promise<void> {
+  const response = await fetch(`${ENDPOINT}/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+  await readEnvelope<unknown>(response);
+}
+
 export async function fetchLabelPairingCandidates(id: number, signal?: AbortSignal): Promise<LabelPairingCandidates> {
   const response = await fetch(`${ENDPOINT}/${id}/candidates`, { credentials: 'same-origin', cache: 'no-store', signal });
   return (await readEnvelope<LabelPairingCandidates>(response)).data;

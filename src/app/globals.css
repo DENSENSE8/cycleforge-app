@@ -1,6 +1,5 @@
 @import '../styles/globals.css';
-/* Typefaces: next/font self-hosts IBM Plex Sans + Sans Condensed + Mono
-   (`src/lib/fonts.ts`). */
+/* Typeface: next/font self-hosts Inter (`src/lib/fonts.ts`) — the only family. */
 
 @import 'tailwindcss' source(none);
 /* Bridge: keep JS theme + CF Type / spacing-intent plugins until fully
@@ -34,23 +33,26 @@
    only emit class strings, while keeping docs, caches and local artifacts out. */
 @source '../**/*.{js,ts,jsx,tsx,mdx}';
 /* Ship-before-adoption roles + spacing intents (were safelist in v3). */
-@source inline("text-role-display text-role-title text-role-body text-role-data text-role-field text-role-caption text-role-eyebrow text-role-micro font-spine inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
+@source inline("text-role-display text-role-title text-role-body text-role-data text-role-field text-role-caption text-role-eyebrow text-role-micro text-role-avatar font-spine inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
 
 .font-dm-sans {
   font-family: var(--font-sans);
 }
 
-/* Identifier legibility: the mono cut never ligates. IBM Plex Mono ships `fi`
-   / `fl` ligatures that fuse two characters into one glyph — in a serial,
-   FNSKU, tracking number, or SKU that means an operator reading the screen
-   transcribes a string that is not the one stored. Scoped to the mono family
-   (the `font-mono` utility + code elements), so prose keeps its ligatures. */
+/* Identifier legibility: the mono token is Inter (one family app-wide), so the
+   identifier treatment lives here. Ligatures off — a `fi` / `fl` ligature fuses
+   two characters into one glyph, and in a serial, FNSKU, tracking number, or
+   SKU that means an operator transcribes a string that is not the one stored.
+   Tabular figures keep digit columns aligned the way the old monospace cut did.
+   Scoped to the mono token (the `font-mono` utility + code elements), so prose
+   keeps its ligatures and proportional figures. */
 .font-mono,
 code,
 kbd,
 samp,
 pre {
   font-variant-ligatures: none;
+  font-variant-numeric: tabular-nums;
 }
 
 /* `--background` / `--foreground` are OWNED by the theme registry
@@ -250,6 +252,19 @@ body {
 }
 .mb-safe {
   margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Number steppers are imprecise mouse targets. Quantity controls use either a
+   scrub/slider or typed value, but native numeric semantics and mobile keypads
+   remain intact. This removes browser-rendered up/down arrows everywhere. */
+input[type='number'] {
+  appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
 }
 
 /* Prevent iOS Safari from auto-zooming on input focus (it zooms when the focused

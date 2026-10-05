@@ -318,11 +318,13 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'statusCategory', 'src/lib/shipping/shipped-filter/shipped-filter-params.ts:23'],
     ['savedViews', 'shipped_saved_views', 'src/components/dashboard/orders-queue/useOrdersQueueFeed.ts:257-261'],
   ],
-  // New page (no old UI): Live feed — the outbound package board; its Day | Week window is page chrome (header).
+  // New page (no old UI): Live feed — the outbound package board (always today); its record selection is sidebar chrome.
   'live-feed': [
-    ['param', 'window', 'src/lib/live-feed/route.ts LIVE_FEED_PARAMS.window (header Day | Week)'],
-    ['param', 'date', 'src/lib/live-feed/route.ts LIVE_FEED_PARAMS.date (header window anchor day)'],
     ['param', 'open', 'src/lib/live-feed/route.ts LIVE_FEED_PARAMS.open (open package)'],
+    ['param', 'q', 'src/lib/live-feed/route.ts LIVE_FEED_PARAMS.q (Find) → NAV_PAGE_DECLS[live-feed].search'],
+    ['param', 'carrier', 'src/lib/live-feed/route.ts readLiveFeedFilters → NAV_FACET_GROUPS live-feed (Carrier facet)'],
+    ['param', 'channel', 'src/lib/live-feed/route.ts readLiveFeedFilters → NAV_FACET_GROUPS live-feed (Channel facet)'],
+    ['param', 'staff', 'src/lib/live-feed/route.ts readLiveFeedFilters → NAV_PAGE_DECLS[live-feed].controls.staff'],
   ],
   'scan-out': [
     ['scanInput', 'scan-out', 'src/components/outbound/scan-out/ScanOutComposerDock.tsx:44-226'],

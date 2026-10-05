@@ -24,7 +24,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ success: false, error: target.error }, { status: 409 });
   }
   if (target.kind === 'unit-not-on-order') {
-    return NextResponse.json({ success: false, error: target.error }, { status: 404 });
+    return NextResponse.json({ success: false, error: target.error, unitNotOnOrder: true, serialUnitId: target.serialUnitId, unitKey: target.unitKey }, { status: 404 });
   }
   return NextResponse.json({
     success: true,

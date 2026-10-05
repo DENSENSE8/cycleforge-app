@@ -19,7 +19,7 @@ import {
   TASK_BOARD_SORTS,
   TASK_BOARD_SORT_LABEL,
 } from '@/lib/task-board/task-board-model';
-import { RECON_PARAM, RECON_REASON_PARAM, REF_IN_PARAM } from '@/lib/receiving/reconcile';
+import { INBOUND_LOCATE } from '@/lib/nav/locate/inbound-params';
 import {
   SAVED_VIEW_PARAM_KEYS,
   SAVED_VIEW_STORAGE_KEY,
@@ -314,10 +314,8 @@ const PIPELINE_CONTROLS: NavControls = {
       { value: 'zoho', label: 'Zoho status', dir: 'asc' },
     ],
   },
-  // A pasted list (`?ref_in=`, the search's `locate`): where its numbers live
-  // (`?recon=`) and, inside a pressed bucket, why (`?recon_reason=`) — the
-  // ledger's chips over the numbers, moved here (ruling A4).
-  pastedListBuckets: { param: RECON_PARAM, facetParam: RECON_REASON_PARAM },
+  // A pasted list's statuses (`?recon=`) and reasons (`?recon_reason=`) are the
+  // ledger body's chips over its list (operator 2026-10-04), never a sidebar row.
 };
 
 /**
@@ -603,7 +601,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           placeholder: 'Search inbound deliveries',
           source: 'url-param',
           param: INBOUND_FIND_PARAM,
-          locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM, facetParam: RECON_REASON_PARAM },
+          locate: { ...INBOUND_LOCATE },
         },
         savedViews: PIPELINE_VIEWS,
         controls: PIPELINE_CONTROLS,
@@ -613,7 +611,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           placeholder: 'Find tracking or last digits',
           source: 'url-param',
           param: INBOUND_FIND_PARAM,
-          locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM, facetParam: RECON_REASON_PARAM },
+          locate: { ...INBOUND_LOCATE },
         },
         savedViews: DOCKED_VIEWS,
         controls: DOCKED_CONTROLS,
@@ -623,7 +621,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           placeholder: 'Search unboxed cartons',
           source: 'url-param',
           param: INBOUND_FIND_PARAM,
-          locate: { locator: 'inbound', param: REF_IN_PARAM, statusParam: RECON_PARAM, facetParam: RECON_REASON_PARAM },
+          locate: { ...INBOUND_LOCATE },
         },
         savedViews: DOCKED_VIEWS,
         controls: UNBOXED_CONTROLS,
@@ -1100,11 +1098,12 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   // find is this sidebar field, narrowing the rows over every fact the sheet
   // paints (the page reads the desk store keyed by its path). A multi-number
   // paste here holds a NEW list in the bar, whose full-screen button replaces
-  // the page's list. Sort (`?sort=`, unset = as pasted) and the located-bucket
-  // facet (`?status=`, `controls.pastedListBuckets`) are the page's own params
-  // (`use-url-bulk-list`, route spec `PASTED_LIST_ROUTE_PARAMS`) — the body's
-  // chip rows moved here (ruling A1/A4). `recentsPanel`: view-less, but the
-  // page opens its own panel (the `pickup` switch).
+  // the page's list. Sort (`?sort=`, unset = as pasted) is this sidebar's
+  // Sort row; the status chips (`?status=`) are the page BODY's, left-aligned
+  // over the sheet's header row (operator 2026-10-04: one status control,
+  // never in the sidebar) — both the page's own params (`use-url-bulk-list`,
+  // route spec `PASTED_LIST_ROUTE_PARAMS`). `recentsPanel`: view-less, but
+  // the page opens its own panel (the `pickup` switch).
   search: {
     recentsPanel: true,
     search: { placeholder: 'Find in the pasted list', source: 'desk-store' },
@@ -1120,7 +1119,6 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           { value: 'status-desc', label: 'Status, reversed' },
         ],
       },
-      pastedListBuckets: { param: 'status' },
     },
   },
   // ── Scan Stations ───────────────────────────────────────────────────────
@@ -1130,31 +1128,10 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   receive: {
     search: { placeholder: 'Filter cartons or incoming…', source: 'url-param', param: INBOUND_FIND_PARAM },
-    // The All view's triage DataTable (`TechAllTriageTable`) saves its column
-    // sort here — its toolbar no longer carries a views menu (ruling A1).
     savedViews: SHEET_SAVED_VIEW_CONFIG['tech-all'],
     scanInput: { grammar: 'unbox', endpoint: '/api/receiving/lookup-po' },
-    // The station has no view rows, so one declaration serves every
-    // `?unboxview=` tab: only the column sorts EVERY tab's list reads
-    // (`?colsort=`/`?coldir=` — the carton cards, the Unboxed and Inbound
-    // ledgers), and unset is each tab's own order. No Source: Inbound's
-    // `?inbound=` is not a /unbox param. The tabs' status cuts are the
-    // `receive` facet groups (`src/lib/nav/facets/unbox.ts`).
-    controls: {
-      sort: {
-        param: GRID_COLUMN_SORT_PARAM,
-        dirParam: GRID_COLUMN_DIR_PARAM,
-        defaultValue: 'default',
-        options: [
-          { value: 'default', label: 'Default order' },
-          { value: 'date', label: 'By date' },
-          { value: 'order', label: 'Purchase order, A to Z', dir: 'asc' },
-          { value: 'title', label: 'Product, A to Z', dir: 'asc' },
-          { value: 'qty', label: 'Largest quantity first', dir: 'desc' },
-          { value: 'tracking', label: 'Tracking, A to Z', dir: 'asc' },
-        ],
-      },
-    },
+    // Scan stations preserve their operational/server order. They deliberately
+    // expose neither a Sort-by control nor a local priority selector.
     actions: [
       { action: { id: 'unbox.resume', label: 'Unbox', intent: 'unbox:resume' } },
       { action: { id: 'unbox.check', label: 'Check', intent: 'unbox:check-unreceived' } },
@@ -1200,6 +1177,15 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     savedViews: REPAIR_VIEWS,
     controls: REPAIR_CONTROLS,
   },
+  // The outbound package board (`src/lib/live-feed/route.ts` LIVE_FEED_PARAMS): Find opens the
+  // match (`?q=`); Carrier · Channel are NAV_FACET_GROUPS['live-feed']; Staff = packages the
+  // staffer is assigned to, picked or packed (`readLiveFeedFilters`).
+  'live-feed': {
+    search: { placeholder: 'Scan or type tracking, order #, SKU', source: 'url-param', param: 'q' },
+    controls: {
+      staff: [{ id: 'staff', param: 'staff', label: 'Staff' }],
+    },
+  },
   'stations-live': {
     controls: {
       staff: [{ id: 'staff', param: 'staff', label: 'Staff' }],
@@ -1211,14 +1197,6 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
         clearParams: [],
         placeholder: 'All time',
       }],
-      sort: {
-        param: 'sort',
-        defaultValue: 'newest',
-        options: [
-          { value: 'newest', label: 'Newest first' },
-          { value: 'oldest', label: 'Oldest first' },
-        ],
-      },
     },
   },
   testing: {

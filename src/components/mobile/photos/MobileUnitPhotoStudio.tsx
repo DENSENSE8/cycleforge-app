@@ -14,6 +14,7 @@ import {
 } from '@/components/mobile/unit/UnitPhotoUploadQueue';
 import { useScopedUnitPhotos, unitPhotosQueryKey } from '@/hooks/useScopedUnitPhotos';
 import { useAblyClient } from '@/contexts/AblyContext';
+import { photoAspectLabel, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getPhoneBridgeChannelName } from '@/lib/realtime/channels';
 
@@ -26,12 +27,14 @@ interface MobileUnitPhotoStudioProps {
   maxPhotos?: number;
   /** Drives the per-photo `unit_photo_uploaded` echo back to the desktop. */
   requestId?: string | null;
-  /** `testing` (default) or `packing` — selects photo_type + dual-link behavior. */
-  stage?: 'testing' | 'packing';
+  /** `testing` (default), `prepack`, or later `packing` — selects photo_type. */
+  stage?: 'testing' | 'prepack' | 'packing';
   /** When packing, dual-link uploads to this packer_logs.id. */
   packerLogId?: number | null;
   /** Order / shipment ref for poRef. */
   poRef?: string | null;
+  /** What these shots show (e.g. prepack serial) — stored as photos.photo_aspect. */
+  aspect?: PhotoAspect | null;
 }
 
 /**
@@ -49,6 +52,7 @@ export function MobileUnitPhotoStudio({
   stage = 'testing',
   packerLogId = null,
   poRef = null,
+  aspect = null,
 }: MobileUnitPhotoStudioProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -111,6 +115,7 @@ export function MobileUnitPhotoStudio({
             stage,
             packerLogId,
             poRef,
+            photoAspect: aspect,
             capturedAtMs: s.capturedAtMs,
           },
           s.blob,
@@ -132,6 +137,7 @@ export function MobileUnitPhotoStudio({
       stage,
       packerLogId,
       poRef,
+      aspect,
     ],
   );
 
@@ -146,7 +152,12 @@ export function MobileUnitPhotoStudio({
       header={
         <div className="min-w-0">
           <p className="text-role-micro text-white/60">
-            {stage === 'packing' ? 'Add packing photos' : 'Add testing photos'}
+            {stage === 'packing'
+              ? 'Add packing photos'
+              : stage === 'prepack'
+                ? 'Add prepack photos'
+                : 'Add testing photos'}
+            {aspect ? ` · ${photoAspectLabel(aspect)}` : ''}
           </p>
           <p className="truncate text-sm font-semibold text-white">{headerLabel}</p>
         </div>

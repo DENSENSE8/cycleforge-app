@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { routeScan, unwrapScannedLocation } from '@/lib/barcode-routing';
-import { normalizeShelfCode } from '@/lib/receiving/arrival-shelves';
+import { normalizeShelfCode, routeScan, unwrapScannedLocation } from '@/lib/barcode-routing';
 import { canonicalRackCode, parseRackCode, rackCode, rackFace, rackLabelPayload } from './rack-code';
 
 const GLN = '0850012345671';

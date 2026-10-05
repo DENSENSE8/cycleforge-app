@@ -20,8 +20,8 @@
  *
  * Selection mode (a pick-many step, e.g. which shelves to print): pass
  * `selected` as a boolean and the tap toggles membership instead of drilling
- * in — the card reports `aria-pressed`, paints the accent ring and a check in
- * the top-right corner.
+ * in — the card reports `aria-pressed`, paints the accent outline (a border
+ * overlay, never a ring a scroller can clip) and a check in the top-right corner.
  *
  * Tier 3 by construction: no className, no children — the slots are typed, so
  * a caller cannot re-introduce a truncated column layout. Press feedback is
@@ -31,6 +31,7 @@
 import { useId, type ReactNode } from 'react';
 import { Check } from '@/components/Icons';
 import { MOBILE_DATA_LIST_ROW_INTERACTION_CLASS } from '@/design-system/components/MobileDataListRow';
+import { STATE_OUTLINE_CLASS } from '@/design-system/components/record-card/record-card-outline';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { TAP_MIN_H_CLASS } from '@/design-system/tokens/interaction';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
@@ -173,11 +174,11 @@ export function MobileRecordCard({ onOpen, testId, ...body }: MobileRecordCardPr
         CARD_CLASS,
         TAP_MIN_H_CLASS,
         MOBILE_DATA_LIST_ROW_INTERACTION_CLASS,
-        focusRing('control'),
-        body.selected && 'ring-2 ring-border-accent',
+        focusRing('cell'),
       )}
     >
       <CardBody {...body} testId={testId} />
+      {body.selected ? <span aria-hidden className={cn(STATE_OUTLINE_CLASS, 'border-2 border-border-accent')} /> : null}
     </button>
   );
 }

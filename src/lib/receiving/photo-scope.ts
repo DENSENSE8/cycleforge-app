@@ -214,21 +214,3 @@ export function mobileCaptureHrefForRequest(req: NormalizedReceivingPhotoRequest
     req.stage === 'unbox_item' ? 'unbox_carton' : req.stage;
   return `/m/r/${req.receivingId}/photos${qs(cartonStage)}`;
 }
-
-/**
- * Mobile deep-link for the arrival guided camera (label → box). Used by the
- * triage scan feed CTA — always explicit `arrival_package` (never a default).
- */
-export function mobileArrivalGuidedPhotosHref(
-  receivingId: number,
-  opts: { back?: string; title?: string | null } = {},
-): string {
-  const params = new URLSearchParams({
-    stage: 'arrival_package',
-    guided: '1',
-  });
-  if (opts.back) params.set('back', opts.back);
-  const title = String(opts.title ?? '').trim();
-  if (title) params.set('title', title);
-  return `/m/r/${receivingId}/photos?${params.toString()}`;
-}

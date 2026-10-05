@@ -7,7 +7,7 @@ import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/compo
 import { Button } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { useBarcodeScanner, type UseBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -19,6 +19,27 @@ export const REPAIR_FIELD_INPUT_CLASS = cn(
   'text-role-field text-mode-ink placeholder:text-mode-muted disabled:opacity-60',
   focusRing('field', 'accent'),
 );
+
+/**
+ * The sheet's camera. The sheet portals its body in a later commit than the
+ * one that opens it, so the scanner starts here — once its `<video>` box exists
+ * for ZXing (or the iOS app's lens) to bind to. The field stops it on close.
+ */
+function ScanSheetCamera({
+  scanner,
+  onDecode,
+  manualPlaceholder,
+}: {
+  scanner: UseBarcodeScanner;
+  onDecode: (value: string) => void;
+  manualPlaceholder: string;
+}) {
+  const { startScanning } = scanner;
+  useEffect(() => {
+    void startScanning();
+  }, [startScanning]);
+  return <ScanSurface scanner={scanner} onDecode={onDecode} manualPlaceholder={manualPlaceholder} />;
+}
 
 /** A labelled text field with a trailing camera Scan. */
 export function ScanValueField({
@@ -46,7 +67,7 @@ export function ScanValueField({
 }) {
   const [scanOpen, setScanOpen] = useState(false);
   const scanner = useBarcodeScanner({ dedupMs: 1500 });
-  const { startScanning, stopScanning, resetLastScan } = scanner;
+  const { stopScanning, resetLastScan } = scanner;
   /** Only the first decode per opening counts; ScanSurface can re-fire before the sheet unmounts. */
   const armedRef = useRef(false);
 
@@ -54,12 +75,11 @@ export function ScanValueField({
     if (scanOpen) {
       armedRef.current = true;
       resetLastScan();
-      void startScanning();
     } else {
       armedRef.current = false;
       void stopScanning();
     }
-  }, [scanOpen, startScanning, stopScanning, resetLastScan]);
+  }, [scanOpen, stopScanning, resetLastScan]);
 
   // The hook's own unmount cleanup stops the decoder but can leave tracks live.
   useEffect(() => () => void stopScanning(), [stopScanning]);
@@ -126,7 +146,7 @@ export function ScanValueField({
             </SheetHeader>
             <SheetBody className="flex flex-col gap-3">
               {scanOpen ? (
-                <ScanSurface scanner={scanner} onDecode={handleDecode} manualPlaceholder={`Type ${label.toLowerCase()}…`} />
+                <ScanSheetCamera scanner={scanner} onDecode={handleDecode} manualPlaceholder={`Type ${label.toLowerCase()}…`} />
               ) : null}
               <Button variant="secondary" size="lg" className="w-full rounded-mode" onClick={closeScan}>
                 Cancel

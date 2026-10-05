@@ -21,6 +21,8 @@ const JobSchema = z.object({
   isReprint: z.boolean().nullable().optional(),
   reprintOfId: z.number().int().positive().nullable().optional(),
   clientEventId: z.string().trim().min(1).nullable().optional(),
+  /** This computer's print station id — the station's job log. */
+  stationId: z.string().trim().min(1).max(100).nullable().optional(),
 });
 
 const BodySchema = z.object({

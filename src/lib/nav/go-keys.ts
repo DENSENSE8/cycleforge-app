@@ -15,7 +15,7 @@ export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Recor
   floor: { l: 'stations-live', a: 'triage', u: 'receive', q: 'testing', p: 'ready-to-pack', k: 'packer', s: 'scan-out' },
   fulfillment: { s: 'outbound', f: 'fba', l: 'label-intake' },
   inbound: { d: 'incoming', p: 'pickup', r: 'repair', s: 'sourcing' },
-  inventory: { i: 'inventory', q: 'qc-labels' },
+  inventory: { s: 'stock', l: 'inventory', q: 'qc-labels' },
 };
 
 /**
@@ -25,11 +25,11 @@ export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Recor
  */
 export const NAV_PAGE_GO_KEYS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   exceptions: { f: 'fulfillment', i: 'inventory', r: 'receiving' },
-  // Live feed (2026-10-03): G O Outbound · G I Inbound — its Direction modes; bare 1–9 the Board and statuses under each.
-  'live-feed': { o: 'outbound', i: 'inbound' },
-  // Tasks (owner 2026-09-29): G A All tasks · G S Support · G D Daily checklist · G P Long-term projects — the parents; bare 1–3 the views under each.
+  // Tasks (owner 2026-09-29): G A All tasks · G D Daily checklist · G P Long-term projects — the parents; bare 1–3 the views under each.
   // Not G C: C is create app-wide (owner 2026-09-30, `key-registry.ts`).
-  home: { a: 'tasks', s: 'support', d: 'daily', p: 'projects' },
+  home: { a: 'tasks', d: 'daily', p: 'projects' },
+  // Print station (owner 2026-10-04): G F FNSKU labels (printing) · G S Stations (managing); bare 1–2 the FNSKU views.
+  'print-station': { f: 'fnsku-labels', s: 'stations' },
 };
 
 /** One `G` destination: a page, or one of `pageId`'s children (`childId`). */

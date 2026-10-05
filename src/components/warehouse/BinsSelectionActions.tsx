@@ -12,7 +12,6 @@ import {
   type RecordActionVerb,
 } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { locationLabelPrintSummary } from '@/lib/print/printLocationRows';
-import { useArrivalShelfTiers } from '@/lib/receiving/arrival-shelves-client';
 import {
   BINS_COPY_HEADER,
   formatBinsCopyRow,
@@ -29,8 +28,6 @@ export function BinsSelectionActions({ selected, rows, onDeleteSelected }: Props
   const count = selected.size;
   const selectedRows = rows.filter((r) => selected.has(r.id));
   const printLocationLabels = useLocationLabelPrint();
-  const arrival = useArrivalShelfTiers();
-  const tierById = arrival.data?.tierById;
 
   const copyTsv = useCallback(() => {
     if (selectedRows.length === 0) return;
@@ -77,9 +74,9 @@ export function BinsSelectionActions({ selected, rows, onDeleteSelected }: Props
     toast.success(`Exported ${selectedRows.length} bin${selectedRows.length === 1 ? '' : 's'}`);
   }, [selectedRows]);
 
-  // Every selected row prints here, now: rack addresses as location faces
-  // (urgency shelves captioned with their tier), anything else as a 2×1
-  // special-bin face — one run on the shared label channel.
+  // Every selected row prints here, now: rack addresses as location faces,
+  // anything else as a 2×1 special-bin face — one run on the shared label
+  // channel.
   const printLabels = useCallback(() => {
     if (selectedRows.length === 0) return;
     void printLocationLabels(
@@ -88,7 +85,6 @@ export function BinsSelectionActions({ selected, rows, onDeleteSelected }: Props
         name: r.name,
         barcode: r.barcode,
         roomName: r.room,
-        arrivalPriorityTier: tierById?.get(r.id) ?? null,
       })),
     ).then(
       (result) => {
@@ -98,7 +94,7 @@ export function BinsSelectionActions({ selected, rows, onDeleteSelected }: Props
       },
       (err: unknown) => toast.error(err instanceof Error ? err.message : 'Print failed'),
     );
-  }, [printLocationLabels, selectedRows, tierById]);
+  }, [printLocationLabels, selectedRows]);
 
   const verbs = useMemo<RecordActionVerb[]>(() => [
     {

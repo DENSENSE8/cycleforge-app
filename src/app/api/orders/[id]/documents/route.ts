@@ -88,6 +88,7 @@ export async function POST(
     const { document, isFirstLabel } = await attachOutboundDocument(gate.ctx.organizationId as OrgId, {
       orderId,
       documentType: parsed.documentType,
+      documentId: parsed.documentId,
       url: parsed.url,
       platform: parsed.platform ?? null,
       source: parsed.source ?? 'manual_upload',
@@ -103,7 +104,12 @@ export async function POST(
       action: AUDIT_ACTION.ORDER_DOCUMENT_ATTACH,
       entityType: AUDIT_ENTITY.ORDER,
       entityId: orderId,
-      after: { documentId: document.id, documentType: document.documentType, url: parsed.url },
+      after: {
+        documentId: document.id,
+        documentType: document.documentType,
+        pairedExisting: parsed.documentId != null,
+        url: parsed.url ?? document.data.url,
+      },
     });
 
     // First label on the order also feeds the order timeline (EventTimeline
@@ -114,7 +120,7 @@ export async function POST(
         action: AUDIT_ACTION.LABEL_PRINTED,
         entityType: AUDIT_ENTITY.ORDER,
         entityId: orderId,
-        after: { url: parsed.url, carrier: parsed.carrier ?? null, tracking: parsed.tracking ?? null },
+        after: { url: parsed.url ?? document.data.url, carrier: parsed.carrier ?? null, tracking: parsed.tracking ?? null },
       });
     }
 

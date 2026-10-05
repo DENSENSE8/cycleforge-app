@@ -113,6 +113,13 @@ interface CollapseItemProps {
    * first (a swipe-dismissed card sliding off) closes its gap after it.
    */
   exitDelay?: number;
+  /**
+   * The open and close timing, when the surface's motion is a tween rather
+   * than the default critically damped spring (the search well's panel:
+   * ease-in-out, closing faster than it opens). Pass them through
+   * `useMotionTransition` so reduced motion still holds.
+   */
+  timing?: { open: Transition; close: Transition };
   'data-testid'?: string;
 }
 
@@ -130,6 +137,7 @@ export function CollapseItem({
   rowRule = false,
   delay,
   exitDelay,
+  timing,
   'data-testid': testId,
 }: CollapseItemProps) {
   const frameRef = useRef<HTMLElement | null>(null);
@@ -158,8 +166,14 @@ export function CollapseItem({
       data-collapse-clip={clip ? '' : undefined}
       initial={enter ? HIDDEN : false}
       animate={SHOWN}
-      exit={exitDelay ? { ...HIDDEN, transition: { ...TRANSITION, delay: exitDelay } } : HIDDEN}
-      transition={delay ? { ...TRANSITION, opacity: { ...fadeInstant, delay } } : TRANSITION}
+      exit={
+        timing
+          ? { ...HIDDEN, transition: timing.close }
+          : exitDelay
+            ? { ...HIDDEN, transition: { ...TRANSITION, delay: exitDelay } }
+            : HIDDEN
+      }
+      transition={timing ? timing.open : delay ? { ...TRANSITION, opacity: { ...fadeInstant, delay } } : TRANSITION}
       onAnimationStart={() => setClip(true)}
       onAnimationComplete={(definition) => {
         if (definition === SHOWN) setClip(false);

@@ -1,108 +1,54 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import type { LiveFeedFilters } from '@/lib/live-feed/route';
 import { getNavFacets, type NavFacetsDeps } from '@/lib/nav/facets/service';
-import { NAV_FACET_GROUPS, isNavFacetContext } from '@/lib/nav/facets/contexts';
-import type { LiveFeedCountReader } from '@/lib/nav/facets/live-feed';
-import { liveFeedStatusesOf } from '@/lib/live-feed/statuses';
-import type { LiveFeedFilters } from '@/lib/live-feed/types';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-const ORG = 'org_test' as OrgId;
-const CHANNEL = { id: 'channel', label: 'Channel', param: 'channel', multi: false };
-const CARRIER = { id: 'carrier', label: 'Carrier', param: 'carrier', multi: false };
+const ORG = 'org-live-feed' as OrgId;
 
-function deps(reader: LiveFeedCountReader): NavFacetsDeps {
+function deps(seen: LiveFeedFilters[]): NavFacetsDeps {
   return {
-    run: async () => [],
+    run: async () => {
+      throw new Error('the live feed counts through its own loader');
+    },
     listLocalPickupLines: async () => [],
     exceptionCounts: async () => ({}),
-    liveFeedCounts: reader,
+    supportRows: async () => [],
+    liveFeedFacets: async (orgId, filters) => {
+      assert.equal(orgId, ORG);
+      seen.push(filters);
+      return {
+        carrier: [{ value: 'USPS', label: 'USPS', count: 7 }, { value: 'UPS', label: 'UPS', count: 3 }],
+        channel: [{ value: 'ebay', label: 'eBay', count: 4 }, { value: 'amazon', label: 'Amazon', count: 2 }],
+      };
+    },
   };
 }
 
-test('one facet context per direction view; Channel on both, Carrier outbound; no lane contexts', () => {
-  assert.deepEqual(NAV_FACET_GROUPS['live-feed.outbound'], [CHANNEL, CARRIER]);
-  assert.deepEqual(NAV_FACET_GROUPS['live-feed.inbound'], [CHANNEL]);
-  for (const gone of ['live-feed.out-board', 'live-feed.in-board', 'live-feed.out-scanned-out', 'live-feed.in-docked']) {
-    assert.equal(isNavFacetContext(gone), false, gone);
-  }
-});
-
-test('outbound: every lane counted under the page params; total = visible lanes; Carrier summed over carrier lanes', async () => {
-  const seen: Array<{ filters: LiveFeedFilters; only: readonly string[] | undefined }> = [];
-  const reader: LiveFeedCountReader = async (_org, filters, _perms, only) => {
-    seen.push({ filters, only });
-    return {
-      'out-to-pack': { count: 4, carriers: [{ key: 'USPS', count: 4 }], channels: [{ key: 'online', count: 3 }, { key: 'in_person', count: 1 }] },
-      'out-scanned-out': { count: 6, carriers: [{ key: 'UPS', count: 6 }, { key: 'USPS', count: 2 }], channels: [{ key: 'online', count: 6 }] },
-      'out-sold-in-person': { count: 0, carriers: [], channels: [{ key: 'in_person', count: 2 }] },
-    };
-  };
-  // The page URL names a lane (an old link): the context decides — the Board counts every lane.
-  const params = new URLSearchParams({ status: 'out-packed', lens: 'scanned_out', from: '2026-09-30', channel: 'online', carrier: 'UPS' });
-  const res = await getNavFacets({ orgId: ORG, permissions: new Set(['packing.view']) }, 'live-feed.outbound', params, deps(reader));
-  assert.ok(res.ok);
-  // Online pick: Sold in person is outside it and drops from the total and the carriers.
-  assert.equal(res.body.total, 10);
-  assert.deepEqual(res.body.groups, [
-    {
-      id: 'channel',
-      label: 'Channel',
-      param: 'channel',
-      options: [
-        { value: 'online', label: 'Online', count: 9 },
-        { value: 'in_person', label: 'In person', count: 3 },
-      ],
-    },
-    {
-      id: 'carrier',
-      label: 'Carrier',
-      param: 'carrier',
-      options: [
-        { value: 'UPS', label: 'UPS', count: 6 },
-        { value: 'USPS', label: 'USPS', count: 6 },
-      ],
-    },
-  ]);
-  assert.equal(seen.length, 1);
-  assert.deepEqual(seen[0].only, liveFeedStatusesOf('outbound').map((s) => s.id));
-  assert.equal(seen[0].filters.dir, 'outbound');
-  assert.equal(seen[0].filters.status, null);
-  assert.equal(seen[0].filters.lens, 'scanned_out');
-  assert.equal(seen[0].filters.from, '2026-09-30');
-  assert.equal(seen[0].filters.carrier, 'UPS');
-});
-
-test('the range always applies: no day in the URL counts today', async () => {
-  let filters: LiveFeedFilters | null = null;
-  const reader: LiveFeedCountReader = async (_org, f) => {
-    filters = f;
-    return {};
-  };
-  await getNavFacets({ orgId: ORG, permissions: new Set(['packing.view']) }, 'live-feed.outbound', new URLSearchParams(), deps(reader));
-  assert.ok(filters);
-  assert.match((filters as LiveFeedFilters).from, /^\d{4}-\d{2}-\d{2}$/);
-  assert.equal((filters as LiveFeedFilters).from, (filters as LiveFeedFilters).to);
-});
-
-test('inbound reads its direction and its lenses, and is refused without receiving.view', async () => {
-  let dir: string | null = null;
-  let lens: string | null = null;
-  const reader: LiveFeedCountReader = async (_org, filters) => {
-    dir = filters.dir;
-    lens = filters.lens;
-    return { 'in-docked': { count: 3, carriers: [], channels: [{ key: 'online', count: 3 }] } };
-  };
-  const ok = await getNavFacets(
-    { orgId: ORG, permissions: new Set(['receiving.view']) },
-    'live-feed.inbound',
-    new URLSearchParams({ lens: 'received' }),
-    deps(reader),
+test('live-feed facets: the board loader answers with the URL filters; Carrier · Channel groups, labels from the loader', async () => {
+  const seen: LiveFeedFilters[] = [];
+  const result = await getNavFacets(
+    { orgId: ORG, permissions: new Set(['packing.view']) },
+    'live-feed',
+    new URLSearchParams({ carrier: 'usps', staff: '4' }),
+    deps(seen),
   );
-  assert.ok(ok.ok);
-  assert.equal(ok.body.total, 3);
-  assert.equal(dir, 'inbound');
-  assert.equal(lens, 'received');
-  const refused = await getNavFacets({ orgId: ORG, permissions: new Set(['packing.view']) }, 'live-feed.inbound', new URLSearchParams(), deps(reader));
-  assert.equal(refused.ok, false);
+  assert.ok(result.ok);
+  assert.deepEqual(seen[0], { carriers: ['USPS'], channels: null, staffId: 4 });
+  assert.equal(result.body.context, 'live-feed');
+  assert.deepEqual(
+    result.body.groups.map((group) => [group.id, group.param, group.options.map((o) => [o.value, o.label, o.count])]),
+    [
+      ['carrier', 'carrier', [['USPS', 'USPS', 7], ['UPS', 'UPS', 3]]],
+      ['channel', 'channel', [['ebay', 'eBay', 4], ['amazon', 'Amazon', 2]]],
+    ],
+  );
+  // Carrier filtered → the selected carriers' members.
+  assert.equal(result.body.total, 7);
+});
+
+test('live-feed facets need packing.view', async () => {
+  const result = await getNavFacets({ orgId: ORG, permissions: new Set(['orders.view']) }, 'live-feed', new URLSearchParams(), deps([]));
+  assert.deepEqual(result, { ok: false, status: 403, error: 'FORBIDDEN', permission: 'packing.view' });
 });

@@ -212,7 +212,8 @@ export function OrderAdminLinkAction({
         items={[
           {
             id: 'copy-order-id',
-            label: 'Copy order ID',
+            // The hover surface over a compact face: it names the complete id, never the face.
+            label: `Copy ${orderId}`,
             icon: <Copy />,
             onSelect: () => {
               void copyToClipboard(orderId, { historyKind: 'id', historyDisplay: orderId }).then((ok) =>

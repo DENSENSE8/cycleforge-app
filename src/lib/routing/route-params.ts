@@ -109,6 +109,11 @@ const AMBIENT_PARAMS = {
   layout: paramRoundTrip((raw) => (raw === 'board' || raw === 'all' ? raw : null)),
   /** Week navigation offset. Only positive values are ever written (0 = deleted). */
   weekOffset: paramPositiveInt,
+  /**
+   * Where a record opened from another page returns on close (`recordDetailsNavigation`
+   * → `DeskRecordPlane`): a same-origin path only, never a protocol-relative or absolute URL.
+   */
+  recordBack: paramRoundTrip((raw) => (raw.startsWith('/') && !raw.startsWith('//') ? raw : null)),
 } as const satisfies Record<string, ParamSchema>;
 
 export type AmbientParamKey = keyof typeof AMBIENT_PARAMS;
@@ -143,12 +148,13 @@ const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   range: 'A time-range facet over the surface\'s own data. Same question; each route validates its own windows.',
   plan: 'A focused plan/shipment id on the FBA board. Sole owner since 2026-08-19 — the Home plans rail (Tasks mode) that shared it was deleted; the entry stays until FBA is the only name in this sentence for a release.',
   pending: 'A "pending" facet over the surface\'s own list — the To-ship desk\'s legacy outbound-tab alias (`/shipping/orders`), and the Products catalog\'s pending-action refine flag. The two routes cannot both be current and each validates its own value shape, so a longer name would buy nothing.',
-  wstatus: 'Warranty-claim status. Owned by `/support`, which renders the warranty board, and by `/dashboard`, which reads it ONLY to forward a legacy `?warranty=` bookmark on to Support (`buildSupportWarrantyRedirectSearch`). A hand-off, not a second warranty surface — the entry leaves when that redirect is sunset.',
-  wexp: 'Warranty-expiry filter; same `/support` + `/dashboard` hand-off as `wstatus`, and leaves with it.',
+  wstatus: 'Legacy warranty-claim status filter retained while old dashboard bookmarks age out.',
+  wexp: 'Legacy warranty-expiry filter retained while old dashboard bookmarks age out.',
   serial: 'A scanned serial number. Same identifier space on Operations (the journey focus dimension) and Warehouse (the location lookup) — both answer "which unit", so a longer name would not disambiguate anything.',
   state: 'A state facet over the surface\'s own list — Incoming\'s carrier delivery state, Inventory\'s unit lifecycle states (a comma list). Same question, per-route vocabularies.',
   section: 'A named section of the surface — Operations\' analytics scroll anchor, and Inventory\'s `replenish` mode selector. Both name "which part of this page"; each validates its own values.',
-  unit: 'A focused serial-unit. Same id space on Operations (journey focus) and Inventory (the by-unit viewport), so a longer name would not disambiguate anything.',
+  unit: 'A focused serial-unit. Same id space on Operations (journey focus) and Inventory (the by-unit viewport), so a longer name would not disambiguate anything; the desk prepack task on QC labels repeats it once per serial in the package (the same `prepackHref` contract as `/m/prepack`).',
+  condition: 'A condition-grade value — Inventory\'s comma-list facet and the desk prepack task\'s chosen grade on QC labels (the shared `prepackHref` contract with `/m/prepack`). Same vocabulary (`condition_grade_enum`), per-route shape.',
   sku: 'A focused SKU string — Products Pairing, the Inventory by-sku viewport and the SKU Exceptions record (`TMP-…`) address the same identifier. (Distinct from `skuId`, the sku_catalog row id.)',
   filter: 'The surface\'s own named filter set — Home Today\'s feed filter and Inventory\'s bucket multi-select. One question, per-route vocabularies.',
   openRepair: 'A focused repair order id. Same id space on `/repair`, which renders it, and on `/walk-in`, which only reads it to forward the legacy deep-link to `/pickup?job=repair` — the hand-off is the reason the key is deliberately identical on both sides.',
@@ -188,6 +194,8 @@ export interface RouteParamsSpec {
   readonly owns: Readonly<Record<string, ParamSchema>>;
   /** Ambient params this route accepts on arrival. */
   readonly carries?: readonly AmbientParamKey[];
+  /** Owned keys that legitimately repeat (`?unit=A&unit=B`); every value is validated and kept, in order. */
+  readonly repeats?: readonly string[];
 }
 
 /** Identity helper — keeps `owns` keys literal for the ownership guard. */
@@ -215,10 +223,12 @@ export function parseRouteParams(
 ): URLSearchParams {
   const next = new URLSearchParams();
   for (const key of declaredKeys(spec)) {
-    const raw = params.get(key);
-    if (raw === null) continue;
-    const parsed = schemaFor(spec, key)?.safeParse(raw);
-    if (parsed?.success) next.set(key, parsed.data);
+    const schema = schemaFor(spec, key);
+    const raws = spec.repeats?.includes(key) ? params.getAll(key) : [params.get(key)].filter((raw): raw is string => raw !== null);
+    for (const raw of raws) {
+      const parsed = schema?.safeParse(raw);
+      if (parsed?.success) next.append(key, parsed.data);
+    }
   }
   return next;
 }

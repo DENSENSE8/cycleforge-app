@@ -36,6 +36,7 @@ import type { StateName } from '@/design-system/tokens/lifecycle';
 import { ReceiptCardPeek } from './IncomingDeliveryCard';
 import { carrierFace, FOLLOWUP_TONE, followupTip, orderedFace, totalFace } from './pasted-number-faces';
 import { receiptCardModel, receiptRecordCard, type ReceiptCardModel } from './receipt-card-model';
+import { purchaseIdentity } from '../incoming-delivery-state';
 
 /** A record on the numbers face: a line the number holds, or the number alone (`line` null, negative id). */
 export interface PastedNumberRow {
@@ -237,7 +238,7 @@ export const PastedNumberCard = memo(function PastedNumberCard({
   const actions = useContext(PastedNumberActionsContext);
   const { entry } = model.number;
   // The PO beside the number, unless the number IS the PO.
-  const identity = model.receipt?.identity ?? null;
+  const identity = model.receipt ? purchaseIdentity(model.receipt.lead) : null;
   const po = identity && identity.replace(/[^a-z0-9]/gi, '').toUpperCase() !== entry.key ? identity : null;
   return (
     <RecordCard

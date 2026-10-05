@@ -1,111 +1,13 @@
 'use client';
 
-import { startTransition, useCallback, useMemo } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { warrantyClaimsQuery, warrantyCoverageQuery } from '@/lib/queries/dashboard-queries';
 import { fetchWarrantyClaim } from '@/lib/warranty/client';
-import { isWarrantyClaimStatus, type WarrantyClaimStatus } from '@/lib/warranty/types';
+import type { WarrantyClaimStatus } from '@/lib/warranty/types';
 
 /** Look-ahead window (days) for the "30 days out" expiry filter (matches the 30-day term). */
 const WARRANTY_EXPIRING_SOON_DAYS = 30;
-
-interface WarrantyUrlState {
-  status: WarrantyClaimStatus | null;
-  expiringSoon: boolean;
-  openClaimId: number | null;
-  setStatus: (next: WarrantyClaimStatus | null) => void;
-  setExpiringSoon: (next: boolean) => void;
-  openClaim: (id: number | null) => void;
-}
-
-/**
- * URL-state for the Warranty Logger mode: `?wstatus`, `?wexp`, `?open`. All mode
- * state lives in the URL (sidebar-mode contract); Support mode switches clear
- * these via the /support param spec.
- */
-export function useWarrantyUrlState(): WarrantyUrlState {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const statusParam = searchParams.get('wstatus');
-  const status = isWarrantyClaimStatus(statusParam) ? statusParam : null;
-  const expiringSoon = searchParams.get('wexp') === '1';
-  const openRaw = Number(searchParams.get('open'));
-  const urlOpenClaimId = Number.isFinite(openRaw) && openRaw > 0 ? openRaw : null;
-
-  const update = useCallback(
-    (mutate: (params: URLSearchParams) => void) => {
-      const params = new URLSearchParams(searchParams.toString());
-      mutate(params);
-      // Prefer staying on /support (Warranty lives under Support). Fall back to
-      // current path for any residual deep-links during redirect soak.
-      const base =
-        pathname?.startsWith('/support') || pathname?.startsWith('/dashboard')
-          ? pathname
-          : '/support';
-      if (base === '/support' && !params.has('mode')) {
-        params.set('mode', 'warranty');
-      }
-      const qs = params.toString();
-      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-
-  const writeOpen = useCallback((params: URLSearchParams, next: number | null) => {
-    if (next) params.set('open', String(next));
-    else params.delete('open');
-  }, []);
-
-  const {
-    value: openClaimId,
-    setValue: setOpenClaim,
-    paint: paintOpen,
-  } = useOptimisticUrlParam<number | null>({
-    urlValue: urlOpenClaimId,
-    replace: update,
-    write: writeOpen,
-    shareKey: 'warranty:open',
-  });
-
-  const setStatus = useCallback(
-    (next: WarrantyClaimStatus | null) => {
-      paintOpen(null);
-      startTransition(() => {
-        update((params) => {
-          if (next) params.set('wstatus', next);
-          else params.delete('wstatus');
-          params.delete('open');
-        });
-      });
-    },
-    [update, paintOpen],
-  );
-
-  const setExpiringSoon = useCallback(
-    (next: boolean) => {
-      paintOpen(null);
-      startTransition(() => {
-        update((params) => {
-          if (next) params.set('wexp', '1');
-          else params.delete('wexp');
-          params.delete('open');
-        });
-      });
-    },
-    [update, paintOpen],
-  );
-
-  const openClaim = useCallback(
-    (id: number | null) => setOpenClaim(id),
-    [setOpenClaim],
-  );
-
-  return { status, expiringSoon, openClaimId, setStatus, setExpiringSoon, openClaim };
-}
 
 interface UseWarrantyClaimsParams {
   status?: WarrantyClaimStatus | null;

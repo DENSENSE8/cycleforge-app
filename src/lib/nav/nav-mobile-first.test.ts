@@ -15,7 +15,7 @@ import { LANE_MOBILE_FIRST, isLaneVisible } from './lanes';
 import { resolveSpineMapEntries } from './spine-slots';
 
 // Read from the ledger everywhere EXCEPT this constant, which names the set for readable failure messages.
-const HIDDEN_LANE_IDS = ['monitor', 'support'] as const;
+const HIDDEN_LANE_IDS = ['monitor'] as const;
 
 /** The registry row behind a palette / spine id, for lane attribution. */
 function laneOf(id: string): string | null {
@@ -67,7 +67,7 @@ test('the desktop lanes still display after a mobile port — the gate does not 
   const sections = DESK_SPINE_SECTIONS.map((s) => s.id);
   // A lane keeps its desktop row whether it is awaiting its phone port or has
   // completed one. Fulfillment is now the latter.
-  const expectedStatus = { inbound: 'desk-only', fulfillment: 'ported', inventory: 'desk-only', catalog: 'desk-only', sales: 'desk-only' } as const;
+  const expectedStatus = { inbound: 'desk-only', fulfillment: 'ported', inventory: 'desk-only', catalog: 'desk-only', sales: 'desk-only', support: 'ported' } as const;
   for (const id of Object.keys(expectedStatus)) {
     assert.equal(LANE_MOBILE_FIRST[id as keyof typeof LANE_MOBILE_FIRST], expectedStatus[id as keyof typeof expectedStatus]);
     assert.ok(sections.includes(id as (typeof sections)[number]), `kept lane "${id}" vanished`);

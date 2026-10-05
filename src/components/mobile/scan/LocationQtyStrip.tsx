@@ -2,7 +2,8 @@
 
 /**
  * The ± counter for one paired SKU on a scanned location. Identity belongs to
- * the host record (the stock position sheet header), never repeated here.
+ * the host record (the stock position sheet header), never repeated here. The
+ * number between − and + is the door to the Take / Put keypad.
  */
 
 import { Minus, Plus, X } from '@/components/Icons';
@@ -23,6 +24,7 @@ export function LocationQtyStrip({
   /** Returns false when the clamp refused the tap (would go below zero). */
   onBump: (step: number) => boolean;
   onCancelPending: () => void;
+  /** Opens the Take / Put keypad for a bulk change. */
   onOpenKeypad: () => void;
 }) {
   const live = Math.max(0, content.qty + pendingDelta);
@@ -55,43 +57,44 @@ export function LocationQtyStrip({
         </div>
       )}
 
-      {/* Keypad left of the minus: */}
+      {/* Direction is colour (owner 2026-10-05): − is rose, + is emerald, both
+          deepen to a solid fill under the thumb; the live count takes the colour
+          of the uncommitted change. */}
       <div className="flex items-stretch gap-2">
         <Button
-          variant="ghost"
-          size="lg"
+          variant="dangerSoft"
+          size="xl"
           radius="surface"
-          className="shrink-0"
-          ariaLabel={`Type an exact quantity for ${content.sku}`}
-          onClick={onOpenKeypad}
-        >
-          123
-        </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          radius="surface"
-          className="flex-1"
+          className="flex-1 active:bg-rose-600 active:text-white"
           icon={<Minus />}
           ariaLabel={`Remove one ${content.sku}`}
           disabled={live === 0}
           onClick={() => onBump(-1)}
+          data-testid="stock-qty-minus"
         />
-        <span
-          aria-live="polite"
-          aria-label={`${live} on hand`}
-          className="flex w-20 shrink-0 items-center justify-center font-mono text-role-title font-semibold tabular-nums text-text-default"
-        >
-          {live}
-        </span>
         <Button
-          variant="primary"
-          size="lg"
+          variant="ghost"
+          size="xl"
           radius="surface"
-          className="flex-1"
+          ariaLabel={`${live} on hand — open keypad`}
+          onClick={onOpenKeypad}
+          className={cn(
+            'w-20 shrink-0 font-mono text-role-title tabular-nums underline decoration-dotted decoration-2 underline-offset-4',
+            pendingDelta < 0 ? 'text-rose-600' : pendingDelta > 0 ? 'text-emerald-700' : 'text-text-default',
+          )}
+          data-testid="stock-qty-keypad"
+        >
+          <span aria-live="polite">{live}</span>
+        </Button>
+        <Button
+          variant="successSoft"
+          size="xl"
+          radius="surface"
+          className="flex-1 active:bg-emerald-600 active:text-white"
           icon={<Plus />}
           ariaLabel={`Add one ${content.sku}`}
           onClick={() => onBump(1)}
+          data-testid="stock-qty-plus"
         />
       </div>
     </div>

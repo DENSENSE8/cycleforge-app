@@ -992,16 +992,45 @@ async function seedMyDayFixtures(
     }
   }
 
-  // The undated interrupt. UNIQUE (organization_id, zendesk_ticket_id) makes the
-  // upsert the idempotency; no support_tickets row is seeded on purpose, so the
-  // subject stays null and the row titles itself from the ticket id.
+  // The undated interrupt: a Zendesk-bound Support item whose primary task the
+  // QA admin is assigned to (task assignees are the Support ownership source).
+  // No subject is cached, so the row titles itself from the ticket number.
+  // Idempotent by the registry's natural key + the item's primary_task_id.
+  const item = await client.query<{ id: string; primary_task_id: number | null }>(
+    `INSERT INTO support_tickets (organization_id, provider, external_ticket_id, created_by)
+     VALUES ($1, 'zendesk', $2, $3)
+     ON CONFLICT (organization_id, provider, external_ticket_id) WHERE external_ticket_id IS NOT NULL
+     DO UPDATE SET lifecycle = 'open', resolved_at = NULL, updated_at = NOW()
+     RETURNING id, primary_task_id`,
+    [orgId, String(QA_FIXTURE_MY_DAY.interruptTicketId), adminStaffId],
+  );
+  const supportItemId = Number(item.rows[0].id);
+  let taskId = item.rows[0].primary_task_id;
+  if (taskId == null) {
+    const task = await client.query<{ id: number }>(
+      `INSERT INTO work_assignments
+         (organization_id, entity_type, entity_id, work_type, status, priority, notes, assigned_by_staff_id)
+       VALUES ($1, 'SUPPORT_TICKET', $2, 'FOLLOW_UP', 'OPEN', $3, 'QA fixture — Support follow-up', $4)
+       RETURNING id`,
+      [orgId, supportItemId, QA_FIXTURE_MY_DAY.priority, adminStaffId],
+    );
+    taskId = task.rows[0].id;
+    await client.query(
+      `UPDATE support_tickets SET primary_task_id = $3 WHERE organization_id = $1 AND id = $2`,
+      [orgId, supportItemId, taskId],
+    );
+  } else {
+    await client.query(
+      `UPDATE work_assignments SET status = 'OPEN', task_state = NULL, updated_at = NOW()
+        WHERE organization_id = $1 AND id = $2 AND status IN ('DONE', 'CANCELED')`,
+      [orgId, taskId],
+    );
+  }
   await client.query(
-    `INSERT INTO support_ticket_assignments
-       (organization_id, zendesk_ticket_id, assigned_staff_id, assigned_by)
-     VALUES ($1, $2, $3, $3)
-     ON CONFLICT (organization_id, zendesk_ticket_id)
-     DO UPDATE SET assigned_staff_id = EXCLUDED.assigned_staff_id, updated_at = NOW()`,
-    [orgId, QA_FIXTURE_MY_DAY.interruptTicketId, adminStaffId],
+    `INSERT INTO work_assignment_assignees (organization_id, assignment_id, staff_id)
+     VALUES ($1, $2, $3)
+     ON CONFLICT DO NOTHING`,
+    [orgId, taskId, adminStaffId],
   );
 
   log(

@@ -77,6 +77,7 @@ export function StepRail({
   className,
   orientation = 'vertical',
   horizontalScroll = false,
+  connectors = true,
 }: {
   steps: readonly RailStep[];
   size?: StepRailSize;
@@ -87,6 +88,8 @@ export function StepRail({
   orientation?: 'vertical' | 'horizontal';
   /** Keep every horizontal step on one rail and let its owner scroll it. */
   horizontalScroll?: boolean;
+  /** Draw the process connector. Dense status summaries can use independent nodes. */
+  connectors?: boolean;
 }) {
   const lastDone = steps.length - 1;
   if (orientation === 'horizontal') {
@@ -100,7 +103,7 @@ export function StepRail({
               // two readable rows; the full record keeps the intended
               // left-to-right process strip. Never squeeze four names/actions
               // into 80px cells.
-              'grid min-w-0 grid-cols-1 items-stretch @xs:grid-cols-2 @xl:grid-cols-4',
+              'grid min-w-0 grid-cols-1 items-stretch @xs:grid-cols-2 @md:grid-cols-4',
           className,
         )}
       >
@@ -111,13 +114,13 @@ export function StepRail({
               'relative min-w-0 py-3',
               horizontalScroll
                 ? 'w-56 shrink-0 pr-5 last:pr-0'
-                : 'px-0 @xs:px-2.5 @xs:odd:pl-0 @xs:even:pr-0 @xl:px-3 @xl:first:pl-0 @xl:last:pr-0',
+                : 'px-0 @xs:px-2.5 @xs:odd:pl-0 @xs:even:pr-0 @md:px-3 @md:first:pl-0 @md:last:pr-0',
             )}
             data-testid={step.testId}
             data-step-state={step.state}
             data-step-tone={step.tone}
           >
-            {i < lastDone ? (
+            {connectors && i < lastDone ? (
               <span
                 aria-hidden
                 className={cn(
@@ -128,7 +131,7 @@ export function StepRail({
                     ? 'right-0'
                     : i % 2 === 0
                       ? 'hidden @xs:block @xs:right-[-0.625rem]'
-                      : 'hidden @xl:block @xl:right-[-0.75rem]',
+                      : 'hidden @md:block @md:right-[-0.75rem]',
                 )}
               />
             ) : null}

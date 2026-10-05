@@ -18,6 +18,12 @@ function asStampText(value: unknown): string | null {
   return null;
 }
 
+/** A staff FK as the wire's id (`StaffAvatar` / `StaffBadge` colour by id); null when unset. */
+function asStaffId(value: unknown): number | null {
+  const id = Number(value);
+  return value != null && Number.isInteger(id) && id > 0 ? id : null;
+}
+
 export function normalizeRow(row: Record<string, unknown>) {
   // Tracking identity resolves in priority order:
   const shipmentTracking    = (row.shipment_tracking_number as string | null) ?? null;
@@ -156,15 +162,19 @@ export function normalizeRow(row: Record<string, unknown>) {
     // Door-scan vs unbox split (history columns).
     received_at:              asStampText(row.receiving_received_at),
     received_by_name:         (row.received_by_name as string | null) ?? null,
+    received_by_id:           asStaffId(row.receiving_received_by),
     // Terminal "Received" (DONE) transition time — distinct from the door-scan
     // received_at above. Drives History's "Received" sort axis. Comes from
     // `rl.*` uncast, so coerce Date → ISO (see {@link asStampText}).
     received_done_at:         asStampText(row.received_done_at),
     unboxed_at:               asStampText(row.receiving_unboxed_at),
     unboxed_by_name:          (row.unboxed_by_name as string | null) ?? null,
+    unboxed_by_id:            asStaffId(row.receiving_unboxed_by),
     unbox_opened_by_name:     (row.unbox_opened_by_name as string | null) ?? null,
+    unbox_opened_by_id:       asStaffId(row.receiving_unbox_opened_by),
     scanned_at:               asStampText(row.first_scanned_at),
     scanned_by_name:          (row.scanned_by_name as string | null) ?? null,
+    scanned_by_id:            asStaffId(row.first_scanned_by),
     // First-class "opened for unbox" time (receiving.unbox_opened_at / UNBOX_SCAN_OPENED).
     // Unboxed rail + History `unboxed_newest` read THIS for label + sort — same
     // axis. Selected on view=unbox_opened / activity / all; null elsewhere.
@@ -227,7 +237,9 @@ export function buildUnmatchedEmptyReceivingLine(pkg: Record<string, unknown>): 
     receiving_received_at: pkg.receiving_received_at,
     receiving_unboxed_at: unboxedAt,
     unboxed_by_name: pkg.unboxed_by_name ?? null,
+    receiving_unboxed_by: pkg.receiving_unboxed_by ?? null,
     unbox_opened_by_name: pkg.unbox_opened_by_name ?? null,
+    receiving_unbox_opened_by: pkg.receiving_unbox_opened_by ?? null,
     receiving_support_notes: pkg.receiving_support_notes ?? null,
     receiving_zoho_notes: pkg.receiving_zoho_notes ?? null,
     receiving_listing_url: pkg.receiving_listing_url ?? null,

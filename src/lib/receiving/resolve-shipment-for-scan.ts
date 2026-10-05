@@ -99,22 +99,28 @@ export async function resolveShipmentForScan(
   }
 
   // ── 2. LAST-8 fallback (lossy — require a single carton, and log) ──────────
+  // Each shipment counts as its NEWEST carton — what the exact tier above picks
+  // for the same row — so a box re-minted under one shipment is still one hit
+  // for its last 8 (operator 2026-10-04: last 8 is the package's identity).
   const last8 = last8FromStoredTracking(canonical);
   if (last8.length >= 8) {
     const fuzzy = await deps.query<ResolverRow>(
       orgId,
-      `SELECT stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source
-         FROM shipping_tracking_numbers stn
-         JOIN receiving_carton r ON r.shipment_id = stn.id
-        WHERE (RIGHT(regexp_replace(stn.tracking_number_normalized, '\\D', '', 'g'), 8) = $1
-            OR RIGHT(regexp_replace(stn.tracking_number_raw,        '\\D', '', 'g'), 8) = $1)
-          ${orgPredicate(orgId, '$2')}
-        ORDER BY r.id DESC
-        LIMIT 2`,
+      `SELECT DISTINCT ON (receiving_id) shipment_id, receiving_id, receiving_source FROM (
+         SELECT DISTINCT ON (stn.id) stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source
+           FROM shipping_tracking_numbers stn
+           JOIN receiving_carton r ON r.shipment_id = stn.id
+          WHERE (RIGHT(regexp_replace(stn.tracking_number_normalized, '\\D', '', 'g'), 8) = $1
+              OR RIGHT(regexp_replace(stn.tracking_number_raw,        '\\D', '', 'g'), 8) = $1)
+            ${orgPredicate(orgId, '$2')}
+          ORDER BY stn.id, r.id DESC
+       ) newest
+       ORDER BY receiving_id DESC
+       LIMIT 2`,
       orgId ? [last8, orgId] : [last8],
     );
 
-    // Single last-8 hit wins; ambiguous (≥2) or miss falls through to digit-prefix.
+    // Single last-8 carton wins; ambiguous (≥2) or miss falls through to digit-prefix.
     if (fuzzy.rows.length === 1) {
       const row = fuzzy.rows[0];
       deps.warn('[resolveShipmentForScan] last-8 fallback used — exact normalized miss', {

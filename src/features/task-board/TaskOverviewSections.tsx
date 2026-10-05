@@ -10,18 +10,15 @@
  * content leads (M2); the section's name lives in `aria-label`.
  */
 
-import { useMemo, useState } from 'react';
-import { ChevronRight, FileText, Lock } from 'lucide-react';
-import { TicketStatusPill } from '@/design-system/components/TicketStatusPill';
+import { useState } from 'react';
+import { ChevronRight, FileText } from 'lucide-react';
 import { Button } from '@/design-system/primitives/Button';
-import { useTicketComments, useZendeskUsers } from '@/hooks/useZendeskQueries';
-import { taskBoardAgo } from '@/lib/task-board/task-board-model';
 import { useTaskDocuments } from '@/lib/tasks/use-task-workspace';
 import { useTaskTimeline } from '@/lib/tasks/use-task-timeline';
 import { cn } from '@/utils/_cn';
 import { TimelineRow } from './TaskRailTimeline';
 
-/** Newest messages / events a preview shows; the tab holds the rest. */
+/** Newest events a preview shows; the tab holds the rest. */
 const PREVIEW_COUNT = 3;
 
 /** One Overview section: a hairline above, the content, no heading. */
@@ -44,83 +41,9 @@ export function OverviewDoor({ children, onClick, testId }: { children: string; 
   );
 }
 
-/**
- * The ticket, in line: the newest three messages Messages-style (customer left on the sunken plane, ours
- * right on the info tint, internal notes with a lock on the warning tint), then the number + status and a
- * door to the Ticket tab, where the one composer lives.
- */
-export function TaskTicketPreview({
-  ticketNumber,
-  status,
-  nowMs,
-  onOpen,
-}: {
-  ticketNumber: number;
-  status: string | null;
-  nowMs: number;
-  onOpen: () => void;
-}) {
-  const { data, isLoading, error } = useTicketComments(ticketNumber);
-  const comments = useMemo(
-    () => [...(data?.comments ?? [])].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at)),
-    [data?.comments],
-  );
-  const authorIds = useMemo(() => [...new Set(comments.map((c) => c.author_id))], [comments]);
-  const users = useZendeskUsers(authorIds);
-  const people = useMemo(() => {
-    const byId = new Map<number, { name: string; agent: boolean }>();
-    for (const u of users.data ?? []) byId.set(u.id, { name: u.name, agent: u.role !== 'end-user' });
-    return byId;
-  }, [users.data]);
-  const visible = comments.slice(-PREVIEW_COUNT);
-  const earlier = comments.length - visible.length;
-
-  return (
-    <section aria-label={`Ticket #${ticketNumber}`} className={cn(OVERVIEW_SECTION, 'flex flex-col gap-2')} data-testid="task-overview-ticket">
-      {isLoading ? <p className="text-role-caption text-text-muted">Loading the ticket…</p> : null}
-      {error ? (
-        <p role="alert" className="text-role-caption text-text-danger">
-          {error.message}
-        </p>
-      ) : null}
-      <ol className="flex flex-col gap-2">
-        {visible.map((comment) => {
-          const who = people.get(comment.author_id);
-          const ours = who?.agent ?? false;
-          const internal = !comment.public;
-          return (
-            <li key={comment.id} className={cn('flex flex-col gap-1', ours ? 'items-end pl-12' : 'items-start pr-12')}>
-              <span className="flex items-center gap-1 px-1 text-role-caption text-text-muted">
-                {internal ? <Lock aria-label="Internal note" className="size-3" /> : null}
-                <span className="font-semibold text-text-default">{who?.name ?? 'Customer'}</span>
-                <span className="tabular-nums">{taskBoardAgo(Date.parse(comment.created_at), nowMs)}</span>
-              </span>
-              <p
-                className={cn(
-                  'line-clamp-6 whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-role-data text-text-default',
-                  internal ? 'bg-fill-warning/15' : ours ? 'bg-fill-info/15' : 'bg-surface-sunken',
-                )}
-              >
-                {comment.body.trim()}
-              </p>
-            </li>
-          );
-        })}
-      </ol>
-      <div className="flex items-center gap-2">
-        <span className="text-role-data font-semibold tabular-nums text-text-default">#{ticketNumber}</span>
-        <TicketStatusPill status={status} />
-        <OverviewDoor onClick={onOpen} testId="task-overview-ticket-open">
-          {earlier > 0 ? `All ${comments.length} messages` : 'Open thread'}
-        </OverviewDoor>
-      </div>
-    </section>
-  );
-}
-
-/** The newest events (ticket messages excluded — the ticket preview has them), then a door to the Timeline tab. */
+/** The newest events, then a door to the Timeline tab. */
 export function TaskTimelinePreview({ taskId, nowMs, onOpen }: { taskId: number; nowMs: number; onOpen: () => void }) {
-  const { items, loading } = useTaskTimeline(taskId, null);
+  const { items, loading } = useTaskTimeline(taskId);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
   if (loading || items.length === 0) return null;
   const visible = items.slice(0, PREVIEW_COUNT);

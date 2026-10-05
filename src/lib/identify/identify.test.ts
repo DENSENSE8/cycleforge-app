@@ -207,7 +207,7 @@ test('the caller context ranks its own kind and stage first within a tier', asyn
     [6, true],
     [5, false],
   ]);
-  assert.equal(scoped.lines[0].candidates[0].href, '/shipping/exceptions?order=7');
+  assert.equal(scoped.lines[0].candidates[0].href, '/exceptions?domain=fulfillment&kind=fbm&order=7');
   assert.ok(scoped.lines[0].candidates[0].actions.some((a) => a.id === 'resolve_exception'));
 });
 
@@ -230,7 +230,7 @@ test('a batch resolves every exact probe in ONE statement and answers per line',
     ],
   );
   assert.equal(res.lines[0].candidates[0].stage, 'receiving');
-  assert.equal(res.lines[2].candidates[0].href, '/support?ticket=9395');
+  assert.equal(res.lines[2].candidates[0].href, '/support?q=9395');
 });
 
 test('the typo repair words travel with their line', async () => {

@@ -69,6 +69,8 @@ test('parks review, search, settings, and sales table routes', () => {
   assert.equal(destination('/search?sel=repair:44'), '/repair?openRepair=44');
   assert.equal(destination('/search?sel=sku:45'), '/products');
   assert.equal(destination('/search?sel=fba:46'), '/shipping/fba');
+  // The pasted list is Search's one live page — never parked.
+  assert.equal(destination('/search/list?refs=A-1,B-2&locator=inbound'), null);
   assert.equal(destination('/settings/staff'), '/settings');
   assert.equal(destination('/settings/staff/7'), '/settings');
   assert.equal(destination('/settings/sessions'), '/settings');
@@ -83,11 +85,9 @@ test('parks review, search, settings, and sales table routes', () => {
   assert.equal(destination('/walk-in?mode=repair'), null);
 });
 
-test('removes only parked sourcing and support modes', () => {
+test('removes the parked sourcing mode', () => {
   assert.equal(destination('/sourcing?mode=compatibility&q=iphone'), '/sourcing?q=iphone');
-  assert.equal(destination('/support?mode=warranty&q=serial'), '/support?q=serial');
   assert.equal(destination('/sourcing'), null);
-  assert.equal(destination('/support?mode=tickets'), null);
   assert.equal(destination('/'), null);
 });
 

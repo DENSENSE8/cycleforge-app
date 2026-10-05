@@ -33,3 +33,16 @@ export async function deactivateSkuCatalog(catalogId: number): Promise<void> {
     throw new Error(body?.error || `Deactivate failed (${res.status})`);
   }
 }
+
+/** Put a deactivated catalog SKU back in the active lists (`PATCH /api/sku-catalog/[id]` `isActive`). */
+export async function reactivateSkuCatalog(catalogId: number): Promise<void> {
+  const res = await fetch(`/api/sku-catalog/${catalogId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isActive: true }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body?.success) {
+    throw new Error(body?.error || `Reactivate failed (${res.status})`);
+  }
+}

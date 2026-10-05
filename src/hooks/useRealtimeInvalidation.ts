@@ -220,21 +220,8 @@ export function useRealtimeInvalidation({
     'shipment.changed',
     () => {
       queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
-      queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['nav-facets'] });
       queryClient.invalidateQueries({ queryKey: ['incoming-details'] });
-    },
-    !!stationChannel && receiving,
-    frameCoalesce,
-  );
-
-  // Email-signal events: a rescan/reconcile upserted or auto-resolved an
-  // email_missing_purchase_orders row. Refreshes Incoming summary tiles
-  // instantly instead of on the poll.
-  useAblyChannel(
-    stationChannel,
-    'email-signal.changed',
-    () => {
-      queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
     },
     !!stationChannel && receiving,
     frameCoalesce,

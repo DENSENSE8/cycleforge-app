@@ -1,6 +1,5 @@
 /**
  * Weight ladder — capped at 600 (2026-07-28, contextual-font-system).
- * Plex Mono loads 700 for mono labels and
  */
 export const fontWeights = {
   regular: 400,

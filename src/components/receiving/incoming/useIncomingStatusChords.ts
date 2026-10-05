@@ -7,7 +7,7 @@
  * - No pasted list: the delivery states (`?state=`), in the
  *   `incoming.pipeline` facet's order (`INCOMING_STATE_FACET`).
  * - A pasted list (`?ref_in=`): its buckets (`?recon=`, `RECON_STATUSES`
- *   order — the sidebar's `pastedListBuckets` row); a press drops the
+ *   order — the ledger's `PastedListStatusRow`); a press drops the
  *   bucket's reason (`?recon_reason=`).
  */
 

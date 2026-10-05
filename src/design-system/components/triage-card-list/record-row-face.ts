@@ -11,8 +11,9 @@
 
 import type { RecordCardModel, RecordCardStatus } from '../record-card/record-card-types';
 import type { RecordFactFace } from '../record-card/record-fact';
-import type { TriageRowFact, TriageRowFace, TriageRowFactWidth } from './TriageRow';
+import type { TriageRowCopy, TriageRowFact, TriageRowFace, TriageRowFactWidth } from './TriageRow';
 import type { TriageViewDecl } from './triage-view';
+import type { OperationalIdentity } from '@/lib/operational-identity';
 
 /** A row has room for 2–4 facts: up to three declared facts plus the status. */
 const MAX_DECLARED_FACTS = 3;
@@ -41,23 +42,29 @@ export function recordRowFace(
   model: RecordCardModel,
   view: Pick<TriageViewDecl, 'facts' | 'slots'>,
   options: {
-    /** The handle the floor says aloud (bin, PO, carton, ticket). */
-    identity: string;
+    /** The handle the floor says aloud (bin, carton, ticket), or an order / PO's {@link OperationalIdentity}. */
+    identity: string | OperationalIdentity;
     identityWidth?: TriageRowFactWidth;
+    /** The handle as a copyable identifier (CopyChip). */
+    identityCopy?: TriageRowCopy;
+    /** Identifiers the card shows on line 1 beside the handle (a repair's serial): they lead the facts, inside the same budget. */
+    leadFacts?: readonly TriageRowFact[];
   },
 ): TriageRowFace {
   const lead = model.lines[0] ?? null;
   const more = model.lines.length > 1 ? ` +${model.lines.length - 1}` : '';
-  const facts: TriageRowFact[] = view.facts.slice(0, MAX_DECLARED_FACTS).map((column) => {
+  const declared: TriageRowFact[] = view.facts.map((column) => {
     const value = lead?.facts[column.id] ?? null;
     return { id: column.id, value, width: widthFor(value) };
   });
+  const facts = [...(options.leadFacts ?? []), ...declared].slice(0, MAX_DECLARED_FACTS);
   const status = statusFact(model.status);
   if (status) facts.push(status);
   return {
     state: model.state,
     identity: options.identity,
     identityWidth: options.identityWidth,
+    identityCopy: options.identityCopy,
     title: lead ? `${lead.title}${more}` : '',
     // A declared photo column holds its place even on a line without one.
     photo: view.slots.photo === 'line' ? { url: lead?.photoUrl ?? null } : undefined,

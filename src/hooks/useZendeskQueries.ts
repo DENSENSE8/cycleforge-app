@@ -1,6 +1,6 @@
 'use client';
 
-/** Data layer for the native Zendesk console (/support). */
+/** Data layer for ticket threads embedded in task and station records. */
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
@@ -55,7 +55,6 @@ export const zendeskKeys = {
   ticket: (id: number) => ['zendesk', 'ticket', id] as const,
   comments: (id: number) => ['zendesk', 'ticket', id, 'comments'] as const,
   photos: (id: number) => ['zendesk', 'ticket', id, 'photos'] as const,
-  assignment: (id: number) => ['zendesk', 'ticket', id, 'assignment'] as const,
   agents: () => ['zendesk', 'agents'] as const,
   /** Predicted next ticket id — the station's draft badge. */
   nextTicketNumber: () => ['zendesk', 'next-ticket-number'] as const,
@@ -148,7 +147,6 @@ interface ZendeskTicketBundle {
   commentsCount: number;
   commentsNextPage: string | null;
   agents: ZendeskAgent[];
-  assignment: TicketAssignment | null;
   entity: { type: string; id: number; source: string } | null;
   photos: TicketPhoto[];
 }
@@ -162,7 +160,6 @@ function seedZendeskTicketCaches(qc: QueryClient, id: number, bundle: ZendeskTic
     next_page: bundle.commentsNextPage,
   });
   qc.setQueryData(zendeskKeys.agents(), bundle.agents);
-  qc.setQueryData(zendeskKeys.assignment(id), bundle.assignment);
   qc.setQueryData(zendeskKeys.photos(id), { entity: bundle.entity, photos: bundle.photos });
 }
 
@@ -281,82 +278,6 @@ export function useZendeskUsers(ids: number[]) {
   });
 }
 
-interface TicketAssignment {
-  ticketId: number;
-  assignedStaffId: number;
-  assignedStaffName: string;
-  assignedBy: number | null;
-  updatedAtMs: number;
-}
-
-/** The in-website staff owner of a ticket (separate from the Zendesk assignee). */
-export function useTicketAssignment(id: number | null) {
-  return useQuery<TicketAssignment | null, HttpError>({
-    queryKey: zendeskKeys.assignment(id ?? 0),
-    queryFn: async () => {
-      const data = await getJson<{ assignment: TicketAssignment | null }>(
-        `/api/zendesk/tickets/${id}/assign`,
-      );
-      return data.assignment;
-    },
-    enabled: !!id,
-    staleTime: ZENDESK_DETAIL_STALE_MS,
-    ...zendeskReadDefaults,
-  });
-}
-
-interface AssignVars {
-  id: number;
-  /** null clears the assignment. */
-  staffId: number | null;
-  /** Optional name for an optimistic label while the server confirms. */
-  staffName?: string;
-}
-
-/** Assign a ticket to one of our staff (drops an inbox notification server-side). */
-export function useAssignTicket() {
-  const qc = useQueryClient();
-  return useMutation<TicketAssignment | null, HttpError, AssignVars, { prev?: TicketAssignment | null }>({
-    mutationFn: async ({ id, staffId }) => {
-      const res = await fetch(`/api/zendesk/tickets/${id}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || !data?.success) throw new HttpError(res.status, data?.error || 'Assign failed');
-      return (data.assignment ?? null) as TicketAssignment | null;
-    },
-    onMutate: async ({ id, staffId, staffName }) => {
-      await qc.cancelQueries({ queryKey: zendeskKeys.assignment(id) });
-      const prev = qc.getQueryData<TicketAssignment | null>(zendeskKeys.assignment(id));
-      const next: TicketAssignment | null =
-        staffId == null
-          ? null
-          : {
-              ticketId: id,
-              assignedStaffId: staffId,
-              assignedStaffName: staffName ?? '…',
-              assignedBy: null,
-              updatedAtMs: 0,
-            };
-      qc.setQueryData<TicketAssignment | null>(zendeskKeys.assignment(id), () => next);
-      return { prev };
-    },
-    onError: (_err, { id }, ctx) => {
-      if (ctx) qc.setQueryData(zendeskKeys.assignment(id), ctx.prev);
-      toast.error('Could not update the staff assignment');
-    },
-    onSuccess: (_a, { staffId }) => {
-      toast.success(staffId == null ? 'Assignment cleared' : 'Assigned to staff');
-    },
-    onSettled: (_a, _e, { id }) => {
-      void qc.invalidateQueries({ queryKey: zendeskKeys.assignment(id) });
-      void qc.invalidateQueries({ queryKey: zendeskKeys.bundle(id) });
-    },
-  });
-}
-
 function applyTicketPatchToCaches(qc: QueryClient, id: number, patch: TicketPatch) {
   qc.setQueryData<ZendeskTicket>(zendeskKeys.ticket(id), (old) =>
     old ? { ...old, ...patch } : old,
@@ -442,4 +363,3 @@ export function useUpdateTicket() {
 }
 
 // `CommentVars` + `useAddComment` were deleted 2026-08-02 with their only consumer, `PackZendeskSection` — itself dead code inside the…
-

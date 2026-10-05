@@ -34,7 +34,8 @@ function harness(rows: Array<Record<string, unknown>>) {
     },
     listLocalPickupLines: noPickup,
     exceptionCounts: noExceptions,
-    liveFeedCounts: async () => ({}),
+    supportRows: async () => [],
+    liveFeedFacets: async () => ({ carrier: [], channel: [] }),
   };
   return { calls, deps };
 }

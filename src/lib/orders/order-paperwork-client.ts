@@ -126,9 +126,31 @@ export async function uploadOrderDocument(orderId: number, orderRef: string, typ
   return readJson<{ document: OutboundDocument }>(res, 'Upload failed.');
 }
 
-async function deleteDocument(documentId: number) {
+export async function deleteDocument(documentId: number) {
   const res = await fetch(`/api/documents/${documentId}`, { method: 'DELETE', credentials: 'same-origin' });
   await readJson(res, 'Could not delete the document.');
+}
+
+export async function replaceDocumentBytes(documentId: number, file: File) {
+  const res = await fetch(`/api/documents/${documentId}`, {
+    method: 'PATCH',
+    credentials: 'same-origin',
+    body: formFor(file, {}),
+  });
+  return readJson<{ document: OutboundDocument }>(res, 'Could not replace the document.');
+}
+
+export async function pairStoredOrderDocument(
+  orderId: number,
+  document: Pick<OutboundDocument, 'id' | 'documentType'>,
+) {
+  const res = await fetch(`/api/orders/${orderId}/documents`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ documentId: document.id, documentType: document.documentType }),
+  });
+  return readJson<{ document: OutboundDocument }>(res, 'Could not pair the stored document.');
 }
 
 /**
@@ -182,8 +204,7 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
 
   const replaceDocument = useMutation({
     mutationFn: async ({ doc, file }: { doc: OutboundDocument; file: File }) => {
-      const next = await uploadOrderDocument(orderId, orderRef, doc.documentType, file);
-      if (next.document.id !== doc.id) await deleteDocument(doc.id);
+      await replaceDocumentBytes(doc.id, file);
     },
     onSuccess: (_data, { file }) => {
       toast.success(`Replaced with ${file.name}`);

@@ -108,7 +108,7 @@ test('pickup lines collapse to one row per order, newest pickup first, respectin
 
 test('identified records keep only search-hit kinds; the query that found them is the fallback title', () => {
   const hit = identifiedRecentRow({ entity_type: 'ticket', entity_id: 9600, title: null, subtitle: null, query: 'refund bose', opened_at: '2026-09-26T09:00:00Z' });
-  assert.deepEqual([hit?.title, hit?.subtitle, hit?.href], ['refund bose', null, '/support?ticket=9600']);
+  assert.deepEqual([hit?.title, hit?.subtitle, hit?.href], ['refund bose', null, '/support?item=9600']);
   assert.equal(identifiedRecentRow({ entity_type: 'nonsense', entity_id: 1, title: 'x', subtitle: null, query: 'q', opened_at: '2026-09-26T09:00:00Z' }), null);
 });
 

@@ -75,7 +75,7 @@ test('an order and a carton are still named by their own id', () => {
 });
 
 test('both ticket doors carry the PROVIDER number, never the registry id', () => {
-  assert.equal(taskDeskRecordHref(ticketRow(), 'desk'), '/support?ticket=48120');
+  assert.equal(taskDeskRecordHref(ticketRow(), 'desk'), '/support?q=48120');
   assert.equal(taskDeskRecordHref(ticketRow(), 'phone'), '/m/t/48120');
 });
 

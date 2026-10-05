@@ -141,6 +141,7 @@ function detectGate(source: string): { gate: string; permission: string | null }
   // `withKioskCart` (src/app/api/kiosk/carts/cart-route.ts) resolves `[id]` and
   // delegates to `withKioskAuth`; the device cookie is still the only gate.
   if (/\bwithKioskCart\s*\(/.test(source)) return { gate: 'withKioskAuth (via withKioskCart)', permission: null };
+  if (/\bwithPrintStationAuth\s*\(/.test(source)) return { gate: 'withPrintStationAuth', permission: null };
   if (/\brequireRoutePerm\s*\(/.test(source)) return { gate: 'requireRoutePerm', permission: null };
   if (/\brequirePermission\s*\(/.test(source)) return { gate: 'requirePermission', permission: null };
   if (/\brequireInternalToken\s*\(/.test(source)) return { gate: 'internal token', permission: null };

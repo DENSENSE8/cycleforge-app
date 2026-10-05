@@ -149,7 +149,7 @@ describe('roomFormCanSave / roomFormIsDirty / roomSaveDisabledReason', () => {
     );
   });
 
-  it('treats name/letter edits as dirty but ignores description-only changes', () => {
+  it('treats name, letter, and description edits as dirty', () => {
     assert.equal(
       roomFormIsDirty({
         creating: false,
@@ -169,6 +169,18 @@ describe('roomFormCanSave / roomFormIsDirty / roomSaveDisabledReason', () => {
         baselineLetter: 'G',
       }),
       false,
+    );
+    assert.equal(
+      roomFormIsDirty({
+        creating: false,
+        selectedRoom: 'Packing 1',
+        trimmedName: 'Packing 1',
+        trimmedLetter: 'G',
+        baselineLetter: 'G',
+        description: 'Fragile only',
+        baselineDescription: '',
+      }),
+      true,
     );
   });
 

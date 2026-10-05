@@ -30,11 +30,22 @@ import type {
  * per order.
  */
 
-export type RawOrderLine = { catalog_title: string | null; product_title: string | null; sku: string | null; quantity: number };
+export type RawOrderLine = {
+  order_line_id: number;
+  item_number: string | null;
+  sku_catalog_id: number | null;
+  catalog_title: string | null;
+  product_title: string | null;
+  sku: string | null;
+  quantity: number;
+};
 
 /** The product lines of the order number `orderNumberSql` names — every `orders` row sharing it, one per line. `$1` = org. */
 export function orderLinesSql(orderNumberSql: string): string {
   return `SELECT json_agg(json_build_object(
+                  'order_line_id', rl.id,
+                  'item_number', rl.item_number,
+                  'sku_catalog_id', COALESCE(rl.sku_catalog_id, sc.id),
                   'catalog_title', sc.product_title,
                   'product_title', rl.product_title,
                   'sku', rl.sku,
@@ -50,6 +61,10 @@ export function orderLinesSql(orderNumberSql: string): string {
 /** Titles through the SKU identity law: the catalog's own title, then the order line's, then the SKU. */
 export function toOrderLines(lines: RawOrderLine[] | null): LabelOrderLine[] {
   return (lines ?? []).map((line) => ({
+    orderLineId: Number(line.order_line_id),
+    itemNumber: line.item_number?.trim() || null,
+    skuCatalogId: line.sku_catalog_id == null ? null : Number(line.sku_catalog_id),
+    sku: line.sku?.trim() || null,
     title: resolveSkuIdentityTitle({ catalog_product_title: line.catalog_title, item_name: line.product_title, sku: line.sku }) || 'Untitled item',
     quantity: line.quantity,
   }));
@@ -229,6 +244,7 @@ function paperworkDocsSql(candSql: string): string {
   ),
   slips AS (
     SELECT k.head_id, d.id AS document_id, d.created_at,
+           array_agg(DISTINCT k.line_id ORDER BY k.line_id) AS order_line_ids,
            CASE WHEN NULLIF(TRIM(d.document_data->>'filename'), '') IS NULL THEN 'Packing slip'
                 ELSE 'Packing slip · ' || TRIM(d.document_data->>'filename') END AS title
       FROM keys k
@@ -240,6 +256,8 @@ function paperworkDocsSql(candSql: string): string {
   ),
   manuals AS (
     SELECT k.head_id, pm.id AS manual_id, pm.source_url, pm.updated_at,
+           array_agg(DISTINCT k.line_id ORDER BY k.line_id) AS order_line_ids,
+           pm.item_number, COALESCE(NULLIF(TRIM(pm.sku), ''), psc.sku) AS paired_sku, pm.sku_catalog_id,
            COALESCE(NULLIF(TRIM(pm.display_name), ''), NULLIF(TRIM(pm.file_name), ''), 'Manual ' || pm.id) AS title,
            MIN(CASE WHEN pm.order_id = k.line_id THEN 0
                     WHEN k.item_key <> '' AND ${idKeySql('pm.item_number')} = k.item_key THEN 1
@@ -255,15 +273,21 @@ function paperworkDocsSql(candSql: string): string {
          OR (k.catalog_id IS NOT NULL AND pm.sku_catalog_id = k.catalog_id)
          OR (k.sku_key <> '' AND ${skuKeySql('pm.sku')} = k.sku_key)
        )
-     GROUP BY k.head_id, pm.id
+      LEFT JOIN sku_catalog psc
+        ON psc.organization_id = pm.organization_id AND psc.id = pm.sku_catalog_id
+     GROUP BY k.head_id, pm.id, psc.sku
   ),
   doc_list AS (
     SELECT head_id, 'packing_slip'::text AS kind, document_id, NULL::bigint AS manual_id, title,
-           NULL::text AS source_url, created_at AS sort_at, 0 AS sort_group, 0 AS source_rank, true AS printable
+           NULL::text AS source_url, created_at AS sort_at, 0 AS sort_group, 0 AS source_rank, true AS printable,
+           'order'::text AS association_source, order_line_ids, NULL::text AS item_number,
+           NULL::text AS paired_sku, NULL::int AS sku_catalog_id
       FROM slips
     UNION ALL
     SELECT head_id, 'manual'::text, NULL::int, manual_id, title,
-           source_url, updated_at, 1, source_rank, TRIM(COALESCE(source_url, '')) LIKE 'http%'
+           source_url, updated_at, 1, source_rank, TRIM(COALESCE(source_url, '')) LIKE 'http%',
+           CASE source_rank WHEN 0 THEN 'order' WHEN 1 THEN 'item_number' ELSE 'sku' END,
+           order_line_ids, item_number, paired_sku, sku_catalog_id
       FROM manuals
   ),
   doc_prints AS (
@@ -292,6 +316,11 @@ interface RawPaperworkDoc {
   sort_at: string | null;
   print_count: number;
   last_printed_at: string | null;
+  association_source: 'order' | 'item_number' | 'sku';
+  order_line_ids: number[] | null;
+  item_number: string | null;
+  paired_sku: string | null;
+  sku_catalog_id: number | null;
 }
 
 interface PaperworkQueueRow {
@@ -311,9 +340,16 @@ interface PaperworkQueueRow {
 }
 
 function toPaperworkDocument(doc: RawPaperworkDoc): PaperworkDocumentRow {
+  const association = {
+    source: doc.association_source,
+    orderLineIds: (doc.order_line_ids ?? []).map(Number),
+    itemNumber: doc.item_number?.trim() || null,
+    sku: doc.paired_sku?.trim() || null,
+    skuCatalogId: doc.sku_catalog_id == null ? null : Number(doc.sku_catalog_id),
+  };
   if (doc.kind === 'packing_slip') {
     const id = Number(doc.document_id);
-    return { key: `doc:${id}`, kind: 'packing_slip', documentId: id, manualId: null, title: doc.title, src: documentContentUrl(id), printCount: doc.print_count, lastPrintedAt: iso(doc.last_printed_at) };
+    return { key: `doc:${id}`, kind: 'packing_slip', documentId: id, manualId: null, title: doc.title, src: documentContentUrl(id), printCount: doc.print_count, lastPrintedAt: iso(doc.last_printed_at), association };
   }
   const id = Number(doc.manual_id);
   const content = manualContentUrl(id, doc.source_url);
@@ -328,6 +364,7 @@ function toPaperworkDocument(doc: RawPaperworkDoc): PaperworkDocumentRow {
     src: content ? `${content}?v=${version}` : null,
     printCount: doc.print_count,
     lastPrintedAt: iso(doc.last_printed_at),
+    association,
   };
 }
 
@@ -360,7 +397,9 @@ const PAPERWORK_CARD_JOINS = `LEFT JOIN staff s ON s.organization_id = $1 AND s.
         SELECT json_agg(json_build_object(
                  'kind', d.kind, 'document_id', d.document_id, 'manual_id', d.manual_id, 'title', d.title,
                  'source_url', d.source_url, 'sort_at', d.sort_at, 'print_count', d.print_count,
-                 'last_printed_at', d.last_printed_at
+                 'last_printed_at', d.last_printed_at, 'association_source', d.association_source,
+                 'order_line_ids', d.order_line_ids, 'item_number', d.item_number,
+                 'paired_sku', d.paired_sku, 'sku_catalog_id', d.sku_catalog_id
                ) ORDER BY d.sort_group, d.source_rank, d.sort_at DESC NULLS LAST, COALESCE(d.document_id, d.manual_id) DESC) AS documents
           FROM docs d
          WHERE d.head_id = po.order_id

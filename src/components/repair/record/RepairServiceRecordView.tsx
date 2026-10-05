@@ -50,17 +50,12 @@ export interface RepairRecordPanel {
   onBack: () => void;
 }
 
-/** The record header's title — `# ticket`, the `#` in the info tint; "No ticket #" when the ticket has none. */
+/** The record header's title — the ticket identifier, or "No ticket #" when it has none. */
 export function RepairRecordTitle({ title }: { title: RepairRecordModel['title'] }) {
   return (
     <span className="flex min-w-max flex-nowrap items-center gap-1 whitespace-nowrap" data-testid="repair-record-title">
       {title.ticket ? (
-        <>
-          <span className={cn('shrink-0', STATE_TONE_CLASSES.info.text)} aria-hidden>
-            #
-          </span>
-          <span className="shrink-0 select-all">{title.ticket}</span>
-        </>
+        <span className="shrink-0 select-all">{title.ticket}</span>
       ) : (
         <span className="shrink-0 text-mode-muted">{title.face}</span>
       )}

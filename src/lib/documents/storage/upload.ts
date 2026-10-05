@@ -15,6 +15,8 @@ interface UploadOutboundDocumentInput {
   buffer: Buffer;
   contentType: string;
   extension?: string;
+  /** Keeps replacements on a new object key while preserving the document id. */
+  versionToken?: string | null;
 }
 
 interface UploadOutboundDocumentResult {
@@ -44,6 +46,7 @@ export async function uploadOutboundDocumentToGcs(
       documentType: input.documentType,
       platform: input.platform,
       orderRef: input.orderRef,
+      versionToken: input.versionToken,
       trackingTail: input.trackingTail,
       documentId: input.documentId,
       extension: input.extension,

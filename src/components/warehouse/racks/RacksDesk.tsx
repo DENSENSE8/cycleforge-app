@@ -3,7 +3,7 @@
 /**
  * Inventory › Locations › **Racks** (`?tab=movable`) — the desk face of the
  * phone's `/m/racks`. Movable racks as shared `RecordCard`s (`Rack 12 · RK12`
- * → where it stands now · shelves · arrival shelves; last moved top-right);
+ * → where it stands now · shelves; last moved top-right);
  * the room is a filter, never a step. `?code=RK12` opens the rack record in
  * the desk record plane; `?new=1` opens the four-step New rack in the same
  * plane. Every read and write goes through `racks-client` (`/api/racks/**`).

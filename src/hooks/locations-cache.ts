@@ -163,24 +163,23 @@ export function roomFormCanSave(opts: {
   );
 }
 
-/**
- * Dirty tracking for name + zone letter only. Description is excluded until
- * note storage ships (editing notes alone must not enable Save).
- */
 export function roomFormIsDirty(opts: {
   creating: boolean;
   selectedRoom: string | null;
   trimmedName: string;
   trimmedLetter: string;
   baselineLetter: string;
+  description?: string;
+  baselineDescription?: string;
 }): boolean {
   if (opts.creating) {
-    return opts.trimmedName.length > 0 || opts.trimmedLetter.length > 0;
+    return opts.trimmedName.length > 0 || opts.trimmedLetter.length > 0 || Boolean(opts.description?.trim());
   }
   if (!opts.selectedRoom) return false;
   return (
     opts.trimmedName !== opts.selectedRoom ||
-    opts.trimmedLetter !== opts.baselineLetter
+    opts.trimmedLetter !== opts.baselineLetter ||
+    (opts.description?.trim() ?? '') !== (opts.baselineDescription?.trim() ?? '')
   );
 }
 

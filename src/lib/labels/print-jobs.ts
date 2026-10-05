@@ -24,6 +24,8 @@ interface LabelPrintJobInput {
   actorStaffId?: number | null;
   /** Idempotency key — a retry with the same key returns the original row. */
   clientEventId?: string | null;
+  /** The print station that printed it (`print_stations.station_id`) — the station's job log. */
+  stationId?: string | null;
 }
 
 interface LabelPrintJobRow {
@@ -62,9 +64,9 @@ export async function recordLabelPrintJob(
     `INSERT INTO label_print_jobs
        (organization_id, job_type, serial_unit_id, manifest_id, handling_unit_id,
         unit_uid, qr_payload, symbology, template_id, printer_profile_id, copies,
-        is_reprint, reprint_of_id, actor_staff_id, client_event_id)
+        is_reprint, reprint_of_id, actor_staff_id, client_event_id, station_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, 'datamatrix'), $9, $10,
-             COALESCE($11, 1), COALESCE($12, false), $13, $14, $15)
+             COALESCE($11, 1), COALESCE($12, false), $13, $14, $15, $16)
      ON CONFLICT (organization_id, client_event_id) WHERE client_event_id IS NOT NULL
        DO NOTHING
      RETURNING *`,
@@ -84,6 +86,7 @@ export async function recordLabelPrintJob(
       input.reprintOfId ?? null,
       input.actorStaffId ?? null,
       input.clientEventId ?? null,
+      input.stationId ?? null,
     ],
   );
   if (inserted.rows[0]) {

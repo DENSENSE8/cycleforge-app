@@ -1,10 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { routeParamsFor } from '@/lib/routing/registry';
-import { parseRouteParams } from '@/lib/routing/route-params';
 import {
-  SUPPORT_WARRANTY_FORWARDED_PARAMS,
-  buildSupportWarrantyRedirectSearch,
   extractOrdersFromDashboardCacheEntry,
   findDashboardSelectedOrderInCache,
   getDashboardOrderViewFromSearch,
@@ -35,18 +31,6 @@ test('getDashboardOrderViewFromSearch ignores ustatus=PICKED as a tab (facet onl
     getDashboardOrderViewFromSearch(new URLSearchParams('ustatus=PICKED')),
     'unshipped',
   );
-});
-
-test('buildSupportWarrantyRedirectSearch preserves claim open + filters', () => {
-  const qs = buildSupportWarrantyRedirectSearch(
-    new URLSearchParams('warranty=&open=42&wstatus=SUBMITTED&wexp=1&search=ORD-1'),
-  );
-  const params = new URLSearchParams(qs);
-  assert.equal(params.get('mode'), 'warranty');
-  assert.equal(params.get('open'), '42');
-  assert.equal(params.get('wstatus'), 'SUBMITTED');
-  assert.equal(params.get('wexp'), '1');
-  assert.equal(params.get('search'), 'ORD-1');
 });
 
 test('normalizeDashboardOrderViewParams collapses every legacy tab onto unshipped', () => {
@@ -204,20 +188,6 @@ test('patchDashboardSelectedOrderFromAssignment updates only matching selected o
   assert.equal(patchDashboardSelectedOrderFromAssignment(current, { orderIds: [88], pickerId: 9 }), current);
 });
 
-test('every param the retired-front-door redirects forward is declared by /dashboard', () => {
-  // `/dashboard` reads these off the URL solely to forward them — to Support for `?warranty=`, and to the FBA board for `?fba`.
-  const spec = routeParamsFor('/dashboard')!;
-  const undeclared = [...SUPPORT_WARRANTY_FORWARDED_PARAMS, 'fba', 'warranty'].filter(
-    (key) => !parseRouteParams(spec, new URLSearchParams(`${key}=1`)).has(key),
-  );
-  assert.deepEqual(
-    undeclared,
-    [],
-    'These keys ride a /dashboard redirect but are not declared by DASHBOARD_ROUTE_PARAMS, ' +
-      'so the boundary parse will drop them the moment the surface mounts the hygiene hook. ' +
-      'Declare them in src/lib/routing/query-mode-routes.ts.',
-  );
-});
 
 /** Regression (2026-08-20): */
 test('the To-ship desk keeps the params that open the Add-orders rail', () => {

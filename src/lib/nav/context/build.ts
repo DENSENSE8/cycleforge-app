@@ -41,11 +41,11 @@ import {
 } from '@/lib/sidebar-navigation';
 import { applyOrgNavToPage, mergeOrgNav, type NavDefinition } from '@/lib/nav/org-nav';
 import { LANE_DOORS } from '@/lib/nav/lanes';
+import { fulfillmentVisiblePageId } from '@/lib/nav/fbm-destinations';
 import { fixedSpineOrder } from '@/lib/nav/spine-slots';
 import { NAV_FACET_GROUPS, isNavFacetContext, mayReadNavFacet } from '@/lib/nav/facets/contexts';
 import { getNavRecentSurface } from '@/lib/nav/recents/surfaces';
 import { OUTBOUND_LOCATE, OUTBOUND_LOCATE_PERMISSION } from '@/lib/nav/locate/outbound-params';
-import { DESK_VIEWS, deskViewHref, resolveDeskView } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
 import {
   NAV_PAGE_DECLS,
@@ -64,7 +64,7 @@ import {
   type NavSection,
 } from './schema';
 
-/** The FBM page — its rows are keyed by `DESK_VIEWS` view id, and lit by `resolveDeskView`. */
+/** The FBM page. Its visible row ids are destination ids, not internal desk-view ids. */
 const SHIPPING_PAGE_ID = 'outbound';
 
 /** Search box of every page that declares none: the global identify box. */
@@ -124,18 +124,6 @@ function hrefOf(target: { pathname: string; search: string }): string {
   return target.search ? `${target.pathname}?${target.search}` : target.pathname;
 }
 
-/**
- * Shipping rows: each reachable child is its `DESK_VIEWS` view — the row id is
- * the VIEW id (the facet / icon / search-scope key), the label the child's
- * (possibly org-renamed) one.
- */
-function shippingRows(page: SidebarPageNav): SectionRow[] {
-  return (page.children ?? []).flatMap((child) => {
-    const view = DESK_VIEWS.find((v) => v.navChild === child.id);
-    return view ? [{ id: view.id, label: child.label, href: deskViewHref(view.id), pathname: view.pathname }] : [];
-  });
-}
-
 function childRows(page: SidebarPageNav): SectionRow[] {
   const bare = { pathname: new URL(page.href, 'http://nav.local').pathname, params: new URLSearchParams() };
   return (page.children ?? []).map((child: SidebarChildPage) => {
@@ -151,25 +139,26 @@ function childRows(page: SidebarPageNav): SectionRow[] {
 }
 
 function sectionRows(page: SidebarPageNav): SectionRow[] {
-  return page.id === SHIPPING_PAGE_ID ? shippingRows(page) : childRows(page);
+  return childRows(page);
 }
 
 /**
  * A page draws a section panel when it has ≥2 views to switch between
  * (Shipping: any), when its navigation list is its panel (`recentsPanel`,
- * Chat), or when the one view a caller may open still carries sidebar
- * controls (a receiving-only caller on the Live feed keeps Inbound's Date by
- * and Handled by — the panel is where those controls live).
+ * Chat), or when its one view — or, view-less, the page itself (the Live
+ * feed's Staff) — still carries sidebar controls: the panel is where those
+ * controls live (a receiving-only caller on Inbound keeps Date by and
+ * Handled by).
  */
 function hasSectionPanel(page: SidebarPageNav, rows: readonly SectionRow[]): boolean {
   const decl = NAV_PAGE_DECLS[page.id];
   if (decl?.recentsPanel) return true;
   if (page.id === SHIPPING_PAGE_ID) return rows.length > 0;
+  if (rows.length === 0) return decl?.controls != null;
   return rows.length >= 2 || (rows.length === 1 && (decl?.controls ?? decl?.items?.[rows[0]!.id]?.controls) != null);
 }
 
 function activeRowId(page: SidebarPageNav, pathname: string, params: URLSearchParams): string | null {
-  if (page.id === SHIPPING_PAGE_ID) return resolveDeskView(pathname);
   return page.resolveChild?.({ pathname, params }) ?? null;
 }
 
@@ -316,8 +305,9 @@ function modeLaneOf(page: SidebarPageNav | null): (typeof SPINE_SECTIONS)[number
  * section, id `<page>.<lane>.modes`, painted as the mode switcher under
  * `‹ <Lane>`.
  */
-function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInput): SectionRow[] {
+function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInput, currentPageId: string): SectionRow[] {
   const group = { id: `${lane.id}.modes`, label: 'Mode' };
+  const visibleCurrentPageId = fulfillmentVisiblePageId(currentPageId);
   const toRow = (row: { id: string; label: string; href: string; description?: string }): SectionRow => ({
     id: row.id,
     label: row.label,
@@ -325,7 +315,7 @@ function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInpu
     pathname: new URL(row.href, 'http://nav.local').pathname,
     group,
     // The lane's current mode is the PAGE (`NavModeSwitcher`'s `currentPageId`), never a view id.
-    active: false,
+    active: row.id === visibleCurrentPageId,
     ...(row.description ? { description: row.description } : {}),
   });
   const doorId = LANE_DOORS[lane.id];
@@ -394,12 +384,18 @@ function searchFor(
 ): NavSearch {
   // The archive keeps the packer-log contract (`outbound.shipped`) even though
   // it is its own page. A fresh scope would split the desk store and the facet counts.
-  const scope = pageId === FULFILLED_PAGE_ID ? SHIPPED_FACET_CONTEXT : activeId ? `${pageId}.${activeId}` : pageId;
-  const deskView = DESK_VIEWS.find((view) => pageId === SHIPPING_PAGE_ID && view.id === activeId);
-  if (pageId === FULFILLED_PAGE_ID || deskView) {
+  const outboundOrders = pageId === SHIPPING_PAGE_ID && activeId === 'orders';
+  const scope = pageId === FULFILLED_PAGE_ID
+    ? SHIPPED_FACET_CONTEXT
+    : outboundOrders
+      ? 'outbound.orders'
+      : activeId
+        ? `${pageId}.${activeId}`
+        : pageId;
+  if (pageId === FULFILLED_PAGE_ID || outboundOrders) {
     return {
       scope,
-      placeholder: pageId === FULFILLED_PAGE_ID ? 'Search shipments' : deskView!.searchScope,
+      placeholder: pageId === FULFILLED_PAGE_ID ? 'Search shipments' : 'Search orders to allocate',
       source: 'desk-store',
       ...(permissions.has(OUTBOUND_LOCATE_PERMISSION) ? { locate: { ...OUTBOUND_LOCATE } } : {}),
     };
@@ -419,10 +415,10 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   const resolvedActive = page ? activeRowId(page, pathname, params) : null;
   const activeId = rows.some((row) => row.id === resolvedActive) ? resolvedActive : null;
   const scanStationPanel = page !== null && CONTEXTUAL_SCAN_STATION_IDS.has(page.id);
-  const sectionScope = page !== null && (scanStationPanel || hasSectionPanel(page, rows)) && input.view !== 'top';
   // Every page of a door lane wears the lane's name (the map shows no page
   // rows for that lane) and its panel leads with the lane's modes.
   const modeLane = modeLaneOf(page);
+  const sectionScope = page !== null && (scanStationPanel || modeLane !== null || hasSectionPanel(page, rows)) && input.view !== 'top';
   const label = scanStationPanel ? 'Scan Stations' : modeLane ? modeLane.label : pageLabel(pageId, page);
   // A page with its own modes paints them as the card, and the current mode's views under it.
   const modeDecl = page ? NAV_PAGE_DECLS[pageId]?.modes : undefined;
@@ -431,7 +427,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
     : modeDecl
       ? pageModeRows(modeDecl, rows, activeId)
       : modeLane && page
-        ? [...laneModeRows(modeLane, pipeline), ...rows]
+        ? [...laneModeRows(modeLane, pipeline, page.id), ...rows]
         : rows;
 
   const viewPathnames = new Set<string>(rows.map((row) => row.pathname));
@@ -439,7 +435,11 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   viewPathnames.add(pathname);
 
   const decl = surfaceFor(pageId, activeId);
-  const facetContext = pageId === FULFILLED_PAGE_ID ? SHIPPED_FACET_CONTEXT : activeId ? `${pageId}.${activeId}` : pageId;
+  const facetContext = pageId === FULFILLED_PAGE_ID
+    ? SHIPPED_FACET_CONTEXT
+    : activeId
+        ? `${pageId}.${activeId}`
+        : pageId;
   const actions = (decl.actions ?? [])
     .filter((entry) => !entry.requires || permissions.has(entry.requires))
     .map((entry) => entry.action);
@@ -449,7 +449,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
     page: { id: pageId, label },
     back: sectionScope ? { label, mode: 'local' } : null,
     search: searchFor(pageId, activeId, decl, permissions),
-    sections: sectionScope ? toSections(pageId, panelRows, activeId) : laneMap(pipeline, pageId),
+    sections: sectionScope ? toSections(pageId, panelRows, activeId) : laneMap(pipeline, fulfillmentVisiblePageId(pageId)),
     params: declaredRouteParams(viewPathnames),
     // The REQUESTED switch; `resolveNavContext` clamps it against parity.
     rollout: input.rolloutOverrides?.[pageId] ?? NAV_CONTEXT_ROLLOUT[pageId] ?? 'legacy',

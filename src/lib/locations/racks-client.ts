@@ -10,6 +10,8 @@ import type {
   AdoptBayResponse,
   CreateRackBody,
   CreateRackResponse,
+  DeleteRackBody,
+  DeleteRackResponse,
   EditRackShelvesBody,
   EditRackShelvesResponse,
   GetRackResponse,
@@ -41,7 +43,7 @@ export function rackQueryKey(code: string) {
   return ['rack', code] as const;
 }
 
-async function rackFetch<T>(path: string, init?: { method: 'POST'; body: unknown }): Promise<T> {
+async function rackFetch<T>(path: string, init?: { method: 'POST' | 'DELETE'; body: unknown }): Promise<T> {
   const res = await fetch(path, {
     method: init?.method ?? 'GET',
     credentials: 'include',
@@ -75,6 +77,10 @@ export function listRacks(filter: { placement?: string | null; room?: number | n
 /** Any rack spelling; a shelf/position code returns its rack. */
 export function getRack(code: string): Promise<GetRackResponse> {
   return rackFetch<GetRackResponse>(rackPath(code));
+}
+
+export function deleteRack(code: string, body: DeleteRackBody): Promise<DeleteRackResponse> {
+  return rackFetch<DeleteRackResponse>(rackPath(code), { method: 'DELETE', body });
 }
 
 export function createRack(body: CreateRackBody): Promise<CreateRackResponse> {

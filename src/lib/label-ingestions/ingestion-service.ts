@@ -22,11 +22,13 @@ export class LabelIngestionServiceError extends Error {
 interface LabelObjectStore {
   put(input: { organizationId: OrgId; objectKey: string; bytes: Buffer }): Promise<void>;
   get(input: { organizationId: OrgId; objectKey: string }): Promise<Buffer>;
+  delete?(input: { organizationId: OrgId; objectKey: string }): Promise<void>;
 }
 
 const productionObjectStore: LabelObjectStore = {
   async put({ organizationId, objectKey, bytes }) { await gcsAdapter.putObject({ organizationId, bucket: defaultGcsBucket(), objectKey, buffer: bytes, contentType: 'application/pdf' }); },
   async get({ objectKey }) { return gcsAdapter.getObjectBytes({ bucket: defaultGcsBucket(), objectKey }); },
+  async delete({ objectKey }) { await gcsAdapter.deleteObject({ bucket: defaultGcsBucket(), objectKey }); },
 };
 
 interface LabelIngestionDependencies {
@@ -75,7 +77,7 @@ const ledgerColumns = 'id, client_event_id, state, row_version, sha256, file_bas
 function basename(input: string): string { const value = input.trim(); if (!value || value.length > 255 || value.includes('/') || value.includes('\\')) throw new LabelIngestionServiceError('INVALID_PDF', 'A safe PDF filename is required.'); return value; }
 function key(org: OrgId, hash: string): string { return `label-ingestions/${org}/${hash.slice(0, 2)}/${hash}.pdf`; }
 
-export async function createLabelIngestion(input: { organizationId: OrgId; actorStaffId: number; clientEventId: string; observedAt: string; fileBasename: string; bytes: Buffer; expectedSha256?: string }, overrides: Partial<LabelIngestionDependencies> = {}): Promise<{ ingestion: PublicLabelIngestion; replayed: boolean }> {
+export async function createLabelIngestion(input: { organizationId: OrgId; actorStaffId: number; clientEventId: string; observedAt: string; fileBasename: string; bytes: Buffer; expectedSha256?: string; /** Bulk reads label evidence but intentionally skips order resolution, even when text names an order. */ matchOrder?: boolean }, overrides: Partial<LabelIngestionDependencies> = {}): Promise<{ ingestion: PublicLabelIngestion; replayed: boolean }> {
   const deps = { ...dependencies, ...overrides };
   if (!input.bytes.length || input.bytes.length > MAX_LABEL_PDF_BYTES) throw new LabelIngestionServiceError('PAYLOAD_TOO_LARGE', 'PDF exceeds the permitted size.');
   if (input.bytes.subarray(0, 5).toString('ascii') !== '%PDF-') throw new LabelIngestionServiceError('INVALID_PDF', 'The uploaded file is not a PDF.');
@@ -86,7 +88,12 @@ export async function createLabelIngestion(input: { organizationId: OrgId; actor
     const sameEventDifferentBytes = existing.rows.some((row) => row.client_event_id === input.clientEventId && row.sha256 !== sha256);
     if (sameEventDifferentBytes) throw new LabelIngestionServiceError('CLIENT_EVENT_PAYLOAD_MISMATCH', 'This client event was already used for different bytes.');
     const sameHash = existing.rows.find((row) => row.sha256 === sha256);
-    if (sameHash) return { ingestion: publicRow(sameHash), replayed: true };
+    if (sameHash) {
+      if (input.matchOrder === false && sameHash.matched_order_id != null) {
+        throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'These label bytes are already linked to an order.');
+      }
+      return { ingestion: publicRow(sameHash), replayed: true };
+    }
   }
   const received = await deps.transaction(input.organizationId, async (client) => {
     const result = await client.query<LedgerRow>(`INSERT INTO label_ingestions (organization_id, actor_staff_id, client_event_id, sha256, file_basename, byte_size, observed_at, source, state) VALUES ($1,$2,$3,$4,$5,$6,$7,'MANUAL_UPLOAD','RECEIVED') ON CONFLICT DO NOTHING RETURNING ${ledgerColumns}`, [input.organizationId, input.actorStaffId, input.clientEventId, sha256, fileBasename, input.bytes.length, input.observedAt]);
@@ -96,12 +103,28 @@ export async function createLabelIngestion(input: { organizationId: OrgId; actor
     if (sameEventDifferentBytes) throw new LabelIngestionServiceError('CLIENT_EVENT_PAYLOAD_MISMATCH', 'This client event was already used for different bytes.');
     const sameHash = concurrent.rows.find((row) => row.sha256 === sha256);
     if (!sameHash) throw new LabelIngestionServiceError('INGESTION_PROCESSING_FAILED', 'The ingestion ledger could not be created.');
+    if (input.matchOrder === false && sameHash.matched_order_id != null) {
+      throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'These label bytes are already linked to an order.');
+    }
     return { row: sameHash, replayed: true };
   });
   if (received.replayed) return { ingestion: publicRow(received.row), replayed: true };
   const objectKey = key(input.organizationId, sha256);
   try { await deps.store.put({ organizationId: input.organizationId, objectKey, bytes: input.bytes }); }
   catch { await deps.transaction(input.organizationId, async (client) => { await client.query(`UPDATE label_ingestions SET state='FAILED', error_code='STAGING_FAILED', error_detail='Object staging failed', attempt_count=attempt_count+1, row_version=row_version+1 WHERE organization_id=$1 AND id=$2`, [input.organizationId, received.row.id]); }); throw new LabelIngestionServiceError('INGESTION_PROCESSING_FAILED', 'The PDF could not be staged.'); }
+  if (input.matchOrder === false) {
+    let evidence: ParsedLabelEvidence | undefined;
+    let reason: LabelQuarantineReasonCode = 'ORDER_NOT_FOUND';
+    try {
+      evidence = await deps.parse(input.bytes);
+    } catch (error) {
+      reason = error instanceof LabelPdfParseError && error.code === 'PDF_LIMIT_EXCEEDED' ? 'PDF_LIMIT_EXCEEDED' : 'PARSE_FAILED';
+    }
+    const unpaired = await deps.transaction(input.organizationId, (client) =>
+      updateQuarantine(client, input.organizationId, Number(received.row.id), objectKey, reason, evidence),
+    );
+    return { ingestion: publicRow(unpaired), replayed: false };
+  }
   return { ingestion: await processStagedLabel({ organizationId: input.organizationId, ingestionId: Number(received.row.id), bytes: input.bytes, deps, objectKey }), replayed: false };
 }
 
@@ -249,6 +272,56 @@ export async function markShipStationIngestionApplied(organizationId: OrgId, inp
 
 export async function listLabelIngestions(organizationId: OrgId, state?: LabelIngestionState, limit = 50, overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion[]> { const deps = { ...dependencies, ...overrides }; const result = await deps.query<LedgerRow>(organizationId, `SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND ($2::text IS NULL OR state=$2) ORDER BY observed_at DESC, id DESC LIMIT $3`, [organizationId, state ?? null, limit]); return result.rows.map(publicRow); }
 export async function getLabelIngestion(organizationId: OrgId, ingestionId: number, overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion> { const deps = { ...dependencies, ...overrides }; const result = await deps.query<LedgerRow>(organizationId, `SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND id=$2`, [organizationId, ingestionId]); if (!result.rows[0]) throw new LabelIngestionServiceError('INGESTION_NOT_FOUND', 'Label ingestion was not found.'); return publicRow(result.rows[0]); }
+
+/**
+ * Delete one unlinked staged label and its existing GCS object. A matched or
+ * applied row is order evidence and is never legal input for the Bulk cleanup
+ * path. The row is deleted first so a storage failure can only leave an
+ * unreachable object, never a live ledger row whose bytes have vanished.
+ */
+export async function deleteUnlinkedLabelIngestion(input: {
+  organizationId: OrgId;
+  actorStaffId: number;
+  ingestionId: number;
+}, overrides: Partial<LabelIngestionDependencies> = {}): Promise<{ id: number; objectKey: string | null }> {
+  const deps = { ...dependencies, ...overrides };
+  const deleted = await deps.transaction(input.organizationId, async (client) => {
+    const locked = await client.query<LedgerRow>(
+      `SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND id=$2 FOR UPDATE`,
+      [input.organizationId, input.ingestionId],
+    );
+    const row = locked.rows[0];
+    if (!row) throw new LabelIngestionServiceError('INGESTION_NOT_FOUND', 'Label ingestion was not found.');
+    if (row.matched_order_id != null || row.state === 'APPLIED') {
+      throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'A label linked to an order cannot be removed as unlinked.');
+    }
+    await client.query(
+      `INSERT INTO audit_logs (actor_staff_id, organization_id, source, action, entity_type, entity_id, before_data, metadata)
+       VALUES ($1, $2, 'label-ingestion', 'label_ingestion.unlinked_deleted', 'label_ingestion', $3, $4::jsonb, $5::jsonb)`,
+      [
+        input.actorStaffId,
+        input.organizationId,
+        String(input.ingestionId),
+        JSON.stringify({ state: row.state, fileBasename: row.file_basename }),
+        JSON.stringify({ object_key: row.staged_object_key, sha256: row.sha256 }),
+      ],
+    );
+    await client.query(
+      `DELETE FROM label_ingestions WHERE organization_id=$1 AND id=$2`,
+      [input.organizationId, input.ingestionId],
+    );
+    return { id: input.ingestionId, objectKey: row.staged_object_key };
+  });
+  if (deleted.objectKey) {
+    if (!deps.store.delete) throw new LabelIngestionServiceError('INGESTION_PROCESSING_FAILED', 'The label object store cannot delete staged files.');
+    try {
+      await deps.store.delete({ organizationId: input.organizationId, objectKey: deleted.objectKey });
+    } catch {
+      throw new LabelIngestionServiceError('INGESTION_PROCESSING_FAILED', 'The unlinked label row was removed, but its staged file could not be deleted.');
+    }
+  }
+  return deleted;
+}
 /** The staged PDF of one ledger row — the bytes the print desk previews and prints. */
 export async function readLabelIngestionPdf(organizationId: OrgId, ingestionId: number, overrides: Partial<LabelIngestionDependencies> = {}): Promise<{ bytes: Buffer; fileBasename: string }> {
   const deps = { ...dependencies, ...overrides };

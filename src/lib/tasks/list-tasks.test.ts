@@ -7,6 +7,7 @@ import {
   isTaskDeskTransitionAllowed,
   listTaskDeskRows,
   patchTaskDeskRowInTx,
+  taskDeskSearchTerms,
   TASK_DESK_DEFAULT_LIMIT,
   TASK_DESK_MAX_LIMIT,
   type TaskDeskDeps,
@@ -32,7 +33,7 @@ const P = {
   q: 9,
   mediaEntityType: 10,
   assignedBy: 11,
-  ticketStatuses: 12,
+  exactId: 12,
 } as const;
 
 interface Captured {
@@ -191,19 +192,6 @@ test('the thrower filter is bound as an int, independent of the assignee filter'
   const plain = fakes();
   await listTaskDeskRows(ORG, { assigneeStaffId: 9 }, plain.deps);
   assert.equal(plain.calls[0].params[P.assignedBy], null);
-});
-
-test('the ticket-status filter binds its statuses as one text[] (OR), and absent or empty binds no filter', async () => {
-  const picked = fakes();
-  await listTaskDeskRows(ORG, { ticketStatuses: ['open', 'pending'] }, picked.deps);
-  assert.deepEqual(picked.calls[0].params[P.ticketStatuses], ['open', 'pending']);
-  assert.equal(picked.calls[0].params[P.org], ORG, 'the status filter reads inside the same org');
-
-  for (const ticketStatuses of [undefined, null, []] as const) {
-    const plain = fakes();
-    await listTaskDeskRows(ORG, { ticketStatuses }, plain.deps);
-    assert.equal(plain.calls[0].params[P.ticketStatuses], null);
-  }
 });
 
 test('a ticket link face carries its ticket status; other kinds carry none', async () => {
@@ -558,4 +546,40 @@ test('legacy single-assignee patch replaces the shared membership with one recip
   assert.equal(result.task.assignee?.id, 12);
   const membershipWrite = statements.find(({ sql }) => /^\s*INSERT INTO work_assignment_assignees/.test(sql));
   assert.deepEqual(membershipWrite?.params, [ORG, 11, [12]]);
+});
+
+// ── the find, and Support's absence ──────────────────────────────────────
+
+test('taskDeskSearchTerms: #id / bare digits are an exact task id; the pattern drops the #', () => {
+  assert.deepEqual(taskDeskSearchTerms('#812'), { pattern: '%812%', exactId: 812 });
+  assert.deepEqual(taskDeskSearchTerms(' 48120 '), { pattern: '%48120%', exactId: 48120 });
+  assert.deepEqual(taskDeskSearchTerms('# 7'), { pattern: '%7%', exactId: 7 });
+  // Text, a marketplace order number or a tracking number is a pattern only — never an id.
+  assert.deepEqual(taskDeskSearchTerms('a@b.com'), { pattern: '%a@b.com%', exactId: null });
+  assert.deepEqual(taskDeskSearchTerms('112-0000000-1'), { pattern: '%112-0000000-1%', exactId: null });
+  assert.deepEqual(taskDeskSearchTerms('1Z999AA10123456784'), { pattern: '%1Z999AA10123456784%', exactId: null });
+  // Zero and absurd digit runs never become an id (no row 0; no unsafe integer).
+  assert.equal(taskDeskSearchTerms('0')?.exactId, null);
+  assert.equal(taskDeskSearchTerms('9'.repeat(16))?.exactId, null);
+  for (const empty of [null, undefined, '', '   ', '#', ' # ']) assert.equal(taskDeskSearchTerms(empty), null);
+});
+
+test('a find binds the pattern and the exact id, and reads a whole search page', async () => {
+  const { deps, calls } = fakes();
+  await listTaskDeskRows(ORG, { q: '#812', limit: 10 }, deps);
+  assert.equal(calls[0].params[P.q], '%812%');
+  assert.equal(calls[0].params[P.exactId], 812);
+  assert.equal(calls[0].params[P.limit], TASK_DESK_MAX_LIMIT);
+
+  const plain = fakes();
+  await listTaskDeskRows(ORG, {}, plain.deps);
+  assert.equal(plain.calls[0].params[P.q], null);
+  assert.equal(plain.calls[0].params[P.exactId], null);
+});
+
+test('a Support item\'s primary task never lists on the Tasks board (only the single-row re-read answers it)', async () => {
+  const { deps, calls } = fakes();
+  await listTaskDeskRows(ORG, {}, deps);
+  assert.match(calls[0].sql, /\$8::bigint IS NOT NULL OR NOT EXISTS \(\s*SELECT 1 FROM support_tickets s\s*WHERE s\.organization_id = wa\.organization_id\s*AND s\.primary_task_id = wa\.id\)/);
+  assert.doesNotMatch(calls[0].sql, /\bsx\./);
 });

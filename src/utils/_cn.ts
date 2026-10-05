@@ -13,6 +13,7 @@ const CUSTOM_FONT_SIZES = [
   'role-caption',
   'role-eyebrow',
   'role-micro',
+  'role-avatar',
   // Touch text-entry (16px, density-proof) — see tailwind.config.mjs.
   'role-field',
   // Task-mode body text (modes/registry.ts) — size follows the region's mode.

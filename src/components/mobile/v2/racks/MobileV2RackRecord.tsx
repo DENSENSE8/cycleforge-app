@@ -18,7 +18,7 @@ import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBa
 import { useAuth } from '@/contexts/AuthContext';
 import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
 import { MobileRecordCard, MobileRecordCardList } from '@/design-system/components/MobileRecordCard';
-import { rackPlacementText } from '@/lib/locations/rack-display';
+import { rackPlacementText, rackShelfCountText } from '@/lib/locations/rack-display';
 import { editRackShelves, getRack, rackQueryKey } from '@/lib/locations/racks-client';
 import { RACK_MAX_SHELVES } from '@/lib/locations/rack-types';
 import { locationHubPath } from '@/lib/mobile/location-hub-href';
@@ -26,7 +26,7 @@ import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { rackLabelsHref } from '@/lib/nav/route-tree';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
-import { plural, rackErrorSentence, rackShelvesLine, shelfTierStatus } from './rack-presentation';
+import { plural, rackErrorSentence } from './rack-presentation';
 import { MobileV2RackMoveSheet } from './MobileV2RackMoveSheet';
 
 type DockId = 'print' | 'move' | 'add';
@@ -74,7 +74,7 @@ export function MobileV2RackRecord({ code, returnTo, backHref }: { code: string;
       <MobileV2DetailTopBar
         title={rack.name}
         subtitle={rackPlacementText(rack)}
-        meta={rackShelvesLine(rack)}
+        meta={rackShelfCountText(rack.shelfCount)}
         backHref={backHref}
         close
         lead={<Warehouse className="h-5 w-5 text-emerald-600" />}
@@ -106,22 +106,17 @@ export function MobileV2RackRecord({ code, returnTo, backHref }: { code: string;
           <p className="break-words px-mode-page py-10 text-center text-role-caption text-text-muted">No shelves on this rack.</p>
         ) : (
           <MobileRecordCardList label={plural(rack.shelves.length, 'shelf', 'shelves')}>
-            {rack.shelves.map((shelf) => {
-              const face = shelfTierStatus(shelf.tier);
-              return (
-                <MobileRecordCard
-                  key={shelf.id}
-                  identity={`Shelf ${shelf.shelf}`}
-                  title={shelf.code}
-                  detail={shelf.stockQty > 0 ? plural(shelf.stockQty, 'unit') : 'Empty'}
-                  count={shelf.positions.length > 0 ? plural(shelf.positions.length, 'position') : null}
-                  status={face.status}
-                  tone={face.tone}
-                  onOpen={() => router.push(withJobReturn(locationHubPath(shelf.code), returnTo))}
-                  testId="rack-shelf-card"
-                />
-              );
-            })}
+            {rack.shelves.map((shelf) => (
+              <MobileRecordCard
+                key={shelf.id}
+                identity={`Shelf ${shelf.shelf}`}
+                title={shelf.code}
+                detail={shelf.stockQty > 0 ? plural(shelf.stockQty, 'unit') : 'Empty'}
+                count={shelf.positions.length > 0 ? plural(shelf.positions.length, 'position') : null}
+                onOpen={() => router.push(withJobReturn(locationHubPath(shelf.code), returnTo))}
+                testId="rack-shelf-card"
+              />
+            ))}
           </MobileRecordCardList>
         )}
       </div>

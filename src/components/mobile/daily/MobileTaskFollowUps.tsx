@@ -107,18 +107,12 @@ export function MobileTaskLogSheet({
   );
 }
 
-/** The task's merged activity stream, read-only (logging lives in `MobileTaskLogSheet`). */
-export function MobileTaskFollowUps({
-  taskId,
-  ticketNumber,
-  nowMs,
-}: {
-  taskId: number;
-  /** Null when the ticket thread is painted in line — its comments are not repeated here. */
-  ticketNumber: number | null;
-  nowMs: number;
-}) {
-  const { items, loading } = useTaskTimeline(taskId, ticketNumber);
+/**
+ * The task's merged activity stream, read-only (logging lives in `MobileTaskLogSheet`). Conversation
+ * messages are never repeated here: the sheet paints its Support item's thread in line.
+ */
+export function MobileTaskFollowUps({ taskId, nowMs }: { taskId: number; nowMs: number }) {
+  const { items, loading } = useTaskTimeline(taskId);
   const [showAllFor, setShowAllFor] = useState<number | null>(null);
   const hidden = showAllFor === taskId ? 0 : Math.max(0, items.length - TASK_TIMELINE_INITIAL_LIMIT);
   const visible = hidden > 0 ? items.slice(0, TASK_TIMELINE_INITIAL_LIMIT) : items;

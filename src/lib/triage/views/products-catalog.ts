@@ -5,6 +5,7 @@
  */
 
 import { triageView } from '@/design-system/components/triage-card-list/triage-view';
+import { PRODUCT_RECORD_PARAM } from '@/components/products/products-view';
 
 export const PRODUCTS_CATALOG_VIEW = triageView({
   id: 'products.catalog',
@@ -17,7 +18,7 @@ export const PRODUCTS_CATALOG_VIEW = triageView({
     pageMode: 'cf:product-rows:page-mode',
     scrollTop: 'cf:product-rows:scroll-top',
   },
-  recordParams: [],
+  recordParams: [PRODUCT_RECORD_PARAM],
   chips: { owner: 'face', param: 'catalogCardStatus' },
   paging: 'client',
   status: 'state',

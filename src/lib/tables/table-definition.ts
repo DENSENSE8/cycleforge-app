@@ -41,6 +41,10 @@ const TABLE_ENTITY_FAMILIES = [
   'repair',
   /** To-Ship CSV import staging — parsed rows + triage state, not live orders. */
   'orders-import',
+  /** Search › Pasted list — one row = one pasted identifier and where it lives (the bar's held list, full screen). */
+  'pasted-list',
+  /** Support › Support items — one row = one local Support item (`/support`). */
+  'support',
   'catalog',
   'pickup',
   'warranty',

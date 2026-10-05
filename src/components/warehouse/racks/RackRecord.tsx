@@ -11,7 +11,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, ChevronLeft, Plus, Printer } from '@/components/Icons';
+import { ArrowRight, ChevronLeft, Plus, Printer, Trash2 } from '@/components/Icons';
 import { ArmedDangerButton } from '@/design-system/components/ArmedDangerButton';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
@@ -21,8 +21,7 @@ import { RECORD_GROUP_TITLE_CLASS, RecordGroup } from '@/design-system/component
 import { Button } from '@/design-system/primitives';
 import { rackErrorMessage, rackPlacementText, rackShelfCountText } from '@/lib/locations/rack-display';
 import { RACK_MAX_SHELVES, type RackDetail, type RackShelf } from '@/lib/locations/rack-types';
-import { editRackShelves, getRack, rackQueryKey } from '@/lib/locations/racks-client';
-import { arrivalTierLabel } from '@/lib/receiving/arrival-tier';
+import { deleteRack, editRackShelves, getRack, rackQueryKey } from '@/lib/locations/racks-client';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
 import { formatDateTimePST } from '@/utils/date';
@@ -62,11 +61,12 @@ export function RackFlowFrame({ title, onBack, testId, children }: { title: stri
 }
 
 /** Title + verbs + view for the rack `code` names (any spelling; a shelf code opens its rack); null with none open. */
-export function useRackRecordSlot(code: string | null, onChanged: () => void): RackRecordSlot | null {
+export function useRackRecordSlot(code: string | null, onChanged: () => void, onDeleted: () => void): RackRecordSlot | null {
   const queryClient = useQueryClient();
   const [panel, setPanel] = useState<{ code: string; panel: RackPanel } | null>(null);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const query = useQuery({
     queryKey: rackQueryKey(code ?? ''),
     queryFn: () => getRack(code!),
@@ -112,6 +112,22 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void): R
     }
   };
 
+  const removeRack = async () => {
+    if (!rack || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteRack(rack.code, { clientEventId: safeRandomUUID() });
+      queryClient.removeQueries({ queryKey: rackQueryKey(code) });
+      onChanged();
+      onDeleted();
+      toast.success(`${rack.name} deleted`);
+    } catch (err) {
+      toast.error(rackErrorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const verbs: RecordActionVerb[] = rack
     ? [
         {
@@ -146,7 +162,22 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void): R
 
   const title = rack ? `${rack.name} · ${rack.code}` : code;
   const subtitle = rack ? rackPlacementText(rack) : undefined;
-  const actions = rack ? <RecordActionStrip key={rack.code} face="header" verbs={verbs} label={`${rack.name} actions`} testId="rack-record-actions" /> : null;
+  const actions = rack ? (
+    <div className="flex min-w-0 items-center gap-2">
+      <RecordActionStrip key={rack.code} face="header" verbs={verbs} label={`${rack.name} actions`} testId="rack-record-actions" />
+      <ArmedDangerButton
+        size="sm"
+        icon={<Trash2 aria-hidden />}
+        iconOnlyUntilArmed
+        label="Delete rack"
+        confirmLabel={`Delete ${rack.code}?`}
+        title="Delete rack"
+        loading={deleting}
+        onConfirm={() => void removeRack()}
+        data-testid="rack-record-delete"
+      />
+    </div>
+  ) : null;
 
   let view: ReactNode;
   if (!rack) {
@@ -196,7 +227,6 @@ function RackRecordBody({ rack, removing, onRemove }: { rack: RackDetail; removi
                 >
                   <span className="text-role-data font-semibold text-mode-ink">Shelf {shelf.shelf}</span>
                   <span className="font-mono text-role-data text-mode-muted">{shelf.code}</span>
-                  {shelf.tier != null ? <span className="text-role-data text-text-info">Arrival · {arrivalTierLabel(shelf.tier)}</span> : null}
                   {shelf.positions.length > 0 ? (
                     <span className="text-role-data text-mode-muted">{shelf.positions.length} positions</span>
                   ) : null}
@@ -206,8 +236,11 @@ function RackRecordBody({ rack, removing, onRemove }: { rack: RackDetail; removi
                   {shelf.stockQty === 0 && shelves.length > 1 ? (
                     <ArmedDangerButton
                       size="sm"
-                      label="Remove shelf"
+                      icon={<Trash2 aria-hidden />}
+                      iconOnlyUntilArmed
+                      label={`Remove ${shelf.code}`}
                       confirmLabel={`Remove ${shelf.code}?`}
+                      title={`Remove ${shelf.code}`}
                       loading={removing === shelf.code}
                       disabled={removing != null}
                       onConfirm={() => onRemove(shelf)}

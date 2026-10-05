@@ -3,6 +3,8 @@ const OWN_TOP_BAR_PREFIXES = [
   // The scan station owns its mode switch, exit semantics and camera state.
   // The host's generic scan CTA was a duplicate "new scan" button.
   '/m/scan',
+  // Prepack owns its wordless four-segment progress bar and Back row.
+  '/m/prepack',
   '/m/receiving/po',
   // Adding purchase orders (the door list and the inbound-order form) owns MobileV2DetailTopBar (X back).
   '/m/receiving/new',
@@ -53,6 +55,9 @@ const OWN_TOP_BAR_PREFIXES = [
   '/m/products/',
   // Customer records own MobileV2DetailTopBar; the directory keeps the host bar.
   '/m/customers/',
+  // Support: the list mounts the host bar itself (MobileV2TopBar) and the record on the same route
+  // (`?item=`) draws MobileV2DetailTopBar (X back to the list) — ownership cannot read the query.
+  '/m/support',
 ] as const;
 
 /**

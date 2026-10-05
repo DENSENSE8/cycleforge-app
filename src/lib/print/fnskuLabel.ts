@@ -15,8 +15,6 @@ export interface FnskuLabelFace {
   title: string;
   /** Catalog condition (`Used - Very Good`); blank prints none — never guessed. */
   condition: string;
-  /** Printed in place of the condition line, e.g. `TEST PRINT · 2:41 PM` — a sticker that must never ship. */
-  mark?: string;
 }
 
 /** How a caller holds and hears a run of stickers. */
@@ -56,9 +54,10 @@ function fitTitle(title: string): string {
   return `${head}…${t.slice(-TITLE_TAIL_CHARS).trimStart()}`;
 }
 
-// ── Silent (raw thermal) ─────────────────────────────────────────────────────
+// ── The face (owner 2026-10-04: exactly Amazon's — barcode, FNSKU, title, condition; nothing else) ──
 
-const dots = (inches: number) => Math.round(inches * LABEL_DPI);
+/** Raster resolution of the browser-dialog face: the driver scales it to its head, so render fine enough to stay crisp. */
+const BROWSER_FACE_DPI = 600;
 
 /** Greedy word wrap by measured width, at most `maxLines`. */
 function measuredLines(context: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
@@ -79,77 +78,93 @@ function measuredLines(context: CanvasRenderingContext2D, text: string, maxWidth
 }
 
 /**
- * Operator 2026-09-25:
- * Operator 2026-09-25: "the barcode must be edge to edge and focused in the
+ * One horizontal 2×1 face, read top to bottom the way Amazon prints it: the
+ * Code 128 bars edge to edge (quiet zones kept), then the FNSKU, the title and
+ * the condition, each in a light, regular weight on the bars' left edge.
+ * Operator 2026-09-25: "the barcode must be edge to edge"; 2026-10-04: no
+ * print stamp, lighter and easier to read.
  */
-function drawFnskuLabel(face: FnskuLabelFace, paper: PaperSize): HTMLCanvasElement {
-  const { canvas, context, width } = createLabelCanvas(paper);
-  const padX = dots(0.05);
-  const padY = dots(0.04);
-  const inner = width - padX * 2;
+function drawFnskuLabel(face: FnskuLabelFace, paper: PaperSize, dpi: number = LABEL_DPI): HTMLCanvasElement {
+  const { canvas, context, width } = createLabelCanvas(paper, dpi);
+  const at = (inches: number) => Math.round(inches * dpi);
+  const padY = at(0.05);
 
   // scale 1 → one canvas pixel per module, so `bars.width` IS the module count.
   const bars = document.createElement('canvas');
   bwipjs.toCanvas(bars, { bcid: 'code128', text: face.fnsku, scale: 1, height: 8, includetext: false });
   const module = Math.max(1, Math.floor(width / (bars.width + QUIET_MODULES * 2)));
   const barsWidth = bars.width * module;
-  const barsHeight = dots(BARS_HEIGHT_IN);
+  const barsLeft = Math.round((width - barsWidth) / 2);
+  const barsHeight = at(BARS_HEIGHT_IN);
   context.imageSmoothingEnabled = false;
-  context.drawImage(bars, Math.round((width - barsWidth) / 2), padY, barsWidth, barsHeight);
+  context.drawImage(bars, barsLeft, padY, barsWidth, barsHeight);
 
-  context.textAlign = 'center';
-  const codeSize = dots(0.11);
-  let y = padY + barsHeight + dots(0.01);
-  drawFittedText(context, face.fnsku, width / 2, y, inner, codeSize, 800);
-  y += codeSize + dots(0.02);
-
-  // Title, then a quieter condition line. The condition is supporting product
-  // information, not a second headline.
+  // Text hangs from the bars' left edge (never into the right quiet zone), like Amazon's own label.
+  const left = barsLeft;
+  const inner = width - left - at(0.06);
   context.textAlign = 'left';
-  const titleSize = dots(0.09);
-  const lineStep = titleSize + dots(0.01);
-  context.font = `600 ${titleSize}px Arial, sans-serif`;
+  let y = padY + barsHeight + at(0.035);
+  const codeSize = at(0.105);
+  drawFittedText(context, face.fnsku, left, y, inner, codeSize, 400);
+  y += codeSize + at(0.025);
+
+  const textSize = at(0.085);
+  const lineStep = textSize + at(0.015);
+  context.font = `400 ${textSize}px Arial, Helvetica, sans-serif`;
   for (const line of measuredLines(context, fitTitle(face.title), inner, 2)) {
-    context.fillText(line, padX, y);
+    context.fillText(line, left, y);
     y += lineStep;
   }
 
-  const condition = face.mark ?? fbaConditionLabel(face.condition);
-  if (condition) drawFittedText(context, condition, padX, y, inner, dots(0.075), 600);
+  const condition = fbaConditionLabel(face.condition);
+  if (condition) drawFittedText(context, condition, left, y, inner, textSize, 400);
   return canvas;
 }
 
 /**
- * The one rendered label face. Preview, raw thermal output, and browser
- * fallback printing all consume this raster so screen and paper cannot drift.
+ * The one label face. Preview, raw thermal output, and browser fallback all
+ * draw it with {@link drawFnskuLabel}, so screen and paper cannot drift; the
+ * preview and the dialog raster are drawn finer than the thermal head.
  * Defaults to the station's 2×1 FNSKU stock.
  */
 export function fnskuLabelPreviewUrl(face: FnskuLabelFace, paper: PaperSize = resolvePaperSize('2x1')): string {
-  return drawFnskuLabel(face, paper).toDataURL('image/png');
+  return drawFnskuLabel(face, paper, BROWSER_FACE_DPI).toDataURL('image/png');
 }
 
 // ── Browser fallback ─────────────────────────────────────────────────────────
 
-/** Copies of the shared raster, one 2×1 print page each. */
-function buildFnskuLabelHtml(face: FnskuLabelFace, copies: number): string {
-  const rasterUrl = fnskuLabelPreviewUrl(face);
-  const pages = Array.from({ length: copies }, () => '<div class="wrap"><img class="label" alt=""></div>').join('\n');
-  return `<!doctype html><html><head><meta charset="utf-8"/><title>${escapeLabelHtml(face.fnsku)}</title>
-<style>
+/**
+ * Chrome kiosk printing must receive the physical page size, not only a
+ * rotated image. Otherwise a printer whose stale system default is 4×5 can
+ * lay one FNSKU face over several 2×1 stickers. Keep this contract identical
+ * to the shared QC/product label shell: one horizontal 2×1 page per copy.
+ */
+export function fnskuBrowserPrintCss(): string {
+  return `
   @page{size:2in 1in;margin:0}
   *{box-sizing:border-box}
   html,body{width:2in;margin:0;padding:0;background:#fff}
-  .wrap{width:2in;height:1in;overflow:hidden;break-after:page;page-break-after:always}
-  .wrap:last-child{break-after:auto;page-break-after:auto}
-  .label{display:block;width:2in;height:1in;object-fit:contain}
+  .page{position:relative;width:2in;height:1in;overflow:hidden;break-after:page;page-break-after:always;break-inside:avoid;page-break-inside:avoid}
+  .page:last-child{break-after:auto;page-break-after:auto}
+  .label{position:absolute;inset:0;display:block;width:2in;height:1in;object-fit:contain}
+`;
+}
+
+function buildFnskuLabelHtml(face: FnskuLabelFace, copies: number): string {
+  const rasterUrl = drawFnskuLabel(face, resolvePaperSize('2x1'), BROWSER_FACE_DPI).toDataURL('image/png');
+  const pages = Array.from({ length: copies }, () => '<div class="page"><img class="label" alt=""></div>').join('\n');
+  return `<!doctype html><html><head><meta charset="utf-8"/><title>${escapeLabelHtml(face.fnsku)}</title>
+<style>
+${fnskuBrowserPrintCss()}
 </style></head><body>
 ${pages}
 <script>
 window.onload=function(){
   var source=${JSON.stringify(rasterUrl)};
   var labels=document.querySelectorAll('.label');
-  for(var i=0;i<labels.length;i++)labels[i].src=source;
-  setTimeout(function(){window.focus();window.print();},120);
+  var left=labels.length;
+  var go=function(){if(--left<=0)setTimeout(function(){window.focus();window.print();},60);};
+  for(var i=0;i<labels.length;i++){labels[i].onload=go;labels[i].onerror=go;labels[i].src=source;}
 };
 window.onafterprint=function(){setTimeout(function(){window.close();},80);};
 </script>

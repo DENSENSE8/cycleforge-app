@@ -54,6 +54,8 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/companion(?:$|\/)/,    // device-authed phone-companion link: open + sync (withKioskAuth)
   /^\/api\/kiosk\/carts(?:$|\/)/,        // device-authed Recent carts: list/create/save/open/done/clear (withKioskAuth)
   /^\/api\/realtime\/kiosk-token(?:$|\/)/, // device-principal Ably token (withKioskAuth) — the STAFF token route stays gated
+  /^\/print-station\/device(?:$|\/)/,   // enrolled print station page (device-token principal; no staff session)
+  /^\/api\/print-station-device\//,     // enrolled print station: pair (code IS the capability) + device-authed routes (withPrintStationAuth)
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
   /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
   /^\/share\/photos\//,                 // public photo share-pack viewer (token capability) Anonymous share-pack read + zip download by token — a token IS the capability.
@@ -226,21 +228,6 @@ function resolveDashboardOutboundRedirect(url: NextRequest['nextUrl']): NextRequ
   const next = url.clone();
   next.pathname = '/shipping/orders';
   next.searchParams.delete('mode');
-  return next;
-}
-
-/**
- * Support › Inquiries → shared To-ship desk with support context.
- * `/support?mode=orders` → `/shipping/orders?context=support`.
- */
-function resolveSupportOrdersRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/support' && url.pathname !== '/support/') return null;
-  const mode = String(url.searchParams.get('mode') || '').trim().toLowerCase();
-  if (mode !== 'orders') return null;
-  const next = url.clone();
-  next.pathname = '/shipping/orders';
-  next.searchParams.delete('mode');
-  next.searchParams.set('context', 'support');
   return next;
 }
 
@@ -588,7 +575,6 @@ export function proxy(req: NextRequest): NextResponse {
       resolveDashboardInboundRedirect(req.nextUrl) ??
       resolveShippedDeskRedirect(req.nextUrl) ??
       resolveDashboardOutboundRedirect(req.nextUrl) ??
-      resolveSupportOrdersRedirect(req.nextUrl) ??
       resolveWalkInJobRedirect(req.nextUrl) ??
       resolveWalkInRepairModeRedirect(req.nextUrl) ??
       resolvePackSurfaceRedirect(req.nextUrl) ??
@@ -621,9 +607,10 @@ export function proxy(req: NextRequest): NextResponse {
           : NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }),
       );
     }
-    const url = req.nextUrl.clone();
-    url.pathname = '/signin';
-    url.searchParams.set('next', pathname);
+    // The whole deep link rides in `next` (path AND query), so sign-in lands
+    // on the same `?filters` the link carried — not beside them on /signin.
+    const url = new URL('/signin', req.nextUrl);
+    url.searchParams.set('next', `${pathname}${req.nextUrl.search}`);
     return applySecurityHeaders(req, NextResponse.redirect(url));
   }
 

@@ -6,6 +6,33 @@
 
 export const MAX_LABEL_COPIES = 99;
 
+/**
+ * The FNSKU quantity slider's scale (owner 2026-10-04): the staffer picks how
+ * far the slider reaches — 20, 30 or 99 — and the stops rescale to it. A UI
+ * scale, not a limit: the wire clamp stays {@link MAX_LABEL_COPIES}. Shared by
+ * the desk Print station and `/m/fnsku`; remembered per staffer in
+ * `staff_preferences.prefs.fnskuCopyRange`.
+ */
+export const FNSKU_COPY_RANGES = [20, 30, MAX_LABEL_COPIES] as const;
+export type FnskuCopyRange = (typeof FNSKU_COPY_RANGES)[number];
+export const DEFAULT_FNSKU_COPY_RANGE: FnskuCopyRange = 30;
+
+/** Useful print-run sizes per range. Manual entry inserts its exact value into the scale. */
+export const FNSKU_COPY_STOPS: Record<FnskuCopyRange, readonly number[]> = {
+  20: [1, 2, 3, 5, 8, 10, 12, 15, 20],
+  30: [1, 2, 5, 10, 15, 20, 25, 30],
+  [MAX_LABEL_COPIES]: [1, 2, 5, 10, 20, 30, 40, 50, 75, MAX_LABEL_COPIES],
+};
+
+export function isFnskuCopyRange(n: unknown): n is FnskuCopyRange {
+  return FNSKU_COPY_RANGES.includes(n as FnskuCopyRange);
+}
+
+/** A copy count held inside one range: 1..range. */
+export function clampToCopyRange(n: number | null | undefined, range: FnskuCopyRange): number {
+  return Math.min(range, clampLabelCopies(n));
+}
+
 /** Ceiling on one bulk TOTE run — distinct from {@link MAX_LABEL_COPIES}, which counts identical copies of ONE face. */
 export const MAX_TOTE_PRINT_RUN = 200;
 

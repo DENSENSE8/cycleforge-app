@@ -11,7 +11,7 @@ import { beginWork } from '@/lib/background-work/store';
 import type { StaffPrintJob } from '@/lib/print/staff-print-bridge';
 import { readPrintStation } from '@/lib/print/print-station';
 import {
-  printBinLabelRun,
+  printLocationLabelRun,
   printHandlingUnitLabelRun,
   printRackLabelRun,
 } from '@/lib/print/printLabelRun';
@@ -89,7 +89,7 @@ export async function executeStationPrintJob(
   }
 
   if (job.grain === 'qc_label' && job.qcLabel) {
-    const error = await printQcLabelStationJob(job.qcLabel, job.request_id);
+    const error = await printQcLabelStationJob(job.qcLabel, job.request_id, { workId });
     if (error) toast.error(error);
     return;
   }
@@ -141,7 +141,7 @@ export async function executeStationPrintJob(
     return;
   }
 
-  await printBinLabelRun({
+  await printLocationLabelRun({
     roomName: loc.roomName,
     segments: loc.segments,
     gln: loc.gln,

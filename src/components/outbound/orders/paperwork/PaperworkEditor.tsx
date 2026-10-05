@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
+import { ChevronRight, X } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
 import { OrderShippingPanel } from '@/components/outbound/labels/OrderShippingPanel';
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
@@ -79,7 +79,6 @@ export function PaperworkEditor({
   index,
   total,
   onAdvance,
-  onPrev,
   onExit,
   onFactsChanged,
 }: {
@@ -87,8 +86,6 @@ export function PaperworkEditor({
   index: number;
   total: number;
   onAdvance: () => void;
-  /** Step back one order; absent at the head of the walk. */
-  onPrev?: () => void;
   onExit: () => void;
   onFactsChanged: () => void;
 }) {
@@ -183,16 +180,6 @@ export function PaperworkEditor({
           Labels <span className="tabular-nums text-text-default">{index} of {total}</span>
         </span>
         <span className="min-w-0 flex-1" />
-        <IconButton
-          size="lg"
-          className={TRIAGE_PANEL_INNER_CORNER}
-          ariaLabel="Previous order"
-          title="Previous order (K)"
-          data-testid="paperwork-prev"
-          disabled={!onPrev}
-          icon={<ChevronLeft className="h-4 w-4" />}
-          onClick={() => onPrev?.()}
-        />
         <Button
           size="md"
           className={triagePanelControl()}

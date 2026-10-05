@@ -6,27 +6,26 @@
  * is the phone sheet's grammar on a desk — mobile first, no field labels, say
  * each fact once, and only the chrome that acts on what is on screen.
  *
- *   Overview  — EVERYTHING in one scroll, newest first, no labels: media,
- *               WHEN (due · priority), WHO·WHERE (project · people · from),
- *               the Brief (minus the title line), the ticket's newest
- *               messages, the documents, the newest events, the links. Each
- *               preview ends in a blue door to its tab.
- *   Ticket    — the support ticket: `SupportTicketDetail` (thread + composer)
- *   Docs      — long documents (`TaskDocsTab`); not offered on a support
- *               follow-up unless it already has one
- *   Timeline  — the Log head and the full stream (`TaskRailTimeline`)
- *   Media     — videos and photos (`TaskRailMedia`)
- *   Links     — every record the task names, and the emails it cites
+ *   Overview      — EVERYTHING in one scroll, newest first, no labels: media,
+ *                   WHEN (due · priority), WHO·WHERE (project · people · from),
+ *                   the Brief (minus the title line), the documents, the
+ *                   newest events, the links. Each preview ends in a blue
+ *                   door to its tab.
+ *   Conversation  — link a helpdesk ticket to the task (`TicketLinkPanel`);
+ *                   Support items themselves live on /support
+ *   Docs          — long documents (`TaskDocsTab`)
+ *   Timeline      — the Log head and the full stream (`TaskRailTimeline`)
+ *   Media         — videos and photos (`TaskRailMedia`)
+ *   Links         — every record the task names, and the emails it cites
  *
- * Header verbs (`TaskRecordActions`): Done · Status (S) · Alert · Reply — Reply
- * only while the composer is NOT on screen (the Ticket tab has its own).
+ * Header verbs (`TaskRecordActions`): Done · Status (S) · Alert · Reply —
+ * Reply only on a ticket-linked task, off the Conversation tab.
  * `[` / `]` step the tabs; the plane owns Esc and ⌘/Ctrl+Shift+S.
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Check, ChevronDown, Link2, Mail, MessageSquareReply, Package, Plus, RotateCcw, Ticket, Truck, Wrench, X, type LucideIcon } from 'lucide-react';
 import { Zap } from '@/components/Icons';
-import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { Collapse } from '@/design-system/components/Collapse';
 import { StaffBadge } from '@/design-system/components/StaffBadge';
 import { TicketStatusPill } from '@/design-system/components/TicketStatusPill';
@@ -39,15 +38,15 @@ import { useTaskLinks } from '@/lib/tasks/use-task-workspace';
 import { useTaskEmailRefs } from '@/lib/tasks/use-task-email-refs';
 import { emailRefNumberFace, emailRefNumberPatch } from '@/lib/tasks/task-email-refs';
 import { mailboxFace, type TaskEmailRef, type TaskEmailRefPatchBody } from '@/lib/tasks/task-email-refs-shared';
+import { classifyEmail } from '@/lib/customers/classified-email';
 import { taskLinkRepairHref, type TaskLink, type TaskLinkCreateBody, type TaskLinkKind } from '@/lib/tasks/task-links-shared';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/design-system/primitives/DropdownMenu';
 import type { TaskDeskPatch } from '@/features/tasks/useTaskDesk';
 import { taskBriefBody, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { taskStatusOf } from '@/lib/tasks/task-status';
-import { useTaskStatusCommit } from '@/lib/tasks/use-task-status-commit';
 import { TASK_STATUS_FACE } from '@/design-system/tokens/task-status';
 import { TASK_PRIORITY } from '@/lib/tasks/task-vocabulary';
-import { TASK_BOARD_TYPE_FACE, taskBoardRowType, type TaskBoardRow } from '@/lib/task-board/task-board-model';
+import { TASK_BOARD_TYPE_FACE, type TaskBoardRow } from '@/lib/task-board/task-board-model';
 import { Button } from '@/design-system/primitives/Button';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { TASK_DUE_PRESETS, taskDueDay, taskDueInstantIso } from '@/lib/tasks/task-due';
@@ -58,15 +57,19 @@ import { TaskAlertButton } from './TaskAlertButton';
 import { TaskOverviewMedia } from './TaskOverviewMedia';
 import { TaskRailMedia } from './TaskRailMedia';
 import { TaskRailTimeline } from './TaskRailTimeline';
-import { OVERVIEW_SECTION, TaskDocsPreview, TaskTicketPreview, TaskTimelinePreview } from './TaskOverviewSections';
-import { TaskStatusCombobox } from './TaskStatusPicker';
+import { OVERVIEW_SECTION, TaskDocsPreview, TaskTimelinePreview } from './TaskOverviewSections';
 
-export const RECORD_TABS = ['overview', 'ticket', 'docs', 'timeline', 'media', 'links'] as const;
+export const RECORD_TABS = ['overview', 'conversation', 'docs', 'timeline', 'media', 'links'] as const;
 export type RecordTab = (typeof RECORD_TABS)[number];
+
+/** An email as painted: a marketplace / private relay reads as its face ("eBay relay email"), never the raw address. */
+function emailFace(email: string): string {
+  return classifyEmail(email)?.label ?? email;
+}
 
 const RECORD_TAB_LABEL: Readonly<Record<RecordTab, string>> = {
   overview: 'Overview',
-  ticket: 'Ticket',
+  conversation: 'Conversation',
   docs: 'Docs',
   timeline: 'Timeline',
   media: 'Media',
@@ -77,19 +80,11 @@ const RECORD_TAB_LABEL: Readonly<Record<RecordTab, string>> = {
 const TASK_ONLY_TABS: Readonly<Partial<Record<RecordTab, true>>> = { docs: true, timeline: true, media: true, links: true };
 
 /**
- * The tabs this row can show, in order — `[` / `]` walk exactly these. The ticket thread is always one tab
- * away (owner 2026-09-30); only a checklist item (no task to link from) omits it. Docs follow the work
- * (owner 2026-10-03: "removing docs for support"): a support follow-up answers a customer, it does not
- * carry plan documents — the tab shows there only when one is already attached.
+ * The tabs this row can show, in order — `[` / `]` walk exactly these. A checklist item (no task) shows
+ * Overview only.
  */
-export function recordTabsFor(row: TaskBoardRow, task: TaskDeskRow | null): RecordTab[] {
-  const support = taskBoardRowType(row) === 'ticket';
-  return RECORD_TABS.filter((t) => {
-    if (TASK_ONLY_TABS[t] && task == null) return false;
-    if (t === 'ticket') return task != null;
-    if (t === 'docs') return !support || row.docCount > 0;
-    return true;
-  });
+export function recordTabsFor(_row: TaskBoardRow, task: TaskDeskRow | null): RecordTab[] {
+  return RECORD_TABS.filter((t) => !(task == null && (TASK_ONLY_TABS[t] || t === 'conversation')));
 }
 
 /** Marks the header's Status verb — the `S` picker anchors to it while a record is open. */
@@ -109,7 +104,7 @@ export function TaskRecordActions({
 }: {
   row: TaskBoardRow;
   task: TaskDeskRow | null;
-  /** The record's open tab — Reply hides on the Ticket tab, whose composer is already on screen. */
+  /** The record's open tab — Reply hides on the Conversation tab, whose composer is already on screen. */
   tab: RecordTab;
   onToggle: () => void;
   onStatus: (anchor: HTMLElement) => void;
@@ -147,8 +142,8 @@ export function TaskRecordActions({
           onOpenChange={onAlertOpenChange}
         />
       ) : null}
-      {row.ticket && tab !== 'ticket' ? (
-        <DeskHeaderAction size="sm" variant="warningSoft" icon={<MessageSquareReply />} label="Reply" ariaLabel="Reply on the ticket" onClick={onReply} />
+      {task && row.ticket && tab !== 'conversation' ? (
+        <DeskHeaderAction size="sm" variant="warningSoft" icon={<MessageSquareReply />} label="Reply" ariaLabel="Reply in the conversation" onClick={onReply} />
       ) : null}
     </>
   );
@@ -207,13 +202,9 @@ export function TaskRecordBody({
         />
       </div>
 
-      {active === 'ticket' && task ? (
+      {active === 'conversation' && task ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          {row.ticket?.number != null ? (
-            <SupportTicketDetail ticketId={row.ticket.number} embedded />
-          ) : (
-            <TicketLinkPanel taskId={task.id} />
-          )}
+          <TicketLinkPanel taskId={task.id} />
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 @lg:px-5">
@@ -233,7 +224,6 @@ export function TaskRecordBody({
           ) : active === 'timeline' && task ? (
             <TaskRailTimeline
               taskId={task.id}
-              ticketNumber={row.ticket?.number ?? null}
               nextFollowUpMs={task.nextFollowUpAtMs}
               nowMs={nowMs}
               onPatch={onPatch}
@@ -245,21 +235,7 @@ export function TaskRecordBody({
           ) : null}
         </div>
       )}
-      {task ? <RecordStatusFooter task={task} onPatch={onPatch} /> : null}
     </div>
-  );
-}
-
-/**
- * The status, bottom-left, on EVERY tab (owner 2026-09-30). Same commit path as
- * the Overview row (`useTaskStatusCommit`); the pill opens the status combobox.
- */
-function RecordStatusFooter({ task, onPatch }: { task: TaskDeskRow; onPatch: (patch: TaskDeskPatch) => Promise<unknown> }) {
-  const { current, setStatus } = useTaskStatusCommit(task, onPatch);
-  return (
-    <footer className="flex h-9 shrink-0 items-center border-t border-border-hairline px-4" data-testid="task-status-footer">
-      <TaskStatusCombobox current={current} onPick={setStatus} />
-    </footer>
   );
 }
 
@@ -324,7 +300,6 @@ function OverviewTab({
     );
   }
 
-  const ticketNumber = row.ticket?.number ?? null;
   return (
     <div className={OVERVIEW_COLUMN}>
       {/* Media first (owner 2026-09-30); mounted only when the row counts some, so a bare task never fetches. */}
@@ -363,12 +338,9 @@ function OverviewTab({
           onReaderOpenChange={onBriefReaderOpenChange}
         />
       </div>
-      {ticketNumber != null ? (
-        <TaskTicketPreview ticketNumber={ticketNumber} status={row.ticket?.status ?? null} nowMs={nowMs} onOpen={() => onTab('ticket')} />
-      ) : null}
       {tabs.includes('docs') ? <TaskDocsPreview taskId={task.id} onOpen={() => onTab('docs')} /> : null}
       <TaskTimelinePreview taskId={task.id} nowMs={nowMs} onOpen={() => onTab('timeline')} />
-      <LinkedList row={row} taskId={task.id} ticketPreviewed={ticketNumber != null} onOpenTicket={() => onTab('ticket')} />
+      <LinkedList row={row} taskId={task.id} onOpenTicket={() => onTab('conversation')} />
     </div>
   );
 }
@@ -658,7 +630,7 @@ function LinksTab({ taskId }: { taskId: number }) {
             <LinkLine
               key={`email:${ref.id}`}
               kind="email"
-              label={ref.customerEmail}
+              label={emailFace(ref.customerEmail)}
               detail={
                 <EmailLinkDetail
                   emailRef={ref}
@@ -673,7 +645,7 @@ function LinksTab({ taskId }: { taskId: number }) {
               }
               trailing={
                 <UnlinkButton
-                  label={ref.customerEmail}
+                  label={emailFace(ref.customerEmail)}
                   onClick={() => emails.remove.mutate(ref.id, { onError: (error) => fail(error, 'Could not unlink that email.') })}
                 />
               }
@@ -746,7 +718,7 @@ function EmailLinkDetail({
         key={`${emailRef.id}:${emailRef.orderNumber}:${emailRef.referenceNumber}`}
         value={emailRefNumberFace(emailRef)}
         placeholder="Add order # or Ref …"
-        ariaLabel={`Order or reference number for ${emailRef.customerEmail}`}
+        ariaLabel={`Order or reference number for ${emailFace(emailRef.customerEmail)}`}
         onCommit={(raw) => onPatch(emailRefNumberPatch(raw))}
         className="mx-0 h-5 w-40 min-w-0 rounded-md px-1 py-0 text-[11px] text-text-muted"
       />
@@ -836,9 +808,8 @@ function LinkLine({
   );
 }
 
-/** Paste a helpdesk number and the thread mounts right here — inline replies stay in the rail (owner
- *  2026-09-30). The link lands through the house links writer; the desk row refetches and the tab swaps
- *  to `SupportTicketDetail`. */
+/** Paste a helpdesk number to link it to the task (owner 2026-09-30). The link lands through the house links
+ *  writer; the desk row refetches. The Support item's own conversation lives on /support. */
 function TicketLinkPanel({ taskId }: { taskId: number }) {
   const { add } = useTaskLinks(taskId);
   const [value, setValue] = useState('');
@@ -859,7 +830,7 @@ function TicketLinkPanel({ taskId }: { taskId: number }) {
         <Ticket aria-hidden className="size-5" />
       </span>
       <p className="max-w-xs text-[13px] text-text-muted">
-        No support ticket linked yet. Paste the ticket number and the conversation opens here — reply inline, internal or public.
+        Link a helpdesk ticket to this task by its number. Reply to the customer from Support.
       </p>
       <div className="flex items-center gap-2 rounded-full bg-surface-sunken py-1 pl-3.5 pr-1">
         <input
@@ -889,24 +860,22 @@ function TicketLinkPanel({ taskId }: { taskId: number }) {
 }
 
 /**
- * Overview's links, no "Linked" heading (the glyph tiles say what each is): the ticket (only when its thread is
- * not already previewed above — one fact, one place), the record it is about, every link, the customer emails.
+ * Overview's links, no "Linked" heading (the glyph tiles say what each is): the ticket, the record it is about,
+ * every link, the customer emails.
  */
 function LinkedList({
   row,
   taskId,
-  ticketPreviewed,
   onOpenTicket,
 }: {
   row: TaskBoardRow;
   taskId: number;
-  ticketPreviewed: boolean;
   onOpenTicket: () => void;
 }) {
   const { links } = useTaskLinks(taskId);
   const { refs } = useTaskEmailRefs(taskId);
   const extra = links.filter((link) => !(row.ticket && link.kind === 'ticket' && link.label.replace(/\D/g, '') === String(row.ticket.number)));
-  const ticketLine = row.ticket && !ticketPreviewed;
+  const ticketLine = row.ticket != null;
   if (!ticketLine && !row.record && extra.length === 0 && refs.length === 0) return null;
   return (
     <section aria-label="Links" className={OVERVIEW_SECTION} data-testid="task-overview-links">
@@ -938,7 +907,7 @@ function LinkedList({
           <LinkLine
             key={`email:${ref.id}`}
             kind="email"
-            label={ref.customerEmail}
+            label={emailFace(ref.customerEmail)}
             detail={[mailboxFace(ref.mailbox), emailRefNumberFace(ref)].filter(Boolean).join(' · ')}
             href={`mailto:${ref.customerEmail}`}
           />

@@ -68,7 +68,6 @@ export function StationTicketPane({
         ticketId={hasTicket ? ticketId : 0}
         receivingId={row.receiving_id ?? undefined}
         embedded
-        hideRequesterBand={false}
         mergeFloorTimeline={false}
         composerPlacement="host"
         hideLinkedContext={!hasTicket}

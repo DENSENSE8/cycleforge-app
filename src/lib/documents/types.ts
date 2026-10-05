@@ -41,12 +41,20 @@ export interface OutboundDocumentData {
   fetchedAt?: string | null;
   uploadedBy?: number | null;
   filename?: string | null;
+  /** Label-ingestion documents retain the ledger's original basename. */
+  fileBasename?: string | null;
+  /** Label-ingestion provenance; the staged GCS object is the document bytes. */
+  labelIngestionId?: number | null;
   error?: string | null;
   /** `gcs` when bytes live in the photos bucket; omitted for NAS/manual URLs. */
   storageProvider?: 'gcs' | 'nas';
   bucket?: string | null;
   objectKey?: string | null;
+  /** Label-ingestion documents use this legacy key; manual/fetched docs use sha256Hex. */
+  sha256?: string | null;
   sha256Hex?: string | null;
+  /** Label-ingestion documents use this legacy key; manual/fetched docs use fileSizeBytes. */
+  byteSize?: number | null;
   fileSizeBytes?: number | null;
   /** Cold NAS copy after GCS→NAS mirror cron (primary serve stays GCS). */
   nasUrl?: string | null;

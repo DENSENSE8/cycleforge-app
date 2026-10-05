@@ -3,36 +3,35 @@
 /**
  * New task (`N`) — hand work to one or more teammates in one breath.
  *
- *   [ Task | Ticket follow-up | Checklist ]
+ *   [ Task | Checklist ]
  *   What needs doing…                         (first line = the headline)
- *   Ticket #48120 / Order, tracking, carton   (resolves on Enter)
+ *   Order, tracking, carton                   (resolves on Enter)
  *   Who   (Me)(Ana)(+)                         first picked leads
  *   Project ▾   Due  Today · Tomorrow · Next week   Urgent
  *                                              ⌘↵ Create task
  *
  * Headless logic is `useThrowTask` (the one task writer, idempotent); the
  * checklist face writes through `useItemActions` and is offered only to a
- * checklist manager.
+ * checklist manager. Support items are created on /support.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ListChecks, ListTodo, Search, Ticket, X } from 'lucide-react';
+import { ListChecks, ListTodo, Search, X } from 'lucide-react';
 import { Zap } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { motion } from '@/design-system/motion';
 import { useRegisterOverlay } from '@/design-system/hooks/useOverlayStack';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { throwTargetKey, useThrowTask, type ThrowTaskMode } from '@/hooks/useThrowTask';
+import { throwTargetKey, useThrowTask } from '@/hooks/useThrowTask';
 import { useItemActions } from '@/lib/daily-checks/use-daily-checks';
 import { addDaysToDateKey, getCurrentPSTDateKey, warehouseCivilTimeToInstant } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { PersonDot } from './task-board-atoms';
 
-type NewTaskKind = 'task' | 'ticket' | 'checklist';
+type NewTaskKind = 'task' | 'checklist';
 
 const KINDS: readonly { id: NewTaskKind; label: string; icon: typeof ListTodo }[] = [
   { id: 'task', label: 'Task', icon: ListTodo },
-  { id: 'ticket', label: 'Ticket follow-up', icon: Ticket },
   { id: 'checklist', label: 'Checklist', icon: ListChecks },
 ];
 
@@ -63,7 +62,9 @@ export function NewTaskSheet({
       <DialogContent
         showCloseButton={false}
         data-testid="task-new-sheet"
-        className="top-[12vh] max-w-[640px] translate-y-0 gap-0 overflow-visible border-0 bg-transparent p-0 shadow-none"
+        // Centred by inset + auto margins, never a translate: anchored layers
+        // portal into dialog-content as `position: fixed`, and a transformed ancestor would offset them.
+        className="inset-x-0 left-0 top-[12vh] mx-auto max-w-[640px] translate-none transform-none gap-0 overflow-visible border-0 bg-transparent p-0 shadow-none"
       >
         <DialogTitle className="sr-only">New task</DialogTitle>
         {open ? (
@@ -97,8 +98,7 @@ function NewTaskSurface({
   initialNote?: string;
 }) {
   const [kind, setKind] = useState<NewTaskKind>('task');
-  const mode: ThrowTaskMode = kind === 'ticket' ? 'ticket' : 'record';
-  const draft = useThrowTask({ mode, onThrown: onCreated, initialNote });
+  const draft = useThrowTask({ onThrown: onCreated, initialNote });
   const { addItem } = useItemActions(getCurrentPSTDateKey());
   const [recurring, setRecurring] = useState(true);
   const [findPeople, setFindPeople] = useState('');
@@ -203,11 +203,9 @@ function NewTaskSurface({
           onChange={(event) => draft.setNote(event.target.value)}
           rows={3}
           placeholder={
-            kind === 'ticket'
-              ? 'What should happen on this ticket?'
-              : kind === 'checklist'
-                ? 'Checklist item — first line is its name'
-                : 'What needs doing? First line is the headline; details below.'
+            kind === 'checklist'
+              ? 'Checklist item — first line is its name'
+              : 'What needs doing? First line is the headline; details below.'
           }
           className="mx-5 mt-4 resize-none bg-transparent text-[17px] font-medium leading-6 text-text-default outline-none placeholder:font-normal placeholder:text-text-muted"
         />
@@ -216,7 +214,7 @@ function NewTaskSurface({
           <div className="mx-5 mt-3 flex flex-col gap-2">
             {/* Record / ticket anchor */}
             <div className="flex items-center gap-2 rounded-2xl bg-surface-sunken px-3 py-2">
-              {kind === 'ticket' ? <Ticket className="size-4 text-text-muted" /> : <Search className="size-4 text-text-muted" />}
+              <Search className="size-4 text-text-muted" />
               <input
                 value={draft.raw}
                 onChange={(event) => draft.setRaw(event.target.value)}
@@ -229,7 +227,7 @@ function NewTaskSurface({
                 onBlur={() => {
                   if (draft.raw.trim() && draft.resolve.status === 'idle') void draft.runResolve();
                 }}
-                placeholder={kind === 'ticket' ? 'Ticket number — 48120' : 'About a record? Order #, tracking, carton (optional)'}
+                placeholder="About a record? Order #, tracking, carton (optional)"
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-text-muted"
               />
               {draft.resolve.status === 'resolving' ? <span className="text-xs text-text-muted">Finding…</span> : null}

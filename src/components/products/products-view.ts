@@ -1,4 +1,4 @@
-/** The `/products` URL contract — the L2 view vocabulary plus the detail href. */
+/** The `/products` URL contract — the L2 view vocabulary, the open record and the detail href. */
 
 const PRODUCTS_VIEWS = ['catalog', 'manuals', 'labels', 'pairing', 'qc'] as const;
 
@@ -15,7 +15,13 @@ export function parseProductsView(raw: string | null | undefined): ProductsView 
   return DEFAULT_PRODUCTS_VIEW;
 }
 
-/** Href for a SKU's product detail page. */
+/**
+ * The catalog product open in the list's record plane (`/products?openSku=<SKU>`) —
+ * the same key the detail-stack history tracker records for a product (`DETAIL_STACK_DEFS.sku`).
+ */
+export const PRODUCT_RECORD_PARAM = 'openSku';
+
+/** Href for a SKU's standalone product page — the deep-link landing (GS1 resolver); the catalog list opens records in place. */
 export function productDetailHref(sku: string): string {
   return `/products/sku/${encodeURIComponent(sku)}`;
 }

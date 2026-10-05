@@ -13,6 +13,7 @@ import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
 import { LOCATION_STOCK_SORTS } from '@/lib/inventory/location-stock-row';
 import { parseQcLabelViewWire } from '@/lib/labels/qc-label-views';
+import { parsePrepackCondition, parsePrepackProvenance } from '@/lib/prepack/types';
 import { parseLabelCopiesWire } from '@/lib/print/labelCopies';
 import {
   RECEIVING_HISTORY_URL_PARAMS,
@@ -485,9 +486,21 @@ const INVENTORY_QC_LABELS_ROUTE_PARAMS = defineRouteParams({
     q: paramText,
     /** The open labelled unit (`serial_units.id`). */
     open: paramText,
+    /** The desktop print task. Kept in the URL so route hygiene cannot close it. */
+    task: paramEnum(['prepack'] as const),
     /** The row list's 1-based page (`useTriageCut`). */
     page: paramPositiveInt,
+    // The desk prepack task's run (`prepackHref`, same contract as `/m/prepack`). Hygiene
+    // stripping these looped: replace → refetch → the form rewrote them → replace…
+    mode: paramEnum(['single', 'bulk'] as const),
+    step: paramEnum(['product', 'unit', 'facts', 'evidence', 'contents', 'label'] as const),
+    catalogId: paramPositiveInt,
+    condition: paramRoundTrip(parsePrepackCondition),
+    provenance: paramRoundTrip(parsePrepackProvenance),
+    /** One per serial in the package. */
+    unit: paramText,
   },
+  repeats: ['unit'],
   carries: WORKBENCH_CARRIES,
 });
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createLabelIngestion, LabelIngestionServiceError, markShipStationIngestionApplied, recordShipStationLabelIngestion, shipStationClientEventId, type ShipStationLabelIngestionInput } from './ingestion-service';
+import { createLabelIngestion, deleteUnlinkedLabelIngestion, LabelIngestionServiceError, markShipStationIngestionApplied, recordShipStationLabelIngestion, shipStationClientEventId, type ShipStationLabelIngestionInput } from './ingestion-service';
 
 const org = '00000000-0000-4000-8000-000000000001' as never;
 const row = (state: string, extra: Record<string, unknown> = {}) => ({ id: 7, client_event_id: '00000000-0000-4000-8000-000000000007', state, row_version: 1, sha256: 'a'.repeat(64), file_basename: 'label.pdf', byte_size: 10, parser_version: 'v1', match_method: null, tracking_number_raw: null, tracking_number_normalized: null, carrier: null, quarantine_reason_code: null, created_at: new Date('2026-09-18T00:00:00Z'), updated_at: new Date('2026-09-18T00:00:00Z'), staged_object_key: null, source: 'MANUAL_UPLOAD', observed_at: new Date('2026-09-18T00:00:00Z'), matched_account_source: null, matched_marketplace_order_id: null, matched_order_id: null, applied_at: null, ...extra });
@@ -10,6 +10,51 @@ test('ingestion stages before parsing and persists the resolver result', async (
     attachTracking: async () => { calls.push('attach'); },
   });
   assert.equal(result.ingestion.state, 'MATCHED'); assert.equal(calls.indexOf('store') < calls.findIndex((call) => call.includes("state='MATCHED'")), true);
+});
+test('bulk parses printable evidence but never resolves an order', async () => {
+  let resolved = false;
+  const tracking = '9400100000000000000004';
+  const result = await createLabelIngestion({
+    organizationId: org,
+    actorStaffId: 2,
+    clientEventId: '00000000-0000-4000-8000-000000000009',
+    observedAt: '2026-10-04T00:00:00.000Z',
+    fileBasename: 'bulk-label.pdf',
+    bytes: Buffer.from('%PDF-bulk'),
+    matchOrder: false,
+  }, {
+    query: async () => ({ rows: [] }),
+    transaction: async (_org, fn) => fn({ query: async (sql: string) => ({
+      rows: [sql.includes("state='QUARANTINED'")
+        ? row('QUARANTINED', {
+            parser_version: 'v2',
+            tracking_number_raw: tracking,
+            tracking_number_normalized: tracking,
+            staged_object_key: 'label-ingestions/o/bulk.pdf',
+            quarantine_reason_code: 'ORDER_NOT_FOUND',
+          })
+        : row('RECEIVED')],
+    }) } as never),
+    store: { put: async () => {}, get: async () => Buffer.from('%PDF-bulk') },
+    parse: async () => ({
+      parserVersion: 'v2',
+      cycleforgeReference: null,
+      marketplaceOrderId: 'CF-TEST-PH-000002',
+      accountSource: 'Phone',
+      trackingNumberRaw: tracking,
+      trackingNumberNormalized: tracking,
+      carrier: 'USPS',
+      multiPackageEvidence: false,
+    }),
+    resolve: async () => {
+      resolved = true;
+      throw new Error('bulk must not resolve an order');
+    },
+  });
+  assert.equal(result.ingestion.state, 'QUARANTINED');
+  assert.equal(result.ingestion.trackingNumberNormalized, tracking);
+  assert.equal(result.ingestion.matchedOrderId, null);
+  assert.equal(resolved, false);
 });
 test('a paired label hands its tracking to every row of its order; a failed attach leaves the pairing standing', async () => {
   const attached: unknown[] = [];
@@ -67,4 +112,39 @@ test('shipstation: finalizing an APPLIED row is a no-op; a stale row version is 
   const stale: string[] = [];
   await assert.rejects(() => markShipStationIngestionApplied(org, { ingestionId: 7, expectedRowVersion: 1, orderIds: [3], shipmentId: 4, documentId: 5 }, tx('MATCHED', 3, stale)), (e: unknown) => e instanceof LabelIngestionServiceError && e.code === 'INGESTION_NOT_ACTIONABLE');
   assert.equal(stale.length, 1);
+});
+
+test('deleteUnlinkedLabelIngestion deletes only an unpaired row, audits it, then removes the staged object', async () => {
+  const sql: string[] = [];
+  const objects: string[] = [];
+  const result = await deleteUnlinkedLabelIngestion(
+    { organizationId: org, actorStaffId: 2, ingestionId: 7 },
+    {
+      transaction: async (_org, fn) => fn({ query: async (text: string) => {
+        sql.push(text);
+        return text.includes('SELECT')
+          ? { rows: [row('QUARANTINED', { staged_object_key: 'label-ingestions/o/a.pdf' })] }
+          : { rows: [] };
+      } } as never),
+      store: { put: async () => {}, get: async () => Buffer.alloc(0), delete: async ({ objectKey }) => { objects.push(objectKey); } },
+    },
+  );
+  assert.deepEqual(result, { id: 7, objectKey: 'label-ingestions/o/a.pdf' });
+  assert.ok(sql.some((text) => text.includes('audit_logs')));
+  assert.ok(sql.some((text) => text.includes('DELETE FROM label_ingestions')));
+  assert.deepEqual(objects, ['label-ingestions/o/a.pdf']);
+});
+
+test('deleteUnlinkedLabelIngestion refuses a matched or APPLIED row before delete', async () => {
+  for (const candidate of [row('MATCHED', { matched_order_id: 12 }), row('APPLIED', { matched_order_id: 12 })]) {
+    const sql: string[] = [];
+    await assert.rejects(
+      deleteUnlinkedLabelIngestion(
+        { organizationId: org, actorStaffId: 2, ingestionId: 7 },
+        { transaction: async (_org, fn) => fn({ query: async (text: string) => { sql.push(text); return { rows: [candidate] }; } } as never) },
+      ),
+      (error: unknown) => error instanceof LabelIngestionServiceError && error.code === 'INGESTION_NOT_ACTIONABLE',
+    );
+    assert.ok(!sql.some((text) => text.includes('DELETE FROM label_ingestions')));
+  }
 });

@@ -104,6 +104,11 @@ const config = {
                 // Interaction wash (row hover) — lighter than card on dark,
                 // canvas-toned on light. The codemod target for hover:bg-gray-50.
                 'surface-hover': 'var(--ds-color-surface-hover)',
+                // Pressed / selected wash for a light row — one step deeper than
+                // hover, never an ink inversion. `bg-surface-selected` was used
+                // (MobileDataListRow press, selected chips) before it existed and
+                // painted nothing; it is the sunken step.
+                'surface-selected': 'var(--ds-color-surface-sunken)',
                 // Tracks / skeletons / avatar placeholders (≈ gray-200).
                 'surface-strong': 'var(--ds-color-surface-strong)',
                 'surface-bench': 'var(--ds-color-surface-bench)',
@@ -229,7 +234,7 @@ const config = {
                 // Master-nav spine only (`font-spine` on MasterNavView). Not a
                 // fourth app cut — it resolves to the app sans (no Overpass load).
                 spine: ['var(--ds-font-sans)', 'Inter', 'system-ui', 'sans-serif'],
-                mono: ['var(--ds-font-mono)', 'IBM Plex Mono', 'ui-monospace', 'monospace'],
+                mono: ['var(--ds-font-mono)', 'Inter', 'system-ui', 'sans-serif'],
             },
             fontSize: {
                 // Legacy px scale (mini/eyebrow/micro/caption/label) RETIRED
@@ -270,6 +275,10 @@ const config = {
                 // unwrapped-route value. An explicit `tracking-*` still wins.
                 'role-eyebrow': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1.35', letterSpacing: 'var(--mode-label-tracking, 0.06em)', fontWeight: '600' }],
                 'role-micro': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1.4', letterSpacing: 'var(--mode-label-tracking, 0.02em)', fontWeight: '500' }],
+                // Initials inside the 20px staff mark. 12px is the smallest
+                // reliable two-initial face at normal density: clear at a
+                // glance, while retaining enough inset around the letters.
+                'role-avatar': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1', letterSpacing: '0.01em', fontWeight: '700' }],
                 // ── role-field: the TOUCH TEXT-ENTRY role ────────────────────
                 //
                 // 1rem = 16px, and it is the ONE role that deliberately does

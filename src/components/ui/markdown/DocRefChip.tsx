@@ -23,6 +23,7 @@ import { openDetailStack } from '@/lib/detail-stacks/open-store';
 import { repairStatusOperatorLabel } from '@/lib/repair-status';
 import { taskBoardDueFace } from '@/lib/task-board/task-board-model';
 import { docRefKey, type DocRefKind, type DocTaskFace } from '@/lib/tasks/doc-live';
+import { supportHref } from '@/lib/nav/route-tree';
 import { taskStatusOf } from '@/lib/tasks/task-status';
 import { taskLinkRepairHref } from '@/lib/tasks/task-links-shared';
 import { cn } from '@/utils/_cn';
@@ -113,7 +114,7 @@ export function DocRefChip({ kind, value, children }: { kind: DocRefKind; value:
     case 'ticket':
       return (
         <Door
-          href={surface === 'phone' ? `/m/t/${face.number}` : `/support?ticket=${face.number}`}
+          href={surface === 'phone' ? `/m/t/${face.number}` : supportHref({ q: face.number })}
           label={`Ticket ${face.number}`}
         >
           <span className={HANDLE}>#{face.number}</span>

@@ -25,12 +25,14 @@ export function getMobileAppTitle(
   if (pathname === '/m/orders') return 'Allocate';
   if (pathname.startsWith('/m/orders/')) return 'Fulfill';
   if (pathname === '/m/exceptions' || pathname.startsWith('/m/exceptions/')) return 'Exceptions';
+  if (pathname === '/m/support') return 'Support';
   if (pathname === '/m/imports' || pathname.startsWith('/m/imports/')) return 'Imports';
   if (pathname === '/m/stock' || pathname.startsWith('/m/stock/')) return 'Stock';
   if (pathname === '/m/racks') return 'Racks';
   if (pathname === '/m/products' || pathname.startsWith('/m/products/')) return 'Products';
   if (pathname === '/m/reports' || pathname.startsWith('/m/reports/')) return 'Reports';
   if (pathname === '/m/activity' || pathname.startsWith('/m/activity/')) return 'Live activity';
+  if (pathname === '/m/live-feed') return 'Live feed';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
   if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';
   if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';

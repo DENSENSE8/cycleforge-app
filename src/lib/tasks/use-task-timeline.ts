@@ -1,32 +1,26 @@
 'use client';
 
 /**
- * The open task's merged Timeline — follow-ups (`useTaskFollowUps`), the linked
- * ticket's comments (`useZendeskTicketBundle`) and the task's audit + alerts
- * (`GET /api/tasks/[id]/timeline`) through the pure `taskTimelineItems`. One
- * hook for the desk rail and the phone sheet, so both paint the same rows.
+ * The open task's merged Timeline — follow-ups (`useTaskFollowUps`) and the
+ * task's audit + alerts (`GET /api/tasks/[id]/timeline`) through the
+ * pure `taskTimelineItems`. Zero provider reads: the Timeline never reaches a
+ * helpdesk. One hook for the desk rail and the phone sheet, so both paint the
+ * same rows.
  */
 
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import { useTaskFollowUps } from './use-task-workspace';
-import {
-  taskTimelineItems,
-  ticketCommentRowsFromZendesk,
-  type TaskTimelineItem,
-  type TaskTimelinePayload,
-} from './task-timeline';
+import { taskTimelineItems, type TaskTimelineItem, type TaskTimelinePayload } from './task-timeline';
 
 /** The audit half's cache key; an alert send invalidates it (TaskAlertButton). */
 export function taskTimelineQueryKey(taskId: number | null) {
   return ['tasks', 'timeline', taskId] as const;
 }
 
-export function useTaskTimeline(taskId: number | null, ticketNumber: number | null) {
+export function useTaskTimeline(taskId: number | null) {
   const queryClient = useQueryClient();
   const { followUps, loading: followUpsLoading } = useTaskFollowUps(taskId);
-  const bundle = useZendeskTicketBundle(ticketNumber);
   const history = useQuery({
     queryKey: taskTimelineQueryKey(taskId),
     enabled: taskId != null,
@@ -50,19 +44,16 @@ export function useTaskTimeline(taskId: number | null, ticketNumber: number | nu
     });
   }, [queryClient, taskId]);
 
-  const comments = bundle.data?.comments;
   const items = useMemo<TaskTimelineItem[]>(
     () =>
       taskTimelineItems({
         followUps,
-        ticketComments: comments ? ticketCommentRowsFromZendesk(comments) : [],
         audit: history.data?.audit ?? [],
         alerts: history.data?.alerts ?? [],
         staffNames: history.data?.staffNames,
       }),
-    [followUps, comments, history.data],
+    [followUps, history.data],
   );
 
-  // The ticket half never holds the stream back: a slow or unconfigured helpdesk just adds rows later.
   return { items, loading: followUpsLoading || history.isLoading };
 }

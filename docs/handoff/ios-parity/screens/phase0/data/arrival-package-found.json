@@ -1,0 +1,37 @@
+{
+  "success": true,
+  "package": {
+    "receivingId": 48213,
+    "tracking": "1Z999AA10123456784",
+    "carrier": "UPS",
+    "found": true,
+    "platform": "ebay",
+    "platformLabel": "eBay",
+    "orderNumber": "12-11402-55871",
+    "vendor": "Greenbay Liquidators LLC",
+    "doorReceivedAt": "2026-10-04T15:12:09.481Z",
+    "items": [
+      {
+        "lineId": 88121,
+        "title": "Apple MacBook Air 13-inch M2 8-core CPU 8-core GPU 8GB Unified Memory 256GB SSD Midnight — open box, charger and USB-C cable included, original packaging",
+        "sku": "MBA13-M2-256",
+        "quantity": 2,
+        "imageUrl": "https://i.ebayimg.com/images/g/abcAAOSw1234/s-l500.jpg"
+      },
+      {
+        "lineId": 88122,
+        "title": "Line L-88122",
+        "sku": null,
+        "quantity": null,
+        "imageUrl": null
+      }
+    ],
+    "urgency": {
+      "urgent": true,
+      "tier": 1,
+      "source": "inbound_order",
+      "reason": "Order PO-1207 is High"
+    },
+    "location": null
+  }
+}

@@ -2,6 +2,7 @@
 
 import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { FnskuCopyRange } from '@/lib/print/labelCopies';
 
 /** Known, typed preference keys. The column is open JSONB; this is the contract. */
 export interface StaffPreferences {
@@ -94,6 +95,8 @@ export interface StaffPreferences {
    * (`useTriageDensity`). Shallow JSONB merge — writers send the whole map.
    */
   triageDensity?: Record<string, 'card' | 'row'> | null;
+  /** FNSKU quantity slider scale — 20, 30 or 99 (`useFnskuCopyRange`). */
+  fnskuCopyRange?: FnskuCopyRange | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

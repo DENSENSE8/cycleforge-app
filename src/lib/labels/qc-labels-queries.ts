@@ -3,10 +3,11 @@
 import 'server-only';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { skuCatalogImageUrlSql } from '@/lib/photos/sku-catalog-image-sql';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import type { QcLabelView } from '@/lib/labels/qc-label-views';
 import type { QcLabelPrintUnit, QcLabelRow } from '@/lib/labels/qc-label-row';
-import { unwrapScannedSerial } from '@/lib/barcode-routing';
+import { routeScan, unwrapScannedSerial } from '@/lib/barcode-routing';
 
 /** Rows painted per load; the footer says when the list is capped. */
 export const QC_LABEL_ROW_CAP = 500;
@@ -29,24 +30,41 @@ export async function listQcLabels(
   const q = opts.query?.trim() || null;
   const { rows } = await tenantQuery<DbRow & { total_count: number }>(
     orgId,
-    `WITH printed AS (
+    `WITH jobs AS (
+       -- A unit label is the unit's own job; a package label is ONE job keyed
+       -- by manifest_id, worn by every member unit.
+       SELECT j.serial_unit_id, j.created_at, j.is_reprint, j.actor_staff_id
+         FROM label_print_jobs j
+        WHERE j.organization_id = $1
+          AND j.template_id = $2
+          AND j.serial_unit_id IS NOT NULL
+       UNION ALL
+       SELECT mi.serial_unit_id, j.created_at, j.is_reprint, j.actor_staff_id
+         FROM label_print_jobs j
+         JOIN label_manifest_items mi
+           ON mi.organization_id = j.organization_id AND mi.manifest_id = j.manifest_id
+        WHERE j.organization_id = $1
+          AND j.template_id = $2
+          AND j.serial_unit_id IS NULL
+          AND j.manifest_id IS NOT NULL
+     ),
+     printed AS (
        SELECT j.serial_unit_id,
               MIN(j.created_at) AS first_printed_at,
               MAX(j.created_at) AS last_printed_at,
               COUNT(*)::int AS print_count,
               COUNT(*) FILTER (WHERE j.is_reprint)::int AS reprint_count,
               (ARRAY_AGG(j.actor_staff_id ORDER BY j.created_at DESC))[1] AS last_actor
-         FROM label_print_jobs j
-        WHERE j.organization_id = $1
-          AND j.template_id = $2
-          AND j.serial_unit_id IS NOT NULL
+         FROM jobs j
         GROUP BY j.serial_unit_id
      )
      SELECT su.id AS serial_unit_id,
             su.unit_uid,
             su.serial_number,
             su.sku,
+            COALESCE(su.sku_catalog_id, sc.id) AS sku_catalog_id,
             sc.product_title AS catalog_product_title,
+            ${skuCatalogImageUrlSql('sc')} AS image_url,
             (SELECT i.name FROM items i
               WHERE i.sku = su.sku AND i.organization_id = su.organization_id AND i.status = 'active'
               ORDER BY i.id LIMIT 1) AS zoho_item_title,
@@ -69,6 +87,8 @@ export async function listQcLabels(
                  AND b.order_id = alloc.order_id
                  AND (b.serial_unit_id = su.id OR UPPER(BTRIM(b.serial_number)) = su.normalized_serial)
             )) AS serial_on_order,
+            pkg.manifest_uid AS package_uid,
+            pkg.serial_count AS package_serial_count,
             COUNT(*) OVER ()::int AS total_count
        FROM printed p
        JOIN serial_units su ON su.id = p.serial_unit_id AND su.organization_id = $1
@@ -100,13 +120,26 @@ export async function listQcLabels(
           LIMIT 1
        ) alloc ON TRUE
   LEFT JOIN orders o ON o.id = alloc.order_id AND o.organization_id = su.organization_id
+  LEFT JOIN LATERAL (
+         SELECT m.manifest_uid,
+                (SELECT COUNT(*)::int FROM label_manifest_items c
+                  WHERE c.organization_id = m.organization_id AND c.manifest_id = m.id) AS serial_count
+           FROM label_manifest_items mi
+           JOIN label_manifests m ON m.id = mi.manifest_id AND m.organization_id = mi.organization_id
+          WHERE mi.organization_id = su.organization_id
+            AND mi.serial_unit_id = su.id
+            AND m.manifest_type = 'PREBOX'
+            AND m.status = 'SEALED'
+          LIMIT 1
+       ) pkg ON TRUE
       WHERE ${VIEW_SQL[opts.view]}
         AND ($3::text IS NULL
              OR su.normalized_serial ILIKE '%' || $3 || '%'
              OR su.unit_uid ILIKE '%' || $3 || '%'
              OR su.sku ILIKE '%' || $3 || '%'
              OR sc.product_title ILIKE '%' || $3 || '%'
-             OR o.order_id ILIKE '%' || $3 || '%')
+             OR o.order_id ILIKE '%' || $3 || '%'
+             OR pkg.manifest_uid ILIKE '%' || $3 || '%')
       ORDER BY p.last_printed_at DESC, su.id DESC
       LIMIT ${QC_LABEL_ROW_CAP}`,
     [orgId, QC_LABEL_TEMPLATE, q],
@@ -120,15 +153,23 @@ export async function listQcLabels(
   };
 }
 
+type TitleParts = { catalog_product_title: string | null; zoho_item_title: string | null };
+
 /**
- * The unit a print request names: the scanned QC label (unit_uid, GS1, `U-`)
- * or a typed serial. Never a bare id — a numeric serial must not print another
- * unit's sticker. `null` when no unit matches.
+ * The label a print request names: the scanned QC label (unit_uid, GS1, `U-`),
+ * a typed serial, or a package label (`KIT-…`, a SEALED PREBOX manifest). Never
+ * a bare id — a numeric serial must not print another unit's sticker. `null`
+ * when nothing matches.
  */
 export async function findQcLabelPrintUnit(orgId: OrgId, raw: string): Promise<QcLabelPrintUnit | null> {
+  const route = routeScan(raw);
+  if (route?.type === 'manifest') return findQcLabelPrintPackage(orgId, route.value);
   const key = unwrapScannedSerial(raw);
   if (!key) return null;
-  const { rows } = await tenantQuery<Omit<QcLabelPrintUnit, 'title'> & { catalog_product_title: string | null; zoho_item_title: string | null }>(
+  // The product face falls back to U-{OEM serial} when no minted unit uid
+  // exists. Treat that printed handle as the serial it names.
+  const handleSerial = /^U-(.+)$/i.exec(key)?.[1]?.trim() || key;
+  const { rows } = await tenantQuery<Omit<QcLabelPrintUnit, 'title' | 'package'> & TitleParts>(
     orgId,
     `SELECT su.id AS serial_unit_id, su.unit_uid, su.serial_number, su.sku,
             su.condition_grade::text AS condition_grade,
@@ -137,14 +178,14 @@ export async function findQcLabelPrintUnit(orgId: OrgId, raw: string): Promise<Q
               WHERE i.sku = su.sku AND i.organization_id = su.organization_id AND i.status = 'active'
               ORDER BY i.id LIMIT 1) AS zoho_item_title,
             EXISTS (SELECT 1 FROM label_print_jobs j
-                     WHERE j.organization_id = su.organization_id AND j.serial_unit_id = su.id AND j.template_id = $3) AS printed
+                     WHERE j.organization_id = su.organization_id AND j.serial_unit_id = su.id AND j.template_id = $4) AS printed
        FROM serial_units su
   LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('su')}
       WHERE su.organization_id = $1
-        AND (su.normalized_serial = UPPER(BTRIM($2)) OR su.unit_uid = BTRIM($2))
-      ORDER BY (su.normalized_serial = UPPER(BTRIM($2))) DESC
+        AND (su.normalized_serial = UPPER(BTRIM($2)) OR su.unit_uid = BTRIM($3))
+      ORDER BY (su.unit_uid = BTRIM($3)) DESC
       LIMIT 1`,
-    [orgId, key, QC_LABEL_TEMPLATE],
+    [orgId, handleSerial, key, QC_LABEL_TEMPLATE],
   );
   const row = rows[0];
   if (!row) return null;
@@ -152,5 +193,59 @@ export async function findQcLabelPrintUnit(orgId: OrgId, raw: string): Promise<Q
   return {
     ...unit,
     title: resolveSkuIdentityTitle({ catalog_product_title, zoho_item_title, sku: unit.sku }) || unit.sku || 'Unknown SKU',
+    package: null,
+  };
+}
+
+/**
+ * A package label: the SEALED PREBOX manifest, printed as one sticker. The
+ * unit fields name its lead member (lowest ordinal); sku and grade are the
+ * package's, falling back to the lead's.
+ */
+async function findQcLabelPrintPackage(orgId: OrgId, packageUid: string): Promise<QcLabelPrintUnit | null> {
+  const { rows } = await tenantQuery<
+    Omit<QcLabelPrintUnit, 'title' | 'package'> &
+      TitleParts & { package_id: number | string; package_uid: string; serial_count: number }
+  >(
+    orgId,
+    `SELECT m.id AS package_id,
+            m.manifest_uid AS package_uid,
+            (SELECT COUNT(*)::int FROM label_manifest_items c
+              WHERE c.organization_id = m.organization_id AND c.manifest_id = m.id) AS serial_count,
+            su.id AS serial_unit_id, su.unit_uid, su.serial_number,
+            pk.sku,
+            COALESCE(NULLIF(BTRIM(m.condition_grade), ''), su.condition_grade::text) AS condition_grade,
+            sc.product_title AS catalog_product_title,
+            (SELECT i.name FROM items i
+              WHERE i.sku = pk.sku AND i.organization_id = m.organization_id AND i.status = 'active'
+              ORDER BY i.id LIMIT 1) AS zoho_item_title,
+            EXISTS (SELECT 1 FROM label_print_jobs j
+                     WHERE j.organization_id = m.organization_id AND j.manifest_id = m.id AND j.template_id = $3) AS printed
+       FROM label_manifests m
+       JOIN LATERAL (
+              SELECT mi.serial_unit_id FROM label_manifest_items mi
+               WHERE mi.organization_id = m.organization_id AND mi.manifest_id = m.id
+               ORDER BY mi.ordinal, mi.id
+               LIMIT 1
+            ) lead ON TRUE
+       JOIN serial_units su ON su.id = lead.serial_unit_id AND su.organization_id = m.organization_id
+ CROSS JOIN LATERAL (
+              SELECT COALESCE(NULLIF(BTRIM(m.sku), ''), su.sku) AS sku, m.organization_id
+            ) pk
+  LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('pk')}
+      WHERE m.organization_id = $1
+        AND UPPER(m.manifest_uid) = UPPER(BTRIM($2))
+        AND m.manifest_type = 'PREBOX'
+        AND m.status = 'SEALED'
+      LIMIT 1`,
+    [orgId, packageUid, QC_LABEL_TEMPLATE],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  const { catalog_product_title, zoho_item_title, package_id, package_uid, serial_count, ...unit } = row;
+  return {
+    ...unit,
+    title: resolveSkuIdentityTitle({ catalog_product_title, zoho_item_title, sku: unit.sku }) || unit.sku || 'Unknown SKU',
+    package: { id: Number(package_id), uid: package_uid, serial_count },
   };
 }

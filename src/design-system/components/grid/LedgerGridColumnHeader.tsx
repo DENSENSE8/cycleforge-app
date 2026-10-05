@@ -10,7 +10,7 @@ import {
   type GridSelectGutterChrome,
 } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { X } from '@/components/Icons';
+import { Pin, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { emitToggleAll } from '@/lib/selection/table-selection';
@@ -84,6 +84,12 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
    * columns grow a right-edge grip.
    */
   onResizeColumn?: (key: string, widthPx: number) => void;
+  /**
+   * Freeze every column up to and including this one (the Sheets "freeze
+   * through"); the current edge's pin unfreezes back to the default. Present ⇒
+   * each header grows a hover pin. The layout owner writes it.
+   */
+  onFreezeColumn?: (key: string) => void;
   /** Runtime label override (e.g. Unbox stage → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
   /**
@@ -113,6 +119,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   onSortColumn,
   onReorderColumn,
   onResizeColumn,
+  onFreezeColumn,
   labelFor,
   leadingChrome,
   bulkBar,
@@ -285,6 +292,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
             onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
             onReorderColumn={onReorderColumn}
             onResizeColumn={onResizeColumn}
+            onFreezeColumn={onFreezeColumn}
           />
         );
       })}
@@ -303,6 +311,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   onSort,
   onReorderColumn,
   onResizeColumn,
+  onFreezeColumn,
 }: {
   column: C;
   last: boolean;
@@ -315,6 +324,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   onSort?: () => void;
   onReorderColumn?: (dragKey: string, dropKey: string) => void;
   onResizeColumn?: (key: string, widthPx: number) => void;
+  onFreezeColumn?: (key: string) => void;
 }) {
   const frozen = Boolean(column.frozen);
   const cellRef = useRef<HTMLDivElement>(null);
@@ -441,6 +451,24 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         sortDir={isActiveSort ? sortDir : null}
         sortable={sortActive}
       />
+      {onFreezeColumn && !flushTrack ? (
+        <HoverTooltip label={column.key === frozenEdgeKey ? 'Unfreeze columns' : 'Freeze through this column'} asChild>
+          <IconButton
+            ariaLabel={column.key === frozenEdgeKey ? 'Unfreeze columns' : `Freeze through ${label}`}
+            data-freeze-column={column.key}
+            onClick={(event) => {
+              event.stopPropagation();
+              onFreezeColumn(column.key);
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            className={cn(
+              'ml-auto grid size-4 shrink-0 place-content-center text-text-faint hover:text-text-default',
+              column.key === frozenEdgeKey ? 'text-text-muted' : 'opacity-0 group-hover/hcell:opacity-100',
+            )}
+            icon={<Pin aria-hidden className="size-3" />}
+          />
+        </HoverTooltip>
+      ) : null}
       {resizable ? (
         <span
           role="separator"
@@ -448,6 +476,14 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
           aria-label={`Resize ${label}`}
           data-resize-grip
           onClick={(event) => event.stopPropagation()}
+          // Double-click fits the column to its widest content (Sheets).
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            const cell = cellRef.current;
+            if (!cell) return;
+            const fit = fitColumnWidth(cell, columns.indexOf(column));
+            if (fit != null) onResizeColumn?.(column.key, Math.max(MIN_RESIZE_PX, fit));
+          }}
           onPointerDown={(event) => {
             // Never let a resize start a sort or a reorder.
             event.preventDefault();
@@ -466,7 +502,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
             window.addEventListener('pointerup', up);
           }}
           className={cn(
-            'absolute inset-y-0 right-0 z-raised w-1 cursor-col-resize',
+            'absolute inset-y-0 right-0 z-raised w-1.5 cursor-col-resize',
             'opacity-0 transition-opacity group-hover/hcell:opacity-100',
             'bg-border-default',
           )}
@@ -480,4 +516,30 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
       {cell}
     </HoverTooltip>
   );
+}
+
+/**
+ * The width that shows a column's widest content in full: the header cell
+ * and every rendered row's cell at `index` (rows are `[data-grid-row]`, one
+ * child per column of the mounted model), each measured by its own content's
+ * scroll width plus its padding. Virtualized rows not on screen are not
+ * measured — the fit is to what the operator can see.
+ */
+function fitColumnWidth(headerCell: HTMLElement, index: number): number | null {
+  let host: HTMLElement | null = headerCell.parentElement;
+  while (host && !host.querySelector('[data-grid-row]')) host = host.parentElement;
+  const cells: HTMLElement[] = [headerCell];
+  for (const row of host?.querySelectorAll<HTMLElement>('[data-grid-row]') ?? []) {
+    const cell = row.children[index];
+    if (cell instanceof HTMLElement) cells.push(cell);
+  }
+  let widest = 0;
+  for (const cell of cells) {
+    const style = getComputedStyle(cell);
+    const pad = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    let content = 0;
+    for (const el of cell.querySelectorAll<HTMLElement>('*')) content = Math.max(content, el.scrollWidth);
+    widest = Math.max(widest, content + pad + 2);
+  }
+  return widest > 0 ? Math.ceil(widest) : null;
 }

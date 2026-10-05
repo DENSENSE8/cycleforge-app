@@ -57,7 +57,8 @@ export function playScanTone(kind: ScanFeedbackKind): void {
   }
 }
 
-const SCAN_BUZZ: Record<ScanFeedbackKind, number | number[]> = {
+/** Vibration pattern per kind (ms on/off). Exported for the native app's generated tokens (scripts/ios/generate-ios-tokens.mts). */
+export const SCAN_BUZZ: Record<ScanFeedbackKind, number | number[]> = {
   success: 16,
   warn: [16, 80, 16],
   reject: [24, 40, 24],

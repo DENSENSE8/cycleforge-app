@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "items": [
+    {
+      "receivingId": 53388,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "operator",
+        "reason": "Marked not urgent by hand"
+      },
+      "location": null,
+      "tracking": "1Z14V5344202691617",
+      "found": true,
+      "platform": "ebay",
+      "platformLabel": "eBay",
+      "orderNumber": "04-15231-48734",
+      "vendor": "chrispig05",
+      "title": "Bose Acoustimass 10 Series V Home Theater Speaker System Black",
+      "lineCount": 1,
+      "doorReceivedAt": "2026-10-02T18:32:43Z"
+    }
+  ]
+}

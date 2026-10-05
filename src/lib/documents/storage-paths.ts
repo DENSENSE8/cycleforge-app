@@ -9,6 +9,8 @@ interface OutboundDocumentPathInput {
   trackingTail?: string | null;
   documentId: number;
   extension?: string;
+  /** Optional immutable suffix for a replacement generation. */
+  versionToken?: string | null;
 }
 
 function slugSegment(value: string): string {
@@ -28,6 +30,7 @@ export function buildOutboundDocumentPath(input: OutboundDocumentPathInput, now:
     slugSegment(input.orderRef),
     input.trackingTail ? slugSegment(input.trackingTail) : null,
     String(input.documentId),
+    input.versionToken ? slugSegment(input.versionToken) : null,
   ]
     .filter(Boolean)
     .join('-');

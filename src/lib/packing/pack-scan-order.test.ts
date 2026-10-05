@@ -89,10 +89,14 @@ test('resolvePackScan: a unit label on no open order goes to prepack, never the 
   assert.deepEqual(await resolvePackScan(client, ORG, 'U-SN123', deps({ unit: { serialUnitId: 9, orderId: null } })), {
     kind: 'unit-not-on-order',
     error: 'Unit SN123 is not on an open order',
+    serialUnitId: 9,
+    unitKey: 'SN123',
   });
   assert.deepEqual(await resolvePackScan(client, ORG, 'U-SN404', deps({})), {
     kind: 'unit-not-on-order',
     error: 'Unit label SN404 not found',
+    serialUnitId: null,
+    unitKey: 'SN404',
   });
 });
 
@@ -106,5 +110,10 @@ test('resolvePackScan: a typed serial on an open order packs; anything else stay
   const tracking = deps({});
   assert.equal(await resolvePackScan(client, ORG, '1Z999AA10123456784', tracking), null);
   assert.deepEqual(tracking.unitScans, [{ kind: 'raw', key: '1Z999AA10123456784' }]);
-  assert.equal(await resolvePackScan(client, ORG, 'SN123', deps({ unit: { serialUnitId: 9, orderId: null } })), null);
+  assert.deepEqual(await resolvePackScan(client, ORG, 'SN123', deps({ unit: { serialUnitId: 9, orderId: null } })), {
+    kind: 'unit-not-on-order',
+    error: 'Unit SN123 is not on an open order',
+    serialUnitId: 9,
+    unitKey: 'SN123',
+  });
 });

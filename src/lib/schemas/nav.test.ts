@@ -42,7 +42,7 @@ test('recents open body: numeric ids become text, label defaults to empty, ident
 });
 
 test('facets query: only declared contexts', () => {
-  assert.equal(NavFacetsQuery.safeParse({ context: 'outbound.triage' }).success, true);
-  assert.equal(NavFacetsQuery.safeParse({ context: 'outbound.orders' }).success, false);
+  assert.equal(NavFacetsQuery.safeParse({ context: 'outbound.orders' }).success, true);
+  assert.equal(NavFacetsQuery.safeParse({ context: 'outbound.triage' }).success, false);
   assert.equal(NavFacetsQuery.safeParse({ context: null }).success, false);
 });

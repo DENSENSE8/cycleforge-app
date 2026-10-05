@@ -1,6 +1,6 @@
 /**
  * A triage VIEW's declaration — the pattern card as data, one per nav view
- * (`NAV_PAGE_DECLS[page].items[view]`: `outbound.triage`, `incoming.pipeline`,
+ * (`NAV_PAGE_DECLS[page].items[view]`: `outbound.orders`, `incoming.pipeline`,
  * `incoming.docked`, …), never per page and never per table. Two views of
  * one page can be drastically different (Shipping vs FBA vs Exceptions); two
  * pages share the face. The face paints; the view says what a row MEANS on

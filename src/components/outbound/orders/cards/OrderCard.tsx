@@ -17,7 +17,7 @@ import { memo, useMemo } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { OrderIdChip } from '@/components/ui/CopyChip';
+import { OperationalIdentityChip } from '@/design-system/components/OperationalIdentityChip';
 import { RecordCard, type RecordOpenEvent } from '@/design-system/components/record-card/RecordCard';
 import type { RecordCardChip, RecordCardModel } from '@/design-system/components/record-card/record-card-types';
 import type { ViewCardModel } from '@/design-system/components/triage-card-list/triage-view';
@@ -29,6 +29,7 @@ import { CARD_DISCLOSE, CARD_FACT_BOX_CLASS } from '@/design-system/tokens/desk-
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { platformDisplayName } from '@/lib/platform-display';
+import { outboundOrderIdentity, type OperationalIdentity } from '@/lib/operational-identity';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { orderRecordLine, type OrderCardModel } from '@/lib/orders/order-card-model';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
@@ -49,8 +50,15 @@ const STATUS_MEANING: Readonly<Record<LifecycleState, string>> = {
 
 const moreOutOfStock = (count: number) => `${count} more out of stock`;
 
-/** The order as the shared card reads it (`outbound.triage`); `channel` is the catalog-resolved storefront (a hook's, so the adapter's). */
-export function orderRecordCard(model: OrderCardModel, channel: RecordCardModel['channel']): ViewCardModel<typeof OUTBOUND_TRIAGE_VIEW> {
+/**
+ * The order as the shared card reads it (`outbound.orders`); `identity` is the order's
+ * {@link OperationalIdentity} and `channel` the catalog-resolved storefront (both a hook's, so the adapter's).
+ */
+export function orderRecordCard(
+  model: OrderCardModel,
+  identity: OperationalIdentity,
+  channel: RecordCardModel['channel'],
+): ViewCardModel<typeof OUTBOUND_TRIAGE_VIEW> {
   const spec = LIFECYCLE[model.state];
   const chips: RecordCardChip[] = [];
   const urgentWord = model.urgentLabel ?? 'Urgent';
@@ -77,9 +85,9 @@ export function orderRecordCard(model: OrderCardModel, channel: RecordCardModel[
           }
         : null,
     aria: {
-      card: `Order ${model.orderId}, ${spec.label}, ${model.lines[0]?.title ?? ''}`,
-      open: `Open order ${model.orderId}`,
-      check: `Select order ${model.orderId}`,
+      card: `${identity.ariaLabel}, ${spec.label}, ${model.lines[0]?.title ?? ''}`,
+      open: `Open ${identity.ariaLabel}`,
+      check: `Select ${identity.ariaLabel}`,
     },
     channel,
     person: model.buyerName,
@@ -120,11 +128,13 @@ export const OrderCard = memo(function OrderCard({
   const channel = useOrderChannel()(model.orderId, model.accountSource);
   const channelName = platformDisplayName(channel);
   const lead = model.lines[0];
+  const orderIdentity = useMemo(() => outboundOrderIdentity(model.orderId, channel), [model.orderId, channel]);
 
   const record = useMemo(
     () =>
       orderRecordCard(
         model,
+        orderIdentity,
         channelName
           ? {
               label: channelName,
@@ -134,7 +144,7 @@ export const OrderCard = memo(function OrderCard({
             }
           : null,
       ),
-    [model, channel, channelName],
+    [model, orderIdentity, channel, channelName],
   );
 
   if (!lead) return null;
@@ -152,7 +162,7 @@ export const OrderCard = memo(function OrderCard({
       platformLabel={channelName}
       showInlineOpen={false}
     >
-      <OrderIdChip value={model.orderId} plain dense truncateDisplay={false} fitDisplayWidth disableTooltip />
+      <OperationalIdentityChip identity={orderIdentity} presentation="full" disableTooltip />
     </OrderAdminLinkAction>
   );
 

@@ -41,13 +41,17 @@ export const COPY_SHOWN_HOTKEY = 'mod+alt+c';
  * Paste a list and check each number's status, from any page (NavFind's
  * paste-a-list: the clipboard's 2+ numbers become the held list in the
  * search field, else the field takes focus with its list panel open, where
- * ⌘V works). ⌘⌥V / Ctrl+Alt+V — the paste twin of {@link COPY_SHOWN_HOTKEY}
- * (copy every shown entry ↔ paste a list). ⌘⇧V is clipboard history
- * (`ClipboardHistoryHost`). Never inside a text field: AltGr layouts type
- * characters with Ctrl+Alt there. Not bare `B`: record verbs own `B`
- * (stock, repair, ship-by).
+ * ⌘V works). ⌘⇧V / Ctrl+Shift+V (operator 2026-10-04), never inside a text
+ * field — there the browser's paste-as-plain-text keeps it. Not bare `B`:
+ * record verbs own `B` (stock, repair, ship-by).
  */
-export const PASTE_LIST_HOTKEY = 'mod+alt+v';
+export const PASTE_LIST_HOTKEY = 'mod+shift+v';
+/**
+ * Clipboard history (`ClipboardHistoryHost`): ⌘⌥V / Ctrl+Alt+V — moved off
+ * ⌘⇧V for paste-a-list (operator 2026-10-04). Never inside a text field:
+ * AltGr layouts type characters with Ctrl+Alt there.
+ */
+export const CLIPBOARD_HISTORY_HOTKEY = 'mod+alt+v';
 
 /**
  * A hotkey as written on a verb: a single letter (`'p'`, bare) or a chord

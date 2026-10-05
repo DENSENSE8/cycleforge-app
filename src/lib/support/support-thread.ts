@@ -91,6 +91,18 @@ function messageText(c: SupportThreadComment): string {
   return text.length > MESSAGE_CHARS ? `${text.slice(0, MESSAGE_CHARS)}…` : text;
 }
 
+/**
+ * The CUSTOMER's comment when nobody on our side wrote it: not a helpdesk
+ * agent (role or roster) and not a CycleForge staffer. The one customer-vs-
+ * agent rule — the drafter's thread read and the Support mirror bridge share it.
+ */
+export function isCustomerComment(
+  c: Pick<SupportThreadComment, 'author_id' | 'author_is_agent' | 'author_staff_id'>,
+  agentIds: ReadonlySet<number>,
+): boolean {
+  return c.author_is_agent !== true && c.author_staff_id == null && !agentIds.has(Number(c.author_id));
+}
+
 export function readSupportThread(input: {
   /** The whole mirrored thread, oldest first. */
   comments: ReadonlyArray<SupportThreadComment>;
@@ -124,11 +136,7 @@ export function readSupportThread(input: {
     if (!c.public) continue;
     const text = messageText(c);
     if (!text) continue;
-    // The CUSTOMER's when nobody on our side wrote it: not a helpdesk agent
-    // (role or roster) and not a CycleForge staffer.
-    const fromCustomer =
-      c.author_is_agent !== true && c.author_staff_id == null && !agentIds.has(Number(c.author_id));
-    const role: SupportThreadRole = fromCustomer ? 'customer' : 'agent';
+    const role: SupportThreadRole = isCustomerComment(c, agentIds) ? 'customer' : 'agent';
     const on = typeof c.created_at === 'string' ? c.created_at.slice(0, 10) : '';
     turns.push(on ? { role, text, on } : { role, text });
     if (role === 'customer') customerMessage = text;

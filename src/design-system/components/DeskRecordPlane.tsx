@@ -4,6 +4,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -12,7 +13,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useRouter } from 'next/navigation';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import { isInternalPath, RECORD_BACK_PARAM } from '@/lib/records/record-details';
 import { motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import {
@@ -169,10 +172,18 @@ export function DeskRecordPlane({
   const swapTransition = swap.transition;
   const swapKey = recordKey ?? (typeof title === 'string' ? title : 'record');
 
-  const onCloseRef = useRef(onClose);
+  // A record opened from another page (the pasted list, the ⌘K palette) carries
+  // `recordBack`: closing it returns there instead of to this desk's list.
+  const router = useRouter();
+  const close = useCallback(() => {
+    const back = new URLSearchParams(window.location.search).get(RECORD_BACK_PARAM);
+    if (isInternalPath(back)) router.push(back, { scroll: false });
+    else onClose();
+  }, [onClose, router]);
+  const onCloseRef = useRef(close);
   useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
+    onCloseRef.current = close;
+  }, [close]);
 
   // Split: the first Esc closes the record. On `document`, so it runs before
   // the stage's own Esc (leave split) on `window`.
@@ -324,7 +335,7 @@ export function DeskRecordPlane({
                     subtitle={subtitle}
                     indexLabel={indexLabel}
                     // An always-open rail has nothing to close to; an `'open'` rail folds back to the lone list.
-                    onClose={listRail === true ? undefined : onClose}
+                    onClose={listRail === true ? undefined : close}
                     actions={actions}
                     // The split pane is narrow: the drawings alone (words in the tooltip), so the order's title keeps its room.
                     // A rail desk has one view — no switch.
@@ -362,7 +373,7 @@ export function DeskRecordPlane({
           <div className="absolute inset-x-0 bottom-0" style={{ top: overlayTop }} data-desk-record-open="">
             <DeskStageOverlay
               open
-              onClose={onClose}
+              onClose={close}
               title={title}
               subtitle={subtitle}
               indexLabel={indexLabel}

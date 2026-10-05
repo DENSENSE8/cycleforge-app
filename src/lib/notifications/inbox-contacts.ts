@@ -1,13 +1,17 @@
 /**
  * The contacts a follow-up alert carries (`staff_inbox_items.payload.contacts`)
  * — read back from the payload, and painted as one compact, clickable phrase
- * each (`customer@x.com · sales@ · Order 12345`, `Ticket #10022`). Client-safe.
+ * each (`customer@x.com · sales@ · Order 12345`, `Ticket #10022`). A relay
+ * address (`…@members.ebay.com`) stays in the payload and paints as its label
+ * ("eBay relay email") through the Support contact face. Client-safe.
  */
 
 import { emailRefNumberFace } from '@/lib/tasks/task-email-refs';
 import { mailboxFace } from '@/lib/tasks/task-email-refs-shared';
 import { taskLinkRepairHref } from '@/lib/tasks/task-links-shared';
+import { supportHref } from '@/lib/nav/route-tree';
 import { getTrackingUrl } from '@/lib/tracking-format';
+import { supportContactFace } from '@/lib/support/contact-face';
 import type { InboxContact } from './types';
 
 function text(raw: unknown): string | null {
@@ -77,18 +81,21 @@ export interface InboxContactFace {
 /** One contact as the inbox row / header line / alert composer reads it. */
 export function inboxContactFace(contact: InboxContact, surface: 'desk' | 'phone'): InboxContactFace {
   switch (contact.kind) {
-    case 'email':
+    case 'email': {
+      const face = supportContactFace({ email: contact.address });
       return {
         key: `email:${contact.address}:${contact.mailbox}`,
-        text: [contact.address, mailboxFace(contact.mailbox), emailRefNumberFace(contact)].filter(Boolean).join(' · '),
-        href: `mailto:${contact.address}`,
-        external: true,
+        text: [face.label, mailboxFace(contact.mailbox), emailRefNumberFace(contact)].filter(Boolean).join(' · '),
+        // A relay is answered on its marketplace, not from a mail client.
+        href: face.email ? `mailto:${face.email}` : null,
+        external: face.email != null,
       };
+    }
     case 'ticket':
       return {
         key: `ticket:${contact.number}`,
         text: `Ticket #${contact.number}`,
-        href: surface === 'phone' ? `/m/t/${contact.number}` : `/support?ticket=${contact.number}`,
+        href: surface === 'phone' ? `/m/t/${contact.number}` : supportHref({ q: contact.number }),
         external: false,
       };
     case 'order':

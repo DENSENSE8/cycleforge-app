@@ -9,7 +9,8 @@ import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
   deriveOrderExceptionBlockers,
 } from '@/lib/orders/order-exception-types';
-import { SHIPPING_EXCEPTIONS_PATH, shippingOrdersHref } from '@/lib/shipping/orders-desk';
+import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
+import { EXCEPTIONS_PATH } from '@/lib/exceptions/types';
 import type { SearchSelection } from '@/lib/search/search-selection';
 
 export interface SearchDossierFinding {
@@ -74,7 +75,7 @@ export function orderDossierFindings(order: {
     itemNumber: order.item_number,
     skuCatalogId: order.sku_catalog_id ?? null,
   });
-  const exceptionsHref = `${SHIPPING_EXCEPTIONS_PATH}?order=${order.id}`;
+  const exceptionsHref = `${EXCEPTIONS_PATH}?order=${order.id}`;
   for (const blocker of blockers) {
     findings.push({
       key: blocker,
@@ -98,7 +99,7 @@ export function orderDossierFindings(order: {
 
 export function orderDossierHandoffs(orderId: number, hasFindings: boolean): SearchDossierHandoff[] {
   const exceptions: SearchDossierHandoff = {
-    href: `${SHIPPING_EXCEPTIONS_PATH}?order=${orderId}`,
+    href: `${EXCEPTIONS_PATH}?order=${orderId}`,
     label: 'Open exceptions',
     primary: hasFindings,
   };

@@ -48,7 +48,18 @@ export function NavSwitcherMenu({
   rows,
   hint,
 }: {
-  current: { label: string; icon?: ComponentType<{ className?: string }>; iconTone?: string; trailing?: ReactNode };
+  current: {
+    label: string;
+    icon?: ComponentType<{ className?: string }>;
+    iconTone?: string;
+    /**
+     * Secondary marks (other views' alert beacons) that only use the room the
+     * label leaves: whole marks that do not fit drop out, the name never
+     * truncates for them (owner 2026-10-04, "Que…" under ↩6 ⏱1).
+     */
+    aside?: ReactNode;
+    trailing?: ReactNode;
+  };
   rows: readonly NavSwitcherRow[];
   /** The hover card's rows; empty = no hint (no keys bound here). */
   hint: readonly KeyHintRow[];
@@ -154,7 +165,11 @@ export function NavSwitcherMenu({
             <CurrentIcon className={navIconStrokeClass(cn('size-4', current.iconTone ?? 'text-text-default'))} />
           </span>
         ) : null}
-        <span className="min-w-0 flex-1 truncate">{current.label}</span>
+        <span className={cn('min-w-0 truncate', current.aside ? 'shrink' : 'flex-1')}>{current.label}</span>
+        {current.aside ? (
+          // One line tall: a mark past the room wraps onto the hidden second line, so marks drop whole (only a lone first mark can clip).
+          <span className="flex h-5 min-w-0 flex-1 flex-wrap items-center justify-end gap-1 overflow-hidden">{current.aside}</span>
+        ) : null}
         {current.trailing}
         {/* text-muted, not -faint: the chevron is the menu's only affordance and -faint read 2.6:1 on the light sidebar. */}
         <ChevronDown aria-hidden className={cn('size-3.5 shrink-0 text-text-muted transition-transform', open && 'rotate-180')} />

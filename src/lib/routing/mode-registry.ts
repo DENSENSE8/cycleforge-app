@@ -36,7 +36,9 @@ const DESK_TRIAGE_ROUTES = [
   // Records + catalog
   '/dashboard', '/fulfilled', '/products', '/search', '/serial', '/photos', '/ops', '/review', '/signals',
   '/sourcing', '/stations', '/studio', '/tote', '/manuals', '/forge', '/operations', '/reports', '/calendar', '/exceptions',
-  '/open-links', '/support', '/onboarding', '/settings', '/admin',
+  '/open-links', '/onboarding', '/settings', '/admin',
+  // The Support workspace (owner 2026-10-04: a top-level workspace at /support)
+  '/support',
   // Identifier doors that resolve and redirect (GS1 links, short links, QR)
   '/01', '/414', '/l', '/o', '/p', '/q', '/qr', '/s',
   // Auth + public entry

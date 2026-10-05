@@ -123,6 +123,34 @@ test('exact miss + ambiguous last-8 (≥2) + digit-prefix miss → matchKind "no
   assert.ok(captured.digitPrefixParams);
 });
 
+test('a typed last 8 reaches the last-8 tier as its own key and lands on the one carton', async () => {
+  // Operator 2026-10-04: tracking identity is its last 8 digits.
+  const { deps, captured } = fakes({
+    exact: [],
+    last8: [{ shipment_id: 182432, receiving_id: 53615, receiving_source: 'zoho_po' }],
+  });
+  const res = await resolveShipmentForScan('98732822', ORG, deps);
+  assert.deepEqual(captured.exactParams, ['98732822', ORG]);
+  assert.deepEqual(captured.last8Params, ['98732822', ORG]);
+  assert.equal(res.matchKind, 'last8');
+  assert.equal(res.receivingId, 53615);
+});
+
+test('the last-8 query counts each shipment as its newest carton, then distinct cartons', async () => {
+  // One shipment re-minted into two cartons is ONE last-8 hit — the carton the
+  // exact tier picks for the full number (`ORDER BY r.id DESC`).
+  let last8Sql = '';
+  const { deps } = fakes({ exact: [], last8: [], digitPrefix: [] });
+  const query = deps.query;
+  deps.query = async <T>(orgId: Parameters<typeof query>[0], sql: string, params: unknown[]) => {
+    if (sql.includes('RIGHT(regexp_replace')) last8Sql = sql;
+    return query<T>(orgId, sql, params);
+  };
+  await resolveShipmentForScan('98732822', ORG, deps);
+  assert.match(last8Sql, /SELECT DISTINCT ON \(receiving_id\)[\s\S]*SELECT DISTINCT ON \(stn\.id\)/);
+  assert.match(last8Sql, /ORDER BY stn\.id, r\.id DESC\s*\) newest\s*ORDER BY receiving_id DESC\s*LIMIT 2/);
+});
+
 test('exact miss + last-8 miss → matchKind "none"', async () => {
   const { deps } = fakes({ exact: [], last8: [], digitPrefix: [] });
   const res = await resolveShipmentForScan('382141152045', ORG, deps);

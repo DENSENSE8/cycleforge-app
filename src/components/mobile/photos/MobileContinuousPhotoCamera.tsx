@@ -153,7 +153,10 @@ export function MobileContinuousPhotoCamera({
           type="button"
           onClick={onClose}
           ariaLabel="Close photo capture"
-          className="h-11 w-11 rounded-full bg-black/55 backdrop-blur-md active:bg-black/75"
+          size="touch"
+          radius="pill"
+          tone="glass"
+          className="bg-black/55 backdrop-blur-md active:bg-black/75"
           icon={<X className="h-5 w-5 text-white" />}
         />
       </div>

@@ -5,7 +5,10 @@
 import type { PrintStock } from '@/lib/label-prints/print-route';
 import type {
   PrintStationAssignment,
+  PrintStationEnrollment,
   PrintStationHeartbeat,
+  PrintStationJob,
+  PrintStationKind,
   PrintStationRegistry,
 } from './print-station-registry-contracts';
 
@@ -87,4 +90,45 @@ export async function putPrintStationAssignment(stock: PrintStock, stationId: st
       body: JSON.stringify({ stock, stationId }),
     }),
   );
+}
+
+async function sendJson<T>(url: string, method: 'POST' | 'PUT', body: unknown): Promise<T> {
+  return readData(
+    await fetch(url, {
+      method,
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+/** Enrol a new org-owned station; resolves its single-use pairing code (shown once). */
+export function postPrintStationEnroll(name: string): Promise<PrintStationEnrollment> {
+  return sendJson('/api/v1/print-stations/enroll', 'POST', { name: name.trim().slice(0, PRINT_STATION_NAME_MAX) });
+}
+
+/** Invalidate an enrolled station's old credential and return its fresh four-digit code. */
+export function postPrintStationRePair(stationId: string): Promise<PrintStationEnrollment> {
+  return sendJson('/api/v1/print-stations/re-pair', 'POST', { stationId });
+}
+
+/** Pause (refuse jobs) or resume one station. */
+export function putPrintStationPaused(stationId: string, paused: boolean): Promise<{ stationId: string; paused: boolean }> {
+  return sendJson('/api/v1/print-stations/pause', 'PUT', { stationId, paused });
+}
+
+/** Revoke an enrolled station or forget a browser one. */
+export function postPrintStationRevoke(stationId: string): Promise<{ stationId: string; kind: PrintStationKind }> {
+  return sendJson('/api/v1/print-stations/revoke', 'POST', { stationId });
+}
+
+export const printStationJobsKey = (stationId: string) => [...PRINT_STATIONS_QUERY_KEY, 'jobs', stationId] as const;
+
+/** One station's newest logged prints. */
+export async function fetchPrintStationJobs(stationId: string): Promise<PrintStationJob[]> {
+  const { jobs } = await readData<{ jobs: PrintStationJob[] }>(
+    await fetch(`/api/v1/print-stations/jobs?station=${encodeURIComponent(stationId)}`, { credentials: 'same-origin', cache: 'no-store' }),
+  );
+  return jobs;
 }

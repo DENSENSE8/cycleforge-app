@@ -58,7 +58,6 @@ import { formatCurrency } from '@/utils/_number';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { recordState, worstState } from './outbound-orders-ledger-state';
 import { StepRail, type RailStep, type StepState } from '@/design-system/components/record-ledger/StepRail';
-import { LatestEdgeScroller } from '@/design-system/components/record-ledger/LatestEdgeScroller';
 import { Calendar, Check, FileText, Package, PackageSearch, Pencil, ShieldCheck, Truck } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SerialChip } from '@/components/ui/CopyChip';
@@ -93,7 +92,6 @@ import { refreshDomain } from '@/lib/refresh/bus';
 import { patchOrderQcAssignee } from '@/lib/qc/qc-assignee-client';
 import { DuplicateOrderBanner } from './facts/DuplicateOrderBanner';
 import { useOrderChannel } from '@/hooks/useCatalog';
-import { platformMetaIconTone } from '@/lib/source-platform';
 import { platformDisplayName } from '@/lib/platform-display';
 import { orderCarrierEventsQuery, type CarrierEvent } from '@/lib/queries/carrier-events-query';
 import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
@@ -143,14 +141,10 @@ export function OrderRecordTitle({ record, records }: { record: ShippedOrder; re
   const orderId = String(record.order_id ?? '').trim();
   const face = orderId || String(record.id);
   const channel = useOrderChannel()(face, record.account_source ?? null);
-  const platformTone = platformMetaIconTone(channel.meta);
-  const platformClass = channel.meta.value ? platformTone.className : STATE_TONE_CLASSES.info.text;
-  const platformStyle = channel.meta.value ? platformTone.style : undefined;
   const platformName = platformDisplayName(channel);
   const orderedAt = ordersOrderedAt(record);
   return (
     <span className="group/order-title relative flex min-w-max flex-nowrap items-center gap-1 whitespace-nowrap" data-testid="order-record-title">
-      <span className={cn('shrink-0', platformClass)} style={platformStyle} aria-hidden>#</span>
       <OrderAdminLinkAction
         orderId={face}
         href={orderAdminUrl(orderId, record.account_source ?? null, record.admin_url)}
@@ -1155,20 +1149,14 @@ function OrderLineFulfilment({
       size="lg"
       label="Fulfillment steps"
       orientation={compact ? 'horizontal' : 'vertical'}
-      horizontalScroll={compact}
+      connectors={!compact}
     />
   );
 
   return (
     <div className="border-b border-mode-fact px-4 py-3 last:border-b-0" data-testid="order-record-stages">
       {named ? <p className="mb-2 truncate text-role-caption font-semibold text-mode-ink">{lineTitle(line, todayKey) || '—'}</p> : null}
-      {compact ? (
-        <LatestEdgeScroller latestKey={rail[Math.min(currentIndex, rail.length - 1)]!.id} testId="order-record-stages-scroll">
-          {stepRail}
-        </LatestEdgeScroller>
-      ) : (
-        stepRail
-      )}
+      {stepRail}
     </div>
   );
 }

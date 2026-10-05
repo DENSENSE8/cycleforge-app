@@ -29,7 +29,8 @@ const RECEIVING_FEED_ROOTS: ReadonlyArray<ReadonlyArray<string>> = [
   ['receiving-lines-table'],
   ['receiving'],
   ['incoming-delivered-unscanned'],
-  ['receiving-lines-incoming-summary'],
+  // Inbound's sidebar delivery-state counts (`incoming.pipeline`).
+  ['nav-facets'],
   // Inventory Displays / Incoming details dossier — receive · unreceive · notes
   // must refresh the trust trail without a manual F5.
   ['incoming-details'],

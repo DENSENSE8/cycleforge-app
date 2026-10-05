@@ -1,0 +1,629 @@
+{
+  "success": true,
+  "items": [
+    {
+      "receivingId": 50277,
+      "urgency": {
+        "urgent": true,
+        "tier": 0,
+        "source": "derived",
+        "reason": "A waiting order needs an item in it"
+      },
+      "location": {
+        "id": 655,
+        "code": "B-09-07",
+        "name": "Bin B-09-07"
+      },
+      "tracking": "1Z999AA101234550277",
+      "found": true,
+      "platform": "ebay",
+      "platformLabel": "eBay",
+      "orderNumber": "12-11402-55871",
+      "vendor": "Greenbay Liquidators LLC",
+      "title": "Apple MacBook Air 13-inch M2 8-core CPU 8-core GPU 8GB Unified Memory 256GB SSD Midnight \u2014 open box, charger and box included",
+      "lineCount": 3,
+      "doorReceivedAt": "2026-09-28T13:22:01Z"
+    },
+    {
+      "receivingId": 150277,
+      "urgency": {
+        "urgent": true,
+        "tier": 0,
+        "source": "derived",
+        "reason": "A waiting order needs an item in it"
+      },
+      "location": {
+        "id": 655,
+        "code": "B-09-07",
+        "name": "Bin B-09-07"
+      },
+      "tracking": "1Z999AA101234550277",
+      "found": true,
+      "platform": "ebay",
+      "platformLabel": "eBay",
+      "orderNumber": "12-11402-55871",
+      "vendor": "Greenbay Liquidators LLC",
+      "title": "Apple MacBook Air 13-inch M2 8-core CPU 8-core GPU 8GB Unified Memory 256GB SSD Midnight \u2014 open box, charger and box included",
+      "lineCount": 3,
+      "doorReceivedAt": "2026-09-28T13:22:01Z"
+    },
+    {
+      "receivingId": 50331,
+      "urgency": {
+        "urgent": true,
+        "tier": 0,
+        "source": "operator",
+        "reason": "Marked urgent by hand"
+      },
+      "location": null,
+      "tracking": null,
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-04T18:31:40Z"
+    },
+    {
+      "receivingId": 150331,
+      "urgency": {
+        "urgent": true,
+        "tier": 0,
+        "source": "operator",
+        "reason": "Marked urgent by hand"
+      },
+      "location": null,
+      "tracking": null,
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-04T18:31:40Z"
+    },
+    {
+      "receivingId": 50298,
+      "urgency": {
+        "urgent": true,
+        "tier": 1,
+        "source": "inbound_order",
+        "reason": "Order GW-88231 is High"
+      },
+      "location": null,
+      "tracking": "1Z999AA101234550298",
+      "found": true,
+      "platform": "goodwill",
+      "platformLabel": "Goodwill",
+      "orderNumber": "GW-88231",
+      "vendor": "Goodwill of Orange County",
+      "title": "Sony WH-1000XM4 Wireless Noise Cancelling Headphones, Black",
+      "lineCount": 2,
+      "doorReceivedAt": "2026-10-02T17:05:44Z"
+    },
+    {
+      "receivingId": 150298,
+      "urgency": {
+        "urgent": true,
+        "tier": 1,
+        "source": "inbound_order",
+        "reason": "Order GW-88231 is High"
+      },
+      "location": null,
+      "tracking": "1Z999AA101234550298",
+      "found": true,
+      "platform": "goodwill",
+      "platformLabel": "Goodwill",
+      "orderNumber": "GW-88231",
+      "vendor": "Goodwill of Orange County",
+      "title": "Sony WH-1000XM4 Wireless Noise Cancelling Headphones, Black",
+      "lineCount": 2,
+      "doorReceivedAt": "2026-10-02T17:05:44Z"
+    },
+    {
+      "receivingId": 50260,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "9400111899223197428490",
+      "found": true,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": "PO-00412",
+      "vendor": null,
+      "title": null,
+      "lineCount": 1,
+      "doorReceivedAt": "2026-09-21T08:00:00Z"
+    },
+    {
+      "receivingId": 150260,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "9400111899223197428490",
+      "found": true,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": "PO-00412",
+      "vendor": null,
+      "title": null,
+      "lineCount": 1,
+      "doorReceivedAt": "2026-09-21T08:00:00Z"
+    },
+    {
+      "receivingId": 53165,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "9361289711068322544977",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T18:22:22Z"
+    },
+    {
+      "receivingId": 153165,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "9361289711068322544977",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T18:22:22Z"
+    },
+    {
+      "receivingId": 253165,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "9361289711068322544977",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T18:22:22Z"
+    },
+    {
+      "receivingId": 53169,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "9334610990370309634346",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:08:28Z"
+    },
+    {
+      "receivingId": 153169,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "9334610990370309634346",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:08:28Z"
+    },
+    {
+      "receivingId": 253169,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "9334610990370309634346",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:08:28Z"
+    },
+    {
+      "receivingId": 53170,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": null,
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:08:44Z"
+    },
+    {
+      "receivingId": 153170,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": null,
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:08:44Z"
+    },
+    {
+      "receivingId": 253170,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": null,
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:08:44Z"
+    },
+    {
+      "receivingId": 53171,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": null,
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:09:25Z"
+    },
+    {
+      "receivingId": 153171,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": null,
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:09:25Z"
+    },
+    {
+      "receivingId": 253171,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": null,
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-09-21T22:09:25Z"
+    },
+    {
+      "receivingId": 53570,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "1ZCFSYNC2026100118450",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-01T08:43:09Z"
+    },
+    {
+      "receivingId": 153570,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "1ZCFSYNC2026100118450",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-01T08:43:09Z"
+    },
+    {
+      "receivingId": 253570,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "1ZCFSYNC2026100118450",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-01T08:43:09Z"
+    },
+    {
+      "receivingId": 53388,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "operator",
+        "reason": "Marked not urgent by hand"
+      },
+      "location": null,
+      "tracking": "1Z14V5344202691617",
+      "found": true,
+      "platform": "ebay",
+      "platformLabel": "eBay",
+      "orderNumber": "04-15231-48734",
+      "vendor": "chrispig05",
+      "title": "Bose Acoustimass 10 Series V Home Theater Speaker System Black",
+      "lineCount": 1,
+      "doorReceivedAt": "2026-10-02T18:32:43Z"
+    },
+    {
+      "receivingId": 153388,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "operator",
+        "reason": "Marked not urgent by hand"
+      },
+      "location": null,
+      "tracking": "1Z14V5344202691617",
+      "found": true,
+      "platform": "ebay",
+      "platformLabel": "eBay",
+      "orderNumber": "04-15231-48734",
+      "vendor": "chrispig05",
+      "title": "Bose Acoustimass 10 Series V Home Theater Speaker System Black",
+      "lineCount": 1,
+      "doorReceivedAt": "2026-10-02T18:32:43Z"
+    },
+    {
+      "receivingId": 253388,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "operator",
+        "reason": "Marked not urgent by hand"
+      },
+      "location": null,
+      "tracking": "1Z14V5344202691617",
+      "found": true,
+      "platform": "ebay",
+      "platformLabel": "eBay",
+      "orderNumber": "04-15231-48734",
+      "vendor": "chrispig05",
+      "title": "Bose Acoustimass 10 Series V Home Theater Speaker System Black",
+      "lineCount": 1,
+      "doorReceivedAt": "2026-10-02T18:32:43Z"
+    },
+    {
+      "receivingId": 53620,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "8122210712",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-02T19:03:13Z"
+    },
+    {
+      "receivingId": 153620,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "8122210712",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-02T19:03:13Z"
+    },
+    {
+      "receivingId": 50311,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "operator",
+        "reason": "Marked not urgent by hand"
+      },
+      "location": {
+        "id": 701,
+        "code": "RK1-1",
+        "name": "Rack 1 Shelf 1"
+      },
+      "tracking": "1Z999AA101234550311",
+      "found": true,
+      "platform": "ebay",
+      "platformLabel": "eBay",
+      "orderNumber": "23-11877-40216",
+      "vendor": "tech_resale_co",
+      "title": "Dell UltraSharp U2723QE 27\" 4K USB-C Hub Monitor",
+      "lineCount": 1,
+      "doorReceivedAt": "2026-10-04T09:40:12Z"
+    },
+    {
+      "receivingId": 150311,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "operator",
+        "reason": "Marked not urgent by hand"
+      },
+      "location": {
+        "id": 701,
+        "code": "RK1-1",
+        "name": "Rack 1 Shelf 1"
+      },
+      "tracking": "1Z999AA101234550311",
+      "found": true,
+      "platform": "ebay",
+      "platformLabel": "eBay",
+      "orderNumber": "23-11877-40216",
+      "vendor": "tech_resale_co",
+      "title": "Dell UltraSharp U2723QE 27\" 4K USB-C Hub Monitor",
+      "lineCount": 1,
+      "doorReceivedAt": "2026-10-04T09:40:12Z"
+    },
+    {
+      "receivingId": 50330,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "TBA318274650012",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-04T18:10:00Z"
+    },
+    {
+      "receivingId": 150330,
+      "urgency": {
+        "urgent": false,
+        "tier": 2,
+        "source": "default",
+        "reason": "Nothing marks it urgent"
+      },
+      "location": null,
+      "tracking": "TBA318274650012",
+      "found": false,
+      "platform": null,
+      "platformLabel": null,
+      "orderNumber": null,
+      "vendor": null,
+      "title": null,
+      "lineCount": 0,
+      "doorReceivedAt": "2026-10-04T18:10:00Z"
+    }
+  ]
+}

@@ -163,13 +163,15 @@ export function GridQtyFractionValue({
   const text = `${received}/${expected ?? '?'}`;
   const qtyExpected = expected ?? 0;
   const complete = expected != null && received >= expected;
+  // Complete wins: a fully counted line is never orange, whatever its size. The
+  // multi-unit warning only marks a line that still has units to count.
   const tone =
     received === 0
       ? 'text-text-faint'
-      : qtyExpected > 1
-        ? 'text-text-warning'
-        : complete
-          ? 'text-emerald-600'
+      : complete
+        ? 'text-emerald-600'
+        : qtyExpected > 1
+          ? 'text-text-warning'
           : 'text-text-muted';
   const tip = tooltip ?? floorQtyFractionTip(received, expected);
 

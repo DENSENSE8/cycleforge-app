@@ -144,6 +144,8 @@ function fakeWriter(priorHash?: string) {
       ingested.push(input);
       return { receivingLineId: 100 + ingested.length, receivingId: 12, created: priorHash === undefined, platformAccountId: null, sourceType: 'manual', sourceOrderId: String(input.sourceOrderId) };
     }) as unknown as IngestInboundOrderDeps['ingestPurchase'],
+    upsertPurchaseLink: (async () => ({})) as unknown as IngestInboundOrderDeps['upsertPurchaseLink'],
+    recordEquivalence: (async () => ({})) as unknown as IngestInboundOrderDeps['recordEquivalence'],
   };
   const hash = () => sql.find((s) => /INSERT INTO inbound_order/.test(s.text))?.params[13] as string | undefined;
   return { client, ingested, deps, hash };

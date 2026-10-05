@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createLocation, getRooms } from '@/lib/neon/location-queries';
+import { createLocation, ensureRoomZoneLetters, getRooms } from '@/lib/neon/location-queries';
 import { withAuth } from '@/lib/auth/withAuth';
 
 /** GET /api/rooms — list active rooms (parent rows with no row/col). */
@@ -27,13 +27,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     try {
       // Tenant-scoped write: createLocation stamps organization_id on the
       // INSERT and runs inside withTenantTransaction when an orgId is threaded.
-      const room = await createLocation({
+      const createdRoom = await createLocation({
         name,
         room: name,
         description: body?.description?.trim() || null,
         sortOrder: typeof body?.sortOrder === 'number' ? body.sortOrder : 0,
         zoneLetter,
       }, ctx.organizationId);
+      if (!zoneLetter) await ensureRoomZoneLetters(ctx.organizationId);
+      const rooms = await getRooms(ctx.organizationId);
+      const room = rooms.find((candidate) => candidate.id === createdRoom.id) ?? createdRoom;
       return NextResponse.json({ success: true, room }, { status: 201 });
     } catch (err: any) {
       // Duplicate zone_letter — partial unique index violation.

@@ -10,7 +10,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Box } from '@/components/Icons';
 import { useRequesterProfile } from '@/hooks/useRequesterProfile';
 import type { SupportContextBundle } from '@/lib/support/context-types';
-import { supportOrdersHref } from '@/components/sidebar/support/support-sidebar-shared';
+import { supportOrdersHref } from '@/lib/support/order-support-routes';
 import { cartonReadHref } from '@/lib/receiving/surface-path';
 import { cn } from '@/utils/_cn';
 

@@ -211,6 +211,19 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
+    name: 'Ring state',
+    // A list item's selected / open / active / current state is geometry (an
+    // overlay STATE_OUTLINE_CLASS span), never a `ring-*` box-shadow a scroll
+    // container clips. `always`: a line-based source read (<1s), and the
+    // increment that breaks it — a new card painting its selection with a
+    // ring — is exactly a `verify:fast` increment. Rule module:
+    // src/lib/design/ring-state-law.ts. Shrink-only baseline:
+    // scripts/ring-state.baseline.json. Escape: `ds-allow-ring: <reason>`.
+    cmd: localBin('tsx'),
+    args: ['scripts/ring-state-guard.ts'],
+    profiles: 'always',
+  },
+  {
     name: 'Disclosure',
     // The screen budget (owner 2026-10-03, just-in-time progressive disclosure):
     // every DECLARED first screen (src/lib/disclosure/surfaces.ts) obeys the law —

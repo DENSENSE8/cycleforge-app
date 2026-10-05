@@ -28,7 +28,8 @@ export type TriageDensitySurface =
   | 'incoming.pipeline'
   | 'imports.runs'
   | 'repair.queue'
-  | 'exceptions.list';
+  | 'exceptions.list'
+  | 'print-station.fnsku';
 
 export function useTriageDensity(
   surfaceKey: TriageDensitySurface,

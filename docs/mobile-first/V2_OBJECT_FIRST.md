@@ -128,11 +128,11 @@ content-sized, one stage at a time; no sheet is ever opened over it.
 
 | Stage | Body | Dock (secondary · primary) |
 |---|---|---|
-| `rest` | Thumbnail · title (tap to rename when on hold) · On hold · quantity · `•••`; evidence preview (hero + two tiles or `+N`) | Camera · Adjust · **Move** |
-| `adjust` | Scan-backed: take reason + `LocationQtyStrip` (± bursts, 123 keypad). Manual: `TouchQtyStepper` | Scan-backed: **Done**. Manual: Back · **Set count to N** (disabled reads `Count is N`) |
+| `rest` | Thumbnail · title (tap to rename when on hold) · On hold · quantity (tap = **Adjust**) · vertical `⋮`; facts (SKU, Location + room — both tap to copy; Last counted; Last moved; Reorder at when set); evidence preview (hero + two tiles or `+N`); **Camera · Choose photos** — both open `MobileNativePhotoCapture` in place (the sheet steps aside) with the SKU's photos as prior photos; Choose photos picks several library photos first and lands in review. Bottom sheet, no X: swipe down or tap outside; it rides above the keyboard while the title is edited | Move above a full-width **Adjust** |
+| `adjust` | ±1 first, one `LocationQtyStrip` for both paths: − rose, + emerald, solid under the thumb; the live count takes the colour of the uncommitted change; the count between − and + opens the Take / Put keypad (`MobilePairQty`). Scan-backed adds the take reason | Scan-backed: **Done**. Manual: Back · **Set count to N** (disabled reads `Count is N`) |
 | `move` | "Moving all N" + Split (→ `TouchQtyStepper`, 1…N); "Or type a location code" | Back · **Scan destination** → becomes **Move N to CODE** when a code is typed |
-| `more` | Split quantity · Edit title (on hold) · Manage photos (when there are any) · Copy SKU · Copy location · Product, history and locations (`/m/products/[sku]`) · Delete placeholder (last, armed; disabled until the count is 0) | Back |
-| `photos` | Every photo as a grid (from the preview's `+N` tile or `•••` › Manage photos); a tile opens the viewer | Back · **Add photos** |
+| `more` | Split quantity · Manage photos (when there are any) · Product, history and locations (`/m/products/[sku]`) · Delete placeholder (last, armed; disabled until the count is 0) | Back |
+| `photos` | Every photo as a grid (from the preview's `+N` tile or `⋮` › Manage photos); a tile opens the viewer | Back |
 
 Photos: a preview or grid tile opens the phone's full-screen swipe viewer (paging,
 pull-down or Dismiss to close; delete only for on-hold stock). The sheet ignores
@@ -192,11 +192,11 @@ the way it stands — the same address path the label builder (`/m/labels`) uses
 | URL | Level | Row → |
 |---|---|---|
 | `/m/stock` | Rooms (room facets only — no stock read) | `?room=` |
-| `?room=R` | Aisles in order (bays · units · SKUs · hold / cleanup), then **Other locations** for places that are not room-coded (racks, totes, staging) | `&aisle=N` / `&aisle=other` |
-| `?room=R&aisle=N` | Bays in order, `Bay 10 (Left)` (levels · units · SKUs) — the server read narrows to the aisle | `&bay=N` |
+| `?room=R` | Aisles in order (bays · units · SKUs · hold / cleanup), then **Other locations** for resolved places off the aisle grid (rack shelves, desks, named bins). A room with no aisles lists those places directly — no Other hop. ROOM / RACK container rows are never places (`location-stock-queries.ts` `CONTAINER_KIND_SQL`) | `&aisle=N` / `&aisle=other` |
+| `?room=R&aisle=N` | Two full-height side choices (Odd bays · Left side \| Even bays · Right side), no heading — the chips already say the aisle; then that side's bays in order. Coordinates come from the scannable code first, row/col labels only for places without one | `&side=` then `&bay=N` |
 | `?room=R&aisle=N&bay=N` | The bay's locations in walk order (level, position) | `/m/loc/<code>`, whose X returns here |
 
-- `PathChips` (design system) head every level: `Rooms › Zone 3 - Parts › Aisle 03 › Bay 10`; system Back
+- `PathChips density="compact"` (design system) head every level: `Rooms › Zone 3 - Parts › Aisle 03 › Bay 10`; system Back
   walks up one level. The location record carries the same chips (room › aisle › bay › level) as its
   vertical path; its title picker (§6) is the lateral one.
 - The shell's search escapes the hierarchy: inside a room it lists the room's matching places flat; at the

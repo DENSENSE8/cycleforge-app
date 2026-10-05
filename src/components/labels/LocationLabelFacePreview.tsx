@@ -6,7 +6,7 @@
  */
 
 import { Printer } from '@/components/Icons';
-import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { useAuth } from '@/contexts/AuthContext';
 import { locationLabelToFace } from '@/lib/print/printLocationLabel';
 import type { LocationSegments } from '@/lib/barcode-routing';

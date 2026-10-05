@@ -3,7 +3,7 @@
 /**
  * One purchase on ONE row — the Compact face of the Inbound list (Full is
  * {@link IncomingDeliveryCard}). The face is derived from the card's own
- * {@link receiptRecordCard} model, so both densities paint one truth.
+ * {@link receiptRecordCard} model and the same `OperationalIdentity`, so both densities paint one truth.
  */
 
 import { memo, useMemo } from 'react';
@@ -20,7 +20,7 @@ export const IncomingDeliveryRow = memo(function IncomingDeliveryRow(props: Tria
   const face = useMemo(
     () =>
       recordRowFace(receiptRecordCard(model), INCOMING_PIPELINE_VIEW, {
-        identity: `PO ${model.identity}`,
+        identity: model.identity,
         identityWidth: 'long',
       }),
     [model],

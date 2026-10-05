@@ -62,8 +62,54 @@ export const inboundOrderLineSchema = z.object({
 });
 export type InboundOrderLine = z.infer<typeof inboundOrderLineSchema>;
 
+/**
+ * A tracking "number" a spreadsheet or a numeric parse already rounded:
+ * `9.434608106245533e+21`. Its digits are gone — it can never match the real
+ * package, so it is refused, never stored (2026-09 eBay imports).
+ */
+export const SCIENTIFIC_NOTATION_TRACKING = /^\d+(\.\d+)?e[+-]?\d+$/i;
+
+export function isScientificNotationTracking(value: string | null | undefined): boolean {
+  return SCIENTIFIC_NOTATION_TRACKING.test(String(value ?? '').trim());
+}
+
+/**
+ * Is `digits` the number a scientific-notation tracking value was rounded
+ * from? Exact: the value was produced by JS `String(Number(digits))`, so the
+ * same rendering of a candidate reproduces it bit for bit. Lets a repair
+ * recover the true number from another row that kept it (a Zoho PO carton).
+ */
+export function isScientificRenderingOf(sci: string, digits: string): boolean {
+  return /^\d+$/.test(digits) && String(Number(digits)) === sci.trim().toLowerCase();
+}
+
+/** The index probe for {@link isScientificRenderingOf}: a candidate's leading digits (mantissa less its rounded last digit) and its length. */
+export function scientificTrackingProbe(sci: string): { prefix: string; length: number } | null {
+  const m = /^(\d+)(?:\.(\d+))?e\+?(\d+)$/i.exec(sci.trim());
+  if (!m) return null;
+  const mantissa = `${m[1]}${m[2] ?? ''}`;
+  return { prefix: mantissa.slice(0, Math.max(1, mantissa.length - 1)), length: Number(m[3]) + m[1].length };
+}
+
+/**
+ * The one true number among `candidates` (e.g. an order's refetched tracking
+ * numbers) that `sci` was rounded from; null when none — or several — render
+ * to it. The verify step of every scientific-notation recovery.
+ */
+export function trueTrackingFor(sci: string, candidates: readonly (string | null | undefined)[]): string | null {
+  const exact = new Set(
+    candidates.flatMap((value) => {
+      const digits = String(value ?? '').replace(/\s+/g, '');
+      return digits && isScientificRenderingOf(sci, digits) ? [digits] : [];
+    }),
+  );
+  return exact.size === 1 ? [...exact][0]! : null;
+}
+
 export const inboundOrderTrackingSchema = z.object({
-  number: text(80),
+  number: text(80).refine((value) => !isScientificNotationTracking(value), {
+    message: 'Tracking number is in scientific notation (e.g. 9.43e+21) — its digits were lost; paste the full number',
+  }),
   /** Display carrier; blank = detect from the number. */
   carrier: text(40),
 });

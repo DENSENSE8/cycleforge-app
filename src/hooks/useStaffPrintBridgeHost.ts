@@ -32,8 +32,9 @@ import {
   type StaffPrintProgress,
   type StaffPrintStatus,
 } from '@/lib/print/staff-print-bridge';
-import { getProfileForRole, listProfiles, setRoute } from '@/lib/print/browserPrint';
-import { isSilentPrintEnabled, setSilentPrintEnabled, SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
+import { listProfiles, setRoute } from '@/lib/print/browserPrint';
+import { localStationReadiness } from '@/lib/print/station-readiness';
+import { setSilentPrintEnabled, SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
 import { PRINT_STATION_CHANGED_EVENT, readPrintStation, runPrintJobOnce, setPrintStationName } from '@/lib/print/print-station';
 import { sendPrintStationHeartbeat } from '@/lib/print/print-station-registry-client';
 import { cancelWork, isLiveWork, pauseWork, readWork, resumeWork, watchWork } from '@/lib/background-work/store';
@@ -41,35 +42,25 @@ import { cancelWork, isLiveWork, pauseWork, readWork, resumeWork, watchWork } fr
 /** The header item of a job this station prints for a sender, keyed so the sender's controls find it. */
 const stationWorkId = (requestId: string) => `print:station:${requestId}`;
 
-/** A desk browser (fine pointer) can always print through its own print path: */
-function deskBrowserCanPrint(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches === true;
-}
-
 function snapshotStatus(): StaffPrintStatus {
-  const label = getProfileForRole('label');
-  const paper = getProfileForRole('paper');
-  const silent = isSilentPrintEnabled();
+  const { silent, label, paper } = localStationReadiness();
   const station = readPrintStation();
-  const labelUsb =
-    !!label && label.kind !== 'os' && label.language !== 'none';
-  const browserPrint = deskBrowserCanPrint();
   return {
     type: 'staff.print_status',
     stationId: station.id,
     stationName: station.name,
     silent,
     label: {
-      ready: silent && (labelUsb || browserPrint),
-      name: label?.name ?? null,
-      kind: label?.kind ?? null,
-      profileId: label?.id ?? null,
+      ready: label.ready,
+      name: label.profile?.name ?? null,
+      kind: label.profile?.kind ?? null,
+      profileId: label.profile?.id ?? null,
     },
     paper: {
-      ready: silent && (!!paper || browserPrint),
-      name: paper?.name ?? null,
-      kind: paper?.kind ?? null,
-      profileId: paper?.id ?? null,
+      ready: paper.ready,
+      name: paper.profile?.name ?? null,
+      kind: paper.profile?.kind ?? null,
+      profileId: paper.profile?.id ?? null,
     },
     profiles: listProfiles().map((p) => ({
       id: p.id,

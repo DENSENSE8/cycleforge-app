@@ -3,6 +3,7 @@ import {
   publishReceivingPhotoChanged,
   publishRepairChanged,
   publishSkuExceptionChanged,
+  publishSkuPhotoChanged,
   publishSkuStockPhotoChanged,
   publishUnitPhotoChanged,
 } from '@/lib/realtime/publish';
@@ -68,6 +69,8 @@ export async function publishEntityMediaInsert(input: {
     await publishRepairChanged({ organizationId: orgId, repairIds: [entityId], source });
   } else if (entityType === 'SKU_STOCK') {
     await publishSkuStockMediaChanged(organizationId, entityId, 'insert', source);
+  } else if (entityType === 'SKU') {
+    await publishSkuPhotoChanged({ organizationId, action: 'insert', skuCatalogId: entityId, source });
   }
   return { receivingId: null };
 }

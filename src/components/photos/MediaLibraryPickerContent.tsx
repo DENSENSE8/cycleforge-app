@@ -39,7 +39,7 @@ import { resolvePhotoLibraryFolderLeafLabel } from '@/lib/photos/library-context
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
-type MediaLibraryPickerTab = 'browse' | 'ticket' | 'carton';
+export type MediaLibraryPickerTab = 'browse' | 'ticket' | 'carton' | 'support';
 
 type IconCmp = typeof Package;
 
@@ -69,7 +69,9 @@ interface MediaLibraryPickerContentProps {
   ticketId?: number;
   /** When set, enables the “Current carton” tab (receivingId scope). */
   receivingId?: number;
-  /** Initial tab — defaults to ticket → carton → browse by context. */
+  /** When set, enables the “This support item” tab (the item's primary task media). */
+  supportTaskId?: number;
+  /** Initial tab — defaults to support item → ticket → carton → browse by context. */
   defaultTab?: MediaLibraryPickerTab;
   selected: ClaimPhotoInput[];
   onSelectedChange: (photos: ClaimPhotoInput[]) => void;
@@ -94,8 +96,10 @@ function initialTab(opts: {
   defaultTab?: MediaLibraryPickerTab;
   ticketId?: number;
   receivingId?: number;
+  supportTaskId?: number;
 }): MediaLibraryPickerTab {
   if (opts.defaultTab) return opts.defaultTab;
+  if (opts.supportTaskId) return 'support';
   if (opts.ticketId) return 'ticket';
   if (opts.receivingId) return 'carton';
   return 'browse';
@@ -107,7 +111,7 @@ function seedNavForTab(
   receivingId?: number,
 ): PhotoDateNav {
   if (tab === 'ticket' && ticketId) return { ticketId: String(ticketId) };
-  // Carton tab uses forceLeaf — no date seed needed; receivingId filters the API.
+  // Carton / support-item tabs use forceLeaf — no date seed needed; the record id filters the API.
   if (tab === 'carton' && receivingId) return EMPTY_DATE_NAV;
   return EMPTY_DATE_NAV;
 }
@@ -119,6 +123,7 @@ function seedNavForTab(
 export function MediaLibraryPickerContent({
   ticketId,
   receivingId,
+  supportTaskId,
   defaultTab,
   selected,
   onSelectedChange,
@@ -127,17 +132,18 @@ export function MediaLibraryPickerContent({
 }: MediaLibraryPickerContentProps) {
   const hasTicketTab = Boolean(ticketId);
   const hasCartonTab = Boolean(receivingId);
-  const scopeToggleVisible = showScopeToggle ?? (hasTicketTab || hasCartonTab);
+  const hasSupportTab = Boolean(supportTaskId);
+  const scopeToggleVisible = showScopeToggle ?? (hasTicketTab || hasCartonTab || hasSupportTab);
   const { builtIn, custom, isLoading: typesLoading } = useImageTypes();
   const { density: gridDensity, setDensity: setGridDensity } = usePhotoGridDensity();
   const today = getCurrentPSTDateKey();
 
   const [tab, setTab] = useState<MediaLibraryPickerTab>(() =>
-    initialTab({ defaultTab, ticketId, receivingId }),
+    initialTab({ defaultTab, ticketId, receivingId, supportTaskId }),
   );
   const [mediaType, setMediaType] = useState<MediaTypeSelection | null>(null);
   const [dateNav, setDateNav] = useState<PhotoDateNav>(() =>
-    seedNavForTab(initialTab({ defaultTab, ticketId, receivingId }), ticketId, receivingId),
+    seedNavForTab(initialTab({ defaultTab, ticketId, receivingId, supportTaskId }), ticketId, receivingId),
   );
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -145,9 +151,12 @@ export function MediaLibraryPickerContent({
   const selectedIds = useMemo(() => new Set(selected.map((p) => p.id)), [selected]);
   const onTicketTab = tab === 'ticket';
   const onCartonTab = tab === 'carton';
+  const onSupportTab = tab === 'support';
+  // Carton and support-item tabs are one record's photos: always a leaf, never folders or search.
+  const onRecordTab = onCartonTab || onSupportTab;
   const onTypeList = tab === 'browse' && mediaType === null;
-  const browseActive = onTicketTab || onCartonTab || (tab === 'browse' && mediaType !== null);
-  const searchActive = Boolean(debounced) && tab === 'browse' && !onTicketTab && !onCartonTab;
+  const browseActive = onTicketTab || onRecordTab || (tab === 'browse' && mediaType !== null);
+  const searchActive = Boolean(debounced) && tab === 'browse';
 
   const resolvedPickerTicketId =
     dateNav.ticketId ?? (onTicketTab && ticketId ? String(ticketId) : undefined);
@@ -158,8 +167,10 @@ export function MediaLibraryPickerContent({
       mediaType,
       ticketTab: onTicketTab,
       cartonTab: onCartonTab,
+      supportTab: onSupportTab,
       ticketId,
       receivingId,
+      supportTaskId,
       dateNav: {
         ...dateNav,
         ...(resolvedPickerTicketId ? { ticketId: resolvedPickerTicketId } : {}),
@@ -171,8 +182,10 @@ export function MediaLibraryPickerContent({
       mediaType,
       onTicketTab,
       onCartonTab,
+      onSupportTab,
       ticketId,
       receivingId,
+      supportTaskId,
       dateNav,
       resolvedPickerTicketId,
       resolvedPickerPoRef,
@@ -197,7 +210,7 @@ export function MediaLibraryPickerContent({
     [dateNav.dateFrom, dateNav.dateTo, resolvedPickerPoRef, resolvedPickerTicketId],
   );
 
-  const folderIsLeaf = onCartonTab || foldersBrowse.isLeaf;
+  const folderIsLeaf = onRecordTab || foldersBrowse.isLeaf;
   const fetchPhotos = browseActive && (searchActive || folderIsLeaf);
   const fetchFolders = browseActive && !searchActive && !folderIsLeaf;
 
@@ -221,15 +234,15 @@ export function MediaLibraryPickerContent({
     return () => clearTimeout(h);
   }, [query]);
 
-  // Reset when ticket / carton context changes (e.g. switching tickets).
+  // Reset when ticket / carton / support-item context changes (e.g. switching tickets).
   useEffect(() => {
-    const next = initialTab({ defaultTab, ticketId, receivingId });
+    const next = initialTab({ defaultTab, ticketId, receivingId, supportTaskId });
     setTab(next);
     setMediaType(null);
     setDateNav(seedNavForTab(next, ticketId, receivingId));
     setQuery('');
     setDebounced('');
-  }, [ticketId, receivingId, defaultTab]);
+  }, [ticketId, receivingId, supportTaskId, defaultTab]);
 
   const toggle = (photo: LibraryPhoto) => {
     const input = toClaimPhotoInput(photo);
@@ -282,7 +295,7 @@ export function MediaLibraryPickerContent({
   const onBreadcrumbNavigate = ({ dateFrom, dateTo }: { dateFrom?: string; dateTo?: string }) => {
     // Keep contextual leaf ids when navigating dates on ticket/carton tabs.
     // Browse-tab date crumbs clear PO/ticket so year/month tiles can reopen.
-    const keepLeafIds = onTicketTab || onCartonTab;
+    const keepLeafIds = onTicketTab || onRecordTab;
     setDateNav({
       dateFrom,
       dateTo,
@@ -368,6 +381,19 @@ export function MediaLibraryPickerContent({
                 )}
               >
                 Current carton
+              </button>
+            ) : null}
+            {hasSupportTab ? (
+              /* ds-raw-button: one more scope tab in this row's existing segmented face (Media types · This ticket · Current carton) */
+              <button
+                type="button"
+                onClick={() => switchTab('support')}
+                className={cn(
+                  'rounded-md px-3 py-1 text-role-caption font-semibold transition',
+                  tab === 'support' ? 'bg-surface-card text-blue-700 shadow-sm' : 'text-text-soft hover:text-text-muted',
+                )}
+              >
+                This support item
               </button>
             ) : null}
           </div>
@@ -541,7 +567,7 @@ export function MediaLibraryPickerContent({
             selectedIds={selectedIds}
             onToggle={toggle}
             excludePhotoIds={excludePhotoIds}
-            forceLeaf={onCartonTab}
+            forceLeaf={onRecordTab}
             isLeaf={foldersBrowse.isLeaf}
             eyebrow={foldersBrowse.eyebrow}
             folderTiles={foldersQuery.tiles}

@@ -2,7 +2,7 @@
 
 /** Print-faithful 2×1 tote / box licence plate — the same iframe every other label preview uses ({@link LabelFacePreview}), so what an… */
 
-import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { handlingUnitLabelToFace } from '@/lib/print/printHandlingUnitLabel';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
 

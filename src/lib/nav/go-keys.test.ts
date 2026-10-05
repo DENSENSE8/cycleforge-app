@@ -31,6 +31,18 @@ test('Receiving hover teaching includes Deliveries, Local Pickup, Repair service
   for (const pageId of ['incoming', 'pickup', 'repair', 'sourcing']) assert.deepEqual(navGoDestinations(pageId), expected, pageId);
 });
 
+test('Warehouse G keys open Stock with S and Locations with L', () => {
+  const expected = [
+    { letter: 's', pageId: 'stock' },
+    { letter: 'l', pageId: 'inventory' },
+    { letter: 'q', pageId: 'qc-labels' },
+  ];
+
+  for (const pageId of ['stock', 'inventory', 'qc-labels']) {
+    assert.deepEqual(navGoDestinations(pageId), expected, pageId);
+  }
+});
+
 test('Scan Stations G keys mirror the visible parent switcher', () => {
   const expected = [
     { letter: 'l', pageId: 'stations-live' },

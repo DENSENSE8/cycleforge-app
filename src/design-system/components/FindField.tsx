@@ -17,11 +17,23 @@
  * the same text to the palette ("Search everywhere", ⌘↵ / Ctrl+↵).
  */
 
-import { useCallback, useEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
+import { CollapseItem } from '@/design-system/components/Collapse';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SEARCH_WELL_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { ClipboardPaste, Search, X } from '@/components/Icons';
@@ -38,9 +50,11 @@ const HINT_EDGE_MASK =
 
 /**
  * Hover-or-focus = "looking at it". Spread `bind` on the element that owns
- * the hint (focus is captured, so an inner input counts).
+ * the hint (focus is captured, so an inner input counts). `also` is a part of
+ * the field portaled elsewhere in the DOM (its {@link FindPanel}): focus
+ * moving into it is still looking.
  */
-export function useHintActivity() {
+export function useHintActivity(also?: RefObject<HTMLElement | null>) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   return {
@@ -51,10 +65,53 @@ export function useHintActivity() {
       onPointerLeave: () => setHovered(false),
       onFocusCapture: () => setFocused(true),
       onBlurCapture: (event: FocusEvent) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+        if (!focusStaysIn(event, also)) setFocused(false);
       },
     },
   };
+}
+
+/** A blur whose next focus is still inside the element (or its portaled part) — focus has not left the field. */
+export function focusStaysIn(event: FocusEvent, also?: RefObject<HTMLElement | null>): boolean {
+  const next = event.relatedTarget as Node | null;
+  return event.currentTarget.contains(next) || Boolean(next && also?.current?.contains(next));
+}
+
+/**
+ * The mouse resting on an element for {@link HINT_INTENT_MS}: intent. A
+ * pointer passing through never counts; touch and pen never hover.
+ */
+export function useHoverIntent(delay = HINT_INTENT_MS) {
+  const [intent, setIntent] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return {
+    intent,
+    bind: {
+      onPointerEnter: (event: ReactPointerEvent) => {
+        if (event.pointerType !== 'mouse') return;
+        window.clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => setIntent(true), delay);
+      },
+      onPointerLeave: () => {
+        window.clearTimeout(timer.current);
+        setIntent(false);
+      },
+    },
+  };
+}
+
+/**
+ * A well that leaves its 32px slot: absolute at the slot's left, and while
+ * `expanded` (hover intent, focus, an open list) it grows right to
+ * max(slot, 28rem) over whatever sits beside it — ease-in-out, a touch slower
+ * in than out. `[data-find-expanded]` on the well is what the header recedes on.
+ */
+export function findWellGrowClass(expanded: boolean): string {
+  return cn(
+    'absolute inset-y-0 left-0 transition-[width,border-radius,box-shadow,filter] ease-[cubic-bezier(0.65,0,0.35,1)]',
+    expanded ? 'z-50 w-[max(100%,28rem)] drop-shadow-lg duration-300' : 'duration-200',
+  );
 }
 
 /**
@@ -178,6 +235,7 @@ export function FindField({
   keyShortcuts,
   onClear,
   overflowRight = false,
+  panelRef: panelRefProp,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -208,10 +266,16 @@ export function FindField({
   overflowRight?: boolean;
   /** The caller has something to clear beyond the text (see above). */
   onClear?: () => void;
+  /** The portaled panel — pass one to tell focus moving into it from focus leaving the field. */
+  panelRef?: RefObject<HTMLDivElement>;
 }) {
   const [draft, setDraft] = useState(value);
   const committed = useRef(value);
-  const look = useHintActivity();
+  const ownPanelRef = useRef<HTMLDivElement>(null);
+  const panelRef = panelRefProp ?? ownPanelRef;
+  const wellRef = useRef<HTMLDivElement>(null);
+  const look = useHintActivity(panelRef);
+  const hover = useHoverIntent();
   useEffect(() => {
     if (value === committed.current) return;
     committed.current = value;
@@ -250,17 +314,24 @@ export function FindField({
   const held = Boolean(dropOpen && drop);
   const answered = Boolean(query && (below || escalate));
   const shortcuts = [escalate ? 'F Meta+Enter Control+Enter' : 'F', keyShortcuts].filter(Boolean).join(' ');
+  // Grown = looked at with intent (hover ~180ms), focused, or holding its open list.
+  const expanded = overflowRight && (look.focused || hover.intent || held);
   const well = (
     <div
+      ref={wellRef}
       data-find-field
-      data-find-expanded={overflowRight && look.focused ? '' : undefined}
-      {...look.bind}
-      className={cn(
-        findWellClass(size),
-        'relative',
-        overflowRight &&
-          'absolute inset-y-0 left-0 transition-[width,border-radius,box-shadow,filter] duration-150 focus-within:z-50 focus-within:w-[max(100%,28rem)] focus-within:drop-shadow-lg',
-      )}
+      data-find-expanded={expanded ? '' : undefined}
+      onPointerEnter={(event) => {
+        look.bind.onPointerEnter();
+        hover.bind.onPointerEnter(event);
+      }}
+      onPointerLeave={() => {
+        look.bind.onPointerLeave();
+        hover.bind.onPointerLeave();
+      }}
+      onFocusCapture={look.bind.onFocusCapture}
+      onBlurCapture={look.bind.onBlurCapture}
+      className={cn(findWellClass(size), 'relative', overflowRight && findWellGrowClass(expanded))}
     >
       <Search aria-hidden className="size-3.5 shrink-0 text-text-muted" />
       <FindLead>{lead}</FindLead>
@@ -325,7 +396,7 @@ export function FindField({
         </button>
         </HoverTooltip>
       ) : null}
-      <FindPanel open={held || answered}>
+      <FindPanel open={held || answered} anchorRef={wellRef} panelRef={panelRef} onClose={() => inputRef.current?.blur()}>
         {held ? drop : null}
         {answered ? below : null}
         {answered && escalate ? (
@@ -364,40 +435,75 @@ export function FindLead({ children }: { children: ReactNode }) {
 }
 
 /**
- * The panel hanging under a find well (FindField's, the everywhere face's):
- * at least 28rem wide from the well's left edge, so its rows read at the
- * width the grown well has. Its height opens and closes with a fade
- * (`motionPresence.findListPanel`, ease-in-out; the close is the reverse,
- * faster); reduced motion keeps it a plain swap. Pointer presses keep focus
- * where it is — the panel is part of the field, not a new tab stop.
+ * The panel hanging under a find well (FindField's, the everywhere face's).
+ * It is PORTALED through the house {@link AnchoredLayer} at the
+ * `panelPopover` band — never painted inside the well, where the sidebar
+ * column's stacking context clipped it under the page (2026-10-04). Anchored
+ * to the well's bottom-left, as wide as the (grown) well and never narrower
+ * than 28rem; it flips / clamps to the viewport and caps its height to the
+ * room it has, scrolling inside. Its height opens and closes through the
+ * house `CollapseItem` on ease-in-out tweens (`motionTransition.findListPanelOpen`
+ * / `findListPanelClose` — the close faster); reduced motion keeps it a plain swap. Pointer presses keep focus
+ * where it is — the panel is part of the field, not a new tab stop — and a
+ * press outside the panel and the well calls `onClose`.
  */
-export function FindPanel({ open, children }: { open: boolean; children: ReactNode }) {
-  const presence = useMotionPresence(motionPresence.findListPanel);
+export function FindPanel({
+  open,
+  anchorRef,
+  panelRef,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  /** The well the panel hangs from. */
+  anchorRef: RefObject<HTMLElement | null>;
+  /** The panel element — focus inside it still belongs to the field ({@link focusStaysIn}). */
+  panelRef?: RefObject<HTMLDivElement>;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   const opening = useMotionTransition(motionTransition.findListPanelOpen);
   const closing = useMotionTransition(motionTransition.findListPanelClose);
+  // The layer stays mounted until the close has played.
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) setMounted(true);
+  }, [open]);
   return (
-    <AnimatePresence initial={false}>
-      {open ? (
-        <motion.div
-          key="find-panel"
-          data-find-panel
-          onPointerDown={(event) => {
-            // A row's own edit box still takes the pointer.
-            if (!(event.target as HTMLElement).closest('input, textarea')) event.preventDefault();
-          }}
-          initial={presence.initial}
-          animate={presence.animate}
-          exit={{ ...presence.exit, transition: closing }}
-          transition={opening}
-          className={cn(
-            'absolute left-0 top-full z-50 mt-1 w-[max(100%,28rem)] cursor-default overflow-hidden bg-surface-card shadow-lg ring-1 ring-inset ring-border-hairline',
-            SIDEBAR_CONTROL_CORNER,
-          )}
-        >
-          <div className="flex max-h-[min(34rem,calc(100vh-6rem))] flex-col gap-1 p-1">{children}</div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+    <AnchoredLayer
+      open={mounted}
+      restoreFocus={false}
+      onClose={onClose}
+      anchorRef={anchorRef}
+      placement="bottom-start"
+      level="panelPopover"
+      gap={4}
+      matchWidth
+      closeOnEscape={false}
+      className="min-w-[28rem]"
+    >
+      <AnimatePresence onExitComplete={() => setMounted(false)}>
+        {open ? (
+          // Height through the house Collapse, on the well's ease-in-out timing (no spring).
+          <CollapseItem key="find-panel" timing={{ open: opening, close: closing }}>
+            <div
+              ref={panelRef}
+              data-find-panel
+              onPointerDown={(event) => {
+                // A row's own edit box still takes the pointer.
+                if (!(event.target as HTMLElement).closest('input, textarea')) event.preventDefault();
+              }}
+              className={cn(
+                'flex max-h-[min(34rem,var(--anchored-available-height,34rem))] cursor-default flex-col gap-1 overflow-hidden bg-surface-card p-1 font-spine shadow-lg ring-1 ring-inset ring-border-hairline',
+                SIDEBAR_CONTROL_CORNER,
+              )}
+            >
+              {children}
+            </div>
+          </CollapseItem>
+        ) : null}
+      </AnimatePresence>
+    </AnchoredLayer>
   );
 }
 
@@ -412,6 +518,7 @@ export function FindToken({
   label,
   clearLabel,
   onOpen,
+  onExpand,
   onClear,
 }: {
   children: ReactNode;
@@ -419,6 +526,8 @@ export function FindToken({
   label: string;
   clearLabel: string;
   onOpen: () => void;
+  /** ↵ on the focused token: what it holds, in full (the pasted list's page). Omit and ↵ presses like a click. */
+  onExpand?: () => void;
   onClear: () => void;
 }) {
   const presence = useMotionPresence(motionPresence.findListToken);
@@ -441,6 +550,11 @@ export function FindToken({
         // Keep focus where it is: the press opens the panel and lands in the field.
         onPointerDown={(event) => event.preventDefault()}
         onClick={onOpen}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' || !onExpand) return;
+          event.preventDefault();
+          onExpand();
+        }}
         className={cn(
           'ds-raw-button inline-flex h-full items-center gap-1 whitespace-nowrap pl-1.5 pr-1 text-role-caption font-semibold tabular-nums hover:bg-surface-card active:translate-y-px',
           SIDEBAR_CONTROL_CORNER,

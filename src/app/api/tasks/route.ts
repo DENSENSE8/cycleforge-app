@@ -11,7 +11,6 @@ import { TASK_ASSIGNEES_MAX, TASK_NOTE_MAX, TASK_PROJECT_NAME_MAX, TASK_STAFF_ID
 import { listTaskDeskRows } from '@/lib/tasks/list-tasks';
 import { taskDeskDbDeps } from '@/lib/tasks/list-tasks-db';
 import { parseTaskDeskLane, type TaskDeskListPayload } from '@/lib/tasks/task-desk-row';
-import { parseTicketStatusQuery } from '@/lib/tasks/ticket-status-filter';
 import { urgencyEntityTypes } from '@/lib/urgency/urgency-targets';
 
 export const dynamic = 'force-dynamic';
@@ -158,17 +157,6 @@ const QuerySchema = z.object({
   priority: z.enum(['urgent', 'normal']).optional(),
   limit: z.string().regex(/^\d+$/).optional(),
   q: z.string().max(200).optional(),
-  /** Comma list of helpdesk statuses (`new,open,pending,hold,solved,closed`, any case); several OR together. */
-  ticketStatus: z
-    .string()
-    .max(200)
-    .optional()
-    .transform((raw, ctx) => {
-      const parsed = parseTicketStatusQuery(raw);
-      if (parsed.ok) return parsed.statuses;
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Unknown ticket status: ${parsed.unknown.join(', ')}` });
-      return z.NEVER;
-    }),
 });
 
 export const GET = withAuth(
@@ -198,7 +186,6 @@ export const GET = withAuth(
           urgency: query.priority ?? null,
           limit: query.limit ? Number(query.limit) : undefined,
           q: query.q ?? null,
-          ticketStatuses: query.ticketStatus,
         },
         taskDeskDbDeps,
       );

@@ -9,6 +9,7 @@ import {
   buildGetOrdersDateFilter,
   buildGetOrdersRequestXml,
   extractTradingShipmentTracking,
+  GET_ORDERS_MAX_ORDER_IDS,
   mapBuyPurchaseOrderToBuyerLines,
   mapTradingOrderToBuyerLines,
   mapTradingOrdersToBuyerLines,
@@ -119,6 +120,45 @@ test('mapTradingOrderToBuyerLines prefers transaction-level tracking', () => {
   });
   assert.equal(line.trackingNumber, 'TX-LEVEL');
   assert.equal(line.carrierCode, 'UPS');
+});
+
+test('a 22-digit USPS tracking number survives the XML parse digit for digit (never 9.43e+21)', () => {
+  // Regression (2026-10-04): the parser's numeric coercion made 9434608106245533522453 a float,
+  // stored as "9.434608106245533e+21" — 145 shipments and 178 mirror rows lost their digits.
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<GetOrdersResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Ack>Success</Ack>
+  <HasMoreOrders>false</HasMoreOrders>
+  <PageNumber>1</PageNumber>
+  <OrderArray>
+    <Order>
+      <OrderID>15-15078-20314</OrderID>
+      <ShippingDetails>
+        <ShipmentTrackingDetails>
+          <ShipmentTrackingNumber>9434608106245533522453</ShipmentTrackingNumber>
+          <ShippingCarrierUsed>USPS</ShippingCarrierUsed>
+        </ShipmentTrackingDetails>
+      </ShippingDetails>
+      <TransactionArray>
+        <Transaction>
+          <OrderLineItemID>267768290542-10084426338515</OrderLineItemID>
+          <TransactionID>10084426338515</TransactionID>
+          <QuantityPurchased>2</QuantityPurchased>
+          <TransactionPrice currencyID="USD">12.50</TransactionPrice>
+          <Item><ItemID>267768290542</ItemID><Title>Bose Companion 2</Title></Item>
+        </Transaction>
+      </TransactionArray>
+    </Order>
+  </OrderArray>
+</GetOrdersResponse>`;
+  const parsed = parseTradingGetOrdersXml(xml);
+  assert.equal(parsed.hasMoreOrders, false);
+  assert.equal(parsed.pageNumber, 1);
+  const [line] = mapTradingOrdersToBuyerLines(parsed.orders);
+  assert.equal(line.trackingNumber, '9434608106245533522453');
+  assert.equal(line.itemId, '267768290542');
+  assert.equal(line.quantity, 2);
+  assert.equal(line.unitCostCents, 1250);
 });
 
 test('parseTradingGetOrdersXml + mapTradingOrdersToBuyerLines round-trip', () => {
@@ -273,4 +313,17 @@ test('buildGetOrdersRequestXml includes OrderRole=Buyer and pagination', () => {
 
   const first = buildGetOrdersRequestXml({ pageNumber: 1, sinceIso: null });
   assert.match(first, /<NumberOfDays>30<\/NumberOfDays>/);
+});
+
+test('buildGetOrdersRequestXml by order id: OrderIDArray (escaped), Buyer role, no date window, ≤100 ids', () => {
+  const xml = buildGetOrdersRequestXml({ pageNumber: 2, sinceIso: '2026-09-01T00:00:00.000Z', orderIds: ['15-15078-20314', 'A&B'] });
+  assert.match(xml, /<OrderRole>Buyer<\/OrderRole>/);
+  assert.match(xml, /<OrderIDArray><OrderID>15-15078-20314<\/OrderID><OrderID>A&amp;B<\/OrderID><\/OrderIDArray>/);
+  assert.doesNotMatch(xml, /ModTimeFrom|NumberOfDays/, 'eBay ignores a date window beside OrderIDArray — never send one');
+  assert.match(xml, /<PageNumber>2<\/PageNumber>/);
+  assert.equal(GET_ORDERS_MAX_ORDER_IDS, 100);
+  const tooMany = Array.from({ length: 101 }, (_, i) => `id-${i}`);
+  assert.throws(() => buildGetOrdersRequestXml({ pageNumber: 1, sinceIso: null, orderIds: tooMany }), /at most 100/);
+  // No ids: the window as before.
+  assert.match(buildGetOrdersRequestXml({ pageNumber: 1, sinceIso: null, orderIds: [] }), /<NumberOfDays>/);
 });

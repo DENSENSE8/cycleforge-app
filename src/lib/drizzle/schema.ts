@@ -2497,6 +2497,8 @@ export const skuCatalog = pgTable('sku_catalog', {
   ean: text('ean'),
   /** GS1 Global Trade Item Number — encodes Digital Link QRs (/01/{gtin}). */
   gtin: text('gtin'),
+  /** Manufacturer part number, owned by the CycleForge catalog (2026-10-05). Not unique. */
+  mpn: text('mpn'),
   imageUrl: text('image_url'),
   isActive: boolean('is_active').notNull().default(true),
   /** Sourcing lifecycle: active|eol|discontinued|nrnd|unknown. Non-active rows feed runSourcingScanJob. Added 2026-06-06. */
@@ -3140,6 +3142,12 @@ export const serialUnits = pgTable('serial_units', {
   shipmentId: bigint('shipment_id', { mode: 'number' }),
   legacyNotes: text('legacy_notes'),
   legacyDateTime: timestamp('legacy_date_time', { withTimezone: true }),
+  /** Set only by the prepack form's Finish action. */
+  prepackedAt: timestamp('prepacked_at', { withTimezone: true }),
+  prepackedByStaffId: integer('prepacked_by_staff_id'),
+  prepackLocationId: integer('prepack_location_id'),
+  /** NONE|MANUFACTURER|SELLER|AMAZON_RENEWED; NULL = not recorded. History, never physical condition (2026-10-05). */
+  refurbProvenance: text('refurb_provenance'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   /** Handling-unit (H-#### testing tote) this unit currently sits in, if any. */
@@ -3147,6 +3155,21 @@ export const serialUnits = pgTable('serial_units', {
   // NOTE: the org-scoped partial unique index ux_serial_units_org_unit_uid
   // and the organization_id column (added 2026-05-23) live in SQL migrations,
   // which are the source of truth for this table — not expressed here.
+});
+
+/** Unit-specific Included/Missing decisions copied from the catalog kit at prepack Finish. */
+export const serialUnitPrepackContents = pgTable('serial_unit_prepack_contents', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  serialUnitId: integer('serial_unit_id').notNull().references(() => serialUnits.id, { onDelete: 'cascade' }),
+  kitPartId: integer('kit_part_id').references(() => skuKitParts.id, { onDelete: 'set null' }),
+  componentName: text('component_name').notNull(),
+  componentType: text('component_type').notNull(),
+  qtyRequired: integer('qty_required').notNull().default(1),
+  componentSku: text('component_sku'),
+  included: boolean('included').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** label_print_jobs — immutable per-print ledger (serial↔label pairing plan §5.1, migration 2026-07-06a). */
@@ -3168,6 +3191,8 @@ export const labelPrintJobs = pgTable('label_print_jobs', {
   reprintOfId: bigint('reprint_of_id', { mode: 'number' }),
   actorStaffId: integer('actor_staff_id'),
   clientEventId: text('client_event_id'),
+  /** The print station that printed it (`print_stations.station_id`) — the per-station job log (2026-10-04c). */
+  stationId: text('station_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -4269,7 +4294,7 @@ export const stationDefinitions = pgTable('station_definitions', {
 }));
 
 // ─── Warranty Claim Logger + Repair Outcome Tracker ──────────────────────────
-// Support › Warranty mode (`/support?mode=warranty`). See 2026-06-06_warranty_claim_logger.sql
+// Warranty claim storage. See 2026-06-06_warranty_claim_logger.sql
 // and docs/warranty-claim-logger-plan.md. Clock logic: src/lib/warranty/clock.ts.
 
 /**
@@ -4873,6 +4898,8 @@ export const kioskDevices = pgTable('kiosk_devices', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
   label: text('label').notNull(),
+  /** CHECK kiosk_devices_kind_chk: kiosk (counter tablet) | print_station (an enrolled print station's credential). */
+  kind: text('kind').notNull().default('kiosk'),
   /** CHECK kiosk_devices_status_chk: enrolled | active | revoked */
   status: text('status').notNull().default('enrolled'),
   enrollCodeHash: text('enroll_code_hash'),

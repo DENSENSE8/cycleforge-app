@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
   adoptBay,
   createRack,
+  deleteRack,
   editRackShelves,
   getRack,
   moveRack,
@@ -50,7 +51,6 @@ function loc(org: string, id: number, kind: string, barcode: string | null, pare
     parentId,
     isActive: true,
     sortOrder: 0,
-    tier: null,
     capacity: null,
     ...extra,
   };
@@ -132,7 +132,7 @@ function fakes(initial: Row[] = seed(), opts: { stock?: Record<number, number>; 
     async insertLocation(orgId, row) {
       cap.inserts.push(row);
       const id = nextId++;
-      rows.push(loc(orgId, id, row.kind, row.barcode, row.parentId, { name: row.name, sortOrder: row.sortOrder, tier: row.tier ?? null }));
+      rows.push(loc(orgId, id, row.kind, row.barcode, row.parentId, { name: row.name, sortOrder: row.sortOrder }));
       return id;
     },
     async updateLocation(orgId, id, patch) {
@@ -205,14 +205,14 @@ function fakes(initial: Row[] = seed(), opts: { stock?: Record<number, number>; 
   return { deps, cap, rows };
 }
 
-/** ORG with rack RK4 (3 shelves, shelf 2 tiered) standing in Room A. */
+/** ORG with rack RK4 (3 shelves) standing in Room A. */
 function withRack(opts: { stock?: Record<number, number>; occupied?: number[] } = {}) {
   return fakes(
     [
       ...seed(),
       loc(ORG, 10, 'RACK', 'RK4', 1, { name: 'Rack 4', sortOrder: 4 }),
       loc(ORG, 11, 'SHELF', 'RK4-1', 10, { name: 'Rack 4 Shelf 1', sortOrder: 1 }),
-      loc(ORG, 12, 'SHELF', 'RK4-2', 10, { name: 'Rack 4 Shelf 2', sortOrder: 2, tier: 0 }),
+      loc(ORG, 12, 'SHELF', 'RK4-2', 10, { name: 'Rack 4 Shelf 2', sortOrder: 2 }),
       loc(ORG, 13, 'SHELF', 'RK4-3', 10, { name: 'Rack 4 Shelf 3', sortOrder: 3 }),
     ],
     opts,
@@ -230,7 +230,7 @@ test('createRack: allocates the next number under the org lock and writes rack +
   const { deps, cap } = withRack();
   const out = await createRack(
     ACTOR,
-    { placementCode: 'room-b', shelves: 3, shelfTiers: [{ shelf: 2, tier: 1 }], clientEventId: 'evt-create-1' },
+    { placementCode: 'room-b', shelves: 3, clientEventId: 'evt-create-1' },
     deps,
   );
   assert.ok(out.ok);
@@ -239,12 +239,12 @@ test('createRack: allocates the next number under the org lock and writes rack +
   assert.deepEqual(cap.locks, [ORG], 'number allocation is serialized by an org-keyed lock');
   assert.deepEqual(cap.txOrgs, [ORG]);
   assert.deepEqual(
-    cap.inserts.map((r) => [r.kind, r.barcode, r.parentId, r.sortOrder, r.tier ?? null]),
+    cap.inserts.map((r) => [r.kind, r.barcode, r.parentId, r.sortOrder]),
     [
-      ['RACK', 'RK5', 2, 5, null],
-      ['SHELF', 'RK5-1', 1000, 1, null],
-      ['SHELF', 'RK5-2', 1000, 2, 1],
-      ['SHELF', 'RK5-3', 1000, 3, null],
+      ['RACK', 'RK5', 2, 5],
+      ['SHELF', 'RK5-1', 1000, 1],
+      ['SHELF', 'RK5-2', 1000, 2],
+      ['SHELF', 'RK5-3', 1000, 3],
     ],
   );
   assert.equal(cap.events.length, 1);
@@ -258,7 +258,6 @@ test('createRack: allocates the next number under the org lock and writes rack +
   assert.equal(out.body.rack.code, 'RK5');
   assert.equal(out.body.rack.room?.id, 2);
   assert.equal(out.body.rack.shelfCount, 3);
-  assert.deepEqual(out.body.rack.tierCounts, [{ tier: 1, count: 1 }]);
 });
 
 test('createRack: positions per shelf become POSITION rows parented to their shelf', async () => {
@@ -317,14 +316,6 @@ test('createRack: placement must be a ROOM/STAGING of the same org', async () =>
   assert.deepEqual(cap.inserts, []);
 });
 
-test('createRack: shelf tier outside the shelf count is invalid before any IO', async () => {
-  const { deps, cap } = fakes();
-  const out = await createRack(ACTOR, { placementId: 1, shelves: 2, shelfTiers: [{ shelf: 3, tier: 0 }], clientEventId: 'evt-t-1' }, deps);
-  assert.ok(!out.ok);
-  assert.equal(out.error.code, 'invalid');
-  assert.deepEqual(cap.txOrgs, []);
-});
-
 // ─── Read ───────────────────────────────────────────────────────────────────
 
 test('getRack: a shelf code (any spelling) resolves to its rack', async () => {
@@ -350,7 +341,7 @@ test('moveRack: one parent_id update; derived room flips; event carries from/to'
   assert.equal(out.body.from.id, 1);
   assert.equal(out.body.to.id, 2);
   assert.equal(out.body.rack.room?.id, 2);
-  assert.equal(out.body.rack.shelves.find((s) => s.code === 'RK4-2')?.tier, 0, 'tiers ride along untouched');
+  assert.deepEqual(out.body.rack.shelves.map((s) => s.code), ['RK4-1', 'RK4-2', 'RK4-3'], 'shelves ride along untouched');
   assert.equal(cap.events.length, 1);
   const payload = cap.events[0]!.payload as Record<string, { id: number; code: string | null }>;
   assert.equal(cap.events[0]!.eventType, RACK_EVENT.moved);
@@ -397,6 +388,32 @@ test('moveRack: a clientEventId already spent on another verb is refused', async
   const out = await moveRack(ACTOR, 'RK4', { destinationCode: 'ROOM-B', clientEventId: 'evt-shared' }, deps);
   assert.ok(!out.ok);
   assert.equal(out.error.code, 'invalid');
+});
+
+// ─── Delete ────────────────────────────────────────────────────────────────
+
+test('deleteRack: retires an empty rack and every shelf/position in one event', async () => {
+  const fixture = withRack();
+  fixture.rows.push(loc(ORG, 14, 'POSITION', 'RK4-1-1', 11, { name: 'Rack 4 Shelf 1 Pos 1' }));
+  const out = await deleteRack(ACTOR, 'RK4', { clientEventId: 'evt-delete-1' }, fixture.deps);
+  assert.ok(out.ok);
+  assert.deepEqual(fixture.cap.deactivated, [10, 11, 12, 13, 14]);
+  assert.deepEqual(out.body.retired, ['RK4', 'RK4-1', 'RK4-2', 'RK4-3', 'RK4-1-1']);
+  assert.equal(fixture.cap.events[0]?.eventType, RACK_EVENT.deleted);
+  const replay = await deleteRack(ACTOR, 'RK4', { clientEventId: 'evt-delete-1' }, fixture.deps);
+  assert.ok(replay.ok);
+  assert.equal(replay.body.idempotent, true);
+  assert.equal(fixture.cap.events.length, 1);
+});
+
+test('deleteRack: refuses an occupied descendant and leaves the hierarchy active', async () => {
+  const { deps, cap } = withRack({ occupied: [12] });
+  const out = await deleteRack(ACTOR, 'RK4', { clientEventId: 'evt-delete-2' }, deps);
+  assert.ok(!out.ok);
+  assert.equal(out.status, 409);
+  assert.equal(out.error.code, 'rack_in_use');
+  assert.deepEqual(cap.deactivated, []);
+  assert.deepEqual(cap.events, []);
 });
 
 // ─── Shelves ────────────────────────────────────────────────────────────────

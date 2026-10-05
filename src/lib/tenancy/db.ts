@@ -90,14 +90,33 @@ export async function tenantQueryOneTrip<T extends QueryResultRow = QueryResultR
   params: ReadonlyArray<unknown> = [],
   via: PgPool = tenantPool,
 ): Promise<QueryResult<T>> {
+  const results = await tenantQueriesOneTrip<T>(orgId, [{ text, params }], via);
+  return results[results.length - 1]!;
+}
+
+/**
+ * Several independent read statements in ONE network round trip: the GUC and
+ * every statement travel as one simple-protocol message, which Postgres runs
+ * in order as a single implicit transaction (so the LOCAL org setting holds
+ * for all of them). One result per statement, in order. Use it when the
+ * statements' combined server time is small next to a round trip; statements
+ * that are each heavy run faster as parallel `tenantQueryOneTrip` calls.
+ */
+export async function tenantQueriesOneTrip<T extends QueryResultRow = QueryResultRow>(
+  orgId: OrgId,
+  statements: ReadonlyArray<{ text: string; params?: ReadonlyArray<unknown> }>,
+  via: PgPool = tenantPool,
+): Promise<Array<QueryResult<T>>> {
   assertOrgId(orgId);
-  const statement = inlineSqlParams(text, params);
+  if (statements.length === 0) return [];
+  // A newline before each `;` so a statement ending in a `--` comment cannot swallow the separator.
+  const body = statements.map(({ text, params }) => inlineSqlParams(text, params ?? []).trim().replace(/;+$/, '')).join('\n;\n');
   const client = await via.connect();
   try {
     const results = (await client.query(
-      `SELECT set_config('app.current_org', '${orgId}', true), ${TX_TIMEOUT_SELECT_LIST};\n${statement}`,
+      `SELECT set_config('app.current_org', '${orgId}', true), ${TX_TIMEOUT_SELECT_LIST};\n${body}`,
     )) as unknown as Array<QueryResult<T>>;
-    return results[results.length - 1];
+    return results.slice(1);
   } finally {
     client.release();
   }

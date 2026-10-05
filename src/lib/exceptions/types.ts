@@ -1,8 +1,8 @@
 /**
  * Exceptions hub — the ONE vocabulary every surface reads (owner 2026-09-28):
- * the global `/exceptions` desk, the phone `/m/exceptions`, and each lane's
- * local Exceptions tab (the same list locked to its domain / kind). Pure data —
- * no React, no SQL.
+ * the global `/exceptions` desk and its phone twin `/m/exceptions`. Legacy
+ * lane routes redirect to this hub; no other page paints an exception list.
+ * Pure data — no React, no SQL.
  *
  * A row belongs to exactly ONE kind. Order SKU-mapping blockers (unpaired SKU,
  * no item number) are `pairs`, not `fbm`; `fbm` is every other held order.

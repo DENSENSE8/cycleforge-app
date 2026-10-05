@@ -1,6 +1,6 @@
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import { photoContentUrl } from '@/lib/photos/display-url';
-import { UNIT_PACKING_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
+import { UNIT_PACKING_PHOTO_TYPE, UNIT_PREPACK_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
 import {
   RECEIVING_PHOTO_LEGACY_PACKAGE,
   RECEIVING_PHOTO_PACKAGE,
@@ -17,6 +17,7 @@ export type UnitTimelinePhotoSource =
   | 'unbox_carton'
   | 'unbox_item'
   | 'testing'
+  | 'prepack'
   | 'packing';
 
 export interface UnitTimelinePhoto {
@@ -104,6 +105,18 @@ export async function listUnitTimelinePhotos(
            ON l.entity_type = 'RECEIVING_LINE' AND l.entity_id = o.line_id
         WHERE p.organization_id = $1
        UNION
+       -- Prepack captures are unit evidence before an order exists. Keep them
+       -- separate from later pack-station photos even though both sit between
+       -- testing and shipment on the evidence spine.
+       SELECT DISTINCT p.id, p.created_at, p.taken_by_staff_id, 'prepack'::text AS source
+         FROM photos p
+         JOIN photo_entity_links l
+           ON l.photo_id = p.id AND l.organization_id = p.organization_id
+        WHERE p.organization_id = $1
+          AND l.entity_type = 'SERIAL_UNIT'
+          AND l.entity_id = $2
+          AND lower(p.photo_type) = lower($8)
+       UNION
        -- Pack captures linked directly to the SERIAL_UNIT (unit QR at pack).
        SELECT DISTINCT p.id, p.created_at, p.taken_by_staff_id, 'packing'::text AS source
          FROM photos p
@@ -114,7 +127,7 @@ export async function listUnitTimelinePhotos(
           AND l.entity_id = $2
           AND (
             lower(p.photo_type) = lower($4)
-            OR lower(COALESCE(p.photo_type, '')) IN ('shipout', 'prepack')
+            OR lower(COALESCE(p.photo_type, '')) = 'shipout'
           )
        UNION
        -- Pack captures on PACKER_LOG that are also dual-linked to this unit.
@@ -145,6 +158,7 @@ export async function listUnitTimelinePhotos(
       RECEIVING_PHOTO_PACKAGE,
       RECEIVING_PHOTO_LEGACY_PACKAGE,
       RECEIVING_PHOTO_UNBOX_CARTON,
+      UNIT_PREPACK_PHOTO_TYPE,
     ],
   );
 

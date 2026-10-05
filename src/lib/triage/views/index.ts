@@ -15,7 +15,6 @@ import { INVENTORY_STOCK_VIEW } from './inventory-stock';
 import {
   LABEL_INTAKE_LABELS_VIEW,
   LABEL_INTAKE_PAPERWORK_VIEW,
-  LABEL_INTAKE_PRINTED_VIEW,
   LABEL_INTAKE_UPLOADS_VIEW,
 } from './label-intake';
 import { LOCATIONS_RACKS_VIEW } from './locations-racks';
@@ -23,6 +22,7 @@ import { OUTBOUND_SHIPPED_VIEW } from './outbound-shipped';
 import { OUTBOUND_TRIAGE_VIEW } from './outbound-triage';
 import { PICKUP_HISTORY_VIEW } from './pickup-history';
 import { PRINT_STATION_FNSKU_VIEW } from './print-station-fnsku';
+import { PRINT_STATIONS_VIEW } from './print-stations';
 import { PRODUCTS_CATALOG_VIEW } from './products-catalog';
 import { PRODUCTS_CATALOG_IMPORT_VIEW } from './products-catalog-import';
 import { QC_LABELS_VIEW } from './qc-labels';
@@ -40,13 +40,13 @@ export {
   INVENTORY_STOCK_VIEW,
   LABEL_INTAKE_LABELS_VIEW,
   LABEL_INTAKE_PAPERWORK_VIEW,
-  LABEL_INTAKE_PRINTED_VIEW,
   LABEL_INTAKE_UPLOADS_VIEW,
   LOCATIONS_RACKS_VIEW,
   OUTBOUND_SHIPPED_VIEW,
   OUTBOUND_TRIAGE_VIEW,
   PICKUP_HISTORY_VIEW,
   PRINT_STATION_FNSKU_VIEW,
+  PRINT_STATIONS_VIEW,
   PRODUCTS_CATALOG_VIEW,
   PRODUCTS_CATALOG_IMPORT_VIEW,
   QC_LABELS_VIEW,
@@ -63,7 +63,6 @@ export const TRIAGE_VIEWS: Readonly<Record<TriageViewId, TriageViewDecl>> = Obje
     LABEL_INTAKE_UPLOADS_VIEW,
     LABEL_INTAKE_LABELS_VIEW,
     LABEL_INTAKE_PAPERWORK_VIEW,
-    LABEL_INTAKE_PRINTED_VIEW,
     IMPORT_RUNS_VIEW,
     IMPORT_ROWS_VIEW,
     INVENTORY_STOCK_VIEW,

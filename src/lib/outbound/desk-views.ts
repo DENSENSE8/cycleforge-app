@@ -7,6 +7,7 @@
 
 import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
+import { EXCEPTIONS_PATH, EXCEPTION_DOMAIN_PARAM, EXCEPTION_KIND_PARAM } from '@/lib/exceptions/types';
 
 /** Views whose rows are `/api/orders` rows — `sqlDeskQueueScope(id)` is their membership. */
 export type DeskQueueViewId = 'triage';
@@ -99,9 +100,6 @@ export const DESK_VIEWS: readonly DeskView[] = [
   },
 ];
 
-/** FBM's painted children. The archive view is not one of them. */
-export const FBM_PAINTED_VIEWS: readonly DeskView[] = DESK_VIEWS.filter((view) => view.id !== 'shipped');
-
 /** View ids in paint order. */
 export const DESK_VIEW_ORDER: readonly DeskViewId[] = DESK_VIEWS.map((view) => view.id);
 
@@ -154,6 +152,12 @@ export function resolveDeskView(pathname: string | null): DeskViewId | null {
  * params travel — filters and the open record belong to the view being left.
  */
 export function deskViewHref(id: DeskViewId): string {
+  if (id === 'exceptions') {
+    return `${EXCEPTIONS_PATH}?${new URLSearchParams({
+      [EXCEPTION_DOMAIN_PARAM]: 'fulfillment',
+      [EXCEPTION_KIND_PARAM]: 'fbm',
+    })}`;
+  }
   const view = getDeskView(id);
   const qs = new URLSearchParams(view.params).toString();
   return qs ? `${view.pathname}?${qs}` : view.pathname;

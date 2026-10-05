@@ -21,10 +21,10 @@ export function useAncestorScrollMargin({
   const [scrollMargin, setScrollMargin] = useState(0);
 
   useEffect(() => {
-    if (!enabled) {
-      setScrollMargin((prev) => (prev === 0 ? prev : 0));
-      return;
-    }
+    // Disabled: the return value is 0 regardless — no state write. A write here
+    // re-renders every caller whose `deps` are fresh each render, forever
+    // ("Maximum update depth exceeded" on /support's table).
+    if (!enabled) return;
     const scrollEl = scrollParentRef.current;
     const inner = innerRef.current;
     if (!scrollEl || !inner) return;

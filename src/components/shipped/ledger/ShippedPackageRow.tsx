@@ -13,6 +13,7 @@ import { memo, useMemo } from 'react';
 import type { TriageCardSlotProps } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageRow, type TriageRowFace } from '@/design-system/components/triage-card-list/TriageRow';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
+import { formatOrderIdDisplay } from '@/lib/copy-chip-format';
 import { OUTBOUND_SHIPPED_VIEW } from '@/lib/triage/views';
 import { formatDateTimePST, formatMonthDayTimePST } from '@/utils/date';
 import {
@@ -22,6 +23,7 @@ import {
   shippedRecordCard,
   type ShippedCardModel,
 } from './shipped-card-model';
+import { shippedPackageTracking } from './shipped-package-state';
 
 const VIEW = OUTBOUND_SHIPPED_VIEW;
 
@@ -39,6 +41,7 @@ export const ShippedPackageRow = memo(function ShippedPackageRow(props: TriageCa
     return {
       state: record.state,
       identity: shippedPackageHandle(row),
+      identityCopy: shippedPackageTracking(row) ? { value: shippedPackageTracking(row), tone: 'tracking' } : undefined,
       identityWidth: 'long',
       title,
       photo: { url: lead.photoUrl },
@@ -51,7 +54,12 @@ export const ShippedPackageRow = memo(function ShippedPackageRow(props: TriageCa
               tip: packedAt ? `Packed by ${packer} · ${formatDateTimePST(packedAt)} PT` : `Packed by ${packer}`,
             }
           : { id: 'packed', value: 'Never packed', width: 'long', tone: 'warn' },
-        { id: 'order', value: orderId ? { kind: 'order-id', value: orderId } : null, width: 'code' },
+        {
+          id: 'order',
+          value: orderId ? { kind: 'order-id', value: orderId } : null,
+          copy: orderId ? { value: orderId, display: formatOrderIdDisplay(orderId), tone: 'id' } : undefined,
+          width: 'code',
+        },
         { id: 'condition', value: lead.facts.condition ?? null, width: 'short' },
         { id: 'price', value: lead.facts.price ?? null, width: 'short' },
       ],

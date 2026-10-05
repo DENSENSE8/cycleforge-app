@@ -17,7 +17,7 @@ export type PackScanTarget =
   /** A tote that cannot be packed from (`toteScanRefusal`). */
   | { kind: 'refused'; error: string }
   /** A printed unit label whose unit is on no open order — the prepack path. */
-  | { kind: 'unit-not-on-order'; error: string };
+  | { kind: 'unit-not-on-order'; error: string; serialUnitId: number | null; unitKey: string };
 
 export interface PackScanDeps {
   resolveTote: typeof resolveToteScan;
@@ -32,9 +32,9 @@ const defaultDeps: PackScanDeps = {
 /**
  * Tote first (a house `H-` plate or an external tote barcode), then a unit
  * (label handle, unit_uid or typed serial). `null` = the scan names neither,
- * and the caller treats it as a tracking / SKU scan exactly as before. A typed
- * serial with no open order is also `null`; a printed unit label is not —
- * it can only ever name a unit.
+ * and the caller treats it as a tracking / SKU scan exactly as before. Any
+ * known unit with no open order lands on its prepack facts, regardless of
+ * whether the packer scanned OEM serial, unit label, or GS1.
  */
 export async function resolvePackScan(
   client: Queryable,
@@ -51,15 +51,18 @@ export async function resolvePackScan(
   }
 
   const scan = pickScanKey(raw);
-  if (!scan) return null;
+  // A package label (`KIT-…`) names no single unit; it is not a pack-unit scan.
+  if (!scan || scan.kind === 'package') return null;
   const unit = await deps.findUnitOrder(client, orgId, scan);
   if (unit?.orderId != null) {
     return { kind: 'order', via: 'unit', orderId: unit.orderId, serialUnitId: unit.serialUnitId };
   }
-  if (scan.kind === 'label') {
+  if (unit || scan.kind === 'label') {
     return {
       kind: 'unit-not-on-order',
       error: unit ? `Unit ${scan.key} is not on an open order` : `Unit label ${scan.key} not found`,
+      serialUnitId: unit?.serialUnitId ?? null,
+      unitKey: scan.key,
     };
   }
   return null;

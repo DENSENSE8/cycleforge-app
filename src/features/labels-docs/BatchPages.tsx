@@ -25,6 +25,7 @@ import type { LabelBatchPage } from '@/lib/label-batches/contracts';
 import { fetchLabelPrintHistory, labelPdfSrc, labelPrintHistoryKey } from '@/lib/label-prints/http-client';
 import { rasterizeDocument } from '@/lib/label-prints/label-raster';
 import { SHIPPING_LABEL_PAPER } from '@/lib/label-prints/print-route';
+import { statusPillLabel } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import { CHANNEL_FACE } from './print-faces';
 
@@ -146,11 +147,11 @@ function PageTile({
       <PagePreview page={page} />
       <div className="flex min-w-0 items-center gap-2">
         {printed ? (
-          <span className="shrink-0 rounded-md bg-fill-success/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-text-success" data-testid="batch-page-badge">
+          <span className={cn('shrink-0 rounded-md bg-fill-success/15 px-2 py-0.5 text-text-success', statusPillLabel)} data-testid="batch-page-badge">
             Printed ×{page.printCount}
           </span>
         ) : (
-          <span className="shrink-0 rounded-md bg-fill-warning/15 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-text-warning" data-testid="batch-page-badge">
+          <span className={cn('shrink-0 rounded-md bg-fill-warning/15 px-2 py-0.5 text-text-warning', statusPillLabel)} data-testid="batch-page-badge">
             Not printed
           </span>
         )}

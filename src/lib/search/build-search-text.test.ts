@@ -580,6 +580,43 @@ test('SUPPORT_TICKET: an unsubjected ticket still titles and indexes by number',
   assert.equal(doc.facets.sourcePlatform, 'internal');
 });
 
+test('SUPPORT_TICKET: requester, linked orders, tracking, SKUs, repairs and pasted refs are searchable; local lifecycle wins', () => {
+  const doc = buildSearchText('SUPPORT_TICKET', {
+    id: 88,
+    provider: 'ebay',
+    external_ticket_id: 'C-7781',
+    subject_cache: 'Where is my remote?',
+    status_cache: 'solved',
+    lifecycle: 'waiting_customer',
+    requester_name: 'Jo Smith',
+    requester_email: 'jo@example.com',
+    requester_handle: 'buyer_jo',
+    account_label: 'usav-main',
+    order_numbers: '16-14873-30704',
+    order_ids: '4211',
+    order_skus: 'BOSE-RC-1',
+    order_trackings: '9400111899561234567890',
+    shipment_trackings: '1Z999AA10123456784',
+    repair_ids: '74',
+    repair_numbers: '48120',
+    repair_order_numbers: '113-44',
+    repair_skus: 'BOSE-901',
+    repair_trackings: '',
+    item_skus: 'BOSE-RC-2',
+    external_refs: 'https://www.ebay.com/itm/296543218877',
+  });
+  for (const needle of [
+    '#88', 'C-7781', 'jo@example.com', 'buyer_jo', 'Jo Smith', '16-14873-30704', '4211',
+    '9400111899561234567890', '1Z999AA10123456784', 'BOSE-RC-1', 'BOSE-RC-2', 'BOSE-901',
+    'RS-74', '48120', '113-44', '296543218877', 'Where is my remote?', 'usav-main',
+  ]) {
+    assert.ok(doc.searchText.includes(needle), `searchText missing ${needle}`);
+  }
+  assert.equal(doc.subtitle, '#88 · Jo Smith · waiting_customer');
+  assert.equal(doc.facets.status, 'waiting_customer');
+  assert.equal(doc.facets.trackingNumber, '9400111899561234567890');
+});
+
 test('isSearchEntityType guards the discriminator set', () => {
   for (const t of SEARCH_ENTITY_TYPES) assert.equal(isSearchEntityType(t), true);
   assert.equal(isSearchEntityType('WALK_IN_ORDER'), false);

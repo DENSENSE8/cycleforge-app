@@ -382,10 +382,7 @@ function requireLane(name) {
 
 function cmdUp(name) {
   const lane = requireLane(name);
-  run('systemctl', ['--user', 'enable', '--now', `cycleforge-lane@${name}.service`]);
-  if (existsSync(laneYmlPath(name))) {
-    run('systemctl', ['--user', 'enable', '--now', `cycleforge-lane-tunnel@${name}.service`]);
-  }
+  run('systemctl', ['--user', 'start', `cycleforge-lane@${name}.service`]);
   log('');
   log(`  ${C.green}up${C.reset}  http://localhost:${lane.LANE_PORT}  ·  https://${lane.LANE_HOST}`);
   log(`  ${C.dim}first compile is slow; journalctl --user -u cycleforge-lane@${name} -f${C.reset}`);
@@ -394,8 +391,7 @@ function cmdUp(name) {
 
 function cmdDown(name) {
   requireLane(name);
-  run('systemctl', ['--user', 'disable', '--now', `cycleforge-lane-tunnel@${name}.service`]);
-  run('systemctl', ['--user', 'disable', '--now', `cycleforge-lane@${name}.service`]);
+  run('systemctl', ['--user', 'stop', `cycleforge-lane@${name}.service`]);
   log(`  ${C.dim}lane ${name} stopped${C.reset}`);
 }
 

@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 /** Every page is parsed (an image-only label also has its barcode decoded) before the answer — up to 500 pages. */
 export const maxDuration = 300;
 
-const ALLOWED_FIELDS = new Set(['file', 'clientEventId']);
+const ALLOWED_FIELDS = new Set(['file', 'clientEventId', 'matchOrder']);
 
 /** GET /api/v1/label-batches?q=&from=&to=&limit= — uploaded label PDFs, newest upload first. */
 export const GET = withAuth(async (request, ctx) => {
@@ -20,7 +20,7 @@ export const GET = withAuth(async (request, ctx) => {
 export const POST = withAuth(async (request, ctx) => {
   try {
     const form = await request.formData();
-    if ([...form.keys()].some((key) => !ALLOWED_FIELDS.has(key)) || [...ALLOWED_FIELDS].some((key) => form.getAll(key).length !== 1)) {
+    if ([...form.keys()].some((key) => !ALLOWED_FIELDS.has(key)) || form.getAll('file').length !== 1 || form.getAll('clientEventId').length !== 1 || form.getAll('matchOrder').length > 1) {
       return v1Error(400, 'INVALID_REQUEST', 'Unexpected, missing or repeated multipart field.');
     }
     const fields = labelBatchUploadFieldsSchema.safeParse({ clientEventId: form.get('clientEventId') });
@@ -34,6 +34,7 @@ export const POST = withAuth(async (request, ctx) => {
       clientEventId: fields.data.clientEventId,
       fileName: file.name,
       bytes: Buffer.from(await file.arrayBuffer()),
+      matchOrder: form.get('matchOrder') !== 'false',
     });
     return v1Data(result, { status: result.replayed ? 200 : 201 });
   } catch (error) {

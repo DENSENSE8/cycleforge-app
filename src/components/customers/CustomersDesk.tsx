@@ -6,7 +6,10 @@ import { useSearchParams } from 'next/navigation';
 import { DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
 import type { CustomerDirectoryPayload } from '@/lib/customers/customer-throughput';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
+import { CUSTOMER_PATHS } from '@/lib/nav/route-tree';
 import { CustomerDirectoryList, CustomerDirectorySummary } from './CustomerDirectoryList';
+import { CustomerDeskActions } from './CustomerDeskActions';
+import { CustomerInvoiceAction } from './CustomerInvoiceAction';
 import { CustomerRecord } from './CustomerRecord';
 import { getCustomerJson } from './customer-format';
 
@@ -33,28 +36,32 @@ export function CustomersDesk() {
     if (customerId == null) params.delete('customer');
     else params.set('customer', String(customerId));
     const qs = params.toString();
-    window.history.replaceState(null, '', qs ? `/customers?${qs}` : '/customers');
+    window.history.replaceState(null, '', qs ? `${CUSTOMER_PATHS.desktop}?${qs}` : CUSTOMER_PATHS.desktop);
   }, [searchParams]);
 
-  const title = selected?.name ?? (selectedId ? `Customer ${selectedId}` : 'Customer');
+  const title = selected?.name ?? (selectedId ? 'Customer record' : 'Customer');
   const subtitle = selected
     ? selected.orderCount > 1
       ? `Repeat customer · ${selected.orderCount} orders`
       : `${selected.orderCount} order${selected.orderCount === 1 ? '' : 's'}`
     : undefined;
   return (
-    <DeskRecordPlane
-      open={selectedId != null}
-      onClose={() => writeSelected(null)}
-      title={title}
-      subtitle={subtitle}
-      recordNoun="customer"
-      recordKey={selectedId == null ? null : String(selectedId)}
-      testId="customer-record-plane"
-      list={<CustomerDirectoryList rows={rows} loading={directory.isPending} failed={directory.isError} fetching={directory.isFetching} selectedId={selectedId} narrowed={Boolean(query)} onOpen={writeSelected} />}
-      summary={<CustomerDirectorySummary rows={rows} />}
-    >
-      {selectedId != null ? <CustomerRecord customerId={selectedId} /> : null}
-    </DeskRecordPlane>
+    <>
+      <CustomerDeskActions onCreated={writeSelected} />
+      <DeskRecordPlane
+        open={selectedId != null}
+        onClose={() => writeSelected(null)}
+        title={title}
+        subtitle={subtitle}
+        recordNoun="customer"
+        recordKey={selectedId == null ? null : String(selectedId)}
+        testId="customer-record-plane"
+        actions={selectedId == null ? null : <CustomerInvoiceAction customerId={selectedId} />}
+        list={<CustomerDirectoryList rows={rows} loading={directory.isPending} failed={directory.isError} fetching={directory.isFetching} selectedId={selectedId} narrowed={Boolean(query)} onOpen={writeSelected} />}
+        summary={<CustomerDirectorySummary rows={rows} />}
+      >
+        {selectedId != null ? <CustomerRecord customerId={selectedId} /> : null}
+      </DeskRecordPlane>
+    </>
   );
 }

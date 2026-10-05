@@ -42,6 +42,9 @@ export async function fetchLocationRecord(
       isProvisional?: boolean;
       imageUrl?: string | null;
       photoIds?: number[];
+      lastCounted?: string | null;
+      updatedAt?: string | null;
+      minQty?: number | null;
     }>;
     handlingUnits?: Array<{
       id?: number;
@@ -70,6 +73,9 @@ export async function fetchLocationRecord(
         isProvisional: c.isProvisional === true,
         imageUrl: c.imageUrl?.trim() || null,
         photoIds: (c.photoIds ?? []).map(Number).filter((id) => Number.isSafeInteger(id) && id > 0),
+        lastCounted: c.lastCounted ?? null,
+        lastMoved: c.updatedAt ?? null,
+        minQty: c.minQty == null ? null : Number(c.minQty),
       })),
     handlingUnits: (json.handlingUnits ?? [])
       .filter((unit) => Number(unit.id) > 0 && unit.code)

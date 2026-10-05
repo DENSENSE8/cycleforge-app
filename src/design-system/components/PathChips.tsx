@@ -30,11 +30,14 @@ export function PathChips({
   currentId,
   ariaLabel,
   testId,
+  density = 'default',
 }: {
   chips: readonly PathChip[];
   currentId: string;
   ariaLabel: string;
   testId?: string;
+  /** Compact is the small pill face used by dense address builders. */
+  density?: 'default' | 'compact';
 }) {
   const router = useRouter();
   const navRef = useRef<HTMLElement>(null);
@@ -70,9 +73,9 @@ export function PathChips({
               <li>
                 <Button
                   variant={current ? 'primary' : reached ? 'primarySoft' : 'secondary'}
-                  size="lg"
-                  radius="surface"
-                  className="min-h-11 gap-1.5 px-3"
+                  size={density === 'compact' ? 'sm' : 'lg'}
+                  radius={density === 'compact' ? 'pill' : 'surface'}
+                  className={density === 'compact' ? 'h-8 min-h-8 gap-1 px-2' : 'min-h-11 gap-1.5 px-3'}
                   // Button's `href` is an external link (new tab); a path chip is an in-app jump.
                   onClick={current ? undefined : chip.onSelect ?? (chip.href ? () => router.push(chip.href!) : undefined)}
                   disabled={!current && !chip.href && !chip.onSelect}

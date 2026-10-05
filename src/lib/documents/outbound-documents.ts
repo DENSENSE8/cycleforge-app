@@ -13,6 +13,7 @@ import { resolveStnForOrder } from './resolve-stn-for-order';
 import { documentContentUrl } from './display-url';
 import { buildSourceHash } from './fetch-idempotency';
 import { uploadOutboundDocumentToGcs, isOutboundDocumentGcsConfigured } from './storage/upload';
+import { gcsAdapter } from '@/lib/photos/storage/gcs-adapter';
 import type {
   DocumentEntityType,
   OutboundDocument,
@@ -168,10 +169,13 @@ export async function listDocumentsForShipment(
   });
 }
 
-interface AttachOutboundDocumentInput {
+export interface AttachOutboundDocumentInput {
   orderId: number;
   documentType: OutboundDocumentType;
-  url: string;
+  /** Existing row to pair/re-pair without copying its bytes. */
+  documentId?: number;
+  /** Required only when creating a new URL-backed row. */
+  url?: string;
   platform?: string | null;
   /** manual_upload | marketplace_api | generated | zoho_export. Defaults to manual_upload. */
   source?: string;
@@ -183,7 +187,7 @@ interface AttachOutboundDocumentInput {
   uploadedBy?: number | null;
 }
 
-interface AttachOutboundDocumentResult {
+export interface AttachOutboundDocumentResult {
   document: OutboundDocument;
   /** True when this is the order's first shipping_label — callers should also
    * record AUDIT_ACTION.LABEL_PRINTED (order timeline precedent). */
@@ -200,7 +204,10 @@ export async function attachOutboundDocument(
   input: AttachOutboundDocumentInput,
   deps: OutboundDocumentDeps = defaultDeps,
 ): Promise<AttachOutboundDocumentResult> {
-  await validateAttachUrl(orgId, input.url, deps);
+  if (input.documentId == null) {
+    if (!input.url) throw new OutboundDocumentValidationError('url is required');
+    await validateAttachUrl(orgId, input.url, deps);
+  }
 
   // Resolve a tracking-supplied STN outside any transaction — resolveShipmentId may hit a carrier API (registerAndSyncShipment) and must not…
   let shipmentId: number | null = null;
@@ -218,6 +225,74 @@ export async function attachOutboundDocument(
       throw new OutboundDocumentNotFoundError(`order not found: ${input.orderId}`);
     }
 
+    if (input.documentId != null) {
+      const existing = await client.query<RawDocumentRow>(
+        `SELECT id, entity_type, entity_id, document_type, document_data, created_at, updated_at
+           FROM documents
+          WHERE id = $1 AND organization_id = $2::uuid
+          FOR UPDATE`,
+        [input.documentId, orgId],
+      );
+      if (existing.rowCount === 0 || existing.rows[0].document_type !== input.documentType) {
+        throw new OutboundDocumentNotFoundError(`document not found: ${input.documentId}`);
+      }
+
+      const storedTracking = existing.rows[0].document_data?.tracking?.trim();
+      if (shipmentId == null && storedTracking) {
+        const resolved = await deps.resolveShipmentId(storedTracking, orgId);
+        shipmentId = resolved.shipmentId;
+      }
+      if (shipmentId == null) {
+        shipmentId = await deps.resolveStnForOrder(orgId, input.orderId, client);
+      }
+      if (shipmentId != null) {
+        await deps.linkShipment(
+          orgId,
+          {
+            ownerType: 'ORDER',
+            ownerId: input.orderId,
+            shipmentId,
+            direction: 'OUTBOUND',
+            source: 'outbound-documents',
+          },
+          client,
+        );
+      }
+
+      await client.query(
+        `DELETE FROM document_entity_links
+          WHERE organization_id = $1::uuid
+            AND document_id = $2
+            AND entity_type IN ('ORDER', 'SHIPMENT')`,
+        [orgId, input.documentId],
+      );
+      await client.query(
+        `UPDATE documents
+            SET entity_type = 'ORDER', entity_id = $1, updated_at = NOW()
+          WHERE id = $2 AND organization_id = $3::uuid`,
+        [input.orderId, input.documentId, orgId],
+      );
+      await client.query(
+        `UPDATE label_ingestions
+            SET matched_order_id = $1, updated_at = NOW(), row_version = row_version + 1
+          WHERE organization_id = $2::uuid AND document_id = $3`,
+        [input.orderId, orgId, input.documentId],
+      );
+      await wireOutboundDocumentLinks(orgId, client, deps, {
+        documentId: input.documentId,
+        orderId: input.orderId,
+        documentType: input.documentType,
+        shipmentId,
+      });
+      const refreshed = await client.query<RawDocumentRow>(
+        `SELECT id, entity_type, entity_id, document_type, document_data, created_at, updated_at
+           FROM documents WHERE id = $1 AND organization_id = $2::uuid`,
+        [input.documentId, orgId],
+      );
+      const [document] = await attachLinksToDocuments(client, orgId, refreshed.rows);
+      return { document: document!, isFirstLabel: false };
+    }
+
     if (shipmentId == null && !(input.tracking && input.tracking.trim())) {
       shipmentId = await deps.resolveStnForOrder(orgId, input.orderId, client);
     }
@@ -228,7 +303,7 @@ export async function attachOutboundDocument(
           AND entity_type IN ('ORDER', 'SHIPPING_LABEL') AND entity_id = $3
           AND document_data->>'url' = $4
         LIMIT 1`,
-      [orgId, input.documentType, input.orderId, input.url],
+      [orgId, input.documentType, input.orderId, input.url!],
     );
     if ((dupe.rowCount ?? 0) > 0) {
       throw new OutboundDocumentConflictError('Document already attached');
@@ -261,7 +336,7 @@ export async function attachOutboundDocument(
     }
 
     const data: OutboundDocumentData = {
-      url: input.url,
+      url: input.url!,
       platform: input.platform ?? null,
       source: input.source ?? 'manual_upload',
       mimeType: input.mimeType ?? null,
@@ -319,11 +394,14 @@ interface DeletedOutboundDocument {
   id: number;
   documentType: OutboundDocumentType;
   orderId: number | null;
+  ingestionIds: number[];
 }
 
 interface DeleteOutboundDocumentOptions {
   /** When set, a document of a different type 404s instead of deleting — lets a type-scoped caller (e.g. */
   expectedDocumentType?: OutboundDocumentType;
+  /** Used by remove-unlinked so a concurrent pair can never be deleted. */
+  requireUnlinked?: boolean;
 }
 
 /** Unlink + delete a document. Cascades to document_entity_links via FK. */
@@ -333,9 +411,9 @@ export async function deleteOutboundDocument(
   opts: DeleteOutboundDocumentOptions = {},
   deps: OutboundDocumentDeps = defaultDeps,
 ): Promise<DeletedOutboundDocument> {
-  return deps.withTenantTransaction(orgId, async (client) => {
-    const existing = await client.query<{ document_type: string; entity_type: string; entity_id: number }>(
-      `SELECT document_type, entity_type, entity_id FROM documents
+  const deleted = await deps.withTenantTransaction(orgId, async (client) => {
+    const existing = await client.query<{ document_type: string; entity_type: string; entity_id: number; document_data: OutboundDocumentData }>(
+      `SELECT document_type, entity_type, entity_id, document_data FROM documents
         WHERE id = $1 AND organization_id = $2`,
       [documentId, orgId],
     );
@@ -346,20 +424,61 @@ export async function deleteOutboundDocument(
     if (opts.expectedDocumentType && row.document_type !== opts.expectedDocumentType) {
       throw new OutboundDocumentNotFoundError(`document not found: ${documentId}`);
     }
+    if (opts.requireUnlinked) {
+      const linked = await client.query(
+        `SELECT 1 FROM document_entity_links
+          WHERE organization_id = $1::uuid AND document_id = $2 AND entity_type = 'ORDER'
+          LIMIT 1`,
+        [orgId, documentId],
+      );
+      if (
+        linked.rowCount !== 0 ||
+        ((row.entity_type === 'ORDER' || row.entity_type === 'SHIPPING_LABEL') && Number(row.entity_id) > 0)
+      ) {
+        throw new OutboundDocumentConflictError('Document is linked to an order');
+      }
+    }
+    const ingestionRows = await client.query<{ id: number }>(
+      `DELETE FROM label_ingestions
+        WHERE organization_id = $1::uuid AND document_id = $2
+      RETURNING id`,
+      [orgId, documentId],
+    );
     await client.query(`DELETE FROM documents WHERE id = $1 AND organization_id = $2`, [documentId, orgId]);
     return {
       id: documentId,
       documentType: row.document_type as OutboundDocumentType,
       orderId: row.entity_type === 'ORDER' || row.entity_type === 'SHIPPING_LABEL' ? Number(row.entity_id) : null,
+      ingestionIds: ingestionRows.rows.map((ingestion) => Number(ingestion.id)),
+      storage: row.document_data?.storageProvider === 'gcs' && row.document_data.bucket && row.document_data.objectKey
+        ? { bucket: row.document_data.bucket, objectKey: row.document_data.objectKey }
+        : null,
     };
   });
+  if (deleted.storage) await gcsAdapter.deleteObject(deleted.storage);
+  return {
+    id: deleted.id,
+    documentType: deleted.documentType,
+    orderId: deleted.orderId,
+    ingestionIds: deleted.ingestionIds,
+  };
 }
 
-interface ReplaceOutboundDocumentInput {
+interface ReplaceOutboundDocumentUrlInput {
   url: string;
   filename?: string | null;
   mimeType?: string | null;
 }
+
+interface ReplaceOutboundDocumentBytesInput {
+  buffer: Buffer;
+  contentType: string;
+  filename?: string | null;
+  extension?: string;
+  uploadedBy?: number | null;
+}
+
+type ReplaceOutboundDocumentInput = ReplaceOutboundDocumentUrlInput | ReplaceOutboundDocumentBytesInput;
 
 /**
  * Replace a document's bytes without unlinking its existing order/shipment
@@ -372,8 +491,62 @@ export async function replaceOutboundDocument(
   input: ReplaceOutboundDocumentInput,
   deps: OutboundDocumentDeps = defaultDeps,
 ): Promise<OutboundDocument> {
-  await validateAttachUrl(orgId, input.url, deps);
-  return deps.withTenantTransaction(orgId, async (client) => {
+  if ('url' in input) {
+    await validateAttachUrl(orgId, input.url, deps);
+    return deps.withTenantTransaction(orgId, async (client) => {
+      const replaced = await client.query<RawDocumentRow>(
+        `UPDATE documents SET document_data = document_data || $3::jsonb,
+                updated_at = NOW()
+          WHERE id = $1
+            AND organization_id = $2
+            AND document_type IN ('shipping_label', 'packing_slip')
+        RETURNING id, entity_type, entity_id, document_type, document_data, created_at, updated_at`,
+        [
+          documentId,
+          orgId,
+          JSON.stringify({ url: input.url, filename: input.filename ?? null, mimeType: input.mimeType ?? null }),
+        ],
+      );
+      if (replaced.rowCount === 0) {
+        throw new OutboundDocumentNotFoundError(`document not found: ${documentId}`);
+      }
+      const [document] = await attachLinksToDocuments(client, orgId, replaced.rows);
+      return document!;
+    });
+  }
+
+  if (!isOutboundDocumentGcsConfigured()) {
+    throw new OutboundDocumentValidationError('GCS storage is required for document replacement');
+  }
+  const current = await deps.withTenantTransaction(orgId, async (client) => {
+    const found = await client.query<RawDocumentRow>(
+      `SELECT id, entity_type, entity_id, document_type, document_data, created_at, updated_at
+         FROM documents
+        WHERE id = $1 AND organization_id = $2::uuid
+          AND document_type IN ('shipping_label', 'packing_slip')`,
+      [documentId, orgId],
+    );
+    if (found.rowCount === 0) throw new OutboundDocumentNotFoundError(`document not found: ${documentId}`);
+    return found.rows[0];
+  });
+  const sha256Hex = createHash('sha256').update(input.buffer).digest('hex');
+  const extension = input.extension ?? (input.contentType === 'application/pdf' ? 'pdf' : input.contentType === 'image/png' ? 'png' : 'bin');
+  const uploaded = await uploadOutboundDocumentToGcs({
+    organizationId: orgId,
+    documentId,
+    documentType: current.document_type as OutboundDocumentType,
+    platform: current.document_data.platform ?? 'manual',
+    orderRef: current.entity_type === 'ORDER' ? String(current.entity_id) : 'unlinked',
+    buffer: input.buffer,
+    contentType: input.contentType,
+    extension,
+    versionToken: `${Date.now()}-${sha256Hex.slice(0, 8)}`,
+  });
+  const oldObject = current.document_data.storageProvider === 'gcs' && current.document_data.bucket && current.document_data.objectKey
+    ? { bucket: current.document_data.bucket, objectKey: current.document_data.objectKey }
+    : null;
+  try {
+    const document = await deps.withTenantTransaction(orgId, async (client) => {
     const replaced = await client.query<RawDocumentRow>(
       `UPDATE documents SET document_data = document_data || $3::jsonb,
               updated_at = NOW()
@@ -385,9 +558,15 @@ export async function replaceOutboundDocument(
         documentId,
         orgId,
         JSON.stringify({
-          url: input.url,
+          url: documentContentUrl(documentId),
           filename: input.filename ?? null,
-          mimeType: input.mimeType ?? null,
+          mimeType: input.contentType,
+          uploadedBy: input.uploadedBy ?? null,
+          storageProvider: 'gcs',
+          bucket: uploaded.bucket,
+          objectKey: uploaded.objectKey,
+          sha256Hex,
+          fileSizeBytes: uploaded.fileSizeBytes,
         }),
       ],
     );
@@ -396,7 +575,13 @@ export async function replaceOutboundDocument(
     }
     const [document] = await attachLinksToDocuments(client, orgId, replaced.rows);
     return document!;
-  });
+    });
+    if (oldObject && oldObject.objectKey !== uploaded.objectKey) await gcsAdapter.deleteObject(oldObject);
+    return document;
+  } catch (error) {
+    await gcsAdapter.deleteObject({ bucket: uploaded.bucket, objectKey: uploaded.objectKey });
+    throw error;
+  }
 }
 
 export interface FetchOutboundDocumentsResult {
@@ -404,8 +589,9 @@ export interface FetchOutboundDocumentsResult {
   failed: Array<{ type: OutboundDocumentType; error: string }>;
 }
 
-interface StoreOutboundDocumentBytesInput {
-  orderId: number;
+export interface StoreOutboundDocumentBytesInput {
+  /** Null is the Bulk contract: stored bytes, intentionally no order identity. */
+  orderId: number | null;
   orderRef: string;
   documentType: OutboundDocumentType;
   platform: string;
@@ -420,7 +606,7 @@ interface StoreOutboundDocumentBytesInput {
   sourceHash?: string;
 }
 
-interface StoreOutboundDocumentBytesResult extends AttachOutboundDocumentResult {
+export interface StoreOutboundDocumentBytesResult extends AttachOutboundDocumentResult {
   created: boolean;
 }
 
@@ -448,7 +634,7 @@ async function findOutboundDocumentBySourceHash(
 
 async function findOutboundDocumentByContentHash(
   orgId: OrgId,
-  orderId: number,
+  orderId: number | null,
   documentType: OutboundDocumentType,
   sha256Hex: string,
   deps: OutboundDocumentDeps = defaultDeps,
@@ -458,8 +644,8 @@ async function findOutboundDocumentByContentHash(
       `SELECT id, entity_type, entity_id, document_type, document_data, created_at, updated_at
          FROM documents
         WHERE organization_id = $1
-          AND entity_type = 'ORDER'
-          AND entity_id = $2
+          AND (($2::int IS NOT NULL AND entity_type = 'ORDER' AND entity_id = $2)
+            OR ($2::int IS NULL AND entity_type = 'UNLINKED'))
           AND document_type = $3
           AND document_data->>'sha256Hex' = $4
         LIMIT 1`,
@@ -563,20 +749,22 @@ export async function storeOutboundDocumentFromBytes(
   }
 
   const insertResult = await deps.withTenantTransaction(orgId, async (client) => {
-    const owner = await client.query(
-      `SELECT 1 FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-      [input.orderId, orgId],
-    );
-    if (owner.rowCount === 0) {
-      throw new OutboundDocumentNotFoundError(`order not found: ${input.orderId}`);
+    if (input.orderId != null) {
+      const owner = await client.query(
+        `SELECT 1 FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+        [input.orderId, orgId],
+      );
+      if (owner.rowCount === 0) {
+        throw new OutboundDocumentNotFoundError(`order not found: ${input.orderId}`);
+      }
     }
 
-    if (shipmentId == null && !(input.tracking && input.tracking.trim())) {
+    if (input.orderId != null && shipmentId == null && !(input.tracking && input.tracking.trim())) {
       shipmentId = await deps.resolveStnForOrder(orgId, input.orderId, client);
     }
 
     let firstLabel = false;
-    if (input.documentType === 'shipping_label') {
+    if (input.orderId != null && input.documentType === 'shipping_label') {
       const prior = await client.query(
         `SELECT 1 FROM documents
           WHERE organization_id = $1 AND document_type = 'shipping_label'
@@ -587,7 +775,7 @@ export async function storeOutboundDocumentFromBytes(
       firstLabel = (prior.rowCount ?? 0) === 0;
     }
 
-    if (shipmentId != null) {
+    if (input.orderId != null && shipmentId != null) {
       await deps.linkShipment(
         orgId,
         {
@@ -605,10 +793,11 @@ export async function storeOutboundDocumentFromBytes(
     try {
       inserted = await client.query<RawDocumentRow>(
         `INSERT INTO documents (entity_type, entity_id, document_type, document_data, organization_id)
-         VALUES ('ORDER', $1, $2, $3::jsonb, $4::uuid)
+         VALUES ($1, $2, $3, $4::jsonb, $5::uuid)
          RETURNING id, entity_type, entity_id, document_type, document_data, created_at, updated_at`,
         [
-          input.orderId,
+          input.orderId == null ? 'UNLINKED' : 'ORDER',
+          input.orderId ?? 0,
           input.documentType,
           JSON.stringify({
             url: '',
@@ -633,14 +822,16 @@ export async function storeOutboundDocumentFromBytes(
     }
 
     const newId = Number(inserted.rows[0].id);
-    await wireOutboundDocumentLinks(orgId, client, deps, {
-      documentId: newId,
-      orderId: input.orderId,
-      documentType: input.documentType,
-      shipmentId,
-    });
+    if (input.orderId != null) {
+      await wireOutboundDocumentLinks(orgId, client, deps, {
+        documentId: newId,
+        orderId: input.orderId,
+        documentType: input.documentType,
+        shipmentId,
+      });
+    }
 
-    if (firstLabel) {
+    if (firstLabel && input.orderId != null) {
       await client.query(
         `UPDATE orders SET label_printed_at = NOW(), label_printed_by = $1
            WHERE id = $2 AND label_printed_at IS NULL AND organization_id = $3`,
@@ -707,7 +898,9 @@ export async function storeOutboundDocumentFromBytes(
       );
     });
 
-    const docs = await listDocumentsForOrder(orgId, input.orderId, deps);
+    const docs = input.orderId == null
+      ? await listUnlinkedOutboundDocuments(orgId, input.documentType, deps)
+      : await listDocumentsForOrder(orgId, input.orderId, deps);
     const document = docs.find((d) => d.id === documentId);
     if (!document) {
       throw new OutboundDocumentNotFoundError(`document not found after store: ${documentId}`);
@@ -723,6 +916,33 @@ export async function storeOutboundDocumentFromBytes(
     });
     throw error;
   }
+}
+
+/** Stored outbound rows that deliberately have no order identity. */
+export async function listUnlinkedOutboundDocuments(
+  orgId: OrgId,
+  documentType?: OutboundDocumentType,
+  deps: OutboundDocumentDeps = defaultDeps,
+): Promise<OutboundDocument[]> {
+  return deps.withTenantTransaction(orgId, async (client) => {
+    const result = await client.query<RawDocumentRow>(
+      `SELECT d.id, d.entity_type, d.entity_id, d.document_type, d.document_data, d.created_at, d.updated_at
+         FROM documents d
+        WHERE d.organization_id = $1::uuid
+          AND d.document_type IN ('shipping_label', 'packing_slip')
+          AND ($2::text IS NULL OR d.document_type = $2)
+          AND NOT EXISTS (
+            SELECT 1 FROM document_entity_links l
+             WHERE l.organization_id = $1::uuid
+               AND l.document_id = d.id
+               AND l.entity_type = 'ORDER'
+          )
+          AND NOT (d.entity_type IN ('ORDER', 'SHIPPING_LABEL') AND d.entity_id > 0)
+        ORDER BY d.created_at DESC`,
+      [orgId, documentType ?? null],
+    );
+    return attachLinksToDocuments(client, orgId, result.rows);
+  });
 }
 
 /**

@@ -23,17 +23,18 @@ const KIOSK_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 /** Default pairing-code lifetime — long enough to stage an MDM tablet without racing. */
 export const DEFAULT_ENROLL_TTL_MINUTES = 7 * 24 * 60;
 
-function sha256(raw: string): string {
+/** Hash of a device token or pairing code — the only form either is ever stored in. Shared by every `kiosk_devices` kind. */
+export function sha256(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
 }
 
 /** Long-lived device credential — 32 bytes url-safe. */
-function newDeviceToken(): string {
+export function newDeviceToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
 /** Short-lived, single-use pairing code — 12 chars url-safe, readable enough to hand-carry. */
-function newEnrollCode(): string {
+export function newEnrollCode(): string {
   return randomBytes(9).toString('base64url');
 }
 
@@ -55,6 +56,7 @@ export async function loadKioskDeviceByToken(
        FROM kiosk_devices
       WHERE device_token_hash = $1
         AND status = 'active'
+        AND kind = 'kiosk'
       LIMIT 1`,
     [sha256(token)],
   );
@@ -99,12 +101,12 @@ interface KioskBindingCookies {
 }
 
 /**
- * Pin the kiosk binding on a response. One place decides the cookie options
- * for BOTH cookies — pair, dogfood bind and in-place re-bind must agree on
- * httpOnly / host-only / year-long or a tablet silently loses its device.
+ * Cookie options for every device credential (`cf_kiosk`, `cf_kiosk_client`,
+ * `cf_print_station`): httpOnly, host-only, year-long. Pair, dogfood bind and
+ * in-place re-bind must agree or a device silently loses its binding.
  */
-export function setKioskCookies(res: NextResponse, cookies: KioskBindingCookies): void {
-  const options = {
+export function deviceCookieOptions() {
+  return {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax' as const,
@@ -112,6 +114,11 @@ export function setKioskCookies(res: NextResponse, cookies: KioskBindingCookies)
     maxAge: KIOSK_COOKIE_MAX_AGE_SECONDS,
     // intentionally no `domain` — host-only on `{slug}.kiosk.app…`
   };
+}
+
+/** Pin the kiosk binding on a response — either half may be omitted. */
+export function setKioskCookies(res: NextResponse, cookies: KioskBindingCookies): void {
+  const options = deviceCookieOptions();
   if (cookies.token) res.cookies.set(KIOSK_COOKIE_NAME, cookies.token, options);
   if (cookies.clientId) res.cookies.set(KIOSK_CLIENT_COOKIE_NAME, cookies.clientId, options);
 }
@@ -180,6 +187,7 @@ export async function pairKioskDevice(
             updated_at = now()
       WHERE enroll_code_hash = $1
         AND status = 'enrolled'
+        AND kind = 'kiosk'
         AND enroll_code_expires_at > now()
         AND ($3::uuid IS NULL OR organization_id = $3::uuid)
       RETURNING id, organization_id, label`,
@@ -214,6 +222,7 @@ export async function revokeStaleDogfoodKioskDevices(
             updated_at = now()
       WHERE organization_id = $1
         AND status = 'active'
+        AND kind = 'kiosk'
         AND label LIKE $2
         AND label <> $3
         AND COALESCE(last_seen_at, created_at) < now() - ($4 || ' days')::interval`,
@@ -234,7 +243,7 @@ export async function issueActiveKioskDeviceToken(
   const hash = sha256(token);
   const existing = await pool.query<{ id: number }>(
     `SELECT id FROM kiosk_devices
-      WHERE organization_id = $1 AND label = $2
+      WHERE organization_id = $1 AND label = $2 AND kind = 'kiosk'
       ORDER BY id ASC
       LIMIT 1`,
     [orgId, label],
@@ -244,7 +253,7 @@ export async function issueActiveKioskDeviceToken(
     const upd = await pool.query<{ id: number }>(
       `UPDATE kiosk_devices
           SET device_token_hash = $1, status = 'active', updated_at = now(), revoked_at = NULL
-        WHERE id = $2 AND organization_id = $3
+        WHERE id = $2 AND organization_id = $3 AND kind = 'kiosk'
         RETURNING id`,
       [hash, deviceId, orgId],
     );
@@ -302,6 +311,7 @@ export async function listKioskDevices(orgId: OrgId): Promise<KioskDeviceSummary
            ON s.id = d.enrolled_by_staff_id
           AND s.organization_id = d.organization_id
         WHERE d.organization_id = $1
+          AND d.kind = 'kiosk'
         ORDER BY d.created_at DESC, d.id DESC`,
       [orgId],
     );
@@ -338,7 +348,7 @@ export async function setKioskDeviceTerminal(
     const r = await client.query(
       `UPDATE kiosk_devices
           SET square_terminal_device_id = $3, updated_at = now()
-        WHERE organization_id = $1 AND id = $2 AND status <> 'revoked'`,
+        WHERE organization_id = $1 AND id = $2 AND status <> 'revoked' AND kind = 'kiosk'`,
       [orgId, deviceId, value],
     );
     return (r.rowCount ?? 0) > 0;
@@ -362,6 +372,7 @@ export async function revokeKioskDevice(orgId: OrgId, deviceId: number): Promise
         WHERE id = $1
           AND organization_id = $2
           AND status <> 'revoked'
+          AND kind = 'kiosk'
         RETURNING id`,
       [deviceId, orgId],
     );

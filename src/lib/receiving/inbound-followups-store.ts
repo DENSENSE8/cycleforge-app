@@ -9,6 +9,8 @@ type Executor = Pick<PoolClient, 'query'>;
 
 export interface InboundFollowupsDeps {
   runTransaction: <T>(orgId: OrgId, fn: (db: Executor) => Promise<T>) => Promise<T>;
+  /** One read statement in one round trip; absent → the read runs in `runTransaction`. */
+  read?: (orgId: OrgId, sql: string, params: unknown[]) => Promise<unknown[]>;
 }
 
 // Lazy so DB-free tests can inject deps without loading the server-only pool.
@@ -16,6 +18,10 @@ const defaultDeps: InboundFollowupsDeps = {
   runTransaction: async (orgId, fn) => {
     const { withTenantTransaction } = await import('@/lib/tenancy/db');
     return withTenantTransaction(orgId, (client) => fn(client));
+  },
+  read: async (orgId, sql, params) => {
+    const { tenantQueryOneTrip } = await import('@/lib/tenancy/db');
+    return (await tenantQueryOneTrip(orgId, sql, params)).rows;
   },
 };
 
@@ -53,10 +59,11 @@ export async function readInboundFollowups(
   deps: InboundFollowupsDeps = defaultDeps,
 ): Promise<InboundFollowup[]> {
   if (keys.length === 0) return [];
-  return deps.runTransaction(orgId, async (db) => {
-    const { rows } = await db.query<Row>(SELECT_WITH_NAME, [orgId, keys]);
-    return rows.map(toFollowup);
-  });
+  const params = [orgId, keys];
+  const rows = deps.read
+    ? ((await deps.read(orgId, SELECT_WITH_NAME, params)) as Row[])
+    : await deps.runTransaction(orgId, async (db) => (await db.query<Row>(SELECT_WITH_NAME, params)).rows);
+  return rows.map(toFollowup);
 }
 
 /**

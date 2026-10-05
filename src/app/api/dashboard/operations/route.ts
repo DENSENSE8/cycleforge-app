@@ -106,7 +106,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         sal.station as source,
         COALESCE(sal.scan_ref, sal.notes, 'Activity logged') as summary,
         sal.staff_id,
-        s.name as actor_name
+        s.name as actor_name,
+        s.color_hex as actor_color_hex
       FROM station_activity_logs sal
       JOIN staff s ON s.id = sal.staff_id
       WHERE sal.organization_id = $1

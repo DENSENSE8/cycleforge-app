@@ -47,16 +47,6 @@ test('Support ticket alias of To ship stays rail-less', () => {
   );
 });
 
-test('Support never mounts a ticket or order list rail', () => {
-  for (const mode of ['', 'tickets', 'voicemail', 'calls', 'warranty', 'issues', 'orders']) {
-    assert.equal(
-      isRaillessSurface('/support', params(`mode=${mode}`)),
-      true,
-      `/support?mode=${mode || 'default'} must collapse the legacy left column`,
-    );
-  }
-});
-
 test('scan-out is rail-less — mobile-first composer, no left recent rail', () => {
   assert.equal(
     isRaillessSurface('/shipping/scan-out', params()),
@@ -108,46 +98,25 @@ test('desk chrome and route-owned context panels are independent', () => {
   assert.equal(hasSidebarContextPanel('/settings/audit'), false);
   assert.equal(hasSidebarContextPanel('/shipping/fba'), false);
   assert.equal(hasSidebarContextPanel('/fba'), false);
-  assert.equal(isStationSurfaceRoute('/support'), false);
   assert.equal(isStationSurfaceRoute('/shipping/orders'), false);
 });
 
-test('the Inventory desk is rail-less on every mount', () => {
-  // Callers: isRaillessSurface + CONTEXT_PANEL_ROUTE_KEYS. No data schemas.
-  // User: "remove the sidebar in general for all the mounting points, in the inventory page in general for the left sidebar"
-  for (const [path, qs] of [
-    ['/inventory', ''],
-    ['/inventory/triage', ''],
-    ['/inventory/pulse', ''],
-    ['/inventory/graph', ''],
-    ['/inventory?section=replenish', 'section=replenish'],
-    ['/inventory/locations', ''],
-    ['/inventory/locations', 'tab=rooms'],
-    ['/inventory/locations', 'tab=bins'],
-    ['/inventory/locations', 'tab=map'],
-    ['/inventory/locations', 'tab=manage'],
-    ['/inventory/locations', 'tab=totes'],
-    ['/warehouse', ''],
-    ['/warehouse', 'tab=rooms'],
-  ] as const) {
-    const search = qs.includes('=') ? params(qs) : params(qs);
-    const pathname = path.split('?')[0]!;
-    assert.equal(
-      isRaillessSurface(pathname, search),
-      true,
-      `${path}${qs ? `?${qs}` : ''} must collapse the left column`,
-    );
-  }
+test('Warehouse uses the existing navigation spine, never a second route-owned sidebar', () => {
+  assert.equal(isRaillessSurface('/inventory/stock', params()), false);
+  assert.equal(isRaillessSurface('/inventory/locations', params()), false);
   assert.equal(hasSidebarContextPanel('/inventory'), false);
+  assert.equal(hasSidebarContextPanel('/inventory/stock'), false);
   assert.equal(hasSidebarContextPanel('/inventory/locations'), false);
   assert.equal(hasSidebarContextPanel('/warehouse'), false);
 });
 
 test('rail-less is declared, never inferred from having tabs', () => {
-  // Shipping and Inventory declare it. If another desk ever reads `true` here,
+  // Shipping declares it. If another desk ever reads `true` here,
   // someone added `railless: true` on purpose — which is the whole point of
   // the flag being written down.
   assert.equal(isRaillessSurface('/shipping/orders', params()), true);
-  assert.equal(isRaillessSurface('/inventory', params()), true);
+  assert.equal(isRaillessSurface('/inventory', params()), false);
+  assert.equal(isRaillessSurface('/inventory/stock', params()), false);
+  assert.equal(isRaillessSurface('/inventory/locations', params()), false);
   assert.equal(isRaillessSurface('/products', params('view=manuals')), false);
 });

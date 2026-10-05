@@ -15,7 +15,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
   const unit = await findQcLabelPrintUnit(ctx.organizationId, scan);
   if (!unit) {
-    return NextResponse.json({ ok: false, error: `No unit with serial or label ${scan}` }, { status: 404 });
+    return NextResponse.json({ ok: false, error: `No unit or package with label ${scan}` }, { status: 404 });
   }
   return NextResponse.json({ ok: true, unit });
 }, { permission: 'print.label' });

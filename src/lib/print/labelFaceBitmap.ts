@@ -81,10 +81,11 @@ function wrapLines(text: string, maxChars: number, maxLines: number): string[] {
 }
 
 /**
- * A blank sticker for `size` at {@link LABEL_DPI}: white ground, black ink,
- * top-aligned text. Draw on it, then hand it to {@link labelCanvasToRawCommands}.
+ * A blank sticker for `size` at `dpi` (default {@link LABEL_DPI}, the thermal
+ * head): white ground, black ink, top-aligned text. Draw on it, then hand it to
+ * {@link labelCanvasToRawCommands} — raw jobs keep the head resolution.
  */
-export function createLabelCanvas(size: PaperSize): {
+export function createLabelCanvas(size: PaperSize, dpi: number = DPI): {
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D;
   width: number;
@@ -94,8 +95,8 @@ export function createLabelCanvas(size: PaperSize): {
     throw new Error('Bitmap label rendering requires a browser document');
   }
   const heightIn = size.heightIn > 0 ? size.heightIn : 1;
-  const width = Math.round(size.widthIn * DPI);
-  const height = Math.round(heightIn * DPI);
+  const width = Math.round(size.widthIn * dpi);
+  const height = Math.round(heightIn * dpi);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -121,33 +122,24 @@ function drawFace(face: LabelFaceModel, size: PaperSize): HTMLCanvasElement {
 
   if (face.kind === 'location') {
     const locSize = Math.round((16 * DPI) / 96);
-    const caption = face.bottomLeft.trim();
-    // The optional caption (bottom-left) takes the bottom line; the code
-    // centres in what is left above it — same order as the `.lcap` HTML face.
-    const captionTop = caption ? height - paddingY - LABEL_FACE_FONT_SIZE : height;
     context.textBaseline = 'middle';
     drawFittedText(
       context,
       face.center,
       paddingX,
-      Math.round(captionTop / 2),
+      Math.round(height / 2),
       infoWidth,
       locSize,
       800,
     );
-    context.textBaseline = 'top';
-    if (caption) {
-      drawFittedText(context, caption, paddingX, captionTop, infoWidth, LABEL_FACE_FONT_SIZE, 800);
-    }
   } else if (face.kind === 'rack') {
-    // Same order as the `.rkick` / `.rhead` / `.lcap` HTML face: parent line
-    // on top, headline centred in what is left, tier caption on the bottom.
+    // Same order as the `.rkick` / `.rhead` HTML face: parent line on top,
+    // headline centred in what is left.
     const kicker = face.topLeft.trim();
-    const caption = face.bottomLeft.trim();
     const kickerSize = cssPxToDots(10);
     const headSize = cssPxToDots(kicker ? 20 : 24);
     const headTop = kicker ? paddingY + kickerSize : 0;
-    const headBottom = caption ? height - paddingY - LABEL_FACE_FONT_SIZE : height;
+    const headBottom = height;
     context.textBaseline = 'top';
     if (kicker) drawFittedText(context, kicker, paddingX, paddingY, infoWidth, kickerSize, 800);
     context.textBaseline = 'middle';
@@ -160,10 +152,6 @@ function drawFace(face: LabelFaceModel, size: PaperSize): HTMLCanvasElement {
       headSize,
       900,
     );
-    context.textBaseline = 'top';
-    if (caption) {
-      drawFittedText(context, caption, paddingX, headBottom, infoWidth, LABEL_FACE_FONT_SIZE, 800);
-    }
   } else if (face.kind === 'lpn') {
     // Match the print-HTML LPN face:
     const kickerSize = cssPxToDots(LPN_LABEL_FACE_LAYOUT.kickerFontCssPx);

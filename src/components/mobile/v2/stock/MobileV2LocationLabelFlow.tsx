@@ -7,7 +7,7 @@
  *
  * Reads the racks (`listRacks`) and the chosen rack (`getRack`) — no second
  * location list. The placard and every shelf start selected; a tap toggles
- * one, "Arrival shelves only" narrows to the urgency shelves. Print hands the
+ * one. Print hands the
  * rows to `useLocationLabelPrint` (the one location print entry point, which
  * records `location.labels.printed`). `?rack=RK12` (the rack record's Print
  * labels) lands on Shelves with that rack.
@@ -47,7 +47,6 @@ export function MobileV2LocationLabelFlow({ initialRack, backHref }: { initialRa
   const rackQuery = useQuery({ queryKey: rackQueryKey(rackCode ?? ''), queryFn: () => getRack(rackCode ?? ''), enabled: rackCode != null });
   const rack = rackQuery.data?.rack ?? null;
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
-  const [arrivalOnly, setArrivalOnly] = useState(false);
   const [run, setRun] = useState<LabelPrintRun>({ kind: 'idle' });
 
   // A freshly loaded rack starts with every label selected.
@@ -58,13 +57,12 @@ export function MobileV2LocationLabelFlow({ initialRack, backHref }: { initialRa
     setSelected(allLabelKeys(rack));
   }, [rack]);
 
-  const rows = useMemo(() => (rack ? labelRows(rack, selected, arrivalOnly) : []), [arrivalOnly, rack, selected]);
+  const rows = useMemo(() => (rack ? labelRows(rack, selected) : []), [rack, selected]);
   const printing = run.kind === 'printing';
 
   const pickRack = (code: string) => {
     seededFor.current = null;
     setRackCode(code);
-    setArrivalOnly(false);
     setRun({ kind: 'idle' });
     setStep(1);
   };
@@ -149,7 +147,7 @@ export function MobileV2LocationLabelFlow({ initialRack, backHref }: { initialRa
         ) : null}
         {step === 1 ? (
           rack ? (
-            <LabelShelvesStep rack={rack} selected={selected} arrivalOnly={arrivalOnly} onArrivalOnly={setArrivalOnly} onToggle={toggle} />
+            <LabelShelvesStep rack={rack} selected={selected} onToggle={toggle} />
           ) : rackQuery.isError ? (
             <p role="alert" className="break-words px-mode-page py-10 text-center text-role-caption font-semibold text-text-danger">
               {rackErrorSentence(rackQuery.error, 'Could not load the rack.')}
@@ -159,12 +157,7 @@ export function MobileV2LocationLabelFlow({ initialRack, backHref }: { initialRa
           )
         ) : null}
         {step === 2 && rack ? (
-          <LabelPrintStep
-            rack={rack}
-            count={rows.length}
-            tiered={rows.filter((row) => row.arrivalPriorityTier != null).length}
-            run={run}
-          />
+          <LabelPrintStep rack={rack} count={rows.length} run={run} />
         ) : null}
       </div>
 

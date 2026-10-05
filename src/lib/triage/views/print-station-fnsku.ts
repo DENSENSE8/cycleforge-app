@@ -1,12 +1,12 @@
 /**
- * Print station › FNSKU labels — triage cards. One card per catalog FNSKU:
- * the FNSKU → title · ASIN · condition (when set); the top-right is its print
- * state here (Printed / Not printed, the last print on hover). Find narrows on
- * the server.
- *
- * Every card is an Amazon FBA FNSKU whose one verb is Print, so the view
- * declares no channel, no next step and no photo (the FBA catalog carries no
- * `sku_catalog` link to read one from): a slot every card paints the same is noise.
+ * Print station › FNSKU labels — find a label, print it (owner 2026-10-04).
+ * One record per catalog FNSKU, read in the station's order: the FNSKU (last
+ * 8 — the `X00` lead repeats on almost every label), title, condition, then
+ * ASIN · SKU at the right. Compact (one line) is the default; Full puts ASIN
+ * · SKU at the right of the top row. No print state, no next step, no
+ * channel, no photo: every card is an Amazon FBA label whose one verb is
+ * Print (the open record), and the FBA catalog carries no `sku_catalog` link
+ * to read a photo from.
  *
  * Not in `TRIAGE_VIEWS`, like QC labels: the page's one nav view is not a
  * server scope, so there is no `page.view` id to check against.
@@ -26,12 +26,9 @@ export const PRINT_STATION_FNSKU_VIEW = triageView({
   recordParams: [PRINT_STATION_FNSKU_PARAM],
   chips: { owner: 'face', param: 'cardStatus' },
   paging: 'client',
-  status: 'state',
-  slots: { identity: 'FNSKU', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
-  facts: [
-    { id: 'asin', tier: 'always' },
-    { id: 'condition', tier: 'always' },
-  ],
+  status: 'none',
+  slots: { identity: 'FNSKU · ASIN · SKU', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
+  facts: [{ id: 'condition', tier: 'always' }],
   sections: null,
   next: [],
 });

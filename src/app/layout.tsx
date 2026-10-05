@@ -19,7 +19,7 @@ import { getInitialAuthUser } from "@/lib/auth/server-session";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isKioskHost, isKioskUiPath } from "@/lib/tenancy/kiosk-host";
-import { isPublicChromePath } from "@/lib/auth/public-chrome-paths";
+import { isDevicePublicChromePath, isPublicChromePath } from "@/lib/auth/public-chrome-paths";
 import {
   ACTIVATION_REDIRECT_HREF,
   isActivationBlocked,
@@ -29,7 +29,7 @@ import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
 import { mergeShellSeeds, seedStaffPreferences } from "@/lib/queries/staff-preferences-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { cfSans, cfSansItalic, ibmPlexMono } from "@/lib/fonts";
+import { cfSans, cfSansItalic } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 import { appViewport } from '@/design-system/tokens/mobile-viewport';
 
@@ -60,7 +60,8 @@ export default async function RootLayout({
     // Local-only visual studies must not pay for the authenticated warehouse
     // shell (and are 404s in production at their page boundary).
     const localVisualStudy = process.env.NODE_ENV !== 'production' && pathname === '/motion-plus-button';
-    const publicChrome = localVisualStudy || (!initialUser && isPublicChromePath(pathname));
+    const publicChrome =
+        localVisualStudy || isDevicePublicChromePath(pathname) || (!initialUser && isPublicChromePath(pathname));
     // `/m/*` is the handheld tree.
     const mobileTree = pathname === '/m' || pathname.startsWith('/m/');
 
@@ -90,7 +91,7 @@ export default async function RootLayout({
     return (
         <html
             lang="en"
-            className={`${cfSans.variable} ${cfSansItalic.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
+            className={`${cfSans.variable} ${cfSansItalic.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>

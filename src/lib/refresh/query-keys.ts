@@ -43,7 +43,7 @@ const REFRESH_DOMAIN_QUERY_KEYS: Record<RefreshDomain, readonly QueryKey[]> = {
   'receiving.lines': [
     ['receiving-lines-table'],
     ['receiving-lines'],
-    ['receiving-lines-incoming-summary'],
+    ['nav-facets'],
   ],
   'receiving.poLines': [['receiving-siblings'], ['receiving-po-detail']],
   repairs: [qk.repairs.all],

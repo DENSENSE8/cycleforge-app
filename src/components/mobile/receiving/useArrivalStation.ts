@@ -12,6 +12,7 @@ import {
   arrivalScanIntent,
   planDoorScan,
   trackingSeenFromPreview,
+  type ScanInputSource,
 } from '@/lib/scan/mobile-arrival-door';
 import { mobileFeedQueryKey } from '@/lib/receiving/mobile-feed-query-key';
 import type { PhoneScanCorrelation } from '@/lib/scan/phone-scan-intent';
@@ -73,7 +74,7 @@ export function useArrivalStation(options: ArrivalStationOptions = {}) {
   const seqRef = useRef(0);
 
   const submitRaw = useCallback(
-    (raw: string, correlation?: PhoneScanCorrelation) => {
+    (raw: string, source: ScanInputSource, correlation?: PhoneScanCorrelation) => {
       const value = raw.trim();
       if (!value) return;
 
@@ -85,7 +86,7 @@ export function useArrivalStation(options: ArrivalStationOptions = {}) {
       };
 
       void (async () => {
-        const intent = arrivalScanIntent(value);
+        const intent = arrivalScanIntent(value, source);
 
         // The wrong label, refused before anything is written. A carton minted
         // for a product barcode is a phantom box somebody has to hunt down.
@@ -119,7 +120,7 @@ export function useArrivalStation(options: ArrivalStationOptions = {}) {
 
         try {
           const preview = await previewTracking(intent.value);
-          const plan = planDoorScan(intent.value, preview.matched);
+          const plan = planDoorScan(intent, preview.matched);
 
           // Seen before. Nothing is written: a second arrival row for one box
           // double-counts the carton and sends two people to unbox it.

@@ -2,6 +2,7 @@ import type { WorkOrderRow } from '@/components/work-orders/types';
 import { fetchAllWorkOrderQueues } from '@/lib/work-orders/fetch-all-queues';
 import { compareWorkOrderRows, topWorkOrderForStaff } from '@/lib/work-orders/ranking';
 import { listSupportFollowupsForStaff } from '@/lib/inbox/support-followups-queries';
+import { supportHref } from '@/lib/nav/route-tree';
 import { listTechQueueItemsForStaff } from '@/lib/inbox/tech-queue-items';
 import { countUnpairedListings } from '@/lib/inbox/unpaired-listing-count';
 import { SURFACE_REGISTRY } from '@/lib/stations/surface-keys';
@@ -77,7 +78,7 @@ const QUEUE_SURFACE_LINKS: Array<{
     key: 'support',
     label: 'Support',
     permission: 'integrations.zendesk',
-    href: '/support',
+    href: supportHref(),
     match: () => false,
     countFrom: 'external',
     showAtZero: true,
@@ -148,11 +149,11 @@ function mapSupportInterrupts(
   items: Awaited<ReturnType<typeof listSupportFollowupsForStaff>>,
 ): MyDayInterrupt[] {
   return items.map((it) => ({
-    id: `support-${it.ticketId}`,
+    id: `support-${it.supportItemId}`,
     kind: 'support_followup' as const,
     title: it.subject?.trim() || `Ticket #${it.ticketId}`,
     subtitle: `Follow up · assigned to ${it.assignedStaffName}`,
-    href: interruptHref({ kind: 'support_followup', ticketId: it.ticketId }),
+    href: supportHref({ item: it.supportItemId }),
     createdAtMs: it.updatedAtMs,
     ticketId: it.ticketId,
   }));

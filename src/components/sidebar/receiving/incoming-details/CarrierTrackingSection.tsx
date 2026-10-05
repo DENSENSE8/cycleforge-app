@@ -80,7 +80,7 @@ export function CarrierTrackingSection({
       toast.success(`Refreshed · ${body.status ?? 'updated'}`);
       queryClient.invalidateQueries({ queryKey: ['incoming-details'] });
       queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
-      queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['nav-facets'] });
       queryClient.invalidateQueries({ queryKey: ['ops-journey'] });
       for (const key of invalidateKeys) {
         queryClient.invalidateQueries({ queryKey: [...key] });

@@ -34,7 +34,7 @@ import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
-import { useUnitPhotoRequestPublisher } from '@/components/sidebar/receiving/useUnitPhotoRequestPublisher';
+import { useUnitPhotoRequestPublisher } from '@/hooks/useUnitPhotoRequestPublisher';
 import { scannedUnitKey } from '@/lib/barcode-routing';
 import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
 import { QcRecentScanRail } from '@/components/sidebar/QcRecentScanRail';

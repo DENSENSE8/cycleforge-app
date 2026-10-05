@@ -5,7 +5,10 @@
  * silently (the existing `fnsku` station job). Browser- and server-safe.
  */
 
-export const PRINT_STATION_PATH = '/print-station' as const;
+import { PRINT_STATION_PATHS } from '@/lib/nav/route-tree';
+
+/** Print station › FNSKU labels (the printing mode). */
+export const PRINT_STATION_PATH = PRINT_STATION_PATHS.fnskuLabels;
 
 /** `?fnsku=` — the open FNSKU (upper-case catalog key). */
 export const PRINT_STATION_FNSKU_PARAM = 'fnsku' as const;
@@ -19,10 +22,18 @@ export function parsePrintStationFnskuView(raw: string | null | undefined): Prin
   return raw === 'reprinted' ? 'reprinted' : 'all';
 }
 
-/** Rows the page loads — Find narrows on the server. */
-export const PRINT_STATION_FNSKU_ROW_CAP = 100;
+/**
+ * Rows the page loads at most; the list pages them on the client (`100 / page`)
+ * and Find narrows on the server. Above the whole FBA catalog (247 on
+ * 2026-10-04), so every FNSKU is reachable by paging, not only by Find.
+ */
+export const PRINT_STATION_FNSKU_ROW_CAP = 1000;
 
-/** One catalog FNSKU as the Print station lists it, with its reprint history. */
+/**
+ * One catalog FNSKU as the Print station lists it: its identification and the
+ * label's text. No print history (owner 2026-10-04): the station finds a label
+ * and prints it; the Reprinted view narrows on the server, never on the row.
+ */
 export interface PrintStationFnskuRow {
   fnsku: string;
   title: string | null;
@@ -30,12 +41,4 @@ export interface PrintStationFnskuRow {
   sku: string | null;
   /** Catalog condition (`Used - Very Good`); printed on the label when set. */
   condition: string | null;
-  /** Reprint jobs logged (`label_print_jobs`, template `fba_fnsku`). */
-  printJobs: number;
-  /** Stickers across those jobs. */
-  copiesPrinted: number;
-  lastPrintedAt: string | null;
-  /** Stickers in the last job and who ran it (the printing station's staffer). */
-  lastCopies: number | null;
-  lastPrintedBy: string | null;
 }

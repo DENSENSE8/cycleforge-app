@@ -205,6 +205,8 @@ export interface ReceivingLineRow {
   received_at?: string | null;
   /** Staff who recorded the door scan (receiving.received_by → staff.name). */
   received_by_name?: string | null;
+  /** Its staff id — what `StaffCell` / `StaffAvatar` colour by. */
+  received_by_id?: number | null;
   /** Unbox timestamp — receiving.unboxed_at; null until the carton is unboxed. */
   unboxed_at?: string | null;
   /** Terminal "Received" (DONE) transition time — receiving_lines.received_done_at;
@@ -220,12 +222,18 @@ export interface ReceivingLineRow {
   testing_opened_at?: string | null;
   /** Staff who unboxed (receiving.unboxed_by → staff.name). */
   unboxed_by_name?: string | null;
+  /** Its staff id (receiving_unbox.unboxed_by) — what `StaffCell` / `StaffAvatar` colour by. */
+  unboxed_by_id?: number | null;
   /** Staff who first opened the carton in Unbox; fallback actor when completion did not stamp `unboxed_by`. */
   unbox_opened_by_name?: string | null;
+  /** Its staff id (receiving_unbox.opened_by). */
+  unbox_opened_by_id?: number | null;
   /** First tracking scan time (receiving_scans, earliest). */
   scanned_at?: string | null;
   /** Staff who first scanned the tracking (receiving_scans.scanned_by → staff.name). */
   scanned_by_name?: string | null;
+  /** Its staff id (receiving_scans.scanned_by). */
+  scanned_by_id?: number | null;
   /** Count of recorded testing verdicts for this line (view=testing and view=testing_opened; null on other views). */
   tested_count?: number | null;
   image_url: string | null;

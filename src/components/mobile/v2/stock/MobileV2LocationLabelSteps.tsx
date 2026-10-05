@@ -3,18 +3,18 @@
 /**
  * The three step bodies of `/m/stock/labels` (MobileV2LocationLabelFlow):
  * Rack cards, Shelves (the rack's placard and shelves as selectable record
- * cards, "Arrival shelves only"), Print (what goes out, progress, result).
+ * cards), Print (what goes out, progress, result).
  * Text wraps, never truncates. No room is a step — the rack card names where
  * it stands as a fact.
  */
 
 import { MobileRecordCard, MobileRecordCardList } from '@/design-system/components/MobileRecordCard';
-import { Button, ProgressBar, Switch } from '@/design-system/primitives';
-import { rackPlacementText } from '@/lib/locations/rack-display';
+import { Button, ProgressBar } from '@/design-system/primitives';
+import { rackPlacementText, rackShelfCountText } from '@/lib/locations/rack-display';
 import type { RackDetail, RackSummary } from '@/lib/locations/rack-types';
 import { locationLabelPrintSummary, type PrintLocationRowsResult } from '@/lib/print/printLocationRows';
-import { plural, rackShelvesLine, rackTierStatus, shelfTierStatus } from '@/components/mobile/v2/racks/rack-presentation';
-import { labelChoices, PLACARD_KEY, shownLabelKeys } from './location-label-flow-model';
+import { plural } from '@/components/mobile/v2/racks/rack-presentation';
+import { labelShelves, PLACARD_KEY, shownLabelKeys } from './location-label-flow-model';
 
 function Quiet({ children, alert = false }: { children: string; alert?: boolean }) {
   return alert ? (
@@ -40,21 +40,16 @@ export function LabelRackStep({
   if (racks.length === 0) return <Quiet>No racks yet. Start one from Racks › New rack.</Quiet>;
   return (
     <MobileRecordCardList label="Choose a rack">
-      {racks.map((rack) => {
-        const tier = rackTierStatus(rack);
-        return (
-          <MobileRecordCard
-            key={rack.id}
-            identity={rack.name}
-            title={rackPlacementText(rack)}
-            detail={rackShelvesLine(rack)}
-            status={tier.status}
-            tone={tier.tone}
-            onOpen={() => onPick(rack)}
-            testId="m-labels-rack"
-          />
-        );
-      })}
+      {racks.map((rack) => (
+        <MobileRecordCard
+          key={rack.id}
+          identity={rack.name}
+          title={rackPlacementText(rack)}
+          detail={rackShelfCountText(rack.shelfCount)}
+          onOpen={() => onPick(rack)}
+          testId="m-labels-rack"
+        />
+      ))}
     </MobileRecordCardList>
   );
 }
@@ -62,80 +57,51 @@ export function LabelRackStep({
 export function LabelShelvesStep({
   rack,
   selected,
-  arrivalOnly,
-  onArrivalOnly,
   onToggle,
 }: {
   rack: RackDetail;
   selected: ReadonlySet<string>;
-  arrivalOnly: boolean;
-  onArrivalOnly: (on: boolean) => void;
   /** Select (`on`) or clear the given label keys (`placard` or a shelf code). */
   onToggle: (keys: readonly string[], on: boolean) => void;
 }) {
-  const choices = labelChoices(rack, arrivalOnly);
-  const shown = shownLabelKeys(choices);
+  const shown = shownLabelKeys(rack);
   const chosen = shown.filter((key) => selected.has(key)).length;
   return (
     <>
-      <div className="flex flex-col gap-2 border-b border-mode-rule px-mode-page py-3">
-        <label className="flex min-h-11 items-center justify-between gap-3 text-mode-body text-mode-ink">
-          <span className="break-words">
-            Arrival shelves only
-            <span className="text-text-muted"> · {rack.tieredShelfCount}</span>
-          </span>
-          <Switch
-            checked={arrivalOnly}
-            onCheckedChange={onArrivalOnly}
-            disabled={rack.tieredShelfCount === 0}
-            data-testid="m-labels-arrival-only"
-          />
-        </label>
-        <div className="flex items-center justify-between gap-3">
-          <span className="break-words text-role-caption text-text-muted" data-testid="m-labels-selected-count">
-            {chosen} of {plural(shown.length, 'label')} selected
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            radius="pill"
-            onClick={() => onToggle(shown, chosen < shown.length)}
-            disabled={shown.length === 0}
-            data-testid="m-labels-toggle-all"
-          >
-            {chosen < shown.length ? 'Select all' : 'Clear all'}
-          </Button>
-        </div>
+      <div className="flex items-center justify-between gap-3 border-b border-mode-rule px-mode-page py-3">
+        <span className="break-words text-role-caption text-text-muted" data-testid="m-labels-selected-count">
+          {chosen} of {plural(shown.length, 'label')} selected
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          radius="pill"
+          onClick={() => onToggle(shown, chosen < shown.length)}
+          data-testid="m-labels-toggle-all"
+        >
+          {chosen < shown.length ? 'Select all' : 'Clear all'}
+        </Button>
       </div>
-      {shown.length === 0 ? <Quiet>{`No arrival shelves on ${rack.name}.`}</Quiet> : (
-        <MobileRecordCardList label={rack.name}>
-          {choices.placard ? (
-            <MobileRecordCard
-              identity="Rack placard"
-              title={rack.code}
-              detail="The big label on the rack frame"
-              selected={selected.has(PLACARD_KEY)}
-              onOpen={() => onToggle([PLACARD_KEY], !selected.has(PLACARD_KEY))}
-              testId="m-labels-placard"
-            />
-          ) : null}
-          {choices.shelves.map((shelf) => {
-            const face = shelfTierStatus(shelf.tier);
-            return (
-              <MobileRecordCard
-                key={shelf.id}
-                identity={`Shelf ${shelf.shelf}`}
-                title={shelf.code}
-                status={face.status}
-                tone={face.tone}
-                selected={selected.has(shelf.code)}
-                onOpen={() => onToggle([shelf.code], !selected.has(shelf.code))}
-                testId="m-labels-shelf"
-              />
-            );
-          })}
-        </MobileRecordCardList>
-      )}
+      <MobileRecordCardList label={rack.name}>
+        <MobileRecordCard
+          identity="Rack placard"
+          title={rack.code}
+          detail="The big label on the rack frame"
+          selected={selected.has(PLACARD_KEY)}
+          onOpen={() => onToggle([PLACARD_KEY], !selected.has(PLACARD_KEY))}
+          testId="m-labels-placard"
+        />
+        {labelShelves(rack).map((shelf) => (
+          <MobileRecordCard
+            key={shelf.id}
+            identity={`Shelf ${shelf.shelf}`}
+            title={shelf.code}
+            selected={selected.has(shelf.code)}
+            onOpen={() => onToggle([shelf.code], !selected.has(shelf.code))}
+            testId="m-labels-shelf"
+          />
+        ))}
+      </MobileRecordCardList>
     </>
   );
 }
@@ -149,19 +115,16 @@ export type LabelPrintRun =
 export function LabelPrintStep({
   rack,
   count,
-  tiered,
   run,
 }: {
   rack: RackDetail;
   count: number;
-  tiered: number;
   run: LabelPrintRun;
 }) {
   return (
     <div className="flex flex-col gap-3 px-mode-page py-4" data-testid="m-labels-print-body">
       <p className="break-words text-mode-body text-mode-ink">
         {plural(count, 'label')} for {rack.name}
-        {tiered > 0 ? ` · ${tiered} with an arrival urgency caption` : ''}
       </p>
       {run.kind === 'printing' ? (
         <ProgressBar

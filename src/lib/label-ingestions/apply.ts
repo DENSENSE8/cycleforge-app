@@ -231,6 +231,7 @@ async function resolveOrCreateShipment(
   }
 
   let shipmentId: number | null = null;
+  let additionalPackage = false;
   if (currentShipmentIds.size > 0) {
     const ids = [...currentShipmentIds].sort((a, b) => a - b);
     const currentShipments = await client.query<{
@@ -252,17 +253,11 @@ async function resolveOrCreateShipment(
         'An existing shipment is not visible in this organization',
       );
     }
-    if (
-      currentShipments.rows.length !== 1
-      || currentShipments.rows[0].tracking_number_normalized !== persistedNormalized
-    ) {
-      throw new ApplyConflict(
-        'MULTI_PACKAGE_CONFLICT',
-        ingestionId,
-        'V1 cannot auto-apply a label to an order that already has a different or additional package',
-      );
-    }
-    shipmentId = asPositiveInteger(currentShipments.rows[0].id, 'shipment id');
+    const sameTracking = currentShipments.rows.find(
+      (row) => row.tracking_number_normalized === persistedNormalized,
+    );
+    if (sameTracking) shipmentId = asPositiveInteger(sameTracking.id, 'shipment id');
+    else additionalPackage = true;
   }
 
   if (shipmentId == null) {
@@ -351,21 +346,25 @@ async function resolveOrCreateShipment(
         ownerId: orderId,
         shipmentId,
         direction: 'OUTBOUND',
-        isPrimary: true,
-        role: 'ORDER_PRIMARY',
+        isPrimary: !additionalPackage,
+        role: additionalPackage ? 'ORDER_PACKAGE' : 'ORDER_PRIMARY',
         source: 'label-ingestion',
       },
       client,
     );
   }
 
-  await client.query(
-    `UPDATE orders
-        SET shipment_id = $1
-      WHERE organization_id = $2
-        AND id = ANY($3::int[])`,
-    [shipmentId, orgId, orderIds],
-  );
+  // `orders.shipment_id` is the legacy primary pointer. An additional box is
+  // represented only by shipment_links so the existing primary stays stable.
+  if (!additionalPackage) {
+    await client.query(
+      `UPDATE orders
+          SET shipment_id = $1
+        WHERE organization_id = $2
+          AND id = ANY($3::int[])`,
+      [shipmentId, orgId, orderIds],
+    );
+  }
 
   return shipmentId;
 }
@@ -538,7 +537,14 @@ async function runApply(
       FOR UPDATE`,
     [orgId, orderIds],
   );
-  if (allocationsResult.rows.length === 0) {
+  // Allocate is an order queue, not proof that a unit is already allocated.
+  // A newly released manual/test order is legitimately `unassigned`; its
+  // label can still be bound to the exact order and stored as a document.
+  // There is simply no inventory unit to transition yet. Once any active
+  // allocation exists, the original all-PACKED invariant remains absolute.
+  const unassignedOrderWithoutUnits = allocationsResult.rows.length === 0
+    && ordersResult.rows.every((row) => row.status?.toLowerCase() === 'unassigned');
+  if (allocationsResult.rows.length === 0 && !unassignedOrderWithoutUnits) {
     return conflict('NO_ACTIVE_ALLOCATIONS', ingestionId, 'Logical order has no active unit allocations');
   }
   if (allocationsResult.rows.some((row) => row.state !== 'PACKED')) {
@@ -554,20 +560,22 @@ async function runApply(
   }
 
   // Third lock class: serial units, in primary-key order.
-  const serialUnitsResult = await client.query<SerialUnitRow>(
-    `SELECT id, current_status::text AS current_status
-       FROM serial_units
-      WHERE organization_id = $1
-        AND id = ANY($2::int[])
-      ORDER BY id ASC
-      FOR UPDATE`,
-    [orgId, serialUnitIds],
-  );
-  if (serialUnitsResult.rows.length !== serialUnitIds.length) {
-    return conflict('SERIAL_UNIT_NOT_FOUND', ingestionId, 'An allocated serial unit was not found');
-  }
-  if (serialUnitsResult.rows.some((row) => row.current_status !== 'PACKED')) {
-    return conflict('SERIAL_UNIT_NOT_PACKED', ingestionId, 'Every allocated serial unit must be PACKED');
+  if (serialUnitIds.length > 0) {
+    const serialUnitsResult = await client.query<SerialUnitRow>(
+      `SELECT id, current_status::text AS current_status
+         FROM serial_units
+        WHERE organization_id = $1
+          AND id = ANY($2::int[])
+        ORDER BY id ASC
+        FOR UPDATE`,
+      [orgId, serialUnitIds],
+    );
+    if (serialUnitsResult.rows.length !== serialUnitIds.length) {
+      return conflict('SERIAL_UNIT_NOT_FOUND', ingestionId, 'An allocated serial unit was not found');
+    }
+    if (serialUnitsResult.rows.some((row) => row.current_status !== 'PACKED')) {
+      return conflict('SERIAL_UNIT_NOT_PACKED', ingestionId, 'Every allocated serial unit must be PACKED');
+    }
   }
   await phase(deps, 'LOCKED_SERIAL_UNITS', client);
 

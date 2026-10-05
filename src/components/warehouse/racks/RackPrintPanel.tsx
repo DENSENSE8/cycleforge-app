@@ -2,9 +2,9 @@
 
 /**
  * Print a rack's labels — the phone's Rack → Shelves → Print, on the desk: the
- * placard and every shelf selected, "Arrival shelves only" narrows to the
- * tiered ones, Print runs them through `useLocationLabelPrint` (which records
- * `location.labels.printed`). No room is ever printed.
+ * placard and every shelf selected, Print runs them through
+ * `useLocationLabelPrint` (which records `location.labels.printed`). No room
+ * is ever printed.
  */
 
 import { useMemo, useState } from 'react';
@@ -16,7 +16,6 @@ import { useLocationLabelPrint } from '@/hooks/useLocationLabelPrint';
 import { rackLabelRows } from '@/lib/locations/rack-display';
 import type { RackDetail } from '@/lib/locations/rack-types';
 import { locationLabelPrintSummary } from '@/lib/print/printLocationRows';
-import { arrivalTierLabel } from '@/lib/receiving/arrival-tier';
 import { toast } from '@/lib/toast';
 
 type RunState =
@@ -30,8 +29,6 @@ export function RackPrintPanel({ rack, testId = 'rack-print' }: { rack: RackDeta
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(rack.shelves.map((s) => s.code)));
   const [run, setRun] = useState<RunState>({ phase: 'idle' });
   const shelves = useMemo(() => [...rack.shelves].sort((a, b) => a.shelf - b.shelf), [rack.shelves]);
-  const tiered = shelves.filter((s) => s.tier != null);
-  const arrivalOnly = !placard && tiered.length > 0 && picked.size === tiered.length && tiered.every((s) => picked.has(s.code));
   const count = (placard ? 1 : 0) + picked.size;
 
   const toggle = (code: string, on: boolean) =>
@@ -57,29 +54,7 @@ export function RackPrintPanel({ rack, testId = 'rack-print' }: { rack: RackDeta
 
   return (
     <div className="flex min-w-0 flex-col gap-4" data-testid={testId}>
-      <RecordGroup
-        title="Labels to print"
-        action={
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={tiered.length === 0}
-            aria-pressed={arrivalOnly}
-            onClick={() => {
-              if (arrivalOnly) {
-                setPlacard(true);
-                setPicked(new Set(shelves.map((s) => s.code)));
-              } else {
-                setPlacard(false);
-                setPicked(new Set(tiered.map((s) => s.code)));
-              }
-            }}
-            data-testid={`${testId}-arrival-only`}
-          >
-            {tiered.length === 0 ? 'No arrival shelves' : arrivalOnly ? 'All labels' : 'Arrival shelves only'}
-          </Button>
-        }
-      >
+      <RecordGroup title="Labels to print">
         <ul className="flex flex-col px-4 pb-2">
           <li className="flex items-center gap-3 border-b border-mode-fact py-2">
             <Checkbox
@@ -104,7 +79,6 @@ export function RackPrintPanel({ rack, testId = 'rack-print' }: { rack: RackDeta
               <label htmlFor={`${testId}-${shelf.code}`} className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 text-role-data text-mode-ink">
                 <span className="font-semibold">Shelf {shelf.shelf}</span>
                 <span className="font-mono text-mode-muted">{shelf.code}</span>
-                {shelf.tier != null ? <span className="text-text-info">Arrival · {arrivalTierLabel(shelf.tier)}</span> : null}
               </label>
             </li>
           ))}

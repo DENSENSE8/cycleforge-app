@@ -267,7 +267,7 @@ export function findBannedWords(): RouteTreeFinding[] {
 
 /** Live Warehouse path prefixes, cut at the first `[`, minimal set (`/m/stock`, `/m/loc/`, …). */
 export function literalPathPrefixes(): string[] {
-  const cut = ROUTE_TREE.filter((node) => node.status === 'live' && node.path)
+  const cut = ROUTE_TREE.filter((node) => node.status === 'live' && node.path && isWarehouseNode(node))
     .map((node) => node.path!.split('[')[0]!)
     .filter((prefix) => prefix.length > 3);
   const unique = [...new Set(cut)].sort((a, b) => a.length - b.length);
@@ -365,6 +365,13 @@ export function formatRouteTreeFinding(f: RouteTreeFinding): string {
 
 /** nodeId → the export a caller writes instead of a literal. */
 export const ROUTE_BUILDERS: Readonly<Record<string, string>> = {
+  customers: 'CUSTOMER_PATHS.desktop',
+  'customers-mobile': 'CUSTOMER_PATHS.mobile',
+  'customer-mobile': 'customerMobilePath(id)',
+  'quality-control': 'QUALITY_CONTROL_PATHS.desktop',
+  'quality-control-mobile': 'QUALITY_CONTROL_PATHS.mobile',
+  'quality-control-line-mobile': 'qualityControlLineMobilePath(id)',
+  'quality-control-lpn-mobile': 'qualityControlLpnMobilePath(id)',
   stock: 'WAREHOUSE_PATHS.stock',
   'stock-detail': 'WAREHOUSE_PATHS.stockDetail',
   'stock-photos': 'stockPhotosHref(stockId, { sku, back })',
@@ -377,6 +384,9 @@ export const ROUTE_BUILDERS: Readonly<Record<string, string>> = {
   'rack-new': 'WAREHOUSE_PATHS.newRack',
   rack: 'locationPath(code)',
   container: 'containerPath(id)',
+  'fnsku-labels': 'PRINT_STATION_PATHS.fnskuLabels',
+  'print-stations': 'PRINT_STATION_PATHS.stations',
+  'print-station-device': 'printStationDeviceHref({ code })',
 };
 
 const BUILDER_IMPORT = "import { … } from '@/lib/nav/route-tree'";

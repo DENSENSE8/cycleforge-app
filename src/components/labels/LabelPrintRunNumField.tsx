@@ -41,6 +41,7 @@ export function LabelPrintRunNumField({
   disabled,
   min = 1,
   max = 99,
+  showLabel = true,
 }: {
   label: string;
   value: number;
@@ -50,6 +51,8 @@ export function LabelPrintRunNumField({
   min?: number;
   /** Inclusive ceiling. Pair **Bay through** with `min={bayFrom}`. */
   max?: number;
+  /** Keep the accessible name while letting a compact host omit duplicate visible copy. */
+  showLabel?: boolean;
 }) {
   const lo = clampInt(min, 1, 99);
   const hi = Math.max(lo, clampInt(max, 1, 99));
@@ -161,9 +164,7 @@ export function LabelPrintRunNumField({
   if (editing && !disabled) {
     return (
       <div className="w-[4.75rem]">
-        <span className="text-role-micro font-semibold text-text-soft">
-          {label}
-        </span>
+        {showLabel ? <span className="text-role-micro font-semibold text-text-soft">{label}</span> : null}
         <input
           ref={inputRef}
           inputMode="numeric"
@@ -183,7 +184,8 @@ export function LabelPrintRunNumField({
             }
           }}
           className={cn(
-            'mt-0.5 h-7 w-full border border-border-default bg-surface-card px-1.5 text-center text-role-caption font-semibold tabular-nums text-text-default',
+            showLabel ? 'mt-0.5' : '',
+            'h-7 w-full border border-border-default bg-surface-card px-1.5 text-center text-role-caption font-semibold tabular-nums text-text-default',
             cornerClass('control'),
             focusRing('field', 'accent'),
           )}
@@ -194,9 +196,7 @@ export function LabelPrintRunNumField({
 
   return (
     <div className="w-[4.75rem]">
-      <span className="text-role-micro font-semibold text-text-soft">
-        {label}
-      </span>
+      {showLabel ? <span className="text-role-micro font-semibold text-text-soft">{label}</span> : null}
       <div
         ref={hostRef}
         role="spinbutton"
@@ -285,7 +285,8 @@ export function LabelPrintRunNumField({
           }
         }}
         className={cn(
-          'mt-0.5 flex h-7 w-full items-center justify-center border border-border-default bg-surface-canvas text-center text-role-caption font-semibold tabular-nums text-text-default',
+          showLabel ? 'mt-0.5' : '',
+          'flex h-7 w-full items-center justify-center border border-border-default bg-surface-canvas text-center text-role-caption font-semibold tabular-nums text-text-default',
           cornerClass('control'),
           focusRing('control'),
           disabled

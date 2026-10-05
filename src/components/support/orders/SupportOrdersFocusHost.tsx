@@ -3,8 +3,7 @@
 /**
  * Support-context order focus on the shared To-ship desk (`/shipping/orders`).
  *
- * Extracted from the former `/support?mode=orders` mount so Support › Inquiries
- * can alias the Fulfillment desk without a second orders board.
+ * Ticket tools embedded in Fulfillment without a second orders board.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -36,6 +35,7 @@ import {
 import { deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import { SHIPPING_ORDERS_PATH, shippingOrdersHref } from '@/lib/shipping/orders-desk';
+import { supportHref } from '@/lib/nav/route-tree';
 import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
 import { SupportCreateTicketModal } from '@/components/support/service-workspace/SupportCreateTicketModal';
 import {
@@ -257,8 +257,7 @@ function SupportOrderFocus({
           claim.createTicket.mutate(
             { subject, note, linkages },
             {
-              onSuccess: (data) =>
-                router.push(`/support?ticket=${data.providerTicketId}`),
+              onSuccess: (data) => router.push(supportHref({ q: data.providerTicketId })),
             },
           )
         }

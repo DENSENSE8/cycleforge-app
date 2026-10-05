@@ -55,17 +55,6 @@ export function SupportTicketDetail({
   onBack,
   /** Station / Unbox rail — denser chrome, no AI panel. */
   embedded = false,
-  /**
-   * With {@link hideTitle}, hide this strip entirely (`/support`). The header
-   * is title-only; this flag no longer draws a requester band.
-   */
-  hideRequesterBand,
-  /**
-   * Drop the editable subject title. `/support` sets it: the thread's split
-   * header already carries the subject in its identity row, and drawing it
-   * again here was the duplicate. Hosts with no such header leave it off.
-   */
-  hideTitle = false,
   /** Carton context for media library “Current carton” tab (unbox / testing). */
   receivingId,
   /** Hide linked-context strip (when already shown by SupportContextHub). */
@@ -83,8 +72,6 @@ export function SupportTicketDetail({
   onBack?: () => void;
   hideExternalLink?: boolean;
   embedded?: boolean;
-  hideRequesterBand?: boolean;
-  hideTitle?: boolean;
   receivingId?: number;
   hideLinkedContext?: boolean;
   showRequesterDetail?: boolean;
@@ -94,7 +81,6 @@ export function SupportTicketDetail({
   mergeFloorTimeline?: boolean;
   preview?: { ticket: ZendeskTicket; comments: readonly ZendeskComment[] } | null;
 }) {
-  const hideRequester = hideRequesterBand ?? embedded;
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(preview ? null : ticketId);
   const ticket = preview?.ticket ?? bundle?.ticket;
   const commentsData = preview
@@ -134,7 +120,7 @@ export function SupportTicketDetail({
   // uploads to GCS (linked to this ticket) and stages it in the composer.
   // Host-owned staging (prop or context) wins so Attach / drop share one bag.
   const contextStaging = useTicketComposerStaging();
-  const localStaging = useTicketPhotoStaging(ticketId);
+  const localStaging = useTicketPhotoStaging({ kind: 'ticket', ticketId });
   const staging = photoStaging ?? contextStaging ?? localStaging;
   // Drag + pick only.
   const ignoreDrop = useCallback(() => undefined, []);
@@ -205,8 +191,6 @@ export function SupportTicketDetail({
           ticket={ticket}
           onBack={onBack}
           compact={embedded}
-          hideRequesterBand={hideRequester}
-          hideTitle={hideTitle}
           readOnly={Boolean(preview)}
         />
         {showRequesterDetail ? (

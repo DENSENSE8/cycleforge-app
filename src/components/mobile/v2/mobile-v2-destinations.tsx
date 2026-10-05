@@ -9,7 +9,9 @@ import {
   Printer,
   ScanBarcode,
   Settings,
+  Radar,
   Tag,
+  TicketHelp,
   Trash2,
   User,
   Warehouse,
@@ -19,7 +21,8 @@ import {
   type DomainGroupId,
 } from '@/lib/nav/lanes';
 import { SHIPPING_NAV_ICONS, STATION_PAGE_ICONS, TECH_NAV_ICONS } from '@/lib/nav/station-nav-icons';
-import { WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
+import { CUSTOMER_PATHS, PREPACK_PATHS, QUALITY_CONTROL_PATHS, SUPPORT_PATHS, WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
+import { FBM_DESTINATIONS } from '@/lib/nav/fbm-destinations';
 import { spineParentTone } from '@/lib/nav/spine-parent-tone';
 import {
   SPINE_NAVIGATION_BAND_ORDER,
@@ -27,8 +30,9 @@ import {
   type SpineNavigationBand,
 } from '@/lib/nav/spine-navigation-band';
 import { OUTBOUND_MODE_PATHS } from '@/lib/outbound/route-contract';
-import { SHIPPING_LABEL_INTAKE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
+import { LIVE_FEED_MOBILE_PATH } from '@/lib/live-feed/route';
+import { LIVE_FEED_PERMISSION } from '@/lib/live-feed/stages';
 
 type DestinationIcon = ComponentType<{ className?: string }>;
 
@@ -54,7 +58,10 @@ export interface MobileV2NavigationGroup {
   destinations: readonly MobileV2Destination[];
 }
 
+/** Support is a Workspace destination on the phone, never an Operations branch. */
 export type MobileV2NavigationGroupId = 'floor' | Exclude<DomainGroupId, 'support'>;
+
+type OperationLane = Exclude<(typeof DOMAIN_GROUPS)[number], { id: 'support' }>;
 
 export interface MobileV2NavigationFamily {
   id: SpineNavigationBand;
@@ -75,7 +82,7 @@ export const MOBILE_V2_DESTINATIONS: readonly MobileV2Destination[] = [
     id: 'customers',
     label: 'Customers',
     description: 'Buyer identity and complete order history',
-    href: '/m/customers',
+    href: CUSTOMER_PATHS.mobile,
     icon: User,
     tone: 'text-sky-600',
     requires: 'orders.view',
@@ -84,10 +91,19 @@ export const MOBILE_V2_DESTINATIONS: readonly MobileV2Destination[] = [
     id: 'qc',
     label: 'Quality control',
     description: 'Returns, repairs and newly unboxed units',
-    href: '/m/qc',
+    href: QUALITY_CONTROL_PATHS.mobile,
     icon: TECH_NAV_ICONS.testing,
     tone: 'text-violet-600',
     requires: 'tech.qc_pass',
+  },
+  {
+    id: 'prepack',
+    label: 'Prepack',
+    description: 'Photograph and box one serialized unit',
+    href: PREPACK_PATHS.form,
+    icon: PackageCheck,
+    tone: 'text-teal-600',
+    requires: 'tech.scan_serial',
   },
   {
     id: 'stock',
@@ -217,6 +233,26 @@ export const MOBILE_V2_WORKSPACE_DESTINATIONS: readonly MobileV2Destination[] = 
     icon: ListChecks,
     tone: 'text-blue-600',
   },
+  // Support is its own workspace (owner 2026-10-04), not a Tasks mode: the list and one record on the phone.
+  {
+    id: 'support',
+    label: 'Support',
+    description: 'Customer conversations and internal records',
+    href: SUPPORT_PATHS.mobile,
+    icon: TicketHelp,
+    tone: 'text-orange-600',
+    requires: 'support.thread.view',
+  },
+  // The Live feed (desktop: the leading Operations row) — every outbound package by stage, one column per tab.
+  {
+    id: 'live-feed',
+    label: 'Live feed',
+    description: 'Every package by stage: to pick, picked, packed, scanned out',
+    href: LIVE_FEED_MOBILE_PATH,
+    icon: Radar,
+    tone: 'text-orange-600',
+    requires: LIVE_FEED_PERMISSION,
+  },
   ...MOBILE_V2_DESTINATIONS.filter(({ id }) => id === 'exceptions'),
 ] as const;
 
@@ -243,6 +279,7 @@ export const MOBILE_V2_FULFILLMENT_DESTINATIONS: readonly MobileV2Destination[] 
     href: '/m/orders',
     icon: STATION_PAGE_ICONS.outbound,
     tone: 'text-blue-600',
+    requires: 'orders.view',
   },
   {
     id: 'fba',
@@ -252,16 +289,6 @@ export const MOBILE_V2_FULFILLMENT_DESTINATIONS: readonly MobileV2Destination[] 
     icon: SHIPPING_NAV_ICONS.fba,
     tone: 'text-purple-600',
     requires: 'fba.view',
-    ported: false,
-  },
-  {
-    id: 'label-intake',
-    label: 'Labels & docs',
-    description: 'Labels, paperwork and printing',
-    href: SHIPPING_LABEL_INTAKE_PATH,
-    icon: SHIPPING_NAV_ICONS.labels,
-    tone: 'text-teal-600',
-    requires: 'packing.review',
     ported: false,
   },
 ] as const;
@@ -280,7 +307,7 @@ const GROUP_DESCRIPTION: Readonly<Record<MobileV2NavigationGroupId, string>> = {
 };
 
 const GROUP_DESTINATION_IDS: Readonly<Record<MobileV2NavigationGroupId, readonly string[]>> = {
-  floor: ['qc', 'pick'],
+  floor: ['qc', 'prepack', 'pick'],
   sales: ['customers'],
   inbound: ['receiving', 'inbound-new'],
   fulfillment: [],
@@ -290,8 +317,8 @@ const GROUP_DESTINATION_IDS: Readonly<Record<MobileV2NavigationGroupId, readonly
 
 /**
  * Operations branches preserve the desktop's station-first order followed by
- * the canonical domain order. Support is hidden by the mobile-first gate on
- * desktop (`LANE_MOBILE_FIRST.support`) and has no mobile Operations branch.
+ * the canonical domain order. Support is a Workspace row (above), not an
+ * Operations branch.
  */
 export const MOBILE_V2_OPERATION_GROUPS: readonly MobileV2NavigationGroup[] = [
   {
@@ -304,7 +331,7 @@ export const MOBILE_V2_OPERATION_GROUPS: readonly MobileV2NavigationGroup[] = [
       .map((id) => MOBILE_DESTINATION_BY_ID.get(id))
       .filter((destination): destination is MobileV2Destination => Boolean(destination)),
   },
-  ...DOMAIN_GROUPS.filter((group) => group.id !== 'support').map((group) => ({
+  ...DOMAIN_GROUPS.filter((group): group is OperationLane => group.id !== 'support').map((group) => ({
     id: group.id,
     label: group.label,
     icon: group.icon,
@@ -324,7 +351,7 @@ const FAMILY_PRESENTATION: Readonly<Record<SpineNavigationBand, {
   tone: string;
 }>> = {
   utility: {
-    description: 'Tasks, exceptions and shared work',
+    description: 'Tasks, Support, exceptions and shared work',
     icon: LayoutDashboard,
     tone: 'text-blue-600',
   },
@@ -351,7 +378,16 @@ export const MOBILE_V2_NAVIGATION_FAMILIES: readonly MobileV2NavigationFamily[] 
     ...(id === 'bottom' ? { destinations: MOBILE_V2_UTILITY_DESTINATIONS } : {}),
   }));
 
-/** FBM is one desktop lane page; these are its task-focused phone faces. */
-export const MOBILE_V2_FBM_DESTINATIONS: readonly MobileV2Destination[] = MOBILE_V2_DESTINATIONS.filter(
-  ({ id }) => id === 'orders',
+/** FBM's shared children; unported children stay in the contract and are omitted by the renderer. */
+export const MOBILE_V2_FBM_DESTINATIONS: readonly MobileV2Destination[] = FBM_DESTINATIONS.map(
+  (destination) => ({
+    id: destination.id,
+    label: destination.label,
+    description: destination.description,
+    href: destination.mobileHref ?? destination.pathname,
+    icon: destination.icon,
+    tone: destination.tone,
+    requires: destination.requires,
+    ...(destination.mobileHref ? {} : { ported: false as const }),
+  }),
 );

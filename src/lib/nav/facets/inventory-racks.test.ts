@@ -42,6 +42,7 @@ test('rack room facets require sku_stock.view', async () => {
     listLocalPickupLines: async () => [],
     exceptionCounts: async () => ({}),
     supportRows: async () => [],
+    liveFeedFacets: async () => ({ carrier: [], channel: [] }),
   };
   const result = await getNavFacets(
     { orgId: ORG, permissions: new Set(['orders.view']) },

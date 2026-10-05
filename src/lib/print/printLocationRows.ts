@@ -7,8 +7,8 @@
  * words only and never a room. A row whose barcode is a room-coded rack
  * address (`Z AA BB L PP`, dashed or flat) gets the structured location face;
  * any other barcode (`RETURNS-TEST`, `QA-SHELF-A01`) gets the flat special-bin
- * face. An arrival urgency shelf (`arrival_priority_tier` 0..3) carries its
- * tier on the sticker. Every face goes out as one run on the same
+ * face. A location label is identification only — it never carries urgency
+ * (operator 2026-10-05). Every face goes out as one run on the same
  * {@link printLabelFacesJob} channel every label uses (silent USB when
  * paired, else one iframe print dialog).
  */
@@ -28,15 +28,12 @@ import {
   specialBinFaceForBarcode,
   specialBinPayloadToFace,
 } from '@/lib/print/printSpecialBinLabel';
-import { arrivalTierLabel, asArrivalTier } from '@/lib/receiving/arrival-tier';
 
 export interface PrintableLocationRow {
   id: number;
   name: string;
   barcode: string | null;
   roomName: string | null;
-  /** `locations.arrival_priority_tier` — 0 = most urgent; null = not an urgency shelf. */
-  arrivalPriorityTier: number | null;
 }
 
 /** The tenant's GS1 identity the location matrix encodes (`useOrgGs1` + the session org slug). */
@@ -79,12 +76,6 @@ export function locationRowSegments(row: Pick<PrintableLocationRow, 'barcode'>):
   return parseLocationCodeFlat(code.replace(/[^A-Za-z0-9]/g, ''));
 }
 
-/** `Arrival · Priority` for a tiered shelf; null when the row is not an urgency shelf. */
-export function arrivalShelfCaption(tier: number | null | undefined): string | null {
-  const t = asArrivalTier(tier);
-  return t === null ? null : `Arrival · ${arrivalTierLabel(t)}`;
-}
-
 /**
  * Rack-family sticker: the placard (`RACK 12`), a shelf (`RACK 12` over
  * `SHELF 3`) or a position (`RACK 12 · SHELF 3` over `POS 2`). The matrix is
@@ -93,8 +84,6 @@ export function arrivalShelfCaption(tier: number | null | undefined): string | n
 export function rackLabelToFace(input: {
   address: RackAddress;
   gln: string;
-  /** Bottom line, e.g. `Arrival · Priority` on an urgency shelf; blank → none. */
-  caption?: string | null;
 }): LabelFaceModel {
   const { headline, sub } = rackFace(input.address);
   const matrix = encodePrintMatrix({ kind: 'rack', address: input.address, gln: input.gln });
@@ -103,7 +92,7 @@ export function rackLabelToFace(input: {
     topLeft: sub ?? '',
     topRight: '',
     center: headline,
-    bottomLeft: (input.caption ?? '').trim(),
+    bottomLeft: '',
     bottomRight: '',
     matrix: { value: matrix.value, symbology: matrix.symbology, scale: 4 },
     hri: matrix.hri,
@@ -144,12 +133,11 @@ export function planLocationRowFaces(
       skipped += 1;
       continue;
     }
-    const tier = asArrivalTier(row.arrivalPriorityTier);
     // Rack grammar first: `RK…` is never a room-coded address, and the face
     // must not fall through to the room-coded or special-bin families.
     const address = parseRackCode(barcode);
     if (address) {
-      faces.push(rackLabelToFace({ address, gln: identity.gln, caption: arrivalShelfCaption(tier) }));
+      faces.push(rackLabelToFace({ address, gln: identity.gln }));
       rackCodes.push(rackCode(address));
       rack += 1;
       continue;
@@ -162,22 +150,13 @@ export function planLocationRowFaces(
           roomName: row.roomName,
           gln: identity.gln,
           orgSlug: identity.orgSlug,
-          caption: arrivalShelfCaption(tier),
         }),
       );
       structured += 1;
       continue;
     }
     const payload = specialBinFaceForBarcode(barcode, { room: row.roomName, name: row.name });
-    // A free-form urgency shelf names its tier in the kicker/badge pair the
-    // special face already has (`BIN · SPECIAL` → `ARRIVAL · PRIORITY`).
-    faces.push(
-      specialBinPayloadToFace(
-        tier === null
-          ? payload
-          : { ...payload, topLeft: 'ARRIVAL', badge: arrivalTierLabel(tier).toUpperCase() },
-      ),
-    );
+    faces.push(specialBinPayloadToFace(payload));
     special += 1;
   }
   return { faces, rack, structured, special, skipped, rackCodes };

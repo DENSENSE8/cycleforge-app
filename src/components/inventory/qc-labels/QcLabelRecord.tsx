@@ -42,7 +42,7 @@ export function qcLabelReprintVerb(row: QcLabelRow, onPrinted: () => void): Reco
     icon: <Printer aria-hidden />,
     run: async () => {
       try {
-        await printQcLabel({ ...row, printed: true });
+        await printQcLabel({ ...row, printed: true, package: null });
         toast.success(`Reprinting ${qcLabelHandle(row)}`);
         onPrinted();
       } catch (err) {

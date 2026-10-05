@@ -102,6 +102,9 @@ export function DocumentStage({
                   {KIND_LABEL[doc.kind]} · {doc.stock === 'label' ? '4×6' : 'Letter'}
                 </span>
                 <span className="max-w-full truncate text-role-caption font-semibold text-mode-ink">{doc.title}</span>
+                {doc.associationLabel ? (
+                  <span className="max-w-full truncate text-role-caption text-mode-muted">{doc.associationLabel}</span>
+                ) : null}
               </button>
             </div>
           );
@@ -114,6 +117,7 @@ export function DocumentStage({
           >
             <span className={cn(RECORD_LABEL_CLASS, 'text-mode-faint')}>Manual · Drive only</span>
             <span className="max-w-48 truncate text-role-caption text-mode-faint">{doc.title}</span>
+            <span className="max-w-48 truncate text-role-caption text-mode-faint">{doc.associationLabel}</span>
           </span>
         ))}
       </div>

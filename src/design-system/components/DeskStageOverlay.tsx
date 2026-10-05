@@ -3,8 +3,7 @@
 /** Center Lock L2 host — a multi-field record form stacked on the desk stage. */
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, X } from '@/components/Icons';
-import { Button } from '@/design-system/primitives/Button';
+import { ArrowLeft, X } from '@/components/Icons';
 import { DeskRecordHeadContext } from './DeskActionSlot';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterOverlay } from '@/design-system/hooks';
@@ -30,10 +29,6 @@ interface DeskStageOverlayProps {
   subtitle?: ReactNode;
   /** Walk position, e.g. `3 of 12`. Omit when not queue-walking. */
   indexLabel?: ReactNode;
-  onPrev?: () => void;
-  onNext?: () => void;
-  prevDisabled?: boolean;
-  nextDisabled?: boolean;
   children: ReactNode;
   footer?: ReactNode;
   testId?: string;
@@ -65,10 +60,6 @@ export function DeskStageOverlay({
   title,
   subtitle,
   indexLabel,
-  onPrev,
-  onNext,
-  prevDisabled,
-  nextDisabled,
   children,
   footer,
   testId = 'desk-stage-overlay',
@@ -153,10 +144,6 @@ export function DeskStageOverlay({
             title={title}
             subtitle={subtitle}
             indexLabel={indexLabel}
-            onPrev={onPrev}
-            onNext={onNext}
-            prevDisabled={prevDisabled}
-            nextDisabled={nextDisabled}
             onClose={onClose}
             // Inline (covers the list) → Back, top left; a centred card keeps ✕.
             dismiss={stageFill ? 'back' : 'close'}
@@ -181,10 +168,6 @@ interface DeskStageRecordHeaderProps {
   title: ReactNode;
   subtitle?: ReactNode;
   indexLabel?: ReactNode;
-  onPrev?: () => void;
-  onNext?: () => void;
-  prevDisabled?: boolean;
-  nextDisabled?: boolean;
   /** Omit for a record with nowhere to close to (a deep-linked lookup) — no Back / ✕. */
   onClose?: () => void;
   /**
@@ -194,9 +177,9 @@ interface DeskStageRecordHeaderProps {
    * `close` — ✕ at the top right, like dismissing a panel.
    */
   dismiss?: 'back' | 'close';
-  /** The record's own verbs — painted before n of N / ‹ › / ✕. */
+  /** The record's own verbs — painted before n of N / ✕. */
   actions?: ReactNode;
-  /** The record-view switch — after the verbs, before n of N / ‹ › / ✕. */
+  /** The record-view switch — after the verbs, before n of N / ✕. */
   viewSwitch?: ReactNode;
   /**
    * A rail desk (`DeskRecordPlane listRail`, owner 2026-09-27): the verbs sit
@@ -217,10 +200,6 @@ export function DeskStageRecordHeader({
   title,
   subtitle,
   indexLabel,
-  onPrev,
-  onNext,
-  prevDisabled,
-  nextDisabled,
   onClose,
   dismiss = 'close',
   actions,
@@ -274,7 +253,7 @@ export function DeskStageRecordHeader({
         ) : null}
       </div>
       {rail ? null : verbs}
-      {/* Hierarchy: where you are (n of N), then how you view it, then ✕. */}
+      {/* Hierarchy: where you are (n of N; J/K walk, no arrows — owner 2026-09-26), then how you view it, then ✕. */}
       {indexLabel ? (
         <span className="hidden shrink-0 tabular-nums text-role-caption text-text-muted @sm/record-head:inline">
           {indexLabel}
@@ -285,34 +264,6 @@ export function DeskStageRecordHeader({
           <DeskRecordHeadContext.Provider value>{viewSwitch}</DeskRecordHeadContext.Provider>
         </span>
       ) : null}
-      {(onPrev || onNext) && (
-        <div className="flex shrink-0 items-center gap-0.5">
-          {onPrev ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label="Previous record"
-              onClick={onPrev}
-              disabled={prevDisabled}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-          ) : null}
-          {onNext ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label="Next record"
-              onClick={onNext}
-              disabled={nextDisabled}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          ) : null}
-        </div>
-      )}
       {rail ? verbs : null}
       {onClose && dismiss === 'close' ? (
         <IconButton

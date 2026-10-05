@@ -63,6 +63,14 @@ import {
   type SearchByScope,
 } from '@/lib/search/search-by';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
+import { AnimatePresence } from '@/design-system/motion';
+import { CollapseItem } from '@/design-system/components/Collapse';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
+import { useLocalBulkList } from '@/lib/nav/locate/use-bulk-list';
+import { pastedListHref } from '@/lib/nav/route-tree';
+import { NavBulkPanel } from '@/components/sidebar/contextual/NavBulkPanel';
+import { useBulkListSort } from '@/components/sidebar/contextual/bulk-list-view';
 
 interface RecentItem {
   id: string;
@@ -202,7 +210,16 @@ export function CommandBar() {
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const inputRef = useRef<HTMLInputElement>(null);
-
+  // Paste-a-list in the palette: 2+ pasted numbers become ONE held list, shown in
+  // place of the results (the bar's own panel — same view, chips and rows).
+  const pasted = useLocalBulkList('everywhere');
+  const [pastedSort, setPastedSort] = useBulkListSort();
+  const pastedListboxRef = useRef<HTMLDivElement>(null);
+  const holdingList = pasted.selection.refs.length > 0;
+  const clearPasted = useRef(pasted.clear);
+  clearPasted.current = pasted.clear;
+  const switchOpen = useMotionTransition(motionTransition.findListPanelOpen);
+  const switchClose = useMotionTransition(motionTransition.findListPanelClose);
   const router = useRouter();
   const pathname = usePathname();
   // The catalog-aware resolver — the SAME one the rails and grids use, so an
@@ -215,18 +232,15 @@ export function CommandBar() {
     () => buildCommandBarNavGroups(new Set(user?.permissions ?? [])),
     [user?.permissions],
   );
+  const openRef = useRef(open);
+  openRef.current = open;
   const setDialogOpen = useCallback((next: boolean) => {
     setOpen(next);
     dispatchOpenChange(next);
   }, []);
 
-  const toggleDialogOpen = useCallback(() => {
-    setOpen((prev) => {
-      const next = !prev;
-      dispatchOpenChange(next);
-      return next;
-    });
-  }, []);
+  // The event leaves outside the state updater: a listener's setState must not run inside CommandBar's render.
+  const toggleDialogOpen = useCallback(() => setDialogOpen(!openRef.current), [setDialogOpen]);
 
   useEffect(() => {
     setRecents(getRecent());
@@ -311,6 +325,7 @@ export function CommandBar() {
       setPlatformFilter(null);
       setRelaxedTo(null);
       clearGlobalHeaderSearchDraft();
+      clearPasted.current();
       return;
     }
     setRecents(getRecent());
@@ -543,6 +558,14 @@ export function CommandBar() {
     });
   }, [router, setDialogOpen, trimmedQuery]);
 
+  // The held list's own page; Esc there comes back to the page under the palette.
+  const openPastedFull = useCallback(() => {
+    const back = `${window.location.pathname}${window.location.search}`;
+    const href = pastedListHref({ refs: pasted.selection.refs, locator: pasted.scope, status: pasted.status, back, repeats: pasted.repeats });
+    setDialogOpen(false);
+    window.requestAnimationFrame(() => router.push(href));
+  }, [pasted.selection.refs, pasted.scope, pasted.status, router, setDialogOpen]);
+
   return (
     <CommandDialog open={open} onOpenChange={setDialogOpen}>
       <Command shouldFilter={false} loop label="Find records" className="max-h-[70vh]">
@@ -553,7 +576,43 @@ export function CommandBar() {
           placeholder={axis ? searchByPlaceholder(axis) : 'Order #, serial, tracking…'}
           hints={query || axis ? undefined : PALETTE_HINTS}
           data-testid="global-find-input"
+          onPaste={(event) => {
+            if (!pasted.paste(event.clipboardData.getData('text'))) return;
+            event.preventDefault();
+            setQuery('');
+          }}
+          onKeyDown={(event) => {
+            // ↓ (or ↵) walks into the held list — cmdk has no items then, and an Enter left
+            // to bubble would reach the desk underneath and open ITS cursor record.
+            if (!holdingList || (event.key !== 'ArrowDown' && event.key !== 'Enter')) return;
+            event.preventDefault();
+            event.stopPropagation();
+            pastedListboxRef.current?.focus({ preventScroll: true });
+          }}
         />
+        {/* A pasted list replaces the results in place: the old face's height folds while
+            the new one's unfolds — one ease-in-out morph, the two faces crossfading. */}
+        <AnimatePresence initial={false}>
+        {holdingList ? (
+          <CollapseItem key="pasted" timing={{ open: switchOpen, close: switchClose }}>
+            <div data-palette-pasted-list className="flex max-h-[min(60vh,28rem)] flex-col p-1">
+              <NavBulkPanel
+                list={pasted}
+                sort={pastedSort}
+                onSort={setPastedSort}
+                onClose={() => setDialogOpen(false)}
+                onLeave={() => inputRef.current?.focus()}
+                onOpenFull={openPastedFull}
+                onClear={() => {
+                  pasted.clear();
+                  inputRef.current?.focus();
+                }}
+                listboxRef={pastedListboxRef}
+              />
+            </div>
+          </CollapseItem>
+        ) : (
+        <CollapseItem key="results" timing={{ open: switchOpen, close: switchClose }}>
         {/* One control zone, ONE rule under it. */}
         <div className="border-b border-border-hairline">
         {/* Method pills — the search axis as a segmented toggle, not a row of typed labels. */}
@@ -759,6 +818,9 @@ export function CommandBar() {
             </CommandGroup>
           ) : null}
         </CommandList>
+        </CollapseItem>
+        )}
+        </AnimatePresence>
       </Command>
     </CommandDialog>
   );

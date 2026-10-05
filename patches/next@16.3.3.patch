@@ -1,0 +1,34 @@
+diff --git a/dist/esm/server/lib/router-utils/resolve-routes.js b/dist/esm/server/lib/router-utils/resolve-routes.js
+index 4c9d087e2b3aaba6f7c2e0b08119ad7b5be701da..d0bdaeea87547aaf3079fe22af4686dee63eb3de 100644
+--- a/dist/esm/server/lib/router-utils/resolve-routes.js
++++ b/dist/esm/server/lib/router-utils/resolve-routes.js
+@@ -99,7 +99,11 @@ export function getResolveRoutes(fsChecker, config, opts, renderServer, renderSe
+         // TODO: inherit this from higher up
+         const protocol = (req == null ? void 0 : (_req_socket = req.socket) == null ? void 0 : _req_socket.encrypted) || ((_req_headers_xforwardedproto = req.headers['x-forwarded-proto']) == null ? void 0 : _req_headers_xforwardedproto.includes('https')) ? 'https' : 'http';
+         // When there are hostname and port we build an absolute URL
+-        const initUrl = config.experimental.trustHostHeader ? `https://${req.headers.host || 'localhost'}${req.url}` : opts.port ? `${protocol}://${formatHostname(opts.hostname || 'localhost')}:${opts.port}${req.url}` : req.url || '';
++        // CycleForge patch (vercel/next.js#91844): NextURL renames a loopback host to
++        // `localhost`; do the same here, or a middleware rewrite under `-H 127.0.0.1`
++        // reads as external and is proxied (EPROTO behind X-Forwarded-Proto: https).
++        const initHostname = /^(?:127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}|::1|\[::1\]|localhost)$/.test(opts.hostname || '') ? 'localhost' : opts.hostname || 'localhost';
++        const initUrl = config.experimental.trustHostHeader ? `https://${req.headers.host || 'localhost'}${req.url}` : opts.port ? `${protocol}://${formatHostname(initHostname)}:${opts.port}${req.url}` : req.url || '';
+         addRequestMeta(req, 'initURL', initUrl);
+         addRequestMeta(req, 'initQuery', {
+             ...parsedUrl.query
+diff --git a/dist/server/lib/router-utils/resolve-routes.js b/dist/server/lib/router-utils/resolve-routes.js
+index 04411126b340eeb59720cbeaebe9a6604fa77a6c..95b08b977f4cd8d1c1ef93710050554be7df5ea1 100644
+--- a/dist/server/lib/router-utils/resolve-routes.js
++++ b/dist/server/lib/router-utils/resolve-routes.js
+@@ -114,7 +114,11 @@ function getResolveRoutes(fsChecker, config, opts, renderServer, renderServerOpt
+         // TODO: inherit this from higher up
+         const protocol = (req == null ? void 0 : (_req_socket = req.socket) == null ? void 0 : _req_socket.encrypted) || ((_req_headers_xforwardedproto = req.headers['x-forwarded-proto']) == null ? void 0 : _req_headers_xforwardedproto.includes('https')) ? 'https' : 'http';
+         // When there are hostname and port we build an absolute URL
+-        const initUrl = config.experimental.trustHostHeader ? `https://${req.headers.host || 'localhost'}${req.url}` : opts.port ? `${protocol}://${(0, _formathostname.formatHostname)(opts.hostname || 'localhost')}:${opts.port}${req.url}` : req.url || '';
++        // CycleForge patch (vercel/next.js#91844): NextURL renames a loopback host to
++        // `localhost`; do the same here, or a middleware rewrite under `-H 127.0.0.1`
++        // reads as external and is proxied (EPROTO behind X-Forwarded-Proto: https).
++        const initHostname = /^(?:127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}|::1|\[::1\]|localhost)$/.test(opts.hostname || '') ? 'localhost' : opts.hostname || 'localhost';
++        const initUrl = config.experimental.trustHostHeader ? `https://${req.headers.host || 'localhost'}${req.url}` : opts.port ? `${protocol}://${(0, _formathostname.formatHostname)(initHostname)}:${opts.port}${req.url}` : req.url || '';
+         (0, _requestmeta.addRequestMeta)(req, 'initURL', initUrl);
+         (0, _requestmeta.addRequestMeta)(req, 'initQuery', {
+             ...parsedUrl.query

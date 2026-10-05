@@ -1,28 +1,22 @@
 /**
- * POST /api/support/suggest — draft an AI support reply for a helpdesk ticket.
+ * POST /api/support/suggest — the station composer's "Draft with AI".
  *
- * Body `{ ticketId, stagedPhotoIds? }`. The thread is read HERE, from the local
- * mirror, never trusted from the client: the latest customer message is what
- * gets answered, and a ticket with no customer in it (staff-opened, automated
- * sender) is refused with a reason instead of drafted.
+ * Body `{ ticketId, stagedPhotoIds? }`, where `ticketId` is the helpdesk
+ * ticket number the station shows. The ticket is mapped to its LOCAL Support
+ * item and drafted from the local conversation and linked records only — no
+ * provider read. The draft is stored on the item like any other (never sent)
+ * and returned in the station's response shape. A conversation that is not an
+ * acknowledged customer conversation is refused with `422 { error, reason }`.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
-import { HELPDESK_CONNECT_HINT, HELPDESK_NOT_CONNECTED_MESSAGE } from '@/lib/integrations/helpdesk';
-import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
-import { suggestSupportReply, SupportSuggestError } from '@/lib/support/suggest-reply';
-import { resolveSupportReplyPersona } from '@/lib/support/reply-persona-deps';
-import { collectPhotoEvidence, type PhotoEvidence } from '@/lib/support/photo-evidence';
-import { supportPhotoEvidenceDeps } from '@/lib/support/photo-evidence-deps';
-import { readSupportThread, type SupportThreadComment } from '@/lib/support/support-thread';
-import { loadTicketMirror } from '@/lib/support/ticket-mirror';
-import { resolveSupportVisionLaneForOrg } from '@/lib/support/vision-lane-deps';
+import { MAX_STAGED_DRAFT_PHOTOS } from '@/lib/schemas/support-drafts';
+import { syncSupportThreadFromMirror } from '@/lib/support/conversation/mirror-bridge';
+import { readStationSupportItem } from '@/lib/support/drafts/context-read';
+import { draftSupportItemNow } from '@/lib/support/drafts/process';
 
 export const runtime = 'nodejs';
-
-/** One paste is a handful of images, not an album. */
-const MAX_STAGED_PHOTOS = 6;
 
 type SuggestBody = {
   ticketId?: number;
@@ -34,8 +28,8 @@ function readPhotoIds(raw: unknown): number[] {
   const out: number[] = [];
   for (const v of raw) {
     const n = Number(v);
-    if (Number.isFinite(n) && n > 0 && !out.includes(n)) out.push(n);
-    if (out.length >= MAX_STAGED_PHOTOS) break;
+    if (Number.isInteger(n) && n > 0 && !out.includes(n)) out.push(n);
+    if (out.length >= MAX_STAGED_DRAFT_PHOTOS) break;
   }
   return out;
 }
@@ -63,90 +57,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'ticketId is required' }, { status: 400 });
   }
 
-  // Drafting a reply only makes sense against a connected helpdesk (the
-  // capability gate, not a vendor check). Same 503 language as /api/zendesk/*.
-  const loaded = await loadTicketMirror(ctx.organizationId, ticketId);
-  if (loaded.status === 'not_configured') {
-    return NextResponse.json(
-      { error: `${HELPDESK_NOT_CONNECTED_MESSAGE} — ${HELPDESK_CONNECT_HINT}` },
-      { status: 503 },
-    );
-  }
-  if (loaded.status === 'not_found') {
+  const item = await readStationSupportItem(ctx.organizationId, ticketId);
+  if (!item) {
     return NextResponse.json({ error: `Ticket #${ticketId} not found` }, { status: 404 });
   }
-
-  const { mirror } = loaded;
-  const read = readSupportThread({
-    comments: mirror.comments as SupportThreadComment[],
-    agentIds: mirror.agents.map((a) => a.id),
-    requesterEmail: mirror.requester?.email,
-    tags: mirror.ticket.tags,
-  });
-  // An image on its own IS a question ("what is this / is it covered"), so a
-  // staged photo drafts even where no customer has written.
-  if (!read.supportOriented && !stagedPhotoIds.length) {
-    return NextResponse.json({ error: read.message, reason: read.reason }, { status: 422 });
+  // A mirrored ticket whose canonical thread was never filled: fill it from the
+  // LOCAL mirror first (backfill mode — no alerts, no queued drafts).
+  if (item.needsMirrorSync) {
+    await syncSupportThreadFromMirror(ctx.organizationId, item.supportItemId, { mode: 'backfill' });
   }
 
-  try {
-    // The tenant's OWN framing — never a hardcoded brand. Degrades to the
-    // generic "a reseller" clause rather than impersonating anyone.
-    // The lane is resolved, never assumed, and it is local-first.
-    const [persona, vision] = await Promise.all([
-      resolveSupportReplyPersona(ctx.organizationId),
-      resolveSupportVisionLaneForOrg(ctx.organizationId),
-    ]);
-
-    // Deterministic pass — every lane. A failure here degrades to a text-only
-    // draft rather than failing the request: the record is never blocked by the
-    // assistant, and the image is already attached to the ticket regardless.
-    let evidence: PhotoEvidence[] = [];
-    if (stagedPhotoIds.length) {
-      try {
-        evidence = await collectPhotoEvidence(
-          stagedPhotoIds,
-          supportPhotoEvidenceDeps(ctx.organizationId),
-        );
-      } catch (err) {
-        console.warn('[support/suggest] photo evidence failed', (err as Error)?.message);
-      }
-    }
-
-    // Signed STORAGE urls, resolved here and never returned to the client —
-    // and only on the lane permitted to send an image off the tenant's box.
-    let imageUrls: string[] = [];
-    if (vision === 'cloud-multimodal' && evidence.length) {
-      const resolved = await Promise.all(
-        evidence.map((photo) =>
-          resolvePhotoAccessUrl(photo.photoId, ctx.organizationId, 'full').catch(() => null),
-        ),
-      );
-      // A fallback to the app content route is exactly what a model cannot
-      // follow, so an unsigned URL is dropped rather than sent.
-      imageUrls = resolved.filter(
-        (url): url is string => typeof url === 'string' && /^https?:\/\//i.test(url),
-      );
-    }
-
-    const result = await suggestSupportReply(ctx.organizationId, {
-      ticketId,
-      subject: mirror.ticket.subject ?? undefined,
-      question: read.supportOriented ? read.customerMessage : '',
-      thread: read.supportOriented ? read.thread : [],
-      today: new Date().toISOString().slice(0, 10),
-      persona,
-      vision,
-      photos: evidence,
-      imageUrls,
-    });
-    return NextResponse.json({ success: true, ...result });
-  } catch (err) {
-    if (err instanceof SupportSuggestError) {
-      console.error('[support/suggest]', err.status, err.message, err.detail ?? '');
-      return NextResponse.json({ error: err.message }, { status: err.status });
-    }
-    console.error('[support/suggest] unexpected', (err as Error)?.message);
-    return NextResponse.json({ error: 'Suggestion failed' }, { status: 503 });
+  const result = await draftSupportItemNow(ctx.organizationId, item.supportItemId, ctx.staffId, { stagedPhotoIds });
+  if (!result.ok) {
+    if (result.status === 502) console.error('[support/suggest]', result.status, result.error);
+    return NextResponse.json({ error: result.error, reason: result.reason }, { status: result.status });
   }
+  return NextResponse.json({ success: true, ...result.suggestion, draftId: result.draft.id });
 }, { permission: 'integrations.zendesk', feature: 'support' });

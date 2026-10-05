@@ -6,9 +6,10 @@ import { LayoutGroup, motion } from '@/design-system/motion';
 import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
-import { ChevronRight } from '@/components/Icons';
+import { Bookmark, ChevronRight } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { APP_SIDEBAR_NAV, STATION_GROUPS, getSidebarPageNav } from '@/lib/sidebar-navigation';
+import { DOMAIN_GROUPS, LANE_DOORS } from '@/lib/nav/lanes';
 import { cn } from '@/utils/_cn';
 import { NAV_BLOCK_CLASS, NAV_BLOCK_PLATE_CLASS } from './nav-block';
 import { NAV_VIEW_ICONS } from './nav-view-icons';
@@ -26,14 +27,28 @@ import { spineParentTone } from '@/components/sidebar/master-nav/spine-parent-to
 export type Glyph = { icon: React.ComponentType<{ className?: string }>; tone: string; alertCount?: true };
 
 /**
+ * Last-resort visual continuity for a server/org-provided view that arrives
+ * before its explicit NAV_VIEW_ICONS registration. The completeness test still
+ * fails coded first-party views, so this fallback cannot normalize omissions.
+ */
+const UNREGISTERED_VIEW_GLYPH: Glyph = { icon: Bookmark, tone: 'text-text-muted' };
+
+/**
  * A row's glyph. A page's view (`pageId` set): the view's state glyph
  * (`NAV_VIEW_ICONS`). Page map: the page's own nav icon — for a lane door
  * that is the lane's parent icon, the same one the landing page registers.
  */
 export function navRowGlyph(item: NavItem, pageId: string | undefined): Glyph | null {
-  if (pageId !== undefined) return NAV_VIEW_ICONS[`${pageId}.${item.id}`] ?? null;
+  if (pageId !== undefined) return NAV_VIEW_ICONS[`${pageId}.${item.id}`] ?? UNREGISTERED_VIEW_GLYPH;
   const stationParent = STATION_GROUPS.find((group) => group.label === item.label);
   if (stationParent) return { icon: stationParent.icon, tone: 'text-text-muted' };
+  // A lane door keeps its landing page id/href for routing, but wears the
+  // lane's parent label and icon. Matching both prevents the Stock page row
+  // (`id: stock`, `label: Stock`) from being mistaken for Warehouse.
+  const domainParent = DOMAIN_GROUPS.find(
+    (lane) => LANE_DOORS[lane.id] === item.id && lane.label === item.label,
+  );
+  if (domainParent) return { icon: domainParent.icon, tone: 'text-text-muted' };
   const icon = APP_SIDEBAR_NAV.find((row) => row.id === item.id)?.icon ?? getSidebarPageNav(item.id)?.icon;
   return icon ? { icon, tone: 'text-text-muted' } : null;
 }

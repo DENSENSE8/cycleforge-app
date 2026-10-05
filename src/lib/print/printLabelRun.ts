@@ -116,8 +116,8 @@ async function recordLocationPrintJobs(input: {
   }
 }
 
-/** Bin / qty-bin print run — register then silent 2×1 pipeline. */
-export async function printBinLabelRun(input: {
+/** Location print run — register then silent 2×1 pipeline. */
+export async function printLocationLabelRun(input: {
   roomName: string;
   segments: readonly LocationSegments[];
   gln: string;
@@ -128,7 +128,7 @@ export async function printBinLabelRun(input: {
   if (input.segments.length === 0) {
     return { status: 'skipped', count: 0 };
   }
-  return asPrintWork('Bin labels', input.segments.length, input.onProgress, async (print) => {
+  return asPrintWork('Location labels', input.segments.length, input.onProgress, async (print) => {
     try {
       await input.register(input.roomName, [...input.segments]);
     } catch (err) {

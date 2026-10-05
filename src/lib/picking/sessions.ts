@@ -28,6 +28,8 @@ export interface PickTaskRow {
   serialNumber: string | null;
   /** Minted unit id the QC / pre-box label encodes (`{SKU}-{YYWW}-{SEQ6}`). */
   unitUid: string | null;
+  /** The SEALED PREBOX package (`KIT-…`) the unit is boxed in — its label names every member. */
+  packageUid: string | null;
   lineId: number;
   sku: string;
   productTitle: string | null;
@@ -163,6 +165,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
         serial_unit_id: number;
         serial_number: string | null;
         unit_uid: string | null;
+        package_uid: string | null;
         sku: string;
         product_title: string | null;
         zoho_item_title?: string | null;
@@ -176,6 +179,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
                 oua.serial_unit_id,
                 su.serial_number,
                 su.unit_uid,
+                lm.manifest_uid    AS package_uid,
                 su.sku,
                 sc.product_title,
                 (SELECT i.name FROM items i
@@ -207,6 +211,12 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
                                 AND sc.organization_id = su.organization_id
       LEFT JOIN locations    l   ON l.id::text = su.current_location
                                 AND l.organization_id = su.organization_id
+      LEFT JOIN label_manifest_items lmi ON lmi.organization_id = su.organization_id
+                                        AND lmi.serial_unit_id = su.id
+      LEFT JOIN label_manifests      lm  ON lm.id = lmi.manifest_id
+                                        AND lm.organization_id = lmi.organization_id
+                                        AND lm.manifest_type = 'PREBOX'
+                                        AND lm.status = 'SEALED'
           WHERE oua.order_id = $1
             AND oua.organization_id = $2
             AND oua.state IN ('ALLOCATED', 'PICKING')
@@ -222,6 +232,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
         serial_unit_id: number;
         serial_number: string | null;
         unit_uid: string | null;
+        package_uid: string | null;
         sku: string;
         product_title: string | null;
         zoho_item_title?: string | null;
@@ -234,6 +245,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
                 oua.serial_unit_id,
                 su.serial_number,
                 su.unit_uid,
+                lm.manifest_uid    AS package_uid,
                 su.sku,
                 sc.product_title,
                 -- Prefer the human-readable barcode (e.g. 'UNSORTED', 'A-12');
@@ -260,6 +272,12 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
       LEFT JOIN sku_catalog  sc  ON sc.sku = su.sku
                                 AND sc.organization_id = su.organization_id
       LEFT JOIN locations    l   ON l.id::text = su.current_location
+      LEFT JOIN label_manifest_items lmi ON lmi.organization_id = su.organization_id
+                                        AND lmi.serial_unit_id = su.id
+      LEFT JOIN label_manifests      lm  ON lm.id = lmi.manifest_id
+                                        AND lm.organization_id = lmi.organization_id
+                                        AND lm.manifest_type = 'PREBOX'
+                                        AND lm.status = 'SEALED'
           WHERE oua.order_id = $1
             AND oua.state IN ('ALLOCATED', 'PICKING')
           ORDER BY oua.id ASC`,
@@ -278,6 +296,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
       serialUnitId: r.serial_unit_id,
       serialNumber: r.serial_number,
       unitUid: r.unit_uid,
+      packageUid: r.package_uid,
       lineId: i + 1,
       sku: r.sku,
       productTitle:

@@ -33,22 +33,37 @@ export function ItemIdentityRow({
   actions,
   testId,
   wrap = false,
+  layout = 'ruler',
   children,
 }: {
   label: string;
   actions: ReactNode;
   testId?: string;
   wrap?: boolean;
+  /** `cell` lets several facts share one responsive identity strip. */
+  layout?: 'ruler' | 'cell';
   children: ReactNode;
 }) {
+  const cell = layout === 'cell';
   return (
     <span
-      className={cn('group/identity flex min-w-0 items-center gap-2 border-b border-mode-fact', wrap ? 'min-h-9 py-0.5' : 'h-9')}
+      className={cn(
+        'group/identity flex min-w-0 items-center gap-2 border-b border-mode-fact',
+        cell && 'relative',
+        wrap ? 'min-h-9 py-0.5' : 'h-9',
+      )}
       data-testid={testId}
     >
-      <span className={cn(RECORD_LABEL_CLASS, 'w-14 shrink-0 leading-none text-mode-muted')}>{label}</span>
+      <span className={cn(RECORD_LABEL_CLASS, cell ? 'w-auto' : 'w-14', 'shrink-0 leading-none text-mode-muted')}>{label}</span>
       <span className={cn('flex min-w-0 flex-1 items-center leading-none', wrap && 'flex-wrap gap-1')}>{children}</span>
-      <span className="flex w-auto shrink-0 items-center justify-end opacity-0 transition-opacity group-focus-within/identity:opacity-100 group-hover/identity:opacity-100 @sm:w-[5.25rem]">
+      <span
+        className={cn(
+          'flex shrink-0 items-center justify-end opacity-0 transition-opacity group-focus-within/identity:opacity-100 group-hover/identity:opacity-100',
+          cell
+            ? 'absolute inset-y-0 right-0 bg-mode-bar pl-1'
+            : 'w-auto @sm:w-[5.25rem]',
+        )}
+      >
         {actions}
       </span>
     </span>

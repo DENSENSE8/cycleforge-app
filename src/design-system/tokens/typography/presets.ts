@@ -44,6 +44,15 @@ export const cardTitle = 'text-base font-semibold text-text-default leading-tigh
 /** Dense record-row title: readable, but quieter than the identity and decision facts around it. */
 export const denseRecordTitle = 'text-sm font-medium leading-tight' as const;
 
+/** Source/platform in a record identity band: a compact label, distinct from the buyer beside it. */
+export const recordPlatform = 'text-role-caption font-semibold leading-none' as const;
+
+/** Person/buyer in a record identity band: conversational data between the ID and note voices. */
+export const recordPerson = 'text-role-data font-medium leading-none' as const;
+
+/** Human-written note in a record identity band: the quietest prose face, never mistaken for an ID. */
+export const recordNote = 'text-role-caption font-normal leading-tight' as const;
+
 /** LedgerGrid / AdminTable column headers — quiet label chrome (override role-micro's 600 weight). */
 /**
  * Column-header face. BLACK ink (operator ruling 2026-08-31, was
@@ -78,6 +87,9 @@ const typographyPresets = {
   ledgerCell,
   cardTitle,
   denseRecordTitle,
+  recordPlatform,
+  recordPerson,
+  recordNote,
   tableHeader,
   tableCell,
   microBadge,

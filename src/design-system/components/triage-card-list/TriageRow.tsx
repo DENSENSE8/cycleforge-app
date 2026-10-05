@@ -8,7 +8,7 @@
  * borders, no column headers, no resize / reorder chrome. Every row reads the
  * same facts in the same place, left → right:
  *
- *   ☐ · state badge · [photo] · identity · title · 2–4 key facts · → next step
+ *   ☐ (on hover / focus / touch, or once checked) · [state badge] · [photo] · identity · title · 2–4 key facts · → next step
  *
  * API (the host's side — everything else is the card list's):
  * - Mount `<TriageCardList density="row" …>` with the SAME family / feed / cut
@@ -18,7 +18,8 @@
  * - The family's `renderCard` returns
  *   `<TriageRow {...slotProps} face={myRowFace(slotProps.model)} testIdPrefix={VIEW.testIdPrefix} />`.
  * - {@link TriageRowFace} is the row as data: `state` (any desk's
- *   `RecordStateFace` or an outbound `LifecycleState`), `identity` (the
+ *   `RecordStateFace` or an outbound `LifecycleState`; `null` when every row
+ *   of the list would wear the same badge, so the column is dropped), `identity` (the
  *   handle the floor says aloud: bin, unit id, order # — shown whole, so give
  *   a long handle `identityWidth: 'long'`), `title`, optional `photo`,
  *   `facts` in priority order, `next` (the verb opening the record leads
@@ -33,9 +34,20 @@
  *   qty, place, date, … — the ONE painter the cards use, Law 2) or plain
  *   text; `label` is a muted lead word (`SN`, `SKU`, `Qty`) for a value that
  *   does not read alone.
+ * - Identifiers stay copyable (owner 2026-10-04): `identityCopy` / a fact's
+ *   `copy` paint the cell as the house `CopyChip` (click copies, hover shows
+ *   the copy bubble) in the identifier's tone — FNSKU, ticket, serial, order #,
+ *   SKU. A self-evident format needs no lead word (a SKU has dashes, an ASIN
+ *   does not): give `label` only to a value that cannot be told apart.
+ *   An order / PO handle is an `OperationalIdentity` (`@/lib/operational-identity`):
+ *   pass it as `identity` and the row paints the same face the Full card does.
  * - A high-information desk queue may opt into `wide`: up to eight facts stay
  *   visible on one shared horizontal scroll plane, and `endFact` + `next` pin
  *   at the right edge. The list host must pair it with `rowScroll`.
+ * - `trailingAction`: the record's one direct verb (FNSKU's Print), the row's
+ *   LAST cell. It shows on row hover / focus / touch and while its own
+ *   popover is open (`aria-expanded`), so the verb runs without opening the
+ *   record. A list whose `next` is always null drops the empty next column.
  * - Keys: the whole row is the open target (Enter opens, focus lands back on
  *   it when Esc closes the record); the checkbox is the only check; Space
  *   folds `quickLook` when the family passes one.
@@ -44,16 +56,20 @@
 import { memo, useRef, type MouseEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight } from '@/components/Icons';
+import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
 import { PhotoHoverPeek } from '@/design-system/components/PhotoHoverPeek';
 import { CARD_STAGGER_CAP, CARD_STAGGER_S, CardCheck } from '@/design-system/components/record-card/RecordCard';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { denseRecordTitle } from '@/design-system/tokens/typography/presets';
+import { denseRecordTitle, recordNote, recordPerson, recordPlatform } from '@/design-system/tokens/typography/presets';
 import type { RecordStateFace } from '@/design-system/tokens/record';
 import { LIFECYCLE, type LifecycleState } from '@/design-system/tokens/lifecycle';
 import { cn } from '@/utils/_cn';
 import { RecordFactPaint, type RecordFactFace } from '@/design-system/components/record-card/record-fact';
+import { OperationalIdentityChip } from '@/design-system/components/OperationalIdentityChip';
+import { isCopyableIdentity, type OperationalIdentity } from '@/lib/operational-identity';
 import type { TriageCardModelBase, TriageCardSlotProps } from './TriageCardList';
 
 /** A fact's fixed column — the rows line up with no header row. */
@@ -66,6 +82,18 @@ const WIDTH_CLASS: Readonly<Record<TriageRowFactWidth, string>> = {
   long: 'w-52',
 };
 
+/**
+ * A copyable identifier's column: the same width as a floor, never a ceiling —
+ * an identifier is never clipped (owner 2026-10-04: the last digit of an FNSKU
+ * was cut off). Same-length ids still line up row to row.
+ */
+const MIN_WIDTH_CLASS: Readonly<Record<TriageRowFactWidth, string>> = {
+  num: 'min-w-16 justify-end text-right',
+  short: 'min-w-24',
+  code: 'min-w-32',
+  long: 'min-w-52',
+};
+
 /** Facts disclose by the row's own width (see the API note). Literal — Tailwind reads the source. */
 const FACT_TIER_CLASS = ['hidden @3xl/row:flex', 'hidden @4xl/row:flex', 'hidden @5xl/row:flex', 'hidden @5xl/row:flex'] as const;
 
@@ -74,6 +102,24 @@ const FACT_TONE_CLASS = {
   muted: 'text-mode-muted',
   warn: 'text-mode-warn',
 } as const;
+
+const FACT_VOICE_CLASS = {
+  data: 'text-role-data',
+  platform: recordPlatform,
+  person: recordPerson,
+  note: recordNote,
+} as const;
+
+/**
+ * An identifier the floor copies (FNSKU, ticket, serial, order #): the cell is
+ * the house {@link CopyChip} — click copies, hover shows the copy bubble — in
+ * the identifier's tone. `display` is the face (default `value`).
+ */
+export interface TriageRowCopy {
+  value: string;
+  display?: string;
+  tone: ChipTone;
+}
 
 export interface TriageRowFact {
   /** Stable id — the cell's test id (`<prefix>-fact-<id>`). */
@@ -85,19 +131,30 @@ export interface TriageRowFact {
   width: TriageRowFactWidth;
   /** Ink for a plain-text value — `warn`: needs a decision now; `muted`: context. Faces carry their own. */
   tone?: keyof typeof FACT_TONE_CLASS;
+  /** Typographic identity for a plain-text value; semantic color remains controlled independently by `tone`. */
+  voice?: keyof typeof FACT_VOICE_CLASS;
   /** The full text when the cell truncates. */
   tip?: string;
+  /** The cell is a copyable identifier: painted as a CopyChip in place of `value`. */
+  copy?: TriageRowCopy;
 }
 
 /** The row as data — what the family's model says one record IS on this list. */
 export interface TriageRowFace {
-  state: RecordStateFace | LifecycleState;
-  /** The record's handle — bin, unit id, order number. */
-  identity: string;
+  /** The record's state badge; null = the list has one constant state, so no badge column. */
+  state: RecordStateFace | LifecycleState | null;
+  /**
+   * The record's handle — bin, unit id, order number. An {@link OperationalIdentity}
+   * paints itself (`OperationalIdentityChip`): face, copy and spoken label are its own,
+   * so `identityDisplay` / `identityCopy` apply only to a plain string handle.
+   */
+  identity: string | OperationalIdentity;
   /** Short visual handle; `identity` remains the full accessible/title value. */
   identityDisplay?: string;
   /** The handle's column (default `code`); `long` for a unit id / tracking-length handle. */
   identityWidth?: TriageRowFactWidth;
+  /** The handle is a copyable identifier: painted as a CopyChip (face `display` ?? `identityDisplay` ?? `identity`). */
+  identityCopy?: TriageRowCopy;
   title: string;
   /** Present = the family shows photos (a thumb holds the column even with no `url`). */
   photo?: { url: string | null };
@@ -124,6 +181,8 @@ export interface TriageRowProps<Row, Model extends TriageCardModelBase<Row>> ext
   rowAttrs?: Readonly<Record<`data-${string}`, string | number>>;
   /** Space's fold under the row — a keyed node (it animates its own height). */
   quickLook?: ReactNode;
+  /** The record's one direct verb at the right edge, revealed on hover / focus (see the API note). */
+  trailingAction?: ReactNode;
 }
 
 function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
@@ -139,12 +198,13 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
   testIdPrefix,
   quickLook,
   rowAttrs,
+  trailingAction,
 }: TriageRowProps<Row, Model>) {
   const openRef = useRef<HTMLButtonElement>(null);
   const id = (part: string) => `${testIdPrefix}-${part}`;
   const selected = checked !== false;
-  const stateId = typeof face.state === 'string' ? face.state : face.state.id;
-  const stateLabel = typeof face.state === 'string' ? LIFECYCLE[face.state].label : face.state.label;
+  const stateId = face.state == null ? undefined : typeof face.state === 'string' ? face.state : face.state.id;
+  const identityCopyable = typeof face.identity === 'string' ? face.identityCopy != null : isCopyableIdentity(face.identity);
   const openRecord = (event: MouseEvent) =>
     onOpen(model.lead, { shiftKey: event.shiftKey, metaKey: event.metaKey, ctrlKey: event.ctrlKey, detail: event.detail, target: event.target });
 
@@ -187,14 +247,21 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
 
       <div
         className={cn(
-          'pointer-events-none relative z-10 flex min-w-0 items-center gap-1.5 pr-3',
-          // The select bar is inset 4px, then padded 16px. Wide rows have no
-          // list inset, so 20px lands their 28px check column on the same axis.
-          face.wide ? 'min-h-9 py-0.5 pl-5' : 'min-h-10 overflow-hidden py-1 pl-4',
+          // The select bar is inset 4px, then padded 16px; rows are full-bleed (no list inset), so
+          // 20px lands the 28px check column on the select-all's axis (measured 2026-10-04: pl-4 sat 4px left).
+          'pointer-events-none relative z-10 flex min-w-0 items-center gap-1.5 pl-5 pr-3',
+          face.wide ? 'min-h-9 py-0.5' : 'min-h-10 overflow-hidden py-1',
         )}
       >
-        {/* The check column — the select bar's check axis. */}
-        <span className="flex w-7 shrink-0 justify-center">
+        {/* The check column — the select bar's check axis. The checkbox shows on row hover / focus,
+            always on touch, and stays once checked (the 2026-09-15 gutter law, as on the card). */}
+        <span
+          className={cn(
+            'flex w-7 shrink-0 justify-center',
+            checked === false &&
+              'opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 group-focus-within/row:opacity-100 [@media(hover:none)]:opacity-100',
+          )}
+        >
           <CardCheck
             checked={checked}
             label={face.aria.check}
@@ -205,11 +272,13 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
             }}
           />
         </span>
-        <span className="flex w-28 shrink-0" data-testid={id('state')}>
-          <LifecycleCode state={face.state} srLabel={null} className="max-w-full">
-            {stateLabel}
-          </LifecycleCode>
-        </span>
+        {face.state != null ? (
+          <span className="flex w-28 shrink-0" data-testid={id('state')}>
+            <LifecycleCode state={face.state} srLabel={null} className="max-w-full">
+              {typeof face.state === 'string' ? LIFECYCLE[face.state].label : face.state.label}
+            </LifecycleCode>
+          </span>
+        ) : null}
         {face.photo ? (
           <PhotoHoverPeek
             src={face.photo.url}
@@ -232,34 +301,61 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
         ) : null}
         <span
           className={cn(
-            WIDTH_CLASS[face.identityWidth ?? 'code'],
-            'flex h-8 shrink-0 items-center truncate font-sans text-role-body font-semibold leading-none tabular-nums text-mode-ink',
+            identityCopyable
+              ? [MIN_WIDTH_CLASS[face.identityWidth ?? 'code'], 'pointer-events-auto flex h-8 shrink-0 items-center']
+              : [WIDTH_CLASS[face.identityWidth ?? 'code'], 'flex h-8 shrink-0 items-center truncate'],
+            'font-sans text-role-body font-semibold leading-none tabular-nums text-mode-ink',
           )}
-          title={face.identity}
+          title={typeof face.identity === 'string' && !face.identityCopy ? face.identity : undefined}
           data-testid={id('identity')}
         >
-          {face.identityDisplay ?? face.identity}
+          {typeof face.identity !== 'string' ? (
+            <OperationalIdentityChip identity={face.identity} presentation="compact" />
+          ) : face.identityCopy ? (
+            <CopyChip
+              value={face.identityCopy.value}
+              display={face.identityCopy.display ?? face.identityDisplay ?? face.identity}
+              ariaLabel={face.identity}
+              tone={face.identityCopy.tone}
+              // Whole value, no overflow clip: `truncate` on the tight-tracked mono face shaved the last glyph.
+              truncateDisplay={false}
+              fitDisplayWidth
+            />
+          ) : (
+            (face.identityDisplay ?? face.identity)
+          )}
         </span>
         <span className={cn(denseRecordTitle, 'truncate text-mode-ink', face.wide ? 'w-80 shrink-0' : 'min-w-32 flex-1')} title={face.title}>
           {face.title}
         </span>
         {face.facts.slice(0, face.wide ? 8 : 4).map((fact, i) => (
-          <span
-            key={fact.id}
-            data-testid={id(`fact-${fact.id}`)}
-            title={fact.tip}
-            className={cn(
-              face.wide ? 'flex' : FACT_TIER_CLASS[i],
-              WIDTH_CLASS[fact.width],
-              'min-w-0 shrink-0 items-baseline gap-1 text-role-data tabular-nums',
-              FACT_TONE_CLASS[fact.tone ?? 'default'],
-            )}
-          >
-            {fact.label ? <span className="shrink-0 text-role-caption text-mode-muted">{fact.label}</span> : null}
-            <span className="min-w-0 truncate">
-              {fact.value == null || typeof fact.value === 'string' ? fact.value : <RecordFactPaint face={fact.value} />}
+          // A fact's full text (a note, a status's why) shows in the house tooltip, never the native
+          // `title`; the cell takes the pointer only then, and a click on it still opens the record.
+          <HoverTooltip key={fact.id} label={fact.tip} disabled={!fact.tip} asChild focusable={false}>
+            <span
+              data-testid={id(`fact-${fact.id}`)}
+              onClick={fact.tip && !fact.copy ? openRecord : undefined}
+              className={cn(
+                face.wide ? 'flex' : FACT_TIER_CLASS[i],
+                fact.copy ? MIN_WIDTH_CLASS[fact.width] : [WIDTH_CLASS[fact.width], 'min-w-0'],
+                'shrink-0 items-baseline gap-1 tabular-nums',
+                fact.tip && 'pointer-events-auto cursor-pointer',
+                FACT_VOICE_CLASS[fact.voice ?? 'data'],
+                FACT_TONE_CLASS[fact.tone ?? 'default'],
+              )}
+            >
+              {fact.label ? <span className="shrink-0 text-role-caption text-mode-muted">{fact.label}</span> : null}
+              {fact.copy ? (
+                <span className="pointer-events-auto shrink-0">
+                  <CopyChip value={fact.copy.value} display={fact.copy.display ?? fact.copy.value} tone={fact.copy.tone} truncateDisplay={false} fitDisplayWidth />
+                </span>
+              ) : (
+                <span className="min-w-0 truncate">
+                  {fact.value == null || typeof fact.value === 'string' ? fact.value : <RecordFactPaint face={fact.value} />}
+                </span>
+              )}
             </span>
-          </span>
+          </HoverTooltip>
         ))}
         {/* The decisive deadline + next step stay reachable while a wide row scrolls. */}
         <span
@@ -272,33 +368,51 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
           )}
         >
           {face.endFact ? (
-            <span
-              data-testid={id(`fact-${face.endFact.id}`)}
-              title={face.endFact.tip}
-              className={cn(
-                WIDTH_CLASS[face.endFact.width],
-                'flex min-w-0 shrink-0 items-baseline gap-1 text-role-data tabular-nums',
-                FACT_TONE_CLASS[face.endFact.tone ?? 'default'],
-              )}
-            >
-              {face.endFact.label ? <span className="shrink-0 text-role-caption text-mode-muted">{face.endFact.label}</span> : null}
-              <span className="min-w-0 truncate">
-                {face.endFact.value == null || typeof face.endFact.value === 'string' ? face.endFact.value : <RecordFactPaint face={face.endFact.value} />}
+            <HoverTooltip label={face.endFact.tip} disabled={!face.endFact.tip} asChild focusable={false}>
+              <span
+                data-testid={id(`fact-${face.endFact.id}`)}
+                onClick={face.endFact.tip ? openRecord : undefined}
+                className={cn(
+                  WIDTH_CLASS[face.endFact.width],
+                  'flex min-w-0 shrink-0 items-baseline gap-1 tabular-nums',
+                  face.endFact.tip && 'pointer-events-auto cursor-pointer',
+                  FACT_VOICE_CLASS[face.endFact.voice ?? 'data'],
+                  FACT_TONE_CLASS[face.endFact.tone ?? 'default'],
+                )}
+              >
+                {face.endFact.label ? <span className="shrink-0 text-role-caption text-mode-muted">{face.endFact.label}</span> : null}
+                <span className="min-w-0 truncate">
+                  {face.endFact.value == null || typeof face.endFact.value === 'string' ? face.endFact.value : <RecordFactPaint face={face.endFact.value} />}
+                </span>
               </span>
+            </HoverTooltip>
+          ) : null}
+          {/* A list whose next is always null and carries a verb gives the empty next column to the verb. */}
+          {face.next || !trailingAction ? (
+            <span className={cn('flex shrink-0 justify-end', face.nextWidth ? WIDTH_CLASS[face.nextWidth] : 'w-20')}>
+              {face.next ? (
+                <span
+                  data-testid={id('next')}
+                  aria-label={`Next step: ${face.next.label}`}
+                  className={cn('inline-flex items-center gap-1 whitespace-nowrap text-role-body font-semibold', face.next.blocked ? 'text-mode-warn' : 'text-mode-ink')}
+                >
+                  <ArrowRight className="size-3.5 text-mode-faint" aria-hidden />
+                  {face.next.label}
+                </span>
+              ) : null}
             </span>
           ) : null}
-          <span className={cn('flex shrink-0 justify-end', face.nextWidth ? WIDTH_CLASS[face.nextWidth] : 'w-20')}>
-            {face.next ? (
-              <span
-                data-testid={id('next')}
-                aria-label={`Next step: ${face.next.label}`}
-                className={cn('inline-flex items-center gap-1 whitespace-nowrap text-role-body font-semibold', face.next.blocked ? 'text-mode-warn' : 'text-mode-ink')}
-              >
-                <ArrowRight className="size-3.5 text-mode-faint" aria-hidden />
-                {face.next.label}
-              </span>
-            ) : null}
-          </span>
+          {trailingAction ? (
+            <span
+              data-testid={id('action')}
+              className={cn(
+                'pointer-events-auto flex shrink-0 items-center opacity-0 transition-opacity duration-150',
+                'group-hover/row:opacity-100 group-focus-within/row:opacity-100 has-[[aria-expanded=true]]:opacity-100 [@media(hover:none)]:opacity-100',
+              )}
+            >
+              {trailingAction}
+            </span>
+          ) : null}
         </span>
       </div>
       {quickLook ? <AnimatePresence initial={false}>{peekOpen ? quickLook : null}</AnimatePresence> : null}

@@ -29,7 +29,9 @@ function useSettled(value: string, ms: number): string {
  * `GET /api/nav/locate` for the field's text or a pasted list. Keyed by
  * staff (the answer is permission-filtered); disabled while there is nothing
  * to locate. The previous answer stays painted while the next one loads, so
- * pills and rows never blink between keystrokes.
+ * pills and rows never blink between keystrokes. `asked` is the settled text
+ * the query is for — an answer acts on the field (↵ opens a match) only when
+ * it is fresh (`!located.isPlaceholderData`) and `asked` is what is typed.
  */
 export function useNavLocate(
   scope: NavLocateScope | undefined,
@@ -40,11 +42,12 @@ export function useNavLocate(
   const q = useSettled(isText ? input.q.trim() : '', isText ? LOCATE_SETTLE_MS : 0);
   const refs = isText ? [] : input.refs;
   const enabled = scope !== undefined && (isText ? q.length >= NAV_LOCATE_MIN_QUERY : refs.length > 0);
-  return useQuery({
+  const located = useQuery({
     queryKey: ['nav-locate', staffKey, scope, isText ? { q } : { refs: refs.join(',') }],
     queryFn: ({ signal }) => fetchNavLocate(scope as NavLocateScope, isText ? { q } : { refs }, signal),
     enabled,
     staleTime: 15_000,
     placeholderData: keepPreviousData,
   });
+  return { located, asked: q };
 }

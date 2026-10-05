@@ -1,735 +1,661 @@
 /**
- * The Live feed's server reads (`/operations/live-feed`: `GET /api/live-feed`,
- * `/board`, the Copy all, the status counts and the Carrier / Channel facets).
- * Every read is one tenant statement over the status memberships
- * (outbound-sql.ts / inbound-sql.ts) built by feed-sql.ts — narrowed by the
- * date rule, staff, find, channel and carrier — so a count is by construction
- * the list's (or the column's) total. `loadLiveFeed` reads ONE status: its
- * exact count and one page of items; `loadLiveFeedBoard` every status of the
- * direction: exact counts and the first items of each. Both then dress each
- * item with its lead line.
+ * The Live feed's reads — the outbound package board.
+ *
+ * Membership is Allocate's, verbatim: the To-ship scope
+ * (`sqlOrderInWarehouseToShip`) split by `sqlOrderDeskStage` over the
+ * `order_stage_facts` signals — pending → To pick, picked, packed — minus the
+ * in-person orders (counter pickups and Square sales: no box leaves the dock).
+ * Scanned out = the order's shipment took its FIRST dock SHIP_CONFIRM today
+ * (the warehouse day). One card per order row, Allocate's grain.
+ *
+ * The board is counts for every stage plus the first page of each; a column's
+ * later pages come one at a time (`loadLiveFeedLane`). Cards carry their
+ * comment count, tags, box mates and stall flag (`order_notes`, `order_tags`,
+ * shared `shipment_id`, `PACKAGE_STALL_HOURS`). The sidebar's carrier /
+ * channel facets and staff filter narrow every read through ONE member set
+ * (`MEMBERS_SQL`), which also counts the facets (`loadLiveFeedFacets`).
+ * `loadLiveFeedPackages` / `findLiveFeedPackages` open what a deep link or a
+ * scan names, inside the board's scope.
  */
 
 import 'server-only';
-
-import { isIncomingUniversal, isReceivingPhysicalStateFirst, isUnboxRailColumnRead } from '@/lib/feature-flags';
+import { lineCondition, linePrice } from '@/lib/orders/order-card-model';
+import {
+  sqlDeskAgingBucket,
+  sqlOrderAssignedToStaff,
+  sqlOrderDeskStage,
+  sqlOrderInWarehouseToShip,
+  sqlOrderTestDeadlineAt,
+} from '@/lib/orders/desk-view-sql';
+import { ORDER_STAGE_FACTS_JOIN, ORDER_STAGE_FACTS_SIGNALS } from '@/lib/orders/order-stage-facts';
+import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
+import { orderLineImageSql } from '@/lib/photos/order-line-image-sql';
+import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
+import { sqlTrackingNumberMatches } from '@/lib/search/order-tracking-match-sql';
+import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
+import { sourcePlatformMeta, UNKNOWN_PLATFORM } from '@/lib/source-platform';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { orderLineImageSql } from '@/lib/photos/order-line-image-sql';
-import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
-import { linePrice } from '@/lib/orders/order-card-model';
-import { recordHref } from '@/lib/identify/record-href';
-import { sqlTrackingNumberMatches } from '@/lib/search/order-tracking-match-sql';
-import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
-import { looksLikeTrackingIdentifier } from '@/lib/search/global-entity-search';
-import { looksLikeIdentifier } from '@/lib/search/search-hit';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
-import {
-  getLiveFeedStatus,
-  isLiveFeedChannel,
-  liveFeedAccess,
-  liveFeedCarrierLabel,
-  liveFeedLensApplies,
-  liveFeedStatusesOf,
-  type LiveFeedChannel,
-  type LiveFeedDirection,
-  type LiveFeedStatusId,
-  type LiveFeedStatusSpec,
-} from '@/lib/live-feed/statuses';
-import { LIVE_FEED_BOARD_COLUMN_CAP, LIVE_FEED_BOARD_GROUP_CAP, LIVE_FEED_PAGE_SIZE } from '@/lib/live-feed/route';
-import { liveFeedPreviousRange, liveFeedTrackingList, liveFeedWindow } from '@/lib/live-feed/model';
-import {
-  buildFeedBoardSql,
-  buildFeedCountsSql,
-  buildFeedMemberRowsSql,
-  buildFeedPageSql,
-  type FeedBoardRow,
-  type FeedCountRow,
-  type FeedItemRow,
-  type FeedMemberRow,
-  type FeedMembership,
-  type FeedNarrow,
-  type FeedPageRow,
-} from '@/lib/live-feed/feed-sql';
-import { OUTBOUND_SHIP_FACTS_CTE, outboundMemberships, outboundTrailsSql } from '@/lib/live-feed/outbound-sql';
-import { INBOUND_LINES_SQL, inboundMemberships } from '@/lib/live-feed/inbound-sql';
-import { IN_PERSON_LINES_SQL, type InPersonLineRow } from '@/lib/live-feed/in-person-lines-sql';
-import { LIVE_FEED_ITEM_FLAGS } from '@/lib/live-feed/types';
+import { addDaysToDateKey, getCurrentPSTDateKey, WAREHOUSE_TIME_ZONE, warehouseDayUtcBounds } from '@/utils/date';
+import { loadPickupCutoffsForDay } from '@/lib/live-feed/pickup-cutoffs';
+import { LIVE_FEED_PAGE_SIZE, type LiveFeedFilters } from '@/lib/live-feed/route';
+import { PACKAGE_STAGES, PACKAGE_STALL_HOURS, type PackageStage } from '@/lib/live-feed/stages';
 import type {
-  LiveFeedBoard,
-  LiveFeedFilters,
-  LiveFeedGroup,
-  LiveFeedItem,
-  LiveFeedItemFlag,
-  LiveFeedLine,
-  LiveFeedPage,
-  LiveFeedStatusFace,
-  LiveFeedStatusFilters,
-  LiveFeedTracking,
-  LiveFeedTrail,
-  LiveFeedUrgency,
+  CarrierLoad,
+  LiveFeedFacets,
+  PackageBoard,
+  PackageCard,
+  PackageColumn,
+  PackageLanePage,
+  PackageUrgency,
+  PickupCountdown,
 } from '@/lib/live-feed/types';
 
-/** Binds after the statement's fixed `$1` org, `$2`/`$3` window. */
-function binder(params: unknown[]): (value: unknown) => string {
-  return (value) => {
-    params.push(value);
-    return `$${params.length}`;
-  };
-}
+/**
+ * The statements' binds — ONE list for every read (an unreferenced bind is
+ * fine): `$1` org; `$2`/`$3` today `[from, to)`; `$4` yesterday's start;
+ * `$5` page size + 1; `$6` page offset; `$7` carrier keys / `$8` channel
+ * keys (text[], NULL = all); `$9` staff id (NULL = everyone); `$10` order
+ * row ids (int[], NULL = the whole board).
+ */
+const ORG = '$1';
+const FROM = '$2';
+const TO = '$3';
+const PREV_FROM = '$4';
+const LIMIT = '$5';
+const OFFSET = '$6';
+const CARRIERS = '$7';
+const CHANNELS = '$8';
+const STAFF = '$9';
+const IDS = '$10';
+
+/** A counter pickup or a Square walk-in sale — handed over in person, never scanned out. Null-safe, so `NOT` of it keeps a NULL channel. */
+const IN_PERSON_SQL = `(COALESCE(o.fulfillment_channel, '') = '${PICKUP_FULFILLMENT_CHANNEL}' OR LOWER(BTRIM(COALESCE(o.account_source, ''))) = 'square')`;
+
+/** Allocate's stage partition, read off the joined `osf` facts. */
+const OPEN_STAGE_SQL = `CASE
+          WHEN ${sqlOrderDeskStage('packed', 'o', ORDER_STAGE_FACTS_SIGNALS)} THEN 'packed'
+          WHEN ${sqlOrderDeskStage('picked', 'o', ORDER_STAGE_FACTS_SIGNALS)} THEN 'picked'
+          ELSE 'to_pick'
+        END`;
+
+const ORDERED_AT_SQL = 'COALESCE(o.order_date, o.created_at)';
+const PACKED_AT_SQL = 'COALESCE(osf.pack_activity_at, osf.packed_at)';
+
+/** Facet keys — the sidebar's `carrier` / `channel` values (`readLiveFeedFilters` normalizes the URL the same way). */
+const CARRIER_KEY_SQL = `NULLIF(UPPER(BTRIM(stn.carrier)), '')`;
+const CHANNEL_KEY_SQL = `NULLIF(LOWER(BTRIM(o.account_source)), '')`;
 
 /**
- * Staff / find as one AND-ed predicate over the membership `m` (the channel
- * and carrier picks are bound apart — their facet tallies count before
- * them). The find matches the item's tracking (the `trk` lateral), an
- * in-person record's own id, or — computed once as a CTE, not per row — an
- * order (outbound) or receiving line (inbound) whose number / SKU / PO
- * equals it.
+ * The staff filter: the staffer holds a live pick / pack assignment on the
+ * order, picked it or packed it (`extra` adds the stage's own hand).
  */
-function narrowSql(filters: LiveFeedFilters, direction: LiveFeedDirection, bind: (value: unknown) => string): FeedNarrow {
-  const clauses: string[] = [];
-  if (filters.staff != null) clauses.push(`m.staff_id = ${bind(filters.staff)}::int`);
-  const base = {
-    lens: filters.lens,
-    carry: filters.carry,
-    channelRef: filters.channel ? bind(filters.channel) : null,
-    carrierRef: filters.carrier ? bind(filters.carrier) : null,
-  };
-  // The outbound lanes read the per-shipment facts once per statement.
-  const shared = direction === 'outbound' ? [OUTBOUND_SHIP_FACTS_CTE] : [];
-  if (!filters.q) return { ...base, sql: clauses.join('\n        AND '), withTracking: false, ctes: shared };
-
-  const q = filters.q;
-  const keys = orderTrackingMatchKeys(q);
-  const digits = q.replace(/\D/g, '');
-  const last8 = digits.length >= 8 ? digits.slice(-8) : '';
-  // Only a tracking-shaped find reads the fuzzy key18 / last-8 arms; a short
-  // order number or SKU must not match a tracking number's tail.
-  const trackingShaped = looksLikeTrackingIdentifier(q, last8, keys);
-  const qRef = bind(q);
-  const tracking = sqlTrackingNumberMatches({
-    stnAlias: 'trk',
-    likeParam: bind(looksLikeIdentifier(q) ? q : `%${q}%`),
-    canonicalParam: bind(keys.exact),
-    key18Param: bind(trackingShaped ? keys.key18 : ''),
-    last8Param: bind(trackingShaped ? last8 : ''),
-  });
-  const recordId = `m.record_id = BTRIM(${qRef})`;
-  if (direction === 'outbound') {
-    const ctes = [
-      `q_orders AS MATERIALIZED (
-      SELECT o_q.id, o_q.shipment_id
-        FROM orders o_q
-       WHERE o_q.organization_id = $1
-         AND (${sqlIdentifierEqualsQuery('o_q.order_id', qRef)}
-              OR UPPER(BTRIM(o_q.sku)) = UPPER(BTRIM(${qRef})))
-    )`,
-      // The packages those orders ride in: their own shipment or an ORDER shipment link.
-      `q_shipments AS MATERIALIZED (
-      SELECT shipment_id FROM q_orders WHERE shipment_id IS NOT NULL
-      UNION
-      SELECT sl_q.shipment_id
-        FROM shipment_links sl_q
-        JOIN q_orders ON q_orders.id = sl_q.owner_id
-       WHERE sl_q.organization_id = $1 AND sl_q.owner_type = 'ORDER'
-    )`,
-    ];
-    clauses.push(`(${tracking}
-        OR ${recordId}
-        OR m.order_row_id IN (SELECT id FROM q_orders)
-        OR m.shipment_id IN (SELECT shipment_id FROM q_shipments))`);
-    return { ...base, sql: clauses.join('\n        AND '), withTracking: true, ctes: [...shared, ...ctes] };
-  }
-  const ctes = [
-    `q_lines AS MATERIALIZED (
-      SELECT rl_q.id, rl_q.receiving_id
-        FROM receiving_line rl_q
-        LEFT JOIN receiving_line_zoho rz_q
-          ON rz_q.receiving_line_id = rl_q.id AND rz_q.organization_id = rl_q.organization_id
-       WHERE rl_q.organization_id = $1
-         AND (UPPER(BTRIM(rl_q.sku)) = UPPER(BTRIM(${qRef}))
-              OR ${sqlIdentifierEqualsQuery('rl_q.source_order_id', qRef)}
-              OR ${sqlIdentifierEqualsQuery('rz_q.zoho_purchaseorder_number', qRef)})
-    )`,
-  ];
-  clauses.push(`(${tracking}
-        OR ${recordId}
-        OR ${sqlIdentifierEqualsQuery('m.po_number', qRef)}
-        OR m.line_id IN (SELECT id FROM q_lines)
-        OR m.receiving_id IN (SELECT receiving_id FROM q_lines WHERE receiving_id IS NOT NULL))`);
-  return { ...base, sql: clauses.join('\n        AND '), withTracking: true, ctes };
+function staffOkSql(extra = ''): string {
+  return `(${STAFF}::int IS NULL
+           OR osf.picked_by = ${STAFF}::int
+           OR COALESCE(osf.pack_activity_by, osf.packed_by) = ${STAFF}::int${extra}
+           OR ${sqlOrderAssignedToStaff(STAFF)})`;
 }
 
+const IDS_OK_SQL = `(${IDS}::int[] IS NULL OR o.id = ANY(${IDS}::int[]))`;
+
 /**
- * The lead order line of each painted outbound package (lowest `orders.id`
- * across the package's own orders and its ORDER shipment links — the
- * Fulfilled card's line order), plus every order an item names directly, and
- * the stage trail of every painted package (`$4`).
+ * Every carrier order still in the building, with its stage, the instant it
+ * entered that stage, its ship-by and its facet keys. A stage fact with no
+ * instant falls back to the step before it.
  */
-const OUTBOUND_LINES_SQL = `
-  WITH pkg AS (
-    SELECT s.shipment_id, MIN(u.id)::int AS lead_id
-    FROM (SELECT DISTINCT unnest($2::bigint[]) AS shipment_id) s
-    JOIN LATERAL (
-      SELECT o.id FROM orders o
-      WHERE o.organization_id = $1 AND o.shipment_id = s.shipment_id
-      UNION
-      SELECT sl.owner_id FROM shipment_links sl
-      WHERE sl.organization_id = $1 AND sl.owner_type = 'ORDER' AND sl.shipment_id = s.shipment_id
-    ) u ON TRUE
-    GROUP BY s.shipment_id
+const OPEN_MEMBERS_CTE = `m_open AS MATERIALIZED (
+    SELECT o.id AS order_row_id,
+           s.stage,
+           CASE s.stage
+             WHEN 'packed' THEN COALESCE(${PACKED_AT_SQL}, osf.picked_at, ${ORDERED_AT_SQL})
+             WHEN 'picked' THEN COALESCE(osf.picked_at, ${ORDERED_AT_SQL})
+             ELSE ${ORDERED_AT_SQL}
+           END AS entered_at,
+           dl.deadline_at,
+           NULL::timestamptz AS scanned_out_at,
+           NULL::int AS scanned_out_by,
+           ${CARRIER_KEY_SQL} AS carrier_key,
+           ${CHANNEL_KEY_SQL} AS channel_key,
+           ${staffOkSql()} AS staff_ok
+      FROM orders o
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      ${ORDER_STAGE_FACTS_JOIN}
+      CROSS JOIN LATERAL (SELECT ${OPEN_STAGE_SQL} AS stage) s
+      LEFT JOIN LATERAL (SELECT ${sqlOrderTestDeadlineAt('o')} AS deadline_at) dl ON TRUE
+     WHERE o.organization_id = ${ORG}
+       AND ${sqlOrderInWarehouseToShip('o')}
+       AND NOT ${IN_PERSON_SQL}
+       AND ${IDS_OK_SQL}
+  )`;
+
+/**
+ * Packages whose FIRST dock scan-out falls in `[fromRef, toRef)` — a re-scan
+ * of a box that already left does not bring it back. The scan-out's staffer is
+ * the first staffed scan.
+ */
+function scannedOutShipmentsCte(name: string, fromRef: string, toRef: string): string {
+  return `${name} AS MATERIALIZED (
+    SELECT sal.shipment_id::bigint AS shipment_id,
+           MIN(sal.created_at) AS scanned_out_at,
+           (array_agg(sal.staff_id ORDER BY sal.created_at, sal.id) FILTER (WHERE sal.staff_id > 0))[1]::int AS scanned_out_by
+      FROM station_activity_logs sal
+     WHERE sal.organization_id = ${ORG}
+       AND sal.activity_type = 'SHIP_CONFIRM'
+       AND sal.shipment_id IS NOT NULL
+       AND sal.created_at >= ${fromRef}::timestamptz
+       AND sal.created_at < ${toRef}::timestamptz
+       AND NOT EXISTS (
+         SELECT 1 FROM station_activity_logs sal_prior
+          WHERE sal_prior.organization_id = ${ORG}
+            AND sal_prior.activity_type = 'SHIP_CONFIRM'
+            AND sal_prior.shipment_id = sal.shipment_id
+            AND sal_prior.created_at < ${fromRef}::timestamptz
+       )
+     GROUP BY 1
+  )`;
+}
+
+/** The carrier orders in scanned-out shipments `shipmentsCte`, member-shaped. */
+function scannedOutMembersSql(shipmentsCte: string): string {
+  return `SELECT o.id AS order_row_id,
+           'scanned_out'::text AS stage,
+           so.scanned_out_at AS entered_at,
+           NULL::timestamptz AS deadline_at,
+           so.scanned_out_at,
+           so.scanned_out_by,
+           ${CARRIER_KEY_SQL} AS carrier_key,
+           ${CHANNEL_KEY_SQL} AS channel_key,
+           ${staffOkSql(` OR so.scanned_out_by = ${STAFF}::int`)} AS staff_ok
+      FROM ${shipmentsCte} so
+      JOIN orders o ON o.organization_id = ${ORG} AND o.shipment_id = so.shipment_id
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      ${ORDER_STAGE_FACTS_JOIN}
+     WHERE COALESCE(o.fulfillment_channel, '') <> 'AFN'
+       AND NOT ${IN_PERSON_SQL}
+       AND ${IDS_OK_SQL}`;
+}
+
+/** The sidebar filters over member alias `m`; a facet's own dimension is left out of its counts. */
+function filterSql(m: string, skip?: 'carrier' | 'channel'): string {
+  return [
+    skip === 'carrier' ? null : `(${CARRIERS}::text[] IS NULL OR ${m}.carrier_key = ANY(${CARRIERS}::text[]))`,
+    skip === 'channel' ? null : `(${CHANNELS}::text[] IS NULL OR ${m}.channel_key = ANY(${CHANNELS}::text[]))`,
+    `${m}.staff_ok`,
+  ]
+    .filter(Boolean)
+    .join(' AND ');
+}
+
+const URGENCY_SQL = (deadline: string) =>
+  `CASE ${sqlDeskAgingBucket(deadline)} WHEN 'overdue' THEN 'late' WHEN 'today' THEN 'due_today' END`;
+
+/** Member alias `a` sat in its stage past `PACKAGE_STALL_HOURS`. */
+function stalledSql(a: string): string {
+  const arms = Object.entries(PACKAGE_STALL_HOURS)
+    .map(([stage, hours]) => `WHEN '${stage}' THEN ${a}.entered_at < now() - interval '${Number(hours)} hours'`)
+    .join(' ');
+  return `COALESCE(CASE ${a}.stage ${arms} ELSE false END, false)`;
+}
+
+/** The warehouse hour (0–23) of instant `at`. */
+const warehouseHourSql = (at: string) => `extract(hour FROM timezone('${WAREHOUSE_TIME_ZONE}', ${at}))::int`;
+
+/**
+ * Lane order over alias `a`, one ordering valid across stages so a single
+ * window function pages every column: open = late, due today, then oldest in
+ * stage; Scanned out = newest first.
+ */
+function laneOrderSql(a: string): string {
+  return `CASE WHEN ${a}.stage = 'scanned_out' THEN 0
+                ELSE CASE ${URGENCY_SQL(`${a}.deadline_at`)} WHEN 'late' THEN 0 WHEN 'due_today' THEN 1 ELSE 2 END
+           END,
+           CASE WHEN ${a}.stage = 'scanned_out' THEN -extract(epoch FROM ${a}.scanned_out_at)
+                ELSE extract(epoch FROM ${a}.entered_at)
+           END NULLS LAST,
+           CASE WHEN ${a}.stage = 'scanned_out' THEN -${a}.order_row_id ELSE ${a}.order_row_id END`;
+}
+
+/** Today's members: everything in the building plus what left today (`m_all`), and yesterday's scan-outs (`m_prev`). */
+const MEMBERS_SQL = `
+  WITH ${OPEN_MEMBERS_CTE},
+  ${scannedOutShipmentsCte('so_now', FROM, TO)},
+  ${scannedOutShipmentsCte('so_prev', PREV_FROM, FROM)},
+  m_all AS (
+    SELECT * FROM m_open
+    UNION ALL
+    ${scannedOutMembersSql('so_now')}
   ),
-  wanted AS (
-    SELECT lead_id AS id FROM pkg
-    UNION
-    SELECT unnest($3::int[])
+  m_prev AS (${scannedOutMembersSql('so_prev')}),
+  m AS (SELECT * FROM m_all WHERE ${filterSql('m_all')})`;
+
+/** The sidebar's facet counts over `m_all`, each with every other filter applied — the same members as the board. */
+const FACETS_SELECT_SQL = `
+    (SELECT COALESCE(json_agg(t ORDER BY t.count DESC, t.value), '[]'::json) FROM (
+       SELECT carrier_key AS value, count(*)::int AS count
+         FROM m_all WHERE carrier_key IS NOT NULL AND ${filterSql('m_all', 'carrier')}
+        GROUP BY carrier_key
+    ) t) AS facet_carrier,
+    (SELECT COALESCE(json_agg(t ORDER BY t.count DESC, t.value), '[]'::json) FROM (
+       SELECT channel_key AS value, count(*)::int AS count
+         FROM m_all WHERE channel_key IS NOT NULL AND ${filterSql('m_all', 'channel')}
+        GROUP BY channel_key
+    ) t) AS facet_channel`;
+
+/**
+ * The board in ONE statement, so the backlog is scanned once: every stage's
+ * counts and its first `$5` cards (page size + 1 — the extra row says
+ * "more"), the hourly pace, each carrier's load and the facet counts.
+ */
+const BOARD_SQL = `${MEMBERS_SQL},
+  pg AS (
+    SELECT * FROM (
+      SELECT m.*, row_number() OVER (PARTITION BY m.stage ORDER BY ${laneOrderSql('m')}) AS ord
+        FROM m
+    ) ranked
+     WHERE ranked.ord <= ${LIMIT}::int
   ),
-  trails AS (${outboundTrailsSql('$4')})
+  cards AS (${dressedCardsSql('pg')})
   SELECT
-    (SELECT COALESCE(json_agg(pkg), '[]'::json) FROM pkg) AS packages,
-    (SELECT COALESCE(json_agg(trails), '[]'::json) FROM trails) AS trails,
-    (SELECT COALESCE(json_agg(json_build_object(
-        'id', o.id,
-        'order_id', o.order_id,
-        'sku', o.sku,
-        'product_title', o.product_title,
-        'zoho_item_title', cxi.external_name,
-        'catalog_product_title', sc.product_title,
-        'quantity', o.quantity,
-        'condition', o.condition,
-        'sale_amount', o.sale_amount,
-        'currency', o.currency,
-        'image_url', ${orderLineImageSql('o')}
-      )), '[]'::json)
-      FROM wanted w
-      JOIN orders o ON o.id = w.id AND o.organization_id = $1
-      LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('o', 'sc')}
-      LEFT JOIN LATERAL (
-        SELECT x.external_name
-        FROM catalog_external_ids x
-        WHERE x.sku_catalog_id = sc.id
-          AND x.organization_id = o.organization_id
-          AND x.provider = 'zoho'
-        ORDER BY x.id
-        LIMIT 1
-      ) cxi ON TRUE) AS lines`;
+    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+       SELECT stage,
+              count(*)::int AS count,
+              count(*) FILTER (WHERE entered_at < ${FROM}::timestamptz)::int AS earlier,
+              count(*) FILTER (WHERE ${URGENCY_SQL('deadline_at')} = 'late')::int AS late,
+              count(*) FILTER (WHERE ${stalledSql('m')})::int AS stalled
+         FROM m
+        WHERE stage <> 'scanned_out'
+        GROUP BY stage
+    ) t) AS open,
+    (SELECT count(*)::int FROM m WHERE stage = 'scanned_out') AS scanned_out,
+    (SELECT count(*)::int FROM m_prev WHERE ${filterSql('m_prev')}) AS previous,
+    (SELECT COALESCE(json_object_agg(h, n), '{}'::json) FROM (
+       SELECT ${warehouseHourSql('scanned_out_at')} AS h, count(*)::int AS n FROM m WHERE stage = 'scanned_out' GROUP BY 1
+    ) t) AS pace_today,
+    (SELECT COALESCE(json_object_agg(h, n), '{}'::json) FROM (
+       SELECT ${warehouseHourSql('scanned_out_at')} AS h, count(*)::int AS n FROM m_prev WHERE ${filterSql('m_prev')} GROUP BY 1
+    ) t) AS pace_yesterday,
+    (SELECT COALESCE(json_agg(t ORDER BY t.carrier), '[]'::json) FROM (
+       SELECT carrier_key AS carrier,
+              count(*) FILTER (WHERE stage = 'to_pick')::int AS to_pick,
+              count(*) FILTER (WHERE stage = 'picked')::int AS picked,
+              count(*) FILTER (WHERE stage = 'packed')::int AS packed,
+              count(*) FILTER (WHERE stage = 'scanned_out')::int AS scanned_out
+         FROM m_all
+        WHERE carrier_key IS NOT NULL
+        GROUP BY carrier_key
+    ) t) AS carriers,
+    ${FACETS_SELECT_SQL},
+    (SELECT COALESCE(json_agg(cards ORDER BY cards.stage, cards.ord), '[]'::json) FROM cards) AS cards`;
 
-interface OutboundTrailRow {
-  shipment_id: number | string;
-  packed_at: string | null;
-  scanned_out_at: string | null;
-  carrier_at: string | null;
-  delivered_at: string | null;
+/** Facet counts alone (the sidebar's own read). */
+const FACETS_SQL = `${MEMBERS_SQL}
+  SELECT ${FACETS_SELECT_SQL}`;
+
+/** One page of `stage`: cards `$6 + 1 … $6 + $5`, in lane order, filters applied. */
+function lanePageSql(stage: PackageStage): string {
+  return `${MEMBERS_SQL},
+  pg AS (
+    SELECT * FROM (
+      SELECT m.*, row_number() OVER (ORDER BY ${laneOrderSql('m')}) AS ord FROM m WHERE m.stage = '${stage}'
+    ) ranked
+     WHERE ranked.ord > ${OFFSET}::int AND ranked.ord <= ${OFFSET}::int + ${LIMIT}::int
+  )
+  SELECT * FROM (${dressedCardsSql('pg')}) cards ORDER BY cards.ord`;
 }
 
-interface OutboundLineRow {
-  id: number;
-  order_id: string | null;
+/** Packages `$10` inside the board's scope (in the building, or scanned out today) — filters NOT applied: find and deep links open what they name. */
+const PACKAGES_SQL = `${MEMBERS_SQL},
+  pg AS (SELECT m_all.*, row_number() OVER (ORDER BY ${laneOrderSql('m_all')}) AS ord FROM m_all)
+  SELECT * FROM (${dressedCardsSql('pg')}) cards ORDER BY cards.ord`;
+
+/** Every member row of `src` (alias `pg`) dressed as a card row. */
+function dressedCardsSql(src: string): string {
+  return `
+  SELECT pg.ord,
+         pg.stage,
+         pg.entered_at,
+         pg.deadline_at,
+         ${URGENCY_SQL('pg.deadline_at')} AS urgency,
+         ${stalledSql('pg')} AS stalled,
+         o.id AS order_row_id,
+         o.order_id AS order_number,
+         o.sku,
+         o.product_title,
+         sc.product_title AS catalog_product_title,
+         cxi.external_name AS zoho_item_title,
+         ${orderLineImageSql('o')} AS image_url,
+         o.quantity,
+         o.condition,
+         o.sale_amount,
+         o.currency,
+         NULLIF(BTRIM(o.account_source), '') AS platform,
+         COALESCE(NULLIF(BTRIM(c.display_name), ''), NULLIF(BTRIM(c.customer_name), '')) AS customer,
+         o.shipment_id,
+         NULLIF(BTRIM(stn.tracking_number_raw), '') AS tracking,
+         NULLIF(BTRIM(stn.carrier), '') AS carrier,
+         COALESCE(o.is_out_of_stock, false) AS blocked,
+         ${ORDERED_AT_SQL} AS ordered_at,
+         osf.picked_at,
+         osf.picked_by,
+         s_pick.name AS picked_by_name,
+         ${PACKED_AT_SQL} AS packed_at,
+         COALESCE(osf.pack_activity_by, osf.packed_by) AS packed_by,
+         s_pack.name AS packed_by_name,
+         pg.scanned_out_at,
+         pg.scanned_out_by,
+         s_out.name AS scanned_out_by_name,
+         COALESCE(nt.n, 0) AS note_count,
+         nt.latest AS latest_note,
+         COALESCE(tg.tags, ARRAY[]::text[]) AS tags,
+         COALESCE(bx.ids, ARRAY[]::int[]) AS box_mates
+    FROM ${src} pg
+    JOIN orders o ON o.id = pg.order_row_id AND o.organization_id = ${ORG}
+    LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+    ${ORDER_STAGE_FACTS_JOIN}
+    LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('o', 'sc')}
+    LEFT JOIN LATERAL (
+      SELECT x.external_name
+        FROM catalog_external_ids x
+       WHERE x.sku_catalog_id = sc.id
+         AND x.organization_id = o.organization_id
+         AND x.provider = 'zoho'
+       ORDER BY x.id
+       LIMIT 1
+    ) cxi ON TRUE
+    LEFT JOIN customers c ON c.id = o.customer_id AND c.organization_id = o.organization_id
+    LEFT JOIN staff s_pick ON s_pick.id = osf.picked_by
+    LEFT JOIN staff s_pack ON s_pack.id = COALESCE(osf.pack_activity_by, osf.packed_by)
+    LEFT JOIN staff s_out ON s_out.id = pg.scanned_out_by
+    LEFT JOIN LATERAL (
+      SELECT count(*)::int AS n, (array_agg(n0.note_text ORDER BY n0.created_at DESC, n0.id DESC))[1] AS latest
+        FROM order_notes n0
+       WHERE n0.organization_id = o.organization_id AND n0.order_id = o.id
+    ) nt ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT array_agg(t0.tag ORDER BY t0.created_at, t0.id) AS tags
+        FROM order_tags t0
+       WHERE t0.organization_id = o.organization_id AND t0.order_id = o.id
+    ) tg ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT array_agg(o2.id::int ORDER BY o2.id) AS ids
+        FROM orders o2
+       WHERE o.shipment_id IS NOT NULL
+         AND o2.organization_id = o.organization_id
+         AND o2.shipment_id = o.shipment_id
+         AND o2.id <> o.id
+    ) bx ON TRUE`;
+}
+
+/**
+ * Find: the board's members whose order number, SKU or tracking (the box's
+ * own shipment) matches — matched over the ~board-sized member set only, never
+ * the org's whole order history. Binds `$11` text, `$12` ILIKE pattern, `$13`
+ * canonical tracking, `$14` key-18, `$15` digits last-8 ('' = off).
+ */
+const FIND_SQL = `${MEMBERS_SQL},
+  hit AS (
+    SELECT m_all.order_row_id
+      FROM m_all
+      JOIN orders o ON o.id = m_all.order_row_id AND o.organization_id = ${ORG}
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+     WHERE ${sqlIdentifierEqualsQuery('o.order_id', '$11')}
+        OR UPPER(BTRIM(COALESCE(o.sku, ''))) = UPPER(BTRIM($11))
+        OR (stn.id IS NOT NULL AND ${sqlTrackingNumberMatches({ stnAlias: 'stn', likeParam: '$12', canonicalParam: '$13', key18Param: '$14', last8Param: '$15' })})
+  ),
+  pg AS (
+    SELECT m_all.*, row_number() OVER (ORDER BY ${laneOrderSql('m_all')}) AS ord
+      FROM m_all
+     WHERE m_all.order_row_id IN (SELECT order_row_id FROM hit)
+  )
+  SELECT * FROM (${dressedCardsSql('pg')}) cards WHERE cards.ord <= ${LIMIT}::int ORDER BY cards.ord`;
+
+interface FacetRows {
+  facet_carrier: Array<{ value: string; count: number }>;
+  facet_channel: Array<{ value: string; count: number }>;
+}
+
+interface BoardRow extends FacetRows {
+  open: Array<{ stage: PackageStage; count: number; earlier: number; late: number; stalled: number }>;
+  scanned_out: number;
+  previous: number;
+  pace_today: Record<string, number>;
+  pace_yesterday: Record<string, number>;
+  carriers: Array<{ carrier: string; to_pick: number; picked: number; packed: number; scanned_out: number }>;
+  cards: CardRow[];
+}
+
+interface CardRow {
+  stage: PackageStage;
+  entered_at: Date | string | null;
+  urgency: PackageUrgency | null;
+  deadline_at: Date | string | null;
+  order_row_id: number;
+  order_number: string | null;
   sku: string | null;
   product_title: string | null;
-  zoho_item_title: string | null;
   catalog_product_title: string | null;
+  zoho_item_title: string | null;
+  image_url: string | null;
   quantity: number | string | null;
   condition: string | null;
   sale_amount: number | string | null;
   currency: string | null;
-  image_url: string | null;
+  platform: string | null;
+  customer: string | null;
+  shipment_id: number | string | null;
+  tracking: string | null;
+  carrier: string | null;
+  blocked: boolean;
+  ordered_at: Date | string | null;
+  picked_at: Date | string | null;
+  picked_by: number | null;
+  picked_by_name: string | null;
+  packed_at: Date | string | null;
+  packed_by: number | null;
+  packed_by_name: string | null;
+  scanned_out_at: Date | string | null;
+  scanned_out_by: number | null;
+  scanned_out_by_name: string | null;
+  note_count: number;
+  latest_note: string | null;
+  tags: string[];
+  stalled: boolean;
+  box_mates: number[];
 }
 
-interface InboundLineRow {
-  id: number;
-  sku: string | null;
-  item_name: string | null;
-  catalog_product_title: string | null;
-  zoho_item_title: string | null;
-  quantity: number | string | null;
-  condition: string | null;
-  unit_cost_cents: number | string | null;
-  unit_price: number | string | null;
-  currency: string | null;
-  image_url: string | null;
-}
+const iso = (value: Date | string | null): string | null => (value == null ? null : new Date(value).toISOString());
 
-function finiteOrNull(value: unknown): number | null {
-  if (value == null || value === '') return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function idOrNull(value: unknown): number | null {
-  const n = finiteOrNull(value);
-  return n != null && n > 0 ? n : null;
-}
-
-interface DressedLine {
-  orderId: string | null;
-  line: LiveFeedLine;
-}
-
-function outboundLine(row: OutboundLineRow): DressedLine {
+function toCard(row: CardRow, todayStart: string): PackageCard {
+  const qty = Number(row.quantity);
+  const enteredAt = iso(row.entered_at);
+  const grade = lineCondition(row);
   return {
-    orderId: row.order_id,
-    line: {
-      title:
-        resolveSkuIdentityTitle({
-          catalog_product_title: row.catalog_product_title,
-          zoho_item_title: row.zoho_item_title,
-          item_name: row.product_title,
-          sku: row.sku,
-        }) || 'Untitled item',
-      photoUrl: row.image_url,
-      condition: row.condition?.trim() || null,
-      qty: finiteOrNull(row.quantity),
-      price: linePrice({ sale_amount: row.sale_amount, currency: row.currency }).text,
+    orderRowId: Number(row.order_row_id),
+    orderNumber: row.order_number?.trim() || null,
+    stage: row.stage,
+    title:
+      resolveSkuIdentityTitle({
+        catalog_product_title: row.catalog_product_title,
+        zoho_item_title: row.zoho_item_title,
+        item_name: row.product_title,
+        sku: row.sku,
+      }) || 'Untitled item',
+    sku: row.sku?.trim() || null,
+    photoUrl: row.image_url,
+    qty: Number.isFinite(qty) && row.quantity != null ? qty : null,
+    condition: grade.label,
+    conditionCode: grade.code,
+    price: linePrice({ sale_amount: row.sale_amount, currency: row.currency }).text,
+    platform: row.platform,
+    customer: row.customer,
+    shipmentId: row.shipment_id == null ? null : Number(row.shipment_id),
+    tracking: row.tracking,
+    carrier: row.carrier,
+    shipBy: iso(row.deadline_at),
+    urgency: row.stage === 'scanned_out' ? null : row.urgency,
+    // Allocate's lifecycle: packed outranks out of stock, so only a package still owed a pick or a pack reads Blocked.
+    blocked: row.blocked && (row.stage === 'to_pick' || row.stage === 'picked'),
+    enteredAt,
+    earlier: row.stage !== 'scanned_out' && enteredAt != null && enteredAt < todayStart,
+    stalled: row.stalled === true,
+    boxMates: (row.box_mates ?? []).map(Number),
+    steps: {
+      ordered: { at: iso(row.ordered_at), staffId: null, staffName: null },
+      picked: { at: iso(row.picked_at), staffId: row.picked_by, staffName: row.picked_by_name?.trim() || null },
+      packed: { at: iso(row.packed_at), staffId: row.packed_by, staffName: row.packed_by_name?.trim() || null },
+      scannedOut: {
+        at: iso(row.scanned_out_at),
+        staffId: row.scanned_out_by,
+        staffName: row.scanned_out_by_name?.trim() || null,
+      },
     },
+    noteCount: Number(row.note_count) || 0,
+    latestNote: row.latest_note?.trim() || null,
+    tags: row.tags ?? [],
   };
 }
 
-function inboundLine(row: InboundLineRow): LiveFeedLine {
-  const cents = finiteOrNull(row.unit_cost_cents);
-  return {
-    title:
-      resolveSkuIdentityTitle({
-        catalog_product_title: row.catalog_product_title,
-        zoho_item_title: row.zoho_item_title,
-        item_name: row.item_name,
-        sku: row.sku,
-      }) || 'Untitled item',
-    photoUrl: row.image_url,
-    condition: row.condition,
-    qty: finiteOrNull(row.quantity),
-    price: linePrice({ sale_amount: cents != null ? cents / 100 : row.unit_price, currency: row.currency }).text,
+/** The binds every read shares (see the bind list at the top). */
+function binds(filters: LiveFeedFilters | null, extra: { offset?: number; ids?: number[] } = {}): unknown[] {
+  const today = getCurrentPSTDateKey();
+  const start = (dayKey: string) => {
+    const bounds = warehouseDayUtcBounds(dayKey);
+    if (!bounds) throw new Error(`live feed: bad day ${dayKey}`);
+    return bounds.startIso;
   };
+  return [
+    null, // $1 org — filled by the caller
+    start(today),
+    start(addDaysToDateKey(today, 1)),
+    start(addDaysToDateKey(today, -1)),
+    LIVE_FEED_PAGE_SIZE + 1,
+    extra.offset ?? 0,
+    filters?.carriers ?? null,
+    filters?.channels ?? null,
+    filters?.staffId ?? null,
+    extra.ids ?? null,
+  ];
 }
 
-function inPersonLine(row: InPersonLineRow): LiveFeedLine {
+const hourly = (byHour: Record<string, number>): number[] => Array.from({ length: 24 }, (_, hour) => Number(byHour[hour] ?? 0));
+
+function toFacets(row: FacetRows): LiveFeedFacets {
   return {
-    title:
-      resolveSkuIdentityTitle({
-        catalog_product_title: row.catalog_product_title,
-        zoho_item_title: row.zoho_item_title,
-        item_name: row.item_name,
-        sku: row.sku,
-      }) || 'Untitled item',
-    photoUrl: row.image_url,
-    condition: row.condition?.trim() || null,
-    qty: finiteOrNull(row.quantity),
-    price: linePrice({ sale_amount: row.amount, currency: row.currency }).text,
-  };
-}
-
-/** Outbound lanes whose package has left the building — their record opens on Fulfilled. */
-const LEFT_BUILDING: Readonly<Partial<Record<LiveFeedStatusId, true>>> = {
-  'out-scanned-out': true,
-  'out-in-transit': true,
-  'out-delivered': true,
-};
-
-/** In-person record families that are not orders or cartons (`FeedItemRow.sub`). */
-const IN_PERSON_RECORD_SUBS = ['LOCAL_PICKUP', 'COUNTER', 'SQUARE'] as const;
-type InPersonRecordSub = (typeof IN_PERSON_RECORD_SUBS)[number];
-
-function inPersonRecordSub(sub: string | null): InPersonRecordSub | null {
-  return (IN_PERSON_RECORD_SUBS as readonly string[]).includes(sub ?? '') ? (sub as InPersonRecordSub) : null;
-}
-
-/** An in-person record's own handle (no tracking / order / PO speaks for it). */
-function inPersonRef(sub: InPersonRecordSub, id: string | null): string {
-  if (sub === 'SQUARE') return 'Square sale';
-  return `${sub === 'COUNTER' ? 'Visit' : 'Pickup'} ${id ?? ''}`.trim();
-}
-
-function outboundHref(statusId: LiveFeedStatusId, row: FeedItemRow, orderRowId: number | null, shipmentId: number | null): string | null {
-  // A counter visit / Square sale has no record page.
-  if (inPersonRecordSub(row.sub)) return null;
-  if (LEFT_BUILDING[statusId] && shipmentId != null) {
-    return recordHref({ kind: 'order', entityId: orderRowId ?? shipmentId, deskView: 'shipped', shipmentId });
-  }
-  return orderRowId == null ? null : recordHref({ kind: 'order', entityId: orderRowId, deskView: 'triage', shipmentId });
-}
-
-function inboundHref(row: FeedItemRow): string | null {
-  // The local pickup record: `/pickup?lcpu=` (receiving-routes.ts).
-  if (row.sub === 'LOCAL_PICKUP' && row.record_id) return `/pickup?${new URLSearchParams({ lcpu: row.record_id }).toString()}`;
-  const receivingId = idOrNull(row.receiving_id);
-  return receivingId != null ? recordHref({ kind: 'receiving', entityId: receivingId }) : null;
-}
-
-const URGENCIES: Readonly<Record<string, LiveFeedUrgency>> = { late: 'late', due_today: 'due_today', aging: 'aging' };
-
-interface DirectionStatement {
-  memberships: FeedMembership[];
-  narrow: FeedNarrow;
-  params: unknown[];
-  bind: (value: unknown) => string;
-}
-
-/**
- * One direction's memberships of `specs` under `range`, its narrowing and
- * binds — shared by every read. A lane the lens does not apply to, or (on a
- * staff-scoped feed) one that attributes nobody, is never asked.
- */
-async function directionStatement(
-  organizationId: OrgId,
-  direction: LiveFeedDirection,
-  specs: readonly LiveFeedStatusSpec[],
-  filters: LiveFeedFilters,
-  range: Pick<LiveFeedFilters, 'from' | 'to' | 'timeFrom' | 'timeTo'> = filters,
-): Promise<DirectionStatement> {
-  const window = liveFeedWindow(range);
-  const params: unknown[] = [organizationId, window.fromIso, window.toIso];
-  const bind = binder(params);
-  const asked = specs.filter(
-    (spec) => liveFeedLensApplies(spec, filters.lens) && (filters.staff == null || spec.staffLabel != null),
-  );
-  let memberships: FeedMembership[];
-  if (direction === 'outbound') {
-    memberships = outboundMemberships(asked);
-  } else {
-    memberships = inboundMemberships(asked, {
-      universalIncoming: await isIncomingUniversal(organizationId),
-      unboxRailColumnRead: isUnboxRailColumnRead(),
-      scannedZohoExclusion: !isReceivingPhysicalStateFirst(),
-    });
-  }
-  return { memberships, narrow: narrowSql(filters, direction, bind), params, bind };
-}
-
-/** The status `filters` names, when the viewer may see its direction; else null. */
-function visibleStatus(filters: LiveFeedStatusFilters, permissions: ReadonlySet<string>): LiveFeedStatusSpec | null {
-  const spec = getLiveFeedStatus(filters.status);
-  return liveFeedAccess(permissions)[spec.direction] ? spec : null;
-}
-
-function statusFace(spec: LiveFeedStatusSpec): LiveFeedStatusFace {
-  return {
-    id: spec.id,
-    label: spec.label,
-    hint: spec.hint,
-    kind: spec.kind,
-    section: spec.section,
-    staffLabel: spec.staffLabel,
-    channels: spec.channels,
-  };
-}
-
-/** A tally list as stored (`[{ key, count }]`), numbers coerced. */
-function tallies(raw: Array<{ key: string; count: number }> | null | undefined): Array<{ key: string; count: number }> {
-  return (raw ?? []).map((t) => ({ key: String(t.key), count: Number(t.count) || 0 }));
-}
-
-/** Per lane: exact count (after both picks), carrier tallies (before the carrier pick), channel tallies (before the channel pick). */
-export interface LiveFeedStatusCount {
-  count: number;
-  carriers: Array<{ key: string; count: number }>;
-  channels: Array<{ key: LiveFeedChannel; count: number }>;
-}
-
-/** `specs` counted under the filters over `range` — one counts statement; a lane never asked (lens / staff) counts 0. */
-async function countSpecs(
-  organizationId: OrgId,
-  filters: LiveFeedFilters,
-  specs: readonly LiveFeedStatusSpec[],
-  range: Pick<LiveFeedFilters, 'from' | 'to' | 'timeFrom' | 'timeTo'>,
-): Promise<Partial<Record<LiveFeedStatusId, LiveFeedStatusCount>>> {
-  const out: Partial<Record<LiveFeedStatusId, LiveFeedStatusCount>> = Object.fromEntries(
-    specs.map((spec) => [spec.id, { count: 0, carriers: [], channels: [] }]),
-  );
-  const statement = await directionStatement(organizationId, filters.dir, specs, filters, range);
-  if (statement.memberships.length === 0) return out;
-  const { rows } = await tenantQueryOneTrip<FeedCountRow>(
-    organizationId,
-    buildFeedCountsSql(statement.memberships, statement.narrow),
-    statement.params,
-  );
-  for (const row of rows) {
-    out[row.status_id] = {
-      count: Number(row.count) || 0,
-      carriers: tallies(row.carriers),
-      channels: tallies(row.channels).flatMap((t) => (isLiveFeedChannel(t.key) ? [{ key: t.key, count: t.count }] : [])),
-    };
-  }
-  return out;
-}
-
-/**
- * Lanes of `filters.dir` counted under the filters (`status` and `page`
- * ignored) — every lane, or just `only`. The view switcher's counts, the
- * Carrier and Channel facets' tallies. A lane outside the channel pick still
- * answers (count 0, its channel tallies intact) so the Channel facet can
- * offer the way back. Empty when the viewer may not see the direction; a lane
- * the lens does not apply to, or a staff-scoped lane that attributes nobody,
- * counts 0.
- */
-export async function countLiveFeedStatuses(
-  organizationId: OrgId,
-  filters: LiveFeedFilters,
-  permissions: ReadonlySet<string>,
-  only?: readonly LiveFeedStatusId[],
-): Promise<Partial<Record<LiveFeedStatusId, LiveFeedStatusCount>>> {
-  if (!liveFeedAccess(permissions)[filters.dir]) return {};
-  const specs = liveFeedStatusesOf(filters.dir).filter((spec) => !only || only.includes(spec.id));
-  return countSpecs(organizationId, filters, specs, filters);
-}
-
-/**
- * Every tracking number of the lane under the feed's filters — unpaged,
- * deduped, in lane order (the Copy all). Null when the viewer may not see
- * the lane's direction.
- */
-export async function loadLiveFeedTracking(
-  organizationId: OrgId,
-  filters: LiveFeedStatusFilters,
-  permissions: ReadonlySet<string>,
-): Promise<LiveFeedTracking | null> {
-  const spec = visibleStatus(filters, permissions);
-  if (!spec) return null;
-  const statement = await directionStatement(organizationId, spec.direction, [spec], filters);
-  const membership = statement.memberships[0];
-  if (!membership) return { status: spec.id, count: 0, tracking: [] };
-  const { rows } = await tenantQueryOneTrip<FeedMemberRow>(
-    organizationId,
-    buildFeedMemberRowsSql(membership, statement.narrow),
-    statement.params,
-  );
-  return { status: spec.id, count: rows.length, tracking: liveFeedTrackingList(rows) };
-}
-
-/**
- * Dress raw rows of one direction with their lead lines and record links —
- * outbound by order (else the package's lead order), inbound by line (else
- * the carton's lead line), in person by the record's first line — and each
- * outbound package with its stage trail.
- */
-async function dressItems(
-  organizationId: OrgId,
-  direction: LiveFeedDirection,
-  rows: ReadonlyArray<{ statusId: LiveFeedStatusId; row: FeedItemRow }>,
-): Promise<LiveFeedItem[]> {
-  const shipmentIds = new Set<number>();
-  const orderIds = new Set<number>();
-  const lineIds = new Set<number>();
-  const cartonIds = new Set<number>();
-  const pickupIds = new Set<number>();
-  const counterIds = new Set<number>();
-  const squareIds = new Set<string>();
-  const trailIds = new Set<number>();
-  for (const { row } of rows) {
-    const sub = inPersonRecordSub(row.sub);
-    if (sub) {
-      if (!row.record_id) continue;
-      if (sub === 'SQUARE') squareIds.add(row.record_id);
-      else {
-        const id = idOrNull(row.record_id);
-        if (id != null) (sub === 'COUNTER' ? counterIds : pickupIds).add(id);
-      }
-      continue;
-    }
-    if (direction === 'outbound') {
-      const orderRowId = idOrNull(row.order_row_id);
-      const shipmentId = idOrNull(row.shipment_id);
-      if (shipmentId != null) trailIds.add(shipmentId);
-      if (orderRowId != null) orderIds.add(orderRowId);
-      else if (shipmentId != null) shipmentIds.add(shipmentId);
-    } else {
-      const lineId = idOrNull(row.line_id);
-      const receivingId = idOrNull(row.receiving_id);
-      if (lineId != null) lineIds.add(lineId);
-      else if (receivingId != null) cartonIds.add(receivingId);
-    }
-  }
-  const [outLines, inLines, personLines] = await Promise.all([
-    shipmentIds.size + orderIds.size + trailIds.size > 0
-      ? tenantQueryOneTrip<{
-          packages: Array<{ shipment_id: number | string; lead_id: number }>;
-          trails: OutboundTrailRow[];
-          lines: OutboundLineRow[];
-        }>(organizationId, OUTBOUND_LINES_SQL, [organizationId, [...shipmentIds], [...orderIds], [...trailIds]])
-      : null,
-    lineIds.size + cartonIds.size > 0
-      ? tenantQueryOneTrip<{ cartons: Array<{ receiving_id: number; lead_id: number }>; lines: InboundLineRow[] }>(
-          organizationId,
-          INBOUND_LINES_SQL,
-          [organizationId, [...lineIds], [...cartonIds]],
-        )
-      : null,
-    pickupIds.size + counterIds.size + squareIds.size > 0
-      ? tenantQueryOneTrip<InPersonLineRow>(organizationId, IN_PERSON_LINES_SQL, [
-          organizationId,
-          [...pickupIds],
-          [...counterIds],
-          [...squareIds],
-        ])
-      : null,
-  ]);
-  const outRow = outLines?.rows[0];
-  const orderLineById = new Map((outRow?.lines ?? []).map((line) => [Number(line.id), outboundLine(line)]));
-  const leadOrderByShipment = new Map((outRow?.packages ?? []).map((pkg) => [Number(pkg.shipment_id), Number(pkg.lead_id)]));
-  const trailByShipment = new Map(
-    (outRow?.trails ?? []).map((t): [number, LiveFeedTrail] => [
-      Number(t.shipment_id),
-      { packedAt: t.packed_at, scannedOutAt: t.scanned_out_at, carrierAt: t.carrier_at, deliveredAt: t.delivered_at },
-    ]),
-  );
-  const inRow = inLines?.rows[0];
-  const receivingLineById = new Map((inRow?.lines ?? []).map((line) => [Number(line.id), inboundLine(line)]));
-  const leadLineByCarton = new Map((inRow?.cartons ?? []).map((c) => [Number(c.receiving_id), Number(c.lead_id)]));
-  const personLineByRecord = new Map((personLines?.rows ?? []).map((line) => [`${line.sub}:${line.record_id}`, inPersonLine(line)]));
-
-  return rows.map(({ statusId, row }): LiveFeedItem => {
-    const shipmentId = idOrNull(row.shipment_id);
-    const receivingId = idOrNull(row.receiving_id);
-    const sub = inPersonRecordSub(row.sub);
-    let orderRowId: number | null = null;
-    let orderId: string | null = null;
-    let line: LiveFeedLine | null = null;
-    if (sub) {
-      line = personLineByRecord.get(`${sub}:${row.record_id}`) ?? null;
-    } else if (direction === 'outbound') {
-      orderRowId = idOrNull(row.order_row_id) ?? (shipmentId != null ? (leadOrderByShipment.get(shipmentId) ?? null) : null);
-      const dressed = orderRowId != null ? orderLineById.get(orderRowId) : undefined;
-      orderId = dressed?.orderId ?? null;
-      line = dressed?.line ?? null;
-    } else {
-      const lineId = idOrNull(row.line_id) ?? (receivingId != null ? (leadLineByCarton.get(receivingId) ?? null) : null);
-      line = lineId != null ? (receivingLineById.get(lineId) ?? null) : null;
-    }
-    const trail = !sub && direction === 'outbound' && shipmentId != null ? trailByShipment.get(shipmentId) : undefined;
-    return {
-      key: row.key,
-      statusId,
-      direction,
-      channel: isLiveFeedChannel(row.channel) ? row.channel : 'online',
-      at: row.at,
-      staffId: row.staff_id,
-      staffName: row.staff_name,
-      tracking: row.tracking?.trim() || null,
-      carrier: row.carrier,
-      orderId,
-      poNumber: row.po_number?.trim() || null,
-      ref: sub ? inPersonRef(sub, row.record_id) : null,
-      customer: row.customer?.trim() || null,
-      shipmentId,
-      receivingId,
-      reason: row.reason,
-      urgency: row.urgency ? (URGENCIES[row.urgency] ?? null) : null,
-      sub: row.sub,
-      flags: (row.flags ?? []).filter((flag): flag is LiveFeedItemFlag => (LIVE_FEED_ITEM_FLAGS as readonly string[]).includes(flag)),
-      line,
-      ...(trail ? { trail } : {}),
-      href: direction === 'outbound' ? outboundHref(statusId, row, orderRowId, shipmentId) : inboundHref(row),
-    };
-  });
-}
-
-/** ONE lane: its exact count and page `filters.page` of its items, dressed. Null when the viewer may not see its direction. */
-export async function loadLiveFeed(
-  organizationId: OrgId,
-  filters: LiveFeedStatusFilters,
-  permissions: ReadonlySet<string>,
-): Promise<LiveFeedPage | null> {
-  const spec = visibleStatus(filters, permissions);
-  if (!spec) return null;
-  const statement = await directionStatement(organizationId, spec.direction, [spec], filters);
-  const membership = statement.memberships[0];
-  let count = 0;
-  let rows: FeedItemRow[] = [];
-  if (membership) {
-    const limitRef = statement.bind(LIVE_FEED_PAGE_SIZE);
-    const offsetRef = statement.bind((filters.page - 1) * LIVE_FEED_PAGE_SIZE);
-    const { rows: result } = await tenantQueryOneTrip<FeedPageRow>(
-      organizationId,
-      buildFeedPageSql(membership, statement.narrow, { limitRef, offsetRef }),
-      statement.params,
-    );
-    count = Number(result[0]?.count) || 0;
-    rows = result[0]?.items ?? [];
-  }
-  const items = await dressItems(
-    organizationId,
-    spec.direction,
-    rows.map((row) => ({ statusId: spec.id, row })),
-  );
-  return {
-    filters,
-    status: { ...statusFace(spec), applicable: liveFeedLensApplies(spec, filters.lens), count },
-    items,
-    page: filters.page,
-    pageSize: LIVE_FEED_PAGE_SIZE,
-  };
-}
-
-/**
- * The Board: every lane of `filters.dir` inside the channel pick, in pipeline
- * order — each its exact count, late count, oldest instant (open lanes),
- * carried-over count (open lanes), top {@link LIVE_FEED_BOARD_GROUP_CAP}
- * groups and its first {@link LIVE_FEED_BOARD_COLUMN_CAP} items (late first),
- * dressed, in one statement; plus each done lane's count over the previous
- * equal period (one counts statement, the same builder). A lane the lens does
- * not apply to answers `applicable: false`, empty. Null when the viewer may
- * not see the direction.
- */
-export async function loadLiveFeedBoard(
-  organizationId: OrgId,
-  filters: LiveFeedFilters,
-  permissions: ReadonlySet<string>,
-): Promise<LiveFeedBoard | null> {
-  if (!liveFeedAccess(permissions)[filters.dir]) return null;
-  const boardFilters = { ...filters, status: null, page: 1 };
-  const specs = liveFeedStatusesOf(filters.dir, filters.channel);
-  const doneSpecs = specs.filter((spec) => spec.kind === 'done');
-  const [statement, previous] = await Promise.all([
-    directionStatement(organizationId, filters.dir, specs, boardFilters),
-    doneSpecs.length > 0
-      ? countSpecs(organizationId, boardFilters, doneSpecs, liveFeedPreviousRange(filters))
-      : Promise.resolve<Partial<Record<LiveFeedStatusId, LiveFeedStatusCount>>>({}),
-  ]);
-  const byStatus = new Map<LiveFeedStatusId, FeedBoardRow>();
-  if (statement.memberships.length > 0) {
-    const capRef = statement.bind(LIVE_FEED_BOARD_COLUMN_CAP);
-    const groupCapRef = statement.bind(LIVE_FEED_BOARD_GROUP_CAP);
-    const { rows } = await tenantQueryOneTrip<FeedBoardRow>(
-      organizationId,
-      buildFeedBoardSql(statement.memberships, statement.narrow, { capRef, groupCapRef }),
-      statement.params,
-    );
-    for (const row of rows) byStatus.set(row.status_id, row);
-  }
-  const flat = specs.flatMap((spec) => (byStatus.get(spec.id)?.items ?? []).map((row) => ({ statusId: spec.id, row })));
-  const dressed = await dressItems(organizationId, filters.dir, flat);
-  const itemsByStatus = new Map<LiveFeedStatusId, LiveFeedItem[]>();
-  for (const item of dressed) {
-    const list = itemsByStatus.get(item.statusId);
-    if (list) list.push(item);
-    else itemsByStatus.set(item.statusId, [item]);
-  }
-  return {
-    filters: boardFilters,
-    columns: specs.map((spec) => {
-      const row = byStatus.get(spec.id);
-      const groups = (row?.groups.top ?? []).map(
-        (g): LiveFeedGroup => ({
-          key: String(g.key),
-          label:
-            spec.groupBy === 'carrier'
-              ? liveFeedCarrierLabel(g.key)
-              : (g.label?.trim() || (g.key === 'unassigned' ? 'Unassigned' : `Staff #${g.key}`)),
-          count: Number(g.count) || 0,
-        }),
-      );
-      return {
-        status: statusFace(spec),
-        applicable: liveFeedLensApplies(spec, filters.lens),
-        count: Number(row?.count) || 0,
-        lateCount: Number(row?.late_count) || 0,
-        oldestAt: row?.oldest_at != null ? new Date(row.oldest_at).toISOString() : null,
-        ...(spec.kind === 'open'
-          ? { carriedOver: Number(row?.carried_over) || 0 }
-          : { previousCount: previous[spec.id]?.count ?? 0 }),
-        groups,
-        groupsMore: Math.max(0, (Number(row?.groups.total) || 0) - groups.length),
-        items: itemsByStatus.get(spec.id) ?? [],
-      };
+    carrier: row.facet_carrier.map(({ value, count }) => ({ value, label: value, count })),
+    // A channel the platform map does not know keeps its own name ("mekong"), not a shared "Unknown".
+    channel: row.facet_channel.map(({ value, count }) => {
+      const meta = sourcePlatformMeta(value);
+      return { value, label: meta === UNKNOWN_PLATFORM ? value : meta.label, count };
     }),
   };
+}
+
+/** Counts for every stage and the first page of each, the pace, carrier loads, today's pickups and the facets — one statement plus the pickup read. */
+export async function loadLiveFeedBoard(orgId: OrgId, filters: LiveFeedFilters | null = null): Promise<PackageBoard> {
+  const values = binds(filters);
+  values[0] = orgId;
+  const todayStart = values[1] as string;
+  const [{ rows }, cutoffs] = await Promise.all([
+    tenantQueryOneTrip<BoardRow>(orgId, BOARD_SQL, values),
+    loadPickupCutoffsForDay(orgId, getCurrentPSTDateKey()),
+  ]);
+  const board = rows[0]!;
+  const open = Object.fromEntries(board.open.map((row) => [row.stage, row]));
+
+  const columns = PACKAGE_STAGES.map((stage): PackageColumn => {
+    const stageRows = board.cards.filter((row) => row.stage === stage);
+    const done = stage === 'scanned_out';
+    return {
+      stage,
+      count: done ? board.scanned_out : (open[stage]?.count ?? 0),
+      earlierCount: done ? 0 : (open[stage]?.earlier ?? 0),
+      lateCount: done ? 0 : (open[stage]?.late ?? 0),
+      stalledCount: done ? 0 : (open[stage]?.stalled ?? 0),
+      previousCount: done ? board.previous : null,
+      items: stageRows.slice(0, LIVE_FEED_PAGE_SIZE).map((row) => toCard(row, todayStart)),
+      hasMore: stageRows.length > LIVE_FEED_PAGE_SIZE,
+    };
+  });
+
+  const carriers: CarrierLoad[] = board.carriers.map((row) => ({
+    carrier: row.carrier,
+    toPick: row.to_pick,
+    picked: row.picked,
+    packed: row.packed,
+    scannedOut: row.scanned_out,
+  }));
+  const loadOf = new Map(carriers.map((load) => [load.carrier, load]));
+  const now = Date.now();
+  // A pickup is a floor-wide fact — its counts never shrink under a facet — but a carrier facet shows only its carriers' trucks.
+  const pickups: PickupCountdown[] = cutoffs.flatMap((cutoff) => {
+    if (filters?.carriers && !filters.carriers.includes(cutoff.carrier)) return [];
+    const load = loadOf.get(cutoff.carrier);
+    const notPacked = (load?.toPick ?? 0) + (load?.picked ?? 0);
+    const packed = load?.packed ?? 0;
+    // A pickup that already left with nothing behind is history, not a countdown.
+    if (Date.parse(cutoff.cutoffAt) < now && notPacked + packed === 0) return [];
+    return [{ carrier: cutoff.carrier, cutoffAt: cutoff.cutoffAt, cutoffLocal: cutoff.cutoffLocal, notPacked, packed, scannedOut: load?.scannedOut ?? 0 }];
+  });
+
+  return {
+    generatedAt: new Date(now).toISOString(),
+    columns,
+    pace: { today: hourly(board.pace_today), yesterday: hourly(board.pace_yesterday) },
+    carriers,
+    pickups,
+    facets: toFacets(board),
+  };
+}
+
+/** One later page of one stage, filters applied. */
+export async function loadLiveFeedLane(
+  orgId: OrgId,
+  stage: PackageStage,
+  offset: number,
+  filters: LiveFeedFilters | null = null,
+): Promise<PackageLanePage> {
+  const values = binds(filters, { offset });
+  values[0] = orgId;
+  const { rows } = await tenantQueryOneTrip<CardRow>(orgId, lanePageSql(stage), values);
+  return {
+    stage,
+    offset,
+    items: rows.slice(0, LIVE_FEED_PAGE_SIZE).map((row) => toCard(row, values[1] as string)),
+    hasMore: rows.length > LIVE_FEED_PAGE_SIZE,
+  };
+}
+
+/** The sidebar's facet counts (carrier, channel), each with every other filter applied. */
+export async function loadLiveFeedFacets(orgId: OrgId, filters: LiveFeedFilters | null): Promise<LiveFeedFacets> {
+  const values = binds(filters);
+  values[0] = orgId;
+  const { rows } = await tenantQueryOneTrip<FacetRows>(orgId, FACETS_SQL, values);
+  return toFacets(rows[0]!);
+}
+
+/** Packages by order row id, inside the board's scope (in the building or scanned out today), in lane order. */
+export async function loadLiveFeedPackages(orgId: OrgId, ids: readonly number[]): Promise<PackageCard[]> {
+  if (ids.length === 0) return [];
+  const values = binds(null, { ids: [...ids] });
+  values[0] = orgId;
+  const { rows } = await tenantQueryOneTrip<CardRow>(orgId, PACKAGES_SQL, values);
+  return rows.map((row) => toCard(row, values[1] as string));
+}
+
+/**
+ * Find: the board's packages whose order number, SKU or tracking matches
+ * `query` (a gun scan, a paste, a typed last 8). Up to `LIVE_FEED_PAGE_SIZE`,
+ * in lane order.
+ */
+export async function findLiveFeedPackages(orgId: OrgId, query: string): Promise<PackageCard[]> {
+  const q = query.trim();
+  if (q.length < 3) return [];
+  const keys = orderTrackingMatchKeys(q);
+  const values = binds(null);
+  values[0] = orgId;
+  values.push(q, q.length >= 8 ? `%${q}%` : q, keys.exact, keys.key18, keys.last8.length >= 8 ? keys.last8 : '');
+  const { rows } = await tenantQueryOneTrip<CardRow>(orgId, FIND_SQL, values);
+  return rows.slice(0, LIVE_FEED_PAGE_SIZE).map((row) => toCard(row, values[1] as string));
 }

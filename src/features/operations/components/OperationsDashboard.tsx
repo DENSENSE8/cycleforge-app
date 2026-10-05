@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { LiveFeedCard } from './LiveFeedCard';
-import { ExceptionsRow } from './ExceptionsRow';
 import { PipelineRow } from './PipelineRow';
 import { SecondaryKPITiles } from './SecondaryKPITiles';
 import { KpiDetailsModal, type KpiKind } from './KpiDetailsModal';
@@ -60,11 +59,6 @@ export function OperationsDashboard() {
             </div>
           </section>
         ) : null}
-
-        {/* ── Exceptions: what needs attention ── */}
-        <section>
-          <ExceptionsRow />
-        </section>
 
         {/* ── Pipeline: where work is stacked ── */}
         <section>

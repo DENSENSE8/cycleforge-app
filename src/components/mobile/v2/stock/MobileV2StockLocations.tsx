@@ -16,6 +16,7 @@ import { useMemo, type ReactNode } from 'react';
 import { AlertTriangle, MapPin, Warehouse } from '@/components/Icons';
 import { DetailNav, type DetailNavItem } from '@/components/mobile/detail/DetailParts';
 import { PathChips, type PathChip } from '@/design-system/components/PathChips';
+import { MOBILE_DATA_LIST_ROW_INTERACTION_CLASS } from '@/design-system/components/MobileDataListRow';
 import { Button } from '@/design-system/primitives/Button';
 import { EmptyState } from '@/design-system/primitives/EmptyState';
 import { BAY_SIDE_FACE, locationCodeFlat, pad2 } from '@/lib/barcode-routing';
@@ -126,7 +127,8 @@ export function MobileV2StockLocations({
 
   type SideChoice = { side: StockDrillSide; group: StockDrillGroup | null; href: string };
   type Listing = {
-    label: string;
+    /** Null when the path chips already say where the operator stands (the side choice). */
+    label: string | null;
     rows: DetailNavItem[];
     /** The aisle level: two full-height choices (odd bays left | even bays right) instead of a list. */
     sides?: readonly [SideChoice, SideChoice];
@@ -171,6 +173,15 @@ export function MobileV2StockLocations({
     }
     if (scope.aisle == null) {
       const { aisles, other } = stockDrillAisles(summaries);
+      // A room with no aisle grid (Showroom, a desk floor) lists its places here: no
+      // "Other locations" hop that only repeats the room.
+      if (aisles.length === 0) {
+        return {
+          label: `Locations in ${room.label}`,
+          rows: stockDrillLocations(summaries, { ...scope, aisle: STOCK_DRILL_OTHER }).map((summary) => locationRow(summary, returnTo)),
+          empty: `${room.label} has no locations yet.`,
+        };
+      }
       return {
         label: `Aisles in ${room.label}`,
         rows: [
@@ -197,7 +208,7 @@ export function MobileV2StockLocations({
         href: stockDrillHref({ room: room.id, aisle: numericAisle, side }),
       });
       return {
-        label: `Aisle ${pad2(numericAisle)} · pick a side`,
+        label: null,
         rows: [],
         sides: [choice('left'), choice('right')],
         empty: `Aisle ${pad2(numericAisle)} has no bays in ${room.label}.`,
@@ -228,15 +239,17 @@ export function MobileV2StockLocations({
   return (
     <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col bg-mode-panel" data-testid="mobile-v2-stock" data-level={currentChip}>
       <div className="sticky top-0 z-sticky border-b border-mode-rule bg-mode-panel">
-        <PathChips chips={chips} currentId={currentChip} ariaLabel="Warehouse path" testId="stock-path" />
+        <PathChips density="compact" chips={chips} currentId={currentChip} ariaLabel="Warehouse path" testId="stock-path" />
       </div>
 
-      <h2 className="px-mode-page pb-1 pt-3 text-role-caption font-semibold text-text-muted" data-testid="stock-level-heading">
-        {listing.label}
-      </h2>
+      {listing.label ? (
+        <h2 className="px-mode-page pb-1 pt-3 text-role-caption font-semibold text-text-muted" data-testid="stock-level-heading">
+          {listing.label}
+        </h2>
+      ) : null}
       {listing.sides ? (
         // The two choices fill what is left of the screen, split down the middle.
-        <div className="grid flex-1 grid-cols-2 border-t border-mode-rule" data-testid="stock-side-choice">
+        <div className="grid flex-1 grid-cols-2 border-t border-mode-rule" data-testid="stock-side-choice" role="group" aria-label={`Aisle ${pad2(numericAisle ?? 0)} sides`}>
           {listing.sides.map(({ side, group, href }) => (
             <Button
               key={side}
@@ -244,7 +257,8 @@ export function MobileV2StockLocations({
               size="xl"
               radius="flush"
               className={cn(
-                'h-full w-full flex-col gap-1 whitespace-normal border-0 px-3 text-center',
+                'h-full w-full flex-col gap-1 whitespace-normal border-0 px-3 text-center enabled:active:scale-100',
+                MOBILE_DATA_LIST_ROW_INTERACTION_CLASS,
                 side === 'right' && 'border-l border-mode-rule',
               )}
               disabled={!group}
@@ -261,7 +275,7 @@ export function MobileV2StockLocations({
         </div>
       ) : listing.rows.length > 0 ? (
         <div data-testid="stock-level-rows">
-          <DetailNav label={listing.label} rows={listing.rows} />
+          <DetailNav label={listing.label ?? 'Locations'} rows={listing.rows} />
         </div>
       ) : (
         <EmptyState title={listing.empty} />

@@ -23,14 +23,12 @@ import {
   initialRackCreateState,
   toCreateRackBody,
   withShelfCount,
-  withShelfTier,
   type RackCreateState,
   type RackCreateStep,
 } from '@/lib/locations/rack-create-model';
 import { rackErrorMessage, rackPlacementText, rackShelfCountText } from '@/lib/locations/rack-display';
 import { RACK_MAX_SHELVES, type PlannedRack, type RackDetail } from '@/lib/locations/rack-types';
 import { createRack, rackQueryKey } from '@/lib/locations/racks-client';
-import { ARRIVAL_TIERS, arrivalTierLabel, asArrivalTier } from '@/lib/receiving/arrival-tier';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { cn } from '@/utils/_cn';
 import { RackPlacementField } from './RackPlacementField';
@@ -123,58 +121,34 @@ export function RackCreateFlow({
     );
   } else if (step === 'shelves') {
     body = (
-      <>
-        <RecordGroup title="How many shelves?">
-          <div className="flex items-center gap-3 px-4 pb-3">
-            <IconButton
-              icon={<Minus aria-hidden />}
-              ariaLabel="One shelf fewer"
-              size="md"
-              radius="control"
-              disabled={state.shelves <= 1}
-              onClick={() => setState((s) => withShelfCount(s, s.shelves - 1))}
-            />
-            <DeferredQtyInput
-              value={state.shelves}
-              min={1}
-              max={RACK_MAX_SHELVES}
-              onChange={(n) => setState((s) => withShelfCount(s, n))}
-              aria-label="Shelves"
-              className={cn(EVIDENCE_CONTROL_CLASS, 'w-20 text-center tabular-nums')}
-            />
-            <IconButton
-              icon={<Plus aria-hidden />}
-              ariaLabel="One shelf more"
-              size="md"
-              radius="control"
-              disabled={state.shelves >= RACK_MAX_SHELVES}
-              onClick={() => setState((s) => withShelfCount(s, s.shelves + 1))}
-            />
-          </div>
-        </RecordGroup>
-        <RecordGroup title="Arrival shelves (optional)">
-          <ul className="flex flex-col px-4 pb-1">
-            {Array.from({ length: state.shelves }, (_, i) => i + 1).map((shelf) => (
-              <li key={shelf} className="flex items-center gap-3 border-b border-mode-fact py-1.5 last:border-b-0">
-                <span className="w-20 shrink-0 text-role-data font-semibold text-mode-ink">Shelf {shelf}</span>
-                <select
-                  value={state.tiers[shelf] != null ? String(state.tiers[shelf]) : ''}
-                  onChange={(event) => setState((s) => withShelfTier(s, shelf, asArrivalTier(event.target.value)))}
-                  aria-label={`Arrival urgency of shelf ${shelf}`}
-                  className={cn(EVIDENCE_CONTROL_CLASS, 'min-w-0 flex-1')}
-                >
-                  <option value="">Not an arrival shelf</option>
-                  {ARRIVAL_TIERS.map((tier) => (
-                    <option key={tier} value={String(tier)}>
-                      Arrival · {arrivalTierLabel(tier)}
-                    </option>
-                  ))}
-                </select>
-              </li>
-            ))}
-          </ul>
-        </RecordGroup>
-      </>
+      <RecordGroup title="How many shelves?">
+        <div className="flex items-center gap-3 px-4 pb-3">
+          <IconButton
+            icon={<Minus aria-hidden />}
+            ariaLabel="One shelf fewer"
+            size="md"
+            radius="control"
+            disabled={state.shelves <= 1}
+            onClick={() => setState((s) => withShelfCount(s, s.shelves - 1))}
+          />
+          <DeferredQtyInput
+            value={state.shelves}
+            min={1}
+            max={RACK_MAX_SHELVES}
+            onChange={(n) => setState((s) => withShelfCount(s, n))}
+            aria-label="Shelves"
+            className={cn(EVIDENCE_CONTROL_CLASS, 'w-20 text-center tabular-nums')}
+          />
+          <IconButton
+            icon={<Plus aria-hidden />}
+            ariaLabel="One shelf more"
+            size="md"
+            radius="control"
+            disabled={state.shelves >= RACK_MAX_SHELVES}
+            onClick={() => setState((s) => withShelfCount(s, s.shelves + 1))}
+          />
+        </div>
+      </RecordGroup>
     );
     primary = (
       <Button variant="primary" icon={<ArrowRight aria-hidden />} loading={busy} disabled={Boolean(blocked)} onClick={() => void review()} data-testid="rack-create-review">
@@ -200,7 +174,6 @@ export function RackCreateFlow({
               <li key={shelf.code} className="flex flex-wrap items-baseline gap-x-2 border-b border-mode-fact py-2 last:border-b-0">
                 <span className="text-role-data font-semibold text-mode-ink">Shelf {shelf.shelf}</span>
                 <span className="font-mono text-role-data text-mode-muted">{shelf.code}</span>
-                {shelf.tier != null ? <span className="text-role-data text-text-info">Arrival · {arrivalTierLabel(shelf.tier)}</span> : null}
               </li>
             ))}
           </ul>

@@ -6,6 +6,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { findTaskAnchor } from './task-links-db';
+import { SUPPORT_TIMELINE_ACTIONS } from '@/lib/support/conversation/timeline-events';
 import {
   taskAlertEntryFromRow,
   taskAuditEntryFromRow,
@@ -44,7 +45,13 @@ export async function readTaskTimelineAudit(
       orgId,
       AUDIT_ENTITY.WORK_ASSIGNMENT,
       String(taskId),
-      [AUDIT_ACTION.WORK_TASK_THROW, AUDIT_ACTION.WORK_TASK_UPDATE, AUDIT_ACTION.TASK_FOLLOW_UP_ALERT],
+      [
+        AUDIT_ACTION.WORK_TASK_THROW,
+        AUDIT_ACTION.WORK_TASK_UPDATE,
+        AUDIT_ACTION.TASK_FOLLOW_UP_ALERT,
+        // The Support loop's own events on the item's primary task.
+        ...SUPPORT_TIMELINE_ACTIONS,
+      ],
     ],
   );
 

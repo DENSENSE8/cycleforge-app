@@ -339,6 +339,9 @@ export class EbayClient {
                   'Buyer'
               ),
               unreadCount: Number(conversation?.unreadCount || 0),
+              // Unread ⇒ the latest message was RECEIVED by this account, so
+              // its recipient is this seller's eBay username.
+              latestRecipientUsername: String(conversation?.latestMessage?.recipientUsername || ''),
               referenceId: String(conversation?.referenceId || ''),
               referenceType: String(conversation?.referenceType || ''),
               createdDate: String(conversation?.latestMessage?.createdDate || conversation?.createdDate || ''),
@@ -350,6 +353,48 @@ export class EbayClient {
     } catch (error: any) {
       console.error(`[${this.accountName}] Error fetching unread messages:`, error.message);
       throw new Error(`Failed to fetch unread messages for ${this.accountName}: ${error.message}`);
+    }
+  }
+
+  /**
+   * One conversation's messages (Commerce Message API getConversation) — read
+   * only; never marks anything read.
+   */
+  async fetchConversationMessages(
+    conversationId: string,
+    conversationType: string,
+    limit = 50,
+  ): Promise<Array<{
+    messageId: string;
+    body: string;
+    subject: string;
+    senderUsername: string;
+    recipientUsername: string;
+    createdDate: string;
+  }>> {
+    try {
+      return await this.withOAuthCredentials(async (api) =>
+        this.auditCall('GET', `/commerce/message/v1/conversation/${conversationId}`, async () => {
+          const response = await api.commerce.message.getConversation(conversationId, {
+            conversationType,
+            limit: Math.max(1, Math.min(limit, 50)),
+            offset: 0,
+          });
+          const parsed = ConversationMessagesResponse.parse(response ?? {});
+          return (parsed.messages ?? []).map((m) => ({
+            messageId: String(m.messageId ?? ''),
+            body: String(m.messageBody ?? ''),
+            subject: String(m.subject ?? ''),
+            senderUsername: String(m.senderUsername ?? ''),
+            recipientUsername: String(m.recipientUsername ?? ''),
+            createdDate: String(m.createdDate ?? ''),
+          }));
+        }),
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[${this.accountName}] Error fetching conversation ${conversationId}:`, message);
+      throw new Error(`Failed to fetch conversation ${conversationId} for ${this.accountName}: ${message}`);
     }
   }
 
@@ -496,3 +541,17 @@ const ActiveListResponse = z
   })
   .passthrough();
 
+/** The slice of a Commerce Message getConversation response the Support eBay adapter reads. */
+const ConversationMessage = z
+  .object({
+    messageId: z.union([z.string(), z.number()]).optional(),
+    messageBody: z.string().optional(),
+    subject: z.string().optional(),
+    senderUsername: z.string().optional(),
+    recipientUsername: z.string().optional(),
+    createdDate: z.string().optional(),
+  })
+  .passthrough();
+const ConversationMessagesResponse = z
+  .object({ messages: z.array(ConversationMessage).optional() })
+  .passthrough();

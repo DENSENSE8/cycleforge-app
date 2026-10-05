@@ -28,7 +28,6 @@ import {
   initialRackCreateState,
   toCreateRackBody,
   withShelfCount,
-  withShelfTier,
   type RackCreateState,
 } from '@/lib/locations/rack-create-model';
 import { createRack } from '@/lib/locations/racks-client';
@@ -195,7 +194,6 @@ export function MobileV2NewRackFlow() {
           <NewRackShelvesStep
             state={state}
             onCount={(count) => setState((current) => withShelfCount(current, count))}
-            onTier={(shelf, tier) => setState((current) => withShelfTier(current, shelf, tier))}
           />
         ) : null}
         {step === 'review' ? <NewRackReviewStep planned={plan.planned} loading={plan.loading} error={plan.error} /> : null}

@@ -29,6 +29,7 @@ import type { PickupLine } from '@/lib/receiving/pickup/pickup-lines';
 import { repairCardModel } from '@/lib/repair/repair-card-model';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
 import { sourcePlatformMeta } from '@/lib/source-platform';
+import { outboundOrderIdentity } from '@/lib/operational-identity';
 import { ExceptionCardPeek } from '@/components/exceptions/cards/ExceptionCard';
 import { exceptionCardModel, exceptionRecordCard } from '@/components/exceptions/cards/exception-card-model';
 import { ImportCardPeek } from '@/components/imports/cards/ImportCardPeek';
@@ -137,6 +138,7 @@ const stockRow = (fields: Partial<LocationStockTableRow>): LocationStockTableRow
   last_moved: '2026-09-30T18:00:00.000Z',
   last_counted: '2026-10-01T16:00:00.000Z',
   ...fields,
+  min_qty: fields.min_qty ?? null,
 });
 const rack = [stockRow({}), stockRow({ location_id: 13, location_barcode: 'A-01-02-01', position: 1, sku: 'REMOTE-V20', qty: 2, last_counted: null })];
 
@@ -261,8 +263,6 @@ const movableRack = (fields: Partial<RackSummary>) => {
     placement: { id: 4, code: 'ROOM-C', name: 'Room C', kind: 'ROOM' },
     room: { id: 4, name: 'Room C', code: 'ROOM-C' },
     shelfCount: 5,
-    tieredShelfCount: 0,
-    tierCounts: [],
     lastMovedAt: NOW,
     ...fields,
   };
@@ -278,11 +278,6 @@ const fnsku = (fields: Partial<PrintStationFnskuRow>) => ({
     asin: 'B000123456',
     sku: 'BOSE-251-BLK',
     condition: 'Used - Very Good',
-    printJobs: 0,
-    copiesPrinted: 0,
-    lastPrintedAt: null,
-    lastCopies: null,
-    lastPrintedBy: null,
     ...fields,
     ordinal: 1,
   },
@@ -295,7 +290,11 @@ export const CARD_VIEW_ADAPTERS: readonly CardViewAdapter[] = [
   {
     view: views.OUTBOUND_TRIAGE_VIEW,
     adapter: 'src/components/outbound/orders/cards/OrderCard.tsx',
-    faces: () => recordCards([orderRecordCard(orderCardModel('order:9001', [order], TODAY), CHANNEL)], OrderCardPeek),
+    faces: () => {
+      const model = orderCardModel('order:9001', [order], TODAY);
+      const identity = outboundOrderIdentity(model.orderId, { label: 'eBay', meta: sourcePlatformMeta('ebay') });
+      return recordCards([orderRecordCard(model, identity, CHANNEL)], OrderCardPeek);
+    },
   },
   {
     view: views.INCOMING_PIPELINE_VIEW,
@@ -334,7 +333,7 @@ export const CARD_VIEW_ADAPTERS: readonly CardViewAdapter[] = [
     // Fixed anatomy: file name … the print state pill ("12 to print" / "All printed"); no channel, person, peek or photo.
     faces: () => [{ status: 'state', channel: false, person: false, quickLook: false, photo: false }],
   },
-  ...[views.LABEL_INTAKE_LABELS_VIEW, views.LABEL_INTAKE_PAPERWORK_VIEW, views.LABEL_INTAKE_PRINTED_VIEW].map((view) => ({
+  ...[views.LABEL_INTAKE_LABELS_VIEW, views.LABEL_INTAKE_PAPERWORK_VIEW].map((view) => ({
     view,
     adapter: 'src/features/labels-docs/LabelCard.tsx',
     // Fixed anatomy: order number + the platform's dot and name; its products beneath (titles, no photo); no status, person or peek.
@@ -399,22 +398,31 @@ export const CARD_VIEW_ADAPTERS: readonly CardViewAdapter[] = [
   },
   {
     view: views.PRINT_STATION_FNSKU_VIEW,
-    adapter: 'src/features/print-station/FnskuPrintDesk.tsx#FnskuCard',
-    faces: () =>
-      recordCards(
-        [
-          fnskuRecordCard(fnsku({})),
-          fnskuRecordCard(fnsku({ printJobs: 2, copiesPrinted: 6, lastPrintedAt: NOW, lastCopies: 3, lastPrintedBy: 'Lin' })),
-        ],
-        null,
-      ),
+    adapter: 'src/features/print-station/FnskuPrintDesk.tsx#FnskuCard, #FnskuRow',
+    faces: () => [
+      ...recordCards([fnskuRecordCard(fnsku({})), fnskuRecordCard(fnsku({ asin: null, sku: null, condition: null }))], null),
+      // Compact: no state badge, channel, person or peek.
+      { status: 'none', channel: false, person: false, quickLook: false, photo: false },
+    ],
   },
+  { view: views.PRINT_STATIONS_VIEW, adapter: 'src/features/print-station/PrintStationsDesk.tsx → TriageRow', faces: () => [TRIAGE_ROW_FACE] },
   {
     view: views.LOCATIONS_RACKS_VIEW,
     adapter: 'src/components/warehouse/racks/RacksDesk.tsx#RackCard',
     faces: () =>
       recordCards(
-        [rackRecordCard(movableRack({})), rackRecordCard(movableRack({ tieredShelfCount: 2, tierCounts: [{ tier: 0, count: 1 }, { tier: 1, count: 1 }] }))],
+        [
+          rackRecordCard(movableRack({})),
+          rackRecordCard(movableRack({
+            id: 13,
+            code: 'RK13',
+            name: 'Rack 13',
+            rackNumber: 13,
+            placement: { id: 9, code: 'C-FLOOR-2', name: 'Floor spot 2', kind: 'STAGING' },
+            room: null,
+            shelfCount: 1,
+          })),
+        ],
         null,
       ),
   },

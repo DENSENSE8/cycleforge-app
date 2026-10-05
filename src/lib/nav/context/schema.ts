@@ -244,23 +244,6 @@ export const NavControlsSchema = z
           .strict(),
       )
       .optional(),
-    /**
-     * The pasted list's located-bucket facet: one pressed bucket in `param`,
-     * and — with `facetParam` — a second row inside it: the pressed bucket's
-     * reasons (each entry's `facet`). Its options are DATA-DRIVEN — the live
-     * locate answer for the URL's list (per paste, with counts) — the gap
-     * `choices` (a fixed vocabulary) and `exclude` (a desk status list) cannot
-     * fill. The list is the page's own: a page whose search `locate`s reads
-     * its `locate.param` (e.g. `/incoming` `?ref_in=`, and then `param` /
-     * `facetParam` are that locate's `statusParam` / `facetParam`); any other
-     * page reads the full list page's `?refs=` (`/search/list`). Painted with
-     * the list's own `BulkStatusChips` (ruling A4: a status chip that filters
-     * is a sidebar control).
-     */
-    pastedListBuckets: z
-      .object({ param: z.string().min(1), facetParam: z.string().min(1).optional() })
-      .strict()
-      .optional(),
   })
   .strict();
 export type NavControls = z.infer<typeof NavControlsSchema>;
@@ -282,9 +265,6 @@ export function navControlParams(controls: NavControls | undefined): string[] {
     ...(controls.group ? [controls.group.param] : []),
     ...(controls.exclude ? [controls.exclude.param] : []),
     ...(controls.choices ?? []).map((choice) => choice.param),
-    ...(controls.pastedListBuckets
-      ? [controls.pastedListBuckets.param, ...(controls.pastedListBuckets.facetParam ? [controls.pastedListBuckets.facetParam] : [])]
-      : []),
   ];
 }
 

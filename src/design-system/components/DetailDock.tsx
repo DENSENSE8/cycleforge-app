@@ -10,6 +10,8 @@ export interface DetailDockVerb<Id extends string = string> {
   id: Id;
   label: string;
   icon: ReactNode;
+  /** Directional continuation arrows may trail the label; all other glyphs lead. */
+  iconPosition?: 'leading' | 'trailing';
   /** The one ink-filled verb. At most one per dock. */
   primary?: boolean;
   /** Semantic face for outcome docks (for example QC pass / fail). */
@@ -141,7 +143,8 @@ export function DetailDock<Id extends string>({
               radius="pill"
               depth
               className={`pointer-events-auto w-full ${FLOATING_ACTION_DISABLED_FACE} ${verb.className ?? ''}`}
-              icon={verb.icon}
+              icon={verb.iconPosition === 'trailing' ? undefined : verb.icon}
+              iconRight={verb.iconPosition === 'trailing' ? verb.icon : undefined}
               disabled={verb.disabled}
               loading={verb.loading}
               onClick={() => fire(() => onVerb(verb.id))}
@@ -166,7 +169,8 @@ export function DetailDock<Id extends string>({
         radius="surface"
         depth={primaryAction}
         className="w-full"
-        icon={verb.icon}
+        icon={verb.iconPosition === 'trailing' ? undefined : verb.icon}
+        iconRight={verb.iconPosition === 'trailing' ? verb.icon : undefined}
         disabled={verb.disabled}
         loading={verb.loading}
         onClick={() => fire(() => onVerb(verb.id))}
@@ -220,7 +224,8 @@ export function DetailDock<Id extends string>({
             : size === 'glove'
               ? 'min-h-mode-hit-cta w-full whitespace-nowrap text-role-caption'
               : 'min-h-mode-hit-cta w-full'} ${stacked && size !== 'glove' ? 'flex-col gap-1 whitespace-nowrap px-2' : ''} ${floating ? FLOATING_ACTION_DISABLED_FACE : ''} ${verb.className ?? ''}`}
-          icon={verb.icon}
+          icon={verb.iconPosition === 'trailing' ? undefined : verb.icon}
+          iconRight={verb.iconPosition === 'trailing' ? verb.icon : undefined}
           disabled={verb.disabled}
           loading={verb.loading}
           onClick={() => fire(() => onVerb(verb.id))}

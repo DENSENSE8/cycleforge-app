@@ -3,6 +3,7 @@ import {
   getRooms,
   renameRoom,
   setRoomZoneLetter,
+  updateLocation,
   bulkSoftDeleteLocations,
   previewLocationDeletion,
   type Location,
@@ -44,6 +45,10 @@ export async function PATCH(
       zoneLetterRaw === undefined
         ? undefined
         : zoneLetterRaw.trim().toUpperCase().charAt(0) || null;
+    const description =
+      typeof body?.description === 'string'
+        ? body.description.trim() || null
+        : undefined;
 
     let renameResult = { updated: 0, barcodesRekeyed: 0 };
     let didRename = false;
@@ -80,7 +85,16 @@ export async function PATCH(
       }
     }
 
-    if (!didRename && letterResult === null) {
+    if (description !== undefined) {
+      const before = await getRooms(orgId);
+      const target = roomSnapshot(before, targetName);
+      if (!target) {
+        return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+      }
+      await updateLocation(target.id, { description }, orgId);
+    }
+
+    if (!didRename && letterResult === null && description === undefined) {
       return NextResponse.json({ success: true, updated: 0, barcodesRekeyed: 0, room: null });
     }
 

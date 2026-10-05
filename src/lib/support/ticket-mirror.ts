@@ -6,7 +6,7 @@
  *
  *   read   readTicketMirror  — one statement (tenantQueryOneTrip + json_agg):
  *                              ticket, thread, authors, staff identity,
- *                              in-app assignment, linked entity + its photos.
+ *                              linked entity + its photos.
  *   load   loadTicketMirror  — local-first; a mirror older than
  *                              TICKET_MIRROR_FRESH_MS is served as-is and
  *                              re-mirrored in `after()`; no mirror → fetch live
@@ -15,7 +15,9 @@
  *                              HelpdeskProvider ticket write (zendesk-adapter)
  *                              and the ticket-watch cron re-mirror through
  *                              remirrorFetchedTicket; scripts/backfill-ticket-mirror
- *                              and revalidation call refreshTicketMirror.
+ *                              and revalidation call refreshTicketMirror. Every
+ *                              write then feeds the local Support thread
+ *                              (conversation/mirror-bridge — local, no provider call).
  *
  * Author identity is resolved at READ time (zendesk_users + helpdesk_comment_staff
  * + staff), so a staff binding recorded after a post shows without a re-mirror.
@@ -42,11 +44,6 @@ import {
 import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
-  mapTicketAssignmentRow,
-  TICKET_ASSIGNMENT_SELECT,
-  type TicketAssignment,
-} from '@/lib/zendesk-assignments';
-import {
   entityPhotosSql,
   mapEntityPhotoRow,
   type EntityPhoto,
@@ -57,6 +54,9 @@ import {
   getCachedUsers,
   upsertCachedUsers,
 } from '@/lib/zendesk-users-cache';
+
+/** Lazy: the Support mirror bridge reads through readTicketMirror, so a static import would cycle. */
+const mirrorBridge = () => import('@/lib/support/conversation/mirror-bridge');
 
 export interface TicketMirrorEntity {
   type: string;
@@ -75,7 +75,6 @@ export interface TicketMirror {
   /** Assignable roster (agents + admins). */
   agents: ZendeskAgent[];
   requester: { id: number; name: string | null; email: string | null } | null;
-  assignment: TicketAssignment | null;
   entity: TicketMirrorEntity | null;
   photos: EntityPhoto[];
 }
@@ -90,7 +89,6 @@ interface MirrorReadRow {
   staff_by_comment: Array<{ comment_id: number; staff_id: number; name: string }>;
   staff_by_email: Array<{ id: number; name: string; email: string | null }>;
   staff_by_name: Array<{ id: number; name: string }>;
-  assignment: Record<string, unknown> | null;
   entity: TicketMirrorEntity | null;
   photos: EntityPhotoRow[];
 }
@@ -198,10 +196,6 @@ SELECT t.id AS support_ticket_id,
             AND btrim(s.name) <> ''
             AND EXISTS (SELECT 1 FROM c WHERE strpos(lower(c.body), lower(btrim(s.name))) > 0)),
          '[]'::json) AS staff_by_name,
-       (SELECT row_to_json(a)
-          FROM (${TICKET_ASSIGNMENT_SELECT}
-                 WHERE a.organization_id = $1 AND a.zendesk_ticket_id = $3
-                 LIMIT 1) a) AS assignment,
        (SELECT row_to_json(ent) FROM ent) AS entity,
        COALESCE((
          SELECT json_agg(ph ORDER BY ph.created_at DESC, ph.id)
@@ -257,7 +251,6 @@ export async function readTicketMirror(
             email: requesterRow?.email ?? null,
           }
         : null,
-    assignment: row.assignment ? mapTicketAssignmentRow(row.assignment) : null,
     entity: row.entity
       ? { type: row.entity.type, id: Number(row.entity.id), source: row.entity.source }
       : null,
@@ -375,6 +368,8 @@ export async function writeTicketMirror(
       }
     })(),
   ]);
+  // The mirror is a transport copy; the Support thread is the local truth.
+  await (await mirrorBridge()).syncSupportThreadAfterMirrorWrite(orgId, registry.id);
   return { supportTicketId: registry.id };
 }
 

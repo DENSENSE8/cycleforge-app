@@ -56,6 +56,8 @@ function fakeDb() {
     ingestPurchase: (async (_org: OrgId, input: Record<string, unknown>) => ({
       receivingLineId: 100, receivingId: 12, created: true, platformAccountId: null, sourceType: 'manual', sourceOrderId: String(input.sourceOrderId),
     })) as unknown as IngestInboundOrderDeps['ingestPurchase'],
+    upsertPurchaseLink: (async () => ({})) as unknown as IngestInboundOrderDeps['upsertPurchaseLink'],
+    recordEquivalence: (async () => ({})) as unknown as IngestInboundOrderDeps['recordEquivalence'],
   };
   const preview = (async (_org: OrgId, raw: unknown) => {
     const draft = inboundOrderDraftSchema.parse(raw);

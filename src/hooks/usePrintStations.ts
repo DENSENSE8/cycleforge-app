@@ -28,9 +28,18 @@ import {
   PRINT_STATIONS_QUERY_KEY,
   putPrintStationAssignment,
   putPrintStationName,
+  putPrintStationPaused,
+  postPrintStationEnroll,
+  postPrintStationRePair,
+  postPrintStationRevoke,
   renameThisPrintStation,
 } from '@/lib/print/print-station-registry-client';
-import type { PrintStationAssignment, PrintStationRegistry } from '@/lib/print/print-station-registry-contracts';
+import type {
+  PrintStationAssignment,
+  PrintStationEnrollment,
+  PrintStationKind,
+  PrintStationRegistry,
+} from '@/lib/print/print-station-registry-contracts';
 import { SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
 import {
   STAFF_PRINT_CONTROL_EVENT,
@@ -58,12 +67,18 @@ export interface PrintStationEntry {
   stationId: string;
   stationName: string;
   thisComputer: boolean;
+  /** `enrolled`: an org-owned computer paired with a code · `browser`: a staff browser's own station. */
+  kind: PrintStationKind;
+  /** Paused from Stations: it refuses jobs until resumed. */
+  paused: boolean;
   /** Where this station was heard: the org registry, the staffer's own roster, or both. */
   sources: Array<'org' | 'staff'>;
   live: boolean;
   lastSeenAt: number | null;
   /** The staffer signed in on that computer at its last org heartbeat — who is at that table. */
   lastSeenStaffId: number | null;
+  /** When it last logged a print (the registry's job log); null = none. */
+  lastJobAt: number | null;
   label: StockFace;
   paper: StockFace;
 }
@@ -72,6 +87,14 @@ const NO_ASSIGNMENT: PrintStationAssignment = { label: null, paper: null };
 const NO_PICKS: Record<PrintStock, string | null> = { label: null, paper: null };
 /** How long a sender keeps listening for a station's progress after it acked. */
 const PROGRESS_LISTEN_MS = 10 * 60_000;
+/** One product label should settle quickly; do not leave the prepack button spinning indefinitely. */
+const QC_PROGRESS_LISTEN_MS = 60_000;
+
+type StationSendOutcome = {
+  acked: boolean;
+  completed?: boolean;
+  message?: string;
+};
 
 /** This computer prints locally, so each stock is always printable here (the dialog is the floor). */
 function localFaces(): Record<PrintStock, StockFace> {
@@ -91,10 +114,18 @@ export interface PrintStations {
   orgAssignment: PrintStationAssignment;
   pick: (stock: PrintStock, stationId: string | null) => void;
   setOrgAssignment: (stock: PrintStock, stationId: string | null) => Promise<void>;
-  /** May this staffer rename OTHER computers (Hardware settings)? Anyone may name this one. */
-  canRenameOthers: boolean;
+  /** Hardware settings: may this staffer rename OTHER computers and set the org's default station? Anyone may name this one. */
+  canManage: boolean;
   /** Rename a station for the whole org (empty = unnamed); rejects with the server's reason. */
   rename: (stationId: string, name: string) => Promise<void>;
+  /** Hardware settings: enrol a new org-owned station; resolves its single-use pairing code. */
+  enroll: (name: string) => Promise<PrintStationEnrollment>;
+  /** Hardware settings: replace an enrolled station's credential without replacing the station. */
+  rePair: (stationId: string) => Promise<PrintStationEnrollment>;
+  /** Hardware settings: pause (it refuses jobs) or resume a station. */
+  setPaused: (stationId: string, paused: boolean) => Promise<void>;
+  /** Hardware settings: revoke an enrolled station / forget a browser one. */
+  revoke: (stationId: string) => Promise<void>;
   /** Why a stock cannot go to its target right now; null when it can. */
   blockedReason: (stock: PrintStock) => string | null;
   /** One bridge job to a named station; resolves true when that station acked it. */
@@ -107,11 +138,11 @@ export interface PrintStations {
   ) => Promise<boolean>;
   /**
    * `copies` (1–99) FBA labels of one FNSKU at a named station; resolves true when it acked.
-   * `test`: a test print — marked face, no reprint logged.
+   * `test`: a test print — the same face, no reprint logged.
    */
   sendFnsku: (stationId: string, fnsku: string, copies: number, options?: { test?: boolean }) => Promise<boolean>;
-  /** One unit's QC label (`unitKey` = `qcLabelWireKey`) at a named station; resolves true when it acked. */
-  sendQcLabel: (stationId: string, unitKey: string) => Promise<boolean>;
+  /** One unit's QC label at a named station; null after print + ledger, otherwise the operator-facing failure. */
+  sendQcLabel: (stationId: string, unitKey: string) => Promise<string | null>;
   /** Location (`bin`) or bay (`rack`) stickers at a named station — it registers and prints them; true when it acked. */
   sendLocationLabels: (stationId: string, grain: 'bin' | 'rack', location: StaffPrintLocationPayload) => Promise<boolean>;
 }
@@ -172,10 +203,13 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
         stationId: s.stationId,
         stationName: s.name,
         thisComputer: false,
+        kind: s.kind,
+        paused: s.paused,
         sources: ['org'],
         live: s.online,
-        lastSeenAt: Date.parse(s.lastSeenAt),
+        lastSeenAt: s.lastSeenAt ? Date.parse(s.lastSeenAt) : null,
         lastSeenStaffId: s.lastSeenStaffId,
+        lastJobAt: s.lastJobAt ? Date.parse(s.lastJobAt) : null,
         label: s.label,
         paper: s.paper,
       });
@@ -186,10 +220,13 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
         stationId: status.stationId,
         stationName: status.stationName,
         thisComputer: false,
+        kind: 'browser',
+        paused: false,
         sources: ['staff'],
         live: isStaffPrintStationLive(s, bridge.now),
         lastSeenAt: s.lastSeenAt,
         lastSeenStaffId: null,
+        lastJobAt: null,
         label: { ready: roleReady(status, 'label'), printer: status.label.name },
         paper: { ready: roleReady(status, 'paper'), printer: status.paper.name },
       };
@@ -202,10 +239,13 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
       const fresher = s.lastSeenAt >= (org.lastSeenAt ?? 0) ? heard : org;
       byId.set(status.stationId, {
         ...fresher,
+        kind: org.kind,
+        paused: org.paused,
         sources: ['org', 'staff'],
         live: org.live || heard.live,
         lastSeenAt: Math.max(org.lastSeenAt ?? 0, s.lastSeenAt),
         lastSeenStaffId: org.lastSeenStaffId,
+        lastJobAt: org.lastJobAt,
       });
     }
     const heardSelf = byId.get(self.id);
@@ -219,10 +259,13 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
       stationId: self.id,
       stationName: self.name,
       thisComputer: true,
+      kind: 'browser',
+      paused: false,
       sources: heardSelf?.sources ?? [],
       live: true,
       lastSeenAt: heardSelf?.lastSeenAt ?? null,
       lastSeenStaffId: staffId || null,
+      lastJobAt: heardSelf?.lastJobAt ?? null,
       label: faces.label,
       paper: faces.paper,
     };
@@ -267,12 +310,50 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     [self.id, queryClient],
   );
 
+  const refreshRegistry = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: PRINT_STATIONS_QUERY_KEY }),
+    [queryClient],
+  );
+  const enroll = useCallback(
+    async (name: string) => {
+      const enrollment = await postPrintStationEnroll(name);
+      await refreshRegistry();
+      return enrollment;
+    },
+    [refreshRegistry],
+  );
+  const setPaused = useCallback(
+    async (stationId: string, paused: boolean) => {
+      await putPrintStationPaused(stationId, paused);
+      await refreshRegistry();
+    },
+    [refreshRegistry],
+  );
+  const rePair = useCallback(
+    async (stationId: string) => {
+      const enrollment = await postPrintStationRePair(stationId);
+      await refreshRegistry();
+      return enrollment;
+    },
+    [refreshRegistry],
+  );
+  const revoke = useCallback(
+    async (stationId: string) => {
+      await postPrintStationRevoke(stationId);
+      await refreshRegistry();
+    },
+    [refreshRegistry],
+  );
+
   const blockedReason = useCallback(
     (stock: PrintStock): string | null => {
       const station = target[stock];
       if (!station) return 'Choose a print station.';
       if (station.thisComputer) return null;
       if (!orgEnabled) return 'You cannot send prints to another station.';
+      if (station.paused) return `${station.stationName} is paused.`;
+      // An enrolled station prints FBA (FNSKU) labels only — the FNSKU picker sends there; documents, locations and QC never do.
+      if (station.kind === 'enrolled') return `${station.stationName} prints FBA labels only.`;
       if (!station.live) return `${station.stationName} is offline.`;
       if (!station[stock].ready) return `${station.stationName} has no ${stock} printer set up.`;
       return null;
@@ -295,13 +376,17 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     stationsRef.current = stations;
   }, [stations]);
 
-  /** One job to one station over its org channel; true when the station acked it. */
+  /** One job to one station over its org channel. QC waits for the terminal print result. */
   const sendStationJob = useCallback(
-    async (stationId: string, body: StaffPrintJobBody, onProgress?: (done: number, total: number) => void): Promise<boolean> => {
+    async (
+      stationId: string,
+      body: StaffPrintJobBody,
+      options: { onProgress?: (done: number, total: number) => void; waitForTerminal?: boolean } = {},
+    ): Promise<StationSendOutcome> => {
       const channelName = orgEnabled ? safeChannelName(() => getPrintStationChannelName(orgId, stationId)) : '';
       const client = channelName ? await getClient() : null;
       const channel = client?.channels.get(channelName);
-      if (!channel) return false;
+      if (!channel) return { acked: false, completed: false, message: 'The print station channel is unavailable.' };
       const requestId = safeRandomUUID();
       const job = { ...body, type: 'staff.print_job', request_id: requestId, targetStationId: stationId } as StaffPrintJob;
       const stationName = stationsRef.current.find((s) => s.stationId === stationId)?.stationName || UNNAMED_PRINT_STATION;
@@ -321,15 +406,18 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
                 : body.grain === 'rack'
                   ? 'Bay labels'
                   : 'Print job';
-      // Documents and FNSKU runs print unit by unit at the station, so they tick back and obey pause / cancel.
-      const reportsProgress = body.grain === 'documents' || body.grain === 'fnsku';
+      // Product labels also report their terminal ledger result; only multi-item
+      // document/FNSKU runs expose pause and cancel controls.
+      const reportsProgress = body.grain === 'documents' || body.grain === 'fnsku' || body.grain === 'qc_label';
+      const controllable = body.grain === 'documents' || body.grain === 'fnsku';
+      const waitsForTerminal = options.waitForTerminal === true;
       const work = beginWork({
         kind: 'print',
         label: `${what} → ${stationName}`,
-        total: body.documents?.items.length ?? body.fnsku?.copies ?? body.location?.segments.length,
+        total: body.documents?.items.length ?? body.fnsku?.copies ?? (body.qcLabel ? 1 : body.location?.segments.length),
         target: stationName,
         ...(body.fnsku ? { detail: body.fnsku.fnsku } : {}),
-        ...(reportsProgress
+        ...(controllable
           ? {
               controls: { pause: true, cancel: true },
               // The station's own item obeys; its next tick confirms (or corrects) what this one shows.
@@ -344,12 +432,21 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
       });
 
       let stopProgress = () => {};
+      let settleTerminal = (_outcome: StationSendOutcome) => {};
+      let terminalSettled = false;
+      const terminal = new Promise<StationSendOutcome>((resolve) => {
+        settleTerminal = (outcome) => {
+          if (terminalSettled) return;
+          terminalSettled = true;
+          resolve(outcome);
+        };
+      });
       if (reportsProgress) {
         const handler = (message: { data?: unknown }) => {
           const progress = parseStaffPrintProgress(message.data);
           if (!progress || progress.request_id !== requestId) return;
           work.progress(progress.done, progress.total);
-          onProgress?.(progress.done, progress.total);
+          options.onProgress?.(progress.done, progress.total);
           const printed = `${progress.done} of ${progress.total} printed at ${stationName}`;
           switch (progress.state) {
             case 'paused':
@@ -358,27 +455,39 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
               break;
             case 'cancelled':
               work.cancelled(`Cancelled · ${printed}`);
+              settleTerminal({ acked: true, completed: false, message: progress.message ?? `Cancelled at ${stationName}.` });
               stopProgress();
               return;
             case 'failed':
               work.fail(progress.message ?? `${stationName} could not print it`);
+              settleTerminal({ acked: true, completed: false, message: progress.message ?? `${stationName} could not print it.` });
               stopProgress();
               return;
             case 'done':
               work.finish(`${progress.message ?? `${progress.total} printed`} at ${stationName}`);
+              settleTerminal({ acked: true, completed: true, message: progress.message });
               stopProgress();
               return;
           }
           if (progress.done >= progress.total) {
             work.finish(`${progress.total} printed at ${stationName}`);
+            settleTerminal({ acked: true, completed: true });
             stopProgress();
           }
         };
-        const timer = window.setTimeout(() => stopProgress(), PROGRESS_LISTEN_MS);
-        // Timed out, unmounted, or refused: the listen ends, so does the header's row (a no-op once settled).
+        const timer = window.setTimeout(() => {
+          if (waitsForTerminal) {
+            const message = `${stationName} accepted the label but did not confirm the print.`;
+            work.fail(message);
+            settleTerminal({ acked: true, completed: false, message });
+          } else {
+            work.finish(`Sent to ${stationName}`);
+          }
+          stopProgress();
+        }, waitsForTerminal ? QC_PROGRESS_LISTEN_MS : PROGRESS_LISTEN_MS);
+        // Timed out, unmounted, refused or settled: release the listener.
         stopProgress = () => {
           window.clearTimeout(timer);
-          work.finish(`Sent to ${stationName}`);
           progressStops.current.delete(stopProgress);
           try {
             channel.unsubscribe(STAFF_PRINT_PROGRESS_EVENT, handler);
@@ -402,14 +511,24 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
           publish: () => channel.publish(STAFF_PRINT_JOB_EVENT, job),
         });
         if (!acked) {
-          work.fail(`${stationName} did not answer`);
+          const message = `${stationName} did not answer. Nothing was printed.`;
+          work.fail(message);
+          settleTerminal({ acked: false, completed: false, message });
           stopProgress();
-        } else if (!reportsProgress) work.finish(`Sent to ${stationName}`);
-        return acked;
-      } catch {
-        work.fail(`Could not reach ${stationName}`);
+          return { acked: false, completed: false, message };
+        }
+        if (!reportsProgress) {
+          work.finish(`Sent to ${stationName}`);
+          return { acked: true };
+        }
+        if (waitsForTerminal) return await terminal;
+        return { acked: true };
+      } catch (failure) {
+        const message = failure instanceof Error ? failure.message : `Could not reach ${stationName}`;
+        work.fail(message);
+        settleTerminal({ acked: false, completed: false, message });
         stopProgress();
-        return false;
+        return { acked: false, completed: false, message };
       }
     },
     [getClient, orgEnabled, orgId],
@@ -423,7 +542,11 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
       items: StationDocumentRef[],
       onProgress?: (done: number, total: number) => void,
     ): Promise<boolean> =>
-      sendStationJob(stationId, { grain: 'documents', role: stock, documents: { stock, batchId, items } }, onProgress),
+      sendStationJob(
+        stationId,
+        { grain: 'documents', role: stock, documents: { stock, batchId, items } },
+        { onProgress },
+      ).then((outcome) => outcome.acked),
     [sendStationJob],
   );
 
@@ -433,19 +556,25 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
         grain: 'fnsku',
         role: 'label',
         fnsku: options?.test ? { fnsku, copies, test: true } : { fnsku, copies },
-      }),
+      }).then((outcome) => outcome.acked),
     [sendStationJob],
   );
 
   const sendQcLabel = useCallback(
-    (stationId: string, unitKey: string): Promise<boolean> =>
-      sendStationJob(stationId, { grain: 'qc_label', role: 'label', qcLabel: { unitKey } }),
+    async (stationId: string, unitKey: string): Promise<string | null> => {
+      const outcome = await sendStationJob(
+        stationId,
+        { grain: 'qc_label', role: 'label', qcLabel: { unitKey } },
+        { waitForTerminal: true },
+      );
+      return outcome.acked && outcome.completed ? null : (outcome.message ?? `${stationId} did not print the label.`);
+    },
     [sendStationJob],
   );
 
   const sendLocationLabels = useCallback(
     (stationId: string, grain: 'bin' | 'rack', location: StaffPrintLocationPayload): Promise<boolean> =>
-      sendStationJob(stationId, { grain, role: 'label', location }),
+      sendStationJob(stationId, { grain, role: 'label', location }).then((outcome) => outcome.acked),
     [sendStationJob],
   );
 
@@ -456,8 +585,12 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     orgAssignment,
     pick,
     setOrgAssignment,
-    canRenameOthers: has('settings.hardware'),
+    canManage: has('settings.hardware'),
     rename,
+    enroll,
+    rePair,
+    setPaused,
+    revoke,
     blockedReason,
     sendDocuments,
     sendFnsku,

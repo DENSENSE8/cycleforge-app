@@ -1,158 +1,214 @@
-# HANDOFF — Paste a list: batch identify in ⌘K and in Find
+# HANDOFF — Paste a list: the list lives IN the search bar
 
-**Paste everything below the rule into a fresh session pointed at
-`/home/michaelgarisek/Projects/cycleforge-lanes/prod`.** Written 2026-09-27.
+Rewritten 2026-10-04 (owner ruling: "the bulk list moves into the search bar").
+Supersedes the 2026-09-27 plan (identify-based list mode in ⌘K and a popover
+under Find) and the interim side chrome (`[›] N` toggle, `[⧉]` paste key +
+textarea box, right-side popout), which are deleted.
 
----
+## The model
 
-You are adding **paste a list** to CycleForge: an operator pastes many
-identifiers at once (order numbers, tracking numbers, serials, SKUs, FNSKUs, one
-per line), and gets one row per line telling them what each one is and where it
-lives. The backend exists and works. It has had no UI since 2026-09-27, when the
-old identify pop-up at the top of the sidebar was replaced by the global ⌘K
-button.
+One search field per chrome — `NavFind` (the sidebar head; the header's field
+while the sidebar is closed). On EVERY face:
 
-It lands in two places, sharing one component:
+- A paste of **2+ identifiers** becomes the HELD list. Ways in:
+  - ⌘V / Ctrl+V in the field;
+  - the well's paste key (shown while the operator looks at the well);
+  - a typed `A, B, C` + ↵;
+  - **⌘⇧V / Ctrl+Shift+V** (`PASTE_LIST_HOTKEY`, `src/lib/keyboard/key-registry.ts`)
+    from anywhere outside a text field. It reads the clipboard: 2+ ids become the
+    list; otherwise (or when the read is blocked) the field takes focus with its
+    panel open on the held list, or on a line that says to press ⌘V.
+    Clipboard history moved to ⌘⌥V / Ctrl+Alt+V (`CLIPBOARD_HISTORY_HOTKEY`).
+    Bare `B` is retired: record verbs own `B`.
+- **One identifier** keeps today's behaviour: the page's Find text, or the
+  palette's query on the everywhere face.
+- Where the list is kept:
+  - a page that locates (`NavSearch.locate`: Receiving's `incoming.*`, the
+    outbound desk pages via `OUTBOUND_LOCATE`) keeps it in its URL
+    (`useNavBulkList` → `?ref_in=` / `?recon=` / `?recon_reason=`; outbound
+    `?refs=`), so the page body's `PastedNumbersLedger` / `IncomingStatusChips`
+    agree with the bar;
+  - every other face holds it in memory, located everywhere
+    (`useLocalBulkList('everywhere')`).
+- The list shows as **one token inside the well** (`40 numbers ×`,
+  `FindToken`). The field's text then finds within the list ("Find in the
+  pasted list"). The field's × and ⌘⇧F clear the text and the list together.
+- The rows live in the **well's own dropdown** (`FindField` `drop` →
+  `FindPanel`, portaled to `<body>` through `AnchoredLayer` at the
+  `panelPopover` band — never inside the sidebar column, whose stacking
+  context clipped it under the page; at least 28rem wide, flips and clamps to
+  the viewport, max-height with internal scroll):
+  - a count + sort line;
+  - status chips with counts (`AnimatedStat`);
+  - one row per number (verdict chip · number · detail · title · link chips),
+    with the verbs pinpoint ↵ · edit E · copy ⌘C · remove ⌫ · recheck R · sort O / S.
+- The panel opens on focus from outside, ↓, the token, or the chord. ↓ again
+  walks into the rows (↑↓ j/k · Home/End · ↵). ↑ past the first row returns to
+  the field. Esc or blur closes it.
+- **Hover key card.** With the mouse on the well for 180ms
+  (`HINT_INTENT_MS`), a `KeyHintPopover enter="drop"` hangs under the well,
+  left-aligned, hotkey first:
+  - `[F]` + the page's Find (only where `F` is armed);
+  - `[mod][K]` Search everywhere;
+  - `[mod][Shift][V]` Paste a list — check each number, with the held count.
 
-1. **⌘K palette** (`src/components/CommandBar.tsx`): global, any page.
-2. **Find** in the contextual sidebar (`src/components/sidebar/contextual/NavFind.tsx`):
-   the `F` field under the global search, scoped to the page you are on.
+  It is the field's only hint: the field carries no key tooltips. It hides while
+  the field has focus or its panel is open. A taught key pressed while the card
+  is up sinks its cap for one beat (`PRESS_BEAT_MS`), then the card leaves.
 
-## Read first
+Every row, chip and count comes from ONE locator answer (`useLocatedList` →
+`GET /api/nav/locate`). There is no second lookup, and no per-locator case in
+the UI.
 
-1. `AGENTS.md`: probe only `http://localhost:3050`, lane unit `cycleforge-lane@prod`,
-   `pnpm verify:fast` before done.
-2. `src/lib/identify/schema.ts`: the contract (below).
-3. `src/app/api/identify/route.ts`: `POST` body `{ q, context? }`; `GET ?q=&context=&limit=`
-   is the same call for probes.
-4. Design laws: `node tools/design-mcp/ds.mjs contract "find hotkey search result row"`,
-   then read `src/design-system/pinned.json` → `NavFind`, `KeyboardKey` (HOTKEY
-   FIRST: glyph → keycap → text), `SearchResultRow` (the one result row: do not fork it).
-5. Another session is editing the data table (`src/components/outbound/**`,
-   `src/components/unshipped/**`, `src/components/tables/**`). Do not touch those.
+Chips filter and STAY pressed for every bucket — the locator's own ids
+(Awaiting tracking included) and other sections' `<locator>:<id>` buckets
+(found elsewhere, after a hairline): route hygiene for `?recon=` / `?located=`
+reads `paramLocateBucket` (`src/lib/routing/locate-bucket-param.ts`, test
+pinned). It used to keep only received / not_received / exceptions, so any
+other chip snapped back to All.
 
-## The contract (exists, do not change it)
+## Full list page — `/search/list`
 
-`POST /api/identify` `{ q: string, context?: '<pageId>' | '<pageId>.<viewId>' }`:
+The held list's own page (owner 2026-10-04: a full-screen view to go into and
+read everything). It is a route, not a layer:
 
-- `q`: one identifier per line. Limits: `IDENTIFY_MAX_LINES` 50,
-  `IDENTIFY_MAX_LINE_CHARS` 256, `IDENTIFY_MAX_INPUT_CHARS` 20 000. Past 50 lines the
-  response sets `truncated: true`.
-- `context`: ranks the caller's scope first, and sets `inContext` on candidates.
-  Shipping contexts: `outbound.exceptions`, `outbound.po`, `outbound.pick`,
-  `outbound.triage` (To ship), `outbound.shipped`.
-- Response (`IdentifyResponseSchema`):
-  - `mode`: `'batch'` when there is more than one line.
-  - `lines[]`: one per input line:
-    - `input`
-    - `mode`: `single` (one exact unique hit: open it) · `list` · `none`
-    - `tokens`, `filters.brands`, `filters.conditions`
-    - `candidates[]`: each has `kind`, `entityId`, `title`, `subtitle?`,
-      `brand?`, `matchedOn {field, token}`, `href` (opens the record in its page
-      and view), `actions[]`, `stage` (`exception | picking | to_ship | shipped |
-      receiving | null`), `inContext`.
-  - `truncated`
-- Click telemetry: `POST /api/search/opened` `{ query, entityType, entityId }`,
-  fire-and-forget (`keepalive`). Every identify call is already logged server-side.
+- **Ways in:** the full-screen icon button at the TOP-LEFT of the list's
+  header (the bar's panel and the ⌘K palette's list alike; tooltip "Open full
+  screen", no key — ⌘⇧L is the browser's address bar, so there is no chord),
+  or ↵ on the token. The URL is built by the route tree's
+  `pastedListHref({ refs, locator, status, back })` (node `pasted-list`).
+- **Way out:** Esc or Back returns to `back`, with that page's list intact.
+- **Data:** the bar's own locate answer (same `useBulkList` /
+  `useLocatedList` key, so opening the page asks nothing new). Every fact
+  rides that answer as `entry.facts` (`NavLocateFacts`, one shape for both
+  sections — PastedFacts, 2026-10-04); the page makes no second read.
+- **Status words:** one per number — "Received", never "Receiving ·
+  Received". Bucket ids keep the section (`inbound:received`); labels are
+  bare (service.ts `mergeLocated`). A section heading appears in the chip
+  row only when two sections share a status word. Not found is a chip and a
+  filter (`NAV_LOCATE_NOWHERE`). A number in two buckets is painted with ONE
+  — `primaryBucketId` (`src/lib/nav/locate/bucket-precedence.ts`: inbound
+  exceptions › awaiting tracking › not received › received; outbound
+  exceptions, then the desk's view order) — on every surface and in the CSV;
+  chips keep membership, so it still counts under both.
+- **Layout (Google-Sheets feel):** Back is the first element of the title
+  line (`titleLead`). The status chips open the page body top-left; sort
+  chips · Copy shown · Export (CSV of exactly the columns and rows on screen)
+  · Recheck all · zoom − / % / + on the right. No find field in the page —
+  its Find is the sidebar field (`NAV_PAGE_DECLS.search`, desk store).
+- **Table (canonical DataTable, display method HIGH):** # · Number (frozen,
+  ×N when the paste carried it N times, hover icon opens the record) · Status
+  · Product title · PO · Vendor · Delivered (date + time) · Unboxed (date +
+  time + `StaffCell`) · Units (received/expected, green once unboxed, muted
+  otherwise, 2px fill underline) · Detail ("Nd since delivered" leads a
+  delivered-not-unboxed row: amber ≥2, red ≥5); SKU · Tracking · Ship by ·
+  Shipped · Packer mount when a number in the list carries them. Every row
+  shows (`unpaged`, virtualized). Sheet density (4px side pad scaled by zoom,
+  hairline column rules via `[data-grid-col-rules]`, one line + full text on
+  hover); both-ways scroll under a sticky header; drag a header edge to
+  resize, double-click it to fit, pin a header to freeze through it, zoom
+  80–150% — all persisted by `useSheetColumns` (`localStorage`).
+- **Pressing a cell copies it** (toast "Copied <value>", a fading wash). The
+  record opens from the Number cell's hover icon, or Enter / O.
+- **Opening a record = its triage card's open**, on every surface (bar panel,
+  ⌘K palette list, this page): `recordHref` comes from `recordDetailsHref`
+  (`src/lib/records/record-details.ts`) — an order opens on
+  `/shipping/orders?openOrderId=` (Fulfilled when it left), a receiving number
+  on `/incoming?ref_in=<number>&openLine=<line>`. On that desk with its list on
+  screen it opens in place; from anywhere else it navigates with
+  `recordBack`, and closing the record (Esc) returns to the sheet — same URL,
+  same scroll. The cards write through the same `setRecordDetailsParam`.
 
-Client fetchers: the two used to live in `src/lib/nav/context/http-client.ts` and were
-deleted with the old pop-up. Re-add them there:
-- `identify(q, { context, signal })`: POST, parse with `IdentifyResponseSchema`,
-  throw `NavHttpError` when not ok.
-- `logSearchOpened({ query, entityType, entityId })`: POST, `keepalive`, swallow errors.
+## Recent lists
 
-## One component: `PasteListResults`
+Every paste through `useBulkList.paste` is recorded
+(`src/lib/nav/locate/recent-lists.ts`: the last 10 per staff key, deduped,
+newest first, `localStorage`). The bar's dropdown lists them when the field
+is focused holding no list (they step aside once text is typed), and as a
+3-row section under a held list's header (`NavRecentLists`). A press restores
+the list through the same paste path and opens its panel; each row also opens
+full screen or is removed; "Clear recent" empties them.
 
-New file `src/components/search/PasteListResults.tsx`. It takes `{ text, context?,
-onOpen(line, candidate) }` and runs `identify` through react-query:
-- key `['identify', context ?? null, text]`
-- debounce 200 ms
-- `staleTime` 10 s
+## Search bar hover + ⌘K palette
 
-Behaviour:
+- **Hover grow:** the page field and the everywhere face grow to max(slot,
+  28rem) on 180ms mouse intent, focus or an open list (`useHoverIntent` +
+  `findWellGrowClass`, ease-in-out 300ms in / 200ms out). The well carries
+  `[data-find-expanded]`.
+- **Header recede:** GlobalHeader's children (except the one holding the
+  field) fade to 60%, scale .985, blur 5px while any well is expanded — a DOM
+  attribute, no import. It stays while the field is focused or its panel is
+  open (no flicker under a typing operator).
+- **Palette list:** a 2+ paste into the ⌘K input holds ONE list
+  (`useLocalBulkList('everywhere')`) and swaps the results for the same
+  `NavBulkPanel` — the two faces crossfade while their heights fold/unfold
+  through `CollapseItem` on the `findListPanel*` timing. The full-screen
+  button closes the palette and opens `/search/list` with `back` = the page
+  underneath.
 
-- **Header row.** "`N` lines · `M` found · `K` not found", plus a **Copy results** button.
-  Copy puts TSV on the clipboard: input, kind, title, stage, absolute URL.
-- **One block per input line:**
-  - The input in mono, faint.
-  - Then the candidates as `SearchResultRow density="dropdown"`. A `single` line
-    shows its one hit lit; a `list` line shows ranked hits, with `inContext` first
-    and an "In this view" chip; a `none` line shows "Not found" in amber.
-  - A stage chip per candidate from `stage`, reusing the view glyphs in
-    `src/components/sidebar/contextual/nav-view-icons.ts`: exception → AlertTriangle,
-    picking → PackageSearch, to_ship → Truck, shipped → PackageCheck.
-- **Keyboard:** ↑/↓ moves across all candidates of all lines, Enter opens,
-  ⌘/Ctrl+Enter opens in a new tab, Esc closes.
-- **Truncated:** show "Only the first 50 lines were checked" when `truncated`.
-- **Open:** `logSearchOpened`, then `router.push(candidate.href)`.
+## Files
 
-## ⌘K: where it plugs in
+| Piece | File |
+|---|---|
+| List hooks (lib-level, shared with mobile) | `src/lib/nav/locate/use-bulk-list.ts` (`useLocatedList`, `useBulkList`, `useLocalBulkList`, `BulkList`, `BulkEntry`) |
+| Staff query key | `src/lib/nav/context/use-nav-staff-key.ts` |
+| URL list, chords, token, panel content | `src/components/sidebar/contextual/NavBulkList.tsx` |
+| Shared filter / sort / row buckets / verbs | `src/components/sidebar/contextual/bulk-list-view.ts` |
+| Status + sort chips (bar and page) | `src/components/sidebar/contextual/NavBulkChips.tsx` |
+| Panel body (full-screen button top-left, count line, keys) | `src/components/sidebar/contextual/NavBulkPanel.tsx` |
+| One row (verdict cell, verbs) | `src/components/sidebar/contextual/NavBulkRow.tsx` |
+| Faces, focus rules | `src/components/sidebar/contextual/NavFind.tsx` (`useSearchFace`) |
+| Full list page | `src/app/search/list/page.tsx`, `src/components/search/pasted-list/*` |
+| Sheet column layout (resize · fit · freeze, persisted) | `src/components/tables/useSheetColumns.ts` + `LedgerGridColumnHeader` (`onFreezeColumn`, double-click fit) |
+| ⌘K palette list | `src/components/CommandBar.tsx` |
+| Header recede | `src/components/layout/GlobalHeader.tsx` (`RECEDE_WHILE_FINDING`) |
+| Bucket filter URL hygiene | `src/lib/routing/locate-bucket-param.ts` |
+| Hover key card rows + intent/beat | `src/components/sidebar/contextual/find-key-card.ts` (`useFindKeyCard`, `findKeyRows`) |
+| Well, token, panel shell | `src/design-system/components/FindField.tsx` (`FindToken`, `FindLead`, `FindPanel`, `HINT_INTENT_MS`) |
+| Key card | `src/components/sidebar/contextual/NavGoKeys.tsx` (`KeyHintPopover enter="drop"`, `KeyHintRow.count`) |
+| Motion presets | `src/design-system/foundations/motion-presets.ts` (`findKey*`, `findList*`, `motionBezier.easeInOutCubic`) |
 
-`CommandBar.tsx` uses cmdk `CommandInput` (`onValueChange={setQuery}`), which is a
-single-line `<input>`. **A pasted list loses its newlines** in an `<input>`, so:
+## Motion
 
-- Add an `onPaste` handler on `CommandInput`. If
-  `event.clipboardData.getData('text')` contains a newline and has at least 2
-  non-empty lines, `preventDefault()`, keep the full text in new state
-  `pastedList`, and switch the palette into **list mode**.
-- **List mode:**
-  - The input shows a chip "`N` lines pasted ×", where × clears it.
-  - `CommandList` renders `<PasteListResults text={pastedList} context={currentContext} />`
-    in place of the normal groups.
-  - `currentContext` comes from the page's `NavContext`
-    (`useNavContext(useCurrentNavPath())` in
-    `src/components/sidebar/contextual/useNavContext.ts`): use
-    `${page.id}.${activeItem.id}` when a view is lit, else `page.id`.
-- **Single-line paste and typing** behave as today (`/api/global-search`); do not
-  change that path.
-- **Discoverability:** add a static palette row "Paste a list… `⌘V`" in the empty
-  state. It focuses the input and shows the hint "one per line".
-- Mind cmdk's own filtering: render the list-mode results outside cmdk's filter
-  (`shouldFilter={false}` on the dialog while in list mode) so every line shows.
+All motion uses ease-in-out tweens (`easeInOutCubic` `[0.65, 0, 0.35, 1]`),
+with no spring and no overshoot. Only transform, opacity and filter animate,
+plus `height: auto` on the one panel. Blur stays ≤ 8px. Reduced motion keeps
+plain fades through `useMotionPresence` / `useMotionTransition`.
 
-## Find: where it plugs in
-
-`NavFind.tsx` `FindWell` is a plain `<input type="search">` that narrows the
-on-screen list through the desk store (`useDeskSearch(pathname)`).
-
-- Add an `onPaste` handler with the same multi-line rule. On a multi-line paste,
-  do **not** write the text into the desk store (a 30-line string would empty the
-  list). Instead open a **popover anchored under the Find well**. Use the existing
-  `Popover` primitive from `@/design-system/primitives`, which the old pop-up used,
-  placement `bottom-start` and width about `22rem`. Inside it, render
-  `<PasteListResults text={pasted} context={`outbound.<viewId>`} />`.
-- The well shows a chip "`N` lines" with ×; Esc or × closes the popover and
-  restores the well.
-- A single-line paste stays today's behaviour (it filters the list).
+| Moment | Preset | Timing |
+|---|---|---|
+| Key card in / out | `findKeyCard` + `findKeyCardIn` / `findKeyCardOut` | blur 8px→0, y −8→0, scale .985→1 · 0.30s in / 0.18s out |
+| Key card rows | `findKeyRow` | blur 3px, y 4→0 · 0.26s, 40ms stagger, each row one unit |
+| Token in the well | `findListToken` | blur 6px, scale .96→1 · 0.24s |
+| Panel height | `CollapseItem timing` = `findListPanelOpen` / `findListPanelClose` | 0.32s open / 0.20s close |
+| Palette results ⇄ list | `CollapseItem timing` = `findListPanelOpen` / `findListPanelClose` | crossfade + height fold/unfold, same timing |
+| Well hover grow | `findWellGrowClass` (CSS, `ease-[cubic-bezier(0.65,0,0.35,1)]`) | width · 300ms in / 200ms out |
+| Header recede | `RECEDE_WHILE_FINDING` (CSS) | opacity .6, scale .985, blur 5px · 300ms in / 200ms out |
+| Rows cascade | `findListRow` | blur 2px, y 4→0 · 0.24s, 30ms stagger, capped at 14 rows |
+| Pending row breath | `findListPending` | opacity 1 ↔ .45 mirror loop, 0.9s half-cycle |
+| Pending → verdict | `findListVerdict` | 0.22s crossfade in one grid cell |
+| Chip pill glide · filter reflow | `findListGlide` | 0.28s `layoutId` pill · `popLayout` + `layout` |
 
 ## Do not
 
-- Do not add a third search surface: only ⌘K and Find get list mode.
-- Do not fork `SearchResultRow`.
-- Do not write pasted multi-line text into the desk store or any URL param.
-- Do not change the identify contract. If a field is missing, add it to
-  `src/lib/identify/schema.ts` with an `identify.test.ts` case.
+- Do not hang anything right of the field. That means no toggle, no paste key
+  and no popout.
+- Do not teach F / ⌘K / ⌘⇧V anywhere but the key card. The `?` sheet lists them
+  too.
+- Do not fire the chord inside a text field. Do not fire it from a field that is
+  not on screen: two NavFinds can mount, so it is hit-tested.
+- Do not use Motion+ `AnimateText`. Hints read in one fixation.
 
-## Acceptance (run all, report evidence)
+## Acceptance (2026-10-04, `:3050`)
 
-1. **Global list mode.** On `:3050`, press ⌘K and paste 5 lines: a real order
-   number, a real tracking number (take one from `/shipping/shipped`), a SKU, a
-   serial, and `ZZZ-NOT-REAL`. You get 5 blocks, the last one "Not found", and the
-   header reads `5 lines · 4 found · 1 not found`. Enter on a hit opens its `href`,
-   and a `POST /api/search/opened` fires (check the request log).
-2. **Find list mode.** Paste the same 5 lines into Find (press `F` first) on
-   `/shipping/orders`. The popover opens, the list is **not** emptied, and hits in
-   the To ship view carry "In this view" and sort first.
-3. **Single-line unchanged.** One tracking number typed into ⌘K still uses
-   `/api/global-search` exactly as before; one order number typed into Find still
-   filters the list.
-4. **Limit.** Paste 60 lines: the "Only the first 50 lines were checked" note
-   shows.
-5. **Copy results.** It yields TSV with 5 rows.
-6. **Checks.** `npx tsc --noEmit -p . ; echo exit=$?`, `pnpm verify:fast`, a
-   screenshot of each surface, and `node tools/design-mcp/ds.mjs contract "paste a
-   list"` returns the law you add.
-7. **Pin the law.** Add a `PasteListResults` entry to `src/design-system/pinned.json`:
-   `useWhen` "paste a list, batch identify, many order numbers, bulk lookup";
-   `doNot` covers no third surface and no desk-store writes; `law` names the two
-   mount points and the `onPaste` rule. Validate the JSON.
+1. Hover the search on `/incoming`, `/shipping/orders` and `/settings` (no
+   list): the card drops and its rows cascade. There is no `[F]` row on the
+   everywhere face.
+2. Paste 3 PO / tracking numbers into Find. The token appears in the well and
+   the list in the dropdown, with chips and counts. Nothing renders right of the
+   field.
+3. Press ⌘⇧V outside a field with a list on the clipboard: the result is the
+   same as 2. ⌘⌥V opens Clipboard history.
+4. With the sidebar collapsed, the header field behaves the same, and only one
+   panel appears.
+5. On `/incoming`, the page-body PastedNumbersLedger still follows `?ref_in=`.

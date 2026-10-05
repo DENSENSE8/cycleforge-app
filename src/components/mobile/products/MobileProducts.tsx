@@ -3,14 +3,13 @@
 /** `/m/products` — phone-first catalog lookup for pack standards and parcel facts. */
 
 import { useCallback, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Package } from '@/components/Icons';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
+import { MobileDataListRow } from '@/design-system/components/MobileDataListRow';
 import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';
 
 export function MobileProducts() {
-  const router = useRouter();
   const [query, setQuery] = useState('');
   const catalog = useSkuCatalogSearch(query, {
     limit: 50,
@@ -55,11 +54,12 @@ export function MobileProducts() {
               .find(Boolean);
             return (
               <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/m/products/${encodeURIComponent(item.sku)}`)}
-                  className="ds-raw-button flex min-h-16 w-full items-center gap-3 px-mode-page py-2 text-left active:bg-mode-ink active:text-mode-panel"
-                  aria-label={`Open ${item.product_title || item.sku}`}
+                {/* The house row: press washes surface-selected, never an ink (black) inversion. */}
+                <MobileDataListRow
+                  href={`/m/products/${encodeURIComponent(item.sku)}`}
+                  ariaLabel={`Open ${item.product_title || item.sku}`}
+                  className="flex min-h-16 items-center gap-3 px-mode-page py-2 text-left"
+                  testId="mobile-product-row"
                 >
                   <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden bg-surface-sunken ring-1 ring-inset ring-mode-rule">
                     {item.image_url ? (
@@ -77,7 +77,7 @@ export function MobileProducts() {
                       SKU {item.sku}{itemNumber ? ` · Item # ${itemNumber}` : ''}
                     </span>
                   </span>
-                </button>
+                </MobileDataListRow>
               </li>
             );
           })}

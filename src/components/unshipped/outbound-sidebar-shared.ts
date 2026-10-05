@@ -25,7 +25,7 @@ const UNSHIPPED_VIEW_PARAMS = [
   'dir',
   // The shared triage exclusion cut (`?hide=`) — saved views keep hidden statuses.
   'hide',
-  // The triage face's status chips (`outbound.triage`, `?cardStatus=`) — a saved view keeps the cut.
+  // Allocate's status chips (`outbound.orders`, `?cardStatus=`) — a saved view keeps the cut.
   'cardStatus',
 ] as const;
 

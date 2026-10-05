@@ -2,6 +2,7 @@
 
 import { inventoryLocationsHref, LOCATIONS_BAY_CODE_RE } from '@/lib/inventory/locations-path';
 import { scannedFnsku } from '@/lib/scan-resolver';
+import { supportHref } from '@/lib/nav/route-tree';
 import {
   detectCarrierFromTracking,
   toDisplayCarrier,
@@ -16,7 +17,7 @@ export type ScanType =
   | 'serial-unit'      // U-class — one physical unit
   | 'handling-unit'    // H-class — a license-plated box/tray (LPN)
   | 'manifest'         // KIT-class — a preboxed kit master label (label_manifests)
-  | 'support-ticket'   // T-class — provider ticket id → /support?ticket=
+  | 'support-ticket'   // T-class — provider ticket id → Tasks › Support Find
   | 'carrier-tracking'
   | 'sscc'
   | 'bin-paired-order'
@@ -73,14 +74,132 @@ const SSCC_PARENS_RE = /^\(00\)(\d{18})$/;
 const SSCC_FNC1_RE = /^\x1D00(\d{18})$/;
 const SSCC_BARE_RE = /^(\d{18})$/;
 
+/** The single-label shapes the fixed-length arm has always taken, routed with `detectCarrierFromTracking`. */
 const CARRIER_TRACKING_SHAPES: ReadonlyArray<RegExp> = [
-  /^1Z[A-Z0-9]{16}$/,
   /^\d{10}$/,
   /^\d{12}$/,
   /^\d{15}$/,
   /^\d{20}$/,
   /^\d{22}$/,
 ];
+
+/**
+ * Marketplace order numbers — eBay `NN-NNNNN-NNNNN`, Amazon `NNN-NNNNNNN-NNNNNNN`,
+ * and Amazon's 17-digit form with the dashes dropped (`11[1-4]…`). They are
+ * printed on pack slips next to the carrier label and are never tracking —
+ * stripped of dashes an eBay order number is 12 digits and used to route as
+ * FedEx.
+ */
+const MARKETPLACE_ORDER_NUMBER_RE = /^(?:\d{2}-\d{5}-\d{5}|\d{3}-\d{7}-\d{7}|11[1-4]\d{14})$/;
+
+export function isMarketplaceOrderNumber(raw: string): boolean {
+  return MARKETPLACE_ORDER_NUMBER_RE.test(String(raw ?? '').trim());
+}
+
+/**
+ * FedEx 2D (PDF417 / MaxiCode) payload — `[)>01…` or the bare `0102…` read: the
+ * 12-digit tracking sits immediately before the `FDEG` service field. Some
+ * wedges render each GS separator as the literal digits `029`.
+ */
+const FEDEX_2D_TRACKING_RE = /(\d{12})\x1D?FDEG/i;
+const FEDEX_2D_RENDERED_GS_RE = /029840029/;
+const FEDEX_2D_RENDERED_TRACKING_RE = /(\d{12})029FDEG/i;
+
+/**
+ * USPS AI 420 routing envelope: `420` + ZIP5 or ZIP9, an optional separator
+ * (GS, `]` as some wedges show GS, or the literal `029`), then the IMpb
+ * (`9` + 20/21/22/26 digits total).
+ */
+const USPS_420_ENVELOPE_RE = /^420(?:\d{5}|\d{9})(?:\x1D|\]|029)?(9(?:\d{19}|\d{20}|\d{21}|\d{25}))$/;
+/** USPS IMpb lengths the fixed 20/22 shapes do not take — 21 and 26 digits. */
+const USPS_IMPB_21_26_RE = /^9[1-5](?:\d{19}|\d{24})$/;
+/** UPS — `1Z` + alphanumerics, including the short / mistyped reads. */
+const UPS_1Z_RE = /^1Z[A-Z0-9]{6,}$/;
+/** Two UPS labels read as one: the first 18-character `1Z` number, then another `1Z`. */
+const UPS_1Z_GLUED_RE = /^(1Z[A-Z0-9]{16})1Z[A-Z0-9]+$/;
+const AMAZON_TBA_RE = /^TBA\d{10,13}$/;
+/** UPU S10 international postal item — `LM221449617CA`. */
+const UPU_S10_RE = /^[A-Z]{2}\d{9}[A-Z]{2}$/;
+
+/** Regional / 3PL shapes seen at the door (Phase 0 scan corpus). */
+const REGIONAL_TRACKING_SHAPES: ReadonlyArray<{ re: RegExp; carrier: DisplayCarrier }> = [
+  { re: /^(?:UUSC?|USC)[A-Z0-9]{10,}$/, carrier: 'Unknown' }, // UniUni
+  { re: /^YT\d{16}$/, carrier: 'Unknown' },                   // YunExpress
+  { re: /^GFUS\d{10,}$/, carrier: 'Unknown' },                // GoFo
+  { re: /^JJD\d{18}$/, carrier: 'Unknown' },                  // J&T
+  { re: /^SWX\d{10,}$/, carrier: 'Unknown' },                 // SpeedX
+  { re: /^ALS\d{10,}$/, carrier: 'Unknown' },
+  { re: /^BBY01\d{12}$/, carrier: 'Unknown' },
+  { re: /^E[MSX]\d{13}[A-Z0-9]{13}$/, carrier: 'Unknown' },   // Cainiao-style
+  { re: /^D\d{14}$/, carrier: 'OnTrac' },
+];
+
+/** FedEx 34-digit barcode, any prefix — the tracking is the last 12 digits. */
+const FEDEX_34_RE = /^\d{34}$/;
+
+/**
+ * Glued double scan — the first known envelope at the head of a longer digit
+ * run. `(?=\d)` keeps these to runs that continue past the envelope.
+ */
+const GLUED_USPS_420_RE = /^420(?:\d{5}|\d{9})(?:029)?(9\d{21})(?=\d)/;
+const GLUED_USPS_IMPB_RE = /^(9[1-5]\d{20})(?=9[1-5]\d{20}|420)/;
+const GLUED_FEDEX_34_RE = /^(96\d{32})(?=\d)/;
+
+/** A bare GS1 GTIN element string (`01` + GTIN-14) — a product label, not tracking. */
+const GS1_GTIN_ELEMENT_RE = /^01\d{14}$/;
+
+type CarrierTrackingHit = { tracking: string; carrier: DisplayCarrier };
+
+function fedex2dTracking(line: string): string | null {
+  if (!/FDEG/i.test(line)) return null;
+  const re = FEDEX_2D_RENDERED_GS_RE.test(line) ? FEDEX_2D_RENDERED_TRACKING_RE : FEDEX_2D_TRACKING_RE;
+  return re.exec(line)?.[1] ?? null;
+}
+
+/** One line of a scan → the carrier tracking it carries, unwrapped, or null. */
+function carrierTrackingInLine(line: string): CarrierTrackingHit | null {
+  if (MARKETPLACE_ORDER_NUMBER_RE.test(line)) return null;
+
+  const fedex2d = fedex2dTracking(line);
+  if (fedex2d) return { tracking: fedex2d, carrier: 'FedEx' };
+
+  const v = normalizeForeignLabel(line);
+  if (!v) return null;
+
+  const usps = USPS_420_ENVELOPE_RE.exec(v);
+  if (usps) return { tracking: usps[1], carrier: 'USPS' };
+
+  const upsGlued = UPS_1Z_GLUED_RE.exec(v);
+  if (upsGlued) return { tracking: upsGlued[1], carrier: 'UPS' };
+  if (UPS_1Z_RE.test(v)) return { tracking: v, carrier: 'UPS' };
+
+  if (AMAZON_TBA_RE.test(v)) return { tracking: v, carrier: 'Amazon' };
+  if (UPU_S10_RE.test(v)) {
+    return { tracking: v, carrier: toDisplayCarrier(detectCarrierFromTracking(v)) };
+  }
+  const regional = REGIONAL_TRACKING_SHAPES.find((shape) => shape.re.test(v));
+  if (regional) return { tracking: v, carrier: regional.carrier };
+
+  if (!/^\d+$/.test(v)) return null;
+
+  if (CARRIER_TRACKING_SHAPES.some((re) => re.test(v))) {
+    return { tracking: v, carrier: toDisplayCarrier(detectCarrierFromTracking(v)) };
+  }
+  if (USPS_IMPB_21_26_RE.test(v)) return { tracking: v, carrier: 'USPS' };
+  if (FEDEX_34_RE.test(v)) return { tracking: v.slice(-12), carrier: 'FedEx' };
+
+  const gluedUsps = GLUED_USPS_420_RE.exec(v) ?? GLUED_USPS_IMPB_RE.exec(v);
+  if (gluedUsps) return { tracking: gluedUsps[1], carrier: 'USPS' };
+  const gluedFedex = GLUED_FEDEX_34_RE.exec(v);
+  if (gluedFedex) return { tracking: gluedFedex[1].slice(-12), carrier: 'FedEx' };
+
+  // Any other long digit run (truncated / unknown envelope) is still a carrier
+  // read — the server's last-8 resolver decides. 18 digits is an SSCC.
+  if (v.length >= 16 && v.length !== 18 && !GS1_GTIN_ELEMENT_RE.test(v)) {
+    return { tracking: v, carrier: toDisplayCarrier(detectCarrierFromTracking(v)) };
+  }
+  return null;
+}
 
 export function scannedSscc(raw: string): string | null {
   const v = normalizeForeignLabel(String(raw ?? '').trim());
@@ -89,13 +208,20 @@ export function scannedSscc(raw: string): string | null {
   return m ? m[1] : null;
 }
 
-export function scannedCarrierTracking(
-  raw: string,
-): { tracking: string; carrier: DisplayCarrier } | null {
-  const v = normalizeForeignLabel(String(raw ?? '').trim());
-  if (!v) return null;
-  if (!CARRIER_TRACKING_SHAPES.some((re) => re.test(v))) return null;
-  return { tracking: v, carrier: toDisplayCarrier(detectCarrierFromTracking(v)) };
+/**
+ * The carrier tracking a scan carries, unwrapped from its envelope (USPS 420 +
+ * ZIP, FedEx 34 / 2D, glued double scans). A multi-line read (pack slip) takes
+ * the first line that is a tracking number.
+ */
+export function scannedCarrierTracking(raw: string): CarrierTrackingHit | null {
+  const text = String(raw ?? '').trim();
+  if (!text) return null;
+  const lines = text.split(/\r\n|\r|\n/).map((line) => line.trim()).filter(Boolean);
+  for (const line of lines) {
+    const hit = carrierTrackingInLine(line);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 function pathToRoute(path: string, value: string): ScanRoute | null {
@@ -214,8 +340,10 @@ export function routeScan(raw: string): ScanRoute | null {
     const [, gtin, serial] = unitParens;
     return { type: 'serial-unit', value, redirect: `/01/${gtin}/21/${encodeURIComponent(serial)}` };
   }
+  //     The element string starts at its `01` AI: an `01` in the middle of a
+  //     longer digit run (a USPS 420 envelope) is not one.
   const unitFnc1 = GS1_AI_UNIT_FNC1_RE.exec(value);
-  if (unitFnc1) {
+  if (unitFnc1 && !/\d$/.test(value.slice(0, unitFnc1.index))) {
     const [, gtin, serial] = unitFnc1;
     return { type: 'serial-unit', value, redirect: `/01/${gtin}/21/${encodeURIComponent(serial)}` };
   }
@@ -242,7 +370,7 @@ export function routeScan(raw: string): ScanRoute | null {
     return {
       type: 'support-ticket',
       value,
-      redirect: `/support?ticket=${ticketShort[1]}`,
+      redirect: supportHref({ q: ticketShort[1] }),
     };
   }
 
@@ -290,15 +418,18 @@ export function routeScan(raw: string): ScanRoute | null {
   const rack = canonicalRackCode(value);
   if (rack) return { type: 'bin', value: rack, redirect: `/inventory?bin=${rack}` };
 
-  // 6. Bin (legacy fallback): starts with a letter.
-  if (/^[A-Za-z]/.test(value)) return { type: 'bin', value };
-
+  // 5d. Foreign labels — an SSCC, then a carrier tracking number (unwrapped
+  //     from its envelope). Above step 6 so a letter-led tracking (`TBA…`,
+  //     UPU S10, regional) is not swallowed as a bin.
   const sscc = scannedSscc(value);
   if (sscc) return { type: 'sscc', value: sscc };
   const tracking = scannedCarrierTracking(value);
   if (tracking) {
     return { type: 'carrier-tracking', value: tracking.tracking, carrier: tracking.carrier };
   }
+
+  // 6. Bin (legacy fallback): starts with a letter.
+  if (/^[A-Za-z]/.test(value)) return { type: 'bin', value };
 
   // 7. Default fallback → SKU.
   return { type: 'sku', value };
@@ -359,6 +490,18 @@ function scannedLocationCode(raw: string): string | null {
 /** Unwrap a value typed or scanned into a **bin / location** field. */
 export function unwrapScannedLocation(raw: string): string {
   return scannedLocationCode(raw) ?? String(raw ?? '').trim();
+}
+
+/**
+ * One label, every spelling: dashed `A-01-01-1-01` and flat `A0101101`
+ * compare equal; a rack code in any spelling (`rk0012-03`, GS1) is `RK12-3`.
+ */
+export function normalizeShelfCode(raw: string): string {
+  const upper = unwrapScannedLocation(raw).trim().toUpperCase();
+  const rack = canonicalRackCode(upper);
+  if (rack) return rack;
+  const segments = parseLocationCodeFlat(upper.replace(/-/g, ''));
+  return segments ? locationCodeFlat(segments) : upper;
 }
 
 /** The route ONLY when the value genuinely DECODED — never when it was guessed. */

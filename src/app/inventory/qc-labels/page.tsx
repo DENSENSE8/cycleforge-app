@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function InventoryQcLabelsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; view?: string }>;
+  searchParams: Promise<{ q?: string; view?: string; task?: 'prepack' }>;
 }) {
   const user = await requirePermission('sku_stock.view');
   const { q, view } = await searchParams;

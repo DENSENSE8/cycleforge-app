@@ -77,7 +77,6 @@ const NON_STATION_COLUMN_SURFACES = [
 /** Files that mount `<StationTerminalDock` with a HAND-BUILT `TerminalActionVm` (not `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY`). */
 const TERMINAL_HAND_VM_ALLOWLIST = [
   'features/review/packer/PackerReviewMode.tsx',
-  'components/support/service-workspace/SupportTicketFocus.tsx',
 ] as const;
 
 // ── Documented identity fork (rules-only, see station-workbench.md) ───────────

@@ -28,6 +28,7 @@ async function facets(context: NavFacetContext, qs: string, permissions = STAFF.
     listLocalPickupLines: async () => [],
     exceptionCounts: async () => ({}),
     supportRows: async () => [],
+    liveFeedFacets: async () => ({ carrier: [], channel: [] }),
   };
   const result = await getNavFacets({ ...STAFF, permissions }, context, new URLSearchParams(qs), deps);
   return { result, calls };

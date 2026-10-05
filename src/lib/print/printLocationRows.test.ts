@@ -5,7 +5,6 @@ import assert from 'node:assert/strict';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 import { locationLabelToFace } from '@/lib/print/printLocationLabel';
 import {
-  arrivalShelfCaption,
   groupRackCodesByRack,
   locationLabelPrintSummary,
   locationRowSegments,
@@ -20,16 +19,8 @@ const GLN = '0850012345671';
 const ROOM = 'Back Room';
 
 function row(over: Partial<PrintableLocationRow>): PrintableLocationRow {
-  return { id: 1, name: 'x', barcode: null, roomName: null, arrivalPriorityTier: null, ...over };
+  return { id: 1, name: 'x', barcode: null, roomName: null, ...over };
 }
-
-test('arrivalShelfCaption names the tier, null when not an urgency shelf', () => {
-  assert.equal(arrivalShelfCaption(0), 'Arrival · Priority');
-  assert.equal(arrivalShelfCaption(1), 'Arrival · High');
-  assert.equal(arrivalShelfCaption(3), 'Arrival · Low');
-  assert.equal(arrivalShelfCaption(null), null);
-  assert.equal(arrivalShelfCaption(7), null);
-});
 
 test('locationRowSegments reads flat and dashed rack barcodes, not free-form ones', () => {
   assert.deepEqual(locationRowSegments({ barcode: 'C0306401' }), { zone: 'C', aisle: 3, bay: 6, level: 4, position: 1 });
@@ -38,32 +29,32 @@ test('locationRowSegments reads flat and dashed rack barcodes, not free-form one
   assert.equal(locationRowSegments({ barcode: null }), null);
 });
 
-test('structured rows get the location face; tiered shelves carry the caption bottom-left', () => {
+test('structured rows get the location face; a label carries no caption', () => {
   const plan = planLocationRowFaces(
     [
       row({ id: 1, barcode: 'C0306401' }),
-      row({ id: 2, barcode: 'A0101100', arrivalPriorityTier: 0 }),
+      row({ id: 2, barcode: 'A0101100' }),
     ],
     IDENTITY,
   );
   assert.equal(plan.structured, 2);
   assert.equal(plan.special, 0);
   assert.equal(plan.skipped, 0);
-  const [plain, tiered] = plan.faces;
-  assert.equal(plain!.kind, 'location');
-  assert.equal(plain!.center, 'C-03-06-4-01');
-  assert.equal(plain!.bottomLeft, '');
-  assert.equal(tiered!.kind, 'location');
-  assert.equal(tiered!.center, 'A-01-01-1');
-  assert.equal(tiered!.bottomLeft, 'Arrival · Priority');
-  assert.match(buildFaceInfoHtml(tiered!).infoHtml, /class="lcap">Arrival · Priority</);
+  const [bin, rackLevel] = plan.faces;
+  assert.equal(bin!.kind, 'location');
+  assert.equal(bin!.center, 'C-03-06-4-01');
+  assert.equal(bin!.bottomLeft, '');
+  assert.equal(rackLevel!.kind, 'location');
+  assert.equal(rackLevel!.center, 'A-01-01-1');
+  assert.equal(rackLevel!.bottomLeft, '');
+  assert.equal(buildFaceInfoHtml(rackLevel!).infoHtml, '<div class="lcode">A-01-01-1</div>');
 });
 
-test('free-form rows get the special-bin face (tier in the kicker/badge); no barcode is skipped', () => {
+test('free-form rows get the special-bin face (BIN kicker, never urgency); no barcode is skipped', () => {
   const plan = planLocationRowFaces(
     [
       row({ id: 3, name: 'QA Triage Shelf A-01', barcode: 'QA-SHELF-A01', roomName: 'Receiving' }),
-      row({ id: 4, name: 'Door shelf', barcode: 'DOOR-1', arrivalPriorityTier: 1 }),
+      row({ id: 4, name: 'Door shelf', barcode: 'DOOR-1' }),
       row({ id: 5, name: 'Unboxing Area', barcode: null }),
       row({ id: 6, name: 'C-01-01-1-01', barcode: '  ' }),
     ],
@@ -72,23 +63,23 @@ test('free-form rows get the special-bin face (tier in the kicker/badge); no bar
   assert.equal(plan.structured, 0);
   assert.equal(plan.special, 2);
   assert.equal(plan.skipped, 2);
-  const [plain, tiered] = plan.faces;
+  const [plain, door] = plan.faces;
   assert.equal(plain!.kind, 'receiving');
   assert.equal(plain!.matrix.value, 'QA-SHELF-A01');
   assert.equal(plain!.topLeft, 'BIN');
   assert.equal(plain!.center, 'QA Triage Shelf A-01');
   assert.equal(plain!.bottomLeft, 'Receiving');
-  assert.equal(tiered!.matrix.value, 'DOOR-1');
-  assert.equal(tiered!.topLeft, 'ARRIVAL');
-  assert.equal(tiered!.topRight, 'HIGH');
+  assert.equal(door!.matrix.value, 'DOOR-1');
+  assert.equal(door!.topLeft, 'BIN');
+  assert.doesNotMatch(faceText(door!), /ARRIVAL|Arrival/);
 });
 
-test('faces keep input order across families (tier-ordered runs stay tier-ordered)', () => {
+test('faces keep input order across families', () => {
   const plan = planLocationRowFaces(
     [
-      row({ id: 1, barcode: 'A0101101', arrivalPriorityTier: 0 }),
-      row({ id: 2, barcode: 'DOOR-1', arrivalPriorityTier: 1 }),
-      row({ id: 3, barcode: 'A0101102', arrivalPriorityTier: 2 }),
+      row({ id: 1, barcode: 'A0101101' }),
+      row({ id: 2, barcode: 'DOOR-1' }),
+      row({ id: 3, barcode: 'A0101102' }),
     ],
     IDENTITY,
   );
@@ -149,25 +140,24 @@ test('rack row → placard face: large RACK headline, matrix, no room text', () 
   assert.doesNotMatch(faceText(placard!), /Back Room/);
 });
 
-test('shelf row → RACK 12 · SHELF 3 face; tier caption only when tiered', () => {
+test('shelf row → RACK 12 · SHELF 3 face; no caption', () => {
   const plan = planLocationRowFaces(
     [
-      row({ id: 2, name: 'Rack 12 Shelf 3', barcode: 'RK12-3', roomName: ROOM, arrivalPriorityTier: 0 }),
+      row({ id: 2, name: 'Rack 12 Shelf 3', barcode: 'RK12-3', roomName: ROOM }),
       row({ id: 3, name: 'Rack 12 Shelf 4', barcode: 'RK12-4', roomName: ROOM }),
     ],
     IDENTITY,
   );
   assert.equal(plan.rack, 2);
-  const [tiered, plain] = plan.faces;
-  assert.equal(tiered!.kind, 'rack');
-  assert.equal(tiered!.topLeft, 'RACK 12');
-  assert.equal(tiered!.center, 'SHELF 3');
-  assert.equal(tiered!.bottomLeft, 'Arrival · Priority');
-  assert.match(buildFaceInfoHtml(tiered!).infoHtml, /class="rkick">RACK 12<\/div><div class="rhead">SHELF 3<\/div><div class="lcap">Arrival · Priority</);
-  assert.equal(plain!.topLeft, 'RACK 12');
-  assert.equal(plain!.center, 'SHELF 4');
-  assert.equal(plain!.bottomLeft, '');
-  assert.match(buildFaceInfoHtml(plain!).infoHtml, /class="lcap"><\/div>/);
+  const [three, four] = plan.faces;
+  assert.equal(three!.kind, 'rack');
+  assert.equal(three!.topLeft, 'RACK 12');
+  assert.equal(three!.center, 'SHELF 3');
+  assert.equal(three!.bottomLeft, '');
+  assert.equal(buildFaceInfoHtml(three!).infoHtml, '<div class="rkick">RACK 12</div><div class="rhead">SHELF 3</div>');
+  assert.equal(four!.topLeft, 'RACK 12');
+  assert.equal(four!.center, 'SHELF 4');
+  assert.equal(four!.bottomLeft, '');
   for (const face of plan.faces) assert.doesNotMatch(faceText(face), /Back Room/);
 });
 
@@ -207,13 +197,13 @@ test('rack barcodes in any printed spelling resolve to the canonical face', () =
 });
 
 test('mixed rack + room-coded + special rows plan in input order; room-coded faces unchanged', () => {
-  const roomRow = row({ id: 2, barcode: 'C0306401', roomName: ROOM, arrivalPriorityTier: 1 });
+  const roomRow = row({ id: 2, barcode: 'C0306401', roomName: ROOM });
   const plan = planLocationRowFaces(
     [
       row({ id: 1, barcode: 'RK12' }),
       roomRow,
       row({ id: 3, barcode: 'DOOR-1' }),
-      row({ id: 4, barcode: 'RK12-3', arrivalPriorityTier: 2 }),
+      row({ id: 4, barcode: 'RK12-3' }),
       row({ id: 5, barcode: null }),
     ],
     { gln: GLN, orgSlug: null },
@@ -224,14 +214,13 @@ test('mixed rack + room-coded + special rows plan in input order; room-coded fac
   );
   assert.deepEqual(plan.faces.map((f) => f.kind), ['rack', 'location', 'receiving', 'rack']);
   assert.deepEqual(plan.rackCodes, ['RK12', 'RK12-3']);
-  assert.equal(plan.faces[3]!.bottomLeft, 'Arrival · Medium');
+  assert.equal(plan.faces[3]!.bottomLeft, '');
   // The room-coded face is exactly what the room-coded builder produces alone.
   const expected = locationLabelToFace({
     segments: locationRowSegments(roomRow)!,
     roomName: ROOM,
     gln: GLN,
     orgSlug: null,
-    caption: 'Arrival · High',
   });
   assert.deepEqual(plan.faces[1], expected);
   assert.deepEqual(planLocationRowFaces([roomRow], { gln: GLN, orgSlug: null }).faces[0], expected);

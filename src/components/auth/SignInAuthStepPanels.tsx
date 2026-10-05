@@ -37,7 +37,6 @@ export function SignInAuthStepPanels({
         spellCheck={false}
         enterKeyHint="next"
         autoFocus
-        appearance="auth"
         value={email}
         onChange={onEmailChange}
       />
@@ -52,7 +51,6 @@ export function SignInAuthStepPanels({
           autoCapitalize="none"
           spellCheck={false}
           enterKeyHint="go"
-          appearance="auth"
           value={password}
           onChange={onPasswordChange}
           trailing={

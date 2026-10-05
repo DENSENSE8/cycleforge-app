@@ -40,6 +40,18 @@ export interface TaskAlertContactSources {
   anchorTicketNumber: number | null;
   links: readonly Pick<TaskLink, 'kind' | 'entityId' | 'label' | 'order' | 'ticket' | 'repair'>[];
   emailRefs: readonly Pick<TaskEmailRef, 'customerEmail' | 'mailbox' | 'orderNumber' | 'referenceNumber'>[];
+  /**
+   * The local Support item the task is the primary task of (server only — the
+   * composer's caches do not carry it): the requester's exact address on the
+   * item's account, and the exact `orders.id` links (`ticket_links` ORDER rows).
+   */
+  supportItem?: {
+    id: number;
+    requesterEmail: string | null;
+    /** The account / transport the customer wrote to (account label, else the channel label). */
+    mailbox: string;
+    orders: readonly { orderId: number; orderNumber: string }[];
+  } | null;
 }
 
 const CONTACT_RANK: Readonly<Record<InboxContact['kind'], number>> = { email: 0, ticket: 1, order: 2, repair: 3, tracking: 4 };
@@ -69,7 +81,20 @@ export function taskAlertContacts(src: TaskAlertContactSources): InboxContact[] 
       referenceNumber: ref.referenceNumber,
     });
   }
+  const support = src.supportItem;
+  if (support?.requesterEmail) {
+    push(`email:${support.requesterEmail.toLowerCase()}:${support.mailbox.toLowerCase()}`, {
+      kind: 'email',
+      address: support.requesterEmail,
+      mailbox: support.mailbox,
+      orderNumber: support.orders[0]?.orderNumber ?? null,
+      referenceNumber: `Support #${support.id}`,
+    });
+  }
   if (src.anchorTicketNumber != null) push(`ticket:${src.anchorTicketNumber}`, { kind: 'ticket', number: src.anchorTicketNumber });
+  for (const order of support?.orders ?? []) {
+    push(`order:${order.orderNumber.toLowerCase()}`, { kind: 'order', orderNumber: order.orderNumber, orderId: order.orderId });
+  }
   for (const link of src.links) {
     switch (link.kind) {
       case 'ticket': {

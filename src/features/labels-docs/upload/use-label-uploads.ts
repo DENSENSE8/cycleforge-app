@@ -9,8 +9,9 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { uploadLabelBatch } from '@/lib/label-batches/http-client';
+import { fetchLabelBatch, uploadLabelBatch } from '@/lib/label-batches/http-client';
 import type { LabelBatchRow } from '@/lib/label-batches/contracts';
+import { applyLabelIngestionHttp, confirmLabelOrderHttp } from '@/lib/label-ingestions/http-client';
 
 export type UploadStatus = 'uploading' | 'added' | 'replayed' | 'failed';
 
@@ -57,7 +58,20 @@ export interface LabelUploads {
 export function useLabelUploads({
   onSettled,
   onUploaded,
-}: { onSettled?: () => void | Promise<void>; onUploaded?: (batchId: number) => void } = {}): LabelUploads {
+  onApplied,
+  matchOrder = true,
+  targetOrderId,
+  targetOrderRef,
+}: {
+  onSettled?: () => void | Promise<void>;
+  onUploaded?: (batchId: number) => void;
+  /** Runs only after every page has been applied to `targetOrderId`. */
+  onApplied?: (result: { batchId: number; ingestionIds: number[] }) => void | Promise<void>;
+  matchOrder?: boolean;
+  /** When set, every uploaded page must resolve or be operator-confirmed onto this exact order, then be applied. */
+  targetOrderId?: number;
+  targetOrderRef?: string;
+} = {}): LabelUploads {
   const [items, setItems] = useState<LabelUploadItem[]>([]);
   const [running, setRunning] = useState(0);
   const nextKey = useRef(0);
@@ -66,6 +80,8 @@ export function useLabelUploads({
   settled.current = onSettled;
   const uploaded = useRef(onUploaded);
   uploaded.current = onUploaded;
+  const applied = useRef(onApplied);
+  applied.current = onApplied;
 
   const patch = useCallback((key: string, next: Partial<LabelUploadItem>) => {
     setItems((current) => current.map((item) => (item.key === key ? { ...item, ...next } : item)));
@@ -86,12 +102,48 @@ export function useLabelUploads({
             }
             setItems((current) => [...current, row]);
             try {
-              const result = await uploadLabelBatch(file);
+              const result = await uploadLabelBatch(file, undefined, { matchOrder });
+              let pairedPages = 0;
+              const appliedIngestionIds: number[] = [];
+              if (targetOrderId != null) {
+                const detail = await fetchLabelBatch(result.batch.id);
+                for (const page of detail.pages) {
+                  if (page.state === 'APPLIED') {
+                    if (page.orderId !== targetOrderId) {
+                      throw new Error(`Page ${page.pageNumber} is already applied to another order.`);
+                    }
+                    pairedPages += 1;
+                    appliedIngestionIds.push(page.id);
+                    continue;
+                  }
+
+                  let ingestion = {
+                    id: page.id,
+                    rowVersion: page.rowVersion,
+                    matchedOrderId: page.orderId,
+                  };
+                  if (page.orderId == null) {
+                    if (!page.trackingNumber) {
+                      throw new Error(`Page ${page.pageNumber} has no readable tracking number and cannot be paired.`);
+                    }
+                    ingestion = (await confirmLabelOrderHttp(page.id, targetOrderId, page.rowVersion)).ingestion;
+                  }
+                  if (ingestion.matchedOrderId !== targetOrderId) {
+                    throw new Error(`Page ${page.pageNumber} resolved to another order and was not filed.`);
+                  }
+                  await applyLabelIngestionHttp(ingestion.id, ingestion.rowVersion);
+                  pairedPages += 1;
+                  appliedIngestionIds.push(ingestion.id);
+                }
+                await applied.current?.({ batchId: result.batch.id, ingestionIds: appliedIngestionIds });
+              }
               const { added, alreadyOnFile, failed } = result.pages;
               patch(key, {
                 status: result.replayed ? 'replayed' : 'added',
                 batchId: result.batch.id,
-                summary: pagesSummary(added, alreadyOnFile, result.batch, result.replayed),
+                summary: targetOrderId != null
+                  ? `${added} label${added === 1 ? '' : 's'} added · ${pairedPages} paired to ${targetOrderRef || `order ${targetOrderId}`}`
+                  : pagesSummary(added, alreadyOnFile, result.batch, result.replayed),
                 reason: failed.length > 0 ? `${failed.length} page(s) failed — p${failed[0]!.pageNumber}: ${failed[0]!.reason}` : null,
               });
               uploaded.current?.(result.batch.id);
@@ -105,7 +157,7 @@ export function useLabelUploads({
         }
       });
     },
-    [patch],
+    [matchOrder, patch, targetOrderId, targetOrderRef],
   );
 
   const clear = useCallback(() => {

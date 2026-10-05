@@ -1,5 +1,5 @@
 /**
- * Outbound › Shipping › To ship — `outbound.triage`. Goal: pick and ship fast.
+ * FBM › Allocate — `outbound.orders`. Goal: pick and ship fast.
  * A line reads ×qty · condition · price (owner 2026-09-28: no stock, item #
  * or bin on the list — easy viewing; the open record carries them). The
  * top-right is the ship-by deadline; sections are the SLA under the default sort.
@@ -9,7 +9,7 @@ import { triageView } from '@/design-system/components/triage-card-list/triage-v
 import { ORDER_NOUN, ORDER_SLA_SECTIONS } from '@/lib/orders/order-card-model';
 
 export const OUTBOUND_TRIAGE_VIEW = triageView({
-  id: 'outbound.triage',
+  id: 'outbound.orders',
   grain: 'order',
   noun: ORDER_NOUN,
   listLabel: 'Orders to ship',

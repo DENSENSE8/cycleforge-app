@@ -52,6 +52,59 @@ export function blackOrWhiteInk(bgHex: string): string {
     : baseColors.white;
 }
 
+export interface AvatarInitialsPaint {
+  /** The accessible variant of the staff colour, still recognisably its hue. */
+  fill: string;
+  /** Pure black or white ink for the tiny initials. */
+  ink: string;
+}
+
+function mixHex(a: string, b: string, amount: number): string {
+  const from = parseHex(a);
+  const to = parseHex(b);
+  if (!from || !to) return a;
+  const t = Math.min(1, Math.max(0, amount));
+  const channel = (start: number, end: number) => Math.round(start + (end - start) * t).toString(16).padStart(2, '0');
+  return `#${channel(from.r, to.r)}${channel(from.g, to.g)}${channel(from.b, to.b)}`;
+}
+
+/**
+ * Paint a staff-colour initials face for a 20px mark.
+ *
+ * At this scale AA's 4.5:1 floor is not enough for a quick visual scan, so
+ * the face requires 7:1. When an assigned colour lands in the middle
+ * luminance band, its fill moves just far enough toward black or white for
+ * the neutral initials ink to clear that threshold.
+ */
+export function avatarInitialsPaint(colorHex: string, minimumContrast = 7): AvatarInitialsPaint | null {
+  const source = normalizeHex(colorHex);
+  if (!source) return null;
+
+  const directInk = blackOrWhiteInk(source);
+  if ((contrastRatio(source, directInk) ?? 0) >= minimumContrast) {
+    return { fill: source, ink: directInk };
+  }
+
+  const candidates = [
+    { ink: baseColors.black, toward: baseColors.white },
+    { ink: baseColors.white, toward: baseColors.black },
+  ].flatMap(({ ink, toward }) => {
+    let low = 0;
+    let high = 1;
+    for (let i = 0; i < 20; i += 1) {
+      const middle = (low + high) / 2;
+      if ((contrastRatio(mixHex(source, toward, middle), ink) ?? 0) >= minimumContrast) high = middle;
+      else low = middle;
+    }
+    const fill = mixHex(source, toward, high);
+    return (contrastRatio(fill, ink) ?? 0) >= minimumContrast ? [{ fill, ink, adjustment: high }] : [];
+  });
+
+  candidates.sort((a, b) => a.adjustment - b.adjustment);
+  const selected = candidates[0];
+  return selected ? { fill: selected.fill, ink: selected.ink } : { fill: source, ink: directInk };
+}
+
 /**
  * Pick dark or light ink for text sitting on `bgHex`. Prefers white when it
  * still clears WCAG AA (~4.5:1) for normal text; otherwise forces dark ink.

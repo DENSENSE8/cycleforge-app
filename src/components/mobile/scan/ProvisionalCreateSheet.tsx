@@ -25,7 +25,8 @@ import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import type { ProvisionalSku } from '@/lib/neon/provisional-sku-queries';
-import { MobileNativePhotoInput } from '@/components/mobile/photos/MobileNativePhotoCapture';
+import { MobileNativePhotoCapture, type CapturedShot } from '@/components/mobile/photos/MobileNativePhotoCapture';
+import { captureFileName } from '@/lib/photos/capture-session';
 
 const DESCRIPTION_MAX = 2000;
 
@@ -65,7 +66,8 @@ export function ProvisionalCreateSheet({
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [phase, setPhase] = useState<'idle' | 'creating' | 'uploading'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  /** The house multi-photo capture owns the screen; the sheet steps aside (never a sheet over a sheet). */
+  const [capturing, setCapturing] = useState(false);
   /** Idempotency key for a barcode-less create — one per sheet mount, never re-rolled. */
   const [sourceRef] = useState(safeRandomUUID);
   const stagedRef = useRef(staged);
@@ -83,17 +85,15 @@ export function ProvisionalCreateSheet({
   const ready = title.trim().length >= 2;
   const hasBarcode = barcode.trim().length > 0;
 
-  const addFiles = useCallback((files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const next: StagedFile[] = Array.from(files)
-      .filter((file) => file.type.startsWith('image/'))
-      .map((file, index) => ({
-        tempId: `${Date.now()}-${index}-${file.name}`,
-        name: file.name,
-        previewUrl: URL.createObjectURL(file),
-        status: 'done',
-        file,
-      }));
+  /** A capture batch joins the staged set; the staged photo now owns each shot's preview URL. */
+  const addShots = useCallback((shots: readonly CapturedShot[]) => {
+    const next: StagedFile[] = shots.map((shot) => {
+      const file = new File([shot.blob], captureFileName(shot.capturedAtMs), {
+        type: shot.blob.type || 'image/jpeg',
+        lastModified: shot.capturedAtMs,
+      });
+      return { tempId: shot.id, name: file.name, previewUrl: shot.previewUrl, status: 'done', file };
+    });
     setStaged((prev) => [...prev, ...next]);
   }, []);
 
@@ -185,7 +185,8 @@ export function ProvisionalCreateSheet({
   }, [barcode, busy, description, hasBarcode, onCreated, queryClient, ready, sourceRef, staffId, staged, title]);
 
   return (
-    <Sheet open={open} onOpenChange={(next) => { if (!next && !busy) onCancel(); }}>
+    <>
+    <Sheet open={open && !capturing} onOpenChange={(next) => { if (!next && !busy) onCancel(); }}>
       {/* The sheet portals out of the page's region; re-declare triage. The
           body drops its inset so the bands and the footer cells run the full
           width of the panel, like every flat screen. */}
@@ -226,15 +227,6 @@ export function ProvisionalCreateSheet({
                 maxLength={DESCRIPTION_MAX}
                 autoComplete="off"
               />
-              <MobileNativePhotoInput
-                ref={fileInput}
-                multiple
-                className="hidden"
-                onChange={(event) => {
-                  addFiles(event.target.files);
-                  event.target.value = '';
-                }}
-              />
               <ComposerStagedPhotoStrip staged={staged} onRemove={busy ? () => {} : removeStaged} />
               <Button
                 variant="secondary"
@@ -243,7 +235,7 @@ export function ProvisionalCreateSheet({
                 className="w-full"
                 icon={<Camera />}
                 disabled={busy}
-                onClick={() => fileInput.current?.click()}
+                onClick={() => setCapturing(true)}
               >
                 {staged.length > 0 ? `Add photos (${staged.length})` : 'Add photos'}
               </Button>
@@ -285,5 +277,24 @@ export function ProvisionalCreateSheet({
         </SheetContent>
       </ModeRegion>
     </Sheet>
+
+    {open && capturing ? (
+      <MobileNativePhotoCapture
+        maxPhotos={10}
+        priorPhotos={staged.map((photo) => ({ id: photo.tempId, previewUrl: photo.previewUrl }))}
+        header={
+          <div className="min-w-0">
+            <p className="text-role-micro text-white/60">New SKU exception</p>
+            <p className="break-words text-sm font-semibold text-white">{title.trim() || 'Photos'}</p>
+          </div>
+        }
+        onDone={(shots) => {
+          addShots(shots);
+          setCapturing(false);
+        }}
+        onCancel={() => setCapturing(false)}
+      />
+    ) : null}
+    </>
   );
 }

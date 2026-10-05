@@ -49,6 +49,7 @@ import { cn } from '@/utils/_cn';
 import { useBulkListView } from '@/components/sidebar/contextual/bulk-list-view';
 import { nextStatusSort } from '@/components/sidebar/contextual/NavBulkChips';
 import { useUrlBulkList, useUrlBulkListSort } from '@/components/sidebar/contextual/use-url-bulk-list';
+import { PastedListStatusRow } from '@/components/sidebar/contextual/PastedListStatusRow';
 import {
   PASTED_LIST_COLUMNS,
   PASTED_LIST_LAYOUT_KEY,
@@ -71,6 +72,9 @@ const SHEET_HEADER = cn(
 
 /** The first paint's cascade runs this long; rows that mount later (scrolled in, filtered in) arrive as they are. */
 const CASCADE_WINDOW_MS = 900;
+
+/** Where the sheet's scroll waits while one of its records is open on its desk. */
+const SCROLL_KEY = 'cf:pasted-list-scroll';
 
 /** Find: every column's text the sheet knows, plus what a row carries without a column (title, facet). */
 function matchesFacts(row: PastedListRow, needle: string): boolean {
@@ -138,10 +142,14 @@ export function PastedListPage() {
   const copyCell = useCallback(async (text: string) => {
     if (await copyToClipboard(text)) toast.success(`Copied ${text}`);
   }, []);
-  // A row opens its record; with none, the list that holds it, narrowed to it.
+  // A row opens its record the way its triage card does (`recordDetailsNavigation`, via the view);
+  // with none, the list that holds it, narrowed to it. The sheet's scroll is kept for the way back.
+  const scrollRef = useRef<HTMLDivElement>(null);
   const openRow = useCallback(
     (row: PastedListRow) => {
       const { entry, buckets } = row.view;
+      const top = scrollRef.current?.scrollTop ?? 0;
+      window.sessionStorage.setItem(SCROLL_KEY, JSON.stringify({ at: window.location.search, top }));
       if (entry.recordHref) view.openRecord(entry);
       else {
         const home = buckets.find((b) => b.bucket.href);
@@ -150,6 +158,17 @@ export function PastedListPage() {
     },
     [view],
   );
+  // Back from a record (`recordBack`): the same list, scrolled where it was left.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || rows.length === 0 || !scrollRef.current) return;
+    restored.current = true;
+    const saved = window.sessionStorage.getItem(SCROLL_KEY);
+    if (!saved) return;
+    window.sessionStorage.removeItem(SCROLL_KEY);
+    const { at, top } = JSON.parse(saved) as { at: string; top: number };
+    if (at === window.location.search) scrollRef.current.scrollTop = top;
+  }, [rows.length]);
 
   // Keys: ↑↓ / J K walk · ↵ / O open · R recheck · ⌘C copy · ⌘⌥C copy shown · S sort · Esc back (F is the sidebar field's).
   // ⌘+ / ⌘− stay the browser's zoom — the sheet's zoom is its own − / + buttons.
@@ -188,9 +207,20 @@ export function PastedListPage() {
 
   return (
     <div data-pasted-list-page className="flex min-h-0 w-full flex-1 flex-col">
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 border-b border-border-hairline px-2 py-1">
+      {list.error ? (
+        <div className="flex shrink-0 items-center gap-2 border-b border-border-hairline px-3 py-1.5 text-role-caption text-text-danger">
+          <span className="min-w-0 flex-1 truncate">{list.error}</span>
+          <Button size="sm" variant="ghost" onClick={list.refetch}>
+            Retry
+          </Button>
+        </div>
+      ) : null}
+        {/* One row directly over the sheet's header row: the statuses left (the page's one status
+            control — never the sidebar), the sheet's tools right. Sort is the sidebar's. */}
+        <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-hairline px-2 py-1">
+          <PastedListStatusRow list={list} className="mr-auto" />
           {counts.checking > 0 ? (
-            <span className="mr-auto text-role-caption tabular-nums text-text-faint">Checking {counts.checking}</span>
+            <span className="text-role-caption tabular-nums text-text-faint">Checking {counts.checking}</span>
           ) : null}
           <HoverTooltip label="Copy the numbers shown" shortcut="Mod + Alt + C" asChild>
             <IconButton ariaLabel="Copy the numbers shown" size="sm" onClick={() => void copyShown()} icon={<Copy aria-hidden className="size-4" />} />
@@ -232,14 +262,6 @@ export function PastedListPage() {
             </HoverTooltip>
           </div>
         </div>
-      {list.error ? (
-        <div className="flex shrink-0 items-center gap-2 border-b border-border-hairline px-3 py-1.5 text-role-caption text-text-danger">
-          <span className="min-w-0 flex-1 truncate">{list.error}</span>
-          <Button size="sm" variant="ghost" onClick={list.refetch}>
-            Retry
-          </Button>
-        </div>
-      ) : null}
       <div
         data-grid-col-rules
         className="flex min-h-0 flex-1 flex-col"
@@ -256,6 +278,7 @@ export function PastedListPage() {
           unpaged
           rows={rows}
           orderGroupsByDate={groups}
+          scrollRef={scrollRef}
           getRowId={(row) => row.view.entry.ref}
           loading={list.selection.refs.length > 0 && list.loading && list.entries.every((e) => e.pending)}
           emptyMessage={

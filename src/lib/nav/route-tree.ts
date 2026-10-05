@@ -5,7 +5,7 @@
  *
  * Four consumers read this module and nothing else:
  *   1. the app — the path constants and builders below are the only way a
- *      Warehouse-lane URL is written;
+ *      registered URL is written;
  *   2. verify `Routes` — `scripts/route-tree-guard.ts` checks the tree against
  *      the file system, the phone menu and the literal-path baseline;
  *   3. the design MCP — `ds_route`, `ds_vocabulary` and `ds_route_tree` spawn
@@ -13,17 +13,20 @@
  *      gate;
  *   4. session start — `--digest` prints the lane summary every session sees.
  *
- * Phase 1 covers the Warehouse lane on the phone. Every node carries the path
+ * Phase 1 began with the Warehouse lane on the phone; first-class Sales and
+ * Scan stations destinations join the same registry. Every node carries the path
  * it LIVES at today (`path`) and the canonical path it MOVES to (`target`);
  * phase 2 flips the routes and turns the old paths into permanent aliases
  * (printed QR codes carry them — an alias is never deleted).
  *
- * Grow this file; never re-declare a Warehouse path or term anywhere else.
+ * Grow this file; never re-declare a registered path or term anywhere else.
  */
 
 // ── Vocabulary ──────────────────────────────────────────────────────────────
 
 export type TermId =
+  | 'customer'
+  | 'quality-control'
   | 'warehouse'
   | 'stock'
   | 'room'
@@ -35,7 +38,13 @@ export type TermId =
   | 'rack'
   | 'container'
   | 'lpn'
-  | 'location-labels';
+  | 'location-labels'
+  | 'print-station'
+  | 'support-item'
+  | 'internal-record'
+  | 'check-in'
+  | 'inbound'
+  | 'outbound';
 
 export interface VocabularyTerm {
   id: TermId;
@@ -55,6 +64,44 @@ export interface VocabularyTerm {
 }
 
 export const VOCABULARY: readonly VocabularyTerm[] = [
+  {
+    id: 'customer',
+    label: 'Customer',
+    plural: 'Customers',
+    definition: 'A buyer identity joined to contact details, channel identities and complete order history.',
+    segment: 'customers',
+    banned: ['account (as the customer record name)', 'contact (as the customer record name)'],
+    owner: 'sales',
+    decided: { by: 'owner', date: '2026-10-04', note: 'Customers is a first-class Sales destination on desktop and mobile.' },
+  },
+  {
+    id: 'quality-control',
+    label: 'Quality control',
+    plural: 'Quality control',
+    definition: 'The testing workflow for returned, repaired and newly unboxed serialized units.',
+    segment: 'quality-control',
+    banned: ['QC (as a navigation label)', 'testing (as the page name)'],
+    owner: 'scan-stations',
+    decided: { by: 'owner', date: '2026-10-04', note: 'Quality control is a first-class Scan stations destination; testing remains the work performed there.' },
+  },
+  {
+    id: 'inbound',
+    label: 'Inbound',
+    plural: 'Inbound',
+    definition: 'The scan direction for packages arriving at the door: a carrier label opens or confirms the arrival.',
+    banned: ['In (as the scan direction)', 'receive (as the scan direction)'],
+    owner: 'scan-stations',
+    decided: { by: 'owner', date: '2026-10-04', note: 'The Scan switcher reads Inbound | Outbound on web and iOS.' },
+  },
+  {
+    id: 'outbound',
+    label: 'Outbound',
+    plural: 'Outbound',
+    definition: 'The scan direction for packages leaving the building: a scan confirms the shipment went out.',
+    banned: ['Out (as the scan direction)', 'scan out (as the direction name)'],
+    owner: 'scan-stations',
+    decided: { by: 'owner', date: '2026-10-04', note: 'The Scan switcher reads Inbound | Outbound on web and iOS.' },
+  },
   {
     id: 'warehouse',
     label: 'Warehouse',
@@ -183,11 +230,60 @@ export const VOCABULARY: readonly VocabularyTerm[] = [
     owner: 'warehouse',
     decided: { by: 'owner', date: '2026-10-03', note: 'Labels belong to Locations, not to Stock.' },
   },
+  {
+    id: 'print-station',
+    label: 'Print station',
+    plural: 'Print stations',
+    definition: 'A computer the org sends label and document jobs to; it prints them silently on its label / paper printers. Named once for the whole org.',
+    segment: 'stations',
+    banned: ['workstation', 'print server'],
+    industry: 'ShipStation Connect workstation · PrintNode computer',
+    owner: 'print-station',
+    decided: { by: 'owner', date: '2026-10-04', note: 'One control plane for print stations, with print icons and solid org-wide names; G then switches Print station between printing (FNSKU labels) and managing (Stations).' },
+  },
+  // Tasks → Support (operator prompt 2026-10-04, the closed loop): the local record is the truth; a
+  // provider's ticket number is optional metadata on it.
+  {
+    id: 'support-item',
+    label: 'Support item',
+    plural: 'Support items',
+    definition:
+      'One customer conversation or internal support record, stored locally with its messages, exact orders and one primary task (Support, /support). Zendesk, eBay, Amazon, Ecwid, email, phone and walk-in are transports for it, never its truth; "Zendesk #9942" is optional metadata.',
+    segment: 'ticket',
+    banned: ['ticket (as the Support record name)', 'case (as the Support record name)', 'Zendesk ticket (as the record name)', 'Update ticket (as a customer-visible action)'],
+    industry: 'Zendesk ticket · Gorgias ticket · Help Scout conversation',
+    owner: 'support',
+    decided: {
+      by: 'owner',
+      date: '2026-10-04',
+      note: 'Support is its own top-level workspace at /support (record /support?item=<support item id>), built on the local model; the old Zendesk console tree stays deleted and /?tab=ticket forwards here. "Conversation" is an accepted synonym for a customer Support item.',
+    },
+  },
+  {
+    id: 'internal-record',
+    label: 'Internal record',
+    plural: 'Internal records',
+    definition:
+      'A Support item that is not for a customer (purpose internal_record): staff notes and updates only — never a customer draft or send. Answers "Is this for a customer?" with No; the other answer is "Customer conversation".',
+    banned: ['internal ticket', 'private ticket', 'note ticket'],
+    owner: 'support',
+    decided: { by: 'owner', date: '2026-10-04', note: 'Staff acknowledge the purpose; a suggestion never decides it.' },
+  },
+  {
+    id: 'check-in',
+    label: 'Check-in',
+    plural: 'Check-ins',
+    definition:
+      'A proactive post-purchase Support item for one exact order (orders.id): opened when the order is delivered or picked up, chased until the customer answers or it is closed with a reason.',
+    banned: ['survey', 'follow-up email (as the program name)', 'touch base'],
+    owner: 'support',
+    decided: { by: 'owner', date: '2026-10-04', note: 'Shown as the "Post-purchase check-ins" Support view.' },
+  },
 ] as const;
 
 // ── Tree ────────────────────────────────────────────────────────────────────
 
-export type LaneId = 'warehouse' | 'receiving';
+export type LaneId = 'sales' | 'scan-stations' | 'warehouse' | 'receiving' | 'search' | 'print-station' | 'tasks' | 'support';
 
 export type RouteNodeKind =
   /** A lane: the menu group, and (target) its landing page. */
@@ -227,6 +323,134 @@ export interface RouteNode {
 }
 
 export const ROUTE_TREE: readonly RouteNode[] = [
+  {
+    id: 'sales',
+    parent: null,
+    kind: 'lane',
+    label: 'Sales',
+    path: null,
+    target: '/customers',
+    page: null,
+    status: 'planned',
+    note: 'Desktop and phone share the same Sales taxonomy; Customers is a peer destination, not a view inside the counter page.',
+  },
+  {
+    id: 'customers',
+    parent: 'sales',
+    kind: 'collection',
+    label: 'Customers',
+    owns: 'customer',
+    path: '/customers',
+    target: '/customers',
+    page: 'src/app/customers/page.tsx',
+    status: 'live',
+    query: ['q', 'customer'],
+    links: ['customers-mobile'],
+  },
+  {
+    id: 'customers-mobile',
+    parent: 'sales',
+    kind: 'collection',
+    label: 'Customers',
+    path: '/m/customers',
+    target: '/m/customers',
+    page: 'src/app/m/(shell)/customers/page.tsx',
+    status: 'live',
+    query: ['q'],
+    links: ['customer-mobile'],
+    note: 'The mobile-first customer directory; it carries the same identity and order-throughput model as the desktop desk.',
+  },
+  {
+    id: 'customer-mobile',
+    parent: 'customers-mobile',
+    kind: 'record',
+    label: 'Customer',
+    path: '/m/customers/[id]',
+    target: '/m/customers/[id]',
+    page: 'src/app/m/(shell)/customers/[id]/page.tsx',
+    status: 'live',
+  },
+  {
+    id: 'scan-stations',
+    parent: null,
+    kind: 'lane',
+    label: 'Scan stations',
+    path: null,
+    target: '/test',
+    page: null,
+    status: 'planned',
+    note: 'The operator benches. Quality control is one first-class station on desktop and mobile.',
+  },
+  {
+    id: 'quality-control',
+    parent: 'scan-stations',
+    kind: 'task',
+    label: 'Quality control',
+    owns: 'quality-control',
+    path: '/test',
+    target: '/test',
+    page: 'src/app/test/page.tsx',
+    status: 'live',
+    links: ['quality-control-mobile'],
+  },
+  {
+    id: 'quality-control-mobile',
+    parent: 'scan-stations',
+    kind: 'task',
+    label: 'Quality control',
+    path: '/m/qc',
+    target: '/m/qc',
+    page: 'src/app/m/(shell)/qc/page.tsx',
+    status: 'live',
+    links: ['quality-control-line-mobile', 'quality-control-lpn-mobile'],
+    note: 'The mobile-first serialized-unit testing queue.',
+  },
+  {
+    id: 'quality-control-line-mobile',
+    parent: 'quality-control-mobile',
+    kind: 'record',
+    label: 'Quality control line',
+    path: '/m/qc/line/[id]',
+    target: '/m/qc/line/[id]',
+    page: 'src/app/m/(shell)/qc/line/[id]/page.tsx',
+    status: 'live',
+  },
+  {
+    id: 'quality-control-lpn-mobile',
+    parent: 'quality-control-mobile',
+    kind: 'record',
+    label: 'Quality control LPN',
+    path: '/m/qc/lpn/[id]',
+    target: '/m/qc/lpn/[id]',
+    page: 'src/app/m/(shell)/qc/lpn/[id]/page.tsx',
+    status: 'live',
+  },
+  {
+    id: 'prepack-mobile',
+    parent: 'scan-stations',
+    kind: 'task',
+    label: 'Prepack',
+    path: '/m/prepack',
+    target: '/m/prepack',
+    page: 'src/app/m/(shell)/prepack/page.tsx',
+    status: 'live',
+    query: ['mode', 'step', 'unit', 'catalogId', 'condition', 'provenance', 'serialRequestId'],
+    links: ['prepack-desktop'],
+    note: 'One responsive mobile-first form for one package of one or more serials. Single: unit → facts → evidence → contents → label; Bulk: product → unit → evidence → contents → label. No location: packing puts the package away. `unit` repeats once per serial; `serialRequestId` is the phone serial handoff reply. Build every URL with prepackHref(); /m/qc remains Quality control.',
+  },
+  {
+    id: 'prepack-desktop',
+    parent: 'scan-stations',
+    kind: 'task',
+    label: 'Prepack',
+    path: '/inventory/qc-labels',
+    target: '/inventory/qc-labels',
+    page: 'src/app/inventory/qc-labels/page.tsx',
+    status: 'live',
+    query: ['task', 'mode', 'step', 'unit', 'catalogId', 'condition', 'provenance'],
+    links: ['prepack-mobile'],
+    note: 'The same prepack form framed on the desk inside the QC labels ledger (`?task=prepack`). Same query contract as /m/prepack minus the phone-only handoff replies.',
+  },
   {
     id: 'warehouse',
     parent: null,
@@ -411,9 +635,116 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     links: ['location'],
     note: 'H-#### handling unit = a tote. UI copy says Tote, never LPN.',
   },
+  {
+    id: 'search',
+    parent: null,
+    kind: 'lane',
+    label: 'Search',
+    path: null,
+    target: '/search',
+    page: null,
+    status: 'planned',
+    note: 'Desktop. The search field (NavFind) and the ⌘K palette are its faces; `/search` itself is parked (it forwards to the record a `?sel=` names). Its one live page is the pasted list.',
+  },
+  {
+    id: 'pasted-list',
+    parent: 'search',
+    kind: 'task',
+    label: 'Pasted list',
+    path: '/search/list',
+    target: '/search/list',
+    page: 'src/app/search/list/page.tsx',
+    status: 'live',
+    query: ['refs', 'locator', 'status', 'back'],
+    note: 'Owner 2026-10-04: the search bar\'s held list, full screen — every pasted number with its physical facts (delivered, unboxed + who, units, carrier word, follow-up, statuses, PO / title, vendor, record link). Opened from the full-screen button at the top-left of the bar\'s or the palette\'s list, or ↵ on the token (no chord: ⌘⇧L is the browser\'s); `?refs=` is the list (same parse and cap as the bar), `?locator=` whose buckets, `?status=` one bucket, `?back=` where Esc returns.',
+  },
+  {
+    id: 'print-station',
+    parent: null,
+    kind: 'lane',
+    label: 'Print station',
+    path: null,
+    target: '/print-station',
+    page: null,
+    status: 'planned',
+    note: 'Desktop. Two modes on one sidebar card, `G` then a letter (owner 2026-10-04): G F FNSKU labels (printing) · G S Stations (managing the org\'s print stations).',
+  },
+  {
+    id: 'fnsku-labels',
+    parent: 'print-station',
+    kind: 'collection',
+    label: 'FNSKU labels',
+    path: '/print-station',
+    target: '/print-station',
+    page: 'src/app/print-station/page.tsx',
+    status: 'live',
+    query: ['view', 'q', 'fnsku', 'page'],
+    note: 'Find an Amazon FBA unit label and print it at a station; views All FNSKUs (bare) · Reprinted.',
+  },
+  {
+    id: 'print-stations',
+    parent: 'print-station',
+    kind: 'collection',
+    label: 'Stations',
+    owns: 'print-station',
+    path: '/print-station/stations',
+    target: '/print-station/stations',
+    page: 'src/app/print-station/stations/page.tsx',
+    status: 'live',
+    query: ['q', 'station', 'page'],
+    note: 'The control plane: every org print station, its printers, online state and the org default per stock; the open station (`?station=`) renames, sets defaults and test-prints.',
+  },
+  {
+    id: 'print-station-device',
+    parent: 'print-station',
+    kind: 'task',
+    label: 'Station device',
+    path: '/print-station/device',
+    target: '/print-station/device',
+    page: 'src/app/print-station/device/page.tsx',
+    status: 'live',
+    query: ['code'],
+    note: 'The enrolled print station itself, on the computer that prints — no staff signed in, public chrome even when a staff session exists. Unpaired: the pairing code entry (`?code=` from the QR pairs at once). Paired: the always-on station — name, online, label printer, the last jobs.',
+  },
+  {
+    id: 'support',
+    parent: null,
+    kind: 'lane',
+    label: 'Support',
+    path: null,
+    target: '/support',
+    page: null,
+    status: 'planned',
+    note: 'Owner 2026-10-04: Support is a top-level workspace, not a Tasks mode. Desktop /support and phone /m/support read the same local model (support_tickets + primary task).',
+  },
+  {
+    id: 'support-items',
+    parent: 'support',
+    kind: 'collection',
+    label: 'Support items',
+    owns: 'support-item',
+    path: '/support',
+    target: '/support',
+    page: 'src/app/support/page.tsx',
+    status: 'live',
+    query: ['view', 'status', 'platform', 'account', 'assignee', 'sort', 'group', 'q', 'item'],
+    note: 'Records only. Status pills New · Open · Pending · On-hold · Solved · Closed (`?status=`, local statuses, supportLocalStatus) sit above the cards like Allocate; views, sort, group-by and facets live in the left sidebar. `?item=` is the Support item id (support_tickets.id), never the task id; legacy /?tab=ticket[&task=] forwards here.',
+  },
+  {
+    id: 'support-items-mobile',
+    parent: 'support',
+    kind: 'collection',
+    label: 'Support items',
+    path: '/m/support',
+    target: '/m/support',
+    page: 'src/app/m/(shell)/support/page.tsx',
+    status: 'live',
+    query: ['status', 'q', 'item'],
+    note: 'Phone Support (SURFACE_LAW): the list, one record read (local thread), internal note and Log customer message. `?item=` is the Support item id. Same name as the desk list: one collection, two surfaces.',
+  },
 ];
 
-// ── Paths and builders (the only way to write a Warehouse URL) ─────────────
+// ── Paths and builders (the only way to write a registered URL) ─────────────
 
 function livePath(id: string): string {
   const node = ROUTE_TREE.find((n) => n.id === id);
@@ -432,6 +763,83 @@ export const WAREHOUSE_PATHS = {
   newRack: livePath('rack-new'),
 } as const;
 
+/** Desktop Search lane live paths. */
+export const SEARCH_PATHS = {
+  pastedList: livePath('pasted-list'),
+} as const;
+
+/** Customer surfaces share this route contract across desktop and mobile. */
+export const CUSTOMER_PATHS = {
+  desktop: livePath('customers'),
+  mobile: livePath('customers-mobile'),
+} as const;
+
+/** Quality-control surfaces share this route contract across desktop and mobile. */
+export const QUALITY_CONTROL_PATHS = {
+  desktop: livePath('quality-control'),
+  mobile: livePath('quality-control-mobile'),
+} as const;
+
+/** The single mobile-first prepack form: on the phone at /m/prepack, on the desk inside QC labels. */
+export const PREPACK_PATHS = {
+  form: livePath('prepack-mobile'),
+  desktop: livePath('prepack-desktop'),
+} as const;
+
+export type PrepackSurface = 'mobile' | 'desktop';
+export type PrepackStepId = 'product' | 'unit' | 'facts' | 'evidence' | 'contents' | 'label';
+
+export interface PrepackRouteState {
+  mode?: 'single' | 'bulk' | null;
+  step?: PrepackStepId | null;
+  /** Every serial key in the package (unit_uid, OEM serial or `U-` handle), in order — one `unit` param each. */
+  units?: readonly string[] | null;
+  catalogId?: number | null;
+  condition?: string | null;
+  provenance?: string | null;
+  /** Phone only: reply to this desk serial request. */
+  serialRequestId?: string | null;
+}
+
+/** Every query key the prepack form owns — a surface strips these when it leaves the task. */
+export const PREPACK_QUERY_KEYS = [
+  'task', 'mode', 'step', 'unit', 'catalogId', 'condition', 'provenance', 'serialRequestId',
+] as const;
+
+/**
+ * `/m/prepack?…` or `/inventory/qc-labels?task=prepack&…`. `keep` carries the
+ * desk ledger's own params (`q`, `view`) through the task untouched.
+ */
+export function prepackHref(surface: PrepackSurface, state: PrepackRouteState = {}, keep?: URLSearchParams): string {
+  const query = new URLSearchParams();
+  if (keep) {
+    for (const [key, value] of keep) {
+      if (!(PREPACK_QUERY_KEYS as readonly string[]).includes(key)) query.set(key, value);
+    }
+  }
+  if (surface === 'desktop') query.set('task', 'prepack');
+  const params: Record<string, string | null | undefined> = {
+    mode: state.mode,
+    step: state.step,
+    catalogId: positiveId(state.catalogId),
+    condition: state.condition,
+    provenance: state.provenance,
+    serialRequestId: surface === 'mobile' ? state.serialRequestId?.trim() : null,
+  };
+  for (const [key, value] of Object.entries(params)) if (value) query.set(key, value);
+  for (const unit of state.units ?? []) if (unit.trim()) query.append('unit', unit.trim());
+  const path = surface === 'desktop' ? PREPACK_PATHS.desktop : PREPACK_PATHS.form;
+  const qs = query.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+/** Print station's two modes, printing (FNSKU labels) and managing (Stations), plus the enrolled station's own page. */
+export const PRINT_STATION_PATHS = {
+  fnskuLabels: livePath('fnsku-labels'),
+  stations: livePath('print-stations'),
+  device: livePath('print-station-device'),
+} as const;
+
 function fill(pattern: string, param: string, value: string): string {
   return pattern.replace(`[${param}]`, encodeURIComponent(value));
 }
@@ -441,6 +849,61 @@ function withQuery(path: string, params?: Record<string, string | null | undefin
   for (const [key, value] of Object.entries(params ?? {})) if (value) query.set(key, value);
   const qs = query.toString();
   return qs ? `${path}?${qs}` : path;
+}
+
+/** Desktop and phone Support share this route contract. */
+export const SUPPORT_PATHS = {
+  desktop: livePath('support-items'),
+  mobile: livePath('support-items-mobile'),
+} as const;
+
+function positiveId(value: number | string | null | undefined): string | null {
+  const n = typeof value === 'string' ? Number(value.trim()) : value;
+  return typeof n === 'number' && Number.isInteger(n) && n > 0 ? String(n) : null;
+}
+
+/**
+ * `/support[?view=][&status=][&item=][&q=]` — the Support workspace. `item` is the
+ * Support item id (support_tickets.id), never the task id. `q` drops a leading
+ * `#` / `T-` so a pasted provider number finds its item.
+ */
+export function supportHref(params?: {
+  item?: number | string | null;
+  q?: string | number | null;
+  view?: string | null;
+  status?: string | null;
+}): string {
+  const q = String(params?.q ?? '')
+    .trim()
+    .replace(/^#/, '')
+    .replace(/^T-/i, '');
+  return withQuery(SUPPORT_PATHS.desktop, {
+    view: params?.view?.trim() || null,
+    status: params?.status?.trim() || null,
+    item: positiveId(params?.item),
+    q: q || null,
+  });
+}
+
+/**
+ * `/m/support[?status=][&item=][&q=]` — phone Support; `item` is the Support item id, `status` the
+ * comma list of local statuses the list's chips show (kept on the record so its X returns to the same cut).
+ */
+export function supportMobileHref(params?: {
+  item?: number | string | null;
+  q?: string | null;
+  status?: string | null;
+}): string {
+  return withQuery(SUPPORT_PATHS.mobile, {
+    status: params?.status?.trim() || null,
+    item: positiveId(params?.item),
+    q: params?.q?.trim() || null,
+  });
+}
+
+/** `/print-station/device?code=` — the enrolled print station's page; a `code` pairs it on arrival (the QR). */
+export function printStationDeviceHref(params?: { code?: string | null }): string {
+  return withQuery(PRINT_STATION_PATHS.device, params);
 }
 
 /** `/m/loc/<code>` — a location or movable rack record. */
@@ -458,6 +921,21 @@ export function containerPath(id: string | number): string {
   return fill(livePath('container'), 'id', String(id));
 }
 
+/** `/m/customers/<id>` — one customer identity and its order history. */
+export function customerMobilePath(id: string | number): string {
+  return fill(livePath('customer-mobile'), 'id', String(id));
+}
+
+/** `/m/qc/line/<id>` — one serialized inbound line at the testing bench. */
+export function qualityControlLineMobilePath(id: string | number): string {
+  return fill(livePath('quality-control-line-mobile'), 'id', String(id));
+}
+
+/** `/m/qc/lpn/<id>` — one receiving LPN at the testing bench. */
+export function qualityControlLpnMobilePath(id: string | number): string {
+  return fill(livePath('quality-control-lpn-mobile'), 'id', String(id));
+}
+
 /** `/m/stock/<stockId>/photos?sku=&back=`. */
 export function stockPhotosHref(stockId: string | number, params: { sku?: string | null; back?: string | null }): string {
   return withQuery(fill(livePath('stock-photos'), 'stockId', String(stockId)), params);
@@ -471,6 +949,39 @@ export function locationLabelsHref(params?: { code?: string | null; kind?: strin
 /** `/m/stock/labels?rack=&back=` — rack shelf stickers (merges into Location labels in phase 2). */
 export function rackLabelsHref(params?: { rack?: string | null; back?: string | null }): string {
   return withQuery(WAREHOUSE_PATHS.rackLabels, params);
+}
+
+/**
+ * `/search/list?refs=&locator=&status=&back=&rep=` — the held pasted list,
+ * full screen. `refs` as the bar holds them (comma-joined, the `?ref_in=`
+ * shape); `rep` = the numbers the paste carried more than once, `<times>*<ref>`
+ * comma-joined ({@link parsePastedListRepeats}).
+ */
+export function pastedListHref(params: {
+  refs: readonly string[];
+  locator: string;
+  status?: string | null;
+  back?: string | null;
+  repeats?: ReadonlyMap<string, number>;
+}): string {
+  const rep = [...(params.repeats ?? [])].map(([ref, times]) => `${times}*${ref}`).join(',');
+  return withQuery(SEARCH_PATHS.pastedList, {
+    refs: params.refs.join(','),
+    locator: params.locator,
+    status: params.status,
+    back: params.back,
+    rep,
+  });
+}
+
+/** `?rep=` → ref → times pasted (malformed pieces are skipped). */
+export function parsePastedListRepeats(raw: string | null | undefined): ReadonlyMap<string, number> {
+  const repeats = new Map<string, number>();
+  for (const piece of String(raw ?? '').split(',')) {
+    const match = /^(\d+)\*(.+)$/.exec(piece.trim());
+    if (match && Number(match[1]) > 1) repeats.set(match[2]!, Number(match[1]));
+  }
+  return repeats;
 }
 
 // ── Lookups (the guard and the MCP read these) ──────────────────────────────

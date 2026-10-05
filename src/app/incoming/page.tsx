@@ -3,9 +3,16 @@ import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePag
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { redirect } from 'next/navigation';
 
 /** `/incoming` — the Incoming operator surface (POs Zoho says are issued but not yet received locally; attach-tracking worklist). */
-export default function IncomingPage() {
+export default async function IncomingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  if (params.lane === 'exceptions') redirect('/exceptions?domain=receiving');
   return (
     <>
       <SurfaceParamHygiene />

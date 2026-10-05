@@ -23,6 +23,7 @@ import {
 } from '@/lib/outbound/scan-out';
 import { productImageUrl } from '@/lib/photos/product-image-url';
 import { publishActivityLogged, publishOrderChanged } from '@/lib/realtime/publish';
+import { recordOrderCheckInMilestonesForOrder } from '@/lib/support/check-ins/milestones-db';
 
 function queueScanOutIdentificationCompleted(
   organizationId: string,
@@ -189,6 +190,13 @@ export const POST = withAuth(
         scanRef: raw,
         source: 'shipped-scan-out',
       }).catch(() => {});
+    }
+    // Post-purchase check-in milestone: a counter pickup (fulfillment_channel
+    // PICKUP) handed over here is `picked_up`; any other order that left is
+    // the shipped fallback until its carrier confirms delivery. Never throws.
+    const confirmedOrderRowId = result.kind === 'confirmed' ? result.carton.orderRowId : null;
+    if (confirmedOrderRowId != null) {
+      after(() => recordOrderCheckInMilestonesForOrder(orgId, confirmedOrderRowId));
     }
     return NextResponse.json(json);
   },

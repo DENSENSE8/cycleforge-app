@@ -32,7 +32,7 @@ export async function requirePermission(
 
   if (!user) {
     const h = await headers();
-    const path = h.get('x-pathname') || '/';
+    const path = `${h.get('x-pathname') || '/'}${h.get('x-search') || ''}`;
     redirect(`/signin?next=${encodeURIComponent(path)}`);
   }
 

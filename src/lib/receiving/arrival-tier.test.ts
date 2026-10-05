@@ -1,4 +1,4 @@
-/** Arrival urgency tier resolver — precedence and the platform default table. */
+/** Package urgency tier resolver — precedence and the platform default table. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

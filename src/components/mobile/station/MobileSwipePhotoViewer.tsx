@@ -444,7 +444,9 @@ export function MobileSwipePhotoViewer({
                       loading="eager"
                       decoding="async"
                       fetchPriority={Math.abs(i - index) <= 1 ? 'high' : 'low'}
-                      className="pointer-events-none max-h-full max-w-full object-contain"
+                      // Fill the screen (contain keeps the aspect): a photo smaller than the
+                      // viewport is scaled up to full screen, never left as a small inset.
+                      className="pointer-events-none h-full w-full object-contain"
                     />
                   )}
                 </div>

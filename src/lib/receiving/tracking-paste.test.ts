@@ -82,6 +82,6 @@ test('a hand-edited deep link degrades instead of breaking the page', () => {
   assert.deepEqual(parseTrackingInParam(null).keys, []);
   assert.deepEqual(parseTrackingInParam('').keys, []);
   // Over-cap in the URL is truncated server-side rather than 400-ing.
-  const many = Array.from({ length: 210 }, (_, i) => `T${String(i).padStart(9, '0')}`).join(',');
+  const many = Array.from({ length: CHECK_ZOHO_RECEIVED_MAX_INPUTS + 60 }, (_, i) => `T${String(i).padStart(9, '0')}`).join(',');
   assert.equal(parseTrackingInParam(many).keys.length, CHECK_ZOHO_RECEIVED_MAX_INPUTS);
 });

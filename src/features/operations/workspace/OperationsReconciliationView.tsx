@@ -2,7 +2,6 @@
 
 /** Operations → Reconciliation Monitor. */
 
-import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import {
   KpiStrip,
@@ -13,14 +12,12 @@ import {
 } from '@/design-system/components/monitor';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
 import type {
-  OpenExceptionRow,
   SmearCandidateRow,
 } from '@/lib/orders/reconciliation-queries';
 
 type ReconciliationResponse = {
   ok: boolean;
   smearCandidates: SmearCandidateRow[];
-  openExceptions: OpenExceptionRow[];
   generatedAt: string;
 };
 
@@ -38,14 +35,12 @@ export function OperationsReconciliationView() {
   });
 
   const smear = q.data?.smearCandidates ?? [];
-  const exceptions = q.data?.openExceptions ?? [];
-
   return (
     <MonitorPageShell stagger contentClassName="mx-auto w-full max-w-[1400px] space-y-6 px-6 pt-6 pb-10">
       <div className="space-y-1">
         <h1 className="text-role-title font-semibold text-text-default">Reconciliation</h1>
         <p className="text-role-caption text-text-muted">
-          Serial↔order binding risks and unmatched tracking exceptions — Monitor only, not a Station queue.
+          Serial↔order binding risks — Monitor only, not a Station queue.
         </p>
       </div>
 
@@ -55,11 +50,6 @@ export function OperationsReconciliationView() {
             label: 'Smear candidates',
             value: q.isLoading ? '…' : String(smear.length),
             valueClassName: smear.length > 0 ? 'text-text-warning' : 'text-text-success',
-          },
-          {
-            label: 'Open exceptions',
-            value: q.isLoading ? '…' : String(exceptions.length),
-            valueClassName: exceptions.length > 0 ? 'text-text-warning' : 'text-text-success',
           },
         ]}
       />
@@ -89,47 +79,6 @@ export function OperationsReconciliationView() {
                   </span>
                 }
                 trailing={<LedgerValue value={row.shipmentId} variant="number" tier="meta" />}
-              />
-            ))}
-          </MonitorListBlock>
-        )}
-      </SectionCard>
-
-      <SectionCard
-        stagger
-        eyebrow="Exceptions"
-        title="Open tracking exceptions"
-        actions={
-          <Link
-            href="/inventory/triage"
-            className="text-role-eyebrow font-semibold text-blue-700 hover:text-blue-800"
-          >
-            Open queue
-          </Link>
-        }
-      >
-        <p className="mb-3 text-role-caption text-text-muted">
-          Unmatched scans held in orders_exceptions (oldest first).
-        </p>
-        {q.isError ? (
-          <p className="text-role-caption text-text-danger">Could not load exceptions.</p>
-        ) : exceptions.length === 0 && !q.isLoading ? (
-          <p className="text-role-caption text-text-muted">No open exceptions.</p>
-        ) : (
-          <MonitorListBlock>
-            {exceptions.map((row: OpenExceptionRow) => (
-              <MonitorListRow
-                key={row.id}
-                title={row.tracking || `exception #${row.id}`}
-                meta={`${row.sourceStation} · ${row.reason}${row.staffName ? ` · ${row.staffName}` : ''}`}
-                trailing={
-                  <LedgerValue
-                    value={row.ageHours >= 24 ? `${Math.round(row.ageHours / 24)}d` : `${row.ageHours}h`}
-                    variant="number"
-                    tone={row.ageHours >= 24 ? 'warning' : 'muted'}
-                    tier="meta"
-                  />
-                }
               />
             ))}
           </MonitorListBlock>

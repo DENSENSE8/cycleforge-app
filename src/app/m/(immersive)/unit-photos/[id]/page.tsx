@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { MobileUnitPhotoStudio } from '@/components/mobile/photos/MobileUnitPhotoStudio';
+import { parsePhotoAspect } from '@/lib/photos/photo-aspects';
 
 /** Immersive (fullscreen) SERIAL_UNIT testing-photo capture surface — the phone lands here from the packer testing-label scan… */
 function UnitPhotoPageInner() {
@@ -14,11 +15,12 @@ function UnitPhotoPageInner() {
   const titleParam = (searchParams.get('title') || '').trim();
   const backParam = (searchParams.get('back') || '').trim();
   const stageParam = (searchParams.get('stage') || '').trim().toLowerCase();
-  const stage = stageParam === 'packing' ? 'packing' : 'testing';
+  const stage = stageParam === 'packing' || stageParam === 'prepack' ? stageParam : 'testing';
   const packerLogIdRaw = Number(searchParams.get('packerLogId'));
   const packerLogId =
     Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null;
   const poRef = (searchParams.get('poRef') || '').trim() || null;
+  const aspect = parsePhotoAspect(searchParams.get('aspect'));
 
   const validId = Number.isFinite(serialUnitId) && serialUnitId > 0;
   const headerLabel = titleParam || (unitKey ? `Unit ${unitKey}` : `Unit #${serialUnitId}`);
@@ -43,6 +45,7 @@ function UnitPhotoPageInner() {
       stage={stage}
       packerLogId={packerLogId}
       poRef={poRef}
+      aspect={aspect}
     />
   );
 }

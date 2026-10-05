@@ -20,6 +20,7 @@ import {
 } from '@/lib/customers/customer-display';
 import type { CustomerOrderStats } from '@/lib/customers/customer-order-stats';
 import type { CustomerOrderHistoryPayload } from '@/lib/customers/customer-throughput';
+import { CUSTOMER_PATHS, customerMobilePath } from '@/lib/nav/route-tree';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import { formatPhoneNumber } from '@/utils/phone';
@@ -80,7 +81,7 @@ export function CustomerProfileScreen({ customerId }: { customerId: number }) {
   });
 
   const record = customer.data?.customer ?? null;
-  const name = record ? customerFullName(record) || `Customer ${customerId}` : `Customer ${customerId}`;
+  const name = record ? customerFullName(record) || 'Unnamed customer' : 'Customer record';
   const count = stats.data?.orderCount ?? history.data?.orders.length ?? 0;
   const repeatFace = count > 1 ? `Repeat customer · ${count} orders` : `${count} order${count === 1 ? '' : 's'}`;
   const address = record ? customerAddressLines(record) : [];
@@ -91,7 +92,7 @@ export function CustomerProfileScreen({ customerId }: { customerId: number }) {
   return (
     <div className="flex min-h-full flex-col bg-surface-card" data-testid="mobile-customer-profile">
       <MobileV2DetailTopBar
-        backHref="/m/customers"
+        backHref={CUSTOMER_PATHS.mobile}
         subtitle="Customer"
         title={name}
         meta={repeatFace}
@@ -150,9 +151,10 @@ export function CustomerProfileScreen({ customerId }: { customerId: number }) {
             ) : (
               <ol className="divide-y divide-border-soft">
                 {(history.data?.orders ?? []).map((order) => {
+                  const backHref = customerMobilePath(customerId);
                   const href = order.orderRef
-                    ? `/m/orders/${encodeURIComponent(order.orderRef)}?back=${encodeURIComponent(`/m/customers/${customerId}`)}`
-                    : `/m/orders/${order.primaryOrderId}?by=id&back=${encodeURIComponent(`/m/customers/${customerId}`)}`;
+                    ? `/m/orders/${encodeURIComponent(order.orderRef)}?back=${encodeURIComponent(backHref)}`
+                    : `/m/orders/${order.primaryOrderId}?by=id&back=${encodeURIComponent(backHref)}`;
                   const platform = platformFace(order.platform);
                   const orderTotal = money(order.totalAmount, order.currency);
                   return (

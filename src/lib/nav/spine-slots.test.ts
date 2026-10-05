@@ -39,6 +39,20 @@ test('the product registry supplies one fixed root order', () => {
   assert.equal(fixedSpineOrder([...catalog, liveFeed])[0], 'live-feed');
 });
 
+// Owner 2026-10-04: Support sits between the Live feed and Scan Stations.
+test('the Support lane paints between the Live feed and Scan Stations', () => {
+  const liveFeed: SidebarNavItem = { id: 'live-feed', label: 'Live feed', href: '/operations/live-feed', icon: Icon };
+  const support: SidebarNavItem = { id: 'support', label: 'Support items', href: '/support', icon: Icon, kind: 'domain', domainGroup: 'support' };
+  assert.deepEqual(fixedSpineOrder([...catalog, support, liveFeed]), [
+    'live-feed',
+    'support',
+    SPINE_STATIONS_SLOT_ID,
+    'fulfillment',
+    'studio',
+    'catalog',
+  ]);
+});
+
 test('a catalog with only benches yields one Scan Stations door', () => {
   assert.deepEqual(
     fixedSpineOrder(catalog.filter((item) => item.kind === 'station')),

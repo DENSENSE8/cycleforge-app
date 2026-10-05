@@ -15,6 +15,12 @@ test('/m/pick owns its bar — the walk\'s scan card carries the scan seat', () 
   assert.equal(mobileRouteOwnsTopBar('/m/pick'), true);
 });
 
+test('/m/support owns its bar — the list mounts the host bar, the `?item=` record its detail bar', () => {
+  // One route for list and record (like the desk's /support?item=): ownership reads the pathname only, so
+  // the list paints MobileV2TopBar itself and the record MobileV2DetailTopBar — one bar, one scan seat each.
+  assert.equal(mobileRouteOwnsTopBar('/m/support'), true);
+});
+
 test('queue routes keep the host header except the immersive scan station', () => {
   // `/m/exceptions/` excludes the exception RECORD while `/m/exceptions` itself, the queue, still gets the host header.
   assert.equal(mobileRouteOwnsTopBar('/m/work'), false);

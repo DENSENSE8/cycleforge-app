@@ -4,8 +4,8 @@
  * What the open card puts on the desk — ONLY the view's own stock (owner
  * 2026-09-27: a view is a print job):
  *
- *   Labels     the order's stored labels (one box or several; or one unpaired label)
- *   Paperwork  the order's packing slips + manuals (from the queue read itself)
+ *   Labels     every label, slip and manual linked to the selected Allocate order
+ *   Paperwork  every label, slip and manual linked to the selected Allocate order
  *   Printed    both — a reprint splits by station like any press
  *
  * `orderPaperwork` is the order's paperwork read live for the open card on
@@ -17,13 +17,16 @@
 import { useMemo } from 'react';
 import type { LabelPrintView } from '@/lib/label-prints/contracts';
 import type { DeskDocument } from '@/lib/label-prints/print-labels';
+import type { OutboundDocument } from '@/lib/documents/types';
 import { useOrderDocuments, useOrderManuals } from '@/lib/orders/order-paperwork-client';
-import { labelDocuments, paperworkDocuments, type DeskCardModel } from './desk-rows';
+import { labelDocuments, type DeskCardModel } from './desk-rows';
 
 export interface DeskDocumentsState {
   documents: DeskDocument[];
+  /** Raw document rows behind doc:* faces; mutations preserve these ids/links. */
+  linkedDocuments: OutboundDocument[];
   /** Manuals the order resolves that only live on Drive — shown, never printed. */
-  unprintable: Array<{ key: string; title: string }>;
+  unprintable: Array<{ key: string; title: string; associationLabel: string }>;
   /** Labels view only: the open order's slips + manuals, for "Print order". */
   orderPaperwork: DeskDocument[];
   loading: boolean;
@@ -31,51 +34,68 @@ export interface DeskDocumentsState {
 }
 
 export function useDeskDocuments(model: DeskCardModel | null, view: LabelPrintView): DeskDocumentsState {
-  // The live per-order read runs only for the open card on Labels (one order, never a list).
-  const liveOrderId = view === 'labels' && model?.lead.orderId != null ? model.lead.orderId : 0;
+  // Both order-tied views use the same live per-order file. The selected order,
+  // not a print-queue snapshot, owns the document strip.
+  const liveOrderId = view !== 'printed' && model?.lead.orderId != null ? model.lead.orderId : 0;
   const slips = useOrderDocuments(liveOrderId);
   const manuals = useOrderManuals(liveOrderId);
 
   return useMemo(() => {
-    if (!model) return { documents: [], unprintable: [], orderPaperwork: [], loading: false, error: null };
-    const labels = view === 'paperwork' ? [] : labelDocuments(model.labels);
-    const paper = view === 'labels' ? { documents: [], unprintable: [] } : paperworkDocuments(model.paperwork);
-
+    if (!model) return { documents: [], linkedDocuments: [], unprintable: [], orderPaperwork: [], loading: false, error: null };
+    const documents: DeskDocument[] = liveOrderId ? labelDocuments(model.labels) : [];
+    const unprintable: DeskDocumentsState['unprintable'] = [];
     const orderPaperwork: DeskDocument[] = [];
     if (liveOrderId) {
       for (const doc of slips.data?.documents ?? []) {
-        if (doc.documentType !== 'packing_slip') continue;
-        orderPaperwork.push({
+        const filename = doc.data.filename ?? doc.data.fileBasename;
+        const mapped: DeskDocument = {
           key: `doc:${doc.id}`,
-          kind: 'packing_slip',
-          title: doc.data.filename ? `Packing slip · ${doc.data.filename}` : 'Packing slip',
+          kind: doc.documentType === 'shipping_label' ? 'label' : 'packing_slip',
+          title: filename
+            ? `${doc.documentType === 'shipping_label' ? 'Shipping label' : 'Packing slip'} · ${filename}`
+            : doc.documentType === 'shipping_label' ? 'Shipping label' : 'Packing slip',
+          associationLabel: `Order ${model.orderRef ?? liveOrderId}`,
           src: `/api/documents/${doc.id}/content`,
-          stock: 'paper',
+          stock: doc.documentType === 'shipping_label' ? 'label' : 'paper',
           ingestionId: null,
           orderId: liveOrderId,
           documentId: doc.id,
           manualId: null,
-        });
+        };
+        documents.push(mapped);
+        if (mapped.stock === 'paper') orderPaperwork.push(mapped);
       }
       for (const manual of manuals.data?.manuals ?? []) {
-        if (!manual.contentUrl) continue;
-        orderPaperwork.push({
+        const associationLabel = manual.source === 'item_number' && manual.pairing.itemNumber
+          ? `Item # ${manual.pairing.itemNumber}`
+          : manual.source === 'sku' && manual.pairing.sku
+            ? `SKU ${manual.pairing.sku}`
+            : `Order ${model.orderRef ?? liveOrderId}`;
+        if (!manual.contentUrl) {
+          unprintable.push({ key: `manual:${manual.id}`, title: manual.displayName, associationLabel });
+          continue;
+        }
+        const mapped: DeskDocument = {
           key: `manual:${manual.id}`,
           kind: 'manual',
           title: manual.displayName,
+          associationLabel,
           src: manual.contentUrl,
           stock: 'paper',
           ingestionId: null,
           orderId: liveOrderId,
           documentId: null,
           manualId: manual.id,
-        });
+        };
+        documents.push(mapped);
+        orderPaperwork.push(mapped);
       }
     }
     const failure = liveOrderId ? (slips.error ?? manuals.error) : null;
     return {
-      documents: [...labels, ...paper.documents],
-      unprintable: paper.unprintable,
+      documents,
+      linkedDocuments: slips.data?.documents ?? [],
+      unprintable,
       orderPaperwork,
       loading: liveOrderId !== 0 && (slips.isPending || manuals.isPending),
       error: failure ? failure.message : null,

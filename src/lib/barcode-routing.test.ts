@@ -285,7 +285,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     mint: () => encodePrintMatrix({ kind: 'ticket', orgSlug: SLUG, ticketDigits: '#9395' }).value,
     value: 'T-9395',
     type: 'support-ticket',
-    redirect: '/support?ticket=9395',
+    redirect: '/support?q=9395',
   },
   {
     what: 'bare handle — handling unit / LPN',
@@ -446,7 +446,7 @@ test('unwrapScannedLocation unwraps every location form, typed codes untouched',
 
 test('T-{id} ticket label scans to Support deep-link', () => {
   const r = routeScan(ticketHandle(9395));
-  strictEqual(r!.redirect, '/support?ticket=9395');
+  strictEqual(r!.redirect, '/support?q=9395');
 });
 
 test('REP-{id} repair label scans back to the working /m/rs/{id} page (not the dead /repair/{id})', () => {
@@ -644,6 +644,57 @@ test('a GS1 SSCC classes as sscc in all three printed forms', () => {
 test('an 18-digit run is a licence plate, not a tracking number', () => {
   strictEqual(routeScan('940011189922319742')?.type, 'sscc');
   strictEqual(scannedCarrierTracking('940011189922319742'), null);
+});
+
+test('carrier envelopes unwrap to the tracking they carry', () => {
+  const cases: Array<[string, string, string]> = [
+    // USPS AI 420 + ZIP5 / ZIP9, with GS, `]` or the literal `029` separator.
+    ['420900019361289711068322544977', '9361289711068322544977', 'USPS'],
+    ['4209264736039434608106245263389937', '9434608106245263389937', 'USPS'],
+    [`42001464${FNC1}9434650106151038378107`, '9434650106151038378107', 'USPS'],
+    ['420926473603]9434608106244898410160', '9434608106244898410160', 'USPS'],
+    ['4209264736030299505510052546153793128', '9505510052546153793128', 'USPS'],
+    // USPS IMpb 21 / 26.
+    ['930011099051354526615', '930011099051354526615', 'USPS'],
+    ['92346902673388000095297453', '92346902673388000095297453', 'USPS'],
+    // FedEx 34, any prefix → last 12; FedEx 2D payloads → the 12 before FDEG.
+    ['9622001900001802153700877998505403', '877998505403', 'FedEx'],
+    ['1311308824370001956700875052173201', '875052173201', 'FedEx'],
+    ['010292647840019383424971640FDEG198084924011400BN16161', '383424971640', 'FedEx'],
+    ['[)>010290292647029840029019029381764210785029FDEG029', '381764210785', 'FedEx'],
+    // Glued double scans → the first envelope.
+    ['94001081062442393259159400108106244239325915', '9400108106244239325915', 'USPS'],
+    ['1ZA8335G03142314731ZC1C7900306624434', '1ZA8335G0314231473', 'UPS'],
+    // Multi-line pack slip → the first tracking line.
+    ['1ZJ22B100302248437\n113-7796771-5871435\n00179', '1ZJ22B100302248437', 'UPS'],
+    // Letter-led carriers that used to fall to the bin fallback.
+    ['TBA5317991003', 'TBA5317991003', 'Amazon'],
+    ['LM221449617CA', 'LM221449617CA', 'USPS'],
+    ['UUS69E1260971998596', 'UUS69E1260971998596', 'Unknown'],
+    ['YT2638921437379714', 'YT2638921437379714', 'Unknown'],
+    ['JJD014600012662687192', 'JJD014600012662687192', 'Unknown'],
+    // Short / mistyped UPS reads are still UPS.
+    ['1ZJ22B10030635441', '1ZJ22B10030635441', 'UPS'],
+  ];
+  for (const [raw, value, carrier] of cases) {
+    const route = routeScan(raw);
+    deepStrictEqual([route?.type, route?.value, route?.carrier], ['carrier-tracking', value, carrier], raw);
+  }
+});
+
+test('order numbers and product barcodes are not carrier tracking', () => {
+  // eBay `NN-NNNNN-NNNNN` stripped of dashes is 12 digits — it used to route as FedEx.
+  strictEqual(routeScan('04-14902-05990')?.type, 'sku');
+  strictEqual(routeScan('113-1528397-8163447')?.type, 'sku');
+  strictEqual(routeScan('11124560724717854')?.type, 'sku');
+  strictEqual(routeScan('0725181870133')?.type, 'sku', 'EAN-13');
+  strictEqual(routeScan('02000000000275')?.type, 'sku', 'GTIN-14');
+  strictEqual(routeScan('0102000000000275')?.type, 'sku', 'GS1 01 + GTIN-14');
+});
+
+test('an `01…21` inside a longer digit run is not a GS1 unit label', () => {
+  strictEqual(routeScan('420601320809400108106245016623217')?.type, 'carrier-tracking');
+  strictEqual(routeScan('0102000000018942210576A')?.type, 'serial-unit');
 });
 
 test('neither foreign class carries a redirect — decodedHandle still refuses them', () => {

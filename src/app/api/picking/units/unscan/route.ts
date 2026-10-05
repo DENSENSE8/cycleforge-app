@@ -1,12 +1,24 @@
 import { NextResponse, after } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
-import { lockUnitForPickScan } from '@/lib/picking/pick-serial-link';
-import { revertUnitPick } from '@/lib/picking/unpick';
+import { lockUnitsForPickScan } from '@/lib/picking/pick-serial-link';
+import { revertUnitPick, type RevertedUnitPick } from '@/lib/picking/unpick';
 import { publishOrderPickFacts } from '@/lib/picking/pick-facts-publish';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 
-/** POST /api/picking/units/unscan — clean inverse of /api/picking/units/scan. */
+/** A member refused mid-call: thrown so the whole un-pick rolls back, answered with the member's refusal. */
+class UnpickUnitRefused extends Error {
+  constructor(readonly failure: { ok: false; status: 404 | 409; error: string }) {
+    super(failure.error);
+    this.name = 'UnpickUnitRefused';
+  }
+}
+
+/**
+ * POST /api/picking/units/unscan — clean inverse of /api/picking/units/scan.
+ * A `KIT-…` package scan reverts every member in one transaction; any member
+ * refused rolls the whole call back with its refusal.
+ */
 export const POST = withAuth(async (request, ctx) => {
   const body = await request.json().catch(() => ({}));
   const scan = String(body?.scan ?? '').trim();
@@ -26,37 +38,52 @@ export const POST = withAuth(async (request, ctx) => {
   const orgId = ctx.organizationId;
 
   const result = await withTenantTransaction(orgId, async (client) => {
-    // Resolve the unit a scan names (serial_units is tenant-owned — a
+    // Resolve the units a scan names (serial_units is tenant-owned — a
     // cross-tenant id/serial reads as not-found).
-    const unitId = serialUnitIdInput ?? (await lockUnitForPickScan(client, orgId, scan))?.unit.id;
-    if (unitId == null) return { ok: false as const, status: 404, error: 'serial_units row not found' };
+    const unitIds = serialUnitIdInput
+      ? [serialUnitIdInput]
+      : ((await lockUnitsForPickScan(client, orgId, scan))?.units.map((u) => u.id) ?? []);
+    if (unitIds.length === 0) return { ok: false as const, status: 404, error: 'serial_units row not found' };
 
     // serial_units PICKED → ALLOCATED via the state machine, the allocation
     // back to ALLOCATED (stays reserved, not released), the serial unlinked.
-    const r = await revertUnitPick(client, orgId, {
-      serialUnitId: unitId,
-      orderId: orderIdInput,
-      actorStaffId,
-      source: 'pick.unscan',
-      clientEventId: clientEventId ? `${clientEventId}:unpick` : null,
-    });
-    if (!r.ok) return r;
-    await refreshOrderStageFacts(orgId, { orderIds: [r.orderId] }, client);
+    // A package's members each need their own client_event_id.
+    const reverted: RevertedUnitPick[] = [];
+    for (const unitId of unitIds) {
+      const eventKey = clientEventId && unitIds.length > 1 ? `${clientEventId}:${unitId}` : clientEventId;
+      const r = await revertUnitPick(client, orgId, {
+        serialUnitId: unitId,
+        orderId: orderIdInput,
+        actorStaffId,
+        source: 'pick.unscan',
+        clientEventId: eventKey ? `${eventKey}:unpick` : null,
+      });
+      if (!r.ok) throw new UnpickUnitRefused(r);
+      reverted.push(r);
+    }
+    const orderIds = [...new Set(reverted.map((r) => r.orderId))];
+    await refreshOrderStageFacts(orgId, { orderIds }, client);
 
+    const first = reverted[0];
     return {
       ok: true as const,
-      unitId: r.unitId,
+      unitId: first.unitId,
       prevStatus: 'PICKED',
       nextStatus: 'ALLOCATED',
-      allocationId: r.allocationId,
-      orderId: r.orderId,
-      inventoryEventId: r.inventoryEventId,
+      allocationId: first.allocationId,
+      orderId: first.orderId,
+      inventoryEventId: first.inventoryEventId,
+      unitIds: reverted.map((r) => r.unitId),
+      orderIds,
     };
+  }).catch((err: unknown) => {
+    if (err instanceof UnpickUnitRefused) return err.failure;
+    throw err;
   });
 
   if (!result.ok) return NextResponse.json(result, { status: result.status });
-  // Un-picking rolls the Pick column back — re-state the order's pick fact.
-  const changedOrderId = result.orderId;
-  after(() => publishOrderPickFacts(orgId, [changedOrderId], 'pick.unscan'));
-  return NextResponse.json(result);
+  // Un-picking rolls the Pick column back — re-state the orders' pick facts.
+  const { orderIds, ...response } = result;
+  after(() => publishOrderPickFacts(orgId, orderIds, 'pick.unscan'));
+  return NextResponse.json(response);
 }, { permission: 'picking.scan' });

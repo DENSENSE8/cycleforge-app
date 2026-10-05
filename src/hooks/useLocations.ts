@@ -109,10 +109,12 @@ async function patchRoom(args: {
   oldName: string;
   newName?: string;
   zoneLetter?: string | null;
+  description?: string | null;
 }): Promise<RoomPatchResult> {
   const body: Record<string, unknown> = {};
   if (args.newName !== undefined) body.name = args.newName;
   if (args.zoneLetter !== undefined) body.zoneLetter = args.zoneLetter;
+  if (args.description !== undefined) body.description = args.description;
   const res = await fetch(`/api/rooms/${encodeURIComponent(args.oldName)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -214,12 +216,13 @@ interface UseLocationsResult {
   creating: boolean;
   createError: Error | null;
   /** Create a brand-new room (just a parent entry; no bins). */
-  createRoom: (name: string, zoneLetter?: string | null) => Promise<LocationRecord | null>;
+  createRoom: (name: string, zoneLetter?: string | null, description?: string | null) => Promise<LocationRecord | null>;
   /** Rename a room everywhere it appears (parent + all bins + barcodes). */
   renameRoom: (
     oldName: string,
     newName?: string,
     zoneLetter?: string | null,
+    description?: string | null,
   ) => Promise<RoomPatchResult | null>;
   /** Soft-delete a room and all of its bins. */
   removeRoom: (name: string) => Promise<{ deactivated: number } | null>;
@@ -386,11 +389,12 @@ export function useLocations(): UseLocationsResult {
   );
 
   const createRoom = useCallback(
-    async (name: string, zoneLetter?: string | null) => {
+    async (name: string, zoneLetter?: string | null, description?: string | null) => {
       try {
         return await createRoomMutation.mutateAsync({
           name,
           zoneLetter: zoneLetter ?? null,
+          description: description?.trim() || null,
         });
       } catch {
         return null;
@@ -400,12 +404,13 @@ export function useLocations(): UseLocationsResult {
   );
 
   const renameRoomFn = useCallback(
-    async (oldName: string, newName?: string, zoneLetter?: string | null) => {
+    async (oldName: string, newName?: string, zoneLetter?: string | null, description?: string | null) => {
       try {
         return await renameRoomMutation.mutateAsync({
           oldName,
           newName,
           zoneLetter,
+          description,
         });
       } catch {
         return null;

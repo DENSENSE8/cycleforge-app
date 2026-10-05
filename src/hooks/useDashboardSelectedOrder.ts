@@ -19,6 +19,7 @@ import {
   type ShippedDetailsContext,
 } from '@/utils/events';
 import { readDetailsOpenBehaviorPreference } from '@/utils/dashboard-preferences';
+import { setRecordDetailsParam } from '@/lib/records/record-details';
 
 // Bumped to v2 to invalidate stale snapshots that stored a corrupted packed_at
 // (filled from orders.created_at by an older round-trip path). v1 entries are
@@ -83,11 +84,8 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
 
   const replaceOpenOrderId = useCallback((orderId: number | null) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (orderId && Number.isFinite(orderId) && orderId > 0) {
-      params.set('openOrderId', String(orderId));
-    } else {
-      params.delete('openOrderId');
-    }
+    // The order card's open record — the same writer the pasted list's opener uses (`recordDetailsHref`).
+    setRecordDetailsParam(params, 'order', orderId && Number.isFinite(orderId) && orderId > 0 ? orderId : null);
     const nextSearch = params.toString();
     const nextPath = pathname || '/shipping/orders';
     router.replace(nextSearch ? `${nextPath}?${nextSearch}` : nextPath);

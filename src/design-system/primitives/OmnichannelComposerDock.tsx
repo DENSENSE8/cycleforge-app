@@ -102,6 +102,8 @@ interface OmnichannelComposerDockProps {
   commitDisabled?: boolean;
   commitAriaLabel?: string;
   commitTooltip?: string;
+  /** `data-testid` on the commit control (browser proofs address a labelled commit by what it does). */
+  commitTestId?: string;
   footerStart?: ReactNode;
   footerEnd?: ReactNode;
   /**
@@ -197,6 +199,7 @@ export const OmnichannelComposerDock = forwardRef<
     commitDisabled,
     commitAriaLabel = 'Save note',
     commitTooltip = 'Save (Enter)',
+    commitTestId,
     footerStart,
     footerEnd,
     headerEnd,
@@ -288,6 +291,7 @@ export const OmnichannelComposerDock = forwardRef<
               disabled={disabled || !canCommit}
               onClick={() => onCommit(localRef.current?.value)}
               icon={commitIcon}
+              data-testid={commitTestId}
             >
               {commitLabel ?? commitAriaLabel}
             </Button>

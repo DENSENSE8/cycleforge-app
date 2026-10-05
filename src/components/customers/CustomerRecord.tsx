@@ -41,8 +41,7 @@ export function CustomerRecord({ customerId }: { customerId: number }) {
           <div className="flex min-w-0 flex-col gap-4">
             <RecordGroup title="Identity" testId="customer-record-identity">
               <div className="px-4 pb-1">
-                <EvidenceFactRow label="Name">{customerFullName(record) || `Customer ${customerId}`}</EvidenceFactRow>
-                <EvidenceFactRow label="Customer id"><span className="tabular-nums">C-{customerId}</span></EvidenceFactRow>
+                <EvidenceFactRow label="Name">{customerFullName(record) || 'Unnamed customer'}</EvidenceFactRow>
                 {phone ? <EvidenceFactRow label="Phone"><a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 hover:underline"><Phone className="size-3.5 text-mode-muted" aria-hidden />{formatPhoneNumber(phone)}</a></EvidenceFactRow> : null}
                 {record.email ? <EvidenceFactRow label="Email"><a href={`mailto:${record.email}`} className="inline-flex min-w-0 items-center gap-1.5 hover:underline"><Mail className="size-3.5 shrink-0 text-mode-muted" aria-hidden /><span className="truncate">{record.email}</span></a></EvidenceFactRow> : null}
                 {address.length > 0 ? <EvidenceFactRow label="Address" wide><span className="flex items-start gap-1.5"><MapPin className="mt-0.5 size-3.5 shrink-0 text-mode-muted" aria-hidden /><span className="whitespace-pre-line">{address.join('\n')}</span></span></EvidenceFactRow> : null}

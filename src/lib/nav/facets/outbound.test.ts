@@ -133,7 +133,8 @@ function comboRunner(orders: FixtureOrder[], captured: Array<{ sql: string; para
   return {
     listLocalPickupLines: noPickup,
     exceptionCounts: noExceptions,
-    liveFeedCounts: async () => ({}),
+    supportRows: async () => [],
+    liveFeedFacets: async () => ({ carrier: [], channel: [] }),
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
       let scoped = orders;
@@ -191,10 +192,10 @@ test('every refinement case narrows the fixture, so the equality below is a real
   }
 });
 
-test('outbound.triage: total and every option count equal the list total for the same params', async () => {
+test('outbound.orders: total and every option count equal the list total for the same params', async () => {
   const orders = fixtureOrders();
   for (const params of PARAM_CASES) {
-    const res = await facetsBody('outbound.triage', new URLSearchParams(params), comboRunner(orders));
+    const res = await facetsBody('outbound.orders', new URLSearchParams(params), comboRunner(orders));
     assert.equal(res.total, listRows(orders, params).length, `total for ${JSON.stringify(params)}`);
     for (const group of res.groups) {
       for (const option of group.options) {
@@ -212,7 +213,7 @@ test('outbound.triage: total and every option count equal the list total for the
 test('partition groups (stage, ship-by) sum to the list total while their own param is unset', async () => {
   const orders = fixtureOrders();
   for (const params of [{}, { attention: '1' }, { late: '1', ustatus: 'BLOCKED' }]) {
-    const res = await facetsBody('outbound.triage', new URLSearchParams(params), comboRunner(orders));
+    const res = await facetsBody('outbound.orders', new URLSearchParams(params), comboRunner(orders));
     for (const id of ['stage', 'aging']) {
       const group = res.groups.find((g) => g.id === id);
       assert.ok(group);
@@ -223,8 +224,8 @@ test('partition groups (stage, ship-by) sum to the list total while their own pa
 
 test('a group never narrows its own options: picking a stage keeps the sibling stage counts', async () => {
   const orders = fixtureOrders();
-  const unfiltered = await facetsBody('outbound.triage', new URLSearchParams(), comboRunner(orders));
-  const picked = await facetsBody('outbound.triage', new URLSearchParams({ stage: 'picked' }), comboRunner(orders));
+  const unfiltered = await facetsBody('outbound.orders', new URLSearchParams(), comboRunner(orders));
+  const picked = await facetsBody('outbound.orders', new URLSearchParams({ stage: 'picked' }), comboRunner(orders));
   assert.deepEqual(
     picked.groups.find((g) => g.id === 'stage')?.options,
     unfiltered.groups.find((g) => g.id === 'stage')?.options,
@@ -234,8 +235,8 @@ test('a group never narrows its own options: picking a stage keeps the sibling s
 
 test('queue facets read the list predicates: the view scope fragment, and ?staff= bound as a parameter', async () => {
   const captured: Array<{ sql: string; params: readonly unknown[] }> = [];
-  await facetsBody('outbound.triage', new URLSearchParams({ staff: '42' }), comboRunner([], captured));
-  await facetsBody('outbound.triage', new URLSearchParams({ staff: '-3' }), comboRunner([], captured));
+  await facetsBody('outbound.orders', new URLSearchParams({ staff: '42' }), comboRunner([], captured));
+  await facetsBody('outbound.orders', new URLSearchParams({ staff: '-3' }), comboRunner([], captured));
   assert.equal(captured.length, 2, 'one statement per facet request');
   assert.ok(captured[0].sql.includes(sqlDeskQueueScope('triage')));
   assert.deepEqual(captured[0].params, [ORG, 42]);
@@ -246,7 +247,7 @@ test('queue facets read the list predicates: the view scope fragment, and ?staff
 test('a context is refused (403) without its list endpoint’s permission, before any read', async () => {
   const captured: Array<{ sql: string; params: readonly unknown[] }> = [];
   const deps = comboRunner([], captured);
-  const res = await getNavFacets({ orgId: ORG, permissions: new Set(['walk_in.view']) }, 'outbound.triage', new URLSearchParams(), deps);
+  const res = await getNavFacets({ orgId: ORG, permissions: new Set(['walk_in.view']) }, 'outbound.orders', new URLSearchParams(), deps);
   assert.deepEqual(res, { ok: false, status: 403, error: 'FORBIDDEN', permission: 'orders.view' });
   assert.equal(captured.length, 0);
 });
@@ -264,7 +265,8 @@ test('pickup: status counts are the workbench grid counts over the same line rea
     run: async () => { throw new Error('pickup facets read the line feed, not SQL'); },
     listLocalPickupLines: async (_org, query) => { reads.push(query); return lines; },
     exceptionCounts: noExceptions,
-    liveFeedCounts: async () => ({}),
+    supportRows: async () => [],
+    liveFeedFacets: async () => ({ carrier: [], channel: [] }),
   };
   const caller = { orgId: ORG, permissions: new Set(['walk_in.view']) };
   const all = await getNavFacets(caller, 'pickup', new URLSearchParams({ q: ' flip ' }), deps);

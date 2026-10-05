@@ -5,6 +5,8 @@
  * landing on the nearest retained surface instead of a 404.
  */
 
+import { SEARCH_PATHS } from '@/lib/nav/route-tree';
+
 const PARKED_INVENTORY_PATHS = new Set([
   '/inventory',
   '/inventory/activity',
@@ -95,7 +97,8 @@ export function parkedSlotSurfaceDestination(
     return '/settings';
   }
 
-  if (isPathOrChild(pathname, '/search')) {
+  // `/search` is parked; its one live page — the pasted list — is not.
+  if (isPathOrChild(pathname, '/search') && !isPathOrChild(pathname, SEARCH_PATHS.pastedList)) {
     const rawSelection = searchParams.get('sel') ?? '';
     const separator = rawSelection.indexOf(':');
     const entityType = separator > 0 ? rawSelection.slice(0, separator) : '';
@@ -131,15 +134,6 @@ export function parkedSlotSurfaceDestination(
       const next = new URLSearchParams(searchParams);
       next.delete('mode');
       return withParams('/sourcing', next);
-    }
-  }
-
-  if (pathname === '/support') {
-    const mode = String(searchParams.get('mode') ?? '').trim().toLowerCase();
-    if (mode === 'warranty') {
-      const next = new URLSearchParams(searchParams);
-      next.delete('mode');
-      return withParams('/support', next);
     }
   }
 

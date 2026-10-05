@@ -5,10 +5,9 @@
  * letter or `locations.room`.
  */
 
-import { arrivalTierLabel } from '@/lib/receiving/arrival-tier';
 import type { PrintableLocationRow } from '@/lib/print/printLocationRows';
 import { RackRequestError } from '@/lib/locations/racks-client';
-import type { RackDetail, RackErrorCode, RackPlacementRef, RackRoomRef, RackSummary } from '@/lib/locations/rack-types';
+import type { RackDetail, RackErrorCode, RackPlacementRef, RackRoomRef } from '@/lib/locations/rack-types';
 
 /**
  * Where the rack stands, in words: the room alone when it stands in the room
@@ -26,12 +25,6 @@ export function rackShelfCountText(count: number): string {
   return `${count} ${count === 1 ? 'shelf' : 'shelves'}`;
 }
 
-/** `Priority 1 · High 2` — the arrival shelves by tier, most urgent first; null when none is tiered. */
-export function rackTierSummaryText(tierCounts: RackSummary['tierCounts']): string | null {
-  if (tierCounts.length === 0) return null;
-  return tierCounts.map(({ tier, count }) => `${arrivalTierLabel(tier)} ${count}`).join(' · ');
-}
-
 /**
  * The rows a rack print run hands `useLocationLabelPrint`: the placard (the
  * rack's own row) first when asked, then the chosen shelves in shelf order.
@@ -42,10 +35,10 @@ export function rackLabelRows(
   pick: { placard: boolean; shelfCodes: ReadonlySet<string> },
 ): PrintableLocationRow[] {
   const rows: PrintableLocationRow[] = [];
-  if (pick.placard) rows.push({ id: rack.id, name: rack.name, barcode: rack.code, roomName: null, arrivalPriorityTier: null });
+  if (pick.placard) rows.push({ id: rack.id, name: rack.name, barcode: rack.code, roomName: null });
   for (const shelf of [...rack.shelves].sort((a, b) => a.shelf - b.shelf)) {
     if (!pick.shelfCodes.has(shelf.code)) continue;
-    rows.push({ id: shelf.id, name: shelf.name, barcode: shelf.code, roomName: null, arrivalPriorityTier: shelf.tier });
+    rows.push({ id: shelf.id, name: shelf.name, barcode: shelf.code, roomName: null });
   }
   return rows;
 }
@@ -58,6 +51,7 @@ export const RACK_ERROR_SENTENCES: Readonly<Record<RackErrorCode, string>> = {
   destination_kind: 'That label is not a room or a floor spot — scan where the rack stands.',
   same_placement: 'The rack already stands there.',
   shelf_has_stock: 'That shelf still holds stock or cartons — move them off first.',
+  rack_in_use: 'That rack still holds stock, cartons, totes, or staged work — move them off first.',
   not_a_rack: 'That code is not a rack.',
   bay_not_found: 'No bay has that code.',
   bay_already_adopted: 'This bay is already a movable rack.',

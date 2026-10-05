@@ -297,7 +297,7 @@ export interface OpenOrderForUnitScan {
 
 /**
  * Pack scan → unit → the NOT-shipped order it is on. The unit is matched the
- * way a pick locks it (`lockUnitForPickScan`): a numeric id only from a label
+ * way a pick locks a unit scan (`lockUnitsForPickScan`): a numeric id only from a label
  * handle, else serial or unit_uid. Its order is the open allocation
  * (ALLOCATED / PICKED / PACKED), else the order its serial was bound to at
  * pick (`tech_serial_numbers.order_id`). Unlike

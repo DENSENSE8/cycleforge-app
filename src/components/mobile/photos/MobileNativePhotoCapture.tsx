@@ -35,7 +35,10 @@ export type { CapturedShot } from '@/lib/photos/capture-session';
 
 export interface PriorPhoto {
   id: string;
+  /** Grid tile source — a thumbnail is right here. */
   previewUrl: string;
+  /** What the full-screen viewer paints; without it the viewer would show the tile thumbnail stretched. */
+  fullUrl?: string;
   photoId?: number;
 }
 
@@ -61,6 +64,19 @@ export const MobileNativePhotoInput = forwardRef<
   );
 });
 
+/**
+ * Photo-library batch picker: several existing photos in one pick, no
+ * `capture`. A host may click it from its own button (inside the user's tap —
+ * iOS opens the picker only from a gesture) and hand the files to
+ * {@link MobileNativePhotoCapture} `initialFiles` for review.
+ */
+export const MobilePhotoLibraryInput = forwardRef<
+  HTMLInputElement,
+  Omit<ComponentPropsWithoutRef<'input'>, 'type' | 'accept' | 'capture' | 'multiple'>
+>(function MobilePhotoLibraryInput({ className = 'sr-only', ...props }, ref) {
+  return <input {...props} ref={ref} type="file" accept="image/*" multiple className={className} />;
+});
+
 interface MobileNativePhotoCaptureProps {
   onDone: (shots: CapturedShot[]) => void;
   onCancel: () => void;
@@ -71,11 +87,17 @@ interface MobileNativePhotoCaptureProps {
   onDeletePrior?: (photoId: number) => void | Promise<void>;
   embedded?: boolean;
   gateCapture?: boolean;
+  /**
+   * Library files the host already picked (its own Choose photos, clicked in
+   * the user's gesture). They land as new shots for review and the live
+   * camera stays closed until asked for.
+   */
+  initialFiles?: readonly File[];
 }
 
 type GallerySlide =
-  | { kind: 'prior'; id: string; previewUrl: string; photoId?: number }
-  | { kind: 'capture'; id: string; previewUrl: string };
+  | { kind: 'prior'; id: string; previewUrl: string; fullUrl: string; photoId?: number }
+  | { kind: 'capture'; id: string; previewUrl: string; fullUrl: string };
 
 const GATE_DIMENSION = 160;
 
@@ -119,6 +141,7 @@ export function MobileNativePhotoCapture({
   onDeletePrior,
   embedded = false,
   gateCapture = false,
+  initialFiles,
 }: MobileNativePhotoCaptureProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const libraryInputRef = useRef<HTMLInputElement>(null);
@@ -141,10 +164,12 @@ export function MobileNativePhotoCapture({
     [],
   );
 
+  // Read once: a host's picked files open review, not the camera.
+  const initialFilesRef = useRef(initialFiles);
   useEffect(() => {
     const available = canUseContinuousWebCamera();
     setContinuousCameraAvailable(available);
-    setContinuousCameraOpen(available);
+    setContinuousCameraOpen(available && !initialFilesRef.current?.length);
   }, []);
 
   const gallerySlides = useMemo<GallerySlide[]>(
@@ -153,12 +178,15 @@ export function MobileNativePhotoCapture({
         kind: 'prior' as const,
         id: photo.id,
         previewUrl: photo.previewUrl,
+        fullUrl: photo.fullUrl ?? photo.previewUrl,
         photoId: photo.photoId,
       })),
       ...shots.map((shot) => ({
         kind: 'capture' as const,
         id: shot.id,
+        // A capture's blob URL is already the full shot.
         previewUrl: shot.previewUrl,
+        fullUrl: shot.previewUrl,
       })),
     ],
     [priorPhotos, shots],
@@ -168,7 +196,8 @@ export function MobileNativePhotoCapture({
     () =>
       gallerySlides.map((slide) => ({
         id: slide.id,
-        previewUrl: slide.previewUrl,
+        // Full screen is full resolution: never the grid thumbnail.
+        previewUrl: slide.fullUrl,
         deletable:
           slide.kind === 'capture' ||
           (slide.photoId != null && typeof onDeletePrior === 'function'),
@@ -233,6 +262,14 @@ export function MobileNativePhotoCapture({
     },
     [gateCapture, jpegQuality, maxPhotos],
   );
+
+  const initialFilesAdded = useRef(false);
+  useEffect(() => {
+    const files = initialFilesRef.current;
+    if (initialFilesAdded.current || !files?.length) return;
+    initialFilesAdded.current = true;
+    void addFiles(files, 'photo-library');
+  }, [addFiles]);
 
   const addContinuousFrame = useCallback(
     async (blob: Blob) => {
@@ -310,15 +347,11 @@ export function MobileNativePhotoCapture({
         }}
         data-testid="mobile-native-photo-input"
       />
-      <input
+      <MobilePhotoLibraryInput
         ref={libraryInputRef}
-        type="file"
-        accept="image/*"
-        multiple
         disabled={processing || atCap}
         tabIndex={-1}
         aria-hidden
-        className="sr-only"
         onChange={(event) => {
           void addFiles(Array.from(event.target.files ?? []), 'photo-library');
           event.target.value = '';
@@ -339,7 +372,10 @@ export function MobileNativePhotoCapture({
           type="button"
           onClick={handleClose}
           ariaLabel="Close photo capture"
-          className="h-11 w-11 shrink-0 rounded-full bg-white/10 active:bg-white/20"
+          size="touch"
+          radius="pill"
+          tone="glass"
+          className="shrink-0 bg-white/10 active:bg-white/20"
           icon={<X className="h-5 w-5 text-white" />}
         />
       </header>

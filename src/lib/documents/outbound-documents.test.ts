@@ -26,6 +26,7 @@ interface Script {
   insertedRow?: Record<string, unknown>;
   insertError?: unknown;
   deleteRow?: Record<string, unknown> | null;
+  pairRow?: Record<string, unknown> | null;
   allowedUrlBases?: string[];
 }
 
@@ -61,11 +62,29 @@ function fakeClientQuery(cap: Captured, script: Script) {
     if (text.includes('UPDATE orders SET label_printed_at')) {
       return { rows: [], rowCount: 1 };
     }
+    if (text.includes('FROM documents') && text.includes('FOR UPDATE')) {
+      return { rows: script.pairRow ? [script.pairRow] : [], rowCount: script.pairRow ? 1 : 0 };
+    }
+    if (text.includes('DELETE FROM document_entity_links')) {
+      return { rows: [], rowCount: 1 };
+    }
+    if (text.includes("UPDATE documents\n            SET entity_type = 'ORDER'")) {
+      return { rows: [], rowCount: 1 };
+    }
+    if (text.includes('UPDATE label_ingestions')) {
+      return { rows: [], rowCount: 0 };
+    }
+    if (text.includes('FROM documents WHERE id = $1')) {
+      return { rows: script.pairRow ? [script.pairRow] : [], rowCount: script.pairRow ? 1 : 0 };
+    }
     if (text.includes('FROM document_entity_links') && text.includes('document_id = ANY')) {
       return { rows: [], rowCount: 0 };
     }
-    if (text.includes('SELECT document_type, entity_type, entity_id FROM documents')) {
+    if (text.includes('SELECT document_type, entity_type, entity_id, document_data FROM documents')) {
       return { rows: script.deleteRow ? [script.deleteRow] : [], rowCount: script.deleteRow ? 1 : 0 };
+    }
+    if (text.includes('DELETE FROM label_ingestions')) {
+      return { rows: [], rowCount: 0 };
     }
     if (text.includes('DELETE FROM documents WHERE id = $1')) {
       return { rows: [], rowCount: 1 };
@@ -219,6 +238,38 @@ test('attachOutboundDocument: unknown order 404s before any link/insert side-eff
   assert.equal(cap.createLinkCalls.length, 0);
 });
 
+test('attachOutboundDocument: pairs an existing stored row without inserting or changing its bytes', async () => {
+  const stored = {
+    ...insertedLabelRow,
+    id: 77,
+    entity_type: 'UNLINKED',
+    entity_id: 0,
+    document_type: 'packing_slip',
+    document_data: {
+      url: '/api/documents/77/content',
+      storageProvider: 'gcs',
+      bucket: 'existing-bucket',
+      objectKey: 'existing/object.pdf',
+      source: 'bulk_upload',
+      platform: 'manual',
+    },
+  };
+  const { deps, cap } = fakes({ pairRow: stored });
+
+  const result = await attachOutboundDocument(
+    ORG,
+    { orderId: 42, documentId: 77, documentType: 'packing_slip' },
+    deps,
+  );
+
+  assert.equal(result.document.id, 77);
+  assert.equal(result.document.data.objectKey, 'existing/object.pdf');
+  assert.ok(!cap.queries.some((query) => query.text.includes('INSERT INTO documents')));
+  assert.deepEqual(cap.createLinkCalls, [
+    { documentId: 77, entityType: 'ORDER', entityId: 42, linkRole: 'primary' },
+  ]);
+});
+
 test('attachOutboundDocument: a protocol-relative URL is rejected, never treated as same-origin', async () => {
   // `//evil.example.com/x` starts with '/' but a browser resolves it against
   // the CURRENT scheme onto a different host — must not slip past the
@@ -257,7 +308,7 @@ test('deleteOutboundDocument: removes an existing row and reports its order id',
 
   const result = await deleteOutboundDocument(ORG, 7, {}, deps);
 
-  assert.deepEqual(result, { id: 7, documentType: 'shipping_label', orderId: 42 });
+  assert.deepEqual(result, { id: 7, documentType: 'shipping_label', orderId: 42, ingestionIds: [] });
   assert.ok(cap.queries.some((q) => q.text.includes('DELETE FROM documents WHERE id = $1 AND organization_id = $2')));
 });
 

@@ -5,12 +5,15 @@
  * it. Stands in for the catalog list while `?import=csv` holds a draft. The
  * server plans (`POST /api/sku-catalog/import`): `[OLD]` rows dropped, each
  * SKU with its leading zeros, every row New / Title differs / In catalog /
- * Duplicate / No SKU / No title. "Add N products" adds the New rows only — a
- * SKU already in the catalog keeps its own title. "Download cleaned CSV" is
- * the file as it should have been.
+ * Duplicate / No SKU / No title. The page header carries the import's verbs
+ * (they act on the whole file, never on checked rows): "Add N products" adds
+ * the New rows only — a SKU already in the catalog keeps its own title;
+ * "Download cleaned CSV" is the file as it should have been; "Cancel" drops
+ * the staged file.
  */
 
 import { memo, useCallback, useMemo, useState } from 'react';
+import { Download, Plus, X } from '@/components/Icons';
 import { useQuery } from '@tanstack/react-query';
 import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
@@ -18,7 +21,7 @@ import { TriageRow, type TriageRowFace } from '@/design-system/components/triage
 import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
-import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import type { RecordStateFace } from '@/design-system/tokens/record';
 import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
@@ -37,6 +40,7 @@ import { toast } from '@/lib/toast';
 const VIEW = PRODUCTS_CATALOG_IMPORT_VIEW;
 const NO_CHIPS: readonly never[] = [];
 const rowId = (row: CatalogImportPlanRow): number => row.line;
+const CHECKING_REASON = 'Checking the file against the catalog';
 
 const OUTCOME_FACE: Readonly<Record<CatalogImportOutcome, RecordStateFace>> = {
   new: { id: 'new', code: 'NEW', label: CATALOG_IMPORT_OUTCOME_LABELS.new, tone: 'info', icon: 'package' },
@@ -59,10 +63,18 @@ function CatalogImportRowImpl(props: TriageCardSlotProps<CatalogImportPlanRow, I
     () => ({
       state: OUTCOME_FACE[row.outcome],
       identity: row.sku || row.rawSku || '—',
+      identityCopy: row.sku || row.rawSku ? { value: (row.sku || row.rawSku)!, tone: 'sku' } : undefined,
       identityWidth: 'code',
       title: row.title || 'No title in the file',
       facts: [
-        { id: 'was', label: row.padded ? 'Was' : undefined, value: row.padded ? row.rawSku : null, width: 'short', tone: 'muted' },
+        {
+          id: 'was',
+          label: row.padded ? 'Was' : undefined,
+          value: row.padded ? row.rawSku : null,
+          copy: row.padded && row.rawSku ? { value: row.rawSku, tone: 'sku' } : undefined,
+          width: 'short',
+          tone: 'muted',
+        },
         {
           id: 'catalog',
           label: row.outcome === 'title_differs' ? 'Catalog' : undefined,
@@ -75,6 +87,7 @@ function CatalogImportRowImpl(props: TriageCardSlotProps<CatalogImportPlanRow, I
           id: 'zoho',
           label: row.zohoItemId ? 'Zoho' : undefined,
           value: row.zohoItemId ? { kind: 'code', text: `…${row.zohoItemId.slice(-6)}`, title: `Zoho item ${row.zohoItemId}` } : null,
+          copy: row.zohoItemId ? { value: row.zohoItemId, display: `…${row.zohoItemId.slice(-6)}`, tone: 'id' } : undefined,
           width: 'short',
         },
       ],
@@ -159,30 +172,47 @@ export function CatalogImportReview({
   }, [inputRows, onApplied]);
 
   const newCount = plan?.summary.new ?? 0;
-  const verbs = useMemo<RecordActionVerb[]>(
-    () => [
-      {
-        id: 'catalog-import-apply',
-        label: newCount === 1 ? 'Add 1 product' : `Add ${newCount} products`,
-        tone: 'blue',
-        disabled: !plan || newCount === 0 || applying,
-        disabledReason: !plan ? 'Checking the file against the catalog' : 'Nothing new to add',
-        run: apply,
-      },
-      {
-        id: 'catalog-import-cleaned',
-        label: 'Download cleaned CSV',
-        disabled: !plan,
-        disabledReason: 'Checking the file against the catalog',
-        run: () => {
-          if (!plan) return;
-          const name = draft.fileName.replace(/\.(csv|tsv|txt)$/i, '');
-          download(`${name} (cleaned).csv`, cleanedCatalogCsv(draft.headers, draft.rows, draft.mapping, plan));
-        },
-      },
-      { id: 'catalog-import-cancel', label: 'Cancel', run: onClose },
-    ],
-    [apply, applying, draft, newCount, onClose, plan],
+  const downloadCleaned = useCallback(() => {
+    if (!plan) return;
+    const name = draft.fileName.replace(/\.(csv|tsv|txt)$/i, '');
+    download(`${name} (cleaned).csv`, cleanedCatalogCsv(draft.headers, draft.rows, draft.mapping, plan));
+  }, [draft, plan]);
+  // The import's verbs act on the whole staged file (the New rows, the cleaned
+  // file, the draft itself), never on checked rows — page header actions, not the select bar.
+  const importActions = useMemo(
+    () => (
+      <div className="flex shrink-0 items-center gap-2" data-testid="catalog-import-actions">
+        <DeskHeaderAction type="button" variant="ghost" size="sm" icon={<X aria-hidden />} onClick={onClose} data-testid="catalog-import-cancel">
+          Cancel
+        </DeskHeaderAction>
+        <DeskHeaderAction
+          type="button"
+          variant="secondary"
+          size="sm"
+          icon={<Download aria-hidden />}
+          disabled={!plan}
+          title={plan ? undefined : CHECKING_REASON}
+          onClick={downloadCleaned}
+          data-testid="catalog-import-cleaned"
+        >
+          Download cleaned CSV
+        </DeskHeaderAction>
+        <DeskHeaderAction
+          type="button"
+          variant="primary"
+          size="sm"
+          icon={<Plus aria-hidden />}
+          loading={applying}
+          disabled={!plan || newCount === 0}
+          title={!plan ? CHECKING_REASON : newCount === 0 ? 'Nothing new to add' : undefined}
+          onClick={() => void apply()}
+          data-testid="catalog-import-apply"
+        >
+          {newCount === 1 ? 'Add 1 product' : `Add ${newCount} products`}
+        </DeskHeaderAction>
+      </div>
+    ),
+    [apply, applying, downloadCleaned, newCount, onClose, plan],
   );
 
   const cut = useTriageCut({ statusKeys: NO_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
@@ -226,10 +256,9 @@ export function CatalogImportReview({
         <span className="text-role-caption text-mode-muted" data-testid="catalog-import-explain">
           {plan
             ? `${plan.summary.rows} rows · ${plan.summary.old} old dropped · ${padded} SKU${padded === 1 ? '' : 's'} given back leading zeros · existing catalog titles are never changed`
-            : 'Checking the file against the catalog…'}
+            : `${CHECKING_REASON}…`}
         </span>
       </div>
-      <RecordActionStrip face="inline" verbs={verbs} label="Import actions" testId="catalog-import-actions" />
       {missingColumns.length > 0 ? (
         <EvidenceNotice tone="warn">The file has no {missingColumns.join(' or ')} column — every row will be reported, none added.</EvidenceNotice>
       ) : null}
@@ -239,6 +268,9 @@ export function CatalogImportReview({
 
   return (
     <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col" data-testid="catalog-import-review">
+      {/* The page's own split CTA (NavPageActions: Add product · Import products CSV) holds the
+          primary slot; the import's verbs ride the overall slot, left of it. */}
+      <DeskActionSlotRegistrar role="overall">{importActions}</DeskActionSlotRegistrar>
       <TriageCardList
         density="row"
         family={family}

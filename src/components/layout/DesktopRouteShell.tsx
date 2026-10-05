@@ -84,7 +84,7 @@ const CommandBar = dynamic(
   () => import('@/components/CommandBar').then((m) => m.CommandBar),
   { ssr: false },
 );
-// Clipboard host owns the ⌘⇧V chord + the single desktop clipboard-panel mount.
+// Clipboard host owns the ⌘⌥V chord (`CLIPBOARD_HISTORY_HOTKEY`) + the single desktop clipboard-panel mount.
 // Must be here rather than in the spine footer: that footer mounts lazily on
 // first spine open, so a chord bound there would be dead on every fresh page load.
 const ClipboardHistoryHost = dynamic(

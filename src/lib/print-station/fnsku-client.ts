@@ -6,7 +6,6 @@ import type { PrintStationFnskuRow, PrintStationFnskuView } from './fnsku';
 
 export interface PrintStationFnskuList {
   rows: PrintStationFnskuRow[];
-  total: number;
 }
 
 /** Every list the desk has loaded sits under this prefix — a condition edit patches them all. */

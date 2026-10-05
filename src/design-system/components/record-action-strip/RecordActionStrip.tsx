@@ -71,7 +71,8 @@ interface RecordActionStripProps {
 
 const STRIP_CLASS =
   'flex w-full min-w-0 items-center gap-1 border-b border-border-soft bg-surface-card px-2 py-1.5';
-const HEADER_FACE_CLASS = '@container/verbs flex w-full min-w-0 flex-1 items-center gap-1';
+const HEADER_FACE_CLASS =
+  '@container/verbs flex w-full min-w-0 flex-1 items-center gap-1 @min-[64rem]/record-head:!min-w-[28rem]';
 const INLINE_FACE_CLASS = 'flex shrink-0 items-center gap-1';
 
 /**
@@ -83,6 +84,12 @@ const HEADER_EXPAND_TIERS: readonly { button: string; label: string }[] = [
   { button: '@sm/verbs:w-auto @sm/verbs:!px-2.5', label: '@sm/verbs:not-sr-only' },
   { button: '@lg/verbs:w-auto @lg/verbs:!px-2.5', label: '@lg/verbs:not-sr-only' },
 ];
+
+// A full-width record has room for all three primary verbs even when flexbox
+// gives the nested verbs container a conservative intrinsic width. Split panes
+// still follow the progressive tiers above.
+const HEADER_FULL_RECORD_BUTTON = '@min-[64rem]/record-head:w-auto @min-[64rem]/record-head:!px-2.5';
+const HEADER_FULL_RECORD_LABEL = '@min-[64rem]/record-head:not-sr-only';
 
 export function partitionRecordActionVerbs(verbs: readonly RecordActionVerb[]): {
   primary: RecordActionVerb[];
@@ -198,10 +205,10 @@ export function RecordActionStrip({
           // A record header spends its width on identity first: a verb is a
           // 24px icon, spelled out only once the header has room for it
           // (HEADER_EXPAND_TIERS); the tooltip and accessible name carry it until then.
-          className={face === 'header' ? cn('h-6 w-6 shrink-0 whitespace-nowrap !px-0', expand?.button) : undefined}
+          className={face === 'header' ? cn('h-6 w-6 shrink-0 whitespace-nowrap !px-0', expand?.button, HEADER_FULL_RECORD_BUTTON) : undefined}
           onClick={() => press(verb)}
         >
-          <span className={face === 'header' ? cn('sr-only', expand?.label) : undefined}>
+          <span className={face === 'header' ? cn('sr-only', expand?.label, HEADER_FULL_RECORD_LABEL) : undefined}>
             {verb.label}
           </span>
           {face !== 'header' && showHotkeys && verb.hotkey ? (
