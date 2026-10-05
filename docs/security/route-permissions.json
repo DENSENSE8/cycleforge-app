@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-05T08:54:22Z",
-  "totalRoutes": 1204,
+  "generatedAt": "2026-10-05T16:15:32Z",
+  "totalRoutes": 1203,
   "summary": {
-    "permissionGated": 979,
+    "permissionGated": 978,
     "authenticatedNoPermission": 139,
     "anonymousIntentional": 37,
     "serviceToService": 49,
@@ -5956,15 +5956,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/prepack/[id]/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "requireRoutePerm",
-      "permission": "tech.scan_serial",
-      "exemptReason": null
-    },
-    {
       "path": "/api/prepack/catalog/[id]/route.ts",
       "methods": [
         "GET",
@@ -5984,18 +5975,19 @@
       "exemptReason": null
     },
     {
-      "path": "/api/prepack/location/route.ts",
+      "path": "/api/prepack/package/route.ts",
       "methods": [
-        "GET"
+        "POST"
       ],
-      "gate": "withAuth",
-      "permission": "sku_stock.view",
+      "gate": "requireRoutePerm",
+      "permission": "tech.scan_serial",
       "exemptReason": null
     },
     {
       "path": "/api/prepack/unit/route.ts",
       "methods": [
-        "GET"
+        "GET",
+        "POST"
       ],
       "gate": "withAuth",
       "permission": "tech.scan_serial",
