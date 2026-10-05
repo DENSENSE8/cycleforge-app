@@ -4,11 +4,8 @@
 
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens';
-import {
-  SerialPreviewStrip,
-  BoxMembershipHint,
-  serialLast8,
-} from '@/components/receiving/SerialPreviewStrip';
+import { SerialPreviewStrip, BoxMembershipHint } from '@/components/receiving/SerialPreviewStrip';
+import { getLast8 } from '@/lib/copy-chip-format';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import type { TestingScanPick } from '@/lib/testing/testing-scan-session-bridge';
@@ -63,7 +60,7 @@ export function TestingScanPickPanel({ pick, onPick, onCancel }: Props) {
                   {row.quantity_received}/{row.quantity_expected ?? '?'} ·{' '}
                   {workflowStageLabel(row.workflow_status || 'EXPECTED')}
                   {row.tracking_number
-                    ? ` · TRK …${serialLast8(String(row.tracking_number))}`
+                    ? ` · TRK …${getLast8(String(row.tracking_number))}`
                     : ''}
                 </span>
                 {row.serials && row.serials.length > 0 ? (

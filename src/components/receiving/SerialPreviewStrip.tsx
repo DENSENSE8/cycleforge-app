@@ -3,11 +3,6 @@
 import { getLast8 } from '@/lib/copy-chip-format';
 import { Package, ScanBarcode } from '@/components/Icons';
 
-/** Last 8 of a serial for a compact preview chip. */
-export function serialLast8(value: string): string {
-  return getLast8(value);
-}
-
 type PreviewSerial = { id?: number; serial_number: string; unit_uid?: string | null };
 type BoxableSerial = { handling_unit_id?: number | null };
 
@@ -74,7 +69,7 @@ export function SerialPreviewStrip({
             }`}
           >
             <ScanBarcode className="h-2.5 w-2.5 shrink-0" />
-            {serialLast8(s.serial_number)}
+            {getLast8(s.serial_number)}
           </span>
         );
       })}

@@ -30,8 +30,11 @@ export const RECON_PARAM = 'recon';
 /** The reason filter inside one status (`?recon=` must be set for it to apply). */
 export const RECON_REASON_PARAM = 'recon_reason';
 
-/** One reconcile fetch holds every matched line (the list route's ceiling). */
-export const RECONCILE_ROW_LIMIT = 500;
+/**
+ * One reconcile fetch holds every matched line: five lines per number at the
+ * paste cap (a 150-number vendor list carries ~2 lines per number).
+ */
+export const RECONCILE_ROW_LIMIT = 5 * CHECK_ZOHO_RECEIVED_MAX_INPUTS;
 
 /** Said above the list when a paste names more lines than one fetch holds. */
 export const RECONCILE_CAP_NOTE = `Only the first ${RECONCILE_ROW_LIMIT} lines are shown`;
@@ -309,29 +312,6 @@ export function reconcileCheck(
       poNumber: row.po_number,
       vendor: row.vendor_name,
     };
-  });
-}
-
-/** Answered numbers per status — a pending number counts nowhere yet. */
-export function reconCounts(entries: readonly ReconEntry[]): Record<ReconStatus, number> {
-  const counts: Record<ReconStatus, number> = { received: 0, not_received: 0 };
-  for (const entry of entries) if (!entry.pending) counts[entry.status] += 1;
-  return counts;
-}
-
-/** Answered numbers of `status` per reason, in {@link RECON_REASONS} order; reasons with none are left out. */
-export function reconReasonCounts(
-  entries: readonly ReconEntry[],
-  status: ReconStatus,
-): Array<{ reason: ReconReason; count: number }> {
-  const counts = new Map<ReconReason, number>();
-  for (const entry of entries) {
-    if (entry.pending || entry.status !== status || !entry.reasonCode) continue;
-    counts.set(entry.reasonCode, (counts.get(entry.reasonCode) ?? 0) + 1);
-  }
-  return RECON_REASONS.flatMap((reason) => {
-    const count = counts.get(reason) ?? 0;
-    return count > 0 ? [{ reason, count }] : [];
   });
 }
 

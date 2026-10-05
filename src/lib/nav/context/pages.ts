@@ -13,6 +13,12 @@ import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sideba
 import { walkInStationHref } from '@/lib/walk-in/jobs';
 import type { NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
 import type { NavAction, NavControls, NavSearch } from './schema';
+import {
+  TASK_BOARD_GROUP_BYS,
+  TASK_BOARD_GROUP_BY_LABEL,
+  TASK_BOARD_SORTS,
+  TASK_BOARD_SORT_LABEL,
+} from '@/lib/task-board/task-board-model';
 import { RECON_PARAM, RECON_REASON_PARAM, REF_IN_PARAM } from '@/lib/receiving/reconcile';
 import {
   SAVED_VIEW_PARAM_KEYS,
@@ -37,17 +43,34 @@ import {
   SOURCING_WATCH_STATUS_OPTIONS,
 } from '@/components/sourcing/sourcing-shared';
 import {
-  LOCATIONS_TAB_OPTIONS,
   REPLENISH_STATUS_OPTIONS,
-  REPLENISH_TAB_OPTIONS,
 } from '@/lib/inventory/inventory-nav-choices';
+import { SHEET_SAVED_VIEW_CONFIG } from '@/lib/saved-views/surfaces';
 import { JOURNEY_FILTER_KEYS, OPERATIONS_SAVED_VIEWS_KEY } from '@/lib/operations/saved-view-presets';
 import { DEFAULT_REPAIR_SORT, REPAIR_SORT_OPTIONS, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
 import { QUEUE_STATUS_CHIPS } from '@/lib/orders/to-ship-queue';
-import { LIVE_FEED_DIRECTIONS, LIVE_FEED_PARAMS } from '@/lib/live-feed/route';
-import { LIVE_FEED_LENS_LABEL, liveFeedLensesOf, type LiveFeedDirection } from '@/lib/live-feed/statuses';
+import { SUPPORT_LOCATE } from '@/lib/nav/locate/support-params';
+import { CHANNEL_DISPOSITION_LABELS } from '@/lib/channel-allocation/types';
+import {
+  LABEL_BATCH_PRINTING_KEYS,
+  LABEL_BATCH_PRINTING_LABEL,
+  LABEL_BATCH_PRINTING_PARAM,
+  LABEL_PAIRING_KEYS,
+  LABEL_PAIRING_LABEL,
+  LABEL_PAIRING_PARAM,
+} from '@/lib/triage/views/label-intake';
+import {
+  SUPPORT_LIST_DEFAULT_GROUP,
+  SUPPORT_LIST_DEFAULT_SORT,
+  SUPPORT_LIST_GROUPS,
+  SUPPORT_LIST_GROUP_LABEL,
+  SUPPORT_LIST_SORTS,
+  SUPPORT_LIST_SORT_LABEL,
+} from '@/lib/support/list/support-list';
+import { RECEIVING_PHOTO_STAGES } from '@/lib/receiving/photo-intent';
+import { photoStageLabel } from '@/lib/photos/stages';
 
 /**
  * The import record (`/operations/imports`, `src/lib/imports/params.ts`) —
@@ -291,6 +314,10 @@ const PIPELINE_CONTROLS: NavControls = {
       { value: 'zoho', label: 'Zoho status', dir: 'asc' },
     ],
   },
+  // A pasted list (`?ref_in=`, the search's `locate`): where its numbers live
+  // (`?recon=`) and, inside a pressed bucket, why (`?recon_reason=`) — the
+  // ledger's chips over the numbers, moved here (ruling A4).
+  pastedListBuckets: { param: RECON_PARAM, facetParam: RECON_REASON_PARAM },
 };
 
 /**
@@ -346,7 +373,7 @@ const QUEUE_CONTROLS: NavControls = {
 /**
  * Repair service's `RepairCardList` on `/repair` and Sales › Repair service.
  * Status (`?tab=`; unset = the surface's default) decides what is loaded;
- * status chips (`?repairStatus=`) narrow within it. Channel is the view
+ * the Stage facet (`?repairStatus=`, `src/lib/nav/facets/repair.ts`) narrows within it. Channel is the view
  * (All · Shipped in · Dropped off). Sidebar Sort
  * (`?sort=`) sets the queue order.
  */
@@ -428,30 +455,6 @@ const SHIPPED_CONTROLS: NavControls = {
   },
 };
 
-/**
- * One Live feed direction view's controls (`/operations/live-feed`,
- * `src/lib/live-feed/route.ts`): Date by — which instant the header's range
- * reads (`entered` = when the package entered its current lane, then the
- * direction's pipeline events) — and Handled by (each lane's own staff
- * role). No Sort: lanes order by urgency and age. The date range itself is
- * page chrome top-right (operator 2026-10-03), never a sidebar control.
- */
-function liveFeedControls(dir: LiveFeedDirection): NavControls {
-  const p = LIVE_FEED_PARAMS;
-  return {
-    choices: [
-      {
-        id: 'lens',
-        label: 'Date by',
-        param: p.lens,
-        options: liveFeedLensesOf(dir).map((lens) => ({ value: lens, label: LIVE_FEED_LENS_LABEL[lens] })),
-        clearParams: [],
-      },
-    ],
-    staff: [{ id: 'staff', param: p.staff, label: 'Handled by' }],
-  };
-}
-
 /** The To-ship desk header (OrdersDeskAddAction · Past imports · Labels walk), removed 2026-09-26. */
 const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
   // Face = the page's manual verb (owner 2026-09-28). Syncing, demo sync, test
@@ -472,7 +475,7 @@ const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
  * stock"); Printed has no stock of its own, so no verb there wears ⌘P.
  * Uploads' face is the upload itself (⌘O rides it everywhere), then the labels.
  */
-function labelsDocsActions(view: 'uploads' | 'labels' | 'paperwork' | 'printed'): readonly NavActionDecl[] {
+function labelsDocsActions(view: 'uploads' | 'labels' | 'paperwork'): readonly NavActionDecl[] {
   const printKey = (stock: 'labels' | 'paperwork') => (view === stock ? { hotkey: 'mod+p' } : {});
   const printLabels: NavAction = { id: 'labels-docs.print-labels', label: 'Print all labels', intent: 'labels-docs:print-labels', ...printKey('labels') };
   const printPaperwork: NavAction = { id: 'labels-docs.print-paperwork', label: 'Print all paperwork', intent: 'labels-docs:print-paperwork', ...printKey('paperwork') };
@@ -485,10 +488,73 @@ function labelsDocsActions(view: 'uploads' | 'labels' | 'paperwork' | 'printed')
   const order =
     view === 'uploads' ? [upload, printLabels, printPaperwork, printAll, uploadSlips]
     : view === 'paperwork' ? [uploadSlips, printPaperwork, printLabels, printAll, upload]
-    : view === 'labels' ? [buyLabel, printLabels, printPaperwork, printAll, upload, uploadSlips]
-    : [printLabels, printPaperwork, printAll, upload, uploadSlips];
+    : [buyLabel, printLabels, printPaperwork, printAll, upload, uploadSlips];
   return order.map((action) => ({ action }));
 }
+
+// Labels & docs status cuts (ruling A4) — once the desk body's chip rails.
+const LABEL_PRINTING_CHOICE: NonNullable<NavControls['choices']>[number] = {
+  id: 'printing',
+  label: 'Printing',
+  param: LABEL_BATCH_PRINTING_PARAM,
+  options: LABEL_BATCH_PRINTING_KEYS.map((value) => ({ value, label: LABEL_BATCH_PRINTING_LABEL[value] })),
+  clearParams: ['page'],
+};
+const LABEL_PAIRING_CHOICE: NonNullable<NavControls['choices']>[number] = {
+  id: 'pairing',
+  label: 'Pairing',
+  param: LABEL_PAIRING_PARAM,
+  options: LABEL_PAIRING_KEYS.map((value) => ({ value, label: LABEL_PAIRING_LABEL[value] })),
+  clearParams: ['page'],
+};
+
+/**
+ * Media Library selection (operator law 2026-10-04): the body's Filters menu
+ * (`PhotoLibraryFilterDropdown`, retired) lives here. Every param is one
+ * `parsePhotoLibraryFilters` already reads (`src/lib/photos/library-filter-state.ts`).
+ */
+const MEDIA_LIBRARY_CONTROLS = {
+  staff: [{ id: 'taken-by', param: 'staffId', label: 'Taken by' }],
+  dateRanges: [
+    { id: 'taken', label: 'Taken', fromParam: 'dateFrom', toParam: 'dateTo', clearParams: [], placeholder: 'All dates' },
+  ],
+  choices: [
+    {
+      id: 'damage',
+      label: 'Damage',
+      param: 'damageDetected',
+      options: [
+        { value: 'true', label: 'Damage detected' },
+        { value: 'false', label: 'No damage flagged' },
+      ],
+      clearParams: [],
+    },
+    {
+      id: 'analysis',
+      label: 'Analysis',
+      param: 'hasAnalysis',
+      options: [
+        { value: 'true', label: 'Analyzed' },
+        { value: 'false', label: 'Not analyzed' },
+      ],
+      clearParams: [],
+    },
+  ],
+} satisfies NavControls;
+/** Evidence stage narrows only the Unboxing view (`photoLibraryFiltersToParams` drops it elsewhere). */
+const MEDIA_UNBOXING_CONTROLS: NavControls = {
+  ...MEDIA_LIBRARY_CONTROLS,
+  choices: [
+    {
+      id: 'stage',
+      label: 'Evidence stage',
+      param: 'stage',
+      options: RECEIVING_PHOTO_STAGES.map((stage) => ({ value: stage, label: photoStageLabel(stage) })),
+      clearParams: [],
+    },
+    ...MEDIA_LIBRARY_CONTROLS.choices,
+  ],
+};
 
 export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   // The MasterNav Chat row's `+` and its thread list (`SidebarNavList.tsx`
@@ -507,7 +573,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   outbound: {
     viewKeys: true,
     items: {
-      triage: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
+      orders: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
     },
   },
   fulfilled: {
@@ -528,7 +594,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   // Inbound also takes a pasted vendor list, located per number by
   // `GET /api/nav/locate` (the inbound locator).
   // `viewKeys`: 1 Inbound · 2 Docked · 3 Unboxed. No bare digit is bound on /incoming
-  // (the status chips are ⌥1–⌥N, `segment-chords.ts`; no EvidenceDecisionBar).
+  // (the statuses — the sidebar's Delivery status facet — are ⌥1–⌥N, `segment-chords.ts`; no EvidenceDecisionBar).
   incoming: {
     viewKeys: true,
     items: {
@@ -667,15 +733,10 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       qc: { search: { placeholder: 'Filter products…', source: 'url-param', param: 'q' } },
     },
   },
-  // Inventory (lane door, `G I`): the painted views are Stock · SKU Exceptions ·
-  // Ledger · Replenish · Locations (the rest are parked, `parked-tabs.ts`), so
-  // digits bind 1–5. Stock's Find, aisle facet, location order and state live
-  // in the contextual sidebar; Rooms remain counted stage chips because their
-  // labels are tenant data. Ledger reads no `q` — its face is ⌘K.
-  inventory: {
+  stock: {
     viewKeys: true,
     items: {
-      stock: {
+      all: {
         search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
         controls: {
           sort: {
@@ -688,25 +749,85 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           },
         },
       },
-      // The Exceptions hub list locked to Missing pairs (owner 2026-09-28): Find narrows it through `?q=`.
-      'sku-exceptions': {
-        search: { placeholder: 'SKU, title or order…', source: 'url-param', param: 'q' },
+      'low-stock': {
+        search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
+        controls: {
+          sort: {
+            param: 'sort',
+            defaultValue: 'location-asc',
+            options: [
+              { value: 'location-asc', label: 'Earliest location first' },
+              { value: 'location-desc', label: 'Latest location first' },
+            ],
+          },
+        },
+      },
+      'out-of-stock': {
+        search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
+        controls: {
+          sort: {
+            param: 'sort',
+            defaultValue: 'location-asc',
+            options: [
+              { value: 'location-asc', label: 'Earliest location first' },
+              { value: 'location-desc', label: 'Latest location first' },
+            ],
+          },
+        },
       },
       replenish: {
         search: { placeholder: 'Filter SKU…', source: 'url-param', param: 'rsku' },
         controls: {
           choices: [
-            { id: 'rtab', label: 'List', param: 'rtab', options: [...REPLENISH_TAB_OPTIONS], clearParams: [] },
             { id: 'rstatus', label: 'Status', param: 'rstatus', options: [...REPLENISH_STATUS_OPTIONS], clearParams: [] },
           ],
         },
       },
+      fifo: {
+        search: { placeholder: 'Filter SKU…', source: 'url-param', param: 'rsku' },
+      },
+    },
+  },
+  // All is the default, unfiltered dataset. Saved views are optional
+  // refinements over it; the hierarchy tools are explicit sibling destinations.
+  inventory: {
+    viewKeys: true,
+    items: {
       locations: {
-        search: { placeholder: 'Filter bins…', source: 'url-param', param: 'q' },
+        search: { placeholder: 'Location, barcode, room or aisle…', source: 'url-param', param: 'q' },
+        savedViews: SHEET_SAVED_VIEW_CONFIG.bins,
         controls: {
-          choices: [{ id: 'tab', label: 'Tool', param: 'tab', options: [...LOCATIONS_TAB_OPTIONS], clearParams: ['code', 'edit', 'new'] }],
+          choices: [{
+            id: 'status',
+            label: 'Status',
+            param: 'status',
+            options: [
+              { value: 'empty', label: 'Empty' },
+              { value: 'low', label: 'Low stock' },
+              { value: 'over', label: 'Over capacity' },
+              { value: 'stale', label: 'Needs counting' },
+            ],
+            clearParams: ['code'],
+          }],
         },
       },
+      rooms: { search: { placeholder: 'Find a room…', source: 'url-param', param: 'q' } },
+      racks: { search: { placeholder: 'Find a rack…', source: 'url-param', param: 'q' } },
+      map: {
+        controls: {
+          choices: [{
+            id: 'show-empty',
+            label: 'Locations',
+            param: 'showEmpty',
+            options: [
+              { value: '0', label: 'Hide empty' },
+              { value: '1', label: 'Show empty' },
+            ],
+            clearParams: [],
+          }],
+        },
+      },
+      labels: {},
     },
   },
   // QC labels (Inventory lane mode, `G Q`): one record per labelled unit. Find
@@ -719,33 +840,15 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       { action: { id: 'qc-labels.print', label: 'Print QC label', intent: 'qc-labels:print' }, requires: 'print.label' },
     ],
   },
-  // Print station (owner 2026-09-29): Find is the master route to an FNSKU — it
-  // narrows the FBA catalog on the server (`?q=`); an exact FNSKU opens it.
+  // Print station (owner 2026-09-29; modes 2026-10-04): two modes on the card, `G` then a letter — FNSKU labels
+  // (printing: Find is the master route to an FNSKU, narrowed on the server, an exact FNSKU opens it) and
+  // Stations (managing: Find narrows the org's print stations by name).
   'print-station': {
+    modes: { label: 'Printing' },
     viewKeys: true,
     search: { placeholder: 'FNSKU, ASIN, SKU or title…', source: 'url-param', param: 'q' },
-  },
-  // Live feed (operator 2026-10-03): the Operations lane's landing page (its door). Views = the directions, Outbound ·
-  // Inbound (`?dir=`, a required single choice, never an "all"), bare 1–2, counted by the facet contexts
-  // `live-feed.<dir>`. The board shows the lanes, so the sidebar lists no statuses. Controls: Date by, Handled by,
-  // and the Channel (online / in person) and Carrier facets; no Sort. The date range is page chrome top-right, not
-  // a sidebar control. Find (`?q=`) narrows every lane.
-  'live-feed': {
-    viewKeys: true,
-    search: { placeholder: 'Tracking, order, SKU or PO…', source: 'url-param', param: LIVE_FEED_PARAMS.q },
-    items: Object.fromEntries(LIVE_FEED_DIRECTIONS.map((dir) => [dir, { controls: liveFeedControls(dir) }] as const)),
-  },
-  support: {
     items: {
-      tickets: {
-        search: { placeholder: 'Search tickets…', source: 'url-param', param: 'tq' },
-      },
-      calls: {
-        search: { placeholder: 'Search caller or number…', source: 'url-param', param: 'q' },
-      },
-      warranty: {
-        search: { placeholder: 'Search warranty claims…', source: 'url-param', param: 'search' },
-      },
+      'stations-all': { search: { placeholder: 'Station name or printer…', source: 'url-param', param: 'q' } },
     },
   },
   'ops-photos': {
@@ -755,6 +858,8 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       source: 'url-param',
       param: 'q',
     },
+    controls: MEDIA_LIBRARY_CONTROLS,
+    items: { unboxing: { controls: MEDIA_UNBOXING_CONTROLS } },
   },
   // Operations (Monitor). History's saved views are its own store (system
   // presets + `/api/operations/saved-views`, painted by NavFilters through the
@@ -834,6 +939,27 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       dates: [{ id: 'report-day', label: 'Report day', param: 'date', clearParams: [] }],
       staff: [{ id: 'staff', label: 'Staff', param: 'staffId' }],
     },
+    items: {
+      // Task time: item controls replace the page's, so day + staff repeat here.
+      activity: {
+        controls: {
+          dates: [{ id: 'report-day', label: 'Report day', param: 'date', clearParams: [] }],
+          staff: [{ id: 'staff', label: 'Staff', param: 'staffId' }],
+          choices: [
+            {
+              id: 'record-kind',
+              label: 'Record kind',
+              param: 'type',
+              options: [
+                { value: 'task', label: 'Tasks' },
+                { value: 'checklist', label: 'Checklists' },
+              ],
+              clearParams: [],
+            },
+          ],
+        },
+      },
+    },
     actionsPlacement: 'sidebar',
     actions: [
       { action: { id: 'reports.refresh', label: 'Refresh', intent: 'reports:refresh' } },
@@ -844,15 +970,60 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   home: {
     // The house two-tier sidebar (owner 2026-09-29): `G` + letter picks the
-    // parent (mode card), bare 1–3 the saved views under it. Whose work
-    // (Mine · Handed off · Everyone) and Open · Done · All live in the middle
-    // of the page for triage (`TaskBulkBar`), not here.
+    // parent (mode card), bare 1–3 the saved views under it. Operator law
+    // 2026-10-04 (supersedes the 2026-09-29 mid-page placement): every
+    // control that picks WHICH tasks show or IN WHAT ORDER lives here —
+    // Status (`?filter=`, unset = Open), Whose work (`?scope=`, unset = Mine),
+    // Sort (`?sort=`) and Group by (`?group=`), the last two remembered per
+    // staffer and seeded into the URL on arrival (`useTaskBoard`). The body
+    // keeps List · Columns, the checklist column switch and the bulk verbs.
     modes: { label: 'Task list' },
     viewKeys: true,
     // Tasks' Find is the header's page search (bare F): narrows the board on `?q=`.
-    search: { placeholder: 'Find a task, order #, tracking #, ticket or person…', source: 'url-param', param: 'q' },
+    search: { placeholder: 'Find a task, order #, tracking # or person…', source: 'url-param', param: 'q' },
     // `C` is create app-wide; the board claims it for New task (`registerPageCreate`), N too.
     actions: [{ action: { id: 'daily.add-task', label: 'New task', intent: 'daily:compose', hotkey: 'c' } }],
+    controls: {
+      sort: {
+        param: 'sort',
+        defaultValue: 'urgency',
+        options: TASK_BOARD_SORTS.map((value) => ({ value, label: TASK_BOARD_SORT_LABEL[value] })),
+      },
+      // Type on Long-term projects reads as Project (`useTaskBoard`); List · Columns ignores it (columns ARE the type split).
+      group: {
+        param: 'group',
+        defaultValue: 'type',
+        options: TASK_BOARD_GROUP_BYS.map((value) => ({ value, label: TASK_BOARD_GROUP_BY_LABEL[value] })),
+      },
+      choices: [
+        {
+          id: 'status',
+          label: 'Status',
+          param: 'filter',
+          defaultValue: 'open',
+          // Waiting = open work on a hold (Pending · Follow-up · Blocked — `TASK_HOLDS`).
+          options: [
+            { value: 'open', label: 'Open' },
+            { value: 'waiting', label: 'Waiting' },
+            { value: 'done', label: 'Done' },
+            { value: 'all', label: 'All' },
+          ],
+          clearParams: [],
+        },
+        {
+          id: 'scope',
+          label: 'Whose work',
+          param: 'scope',
+          defaultValue: 'mine',
+          options: [
+            { value: 'mine', label: 'Mine' },
+            { value: 'handed', label: 'Handed off' },
+            { value: 'everyone', label: 'Everyone' },
+          ],
+          clearParams: [],
+        },
+      ],
+    },
   },
   // Sales station actions plus the URL-owned Find for each searchable view.
   sales: {
@@ -866,10 +1037,6 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     ],
     items: {
       counter: { actions: [] },
-      customers: {
-        actions: [],
-        search: { placeholder: 'Search customers…', source: 'url-param', param: 'q' },
-      },
       sales: { search: { placeholder: 'Search sales…', source: 'url-param', param: 'sq' } },
       'repairs-all': {
         actions: [],
@@ -891,6 +1058,71 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       },
     },
   },
+  customers: {
+    search: { placeholder: 'Search customers…', source: 'url-param', param: 'q' },
+  },
+  // /support — the Support workspace (owner 2026-10-04). Find narrows the list
+  // (`?q=`, SUPPORT_LIST_SQL) and its dropdown lists the matching Support
+  // items (support locator: per-status pills + the records, a click opens
+  // `?item=`); a pasted list rides `?refs=` / `?located=`.
+  // Sort (`?sort=`, default Most urgent first) and Group by (`?group=`, unset =
+  // No grouping — `controls.group`, view state like Sort: one pressed choice,
+  // never counted or cleared by Reset) are the list's own params
+  // (`parseSupportListFilter`); the Platform · Account · Assignee facets are
+  // NAV_FACET_GROUPS['support.*'].
+  // The local status row (New … Closed, `?status=`) is the record list's chip
+  // cut, never a sidebar control. `viewKeys`: no other bare digit is bound on
+  // /support. `C` (and N) open the inline New Support item form — the page
+  // claims `C` (`registerPageCreate`) and runs `support:create`.
+  support: {
+    viewKeys: true,
+    search: { placeholder: 'Find Support items', source: 'url-param', param: 'q', locate: { ...SUPPORT_LOCATE } },
+    controls: {
+      sort: {
+        param: 'sort',
+        defaultValue: SUPPORT_LIST_DEFAULT_SORT,
+        options: SUPPORT_LIST_SORTS.map((value) => ({ value, label: SUPPORT_LIST_SORT_LABEL[value] })),
+      },
+      group: {
+        param: 'group',
+        defaultValue: SUPPORT_LIST_DEFAULT_GROUP,
+        options: SUPPORT_LIST_GROUPS.map((value) => ({ value, label: SUPPORT_LIST_GROUP_LABEL[value] })),
+      },
+    },
+    actions: [
+      {
+        action: { id: 'support.new-item', label: 'New Support item', intent: 'support:create', hotkey: 'c' },
+        requires: 'support.thread.manage',
+      },
+    ],
+  },
+  // `/search/list` — the pasted list, full screen (owner 2026-10-04): its ONE
+  // find is this sidebar field, narrowing the rows over every fact the sheet
+  // paints (the page reads the desk store keyed by its path). A multi-number
+  // paste here holds a NEW list in the bar, whose full-screen button replaces
+  // the page's list. Sort (`?sort=`, unset = as pasted) and the located-bucket
+  // facet (`?status=`, `controls.pastedListBuckets`) are the page's own params
+  // (`use-url-bulk-list`, route spec `PASTED_LIST_ROUTE_PARAMS`) — the body's
+  // chip rows moved here (ruling A1/A4). `recentsPanel`: view-less, but the
+  // page opens its own panel (the `pickup` switch).
+  search: {
+    recentsPanel: true,
+    search: { placeholder: 'Find in the pasted list', source: 'desk-store' },
+    controls: {
+      sort: {
+        param: 'sort',
+        defaultValue: 'pasted',
+        options: [
+          { value: 'pasted', label: 'As pasted' },
+          { value: 'id', label: 'Order ID, A to Z' },
+          { value: 'id-desc', label: 'Order ID, Z to A' },
+          { value: 'status', label: 'Status' },
+          { value: 'status-desc', label: 'Status, reversed' },
+        ],
+      },
+      pastedListBuckets: { param: 'status' },
+    },
+  },
   // ── Scan Stations ───────────────────────────────────────────────────────
   triage: {
     search: { placeholder: 'Filter scanned cartons…', source: 'url-param', param: 'triq' },
@@ -898,7 +1130,31 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   },
   receive: {
     search: { placeholder: 'Filter cartons or incoming…', source: 'url-param', param: INBOUND_FIND_PARAM },
+    // The All view's triage DataTable (`TechAllTriageTable`) saves its column
+    // sort here — its toolbar no longer carries a views menu (ruling A1).
+    savedViews: SHEET_SAVED_VIEW_CONFIG['tech-all'],
     scanInput: { grammar: 'unbox', endpoint: '/api/receiving/lookup-po' },
+    // The station has no view rows, so one declaration serves every
+    // `?unboxview=` tab: only the column sorts EVERY tab's list reads
+    // (`?colsort=`/`?coldir=` — the carton cards, the Unboxed and Inbound
+    // ledgers), and unset is each tab's own order. No Source: Inbound's
+    // `?inbound=` is not a /unbox param. The tabs' status cuts are the
+    // `receive` facet groups (`src/lib/nav/facets/unbox.ts`).
+    controls: {
+      sort: {
+        param: GRID_COLUMN_SORT_PARAM,
+        dirParam: GRID_COLUMN_DIR_PARAM,
+        defaultValue: 'default',
+        options: [
+          { value: 'default', label: 'Default order' },
+          { value: 'date', label: 'By date' },
+          { value: 'order', label: 'Purchase order, A to Z', dir: 'asc' },
+          { value: 'title', label: 'Product, A to Z', dir: 'asc' },
+          { value: 'qty', label: 'Largest quantity first', dir: 'desc' },
+          { value: 'tracking', label: 'Tracking, A to Z', dir: 'asc' },
+        ],
+      },
+    },
     actions: [
       { action: { id: 'unbox.resume', label: 'Unbox', intent: 'unbox:resume' } },
       { action: { id: 'unbox.check', label: 'Check', intent: 'unbox:check-unreceived' } },
@@ -983,9 +1239,31 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   fba: {
     viewKeys: true,
     scanInput: { grammar: 'fnsku', endpoint: '/api/fba/fnskus/validate' },
+    items: {
+      // Ready (`?fbaMode=ready`): the allocation history DataTable's Find
+      // (`?q=`), disposition facet (`?rtab=`, unset = every tested unit) and
+      // saved views — record selection is sidebar chrome (ruling A1).
+      ready: {
+        search: { placeholder: 'Filter tested units…', source: 'url-param', param: 'q' },
+        savedViews: SHEET_SAVED_VIEW_CONFIG.ready,
+        controls: {
+          choices: [{
+            id: 'ready-disposition',
+            label: 'Destination',
+            param: 'rtab',
+            options: [
+              { value: 'fba', label: CHANNEL_DISPOSITION_LABELS.FBA },
+              { value: 'prebox', label: CHANNEL_DISPOSITION_LABELS.PREBOX_STOCK },
+              { value: 'hold', label: CHANNEL_DISPOSITION_LABELS.HOLD },
+            ],
+            clearParams: [],
+          }],
+        },
+      },
+    },
   },
-  // Labels & docs: Uploads (bare — one card per uploaded PDF) · Labels ·
-  // Paperwork · Printed are sidebar views (bare keys 1 · 2 · 3 · 4); Find
+  // Labels & docs: Bulk (bare) · Shipping labels · Packing slips are the
+  // three saved views; print state remains within each record. Find
   // narrows the list through the desk store. The header split CTA's face is
   // the view's own job — Uploads uploads label PDFs, a print view prints all of
   // its stock (⌘P); ⌘O uploads label PDFs everywhere (`LabelsDocsDesk`
@@ -1001,11 +1279,11 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           dateRanges: [
             { id: 'uploaded', label: 'Uploaded', fromParam: 'from', toParam: 'to', clearParams: [], placeholder: 'Any date' },
           ],
+          choices: [LABEL_PRINTING_CHOICE],
         },
       },
-      labels: { actions: labelsDocsActions('labels') },
-      paperwork: { actions: labelsDocsActions('paperwork') },
-      printed: { actions: labelsDocsActions('printed') },
+      labels: { actions: labelsDocsActions('labels'), controls: { choices: [LABEL_PAIRING_CHOICE] } },
+      paperwork: { actions: labelsDocsActions('paperwork'), controls: { choices: [LABEL_PAIRING_CHOICE] } },
     },
   },
   // The import record: Runs (bare) · Orders (`?view=rows`). Find narrows the

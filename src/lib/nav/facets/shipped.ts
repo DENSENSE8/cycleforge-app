@@ -10,9 +10,9 @@
  * (`dedupeShippedRecords` keys every Shipped row by its package, since scan-out
  * membership requires one).
  *
- * Per package, a type view matches when ANY of its rows does (filter, then
- * collapse — the list's order); carrier, status and the exception flag belong
- * to the package itself.
+ * Per package, a type view or a package-status pill matches when ANY of its
+ * rows does (filter, then collapse — the list's order); carrier, status and
+ * the exception flag belong to the package itself.
  *
  * Not reflected: the desk-store search (never in the URL), `?ostatus` (a state
  * derived from the whole record, applied in the browser), and a type preference
@@ -24,7 +24,7 @@ import { NAV_FACET_GROUPS } from '@/lib/nav/facets/contexts';
 import type { FacetSqlRunner } from '@/lib/nav/facets/outbound';
 import type { NavFacetsResponse } from '@/lib/nav/context/schema';
 import { isPackerLogEnrichmentRead } from '@/lib/feature-flags';
-import { buildPackerLogBaseWhere, packerLogOrderJoins } from '@/lib/neon/packer-logs-week';
+import { buildPackerLogBaseWhere, packerLogOrderJoins, sqlLatestShipConfirmAt } from '@/lib/neon/packer-logs-week';
 import {
   CARRIERS,
   STATUS_CATEGORIES,
@@ -38,16 +38,19 @@ import {
   shippedTimeWindow,
 } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import {
+  SHIPPED_CARD_JOINS,
   SHIPPED_CARRIER_SQL,
   SHIPPED_CHANNEL_SQL,
   SHIPPED_EXCEPTION_SQL,
   SHIPPED_STATUS_SQL,
   readShippedDeskFilters,
+  shippedCardKeysSql,
   shippedFilterJoins,
   shippedTypeSql,
 } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { SHIPPED_STATUS_CHIPS, shippedStatusChipFace } from '@/components/shipped/ledger/shipped-card-model';
 
 type ParamReader = Pick<URLSearchParams, 'get'>;
 
@@ -57,6 +60,8 @@ export interface ShippedFacetCombo {
   channel: string;
   status: string;
   exception: boolean;
+  /** The pills any of the package's rows lights (`?cardStatus=` narrows rows, then collapses). */
+  card: readonly string[];
   n: number;
 }
 
@@ -90,8 +95,12 @@ export function buildShippedFacetSql(orgId: OrgId, params: ParamReader, enriched
     },
     bind,
   );
+  // The pills a package answers to: any of its rows' (`shippedCardKeysSql`, the list's `?cardStatus=` predicate).
+  const cardSql = `ARRAY_TO_STRING(ARRAY_REMOVE(ARRAY[
+            ${SHIPPED_STATUS_CHIPS.map((key) => `CASE WHEN bool_or('${key}' = ANY(card_f.keys)) THEN '${key}' END`).join(',\n            ')}
+          ]::text[], NULL), ',')`;
   const sql = `
-    SELECT p.t_all, p.t_orders, p.t_sku, p.t_fba, p.channel, p.carrier, p.status, p.exception, COUNT(*)::int AS n
+    SELECT p.t_all, p.t_orders, p.t_sku, p.t_fba, p.channel, p.carrier, p.status, p.exception, p.card, COUNT(*)::int AS n
       FROM (
         SELECT
           bool_or(${shippedTypeSql('all', enriched)}) AS t_all,
@@ -101,13 +110,15 @@ export function buildShippedFacetSql(orgId: OrgId, params: ParamReader, enriched
           MAX(${SHIPPED_CHANNEL_SQL}) AS channel,
           MAX(${SHIPPED_CARRIER_SQL}) AS carrier,
           MAX(${SHIPPED_STATUS_SQL}) AS status,
-          bool_or(${SHIPPED_EXCEPTION_SQL}) AS exception
+          bool_or(${SHIPPED_EXCEPTION_SQL}) AS exception,
+          ${cardSql} AS card
         FROM station_activity_logs sal
-        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${packerLogOrderJoins(enriched)}${shippedFilterJoins(enriched)}
+        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${packerLogOrderJoins(enriched)}${shippedFilterJoins(enriched)}${SHIPPED_CARD_JOINS}
+        CROSS JOIN LATERAL (SELECT ${shippedCardKeysSql(sqlLatestShipConfirmAt('sal'))} AS keys) card_f
         WHERE ${conditions.join(' AND ')}
         GROUP BY sal.shipment_id
       ) p
-     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8`;
+     GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9`;
   return { sql, params: bind };
 }
 
@@ -123,6 +134,7 @@ function toShippedCombo(row: Record<string, unknown>): ShippedFacetCombo {
     channel: String(row.channel ?? ''),
     status: String(row.status ?? ''),
     exception: row.exception === true,
+    card: String(row.card ?? 'FULFILLED').split(',').filter(Boolean),
     n: Number(row.n) || 0,
   };
 }
@@ -159,6 +171,11 @@ function shippedDimensions(): FacetDimension<ShippedFacetCombo>[] {
       options: [{ value: '1', label: 'Exception or stalled' }],
       matches: (row, value) => value === '1' && row.exception,
     },
+    {
+      groupId: 'packageStatus', label: decl('packageStatus').label, param: decl('packageStatus').param,
+      options: SHIPPED_STATUS_CHIPS.map((key) => ({ value: key, label: shippedStatusChipFace(key).label })),
+      matches: (row, value) => value.split(',').some((key) => row.card.includes(key)),
+    },
   ];
 }
 
@@ -182,6 +199,7 @@ export async function shippedFacets(orgId: OrgId, params: ParamReader, run: Face
     channel: filters.channels.length > 0 ? filters.channels.join(',') : null,
     status: filters.statusCategory,
     exceptions: filters.exceptionsOnly ? '1' : null,
+    packageStatus: filters.cardStatus.length > 0 ? filters.cardStatus.join(',') : null,
   });
   return { context: 'outbound.shipped', total, groups };
 }

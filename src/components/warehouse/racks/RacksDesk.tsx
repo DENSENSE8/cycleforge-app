@@ -13,7 +13,6 @@ import { memo, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from '@/components/Icons';
-import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
@@ -21,7 +20,6 @@ import { useLocalTriageSelection } from '@/design-system/components/triage-card-
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { Button } from '@/design-system/primitives';
-import { cn } from '@/utils/_cn';
 import type { RowGroup } from '@/lib/group-rows';
 import { inventoryLocationsHref } from '@/lib/inventory/locations-path';
 import { canonicalRackCode } from '@/lib/locations/rack-code';
@@ -35,7 +33,7 @@ import { useRackRecordSlot } from './RackRecord';
 import { rackRecordCard, type RackCardModel } from './rack-card-model';
 
 const VIEW = LOCATIONS_RACKS_VIEW;
-/** No status chips: the room filter is the host's own select. */
+/** No status chips: the room filter is the sidebar's Room facet (`NAV_FACET_GROUPS['inventory.racks']`). */
 const NO_CHIPS: readonly never[] = [];
 /** The plane's record id while it holds New rack, or a rack outside the loaded list. */
 const CREATE_ID = -1;
@@ -53,14 +51,8 @@ export function RacksDesk() {
     () => (all.data?.racks ?? []).filter((r) => room == null || r.room?.id === room),
     [all.data, room],
   );
-  // Rooms that hold a rack, for the filter (derived room, never a code letter).
-  const rooms = useMemo(() => {
-    const byId = new Map<number, string>();
-    for (const r of all.data?.racks ?? []) if (r.room) byId.set(r.room.id, r.room.name);
-    return [...byId].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [all.data]);
 
-  /** The open rack / New rack / room move within the page: History API, no server round-trip (J / K stay instant). */
+  /** The open rack / New rack move within the page: History API, no server round-trip (J / K stay instant). */
   const writeParams = useCallback(
     (patch: Record<string, string | null>) => {
       const params = readLiveSearchParams(searchParams.toString());
@@ -136,7 +128,7 @@ export function RacksDesk() {
     open: { id: openId, open: openRow, close: closeRecord },
   };
 
-  const slot = useRackRecordSlot(creating ? null : openCode, refreshList);
+  const slot = useRackRecordSlot(creating ? null : openCode, refreshList, closeRecord);
   const total = racks.length;
 
   return (
@@ -151,20 +143,6 @@ export function RacksDesk() {
           <p className="truncate text-sm text-text-muted">
             {all.isPending ? 'Reading racks…' : `${total} ${total === 1 ? 'rack' : 'racks'}`}
           </p>
-          <select
-            value={room == null ? '' : String(room)}
-            onChange={(event) => writeParams({ room: event.target.value || null })}
-            aria-label="Room"
-            className={cn(FILTER_DROPDOWN_SELECT_CLASS, 'w-auto min-w-40')}
-            data-testid="rack-cards-room"
-          >
-            <option value="">All rooms</option>
-            {rooms.map(([id, name]) => (
-              <option key={id} value={String(id)}>
-                {name}
-              </option>
-            ))}
-          </select>
           <Button
             variant="primary"
             size="sm"
@@ -178,7 +156,7 @@ export function RacksDesk() {
           </Button>
         </div>
       }
-      searchEmpty={room != null ? <p className="text-sm text-text-muted">No rack stands in this room — pick All rooms.</p> : null}
+      searchEmpty={room != null ? <p className="text-sm text-text-muted">No rack stands in this room — clear Room in the sidebar.</p> : null}
       allClear={<TriageAllClear title="No movable racks yet" detail="Create the first one with New rack." />}
       record={{
         title: creating ? 'New rack' : (slot?.title ?? openCode ?? ''),

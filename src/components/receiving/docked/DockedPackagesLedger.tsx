@@ -10,7 +10,6 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
-import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import { TriageCardList, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
@@ -23,7 +22,7 @@ import { useRecordSlot } from '@/design-system/components/record-ledger/useRecor
 import { cartonBands, cartonCardKey, cartonCardModel } from '@/components/receiving/history/cards/carton-card-model';
 import { ReceivingCartonCard } from '@/components/receiving/history/cards/CartonCard';
 import { INCOMING_DOCKED_VIEW } from '@/lib/triage/views';
-import { DOCKED_KIND_OPTIONS, dockedIntakeKind, dockedPackageRecordFace } from '@/lib/receiving/docked-record-state';
+import { DOCKED_KIND_OPTIONS, DOCKED_STATUS_OPTIONS, dockedIntakeKind, dockedPackageRecordFace, type DockedStatus } from '@/lib/receiving/docked-record-state';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
@@ -33,8 +32,8 @@ import { defaultDirForReceivingGridSort, isReceivingGridSortable, type Receiving
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
 
 const VIEW = INCOMING_DOCKED_VIEW;
-const DOCKED_STATUS_KEYS = ['DOCKED'] as const;
-type DockedStatusKey = (typeof DOCKED_STATUS_KEYS)[number];
+// The status cut (`?dflag=`) is the sidebar Status facet (`incoming.docked`); every carton is DOCKED.
+const DOCKED_STATUS_KEYS: readonly DockedStatus[] = DOCKED_STATUS_OPTIONS.map((option) => option.value);
 const KIND_VALUES = new Set<string>(DOCKED_KIND_OPTIONS.map((option) => option.value));
 const rowId = (row: ReceivingLineRow) => row.id;
 
@@ -79,7 +78,7 @@ export function DockedPackagesLedger({
   );
   const sectioned = !sort || sort === 'date';
   const allBands = useMemo(() => cartonBands(visibleRows, 'scanned', sectioned), [sectioned, visibleRows]);
-  const cut = useTriageCut<DockedStatusKey>({ statusKeys: DOCKED_STATUS_KEYS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
+  const cut = useTriageCut<DockedStatus>({ statusKeys: DOCKED_STATUS_KEYS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
   const bands = useMemo(() => cut.filterBands(allBands, cartonCardKey, () => DOCKED_STATUS_KEYS), [allBands, cut]);
   const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
   const openRow = useMemo(() => painted.find((row) => row.id === selectedId) ?? null, [painted, selectedId]);
@@ -128,10 +127,6 @@ export function DockedPackagesLedger({
     facts: [{ label: 'Packages', value: allBands.reduce((sum, [, groups]) => sum + groups.length, 0) }],
     note: 'Tracking is the primary package identity. Open a row to inspect its arrival, items and next receiving step.',
   };
-  const statusChips = useMemo<StatusChip<DockedStatusKey>[]>(
-    () => [{ id: 'DOCKED', label: 'Docked', tone: 'info', count: allBands.reduce((sum, [, groups]) => sum + groups.length, 0) }],
-    [allBands],
-  );
 
   return (
     <div data-testid="docked-packages-ledger" className="flex min-h-0 min-w-0 flex-1">
@@ -139,15 +134,7 @@ export function DockedPackagesLedger({
         family={family}
         feed={feed}
         cut={cut}
-        summary={
-          <StatusChipRail
-            chips={statusChips}
-            active={cut.url.statusFilter}
-            onToggle={cut.url.toggleStatus}
-            onReset={cut.url.resetStatus}
-            testId="docked-status-chips"
-          />
-        }
+        summary={null}
         bulk={<ReceivingSelectionVerbs noun="packages" advance="unboxed" />}
         searchEmpty={query.trim() ? <p className="text-sm text-text-muted">No docked package matches those tracking digits.</p> : null}
         allClear={<TriageAllClear title={emptyMessage} detail="Arrival-scanned packages wait here until Unbox begins." />}

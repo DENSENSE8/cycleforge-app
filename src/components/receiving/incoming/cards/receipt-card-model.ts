@@ -4,9 +4,9 @@
  * purchase, turned into the shared {@link RecordCardModel}. The face and the
  * card never learn that the rows are receiving lines (Law 1).
  *
- *   ┃ ☐  PO 21-15192-45235 · eBay aerodeals  ⚠ Wrong destination → …   ● Delivered · not scanned
+ *   ┃ ☐  45235 · aerodeals  ⚠ Wrong destination → …                    ● Delivered · not scanned
  *   ┃ ◉  [photo] Bose Lifestyle AV-18 Series Media Center Remote
- *   ┃           ×1 · TRK …4378113 · SKU · Exp Sep 30                       → Receive
+ *   ┃           ×1 · TRK 94378113 · SKU · Exp Sep 30                       → Receive
  */
 
 import type { RowGroup } from '@/lib/group-rows';
@@ -19,7 +19,9 @@ import { recordStateGlyph } from '@/design-system/components/record-card/record-
 import type { RecordStateFace } from '@/design-system/tokens/record';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
-import { incomingDeliveryNextAction, purchaseDeliveryState, purchaseIdentity } from '../incoming-delivery-state';
+import { inboundOrderIdentity, type OperationalIdentity } from '@/lib/operational-identity';
+import { getLast8 } from '@/lib/copy-chip-format';
+import { incomingDeliveryNextAction, purchaseDeliveryState } from '../incoming-delivery-state';
 
 export interface ReceiptCardModel {
   /** Card key: the purchase key can head two groups, the lead line's id keeps it unique. */
@@ -31,18 +33,14 @@ export interface ReceiptCardModel {
   rows: ReceivingLineRow[];
   /** The purchase's worst delivery state. */
   state: RecordStateFace;
-  /** `PO …` handle. */
-  identity: string;
-  /** Vendor / account / platform the purchase came from. */
-  source: string | null;
+  /** The purchase's handle: its marketplace / source order, else its PO (`inboundOrderIdentity`). */
+  identity: OperationalIdentity;
+  /** Who sold it to us — never the platform, the account or the source type. */
+  vendor: string | null;
 }
 
 export function receiptCardKey(group: RowGroup<ReceivingLineRow>): string {
   return `${group.key}#${group.rows[0]?.id ?? ''}`;
-}
-
-function sourceLabel(row: ReceivingLineRow): string | null {
-  return (row.platform_account_label || row.vendor_name || (row.inbound_source_type || row.source_platform || '').trim()) || null;
 }
 
 export function receiptCardModel(group: RowGroup<ReceivingLineRow>): ReceiptCardModel {
@@ -55,14 +53,9 @@ export function receiptCardModel(group: RowGroup<ReceivingLineRow>): ReceiptCard
     lead,
     rows,
     state: purchaseDeliveryState(rows),
-    identity: purchaseIdentity(lead),
-    source: sourceLabel(lead),
+    identity: inboundOrderIdentity(lead),
+    vendor: lead.vendor_name?.trim() || null,
   };
-}
-
-/** Tracking cut to its tail — enough to match a label at the dock. */
-function trackingTail(value: string): string {
-  return value.length > 10 ? `…${value.slice(-8)}` : value;
 }
 
 function receiptLine(row: ReceivingLineRow): RecordCardLine {
@@ -77,7 +70,8 @@ function receiptLine(row: ReceivingLineRow): RecordCardLine {
     alertNote: reason ? `${reason.why} → ${reason.next}` : null,
     facts: {
       qty: { kind: 'qty', value: Number(row.quantity_expected ?? row.quantity_received ?? 0) },
-      tracking: tracking ? { kind: 'code', text: `TRK ${trackingTail(tracking)}`, title: tracking } : { kind: 'missing', text: 'No tracking' },
+      // A list face: the house last-8 (`getLast8`); the full number rides the title.
+      tracking: tracking ? { kind: 'code', text: `TRK ${getLast8(tracking)}`, title: tracking } : { kind: 'missing', text: 'No tracking' },
       sku: row.sku ? { kind: 'code', text: row.sku, title: 'SKU' } : null,
       expected: expected ? { kind: 'date', text: `Exp ${fmtDate(expected, 'MMM d')}`, title: fmtDate(expected) } : null,
     },
@@ -109,12 +103,12 @@ export function receiptRecordCard(model: ReceiptCardModel): ViewCardModel<typeof
           }
         : null,
     aria: {
-      card: `PO ${identity}, ${state.label}, ${title}`,
-      open: `Open PO ${identity}`,
-      check: `Select PO ${identity}`,
+      card: `${identity.ariaLabel}, ${state.label}, ${title}`,
+      open: `Open ${identity.ariaLabel}`,
+      check: `Select ${identity.ariaLabel}`,
     },
     channel: null,
-    person: model.source,
+    person: model.vendor,
     chips: [],
     // Why this delivery needs a person, and what to do — read-only on line 1.
     notes: { fixed: reason ? { label: reason.label, text: `${reason.why} → ${reason.next}` } : null, own: null },

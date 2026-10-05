@@ -1,5 +1,5 @@
 import pool from '../db';
-import { normalizeTrackingKey18 } from '@/lib/tracking-format';
+import { normalizeTrackingKey18, trackingDigitsLast8Strict, trackingRawTail8 } from '@/lib/tracking-format';
 import { queryWithRetry } from '@/lib/db-retry';
 import { getShippedSearchFieldConfig, type ShippedSearchField } from '@/lib/shipped-search';
 import { buildRankedSearchSql, buildTextSearchVariants, type RankedSearchVariant } from '@/lib/search/sql-ranked-search';
@@ -960,8 +960,7 @@ export async function searchShippedOrders(
 ): Promise<ShippedSearchResult> {
   try {
     const trimmedQuery = String(query || '').trim();
-    const digitsOnly = trimmedQuery.replace(/\D/g, '');
-    const last8 = digitsOnly.length >= 8 ? digitsOnly.slice(-8) : '';
+    const last8 = trackingDigitsLast8Strict(trimmedQuery);
     const key18 = normalizeTrackingKey18(trimmedQuery);
     const searchField = options?.searchField ?? 'all';
     const resultLimit = Math.min(500, Math.max(25, Number(options?.limit) || 200));
@@ -1349,7 +1348,7 @@ export async function searchShippedOrders(
  */
 export async function getShippedOrderByTracking(tracking: string, orgId?: OrgId): Promise<ShippedOrder | null> {
   try {
-    const last8 = tracking.slice(-8).toLowerCase();
+    const last8 = trackingRawTail8(tracking).toLowerCase();
     // Tracking is a STRING key — it collides across tenants — so when orgId is
     // threaded we add an explicit org predicate ($2) on the order's org column.
     const orgClause = orgId ? `AND os.organization_id = $2` : '';

@@ -204,8 +204,9 @@ export interface TriageCardListProps<Row, Model extends TriageCardModelBase<Row>
   /** The host's `useTriageCut` handle — the same one it filtered `feed.bands` with. */
   cut: TriageCut<K>;
   record: TriageRecordSlot;
-  /** Status chips (the bar's left, while nothing is checked). */
-  summary: ReactNode;
+  /** Non-filter list read-out at the bar's left, while nothing is checked. Status filter chips are NOT
+   *  painted here — A4 (2026-10-04): they are per-page sidebar facets (`NAV_PAGE_DECLS`). */
+  summary?: ReactNode;
   /** Chips stay inline between the count and the pager at every width (`TriageSelectBar`). */
   summaryInline?: boolean;
   /** The selection's verbs (Law 5), while anything is checked. */

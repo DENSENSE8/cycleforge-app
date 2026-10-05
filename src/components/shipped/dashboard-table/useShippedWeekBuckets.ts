@@ -25,6 +25,8 @@ interface UseShippedWeekBucketsParams {
   pickedBy?: number;
   /** `?channel` — comma-separated, lower-cased. Answered in SQL with the facet counts. */
   channel?: string | null;
+  /** `?cardStatus` — package-status pills, comma list. Answered in SQL with the facet counts. */
+  cardStatus?: string | null;
   /** Sidebar sort key. Answered in SQL, not by reordering the loaded window. */
   sort?: string | null;
   /** False in all-time mode (empty window ⇒ there is nothing to bucket). */
@@ -60,6 +62,7 @@ export function useShippedWeekBuckets({
   shippedTime,
   pickedBy,
   channel = null,
+  cardStatus = null,
   sort = null,
   enabled,
   searchTerm = '',
@@ -73,7 +76,7 @@ export function useShippedWeekBuckets({
       // Key + fetch + TTLs come from the shared factory (SoT) so the warm-up
       // prefetch and this live query can never drift apart.
       ...dashboardShippedWeekQuery({
-        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, shippedTime, pickedBy, searchTerm, limit, phase, sort, channel,
+        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, shippedTime, pickedBy, searchTerm, limit, phase, sort, channel, cardStatus,
       }),
       placeholderData: (prev: PackerRecord[] | undefined) => prev,
       enabled,

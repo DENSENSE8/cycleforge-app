@@ -1,8 +1,11 @@
-/** GET /api/receiving-lines/incoming/summary */
+/**
+ * Inbound's delivery-state counts — the composed aggregate behind the
+ * `incoming.pipeline` sidebar facet (`src/lib/nav/facets/incoming-pipeline.ts`). Counted per
+ * purchase (distinct Zoho PO) over the `view=incoming` rows: EXPECTED, nothing
+ * received, open in Zoho, not dock-scanned.
+ */
 
-import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
@@ -15,20 +18,22 @@ import {
 } from '@/lib/receiving/delivered-unscanned';
 import { getDeliveredNotUnboxedCount } from '@/lib/receiving/delivered-not-unboxed';
 import { isIncomingUniversal } from '@/lib/feature-flags';
+import type { IncomingSummary } from '@/components/sidebar/receiving/incoming/incoming-summary-types';
+import type { OrgId } from '@/lib/tenancy/constants';
 
-export const dynamic = 'force-dynamic';
-
-export const GET = withAuth(async (_request: NextRequest, ctx) => {
-  const orgId = ctx.organizationId;
-  // 30s-polled Incoming attention filter counts. Cache the composed
-  // aggregate org-scoped; every receiving write busts receiving-lines.
-  const payload = await getOrSet(
+/** Cached org-scoped; every receiving write busts receiving-lines. */
+export function getIncomingSummary(orgId: OrgId): Promise<IncomingSummary> {
+  return getOrSet(
     CACHE_NS.receivingIncomingSummary,
     orgId,
     'summary',
     CACHE_TTL.rollup,
     [CACHE_TAGS.receivingLines],
-    async () => {
+    () => computeIncomingSummary(orgId),
+  );
+}
+
+async function computeIncomingSummary(orgId: OrgId): Promise<IncomingSummary> {
   const r = await tenantQuery<{
     issued: number;
     delivered_unopened: number;
@@ -107,7 +112,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
          -- received order leaves Incoming after a Refresh-Zoho mirror sync.
          AND ${NOT_ZOHO_RECEIVED_PREDICATE}
          -- A scanned box has left Incoming (it shows in the scanned view now), so
-         -- exclude it here too — keeps these chip counts in sync with the list's
+         -- exclude it here too — keeps these counts in sync with the list's
          -- view=incoming rows, which now apply the same scan guard.
          AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
     [orgId],
@@ -169,8 +174,4 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
     ebay_incoming,
     universal_incoming,
   };
-    },
-  );
-
-  return NextResponse.json({ success: true, ...payload });
-}, { permission: 'receiving.view' });
+}

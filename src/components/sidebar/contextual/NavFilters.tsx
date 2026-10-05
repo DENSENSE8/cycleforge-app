@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { navControlParams, type NavContext, type NavFilters as NavFiltersSpec } from '@/lib/nav/context/schema';
+import { navControlParams, type NavContext, type NavFilters as NavFiltersSpec, type NavSearch } from '@/lib/nav/context/schema';
 import { fetchNavFacets } from '@/lib/nav/context/http-client';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, LayoutGroup, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
@@ -29,10 +29,15 @@ import { useReplaceSearchParams } from './useReplaceSearchParams';
 import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { NavSlotError } from './NavSlotError';
 import { NAV_BLOCK_CLASS, NAV_CHOICE_PRESS_CLASS, NAV_CHOICE_SELECTED_CLASS } from './nav-block';
+import { BulkStatusChips, PillChip } from './NavBulkChips';
+import { useNavBulkList } from './NavBulkList';
+import { useUrlBulkList } from './use-url-bulk-list';
+import type { BulkList } from '@/lib/nav/locate/use-bulk-list';
 
 const FACETS_STALE_MS = 15_000;
 
 type NavControls = NonNullable<NavContext['controls']>;
+type NavLocate = NonNullable<NavSearch['locate']>;
 
 /** Every row in the panel: the sidebar's pressable block at 32px. */
 const ROW_CLASS = cn(NAV_BLOCK_CLASS, 'h-8 text-role-caption');
@@ -59,9 +64,12 @@ function readValues(raw: string | null, multi: boolean): string[] {
 export function NavFilters({
   filters,
   controls,
+  locate,
 }: {
   filters: NavFiltersSpec | undefined;
   controls: NavControls | undefined;
+  /** The page search's pasted-list locate — the list `controls.pastedListBuckets` reads. */
+  locate?: NavLocate;
 }) {
   const searchParams = useSearchParams();
   const search = searchParams?.toString() ?? '';
@@ -75,10 +83,10 @@ export function NavFilters({
     placeholderData: keepPreviousData,
   });
 
-  // Sort orders the list; it is not a filter, so Reset and the count leave it.
+  // Sort and Group by order / band the list; they are not filters, so Reset and the count leave them.
   const ownedParams = [
     ...(filters?.groups.map((group) => group.param) ?? []),
-    ...navControlParams(controls ? { ...controls, sort: undefined } : undefined),
+    ...navControlParams(controls ? { ...controls, sort: undefined, group: undefined } : undefined),
   ];
   const activeCount = ownedParams.filter((param) => searchParams?.has(param)).length;
   const [open, setOpen] = useState<ReadonlySet<string>>(
@@ -151,7 +159,10 @@ export function NavFilters({
 
       <div className="flex flex-col gap-px">
         {controls?.sort ? (
-          <SortRow spec={controls.sort} open={open.has('sort')} onToggle={toggleOpen} />
+          <SortRow id="sort" label="Sort" spec={controls.sort} open={open.has('sort')} onToggle={toggleOpen} />
+        ) : null}
+        {controls?.group ? (
+          <SortRow id="group" label="Group by" spec={controls.group} open={open.has('group')} onToggle={toggleOpen} />
         ) : null}
         {controls?.staff?.map((row) => <StaffRow key={row.id} id={row.id} param={row.param} label={row.label} />)}
         {controls?.dates?.map((row) => <SingleDateRow key={row.id} spec={row} />)}
@@ -167,10 +178,13 @@ export function NavFilters({
             onToggle={toggleOpen}
           />
         ) : null}
+        {controls?.pastedListBuckets ? <PastedListBucketsRow spec={controls.pastedListBuckets} locate={locate} /> : null}
         {filters
           ? filters.groups.map((declared) => {
               const group = facets.data?.groups.find((g) => g.id === declared.id);
               const active = readValues(searchParams?.get(declared.param) ?? null, declared.multi);
+              // A context serving several tabs (the Unbox station) answers a group the open tab does not read with no options.
+              if (group?.options.length === 0 && active.length === 0) return null;
               const summary =
                 active.length === 0
                   ? null
@@ -525,13 +539,17 @@ export function TimeField({ label, value, onCommit }: { label: string; value: st
   );
 }
 
-/** The list's order, as one closed row whose options open under it. */
+/** The list's order (`controls.sort`) or banding (`controls.group`): one closed row whose single choice opens under it. */
 function SortRow({
+  id,
+  label,
   spec,
   open,
   onToggle,
 }: {
-  spec: NonNullable<NavControls['sort']>;
+  id: string;
+  label: string;
+  spec: NonNullable<NavControls['sort']> | NonNullable<NavControls['group']>;
   open: boolean;
   onToggle: (id: string) => void;
 }) {
@@ -539,11 +557,12 @@ function SortRow({
   const replace = useReplaceSearchParams();
   const value = searchParams?.get(spec.param) ?? spec.defaultValue;
   const current = spec.options.find((option) => option.value === value) ?? spec.options[0];
+  const dirParam = 'dirParam' in spec ? spec.dirParam : undefined;
   return (
-    <Disclosure id="sort" label="Sort" summary={current?.label ?? null} open={open} onToggle={onToggle}>
+    <Disclosure id={id} label={label} summary={current?.label ?? null} open={open} onToggle={onToggle}>
       <div
         role="radiogroup"
-        aria-label="Sort"
+        aria-label={label}
         className={cn('divide-y divide-border-hairline border border-border-soft bg-surface-card', SIDEBAR_CONTROL_CORNER)}
       >
         {spec.options.map((option) => {
@@ -554,14 +573,14 @@ function SortRow({
               type="button"
               role="radio"
               aria-checked={selected}
-              data-nav-sort-option={option.value}
+              {...{ [`data-nav-${id}-option`]: option.value }}
               onClick={() =>
                 replace((params) => {
                   if (option.value === spec.defaultValue) params.delete(spec.param);
                   else params.set(spec.param, option.value);
-                  if (!spec.dirParam) return;
-                  if (option.dir) params.set(spec.dirParam, option.dir);
-                  else params.delete(spec.dirParam);
+                  if (!dirParam) return;
+                  if ('dir' in option && option.dir) params.set(dirParam, option.dir);
+                  else params.delete(dirParam);
                 })
               }
               className={cn(
@@ -653,6 +672,84 @@ function ExcludeRow({
   );
 }
 
+/**
+ * The pasted list's bucket facet (`controls.pastedListBuckets`): where the
+ * list's numbers live, with how many each holds — the list's own
+ * `BulkStatusChips`, over the same `useBulkList` query the page body reads —
+ * and, with `facetParam`, the pressed bucket's reasons under it. The list is
+ * the page's located one (`locate`, e.g. `/incoming` `?ref_in=`) or, on a
+ * page that locates nothing, the full list page's `?refs=`.
+ */
+function PastedListBucketsRow({ spec, locate }: { spec: NonNullable<NavControls['pastedListBuckets']>; locate: NavLocate | undefined }) {
+  return locate ? <LocatedListBuckets spec={spec} locate={locate} /> : <UrlListBuckets />;
+}
+
+function LocatedListBuckets({ spec, locate }: { spec: NonNullable<NavControls['pastedListBuckets']>; locate: NavLocate }) {
+  const list = useNavBulkList({
+    locator: locate.locator,
+    param: locate.param,
+    statusParam: spec.param,
+    ...(spec.facetParam ? { facetParam: spec.facetParam } : {}),
+  });
+  return <PastedListBuckets list={list} facetParam={spec.facetParam ?? null} />;
+}
+
+function UrlListBuckets() {
+  return <PastedListBuckets list={useUrlBulkList()} facetParam={null} />;
+}
+
+function PastedListBuckets({ list, facetParam }: { list: BulkList; facetParam: string | null }) {
+  const pillScope = useId();
+  const replace = useReplaceSearchParams();
+  if (list.selection.refs.length === 0) return null;
+  const nowhere = list.entries.filter((entry) => !entry.pending && entry.buckets.length === 0).length;
+  const reasons = facetParam ? bucketReasons(list) : [];
+  const toggleReason = (id: string) =>
+    replace((params) => {
+      params.delete('page');
+      if (list.facet === id) params.delete(facetParam!);
+      else params.set(facetParam!, id);
+    });
+  return (
+    <div data-nav-pasted-list-buckets className="py-px">
+      <span className="flex h-7 items-center gap-1.5 px-2 text-role-micro font-semibold uppercase tracking-wide text-text-faint">
+        Status
+      </span>
+      <LayoutGroup id={pillScope}>
+        <BulkStatusChips list={list} nowhere={nowhere} className="px-2 pb-1" />
+        {reasons.length > 0 ? (
+          <div data-nav-pasted-list-reasons role="group" aria-label="Reasons" className="flex flex-wrap items-center gap-1 px-2 pb-1">
+            {reasons.map((reason) => (
+              <PillChip
+                key={reason.id}
+                pill="reason"
+                active={list.facet === reason.id}
+                onClick={() => toggleReason(reason.id)}
+                label={reason.label}
+                count={reason.count}
+              />
+            ))}
+          </div>
+        ) : null}
+      </LayoutGroup>
+    </div>
+  );
+}
+
+/** Why the pressed bucket's numbers sit there — each entry's `facet`, counted, in answer order. */
+function bucketReasons(list: BulkList): { id: string; label: string; count: number }[] {
+  const status = list.status;
+  if (!status) return [];
+  const byId = new Map<string, { id: string; label: string; count: number }>();
+  for (const entry of list.entries) {
+    if (!entry.facet || !entry.buckets.includes(status)) continue;
+    const seen = byId.get(entry.facet.id);
+    if (seen) seen.count += 1;
+    else byId.set(entry.facet.id, { id: entry.facet.id, label: entry.facet.label, count: 1 });
+  }
+  return [...byId.values()];
+}
+
 function ChoiceRow({
   spec,
   open,
@@ -664,7 +761,8 @@ function ChoiceRow({
 }) {
   const searchParams = useSearchParams();
   const replace = useReplaceSearchParams();
-  const value = searchParams?.get(spec.param) ?? null;
+  // A defaulted choice is never empty: unset reads as `defaultValue`.
+  const value = searchParams?.get(spec.param) ?? spec.defaultValue ?? null;
   const current = spec.options.find((option) => option.value === value) ?? null;
   return (
     <Disclosure id={spec.id} label={spec.label} summary={current?.label ?? value} open={open} onToggle={onToggle}>
@@ -684,7 +782,8 @@ function ChoiceRow({
               data-nav-choice-option={option.value}
               onClick={() =>
                 replace((params) => {
-                  if (selected) params.delete(spec.param);
+                  // The default (or, with none, the lit option again) clears; a defaulted lit option stays lit.
+                  if (option.value === spec.defaultValue || (selected && spec.defaultValue == null)) params.delete(spec.param);
                   else params.set(spec.param, option.value);
                   for (const key of spec.clearParams) params.delete(key);
                 })

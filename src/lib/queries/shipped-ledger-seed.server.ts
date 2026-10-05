@@ -50,6 +50,7 @@ export async function seedShippedLedger(shippedFilter: ShippedTypeFilter): Promi
         statusCategory: null,
         exceptionsOnly: false,
         channels: [],
+        cardStatus: [],
       },
       spineOnly: true,
     });

@@ -1,13 +1,19 @@
 'use client';
 
 /**
- * Status counts as FILTERS above the cards (owner 2026-09-27) — the triage
- * desks' status rail. {@link StatusChipRail} paints any family's chips (the
- * Exceptions desk's kinds); {@link QueueStatusChips} is the To-ship desk's and
- * the phone pick queue's (owner 2026-09-28: the same counts on every device).
- * A chip counts CARDS, so tapping it shows exactly that many. The host decides
- * whether chips OR together or pick one; Reset (or Esc) clears them. The host
+ * Status counts as filter chips — the triage desks' status rail. {@link StatusChipRail}
+ * paints any family's chips (the Exceptions desk's kinds); {@link QueueStatusChips} is
+ * the To-ship desk's and the phone pick queue's (owner 2026-09-28: the same counts on
+ * every device). A chip counts CARDS, so tapping it shows exactly that many. The host
+ * decides whether chips OR together or pick one; Reset (or Esc) clears them. The host
  * counts; this paints.
+ *
+ * Placement (owner ruling A4, 2026-10-04): chips that filter are CONTROLS — a desktop
+ * page declares its statuses as facets in its own contextual sidebar (NAV_PAGE_DECLS +
+ * its NAV_FACET_GROUPS context), never this rail in a page body or a list's
+ * `summary` / `banner` slot. Body mounts are queued debt (ledger `body-status-chip-rails`,
+ * loop rule `layout.sidebar-owns-table-controls`); phones are exempt pending the mobile
+ * filter-home ruling.
  */
 
 import { useRef } from 'react';

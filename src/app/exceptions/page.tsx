@@ -5,6 +5,7 @@ import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { ExceptionsDesk } from '@/components/exceptions/ExceptionsDesk';
 import { getCurrentUser } from '@/lib/auth/current-user';
+import { getExceptionRecord, type ExceptionCaller } from '@/lib/exceptions/hub';
 import { exceptionLanding } from '@/lib/exceptions/permissions';
 import {
   EXCEPTIONS_PATH,
@@ -14,6 +15,8 @@ import {
   parseExceptionDomain,
   parseExceptionKind,
   parseExceptionRowKey,
+  exceptionRowKey,
+  type ExceptionKind,
 } from '@/lib/exceptions/types';
 
 export const metadata: Metadata = {
@@ -23,6 +26,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 type SearchParams = Record<string, string | string[] | undefined>;
+
+/** Order-backed exception kinds, most likely operational blocker first. */
+const ORDER_KINDS: readonly ExceptionKind[] = ['fbm', 'paperwork', 'labels', 'pairs'];
 
 /**
  * `/exceptions` — the global Exceptions hub, ONE category at a time (owner
@@ -44,6 +50,25 @@ export default async function ExceptionsPage({ searchParams }: { searchParams: P
   const recordKind = parseExceptionRowKey(one(EXCEPTION_RECORD_PARAM) ?? '')?.kind ?? null;
   const requested = { domain: parseExceptionDomain(rawDomain), kind: parseExceptionKind(rawKind) ?? recordKind };
   const user = await getCurrentUser();
+  const legacyOrderId = Number(one('order'));
+  if (user && Number.isInteger(legacyOrderId) && legacyOrderId > 0) {
+    const caller: ExceptionCaller = {
+      orgId: user.organizationId,
+      has: (permission) => user.permissions.has(permission),
+    };
+    for (const kind of ORDER_KINDS) {
+      const key = exceptionRowKey(kind, String(legacyOrderId));
+      const found = await getExceptionRecord(caller, key);
+      if (!found.ok) continue;
+      const params = new URLSearchParams();
+      for (const [name, value] of Object.entries(sp)) {
+        if (name === 'order') continue;
+        for (const entry of Array.isArray(value) ? value : value === undefined ? [] : [value]) params.append(name, entry);
+      }
+      params.set(EXCEPTION_RECORD_PARAM, key);
+      redirect(`${EXCEPTIONS_PATH}?${params}`);
+    }
+  }
   const landing = user ? exceptionLanding((permission) => user.permissions.has(permission), requested) : null;
   if (landing && (landing.kind !== rawKind || landing.domain !== rawDomain)) {
     const params = new URLSearchParams();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { last8FromStoredTracking } from '@/lib/tracking-format';
 
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 const DEFAULT_LIMIT = 100;
@@ -16,11 +17,6 @@ function requiredEnvAny(primaryName: string, aliases: string[] = []): string {
 
 function isBlank(value: unknown): boolean {
   return value === null || value === undefined || String(value).trim() === '';
-}
-
-function getLastEightDigits(value: unknown): string {
-  if (!value) return '';
-  return String(value).replace(/\D/g, '').slice(-8);
 }
 
 function parseEcwidOrderDate(value: unknown): Date | null {
@@ -128,7 +124,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
 
       if (existingRows.length === 0 && trackingNumber) {
-        const last8 = getLastEightDigits(trackingNumber);
+        const last8 = last8FromStoredTracking(trackingNumber);
         if (last8) {
           // The stn join is on the integer surrogate PK (stn.id = o.shipment_id)
           // so it's safe bare; shipping_tracking_numbers has no organization_id

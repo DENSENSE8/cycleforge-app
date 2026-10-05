@@ -1,12 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import {
-  DataTableFilterMenu,
-  DataTableSortMenu,
-  type DataTableFilterChrome,
-  type DataTableSortOption,
-} from '@/components/tables/DataTable';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TriageCardList, type TriageFeed, type TriageRecordSlot, type TriageServerPages } from '@/design-system/components/triage-card-list/TriageCardList';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
@@ -19,9 +13,7 @@ import { IncomingDeliveryCard } from './cards/IncomingDeliveryCard';
 import { IncomingDeliveryRow } from './cards/IncomingDeliveryRow';
 import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { receiptCardKey, receiptCardModel, type ReceiptCardModel } from './cards/receipt-card-model';
-import { IncomingStatusChips, type IncomingStatusChipSet } from './IncomingStatusChips';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import type { IncomingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
 import type { RowGroup } from '@/lib/group-rows';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { useInboundDeliveryRecord } from '@/components/receiving/record/useInboundRecord';
@@ -33,25 +25,13 @@ const purchaseKey = (row: ReceivingLineRow): string =>
   (row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || row.source_order_id || '').trim();
 
 const VIEW = INCOMING_PIPELINE_VIEW;
-/** Inbound's status chips are its own (`IncomingStatusChips`, server buckets) — the face's cut filters none. */
+/** Inbound's delivery states are the sidebar's facet (`incoming.pipeline`, `?state=`, server counts) — the face's cut filters none. */
 const NO_FACE_CHIPS: readonly never[] = [];
 const noFaceChipsOf = (): readonly never[] => NO_FACE_CHIPS;
-/** A Find naming exactly one PO (or its full tracking number) opens it. */
+/** A Find naming exactly one order / PO — the complete value, or the PO behind an order — or its full tracking number opens it. */
 const receiptExactFind = (query: string, card: ReceiptCardModel) =>
-  card.identity.toLowerCase() === query || card.rows.some((row) => (row.tracking_number ?? '').toLowerCase() === query);
-
-const SORT_OPTIONS: readonly DataTableSortOption[] = [
-  { id: 'order', label: 'Purchase order', group: 'Record' },
-  { id: 'title', label: 'Product title', group: 'Record' },
-  { id: 'date', label: 'Expected date', group: 'Delivery' },
-  { id: 'age', label: 'Age', group: 'Delivery' },
-  { id: 'status', label: 'Delivery state', group: 'Delivery' },
-  { id: 'tracking', label: 'Tracking', group: 'Delivery' },
-  { id: 'qty', label: 'Quantity', group: 'Item' },
-  { id: 'condition', label: 'Condition', group: 'Item' },
-  { id: 'platform', label: 'Source', group: 'Purchase' },
-  { id: 'zoho', label: 'Zoho status', group: 'Purchase' },
-];
+  [card.identity.value, card.identity.fallback?.value].some((value) => value?.toLowerCase() === query) ||
+  card.rows.some((row) => (row.tracking_number ?? '').toLowerCase() === query);
 
 interface IncomingDeliveriesLedgerProps {
   groups: readonly [string, RowGroup<ReceivingLineRow>[]][];
@@ -60,23 +40,12 @@ interface IncomingDeliveriesLedgerProps {
   emptyMessage: string;
   /** The page's Find text (sidebar or global header) — the cards face reads it. */
   findValue: string;
-  filter: DataTableFilterChrome;
-  /**
-   * The contextual sidebar owns Source and Sort (`/incoming`): the toolbar
-   * drops its Filter funnel and Sort icon. The Unbox embed has no sidebar.
-   */
-  sidebarOwnsControls: boolean;
-  /** Status chips top-left (delivery state, or the pasted list's buckets). */
-  statusChips?: IncomingStatusChipSet | null;
   /** One line above the list (e.g. the pasted list hit the row cap). */
   notice?: string | null;
   /** Which Inbound lane the rows are — the summary pane reads it. */
   lane?: 'pipeline' | 'exceptions';
   /** `groups` bands are urgency sections (`cutIncomingSections`) — the cards head each one. */
   sectioned?: boolean;
-  sort: IncomingGridColumnKey | null;
-  sortDir: 'asc' | 'desc' | null;
-  onSort: (key: IncomingGridColumnKey) => void;
   selectedId: number | null;
   selectedIds: Set<number>;
   onOpenRow: (row: ReceivingLineRow) => void;
@@ -94,15 +63,9 @@ export function IncomingDeliveriesLedger({
   loading,
   emptyMessage,
   findValue,
-  filter,
-  sidebarOwnsControls,
-  statusChips,
   notice,
   lane = 'pipeline',
   sectioned = false,
-  sort,
-  sortDir,
-  onSort,
   selectedId,
   selectedIds,
   onOpenRow,
@@ -166,25 +129,8 @@ export function IncomingDeliveriesLedger({
 
   const inbound = useInboundDeliveryRecord({ row: openRow, lines: openLines, onRemoved: close });
   const slot = useRecordSlot(inbound?.model ?? null, inbound?.verbs ?? [], openRow ? `PO ${purchaseIdentity(openRow)} actions` : 'Delivery actions', 'inbound-record');
-  // Off the desk (the Unbox embed) this row owns Source and Sort only. Find is
-  // the page header's URL-bound field.
-  const controls = sidebarOwnsControls ? null : (
-    <div className="flex shrink-0 items-center gap-2 border-b border-border-soft px-3 py-1">
-      <span className="flex-1" />
-      <DataTableFilterMenu {...filter} />
-      <DataTableSortMenu
-        options={SORT_OPTIONS}
-        active={sort}
-        hot={sort != null}
-        activeFace={sort && sortDir ? { label: `${sort} · ${sortDir}` } : undefined}
-        onSelect={(id) => onSort(id as IncomingGridColumnKey)}
-      />
-    </div>
-  );
-
   return (
     <div data-testid="incoming-deliveries-ledger" data-face="cards" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {controls}
       <div className="flex min-h-0 min-w-0 flex-1">
         <IncomingDeliveryCards
           cut={cut}
@@ -203,7 +149,6 @@ export function IncomingDeliveriesLedger({
           onToggleRow={onToggleRow}
           serverPages={{ page, pageCount, pageSize, onPage }}
           total={total}
-          statusChips={statusChips ? <IncomingStatusChips set={statusChips} /> : null}
           notice={notice ?? null}
           record={{
             title: slot?.title ?? 'Delivery',
@@ -243,7 +188,6 @@ function IncomingDeliveryCards({
   onToggleRow,
   serverPages,
   total,
-  statusChips,
   notice,
   record,
 }: {
@@ -263,7 +207,6 @@ function IncomingDeliveryCards({
   onToggleRow: (row: ReceivingLineRow) => void;
   serverPages: TriageServerPages;
   total: number;
-  statusChips: ReactNode;
   notice: string | null;
   record: TriageRecordSlot;
 }) {
@@ -306,7 +249,8 @@ function IncomingDeliveryCards({
       cut={cut}
       record={record}
       densityControl={{ value: density, onChange: setDensity }}
-      summary={statusChips}
+      // No chips: the delivery states are the sidebar's facet.
+      summary={null}
       bulk={<ReceivingSelectionVerbs noun="deliveries" />}
       banner={
         notice ? (

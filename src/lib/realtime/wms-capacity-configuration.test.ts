@@ -13,11 +13,9 @@ function source(file: string): string {
 }
 
 test('operator location editors expose capacity and the tenant route persists it', () => {
-  const admin = source('src/components/admin/LocationsManagementTab.tsx');
   const portable = source('src/components/locations/LocationCrudDialog.tsx');
   const route = source('src/app/api/locations/[barcode]/properties/route.ts');
 
-  assert.match(admin, />Capacity</);
   assert.match(portable, /label="Capacity"/);
   assert.match(route, /updateLocation\([^]*parsed\.capacity/);
   assert.match(route, /requireRoutePerm\(req, 'sku_stock\.manage'\)/);

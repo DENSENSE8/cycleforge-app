@@ -130,10 +130,6 @@ export const SHEET_SAVED_VIEW_CONFIG = {
   },
 } as const;
 
-export function sheetSavedViewConfigForTable(tableId: string) {
-  return SHEET_SAVED_VIEW_CONFIG[tableId as keyof typeof SHEET_SAVED_VIEW_CONFIG] ?? null;
-}
-
 /** Storage key → DB surface (the `useSavedViews` consumers). */
 const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> = {
   [MY_DAY_SAVED_VIEWS_KEY]: 'home_today',

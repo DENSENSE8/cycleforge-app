@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { getNavLocate, type NavLocateDeps, type NavLocateResult } from './service';
 import { buildOutboundRefsSql, buildOutboundTextCountSql } from './outbound';
 import { NAV_LOCATE_MAX_REFS, NavLocateResponseSchema, type NavLocateResponse } from '@/lib/nav/context/schema';
+import { SHIP_OUT_LATERAL } from '@/lib/neon/orders-queries';
+import { ORDER_STAGE_FACTS_JOIN } from '@/lib/orders/order-stage-facts';
+import { WA_DEADLINE_LATERAL } from '@/lib/orders/orders-list';
 import { buildPackerLogBaseWhere, sqlPackerLogSearch } from '@/lib/neon/packer-logs-week';
 import { sqlDeskQueueScope } from '@/lib/orders/desk-view-sql';
-import { sqlOrderInExceptionQueue } from '@/lib/orders/exception-membership';
-import { exceptionScopeWhere, exceptionSearchSql } from '@/lib/orders/order-exceptions';
 import type { OrdersListQuery } from '@/lib/orders/orders-list-query';
 import { DESK_VIEW_ORDER, deskViewHref } from '@/lib/outbound/desk-views';
 import { routeParamsFor } from '@/lib/routing/registry';
@@ -15,14 +16,37 @@ import { readShippedDateWindow } from '@/lib/shipping/shipped-filter/shipped-fil
 import type { CheckZohoReceivedLocal, CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { OrgId } from '@/lib/tenancy/constants';
+import {
+  identifierEqualsQuery,
+  identifierFaceCompact,
+  sqlIdentifierEqualsQuery,
+  sqlIdentifierFaceCompact,
+} from '@/lib/search/order-number-match';
 
 const ORG = '00000000-0000-0000-0000-000000000001' as OrgId;
 const EVERY = new Set(['orders.view', 'packing.view', 'receiving.view']);
+const OUTBOUND_LOCATOR_VIEWS = DESK_VIEW_ORDER.filter((id) => id !== 'exceptions');
 
 /** Order rows the refs statement returns per pasted ref (its membership flags). */
 const ORDERS: Record<string, Array<Record<string, unknown>>> = {
   '02-15212-00001': [
-    { id: 11, order_id: '02-15212-00001', product_title: 'Bose QC45', in_triage: true },
+    {
+      id: 11,
+      order_id: '02-15212-00001',
+      product_title: 'Bose QC45',
+      in_triage: true,
+      // The row facts the same statement reads (WA_DEADLINE_LATERAL, ORDER_STAGE_FACTS_JOIN, SHIP_OUT_LATERAL).
+      status: 'unshipped',
+      ship_by_date: '2026-10-06',
+      fact_title: 'Bose QuietComfort 45',
+      sku: 'QC45-BLK',
+      tracking_number: '1ZA677K10318827054',
+      delivered_at: null,
+      packed_at: new Date('2026-10-04T17:00:00Z'),
+      packer_id: 4,
+      packer_name: 'Tuan',
+      shipped_at: null,
+    },
   ],
   '1Z999AA10123456784': [{ id: 12, order_id: '113-0000000-0000001', product_title: null, in_shipped: true }],
   'SPLIT-9': [
@@ -88,7 +112,7 @@ function fakes() {
       }
       const view = /FROM \(LIST:(\w+)\) listed/.exec(sql)?.[1];
       if (view) return [{ n: { triage: 4 }[view] }];
-      return [{ exceptions: 3, shipped: 5 }];
+      return [{ unused: 0, shipped: 5 }];
     },
     ordersListSql: async (orgId, query) => {
       cap.lists.push(query);
@@ -101,6 +125,9 @@ function fakes() {
     inboundLines: async () => LINES,
     inboundAwaiting: async () => [],
     inboundFollowups: async () => [],
+    supportRows: async () => {
+      throw new Error('support is asked on /support only');
+    },
   };
   return { deps, cap };
 }
@@ -113,12 +140,12 @@ async function ok(result: NavLocateResult): Promise<NavLocateResponse> {
 
 const counts = (body: NavLocateResponse) => Object.fromEntries(body.buckets.map((b) => [b.id, b.count]));
 
-test('outbound text: one bucket per desk view in DESK_VIEW_ORDER, each counted by its own list', async () => {
+test('outbound text: FBM locator omits Exceptions because they only live globally', async () => {
   const { deps, cap } = fakes();
   const body = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'outbound', { q: '02-15212' }, deps));
-  assert.deepEqual(body.buckets.map((b) => b.id), [...DESK_VIEW_ORDER]);
+  assert.deepEqual(body.buckets.map((b) => b.id), OUTBOUND_LOCATOR_VIEWS);
   assert.deepEqual(body.buckets.map((b) => b.href), [
-    ...DESK_VIEW_ORDER.filter((id) => id !== 'shipped').map((id) => deskViewHref(id)),
+    ...OUTBOUND_LOCATOR_VIEWS.filter((id) => id !== 'shipped').map((id) => deskViewHref(id)),
     `${deskViewHref('shipped')}&allDates=1`,
   ]);
   // Every href survives its route's hygiene, and Shipped opens on the window its count reads (none).
@@ -130,8 +157,8 @@ test('outbound text: one bucket per desk view in DESK_VIEW_ORDER, each counted b
   }
   const shippedUrl = new URL(body.buckets.find((b) => b.id === 'shipped')?.href ?? '', 'http://t');
   assert.deepEqual(readShippedDateWindow(shippedUrl.searchParams), { start: '', end: '' });
-  assert.deepEqual(body.buckets.map((b) => b.label), ['Allocate', 'Exceptions', 'Fulfilled']);
-  assert.deepEqual(counts(body), { triage: 4, exceptions: 3, shipped: 5 });
+  assert.deepEqual(body.buckets.map((b) => b.label), ['Allocate', 'Fulfilled']);
+  assert.deepEqual(counts(body), { triage: 4, shipped: 5 });
   assert.deepEqual(body.entries, []);
   assert.equal(body.truncated, 0);
   // Each queue view ran the desk's own scoped search — never the unscoped feed.
@@ -149,7 +176,7 @@ test('outbound without packing.view omits the Shipped bucket, not the answer', a
   const { deps, cap } = fakes();
   const caller = { orgId: ORG, permissions: new Set(['orders.view']) };
   const text = await ok(await getNavLocate(caller, 'outbound', { q: 'bose' }, deps));
-  assert.deepEqual(text.buckets.map((b) => b.id), ['triage', 'exceptions']);
+  assert.deepEqual(text.buckets.map((b) => b.id), ['triage']);
   assert.ok(cap.statements.every((s) => !s.sql.includes('packer_logs pl')), 'shipped never queried');
   const pasted = await ok(await getNavLocate(caller, 'outbound', { refs: '1Z999AA10123456784' }, deps));
   // Its only home is Shipped, which this caller cannot see.
@@ -184,19 +211,70 @@ test('outbound refs: one entry per ref in paste order, [] when found nowhere, co
     ),
   );
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets]), [
-    ['SPLIT-9', ['triage', 'exceptions']],
+    ['SPLIT-9', ['triage']],
     ['NOPE123', []],
     ['02-15212-00001', ['triage']],
     ['1Z999AA10123456784', ['shipped']],
   ]);
-  assert.deepEqual(counts(body), { triage: 2, exceptions: 1, shipped: 1 });
+  assert.deepEqual(counts(body), { triage: 2, shipped: 1 });
   const [split, nope, single, shipped] = body.entries;
   // Two order lines are no single record.
   assert.deepEqual([split.title, split.detail, split.recordHref], ['SPLIT-9 · Speaker', '2 order lines', null]);
-  assert.deepEqual([nope.title, nope.detail, nope.recordHref], [null, null, null]);
+  assert.deepEqual([nope.title, nope.detail, nope.recordHref, nope.facts], [null, null, null, null]);
   assert.equal(single.title, '02-15212-00001 · Bose QC45');
   assert.ok(single.recordHref?.startsWith('/'));
   assert.equal(shipped.title, '113-0000000-0000001');
+  // The order's row facts, read in the same statement: ship-by, packer by staff id, packed stamp.
+  assert.deepEqual(single.facts, {
+    section: 'outbound',
+    title: 'Bose QuietComfort 45',
+    sku: 'QC45-BLK',
+    tracking: '1ZA677K10318827054',
+    deliveredAt: null,
+    channelStatus: 'unshipped',
+    shipBy: '2026-10-06',
+    packedAt: '2026-10-04T17:00:00.000Z',
+    shippedAt: null,
+    packer: { id: 4, name: 'Tuan' },
+    po: null,
+    vendor: null,
+    lines: 1,
+    duplicates: [],
+    unboxedAt: null,
+    unboxedBy: null,
+    units: null,
+  });
+  // A ref naming several order lines reads its lead line, and says how many.
+  assert.deepEqual([split.facts?.section, split.facts?.lines, split.facts?.packer], ['outbound', 2, null]);
+});
+
+test('outbound refs: the facts ride the ONE refs statement, off the To-ship list joins', async () => {
+  const { deps, cap } = fakes();
+  await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'outbound', { refs: '02-15212-00001' }, deps));
+  assert.equal(cap.statements.length, 1, 'no second read for the facts');
+  const [{ sql }] = cap.statements;
+  for (const fragment of [WA_DEADLINE_LATERAL, ORDER_STAGE_FACTS_JOIN, SHIP_OUT_LATERAL]) {
+    assert.ok(sql.includes(fragment), `refs statement lacks ${fragment.trim().slice(0, 50)}`);
+  }
+});
+
+test('outbound channelStatus is the source\'s word, never the warehouse stage — the bucket is', async () => {
+  // Regression (2026-10-04): 1909809 / 9235459 / 9247429 — Amazon imports landed
+  // `orders.status = 'shipped'` with tracking, never packed or scanned out here.
+  const { deps } = fakes();
+  const run = deps.run;
+  deps.run = async (orgId, sql, params) =>
+    sql.includes('WITH r AS')
+      ? [{ ord: 1, id: 13527, order_id: '113-6729910-1909809', product_title: 'Bracket', in_triage: true, status: 'shipped', tracking_number: '9300110990513574820788', packed_at: null, shipped_at: null, packer_id: null, packer_name: null }]
+      : run(orgId, sql, params);
+  const body = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'outbound', { refs: '1909809' }, deps));
+  const [entry] = body.entries;
+  assert.deepEqual(entry.buckets, ['triage']);
+  assert.deepEqual(
+    [entry.facts?.channelStatus, entry.facts?.shippedAt, entry.facts?.packedAt, entry.facts?.packer],
+    ['shipped', null, null, null],
+  );
+  assert.equal('orderStatus' in (entry.facts ?? {}), false);
 });
 
 test('refs past the cap are dropped and reported; duplicates collapse', async () => {
@@ -209,6 +287,64 @@ test('refs past the cap are dropped and reported; duplicates collapse', async ()
   assert.equal(body.truncated, 5);
   assert.deepEqual(body.entries.map((e) => e.ref), pasted.slice(0, NAV_LOCATE_MAX_REFS));
   assert.deepEqual(cap.statements[0].params[1], pasted.slice(0, NAV_LOCATE_MAX_REFS));
+});
+
+test('blank lines and repeats never count against the cap', async () => {
+  const { deps } = fakes();
+  const unique = Array.from({ length: NAV_LOCATE_MAX_REFS }, (_, i) => `07-15050-${String(10000 + i)}`);
+  // The operator's paste: every number twice, dashed and not, blank lines between.
+  const paste = unique.flatMap((ref) => [ref, '', ref.replace(/-/g, ''), '  ']).join('\n');
+  const body = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'outbound', { refs: paste }, deps));
+  assert.equal(body.truncated, 0);
+  assert.deepEqual(body.entries.map((e) => e.ref), unique);
+});
+
+test('outbound: the number an order row shows (its id chip face) finds that order', () => {
+  // Regression (2026-10-04): 1909809 · 9235459 · 9247429, copied off /shipping/orders,
+  // all answered "Not found" — the faces of 113-6729910-1909809 etc. The identifier
+  // arm matched only the whole id or its last 8, never the 7-digit face.
+  const built = buildOutboundRefsSql(ORG, ['1909809', '9235459', '9247429'], true);
+  assert.ok(built.sql.includes(sqlIdentifierEqualsQuery('o.order_id', 'c.ref')));
+  assert.ok(built.sql.includes(sqlIdentifierFaceCompact('o.order_id')), 'the chip-face arm decides');
+  // The candidate key the order is probed by is the face's tail, so the face reaches the predicate.
+  const key4 = built.params[6] as string[];
+  assert.deepEqual(key4, ['9809', '5459', '7429']);
+  assert.equal(identifierFaceCompact('113-6729910-1909809').slice(-4), key4[0]);
+  assert.equal(identifierEqualsQuery('113-6729910-1909809', '1909809'), true);
+  assert.equal(identifierEqualsQuery('112-4410844-9235459', '9235459'), true);
+  assert.equal(identifierEqualsQuery('114-7232334-9247429', '9247429'), true);
+});
+
+test('a section never says "Not found" for a ref another readable section holds', async () => {
+  const { deps, cap } = fakes();
+  const body = await ok(
+    await getNavLocate({ orgId: ORG, permissions: EVERY }, 'outbound', { refs: '02-15212-00001,PO-1,ZZZ' }, deps),
+  );
+  assert.equal(body.locator, 'outbound');
+  // The page's own buckets first, unprefixed and complete; another section's only where it holds a ref.
+  assert.deepEqual(body.buckets.map((b) => [b.id, b.count]), [
+    ...OUTBOUND_LOCATOR_VIEWS.map((id) => [id, id === 'triage' ? 1 : 0]),
+    ['inbound:received', 1],
+  ]);
+  const received = body.buckets.find((b) => b.id === 'inbound:received');
+  // The id carries the section; the painted label is the bare status (owner 2026-10-04).
+  assert.equal(received?.label, 'Received');
+  assert.equal(received?.href, '/incoming?recon=received');
+  assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets, e.title]), [
+    ['02-15212-00001', ['triage'], '02-15212-00001 · Bose QC45'],
+    ['PO-1', ['inbound:received'], 'PO PO-1 · Acme'],
+    // In neither section: still found nowhere.
+    ['ZZZ', [], null],
+  ]);
+  // Only the refs the page did not hold were asked of Receiving.
+  assert.deepEqual(cap.checked, [['PO-1', 'ZZZ']]);
+
+  // Without the other section's permission the answer stays the page's own.
+  const ordersOnly = await ok(
+    await getNavLocate({ orgId: ORG, permissions: new Set(['orders.view']) }, 'outbound', { refs: 'PO-1' }, deps),
+  );
+  assert.deepEqual(ordersOnly.entries[0].buckets, []);
+  assert.ok(ordersOnly.buckets.every((b) => !b.id.includes(':')));
 });
 
 test('inbound: the Check answer per ref — received, not received, nowhere', async () => {
@@ -227,9 +363,8 @@ test('inbound: the Check answer per ref — received, not received, nowhere', as
     ['not_received', '/incoming?recon=not_received'],
     ['exceptions', '/incoming?lane=exceptions'],
   ]);
-  assert.equal(body.entries[0].recordHref, '/incoming?recon=received&ref_in=PO-1');
-  assert.equal(body.entries[1].recordHref, '/incoming?recon=not_received&ref_in=PO-2');
-  assert.equal(body.entries[4].recordHref, null);
+  // A number with no carton line has no record — and never the ledger's `?ref_in=` list URL.
+  assert.deepEqual(body.entries.map((e) => e.recordHref), [null, null, null, null, null, null]);
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets]), [
     ['PO-1', ['received']],
     ['PO-2', ['not_received']],
@@ -285,6 +420,71 @@ test("inbound detail says the carrier's last word and the number's follow-up tag
   assert.deepEqual(asked, []);
 });
 
+test('inbound facts: the pasted page row off the reconcile lines — unboxer by staff id, carton record', async () => {
+  const { deps } = fakes();
+  const line = (patch: Partial<ReceivingLineRow>) =>
+    // The feed's own stamp shapes: a stringified `Date` (delivered) and Postgres `timestamptz::text` (unboxed).
+    ({ zoho_purchaseorder_number: 'PO-1', tracking_number: '1ZA677K10318827054', is_delivered: true, delivered_at: String(new Date('2026-09-18T20:00:00Z')), ...patch }) as unknown as ReceivingLineRow;
+  deps.inboundLines = async () => [
+    line({
+      id: 1,
+      receiving_id: 501,
+      catalog_product_title: 'Bose SoundLink Mini',
+      sku: 'SLM-1',
+      vendor_name: 'Goodwill',
+      quantity_received: 1,
+      quantity_expected: 2,
+      unboxed_at: '2026-09-19 03:00:00.123456-07',
+      unboxed_by_name: 'Dana',
+      unboxed_by_id: 7,
+    }),
+    // A later unbox that never stamped its completer: the staffer who opened the carton.
+    line({
+      id: 2,
+      receiving_id: 502,
+      quantity_received: 1,
+      quantity_expected: 1,
+      unboxed_at: '2026-09-20 03:00:00.5-07',
+      unbox_opened_by_name: 'Lin',
+      unbox_opened_by_id: 9,
+    }),
+  ];
+  const body = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { refs: 'PO-1,NOPE' }, deps));
+  const [po1, nope] = body.entries;
+  assert.deepEqual(po1.facts, {
+    section: 'inbound',
+    title: 'Bose SoundLink Mini',
+    sku: 'SLM-1',
+    tracking: '1ZA677K10318827054',
+    // Every stamp an ISO-8601 UTC instant, whatever shape the feed handed over.
+    deliveredAt: '2026-09-18T20:00:00.000Z',
+    channelStatus: null,
+    shipBy: null,
+    packedAt: null,
+    shippedAt: null,
+    packer: null,
+    po: 'PO-1',
+    vendor: 'Goodwill',
+    lines: 2,
+    duplicates: [],
+    unboxedAt: '2026-09-20T10:00:00.500Z',
+    unboxedBy: { id: 9, name: 'Lin' },
+    units: { received: 2, expected: 3 },
+  });
+  // Its own record — the lead line's carton — so opening it never rewrites a held `/incoming` list.
+  assert.equal(po1.recordHref, '/search?sel=receiving:501');
+  assert.equal(nope.facts, null);
+  assert.equal(nope.recordHref, null);
+
+  // Under `everywhere` (and any fall-through) the facts merge with the entry.
+  const merged = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'everywhere', { refs: '02-15212-00001,PO-1' }, deps));
+  assert.deepEqual(merged.entries.map((e) => [e.ref, e.facts?.section, e.recordHref]), [
+    ['02-15212-00001', 'outbound', '/search?sel=order:11'],
+    ['PO-1', 'inbound', '/search?sel=receiving:501'],
+  ]);
+  assert.deepEqual(merged.entries[1].facts?.unboxedBy, { id: 9, name: 'Lin' });
+});
+
 test('everywhere: every permitted locator, ids and labels prefixed, entries merged per ref', async () => {
   const { deps } = fakes();
   const body = await ok(
@@ -292,14 +492,14 @@ test('everywhere: every permitted locator, ids and labels prefixed, entries merg
   );
   assert.deepEqual(body.locator, 'everywhere');
   assert.deepEqual(body.buckets.map((b) => b.id), [
-    ...DESK_VIEW_ORDER.map((id) => `outbound:${id}`),
+    ...OUTBOUND_LOCATOR_VIEWS.map((id) => `outbound:${id}`),
     'inbound:awaiting_tracking',
     'inbound:received',
     'inbound:not_received',
     'inbound:exceptions',
   ]);
-  assert.equal(body.buckets.find((b) => b.id === 'outbound:triage')?.label, 'Fulfillment · Allocate');
-  assert.equal(body.buckets.find((b) => b.id === 'inbound:received')?.label, 'Receiving · Received');
+  assert.equal(body.buckets.find((b) => b.id === 'outbound:triage')?.label, 'Allocate');
+  assert.equal(body.buckets.find((b) => b.id === 'inbound:received')?.label, 'Received');
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets, e.title]), [
     ['02-15212-00001', ['outbound:triage'], '02-15212-00001 · Bose QC45'],
     ['PO-1', ['inbound:received'], 'PO PO-1 · Acme'],
@@ -307,11 +507,10 @@ test('everywhere: every permitted locator, ids and labels prefixed, entries merg
   ]);
 });
 
-test('the outbound statements read each view list\'s own membership predicates', () => {
+test('the outbound statements read visible FBM and Fulfilled membership only', () => {
   const refs = buildOutboundRefsSql(ORG, ['02-15212-00001'], true);
   for (const predicate of [
     sqlDeskQueueScope('triage'),
-    sqlOrderInExceptionQueue('o', 'stn'),
     ...buildPackerLogBaseWhere({ organizationId: ORG }, []).conditions.slice(1),
   ]) {
     assert.ok(refs.sql.includes(predicate), `refs statement lacks ${predicate.slice(0, 60)}`);
@@ -319,9 +518,7 @@ test('the outbound statements read each view list\'s own membership predicates',
   assert.equal(buildOutboundRefsSql(ORG, ['x'], false).sql.includes('packer_logs pl'), false);
 
   const text = buildOutboundTextCountSql(ORG, 'Bose', true);
-  assert.ok(text.sql.includes(exceptionScopeWhere('actionable')));
-  assert.ok(text.sql.includes(exceptionSearchSql('$2')));
-  assert.equal(text.params[1], '%bose%');
+  assert.doesNotMatch(text.sql, /exception/i);
   const likeIndex = text.params.indexOf('%Bose%');
   assert.ok(likeIndex > 0);
   assert.ok(text.sql.includes(sqlPackerLogSearch(`$${likeIndex + 1}`)));

@@ -163,17 +163,26 @@ narrows or orders the list. Owner rulings, 2026-09-27:
   into the left sidebar."
 - "The status chips are perfect for displaying in the middle above the data table."
 
+**Superseded 2026-10-04 (owner rulings A1 + A4,
+`docs/handoff/PROMPT-omp-write-time-rules-2026-10-04.md` §3):** the 2026-09-27 "status chips in the
+middle above the data table" placement is void. Status chips that filter are controls: each page
+declares its own statuses as facets in its contextual sidebar (`NAV_PAGE_DECLS[page]` + its
+`NAV_FACET_GROUPS` context) — never a shared chip rail in a body or a list's `summary` / `banner`
+slot (ledger `body-status-chip-rails`). The `sidebarOwnsControls` toolbar exception is void too:
+`DataTable`'s find, filter, sort, views and date controls are retired (ledger
+`record-selection-controls-left-the-body`). Debt is tracked by loop rule
+`layout.sidebar-owns-table-controls`.
+
 So the triage page has exactly two places a control can live:
 
 | Where | What | Examples |
 |---|---|---|
-| Middle, above the list (face) | Status chips (the family's `statusChips`), select-all, count, per-page / Scroll, In place / Split, Floor, fullscreen | To ship `cardStatus` chips; On the way delivery-state chips (`?state=`) |
-| Left sidebar (host declaration) | Sort, staff, date ranges, single-choice filters, facet groups with counts, saved views, Find, view keys | Everything else |
+| Middle, above the list (face) | Select-all, count, per-page / Scroll, In place / Split, Floor, fullscreen — how records render, never which records show | Compact / Full density switch |
+| Left sidebar (host declaration) | Status facets with counts, sort, staff, date ranges, single-choice filters, facet groups with counts, saved views, Find, view keys | To ship `cardStatus` statuses; On the way delivery states (`?state=`) |
 
-Nothing that sorts, filters or picks a date may render in the list header, the section headers or a
-toolbar menu. The one exception is a mount with **no** contextual sidebar (the Unbox workbench's
-History / Inbound tabs): its ledger keeps its toolbar through a single `sidebarOwnsControls` prop
-(`DockedReceiptsLedger`, `IncomingDeliveriesLedger`), never through a second component.
+Nothing that sorts, filters or picks a date may render in the list header, the section headers, a
+toolbar menu or a chip row above the list. Phones (`src/app/m/**`, `src/components/mobile/**`) are
+exempt pending the mobile filter-home ruling (A2).
 
 A family's sidebar is **data**, declared once in `NAV_PAGE_DECLS[<page>].items[<view>]`
 (`src/lib/nav/context/pages.ts`) and painted by `NavFilters` for every family:

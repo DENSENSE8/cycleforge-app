@@ -258,6 +258,42 @@ function buildRepairSearchWhere(idx: number, tab?: RepairTab, needsLabel?: boole
           ${label}`;
 }
 
+/** The desk list's scope — `GET /api/repair-service` (list or Find) and the sidebar's status counts. */
+export interface RepairListScope {
+  tab: RepairTab;
+  needsLabel?: boolean;
+  channel?: RepairChannel | null;
+  /** Find text; set = the search read (`buildRepairSearchWhere`). */
+  q?: string | null;
+  limit: number;
+  offset?: number;
+}
+
+/**
+ * One tenant-scoped statement over the desk list's rows: `select` columns,
+ * the list's FROM + WHERE, its order and page. `getAllRepairs` /
+ * `searchRepairs` read cards with it; the facet counts wrap it.
+ */
+export function buildRepairListSql(select: string, scope: RepairListScope, orgId: OrgId): { sql: string; params: unknown[] } {
+  const params: unknown[] = [];
+  const bind = (value: unknown) => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+  let where = buildRepairTabWhere(scope.tab, scope.needsLabel);
+  if (scope.q) {
+    params.push(`%${scope.q}%`);
+    where = buildRepairSearchWhere(params.length, scope.tab, scope.needsLabel);
+  }
+  const sql = `SELECT ${select}
+         ${REPAIR_FROM}
+         ${where} AND rs.organization_id = ${bind(orgId)}
+         ${scope.channel ? `AND rs.intake_channel = ${bind(scope.channel)}` : ''}
+         ORDER BY rs.created_at DESC NULLS LAST, rs.id DESC
+         LIMIT ${bind(scope.limit)} OFFSET ${bind(scope.offset ?? 0)}`;
+  return { sql, params };
+}
+
 export async function getAllRepairs(
   limit = 100,
   offset = 0,
@@ -268,16 +304,8 @@ export async function getAllRepairs(
     const where = buildRepairTabWhere(options?.tab || 'active', options?.needsLabel);
     const channel = options?.channel ?? null;
     if (orgId) {
-      const result = await tenantQuery(
-        orgId,
-        `SELECT ${REPAIR_SELECT_COLUMNS}
-         ${REPAIR_FROM}
-         ${where} AND rs.organization_id = $3
-         ${channel ? 'AND rs.intake_channel = $4' : ''}
-         ORDER BY rs.created_at DESC NULLS LAST, rs.id DESC
-         LIMIT $1 OFFSET $2`,
-        channel ? [limit, offset, orgId, channel] : [limit, offset, orgId],
-      );
+      const { sql, params } = buildRepairListSql(REPAIR_SELECT_COLUMNS, { tab: options?.tab || 'active', needsLabel: options?.needsLabel, channel, limit, offset }, orgId);
+      const result = await tenantQuery(orgId, sql, params);
       return result.rows.map(mapRepairRow);
     }
     const result = await pool.query(
@@ -817,6 +845,9 @@ export async function createRepair(params: CreateRepairParams, orgId?: OrgId): P
   return record!;
 }
 
+/** A Find answers its newest 20 matches. */
+export const REPAIR_SEARCH_LIMIT = 20;
+
 export async function searchRepairs(
   query: string,
   options?: { tab?: RepairTab; needsLabel?: boolean; channel?: RepairChannel | null },
@@ -827,16 +858,8 @@ export async function searchRepairs(
     const where = buildRepairSearchWhere(1, options?.tab, options?.needsLabel);
     const channel = options?.channel ?? null;
     if (orgId) {
-      const result = await tenantQuery(
-        orgId,
-        `SELECT ${REPAIR_SELECT_COLUMNS}
-         ${REPAIR_FROM}
-         ${where} AND rs.organization_id = $2
-         ${channel ? 'AND rs.intake_channel = $3' : ''}
-         ORDER BY rs.created_at DESC NULLS LAST, rs.id DESC
-         LIMIT 20`,
-        channel ? [searchTerm, orgId, channel] : [searchTerm, orgId],
-      );
+      const { sql, params } = buildRepairListSql(REPAIR_SELECT_COLUMNS, { tab: options?.tab ?? 'all', needsLabel: options?.needsLabel, channel, q: query, limit: REPAIR_SEARCH_LIMIT }, orgId);
+      const result = await tenantQuery(orgId, sql, params);
       return result.rows.map(mapRepairRow);
     }
     const result = await pool.query(
@@ -845,7 +868,7 @@ export async function searchRepairs(
        ${where}
        ${channel ? 'AND rs.intake_channel = $2' : ''}
        ORDER BY rs.created_at DESC NULLS LAST, rs.id DESC
-       LIMIT 20`,
+       LIMIT ${REPAIR_SEARCH_LIMIT}`,
       channel ? [searchTerm, channel] : [searchTerm],
     );
 

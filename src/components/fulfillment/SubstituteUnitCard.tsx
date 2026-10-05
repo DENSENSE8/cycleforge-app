@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { cn } from '@/utils/_cn';
+import { getLast8Serial } from '@/lib/copy-chip-format';
 import { Loader2 } from '@/components/Icons';
 import { SubstitutePanel } from './SubstitutePanel';
 import { OrderAmendmentsSection } from './OrderAmendmentsSection';
@@ -68,7 +69,7 @@ export function SubstituteUnitCard({
                     )}
                   >
                     {t.sku}
-                    {t.serialNumber ? ` · ${t.serialNumber.slice(-8)}` : ''}
+                    {t.serialNumber ? ` · ${getLast8Serial(t.serialNumber)}` : ''}
                   </button>
                 );
               })}

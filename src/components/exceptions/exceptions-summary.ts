@@ -9,12 +9,6 @@ import {
   type ExceptionListResponse,
 } from '@/lib/exceptions/types';
 
-/** The lock a lane door puts on the one list (`ExceptionsDesk`). */
-export interface ExceptionsDeskLock {
-  domain?: ExceptionDomain;
-  kind?: ExceptionKind;
-}
-
 /**
  * Totals from the list's own counts (the same predicate as its rows) over
  * only the kinds this list covers: the open total, then per domain when it
@@ -22,7 +16,6 @@ export interface ExceptionsDeskLock {
  */
 export function exceptionsSummary(
   counts: ExceptionListResponse['counts'] | undefined,
-  lock: ExceptionsDeskLock | undefined,
   kind: ExceptionKind | undefined,
   domain: ExceptionDomain | undefined,
 ): RecordLedgerSummary {
@@ -46,7 +39,7 @@ export function exceptionsSummary(
         ? kinds.map((candidate) => ({ label: EXCEPTION_KIND_SPEC[candidate].label, value: counts?.[candidate] ?? 0, toolbar: true }))
         : [];
   return {
-    title: lock?.kind ? EXCEPTION_KIND_SPEC[lock.kind].label : lock?.domain ? EXCEPTION_DOMAIN_LABEL[lock.domain] : 'Exceptions',
+    title: 'Exceptions',
     facts: [{ label: 'Open', value: open, warn: open > 0 }, ...breakdown],
     note: 'Open one to resolve it here.',
   };

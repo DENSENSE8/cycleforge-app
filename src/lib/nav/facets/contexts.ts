@@ -10,31 +10,53 @@
  * readers. Every `param` is a URL param the view's list already reads, so a
  * facet link survives the route's param spec and drives the same predicate.
  *
- * Shipping (page `outbound`) section items are the DESK_VIEWS ids; a station
- * page with no section views uses the bare page id (`pickup`).
+ * FBM's `outbound` context only owns Allocate filters. Exceptions are always
+ * filtered inside the global `/exceptions` page.
  */
 
 import { EXCEPTION_KIND_PERMISSION } from '@/lib/exceptions/permissions';
 import { exceptionKindsOf } from '@/lib/exceptions/types';
-import { LIVE_FEED_DIRECTION_PERMISSION, type LiveFeedDirection } from '@/lib/live-feed/statuses';
+import { DOCKED_FLAG_PARAM } from '@/lib/receiving/inbound-lane';
+import { UNBOX_KPI_FILTER_PARAM } from '@/lib/receiving/unbox-metrics';
+import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
+import { SUPPORT_LIST_VIEWS } from '@/lib/support/list/support-list';
 
 /**
- * The Live feed (`/operations/live-feed`): one context per sidebar view —
- * a direction's Board (`live-feed.outbound` / `live-feed.inbound`) —
- * answered by `src/lib/nav/facets/live-feed.ts`.
+ * The Support workspace (`/support`): one context per sidebar view — Queue
+ * (`support.queue`, no `?view=`) and each SUPPORT_LIST_VIEWS id — answered by
+ * the list's own predicates (`src/lib/nav/facets/support.ts`).
  */
-export const LIVE_FEED_FACET_PAGE = 'live-feed';
-export type LiveFeedFacetContext = `${typeof LIVE_FEED_FACET_PAGE}.${LiveFeedDirection}`;
+const SUPPORT_FACET_CONTEXTS = ['support.queue', ...SUPPORT_LIST_VIEWS.map((view) => `support.${view}` as const)] as const;
+type SupportFacetContextId = (typeof SUPPORT_FACET_CONTEXTS)[number];
+
+/**
+ * The repair desk (`RepairCardList`): `/repair`'s channel views and Sales ›
+ * Repair service's — answered by the list's own statement (`src/lib/nav/facets/repair.ts`).
+ */
+export const REPAIR_FACET_CONTEXTS = [
+  'repair.all',
+  'repair.shipped-in',
+  'repair.dropped-off',
+  'sales.repairs-all',
+  'sales.repairs-shipped-in',
+  'sales.repairs-dropped-off',
+] as const;
+export type RepairFacetContextId = (typeof REPAIR_FACET_CONTEXTS)[number];
 
 export const NAV_FACET_CONTEXTS = [
   'stations-live',
-  'outbound.exceptions',
-  'outbound.triage',
+  'outbound.orders',
   'outbound.shipped',
   'pickup',
-  'inventory.stock',
+  'stock.all',
+  'inventory.racks',
   'imports.runs',
   'imports.rows',
+  'incoming.pipeline',
+  'incoming.docked',
+  'incoming.unboxed',
+  // The Unbox station (`/unbox`): one context for every `?unboxview=` tab (`unbox.ts`).
+  'receive',
   // The Exceptions hub (`/exceptions`): one context per kind plus the whole
   // hub; totals are the hub list's (`src/lib/nav/facets/exceptions.ts`).
   'exceptions',
@@ -51,10 +73,8 @@ export const NAV_FACET_CONTEXTS = [
   'exceptions.claim',
   'exceptions.short',
   'exceptions.unfound',
-  // The Live feed's direction views; totals, Channel and Carrier counts are
-  // the feed's own statement (`src/lib/nav/facets/live-feed.ts`).
-  'live-feed.outbound',
-  'live-feed.inbound',
+  ...SUPPORT_FACET_CONTEXTS,
+  ...REPAIR_FACET_CONTEXTS,
 ] as const;
 export type NavFacetContext = (typeof NAV_FACET_CONTEXTS)[number];
 
@@ -78,23 +98,38 @@ const LATE: NavFacetGroupDecl = { id: 'late', label: 'Must ship', param: 'late',
 const URGENT: NavFacetGroupDecl = { id: 'attention', label: 'Urgent', param: 'attention', multi: false };
 const OUT_OF_STOCK: NavFacetGroupDecl = { id: 'ustatus', label: 'Stock', param: 'ustatus', multi: false };
 const IMPORT_SOURCE: NavFacetGroupDecl = { id: 'source', label: 'Source', param: 'source', multi: true };
-/** The Live feed's `?carrier=` (outbound), counted by the feed's own statement. */
-const LIVE_FEED_CARRIER: NavFacetGroupDecl = { id: 'carrier', label: 'Carrier', param: 'carrier', multi: false };
-/** The Live feed's `?channel=` (both directions; unset = both), counted by the feed's own statement. */
-const LIVE_FEED_CHANNEL: NavFacetGroupDecl = { id: 'channel', label: 'Channel', param: 'channel', multi: false };
+/** The Support list's facets — `parseSupportListFilter` reads each as a comma list. */
+const SUPPORT_GROUPS: readonly NavFacetGroupDecl[] = [
+  { id: 'platform', label: 'Platform', param: 'platform', multi: true },
+  { id: 'account', label: 'Account', param: 'account', multi: true },
+  { id: 'assignee', label: 'Assignee', param: 'assignee', multi: true },
+];
+/** The repair desk's stages (`?repairStatus=`, `REPAIR_QUEUE_VIEW.chips.param`): the list's client cut, any-of. */
+const REPAIR_GROUPS: readonly NavFacetGroupDecl[] = [{ id: 'repairStatus', label: 'Stage', param: REPAIR_STATUS_CHIP_PARAM, multi: true }];
+/** Unboxed cartons' attention pills (`?dflag=`, any-of) — `UnboxedReceiptsLedger`'s cut (`unbox.ts`). */
+const UNBOXED_STATUS: NavFacetGroupDecl = { id: 'status', label: 'Status', param: DOCKED_FLAG_PARAM, multi: true, inline: true };
 
 export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFacetGroupDecl[]>> = {
   'stations-live': [
     { id: 'job', label: 'Job', param: 'job', multi: true },
     { id: 'outcome', label: 'Outcome', param: 'outcome', multi: true },
   ],
-  // FBM › Exceptions is the hub list locked to Fulfillment — counts only.
-  'outbound.exceptions': [],
-  'inventory.stock': [
+  'stock.all': [
     { id: 'room', label: 'Room', param: 'room', multi: false },
     { id: 'aisle', label: 'Aisle', param: 'aisle', multi: true, inline: true },
+    { id: 'health', label: 'Stock health', param: 'status', multi: true },
   ],
-  'outbound.triage': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
+  // Inventory › Locations › Racks: the room each rack stands in (`?room=<room location id>`, `inventory-racks.ts`).
+  'inventory.racks': [{ id: 'room', label: 'Room', param: 'room', multi: false }],
+  // Inbound › Inbound: the delivery-state walk (`?state=`, `incoming-pipeline.ts`) — the body's status chips, moved here.
+  'incoming.pipeline': [{ id: 'state', label: 'Delivery status', param: 'state', multi: false, inline: true }],
+  // Inbound › Docked: the list's status cut (`?dflag=`, `INCOMING_DOCKED_VIEW.chips`, `incoming-docked.ts`) — the body's chips, moved here.
+  'incoming.docked': [{ id: 'status', label: 'Status', param: DOCKED_FLAG_PARAM, multi: true, inline: true }],
+  // Inbound › Unboxed and the Unbox station: the body's pills, moved here (`unbox.ts`). The
+  // station's KPI cut (`?ukpi=`, one) is the Unbox tab's own (`unboxKpiRowFilter`).
+  'incoming.unboxed': [UNBOXED_STATUS],
+  receive: [UNBOXED_STATUS, { id: 'kpi', label: 'KPI', param: UNBOX_KPI_FILTER_PARAM, multi: false, inline: true }],
+  'outbound.orders': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
   // The Shipped list's own params (`useShippedTableFilters`), answered in
   // `fetchPackerLogRows`' WHERE — `src/lib/shipping/shipped-filter/shipped-filter-sql.ts`.
   'outbound.shipped': [
@@ -103,6 +138,8 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     { id: 'carrier', label: 'Carrier', param: 'carrier', multi: false },
     { id: 'status', label: 'Tracking status', param: 'statusCategory', multi: false },
     { id: 'exceptions', label: 'Needs attention', param: 'exceptions', multi: false },
+    // The list's own client cut (`OUTBOUND_SHIPPED_VIEW.chips.param`, OR across picks).
+    { id: 'packageStatus', label: 'Package status', param: 'cardStatus', multi: true },
   ],
   pickup: [
     { id: 'status', label: 'Order status', param: 'status', multi: false },
@@ -137,8 +174,8 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
   'exceptions.claim': [],
   'exceptions.short': [],
   'exceptions.unfound': [],
-  'live-feed.outbound': [LIVE_FEED_CHANNEL, LIVE_FEED_CARRIER],
-  'live-feed.inbound': [LIVE_FEED_CHANNEL],
+  ...(Object.fromEntries(SUPPORT_FACET_CONTEXTS.map((context) => [context, SUPPORT_GROUPS])) as Record<SupportFacetContextId, readonly NavFacetGroupDecl[]>),
+  ...(Object.fromEntries(REPAIR_FACET_CONTEXTS.map((context) => [context, REPAIR_GROUPS])) as Record<RepairFacetContextId, readonly NavFacetGroupDecl[]>),
 };
 
 /**
@@ -149,13 +186,20 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
  */
 export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | readonly string[]>> = {
   'stations-live': 'operations.view',
-  'outbound.exceptions': [...new Set(exceptionKindsOf('fulfillment').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
-  'outbound.triage': 'orders.view',
-  'inventory.stock': 'sku_stock.view',
+  'outbound.orders': 'orders.view',
+  'stock.all': 'sku_stock.view',
+  'inventory.racks': 'sku_stock.view',
   'outbound.shipped': 'packing.view',
   pickup: 'walk_in.view',
   'imports.runs': 'orders.view',
   'imports.rows': 'orders.view',
+  // The lane's own read (`GET /api/receiving-lines?view=incoming`).
+  'incoming.pipeline': 'receiving.view',
+  // The list's own read (`GET /api/receiving-lines?view=scanned`).
+  'incoming.docked': 'receiving.view',
+  // The lists' own read (`GET /api/receiving-lines`).
+  'incoming.unboxed': 'receiving.view',
+  receive: 'receiving.view',
   exceptions: [...new Set(Object.values(EXCEPTION_KIND_PERMISSION))],
   'exceptions.fulfillment': [...new Set(exceptionKindsOf('fulfillment').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
   'exceptions.inventory': [...new Set(exceptionKindsOf('inventory').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
@@ -170,8 +214,10 @@ export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | rea
   'exceptions.claim': EXCEPTION_KIND_PERMISSION.claim,
   'exceptions.short': EXCEPTION_KIND_PERMISSION.short,
   'exceptions.unfound': EXCEPTION_KIND_PERMISSION.unfound,
-  'live-feed.outbound': LIVE_FEED_DIRECTION_PERMISSION.outbound,
-  'live-feed.inbound': LIVE_FEED_DIRECTION_PERMISSION.inbound,
+  // The list's own read (`GET /api/support/list`).
+  ...(Object.fromEntries(SUPPORT_FACET_CONTEXTS.map((context) => [context, 'support.thread.view'])) as Record<SupportFacetContextId, string>),
+  // The list's own read (`GET /api/repair-service`).
+  ...(Object.fromEntries(REPAIR_FACET_CONTEXTS.map((context) => [context, 'repair.view'])) as Record<RepairFacetContextId, string>),
 };
 
 /** May a caller holding `permissions` read `context`'s counts? */

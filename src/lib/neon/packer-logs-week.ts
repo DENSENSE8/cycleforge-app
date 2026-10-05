@@ -15,6 +15,7 @@ import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   NO_SHIPPED_DESK_FILTERS,
+  SHIPPED_CARD_JOINS,
   hasShippedDeskFilter,
   shippedDeskConditions,
   shippedFilterJoins,
@@ -46,8 +47,8 @@ interface FetchPackerLogRowsOptions {
   /** `?pickedBy` — see {@link PackerLogBaseFilter.pickedBy}. */
   pickedBy?: number | null;
   /**
-   * The Shipped desk's view filters (type / carrier / status / exceptions),
-   * answered in the page WHERE — one predicate with the sidebar facet counts.
+   * The Shipped desk's view filters (type / carrier / status / exceptions /
+   * channel / package status), answered in the page WHERE — one predicate with the sidebar facet counts.
    * Absent = no such narrowing (packer station, recents, review).
    */
   shippedFilters?: ShippedDeskFilters;
@@ -422,6 +423,7 @@ export async function fetchPackerLogRows(
       opts.shippedFilters?.statusCategory ?? '',
       opts.shippedFilters?.exceptionsOnly ? 'exceptions' : '',
       (opts.shippedFilters?.channels ?? []).join(','),
+      (opts.shippedFilters?.cardStatus ?? []).join(','),
     ].join('|'),
     // Exact shipped-instant window + picker — each narrows the answer.
     shippedWindow: opts.shippedFrom && opts.shippedTo ? `${opts.shippedFrom}|${opts.shippedTo}` : '',
@@ -467,7 +469,7 @@ export async function fetchPackerLogRows(
     return placeholder;
   };
   const whereFor = (enriched: boolean) =>
-    `WHERE ${[...conditions, ...shippedDeskConditions(shippedFilters, enriched, bindShipped)].join(' AND ')}`;
+    `WHERE ${[...conditions, ...shippedDeskConditions(shippedFilters, enriched, bindShipped, sqlLatestShipConfirmAt())].join(' AND ')}`;
   const legacyWhere = whereFor(false);
   const enrichedWhere = whereFor(true);
   params.push(limit, offset);
@@ -478,6 +480,8 @@ export async function fetchPackerLogRows(
   // staff / pickedBy filter references the order-derived laterals, and a
   // Shipped desk filter reads the package — pulled in only when active.
   const shippedJoins = hasShippedDeskFilter(shippedFilters);
+  // A package-status pick reads the row's order, hold and test deadline too.
+  const cardCut = shippedFilters.cardStatus.length > 0;
 
   // The PACKAGE a row is about, and its order lines (lowest `orders.id` first —
   // the record's primary line) with the SKU identity title / photo sources the
@@ -551,7 +555,7 @@ export async function fetchPackerLogRows(
         FROM station_activity_logs sal
         LEFT JOIN latest_ship_confirm ship_page ON ship_page.shipment_id = sal.shipment_id
         LEFT JOIN shipping_tracking_numbers stn_sort ON stn_sort.id = sal.shipment_id
-        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins || shippedFilters.channels.length > 0 ? packerLogOrderJoins(enriched) : ''}${shippedJoins ? shippedFilterJoins(enriched) : ''}
+        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins || shippedFilters.channels.length > 0 || cardCut ? packerLogOrderJoins(enriched) : ''}${shippedJoins ? shippedFilterJoins(enriched) : ''}${cardCut ? SHIPPED_CARD_JOINS : ''}
         ${enriched ? enrichedWhere : legacyWhere}
         ORDER BY ${pageOrder}
         LIMIT $${limitIdx} OFFSET $${offsetIdx}

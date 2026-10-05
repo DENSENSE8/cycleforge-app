@@ -4,7 +4,24 @@ import type { NavFacetsResponse } from '@/lib/nav/context/schema';
 import { NAV_FACET_GROUPS } from '@/lib/nav/facets/contexts';
 import type { FacetSqlRunner } from '@/lib/nav/facets/outbound';
 import { locationStockRoomId } from '@/lib/inventory/location-stock-row';
+import { getStockByLocation, type StockScopeCounts } from '@/lib/neon/location-stock-queries';
 import type { OrgId } from '@/lib/tenancy/constants';
+
+/**
+ * The list's OWN scope counts (`getStockByLocation` → `counts`, room/aisle/q
+ * scoped). Its FILTERs mirror the client health cut `stockHealth` in
+ * StockLedger.tsx: in-stock qty > 0, low min_qty set and qty ≤ min_qty, out
+ * qty ≤ 0 on a non-empty pair, on-hold provisional (TMP).
+ */
+export type StockScopeCountReader = (args: {
+  orgId: OrgId;
+  room: string | null;
+  aisle: string | null;
+  query: string | null;
+}) => Promise<StockScopeCounts>;
+
+const readStockScopeCounts: StockScopeCountReader = async (args) =>
+  (await getStockByLocation({ ...args, limit: 1 })).counts;
 
 type ParamReader = Pick<URLSearchParams, 'get'>;
 
@@ -32,12 +49,13 @@ export async function inventoryStockFacets(
   orgId: OrgId,
   params: ParamReader,
   run: FacetSqlRunner,
+  scopeCounts: StockScopeCountReader = readStockScopeCounts,
 ): Promise<NavFacetsResponse> {
   // ONE trip: per room × aisle, the IN-STOCK pair count (bin rows with stock
   // on them) — the room display's filter counts read as "pairs on the shelf",
   // not "barcodes that exist". Rooms and aisles with nothing in stock stay
   // listed at 0 so the filter never hides a real place to look.
-  const rows = (await run(
+  const [rawRows, counts] = await Promise.all([run(
     `
       SELECT
         NULLIF(TRIM(l.room), '') AS room,
@@ -61,7 +79,8 @@ export async function inventoryStockFacets(
       ORDER BY 1 NULLS LAST, 2 NULLS LAST
     `,
     [orgId],
-  )).map((row): LocationFacetRow => ({
+  ), scopeCounts({ orgId, room: params.get('room'), aisle: params.get('aisle'), query: params.get('q') })]);
+  const rows = rawRows.map((row): LocationFacetRow => ({
     room: row.room == null ? null : String(row.room),
     aisle: row.aisle == null ? null : Number(row.aisle),
     n: Number(row.n) || 0,
@@ -72,9 +91,10 @@ export async function inventoryStockFacets(
   const roomId = (row: Pick<LocationFacetRow, 'room'>) => locationStockRoomId(row);
   const matchesRoom = (row: LocationFacetRow) => selectedRooms.size === 0 || selectedRooms.has(roomId(row));
   const matchesAisle = (row: LocationFacetRow) => selectedAisles.size === 0 || (row.aisle != null && selectedAisles.has(row.aisle));
-  const declarations = NAV_FACET_GROUPS['inventory.stock'];
+  const declarations = NAV_FACET_GROUPS['stock.all'];
   const roomDeclaration = declarations.find((group) => group.id === 'room')!;
   const aisleDeclaration = declarations.find((group) => group.id === 'aisle')!;
+  const healthDeclaration = declarations.find((group) => group.id === 'health')!;
 
   const roomLabels = new Map<string, string>();
   for (const row of rows) roomLabels.set(roomId(row), row.room ?? 'No room');
@@ -82,7 +102,7 @@ export async function inventoryStockFacets(
     .sort((left, right) => left - right);
 
   return {
-    context: 'inventory.stock',
+    context: 'stock.all',
     total: rows
       .filter((row) => matchesRoom(row) && matchesAisle(row))
       .reduce((sum, row) => sum + row.n, 0),
@@ -112,6 +132,17 @@ export async function inventoryStockFacets(
             .filter((row) => row.aisle === value && matchesRoom(row))
             .reduce((sum, row) => sum + row.n, 0),
         })),
+      },
+      {
+        id: healthDeclaration.id,
+        label: healthDeclaration.label,
+        param: healthDeclaration.param,
+        options: [
+          { value: 'in-stock', label: 'In stock', count: counts.inStockPairs },
+          { value: 'low-stock', label: 'Low stock', count: counts.lowStockPairs },
+          { value: 'out-of-stock', label: 'Out of stock', count: counts.outPairs },
+          { value: 'on-hold', label: 'On hold', count: counts.onHoldPairs },
+        ],
       },
     ],
   };

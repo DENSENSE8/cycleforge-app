@@ -6,8 +6,6 @@
  * - Allocate (and any view whose rows are `/api/orders` rows):
  *   `sqlDeskQueueScope` (`/api/orders` with the flags the desk sends —
  *   `inWarehouse=true` plus the view's defining params);
- * - Exceptions: `sqlOrderInExceptionQueue` = `exceptionScopeWhere('actionable')`
- *   (`/api/orders/exceptions`);
  * - Shipped: `buildPackerLogBaseWhere` (`/api/packerlogs`), one row per
  *   package, with no date window — where an order lives, not what this week
  *   shows. Its href opens the list on the same window (`allDates=1`), so the
@@ -15,19 +13,26 @@
  *
  * `q` (the field's text) counts what each view's own find matches: the queue
  * views run their list SQL (`buildOrdersListSql`, search included) wrapped in
- * a count; Exceptions adds `exceptionSearchSql`; Shipped `sqlPackerLogSearch`.
+ * a count; Shipped adds `sqlPackerLogSearch`. Exceptions never appear as an
+ * FBM locator bucket; their only navigation home is `/exceptions`.
  *
  * `refs` (a pasted list) matches each ref exactly — order number / item
- * number (`sqlIdentifierEqualsQuery`) or tracking (`sqlTrackingNumberMatches`,
- * gated by `looksLikeTrackingIdentifier`), the header find's identifier arm —
- * and reads every bucket's membership per matched order in one statement.
+ * number (`sqlIdentifierEqualsQuery`: whole, last 8, or the face the row's id
+ * chip prints, e.g. `1909809` for `113-6729910-1909809`) or tracking
+ * (`sqlTrackingNumberMatches`, gated by `looksLikeTrackingIdentifier`), the
+ * header find's identifier arm — and reads every bucket's membership per
+ * matched order in one statement, with the order's row facts (`NavLocateFacts`:
+ * status, ship-by, packer, packed / scanned-out stamps, tracking, SKU / title)
+ * off the To-ship list's own joins (`WA_DEADLINE_LATERAL`,
+ * `ORDER_STAGE_FACTS_JOIN`, `SHIP_OUT_LATERAL`) in that same statement.
  */
 
-import type { NavLocateBucket, NavLocateEntry } from '@/lib/nav/context/schema';
+import type { NavLocateBucket, NavLocateEntry, NavLocateFacts } from '@/lib/nav/context/schema';
 import { buildPackerLogBaseWhere, sqlPackerLogSearch } from '@/lib/neon/packer-logs-week';
+import { SHIP_OUT_LATERAL } from '@/lib/neon/orders-queries';
 import { sqlDeskQueueScope } from '@/lib/orders/desk-view-sql';
-import { sqlOrderInExceptionQueue } from '@/lib/orders/exception-membership';
-import { exceptionScopeWhere, exceptionSearchSql } from '@/lib/orders/order-exceptions';
+import { ORDER_STAGE_FACTS_JOIN } from '@/lib/orders/order-stage-facts';
+import { WA_DEADLINE_LATERAL } from '@/lib/orders/orders-list';
 import { parseOrdersListQuery, type OrdersListQuery } from '@/lib/orders/orders-list-query';
 import {
   DESK_VIEW_ORDER,
@@ -43,7 +48,7 @@ import { sqlOrderOwnsShipment, sqlTrackingNumberMatches } from '@/lib/search/ord
 import { searchHitHref } from '@/lib/search/search-hit';
 import { escapeLike } from '@/lib/sql-like';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { orderTrackingMatchKeys } from '@/lib/tracking-format';
+import { orderTrackingMatchKeys, trackingDigitsLast8Strict } from '@/lib/tracking-format';
 import { SHIPPED_ALL_DATES_PARAM } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 
 /** The Shipped list's gate (`/api/packerlogs`) — without it the bucket is omitted, not the answer. */
@@ -82,7 +87,7 @@ export interface OutboundLocateDeps {
 
 /** The buckets this caller may see, in `DESK_VIEW_ORDER`. */
 export function outboundBucketIds(permissions: ReadonlySet<string>): DeskViewId[] {
-  return DESK_VIEW_ORDER.filter((id) => id !== 'shipped' || permissions.has(SHIPPED_BUCKET_PERMISSION));
+  return DESK_VIEW_ORDER.filter((id) => id !== 'exceptions' && (id !== 'shipped' || permissions.has(SHIPPED_BUCKET_PERMISSION)));
 }
 
 function bucketsWith(ids: readonly DeskViewId[], counts: Partial<Record<DeskViewId, number>>): NavLocateBucket[] {
@@ -104,9 +109,9 @@ export function queueSearchQuery(view: DeskQueueViewId, q: string): OrdersListQu
   return parseOrdersListQuery(new URLSearchParams({ q, inWarehouse: 'true', ...getDeskView(view).params }));
 }
 
-/** Exceptions + (optionally) Shipped counts for the field's text — one statement. */
+/** Optional Shipped count for the field's text — one statement. */
 export function buildOutboundTextCountSql(orgId: OrgId, q: string, withShipped: boolean) {
-  const params: unknown[] = [orgId, `%${q.toLowerCase()}%`];
+  const params: unknown[] = [orgId];
   let shipped = '';
   if (withShipped) {
     const { conditions } = buildPackerLogBaseWhere({ organizationId: orgId }, params);
@@ -118,28 +123,30 @@ export function buildOutboundTextCountSql(orgId: OrgId, q: string, withShipped: 
          LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id
         WHERE ${conditions.join('\n          AND ')}) AS shipped`;
   }
-  const sql = `
-    SELECT
-      (SELECT COUNT(*)::int
-         FROM orders o
-         LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
-        ${exceptionScopeWhere('actionable')}
-          AND ${exceptionSearchSql('$2')}) AS exceptions${shipped}`;
+  const sql = `SELECT 0::int AS unused${shipped}`;
   return { sql, params };
 }
 
-/** Order-side candidate keys — computed once per order / tracking row, then hash-joined. */
+/**
+ * Order-side candidate keys. Each is the expression of an
+ * `(organization_id, <key>)` index (migration `2026-10-04_locate_bulk_keys`),
+ * so a ref probes the index instead of normalizing every order of the org.
+ */
 const ORDER_KEY_SQL = (column: string) => `right(regexp_replace(lower(COALESCE(${column}, '')), '[^a-z0-9]', '', 'g'), 4)`;
 const ORDER_DIGITS8_SQL = (column: string) => `right(regexp_replace(COALESCE(${column}, ''), '[^0-9]', '', 'g'), 8)`;
+/** Tracking-side candidate keys, spelled as the `shipping_tracking_numbers` index expressions. */
+const STN_KEY18_SQL = `right(regexp_replace(upper(COALESCE(s.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g'), 18)`;
+const STN_LAST8_SQL = `right(regexp_replace(s.tracking_number_normalized, '\\D', '', 'g'), 8)`;
 
 /**
  * One statement: every order each ref names, with its membership in every bucket.
  *
- * The match is the header find's identifier arm, exactly. It cannot index —
- * every arm normalizes both sides — so each ref first narrows to candidates
- * by keys every arm implies (the last 4 alphanumerics, the last 8 digits;
- * for tracking the canonical / key-18 / last-8 / raw forms), computed once
- * per order and hash-joined; the imported predicates then decide.
+ * The match is the header find's identifier arm, exactly. Its predicates
+ * normalize both sides, so each ref first narrows to candidates by keys every
+ * arm implies — the last 4 alphanumerics and the last 8 digits of an order /
+ * item number (the chip face ends in the former); for tracking the canonical /
+ * key-18 / last-8 / raw forms — each an indexed lookup; the imported
+ * predicates then decide.
  */
 export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], withShipped: boolean) {
   const canon: string[] = [];
@@ -151,7 +158,7 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
   for (const ref of refs) {
     const keys = orderTrackingMatchKeys(ref);
     const digits = ref.replace(/\D/g, '');
-    const tail = digits.length >= 8 ? digits.slice(-8) : '';
+    const tail = trackingDigitsLast8Strict(digits);
     canon.push(keys.exact);
     key18.push(keys.key18);
     last8.push(tail);
@@ -186,41 +193,26 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
            AND ${sqlOrderOwnsShipment('o', 'sal.shipment_id')}
       )`;
   }
+  const orderArm = (key: string, ref: string) => `SELECT r.ord, r.ref, o.id
+        FROM r
+        JOIN orders o ON o.organization_id = $1 AND ${key} = ${ref}`;
   const sql = `
     WITH r AS (
       SELECT *
         FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::boolean[], $7::text[], $8::text[])
              WITH ORDINALITY AS r(ref, canon, key18, last8, trackish, key4, digits8, ord)
     ),
-    ok AS MATERIALIZED (
-      SELECT o.id,
-             ${ORDER_KEY_SQL('o.order_id')} AS order_key4,
-             ${ORDER_DIGITS8_SQL('o.order_id')} AS order_digits8,
-             ${ORDER_KEY_SQL('o.item_number')} AS item_key4,
-             ${ORDER_DIGITS8_SQL('o.item_number')} AS item_digits8
-        FROM orders o
-       WHERE o.organization_id = $1
-    ),
     order_candidate AS (
-      SELECT r.ord, r.ref, ok.id FROM r JOIN ok ON ok.order_key4 = r.key4
-      UNION SELECT r.ord, r.ref, ok.id FROM r JOIN ok ON r.digits8 <> '' AND ok.order_digits8 = r.digits8
-      UNION SELECT r.ord, r.ref, ok.id FROM r JOIN ok ON ok.item_key4 = r.key4
-      UNION SELECT r.ord, r.ref, ok.id FROM r JOIN ok ON r.digits8 <> '' AND ok.item_digits8 = r.digits8
-    ),
-    tk AS MATERIALIZED (
-      SELECT s.id,
-             lower(s.tracking_number_raw) AS raw_lower,
-             s.tracking_number_normalized AS normalized,
-             right(regexp_replace(upper(COALESCE(s.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g'), 18) AS key18,
-             ${ORDER_DIGITS8_SQL('s.tracking_number_normalized')} AS last8
-        FROM shipping_tracking_numbers s
-       WHERE EXISTS (SELECT 1 FROM r WHERE r.trackish)
+      ${orderArm(ORDER_KEY_SQL('o.order_id'), 'r.key4')}
+      UNION ${orderArm(ORDER_DIGITS8_SQL('o.order_id'), 'NULLIF(r.digits8, \'\')')}
+      UNION ${orderArm(ORDER_KEY_SQL('o.item_number'), 'r.key4')}
+      UNION ${orderArm(ORDER_DIGITS8_SQL('o.item_number'), 'NULLIF(r.digits8, \'\')')}
     ),
     tracking_candidate AS (
-      SELECT r.ord, tk.id FROM r JOIN tk ON r.trackish AND tk.normalized = r.canon
-      UNION SELECT r.ord, tk.id FROM r JOIN tk ON r.trackish AND r.key18 <> '' AND tk.key18 = r.key18
-      UNION SELECT r.ord, tk.id FROM r JOIN tk ON r.trackish AND r.last8 <> '' AND tk.last8 = r.last8
-      UNION SELECT r.ord, tk.id FROM r JOIN tk ON r.trackish AND tk.raw_lower = lower(r.ref)
+      SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND s.tracking_number_normalized = r.canon
+      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND ${STN_KEY18_SQL} = NULLIF(r.key18, '')
+      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND ${STN_LAST8_SQL} = NULLIF(r.last8, '')
+      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND lower(s.tracking_number_raw) = lower(r.ref)
     ),
     tracking_hit AS (
       SELECT r.ord, stn_trk.id
@@ -252,14 +244,68 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
            o.id,
            o.order_id,
            o.product_title,
-           ${sqlOrderInExceptionQueue('o', 'stn')} AS in_exceptions,
            ${QUEUE_VIEWS.map((view) => `${sqlDeskQueueScope(view)} AS in_${view},`).join('\n           ')}
-           ${shipped} AS in_shipped
+           ${shipped} AS in_shipped,
+           o.status,
+           to_char(wa_deadline.deadline_at, 'YYYY-MM-DD') AS ship_by_date,
+           COALESCE(sc.product_title, o.product_title) AS fact_title,
+           COALESCE(sc.sku, o.sku) AS sku,
+           stn.tracking_number_raw AS tracking_number,
+           stn.delivered_at,
+           COALESCE(osf.packed_at, osf.pack_activity_at) AS packed_at,
+           COALESCE(osf.packed_by, osf.packer_id) AS packer_id,
+           staff_packer.name AS packer_name,
+           -- Left the warehouse: the dock scan-out, else the packer log the Shipped list reads.
+           COALESCE(ship_out.ship_confirmed_at, osf.packed_at) AS shipped_at
       FROM hit h
       JOIN orders o ON o.id = h.id
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
+      ${WA_DEADLINE_LATERAL}
+      ${ORDER_STAGE_FACTS_JOIN}
+      -- Who packed it, else who it is assigned to pack (the Pack field's \`packed_by_name|packer_name\`).
+      LEFT JOIN staff staff_packer
+        ON staff_packer.id = COALESCE(osf.packed_by, osf.packer_id)
+       AND staff_packer.organization_id = o.organization_id
+      ${SHIP_OUT_LATERAL}
      ORDER BY h.ord, o.id`;
   return { sql, params };
+}
+
+/** A wire stamp: node-pg hands timestamptz back as `Date`. */
+function stampText(value: unknown): string | null {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  const text = value == null ? '' : String(value).trim();
+  return text || null;
+}
+
+const textOf = (value: unknown): string | null => (value == null ? null : String(value).trim() || null);
+
+/** One matched order's row facts (the ref's lead order when it names several). */
+export function outboundFacts(row: Record<string, unknown>, lines: number): NavLocateFacts {
+  const packerId = Number(row.packer_id);
+  const packerName = textOf(row.packer_name);
+  const hasPacker = Number.isInteger(packerId) && packerId > 0;
+  return {
+    section: 'outbound',
+    title: textOf(row.fact_title),
+    sku: textOf(row.sku),
+    tracking: textOf(row.tracking_number),
+    deliveredAt: stampText(row.delivered_at),
+    // The source's word (`orders.status`), never the warehouse stage — that is the bucket.
+    channelStatus: textOf(row.status),
+    shipBy: textOf(row.ship_by_date),
+    packedAt: stampText(row.packed_at),
+    shippedAt: stampText(row.shipped_at),
+    packer: hasPacker || packerName ? { id: hasPacker ? packerId : null, name: packerName } : null,
+    po: null,
+    vendor: null,
+    lines,
+    duplicates: [],
+    unboxedAt: null,
+    unboxedBy: null,
+    units: null,
+  };
 }
 
 export interface OutboundLocateResult {
@@ -287,7 +333,6 @@ export async function locateOutboundText(
     deps.run(text.sql, text.params),
   ]);
   const counts: Partial<Record<DeskViewId, number>> = Object.fromEntries(queueCounts);
-  counts.exceptions = Number(textRow?.exceptions) || 0;
   if (withShipped) counts.shipped = Number(textRow?.shipped) || 0;
   return { buckets: bucketsWith(ids, counts), entries: [] };
 }
@@ -322,6 +367,7 @@ export async function locateOutboundRefs(
         : null,
       detail: hits.length > 1 ? `${hits.length} order lines` : null,
       recordHref: hits.length === 1 ? searchHitHref('ORDER', Number(lead.id)) : null,
+      facts: lead ? outboundFacts(lead, hits.length) : null,
     };
   });
   return { buckets: bucketsWith(ids, counts), entries };

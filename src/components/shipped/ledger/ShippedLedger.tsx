@@ -18,7 +18,6 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Copy } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { scopeRecordVerbs } from '@/design-system/components/record-action-strip/record-verb-scope';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
@@ -26,7 +25,7 @@ import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-syst
 import { TriageCardList, type TriageCardSlotProps, type TriageFeed } from '@/design-system/components/triage-card-list/TriageCardList';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useLocalTriageSelection } from '@/design-system/components/triage-card-list/local-selection';
-import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
+import { filterTriageBands, useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
 import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { triageRowKeyId } from '@/design-system/components/triage-card-list/triage-row-id';
 import { triageFamily } from '@/design-system/components/triage-card-list/triage-view';
@@ -56,7 +55,6 @@ import {
   isOpenUnmatchedScan,
   isUnmatchedScanOut,
   SHIPPED_STATUS_CHIPS,
-  shippedStatusChipFace,
   shippedStatusKeys,
   type ShippedCardModel,
   type ShippedStatusChip,
@@ -77,6 +75,8 @@ const LEGACY_OPEN_ORDER_PARAM = 'openOrderId';
 const FACET_CONTEXT = 'outbound.shipped';
 const FACETS_STALE_MS = 60_000;
 const UNMATCHED_STALE_MS = 60_000;
+/** `?cardStatus=` narrows the fetch, so the feed's rows take no status cut in the browser. */
+const NO_STATUS_CUT: ReadonlySet<ShippedStatusChip> = new Set();
 
 /** Station events that can open (a miss) or close (a re-scan that now matches) an unmatched scan. */
 const UNMATCHED_EVENT_TYPES: Readonly<Record<string, true>> = {
@@ -157,6 +157,10 @@ export function ShippedLedger({
     || effPickedBy != null
     || shippedFilter === 'sku'
     || shippedFilter === 'fba';
+  const cut = useTriageCut({ statusKeys: SHIPPED_STATUS_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
+  // Package-status cut (`?cardStatus=`) is a sidebar facet (`outbound.shipped` › Package status), answered by
+  // the fetch — one predicate with the facet count. Only the dock misses, painted from here, take it in the browser.
+  const { statusFilter, excludedFilter } = cut.url;
   const scanOutMisses = useMemo<DerivedPackerRecord[]>(() => {
     if (missesExcluded) return [];
     return (unmatchedScans.data ?? [])
@@ -169,7 +173,8 @@ export function ShippedLedger({
         return day >= effectiveWeekStart && day <= effectiveWeekEnd;
       })
       .map(unmatchedScanOutRecord)
-      .filter(matchesOutbound);
+      .filter(matchesOutbound)
+      .filter((row) => statusFilter.size === 0 || shippedStatusKeys(row).some((key) => statusFilter.has(key)));
   }, [
     missesExcluded,
     unmatchedScans.data,
@@ -178,33 +183,23 @@ export function ShippedLedger({
     effectiveWeekStart,
     effectiveWeekEnd,
     matchesOutbound,
+    statusFilter,
   ]);
   const rows = useMemo(
     () => (scanOutMisses.length > 0 ? [...scanOutMisses, ...derivedRecords] : derivedRecords),
     [scanOutMisses, derivedRecords],
   );
 
-  const cut = useTriageCut({ statusKeys: SHIPPED_STATUS_CHIPS, recordParams: VIEW.recordParams, statusParam: VIEW.chips.param });
-  const { filterBands } = cut;
+  const { heldKeys } = cut;
   const allBands = useMemo<[string, RowGroup<DerivedPackerRecord>[]][]>(
     () => (rows.length ? [['shipped', rows.map((row) => ({ key: shippedPackageKey(row), rows: [row] }))]] : []),
     [rows],
   );
-  const bands = useMemo(() => filterBands(allBands, (group) => group.key, shippedStatusKeys), [filterBands, allBands]);
+  const bands = useMemo(
+    () => filterTriageBands(allBands, (group) => group.key, shippedStatusKeys, NO_STATUS_CUT, excludedFilter, heldKeys),
+    [allBands, excludedFilter, heldKeys],
+  );
   const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
-
-  // ── Status pills beside the count (the Allocate summary row) ──────────────
-  // Counted in PACKAGES over everything loaded, never the lit cut — tapping a pill shows that many.
-  const { statusFilter, toggleStatus, resetStatus } = cut.url;
-  const statusChips = useMemo<StatusChip<ShippedStatusChip>[]>(() => {
-    const counts = new Map<ShippedStatusChip, number>();
-    for (const row of rows) for (const key of shippedStatusKeys(row)) counts.set(key, (counts.get(key) ?? 0) + 1);
-    return SHIPPED_STATUS_CHIPS.filter((key) => (counts.get(key) ?? 0) > 0 || statusFilter.has(key)).map((key) => ({
-      id: key,
-      ...shippedStatusChipFace(key),
-      count: counts.get(key) ?? 0,
-    }));
-  }, [rows, statusFilter]);
 
   // The server's package total for this window + filters — the pager's "of N" while pages remain unloaded.
   // `ostatus` and a browser-only type preference narrow in the browser, beyond what the facets count.
@@ -330,6 +325,7 @@ export function ShippedLedger({
     painted,
     sectioned: false,
     total: serverTotal,
+    statusOnServer: true,
     loading: query.isLoading,
     fetching: query.isFetching || pagination.isLoadingMore,
     onLoadMore: pagination.isTruncated ? pagination.loadMore : undefined,
@@ -402,16 +398,7 @@ export function ShippedLedger({
       densityControl={{ value: density, onChange: setDensity }}
       feed={feed}
       cut={cut}
-      summary={
-        <StatusChipRail
-          chips={statusChips}
-          active={statusFilter}
-          onToggle={toggleStatus}
-          onReset={resetStatus}
-          label="Filter by package status"
-          testId="shipped-status-chips"
-        />
-      }
+      summary={null}
       bulk={<RecordActionStrip face="header" verbs={bulkVerbs} label="Checked packages actions" testId="shipped-bulk" />}
       banner={
         copyAllUnmatched || (outsideWindow && openKey) ? (

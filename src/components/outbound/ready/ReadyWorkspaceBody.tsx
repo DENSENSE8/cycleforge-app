@@ -2,20 +2,21 @@
 
 /**
  * Ready stage body for the FBA inbound workbench — the allocation history
- * grid. Find is page chrome in the contextual sidebar/header; this host only
- * reads `q` to fetch and narrow the table.
+ * grid. Find (`?q=`) and the disposition facet (`?rtab=`) are page chrome in
+ * the contextual sidebar (`NAV_PAGE_DECLS.fba.items.ready`); this host only
+ * reads them to fetch and narrow the table.
  */
 
 import { useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ReadyQueueTable } from '@/components/outbound/ready/ReadyQueueTable';
 import { fetchReadyHistory, readyHistoryQueryKey } from '@/components/outbound/ready/ready-history';
-import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import { useReadyWorkspaceTab } from '@/hooks/useReadyWorkspaceTab';
 import { readyTabDisposition } from '@/utils/ready-workspace-state';
 
 export function ReadyWorkspaceBody() {
-  const { q } = useOutboundUrlState();
+  const q = useSearchParams()?.get('q')?.trim() ?? '';
   const { readyTab } = useReadyWorkspaceTab();
   const query = useQuery({
     queryKey: readyHistoryQueryKey(q),

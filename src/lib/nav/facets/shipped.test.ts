@@ -32,6 +32,8 @@ interface FixturePackage {
   status: string;
   channel: string;
   exception: boolean;
+  /** `shippedStatusKeys` of the package's kept (newest) row. */
+  card: string[];
   /** The row's `created_at` as the list receives it: naive warehouse wall clock. */
   shippedAt: string;
   /** The order's picker (PICK_FACTS source priority), null = no pick fact / no order. */
@@ -49,6 +51,7 @@ const STAMPS = [
   '2026-09-20 23:59:59',
 ];
 const PICKERS = [3, 5, null];
+const CARDS = [['FULFILLED'], ['FULFILLED', 'LATE'], ['FULFILLED', 'ON_THE_WAY', 'NEVER_PACKED'], ['FULFILLED', 'UNMATCHED']];
 
 const row = (...types: ShippedTypeFilter[]) =>
   Object.fromEntries(TYPES.map((t) => [t, types.includes(t)])) as Record<ShippedTypeFilter, boolean>;
@@ -74,6 +77,7 @@ function fixturePackages(): FixturePackage[] {
               rows, carrier, status, exception, channel: CHANNELS[(i + k) % CHANNELS.length],
               shippedAt: STAMPS[(i + k) % STAMPS.length],
               pickedBy: PICKERS[(i * 7 + k) % PICKERS.length],
+              card: CARDS[(i + 2 * k) % CARDS.length],
             });
           }
         }
@@ -111,6 +115,8 @@ function listPackages(packages: FixturePackage[], params: Record<string, string>
     if (channels.length > 0 && !channels.includes(p.channel)) return false;
     if (timeWindow && !shippedStampInWindow(p.shippedAt, timeWindow)) return false;
     if (pickedBy != null && p.pickedBy !== pickedBy) return false;
+    const cardStatus = (params.cardStatus ?? '').split(',').filter(Boolean);
+    if (cardStatus.length > 0 && !cardStatus.some((key) => p.card.includes(key))) return false;
     return true;
   });
 }
@@ -126,7 +132,7 @@ function comboRunner(packages: FixturePackage[], captured: Array<{ sql: string; 
   return {
     listLocalPickupLines: noPickup,
     exceptionCounts: noExceptions,
-    liveFeedCounts: async () => ({}),
+    supportRows: async () => [],
     run: async (_orgId, sql, params) => {
       captured.push({ sql, params });
       // Exact time-window values are the ISO instants among the bound params.
@@ -151,6 +157,7 @@ function comboRunner(packages: FixturePackage[], captured: Array<{ sql: string; 
           channel: p.channel,
           status: p.status,
           exception: p.exception,
+          card: p.card.join(','),
         };
         const key = JSON.stringify(combo);
         const entry = byKey.get(key) ?? { ...combo, n: 0 };
@@ -188,6 +195,9 @@ const PARAM_CASES: Array<Record<string, string>> = [
   { pickedBy: '5', dateFrom: '2026-09-20', dateTo: '2026-09-20', timeFrom: '09:00', timeTo: '11:30' },
   { pickedBy: 'x' }, // not a staff id: no narrowing
   { channel: 'ebay,shopify' },
+  // Package status (the list's `?cardStatus=` cut, OR across picks).
+  { cardStatus: 'LATE' },
+  { cardStatus: 'UNMATCHED,NEVER_PACKED', carrier: 'UPS' },
 ];
 
 test('outbound.shipped: total and every option count equal the Shipped list total for the same params', async () => {
@@ -195,7 +205,7 @@ test('outbound.shipped: total and every option count equal the Shipped list tota
   for (const params of PARAM_CASES) {
     const res = await facetsBody(new URLSearchParams(params), comboRunner(packages));
     assert.equal(res.total, listPackages(packages, params).length, `total for ${JSON.stringify(params)}`);
-    assert.deepEqual(res.groups.map((g) => g.param), ['shippedFilter', 'channel', 'carrier', 'statusCategory', 'exceptions']);
+    assert.deepEqual(res.groups.map((g) => g.param), ['shippedFilter', 'channel', 'carrier', 'statusCategory', 'exceptions', 'cardStatus']);
     for (const group of res.groups) {
       for (const option of group.options) {
         const picked = { ...params, [group.param]: option.value };
@@ -252,7 +262,7 @@ test('outbound.shipped: a DB without packer_log_enrichment falls back to the leg
     const deps: NavFacetsDeps = {
       listLocalPickupLines: noPickup,
       exceptionCounts: noExceptions,
-      liveFeedCounts: async () => ({}),
+      supportRows: async () => [],
       run: async (_orgId, sql) => {
         captured.push(sql);
         if (sql.includes('packer_log_enrichment')) throw Object.assign(new Error('relation missing'), { code: '42P01' });

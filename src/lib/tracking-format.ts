@@ -155,6 +155,29 @@ export function last8FromStoredTracking(input: string): string {
   return digitsOnly.slice(-8);
 }
 
+/**
+ * Digits-only last 8, or '' when the value carries fewer than 8 digits.
+ * Strict sibling of {@link last8FromStoredTracking} for match keys that must
+ * not fire on short inputs (SQL side: `RIGHT(regexp_replace(col,'\D','','g'), 8)`).
+ */
+export function trackingDigitsLast8Strict(input: string | null | undefined): string {
+  const digits = String(input ?? '').replace(/\D/g, '');
+  return digits.length >= 8 ? digits.slice(-8) : '';
+}
+
+/** Canonical (uppercase A–Z0–9) last 8 — pairs with SQL `right(regexp_replace(upper(col),'[^A-Z0-9]','','g'), 8)`. */
+export function trackingCanonicalLast8(input: string | null | undefined): string {
+  return normalizeTrackingCanonical(String(input ?? '')).slice(-8);
+}
+
+/**
+ * Trailing 8 characters exactly as given (whole value when shorter) — pairs
+ * with SQL `RIGHT(col, 8)` on an un-normalized column. No trimming or casing.
+ */
+export function trackingRawTail8(input: string | null | undefined): string {
+  return String(input ?? '').slice(-8);
+}
+
 // ─── Carrier detection ──────────────────────────────────────────────────────
 //
 // Delegates to the canonical pattern list in utils/carrier-patterns.ts.

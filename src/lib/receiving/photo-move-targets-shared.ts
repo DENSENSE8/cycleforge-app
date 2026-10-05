@@ -6,6 +6,7 @@
 import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
 import { parsePoListSearch } from '@/lib/receiving/po-list-search';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
+import { getLast8 } from '@/lib/copy-chip-format';
 
 /** Parsed search intent — pure so unit tests stay DB-free. */
 interface PhotoMoveSearchIntent {
@@ -91,7 +92,7 @@ export function photoMoveTargetLabel(row: {
   if (row.ticket_id != null && row.ticket_id > 0) return `Ticket #${row.ticket_id}`;
   const tracking = String(row.tracking_number || '').trim();
   if (tracking) {
-    return tracking.length > 8 ? `…${tracking.slice(-8)}` : tracking;
+    return tracking.length > 8 ? `…${getLast8(tracking)}` : tracking;
   }
   return `R-${row.receiving_id}`;
 }

@@ -6,7 +6,7 @@
  * the row; bulk verbs over a selection; delegation one key away.
  *
  * Keys (bare, never inside a field or under an overlay):
- *   J / K or ↓ / ↑  move · Enter open (a ticket opens on its thread) · D done
+ *   J / K or ↓ / ↑  move · Enter open (a ticket-linked row opens on its Conversation tab) · D done
  *   S status combobox (To do · In progress · Pending · Follow-up · Blocked · Done · Canceled) · X select · Shift+X select all
  *   N or C new task (C is create on every page — `registerPageCreate`) · H checklist column · V list / columns · [ / ] record tab
  *   B read the Brief · A alert the owners to follow up (Everyone scope, record open)
@@ -22,8 +22,6 @@ import { Plus } from 'lucide-react';
 import { motion } from '@/design-system/motion';
 import { DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
-import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
-import { TICKET_STATUSES, TICKET_STATUS_FACE, type TicketStatus } from '@/design-system/tokens/ticket-status';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,7 +56,7 @@ import { TASK_ALERT_KEY } from './TaskAlertButton';
 import { TaskBoardColumns } from './TaskBoardColumns';
 import { TaskBulkBar, type TaskBulkVerbs } from './TaskBulkBar';
 import { TaskChecklistColumn, type TaskTableHandlers } from './TaskChecklistColumn';
-import { TASK_RECORD_STATUS_FIELD_ATTR, TaskStatusPicker } from './TaskStatusPicker';
+import { TaskStatusPicker } from './TaskStatusPicker';
 import { TaskTable, type TaskTableSection } from './TaskTable';
 import { useTaskBoard } from './useTaskBoard';
 import type { TaskDeskPatch } from '@/features/tasks/useTaskDesk';
@@ -72,7 +70,7 @@ const TASK_BOARD_SHORTCUTS = {
   rows: [
     { keys: ['J'], label: 'Next row (↓)' },
     { keys: ['K'], label: 'Previous row (↑)' },
-    { keys: ['Enter'], label: 'Open the row (a ticket opens on its thread)' },
+    { keys: ['Enter'], label: 'Open the row (a ticket-linked task opens on its Conversation tab)' },
     { keys: ['D'], label: 'Done (or reopen) — the row, or the selection' },
     { keys: ['S'], label: 'Set status — type to filter (pen → Pending) or a letter, Enter (1–7 apply at once)' },
     { keys: ['X'], label: 'Select the row' },
@@ -84,7 +82,7 @@ const TASK_BOARD_SHORTCUTS = {
     { keys: [']'], label: 'Next record tab' },
     { keys: ['B'], label: 'Read the Brief (full-screen reader)' },
     { keys: [TASK_ALERT_KEY.toUpperCase()], label: 'Alert the owners to follow up (Everyone)' },
-    { keys: ['Esc'], label: 'Clear the selection, then close the record, then clear the ticket-status filter' },
+    { keys: ['Esc'], label: 'Clear the selection, then close the record' },
   ],
 };
 
@@ -99,8 +97,7 @@ export function TaskBoard() {
   const canManageChecklist = has('admin.manage_staff');
   useSurfacePaintMark(TASK_BOARD_PRIMARY_PAINT_MARK, !board.loading);
 
-  const { visible, projects, view, layout, openKey, composing, nowMs, setOpen, setParams, toggleDone, patchTask } = board;
-  const { group, sort, setGroup, setSort } = board;
+  const { visible, projects, view, layout, group, openKey, composing, nowMs, setOpen, setParams, toggleDone, patchTask } = board;
   const { checklist, checklistPinned, checklistColumnOn, setChecklistColumn } = board;
   const [recordTab, setRecordTab] = useState<RecordTab>('overview');
   const [briefReaderOpen, setBriefReaderOpen] = useState(false);
@@ -110,7 +107,7 @@ export function TaskBoard() {
   const anchorKey = useRef<string | null>(null);
 
   // P3 Group by (`taskBoardGroups`): each group a sticky heading under a hairline, keeping the board's
-  // order inside it (owner 2026-10-03). Type is the default — checklist · Support follow-ups · Long-term
+  // order inside it (owner 2026-10-03). Type is the default — checklist · Long-term
   // projects · Standalone tasks; a single type IS the view, so it stays one flat list, as does No grouping.
   // A project group's heading paints that project's roll-up (progress, people, next due).
   const sections = useMemo<TaskTableSection[]>(() => {
@@ -172,7 +169,7 @@ export function TaskBoard() {
   );
   /** Enter / click: a row whose next step is a reply opens straight on its thread. */
   const openForNextStep = useCallback(
-    (row: TaskBoardRow) => openRow(row, taskBoardNextStep(row, nowMs)?.action === 'reply' ? 'ticket' : 'overview'),
+    (row: TaskBoardRow) => openRow(row, taskBoardNextStep(row, nowMs)?.action === 'reply' ? 'conversation' : 'overview'),
     [nowMs, openRow],
   );
 
@@ -260,29 +257,24 @@ export function TaskBoard() {
   useEffect(() => registerPageCreate({ label: 'New task', run: () => setComposing(true) }), [setComposing]);
 
   // ── keyboard ────────────────────────────────────────────────────────────
-  const { openRow: openRecord, openTask, ticketStatuses, ticketCounts, setTicketStatuses } = board;
-  const ticketActive = ticketStatuses.length > 0;
+  const { openRow: openRecord, openTask } = board;
   // Alert is an Everyone verb (owner 2026-09-30): Mine / Handed off never alert.
   const canAlert = board.scope === 'everyone';
-  const keyState = useRef({ order, cursor, openKey, openRecord, openTask, composing, recordTab, selectedCount: selected.size, verbs, layout, checklistColumnOn, ticketActive, canAlert });
-  keyState.current = { order, cursor, openKey, openRecord, openTask, composing, recordTab, selectedCount: selected.size, verbs, layout, checklistColumnOn, ticketActive, canAlert };
+  const keyState = useRef({ order, cursor, openKey, openRecord, openTask, composing, recordTab, selectedCount: selected.size, verbs, layout, checklistColumnOn, canAlert });
+  keyState.current = { order, cursor, openKey, openRecord, openTask, composing, recordTab, selectedCount: selected.size, verbs, layout, checklistColumnOn, canAlert };
   // Esc clears a selection before the record plane (close, then leave split)
   // sees it: capture phase, ahead of the plane's document / window listeners.
-  // With neither, it resets the ticket-status chips (the rail's Reset · Esc).
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
-      const s = keyState.current;
-      const clearsFilter = s.selectedCount === 0 && s.openKey == null && s.ticketActive;
-      if (s.selectedCount === 0 && !clearsFilter) return;
+      if (keyState.current.selectedCount === 0) return;
       if (isEditableKeyTarget(event.target) || hasOpenOverlay()) return;
       event.preventDefault();
-      if (clearsFilter) setTicketStatuses([]);
-      else clearSelection();
+      clearSelection();
     };
     window.addEventListener('keydown', onEscape, true);
     return () => window.removeEventListener('keydown', onEscape, true);
-  }, [clearSelection, setTicketStatuses]);
+  }, [clearSelection]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -308,12 +300,9 @@ export function TaskBoard() {
         else if (s.cursor) toggleDone(s.cursor);
       } else if (key === 'n' && !event.repeat) setComposing(true);
       else if (key === 's' && !event.repeat && s.cursor?.source === 'task') {
-        // The open record's Status control (Overview), else its header verb, else the row.
+        // The open record's header Status verb, else the row.
         const record =
-          s.openKey === s.cursor.key
-            ? (document.querySelector<HTMLElement>(`[${TASK_RECORD_STATUS_FIELD_ATTR}]`) ??
-              document.querySelector<HTMLElement>(`[${TASK_RECORD_STATUS_ANCHOR_ATTR}]`))
-            : null;
+          s.openKey === s.cursor.key ? document.querySelector<HTMLElement>(`[${TASK_RECORD_STATUS_ANCHOR_ATTR}]`) : null;
         openStatusPicker(s.cursor, record);
       } else if (key === 'h' && !event.repeat) setChecklistColumn(!s.checklistColumnOn);
       else if (key === 'v' && !event.repeat) setLayout(s.layout === 'columns' ? 'list' : 'columns');
@@ -343,24 +332,12 @@ export function TaskBoard() {
     nowMs,
     onCursor: setCursorKey,
     onOpen: openForNextStep,
-    onReply: (row) => openRow(row, 'ticket'),
+    onReply: (row) => openRow(row, 'conversation'),
     onToggle: toggleDone,
     onSelect: selectRow,
     onFocusProject: (name) => setParams({ project: board.project === name ? null : name, tab: 'project' }),
     canAlert,
   };
-  // Helpdesk statuses as filters (owner 2026-09-30) — the same pill hues the rows wear; several OR together.
-  const ticketChips = useMemo<StatusChip<TicketStatus>[]>(
-    () => TICKET_STATUSES.map((id) => ({ id, label: TICKET_STATUS_FACE[id].label, tone: TICKET_STATUS_FACE[id], count: ticketCounts[id] })),
-    [ticketCounts],
-  );
-  const ticketActiveSet = useMemo<ReadonlySet<TicketStatus>>(() => new Set(ticketStatuses), [ticketStatuses]);
-  const toggleTicketStatus = useCallback(
-    (id: TicketStatus) =>
-      setTicketStatuses(ticketActiveSet.has(id) ? ticketStatuses.filter((s) => s !== id) : [...ticketStatuses, id]),
-    [setTicketStatuses, ticketActiveSet, ticketStatuses],
-  );
-  const showTicketRail = ticketActive || ticketChips.some((chip) => chip.count > 0);
   const openAt = openRecord ? order.findIndex((row) => row.key === openRecord.key) : -1;
   const closeRecord = useCallback(() => setOpen(null), [setOpen]);
 
@@ -393,7 +370,7 @@ export function TaskBoard() {
                 tab={recordTab}
                 onToggle={() => toggleDone(openRecord)}
                 onStatus={(anchor) => openStatusPicker(openRecord, anchor)}
-                onReply={() => setRecordTab('ticket')}
+                onReply={() => setRecordTab('conversation')}
                 canAlert={canAlert}
                 alertOpen={alertOpen}
                 onAlertOpenChange={setAlertOpen}
@@ -401,9 +378,9 @@ export function TaskBoard() {
             ) : undefined
           }
           list={
-            <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-              {/* No DESK_RECORD_ANCHOR_ATTR here (owner 2026-10-03): every control in this strip — scope, status, ticket
-                  status chips, select-all, layout — acts on the LIST. In place the list is not on screen, so the record
+            <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+              {/* No DESK_RECORD_ANCHOR_ATTR here (owner 2026-10-03): every control in this strip — select-all,
+                  layout, the checklist column — acts on the LIST. In place the list is not on screen, so the record
                   covers the strip from the top; in Split the list is beside the record and keeps its controls. */}
               <div className="shrink-0">
                 <TaskBulkBar
@@ -415,10 +392,6 @@ export function TaskBoard() {
                   canDone={selectedRows.some((row) => !row.done && row.status !== 'CANCELED')}
                   canReopen={selectedRows.some((row) => row.done)}
                   hasTasks={selectedRows.some((row) => row.source === 'task')}
-                  status={board.status}
-                  onStatus={(status) => setParams({ filter: status === 'open' ? null : status })}
-                  scope={board.scope}
-                  onScope={(scope) => setParams({ scope: scope === 'mine' ? null : scope })}
                   project={board.project}
                   onClearProject={() => setParams({ project: null })}
                   openCount={openCount}
@@ -428,28 +401,8 @@ export function TaskBoard() {
                   onLayout={setLayout}
                   checklistOn={checklistColumnOn}
                   onChecklist={setChecklistColumn}
-                  display={{
-                    group,
-                    sort,
-                    // Lit off the house default: Type (Long-term projects: Project) · Urgency.
-                    hot: sort !== 'urgency' || group !== (view === 'project' ? 'project' : 'type'),
-                    onGroup: setGroup,
-                    onSort: setSort,
-                  }}
                   error={board.error}
                 />
-                {showTicketRail ? (
-                  <div className="flex border-b border-border-hairline px-3 py-1.5">
-                    <StatusChipRail
-                      chips={ticketChips}
-                      active={ticketActiveSet}
-                      onToggle={toggleTicketStatus}
-                      onReset={() => setTicketStatuses([])}
-                      label="Filter by ticket status"
-                      testId="task-board-ticket-chips"
-                    />
-                  </div>
-                ) : null}
               </div>
 
               {board.loading ? (
@@ -472,11 +425,9 @@ export function TaskBoard() {
                           title={
                             board.query
                               ? 'Nothing matches that search'
-                              : ticketActive
-                                ? 'No tasks with a ticket in that status'
-                                : board.status === 'done'
-                                  ? 'Nothing finished yet'
-                                  : 'All clear'
+                              : board.status === 'done'
+                                ? 'Nothing finished yet'
+                                : 'All clear'
                           }
                           detail={`${TASK_BOARD_VIEW_LABEL[view]} · press N for a new task`}
                         />

@@ -58,6 +58,8 @@ interface ShippedViewFilterParams {
   pickedBy?: number;
   /** `?channel` — comma-separated, lower-cased. */
   channel?: string | null;
+  /** `?cardStatus` — package-status pills, comma list. */
+  cardStatus?: string | null;
 }
 
 interface ShippedQueryParams extends ShippedViewFilterParams {
@@ -235,6 +237,7 @@ export function dashboardShippedQuery({
   pickedBy,
   searchTerm = '',
   channel = null,
+  cardStatus = null,
   limit = SHIPPED_FEED_PAGE_SIZE,
   phase = 'full',
 }: ShippedQueryParams = {}) {
@@ -254,10 +257,11 @@ export function dashboardShippedQuery({
       shippedTime,
       pickedBy,
       channel,
+      cardStatus,
     }),
     queryFn: () =>
       fetchDashboardPackedRecords({
-        packedBy, staffId, weekStart, weekEnd, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy, channel,
+        packedBy, staffId, weekStart, weekEnd, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy, channel, cardStatus,
       }),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -297,24 +301,25 @@ export function dashboardShippedWeekQuery({
   pickedBy,
   searchTerm = '',
   channel = null,
+  cardStatus = null,
   limit = SHIPPED_FEED_PAGE_SIZE,
   phase = 'full',
   sort = null,
 }: ShippedWeekQueryParams) {
-  // Tracking status and stalls move after the week closes; only a status-free
-  // past week is a fixed answer.
-  const immutable = isPastWeekStart(weekStart) && !searchTerm && !statusCategory && !exceptionsOnly;
+  // Tracking status, stalls and package status move after the week closes;
+  // only a status-free past week is a fixed answer.
+  const immutable = isPastWeekStart(weekStart) && !searchTerm && !statusCategory && !exceptionsOnly && !cardStatus;
   return queryOptions({
     queryKey: [
       'dashboard-table',
       'shipped',
       'week',
       weekStart,
-      { packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, sort, shippedTime: shippedTime ?? undefined, pickedBy, channel },
+      { packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, sort, shippedTime: shippedTime ?? undefined, pickedBy, channel, cardStatus },
     ],
     queryFn: () =>
       fetchDashboardPackedRecords({
-        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy, sort, channel,
+        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy, sort, channel, cardStatus,
       }),
     staleTime: immutable ? Infinity : 5 * 60 * 1000,
     gcTime: immutable ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000,

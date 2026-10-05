@@ -27,8 +27,19 @@
  *
  * Probe API — static: async ({ repo, load }) => Violation[]   (load(rel) imports a module of the judged checkout)
  *             live:   { viewport: 'desktop' | 'mobile', run: async ({ page, origin, load }) => Violation[] }
- *             Violation = { message: string, file?: string, fingerprint?: string }
+ *             Violation = { message: string, file?: string, fingerprint?: string, debt?: true }
+ *             (`debt`: a hit a shrink-only baseline already holds — reported as advisory `<id>:debt`, never a fail)
  */
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const PACK_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+/** The parser pi enforces `.omp/rules` with (Garisek kernel): one reading of a rule's frontmatter for omp, pi and these probes. */
+const { parseGuardRule } = await import(
+  pathToFileURL(path.join(process.env.GARISEK_OS_ROOT || path.join(os.homedir(), 'Projects/Garisek-OS'), 'scripts/spec-kernel/harness/pi-guards.ts')).href
+);
 
 const DESKTOP = 'desktop';
 const OPERATOR = { by: 'owner', at: '2026-10-03' };
@@ -53,6 +64,92 @@ async function registeredDeskUrls(load) {
 
 /** A permission set that grants everything: contracts judge structure, not one staff's role. */
 const ALL_PERMISSIONS = new Proxy(new Set(), { get: (t, k) => (k === 'has' ? () => true : Reflect.get(t, k)) });
+
+// ── Interrupt-rule twins: an omp rule's own signatures, run over the whole tree ─────────────────
+const SIDEBAR_RULE = '.omp/rules/sidebar-owns-table-controls.md';
+const LAST8_RULE = '.omp/rules/identifier-last8.md';
+const NAV_DECL_FILES = ['src/lib/nav/context/pages.ts', 'src/lib/nav/facets/contexts.ts', 'src/lib/sidebar-navigation.ts'];
+
+/** Every file under `src/`, repo-relative with `/` separators. */
+function srcFiles(repo) {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(path.join(repo, dir), { withFileTypes: true })) {
+      if (e.isDirectory()) walk(`${dir}/${e.name}`);
+      else if (e.isFile()) out.push(`${dir}/${e.name}`);
+    }
+  };
+  walk('src');
+  return out;
+}
+
+/**
+ * What the interrupt rule `ruleFile` (omp TTSR frontmatter) would stop if each file of `repo` were
+ * written today: file → matched texts. `condition` regexes, the `tool:write(<glob>)` scope and the
+ * `globs` exclusions are read from the rule itself — never copied here — so the write-time stop and
+ * the loop's whole-tree check cannot drift. Paths are matched repo-relative.
+ */
+function ruleHits(repo, ruleFile) {
+  const rule = parseGuardRule(path.basename(ruleFile, '.md'), fs.readFileSync(path.join(repo, ruleFile), 'utf8'));
+  if (!rule?.conditions.length) throw new Error(`${ruleFile}: no compilable \`condition\` to probe with`);
+  const scopes = rule.scopes.filter((s) => s.tool === 'write');
+  if (!scopes.length) throw new Error(`${ruleFile}: no \`tool:write(<glob>)\` scope`);
+  const inScope = (rel) =>
+    scopes.some((s) => !s.glob || s.glob.test(rel)) &&
+    !rule.exclude.some((re) => re.test(rel)) &&
+    (!rule.include.length || rule.include.some((re) => re.test(rel)));
+  const signatures = rule.conditions.map((re) => new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`));
+  const hits = {};
+  for (const rel of srcFiles(repo)) {
+    if (!inScope(rel)) continue;
+    const src = fs.readFileSync(path.join(repo, rel), 'utf8');
+    const found = signatures.flatMap((re) => [...src.matchAll(re)].map((m) => m[0].replace(/\s+/g, ' ').slice(0, 60)));
+    if (found.length) hits[rel] = found;
+  }
+  return hits;
+}
+
+/** Files the rule hits in the pack's own tree today; none when the rule cannot be read (the probe then reports no_data). */
+function hitFiles(ruleFile) {
+  try {
+    return Object.keys(ruleHits(PACK_ROOT, ruleFile));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Shrink-only ratchet of an interrupt rule over the tree. `baselineFile` (`{ note, files: { file: hits } }`)
+ * holds today's debt: a file over its count, or not listed, is a violation; hits within it are `debt`
+ * (advisory `<id>:debt`, one unit per file via `pnpm spec:loop --debt contracts#<id>:debt`).
+ * `SPEC_WRITE_CONTRACT_BASELINES=1` rewrites the baseline shrink-only (seeds it when missing).
+ */
+function ratchet(repo, { ruleFile, baselineFile, note, fix }) {
+  const hits = ruleHits(repo, ruleFile);
+  const abs = path.join(repo, baselineFile);
+  let baseline = fs.existsSync(abs) ? JSON.parse(fs.readFileSync(abs, 'utf8')).files : null;
+  if (process.env.SPEC_WRITE_CONTRACT_BASELINES === '1') {
+    const next = {};
+    for (const [file, found] of Object.entries(hits).sort(([a], [b]) => a.localeCompare(b))) {
+      if (!baseline) next[file] = found.length;
+      else if (baseline[file] !== undefined) next[file] = Math.min(baseline[file], found.length);
+    }
+    fs.writeFileSync(abs, `${JSON.stringify({ note, files: next }, null, 2)}\n`);
+    baseline = next;
+  }
+  if (!baseline) throw new Error(`${baselineFile} missing — seed it with SPEC_WRITE_CONTRACT_BASELINES=1`);
+  const out = [];
+  for (const [file, found] of Object.entries(hits)) {
+    const allowed = baseline[file] ?? 0;
+    const what = [...new Set(found)].join(' · ');
+    if (found.length > allowed) {
+      out.push({ message: `${found.length} hit(s) of ${ruleFile}, baseline ${allowed}: ${what} — ${fix}`, file, fingerprint: allowed ? 'grew' : 'new' });
+    } else {
+      out.push({ message: `${found.length} baselined hit(s) of ${ruleFile}: ${what} — ${fix}`, file, fingerprint: 'debt', debt: true });
+    }
+  }
+  return out;
+}
 
 /** @type {SpecRule[]} */
 export const CONTRACTS = [
@@ -134,52 +231,6 @@ export const CONTRACTS = [
           const back = await page.locator('aside [data-nav-back="true"]').first().waitFor({ timeout: 15_000 }).then(() => true, () => false);
           if (!back) out.push({ message: `${url}: no contextual sidebar (the top map is showing)` });
         }
-        return out;
-      },
-    },
-  },
-  {
-    id: 'livefeed.distinct-tones',
-    statement: 'On the Live feed page every direction tab wears its own colour — in the sidebar view switcher and in the "G then" key pills of the desk header — and selection controls never reuse the page’s orange: not everything the same orange.',
-    ruling: { ...OPERATOR, words: 'the live feed page must have different colors for its tab switching, g then selection type, not all the same orange color' },
-    interpretation:
-      'Static: the live-feed view tones in nav-view-icons are pairwise distinct. Live: (a) the sidebar direction switcher’s options and (b) the header key pills shown after pressing G ("G then O Outbound · I Inbound") paint pairwise-distinct icon colours; (c) no checked selection control in the sidebar paints the page orange. On 2026-10-03 all three held (Outbound orange, Inbound blue, selections ink) — the contract guards it; correct the interpretation if the operator meant another surface.',
-    surface: DESKTOP,
-    status: 'active',
-    fix: ['revert', 'worker'],
-    mutants: ['live-feed-tones-merged'],
-    lease: ['src/components/sidebar/contextual/nav-view-icons.ts', 'src/components/sidebar/contextual/NavViewSwitcher.tsx', 'src/components/sidebar/contextual/NavKeyStrip.tsx', 'src/lib/sidebar-navigation.ts'],
-    static: async ({ load }) => {
-      const icons = await load('src/components/sidebar/contextual/nav-view-icons.ts');
-      const table = Object.values(icons).find((v) => v && typeof v === 'object' && 'live-feed.outbound' in v);
-      if (!table) return [{ message: 'nav-view-icons exports no table with live-feed.* views', file: 'src/components/sidebar/contextual/nav-view-icons.ts' }];
-      const views = Object.entries(table).filter(([k]) => k.startsWith('live-feed.'));
-      const tones = views.map(([, v]) => v.tone);
-      return new Set(tones).size === tones.length ? [] : [{ message: `live-feed views share a tone: ${views.map(([k, v]) => `${k}=${v.tone}`).join(', ')}`, file: 'src/components/sidebar/contextual/nav-view-icons.ts', fingerprint: 'view-tones-shared' }];
-    },
-    live: {
-      viewport: DESKTOP,
-      run: async ({ page }) => {
-        const out = [];
-        await page.goto('/operations/live-feed', { waitUntil: 'domcontentloaded' });
-        await page.locator('[data-nav-switcher="view"]').first().click({ timeout: 20_000 });
-        const colours = await page
-          .locator('[data-nav-switcher-host] svg, [role=menu] svg')
-          .evaluateAll((svgs) => svgs.map((s) => getComputedStyle(s).color));
-        if (colours.length >= 2 && new Set(colours).size < colours.length) out.push({ message: `direction tabs share an icon colour: ${colours.join(', ')}`, fingerprint: 'switcher-colours-shared' });
-        await page.keyboard.press('Escape');
-        // (b) The "G then" key pills: press G over the desk, read the header pills' icon colours.
-        await page.locator('main').first().click({ position: { x: 900, y: 600 } }).catch(() => {});
-        await page.keyboard.press('g');
-        const pills = page.locator('main button, main a').filter({ hasText: /^\s*\S\s*(Outbound|Inbound)\s*$/ });
-        await pills.first().waitFor({ timeout: 5_000 }).catch(() => {});
-        const pillColours = await pills.locator('svg').evaluateAll((svgs) => svgs.map((s) => getComputedStyle(s).color));
-        if (pillColours.length >= 2 && new Set(pillColours).size < pillColours.length) out.push({ message: `"G then" key pills share an icon colour: ${pillColours.join(', ')}`, fingerprint: 'key-pill-colours-shared' });
-        await page.keyboard.press('Escape');
-        const orange = await page
-          .locator('aside [aria-checked="true"], aside [data-state="checked"], aside [aria-pressed="true"]')
-          .evaluateAll((els) => els.filter((e) => /rgb\(234, 88, 12\)|rgb\(249, 115, 22\)/.test(getComputedStyle(e).color + getComputedStyle(e).backgroundColor)).length);
-        if (orange) out.push({ message: `${orange} selected control(s) paint the page orange` });
         return out;
       },
     },
@@ -276,6 +327,61 @@ export const CONTRACTS = [
       return out;
     },
   },
+  {
+    id: 'layout.sidebar-owns-table-controls',
+    statement:
+      'Every control that changes which records show or in what order — filters, sort, date / time window, staff, carrier / status / reason facets, views, modes, and status chips that filter — lives in the page’s left contextual sidebar, declared in NAV_PAGE_DECLS (src/lib/nav/context/pages.ts); the page body shows records only.',
+    ruling: {
+      by: 'owner',
+      at: '2026-10-04',
+      words:
+        'The agent has a very hard time building out the left contextual sidebar whenever building a new page. … sorting data table information and filtering belongs in the left contextual sidebar below the top level navigation. I needed to inject that rule whenever it tries to put filtering above the data table, scan the code base and … delete any functions In the codebase that are the opposite of that rule.',
+    },
+    interpretation:
+      'Operator rulings 2026-10-04 (docs/handoff/PROMPT-omp-write-time-rules-2026-10-04.md §3): A1 DataTable’s record-selection controls (sheetFind, filter / DataTableFilterMenu, sortMenu / DataTableSortMenu, views / WorkbenchViewsMenu, dateMenu / DataTableDateMenuControl) are retired — consumers declare them in NAV_PAGE_DECLS; A2 mobile (src/app/m/**, src/components/mobile/**) exempt pending the mobile ruling; A3 the three CSV staging hosts exempt; A4 filtering status chips are controls, declared per page in its sidebar + facet context. Reference shape: QUEUE_CONTROLS at NAV_PAGE_DECLS.outbound.items.orders, facets `outbound.orders`, body reads the URL via useReplaceSearchParams. Probe: the interrupt rule .omp/rules/sidebar-owns-table-controls.md (its condition / scope / globs, read from the file) over every src file, ratcheted by scripts/sidebar-controls.baseline.json (shrink-only). A unit’s fix touches its body file plus the three nav declaration files.',
+    surface: DESKTOP,
+    status: 'active',
+    fix: ['worker'],
+    mutants: ['sidebar-sort-menu-in-body'],
+    // Per unit = the body file + the nav declarations; the kernel builds one `rule:<id>` unit per rule, so the lease is their union over today's hits.
+    get lease() {
+      return [...new Set([...hitFiles(SIDEBAR_RULE), ...NAV_DECL_FILES])].sort();
+    },
+    static: async ({ repo }) =>
+      ratchet(repo, {
+        ruleFile: SIDEBAR_RULE,
+        baselineFile: 'scripts/sidebar-controls.baseline.json',
+        note: 'FROZEN BASELINE — files whose body still mounts a record-selection control (.omp/rules/sidebar-owns-table-controls.md signatures). SHRINK-ONLY: declare the control in NAV_PAGE_DECLS and delete it from the body. Rewrite with SPEC_WRITE_CONTRACT_BASELINES=1 node_modules/.bin/tsx tools/spec-loop/live-contracts.mjs --repo . --only layout.sidebar-owns-table-controls.',
+        fix: 'declare it in NAV_PAGE_DECLS[page] (rule://sidebar-controls-contract) and render records only',
+      }),
+  },
+  {
+    id: 'identity.last8-one-helper',
+    statement:
+      'An identifier in a list (rows, cards, chips, scan tape — any identifier kind) shows its last 8 through one helper: getLast8 / getLast8Serial / formatOrderIdDisplay (src/lib/copy-chip-format.ts), painted by CopyChip displayWidth="last8" / OperationalIdentityChip; a scanned or typed tail matches through normalizeTrackingLast8 / orderTrackingMatchKeys (src/lib/tracking-format.ts). Never slice(-8) by hand. Record bodies keep the full id; copy is always the full value.',
+    ruling: {
+      by: 'owner',
+      at: '2026-10-04',
+      words: 'there is also a rule that I need to implement within the OMP coding harness for the identifiers to use the last eight of the identification number.',
+    },
+    interpretation:
+      'Operator ruling B1 2026-10-04: last 8 when the identifier is in a list; record bodies keep the full id (the 2026-09-30 ruling stands); copy = full value; matching = normalizeTrackingLast8. SQL RIGHT(col, 8) keeps its shape (the idx_stn_*_last8 indexes depend on it) — its INPUT goes through the helper. Probe: the interrupt rule .omp/rules/identifier-last8.md (its condition / scope / globs, read from the file — the helper homes are its exclusions) over every src file, ratcheted by scripts/identifier-last8.baseline.json (shrink-only). A unit’s fix touches its one file.',
+    surface: 'both',
+    status: 'active',
+    fix: ['worker'],
+    mutants: ['identifier-hand-rolled-last8'],
+    // Per unit = the one file; the kernel builds one `rule:<id>` unit per rule, so the lease is the union over today's hits.
+    get lease() {
+      return hitFiles(LAST8_RULE).sort();
+    },
+    static: async ({ repo }) =>
+      ratchet(repo, {
+        ruleFile: LAST8_RULE,
+        baselineFile: 'scripts/identifier-last8.baseline.json',
+        note: 'FROZEN BASELINE — hand-rolled last-8 sites outside the helper homes (.omp/rules/identifier-last8.md signatures). SHRINK-ONLY: use getLast8* / CopyChip (display) or normalizeTrackingLast8 / orderTrackingMatchKeys (matching). Rewrite with SPEC_WRITE_CONTRACT_BASELINES=1 node_modules/.bin/tsx tools/spec-loop/live-contracts.mjs --repo . --only identity.last8-one-helper.',
+        fix: 'use getLast8 / getLast8Serial / formatOrderIdDisplay or CopyChip displayWidth="last8" (display), normalizeTrackingLast8 / orderTrackingMatchKeys (matching)',
+      }),
+  },
   // ── Law enforced by other anchors (read by workers and the verifier) ─────────────────────────
   {
     id: 'ds.port',
@@ -313,7 +419,7 @@ export const PROBED = CONTRACTS.filter((c) => c.static || c.live);
 
 /**
  * SpecRuleV1 (Garisek-OS src/lib/loops/spec/types.ts) in JSDoc.
- * @typedef {{ message: string, file?: string, fingerprint?: string }} Violation
+ * @typedef {{ message: string, file?: string, fingerprint?: string, debt?: true }} Violation
  * @typedef {(rel: string) => Promise<Record<string, unknown>>} Load
  * @typedef {{ id: string, statement: string, ruling: { by: string, at: string, words: string }, interpretation?: string,
  *   surface: 'desktop' | 'mobile' | 'both', status: 'proposed' | 'active' | 'retired',

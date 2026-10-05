@@ -2,12 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sheets as googleSheets } from '@googleapis/sheets';
 import { getGoogleAuth } from '@/lib/google-auth';
 import { getIntegrationCredentials, type GoogleSheetsCredentials } from '@/lib/integrations/credentials';
-import { normalizeTrackingKey18 } from '@/lib/tracking-format';
+import { last8FromStoredTracking, normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { normalizePSTTimestamp } from '@/utils/date';
 import {
     ensureOrdersExceptionsTable,
-    getTrackingLast8,
     hasFbaFnsku,
     hasOrderByTracking,
     parseSheetDateTime,
@@ -137,7 +136,7 @@ async function executeSyncTechSerialNumbers(orgId: OrgId) {
                     continue;
                 }
 
-                const cacheKey = getTrackingLast8(shippingTrackingNumber) || shippingTrackingNumber.toUpperCase();
+                const cacheKey = last8FromStoredTracking(shippingTrackingNumber) || shippingTrackingNumber.toUpperCase();
                 const hasMatchingOrder = orderMatchCache.has(cacheKey)
                     ? !!orderMatchCache.get(cacheKey)
                     : await hasOrderByTracking(client, shippingTrackingNumber, orgId);
@@ -293,7 +292,7 @@ async function executeSyncPackerLogs(orgId: OrgId) {
                     continue;
                 }
 
-                const cacheKey = getTrackingLast8(shippingTrackingNumber) || shippingTrackingNumber.toUpperCase();
+                const cacheKey = last8FromStoredTracking(shippingTrackingNumber) || shippingTrackingNumber.toUpperCase();
                 const hasMatchingOrder = orderMatchCache.has(cacheKey)
                     ? !!orderMatchCache.get(cacheKey)
                     : await hasOrderByTracking(client, shippingTrackingNumber, orgId);

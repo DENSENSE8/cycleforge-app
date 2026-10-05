@@ -10,7 +10,8 @@ import {
   receivingOrderIdFromParts,
   receivingSearchTitle,
 } from '@/lib/search/receiving-search-title';
-import { orderTrackingMatchKeys } from '@/lib/tracking-format';
+import { orderTrackingMatchKeys, trackingDigitsLast8Strict } from '@/lib/tracking-format';
+import { getLast8 } from '@/lib/copy-chip-format';
 import {
   sqlTrackingNumberMatches,
 } from '@/lib/search/order-tracking-match-sql';
@@ -207,8 +208,7 @@ export function looksLikeTrackingIdentifier(
 async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
   // Marketplace order # / item number / tracking identifier:
   const identifier = looksLikeIdentifier(query);
-  const digits = query.replace(/\D/g, '');
-  const last8 = digits.length >= 8 ? digits.slice(-8) : '';
+  const last8 = trackingDigitsLast8Strict(query);
   const keys = orderTrackingMatchKeys(query);
   const like = identifier ? query : `%${query}%`;
   const orderNumberExact = sqlIdentifierEqualsQuery('o.order_id', '$2');
@@ -513,8 +513,7 @@ export function buildReceivingSearchSql(
   // Join shipping_tracking_numbers so search matches rows reachable only via receiving.shipment_id (post inbound-tracking unification).
   const identifier = looksLikeIdentifier(query);
   const normalizedQuery = query.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-  const digits = query.replace(/\D/g, '');
-  const last8 = digits.length >= 8 ? digits.slice(-8) : '';
+  const last8 = trackingDigitsLast8Strict(query);
   const trackKeys = orderTrackingMatchKeys(query);
   const trackingShaped = looksLikeTrackingIdentifier(query, last8, trackKeys);
 
@@ -673,7 +672,7 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
         isReturn: row.is_return === true,
         firstItemName,
         fallback: row.tracking_number
-          ? `Carton · ${String(row.tracking_number).slice(-8)}`
+          ? `Carton · ${getLast8(String(row.tracking_number))}`
           : 'Unmatched carton',
       }),
       subtitle: [orderId, row.carrier].filter(Boolean).join(' · ') || 'Unknown carrier',
@@ -1360,7 +1359,7 @@ export async function searchAllEntities(
   const printed = Boolean(scanRoute?.redirect);
   // Printed classes that are NOT internal PK keys must be routed before the Internal ID branch, which knows no ticket / repair / manifest…
   if (printed && scanRoute?.type === 'support-ticket') {
-    const ticketId = /^\/support\?ticket=(\d+)/.exec(scanRoute.redirect ?? '')?.[1];
+    const ticketId = new URL(scanRoute.redirect ?? '/', 'http://local').searchParams.get('q');
     const tickets = ticketId
       ? await searchSupportTickets(orgId, ticketId).catch(() => [])
       : [];

@@ -33,6 +33,7 @@ import {
 } from '@/lib/receiving/receiving-stage-stamp';
 import { conditionSentenceLabel, resolveConditionGrade } from '@/lib/conditions';
 import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
+import { receivingCartonKey } from '@/components/station/receiving-grouping';
 
 /** Which face needs a person first — a carton wears its most urgent line (`dockedRecordFace`). */
 const STATE_URGENCY: Readonly<Record<string, number>> = { EXCEPTION: 6, UNFOUND: 5, CLAIM: 4, SHORT: 3, SCANNED: 2, RECEIVED: 0 };
@@ -78,13 +79,17 @@ export interface CartonCardModel {
   activity: { label: string; instant: string } | null;
   /** When the carton was first unpacked (first Unbox open, else unbox complete); null = never. */
   unboxedAt: string | null;
-  /** Who unboxed it (`unboxed_by_name`); null = not recorded. */
-  unboxedBy: string | null;
-  /** Unboxed's mandatory far-right fact. Docked has no unboxer yet. */
-  topRight: { label: 'Unboxed by'; value: string } | null;
+  /** Who unboxed it (`unboxed_by_id` + `unboxed_by_name`, else the opener); null = not recorded. */
+  unboxedBy: CartonStaff | null;
+  /** Unboxed's mandatory far-right fact. Docked has no unboxer yet. `staffId` colours the name (`StaffCell`). */
+  topRight: { label: 'Unboxed by'; value: string; staffId: number | null } | null;
 }
 
-const cartonKeyOf = (row: ReceivingLineRow) => (row.receiving_id != null ? `carton:${row.receiving_id}` : `line:${row.id}`);
+/** A staffer on a carton fact — the id colours them, the name is the row's words. */
+export interface CartonStaff {
+  id: number | null;
+  name: string;
+}
 
 /** The scanned package handle: tracking first, then carton number. */
 export function cartonCardIdentity(row: ReceivingLineRow): string {
@@ -101,7 +106,7 @@ export function cartonOrderId(row: ReceivingLineRow): string | null {
 export function groupCartons(rows: readonly ReceivingLineRow[]): RowGroup<ReceivingLineRow>[] {
   const byKey = new Map<string, RowGroup<ReceivingLineRow>>();
   for (const row of rows) {
-    const key = cartonKeyOf(row);
+    const key = receivingCartonKey(row);
     const group = byKey.get(key);
     if (group) group.rows.push(row);
     else byKey.set(key, { key, rows: [row] });
@@ -133,10 +138,14 @@ function firstUnboxed(rows: readonly ReceivingLineRow[]): string | null {
 }
 
 /** Who unboxed the carton — completion actor first, then the staffer who opened it. */
-function unboxedByName(rows: readonly ReceivingLineRow[]): string | null {
-  return rows
-    .map((row) => (row.unboxed_by_name || row.unbox_opened_by_name || '').trim())
-    .find(Boolean) ?? null;
+function unboxedBy(rows: readonly ReceivingLineRow[]): CartonStaff | null {
+  for (const row of rows) {
+    const done = (row.unboxed_by_name || '').trim();
+    if (done) return { id: row.unboxed_by_id ?? null, name: done };
+    const opened = (row.unbox_opened_by_name || '').trim();
+    if (opened) return { id: row.unbox_opened_by_id ?? null, name: opened };
+  }
+  return null;
 }
 
 function firstTrackingNumber(rows: readonly ReceivingLineRow[]): string | null {
@@ -202,6 +211,7 @@ export function cartonCardModel(
   const identityKind: CartonCardModel['identityKind'] =
     surface === 'unboxed' ? (orderId ? 'order' : 'carton') : tracking ? 'tracking' : 'carton';
   const identity = identityKind === 'order' ? orderId! : identityKind === 'tracking' ? tracking! : String(lead.receiving_id ?? Math.abs(lead.id));
+  const unboxer = unboxedBy(rows);
   return {
     key: group.key,
     ids: rows.map((row) => row.id),
@@ -217,8 +227,11 @@ export function cartonCardModel(
     vendor: (lead.vendor_name || lead.platform_account_label || '').trim() || null,
     activity: latestActivity(rows, axis),
     unboxedAt: firstUnboxed(rows),
-    unboxedBy: unboxedByName(rows),
-    topRight: surface === 'unboxed' ? { label: 'Unboxed by', value: unboxedByName(rows) ?? 'Not recorded' } : null,
+    unboxedBy: unboxer,
+    topRight:
+      surface === 'unboxed'
+        ? { label: 'Unboxed by', value: unboxer?.name ?? 'Not recorded', staffId: unboxer?.id ?? null }
+        : null,
   };
 }
 

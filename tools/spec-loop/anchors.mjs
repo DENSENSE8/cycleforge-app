@@ -259,7 +259,9 @@ async function contracts(ctx, id, mode) {
       raw.push({ rule: 'probe-no-data', severity: 'advisory', file: c.id, message: `[${c.mode}] ${c.id}: ${c.error}`, fingerprint: `${c.mode}:no-data` });
     }
     for (const v of c.violations) {
-      raw.push({ rule: c.id, severity: 'error', file: v.file ?? null, message: `[${c.mode}] ${v.message}`, ...(v.fingerprint ? { fingerprint: `${c.mode}:${v.fingerprint}` } : {}) });
+      // Baselined debt is advisory under its own rule id, so a kill check on `<id>` never counts it.
+      const rule = v.debt ? `${c.id}:debt` : c.id;
+      raw.push({ rule, severity: v.debt ? 'advisory' : 'error', file: v.file ?? null, message: `[${c.mode}] ${v.message}`, ...(v.fingerprint ? { fingerprint: `${c.mode}:${v.fingerprint}` } : {}) });
     }
   }
   const findings = ctx.findings(id, raw);

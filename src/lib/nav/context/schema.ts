@@ -15,6 +15,7 @@
 
 import { z } from 'zod';
 import { NAV_RECENT_ROW_VERBS } from '@/lib/nav/recents/surfaces';
+import { CHECK_ZOHO_RECEIVED_MAX_INPUTS } from '@/lib/receiving/tracking-paste';
 
 export const NAV_ITEM_KINDS = ['link', 'drill', 'filter', 'toggle'] as const;
 export type NavItemKind = (typeof NAV_ITEM_KINDS)[number];
@@ -46,7 +47,7 @@ export type NavSection = z.infer<typeof NavSectionSchema>;
 
 export const NAV_SEARCH_SOURCES = ['desk-store', 'url-param', 'identify'] as const;
 /** Sections that answer "where does this identifier live" (`GET /api/nav/locate`). */
-export const NAV_LOCATORS = ['outbound', 'inbound'] as const;
+export const NAV_LOCATORS = ['outbound', 'inbound', 'support'] as const;
 export type NavLocator = (typeof NAV_LOCATORS)[number];
 
 export const NavSearchSchema = z
@@ -180,6 +181,22 @@ export const NavControlsSchema = z
       .strict()
       .optional(),
     /**
+     * How the list bands its records — view state like `sort`, never a
+     * filter: one choice writes `param` (`defaultValue` = unset, e.g. no
+     * grouping), painted as the Sort row (pressed, never a check) and never
+     * counted or cleared by Reset. `choices` cannot say this: it is a
+     * clearable filter (a check per option, counted by Reset).
+     */
+    group: z
+      .object({
+        param: z.string().min(1),
+        /** The grouping the list shows with `param` unset. */
+        defaultValue: z.string().min(1),
+        options: z.array(z.object({ value: z.string().min(1), label: z.string().min(1) }).strict()).min(2),
+      })
+      .strict()
+      .optional(),
+    /**
      * Multi-select status exclusions. Options are published by the owning
      * triage desk's status vocabulary and write one shared comma-list param.
      */
@@ -208,6 +225,9 @@ export const NavControlsSchema = z
      * the list endpoint takes without a facet query). Picking an option
      * writes `param`; picking it again clears it (the list's "all"). Either
      * way every `clearParams` key goes too (a page number past the new end).
+     * With `defaultValue` the choice is never empty: unset reads as that
+     * option (lit), picking it clears `param`, and a lit option pressed again
+     * stays lit (Tasks' Open · Waiting · Done · All, unset = Open).
      */
     choices: z
       .array(
@@ -218,9 +238,28 @@ export const NavControlsSchema = z
             param: z.string().min(1),
             options: z.array(z.object({ value: z.string().min(1), label: z.string().min(1) }).strict()).min(2),
             clearParams: z.array(z.string().min(1)),
+            /** The option (one of `options`) the list shows with `param` unset. */
+            defaultValue: z.string().min(1).optional(),
           })
           .strict(),
       )
+      .optional(),
+    /**
+     * The pasted list's located-bucket facet: one pressed bucket in `param`,
+     * and — with `facetParam` — a second row inside it: the pressed bucket's
+     * reasons (each entry's `facet`). Its options are DATA-DRIVEN — the live
+     * locate answer for the URL's list (per paste, with counts) — the gap
+     * `choices` (a fixed vocabulary) and `exclude` (a desk status list) cannot
+     * fill. The list is the page's own: a page whose search `locate`s reads
+     * its `locate.param` (e.g. `/incoming` `?ref_in=`, and then `param` /
+     * `facetParam` are that locate's `statusParam` / `facetParam`); any other
+     * page reads the full list page's `?refs=` (`/search/list`). Painted with
+     * the list's own `BulkStatusChips` (ruling A4: a status chip that filters
+     * is a sidebar control).
+     */
+    pastedListBuckets: z
+      .object({ param: z.string().min(1), facetParam: z.string().min(1).optional() })
+      .strict()
       .optional(),
   })
   .strict();
@@ -240,8 +279,12 @@ export function navControlParams(controls: NavControls | undefined): string[] {
       ...(range.toTimeParam ? [range.toTimeParam] : []),
     ]),
     ...(controls.sort ? [controls.sort.param, ...(controls.sort.dirParam ? [controls.sort.dirParam] : [])] : []),
+    ...(controls.group ? [controls.group.param] : []),
     ...(controls.exclude ? [controls.exclude.param] : []),
     ...(controls.choices ?? []).map((choice) => choice.param),
+    ...(controls.pastedListBuckets
+      ? [controls.pastedListBuckets.param, ...(controls.pastedListBuckets.facetParam ? [controls.pastedListBuckets.facetParam] : [])]
+      : []),
   ];
 }
 
@@ -356,12 +399,12 @@ export const NavContextQuerySchema = z
   .object({
     /**
      * An in-app URL: pathname plus optional search. Never another origin.
-     * Room for a pasted list (`NAV_LOCATE_MAX_REFS` numbers ride the search, ~3–6KB).
+     * Room for a pasted list (`NAV_LOCATE_MAX_REFS` numbers ride the search, ~7–10KB).
      */
     path: z
       .string()
       .min(1)
-      .max(8192)
+      .max(16384)
       .refine((path) => path.startsWith('/') && !path.startsWith('//') && !path.includes('\\'), {
         message: 'path must be an in-app pathname',
       }),
@@ -417,7 +460,7 @@ export const NavFacetsResponseSchema = z
 export type NavFacetsResponse = z.infer<typeof NavFacetsResponseSchema>;
 
 /**
- * `GET /api/nav/locate?locator=<id>&(q=<text>|refs=<a,b,…>)` — where
+ * `GET|POST /api/nav/locate?locator=<id>&(q=<text>|refs=<a,b,…>)` — where
  * identifiers live. `locator` is a page's `search.locate.locator`, or
  * `everywhere` = every locator the caller may read (bucket ids then carry the
  * locator: `outbound:triage`).
@@ -425,17 +468,41 @@ export type NavFacetsResponse = z.infer<typeof NavFacetsResponseSchema>;
  * A BUCKET is a place a record can be: a view of the section (To ship,
  * Shipped) or a verdict the section owns (Received). Membership is the SAME
  * predicate the bucket's list uses, so a count is the rows that list shows.
+ *
+ * FOUND ELSEWHERE: under a section locator, a pasted ref the section holds
+ * nowhere is asked of every other section the caller may read. Its hits come
+ * back exactly as under `everywhere` — `<locator>:<id>` bucket ids, labels
+ * the bare status ("Received", never "Receiving · Received": a client names
+ * the section — {@link NAV_LOCATOR_SECTION_LABEL} — only to tell two
+ * same-word statuses apart) — AFTER the page's own
+ * buckets, which keep their unprefixed ids and order. Another section's
+ * bucket is listed only when it holds a ref. So `entry.buckets: []` always
+ * means found nowhere the caller can see. The typed field (`q`) answers its
+ * own section only. Support answers on /support alone: it is never asked
+ * under `everywhere` nor for another section's misses (a pasted order or
+ * tracking list is a shipping question), while ITS misses ask the shipping
+ * sections like any other.
  */
 export const NAV_LOCATE_SCOPES = [...NAV_LOCATORS, 'everywhere'] as const;
 export type NavLocateScope = (typeof NAV_LOCATE_SCOPES)[number];
+/** The section a locator answers for — painted only to tell two same-word buckets of different sections apart. */
+export const NAV_LOCATOR_SECTION_LABEL: Readonly<Record<NavLocator, string>> = {
+  outbound: 'Fulfillment',
+  inbound: 'Receiving',
+  support: 'Support',
+};
+/** The status filter for pasted refs found nowhere (no bucket holds them) — the Not found chip; never a bucket id. */
+export const NAV_LOCATE_NOWHERE = 'nowhere';
 /** A bucket's ink — one meaning per tone, never a per-component hue. */
 export const NAV_LOCATE_TONES = ['neutral', 'info', 'success', 'warning', 'danger'] as const;
 /** Most refs one locate answers (the paste-a-list cap — the Check's, `CHECK_ZOHO_RECEIVED_MAX_INPUTS`). */
-export const NAV_LOCATE_MAX_REFS = 150;
+export const NAV_LOCATE_MAX_REFS = CHECK_ZOHO_RECEIVED_MAX_INPUTS;
+/** Most records a typed `q` lists as entries (the field's dropdown); the rest are `truncated`. */
+export const NAV_LOCATE_MAX_MATCHES = 8;
 
 export const NavLocateBucketSchema = z
   .object({
-    /** Locator-local (`triage`, `received`); `<locator>:<id>` under `everywhere`. */
+    /** Locator-local (`triage`, `received`); `<locator>:<id>` under `everywhere` or for a ref found in another section. */
     id: z.string().min(1),
     label: z.string().min(1),
     tone: z.enum(NAV_LOCATE_TONES),
@@ -447,6 +514,73 @@ export const NavLocateBucketSchema = z
   .strict();
 export type NavLocateBucket = z.infer<typeof NavLocateBucketSchema>;
 
+/** A staffer on a fact, by id (colour — `StaffCell`) and name (the row's own words). */
+export const NavLocateStaffSchema = z
+  .object({
+    id: z.number().int().positive().nullable(),
+    name: z.string().nullable(),
+  })
+  .strict();
+export type NavLocateStaff = z.infer<typeof NavLocateStaffSchema>;
+
+/**
+ * The facts the pasted-list page paints per number — ONE shape for both
+ * sections, so the page renders one row type. `section` names whose facts
+ * these are; each locator fills the fields it knows and leaves the rest null.
+ * Read in the SAME round trip as the verdict (outbound: the refs statement;
+ * inbound: the ledger's reconcile lines), never a second read. Every `*At`
+ * is a full ISO-8601 UTC instant (`2026-09-09T21:14:00.000Z`); `shipBy` is
+ * the one calendar date (`YYYY-MM-DD`).
+ *
+ * - both: `title`, `sku`, `tracking`, `deliveredAt` (carrier said delivered);
+ * - outbound (the order — the lead order when the ref names several):
+ *   `channelStatus` (`orders.status` — what the order's SOURCE reported on
+ *   import / sync: marketplace or ShipStation, `CanonicalOrder.status`; NOT
+ *   the warehouse stage, which is the entry's bucket. An Amazon order
+ *   imported as `shipped` with its tracking, never packed or scanned out
+ *   here, reads channel `shipped` in Allocate — a real gap, not a
+ *   contradiction), `shipBy` (`YYYY-MM-DD`, the ship-by
+ *   deadline the desk sorts by), `packedAt` + `packer` (who packed it, else
+ *   the pack assignee), `shippedAt` (dock scan-out `SHIP_CONFIRM`, else the
+ *   packer log the Shipped list reads; the warehouse's own stamps only);
+ *   `lines` = order lines the ref names;
+ * - inbound (the number's receiving lines): `po` (the PO# the Check /
+ *   lines name — `ReconEntry.poNumber`), `vendor`, `lines` (receiving
+ *   lines it holds), `unboxedAt` + `unboxedBy` (latest unbox; who completed
+ *   it, else who opened the carton), `units` — `received` = units counted
+ *   in at the Unbox bench (Σ `receiving_line.quantity_received`, written by
+ *   the bench's receive, `receiveLineUnits`; never the carrier's or Zoho's
+ *   word) / `expected` = units bought (Σ `quantity_expected`; null = a line
+ *   has no expected qty). A purchase counts ONCE: an unreceived eBay-import
+ *   line that is the same purchase as a Zoho PO line of the number
+ *   (`duplicatePurchaseLineIds`, the eBay ↔ Zoho merge's `matchZohoPo`) is
+ *   left out of `lines` / `units` / every fact and named in `duplicates`
+ *   (its receiving_line ids) — a data defect to clean up, never a short.
+ *   Outbound: `duplicates` is always `[]`.
+ */
+export const NavLocateFactsSchema = z
+  .object({
+    section: z.enum(NAV_LOCATORS),
+    title: z.string().nullable(),
+    sku: z.string().nullable(),
+    tracking: z.string().nullable(),
+    deliveredAt: z.string().nullable(),
+    channelStatus: z.string().nullable(),
+    shipBy: z.string().nullable(),
+    packedAt: z.string().nullable(),
+    shippedAt: z.string().nullable(),
+    packer: NavLocateStaffSchema.nullable(),
+    po: z.string().nullable(),
+    vendor: z.string().nullable(),
+    lines: z.number().int().nonnegative(),
+    duplicates: z.array(z.number().int()),
+    unboxedAt: z.string().nullable(),
+    unboxedBy: NavLocateStaffSchema.nullable(),
+    units: z.object({ received: z.number().nonnegative(), expected: z.number().nonnegative().nullable() }).strict().nullable(),
+  })
+  .strict();
+export type NavLocateFacts = z.infer<typeof NavLocateFactsSchema>;
+
 export const NavLocateEntrySchema = z
   .object({
     /** As pasted. */
@@ -457,10 +591,16 @@ export const NavLocateEntrySchema = z
     title: z.string().nullable(),
     /** Why it sits there ("Delivered · not scanned"). */
     detail: z.string().nullable(),
-    /** Its record, when it is one record. */
+    /**
+     * Its own durable record (the order; the receiving carton / PO record),
+     * when it is one record — never a list URL, so opening it never rewrites
+     * a list the operator holds (`/incoming?ref_in=`).
+     */
     recordHref: z.string().startsWith('/').nullable(),
     /** Why it sits in its bucket, as a filterable id + words (`facetParam`). Absent = no facet. */
     facet: z.object({ id: z.string().min(1), label: z.string().min(1) }).strict().nullable().optional(),
+    /** What the house knows about it ({@link NavLocateFactsSchema}); outbound / inbound `refs` answers only. Absent/null = found nowhere, or a section that keeps no row facts (support). */
+    facts: NavLocateFactsSchema.nullable().optional(),
   })
   .strict();
 export type NavLocateEntry = z.infer<typeof NavLocateEntrySchema>;
@@ -468,11 +608,16 @@ export type NavLocateEntry = z.infer<typeof NavLocateEntrySchema>;
 export const NavLocateResponseSchema = z
   .object({
     locator: z.enum(NAV_LOCATE_SCOPES),
-    /** Every bucket the locator declares, in its order — zero counts included. */
+    /** Every bucket the locator declares, in its order — zero counts included — then any other section's buckets holding a pasted ref (`<locator>:<id>`). */
     buckets: z.array(NavLocateBucketSchema),
-    /** `refs` only, in paste order; `q` answers counts alone. */
+    /**
+     * `refs`: one per pasted ref, in paste order. `q`: a locator whose
+     * records open on their own (support) lists its best matches, at most
+     * {@link NAV_LOCATE_MAX_MATCHES}, ref = the record's `#<id>`; the others
+     * answer counts alone (`[]`).
+     */
     entries: z.array(NavLocateEntrySchema),
-    /** Refs past {@link NAV_LOCATE_MAX_REFS}, dropped. */
+    /** `refs`: refs past {@link NAV_LOCATE_MAX_REFS}, dropped. `q`: matches past {@link NAV_LOCATE_MAX_MATCHES}, not listed. */
     truncated: z.number().int().nonnegative(),
   })
   .strict();

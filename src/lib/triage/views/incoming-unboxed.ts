@@ -13,6 +13,7 @@ export const INCOMING_UNBOXED_VIEW = triageView({
   bodyTestId: 'unboxed-cards',
   storageKeys: { pageMode: 'cf:unboxed-cards:scroll', scrollTop: 'cf:unboxed-cards:scroll-top' },
   recordParams: ['openLine'],
+  // The attention cut (Unfound · Claim · Short, any-of): the face cuts by it; the sidebar's Status facet writes it (`nav/facets/unbox.ts`).
   chips: { owner: 'face', param: DOCKED_FLAG_PARAM },
   paging: 'client',
   // The far right is "Unboxed by <staff>" (owner 2026-09-30), a trailing fact — no status painter.

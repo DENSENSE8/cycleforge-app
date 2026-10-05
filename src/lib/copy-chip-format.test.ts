@@ -45,6 +45,22 @@ test('formatOrderIdDisplay: one compact order face for every operational surface
   assert.equal(formatOrderIdDisplay('CF-5043'), 'CF-5043');
 });
 
+test('formatOrderIdDisplay: the order face is a real tail of the id, never a digits-only splice', () => {
+  // The retired `getOrderIdLast8` (digits-only last 8) spliced across segments
+  // (`113-1397006-0292212` → `60292212`) and kept marketplace punctuation (`#1234`).
+  const shapes: Array<[string, string]> = [
+    ['113-1397006-0292212', '0292212'], // Amazon 3-7-7
+    ['12-11234-56789', '56789'], // eBay
+    ['EC-100045', '100045'], // Ecwid prefixed
+    ['#1234', '1234'], // Shopify
+    ['260930ABCDEF12', 'ABCDEF12'], // alphanumeric, no delimiter
+  ];
+  for (const [id, face] of shapes) {
+    assert.equal(formatOrderIdDisplay(id), face, id);
+    assert.ok(id.endsWith(face), `${id} -> ${face}: not a tail of the id`);
+  }
+});
+
 test('abbreviateIdentifier: never pads — a padded id is a wrong id', () => {
   // Staff read these aloud and key them into an RF scanner.
   assert.equal(abbreviateIdentifier('5034'), '5034');

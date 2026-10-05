@@ -8,7 +8,7 @@ import { upsertReceivingLineTesting, upsertReceivingLineZoho } from '@/lib/recei
 import { isTestTrackingShortcutAllowed } from '@/lib/tenancy/test-tracking';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { formatPSTTimestamp } from '@/utils/date';
-import { getCarrier, extractCanonicalTracking } from '@/lib/tracking-format';
+import { getCarrier, extractCanonicalTracking, trackingDigitsLast8Strict } from '@/lib/tracking-format';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
@@ -45,7 +45,7 @@ import {
   upsertOpenTrackingException,
   resolveReceivingExceptionsByReceivingId,
 } from '@/lib/tracking-exceptions';
-import { routeScan, scannedReceivingId } from '@/lib/barcode-routing';
+import { scannedReceivingId } from '@/lib/barcode-routing';
 import { detectStationScanType } from '@/lib/station-scan-routing';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
@@ -678,11 +678,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   // Canonicalize carrier scans at the ingestion boundary so a scanned GS1/"96" FedEx barcode (e.g.
   const scannedCartonId = scannedReceivingId(rawTracking);
   /** The ticket number when the raw value is a printed TICKET label. */
-  const scannedTicketValue = (() => {
-    const redirect = routeScan(rawTracking)?.redirect ?? '';
-    const m = /^\/support\?ticket=(\d+)$/.exec(redirect);
-    return m ? m[1] : null;
-  })();
+  const scannedTicketValue = parseTicketScanValue(rawTracking);
   // A house handle that is NOT a carton (a unit, a line, a shelf address, a
   // kit manifest) is likewise not a carrier number. Tickets are excluded —
   // they have a legitimate branch below that resolves them to a carton.
@@ -825,7 +821,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       });
     }
     if (ticketId != null) {
-      const hit = await resolveSupportTicketToReceiving(ctx.organizationId, ticketScanValue).catch(
+      const hit = await resolveSupportTicketToReceiving(ctx.organizationId, String(ticketScanValue)).catch(
         () => null,
       );
       if (hit) {
@@ -1289,8 +1285,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   const localPoId = pickLocalPoId(await scanProbe(), existingScan?.poId ?? null);
   if (localPoId) zohoPoIds.add(localPoId);
 
-  const digits = trackingNumber.replace(/\D/g, '');
-  const last8 = digits.length >= 8 ? digits.slice(-8) : '';
+  const last8 = trackingDigitsLast8Strict(trackingNumber);
 
   // 3a. MATCHED path — one receiving row per PO.
   if (zohoPoIds.size > 0) {

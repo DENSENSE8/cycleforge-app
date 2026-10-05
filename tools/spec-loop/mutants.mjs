@@ -23,8 +23,9 @@ const STOCK_LIST = 'src/components/mobile/v2/stock/MobileV2StockLocations.tsx';
 const SHORTCUTS_PAGE = 'src/app/m/(shell)/stock/shortcuts/page.tsx';
 const SIDEBAR_NAV = 'src/lib/sidebar-navigation.ts';
 const NAV_ROLLOUT = 'src/lib/nav/context/rollout.ts';
-const NAV_VIEW_ICONS = 'src/components/sidebar/contextual/nav-view-icons.ts';
 const LANES = 'src/lib/nav/lanes.ts';
+const ORDER_CARD_LIST = 'src/components/outbound/orders/cards/OrderCardList.tsx';
+const SHIPPED_CARD_MODEL = 'src/components/shipped/ledger/shipped-card-model.ts';
 
 /** @type {SpecMutant[]} */
 export const MUTANTS = [
@@ -139,19 +140,6 @@ export default function StockShortcutsPage() {
     expect: [{ anchor: 'contracts', rule: 'nav.every-page-contextual-sidebar', file: 'src/lib/nav/context/pages.ts' }],
   },
   {
-    id: 'live-feed-tones-merged',
-    describe: 'The Inbound live-feed view wears the page orange too — "not all the same orange color".',
-    rules: ['livefeed.distinct-tones'],
-    edits: [
-      {
-        file: NAV_VIEW_ICONS,
-        find: "'live-feed.inbound': { icon: domainLane('inbound').icon, tone: 'text-blue-600' },",
-        replace: "'live-feed.inbound': { icon: domainLane('inbound').icon, tone: 'text-orange-600' },",
-      },
-    ],
-    expect: [{ anchor: 'contracts', rule: 'livefeed.distinct-tones', file: NAV_VIEW_ICONS }],
-  },
-  {
     id: 'warehouse-lane-renamed-inventory',
     describe: 'The Warehouse lane is labelled Inventory again — the name the operator ruled away.',
     rules: ['nav.warehouse-lane'],
@@ -182,5 +170,38 @@ export default function StockShortcutsPage() {
       },
     ],
     expect: [{ anchor: 'contracts', rule: 'stock.no-foreign-doors', file: STOCK_LIST }],
+  },
+  {
+    id: 'sidebar-sort-menu-in-body',
+    describe: 'The To-ship card list mounts a status chip rail in its `summary` slot instead of declaring the statuses as facets in its own contextual sidebar — the shape the operator ruled away ("sorting data table information and filtering belongs in the left contextual sidebar"; A4: chips that filter are controls). Id kept from when the planted control was DataTableSortMenu (deleted under A1).',
+    rules: ['layout.sidebar-owns-table-controls'],
+    edits: [
+      {
+        file: ORDER_CARD_LIST,
+        find: "import { OrderCard } from './OrderCard';",
+        replace: "import { OrderCard } from './OrderCard';\nimport { StatusChipRail } from '@/design-system/components/QueueStatusChips';",
+      },
+      {
+        file: ORDER_CARD_LIST,
+        find: '      leadSlot={<OrderListLeadSlot />}',
+        replace:
+          "      leadSlot={<OrderListLeadSlot />}\n      summary={\n        <StatusChipRail\n          chips={[{ id: 'late', label: 'Late', tone: 'danger', count: 0 }]}\n          active={new Set<string>()}\n          onToggle={() => {}}\n          onReset={() => {}}\n          testId=\"order-status-rail\"\n        />\n      }",
+      },
+    ],
+    expect: [{ anchor: 'contracts', rule: 'layout.sidebar-owns-table-controls', file: ORDER_CARD_LIST }],
+  },
+  {
+    id: 'identifier-hand-rolled-last8',
+    describe: 'A card model grows its own `last8` (slice(-8)) instead of getLast8 / CopyChip displayWidth="last8" — a second last-8 helper.',
+    rules: ['identity.last8-one-helper'],
+    edits: [
+      {
+        file: SHIPPED_CARD_MODEL,
+        find: 'export type ShippedCardModel = TriageCardModelBase<DerivedPackerRecord>;',
+        replace:
+          'export type ShippedCardModel = TriageCardModelBase<DerivedPackerRecord>;\n\n/** The tracking number\'s short face on the card. */\nexport function last8(value: string): string {\n  return value.slice(-8);\n}',
+      },
+    ],
+    expect: [{ anchor: 'contracts', rule: 'identity.last8-one-helper', file: SHIPPED_CARD_MODEL }],
   },
 ];

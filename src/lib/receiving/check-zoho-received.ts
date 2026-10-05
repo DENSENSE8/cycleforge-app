@@ -1,5 +1,6 @@
 /** Manual paste → Zoho received check for Incoming / Unbox. */
 
+import { trackingDigitsLast8Strict, trackingRawTail8 } from '@/lib/tracking-format';
 import {
   canonicalizeTrackingKey,
   pickMirrorPoIdFromCandidates,
@@ -125,11 +126,6 @@ interface CheckZohoPoHit {
   status?: string | null;
 }
 
-function last8Digits(tracking: string): string | null {
-  const digits = String(tracking || '').replace(/\D/g, '');
-  if (digits.length < 8) return null;
-  return digits.slice(-8);
-}
 
 interface MirrorHit {
   zoho_purchaseorder_id: string;
@@ -167,12 +163,14 @@ export interface CheckZohoReceivedDeps {
 /**
  * Batch mirror lookup: exact Reference# or PO# first, unique last-8 Reference#
  * suffix fallback. Returns a map keyed by canonicalizeTrackingKey(key).
+ * One statement, one round trip, scoped to the org (the owner role bypasses
+ * RLS, so the predicate is the scope).
  */
 async function lookupMirrorByTrackings(
   orgId: OrgId,
   trackings: string[],
 ): Promise<Map<string, MirrorHit | 'ambiguous' | null>> {
-  const { tenantQuery } = await import('@/lib/tenancy/db');
+  const { tenantQueryOneTrip } = await import('@/lib/tenancy/db');
   const out = new Map<string, MirrorHit | 'ambiguous' | null>();
   if (trackings.length === 0) return out;
 
@@ -180,7 +178,7 @@ async function lookupMirrorByTrackings(
   const last8s = [
     ...new Set(
       trackings
-        .map((t) => last8Digits(t))
+        .map((t) => trackingDigitsLast8Strict(t))
         .filter((v): v is string => Boolean(v)),
     ),
   ];
@@ -190,7 +188,7 @@ async function lookupMirrorByTrackings(
     return out;
   }
 
-  const { rows } = await tenantQuery<MirrorHit>(
+  const { rows } = await tenantQueryOneTrip<MirrorHit>(
     orgId,
     `SELECT zoho_purchaseorder_id,
             zoho_purchaseorder_number,
@@ -202,7 +200,8 @@ async function lookupMirrorByTrackings(
               AS ref_canon,
             zoho_purchaseorder_number_norm AS po_canon
        FROM zoho_po_mirror
-      WHERE (
+      WHERE organization_id = $3
+        AND ((
           COALESCE(reference_number, '') <> ''
           AND (
             NULLIF(upper(regexp_replace(COALESCE(reference_number, ''), '[^A-Za-z0-9]', '', 'g')), '')
@@ -219,15 +218,17 @@ async function lookupMirrorByTrackings(
          OR (
           zoho_purchaseorder_number_norm IS NOT NULL
           AND zoho_purchaseorder_number_norm = ANY($1::text[])
-        )
+        ))
       ORDER BY last_synced_at DESC NULLS LAST
-      LIMIT 500`,
-    [canons, last8s],
+      LIMIT $4`,
+    // Room for every exact hit plus suffix fan-out — a fixed 500 dropped hits
+    // once a paste ran past a few hundred numbers.
+    [canons, last8s, orgId, Math.max(500, trackings.length * 4)],
   );
 
   for (const tracking of trackings) {
     const canon = canonicalizeTrackingKey(tracking);
-    const last8 = last8Digits(tracking);
+    const last8 = trackingDigitsLast8Strict(tracking) || null;
     const exactRefPoIds: string[] = [];
     const exactNumberPoIds: string[] = [];
     const suffixPoIds: string[] = [];
@@ -241,7 +242,7 @@ async function lookupMirrorByTrackings(
       const poCanon = String(row.po_canon || '');
       if (canon && ref === canon) exactRefPoIds.push(id);
       else if (canon && poCanon === canon) exactNumberPoIds.push(id);
-      else if (last8 && ref.length >= 8 && ref.slice(-8) === last8) suffixPoIds.push(id);
+      else if (last8 && ref.length >= 8 && trackingRawTail8(ref) === last8) suffixPoIds.push(id);
     }
 
     // Exact Reference# wins, then exact PO#, then unique last-8 Reference#.
@@ -269,7 +270,7 @@ async function lookupLocalByTrackings(
   orgId: OrgId,
   trackings: string[],
 ): Promise<Map<string, CheckZohoReceivedLocal>> {
-  const { tenantQuery } = await import('@/lib/tenancy/db');
+  const { tenantQueriesOneTrip } = await import('@/lib/tenancy/db');
   const out = new Map<string, CheckZohoReceivedLocal>();
   if (trackings.length === 0) return out;
 
@@ -306,9 +307,11 @@ async function lookupLocalByTrackings(
     });
   };
 
-  const { rows } = await tenantQuery<LocalRow>(
-    orgId,
-    `WITH keys AS (SELECT DISTINCT unnest($1::text[]) AS canon)
+  // The tracking read and the PO# read travel together (one round trip); a
+  // tracking hit wins over a PO# hit for the same key (`putRow` keeps the first).
+  const [{ rows }, { rows: poRows }] = await tenantQueriesOneTrip<LocalRow>(orgId, [
+    {
+      text: `WITH keys AS (SELECT DISTINCT unnest($1::text[]) AS canon)
      SELECT DISTINCT ON (k.canon)
             k.canon,
             true                                                 AS known,
@@ -347,17 +350,10 @@ async function lookupLocalByTrackings(
                COALESCE(stn.is_delivered, false) DESC,
                stn.delivered_at DESC NULLS LAST,
                stn.id DESC`,
-    [canons, orgId],
-  );
-
-  for (const row of rows) putRow(row);
-
-  const missingPoCanons = canons.filter((c) => !out.has(c));
-  if (missingPoCanons.length === 0) return out;
-
-  const { rows: poRows } = await tenantQuery<LocalRow>(
-    orgId,
-    `WITH keys AS (SELECT DISTINCT unnest($1::text[]) AS canon),
+      params: [canons, orgId],
+    },
+    {
+      text: `WITH keys AS (SELECT DISTINCT unnest($1::text[]) AS canon),
           linked AS (
             SELECT k.canon,
                    r.id AS receiving_id,
@@ -398,9 +394,11 @@ async function lookupLocalByTrackings(
             )                                                    AS unboxed
        FROM linked l
       GROUP BY l.canon`,
-    [missingPoCanons, orgId],
-  );
+      params: [canons, orgId],
+    },
+  ]);
 
+  for (const row of rows) putRow(row);
   for (const row of poRows) putRow(row);
 
   return out;

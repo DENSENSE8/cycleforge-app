@@ -101,7 +101,7 @@ const VIEW_DENSITY_SETTINGS: readonly SettingDef[] = ORDER_LIST_VIEW_KEYS.map((v
 
 /** The Tasks board's pinned Daily checklist column, shown or hidden per staffer (`H` on `/`). */
 export const TASK_BOARD_CHECKLIST_COLUMN_SETTING = 'desk.home.checklistColumn';
-/** The Tasks board's Display menu — Group by and Order by, remembered per staffer (`?group=` / `?sort=` override). */
+/** The Tasks board's Group by and Sort (the contextual sidebar's rows), remembered per staffer: the last pick, seeded into a bare `/`'s `?group=` / `?sort=`. */
 export const TASK_BOARD_GROUP_SETTING = 'desk.home.group';
 export const TASK_BOARD_SORT_SETTING = 'desk.home.sort';
 
@@ -483,7 +483,7 @@ export const SETTINGS: readonly SettingDef[] = [
     group: 'Tasks board',
     scope: 'staff',
     label: 'Tasks: group by',
-    description: 'How the Tasks list groups its rows (Display menu on the board). Long-term projects always group by project.',
+    description: 'How the Tasks list groups its rows (Group by in the Tasks sidebar). Long-term projects always group by project.',
     control: 'select',
     schema: z.enum(TASK_BOARD_GROUP_BYS).default('type'),
     options: TASK_BOARD_GROUP_BYS.map((value) => ({ value, label: TASK_BOARD_GROUP_BY_LABEL[value] })),
@@ -494,7 +494,7 @@ export const SETTINGS: readonly SettingDef[] = [
     group: 'Tasks board',
     scope: 'staff',
     label: 'Tasks: order by',
-    description: 'How the Tasks list orders its rows (Display menu on the board). Finished work always sinks.',
+    description: 'How the Tasks list orders its rows (Sort in the Tasks sidebar). Finished work always sinks.',
     control: 'select',
     schema: z.enum(TASK_BOARD_SORTS).default('urgency'),
     options: TASK_BOARD_SORTS.map((value) => ({ value, label: TASK_BOARD_SORT_LABEL[value] })),

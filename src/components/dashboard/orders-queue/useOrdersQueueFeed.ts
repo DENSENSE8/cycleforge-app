@@ -7,19 +7,7 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { filterShippedOrdersByQuery } from '@/lib/orders/filter-painted-orders';
 import type { TableId } from '@/lib/tables/table-columns';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
-import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sidebar-shared';
-import {
-  QUEUE_DISPLAY_SORT_OPTIONS,
-  flipQueueDisplaySortDir,
-  isQueueColumnSort,
-  isQueueNamePinSort,
-  queueCarrierSortOptions,
-  queueChannelSortOptions,
-  queueColumnSortOptions,
-  queueDisplaySortFace,
-  type QueueDisplaySort,
-  type QueueDisplaySortDir,
-} from '@/utils/queue-display-sort';
+import type { QueueDisplaySort, QueueDisplaySortDir } from '@/utils/queue-display-sort';
 import { normalizePersonName, type OrdersQueueMode, type QueueRowRecord } from './helpers';
 import { useOrdersQueueRows } from './useOrdersQueueRows';
 import {
@@ -29,7 +17,6 @@ import {
 } from '@/hooks/useKitCompositionMap';
 import { useOrdersQueuePlane, type OrdersQueuePlane } from './useOrdersQueuePlane';
 import type { KitComposition } from '@/lib/orders/order-kit-composition';
-import type { DataTableSortOption } from '@/components/tables/DataTable';
 import type { RowGroup } from '@/lib/group-rows';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { refreshDomain } from '@/lib/refresh/bus';
@@ -137,14 +124,6 @@ export interface OrdersQueueCommits {
   handleCommitTracking: (record: ShippedOrder, tracking: string, onCommitted?: () => void) => void;
 }
 
-interface OrdersQueueSortMenu {
-  options: readonly DataTableSortOption[];
-  active: QueueDisplaySort;
-  hot: boolean;
-  onSelect: (id: string) => void;
-  activeFace: Pick<DataTableSortOption, 'label' | 'shortLabel' | 'identity'>;
-}
-
 interface OrdersQueueFeed extends OrdersQueueCommits {
   /** Warehouse civil today (`YYYY-MM-DD`), resolved once per render. */
   todayKey: string;
@@ -162,8 +141,6 @@ interface OrdersQueueFeed extends OrdersQueueCommits {
   displayedRecords: ShippedOrder[];
   compositionMap: ReadonlyMap<number, KitComposition>;
   plane: OrdersQueuePlane;
-  sortMenu: OrdersQueueSortMenu;
-  views: { storageKey: string; paramKeys: readonly string[]; emptyHint: string } | undefined;
 }
 
 /** The outbound queue FEED — every data / behaviour hook an outbound lane needs, with no presentation: */
@@ -238,56 +215,6 @@ export function useOrdersQueueFeed({
     handleCommitTracking,
   } = useOrdersQueueCommits();
 
-  const handleSortMenuSelect = useCallback(
-    (id: string) => {
-      const next = id as QueueDisplaySort;
-      // A name pin is a face, not a direction. Re-selecting "Amazon" must
-      // keep Amazon on top — flipping would bury the name the operator chose.
-      if (isQueueNamePinSort(next)) {
-        setSort(next);
-        return;
-      }
-      if (isQueueColumnSort(next) && sort === next && dir) {
-        setSort(next, flipQueueDisplaySortDir(dir));
-      } else {
-        setSort(next);
-      }
-    },
-    [sort, dir, setSort],
-  );
-
-  const sortMenuOptions = useMemo(
-    () => [
-      ...QUEUE_DISPLAY_SORT_OPTIONS,
-      ...queueColumnSortOptions(),
-      ...queueChannelSortOptions(),
-      ...queueCarrierSortOptions(),
-    ],
-    [],
-  );
-
-  const sortMenu: OrdersQueueSortMenu = {
-    options: sortMenuOptions,
-    active: sort,
-    hot: sort !== 'deadline',
-    onSelect: handleSortMenuSelect,
-    activeFace: queueDisplaySortFace(sort),
-  };
-
-  // The lane's saved views, resolved through the ONE outbound resolver so the toolbar menu and the rail's `OutboundSavedViewsList` cannot…
-  const views =
-    queueMode === 'fulfillment'
-      ? {
-          ...outboundSavedViewsConfig('unshipped'),
-          emptyHint: 'Save a filter and sort combination to come back to it.',
-        }
-      : queueMode === 'shipped'
-        ? {
-            ...outboundSavedViewsConfig('shipped'),
-            emptyHint: 'Save a filter and sort combination to come back to it.',
-          }
-        : undefined;
-
   return {
     todayKey,
     getStaffName,
@@ -308,8 +235,6 @@ export function useOrdersQueueFeed({
     handleCommitPlatform,
     handleCommitSkuBin,
     handleCommitTracking,
-    sortMenu,
-    views,
   };
 }
 

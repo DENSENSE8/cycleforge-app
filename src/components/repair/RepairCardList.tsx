@@ -10,10 +10,11 @@
  * The contextual sidebar owns the loading controls: Find (`?search=`), the
  * channel view (`?channel=`: All · Shipped in · Dropped off), Status (`?tab=`
  * — what is loaded) and Sort (`?sort=`, applied here over the loaded tickets
- * like the other card hosts). The status chips right of the count
- * (`?repairStatus=`: Arriving · Still needs work · Completed · Closed) narrow
- * the loaded tickets, like Allocate's; each card's status is an inline
- * control, and Change status on the check-set's strip sets every checked one.
+ * like the other card hosts). The sidebar's Stage facet
+ * (`?repairStatus=`: Arriving · Still needs work · Completed · Closed) narrows
+ * the loaded tickets, like Allocate's. A card shows its status as the rail
+ * only: Change status lives on the open record and on the check-set's strip.
+ * A channel view drops the channel from every card (the page already says it).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,7 +22,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, ListChecks, Maximize2 } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
-import { StatusChipRail } from '@/design-system/components/QueueStatusChips';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
@@ -38,7 +38,7 @@ import { parseRepairChannel, REPAIR_ALL_CHANNELS_LABEL, REPAIR_CHANNEL_LABEL, RE
 import { compareRepairs, repairCardModel, repairDayKey, type RepairCardModel } from '@/lib/repair/repair-card-model';
 import { isRepairClosed } from '@/lib/repair-status';
 import { DEFAULT_REPAIR_SORT, parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
-import { REPAIR_STATUS_CHIP_KEYS, repairStatusChipKey, repairStatusChips } from '@/lib/repair/repair-status-chips';
+import { REPAIR_STATUS_CHIP_KEYS, repairStatusChipKey } from '@/lib/repair/repair-status-chips';
 import { REPAIR_QUEUE_VIEW } from '@/lib/triage/views';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { toast } from '@/lib/toast';
@@ -47,7 +47,7 @@ import { qk } from '@/queries/keys';
 import { useRepairRecordSlot } from './record/useRepairRecordSlot';
 import { RepairCard } from './cards/RepairCard';
 import { RepairRow } from './cards/RepairRow';
-import { RepairStatusList } from './cards/RepairStatusControl';
+import { RepairStatusList } from './cards/RepairStatusList';
 import { useRepairStatusChange } from './useRepairStatusChange';
 
 const VIEW = REPAIR_QUEUE_VIEW;
@@ -215,12 +215,11 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
       triageFamily(VIEW, {
         rowId,
         groupKey: cardKey,
-        cardModel: (group) => repairCardModel(group.rows[0]!, todayKey, getStaffName),
+        cardModel: (group) => repairCardModel(group.rows[0]!, todayKey, { staffName: getStaffName, channelPinned: channel != null }),
         exactFind,
-        renderCard: (props) =>
-          density === 'row' ? <RepairRow {...props} /> : <RepairCard {...props} onChangeStatus={changeStatus} />,
+        renderCard: (props) => (density === 'row' ? <RepairRow {...props} /> : <RepairCard {...props} />),
       }),
-    [todayKey, getStaffName, changeStatus, density],
+    [todayKey, getStaffName, channel, density],
   );
 
   const selection = useRepairSelection(painted, `${search}|${searchParams.toString()}`);
@@ -290,10 +289,8 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
       { label: 'Still open', value: inProgress },
       { label: 'Closed', value: repairs.length - inProgress },
     ],
-    note: 'Open a repair to work it from its record — status, labels, paperwork and tickets are its header verbs. The chips narrow the list; Sort lives in the sidebar.',
+    note: 'Open a repair to work it from its record — status, labels, paperwork and tickets are its header verbs. Stage and Sort live in the sidebar.',
   };
-  // The chips count cards over everything loaded, never the narrowed cut.
-  const statusChips = useMemo(() => repairStatusChips(repairs), [repairs]);
   const narrowed = Boolean(search) || needsLabel || searchParams.has('tab');
 
   return (
@@ -314,16 +311,7 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
           view: slot?.view ?? null,
           strip: null,
         }}
-        summary={
-          <StatusChipRail
-            chips={statusChips}
-            active={cut.url.statusFilter}
-            onToggle={cut.url.toggleStatus}
-            onReset={cut.url.resetStatus}
-            label="Filter repairs by status"
-            testId="repair-status-chips"
-          />
-        }
+        summary={null}
         bulk={<RecordActionStrip verbs={bulkVerbs} label="Checked repair actions" testId="repair-bulk" face="header" />}
         searchEmpty={narrowed ? <p className="text-sm text-text-muted">{search ? `No repairs match "${search}"` : 'No repairs in this view.'}</p> : null}
         allClear={

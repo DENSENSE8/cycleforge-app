@@ -6,18 +6,14 @@
  * outcome. `?run=` narrows to one run; `?row=<id>` opens the order's import
  * record in the desk record plane.
  *
- * The outcome chips (Inserted · Backfilled · Tracking · To review · Skipped ·
- * Failed) write the sidebar's own `?outcome=` facet — a chip is its outcomes
- * (Backfilled = backfilled · adopted · claimed) — so the SERVER narrows and
- * the sidebar's facet counts are the chips' counts.
+ * Outcome, like every other filter, is the sidebar's own facet (`?outcome=`,
+ * counted in `imports.rows`) — the SERVER narrows.
  */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrderChannel } from '@/hooks/useCatalog';
-import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { scopeRecordVerbs } from '@/design-system/components/record-action-strip/record-verb-scope';
@@ -31,7 +27,6 @@ import { writeClipboardText } from '@/lib/clipboard';
 import type { ImportRowOutcome, ImportRunRowItem } from '@/lib/imports/types';
 import { IMPORTS_PATH, importOrderHref, importReviewHref } from '@/lib/imports/record-faces';
 import { IMPORT_PAGE_SIZE, importListQuery, positiveIntParam, useImportRows } from '@/lib/imports/record-client';
-import { fetchNavFacets } from '@/lib/nav/context/http-client';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { toast } from '@/lib/toast';
 import { IMPORT_ROWS_VIEW } from '@/lib/triage/views';
@@ -47,20 +42,17 @@ import { ImportRowRecordView } from './ImportRowRecordView';
 import { ImportRunScopeBanner } from './ImportRunScopeBanner';
 
 const VIEW = IMPORT_ROWS_VIEW;
-/** The chips are the host's (`?outcome=`), not the face's cut. */
+/** Outcome is the sidebar's facet (`?outcome=`), not the face's cut. */
 const NO_FACE_CHIPS: readonly string[] = [];
-/** The facet context the sidebar counts this view's facets in — the same query, so one fetch. */
-const FACET_CONTEXT = 'imports.rows';
-const FACETS_STALE_MS = 15_000;
 
-/** Each chip and the outcomes it stands for, in the record's order. */
-const OUTCOME_CHIPS: readonly { id: string; label: string; outcomes: readonly ImportRowOutcome[] }[] = [
-  { id: 'inserted', label: 'Inserted', outcomes: ['inserted'] },
-  { id: 'backfilled', label: 'Backfilled', outcomes: ['backfilled', 'adopted', 'claimed'] },
-  { id: 'tracking', label: 'Tracking', outcomes: ['tracking_filled'] },
-  { id: 'review', label: 'To review', outcomes: ['ambiguous', 'quarantined'] },
-  { id: 'skipped', label: 'Skipped', outcomes: ['skipped'] },
-  { id: 'failed', label: 'Failed', outcomes: ['failed'] },
+/** The summary's outcome tallies, in the record's order (Backfilled = backfilled · adopted · claimed). */
+const OUTCOME_CHIPS: readonly { label: string; outcomes: readonly ImportRowOutcome[] }[] = [
+  { label: 'Inserted', outcomes: ['inserted'] },
+  { label: 'Backfilled', outcomes: ['backfilled', 'adopted', 'claimed'] },
+  { label: 'Tracking', outcomes: ['tracking_filled'] },
+  { label: 'To review', outcomes: ['ambiguous', 'quarantined'] },
+  { label: 'Skipped', outcomes: ['skipped'] },
+  { label: 'Failed', outcomes: ['failed'] },
 ];
 
 const rowId = (row: ImportRunRowItem) => row.id;
@@ -85,13 +77,6 @@ export function ImportRowsList() {
     pageMode.resolved,
     pageMode.mode === 'scroll' ? IMPORT_PAGE_SIZE : pageMode.mode,
   );
-  const search = searchParams.toString();
-  const facets = useQuery({
-    queryKey: ['nav-facets', FACET_CONTEXT, search],
-    queryFn: ({ signal }) => fetchNavFacets(FACET_CONTEXT, search, signal),
-    staleTime: FACETS_STALE_MS,
-    placeholderData: keepPreviousData,
-  });
 
   const sort = searchParams.get('sort');
   const sectioned = !sort || sort === 'newest';
@@ -121,41 +106,6 @@ export function ImportRowsList() {
   );
 
   const { port: selection, selected } = useImportSelection(rows.items, cut.url.scopeKey);
-
-  // ── Outcome chips → the sidebar's `?outcome=` ─────────────────────────────
-  const outcomeRaw = searchParams.get('outcome') ?? '';
-  const chipSet = useMemo<IncomingStatusChipSet>(() => {
-    const active = new Set(outcomeRaw.split(',').filter(Boolean));
-    const counted = facets.data?.groups.find((group) => group.param === 'outcome')?.options;
-    const countOf = new Map(counted?.map((option) => [option.value, option.count] as const));
-    return {
-      label: 'Filter by outcome',
-      disabledReason: null,
-      onToggle: (id) => {
-        const chip = OUTCOME_CHIPS.find((candidate) => candidate.id === id);
-        if (!chip) return;
-        writeParams((params) => {
-          const current = new Set((params.get('outcome') ?? '').split(',').filter(Boolean));
-          const on = chip.outcomes.every((outcome) => current.has(outcome));
-          for (const outcome of chip.outcomes) {
-            if (on) current.delete(outcome);
-            else current.add(outcome);
-          }
-          if (current.size > 0) params.set('outcome', [...current].join(','));
-          else params.delete('outcome');
-          // A narrower list from page 3 would land past its end.
-          params.delete('page');
-        });
-      },
-      chips: OUTCOME_CHIPS.map((chip) => ({
-        id: chip.id,
-        label: chip.label,
-        count: counted ? chip.outcomes.reduce((sum, outcome) => sum + (countOf.get(outcome) ?? 0), 0) : null,
-        tone: IMPORT_ROW_OUTCOME_LIFECYCLE[chip.outcomes[0]!].tone,
-        active: chip.outcomes.every((outcome) => active.has(outcome)),
-      })),
-    };
-  }, [outcomeRaw, facets.data, writeParams]);
 
   const copy = useCallback((values: readonly string[], noun: string) => {
     if (writeClipboardText(values.join('\n'))) toast.success(`Copied ${values.length} ${noun}${values.length === 1 ? '' : 's'}`);
@@ -224,7 +174,7 @@ export function ImportRowsList() {
     for (const row of rows.items) by.set(row.outcome, (by.get(row.outcome) ?? 0) + 1);
     return OUTCOME_CHIPS.map((chip) => [chip.label, chip.outcomes.reduce((n, outcome) => n + (by.get(outcome) ?? 0), 0)] as const);
   }, [rows.items]);
-  const narrowed = Boolean(q.trim()) || outcomeRaw !== '';
+  const narrowed = Boolean(q.trim()) || Boolean(searchParams.get('outcome'));
 
   const orderHref = openRow ? importOrderHref(openRow.orderRowId) : null;
   const stripVerbs: RecordActionVerb[] = openRow
@@ -252,7 +202,6 @@ export function ImportRowsList() {
         family={family}
         feed={feed}
         cut={cut}
-        summary={<IncomingStatusChips set={chipSet} />}
         bulk={<RecordActionStrip face="header" verbs={bulkVerbs} label="Checked orders actions" testId="import-rows-bulk" />}
         banner={
           <>

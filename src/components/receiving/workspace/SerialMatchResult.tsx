@@ -180,8 +180,9 @@ export function SerialMatchResult({
                 {matchedOrder.condition ? (
                   <MetaPill label="Sold as" value={prettyEnum(matchedOrder.condition)} />
                 ) : null}
+                {/* Record body: the full tracking number, like the Order pill (B1). */}
                 {matchedOrder.tracking_number ? (
-                  <MetaPill label="Shipped" value={matchedOrder.tracking_number.slice(-8)} />
+                  <MetaPill label="Shipped" value={matchedOrder.tracking_number} />
                 ) : null}
               </div>
               {/* Listing link — opens the marketplace listing in a new page,

@@ -4,10 +4,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/design-system/primitives';
+import { Button, SearchField } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { FileText, Loader2, Upload, X } from '@/components/Icons';
-import { DataTable } from '@/components/tables/DataTable';
+import { DataTable, DataTableFilterMenu } from '@/components/tables/DataTable';
 
 
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
@@ -251,6 +251,31 @@ export function CsvImportStagingHost() {
             {draft.rows.length} rows
           </span>
         </div>
+        {/* In-job sub-ledger Find + status funnel (CSV staging is exempt from
+            the sidebar ruling — A3); the draft, not the page, owns them. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <SearchField
+            value={draft.query}
+            onChange={(next: string) => setTableImportQuery(SURFACE, next)}
+            placeholder="Find staged rows…"
+            inputRef={(el) => el?.setAttribute('aria-label', 'Find staged rows')}
+            className="min-w-0 max-w-[22rem] flex-1 overflow-hidden"
+            tone="neutral"
+            hideUnderline
+            fillHost
+          />
+          <DataTableFilterMenu
+            options={STATUS_FILTERS.filter((o) => o.id !== 'all').map((o) => ({
+              id: o.id,
+              label: o.label,
+              active: filter === o.id,
+            }))}
+            onToggle={(id) =>
+              setTableImportFilter(SURFACE, id === filter ? 'all' : (id as typeof filter))
+            }
+            onClearAll={() => setTableImportFilter(SURFACE, 'all')}
+          />
+        </div>
         {/* The two verbs that COMMIT the draft. Not a toolbar — the staging
             host is a decision, and these are the decision. */}
         <div className="flex shrink-0 items-center gap-1">
@@ -307,22 +332,8 @@ export function CsvImportStagingHost() {
           loading={false}
           emptyMessage="This file has no rows left to import."
           searchEmptyMessage="No rows match this filter."
+          isNarrowed={Boolean(draft.query) || filter !== 'all'}
           selectionScope={CSV_IMPORT_STAGING_SELECTION_SCOPE}
-          sheetFind={{
-            value: draft.query,
-            onChange: (next: string) => setTableImportQuery(SURFACE, next),
-            placeholder: 'Find staged rows…',
-          }}
-          filter={{
-            options: STATUS_FILTERS.filter((o) => o.id !== 'all').map((o) => ({
-              id: o.id,
-              label: o.label,
-              active: filter === o.id,
-            })),
-            onToggle: (id) =>
-              setTableImportFilter(SURFACE, id === filter ? 'all' : (id as typeof filter)),
-            onClearAll: () => setTableImportFilter(SURFACE, 'all'),
-          }}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>
               {group.rows.map((row) => (

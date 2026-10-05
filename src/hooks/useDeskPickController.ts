@@ -37,12 +37,6 @@ function newStationIdempotencyKey(): string {
   return safeRandomUUID();
 }
 
-export function getOrderIdLast8(orderId: string) {
-  const digits = String(orderId || '').replace(/\D/g, '');
-  if (digits.length >= 8) return digits.slice(-8);
-  return String(orderId || '').slice(-8);
-}
-
 export function useDeskPickController({
   userId,
   userName,

@@ -35,6 +35,8 @@ interface ShippedFeedQueryKeyOptions {
   pickedBy?: number;
   /** `?channel` — comma-separated, lower-cased. Absent = no channel predicate. */
   channel?: string | null;
+  /** `?cardStatus` — package-status pills, comma list. Absent = no package-status predicate. */
+  cardStatus?: string | null;
 }
 
 /** Cache-key contract shared by the RSC seed and the browser query factory. */
@@ -53,6 +55,7 @@ export function shippedFeedQueryKey({
   shippedTime = null,
   pickedBy,
   channel = null,
+  cardStatus = null,
 }: ShippedFeedQueryKeyOptions = {}) {
   return [
     'dashboard-table',
@@ -72,6 +75,7 @@ export function shippedFeedQueryKey({
       shippedTime: shippedTime ?? undefined,
       pickedBy,
       channel,
+      cardStatus,
     },
   ] as const;
 }

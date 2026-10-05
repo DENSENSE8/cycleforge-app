@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { resolveReceivingSchema } from '@/utils/receiving-schema';
 import { withAuth } from '@/lib/auth/withAuth';
+import { trackingRawTail8 } from '@/lib/tracking-format';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
     const { searchParams } = new URL(req.url);
@@ -11,7 +12,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
     }
 
-    const last8 = query.slice(-8);
+    const last8 = trackingRawTail8(query);
     const { dateColumn, hasQuantity } = await resolveReceivingSchema();
     const countExpr = hasQuantity ? "COALESCE(quantity, '1')" : "'1'";
 

@@ -31,7 +31,6 @@ export function useBinsFilterParams() {
   const onParamChange = useCallback(
     (key: 'status' | 'room' | 'q', value: string) => {
       const next = new URLSearchParams(searchParams.toString());
-      if (!next.get('tab')) next.set('tab', 'bins');
       if (value) next.set(key, value);
       else next.delete(key);
       // Stay on the route the filter is mounted on (Locations path).

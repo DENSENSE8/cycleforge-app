@@ -4,10 +4,8 @@
  * **Exceptions** — the ONE exception list, ONE category at a time (owner
  * 2026-09-29: never a blanket list). At `/exceptions` the URL always names a
  * kind (`?domain=&kind=`, the page redirects to one): the sidebar's mode card
- * picks the domain, its views the kind. The same list is locked to a domain /
- * kind behind each lane's own door (FBM › Exceptions, Inventory › SKU /
- * Tracking Exceptions, Deliveries' Claim · Short · Unfound); a door locked to
- * a domain keeps the kind chips. It wears the Allocate desk's triage face
+ * picks the domain, its views the kind. No lane embeds or repaints this list;
+ * legacy lane URLs redirect here. It wears the Allocate desk's triage face
  * ({@link TriageCardList}: count · pager · In place / Split): one card per
  * exception — the tag (WHY) leftmost as the state pill, the blocked entity
  * next, the resolve verb at the card's bottom-right. A record opens through
@@ -19,7 +17,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
 import { RecordLedgerSummaryPane } from '@/design-system/components/record-ledger/RecordLedgerSummary';
-import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import {
   TriageCardList,
   type TriageFeed,
@@ -29,7 +26,6 @@ import { triageFamily } from '@/design-system/components/triage-card-list/triage
 import { useTriageDensity } from '@/design-system/components/triage-card-list/triage-density';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
 import { useTriageCut } from '@/design-system/components/triage-card-list/triage-list-state';
-import type { StateName } from '@/design-system/tokens/lifecycle';
 import { useException, useExceptionOrderNote, useExceptionsInfinite } from '@/hooks/exceptions';
 import { toast } from '@/lib/toast';
 import {
@@ -38,10 +34,8 @@ import {
   EXCEPTION_KIND_PARAM,
   EXCEPTION_KIND_SPEC,
   EXCEPTION_RECORD_PARAM,
-  exceptionKindsOf,
   parseExceptionDomain,
   parseExceptionKind,
-  type ExceptionDomain,
   type ExceptionKind,
   type ExceptionRow,
 } from '@/lib/exceptions/types';
@@ -60,39 +54,18 @@ import {
   exceptionSection,
 } from './cards/exception-card-model';
 import { ExceptionRecordPane } from './ExceptionRecordPane';
-import { exceptionsSummary, type ExceptionsDeskLock } from './exceptions-summary';
+import { exceptionsSummary } from './exceptions-summary';
 
 const VIEW = EXCEPTIONS_VIEW;
 
 /** Find is debounced before it reaches the server. */
 const FIND_DEBOUNCE_MS = 250;
 
-/** A kind chip's dot: red where stock or orders cannot move at all, amber where a person must decide. */
-const KIND_TONE: Readonly<Record<ExceptionKind, StateName>> = {
-  fbm: 'danger',
-  labels: 'danger',
-  paperwork: 'warning',
-  unmatched: 'warning',
-  pairs: 'danger',
-  bins: 'danger',
-  tracking: 'warning',
-  claim: 'warning',
-  short: 'warning',
-  unfound: 'danger',
-};
-
 const NO_KINDS: readonly ExceptionKind[] = [];
-const KINDS_OF_DOMAIN: Readonly<Record<ExceptionDomain, readonly ExceptionKind[]>> = {
-  fulfillment: exceptionKindsOf('fulfillment'),
-  inventory: exceptionKindsOf('inventory'),
-  receiving: exceptionKindsOf('receiving'),
-};
 
 export interface ExceptionsDeskProps {
-  /** The route the desk writes its params onto — the hub, or a lane door. */
+  /** The route the desk writes its params onto. */
   basePath: string;
-  /** A lane door's lock: the list is this domain / kind only, whatever the URL says. */
-  lock?: ExceptionsDeskLock;
   /**
    * Find text when the door's search box is not `?q=` (Shipping's desk
    * store). Omitted = the hub's own `?q=` (the contextual sidebar's Find).
@@ -100,22 +73,20 @@ export interface ExceptionsDeskProps {
   query?: string;
 }
 
-export function ExceptionsDesk({ basePath, lock, query }: ExceptionsDeskProps) {
+export function ExceptionsDesk({ basePath, query }: ExceptionsDeskProps) {
   const searchParams = useSearchParams();
 
-  const domain = lock?.domain ?? parseExceptionDomain(searchParams.get(EXCEPTION_DOMAIN_PARAM)) ?? undefined;
-  // The hub: the URL's kind IS the category (never a filter to clear). A door
-  // locked to a domain: its kinds are chips, one at a time.
-  const hubKind = lock ? undefined : (parseExceptionKind(searchParams.get(EXCEPTION_KIND_PARAM)) ?? undefined);
-  const chipKinds = lock?.domain && !lock.kind ? KINDS_OF_DOMAIN[lock.domain] : NO_KINDS;
+  const domain = parseExceptionDomain(searchParams.get(EXCEPTION_DOMAIN_PARAM)) ?? undefined;
+  // The URL's kind IS the category (never a filter to clear).
+  const urlKind = parseExceptionKind(searchParams.get(EXCEPTION_KIND_PARAM)) ?? undefined;
   const cut = useTriageCut({
-    statusKeys: chipKinds,
+    statusKeys: NO_KINDS,
     recordParams: VIEW.recordParams,
     statusParam: VIEW.chips.param,
     statusSelect: 'one',
   });
   const { statusFilter } = cut.url;
-  const kind = lock?.kind ?? hubKind ?? [...statusFilter][0];
+  const kind = urlKind ?? [...statusFilter][0];
 
   const find = (query ?? searchParams.get('q') ?? '').trim();
   const [debounced, setDebounced] = useState(find);
@@ -256,7 +227,7 @@ export function ExceptionsDesk({ basePath, lock, query }: ExceptionsDeskProps) {
   );
 
   // The scope's total from the hub's counts — the same predicate as its rows.
-  const scopeKinds = kind ? [kind] : chipKinds;
+  const scopeKinds = kind ? [kind] : NO_KINDS;
   const total = counts ? scopeKinds.reduce((sum, k) => sum + (counts[k] ?? 0), 0) : undefined;
 
   const feed: TriageFeed<ExceptionRow> = {
@@ -274,23 +245,7 @@ export function ExceptionsDesk({ basePath, lock, query }: ExceptionsDeskProps) {
     open: { id: openId, open: openRecord, close: closeRecord },
   };
 
-  // Kinds the caller may see (a kind absent from `counts` is not theirs), in the hub's order.
-  const chips = useMemo<StatusChip<ExceptionKind>[]>(
-    () =>
-      counts
-        ? chipKinds
-            .filter((candidate) => counts[candidate] !== undefined)
-            .map((candidate) => ({
-              id: candidate,
-              label: EXCEPTION_KIND_SPEC[candidate].label,
-              tone: KIND_TONE[candidate],
-              count: counts[candidate] ?? 0,
-            }))
-        : [],
-    [counts, chipKinds],
-  );
-
-  const summary = useMemo(() => exceptionsSummary(counts, lock, kind, domain), [counts, lock, kind, domain]);
+  const summary = useMemo(() => exceptionsSummary(counts, kind, domain), [counts, kind, domain]);
   const narrowed = Boolean(debounced) || statusFilter.size > 0;
   const scopeLabel = kind ? EXCEPTION_KIND_SPEC[kind].label : domain ? EXCEPTION_DOMAIN_LABEL[domain] : null;
 
@@ -300,18 +255,6 @@ export function ExceptionsDesk({ basePath, lock, query }: ExceptionsDeskProps) {
       densityControl={{ value: density, onChange: setDensity }}
       feed={feed}
       cut={cut}
-      summary={
-        chips.length ? (
-          <StatusChipRail
-            chips={chips}
-            active={statusFilter}
-            onToggle={cut.url.toggleStatus}
-            onReset={cut.url.resetStatus}
-            label="Filter by kind"
-            testId="exception-kind-chips"
-          />
-        ) : null
-      }
       bulk={<span className="truncate text-sm text-text-muted">Open one to resolve it</span>}
       banner={
         list.isError ? (

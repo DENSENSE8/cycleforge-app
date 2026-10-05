@@ -403,6 +403,7 @@ export async function fetchDashboardPackedRecords({
   shippedFilter,
   carrier,
   channel,
+  cardStatus,
   statusCategory,
   exceptionsOnly = false,
   searchTerm = '',
@@ -423,6 +424,8 @@ export async function fetchDashboardPackedRecords({
   statusCategory?: string | null;
   /** `?channel` — comma-separated, lower-cased. Same predicate as the facet counts. */
   channel?: string | null;
+  /** `?cardStatus` — package-status pills, comma list. Same predicate as the facet counts. */
+  cardStatus?: string | null;
   exceptionsOnly?: boolean;
   /** The desk's find text, answered in SQL by `/api/packerlogs?q=`. */
   searchTerm?: string;
@@ -447,6 +450,7 @@ export async function fetchDashboardPackedRecords({
   if (carrier) params.set('carrier', carrier);
   if (statusCategory) params.set('statusCategory', statusCategory);
   if (channel) params.set('channel', channel);
+  if (cardStatus) params.set('cardStatus', cardStatus);
   if (exceptionsOnly) params.set('exceptions', '1');
   if (searchTerm.trim()) params.set('q', searchTerm.trim());
   if (shippedTime) {

@@ -5,7 +5,7 @@
  * pasted `ABC_123` matched `ABC-123` and `%` became match-all.
  */
 import { escapeLike } from '@/lib/sql-like';
-import { normalizeTrackingKey18 } from '@/lib/tracking-format';
+import { normalizeTrackingKey18, trackingDigitsLast8Strict } from '@/lib/tracking-format';
 
 export function ordersSearchNeedle(raw: string): string {
   return raw.trim();
@@ -18,8 +18,7 @@ export function ordersSearchLikePattern(raw: string): string | null {
 }
 
 export function ordersSearchLast8(raw: string): string {
-  const digits = ordersSearchNeedle(raw).replace(/\D/g, '');
-  return digits.length >= 8 ? digits.slice(-8) : '';
+  return trackingDigitsLast8Strict(ordersSearchNeedle(raw));
 }
 
 export function ordersSearchTrackingKey18(raw: string): string {

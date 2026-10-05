@@ -47,8 +47,6 @@ export const LAYER_LAW_ALLOWLIST: Readonly<Record<LayerLaw, Readonly<Record<stri
   3: {
     'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx':
       'the Shipped package record keeps its full strip (`viewKey === shipping.shipped`) — belongs in its view spec',
-    'src/components/station/useReceivingModeContext.ts':
-      'route → receiving mode adapter read inside the shared station context',
   },
   5: {
     'src/components/outbound/labels/BuyLabelSection.tsx': 'local money() + eta() copies of the label formatters',

@@ -41,6 +41,10 @@ const EVALUATOR_FILES = [
   'tools/design-mcp/route-tree-smoke.mjs',
   'tools/design-mcp/ds.mjs',
   'scripts/ds-forks.baseline.json',
+  '.omp/rules/sidebar-owns-table-controls.md',
+  'scripts/sidebar-controls.baseline.json',
+  '.omp/rules/identifier-last8.md',
+  'scripts/identifier-last8.baseline.json',
   'tests/auth-preflight.mjs',
 ];
 

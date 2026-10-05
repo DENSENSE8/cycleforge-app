@@ -1,8 +1,31 @@
 {
   "version": 1,
-  "updated": "2026-10-03",
+  "updated": "2026-10-04",
   "states": ["queued", "in_progress", "exception", "retired"],
   "entries": [
+    {
+      "id": "nav-find-side-bulk-list",
+      "state": "retired",
+      "category": "search-field",
+      "problem": "Owner 2026-10-04: the pasted-identifier list hung RIGHT of the search field — a `[›] N` toggle, a `[⧉]` paste key with its own textarea paste box, and a right-side popout — a second surface beside the one search bar. The list moves INTO the bar: one token in the well, the rows in the well's own dropdown.",
+      "replacementPaths": [
+        "src/design-system/components/FindField.tsx",
+        "src/components/sidebar/contextual/NavBulkPanel.tsx",
+        "src/lib/nav/locate/use-bulk-list.ts"
+      ],
+      "deletedPaths": [
+        "src/components/sidebar/contextual/NavBulkPopout.tsx"
+      ],
+      "forbiddenSource": [
+        "NavBulkToggle",
+        "NavBulkPopout",
+        "NavBulkPasteKey",
+        "data-nav-bulk-toggle",
+        "data-nav-bulk-paste-box",
+        "data-nav-bulk-popout"
+      ],
+      "exitCriteria": "A paste of 2+ identifiers on any NavFind face shows a FindToken inside the well and the rows in FindPanel under it; nothing renders right of the field."
+    },
     {
       "id": "locations-sticky-bulk-action-bar",
       "state": "retired",
@@ -149,7 +172,7 @@
         "src/design-system/components/triage-card-list/TriageCardList.tsx",
         "src/lib/routing/parked-slot-surfaces.ts"
       ],
-      "exitCriteria": "No page, grid hook or field family exists behind a parked redirect; a job that needs a list again returns as a TriageViewDecl card view (mobile V2 first), never a compound grid.",
+      "exitCriteria": "No page, grid hook or field family exists behind a parked redirect; a job that needs a list again returns as a TriageViewDecl card view (mobile V2 first), never a compound grid. The retired find workbench was /search's own page.tsx + loading.tsx; /search/list (the pasted list, owner 2026-10-04) is a live, unparked route-tree node.",
       "deletedPaths": [
         "src/components/tables/useCompoundSpreadsheet.tsx",
         "src/components/tables/registered-bindings.ts",
@@ -161,7 +184,8 @@
         "src/components/warranty/grid",
         "src/features/review",
         "src/app/review",
-        "src/app/search",
+        "src/app/search/page.tsx",
+        "src/app/search/loading.tsx",
         "src/app/warehouse/rma",
         "src/app/settings/staff",
         "src/app/settings/devices",
@@ -556,6 +580,187 @@
         "src/lib/print/printLocationRows.ts"
       ],
       "exitCriteria": "Every location read derives its room from parent_id: no server reader selects, filters, groups or orders by locations.room (only derived-room.ts reads a ROOM row's own key), the room-coded builders compose no code from a room letter, and npm run verify:derived-room stays green until the column is dropped."
+    },
+    {
+      "id": "operational-identity",
+      "state": "queued",
+      "category": "record-identity",
+      "problem": "Owner 2026-10-04: an order / PO handle decided its own face per surface — `PO ` prefixes, a full id on one density and a last-8 on the other, local `formatOrderIdDisplay` calls, aria strings rebuilt per adapter. Checkpoint 1 moved Inbound Compact/Full and Outbound Compact/Full onto `OperationalIdentity` + `OperationalIdentityChip`; the rest still paint their own, pending visual approval. Owner ruling B1 (2026-10-04): an identifier in a LIST (rows, cards, chips, scan tape — any id kind) shows its last 8; a record body keeps the full id (2026-09-30 ruling stands); the copied value is always the full id. 24 files still hand-roll that last 8 — `.slice(-8)`, a SQL `RIGHT(…, 8)` fed an unnormalised input, or a local helper (`last8`, `trackingTail`, `getOrderIdLast8`, `getLastEightDigits`) — instead of the one display helper (`getLast8` / `getLast8Serial` / `formatOrderIdDisplay`, src/lib/copy-chip-format.ts) and the one match helper (`normalizeTrackingLast8` / `orderTrackingMatchKeys`, src/lib/tracking-format.ts).",
+      "currentPaths": [
+        "src/components/ui/CopyChip.tsx",
+        "src/design-system/components/record-card/record-fact.tsx",
+        "src/components/dashboard/OrdersQueueFirstPaint.tsx",
+        "src/components/shipped/ledger/ShippedPackageRow.tsx",
+        "src/components/receiving/history/cards/CartonCard.tsx",
+        "src/components/receiving/incoming/cards/PastedNumberCard.tsx",
+        "src/components/receiving/incoming/incoming-delivery-state.ts",
+        "src/components/outbound/orders/OrderRecordView.tsx",
+        "src/hooks/useDeskPickController.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/operational-identity.ts",
+        "src/design-system/components/OperationalIdentityChip.tsx",
+        "src/lib/copy-chip-format.ts",
+        "src/lib/tracking-format.ts"
+      ],
+      "exitCriteria": "Every order / PO handle on a record surface is an OperationalIdentity painted by OperationalIdentityChip: no `formatOrderIdDisplay` call outside src/lib/operational-identity.ts and CopyChip.tsx, no `OrderIdChip` consumer, no `PO ${` resting face, and operational-identity-surfaces.test.ts covers every migrated surface. AND the last-8 forks reach 0 under loop rule `identity.last8-one-helper` (interrupt rule .omp/rules/identifier-last8.md): scripts/identifier-last8.baseline.json lists no file — no `.slice(-8)`, `RIGHT(…, 8)` input or local last-8 helper outside src/lib/copy-chip-format.ts, src/lib/tracking-format.ts and src/lib/operational-identity.ts (SQL keeps the `RIGHT(col, 8)` shape behind the idx_stn_*_last8 indexes; only its input routes through `normalizeTrackingLast8`). Only then add forbiddenSource for the retired local helper names (`getOrderIdLast8`, `trackingTail`, `getLastEightDigits`) — they are live today, so a needle now would turn verify:fast red."
+    },
+    {
+      "id": "support-under-tasks",
+      "state": "retired",
+      "category": "workspace-placement",
+      "problem": "Owner 2026-10-04: Support lived as a mode of the Tasks board (`/?tab=ticket`), so it inherited the board's generic chrome — Open/Waiting/Done/All, Mine/Handed off/Everyone, List/Columns, the Daily checklist column and the 'All tasks' fallback — and its record was a Tasks rail. Support is its own lane and page: `/support` (local status chips above the Support DataTable — Order ID · Platform · Customer question —, views / sort / group-by / Platform · Account · Assignee facets in the left sidebar, the record in DeskRecordPlane with the conversation as its whole body).",
+      "replacementPaths": [
+        "src/app/support/page.tsx",
+        "src/features/support/SupportDesk.tsx",
+        "src/features/support/support-table.ts",
+        "src/features/support/SupportTable.tsx",
+        "src/features/support/SupportStatusVerb.tsx",
+        "src/lib/support/list/support-list.ts",
+        "src/lib/nav/facets/support.ts"
+      ],
+      "deletedPaths": [
+        "src/lib/tasks/support-task-route.ts",
+        "src/features/task-board/support",
+        "src/features/task-board/NewSupportItemForm.tsx",
+        "src/features/support/SupportRecordBody.tsx",
+        "src/features/support/cards"
+      ],
+      "forbiddenSource": [
+        "supportTasksHref",
+        "taskBoardSupportFlags",
+        "taskBoardSupportViewMatches"
+      ],
+      "exitCriteria": "No Support mode, view or facet on the Tasks board; every Support link is `supportHref` (`/support[?item=]`); `/?tab=ticket…` only survives as the server redirect in src/app/page.tsx."
+    },
+    {
+      "id": "record-selection-controls-left-the-body",
+      "state": "retired",
+      "category": "table-controls",
+      "problem": "Owner 2026-10-04: \"sorting data table information and filtering belongs in the left contextual sidebar below the top level navigation\". Two body filter strips had 0 importers and taught the opposite: AdminFilterChips (a hand-rolled pressed-chip row for admin lists) and the monitor FilterBand (a filter row above a monitor board). Ruling A1 retired DataTable's built-in record-selection controls — `sheetFind` (the in-table find), the `views` slot with its `sheetSavedViewConfigForTable` default (WorkbenchViewsMenu in the table bar), `dateMenu` (DataTableDateMenuControl) and the `sortMenu` / `filter` props; DataTable keeps only non-selection chrome (toolbar actions, page size, export, zoom, record-view switch). Every consumer declares those controls in NAV_PAGE_DECLS for the left contextual sidebar.",
+      "replacementPaths": [
+        "src/lib/nav/context/pages.ts",
+        "src/lib/nav/context/schema.ts",
+        "src/lib/nav/facets/contexts.ts",
+        "src/components/sidebar/contextual/NavFilters.tsx",
+        "src/components/sidebar/contextual/useReplaceSearchParams.ts"
+      ],
+      "deletedPaths": [
+        "src/components/admin/shared/AdminFilterChips.tsx",
+        "src/design-system/components/monitor/FilterBand.tsx"
+      ],
+      "forbiddenSource": [
+        "AdminFilterChips",
+        "FilterBandProps",
+        "monitor/FilterBand",
+        "<FilterBand",
+        "sheetFind",
+        "DataTableSearch",
+        "DataTableDateMenu",
+        "sheetSavedViewConfigForTable",
+        "sortMenu={",
+        "dateMenu={",
+        "DataTableSortMenu",
+        "DataTableSortOption",
+        "DATA_TABLE_FILTER_IDLE"
+      ],
+      "exitCriteria": "No file under src/ mounts a body filter strip or passes a find, views, date or sort control to DataTable; the reference page (To ship: QUEUE_CONTROLS at NAV_PAGE_DECLS.outbound.items.orders, facets 'outbound.orders') narrows and orders its list from the left contextual sidebar only."
+    },
+    {
+      "id": "filter-refinement-bar",
+      "state": "queued",
+      "category": "table-controls",
+      "problem": "FilterRefinementBar is the 2026-08-31 'big refinement bar' fork (glassmorphic filter pill, hunt tiles, refinement pills under a trigger). It survives as SidebarShell's optional `filter` slot and as the `FilterRefinement` type the photo library's refinements are built on. Owner 2026-10-04 (A1): every control that changes which records show or in what order is declared in NAV_PAGE_DECLS and painted by NavFilters — not a second filter primitive.",
+      "currentPaths": [
+        "src/design-system/components/FilterRefinementBar.tsx",
+        "src/components/layout/SidebarShell.tsx",
+        "src/lib/photos/library-refinements.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/nav/context/pages.ts",
+        "src/lib/nav/facets/contexts.ts",
+        "src/components/sidebar/contextual/NavFilters.tsx"
+      ],
+      "exitCriteria": "FilterRefinementBar has 0 importers: SidebarShell drops its `filter` prop, the photo library's refinements are NAV_PAGE_DECLS['ops-photos'] controls / facets (proved at :3050), the design-system barrel stops re-exporting it; then delete src/design-system/components/FilterRefinementBar.tsx, flip to retired with deletedPaths and forbiddenSource ['FilterRefinementBar', 'FilterRefinement']. Tracked by loop rule `layout.sidebar-owns-table-controls`."
+    },
+    {
+      "id": "filter-dropdown-select",
+      "state": "queued",
+      "category": "table-controls",
+      "problem": "FilterDropdownSelect is a labelled native-select FILTER row (\"Shared native select row for FilterRefinementBar dropdown panels\"). Its one component consumer is a body filter (TaskActivityReport staff + record kind, above the report), and its class FILTER_DROPDOWN_SELECT_CLASS paints the hand-rolled body filter selects that remain (ReasonCodesManagementTab vocabulary, GoalsAnalyticsTab station; RacksDesk's room select already moved to the inventory.racks sidebar facet and LocationsManagementTab was deleted) — the shape the sidebar law forbids. The same class also styles ordinary form fields (settings, dialogs, editors), so the 'Filter' name teaches agents a select in the body is a filter home.",
+      "currentPaths": [
+        "src/design-system/components/FilterDropdownSelect.tsx"
+      ],
+      "replacementPaths": [
+        "src/lib/nav/context/pages.ts",
+        "src/lib/nav/facets/contexts.ts",
+        "src/components/sidebar/contextual/NavFilters.tsx",
+        "src/design-system/components/SearchableSelectField.tsx"
+      ],
+      "exitCriteria": "Every body FILTER that uses it (TaskActivityReport, ReasonCodesManagementTab, GoalsAnalyticsTab) is a NAV_PAGE_DECLS control proved at :3050 and gone from the body (loop rule `layout.sidebar-owns-table-controls` baseline drops them); the FilterDropdownSelect component has 0 importers and is deleted; form-field consumers read a select class named for its job (no `FILTER_DROPDOWN_*` export); then retire with forbiddenSource ['FilterDropdownSelect', 'FILTER_DROPDOWN_']."
+    },
+    {
+      "id": "filter-menu-in-body",
+      "state": "queued",
+      "category": "table-controls",
+      "problem": "FilterMenu (src/components/ui/FilterMenu.tsx) is the rail / sidebar funnel. Mounted in a page body it becomes a filter above the records: PhotoLibraryFindRow (FilterMenu + MediaViewsMenu above the photo grid) and the unfound resolver's EcwidOrderScopeFilters. Sidebar consumers (src/components/sidebar/**) are its home; the three CSV staging hosts are exempt pending the CSV ruling (A3, deferred).",
+      "currentPaths": [
+        "src/components/ui/FilterMenu.tsx"
+      ],
+      "replacementPaths": [
+        "src/lib/nav/context/pages.ts",
+        "src/lib/nav/facets/contexts.ts",
+        "src/components/sidebar/contextual/NavFilters.tsx"
+      ],
+      "exitCriteria": "FilterMenu is imported only under src/components/sidebar/** (plus the A3-deferred CSV staging hosts until that ruling): the photo library's facets are NAV_PAGE_DECLS['ops-photos'] controls and the resolver's scope is declared for its page, both proved at :3050, and loop rule `layout.sidebar-owns-table-controls` reports 0 FilterMenu hits outside those homes. FilterMenu itself stays as the sidebar funnel."
+    },
+    {
+      "id": "body-status-chip-rails",
+      "state": "queued",
+      "category": "table-controls",
+      "problem": "Owner ruling A4 (2026-10-04): status chips that filter are CONTROLS, declared per page in that page's contextual sidebar (NAV_PAGE_DECLS[page] + its facet context) — never a shared cross-codebase chip rail in a body, a TriageCardList `summary` / `banner` slot or above a DataTable. Today StatusChipRail / QueueStatusChips (src/design-system/components/QueueStatusChips.tsx), IncomingStatusChips and BulkStatusChips / BulkSortChips (NavBulkChips.tsx) paint status filters in the bodies of To ship (OrderCardList), Shipped, Docked, Repair, Stock, Exceptions, Support, Import runs / rows, Unbox, Inbound history / pasted numbers, Catalog import review, Labels docs, the Task board and the pasted-list page — 8 of them duplicating a facet the sidebar already declares.",
+      "currentPaths": [
+        "src/design-system/components/QueueStatusChips.tsx",
+        "src/components/receiving/incoming/IncomingStatusChips.tsx",
+        "src/components/sidebar/contextual/NavBulkChips.tsx"
+      ],
+      "replacementPaths": [
+        "src/lib/nav/context/pages.ts",
+        "src/lib/nav/facets/contexts.ts",
+        "src/components/sidebar/contextual/NavFilters.tsx"
+      ],
+      "exitCriteria": "No desktop body imports StatusChipRail, QueueStatusChips, IncomingStatusChips, BulkStatusChips or BulkSortChips: each page's statuses are facet rows in its own NAV_FACET_GROUPS context (counted by the list's query builder, proved at :3050) and loop rule `layout.sidebar-owns-table-controls` reports 0 chip-rail files (scripts/sidebar-controls.baseline.json shrinks to the exempt homes). Mobile (src/app/m/**, src/components/mobile/**) is exempt pending the mobile filter-home ruling (A2); once it lands, delete the rails no consumer needs and retire with forbiddenSource for their names."
+    },
+    {
+      "id": "data-table-filter-menu-off-table",
+      "state": "queued",
+      "category": "table-controls",
+      "problem": "Ruling A1 (2026-10-04) took filter and sort out of DataTable. The sort menu is deleted (DataTableSortMenu / DataTableSortOption, locked by `record-selection-controls-left-the-body`), but DataTable.tsx still exports DataTableFilterMenu (with the DataTableFilterChrome type) for one 'off-table' mount: the CSV staging host's filter (outbound/orders/CsvImportStagingHost.tsx, A3, deferred). A second filter door beside the sidebar.",
+      "currentPaths": [
+        "src/components/tables/DataTable.tsx"
+      ],
+      "replacementPaths": [
+        "src/lib/nav/context/pages.ts",
+        "src/lib/nav/facets/contexts.ts",
+        "src/components/sidebar/contextual/NavFilters.tsx"
+      ],
+      "exitCriteria": "When the CSV ruling lands, CsvImportStagingHost stops mounting DataTableFilterMenu, DataTable.tsx stops exporting it and DataTableFilterChrome, and this entry retires with forbiddenSource ['DataTableFilterMenu', 'DataTableFilterChrome']. Until then no other file imports it (loop rule `layout.sidebar-owns-table-controls`)."
+    },
+    {
+      "id": "workbench-views-menu-in-body",
+      "state": "queued",
+      "category": "table-controls",
+      "problem": "Ruling A1 removed WorkbenchViewsMenu from DataTable's bar (the `views` slot and its `sheetSavedViewConfigForTable` default, now locked by `record-selection-controls-left-the-body`). The menu still renders in a page body through MediaViewsMenu on PhotoLibraryFindRow, above the photo grid. Views are sidebar navigation children (SIDEBAR_PAGE_NAV) or the global-header saved views — never a body menu.",
+      "currentPaths": [
+        "src/components/saved-views/WorkbenchViewsMenu.tsx",
+        "src/components/photos/MediaViewsMenu.tsx"
+      ],
+      "replacementPaths": [
+        "src/lib/sidebar-navigation.ts",
+        "src/lib/nav/context/pages.ts",
+        "src/components/sidebar/contextual/NavFilters.tsx"
+      ],
+      "exitCriteria": "PhotoLibraryFindRow mounts no views menu: the photo library's views are SIDEBAR_PAGE_NAV children / NAV_PAGE_DECLS['ops-photos'] declarations proved at :3050; WorkbenchViewsMenu and MediaViewsMenu then have 0 body importers (loop rule `layout.sidebar-owns-table-controls`) and either move under src/components/sidebar/** or are deleted and retired with forbiddenSource ['WorkbenchViewsMenu', 'MediaViewsMenu']."
     }
   ]
 }

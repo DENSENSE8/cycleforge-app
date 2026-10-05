@@ -14,7 +14,7 @@ import {
   getSidebarPageNav,
   spineSectionIdForPage,
 } from '@/lib/sidebar-navigation';
-import { LANE_DOORS } from '@/lib/nav/lanes';
+import { DOMAIN_GROUPS, LANE_DOORS } from '@/lib/nav/lanes';
 import { NAV_PARITY, pageStops, parityGaps, uncoveredRows } from './parity';
 import { declaredRouteParams, type ResolveNavContextInput } from './build';
 import { resolveNavContext } from './resolve';
@@ -89,7 +89,11 @@ test('every section item href round-trips: resolving it lights exactly that item
         assert.equal(ctx.page.id, page.id, `${item.href} leaves ${page.id}`);
         assert.equal(ctx.scope, 'section', item.href);
         // A page's own mode is current on its card beside the view it opens: set the modes aside, then exactly one view is lit.
-        const modeIds = new Set(ctx.sections.filter(isPageModeSection(ctx)).flatMap((modes) => modes.items.map((mode) => mode.id)));
+        const modeIds = new Set(
+          ctx.sections
+            .filter((section) => isPageModeSection(ctx)(section) || isLanePageSection(section))
+            .flatMap((modes) => modes.items.map((mode) => mode.id)),
+        );
         const lit = activeIds(ctx).filter((id) => !modeIds.has(id));
         if (modeIds.has(item.id)) {
           assert.ok(activeIds(ctx).includes(item.id), `${item.href}: its mode is current`);
@@ -141,21 +145,21 @@ test('Fulfillment is a lane door: one map row, the lane name on its panel, its p
     ['outbound', 'FBM'],
     ['fulfilled', 'Fulfilled'],
     ['fba', 'FBA'],
-    ['label-intake', 'Labels & docs'],
   ]);
   // FBM is Amazon's acronym for every channel we ship ourselves — the mode says so; FBA is the split.
   assert.deepEqual(modes?.items.map((item) => item.description), [
     'Fulfilled by merchant · all channels',
     'Every package that left the building',
     'Fulfilled by Amazon',
-    undefined,
   ]);
-  assert.ok(modes?.items.every((item) => !item.active), 'a mode row never lights a view');
+  assert.equal(modes?.items.find((item) => item.id === 'outbound')?.active, true);
 
-  // Operator 2026-10-03: the Live feed opens Operations, Scan Stations right
-  // under it and above Receiving; fixed utilities close the map.
+  // Operator 2026-10-03: the Live feed opens Operations; owner 2026-10-04:
+  // Support right under it, then Scan Stations above Receiving; fixed
+  // utilities close the map.
   assert.equal(map.sections[1]?.id, 'live-feed');
-  const stations = map.sections[2];
+  assert.equal(map.sections[2]?.id, 'support');
+  const stations = map.sections[3];
   assert.equal(stations?.id, 'floor');
   assert.deepEqual(stations?.items.map((item) => [item.id, item.label, item.kind]), [
     ['receive', 'Scan Stations', 'drill'],
@@ -165,6 +169,25 @@ test('Fulfillment is a lane door: one map row, the lane name on its panel, its p
       map.sections.findIndex((section) => section.id === 'inbound'),
   );
   assert.equal(map.sections.at(-1)?.id, 'bottom');
+});
+
+test('Sales is a lane door with Front desk and Customers as first-class modes', () => {
+  const map = at('/counter', { view: 'top' });
+  const sales = map.sections.find((section) => section.id === 'sales');
+  assert.deepEqual(sales?.items.map((item) => [item.id, item.label]), [['sales', 'Sales']]);
+
+  for (const href of ['/counter', '/customers']) {
+    const context = at(href);
+    assert.equal(context.scope, 'section', href);
+    assert.equal(context.page.label, 'Sales', href);
+    assert.equal(context.back?.label, 'Sales', href);
+    const modes = context.sections.find(isLanePageSection);
+    assert.deepEqual(modes?.items.map((item) => [item.id, item.label]), [
+      ['sales', 'Front desk'],
+      ['customers', 'Customers'],
+    ], href);
+  }
+  assert.equal(at('/customers').search.placeholder, 'Search customers…');
 });
 
 test('the parent map keeps Scan Stations to one door across every station route', () => {
@@ -190,6 +213,12 @@ test('every mode of a door lane wears the lane on ‹ and the SAME mode card, it
       (page) => spineSectionIdForPage(page) === laneId && APP_SIDEBAR_NAV.some((item) => item.id === page.id),
     );
     const doorModes = at(door.href).sections.find(isLanePageSection)?.items.map((item) => item.id);
+    // One page is no choice (Support): no switcher, but ‹ still names the lane.
+    if (lanePages.length < 2) {
+      assert.equal(doorModes, undefined, `${laneId}: a one-page lane paints no mode switcher`);
+      assert.equal(at(door.href).back?.label, DOMAIN_GROUPS.find((lane) => lane.id === laneId)?.label, `${laneId}: ‹ names the lane`);
+      continue;
+    }
     assert.deepEqual(doorModes?.[0], doorId, `${laneId}: the door leads its modes`);
     for (const page of lanePages) {
       const ctx = at(page.href);
@@ -239,10 +268,12 @@ test('permission filtering removes the rows a role cannot reach', () => {
   assert.deepEqual(itemIds(at('/shipping/orders', { permissions: noPacking })), [
     'outbound',
     'fba',
+    'orders',
     'label-intake',
-    'triage',
-    'exceptions',
   ]);
+
+  const noPackingReview = new Set([...ALL].filter((p) => p !== 'packing.review'));
+  assert.ok(!itemIds(at('/shipping/orders', { permissions: noPackingReview })).includes('label-intake'));
 
   // Packing-only roles reach one Fulfillment door (Fulfilled): one page is no
   // choice, so no lane rows paint — only Fulfilled's saved views.
@@ -278,9 +309,8 @@ test('the org nav override shapes the section and the map — one pipeline with 
       {
         id: 'outbound',
         children: [
-          { id: 'exceptions', order: 0 },
+          { id: 'label-intake', order: 0 },
           { id: 'orders', label: 'Allocate queue' },
-          { id: 'shipped', hidden: true },
         ],
       },
       { id: 'fba', hidden: true },
@@ -289,8 +319,8 @@ test('the org nav override shapes the section and the map — one pipeline with 
     ],
   };
   const shipping = at('/shipping/orders', { orgNav });
-  assert.deepEqual(itemIds(shipping), ['outbound', 'fulfilled', 'label-intake', 'exceptions', 'triage']);
-  assert.equal(items(shipping).find((i) => i.id === 'triage')?.label, 'Allocate queue');
+  assert.deepEqual(itemIds(shipping), ['outbound', 'fulfilled', 'label-intake', 'orders']);
+  assert.equal(items(shipping).find((i) => i.id === 'orders')?.label, 'Allocate queue');
 
   const map = at('/', { orgNav, view: 'top' });
   assert.ok(!itemIds(map).includes('fba'));
@@ -339,7 +369,6 @@ test('every advertised param survives the hygiene of the view that reads it', ()
 
 test('the Shipping filters removed on 2026-09-26 are advertised and survive with real values', () => {
   const samples: ReadonlyArray<readonly [string, string, string]> = [
-    ['/shipping/exceptions', 'record', 'fbm:42'],
     ['/shipping/orders', 'stage', 'packed'],
     ['/shipping/orders', 'aging', 'overdue'],
     ['/shipping/orders', 'late', '1'],
@@ -382,7 +411,7 @@ test('the Shipping filters removed on 2026-09-26 are advertised and survive with
 test('a pasted list and its bucket filter survive every Shipping view, past the free-text cap', () => {
   // 40 order numbers ≈ 600 chars — longer than a text param may be.
   const refs = Array.from({ length: 40 }, (_, i) => `02-${15200 + i}-${40000 + i}`).join(',');
-  for (const href of ['/shipping/orders', '/shipping/exceptions', '/fulfilled']) {
+  for (const href of ['/shipping/orders', '/fulfilled']) {
     const locate = at(href).search.locate;
     assert.ok(locate, `${href} locates a pasted list`);
     assert.equal(locate.locator, 'outbound');
@@ -403,6 +432,8 @@ test('a 150-number pasted list and its status + reason filters survive the Inbou
   const refs = Array.from({ length: 150 }, (_, i) => `1Z999AA1${String(10_000_000 + i)}`).join(',');
   const locate = at('/incoming').search.locate;
   assert.ok(locate?.facetParam, '/incoming locates a pasted list with a reason filter');
+  // The sidebar's bucket + reason rows write the params the search's pasted list reads.
+  assert.deepEqual(at('/incoming').controls?.pastedListBuckets, { param: locate.statusParam, facetParam: locate.facetParam });
   const spec = routeParamsFor('/incoming');
   assert.ok(spec);
   const kept = parseRouteParams(
@@ -419,7 +450,7 @@ test('each Shipping view carries the filters and controls its own list reads', (
   assert.equal(shipped.filters?.facetContext, 'outbound.shipped');
   assert.deepEqual(
     shipped.filters?.groups.map((group) => group.param),
-    ['shippedFilter', 'channel', 'carrier', 'statusCategory', 'exceptions'],
+    ['shippedFilter', 'channel', 'carrier', 'statusCategory', 'exceptions', 'cardStatus'],
   );
   // Who touched it, and when — each a button in the body, each a param the list reads.
   const shippedControls = navControlParams(shipped.controls);
@@ -433,8 +464,8 @@ test('each Shipping view carries the filters and controls its own list reads', (
   }
   // "What to ship first": the queue's default order is ship-by, soonest first.
   assert.equal(allocate?.sort?.defaultValue, 'deadline');
-  // The Exceptions workbench reads no staff or date param.
-  assert.equal(at('/shipping/exceptions').controls, undefined);
+  // Exceptions owns its controls and filtering only on the global page.
+  assert.equal(at('/exceptions').page.id, 'exceptions');
 });
 
 test('each Inbound view carries the filters and controls its own list reads, and its saved views keep them', () => {
@@ -496,6 +527,23 @@ test('each Inbound view carries the filters and controls its own list reads, and
   assert.ok(!navControlParams(pipeline.controls).includes('dflag'));
   assert.ok(!navControlParams(docked.controls).includes('inbound'));
   assert.ok(!navControlParams(unboxed.controls).includes('inbound'));
+  // Unboxed's attention pills are its Status facet (ruling A4) — the one writer of `?dflag=`.
+  assert.deepEqual(unboxed.filters?.groups.map((group) => group.param), ['dflag']);
+  assert.ok(unboxed.savedViews?.paramKeys.includes('dflag'));
+});
+
+test('the Unbox station: one context for every tab — its status cuts are facets, its Sort only what every tab sorts by', () => {
+  const station = at('/unbox');
+  assert.equal(station.filters?.facetContext, 'receive');
+  assert.deepEqual(station.filters?.groups.map((group) => group.param), ['dflag', 'ukpi']);
+  const sort = station.controls?.sort;
+  assert.ok(sort);
+  // Unset is each tab's own order; every other option is a column the cards, the Unboxed and the Inbound ledgers sort by.
+  for (const option of sort.options) {
+    if (option.value === sort.defaultValue) continue;
+    assert.ok(isReceivingGridSortable(option.value) && isIncomingGridSortable(option.value), `sort ${option.value}`);
+  }
+  assert.deepEqual(station.controls?.choices ?? [], [], 'Inbound’s Source is no /unbox param');
 });
 
 test('every facet context names a real page or section view, and every recents surface exists', () => {
@@ -524,14 +572,21 @@ test('every facet context names a real page or section view, and every recents s
   }
 });
 
-test('FBM\'s children ARE its painted desk views, Allocate first, and FBM opens on Allocate', () => {
-  assert.deepEqual(getSidebarPageNav('outbound')?.children?.map((child) => child.id), ['orders', 'exceptions']);
-  assert.deepEqual(itemIds(at('/shipping/orders')), ['outbound', 'fulfilled', 'fba', 'label-intake', 'triage', 'exceptions']);
+test('FBM owns Allocate and Labels & docs, while Exceptions stays global', () => {
+  assert.deepEqual(getSidebarPageNav('outbound')?.children?.map((child) => child.id), ['orders', 'label-intake']);
+  assert.deepEqual(itemIds(at('/shipping/orders')), ['outbound', 'fulfilled', 'fba', 'orders', 'label-intake']);
   // The lane map door and the FBM mode card both land on Allocate.
   assert.equal(items(at('/unbox', { view: 'top' })).find((item) => item.id === 'outbound')?.href, '/shipping/orders');
   const modes = at('/fulfilled').sections.find(isLanePageSection);
   assert.equal(modes?.items.find((item) => item.id === 'outbound')?.href, '/shipping/orders');
-  assert.deepEqual(activeIds(at('/shipping/orders')).filter((id) => id !== 'outbound'), ['triage']);
+  assert.deepEqual(activeIds(at('/shipping/orders')).filter((id) => id !== 'outbound'), ['orders']);
+  const uploads = at('/shipping/label-intake');
+  assert.deepEqual(activeIds(uploads).filter((id) => id !== 'outbound'), ['uploads']);
+  const terminalViews = uploads.sections.filter((section) => !isLanePageSection(section)).flatMap((section) => section.items);
+  assert.deepEqual(terminalViews.map((item) => item.id), ['orders', 'uploads', 'labels', 'paperwork']);
+  assert.equal(terminalViews[0]?.label, 'Allocate');
+  assert.equal(uploads.viewKeys, true, 'Allocate and Labels & docs terminal views keep numeric shortcuts');
+  assert.ok(!itemIds(at('/shipping/orders')).includes('exceptions'));
   // No Pick list and no PO paired row anywhere in FBM's nav; the parked Shortage desk lights no view.
   for (const href of ['/shipping/orders', '/shipping/shortage?pair=po']) {
     const labels = items(at(href)).map((item) => item.label);
@@ -546,8 +601,8 @@ test('view=top is the ‹ peek: the lane map with the page lit, the page tools k
   assert.equal(peek.back, null);
   assert.deepEqual(activeIds(peek), ['outbound']);
   assert.equal(items(peek).find((item) => item.id === 'outbound')?.kind, 'drill');
-  assert.equal(peek.search.scope, 'outbound.triage');
-  assert.equal(peek.filters?.facetContext, 'outbound.triage');
+  assert.equal(peek.search.scope, 'outbound.orders');
+  assert.equal(peek.filters?.facetContext, 'outbound.orders');
 
   const station = at('/unbox');
   assert.equal(station.scope, 'section');
@@ -681,9 +736,9 @@ test('ported scan stations use contextual navigation without dropping scan contr
 test('the gate has teeth: a param counts only on the view whose route keeps it', () => {
   const shipping = pageStops('outbound');
   const row = { kind: 'param', id: 'record', source: 'test' } as const;
-  assert.deepEqual(uncoveredRows([{ ...row, view: 'exceptions' }], shipping), []);
-  // `/shipping/orders` does not own `record` — pinned there, it is a gap.
-  assert.equal(uncoveredRows([{ ...row, view: 'triage' }], shipping).length, 1);
+  // Neither visible FBM destination owns the legacy Exceptions record param.
+  assert.equal(uncoveredRows([{ ...row, view: 'exceptions' }], shipping).length, 1);
+  assert.equal(uncoveredRows([{ ...row, view: 'orders' }], shipping).length, 1);
   // Unbox carries the Unbox grammar; an Arrival scan row is not covered by it.
   assert.equal(uncoveredRows([{ kind: 'scanInput', id: 'arrival', source: 'test' }], pageStops('receive')).length, 1);
 });
@@ -711,9 +766,10 @@ test('the parent map paints the Operations band in the ruled order and closes wi
   const map = at('/', { permissions: ALL, view: 'top' });
   // Operator 2026-10-03: "Operations → Live feed, Scan Stations, Receiving,
   // Fulfillment, Inventory changed to Warehouse … and Products at the bottom."
+  // Owner 2026-10-04: Support sits between the Live feed and Scan Stations.
   // Unnamed rows (Sales) keep their relative order between Warehouse and Products.
   assert.deepEqual(
-    items(map).slice(0, 12).map((item) => item.label),
+    items(map).slice(0, 13).map((item) => item.label),
     [
       'Chat',
       'Tasks',
@@ -721,6 +777,7 @@ test('the parent map paints the Operations band in the ruled order and closes wi
       'Exceptions',
       'Media Library',
       'Live feed',
+      'Support',
       'Scan Stations',
       'Receiving',
       'Fulfillment',
@@ -849,68 +906,19 @@ test('/exceptions wears a mode card like Fulfillment: Fulfillment · Inventory �
   assert.deepEqual(parityGaps('exceptions'), []);
 });
 
-test('/operations/live-feed is one root row under the Operations band with its own panel: Outbound · Inbound views, no statuses, no Sort, no date range', () => {
+test('/operations/live-feed is one root row under the Operations band: no views, no controls, no facets; window params survive', () => {
   // The map: one row, its own section after the lanes; no lane, no door, no mode card.
   const map = at('/operations/live-feed', { view: 'top' });
   const row = map.sections.find((section) => section.id === 'live-feed');
   assert.deepEqual(row?.items.map((item) => [item.id, item.label, item.active]), [['live-feed', 'Live feed', true]]);
   assert.equal(map.sections.some((section) => section.id === 'monitor'), false, 'the Monitor lane stays parked');
 
-  const views = (ctx: NavContext) => ctx.sections.flatMap((section) => section.items).map((item) => [item.id, item.active]);
-  const outbound = at('/operations/live-feed?lens=packed&from=2026-09-30&to=2026-09-30');
-  assert.equal(outbound.rollout, 'contextual');
-  assert.equal(outbound.scope, 'section');
-  assert.equal(outbound.page.id, 'live-feed');
-  assert.deepEqual(outbound.back, { label: 'Live feed', mode: 'local' });
-  assert.equal(outbound.sections.some(isLanePageSection), false, 'no lane mode card');
-  assert.equal(outbound.sections.some(isPageModeSection(outbound)), false, 'no page modes');
-  // The views: the two directions, outbound current; never a lane / status, never a Board view.
-  assert.deepEqual(views(outbound), [
-    ['outbound', true],
-    ['inbound', false],
-  ]);
-  for (const section of outbound.sections.filter((s) => !isLanePageSection(s))) {
-    for (const item of section.items) {
-      const url = new URL(item.href, 'http://x');
-      assert.equal(url.pathname, '/operations/live-feed');
-      assert.equal(url.searchParams.get('dir'), item.id);
-      assert.equal(url.searchParams.get('status'), null);
-    }
-  }
-  assert.equal(outbound.viewKeys, true);
-  assert.equal(outbound.search.param, 'q');
-  // Controls: Date by (the direction's lenses) and Handled by; no Sort, no sidebar date range (page chrome).
-  assert.deepEqual(outbound.controls?.choices?.map((choice) => [choice.label, choice.param, choice.options.map((o) => o.value)]), [
-    ['Date by', 'lens', ['entered', 'packed', 'scanned_out', 'delivered']],
-  ]);
-  assert.deepEqual(outbound.controls?.staff, [{ id: 'staff', param: 'staff', label: 'Handled by' }]);
-  assert.equal(outbound.controls?.sort, undefined);
-  assert.equal(outbound.controls?.dateRanges, undefined);
-  // Channel and Carrier facets, counted per direction.
-  assert.equal(outbound.filters?.facetContext, 'live-feed.outbound');
-  assert.deepEqual(outbound.filters?.groups.map((group) => [group.id, group.param, group.multi]), [
-    ['channel', 'channel', false],
-    ['carrier', 'carrier', false],
-  ]);
-  // The range survives (the header writes it); a lane param is not a page param.
-  assert.ok(outbound.params.includes('from') && outbound.params.includes('lens') && outbound.params.includes('carry'));
-  assert.ok(!outbound.params.includes('status') && !outbound.params.includes('sort'));
-
-  // Inbound: its own lenses; Channel only.
-  const inbound = at('/operations/live-feed?dir=inbound');
-  assert.deepEqual(views(inbound), [
-    ['outbound', false],
-    ['inbound', true],
-  ]);
-  assert.deepEqual(inbound.controls?.choices?.[0]?.options.map((o) => o.value), ['entered', 'received', 'unboxed']);
-  assert.deepEqual(inbound.filters?.groups.map((group) => group.id), ['channel']);
-
-  // A receiving-only caller keeps the panel: Inbound alone, with its controls and facets.
-  const receivingOnly = at('/operations/live-feed?dir=inbound', { permissions: new Set(['receiving.view']) });
-  assert.equal(receivingOnly.scope, 'section');
-  assert.deepEqual(views(receivingOnly), [['inbound', true]]);
-  assert.equal(receivingOnly.controls?.choices?.[0]?.label, 'Date by');
-  assert.equal(receivingOnly.filters?.facetContext, 'live-feed.inbound');
+  const feed = at('/operations/live-feed?window=week&date=2026-09-30');
+  assert.equal(feed.rollout, 'contextual');
+  assert.equal(feed.page.id, 'live-feed');
+  assert.equal(feed.controls, undefined);
+  assert.equal(feed.filters, undefined);
+  assert.deepEqual([...feed.params].sort(), ['date', 'open', 'window']);
   assert.deepEqual(parityGaps('live-feed'), []);
 });
 

@@ -175,8 +175,8 @@ export function TriageSelectBar({
   /** Null when the host pages on the server — the size is its own; no per-page menu. */
   pageMode: TriagePageMode | null;
   onPageModeChange: (mode: TriagePageMode) => void;
-  /** Status filter chips with their counts. */
-  summary: ReactNode;
+  /** Non-filter list read-out (A4 2026-10-04: status filter chips live in the page's sidebar facets, not here). */
+  summary?: ReactNode;
   onToggleAll: () => void;
   onClear: () => void;
   /** The selection's verbs — painted while one or more are checked (Law 5). */

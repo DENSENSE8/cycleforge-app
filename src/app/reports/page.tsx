@@ -130,7 +130,7 @@ function ReportsPageInner() {
       <main className="mx-auto flex min-h-0 min-w-0 w-full max-w-[1800px] flex-1 flex-col px-3 py-3">
         {tab === 'activity' ? (
           <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <TaskActivityReport dateKey={dateKey} />
+            <TaskActivityReport dateKey={dateKey} staffId={staffId} />
           </section>
         ) : error ? (
           <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>

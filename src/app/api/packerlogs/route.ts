@@ -29,8 +29,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const weekStart = searchParams.get('weekStart') || '';
     const weekEnd = searchParams.get('weekEnd') || '';
     // The Shipped desk's view filters (`shippedFilter`, `carrier`,
-    // `statusCategory`, `exceptions`) — answered in SQL, one predicate with
-    // the sidebar facet counts. Absent params narrow nothing.
+    // `statusCategory`, `exceptions`, `channel`, `cardStatus`) — answered in
+    // SQL, one predicate with the sidebar facet counts. Absent params narrow nothing.
     const shippedFilters = readShippedDeskFilters(searchParams);
     // A picked day (`dateFrom`/`dateTo`) is the list window even with no
     // time-of-day. The week bucket around that day must not leak in.

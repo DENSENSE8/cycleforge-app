@@ -12,7 +12,7 @@
  */
 
 import type { OrgId } from '@/lib/tenancy/constants';
-import { extractCanonicalTracking, last8FromStoredTracking } from '@/lib/tracking-format';
+import { extractCanonicalTracking, last8FromStoredTracking, trackingDigitsLast8Strict } from '@/lib/tracking-format';
 import { trackingDigits } from './digit-prefix-near-miss';
 
 
@@ -42,7 +42,7 @@ export function buildScanProbeKeys(trackingNumber: string): ScanProbeKeys {
     canonical,
     stnLast8: stnLast8.length >= 8 ? stnLast8 : '',
     stnDigits: stnDigits.length >= 8 ? stnDigits : '',
-    scanLast8: scanDigits.length >= 8 ? scanDigits.slice(-8) : '',
+    scanLast8: trackingDigitsLast8Strict(scanDigits),
     poRef,
     poDigits: poDigits.length >= 8 ? poDigits : '',
   };
@@ -101,7 +101,14 @@ const REF_DIGITS = `regexp_replace(COALESCE(reference_number, ''), '[^0-9]', '',
  * $1 canonical · $2 stnLast8 · $3 stnDigits · $4 scanLast8 · $5 poRef · $6 poDigits · $7 orgId.
  * Each CTE mirrors one legacy tier query; an empty key skips its tier, and a
  * lossy tier (last-8, digit-prefix, near-miss) runs only when the tier that
- * outranks it missed — the same short-circuit the old early returns gave.
+ * outranks it found no carton. Last-8 is the package's identity (operator
+ * 2026-10-04): a paste, a scan and a stored variant of one label disagree on
+ * their envelopes (`420`+ZIP, FedEx `96…`) but never on their last 8 digits —
+ * so an exact STN row that has no carton (a pasted variant) does not stop the
+ * last-8 tier from finding the box, and every tier counts DISTINCT cartons, so
+ * two variants of one label on one box are one hit, not an ambiguity. The
+ * last-8 tier also counts each shipment as its NEWEST carton — what `stn_exact`
+ * picks for the same row — so a box re-minted under one shipment is one hit.
  * Every tier is index-served (2026-09-29f / 2026-09-29g migrations).
  */
 export const SCAN_MATCH_PROBE_SQL = `
@@ -114,63 +121,75 @@ WITH stn_exact AS (
    ORDER BY r.id DESC NULLS LAST
    LIMIT 1
 ), stn_last8 AS (
-  SELECT stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source,
-         r.zoho_purchaseorder_id AS po_id, ${lineCount('r.id')}
-    FROM (
-      SELECT stn.id FROM shipping_tracking_numbers stn
-       WHERE $2 <> ''
-         AND NOT EXISTS (SELECT 1 FROM stn_exact)
-         AND (RIGHT(regexp_replace(stn.tracking_number_normalized, '\\D', '', 'g'), 8) = $2
-           OR RIGHT(regexp_replace(stn.tracking_number_raw, '\\D', '', 'g'), 8) = $2)
-      OFFSET 0
-    ) stn
-    JOIN receiving_carton r ON r.shipment_id = stn.id
-   WHERE ${ORG_JOIN}
-   ORDER BY r.id DESC
-   LIMIT 2
+  SELECT DISTINCT ON (receiving_id) * FROM (
+    SELECT DISTINCT ON (stn.id) stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source,
+           r.zoho_purchaseorder_id AS po_id, ${lineCount('r.id')}
+      FROM (
+        SELECT stn.id FROM shipping_tracking_numbers stn
+         WHERE $2 <> ''
+           AND NOT EXISTS (SELECT 1 FROM stn_exact WHERE receiving_id IS NOT NULL)
+           AND (RIGHT(regexp_replace(stn.tracking_number_normalized, '\\D', '', 'g'), 8) = $2
+             OR RIGHT(regexp_replace(stn.tracking_number_raw, '\\D', '', 'g'), 8) = $2)
+        OFFSET 0
+      ) stn
+      JOIN receiving_carton r ON r.shipment_id = stn.id
+     WHERE ${ORG_JOIN}
+     ORDER BY stn.id, r.id DESC
+  ) newest
+  ORDER BY receiving_id DESC
+  LIMIT 2
 ), stn_prefix AS (
-  SELECT stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source,
-         r.zoho_purchaseorder_id AS po_id, ${lineCount('r.id')}
-    FROM (
-      SELECT stn.id FROM shipping_tracking_numbers stn
-       WHERE $3 <> ''
-         AND NOT EXISTS (SELECT 1 FROM stn_exact)
-         AND (SELECT count(*) FROM stn_last8) <> 1
-         AND ${nearMissDigits(STN_DIGITS, '$3')}
-      OFFSET 0
-    ) stn
-    JOIN receiving_carton r ON r.shipment_id = stn.id
-   WHERE ${ORG_JOIN}
-   ORDER BY r.id DESC
-   LIMIT 2
+  SELECT * FROM (
+    SELECT DISTINCT ON (r.id) stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source,
+           r.zoho_purchaseorder_id AS po_id, ${lineCount('r.id')}
+      FROM (
+        SELECT stn.id FROM shipping_tracking_numbers stn
+         WHERE $3 <> ''
+           AND NOT EXISTS (SELECT 1 FROM stn_exact WHERE receiving_id IS NOT NULL)
+           AND (SELECT count(*) FROM stn_last8) <> 1
+           AND ${nearMissDigits(STN_DIGITS, '$3')}
+        OFFSET 0
+      ) stn
+      JOIN receiving_carton r ON r.shipment_id = stn.id
+     WHERE ${ORG_JOIN}
+     ORDER BY r.id DESC, stn.id
+  ) cartons
+  ORDER BY receiving_id DESC
+  LIMIT 2
 ), inbound AS (
-  SELECT NULL::int AS shipment_id, rl.receiving_id, 'unmatched'::text AS receiving_source,
-         rc.zoho_purchaseorder_id AS po_id, ${lineCount('rl.receiving_id')}
-    FROM inbound_purchase_order_mirror m
-    JOIN inbound_purchase_order_links l
-      ON l.organization_id = m.organization_id
-     AND l.source_type = m.source_type
-     AND l.source_order_id = m.source_order_id
-    JOIN receiving_line rl
-      ON rl.id = l.receiving_line_id
-     AND rl.organization_id = m.organization_id
-    LEFT JOIN receiving_carton rc ON rc.id = rl.receiving_id
-   WHERE $1 <> ''
-     AND m.organization_id = $7::uuid
-     AND NULLIF(upper(regexp_replace(COALESCE(m.tracking_number, ''), '[^A-Za-z0-9]', '', 'g')), '') = $1
-   ORDER BY rl.id DESC
-   LIMIT 2
+  SELECT * FROM (
+    SELECT DISTINCT ON (rl.receiving_id) NULL::int AS shipment_id, rl.receiving_id, 'unmatched'::text AS receiving_source,
+           rc.zoho_purchaseorder_id AS po_id, ${lineCount('rl.receiving_id')}
+      FROM inbound_purchase_order_mirror m
+      JOIN inbound_purchase_order_links l
+        ON l.organization_id = m.organization_id
+       AND l.source_type = m.source_type
+       AND l.source_order_id = m.source_order_id
+      JOIN receiving_line rl
+        ON rl.id = l.receiving_line_id
+       AND rl.organization_id = m.organization_id
+      LEFT JOIN receiving_carton rc ON rc.id = rl.receiving_id
+     WHERE m.organization_id = $7::uuid
+       AND (($1 <> '' AND NULLIF(upper(regexp_replace(COALESCE(m.tracking_number, ''), '[^A-Za-z0-9]', '', 'g')), '') = $1)
+         OR ($2 <> '' AND RIGHT(regexp_replace(COALESCE(m.tracking_number, ''), '\\D', '', 'g'), 8) = $2))
+     ORDER BY rl.receiving_id DESC, rl.id DESC
+  ) cartons
+  ORDER BY receiving_id DESC
+  LIMIT 2
 ), scan_last8 AS (
-  SELECT s.id AS scan_id, s.receiving_id, rc.zoho_purchaseorder_id AS po_id, ${lineCount('s.receiving_id')}
-    FROM (
-      SELECT id, receiving_id FROM receiving_scans
-       WHERE $4 <> ''
-         AND RIGHT(regexp_replace(tracking_number, '\\D', '', 'g'), 8) = $4
-      OFFSET 0
-    ) s
-    LEFT JOIN receiving_carton rc ON rc.id = s.receiving_id
-   ORDER BY s.id DESC
-   LIMIT 2
+  SELECT * FROM (
+    SELECT DISTINCT ON (s.receiving_id) s.id AS scan_id, s.receiving_id, rc.zoho_purchaseorder_id AS po_id, ${lineCount('s.receiving_id')}
+      FROM (
+        SELECT id, receiving_id FROM receiving_scans
+         WHERE $4 <> ''
+           AND RIGHT(regexp_replace(tracking_number, '\\D', '', 'g'), 8) = $4
+        OFFSET 0
+      ) s
+      LEFT JOIN receiving_carton rc ON rc.id = s.receiving_id
+     ORDER BY s.receiving_id, s.id DESC
+  ) cartons
+  ORDER BY scan_id DESC
+  LIMIT 2
 ), po_ref AS (
   SELECT zoho_purchaseorder_id
     FROM zoho_po_mirror
@@ -276,8 +295,10 @@ export function pickCartonMatch(probe: ScanMatchProbe): CartonMatch | null {
           lineCount: Number(row.line_count) || 0,
         };
 
+  // An exact STN row that carries no carton (a pasted variant, an outbound
+  // label) is not the box: the last-8 tiers still look for it.
   const exact = probe.stnExact[0];
-  const stnHit = exact
+  const stnHit = exact?.receiving_id != null
     ? fromCarton('stn_exact', exact)
     : probe.stnLast8.length === 1
       ? fromCarton('stn_last8', probe.stnLast8[0])

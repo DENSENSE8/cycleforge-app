@@ -293,6 +293,17 @@ model); shrink-only baseline `scripts/identifier-last8.baseline.json` seeded wit
 | B1 | Last-8 scope: which identifiers (tracking, order #, serial, ticket, PO, carton) and where (dense faces only vs also record bodies)? Supersedes the 2026-09-30 "ids always full on record bodies" ruling or not? | B2 body text; record-body files |
 | R1 | Set `ttsr.repeatMode: after-gap` so the rules fire every time in long sessions? | omp settings (operator scope) |
 
+### Operator rulings (2026-10-04, answers to the table above)
+
+| # | Ruling | Consequence |
+|---|---|---|
+| A1 | **Retire `DataTable`'s built-in record-selection controls.** `sheetFind`, `filter` (`DataTableFilterMenu`), `sortMenu` (`DataTableSortMenu`), `views` (`WorkbenchViewsMenu`, incl. the `sheetSavedViewConfigForTable` default), `dateMenu` (`DataTableDateMenuControl`) leave `DataTable`; every consumer declares them in `NAV_PAGE_DECLS`. Non-selection chrome (toolbar actions, page size, export, zoom, record-view switch) stays. "To-ship is the gold" is void. | Those props are interrupt triggers; ledger entries for the five subcomponents. |
+| A2 | **Deferred** — the mobile home for filters will be defined later. | Exempt `src/app/m/**` + `src/components/mobile/**` from A2/A3 for now (rule body says "pending mobile ruling"). |
+| A3 | **CSV imports deferred.** | Exempt the three CSV staging hosts. Resolver flyout, `LabelsProductsWorkspace`, `GoalsAnalyticsTab` are NOT exempt: they sit in the A3 baseline as debt. |
+| A4 | **Yes — status chips that filter are controls, declared per page** in that page's contextual sidebar (`NAV_PAGE_DECLS[page]` + its facet context), never a shared cross-codebase chip rail in a body. | The 14 `summary`-slot chip rails move to per-page sidebar facets; chip components are interrupt triggers. |
+| B1 | **Last 8 when the identifier is in a list** (rows, cards, chips, scan tape — any identifier kind). Record bodies keep the full id (2026-09-30 ruling stands). Copy is always the full value; matching uses `normalizeTrackingLast8`. | B2 body text; no record-body changes. |
+| R1 | **Yes** — `ttsr.repeatMode: after-gap` saved to the global omp config (`repeatGap: 10`). | Rules fire again after a 10-message gap in long sessions. |
+
 ---
 
 ## 4. Acceptance (each item is observed, not claimed)
@@ -324,3 +335,18 @@ model); shrink-only baseline `scripts/identifier-last8.baseline.json` seeded wit
   **LoopRules** (A3, B3 + mutants + baselines), **SidebarDuplicates** (migration step 1),
   **SidebarMissing** (step 2, one page group each), **IdentityForks** (B display forks, then match
   forks), **Ledger** (A4, B4, `pinned.json`). RuleAuthor goes first; the rest consume its rule files.
+
+## 6. Status (2026-10-04, end of session)
+
+| Acceptance | State |
+|---|---|
+| 1 rules loaded | Both interrupt rules `[native]` in `omp ttsr list`; contract rules are rulebook rules (`rule://`), read 11× by a headless probe. |
+| 2 `ttsr test` | 40/40 + CatalogImportReview exemption cases. Transcripts were in the session's `local://ttsr-evidence.md`. |
+| 3 scan before → after | A2: inventory 21 (a) + 9 (b) → **5 files**, all decided debt: `GoalsAnalyticsTab`, `ReasonCodesManagementTab` (needs a route-tree node), `EcwidOrderScopeFilters` (resolver flyout), `pickup-record-model.tsx` (record-internal item filter), `features/support/SupportDesk.tsx` (another session's untracked file; its sidebar has no `status` facet). B2: 24 files / 45 sites → **0**. |
+| 4 headless session | The specified prompt ended in a `NAV_PAGE_DECLS` + facet change via the contract rule (no interrupt needed); a forced bad write fired `ttsr_triggered` and the file was never created. |
+| 5 loop | `spec:sweep --only contracts`: both new probes pass; the anchor's 2 errors are the pre-existing `nav.every-page-contextual-sidebar` live-feed rows. `spec:loop --plant --attempts 0`: `sidebar-sort-menu-in-body` and `identifier-hand-rolled-last8` caught. Baselines: sidebar 5 files, last-8 0. |
+| 6 GEX45 | Pushed by explicit path on operator instruction, knowing HEAD will **not** typecheck: this slice depends on other sessions' uncommitted work (`NavBulkChips`, `bulk-list-view`, `useSheetColumns`, route-tree `SEARCH_PATHS`/`supportHref`, `@/lib/operational-identity`, `RepairStatusList`, label-batch clients, `ReceivingLineRow` fields, and ExceptionsDesk `lock` callers already gone from the working tree). The GEX45 static sweep stays red until those sessions land. The full working tree typechecks except `features/support/SupportDesk.tsx`. |
+| 7 `:3050` proof | Partial. Screenshots taken before the lane went down (~16:01, `tailscale serve` holds tcp 3050). Owed: `/shipping/orders?stage=picked`, `/operations/imports` status/outcome, `/incoming?ref_in=…` buckets + reasons, `/search/list`, `/unbox` tabs, `/stations/live`, `/inventory/stock` health facet, `/incoming?lane=docked&dkind=return` count, Shipped `?cardStatus=` (server-side now). |
+| 8 ledger | `record-selection-controls-left-the-body` retired with `forbiddenSource`; queued entries for FilterRefinementBar, FilterDropdownSelect, FilterMenu-in-body, body chip rails, DataTableFilterMenu (CSV host only), MediaViewsMenu; `operational-identity` extended. `pinned.json` no longer has the To-ship carve-out. |
+
+Known gaps: Photos `MediaViewsMenu` (NavSavedViewsSchema has no store/payload adapter), task-board `?project=` chip (needs a `home` facet group), `/unbox` Source dropped (`receive` has no per-tab controls), per-unit lease for `rule:layout.sidebar-owns-table-controls` needs a two-line change in Garisek-OS `scripts/spec-kernel/loop.ts`. Ready queue `GET /api/shipping/ready-queue` 500s (`fba_shipment_status_enum: ""`), seen during the run, not caused by it.

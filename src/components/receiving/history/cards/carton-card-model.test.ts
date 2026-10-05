@@ -127,21 +127,23 @@ test('Docked preserves arrival order instead of prioritizing an uninspected shor
 
 test('Unboxed exposes the unboxer as its mandatory far-right model fact', () => {
   const lines = [
-    row({ id: 21, receiving_id: 4, workflow_status: 'DONE', unboxed_at: '2026-09-25T23:10:00Z', unboxed_by_name: 'Dana', unbox_opened_by_name: 'Lin', received_done_at: '2026-09-27T18:00:00Z', quantity_received: 1, quantity_expected: 1 }),
+    row({ id: 21, receiving_id: 4, workflow_status: 'DONE', unboxed_at: '2026-09-25T23:10:00Z', unboxed_by_name: 'Dana', unboxed_by_id: 7, unbox_opened_by_name: 'Lin', unbox_opened_by_id: 9, received_done_at: '2026-09-27T18:00:00Z', quantity_received: 1, quantity_expected: 1 }),
     row({ id: 22, receiving_id: 4, workflow_status: 'DONE', unbox_opened_at: '2026-09-25T22:42:00Z', received_done_at: '2026-09-27T18:00:00Z', quantity_received: 1, quantity_expected: 1 }),
   ];
   const model = cartonCardModel(carton(lines), 'received');
   const card = cartonRecordCard(model);
-  assert.deepEqual(model.topRight, { label: 'Unboxed by', value: 'Dana' });
+  // The staff id rides with the name — the card colours the unboxer by it (`StaffCell`).
+  assert.deepEqual(model.topRight, { label: 'Unboxed by', value: 'Dana', staffId: 7 });
+  assert.deepEqual(model.unboxedBy, { id: 7, name: 'Dana' });
   assert.equal(card.status.kind, 'none');
 });
 
 test('Unboxed falls back to the staffer who opened the carton when completion omitted its actor', () => {
   const model = cartonCardModel(
-    carton([row({ id: 23, receiving_id: 4, unbox_opened_at: day, unbox_opened_by_name: 'Lin' })]),
+    carton([row({ id: 23, receiving_id: 4, unbox_opened_at: day, unbox_opened_by_name: 'Lin', unbox_opened_by_id: 9 })]),
     'unboxed',
   );
-  assert.deepEqual(model.topRight, { label: 'Unboxed by', value: 'Lin' });
+  assert.deepEqual(model.topRight, { label: 'Unboxed by', value: 'Lin', staffId: 9 });
 });
 
 test('Docked keeps expected arrival in its top-right status slot', () => {
@@ -162,6 +164,6 @@ test('Docked keeps expected arrival in its top-right status slot', () => {
 test('Unboxed always exposes the staff fact when no name was recorded', () => {
   const line = row({ id: 31, receiving_id: 5, workflow_status: 'DONE', received_done_at: '2026-09-27T18:00:00Z', quantity_received: 1, quantity_expected: 1 });
   const model = cartonCardModel(carton([line]), 'received');
-  assert.deepEqual(model.topRight, { label: 'Unboxed by', value: 'Not recorded' });
+  assert.deepEqual(model.topRight, { label: 'Unboxed by', value: 'Not recorded', staffId: null });
   assert.equal(cartonRecordCard(model).status.kind, 'none');
 });

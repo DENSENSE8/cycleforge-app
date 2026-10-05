@@ -21,7 +21,7 @@ export const RECEIVE_QUEUE_VIEW = triageView({
   bodyTestId: 'unbox-cards',
   storageKeys: { pageMode: 'cf:unbox-cards:scroll', scrollTop: 'cf:unbox-cards:scroll-top' },
   recordParams: ['recvId', 'lineId'],
-  // The KPI cut (`?ukpi=`, one at a time): the host filters the rows it loads.
+  // The KPI cut (`?ukpi=`, one at a time, the sidebar's KPI facet): the host filters the rows it loads.
   chips: { owner: 'host', param: UNBOX_KPI_FILTER_PARAM },
   paging: 'client',
   // The carton's workflow state is the rail; the unboxer, once there is one, is the far-right fact.

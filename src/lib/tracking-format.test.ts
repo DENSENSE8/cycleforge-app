@@ -13,6 +13,9 @@ import {
   resolveTrackingOpenUrl,
   searchableTrackingNumber,
   uspsSearchableTrackingNumber,
+  trackingDigitsLast8Strict,
+  trackingCanonicalLast8,
+  trackingRawTail8,
 } from './tracking-format';
 
 // ─── The reconciliation invariant ─────────────────────────────────────────────
@@ -239,4 +242,19 @@ test('getTrackingUrl / byCarrier: OnTrac · LaserShip · GSO map to official hos
   const gso = 'AB12345678901234';
   assert.match(getTrackingUrl(gso)!, /gls-us\.com/i);
   assert.match(getTrackingUrlByCarrier(gso, 'GSO')!, /gls-us\.com/i);
+});
+
+test('last-8 variants keep each call site\'s matching semantics', () => {
+  // Strict digits: '' under 8 digits (loose sibling returns the short run).
+  assert.equal(trackingDigitsLast8Strict('1Z 999 AA1 01 2345 6784'), '23456784');
+  assert.equal(trackingDigitsLast8Strict('9400 1112 0206 1234 5678 90'), '34567890');
+  assert.equal(trackingDigitsLast8Strict('AB1234'), '');
+  assert.equal(trackingDigitsLast8Strict(null), '');
+  assert.equal(last8FromStoredTracking('AB1234'), '1234');
+  // Canonical: uppercase alnum tail, separators dropped.
+  assert.equal(trackingCanonicalLast8('1z999aa1-0123-4567-84'), '23456784');
+  // Raw: exact trailing 8 (whole value when shorter) — pairs with SQL RIGHT(col, 8).
+  assert.equal(trackingRawTail8('TBA123456789012'), '56789012');
+  assert.equal(trackingRawTail8('abc'), 'abc');
+  assert.equal(trackingRawTail8(undefined), '');
 });

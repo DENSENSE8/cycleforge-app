@@ -30,7 +30,6 @@ import {
   normalizeUnboxWorkspaceTabParams,
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
-import { SUPPORT_MODES } from '@/components/sidebar/support/support-sidebar-shared';
 import {
   applyToShipTriageFacet,
   getToShipTriageFacetFromSearch,
@@ -168,25 +167,10 @@ test('EVERY Unbox workbench tab wire survives surface hygiene', () => {
   );
 });
 
-test('Support mode=tickets survives the route registry (default deep-link wire)', () => {
-  // VoicemailDetail writes `?mode=tickets`; the hand-copied enum omitted the
-  // default token. Round-trip SUPPORT_MODES so a deep link is not stripped.
-  const spec = routeParamsFor('/support');
-  assert.ok(spec);
-  for (const mode of SUPPORT_MODES) {
-    assert.equal(
-      parseRouteParams(spec, new URLSearchParams(`mode=${mode}`)).get('mode'),
-      mode,
-      `?mode=${mode} must survive /support registry`,
-    );
-  }
-  assert.equal(parseRouteParams(spec, new URLSearchParams('mode=nonsense')).get('mode'), null);
-});
-
 test('default-omit mode wires survive hygiene (pack/locations/sourcing/home/ops)', () => {
-  // Same class as support `tickets`: defaults usually omitted from the URL, but
-  // deep links / assistant copy write them. Hand-copied enums that forgot the
-  // default token stripped them on the next hygiene pass.
+  // Defaults are usually omitted from the URL, but deep links / assistant copy
+  // write them. Hand-copied enums that forgot the default token stripped them
+  // on the next hygiene pass.
   const cases: Array<{ path: string; key: string; wire: string }> = [
     { path: '/pack', key: 'packMode', wire: 'standard' },
     { path: '/inventory/locations', key: 'tab', wire: 'labels' },
@@ -463,7 +447,7 @@ test('the mobile RouteShell pane param is ambient on every shell that mounts it'
   // A live defect until 2026-07-29: `RouteShell` is a shared DS component read
   // through a constant, so no route declared `?pane=` and the hygiene hook
   // stripped it the instant the operator tapped the mobile Actions tab.
-  for (const route of ['/test', '/pick', '/sourcing', '/support', '/unbox', '/receiving/history']) {
+  for (const route of ['/test', '/pick', '/sourcing', '/unbox', '/receiving/history']) {
     const spec = routeParamsFor(route)!;
     assert.equal(
       parseRouteParams(spec, new URLSearchParams('pane=actions')).get('pane'),

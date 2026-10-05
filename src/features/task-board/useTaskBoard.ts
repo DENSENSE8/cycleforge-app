@@ -2,21 +2,19 @@
 
 /**
  * The Tasks board's state: the two feeds (tasks + today's checklist) and the
- * URL (`?tab=` view, `?filter=` status, `?scope=` whose, `?q=` find,
- * `?project=` one project, `?layout=` list or columns, `?ticket=` helpdesk
- * statuses, `?group=` / `?sort=` the Display menu, `?task=` / `?check=` the
- * open row), plus the staffer's remembered checklist column and Display
- * choice. React Query dedupes the fetches, so the sidebar counts and
- * the table read the same rows.
+ * URL (`?tab=` view, `?filter=` status, `?scope=` whose, `?group=` / `?sort=`
+ * — the contextual sidebar's controls — `?q=` find, `?project=` one project,
+ * `?layout=` list or columns, `?task=` / `?check=` the open row), plus the
+ * staffer's remembered checklist column and Group by / Sort. React Query dedupes the
+ * fetches. Support items live on /support; the task feed never carries them.
  */
 
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentPSTDateKey } from '@/utils/date';
 import { useDailyChecks, useToggleCheck } from '@/lib/daily-checks/use-daily-checks';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
-import { taskDeskQueryOptions, useTaskDesk, type TaskDeskPatch, type TaskDeskScope } from '@/features/tasks/useTaskDesk';
+import { useTaskDesk, type TaskDeskPatch, type TaskDeskScope } from '@/features/tasks/useTaskDesk';
 import { useSetting } from '@/hooks/useSettings';
 import {
   TASK_BOARD_CHECKLIST_COLUMN_SETTING,
@@ -25,14 +23,7 @@ import {
 } from '@/lib/settings/registry';
 import { toast } from '@/lib/toast';
 import { buildDailyTaskRows } from '@/features/home/grid/daily-task-row';
-import { sortTaskDeskRows, taskDeskRowFromWire, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
-import {
-  parseTicketStatusParam,
-  taskMatchesTicketStatuses,
-  ticketStatusCounts,
-  ticketStatusParam,
-} from '@/lib/tasks/ticket-status-filter';
-import type { TicketStatus } from '@/design-system/tokens/ticket-status';
+import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import {
   parseTaskBoardGroupBy,
   parseTaskBoardSort,
@@ -69,7 +60,6 @@ export function parseTaskBoardLayout(raw: string | null): TaskBoardLayout {
 
 /** Wide triage's columns, left → right (the checklist stays the pinned column). */
 export const TASK_BOARD_COLUMNS = [
-  { type: 'ticket', label: 'Support tickets' },
   { type: 'task', label: 'Tasks' },
   { type: 'project', label: 'Projects' },
 ] as const;
@@ -91,23 +81,14 @@ export interface TaskBoardState {
   /** `?project=` — one project's tasks, or null. */
   project: string | null;
   layout: TaskBoardLayout;
-  /** Display · Group by (P3): `?group=`, else the staffer's remembered choice, else Type (Long-term projects: Project). */
+  /** Group by (`?group=`, the sidebar's Group by row), else Type (Long-term projects: Project). */
   group: TaskBoardGroupBy;
-  /** Display · Order by (P3): `?sort=`, else the staffer's remembered choice, else Urgency. */
+  /** Order by (`?sort=`, the sidebar's Sort row), else Urgency. */
   sort: TaskBoardSort;
-  /** Pick a grouping: the URL carries it and the staffer's setting remembers it. */
-  setGroup: (group: TaskBoardGroupBy) => void;
-  /** Pick an order: the URL carries it and the staffer's setting remembers it. */
-  setSort: (sort: TaskBoardSort) => void;
   /** `?compose=1` — the New task sheet is open. */
   composing: boolean;
   /** `?note=` — the headline ⌘K's New task "<query>" carried in from another page. Read once, then stripped. */
   composeNote: string | null;
-  /** `?ticket=` — helpdesk statuses (OR); a task passes when its anchor or a linked ticket is in one. Empty = no filter. */
-  ticketStatuses: readonly TicketStatus[];
-  /** Tasks per helpdesk status over what the board would show WITHOUT the ticket filter — the chip rail's counts. */
-  ticketCounts: Readonly<Record<TicketStatus, number>>;
-  setTicketStatuses: (next: readonly TicketStatus[]) => void;
   /** Every row in scope, sorted. */
   rows: readonly TaskBoardRow[];
   /** What the list paints: find × view × status × project (checklist rows leave for the pinned column). */
@@ -154,44 +135,28 @@ export function useTaskBoard(): TaskBoardState {
   const layout = parseTaskBoardLayout(searchParams.get('layout'));
   const composing = searchParams.get('compose') === '1';
   const composeNote = searchParams.get('note');
-  const rawTicket = searchParams.get('ticket');
-  const ticketStatuses = useMemo(() => parseTicketStatusParam(rawTicket), [rawTicket]);
-  const ticketActive = ticketStatuses.length > 0;
   const rawTask = searchParams.get('task');
   const rawCheck = searchParams.get('check');
   const openKey =
     rawTask && /^\d+$/.test(rawTask) ? `task:${rawTask}` : rawCheck && /^\d+$/.test(rawCheck) ? `checklist:${rawCheck}` : null;
-  // P3 Display: `?group=` / `?sort=` win (a shared link), else the staffer's remembered choice (the click answers
-  // before the write lands), else the house default — Type · Urgency, today's board. A single-type view has no type
+  // Sort / Group by are the sidebar's (`NAV_PAGE_DECLS.home.controls`, operator law 2026-10-04): the URL is the truth
+  // both the sidebar and the board read, unset = the house default — Type · Urgency. A single-type view has no type
   // split, so Type there reads as the view's own shape: Long-term projects groups by project, the rest stay flat.
+  const urlGroup = parseTaskBoardGroupBy(searchParams.get('group')) ?? 'type';
+  const group: TaskBoardGroupBy = view === 'project' && urlGroup === 'type' ? 'project' : urlGroup;
+  const sort: TaskBoardSort = parseTaskBoardSort(searchParams.get('sort')) ?? 'urgency';
   const groupSetting = useSetting<TaskBoardGroupBy>('desk', TASK_BOARD_GROUP_SETTING);
   const sortSetting = useSetting<TaskBoardSort>('desk', TASK_BOARD_SORT_SETTING);
-  const [groupLocal, setGroupLocal] = useState<TaskBoardGroupBy | null>(null);
-  const [sortLocal, setSortLocal] = useState<TaskBoardSort | null>(null);
-  const groupPicked =
-    parseTaskBoardGroupBy(searchParams.get('group')) ?? groupLocal ?? parseTaskBoardGroupBy(groupSetting.value) ?? 'type';
-  const group: TaskBoardGroupBy = view === 'project' && groupPicked === 'type' ? 'project' : groupPicked;
-  const sort: TaskBoardSort =
-    parseTaskBoardSort(searchParams.get('sort')) ?? sortLocal ?? parseTaskBoardSort(sortSetting.value) ?? 'urgency';
 
   const checks = useDailyChecks(dateKey);
   const tasks = useTaskDesk('all', scope);
-  // The ticket filter is answered in SQL (`?ticketStatus=`), so a status past the unfiltered page still lands.
-  const ticketQuery = useQuery({ ...taskDeskQueryOptions('all', scope, ticketStatuses), enabled: ticketActive });
   const toggleCheck = useToggleCheck(dateKey);
 
   // The server renders with an empty query cache while the client's may be
   // warm already: hydrate against the server's view, read the cache after.
   const hydrated = useSyncExternalStore(subscribeNothing, () => true, () => false);
   const checksData = hydrated ? checks.data : undefined;
-  const allTaskRows = hydrated ? tasks.rows : NO_TASKS;
-  const ticketData = hydrated ? ticketQuery.data : undefined;
-  // Until the filtered read lands, the loaded page narrows in place — same rule, no skeleton flash.
-  const taskRows = useMemo<readonly TaskDeskRow[]>(() => {
-    if (!ticketActive) return allTaskRows;
-    if (ticketData) return sortTaskDeskRows(ticketData.map(taskDeskRowFromWire));
-    return allTaskRows.filter((row) => taskMatchesTicketStatuses(row, ticketStatuses));
-  }, [allTaskRows, ticketActive, ticketData, ticketStatuses]);
+  const taskRows = hydrated ? tasks.rows : NO_TASKS;
 
   const checklistAll = useMemo<TaskBoardRow[]>(() => {
     const done = new Set(checksData?.mine?.doneItemIds ?? []);
@@ -200,12 +165,10 @@ export function useTaskBoard(): TaskBoardState {
     );
   }, [checksData, dateKey]);
 
-  // The checklist is the viewer's own shift; it has no "handed off" half,
-  // and no helpdesk status either: a ticket filter leaves tasks only.
+  // The checklist is the viewer's own shift; it has no "handed off" half.
   const rows = useMemo<TaskBoardRow[]>(
-    () =>
-      sortTaskBoardRowsBy([...(scope === 'mine' && !ticketActive ? checklistAll : []), ...taskRows.map(taskBoardRowFromTask)], sort),
-    [checklistAll, scope, taskRows, ticketActive, sort],
+    () => sortTaskBoardRowsBy([...(scope === 'mine' ? checklistAll : []), ...taskRows.map(taskBoardRowFromTask)], sort),
+    [checklistAll, scope, taskRows, sort],
   );
 
   // The pinned column is remembered per staffer; the click answers before the write lands.
@@ -229,6 +192,7 @@ export function useTaskBoard(): TaskBoardState {
   const counts = useMemo(() => taskBoardViewCounts(found), [found]);
   const projects = useMemo(() => taskBoardProjects(found), [found]);
   const checklist = useMemo(() => checklistAll.filter((row) => taskBoardFindMatches(row, query)), [checklistAll, query]);
+  const nowMs = tasks.nowMs;
   const visible = useMemo(
     () =>
       found.filter(
@@ -252,22 +216,6 @@ export function useTaskBoard(): TaskBoardState {
     }));
   }, [found, status, project]);
 
-  // Each chip counts what tapping it alone would show: every other filter applies, the ticket filter does not.
-  const ticketCounts = useMemo(
-    () =>
-      ticketStatusCounts(
-        allTaskRows.filter((task) => {
-          const row = taskBoardRowFromTask(task);
-          return (
-            taskBoardFindMatches(row, query) &&
-            (layout === 'columns' || taskBoardViewMatches(row, view)) &&
-            taskBoardStatusMatches(row, status) &&
-            (project == null || row.project === project)
-          );
-        }),
-      ),
-    [allTaskRows, query, layout, view, status, project],
-  );
 
   const setParams = useCallback(
     (patch: Record<string, string | null>) => {
@@ -282,39 +230,34 @@ export function useTaskBoard(): TaskBoardState {
     [router, searchParams],
   );
 
-  const setTicketStatuses = useCallback(
-    (next: readonly TicketStatus[]) => setParams({ ticket: ticketStatusParam(next) }),
-    [setParams],
-  );
-
-  // A pick is remembered per staffer (the checklist-column pattern) and drops any `?group=` / `?sort=` link
-  // override, so the remembered choice governs every view from here on.
-  const writeGroup = useRef(groupSetting.set);
-  writeGroup.current = groupSetting.set;
-  const writeSort = useRef(sortSetting.set);
-  writeSort.current = sortSetting.set;
-  const setGroup = useCallback(
-    (next: TaskBoardGroupBy) => {
-      setGroupLocal(next);
-      if (searchParams.has('group')) setParams({ group: null });
-      writeGroup.current(next, 'staff').catch(() => {
-        setGroupLocal(null);
-        toast.error('Could not remember the grouping.');
-      });
-    },
-    [searchParams, setParams],
-  );
-  const setSort = useCallback(
-    (next: TaskBoardSort) => {
-      setSortLocal(next);
-      if (searchParams.has('sort')) setParams({ sort: null });
-      writeSort.current(next, 'staff').catch(() => {
-        setSortLocal(null);
-        toast.error('Could not remember the order.');
-      });
-    },
-    [searchParams, setParams],
-  );
+  // Each staffer's last pick is remembered. An arrival that names neither param opens on the remembered pick (seeded
+  // into the URL once the setting loads, so the sidebar shows what the board does); a link that names one wins and is
+  // not remembered. After that, every change of the URL's choice — a sidebar pick, the default included — is saved.
+  const seeded = useRef<{ group: TaskBoardGroupBy; sort: TaskBoardSort } | null>(null);
+  const settings = useRef({ group: groupSetting, sort: sortSetting });
+  settings.current = { group: groupSetting, sort: sortSetting };
+  const settingsLoading = groupSetting.isLoading || sortSetting.isLoading;
+  useEffect(() => {
+    if (settingsLoading) return;
+    const last = seeded.current;
+    if (!last) {
+      const rememberedGroup = parseTaskBoardGroupBy(settings.current.group.value);
+      const rememberedSort = parseTaskBoardSort(settings.current.sort.value);
+      const seedGroup = !searchParams.has('group') && rememberedGroup && rememberedGroup !== 'type' ? rememberedGroup : null;
+      const seedSort = !searchParams.has('sort') && rememberedSort && rememberedSort !== 'urgency' ? rememberedSort : null;
+      seeded.current = { group: seedGroup ?? urlGroup, sort: seedSort ?? sort };
+      if (seedGroup || seedSort) setParams({ ...(seedGroup ? { group: seedGroup } : {}), ...(seedSort ? { sort: seedSort } : {}) });
+      return;
+    }
+    if (urlGroup !== last.group) {
+      last.group = urlGroup;
+      settings.current.group.set(urlGroup, 'staff').catch(() => toast.error('Could not remember the grouping.'));
+    }
+    if (sort !== last.sort) {
+      last.sort = sort;
+      settings.current.sort.set(sort, 'staff').catch(() => toast.error('Could not remember the order.'));
+    }
+  }, [settingsLoading, urlGroup, sort, searchParams, setParams]);
 
   /** The open row moves without a server round-trip: J / K stay instant. */
   const setOpen = useCallback(
@@ -349,11 +292,8 @@ export function useTaskBoard(): TaskBoardState {
     [update],
   );
 
-  // A checklist row opened from the pinned column exists in every scope; a
-  // task the ticket filter hides stays open (the unfiltered feed still holds it).
-  const openTaskAny = openKey?.startsWith('task:')
-    ? (taskRows.find((t) => `task:${t.id}` === openKey) ?? allTaskRows.find((t) => `task:${t.id}` === openKey) ?? null)
-    : null;
+  // A checklist row opened from the pinned column exists in every scope.
+  const openTaskAny = openKey?.startsWith('task:') ? (taskRows.find((t) => `task:${t.id}` === openKey) ?? null) : null;
   const openRow = openKey
     ? (rows.find((row) => row.key === openKey) ??
       checklistAll.find((row) => row.key === openKey) ??
@@ -370,13 +310,8 @@ export function useTaskBoard(): TaskBoardState {
     layout,
     group,
     sort,
-    setGroup,
-    setSort,
     composing,
     composeNote,
-    ticketStatuses,
-    ticketCounts,
-    setTicketStatuses,
     rows,
     visible,
     columns,
@@ -389,13 +324,13 @@ export function useTaskBoard(): TaskBoardState {
     openKey,
     openRow,
     openTask,
-    nowMs: tasks.nowMs,
+    nowMs,
     loading: !hydrated || checks.isLoading || tasks.loading,
     error: !hydrated
       ? null
       : checks.isError
         ? 'Could not load the checklist.'
-        : (tasks.error ?? (ticketActive && ticketQuery.isError ? 'Could not filter by ticket status.' : null)),
+        : tasks.error,
     setParams,
     setOpen,
     toggleDone,

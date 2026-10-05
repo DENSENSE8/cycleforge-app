@@ -1,9 +1,9 @@
 /**
- * Shipping › Labels & docs — one view per job: `label-intake.uploads` (the
+ * Shipping › Labels & docs — three saved views: `label-intake.uploads` (the
  * bare route: one card per uploaded label PDF — a batch — its pages the
  * batch's labels), `label-intake.labels` (4×6 labels not yet printed),
- * `label-intake.paperwork` (packing slips and manuals not yet printed) and
- * `label-intake.printed` (the print history of both). On the print views one
+ * `label-intake.paperwork` (packing slips and manuals). Print history remains
+ * on each document; it is not a fourth saved view. On order-tied views one
  * card per ORDER (every label shipping it rides one card; an unpaired label is
  * its own card): platform + order number on top, its products with quantities
  * beneath — nothing else on the card. The cards are a fixed-width rail; the
@@ -13,7 +13,7 @@
 import { triageView, type TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
 
 /** The desk's views, bare route first (`?view=`; `uploads` also rides the bare URL). */
-export const LABEL_INTAKE_VIEWS = ['uploads', 'labels', 'paperwork', 'printed'] as const;
+export const LABEL_INTAKE_VIEWS = ['uploads', 'labels', 'paperwork'] as const;
 export type LabelIntakeView = (typeof LABEL_INTAKE_VIEWS)[number];
 
 /** Uploads: the open batch's URL param. */
@@ -23,11 +23,13 @@ export const LABEL_BATCH_PARAM = 'batch';
 export const LABEL_BATCH_PRINTING_PARAM = 'printing';
 export const LABEL_BATCH_PRINTING_KEYS = ['to-print', 'printed'] as const;
 export type LabelBatchPrintingKey = (typeof LABEL_BATCH_PRINTING_KEYS)[number];
+export const LABEL_BATCH_PRINTING_LABEL: Readonly<Record<LabelBatchPrintingKey, string>> = { 'to-print': 'To print', printed: 'Printed' };
 
 /** The pairing cut — the status chips and their one URL param. */
 export const LABEL_PAIRING_PARAM = 'pairing';
 export const LABEL_PAIRING_KEYS = ['unpaired', 'paired'] as const;
 export type LabelPairingKey = (typeof LABEL_PAIRING_KEYS)[number];
+export const LABEL_PAIRING_LABEL: Readonly<Record<LabelPairingKey, string>> = { unpaired: 'No order', paired: 'Paired' };
 
 const SHARED = {
   grain: 'order',
@@ -55,7 +57,7 @@ export const LABEL_INTAKE_UPLOADS_VIEW = triageView({
   id: 'label-intake.uploads',
   grain: 'batch',
   noun: { one: 'batch', many: 'batches' },
-  listLabel: 'Uploaded label PDFs',
+  listLabel: 'Bulk files',
   testIdPrefix: 'batch-card',
   bodyTestId: 'batch-cards',
   storageKeys: { pageMode: 'cf:batch-cards:scroll', scrollTop: 'cf:batch-cards:scroll-top' },
@@ -70,7 +72,7 @@ export const LABEL_INTAKE_UPLOADS_VIEW = triageView({
 export const LABEL_INTAKE_LABELS_VIEW = triageView({
   ...SHARED,
   id: 'label-intake.labels',
-  listLabel: 'Labels to print',
+  listLabel: 'Shipping labels',
   testIdPrefix: 'label-card',
   bodyTestId: 'label-cards',
   storageKeys: { pageMode: 'cf:label-cards:scroll', scrollTop: 'cf:label-cards:scroll-top' },
@@ -79,17 +81,8 @@ export const LABEL_INTAKE_LABELS_VIEW = triageView({
 export const LABEL_INTAKE_PAPERWORK_VIEW = triageView({
   ...SHARED,
   id: 'label-intake.paperwork',
-  listLabel: 'Paperwork to print',
+  listLabel: 'Packing slips',
   testIdPrefix: 'paperwork-card',
   bodyTestId: 'paperwork-cards',
   storageKeys: { pageMode: 'cf:paperwork-cards:scroll', scrollTop: 'cf:paperwork-cards:scroll-top' },
-});
-
-export const LABEL_INTAKE_PRINTED_VIEW = triageView({
-  ...SHARED,
-  id: 'label-intake.printed',
-  listLabel: 'Printed labels and paperwork',
-  testIdPrefix: 'printed-card',
-  bodyTestId: 'printed-cards',
-  storageKeys: { pageMode: 'cf:printed-cards:scroll', scrollTop: 'cf:printed-cards:scroll-top' },
 });

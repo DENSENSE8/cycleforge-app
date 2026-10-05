@@ -6,9 +6,7 @@ import {
   filterRowsByRecon,
   parseReconReasonParam,
   parseRefList,
-  reconCounts,
   reconOfCheckRow,
-  reconReasonCounts,
   reconcileCheck,
   RECON_REASON_LABELS,
   RECON_REASON_STATUS,
@@ -87,8 +85,6 @@ test('entries keep the paste order and match the Check by canonical key', () => 
     ['1z999-aa1-0123456784', 'received', null],
     ['NOPE-1', 'not_received', 'No match anywhere'],
   ]);
-  // Every pasted number is in exactly one bucket: the counts sum to the paste.
-  assert.deepEqual(reconCounts(entries), { received: 1, not_received: 2 });
 });
 
 test('a status filter keeps every line of the numbers in that bucket, by PO or tracking', () => {
@@ -201,12 +197,11 @@ test('a number live Zoho was never asked about is decided by our own tables', ()
     // Only a number the Check has not answered at all is pending.
     [true, 'not_received', null],
   ]);
-  assert.deepEqual(reconCounts(entries), { received: 1, not_received: 2 });
   const unanswered = { id: 10, tracking_number: 'UNASKED', zoho_purchaseorder_number: null } as ReceivingLineRow;
   assert.deepEqual(filterRowsByRecon([unanswered], entries, 'not_received'), []);
 });
 
-test('a reason narrows its status; the counts per reason sum to the status', () => {
+test('a reason narrows its status', () => {
   const selection = parseRefList('A-1\nB-2\nC-3\nD-4');
   const entries = reconcileCheck(selection, [
     checkRow({ tracking: 'A-1', po_number: 'A-1', local: local({ delivered: true }) }),
@@ -214,11 +209,12 @@ test('a reason narrows its status; the counts per reason sum to the status', () 
     checkRow({ tracking: 'C-3', po_number: 'C-3' }),
     checkRow({ tracking: 'D-4', po_number: 'D-4', local: local({ scanned: true }) }),
   ]);
-  assert.deepEqual(reconReasonCounts(entries, 'not_received'), [
-    { reason: 'delivered_not_scanned', count: 2 },
-    { reason: 'in_transit', count: 1 },
+  assert.deepEqual(entries.map((e) => [e.status, e.reasonCode]), [
+    ['not_received', 'delivered_not_scanned'],
+    ['not_received', 'delivered_not_scanned'],
+    ['not_received', 'in_transit'],
+    ['received', 'scanned'],
   ]);
-  assert.deepEqual(reconReasonCounts(entries, 'received'), [{ reason: 'scanned', count: 1 }]);
   const rows = ['A-1', 'B-2', 'C-3', 'D-4'].map(
     (po, i) => ({ id: i + 1, zoho_purchaseorder_number: po, tracking_number: null }) as ReceivingLineRow,
   );

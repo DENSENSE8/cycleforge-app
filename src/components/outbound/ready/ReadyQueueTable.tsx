@@ -5,10 +5,7 @@ import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import {
-  DataTable,
-  type DataTableFilterOption,
-} from '@/components/tables/DataTable';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { AllocationHit } from '@/lib/channel-allocation';
@@ -34,14 +31,8 @@ interface ReadyQueueTableProps {
   isError: boolean;
   isFetching: boolean;
   onRetry: () => void;
-  /** True while a search or a non-`all` tab is narrowing the hits. */
+  /** True while the sidebar's find or Ready facet (`?q=` / `?rtab=`) is narrowing the hits. */
   isFiltered?: boolean;
-  /** The ONE filter control, as data (the FBA desk threads its mode options). */
-  filter?: {
-    options: readonly DataTableFilterOption[];
-    onToggle: (id: string) => void;
-    onClearAll: () => void;
-  };
 }
 
 /** Row order for a column sort, keyed by SORT FACT — the structural `title` plus catalog field ids (`readySortFactFor` maps a mounted… */
@@ -85,7 +76,6 @@ export function ReadyQueueTable({
   isFetching,
   onRetry,
   isFiltered = false,
-  filter,
 }: ReadyQueueTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -163,7 +153,7 @@ export function ReadyQueueTable({
             ? 'No tested units match this view. Clear the search or choose All tested.'
             : 'No tested units yet — completed verdicts appear here newest first.'
         }
-        filter={filter}
+        isNarrowed={isFiltered}
         scrollRef={scrollRef}
         renderGroup={(group, _stripe, { columns: visible }) => (
           <>{group.rows.map((hit) => renderLeaf(hit, visible))}</>

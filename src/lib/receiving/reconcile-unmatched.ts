@@ -18,6 +18,7 @@ import {
   pickMirrorPoIdFromCandidates,
 } from '@/lib/zoho/call-reduction';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { trackingDigitsLast8Strict, trackingRawTail8 } from '@/lib/tracking-format';
 
 interface ReconcileResult {
   receivingId: number;
@@ -43,11 +44,6 @@ interface ReceivingSnapshot {
   organization_id: string | null;
 }
 
-function last8Digits(tracking: string | null | undefined): string | null {
-  const digits = String(tracking || '').replace(/\D/g, '');
-  if (digits.length < 8) return null;
-  return digits.slice(-8);
-}
 
 function isRateLimit(err: unknown): boolean {
   return err instanceof ZohoRateLimitError || (err as { name?: string })?.name === 'ZohoRateLimitError';
@@ -95,7 +91,7 @@ async function findMirrorPoIdForTracking(
     if (!id) continue;
     const ref = String(row.ref_canon || '');
     if (canon && ref === canon) exactPoIds.push(id);
-    else if (ref.length >= 8 && ref.slice(-8) === last8) suffixPoIds.push(id);
+    else if (ref.length >= 8 && trackingRawTail8(ref) === last8) suffixPoIds.push(id);
   }
   return pickMirrorPoIdFromCandidates({ exactPoIds, suffixPoIds });
 }
@@ -128,7 +124,7 @@ export async function reconcileUnmatchedReceiving(
     };
   }
 
-  const last8 = last8Digits(rec.receiving_tracking_number);
+  const last8 = trackingDigitsLast8Strict(rec.receiving_tracking_number) || null;
   if (!last8) {
     return {
       receivingId,

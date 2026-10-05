@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { FilterDropdownSelect } from '@/design-system/components/FilterDropdownSelect';
+import { EmptyState } from '@/design-system/primitives/EmptyState';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { formatDateKeyMedium } from '@/utils/date';
 import {
@@ -21,9 +22,10 @@ import { cn } from '@/utils/_cn';
 
 type KindFilter = 'all' | TaskActivityRow['kind'];
 
-export function TaskActivityReport({ dateKey }: { dateKey: string }) {
-  const [staffId, setStaffId] = useState('all');
-  const [kind, setKind] = useState<KindFilter>('all');
+/** Staff (`staffId`) and record kind (`type`) are sidebar controls; the body reads the URL. */
+export function TaskActivityReport({ dateKey, staffId }: { dateKey: string; staffId: number | null }) {
+  const typeParam = useSearchParams().get('type');
+  const kind: KindFilter = typeParam === 'task' || typeParam === 'checklist' ? typeParam : 'all';
   const query = useQuery({
     queryKey: ['task-activity-report', dateKey],
     queryFn: () => fetchTaskActivityReport(dateKey),
@@ -31,45 +33,25 @@ export function TaskActivityReport({ dateKey }: { dateKey: string }) {
     staleTime: 30_000,
   });
   const rows = query.data?.rows;
-  const staff = useMemo(() => activityStaffTotals(rows ?? []), [rows]);
   const events = useMemo(() => eventsByActivityRow(query.data?.events ?? []), [query.data?.events]);
   const filtered = rows?.filter((row) =>
-    (staffId === 'all' || row.staffId === Number(staffId)) && (kind === 'all' || row.kind === kind),
+    (staffId === null || row.staffId === staffId) && (kind === 'all' || row.kind === kind),
   ) ?? [];
   const staffTotals = activityStaffTotals(filtered);
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1 pb-6" aria-label="Task time and activity">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-44">
-          <FilterDropdownSelect
-            label="Staff"
-            ariaLabel="Filter activity by staff"
-            value={staffId}
-            onChange={setStaffId}
-            emptyOption={{ value: 'all', label: 'All staff' }}
-            options={staff.map((person) => ({ value: person.staffId, label: activityStaffLabel(person.staffId, person.staffName) }))}
-          />
-        </div>
-        <div className="min-w-44">
-          <FilterDropdownSelect
-            label="Record kind"
-            ariaLabel="Filter activity by kind"
-            value={kind}
-            onChange={(value) => setKind(value as KindFilter)}
-            emptyOption={{ value: 'all', label: 'Tasks and checklists' }}
-            options={[{ value: 'task', label: 'Tasks' }, { value: 'checklist', label: 'Checklists' }]}
-          />
-        </div>
-        {query.data ? <p className="pb-2 text-role-micro text-text-muted">{filtered.length} of {rows?.length ?? 0} staff / record / day rows · warehouse time</p> : null}
-      </div>
+      {query.data ? <p className="text-role-micro text-text-muted">{filtered.length} of {rows?.length ?? 0} staff / record / day rows · warehouse time</p> : null}
       <p className="text-role-micro text-text-muted">
         Measured focus is tracked session time per staff and task. View, completion and audit interactions are timestamps, not measured work. Task lifecycle is separate, unattributed wall-clock from start to completion: not staff time or measured focus. Activity before tracking began may not appear.
       </p>
       {query.isPending ? <p role="status" className="py-6 text-role-caption text-text-muted">Loading activity…</p> : null}
       {query.isError ? <p role="alert" className="py-6 text-role-caption text-text-muted">{query.error.message}</p> : null}
       {query.data && filtered.length === 0 ? (
-        <p className="py-6 text-role-caption text-text-muted">No per-staff tracked task or checklist activity recorded for {formatDateKeyMedium(dateKey, { withYear: true })}{staffId !== 'all' || kind !== 'all' ? ' with these filters' : ''}. This does not mean no work occurred.</p>
+        <EmptyState
+          title={staffId !== null || kind !== 'all' ? 'No activity with these filters' : 'No tracked activity'}
+          description={`No per-staff tracked task or checklist activity recorded for ${formatDateKeyMedium(dateKey, { withYear: true })}. This does not mean no work occurred.`}
+        />
       ) : null}
       {query.data && staffTotals.length > 0 ? (
         <ul className="flex flex-wrap gap-2" aria-label="Measured focus by staff for the selected day">

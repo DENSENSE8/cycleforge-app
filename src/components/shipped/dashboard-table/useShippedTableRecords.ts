@@ -36,6 +36,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     exceptionsOnly,
     carrierFilter,
     channelFilter,
+    cardStatusFilter,
     statusFilter,
     matchesOutbound,
     normalizedSearch,
@@ -67,6 +68,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     shippedFilter,
     carrierFilter,
     channelFilter,
+    cardStatusFilter,
     statusFilter,
     exceptionsOnly,
     shippedTime,
@@ -84,6 +86,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     shippedFilter,
     carrier: carrierFilter,
     channel: channelFilter,
+    cardStatus: cardStatusFilter,
     statusCategory: statusFilter,
     exceptionsOnly,
     shippedTime: shippedTime ?? dayWindow,
@@ -102,6 +105,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
       shippedFilter,
       carrier: carrierFilter,
       channel: channelFilter,
+      cardStatus: cardStatusFilter,
       statusCategory: statusFilter,
       exceptionsOnly,
       shippedTime,
@@ -146,9 +150,9 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   }, [fetchedRecords, effectiveWeekStart, effectiveWeekEnd, shippedInstantWindow]);
   const dedupedRecords = useMemo(() => dedupeShippedRecords(rawRecords), [rawRecords]);
 
-  // Type / carrier / status / exceptions are answered by the fetch (one SQL
-  // predicate with the sidebar facet counts); `?ostatus` — a state derived from
-  // the whole record — is the one view filter still applied here.
+  // Type / carrier / status / exceptions / package status are answered by the
+  // fetch (one SQL predicate with the sidebar facet counts); `?ostatus` — a
+  // state derived from the whole record — is the one view filter still applied here.
   const records = useMemo(
     () => dedupedRecords.filter((r) => isShippedDeskRow(r) && matchesOutbound(r)),
     [dedupedRecords, matchesOutbound],

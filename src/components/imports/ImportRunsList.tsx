@@ -2,20 +2,15 @@
 
 /**
  * Imports › **Runs** — the import-run HOST of the triage face (the To-ship
- * card list): one card per run, grouped by status. Status chips (Running ·
- * Success · Partial · Failed) cut the loaded runs through the sidebar's own
- * `?status=`. `?run=<id>` opens the run record in the desk record plane.
- *
- * The list API reads the sidebar's other filters verbatim; `status` is the
- * chips' cut, so the server answers every status and the chips count them all.
+ * card list): one card per run, grouped by status. Status, like every other
+ * filter, is the sidebar's own facet (`?status=`, counted in `imports.runs`).
+ * `?run=<id>` opens the run record in the desk record plane.
  */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrderChannel } from '@/hooks/useCatalog';
-import { IncomingStatusChips, type IncomingStatusChipSet } from '@/components/receiving/incoming/IncomingStatusChips';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { scopeRecordVerbs } from '@/design-system/components/record-action-strip/record-verb-scope';
@@ -27,10 +22,9 @@ import { useTriageDensity } from '@/design-system/components/triage-card-list/tr
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { IMPORT_RUN_LIFECYCLE } from '@/design-system/tokens/import-record-lifecycle';
 import { writeClipboardText } from '@/lib/clipboard';
-import { IMPORT_RUN_STATUSES, type ImportRunListItem, type ImportRunStatus } from '@/lib/imports/types';
-import { IMPORTS_PATH, IMPORT_RUN_STATUS_LABELS, importKindLabel, importStamp, importTriggerLabel } from '@/lib/imports/record-faces';
+import type { ImportRunListItem } from '@/lib/imports/types';
+import { IMPORTS_PATH, importKindLabel, importStamp, importTriggerLabel } from '@/lib/imports/record-faces';
 import { IMPORT_PAGE_SIZE, importListQuery, positiveIntParam, useImportRun, useImportRuns } from '@/lib/imports/record-client';
-import { fetchNavFacets } from '@/lib/nav/context/http-client';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { toast } from '@/lib/toast';
 import { IMPORT_RUNS_VIEW } from '@/lib/triage/views';
@@ -46,11 +40,8 @@ import {
 import { ImportRunRecordView } from './ImportRunRecordView';
 
 const VIEW = IMPORT_RUNS_VIEW;
-/** The chips are the host's (`?status=`, the sidebar's Status facet), not the face's cut. */
+/** Status is the sidebar's facet (`?status=`), not the face's cut. */
 const NO_FACE_CHIPS: readonly string[] = [];
-/** The facet context the sidebar counts this view's facets in — the same query, so one fetch. */
-const FACET_CONTEXT = 'imports.runs';
-const FACETS_STALE_MS = 15_000;
 
 const runId = (run: ImportRunListItem) => run.id;
 const noStatusKeys = (): readonly string[] => NO_FACE_CHIPS;
@@ -74,13 +65,6 @@ export function ImportRunsList() {
     pageMode.resolved,
     pageMode.mode === 'scroll' ? IMPORT_PAGE_SIZE : pageMode.mode,
   );
-  const search = searchParams.toString();
-  const facets = useQuery({
-    queryKey: ['nav-facets', FACET_CONTEXT, search],
-    queryFn: ({ signal }) => fetchNavFacets(FACET_CONTEXT, search, signal),
-    staleTime: FACETS_STALE_MS,
-    placeholderData: keepPreviousData,
-  });
 
   const sort = searchParams.get('sort');
   const sectioned = !sort || sort === 'newest';
@@ -110,31 +94,6 @@ export function ImportRunsList() {
   );
 
   const { port: selection, selected } = useImportSelection(runs.items, cut.url.scopeKey);
-
-  // ── Status chips → the sidebar's `?status=` (one status at a time) ─────────
-  const statusRaw = searchParams.get(VIEW.chips.param);
-  const chipSet = useMemo<IncomingStatusChipSet>(() => {
-    const counted = facets.data?.groups.find((group) => group.param === VIEW.chips.param)?.options;
-    const countOf = new Map(counted?.map((option) => [option.value, option.count] as const));
-    return {
-      label: 'Filter by status',
-      disabledReason: null,
-      onToggle: (id) =>
-        writeParams((params) => {
-          if (params.get(VIEW.chips.param) === id) params.delete(VIEW.chips.param);
-          else params.set(VIEW.chips.param, id);
-          // A narrower list from page 3 would land past its end.
-          params.delete('page');
-        }),
-      chips: IMPORT_RUN_STATUSES.map((status: ImportRunStatus) => ({
-        id: status,
-        label: IMPORT_RUN_STATUS_LABELS[status],
-        count: counted ? (countOf.get(status) ?? 0) : null,
-        tone: IMPORT_RUN_LIFECYCLE[status].tone,
-        active: statusRaw === status,
-      })),
-    };
-  }, [statusRaw, facets.data, writeParams]);
 
   const showOrders = useCallback(
     (run: Pick<ImportRunListItem, 'id'>) => router.push(`${IMPORTS_PATH}?view=rows&run=${run.id}`),
@@ -219,7 +178,6 @@ export function ImportRunsList() {
         densityControl={{ value: density, onChange: setDensity }}
         feed={feed}
         cut={cut}
-        summary={<IncomingStatusChips set={chipSet} />}
         bulk={<RecordActionStrip face="header" verbs={bulkVerbs} label="Checked runs actions" testId="import-runs-bulk" />}
         banner={runs.isError ? <EvidenceNotice tone="warn">{runs.error.message}</EvidenceNotice> : null}
         searchEmpty={narrowed ? <TriageAllClear title="No runs match" detail="Clear the Find or widen the dates in the sidebar." /> : null}

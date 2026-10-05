@@ -24,6 +24,14 @@ export function dockedPackageRecordFace(_row: ReceivingLineRow): RecordStateFace
 }
 
 /**
+ * Deliveries › Docked's status cut (`?dflag=`, `INCOMING_DOCKED_VIEW.chips`):
+ * the sidebar Status facet (`incoming.docked`) and the list's `useTriageCut`
+ * keys. Every docked carton wears {@link DOCKED_PACKAGE_FACE}.
+ */
+export const DOCKED_STATUS_OPTIONS = [{ value: 'DOCKED', label: 'Docked' }] as const;
+export type DockedStatus = (typeof DOCKED_STATUS_OPTIONS)[number]['value'];
+
+/**
  * Unboxed "needs attention" pills (owner 2026-09-28), in pill order — the
  * `?dflag=` vocabulary, most urgent first (Unfound › Claim › Short). Each is a
  * carton fact read off its lines; a carton wears a pill when any of its lines

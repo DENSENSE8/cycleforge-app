@@ -13,7 +13,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus } from '@/components/Icons';
 import { CopyChip } from '@/components/ui/CopyChip';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
-import { StatusChipRail, type StatusChip } from '@/design-system/components/QueueStatusChips';
 import { RecordLedgerSummaryPane, RecordLedgerTally } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { RecordCard } from '@/design-system/components/record-card/RecordCard';
 import { RecordFactPaint } from '@/design-system/components/record-card/record-fact';
@@ -70,14 +69,10 @@ const STOCK_PATH = '/inventory/stock';
 /** A burst of counts (a gun session) costs one loader re-read. */
 const LIVE_REFRESH_DEBOUNCE_MS = 400;
 
-type StockHealth = 'in-stock' | 'out-of-stock' | 'on-hold';
+type StockHealth = 'in-stock' | 'low-stock' | 'out-of-stock' | 'on-hold';
 
-const STOCK_HEALTH_CHIPS: readonly Omit<StatusChip<StockHealth>, 'count'>[] = [
-  { id: 'in-stock', label: 'In stock', tone: 'info' },
-  { id: 'out-of-stock', label: 'Out of stock', tone: 'danger' },
-  { id: 'on-hold', label: 'On hold', tone: 'warning' },
-];
-const STOCK_HEALTH_KEYS = STOCK_HEALTH_CHIPS.map((chip) => chip.id);
+/** The `?status=` cut's ids — the sidebar's Stock health facet (`stock.all`) writes them. */
+const STOCK_HEALTH_KEYS: readonly StockHealth[] = ['in-stock', 'low-stock', 'out-of-stock', 'on-hold'];
 
 export function stockHealth(row: LocationStockTableRow): readonly StockHealth[] {
   // An empty address is capacity, not an item. It stays in the location walk
@@ -87,8 +82,9 @@ export function stockHealth(row: LocationStockTableRow): readonly StockHealth[] 
   // On hold is an exception facet, not a third inventory quantity state.
   // A TMP row is still either physically present or out of stock, so operators
   // can reach zero-count exceptions from either relevant chip.
-  if (state === 'onHold') return row.qty > 0 ? ['in-stock', 'on-hold'] : ['out-of-stock', 'on-hold'];
-  return [state === 'outOfStock' ? 'out-of-stock' : 'in-stock'];
+  const quantityState: StockHealth = row.qty <= 0 ? 'out-of-stock' : 'in-stock';
+  const lowStock = row.min_qty != null && row.qty <= row.min_qty;
+  return [quantityState, ...(lowStock ? ['low-stock' as const] : []), ...(state === 'onHold' ? ['on-hold' as const] : [])];
 }
 
 /**
@@ -535,39 +531,6 @@ export function StockLedger({
     router.refresh();
   }, [bulkBusy, deletable, router, selection]);
 
-  const toggleHealth = useCallback(
-    (key: StockHealth) => {
-      replace((params) => {
-        const selected = new Set(
-          (params.get(VIEW.chips.param) ?? '')
-            .split(',')
-            .filter((value): value is StockHealth => STOCK_HEALTH_KEYS.includes(value as StockHealth)),
-        );
-        if (!selected.delete(key)) selected.add(key);
-        const ordered = STOCK_HEALTH_KEYS.filter((value) => selected.has(value));
-        if (ordered.length) params.set(VIEW.chips.param, ordered.join(','));
-        else params.delete(VIEW.chips.param);
-        params.delete('page');
-      });
-    },
-    [replace],
-  );
-  const resetHealth = useCallback(
-    () => replace((params) => {
-      params.delete(VIEW.chips.param);
-      params.delete('page');
-    }),
-    [replace],
-  );
-
-  const chips = useMemo<StatusChip<StockHealth>[]>(
-    () => [
-      { ...STOCK_HEALTH_CHIPS[0]!, count: counts.inStockProducts, label: `In stock · ${counts.inStockUnits} units` },
-      { ...STOCK_HEALTH_CHIPS[1]!, count: counts.outPairs },
-      { ...STOCK_HEALTH_CHIPS[2]!, count: counts.onHoldPairs },
-    ],
-    [counts],
-  );
   // The list read as a whole: server counts over the SAME matched set — the
   // numbers never move when the health filter narrows the rows on screen.
   const summary = useMemo(() => stockSummary(totalCount, counts, rooms), [counts, rooms, totalCount]);
@@ -584,14 +547,6 @@ export function StockLedger({
         summary={
           <div className="flex min-w-0 flex-1 items-center">
             <RecordLedgerTally summary={summary} />
-            <StatusChipRail
-              chips={chips}
-              active={cut.url.statusFilter}
-              onToggle={toggleHealth}
-              onReset={resetHealth}
-              label="Stock health"
-              testId="stock-health"
-            />
           </div>
         }
         summaryInline
@@ -828,7 +783,9 @@ const StockCompactRow = memo(function StockCompactRow(props: TriageCardSlotProps
     const row = model.lead;
     const bin = locationStockRackFace(row);
     const identity = `${row.room ?? 'No room'} · ${bin ?? 'No location'}`;
-    return recordRowFace(stockRecordCard(model, stockRowId), VIEW, { identity, identityWidth: 'long' });
+    // Copy the bin — the part the floor scans/types — while the face keeps `room · bin`.
+    const identityCopy = bin ? { value: bin, display: identity, tone: 'bin' as const } : undefined;
+    return recordRowFace(stockRecordCard(model, stockRowId), VIEW, { identity, identityWidth: 'long', identityCopy });
   }, [model]);
   return (
     <TriageRow

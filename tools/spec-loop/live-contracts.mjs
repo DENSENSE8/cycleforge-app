@@ -8,7 +8,8 @@
  * import that checkout's own registries; live probes (only with --live) drive Chromium at the dev
  * origin through the shared auth preflight. Prints one JSON document:
  *   { contracts: [{ id, status: pass|fail|no_data, mode: static|live, violations, ms }] }
- * A probe that throws is `no_data` with the error — never a pass, never a fail.
+ * A probe that throws is `no_data` with the error — never a pass, never a fail. Violations marked
+ * `debt` (held by a shrink-only baseline) never fail a probe.
  */
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -27,7 +28,7 @@ async function probe(contract, mode, fn) {
   const started = Date.now();
   try {
     const violations = await fn();
-    results.push({ id: contract.id, mode, status: violations.length ? 'fail' : 'pass', violations, ms: Date.now() - started });
+    results.push({ id: contract.id, mode, status: violations.some((v) => !v.debt) ? 'fail' : 'pass', violations, ms: Date.now() - started });
   } catch (err) {
     results.push({ id: contract.id, mode, status: 'no_data', violations: [], error: String(err?.message ?? err).split('\n')[0], ms: Date.now() - started });
   }

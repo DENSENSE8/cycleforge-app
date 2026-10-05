@@ -1,14 +1,10 @@
 'use client';
 
-/** Media Library card controls — filters, saved views, display controls, and fullscreen. */
+/** Media Library card controls — saved views, display controls, and fullscreen. Filters live in the left sidebar (`NAV_PAGE_DECLS['ops-photos']`). */
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
-import { FilterMenu } from '@/components/ui/FilterMenu';
 import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewSwitch';
 import { cornerClass } from '@/design-system/tokens/radius';
-import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import type { MediaViewPayload } from '@/hooks/useMediaLibrarySavedViews';
 import {
   countActivePhotoLibraryFilters,
@@ -20,12 +16,10 @@ import type { PhotoGridDensity } from '@/lib/photos/photo-grid-density';
 import { cn } from '@/utils/_cn';
 import { MediaViewsMenu } from './MediaViewsMenu';
 import { PhotoDisplayControls } from './PhotoDisplayControls';
-import { PhotoLibraryFilterDropdown } from './PhotoLibraryFilterDropdown';
 
 export function PhotoLibraryFindRow({
   filters,
   view,
-  onPatch,
   onApplyView,
   onViewChange,
   density,
@@ -39,7 +33,6 @@ export function PhotoLibraryFindRow({
 }: {
   filters: PhotoLibraryFilterState;
   view: PhotoLibraryViewMode;
-  onPatch: (partial: Partial<PhotoLibraryFilterState>) => void;
   onApplyView: (payload: MediaViewPayload) => void;
   onViewChange: (view: PhotoLibraryViewMode) => void;
   density: PhotoGridDensity;
@@ -51,34 +44,12 @@ export function PhotoLibraryFindRow({
   isRefreshing: boolean;
   canManageViews: boolean;
 }) {
-  const [filterOpen, setFilterOpen] = useState(false);
-
-  const staffQuery = useQuery({
-    queryKey: ['staff', 'active', 'recipients'],
-    queryFn: async (): Promise<StaffRecipient[]> => {
-      const res = await fetch('/api/staff?active=true');
-      if (!res.ok) throw new Error('staff fetch failed');
-      const data = (await res.json()) as StaffRecipient[] | { staff?: StaffRecipient[] };
-      return Array.isArray(data) ? data : (data.staff ?? []);
-    },
-    staleTime: 10 * 60 * 1000,
-  });
-  const staffOptions = staffQuery.data ?? [];
-
-  const activeFilterCount = countActivePhotoLibraryFilters(filters);
-  const filterHot =
-    activeFilterCount > 0
-    || Boolean(filters.stage)
-    || Boolean(filters.dateFrom)
-    || Boolean(filters.dateTo);
-
   const savable =
-    activeFilterCount > 0
+    countActivePhotoLibraryFilters(filters) > 0
     || Boolean(filters.dateFrom)
     || Boolean(filters.sourceScope && filters.sourceScope !== 'all')
     || Boolean(filters.imageType)
     || view !== DEFAULT_PHOTO_LIBRARY_VIEW;
-
 
   return (
     <div
@@ -88,27 +59,6 @@ export function PhotoLibraryFindRow({
         PRIMARY_CHROME_ROW_FACE,
       )}
     >
-
-      <FilterMenu
-        open={filterOpen}
-        onOpenChange={setFilterOpen}
-        hot={filterHot}
-        label="Filters"
-        hotActiveLabel={
-          activeFilterCount > 0
-            ? `${activeFilterCount} active`
-            : undefined
-        }
-        contentClassName="w-80 p-3"
-      >
-        <PhotoLibraryFilterDropdown
-          filters={filters}
-          onPatch={onPatch}
-          onClose={() => setFilterOpen(false)}
-          staffOptions={staffOptions}
-        />
-      </FilterMenu>
-
       <MediaViewsMenu
         currentFilters={filters}
         currentView={view}

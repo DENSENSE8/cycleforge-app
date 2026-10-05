@@ -17,7 +17,7 @@ export const INCOMING_DOCKED_VIEW = triageView({
   bodyTestId: 'docked-packages',
   storageKeys: { pageMode: 'cf:docked-packages:scroll', scrollTop: 'cf:docked-packages:scroll-top' },
   recordParams: ['openLine'],
-  // The attention cut: Claim · Short · Unfound pills (comma list) — the face owns it; no sidebar twin.
+  // The status cut (`DOCKED_STATUS_OPTIONS`, comma list) — read by the face's `useTriageCut`, picked in the sidebar Status facet (`incoming.docked`).
   chips: { owner: 'face', param: DOCKED_FLAG_PARAM },
   paging: 'client',
   // The vendor's promised arrival is the sealed package's SLA; no promise → the arrival stamp, untoned.

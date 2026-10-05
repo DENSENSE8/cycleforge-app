@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { OrderLinkage } from '@/lib/order-linkage';
 import { OrderIdChip, TrackingChip, SerialChip, TicketChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { supportHref } from '@/lib/nav/route-tree';
 
 interface LinkedTicketsPanelProps {
   order?: string | null;
@@ -29,7 +30,7 @@ interface LinkedTicketsPanelProps {
   /**
    * Where ticket chips navigate.
    *   - `zendesk` (default) — provider open URL when present
-   *   - `support` — in-app `/support?ticket=…` Timeline / Connections
+   *   - `support` — Tasks → Support, narrowed to this ticket
    */
   ticketNav?: 'zendesk' | 'support';
   /**
@@ -47,10 +48,10 @@ function supportTicketHref(tk: {
 }): string | null {
   const fromId = tk.zendeskTicketId;
   if (fromId != null && Number.isFinite(fromId) && fromId > 0) {
-    return `/support?ticket=${fromId}`;
+    return supportHref({ q: fromId });
   }
   const digits = tk.label.replace(/\D/g, '');
-  return digits ? `/support?ticket=${digits}` : null;
+  return digits ? supportHref({ q: digits }) : null;
 }
 
 /** Debounce a value so live-typed identifiers (e.g. a serial being scanned) do
@@ -63,11 +64,6 @@ function useDebounced<T>(value: T, ms = 400): T {
   }, [value, ms]);
   return v;
 }
-
-const last8 = (v: string | null | undefined): string => {
-  const s = String(v ?? '').trim();
-  return s.length <= 8 ? s || '—' : s.slice(-8);
-};
 
 /**
  * One labelled row of the loop — an eyebrow naming the identifier KIND, then its
@@ -265,13 +261,15 @@ export function LinkedTicketsPanel({
               <OrderIdChip value={data.order.orderId} display={data.order.orderId} dense />
             ) : null}
           </LoopRow>
+          {/* Record body (Support Context hub): ids in FULL, like the Order row
+              (B1 2026-10-04) — the last-8 face is for lists only. */}
           <LoopRow label="Tracking">
             {loopTrackings.map((t, i) =>
               t.tracking ? (
                 <TrackingChip
                   key={`${t.shipmentId}-${t.tracking}-${i}`}
                   value={t.tracking}
-                  display={last8(t.tracking)}
+                  display={t.tracking}
                   dense
                 />
               ) : null,

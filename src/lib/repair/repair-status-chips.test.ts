@@ -1,26 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { REPAIR_STATUS } from '@/design-system/tokens/repair-status';
-import { REPAIR_STATUS_CHIP_KEYS, repairStatusChipKey, repairStatusChips } from './repair-status-chips';
+import { REPAIR_STATUS_CHIP_KEYS, REPAIR_STATUS_CHIP_OPTIONS, repairStatusChipKey } from './repair-status-chips';
 
-test('one chip per stage present, in stage order, in the shop’s words, counted in cards', () => {
-  const chips = repairStatusChips([
-    { status: 'Done' },
-    { status: 'Pending Repair' },
-    { status: 'Awaiting Parts' },
-    { status: 'Repaired, Contact Customer' },
-    { status: 'Incoming Shipment' },
-    { status: 'Awaiting Pickup' },
-  ]);
+test('one option per stage, in stage order, in the shop’s words, then Other', () => {
   assert.deepEqual(
-    chips.map(({ id, label, tone, count }) => [id, label, tone, count]),
+    REPAIR_STATUS_CHIP_OPTIONS.map(({ value, label }) => [value, label]),
     [
-      ['arriving', 'Arriving', 'info', 1],
-      ['needs-work', 'Still needs work', 'warning', 2],
-      ['completed', 'Completed', 'success', 2],
-      ['closed', 'Closed', 'neutral', 1],
+      ['arriving', 'Arriving'],
+      ['needs-work', 'Still needs work'],
+      ['completed', 'Completed'],
+      ['closed', 'Closed'],
+      ['other', 'Other'],
     ],
   );
+  assert.equal(repairStatusChipKey('Incoming Shipment'), 'arriving');
+  assert.equal(repairStatusChipKey('Pending Repair'), 'needs-work');
+  assert.equal(repairStatusChipKey('Repaired, Contact Customer'), 'completed');
+  assert.equal(repairStatusChipKey('Done'), 'closed');
 });
 
 test('the parts money is still before the repair; waiting on the customer is after it', () => {
@@ -33,5 +30,6 @@ test('the parts money is still before the repair; waiting on the customer is aft
 test('every controlled status belongs to a stage; only legacy free text falls to Other', () => {
   for (const status of Object.keys(REPAIR_STATUS)) assert.notEqual(repairStatusChipKey(status), 'other', status);
   for (const key of REPAIR_STATUS_CHIP_KEYS) assert.match(key, /^[a-z-]+$/);
-  assert.deepEqual(repairStatusChips([{ status: 'On hold (legacy)' }, { status: null }]).map((chip) => [chip.id, chip.count]), [['other', 2]]);
+  assert.equal(repairStatusChipKey('On hold (legacy)'), 'other');
+  assert.equal(repairStatusChipKey(null), 'other');
 });

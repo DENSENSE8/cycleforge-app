@@ -31,7 +31,7 @@ export function ClaimModalHeader({
             : row.zoho_purchaseorder_number
               ? `PO ${row.zoho_purchaseorder_number}`
               : row.tracking_number
-                ? `Carton · ${String(row.tracking_number).slice(-8)}`
+                ? `Carton · ${String(row.tracking_number)}`
                 : 'Unmatched carton'}
         </p>
       </div>

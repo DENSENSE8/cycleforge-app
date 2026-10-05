@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-03T21:23:41Z",
-  "totalRoutes": 1173,
+  "generatedAt": "2026-10-04T22:56:05Z",
+  "totalRoutes": 1201,
   "summary": {
-    "permissionGated": 955,
-    "authenticatedNoPermission": 134,
-    "anonymousIntentional": 36,
-    "serviceToService": 48,
+    "permissionGated": 977,
+    "authenticatedNoPermission": 138,
+    "anonymousIntentional": 37,
+    "serviceToService": 49,
     "ungatedRead": 0,
     "ungatedWrite": 0
   },
@@ -2016,6 +2016,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/cron/support/loop/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "cron bearer secret",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/cron/tasks/repair-sync/route.ts",
       "methods": [
         "GET"
@@ -2122,6 +2131,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/customers/[id]/invoice/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {
@@ -2312,6 +2330,17 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/documents/unlinked/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "packing.review",
       "exemptReason": null
     },
     {
@@ -3796,16 +3825,7 @@
       "exemptReason": null
     },
     {
-      "path": "/api/live-feed/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth (no permission)",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/live-feed/tracking/route.ts",
+      "path": "/api/live-feed/lane/route.ts",
       "methods": [
         "GET"
       ],
@@ -4149,7 +4169,8 @@
     {
       "path": "/api/nav/locate/route.ts",
       "methods": [
-        "GET"
+        "GET",
+        "POST"
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
@@ -4768,6 +4789,16 @@
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/tags/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
       "exemptReason": null
     },
     {
@@ -5897,6 +5928,107 @@
       "exemptReason": null
     },
     {
+      "path": "/api/prepack/[id]/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "tech.scan_serial",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/prepack/catalog/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/prepack/catalog/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/prepack/location/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/prepack/unit/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "tech.scan_serial",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/print-station-device/fnsku/[fnsku]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withPrintStationAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/print-station-device/heartbeat/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withPrintStationAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/print-station-device/pair/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (anonymous allowed)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/print-station-device/print-jobs/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withPrintStationAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/print-station-device/qc-label/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withPrintStationAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/print-station-device/realtime-token/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withPrintStationAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/print-station/fnskus/route.ts",
       "methods": [
         "GET"
@@ -6186,6 +6318,7 @@
     {
       "path": "/api/racks/[code]/route.ts",
       "methods": [
+        "DELETE",
         "GET"
       ],
       "gate": "requireRoutePerm",
@@ -6446,15 +6579,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/receiving-lines/incoming/summary/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/receiving-lines/incoming/sync-one/route.ts",
       "methods": [
         "POST"
@@ -6571,6 +6695,16 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/[id]/arrival/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/[id]/attach-box/route.ts",
       "methods": [
         "POST"
@@ -6634,15 +6768,6 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/[id]/placement/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.mark_received",
       "exemptReason": null
     },
     {
@@ -9505,6 +9630,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/support/check-ins/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "support.thread.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/support/context/route.ts",
       "methods": [
         "GET"
@@ -9514,12 +9648,104 @@
       "exemptReason": null
     },
     {
+      "path": "/api/support/items/[id]/drafts/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/items/[id]/messages/[messageId]/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/items/[id]/messages/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/items/[id]/orders/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/items/[id]/replies/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/items/[id]/resolve/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/items/[id]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/items/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "support.thread.manage",
+      "exemptReason": null
+    },
+    {
       "path": "/api/support/linkage/route.ts",
       "methods": [
         "GET"
       ],
       "gate": "withAuth",
       "permission": "integrations.zendesk",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/list/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "support.thread.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/support/order-candidates/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "support.thread.view",
       "exemptReason": null
     },
     {
@@ -10017,6 +10243,7 @@
     {
       "path": "/api/v1/label-batches/[id]/route.ts",
       "methods": [
+        "DELETE",
         "GET"
       ],
       "gate": "withAuth",
@@ -10117,6 +10344,7 @@
     {
       "path": "/api/v1/label-ingestions/[id]/route.ts",
       "methods": [
+        "DELETE",
         "GET"
       ],
       "gate": "withAuth",
@@ -10181,12 +10409,57 @@
       "exemptReason": null
     },
     {
+      "path": "/api/v1/print-stations/enroll/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "settings.hardware",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/print-stations/jobs/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "print.label",
+      "exemptReason": null
+    },
+    {
       "path": "/api/v1/print-stations/name/route.ts",
       "methods": [
         "PUT"
       ],
       "gate": "withAuth",
       "permission": "print.label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/print-stations/pause/route.ts",
+      "methods": [
+        "PUT"
+      ],
+      "gate": "withAuth",
+      "permission": "settings.hardware",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/print-stations/re-pair/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "settings.hardware",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/print-stations/revoke/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "settings.hardware",
       "exemptReason": null
     },
     {
@@ -10719,16 +10992,6 @@
     {
       "path": "/api/zendesk/photo-ticket/route.ts",
       "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "integrations.zendesk",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/zendesk/tickets/[id]/assign/route.ts",
-      "methods": [
-        "GET",
         "POST"
       ],
       "gate": "withAuth",

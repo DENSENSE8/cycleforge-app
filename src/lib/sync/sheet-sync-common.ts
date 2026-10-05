@@ -1,9 +1,6 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
-
-export function getTrackingLast8(value: string): string {
-  return String(value || '').replace(/\D/g, '').slice(-8);
-}
+import { last8FromStoredTracking } from '@/lib/tracking-format';
 
 export function parseSheetDateTime(rawValue: string): Date | null {
   const value = String(rawValue || '').trim();
@@ -53,7 +50,7 @@ export async function hasOrderByTracking(
   const tracking = String(shippingTracking || '').trim();
   if (!tracking) return false;
 
-  const trackingLast8 = getTrackingLast8(tracking);
+  const trackingLast8 = last8FromStoredTracking(tracking);
 
   if (orgId) {
     // Executor pattern:
@@ -186,7 +183,7 @@ export async function upsertOpenOrdersException(params: {
   const tracking = String(params.shippingTrackingNumber || '').trim();
   if (!tracking || tracking.includes(':')) return;
 
-  const trackingLast8 = getTrackingLast8(tracking);
+  const trackingLast8 = last8FromStoredTracking(tracking);
   const orgId = params.orgId;
 
   if (orgId) {

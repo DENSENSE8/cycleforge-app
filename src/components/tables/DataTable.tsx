@@ -22,10 +22,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/design-system/primitives/radix-popover';
-import { ArrowUpDown, ChevronDown, Download, Filter } from '@/components/Icons';
+import { ChevronDown, Download, Filter } from '@/components/Icons';
 import { Button, SearchField } from '@/design-system/primitives';
-import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import type { DateRange } from 'react-day-picker';
 import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewSwitch';
 import { DataTableZoomToggle } from '@/components/tables/DataTableZoomToggle';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
@@ -58,7 +56,6 @@ import {
   writeDataTablePageSize,
   type DataTablePageSize,
 } from '@/lib/tables/data-table-pagination';
-import { dataTableFindHighlightId } from '@/lib/tables/data-table-find';
 import {
   clearDataTableVisibleIds,
   publishDataTableVisibleIds,
@@ -66,12 +63,7 @@ import {
 } from '@/lib/tables/data-table-visible-rows';
 import { emitSelectionTotal } from '@/lib/selection/table-selection';
 import { MenuBrandIdentity } from '@/components/ui/grid-cells';
-import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
-import { sheetSavedViewConfigForTable } from '@/lib/saved-views/surfaces';
-import {
-  ToolbarListboxOption,
-  toolbarListboxOptionKeyDown,
-} from '@/design-system/primitives/ToolbarListbox';
+import { ToolbarListboxOption } from '@/design-system/primitives/ToolbarListbox';
 import {
   DATA_TABLE_TOOLBAR_CORNER,
   DROPDOWN_ITEM_CORNER,
@@ -84,16 +76,6 @@ import {
   DATA_TABLE_OVERLAY_HOST_ATTR,
 } from '@/components/tables/data-table-overlay-host';
 import { cn } from '@/utils/_cn';
-
-/**
- * The QUICK DATE control — a peer of the filter, not a second toolbar.
- * two clicks inside it (operator ruling 2026-08-31).
- */
-export interface DataTableDateMenu {
-  /** The live range, or `undefined` for "any date". */
-  range: DateRange | undefined;
-  onRangeChange: (next: DateRange | undefined) => void;
-}
 
 /** One option in the single filter control. Data — the caller owns the meaning. */
 export interface DataTableFilterOption {
@@ -119,16 +101,6 @@ export type DataTableFilterChrome = {
   onClearAll: () => void;
 };
 
-/**
- * Idle funnel when a family has not wired facets yet. The icon still paints —
- * omit `filter` and DataTable mounts this, never hides the control.
- */
-const DATA_TABLE_FILTER_IDLE: DataTableFilterChrome = {
-  options: [],
-  onToggle: () => {},
-  onClearAll: () => {},
-};
-
 /** One job verb on the LEFT toolbar cluster — data, never a ReactNode slot. */
 export type DataTableToolbarAction = {
   id: string;
@@ -144,64 +116,11 @@ export type DataTableToolbarAction = {
   };
 };
 
-/** One option in the toolbar sort control. */
-export interface DataTableSortOption {
-  id: string;
-  label: string;
-  /** Trigger face when this option is active. Defaults to {@link label}. */
-  shortLabel?: string;
-  /** Heading in the menu when the list answers more than one question. */
-  group?: string;
-  identity?: DataTableBrandIdentity;
-}
-
 /** Brand swatch for a menu row — resolved by {@link MenuBrandIdentity}. */
 export interface DataTableBrandIdentity {
   kind: 'platform' | 'carrier';
   label: string;
   value?: string;
-}
-
-/** Legacy in-table search. Page-level lists migrate to NAV_PAGE_DECLS.search. */
-export interface DataTableSearch {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  /**
-   * `'server'` ⇒ `rows` are ALREADY the answer for `value`; the engine's
-   * client-side substring filter is bypassed rather than run a second time
-   * over a set the server has narrowed. Omitted / `'client'` ⇒ unchanged.
-   */
-  answeredBy?: 'client' | 'server';
-  /** `'server'` only: */
-  pending?: boolean;
-}
-
-
-/**
- * The quick-date chip — the same popover primitive as the filter and the fields
- * menu, so all three open one component rather than three lookalikes.
- */
-function DataTableDateMenuControl({ range, onRangeChange }: DataTableDateMenu) {
-  const active = Boolean(range?.from);
-  return (
-    <DateRangePickerField
-      value={range}
-      onChange={onRangeChange}
-      placeholder=""
-      // Restyled from a full-width field into a chrome-row chip: same control,
-      // same calendar, same presets — it just has to sit on a 28px band beside
-      // the funnel instead of in a form. `cn` is tailwind-merge, so these win.
-      className={cn(
-        'h-6 w-auto shrink-0 gap-1 border-0 bg-transparent px-1.5 text-role-caption',
-        DATA_TABLE_TOOLBAR_CORNER,
-        'hover:border-0 hover:bg-surface-hover',
-        // No `focus:ring-0` here: overriding the picker's focus ring away would
-        // strip the only thing telling a keyboard operator where they are.
-        active ? 'text-text-default' : 'text-text-muted',
-      )}
-    />
-  );
 }
 
 /** Export the CURRENT view to a CSV file. */
@@ -249,15 +168,11 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   searchEmptyState?: ReactNode;
 
   /**
-   * In-job sub-ledger Find. Page-level lists MUST use NAV_PAGE_DECLS.search;
-   * this is only for rows subordinate to the current job (for example CSV
-   * staging).
+   * True while page chrome (the contextual sidebar's find / facets — ruling
+   * A1: record selection never lives in this toolbar) narrows `rows`, so an
+   * empty settle reads {@link searchEmptyMessage} instead of "empty".
    */
-  sheetFind?: DataTableSearch;
-
-  // ── The one filter control (data, not a node) ──────────────────────────────
-  /** Facets for the always-mounted funnel. Omit → {@link DATA_TABLE_FILTER_IDLE}. */
-  filter?: DataTableFilterChrome;
+  isNarrowed?: boolean;
 
   /**
    * Job verbs in the LEFT cluster after filter. Omit when the desk has none —
@@ -265,47 +180,6 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    * (and the paste morph) from this list.
    */
   actions?: readonly DataTableToolbarAction[];
-
-  /** The one sort control (data, not a node). */
-  sortMenu?: {
-    options: readonly DataTableSortOption[];
-    /** Currently selected option id. `null` = surface default (unlit). */
-    active: string | null;
-    /**
-     * Lights the trigger. Omit and the trigger lights whenever `active` is
-     * set — pass `false` when the active id IS the surface default
-     * (To-ship's `deadline`).
-     */
-    hot?: boolean;
-    onSelect: (id: string) => void;
-    /**
-     * Trigger face when `active` is not in {@link options} (legacy pins /
-     * retired aliases). DATA column facts belong in `options` so the open
-     * list can check Pick / Status — never only name them on the trigger.
-     */
-    activeFace?: Pick<DataTableSortOption, 'label' | 'shortLabel' | 'identity'>;
-    /** Trigger test id — two sort menus on one page (the bar and a section header) need their own. */
-    testId?: string;
-    /** Menu alignment to the trigger; `end` for a trigger at a row's right edge. */
-    align?: 'start' | 'end';
-    /**
-     * One check per band when the menu answers more than one question — a
-     * Display menu: Group by and Order by, each a `group` band. Defaults to
-     * `[active]`. Set, the menu stays open across picks (one pick per band).
-     */
-    selected?: readonly string[];
-    /** The control's accessible name (trigger + list). Default `Sort`. */
-    label?: string;
-  };
-
-  /** Named saved views for this surface — data, never a ReactNode slot. */
-  views?: {
-    storageKey: string;
-    paramKeys: readonly string[];
-    emptyHint?: string;
-    /** @deprecated Saved views no longer persist a configurable field layout. */
-    layout?: unknown;
-  };
 
   /** @deprecated Configurable field menus were deleted; this prop is ignored. */
   fields?: DataTableFieldsMenuData;
@@ -329,12 +203,18 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    */
   onLoadMore?: () => void;
   // Selection VERBS are not a table prop.
-  /** Quick date refinement — drawn beside the filter. See {@link DataTableDateMenu}. */
-  dateMenu?: DataTableDateMenu;
   /** Drag a column header onto another to reorder. */
   onReorderColumn?: (dragKey: string, dropKey: string) => void;
   /** Commit a drag-resized column width in px. Omit and headers do not resize. */
   onResizeColumn?: (key: string, widthPx: number) => void;
+  /** Freeze through a column from its header (see `useSheetColumns`). Omit and headers carry no pin. */
+  onFreezeColumn?: (key: string) => void;
+  /**
+   * A sheet that scrolls every row instead of paging (the Pasted list —
+   * owner 2026-10-04). The grid virtualizes, so a few hundred rows cost the
+   * same as a page.
+   */
+  unpaged?: boolean;
   /** Filename for the CSV export button. Defaults to `export.csv`. */
   exportFilename?: string;
 
@@ -653,251 +533,6 @@ function DataTableToolbarActions({ actions }: { actions: readonly DataTableToolb
   );
 }
 
-/** The one SORT control — a peer of the filter, not a second toolbar. */
-export function DataTableSortMenu({
-  options,
-  active,
-  hot: hotProp,
-  onSelect,
-  activeFace,
-  testId = 'data-table-sort',
-  align = 'start',
-  selected,
-  label,
-}: NonNullable<DataTableProps<unknown, string, LedgerGridColumnModel>['sortMenu']>) {
-  const name = label ?? 'Sort';
-  const checked = selected ?? (active ? [active] : []);
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const listRef = useRef<HTMLUListElement | null>(null);
-  const listId = useId();
-  const menuOption = options.find((o) => o.id === active) ?? null;
-  const activeOption =
-    menuOption ??
-    (active && activeFace ? { id: active, ...activeFace } : null);
-  const hot = hotProp ?? Boolean(active);
-  const triggerLabel = hot && activeOption ? (activeOption.shortLabel ?? activeOption.label) : null;
-
-  const bands = useMemo(() => {
-    const next: { key: string; options: DataTableSortOption[] }[] = [];
-    for (const option of options) {
-      const key = option.group ?? '';
-      const band = next.find((b) => b.key === key);
-      if (band) band.options.push(option);
-      else next.push({ key, options: [option] });
-    }
-    return next;
-  }, [options]);
-
-  const grouped = bands.length > 1 && bands.some((b) => b.key !== '');
-  // A multi-question menu (Group by · Order by) is a few short settings, never a list to search.
-  const showFilter = !selected && options.length >= 8;
-  const filteredBands = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return bands;
-    return bands
-      .map((band) => ({
-        ...band,
-        options: band.options.filter(
-          (option) =>
-            option.label.toLowerCase().includes(q) ||
-            (option.shortLabel ?? '').toLowerCase().includes(q),
-        ),
-      }))
-      .filter((band) => band.options.length > 0);
-  }, [bands, query]);
-  const filteredOptions = useMemo(
-    () => filteredBands.flatMap((band) => band.options),
-    [filteredBands],
-  );
-
-  const closeMenu = () => setOpen(false);
-
-  const revealActive = () => {
-    requestAnimationFrame(() => {
-      listRef.current
-        ?.querySelector<HTMLElement>('[aria-selected="true"]')
-        ?.scrollIntoView({ block: 'nearest' });
-    });
-  };
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) {
-          setQuery('');
-          revealActive();
-        }
-      }}
-    >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          data-testid={testId}
-          aria-haspopup="listbox"
-          aria-controls={open ? listId : undefined}
-          aria-label={
-            triggerLabel ? `${name}, ${triggerLabel}` : hot ? `${name}, custom` : name
-          }
-          aria-pressed={hot}
-          aria-expanded={open}
-          className={cn(
-            'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-1.5 text-role-caption',
-            'transition-colors duration-100 ease-out',
-            PRIMARY_CHROME_ROW_FACE,
-            DATA_TABLE_TOOLBAR_CORNER,
-            focusRing('control'),
-            hot
-              ? 'bg-blue-600 text-white hover:bg-blue-600'
-              : 'text-text-muted hover:bg-surface-hover hover:text-text-default',
-          )}
-        >
-          <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
-          {triggerLabel ? (
-            <span className="inline-flex max-w-[9rem] items-center gap-1">
-              {activeOption?.identity ? (
-                <MenuBrandIdentity compact {...activeOption.identity} />
-              ) : null}
-              <span className="truncate">{triggerLabel}</span>
-            </span>
-          ) : null}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align={align}
-        sideOffset={2}
-        data-testid={`${testId}-menu`}
-        className={cn(
-          DROPDOWN_SHELL_CORNER,
-          'flex w-64 flex-col overflow-hidden p-0',
-          'max-h-[var(--radix-popover-content-available-height)]',
-          focusRing('field', 'accent'),
-        )}
-      >
-        {showFilter ? (
-          <div
-            role="search"
-            data-testid="data-table-sort-filter"
-            className="border-b border-border-soft px-1.5 py-1"
-            onKeyDown={(event) => {
-              if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-              if (filteredOptions.length === 0) return;
-              event.preventDefault();
-              const next = event.key === 'ArrowDown' ? 0 : filteredOptions.length - 1;
-              listRef.current
-                ?.querySelector<HTMLButtonElement>(`[data-option-index="${next}"]`)
-                ?.focus();
-            }}
-          >
-            <SearchField
-              value={query}
-              onChange={setQuery}
-              onSearch={() => {
-                if (filteredOptions.length !== 1) return;
-                onSelect(filteredOptions[0].id);
-                closeMenu();
-              }}
-              inputRef={(el) => {
-                if (!el) return;
-                el.setAttribute('role', 'combobox');
-                el.setAttribute('aria-expanded', 'true');
-                el.setAttribute('aria-controls', listId);
-                el.setAttribute('aria-autocomplete', 'list');
-                el.setAttribute('aria-label', 'Filter');
-              }}
-              placeholder="Filter…"
-              tone="neutral"
-              size="compact"
-              hideUnderline
-              debounceMs={0}
-              autoFocus
-              className="min-w-0"
-            />
-          </div>
-        ) : null}
-        <ul
-          ref={listRef}
-          id={listId}
-          role="listbox"
-          aria-label={name}
-          aria-multiselectable={selected ? true : undefined}
-          className="min-h-0 flex-1 overflow-y-auto py-0.5"
-        >
-          {filteredOptions.length === 0 ? (
-            <li className="px-2.5 py-1.5 text-role-caption text-text-faint">No matches</li>
-          ) : (
-            filteredBands.map((band, bandIndex) => {
-              const headingId = band.key
-                ? `${listId}-${band.key.replace(/\s+/g, '-')}`
-                : undefined;
-              let optionIndex = 0;
-              for (let i = 0; i < bandIndex; i += 1) {
-                optionIndex += filteredBands[i].options.length;
-              }
-              return (
-                <Fragment key={band.key || `band-${bandIndex}`}>
-                  {grouped && band.key ? (
-                    <li role="presentation">
-                      <p
-                        id={headingId}
-                        data-testid={`data-table-sort-group-${band.key.replace(/\s+/g, '-')}`}
-                        className={cn(
-                          'px-2.5 pb-0.5 text-role-micro font-semibold text-text-faint',
-                          bandIndex === 0 ? 'pt-1' : 'pt-2',
-                        )}
-                      >
-                        {band.key}
-                      </p>
-                    </li>
-                  ) : null}
-                  {band.options.map((option, withinBand) => {
-                    const index = optionIndex + withinBand;
-                    return (
-                      <li key={option.id}>
-                        <ToolbarListboxOption
-                          index={index}
-                          selected={checked.includes(option.id)}
-                          checkAlign="end"
-                          leading={
-                            option.identity ? (
-                              <MenuBrandIdentity {...option.identity} />
-                            ) : undefined
-                          }
-                          onClick={() => {
-                            onSelect(option.id);
-                            if (!selected) closeMenu();
-                          }}
-                          onKeyDown={(event) =>
-                            toolbarListboxOptionKeyDown(
-                              event,
-                              index,
-                              filteredOptions.length,
-                              listRef,
-                              closeMenu,
-                            )
-                          }
-                          dataAttrs={{
-                            'data-testid': `data-table-sort-${option.id.replace(/:/g, '-')}`,
-                            ...(checked.includes(option.id) ? { 'data-active': '' } : {}),
-                          }}
-                        >
-                          {option.label}
-                        </ToolbarListboxOption>
-                      </li>
-                    );
-                  })}
-                </Fragment>
-              );
-            })
-          )}
-        </ul>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 export function DataTablePageSizeMenu({
   pageSize,
   pageSizes,
@@ -1029,18 +664,15 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   searchEmptyMessage,
   emptyState,
   searchEmptyState,
-  sheetFind,
-  filter,
+  isNarrowed = false,
   actions,
-  sortMenu,
-  views,
   tabs,
   activeTab,
   onTabChange,
   totalCount,
-  dateMenu,
   onReorderColumn,
   onResizeColumn,
+  onFreezeColumn,
   exportFilename,
   onLoadMore,
   selectionScope,
@@ -1066,6 +698,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   bodyPrefix,
   actionStrip,
   bulkBar,
+  unpaged = false,
 }: DataTableProps<Row, K, C>) {
   const selectedRows = useTableSelection<Row>(selectionScope ?? '__idle__');
   const selectedCount = selectionScope ? selectedRows.length : 0;
@@ -1074,13 +707,14 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   useEffect(() => {
     setPageSize(readDataTablePageSize());
   }, []);
-  const sheetFindValue = sheetFind?.value ?? '';
   useEffect(() => {
     setPageIndex(0);
-  }, [pageSize, sheetFindValue]);
+  }, [pageSize]);
+  // An unpaged sheet is one page of every row (the grid virtualizes); the pager never shows.
+  const effectivePageSize = unpaged ? Number.MAX_SAFE_INTEGER : pageSize;
   const paged = useMemo(
-    () => pageGroupedRenderOrder(orderGroupsByDate, pageIndex, pageSize),
-    [orderGroupsByDate, pageIndex, pageSize],
+    () => pageGroupedRenderOrder(orderGroupsByDate, pageIndex, effectivePageSize),
+    [orderGroupsByDate, pageIndex, effectivePageSize],
   );
   useEffect(() => {
     if (pageIndex > paged.pageCount - 1) setPageIndex(Math.max(0, paged.pageCount - 1));
@@ -1106,29 +740,16 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
     emitSelectionTotal(selectionScope, visibleIds.length);
     return () => clearDataTableVisibleIds(selectionScope);
   }, [selectionScope, visibleIds]);
-  const paintedRowIds = useMemo(
-    () =>
-      flattenRenderOrder(orderGroupsByDate).map((row) => {
-        if (getRowId) return getRowId(row);
-        if (row && typeof row === 'object' && 'id' in row) return String(row.id);
-        return '';
-      }).filter(Boolean),
-    [orderGroupsByDate, getRowId],
-  );
-  const findScrollToKey = scrollToKey ?? dataTableFindHighlightId({
-    query: sheetFindValue,
-    paintedRowIds,
-  });
   useEffect(() => {
-    if (!findScrollToKey || !getRowId) return;
+    if (!scrollToKey || !getRowId) return;
     const next = pageIndexForRowId(
       orderGroupsByDate,
       pageSize,
-      findScrollToKey,
+      scrollToKey,
       getRowId,
     );
     if (next != null && next !== pageIndex) setPageIndex(next);
-  }, [findScrollToKey, getRowId, orderGroupsByDate, pageIndex, pageSize]);
+  }, [scrollToKey, getRowId, orderGroupsByDate, pageIndex, pageSize]);
   const gridHostRef = useRef<HTMLDivElement>(null);
   const { onBodyKeyDown } = useDataTableRowRoving({
     gridHostRef,
@@ -1151,33 +772,6 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
     return { isSortable: (key: string) => sortable.has(key) };
   }, [binding, mounted, isSortable]);
 
-  const resolvedSortMenu = useMemo(() => {
-    if (sortMenu && sortMenu.options.length > 0) return sortMenu;
-    const derived: DataTableSortOption[] = [];
-    for (const col of mounted) {
-      if (!headerLayout.isSortable(col.key)) continue;
-      const label = col.gridLabel || col.label;
-      if (!label) continue;
-      derived.push({ id: col.key, label, shortLabel: label });
-    }
-    if (derived.length === 0) return null;
-    return {
-      options: derived,
-      active: sort,
-      onSelect: (id: string) => {
-        const col = mounted.find((c) => c.key === id);
-        const type = col?.type;
-        const defaultDir: GridSortDir =
-          type === 'date' || type === 'price' || type === 'number' ? 'desc' : 'asc';
-        if (sort === id && dir) {
-          onSortChange(id as K, dir === 'asc' ? 'desc' : 'asc');
-        } else {
-          onSortChange(id as K, defaultDir);
-        }
-      },
-    };
-  }, [sortMenu, mounted, headerLayout, sort, dir, onSortChange]);
-
   const multiSelect = Boolean(selectionScope);
 
   const renderColumnHeader = useCallback(
@@ -1193,6 +787,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         onSortColumn={(key) => api.toggleColumnSort(key as K)}
         onReorderColumn={headerReorder}
         onResizeColumn={onResizeColumn}
+        onFreezeColumn={onFreezeColumn}
         labelFor={labelFor}
         bulkBar={bulkBar}
       />
@@ -1207,13 +802,10 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       labelFor,
       headerReorder,
       onResizeColumn,
+      onFreezeColumn,
       bulkBar,
     ],
   );
-
-  const filterChrome = filter ?? DATA_TABLE_FILTER_IDLE;
-  const isNarrowed = Boolean(sheetFindValue) || Boolean(filterChrome.options.some((o) => o.active));
-  const sheetFindPending = sheetFind?.answeredBy === 'server' && sheetFind.pending === true;
 
   const stage = useDeskStageOptional();
   const exportInHeader = Boolean(
@@ -1290,14 +882,6 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       setChosenFieldIds,
     ],
   );
-  const defaultViews = sheetSavedViewConfigForTable(binding.definition.tableId);
-  const resolvedViews = views ?? (
-    defaultViews
-      ? { ...defaultViews, emptyHint: undefined }
-      : null
-  );
-
-
   return (
     <>
         {exportInHeader ? (
@@ -1320,32 +904,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           PRIMARY_CHROME_ROW_FACE,
         )}
       >
-        {sheetFind ? (
-          <SearchField
-            value={sheetFind.value}
-            onChange={sheetFind.onChange}
-            placeholder={sheetFind.placeholder ?? 'Find in this sheet…'}
-            isSearching={sheetFindPending}
-            inputRef={(el) => el?.setAttribute('aria-label', sheetFind.placeholder ?? 'Find in this sheet')}
-            className={cn('min-w-0 max-w-[22rem] flex-1 overflow-hidden', DATA_TABLE_TOOLBAR_CORNER)}
-            tone="neutral"
-            hideUnderline
-            fillHost
-          />
-        ) : null}
-        <DataTableFilterMenu {...filterChrome} />
         {actions && actions.length > 0 ? <DataTableToolbarActions actions={actions} /> : null}
-        {resolvedSortMenu ? <DataTableSortMenu {...resolvedSortMenu} /> : null}
-        {resolvedViews ? (
-          <div data-testid="data-table-views" className="inline-flex shrink-0 items-center">
-            <WorkbenchViewsMenu
-              storageKey={resolvedViews.storageKey}
-              paramKeys={resolvedViews.paramKeys}
-              emptyHint={resolvedViews.emptyHint}
-            />
-          </div>
-        ) : null}
-        {dateMenu ? <DataTableDateMenuControl {...dateMenu} /> : null}
         <DataTablePageSizeMenu
           pageSize={pageSize}
           pageSizes={DATA_TABLE_PAGE_SIZES}
@@ -1389,7 +948,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           rows={rows}
           orderGroupsByDate={paged.order}
           getRowId={getRowId}
-          loading={loading || sheetFindPending}
+          loading={loading}
           emptyMessage={emptyMessage}
           searchEmptyMessage={searchEmptyMessage}
           emptyState={emptyState}
@@ -1403,7 +962,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           renderRow={renderRow}
           scrollRef={scrollRef}
           scrollParentRef={scrollParentRef}
-          scrollToKey={findScrollToKey}
+          scrollToKey={scrollToKey}
           bodyPrefix={bodyPrefix}
         />
       </div>

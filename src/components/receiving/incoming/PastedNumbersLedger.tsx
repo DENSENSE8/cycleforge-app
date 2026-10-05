@@ -68,7 +68,6 @@ import { useInboundDeliveryRecord } from '@/components/receiving/record/useInbou
 import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
 import { inboundPastedNumberModel } from '@/components/receiving/record/inbound-record-model';
 import { incomingDeliverySummary } from './incoming-delivery-state';
-import { IncomingStatusChips, type IncomingStatusChipSet } from './IncomingStatusChips';
 import { PastedNumbersBanner } from './PastedNumbersBanner';
 
 const VIEW = INCOMING_PIPELINE_VIEW;
@@ -86,7 +85,7 @@ const FOLLOWUP_ICON = { need_claim: Flag, double_check: Search, chasing_seller: 
 
 interface PastedNumbersLedgerProps {
   check: InboundCheck;
-  /** `?recon=` / `?recon_reason=` — null when the chips cannot filter honestly (the cap). */
+  /** `?recon=` / `?recon_reason=` (the sidebar's `pastedListBuckets`) — null when they cannot filter honestly (the cap). */
   status: ReconStatus | null;
   reason: ReconReason | null;
   /** Every loaded line of the pasted list (`view=reconcile`), before any filter. */
@@ -94,7 +93,6 @@ interface PastedNumbersLedgerProps {
   rowsLoading: boolean;
   emptyMessage: string;
   findValue: string;
-  statusChips: IncomingStatusChipSet | null;
   /** One line above the list (the pasted list hit the row cap). */
   notice: string | null;
   /** `?openLine=` — a line id, or a number's placeholder id (negative). */
@@ -112,7 +110,6 @@ export function PastedNumbersLedger({
   rowsLoading,
   emptyMessage,
   findValue,
-  statusChips,
   notice,
   selectedId,
   selectedIds,
@@ -490,11 +487,11 @@ export function PastedNumbersLedger({
               view: slot?.view ?? null,
               strip: null,
             }}
-            summary={statusChips ? <IncomingStatusChips set={statusChips} /> : null}
+            // No chips: the buckets and their reasons are the sidebar's (`pastedListBuckets`).
+            summary={null}
             bulk={<ReceivingSelectionVerbs noun="numbers" lead={bulkLead} />}
             banner={
               <PastedNumbersBanner
-                reasons={statusChips?.reasons ?? null}
                 checking={check.checking}
                 pasted={check.entries.length}
                 answered={check.answered}

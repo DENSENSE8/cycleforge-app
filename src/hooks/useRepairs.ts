@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
 import { REPAIR_CHANNEL_PARAM, type RepairChannel } from '@/lib/repair/repair-channel';
+import { REPAIR_DESK_LIST_LIMIT } from '@/lib/repair/repair-status-chips';
 import { useAblyChannel } from './useAblyChannel';
 import { getDbTableChannelName, getRepairsChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +28,7 @@ export function useRepairsTable(
     queryFn: async () => {
       const params = new URLSearchParams({ tab });
       // The API's default page is 50 rows and this table has no server paging, so the desk silently stopped at the 50th repair while the kiosk…
-      params.set('limit', '500');
+      params.set('limit', String(REPAIR_DESK_LIST_LIMIT));
       if (search) params.set('q', search);
       if (needsLabel) params.set('needsLabel', '1');
       if (channel) params.set(REPAIR_CHANNEL_PARAM, channel);

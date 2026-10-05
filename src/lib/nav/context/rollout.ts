@@ -23,6 +23,7 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   home: 'contextual',
   'stations-live': 'contextual',
   sales: 'contextual',
+  customers: 'contextual',
   operations: 'contextual',
   reports: 'contextual',
   'ops-photos': 'contextual',
@@ -40,11 +41,14 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   // App-wide (owner 2026-09-29): dogfooded contextual by the org-1 owner, parity gaps empty — every org gets it.
   outbound: 'contextual',
   fulfilled: 'contextual',
-  // Born contextual (2026-10-03): Direction modes, Board + status views, every control and Find in the sidebar; no old panel.
+  // Born contextual (2026-10-03): one row, no views or controls; its Day | Week window is page chrome.
   'live-feed': 'contextual',
   'scan-out': 'contextual',
   packer: 'contextual',
   products: 'contextual',
+  // Warehouse's landing page. Like Fulfillment, Stock opens the existing
+  // spine and exposes the Warehouse mode + Stock view switchers there.
+  stock: 'contextual',
   inventory: 'contextual',
   'qc-labels': 'contextual',
   support: 'contextual',
@@ -55,6 +59,8 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   exceptions: 'contextual',
   // Born contextual (owner 2026-09-29): Find + its one view are the whole panel.
   'print-station': 'contextual',
+  // `/search/list` (2026-10-04): the pasted list's bucket facet + Sort left the body (ruling A1/A4).
+  search: 'contextual',
 };
 
 /** Settings value set of `nav.contextual.<pageId>`; `inherit` defers to the next level. */

@@ -3,8 +3,8 @@
  * line 1 = room · rack (top-left) … the rack's total on hand, then when it was
  * last counted / moved (top-right date); the lead product, then +N product
  * positions using Allocate's disclosure; Space folds every position with its
- * last count and move. Stock-health chips write `?status=` in the middle bar;
- * Room and Aisle live in the contextual sidebar.
+ * last count and move. Room, Aisle and Stock health (`?status=`) live in the
+ * contextual sidebar.
  */
 
 import { triageView } from '@/design-system/components/triage-card-list/triage-view';

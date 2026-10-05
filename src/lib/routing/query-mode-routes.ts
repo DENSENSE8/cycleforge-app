@@ -2,12 +2,11 @@
 
 import { parseLabelsView } from '@/components/labels/labels-view';
 import { PAIRING_SORTS } from '@/components/products/pairing/types';
-import { parseProductsView } from '@/components/products/products-view';
+import { parseProductsView, PRODUCT_RECORD_PARAM } from '@/components/products/products-view';
 import {
   parseSourcingAnalyticsRange,
   parseSourcingModeWire,
 } from '@/components/sourcing/sourcing-shared';
-import { parseSupportModeWire } from '@/components/sidebar/support/support-sidebar-shared';
 import { parseOperationsModeWire } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { parseHomeModeWire } from '@/features/home/home-modes';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
@@ -48,45 +47,6 @@ import { EXCEPTION_RECORD_ROUTE_PARAMS } from './desk-page-routes';
 
 /** Operator-level bits every workbench accepts on arrival. */
 const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
-
-/** `/support` — Tickets · Orders · Voicemail · Calls · Warranty · Issues. */
-const SUPPORT_ROUTE_PARAMS = defineRouteParams({
-  route: '/support',
-  owns: {
-    /**
-     * Mode on the WIRE — includes default `tickets` (usually omitted, but
-     * deep links like VoicemailDetail still write it). Never a hand-copied
-     * enum that forgets the default token.
-     */
-    mode: paramRoundTrip(parseSupportModeWire),
-    /** Focused record, per mode. */
-    ticket: paramText,
-    vm: paramText,
-    issueId: paramPositiveInt,
-    open: paramPositiveInt,
-    openOrderId: paramPositiveInt,
-    /** Filters. */
-    q: paramText,
-    search: paramText,
-    status: paramText,
-    assignee: paramText,
-    direction: paramText,
-    range: paramText,
-    type: paramText,
-    reporter: paramText,
-    stage: paramText,
-    /** Warranty-scoped. */
-    wstatus: paramText,
-    wexp: paramText,
-    /** Ready/units-scoped. */
-    ustatus: paramText,
-    attention: paramFlag,
-    /** Tickets board — its own search + status, namespaced away from `q`/`status`. */
-    tq: paramText,
-    tstatus: paramText,
-  },
-  carries: WORKBENCH_CARRIES,
-});
 
 /** `/dashboard` — Search · Receiving · Outbound. */
 const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
@@ -147,7 +107,7 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
 });
 
 
-/** `/` (Tasks, was Daily) — the follow-up desk: tasks, ticket follow-ups, the checklist, projects. */
+/** `/` (Tasks, was Daily) — the follow-up desk: tasks, the checklist, projects. */
 const HOME_ROUTE_PARAMS = defineRouteParams({
   route: '/',
   owns: {
@@ -160,17 +120,17 @@ const HOME_ROUTE_PARAMS = defineRouteParams({
      * so the param survives navigation in the meantime.
      */
     item: paramPositiveInt,
-    /** Tasks' sidebar-owned view, status, scope, and header Find. */
+    /** Tasks' sidebar-owned view, status, scope, order, grouping, and header Find. */
     tab: paramText,
     q: paramText,
     filter: paramText,
     scope: paramText,
+    sort: paramText,
+    group: paramText,
     /** Tasks' project focus — one project's rows (the board's project heading). */
     project: paramText,
     /** Tasks' layout: `columns` = wide triage, one column per type (the toolbar's List · Columns, `V`). */
     layout: paramText,
-    /** Tasks' helpdesk-status chips: a comma list (`new,open,pending,hold,solved,closed`), several OR together. */
-    ticket: paramText,
     /** The agenda row list's 1-based page (`useTriageCut`). */
     page: paramPositiveInt,
   },
@@ -275,6 +235,8 @@ export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
     catalogSort: paramEnum(['title', 'sku', 'channels', 'attention'] as const),
     /** Import products CSV: the staged file's review stands in for the catalog list while set. */
     import: paramEnum(['csv'] as const),
+    /** The catalog product open in place on the list's record plane (its SKU). */
+    [PRODUCT_RECORD_PARAM]: paramText,
     /** Pairing backlog ordering. */
     sort: paramEnum(PAIRING_SORTS),
     /** Selected catalog row on QC Checklist. */
@@ -428,11 +390,11 @@ export const INVENTORY_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/** `/inventory/locations` — Bin Tags · Bays · Rooms · Bins · Map (former `/warehouse` desk). */
+/** `/inventory/locations` — All · Rooms · Racks · Map · Labels. */
 const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/locations',
   owns: {
-    /** Bin Tags is the default and rides the bare URL. */
+    /** All is the default and rides the bare URL. */
     tab: paramCanonical(parseLocationsTabWire),
     room: paramText,
     code: paramText,
@@ -452,6 +414,12 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
 export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/stock',
   owns: {
+    /** Named stock workspace; absent = the complete stock ledger. */
+    view: paramEnum(['replenish'] as const),
+    /** Replenishment view's namespaced filters. */
+    rsku: paramText,
+    rtab: paramText,
+    rstatus: paramText,
     /** The one search box, over every fact a record paints (server-side). */
     q: paramText,
     /** Room chips — a comma-separated multi-select over `locations.room` (the list's own cut, `useTriageCut`). */
@@ -578,7 +546,6 @@ export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
 
 /** Every still-query-mode surface with a declared spec. */
 export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
-  SUPPORT_ROUTE_PARAMS,
   DASHBOARD_ROUTE_PARAMS,
   OPERATIONS_ROUTE_PARAMS,
   PRODUCTS_ROUTE_PARAMS,

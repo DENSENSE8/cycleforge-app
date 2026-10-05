@@ -4,6 +4,7 @@ import type { StudioLens } from '@/components/studio/studio-types';
 import { parseReportTab } from '@/lib/reports/report-tabs';
 import {
   defineRouteParams,
+  paramCanonical,
   paramDateKey,
   paramEnum,
   paramPositiveInt,
@@ -12,6 +13,7 @@ import {
   paramTimeKey,
   type RouteParamsSpec,
 } from './route-params';
+import { paramLocateBucket } from './locate-bucket-param';
 import { z } from 'zod';
 import { IMPORTS_PATH, IMPORT_SORTS, IMPORT_VIEWS } from '@/lib/imports/params';
 import { IMPORT_RUN_STATUSES, IMPORT_RUN_TRIGGERS } from '@/lib/imports/types';
@@ -25,6 +27,19 @@ import {
   parseExceptionRowKey,
 } from '@/lib/exceptions/types';
 import { PRINT_STATION_FNSKU_PARAM, PRINT_STATION_FNSKU_VIEWS, PRINT_STATION_PATH, PRINT_STATION_VIEW_PARAM } from '@/lib/print-station/fnsku';
+import { PRINT_STATIONS_PATH, PRINT_STATIONS_STATION_PARAM, PRINT_STATION_ID_RE } from '@/lib/print-station/stations';
+import { CUSTOMER_PATHS, PRINT_STATION_PATHS, SEARCH_PATHS, SUPPORT_PATHS } from '@/lib/nav/route-tree';
+import { NAV_LOCATE_SCOPES } from '@/lib/nav/context/schema';
+import { SUPPORT_LOCATE_REFS_PARAM, SUPPORT_LOCATE_STATUS_PARAM } from '@/lib/nav/locate/support-params';
+import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
+import {
+  SUPPORT_LIST_GROUPS,
+  SUPPORT_LIST_SORTS,
+  SUPPORT_LIST_VIEWS,
+  parseSupportListAssignees,
+  parseSupportListPlatformIds,
+  parseSupportListStatuses,
+} from '@/lib/support/list/support-list';
 
 /** `/reports` — Staff day · Packer day · Bin Utilization · Velocity · Dead Stock · Tasks · Task activity. */
 const REPORTS_ROUTE_PARAMS = defineRouteParams({
@@ -38,6 +53,8 @@ const REPORTS_ROUTE_PARAMS = defineRouteParams({
     date: paramDateKey,
     /** Optional staff member for staff/packer report rows and KPI totals. */
     staffId: paramPositiveInt,
+    /** Task time: record kind (task / checklist); unset = both. */
+    type: paramEnum(['task', 'checklist'] as const),
   },
 });
 
@@ -54,12 +71,41 @@ const COUNTER_ROUTE_PARAMS = defineRouteParams({
 
 /** `/customers` — the shared customer book; Find plus the open desktop record. */
 const CUSTOMERS_ROUTE_PARAMS = defineRouteParams({
-  route: '/customers',
+  route: CUSTOMER_PATHS.desktop,
   owns: {
     /** Name, phone, email or customer identity. */
     q: paramText,
     /** The customer open in the desk record plane. */
     customer: paramPositiveInt,
+  },
+});
+
+/**
+ * `/support` — the Support workspace (owner 2026-10-04): the sidebar view,
+ * the status chips, the Platform · Account · Assignee facets, sort and
+ * group-by (`parseSupportListFilter`, the list's own parser), Find and its
+ * pasted list and the open Support item. The table is unpaged.
+ */
+const SUPPORT_ROUTE_PARAMS = defineRouteParams({
+  route: SUPPORT_PATHS.desktop,
+  owns: {
+    view: paramEnum(SUPPORT_LIST_VIEWS),
+    /** The status chips — local statuses, comma-joined in canonical order. */
+    status: paramCanonical((raw) => parseSupportListStatuses(raw).join(',') || null),
+    platform: paramCanonical((raw) => parseSupportListPlatformIds(raw).join(',') || null),
+    /** Account labels, comma-joined. */
+    account: paramText,
+    /** Staff ids and `none` (unowned), comma-joined. */
+    assignee: paramCanonical((raw) => parseSupportListAssignees(raw).join(',') || null),
+    sort: paramEnum(SUPPORT_LIST_SORTS),
+    group: paramEnum(SUPPORT_LIST_GROUPS),
+    /** Find: Support #, order, ticket number, contact, tracking, SKU, subject… */
+    q: paramText,
+    /** The pasted list and its bucket filter (`SUPPORT_LOCATE`). */
+    [SUPPORT_LOCATE_REFS_PARAM]: paramCanonical((raw) => serializeRefIn(parseRefInParam(raw).refs) || null),
+    [SUPPORT_LOCATE_STATUS_PARAM]: paramLocateBucket('support'),
+    /** The open Support item (support_tickets.id, never the task id). */
+    item: paramPositiveInt,
   },
 });
 
@@ -182,6 +228,19 @@ const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
   },
 });
 
+/** `/print-station/stations` — Print station › Stations: Find over station names and the open station. */
+const PRINT_STATIONS_ROUTE_PARAMS = defineRouteParams({
+  route: PRINT_STATIONS_PATH,
+  owns: {
+    /** Find: a station's name. */
+    q: paramText,
+    /** The open station (registry id). */
+    [PRINT_STATIONS_STATION_PARAM]: paramRoundTrip((raw) => (PRINT_STATION_ID_RE.test(raw) ? raw : null)),
+    /** The row list's 1-based page (`useTriageCut`). */
+    page: paramPositiveInt,
+  },
+});
+
 /** `/print-station` — Print station › FNSKU labels: the view, Find over the FBA catalog and the open FNSKU. */
 const PRINT_STATION_ROUTE_PARAMS = defineRouteParams({
   route: PRINT_STATION_PATH,
@@ -197,14 +256,46 @@ const PRINT_STATION_ROUTE_PARAMS = defineRouteParams({
   },
 });
 
+/** `/print-station/device` — the enrolled print station's own page: `?code=` (the QR) pairs it on arrival. */
+const PRINT_STATION_DEVICE_ROUTE_PARAMS = defineRouteParams({
+  route: PRINT_STATION_PATHS.device,
+  owns: {
+    /** The single-use pairing code (url-safe, as enrolling mints it). */
+    code: paramRoundTrip((raw) => (/^[A-Za-z0-9_-]{8,64}$/.test(raw) ? raw : null)),
+  },
+});
+
+/** `/search/list` — the pasted list, full screen (route-tree `pasted-list`). */
+const PASTED_LIST_ROUTE_PARAMS = defineRouteParams({
+  route: SEARCH_PATHS.pastedList,
+  owns: {
+    /** The pasted numbers (the bar's parse and cap). */
+    refs: paramCanonical((raw) => serializeRefIn(parseRefInParam(raw).refs) || null),
+    /** Whose buckets answer the paste. */
+    locator: paramRoundTrip((raw) => ((NAV_LOCATE_SCOPES as readonly string[]).includes(raw) ? raw : null)),
+    /** One located bucket — the sidebar's Status facet (a live bucket id, `<locator>:<id>` when found elsewhere). */
+    status: paramText,
+    /** Paste repeats (`parsePastedListRepeats`). */
+    rep: paramText,
+    /** The sidebar's Sort (`pasted` default unset · `id` · `status`, `-desc` reversed). */
+    sort: paramEnum(['id', 'id-desc', 'status', 'status-desc'] as const),
+    /** Where Esc returns. */
+    back: paramText,
+  },
+});
+
 export const DESK_PAGE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   REPORTS_ROUTE_PARAMS,
   COUNTER_ROUTE_PARAMS,
   CUSTOMERS_ROUTE_PARAMS,
+  SUPPORT_ROUTE_PARAMS,
   STUDIO_ROUTE_PARAMS,
   STUDIO_CATALOG_ROUTE_PARAMS,
   STATION_LIVE_ROUTE_PARAMS,
   IMPORTS_ROUTE_PARAMS,
   EXCEPTIONS_ROUTE_PARAMS,
+  PRINT_STATIONS_ROUTE_PARAMS,
   PRINT_STATION_ROUTE_PARAMS,
+  PRINT_STATION_DEVICE_ROUTE_PARAMS,
+  PASTED_LIST_ROUTE_PARAMS,
 ];

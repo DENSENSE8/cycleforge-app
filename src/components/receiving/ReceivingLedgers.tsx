@@ -19,7 +19,7 @@ import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving
 import { IncomingPoImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingPoImportStagingHost';
 import { IncomingDeliveriesLedger } from '@/components/receiving/incoming/IncomingDeliveriesLedger';
 import { PastedNumbersLedger } from '@/components/receiving/incoming/PastedNumbersLedger';
-import { useIncomingStatusChips } from '@/components/receiving/incoming/IncomingStatusChips';
+import { useIncomingStatusChords } from '@/components/receiving/incoming/useIncomingStatusChords';
 import { DockedPackagesLedger } from '@/components/receiving/docked/DockedPackagesLedger';
 import { UnboxedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
@@ -37,7 +37,8 @@ import {
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
-import { computeWeekRange, formatWeekRangeCompact } from '@/utils/date';
+import { formatWeekRangeCompact } from '@/utils/date';
+import { receivingDayWindow } from '@/components/station/receiving-grouping';
 import {
   buildReceivingHistoryExportCsv,
   receivingHistoryExportFilename,
@@ -54,7 +55,6 @@ import { dispatchSelectLine } from '@/components/station/receiving-lines-table-h
 import { UnboxCartonCards } from '@/components/receiving/unbox/UnboxCartonCards';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
-import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIncomingTableChrome';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
 import {
@@ -139,14 +139,7 @@ export function ReceivingLedgers({
   // Inbound History's sidebar date row (`?dateFrom=`/`?dateTo=`) replaces the
   // week as the day slice while set; an open end reaches every loaded day.
   const historyDateRange = modeContext.historyDateRange ?? null;
-  const computedWeek = computeWeekRange(weekOffset);
-  const weekRange = historyDateRange
-    ? {
-        ...computedWeek,
-        startStr: historyDateRange.from || '0000-01-01',
-        endStr: historyDateRange.to || '9999-12-31',
-      }
-    : computedWeek;
+  const weekRange = receivingDayWindow(weekOffset, historyDateRange);
 
   const isUnboxTableMode = mode.id === 'unbox_queue' || mode.id === 'unbox_viewed';
 
@@ -284,7 +277,7 @@ export function ReceivingLedgers({
   const isInboundExceptions = modeContext.incomingExceptions;
   const onePage = reconciling || isInboundExceptions;
   // Over the cap the rows are a partial set: a bucket filter over them would
-  // hide lines that are there, so the chips stand down and a note says so.
+  // hide lines that are there, so the statuses stand down and a note says so.
   const reconcileCapped =
     onePage && data != null && Number(data.total ?? 0) > (data.receiving_lines?.length ?? 0);
   const reconFilter = reconcileCapped ? null : recon;
@@ -292,16 +285,13 @@ export function ReceivingLedgers({
   // A pasted list reads number by number (one card per pasted number); the
   // Exceptions lane keeps its own population.
   const numbersLedger = reconciling && !isInboundExceptions;
-  // Status chips over the Incoming ledger: delivery state (`?state=`), or the
-  // pasted list's buckets (`?recon=`, then its reasons `?recon_reason=`) — ⌥1–⌥N.
-  // Exceptions is its own population: no delivery-state or paste buckets over it.
-  const incomingStatusChips = useIncomingStatusChips({
+  // Inbound's statuses are the sidebar's (`incoming.pipeline` facet `?state=`;
+  // a pasted list's `pastedListBuckets` `?recon=` / `?recon_reason=`); their
+  // ⌥1–⌥N keys live here. Exceptions is its own population: neither.
+  useIncomingStatusChords({
     enabled: isIncomingMode && !isInboundExceptions,
     reconciling,
-    check: inboundCheck,
-    recon: reconFilter,
-    reason: reconReason,
-    disabledReason: reconcileCapped ? RECONCILE_CAP_NOTE : null,
+    disabled: reconcileCapped,
   });
 
   // KPI-tile click-to-filter (Unbox only).
@@ -418,12 +408,7 @@ export function ReceivingLedgers({
   const incomingDegraded = isIncomingMode && isError && localRows.length === 0;
 
   // Incoming column sort — DURABLE on `?colsort=`/`?coldir=`, deliberately NOT `?sort=` (that param is the Incoming SERVER ORDER BY vocabulary).
-  const {
-    sort: incomingColumnSort,
-    dir: incomingSortDir,
-    setSort: setIncomingSort,
-    toggleColumnSort: toggleIncomingSort,
-  } = useUrlColumnSort<IncomingGridColumnKey>({
+  const { sort: incomingColumnSort, dir: incomingSortDir } = useUrlColumnSort<IncomingGridColumnKey>({
     isColumn: isIncomingGridSortable,
     defaultDir: defaultDirForIncomingGridSort,
   });
@@ -498,8 +483,6 @@ export function ReceivingLedgers({
   );
   const weekCount = getWeekCount();
 
-  const incomingChrome = useIncomingTableChrome();
-
   // Unbox Queue / Recent skip the week filter — do NOT paint a static
   // "Door queue · N" fact chip (duplicates the Queue tab badge; not actionable).
   // History (Unbox tab, Docked lane, standalone) carries the week pill.
@@ -553,7 +536,6 @@ export function ReceivingLedgers({
                   rowsLoading={isLoading && localRows.length === 0}
                   emptyMessage={emptyMessage}
                   findValue={receivingSearchValue}
-                  statusChips={incomingStatusChips}
                   notice={reconcileCapped ? RECONCILE_CAP_NOTE : null}
                   selectedId={openLineId}
                   selectedIds={selectedIds}
@@ -567,18 +549,9 @@ export function ReceivingLedgers({
                   loading={isLoading && localRows.length === 0}
                   emptyMessage={emptyMessage}
                   findValue={receivingSearchValue}
-                  filter={incomingChrome.filter}
-                  sidebarOwnsControls={isInboundDeskHost}
-                  statusChips={incomingStatusChips}
                   notice={reconcileCapped ? RECONCILE_CAP_NOTE : null}
                   lane={isInboundExceptions ? 'exceptions' : 'pipeline'}
                   sectioned={incomingSectioned}
-                  sort={incomingColumnSort}
-                  sortDir={incomingSortDir}
-                  onSort={(key) => {
-                    if (incomingColumnSort === key) toggleIncomingSort(key);
-                    else setIncomingSort(key);
-                  }}
                   selectedId={openLineId}
                   selectedIds={selectedIds}
                   onOpenRow={openLedgerRow}
@@ -611,7 +584,6 @@ export function ReceivingLedgers({
                 query={receivingSearchValue}
                 activityAxis={historyAxis}
                 toolbarExtra={isInboundDeskHost ? null : chromePill}
-                sidebarOwnsControls={isInboundDeskHost}
                 selectedId={openLineId}
                 selectedIds={selectedIds}
                 onOpenRow={openLedgerRow}
@@ -629,7 +601,6 @@ export function ReceivingLedgers({
   return (
     <UnboxCartonCards
       rows={orderedVisibleRows}
-      kpiRows={isUnboxWorkbench && unboxTabForFilter !== 'incoming' ? localRows : null}
       loading={isLoading && localRows.length === 0}
       emptyMessage={emptyMessage}
       query={receivingSearchValue}

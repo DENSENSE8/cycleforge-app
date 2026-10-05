@@ -230,7 +230,17 @@ export function ContextualSidebar() {
                     }
                   />
                 ) : inlineScanStation ? (
-                  <SidebarContextPanel />
+                  <>
+                    {/* A station's facets and controls (Unbox's status cuts and Sort) ride above its scan panel. */}
+                    {nav.filters || nav.controls ? (
+                      <div className="shrink-0">
+                        <NavFilters key={nav.filters?.facetContext ?? nav.page.id} filters={nav.filters} controls={nav.controls} />
+                      </div>
+                    ) : null}
+                    <div className="flex min-h-0 flex-1 flex-col">
+                      <SidebarContextPanel />
+                    </div>
+                  </>
                 ) : (
                   <SectionBody nav={nav} />
                 )}
@@ -307,6 +317,7 @@ function SectionBody({ nav }: { nav: NavContext }) {
           key={nav.filters?.facetContext ?? nav.page.id}
           filters={nav.filters}
           controls={nav.controls}
+          locate={nav.search?.locate}
         />
       ) : null}
       {nav.actionsPlacement === 'sidebar' && nav.actions ? <NavSidebarActions actions={nav.actions} /> : null}

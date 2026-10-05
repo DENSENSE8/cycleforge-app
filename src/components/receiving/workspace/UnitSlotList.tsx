@@ -17,6 +17,7 @@ import { cornerClass } from "@/design-system/tokens/radius";
 import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { cn } from "@/utils/_cn";
 import { copyToClipboard } from "@/utils/_dom";
+import { getLast8 } from "@/lib/copy-chip-format";
 import { ConditionBadge } from "./ConditionBadge";
 import { NoSerialOfferCheck } from "./line-edit/NoSerialOfferCheck";
 import {
@@ -122,11 +123,6 @@ interface Props {
   maxVisible?: number;
   /** Rendered after the visible window when rows are capped (overflow CTA). */
   overflowSlot?: ReactNode;
-}
-
-function last8(sn: string): string {
-  const v = (sn || "").trim();
-  return v.length > 8 ? v.slice(-8) : v;
 }
 
 function synthesizeLinkedSerial(unit: UnitSlotView): UnitLike | null {
@@ -434,7 +430,7 @@ function CollapsedRow({
         trailing={
           serial ? (
             <span className="font-mono text-sm font-semibold tracking-tight text-text-default underline decoration-emerald-500 decoration-2 underline-offset-2">
-              {last8(serial.serial_number)}
+              {getLast8(serial.serial_number)}
             </span>
           ) : waived ? (
             <span className="text-role-caption font-semibold text-emerald-700">

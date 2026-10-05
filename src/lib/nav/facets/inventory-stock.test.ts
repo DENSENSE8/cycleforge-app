@@ -1,10 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { locationStockRoomId } from '@/lib/inventory/location-stock-row';
-import { inventoryStockFacets } from './inventory-stock';
+import { inventoryStockFacets, type StockScopeCountReader } from './inventory-stock';
 import { getNavFacets, type NavFacetsDeps } from './service';
 
 const ORG = '00000000-0000-0000-0000-000000000001';
+const NO_COUNTS: StockScopeCountReader = async () => ({
+  inStockPairs: 0,
+  inStockProducts: 0,
+  inStockUnits: 0,
+  onHoldPairs: 0,
+  lowStockPairs: 0,
+  outPairs: 0,
+});
 
 test('stock room and aisle facets cross-filter with comma-safe room ids', async () => {
   const calls: Array<{ sql: string; params: readonly unknown[] }> = [];
@@ -19,7 +27,7 @@ test('stock room and aisle facets cross-filter with comma-safe room ids', async 
       { room, aisle: 10, n: 1 },
       { room: 'Zone 3 - Parts', aisle: 2, n: 5 },
     ];
-  });
+  }, NO_COUNTS);
 
   assert.equal(result.total, 8);
   assert.deepEqual(result.groups.find((group) => group.id === 'room')?.options, [
@@ -42,6 +50,7 @@ test('room counts include barcoded locations without a numeric aisle', async () 
       { room: 'Zone 3 - Parts', aisle: null, n: 1 },
       { room: 'Zone 3 - Parts', aisle: 3, n: 2 },
     ],
+    NO_COUNTS,
   );
 
   assert.equal(result.total, 3);
@@ -53,16 +62,39 @@ test('room counts include barcoded locations without a numeric aisle', async () 
   ]);
 });
 
+test('stock health counts come from the list scope counts on the chip ids', async () => {
+  const seen: Array<Parameters<StockScopeCountReader>[0]> = [];
+  const result = await inventoryStockFacets(
+    ORG,
+    new URLSearchParams({ room: 'Zone 3 - Parts', aisle: '2', q: 'brake', status: 'low-stock' }),
+    async () => [],
+    async (args) => {
+      seen.push(args);
+      return { inStockPairs: 9, inStockProducts: 4, inStockUnits: 30, onHoldPairs: 1, lowStockPairs: 3, outPairs: 2 };
+    },
+  );
+
+  assert.deepEqual(seen, [{ orgId: ORG, room: 'Zone 3 - Parts', aisle: '2', query: 'brake' }]);
+  const health = result.groups.find((group) => group.id === 'health');
+  assert.equal(health?.param, 'status');
+  assert.deepEqual(health?.options, [
+    { value: 'in-stock', label: 'In stock', count: 9 },
+    { value: 'low-stock', label: 'Low stock', count: 3 },
+    { value: 'out-of-stock', label: 'Out of stock', count: 2 },
+    { value: 'on-hold', label: 'On hold', count: 1 },
+  ]);
+});
+
 test('inventory stock facets require sku_stock.view', async () => {
   const deps: NavFacetsDeps = {
     run: async () => [],
     listLocalPickupLines: async () => [],
     exceptionCounts: async () => ({}),
-    liveFeedCounts: async () => ({}),
+    supportRows: async () => [],
   };
   const result = await getNavFacets(
     { orgId: ORG, permissions: new Set(['orders.view']) },
-    'inventory.stock',
+    'stock.all',
     new URLSearchParams(),
     deps,
   );

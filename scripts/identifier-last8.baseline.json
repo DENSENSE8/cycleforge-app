@@ -1,0 +1,4 @@
+{
+  "note": "FROZEN BASELINE — hand-rolled last-8 sites outside the helper homes (.omp/rules/identifier-last8.md signatures). SHRINK-ONLY: use getLast8* / CopyChip (display) or normalizeTrackingLast8 / orderTrackingMatchKeys (matching). Rewrite with SPEC_WRITE_CONTRACT_BASELINES=1 node_modules/.bin/tsx tools/spec-loop/live-contracts.mjs --repo . --only identity.last8-one-helper.",
+  "files": {}
+}

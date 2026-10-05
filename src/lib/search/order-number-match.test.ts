@@ -11,6 +11,8 @@ import {
   orderNumberLast8Digits,
   serialNumberEqualsQuery,
   sqlIdentifierEqualsQuery,
+  sqlIdentifierFaceCompact,
+  identifierFaceCompact,
 } from './order-number-match';
 import {
   headerFindEmptyMessage,
@@ -47,6 +49,15 @@ describe('orderNumberEqualsQuery', () => {
     assert.equal(identifierChipLast8Compact(EBAY), '8413689');
     assert.equal(orderNumberEqualsQuery(EBAY, '84-13689'), true);
   });
+
+  it('matches the id chip face a row shows — the last segment of a composed id', () => {
+    // The Allocate row prints `1909809` for this Amazon order; pasted back, it is that order.
+    assert.equal(identifierFaceCompact('113-6729910-1909809'), '1909809');
+    assert.equal(orderNumberEqualsQuery('113-6729910-1909809', '1909809'), true);
+    assert.equal(orderNumberEqualsQuery(EBAY, '13689'), true);
+    // A middle segment is not the face.
+    assert.equal(orderNumberEqualsQuery('113-6729910-1909809', '6729910'), false);
+  });
 });
 
 describe('serialNumberEqualsQuery', () => {
@@ -76,6 +87,7 @@ describe('sqlIdentifierEqualsQuery', () => {
     assert.match(sql, /RIGHT\(/);
     assert.ok(sql.includes("[^a-z0-9]"));
     assert.ok(sql.includes("RIGHT(COALESCE(o.order_id, ''), 8)"));
+    assert.ok(sql.includes(sqlIdentifierFaceCompact('o.order_id')), 'the chip-face arm');
   });
 });
 

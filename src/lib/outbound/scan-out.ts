@@ -8,7 +8,7 @@ import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY, type RecordAuditArgs } from '@/lib/audit-logs';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { extractCanonicalTracking } from '@/lib/tracking-format';
+import { extractCanonicalTracking, trackingCanonicalLast8 } from '@/lib/tracking-format';
 import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { productImageUrl } from '@/lib/photos/product-image-url';
@@ -335,7 +335,7 @@ async function findByTracking(
   organizationId: string,
   norm: string,
 ): Promise<TrackingRow | null> {
-  const last8 = norm.slice(-8).toUpperCase();
+  const last8 = trackingCanonicalLast8(norm);
   const rows = await tenantQuery<TrackingRow>(
     organizationId,
     `SELECT id, shipment_id, shipping_tracking_number

@@ -70,7 +70,10 @@ export function useShippedTableFilters({
 
   const exceptionsOnly = readShippedExceptionsFilter(searchParams);
   const carrierFilter = readShippedCarrierFilter(searchParams);
-  const channelFilter = readShippedDeskFilters(searchParams).channels.join(',') || null;
+  const deskFilters = readShippedDeskFilters(searchParams);
+  const channelFilter = deskFilters.channels.join(',') || null;
+  /** `?cardStatus=` — package-status pills, comma list; answered in SQL with the facet counts. */
+  const cardStatusFilter = deskFilters.cardStatus.join(',') || null;
   const statusFilter = readShippedStatusFilter(searchParams);
   const sort = searchParams.get('sort') || 'ship_confirmed_at';
   const obStatus = lockedOutboundStatus
@@ -236,6 +239,7 @@ export function useShippedTableFilters({
     exceptionsOnly,
     carrierFilter,
     channelFilter,
+    cardStatusFilter,
     statusFilter,
     matchesOutbound,
     effPackedBy,

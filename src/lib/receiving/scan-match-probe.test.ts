@@ -4,6 +4,7 @@ import {
   buildScanProbeKeys,
   pickCartonMatch,
   pickLocalPoId,
+  SCAN_MATCH_PROBE_SQL,
   scanVerdictFromProbe,
   type ProbeCartonRow,
   type ScanMatchProbe,
@@ -39,6 +40,26 @@ test('keys: values under 8 digits leave every lossy tier off', () => {
   assert.equal(k.poRef, 'AB12');
 });
 
+test('keys: a typed last 8 is its own last-8 key on every last-8 tier', () => {
+  // Operator 2026-10-04: a label that will not scan is keyed as its last 8.
+  const k = buildScanProbeKeys('98732822');
+  assert.equal(k.canonical, '98732822');
+  assert.equal(k.stnLast8, '98732822');
+  assert.equal(k.scanLast8, '98732822');
+});
+
+test('SQL: the last-8 tier counts each shipment as its newest carton, then distinct cartons', () => {
+  // One shipment re-minted into two cartons must be ONE last-8 hit — the
+  // carton `stn_exact` picks for the full number — or a typed last 8 misses
+  // the box its full scan finds.
+  const tier = SCAN_MATCH_PROBE_SQL.slice(
+    SCAN_MATCH_PROBE_SQL.indexOf('stn_last8 AS ('),
+    SCAN_MATCH_PROBE_SQL.indexOf('stn_prefix AS ('),
+  );
+  assert.match(tier, /SELECT DISTINCT ON \(receiving_id\) \* FROM \(\s*SELECT DISTINCT ON \(stn\.id\)/);
+  assert.match(tier, /ORDER BY stn\.id, r\.id DESC\s*\) newest\s*ORDER BY receiving_id DESC\s*LIMIT 2/);
+});
+
 test('STN exact outranks every other tier', () => {
   const m = pickCartonMatch(
     probe({
@@ -51,11 +72,22 @@ test('STN exact outranks every other tier', () => {
   assert.equal(m?.receivingId, 1);
 });
 
-test('an exact STN row with no carton skips the lossy STN tiers but still reaches Incoming', () => {
+test('an exact STN row with no carton (a pasted variant) does not hide the box its last 8 digits name', () => {
   const m = pickCartonMatch(
     probe({
       stnExact: [carton({ receiving_id: null })],
       stnLast8: [carton({ receiving_id: 2 })],
+      inbound: [carton({ receiving_id: 3, receiving_source: 'zoho_po' })],
+    }),
+  );
+  assert.equal(m?.tier, 'stn_last8');
+  assert.equal(m?.receivingId, 2);
+});
+
+test('an exact STN row with no carton and no last-8 box still reaches Incoming', () => {
+  const m = pickCartonMatch(
+    probe({
+      stnExact: [carton({ receiving_id: null })],
       inbound: [carton({ receiving_id: 3, receiving_source: 'zoho_po' })],
     }),
   );

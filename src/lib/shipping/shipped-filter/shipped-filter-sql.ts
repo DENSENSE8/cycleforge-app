@@ -1,7 +1,7 @@
 /**
  * The Shipped desk's view filters as SQL — type (`shippedFilter`), carrier
- * (`carrier`), tracking status (`statusCategory`) and exceptions-only
- * (`exceptions`). ONE predicate per filter, read by both the list
+ * (`carrier`), tracking status (`statusCategory`), exceptions-only
+ * (`exceptions`) and package status (`cardStatus`). ONE predicate per filter, read by both the list
  * (`fetchPackerLogRows`' page WHERE) and the sidebar facet counts
  * (`src/lib/nav/facets/shipped.ts`), so a count is by construction the list
  * total for that pick.
@@ -17,6 +17,7 @@
 
 import type { CarrierCode, ShipmentStatusCategory } from '@/lib/shipping/shipment-status';
 import type { ShippedTypeFilter } from './shipped-filter-constants';
+import { SHIPPED_STATUS_CHIPS, type ShippedStatusChip } from '@/components/shipped/ledger/shipped-card-model';
 import {
   readShippedCarrierFilter,
   readShippedExceptionsFilter,
@@ -35,6 +36,8 @@ export interface ShippedDeskFilters {
   exceptionsOnly: boolean;
   /** `account_source` values, lower-cased. Empty = no channel predicate. */
   channels: readonly string[];
+  /** Package-status pills (`?cardStatus=`, `shippedStatusKeys`), OR across picks. Empty = no predicate. */
+  cardStatus: readonly ShippedStatusChip[];
 }
 
 export const NO_SHIPPED_DESK_FILTERS: ShippedDeskFilters = {
@@ -43,6 +46,7 @@ export const NO_SHIPPED_DESK_FILTERS: ShippedDeskFilters = {
   statusCategory: null,
   exceptionsOnly: false,
   channels: [],
+  cardStatus: [],
 };
 
 /** The desk's own parse of each param (`useShippedTableFilters`); anything else is not a filter. */
@@ -61,11 +65,21 @@ export function readShippedDeskFilters(params: ParamReader): ShippedDeskFilters 
     statusCategory: readShippedStatusFilter(params),
     exceptionsOnly: readShippedExceptionsFilter(params),
     channels,
+    cardStatus: (params.get('cardStatus') ?? '')
+      .split(',')
+      .filter((key): key is ShippedStatusChip => (SHIPPED_STATUS_CHIPS as readonly string[]).includes(key)),
   };
 }
 
 export function hasShippedDeskFilter(filters: ShippedDeskFilters): boolean {
-  return filters.type != null || filters.carrier != null || filters.statusCategory != null || filters.exceptionsOnly || filters.channels.length > 0;
+  return (
+    filters.type != null
+    || filters.carrier != null
+    || filters.statusCategory != null
+    || filters.exceptionsOnly
+    || filters.channels.length > 0
+    || filters.cardStatus.length > 0
+  );
 }
 
 /**
@@ -143,13 +157,52 @@ export const SHIPPED_EXCEPTION_SQL = `COALESCE((
       ), false)`;
 
 /**
+ * The joins {@link shippedCardKeysSql} reads beyond {@link shippedFilterJoins}:
+ * the row's unmatched-scan hold (`oe_f`) and its order's test deadline (`wa_f`,
+ * the list's `ship_by_date`). Goes after the order joins — it reads `o`.
+ */
+export const SHIPPED_CARD_JOINS = `
+        LEFT JOIN orders_exceptions oe_f ON oe_f.id = sal.orders_exception_id
+        LEFT JOIN LATERAL (
+            SELECT wa.deadline_at
+              FROM work_assignments wa
+             WHERE wa.entity_type = 'ORDER' AND wa.entity_id = o.id AND wa.work_type = 'TEST'
+             ORDER BY CASE wa.status WHEN 'IN_PROGRESS' THEN 1 WHEN 'ASSIGNED' THEN 2 WHEN 'OPEN' THEN 3 WHEN 'DONE' THEN 4 ELSE 5 END,
+                      wa.updated_at DESC, wa.id DESC
+             LIMIT 1
+        ) wa_f ON TRUE`;
+
+/**
+ * The pills one row lights (`shippedStatusKeys`) as `text[]` — ONE expression
+ * for the list's `?cardStatus=` predicate and the sidebar's Package status
+ * counts. Reads `stn_f`, `o` and {@link SHIPPED_CARD_JOINS}; `shipConfirmAt` is
+ * the package's latest dock handoff (`sqlLatestShipConfirmAt`).
+ */
+export function shippedCardKeysSql(shipConfirmAt: string): string {
+  const category = SHIPPED_STATUS_SQL;
+  return `ARRAY_REMOVE(ARRAY[
+            'FULFILLED',
+            CASE WHEN ${category} = 'LABEL_CREATED' THEN 'LABEL_ONLY' END,
+            CASE WHEN ${category} IN ('ACCEPTED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY') THEN 'ON_THE_WAY' END,
+            CASE WHEN ${category} = 'DELIVERED' OR stn_f.is_delivered IS TRUE THEN 'DELIVERED' END,
+            CASE WHEN wa_f.deadline_at IS NOT NULL AND ${shipConfirmAt} > wa_f.deadline_at THEN 'LATE' END,
+            CASE WHEN ${category} IN ('EXCEPTION', 'RETURNED') OR stn_f.has_exception IS TRUE THEN 'EXCEPTION' END,
+            CASE WHEN oe_f.id IS NOT NULL AND o.id IS NULL AND LOWER(BTRIM(COALESCE(oe_f.status, ''))) = 'open' THEN 'UNMATCHED' END,
+            CASE WHEN sal.station IS DISTINCT FROM 'PACK' OR sal.staff_id IS NULL THEN 'NEVER_PACKED' END
+          ]::text[], NULL)`;
+}
+
+/**
  * WHERE conditions for the active filters. `bind` pushes a value and returns
- * its placeholder; carrier, status, and channel are the bound values.
+ * its placeholder; carrier, status, channel and package status are the bound
+ * values. A package-status pick reads `o` and {@link SHIPPED_CARD_JOINS};
+ * `shipConfirmAt` as in {@link shippedCardKeysSql}.
  */
 export function shippedDeskConditions(
   filters: ShippedDeskFilters,
   enriched: boolean,
   bind: (value: unknown) => string,
+  shipConfirmAt: string,
 ): string[] {
   const conditions: string[] = [];
   if (filters.type) conditions.push(shippedTypeSql(filters.type, enriched));
@@ -157,5 +210,8 @@ export function shippedDeskConditions(
   if (filters.statusCategory) conditions.push(`${SHIPPED_STATUS_SQL} = ${bind(filters.statusCategory)}`);
   if (filters.exceptionsOnly) conditions.push(SHIPPED_EXCEPTION_SQL);
   if (filters.channels.length > 0) conditions.push(`${SHIPPED_CHANNEL_SQL} = ANY(${bind(filters.channels)}::text[])`);
+  if (filters.cardStatus.length > 0) {
+    conditions.push(`${shippedCardKeysSql(shipConfirmAt)} && ${bind(filters.cardStatus)}::text[]`);
+  }
   return conditions;
 }

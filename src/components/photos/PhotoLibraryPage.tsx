@@ -71,7 +71,7 @@ export type { LibraryPhoto } from './photo-library-types';
 import type { LibraryPhoto } from './photo-library-types';
 import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
 
-/** Right pane: workbench chrome + the flat photo stream. Filters live in the header. */
+/** Right pane: workbench chrome + the flat photo stream. Filters live in the left sidebar (`NAV_PAGE_DECLS['ops-photos']`). */
 export function PhotoLibraryPage() {
   const { filters, display, setView, patch, applyView } = usePhotoLibraryUrlState();
   const { view } = display;
@@ -671,7 +671,6 @@ export function PhotoLibraryPage() {
         <PhotoLibraryFindRow
           filters={filters}
           view={view}
-          onPatch={patch}
           onApplyView={(payload) => applyView(payload.filters, payload.view)}
           onViewChange={handleViewChange}
           density={gridDensity}

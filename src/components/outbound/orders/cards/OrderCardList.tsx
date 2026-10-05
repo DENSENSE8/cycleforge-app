@@ -43,8 +43,7 @@ import { OrderRecordHeaderActions } from '../record-keys/OrderRecordHeaderAction
 import { OrderListLeadSlot } from '../intake/order-list-lead';
 import { OrderRecordActionStrip, OrdersMorphingHost } from '../to-ship/MorphingRowActionMenu';
 import { OrderQueueSummary, queueRowStatusKeys } from '../OrderQueueSummary';
-import { QUEUE_STATUS_CHIPS, queueOrdersOf, queueStatusCounts } from '@/lib/orders/to-ship-queue';
-import { QueueStatusChips } from '@/design-system/components/QueueStatusChips';
+import { QUEUE_STATUS_CHIPS } from '@/lib/orders/to-ship-queue';
 import { OrderCard } from './OrderCard';
 import { OrderRow } from './OrderRow';
 import { TriageCardList, type TriageFeed, type TriageSelectionPort } from '@/design-system/components/triage-card-list/TriageCardList';
@@ -158,9 +157,6 @@ export function OrderCardList({
     arrangeGroups,
   });
   const { plane, orderGroupsByDate, allOrderGroupsByDate, displayedRecords, painted, todayKey, getStaffName } = feed;
-
-  // The chips count ORDERS (cards) over the whole queue, never the filtered cut.
-  const queueCounts = useMemo(() => queueStatusCounts(queueOrdersOf(allOrderGroupsByDate)), [allOrderGroupsByDate]);
 
   // Documents (the bar's verb): the order's label · slip · manuals open in the
   // split pane — the list stays on the left to keep triaging (owner 2026-09-27).
@@ -306,15 +302,6 @@ export function OrderCardList({
       rowScroll
       feed={triageFeed}
       cut={cut}
-      summary={
-        <QueueStatusChips
-          statuses={QUEUE_STATUS_CHIPS}
-          counts={queueCounts}
-          active={cut.url.statusFilter}
-          onToggle={cut.url.toggleStatus}
-          onReset={cut.url.resetStatus}
-        />
-      }
       bulk={
         <OrdersMorphingHost
           placement="header"

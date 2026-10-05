@@ -163,6 +163,19 @@ export const INCOMING_HUNT_TILE_ORDER: readonly IncomingDeliveryState[] = [
   'AWAITING_TRACKING',
 ] as const;
 
+/**
+ * Inbound's delivery-state FACET (`incoming.pipeline`, `?state=`) in the
+ * lane's walk order — what is on the dock first, what has no tracking last.
+ * The sidebar paints it (`nav/facets/incoming-pipeline.ts`); ⌥1–⌥N press it
+ * in this order (`useIncomingStatusChords`).
+ */
+export const INCOMING_STATE_FACET: readonly { state: IncomingDeliveryState; label: string }[] = [
+  { state: 'DELIVERED_UNOPENED', label: INCOMING_DELIVERY_STATE_FACE.DELIVERED_UNOPENED.tileLabel },
+  { state: 'ARRIVING_TODAY', label: 'Arriving today' },
+  { state: 'IN_TRANSIT', label: 'In transit' },
+  { state: 'AWAITING_TRACKING', label: 'Awaiting tracking' },
+];
+
 /** Tile icons can differ from the grid glyph (e.g. delivered-unopened uses AlertTriangle in the strip). */
 const INCOMING_HUNT_TILE_ICON: Partial<
   Record<IncomingDeliveryState, ComponentType<{ className?: string }>>
