@@ -1,0 +1,82 @@
+diff --git a/src/app/api/receiving/inbound/supplier-row/route.ts b/src/app/api/receiving/inbound/supplier-row/route.ts
+new file mode 100644
+index 000000000..12308e63f
+--- /dev/null
++++ b/src/app/api/receiving/inbound/supplier-row/route.ts
+@@ -0,0 +1,76 @@
++/**
++ * POST /api/receiving/inbound/supplier-row — one supplier spreadsheet row → an
++ * inbound PO.
++ *
++ * Body `{ poNumber, vendor, sku, title?, quantity, unitCost?, orderDate?, expectedDate? }`.
++ * The row parses into the one inbound contract (`InboundOrderDraft`) and lands
++ * through the one writer (`ingestInboundOrder`): the same order identity, line
++ * keys, ledger and idempotency as the form and the CSV import. Re-posting the
++ * same row is unchanged, never a second order.
++ */
++
++import { NextRequest, NextResponse } from 'next/server';
++import { z } from 'zod';
++import { withAuth } from '@/lib/auth/withAuth';
++import { parseBody } from '@/lib/schemas/parse';
++import { readIdempotencyKey } from '@/lib/api-idempotency';
++import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
++import { emptyInboundOrderDraft, emptyInboundOrderLine, type InboundOrderDraft } from '@/lib/inbound/inbound-order-draft';
++import { ingestInboundOrder, InboundOrderRefused } from '@/lib/inbound/ingest-inbound-order';
++
++const civilDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
++
++const Body = z.object({
++  poNumber: z.string().trim().min(1).max(200),
++  vendor: z.string().trim().min(1).max(200),
++  sku: z.string().trim().min(1).max(200),
++  title: z.string().trim().max(500).optional().default(''),
++  quantity: z.number().int().min(1).max(10_000),
++  /** Dollars as the sheet has them; the contract carries integer cents. */
++  unitCost: z.number().min(0).max(10_000_000).nullable().optional(),
++  orderDate: civilDate.nullable().optional(),
++  expectedDate: civilDate.nullable().optional(),
++});
++
++export const POST = withAuth(async (request: NextRequest, ctx) => {
++  const row = parseBody(Body, await request.json().catch(() => ({})));
++  if (row instanceof NextResponse) return row;
++
++  const draft: InboundOrderDraft = {
++    ...emptyInboundOrderDraft('PO'),
++    platform: 'manual',
++    orderNumber: row.poNumber,
++    vendor: row.vendor,
++    orderDate: row.orderDate ?? null,
++    expectedDate: row.expectedDate ?? null,
++    tracking: [],
++    lines: [
++      {
++        ...emptyInboundOrderLine(),
++        sku: row.sku,
++        title: row.title,
++        quantity: row.quantity,
++        unitCostCents: row.unitCost == null ? null : Math.round(row.unitCost * 100),
++      },
++    ],
++  };
++
++  try {
++    const result = await ingestInboundOrder(ctx.organizationId, draft, {
++      origin: 'csv',
++      source: 'csv',
++      staffId: ctx.staffId,
++      sourceEventId: readIdempotencyKey(request),
++    });
++    if (!result.unchanged) {
++      await invalidateReceivingViews(ctx.organizationId).catch((e) => console.warn('[inbound/supplier-row] invalidate failed', e));
++    }
++    return NextResponse.json({ success: true, result });
++  } catch (err) {
++    if (err instanceof InboundOrderRefused) {
++      return NextResponse.json({ success: false, error: err.message, missing: err.missing }, { status: err.status });
++    }
++    console.error('[inbound/supplier-row]', err);
++    return NextResponse.json({ success: false, error: err instanceof Error ? err.message : 'inbound order failed' }, { status: 500 });
++  }
++}, { permission: 'receiving.view' });

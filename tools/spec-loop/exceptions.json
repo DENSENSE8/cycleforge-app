@@ -1,0 +1,33 @@
+[
+  {
+    "v": 1,
+    "id": "sidebar-controls.mobile-deferred",
+    "rule": "layout.sidebar-owns-table-controls",
+    "files": ["src/app/m/**", "src/components/mobile/**"],
+    "ruling": {
+      "by": "operator",
+      "at": "2026-10-04",
+      "words": "Deferred — the mobile home for filters will be defined later."
+    },
+    "reviewBy": "2026-11-04",
+    "exit": "The operator rules where mobile filters live (docs/mobile-first/SURFACE_LAW.md), and .omp/rules/sidebar-owns-table-controls.md no longer excludes src/app/m/** and src/components/mobile/**."
+  },
+  {
+    "v": 1,
+    "id": "sidebar-controls.csv-staging-deferred",
+    "rule": "layout.sidebar-owns-table-controls",
+    "files": [
+      "src/components/outbound/orders/CsvImportStagingHost.tsx",
+      "src/components/sidebar/receiving/incoming/IncomingPoImportStagingHost.tsx",
+      "src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx",
+      "src/components/products/catalog/CatalogImportReview.tsx"
+    ],
+    "ruling": {
+      "by": "operator",
+      "at": "2026-10-04",
+      "words": "CSV imports deferred."
+    },
+    "reviewBy": "2026-11-04",
+    "exit": "The operator rules the CSV staging surfaces (dialog-internal for good, or migrated to the sidebar), and .omp/rules/sidebar-owns-table-controls.md no longer excludes these four files."
+  }
+]

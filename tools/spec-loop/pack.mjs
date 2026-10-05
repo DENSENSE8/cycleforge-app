@@ -7,11 +7,13 @@
  *
  *   pnpm spec:sweep [--placement static|live|full] [--only a,b] …   (scripts/spec.mjs → kernel CLI)
  *   pnpm spec:loop (--plant | --debt <selector> | --goal <file.md>) …
+ *   pnpm spec:reject -- --words "…" [--url /route] [--files a,b] …     (rejection → rule proposal; docs/loops/README.md)
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACCEPTED_ANCHOR, ACCEPTED_DIR, acceptedRuleIds } from './accepted.mjs';
 import { ANCHORS, preexistingCritique } from './anchors.mjs';
 import { CONTRACTS } from './contracts.mjs';
 import { MUTANTS } from './mutants.mjs';
@@ -21,6 +23,13 @@ import { loadSurfaceLaw } from './surface.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const surfaceOf = loadSurfaceLaw(ROOT);
 
+// Autoresearch (Garisek-OS docs/loops/AUTORESEARCH.md): the operator's register, the hidden exam and the brief.
+/** Granted exceptions (only `cli except` writes it); the kernel adds it to the evaluator hash itself. */
+const EXCEPTIONS_FILE = 'tools/spec-loop/exceptions.json';
+const EXAM_DIR = 'tools/spec-loop/exam';
+/** Human-edited, measured by the exam: forbidden to workers, but NOT a sweep evaluator input (it judges no tree). */
+const DOMAIN_BRIEF = 'docs/loops/DOMAIN-BRIEF.md';
+
 /** The evaluator: hashed into every receipt; a change is `anchor-changed`, never auto-kept. */
 const EVALUATOR_FILES = [
   'scripts/spec.mjs',
@@ -28,6 +37,9 @@ const EVALUATOR_FILES = [
   'tools/spec-loop/anchors.mjs',
   'tools/spec-loop/contracts.mjs',
   'tools/spec-loop/live-contracts.mjs',
+  'tools/spec-loop/accepted.mjs',
+  // Each installed rule is evaluator: its probe, its verbatim ruling and its shrink-only baseline.
+  ...acceptedRuleIds(ROOT).flatMap((id) => ['rule.mjs', 'ruling.json', 'baseline.json'].map((f) => `${ACCEPTED_DIR}/${id}/${f}`)),
   'tools/spec-loop/port.mjs',
   'tools/spec-loop/surface.mjs',
   'scripts/verify-profile.mjs',
@@ -58,6 +70,7 @@ const FORBIDDEN = [
   /^scripts\/verify(-profile)?\.mjs$/,
   /^scripts\/disclosure-audit\.ts$/,
   /^tools\/(design-mcp|spec-loop)\//,
+  /^docs\/loops\//,
   /^tests\/auth-preflight\.mjs$/,
   /^\.omp\//,
   /^src\/lib\/views\/layer-law\.ts$/,
@@ -105,7 +118,7 @@ export default {
   rules: CONTRACTS,
   mutants: MUTANTS,
   evaluatorFiles: EVALUATOR_FILES,
-  baselineGlobs: ['scripts/*.baseline.json'],
+  baselineGlobs: ['scripts/*.baseline.json', `${ACCEPTED_DIR}/*/baseline.json`],
   forbidden: FORBIDDEN.map((re) => re.source),
   silencers: /eslint-disable|@ts-ignore|@ts-expect-error|@ts-nocheck/.source,
   workerScope: /^src\//.source,
@@ -119,11 +132,12 @@ export default {
       'Mobile code stays in src/components/mobile/** or src/app/m/**; desktop code never imports it (Component split).',
     ],
     hardRules: [
-      'Never edit: scripts/spec-*, scripts/*-guard.*, *.baseline.json, exemption/allowlist files, scripts/verify*.mjs, tools/design-mcp/**, tools/spec-loop/**, src/lib/nav/route-tree*.ts, src/lib/disclosure/**, eslint config, package.json, *.test.*, AGENTS.md, .omp/**. No eslint-disable / @ts-ignore / @ts-expect-error.',
+      'Never edit: scripts/spec-*, scripts/*-guard.*, *.baseline.json, exemption/allowlist files, scripts/verify*.mjs, tools/design-mcp/**, tools/spec-loop/** (incl. exceptions.json and rules/accepted/**), docs/loops/**, src/lib/nav/route-tree*.ts, src/lib/disclosure/**, eslint config, package.json, *.test.*, AGENTS.md, .omp/**. No eslint-disable / @ts-ignore / @ts-expect-error. An exception is never granted by you — name it in your report as a gap.',
       'Keep every job the code did: port a hand-rolled control onto the primitive and keep its verb; never delete a feature to make a finding go away unless the law above says it must go.',
       'Smallest change that satisfies the law. Do not refactor unrelated code.',
       'Never edit a quotation of an operator / owner ruling (quoted, attributed, usually dated words) — rulings are verbatim history.',
     ],
+    brief: DOMAIN_BRIEF,
   },
   hints: contractHints,
   unitChecks: [
@@ -160,4 +174,9 @@ export default {
   stateDir: '.garisek/spec',
   sandbox: { kind: 'rsync-copy', linkDirs: ['node_modules'] },
   verifierCases: 'tools/spec-loop/verifier-cases.json',
+  proposals: { acceptedDir: ACCEPTED_DIR, anchor: ACCEPTED_ANCHOR },
+  exceptionsFile: EXCEPTIONS_FILE,
+  // Never materialized into a worker / drafter / exam sandbox: the exam's checks + reference patches, the rejected evidence.
+  hidden: [`${EXAM_DIR}/**`, `${ACCEPTED_DIR}/*/evidence/**`],
+  exam: { dir: EXAM_DIR },
 };

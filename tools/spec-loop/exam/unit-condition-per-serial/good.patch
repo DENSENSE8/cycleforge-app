@@ -1,0 +1,170 @@
+diff --git a/src/components/tech/TestingUnitSlots.tsx b/src/components/tech/TestingUnitSlots.tsx
+index a7bea65e2..369424746 100644
+--- a/src/components/tech/TestingUnitSlots.tsx
++++ b/src/components/tech/TestingUnitSlots.tsx
+@@ -9,6 +9,7 @@ import {
+ import { InlineSerialAdder } from '@/components/receiving/workspace/InlineSerialAdder';
+ import { UnitSlotList, type UnitLike } from '@/components/receiving/workspace/UnitSlotList';
+ import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
++import { TextField } from '@/design-system/primitives/TextField';
+ import { ConditionBadge } from '@/components/receiving/workspace/ReceivingUnitRows';
+ 
+ export interface UnitSlotSerial {
+@@ -53,8 +54,8 @@ interface Props {
+    * {@link onSetVerdict} when absent.
+    */
+   onSetUnitVerdict?: (serial: UnitSlotSerial, next: TestingVerdict) => void;
+-  /** Update the condition of a single unit. */
+-  onSetUnitCondition?: (serial: UnitSlotSerial, next: string) => void;
++  /** Update the condition of a single unit; its cosmetic notes ride on the same grade write. */
++  onSetUnitCondition?: (serial: UnitSlotSerial, next: string, cosmeticNotes: string | null) => void;
+   onAddSerial: (serial: string) => void | Promise<void>;
+   onDeleteSerial: (serial: UnitSlotSerial) => void;
+   onReplaceSerial: (original: UnitSlotSerial, next: string) => void;
+@@ -95,7 +96,8 @@ function ConditionVerdictColumns({
+   serialSlot = null,
+ }: {
+   condition: string | null | undefined;
+-  onConditionChange?: (next: string) => void;
++  /** The grade pick, with this unit's cosmetic notes (null = none written). */
++  onConditionChange?: (next: string, cosmeticNotes: string | null) => void;
+   showCondition: boolean;
+   verdict: TestingVerdict | null;
+   onVerdictChange: (next: TestingVerdict) => void;
+@@ -109,35 +111,49 @@ function ConditionVerdictColumns({
+   const [expanded, setExpanded] = useState<ExpandedPicker>(
+     () => (verdict == null ? 'verdict' : null),
+   );
++  // This unit's cosmetic notes — saved with its grade on the unit's own history.
++  const [cosmetic, setCosmetic] = useState('');
++  const grading = showCondition && onConditionChange != null;
+ 
+   return (
+-    <div className="flex w-full min-w-0 items-stretch gap-0">
+-      {showCondition && onConditionChange ? (
+-        <StationConditionEditor
+-          condition={condition}
+-          onChange={onConditionChange}
+-          isLocked={conditionLocked}
+-          collapsible
+-          collapsedLabel
+-          expanded={expanded === 'condition'}
+-          onExpandedChange={(next) => setExpanded(next ? 'condition' : null)}
++    <div className="flex w-full min-w-0 flex-col gap-1">
++      <div className="flex w-full min-w-0 items-stretch gap-0">
++        {grading ? (
++          <StationConditionEditor
++            condition={condition}
++            onChange={(next) => onConditionChange?.(next, cosmetic.trim() || null)}
++            isLocked={conditionLocked}
++            collapsible
++            collapsedLabel
++            expanded={expanded === 'condition'}
++            onExpandedChange={(next) => setExpanded(next ? 'condition' : null)}
++          />
++        ) : null}
++        {serialSlot}
++        <div className="min-w-0 flex-1">
++          <TestingStatusPills
++            value={verdict}
++            onChange={(next) => {
++              onVerdictChange(next);
++              setExpanded(null);
++            }}
++            disabled={verdictDisabled}
++            collapsible
++            collapsedLabel
++            expanded={expanded === 'verdict'}
++            onExpandedChange={(next) => setExpanded(next ? 'verdict' : null)}
++          />
++        </div>
++      </div>
++      {grading ? (
++        <TextField
++          label="Cosmetic notes (scratches, dents, scuffs) — saved with the grade"
++          value={cosmetic}
++          onChange={setCosmetic}
++          disabled={conditionLocked}
++          maxLength={500}
+         />
+       ) : null}
+-      {serialSlot}
+-      <div className="min-w-0 flex-1">
+-        <TestingStatusPills
+-          value={verdict}
+-          onChange={(next) => {
+-            onVerdictChange(next);
+-            setExpanded(null);
+-          }}
+-          disabled={verdictDisabled}
+-          collapsible
+-          collapsedLabel
+-          expanded={expanded === 'verdict'}
+-          onExpandedChange={(next) => setExpanded(next ? 'verdict' : null)}
+-        />
+-      </div>
+     </div>
+   );
+ }
+@@ -224,7 +240,7 @@ export function TestingLinePanel({
+       condition={saved[0]?.condition_grade}
+       onConditionChange={
+         saved[0]?.id != null && onSetUnitCondition
+-          ? (next) => onSetUnitCondition(saved[0], next)
++          ? (next, cosmeticNotes) => onSetUnitCondition(saved[0], next, cosmeticNotes)
+           : undefined
+       }
+       showCondition={saved[0]?.id != null && onSetUnitCondition != null}
+@@ -247,7 +263,7 @@ interface TestingUnitRowsProps {
+   selectedIndex?: number;
+   onSelectIndex?: (index: number) => void;
+   onSetUnitVerdict: (serial: UnitSlotSerial, next: TestingVerdict) => void;
+-  onSetUnitCondition?: (serial: UnitSlotSerial, next: string) => void;
++  onSetUnitCondition?: (serial: UnitSlotSerial, next: string, cosmeticNotes: string | null) => void;
+   onAddSerial: (serial: string) => void | Promise<void>;
+   onDeleteSerial: (serial: UnitSlotSerial) => void;
+   onReplaceSerial: (original: UnitSlotSerial, next: string) => void;
+@@ -306,7 +322,7 @@ function TestingUnitRows({
+           condition={serial?.condition_grade}
+           onConditionChange={
+             serial?.id != null && onSetUnitCondition
+-              ? (next) => onSetUnitCondition(serial as UnitSlotSerial, next)
++              ? (next, cosmeticNotes) => onSetUnitCondition(serial as UnitSlotSerial, next, cosmeticNotes)
+               : undefined
+           }
+           showCondition={serial?.id != null && onSetUnitCondition != null}
+diff --git a/src/components/tech/testing-panel/TestingLineSlot.tsx b/src/components/tech/testing-panel/TestingLineSlot.tsx
+index adef4c6a3..240ea2cd8 100644
+--- a/src/components/tech/testing-panel/TestingLineSlot.tsx
++++ b/src/components/tech/testing-panel/TestingLineSlot.tsx
+@@ -58,7 +58,7 @@ export function TestingLineSlot({
+       onSelectIndex={(i) => c.setActiveSlotByLine((m) => ({ ...m, [lineId]: i }))}
+       onSetVerdict={(next) => c.requestLineVerdict(lineId, serials, next)}
+       onSetUnitVerdict={(serial, next) => c.requestSlotVerdict(lineId, serial, next)}
+-      onSetUnitCondition={(serial, next) => void c.handleSlotCondition(lineId, serial, next)}
++      onSetUnitCondition={(serial, next, cosmeticNotes) => void c.handleSlotCondition(lineId, serial, next, cosmeticNotes)}
+       onAddSerial={(sn) => c.enqueueSerial(lineId, sn)}
+       onDeleteSerial={async (s) => {
+         if (s.id == null) return;
+diff --git a/src/components/tech/hooks/useTestingLineController.ts b/src/components/tech/hooks/useTestingLineController.ts
+index 0290e96c4..4a9cfe26e 100644
+--- a/src/components/tech/hooks/useTestingLineController.ts
++++ b/src/components/tech/hooks/useTestingLineController.ts
+@@ -277,7 +277,7 @@ export function useTestingLineController(
+   );
+ 
+   const handleSlotCondition = useCallback(
+-    async (lineId: number, serial: UnitSlotSerial, nextGrade: string) => {
++    async (lineId: number, serial: UnitSlotSerial, nextGrade: string, cosmeticNotes: string | null = null) => {
+       if (serial.id == null) return;
+       const priorGrade = serial.condition_grade;
+ 
+@@ -297,6 +297,8 @@ export function useTestingLineController(
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+             new_grade: nextGrade,
++            // The unit's own cosmetic notes land on its condition history with this grade.
++            cosmetic_notes: cosmeticNotes,
+             client_event_id: `testing-grade-${serial.id}-${nextGrade}-${Date.now()}`,
+           }),
+         });

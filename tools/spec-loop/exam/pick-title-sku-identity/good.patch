@@ -1,0 +1,140 @@
+diff --git a/src/lib/replenishment/pick-face.ts b/src/lib/replenishment/pick-face.ts
+index 1475407bd..09019252f 100644
+--- a/src/lib/replenishment/pick-face.ts
++++ b/src/lib/replenishment/pick-face.ts
+@@ -4,6 +4,7 @@ import pool from '@/lib/db';
+ import type { PoolClient } from 'pg';
+ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+ import type { OrgId } from '@/lib/tenancy/constants';
++import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
+ 
+ // ─── Types ───────────────────────────────────────────────────────────────────
+ 
+@@ -12,6 +13,8 @@ type ReplenishmentTaskStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETE' | 'CANCE
+ interface ReplenishmentTaskRow {
+   id: number;
+   sku: string;
++  /** The SKU's one title (`resolveSkuIdentityTitle` over the org's catalog row); null = no catalog title. */
++  productTitle: string | null;
+   fromBinId: number | null;
+   toBinId: number;
+   qty: number;
+@@ -502,25 +505,29 @@ async function recordReplenishmentEvent(
+ 
+ // ─── Reads ───────────────────────────────────────────────────────────────────
+ 
++type OpenTaskDbRow = {
++  id: number;
++  sku: string;
++  catalog_product_title: string | null;
++  from_bin_id: number | null;
++  to_bin_id: number;
++  qty: number;
++  status: ReplenishmentTaskStatus;
++  detected_at: string;
++  assigned_staff_id: number | null;
++  started_at: string | null;
++  completed_at: string | null;
++  qty_moved: number | null;
++};
++
+ export async function listOpenTasks(orgId?: OrgId): Promise<ReplenishmentTaskRow[]> {
+   // Tenant-scoped path: `replenishment_tasks` has no organization_id column;
+   // scope via its `to_bin_id → locations.organization_id` parent.
+   const { rows } = orgId
+-    ? await tenantQuery<{
+-        id: number;
+-        sku: string;
+-        from_bin_id: number | null;
+-        to_bin_id: number;
+-        qty: number;
+-        status: ReplenishmentTaskStatus;
+-        detected_at: string;
+-        assigned_staff_id: number | null;
+-        started_at: string | null;
+-        completed_at: string | null;
+-        qty_moved: number | null;
+-      }>(
++    ? await tenantQuery<OpenTaskDbRow>(
+         orgId,
+-        `SELECT rt.id, rt.sku, rt.from_bin_id, rt.to_bin_id, rt.qty, rt.status,
++        `SELECT rt.id, rt.sku, sc.product_title AS catalog_product_title,
++                rt.from_bin_id, rt.to_bin_id, rt.qty, rt.status,
+                 rt.detected_at::text,
+                 rt.assigned_staff_id,
+                 rt.started_at::text,
+@@ -529,36 +536,29 @@ export async function listOpenTasks(orgId?: OrgId): Promise<ReplenishmentTaskRow
+            FROM replenishment_tasks rt
+            JOIN locations loc ON loc.id = rt.to_bin_id
+                              AND loc.organization_id = $1
++           LEFT JOIN sku_catalog sc ON sc.sku = rt.sku AND sc.organization_id = loc.organization_id
+           WHERE rt.status IN ('REQUESTED','IN_PROGRESS')
+           ORDER BY rt.detected_at ASC`,
+         [orgId],
+       )
+-    : await pool.query<{
+-        id: number;
+-        sku: string;
+-        from_bin_id: number | null;
+-        to_bin_id: number;
+-        qty: number;
+-        status: ReplenishmentTaskStatus;
+-        detected_at: string;
+-        assigned_staff_id: number | null;
+-        started_at: string | null;
+-        completed_at: string | null;
+-        qty_moved: number | null;
+-      }>(
+-        `SELECT id, sku, from_bin_id, to_bin_id, qty, status,
+-                detected_at::text,
+-                assigned_staff_id,
+-                started_at::text,
+-                completed_at::text,
+-                qty_moved
+-           FROM replenishment_tasks
+-          WHERE status IN ('REQUESTED','IN_PROGRESS')
+-          ORDER BY detected_at ASC`,
++    : await pool.query<OpenTaskDbRow>(
++        `SELECT rt.id, rt.sku, sc.product_title AS catalog_product_title,
++                rt.from_bin_id, rt.to_bin_id, rt.qty, rt.status,
++                rt.detected_at::text,
++                rt.assigned_staff_id,
++                rt.started_at::text,
++                rt.completed_at::text,
++                rt.qty_moved
++           FROM replenishment_tasks rt
++           LEFT JOIN locations loc ON loc.id = rt.to_bin_id
++           LEFT JOIN sku_catalog sc ON sc.sku = rt.sku AND sc.organization_id = loc.organization_id
++          WHERE rt.status IN ('REQUESTED','IN_PROGRESS')
++          ORDER BY rt.detected_at ASC`,
+       );
+   return rows.map((r) => ({
+     id: r.id,
+     sku: r.sku,
++    productTitle: resolveSkuIdentityTitle({ catalog_product_title: r.catalog_product_title }) || null,
+     fromBinId: r.from_bin_id,
+     toBinId: r.to_bin_id,
+     qty: r.qty,
+diff --git a/src/app/warehouse/replenishment/page.tsx b/src/app/warehouse/replenishment/page.tsx
+index d7d708e2e..44aed1acb 100644
+--- a/src/app/warehouse/replenishment/page.tsx
++++ b/src/app/warehouse/replenishment/page.tsx
+@@ -9,6 +9,8 @@ import { Panel, Button } from '@/design-system/primitives';
+ interface TaskRow {
+   id: number;
+   sku: string;
++  /** The SKU's catalog title (server-resolved through the SKU identity law). */
++  productTitle: string | null;
+   fromBinId: number | null;
+   toBinId: number;
+   qty: number;
+@@ -188,6 +190,9 @@ function Section({ title, count, tone, tasks, actionLabel, onAction, onCancel, w
+           {tasks.map((t) => (
+             <li key={t.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+               <div className="min-w-0">
++                {t.productTitle ? (
++                  <p className="mb-1 truncate text-sm font-semibold text-text-default">{t.productTitle}</p>
++                ) : null}
+                 <div className="flex flex-wrap items-center gap-2">
+                   <span className="font-mono text-sm font-semibold text-text-default">{t.sku}</span>
+                   <span

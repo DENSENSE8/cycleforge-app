@@ -1,0 +1,51 @@
+diff --git a/src/components/labels/unit-detail/UnitDetailHeader.tsx b/src/components/labels/unit-detail/UnitDetailHeader.tsx
+index 8668ae391..1c28a92ab 100644
+--- a/src/components/labels/unit-detail/UnitDetailHeader.tsx
++++ b/src/components/labels/unit-detail/UnitDetailHeader.tsx
+@@ -5,7 +5,9 @@ import { PaneHeader, PaneHeaderTitle } from '@/components/ui/pane-header';
+ import { HoverTooltip } from '@/components/ui/HoverTooltip';
+ import { IconButton } from '@/design-system/primitives';
+ import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
+-import { Printer, Package, Link2, Sparkles, Camera } from '@/components/Icons';
++import { Printer, Package, Link2, Sparkles, Camera, AlertTriangle } from '@/components/Icons';
++import { toast } from '@/lib/toast';
++import { requestConfirm } from '@/design-system/components/confirm';
+ import Link from 'next/link';
+ import {
+   InventoryLinkagePopover,
+@@ -34,6 +36,22 @@ export function UnitDetailHeader({
+   const popover = useHeaderPopover();
+   const skuCatalogId = unit.sku_catalog_id ?? null;
+ 
++  const markDamaged = async () => {
++    const ok = await requestConfirm({
++      description: `Mark ${unit.unit_uid || unit.serial_number} as damaged? It will be put on hold.`,
++      tone: 'danger',
++      confirmLabel: 'Mark damaged',
++    });
++    if (!ok) return;
++    const res = await fetch(`/api/serial-units/${unit.id}/hold`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ reason: 'Damaged', client_event_id: `damage-${unit.id}-${Date.now()}` }),
++    });
++    if (res.ok) toast.success('Unit marked as damaged');
++    else toast.error('Could not mark the unit as damaged');
++  };
++
+   return (
+     <PaneHeader
+       // Inner (inset-shadow) bottom hairline — the canonical receiving header
+@@ -72,6 +90,12 @@ export function UnitDetailHeader({
+             active={popover.open === 'similar'}
+             onClick={() => popover.toggle('similar')}
+           />
++          <ActionIconButton
++            icon={<AlertTriangle className="h-4 w-4" />}
++            label="Mark damaged"
++            active={false}
++            onClick={() => void markDamaged()}
++          />
+           <Link
+             href={`/ops/photos?entityType=SERIAL_UNIT&entityId=${unit.id}`}
+             target="_blank"

@@ -1,0 +1,109 @@
+diff --git a/src/components/repair/RepairCardList.tsx b/src/components/repair/RepairCardList.tsx
+index 2d60ce26a..32384411a 100644
+--- a/src/components/repair/RepairCardList.tsx
++++ b/src/components/repair/RepairCardList.tsx
+@@ -19,7 +19,8 @@
+ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+ import { useQuery } from '@tanstack/react-query';
+-import { Copy, ListChecks, Maximize2 } from '@/components/Icons';
++import { Copy, ListChecks, Maximize2, User } from '@/components/Icons';
++import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
+ import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
+ import { StatusChipRail } from '@/design-system/components/QueueStatusChips';
+ import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
+@@ -44,6 +45,7 @@ import { parseRepairTab } from '@/lib/walk-in/history-modes';
+ import { toast } from '@/lib/toast';
+ import { formatDateKeyMedium, getCurrentPSTDateKey } from '@/utils/date';
+ import { qk } from '@/queries/keys';
++import { saveWorkOrder } from '@/lib/work-orders/saveWorkOrder';
+ import { useRepairRecordSlot } from './record/useRepairRecordSlot';
+ import { RepairCard } from './cards/RepairCard';
+ import { RepairRow } from './cards/RepairRow';
+@@ -92,6 +94,55 @@ function useRepairSelection(rows: readonly RSRecord[], scopeKey: string) {
+   return { port, selected: rows.filter((row) => ids.has(row.id)) };
+ }
+ 
++/**
++ * The strip's Assign tech morph: the house staff assign combo (technician
++ * lane) anchored under the strip. A pick assigns every checked repair; Esc /
++ * a press outside morphs the strip back.
++ */
++function BulkAssignTechDisplay({
++  repairs,
++  onPick,
++  done,
++}: {
++  repairs: readonly RSRecord[];
++  onPick: (staffId: number | null, staffName: string | null) => void;
++  done: () => void;
++}) {
++  const anchorRef = useRef<HTMLSpanElement>(null);
++  const count = `${repairs.length} repair${repairs.length === 1 ? '' : 's'}`;
++  return (
++    <>
++      <span ref={anchorRef} className="truncate text-role-caption text-text-soft">
++        Assign a tech to {count}
++      </span>
++      <StageStaffAssignPopover
++        open
++        onClose={done}
++        anchorRef={anchorRef}
++        label={`Assign a tech to ${count}`}
++        role="technician"
++        selectedStaffId={null}
++        onCommit={(staffId, staffName) => {
++          done();
++          onPick(staffId, staffName);
++        }}
++      />
++    </>
++  );
++}
++
++/** One repair's tech through the one work-assignment writer (`work_assignments`, REPAIR work). */
++async function assignRepairTech(repair: RSRecord, staffId: number | null): Promise<void> {
++  await saveWorkOrder({
++    entityType: 'REPAIR',
++    entityId: repair.id,
++    assignedTechId: staffId,
++    status: staffId ? 'ASSIGNED' : 'OPEN',
++    priority: 100,
++    deadlineAt: null,
++  });
++}
++
+ /**
+  * The strip's Change status morph: the house status list, anchored under the
+  * strip. A pick (or Esc / a press outside) morphs the strip back.
+@@ -266,8 +317,29 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
+           />
+         ),
+       },
++      {
++        id: 'assign-tech',
++        label: 'Assign tech',
++        icon: <User className="size-4" aria-hidden />,
++        disabled: checked.length === 0,
++        disabledReason: 'Check the repairs to assign',
++        display: (done) => (
++          <BulkAssignTechDisplay
++            repairs={checked}
++            done={done}
++            onPick={(staffId, staffName) =>
++              void Promise.all(checked.map((repair) => assignRepairTech(repair, staffId)))
++                .then(() => {
++                  toast.success(staffName ? `Assigned ${staffName}` : 'Tech cleared');
++                  void refetch();
++                })
++                .catch((err) => toast.error(err instanceof Error ? err.message : 'Could not assign the tech'))
++            }
++          />
++        ),
++      },
+     ];
+-  }, [checked, open, changeStatus]);
++  }, [checked, open, changeStatus, refetch]);
+ 
+   const feed: TriageFeed<RSRecord> = {
+     bands,

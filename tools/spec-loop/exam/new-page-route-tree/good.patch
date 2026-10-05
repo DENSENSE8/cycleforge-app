@@ -1,0 +1,161 @@
+diff --git a/src/lib/nav/route-tree.ts b/src/lib/nav/route-tree.ts
+index c1a44e028..032222634 100644
+--- a/src/lib/nav/route-tree.ts
++++ b/src/lib/nav/route-tree.ts
+@@ -393,10 +393,11 @@ export const ROUTE_TREE: readonly RouteNode[] = [
+     kind: 'collection',
+     label: 'Containers',
+     owns: 'container',
+-    path: null,
++    path: '/m/h',
+     target: '/m/warehouse/containers',
+-    page: null,
+-    status: 'planned',
++    page: 'src/app/m/(shell)/h/page.tsx',
++    status: 'live',
++    note: 'Every tote of the org, newest first; a card opens the tote record (`containerPath`).',
+   },
+   {
+     id: 'container',
+@@ -430,6 +431,7 @@ export const WAREHOUSE_PATHS = {
+   rackLabels: livePath('rack-labels'),
+   racks: livePath('racks'),
+   newRack: livePath('rack-new'),
++  containers: livePath('containers'),
+ } as const;
+ 
+ function fill(pattern: string, param: string, value: string): string {
+diff --git a/src/lib/nav/route-tree-law.ts b/src/lib/nav/route-tree-law.ts
+index f69346784..fc75a6dfb 100644
+--- a/src/lib/nav/route-tree-law.ts
++++ b/src/lib/nav/route-tree-law.ts
+@@ -376,6 +376,7 @@ export const ROUTE_BUILDERS: Readonly<Record<string, string>> = {
+   racks: 'WAREHOUSE_PATHS.racks',
+   'rack-new': 'WAREHOUSE_PATHS.newRack',
+   rack: 'locationPath(code)',
++  containers: 'WAREHOUSE_PATHS.containers',
+   container: 'containerPath(id)',
+ };
+ 
+diff --git a/src/components/mobile/v2/mobile-v2-destinations.tsx b/src/components/mobile/v2/mobile-v2-destinations.tsx
+index a93cb54e9..e01db2d81 100644
+--- a/src/components/mobile/v2/mobile-v2-destinations.tsx
++++ b/src/components/mobile/v2/mobile-v2-destinations.tsx
+@@ -176,6 +176,15 @@ export const MOBILE_V2_DESTINATIONS: readonly MobileV2Destination[] = [
+     tone: 'text-emerald-600',
+     requires: 'sku_stock.view',
+   },
++  {
++    id: 'containers',
++    label: 'Containers',
++    description: 'Every tote and what it holds',
++    href: WAREHOUSE_PATHS.containers,
++    icon: Warehouse,
++    tone: 'text-emerald-600',
++    requires: 'handling_unit.view',
++  },
+   {
+     id: 'reports',
+     label: 'Reports',
+@@ -284,7 +293,7 @@ const GROUP_DESTINATION_IDS: Readonly<Record<MobileV2NavigationGroupId, readonly
+   sales: ['customers'],
+   inbound: ['receiving', 'inbound-new'],
+   fulfillment: [],
+-  inventory: ['stock', 'locations', 'labels', 'racks'],
++  inventory: ['stock', 'locations', 'labels', 'racks', 'containers'],
+   catalog: ['products'],
+ };
+ 
+diff --git a/src/app/m/(shell)/h/page.tsx b/src/app/m/(shell)/h/page.tsx
+new file mode 100644
+index 000000000..247aa68af
+--- /dev/null
++++ b/src/app/m/(shell)/h/page.tsx
+@@ -0,0 +1,10 @@
++import { requirePermission } from '@/lib/auth/page-guard';
++import { MobileToteList } from '@/components/mobile/handling-units/MobileToteList';
++
++export const dynamic = 'force-dynamic';
++
++/** `/m/h` — every tote of the org (route-tree node `containers`; door: the phone menu › Inventory › Containers). A card opens the tote record. */
++export default async function MobileTotesPage() {
++  await requirePermission('handling_unit.view');
++  return <MobileToteList />;
++}
+diff --git a/src/components/mobile/handling-units/MobileToteList.tsx b/src/components/mobile/handling-units/MobileToteList.tsx
+new file mode 100644
+index 000000000..538e61373
+--- /dev/null
++++ b/src/components/mobile/handling-units/MobileToteList.tsx
+@@ -0,0 +1,71 @@
++'use client';
++
++/**
++ * `/m/h` — every tote of the org, newest first (route-tree node `containers`).
++ * One `MobileRecordCard` per tote: its code, where it sits, how many units it
++ * holds and its status. A card opens the tote record (`containerPath`).
++ */
++
++import { useRouter } from 'next/navigation';
++import { useQuery } from '@tanstack/react-query';
++import { MobileRecordCard, MobileRecordCardList } from '@/design-system/components/MobileRecordCard';
++import { withJobReturn } from '@/lib/mobile/nav-trail';
++import { containerPath, WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
++import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
++import { formatMonthDayTimePST } from '@/utils/date';
++
++interface ToteListItem {
++  id: number;
++  code: string;
++  status: string;
++  location_name: string | null;
++  unit_count: number;
++  created_at: string;
++}
++
++async function listTotes(): Promise<ToteListItem[]> {
++  const res = await fetch('/api/handling-units?limit=500', { cache: 'no-store' });
++  const json = (await res.json().catch(() => null)) as { success?: boolean; handling_units?: ToteListItem[]; error?: string } | null;
++  if (!res.ok || !json?.success) throw new Error(json?.error || `Could not load totes (${res.status})`);
++  return json.handling_units ?? [];
++}
++
++const unitsLine = (n: number) => `${n} unit${n === 1 ? '' : 's'}`;
++
++export function MobileToteList() {
++  const router = useRouter();
++  const query = useQuery({ queryKey: ['handling-units', 'tote-list'], queryFn: listTotes });
++  const totes = query.data ?? [];
++
++  return (
++    <div className="flex min-h-full flex-col bg-mode-panel" data-testid="m-totes">
++      <div className="flex-1">
++        {query.isPending ? (
++          <p className="break-words px-mode-page py-10 text-center text-role-caption text-text-muted">Loading totes…</p>
++        ) : query.isError ? (
++          <p role="alert" className="break-words px-mode-page py-10 text-center text-role-caption font-semibold text-text-danger">
++            {query.error instanceof Error ? query.error.message : 'Could not load totes.'}
++          </p>
++        ) : totes.length === 0 ? (
++          <p className="break-words px-mode-page py-10 text-center text-role-caption text-text-muted">No totes yet.</p>
++        ) : (
++          <MobileRecordCardList label={`${totes.length} tote${totes.length === 1 ? '' : 's'}`}>
++            {totes.map((tote) => (
++              <MobileRecordCard
++                key={tote.id}
++                identity={tote.code}
++                timestamp={formatMonthDayTimePST(tote.created_at)}
++                title={tote.location_name ?? 'Not at a location'}
++                detail={unitsLine(tote.unit_count)}
++                status={sentenceCaseLabel(tote.status)}
++                tone={tote.status === 'CLOSED' ? 'neutral' : 'ok'}
++                onOpen={() => router.push(withJobReturn(containerPath(tote.id), WAREHOUSE_PATHS.containers))}
++                testId="tote-card"
++              />
++            ))}
++          </MobileRecordCardList>
++        )}
++      </div>
++    </div>
++  );
++}

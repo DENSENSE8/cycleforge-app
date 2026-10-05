@@ -1,0 +1,107 @@
+diff --git a/src/components/outbound/orders/cards/OrderCard.tsx b/src/components/outbound/orders/cards/OrderCard.tsx
+index 69a9221df..d653cb713 100644
+--- a/src/components/outbound/orders/cards/OrderCard.tsx
++++ b/src/components/outbound/orders/cards/OrderCard.tsx
+@@ -101,6 +101,8 @@ export interface OrderCardProps extends TriageCardSlotProps<ShippedOrder, OrderC
+   todayKey: string;
+   /** Save the order's staff note from line 1 (appends to the notes trail). */
+   onSaveNote: (record: ShippedOrder, text: string) => void;
++  /** Change the order's ship-by from the quick look (the queue's ship-by writer). */
++  onCommitShipBy: (record: ShippedOrder, dateKey: string) => void;
+ }
+ 
+ export const OrderCard = memo(function OrderCard({
+@@ -116,6 +118,7 @@ export const OrderCard = memo(function OrderCard({
+   onTogglePeek,
+   todayKey,
+   onSaveNote,
++  onCommitShipBy,
+ }: OrderCardProps) {
+   const channel = useOrderChannel()(model.orderId, model.accountSource);
+   const channelName = platformDisplayName(channel);
+@@ -215,6 +218,7 @@ export const OrderCard = memo(function OrderCard({
+           key="peek"
+           model={model}
+           todayKey={todayKey}
++          onCommitShipBy={(dateKey) => onCommitShipBy(model.lead, dateKey)}
+         />
+       }
+       onSaveNote={(text) => onSaveNote(model.lead, text)}
+diff --git a/src/components/outbound/orders/cards/OrderCardList.tsx b/src/components/outbound/orders/cards/OrderCardList.tsx
+index 2fe34f907..fbf3a4411 100644
+--- a/src/components/outbound/orders/cards/OrderCardList.tsx
++++ b/src/components/outbound/orders/cards/OrderCardList.tsx
+@@ -277,9 +277,13 @@ export function OrderCardList({
+         cardModel,
+         exactFind: orderExactFind,
+         renderCard: (props) =>
+-          density === 'row' ? <OrderRow {...props} /> : <OrderCard {...props} todayKey={todayKey} onSaveNote={saveNote} />,
++          density === 'row' ? (
++            <OrderRow {...props} />
++          ) : (
++            <OrderCard {...props} todayKey={todayKey} onSaveNote={saveNote} onCommitShipBy={handleCommitShipBy} />
++          ),
+       }),
+-    [cardModel, todayKey, saveNote, density],
++    [cardModel, todayKey, saveNote, handleCommitShipBy, density],
+   );
+ 
+   const triageFeed: TriageFeed<ShippedOrder> = {
+diff --git a/src/components/outbound/orders/cards/OrderCardPeek.tsx b/src/components/outbound/orders/cards/OrderCardPeek.tsx
+index df51cdfda..96a4c01fa 100644
+--- a/src/components/outbound/orders/cards/OrderCardPeek.tsx
++++ b/src/components/outbound/orders/cards/OrderCardPeek.tsx
+@@ -20,6 +20,7 @@ import type { OrderCardModel } from '@/lib/orders/order-card-model';
+ import type { OrderStage } from '@/lib/orders/order-stages';
+ import { formatCurrency } from '@/utils/_number';
+ import { cn } from '@/utils/_cn';
++import { LedgerShipBy } from '../outbound-orders-ledger-editors';
+ 
+ function Fact({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
+   return (
+@@ -46,7 +47,16 @@ function StageFact({ stage }: { stage: OrderStage }) {
+ 
+ const clean = (value: unknown) => String(value ?? '').trim();
+ 
+-export function OrderCardPeek({ model, todayKey }: { model: OrderCardModel; todayKey: string }) {
++export function OrderCardPeek({
++  model,
++  todayKey,
++  onCommitShipBy,
++}: {
++  model: OrderCardModel;
++  todayKey: string;
++  /** Commit a new ship-by day (`YYYY-MM-DD`) through the queue's writer. */
++  onCommitShipBy: (dateKey: string) => void;
++}) {
+   const lead = model.lead;
+   const multi = model.lines.length > 1;
+   const rows = model.lines.map((line) => line.record);
+@@ -65,6 +75,8 @@ export function OrderCardPeek({ model, todayKey }: { model: OrderCardModel; toda
+   const email = clean(lead.customer?.email);
+ 
+   const placed = resolveOrdersIndexValue(rows, 'orders.order_date', { todayKey });
++  const deadline = resolveOrdersIndexValue(rows, 'orders.fulfill_by', { todayKey });
++  const delay = deadline?.kind === 'deadline' ? deadline.delay : null;
+   const tracking = clean(lead.shipping_tracking_number);
+   const carrier = clean(lead.carrier);
+   const serials = [...new Set(rows.flatMap((row) => clean(row.serial_number).split(',').map((s) => s.trim())).filter(Boolean))];
+@@ -95,7 +107,17 @@ export function OrderCardPeek({ model, todayKey }: { model: OrderCardModel; toda
+             )}
+           </Fact>
+           <Fact label="Ordered">{placed?.kind === 'placed' ? placed.face : '—'}</Fact>
+-          <Fact label="Ship by">{model.sla.tip ?? model.sla.face}</Fact>
++          <Fact label="Ship by">
++            <span className="block h-8 w-40">
++              <LedgerShipBy
++                dateKey={delay?.dateKey ?? null}
++                overdueDays={delay?.overdue ? delay.days : 0}
++                dueToday={Boolean(delay?.dueToday)}
++                tip={model.sla.tip ?? undefined}
++                onCommit={onCommitShipBy}
++              />
++            </span>
++          </Fact>
+           <Fact label="Tracking" wide>
+             <span className={cn('inline-flex min-w-0 items-center gap-1', tracking ? 'font-mono text-xs' : 'text-text-faint')}>
+               <Truck className="size-3 shrink-0 text-text-faint" aria-hidden />

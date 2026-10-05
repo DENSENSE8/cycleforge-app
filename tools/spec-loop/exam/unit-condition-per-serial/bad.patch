@@ -1,0 +1,79 @@
+diff --git a/src/lib/migrations/2026-10-05_receiving_line_cosmetic_condition.sql b/src/lib/migrations/2026-10-05_receiving_line_cosmetic_condition.sql
+new file mode 100644
+index 000000000..205145b94
+--- /dev/null
++++ b/src/lib/migrations/2026-10-05_receiving_line_cosmetic_condition.sql
+@@ -0,0 +1,3 @@
++-- Testers record the cosmetic condition of the item they tested.
++ALTER TABLE receiving_line
++  ADD COLUMN IF NOT EXISTS cosmetic_condition text;
+diff --git a/src/lib/drizzle/schema.ts b/src/lib/drizzle/schema.ts
+index 6a82ba3e9..cfdc2ab2d 100644
+--- a/src/lib/drizzle/schema.ts
++++ b/src/lib/drizzle/schema.ts
+@@ -1383,6 +1383,8 @@ export const receivingLines = pgTable('receiving_line', {
+ 
+   /** Operator's durable per-item note. Never printed — the face is `label_note`. */
+   notes: text('notes'),
++  /** Cosmetic condition recorded by the tester (scratches, dents, scuffs). */
++  cosmeticCondition: text('cosmetic_condition'),
+   /** Printed label face center text (carton face center / As Listed disclosure).
+    *  Split out of `notes` 2026-07-31 so an item note need not print. */
+   labelNote: text('label_note'),
+diff --git a/src/app/api/receiving-lines/route.ts b/src/app/api/receiving-lines/route.ts
+index 84503e8d6..628b96a33 100644
+--- a/src/app/api/receiving-lines/route.ts
++++ b/src/app/api/receiving-lines/route.ts
+@@ -477,6 +477,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
+       ['label_note',                String(body?.label_note ?? '').trim() || null],
+       ['receiving_type',            String(body?.receiving_type ?? '').trim() || null],
+       ['zendesk_ticket',            String(body?.zendesk_ticket ?? '').trim() || null],
++      ['cosmetic_condition',        String(body?.cosmetic_condition ?? '').trim() || null],
+     ];
+     for (const [col, val] of textFields) {
+       if (body[col] !== undefined) {
+diff --git a/src/components/tech/testing-panel/TestingLineSlot.tsx b/src/components/tech/testing-panel/TestingLineSlot.tsx
+index adef4c6a3..ef1d7b626 100644
+--- a/src/components/tech/testing-panel/TestingLineSlot.tsx
++++ b/src/components/tech/testing-panel/TestingLineSlot.tsx
+@@ -1,4 +1,7 @@
++import { useState } from 'react';
+ import { requestConfirm } from '@/design-system/components/confirm';
++import { TextField } from '@/design-system/primitives/TextField';
++import { toast } from '@/lib/toast';
+ import { ActiveLineTestingSerial, type UnitSlotSerial } from './ActiveLineTestingSerial';
+ import type { TestingController } from './testing-panel-types';
+ 
+@@ -40,7 +43,25 @@ export function TestingLineSlot({
+   forceUnitRows?: boolean;
+   flush?: boolean;
+ }) {
++  const [cosmetic, setCosmetic] = useState('');
++
++  const saveCosmetic = async () => {
++    const res = await fetch('/api/receiving-lines', {
++      method: 'PATCH',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ id: lineId, cosmetic_condition: cosmetic }),
++    });
++    if (!res.ok) toast.error('Could not save the cosmetic condition');
++  };
++
+   return (
++    <div className="flex flex-col gap-1">
++    <TextField
++      label="Cosmetic condition (scratches, dents, scuffs)"
++      value={cosmetic}
++      onChange={setCosmetic}
++      onBlur={() => void saveCosmetic()}
++    />
+     <ActiveLineTestingSerial
+       lineId={lineId}
+       saved={serials}
+@@ -67,5 +88,6 @@ export function TestingLineSlot({
+       }}
+       onReplaceSerial={(original, next) => void c.replaceSerial(lineId, original, next)}
+     />
++    </div>
+   );
+ }

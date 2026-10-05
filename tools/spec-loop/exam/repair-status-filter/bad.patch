@@ -1,0 +1,62 @@
+diff --git a/src/components/repair/RepairCardList.tsx b/src/components/repair/RepairCardList.tsx
+index 2d60ce26a..1539a6543 100644
+--- a/src/components/repair/RepairCardList.tsx
++++ b/src/components/repair/RepairCardList.tsx
+@@ -22,6 +22,7 @@ import { useQuery } from '@tanstack/react-query';
+ import { Copy, ListChecks, Maximize2 } from '@/components/Icons';
+ import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
+ import { StatusChipRail } from '@/design-system/components/QueueStatusChips';
++import { Button } from '@/design-system/primitives/Button';
+ import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
+ import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
+ import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
+@@ -144,7 +145,15 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
+   const todayKey = getCurrentPSTDateKey();
+   const changeStatus = useRepairStatusChange();
+ 
+-  const sorted = useMemo(() => [...repairs].sort((a, b) => compareRepairs(a, b, sort)), [repairs, sort]);
++  // Quick filter: only repairs waiting on parts.
++  const [partsOnly, setPartsOnly] = useState(false);
++  const sorted = useMemo(
++    () =>
++      [...repairs]
++        .filter((repair) => !partsOnly || repair.status === 'Awaiting Parts')
++        .sort((a, b) => compareRepairs(a, b, sort)),
++    [repairs, sort, partsOnly],
++  );
+   const allBands = useMemo<[string, RowGroup<RSRecord>[]][]>(() => {
+     const groups = sorted.map((repair) => ({ key: `repair:${repair.id}`, rows: [repair] }));
+     if (!dated) return groups.length ? [[ALL_BAND, groups]] : [];
+@@ -315,14 +324,24 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
+           strip: null,
+         }}
+         summary={
+-          <StatusChipRail
+-            chips={statusChips}
+-            active={cut.url.statusFilter}
+-            onToggle={cut.url.toggleStatus}
+-            onReset={cut.url.resetStatus}
+-            label="Filter repairs by status"
+-            testId="repair-status-chips"
+-          />
++          <div className="flex items-center gap-2">
++            <StatusChipRail
++              chips={statusChips}
++              active={cut.url.statusFilter}
++              onToggle={cut.url.toggleStatus}
++              onReset={cut.url.resetStatus}
++              label="Filter repairs by status"
++              testId="repair-status-chips"
++            />
++            <Button
++              variant={partsOnly ? 'primary' : 'secondary'}
++              size="sm"
++              aria-pressed={partsOnly}
++              onClick={() => setPartsOnly((on) => !on)}
++            >
++              Waiting on parts
++            </Button>
++          </div>
+         }
+         bulk={<RecordActionStrip verbs={bulkVerbs} label="Checked repair actions" testId="repair-bulk" face="header" />}
+         searchEmpty={narrowed ? <p className="text-sm text-text-muted">{search ? `No repairs match "${search}"` : 'No repairs in this view.'}</p> : null}

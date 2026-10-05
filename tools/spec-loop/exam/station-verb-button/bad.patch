@@ -1,0 +1,43 @@
+diff --git a/src/components/sidebar/TestingSidebarPanel.tsx b/src/components/sidebar/TestingSidebarPanel.tsx
+index b83ac5181..a12bfc4ca 100644
+--- a/src/components/sidebar/TestingSidebarPanel.tsx
++++ b/src/components/sidebar/TestingSidebarPanel.tsx
+@@ -386,6 +386,7 @@ export function TestingSidebarPanel({
+                 <UnitPhotoRequestStatus
+                   serialUnitId={lastUnitPhotoRequest.serialUnitId}
+                   unitKey={lastUnitPhotoRequest.unitKey}
++                  onResend={() => void publishUnitPhotoRequest(lastUnitPhotoRequest)}
+                 />
+               </div>
+             ) : null}
+diff --git a/src/components/station/UnitPhotoRequestStatus.tsx b/src/components/station/UnitPhotoRequestStatus.tsx
+index ffced36e8..45cc454d3 100644
+--- a/src/components/station/UnitPhotoRequestStatus.tsx
++++ b/src/components/station/UnitPhotoRequestStatus.tsx
+@@ -8,9 +8,12 @@ import { useAuth } from '@/contexts/AuthContext';
+ export function UnitPhotoRequestStatus({
+   serialUnitId,
+   unitKey,
++  onResend,
+ }: {
+   serialUnitId: number;
+   unitKey: string | null;
++  /** Publish the same request again — the phone missed it. */
++  onResend: () => void;
+ }) {
+   const { user } = useAuth();
+   const staffId = user?.staffId ?? 0;
+@@ -28,6 +31,13 @@ export function UnitPhotoRequestStatus({
+       <span className="shrink-0 text-role-micro tabular-nums text-text-faint">
+         {count} captured
+       </span>
++      <button
++        type="button"
++        onClick={onResend}
++        className="shrink-0 text-role-micro font-semibold text-blue-600 hover:underline"
++      >
++        Resend
++      </button>
+     </div>
+   );
+ }

@@ -1,0 +1,93 @@
+diff --git a/src/lib/replenishment/pick-face.ts b/src/lib/replenishment/pick-face.ts
+index 1475407bd..15923fe18 100644
+--- a/src/lib/replenishment/pick-face.ts
++++ b/src/lib/replenishment/pick-face.ts
+@@ -12,6 +12,7 @@ type ReplenishmentTaskStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETE' | 'CANCE
+ interface ReplenishmentTaskRow {
+   id: number;
+   sku: string;
++  productName: string | null;
+   fromBinId: number | null;
+   toBinId: number;
+   qty: number;
+@@ -509,6 +510,7 @@ export async function listOpenTasks(orgId?: OrgId): Promise<ReplenishmentTaskRow
+     ? await tenantQuery<{
+         id: number;
+         sku: string;
++        product_name: string | null;
+         from_bin_id: number | null;
+         to_bin_id: number;
+         qty: number;
+@@ -520,7 +522,8 @@ export async function listOpenTasks(orgId?: OrgId): Promise<ReplenishmentTaskRow
+         qty_moved: number | null;
+       }>(
+         orgId,
+-        `SELECT rt.id, rt.sku, rt.from_bin_id, rt.to_bin_id, rt.qty, rt.status,
++        `SELECT rt.id, rt.sku, COALESCE(i.name, sc.product_title) AS product_name,
++                rt.from_bin_id, rt.to_bin_id, rt.qty, rt.status,
+                 rt.detected_at::text,
+                 rt.assigned_staff_id,
+                 rt.started_at::text,
+@@ -529,6 +532,8 @@ export async function listOpenTasks(orgId?: OrgId): Promise<ReplenishmentTaskRow
+            FROM replenishment_tasks rt
+            JOIN locations loc ON loc.id = rt.to_bin_id
+                              AND loc.organization_id = $1
++           LEFT JOIN sku_catalog sc ON sc.sku = rt.sku
++           LEFT JOIN items i ON i.sku = rt.sku
+           WHERE rt.status IN ('REQUESTED','IN_PROGRESS')
+           ORDER BY rt.detected_at ASC`,
+         [orgId],
+@@ -536,6 +541,7 @@ export async function listOpenTasks(orgId?: OrgId): Promise<ReplenishmentTaskRow
+     : await pool.query<{
+         id: number;
+         sku: string;
++        product_name: string | null;
+         from_bin_id: number | null;
+         to_bin_id: number;
+         qty: number;
+@@ -546,19 +552,23 @@ export async function listOpenTasks(orgId?: OrgId): Promise<ReplenishmentTaskRow
+         completed_at: string | null;
+         qty_moved: number | null;
+       }>(
+-        `SELECT id, sku, from_bin_id, to_bin_id, qty, status,
++        `SELECT rt.id, rt.sku, COALESCE(i.name, sc.product_title) AS product_name,
++                rt.from_bin_id, rt.to_bin_id, rt.qty, rt.status,
+                 detected_at::text,
+                 assigned_staff_id,
+                 started_at::text,
+                 completed_at::text,
+                 qty_moved
+-           FROM replenishment_tasks
++           FROM replenishment_tasks rt
++           LEFT JOIN sku_catalog sc ON sc.sku = rt.sku
++           LEFT JOIN items i ON i.sku = rt.sku
+           WHERE status IN ('REQUESTED','IN_PROGRESS')
+           ORDER BY detected_at ASC`,
+       );
+   return rows.map((r) => ({
+     id: r.id,
+     sku: r.sku,
++    productName: r.product_name,
+     fromBinId: r.from_bin_id,
+     toBinId: r.to_bin_id,
+     qty: r.qty,
+diff --git a/src/app/warehouse/replenishment/page.tsx b/src/app/warehouse/replenishment/page.tsx
+index d7d708e2e..c06bb0370 100644
+--- a/src/app/warehouse/replenishment/page.tsx
++++ b/src/app/warehouse/replenishment/page.tsx
+@@ -9,6 +9,7 @@ import { Panel, Button } from '@/design-system/primitives';
+ interface TaskRow {
+   id: number;
+   sku: string;
++  productName: string | null;
+   fromBinId: number | null;
+   toBinId: number;
+   qty: number;
+@@ -190,6 +191,7 @@ function Section({ title, count, tone, tasks, actionLabel, onAction, onCancel, w
+               <div className="min-w-0">
+                 <div className="flex flex-wrap items-center gap-2">
+                   <span className="font-mono text-sm font-semibold text-text-default">{t.sku}</span>
++                  {t.productName && <span className="truncate text-sm text-text-default">{t.productName}</span>}
+                   <span
+                     className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${replenishmentStatusBadgeClass(t.status)}`}
+                   >

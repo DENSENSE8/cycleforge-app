@@ -1,0 +1,88 @@
+diff --git a/src/components/repair/RepairCardList.tsx b/src/components/repair/RepairCardList.tsx
+index 2d60ce26a..707e4b584 100644
+--- a/src/components/repair/RepairCardList.tsx
++++ b/src/components/repair/RepairCardList.tsx
+@@ -44,6 +44,8 @@ import { parseRepairTab } from '@/lib/walk-in/history-modes';
+ import { toast } from '@/lib/toast';
+ import { formatDateKeyMedium, getCurrentPSTDateKey } from '@/utils/date';
+ import { qk } from '@/queries/keys';
++import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
++import { saveWorkOrder } from '@/lib/work-orders/saveWorkOrder';
+ import { useRepairRecordSlot } from './record/useRepairRecordSlot';
+ import { RepairCard } from './cards/RepairCard';
+ import { RepairRow } from './cards/RepairRow';
+@@ -92,6 +94,58 @@ function useRepairSelection(rows: readonly RSRecord[], scopeKey: string) {
+   return { port, selected: rows.filter((row) => ids.has(row.id)) };
+ }
+ 
++/** Assign a technician to the checked repairs. */
++function BulkAssignTechSelect({
++  repairs,
++  onDone,
++  done,
++}: {
++  repairs: readonly RSRecord[];
++  onDone: () => void;
++  done: () => void;
++}) {
++  const [staff, setStaff] = useState<StaffMember[]>([]);
++  const [saving, setSaving] = useState(false);
++
++  useEffect(() => {
++    void getActiveStaff().then(setStaff);
++  }, []);
++
++  const assign = async (value: string) => {
++    const techId = value ? Number(value) : null;
++    setSaving(true);
++    try {
++      for (const repair of repairs) {
++        await saveWorkOrder({ entityType: 'REPAIR', entityId: repair.id, assignedTechId: techId, status: techId ? 'ASSIGNED' : 'OPEN', priority: 100, deadlineAt: null });
++      }
++      toast.success('Technician assigned');
++      onDone();
++    } catch (err) {
++      toast.error(err instanceof Error ? err.message : 'Failed to assign');
++    } finally {
++      setSaving(false);
++      done();
++    }
++  };
++
++  return (
++    <select
++      className="h-8 rounded border border-border-soft bg-surface-card px-2 text-sm"
++      defaultValue=""
++      disabled={saving}
++      onChange={(e) => void assign(e.target.value)}
++      aria-label="Assign technician"
++    >
++      <option value="">Select technician…</option>
++      {staff.map((member) => (
++        <option key={member.id} value={member.id}>
++          {member.name}
++        </option>
++      ))}
++    </select>
++  );
++}
++
+ /**
+  * The strip's Change status morph: the house status list, anchored under the
+  * strip. A pick (or Esc / a press outside) morphs the strip back.
+@@ -266,8 +320,14 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
+           />
+         ),
+       },
++      {
++        id: 'assign-tech',
++        label: 'Assign technician',
++        icon: <ListChecks className="size-4" aria-hidden />,
++        display: (done) => <BulkAssignTechSelect repairs={checked} done={done} onDone={() => void refetch()} />,
++      },
+     ];
+-  }, [checked, open, changeStatus]);
++  }, [checked, open, changeStatus, refetch]);
+ 
+   const feed: TriageFeed<RSRecord> = {
+     bands,

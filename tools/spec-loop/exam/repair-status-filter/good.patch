@@ -1,0 +1,170 @@
+diff --git a/src/components/repair/RepairCardList.tsx b/src/components/repair/RepairCardList.tsx
+index 2d60ce26a..198a15995 100644
+--- a/src/components/repair/RepairCardList.tsx
++++ b/src/components/repair/RepairCardList.tsx
+@@ -39,6 +39,7 @@ import { compareRepairs, repairCardModel, repairDayKey, type RepairCardModel } f
+ import { isRepairClosed } from '@/lib/repair-status';
+ import { DEFAULT_REPAIR_SORT, parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+ import { REPAIR_STATUS_CHIP_KEYS, repairStatusChipKey, repairStatusChips } from '@/lib/repair/repair-status-chips';
++import { isRepairWaitingOn, parseRepairWaiting, REPAIR_WAITING_PARAM } from '@/lib/repair/repair-waiting';
+ import { REPAIR_QUEUE_VIEW } from '@/lib/triage/views';
+ import { parseRepairTab } from '@/lib/walk-in/history-modes';
+ import { toast } from '@/lib/toast';
+@@ -135,10 +136,16 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
+   const needsLabel = searchParams.get('needsLabel') === '1';
+   const search = (searchParams.get('search') ?? '').trim();
+   const sort = parseRepairSort(searchParams.get(REPAIR_SORT_PARAM)) ?? DEFAULT_REPAIR_SORT;
++  // Sidebar Waiting on (`?waiting=`): only the tickets stalled on parts.
++  const waiting = parseRepairWaiting(searchParams.get(REPAIR_WAITING_PARAM));
+   // Newest / oldest band the cards into the days they were opened.
+   const dated = sort === 'newest' || sort === 'oldest';
+ 
+-  const { data: repairs = [], isLoading, isFetching, isError, refetch } = useRepairsTable(search, tab, needsLabel, channel);
++  const { data: loaded = [], isLoading, isFetching, isError, refetch } = useRepairsTable(search, tab, needsLabel, channel);
++  const repairs = useMemo(
++    () => (waiting ? loaded.filter((repair) => isRepairWaitingOn(repair.status, waiting)) : loaded),
++    [loaded, waiting],
++  );
+   const { getStaffName } = useStaffNameMap();
+   // The warehouse day the SLA reads against (PT civil day).
+   const todayKey = getCurrentPSTDateKey();
+@@ -294,7 +301,7 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
+   };
+   // The chips count cards over everything loaded, never the narrowed cut.
+   const statusChips = useMemo(() => repairStatusChips(repairs), [repairs]);
+-  const narrowed = Boolean(search) || needsLabel || searchParams.has('tab');
++  const narrowed = Boolean(search) || needsLabel || Boolean(waiting) || searchParams.has('tab');
+ 
+   return (
+     <div data-testid="repair-queue" data-face="cards" className="flex min-h-0 min-w-0 flex-1">
+diff --git a/src/lib/nav/context/pages.ts b/src/lib/nav/context/pages.ts
+index 62d9eda23..120542729 100644
+--- a/src/lib/nav/context/pages.ts
++++ b/src/lib/nav/context/pages.ts
+@@ -44,6 +44,7 @@ import {
+ import { JOURNEY_FILTER_KEYS, OPERATIONS_SAVED_VIEWS_KEY } from '@/lib/operations/saved-view-presets';
+ import { DEFAULT_REPAIR_SORT, REPAIR_SORT_OPTIONS, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+ import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
++import { REPAIR_WAITING_OPTIONS, REPAIR_WAITING_PARAM } from '@/lib/repair/repair-waiting';
+ import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
+ import { QUEUE_STATUS_CHIPS } from '@/lib/orders/to-ship-queue';
+ import { LIVE_FEED_DIRECTIONS, LIVE_FEED_PARAMS } from '@/lib/live-feed/route';
+@@ -347,8 +348,8 @@ const QUEUE_CONTROLS: NavControls = {
+  * Repair service's `RepairCardList` on `/repair` and Sales › Repair service.
+  * Status (`?tab=`; unset = the surface's default) decides what is loaded;
+  * status chips (`?repairStatus=`) narrow within it. Channel is the view
+- * (All · Shipped in · Dropped off). Sidebar Sort
+- * (`?sort=`) sets the queue order.
++ * (All · Shipped in · Dropped off). Waiting on (`?waiting=`) narrows to the
++ * tickets stalled on parts. Sidebar Sort (`?sort=`) sets the queue order.
+  */
+ const REPAIR_CONTROLS: NavControls = {
+   choices: [
+@@ -365,6 +366,13 @@ const REPAIR_CONTROLS: NavControls = {
+       ],
+       clearParams: ['page', REPAIR_STATUS_CHIP_PARAM],
+     },
++    {
++      id: 'waiting',
++      label: 'Waiting on',
++      param: REPAIR_WAITING_PARAM,
++      options: REPAIR_WAITING_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
++      clearParams: ['page'],
++    },
+   ],
+   exclude: {
+     id: 'exclude-status',
+diff --git a/src/lib/routing/query-mode-routes.ts b/src/lib/routing/query-mode-routes.ts
+index 0df25ec12..b11fcf8e3 100644
+--- a/src/lib/routing/query-mode-routes.ts
++++ b/src/lib/routing/query-mode-routes.ts
+@@ -23,6 +23,7 @@ import {
+ import { parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+ import { REPAIR_CHANNELS, REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
+ import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
++import { parseRepairWaiting, REPAIR_WAITING_PARAM } from '@/lib/repair/repair-waiting';
+ import {
+   parsePickupTab,
+   parseRepairTab,
+@@ -128,6 +129,8 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
+     page: paramPositiveInt,
+     /** Status chips right of the count (comma list, `REPAIR_STATUS_CHIP_KEYS`). */
+     [REPAIR_STATUS_CHIP_PARAM]: paramText,
++    /** Repair cards' sidebar Waiting on (`REPAIR_WAITING_OPTIONS`). */
++    [REPAIR_WAITING_PARAM]: paramRoundTrip(parseRepairWaiting),
+     /** Shared client-side status exclusion cut (`?hide=`). */
+     hide: paramText,
+     /** Repair record deep-link (Sales history may open a card; intake stays on `/repair`). */
+diff --git a/src/lib/routing/receiving-routes.ts b/src/lib/routing/receiving-routes.ts
+index c1b27f60b..6b9859aba 100644
+--- a/src/lib/routing/receiving-routes.ts
++++ b/src/lib/routing/receiving-routes.ts
+@@ -35,6 +35,7 @@ import { parsePickupStatusTabWire } from '@/lib/local-pickup/order-status';
+ import { parseRepairSort, REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+ import { REPAIR_CHANNELS, REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
+ import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
++import { parseRepairWaiting, REPAIR_WAITING_PARAM } from '@/lib/repair/repair-waiting';
+ import { parseRepairTab } from '@/lib/walk-in/history-modes';
+ import { resolveTriageView } from '@/utils/triage-workspace-state';
+ import { parseUnboxViewWire } from '@/utils/unbox-workspace-state';
+@@ -322,6 +323,8 @@ const REPAIR_ROUTE_PARAMS = defineRouteParams({
+     page: paramPositiveInt,
+     /** Status chips right of the count (comma list, `REPAIR_STATUS_CHIP_KEYS`). */
+     [REPAIR_STATUS_CHIP_PARAM]: paramText,
++    /** Sidebar Waiting on — `REPAIR_WAITING_OPTIONS` (`parts` · `parts-payment`). */
++    [REPAIR_WAITING_PARAM]: paramRoundTrip(parseRepairWaiting),
+     /** Shared client-side status exclusion cut (`?hide=`). */
+     hide: paramText,
+     /** Sidebar view: All (bare) · Shipped in (`shipment`) · Dropped off (`pickup`) — `repair_service.intake_channel`. */
+diff --git a/src/lib/station/table-url-params.ts b/src/lib/station/table-url-params.ts
+index b6c3de263..a74fc8c05 100644
+--- a/src/lib/station/table-url-params.ts
++++ b/src/lib/station/table-url-params.ts
+@@ -12,6 +12,7 @@ import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid
+ import { REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
+ import { REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
+ import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
++import { REPAIR_WAITING_PARAM } from '@/lib/repair/repair-waiting';
+ 
+ /**
+  * Canonical URL param for the universal all-staff ↔ single-staff filter
+@@ -100,6 +101,7 @@ export const SAVED_VIEW_PARAM_KEYS: Record<StationSurfaceKey, readonly string[]>
+     REPAIR_CHANNEL_PARAM,
+     REPAIR_SORT_PARAM,
+     REPAIR_STATUS_CHIP_PARAM,
++    REPAIR_WAITING_PARAM,
+     'hide',
+     'search',
+   ],
+diff --git a/src/lib/repair/repair-waiting.ts b/src/lib/repair/repair-waiting.ts
+new file mode 100644
+index 000000000..e08270e6b
+--- /dev/null
++++ b/src/lib/repair/repair-waiting.ts
+@@ -0,0 +1,26 @@
++/**
++ * The repair cards' sidebar "Waiting on" choice (`?waiting=`): narrows the
++ * loaded tickets to the ones stalled on parts (`Awaiting Parts`) or on the
++ * customer's parts money (`Awaiting Additional Parts Payment`). Declared in
++ * `REPAIR_CONTROLS` (`NAV_PAGE_DECLS`); `RepairCardList` only reads it.
++ */
++
++/** `?waiting=parts` — `/repair` and Sales › Repair service. */
++export const REPAIR_WAITING_PARAM = 'waiting';
++
++export const REPAIR_WAITING_OPTIONS = [
++  { value: 'parts', label: 'Parts', statuses: ['Awaiting Parts'] },
++  { value: 'parts-payment', label: 'Parts payment', statuses: ['Awaiting Additional Parts Payment'] },
++] as const;
++
++export type RepairWaiting = (typeof REPAIR_WAITING_OPTIONS)[number]['value'];
++
++export function parseRepairWaiting(raw: string | null | undefined): RepairWaiting | null {
++  return REPAIR_WAITING_OPTIONS.find((option) => option.value === raw)?.value ?? null;
++}
++
++/** True when a stored repair status is what `waiting` names. */
++export function isRepairWaitingOn(status: string | null | undefined, waiting: RepairWaiting): boolean {
++  const option = REPAIR_WAITING_OPTIONS.find((candidate) => candidate.value === waiting);
++  return Boolean(option && (option.statuses as readonly string[]).includes((status ?? '').trim()));
++}

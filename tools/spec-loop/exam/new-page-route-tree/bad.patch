@@ -1,0 +1,101 @@
+diff --git a/src/components/mobile/v2/mobile-v2-destinations.tsx b/src/components/mobile/v2/mobile-v2-destinations.tsx
+index a93cb54e9..d900a7910 100644
+--- a/src/components/mobile/v2/mobile-v2-destinations.tsx
++++ b/src/components/mobile/v2/mobile-v2-destinations.tsx
+@@ -176,6 +176,15 @@ export const MOBILE_V2_DESTINATIONS: readonly MobileV2Destination[] = [
+     tone: 'text-emerald-600',
+     requires: 'sku_stock.view',
+   },
++  {
++    id: 'totes',
++    label: 'Totes',
++    description: 'All totes and their contents',
++    href: '/m/totes',
++    icon: Warehouse,
++    tone: 'text-emerald-600',
++    requires: 'handling_unit.view',
++  },
+   {
+     id: 'reports',
+     label: 'Reports',
+@@ -284,7 +293,7 @@ const GROUP_DESTINATION_IDS: Readonly<Record<MobileV2NavigationGroupId, readonly
+   sales: ['customers'],
+   inbound: ['receiving', 'inbound-new'],
+   fulfillment: [],
+-  inventory: ['stock', 'locations', 'labels', 'racks'],
++  inventory: ['stock', 'locations', 'labels', 'racks', 'totes'],
+   catalog: ['products'],
+ };
+ 
+diff --git a/src/app/m/(shell)/totes/page.tsx b/src/app/m/(shell)/totes/page.tsx
+new file mode 100644
+index 000000000..b19ab8871
+--- /dev/null
++++ b/src/app/m/(shell)/totes/page.tsx
+@@ -0,0 +1,10 @@
++import { requirePermission } from '@/lib/auth/page-guard';
++import { MobileTotesList } from '@/components/mobile/v2/totes/MobileTotesList';
++
++export const dynamic = 'force-dynamic';
++
++/** `/m/totes` — list of all totes. */
++export default async function MobileTotesPage() {
++  await requirePermission('handling_unit.view');
++  return <MobileTotesList />;
++}
+diff --git a/src/components/mobile/v2/totes/MobileTotesList.tsx b/src/components/mobile/v2/totes/MobileTotesList.tsx
+new file mode 100644
+index 000000000..158f1133e
+--- /dev/null
++++ b/src/components/mobile/v2/totes/MobileTotesList.tsx
+@@ -0,0 +1,50 @@
++'use client';
++
++/** `/m/totes` — every tote (LPN) of the org; tap one to open it. */
++
++import { useRouter } from 'next/navigation';
++import { useQuery } from '@tanstack/react-query';
++import { MobileRecordCard, MobileRecordCardList } from '@/design-system/components/MobileRecordCard';
++
++interface Tote {
++  id: number;
++  code: string;
++  status: string;
++  location_name: string | null;
++  unit_count: number;
++}
++
++export function MobileTotesList() {
++  const router = useRouter();
++  const query = useQuery({
++    queryKey: ['totes'],
++    queryFn: async (): Promise<Tote[]> => {
++      const res = await fetch('/api/handling-units?limit=500');
++      const json = await res.json();
++      return json.handling_units ?? [];
++    },
++  });
++  const totes = query.data ?? [];
++
++  return (
++    <div className="flex min-h-full flex-col bg-mode-panel" data-testid="m-totes">
++      {query.isPending ? (
++        <p className="px-mode-page py-10 text-center text-role-caption text-text-muted">Loading totes…</p>
++      ) : (
++        <MobileRecordCardList label={`${totes.length} totes`}>
++          {totes.map((tote) => (
++            <MobileRecordCard
++              key={tote.id}
++              identity={tote.code}
++              title={tote.location_name ?? 'No location'}
++              detail={`${tote.unit_count} units`}
++              status={tote.status}
++              onOpen={() => router.push(`/m/h/${tote.id}?back=/m/totes`)}
++              testId="tote-card"
++            />
++          ))}
++        </MobileRecordCardList>
++      )}
++    </div>
++  );
++}

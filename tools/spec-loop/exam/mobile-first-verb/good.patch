@@ -1,0 +1,127 @@
+diff --git a/src/components/mobile/unit/useUnitHubRows.tsx b/src/components/mobile/unit/useUnitHubRows.tsx
+index 13ea585e7..53ee49d58 100644
+--- a/src/components/mobile/unit/useUnitHubRows.tsx
++++ b/src/components/mobile/unit/useUnitHubRows.tsx
+@@ -3,7 +3,7 @@
+ import { useQuery } from '@tanstack/react-query';
+ import type { DetailNavItem } from '@/components/mobile/detail/DetailParts';
+ import { useUnitQcRow } from '@/components/mobile/qc/useUnitQc';
+-import { Activity, Archive, History, Inbox, ListChecks, MapPin, Package, ShoppingCart } from '@/components/Icons';
++import { Activity, AlertTriangle, Archive, History, Inbox, ListChecks, MapPin, Package, ShoppingCart } from '@/components/Icons';
+ import { timeAgo } from '@/utils/_date';
+ import { newestUnitEvents, unitEventLabel } from './unitTimeline';
+ import type { SerialUnitResponse } from '@/lib/serial/use-serial-unit';
+@@ -15,7 +15,7 @@ interface PackScanResponse {
+   packHref?: string;
+ }
+ 
+-export type UnitHubVerb = 'pair' | 'move' | 'line-test' | 'stash';
++export type UnitHubVerb = 'pair' | 'move' | 'line-test' | 'stash' | 'damage';
+ 
+ const NO_LINE = 'Not on a receiving line';
+ 
+@@ -98,6 +98,14 @@ export function useUnitHubRows(
+       onSelect: lineId ? () => openVerb('stash') : undefined,
+       meta: lineId ? `Put away off line L-${lineId}` : NO_LINE,
+     },
++    {
++      id: 'damage',
++      title: 'Mark damaged',
++      icon: <AlertTriangle />,
++      // A damaged unit goes ON HOLD (`/hold`) carrying what is wrong; an already-held unit stays inert.
++      onSelect: unit && unit.current_status !== 'ON_HOLD' ? () => openVerb('damage') : undefined,
++      meta: unit?.current_status === 'ON_HOLD' ? 'On hold' : 'Put it on hold and say what is wrong',
++    },
+     {
+       id: 'line',
+       title: 'Receiving line',
+diff --git a/src/components/mobile/unit/UnitVerbSheets.tsx b/src/components/mobile/unit/UnitVerbSheets.tsx
+index 91cc53e68..8c23ec80d 100644
+--- a/src/components/mobile/unit/UnitVerbSheets.tsx
++++ b/src/components/mobile/unit/UnitVerbSheets.tsx
+@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
+ import { unwrapScannedLocation } from '@/lib/barcode-routing';
+ import { postUnitVerb, UnitRefSheet } from './UnitSheetParts';
+ 
+-/** The unit's own verbs — Pair with order, Move to bin. */
++/** The unit's own verbs — Pair with order, Move to bin, Mark damaged. */
+ 
+ interface UnitVerbSheetProps {
+   open: boolean;
+@@ -140,3 +140,55 @@ export function UnitMoveSheet({ open, unitId, initialValue, onClose, onDone }: U
+     />
+   );
+ }
++
++/**
++ * Mark damaged — the unit goes ON HOLD (`POST /api/serial-units/[id]/hold`,
++ * the shared `holdUnit` transaction) with what is wrong as the reason, so it
++ * leaves sellable stock without touching any other unit of its SKU.
++ */
++export function UnitDamageSheet({ open, unitId, onClose, onDone }: Omit<UnitVerbSheetProps, 'initialValue'>) {
++  const [damage, setDamage] = useState('');
++  const [busy, setBusy] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++
++  useEffect(() => {
++    if (!open) return;
++    setDamage('');
++    setError(null);
++  }, [open]);
++
++  const submit = async () => {
++    const what = damage.trim();
++    if (!what || busy) return;
++    setBusy(true);
++    setError(null);
++    try {
++      const { res, json } = await postUnitVerb(`/api/serial-units/${unitId}/hold`, {
++        reason: `Damaged — ${what}`,
++        client_event_id: `mu-damage-${unitId}-${Date.now()}`,
++      });
++      if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP ${res.status}`);
++      onDone('Marked damaged — the unit is on hold');
++    } catch (err) {
++      setError(err instanceof Error ? err.message : 'Mark damaged failed');
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  return (
++    <UnitRefSheet
++      open={open}
++      title="Mark damaged"
++      label="What is damaged?"
++      value={damage}
++      onChange={setDamage}
++      busy={busy}
++      error={error}
++      notice={null}
++      submitLabel="Mark damaged"
++      onSubmit={() => void submit()}
++      onClose={onClose}
++    />
++  );
++}
+diff --git a/src/app/m/(shell)/u/[id]/page.tsx b/src/app/m/(shell)/u/[id]/page.tsx
+index 7f911740f..0d70c2763 100644
+--- a/src/app/m/(shell)/u/[id]/page.tsx
++++ b/src/app/m/(shell)/u/[id]/page.tsx
+@@ -14,7 +14,7 @@ import { DetailAck, DetailFact, DetailFacts, DetailNav, DetailSectionHeading } f
+ import { useSerialUnit } from '@/lib/serial/use-serial-unit';
+ import { useUnitHubRows, type UnitHubVerb } from '@/components/mobile/unit/useUnitHubRows';
+ import { UnitLineTestSheet, UnitStashSheet } from '@/components/mobile/unit/UnitLineSheets';
+-import { UnitMoveSheet, UnitPairSheet } from '@/components/mobile/unit/UnitVerbSheets';
++import { UnitDamageSheet, UnitMoveSheet, UnitPairSheet } from '@/components/mobile/unit/UnitVerbSheets';
+ 
+ // Mirror of /m/scan's RecentScan — kept loose so we don't crash on shape drift.
+ interface ScanContext {
+@@ -179,6 +179,7 @@ export default function MobileUnitPage() {
+             onClose={closeSheet}
+             onDone={handleDone}
+           />
++          <UnitDamageSheet open={sheet === 'damage'} unitId={unit.id} onClose={closeSheet} onDone={handleDone} />
+           {unit.current_receiving_line_id ? (
+             <>
+               <UnitLineTestSheet

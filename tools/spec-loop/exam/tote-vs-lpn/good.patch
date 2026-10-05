@@ -1,0 +1,14 @@
+diff --git a/src/components/mobile/handling-units/HandlingUnitV2Record.tsx b/src/components/mobile/handling-units/HandlingUnitV2Record.tsx
+index 07c42116d..703e55919 100644
+--- a/src/components/mobile/handling-units/HandlingUnitV2Record.tsx
++++ b/src/components/mobile/handling-units/HandlingUnitV2Record.tsx
+@@ -119,6 +119,9 @@ export function HandlingUnitV2Record({ lpnRef }: { lpnRef: string }) {
+                 <SheetDescription className="font-mono">{selected.serial_number} · {box.code}</SheetDescription>
+               </SheetHeader>
+               <SheetBody className="grid content-start gap-3">
++                <p className="text-sm text-text-soft" data-testid="tote-member-where">
++                  In tote <span className="font-mono">{box.code}</span> · {box.location_name ? `parked at ${box.location_name}` : 'not parked'}
++                </p>
+                 <Button variant="primary" size="lg" radius="surface" onClick={() => router.push(`/m/u/${selected.id}/qc?back=${encodeURIComponent(selfHref)}`)}>Open QC</Button>
+                 <Button variant="secondary" size="lg" radius="surface" icon={<ImagePlus />} onClick={() => router.push(`/m/unit-photos/${selected.id}?stage=testing&back=${encodeURIComponent(selfHref)}`)}>Add photo</Button>
+                 <Button variant="ghost" size="lg" radius="surface" onClick={() => router.push(`/m/u/${selected.id}`)}>Open unit record</Button>

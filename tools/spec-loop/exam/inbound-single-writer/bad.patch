@@ -1,0 +1,50 @@
+diff --git a/src/app/api/receiving/inbound/supplier-row/route.ts b/src/app/api/receiving/inbound/supplier-row/route.ts
+new file mode 100644
+index 000000000..28012e0c5
+--- /dev/null
++++ b/src/app/api/receiving/inbound/supplier-row/route.ts
+@@ -0,0 +1,44 @@
++import { NextRequest, NextResponse } from 'next/server';
++import { z } from 'zod';
++import { withAuth } from '@/lib/auth/withAuth';
++import { withTenantTransaction } from '@/lib/tenancy/db';
++
++/**
++ * POST /api/receiving/inbound/supplier-row
++ * Creates an inbound purchase order from one supplier spreadsheet row.
++ */
++const Row = z.object({
++  poNumber: z.string().trim().min(1),
++  vendor: z.string().trim().min(1),
++  sku: z.string().trim().min(1),
++  title: z.string().trim().optional().default(''),
++  quantity: z.number().int().min(1),
++  unitCost: z.number().min(0).nullable().optional(),
++});
++
++export const POST = withAuth(async (request: NextRequest, ctx) => {
++  const parsed = Row.safeParse(await request.json().catch(() => null));
++  if (!parsed.success) {
++    return NextResponse.json({ success: false, error: parsed.error.message }, { status: 400 });
++  }
++  const row = parsed.data;
++
++  const result = await withTenantTransaction(ctx.organizationId, async (client) => {
++    const order = await client.query<{ id: number }>(
++      `INSERT INTO inbound_order (organization_id, order_type, source_type, source_platform, external_order_id, vendor, status, created_at)
++       VALUES ($1, 'PO', 'manual', 'none', $2, $3, 'OPEN', NOW())
++       RETURNING id`,
++      [ctx.organizationId, row.poNumber, row.vendor],
++    );
++    const inboundOrderId = order.rows[0].id;
++    const line = await client.query<{ id: number }>(
++      `INSERT INTO receiving_line (organization_id, inbound_order_id, sku, item_name, quantity_expected, unit_cost)
++       VALUES ($1, $2, $3, $4, $5, $6)
++       RETURNING id`,
++      [ctx.organizationId, inboundOrderId, row.sku, row.title, row.quantity, row.unitCost ?? null],
++    );
++    return { inboundOrderId, receivingLineId: line.rows[0].id };
++  });
++
++  return NextResponse.json({ success: true, ...result });
++}, { permission: 'receiving.view' });

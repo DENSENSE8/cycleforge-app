@@ -1,0 +1,30 @@
+diff --git a/src/components/warehouse/room-detail/RoomStatsCard.tsx b/src/components/warehouse/room-detail/RoomStatsCard.tsx
+index 5957386b6..aaae8a27b 100644
+--- a/src/components/warehouse/room-detail/RoomStatsCard.tsx
++++ b/src/components/warehouse/room-detail/RoomStatsCard.tsx
+@@ -1,5 +1,5 @@
+ import { WorkspaceCard } from '@/design-system/components';
+-import { Button } from '@/design-system/primitives';
++import { Button, EmptyState } from '@/design-system/primitives';
+ import { Box } from '@/components/Icons';
+ import { FillBar } from '../FillBar';
+ import { Stat, Tally } from './RoomDetailPieces';
+@@ -17,6 +17,18 @@ export function RoomStatsCard({
+   selectedRoom: string | null;
+   onOpenBins: () => void;
+ }) {
++  // A room with no locations yet says so instead of a row of zeros.
++  if (stats.binCount === 0) {
++    return (
++      <WorkspaceCard tone="blue" label="Live overview">
++        <EmptyState
++          className="py-6"
++          title="Nothing set up in this room yet"
++          description={`${selectedRoom ?? 'This room'} has no aisles, bays or locations. Add locations and they show here.`}
++        />
++      </WorkspaceCard>
++    );
++  }
+   return (
+     <WorkspaceCard
+       tone="blue"

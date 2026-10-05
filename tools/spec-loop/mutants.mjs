@@ -14,6 +14,8 @@
  * must find them and port them onto the existing primitives.
  */
 
+import { ACCEPTED } from './accepted.mjs';
+
 /** @typedef {{ file: string, find: string, replace: string }} MutantEdit */
 /** @typedef {{ anchor: string, rule: string, file: string }} MutantExpectation */
 /** @typedef {{ id: string, describe: string, rules?: string[], create?: Record<string, string>, edits?: MutantEdit[], fromCommit?: { commit: string, files: string[] }, expect: MutantExpectation[] }} SpecMutant */
@@ -204,4 +206,6 @@ export default function StockShortcutsPage() {
     ],
     expect: [{ anchor: 'contracts', rule: 'identity.last8-one-helper', file: SHIPPED_CARD_MODEL }],
   },
+  // `<ruleId>--plant` of each accepted rule (tools/spec-loop/accepted.mjs).
+  ...ACCEPTED.mutants,
 ];

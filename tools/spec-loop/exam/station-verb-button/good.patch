@@ -1,0 +1,45 @@
+diff --git a/src/components/sidebar/TestingSidebarPanel.tsx b/src/components/sidebar/TestingSidebarPanel.tsx
+index b83ac5181..a12bfc4ca 100644
+--- a/src/components/sidebar/TestingSidebarPanel.tsx
++++ b/src/components/sidebar/TestingSidebarPanel.tsx
+@@ -386,6 +386,7 @@ export function TestingSidebarPanel({
+                 <UnitPhotoRequestStatus
+                   serialUnitId={lastUnitPhotoRequest.serialUnitId}
+                   unitKey={lastUnitPhotoRequest.unitKey}
++                  onResend={() => void publishUnitPhotoRequest(lastUnitPhotoRequest)}
+                 />
+               </div>
+             ) : null}
+diff --git a/src/components/station/UnitPhotoRequestStatus.tsx b/src/components/station/UnitPhotoRequestStatus.tsx
+index ffced36e8..a4bd347c0 100644
+--- a/src/components/station/UnitPhotoRequestStatus.tsx
++++ b/src/components/station/UnitPhotoRequestStatus.tsx
+@@ -3,14 +3,18 @@
+ import { useScopedUnitPhotos } from '@/hooks/useScopedUnitPhotos';
+ import { useUnitPhotosRealtimeRefresh } from '@/hooks/useUnitPhotosRealtimeRefresh';
+ import { useAuth } from '@/contexts/AuthContext';
++import { Button } from '@/design-system/primitives';
+ 
+ /** Compact station-card status line: */
+ export function UnitPhotoRequestStatus({
+   serialUnitId,
+   unitKey,
++  onResend,
+ }: {
+   serialUnitId: number;
+   unitKey: string | null;
++  /** Publish the same request again — the phone missed it. */
++  onResend: () => void;
+ }) {
+   const { user } = useAuth();
+   const staffId = user?.staffId ?? 0;
+@@ -28,6 +32,9 @@ export function UnitPhotoRequestStatus({
+       <span className="shrink-0 text-role-micro tabular-nums text-text-faint">
+         {count} captured
+       </span>
++      <Button variant="ghost" size="sm" onClick={onResend}>
++        Resend
++      </Button>
+     </div>
+   );
+ }

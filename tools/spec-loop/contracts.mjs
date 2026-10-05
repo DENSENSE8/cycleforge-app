@@ -34,6 +34,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { ACCEPTED } from './accepted.mjs';
 
 const PACK_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 /** The parser pi enforces `.omp/rules` with (Garisek kernel): one reading of a rule's frontmatter for omp, pi and these probes. */
@@ -412,6 +413,8 @@ export const CONTRACTS = [
     enforcedBy: 'routes,gate:Routes',
     mutants: ['hand-rolled-bottom-buttons', 'unneeded-navigation-page'],
   },
+  // Operator rejections accepted as rules (tools/spec-loop/accepted.mjs) — each probed, ratcheted, planted.
+  ...ACCEPTED.rules,
 ];
 
 /** Contracts with a probe (the rest are law text for workers and the verifier). */
