@@ -10,7 +10,7 @@ import { Barcode, Check, AlertTriangle } from '@/components/Icons';
 import { getLast8 } from '@/components/ui/CopyChip';
 import { useAppendOrderNote } from '@/hooks/useOrderNotes';
 import { useRegisterScanSink } from '@/lib/station-scan-sink';
-import { isScanOutTrackingCommit } from '@/components/outbound/scan-out/scan-out-commit';
+import { isScanOutTrackingCommit } from '@/lib/outbound/scan-out-commit';
 import {
   SCAN_OUT_DISPLAYS_CHANGED_EVENT,
   dispatchScanOutCloseDisplays,

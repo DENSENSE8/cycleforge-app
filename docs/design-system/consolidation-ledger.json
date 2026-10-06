@@ -405,7 +405,7 @@
         "src/lib/receiving/arrival-command-routing.ts",
         "src/lib/receiving/classify-unbox-scan.ts",
         "src/lib/testing/resolve-testing-scan.ts",
-        "src/components/outbound/scan-out/scan-out-commit.ts",
+        "src/lib/outbound/scan-out-commit.ts",
         "src/components/station/PackScanColumn.tsx"
       ],
       "replacementPaths": [

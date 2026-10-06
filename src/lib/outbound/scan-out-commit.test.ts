@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isMobileScanOutCommit, isScanOutTrackingCommit } from '@/components/outbound/scan-out/scan-out-commit';
+import { isMobileScanOutCommit, isScanOutTrackingCommit } from '@/lib/outbound/scan-out-commit';
 
 test('UPS 1Z and long alnum blobs are tracking commits', () => {
   assert.equal(isScanOutTrackingCommit('1Z999AA10123456784'), true);

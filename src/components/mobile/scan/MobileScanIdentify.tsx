@@ -47,7 +47,7 @@ import {
 import { locationScanProofExpiresAt } from '@/lib/mobile/location-scan-proof-expiry';
 import { fnskuFromTail } from '@/lib/scan-resolver';
 import { fetchFnskuRecord } from '@/components/mobile/fnsku/useFnskuRecord';
-import { isMobileScanOutCommit } from '@/components/outbound/scan-out/scan-out-commit';
+import { isMobileScanOutCommit } from '@/lib/outbound/scan-out-commit';
 import { postScanOut, undoScanOut } from '@/lib/outbound/scan-out-client';
 import { landScanIdentify, viewOnlyIdentityHref } from '@/lib/scan/identify-land';
 import { arrivalScanIntent, type ScanInputSource } from '@/lib/scan/mobile-arrival-door';

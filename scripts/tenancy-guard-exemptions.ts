@@ -73,6 +73,7 @@ export const ROUTE_TENANCY_EXEMPTIONS: Record<string, { reason: string; category
   '/api/integrations/google-drive/callback': { category: 'cross-org-by-design', reason: "OAuth callback with no session; org recovered from the encrypted state payload (upsertIntegrationCredentials)" },
   '/api/integrations/google-drive/connect': { category: 'no-db-false-positive', reason: "builds the OAuth redirect, encrypts org into state; no query" },
   '/api/integrations/google-drive/health': { category: 'helper-safe-delegation', reason: "thin handler; tenant-table work is delegated to a src/lib/** helper threaded ctx.organizationId; pool (if imported) is used only for ctx-stamped recordAudit / api-idempotency — verified: no inline tenant pool.query" },
+  '/api/locations/register': { category: 'helper-safe-delegation', reason: "thin handler; registerLocationsAudited → registerPrintedLocations(input, ctx.organizationId) runs inside withTenantTransaction; audit via ctx-stamped recordAudit — verified: no inline tenant pool.query" },
   '/api/manual-server/by-item': { category: 'no-db-false-positive', reason: "external manual-server HTTP fetch; no DB" },
   '/api/manual-server/unassigned': { category: 'no-db-false-positive', reason: "external manual-server HTTP fetch; no DB" },
   '/api/nas-config': { category: 'helper-safe-delegation', reason: "thin handler; tenant-table work is delegated to a src/lib/** helper threaded ctx.organizationId; pool (if imported) is used only for ctx-stamped recordAudit / api-idempotency — verified: no inline tenant pool.query" },
@@ -89,7 +90,6 @@ export const ROUTE_TENANCY_EXEMPTIONS: Record<string, { reason: string; category
   // is a thin re-export alias (kept until clients migrate) — both entries stay.
   '/api/receiving/pending-check': { category: 'helper-safe-delegation', reason: "thin handler; tenant-table work is delegated to a src/lib/** helper threaded ctx.organizationId; pool (if imported) is used only for ctx-stamped recordAudit / api-idempotency — verified: no inline tenant pool.query" },
   '/api/shipping/track/register': { category: 'helper-safe-delegation', reason: "thin handler; tenant-table work is delegated to a src/lib/** helper threaded ctx.organizationId; pool (if imported) is used only for ctx-stamped recordAudit / api-idempotency — verified: no inline tenant pool.query" },
-  '/api/shipping/track/sync-one': { category: 'helper-safe-delegation', reason: "thin handler; tenant-table work is delegated to a src/lib/** helper threaded ctx.organizationId; pool (if imported) is used only for ctx-stamped recordAudit / api-idempotency — verified: no inline tenant pool.query" },
   '/api/staff/schedule/bulk': { category: 'no-db-false-positive', reason: "writes staff_weekly_schedule/overrides; \"staff\" matched strings, not the staff table" },
   '/api/studio/graph': { category: 'no-db-false-positive', reason: "drizzle reads workflow_* (not enforced); \"types\" matched the \"studio-types\" import path" },
   '/api/studio/templates': { category: 'no-db-false-positive', reason: "reads global workflow_templates; \"types\" matched the \"studio-types\" import path" },
