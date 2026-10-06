@@ -6,7 +6,7 @@
 import { AUDIT_ACTION } from '@/lib/audit-logs';
 import type { TaskFollowUpChannel } from '@/lib/tasks/task-follow-ups-shared';
 
-import { supportResolveBlockers, type SupportNextStep, type SupportResolveBlocker } from './model';
+import { supportResolveBlockers, type CheckInOutcome, type SupportNextStep, type SupportResolveBlocker } from './model';
 import type { SupportItemRow, SupportStore, SupportTaskRow } from './store';
 
 /**
@@ -75,15 +75,19 @@ function isOpenTask(task: SupportTaskRow): boolean {
   return task.status !== 'DONE' && task.status !== 'CANCELED';
 }
 
+export type ResolveRefusal = 'reason_required' | 'outcome_required' | 'outcome_not_allowed';
+
 export type ResolveInStoreResult =
   | { ok: true; idempotent: boolean; override: boolean; blockers: SupportResolveBlocker[] }
   | { ok: false; status: 409; blockers: SupportResolveBlocker[] }
-  | { ok: false; status: 422; error: 'reason_required' };
+  | { ok: false; status: 422; error: ResolveRefusal };
 
 /**
  * Rule 4: resolve only when nothing is outstanding, or past blockers with an
  * override AND a reason. Task DONE + item resolved + check-in closed + drafts
  * set aside — all on the caller's transaction. Re-resolving is a no-op.
+ * Closing the check-in as `resolved` requires its outcome (Happy / Had an
+ * issue); any other resolve carries none.
  */
 export async function resolveInStore(
   store: SupportStore,
@@ -93,6 +97,7 @@ export async function resolveInStore(
     reason: string | null;
     override: boolean;
     checkInDisposition: 'resolved' | 'no_response_closed' | null;
+    checkInOutcome: CheckInOutcome | null;
     nowMs: number;
   },
 ): Promise<ResolveInStoreResult> {
@@ -100,6 +105,12 @@ export async function resolveInStore(
   if (item.lifecycle === 'resolved') return { ok: true, idempotent: true, override: false, blockers: [] };
   const reason = args.reason?.trim() || null;
   if (args.override && !reason) return { ok: false, status: 422, error: 'reason_required' };
+  if (args.checkInDisposition === 'resolved' && args.checkInOutcome == null) {
+    return { ok: false, status: 422, error: 'outcome_required' };
+  }
+  if (args.checkInDisposition !== 'resolved' && args.checkInOutcome != null) {
+    return { ok: false, status: 422, error: 'outcome_not_allowed' };
+  }
 
   const task = item.primaryTaskId == null ? null : await store.readTask(item.primaryTaskId);
   const counts = await store.deliveryCounts(item.id);
@@ -128,6 +139,7 @@ export async function resolveInStore(
     await store.closeCheckIn(item.id, {
       staffId: args.staffId,
       disposition: args.checkInDisposition,
+      outcome: args.checkInOutcome,
       reason,
       nowMs: args.nowMs,
     });
@@ -139,7 +151,7 @@ export async function resolveInStore(
       taskId: task.id,
       action: override ? AUDIT_ACTION.SUPPORT_ITEM_RESOLVE_OVERRIDE : AUDIT_ACTION.SUPPORT_ITEM_RESOLVE,
       actorStaffId: args.staffId,
-      after: { supportItemId: item.id, reason, blockers, checkInDisposition: args.checkInDisposition },
+      after: { supportItemId: item.id, reason, blockers, checkInDisposition: args.checkInDisposition, checkInOutcome: args.checkInOutcome },
       ...(override ? { reasonCode: 'SUPPORT_RESOLVE_OVERRIDE' } : {}),
     });
   }
@@ -204,6 +216,7 @@ export async function applyNextStep(
       reason: step.resolutionReason ?? null,
       override: false,
       checkInDisposition: null,
+      checkInOutcome: null,
       nowMs: args.nowMs,
     });
     return { ok: true, resolve };

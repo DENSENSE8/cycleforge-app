@@ -118,11 +118,11 @@ export function doFirstLine(kind: ListKind, item: WorkItem): string {
 }
 
 const COLUMNS: Readonly<Record<ListKind, readonly string[]>> = {
-  exceptions: ['Order', 'SKU', 'Item', 'Reason', 'Next step', 'Owner', 'Channel'],
+  exceptions: ['Order', 'SKU', 'Item', 'Reason', 'Next step', 'Owner', 'Platform'],
   out_of_stock: ['Order', 'SKU', 'Item', 'Short', 'Ship by', 'Days late', 'Replenishment'],
   need_to_order: ['SKU', 'Item', 'To order', 'Orders waiting', 'Vendor', 'Status'],
   late: ['Order', 'Ship by', 'Days late', 'SKU', 'Item', 'Why'],
-  pending: ['Order', 'Ship by', 'SKU', 'Item', 'Qty', 'Channel'],
+  pending: ['Order', 'Ship by', 'SKU', 'Item', 'Qty', 'Platform'],
 };
 
 function cells(item: WorkItem): Record<string, string | number | null> {
@@ -133,7 +133,7 @@ function cells(item: WorkItem): Record<string, string | number | null> {
     Reason: item.reason,
     'Next step': item.action,
     Owner: item.owner,
-    Channel: item.channel,
+    Platform: item.channel,
     Short: item.qty,
     'Ship by': item.shipBy,
     'Days late': item.daysLate,

@@ -105,8 +105,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 44 tools (39 read + 1 device + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 44);
+test('registry: 43 tools (38 read + 1 device + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 43);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -120,7 +120,6 @@ test('registry: 44 tools (39 read + 1 device + 4 gateway), unique names, model-g
     'resolve_receiving_line_for_order', 'list_receiving_line_photos',
     'locate_product', 'list_location_contents', 'get_order_documents',
     'draft_manual_order',
-    'draft_po_import',
     'reconcile_refs', 'get_customer', 'get_worklist', 'get_staff_report', 'get_tracking_status',
     'quote_label_rates', 'list_capabilities',
     // Device tool: resolves a print the operator's browser sends to their station.
@@ -149,7 +148,6 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
     list_location_contents: { location: 'C-03-12-3' },
     get_order_documents: { order: '5083' },
     draft_manual_order: { customerName: 'Jane Doe', phone: '555-123-4567', items: [{ product: 'Bose 151 bracket' }] },
-    draft_po_import: { poNumber: 'PO-1', vendor: 'Acme', items: [{ product: 'A-1', quantity: 2 }], trackingNumbers: ['1Z999AA10123456784'] },
     print_order_paperwork: { orders: ['5083'] },
     quote_label_rates: { order: '5083' },
   };

@@ -5,8 +5,8 @@ import { parseRouteParams } from '@/lib/routing/route-params';
 import {
   SHIPPING_SHIPPED_PATH,
   buildShippedDeskSearch,
+  fulfilledShipmentHref,
   isLegacyShippedDeskUrl,
-  shippedTodayHref,
   shippingShippedHref,
 } from './shipped-desk';
 
@@ -35,23 +35,21 @@ describe('shipped-desk', () => {
     );
   });
 
-  it('carries the shipped vocabulary and drops the queue vocabulary', () => {
+  it('renames the shipped vocabulary into Fulfilled and drops the rest', () => {
     const carried = buildShippedDeskSearch(
       params(
         'shipped=&carrier=UPS&shippedWeekOffset=2&dateFrom=2026-08-01&dateTo=2026-08-07'
-          + '&search=1Z999&stage=packed&cage=1&ustatus=BLOCKED&openOrderId=42',
+          + '&search=1Z999&packedBy=3&stage=packed&cage=1&ustatus=BLOCKED&openOrderId=42',
       ),
     );
     assert.equal(carried.get('carrier'), 'UPS');
-    assert.equal(carried.get('shippedWeekOffset'), '2');
-    assert.equal(carried.get('dateFrom'), '2026-08-01');
-    assert.equal(carried.get('dateTo'), '2026-08-07');
-    assert.equal(carried.get('search'), '1Z999');
-    // The presence flag dies with the surface that read it.
-    assert.equal(carried.has('shipped'), false);
-    // Open-queue keys would be filters that can only ever return nothing.
-    for (const key of ['stage', 'cage', 'ustatus', 'openOrderId']) {
-      assert.equal(carried.has(key), false, `${key} must not ride to history`);
+    assert.equal(carried.get('from'), '2026-08-01');
+    assert.equal(carried.get('to'), '2026-08-07');
+    assert.equal(carried.get('q'), '1Z999');
+    assert.equal(carried.get('packer'), '3');
+    // The presence flag dies with the surface that read it; the old ledger's week pager too.
+    for (const key of ['shipped', 'shippedWeekOffset', 'stage', 'cage', 'ustatus', 'openOrderId']) {
+      assert.equal(carried.has(key), false, `${key} must not ride to Fulfilled`);
     }
   });
 
@@ -79,28 +77,11 @@ describe('shipped-desk', () => {
 
   it('builds canonical hrefs', () => {
     assert.equal(shippingShippedHref(), SHIPPING_SHIPPED_PATH);
+    assert.equal(shippingShippedHref({ find: '1Z999' }), '/fulfilled?q=1Z999');
     assert.equal(
-      shippingShippedHref({ search: '1Z999' }),
-      '/fulfilled?search=1Z999',
+      shippingShippedHref({ from: '2026-08-30', to: '2026-08-30' }),
+      '/fulfilled?from=2026-08-30&to=2026-08-30',
     );
-    // Week 0 is the default paint — it is absence, not a param.
-    assert.equal(shippingShippedHref({ weekOffset: 0 }), SHIPPING_SHIPPED_PATH);
-    assert.equal(
-      shippingShippedHref({ weekOffset: 3 }),
-      '/fulfilled?shippedWeekOffset=3',
-    );
-    assert.equal(
-      shippingShippedHref({ ostatus: 'PACKED_STAGED' }),
-      '/fulfilled?ostatus=PACKED_STAGED',
-    );
-  });
-
-  it('points "shipped today" at a single day, not the week', () => {
-    // The chip counts today; a link that opened the whole week would land on a
-    // wider set than the number it was printed on.
-    assert.equal(
-      shippedTodayHref('2026-08-30'),
-      '/fulfilled?dateFrom=2026-08-30&dateTo=2026-08-30',
-    );
+    assert.equal(fulfilledShipmentHref(42), '/fulfilled?shipment=42');
   });
 });

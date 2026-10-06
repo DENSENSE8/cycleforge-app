@@ -91,6 +91,8 @@ interface AttachSerialResult {
   warnings: string[];
   /** True when the same serial was already attached to this line — friendly no-op. */
   already_attached: boolean;
+  /** The serial matched one the purchase listing showed — stamped confirmed now. */
+  listing_serial_confirmed: boolean;
   inventory_event_id: number | null;
   line_state: ReturnType<typeof lineState>;
 }
@@ -112,6 +114,15 @@ export async function attachSerialToLine(
         throw new Error(`receiving_line ${input.receiving_line_id} not found`);
       }
 
+      // A serial the listing showed (`receiving_line_listing_serial`) is confirmed by scanning it here.
+      const listingConfirm = await client.query(
+        `UPDATE receiving_line_listing_serial
+            SET confirmed_at = NOW(), confirmed_by = $4, updated_at = NOW()
+          WHERE organization_id = $1 AND receiving_line_id = $2 AND serial_norm = $3
+            AND confirmed_at IS NULL`,
+        [orgId, line.id, normalized, input.staff_id ?? null],
+      );
+      const listingSerialConfirmed = (listingConfirm.rowCount ?? 0) > 0;
       // Idempotent re-scan: same serial already on this line → friendly no-op.
       const existing = await client.query<{ id: number }>(
         // Phase 3: line membership via provenance reverse lookup.
@@ -136,6 +147,7 @@ export async function attachSerialToLine(
           is_return: false,
           warnings: [],
           already_attached: true,
+          listing_serial_confirmed: listingSerialConfirmed,
           inventory_event_id: null,
           line_state: lineState(line),
         };
@@ -242,6 +254,7 @@ export async function attachSerialToLine(
         is_return: upserted.is_return,
         warnings: upserted.warnings,
         already_attached: false,
+        listing_serial_confirmed: listingSerialConfirmed,
         inventory_event_id: event.id,
         line_state: lineState(lineForState),
       };

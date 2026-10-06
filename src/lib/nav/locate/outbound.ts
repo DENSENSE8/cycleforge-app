@@ -27,7 +27,14 @@
  * `ORDER_STAGE_FACTS_JOIN`, `SHIP_OUT_LATERAL`) in that same statement.
  */
 
-import type { NavLocateBucket, NavLocateEntry, NavLocateFacts } from '@/lib/nav/context/schema';
+import type { NavLocateBucket, NavLocateEntry } from '@/lib/nav/context/schema';
+import {
+  BUYER_CANCEL_BUCKET_ID,
+  BUYER_CANCEL_LABEL,
+  locateBucketsForBuyerCancel,
+} from '@/lib/orders/buyer-cancelled';
+import { orderRecordHref } from '@/lib/search/search-hit';
+import { outboundFacts } from '@/lib/nav/locate/outbound-facts';
 import { buildPackerLogBaseWhere, sqlPackerLogSearch } from '@/lib/neon/packer-logs-week';
 import { SHIP_OUT_LATERAL } from '@/lib/neon/orders-queries';
 import { sqlDeskQueueScope } from '@/lib/orders/desk-view-sql';
@@ -187,7 +194,7 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
                  UNION
                  SELECT sl_own.shipment_id
                    FROM shipment_links sl_own
-                  WHERE sl_own.owner_type = 'ORDER' AND sl_own.owner_id = o.id
+                  WHERE sl_own.organization_id = o.organization_id AND sl_own.owner_type = 'ORDER' AND sl_own.owner_id = o.id
                ))
            AND ${conditions.join('\n           AND ')}
            AND ${sqlOrderOwnsShipment('o', 'sal.shipment_id')}
@@ -272,42 +279,6 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
   return { sql, params };
 }
 
-/** A wire stamp: node-pg hands timestamptz back as `Date`. */
-function stampText(value: unknown): string | null {
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
-  const text = value == null ? '' : String(value).trim();
-  return text || null;
-}
-
-const textOf = (value: unknown): string | null => (value == null ? null : String(value).trim() || null);
-
-/** One matched order's row facts (the ref's lead order when it names several). */
-export function outboundFacts(row: Record<string, unknown>, lines: number): NavLocateFacts {
-  const packerId = Number(row.packer_id);
-  const packerName = textOf(row.packer_name);
-  const hasPacker = Number.isInteger(packerId) && packerId > 0;
-  return {
-    section: 'outbound',
-    title: textOf(row.fact_title),
-    sku: textOf(row.sku),
-    tracking: textOf(row.tracking_number),
-    deliveredAt: stampText(row.delivered_at),
-    // The source's word (`orders.status`), never the warehouse stage — that is the bucket.
-    channelStatus: textOf(row.status),
-    shipBy: textOf(row.ship_by_date),
-    packedAt: stampText(row.packed_at),
-    shippedAt: stampText(row.shipped_at),
-    packer: hasPacker || packerName ? { id: hasPacker ? packerId : null, name: packerName } : null,
-    po: null,
-    vendor: null,
-    lines,
-    duplicates: [],
-    unboxedAt: null,
-    unboxedBy: null,
-    units: null,
-  };
-}
-
 export interface OutboundLocateResult {
   buckets: NavLocateBucket[];
   entries: NavLocateEntry[];
@@ -354,11 +325,15 @@ export async function locateOutboundRefs(
     else byRef.set(ord, [row]);
   }
   const counts: Partial<Record<DeskViewId, number>> = {};
+  let buyerCancels = 0;
   const entries = refs.map((ref, index): NavLocateEntry => {
     const hits = byRef.get(index + 1) ?? [];
-    const buckets = ids.filter((id) => hits.some((hit) => hit[`in_${id}`] === true));
-    for (const id of buckets) counts[id] = (counts[id] ?? 0) + 1;
     const lead = hits[0];
+    const membership = ids.filter((id) => hits.some((hit) => hit[`in_${id}`] === true));
+    const buckets = locateBucketsForBuyerCancel(lead?.status, membership);
+    const buyerCancel = buckets.length === 1 && buckets[0] === BUYER_CANCEL_BUCKET_ID;
+    if (buyerCancel) buyerCancels += 1;
+    else for (const id of buckets) if (isDeskBucket(id)) counts[id] = (counts[id] ?? 0) + 1;
     return {
       ref,
       buckets,
@@ -367,16 +342,33 @@ export async function locateOutboundRefs(
         : null,
       detail: hits.length > 1 ? `${hits.length} order lines` : null,
       // The order card's own open (`/shipping/orders?openOrderId=`); a package that left opens on Fulfilled.
+      // A buyer cancel opens the search record, which paints "Buyer cancel".
       recordHref:
-        hits.length === 1
-          ? recordDetailsHref({
-              kind: 'order',
-              orderId: Number(lead.id),
-              shipped: buckets.length > 0 && buckets.every((id) => id === 'shipped'),
-            })
-          : null,
+        hits.length !== 1 || !lead
+          ? null
+          : buyerCancel
+            ? orderRecordHref(Number(lead.id))
+            : recordDetailsHref({
+                kind: 'order',
+                orderId: Number(lead.id),
+                shipped: buckets.length > 0 && buckets.every((id) => id === 'shipped'),
+              }),
       facts: lead ? outboundFacts(lead, hits.length) : null,
     };
   });
-  return { buckets: bucketsWith(ids, counts), entries };
+  const buckets = bucketsWith(ids, counts);
+  if (buyerCancels > 0) {
+    buckets.push({
+      id: BUYER_CANCEL_BUCKET_ID,
+      label: BUYER_CANCEL_LABEL,
+      tone: 'warning',
+      href: null,
+      count: buyerCancels,
+    });
+  }
+  return { buckets, entries };
+}
+
+function isDeskBucket(id: string): id is DeskViewId {
+  return id === 'triage' || id === 'exceptions' || id === 'shipped';
 }

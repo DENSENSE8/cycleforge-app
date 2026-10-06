@@ -2,16 +2,14 @@
 
 import { useMemo } from 'react';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
-import { Panel, Button, IconButton } from '@/design-system/primitives';
-import { Pencil, Printer, X } from '@/components/Icons';
+import { Panel, Button, IconButton, TextField } from '@/design-system/primitives';
+import { Check, Pencil, Printer, X } from '@/components/Icons';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
 import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { useLabelDraft } from '@/components/labels/useLabelDraft';
 import { unitLabelToFace } from '@/lib/print/printProductLabel';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cn } from '@/utils/_cn';
 
 
 
@@ -23,13 +21,13 @@ export interface ProductLabelDraft {
   condition: string;
   /** Bottom-right product color. */
   color: string;
+  /** Custom text under the title; only editable where the host opts in (`customText`). */
+  text?: string;
 }
 
 const FIELD_LABEL = `${microBadge} mb-1.5 block text-text-soft tracking-wider`;
-const TEXT_INPUT =
-  cn('w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
-/** Custom-print editor for the product/unit (testing + products page) label. */
+/** Custom-print editor for the product/unit (testing, products page, prepack) label. */
 export function ProductLabelEditPopover({
   open,
   defaults,
@@ -37,6 +35,8 @@ export function ProductLabelEditPopover({
   matrix,
   onApplyAndPrint,
   onClose,
+  customText = false,
+  applyLabel,
 }: {
   open: boolean;
   /** Seed values — re-read every time the popover opens. */
@@ -44,9 +44,13 @@ export function ProductLabelEditPopover({
   sku: string;
   /** The DataMatrix the label encodes — rendered in the live preview as-is. */
   matrix: LabelFaceModel['matrix'];
-  /** Apply the chosen fields + print. */
+  /** Apply the chosen fields (+ print, unless the host relabels the verb with `applyLabel`). */
   onApplyAndPrint: (draft: ProductLabelDraft) => void;
   onClose: () => void;
+  /** Offer the custom text line (the face's centre slot). The host must persist it. */
+  customText?: boolean;
+  /** The footer verb when applying does not print (prepack: the form's Print does). Default "Save & print". */
+  applyLabel?: string;
 }) {
   const { draft, set } = useLabelDraft<ProductLabelDraft>(defaults, open);
 
@@ -57,9 +61,10 @@ export function ProductLabelEditPopover({
         title: draft.title,
         condition: draft.condition,
         color: draft.color,
+        note: customText ? draft.text : null,
         matrix,
       }),
-    [sku, draft.title, draft.condition, draft.color, matrix],
+    [sku, draft.title, draft.condition, draft.color, draft.text, customText, matrix],
   );
 
   return (
@@ -92,30 +97,25 @@ export function ProductLabelEditPopover({
         </Panel>
 
         <div className="space-y-3.5">
-          <div>
-            <label className={FIELD_LABEL}>Title (top row)</label>
-            <input
-              value={draft.title}
-              onChange={(e) => set('title', e.target.value)}
-              placeholder="Product title"
-              className={TEXT_INPUT}
+          <TextField label="Title (top row)" value={draft.title} onChange={(value) => set('title', value)} autoComplete="off" />
+
+          {customText ? (
+            <TextField
+              label="Custom text (under the title)"
+              value={draft.text ?? ''}
+              onChange={(value) => set('text', value)}
+              maxLength={120}
+              autoComplete="off"
+              data-testid="label-custom-text"
             />
-          </div>
+          ) : null}
 
           <div>
-            <label className={FIELD_LABEL}>Condition</label>
+            <span className={FIELD_LABEL}>Condition</span>
             <ConditionPills value={draft.condition} onChange={(g) => set('condition', g)} />
           </div>
 
-          <div>
-            <label className={FIELD_LABEL}>Color (bottom-right)</label>
-            <input
-              value={draft.color}
-              onChange={(e) => set('color', e.target.value)}
-              placeholder="e.g. Black"
-              className={TEXT_INPUT}
-            />
-          </div>
+          <TextField label="Color (bottom-right)" value={draft.color} onChange={(value) => set('color', value)} autoComplete="off" />
         </div>
       </div>
 
@@ -132,14 +132,14 @@ export function ProductLabelEditPopover({
         <Button
           variant="primary"
           size="sm"
-          icon={<Printer className="h-3.5 w-3.5" />}
+          icon={applyLabel ? <Check className="h-3.5 w-3.5" /> : <Printer className="h-3.5 w-3.5" />}
           onClick={() => {
             onApplyAndPrint(draft);
             onClose();
           }}
           className="text-role-micro"
         >
-          Save &amp; print
+          {applyLabel ?? 'Save & print'}
         </Button>
       </div>
     </RightPaneOverlay>

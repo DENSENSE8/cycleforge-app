@@ -1441,6 +1441,8 @@ export const receivingLines = pgTable('receiving_line', {
   lineKey: text('line_key'),
   unitCostCents: bigint('unit_cost_cents', { mode: 'number' }),
   currency: text('currency'),
+  /** The condition the item was BOUGHT at — the listing's grade; unbox grades separately (2026-10-06). */
+  purchaseConditionGrade: conditionGradeEnum('purchase_condition_grade'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1632,10 +1634,34 @@ export const receivingLineReturn = pgTable('receiving_line_return', {
   returnReason: text('return_reason'),
   sourceOrderId: text('source_order_id'),
   rmaRef: text('rma_ref'),
+  /** Amazon return-report identity of the returned unit (2026-10-06). */
+  fnsku: text('fnsku'),
+  licensePlateNumber: text('license_plate_number'),
+  disposition: text('disposition'),
+  customerComment: text('customer_comment'),
+  returnRequestedOn: date('return_requested_on'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   orgSourceOrderIdx: index('idx_receiving_line_return_org_source_order').on(table.organizationId, table.sourceOrderId),
+}));
+
+/** Serial numbers the purchase listing showed; unbox confirms against them. first_seen_at = listing time (2026-10-06). */
+export const receivingLineListingSerial = pgTable('receiving_line_listing_serial', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  receivingLineId: integer('receiving_line_id').notNull().references(() => receivingLines.id, { onDelete: 'cascade' }),
+  serial: text('serial').notNull(),
+  serialNorm: text('serial_norm').notNull(),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  source: text('source').notNull(),
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+  confirmedBy: integer('confirmed_by').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgLineSerialUx: uniqueIndex('receiving_line_listing_serial_org_line_serial_unique').on(table.organizationId, table.receivingLineId, table.serialNorm),
+  orgSerialIdx: index('idx_receiving_line_listing_serial_org_serial').on(table.organizationId, table.serialNorm),
 }));
 
 /** Putaway facts (location_code, bin, put_away_* · staged_*). 1:1. */
@@ -1880,7 +1906,30 @@ export const inboundImportBatch = pgTable('inbound_import_batch', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   committedAt: timestamp('committed_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  /** The uploaded file behind the batch, for the upload check (2026-10-06b). */
+  fileName: text('file_name'),
+  preset: text('preset'),
+  headers: jsonb('headers'),
+  columnMap: jsonb('column_map'),
 });
+
+/** One data row of an uploaded import file and what it landed as (2026-10-06b). */
+export const inboundImportRow = pgTable('inbound_import_row', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  batchId: bigint('batch_id', { mode: 'number' }).notNull().references(() => inboundImportBatch.id, { onDelete: 'cascade' }),
+  rowNumber: integer('row_number').notNull(),
+  cells: jsonb('cells').notNull(),
+  orderKey: text('order_key'),
+  lineKey: text('line_key'),
+  status: text('status').notNull(),
+  problem: text('problem'),
+  inboundOrderId: bigint('inbound_order_id', { mode: 'number' }),
+  receivingLineId: integer('receiving_line_id').references(() => receivingLines.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgBatchRowUx: uniqueIndex('inbound_import_row_org_batch_row_unique').on(table.organizationId, table.batchId, table.rowNumber),
+}));
 
 /** The inbound ingest ledger — one row per order landing attempt, idempotent on (org, source, source_event_id) (2026-09-27f). */
 export const inboundIngestEvent = pgTable('inbound_ingest_event', {
@@ -2064,6 +2113,9 @@ export const documents = pgTable('documents', {
   signerName: text('signer_name'),
   signedAt: timestamp('signed_at', { withTimezone: true }),
   documentData: jsonb('document_data').notNull().default({}),
+  /** The bulk upload (`label_batches.id`) a paper page came from, and its page (2026-10-06b_print_files). */
+  uploadBatchId: bigint('upload_batch_id', { mode: 'number' }),
+  uploadPageNumber: integer('upload_page_number'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -2107,6 +2159,8 @@ export const fbaFnskus = pgTable('fba_fnskus', {
   sku: text('sku'),
   /** Catalog-level condition grade — single source of truth for FBA condition (live column). */
   condition: text('condition'),
+  /** Printed bottom-right of the FNSKU label. Null = color or series read from the title. */
+  labelMark: text('label_mark'),
   isActive: boolean('is_active').notNull().default(true),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -2523,6 +2577,8 @@ export const skuCatalog = pgTable('sku_catalog', {
    * Added 2026-07-22 (Products Catalog MDM).
    */
   providerItemId: text('provider_item_id'),
+  /** This SKU never ships with product paperwork — its order lines are Not required, never Missing (2026-10-05). */
+  paperworkNotRequired: boolean('paperwork_not_required').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -3237,6 +3293,8 @@ export const labelManifests = pgTable('label_manifests', {
   /** Lifecycle: 'OPEN' | 'SEALED' | 'DISSOLVED'. */
   status: text('status').notNull().default('OPEN'),
   notes: text('notes'),
+  /** Hand-edited QC label face `{title,color,text}`; null = default (migration 2026-10-05). */
+  labelFace: jsonb('label_face'),
   createdBy: integer('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   sealedAt: timestamp('sealed_at', { withTimezone: true }),

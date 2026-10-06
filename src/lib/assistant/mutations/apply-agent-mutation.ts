@@ -58,8 +58,6 @@ import type { PoolClient } from 'pg';
 import { OrderManualError, linkManualToSkuInTx, restoreManualPairingInTx } from '@/lib/manuals/order-manuals';
 import { ManualOrderRefused, createManualOrderInTx, registerDraftTracking } from '@/lib/orders/create-order';
 import { manualOrderDraftSchema } from '@/lib/orders/manual-order-draft';
-import { PoImportRefused, importPurchaseOrderInTx } from '@/lib/inbound/import-po';
-import { poImportDraftSchema } from '@/lib/inbound/po-import-draft';
 import type { TxClient } from '@/lib/inbound/purchase-links';
 import { dispatchChatWrite } from './chat-write-dispatch';
 import { dispatchLabelWrite } from './label-write-dispatch';
@@ -220,8 +218,6 @@ async function dispatchApply(
       return dispatchManualLink(client, orgId, payload);
     case 'order.create_manual':
       return dispatchManualOrder(client, orgId, payload);
-    case 'receiving.import_po':
-      return dispatchPoImport(client, orgId, payload);
     case 'receiving.link_order':
       return applyPoOrderLinkInTx(client as unknown as TxClient, orgId, payload);
     case 'order.set_flag':
@@ -311,26 +307,6 @@ async function dispatchManualOrder(client: Client, orgId: OrgId, payload: Payloa
     return { ok: true, inverse: null, targetRef: created.orderNumber };
   } catch (err) {
     if (err instanceof ManualOrderRefused) return { ok: false, status: err.status, error: err.message };
-    throw err;
-  }
-}
-
-const PoImportPayload = z.object({ draft: poImportDraftSchema }).strict();
-
-/**
- * A chat-drafted purchase order (review class: applied by the operator's
- * confirmation or a reviewer). The same ingestPurchase the Incoming desk Add
- * runs, inside the review transaction. Not revertable. `targetRef` is the PO
- * number; the receiving ids ride back through the tool's read-back.
- */
-async function dispatchPoImport(client: Client, orgId: OrgId, payload: Payload): Promise<DispatchResult> {
-  const parsed = PoImportPayload.safeParse(payload);
-  if (!parsed.success) return payloadError('receiving.import_po', parsed.error.issues);
-  try {
-    const imported = await importPurchaseOrderInTx(client as unknown as TxClient, orgId, parsed.data.draft);
-    return { ok: true, inverse: null, targetRef: imported.poNumber };
-  } catch (err) {
-    if (err instanceof PoImportRefused) return { ok: false, status: err.status, error: err.message };
     throw err;
   }
 }

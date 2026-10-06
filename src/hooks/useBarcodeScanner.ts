@@ -1,6 +1,13 @@
 'use client';
 
+import type { IScannerControls } from '@zxing/browser';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  cameraStreamIsLive,
+  loadBarcodeReader,
+  stopCameraStream,
+  warmCamera,
+} from '@/lib/scan/warm-camera';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -15,8 +22,14 @@ export interface UseBarcodeScanner {
   scanStatus: BarcodeScanStatus;
   /** Start the camera and begin continuous scanning. */
   startScanning: () => Promise<void>;
-  /** Stop the camera entirely. */
+  /** Stop the camera entirely (also releases a stream this scanner parked). */
   stopScanning: () => Promise<void>;
+  /**
+   * Detach the camera and stop decoding. With `keepWarm` (under the `/m` shell)
+   * the stream parks for the next capture window to reattach; otherwise this
+   * stops it like {@link stopScanning}.
+   */
+  parkScanning: () => void;
   /** Pause decoding (camera stays on but no callbacks fire). */
   pauseScanning: () => void;
   /** Resume decoding after pause. */
@@ -40,25 +53,54 @@ interface UseBarcodeOptions {
   dedupMs?: number;
   /** Cooldown after acceptScan() in ms. Default: 1500. */
   acceptCooldownMs?: number;
+  /**
+   * Park the stream on unmount / `parkScanning` instead of stopping it, so the
+   * next capture window reattaches without a fresh `getUserMedia`. Only while
+   * `useWarmCameraOwner` is mounted (the `/m` shell); elsewhere a park stops.
+   */
+  keepWarm?: boolean;
 }
 
-// IScannerControls type from @zxing/browser
-interface ScannerControls {
-  stop: () => void;
-  switchTorch?: (onOff: boolean) => Promise<void>;
-}
+/**
+ * The rear camera at high resolution with CONTINUOUS autofocus — small
+ * DataMatrix labels (prepacked SKU+serial) won't decode on a fixed-focus frame.
+ */
+const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
+  video: {
+    facingMode: { ideal: 'environment' },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    // focusMode isn't in the TS MediaTrackConstraints type yet.
+    advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet],
+  },
+};
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 /** Universal barcode scanner hook powered by `@zxing/browser`. */
 export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeScanner {
-  const { dedupMs = 2000, acceptCooldownMs = 1500 } = options;
+  const { dedupMs = 2000, acceptCooldownMs = 1500, keepWarm = false } = options;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const controlsRef = useRef<ScannerControls | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
+  /** The stream on this scanner's video element. */
+  const streamRef = useRef<MediaStream | null>(null);
+  /** The stream this scanner last parked — its stop releases that one, never another window's. */
+  const parkedRef = useRef<MediaStream | null>(null);
+  /** Bumped by every start/stop/park; a start that finds it moved is stale. */
+  const sessionRef = useRef(0);
+  /** What a stale start does with a stream it acquired late: whatever the call that superseded it asked for. */
+  const handoffRef = useRef<'park' | 'stop'>('stop');
+  const keepWarmRef = useRef(keepWarm);
+  keepWarmRef.current = keepWarm;
   const pausedRef = useRef(false);
+  const torchOnRef = useRef(false);
 
-  const [scanStatus, setScanStatus] = useState<BarcodeScanStatus>('idle');
+  // A parked lens is about to be reattached: open as scanning so the panel
+  // does not flash its warm-up between the route change and the attach.
+  const [scanStatus, setScanStatus] = useState<BarcodeScanStatus>(() =>
+    keepWarm && warmCamera.holding() ? 'scanning' : 'idle',
+  );
   const [lastScannedValue, setLastScannedValue] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [torchOn, setTorchOn] = useState(false);
@@ -72,6 +114,28 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
     const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     // eslint-disable-next-line no-console -- opt-in client camera-debug trace (gated by window.__USAV_CAMERA_DEBUG)
     console.debug(`[useBarcodeScanner ${ts}] ${msg}`);
+  }, []);
+
+  const setTorch = useCallback((on: boolean) => {
+    torchOnRef.current = on;
+    setTorchOn(on);
+  }, []);
+
+  /**
+   * Stop decoding and take the stream off the video element; the caller parks
+   * or stops what comes back. `handoff` is what an in-flight start that this
+   * supersedes does with a stream it acquires late.
+   */
+  const detach = useCallback((handoff: 'park' | 'stop'): MediaStream | null => {
+    sessionRef.current += 1;
+    handoffRef.current = handoff;
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+    const stream = streamRef.current;
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    pausedRef.current = false;
+    return stream;
   }, []);
 
   // ── Start scanning ──
@@ -94,102 +158,111 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
       return;
     }
 
-    // Stop any prior session
-    if (controlsRef.current) {
-      controlsRef.current.stop();
-      controlsRef.current = null;
-    }
-
     const video = videoRef.current;
     if (!video) {
       log('ERROR: no video ref');
       return;
     }
 
+    // A restart keeps the stream already on the element; a window coming back
+    // to the screen reattaches the parked one. Either shows frames at once —
+    // before the decoder is even awaited.
+    const held = detach('stop');
+    const session = sessionRef.current;
+    const isStale = () => session !== sessionRef.current;
+    let reused = held && cameraStreamIsLive(held) ? held : null;
+    if (held && !reused) stopCameraStream(held);
+    if (!reused && keepWarmRef.current) reused = warmCamera.take();
+    parkedRef.current = null;
+    if (reused) {
+      streamRef.current = reused;
+      video.srcObject = reused;
+      setScanStatus('scanning');
+      setError(null);
+    }
+
     try {
-      log('Importing @zxing/browser...');
-      const { BrowserMultiFormatReader } = await import('@zxing/browser');
-      const { BarcodeFormat, DecodeHintType } = await import('@zxing/library');
-
-      const hints = new Map();
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-        BarcodeFormat.QR_CODE,
-        BarcodeFormat.CODABAR,
-        BarcodeFormat.CODE_39,
-        BarcodeFormat.CODE_128,
-        BarcodeFormat.DATA_MATRIX,
-        BarcodeFormat.ITF,
-        BarcodeFormat.EAN_13,
-        BarcodeFormat.EAN_8,
-        BarcodeFormat.UPC_A,
-        BarcodeFormat.UPC_E,
-      ]);
-      hints.set(DecodeHintType.TRY_HARDER, true);
-
-      const reader = new BrowserMultiFormatReader(hints);
-      log('ZXing reader created');
+      const reader = await loadBarcodeReader();
+      if (isStale()) return;
+      log('ZXing reader ready');
 
       setScanStatus('scanning');
       setError(null);
       pausedRef.current = false;
 
-      // Acquire the rear camera at high resolution with CONTINUOUS autofocus — small DataMatrix labels (prepacked SKU+serial) won't decode on…
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          // focusMode isn't in the TS MediaTrackConstraints type yet.
-          advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet],
-        },
-      };
-      const controls = await reader.decodeFromConstraints(
-        constraints,
-        video,
-        (result, _err) => {
-          if (pausedRef.current) return;
-          if (!result) return; // no barcode in this frame
-
-          const decodedText = result.getText();
-          const now = Date.now();
-
-          // Cooldown check
-          if (now < cooldownUntilRef.current) return;
-
-          // Dedup check
-          const last = lastDecodedRef.current;
-          if (last && last.value === decodedText && now - last.timestamp < dedupMs) return;
-
-          log(`Decoded: ${decodedText}`);
-          lastDecodedRef.current = { value: decodedText, timestamp: now };
-          setLastScannedValue(decodedText);
-        },
-      );
-
-      controlsRef.current = controls;
-      log('Scanning started');
-
-      // Force continuous autofocus on the live track (the lens keeps hunting to sharpen on whatever's in frame, including a small label held close).
-      try {
-        const stream = video.srcObject as MediaStream | null;
-        const track = stream?.getVideoTracks?.()[0];
-        const caps = (track?.getCapabilities?.() ?? {}) as Record<string, unknown>;
-        const focusModes = (caps.focusMode as string[] | undefined) ?? [];
-        if (track && focusModes.includes('continuous')) {
-          await (track as MediaStreamTrack).applyConstraints({
-            advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet],
-          });
+      let fresh: MediaStream | null = null;
+      if (!streamRef.current) {
+        fresh = await navigator.mediaDevices.getUserMedia(CAMERA_CONSTRAINTS);
+        if (isStale()) {
+          // Superseded while the lens opened: hand it to whatever superseded us.
+          if (keepWarmRef.current && handoffRef.current === 'park') {
+            warmCamera.park(fresh);
+            parkedRef.current = fresh;
+          } else {
+            stopCameraStream(fresh);
+          }
+          return;
         }
-      } catch {
-        /* focus control unsupported — fall back to the camera's default */
+        streamRef.current = fresh;
+        video.srcObject = fresh;
       }
-    } catch (err: any) {
-      setScanStatus('error');
-      controlsRef.current = null;
 
-      const errName = err?.name || '';
-      const errMsg = String(err?.message || '').toLowerCase();
-      log(`ERROR: name=${errName} msg=${err?.message?.slice(0, 120)}`);
+      // Decodes the element's own stream — the controls stop the loop, never
+      // the stream, so a park keeps the lens.
+      const controls = await reader.decodeFromVideoElement(video, (result) => {
+        if (pausedRef.current) return;
+        if (!result) return; // no barcode in this frame
+
+        const decodedText = result.getText();
+        const now = Date.now();
+
+        // Cooldown check
+        if (now < cooldownUntilRef.current) return;
+
+        // Dedup check
+        const last = lastDecodedRef.current;
+        if (last && last.value === decodedText && now - last.timestamp < dedupMs) return;
+
+        log(`Decoded: ${decodedText}`);
+        lastDecodedRef.current = { value: decodedText, timestamp: now };
+        setLastScannedValue(decodedText);
+      });
+      if (isStale()) {
+        controls.stop();
+        return;
+      }
+      controlsRef.current = controls;
+      log(reused ? 'Scanning resumed on the warm lens' : 'Scanning started');
+
+      // Force continuous autofocus on a newly opened track (the lens keeps
+      // hunting to sharpen on whatever's in frame, including a small label
+      // held close). A reattached lens already has it.
+      if (fresh) {
+        try {
+          const track = fresh.getVideoTracks()[0];
+          const caps = (track?.getCapabilities?.() ?? {}) as Record<string, unknown>;
+          const focusModes = (caps.focusMode as string[] | undefined) ?? [];
+          if (track && focusModes.includes('continuous')) {
+            await track.applyConstraints({
+              advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet],
+            });
+          }
+        } catch {
+          /* focus control unsupported — fall back to the camera's default */
+        }
+      }
+    } catch (err) {
+      if (isStale()) return;
+      const failed = detach('stop');
+      if (failed) stopCameraStream(failed);
+      setScanStatus('error');
+
+      // getUserMedia rejects with a DOMException; ZXing's play timeout rejects with `false`.
+      const failure = (err ?? {}) as { name?: unknown; message?: unknown };
+      const errName = String(failure.name ?? '');
+      const message = String(failure.message ?? '');
+      const errMsg = message.toLowerCase();
+      log(`ERROR: name=${errName} msg=${message.slice(0, 120)}`);
 
       if (!isSecureOrigin || errMsg.includes('secure context') || errMsg.includes('https')) {
         setError('Camera access requires HTTPS or localhost. Safari will not prompt on an insecure dev URL.');
@@ -200,28 +273,35 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
       } else if (errName === 'NotFoundError' || errMsg.includes('no camera') || errMsg.includes('not found')) {
         setError('No camera found on this device.');
       } else {
-        setError(err?.message || 'Camera unavailable');
+        setError(message || 'Camera unavailable');
       }
     }
-  }, [log, dedupMs]);
+  }, [log, dedupMs, detach]);
 
-  // ── Stop scanning ──
+  // ── Stop / park ──
 
   const stopScanning = useCallback(async () => {
-    if (controlsRef.current) {
-      controlsRef.current.stop();
-      controlsRef.current = null;
-    }
-    // Also stop any leftover tracks on the video element
-    const video = videoRef.current;
-    if (video?.srcObject) {
-      (video.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-      video.srcObject = null;
-    }
-    pausedRef.current = false;
-    setTorchOn(false);
+    const stream = detach('stop');
+    if (stream) stopCameraStream(stream);
+    if (parkedRef.current) warmCamera.release(parkedRef.current);
+    parkedRef.current = null;
+    setTorch(false);
     setScanStatus('idle');
-  }, []);
+  }, [detach, setTorch]);
+
+  const parkScanning = useCallback(() => {
+    const stream = detach('park');
+    setScanStatus('idle');
+    if (!stream) return;
+    // A lit torch never parks: the flashlight would burn on behind another screen.
+    if (keepWarmRef.current && !torchOnRef.current) {
+      warmCamera.park(stream);
+      parkedRef.current = stream;
+      return;
+    }
+    stopCameraStream(stream);
+    setTorch(false);
+  }, [detach, setTorch]);
 
   // ── Pause / Resume ──
 
@@ -251,37 +331,19 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
   // ── Torch ──
 
   const toggleTorch = useCallback(() => {
-    const controls = controlsRef.current;
-    if (!controls?.switchTorch) {
-      // Fallback: try applying constraints directly to the video track
-      const video = videoRef.current;
-      const track = (video?.srcObject as MediaStream)?.getVideoTracks()[0];
-      if (!track) return;
-      const caps = track.getCapabilities?.() as any;
-      if (!caps?.torch) return;
-      const newState = !torchOn;
-      (track as any).applyConstraints({ advanced: [{ torch: newState }] })
-        .then(() => setTorchOn(newState))
-        .catch(() => {});
-      return;
-    }
-
-    const newState = !torchOn;
-    controls.switchTorch(newState)
-      .then(() => setTorchOn(newState))
+    const track = streamRef.current?.getVideoTracks()[0];
+    const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { torch?: boolean }) | undefined;
+    if (!track || !caps?.torch) return;
+    const next = !torchOnRef.current;
+    track
+      .applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] })
+      .then(() => setTorch(next))
       .catch(() => {});
-  }, [torchOn]);
+  }, [setTorch]);
 
-  // ── Cleanup on unmount ──
+  // ── Unmount: park (keepWarm) or stop ──
 
-  useEffect(() => {
-    return () => {
-      if (controlsRef.current) {
-        controlsRef.current.stop();
-        controlsRef.current = null;
-      }
-    };
-  }, []);
+  useEffect(() => parkScanning, [parkScanning]);
 
   return {
     videoRef,
@@ -289,6 +351,7 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
     scanStatus,
     startScanning,
     stopScanning,
+    parkScanning,
     pauseScanning,
     resumeScanning,
     acceptScan,
@@ -298,4 +361,32 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
     toggleTorch,
     torchOn,
   };
+}
+
+/**
+ * Owns the warm lens for a shell (the `/m` layout). While mounted, a
+ * `keepWarm` scanner may park its stream between screens; the page going
+ * hidden releases the parked stream, and leaving the shell releases it. Also
+ * pre-loads the decoder chunk on idle so the first Scan does not wait on it —
+ * a module load, never a camera permission ask.
+ */
+export function useWarmCameraOwner(): void {
+  useEffect(() => {
+    warmCamera.setOwned(true);
+    const onVisibility = () => warmCamera.setHidden(document.visibilityState === 'hidden');
+    onVisibility();
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const prewarm = () => void loadBarcodeReader();
+    // iOS Safari has no requestIdleCallback.
+    const idle = 'requestIdleCallback' in window;
+    const handle = idle ? window.requestIdleCallback(prewarm, { timeout: 4000 }) : window.setTimeout(prewarm, 1500);
+
+    return () => {
+      if (idle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+      document.removeEventListener('visibilitychange', onVisibility);
+      warmCamera.setOwned(false);
+    };
+  }, []);
 }

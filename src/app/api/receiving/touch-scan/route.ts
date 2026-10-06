@@ -28,10 +28,17 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     unboxed_at: string | null;
     unboxed_by_name: string | null;
     zoho_purchaseorder_number: string | null;
+    units_outstanding: boolean;
   }>(
     ctx.organizationId,
     `SELECT rc.source, rc.carrier, rc.zoho_purchaseorder_number,
-              ru.unboxed_at, staff_unbox.name AS unboxed_by_name
+              ru.unboxed_at, staff_unbox.name AS unboxed_by_name,
+              EXISTS (
+                SELECT 1 FROM receiving_line rl
+                 WHERE rl.receiving_id = rc.id AND rl.organization_id = rc.organization_id
+                   AND rl.workflow_status <> 'DONE'
+                   AND COALESCE(rl.quantity_expected, 0) > COALESCE(rl.quantity_received, 0)
+              ) AS units_outstanding
          FROM receiving_carton rc
          LEFT JOIN receiving_unbox ru
            ON ru.receiving_id = rc.id AND ru.organization_id = rc.organization_id
@@ -59,7 +66,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   // Already unboxed → this scan is an inspection, not work. It must not claim
   // `scanned_by` from whoever actually unboxed the carton, must not stamp the
   // unbox-open milestone, and must not fire UNBOX_SCAN_OPENED.
-  const scanKind = classifyScanKind(intakeSurface, { unboxedAt: row.unboxed_at });
+  const scanKind = classifyScanKind(intakeSurface, { unboxedAt: row.unboxed_at, unitsOutstanding: row.units_outstanding });
 
   if (scanKind === 'lookup') {
     await recordUnboxLookupScan({

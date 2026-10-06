@@ -74,7 +74,14 @@ test('stock health counts come from the list scope counts on the chip ids', asyn
     },
   );
 
-  assert.deepEqual(seen, [{ orgId: ORG, room: 'Zone 3 - Parts', aisle: '2', query: 'brake' }]);
+  assert.deepEqual(seen, [{
+    orgId: ORG,
+    room: 'Zone 3 - Parts',
+    excludeRoom: null,
+    aisle: '2',
+    excludeAisle: null,
+    query: 'brake',
+  }]);
   const health = result.groups.find((group) => group.id === 'health');
   assert.equal(health?.param, 'status');
   assert.deepEqual(health?.options, [

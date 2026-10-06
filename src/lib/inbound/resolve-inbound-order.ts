@@ -43,7 +43,10 @@ function normalizeOrderKey(raw: string): string {
 }
 
 /**
- * Exact (normalized) match on link source_order_id or mirror order_number.
+ * Exact (normalized) match on link source_order_id or mirror order_number —
+ * or on a return report's unit identity (`receiving_line_return`
+ * license_plate_number / fnsku) of a line not yet fully received, so an FBA
+ * customer return with no tracking opens when its LPN or FNSKU is scanned.
  * Ambiguous (≥2 distinct primary orders) → null.
  */
 export async function resolveInboundCartonByOrderId(
@@ -79,6 +82,16 @@ export async function resolveInboundCartonByOrderId(
         AND (
               NULLIF(upper(regexp_replace(l.source_order_id, '[^A-Za-z0-9]', '', 'g')), '') = $2
            OR NULLIF(upper(regexp_replace(COALESCE(m.order_number, ''), '[^A-Za-z0-9]', '', 'g')), '') = $2
+           OR EXISTS (
+                SELECT 1 FROM receiving_line_return rr
+                 WHERE rr.organization_id = l.organization_id
+                   AND rr.receiving_line_id = rl.id
+                   AND COALESCE(rl.quantity_received, 0) < COALESCE(rl.quantity_expected, 1)
+                   AND $2 IN (
+                         NULLIF(upper(regexp_replace(COALESCE(rr.license_plate_number, ''), '[^A-Za-z0-9]', '', 'g')), ''),
+                         NULLIF(upper(regexp_replace(COALESCE(rr.fnsku, ''), '[^A-Za-z0-9]', '', 'g')), '')
+                       )
+              )
             )
       ORDER BY rl.id DESC
       LIMIT 4`,

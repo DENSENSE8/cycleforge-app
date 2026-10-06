@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseCsv } from '@/lib/tables/import/parse-csv';
 import type { BatchOrderOutcome } from './import-batch';
-import { identifyColumns, poPresetForPlatform } from './po-columns';
+import { PO_PRESETS, identifyColumns } from './po-columns';
 import { groupPoReviewOrders, poColumnsNeedingLook, poOrphanLines, poRemapColumn, poReviewOrders, poReviewStatus } from './po-csv-review';
 
 const fixture = parseCsv(readFileSync(new URL('./fixtures/goodwill-po-synthetic.csv', import.meta.url), 'utf8'));
-const identification = identifyColumns(fixture.headers, fixture.rows, { preset: poPresetForPlatform('goodwill'), platform: 'goodwill' });
+const identification = identifyColumns(fixture.headers, fixture.rows, { preset: PO_PRESETS.goodwill, platform: 'goodwill' });
 
 const outcomes: BatchOrderOutcome[] = [
   { orderNumber: '99990001', rows: [0, 1], status: 'valid', change: 'new', lines: 2 },
@@ -16,7 +16,7 @@ const outcomes: BatchOrderOutcome[] = [
 ];
 
 test('each order card carries its date, full titles, units and total from the file rows', () => {
-  const [first] = poReviewOrders({ rows: fixture.rows, mapping: identification.mapping, platform: 'goodwill', outcomes, rowProblems: [] });
+  const [first] = poReviewOrders({ rows: fixture.rows, mapping: identification.mapping, platform: 'goodwill', preset: 'goodwill', outcomes, rowProblems: [] });
   assert.equal(first.orderNumber, '99990001');
   assert.equal(first.status, 'new');
   assert.equal(first.orderDate, '2026-09-14');
@@ -31,6 +31,7 @@ test('row problems land on their line; problems naming no row stay on the order'
     rows: fixture.rows,
     mapping: identification.mapping,
     platform: 'goodwill',
+    preset: 'goodwill',
     outcomes,
     rowProblems: [{ row: 2, field: 'unit_cost', message: 'Unit cost "x" is not a price' }],
   });
@@ -40,7 +41,7 @@ test('row problems land on their line; problems naming no row stay on the order'
 });
 
 test('groups put what needs a fix first and drop empty groups', () => {
-  const orders = poReviewOrders({ rows: fixture.rows, mapping: identification.mapping, platform: 'goodwill', outcomes, rowProblems: [] });
+  const orders = poReviewOrders({ rows: fixture.rows, mapping: identification.mapping, platform: 'goodwill', preset: 'goodwill', outcomes, rowProblems: [] });
   assert.deepEqual(groupPoReviewOrders(orders).map((g) => g.status), ['needs_fix', 'new', 'unchanged']);
 });
 
@@ -54,6 +55,7 @@ test('rows with no order number come back on their own', () => {
     rows: [{ ...fixture.rows[0], 'Purchase Ref': '' }],
     mapping: identification.mapping,
     platform: 'goodwill',
+    preset: 'goodwill',
     rowProblems: [{ row: 0, field: 'order_number', message: 'Order # is blank' }],
   });
   assert.equal(lines.length, 1);

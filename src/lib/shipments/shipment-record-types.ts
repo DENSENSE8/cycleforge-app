@@ -2,6 +2,7 @@
 
 import { productImageUrl } from '@/lib/photos/product-image-url';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
+import type { FulfilledCheckInRow } from '@/lib/nav/fulfilled/sql';
 
 export interface ShipmentRecordSerial {
   serial: string;
@@ -106,6 +107,24 @@ export interface ShipmentRecordPhoto {
   takenAt: string | null;
 }
 
+/**
+ * The post-ship JOURNEY's instants (operator 2026-10-05) — hand-off → first
+ * carrier scan → delivered (against the FIRST promise) → the order's
+ * post-purchase check-in. Read by the record's journey rail; the same rules as
+ * the Fulfilled list (`src/lib/nav/fulfilled/sql.ts`, `bucket.ts`).
+ */
+export interface ShipmentRecordJourney {
+  /** Staffed scan-out, else the ShipStation ship date, else label created / printed, else the carrier's acceptance. */
+  handOffAt: string | null;
+  /** The first REAL carrier scan (`firstCarrierScanAt`; synthetic scan stamps ignored). */
+  firstCarrierScanAt: string | null;
+  /** The carrier's FIRST promised delivery (`first_estimated_delivery_at`); kept after delivery. */
+  promisedAt: string | null;
+  deliveredAt: string | null;
+  /** The order's check-in (`order_support_follow_ups`, program post_purchase); null when none is projected. */
+  checkIn: FulfilledCheckInRow | null;
+}
+
 export interface ShipmentRecord {
   shipmentId: number;
   tracking: string;
@@ -156,6 +175,7 @@ export interface ShipmentRecord {
   photos: ShipmentRecordPhoto[];
   /** Newest first. */
   actions: ShipmentRecordAction[];
+  journey: ShipmentRecordJourney;
 }
 
 /** `POST /api/shipments/[id]/resolve-exception` body. */

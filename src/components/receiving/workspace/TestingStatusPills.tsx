@@ -27,6 +27,8 @@ interface Props {
    * the verdict. Defaults to true.
    */
   collapsedLabel?: boolean;
+  /** Expanded strip prints each verdict's word beside its glyph (the station's middle verdict row). */
+  labeled?: boolean;
 }
 
 const VERDICT_ICON = {
@@ -38,6 +40,7 @@ const VERDICT_ICON = {
 const TEST_OPTS: Array<{
   value: TestingVerdict;
   label: string;
+  /** The word a labeled strip prints. */
   short: string;
   face: ReactNode;
   tone: { active: string; inactive: string };
@@ -55,7 +58,7 @@ const TEST_OPTS: Array<{
   {
     value: 'TEST_AGAIN',
     label: 'Test Again',
-    short: 'Again',
+    short: 'Test again',
     face: VERDICT_ICON.TEST_AGAIN,
     tone: {
       active: 'bg-blue-600 text-white shadow-none ring-blue-700',
@@ -105,6 +108,7 @@ export function TestingStatusPills({
   expanded: expandedProp,
   onExpandedChange,
   collapsedLabel = true,
+  labeled = false,
 }: Props) {
   const selected = (value ?? '').toUpperCase() as TestingVerdict | '';
   const selectedOpt = TEST_OPTS.find((o) => o.value === selected) ?? null;
@@ -204,9 +208,10 @@ export function TestingStatusPills({
                 if (collapsible) setExpanded(false);
               }}
               disabled={disabled}
-              className={`${SEGMENT_FACE} ${isActive ? opt.tone.active : opt.tone.inactive}`}
+              className={`${SEGMENT_FACE} ${labeled ? 'gap-2 text-role-caption font-semibold' : ''} ${isActive ? opt.tone.active : opt.tone.inactive}`}
             >
               {opt.face}
+              {labeled ? <span className="truncate">{opt.short}</span> : null}
             </button>
           </HoverTooltip>
         );

@@ -13,21 +13,30 @@ export const metadata: Metadata = { title: 'Print station' };
 /**
  * `/print-station` — **Print station › FNSKU labels** (owner 2026-09-29), the
  * printing mode (`G F`; `G S` is Stations): find an FNSKU from the sidebar's
- * Find (`?q=`), open it (`?fnsku=`) or hover its row's Print, pick the station
- * at the packer's table and how many, and it prints there silently.
+ * Find (`?q=`), narrow by condition (`?condition=`), open it (`?fnsku=`) or
+ * hover its row's Print, pick the station at the packer's table and how many,
+ * and it prints there silently.
  */
-export default async function PrintStationPage({ searchParams }: { searchParams: Promise<{ q?: string; view?: string }> }) {
+export default async function PrintStationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; view?: string; condition?: string }>;
+}) {
   const user = await requirePermission('print.label');
-  const { q, view: rawView } = await searchParams;
+  const { q, view: rawView, condition } = await searchParams;
   const view = parsePrintStationFnskuView(rawView);
-  const { rows } = await listPrintStationFnskus(user.organizationId, { query: q ?? null, view });
+  const { rows } = await listPrintStationFnskus(user.organizationId, {
+    query: q ?? null,
+    view,
+    condition: condition ?? null,
+  });
   return (
     <>
       <SurfaceParamHygiene />
       {/* The desk frame: its stage places the open FNSKU (DeskRecordPlane); title and keys come from the sidebar's NavContext. */}
       <DeskPageLayout bare className="h-full">
         <Suspense fallback={null}>
-          <FnskuPrintDesk rows={rows} view={view} />
+          <FnskuPrintDesk rows={rows} view={view} query={q ?? ''} condition={condition ?? ''} />
         </Suspense>
       </DeskPageLayout>
     </>

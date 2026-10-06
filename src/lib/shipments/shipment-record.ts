@@ -2,8 +2,13 @@
 
 import pool from '@/lib/db';
 import { readInventorySpine } from '@/lib/audit-log/inventory-spine';
+import { firstCarrierScanAt } from '@/lib/nav/fulfilled/bucket';
+import type { FulfilledCheckInRow } from '@/lib/nav/fulfilled/sql';
+import { scanOutBackdated } from '@/lib/outbound/scan-out-provenance';
 import { photoContentUrl } from '@/lib/photos/display-url';
 import { sqlOrderOwnsShipment } from '@/lib/search/order-tracking-match-sql';
+import { SUPPORT_CHECK_IN_PROGRAM } from '@/lib/support/check-ins/config';
+import { CHECK_IN_OUTCOMES, ORDER_CHECK_IN_STATES, type CheckInOutcome, type OrderCheckInState } from '@/lib/support/conversation/model';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { getTrackingUrl, getTrackingUrlByCarrier, orderTrackingMatchKeys } from '@/lib/tracking-format';
@@ -13,6 +18,7 @@ import {
   type ShipmentRecord,
   type ShipmentRecordAction,
   type ShipmentRecordItem,
+  type ShipmentRecordJourney,
   type ShipmentRecordSibling,
 } from './shipment-record-types';
 
@@ -87,6 +93,8 @@ export interface ShipmentBoxRow {
 export interface ShipmentStationRow {
   id: number;
   created_at: Instant;
+  /** Write time — `scanOutBackdated` reads it against `created_at`. */
+  updated_at: Instant;
   station: string | null;
   activity_type: string;
   scan_ref: string | null;
@@ -137,6 +145,33 @@ export interface ShipmentPhotoRow {
   taken_at: Instant;
 }
 
+/** The package row's journey columns, read apart from {@link readVisibleShipment} so lookup never depends on them. */
+export interface ShipmentJourneyStnRow {
+  first_estimated_delivery_at: Instant;
+  source_system: string | null;
+  consecutive_error_count: number | string | null;
+}
+
+/** The hand-off fallbacks for a package never scanned out: its ShipStation label and the lines' label print. */
+export interface ShipmentHandOffRow {
+  shipstation_ship_at: Instant;
+  shipstation_created_at: Instant;
+  label_printed_at: Instant;
+}
+
+/** The owning order's post-purchase check-in (`order_support_follow_ups`) + its latest inbound message instant. */
+export interface ShipmentCheckInRow {
+  state: string;
+  support_ticket_id: number | string | null;
+  trigger_at: Instant;
+  due_at: Instant;
+  contacted_at: Instant;
+  next_follow_up_at: Instant;
+  closed_at: Instant;
+  outcome: string | null;
+  replied_at: Instant;
+}
+
 export interface ShipmentRecordRows {
   stn: ShipmentStnRow;
   items: ShipmentItemRow[];
@@ -153,6 +188,9 @@ export interface ShipmentRecordRows {
   carrier: CarrierEventRow[];
   inventory: ShipmentInventoryRow[];
   photos: ShipmentPhotoRow[];
+  journeyStn: ShipmentJourneyStnRow | null;
+  handOff: ShipmentHandOffRow | null;
+  checkIn: ShipmentCheckInRow | null;
 }
 
 // ─── Loader ──────────────────────────────────────────────────────────────────
@@ -213,6 +251,71 @@ export const SHIPMENT_EXCEPTIONS_SQL = `
      )
    ORDER BY (oe.status = 'open') DESC, oe.created_at DESC NULLS LAST, oe.id DESC
    LIMIT 20`;
+
+const SHIPMENT_JOURNEY_STN_SQL = `
+  SELECT stn.first_estimated_delivery_at, stn.source_system, stn.consecutive_error_count
+    FROM shipping_tracking_numbers stn
+   WHERE stn.id = $1`;
+
+/** A ShipStation stamp (`YYYY-MM-DDTHH:MM:SS`, PT wall clock) as an instant; null when the text is not one. */
+const SS_CREATED_AT = `CASE WHEN s.create_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+                            THEN left(s.create_date, 19)::timestamp AT TIME ZONE 'America/Los_Angeles' END`;
+
+/**
+ * The hand-off fallbacks the Fulfilled list reads (`src/lib/nav/fulfilled/sql.ts` `ss_label`): the
+ * package's ShipStation label — the one naming its tracking, else the lines' latest — ship date (never
+ * before the label was made) and creation, and the lines' earliest label print.
+ */
+const SHIPMENT_HAND_OFF_SQL = `
+  SELECT ss.ship_at AS shipstation_ship_at,
+         ss.created_at AS shipstation_created_at,
+         (SELECT MIN(o.label_printed_at) FROM orders o
+           WHERE o.organization_id = $1 AND o.id = ANY($2::int[])) AS label_printed_at
+    FROM (SELECT 1) one
+    LEFT JOIN LATERAL (
+      SELECT CASE WHEN s.ship_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+                  THEN GREATEST(left(s.ship_date, 10)::timestamp AT TIME ZONE 'America/Los_Angeles', ${SS_CREATED_AT})
+             END AS ship_at,
+             ${SS_CREATED_AT} AS created_at
+        FROM shipstation_shipment_refs s
+       WHERE s.organization_id = $1
+         AND s.order_row_id = ANY($2::int[])
+         AND NOT COALESCE(s.voided, false)
+         AND NOT COALESCE(s.is_return_label, false)
+       ORDER BY (UPPER(regexp_replace(COALESCE(s.tracking_number, ''), '[^A-Za-z0-9]', '', 'g')) = $3::text) DESC,
+                s.ship_date DESC NULLS LAST, s.id DESC
+       LIMIT 1
+    ) ss ON TRUE`;
+
+/**
+ * The order's post-purchase check-in: the row of the REPRESENTATIVE line (lowest `orders.id` of
+ * the same order number + storefront, or the line itself when the number is blank) — the key the
+ * Fulfilled list joins on — with its latest inbound message's instant as the customer's reply.
+ */
+const SHIPMENT_CHECK_IN_SQL = `
+  SELECT f.state, f.support_ticket_id, f.trigger_at, f.due_at, f.contacted_at,
+         f.next_follow_up_at, f.closed_at, f.outcome,
+         COALESCE(tm.occurred_at, tm.created_at) AS replied_at
+    FROM order_support_follow_ups f
+    JOIN orders fo ON fo.id = f.order_id AND fo.organization_id = $1
+    LEFT JOIN thread_messages tm ON tm.id = f.latest_inbound_message_id AND tm.organization_id = $1
+   WHERE f.organization_id = $1
+     AND f.program = $3
+     AND EXISTS (
+       SELECT 1 FROM orders o
+        WHERE o.organization_id = $1
+          AND o.id = ANY($2::int[])
+          AND (
+            o.id = fo.id
+            OR (
+              NULLIF(BTRIM(o.order_id), '') IS NOT NULL
+              AND fo.order_id = o.order_id
+              AND COALESCE(fo.account_source, '') = COALESCE(o.account_source, '')
+            )
+          )
+     )
+   ORDER BY f.order_id
+   LIMIT 1`;
 
 async function loadShipmentRecordRows(
   orgId: OrgId,
@@ -365,7 +468,7 @@ async function loadShipmentRecordRows(
 
     const station = (
       await client.query<ShipmentStationRow>(
-        `SELECT sal.id, sal.created_at, sal.station, sal.activity_type, sal.scan_ref,
+        `SELECT sal.id, sal.created_at, sal.updated_at, sal.station, sal.activity_type, sal.scan_ref,
                 sal.staff_id, s.name AS staff_name, sal.metadata, sal.notes,
                 sal.orders_exception_id,
                 COALESCE(
@@ -424,10 +527,22 @@ async function loadShipmentRecordRows(
         ).rows
       : [];
 
-    return { items, serials, packs, boxes, station, exceptions, audits, photos };
+    // ── journey: the hand-off fallbacks and the order's check-in (org-scoped, like every read above)
+    // The ShipStation join compares the tracking upper-case, letters and digits only.
+    const ssTrackingKey = stn.tracking_number_raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const handOff = orderIds.length
+      ? ((await client.query<ShipmentHandOffRow>(SHIPMENT_HAND_OFF_SQL, [orgId, orderIds, ssTrackingKey])).rows[0] ?? null)
+      : null;
+    const checkIn = orderIds.length
+      ? ((await client.query<ShipmentCheckInRow>(SHIPMENT_CHECK_IN_SQL, [orgId, orderIds, SUPPORT_CHECK_IN_PROGRAM])).rows[0] ?? null)
+      : null;
+
+    return { items, serials, packs, boxes, station, exceptions, audits, photos, handOff, checkIn };
   });
 
   const carrier = await listShipmentCarrierEvents(shipmentId);
+  // The package row is already proven visible to the org (`readVisibleShipment`); legacy rows carry no org id.
+  const journeyStn = (await pool.query<ShipmentJourneyStnRow>(SHIPMENT_JOURNEY_STN_SQL, [shipmentId])).rows[0] ?? null;
 
   const unitIds = Array.from(
     new Set(rows.serials.map((s) => Number(s.serial_unit_id)).filter((id) => Number.isFinite(id) && id > 0)),
@@ -436,7 +551,7 @@ async function loadShipmentRecordRows(
     ? ((await readInventorySpine({ serialUnitIds: unitIds, order: 'desc', limit: 200 }, orgId)) as unknown as ShipmentInventoryRow[])
     : [];
 
-  return { stn, ...rows, carrier, inventory };
+  return { stn, ...rows, carrier, inventory, journeyStn };
 }
 
 // ─── Pure shaping ────────────────────────────────────────────────────────────
@@ -458,9 +573,9 @@ function humanizeVerb(verb: string): string {
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : verb;
 }
 
-/** `metadata.source` naming an ops backfill (`ops-backfill-scan-out` …), not a live dock scan. */
-function isBackfillSource(metadata: Record<string, unknown> | null | undefined): boolean {
-  return /backfill/i.test(String(metadata?.source ?? ''));
+/** A scan-out whose stamp was backdated, not the dock hand-off moment — the one rule (`scanOutBackdated`) the Fulfilled sheet's Scan source reads too. */
+function shipConfirmBackdated(row: ShipmentStationRow): boolean {
+  return scanOutBackdated({ source: clean(row.metadata?.source), createdAt: row.created_at ?? '', updatedAt: row.updated_at });
 }
 
 const STATION_LABELS: Record<string, string> = {
@@ -511,12 +626,12 @@ function stationAction(row: ShipmentStationRow): ShipmentRecordAction | null {
   const at = isoInstant(row.created_at);
   if (!at) return null;
   const kind = String(row.activity_type);
-  const backfilled = kind === 'SHIP_CONFIRM' && isBackfillSource(row.metadata);
+  const backfilled = kind === 'SHIP_CONFIRM' && shipConfirmBackdated(row);
   let label = STATION_LABELS[kind] ?? humanizeVerb(kind);
   let detail: string | null = null;
   if (backfilled) {
     label = 'Scan-out backfilled';
-    detail = `Ops backfill (${clean(row.metadata?.source) ?? 'backfill'}), not a live dock scan`;
+    detail = `Backdated stamp (${clean(row.metadata?.source) ?? 'no source'}), not the dock hand-off moment`;
   } else if (kind === 'SERIAL_ADDED') {
     detail = clean(row.serial_number);
   } else if (row.orders_exception_id != null && kind.startsWith('PACK')) {
@@ -589,6 +704,81 @@ function ordinalByBoxSeq(boxes: ShipmentBoxRow[]): Map<number, number> {
   return new Map(sorted.map((b, i) => [Number(b.shipment_id), i + 1]));
 }
 
+/** Carrier event categories that prove a physical carrier scan (the Fulfilled list's `first_move_at`). */
+const MOVE_CATEGORIES: Readonly<Record<string, true>> = { ACCEPTED: true, IN_TRANSIT: true, OUT_FOR_DELIVERY: true, DELIVERED: true };
+
+/** The check-in row as the wire carries it; null when none, or its state is a word this build does not know. */
+function checkInOf(row: ShipmentCheckInRow | null): FulfilledCheckInRow | null {
+  const state = clean(row?.state);
+  if (!row || !state || !(ORDER_CHECK_IN_STATES as readonly string[]).includes(state)) return null;
+  const outcome = clean(row.outcome);
+  const ticket = Number(row.support_ticket_id);
+  return {
+    state: state as OrderCheckInState,
+    supportItemId: Number.isInteger(ticket) && ticket > 0 ? ticket : null,
+    triggerAt: isoInstant(row.trigger_at),
+    dueAt: isoInstant(row.due_at),
+    contactedAt: isoInstant(row.contacted_at),
+    nextFollowUpAt: isoInstant(row.next_follow_up_at),
+    repliedAt: isoInstant(row.replied_at),
+    closedAt: isoInstant(row.closed_at),
+    outcome: outcome && (CHECK_IN_OUTCOMES as readonly string[]).includes(outcome) ? (outcome as CheckInOutcome) : null,
+  };
+}
+
+/** The earliest carrier event whose category passes `keep`, as an ISO instant. */
+function earliestCarrierEventAt(events: readonly CarrierEventRow[], keep: (category: string) => boolean): string | null {
+  let earliest: string | null = null;
+  for (const event of events) {
+    const at = isoInstant(event.event_occurred_at);
+    if (at && keep(String(event.normalized_status_category ?? '').toUpperCase()) && (earliest === null || at < earliest)) earliest = at;
+  }
+  return earliest;
+}
+
+/**
+ * The journey's instants by the Fulfilled list's rules: hand-off = the latest STAFFED scan-out,
+ * else the ShipStation ship date, label created, label printed, ShipStation label made, carrier
+ * acceptance; the first carrier scan ignores synthetic scan stamps (`firstCarrierScanAt`).
+ */
+function journeyOf(rows: ShipmentRecordRows): ShipmentRecordJourney {
+  const { stn, handOff, journeyStn } = rows;
+  const staffedScanOut = rows.station.find(
+    (r) => r.activity_type === 'SHIP_CONFIRM' && Number(r.staff_id) > 0 && isoInstant(r.created_at) !== null,
+  );
+  const handOffAt =
+    [
+      staffedScanOut?.created_at,
+      handOff?.shipstation_ship_at,
+      stn.label_created_at,
+      handOff?.label_printed_at,
+      handOff?.shipstation_created_at,
+      stn.carrier_accepted_at,
+    ]
+      .map((at) => isoInstant(at))
+      .find((at) => at !== null) ?? null;
+  const deliveredAt = isoInstant(stn.delivered_at) ?? earliestCarrierEventAt(rows.carrier, (category) => category === 'DELIVERED');
+  const errors = Number(journeyStn?.consecutive_error_count ?? 0);
+  return {
+    handOffAt,
+    firstCarrierScanAt: firstCarrierScanAt({
+      firstMoveEventAt: earliestCarrierEventAt(rows.carrier, (category) => MOVE_CATEGORIES[category] === true),
+      sourceSystem: clean(journeyStn?.source_system),
+      eventCount: rows.carrier.length,
+      lastCheckedAt: isoInstant(stn.last_checked_at),
+      consecutiveErrors: Number.isFinite(errors) ? errors : 0,
+      lastError: clean(stn.last_error_message),
+      carrierAcceptedAt: isoInstant(stn.carrier_accepted_at),
+      firstInTransitAt: isoInstant(stn.first_in_transit_at),
+      outForDeliveryAt: isoInstant(stn.out_for_delivery_at),
+      deliveredAt,
+    }),
+    promisedAt: isoInstant(journeyStn?.first_estimated_delivery_at),
+    deliveredAt,
+    checkIn: checkInOf(rows.checkIn),
+  };
+}
+
 export function buildShipmentRecord(rows: ShipmentRecordRows): ShipmentRecord {
   const shipmentId = Number(rows.stn.id);
   const tracking = rows.stn.tracking_number_raw;
@@ -641,7 +831,7 @@ export function buildShipmentRecord(rows: ShipmentRecordRows): ShipmentRecord {
         at: isoInstant(shipRow.created_at) as string,
         staffId: shipRow.staff_id ?? null,
         staffName: clean(shipRow.staff_name),
-        backfilled: isBackfillSource(shipRow.metadata),
+        backfilled: shipConfirmBackdated(shipRow),
       }
     : null;
 
@@ -806,6 +996,7 @@ export function buildShipmentRecord(rows: ShipmentRecordRows): ShipmentRecord {
     exception,
     photos,
     actions,
+    journey: journeyOf(rows),
   };
 }
 

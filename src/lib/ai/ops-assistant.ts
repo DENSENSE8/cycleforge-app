@@ -25,7 +25,7 @@ export interface LocalAiResolution {
  * what already left, and that surface has had its own door since 2026-08-30.
  */
 function buildDashboardHref(timeframe: AiTimeframe): string {
-  return shippingShippedHref({ weekOffset: timeframe.weekOffset ?? null });
+  return shippingShippedHref({ from: timeframe.start, to: timeframe.end });
 }
 
 function buildStaffHref(dimension: ShippingDimension, staffId: number | null): string | undefined {
@@ -117,7 +117,7 @@ function buildSampleRecords(records: ShippedOrder[]): AiSampleRecord[] {
       record.packed_by_name ? `Packer ${record.packed_by_name}` : null,
       record.tested_by_name ? `Tester ${record.tested_by_name}` : null,
     ].filter(Boolean).join(' | '),
-    href: shippingShippedHref({ search: String(record.order_id || record.id) }),
+    href: shippingShippedHref({ find: String(record.order_id || record.id) }),
   }));
 }
 

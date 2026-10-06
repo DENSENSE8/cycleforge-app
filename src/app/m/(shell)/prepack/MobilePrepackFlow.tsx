@@ -1,10 +1,10 @@
 'use client';
 
 import { PrepackSerialScan } from '@/components/mobile/prepack/PrepackSerialScan';
-import { PrepackFlow } from '@/features/prepack/PrepackFlow';
+import { PrepackForm } from '@/features/prepack/PrepackForm';
 import type { PrepackRouteState } from '@/lib/nav/route-tree';
 
-/** The phone's prepack form: the shared flow with the camera serial scan. */
+/** The phone's prepack form: the shared form with the camera serial scan. */
 export function MobilePrepackFlow({ initial }: { initial: PrepackRouteState }) {
-  return <PrepackFlow surface="mobile" initial={initial} serialEntry={PrepackSerialScan} />;
+  return <PrepackForm surface="mobile" initial={initial} serialEntry={PrepackSerialScan} />;
 }

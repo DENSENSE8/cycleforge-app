@@ -28,11 +28,11 @@ export interface DeskDocument {
   /** Same-origin bytes (PDF or image). */
   src: string;
   stock: PrintStock;
-  /** Set for ledger labels — those print rows are logged. */
+  /** Set for ledger labels — those print rows are logged by ingestion. */
   ingestionId: number | null;
-  /** The order the document belongs to; paperwork prints log per order. */
+  /** The order the document belongs to; paperwork prints log per order (an unpaired slip logs with none). */
   orderId: number | null;
-  /** Packing slip `documents.id`. */
+  /** `documents.id` — a packing slip, or a shipping-label document (logged by document when it has no ingestion). */
   documentId: number | null;
   /** Manual `product_manuals.id`. */
   manualId: number | null;
@@ -173,19 +173,35 @@ export async function printDocuments(
   const station = opts?.station?.id ? { stationId: opts.station.id, stationName: opts.station.name.trim() || null } : {};
   const logs: Promise<unknown>[] = [];
   const labelRoute = routes.label;
-  const ingestionIds = [...new Set(printed.flatMap((doc) => (doc.kind === 'label' && doc.ingestionId != null ? [doc.ingestionId] : [])))];
-  if (labelRoute && ingestionIds.length > 0) {
-    logs.push(recordLabelPrintBatch({ batchId: safeRandomUUID(), channel: labelRoute.channel, printerName: labelRoute.printerName, ...station, ingestionIds }));
+  // A ledger label logs by its ingestion; a shipping-label document with none (Bulk) logs by its document.
+  const ingestionIds = new Set<number>();
+  const documentIds = new Set<number>();
+  for (const doc of printed) {
+    if (doc.kind !== 'label') continue;
+    if (doc.ingestionId != null) ingestionIds.add(doc.ingestionId);
+    else if (doc.documentId != null) documentIds.add(doc.documentId);
+  }
+  if (labelRoute && ingestionIds.size + documentIds.size > 0) {
+    logs.push(
+      recordLabelPrintBatch({
+        batchId: safeRandomUUID(),
+        channel: labelRoute.channel,
+        printerName: labelRoute.printerName,
+        ...station,
+        ingestionIds: [...ingestionIds],
+        documentIds: [...documentIds],
+      }),
+    );
   }
   const paperRoute = routes.paper;
-  // One item per document per order: the same manual on two orders logs for each.
+  // One item per document per order: the same manual on two orders logs for each; an unpaired slip logs with no order.
   const seen = new Set<string>();
   const items: PaperworkPrintItem[] = [];
   for (const doc of printed) {
     const dedupeKey = `${doc.orderId}:${doc.key}`;
-    if (doc.orderId == null || seen.has(dedupeKey)) continue;
+    if (seen.has(dedupeKey)) continue;
     if (doc.kind === 'packing_slip' && doc.documentId != null) items.push({ orderId: doc.orderId, kind: 'packing_slip', documentId: doc.documentId });
-    else if (doc.kind === 'manual' && doc.manualId != null) items.push({ orderId: doc.orderId, kind: 'manual', manualId: doc.manualId });
+    else if (doc.kind === 'manual' && doc.manualId != null && doc.orderId != null) items.push({ orderId: doc.orderId, kind: 'manual', manualId: doc.manualId });
     else continue;
     seen.add(dedupeKey);
   }

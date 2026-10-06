@@ -36,7 +36,6 @@ export function StockPhotoTile({
   fullPhotoUrl,
   title,
   onChanged,
-  showVerbs = true,
 }: {
   stockId: number | null;
   sku: string;
@@ -46,8 +45,6 @@ export function StockPhotoTile({
   title: string;
   /** A surface reading the SKU client-side re-reads it when a photo lands (`router.refresh` covers route loaders). */
   onChanged?: () => void;
-  /** The record menu owns Upload / Phone — the tile stays a photo. */
-  showVerbs?: boolean;
 }) {
   const upload = useSkuStockPhotoUpload(stockId, onChanged);
   const phone = useSkuStockSendToPhone({ stockId, sku, onChanged });
@@ -56,35 +53,41 @@ export function StockPhotoTile({
   // Touch: the verbs stack UNDER the tile at the 44px rung — two of them do not fit inside a 112px tile.
   const { isMobile } = useUIModeOptional();
 
-  const verbs = (inTile: boolean) => (
-    <>
-      <Button
-        variant="secondary"
-        size={isMobile ? 'lg' : 'sm'}
-        radius="surface"
-        icon={<Upload aria-hidden />}
-        onClick={upload.pick}
-        disabled={stockId == null || upload.progress != null}
-        className={cn('w-full justify-center', inTile && 'h-7')}
-        data-testid="stock-photo-upload"
-      >
-        {upload.progress ?? 'Upload'}
-      </Button>
-      <Button
-        variant="secondary"
-        size={isMobile ? 'lg' : 'sm'}
-        radius="surface"
-        icon={<Smartphone aria-hidden />}
-        onClick={phone.send}
-        disabled={!phone.available || phone.busy}
-        title={phone.available ? 'Open the camera on your phone for this SKU (P)' : 'No phone paired for this station'}
-        className={cn('w-full justify-center', inTile && 'h-7')}
-        data-testid="stock-photo-phone"
-      >
-        {phone.busy ? phone.label : 'Phone'}
-      </Button>
-    </>
-  );
+  // The verbs read as presses on the sunken tile (owner 2026-10-05): a blue-tint
+  // face that deepens under the pointer, and a pointer cursor — the neutral
+  // secondary face's hover matched the tile and looked inert.
+  const verbs = (inTile: boolean) => {
+    const face = cn('w-full cursor-pointer justify-center', inTile && 'h-7');
+    return (
+      <>
+        <Button
+          variant="primarySoft"
+          size={isMobile ? 'lg' : 'sm'}
+          radius="surface"
+          icon={<Upload aria-hidden />}
+          onClick={upload.pick}
+          disabled={stockId == null || upload.progress != null}
+          className={face}
+          data-testid="stock-photo-upload"
+        >
+          {upload.progress ?? 'Upload'}
+        </Button>
+        <Button
+          variant="primarySoft"
+          size={isMobile ? 'lg' : 'sm'}
+          radius="surface"
+          icon={<Smartphone aria-hidden />}
+          onClick={phone.send}
+          disabled={!phone.available || phone.busy}
+          title={phone.available ? 'Send to phone — open its camera for this SKU' : 'No phone paired for this station'}
+          className={face}
+          data-testid="stock-photo-phone"
+        >
+          {phone.busy ? phone.label : 'Phone'}
+        </Button>
+      </>
+    );
+  };
 
   if (!url && !isMobile) {
     return (
@@ -101,7 +104,7 @@ export function StockPhotoTile({
         >
           {recordInitials(title)}
         </span>
-        {showVerbs ? verbs(true) : null}
+        {verbs(true)}
       </div>
     );
   }
@@ -129,7 +132,7 @@ export function StockPhotoTile({
           {recordInitials(title)}
         </span>
       )}
-      {showVerbs ? verbs(false) : null}
+      {verbs(false)}
       {fullOpen && fullPhotoUrl ? <LightboxPortal photos={[fullPhotoUrl]} onClose={() => setFullOpen(false)} /> : null}
     </div>
   );

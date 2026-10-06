@@ -80,7 +80,7 @@ export const PackageCard = memo(function PackageCard({
     <article
       data-package-card={card.orderRowId}
       aria-label={card.title}
-      className={cn('group/card relative isolate rounded-xl bg-white p-3 text-left shadow-sm transition-shadow hover:shadow-md', selected && 'shadow-md')}
+      className={cn('@container/card group/card relative isolate rounded-xl bg-white p-3 text-left shadow-sm transition-shadow hover:shadow-md', selected && 'shadow-md')}
     >
       {/* ds-raw-button: the whole-card open target under the content, as RecordCard's — not a visible control. */}
       <button
@@ -91,8 +91,8 @@ export const PackageCard = memo(function PackageCard({
         onClick={onCard}
         className={cn('absolute inset-0 z-0 cursor-pointer rounded-[inherit]', focusRing('cell'))}
       />
-      <div className="pointer-events-none relative z-10 flex gap-3">
-        <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-inset ring-slate-900/5">
+      <div className="pointer-events-none relative z-10 flex gap-3 @max-[15rem]/card:gap-2">
+        <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-inset ring-slate-900/5 @max-[15rem]/card:size-9">
           <RecordPhoto src={card.photoUrl} fallback={card.title} />
           {showCheck ? (
             <span
@@ -107,7 +107,7 @@ export const PackageCard = memo(function PackageCard({
         </span>
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">{card.title}</p>
-          <p className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+          <p className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs text-slate-500">
             <BrandIdentityDot {...platformMetaBrandDot(platform)} />
             <span className="shrink-0">{sourcePlatformLabel(card.platform)}</span>
             {card.orderNumber ? (
@@ -119,16 +119,17 @@ export const PackageCard = memo(function PackageCard({
               </>
             ) : null}
             {card.carrier ? (
-              <>
+              <span className="contents @max-[15rem]/card:hidden">
                 <span aria-hidden className="text-slate-300">·</span>
                 <span className="shrink-0">{card.carrier}</span>
-              </>
+              </span>
             ) : null}
           </p>
         </div>
       </div>
 
-      <div className="pointer-events-none relative z-10 mt-2 flex items-center gap-2">
+      {/* A narrow column wraps the facts under the pressure pills rather than clipping either. */}
+      <div className="pointer-events-none relative z-10 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="flex min-w-0 flex-wrap gap-1">
           <ShipByPill card={card} now={now} />
           {card.stalled ? <Pill tone="warning">Stalled</Pill> : null}
@@ -147,9 +148,11 @@ export const PackageCard = memo(function PackageCard({
       </div>
 
       <div className="pointer-events-none relative z-10 mt-2.5 flex items-center gap-2 border-t border-slate-100 pt-2">
-        <StageTrack stage={card.stage} />
+        <span className="contents @max-[13rem]/card:hidden">
+          <StageTrack stage={card.stage} />
+        </span>
         {age ? (
-          <span className={cn('text-xs tabular-nums', done ? 'text-slate-500' : 'font-medium text-slate-600')}>
+          <span className={cn('whitespace-nowrap text-xs tabular-nums', done ? 'text-slate-500' : 'font-medium text-slate-600')}>
             {done ? age : `${age} here`}
           </span>
         ) : null}

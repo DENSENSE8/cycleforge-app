@@ -15,8 +15,16 @@
  */
 
 import { EXCEPTION_KIND_PERMISSION } from '@/lib/exceptions/permissions';
+import {
+  ORDER_PACKET_CHANNEL_PARAM,
+  ORDER_PACKET_GAP_PARAM,
+  ORDER_PACKET_STATUS_PARAM,
+} from '@/lib/label-prints/order-packet-contracts';
+import { PRINT_FILE_STATUS_PARAM } from '@/lib/label-prints/print-file-contracts';
 import { exceptionKindsOf } from '@/lib/exceptions/types';
 import { DOCKED_FLAG_PARAM } from '@/lib/receiving/inbound-lane';
+import { FULFILLED_CARRIER_PARAM, FULFILLED_CHANNEL_PARAM, FULFILLED_SCAN_PARAM } from '@/lib/outbound/fulfilled-params';
+import { PURCHASES_SOURCE_PARAM, PURCHASES_VENDOR_PARAM } from '@/lib/receiving/purchases-params';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 import { SUPPORT_LIST_VIEWS } from '@/lib/support/list/support-list';
 
@@ -47,7 +55,10 @@ export const NAV_FACET_CONTEXTS = [
   // The Live feed (`/operations/live-feed`): the outbound package board, one context (`live-feed.ts`).
   'live-feed',
   'outbound.orders',
-  'outbound.shipped',
+  // Labels & docs › Bulk (bare): the file list's own statement's counts (`label-intake-files.ts`).
+  'label-intake.uploads',
+  // Labels & docs › Orders (`?view=orders`): the one order-packet statement's counts (`label-intake-orders.ts`).
+  'label-intake.orders',
   'pickup',
   'stock.all',
   'inventory.racks',
@@ -56,6 +67,10 @@ export const NAV_FACET_CONTEXTS = [
   'incoming.pipeline',
   'incoming.docked',
   'incoming.unboxed',
+  // Purchasing (`/purchasing`, a Receiving mode): Source · Vendor counted by the sheet's own read (`purchasing.ts`).
+  'purchasing',
+  // Fulfilled (`/fulfilled`): Channel · Carrier · Scan counted by the sheet's own read (`fulfilled.ts`).
+  'fulfilled',
   // The Unbox station (`/unbox`): one context for every `?unboxview=` tab (`unbox.ts`).
   'receive',
   // The Exceptions hub (`/exceptions`): one context per kind plus the whole
@@ -84,6 +99,8 @@ export interface NavFacetGroupDecl {
   label: string;
   /** URL param the group writes (and the list reads). */
   param: string;
+  /** Optional comma-list param that omits values from this group. */
+  excludeParam?: string;
   multi: boolean;
   /**
    * Render the options INLINE, always open, instead of a collapsed row the
@@ -91,6 +108,8 @@ export interface NavFacetGroupDecl {
    * the extra click hides the walk the list is ordered by (owner 2026-09-30).
    */
   inline?: boolean;
+  /** A long open option set (vendors): a filter field narrows the options by name. */
+  searchable?: boolean;
 }
 
 const STAGE: NavFacetGroupDecl = { id: 'stage', label: 'Stage', param: 'stage', multi: false };
@@ -118,12 +137,12 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
   // The board's own params (`LIVE_FEED_PARAMS`, `readLiveFeedFilters`): comma lists of carrier / channel keys.
   'live-feed': [
     { id: 'carrier', label: 'Carrier', param: 'carrier', multi: true },
-    { id: 'channel', label: 'Channel', param: 'channel', multi: true },
+    { id: 'channel', label: 'Platform', param: 'channel', multi: true },
   ],
   'stock.all': [
-    { id: 'room', label: 'Room', param: 'room', multi: false },
-    { id: 'aisle', label: 'Aisle', param: 'aisle', multi: true, inline: true },
-    { id: 'health', label: 'Stock health', param: 'status', multi: true },
+    { id: 'health', label: 'Stock health', param: 'status', excludeParam: 'excludeStatus', multi: true },
+    { id: 'room', label: 'Room', param: 'room', excludeParam: 'excludeRoom', multi: false },
+    { id: 'aisle', label: 'Aisle', param: 'aisle', excludeParam: 'excludeAisle', multi: true, inline: true },
   ],
   // Inventory › Locations › Racks: the room each rack stands in (`?room=<room location id>`, `inventory-racks.ts`).
   'inventory.racks': [{ id: 'room', label: 'Room', param: 'room', multi: false }],
@@ -135,17 +154,29 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
   // declared once for the shared collection (`unbox.ts`).
   'incoming.unboxed': [UNBOXED_STATUS],
   receive: [UNBOXED_STATUS],
+  // Purchasing: the sheet's own `facets` (`GET /api/nav/purchases`, `purchasing.ts`).
+  // Status is the body's chip row (`?recon=`), never a group here.
+  purchasing: [
+    { id: 'source', label: 'Source', param: PURCHASES_SOURCE_PARAM, multi: false },
+    { id: 'vendor', label: 'Vendor', param: PURCHASES_VENDOR_PARAM, multi: false, searchable: true },
+  ],
+  // Fulfilled: the sheet's own `facets` (`GET /api/nav/fulfilled`, `fulfilled.ts`). Packer is the
+  // page's staff row (`NAV_PAGE_DECLS.fulfilled.controls.staff`); status is the body's chip row.
+  fulfilled: [
+    { id: 'channel', label: 'Platform', param: FULFILLED_CHANNEL_PARAM, multi: false },
+    { id: 'carrier', label: 'Carrier', param: FULFILLED_CARRIER_PARAM, multi: false },
+    { id: 'scan', label: 'Scan', param: FULFILLED_SCAN_PARAM, multi: false },
+  ],
   'outbound.orders': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
-  // The Shipped list's own params (`useShippedTableFilters`), answered in
-  // `fetchPackerLogRows`' WHERE — `src/lib/shipping/shipped-filter/shipped-filter-sql.ts`.
-  'outbound.shipped': [
-    { id: 'type', label: 'Type', param: 'shippedFilter', multi: false },
-    { id: 'channel', label: 'Channel', param: 'channel', multi: true },
-    { id: 'carrier', label: 'Carrier', param: 'carrier', multi: false },
-    { id: 'status', label: 'Tracking status', param: 'statusCategory', multi: false },
-    { id: 'exceptions', label: 'Needs attention', param: 'exceptions', multi: false },
-    // The list's own client cut (`OUTBOUND_SHIPPED_VIEW.chips.param`, OR across picks).
-    { id: 'packageStatus', label: 'Package status', param: 'cardStatus', multi: true },
+  // Print status Not printed · Partly printed · Printed (absence = All) —
+  // `/api/shipping/label-intake/files`' own param, counted under every OTHER filter.
+  'label-intake.uploads': [{ id: 'printing', label: 'Print status', param: PRINT_FILE_STATUS_PARAM, multi: false, inline: true }],
+  // Status Missing · Ready · Printed (absence = All), the missing slot and the channel —
+  // `/api/shipping/label-intake/orders`' own params, counted under every OTHER filter.
+  'label-intake.orders': [
+    { id: 'status', label: 'Status', param: ORDER_PACKET_STATUS_PARAM, multi: false, inline: true },
+    { id: 'gap', label: 'Missing slot', param: ORDER_PACKET_GAP_PARAM, multi: true, inline: true },
+    { id: 'channel', label: 'Channel', param: ORDER_PACKET_CHANNEL_PARAM, multi: true },
   ],
   pickup: [
     { id: 'status', label: 'Order status', param: 'status', multi: false },
@@ -197,7 +228,10 @@ export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | rea
   'outbound.orders': 'orders.view',
   'stock.all': 'sku_stock.view',
   'inventory.racks': 'sku_stock.view',
-  'outbound.shipped': 'packing.view',
+  // The list's own read (`GET /api/shipping/label-intake/files`).
+  'label-intake.uploads': 'shipping.view',
+  // The list's own read (`GET /api/shipping/label-intake/orders`).
+  'label-intake.orders': 'shipping.view',
   pickup: 'walk_in.view',
   'imports.runs': 'orders.view',
   'imports.rows': 'orders.view',
@@ -208,6 +242,10 @@ export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | rea
   // The lists' own read (`GET /api/receiving-lines`).
   'incoming.unboxed': 'receiving.view',
   receive: 'receiving.view',
+  // The sheet's own read (`GET /api/nav/purchases`).
+  purchasing: 'receiving.view',
+  // The sheet's own read (`GET /api/nav/fulfilled`).
+  fulfilled: 'packing.view',
   exceptions: [...new Set(Object.values(EXCEPTION_KIND_PERMISSION))],
   'exceptions.fulfillment': [...new Set(exceptionKindsOf('fulfillment').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
   'exceptions.inventory': [...new Set(exceptionKindsOf('inventory').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],

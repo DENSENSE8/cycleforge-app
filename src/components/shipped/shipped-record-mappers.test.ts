@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { toDetailRecord } from '@/components/shipped/shipped-record-mappers';
-import type { DerivedPackerRecord } from '@/lib/shipped-records';
+import type { PackerRecord } from '@/hooks/usePackerLogs';
 
-function fakePacker(overrides: Partial<DerivedPackerRecord> = {}): DerivedPackerRecord {
+function fakePacker(overrides: Partial<PackerRecord> = {}): PackerRecord {
   return {
     id: 9001,
     order_row_id: 42,
@@ -15,11 +15,8 @@ function fakePacker(overrides: Partial<DerivedPackerRecord> = {}): DerivedPacker
     deadline_at: '2026-07-22T12:00:00.000Z',
     shipping_tracking_number: '1Z999',
     serial_number: 'SN-1',
-    outboundState: 'SCANNED_OUT',
-    hasLeft: true,
-    effShipTime: '2026-07-20T15:00:00.000Z',
     ...overrides,
-  } as DerivedPackerRecord;
+  } as PackerRecord;
 }
 
 describe('toDetailRecord', () => {

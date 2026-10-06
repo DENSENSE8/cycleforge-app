@@ -34,6 +34,8 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   testing: 'contextual',
   'ready-to-pack': 'contextual',
   incoming: 'contextual',
+  // Born contextual (owner 2026-10-05): a Receiving mode, its controls and facets in the sidebar.
+  purchasing: 'contextual',
   receiving: 'contextual',
   sourcing: 'contextual',
   fba: 'contextual',

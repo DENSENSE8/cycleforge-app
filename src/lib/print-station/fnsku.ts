@@ -13,6 +13,51 @@ export const PRINT_STATION_PATH = PRINT_STATION_PATHS.fnskuLabels;
 /** `?fnsku=` — the open FNSKU (upper-case catalog key). */
 export const PRINT_STATION_FNSKU_PARAM = 'fnsku' as const;
 
+/** `?condition=` — FNSKU labels: one Amazon condition, or unset for every condition. */
+export const PRINT_STATION_CONDITION_PARAM = 'condition' as const;
+
+/**
+ * Sidebar condition filter. `value` is the URL token (lowercase, hygiene-safe);
+ * `label` is what the label prints. Matching strips the stored grade prefix
+ * (`B+ Used - Very Good` and `Used - Very Good` are the same condition).
+ */
+export const PRINT_STATION_CONDITION_VALUES = ['none', 'new', 'like-new', 'very-good', 'good', 'acceptable'] as const;
+
+export const PRINT_STATION_CONDITION_OPTIONS: readonly {
+  value: (typeof PRINT_STATION_CONDITION_VALUES)[number];
+  label: string;
+}[] = [
+  { value: 'none', label: 'No condition' },
+  { value: 'new', label: 'New' },
+  { value: 'like-new', label: 'Used - Like New' },
+  { value: 'very-good', label: 'Used - Very Good' },
+  { value: 'good', label: 'Used - Good' },
+  { value: 'acceptable', label: 'Used - Acceptable' },
+];
+
+/** Saved catalog condition is blank — a label must not print until one is stored. */
+export function fnskuConditionMissing(condition: string | null | undefined): boolean {
+  return !String(condition ?? '').trim();
+}
+
+/** What an operator reads when a print is refused for a missing condition. */
+export function fnskuConditionRequiredMessage(fnsku: string): string {
+  return `${fnsku} has no condition — set one before printing.`;
+}
+
+/** `?condition=none` — only FNSKUs whose saved condition is blank. */
+export function printStationConditionMissingOnly(raw: string | null | undefined): boolean {
+  return String(raw ?? '').trim().toLowerCase() === 'none';
+}
+
+/** The catalog words a `?condition=` token matches, or null when it is unset, `none`, or unknown. */
+export function printStationConditionWords(raw: string | null | undefined): string | null {
+  const slug = String(raw ?? '').trim().toLowerCase();
+  if (!slug || slug === 'none') return null;
+  const hit = PRINT_STATION_CONDITION_OPTIONS.find((option) => option.value === slug);
+  return hit ? hit.label.trim().toLowerCase() : null;
+}
+
 /** `?view=` — FNSKU labels: every FNSKU (bare) or only those already reprinted here (the damage history). */
 export const PRINT_STATION_VIEW_PARAM = 'view' as const;
 export const PRINT_STATION_FNSKU_VIEWS = ['reprinted'] as const;
@@ -41,4 +86,6 @@ export interface PrintStationFnskuRow {
   sku: string | null;
   /** Catalog condition (`Used - Very Good`); printed on the label when set. */
   condition: string | null;
+  /** Saved bottom-right mark. Missing or null prints the color or series read from the title. */
+  mark?: string | null;
 }

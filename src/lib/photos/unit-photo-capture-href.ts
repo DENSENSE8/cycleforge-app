@@ -6,7 +6,7 @@ export function unitPhotoCaptureHref(
   opts: {
     requestId?: string | null;
     unit?: string | null;
-    stage?: 'testing' | 'prepack' | 'packing';
+    stage?: 'testing' | 'packing';
     aspect?: PhotoAspect | null;
     packerLogId?: number | null;
     poRef?: string | null;

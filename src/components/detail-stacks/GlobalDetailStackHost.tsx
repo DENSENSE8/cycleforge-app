@@ -17,7 +17,6 @@ import { cartonReadHref } from '@/lib/receiving/surface-path';
 import { taskLinkRepairHref } from '@/lib/tasks/task-links-shared';
 import { dispatchDashboardAndStationRefresh } from '@/utils/events';
 import { toast } from '@/lib/toast';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 const CompactOrderPeek = dynamic(
   () => import('@/components/order-record/CompactOrderPeek').then((m) => m.CompactOrderPeek),
@@ -50,7 +49,7 @@ function DetailStackLoadingShell({ stackId, onClose }: { stackId: string; onClos
           title="Details"
           ariaLabel="Loading details"
           testId="global-detail-stack-loading"
-          body={<UniversalLoader isLoading label="Loading details" className="h-full" />}
+          body={null}
         />
       </div>
     </DetailStackRailRegistrar>

@@ -335,7 +335,7 @@ export interface NavRecentAdapterDeps {
   listAssistantSessions: typeof listAssistantSessions;
   fetchReceivingLinesPage: typeof fetchReceivingLinesPage;
   fetchDeskPickLogRows: typeof fetchDeskPickLogRows;
-  fetchPackerLogRows: (opts: { organizationId: OrgId; packerId: number; limit: number }) => Promise<{ rows: PackerRecentFields[] }>;
+  fetchPackerLogRows: (opts: { organizationId: OrgId; population: 'packed'; packerId: number; limit: number }) => Promise<{ rows: PackerRecentFields[] }>;
   listRecentLabelPrints: typeof listRecentLabelPrints;
   listLocalPickupLines: typeof listLocalPickupLines;
   readIdentified: (orgId: OrgId, staffId: number, limit: number) => Promise<IdentifiedEntityRow[]>;
@@ -412,7 +412,8 @@ async function unpagedRows(
       return keepRows(rows.map(techLogRecentRow), limit);
     }
     case 'packer.packs': {
-      const { rows } = await deps.fetchPackerLogRows({ organizationId: orgId, packerId: staffId, limit });
+      // The staffer's packs, scanned out or not — not the Fulfilled list.
+      const { rows } = await deps.fetchPackerLogRows({ organizationId: orgId, population: 'packed', packerId: staffId, limit });
       return keepRows(rows.map(packerLogRecentRow), limit);
     }
     case 'labels.prints': {

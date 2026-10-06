@@ -15,7 +15,7 @@ function UnitPhotoPageInner() {
   const titleParam = (searchParams.get('title') || '').trim();
   const backParam = (searchParams.get('back') || '').trim();
   const stageParam = (searchParams.get('stage') || '').trim().toLowerCase();
-  const stage = stageParam === 'packing' || stageParam === 'prepack' ? stageParam : 'testing';
+  const stage = stageParam === 'packing' ? 'packing' : 'testing';
   const packerLogIdRaw = Number(searchParams.get('packerLogId'));
   const packerLogId =
     Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null;

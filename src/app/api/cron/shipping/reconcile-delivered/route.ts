@@ -53,7 +53,6 @@ export async function GET(req: NextRequest) {
         deliveredReconciled: delivered.deliveredReconciled,
         scanDelivered: delivered.scanDelivered,
         coherenceFixed: delivered.coherenceFixed,
-        erroredRecovered: delivered.erroredRecovered,
         durationMs: delivered.durationMs,
       },
       match,

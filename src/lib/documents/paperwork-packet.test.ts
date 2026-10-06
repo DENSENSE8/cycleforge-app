@@ -37,8 +37,8 @@ function fakes() {
       return {
         documents: [doc(11, 'shipping_label'), doc(12, 'packing_slip')],
         manuals: [
-          { id: 7, documentId: 70, displayName: 'Manual A', sourceUrl: null, fileName: 'a.pdf', sku: null, itemNumber: null },
-          { id: 8, documentId: null, displayName: 'Manual B', sourceUrl: null, fileName: 'b.pdf', sku: null, itemNumber: null },
+          { id: 7, displayName: 'Manual A', sourceUrl: null, fileName: 'a.pdf', sku: null, itemNumber: null },
+          { id: 8, displayName: 'Manual B', sourceUrl: null, fileName: 'b.pdf', sku: null, itemNumber: null },
         ],
         labelIngestions: [],
         byType: {},
@@ -61,7 +61,7 @@ test('buildPaperworkPackets: pack order — label, slip, then manuals — with c
     [
       ['shipping_label', '/api/documents/11/content'],
       ['packing_slip', '/api/documents/12/content'],
-      ['manual', '/api/documents/70/content'],
+      ['manual', '/api/product-manuals/7/content'],
       ['manual', '/api/product-manuals/8/content'],
     ],
   );
@@ -77,7 +77,7 @@ test('buildPaperworkPackets: every page is ledgered fallback_browser, keyed by b
     [
       'desk-print:b1:1:doc:11',
       'desk-print:b1:1:doc:12',
-      'desk-print:b1:1:doc:70',
+      'desk-print:b1:1:manual:7',
       'desk-print:b1:1:manual:8',
       'desk-print:b1:2:doc:21',
     ],

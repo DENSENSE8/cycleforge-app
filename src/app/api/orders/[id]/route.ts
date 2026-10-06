@@ -132,7 +132,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const deleted = await deleteOrder(id, gate.ctx.organizationId);
+    const deleted = await deleteOrder(id, gate.ctx.organizationId, gate.ctx.staffId);
     if (!deleted) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }

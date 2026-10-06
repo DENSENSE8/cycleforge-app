@@ -26,6 +26,7 @@ import {
 } from './receiving-routes';
 import { PRODUCTS_ROUTE_PARAMS } from './query-mode-routes';
 import { routeParamsFor } from './registry';
+import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
 import {
   normalizeUnboxWorkspaceTabParams,
   type UnboxWorkspaceTab,
@@ -122,6 +123,27 @@ test('Incoming desk accepts Pipeline ∪ Docked sorts; History keeps its own voc
   assert.equal(parseRouteParams(INCOMING_ROUTE_PARAMS, history).get('sort'), 'unboxed_newest');
   // Standalone History still rejects Pipeline ORDER BY ids.
   assert.equal(parseRouteParams(HISTORY_ROUTE_PARAMS, incoming).get('sort'), null);
+});
+
+test('a full Purchasing URL survives /purchasing hygiene; bad values die; /incoming no longer owns them', () => {
+  const spec = routeParamsFor(RECEIVING_PATHS.purchasing);
+  assert.ok(spec, '/purchasing has a route spec');
+  assert.equal(spec.route, RECEIVING_PATHS.purchasing);
+  const full =
+    'axis=delivered&from=2026-07-01&to=2026-09-30&source=zoho&vendor=Acme+Supply&unboxedBy=12&colsort=waiting&coldir=asc&recon=not_received&find=PO-1001&recordBack=%2Fincoming';
+  const params = new URLSearchParams(full);
+  const kept = parseRouteParams(spec, params);
+  for (const [key, value] of params) assert.equal(kept.get(key), value, key);
+  assert.equal([...kept.keys()].length, [...params.keys()].length);
+  const bad = parseRouteParams(
+    spec,
+    new URLSearchParams('lane=docked&axis=shipped&from=July&source=walmart&unboxedBy=-3&vendor=Acme'),
+  );
+  for (const gone of ['lane', 'axis', 'from', 'source', 'unboxedBy']) assert.equal(bad.get(gone), null, gone);
+  assert.equal(bad.get('vendor'), 'Acme');
+  const incoming = parseRouteParams(INCOMING_ROUTE_PARAMS, new URLSearchParams('lane=unboxed&axis=delivered&vendor=Acme&unboxedBy=4'));
+  assert.equal(incoming.get('lane'), 'unboxed');
+  for (const gone of ['axis', 'vendor', 'unboxedBy']) assert.equal(incoming.get(gone), null, gone);
 });
 
 test('retired PO Mailbox links resolve to the incoming ledger without a mailbox face', () => {

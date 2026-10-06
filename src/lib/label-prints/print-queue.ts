@@ -2,6 +2,13 @@ import 'server-only';
 import { documentContentUrl } from '@/lib/documents/display-url';
 import type { LabelIngestionState } from '@/lib/label-ingestions/types';
 import { manualContentUrl } from '@/lib/manuals/order-manuals';
+import {
+  idKeySql,
+  lineCatalogIdSql,
+  platformCrosswalkKeySqls,
+  productPaperworkMatchSql,
+  skuKeySql,
+} from '@/lib/manuals/paperwork-match-sql';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -9,11 +16,9 @@ import type {
   LabelOrderLine,
   LabelPrintChannel,
   LabelPrintEvent,
-  LabelPrintQueue,
   LabelPrintRecordBody,
   LabelPrintRecordResult,
   LabelPrintRow,
-  LabelPrintView,
   PaperworkDocKind,
   PaperworkDocumentRow,
   PaperworkPrintRecordBody,
@@ -76,6 +81,7 @@ const iso = (value: Date | string | null): string | null => (value == null ? nul
 
 export interface LabelQueueRow {
   id: string;
+  document_id: number | null;
   state: LabelIngestionState;
   row_version: number;
   source: string;
@@ -83,12 +89,13 @@ export interface LabelQueueRow {
   carrier: string | null;
   tracking_number_normalized: string | null;
   quarantine_reason_code: string | null;
-  observed_at: Date;
+  /** A Date off a plain row; an ISO string when the row arrives through `json_agg`. */
+  observed_at: Date | string;
   matched_order_id: number | null;
   order_ref: string | null;
   shipstation_shipment_id: string | null;
   print_count: number;
-  last_printed_at: Date | null;
+  last_printed_at: Date | string | null;
   last_printed_by: string | null;
   last_station_name: string | null;
   order_account_source: string | null;
@@ -99,6 +106,7 @@ export interface LabelQueueRow {
 export function toLabelRow(row: LabelQueueRow): LabelPrintRow {
   return {
     id: Number(row.id),
+    documentId: row.document_id == null ? null : Number(row.document_id),
     state: row.state,
     rowVersion: Number(row.row_version),
     source: row.source,
@@ -106,7 +114,7 @@ export function toLabelRow(row: LabelQueueRow): LabelPrintRow {
     carrier: row.carrier,
     trackingNumber: row.tracking_number_normalized,
     quarantineReasonCode: row.quarantine_reason_code,
-    observedAt: row.observed_at.toISOString(),
+    observedAt: new Date(row.observed_at).toISOString(),
     orderId: row.matched_order_id,
     orderRef: row.order_ref,
     shipstationShipmentId: row.shipstation_shipment_id == null ? null : Number(row.shipstation_shipment_id),
@@ -120,12 +128,21 @@ export function toLabelRow(row: LabelQueueRow): LabelPrintRow {
 }
 
 /**
+ * The print events that are this ledger label `li`: logged by the ingestion,
+ * or — once it is APPLIED — logged by its shipping-label document (a Bulk
+ * print of the document row).
+ */
+export const LABEL_EVENT_OF_INGESTION_SQL = `e.organization_id = li.organization_id
+            AND (e.label_ingestion_id = li.id
+                 OR (li.document_id IS NOT NULL AND e.label_ingestion_id IS NULL AND e.document_id = li.document_id))`;
+
+/**
  * The desk's label row: SELECT list + joins over `label_ingestions li`, `$1` =
  * the org. Callers add WHERE / ORDER BY / LIMIT (and extra `li.` columns) and
  * map with {@link toLabelRow}.
  */
 export function labelRowSelectSql(extraColumns = ''): string {
-  return `SELECT li.id, li.state, li.row_version, li.source, li.file_basename, li.carrier,
+  return `SELECT li.id, li.document_id, li.state, li.row_version, li.source, li.file_basename, li.carrier,
             li.tracking_number_normalized, li.quarantine_reason_code, li.observed_at,
             li.matched_order_id, li.shipstation_shipment_id,
             COALESCE(NULLIF(o.order_id, ''), li.matched_marketplace_order_id) AS order_ref,
@@ -140,54 +157,14 @@ export function labelRowSelectSql(extraColumns = ''): string {
                 (array_agg(e.printed_by_staff_id ORDER BY e.printed_at DESC, e.id DESC))[1] AS last_staff_id,
                 (array_agg(e.station_name ORDER BY e.printed_at DESC, e.id DESC))[1] AS last_station_name
            FROM label_print_events e
-          WHERE e.organization_id = li.organization_id AND e.label_ingestion_id = li.id
+          WHERE ${LABEL_EVENT_OF_INGESTION_SQL}
        ) p
        LEFT JOIN staff s
          ON s.organization_id = li.organization_id AND s.id = p.last_staff_id
        LEFT JOIN LATERAL (${orderLinesSql('o.order_id')}) ol ON true`;
 }
 
-/** Unprinted: oldest arrival first (print in the order labels landed). Printed: newest print first. */
-async function listLabelRows(organizationId: OrgId, printed: boolean, limit: number): Promise<LabelPrintRow[]> {
-  const result = await tenantQuery<LabelQueueRow>(
-    organizationId,
-    `${labelRowSelectSql()}
-      WHERE li.organization_id = $1
-        AND li.staged_object_key IS NOT NULL
-        AND (p.print_count > 0) = $2::boolean
-      ORDER BY CASE WHEN NOT $2::boolean THEN li.observed_at END ASC,
-               CASE WHEN $2::boolean THEN p.last_printed_at END DESC,
-               li.id ASC
-      LIMIT $3`,
-    [organizationId, printed, limit],
-  );
-  return result.rows.map(toLabelRow);
-}
-
-async function countLabels(organizationId: OrgId): Promise<{ unprinted: number; printed: number }> {
-  const result = await tenantQuery<{ unprinted: number; printed: number }>(
-    organizationId,
-    `SELECT count(*) FILTER (WHERE NOT printed)::int AS unprinted,
-            count(*) FILTER (WHERE printed)::int AS printed
-       FROM (
-         SELECT EXISTS (
-                  SELECT 1 FROM label_print_events e
-                   WHERE e.organization_id = li.organization_id AND e.label_ingestion_id = li.id
-                ) AS printed
-           FROM label_ingestions li
-          WHERE li.organization_id = $1 AND li.staged_object_key IS NOT NULL
-       ) t`,
-    [organizationId],
-  );
-  return { unprinted: result.rows[0]?.unprinted ?? 0, printed: result.rows[0]?.printed ?? 0 };
-}
-
 // ── Paperwork ──────────────────────────────────────────────────────────────
-
-/** SQL twin of normalizeIdentifier: UPPER alnum, leading zeros stripped. */
-const idKeySql = (expr: string) => `regexp_replace(regexp_replace(UPPER(TRIM(COALESCE(${expr}, ''))), '[^A-Z0-9]', '', 'g'), '^0+', '')`;
-/** SQL twin of paperworkSkuKey: UPPER alnum (zeros kept). */
-const skuKeySql = (expr: string) => `regexp_replace(UPPER(TRIM(COALESCE(${expr}, ''))), '[^A-Z0-9]', '', 'g')`;
 
 /**
  * Every paperwork document of the candidate orders, in ONE statement. `candSql`
@@ -199,12 +176,16 @@ const skuKeySql = (expr: string) => `regexp_replace(UPPER(TRIM(COALESCE(${expr},
  * has one row per line). Packing slips are `documents` of type packing_slip
  * linked to any line. Manuals resolve per line exactly like
  * `src/lib/manuals/order-manuals.ts` — pinned to the line (order), its item
- * number, or its SKU (catalog id, else SKU text); the catalog id falls back to
- * the SKU's catalog row, then the item number's platform crosswalk
- * (`resolveSkuCatalogId`). A manual keeps its most specific source across lines.
+ * number, or its SKU (catalog id, else SKU text); the catalog id is
+ * `lineCatalogIdSql` (line's own, else the SKU's catalog row, else the item
+ * number's platform crosswalk) — the same resolution release gate G2 uses.
+ * A manual keeps its most specific source across lines.
+ *
+ * `preludeCtes` (no leading WITH) are CTEs `candSql` may read. A slip's print
+ * stats also count its unpaired prints (logged with no order, from Bulk).
  */
-function paperworkDocsSql(candSql: string): string {
-  return `WITH cand AS (${candSql}),
+export function paperworkDocsSql(candSql: string, preludeCtes = ''): string {
+  return `WITH ${preludeCtes ? `${preludeCtes},\n  ` : ''}cand AS (${candSql}),
   heads AS (
     SELECT c.order_id, c.observed_at, c.paired, o.order_id AS order_number, o.account_source,
            COALESCE(NULLIF(o.order_id, ''), o.id::text) AS order_ref
@@ -220,11 +201,12 @@ function paperworkDocsSql(candSql: string): string {
         ON rl.organization_id = $1
        AND (rl.id = h.order_id OR (NULLIF(h.order_number, '') IS NOT NULL AND rl.order_id = h.order_number))
   ),
-  -- The item number's platform crosswalk, one pass over sku_platform_ids for every line that needs it.
+  -- The item number's platform crosswalk, one pass over sku_platform_ids for every line that needs it
+  -- (the set-based twin of platformCrosswalkCatalogIdSql).
   crosswalk AS (
     SELECT x.key, min(sp.sku_catalog_id) AS sku_catalog_id
       FROM sku_platform_ids sp
-      CROSS JOIN LATERAL (VALUES (${skuKeySql('sp.platform_item_id')}), (${skuKeySql('sp.platform_sku')})) AS x(key)
+      CROSS JOIN LATERAL (VALUES ${platformCrosswalkKeySqls('sp').map((key) => `(${key})`).join(', ')}) AS x(key)
      WHERE sp.organization_id = $1
        AND sp.sku_catalog_id IS NOT NULL
        AND x.key IN (SELECT item_key FROM lines WHERE item_key <> '' AND sku_catalog_id IS NULL)
@@ -232,13 +214,7 @@ function paperworkDocsSql(candSql: string): string {
   ),
   keys AS (
     SELECT l.head_id, l.line_id, l.item_key, l.sku_key,
-           COALESCE(
-             l.sku_catalog_id,
-             (SELECT sc.id FROM sku_catalog sc
-               WHERE sc.organization_id = $1 AND NULLIF(TRIM(l.sku), '') IS NOT NULL AND sc.sku = TRIM(l.sku)
-               LIMIT 1),
-             cw.sku_catalog_id
-           ) AS catalog_id
+           ${lineCatalogIdSql({ org: '$1', lineCatalogId: 'l.sku_catalog_id', sku: 'l.sku', crosswalkCatalogId: 'cw.sku_catalog_id' })} AS catalog_id
       FROM lines l
       LEFT JOIN crosswalk cw ON l.item_key <> '' AND cw.key = l.item_key
   ),
@@ -265,14 +241,7 @@ function paperworkDocsSql(candSql: string): string {
       FROM keys k
       JOIN product_manuals pm
         ON pm.organization_id = $1
-       AND pm.is_active = TRUE
-       AND pm.status = 'assigned'
-       AND (
-         pm.order_id = k.line_id
-         OR (k.item_key <> '' AND ${idKeySql('pm.item_number')} = k.item_key)
-         OR (k.catalog_id IS NOT NULL AND pm.sku_catalog_id = k.catalog_id)
-         OR (k.sku_key <> '' AND ${skuKeySql('pm.sku')} = k.sku_key)
-       )
+       AND ${productPaperworkMatchSql({ pm: 'pm', lineId: 'k.line_id', itemKey: 'k.item_key', catalogId: 'k.catalog_id', skuKey: 'k.sku_key' })}
       LEFT JOIN sku_catalog psc
         ON psc.organization_id = pm.organization_id AND psc.id = pm.sku_catalog_id
      GROUP BY k.head_id, pm.id, psc.sku
@@ -291,23 +260,27 @@ function paperworkDocsSql(candSql: string): string {
       FROM manuals
   ),
   doc_prints AS (
-    SELECT e.order_id, e.document_kind, e.document_id, e.manual_id,
+    SELECT dl.head_id, dl.kind, dl.document_id, dl.manual_id,
            count(*)::int AS print_count, max(e.printed_at) AS last_printed_at
-      FROM paperwork_print_events e
-     WHERE e.organization_id = $1 AND e.order_id IN (SELECT order_id FROM heads)
+      FROM doc_list dl
+      JOIN paperwork_print_events e
+        ON e.organization_id = $1 AND e.document_kind = dl.kind
+       AND e.document_id IS NOT DISTINCT FROM dl.document_id
+       AND e.manual_id IS NOT DISTINCT FROM dl.manual_id
+       AND (e.order_id = dl.head_id OR (e.order_id IS NULL AND dl.kind = 'packing_slip'))
      GROUP BY 1, 2, 3, 4
   ),
   docs AS (
     SELECT dl.*, COALESCE(dp.print_count, 0) AS print_count, dp.last_printed_at
       FROM doc_list dl
       LEFT JOIN doc_prints dp
-        ON dp.order_id = dl.head_id AND dp.document_kind = dl.kind
+        ON dp.head_id = dl.head_id AND dp.kind = dl.kind
        AND dp.document_id IS NOT DISTINCT FROM dl.document_id
        AND dp.manual_id IS NOT DISTINCT FROM dl.manual_id
   )`;
 }
 
-interface RawPaperworkDoc {
+export interface RawPaperworkDoc {
   kind: PaperworkDocKind;
   document_id: number | null;
   manual_id: number | null;
@@ -324,8 +297,6 @@ interface RawPaperworkDoc {
 }
 
 interface PaperworkQueueRow {
-  paperwork_count: number;
-  printed_count: number;
   order_id: number | null;
   observed_at: Date | null;
   order_ref: string | null;
@@ -339,7 +310,7 @@ interface PaperworkQueueRow {
   [key: string]: unknown;
 }
 
-function toPaperworkDocument(doc: RawPaperworkDoc): PaperworkDocumentRow {
+export function toPaperworkDocument(doc: RawPaperworkDoc): PaperworkDocumentRow {
   const association = {
     source: doc.association_source,
     orderLineIds: (doc.order_line_ids ?? []).map(Number),
@@ -379,7 +350,6 @@ const PER_ORDER_CTES = `order_prints AS (
   ),
   per_order AS (
     SELECT h.*, COALESCE(h.observed_at, op.last_printed_at) AS sort_observed_at,
-           EXISTS (SELECT 1 FROM docs d WHERE d.head_id = h.order_id AND d.printable AND d.print_count = 0) AS has_unprinted,
            COALESCE(op.print_count, 0) AS print_count, op.last_printed_at, op.last_staff_id, op.last_station_name
       FROM heads h
       LEFT JOIN order_prints op ON op.order_id = h.order_id
@@ -421,62 +391,6 @@ function toPaperworkRow(row: PaperworkQueueRow & { order_id: number }): Paperwor
 }
 
 /**
- * Paperwork orders plus both paperwork counts. `printed` false: paired orders
- * with a printable document never printed for them, oldest label arrival first.
- * `printed` true: orders with any paperwork print, newest print first.
- * `limit` 0 reads the counts only.
- */
-async function listPaperworkRows(
-  organizationId: OrgId,
-  printed: boolean,
-  limit: number,
-): Promise<{ rows: PaperworkPrintRow[]; unprinted: number; printed: number }> {
-  const cand = `SELECT order_id, min(observed_at) AS observed_at, bool_or(paired) AS paired
-                  FROM (
-                    SELECT li.matched_order_id AS order_id, li.observed_at, true AS paired
-                      FROM label_ingestions li
-                     WHERE li.organization_id = $1 AND li.staged_object_key IS NOT NULL AND li.matched_order_id IS NOT NULL
-                    UNION ALL
-                    SELECT DISTINCT e.order_id, NULL::timestamptz, false
-                      FROM paperwork_print_events e
-                     WHERE e.organization_id = $1
-                  ) c
-                 GROUP BY order_id`;
-  const result = await tenantQuery<PaperworkQueueRow>(
-    organizationId,
-    `${paperworkDocsSql(cand)},
-  ${PER_ORDER_CTES}
-SELECT cnt.paperwork_count, cnt.printed_count, r.*
-  FROM (
-    SELECT count(*) FILTER (WHERE paired AND has_unprinted)::int AS paperwork_count,
-           count(*) FILTER (WHERE print_count > 0)::int AS printed_count
-      FROM per_order
-  ) cnt
-  LEFT JOIN LATERAL (
-    SELECT ${PAPERWORK_CARD_COLUMNS},
-           row_number() OVER (
-             ORDER BY CASE WHEN $2::boolean THEN po.last_printed_at END DESC,
-                      CASE WHEN NOT $2::boolean THEN po.sort_observed_at END ASC,
-                      po.order_id ASC
-           ) AS ord
-      FROM per_order po
-      ${PAPERWORK_CARD_JOINS}
-     WHERE CASE WHEN $2::boolean THEN po.print_count > 0 ELSE po.paired AND po.has_unprinted END
-     ORDER BY ord
-     LIMIT $3
-  ) r ON true
- ORDER BY r.ord`,
-    [organizationId, printed, limit],
-  );
-  const head = result.rows[0];
-  return {
-    rows: result.rows.flatMap((row) => (row.order_id == null ? [] : [toPaperworkRow({ ...row, order_id: row.order_id })])),
-    unprinted: head?.paperwork_count ?? 0,
-    printed: head?.printed_count ?? 0,
-  };
-}
-
-/**
  * Every paperwork card of the orders `candSql` yields — the Paperwork view's
  * own resolution (slips + manuals per order, printed or not), oldest arrival
  * first. `candSql` yields `(order_id, observed_at, paired)`; `$1` is the org,
@@ -496,83 +410,110 @@ SELECT ${PAPERWORK_CARD_COLUMNS}
   return result.rows.map(toPaperworkRow);
 }
 
-// ── The queue ──────────────────────────────────────────────────────────────
-
-/** One view of the print desk, with true counts for all three views. */
-export async function listPrintDeskQueue(organizationId: OrgId, view: LabelPrintView, limit: number): Promise<LabelPrintQueue> {
-  const [labels, labelCounts, paperwork] = await Promise.all([
-    view === 'paperwork' ? Promise.resolve([]) : listLabelRows(organizationId, view === 'printed', limit),
-    countLabels(organizationId),
-    listPaperworkRows(organizationId, view === 'printed', view === 'labels' ? 0 : limit),
-  ]);
-  const counts = {
-    labels: labelCounts.unprinted,
-    paperwork: paperwork.unprinted,
-    printed: labelCounts.printed + paperwork.printed,
-  };
-  if (view === 'labels') return { view, rows: labels, counts };
-  if (view === 'paperwork') return { view, rows: paperwork.rows, counts };
-  return { view, labels, paperwork: paperwork.rows, counts };
-}
-
 // ── The print logs ─────────────────────────────────────────────────────────
 
 /**
- * Log one label print batch. The reprint flag is read from the log itself,
- * not the client; ids that are not this org's printable labels log nothing; a
- * replayed batch id logs nothing twice.
+ * Every successful print of shipping-label document `<doc>` (an SQL expression,
+ * possibly NULL), from any log: label events by the document or by any
+ * ingestion applied to it, and dispatched / browser-fallback print jobs.
+ */
+const labelDocumentPrintedSql = (doc: string) => `(${doc} IS NOT NULL AND (
+              EXISTS (SELECT 1 FROM label_print_events e
+                       WHERE e.organization_id = $1
+                         AND (e.document_id = ${doc}
+                              OR e.label_ingestion_id IN (SELECT ai.id FROM label_ingestions ai
+                                                           WHERE ai.organization_id = $1 AND ai.document_id = ${doc})))
+              OR EXISTS (SELECT 1 FROM document_print_jobs j
+                          WHERE j.organization_id = $1 AND j.status IN ('dispatched', 'fallback_browser')
+                            AND (j.document_id = ${doc}
+                                 OR j.label_ingestion_id IN (SELECT ai.id FROM label_ingestions ai
+                                                              WHERE ai.organization_id = $1 AND ai.document_id = ${doc})))))`;
+
+/**
+ * Log one label print batch: ledger labels by ingestion, shipping-label
+ * documents with no ingestion (Bulk) by `documents.id`. The reprint flag is
+ * read from every print log, never the client; ids that are not this org's
+ * printable labels log nothing; a replayed batch id logs nothing twice.
  */
 export async function recordLabelPrints(
   organizationId: OrgId,
   staffId: number,
   body: LabelPrintRecordBody,
 ): Promise<LabelPrintRecordResult> {
-  const result = await tenantQuery<{ label_ingestion_id: string }>(
-    organizationId,
-    `INSERT INTO label_print_events
-            (organization_id, label_ingestion_id, batch_id, channel, printer_name, station_id, station_name,
-             is_reprint, printed_by_staff_id)
-     SELECT li.organization_id, li.id, $2::uuid, $3, $4, $7, $8,
-            EXISTS (SELECT 1 FROM label_print_events e
-                     WHERE e.organization_id = li.organization_id AND e.label_ingestion_id = li.id),
-            $5
-       FROM label_ingestions li
-      WHERE li.organization_id = $1
-        AND li.id = ANY($6::bigint[])
-        AND li.staged_object_key IS NOT NULL
-     ON CONFLICT (organization_id, batch_id, label_ingestion_id) DO NOTHING
-     RETURNING label_ingestion_id`,
-    [
-      organizationId,
-      body.batchId,
-      body.channel,
-      body.printerName ?? null,
-      staffId,
-      body.ingestionIds,
-      body.stationId ?? null,
-      body.stationName ?? null,
-    ],
-  );
-  return { batchId: body.batchId, recorded: result.rows.map((row) => Number(row.label_ingestion_id)) };
+  const shared = [organizationId, body.batchId, body.channel, body.printerName ?? null, staffId, body.stationId ?? null, body.stationName ?? null];
+  const ingestionIds = body.ingestionIds ?? [];
+  const documentIds = body.documentIds ?? [];
+  const [byIngestion, byDocument] = await Promise.all([
+    ingestionIds.length === 0
+      ? null
+      : tenantQuery<{ label_ingestion_id: string }>(
+          organizationId,
+          `INSERT INTO label_print_events
+                  (organization_id, label_ingestion_id, batch_id, channel, printer_name, station_id, station_name,
+                   is_reprint, printed_by_staff_id)
+           SELECT li.organization_id, li.id, $2::uuid, $3, $4, $6, $7,
+                  EXISTS (SELECT 1 FROM label_print_events e WHERE ${LABEL_EVENT_OF_INGESTION_SQL})
+                    OR EXISTS (SELECT 1 FROM document_print_jobs j
+                                WHERE j.organization_id = $1 AND j.status IN ('dispatched', 'fallback_browser')
+                                  AND j.label_ingestion_id = li.id)
+                    OR ${labelDocumentPrintedSql('li.document_id')},
+                  $5
+             FROM label_ingestions li
+            WHERE li.organization_id = $1
+              AND li.id = ANY($8::bigint[])
+              AND li.staged_object_key IS NOT NULL
+           ON CONFLICT (organization_id, batch_id, label_ingestion_id) DO NOTHING
+           RETURNING label_ingestion_id`,
+          [...shared, ingestionIds],
+        ),
+    documentIds.length === 0
+      ? null
+      : tenantQuery<{ document_id: number }>(
+          organizationId,
+          `INSERT INTO label_print_events
+                  (organization_id, document_id, batch_id, channel, printer_name, station_id, station_name,
+                   is_reprint, printed_by_staff_id)
+           SELECT d.organization_id, d.id, $2::uuid, $3, $4, $6, $7, ${labelDocumentPrintedSql('d.id')}, $5
+             FROM documents d
+            WHERE d.organization_id = $1
+              AND d.id = ANY($8::int[])
+              AND d.document_type = 'shipping_label'
+           ON CONFLICT (organization_id, batch_id, document_id) WHERE label_ingestion_id IS NULL DO NOTHING
+           RETURNING document_id`,
+          [...shared, documentIds],
+        ),
+  ]);
+  return {
+    batchId: body.batchId,
+    recorded: (byIngestion?.rows ?? []).map((row) => Number(row.label_ingestion_id)),
+    recordedDocuments: (byDocument?.rows ?? []).map((row) => Number(row.document_id)),
+  };
 }
 
 /**
- * Log one paperwork print batch. Each item logs only when its packing slip or
- * printable manual resolves for that order in this org (same resolution as the
- * Paperwork view); the reprint flag is read from the log; a replayed batch id
- * logs nothing twice.
+ * Log one paperwork print batch. A paired item logs only when its packing slip
+ * or printable manual resolves for that order in this org (same resolution as
+ * the Paperwork view); an unpaired packing slip (`orderId` null, Bulk) logs
+ * when it is this org's packing slip. The reprint flag is read from the logs;
+ * a replayed batch id logs nothing twice.
  */
 export async function recordPaperworkPrints(
   organizationId: OrgId,
   staffId: number,
   body: PaperworkPrintRecordBody,
 ): Promise<PaperworkPrintRecordResult> {
+  const paired = body.items.filter((item) => item.orderId != null);
+  const unpairedSlipIds = body.items.flatMap((item) => (item.orderId == null && item.kind === 'packing_slip' && item.documentId != null ? [item.documentId] : []));
+  const batch = [body.batchId, body.channel, body.printerName ?? null, body.stationId ?? null, body.stationName ?? null, staffId];
   const cand = `SELECT o.id AS order_id, NULL::timestamptz AS observed_at, true AS paired
                   FROM orders o
                  WHERE o.organization_id = $1 AND o.id = ANY($2::int[])`;
-  const result = await tenantQuery(
-    organizationId,
-    `${paperworkDocsSql(cand)},
+  const [pairedResult, unpairedResult] = await Promise.all([
+    paired.length === 0
+      ? null
+      : tenantQuery(
+          organizationId,
+          `${paperworkDocsSql(cand)},
   req AS (
     SELECT * FROM unnest($2::int[], $3::text[], $4::int[], $5::bigint[]) AS r(order_id, kind, document_id, manual_id)
   )
@@ -587,21 +528,39 @@ SELECT $1, r.order_id, r.kind, r.document_id, r.manual_id, $6::uuid, $7, $8, $9,
    AND d.manual_id IS NOT DISTINCT FROM r.manual_id
 ON CONFLICT ON CONSTRAINT paperwork_print_events_batch_doc_uniq DO NOTHING
 RETURNING id`,
-    [
-      organizationId,
-      body.items.map((item) => item.orderId),
-      body.items.map((item) => item.kind),
-      body.items.map((item) => (item.kind === 'packing_slip' ? item.documentId ?? null : null)),
-      body.items.map((item) => (item.kind === 'manual' ? item.manualId ?? null : null)),
-      body.batchId,
-      body.channel,
-      body.printerName ?? null,
-      body.stationId ?? null,
-      body.stationName ?? null,
-      staffId,
-    ],
-  );
-  return { batchId: body.batchId, recorded: result.rowCount ?? 0 };
+          [
+            organizationId,
+            paired.map((item) => item.orderId),
+            paired.map((item) => item.kind),
+            paired.map((item) => (item.kind === 'packing_slip' ? item.documentId ?? null : null)),
+            paired.map((item) => (item.kind === 'manual' ? item.manualId ?? null : null)),
+            ...batch,
+          ],
+        ),
+    unpairedSlipIds.length === 0
+      ? null
+      : tenantQuery(
+          organizationId,
+          `INSERT INTO paperwork_print_events
+                  (organization_id, order_id, document_kind, document_id, manual_id, batch_id, channel, printer_name,
+                   station_id, station_name, is_reprint, printed_by_staff_id)
+           SELECT d.organization_id, NULL, 'packing_slip', d.id, NULL, $3::uuid, $4, $5, $6, $7,
+                  EXISTS (SELECT 1 FROM paperwork_print_events e
+                           WHERE e.organization_id = $1 AND e.document_kind = 'packing_slip' AND e.document_id = d.id)
+                    OR EXISTS (SELECT 1 FROM document_print_jobs j
+                                WHERE j.organization_id = $1 AND j.status IN ('dispatched', 'fallback_browser')
+                                  AND j.document_id = d.id),
+                  $8
+             FROM documents d
+            WHERE d.organization_id = $1
+              AND d.id = ANY($2::int[])
+              AND d.document_type = 'packing_slip'
+           ON CONFLICT ON CONSTRAINT paperwork_print_events_batch_doc_uniq DO NOTHING
+           RETURNING id`,
+          [organizationId, unpairedSlipIds, ...batch],
+        ),
+  ]);
+  return { batchId: body.batchId, recorded: (pairedResult?.rowCount ?? 0) + (unpairedResult?.rowCount ?? 0) };
 }
 
 /** One label's print log, newest first. Null when the label is not this org's. */
@@ -620,9 +579,10 @@ export async function listLabelPrintHistory(organizationId: OrgId, ingestionId: 
     }>(
       organizationId,
       `SELECT e.id, e.batch_id, e.channel, e.printer_name, e.station_name, e.is_reprint, e.printed_at, s.name AS printed_by
-         FROM label_print_events e
+         FROM label_ingestions li
+         JOIN label_print_events e ON ${LABEL_EVENT_OF_INGESTION_SQL}
          LEFT JOIN staff s ON s.organization_id = e.organization_id AND s.id = e.printed_by_staff_id
-        WHERE e.organization_id = $1 AND e.label_ingestion_id = $2
+        WHERE li.organization_id = $1 AND li.id = $2
         ORDER BY e.printed_at DESC, e.id DESC
         LIMIT 100`,
       [organizationId, ingestionId],

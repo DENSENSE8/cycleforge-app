@@ -6,15 +6,12 @@
  */
 import type {
   LabelPrintEvent,
-  LabelPrintQueue,
   LabelPrintRecordBody,
   LabelPrintRecordResult,
-  LabelPrintView,
   PaperworkPrintRecordBody,
   PaperworkPrintRecordResult,
 } from './contracts';
 
-export const labelPrintQueueKey = (view: LabelPrintView) => ['v1', 'label-prints', view] as const;
 export const LABEL_PRINTS_QUERY_ROOT = ['v1', 'label-prints'] as const;
 export const labelPrintHistoryKey = (id: number) => ['v1', 'label-ingestions', id, 'prints'] as const;
 
@@ -35,10 +32,6 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
       body: JSON.stringify(body),
     }),
   );
-}
-
-export async function fetchLabelPrintQueue(view: LabelPrintView): Promise<LabelPrintQueue> {
-  return readData(await fetch(`/api/v1/label-prints?view=${view}`, { credentials: 'same-origin', cache: 'no-store' }));
 }
 
 export async function fetchLabelPrintHistory(id: number): Promise<LabelPrintEvent[]> {

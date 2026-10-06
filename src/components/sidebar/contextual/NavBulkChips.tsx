@@ -1,13 +1,13 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { AlertCircle, ArrowDown, ArrowUp, ArrowUpDown } from '@/components/Icons';
 import { motion } from '@/design-system/motion';
 import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
-import type { BulkList } from '@/lib/nav/locate/use-bulk-list';
+import type { LocatedRecords } from '@/lib/nav/locate/use-bulk-list';
 import { NAV_LOCATE_NOWHERE, NAV_LOCATOR_SECTION_LABEL, type NavLocateBucket, type NavLocateScope } from '@/lib/nav/context/schema';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CHIP_CORNER } from '@/design-system/tokens/radius';
@@ -77,6 +77,28 @@ export function PillChip({
   );
 }
 
+/** One status chip's facts — what the wrapping row and the page's fitting row (`PastedListStatusRow`) both paint. */
+export interface StatusChipItem {
+  key: string;
+  /** The gliding pill's group (`PillChip.pill`). */
+  pill: string;
+  label: string;
+  /** The section word painted before the chip — the first of its run when two sections share a status word. */
+  heading?: string;
+  count: number;
+  active: boolean;
+  onSelect: () => void;
+  /** The tone glyph before the word. */
+  lead?: ReactNode;
+}
+
+/** A {@link StatusChipItem} as its chip. */
+export function StatusChip({ item }: { item: StatusChipItem }) {
+  return (
+    <PillChip pill={item.pill} active={item.active} onClick={item.onSelect} label={item.label} count={item.count} lead={item.lead} />
+  );
+}
+
 /**
  * Where the pasted numbers live: All N · each bucket that holds one (glyph in
  * its tone, its BARE status word, count) · Not found N. One word per status —
@@ -84,61 +106,74 @@ export function PillChip({
  * carries the section (`inbound:received`), the chip does not. Only when two
  * sections hold a status of the same word does each section's run get one
  * quiet heading, so the two "Exceptions" can be told apart. A press writes
- * the list's status filter (`BulkList.setStatus`; Not found is
- * {@link NAV_LOCATE_NOWHERE}); the pressed chip is one gliding pill. The bar's
- * panel, the ⌘K palette's list and the full list page paint this same row.
+ * the list's status filter (`LocatedRecords.setStatus`; Not found is
+ * {@link NAV_LOCATE_NOWHERE}). A bucket with nothing in it is hidden unless
+ * it is the pressed one.
  */
-export function BulkStatusChips({ list, nowhere, className }: { list: BulkList; nowhere: number; className?: string }) {
-  if (list.buckets.length === 0 && nowhere === 0) return null;
+export function bulkStatusItems(list: LocatedRecords, nowhere: number): StatusChipItem[] {
+  if (list.buckets.length === 0 && nowhere === 0) return [];
   const shown = list.buckets.filter((bucket) => bucket.count > 0 || bucket.id === list.status);
-  const runs = sectionRuns(shown, list.scope);
   const words = shown.map((bucket) => bucket.label.toLowerCase());
   const clash = words.some((word, index) => words.indexOf(word) !== index);
-  const chip = (bucket: NavLocateBucket) => {
-    const Glyph = TONE_ICON[bucket.tone];
-    return (
-      <PillChip
-        key={bucket.id}
-        pill="bucket"
-        active={list.status === bucket.id}
-        onClick={() => list.setStatus(list.status === bucket.id ? null : bucket.id)}
-        label={bucket.label}
-        count={bucket.count}
-        lead={
+  const items: StatusChipItem[] = [
+    { key: 'all', pill: 'bucket', label: 'All', count: list.entries.length, active: list.status === null, onSelect: () => list.setStatus(null) },
+  ];
+  for (const run of clash ? sectionRuns(shown, list.scope) : [{ label: undefined, buckets: shown }]) {
+    run.buckets.forEach((bucket, index) => {
+      const Glyph = TONE_ICON[bucket.tone];
+      items.push({
+        key: bucket.id,
+        pill: 'bucket',
+        label: bucket.label,
+        heading: index === 0 ? run.label : undefined,
+        count: bucket.count,
+        active: list.status === bucket.id,
+        onSelect: () => list.setStatus(list.status === bucket.id ? null : bucket.id),
+        lead: (
           <span aria-hidden className="inline-flex" style={{ color: NAV_LOCATE_TONE_VAR[bucket.tone] }}>
             <Glyph className="size-3" />
           </span>
-        }
-      />
-    );
-  };
+        ),
+      });
+    });
+  }
+  if (nowhere > 0 || list.status === NAV_LOCATE_NOWHERE) {
+    items.push({
+      key: NAV_LOCATE_NOWHERE,
+      pill: 'bucket',
+      label: 'Not found',
+      count: nowhere,
+      active: list.status === NAV_LOCATE_NOWHERE,
+      onSelect: () => list.setStatus(list.status === NAV_LOCATE_NOWHERE ? null : NAV_LOCATE_NOWHERE),
+      lead: (
+        <span aria-hidden className="inline-flex" style={{ color: NAV_LOCATE_TONE_VAR.danger }}>
+          <AlertCircle className="size-3" />
+        </span>
+      ),
+    });
+  }
+  return items;
+}
+
+/** The status chips, wrapping — the bar's small panel. The page body paints them on one fitting line (`PastedListStatusRow`). */
+export function BulkStatusChips({ list, nowhere, className }: { list: LocatedRecords; nowhere: number; className?: string }) {
+  const items = bulkStatusItems(list, nowhere);
+  if (items.length === 0) return null;
   return (
     <div data-bulk-buckets className={cn('flex shrink-0 flex-wrap items-center gap-1', className)}>
-      <PillChip pill="bucket" active={list.status === null} onClick={() => list.setStatus(null)} label="All" count={list.entries.length} />
-      {clash
-        ? runs.map((run) => (
-            <span key={run.section} data-bulk-section={run.section} className="flex flex-wrap items-center gap-1">
-              <span className="px-0.5 text-role-micro text-text-faint">{run.label}</span>
-              {run.buckets.map(chip)}
-            </span>
-          ))
-        : shown.map(chip)}
-      {nowhere > 0 || list.status === NAV_LOCATE_NOWHERE ? (
-        <PillChip
-          pill="bucket"
-          active={list.status === NAV_LOCATE_NOWHERE}
-          onClick={() => list.setStatus(list.status === NAV_LOCATE_NOWHERE ? null : NAV_LOCATE_NOWHERE)}
-          label="Not found"
-          count={nowhere}
-          lead={
-            <span aria-hidden className="inline-flex" style={{ color: NAV_LOCATE_TONE_VAR.danger }}>
-              <AlertCircle className="size-3" />
-            </span>
-          }
-        />
-      ) : null}
+      {items.map((item) => (
+        <Fragment key={item.key}>
+          {item.heading ? <StatusChipHeading>{item.heading}</StatusChipHeading> : null}
+          <StatusChip item={item} />
+        </Fragment>
+      ))}
     </div>
   );
+}
+
+/** A section's quiet word before its run of chips. */
+export function StatusChipHeading({ children }: { children: ReactNode }) {
+  return <span className="px-0.5 text-role-micro text-text-faint">{children}</span>;
 }
 
 /** Buckets grouped by the section that holds them, in answer order — the page's own first. */

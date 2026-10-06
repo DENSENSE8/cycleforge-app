@@ -11,9 +11,13 @@
  *    a dot at every stop keeps the snap points visible before a drag;
  *  - dots are deliberately smaller than the rail (6px on the 20px default
  *    rail; 4px on the compact 12px rail), so increments read as markers rather
- *    than a dashed track; hovering the rail grows the markers slightly through
- *    Motion without shifting their snapped positions;
- *    than a dashed track;
+ *    than a dashed track. The rail runs half its height past the thumb's
+ *    travel at each end, so the first and last dots sit centred in the rail's
+ *    rounded caps — never hanging off the end — and every dot sits exactly
+ *    where the thumb (and the native input's thumb) lands for that stop;
+ *  - hover is about ONE stop (owner 2026-10-05): the dot nearest the pointer
+ *    grows and its value previews above it (or its chip lights up) — the rest
+ *    stay still. Touch has no hover, so nothing grows under a finger;
  *  - the completed rail and selected chip use the semantic info fill; reached
  *    dots are light and future dots remain blue for legibility on either rail;
  *  - the thumb is a high-contrast neutral-gray disc with a quiet lift, large enough
@@ -33,6 +37,7 @@
  * timed by `motionDuration.progressFill`, off under reduced motion.
  */
 
+import { useRef, useState, type PointerEvent } from 'react';
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { motionBezier, motionDuration } from '@/design-system/foundations/motion-presets';
 import { cn } from '@/utils/_cn';
@@ -89,19 +94,32 @@ export function StopSlider({
   const last = Math.max(stops.length - 1, 0);
   const index = nearestStopIndex(stops, value);
   const fraction = last === 0 ? 1 : index / last;
-  /** Keep endpoints fully inside the rail instead of hanging half a dot over either end. */
-  const dotInset = compact ? 2 : 3;
-  const at = (i: number) => `calc(${dotInset}px + (100% - ${dotInset * 2}px) * ${last === 0 ? 1 : i / last})`;
-  /** Thumb radius in px — the track's inset, so both endpoint thumbs stay inside the interaction band. */
+  /** Stop `i` along the thumb's travel — dots, thumb and the native input's thumb all share it. */
+  const at = (i: number) => `${(last === 0 ? 1 : i / last) * 100}%`;
+  /** Thumb radius in px — the travel's inset, so both endpoint thumbs stay inside the interaction band. */
   const inset = compact ? 16 : 20;
   const travel = reduceMotion ? { duration: 0 } : { duration: motionDuration.progressFill, ease: motionBezier.easeOut };
   const dotMotion = reduceMotion ? { duration: 0 } : { duration: motionDuration.progressFill, ease: motionBezier.easeOut };
+  const dots = stops.length > 1 && stops.length <= MAX_STOP_DOTS;
+  const chips = showStops && stops.length > 1;
+
+  // The one stop under a hovering pointer (mouse / pen — touch never hovers).
+  const travelRef = useRef<HTMLDivElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const trackHover = (event: PointerEvent<HTMLDivElement>) => {
+    const rect = travelRef.current?.getBoundingClientRect();
+    if (disabled || event.pointerType === 'touch' || !rect || rect.width === 0 || last === 0) return;
+    const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+    setHoverIndex(Math.round(ratio * last));
+  };
+  // The thumb already names its own stop; a preview only speaks for another one.
+  const preview = hoverIndex != null && hoverIndex !== index ? hoverIndex : null;
 
   return (
     <div className={cn('group flex w-full min-w-56 flex-col', disabled && 'opacity-50', className)}>
       {/* P5 — labels above the track, so the thumb (and the finger on it) never covers them. The
           end labels anchor to the band's edges so a long word ("Done") never spills out of it. */}
-      {showStops && stops.length > 1 ? (
+      {chips ? (
         <div className="relative h-7">
           {stops.map((stop, i) => {
             const chosen = i === index;
@@ -120,9 +138,11 @@ export function StopSlider({
                   !edge && '-translate-x-1/2',
                   chosen
                     ? 'bg-fill-info font-semibold text-text-inverse'
-                    : i < index
-                      ? 'text-text-default hover:bg-surface-sunken'
-                      : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
+                    : i === preview
+                      ? 'bg-surface-sunken text-text-default'
+                      : i < index
+                        ? 'text-text-default hover:bg-surface-sunken'
+                        : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
                   disabled && 'cursor-not-allowed',
                 )}
                 aria-label={`${ariaLabel}: ${formatValue(stop)}`}
@@ -134,17 +154,27 @@ export function StopSlider({
         </div>
       ) : null}
 
-      <motion.div className={cn('relative w-full', compact ? 'h-12' : 'h-16')} initial="rest" animate="rest" whileHover="hover">
-        {/* Track + dots + fill + thumb, inset by the thumb radius so the thumb's centre meets both ends. */}
-        <div aria-hidden className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2', compact ? 'inset-x-4' : 'inset-x-5')}>
+      <div
+        className={cn('relative w-full', compact ? 'h-12' : 'h-16')}
+        onPointerMove={trackHover}
+        onPointerLeave={() => setHoverIndex(null)}
+      >
+        {/* The thumb's travel, inset by the thumb radius so the thumb's centre meets both ends. */}
+        <div
+          ref={travelRef}
+          aria-hidden
+          className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2', compact ? 'inset-x-4' : 'inset-x-5')}
+        >
           <div
             className={cn(
-              'relative w-full overflow-hidden rounded-full bg-fill-info/35 ring-1 ring-inset ring-fill-info/40',
-              compact ? 'h-3' : 'h-5',
+              'absolute top-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-fill-info/35 ring-1 ring-inset ring-fill-info/40',
+              compact ? '-inset-x-1.5 h-3' : '-inset-x-2.5 h-5',
             )}
           >
-            <motion.div
-              className="absolute inset-0 w-full origin-left rounded-full bg-fill-info"
+            {/* Fill = the left cap (always reached) + the travel scaled to the thumb. */}
+            <span className={cn('absolute inset-y-0 left-0 bg-fill-info', compact ? 'w-1.5' : 'w-2.5')} />
+            <motion.span
+              className={cn('absolute inset-y-0 origin-left bg-fill-info', compact ? 'inset-x-1.5' : 'inset-x-2.5')}
               initial={false}
               animate={{ scaleX: fraction }}
               transition={travel}
@@ -152,21 +182,38 @@ export function StopSlider({
           </div>
           {/* P5 — a dot per stop, smaller than the rail: light markers remain visible on the filled
               portion, while future stops stay a deeper blue against the quieter blue rail. */}
-          {stops.length > 1 && stops.length <= MAX_STOP_DOTS
+          {dots
             ? stops.map((stop, i) => (
                 <motion.span
                   key={stop}
                   style={{ left: at(i) }}
-                  variants={{ rest: { scale: 1 }, hover: { scale: 1.35 } }}
+                  initial={false}
+                  animate={{ scale: i === preview ? 1.9 : 1 }}
                   transition={dotMotion}
+                  data-hovered={i === preview ? '' : undefined}
                   className={cn(
                     'absolute top-1/2 block -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors',
                     compact ? 'size-1' : 'size-1.5',
-                    i <= index ? 'bg-text-inverse/70' : 'bg-fill-info',
+                    i <= index
+                      ? i === preview ? 'bg-text-inverse' : 'bg-text-inverse/70'
+                      : i === preview ? 'bg-text-info' : 'bg-fill-info',
                   )}
                 />
               ))
             : null}
+          {/* Without chips, the hovered stop says what a click there sets. */}
+          {preview != null && !chips ? (
+            <span
+              className={cn(
+                'absolute -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full bg-surface-card px-1.5 text-role-caption font-semibold tabular-nums text-text-default shadow-sm ring-1 ring-inset ring-border-default',
+                compact ? '-top-5' : '-top-6',
+              )}
+              style={{ left: at(preview) }}
+              data-testid={testId ? `${testId}-preview` : undefined}
+            >
+              {stopLabel(stops[preview]!)}
+            </span>
+          ) : null}
           <motion.div className="absolute inset-0" initial={false} animate={{ x: `${fraction * 100}%` }} transition={travel}>
             <span
               className={cn(
@@ -203,7 +250,7 @@ export function StopSlider({
           )}
           data-testid={testId}
         />
-      </motion.div>
+      </div>
     </div>
   );
 }

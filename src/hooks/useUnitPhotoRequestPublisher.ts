@@ -22,15 +22,15 @@ type UnitPhotoRequestPublisher = (args: {
   serialUnitId: number;
   /** Resolvable unit key (serial or minted unit_uid) for display + poRef filing. */
   unitKey: string | null;
-  /** `testing` (default), `prepack`, or later `packing` capture stage. */
-  stage?: 'testing' | 'prepack' | 'packing';
+  /** `testing` (default) or `packing` capture stage. */
+  stage?: 'testing' | 'packing';
   /** When packing, dual-link uploads to this packer_logs.id. */
   packerLogId?: number | null;
   /** Order / shipment ref for poRef. */
   poRef?: string | null;
   /** Caller-minted id (send-to-device ack waiter); minted here when omitted. */
   requestId?: string;
-  /** What the phone should shoot (prepack serial / condition / contents). */
+  /** What the phone should shoot (e.g. serial / condition / contents). */
   aspect?: PhotoAspect | null;
 }) => Promise<void>;
 

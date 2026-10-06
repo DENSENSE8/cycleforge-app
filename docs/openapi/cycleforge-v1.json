@@ -278,65 +278,6 @@
       }
     },
     "/api/v1/label-batches": {
-      "get": {
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "maxLength": 200
-            },
-            "description": "File name, a page's tracking number or order ref"
-          },
-          {
-            "name": "from",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "description": "Upload date on or after (warehouse civil date)"
-          },
-          {
-            "name": "to",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "description": "Upload date on or before (warehouse civil date)"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 500
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Uploaded label PDFs, newest upload first ({ rows, total })"
-          },
-          "400": {
-            "description": "Invalid query",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "requestBody": {
           "required": true,
@@ -357,6 +298,13 @@
                   "clientEventId": {
                     "type": "string",
                     "format": "uuid"
+                  },
+                  "stock": {
+                    "type": "string",
+                    "enum": [
+                      "label"
+                    ],
+                    "description": "Every page is a shipping label, nothing auto-applied (an order slot). Absent: each page by its size — 4×6-class → label, else packing slip"
                   }
                 }
               }
@@ -365,10 +313,10 @@
         },
         "responses": {
           "200": {
-            "description": "These bytes are already a batch — returned as is, nothing ingested ({ batch, replayed: true, pages })"
+            "description": "These bytes are already a file — returned as is, missing pages landed ({ file, duplicate: true, failedPages })"
           },
           "201": {
-            "description": "Batch created; every page ingested as a label ({ batch, replayed: false, pages })"
+            "description": "File stored; its pages landed and were matched to orders silently ({ file, duplicate: false, failedPages })"
           },
           "400": {
             "description": "Rejected (not a PDF, too large, too many pages)",
@@ -398,10 +346,48 @@
         ],
         "responses": {
           "200": {
-            "description": "One batch: its pages (label rows + pageNumber, page order) and the paired orders' paperwork"
+            "description": "One file and its label pages as ledger rows (label rows + pageNumber, page order): { file, pages }"
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File deleted with its label pages and paperwork pages ({ batchId, deletedIngestionIds, deletedDocumentIds })"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A page is matched or applied to an order — nothing deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -853,43 +839,6 @@
       }
     },
     "/api/v1/label-prints": {
-      "get": {
-        "parameters": [
-          {
-            "name": "view",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/LabelPrintView"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 500
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Print queue by view: labels (unprinted labels, paired or not), paperwork (one row per paired order with unprinted slips / manuals), printed (printed labels + paperwork orders); true counts for all three views"
-          },
-          "400": {
-            "description": "Invalid query",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "requestBody": {
           "required": true,
@@ -899,9 +848,9 @@
                 "type": "object",
                 "required": [
                   "batchId",
-                  "channel",
-                  "ingestionIds"
+                  "channel"
                 ],
+                "description": "At least one id across ingestionIds + documentIds, at most the batch cap in all",
                 "properties": {
                   "batchId": {
                     "type": "string",
@@ -935,13 +884,23 @@
                   },
                   "ingestionIds": {
                     "type": "array",
-                    "minItems": 1,
                     "maxItems": 500,
                     "uniqueItems": true,
                     "items": {
                       "type": "integer",
                       "minimum": 1
-                    }
+                    },
+                    "description": "Ledger labels (`label_ingestions.id`)"
+                  },
+                  "documentIds": {
+                    "type": "array",
+                    "maxItems": 500,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "description": "Shipping-label `documents.id` with no ingestion"
                   }
                 }
               }
@@ -950,7 +909,7 @@
         },
         "responses": {
           "200": {
-            "description": "Print batch logged; a replayed batch logs nothing twice"
+            "description": "Print batch logged ({ batchId, recorded, recordedDocuments }); a replayed batch logs nothing twice"
           },
           "400": {
             "description": "Rejected",
@@ -1021,8 +980,12 @@
                       ],
                       "properties": {
                         "orderId": {
-                          "type": "integer",
-                          "minimum": 1
+                          "type": [
+                            "integer",
+                            "null"
+                          ],
+                          "minimum": 1,
+                          "description": "Null only for an unpaired packing slip; a manual always names its order"
                         },
                         "kind": {
                           "$ref": "#/components/schemas/PaperworkDocKind"
@@ -1575,14 +1538,6 @@
           "THERMAL_SERIAL",
           "DESKTOP_HOST",
           "BROWSER_DIALOG"
-        ]
-      },
-      "LabelPrintView": {
-        "type": "string",
-        "enum": [
-          "labels",
-          "paperwork",
-          "printed"
         ]
       },
       "PaperworkDocKind": {

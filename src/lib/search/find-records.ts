@@ -1,6 +1,10 @@
 /** `findRecords` — the one entry point the operator-facing find surfaces call. */
 
-import { searchAllEntities, type GlobalSearchResult } from '@/lib/search/global-entity-search';
+import {
+  loadAllocateSearchStatuses,
+  searchAllEntities,
+  type GlobalSearchResult,
+} from '@/lib/search/global-entity-search';
 import { hybridSearch, type HybridSearchResult } from '@/lib/search/hybrid-retrieval';
 import { looksLikeIdentifier, type SearchHit } from '@/lib/search/search-hit';
 import { expandQuery } from '@/lib/search/query-expansion';
@@ -52,6 +56,11 @@ export interface FindRecordsDeps {
   brand(orgId: OrgId, query: string, limit: number): Promise<BrandSearchResult>;
   /** Brand facet for a result list the other arms already chose. */
   brandFacet(orgId: OrgId, rows: GlobalSearchResult[]): Promise<BrandFacetEntry[]>;
+  /**
+   * Order chip from Allocate's stage. Omitted in tests; production always
+   * stamps, because the search index still carries the channel status.
+   */
+  allocateStatus?(orgId: OrgId, orderIds: readonly number[]): Promise<Map<number, string>>;
 }
 
 const defaultDeps: FindRecordsDeps = {
@@ -59,6 +68,7 @@ const defaultDeps: FindRecordsDeps = {
   hybrid: (orgId, query, opts) => hybridSearch(orgId, query, opts),
   brand: searchByBrand,
   brandFacet: (orgId, rows) => brandFacetForResults(orgId, rows),
+  allocateStatus: loadAllocateSearchStatuses,
 };
 
 /** SearchHit → GlobalSearchResult. The doc index carries a strict subset of the
@@ -112,15 +122,34 @@ async function runOnce(
   return { rows: merged.slice(0, opts.limit), usedSemantic: fuzzy.usedSemantic };
 }
 
+/** Replace each order row's chip with its Allocate stage. A lookup failure keeps the rows. */
+async function withAllocateStatus(
+  orgId: OrgId,
+  rows: GlobalSearchResult[],
+  deps: FindRecordsDeps,
+): Promise<GlobalSearchResult[]> {
+  if (!deps.allocateStatus) return rows;
+  const ids = rows.filter((row) => row.entityType === 'order').map((row) => row.id);
+  if (ids.length === 0) return rows;
+  const labels = await deps.allocateStatus(orgId, ids).catch(() => new Map<number, string>());
+  if (labels.size === 0) return rows;
+  return rows.map((row) => {
+    if (row.entityType !== 'order') return row;
+    const status = labels.get(row.id);
+    if (!status) return row;
+    return { ...row, facets: { ...row.facets, status } };
+  });
+}
+
 /** Attach the brand facet of the chosen rows; a facet failure never costs the rows. */
 async function withBrandFacet(
   orgId: OrgId,
   result: Omit<FindRecordsResult, 'brandFacet'>,
   deps: FindRecordsDeps,
 ): Promise<FindRecordsResult> {
-  const brandFacet =
-    result.rows.length > 0 ? await deps.brandFacet(orgId, result.rows).catch(() => []) : [];
-  return { ...result, brandFacet };
+  const rows = await withAllocateStatus(orgId, result.rows, deps);
+  const brandFacet = rows.length > 0 ? await deps.brandFacet(orgId, rows).catch(() => []) : [];
+  return { ...result, rows, brandFacet };
 }
 
 /**
@@ -157,8 +186,9 @@ export async function findRecords(
     const found = await deps
       .brand(orgId, q, opts.limit)
       .catch((): BrandSearchResult => ({ hits: [], facet: [] }));
+    const rows = await withAllocateStatus(orgId, found.hits.slice(0, opts.limit).map(hitToResult), deps);
     return {
-      rows: found.hits.slice(0, opts.limit).map(hitToResult),
+      rows,
       effectiveQuery: q,
       relaxed: false,
       usedSemantic: false,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -14,6 +14,7 @@ import {
   MoreVertical,
   Package,
   ScanBarcode,
+  ChevronsRight,
   SlidersHorizontal,
   Trash2,
 } from '@/components/Icons';
@@ -26,6 +27,10 @@ import { TouchQtyStepper } from '@/design-system/components/TouchQtyStepper';
 import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
 import { useAuth } from '@/contexts/AuthContext';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
+import { resolveScannedItemSku } from '@/lib/inventory/scanned-item-sku';
+import { routeScan } from '@/lib/barcode-routing';
+import { recordStockAdjust } from '@/lib/mobile/stock-adjust-session';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 import { commitStockRequest, stockSetRequest } from '@/lib/inventory/stock-bin-verb-writes';
 import { announceStockTransfer, postStockTransfer } from '@/lib/inventory/stock-transfer-client';
 import { takeReasonPayload, type TakeReasonChoice } from '@/lib/inventory/take-reason';
@@ -39,6 +44,7 @@ import { cn } from '@/utils/_cn';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { DetailFact, DetailFacts } from '@/components/mobile/detail/DetailParts';
 import { TakeReasonChooser } from '@/components/mobile/pair/TakeReasonChooser';
+import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
 import { LocationQtyStrip } from '@/components/mobile/scan/LocationQtyStrip';
 import { useBinQtyCommit } from '@/components/mobile/scan/use-bin-qty-commit';
 import { locationRecordQueryKey } from '@/components/mobile/scan/location-bind-api';
@@ -53,9 +59,11 @@ import {
 /** One task at a time in ONE sheet (docs/mobile-first/V2_OBJECT_FIRST.md §5). */
 type Stage = 'rest' | 'adjust' | 'move' | 'more' | 'photos';
 type TitleSave = { state: 'idle' | 'saving' | 'saved' } | { state: 'error'; message: string };
-type StageVerb = 'adjust' | 'move' | 'back' | 'done' | 'count' | 'commit';
+type StageVerb = 'adjust' | 'move' | 'back' | 'done' | 'count' | 'commit' | 'next';
 
 const MORE_ROW_CLASS = 'w-full justify-start';
+/** The same unit is scanned again on purpose when counting: a short same-code cooldown. */
+const ITEM_SCAN_DEDUP_MS = 900;
 
 /**
  * Stock at one location as flat rows; a tap opens the stock position bottom
@@ -63,15 +71,33 @@ const MORE_ROW_CLASS = 'w-full justify-start';
  * and the exact count. Adjust is ±1 first; the keypad lives under More.
  * Counting, moving and record management are stages of that sheet, never a
  * resting form. The sheet has no X: it dismisses by swipe or an outside tap.
+ *
+ * A location scan lands here: `adjustSku` opens that SKU's sheet straight on
+ * adjust; `pick` heads the rows "Select item" (last moved first) and a tap goes
+ * straight to adjust. A hardware scan of an item here picks it, then counts +1
+ * per scan; `next` walks on to the neighbouring location and `doneReturn`
+ * sends Done back to the scan loop.
  */
 export function LocationStockPositions({
   record,
   returnTo,
   verificationToken,
+  adjustSku = null,
+  pick = false,
+  next = null,
+  doneReturn = null,
 }: {
   record: LocationRecord;
   returnTo: string;
   verificationToken: string | null;
+  /** The one SKU a location scan landed on; read on mount only. */
+  adjustSku?: string | null;
+  /** The scan found several items: the rows are the item picker. */
+  pick?: boolean;
+  /** The next location in this room's walk. */
+  next?: { face: string; open: () => void } | null;
+  /** Arrived from the scan loop: Done goes back to the camera. */
+  doneReturn?: (() => void) | null;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -93,6 +119,7 @@ export function LocationStockPositions({
   /** The house photo capture, open over the page (the sheet steps aside); `files` = picked from the library first. */
   const [capture, setCapture] = useState<{ files: File[] } | null>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const selected = record.contents.find((row) => row.sku === selectedSku) ?? null;
   const takePayload = useMemo(() => takeReasonPayload(takeReason), [takeReason]);
   const commitReason = useMemo(
@@ -131,9 +158,23 @@ export function LocationStockPositions({
     locationVerificationToken: verificationToken,
     takeReason: commitReason,
     onCommitStart: useCallback((sku: string, delta: number) => applyQty(sku, (qty) => qty + delta), [applyQty]),
-    onCommitted: useCallback(({ sku, binQty }: { sku: string; binQty: number | null }) => {
+    onCommitted: useCallback(({ sku, delta, binQty }: { sku: string; delta: number; binQty: number | null }) => {
       if (binQty != null) applyQty(sku, () => binQty);
-    }, [applyQty]),
+      // The scan page's tape, Undo and tally read this session's writes.
+      const row = record.contents.find((candidate) => candidate.sku === sku);
+      recordStockAdjust({
+        id: safeRandomUUID(),
+        code: record.code,
+        face: record.face,
+        sku,
+        title: row?.productTitle ?? null,
+        imageUrl: row?.imageUrl ?? null,
+        delta,
+        at: new Date().toISOString(),
+        proof: verificationToken,
+        undone: false,
+      });
+    }, [applyQty, record, verificationToken]),
     onFailed: useCallback(({ sku, delta, message }: { sku: string; delta: number; message: string }) => {
       applyQty(sku, (qty) => qty - delta);
       setError(message);
@@ -152,6 +193,35 @@ export function LocationStockPositions({
     setTitleDraft(row.productTitle?.trim() || '');
     setTitleSave({ state: 'idle' });
     setSelectedSku(row.sku);
+  };
+
+  const startAdjust = (row: LocationBindContent) => {
+    // ±1 first, on the shelf; the number between − and + opens the Take / Put keypad.
+    if (!verificationToken) setCountDraft(row.qty);
+    setStage('adjust');
+  };
+
+  // A one-item scan lands on that item's ±1 strip; the URL's one-shot params
+  // are dropped by the hub, so this runs for the landing only, never on a refresh.
+  useEffect(() => {
+    const row = adjustSku ? record.contents.find((candidate) => candidate.sku === adjustSku) : null;
+    if (row) {
+      open(row);
+      startAdjust(row);
+    } else if (pick) {
+      sectionRef.current?.scrollIntoView({ block: 'nearest' });
+    }
+  }, []);
+
+  /** A manual ±1 moves the draft count; it never goes below zero. */
+  const bumpCount = (step: number) => {
+    if (countDraft == null || countDraft + step < 0) {
+      vibrateScan('reject');
+      return false;
+    }
+    setCountDraft(countDraft + step);
+    vibrateScan('success');
+    return true;
   };
 
   const saveTitle = useCallback(async () => {
@@ -199,6 +269,19 @@ export function LocationStockPositions({
         ),
       );
       applyQty(row.sku, () => qty);
+      recordStockAdjust({
+        id: safeRandomUUID(),
+        code: record.code,
+        face: record.face,
+        sku: row.sku,
+        title: row.productTitle ?? null,
+        imageUrl: row.imageUrl ?? null,
+        delta: qty - row.qty,
+        at: new Date().toISOString(),
+        // A manual count carries no scan proof: never undone from the scan page.
+        proof: null,
+        undone: false,
+      });
       vibrateScan('success');
       setCountDraft(null);
       setStage('rest');
@@ -234,6 +317,66 @@ export function LocationStockPositions({
     vibrateScan(accepted ? 'success' : 'reject');
     return accepted;
   };
+
+  /**
+   * A hardware scan of an item on this record: the first scan picks it (opens
+   * its adjust), each further scan of the same item counts one unit. Printed
+   * location labels are the hub's (it re-verifies or walks). A value naming a
+   * SKU here is always an item; anything else is claimed only while the
+   * operator is picking or adjusting, so a stray tracking label on a browsed
+   * record still routes as before. A bare letter-led code that turns out not
+   * to be an item here goes back to the hub as a location.
+   */
+  const itemScanArmed = pick || stage === 'adjust';
+  useEffect(() => {
+    const onWedge = (event: Event) => {
+      const detail = (event as CustomEvent<{ value?: string; location?: boolean }>).detail;
+      const raw = detail?.value?.trim();
+      if (!raw || detail?.location === true || event.defaultPrevented || record.contents.length === 0) return;
+      const local = record.contents.some((row) => row.sku.toUpperCase() === raw.toUpperCase());
+      const route = routeScan(raw);
+      const printedLocation = route?.type === 'bin-paired-order' || (route?.type === 'bin' && Boolean(route.redirect));
+      if (!local && (printedLocation || !itemScanArmed)) return;
+      event.preventDefault();
+      void resolveScannedItemSku(raw, record.contents.map((row) => row.sku)).then((sku) => {
+        const row = sku ? record.contents.find((candidate) => candidate.sku === sku) : null;
+        if (!row) {
+          if (route?.type === 'bin') {
+            window.dispatchEvent(new CustomEvent('wedge-scan', { detail: { value: raw, location: true }, cancelable: true }));
+            return;
+          }
+          vibrateScan('reject');
+          toast.error(`${raw} is not stocked at ${record.face}`);
+          return;
+        }
+        if (stage === 'adjust' && selected?.sku === row.sku) {
+          if (countDraft == null) bump(row, 1);
+          else bumpCount(1);
+          return;
+        }
+        void quick.flush();
+        open(row);
+        startAdjust(row);
+        vibrateScan('success');
+      });
+    };
+    window.addEventListener('wedge-scan', onWedge);
+    return () => window.removeEventListener('wedge-scan', onWedge);
+  });
+
+  // Picking after a scan: the item last moved here is the likely one, so it
+  // leads. The order is fixed for the visit — rows never jump under a thumb.
+  const [pickOrder] = useState(() => (pick
+    ? [...record.contents].sort((a, b) => (b.lastMoved ?? '').localeCompare(a.lastMoved ?? '')).map((row) => row.sku)
+    : null));
+  const rows = useMemo(() => {
+    if (!pickOrder) return record.contents;
+    const rank = (sku: string) => {
+      const at = pickOrder.indexOf(sku);
+      return at < 0 ? pickOrder.length : at;
+    };
+    return [...record.contents].sort((a, b) => rank(a.sku) - rank(b.sku));
+  }, [pickOrder, record.contents]);
 
   const qtyToMove = (row: LocationBindContent) => (splitting ? Math.min(row.qty, Math.max(1, moveQty)) : row.qty);
 
@@ -305,10 +448,14 @@ export function LocationStockPositions({
   const verbs = ((): readonly DetailDockVerb<StageVerb>[] => {
     if (!selected) return [];
     const back: DetailDockVerb<StageVerb> = { id: 'back', label: 'Back', icon: <ArrowLeft />, testId: 'stock-sheet-back' };
+    // Next walks the room without a scan, so it lands on the count path there.
+    const nextVerb: DetailDockVerb<StageVerb> | null = next
+      ? { id: 'next', label: `Next · ${next.face}`, icon: <ChevronsRight />, testId: 'stock-adjust-next' }
+      : null;
     if (stage === 'adjust' && countDraft != null) {
       const unchanged = countDraft === selected.qty;
       return [
-        back,
+        nextVerb ?? back,
         {
           id: 'count',
           label: unchanged ? `Count is ${countDraft}` : `Set count to ${countDraft}`,
@@ -321,7 +468,8 @@ export function LocationStockPositions({
       ];
     }
     if (stage === 'adjust') {
-      return [{ id: 'done', label: 'Done', icon: <Check />, primary: true, testId: 'stock-adjust-done' }];
+      const done: DetailDockVerb<StageVerb> = { id: 'done', label: 'Done', icon: <Check />, primary: true, testId: 'stock-adjust-done' };
+      return nextVerb ? [nextVerb, done] : [done];
     }
     if (stage === 'move') {
       const qty = qtyToMove(selected);
@@ -339,27 +487,15 @@ export function LocationStockPositions({
     return [{ id: 'move', label: 'Move', icon: <ArrowRight />, testId: 'stock-move' }, adjust];
   })();
 
-  const startAdjust = (row: LocationBindContent) => {
-    // ±1 first, on the shelf; the number between − and + opens the Take / Put keypad.
-    if (!verificationToken) setCountDraft(row.qty);
-    setStage('adjust');
-  };
-
-  /** A manual ±1 moves the draft count; it never goes below zero. */
-  const bumpCount = (step: number) => {
-    if (countDraft == null || countDraft + step < 0) {
-      vibrateScan('reject');
-      return false;
-    }
-    setCountDraft(countDraft + step);
-    vibrateScan('success');
-    return true;
-  };
-
   const onVerb = (verb: StageVerb) => {
     if (!selected) return;
     setError(null);
-    if (verb === 'back' || verb === 'done') {
+    if (verb === 'done' && doneReturn) {
+      // The scan loop: Done is "next location, camera please".
+      void quick.flush().finally(doneReturn);
+    } else if (verb === 'next' && next) {
+      void quick.flush().finally(next.open);
+    } else if (verb === 'back' || verb === 'done') {
       if (verb === 'done') void quick.flush();
       setCountDraft(null);
       setStage('rest');
@@ -374,13 +510,18 @@ export function LocationStockPositions({
   };
 
   return (
-    <section aria-label="Stock in this location" data-testid="location-stock-positions">
-      {record.contents.map((row) => (
+    <section ref={sectionRef} aria-label="Stock in this location" data-testid="location-stock-positions">
+      {pick ? <h2 className="px-mode-page pb-1 pt-3 text-role-eyebrow text-text-soft">Select item</h2> : null}
+      {rows.map((row) => (
         // ds-raw-button: the whole row is the target (F3), not its chevron.
         <button
           key={row.sku}
           type="button"
-          onClick={() => open(row)}
+          onClick={() => {
+            open(row);
+            // Picking an item after a scan is choosing what to adjust.
+            if (pick) startAdjust(row);
+          }}
           data-testid="location-stock-row"
           className="grid min-h-14 w-full grid-cols-[2.75rem_minmax(0,1fr)_auto_1rem] items-center gap-2 border-b border-mode-rule bg-mode-panel px-mode-page py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-accent"
         >
@@ -567,6 +708,20 @@ export function LocationStockPositions({
                       onBump={(step) => (countDraft == null ? bump(selected, step) : bumpCount(step))}
                       onCancelPending={() => (countDraft == null ? quick.cancel(selected.sku) : setCountDraft(selected.qty))}
                       onOpenKeypad={() => navigateAfterFlush(locationKeypadHref(record.code, selected.sku, { returnTo, verificationToken }))}
+                    />
+                    {/* The phone's scanner for this loop, folded until asked for: an item read
+                        counts +1 (or picks that item), a location label renews this shelf's scan or
+                        walks to the next — the same event a hardware scanner fires, so one path. */}
+                    <MobileCaptureWindow
+                      label="Count camera"
+                      collapsedLabel="Scan items to count"
+                      status={`${live} on hand`}
+                      initiallyArmed={false}
+                      dedupMs={ITEM_SCAN_DEDUP_MS}
+                      manualLabel="SKU or item barcode"
+                      onDecode={(value) => {
+                        window.dispatchEvent(new CustomEvent('wedge-scan', { detail: { value }, cancelable: true }));
+                      }}
                     />
                   </div>
                 ) : null}

@@ -744,6 +744,9 @@ test('reconcile brings lineless door-scanned cartons the list names, from any so
   assert.deepEqual(placeholders.list.params, [ORG, ['1Z999AA10123456784', 'PO7']]);
   assert.ok(placeholders.list.sql.includes('stn.tracking_number_normalized = ANY($2::text[])'));
   assert.ok(!placeholders.list.sql.includes('r.source IN'), 'a scanned zoho_po carton counts too');
+  // Every carton the list names (bounded by its keys), never the 150-row browse cap.
+  assert.ok(!/LIMIT 150/.test(placeholders.list.sql));
+  assert.ok(/LIMIT 150/.test(buildUnmatchedPlaceholdersSql(parseReceivingLinesQuery(new URLSearchParams('view=all')), ORG).list.sql));
   assert.equal(
     shouldIncludeUnmatchedPlaceholders(parseReceivingLinesQuery(new URLSearchParams('view=reconcile'))),
     false,

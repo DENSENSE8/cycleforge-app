@@ -40,8 +40,6 @@ const TOOL_LABELS: Readonly<Record<string, string>> = {
   print_order_paperwork: 'Print order papers',
   draft_manual_order: 'Order draft',
   create_manual_order: 'Order',
-  draft_po_import: 'Purchase order',
-  import_purchase_order: 'Purchase order',
   link_po_to_order: 'PO ↔ order link',
   set_order_flag: 'Order flags',
   mark_out_of_stock: 'Out of stock',

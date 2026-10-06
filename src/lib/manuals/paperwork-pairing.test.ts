@@ -80,9 +80,11 @@ test('scoped pairs pin exactly one key and refuse a key the order lacks', () => 
   assert.throws(() => scopePairing('sku', { ...order, sku: ' ' }), /no SKU/);
 });
 
-test('the default scope is the recurring key the order has', () => {
-  assert.equal(defaultPairScope({ itemNumber: 'B00CD1PTF0', sku: '01103' }), 'item_number');
-  assert.equal(defaultPairScope({ itemNumber: '000', sku: '01103' }), 'sku');
+test('the default scope is SKU first, then item number, then the order', () => {
+  assert.equal(defaultPairScope({ itemNumber: 'B00CD1PTF0', sku: '01103' }), 'sku');
+  assert.equal(defaultPairScope({ itemNumber: 'B00CD1PTF0', sku: ' - ' }), 'item_number');
+  assert.equal(defaultPairScope({ itemNumber: 'B00CD1PTF0', sku: null }), 'item_number');
+  assert.equal(defaultPairScope({ itemNumber: '000', sku: null }), 'order');
   assert.equal(defaultPairScope({ itemNumber: null, sku: null }), 'order');
   assert.equal(parsePairScope(''), null);
   assert.equal(parsePairScope('sku'), 'sku');

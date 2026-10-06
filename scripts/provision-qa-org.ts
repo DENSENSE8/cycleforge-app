@@ -70,7 +70,9 @@ import {
 } from '@/lib/tenancy/qa-org';
 import { upsertIntegrationCredentials } from '@/lib/integrations/credentials';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { tagInboundAsReturn } from '@/lib/inbound/tag-inbound-return';
+import { tagInboundReturnInTx } from '@/lib/inbound/tag-inbound-return';
+import type { TxClient } from '@/lib/inbound/purchase-links';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 import { createProvisionalSku } from '@/lib/neon/provisional-sku-queries';
 import { createTask } from '@/lib/tasks/create-task';
 
@@ -1333,7 +1335,7 @@ async function seedTriageFixtures(pool: Pool, orgId: string, adminStaffId: numbe
     await client.query('BEGIN');
     await setOrgGuc(client, orgId);
 
-    // 1. Return package — spine here, RETURN facts via tagInboundAsReturn below.
+    // 1. Return package — spine here, RETURN facts via tagInboundReturnInTx below.
     const ret = await ensureArrivedPackage(client, orgId, adminStaffId, {
       tracking: fx.returnPackage.tracking, itemName: fx.returnPackage.itemName,
       sku: fx.returnPackage.sku, intakeType: null,
@@ -1416,13 +1418,16 @@ async function seedTriageFixtures(pool: Pool, orgId: string, adminStaffId: numbe
     client.release();
   }
 
-  // Decisions through the floor's own writers (each owns its transaction).
-  await tagInboundAsReturn(orgId, {
-    receivingLineId: returnLineId,
-    sourceType: fx.returnPackage.sourceType,
-    sourceOrderId: fx.returnPackage.sourceOrderId,
-    returnReason: fx.returnPackage.returnReason,
-  });
+  // Decisions through the floor's own writers.
+  await withTenantTransaction(orgId, (tx) =>
+    tagInboundReturnInTx(tx as unknown as TxClient, orgId, {
+      receivingLineId: returnLineId,
+      sourceType: fx.returnPackage.sourceType,
+      sourceOrderId: fx.returnPackage.sourceOrderId,
+      returnReason: fx.returnPackage.returnReason,
+      rmaRef: null,
+    }),
+  );
 
   // 6. On-hold placeholder with stock. createProvisionalSku mints it at 0; the
   //    fixture's point is stock to merge, so set the on-hand count it reads.

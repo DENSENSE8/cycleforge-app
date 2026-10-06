@@ -77,9 +77,11 @@ export async function handleFnskuScan(
 
     if (data.salId || data.fnskuSalId) {
       const eventSalId = data.salId ?? data.fnskuSalId;
+      // `id` = the FNSKU_SCANNED station_activity_logs row — the id
+      // `GET /api/picking/desk/logs` gives it — so the echo replaces it in place.
       window.dispatchEvent(new CustomEvent('tech-log-added', {
         detail: {
-          id: -1 * Number(eventSalId),
+          id: Number(eventSalId),
           source_row_id: Number(eventSalId),
           source_kind: 'fba_scan',
           tech_serial_id: null,

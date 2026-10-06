@@ -31,7 +31,6 @@ import {
 } from '@/lib/local-pickup/stage-filters';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { PICKUP_HISTORY_VIEW } from '@/lib/triage/views';
-import { newInboundOrderHref } from '@/lib/inbound/new-inbound-order-path';
 import { formatDateKeyMedium } from '@/utils/date';
 import { usePickupRecord } from '@/lib/receiving/pickup/usePickupRecord';
 import { PickupCard } from './cards/PickupCard';
@@ -199,7 +198,8 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   const pickup = usePickupRecord(openGroup);
   const slot = useRecordSlot(pickup?.model ?? null, pickup?.verbs ?? [], openGroup ? `Local pickup ${openGroup.identity} actions` : 'Pickup actions', 'pickup-record');
   const close = useCallback(() => setOrder(null), [setOrder]);
-  const importPaperwork = useCallback(() => router.push(newInboundOrderHref('PICKUP')), [router]);
+  // Pickup paperwork lands from the phone pickup door (the desk form adds POs and returns only).
+  const importPaperwork = useCallback(() => router.push('/m/receiving/pickup/new?type=PICKUP'), [router]);
   const importAction = useMemo(
     () => (
       <DeskHeaderAction

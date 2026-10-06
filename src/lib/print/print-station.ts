@@ -8,8 +8,14 @@ import { UNNAMED_PRINT_STATION, type StaffPrintRole } from './staff-print-bridge
 const ID_KEY = 'cf.printStation.id';
 const NAME_KEY = 'cf.printStation.name';
 
-/** Dispatched on the window when this computer's station id or name changes. */
+/** Dispatched on the window when this computer's station id, name or local printers change. */
 export const PRINT_STATION_CHANGED_EVENT = 'cf:print-station-changed';
+
+/**
+ * Dispatched on the window when a staffer's per-stock station pick changes on
+ * this device, so every mounted picker / press re-reads it without a reload.
+ */
+export const PRINT_STATION_PICK_CHANGED_EVENT = 'cf:print-station-pick-changed';
 
 interface PrintStation {
   id: string;

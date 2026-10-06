@@ -122,6 +122,11 @@ function computeCurrentPSTWeek(): { startStr: string; endStr: string } {
   return { startStr: fmt(sun), endStr: fmt(sat) };
 }
 
+/**
+ * The packer's own packs (`?population=packed`) — every PACK scan they made in
+ * the week, scanned out or not. Not the Fulfilled list, which requires a dock
+ * scan-out and so drops a pack the moment after it lands.
+ */
 export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = {}) {
   const { weekOffset = 0, weekRange, search = '' } = options;
   const searchTerm = search.trim();
@@ -141,7 +146,7 @@ export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = 
   const query = useQuery<PackerRecord[]>({
     queryKey,
     queryFn: async () => {
-      const params = new URLSearchParams({ packerId: String(packerId) });
+      const params = new URLSearchParams({ packerId: String(packerId), population: 'packed' });
       // A searching fetch sends no page bound: the route drops it so a match
       // outside the newest thousand scans is still found (the defect this
       // whole path exists to close).

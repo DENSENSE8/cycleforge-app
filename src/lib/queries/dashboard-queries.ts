@@ -9,14 +9,10 @@ import {
   fetchUnshippedOrderRowById,
   fetchUnshippedQueueCounts,
   fetchDeskCounts,
-  fetchDashboardPackedRecords,
 } from '@/lib/dashboard-table-data';
 import { fetchStagedOrdersData } from '@/lib/outbound/outbound-table-data';
 import { fetchWarrantyClaims, fetchWarrantyCoverage, type FetchWarrantyClaimsParams } from '@/lib/warranty/client';
-import { isPastWeekStart } from '@/lib/dashboard-week-range';
 import type { DeskPairFilter } from '@/lib/orders/desk-view-filters';
-import type { ShippedTimeParams } from '@/lib/shipping/shipped-filter/shipped-filter-params';
-import { shippedFeedQueryKey, SHIPPED_FEED_PAGE_SIZE } from '@/lib/shipping/shipped-feed-config';
 
 interface OrderQueryParams {
   searchQuery?: string;
@@ -46,38 +42,6 @@ interface OrderQueryParams {
   shipByTo?: string;
 }
 
-
-/** The Shipped desk's view filters — answered in SQL by `/api/packerlogs`, one predicate with the sidebar facet counts. Part of the key. */
-interface ShippedViewFilterParams {
-  carrier?: string | null;
-  statusCategory?: string | null;
-  exceptionsOnly?: boolean;
-  /** Exact shipped-instant window (`?timeFrom`/`?timeTo` over `dateFrom`/`dateTo`); null/absent = none. */
-  shippedTime?: ShippedTimeParams | null;
-  /** `?pickedBy` — the order's picker. */
-  pickedBy?: number;
-  /** `?channel` — comma-separated, lower-cased. */
-  channel?: string | null;
-  /** `?cardStatus` — package-status pills, comma list. */
-  cardStatus?: string | null;
-}
-
-interface ShippedQueryParams extends ShippedViewFilterParams {
-  weekStart?: string;
-  weekEnd?: string;
-  packedBy?: number;
-  /** Universal staff filter (P1-WORK-02): packed_by OR tested_by this staff. */
-  staffId?: number;
-  shippedFilter?: string;
-  /** Desk find text, answered SERVER-side by `/api/packerlogs?q=`. */
-  searchTerm?: string;
-  /** Row ceiling for this fetch; default {@link SHIPPED_FEED_PAGE_SIZE}. */
-  limit?: number;
-  /** Spine-first: 'spine' fetches immediate-paint columns only (deferred fields
-   *  hydrate separately); 'full' (default) is the complete row. Part of the
-   *  cache key so spine and full never share an entry. */
-  phase?: 'spine' | 'full';
-}
 
 /** Pending queue (label-assigned, not yet packed). Matches the Pending grid / UnshippedTable. */
 export function pendingOrdersQuery({
@@ -220,109 +184,6 @@ export function packedOrdersQuery({
     queryFn: () => fetchStagedOrdersData({ searchQuery, staffId, dateFrom, dateTo }),
     staleTime: 60_000,
     gcTime: 15 * 60 * 1000,
-  });
-}
-
-/** Shipped/packed records for a week window. Matches the Shipped ledger's feed (`useShippedTableRecords`). */
-export function dashboardShippedQuery({
-  weekStart,
-  weekEnd,
-  packedBy,
-  staffId,
-  shippedFilter,
-  carrier = null,
-  statusCategory = null,
-  exceptionsOnly = false,
-  shippedTime = null,
-  pickedBy,
-  searchTerm = '',
-  channel = null,
-  cardStatus = null,
-  limit = SHIPPED_FEED_PAGE_SIZE,
-  phase = 'full',
-}: ShippedQueryParams = {}) {
-  return queryOptions({
-    queryKey: shippedFeedQueryKey({
-      weekStart,
-      weekEnd,
-      packedBy,
-      staffId,
-      shippedFilter,
-      carrier,
-      statusCategory,
-      exceptionsOnly,
-      searchTerm,
-      limit,
-      phase,
-      shippedTime,
-      pickedBy,
-      channel,
-      cardStatus,
-    }),
-    queryFn: () =>
-      fetchDashboardPackedRecords({
-        packedBy, staffId, weekStart, weekEnd, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy, channel, cardStatus,
-      }),
-    staleTime: 5 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-  });
-}
-
-interface ShippedWeekQueryParams extends ShippedViewFilterParams {
-  /** Canonical Monday (YYYY-MM-DD) — the stable per-week cache unit. */
-  weekStart: string;
-  /** Canonical Sunday (YYYY-MM-DD). */
-  weekEnd: string;
-  packedBy?: number;
-  staffId?: number;
-  shippedFilter?: string;
-  /** Desk find text (see {@link ShippedQueryParams.searchTerm}). Part of the key. */
-  searchTerm?: string;
-  /** Row ceiling for this week; default {@link SHIPPED_FEED_PAGE_SIZE}. Part of
-   *  the cache key, so a bumped ceiling is its own immutable past-week entry. */
-  limit?: number;
-  /** Spine-first phase (see {@link ShippedQueryParams.phase}). Part of the key. */
-  phase?: 'spine' | 'full';
-  /** Sidebar sort key. Part of the cache key. */
-  sort?: string | null;
-}
-
-/** One canonical Mon–Sun week of shipped records — the SoT for both the bucketed `useQueries` in `useShippedWeekBuckets` AND the warm-up… */
-export function dashboardShippedWeekQuery({
-  weekStart,
-  weekEnd,
-  packedBy,
-  staffId,
-  shippedFilter,
-  carrier = null,
-  statusCategory = null,
-  exceptionsOnly = false,
-  shippedTime = null,
-  pickedBy,
-  searchTerm = '',
-  channel = null,
-  cardStatus = null,
-  limit = SHIPPED_FEED_PAGE_SIZE,
-  phase = 'full',
-  sort = null,
-}: ShippedWeekQueryParams) {
-  // Tracking status, stalls and package status move after the week closes;
-  // only a status-free past week is a fixed answer.
-  const immutable = isPastWeekStart(weekStart) && !searchTerm && !statusCategory && !exceptionsOnly && !cardStatus;
-  return queryOptions({
-    queryKey: [
-      'dashboard-table',
-      'shipped',
-      'week',
-      weekStart,
-      { packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, sort, shippedTime: shippedTime ?? undefined, pickedBy, channel, cardStatus },
-    ],
-    queryFn: () =>
-      fetchDashboardPackedRecords({
-        weekStart, weekEnd, packedBy, staffId, shippedFilter, carrier, statusCategory, exceptionsOnly, searchTerm, limit, phase, shippedTime, pickedBy, sort, channel, cardStatus,
-      }),
-    staleTime: immutable ? Infinity : 5 * 60 * 1000,
-    gcTime: immutable ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000,
   });
 }
 

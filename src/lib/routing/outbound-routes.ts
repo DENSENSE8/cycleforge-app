@@ -17,13 +17,52 @@ import {
   SHIPPING_ORDERS_PATH,
   SHIPPING_SHORTAGE_PATH,
 } from '@/lib/shipping/orders-desk';
+import { LABEL_INTAKE_VIEWS } from '@/lib/triage/views/label-intake';
 import {
-  LABEL_BATCH_PARAM,
-  LABEL_BATCH_PRINTING_PARAM,
-  LABEL_INTAKE_VIEWS,
-  LABEL_PAIRING_PARAM,
-} from '@/lib/triage/views/label-intake';
+  PRINT_FILE_PRINTED_FROM_PARAM,
+  PRINT_FILE_PRINTED_TO_PARAM,
+  PRINT_FILE_QUERY_PARAM,
+  PRINT_FILE_SORT_PARAM,
+  PRINT_FILE_SORTS,
+  PRINT_FILE_STATUS_PARAM,
+  PRINT_FILE_STATUSES,
+  PRINT_FILE_UPLOADED_FROM_PARAM,
+  PRINT_FILE_UPLOADED_TO_PARAM,
+} from '@/lib/label-prints/print-file-contracts';
+import {
+  ORDER_PACKET_CHANNEL_PARAM,
+  ORDER_PACKET_GAP_PARAM,
+  ORDER_PACKET_SORTS,
+  ORDER_PACKET_STATUS_PARAM,
+  ORDER_PACKET_STATUSES,
+} from '@/lib/label-prints/order-packet-contracts';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
+import {
+  FULFILLED_AXES,
+  FULFILLED_AXIS_PARAM,
+  FULFILLED_CARRIER_PARAM,
+  FULFILLED_CHANNEL_PARAM,
+  FULFILLED_FIND_PARAM,
+  FULFILLED_FROM_PARAM,
+  FULFILLED_CARDS_PARAM,
+  FULFILLED_DONE_PARAM,
+  FULFILLED_GRAIN_PARAM,
+  FULFILLED_GROUP_PARAM,
+  FULFILLED_GRAINS,
+  FULFILLED_LAYOUT_PARAM,
+  FULFILLED_LAYOUTS,
+  FULFILLED_MINE_PARAM,
+  FULFILLED_MINE_VALUE,
+  FULFILLED_PACKER_PARAM,
+  FULFILLED_SCAN_PARAM,
+  FULFILLED_SCANS,
+  FULFILLED_STATUS_PARAM,
+  FULFILLED_TO_PARAM,
+  FULFILLED_UNTRACKED_PARAM,
+} from '@/lib/outbound/fulfilled-params';
+import { FULFILLED_BUCKET_IDS } from '@/lib/nav/locate/bucket-precedence';
+import { SHIPMENT_RECORD_PARAM } from '@/lib/shipments/shipment-record-types';
+import { RECORD_DETAILS_PARAM } from '@/lib/records/record-details';
 import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
 import { parseReadyWorkspaceTabWire } from '@/utils/ready-workspace-state';
 import {
@@ -36,7 +75,6 @@ import {
   paramPresence,
   paramRoundTrip,
   paramText,
-  paramTimeKey,
   type RouteParamsSpec,
 } from './route-params';
 import { TO_SHIP_QUEUE_FACET_PARAMS } from './to-ship-queue-params';
@@ -178,52 +216,45 @@ const FBA_ROUTE_PARAMS = defineRouteParams({
   carries: SHIPPING_CARRIES,
 });
 
-/** `/shipping/shipped` — the Shipped desk: */
+/**
+ * `/fulfilled` — Fulfilled, every shipped order on the journey board or as one
+ * sheet (`fulfilled-params.ts`): which date the window reads, the window (PT
+ * civil days; neither = the last 90 days), channel, carrier, packer, Packed by
+ * me (`mine=me`), scan source, the row grain, the body layout (`layout`: board
+ * is absence, `sheet` the sheet — owned here, so the station tables' ambient
+ * `layout` is not carried), the board's display toggles (`done`, `untracked`,
+ * `cards`, `group`) and Find (`q`, server-side). Its Sort is the carried `colsort` /
+ * `coldir`; its status chips are `status` (client-side). The open package is
+ * `shipment`; `openOrderId` (what `recordDetailsHref` writes for a shipped
+ * order) resolves to its package, then drops.
+ */
 const SHIPPED_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_SHIPPED_PATH,
   owns: {
-    /** Find by order number / tracking / SKU. */
-    search: paramText,
-    /**
-     * The open package (`SHIPMENT_RECORD_PARAM`): a `shipping_tracking_numbers.id`,
-     * or `scan-<id>` for a pack scan that captured no tracking (no package record).
-     */
-    shipment: paramText,
-    /** Legacy open order line — the ledger maps it to that line's package, then drops it. */
-    openOrderId: paramPositiveInt,
-    shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
-    /** Saved view preset (`FULFILLED_VIEWS`). Absence is All. */
-    view: paramEnum(['all', 'online', 'fba', 'sku', 'delivered'] as const),
-    shippedSearchField: paramRoundTrip(parseShippedSearchFieldWire),
-    /** A named warehouse week, whole weeks back (`readShippedDateWindow`); absent = all-time. */
-    shippedWeekOffset: paramPositiveInt,
-    /** Explicit day window — wins over a named week. */
-    dateFrom: paramDateKey,
-    dateTo: paramDateKey,
-    /** Explicit all-time (the Shipped locate bucket's link). */
-    allDates: paramFlag,
-    /** Outbound-state facet off the status legend (e.g. `PACKED_STAGED`). */
-    ostatus: paramText,
-    exceptions: paramFlag,
-    carrier: paramText,
-    statusCategory: paramText,
-    /** Channel (`account_source`), comma-joined when more than one. */
-    channel: paramText,
-    packedBy: paramPositiveInt,
-    /** Who ACTUALLY picked the shipped order (pick facts). */
-    pickedBy: paramPositiveInt,
-    /** Time of day at each end of the dateFrom/dateTo window (HH:mm, PT). */
-    timeFrom: paramTimeKey,
-    timeTo: paramTimeKey,
-    /** Grid display sort — column/server ids, same alphabet as the desk. */
-    sort: paramText,
-    dir: paramEnum(['asc', 'desc'] as const),
-    /** The card list's status pills (comma list, `useTriageCut`) and its 1-based page. */
-    cardStatus: paramText,
-    page: paramPositiveInt,
-    ...DESK_LOCATE_PARAMS,
+    [FULFILLED_AXIS_PARAM]: paramRoundTrip((raw) => FULFILLED_AXES.find((axis) => axis === raw)),
+    [FULFILLED_FROM_PARAM]: paramDateKey,
+    [FULFILLED_TO_PARAM]: paramDateKey,
+    [FULFILLED_CHANNEL_PARAM]: paramText,
+    [FULFILLED_CARRIER_PARAM]: paramText,
+    [FULFILLED_PACKER_PARAM]: paramPositiveInt,
+    [FULFILLED_SCAN_PARAM]: paramEnum(FULFILLED_SCANS),
+    [FULFILLED_GRAIN_PARAM]: paramEnum(FULFILLED_GRAINS),
+    [FULFILLED_LAYOUT_PARAM]: paramEnum(FULFILLED_LAYOUTS),
+    [FULFILLED_STATUS_PARAM]: paramRoundTrip((raw) => FULFILLED_BUCKET_IDS.find((id) => id === raw)),
+    [FULFILLED_FIND_PARAM]: paramText,
+    [FULFILLED_MINE_PARAM]: paramEnum([FULFILLED_MINE_VALUE] as const),
+    [FULFILLED_DONE_PARAM]: paramEnum(['hide'] as const),
+    [FULFILLED_UNTRACKED_PARAM]: paramEnum(['hide'] as const),
+    [FULFILLED_CARDS_PARAM]: paramEnum(['compact'] as const),
+    [FULFILLED_GROUP_PARAM]: paramEnum(['carrier'] as const),
+    /** The open package (`SHIPMENT_RECORD_PARAM`): a `shipping_tracking_numbers.id`. */
+    [SHIPMENT_RECORD_PARAM]: paramPositiveInt,
+    /** A shipped order's details (`recordDetailsHref`) — resolved to its package, then dropped. */
+    [RECORD_DETAILS_PARAM.order]: paramPositiveInt,
+    /** Where the sheet's Back returns when it was opened from another page. */
+    back: paramText,
   },
-  carries: SHIPPING_CARRIES,
+  carries: SHIPPING_CARRIES.filter((key) => key !== FULFILLED_LAYOUT_PARAM),
 });
 
 /**
@@ -281,24 +312,34 @@ const SCAN_OUT_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/shipping/label-intake` — Labels & docs: Uploads (bare) · Labels · Paperwork ·
- * Printed. Search is desk-store, never a URL param.
+ * `/shipping/label-intake` — Labels & docs: Bulk (bare, the file list) ·
+ * Orders (`?view=orders`). Both narrow on the server through `?q=`; `sort` is
+ * one param read by whichever view is on screen (either vocabulary).
  */
 const LABEL_INTAKE_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_LABEL_INTAKE_PATH,
   owns: {
     view: paramEnum(LABEL_INTAKE_VIEWS),
-    /** The Buy a label compose record (owner 2026-10-01) — `?buy=1` swaps the record plane. */
+    /** The Buy a label compose (owner 2026-10-01) — `?view=orders&buy=1` swaps the Orders pane. */
     buy: paramFlag,
-    /** Uploads: the Uploaded window (warehouse civil days, inclusive). */
-    from: paramDateKey,
-    to: paramDateKey,
-    /** Uploads: the open batch. */
-    [LABEL_BATCH_PARAM]: paramPositiveInt,
-    /** Uploads: the print-state chips (`to-print,printed`); the cut ignores unknown keys. */
-    [LABEL_BATCH_PRINTING_PARAM]: paramText,
-    /** The pairing chips (`unpaired,paired`); the cut ignores unknown keys. */
-    [LABEL_PAIRING_PARAM]: paramText,
+    /** Bulk: the Uploaded window (warehouse civil days, inclusive). */
+    [PRINT_FILE_UPLOADED_FROM_PARAM]: paramDateKey,
+    [PRINT_FILE_UPLOADED_TO_PARAM]: paramDateKey,
+    /** Bulk: the Printed window (warehouse civil days, inclusive). */
+    [PRINT_FILE_PRINTED_FROM_PARAM]: paramDateKey,
+    [PRINT_FILE_PRINTED_TO_PARAM]: paramDateKey,
+    /** Bulk: Print status — Not printed · Partly printed · Printed (absent = All). */
+    [PRINT_FILE_STATUS_PARAM]: paramEnum(PRINT_FILE_STATUSES),
+    /** Sort — Bulk's or Orders' vocabulary. */
+    [PRINT_FILE_SORT_PARAM]: paramEnum([...PRINT_FILE_SORTS, ...ORDER_PACKET_SORTS]),
+    /** The sidebar Find, narrowed on the server (both views). */
+    [PRINT_FILE_QUERY_PARAM]: paramText,
+    /** Orders: Missing · Ready · Printed (absent = All). */
+    [ORDER_PACKET_STATUS_PARAM]: paramEnum(ORDER_PACKET_STATUSES),
+    /** Orders: the missing slots, comma-joined (any-of). */
+    [ORDER_PACKET_GAP_PARAM]: paramText,
+    /** Orders: channels (`orders.account_source`, case as stored), comma-joined (any-of). */
+    [ORDER_PACKET_CHANNEL_PARAM]: paramText,
     /** The triage list's page (`useTriageCut`). */
     page: paramPositiveInt,
   },

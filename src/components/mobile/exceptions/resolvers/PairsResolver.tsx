@@ -5,7 +5,7 @@
  * - an open order whose SKU is unpaired / has no item number: repair the
  *   order's identity, then pair it to a catalog item (or mint one and pair);
  *   pairing clears every held order carrying the same item number;
- * - a floor-minted `TMP-` placeholder: merge it into the real Zoho SKU.
+ * - a floor-minted `TMP-` placeholder: merge it into the permanent catalog SKU.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -32,15 +32,15 @@ type PlaceholderPairsFacts = Extract<PairsExceptionFacts, { source: 'placeholder
 
 const NO_PAIR_PERMISSION = 'Your role can view this exception but cannot change catalog pairing.';
 
-/** The Zoho catalog, searched as the operator types (250 ms debounce). */
-function useZohoCatalogOptions() {
+/** Permanent CycleForge catalog SKUs, searched as the operator types (250 ms debounce). */
+function usePermanentSkuOptions() {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(query.trim()), 250);
     return () => window.clearTimeout(timer);
   }, [query]);
-  const catalog = useSkuCatalogSearch(debounced, { limit: 15, searchField: 'zoho_catalog' });
+  const catalog = useSkuCatalogSearch(debounced, { limit: 15, searchField: 'catalog' });
   const hits = catalog.data;
   const options = useMemo(
     () => (hits ?? []).map((hit) => ({ value: String(hit.id), label: hit.sku, meta: hit.product_title })),
@@ -58,7 +58,7 @@ export function PairsOrderResolver({ facts, onResolved }: PhoneResolverProps<Ord
   const order = facts.order;
   const orderRef = order.orderNumber || `#${order.id}`;
   const here = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`;
-  const catalog = useZohoCatalogOptions();
+  const catalog = usePermanentSkuOptions();
 
   const [itemNumber, setItemNumber] = useState(order.itemNumber ?? '');
   const [sku, setSku] = useState(order.sku ?? '');
@@ -191,7 +191,7 @@ export function PairsPlaceholderResolver({ facts, onResolved }: PhoneResolverPro
   const canPair = has('sku_stock.manage');
   const resolve = useResolvePairsException();
   const placeholder = facts.placeholder;
-  const catalog = useZohoCatalogOptions();
+  const catalog = usePermanentSkuOptions();
   const [targetId, setTargetId] = useState<string | null>(null);
   const target = catalog.hits?.find((hit) => String(hit.id) === targetId) ?? null;
   const [picked, setPicked] = useState<{ sku: string; title: string | null } | null>(null);
@@ -201,7 +201,7 @@ export function PairsPlaceholderResolver({ facts, onResolved }: PhoneResolverPro
 
   const merge = () => {
     if (!picked) {
-      toast.error('Pick the Zoho SKU this placeholder really is.');
+      toast.error('Pick the permanent SKU this placeholder belongs to.');
       return;
     }
     return resolve
@@ -236,7 +236,7 @@ export function PairsPlaceholderResolver({ facts, onResolved }: PhoneResolverPro
         </section>
       ) : null}
       <section aria-labelledby="pairs-merge-heading">
-        <DetailSectionHeading id="pairs-merge-heading">Pair to Zoho SKU</DetailSectionHeading>
+        <DetailSectionHeading id="pairs-merge-heading">Pair to SKU</DetailSectionHeading>
         {canPair ? (
           <SearchableSelectField
             value={targetId}
@@ -245,13 +245,14 @@ export function PairsPlaceholderResolver({ facts, onResolved }: PhoneResolverPro
             onSearchChange={catalog.setQuery}
             loading={catalog.loading}
             disabled={resolve.isPending}
-            placeholder="Pick the real Zoho SKU…"
-            searchPlaceholder="Search Zoho by SKU or title…"
-            emptyMessage={catalog.query.trim() ? 'Nothing matches.' : 'Type to search Zoho items.'}
-            ariaLabel="Pick the real Zoho SKU"
+            placeholder="Pick the permanent SKU…"
+            searchPlaceholder="Search permanent SKU or title…"
+            emptyMessage={catalog.query.trim() ? 'Nothing matches.' : 'Type to search permanent SKUs.'}
+            ariaLabel="Pick the permanent SKU"
             testId="mobile-exception-merge-search"
             appearance="flush"
             className="h-11"
+            paste={{ label: 'Paste a SKU or item ID', onPaste: catalog.setQuery }}
           />
         ) : (
           <p className="bg-surface-danger px-mode-page py-2 text-role-caption text-text-danger">{NO_PAIR_PERMISSION}</p>

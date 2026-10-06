@@ -10,6 +10,7 @@ import type { TaskFollowUpChannel, TaskFollowUpDirection } from '@/lib/tasks/tas
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { SupportEntityLinkType, SupportOrderLinkInput } from './ingest-types';
 import type {
+  CheckInOutcome,
   DeliveryState,
   ReplyDisposition,
   SupportChannel,
@@ -233,7 +234,17 @@ export interface SupportStore {
 
   // ── Check-in projection ──
   refreshCheckIn(supportItemId: number, staffId: number | null, nowMs: number): Promise<void>;
-  closeCheckIn(supportItemId: number, args: { staffId: number | null; disposition: 'resolved' | 'no_response_closed'; reason: string | null; nowMs: number }): Promise<void>;
+  /** `resolved` carries its outcome (required); `no_response_closed` carries none. */
+  closeCheckIn(
+    supportItemId: number,
+    args: {
+      staffId: number | null;
+      disposition: 'resolved' | 'no_response_closed';
+      outcome: CheckInOutcome | null;
+      reason: string | null;
+      nowMs: number;
+    },
+  ): Promise<void>;
 
   // ── Timeline ──
   recordEvent(event: SupportTimelineEventInsert): Promise<void>;

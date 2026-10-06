@@ -1,4 +1,9 @@
-/** Client/server wire types for the prepack flow: one package of one or more serial units. */
+/**
+ * Client/server wire types for the prepack form: one product, N packages, one
+ * label per package. A package carries zero, one or more serials.
+ */
+
+import type { QcLabelPrintUnit } from '@/lib/labels/qc-label-row';
 
 export const PREPACK_KIT_PART_TYPES = [
   'REMOTE',
@@ -10,19 +15,37 @@ export const PREPACK_KIT_PART_TYPES = [
 
 export type PrepackKitPartType = (typeof PREPACK_KIT_PART_TYPES)[number];
 
-/** Physical condition of the unit in hand (`condition_grade_enum`). */
+export const PREPACK_KIT_PART_TYPE_LABEL: Record<PrepackKitPartType, string> = {
+  REMOTE: 'Remote',
+  CABLE: 'Cable',
+  ACCESSORY: 'Accessory',
+  MANUAL: 'Manual',
+  PACKAGING: 'Packaging',
+};
+
+/**
+ * Physical condition a prepack may grade (`condition_grade_enum`). The enum
+ * also holds USED_C and PARTS; prepack never offers them (operator 2026-10-05).
+ */
 export const PREPACK_CONDITIONS = [
   'BRAND_NEW',
   'LIKE_NEW',
   'REFURBISHED',
   'USED_A',
   'USED_B',
-  'USED_C',
-  'PARTS',
 ] as const;
 
 export type PrepackCondition = (typeof PREPACK_CONDITIONS)[number];
 
+export const PREPACK_CONDITION_LABEL: Record<PrepackCondition, string> = {
+  BRAND_NEW: 'New',
+  LIKE_NEW: 'Like new',
+  REFURBISHED: 'Refurbished',
+  USED_A: 'Used A',
+  USED_B: 'Used B',
+};
+
+/** A prepack grade, or null — a unit graded Used C / Parts prefills nothing. */
 export function parsePrepackCondition(raw: string | null | undefined): PrepackCondition | null {
   const value = String(raw ?? '').trim().toUpperCase();
   return (PREPACK_CONDITIONS as readonly string[]).includes(value) ? (value as PrepackCondition) : null;
@@ -49,85 +72,11 @@ export function parsePrepackProvenance(raw: string | null | undefined): PrepackP
   return (PREPACK_PROVENANCES as readonly string[]).includes(value) ? (value as PrepackProvenance) : null;
 }
 
-/**
- * Unit-specific evidence a prepack must carry. Each kind is a `photo_aspect`
- * on a SERIAL_UNIT `prepack` photo; catalog photos belong to the SKU and never
- * count here.
- */
-export const PREPACK_EVIDENCE_KINDS = ['serial', 'condition', 'contents'] as const;
-
-export type PrepackEvidenceKind = (typeof PREPACK_EVIDENCE_KINDS)[number];
-
-export type PrepackEvidence = Record<PrepackEvidenceKind, number>;
-
-/** The aspect a capture of each kind is stamped with. */
-export const PREPACK_EVIDENCE_ASPECT = {
-  serial: 'serial',
-  condition: 'condition',
-  contents: 'included',
-} as const satisfies Record<PrepackEvidenceKind, string>;
-
-export const PREPACK_EVIDENCE_LABEL: Record<PrepackEvidenceKind, string> = {
-  serial: 'Serial label',
-  condition: 'Condition',
-  contents: 'Contents',
-};
-
-/** Contents evidence is required only when the SKU expects parts. */
-export function requiredPrepackEvidence(kitPartCount: number): PrepackEvidenceKind[] {
-  return kitPartCount > 0 ? [...PREPACK_EVIDENCE_KINDS] : ['serial', 'condition'];
-}
-
-/** One missing piece of package evidence. `serialUnitId` names the serial a per-serial gap belongs to. */
-export interface PrepackEvidenceGap {
-  kind: PrepackEvidenceKind;
-  serialUnitId: number | null;
-}
-
-/**
- * A package's evidence: every serial carries its own serial photo; condition
- * and contents are package facts, satisfied by a photo on any member (the
- * form captures them on the first serial).
- */
-export function missingPackageEvidence(
-  units: readonly { id: number; evidence: PrepackEvidence }[],
-  kitPartCount: number,
-): PrepackEvidenceGap[] {
-  if (units.length === 0) return requiredPrepackEvidence(kitPartCount).map((kind) => ({ kind, serialUnitId: null }));
-  const gaps: PrepackEvidenceGap[] = [];
-  for (const kind of requiredPrepackEvidence(kitPartCount)) {
-    if (kind === 'serial') {
-      for (const unit of units) if ((unit.evidence.serial ?? 0) < 1) gaps.push({ kind, serialUnitId: unit.id });
-    } else if (units.every((unit) => (unit.evidence[kind] ?? 0) < 1)) {
-      gaps.push({ kind, serialUnitId: null });
-    }
-  }
-  return gaps;
-}
-
-/** One sentence naming what a package still needs before Finish. */
-export function packageEvidenceRefusal(gaps: readonly PrepackEvidenceGap[], serialCount: number): string | null {
-  if (gaps.length === 0) return null;
-  const serialGaps = gaps.filter((gap) => gap.kind === 'serial').length;
-  const parts = [
-    serialGaps > 0
-      ? serialCount > 1 ? `a serial photo for ${serialGaps} of ${serialCount} serials` : 'a serial photo'
-      : null,
-    gaps.some((gap) => gap.kind === 'condition') ? 'a condition photo' : null,
-    gaps.some((gap) => gap.kind === 'contents') ? 'a contents photo' : null,
-  ].filter(Boolean);
-  return `Take ${parts.join(', ')} before printing.`;
-}
-
+/** One catalog product as the browser, the selected card and the hero paint it: square image, title, SKU. */
 export interface PrepackCatalogChoice {
   id: number;
   sku: string;
   title: string;
-  /** Manufacturer part number (`sku_catalog.mpn`), when recorded. */
-  mpn: string | null;
-  /** Inactive catalog identities remain selectable for units already received under them. */
-  isActive: boolean;
-  isProvisional: boolean;
   /** The product photo (`skuCatalogImageUrlSql` precedence); null paints initials. */
   imageUrl: string | null;
 }
@@ -137,15 +86,52 @@ export interface PrepackKitPart {
   componentName: string;
   componentType: PrepackKitPartType;
   qtyRequired: number;
-  /** A REMOTE's own catalog SKU, resolved only through sku_relationships. */
+  /** The part's own catalog SKU, resolved through sku_relationships; null when unpaired. */
   componentSku: string | null;
 }
 
+/** A child SKU paired to the product (`sku_relationships` parent → child). */
+export interface PrepackKitChild {
+  id: number;
+  sku: string;
+  title: string;
+}
+
+/**
+ * Where a `product_manuals` row is linked today — the "use cases" the
+ * operator checks before pairing. One row links one SKU (scalar columns), so
+ * pairing a manual that is linked elsewhere MOVES it here.
+ */
+export interface PrepackManualUsage {
+  sku: string | null;
+  skuCatalogId: number | null;
+  /** The linked SKU's catalog title (else the manual's own `product_title`). */
+  productTitle: string | null;
+  itemNumber: string | null;
+  orderId: number | null;
+  /** The order's channel number (`orders.order_id`), when pinned to one order. */
+  orderLabel: string | null;
+  status: 'unassigned' | 'assigned' | 'archived';
+}
+
+/** One `product_manuals` row: what it is, and where it is used. Its file opens at `productManualContentPath(id)`. */
+export interface PrepackManual {
+  id: number;
+  /** `display_name`, else `product_title`, else `file_name`. */
+  title: string;
+  /** Paperwork type (`manual`, `packing_list`, …). */
+  type: string | null;
+  fileName: string | null;
+  updatedAt: string | null;
+  usage: PrepackManualUsage;
+}
+
+/** The product's pairing facts: parts list, child SKUs and the manual. */
 export interface PrepackKit {
   catalog: PrepackCatalogChoice;
   parts: PrepackKitPart[];
-  /** Reference photos on the catalog SKU (entity `SKU`). Never unit evidence. */
-  catalogPhotoCount: number;
+  children: PrepackKitChild[];
+  manual: PrepackManual | null;
 }
 
 export interface PrepackContentFact extends PrepackKitPart {
@@ -173,9 +159,53 @@ export interface PrepackUnit {
   /** Every serial in that package (this one included), in package order. */
   packageSerials: string[];
   contents: PrepackContentFact[];
-  /** Typed prepack photo counts on this unit. */
-  evidence: PrepackEvidence;
 }
 
-/** A unit lookup: the unit, or a serial CycleForge has never seen (it is created when added to a package). */
+/** A unit lookup: the unit, or a serial CycleForge has never seen (it is created on save). */
 export type PrepackUnitLookup = { unit: PrepackUnit; newSerial: null } | { unit: null; newSerial: string };
+
+/** Hand-edited label face for one package (the QC page's product label editor). Null fields print the product default. */
+export interface PrepackLabelFace {
+  /** Top row; null = the product title. */
+  title: string | null;
+  /** Bottom-right color. */
+  color: string | null;
+  /** Custom text under the title (the face's centre line). */
+  text: string | null;
+}
+
+/** One package = one label. `serials` may be empty (the unit gets a CycleForge `U-…` handle) or hold 2+ (one PREBOX manifest). */
+export interface PrepackPackageInput {
+  serials: string[];
+  condition: PrepackCondition;
+  provenance: PrepackProvenance;
+  label: PrepackLabelFace;
+}
+
+/** `POST /api/prepack/package` body. Contents decisions apply to every package. */
+export interface PrepackSaveInput {
+  skuCatalogId: number;
+  packages: PrepackPackageInput[];
+  contents: { kitPartId: number; included: boolean }[];
+  clientEventId?: string;
+}
+
+/** `POST /api/prepack/package` answer: one print unit per package, in request order. */
+export interface PrepackSaveResult {
+  catalog: PrepackCatalogChoice;
+  printUnits: QcLabelPrintUnit[];
+}
+
+/** `POST /api/prepack/catalog/[id]/parts` body: one part on the product's list, optionally paired to a child SKU. */
+export interface PrepackKitPartInput {
+  componentName: string;
+  componentType: PrepackKitPartType;
+  qtyRequired: number;
+  childSkuCatalogId: number | null;
+}
+
+/** `DELETE /api/prepack/catalog/[id]/manual` body: unlink the manual from this product, or retire it from the library. */
+export interface PrepackManualRemoveInput {
+  manualId: number;
+  mode: 'unpair' | 'delete';
+}

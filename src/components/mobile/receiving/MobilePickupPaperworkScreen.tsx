@@ -5,8 +5,9 @@
  * paperwork. Photograph the paperwork → the server reads it into a PICKUP
  * draft (POST /api/receiving/inbound/extract-po) → review what it read →
  * land it through the same writer as the desk form
- * (POST /api/receiving/inbound/orders). Editing a draft field by field is the
- * desk's job (`/incoming/new?type=PICKUP`); the phone captures and lands.
+ * (POST /api/receiving/inbound/orders). It is THE pickup-paperwork door — the
+ * desk Local Pickup "Import paperwork" opens it too (the desk inbound form
+ * `/purchasing/new` adds purchase orders and returns only).
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -21,7 +22,7 @@ import {
 import { postInboundOrder, postInboundOrderExtract, readFileAsDataUrl } from '@/lib/inbound/inbound-order-client';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
-import { formatCostCents } from '@/lib/inbound/po-import-draft';
+import { formatCents } from '@/lib/orders/manual-order-draft';
 import { printReceivingLineLabelsByIds } from '@/lib/receiving/print-receiving-line-labels';
 import { MobileNativePhotoInput } from '@/components/mobile/photos/MobileNativePhotoCapture';
 
@@ -160,7 +161,7 @@ export function MobilePickupPaperworkScreen() {
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-text-muted">Paid</dt>
-              <dd className="text-text-default">{paidCents == null ? '—' : formatCostCents(paidCents, draft.currency)}</dd>
+              <dd className="text-text-default">{paidCents == null ? '—' : formatCents(paidCents, draft.currency)}</dd>
             </div>
             <div className="flex flex-col gap-1">
               <dt className="text-text-muted">Items</dt>

@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-05T16:15:32Z",
-  "totalRoutes": 1203,
+  "generatedAt": "2026-10-06T16:01:29Z",
+  "totalRoutes": 1216,
   "summary": {
-    "permissionGated": 978,
+    "permissionGated": 991,
     "authenticatedNoPermission": 139,
     "anonymousIntentional": 37,
     "serviceToService": 49,
@@ -2333,17 +2333,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/documents/unlinked/route.ts",
-      "methods": [
-        "DELETE",
-        "GET",
-        "POST"
-      ],
-      "gate": "requireRoutePerm",
-      "permission": "packing.review",
-      "exemptReason": null
-    },
-    {
       "path": "/api/ebay/accounts/route.ts",
       "methods": [
         "DELETE",
@@ -4186,6 +4175,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/nav/fulfilled/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/nav/locate/route.ts",
       "methods": [
         "GET",
@@ -4193,6 +4191,15 @@
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/nav/purchases/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
       "exemptReason": null
     },
     {
@@ -4922,6 +4929,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/buyer-cancel/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/caged/route.ts",
       "methods": [
         "GET"
@@ -5325,15 +5341,6 @@
       "path": "/api/packerlogs/for-order/route.ts",
       "methods": [
         "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "packing.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/packerlogs/hydrate/route.ts",
-      "methods": [
-        "POST"
       ],
       "gate": "withAuth",
       "permission": "packing.view",
@@ -5956,17 +5963,44 @@
       "exemptReason": null
     },
     {
+      "path": "/api/prepack/catalog/[id]/manual/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "product_manuals.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/prepack/catalog/[id]/manual/upload/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "product_manuals.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/prepack/catalog/[id]/parts/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "sku_stock.manage",
+      "exemptReason": null
+    },
+    {
       "path": "/api/prepack/catalog/[id]/route.ts",
       "methods": [
-        "GET",
-        "PATCH"
+        "GET"
       ],
       "gate": "requireRoutePerm",
       "permission": "sku_stock.view",
       "exemptReason": null
     },
     {
-      "path": "/api/prepack/catalog/route.ts",
+      "path": "/api/prepack/manuals/route.ts",
       "methods": [
         "GET"
       ],
@@ -5984,10 +6018,18 @@
       "exemptReason": null
     },
     {
+      "path": "/api/prepack/recent/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/prepack/unit/route.ts",
       "methods": [
-        "GET",
-        "POST"
+        "GET"
       ],
       "gate": "withAuth",
       "permission": "tech.scan_serial",
@@ -6903,15 +6945,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/receiving/inbound/import-csv/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/receiving/inbound/import-ebay/route.ts",
       "methods": [
         "POST"
@@ -6924,6 +6957,24 @@
       "path": "/api/receiving/inbound/import-po-csv/route.ts",
       "methods": [
         "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/inbound/imports/[batchId]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/inbound/imports/route.ts",
+      "methods": [
+        "GET"
       ],
       "gate": "withAuth",
       "permission": "receiving.view",
@@ -8509,11 +8560,47 @@
       "exemptReason": null
     },
     {
+      "path": "/api/shipping/label-intake/files/[id]/content/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/label-intake/files/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/label-intake/files/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/shipping/label-intake/labels/[labelId]/pdf/route.ts",
       "methods": [
         "GET"
       ],
       "gate": "requireRoutePerm",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/label-intake/orders/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
       "permission": "shipping.view",
       "exemptReason": null
     },
@@ -8683,6 +8770,24 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "sku_stock.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/sku-catalog/[id]/paperwork-reach/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/sku-catalog/[id]/paperwork-required/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "product_manuals.manage",
       "exemptReason": null
     },
     {
@@ -8912,6 +9017,15 @@
       ],
       "gate": "withAuth",
       "permission": "admin.manage_features",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/sku-catalog/scanned-item/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "sku_stock.view",
       "exemptReason": null
     },
     {
@@ -10274,11 +10388,10 @@
     {
       "path": "/api/v1/label-batches/route.ts",
       "methods": [
-        "GET",
         "POST"
       ],
       "gate": "withAuth",
-      "permission": "packing.review",
+      "permission": "packing.complete_order",
       "exemptReason": null
     },
     {
@@ -10385,11 +10498,10 @@
     {
       "path": "/api/v1/label-prints/route.ts",
       "methods": [
-        "GET",
         "POST"
       ],
       "gate": "withAuth",
-      "permission": "packing.review",
+      "permission": "print.label",
       "exemptReason": null
     },
     {

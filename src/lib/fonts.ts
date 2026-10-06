@@ -8,17 +8,10 @@ import { Inter } from 'next/font/google';
  */
 export const cfSans = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  // Normal AND italic in ONE query: a second Inter() call for the italic cut
-  // made Turbopack's font import map carry two entries for the family and the
-  // whole app failed to compile from a cold .next ("next/font/google queries
-  // have exactly one entry", 2026-09-30).
-  style: ['normal', 'italic'],
+  // Inter's variable normal face is one `next/font` request. Asking the Google
+  // loader for normal + italic generated multiple virtual font entries, which
+  // Turbopack 16.3 rejected while resolving its internal font module.
+  // Italic text uses the browser's synthesized italic face from this one family.
   variable: '--font-cf-sans',
   display: 'swap',
 });
-
-/** Kept as an alias: the italic cut now rides {@link cfSans}. */
-export const cfSansItalic = cfSans;
-
-/** ## The spine has no cut of its own */

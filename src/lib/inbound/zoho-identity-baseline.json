@@ -35,7 +35,6 @@
     "src/lib/assistant/tools/domain-read-tools.ts",
     "src/lib/assistant/tools/manual-link-tools.ts",
     "src/lib/assistant/tools/manual-order-tools.ts",
-    "src/lib/assistant/tools/po-import-tools.ts",
     "src/lib/assistant/tools/wms-tools.ts",
     "src/lib/audit-log/receiving-aggregator.ts",
     "src/lib/inbound/merge-purchase-lines.ts",

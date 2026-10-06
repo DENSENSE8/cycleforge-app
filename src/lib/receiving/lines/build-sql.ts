@@ -24,6 +24,7 @@ import {
   sqlReceivingZendeskTicketColumn,
 } from './sql-receiving-ticket';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from './sql-receiving-image';
+import { RECEIVING_LINE_LISTING_EVIDENCE_SQL } from './sql-listing-evidence';
 import {
   SHIPMENT_DELIVERY_ATTEMPTS_SQL,
   SHIPMENT_SIGNED_BY_SQL,
@@ -246,6 +247,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                 stn.is_delivered             AS shipment_is_delivered,
                 stn.delivered_at             AS shipment_delivered_at,
                 ${RECEIVING_LINE_IMAGE_URL_SQL},
+                ${RECEIVING_LINE_LISTING_EVIDENCE_SQL},
                 sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -419,6 +421,7 @@ export function buildReceivingLinesByReceivingIdSql(
                   stn.is_delivered             AS shipment_is_delivered,
                   stn.delivered_at             AS shipment_delivered_at,
                   ${RECEIVING_LINE_IMAGE_URL_SQL},
+                  ${RECEIVING_LINE_LISTING_EVIDENCE_SQL},
                   sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -1520,6 +1523,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                 stn.is_delivered             AS shipment_is_delivered,
                 stn.delivered_at             AS shipment_delivered_at,
                 ${RECEIVING_LINE_IMAGE_URL_SQL},
+                ${RECEIVING_LINE_LISTING_EVIDENCE_SQL},
                 sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -1841,7 +1845,7 @@ export function buildUnmatchedPlaceholdersSql(
              ${unmatchedSearchSql}${activityUnboxTouchSql}${scannedDockTouchSql}
            ORDER BY COALESCE(rs_agg.last_scan::text, rt.door_received_at::text, r.created_at::text) DESC NULLS LAST,
                     r.id DESC
-           LIMIT 150`,
+           ${reconcile ? '' : 'LIMIT 150'}`,
       params: unmatchedSearchVals,
     },
     count: {

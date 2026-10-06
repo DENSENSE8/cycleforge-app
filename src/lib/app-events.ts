@@ -53,6 +53,8 @@ export const COMMAND_BAR_CHORD = 'Cmd + K' as const;
 export const CLIPBOARD_HISTORY_OPEN_EVENT = 'app:clipboard-history-open' as const;
 /** Ask {@link ThrowTaskHost} to open the throw-a-task panel (spine ⋯ button). */
 export const THROW_TASK_OPEN_EVENT = 'app:throw-task-open' as const;
+/** Ask {@link NewTicketHost} to open the global New ticket composer (Add → Support, `C` then `T`). */
+export const NEW_TICKET_OPEN_EVENT = 'app:new-ticket-open' as const;
 /**
  * The agent asked the AI session to show an artifact (table / timeline /
  * ticket thread / reply draft / chart / record / report …) via the

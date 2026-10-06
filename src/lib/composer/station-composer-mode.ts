@@ -96,12 +96,12 @@ export function stationComposerModePlaceholder(
   if (mode === 'ticket') {
     if (opts.hasTicket) {
       const face = (opts.ticketLabel || '').trim() || 'ticket';
-      return `Update on ${face} — Enter to send`;
+      return `Update on ${face} — ⌘ or Ctrl+Enter to send`;
     }
     // No ticket yet → this field IS the claim body, seeded from the template.
     // It used to read "Create or link a ticket above — then send from here",
     // pointing at a claim form that no longer sits above it.
-    return 'Claim body — Enter to file the ticket';
+    return 'Claim body — ⌘ or Ctrl+Enter to file the ticket';
   }
   return 'Note for this item — shows on the sticker center';
 }

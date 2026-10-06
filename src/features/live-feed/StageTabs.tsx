@@ -6,6 +6,7 @@
  * column; swiping the column moves the tab.
  */
 
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { STATE_OUTLINE_CLASS } from '@/design-system/components/record-card/record-card-outline';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { PACKAGE_STAGE_META, type PackageStage } from '@/lib/live-feed/stages';
@@ -45,7 +46,7 @@ export function StageTabs({
             <span className="flex items-center gap-1">
               <look.Icon className={cn('size-3.5', on ? look.ink : 'text-slate-400')} />
               <span className={cn('text-lg font-semibold leading-none tabular-nums', on ? 'text-slate-900' : 'text-slate-600')}>
-                {column.count}
+                <AnimatedStat value={column.count} />
               </span>
             </span>
             <span className={cn('truncate text-xs font-medium', on ? look.ink : 'text-slate-500')}>

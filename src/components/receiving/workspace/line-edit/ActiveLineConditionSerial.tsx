@@ -15,6 +15,7 @@ import { useSetting } from "@/hooks/useSettings";
 import { requestConfirm } from "@/design-system/components/confirm";
 import { resolveCaptureEntry } from "../line-receive-mode";
 import { PoLineUnitCaptureList } from "./PoLineUnitCaptureList";
+import type { ListingSerialRef } from "@/lib/receiving/receiving-line-row";
 
 type SerialLookupView = Pick<
   ComponentProps<typeof SerialMatchResult>,
@@ -63,6 +64,7 @@ export function ActiveLineConditionSerial({
   poRef = null,
   poRouteRef = null,
   onArmCapture,
+  listingSerials = null,
 }: {
   serials: ActiveRowSerial[];
   lineId: number;
@@ -173,6 +175,8 @@ export function ActiveLineConditionSerial({
   onActiveConditionChange: (next: string | null) => void;
   onConditionChange: (next: string) => void;
   onEditingSerialChange: (next: ActiveRowSerial | null) => void;
+  /** The line's `listing_serials` — the capture row offers Confirm for each unconfirmed one. */
+  listingSerials?: ReadonlyArray<ListingSerialRef> | null;
 }) {
   // Settings Registry: org policy for the destructive serial-remove confirm
   // (default on — falls back to the prior always-confirm UX while loading).
@@ -302,6 +306,7 @@ export function ActiveLineConditionSerial({
           autoFocusSerial={autoFocusSerial}
           autoCommitDefaultGrade={autoCommitDefaultGrade}
           onArmCapture={onArmCapture}
+          listingSerials={listingSerials}
         />
       ) : isMultiQty ? (
         // Non-progressive multi-unit detail: compact unit rows.

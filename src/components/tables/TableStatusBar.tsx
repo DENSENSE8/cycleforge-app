@@ -12,7 +12,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useSelectionStatusBarHotkeys } from '@/hooks/useSelectionStatusBarHotkeys';
 import { cn } from '@/utils/_cn';
-import { formatDataTableCount } from '@/lib/tables/data-table-pagination';
+import { formatDataTableCount, type DataTableRowNoun } from '@/lib/tables/data-table-pagination';
 
 
 /** One tab in the strip. Never an `all` entry — see {@link DataTable}. */
@@ -57,6 +57,8 @@ interface TableStatusBarProps {
   shown?: number;
   /** Rows behind the CURRENT narrowing — the denominator of {@link shown}. */
   total?: number;
+  /** What the rows are called ("purchases") — default "rows". */
+  rowNoun?: DataTableRowNoun;
   /** Rows the operator has picked. Zero prints nothing — see below. */
   selected?: number;
   /** Live selection CTAs (Assign, Copy, Listing → staff, …). */
@@ -193,6 +195,7 @@ export function TableStatusBar({
   lead,
   shown,
   total,
+  rowNoun,
   selected = 0,
   selectionActions,
   pager,
@@ -291,7 +294,7 @@ export function TableStatusBar({
         ) : null}
         {typeof shown === 'number' ? (
           <span className="tabular-nums" data-testid="data-table-row-count">
-            {formatDataTableCount(shown, total)}
+            {formatDataTableCount(shown, total, rowNoun)}
           </span>
         ) : null}
         {pager && (pager.pageCount > 1 || onLoadMore) ? (

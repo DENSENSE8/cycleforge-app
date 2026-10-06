@@ -13,14 +13,6 @@ import { isPackerLogEnrichmentRead } from '@/lib/feature-flags';
 import { sqlPackerOrderMatchLateral } from '@/lib/neon/packer-order-match';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import type { OrgId } from '@/lib/tenancy/constants';
-import {
-  NO_SHIPPED_DESK_FILTERS,
-  SHIPPED_CARD_JOINS,
-  hasShippedDeskFilter,
-  shippedDeskConditions,
-  shippedFilterJoins,
-  type ShippedDeskFilters,
-} from '@/lib/shipping/shipped-filter/shipped-filter-sql';
 import { sqlOrderPickedByStaff } from '@/lib/orders/desk-view-sql';
 import { orderLineImageSql } from '@/lib/photos/order-line-image-sql';
 
@@ -31,6 +23,8 @@ interface FetchPackerLogRowsOptions {
    * every tenant's PACK rows to any caller (tenant-isolation bug, 2026-07-01).
    */
   organizationId: OrgId;
+  /** Fulfilled list (default) or a pack station's own packs — see {@link PackerLogPopulation}. */
+  population?: PackerLogPopulation;
   packerId?: number | null;
   /**
    * Universal staff filter (P1-WORK-02): narrow to rows this staff packed OR
@@ -46,16 +40,8 @@ interface FetchPackerLogRowsOptions {
   shippedTo?: string | null;
   /** `?pickedBy` — see {@link PackerLogBaseFilter.pickedBy}. */
   pickedBy?: number | null;
-  /**
-   * The Shipped desk's view filters (type / carrier / status / exceptions /
-   * channel / package status), answered in the page WHERE — one predicate with the sidebar facet counts.
-   * Absent = no such narrowing (packer station, recents, review).
-   */
-  shippedFilters?: ShippedDeskFilters;
   /** The bench find box, ANSWERED HERE. */
   searchTerm?: string;
-  /** Spine-first render (immediate paint). */
-  spineOnly?: boolean;
   /** Sidebar sort. Default is scanned-out, newest. */
   sort?: string | null;
 }
@@ -111,8 +97,17 @@ const SEARCH_ROW_CEILING = 5000;
 // Set once if `packer_log_enrichment` is absent (a DB that hasn't run the 2026-06-29f migration — e.g.
 let enrichmentTableMissing = false;
 
+/**
+ * Which packer-log rows a read is about. `fulfilled` (the default) is the
+ * Fulfilled list: packages with a staffed dock scan-out, windowed by that
+ * scan-out. `packed` is a pack station's own history: its PACK scans, windowed
+ * by the pack instant — a fresh pack belongs there before anyone scans it out.
+ */
+export type PackerLogPopulation = 'fulfilled' | 'packed';
+
 export interface PackerLogBaseFilter {
   organizationId: OrgId;
+  population?: PackerLogPopulation;
   packerId?: number | null;
   staffId?: number | null;
   weekStart?: string;
@@ -233,15 +228,17 @@ export function sqlLatestShipConfirmStaff(alias = 'sal'): string {
 }
 /**
  * The packer-log population every read shares — tenant, row population, the
- * Shipped-desk membership (a dock scan-out), staff and the padded date window —
- * over `station_activity_logs sal` + `packer_logs pl`. Appends its bind values
- * to `params`. `needsOrderJoins` = the query must add {@link packerLogOrderJoins}.
+ * Shipped-desk membership (a dock scan-out; `fulfilled` only), staff and the
+ * padded date window — over `station_activity_logs sal` + `packer_logs pl`.
+ * Appends its bind values to `params`. `needsOrderJoins` = the query must add
+ * {@link packerLogOrderJoins}.
  */
 export function buildPackerLogBaseWhere(
   opts: PackerLogBaseFilter,
   params: unknown[],
 ): { conditions: string[]; needsOrderJoins: boolean } {
   const orgId = opts.organizationId;
+  const packed = opts.population === 'packed';
   const weekStart = opts.weekStart ?? '';
   const weekEnd = opts.weekEnd ?? '';
   const staffFilterId =
@@ -252,7 +249,7 @@ export function buildPackerLogBaseWhere(
   conditions.push(`sal.organization_id = $${params.length}`);
 
   // Row population:
-  conditions.push(`(
+  conditions.push(packed ? `sal.station = 'PACK'` : `(
     sal.station = 'PACK'
     OR (
       sal.activity_type = 'SHIP_CONFIRM'
@@ -274,16 +271,19 @@ export function buildPackerLogBaseWhere(
   )`);
 
   // Shipped desk membership: a dock scan-out with staff + time. Packed-only
-  // (IN STAGING) stays on To-ship until SHIP_CONFIRM.
-  conditions.push(`EXISTS (
-    SELECT 1 FROM station_activity_logs so
-    WHERE so.activity_type = 'SHIP_CONFIRM'
-      AND so.staff_id IS NOT NULL
-      AND so.staff_id > 0
-      AND so.shipment_id IS NOT NULL
-      AND so.shipment_id = sal.shipment_id
-      AND so.organization_id = sal.organization_id
-  )`);
+  // (IN STAGING) stays on To-ship until SHIP_CONFIRM — and on the packer's own
+  // `packed` history, which is every pack it made.
+  if (!packed) {
+    conditions.push(`EXISTS (
+      SELECT 1 FROM station_activity_logs so
+      WHERE so.activity_type = 'SHIP_CONFIRM'
+        AND so.staff_id IS NOT NULL
+        AND so.staff_id > 0
+        AND so.shipment_id IS NOT NULL
+        AND so.shipment_id = sal.shipment_id
+        AND so.organization_id = sal.organization_id
+    )`);
+  }
 
   if (opts.packerId != null && !Number.isNaN(opts.packerId)) {
     params.push(opts.packerId);
@@ -304,13 +304,15 @@ export function buildPackerLogBaseWhere(
   }
 
   // A Shipped period is the dock handoff period, not the earlier pack-scan
-  // period. Keep the one-day padding used by the client-side PST boundary pass.
+  // period; a `packed` period is the pack instant. Keep the one-day padding
+  // used by the client-side PST boundary pass.
   if (weekStart && weekEnd) {
     params.push(weekStart, weekEnd);
     const ws = params.length - 1;
     const we = params.length;
-    conditions.push(`${sqlLatestShipConfirmAt()} >= ($${ws}::date - interval '1 day')`);
-    conditions.push(`${sqlLatestShipConfirmAt()} <  ($${we}::date + interval '2 days')`);
+    const periodAt = packed ? 'sal.created_at' : sqlLatestShipConfirmAt();
+    conditions.push(`${periodAt} >= ($${ws}::date - interval '1 day')`);
+    conditions.push(`${periodAt} <  ($${we}::date + interval '2 days')`);
   }
 
   if (opts.shippedFrom && opts.shippedTo) {
@@ -398,9 +400,6 @@ export async function fetchPackerLogRows(
   const offset = searchTerm ? 0 : (opts.offset ?? 0);
   const weekStart = opts.weekStart ?? '';
   const weekEnd = opts.weekEnd ?? '';
-  // Spine-first only makes sense on the enriched read path (it trims enriched
-  // laterals); the legacy query is left whole.
-  const spineOnly = Boolean(opts.spineOnly) && isPackerLogEnrichmentRead();
 
   const orgId = opts.organizationId;
 
@@ -411,20 +410,14 @@ export async function fetchPackerLogRows(
     // Org id FIRST so the cache is per-tenant — never share a PACK-log page
     // across organizations.
     organizationId: orgId,
+    // A packer's own packs and the Fulfilled list are different answers.
+    population: opts.population ?? 'fulfilled',
     packerId: opts.packerId ?? '',
     staffId: staffFilterId ?? '',
     limit,
     offset,
     weekStart,
     weekEnd,
-    shippedFilters: [
-      opts.shippedFilters?.type ?? '',
-      opts.shippedFilters?.carrier ?? '',
-      opts.shippedFilters?.statusCategory ?? '',
-      opts.shippedFilters?.exceptionsOnly ? 'exceptions' : '',
-      (opts.shippedFilters?.channels ?? []).join(','),
-      (opts.shippedFilters?.cardStatus ?? []).join(','),
-    ].join('|'),
     // Exact shipped-instant window + picker — each narrows the answer.
     shippedWindow: opts.shippedFrom && opts.shippedTo ? `${opts.shippedFrom}|${opts.shippedTo}` : '',
     pickedBy: opts.pickedBy ?? '',
@@ -432,9 +425,6 @@ export async function fetchPackerLogRows(
     // it a searched page and the unfiltered week collide on one entry and the
     // first to land is served to the other.
     q: searchTerm,
-    // Spine and full responses have different column payloads — keep them in
-    // separate cache entries so one can never be served for the other.
-    phase: spineOnly ? 'spine' : 'full',
     sort: opts.sort ?? '',
   });
 
@@ -455,33 +445,10 @@ export async function fetchPackerLogRows(
     conditions.push(sqlPackerLogSearch(`$${params.length}`));
   }
 
-  // The Shipped desk's view filters. Both read paths bind the same values; only
-  // the order-match fragment differs, so each gets its own WHERE over one list.
-  const shippedFilters = opts.shippedFilters ?? NO_SHIPPED_DESK_FILTERS;
-  const boundShipped = new Map<unknown, string>();
-  const bindShipped = (value: unknown) => {
-    let placeholder = boundShipped.get(value);
-    if (!placeholder) {
-      params.push(value);
-      placeholder = `$${params.length}`;
-      boundShipped.set(value, placeholder);
-    }
-    return placeholder;
-  };
-  const whereFor = (enriched: boolean) =>
-    `WHERE ${[...conditions, ...shippedDeskConditions(shippedFilters, enriched, bindShipped, sqlLatestShipConfirmAt())].join(' AND ')}`;
-  const legacyWhere = whereFor(false);
-  const enrichedWhere = whereFor(true);
+  const pageWhere = `WHERE ${conditions.join(' AND ')}`;
   params.push(limit, offset);
   const limitIdx = params.length - 1;
   const offsetIdx = params.length;
-
-  // Page-selection joins. Almost every filter touches only sal/pl, but a
-  // staff / pickedBy filter references the order-derived laterals, and a
-  // Shipped desk filter reads the package — pulled in only when active.
-  const shippedJoins = hasShippedDeskFilter(shippedFilters);
-  // A package-status pick reads the row's order, hold and test deadline too.
-  const cardCut = shippedFilters.cardStatus.length > 0;
 
   // The PACKAGE a row is about, and its order lines (lowest `orders.id` first —
   // the record's primary line) with the SKU identity title / photo sources the
@@ -535,7 +502,11 @@ export async function fetchPackerLogRows(
   // Resolve the page before the expensive per-row product-title / serial /
   // order-match laterals run. Compute the latest handoff once per shipment so
   // ordering does not execute a correlated aggregate for every candidate row.
-  const pageOrder = shippedPageOrderSql(opts.sort);
+  // A packer's own packs read newest PACK first — the pack instant is that
+  // population's axis, as it is its window.
+  const pageOrder = opts.population === 'packed'
+    ? 'sal.created_at DESC NULLS LAST, sal.id DESC'
+    : shippedPageOrderSql(opts.sort);
   const pageCteFor = (enriched: boolean) => `
     WITH latest_ship_confirm AS MATERIALIZED (
         SELECT DISTINCT ON (so_page.shipment_id)
@@ -555,8 +526,8 @@ export async function fetchPackerLogRows(
         FROM station_activity_logs sal
         LEFT JOIN latest_ship_confirm ship_page ON ship_page.shipment_id = sal.shipment_id
         LEFT JOIN shipping_tracking_numbers stn_sort ON stn_sort.id = sal.shipment_id
-        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins || shippedFilters.channels.length > 0 || cardCut ? packerLogOrderJoins(enriched) : ''}${shippedJoins ? shippedFilterJoins(enriched) : ''}${cardCut ? SHIPPED_CARD_JOINS : ''}
-        ${enriched ? enrichedWhere : legacyWhere}
+        LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id${needsOrderJoins ? packerLogOrderJoins(enriched) : ''}
+        ${pageWhere}
         ORDER BY ${pageOrder}
         LIMIT $${limitIdx} OFFSET $${offsetIdx}
     )`;
@@ -886,17 +857,11 @@ export async function fetchPackerLogRows(
     ORDER BY page.ord
   `;
 
-  // Read-model path (PACKER_LOG_ENRICHMENT_READ). The deadline lateral stays
-  // off the spine; hydration fills ship_by_date. delivered_at is on `stn`,
+  // Read-model path (PACKER_LOG_ENRICHMENT_READ). delivered_at is on `stn`,
   // which this query already joins.
-  const deadlineCols = spineOnly
-    ? `NULL::text AS ship_by_date,
-        NULL::text AS deadline_at,`
-    : `to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_by_date,
+  const deadlineCols = `to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_by_date,
         to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS deadline_at,`;
-  const deadlineJoin = spineOnly
-    ? ''
-    : `LEFT JOIN LATERAL (
+  const deadlineJoin = `LEFT JOIN LATERAL (
         SELECT wa.deadline_at
         FROM work_assignments wa
         WHERE wa.entity_type = 'ORDER'
@@ -1065,7 +1030,7 @@ export async function fetchPackerLogRows(
   // Spine-first skips the photos round-trip; photos arrive via the hydrate call.
   const photosMap: Record<number, any[]> = {};
   const outcomeMap: Record<number, string> = {};
-  if (!spineOnly && packerLogIds.length > 0) {
+  if (packerLogIds.length > 0) {
     try {
       const photosResult = await pool.query(
         `SELECT l.entity_id,

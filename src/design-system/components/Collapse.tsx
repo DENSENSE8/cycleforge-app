@@ -88,9 +88,14 @@ function measureEdgeSpacing(el: HTMLElement): EdgeSpacing {
 
 type CollapseTag = 'div' | 'li';
 
-/** A hairline between consecutive rows, drawn by a pseudo-element so it adds no height of its own. */
+/**
+ * A hairline between consecutive rows, drawn by a pseudo-element so it adds no height of its own.
+ * `isolate` + `z-10` keep it ABOVE the row's content: a row whose card is
+ * positioned / transformed with an opaque fill (a RecordCard `<article>`, a
+ * sliding motion box) otherwise paints over the rule and the divider vanishes.
+ */
 const ROW_RULE =
-  'relative [&+&]:before:pointer-events-none [&+&]:before:absolute [&+&]:before:inset-x-4 [&+&]:before:top-px [&+&]:before:h-px [&+&]:before:bg-border-hairline';
+  'relative isolate [&+&]:before:pointer-events-none [&+&]:before:absolute [&+&]:before:inset-x-4 [&+&]:before:top-px [&+&]:before:z-10 [&+&]:before:h-px [&+&]:before:bg-border-hairline';
 
 interface CollapseItemProps {
   children: ReactNode;

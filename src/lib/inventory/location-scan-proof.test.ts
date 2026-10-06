@@ -25,10 +25,8 @@ test('binds a location scan proof to tenant, staff, and canonical location', () 
   assert.throws(() => verifyLocationScanProof(signed.token, { ...identity, locationCode: 'C0101200' }, { secret, now: 1_800_000_100 }));
 });
 
-test('expires a location scan proof', () => {
+test('a location scan still authorizes that staff and bin after its stamp age', () => {
   const signed = signLocationScanProof(identity, { secret, now: 1_800_000_000, ttlSeconds: 300 });
-  assert.throws(
-    () => verifyLocationScanProof(signed.token, identity, { secret, now: 1_800_000_301 }),
-    /expired/i,
-  );
+  const claims = verifyLocationScanProof(signed.token, identity, { secret, now: 1_800_000_301 });
+  assert.equal(claims.locationCode, 'C0101100');
 });

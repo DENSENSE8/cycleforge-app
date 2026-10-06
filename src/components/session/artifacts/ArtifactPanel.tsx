@@ -22,7 +22,6 @@ import { artifactSummary } from './artifact-summary';
 import { DocumentArtifact } from './DocumentArtifact';
 import { PaymentArtifact } from './PaymentArtifact';
 import { OrderDraftArtifact } from './OrderDraftArtifact';
-import { PoDraftArtifact } from './PoDraftArtifact';
 import { CapabilityArtifact } from './CapabilityArtifact';
 import {
   ChartArtifact,
@@ -134,8 +133,6 @@ function renderArtifact(
       return <PaymentArtifact artifact={artifact} />;
     case 'order_draft':
       return <OrderDraftArtifact artifact={artifact} />;
-    case 'po_draft':
-      return <PoDraftArtifact artifact={artifact} />;
     case 'capability':
       return <CapabilityArtifact artifact={artifact} />;
     default:

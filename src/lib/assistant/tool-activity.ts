@@ -38,7 +38,6 @@ export const WRITE_TOOL_NAMES = [
   'link_manual_to_sku',
   'request_payment',
   'create_manual_order',
-  'import_purchase_order',
   'link_po_to_order',
   'set_order_flag',
   'mark_out_of_stock',
@@ -115,7 +114,6 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   link_manual_to_sku: 'Linking the manual to the SKU',
   request_payment: 'Setting up the Square payment',
   create_manual_order: 'Creating the order',
-  import_purchase_order: 'Importing the purchase order',
   link_po_to_order: 'Linking the PO to the order',
   set_order_flag: 'Flagging the orders',
   mark_out_of_stock: 'Marking the lines out of stock',
@@ -140,7 +138,6 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   // ── Order intake (session surface) ──────────────────────────────────────
   triage_orders_csv: 'Triaging the pasted orders',
   draft_manual_order: 'Drafting the order',
-  draft_po_import: 'Drafting the purchase order',
 
   // ── Where the operation is leaking ──────────────────────────────────────
   get_roi_gaps: 'Finding where we are leaking',

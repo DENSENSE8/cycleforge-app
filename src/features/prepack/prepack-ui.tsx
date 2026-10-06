@@ -1,24 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { Check } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useState, type ReactNode } from 'react';
 import { RecordPhoto } from '@/design-system/components/record-ledger/RecordPhoto';
-import { Button } from '@/design-system/primitives';
+import type { PrepackCatalogChoice } from '@/lib/prepack/types';
 import { cn } from '@/utils/_cn';
 
 /**
- * A product's photo tile in a list row — the product photo, or its initials
- * (also when the photo URL fails, e.g. a Zoho image while Zoho is
- * disconnected). Non-interactive on purpose: it sits inside row buttons; a
- * card that is not a button wraps it in `PhotoHoverPeek`.
+ * A product's photo tile — the product photo, or its initials (also when the
+ * photo URL fails, e.g. a Zoho image while Zoho is disconnected).
+ * Non-interactive on purpose: it sits inside row buttons.
  */
 export function ProductThumb({ src, title, className }: { src: string | null; title: string; className?: string }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const shown = src && src !== failedSrc ? src : null;
   return (
     <span
-      className={cn('relative size-11 shrink-0 overflow-hidden rounded-mode-control bg-surface-sunken ring-1 ring-inset ring-black/5', className)}
+      className={cn('relative block size-11 shrink-0 overflow-hidden rounded-mode-control bg-surface-sunken ring-1 ring-inset ring-black/5', className)}
       data-testid="product-thumb"
       data-has-photo={shown ? 'true' : 'false'}
       data-photo-failed={src && src === failedSrc ? 'true' : undefined}
@@ -28,69 +25,50 @@ export function ProductThumb({ src, title, className }: { src: string | null; ti
   );
 }
 
-export function PrepackFact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 border-b border-mode-rule py-2 last:border-b-0">
-      <dt className="text-role-caption font-semibold text-text-muted">{label}</dt>
-      <dd className={`break-words text-right text-role-caption text-mode-ink ${mono ? 'font-mono' : ''}`}>{value}</dd>
-    </div>
-  );
-}
-
-export interface PrepackChoice<Id extends string> {
-  id: Id;
-  label: string;
-  help: string;
-}
-
-/** One pick-one grid of tall Button tiles (condition grade, provenance). `hotkeys` paints 1–9 on desk. */
-export function PrepackChoiceTiles<Id extends string>({
-  legend,
-  choices,
-  value,
-  onChange,
-  hotkeys = false,
-  testIdPrefix,
+/**
+ * The one product identity face — square image, title, SKU underneath — in
+ * the browser rows, the form's Product section and the context hero.
+ * `photo` lets the caller wrap the thumb (the hero's shared-layout morph).
+ */
+export function ProductIdentity({
+  product,
+  size = 'row',
+  photo,
+  trailing,
 }: {
-  legend: string;
-  choices: readonly PrepackChoice<Id>[];
-  value: Id | null;
-  onChange: (id: Id) => void;
-  hotkeys?: boolean;
-  testIdPrefix: string;
+  product: PrepackCatalogChoice;
+  size?: 'row' | 'card' | 'hero';
+  photo?: (thumb: ReactNode) => ReactNode;
+  trailing?: ReactNode;
 }) {
-  return (
-    <fieldset className="space-y-2" data-testid={`${testIdPrefix}-choice`}>
-      <legend className="text-role-caption font-semibold text-text-muted">{legend}</legend>
-      <div className="grid grid-cols-2 gap-2">
-        {choices.map((choice, index) => {
-          const selected = value === choice.id;
-          return (
-            <HoverTooltip
-              key={choice.id}
-              label={choice.label}
-              shortcut={hotkeys && index < 9 ? String(index + 1) : undefined}
-              disabled={!hotkeys}
-              asChild
-            >
-              <Button
-                variant={selected ? 'ink' : 'secondary'}
-                size="lg"
-                aria-pressed={selected}
-                onClick={() => onChange(choice.id)}
-                className="h-auto min-h-16 flex-col items-start justify-center gap-0.5 whitespace-normal py-2 text-left"
-                data-testid={`${testIdPrefix}-${choice.id.toLowerCase()}`}
-              >
-                <span className="flex w-full items-center gap-1.5 text-role-caption font-semibold">
-                  <span className="min-w-0 flex-1">{choice.label}</span>
-                  {selected ? <Check className="size-3.5 shrink-0" /> : null}
-                </span>
-                <span className="text-role-eyebrow font-normal opacity-80">{choice.help}</span>
-              </Button>
-            </HoverTooltip>
-          );
-        })}
+  const thumb = (
+    <ProductThumb
+      src={product.imageUrl}
+      title={product.title}
+      className={size === 'hero' ? 'size-full' : size === 'card' ? 'size-20' : 'size-12'}
+    />
+  );
+  if (size === 'hero') {
+    return (
+      <div className="flex flex-col gap-3" data-testid="prepack-product-hero">
+        <div className="aspect-square w-full max-w-72">{photo ? photo(thumb) : thumb}</div>
+        <div className="min-w-0">
+          <p className="break-words text-role-title font-semibold text-mode-ink">{product.title}</p>
+          <p className="break-all font-mono text-role-caption text-text-muted">{product.sku}</p>
+        </div>
       </div>
-    </fieldset>
+    );
+  }
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      {photo ? photo(thumb) : thumb}
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left">
+        <span className={cn('line-clamp-2 break-words font-semibold text-mode-ink', size === 'card' ? 'text-role-data' : 'text-sm')}>
+          {product.title}
+        </span>
+        <span className="break-all font-mono text-role-caption text-text-muted">{product.sku}</span>
+      </div>
+      {trailing}
+    </div>
   );
 }

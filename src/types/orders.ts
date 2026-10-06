@@ -120,6 +120,8 @@ export interface ShippedOrder {
   /** True when this is an ASK, not revenue. Surfaces must mark it (≈). */
   price_is_estimate?: boolean;
   status_history: any;
+  /** `orders.status`. `buyer_cancelled` is the operator's buyer-cancel mark. */
+  status?: string | null;
   /** Derived from shipping_tracking_numbers carrier status — not stored on orders */
   is_shipped?: boolean;
   /** Operator blocked the line — `orders.is_out_of_stock`. */

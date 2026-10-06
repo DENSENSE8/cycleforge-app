@@ -110,13 +110,22 @@ const REF_DIGITS = `regexp_replace(COALESCE(reference_number, ''), '[^0-9]', '',
  * last-8 tier also counts each shipment as its NEWEST carton — what `stn_exact`
  * picks for the same row — so a box re-minted under one shipment is one hit.
  * Every tier is index-served (2026-09-29f / 2026-09-29g migrations).
+ *
+ * A carton owns a shipment through `receiving_carton.shipment_id` (its primary
+ * box) OR a `shipment_links` RECEIVING row — every further box of a purchase
+ * order that shipped in several boxes. Both STN tiers read both, so box 3 of
+ * 10 opens its purchase order's carton like box 1 does.
  */
+const CARTON_OWNS_SHIPMENT = `(r.shipment_id = stn.id OR r.id IN (
+      SELECT sl.owner_id FROM shipment_links sl
+       WHERE sl.shipment_id = stn.id AND sl.owner_type = 'RECEIVING' AND sl.organization_id = $7::uuid))`;
+
 export const SCAN_MATCH_PROBE_SQL = `
 WITH stn_exact AS (
   SELECT stn.id AS shipment_id, r.id AS receiving_id, r.source AS receiving_source,
          r.zoho_purchaseorder_id AS po_id, ${lineCount('r.id')}
     FROM shipping_tracking_numbers stn
-    LEFT JOIN receiving_carton r ON r.shipment_id = stn.id AND ${ORG_JOIN}
+    LEFT JOIN receiving_carton r ON ${CARTON_OWNS_SHIPMENT} AND ${ORG_JOIN}
    WHERE $1 <> '' AND stn.tracking_number_normalized = $1
    ORDER BY r.id DESC NULLS LAST
    LIMIT 1
@@ -132,7 +141,7 @@ WITH stn_exact AS (
              OR RIGHT(regexp_replace(stn.tracking_number_raw, '\\D', '', 'g'), 8) = $2)
         OFFSET 0
       ) stn
-      JOIN receiving_carton r ON r.shipment_id = stn.id
+      JOIN receiving_carton r ON ${CARTON_OWNS_SHIPMENT}
      WHERE ${ORG_JOIN}
      ORDER BY stn.id, r.id DESC
   ) newest

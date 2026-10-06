@@ -13,7 +13,6 @@ import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
 import { LOCATION_STOCK_SORTS } from '@/lib/inventory/location-stock-row';
 import { parseQcLabelViewWire } from '@/lib/labels/qc-label-views';
-import { parsePrepackCondition, parsePrepackProvenance } from '@/lib/prepack/types';
 import { parseLabelCopiesWire } from '@/lib/print/labelCopies';
 import {
   RECEIVING_HISTORY_URL_PARAMS,
@@ -398,6 +397,7 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
     /** All is the default and rides the bare URL. */
     tab: paramCanonical(parseLocationsTabWire),
     room: paramText,
+    excludeRoom: paramText,
     code: paramText,
     q: paramText,
     status: paramText,
@@ -427,10 +427,12 @@ export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
     room: paramText,
     /** Numeric aisle multi-select, comma-separated. */
     aisle: paramText,
+    excludeAisle: paramText,
     /** Physical location order in the stock walk. */
     sort: paramEnum(LOCATION_STOCK_SORTS),
     /** Operational state funnel: open placeholders or catalog-paired stock. */
     status: paramText,
+    excludeStatus: paramText,
     /** The open stock pair (its record key) — the evidence column. */
     open: paramText,
     /** An on-hold SKU named by a compatibility/share link. */
@@ -490,17 +492,12 @@ const INVENTORY_QC_LABELS_ROUTE_PARAMS = defineRouteParams({
     task: paramEnum(['prepack'] as const),
     /** The row list's 1-based page (`useTriageCut`). */
     page: paramPositiveInt,
-    // The desk prepack task's run (`prepackHref`, same contract as `/m/prepack`). Hygiene
+    // The desk prepack form (`prepackHref`, same contract as `/m/prepack`). Hygiene
     // stripping these looped: replace → refetch → the form rewrote them → replace…
-    mode: paramEnum(['single', 'bulk'] as const),
-    step: paramEnum(['product', 'unit', 'facts', 'evidence', 'contents', 'label'] as const),
     catalogId: paramPositiveInt,
-    condition: paramRoundTrip(parsePrepackCondition),
-    provenance: paramRoundTrip(parsePrepackProvenance),
-    /** One per serial in the package. */
+    /** The scanned serial the form was started from. */
     unit: paramText,
   },
-  repeats: ['unit'],
   carries: WORKBENCH_CARRIES,
 });
 

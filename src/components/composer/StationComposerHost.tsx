@@ -388,9 +388,17 @@ export function StationComposerHost({
   const handleModeKey = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (onTextareaKeyDown?.(e)) return true;
-      return false;
+      // Ticket mode in Unbox: Enter breaks the line. Send is ⌘/Ctrl+Enter.
+      // Unbox notes and Ask still commit on Enter.
+      if (!isTicket || e.key !== 'Enter' || e.nativeEvent.isComposing) return false;
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        onTicketCommit?.();
+        return true;
+      }
+      return true;
     },
-    [onTextareaKeyDown],
+    [isTicket, onTextareaKeyDown, onTicketCommit],
   );
 
   // Ticket `+` drills; Unbox `+` keeps its flat coloured insert rail. Leaving
@@ -599,10 +607,10 @@ export function StationComposerHost({
             : isAsk
               ? 'Ask (Enter) · Shift+Enter for newline'
               : ticketCommitLabel
-                ? `${ticketCommitLabel} (Enter)`
+                ? `${ticketCommitLabel} (⌘ or Ctrl+Enter)`
                 : hasTicket
-                  ? `${stationComposerTicketCommitLabel(true, ticketIsPublic)} (Enter) · Shift+Enter for newline`
-                  : 'Create ticket (Enter)'
+                  ? `${stationComposerTicketCommitLabel(true, ticketIsPublic)} (⌘ or Ctrl+Enter)`
+                  : 'Create ticket (⌘ or Ctrl+Enter)'
         }
         ghostSuffix={isTicket || isAsk ? undefined : ghostSuffix}
         matchedPhrase={isTicket || isAsk ? null : matchedPhrase}

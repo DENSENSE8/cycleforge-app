@@ -8,88 +8,28 @@ import { CopyChip } from '@/components/ui/CopyChip';
 import { EVIDENCE_CONTROL_CLASS } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { Button } from '@/design-system/primitives';
+import { TextField } from '@/design-system/primitives/TextField';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
+import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { SKU_EXCEPTIONS_PATH } from '@/lib/inventory/sku-exception-links';
 import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 import { toast } from '@/lib/toast';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 const TITLE_MIN = 2;
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 2000;
-/** Description height: starts at ~4 lines, drags between one short line and most of a screen. */
-const DESCRIPTION_DEFAULT_PX = 96;
-const DESCRIPTION_MIN_PX = 72;
-const DESCRIPTION_MAX_PX = 640;
-const GRIP_KEY_STEP_PX = 24;
 
 type OnChanged = () => Promise<void>;
-
-/**
- * A full-width grip under a field: press and drag down to grow it, up to
- * shrink it (↑ / ↓ with the grip focused). The textarea's own corner handle
- * is too small to find (owner 2026-09-30).
- */
-function DragResizeGrip({
-  label,
-  heightPx,
-  onHeight,
-  testId,
-}: {
-  label: string;
-  heightPx: number;
-  onHeight: (px: number) => void;
-  testId?: string;
-}) {
-  const clamp = (px: number) => Math.min(DESCRIPTION_MAX_PX, Math.max(DESCRIPTION_MIN_PX, Math.round(px)));
-  return (
-    <div
-      role="separator"
-      aria-orientation="horizontal"
-      aria-label={label}
-      aria-valuemin={DESCRIPTION_MIN_PX}
-      aria-valuemax={DESCRIPTION_MAX_PX}
-      aria-valuenow={heightPx}
-      tabIndex={0}
-      title="Drag to resize"
-      data-testid={testId}
-      className={cn('group/grip -mt-1 flex h-4 w-full cursor-row-resize touch-none items-center justify-center rounded-mode', focusRing('control'))}
-      onPointerDown={(event) => {
-        event.preventDefault();
-        const startY = event.clientY;
-        const startPx = heightPx;
-        const target = event.currentTarget;
-        target.setPointerCapture(event.pointerId);
-        const move = (e: PointerEvent) => onHeight(clamp(startPx + e.clientY - startY));
-        const up = () => {
-          target.removeEventListener('pointermove', move);
-          target.removeEventListener('pointerup', up);
-          target.removeEventListener('pointercancel', up);
-        };
-        target.addEventListener('pointermove', move);
-        target.addEventListener('pointerup', up);
-        target.addEventListener('pointercancel', up);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'ArrowDown') onHeight(clamp(heightPx + GRIP_KEY_STEP_PX));
-        else if (event.key === 'ArrowUp') onHeight(clamp(heightPx - GRIP_KEY_STEP_PX));
-        else return;
-        event.preventDefault();
-      }}
-    >
-      <span aria-hidden className="h-1 w-10 rounded-full bg-border-default transition-colors group-hover/grip:bg-border-emphasis" />
-    </div>
-  );
-}
 
 // ── Product ─────────────────────────────────────────────────────────────────
 
 /**
- * The title and description typed on the phone, editable here. An untouched
+ * The title and description typed on the phone, editable here as the house
+ * floating-label fields (owner 2026-10-05). Edits save themselves; the card
+ * speaks only while saving or when the title is out of range. An untouched
  * field shows the SERVER value, so a phone edit landing through realtime
- * repaints it; once touched it holds the draft until Save or Revert.
+ * repaints it; once touched it holds the draft until it saves.
  */
 export function SkuExceptionProductSection({
   fieldId,
@@ -103,7 +43,6 @@ export function SkuExceptionProductSection({
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [descriptionPx, setDescriptionPx] = useState(DESCRIPTION_DEFAULT_PX);
   const title = titleDraft ?? item.productTitle;
 
   const description = descriptionDraft ?? item.description ?? '';
@@ -112,7 +51,6 @@ export function SkuExceptionProductSection({
     descriptionDraft !== null && descriptionDraft.trim() !== (item.description ?? '').trim();
   const titleLength = title.trim().length;
   const titleInvalid = titleLength < TITLE_MIN || titleLength > TITLE_MAX;
-  const dirty = titleDraft !== null || descriptionDraft !== null;
   const canSave = (titleChanged || descriptionChanged) && !titleInvalid && !saving;
 
   const save = async () => {
@@ -153,55 +91,31 @@ export function SkuExceptionProductSection({
       testId="sku-exception-product"
       action={saving ? <span className="text-role-caption text-mode-muted" data-testid="sku-exception-saving">Saving…</span> : undefined}
     >
-      <div className="flex flex-col gap-2 px-4 pb-3 pt-1">
-        <label htmlFor={`${fieldId}-title`} className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
-          Title
-        </label>
-        <input
+      <div className="flex flex-col gap-3 px-4 pb-4 pt-2">
+        <TextField
           id={`${fieldId}-title`}
+          label="Title"
           value={title}
           maxLength={TITLE_MAX}
-          onChange={(event) => setTitleDraft(event.target.value)}
+          onChange={setTitleDraft}
           aria-invalid={titleInvalid || undefined}
-          className={cn(EVIDENCE_CONTROL_CLASS, 'w-full')}
           data-testid="sku-exception-title"
         />
-        <label htmlFor={`${fieldId}-description`} className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
-          Description
-        </label>
-        <textarea
+        <TextField
           id={`${fieldId}-description`}
+          label="Description"
+          multiline
+          rows={4}
           value={description}
           maxLength={DESCRIPTION_MAX}
-          onChange={(event) => setDescriptionDraft(event.target.value)}
-          placeholder="Condition, markings, what's in the box…"
-          className={cn(EVIDENCE_CONTROL_CLASS, 'w-full resize-none py-1.5')}
-          style={{ height: descriptionPx }}
+          onChange={setDescriptionDraft}
           data-testid="sku-exception-description"
         />
-        <DragResizeGrip label="Resize description" heightPx={descriptionPx} onHeight={setDescriptionPx} testId="sku-exception-description-grip" />
-        <div className="flex min-h-8 items-center gap-2">
-          <span role="status" aria-live="polite" className="mr-auto text-role-caption text-mode-muted">
-            {titleInvalid
-              ? `Title needs ${TITLE_MIN}–${TITLE_MAX} characters`
-              : titleChanged || descriptionChanged
-                ? 'Unsaved changes'
-                : 'Up to date'}
-          </span>
-          {dirty ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={saving}
-              onClick={() => {
-                setTitleDraft(null);
-                setDescriptionDraft(null);
-              }}
-            >
-              Revert
-            </Button>
-          ) : null}
-        </div>
+        {titleInvalid ? (
+          <p role="status" className="text-role-caption text-text-warning">
+            Title needs {TITLE_MIN}–{TITLE_MAX} characters
+          </p>
+        ) : null}
       </div>
     </RecordGroup>
   );
@@ -272,7 +186,6 @@ export function SkuExceptionBarcodeValue({
 
   return (
     <div className="flex w-full flex-col gap-1.5 pt-1" data-testid="sku-exception-barcode-attach">
-      <span className="text-role-caption font-medium text-mode-warn">No barcode</span>
       <div className="flex items-center gap-2">
         <input
           id={`${fieldId}-barcode`}

@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import pool from '../db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -238,6 +239,35 @@ export async function createRelationship(params: {
     ],
   );
   return result.rows[0];
+}
+
+/**
+ * The parent → child edge inside the caller's tenant transaction, idempotent:
+ * an existing edge is kept as it is (qty / notes untouched). `created` says
+ * whether this call wrote it.
+ */
+export async function ensureRelationshipInTx(
+  client: PoolClient,
+  orgId: OrgId,
+  params: { parentSkuId: number; childSkuId: number; qty?: number; notes?: string | null },
+): Promise<{ relationship: SkuRelationshipRow; created: boolean }> {
+  const inserted = await client.query<SkuRelationshipRow>(
+    `INSERT INTO sku_relationships (parent_sku_id, child_sku_id, qty, notes, organization_id)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (parent_sku_id, child_sku_id) DO NOTHING
+     RETURNING *`,
+    [params.parentSkuId, params.childSkuId, params.qty ?? 1, params.notes?.trim() || null, orgId],
+  );
+  if (inserted.rows[0]) return { relationship: inserted.rows[0], created: true };
+  const existing = await client.query<SkuRelationshipRow>(
+    `SELECT * FROM sku_relationships
+      WHERE parent_sku_id = $1 AND child_sku_id = $2 AND organization_id = $3
+      LIMIT 1`,
+    [params.parentSkuId, params.childSkuId, orgId],
+  );
+  const relationship = existing.rows[0];
+  if (!relationship) throw new Error('SKU relationship conflicts with another organization');
+  return { relationship, created: false };
 }
 
 export async function updateRelationship(

@@ -175,6 +175,11 @@ function drawFace(face: LabelFaceModel, size: PaperSize): HTMLCanvasElement {
       drawFittedText(context, line, paddingX, y, infoWidth, LABEL_FACE_FONT_SIZE, 700);
       y += 22;
     }
+    // Custom line under the title, as the HTML `.ptitle ~ .center`.
+    const note = face.center.trim();
+    if (note) {
+      drawFittedText(context, note, paddingX, y + 6, infoWidth, LABEL_FACE_FONT_SIZE, 600);
+    }
     drawFittedText(
       context,
       face.bottomLeft,

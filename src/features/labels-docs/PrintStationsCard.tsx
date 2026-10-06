@@ -59,10 +59,11 @@ export function stationHealth(station: PrintStationEntry | null, stock: PrintSto
   return station[stock].ready ? { tone: 'ok', words: 'Online' } : { tone: 'warn', words: `No ${stock === 'label' ? 'label' : 'paper'} printer` };
 }
 
-const DOT: Record<'ok' | 'warn' | 'off', string> = { ok: 'bg-fill-success', warn: 'bg-fill-warning', off: 'bg-text-faint' };
+/** The online / attention / offline dot fill for a {@link stationHealth} tone. */
+export const STATION_DOT_CLASS: Record<'ok' | 'warn' | 'off', string> = { ok: 'bg-fill-success', warn: 'bg-fill-warning', off: 'bg-text-faint' };
 
 /** A station's name; unnamed computers are told apart by the tail of their id. */
-function stationName(station: PrintStationEntry): string {
+export function stationName(station: PrintStationEntry): string {
   return station.stationName === UNNAMED_PRINT_STATION && !station.thisComputer
     ? `${station.stationName} ·${station.stationId.slice(-4)}`
     : station.stationName;
@@ -171,7 +172,7 @@ function StationRow({ stock, port }: { stock: PrintStock; port: PrintStationsPor
             aria-label={`${face.term} print station: ${stationFace(target, stock)}`}
           >
             <span className="flex min-w-0 items-center gap-2">
-              <span aria-hidden className={cn('size-2 shrink-0 rounded-full', DOT[health.tone])} />
+              <span aria-hidden className={cn('size-2 shrink-0 rounded-full', STATION_DOT_CLASS[health.tone])} />
               <span className="truncate">{stationFace(target, stock)}</span>
             </span>
             <ChevronDown className="size-4 shrink-0" />
@@ -187,7 +188,7 @@ function StationRow({ stock, port }: { stock: PrintStock; port: PrintStationsPor
                 onSelect={() => port.pick(stock, station.stationId)}
                 data-testid={`print-station-${stock}-option`}
               >
-                <span aria-hidden className={cn('size-2 shrink-0 rounded-full', DOT[row.tone])} />
+                <span aria-hidden className={cn('size-2 shrink-0 rounded-full', STATION_DOT_CLASS[row.tone])} />
                 <span className="min-w-0 flex-1 truncate">{stationName(station)}</span>
                 <span className="shrink-0 text-xs text-text-muted">{row.words}</span>
                 {target?.stationId === station.stationId ? <Check className="size-4 shrink-0" /> : null}

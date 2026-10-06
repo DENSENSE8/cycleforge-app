@@ -18,7 +18,7 @@
 
 import { useEffect, useState } from 'react';
 import { Check, Printer } from '@/components/Icons';
-import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
+import { DeskRecordLayout, deskRecordBesideList, useDeskRecordView } from '@/design-system/components/DeskRecordPlane';
 import { InlineEditableValue } from '@/design-system/components/InlineEditableValue';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
@@ -35,7 +35,8 @@ import { Button } from '@/design-system/primitives';
 import { RECORD_ID_CLASS } from '@/design-system/tokens/record';
 import { usePrintStations } from '@/hooks/usePrintStations';
 import { clampLabelCopies } from '@/lib/print/labelCopies';
-import type { PrintStationFnskuRow } from '@/lib/print-station/fnsku';
+import { fnskuLabelGlance } from '@/lib/print/fnskuLabelGlance';
+import { fnskuConditionMissing, fnskuConditionRequiredMessage, type PrintStationFnskuRow } from '@/lib/print-station/fnsku';
 import type { PrintStationFnskuPatch } from '@/lib/print-station/fnsku-client';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { cn } from '@/utils/_cn';
@@ -79,7 +80,9 @@ function FnskuLabelPreview({ row }: { row: PrintStationFnskuRow }) {
   useEffect(() => {
     let live = true;
     import('@/lib/print/fnskuLabel')
-      .then(({ fnskuLabelPreviewUrl }) => fnskuLabelPreviewUrl({ fnsku: row.fnsku, title: row.title ?? '', condition: row.condition ?? '' }))
+      .then(({ fnskuLabelPreviewUrl }) =>
+        fnskuLabelPreviewUrl({ fnsku: row.fnsku, title: row.title ?? '', condition: row.condition ?? '', mark: row.mark }),
+      )
       .then(
         (url) => live && setSrc(url),
         (error: unknown) => live && setFailure(error instanceof Error ? error.message : 'Could not draw the label.'),
@@ -87,7 +90,7 @@ function FnskuLabelPreview({ row }: { row: PrintStationFnskuRow }) {
     return () => {
       live = false;
     };
-  }, [row.fnsku, row.title, row.condition]);
+  }, [row.fnsku, row.title, row.condition, row.mark]);
 
   return (
     <div className="flex items-center justify-center bg-white" data-testid="fnsku-label-preview">
@@ -128,9 +131,15 @@ export function FnskuPrintRecord({
 }) {
   const stations = usePrintStations();
   const reduce = useReducedMotion();
+  const split = deskRecordBesideList(useDeskRecordView());
   const [copies, setCopies] = useState(1);
   const [conditionDraft, setConditionDraft] = useState(row.condition ?? '');
   const [titleDraft, setTitleDraft] = useState(row.title ?? '');
+  // null = print the color or series read from the title. A string is the saved corner.
+  const [markOverride, setMarkOverride] = useState<string | null>(row.mark ?? null);
+  useEffect(() => {
+    setMarkOverride(row.mark ?? null);
+  }, [row.fnsku, row.mark]);
   // The target for THIS reprint — seeded from the staffer's label station, never written back
   // (sending one sticker to a packer's table must not move the manager's own default).
   const [chosenId, setChosenId] = useState<string | null>(null);
@@ -138,10 +147,15 @@ export function FnskuPrintRecord({
   const [notice, setNotice] = useState('');
 
   const chosen = resolvePrintStation(stations, chosenId);
-  const blocked = chosen ? stationBlocked(chosen) : 'Choose a print station';
+  const needsCondition = fnskuConditionMissing(row.condition);
+  const blocked = needsCondition
+    ? fnskuConditionRequiredMessage(row.fnsku)
+    : chosen
+      ? stationBlocked(chosen)
+      : 'Choose a print station';
 
   const print = async ({ test = false }: { test?: boolean } = {}) => {
-    if (!chosen || blocked) return;
+    if (!chosen || blocked || needsCondition) return;
     const count = clampLabelCopies(copies);
     const run = test ? `a test print of ${labels(count)}` : labels(count);
     setPhase('sending');
@@ -166,24 +180,18 @@ export function FnskuPrintRecord({
       if (!test && outcome.printed > 0) onPrinted();
       return;
     }
-    const acked = await stations.sendFnsku(chosen.stationId, row.fnsku, count, { test });
-    setPhase(acked ? 'sent' : 'failed');
-    setNotice(
-      acked
-        ? `${chosen.stationName} is printing ${run} of ${row.fnsku}.`
-        : `${chosen.stationName} did not answer — is CycleForge open there? Nothing was printed.`,
-    );
+    const reason = await stations.sendFnsku(chosen.stationId, row.fnsku, count, { test });
+    setPhase(reason ? 'failed' : 'sent');
+    setNotice(reason ?? `${chosen.stationName} is printing ${run} of ${row.fnsku}.`);
     // The station prints, then logs; the list re-reads once that log has had time to land.
-    if (acked && !test) window.setTimeout(onPrinted, LOG_SETTLE_MS);
+    if (!reason && !test) window.setTimeout(onPrinted, LOG_SETTLE_MS);
   };
 
   const printLabel = chosen ? `Print ${labels(copies)} → ${chosen.thisComputer ? 'this computer' : chosen.stationName}` : `Print ${labels(copies)}`;
   const noticeTarget = motionTargetFor(PRINT_NOTICE_MOTION, phase);
 
-  const previewRow =
-    conditionDraft === (row.condition ?? '') && titleDraft === (row.title ?? '')
-      ? row
-      : { ...row, condition: conditionDraft, title: titleDraft };
+  const derivedMark = fnskuLabelGlance(titleDraft);
+  const previewRow = { ...row, condition: conditionDraft, title: titleDraft, mark: markOverride };
   const saveTitle = async () => {
     const title = titleDraft.trim();
     if (title === (row.title ?? '')) return;
@@ -193,6 +201,15 @@ export function FnskuPrintRecord({
       setTitleDraft(row.title ?? '');
     }
   };
+  const saveMark = async () => {
+    const stored = markOverride == null ? null : markOverride.trim().slice(0, 40) || null;
+    if (stored === (row.mark ?? null)) return;
+    try {
+      await onSaveLabel({ mark: stored });
+    } catch {
+      setMarkOverride(row.mark ?? null);
+    }
+  };
   const saveCondition = async () => {
     try {
       await onSaveLabel({ condition: conditionDraft || null });
@@ -200,9 +217,68 @@ export function FnskuPrintRecord({
       setConditionDraft(row.condition ?? '');
     }
   };
+  const conditionDirty = conditionDraft !== (row.condition ?? '');
+  const details = (
+    <div className="flex min-w-0 flex-col gap-4">
+      <RecordGroup title="Label details" testId="fnsku-record-catalog">
+        <div className={FACTS_BODY_CLASS}>
+          <EvidenceFactRow label="FNSKU">
+            <span className={RECORD_ID_CLASS}>{row.fnsku}</span>
+          </EvidenceFactRow>
+          <EvidenceFactRow label="Label" wide>
+            <InlineEditableValue
+              value={titleDraft}
+              onChange={setTitleDraft}
+              onSubmit={() => void saveTitle()}
+              onCancel={() => setTitleDraft(row.title ?? '')}
+              editable={!labelSaving}
+              placeholder="No label in the catalog"
+              ariaLabel="Edit FNSKU label"
+              showEditIcon
+            />
+          </EvidenceFactRow>
+          <EvidenceFactRow label="Bottom right" wide>
+            <InlineEditableValue
+              value={markOverride ?? derivedMark}
+              onChange={setMarkOverride}
+              onSubmit={() => void saveMark()}
+              onCancel={() => setMarkOverride(row.mark ?? null)}
+              editable={!labelSaving}
+              placeholder="Color or series"
+              ariaLabel="Edit label bottom right"
+              showEditIcon
+            />
+          </EvidenceFactRow>
+          <EvidenceFactRow label="Condition" wide>
+            <div className="flex flex-wrap items-center gap-2">
+              <FnskuConditionPicker
+                value={conditionDraft || null}
+                onChange={setConditionDraft}
+                disabled={labelSaving}
+                testId="fnsku-record-condition"
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                radius="control"
+                loading={labelSaving}
+                disabled={!conditionDraft || !conditionDirty}
+                onClick={() => void saveCondition()}
+                data-testid="fnsku-condition-save"
+              >
+                Save
+              </Button>
+            </div>
+          </EvidenceFactRow>
+        </div>
+      </RecordGroup>
+    </div>
+  );
+
   const main = (
     <div className="flex min-w-0 flex-col gap-4">
       <FnskuLabelPreview row={previewRow} />
+      {split ? details : null}
 
       <RecordGroup title="How many" testId="fnsku-record-copies">
         <QuantityPicker copies={copies} onCopies={setCopies} disabled={phase === 'sending'} />
@@ -244,7 +320,8 @@ export function FnskuPrintRecord({
               </Button>
             </MagneticActionField>
           </div>
-          {blocked ? <p className="text-right text-role-caption text-text-warning">{chosen ? `${chosen.stationName}: ${blocked}.` : `${blocked}.`}</p> : null}
+          {needsCondition ? <p className="text-right text-role-caption text-text-warning">{fnskuConditionRequiredMessage(row.fnsku)}</p> : null}
+          {!needsCondition && blocked ? <p className="text-right text-role-caption text-text-warning">{chosen ? `${chosen.stationName}: ${blocked}.` : `${blocked}.`}</p> : null}
           <AnimatePresence initial={false}>
             {phase !== 'idle' ? (
               <motion.p
@@ -282,55 +359,9 @@ export function FnskuPrintRecord({
     </div>
   );
 
-  const conditionDirty = conditionDraft !== (row.condition ?? '');
-  const aside = (
-    <div className="flex min-w-0 flex-col gap-4">
-      <RecordGroup title="Label details" testId="fnsku-record-catalog">
-        <div className={FACTS_BODY_CLASS}>
-          <EvidenceFactRow label="FNSKU">
-            <span className={RECORD_ID_CLASS}>{row.fnsku}</span>
-          </EvidenceFactRow>
-          <EvidenceFactRow label="Label" wide>
-            <InlineEditableValue
-              value={titleDraft}
-              onChange={setTitleDraft}
-              onSubmit={() => void saveTitle()}
-              onCancel={() => setTitleDraft(row.title ?? '')}
-              editable={!labelSaving}
-              placeholder="No label in the catalog"
-              ariaLabel="Edit FNSKU label"
-              showEditIcon
-            />
-          </EvidenceFactRow>
-          <EvidenceFactRow label="Condition" wide>
-            <div className="flex flex-wrap items-center gap-2">
-              <FnskuConditionPicker
-                value={conditionDraft || null}
-                onChange={setConditionDraft}
-                disabled={labelSaving}
-                testId="fnsku-record-condition"
-              />
-              <Button
-                variant="primary"
-                size="sm"
-                radius="control"
-                loading={labelSaving}
-                disabled={!conditionDraft || !conditionDirty}
-                onClick={() => void saveCondition()}
-                data-testid="fnsku-condition-save"
-              >
-                Save
-              </Button>
-            </div>
-          </EvidenceFactRow>
-        </div>
-      </RecordGroup>
-    </div>
-  );
-
   return (
     <div className={FNSKU_RECORD_ROOT_CLASS} data-testid="fnsku-print-evidence">
-      <DeskRecordLayout main={main} aside={aside} />
+      <DeskRecordLayout main={main} aside={split ? undefined : details} />
     </div>
   );
 }

@@ -235,21 +235,6 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
     'customer',
   ],
   create_manual_order: ['create this order', 'create the order', 'create it', 'place the order', 'confirm', 'yes'],
-  // A purchase order pasted / typed for import — and the follow-ups that
-  // complete its card (tracking, PO number, vendor, listing link).
-  draft_po_import: [
-    'purchase order',
-    'import po',
-    'import a po',
-    'po number',
-    'vendor',
-    'supplier',
-    'tracking number is',
-    'listing link',
-    'expected',
-    'this po is for',
-  ],
-  import_purchase_order: ['import this po', 'import the po', 'import it', 'confirm', 'yes'],
   link_po_to_order: ['link po', 'link the po', 'link this po', 'unlink', 'po is for order', 'bought for order', 'link it to order', 'confirm', 'yes'],
   set_order_flag: ['flag', 'priority', 'on hold', 'put on hold', 'damaged', 'discrepancy', 'awaiting customer', 'mark ready', 'unflag'],
   mark_out_of_stock: ['out of stock', 'oos', 'mark out of stock', 'no stock'],
@@ -377,17 +362,6 @@ const RECALL_FLOOR: readonly { shape: RegExp; tool: string; why: string }[] = [
     shape: /\bcreate\s+(this|the|that)?\s*(phone\s+)?order\b|\bplace\s+(this|the)\s+order\b/i,
     tool: 'create_manual_order',
     why: 'creating the drafted order is the confirm-before-write order tool',
-  },
-  {
-    shape: /\bpurchase\s+order\b|\bp\.?o\.?\s*(#|number|no\b|:)|\bpo[-\s]?\d{2,}|\b(vendor|supplier)\b|\btracking(\s+(number|#|no\.?))?\s*(is\b|:)|\bquantity\s+for\s+line\b|^\s*for\s+orders?\s*:/i,
-    tool: 'draft_po_import',
-    why: 'a pasted PO (and the answers that complete it) is the PO import draft, not a record search',
-  },
-  {
-    // The short command only — "Import this purchase order:\nPO number: …" is a paste (draft_po_import).
-    shape: /^\s*(?:please\s+)?import\s+(this|the|that|it)(\s+(po|purchase\s+order))?\s*[.!]?\s*$/i,
-    tool: 'import_purchase_order',
-    why: 'importing the drafted PO is the confirm-before-write import tool; a pasted PO is the draft',
   },
   {
     shape: /\b(un)?link\w*\b[^.?!]*\b(po|purchase\s+order)\b|\b(po|purchase\s+order)\b[^.?!]*\b(is|was)\s+(bought\s+)?for\s+(customer\s+)?orders?\b/i,

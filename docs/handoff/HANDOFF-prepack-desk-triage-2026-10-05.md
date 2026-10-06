@@ -32,8 +32,8 @@ phone), grade, photograph, mark contents, store, print — with no avoidable blo
 - **Find:** the sidebar search writes `?q=`; `src/app/inventory/qc-labels/page.tsx` passes it to
   `listQcLabels` (`src/lib/labels/qc-labels-queries.ts`), which filters printed labels. Page config:
   `src/lib/context/pages.ts` → `'qc-labels'`.
-  - The catalog search already exists: `GET /api/prepack/catalog?q=` → `searchPrepackCatalog`
-    (`src/lib/prepack/server.ts`). It matches SKU, UPC, EAN, GTIN, MPN and title.
+  - The catalog search already exists: `GET /api/sku-catalog/search?searchField=catalog&q=`
+    (`searchFromCatalog`). It matches SKU, title, UPC, EAN, GTIN, MPN, platform ids and external ids (ASIN, FNSKU).
 - **"ALL":** set by `src/lib/sidebar-navigation.ts` (~line 1553: `{ id: 'all', label: 'ALL', … }`).
   The ledger copy "Clear Find or choose ALL." also paints it.
 - **Unbox gate:** `loadPrepackUnit` (`src/lib/prepack/server.ts`) requires

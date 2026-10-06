@@ -24,7 +24,6 @@ import { useTableImportFilePicker } from '@/components/tables/import/TableImport
 import { useAuth } from '@/contexts/AuthContext';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import {
   ORDERS_DESK_CONTEXT_KEY,
   ORDERS_DESK_SUPPORT_CONTEXT,
@@ -43,7 +42,7 @@ const SupportOrdersFocusHost = dynamic(
     import('@/components/support/orders/SupportOrdersFocusHost').then(
       (m) => m.SupportOrdersFocusHost,
     ),
-  { ssr: false, loading: () => <UniversalLoader isLoading label="Loading order" /> },
+  { ssr: false },
 );
 
 function OutboundOrdersDeskContent({

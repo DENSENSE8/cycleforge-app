@@ -4,6 +4,7 @@ import { extractCanonicalTracking } from '@/lib/tracking-format';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
 import { isoStampInstant } from '../carrier-event-instant';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { requireCarrierCredentials } from '../carrier-credentials';
 
 export const FEDEX_BASE_URL =
   process.env.FEDEX_ENV === 'production'
@@ -24,12 +25,7 @@ let tokenCache: TokenCache | null = null;
 let tokenInFlight: Promise<string> | null = null;
 
 async function fetchFreshToken(): Promise<string> {
-  const clientId = process.env.FEDEX_CLIENT_ID;
-  const clientSecret = process.env.FEDEX_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error('FEDEX_CLIENT_ID and FEDEX_CLIENT_SECRET are required');
-  }
+  const [clientId, clientSecret] = requireCarrierCredentials('FEDEX');
 
   const body = new URLSearchParams({
     grant_type: 'client_credentials',
@@ -241,6 +237,13 @@ export async function trackByNumber(trackingNumber: string): Promise<CarrierTrac
       events: [],
       payload,
     };
+  }
+  // A 200 can still carry a per-number error (TRACKING.TRACKINGNUMBER.NOTFOUND): FedEx does not know
+  // this number. Fail like UPS's TV1002 so the row shows the reason and backs off — never a silent UNKNOWN.
+  if (trackResult.error?.code) {
+    throw Object.assign(new Error(`FedEx track failed: ${trackResult.error.code} ${trackResult.error.message ?? ''}`.trim()), {
+      code: String(trackResult.error.code).endsWith('NOTFOUND') ? 'NOT_FOUND' : 'HTTP_ERROR',
+    });
   }
 
   return buildFedExResultFromTrackResult(normalized, trackResult, payload);

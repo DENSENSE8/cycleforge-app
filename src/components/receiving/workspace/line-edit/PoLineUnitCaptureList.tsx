@@ -18,6 +18,8 @@ import {
 import type { SavedSerial } from '../SerialScanField';
 import type { UnitLike, UnitSlotView } from '../UnitSlotList';
 import { PoLineCaptureRow } from './PoLineCaptureRow';
+import { ListingSerialReferences } from './ListingSerialReferences';
+import type { ListingSerialRef } from '@/lib/receiving/receiving-line-row';
 
 export function PoLineUnitCaptureList({
   lineId,
@@ -44,6 +46,7 @@ export function PoLineUnitCaptureList({
   autoCommitDefaultGrade = false,
   onSerialPanelOpen,
   onArmCapture,
+  listingSerials = null,
 }: {
   lineId: number;
   receivingId: number | null;
@@ -72,6 +75,8 @@ export function PoLineUnitCaptureList({
   onSerialPanelOpen?: () => void;
   /** Promote this line to the workspace controller before arming serial. */
   onArmCapture?: () => void;
+  /** The line's `listing_serials` — unconfirmed ones paint a "Listing shows …" reference with Confirm. */
+  listingSerials?: ReadonlyArray<ListingSerialRef> | null;
 }) {
   const [forceUnitMode, setForceUnitMode] = useState(false);
 
@@ -151,6 +156,11 @@ export function PoLineUnitCaptureList({
     />
   );
 
+  // Serials the purchase listing showed, still to confirm — Confirm adds through the same path as a scan.
+  const listingReferences = (
+    <ListingSerialReferences serials={listingSerials} disabled={disabled} onConfirm={onAddSerial} />
+  );
+
   if (mode === 'qtyRollup') {
     return (
       <div
@@ -159,6 +169,7 @@ export function PoLineUnitCaptureList({
         data-receive-mode="qtyRollup"
       >
         {captureFace}
+        {listingReferences}
         <BulkQuantityPanel
           quantityExpected={quantityExpected}
           lineCondition={lineCondition}
@@ -184,6 +195,7 @@ export function PoLineUnitCaptureList({
       data-receive-mode="unitTrack"
     >
       {captureFace}
+      {listingReferences}
       {showReceiveAsBulk ? (
         <Button
           type="button"

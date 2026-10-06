@@ -10,7 +10,7 @@ import {
   type DragEvent,
 } from 'react';
 
-/** Generic image dropzone — drag-drop, click-to-pick, OR **paste**. */
+/** Generic dropzone (images by default; `acceptFile` widens it) — drag-drop, click-to-pick, OR **paste** (images only). */
 export interface UsePhotoDropzone {
   isDragging: boolean;
   rootProps: {
@@ -35,6 +35,8 @@ export interface UsePhotoDropzone {
 const isFileDrag = (e: DragEvent): boolean =>
   Array.from(e.dataTransfer?.types ?? []).includes('Files');
 
+const isImageFile = (file: File): boolean => file.type.startsWith('image/');
+
 /** Image files on a clipboard, or `[]`. */
 function imageFilesFromClipboard(data: DataTransfer | null): File[] {
   if (!data) return [];
@@ -52,6 +54,8 @@ export function usePhotoDropzone(
   onFiles: (files: File[]) => void,
   opts: {
     accept?: string;
+    /** Which dropped / picked files are kept. Default: images. A CSV drop passes its own test. */
+    acceptFile?: (file: File) => boolean;
     multiple?: boolean;
     /**
      * Also listen for paste on `document`, so an image lands even when nothing
@@ -63,7 +67,7 @@ export function usePhotoDropzone(
     paste?: boolean;
   } = {},
 ): UsePhotoDropzone {
-  const { accept = 'image/*', multiple = true, documentPaste = false, paste = true } = opts;
+  const { accept = 'image/*', multiple = true, documentPaste = false, paste = true, acceptFile = isImageFile } = opts;
   const elRef = useRef<HTMLInputElement | null>(null);
   // Callback ref — assignable to <input ref> across React 18/19 typings, unlike
   // a RefObject<HTMLInputElement | null> which trips LegacyRef variance.
@@ -78,10 +82,10 @@ export function usePhotoDropzone(
   const acceptFiles = useCallback(
     (list: FileList | null) => {
       if (!list) return;
-      const files = Array.from(list).filter((f) => f.type.startsWith('image/'));
+      const files = Array.from(list).filter(acceptFile);
       if (files.length) onFiles(files);
     },
-    [onFiles],
+    [onFiles, acceptFile],
   );
 
   const onDragEnter = useCallback((e: DragEvent) => {

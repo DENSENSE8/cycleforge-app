@@ -34,7 +34,6 @@ import {
   UNFOUND_PO_SENTINEL,
 } from '@/lib/receiving/po-group-title';
 import { receivingHandle, scannedReceivingId } from '@/lib/barcode-routing';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { cn } from '@/utils/_cn';
 
 /** What the operator put in the box, in the ONE vocabulary the API understands. */
@@ -482,13 +481,7 @@ export function MovePhotosBetweenPoPanel({
                     </p>
                   ) : null}
                   <div className="max-h-48 overflow-y-auto">
-                    {poLoading ? (
-                      <UniversalLoader
-                        isLoading
-                        label="Searching cartons"
-                        className="min-h-24"
-                      />
-                    ) : targetRows.length === 0 ? (
+                    {poLoading ? null : targetRows.length === 0 ? (
                       <p className="px-3 py-8 text-center text-role-micro text-text-soft">
                         {poSearchNeedle(search)
                           ? 'No matching cartons'

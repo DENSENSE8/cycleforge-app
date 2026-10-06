@@ -328,12 +328,12 @@ export const PERSISTED_TABLE_ROWS_MAX = 50;
 
 /**
  * Only table, record and draft cards persist (plan §C.3): they are the
- * kinds a reopened thread must show — and a phone-order / PO draft is also the
- * state `create_manual_order` / `import_purchase_order` reads back on the next turn. A table keeps its
+ * kinds a reopened thread must show — and a phone-order draft is also the
+ * state `create_manual_order` reads back on the next turn. A table keeps its
  * first {@link PERSISTED_TABLE_ROWS_MAX} rows — the full set stays live-only.
  */
 export function persistableArtifact(artifact: SessionArtifact): SessionArtifact | null {
-  if (artifact.kind === 'record' || artifact.kind === 'order_draft' || artifact.kind === 'po_draft' || artifact.kind === 'capability') return artifact;
+  if (artifact.kind === 'record' || artifact.kind === 'order_draft' || artifact.kind === 'capability') return artifact;
   if (artifact.kind === 'table') {
     return artifact.rows.length > PERSISTED_TABLE_ROWS_MAX
       ? { ...artifact, rows: artifact.rows.slice(0, PERSISTED_TABLE_ROWS_MAX) }

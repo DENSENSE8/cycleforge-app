@@ -12,7 +12,10 @@ import type { StaffPrintDocumentsPayload, StationDocumentRef } from './staff-pri
 /** The wire ref of one desk document; null for a document with no id to print by. */
 export function stationDocumentRef(doc: DeskDocument): StationDocumentRef | null {
   const base = { kind: doc.kind, orderId: doc.orderId, title: doc.title };
-  if (doc.kind === 'label') return doc.ingestionId == null ? null : { ...base, ingestionId: doc.ingestionId };
+  if (doc.kind === 'label') {
+    if (doc.ingestionId != null) return { ...base, ingestionId: doc.ingestionId };
+    return doc.documentId == null ? null : { ...base, documentId: doc.documentId };
+  }
   if (doc.kind === 'packing_slip') return doc.documentId == null ? null : { ...base, documentId: doc.documentId };
   return doc.manualId == null ? null : { ...base, manualId: doc.manualId };
 }
@@ -29,6 +32,16 @@ export function deskDocumentsFromStation(payload: StaffPrintDocumentsPayload): D
         src: labelPdfSrc(ref.ingestionId),
         ingestionId: ref.ingestionId,
         documentId: null,
+        manualId: null,
+      });
+    } else if (ref.kind === 'label' && ref.documentId != null) {
+      // A shipping-label document with no ingestion (Bulk): bytes by document, logged by document.
+      docs.push({
+        ...common,
+        key: `doc:${ref.documentId}`,
+        src: documentContentUrl(ref.documentId),
+        ingestionId: null,
+        documentId: ref.documentId,
         manualId: null,
       });
     } else if (ref.kind === 'packing_slip' && ref.documentId != null) {

@@ -21,11 +21,12 @@ import {
 } from '@/lib/testing/testing-scan-session';
 import {
   publishTestingScanPick,
-  publishTestingScanSession,
   useTestingScanPickResolved,
 } from '@/lib/testing/testing-scan-session-bridge';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { readSelectLineDetail } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { seedReceivingSiblingsCache } from '@/lib/queries/receiving-queries';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { BoxWorkbenchPanel } from '@/components/receiving/BoxWorkbenchPanel';
@@ -37,14 +38,10 @@ import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtim
 import { useUnitPhotoRequestPublisher } from '@/hooks/useUnitPhotoRequestPublisher';
 import { scannedUnitKey } from '@/lib/barcode-routing';
 import { UnitPhotoRequestStatus } from '@/components/station/UnitPhotoRequestStatus';
-import { QcRecentScanRail } from '@/components/sidebar/QcRecentScanRail';
+import { ReceivingFeedRail } from '@/components/sidebar/receiving/ReceivingFeedRail';
+import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 
 interface Props {
-  /**
-   * Optional override for the rail's highlighted line. When omitted, the
-   * sidebar tracks selection itself by listening for `receiving-select-line`.
-   */
-  selectedLineId?: number | null;
   /** Staff id used to theme the scan bar's input border. */
   staffId?: string;
 }
@@ -125,12 +122,6 @@ export function TestingSidebarPanel({
     testingScanSessionReducer,
     INITIAL_TESTING_SCAN_SESSION,
   );
-  // The session DISPLAY lives in the workspace (one region per active entity —
-  // see TestingScanSessionFeedback). The reducer stays here because the scan bar
-  // feeds it; only the computed value crosses the tree boundary.
-  useEffect(() => {
-    publishTestingScanSession(session);
-  }, [session]);
   // Unmounting the scan column (leaving Testing) clears any pending choice —
   // the middle must never keep asking a question nothing can answer.
   useEffect(() => () => publishTestingScanPick(null), []);
@@ -144,6 +135,12 @@ export function TestingSidebarPanel({
     serialUnitId: number;
     unitKey: string | null;
   } | null>(null);
+  // The line open in the Testing workspace — the Recent rail's highlight. Every
+  // open (scan, pick, rail row) goes through `receiving-select-line`.
+  const [openLine, setOpenLine] = useState<ReceivingLineRow | null>(null);
+  useReceivingEvents({
+    'receiving-select-line': (detail) => setOpenLine(readSelectLineDetail(detail).row),
+  });
 
   const { user } = useAuth();
   const authOrgId = user?.organizationId;
@@ -414,7 +411,19 @@ export function TestingSidebarPanel({
           </div>
         </>
       ) : null}
-      {!isMobile ? <QcRecentScanRail /> : null}
+      {/* QC Recent — the lines this operator opened on Quality Control
+          (`testingRecent`, view=testing_opened). A scan opens its line; the
+          open is stamped server-side before the rail re-reads, so the scan
+          stays listed (the Unbox rail's contract). */}
+      {!isMobile ? (
+        <SidebarRailScrollport>
+          <ReceivingFeedRail
+            feed="testingRecent"
+            selectedLineId={openLine?.id ?? null}
+            selectedRow={openLine}
+          />
+        </SidebarRailScrollport>
+      ) : null}
 
       {isMobile ? (
         <div className="flex-shrink-0 border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">

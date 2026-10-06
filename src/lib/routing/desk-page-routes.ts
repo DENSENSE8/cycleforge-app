@@ -26,7 +26,14 @@ import {
   EXCEPTION_RECORD_PARAM,
   parseExceptionRowKey,
 } from '@/lib/exceptions/types';
-import { PRINT_STATION_FNSKU_PARAM, PRINT_STATION_FNSKU_VIEWS, PRINT_STATION_PATH, PRINT_STATION_VIEW_PARAM } from '@/lib/print-station/fnsku';
+import {
+  PRINT_STATION_CONDITION_PARAM,
+  PRINT_STATION_CONDITION_VALUES,
+  PRINT_STATION_FNSKU_PARAM,
+  PRINT_STATION_FNSKU_VIEWS,
+  PRINT_STATION_PATH,
+  PRINT_STATION_VIEW_PARAM,
+} from '@/lib/print-station/fnsku';
 import { PRINT_STATIONS_PATH, PRINT_STATIONS_STATION_PARAM, PRINT_STATION_ID_RE } from '@/lib/print-station/stations';
 import { CUSTOMER_PATHS, PRINT_STATION_PATHS, SEARCH_PATHS, SUPPORT_PATHS } from '@/lib/nav/route-tree';
 import { NAV_LOCATE_SCOPES } from '@/lib/nav/context/schema';
@@ -249,6 +256,8 @@ const PRINT_STATION_ROUTE_PARAMS = defineRouteParams({
     [PRINT_STATION_VIEW_PARAM]: paramEnum(PRINT_STATION_FNSKU_VIEWS),
     /** Find: FNSKU, ASIN, SKU or title — server-side. */
     q: paramText,
+    /** One Amazon condition (`very-good`); unset is every condition. */
+    [PRINT_STATION_CONDITION_PARAM]: paramEnum(PRINT_STATION_CONDITION_VALUES),
     /** The open FNSKU (catalog key, upper-case). */
     [PRINT_STATION_FNSKU_PARAM]: paramRoundTrip((raw) => (/^[A-Z0-9]{1,40}$/.test(raw) ? raw : null)),
     /** The row list's 1-based page (`useTriageCut`). */

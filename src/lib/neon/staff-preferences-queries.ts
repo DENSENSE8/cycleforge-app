@@ -90,7 +90,7 @@ export interface StaffPreferences {
   /** Extra Unbox Band-1 tabs pinned via the Pin-list composer (catalog: */
   unboxPinnedExtraTabs?: Array<'incoming'> | null;
   /**
-   * Triage list density per surface (`outbound.allocate`, `outbound.fulfilled`,
+   * Triage list density per surface (`outbound.allocate`,
    * `incoming.pasted`, `live-feed`): `card` = Full, `row` = Compact — the operator's own pick
    * (`useTriageDensity`). Shallow JSONB merge — writers send the whole map.
    */

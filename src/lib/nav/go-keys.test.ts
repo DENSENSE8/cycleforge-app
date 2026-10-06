@@ -21,14 +21,15 @@ test('a lane page keeps exactly its lane modes; page letters never leak off thei
   assert.deepEqual(navGoDestinations(undefined), []);
 });
 
-test('Receiving hover teaching includes Deliveries, Local Pickup, Repair service and Sourcing', () => {
+test('Receiving hover teaching includes Deliveries, Purchasing, Local Pickup, Repair service and Sourcing', () => {
   const expected = [
     { letter: 'd', pageId: 'incoming' },
+    { letter: 'u', pageId: 'purchasing' },
     { letter: 'p', pageId: 'pickup' },
     { letter: 'r', pageId: 'repair' },
     { letter: 's', pageId: 'sourcing' },
   ];
-  for (const pageId of ['incoming', 'pickup', 'repair', 'sourcing']) assert.deepEqual(navGoDestinations(pageId), expected, pageId);
+  for (const pageId of ['incoming', 'purchasing', 'pickup', 'repair', 'sourcing']) assert.deepEqual(navGoDestinations(pageId), expected, pageId);
 });
 
 test('Warehouse G keys open Stock with S and Locations with L', () => {

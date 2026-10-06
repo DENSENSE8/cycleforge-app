@@ -1,10 +1,6 @@
 /** Saved-view surface SoT — discriminator values for the polymorphic `saved_views` table and the storage-key → surface map used by… */
 
-import {
-  PACKED_SAVED_VIEWS_KEY,
-  SHIPPED_SAVED_VIEWS_KEY,
-  UNSHIPPED_SAVED_VIEWS_KEY,
-} from '@/components/unshipped/outbound-sidebar-shared';
+import { PACKED_SAVED_VIEWS_KEY, UNSHIPPED_SAVED_VIEWS_KEY } from '@/components/unshipped/outbound-sidebar-shared';
 import { SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { MY_DAY_SAVED_VIEWS_KEY } from '@/lib/my-day/my-day-saved-views';
 
@@ -19,6 +15,12 @@ export const SAVED_VIEW_SURFACES = [
   'packer_history',
   'receiving_history',
   'receiving_incoming',
+  // Receiving › Purchasing (`/purchasing`). CHECK follow-up:
+  // `2026-10-05_saved_views_receiving_purchases.sql`.
+  'receiving_purchases',
+  // Fulfillment › Fulfilled (`/fulfilled`). CHECK follow-up:
+  // `2026-10-05b_saved_views_fulfilled.sql`.
+  'outbound_fulfilled',
   'testing_history',
   // Home → Today (`/`). Added 2026-08-01 with the CHECK follow-up
   // `2026-08-01a_saved_views_home_today.sql`.
@@ -56,6 +58,8 @@ export const GENERIC_SAVED_VIEW_SURFACES = [
   'packer_history',
   'receiving_history',
   'receiving_incoming',
+  'receiving_purchases',
+  'outbound_fulfilled',
   'testing_history',
   'home_today',
   // Every Phase-4 rebuild is served by the generic routes — none of them has a
@@ -135,11 +139,12 @@ const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> 
   [MY_DAY_SAVED_VIEWS_KEY]: 'home_today',
   [UNSHIPPED_SAVED_VIEWS_KEY]: 'dashboard_unshipped',
   [PACKED_SAVED_VIEWS_KEY]: 'dashboard_packed',
-  [SHIPPED_SAVED_VIEWS_KEY]: 'dashboard_shipped',
   [SAVED_VIEW_STORAGE_KEY.tech_history]: 'tech_history',
   [SAVED_VIEW_STORAGE_KEY.packer_history]: 'packer_history',
   [SAVED_VIEW_STORAGE_KEY.receiving_history]: 'receiving_history',
   [SAVED_VIEW_STORAGE_KEY.receiving_incoming]: 'receiving_incoming',
+  [SAVED_VIEW_STORAGE_KEY.receiving_purchases]: 'receiving_purchases',
+  [SAVED_VIEW_STORAGE_KEY.outbound_fulfilled]: 'outbound_fulfilled',
   [SAVED_VIEW_STORAGE_KEY.testing_history]: 'testing_history',
   [SAVED_VIEW_STORAGE_KEY.repair_queue]: 'repair_queue',
   // Phase 4 rebuilds — one entry per key above, or the surface saves nothing.

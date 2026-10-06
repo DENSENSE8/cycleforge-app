@@ -144,20 +144,6 @@ const SEEDED_ROUTES = [
       { label: 'Packer week logs', keyPrefix: ['packer-logs'] },
     ],
   },
-  {
-    route: '/m/home',
-    module: 'src/lib/queries/mobile-feed-seed.server.ts',
-    seeds: [
-      { label: 'Mobile Unbox feed', keyPrefix: ['receiving-lines-table', 'rail', 'unbox-opened'] },
-    ],
-  },
-  {
-    route: '/m/scan',
-    module: 'src/lib/queries/mobile-feed-seed.server.ts',
-    seeds: [
-      { label: 'Mobile Arrival feed', keyPrefix: ['receiving-lines-table', 'rail', 'scanned'] },
-    ],
-  },
 ];
 
 /** The session cookie. Minted with the existing script rather than re-implemented. */

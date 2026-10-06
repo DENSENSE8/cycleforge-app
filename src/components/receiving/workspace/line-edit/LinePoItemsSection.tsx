@@ -342,6 +342,7 @@ export function LinePoItemsSection({
                     row.zoho_purchaseorder_number ??
                     null
                   }
+                  listingSerials={line.listing_serials}
                   onArmCapture={() => {
                     // Sibling faces paint like the controller but only one line owns data-active-step + the po-line:
                     setActiveSinkId(`po-line:${line.id}`);

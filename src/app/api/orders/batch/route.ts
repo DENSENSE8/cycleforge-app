@@ -104,7 +104,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     packerName: r.packer_name ? String(r.packer_name) : null,
     // The Shipped DESK, not the To-ship queue with a legacy presence flag on
     // it: every row here has already left, which is that desk's whole subject.
-    href: shippingShippedHref({ search: String(r.order_id ?? '') }),
+    href: shippingShippedHref({ find: String(r.order_id ?? '') }),
   }));
 
   return NextResponse.json({ orders });

@@ -29,12 +29,13 @@ import type { OrdersListQuery } from '@/lib/orders/orders-list-query';
 import { checkZohoReceived, type CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
 import { enrichIncomingTrackingIntegrity } from '@/lib/receiving/lines/incoming-integrity';
 import { fetchReceivingLinesPage, resolveReceivingLinesReadFlags } from '@/lib/receiving/lines/list-page';
-import { parseReceivingLinesQuery } from '@/lib/receiving/lines/query';
+import { parseReceivingLinesQuery, type ReceivingLinesQuery } from '@/lib/receiving/lines/query';
 import type { InboundFollowup } from '@/lib/receiving/inbound-followups';
 import { readInboundFollowups } from '@/lib/receiving/inbound-followups-store';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { reconcileListParams, awaitingTrackingListParams } from '@/lib/receiving/receiving-modes';
 import { parseRefList } from '@/lib/receiving/reconcile';
+import { parseTrackingKeys } from '@/lib/receiving/tracking-paste';
 import { listSupportRows } from '@/lib/support/list/support-list-db';
 import type { SupportListRow } from '@/lib/support/list/support-list';
 import { isIncomingUniversal } from '@/lib/feature-flags';
@@ -120,52 +121,83 @@ const RECONCILE_LINE_COLUMNS = [
 ] as const;
 
 /**
+ * A receiving-lines query cut to `refs`: every ref's key by the Check's own
+ * splitter, never its paste cap — a paste is capped where it is parsed
+ * (`parseRefList`), and the Purchases view asks every purchase in its window
+ * in one read. Room for five lines per number (`RECONCILE_ROW_LIMIT`'s ratio).
+ */
+function refQuery(params: URLSearchParams, refs: readonly string[]): ReceivingLinesQuery {
+  const query = parseReceivingLinesQuery(params);
+  const refIn = parseTrackingKeys([...refs], Number.MAX_SAFE_INTEGER).keys;
+  return { ...query, refIn, limit: Math.max(query.limit, refIn.length * 5) };
+}
+
+/**
+ * The Unbox Check over `refs`, every row of its answer. `liveZoho: false`
+ * answers from our tables alone (the mirror + local state): no live Zoho call
+ * for a mirror miss, so the warehouse lines decide it (`reconcileCheck`).
+ */
+export async function readInboundCheck(
+  orgId: OrgId,
+  refs: readonly string[],
+  options: { liveZoho: boolean },
+): Promise<CheckZohoReceivedRow[]> {
+  const result = await checkZohoReceived(orgId, [...refs], {
+    maxInputs: Number.MAX_SAFE_INTEGER,
+    ...(options.liveZoho ? {} : { maxZohoLookups: 0 }),
+  });
+  if ('error' in result) return [];
+  return [...result.received_in_zoho, ...result.not_received_in_zoho, ...result.undetermined];
+}
+
+/** `GET /api/receiving-lines?view=reconcile&ref_in=…` rows (serials aside — the verdict never reads them). */
+export async function readInboundLines(orgId: OrgId, refs: readonly string[]): Promise<ReceivingLineRow[]> {
+  const params = reconcileListParams([]);
+  params.delete('include');
+  const query = refQuery(params, refs);
+  const [page, org] = await Promise.all([
+    fetchReceivingLinesPage({
+      query,
+      orgId,
+      viewerStaffId: Number.NaN,
+      universalIncoming: false,
+      countTotal: false,
+      columns: RECONCILE_LINE_COLUMNS,
+      ...resolveReceivingLinesReadFlags(query),
+    }),
+    getOrganization(orgId),
+  ]);
+  const warehousePostal = org?.settings?.shipFrom?.postalCode ?? '';
+  for (const row of page.rows) enrichIncomingTrackingIntegrity(row as Record<string, unknown>, warehousePostal);
+  return page.rows as unknown as ReceivingLineRow[];
+}
+
+/** Incoming `?state=AWAITING_TRACKING` rows for `refs` — the list that bucket opens. */
+export async function readInboundAwaiting(orgId: OrgId, refs: readonly string[]): Promise<ReceivingLineRow[]> {
+  if (refs.length === 0) return [];
+  const query = refQuery(awaitingTrackingListParams([]), refs);
+  const page = await fetchReceivingLinesPage({
+    query,
+    orgId,
+    viewerStaffId: Number.NaN,
+    universalIncoming: await isIncomingUniversal(orgId),
+    countTotal: false,
+    columns: VERDICT_LINE_COLUMNS,
+    ...resolveReceivingLinesReadFlags(query),
+  });
+  return page.rows as unknown as ReceivingLineRow[];
+}
+
+/**
  * Every read here is one round trip (`tenantQueryOneTrip` / the page reader's
  * `countTotal: false` batch); the locators run their arms in parallel.
  */
 export const defaultNavLocateDeps: NavLocateDeps = {
   run: async (orgId, sql, params) => (await tenantQueryOneTrip(orgId, sql, params)).rows,
   ordersListSql: async (orgId, query) => buildOrdersListSql(orgId, query, await readOrdersListSchema()),
-  inboundCheck: async (orgId, refs) => {
-    const result = await checkZohoReceived(orgId, [...refs]);
-    if ('error' in result) return [];
-    return [...result.received_in_zoho, ...result.not_received_in_zoho, ...result.undetermined];
-  },
-  inboundLines: async (orgId, refs) => {
-    const params = reconcileListParams(refs);
-    // Serials are the ledger's column; the verdict never reads them.
-    params.delete('include');
-    const query = parseReceivingLinesQuery(params);
-    const [page, org] = await Promise.all([
-      fetchReceivingLinesPage({
-        query,
-        orgId,
-        viewerStaffId: Number.NaN,
-        universalIncoming: false,
-        countTotal: false,
-        columns: RECONCILE_LINE_COLUMNS,
-        ...resolveReceivingLinesReadFlags(query),
-      }),
-      getOrganization(orgId),
-    ]);
-    const warehousePostal = org?.settings?.shipFrom?.postalCode ?? '';
-    for (const row of page.rows) enrichIncomingTrackingIntegrity(row as Record<string, unknown>, warehousePostal);
-    return page.rows as unknown as ReceivingLineRow[];
-  },
-  inboundAwaiting: async (orgId, refs) => {
-    if (refs.length === 0) return [];
-    const query = parseReceivingLinesQuery(awaitingTrackingListParams(refs));
-    const page = await fetchReceivingLinesPage({
-      query,
-      orgId,
-      viewerStaffId: Number.NaN,
-      universalIncoming: await isIncomingUniversal(orgId),
-      countTotal: false,
-      columns: VERDICT_LINE_COLUMNS,
-      ...resolveReceivingLinesReadFlags(query),
-    });
-    return page.rows as unknown as ReceivingLineRow[];
-  },
+  inboundCheck: (orgId, refs) => readInboundCheck(orgId, refs, { liveZoho: true }),
+  inboundLines: readInboundLines,
+  inboundAwaiting: readInboundAwaiting,
   inboundFollowups: (orgId, keys) => readInboundFollowups(orgId, [...keys]),
   supportRows: (orgId, q) => listSupportRows(orgId, { q }),
 };

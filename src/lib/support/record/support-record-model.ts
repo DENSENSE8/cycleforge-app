@@ -9,8 +9,10 @@ import { stationComposerTicketCommitLabel } from '@/lib/composer/station-compose
 import {
   ANSWERING_DELIVERY_STATES,
   supportCustomerActionsAllowed,
+  type CheckInOutcome,
   type DeliveryState,
   type OrderCheckInState,
+  type OrderCheckInView,
   type SupportItemView,
   type SupportMessageView,
   type SupportPurpose,
@@ -169,30 +171,41 @@ export type SupportResolveBody = {
   reason?: string;
   override?: boolean;
   checkInDisposition?: 'resolved' | 'no_response_closed';
+  checkInOutcome?: CheckInOutcome;
 };
 
 /**
  * The resolve request, or why it may not be sent. With blockers the staffer
  * must choose override AND type a reason; "Close — no response" always needs
- * its reason. The server re-checks every rule (409 `{ blockers }`).
+ * its reason; closing a check-in as resolved needs how it ended (Happy / Had
+ * an issue). The server re-checks every rule (409 `{ blockers }`, 422).
  */
 export function supportResolveRequest(args: {
   blockers: readonly SupportResolveBlocker[];
   override: boolean;
   reason: string;
   disposition?: 'resolved' | 'no_response_closed';
+  outcome?: CheckInOutcome | null;
 }): { ok: true; body: SupportResolveBody } | { ok: false; error: string } {
   const reason = args.reason.trim();
   const blocked = args.blockers.length > 0;
   if (blocked && !args.override) return { ok: false, error: 'Clear the blockers first, or override with a reason.' };
   if (blocked && !reason) return { ok: false, error: 'Type the reason for the override.' };
   if (args.disposition === 'no_response_closed' && !reason) return { ok: false, error: 'Say why it closes without a response.' };
+  if (args.disposition === 'resolved' && !args.outcome) return { ok: false, error: 'Choose how it ended: Happy or Had an issue.' };
   const body: SupportResolveBody = {};
   if (reason) body.reason = reason;
   if (blocked) body.override = true;
   if (args.disposition) body.checkInDisposition = args.disposition;
+  if (args.disposition === 'resolved' && args.outcome) body.checkInOutcome = args.outcome;
   return { ok: true, body };
 }
+
+/** How a resolved check-in ended, in the words the close offers (operator 2026-10-05). */
+export const CHECK_IN_OUTCOME_LABEL: Readonly<Record<CheckInOutcome, string>> = {
+  happy: 'Happy',
+  issue: 'Had an issue',
+};
 
 const CLOSED_CHECK_IN_STATES: Readonly<Partial<Record<OrderCheckInState, true>>> = {
   resolved: true,
@@ -249,6 +262,12 @@ export const ORDER_CHECK_IN_STATE_LABEL: Readonly<Record<OrderCheckInState, stri
   not_applicable: 'Not applicable',
 };
 
+/** The check-in's state word; a resolved check-in names how it ended (`Resolved · Happy`). */
+export function supportCheckInStateLabel(checkIn: Pick<OrderCheckInView, 'state' | 'outcome'>): string {
+  const label = ORDER_CHECK_IN_STATE_LABEL[checkIn.state];
+  return checkIn.state === 'resolved' && checkIn.outcome ? `${label} · ${CHECK_IN_OUTCOME_LABEL[checkIn.outcome]}` : label;
+}
+
 const TRIGGER_LABEL: Readonly<Record<string, string>> = {
   delivered: 'Delivered',
   picked_up: 'Picked up',
@@ -290,6 +309,6 @@ export function supportCheckInFacts(
     facts.push({ id: 'trigger', label: kind ? (TRIGGER_LABEL[kind] ?? 'Fulfilled') : 'Fulfilled', value: formatAt(checkIn.triggerAt) });
   }
   if (checkIn.dueAt) facts.push({ id: 'due', label: 'Check-in due', value: formatAt(checkIn.dueAt) });
-  facts.push({ id: 'state', label: 'State', value: ORDER_CHECK_IN_STATE_LABEL[checkIn.state] });
+  facts.push({ id: 'state', label: 'State', value: supportCheckInStateLabel(checkIn) });
   return facts;
 }

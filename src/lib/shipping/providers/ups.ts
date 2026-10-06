@@ -3,6 +3,7 @@ import { normalizeUPSStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
 import { upsActivityInstant, upsActivityLegacyStamp } from '../carrier-event-instant';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { requireCarrierCredentials } from '../carrier-credentials';
 
 // UPS uses one host for both production and the CIE sandbox swap (wwwcie.ups.com).
 // Existing behaviour is production-only; expose the base so the subscription
@@ -22,12 +23,7 @@ let tokenCache: TokenCache | null = null;
 let tokenInFlight: Promise<string> | null = null;
 
 async function fetchFreshToken(): Promise<string> {
-  const clientId = process.env.UPS_CLIENT_ID;
-  const clientSecret = process.env.UPS_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error('UPS_CLIENT_ID and UPS_CLIENT_SECRET are required');
-  }
+  const [clientId, clientSecret] = requireCarrierCredentials('UPS');
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   const res = await fetch(UPS_AUTH_URL, {
@@ -134,12 +130,15 @@ function buildUPSResultFromPayload(payload: any, shipment: any, pkg: any): Carri
     };
   }
 
+  // `currentStatus` carries a 3-digit code and words but usually NO `type` ("160 · We Have Your
+  // Package" while the newest activity is type `I`): read it first, then the newest activity's status.
   const currentStatus = pkg?.currentStatus ?? pkg?.activity?.[0]?.status;
-  const latestCategory = normalizeUPSStatus(
-    currentStatus?.type,
-    currentStatus?.code,
-    currentStatus?.description
-  );
+  const newestActivity = pkg?.activity?.[0]?.status;
+  const fromCurrent = normalizeUPSStatus(currentStatus?.type, currentStatus?.code, currentStatus?.description);
+  const latestCategory =
+    fromCurrent === 'UNKNOWN' && newestActivity
+      ? normalizeUPSStatus(newestActivity.type, newestActivity.code, newestActivity.description)
+      : fromCurrent;
 
   const activities: unknown[] = Array.isArray(pkg?.activity) ? pkg.activity : [];
   const events: CarrierTrackingEvent[] = activities.map((act: any) => {

@@ -1,0 +1,42 @@
+-- 2026-10-05_stn_tracking_raw_key18_column.sql
+--
+-- WHAT
+--   shipping_tracking_numbers.tracking_raw_key18 — a STORED generated column
+--   holding the last 18 alphanumerics of tracking_number_raw:
+--     RIGHT(regexp_replace(UPPER(tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18)
+--   (the expression of idx_stn_tracking_raw_key18, 2026-09-27d, verbatim).
+--   Its index is the next file (2026-10-05b, CONCURRENTLY needs no-transaction).
+--
+-- WHY
+--   The key-18 order-match arm (src/lib/neon/packer-order-match.ts) probed
+--   idx_stn_tracking_raw_key18 through that expression. Under app_tenant the
+--   table's RLS policy is a security qual, and a user qual may only be pushed
+--   into an index scan when it is leakproof; regexp_replace / upper / right
+--   are not, and only a superuser can mark a wrapper LEAKPROOF (neondb_owner
+--   is not). So as app_tenant the arm bitmap-scanned every org tracking row
+--   per scan-out (11,929 rows removed x 137 loops; outbound.shipped facets
+--   2.3-3.1 s as app_tenant vs 0.41-0.48 s as owner, 2026-10-05). A plain
+--   column compared with texteq (leakproof) is index-matchable under RLS.
+--
+-- SAFETY
+--   ADD COLUMN ... STORED rewrites the table under ACCESS EXCLUSIVE: 7.2 MB
+--   heap / 32 MB total / ~12.7k rows on 2026-10-05 (sub-second rewrite). The
+--   runner's SET LOCAL lock_timeout (5s) makes it fail fast instead of
+--   queueing writers behind it. Every INSERT into this table names its
+--   columns, so a generated column breaks no writer. tracking_number_raw is
+--   NOT NULL. Tenant-owned table already under FORCE RLS; no policy change.
+--   idx_stn_tracking_raw_key18 stays until the code reading the column is
+--   deployed (the running build still probes the expression).
+--
+-- ROLLBACK
+--   ALTER TABLE shipping_tracking_numbers DROP COLUMN IF EXISTS tracking_raw_key18;
+--   (drops its index with it)
+--
+-- VERIFY
+--   SELECT count(*) FROM shipping_tracking_numbers
+--    WHERE tracking_raw_key18 IS DISTINCT FROM
+--          RIGHT(regexp_replace(UPPER(tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18);  -- 0
+
+ALTER TABLE shipping_tracking_numbers
+  ADD COLUMN IF NOT EXISTS tracking_raw_key18 text
+  GENERATED ALWAYS AS (RIGHT(regexp_replace(UPPER(tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18)) STORED;

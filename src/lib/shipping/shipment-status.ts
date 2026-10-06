@@ -32,6 +32,9 @@ function normalizeShipmentStatusCategory(
     : 'UNKNOWN';
 }
 
+/** Hours without a carrier event before a moving, undelivered shipment reads as stalled. */
+export const STALL_HOURS = 72;
+
 export function isStalled(args: {
   isTerminal?: boolean | null;
   category?: ShipmentStatusCategory | string | null;
@@ -46,5 +49,5 @@ export function isStalled(args: {
   if (!args.latestEventAt) return false;
   const ms = (args.now ?? Date.now()) - new Date(args.latestEventAt).getTime();
   if (!Number.isFinite(ms)) return false;
-  return ms > (args.stallHours ?? 72) * 3_600_000;
+  return ms > (args.stallHours ?? STALL_HOURS) * 3_600_000;
 }

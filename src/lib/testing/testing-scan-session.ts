@@ -113,34 +113,3 @@ export function testingScanSessionReducer(
       return state;
   }
 }
-
-/** Serials to show on the feedback card for the confirmed unit / line. */
-export function sessionSerials(session: TestingScanSession): Array<{
-  id?: number;
-  serial_number: string;
-  unit_uid?: string | null;
-}> {
-  const serials = session.line?.serials;
-  if (!Array.isArray(serials) || serials.length === 0) return [];
-  if (!session.unitKey) {
-    return serials.map((s) => ({
-      id: s.id,
-      serial_number: s.serial_number,
-      unit_uid: s.unit_uid ?? null,
-    }));
-  }
-  const key = session.unitKey.trim().toUpperCase();
-  const matched = serials.filter((s) => {
-    const sn = String(s.serial_number || '').trim().toUpperCase();
-    const uid = String(s.unit_uid || '').trim().toUpperCase();
-    return sn === key || uid === key || uid.endsWith(key) || sn.endsWith(key);
-  });
-  // If the unit key didn't match a single serial, show all line serials —
-  // the operator still needs the full prepack picture.
-  const list = matched.length > 0 ? matched : serials;
-  return list.map((s) => ({
-    id: s.id,
-    serial_number: s.serial_number,
-    unit_uid: s.unit_uid ?? null,
-  }));
-}

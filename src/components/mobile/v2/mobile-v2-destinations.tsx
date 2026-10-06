@@ -21,7 +21,7 @@ import {
   type DomainGroupId,
 } from '@/lib/nav/lanes';
 import { SHIPPING_NAV_ICONS, STATION_PAGE_ICONS, TECH_NAV_ICONS } from '@/lib/nav/station-nav-icons';
-import { CUSTOMER_PATHS, PREPACK_PATHS, QUALITY_CONTROL_PATHS, SUPPORT_PATHS, WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
+import { CUSTOMER_PATHS, FULFILLED_PATHS, PREPACK_PATHS, QUALITY_CONTROL_PATHS, SUPPORT_PATHS, WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
 import { FBM_DESTINATIONS } from '@/lib/nav/fbm-destinations';
 import { spineParentTone } from '@/lib/nav/spine-parent-tone';
 import {
@@ -30,7 +30,6 @@ import {
   type SpineNavigationBand,
 } from '@/lib/nav/spine-navigation-band';
 import { OUTBOUND_MODE_PATHS } from '@/lib/outbound/route-contract';
-import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { LIVE_FEED_MOBILE_PATH } from '@/lib/live-feed/route';
 import { LIVE_FEED_PERMISSION } from '@/lib/live-feed/stages';
 
@@ -99,7 +98,7 @@ export const MOBILE_V2_DESTINATIONS: readonly MobileV2Destination[] = [
   {
     id: 'prepack',
     label: 'Prepack',
-    description: 'Photograph and box one serialized unit',
+    description: 'Scan a serial, grade each package, print its labels',
     href: PREPACK_PATHS.form,
     icon: PackageCheck,
     tone: 'text-teal-600',
@@ -265,12 +264,11 @@ export const MOBILE_V2_FULFILLMENT_DESTINATIONS: readonly MobileV2Destination[] 
   {
     id: 'fulfilled',
     label: 'Fulfilled',
-    description: 'Every package that left the building',
-    href: SHIPPING_SHIPPED_PATH,
+    description: 'Every order since it left: carrier, delivery and check-in',
+    href: FULFILLED_PATHS.mobile,
     icon: PackageCheck,
     tone: 'text-emerald-600',
     requires: 'packing.view',
-    ported: false,
   },
   {
     id: 'fbm',

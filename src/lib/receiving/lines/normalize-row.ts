@@ -1,6 +1,6 @@
 /** Shape a raw `receiving_line` SQL row into the API's wire row. */
 
-import type { TicketReason } from '../receiving-line-row';
+import type { ListingSerialRef, TicketReason } from '../receiving-line-row';
 
 /**
  * Wire timestamps as strings. `SELECT rl.*` (and uncast street columns) arrive
@@ -76,6 +76,11 @@ export function normalizeRow(row: Record<string, unknown>) {
     workflow_status:          (row.workflow_status as string | null) ?? null,
     disposition_code:         (row.disposition_code as string) ?? 'HOLD',
     condition_grade:          (row.condition_grade as string) ?? 'USED_A',
+    // "As listed" — what the purchase listing said (sql-listing-evidence.ts). A SELECT without the
+    // evidence fragment (the PATCH re-fetch) leaves them off the wire, so a merged patch never blanks them.
+    purchase_condition_grade: 'purchase_condition_grade' in row ? ((row.purchase_condition_grade as string | null) ?? null) : undefined,
+    listing_serials:          Array.isArray(row.listing_serials) ? (row.listing_serials as ListingSerialRef[]) : undefined,
+    listing_photo_ids:        Array.isArray(row.listing_photo_ids) ? (row.listing_photo_ids as unknown[]).map(Number) : undefined,
     condition_set_at:         (row.condition_set_at as string | null) ?? null,
     label_printed_at:         (row.label_printed_at as string | null) ?? null,
     // Unbox procedure ACKNOWLEDGEMENT stamps — the gates for the `condition`, `contents` and `label` capture steps…

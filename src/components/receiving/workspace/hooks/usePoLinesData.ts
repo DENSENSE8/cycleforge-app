@@ -166,7 +166,8 @@ export function usePoLinesData({
     refetchOnWindowFocus: false,
   });
 
-  // Overlay resolved serials + units onto the metadata cache.
+  // Overlay resolved serials + units — and the listing evidence ("As listed"),
+  // which a scan's optimistic stub row never carries — onto the metadata cache.
   const serialRows = serialsQuery.data?.receiving_lines;
   useEffect(() => {
     if (!serialRows) return;
@@ -176,6 +177,11 @@ export function usePoLinesData({
         {
           serials: (r.serials ?? []) as ReceivingLineRow['serials'],
           units: (r.units ?? []) as ReceivingLineRow['units'],
+          listing: {
+            purchase_condition_grade: r.purchase_condition_grade,
+            listing_serials: r.listing_serials,
+            listing_photo_ids: r.listing_photo_ids,
+          },
         },
       ]),
     );
@@ -189,6 +195,15 @@ export function usePoLinesData({
           (s) => readOptimisticFlag(s as { _optimistic?: 'adding' | 'removing' }) != null,
         );
         let patched = r;
+        if (
+          incoming.listing.listing_serials !== undefined &&
+          (r.purchase_condition_grade !== incoming.listing.purchase_condition_grade ||
+            JSON.stringify(r.listing_serials) !== JSON.stringify(incoming.listing.listing_serials) ||
+            JSON.stringify(r.listing_photo_ids) !== JSON.stringify(incoming.listing.listing_photo_ids))
+        ) {
+          changed = true;
+          patched = { ...patched, ...incoming.listing } as ReceivingLineRow;
+        }
         if (!hasInFlight && r.serials !== incoming.serials) {
           changed = true;
           patched = { ...patched, serials: incoming.serials } as ReceivingLineRow;
@@ -213,6 +228,11 @@ export function usePoLinesData({
         }
         return patched;
       });
+      // A scan's optimistic seed can hold only the line it opened (a cached rail
+      // row); the hydration fetch is the whole carton, so its other lines join.
+      const known = new Set(next.map((r) => r.id));
+      const missing = serialRows.filter((r) => !known.has(r.id));
+      if (missing.length > 0) return { ...prev, receiving_lines: [...next, ...missing] };
       return changed ? { ...prev, receiving_lines: next } : prev;
     });
   }, [serialRows, queryClient, queryKey]);

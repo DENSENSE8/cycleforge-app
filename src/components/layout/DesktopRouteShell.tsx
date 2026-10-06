@@ -2,7 +2,7 @@
 
 import { type ReactNode, useState, useCallback, useEffect, useRef } from 'react';
 import { Suspense } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, type Variants } from '@/design-system/motion';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
@@ -34,6 +34,10 @@ import {
 } from '@/components/sidebar/contextual/useNavContext';
 import { OrgCapabilitiesRealtime } from '@/hooks/useOrgCapabilities';
 import { useLocalStorage } from '@/hooks';
+import { Collapse } from '@/design-system/components/Collapse';
+import { motionTransition } from '@/design-system/foundations/motion-presets';
+import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
+import { useListFocusEscape, useListFocusMode } from '@/lib/shell/list-focus-mode';
 
 // The sidebar is its own chunk:
 const DashboardSidebar = dynamic(
@@ -98,6 +102,11 @@ const ThrowTaskHost = dynamic(
   () => import('@/components/quick-access/ThrowTaskHost').then((m) => m.ThrowTaskHost),
   { ssr: false },
 );
+// The global New ticket composer (Add → Support, `C` then `T`); opened by event, so it mounts once here.
+const NewTicketHost = dynamic(
+  () => import('@/components/support/new-ticket/NewTicketHost').then((m) => m.NewTicketHost),
+  { ssr: false },
+);
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
   { ssr: false },
@@ -153,6 +162,23 @@ const drawerTransition = {
   mass: 0.8,
 };
 
+// ─── List focus mode (`useListFocusMode`) ────────────────────────────────────
+
+/**
+ * The nav column's slot in focus mode: its width collapses while the column
+ * inside slides left by its own width, so the panel's right edge rides the
+ * closing edge — one slide, one reflow. Clipped only while hidden or moving
+ * (the column's search field grows over the header when settled open).
+ */
+const focusColumnSlotVariants: Variants = {
+  shown: { width: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } },
+  hidden: { width: 0, opacity: 0, overflow: 'hidden' },
+};
+const focusColumnSlideVariants: Variants = {
+  shown: { x: 0 },
+  hidden: { x: '-100%' },
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 /** ResponsiveLayout — wraps the desktop app frame. */
@@ -181,6 +207,12 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
     window.addEventListener(MASTER_NAV_TOGGLE_EVENT, toggleNav);
     return () => window.removeEventListener(MASTER_NAV_TOGGLE_EVENT, toggleNav);
   }, [toggleNav]);
+  // List focus mode (`useListFocusMode`): the column, the global header and the desk
+  // title band slide away; the page body fills the viewport. Esc leaves.
+  const focus = useListFocusMode();
+  useListFocusEscape(focus);
+  const focusTransition = useMotionTransition(motionTransition.listFocusChrome);
+  const focusTiming = { open: focusTransition, close: focusTransition };
   // Before mount, only what the server also knows (localStorage is invisible
   // to SSR — reading it here would break hydration).
   const columnOpen = !mounted ? staticContextual : contextualActive ? contextualOpen : navOpen;
@@ -208,8 +240,8 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   // Pages move their own controls in (e.g. the order list's Find) while the
   // column is closed.
   useEffect(() => {
-    setSidebarColumnOpen(columnOpen && !chromeless);
-  }, [columnOpen, chromeless]);
+    setSidebarColumnOpen(columnOpen && !chromeless && !focus.on);
+  }, [columnOpen, chromeless, focus.on]);
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
@@ -222,7 +254,7 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   // state decides (localStorage is invisible to SSR), so hydration matches.
   const [columnMounted, setColumnMounted] = useState(false);
   const onColumnMounted = useCallback(() => setColumnMounted(true), []);
-  const reserveColumn = !chromeless && !columnMounted && columnOpen;
+  const reserveColumn = !chromeless && !focus.on && !columnMounted && columnOpen;
 
   /** Warm the spine chunk during the first idle window — the backstop tier of the prefetch (`preload-spine.ts`). */
   useEffect(() => {
@@ -333,31 +365,51 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
             whether the page has its own panel (it opens the column by default). */}
         {reserveColumn ? <div aria-hidden className={cn('h-full shrink-0', SIDEBAR_SPINE_WIDTH)} /> : null}
         {!chromeless && (
-          <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
-            <Suspense fallback={null}>
-              <NavRolloutProbe />
-              <OrgCapabilitiesRealtime />
-              <SidebarNavColumn
-                onMounted={onColumnMounted}
-                open={columnOpen}
-                peeking={navPeek.isOpen}
-                peekSurfaceProps={navPeek.surfaceProps}
-                onPeekDismiss={navPeek.close}
-              >
-                <ContextualSidebar />
-              </SidebarNavColumn>
-            </Suspense>
-          </ErrorBoundary>
+          <motion.div
+            data-list-focus-chrome="sidebar"
+            className="flex h-full shrink-0"
+            initial={false}
+            animate={focus.on ? 'hidden' : 'shown'}
+            variants={focusColumnSlotVariants}
+            transition={focusTransition}
+            inert={focus.on}
+          >
+            <motion.div
+              className="flex h-full"
+              initial={false}
+              animate={focus.on ? 'hidden' : 'shown'}
+              variants={focusColumnSlideVariants}
+              transition={focusTransition}
+            >
+              <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
+                <Suspense fallback={null}>
+                  <NavRolloutProbe />
+                  <OrgCapabilitiesRealtime />
+                  <SidebarNavColumn
+                    onMounted={onColumnMounted}
+                    open={columnOpen}
+                    peeking={navPeek.isOpen}
+                    peekSurfaceProps={navPeek.surfaceProps}
+                    onPeekDismiss={navPeek.close}
+                  >
+                    <ContextualSidebar />
+                  </SidebarNavColumn>
+                </Suspense>
+              </ErrorBoundary>
+            </motion.div>
+          </motion.div>
         )}
 
         <div className={cn('relative flex h-full min-w-0 flex-1 flex-col overflow-hidden', appChromeClass)}>
           {!chromeless && (
-          <GlobalHeader
-            navOpen={columnOpen}
-            onToggleNav={toggleNav}
-            peeking={navPeek.isOpen}
-            peekTriggerProps={navPeek.triggerProps}
-          />
+            <Collapse open={!focus.on} timing={focusTiming} frameClassName="shrink-0" data-testid="list-focus-header-slot">
+              <GlobalHeader
+                navOpen={columnOpen}
+                onToggleNav={toggleNav}
+                peeking={navPeek.isOpen}
+                peekTriggerProps={navPeek.triggerProps}
+              />
+            </Collapse>
           )}
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
             {/* The route's own sidebar rides HERE, beside the workspace — one wrapper for every route, benches included. */}
@@ -378,6 +430,7 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
         <CommandBar />
         <ClipboardHistoryHost />
         <ThrowTaskHost />
+        <NewTicketHost />
         <Suspense fallback={null}>
           <GlobalDesktopSkuScanner />
         </Suspense>

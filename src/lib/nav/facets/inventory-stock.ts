@@ -16,7 +16,9 @@ import type { OrgId } from '@/lib/tenancy/constants';
 export type StockScopeCountReader = (args: {
   orgId: OrgId;
   room: string | null;
+  excludeRoom: string | null;
   aisle: string | null;
+  excludeAisle: string | null;
   query: string | null;
 }) => Promise<StockScopeCounts>;
 
@@ -79,7 +81,14 @@ export async function inventoryStockFacets(
       ORDER BY 1 NULLS LAST, 2 NULLS LAST
     `,
     [orgId],
-  ), scopeCounts({ orgId, room: params.get('room'), aisle: params.get('aisle'), query: params.get('q') })]);
+  ), scopeCounts({
+    orgId,
+    room: params.get('room'),
+    excludeRoom: params.get('excludeRoom'),
+    aisle: params.get('aisle'),
+    excludeAisle: params.get('excludeAisle'),
+    query: params.get('q'),
+  })]);
   const rows = rawRows.map((row): LocationFacetRow => ({
     room: row.room == null ? null : String(row.room),
     aisle: row.aisle == null ? null : Number(row.aisle),

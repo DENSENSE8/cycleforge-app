@@ -5,7 +5,6 @@
 import { useCallback, useState } from 'react';
 import { Package } from '@/components/Icons';
 import { SearchField } from '@/design-system/primitives/SearchField';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { MobileDataListRow } from '@/design-system/components/MobileDataListRow';
 import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';
 
@@ -36,9 +35,7 @@ export function MobileProducts() {
         />
       </div>
 
-      {catalog.isPending && rows.length === 0 ? (
-        <UniversalLoader isLoading label="Loading products" className="min-h-48" />
-      ) : catalog.isError ? (
+      {catalog.isPending && rows.length === 0 ? null : catalog.isError ? (
         <p className="border-b border-mode-rule px-mode-page py-8 text-center text-role-data font-semibold text-text-danger">
           Couldn&apos;t load products.
         </p>

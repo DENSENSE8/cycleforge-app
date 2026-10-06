@@ -57,8 +57,8 @@ export interface SheetColumns<C extends LedgerGridColumnModel> {
    * (kept at 100%) scale with them, so columns stay proportional.
    */
   zoom: number;
-  /** One rung in (+1) or out (−1); 0 = back to 100%. */
-  stepZoom: (direction: -1 | 0 | 1) => void;
+  /** Set the zoom to one of {@link SHEET_ZOOM_STEPS}; any other value is ignored. */
+  setZoom: (percent: number) => void;
 }
 
 export function useSheetColumns<C extends LedgerGridColumnModel>(storageKey: string, base: readonly C[]): SheetColumns<C> {
@@ -95,13 +95,9 @@ export function useSheetColumns<C extends LedgerGridColumnModel>(storageKey: str
       widths: { ...current.widths, [key]: Math.round((widthPx * DEFAULT_ZOOM) / current.zoom) },
     }));
   }, []);
-  const stepZoom = useCallback((direction: -1 | 0 | 1) => {
-    setPrefs((current) => {
-      if (direction === 0) return { ...current, zoom: DEFAULT_ZOOM };
-      const at = SHEET_ZOOM_STEPS.indexOf(current.zoom as (typeof SHEET_ZOOM_STEPS)[number]);
-      const next = SHEET_ZOOM_STEPS[Math.min(SHEET_ZOOM_STEPS.length - 1, Math.max(0, at + direction))]!;
-      return { ...current, zoom: next };
-    });
+  const setZoom = useCallback((percent: number) => {
+    if (!SHEET_ZOOM_STEPS.includes(percent as (typeof SHEET_ZOOM_STEPS)[number])) return;
+    setPrefs((current) => ({ ...current, zoom: percent }));
   }, []);
   // Pinning the current edge again unfreezes every column.
   const frozenEdge = [...columns].reverse().find((c) => c.frozen)?.key ?? null;
@@ -110,5 +106,5 @@ export function useSheetColumns<C extends LedgerGridColumnModel>(storageKey: str
     [frozenEdge],
   );
 
-  return { columns, onResizeColumn, onFreezeColumn, zoom: prefs.zoom, stepZoom };
+  return { columns, onResizeColumn, onFreezeColumn, zoom: prefs.zoom, setZoom };
 }

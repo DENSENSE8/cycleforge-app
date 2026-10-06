@@ -12,13 +12,8 @@ import { INCOMING_PIPELINE_VIEW } from './incoming-pipeline';
 import { IMPORT_ROWS_VIEW, IMPORT_RUNS_VIEW } from './imports';
 import { INVENTORY_REPLENISH_VIEW } from './inventory-replenish';
 import { INVENTORY_STOCK_VIEW } from './inventory-stock';
-import {
-  LABEL_INTAKE_LABELS_VIEW,
-  LABEL_INTAKE_PAPERWORK_VIEW,
-  LABEL_INTAKE_UPLOADS_VIEW,
-} from './label-intake';
+import { LABEL_INTAKE_ORDERS_VIEW, LABEL_INTAKE_UPLOADS_VIEW } from './label-intake';
 import { LOCATIONS_RACKS_VIEW } from './locations-racks';
-import { OUTBOUND_SHIPPED_VIEW } from './outbound-shipped';
 import { OUTBOUND_TRIAGE_VIEW } from './outbound-triage';
 import { PICKUP_HISTORY_VIEW } from './pickup-history';
 import { PRINT_STATION_FNSKU_VIEW } from './print-station-fnsku';
@@ -38,11 +33,9 @@ export {
   IMPORT_RUNS_VIEW,
   INVENTORY_REPLENISH_VIEW,
   INVENTORY_STOCK_VIEW,
-  LABEL_INTAKE_LABELS_VIEW,
-  LABEL_INTAKE_PAPERWORK_VIEW,
+  LABEL_INTAKE_ORDERS_VIEW,
   LABEL_INTAKE_UPLOADS_VIEW,
   LOCATIONS_RACKS_VIEW,
-  OUTBOUND_SHIPPED_VIEW,
   OUTBOUND_TRIAGE_VIEW,
   PICKUP_HISTORY_VIEW,
   PRINT_STATION_FNSKU_VIEW,
@@ -61,13 +54,11 @@ export const TRIAGE_VIEWS: Readonly<Record<TriageViewId, TriageViewDecl>> = Obje
     INCOMING_DOCKED_VIEW,
     INCOMING_UNBOXED_VIEW,
     LABEL_INTAKE_UPLOADS_VIEW,
-    LABEL_INTAKE_LABELS_VIEW,
-    LABEL_INTAKE_PAPERWORK_VIEW,
+    LABEL_INTAKE_ORDERS_VIEW,
     IMPORT_RUNS_VIEW,
     IMPORT_ROWS_VIEW,
     INVENTORY_STOCK_VIEW,
     INVENTORY_REPLENISH_VIEW,
-    OUTBOUND_SHIPPED_VIEW,
     PRODUCTS_CATALOG_VIEW,
   ].map((view) => [view.id, view]),
 );

@@ -26,10 +26,18 @@ export function writeDataTablePageSize(size: DataTablePageSize): void {
   window.localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size));
 }
 
-/** Footer copy: one page prints "N rows"; a slice prints "shown of total". */
-export function formatDataTableCount(shown: number, total?: number): string {
+/** What a table's rows are called in its footer — "row" / "rows" unless the list names its records. */
+export interface DataTableRowNoun {
+  one: string;
+  many: string;
+}
+
+const ROW_NOUN: DataTableRowNoun = { one: 'row', many: 'rows' };
+
+/** Footer copy: one page prints "N rows" (or the list's own noun: "N purchases"); a slice prints "shown of total". */
+export function formatDataTableCount(shown: number, total?: number, noun: DataTableRowNoun = ROW_NOUN): string {
   if (total == null || shown === total) {
-    return `${shown.toLocaleString()} ${shown === 1 ? 'row' : 'rows'}`;
+    return `${shown.toLocaleString()} ${shown === 1 ? noun.one : noun.many}`;
   }
   return `${shown.toLocaleString()} of ${total.toLocaleString()}`;
 }

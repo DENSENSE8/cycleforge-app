@@ -38,20 +38,24 @@ export interface RecordCardMobileProps {
   model: RecordCardMobileModel;
   /** The family's fact columns, in order (orders: qty · condition · price). */
   factColumns: readonly RecordFactColumn[];
-  /** Where the record sits — the top row's first element. `onPress` makes it the set-location door. */
-  location: { path: string | null; onPress?: () => void };
+  /**
+   * Where the record sits — the top row's first element. `onPress` makes it the set-location door.
+   * Omitted = the family has no location (a shipped order left the building): no badge, never "No bin".
+   */
+  location?: { path: string | null; onPress?: () => void };
   onOpen: () => void;
   testIdPrefix: string;
 }
 
-const PHOTO_BOX = { lg: RECORD_MOBILE_PHOTO_SIZE_CLASS, xl: 'size-28' } as const;
+const PHOTO_BOX = { lg: RECORD_MOBILE_PHOTO_SIZE_CLASS, md: 'size-16', xl: 'size-28' } as const;
 
 /**
  * The phone's product photo: square, no corner, the image filling the square
  * (`object-cover` — a letterboxed well reads as padding); no photo → the
  * package placeholder. `lg`: the list card's lines, exactly their two body
- * rows tall. `xl`: the order's pick screen, big enough to find the item on
- * the shelf.
+ * rows tall. `md`: a pick list where the photo is how the item is told apart
+ * (Pair to SKU's results). `xl`: the order's pick screen, big enough to find
+ * the item on the shelf.
  */
 export function RecordSquarePhoto({ url, size, alt = '' }: { url: string | null; size: keyof typeof PHOTO_BOX; alt?: string }) {
   const box = PHOTO_BOX[size];
@@ -65,7 +69,7 @@ export function RecordSquarePhoto({ url, size, alt = '' }: { url: string | null;
     />
   ) : (
     <span aria-hidden className={cn('flex shrink-0 items-center justify-center rounded-none bg-surface-sunken text-text-faint', box)}>
-      <Package className={size === 'xl' ? 'size-6' : 'size-4'} />
+      <Package className={size === 'lg' ? 'size-4' : 'size-6'} />
     </span>
   );
 }
@@ -148,7 +152,7 @@ export function RecordCardMobile({ model, factColumns, location, onOpen, testIdP
 
       {/* Top row — location · code · ref …… due date. */}
       <div data-testid={id('row')} className="pointer-events-none relative z-10 flex min-w-0 items-center gap-2">
-        <LocationBadge text={location.path} onPress={location.onPress} className="pointer-events-auto shrink" />
+        {location ? <LocationBadge text={location.path} onPress={location.onPress} className="pointer-events-auto shrink" /> : null}
         {model.code ? (
           <LifecycleCode state={model.code} srLabel={model.code.label} className="shrink-0 text-role-eyebrow">
             {model.code.code}

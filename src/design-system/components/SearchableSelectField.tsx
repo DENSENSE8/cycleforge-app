@@ -10,7 +10,9 @@ import {
   type ReactNode,
 } from 'react';
 import { Command } from 'cmdk';
-import { ChevronDown, Search, Check, Loader2, Plus } from '@/components/Icons';
+import { ChevronDown, Search, Check, ClipboardPaste, Loader2, Plus } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives/IconButton';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { Popover } from '../primitives/Popover';
@@ -82,11 +84,25 @@ interface SearchableSelectFieldProps<T = unknown> {
   /** The list opened / closed — hosts load their options just in time on the first open. */
   onOpenChange?: (open: boolean) => void;
   /**
+   * Optional clipboard shortcut in the dropdown's search row. The host owns
+   * what a pasted identifier means (for example, resolving an external SKU to
+   * a catalog SKU); this primitive only reads the clipboard and supplies text.
+   */
+  paste?: { label?: string; onPaste: (value: string) => void };
+  /**
    * Inline create (e.g. "Add platform"): a trailing row, always visible, that hands the
    * typed name to the host — the host creates the row and selects it. Hidden while the
    * query already names an option exactly. Empty query: the row asks for a name.
    */
   create?: { label: string; onCreate: (name: string) => void };
+  /**
+   * `dropdown` (default): a trigger that opens the list in its own popover.
+   * `inline`: the search row and list paint in place, filling the host's
+   * height — for a sheet or panel that already IS the picker (no trigger, no
+   * second layer). `autoFocus` then focuses the search; a pick does not close
+   * anything; Escape and Tab stay the host's.
+   */
+  presentation?: 'dropdown' | 'inline';
 }
 
 const TONE_TRIGGER: Record<NonNullable<SearchableSelectFieldProps['tone']>, string> = {
@@ -186,7 +202,9 @@ export function SearchableSelectField<T = unknown>({
   loading = false,
   testId,
   onOpenChange,
+  paste,
   create,
+  presentation = 'dropdown',
 }: SearchableSelectFieldProps<T>) {
   const [open, setOpenState] = useState(false);
   const setOpen = (next: boolean) => {
@@ -203,6 +221,7 @@ export function SearchableSelectField<T = unknown>({
   const flush = appearance === 'flush';
   const hasLabel = Boolean(label?.trim());
   const remote = typeof onSearchChange === 'function';
+  const inline = presentation === 'inline';
 
   // In remote mode the host reports the query change and refetches; setting the
   // internal state here keeps the input controlled + the typeahead seed working.
@@ -235,7 +254,8 @@ export function SearchableSelectField<T = unknown>({
 
   const pick = (opt: SearchableSelectOption<T>) => {
     onChange(opt.value, opt);
-    close(true);
+    // Inline, the list IS the face: the pick stays checked in it.
+    if (!inline) close(true);
   };
 
   useEffect(() => {
@@ -246,10 +266,25 @@ export function SearchableSelectField<T = unknown>({
     return () => cancelAnimationFrame(id);
   }, [open]);
 
+  useEffect(() => {
+    if (inline && autoFocus) inputRef.current?.focus({ preventScroll: true });
+  }, [inline, autoFocus]);
+
   const openList = (seedQuery?: string) => {
     if (disabled) return;
     if (seedQuery != null) updateQuery(seedQuery);
     setOpen(true);
+  };
+
+  const pasteQuery = async () => {
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+      if (!text) return;
+      paste?.onPaste(text);
+      updateQuery(text);
+    } catch {
+      // Clipboard access is optional; the operator can always type the ID.
+    }
   };
 
   const onTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -277,6 +312,7 @@ export function SearchableSelectField<T = unknown>({
   };
 
   const onListKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (inline) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
@@ -341,6 +377,175 @@ export function SearchableSelectField<T = unknown>({
     </button>
   );
 
+  const list = (
+    <Command
+      shouldFilter={false}
+      className={cn('flex min-h-0 flex-col rounded-none bg-surface-card', inline && 'flex-1')}
+      onKeyDown={onListKeyDown}
+      id={`${labelId}-listbox`}
+    >
+      <div
+        className={cn(
+          'flex shrink-0 items-center gap-2 border-b border-border-hairline',
+          flush ? 'h-9 gap-1.5 px-3.5' : 'gap-2 px-2.5 py-2',
+        )}
+        cmdk-input-wrapper=""
+      >
+        <Search className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
+        <Command.Input
+          ref={inputRef}
+          value={query}
+          onValueChange={updateQuery}
+          placeholder={searchPlaceholder}
+          aria-label={inline ? (ariaLabel ?? label ?? searchPlaceholder) : undefined}
+          data-testid={inline && testId ? `${testId}-input` : undefined}
+          className={cn(
+            'w-full bg-transparent text-text-default outline-none placeholder:text-text-faint',
+            flush ? 'h-9 text-role-caption font-medium' : 'text-role-micro',
+          )}
+        />
+        {paste ? (
+          <HoverTooltip label={paste.label ?? 'Paste from clipboard'} asChild placement="above">
+            <IconButton
+              size="xs"
+              radius="control"
+              tone="accent"
+              ariaLabel={paste.label ?? 'Paste from clipboard'}
+              icon={<ClipboardPaste className="h-3.5 w-3.5" />}
+              onClick={() => void pasteQuery()}
+            />
+          </HoverTooltip>
+        ) : null}
+      </div>
+
+      <Command.List
+        className={cn(
+          // Inline, the host sizes the face and the list takes what is left.
+          inline ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain' : 'max-h-72 min-h-0 overflow-y-auto overscroll-contain',
+          flush ? 'p-0' : 'py-1',
+        )}
+      >
+        {loading ? (
+          <div
+            className={cn(
+              'flex items-center gap-2 text-text-faint',
+              flush ? 'px-3.5 py-2.5' : 'px-3 py-2',
+            )}
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span className={cn(flush ? 'text-role-caption' : 'text-role-micro')}>
+              Searching…
+            </span>
+          </div>
+        ) : (
+          <Command.Empty
+            className={cn(
+              'text-center text-role-eyebrow mode-label-case text-text-faint',
+              flush ? 'px-3.5 py-3' : 'px-3 py-4',
+            )}
+          >
+            {emptyMessage}
+          </Command.Empty>
+        )}
+
+        {groups.map(({ heading, items }) => (
+          <Command.Group
+            key={heading || '__ungrouped'}
+            heading={heading || undefined}
+            className={cn(
+              heading
+                && '[&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-role-eyebrow [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:mode-label-case [&_[cmdk-group-heading]]:text-text-faint',
+              heading
+                && (flush
+                  ? '[&_[cmdk-group-heading]]:px-3.5'
+                  : '[&_[cmdk-group-heading]]:px-3'),
+            )}
+          >
+            {items.map((opt) => {
+              const active = opt.value === value;
+              return (
+                <Command.Item
+                  key={String(opt.value)}
+                  value={`${opt.label} ${opt.meta ?? ''} ${opt.value}`}
+                  onSelect={() => pick(opt)}
+                  data-checked={active ? '' : undefined}
+                  className={cn(
+                    'flex w-full cursor-pointer items-center gap-2 text-left outline-none transition-colors',
+                    'data-[selected=true]:bg-surface-hover',
+                    flush ? 'rounded-none px-3.5 py-2' : 'px-3 py-1.5',
+                    active ? TONE_ACTIVE[tone] : 'text-text-muted',
+                  )}
+                >
+                  {renderOption ? (
+                    renderOption(opt, { active })
+                  ) : (
+                    <>
+                      <span
+                        className={cn(
+                          'min-w-0 flex-1 truncate',
+                          flush ? 'text-role-caption font-medium' : 'text-role-micro',
+                        )}
+                      >
+                        {opt.label}
+                      </span>
+                      {opt.meta ? (
+                        <span className="shrink-0 text-role-eyebrow mode-label-case text-text-faint">
+                          {opt.meta}
+                        </span>
+                      ) : null}
+                      {active ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
+                    </>
+                  )}
+                </Command.Item>
+              );
+            })}
+          </Command.Group>
+        ))}
+
+        {showCreate && create ? (
+          <Command.Group className="border-t border-border-hairline">
+            <Command.Item
+              value="__searchable-select-create__"
+              onSelect={() => {
+                if (!createName) {
+                  inputRef.current?.focus();
+                  return;
+                }
+                create.onCreate(createName);
+                if (!inline) close(true);
+              }}
+              className={cn(
+                'flex w-full cursor-pointer items-center gap-2 text-left text-blue-700 outline-none transition-colors',
+                'data-[selected=true]:bg-surface-hover',
+                flush ? 'rounded-none px-3.5 py-2' : 'px-3 py-1.5',
+              )}
+              data-testid={testId ? `${testId}-create` : undefined}
+            >
+              <Plus className="h-3.5 w-3.5 shrink-0" />
+              <span className={cn('min-w-0 flex-1 truncate font-semibold', flush ? 'text-role-caption' : 'text-role-micro')}>
+                {createName ? `${create.label} “${createName}”` : create.label}
+              </span>
+              {createName ? null : (
+                <span className="shrink-0 text-role-eyebrow mode-label-case text-text-faint">Type its name</span>
+              )}
+            </Command.Item>
+          </Command.Group>
+        ) : null}
+      </Command.List>
+    </Command>
+  );
+
+  if (inline) {
+    return (
+      <div
+        className={cn('flex min-h-0 flex-col overflow-hidden rounded-lg border border-border-default bg-surface-card', className)}
+        data-testid={testId}
+      >
+        {list}
+      </div>
+    );
+  }
+
   return (
     <>
       {hasLabel ? (
@@ -354,7 +559,6 @@ export function SearchableSelectField<T = unknown>({
       ) : (
         trigger
       )}
-
       <Popover
         open={open}
         onClose={() => close(true)}
@@ -375,145 +579,7 @@ export function SearchableSelectField<T = unknown>({
           flush && '[[data-side=top]>&]:border-b-0 [[data-side=bottom]>&]:border-t-0',
         )}
       >
-        <Command
-          shouldFilter={false}
-          className="flex min-h-0 flex-col rounded-none bg-surface-card"
-          onKeyDown={onListKeyDown}
-          id={`${labelId}-listbox`}
-        >
-          <div
-            className={cn(
-              'flex shrink-0 items-center gap-2 border-b border-border-hairline',
-              flush ? 'h-9 gap-1.5 px-3.5' : 'gap-2 px-2.5 py-2',
-            )}
-            cmdk-input-wrapper=""
-          >
-            <Search className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
-            <Command.Input
-              ref={inputRef}
-              value={query}
-              onValueChange={updateQuery}
-              placeholder={searchPlaceholder}
-              className={cn(
-                'w-full bg-transparent text-text-default outline-none placeholder:text-text-faint',
-                flush ? 'h-9 text-role-caption font-medium' : 'text-role-micro',
-              )}
-            />
-          </div>
-
-          <Command.List
-            className={cn(
-              'max-h-72 min-h-0 overflow-y-auto overscroll-contain',
-              flush ? 'p-0' : 'py-1',
-            )}
-          >
-            {loading ? (
-              <div
-                className={cn(
-                  'flex items-center gap-2 text-text-faint',
-                  flush ? 'px-3.5 py-2.5' : 'px-3 py-2',
-                )}
-              >
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span className={cn(flush ? 'text-role-caption' : 'text-role-micro')}>
-                  Searching…
-                </span>
-              </div>
-            ) : (
-              <Command.Empty
-                className={cn(
-                  'text-center text-role-eyebrow mode-label-case text-text-faint',
-                  flush ? 'px-3.5 py-3' : 'px-3 py-4',
-                )}
-              >
-                {emptyMessage}
-              </Command.Empty>
-            )}
-
-            {groups.map(({ heading, items }) => (
-              <Command.Group
-                key={heading || '__ungrouped'}
-                heading={heading || undefined}
-                className={cn(
-                  heading
-                    && '[&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-role-eyebrow [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:mode-label-case [&_[cmdk-group-heading]]:text-text-faint',
-                  heading
-                    && (flush
-                      ? '[&_[cmdk-group-heading]]:px-3.5'
-                      : '[&_[cmdk-group-heading]]:px-3'),
-                )}
-              >
-                {items.map((opt) => {
-                  const active = opt.value === value;
-                  return (
-                    <Command.Item
-                      key={String(opt.value)}
-                      value={`${opt.label} ${opt.meta ?? ''} ${opt.value}`}
-                      onSelect={() => pick(opt)}
-                      className={cn(
-                        'flex w-full cursor-pointer items-center gap-2 text-left outline-none transition-colors',
-                        'data-[selected=true]:bg-surface-hover',
-                        flush ? 'rounded-none px-3.5 py-2' : 'px-3 py-1.5',
-                        active ? TONE_ACTIVE[tone] : 'text-text-muted',
-                      )}
-                    >
-                      {renderOption ? (
-                        renderOption(opt, { active })
-                      ) : (
-                        <>
-                          <span
-                            className={cn(
-                              'min-w-0 flex-1 truncate',
-                              flush ? 'text-role-caption font-medium' : 'text-role-micro',
-                            )}
-                          >
-                            {opt.label}
-                          </span>
-                          {opt.meta ? (
-                            <span className="shrink-0 text-role-eyebrow mode-label-case text-text-faint">
-                              {opt.meta}
-                            </span>
-                          ) : null}
-                          {active ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
-                        </>
-                      )}
-                    </Command.Item>
-                  );
-                })}
-              </Command.Group>
-            ))}
-
-            {showCreate && create ? (
-              <Command.Group className="border-t border-border-hairline">
-                <Command.Item
-                  value="__searchable-select-create__"
-                  onSelect={() => {
-                    if (!createName) {
-                      inputRef.current?.focus();
-                      return;
-                    }
-                    create.onCreate(createName);
-                    close(true);
-                  }}
-                  className={cn(
-                    'flex w-full cursor-pointer items-center gap-2 text-left text-blue-700 outline-none transition-colors',
-                    'data-[selected=true]:bg-surface-hover',
-                    flush ? 'rounded-none px-3.5 py-2' : 'px-3 py-1.5',
-                  )}
-                  data-testid={testId ? `${testId}-create` : undefined}
-                >
-                  <Plus className="h-3.5 w-3.5 shrink-0" />
-                  <span className={cn('min-w-0 flex-1 truncate font-semibold', flush ? 'text-role-caption' : 'text-role-micro')}>
-                    {createName ? `${create.label} “${createName}”` : create.label}
-                  </span>
-                  {createName ? null : (
-                    <span className="shrink-0 text-role-eyebrow mode-label-case text-text-faint">Type its name</span>
-                  )}
-                </Command.Item>
-              </Command.Group>
-            ) : null}
-          </Command.List>
-        </Command>
+        {list}
       </Popover>
     </>
   );

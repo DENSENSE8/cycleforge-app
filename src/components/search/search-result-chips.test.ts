@@ -36,6 +36,8 @@ test('orderStatusTone: null / undefined / empty → gray with a "No status" labe
 
 test('orderStatusTone: label is title-cased from the raw value', () => {
   assert.equal(orderStatusTone('shipped').label, 'Shipped');
+  assert.equal(orderStatusTone('To pick').label, 'To pick');
+  assert.equal(orderStatusTone('To pick').tone, 'amber');
   assert.equal(orderStatusTone('DELIVERED').label, 'Delivered');
 });
 

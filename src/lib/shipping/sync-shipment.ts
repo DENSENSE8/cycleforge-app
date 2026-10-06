@@ -1,4 +1,4 @@
-import type { CarrierCode, ShipmentRow } from './types';
+import type { CarrierCode, CarrierTrackingResult, ShipmentRow } from './types';
 import { extractCanonicalTracking } from '@/lib/tracking-format';
 import { detectCarrier } from './normalize';
 import {
@@ -13,6 +13,7 @@ import { publishShipmentStatusChange } from './publish-on-status-change';
 import { isCarrierSyncEnabled } from './enabled-carriers';
 import { resolveShipmentOrgId } from './resolve-shipment-org';
 import { shouldPublishCarrierSync } from './sync-publish';
+import { CARRIER_CREDENTIALS_MISSING, carrierCredentialsMessage, missingCarrierCredentials } from './carrier-credentials';
 import * as ups from './providers/ups';
 import * as usps from './providers/usps';
 import * as fedex from './providers/fedex';
@@ -33,27 +34,54 @@ export interface SyncShipmentResult {
   errorCode?: string;
 }
 
-function getProvider(carrier: CarrierCode) {
-  switch (carrier) {
-    case 'UPS': return ups;
-    case 'USPS': return usps;
-    case 'FEDEX': return fedex;
-  }
+/**
+ * Everything {@link syncShipment} reaches outside itself. The default is the
+ * real provider + repository writers — the cron sweep, the resync script and
+ * the on-demand poll all go through it, so there is one writer; tests swap pieces.
+ */
+export interface SyncShipmentDeps {
+  getShipmentById: typeof getShipmentById;
+  getShipmentByTracking: typeof getShipmentByTracking;
+  upsertShipment: typeof upsertShipment;
+  upsertTrackingEvents: typeof upsertTrackingEvents;
+  updateShipmentSummary: typeof updateShipmentSummary;
+  updateShipmentError: typeof updateShipmentError;
+  publishShipmentStatusChange: typeof publishShipmentStatusChange;
+  resolveShipmentOrgId: typeof resolveShipmentOrgId;
+  trackByNumber(carrier: CarrierCode, trackingNumber: string): Promise<CarrierTrackingResult>;
+  /** Where carrier credentials are read from. */
+  env: Readonly<Record<string, string | undefined>>;
 }
+
+const PROVIDERS = { UPS: ups, USPS: usps, FEDEX: fedex } as const satisfies Record<CarrierCode, unknown>;
+
+export const syncShipmentDeps: SyncShipmentDeps = {
+  getShipmentById,
+  getShipmentByTracking,
+  upsertShipment,
+  upsertTrackingEvents,
+  updateShipmentSummary,
+  updateShipmentError,
+  publishShipmentStatusChange,
+  resolveShipmentOrgId,
+  trackByNumber: (carrier, trackingNumber) => PROVIDERS[carrier].trackByNumber(trackingNumber),
+  env: process.env,
+};
 
 export async function syncShipment(
   input: SyncShipmentInput,
   orgId?: OrgId,
+  deps: SyncShipmentDeps = syncShipmentDeps,
 ): Promise<SyncShipmentResult> {
   let shipment =
     input.shipmentId != null
-      ? await getShipmentById(input.shipmentId, orgId)
+      ? await deps.getShipmentById(input.shipmentId, orgId)
       : null;
 
   if (!shipment && input.trackingNumber) {
     // Canonical key (FedEx GS1 unwrap) — raw gun read stays on tracking_number_raw.
     const normalized = extractCanonicalTracking(input.trackingNumber);
-    shipment = await getShipmentByTracking(normalized, orgId);
+    shipment = await deps.getShipmentByTracking(normalized, orgId);
 
     if (!shipment) {
       const carrier =
@@ -67,7 +95,7 @@ export async function syncShipment(
         };
       }
 
-      shipment = await upsertShipment({
+      shipment = await deps.upsertShipment({
         trackingNumberRaw: input.trackingNumber,
         trackingNumberNormalized: normalized,
         carrier,
@@ -86,7 +114,7 @@ export async function syncShipment(
   const effectiveOrgId =
     orgId ??
     (shipment.organization_id as OrgId | null) ??
-    (await resolveShipmentOrgId(shipment.id)) ??
+    (await deps.resolveShipmentOrgId(shipment.id)) ??
     undefined;
 
   if (shipment.is_terminal) {
@@ -98,7 +126,8 @@ export async function syncShipment(
     };
   }
 
-  const carrier = shipment.carrier as CarrierCode;
+  // Upper-cased like isCarrierSyncEnabled: a lowercase row must reach its provider, not crash the lookup.
+  const carrier = shipment.carrier.toUpperCase() as CarrierCode;
 
   // USPS is disabled pending its IP Agreement (see enabled-carriers.ts). Skip without
   // calling the provider or recording an error so disabled-carrier shipments
@@ -112,12 +141,22 @@ export async function syncShipment(
     };
   }
 
-  const provider = getProvider(carrier);
+  // Missing credentials are a configuration fault, not this package's: report
+  // it without touching the row, so its backoff and error columns stay as they
+  // are and the next poll after the values land is not 12h away.
+  if (missingCarrierCredentials(carrier, deps.env).length > 0) {
+    return {
+      ok: false,
+      shipmentId: shipment.id,
+      error: carrierCredentialsMessage(carrier),
+      errorCode: CARRIER_CREDENTIALS_MISSING,
+    };
+  }
 
   try {
-    const result = await provider.trackByNumber(shipment.tracking_number_normalized);
+    const result = await deps.trackByNumber(carrier, shipment.tracking_number_normalized);
 
-    const inserted = await upsertTrackingEvents(
+    const inserted = await deps.upsertTrackingEvents(
       shipment.id,
       carrier,
       shipment.tracking_number_normalized,
@@ -125,7 +164,7 @@ export async function syncShipment(
       effectiveOrgId,
     );
 
-    const statusCategory = await updateShipmentSummary(shipment.id, result, effectiveOrgId);
+    const statusCategory = await deps.updateShipmentSummary(shipment.id, result, effectiveOrgId);
     // A summary can advance even when its carrier event was already present
     // (reconcile/backfill race). Publish that transition too so queue caches do
     // not keep a delivered order until their TTL expires.
@@ -136,7 +175,7 @@ export async function syncShipment(
       deliveredAt: result.deliveredAt,
       eventsInserted: inserted,
     })) {
-      await publishShipmentStatusChange({
+      await deps.publishShipmentStatusChange({
         shipmentId: shipment.id,
         source: 'shipping-sync',
         trackingNumber: shipment.tracking_number_normalized,
@@ -155,7 +194,7 @@ export async function syncShipment(
   } catch (err: any) {
     const code = err?.code ?? 'SYNC_ERROR';
     const message = err?.message ?? 'Unknown sync error';
-    await updateShipmentError(shipment.id, code, message, carrier, effectiveOrgId);
+    await deps.updateShipmentError(shipment.id, code, message, carrier, effectiveOrgId);
 
     return {
       ok: false,
@@ -193,7 +232,9 @@ export async function registerAndSyncShipment(params: {
 }, orgId?: OrgId) {
   const shipment = await registerShipment(params, orgId);
 
-  if (!shipment.last_checked_at && !shipment.latest_status_category) {
+  // check_attempt_count, not last_checked_at: last_checked_at only marks a
+  // SUCCESSFUL poll, and a failed first attempt is paced by the backoff.
+  if (!shipment.check_attempt_count && !shipment.latest_status_category) {
     await syncShipment({ shipmentId: shipment.id }, orgId);
   }
 
@@ -232,7 +273,7 @@ export async function registerShipmentPermissive(params: {
   // Best-effort carrier sync for known carriers only. Never throw into the caller.
   // Skip when creating an outbound work-queue row: a live UPS lookup on a test
   // 1Z… number marks EXCEPTION and To Ship pending treats that as already shipped.
-  if (params.syncCarrier !== false && detected && !shipment.last_checked_at) {
+  if (params.syncCarrier !== false && detected && !shipment.check_attempt_count) {
     void syncShipment({ shipmentId: shipment.id }, orgId).catch(() => {});
   }
 

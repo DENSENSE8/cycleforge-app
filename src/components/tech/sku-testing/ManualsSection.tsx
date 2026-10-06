@@ -53,14 +53,7 @@ export function ManualsSection({
     return manuals.map((m) => {
       const name = m.display_name || m.file_name || `Manual #${m.id}`;
       // Same-origin content proxy — Vercel Blob CSP blanks PDFs in iframes.
-      // `/api/documents/:id/content` still needs orders.view; only use it when
-      // there is no product-manuals blob.
-      const src =
-        m.source_url
-          ? productManualContentPath(m.id)
-          : m.document_id != null && m.document_id > 0
-            ? `/api/documents/${m.document_id}/content`
-            : null;
+      const src = m.source_url ? productManualContentPath(m.id) : null;
       return {
         id: `manual:${m.id}`,
         title: name,
@@ -148,7 +141,7 @@ export function ManualsSection({
                   ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">
-                  {m.source_url || m.document_id ? (
+                  {m.source_url ? (
                     <HoverTooltip label="View manual" asChild>
                       <IconButton
                         icon={<FileText className="h-4 w-4" />}

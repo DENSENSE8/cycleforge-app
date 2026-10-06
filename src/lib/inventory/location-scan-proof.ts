@@ -27,9 +27,9 @@ function canonicalLocation(code: string): string {
 }
 
 /**
- * Short-lived proof that the signed-in operator physically scanned this
- * location. It is bound to tenant, staff member, and location so copying a URL
- * cannot authorize another person or another bin.
+ * Proof that the signed-in operator physically scanned this location. It is
+ * bound to tenant, staff member, and location so copying a URL cannot
+ * authorize another person or another bin. Age does not revoke it.
  */
 export function signLocationScanProof(
   identity: { organizationId: string; staffId: number; locationCode: string },
@@ -66,7 +66,9 @@ export function verifyLocationScanProof(
   }
   const claims = LocationScanProofClaims.parse(JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')));
   const now = options.now ?? Math.floor(Date.now() / 1_000);
-  if (claims.expiresAt < now || claims.issuedAt > now + 5) throw new Error('Location scan expired. Scan it again to edit stock.');
+  // A location scan stays valid for that staff member and that bin. Age is not
+  // a reason to stop adjusting; a stamp from the future is.
+  if (claims.issuedAt > now + 5) throw new Error('This scan does not authorize changes at this location.');
   if (
     claims.organizationId !== expected.organizationId
     || claims.staffId !== expected.staffId

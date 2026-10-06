@@ -36,6 +36,7 @@ import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/w
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
+import { publishListingSerialConfirmed } from '@/components/receiving/workspace/line-edit/listing-serial-confirm';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
 import { requestConfirm } from '@/design-system/components/confirm';
@@ -148,8 +149,12 @@ function useActiveUnfoundLineSerials({
           );
           return;
         }
+        if (json.listing_serial_confirmed) {
+          publishListingSerialConfirmed(queryClient, receivingId, resolvedLineId, serial);
+        }
         if (json.already_attached) {
-          toast.info(`Already added — ${serial}`);
+          if (json.listing_serial_confirmed) toast.success(`Confirmed — ${serial}`);
+          else toast.info(`Already added — ${serial}`);
           publish(
             resolvedLineId,
             rollbackOptimisticSerial(readLineSerials(resolvedLineId), tempId),
@@ -200,6 +205,7 @@ function useActiveUnfoundLineSerials({
       isReturn,
       lineCondition,
       publish,
+      queryClient,
       readLineSerials,
       receivingId,
       serialLookup,
@@ -670,6 +676,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                           props.linkedOrderHint?.zoho_purchaseorder_number ?? null
                         }
                         poRouteRef={null}
+                        listingSerials={line.listing_serials}
                         onArmCapture={() => {
                           setActiveSinkId(`po-line:${line.id}`);
                           if (!isActiveLine) dispatchSelectLine(line);

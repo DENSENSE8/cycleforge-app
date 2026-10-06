@@ -154,6 +154,8 @@ export type TableId =
   | 'pasted-list'
   /** Support › Support items — its OWN bucket; three structural columns, nothing to hide. */
   | 'support'
+  /** Purchasing › Upload check — its OWN bucket; one track per file column, nothing to hide. */
+  | 'inbound-import-check'
   /**
    * Amazon Prep › shipment board. The KEY stays because `TableId`'s runtime
    * vocabulary derives from this record — the display is being rebuilt.
@@ -407,6 +409,8 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    * the two mounts' Fields prefs from fighting, nothing more.
    */
   'sku-allocations': [],
+  /** Upload check — **deliberately empty**: its tracks are the uploaded file's own columns. */
+  'inbound-import-check': [],
 };
 
 function tableColumnsFor(tableId: TableId): TableColumnSpec[] {

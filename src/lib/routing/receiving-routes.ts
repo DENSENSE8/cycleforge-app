@@ -23,8 +23,20 @@ import {
   DOCKED_KIND_VALUES,
   INBOUND_FIND_PARAM,
   INBOUND_LANE_PARAM_VALUES,
+  INBOUND_SOURCE_OPTIONS,
   parseInboundDeskSort,
 } from '@/lib/receiving/inbound-lane';
+import {
+  PURCHASES_AXES,
+  PURCHASES_AXIS_PARAM,
+  PURCHASES_FROM_PARAM,
+  PURCHASES_SOURCE_PARAM,
+  PURCHASES_STATUS_PARAM,
+  PURCHASES_TO_PARAM,
+  PURCHASES_UNBOXED_BY_PARAM,
+  PURCHASES_VENDOR_PARAM,
+} from '@/lib/receiving/purchases-params';
+import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
 import { parseIncomingViewWire } from '@/lib/receiving/incoming-view';
 import { parseIncomingDeliveryStateWire } from '@/lib/receiving/incoming-delivery-state-face';
 import { parseUnboxKpiFilterWire } from '@/lib/receiving/unbox-metrics';
@@ -206,7 +218,7 @@ export const TRIAGE_ROUTE_PARAMS = defineRouteParams({
 export const INCOMING_ROUTE_PARAMS = defineRouteParams({
   route: INCOMING_SURFACE_ROUTE,
   owns: {
-    /** Desk lane (`pipeline` default, omitted | `docked` | `exceptions`). */
+    /** Desk lane (`pipeline` default, omitted | `docked` | `unboxed` | `exceptions`). */
     lane: paramEnum(INBOUND_LANE_PARAM_VALUES),
     /** Retired Incoming collection face (`pos` only). Hygiene strips leftovers. */
     incview: paramRoundTrip(parseIncomingViewWire),
@@ -275,6 +287,29 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
      * staffer chose fullscreen; a reload restores it.
      */
     openLine: paramText,
+  },
+  carries: BROWSE_SURFACE_CARRIES,
+});
+
+/**
+ * `/purchasing` — Purchasing, a Receiving mode (`purchases-params.ts`): which
+ * date the window reads, the window (civil days; neither = the last 90 days),
+ * the purchasing source, the vendor and who unboxed. Its Sort is the carried
+ * `colsort` / `coldir` (`PURCHASES_SORTS`); its status chips are `recon`;
+ * Find is `find`, narrowing the query server-side.
+ */
+const PURCHASING_ROUTE_PARAMS = defineRouteParams({
+  route: RECEIVING_PATHS.purchasing,
+  owns: {
+    [PURCHASES_AXIS_PARAM]: paramEnum(PURCHASES_AXES),
+    [PURCHASES_FROM_PARAM]: paramDateKey,
+    [PURCHASES_TO_PARAM]: paramDateKey,
+    [PURCHASES_SOURCE_PARAM]: paramRoundTrip((raw) => INBOUND_SOURCE_OPTIONS.find((option) => option.value === raw)?.value),
+    [PURCHASES_VENDOR_PARAM]: paramText,
+    [PURCHASES_UNBOXED_BY_PARAM]: paramPositiveInt,
+    /** The body's status chips — the inbound locator's buckets (`PURCHASES_STATUS_PARAM`). */
+    [PURCHASES_STATUS_PARAM]: paramLocateBucket('inbound'),
+    [INBOUND_FIND_PARAM]: paramText,
   },
   carries: BROWSE_SURFACE_CARRIES,
 });
@@ -383,6 +418,7 @@ export const RECEIVING_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   UNBOX_ROUTE_PARAMS,
   TRIAGE_ROUTE_PARAMS,
   INCOMING_ROUTE_PARAMS,
+  PURCHASING_ROUTE_PARAMS,
   PICKUP_ROUTE_PARAMS,
   REPAIR_ROUTE_PARAMS,
   HISTORY_ROUTE_PARAMS,

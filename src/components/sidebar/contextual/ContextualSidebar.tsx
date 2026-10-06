@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { NavAction, NavContext } from '@/lib/nav/context/schema';
 import { fetchNavContext } from '@/lib/nav/context/http-client';
 import { MASTER_NAV_TOGGLE_EVENT } from '@/lib/app-events';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
@@ -125,8 +125,17 @@ export function ContextualSidebar() {
     }
   }, [peekTop]);
 
+  // The body never stacks two faces (operator 2026-10-05: page-map rows were
+  // left painted under a Scan Station's filters). A swap is a hard cut: the
+  // outgoing face unmounts in the same commit the incoming one mounts, and
+  // only the incoming face fades in. No exit phase, so nothing can linger,
+  // overlap or take a click. The first painted body does not fade.
   const presence = useMotionPresence(motionPresence.sidebarScopeSwap);
   const transition = useMotionTransition(motionTransition.sidebarScopeSwap);
+  const bodyPainted = useRef(false);
+  useEffect(() => {
+    if (nav) bodyPainted.current = true;
+  }, [nav]);
 
   return (
     <SidebarProvider
@@ -200,53 +209,48 @@ export function ContextualSidebar() {
             <BodySkeleton />
           )
         ) : (
-          <div className={cn('grid [&>*]:col-start-1 [&>*]:row-start-1', inlineScanStation && 'h-full min-h-0')}>
-            <AnimatePresence initial={false}>
-              <motion.div
-                key={`${showTop ? 'top' : 'section'}:${nav.page.id}`}
-                initial={presence.initial}
-                animate={presence.animate}
-                exit={presence.exit}
-                transition={transition}
-                className={cn(
-                  'flex min-w-0 flex-col',
-                  inlineScanStation ? 'h-full min-h-0' : 'pb-2',
-                )}
-              >
-                {showTop ? (
-                  <TopBody
-                    nav={body}
-                    loading={(peekTop || mapOnly) && !top.data}
-                    failed={(peekTop || mapOnly) && top.isError}
-                    onRetry={() => void top.refetch()}
-                    litRowRef={litTopRowRef}
-                    onReturn={
-                      peekTop
-                        ? () => {
-                            returnFocusToBack.current = true;
-                            setPeekTop(false);
-                          }
-                        : undefined
-                    }
-                  />
-                ) : inlineScanStation ? (
-                  <>
-                    {/* A station's facets and controls (Unbox's status cuts and Sort) ride above its scan panel. */}
-                    {nav.filters || nav.controls ? (
-                      <div className="shrink-0">
-                        <NavFilters key={nav.filters?.facetContext ?? nav.page.id} filters={nav.filters} controls={nav.controls} />
-                      </div>
-                    ) : null}
-                    <div className="flex min-h-0 flex-1 flex-col">
-                      <SidebarContextPanel />
-                    </div>
-                  </>
-                ) : (
-                  <SectionBody nav={nav} />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+          <motion.div
+            key={`${showTop ? 'top' : 'section'}:${nav.page.id}`}
+            initial={bodyPainted.current ? presence.initial : false}
+            animate={presence.animate}
+            transition={transition}
+            className={cn(
+              'flex min-w-0 flex-col',
+              inlineScanStation ? 'h-full min-h-0' : 'pb-2',
+            )}
+          >
+            {showTop ? (
+              <TopBody
+                nav={body}
+                loading={(peekTop || mapOnly) && !top.data}
+                failed={(peekTop || mapOnly) && top.isError}
+                onRetry={() => void top.refetch()}
+                litRowRef={litTopRowRef}
+                onReturn={
+                  peekTop
+                    ? () => {
+                        returnFocusToBack.current = true;
+                        setPeekTop(false);
+                      }
+                    : undefined
+                }
+              />
+            ) : inlineScanStation ? (
+              <>
+                {/* A station's facets and controls (Unbox's status cuts) ride above its scan panel; stations declare no Sort. */}
+                {nav.filters || nav.controls ? (
+                  <div className="shrink-0">
+                    <NavFilters key={nav.filters?.facetContext ?? nav.page.id} filters={nav.filters} controls={nav.controls} />
+                  </div>
+                ) : null}
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <SidebarContextPanel />
+                </div>
+              </>
+            ) : (
+              <SectionBody nav={nav} />
+            )}
+          </motion.div>
         )}
       </SidebarContent>
 

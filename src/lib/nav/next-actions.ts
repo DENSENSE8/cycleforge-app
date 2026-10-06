@@ -28,7 +28,7 @@ export const PAGE_NEXT_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   incoming: ['Docked cartons are waiting to be unboxed'],
   sourcing: ['Work the Queue before scouting new sources'],
   fba: ['Build the plan, then combine before it ships'],
-  'label-intake': ['Upload label PDFs, then print each view'],
+  'label-intake': ['Unprinted documents lead; check them, then print'],
   outbound: ['Allocate first: the oldest ship-by leads', 'Out-of-stock orders move to Exceptions'],
   'scan-out': ['Scan out every box that leaves'],
   packer: ['Print the label and papers, then seal the box'],

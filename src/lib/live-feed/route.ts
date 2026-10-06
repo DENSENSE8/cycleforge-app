@@ -10,7 +10,13 @@
  * open past midnight rolls over on its next refresh. Client-safe.
  */
 
-import { isPackageStage, type PackageStage } from '@/lib/live-feed/stages';
+import {
+  isPackageStage,
+  PACKAGE_STAGE_SORTS,
+  PACKAGE_STAGES,
+  type PackageSort,
+  type PackageStage,
+} from '@/lib/live-feed/stages';
 
 export const LIVE_FEED_PATH = '/operations/live-feed';
 export const LIVE_FEED_MOBILE_PATH = '/m/live-feed';
@@ -32,6 +38,8 @@ export const LIVE_FEED_PARAMS = {
   channel: 'channel',
   /** Only packages this staffer is assigned to, picked or packed (`staff.id`). */
   staff: 'staff',
+  /** Column order, non-defaults only: `to_pick:latest,scanned_out:oldest` (`PACKAGE_STAGE_SORTS`). */
+  sort: 'sort',
   /** API only. */
   stage: 'stage',
   /** API only. */
@@ -43,11 +51,13 @@ export const LIVE_FEED_PARAMS = {
 /** Cards per stage page. */
 export const LIVE_FEED_PAGE_SIZE = 25;
 
-/** The board's record filters — the sidebar's carrier / channel facets and staff control (the phone's "Mine"). */
+/** The board's record filters — the sidebar's carrier / channel facets and staff control (the phone's "Mine") — and each column's chosen order. */
 export interface LiveFeedFilters {
   carriers: string[] | null;
   channels: string[] | null;
   staffId: number | null;
+  /** Columns whose order is NOT their default; `resolvePackageSorts` fills the rest. */
+  sorts: Partial<Record<PackageStage, PackageSort>> | null;
 }
 
 interface ParamReader {
@@ -69,21 +79,45 @@ function readKeys(params: ParamReader, name: string, normalize: (value: string) 
   return keys.length > 0 ? keys : null;
 }
 
+/** `to_pick:latest,…` → the valid non-default choices (a column's default is never written). */
+function readSorts(params: ParamReader): Partial<Record<PackageStage, PackageSort>> | null {
+  const sorts: Partial<Record<PackageStage, PackageSort>> = {};
+  for (const pair of (params.get(LIVE_FEED_PARAMS.sort) ?? '').split(',')) {
+    const [stage, sort] = pair.trim().split(':');
+    if (!isPackageStage(stage)) continue;
+    const choices = PACKAGE_STAGE_SORTS[stage];
+    if (choices.includes(sort as PackageSort) && sort !== choices[0]) sorts[stage] = sort as PackageSort;
+  }
+  return Object.keys(sorts).length > 0 ? sorts : null;
+}
+
 export function readLiveFeedFilters(params: ParamReader): LiveFeedFilters {
   const staff = Number(params.get(LIVE_FEED_PARAMS.staff));
   return {
     carriers: readKeys(params, LIVE_FEED_PARAMS.carrier, (value) => value.toUpperCase()),
     channels: readKeys(params, LIVE_FEED_PARAMS.channel, (value) => value.toLowerCase()),
     staffId: Number.isInteger(staff) && staff > 0 ? staff : null,
+    sorts: readSorts(params),
   };
 }
 
-/** The filters as API query params (empty filters stay off). */
+/** The column orders as the `sort` param value, pipeline order, defaults dropped; `null` when every column is on its default. */
+export function liveFeedSortParam(sorts: Partial<Record<PackageStage, PackageSort>> | null): string | null {
+  const pairs = PACKAGE_STAGES.flatMap((stage) => {
+    const sort = sorts?.[stage];
+    return sort && sort !== PACKAGE_STAGE_SORTS[stage][0] && PACKAGE_STAGE_SORTS[stage].includes(sort) ? [`${stage}:${sort}`] : [];
+  });
+  return pairs.length > 0 ? pairs.join(',') : null;
+}
+
+/** The filters as API query params (empty filters and default orders stay off). */
 export function liveFeedFilterParams(filters: LiveFeedFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.carriers) params.set(LIVE_FEED_PARAMS.carrier, filters.carriers.join(','));
   if (filters.channels) params.set(LIVE_FEED_PARAMS.channel, filters.channels.join(','));
   if (filters.staffId != null) params.set(LIVE_FEED_PARAMS.staff, String(filters.staffId));
+  const sort = liveFeedSortParam(filters.sorts);
+  if (sort) params.set(LIVE_FEED_PARAMS.sort, sort);
   return params;
 }
 

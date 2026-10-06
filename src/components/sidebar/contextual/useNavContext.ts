@@ -2,10 +2,11 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import { fetchNavContext } from '@/lib/nav/context/http-client';
 import type { NavContext } from '@/lib/nav/context/schema';
+import { getSidebarNavPageId } from '@/lib/sidebar-navigation';
 import { readNavContextSnapshot, writeNavContextSnapshot } from './nav-context-snapshot';
 
 /** Revalidate at most this often per URL; the snapshot paints meanwhile. */
@@ -42,6 +43,17 @@ function useHydrated(): boolean {
 }
 
 /**
+ * The last URL's context stands in only while it is the SAME page (a param
+ * change). Another page's panel — its Sort row, filters, switchers — must never
+ * paint under a new URL. The page map (`view: 'top'`) is one map for every URL.
+ */
+function carriesOver(previous: NavContext | undefined, path: string, view: 'top' | undefined): NavContext | undefined {
+  if (!previous || view === 'top') return previous;
+  const url = new URL(path, 'http://nav.local');
+  return previous.page.id === getSidebarNavPageId(url.pathname, url.searchParams) ? previous : undefined;
+}
+
+/**
  * `GET /api/nav/context` for `path`, rendered from the persisted snapshot and
  * revalidated behind it. `view: 'top'` is the `‹` peek. The snapshot is a
  * placeholder painted only after hydration; the cache holds server truth only.
@@ -58,7 +70,7 @@ export function useNavContext(
     queryFn: ({ signal }) => fetchNavContext(path, { view, signal }),
     staleTime: NAV_CONTEXT_STALE_MS,
     placeholderData: (previous) =>
-      keepPreviousData(previous) ?? (hydrated ? readNavContextSnapshot(staffKey, path, view) : undefined),
+      carriesOver(previous, path, view) ?? (hydrated ? readNavContextSnapshot(staffKey, path, view) : undefined),
     enabled,
   });
   const fresh = query.isFetchedAfterMount ? query.data : undefined;

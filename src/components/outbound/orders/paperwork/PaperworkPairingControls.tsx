@@ -244,7 +244,8 @@ export function PairingControls({
   onPair,
   onOpenItemView,
 }: {
-  resolved: OrderManualsResponse | null;
+  /** The line's pairing keys (an order's manuals response, or one Orders-view line). */
+  resolved: Pick<OrderManualsResponse, 'itemNumber' | 'sku'> | null;
   scope: PaperworkSource;
   /** Absent in the item view — the scope is the item number. */
   onScope?: (scope: PaperworkSource) => void;

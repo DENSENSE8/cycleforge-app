@@ -8,10 +8,20 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { ChevronDown } from '@/components/Icons';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
+import { Button } from '@/design-system/primitives/Button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/design-system/primitives/DropdownMenu';
 import { Spinner } from '@/design-system/primitives/Spinner';
 import { liveFeedLaneQuery } from '@/lib/live-feed/query';
 import type { LiveFeedFilters } from '@/lib/live-feed/route';
-import { PACKAGE_STAGE_META } from '@/lib/live-feed/stages';
+import {
+  PACKAGE_SORT_LABEL,
+  PACKAGE_STAGE_META,
+  PACKAGE_STAGE_SORTS,
+  type PackageSort,
+  type PackageStage,
+} from '@/lib/live-feed/stages';
 import type { PackageCard as PackageCardData, PackageColumn } from '@/lib/live-feed/types';
 import { cn } from '@/utils/_cn';
 import { PackageCard, type PackageCheckMode } from './PackageCard';
@@ -55,21 +65,60 @@ function ColumnMeta({ column }: { column: PackageColumn }) {
   );
 }
 
-export function StageColumnHeader({ column }: { column: PackageColumn }) {
+export function StageColumnHeader({
+  column,
+  sort,
+  onSort,
+}: {
+  column: PackageColumn;
+  sort: PackageSort;
+  onSort?: (stage: PackageStage, sort: PackageSort) => void;
+}) {
   const look = STAGE_LOOK[column.stage];
+  const label = PACKAGE_STAGE_META[column.stage].label;
   return (
-    <header className="flex items-center gap-3 px-3 pb-2 pt-3">
-      <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset', look.tile)}>
+    <header className="flex items-center gap-3 px-3 pb-2 pt-3 @max-[13rem]/col:gap-2">
+      <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset @max-[13rem]/col:hidden', look.tile)}>
         <look.Icon className="size-[18px]" />
       </span>
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-sm font-semibold text-slate-900">{PACKAGE_STAGE_META[column.stage].label}</h2>
+        <h2 className="truncate text-sm font-semibold text-slate-900">{label}</h2>
         <p className="flex items-center gap-1.5 truncate text-xs text-slate-500">
           <ColumnMeta column={column} />
         </p>
+        {onSort ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                iconRight={<ChevronDown className="size-3.5" />}
+                ariaLabel={`Sort ${label}: ${PACKAGE_SORT_LABEL[sort]}`}
+                data-testid={`live-feed-sort-${column.stage}`}
+                className="-ml-2 mt-0.5 h-6 px-2 text-xs font-medium"
+              >
+                {PACKAGE_SORT_LABEL[sort]}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {PACKAGE_STAGE_SORTS[column.stage].map((choice) => (
+                <DropdownMenuItem
+                  key={choice}
+                  aria-current={choice === sort ? 'true' : undefined}
+                  className={cn(choice === sort && 'font-semibold')}
+                  onSelect={() => onSort(column.stage, choice)}
+                  data-testid={`live-feed-sort-${column.stage}-${choice}`}
+                >
+                  {PACKAGE_SORT_LABEL[choice]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </div>
-      <span className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900" data-testid={`live-feed-count-${column.stage}`}>
-        {column.count}
+      <span className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900 @max-[13rem]/col:text-2xl" data-testid={`live-feed-count-${column.stage}`}>
+        <AnimatedStat value={column.count} />
       </span>
     </header>
   );
@@ -78,6 +127,8 @@ export function StageColumnHeader({ column }: { column: PackageColumn }) {
 export function StageColumn({
   column,
   filters,
+  sort,
+  onSort,
   now,
   selectedId,
   checkedIds,
@@ -89,6 +140,9 @@ export function StageColumn({
 }: {
   column: PackageColumn;
   filters: LiveFeedFilters;
+  /** The column's order (`resolvePackageSorts(filters.sorts)[stage]`). */
+  sort: PackageSort;
+  onSort?: (stage: PackageStage, sort: PackageSort) => void;
   now: number | null;
   selectedId: number | null;
   checkedIds: ReadonlySet<number>;
@@ -138,12 +192,13 @@ export function StageColumn({
       data-column={column.stage}
       data-testid={`live-feed-column-${column.stage}`}
       aria-label={`${PACKAGE_STAGE_META[column.stage].label}: ${column.count}`}
-      className={cn('flex min-h-0 flex-col rounded-2xl bg-slate-100/80 ring-1 ring-inset ring-slate-900/5', className)}
+      className={cn('@container/col flex min-h-0 flex-col rounded-2xl bg-slate-100/80 ring-1 ring-inset ring-slate-900/5', className)}
     >
       <span aria-hidden className={cn('mx-3 mt-3 h-1 rounded-full', look.solid)} />
-      {showHeader ? <StageColumnHeader column={column} /> : null}
-      {/* pt-1: breathing room for the first card's shadow. Card state outlines are overlay borders inside the card, so the scroller's clip never cuts them. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2 pt-1">
+      {showHeader ? <StageColumnHeader column={column} sort={sort} onSort={onSort} /> : null}
+      {/* pt-1: breathing room for the first card's shadow. pb-16: the list's end scrolls clear of the floating bulk pills.
+          Card state outlines are overlay borders inside the card, so the scroller's clip never cuts them. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-16 pt-1">
         {items.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
             <span className={cn('flex size-10 items-center justify-center rounded-2xl ring-1 ring-inset', look.tile)}>

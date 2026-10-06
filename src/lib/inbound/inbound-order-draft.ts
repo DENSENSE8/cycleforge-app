@@ -1,7 +1,8 @@
 /**
- * THE inbound-order contract — every way an order enters Incoming (the triage
- * form, CSV, the AI chat, marketplace / Zoho sync, auto-replenish) parses
- * into this one shape and lands through `ingestInboundOrderInTx`.
+ * THE inbound-order contract — every way an order enters Incoming (the
+ * Add purchase order form, file import, paperwork extract, marketplace / Zoho
+ * sync, auto-replenish) parses into this one shape and lands through
+ * `ingestInboundOrderInTx`.
  *
  * Identity (owned by CycleForge, never by an external system):
  *   order = (org, source_type, source_platform, normalized order number)
@@ -19,12 +20,13 @@
  */
 
 import { z } from 'zod';
+import { CONDITION_GRADES } from '@/lib/conditions';
 import { inboundSourcePlatformForRaw, inboundSourceTypeForPlatform } from '@/lib/inbound/desk-csv';
 import { detectCarrier, extractCanonicalTracking } from '@/lib/tracking-format';
 
 const text = (max: number) => z.string().trim().max(max);
 
-/** The types a person authors (form, CSV, chat, paperwork extract). */
+/** The types a person authors (form, file import, paperwork extract). */
 export const AUTHORED_INBOUND_ORDER_TYPES = ['PO', 'RETURN', 'TRADE_IN', 'PICKUP'] as const;
 /** Every type the spine lands — plus the drop-off a repair ticket lands for itself. */
 export const INBOUND_ORDER_TYPES = [...AUTHORED_INBOUND_ORDER_TYPES, 'REPAIR'] as const;
@@ -54,8 +56,28 @@ export const inboundOrderLineSchema = z.object({
   listingUrl: text(2000),
   /** Marketplace item number the listing carries (eBay item, ASIN, …). */
   itemNumber: text(64),
-  /** Pickup-paperwork facts. Optional on every other inbound type. */
-  conditionGrade: z.enum(['BRAND_NEW', 'USED_A', 'USED_B', 'USED_C', 'PARTS']).nullable().optional(),
+  /**
+   * The condition the item was BOUGHT at — what the listing says (every
+   * order type). Lands as `receiving_line.purchase_condition_grade` and
+   * pre-selects unbox's picker; unbox's own grade is stamped separately.
+   */
+  conditionGrade: z.enum(CONDITION_GRADES).nullable().optional(),
+  /** Serial numbers the listing shows (seller photos of the plate) — unbox confirms against them. */
+  listingSerials: z.array(text(120)).max(200).optional(),
+  /** Return-report facts that identify a returned unit (Amazon). */
+  fnsku: text(40).optional(),
+  licensePlateNumber: text(80).optional(),
+  disposition: text(200).optional(),
+  customerComment: text(1000).optional(),
+  /**
+   * Per-unit return facts when one order's rows differ (a return report has a
+   * row per returned item). Blank / absent = the order's `returnReason`,
+   * `rmaId`, `returnRequestDate`.
+   */
+  returnReason: text(500).optional(),
+  rmaId: text(200).optional(),
+  returnRequestDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  /** Pickup-paperwork facts (kiosk / phone pickup). */
   partsStatus: z.enum(['COMPLETE', 'MISSING_PARTS']).nullable().optional(),
   missingPartsNote: text(500).optional(),
   conditionNote: text(1000).optional(),
@@ -130,11 +152,14 @@ export const inboundOrderDraftSchema = z.object({
   orderDate: civilDate,
   expectedDate: civilDate,
   currency: z.string().trim().length(3),
-  tracking: z.array(inboundOrderTrackingSchema).max(10),
+  /** One purchase can ship in many boxes — every number is its own package. */
+  tracking: z.array(inboundOrderTrackingSchema).max(500),
   lines: z.array(inboundOrderLineSchema).min(1).max(200),
   notes: text(2000),
   returnReason: text(500),
   rmaId: text(200),
+  /** The day the buyer asked to return (return reports). */
+  returnRequestDate: civilDate.optional(),
   /** Money-receipt facts carried by local-pickup paperwork. */
   pickup: z.object({
     paymentMethod: text(40),
@@ -156,7 +181,7 @@ export function emptyInboundOrderLine(): InboundOrderLine {
   return {
     lineKey: '', skuCatalogId: null, sku: '', title: '', quantity: null,
     unitCostCents: null, listingUrl: '', itemNumber: '', conditionGrade: null,
-    partsStatus: null, missingPartsNote: '', conditionNote: '',
+    listingSerials: [], partsStatus: null, missingPartsNote: '', conditionNote: '',
   };
 }
 

@@ -40,7 +40,7 @@ export const FBM_DESTINATIONS: readonly FbmDestination[] = [
   {
     id: 'label-intake',
     label: 'Labels & docs',
-    description: 'Shipping labels, packing slips and product paperwork',
+    description: 'Shipping labels and paperwork — upload and print',
     pathname: SHIPPING_LABEL_INTAKE_PATH,
     requires: 'packing.review',
     icon: SHIPPING_NAV_ICONS.labels,

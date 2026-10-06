@@ -88,6 +88,7 @@ interface BinContent {
   barcode?: string;
   product_title?: string;
   is_provisional?: boolean;
+  display_name_override?: string | null;
   cover_photo_id?: number | null;
   /** SKU_STOCK photo ids in display order; `[0]` is the cover. */
   photo_ids?: number[];
@@ -1019,13 +1020,16 @@ export async function bulkCreateBinRange(data: {
   return runBatch(pool);
 }
 
+/** Rows a printed-address registration inserted or reactivated, plus every bin it resolved. */
+export type PrintedLocationsRegistration = { registered: number; bins: Location[] };
+
 /** Upsert location rows for a batch of printer-format addresses ({zone, aisle, bay, level, position}). */
 export async function registerPrintedLocations(input: {
   room: string;
   segments: LocationSegments[];
   binType?: string | null;
   capacity?: number | null;
-}, orgId?: OrgId): Promise<{ registered: number; bins: Location[] }> {
+}, orgId?: OrgId): Promise<PrintedLocationsRegistration> {
   const room = input.room.trim();
   if (!room) throw new Error('room is required');
   if (!Array.isArray(input.segments) || input.segments.length === 0) {

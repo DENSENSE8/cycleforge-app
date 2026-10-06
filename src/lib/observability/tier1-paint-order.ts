@@ -61,8 +61,6 @@ const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
     aliases: ['/receiving'],
     label: 'Unbox',
     lcpSurface: 'primary',
-    /** Route loading cover. */
-    skeleton: 'src/design-system/components/UniversalLoader.tsx',
     lcpHosts: [
       'src/components/receiving/unbox/UnboxLineWorkspace.tsx',
     ],

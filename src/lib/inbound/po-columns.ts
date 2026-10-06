@@ -1,27 +1,40 @@
 /**
- * Inbound purchase-order CSV — THE column registry (client + server safe).
+ * Inbound order import — THE column registry and THE import engine
+ * (client + server safe). Every bulk file (a purchase-order sheet, an Amazon
+ * returns report, an FBA customer returns report, an eBay returns export, a
+ * ShopGoodwill order list) is read by this one table.
  *
- * One table says, for every canonical PO field: where it lands (the
- * `InboundOrderDraft` header / line / tracking key and so the table column),
- * whether the order cannot land without it, the header words that name it,
- * and the value shape that gives it away when the header is unfamiliar.
+ * One table says, for every canonical field: where it lands (the
+ * `InboundOrderDraft` header / line / tracking key and the DB column the
+ * writer persists it in — the upload check reads it back through
+ * `target.column`), whether the order cannot land without it, the header
+ * words that name it, and the value shape that gives it away when the header
+ * is unfamiliar.
+ *
+ * A preset is a known export format: its own header words (tried first), the
+ * order type and platform it stamps, the rows it skips, and how a row's line
+ * key and listing link are built. `detectPoPreset` picks one from the header
+ * row; the operator can override it.
  *
  * `identifyColumns` binds a file's columns to fields in a fixed ladder:
  *   1. preset header aliases (the platform's own export words),
  *   2. registry header aliases,
  *   3. value shape (tracking numbers, money, dates, URLs, ids, titles, small
  *      integers) — so a file with headers nobody has seen still yields order #,
- *      title, price and tracking.
- * The LLM mapping (`proposePoColumnMapping`, server) is an explicit fallback
+ *      title, price and tracking. A verified preset (a published report
+ *      format) skips this step: its every column is named by its spec, and a
+ *      guess would bind report columns that are not ours (label cost, refunds).
+ * The LLM mapping (`proposeColumnMapping`, server) is an explicit fallback
  * the operator asks for only when required fields stay unmapped.
  *
- * `poRowToDeskRow` turns one mapped CSV row into the desk import row the one
- * inbound writer already groups (`draftsFromDeskRows` → `ingestInboundOrder`),
+ * `poRowToDeskRow` turns one mapped row into the desk import row the one
+ * inbound writer groups (`draftsFromDeskRows` → `ingestInboundOrder`),
  * returning every problem with the exact field — a row is never silently
  * dropped and a blank quantity is never guessed.
  */
 
 import { detectCarrier, extractCanonicalTracking } from '@/lib/tracking-format';
+import { conditionGradeFromListing } from '@/lib/conditions';
 import type { DeskImportRow } from '@/lib/inbound/desk-csv';
 import { inboundSourcePlatformForRaw, inboundSourceTypeForPlatform } from '@/lib/inbound/desk-csv';
 
@@ -29,6 +42,7 @@ import { inboundSourcePlatformForRaw, inboundSourceTypeForPlatform } from '@/lib
 
 export const PO_FIELDS = [
   'order_number',
+  'order_type',
   'platform',
   'vendor',
   'order_date',
@@ -44,6 +58,14 @@ export const PO_FIELDS = [
   'tracking',
   'carrier',
   'condition',
+  'listing_serials',
+  'return_reason',
+  'rma',
+  'return_request_date',
+  'fnsku',
+  'license_plate',
+  'disposition',
+  'customer_comment',
   'notes',
   'priority',
 ] as const;
@@ -57,7 +79,7 @@ export interface PoColumnTarget {
   level: 'order' | 'line' | 'tracking';
   /** `InboundOrderDraft` (or line / tracking entry) key. */
   draftKey: string;
-  /** Where the writer persists it. */
+  /** The DB column the writer persists it in — the upload check reads it back from here. */
   column: string;
 }
 
@@ -84,10 +106,18 @@ export const PO_COLUMNS: Record<PoField, PoColumnSpec> = {
     aliases: ['order number', 'order #', 'order no', 'order id', 'order', 'po', 'po number', 'po #', 'purchase order', 'purchase order number', 'source order id', 'order ref'],
     shape: 'id',
   },
+  order_type: {
+    field: 'order_type',
+    label: 'Order type',
+    target: { level: 'order', draftKey: 'type', column: 'inbound_order.receiving_type' },
+    required: false,
+    aliases: ['order type', 'type', 'kind', 'intake', 'intake type', 'receiving type'],
+    shape: null,
+  },
   platform: {
     field: 'platform',
     label: 'Platform',
-    target: { level: 'order', draftKey: 'platform', column: 'inbound_order.source_type / source_platform' },
+    target: { level: 'order', draftKey: 'platform', column: 'inbound_order.source_platform' },
     required: 'unless_preset',
     aliases: ['platform', 'source', 'source type', 'channel', 'marketplace', 'site'],
     shape: null,
@@ -127,17 +157,17 @@ export const PO_COLUMNS: Record<PoField, PoColumnSpec> = {
   sku: {
     field: 'sku',
     label: 'SKU',
-    target: { level: 'line', draftKey: 'sku', column: 'receiving_line.sku → sku_catalog' },
+    target: { level: 'line', draftKey: 'sku', column: 'receiving_line.sku' },
     required: 'identity',
-    aliases: ['sku', 'our sku', 'catalog sku', 'item sku', 'merchant sku', 'product sku'],
+    aliases: ['sku', 'our sku', 'catalog sku', 'item sku', 'merchant sku', 'product sku', 'custom label', 'custom label sku'],
     shape: null,
   },
   item_id: {
     field: 'item_id',
     label: 'Item / listing #',
-    target: { level: 'line', draftKey: 'itemNumber + lineKey', column: 'receiving_line.line_key / mirror item number' },
+    target: { level: 'line', draftKey: 'itemNumber', column: 'inbound_purchase_order_mirror.line_items[].itemNumber' },
     required: false,
-    aliases: ['item id', 'item #', 'item number', 'item no', 'listing id', 'listing #', 'listing number', 'lot', 'lot #', 'lot number', 'line id', 'line item id'],
+    aliases: ['item id', 'item #', 'item number', 'item no', 'listing id', 'listing #', 'listing number', 'lot', 'lot #', 'lot number', 'line id', 'line item id', 'asin'],
     shape: 'id',
   },
   listing_url: {
@@ -153,13 +183,13 @@ export const PO_COLUMNS: Record<PoField, PoColumnSpec> = {
     label: 'Quantity',
     target: { level: 'line', draftKey: 'quantity', column: 'receiving_line.quantity_expected' },
     required: 'unless_preset',
-    aliases: ['qty', 'quantity', 'quantity expected', 'qty ordered', 'quantity ordered', 'units', 'count'],
+    aliases: ['qty', 'quantity', 'quantity expected', 'qty ordered', 'quantity ordered', 'units', 'count', 'return quantity', 'qty returned', 'quantity returned'],
     shape: 'integer',
   },
   unit_cost: {
     field: 'unit_cost',
     label: 'Unit cost',
-    target: { level: 'line', draftKey: 'unitCostCents', column: 'receiving_line.unit_cost' },
+    target: { level: 'line', draftKey: 'unitCostCents', column: 'receiving_line.unit_cost_cents' },
     required: false,
     aliases: ['unit cost', 'unit price', 'price', 'cost', 'item price', 'item cost', 'each', 'price each', 'rate'],
     shape: 'money',
@@ -167,7 +197,7 @@ export const PO_COLUMNS: Record<PoField, PoColumnSpec> = {
   line_total: {
     field: 'line_total',
     label: 'Line total',
-    target: { level: 'line', draftKey: 'unitCostCents (÷ quantity, when no unit cost)', column: 'receiving_line.unit_cost' },
+    target: { level: 'line', draftKey: 'unitCostCents (÷ quantity, when no unit cost)', column: 'receiving_line.unit_cost_cents × quantity_expected' },
     required: false,
     aliases: ['line total', 'total', 'item total', 'extended price', 'total price', 'amount', 'subtotal'],
     shape: 'money',
@@ -183,26 +213,90 @@ export const PO_COLUMNS: Record<PoField, PoColumnSpec> = {
   tracking: {
     field: 'tracking',
     label: 'Tracking #',
-    target: { level: 'tracking', draftKey: 'tracking[].number', column: 'shipping_tracking_numbers → receiving_carton' },
+    target: { level: 'tracking', draftKey: 'tracking[].number', column: 'shipping_tracking_numbers.tracking_number_normalized' },
     required: false,
-    aliases: ['tracking', 'tracking number', 'tracking #', 'tracking no', 'tracking id', 'tracking code'],
+    aliases: ['tracking', 'tracking number', 'tracking #', 'tracking no', 'tracking id', 'tracking code', 'return tracking number', 'return tracking id', 'return tracking'],
     shape: 'tracking',
   },
   carrier: {
     field: 'carrier',
     label: 'Carrier',
-    target: { level: 'tracking', draftKey: 'tracking[].carrier', column: 'receiving_line.carrier_code' },
+    target: { level: 'tracking', draftKey: 'tracking[].carrier', column: 'shipping_tracking_numbers.carrier' },
     required: false,
-    aliases: ['carrier', 'shipping carrier', 'carrier code', 'ship via', 'shipped via', 'shipper'],
+    aliases: ['carrier', 'shipping carrier', 'carrier code', 'ship via', 'shipped via', 'shipper', 'return carrier'],
     shape: 'carrier',
   },
   condition: {
     field: 'condition',
     label: 'Condition',
-    target: { level: 'order', draftKey: 'notes', column: 'inbound_order.notes' },
+    target: { level: 'line', draftKey: 'conditionGrade', column: 'receiving_line.purchase_condition_grade' },
     required: false,
-    aliases: ['condition', 'item condition', 'grade'],
+    aliases: ['condition', 'item condition', 'grade', 'listing condition', 'condition bought'],
     shape: 'condition',
+  },
+  listing_serials: {
+    field: 'listing_serials',
+    label: 'Listing serials',
+    target: { level: 'line', draftKey: 'listingSerials', column: 'receiving_line_listing_serial.serial' },
+    required: false,
+    aliases: ['serial', 'serials', 'serial number', 'serial numbers', 'serial #', 'listing serial', 'listing serials'],
+    shape: null,
+  },
+  return_reason: {
+    field: 'return_reason',
+    label: 'Return reason',
+    target: { level: 'line', draftKey: 'returnReason (order: first row)', column: 'receiving_line_return.return_reason' },
+    required: false,
+    aliases: ['return reason', 'reason', 'reason for return', 'return reason code'],
+    shape: null,
+  },
+  rma: {
+    field: 'rma',
+    label: 'RMA',
+    target: { level: 'line', draftKey: 'rmaId (order: first row)', column: 'receiving_line_return.rma_ref' },
+    required: false,
+    aliases: ['rma', 'rma id', 'rma #', 'rma no', 'rma ref', 'return id', 'return #', 'return number', 'return authorization'],
+    shape: null,
+  },
+  return_request_date: {
+    field: 'return_request_date',
+    label: 'Return request date',
+    target: { level: 'line', draftKey: 'returnRequestDate (order: first row)', column: 'receiving_line_return.return_requested_on' },
+    required: false,
+    aliases: ['return request date', 'return date', 'return requested', 'return opened', 'return opened date', 'request date', 'return created', 'return created date'],
+    shape: null,
+  },
+  fnsku: {
+    field: 'fnsku',
+    label: 'FNSKU',
+    target: { level: 'line', draftKey: 'fnsku', column: 'receiving_line_return.fnsku' },
+    required: false,
+    aliases: ['fnsku'],
+    shape: null,
+  },
+  license_plate: {
+    field: 'license_plate',
+    label: 'License plate #',
+    target: { level: 'line', draftKey: 'licensePlateNumber', column: 'receiving_line_return.license_plate_number' },
+    required: false,
+    aliases: ['license plate number', 'license plate', 'lpn'],
+    shape: null,
+  },
+  disposition: {
+    field: 'disposition',
+    label: 'Disposition',
+    target: { level: 'line', draftKey: 'disposition', column: 'receiving_line_return.disposition' },
+    required: false,
+    aliases: ['disposition', 'detailed disposition'],
+    shape: null,
+  },
+  customer_comment: {
+    field: 'customer_comment',
+    label: 'Customer comments',
+    target: { level: 'line', draftKey: 'customerComment', column: 'receiving_line_return.customer_comment' },
+    required: false,
+    aliases: ['customer comments', 'customer comment', 'buyer comments', 'buyer comment', 'buyer note', 'buyer notes'],
+    shape: null,
   },
   notes: {
     field: 'notes',
@@ -222,15 +316,32 @@ export const PO_COLUMNS: Record<PoField, PoColumnSpec> = {
   },
 };
 
-// ─── platform presets ────────────────────────────────────────────────────────
+// ─── presets ─────────────────────────────────────────────────────────────────
 
-export type PoPresetId = 'goodwill' | 'generic';
+export const PO_PRESET_IDS = ['amazon_returns', 'amazon_fba_returns', 'ebay_returns', 'goodwill', 'generic'] as const;
+export type PoPresetId = (typeof PO_PRESET_IDS)[number];
+
+/** The mapped values a preset builds a line key / listing link from. */
+export interface PoPresetRowFacts {
+  itemId: string;
+  rma: string;
+  licensePlate: string;
+}
 
 export interface PoPlatformPreset {
   id: PoPresetId;
   label: string;
+  /** Order type every row lands as unless an order-type column says otherwise. */
+  orderType: 'PO' | 'RETURN';
   /** Platform stamp when the file has no platform column ('' = operator picks). */
   platform: string;
+  /**
+   * True when the header words come from the platform's published report
+   * spec (`spec`); false = guessed — the operator checks the column matches.
+   */
+  verified: boolean;
+  /** Where the export format is documented. */
+  spec: string | null;
   /** Urgency tier (0 = most urgent … 3) when a row names none; null = Auto. */
   defaultTier: 0 | 1 | 2 | 3 | null;
   /** Vendor when the file has no vendor column / the cell is blank. */
@@ -239,22 +350,156 @@ export interface PoPlatformPreset {
   quantityWhenAbsent: number | null;
   /** The platform's own export words, tried before the registry aliases. */
   headerAliases: Partial<Record<PoField, readonly string[]>>;
+  /** Normalized headers that together identify the format (`detectPoPreset`); any one set matching wins. */
+  signatures: ReadonlyArray<readonly string[]>;
+  /** Row gate read from a column the import does not save: the header words and the cell values that skip a row. */
+  skip?: { headers: readonly string[]; values: RegExp; reason: string };
+  /** The line key a row lands with; '' = the item #. */
+  lineKey?: (facts: PoPresetRowFacts) => string;
+  /** The listing link built from the item # when the file has none. */
+  listingUrlFromItemId?: (itemId: string) => string;
+  /** Look the line's catalog item up by SKU, then by item # (Amazon: the ASIN is the catalog SKU). */
+  catalogByItemId: boolean;
+  /**
+   * Bind unnamed columns by value shape. Off for a published report format:
+   * its every column is named by its spec, and a guess would bind report
+   * columns that are not ours (label cost, refunds).
+   */
+  guessByShape: boolean;
 }
 
+export function amazonListingUrlForAsin(asin: string): string {
+  return `https://www.amazon.com/dp/${asin.trim().toUpperCase()}`;
+}
+
+function ebayListingUrlForItem(itemId: string): string {
+  return `https://www.ebay.com/itm/${itemId.trim()}`;
+}
+
+const SPEC_AMAZON_RETURNS = 'https://developer-docs.amazon/sp-api/docs/report-type-values-returns';
+const SPEC_AMAZON_FBA = 'https://developer-docs.amazon/sp-api/docs/report-type-values-fba';
+
 export const PO_PRESETS: Record<PoPresetId, PoPlatformPreset> = {
+  // GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE (seller-fulfilled Manage Returns), TAB-delimited, and the
+  // Prime CSV variant with hyphenated headers (Order-ID, Return-request-date, …) — both normalize the same.
+  // Order Amount / Order quantity / Label cost / Refunded Amount are the BUYER's order money, not what the
+  // unit cost us: never mapped (the pre-2026-10-06 returns import never mapped them either).
+  amazon_returns: {
+    id: 'amazon_returns',
+    label: 'Amazon returns (Manage Returns report)',
+    orderType: 'RETURN',
+    platform: 'amazon',
+    verified: true,
+    spec: SPEC_AMAZON_RETURNS,
+    defaultTier: null,
+    vendor: '',
+    quantityWhenAbsent: 1,
+    headerAliases: {
+      order_number: ['order id'],
+      order_date: ['order date'],
+      return_request_date: ['return request date'],
+      rma: ['amazon rma id'],
+      carrier: ['return carrier'],
+      tracking: ['tracking id'],
+      item_id: ['asin'],
+      sku: ['merchant sku'],
+      item_title: ['item name'],
+      quantity: ['return quantity'],
+      return_reason: ['return reason'],
+    },
+    signatures: [
+      ['orderid', 'asin', 'amazonrmaid'],
+      ['orderid', 'asin', 'returnrequestdate'],
+    ],
+    skip: { headers: ['return request status'], values: /^cancell?ed$/i, reason: 'Return request cancelled — skipped' },
+    lineKey: ({ itemId, rma }) => (itemId && rma ? `${rma}:${itemId}` : itemId || rma),
+    listingUrlFromItemId: amazonListingUrlForAsin,
+    catalogByItemId: true,
+    guessByShape: false,
+  },
+  // GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA. No tracking: FBA returns go back to an Amazon warehouse,
+  // so a CSV return lands without one (returnClaim false).
+  amazon_fba_returns: {
+    id: 'amazon_fba_returns',
+    label: 'Amazon FBA customer returns',
+    orderType: 'RETURN',
+    platform: 'amazon',
+    verified: true,
+    spec: SPEC_AMAZON_FBA,
+    defaultTier: null,
+    vendor: '',
+    quantityWhenAbsent: 1,
+    headerAliases: {
+      order_number: ['order id'],
+      return_request_date: ['return date'],
+      sku: ['sku'],
+      item_id: ['asin'],
+      fnsku: ['fnsku'],
+      item_title: ['product name'],
+      quantity: ['quantity'],
+      disposition: ['detailed disposition'],
+      return_reason: ['reason'],
+      license_plate: ['license plate number'],
+      customer_comment: ['customer comments'],
+    },
+    signatures: [
+      ['orderid', 'fnsku', 'licenseplateno'],
+      ['orderid', 'fnsku', 'detaileddisposition'],
+    ],
+    lineKey: ({ itemId, licensePlate }) => licensePlate || itemId,
+    listingUrlFromItemId: amazonListingUrlForAsin,
+    catalogByItemId: true,
+    guessByShape: false,
+  },
+  // eBay publishes no returns-report column spec: these are the Seller Hub returns words as we know
+  // them, UNVERIFIED — the operator checks the column matches before importing.
+  ebay_returns: {
+    id: 'ebay_returns',
+    label: 'eBay returns',
+    orderType: 'RETURN',
+    platform: 'ebay',
+    verified: false,
+    spec: null,
+    defaultTier: null,
+    vendor: '',
+    quantityWhenAbsent: 1,
+    headerAliases: {
+      rma: ['return id', 'return number'],
+      order_number: ['order number', 'order id', 'sales record number'],
+      item_id: ['item id', 'item number'],
+      item_title: ['item title'],
+      sku: ['custom label', 'custom label sku'],
+      quantity: ['quantity', 'return quantity'],
+      return_reason: ['return reason', 'reason for return'],
+      customer_comment: ['buyer comments', 'buyer comment', 'comments from buyer'],
+      tracking: ['return tracking number', 'tracking number'],
+      return_request_date: ['return opened', 'return opened date', 'request date', 'return request date', 'return created'],
+    },
+    signatures: [
+      ['returnid', 'itemid'],
+      ['returnid', 'itemno'],
+    ],
+    lineKey: ({ itemId, rma }) => (itemId && rma ? `${rma}:${itemId}` : itemId || rma),
+    listingUrlFromItemId: ebayListingUrlForItem,
+    catalogByItemId: false,
+    guessByShape: true,
+  },
   goodwill: {
     id: 'goodwill',
     label: 'Goodwill',
+    orderType: 'PO',
     platform: 'goodwill',
+    // UNVERIFIED: guessed from the ShopGoodwill order-history / won-items pages,
+    // not from a real export — re-check against an actual ShopGoodwill CSV. The
+    // value-shape pass must (and does — see po-columns.test.ts) identify order #,
+    // title, price and tracking without any of these.
+    verified: false,
+    spec: null,
     // Goodwill buys are cheap parts lots — the bottom shelf unless a row says otherwise.
     defaultTier: 3,
     vendor: 'Goodwill',
     // One won item per row is how ShopGoodwill lists an order.
     quantityWhenAbsent: 1,
-    // UNVERIFIED: guessed from the ShopGoodwill order-history / won-items pages,
-    // not from a real export — re-check against an actual ShopGoodwill CSV. The
-    // value-shape pass must (and does — see po-columns.test.ts) identify order #,
-    // title, price and tracking without any of these.
     headerAliases: {
       order_number: ['shopgoodwill order', 'sgw order', 'goodwill order', 'order id #'],
       item_id: ['item id', 'item #', 'sgw item', 'auction id', 'listing id'],
@@ -265,27 +510,44 @@ export const PO_PRESETS: Record<PoPresetId, PoPlatformPreset> = {
       order_date: ['won date', 'end date', 'auction end', 'ended', 'paid date', 'payment date'],
       tracking: ['tracking #', 'tracking number'],
     },
+    // Goodwill is detected by its words in the headers or cells, not a header set.
+    signatures: [],
+    catalogByItemId: false,
+    guessByShape: true,
   },
   generic: {
     id: 'generic',
     label: 'Other platform',
+    orderType: 'PO',
     platform: '',
+    verified: true,
+    spec: null,
     defaultTier: null,
     vendor: '',
     quantityWhenAbsent: null,
     headerAliases: {},
+    signatures: [],
+    catalogByItemId: false,
+    guessByShape: true,
   },
 };
 
-/** The preset a platform token wears — Goodwill has its own, every other platform is generic. */
-export function poPresetForPlatform(platform: string): PoPlatformPreset {
-  return platform.trim().toLowerCase() === 'goodwill' ? PO_PRESETS.goodwill : PO_PRESETS.generic;
+/**
+ * The preset a file looks like: a known report's header set, else Goodwill
+ * words anywhere in headers or cells, else the generic template.
+ */
+export function detectPoPreset(headers: readonly string[], rows: ReadonlyArray<Record<string, string>>): PoPresetId {
+  const have = new Set(headers.map(normalizePoHeader));
+  for (const id of PO_PRESET_IDS) {
+    if (PO_PRESETS[id].signatures.some((sig) => sig.every((h) => have.has(h)))) return id;
+  }
+  const hay = [...headers, ...rows.slice(0, 50).flatMap((r) => Object.values(r))];
+  return hay.some((v) => /goodwill/i.test(v)) ? 'goodwill' : 'generic';
 }
 
-/** Best guess at the file's platform: Goodwill words anywhere in headers or cells, else none. */
-export function suggestPoPlatform(headers: readonly string[], rows: ReadonlyArray<Record<string, string>>): string {
-  const hay = [...headers, ...rows.slice(0, 50).flatMap((r) => Object.values(r))];
-  return hay.some((v) => /goodwill/i.test(v)) ? 'goodwill' : '';
+/** The platform the import stamps: the preset's own, else the operator's pick. */
+export function poPresetPlatform(preset: PoPlatformPreset, pick: string | null | undefined): string {
+  return preset.platform || String(pick ?? '').trim().toLowerCase();
 }
 
 // ─── header normalization ────────────────────────────────────────────────────
@@ -498,8 +760,9 @@ export function identifyColumns(
     }
   }
 
-  // 3. Value shape, most distinctive shapes first.
-  const free = () => columns.filter((c) => c.field == null && (samples.get(c.header)?.length ?? 0) > 0);
+  // 3. Value shape, most distinctive shapes first — only for a preset that guesses (no published spec).
+  const free = () =>
+    preset.guessByShape ? columns.filter((c) => c.field == null && (samples.get(c.header)?.length ?? 0) > 0) : [];
   const best = (shape: PoValueShape) =>
     free()
       .map((c) => ({ c, share: shapeShare(samples.get(c.header)!, shape) }))
@@ -584,7 +847,7 @@ export function identifyColumns(
 
   for (const col of columns) {
     if (col.field == null && !col.note) {
-      col.note = (samples.get(col.header)?.length ?? 0) === 0 ? 'Column is empty' : 'Not recognised — left out';
+      col.note = (samples.get(col.header)?.length ?? 0) === 0 ? 'Column is empty' : 'Not saved — no field reads it';
     }
   }
 
@@ -672,11 +935,30 @@ export interface PoRowContext {
 
 const BLANK_TRACKING_RE = /^(n\/?a|none|null|unknown|not\s*available|pending|not shipped|-+)$/i;
 
+/** The cell under the first of `words` the row has as a header (normalized match), trimmed. */
+function cellByHeaderWords(row: Record<string, string>, words: readonly string[]): string {
+  const wanted = new Set(words.map(normalizePoHeader));
+  for (const [header, value] of Object.entries(row)) {
+    if (wanted.has(normalizePoHeader(header))) return (value ?? '').trim();
+  }
+  return '';
+}
+
+/** "return", "returns" → RETURN; "po", "purchase", "purchase order" → PO; else null. */
+function orderTypeFromCell(raw: string): 'PO' | 'RETURN' | null {
+  const v = raw.trim().toLowerCase();
+  if (/^returns?$/.test(v)) return 'RETURN';
+  if (/^(po|purchases?|purchase order)$/.test(v)) return 'PO';
+  return null;
+}
+
 /**
- * One mapped CSV row → the desk import row the inbound writer groups, plus
+ * One mapped row → the desk import row the inbound writer groups, plus
  * every problem on it. A row with a problem still comes back (when it has an
  * order number) so its order is held as a whole — landing the other lines
- * alone would shift positional line keys under a later fix.
+ * alone would shift positional line keys under a later fix. A row the preset
+ * skips (a cancelled return request) comes back with `skipReason` and no
+ * problems.
  */
 export function poRowToDeskRow(
   row: Record<string, string>,
@@ -692,11 +974,20 @@ export function poRowToDeskRow(
   const flag = (field: PoField, message: string) => problems.push({ row: index, field, message });
 
   const orderNumber = get('order_number');
+  const skipReason = preset.skip && preset.skip.values.test(cellByHeaderWords(row, preset.skip.headers)) ? preset.skip.reason : null;
   if (!orderNumber) flag('order_number', mapping.order_number ? `${PO_COLUMNS.order_number.label} is blank` : 'No order # column');
 
-  const platformRaw = get('platform') || ctx.platform.trim() || preset.platform;
+  const platformRaw = get('platform') || poPresetPlatform(preset, ctx.platform);
   if (!platformRaw) flag('platform', 'No platform — pick one or map a platform column');
   else if (inboundSourceTypeForPlatform(platformRaw) === 'zoho') flag('platform', 'Zoho orders arrive by sync, not by CSV');
+
+  let orderType = preset.orderType;
+  const typeRaw = get('order_type');
+  if (typeRaw) {
+    const parsed = orderTypeFromCell(typeRaw);
+    if (parsed) orderType = parsed;
+    else flag('order_type', `Order type "${typeRaw}" is not a purchase order or a return`);
+  }
 
   const title = get('item_title');
   const sku = get('sku');
@@ -734,7 +1025,7 @@ export function poRowToDeskRow(
     else if (unitCostCents == null && !unitRaw && quantity != null) unitCostCents = Math.round(totalCents / quantity);
   }
 
-  const date = (field: 'order_date' | 'expected_date'): string | null => {
+  const date = (field: 'order_date' | 'expected_date' | 'return_request_date'): string | null => {
     const raw = get(field);
     if (!raw) return null;
     const parsed = parsePoDate(raw);
@@ -743,6 +1034,7 @@ export function poRowToDeskRow(
   };
   const orderDate = date('order_date');
   const expectedDate = date('expected_date');
+  const returnRequestDate = date('return_request_date');
 
   let priorityTier: number | null = preset.defaultTier;
   const priorityRaw = get('priority');
@@ -761,8 +1053,17 @@ export function poRowToDeskRow(
     else trackingNumber = canon;
   }
 
-  const listingUrl = get('listing_url');
+  const itemId = get('item_id');
+  let listingUrl = get('listing_url');
   if (listingUrl && !/^https?:\/\//i.test(listingUrl)) flag('listing_url', `Listing URL "${listingUrl}" is not an http(s) link`);
+  if (!listingUrl && itemId && preset.listingUrlFromItemId) listingUrl = preset.listingUrlFromItemId(itemId);
+
+  const conditionRaw = get('condition');
+  const conditionGrade = conditionGradeFromListing(conditionRaw);
+  if (conditionRaw && !conditionGrade) {
+    flag('condition', `Condition "${conditionRaw}" names no grade (new, like new, refurbished, used A/B/C, parts)`);
+  }
+  const listingSerials = [...new Set(get('listing_serials').split(/[,;|\n]+/).map((s) => s.trim()).filter(Boolean))];
 
   const notes: string[] = [];
   const shippingRaw = get('shipping');
@@ -771,23 +1072,22 @@ export function poRowToDeskRow(
     if (cents == null) flag('shipping', `Shipping "${shippingRaw}" is not a price`);
     else if (cents > 0) notes.push(`Shipping $${(cents / 100).toFixed(2)}`);
   }
-  const condition = get('condition');
-  if (condition) notes.push(`Condition (${(title || sku).slice(0, 60)}): ${condition}`);
   const note = get('notes');
   if (note) notes.push(note);
 
-  if (!orderNumber) return { deskRow: null, problems };
+  if (!orderNumber && !skipReason) return { deskRow: null, problems };
 
-  const itemId = get('item_id');
+  const rma = get('rma');
+  const licensePlate = get('license_plate');
+  const lineKey = preset.lineKey ? preset.lineKey({ itemId, rma, licensePlate }) : itemId;
   return {
     deskRow: {
-      kind: 'purchase',
       sourceType: inboundSourceTypeForPlatform(platformRaw || 'manual'),
       sourcePlatform: inboundSourcePlatformForRaw(platformRaw),
-      receivingType: 'PO',
+      receivingType: orderType,
       priorityTier,
       orderId: orderNumber,
-      lineItemId: itemId || null,
+      lineItemId: lineKey || null,
       itemNumber: itemId || null,
       sku: sku || null,
       itemName: title || null,
@@ -800,8 +1100,19 @@ export function poRowToDeskRow(
       orderDate,
       expectedDate,
       notes: notes.join('\n') || null,
+      returnReason: get('return_reason') || null,
+      rmaId: rma || null,
+      returnRequestDate,
+      conditionGrade,
+      listingSerials,
+      fnsku: get('fnsku') || null,
+      licensePlateNumber: licensePlate || null,
+      disposition: get('disposition') || null,
+      customerComment: get('customer_comment') || null,
+      catalogLookup: preset.catalogByItemId ? [sku, itemId].filter(Boolean) : [],
+      skipReason,
       rawPayload: row,
     },
-    problems,
+    problems: skipReason ? [] : problems,
   };
 }

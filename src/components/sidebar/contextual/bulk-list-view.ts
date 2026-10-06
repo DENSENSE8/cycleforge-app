@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { NAV_LOCATE_NOWHERE, type NavLocateBucket } from '@/lib/nav/context/schema';
-import type { BulkEntry, BulkList } from '@/lib/nav/locate/use-bulk-list';
+import type { BulkEntry, LocatedRecords } from '@/lib/nav/locate/use-bulk-list';
 import { primaryBucketId } from '@/lib/nav/locate/bucket-precedence';
 import { setDeskSearch, useDeskSearch } from '@/lib/outbound/desk-search-store';
 import { recordDetailsNavigation } from '@/lib/records/record-details';
@@ -51,7 +51,7 @@ const ORDER_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity
  * `<locator>:<id>` (the section's own keep bare ids). Under `everywhere`
  * every id is prefixed and none is "elsewhere".
  */
-export function isElsewhereBucket(bucket: Pick<NavLocateBucket, 'id'>, scope: BulkList['scope']): boolean {
+export function isElsewhereBucket(bucket: Pick<NavLocateBucket, 'id'>, scope: LocatedRecords['scope']): boolean {
   return scope !== 'everywhere' && bucket.id.includes(':');
 }
 
@@ -116,7 +116,7 @@ export function useBulkListView({
   sort,
   onLeave,
 }: {
-  list: BulkList;
+  list: LocatedRecords;
   /** The page list's Find; absent (the everywhere face) = the desk store at this path. */
   find?: PageFind;
   sort: BulkListSort;
@@ -215,7 +215,7 @@ export function useBulkListView({
   // A pinpointed number that leaves the list must not keep narrowing the ledger to nothing.
   const remove = (entry: BulkEntry) => {
     if (find === entry.ref) setFind('');
-    list.remove(entry.ref);
+    list.remove?.(entry.ref);
   };
   const recheck = (entry: BulkEntry) => {
     list.recheck(entry.ref);

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { Search } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
 import { SearchEntityRecord } from '@/components/search/dossier/SearchEntityRecord';
 import { loadDetailStack } from '@/lib/detail-stacks/load-detail-stack';
@@ -95,7 +94,7 @@ export function SearchSkuDossier({ id, onBack }: { id: number; onBack?: () => vo
       </PaneCentre>
     );
   }
-  if (!catalog) return <UniversalLoader isLoading label="Loading SKU" />;
+  if (!catalog) return null;
 
   const sku = presentFact(catalog.sku) || `SKU ${id}`;
   const title = presentFact(catalog.product_title) || sku;
@@ -202,7 +201,7 @@ export function SearchStackDossier({
     if (!loading) primaryPaint?.onPrimaryPainted();
   }, [loading, primaryPaint]);
 
-  if (loading) return <UniversalLoader isLoading label={`Loading ${label.toLowerCase()}`} />;
+  if (loading) return null;
 
   if (missing || (!claim && !plan)) {
     return (

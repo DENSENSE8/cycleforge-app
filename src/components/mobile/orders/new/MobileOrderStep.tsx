@@ -37,7 +37,7 @@ export function MobileOrderStep({
     <div className="bg-mode-panel" data-testid="m-order-order">
       <MobileFormHeading>Order</MobileFormHeading>
       <button type="button" onClick={() => setChannelOpen(true)} className={ROW_CLASS} data-testid="m-order-channel">
-        <span className="w-20 shrink-0 text-role-caption font-medium text-mode-muted">Channel</span>
+        <span className="w-20 shrink-0 text-role-caption font-medium text-mode-muted">Platform</span>
         <span
           className={`min-w-0 flex-1 truncate text-mode-body ${channel ? 'font-semibold text-mode-ink' : 'text-mode-muted'}`}
         >
@@ -97,10 +97,10 @@ export function MobileOrderStep({
       <Sheet open={channelOpen} onOpenChange={(next) => { if (!next) setChannelOpen(false); }}>
         <SheetContent side="bottom" aria-describedby={undefined}>
           <SheetHeader className="shrink-0 border-b border-mode-rule px-mode-page py-3 pr-12">
-            <SheetTitle>Channel</SheetTitle>
+            <SheetTitle>Platform</SheetTitle>
           </SheetHeader>
           <SheetBody className="px-0 pt-0">
-            <ul aria-label="Channels" data-testid="m-order-channel-sheet">
+            <ul aria-label="Platforms" data-testid="m-order-channel-sheet">
               {channelOptions.map((o) => {
                 const selected = o.value === channel?.value;
                 return (

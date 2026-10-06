@@ -1,49 +1,77 @@
 'use client';
 
 /**
- * Scan (or type) an inbound tracking number into the order — through the V2
- * scan root, `MobileV2ScanInput`. A decode lands the canonical number in the
- * draft's first empty tracking slot and closes the sheet.
+ * Add tracking numbers to the order — as many as it has boxes: scan (or type
+ * and Enter) one at a time through the V2 scan root, `MobileV2ScanInput`, or
+ * paste a whole list (newlines, commas or spaces) and Add them all. The sheet
+ * stays open for the next box; Done closes it.
  */
 
-import { Check } from '@/components/Icons';
+import { useState } from 'react';
+import { Check, ClipboardPaste } from '@/components/Icons';
 import { MobileV2ActionSheet } from '@/components/mobile/v2/MobileV2ActionSheet';
 import { MobileV2ScanInput } from '@/components/mobile/v2/scan/MobileV2ScanInput';
-import { extractCanonicalTracking } from '@/lib/tracking-format';
+import { TextField } from '@/design-system/primitives';
+import { splitPastedList } from '@/lib/inbound/inbound-order-compose';
+
+type TrackingVerb = 'paste' | 'done';
 
 export function MobileV2InboundTrackingSheet({
   open,
-  onScan,
+  count,
+  onAdd,
   onClose,
 }: {
   open: boolean;
-  onScan: (trackingNumber: string) => void;
+  /** Tracking numbers on the order so far. */
+  count: number;
+  onAdd: (numbers: string[]) => void;
   onClose: () => void;
 }) {
+  const [pasted, setPasted] = useState('');
+  const listed = splitPastedList(pasted);
   return (
     <MobileV2ActionSheet
       open={open}
       onClose={onClose}
-      title="Scan tracking"
-      description="Scan the label barcode, or type the number and press Enter."
-      verbs={[{ id: 'done', label: 'Done', icon: <Check />, primary: true }]}
-      onVerb={onClose}
+      eyebrow={count ? `${count} on the order` : undefined}
+      title="Add tracking"
+      description="Scan each box’s label, or paste the whole list."
+      verbs={[
+        {
+          id: 'paste',
+          label: listed.length > 1 ? `Add ${listed.length}` : 'Add pasted',
+          icon: <ClipboardPaste />,
+          disabled: listed.length === 0,
+          testId: 'm-inbound-tracking-add-pasted',
+        },
+        { id: 'done', label: 'Done', icon: <Check />, primary: true, testId: 'm-inbound-tracking-done' },
+      ]}
+      onVerb={(verb: TrackingVerb) => {
+        if (verb === 'done') return onClose();
+        onAdd(listed);
+        setPasted('');
+      }}
       dockLabel="Tracking actions"
       testId="m-inbound-tracking-sheet"
     >
-      <div className="px-mode-page py-3">
+      <div className="flex flex-col gap-3 px-mode-page py-3">
         <MobileV2ScanInput
           compact
           autoFocus
           prominentCamera
           cameraSuspended={!open}
           placeholder="Tracking number"
-          onDecode={(value) => {
-            const number = extractCanonicalTracking(value.trim()) || value.trim();
-            if (!number) return;
-            onScan(number);
-            onClose();
-          }}
+          onDecode={(value) => onAdd(splitPastedList(value))}
+        />
+        <TextField
+          label="Or paste many tracking numbers"
+          value={pasted}
+          multiline
+          rows={4}
+          mono
+          onChange={setPasted}
+          data-testid="m-inbound-tracking-paste"
         />
       </div>
     </MobileV2ActionSheet>

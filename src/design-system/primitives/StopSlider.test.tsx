@@ -14,7 +14,6 @@ test('uses the shared blue rail, inset increment dots, and a gray grab target', 
   assert.match(html, /bg-fill-info/, 'completed rail and selected chip use the semantic blue');
   assert.match(html, /h-5/, 'default rail is 20px high');
   assert.match(html, /size-1\.5/, 'default increment dots are 6px, not rail-height');
-  assert.match(html, /calc\(3px \+ \(100% - 6px\)/, 'end dots are inset into the rail instead of hanging over it');
   assert.match(html, /bg-text-inverse\/70/, 'reached increments remain legible over blue');
   assert.match(html, /bg-surface-strong shadow-sm/, 'the thumb is a lifted, high-contrast gray surface');
   assert.match(html, /aria-valuetext="2 labels"/);

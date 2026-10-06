@@ -78,6 +78,29 @@ export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hid
  */
 export const DESK_SPLIT_LIST_CARD_CLASS = 'flex min-h-0 min-w-0 w-full flex-1 flex-col';
 
+/* ── SELECTION DOCK — a ledger + its selection pane (owner 2026-10-04, Labels & docs › Bulk) ── */
+
+/** The ledger's floor beside a docked pane (rem). */
+export const DESK_SELECTION_LEDGER_MIN_REM = 36;
+/** The pane's floor (rem): it is never squeezed below this — under it the pane becomes a drawer. */
+export const DESK_SELECTION_PANE_MIN_REM = 24;
+/** The dock's own width (rem) under which the pane leaves the grid and opens as a drawer: ledger floor + pane floor. */
+export const DESK_SELECTION_DOCK_MIN_REM = DESK_SELECTION_LEDGER_MIN_REM + DESK_SELECTION_PANE_MIN_REM;
+
+/**
+ * {@link DeskSelectionDock} docked: ledger `minmax(36rem, 1fr)` beside the pane
+ * `minmax(24rem, clamp(28rem, 25%, 34rem))` — preferred 28rem, floor 24rem,
+ * ceiling 34rem on a very wide dock. Literal — Tailwind reads the source.
+ */
+export const DESK_SELECTION_DOCK_GRID_CLASS =
+  'grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)] grid-cols-[minmax(36rem,1fr)_minmax(24rem,clamp(28rem,25%,34rem))]';
+
+/** The docked pane: one hairline seam against the ledger, its own `@container/pane` for the pane's layout tiers. */
+export const DESK_SELECTION_PANE_CLASS = '@container/pane flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-mode-divide bg-surface-card';
+
+/** The narrow dock's drawer: full height at the right edge, at most the pane ceiling. */
+export const DESK_SELECTION_DRAWER_CARD_CLASS = '@container/pane h-full w-full max-w-[34rem] border-0 border-l border-mode-divide';
+
 /* ── ORDER CARD disclosure — the To-ship card list (owner 2026-09-27) ────────── */
 
 /**

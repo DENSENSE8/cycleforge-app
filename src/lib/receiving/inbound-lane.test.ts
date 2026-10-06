@@ -7,6 +7,7 @@ import {
   isPipelineSort,
   parseInboundDeskSort,
   parseInboundLane,
+  INBOUND_LANE_PARAM_VALUES,
 } from '@/lib/receiving/inbound-lane';
 
 test('parseInboundLane: Deliveries resolves Inbound, Docked and Unboxed independently', () => {
@@ -82,4 +83,9 @@ test('exceptions is a lane of its own: parsed, written, and it sheds the paste a
   // A list pasted on Unboxed is Unboxed's: back on On the way it is gone, reason filter too.
   const unboxedPaste = new URLSearchParams('lane=unboxed&ref_in=PO-1,PO-2&recon=received&recon_reason=unboxed');
   for (const gone of ['ref_in', 'recon', 'recon_reason']) assert.equal(applyInboundLane(unboxedPaste, 'pipeline').get(gone), null, gone);
+});
+
+test('Purchasing is its own Receiving mode (`/purchasing`), never a Deliveries lane', () => {
+  assert.equal(parseInboundLane('purchases'), 'pipeline');
+  assert.equal((INBOUND_LANE_PARAM_VALUES as readonly string[]).includes('purchases'), false);
 });

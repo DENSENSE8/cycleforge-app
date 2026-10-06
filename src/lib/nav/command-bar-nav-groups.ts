@@ -1,5 +1,6 @@
 /** ⌘K palette page buckets — Pin → the spine order (`fixedSpineOrder`). */
 
+import { isTabParked } from '@/lib/nav/parked-tabs';
 import { searchNav } from '@/lib/nav/nav-search';
 import {
   spineAccentFor,
@@ -8,7 +9,9 @@ import {
 import { spineNavigationBandTitle } from '@/lib/nav/spine-navigation-band';
 import { fixedSpineOrder } from '@/lib/nav/spine-slots';
 import {
+  applyChildTarget,
   filterPageChildren,
+  getMasterNavItem,
   getSidebarNavItems,
   getSidebarPageNav,
   isSidebarPageReachable,
@@ -28,7 +31,15 @@ type CommandBarNavPageRow = {
   label: string;
   href: string;
   icon: SidebarIconComponent;
+  /** A view row's page ("Deliveries") — tells sibling views of different pages apart. */
+  context?: string;
 };
+
+/**
+ * A page's views (`SidebarPageNav.children`, permission-filtered, unparked).
+ * Never painted as a band row — a typed query ranks them beside their page.
+ */
+type CommandBarNavView = CommandBarNavPageRow;
 
 type CommandBarNavSubgroupRow = {
   type: 'subgroup';
@@ -46,6 +57,8 @@ type CommandBarNavGroup = {
   sectionIcon: SidebarIconComponent | null;
   accent: SpineAccentClasses;
   rows: CommandBarNavRow[];
+  /** The band's pages' views — ranked only by a typed query, never painted at rest. */
+  views: CommandBarNavView[];
 };
 
 function toPageRow(item: SidebarNavItem): CommandBarNavPageRow {
@@ -56,6 +69,31 @@ function toPageRow(item: SidebarNavItem): CommandBarNavPageRow {
     href: item.href,
     icon: item.desktopIcon ?? item.icon,
   };
+}
+
+/**
+ * The views a typed query may land on — each child's own href and label. A
+ * view that lands exactly where its page does is the page row.
+ */
+function viewsOf(item: SidebarNavItem, permissions?: ReadonlySet<string>): CommandBarNavView[] {
+  const declared = getSidebarPageNav(item.id);
+  if (!declared?.children?.length) return [];
+  const page = permissions ? filterPageChildren(declared, permissions) : declared;
+  const bare = { pathname: new URL(item.href, 'http://nav.local').pathname, params: new URLSearchParams() };
+  return (page.children ?? [])
+    .filter((child) => !isTabParked(page.id, child.id))
+    .map((child): CommandBarNavView => {
+      const target = applyChildTarget(bare, child.to());
+      return {
+        type: 'page',
+        id: `${item.id}:${child.id}`,
+        label: child.label,
+        href: target.search ? `${target.pathname}?${target.search}` : target.pathname,
+        icon: child.icon,
+        context: item.label,
+      };
+    })
+    .filter((view) => view.href !== item.href);
 }
 
 /**
@@ -88,6 +126,7 @@ export function buildCommandBarNavGroups(
       sectionIcon: null,
       accent: spineAccentFor(null),
       rows: pinItems.map((i) => toPageRow(i)),
+      views: pinItems.flatMap((i) => viewsOf(i, permissions)),
     });
   }
 
@@ -107,6 +146,7 @@ export function buildCommandBarNavGroups(
         sectionIcon: section.icon,
         accent: spineAccentFor(section.id),
         rows: sectionItems.map((i) => toPageRow(i)),
+        views: sectionItems.flatMap((i) => viewsOf(i, permissions)),
       });
       continue;
     }
@@ -119,10 +159,12 @@ export function buildCommandBarNavGroups(
         sectionIcon: null,
         accent: spineAccentFor(null),
         rows: [],
+        views: [],
       };
       groups.push(rootGroup);
     }
     rootGroup.rows.push(toPageRow(item));
+    rootGroup.views.push(...viewsOf(item, permissions));
   }
 
   const footerItems = items.filter((i) => i.kind === 'bottom');
@@ -133,13 +175,18 @@ export function buildCommandBarNavGroups(
       sectionIcon: null,
       accent: spineAccentFor(null),
       rows: footerItems.map((i) => toPageRow(i)),
+      views: footerItems.flatMap((i) => viewsOf(i, permissions)),
     });
   }
 
   return groups;
 }
 
-/** Filter page rows through the shared nav matcher. */
+/**
+ * Filter page rows through the shared nav matcher — by label, href and the
+ * page's own `keywords` ("unreceived" → Purchasing). A query also reaches each
+ * page's views by label, ranked beside the pages of the same band.
+ */
 export function filterCommandBarNavGroups(
   groups: readonly CommandBarNavGroup[],
   query: string,
@@ -151,7 +198,10 @@ export function filterCommandBarNavGroups(
       (row): row is CommandBarNavPageRow => row.type === 'page',
     );
     const ranked = searchNav(
-      pages.map((row) => ({ ...row, keywords: [row.href] })),
+      [
+        ...pages.map((row) => ({ ...row, keywords: [row.href, ...(getMasterNavItem(row.id)?.keywords ?? [])] })),
+        ...group.views.map((view) => ({ ...view, keywords: [] as string[] })),
+      ],
       query,
     );
     if (ranked.length === 0) return [];

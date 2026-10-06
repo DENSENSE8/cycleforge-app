@@ -1,16 +1,19 @@
 /**
- * Bulk purchase-order CSV → the one inbound writer (server).
+ * Bulk inbound order import → the one inbound writer (server).
  *
- *   identify columns (`po-columns`) → each row → desk row (+ its problems) →
- *   `draftsFromDeskRows` groups orders → `inboundOrderMissing` checks every
- *   order → `runInboundDraftBatch` previews (dry run, writes nothing) or lands
- *   each clean order through `ingestInboundOrder`.
+ *   preset (`detectPoPreset`, or the operator's pick) → identify columns
+ *   (`po-columns`) → each row → desk row (+ its problems) →
+ *   `draftsFromDeskRows` groups orders (one per platform + order #, each row a
+ *   line) → `inboundOrderMissing` checks every order → `runInboundDraftBatch`
+ *   previews (dry run, writes nothing) or lands each clean order through
+ *   `ingestInboundOrder` and keeps the file row by row for the upload check.
  *
  * An order with any problem row is held whole and reported with the exact
- * field per row; a row with no order number is reported on its own. Nothing
- * is dropped silently. The AI header mapping runs only when the caller asks
- * (`assist`) AND required fields are still unmapped after header + value
- * shape.
+ * field per row; a row with no order number is reported on its own; a row the
+ * preset skips (a cancelled return request) is kept as held with its reason.
+ * Nothing is dropped silently. The AI header mapping runs only when the
+ * caller asks (`assist`) AND required fields are still unmapped after header
+ * + value shape.
  */
 
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -21,8 +24,10 @@ import type { DeskImportRow } from './desk-csv';
 import {
   PO_COLUMNS,
   PO_FIELDS,
+  PO_PRESETS,
+  detectPoPreset,
   identifyColumns,
-  poPresetForPlatform,
+  poPresetPlatform,
   poRowToDeskRow,
   withPoMapping,
   type PoColumnIdentification,
@@ -44,15 +49,18 @@ const FIELD_FOR_NEED: Record<InboundOrderField, PoField> = {
   pickup_date: 'order_date',
   tracking: 'tracking',
   return_item: 'sku',
-  return_reason: 'notes',
+  return_reason: 'return_reason',
   listing_url: 'listing_url',
 };
 
 export interface PoCsvImportInput {
+  fileName: string;
   headers: string[];
   rows: Record<string, string>[];
-  /** Platform pick; its preset (Goodwill / generic) supplies the defaults. */
-  platform: string;
+  /** The export format; absent = detected from the header row. */
+  preset?: PoPresetId | null;
+  /** Platform pick — only read when the preset stamps none (`generic`). */
+  platform?: string | null;
   /** Operator's column picks (field → header); absent = identified. */
   mapping?: Partial<Record<PoField, string>> | null;
   /** Ask the AI for headers when required fields stay unmapped. Dry run only. */
@@ -108,12 +116,12 @@ export async function runPoCsvImport(
   input: PoCsvImportInput,
   deps: PoCsvImportDeps = {},
 ): Promise<PoCsvImportResult> {
-  const platform = input.platform.trim().toLowerCase();
-  const preset = poPresetForPlatform(platform);
-  const presetPlatform = platform || preset.platform;
-  let identification = identifyColumns(input.headers, input.rows, { preset, platform: presetPlatform });
+  const presetId = input.preset ?? detectPoPreset(input.headers, input.rows);
+  const preset = PO_PRESETS[presetId];
+  const platform = poPresetPlatform(preset, input.platform);
+  let identification = identifyColumns(input.headers, input.rows, { preset, platform });
   if (input.mapping) {
-    identification = withPoMapping(identification, input.mapping, { preset, platform: presetPlatform });
+    identification = withPoMapping(identification, input.mapping, { preset, platform });
   }
 
   let assist: PoCsvImportResult['assist'] = null;
@@ -131,7 +139,7 @@ export async function runPoCsvImport(
         mapping[s.field] = s.header;
         detail[s.field] = { note: s.reason, confidence: s.confidence === 'high' ? 0.8 : s.confidence === 'medium' ? 0.6 : 0.4 };
       }
-      identification = withPoMapping(identification, mapping, { preset, platform: presetPlatform, reason: 'ai', detail });
+      identification = withPoMapping(identification, mapping, { preset, platform, reason: 'ai', detail });
       assist = { ran: true, model: proposal.model, rejected: proposal.rejectedHallucinations };
     } catch (err) {
       assist = { ran: false, error: err instanceof Error ? err.message : 'AI mapping unavailable' };
@@ -139,14 +147,14 @@ export async function runPoCsvImport(
   }
 
   if (identification.missingRequired.length > 0) {
-    return { platform: presetPlatform, preset: preset.id, identification, assist, rowProblems: [], batch: null, summary: summarize(null) };
+    return { platform, preset: presetId, identification, assist, rowProblems: [], batch: null, summary: summarize(null) };
   }
 
   const rowProblems: PoRowProblem[] = [];
   const deskRows: DeskImportRow[] = [];
   const fileRowOf: number[] = [];
   input.rows.forEach((row, index) => {
-    const { deskRow, problems } = poRowToDeskRow(row, index, { mapping: identification.mapping, preset, platform: presetPlatform });
+    const { deskRow, problems } = poRowToDeskRow(row, index, { mapping: identification.mapping, preset, platform });
     rowProblems.push(...problems);
     if (deskRow) {
       deskRows.push(deskRow);
@@ -173,21 +181,32 @@ export async function runPoCsvImport(
   });
   rowProblems.sort((a, b) => a.row - b.row);
 
+  const problemsByRow = new Map<number, string[]>();
+  for (const p of rowProblems) problemsByRow.set(p.row, [...(problemsByRow.get(p.row) ?? []), p.message]);
+
   const batch = await runInboundDraftBatch(
     orgId,
     {
       orders,
       skipped: grouped.skipped.map((s) => ({ row: fileRowOf[s.row], reason: s.reason })),
       total: input.rows.length,
-      fileHash: inboundFileHash({ platform: presetPlatform, mapping: identification.mapping, rows: input.rows }),
+      fileHash: inboundFileHash({ preset: presetId, platform, mapping: identification.mapping, rows: input.rows }),
       origin: 'csv',
-      source: 'po-csv',
+      source: `import:${presetId}`,
       staffId: input.staffId,
       label: input.label ?? null,
+      file: {
+        name: input.fileName,
+        preset: presetId,
+        headers: input.headers,
+        columnMap: identification.mapping as Record<string, string>,
+        rows: input.rows,
+        problemsByRow,
+      },
       dryRun: input.dryRun,
     },
     deps.batch,
   );
 
-  return { platform: presetPlatform, preset: preset.id, identification, assist, rowProblems, batch, summary: summarize(batch) };
+  return { platform, preset: presetId, identification, assist, rowProblems, batch, summary: summarize(batch) };
 }

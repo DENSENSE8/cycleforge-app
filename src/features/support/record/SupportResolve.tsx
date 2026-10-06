@@ -5,9 +5,10 @@
  * The item's blockers (an unanswered customer message, an overdue follow-up,
  * a reply copied but not confirmed sent, …) are listed in their own words;
  * resolving is refused while any remain unless the staffer chooses Override
- * AND types the reason. A post-purchase check-in that was chased offers
- * "Close — no response" (reason required). Who resolved it and why is the
- * status verb's own line once it is resolved.
+ * AND types the reason. A post-purchase check-in resolves through how it
+ * ended — Happy or Had an issue (operator 2026-10-05) — and, once chased,
+ * also offers "Close — no response" (reason required). Who resolved it and
+ * why is the status verb's own line once it is resolved.
  */
 
 import { useState } from 'react';
@@ -15,9 +16,14 @@ import { CircleSlash } from 'lucide-react';
 import { Button } from '@/design-system/primitives/Button';
 import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { TextField } from '@/design-system/primitives/TextField';
-import { SUPPORT_RESOLVE_BLOCKER_LABEL, type SupportItemView, type SupportResolveBlocker } from '@/lib/support/conversation/model';
+import { CHECK_IN_OUTCOMES, SUPPORT_RESOLVE_BLOCKER_LABEL, type CheckInOutcome, type SupportItemView, type SupportResolveBlocker } from '@/lib/support/conversation/model';
 import { toast } from '@/lib/toast';
-import { supportCanCloseNoResponse, supportResolveLabel, supportResolveRequest } from '@/lib/support/record/support-record-model';
+import {
+  CHECK_IN_OUTCOME_LABEL,
+  supportCanCloseNoResponse,
+  supportResolveLabel,
+  supportResolveRequest,
+} from '@/lib/support/record/support-record-model';
 import { SupportRequestError, useSupportItemActions } from '@/lib/support/record/use-support-item';
 
 export function SupportResolve({ item, onOpenChange }: { item: SupportItemView; onOpenChange: (open: boolean) => void }) {
@@ -29,8 +35,8 @@ export function SupportResolve({ item, onOpenChange }: { item: SupportItemView; 
   const blockers = serverBlockers ?? item.resolveBlockers;
   const label = supportResolveLabel(item);
 
-  const submit = (disposition?: 'resolved' | 'no_response_closed') => {
-    const request = supportResolveRequest({ blockers, override, reason, disposition });
+  const submit = (disposition?: 'resolved' | 'no_response_closed', outcome?: CheckInOutcome) => {
+    const request = supportResolveRequest({ blockers, override, reason, disposition, outcome });
     if (!request.ok) {
       toast.error(request.error);
       return;
@@ -108,16 +114,35 @@ export function SupportResolve({ item, onOpenChange }: { item: SupportItemView; 
             Close — no response
           </Button>
         ) : null}
-        <Button
-          variant="success"
-          size="sm"
-          disabled={blocked && (!override || !reason.trim())}
-          loading={resolve.isPending && resolve.variables?.checkInDisposition !== 'no_response_closed'}
-          onClick={() => submit(item.checkIn ? 'resolved' : undefined)}
-          data-testid="support-resolve-confirm"
-        >
-          {label}
-        </Button>
+        {item.checkIn ? (
+          <div role="group" aria-label="Resolve as — how the check-in ended" className="flex items-center gap-2" data-testid="support-resolve-outcome">
+            <span className="text-role-caption text-text-muted">Resolve as</span>
+            {CHECK_IN_OUTCOMES.map((outcome) => (
+              <Button
+                key={outcome}
+                variant={outcome === 'happy' ? 'success' : 'warning'}
+                size="sm"
+                disabled={resolve.isPending || (blocked && (!override || !reason.trim()))}
+                loading={resolve.isPending && resolve.variables?.checkInOutcome === outcome}
+                onClick={() => submit('resolved', outcome)}
+                data-testid={`support-resolve-outcome-${outcome}`}
+              >
+                {CHECK_IN_OUTCOME_LABEL[outcome]}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <Button
+            variant="success"
+            size="sm"
+            disabled={blocked && (!override || !reason.trim())}
+            loading={resolve.isPending}
+            onClick={() => submit()}
+            data-testid="support-resolve-confirm"
+          >
+            {label}
+          </Button>
+        )}
       </div>
     </section>
   );

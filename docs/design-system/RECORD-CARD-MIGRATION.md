@@ -123,7 +123,7 @@ mount**, so there is nothing to port there — porting them means building a pag
 ### Non-table grids (out of scope unless noted)
 
 `StationListTable.tsx` (raw `LedgerGrid` under station pipelines), `WarehouseMap.tsx` (bin map),
-`app/inventory/throughput` (heatmap), `IncomingReturnsImportStagingHost` (CSV preview), markdown
+`app/inventory/throughput` (heatmap), markdown
 tables, receipt HTML. AI artifacts (`InlineArtifact.tsx`, `renderers.tsx`, `ReportArtifact.tsx`,
 `PaymentArtifact.tsx`) → Wave N+1.
 

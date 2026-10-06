@@ -14,7 +14,6 @@ import { copySellerClaimMessageWithPersist } from '@/lib/receiving-claim-seller-
 import { sellerDraftMatchesTicket } from '@/lib/receiving-claim-seller-ticket-match';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 
 
@@ -304,9 +303,7 @@ function SellerMessagePanel({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-        {isLoading ? (
-          <UniversalLoader isLoading label="Loading seller message" className="min-h-32" />
-        ) : isError ? (
+        {isLoading ? null : isError ? (
           <p className="rounded-md bg-rose-50 px-2 py-1.5 text-role-caption text-rose-600">
             {error instanceof Error ? error.message : 'Could not load message'}
           </p>

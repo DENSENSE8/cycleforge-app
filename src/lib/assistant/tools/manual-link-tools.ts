@@ -188,7 +188,7 @@ export function buildManualLinkTool(
     ]);
     const m = manual.rows[0] ?? {};
     const c = catalog.rows[0] ?? {};
-    await deps.settle(ctx.organizationId, manualId, null, c.id != null ? Number(c.id) : null);
+    await deps.settle(ctx.organizationId);
     const name = manualName(m, manualId);
     const title = resolveSkuIdentityTitle(c as never) || sku;
     return brandReportEnvelope(

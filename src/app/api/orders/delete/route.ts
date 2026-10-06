@@ -6,6 +6,7 @@ import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { releaseOrderAllocationsForDeletion } from '@/lib/neon/orders-queries';
 
 /** POST /api/orders/delete - Delete one or more orders Body: */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -55,6 +56,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return { notFound: true as const };
     }
 
+    // Deleting an order also owns its allocation edges. Release active units
+    // safely and remove those rows before the restrictive FK sees the parent
+    // delete, so operators do not have to clear allocations separately.
+    for (const id of idsToDelete) {
+      await releaseOrderAllocationsForDeletion(client, {
+        orderId: id,
+        orgId: ctx.organizationId,
+        actorStaffId: ctx.staffId,
+      });
+    }
+
     const result = await client.query(
       `DELETE FROM orders WHERE id = ANY($1::int[]) AND organization_id = $2`,
       [idsToDelete, ctx.organizationId]
@@ -62,6 +74,21 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if ((result.rowCount || 0) === 0) {
       return { notFound: true as const };
     }
+
+    await client.query(
+      `DELETE FROM work_assignments
+        WHERE organization_id = $2
+          AND entity_type = 'ORDER'
+          AND entity_id = ANY($1::bigint[])`,
+      [idsToDelete, ctx.organizationId],
+    );
+    await client.query(
+      `DELETE FROM feed_memberships
+        WHERE organization_id = $2::uuid
+          AND entity_type = 'ORDER'
+          AND entity_id = ANY($1::bigint[])`,
+      [idsToDelete, ctx.organizationId],
+    );
 
     // One audit row per deleted order, with full before snapshot.
     for (const row of beforeRows.rows) {

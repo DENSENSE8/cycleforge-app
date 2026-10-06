@@ -39,6 +39,7 @@ import {
   sqlOrderDeskStage,
   sqlOrderHasPoPairedShortage,
   sqlOrderInWarehouseToShip,
+  sqlOrderOpenUnshipped,
 } from '@/lib/orders/desk-view-sql';
 import {
   encodeOrdersListCursor,
@@ -686,19 +687,18 @@ export function buildOrdersListSql(
     // SHIP_CONFIRM, not AFN), so the list and its counters cannot disagree.
     sql += ` AND ${sqlOrderInWarehouseToShip('o')}`;
   } else if (!includeShipped && !packedOnly) {
-    // Blocked OOS work remains actionable even when a stale carrier status
-    // says "shipped"; blockedOnly still excludes real dock ship-confirm rows.
     if (!blockedOnly) {
-      // Pending/unshipped dashboards should stay limited to orders that have not
-      // entered a carrier-shipped state, even when excludePacked is also active.
-      sql += ` AND NOT ${shippedByCarrierOrLatestStatusSql}`;
-      // Dock scan-out is the Shipped desk. Without this, never-packed rows that
-      // already left still painted on To-ship / Ready-to-pack.
-      sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
+      // Open (unshipped) — not carrier-shipped (even when excludePacked is also
+      // active), no dock scan-out (the Shipped desk), not Amazon-fulfilled.
+      // The ONE predicate Allocate's reach counts (`sqlOrderOpenUnshipped`).
+      sql += ` AND ${sqlOrderOpenUnshipped('o')}`;
+    } else {
+      // Blocked OOS work remains actionable even when a stale carrier status
+      // says "shipped"; `sqlOrderBlockedPending` below still excludes real dock
+      // ship-confirm rows. Amazon-fulfilled (FBA/AFN) orders are read-only
+      // records — Amazon ships them, so they never belong on a to-do list.
+      sql += ` AND COALESCE(o.fulfillment_channel, '') <> 'AFN'`;
     }
-    // Amazon-fulfilled (FBA/AFN) orders are read-only records — Amazon ships
-    // them, so they never belong on the to-ship/pack to-do list.
-    sql += ` AND COALESCE(o.fulfillment_channel, '') <> 'AFN'`;
   }
 
   if (packedOnly) {

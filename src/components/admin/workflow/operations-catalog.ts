@@ -374,7 +374,7 @@ const FLOWS: OpsFlow[] = [
     ],
     offPath: [
       { stage: 'Released', note: 'Allocation unwound → unit returns to STOCKED' },
-      { stage: 'Carrier: Accepted → In Transit → Out for Delivery → Delivered', note: 'Live carrier tracking on the Shipped card, bottom right (ShippedPackageCard)' },
+      { stage: 'Carrier: Accepted → In Transit → Out for Delivery → Delivered', note: 'Live carrier tracking on the Fulfilled package record (`?shipment=`)' },
       { stage: 'UI buckets', note: 'Awaiting Tracking (no shipment_id) → Pending (label, no carrier scan) → Shipped (carrier accepted)' },
     ],
   },

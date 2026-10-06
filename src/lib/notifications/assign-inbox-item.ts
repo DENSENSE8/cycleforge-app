@@ -77,6 +77,8 @@ interface MentionInboxItemArgs {
   sourceKey: string;
   actorStaffId: number | null;
   note: string | null;
+  /** The PROVIDER ticket number, on a `support_ticket` row only. */
+  ticketNumber?: number | null;
 }
 
 export function mentionInboxItemParams(organizationId: string, args: MentionInboxItemArgs): unknown[] {
@@ -88,7 +90,11 @@ export function mentionInboxItemParams(organizationId: string, args: MentionInbo
     args.entityId,
     args.eventKey,
     args.actorStaffId,
-    JSON.stringify({ note: args.note, urgent: false }),
+    JSON.stringify({
+      note: args.note,
+      urgent: false,
+      ...(args.ticketNumber != null ? { ticketNumber: args.ticketNumber } : {}),
+    }),
     key,
     key,
   ];

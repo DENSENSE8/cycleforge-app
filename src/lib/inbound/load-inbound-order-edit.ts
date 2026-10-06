@@ -47,24 +47,49 @@ export async function loadInboundOrderEdit(
   const [lines, tracking, ledger] = await Promise.all([
     deps.query<InboundOrderLineRow>(
       orgId,
-      `SELECT rl.line_key, rl.sku, rl.item_name, rl.sku_catalog_id, rl.quantity_expected,
-              rl.quantity_received, rl.unit_cost_cents, rl.listing_url
+      `SELECT rl.id, rl.line_key, rl.sku, rl.item_name, rl.sku_catalog_id, rl.quantity_expected,
+              rl.quantity_received, rl.unit_cost_cents, rl.listing_url,
+              rl.purchase_condition_grade::text AS purchase_condition_grade,
+              (SELECT array_agg(ls.serial ORDER BY ls.first_seen_at, ls.id)
+                 FROM receiving_line_listing_serial ls
+                WHERE ls.organization_id = rl.organization_id AND ls.receiving_line_id = rl.id) AS listing_serials,
+              (SELECT array_agg(p.id ORDER BY p.id)
+                 FROM photos p
+                 JOIN photo_entity_links l
+                   ON l.photo_id = p.id AND l.organization_id = p.organization_id
+                  AND l.entity_type = 'RECEIVING_LINE' AND l.entity_id = rl.id AND l.link_role = 'primary'
+                WHERE p.organization_id = rl.organization_id AND p.photo_type = 'listing') AS listing_photo_ids,
+              rr.return_reason, rr.rma_ref, rr.return_requested_on::text AS return_requested_on,
+              rr.fnsku, rr.license_plate_number, rr.disposition, rr.customer_comment
          FROM receiving_line rl
+         LEFT JOIN receiving_line_return rr
+           ON rr.receiving_line_id = rl.id AND rr.organization_id = rl.organization_id
         WHERE rl.organization_id = $1 AND rl.inbound_order_id = $2
         ORDER BY rl.id`,
       [orgId, inboundOrderId],
     ),
     deps.query<InboundOrderTrackingRow>(
       orgId,
-      `SELECT stn.tracking_number_raw AS tracking,
-              COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), rc.carrier) AS carrier
-         FROM receiving_carton rc
-         JOIN shipping_tracking_numbers stn ON stn.id = rc.shipment_id
-        WHERE rc.organization_id = $1
-          AND rc.id IN (SELECT rl.receiving_id FROM receiving_line rl
-                         WHERE rl.organization_id = $1 AND rl.inbound_order_id = $2
-                           AND rl.receiving_id IS NOT NULL)
-        ORDER BY rc.id`,
+      // Every box: each carton's primary shipment and its shipment_links boxes
+      // (a purchase order that shipped in several boxes), primary first, then
+      // in the order the numbers were registered.
+      `SELECT tracking, carrier FROM (
+         SELECT DISTINCT ON (stn.id) stn.id, stn.tracking_number_raw AS tracking,
+                COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), rc.carrier) AS carrier,
+                rc.id AS carton_id, (stn.id = rc.shipment_id) AS primary_box
+           FROM receiving_carton rc
+           JOIN shipping_tracking_numbers stn
+             ON stn.id = rc.shipment_id
+             OR stn.id IN (SELECT sl.shipment_id FROM shipment_links sl
+                            WHERE sl.owner_type = 'RECEIVING' AND sl.owner_id = rc.id
+                              AND sl.organization_id = rc.organization_id)
+          WHERE rc.organization_id = $1
+            AND rc.id IN (SELECT rl.receiving_id FROM receiving_line rl
+                           WHERE rl.organization_id = $1 AND rl.inbound_order_id = $2
+                             AND rl.receiving_id IS NOT NULL)
+          ORDER BY stn.id, (stn.id = rc.shipment_id) DESC
+       ) boxes
+      ORDER BY carton_id, primary_box DESC, id`,
       [orgId, inboundOrderId],
     ),
     deps.query<{ payload: unknown }>(

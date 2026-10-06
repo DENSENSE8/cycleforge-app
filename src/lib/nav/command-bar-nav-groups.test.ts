@@ -220,3 +220,25 @@ test('permission filter hides gated pages', () => {
   assert.equal(pageIds.includes('operations'), false);
   assert.equal(pageIds.includes('admin'), false);
 });
+
+test('Purchasing is a Receiving page found by its own keywords; views are found by label', () => {
+  const groups = buildCommandBarNavGroups(new Set(['receiving.view']));
+  for (const query of ['purchasing', 'purchases', 'unreceived', 'POs']) {
+    const filtered = filterCommandBarNavGroups(groups, query);
+    const band = filtered.find((g) => g.rows.some((r) => r.type === 'page' && r.id === 'purchasing'));
+    assert.ok(band, `"${query}" must find Purchasing`);
+    assert.equal(band?.id, 'inbound', 'Purchasing ranks in the Receiving band, beside the other modes');
+    const hit = band?.rows.find((r) => r.type === 'page' && r.id === 'purchasing');
+    assert.equal(hit && hit.type === 'page' ? hit.href : null, '/purchasing');
+  }
+  // No Deliveries view stands in for it any more.
+  const views = groups.flatMap((g) => g.views);
+  assert.equal(views.some((v) => v.id === 'incoming:purchases' || v.label === 'Purchases'), false);
+  // A view is still reached by its label, beside its page.
+  const docked = filterCommandBarNavGroups(groups, 'docked').flatMap((g) => g.rows).find((r) => r.type === 'page' && r.id === 'incoming:docked');
+  assert.equal(docked && docked.type === 'page' ? docked.context : null, 'Deliveries');
+  // At rest the palette paints pages only — views wait for a query.
+  assert.equal(groups.some((g) => g.rows.some((r) => r.id === 'incoming:docked')), false);
+  // A view that lands where its page does is the page row, not a duplicate.
+  assert.equal(groups.some((g) => g.views.some((v) => v.href === '/incoming')), false);
+});

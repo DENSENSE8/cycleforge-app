@@ -7,11 +7,9 @@
  * (`orders.order_id` — one order may be several line rows) with the first
  * line row as `local_order_id`. One edge per (PO, order); a re-link is a no-op.
  *
- * Writers (both inside the caller's tenant transaction, org stamped from ctx):
- *  - `importPurchaseOrderInTx` — the chat PO import, for the draft's resolved
- *    "For order" refs;
- *  - the `receiving.link_order` agent mutation (`link_po_to_order`) — link or
- *    unlink an existing PO, each the other's inverse.
+ * Writer (inside the caller's tenant transaction, org stamped from ctx): the
+ * `receiving.link_order` agent mutation (`link_po_to_order`) — link or
+ * unlink an existing PO, each the other's inverse.
  * Readers: the order timeline payload (`poLinks`) and the carton payload
  * (`order_links`), which the order and carton records render as related links.
  */
@@ -26,7 +24,7 @@ export interface LinkTx {
 type Rows = Array<Record<string, unknown>>;
 export type LinkQuery = (orgId: OrgId, text: string, params: ReadonlyArray<unknown>) => Promise<{ rows: Rows }>;
 
-// ─── payload (the agent mutation's, and the import's link list) ─────────────
+// ─── payload (the agent mutation's link list) ───────────────────────────────
 
 export const linkedOrderSchema = z
   .object({

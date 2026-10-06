@@ -74,12 +74,11 @@ export async function buildPaperworkPackets(
       });
     }
     for (const manual of resolved.manuals) {
-      const documentId = manual.documentId != null && manual.documentId > 0 ? manual.documentId : null;
       items.push({
         kind: 'manual',
         documentType: 'manual',
-        src: documentId ? `/api/documents/${documentId}/content` : `/api/product-manuals/${manual.id}/content`,
-        documentId,
+        src: `/api/product-manuals/${manual.id}/content`,
+        documentId: null,
         productManualId: manual.id,
         labelIngestionId: null,
         name: manual.displayName ?? null,

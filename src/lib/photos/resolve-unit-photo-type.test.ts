@@ -15,10 +15,6 @@ describe('resolveUnitPhotoTypeFromStage', () => {
     assert.equal(resolveUnitPhotoTypeFromStage(''), UNIT_PACKING_PHOTO_TYPE);
   });
 
-  it('keeps prepack as prepack stage type', () => {
-    assert.equal(resolveUnitPhotoTypeFromStage('prepack'), 'prepack');
-  });
-
   it('maps testing stage to testing_photo', () => {
     assert.equal(resolveUnitPhotoTypeFromStage('testing'), UNIT_TESTING_PHOTO_TYPE);
     assert.equal(resolveUnitPhotoTypeFromStage('testing_photo'), UNIT_TESTING_PHOTO_TYPE);

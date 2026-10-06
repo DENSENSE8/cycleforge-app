@@ -10,6 +10,7 @@
  */
 
 import type { ModeLookName, ModeName } from '@/design-system/modes/registry';
+import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
 
 export interface ModeRouteEntry {
   /**
@@ -28,7 +29,7 @@ const DESK_TRIAGE_ROUTES = [
   // Outbound + sales
   '/counter', '/fba', '/pack', '/packer', '/pick', '/pickup', '/walk-in', '/tracking-exceptions',
   // Inbound
-  '/incoming', '/triage', '/receiving', '/unbox', '/carton',
+  '/incoming', RECEIVING_PATHS.purchasing, '/triage', '/receiving', '/unbox', '/carton',
   // Inventory + warehouse
   '/inventory', '/warehouse', '/replenish', '/bin',
   // Repair + test
@@ -62,8 +63,6 @@ const DECLARED_ROUTES: readonly ModeRouteEntry[] = [
   { route: '/print-station', mode: 'triage' },
   // The desk's new-sales-order form — triage on a touch screen too.
   { route: '/orders/new', mode: 'triage' },
-  // The desk's new-inbound-order form (PO · Return · Trade-in · Pickup).
-  { route: '/incoming/new', mode: 'triage' },
   { route: '/ai-chat', mode: 'assistant' },
   // Local-only Motion+ visual study (the page itself is a production 404).
   { route: '/motion-plus-button', mode: 'assistant' },

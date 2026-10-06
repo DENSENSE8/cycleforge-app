@@ -22,6 +22,7 @@ import { resolveNavContext } from './resolve';
 import { NAV_CONTEXT_PINNED_LEGACY, NAV_CONTEXT_ROLLOUT } from './rollout';
 import { NavContextSchema, NavItemSchema, navControlParams, type NavContext, type NavItem } from './schema';
 import { isIncomingGridSortable, isReceivingGridSortable } from '@/lib/receiving/receiving-grid-layout';
+import { PURCHASES_SORTS } from '@/lib/receiving/purchases-params';
 
 const ALL = new Set<string>(ALL_PERMISSIONS);
 
@@ -150,7 +151,7 @@ test('Fulfillment is a lane door: one map row, the lane name on its panel, its p
   // FBM is Amazon's acronym for every channel we ship ourselves — the mode says so; FBA is the split.
   assert.deepEqual(modes?.items.map((item) => item.description), [
     'Fulfilled by merchant · all channels',
-    'Every package that left the building',
+    'Every order that left the building',
     'Fulfilled by Amazon',
   ]);
   assert.equal(modes?.items.find((item) => item.id === 'outbound')?.active, true);
@@ -205,23 +206,26 @@ test('the parent map keeps Scan Stations to one door across every station route'
 
 test('every mode of a door lane wears the lane on ‹ and the SAME mode card, itself current — never a ‹ <Page> row', () => {
   // Derived from lane membership (`LANE_DOORS`), so a page added to a door
-  // lane gets the parent tier with no declaration (operator 2026-09-28:
-  // Labels & docs and Sourcing are modes, like Shipping, not back rows).
+  // lane gets the parent tier with no declaration. Receiving is the exception:
+  // Sourcing remains a standalone Inbound page, not an operational mode.
   for (const [laneId, doorId] of Object.entries(LANE_DOORS)) {
     const door = getSidebarPageNav(doorId!);
     assert.ok(door, laneId);
     const lanePages = SIDEBAR_PAGE_NAV.filter(
       (page) => spineSectionIdForPage(page) === laneId && APP_SIDEBAR_NAV.some((item) => item.id === page.id),
     );
+    const modePages = laneId === 'inbound'
+      ? lanePages.filter((page) => ['incoming', 'purchasing', 'pickup', 'repair'].includes(page.id))
+      : lanePages;
     const doorModes = at(door.href).sections.find(isLanePageSection)?.items.map((item) => item.id);
     // One page is no choice (Support): no switcher, but ‹ still names the lane.
-    if (lanePages.length < 2) {
+    if (modePages.length < 2) {
       assert.equal(doorModes, undefined, `${laneId}: a one-page lane paints no mode switcher`);
       assert.equal(at(door.href).back?.label, DOMAIN_GROUPS.find((lane) => lane.id === laneId)?.label, `${laneId}: ‹ names the lane`);
       continue;
     }
     assert.deepEqual(doorModes?.[0], doorId, `${laneId}: the door leads its modes`);
-    for (const page of lanePages) {
+    for (const page of modePages) {
       const ctx = at(page.href);
       if (ctx.scope !== 'section') continue;
       const laneLabel = at(door.href).page.label;
@@ -277,11 +281,11 @@ test('permission filtering removes the rows a role cannot reach', () => {
   assert.ok(!itemIds(at('/shipping/orders', { permissions: noPackingReview })).includes('label-intake'));
 
   // Packing-only roles reach one Fulfillment door (Fulfilled): one page is no
-  // choice, so no lane rows paint — only Fulfilled's saved views.
+  // choice, so no lane rows paint — and the sheet has no view rows of its own.
   const shippedOnly = new Set(['shipping.view', 'packing.view']);
   const archive = at('/fulfilled', { permissions: shippedOnly });
   assert.equal(archive.scope, 'section');
-  assert.deepEqual(itemIds(archive), ['all', 'online', 'fba', 'sku', 'delivered']);
+  assert.deepEqual(itemIds(archive), []);
 
   // No child door at all: no Shipping section, and no Shipping row on the map.
   const noDoor = at('/shipping/orders', { permissions: new Set(['shipping.view', 'receiving.view']) });
@@ -389,16 +393,6 @@ test('the Shipping filters removed on 2026-09-26 are advertised and survive with
     ['/shipping/shortage', 'shipByTo', '2026-09-30'],
     ['/shipping/orders', 'sort', 'ship_by'],
     ['/shipping/orders', 'dir', 'asc'],
-    ['/fulfilled', 'pickedBy', '7'],
-    ['/fulfilled', 'timeFrom', '09:00'],
-    ['/fulfilled', 'timeTo', '23:59'],
-    ['/fulfilled', 'shippedFilter', 'orders'],
-    ['/fulfilled', 'carrier', 'UPS'],
-    ['/fulfilled', 'statusCategory', 'delivered'],
-    ['/fulfilled', 'exceptions', '1'],
-    ['/fulfilled', 'dateFrom', '2026-09-01'],
-    ['/fulfilled', 'dateTo', '2026-09-26'],
-    ['/fulfilled', 'shippedWeekOffset', '2'],
   ];
 
   for (const [pathname, key, value] of samples) {
@@ -409,22 +403,20 @@ test('the Shipping filters removed on 2026-09-26 are advertised and survive with
   }
 });
 
-test('a pasted list and its bucket filter survive every Shipping view, past the free-text cap', () => {
+test('a pasted list and its bucket filter survive the Allocate view, past the free-text cap', () => {
   // 40 order numbers ≈ 600 chars — longer than a text param may be.
   const refs = Array.from({ length: 40 }, (_, i) => `02-${15200 + i}-${40000 + i}`).join(',');
-  for (const href of ['/shipping/orders', '/fulfilled']) {
-    const locate = at(href).search.locate;
-    assert.ok(locate, `${href} locates a pasted list`);
-    assert.equal(locate.locator, 'outbound');
-    const spec = routeParamsFor(new URL(href, 'http://t').pathname);
-    assert.ok(spec, href);
-    const kept = parseRouteParams(spec, new URLSearchParams({ [locate.param]: refs, [locate.statusParam]: 'shipped' }));
-    assert.equal(kept.get(locate.param), refs, `${href} strips the pasted list`);
-    assert.equal(kept.get(locate.statusParam), 'shipped', `${href} strips the bucket filter`);
-  }
+  const href = '/shipping/orders';
+  const locate = at(href).search.locate;
+  assert.ok(locate, `${href} locates a pasted list`);
+  assert.equal(locate.locator, 'outbound');
+  const spec = routeParamsFor(new URL(href, 'http://t').pathname);
+  assert.ok(spec, href);
+  const kept = parseRouteParams(spec, new URLSearchParams({ [locate.param]: refs, [locate.statusParam]: 'shipped' }));
+  assert.equal(kept.get(locate.param), refs, `${href} strips the pasted list`);
+  assert.equal(kept.get(locate.statusParam), 'shipped', `${href} strips the bucket filter`);
   const noOrders = new Set([...ALL].filter((permission) => permission !== 'orders.view'));
-  const denied = at('/fulfilled', { permissions: noOrders });
-  assert.equal(denied.search.scope, 'outbound.shipped');
+  const denied = at(href, { permissions: noOrders });
   assert.equal(denied.search.locate, undefined, 'no locate without the desk lists');
 });
 
@@ -447,17 +439,12 @@ test('a 150-number pasted list and its status + reason filters survive the Inbou
 });
 
 test('each Shipping view carries the filters and controls its own list reads', () => {
-  const shipped = at('/fulfilled');
-  assert.equal(shipped.filters?.facetContext, 'outbound.shipped');
-  assert.deepEqual(
-    shipped.filters?.groups.map((group) => group.param),
-    ['shippedFilter', 'channel', 'carrier', 'statusCategory', 'exceptions', 'cardStatus'],
-  );
-  // Who touched it, and when — each a button in the body, each a param the list reads.
-  const shippedControls = navControlParams(shipped.controls);
-  for (const key of ['staff', 'pickedBy', 'packedBy', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo']) {
-    assert.ok(shippedControls.includes(key), `shipped control ${key}`);
-  }
+  // Fulfilled is a page like any other: its search is its own `?q=`, its facets its own context.
+  const fulfilled = at('/fulfilled');
+  assert.equal(fulfilled.search.source, 'url-param');
+  assert.equal(fulfilled.search.param, 'q');
+  assert.equal(fulfilled.search.placeholder, 'Find fulfilled orders');
+  assert.equal(fulfilled.filters?.facetContext, 'fulfilled');
   const allocate = at('/shipping/orders').controls;
   const allocateControls = navControlParams(allocate);
   for (const key of ['staff', 'pickedBy', 'shipByFrom', 'shipByTo', 'orderFrom', 'orderTo', 'sort', 'dir']) {
@@ -533,6 +520,73 @@ test('each Inbound view carries the filters and controls its own list reads, and
   assert.ok(unboxed.savedViews?.paramKeys.includes('dflag'));
 });
 
+test('Purchasing carries the controls, Find and facets its sheet reads, and its own saved views', () => {
+  const purchasing = at('/purchasing');
+  const pipeline = at('/incoming');
+  assert.equal(purchasing.page.id, 'purchasing');
+  const keys = navControlParams(purchasing.controls);
+  // The date axis and its window, who unboxed it, and the sheet's column order.
+  for (const key of ['axis', 'from', 'to', 'unboxedBy', 'colsort', 'coldir']) {
+    assert.ok(keys.includes(key), `/purchasing control ${key}`);
+    assert.ok(purchasing.savedViews?.paramKeys.includes(key), `/purchasing: a saved view drops ${key}`);
+  }
+  const sort = purchasing.controls?.sort;
+  assert.ok(sort);
+  for (const option of sort.options) {
+    assert.ok((PURCHASES_SORTS as readonly string[]).includes(option.value), `/purchasing: sort ${option.value} is no column`);
+  }
+  const spec = routeParamsFor('/purchasing');
+  assert.ok(spec);
+  for (const choice of purchasing.controls?.choices ?? []) {
+    for (const option of choice.options) {
+      const kept = parseRouteParams(spec, new URLSearchParams({ [choice.param]: option.value }));
+      assert.equal(kept.get(choice.param), option.value, `/purchasing strips ${choice.param}=${option.value}`);
+    }
+  }
+  // Find narrows its sheet in place (no locator — a pasted list is Inbound's),
+  // Source · Vendor are counted facets (Vendor searchable), and its status
+  // chips stay the body's (`?recon=`).
+  assert.equal(purchasing.search?.param, 'find');
+  assert.equal(purchasing.search?.locate, undefined);
+  assert.equal(purchasing.filters?.facetContext, 'purchasing');
+  assert.deepEqual(purchasing.filters?.groups.map((group) => [group.param, group.searchable === true]), [
+    ['source', false],
+    ['vendor', true],
+  ]);
+  assert.ok(!keys.includes('recon'));
+  assert.ok(purchasing.savedViews?.paramKeys.includes('recon'));
+  assert.notEqual(purchasing.savedViews?.storageKey, pipeline.savedViews?.storageKey);
+  assert.ok(!keys.includes('inbound'));
+  assert.ok(!keys.includes('dkind'));
+});
+
+test('Purchasing is a Receiving mode on the lane’s mode card, never a top-level row', () => {
+  const modesOf = (ctx: NavContext) => ctx.sections.find((section) => section.id === `${ctx.page.id}.inbound.modes`)?.items ?? [];
+  for (const href of ['/incoming', '/purchasing', '/pickup', '/repair']) {
+    assert.deepEqual(
+      modesOf(at(href)).map((item) => item.label),
+      ['Deliveries', 'Local Pickup', 'Repair service', 'Purchasing'],
+      `${href}: the Receiving mode card`,
+    );
+  }
+  const purchasing = at('/purchasing');
+  assert.equal(purchasing.scope, 'section');
+  assert.deepEqual(modesOf(purchasing).filter((item) => item.active).map((item) => item.id), ['purchasing']);
+  assert.equal(modesOf(purchasing).find((item) => item.id === 'purchasing')?.href, '/purchasing');
+  // No child row wears the mode's name (nav-name law).
+  const childRows = purchasing.sections.filter((section) => section.id !== 'purchasing.inbound.modes').flatMap((section) => section.items);
+  assert.equal(childRows.some((item) => item.label === 'Purchasing'), false);
+  // The page map: Receiving is ONE door row (Deliveries' landing), lit on Purchasing; no Purchasing row.
+  for (const href of ['/purchasing', '/incoming', '/']) {
+    const map = at(href, { view: 'top' });
+    assert.equal(map.scope, 'top', href);
+    assert.equal(items(map).some((item) => item.id === 'purchasing' || item.label === 'Purchasing'), false, `${href}: page map`);
+  }
+  const door = items(at('/purchasing', { view: 'top' })).find((item) => item.label === 'Receiving');
+  assert.equal(door?.id, 'incoming');
+  assert.equal(door?.active, true);
+});
+
 test('the Unbox station has no Sort-by or KPI-priority control', () => {
   const station = at('/unbox');
   assert.equal(station.filters?.facetContext, 'receive');
@@ -557,11 +611,6 @@ test('every facet context names a real page or section view, and every recents s
   // context is the count its card paints (`NavModeSwitcher`), never a list's
   // filters: the mode opens its first view.
   for (const context of NAV_FACET_CONTEXTS) {
-    // The archive kept the packer-log facet contract when it left FBM.
-    if (context === 'outbound.shipped') {
-      assert.equal(at('/fulfilled').filters?.facetContext, context, context);
-      continue;
-    }
     const [pageId, itemId] = context.split('.');
     const page = getSidebarPageNav(pageId ?? '');
     assert.ok(page, context);
@@ -587,8 +636,13 @@ test('FBM owns Allocate and Labels & docs, while Exceptions stays global', () =>
   assert.deepEqual(activeIds(at('/shipping/orders')).filter((id) => id !== 'outbound'), ['orders']);
   const uploads = at('/shipping/label-intake');
   assert.deepEqual(activeIds(uploads).filter((id) => id !== 'outbound'), ['uploads']);
+  assert.equal(uploads.filters?.facetContext, 'label-intake.uploads');
+  assert.deepEqual(uploads.filters?.groups.map((group) => group.param), ['printing']);
   const terminalViews = uploads.sections.filter((section) => !isLanePageSection(section)).flatMap((section) => section.items);
-  assert.deepEqual(terminalViews.map((item) => item.id), ['orders', 'uploads', 'labels', 'paperwork']);
+  assert.deepEqual(terminalViews.map((item) => item.id), ['allocate', 'uploads', 'orders']);
+  const orders = at('/shipping/label-intake?view=orders');
+  assert.deepEqual(activeIds(orders).filter((id) => id !== 'outbound'), ['orders']);
+  assert.equal(orders.filters?.facetContext, 'label-intake.orders');
   assert.equal(terminalViews[0]?.label, 'Allocate');
   assert.equal(uploads.viewKeys, true, 'Allocate and Labels & docs terminal views keep numeric shortcuts');
   assert.ok(!itemIds(at('/shipping/orders')).includes('exceptions'));
@@ -656,7 +710,7 @@ test('Repair service is a Receiving mode whose views split tickets by intake cha
   const bare = at('/repair');
   assert.equal(bare.page.id, 'repair');
   assert.equal(bare.back?.label, 'Receiving');
-  assert.deepEqual(modesOf(bare), ['Deliveries', 'Local Pickup', 'Repair service', 'Sourcing']);
+  assert.deepEqual(modesOf(bare), ['Deliveries', 'Local Pickup', 'Repair service', 'Purchasing']);
   assert.deepEqual(viewsOf(bare).map((item) => [item.label, item.href, item.active]), [
     ['All repairs', '/repair', true],
     ['Shipped in', '/repair?channel=shipment', false],
@@ -948,4 +1002,21 @@ test('Reports is a top-level parent whose report types and controls live in the 
     'reports.export-outbound',
   ]);
   assert.deepEqual(parityGaps('reports'), []);
+});
+
+test('FNSKU labels carry a Condition filter; Stations does not', () => {
+  const labels = at('/print-station');
+  const choice = labels.controls?.choices?.find((row) => row.param === 'condition');
+  assert.ok(choice);
+  assert.deepEqual(
+    choice.options.map((option) => option.value),
+    ['none', 'new', 'like-new', 'very-good', 'good', 'acceptable'],
+  );
+  assert.ok(at('/print-station?view=reprinted').controls?.choices?.some((row) => row.param === 'condition'));
+  assert.equal(at('/print-station/stations').controls?.choices, undefined);
+  const spec = routeParamsFor('/print-station');
+  assert.ok(spec);
+  assert.equal(parseRouteParams(spec, new URLSearchParams('condition=Very-Good')).get('condition'), 'very-good');
+  assert.equal(parseRouteParams(spec, new URLSearchParams('condition=mystery')).get('condition'), null);
+  assert.deepEqual(parityGaps('print-station'), []);
 });

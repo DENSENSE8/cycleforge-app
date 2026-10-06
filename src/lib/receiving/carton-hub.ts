@@ -1,6 +1,6 @@
 /** The carton hub's read model (`/m/r/[id]`, the mobile exoskeleton): */
 
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ListingSerialRef, ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { workflowStage } from '@/lib/receiving/workflow-stages';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
@@ -22,6 +22,10 @@ export interface CartonHubLine {
   workflow_status: string | null;
   qa_status?: string | null;
   condition_grade?: string | null;
+  /** "As listed" — what the purchase listing said (`sql-listing-evidence.ts`). */
+  purchase_condition_grade?: string | null;
+  listing_serials?: ListingSerialRef[];
+  listing_photo_ids?: number[];
   zoho_purchaseorder_id?: string | null;
   zoho_purchaseorder_number?: string | null;
   receiving_type?: string | null;

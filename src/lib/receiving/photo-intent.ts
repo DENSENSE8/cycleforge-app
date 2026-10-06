@@ -3,6 +3,16 @@
 export const RECEIVING_PHOTO_PACKAGE = 'receiving_package' as const;
 export const RECEIVING_PHOTO_UNBOX_CARTON = 'receiving_unbox_carton' as const;
 export const RECEIVING_PHOTO_ITEM = 'receiving_item' as const;
+/**
+ * The seller's listing photos of a purchased item (scratches "as listed",
+ * the serial plate), uploaded with the inbound order before it arrives. On a
+ * RECEIVING_LINE but NOT receiving evidence: never an unbox stage, never
+ * counted by the photo policy or the photo counts.
+ */
+export const RECEIVING_PHOTO_LISTING = 'listing' as const;
+
+/** SQL predicate (alias `p` = photos) excluding listing photos from receiving evidence. */
+export const NOT_LISTING_PHOTO_SQL = `COALESCE(p.photo_type, '') <> '${RECEIVING_PHOTO_LISTING}'`;
 
 /** Legacy carton-level type written before package/item split. */
 export const RECEIVING_PHOTO_LEGACY_PACKAGE = 'receiving' as const;
@@ -15,7 +25,7 @@ export const RECEIVING_CARTON_PHOTO_TYPES = [
 ] as const;
 
 /** photo_type values allowed on a RECEIVING_LINE primary link. */
-export const RECEIVING_LINE_PHOTO_TYPES = [RECEIVING_PHOTO_ITEM] as const;
+export const RECEIVING_LINE_PHOTO_TYPES = [RECEIVING_PHOTO_ITEM, RECEIVING_PHOTO_LISTING] as const;
 
 /** Inbound evidence stages owned by the receiving flow (matrix above). */
 export const RECEIVING_PHOTO_STAGES = ['arrival_package', 'unbox_carton', 'unbox_item'] as const;
@@ -35,9 +45,10 @@ export function photoStageForScanIntakeSurface(
 /**
  * List-filter intent for receiving photo queries (`all` = no stage filter).
  * `carton` = every RECEIVING-entity photo regardless of sub-stage — see
- * {@link RECEIVING_PHOTO_LIST_INTENT_CARTON}.
+ * {@link RECEIVING_PHOTO_LIST_INTENT_CARTON}. `item` = the line's unbox
+ * evidence; `listing` = the line's listing photos (never evidence).
  */
-export type ReceivingPhotoListIntent = 'package' | 'unbox_carton' | 'item' | 'all' | 'carton';
+export type ReceivingPhotoListIntent = 'package' | 'unbox_carton' | 'item' | 'listing' | 'all' | 'carton';
 
 function norm(photoType: string | null | undefined): string {
   return String(photoType ?? '').trim().toLowerCase();
@@ -59,6 +70,10 @@ export function isItemPhotoType(photoType: string | null | undefined): boolean {
 /** Any photo_type a RECEIVING (carton) link may legally carry. */
 export function isCartonPhotoType(photoType: string | null | undefined): boolean {
   return (RECEIVING_CARTON_PHOTO_TYPES as readonly string[]).includes(norm(photoType));
+}
+
+export function isListingPhotoType(photoType: string | null | undefined): boolean {
+  return norm(photoType) === RECEIVING_PHOTO_LISTING;
 }
 
 /** Canonical photo_type stamped for a receiving stage. */
@@ -112,14 +127,15 @@ export function receivingStageFromPhotoType(
   photoType: string | null | undefined,
 ): ReceivingPhotoStage | null {
   const entity = String(entityType ?? '').trim().toUpperCase();
-  if (entity === 'RECEIVING_LINE') return 'unbox_item';
+  // Line evidence is item evidence by the identity law — except the seller's listing photos.
+  if (entity === 'RECEIVING_LINE') return isListingPhotoType(photoType) ? null : 'unbox_item';
   if (entity !== 'RECEIVING') return null;
   if (isUnboxCartonPhotoType(photoType)) return 'unbox_carton';
   if (isPackagePhotoType(photoType) || norm(photoType) === '') return 'arrival_package';
   return null;
 }
 
-/** SQL fragment (ANDed into the receiving photo list WHERE) for one intent. */
+/** SQL fragment (ANDed into the receiving photo list WHERE) for one intent. Only 'listing' returns the seller's listing photos. */
 export function receivingPhotoIntentSql(intent: ReceivingPhotoListIntent): string {
   switch (intent) {
     case 'package':
@@ -129,9 +145,12 @@ export function receivingPhotoIntentSql(intent: ReceivingPhotoListIntent): strin
     case 'carton':
       return ` AND l.entity_type = 'RECEIVING'`;
     case 'item':
-      return ` AND l.entity_type = 'RECEIVING_LINE'`;
+      return ` AND l.entity_type = 'RECEIVING_LINE' AND ${NOT_LISTING_PHOTO_SQL}`;
+    case 'listing':
+      return ` AND l.entity_type = 'RECEIVING_LINE' AND p.photo_type = '${RECEIVING_PHOTO_LISTING}'`;
     case 'all':
-      return '';
+      // Every receiving shot — the seller's listing photos are not receiving evidence; read them with 'listing'.
+      return ` AND ${NOT_LISTING_PHOTO_SQL}`;
   }
 }
 

@@ -134,6 +134,8 @@ export interface TriageViewParts<Row, Model extends TriageCardModelBase<Row>> {
   cardModel: (group: RowGroup<Row>, band: string) => Model;
   state?: (group: RowGroup<Row>, band: string) => RecordStateFace;
   exactFind?: (query: string, model: Model) => boolean;
+  /** The card folds its lines beneath it (→ / ←) — {@link TriageFamily.expandable}. */
+  expandable?: boolean;
   renderCard: (props: TriageCardSlotProps<Row, Model>) => ReactNode;
 }
 

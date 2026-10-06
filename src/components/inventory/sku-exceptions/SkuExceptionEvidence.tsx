@@ -3,9 +3,9 @@
 /**
  * SKU exception — the open placeholder SKU, placed by its host's record
  * plane, in the order record's grammar: one `RecordGroup` card per section.
- * Main (the work) = Pair to Zoho SKU → the host's item card → Product →
- * Locations. Stock may place the host item first so populated and empty
- * location records share Item → Zoho SKU.
+ * Main (the work) = Pair to SKU → the host's item card → Product →
+ * Locations. Stock hides the Pair group: its action strip opens the same
+ * editor as a panel anchored under the Pair to SKU verb.
  */
 
 import { useCallback, useId, type ReactNode } from 'react';
@@ -37,9 +37,7 @@ export interface SkuExceptionEvidenceProps {
   onExit: () => void;
   /** The host's item card (photo tile · title · SKU). */
   itemRow?: ReactNode;
-  /** Stock records place the pairing group under the item, matching empty locations. */
-  pairAfterItem?: boolean;
-  /** Stock records open pairing from the header menu, not an inline group. */
+  /** Stock records pair from their action strip's anchored panel, not an inline group. */
   hidePair?: boolean;
 }
 
@@ -53,7 +51,6 @@ export function SkuExceptionEvidence(props: SkuExceptionEvidenceProps) {
         item={item}
         onExit={props.onExit}
         itemRow={props.itemRow}
-        pairAfterItem={props.pairAfterItem}
         hidePair={props.hidePair}
       />
     );
@@ -97,13 +94,11 @@ function SkuExceptionRecordEvidence({
   item,
   onExit,
   itemRow,
-  pairAfterItem = false,
   hidePair = false,
 }: {
   item: ProvisionalSkuDetail;
   onExit: () => void;
   itemRow?: ReactNode;
-  pairAfterItem?: boolean;
   hidePair?: boolean;
 }) {
   const fieldId = useId();
@@ -114,11 +109,11 @@ function SkuExceptionRecordEvidence({
     await refresh();
   }, [onExit, refresh]);
 
-  const pairRow = hidePair ? null : <SkuExceptionPairSection fieldId={fieldId} item={item} onPaired={paired} />;
+  const pairRow = hidePair ? null : <SkuExceptionPairSection item={item} onPaired={paired} />;
   return (
     <div className="flex min-w-0 flex-col gap-4" data-testid="sku-exception-evidence">
-      {pairAfterItem ? itemRow : pairRow}
-      {pairAfterItem ? pairRow : itemRow}
+      {pairRow}
+      {itemRow}
       <SkuExceptionProductSection fieldId={fieldId} item={item} onChanged={refresh} />
       <StockLocationsGroup sku={item.sku} onChanged={refresh} />
     </div>

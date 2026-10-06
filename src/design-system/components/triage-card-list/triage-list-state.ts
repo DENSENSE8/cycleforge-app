@@ -415,6 +415,8 @@ function cardUnderCursor(target: EventTarget | null, root: HTMLElement | null): 
  *   Space; this covers the pointer. A focused button elsewhere keeps Space.
  * - **Enter** opens it — only with nothing focused (a focused control keeps
  *   its own Enter; a focused card's Enter is its open button's).
+ * - **→ / ←** unfold / fold its lines — only for a family that folds them
+ *   (`onExpand`); a focused control outside every card keeps its arrows.
  *
  * Never while typing, with an overlay up, with Ctrl / ⌘ / Alt held, or after
  * another surface took the key — the selection bar's verb letters bind in
@@ -427,6 +429,7 @@ export function useTriageCardKeys({
   onCheck,
   onPeek,
   onOpen,
+  onExpand,
 }: {
   enabled: boolean;
   /** The list's scroll box — the pointer's card is looked up inside it. */
@@ -436,9 +439,11 @@ export function useTriageCardKeys({
   onCheck: (recordKey: string, event: { shiftKey: boolean }) => void;
   onPeek: (recordKey: string) => void;
   onOpen: (recordKey: string) => void;
+  /** → (`true`) / ← (`false`); absent = the cards fold nothing and the arrows stay the page's. */
+  onExpand?: (recordKey: string, on: boolean) => void;
 }) {
-  const latest = useRef({ openKey, onCheck, onPeek, onOpen });
-  latest.current = { openKey, onCheck, onPeek, onOpen };
+  const latest = useRef({ openKey, onCheck, onPeek, onOpen, onExpand });
+  latest.current = { openKey, onCheck, onPeek, onOpen, onExpand };
   useEffect(() => {
     if (!enabled) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -459,6 +464,17 @@ export function useTriageCardKeys({
         if (!key) return;
         event.preventDefault();
         latest.current.onPeek(key);
+        return;
+      }
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+        const expand = latest.current.onExpand;
+        if (!expand || event.shiftKey) return;
+        const inCard = event.target instanceof Element && event.target.closest(`[${DESK_RECORD_KEY_ATTR}]`) != null;
+        if (onControl && !inCard) return;
+        const key = cardUnderCursor(event.target, root) || latest.current.openKey;
+        if (!key) return;
+        event.preventDefault();
+        expand(key, event.key === 'ArrowRight');
         return;
       }
       if (event.key === 'Enter') {

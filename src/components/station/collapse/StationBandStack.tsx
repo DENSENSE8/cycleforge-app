@@ -2,7 +2,7 @@
 
 /** The station centre's bands — Items · Label · Placement — as ONE component. */
 
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { STATION_SCAN_BENCH_CLASS, STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import {
@@ -49,6 +49,12 @@ export interface StationBand {
    */
   bodyClassName?: string;
   testId?: string;
+  /**
+   * Always-visible content directly under this band, outside its collapse —
+   * a station decision that must stay on screen between two bands (Quality
+   * control's Pass · Test again · Fail row between Items and Label).
+   */
+  after?: ReactNode;
 }
 
 export function StationBandStack({
@@ -82,38 +88,40 @@ export function StationBandStack({
       {bands.map((band, index) => {
         const open = collapse.isOpen(band.id);
         return (
-          <StationCollapsibleBlock
-            key={band.id}
-            bandId={band.id}
-            face={face}
-            label={band.label}
-            icon={band.icon}
-            // Padding gives the band room; the seam closes it off. The first
-            // band skips the rule — a line above the first thing on the sheet
-            // is a boundary with nothing on the other side of it.
-            seam={index > 0}
-            className={BAND_FLUSH_CLASS}
-            headerClassName={STATION_SCAN_BENCH_CLASS}
-            bodyClassName={cn(
-              BAND_BODY_INSET_CLASS,
-              STATION_BAND_BODY_WELL_CLASS,
-              band.bodyClassName,
-            )}
-            collapsed={!open}
-            onToggle={() => collapse.toggle(band.id)}
-            action={
-              index !== 0
-                ? undefined
-                : allOpen && onCollapseAll
-                  ? <StationCollapseAllAction onCollapseAll={onCollapseAll} />
-                  : !anyOpen
-                    ? <StationExpandAllAction onExpandAll={collapse.expandAll} />
-                    : undefined
-            }
-            testId={band.testId}
-          >
-            {band.body}
-          </StationCollapsibleBlock>
+          <Fragment key={band.id}>
+            <StationCollapsibleBlock
+              bandId={band.id}
+              face={face}
+              label={band.label}
+              icon={band.icon}
+              // Padding gives the band room; the seam closes it off. The first
+              // band skips the rule — a line above the first thing on the sheet
+              // is a boundary with nothing on the other side of it.
+              seam={index > 0}
+              className={BAND_FLUSH_CLASS}
+              headerClassName={STATION_SCAN_BENCH_CLASS}
+              bodyClassName={cn(
+                BAND_BODY_INSET_CLASS,
+                STATION_BAND_BODY_WELL_CLASS,
+                band.bodyClassName,
+              )}
+              collapsed={!open}
+              onToggle={() => collapse.toggle(band.id)}
+              action={
+                index !== 0
+                  ? undefined
+                  : allOpen && onCollapseAll
+                    ? <StationCollapseAllAction onCollapseAll={onCollapseAll} />
+                    : !anyOpen
+                      ? <StationExpandAllAction onExpandAll={collapse.expandAll} />
+                      : undefined
+              }
+              testId={band.testId}
+            >
+              {band.body}
+            </StationCollapsibleBlock>
+            {band.after}
+          </Fragment>
         );
       })}
     </div>

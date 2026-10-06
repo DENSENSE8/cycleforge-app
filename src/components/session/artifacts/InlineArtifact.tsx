@@ -43,7 +43,6 @@ import { copyArtifact, downloadTableCsv } from './artifact-export';
 import type { ArtifactSummary } from './artifact-summary';
 import { ChartArtifact, RecordArtifact, ReportArtifact, TimelineArtifact, cellText, rowLookup } from './renderers';
 import { OrderDraftArtifact } from './OrderDraftArtifact';
-import { PoDraftArtifact } from './PoDraftArtifact';
 import { CapabilityArtifact } from './CapabilityArtifact';
 
 /** An identifier kind → the house chip tone that paints it (`CopyChip`'s registry). */
@@ -218,8 +217,6 @@ export function InlineArtifact({
           <InlineTable artifact={artifact} onShowAll={onExpand} />
         ) : artifact.kind === 'order_draft' ? (
           <OrderDraftArtifact artifact={artifact} />
-        ) : artifact.kind === 'po_draft' ? (
-          <PoDraftArtifact artifact={artifact} />
         ) : artifact.kind === 'capability' ? (
           <CapabilityArtifact artifact={artifact} />
         ) : (

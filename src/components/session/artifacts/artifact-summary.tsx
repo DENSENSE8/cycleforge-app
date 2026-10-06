@@ -97,13 +97,6 @@ export function artifactSummary(entry: SessionArtifactEntry): ArtifactSummary {
         count: plural(artifact.draft.lines.length + artifact.unresolved.length, 'line'),
         icon: <ClipboardList className={GLYPH} />,
       };
-    case 'po_draft':
-      return {
-        title: artifact.title,
-        kind: 'Purchase order · draft',
-        count: plural(artifact.draft.lines.length, 'item'),
-        icon: <ClipboardList className={GLYPH} />,
-      };
     case 'report':
       return {
         title: artifact.title,

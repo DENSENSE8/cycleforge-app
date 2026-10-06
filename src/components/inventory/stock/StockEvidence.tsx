@@ -8,8 +8,8 @@
  * (copies its dashed face) · how it is held · the SKU's home tote (Pair tote /
  * Switch home tote, `StockPairBin`) — then **Locations**: every tote and bin
  * the SKU sits in, each countable, plus Add location (`StockLocationsGroup`).
- * A placeholder (`TMP-`) swaps main for its own work column (Pair to Zoho
- * first, this item card under it) and leads the aside with its own facts
+ * A placeholder (`TMP-`) swaps main for its own work column (this item card
+ * first) and leads the aside with its own facts
  * (`placeholder`). Aside = [placeholder facts →] Send to staff → Movement.
  */
 
@@ -38,6 +38,8 @@ const FACTS_BODY_CLASS = 'flex flex-col px-4 pb-1 [&>*:last-child]:border-b-0';
 interface PlaceholderParts {
   main: (itemRow: ReactNode) => ReactNode;
   aside?: ReactNode;
+  /** The item card's SKU line — a temporary SKU's chip with its Pair pencil. */
+  skuContent?: ReactNode;
 }
 
 function stamp(iso: string | null): string | null {
@@ -64,7 +66,6 @@ export function StockEvidence({
   record,
   onCounted,
   placeholder,
-  elsewhereQty = 0,
 }: {
   /** The open pair (live row), or null when the link names a pair no longer listed. */
   record: LocationStockTableRow | null;
@@ -72,10 +73,8 @@ export function StockEvidence({
   onCounted: () => void;
   /** A `TMP-` placeholder's own record parts. */
   placeholder?: PlaceholderParts;
-  /** Same SKU sitting at OTHER locations right now — the zero-here empty state's "stock exists elsewhere" arm. */
-  elsewhereQty?: number;
 }) {
-  if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} placeholder={placeholder} elsewhereQty={elsewhereQty} />;
+  if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} placeholder={placeholder} />;
   return (
     <DeskRecordLayout
       main={
@@ -91,16 +90,14 @@ function StockRecordEvidence({
   record,
   onCounted,
   placeholder,
-  elsewhereQty,
 }: {
   record: LocationStockTableRow;
   onCounted: () => void;
   placeholder?: PlaceholderParts;
-  elsewhereQty: number;
 }) {
   // Empty and populated records share this exact item layout. Only the empty
   // record swaps the title/SKU content for editors.
-  const itemBody = <StockItemCard record={record} onChanged={onCounted} elsewhereQty={elsewhereQty} />;
+  const itemBody = <StockItemCard record={record} skuContent={placeholder?.skuContent} onChanged={onCounted} />;
 
   const itemRow = (
     <RecordGroup title="Item" titleHidden>
@@ -114,7 +111,7 @@ function StockRecordEvidence({
     <div className="flex min-w-0 flex-col gap-4">
       {stockRecordState(record) === 'onHold' ? (
         // A TMP- SKU the loader did not flag: it still cannot be sold by name.
-        <EvidenceNotice tone="warn">A floor-minted placeholder — pair it to its Zoho item before it sells.</EvidenceNotice>
+        <EvidenceNotice tone="warn">A floor-minted placeholder — pair it to its permanent SKU before it sells.</EvidenceNotice>
       ) : null}
       {itemRow}
       <StockLocationsGroup sku={record.sku} onChanged={onCounted} />

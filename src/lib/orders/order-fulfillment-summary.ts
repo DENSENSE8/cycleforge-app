@@ -2,6 +2,7 @@ import { nonSentinelTimestamp } from '@/components/dashboard/orders-queue/helper
 import type { StateName } from '@/design-system/tokens/lifecycle';
 import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import type { ShippedOrder } from '@/types/orders';
+import { BUYER_CANCEL_LABEL, isBuyerCancelledStatus } from './buyer-cancelled';
 import { orderFulfillmentBadge, type OrderFulfillmentLine } from './order-fulfillment-badge';
 
 export type FulfillmentSummaryLine = OrderFulfillmentLine &
@@ -12,6 +13,7 @@ export type FulfillmentSummaryLine = OrderFulfillmentLine &
     | 'latest_status_category'
     | 'latest_status_description'
     | 'latest_status_label'
+    | 'status'
   >;
 
 /** The order's current fulfillment status. Painted in ONE pinned tone by the record, so it carries no tone of its own. */
@@ -56,6 +58,10 @@ function latestCarrierLine(lines: readonly FulfillmentSummaryLine[]): Fulfillmen
 
 /** One plain-language answer for “where is this order now?” */
 export function fulfillmentCurrentStatus(lines: readonly FulfillmentSummaryLine[]): FulfillmentCurrentStatus {
+  if (lines.some((line) => isBuyerCancelledStatus(line.status))) {
+    return { label: BUYER_CANCEL_LABEL };
+  }
+
   const delivered = lines.find((line) => line.is_delivered === true);
   if (delivered) {
     return {

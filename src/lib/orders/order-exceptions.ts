@@ -8,6 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { PICKUP_FULFILLMENT_CHANNEL, evaluateReleaseGates } from './release-gates';
 import { exceptionHeldSql, sqlOrderInExceptionQueue } from './exception-membership';
 import { buyerNoteUnacknowledgedSql } from './buyer-note-interlock';
+import { G2_DOCUMENT_COUNT_SQL, G2_SKU_PAPERWORK_NOT_REQUIRED_SQL } from './g2-paperwork-sql';
 import {
   ORDER_EXCEPTION_CATEGORIES,
   deriveOrderExceptionBlockers,
@@ -41,6 +42,7 @@ interface RawExceptionRow {
   account_source: string | null;
   release_state: string | null;
   docs_not_required: boolean | null;
+  sku_paperwork_not_required: boolean | null;
   fulfillment_channel: string | null;
   tracking_number: string | null;
   sku_catalog_id: number | string | null;
@@ -56,25 +58,7 @@ interface RawExceptionRow {
   internal_note: string | null;
 }
 
-/** Document + label existence, phrased exactly as `caged-orders.ts` phrases them so an order's G2/G3 answer is identical on both surfaces. */
-const G2_DOCUMENT_COUNT_SQL = `(
-  SELECT COUNT(*)::int
-    FROM documents d
-   WHERE d.organization_id = o.organization_id
-     AND COALESCE(d.document_type, '') <> 'shipping_label'
-     AND EXISTS (
-       SELECT 1 FROM document_entity_links l
-        WHERE l.document_id = d.id
-          AND l.organization_id = o.organization_id
-          AND (
-            (l.entity_type = 'ORDER' AND l.entity_id = o.id)
-            OR (o.sku_catalog_id IS NOT NULL
-                AND l.entity_type = 'SKU'
-                AND l.entity_id = o.sku_catalog_id)
-          )
-     )
-)`;
-
+/** Label existence, phrased exactly as `caged-orders.ts` phrases it so an order's G3 answer is identical on both surfaces (G2 is shared: `g2-paperwork-sql.ts`). */
 const G3_LABEL_EXISTS_SQL = `EXISTS (
   SELECT 1 FROM documents d
    WHERE d.organization_id = o.organization_id
@@ -152,6 +136,7 @@ function mapRow(row: RawExceptionRow): OrderExceptionRow {
       trackingNumber: row.tracking_number,
       linkedDocumentCount,
       docsNotRequired: row.docs_not_required === true,
+      skuPaperworkNotRequired: row.sku_paperwork_not_required === true,
       shippingLabelLinked: row.shipping_label_linked === true,
       shippingLabelPurchased: row.shipping_label_purchased === true,
       skuCatalogId,
@@ -196,6 +181,7 @@ const EXCEPTION_SELECT = `
     NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') AS buyer_note,
     NULLIF(TRIM(COALESCE(o.notes, '')), '') AS internal_note,
     ${G2_DOCUMENT_COUNT_SQL} AS linked_document_count,
+    ${G2_SKU_PAPERWORK_NOT_REQUIRED_SQL} AS sku_paperwork_not_required,
     ${G3_LABEL_EXISTS_SQL}   AS shipping_label_linked,
     ${G3_LABEL_PURCHASED_SQL} AS shipping_label_purchased,
     ${SIBLING_UNPAIRED_SQL}  AS sibling_unpaired_count

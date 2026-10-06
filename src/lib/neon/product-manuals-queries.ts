@@ -150,11 +150,12 @@ export async function searchProductManuals(
   orgId?: OrgId,
 ): Promise<ProductManual[]> {
   const normalizedStatus = status ? normalizeManualStatus(status) : null;
-  // NEEDS-COL: no organization_id; GUC-wrap when orgId present. Body unchanged.
+  // product_manuals carries organization_id (nullable, GUC-default): filter on it when orgId is known.
   const sql = `SELECT id, sku, item_number, product_title, display_name, google_file_id, source_url, thumbnail_url, relative_path, folder_path, file_name, status, assigned_at, assigned_by, type, is_active, updated_at
      FROM product_manuals
      WHERE is_active = TRUE
        AND ($4::text IS NULL OR status = $4)
+       AND ($5::uuid IS NULL OR organization_id = $5)
        AND (
          item_number ILIKE $1
          OR display_name ILIKE $1
@@ -167,7 +168,7 @@ export async function searchProductManuals(
        )
      ORDER BY updated_at DESC NULLS LAST, id DESC
      LIMIT $3`;
-  const params = [`%${query}%`, query, limit, normalizedStatus];
+  const params = [`%${query}%`, query, limit, normalizedStatus, orgId ?? null];
   const result = orgId
     ? await tenantQuery<ProductManual>(orgId, sql, params)
     : await pool.query(sql, params);

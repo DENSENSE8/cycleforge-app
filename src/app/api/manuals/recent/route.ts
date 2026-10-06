@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { normalizeIdentifier } from '@/lib/product-manuals';
+import { normalizeIdentifier } from '@/lib/manuals/identifier-key';
 import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { getCurrentUser } from '@/lib/auth/current-user';
 

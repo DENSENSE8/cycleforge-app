@@ -3,7 +3,7 @@
 /**
  * Unbox page-header CTAs — **Unbox** (resume last carton), **Check**
  * (unreceived-orders rail), and on the Inbound tab **Add purchase order**
- * (navigates to `/incoming/new?type=PO`, the form the Inbound desk's Add opens).
+ * (navigates to `/purchasing/new`, the form Purchasing's Add opens).
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -16,7 +16,7 @@ import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { fetchUnboxOpenedRows } from '@/lib/receiving/rail/feeds';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { newInboundOrderHref } from '@/lib/inbound/new-inbound-order-path';
+import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
 
 export function UnboxDeskActions() {
   const router = useRouter();
@@ -32,7 +32,7 @@ export function UnboxDeskActions() {
   const closeCheck = useCallback(() => setCheckOpen(false), []);
 
   const handleAddPo = useCallback(() => {
-    router.push(newInboundOrderHref('PO'));
+    router.push(RECEIVING_PATHS.purchaseNew);
   }, [router]);
 
   const handleUnbox = useCallback(() => {

@@ -72,6 +72,10 @@ export interface ShipmentRow {
   delivered_at: string | null;
   exception_at: string | null;
   latest_event_at: string | null;
+  /** The carrier's newest promised delivery instant; null once delivered. */
+  estimated_delivery_at: string | null;
+  /** The carrier's FIRST promised delivery instant; kept after delivery. */
+  first_estimated_delivery_at: string | null;
   last_checked_at: string | null;
   next_check_at: string | null;
   check_attempt_count: number;

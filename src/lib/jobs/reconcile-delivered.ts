@@ -14,13 +14,8 @@ interface ReconcileDeliveredResult {
   scanDelivered: number;
   /** is_delivered=true rows with no delivered_at that got one (coherence A4). */
   coherenceFixed: number;
-  /** error-stuck rows freed for one more poll attempt. */
-  erroredRecovered: number;
   durationMs: number;
 }
-
-/** Hours a row must sit error-stuck before we grant it another retry. */
-const ERROR_RETRY_AFTER_HOURS = 12;
 
 export async function runReconcileDeliveredJob(): Promise<ReconcileDeliveredResult> {
   const start = Date.now();
@@ -87,28 +82,11 @@ export async function runReconcileDeliveredJob(): Promise<ReconcileDeliveredResu
           AND stn.delivered_at IS NULL`,
     );
 
-    // 3. Free error-stuck rows for one more attempt. Skip carrier-blocked rows
-    //    (tracking_blocked_reason set → 24h backoff already; retrying just
-    //    re-hits the access wall) and terminal rows.
-    const recovered = await client.query(
-      `UPDATE shipping_tracking_numbers
-          SET consecutive_error_count = 0,
-              next_check_at           = now(),
-              updated_at              = now()
-        WHERE is_terminal = false
-          AND consecutive_error_count >= 5
-          AND tracking_blocked_reason IS NULL
-          AND carrier IN ('UPS','USPS','FEDEX')
-          AND (last_checked_at IS NULL OR last_checked_at < now() - ($1 || ' hours')::interval)`,
-      [String(ERROR_RETRY_AFTER_HOURS)],
-    );
-
     return {
       ok: true,
       deliveredReconciled: delivered.rowCount ?? 0,
       scanDelivered: scanDelivered.rowCount ?? 0,
       coherenceFixed: coherence.rowCount ?? 0,
-      erroredRecovered: recovered.rowCount ?? 0,
       durationMs: Date.now() - start,
     };
   } finally {

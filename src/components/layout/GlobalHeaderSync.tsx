@@ -100,13 +100,6 @@ export function GlobalHeaderSync() {
   const printing = printJobs.some((item) => isLiveWork(item.status));
   const busy = running || printing;
   const jobRunning = (job: GlobalSyncJob) => syncWork.get(syncWorkId(job.id))?.status === 'running';
-  /** The most recent thing that synced into the system, across every job. */
-  const latest = useMemo(() => {
-    let at: string | null = null;
-    for (const j of jobs) if (j.lastRun && j.lastRun.status !== 'running' && (!at || j.lastRun.at > at)) at = j.lastRun.at;
-    return { at, failed: jobs.some((j) => j.lastRun?.status === 'failed') };
-  }, [jobs]);
-
   useEffect(() => setOpen(false), [pathname]);
 
   const run = useCallback(
@@ -202,18 +195,6 @@ export function GlobalHeaderSync() {
   );
 
   // One fixed-size key (owner 2026-09-28: no text, never changes width): the
-  // glyph spins while the system works — any sync or print (the work record);
-  // the dot is the ledger's state. The print itself shows only as its card.
-  const dot = running
-    ? { tone: 'bg-blue-500 animate-pulse motion-reduce:animate-none', says: 'syncing' }
-    : printing
-      ? { tone: 'bg-blue-500 animate-pulse motion-reduce:animate-none', says: 'printing' }
-      : latest.failed
-        ? { tone: 'bg-amber-500', says: 'a sync failed' }
-        : latest.at
-          ? { tone: 'bg-emerald-500', says: 'up to date' }
-          : null;
-
   return (
     <div ref={anchorRef} className="flex h-full shrink-0 items-center px-1">
       <button
@@ -231,11 +212,7 @@ export function GlobalHeaderSync() {
         }}
         onPointerLeave={() => setHintAt(null)}
         onPointerDown={() => setHintAt(null)}
-        aria-label={[
-          'Sync',
-          dot?.says,
-          latest.at ? `last synced ${formatRelativeTime(latest.at)}` : null,
-        ].filter(Boolean).join(' — ')}
+        aria-label="Sync"
         aria-expanded={open}
         aria-keyshortcuts={LEADER}
         data-state={open ? 'open' : 'closed'}
@@ -246,13 +223,6 @@ export function GlobalHeaderSync() {
         className={cn(HEADER_PILL_CLASS, 'w-8 justify-center p-0')}
       >
         <RefreshCw className={cn(TOP_CHROME_ICON_FACE, busy && 'animate-spin motion-reduce:animate-none')} aria-hidden />
-        {dot ? (
-          <span
-            aria-hidden
-            data-testid="global-sync-dot"
-            className={cn('pointer-events-none absolute right-0.5 top-0.5 size-2 rounded-full ring-2 ring-surface-card', dot.tone)}
-          />
-        ) : null}
       </button>
       <KeyHintPopover id="sync" at={open ? null : hintAt} rows={HINT_ROWS} lead={HINT_LEAD} />
       <AnchoredLayer open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} placement="bottom-end" gap={0} edgeAlign="viewport">

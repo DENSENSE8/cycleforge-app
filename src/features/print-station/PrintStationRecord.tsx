@@ -83,8 +83,8 @@ export function PrintStationRecord({
   });
   // A test label needs a real FNSKU to draw: the catalog's first, the one FNSKU labels leads with.
   const sample = useQuery({
-    queryKey: printStationFnskusKey('', 'all'),
-    queryFn: ({ signal }) => fetchPrintStationFnskus('', 'all', signal),
+    queryKey: printStationFnskusKey('', 'all', ''),
+    queryFn: ({ signal }) => fetchPrintStationFnskus('', 'all', '', signal),
     staleTime: 60_000,
   });
   const testFnsku = sample.data?.rows[0]?.fnsku ?? null;
@@ -121,14 +121,17 @@ export function PrintStationRecord({
     }
   };
 
-  /** FNSKU stickers at this station: printed here on this computer, else sent over its channel. True when printed / acked. */
-  const printAtStation = async (fnsku: string, copies: number, test: boolean): Promise<boolean> => {
+  /** FNSKU stickers at this station. Null when they went out; a string is why they did not. */
+  const printAtStation = async (fnsku: string, copies: number, test: boolean): Promise<string | null> => {
     if (station.thisComputer) {
       // Lazy, as every FNSKU print here: the local print driver stays out of the page bundle until it prints.
       const { printFnskuStationJob } = await import('@/lib/print/printFnskuStationJob');
       const job = test ? { fnsku, copies, test: true as const } : { fnsku, copies };
       const outcome = await printFnskuStationJob(job, safeRandomUUID()).catch(() => null);
-      return Boolean(outcome && outcome.printed > 0 && !outcome.failure);
+      if (!outcome) return 'The label did not print.';
+      if (outcome.failure) return outcome.failure;
+      if (outcome.printed === 0) return outcome.cancelled ? 'Cancelled.' : 'Nothing printed.';
+      return null;
     }
     return port.sendFnsku(station.stationId, fnsku, copies, test ? { test: true } : undefined);
   };
@@ -136,18 +139,18 @@ export function PrintStationRecord({
   const testPrint = async () => {
     if (!testFnsku || testBlocked) return;
     setTesting(true);
-    const ok = await printAtStation(testFnsku, 1, true);
+    const reason = await printAtStation(testFnsku, 1, true);
     setTesting(false);
-    if (ok) toast.success(station.thisComputer ? 'Test label printed here' : `Test label sent to ${name}`);
-    else toast.error(station.thisComputer ? 'The test label did not print here' : `${name} did not answer — no test label`);
+    if (!reason) toast.success(station.thisComputer ? 'Test label printed here' : `Test label sent to ${name}`);
+    else toast.error(reason);
   };
 
   const reprint = async (job: PrintStationJob) => {
     setReprinting(job.id);
-    const ok = await printAtStation(job.payload, job.copies, false);
+    const reason = await printAtStation(job.payload, job.copies, false);
     setReprinting(null);
-    if (ok) toast.success(station.thisComputer ? `${job.payload} reprinted here` : `${job.payload} × ${job.copies} sent to ${name}`);
-    else toast.error(station.thisComputer ? `${job.payload} did not print here` : `${name} did not answer — nothing reprinted`);
+    if (!reason) toast.success(station.thisComputer ? `${job.payload} reprinted here` : `${job.payload} × ${job.copies} sent to ${name}`);
+    else toast.error(reason);
   };
 
   const togglePause = async () => {

@@ -2,9 +2,10 @@
 
 /** `/m/scan` — identification kernel on the phone. */
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/design-system/primitives';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNetworkOnline } from '@/hooks/useConnectionHealth';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { MobileScanHeader, type MobileScanDirection, type MobileScanMode } from '@/components/mobile/scan/MobileScanHeader';
@@ -24,10 +25,29 @@ import {
 } from '@/lib/receiving/arrival-mobile-flow';
 import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
 import { locationHubHref, locationHubPath, locationKeypadHref, withLocationScanProof } from '@/lib/mobile/location-hub-href';
+import { locationScanLanding, withLocationScanLanding, type LocationScanLanding } from '@/lib/mobile/location-scan-landing';
 import { fnskuHubHref } from '@/lib/mobile/fnsku-hub-href';
-import { routeScan, unwrapScannedLocation, locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
+import { routeScan, unwrapScannedLocation } from '@/lib/barcode-routing';
+import {
+  LOCATION_TAPE_KEY_PREFIX,
+  locationTapeEntry,
+  readScanTape,
+  recordLocationVisit,
+  withStockAdjusts,
+  writeScanTape,
+} from '@/lib/mobile/scan-tape-session';
+import {
+  markStockAdjustUndone,
+  readStockAdjusts,
+  STOCK_ADJUST_EVENT,
+  stockAdjustTally,
+  undoableStockAdjust,
+  type StockAdjustEntry,
+} from '@/lib/mobile/stock-adjust-session';
+import { locationScanProofExpiresAt } from '@/lib/mobile/location-scan-proof-expiry';
 import { fnskuFromTail } from '@/lib/scan-resolver';
 import { fetchFnskuRecord } from '@/components/mobile/fnsku/useFnskuRecord';
+import { isMobileScanOutCommit } from '@/components/outbound/scan-out/scan-out-commit';
 import { postScanOut, undoScanOut } from '@/lib/outbound/scan-out-client';
 import { landScanIdentify, viewOnlyIdentityHref } from '@/lib/scan/identify-land';
 import { arrivalScanIntent, type ScanInputSource } from '@/lib/scan/mobile-arrival-door';
@@ -42,53 +62,15 @@ import { useArrivalPlacementHandoff } from '@/components/mobile/v2/receiving/use
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { announceStockTransfer, postStockTransfer } from '@/lib/inventory/stock-transfer-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { fetchLocationRecord } from '@/components/mobile/scan/location-bind-api';
+import { locationRecordQueryKey, scanLocation, type ScannedLocation } from '@/components/mobile/scan/location-bind-api';
 import {
   resolvePhoneScanIntent,
   withPhoneScanCorrelation,
 } from '@/lib/scan/phone-scan-intent';
 
-function locationFace(code: string): string {
-  const segs = parseLocationCodeFlat(code);
-  return segs ? locationCode(segs) : code;
-}
-
 function withScanMode(href: string, mode: MobileScanMode): string {
   const sep = href.includes('?') ? '&' : '?';
   return `${href}${sep}scanMode=${mode}`;
-}
-
-/** The scan-tape / session-feed row for a location that opened its record. */
-function locationTapeEntry(code: string, seq: number): StationTapeEntry {
-  return {
-    id: `location-${seq}`,
-    tone: 'ok',
-    verb: 'Location',
-    title: 'Location',
-    identifier: locationFace(code),
-    recordId: null,
-    conditionGrade: null,
-    imageUrl: null,
-    actor: null,
-    actorId: null,
-    message: 'Opened the location record',
-    at: new Date().toISOString(),
-    dedupeKey: `location:${code.toUpperCase()}`,
-    live: true,
-  };
-}
-
-async function authorizeScannedLocation(code: string): Promise<string> {
-  // This read also registers a structurally valid new flat location before
-  // the proof endpoint checks it. Legacy labels must already exist.
-  await fetchLocationRecord(code, parseLocationCodeFlat(code));
-  const response = await fetch(`/api/locations/${encodeURIComponent(code)}/verify`, {
-    method: 'POST',
-    credentials: 'include',
-  });
-  const body = (await response.json().catch(() => null)) as { token?: string; error?: string } | null;
-  if (!response.ok || !body?.token) throw new Error(body?.error || 'Could not verify location scan');
-  return body.token;
 }
 
 /** Per-device In | Out choice on `/m/scan`. */
@@ -128,19 +110,43 @@ function MobileScanIdentifyInner() {
   const outbound = direction === 'out' && !operationLocked && scanMode === 'operate';
 
   const [tape, setTape] = useState<StationTapeEntry[]>([]);
-  const { history, isError: historyFailed, retry: retryHistory } = useArrivalHistory();
-  const [seeded, setSeeded] = useState(false);
+  // The loop leaves this page for every location record: the tape comes back
+  // from session storage (after mount — the server render has no storage).
+  const [tapeRestored, setTapeRestored] = useState(false);
   useEffect(() => {
-    if (seeded || history.length === 0) return;
-    setSeeded(true);
-    setTape((prev) => {
-      const live = new Set(prev.map((row) => row.dedupeKey).filter(Boolean));
-      return [...prev, ...history.filter((row) => !row.dedupeKey || !live.has(row.dedupeKey))].slice(
-        0,
-        STATION_TAPE_LIMIT,
-      );
-    });
-  }, [history, seeded]);
+    setTape(readScanTape());
+    setTapeRestored(true);
+  }, []);
+  useEffect(() => {
+    if (tapeRestored) writeScanTape(tape);
+  }, [tape, tapeRestored]);
+  // What the record pages adjusted this session: the rows' words, Undo and the tally.
+  const [adjusts, setAdjusts] = useState<StockAdjustEntry[]>([]);
+  useEffect(() => {
+    const read = () => setAdjusts(readStockAdjusts());
+    read();
+    window.addEventListener(STOCK_ADJUST_EVENT, read);
+    return () => window.removeEventListener(STOCK_ADJUST_EVENT, read);
+  }, []);
+  const tally = useMemo(() => stockAdjustTally(adjusts), [adjusts]);
+  // Earlier scans cost a server read: none on open, only when the operator asks.
+  const [showHistory, setShowHistory] = useState(false);
+  const {
+    history,
+    loading: historyLoading,
+    isError: historyFailed,
+    retry: retryHistory,
+  } = useArrivalHistory({ enabled: showHistory });
+  /**
+   * This session's rows first — each location says what was adjusted there —
+   * then the asked-for history they do not already show.
+   */
+  const entries = useMemo(() => {
+    const own = withStockAdjusts(tape, adjusts);
+    if (!showHistory || history.length === 0) return own;
+    const live = new Set(own.map((row) => row.dedupeKey).filter(Boolean));
+    return [...own, ...history.filter((row) => !row.dedupeKey || !live.has(row.dedupeKey))].slice(0, STATION_TAPE_LIMIT);
+  }, [tape, adjusts, history, showHistory]);
 
   const [cameraOff, setCameraOff] = useState(false);
   const [arrived, setArrived] = useState(0);
@@ -152,9 +158,10 @@ function MobileScanIdentifyInner() {
 
   const onSettled = useCallback(
     (settled: SettledArrival) => {
-      setTape((prev) => pushStationTape(prev, arrivalTapeEntry(settled)));
+      // A random id: a restored row from an earlier visit may carry this visit's counter.
+      setTape((prev) => pushStationTape(prev, { ...arrivalTapeEntry(settled), id: `arrival-${safeRandomUUID()}` }));
       recordMobileSessionEntry({
-        id: `unbox-${settled.seq}`,
+        id: `unbox-${safeRandomUUID()}`,
         job: 'unbox',
         title: settled.title,
         identifier: settled.tracking ?? settled.scanned,
@@ -179,21 +186,10 @@ function MobileScanIdentifyInner() {
   const [outNotice, setOutNotice] = useState<string | null>(null);
   const [outUndo, setOutUndo] = useState<{ entryId: string; shipmentId: number } | null>(null);
   const [outUndoing, setOutUndoing] = useState(false);
-  const locationSeqRef = useRef(0);
 
   const applyLocationTape = useCallback((entry: StationTapeEntry, href: string) => {
     setTape((prev) => pushStationTape(prev, entry));
-    recordMobileSessionEntry({
-      id: entry.id,
-      job: 'display',
-      title: entry.title,
-      identifier: entry.identifier,
-      entityId: null,
-      state: 'done',
-      href,
-      at: entry.at,
-      dedupeKey: entry.dedupeKey ? `display:${entry.dedupeKey}` : null,
-    });
+    recordLocationVisit(entry, href);
   }, []);
 
   const onDecode = useCallback(
@@ -214,14 +210,16 @@ function MobileScanIdentifyInner() {
               return;
             }
             const code = unwrapScannedLocation(value);
-            let proof: string;
+            // One request: registers a new flat location, reads the record, mints the proof.
+            let authorized: ScannedLocation;
             try {
-              proof = await authorizeScannedLocation(code);
+              authorized = await scanLocation(code);
             } catch (error) {
               setLocationError(error instanceof Error ? error.message : 'Could not verify location');
               playScanFeedback('reject');
               return;
             }
+            const { record, proof } = authorized;
             const returnTo = mobileJobReturn(searchParams.get('returnTo')) ?? '/m/stock';
             const pairSku = searchParams.get('pairSku')?.trim();
             const moveLpn = searchParams.get('moveLpn')?.trim();
@@ -267,11 +265,24 @@ function MobileScanIdentifyInner() {
               router.replace(returnTo);
               return;
             }
-            const href = pairSku
-              ? locationKeypadHref(code, pairSku, { returnTo, verificationToken: proof })
-              : withLocationScanProof(withJobReturn(locationHubPath(code), returnTo), proof);
-            applyLocationTape(locationTapeEntry(code, ++locationSeqRef.current), href);
-            playScanFeedback('success');
+            let href: string;
+            let landingKind: LocationScanLanding['kind'] = 'record';
+            if (pairSku) {
+              href = locationKeypadHref(code, pairSku, { returnTo, verificationToken: proof });
+            } else {
+              // The hub paints from this read; no second GET for the same record.
+              queryClient.setQueryData(locationRecordQueryKey(code), record);
+              // A re-scan for an expired proof goes back to the SKU it was adjusting.
+              const resumeSku = searchParams.get('resumeSku')?.trim();
+              const landing: LocationScanLanding = resumeSku && record.contents.some((row) => row.sku === resumeSku)
+                ? { kind: 'adjust', sku: resumeSku }
+                : locationScanLanding(record);
+              landingKind = landing.kind;
+              href = withLocationScanProof(withLocationScanLanding(withJobReturn(locationHubPath(code), returnTo), landing), proof);
+            }
+            applyLocationTape(locationTapeEntry(code), href);
+            // Eyes-free: the chirp means "±1 is ready"; the double note means "look first".
+            playScanFeedback(pairSku || landingKind === 'adjust' ? 'success' : 'warn');
             router.push(href);
             return;
           }
@@ -292,7 +303,7 @@ function MobileScanIdentifyInner() {
             router.push(withPhoneScanCorrelation(`/m/orders/new?scan=${encodeURIComponent(value)}`, correlation));
             return;
           }
-          if (outbound && route?.type === 'carrier-tracking') {
+          if (outbound && isMobileScanOutCommit(value, route?.type)) {
             // Out: the real dock scan-out — the same POST the desk scan-out station sends.
             const result = await postScanOut(value).catch(() => null);
             if (!result) {
@@ -421,17 +432,20 @@ function MobileScanIdentifyInner() {
           // A location is a full-screen record with an X back here, never
           // a sheet over the camera (operator 2026-09-25).
           const code = unwrapScannedLocation(value);
-          let proof: string;
+          let authorized: ScannedLocation;
           try {
-            proof = await authorizeScannedLocation(code);
+            authorized = await scanLocation(code);
           } catch (error) {
             setLocationError(error instanceof Error ? error.message : 'Could not verify location');
             playScanFeedback('reject');
             return;
           }
-          const href = withLocationScanProof(locationHubHref(code), proof);
-          applyLocationTape(locationTapeEntry(code, ++locationSeqRef.current), href);
-          playScanFeedback('success');
+          // One loose item opens straight on its ±1 adjust; several ask which first.
+          queryClient.setQueryData(locationRecordQueryKey(code), authorized.record);
+          const landing = locationScanLanding(authorized.record);
+          const href = withLocationScanProof(withLocationScanLanding(locationHubHref(code), landing), authorized.proof);
+          applyLocationTape(locationTapeEntry(code), href);
+          playScanFeedback(landing.kind === 'adjust' ? 'success' : 'warn');
           router.push(withPhoneScanCorrelation(href, correlation));
         } finally {
           setDispatching((n) => Math.max(0, n - 1));
@@ -459,10 +473,10 @@ function MobileScanIdentifyInner() {
    */
   const opens = useMemo(() => {
     const map = new Map<string, () => void>();
-    for (const entry of tape) {
+    for (const entry of entries) {
       if (!entry.dedupeKey) continue;
-      if (entry.dedupeKey.startsWith('location:')) {
-        const href = locationHubHref(entry.dedupeKey.slice('location:'.length));
+      if (entry.dedupeKey.startsWith(LOCATION_TAPE_KEY_PREFIX)) {
+        const href = locationHubHref(entry.dedupeKey.slice(LOCATION_TAPE_KEY_PREFIX.length));
         map.set(entry.dedupeKey, () => router.push(href));
         continue;
       }
@@ -472,7 +486,7 @@ function MobileScanIdentifyInner() {
       map.set(entry.dedupeKey, () => router.push(href));
     }
     return map;
-  }, [tape, router]);
+  }, [entries, router]);
 
   const itemOpen = useCallback(
     (entry: StationTapeEntry): (() => void) | null => (entry.dedupeKey && opens.get(entry.dedupeKey)) || null,
@@ -497,12 +511,60 @@ function MobileScanIdentifyInner() {
       .finally(() => setOutUndoing(false));
   }, [outUndo, outUndoing, playScanFeedback]);
 
+  /** A session adjust is undone with the same scan proof, as the inverse write. */
+  const { user } = useAuth();
+  const [undoingAdjust, setUndoingAdjust] = useState<string | null>(null);
+  const undoAdjust = useCallback((adjust: StockAdjustEntry) => {
+    if (!adjust.proof || undoingAdjust) return;
+    const commandId = safeRandomUUID();
+    setUndoingAdjust(adjust.id);
+    void fetch(`/api/locations/${encodeURIComponent(adjust.code)}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': commandId },
+      body: JSON.stringify({
+        action: adjust.delta > 0 ? 'take' : 'put',
+        sku: adjust.sku,
+        qty: Math.abs(adjust.delta),
+        staffId: user?.staffId ?? 0,
+        reason: 'UNDO',
+        notes: `Undo of ${adjust.delta > 0 ? '+' : '−'}${Math.abs(adjust.delta)} at ${adjust.face}`,
+        clientEventId: commandId,
+        locationVerificationToken: adjust.proof,
+      }),
+    })
+      .then(async (response) => {
+        const body = (await response.json().catch(() => null)) as { success?: boolean; error?: string } | null;
+        if (!response.ok || body?.success === false) throw new Error(body?.error || 'Undo failed — try again');
+        markStockAdjustUndone(adjust.id);
+        void queryClient.invalidateQueries({ queryKey: locationRecordQueryKey(adjust.code) });
+        playScanFeedback('success');
+      })
+      .catch((error: unknown) => {
+        setLocationError(error instanceof Error ? error.message : 'Undo failed — try again');
+        playScanFeedback('reject');
+      })
+      .finally(() => setUndoingAdjust(null));
+  }, [playScanFeedback, queryClient, undoingAdjust, user?.staffId]);
+
   const itemActions = useCallback(
-    (entry: StationTapeEntry): readonly StationItemAction[] | null =>
-      outUndo && entry.id === outUndo.entryId
-        ? [{ label: 'Undo scan-out', pendingLabel: 'Undoing…', run: undoOut, pending: outUndoing }]
-        : null,
-    [outUndo, outUndoing, undoOut],
+    (entry: StationTapeEntry): readonly StationItemAction[] | null => {
+      if (outUndo && entry.id === outUndo.entryId) {
+        return [{ label: 'Undo scan-out', pendingLabel: 'Undoing…', run: undoOut, pending: outUndoing }];
+      }
+      if (!entry.dedupeKey?.startsWith(LOCATION_TAPE_KEY_PREFIX)) return null;
+      const adjust = undoableStockAdjust(adjusts, entry.dedupeKey.slice(LOCATION_TAPE_KEY_PREFIX.length));
+      // Only while its scan proof still authorizes a write at that location.
+      const expiresAt = locationScanProofExpiresAt(adjust?.proof ?? null);
+      if (!adjust || expiresAt == null || expiresAt <= Date.now()) return null;
+      return [{
+        label: `Undo ${adjust.sku} ${adjust.delta > 0 ? '+' : '−'}${Math.abs(adjust.delta)}`,
+        pendingLabel: 'Undoing…',
+        run: () => undoAdjust(adjust),
+        pending: undoingAdjust === adjust.id,
+      }];
+    },
+    [adjusts, outUndo, outUndoing, undoAdjust, undoOut, undoingAdjust],
   );
 
   /**
@@ -518,11 +580,16 @@ function MobileScanIdentifyInner() {
     if (locationError) return locationError;
     if (outbound && outNotice && pending === 0) return outNotice;
     if (cameraOff) return 'Camera off';
-    if (locationOnly) return pending > 0 ? 'Checking location…' : 'Location scan';
+    // This session's stock work: distinct locations touched and units moved.
+    const stock = tally.locations > 0
+      ? `${tally.locations} location${tally.locations === 1 ? '' : 's'} · ${tally.units} unit${tally.units === 1 ? '' : 's'}`
+      : null;
+    if (locationOnly) return pending > 0 ? 'Checking location…' : stock ?? 'Location scan';
     if (pending > 0) return `${pending} pending · ${arrived} in`;
     if (scanMode === 'view') return 'View only';
-    return outbound ? 'Out' : `${arrived} in`;
-  }, [online, cameraOff, locationError, locationOnly, pending, arrived, scanMode, outbound, outNotice]);
+    if (outbound) return 'Out';
+    return stock && arrived === 0 ? stock : stock ? `${arrived} in · ${stock}` : `${arrived} in`;
+  }, [online, cameraOff, locationError, locationOnly, pending, arrived, scanMode, outbound, outNotice, tally]);
 
   if (classifyRid != null) {
     return (
@@ -537,6 +604,31 @@ function MobileScanIdentifyInner() {
       : mobileJobReturn(searchParams.get('returnTo'));
   const scanTitle = locationOnly ? 'Scan location' : qcArmed ? 'Quality control' : 'Scan';
 
+  // Package history is a server read: only on the operator's tap, from the
+  // empty screen or under this session's rows. Locations have no package history.
+  const historyControl = locationOnly ? null : historyFailed ? (
+    <div className="flex flex-col items-center gap-2">
+      <p className="text-role-eyebrow text-text-danger">Could not load earlier packages</p>
+      <Button variant="secondary" size="lg" radius="mode" className="min-h-mode-hit" onClick={() => void retryHistory()}>
+        Try again
+      </Button>
+    </div>
+  ) : showHistory && !historyLoading ? (
+    history.length === 0 ? <p className="text-role-eyebrow text-text-soft">No recent scans</p> : null
+  ) : (
+    <Button
+      variant="ghost"
+      size="lg"
+      radius="mode"
+      className="min-h-mode-hit"
+      loading={historyLoading}
+      onClick={() => setShowHistory(true)}
+      data-testid="scan-recent-history"
+    >
+      Recent scans
+    </Button>
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
       <MobileScanHeader
@@ -550,43 +642,26 @@ function MobileScanIdentifyInner() {
       />
       <div className="min-h-0 flex-1">
         <MobileV2ScanStation
-          entries={tape}
+          entries={entries}
           untitledLabel="Package"
           itemActions={itemActions}
           empty={
             <div className="flex flex-col items-center gap-3 px-8 pb-6 text-center">
-              {historyFailed ? (
-                <>
-                  <p className="text-role-eyebrow text-text-danger">
-                    Could not load earlier packages
-                  </p>
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    radius="mode"
-                    className="min-h-mode-hit"
-                    onClick={() => void retryHistory()}
-                  >
-                    Try again
-                  </Button>
-                </>
-              ) : locationOnly ? (
-                <p className="text-role-eyebrow text-text-soft">Scan a shelf or bin location</p>
-              ) : qcArmed ? (
-                <p className="text-role-eyebrow text-text-soft">
-                  Quality control — scan an LPN, carton, line or unit
-                </p>
-              ) : (
-                <p className="text-role-eyebrow text-text-soft">
-                  {scanMode === 'view'
-                    ? 'View records without changing them'
-                    : outbound
-                      ? 'Scan a shipping label to scan it out'
-                      : 'Scan a tracking number or location code'}
-                </p>
-              )}
+              <p className="text-role-eyebrow text-text-soft">
+                {locationOnly
+                  ? 'Scan a shelf or bin location'
+                  : qcArmed
+                    ? 'Quality control — scan an LPN, carton, line or unit'
+                    : scanMode === 'view'
+                      ? 'View records without changing them'
+                      : outbound
+                        ? 'Scan a shipping label to scan it out'
+                        : 'Scan a tracking number or location code'}
+              </p>
+              {historyControl}
             </div>
           }
+          more={historyControl}
           itemOpen={itemOpen}
           captureWindow={
             <MobileCaptureWindow

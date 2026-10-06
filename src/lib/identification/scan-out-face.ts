@@ -1,6 +1,6 @@
 /**
  * Scan-out JobFace mapper — POST/GET carton JSON → IdentificationResult.
- * Scan-out refuses cancellation and cartons without a completed pack. Carrier
+ * Scan-out refuses a cancelled order. A missing pack scan does not. Carrier
  * delivery state does not authorize or block SHIP_CONFIRM. Dual-entry:
  * `source: 'scan'` (gun) and `source: 'claim'` (GET ?orderId=) share this function.
  */

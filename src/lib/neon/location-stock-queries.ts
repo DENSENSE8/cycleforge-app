@@ -107,8 +107,12 @@ export async function getStockByLocation(args: {
   query?: string | null;
   /** The contextual room/zone filter, applied before the cap. */
   room?: string | null;
+  /** Comma-list of room facet ids to omit before paging. */
+  excludeRoom?: string | null;
   /** Numeric aisle multi-select from the contextual sidebar. */
   aisle?: string | null;
+  /** Comma-list of aisle values to omit before paging. */
+  excludeAisle?: string | null;
 }): Promise<StockByLocationPage> {
   const limit = Math.max(1, Math.min(args.limit ?? LOCATION_STOCK_ROW_CAP, LOCATION_STOCK_ROW_CAP));
 
@@ -118,8 +122,12 @@ export async function getStockByLocation(args: {
   // '' and `%%` would match every row, so that leg goes NULL instead.
   const rooms = parseLocationStockRoomIds(args.room);
   const roomFilter = rooms.length ? rooms : null;
+  const excludedRooms = parseLocationStockRoomIds(args.excludeRoom);
+  const excludedRoomFilter = excludedRooms.length ? excludedRooms : null;
   const parsedAisles = parseLocationStockAisles(args.aisle);
   const aisles = parsedAisles.length ? parsedAisles : null;
+  const excludedAisles = parseLocationStockAisles(args.excludeAisle);
+  const excludedAisleFilter = excludedAisles.length ? excludedAisles : null;
   const locationWalk = Boolean(roomFilter?.length || aisles?.length);
   const flattened = needle.replace(/[^A-Za-z0-9]/g, '');
   const flatLike = needle && flattened ? `%${flattened}%` : null;
@@ -332,11 +340,21 @@ export async function getStockByLocation(args: {
         OR ('(none)' = ANY($6::text[]) AND NULLIF(TRIM(j.room), '') IS NULL)
       )
       AND ($6::text[] IS NULL OR j.location_id IS NOT NULL)
+      AND (
+        $9::text[] IS NULL
+        OR NOT (j.room = ANY($9::text[]) OR ('(none)' = ANY($9::text[]) AND NULLIF(TRIM(j.room), '') IS NULL))
+      )
       AND ($7::int[] IS NULL OR (
         CASE
           WHEN j.row_label ~ '^[0-9]+-[0-9]+$' THEN split_part(j.row_label, '-', 1)::int
           ELSE NULL
         END = ANY($7::int[])
+      ))
+      AND ($10::int[] IS NULL OR NOT (
+        CASE
+          WHEN j.row_label ~ '^[0-9]+-[0-9]+$' THEN split_part(j.row_label, '-', 1)::int
+          ELSE NULL
+        END = ANY($10::int[])
       ))
       AND ($4::text IS NULL OR (
             COALESCE(j.title_override, '')     ILIKE $4
@@ -447,6 +465,8 @@ export async function getStockByLocation(args: {
     roomFilter,
     aisles?.length ? aisles : null,
     locationWalk,
+    excludedRoomFilter,
+    excludedAisleFilter,
   ]);
 
   return {

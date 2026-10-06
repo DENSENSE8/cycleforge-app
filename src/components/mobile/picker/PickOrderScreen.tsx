@@ -178,7 +178,7 @@ export function PickOrderScreen({
                 <DetailFacts label="Order details">
                   <DetailFact label="Buyer" value={details?.buyerName} />
                   <DetailFact
-                    label="Channel"
+                    label="Platform"
                     value={
                       details?.channel ? (
                         <span className="inline-flex items-center gap-1.5">

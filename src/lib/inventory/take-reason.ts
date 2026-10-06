@@ -37,6 +37,8 @@ const LEDGER_LABELS: Readonly<Record<string, string>> = {
   TAKE_VENDOR: 'Taken · Return to vendor',
   TAKE_COUNT: 'Taken · Count correction',
   TAKE_CUSTOM: 'Taken',
+  // The scan page's Undo of a session adjust writes the inverse with this reason.
+  UNDO: 'Undone',
 };
 
 /** Human label for a take code; other reasons pass through unchanged. */

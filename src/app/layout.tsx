@@ -2,16 +2,13 @@ import "./globals.css";
 import type { Viewport } from 'next';
 /** The shell branch (public chrome vs the warehouse client) lives in a CLIENT component on purpose: */
 import { AppShellSwitch } from "@/components/layout/AppShellSwitch";
-import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
-import { STATION_SKIN_BOOT_SCRIPT } from "@/lib/theme/station-skin";
-import { STATION_DEPTH_BOOT_SCRIPT } from "@/lib/theme/station-depth";
+import { HeadBootScripts } from "@/components/layout/HeadBootScripts";
 import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { stationSkinStyleText } from '@/design-system/themes/station-skins';
 import { stationDepthStyleText } from '@/design-system/themes/station-depths';
 import { modeRegistryStyleText } from '@/design-system/modes/registry';
 import { aiSystemStyleText } from '@/design-system/ai/tokens';
-import { TRIAL_BOOT_SCRIPT } from '@/lib/design/trials';
 // `MotionConfig`, so a static import in this file shipped the Motion runtime
 // (~104KB gz) to every route, public chrome included. It now lives inside
 // `WarehouseShell`, which is already behind `next/dynamic` — see the note there.
@@ -29,7 +26,7 @@ import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
 import { mergeShellSeeds, seedStaffPreferences } from "@/lib/queries/staff-preferences-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { cfSans, cfSansItalic } from "@/lib/fonts";
+import { cfSans } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 import { appViewport } from '@/design-system/tokens/mobile-viewport';
 
@@ -91,7 +88,7 @@ export default async function RootLayout({
     return (
         <html
             lang="en"
-            className={`${cfSans.variable} ${cfSansItalic.variable} h-full overflow-hidden`}
+            className={`${cfSans.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>
@@ -105,8 +102,11 @@ export default async function RootLayout({
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
                 <meta name="apple-mobile-web-app-title" content={PRODUCT_NAME} />
                 <meta name="mobile-web-app-capable" content="yes" />
-                {/* URL-only design trial flags; never persisted. */}
-                <script dangerouslySetInnerHTML={{ __html: TRIAL_BOOT_SCRIPT }} />
+                {/* Pre-paint scripts, streamed into the server HTML only (never a
+                    React-rendered <script>): URL-only trial flags, the cached
+                    theme / station skin / station depth (no light→dark flash),
+                    and the stale service-worker eviction. */}
+                <HeadBootScripts />
                 <style id="app-design-tokens">{designTokenStyleText}</style>
                 {/* Generated theme palettes (light/dark/mono/slate + staff
                     accents) from the theme registry — the single owner of every
@@ -122,18 +122,6 @@ export default async function RootLayout({
                     corners, prose scale and measure; after the mode registry
                     because `[data-ai-surface]` remaps the neutral vars again. */}
                 <style id="app-ai-system">{aiSystemStyleText}</style>
-                {/* Applies the cached theme before paint (no light→dark flash). */}
-                <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
-                <script dangerouslySetInnerHTML={{ __html: STATION_SKIN_BOOT_SCRIPT }} />
-                <script dangerouslySetInnerHTML={{ __html: STATION_DEPTH_BOOT_SCRIPT }} />
-                {/* Evict leftover Warehouse-OS Workbox CacheFirst on this
-                    origin (usav-dev / localhost:3050) so Home CSS can paint. */}
-                <script
-                  dangerouslySetInnerHTML={{
-                    __html:
-                      "(function(){try{if(!('serviceWorker' in navigator))return;navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});if(window.caches){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}}catch(e){}})();",
-                  }}
-                />
             </head>
             <body className={`${cfSans.className} h-full w-full antialiased m-0 overflow-hidden ${appChromeClass}`}>
                 {/* Pin the app to the visual viewport. */}

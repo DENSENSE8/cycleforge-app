@@ -67,7 +67,7 @@ export function recordRowFace(
     identityCopy: options.identityCopy,
     title: lead ? `${lead.title}${more}` : '',
     // A declared photo column holds its place even on a line without one.
-    photo: view.slots.photo === 'line' ? { url: lead?.photoUrl ?? null } : undefined,
+    photo: view.slots.photo === 'line' ? { url: lead?.photoUrl ?? null, fullUrl: lead?.photoFullUrl ?? null } : undefined,
     facts,
     next: model.next ? { label: model.next.label, blocked: model.next.blocked } : null,
     nextWidth: 'code',

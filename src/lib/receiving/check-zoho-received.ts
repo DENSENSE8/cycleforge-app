@@ -158,6 +158,8 @@ export interface CheckZohoReceivedDeps {
   lookupLocal?: LocalLookupFn;
   maxZohoLookups?: number;
   concurrency?: number;
+  /** Unique numbers one call answers; default the paste cap ({@link CHECK_ZOHO_RECEIVED_MAX_INPUTS}). */
+  maxInputs?: number;
 }
 
 /**
@@ -226,24 +228,39 @@ async function lookupMirrorByTrackings(
     [canons, last8s, orgId, Math.max(500, trackings.length * 4)],
   );
 
+  // The hits indexed once by each key a paste can name — a long paste must
+  // not rescan every hit per number. Each list keeps the statement's order.
+  type Hit = { id: string; ref: string; poCanon: string };
+  const byId = new Map<string, MirrorHit>();
+  const byRef = new Map<string, Hit[]>();
+  const byPo = new Map<string, Hit[]>();
+  const byTail8 = new Map<string, Hit[]>();
+  const push = (map: Map<string, Hit[]>, key: string, hit: Hit) => {
+    const list = map.get(key);
+    if (list) list.push(hit);
+    else map.set(key, [hit]);
+  };
+  for (const row of rows) {
+    const id = String(row.zoho_purchaseorder_id || '').trim();
+    if (!id) continue;
+    byId.set(id, row);
+    const hit = { id, ref: String(row.ref_canon || ''), poCanon: String(row.po_canon || '') };
+    push(byRef, hit.ref, hit);
+    push(byPo, hit.poCanon, hit);
+    if (hit.ref.length >= 8) push(byTail8, trackingRawTail8(hit.ref), hit);
+  }
+
   for (const tracking of trackings) {
     const canon = canonicalizeTrackingKey(tracking);
     const last8 = trackingDigitsLast8Strict(tracking) || null;
-    const exactRefPoIds: string[] = [];
-    const exactNumberPoIds: string[] = [];
-    const suffixPoIds: string[] = [];
-    const byId = new Map<string, MirrorHit>();
-
-    for (const row of rows) {
-      const id = String(row.zoho_purchaseorder_id || '').trim();
-      if (!id) continue;
-      byId.set(id, row);
-      const ref = String(row.ref_canon || '');
-      const poCanon = String(row.po_canon || '');
-      if (canon && ref === canon) exactRefPoIds.push(id);
-      else if (canon && poCanon === canon) exactNumberPoIds.push(id);
-      else if (last8 && ref.length >= 8 && trackingRawTail8(ref) === last8) suffixPoIds.push(id);
-    }
+    // A hit counts once: as an exact Reference#, else an exact PO#, else a last-8 Reference#.
+    const exactRefPoIds = canon ? (byRef.get(canon) ?? []).map((hit) => hit.id) : [];
+    const exactNumberPoIds = canon
+      ? (byPo.get(canon) ?? []).filter((hit) => hit.ref !== canon).map((hit) => hit.id)
+      : [];
+    const suffixPoIds = last8
+      ? (byTail8.get(last8) ?? []).filter((hit) => hit.ref !== canon && hit.poCanon !== canon).map((hit) => hit.id)
+      : [];
 
     // Exact Reference# wins, then exact PO#, then unique last-8 Reference#.
     const exactPoIds =
@@ -525,7 +542,7 @@ export async function checkZohoReceived(
   input: string | string[],
   deps: CheckZohoReceivedDeps = {},
 ): Promise<CheckZohoReceivedResult | { error: string }> {
-  const parsed = parseTrackingPaste(input);
+  const parsed = parseTrackingPaste(input, deps.maxInputs);
   if (!parsed.ok) return { error: parsed.error };
 
   const lookupMirror = deps.lookupMirror ?? lookupMirrorByTrackings;

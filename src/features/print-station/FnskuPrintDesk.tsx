@@ -47,11 +47,19 @@ import {
   type PrintStationFnskuList,
   type PrintStationFnskuPatch,
 } from '@/lib/print-station/fnsku-client';
-import { PRINT_STATION_FNSKU_PARAM, PRINT_STATION_FNSKU_ROW_CAP, PRINT_STATION_PATH, type PrintStationFnskuRow, type PrintStationFnskuView } from '@/lib/print-station/fnsku';
+import {
+  PRINT_STATION_CONDITION_PARAM,
+  printStationConditionWords,
+  PRINT_STATION_FNSKU_PARAM,
+  PRINT_STATION_FNSKU_ROW_CAP,
+  PRINT_STATION_PATH,
+  type PrintStationFnskuRow,
+  type PrintStationFnskuView,
+} from '@/lib/print-station/fnsku';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import { PRINT_STATION_FNSKU_VIEW } from '@/lib/triage/views';
-import { fbaCondition } from '@/lib/fba/fba-conditions';
+import { fbaCondition, fbaConditionLabel } from '@/lib/fba/fba-conditions';
 import { toast } from '@/lib/toast';
 import { FnskuBulkPrint, FnskuRowPrint } from './FnskuBulkPrint';
 import { FnskuCreatePopover, type CreatedFnsku } from './FnskuCreateForm';
@@ -87,18 +95,31 @@ const fnskuRowId = (row: FnskuListItem): number => row.ordinal;
 /** The open FNSKU is not in this load (a stale link or a narrower Find): the plane shows why. */
 const NOT_LOADED_ID = -1;
 
-export function FnskuPrintDesk({ rows: initialRows, view }: { rows: PrintStationFnskuRow[]; view: PrintStationFnskuView }) {
+export function FnskuPrintDesk({
+  rows: initialRows,
+  view,
+  query: serverQuery,
+  condition: serverCondition,
+}: {
+  rows: PrintStationFnskuRow[];
+  view: PrintStationFnskuView;
+  /** The Find and condition the server already loaded — only that pair may seed the cache. */
+  query: string;
+  condition: string;
+}) {
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
   const queryClient = useQueryClient();
   const query = searchParams.get('q')?.trim() ?? '';
+  const condition = searchParams.get(PRINT_STATION_CONDITION_PARAM)?.trim().toLowerCase() ?? '';
+  const seeded = query === serverQuery.trim() && condition === serverCondition.trim().toLowerCase();
   const list = useQuery({
-    queryKey: printStationFnskusKey(query, view),
-    queryFn: ({ signal }) => fetchPrintStationFnskus(query, view, signal),
-    initialData: { rows: initialRows },
+    queryKey: printStationFnskusKey(query, view, condition),
+    queryFn: ({ signal }) => fetchPrintStationFnskus(query, view, condition, signal),
+    ...(seeded ? { initialData: { rows: initialRows } } : {}),
     staleTime: 15_000,
   });
-  const rows = list.data.rows;
+  const rows = list.data?.rows ?? [];
   const labelMutation = useOptimisticMutation<void, { fnsku: string; patch: PrintStationFnskuPatch }>({
     mutationFn: ({ fnsku, patch }) => savePrintStationFnsku(fnsku, patch),
     caches: [
@@ -116,6 +137,7 @@ export function FnskuPrintDesk({ rows: initialRows, view }: { rows: PrintStation
                         ...row,
                         ...('title' in vars.patch ? { title: vars.patch.title?.trim() || null } : {}),
                         ...('condition' in vars.patch ? { condition: vars.patch.condition?.trim() || null } : {}),
+                        ...('mark' in vars.patch ? { mark: vars.patch.mark?.trim().slice(0, 40) || null } : {}),
                       }
                     : row,
                 ),
@@ -258,14 +280,18 @@ export function FnskuPrintDesk({ rows: initialRows, view }: { rows: PrintStation
   );
   const created = useCallback(
     (row: CreatedFnsku) => {
-      queryClient.setQueryData<PrintStationFnskuList>(printStationFnskusKey(query, view), (current) => {
+      queryClient.setQueryData<PrintStationFnskuList>(printStationFnskusKey(query, view, condition), (current) => {
         if (!current) return current;
+        const wanted = printStationConditionWords(condition);
+        if (condition === 'none' && String(row.condition ?? '').trim()) return current;
+        if (wanted && fbaConditionLabel(row.condition).trim().toLowerCase() !== wanted) return current;
         const added: PrintStationFnskuRow = {
           fnsku: row.fnsku,
           title: row.product_title,
           asin: row.asin,
           sku: row.sku,
           condition: row.condition,
+          mark: null,
         };
         const exists = current.rows.some((item) => item.fnsku === row.fnsku);
         return {
@@ -278,7 +304,7 @@ export function FnskuPrintDesk({ rows: initialRows, view }: { rows: PrintStation
       writeOpen(row.fnsku);
       void queryClient.invalidateQueries({ queryKey: PRINT_STATION_FNSKUS_KEY });
     },
-    [query, queryClient, view, writeOpen],
+    [condition, query, queryClient, view, writeOpen],
   );
 
   return (

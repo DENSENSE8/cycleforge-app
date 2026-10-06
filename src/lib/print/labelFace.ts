@@ -8,7 +8,7 @@ export interface LabelFaceModel {
   topLeft: string;
   /** Top-right — date (receiving). Unused by `product`. */
   topRight: string;
-  /** Center — the 3-line hero text (receiving notes). Unused by `product`. */
+  /** Center — the 3-line hero text (receiving notes); for `product`, the one-line custom text under the title (hidden when empty). */
   center: string;
   /** Bottom-left — condition grade (`label` variant). */
   bottomLeft: string;
@@ -50,6 +50,11 @@ const LABEL_FACE_CSS =
   '.ptitle{font-size:9px;font-weight:700;line-height:1.15;color:#000;text-align:left;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;word-break:break-word}' +
   '.bl{flex:1 1 auto;min-width:0;font-size:9px;font-weight:900;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
   '.br{flex:0 0 auto;font-size:9px;font-weight:900;letter-spacing:0.3px;line-height:1.05;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}';
+
+/** Product face centre: one left-aligned line under the title; gone when empty so the default face is unchanged. */
+const PRODUCT_LABEL_FACE_CSS =
+  '.ptitle~.center{flex:0 1 auto;text-align:left;-webkit-line-clamp:1;padding:0}' +
+  '.ptitle~.center:empty{display:none}';
 
 /** Location sticker — large code, no room / zone / level gloss. */
 const LOCATION_LABEL_FACE_CSS =
@@ -113,9 +118,10 @@ export function buildFaceInfoHtml(model: LabelFaceModel): {
   if (model.kind === 'product') {
     const infoHtml =
       `<div class="ptitle">${escapeLabelHtml(model.topLeft)}</div>` +
+      `<div class="center">${escapeLabelHtml(model.center)}</div>` +
       `<div class="row"><span class="bl">${escapeLabelHtml(model.bottomLeft)}</span>` +
       `<span class="br">${escapeLabelHtml(model.bottomRight)}</span></div>`;
-    return { infoHtml, infoCss: LABEL_FACE_CSS, infoAlign: 'space-between' };
+    return { infoHtml, infoCss: LABEL_FACE_CSS + PRODUCT_LABEL_FACE_CSS, infoAlign: 'space-between' };
   }
   const infoHtml =
     `<div class="row"><span class="tl">${escapeLabelHtml(model.topLeft)}</span>` +
@@ -153,6 +159,7 @@ export function patchLabelFaceDocument(
     setText('.hu-code', model.center);
   } else if (model.kind === 'product') {
     setText('.ptitle', model.topLeft);
+    setText('.center', model.center);
     setText('.bl', model.bottomLeft);
     setText('.br', model.bottomRight);
   } else {

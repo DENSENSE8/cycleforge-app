@@ -1,5 +1,3 @@
-import { SHIPPED_FILTER_COOKIE } from '@/lib/shipping/shipped-feed-config';
-
 type ShippedTypeFilterPreference = 'all' | 'orders' | 'sku' | 'fba';
 type ShippedSearchFieldPreference =
   | 'all'
@@ -28,7 +26,6 @@ export function readShippedFilterPreference(): ShippedTypeFilterPreference | nul
 export function writeShippedFilterPreference(value: ShippedTypeFilterPreference): void {
   if (!canUseStorage()) return;
   window.localStorage.setItem(PREF_SHIPPED_FILTER, value);
-  document.cookie = `${SHIPPED_FILTER_COOKIE}=${encodeURIComponent(value)}; Path=/; Max-Age=31536000; SameSite=Lax`;
 }
 
 export function readShippedSearchFieldPreference(): ShippedSearchFieldPreference | null {

@@ -4,12 +4,12 @@ import { readFileSync } from 'node:fs';
 import { parseCsv } from '@/lib/tables/import/parse-csv';
 import {
   PO_PRESETS,
+  detectPoPreset,
   identifyColumns,
   normalizePoHeader,
   parsePoDate,
   parsePoMoneyCents,
   poRowToDeskRow,
-  suggestPoPlatform,
   withPoMapping,
 } from './po-columns';
 
@@ -124,7 +124,147 @@ test('value parsers: dates and money', () => {
   assert.equal(parsePoMoneyCents('abc'), null);
 });
 
-test('platform suggestion sees Goodwill in cells', () => {
-  assert.equal(suggestPoPlatform(['Store'], [{ Store: 'Goodwill of Orange County' }]), 'goodwill');
-  assert.equal(suggestPoPlatform(fixture.headers, fixture.rows), '');
+// GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE row, plus a condition column.
+const amazonFlatRow: Record<string, string> = {
+  'Order ID': '111-7654321-1234567',
+  'Order date': '2026-01-02',
+  'Return request date': '2026-01-05',
+  'Return request status': 'Approved',
+  'Amazon RMA ID': 'amzn1.rma.v1.xyz',
+  'Merchant RMA ID': '',
+  'Label type': 'AmazonPrePaidLabel',
+  'Label cost': '$7.25',
+  'Return carrier': 'UPS',
+  'Tracking ID': '1Z999AA10123456784',
+  ASIN: 'B0ABC12345',
+  'Merchant SKU': 'MSKU-1',
+  'Item Name': 'Widget Pro',
+  'Return quantity': '2',
+  'Return Reason': 'CR-DEFECTIVE',
+  'Order Amount': '$59.99',
+  'Order quantity': '2',
+  Condition: 'Used - Very Good',
+};
+
+const FBA_HEADERS = [
+  'return-date',
+  'order-id',
+  'sku',
+  'asin',
+  'fnsku',
+  'product-name',
+  'quantity',
+  'fulfillment-center-id',
+  'detailed-disposition',
+  'reason',
+  'status',
+  'license-plate-number',
+  'customer-comments',
+];
+
+function amazonCtx(row: Record<string, string>) {
+  const preset = PO_PRESETS.amazon_returns;
+  return { mapping: identifyColumns(Object.keys(row), [row], { preset }).mapping, preset, platform: '' };
+}
+
+test('preset detection: Goodwill words, a plain file, and each report header set', () => {
+  assert.equal(detectPoPreset(['Store'], [{ Store: 'Goodwill of Orange County' }]), 'goodwill');
+  assert.equal(detectPoPreset(fixture.headers, fixture.rows), 'generic');
+  assert.equal(detectPoPreset(Object.keys(amazonFlatRow), [amazonFlatRow]), 'amazon_returns');
+  const prime = ['Order-ID', 'Order-date', 'Return-request-date', 'Return-request-status', 'Amazon-RMA-ID', 'Tracking-ID', 'ASIN', 'Merchant-SKU', 'Item-Name', 'Return-quantity', 'Return-Reason'];
+  assert.equal(detectPoPreset(prime, []), 'amazon_returns');
+  assert.equal(detectPoPreset(FBA_HEADERS, []), 'amazon_fba_returns');
+  const ebay = ['Return ID', 'Order number', 'Item ID', 'Item title', 'Custom label', 'Quantity', 'Return reason', 'Buyer comments', 'Return opened'];
+  assert.equal(detectPoPreset(ebay, []), 'ebay_returns');
+});
+
+test('Amazon returns identify by header words only — buyer order money is never the unit cost', () => {
+  const id = identifyColumns(Object.keys(amazonFlatRow), [amazonFlatRow], { preset: PO_PRESETS.amazon_returns });
+  assert.equal(id.mapping.unit_cost, undefined);
+  assert.equal(id.mapping.line_total, undefined);
+  for (const header of ['Order Amount', 'Label cost', 'Order quantity']) {
+    assert.equal(id.columns.find((c) => c.header === header)?.field, null, `${header} stays unbound`);
+  }
+  assert.ok(id.columns.every((c) => c.reason == null || c.reason === 'preset' || c.reason === 'header'));
+  assert.equal(id.mapping.order_number, 'Order ID');
+  assert.equal(id.mapping.item_id, 'ASIN');
+  assert.equal(id.mapping.sku, 'Merchant SKU');
+  assert.equal(id.mapping.rma, 'Amazon RMA ID');
+  assert.equal(id.mapping.condition, 'Condition');
+  assert.deepEqual(id.missingRequired, []);
+});
+
+test('Amazon return row: line key, listing link, condition grade, catalog lookup', () => {
+  const { deskRow, problems } = poRowToDeskRow(amazonFlatRow, 0, amazonCtx(amazonFlatRow));
+  assert.deepEqual(problems, []);
+  assert.equal(deskRow?.receivingType, 'RETURN');
+  assert.equal(deskRow?.sourceType, 'amazon');
+  assert.equal(deskRow?.sourcePlatform, 'amazon');
+  assert.equal(deskRow?.orderId, '111-7654321-1234567');
+  assert.equal(deskRow?.lineItemId, 'amzn1.rma.v1.xyz:B0ABC12345');
+  assert.equal(deskRow?.listingUrl, 'https://www.amazon.com/dp/B0ABC12345');
+  assert.equal(deskRow?.quantity, 2);
+  assert.equal(deskRow?.unitCostCents, null);
+  assert.equal(deskRow?.trackingNumber, '1Z999AA10123456784');
+  assert.equal(deskRow?.carrierCode, 'UPS');
+  assert.equal(deskRow?.rmaId, 'amzn1.rma.v1.xyz');
+  assert.equal(deskRow?.returnReason, 'CR-DEFECTIVE');
+  assert.equal(deskRow?.returnRequestDate, '2026-01-05');
+  assert.equal(deskRow?.conditionGrade, 'USED_A');
+  assert.equal(deskRow?.notes, null, 'condition is a grade, not a note');
+  assert.deepEqual(deskRow?.catalogLookup, ['MSKU-1', 'B0ABC12345']);
+  assert.equal(deskRow?.skipReason, null);
+});
+
+test('a cancelled return request is skipped with a reason, not flagged', () => {
+  for (const status of ['Cancelled', 'Canceled']) {
+    const row = { ...amazonFlatRow, 'Return request status': status, 'Return quantity': 'lots' };
+    const { deskRow, problems } = poRowToDeskRow(row, 0, amazonCtx(row));
+    assert.deepEqual(problems, []);
+    assert.equal(deskRow?.skipReason, PO_PRESETS.amazon_returns.skip?.reason);
+    assert.ok(deskRow?.skipReason);
+  }
+});
+
+test('FBA return row: license plate is the line key; FBA facts carried', () => {
+  const row: Record<string, string> = {
+    'return-date': '2026-09-20T10:15:00+00:00',
+    'order-id': '114-1111111-2222222',
+    sku: 'FBA-SKU-1',
+    asin: 'B0FBA00001',
+    fnsku: 'X00FNSKU01',
+    'product-name': 'Trail light',
+    quantity: '1',
+    'fulfillment-center-id': 'PHX7',
+    'detailed-disposition': 'CUSTOMER_DAMAGED',
+    reason: 'DAMAGED_BY_CARRIER',
+    status: 'Unit returned to inventory',
+    'license-plate-number': 'LPNRR123456789',
+    'customer-comments': 'Arrived cracked',
+  };
+  const preset = PO_PRESETS.amazon_fba_returns;
+  const mapping = identifyColumns(FBA_HEADERS, [row], { preset }).mapping;
+  const { deskRow, problems } = poRowToDeskRow(row, 0, { mapping, preset, platform: '' });
+  assert.deepEqual(problems, []);
+  assert.equal(deskRow?.receivingType, 'RETURN');
+  assert.equal(deskRow?.lineItemId, 'LPNRR123456789');
+  assert.equal(deskRow?.licensePlateNumber, 'LPNRR123456789');
+  assert.equal(deskRow?.fnsku, 'X00FNSKU01');
+  assert.equal(deskRow?.disposition, 'CUSTOMER_DAMAGED');
+  assert.equal(deskRow?.customerComment, 'Arrived cracked');
+  assert.equal(deskRow?.returnRequestDate, '2026-09-20');
+  assert.equal(deskRow?.returnReason, 'DAMAGED_BY_CARRIER');
+  assert.equal(deskRow?.trackingNumber, null);
+  assert.equal(deskRow?.listingUrl, 'https://www.amazon.com/dp/B0FBA00001');
+});
+
+test('listing serials split on comma, semicolon and pipe', () => {
+  const ctx = {
+    mapping: { order_number: 'o', item_title: 't', quantity: 'q', listing_serials: 's' },
+    preset: PO_PRESETS.generic,
+    platform: 'manual',
+  };
+  const { deskRow, problems } = poRowToDeskRow({ o: 'PO-1', t: 'Speaker pair', q: '4', s: 'SN1, SN2;SN3 | SN4,SN1' }, 0, ctx);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(deskRow?.listingSerials, ['SN1', 'SN2', 'SN3', 'SN4']);
 });

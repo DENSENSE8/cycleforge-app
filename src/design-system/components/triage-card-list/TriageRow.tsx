@@ -48,6 +48,11 @@
  *   LAST cell. It shows on row hover / focus / touch and while its own
  *   popover is open (`aria-expanded`), so the verb runs without opening the
  *   record. A list whose `next` is always null drops the empty next column.
+ * - `expansion` (family `expandable`): the record's lines folded under the
+ *   row — a chevron after the check, → / ← and the chevron toggle the face's
+ *   `expanded`; the lines paint above the open target, so their controls act.
+ * - `strip`: a compact cell between identity and title that never discloses
+ *   away (Orders' slot strip) — for a composition the row must always read.
  * - Keys: the whole row is the open target (Enter opens, focus lands back on
  *   it when Esc closes the record); the checkbox is the only check; Space
  *   folds `quickLook` when the family passes one.
@@ -55,7 +60,7 @@
 
 import { memo, useRef, type MouseEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight } from '@/components/Icons';
+import { ArrowRight, ChevronRight } from '@/components/Icons';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
@@ -155,9 +160,19 @@ export interface TriageRowFace {
   identityWidth?: TriageRowFactWidth;
   /** The handle is a copyable identifier: painted as a CopyChip (face `display` ?? `identityDisplay` ?? `identity`). */
   identityCopy?: TriageRowCopy;
+  /**
+   * A compact, ALWAYS-visible cell between the identity and the title — the
+   * record's composition at a glance (Labels & docs › Orders: the slot strip).
+   * Never disclosed away by width, unlike `facts`.
+   */
+  strip?: ReactNode;
   title: string;
+  /** A glyph naming the record's kind, painted before the title (Bulk: paperwork vs shipping label). */
+  titleIcon?: ReactNode;
+  /** The title's native tooltip when it should say more than the title (the facts a narrow row hides); default `title`. */
+  titleTip?: string;
   /** Present = the family shows photos (a thumb holds the column even with no `url`). */
-  photo?: { url: string | null };
+  photo?: { url: string | null; fullUrl?: string | null };
   /** 2–4, most needed first. */
   facts: readonly TriageRowFact[];
   /** Keep every fact visible and make the row wide enough for shared horizontal scrolling. */
@@ -183,6 +198,12 @@ export interface TriageRowProps<Row, Model extends TriageCardModelBase<Row>> ext
   quickLook?: ReactNode;
   /** The record's one direct verb at the right edge, revealed on hover / focus (see the API note). */
   trailingAction?: ReactNode;
+  /**
+   * The record's lines folded under the row (a family with `expandable`):
+   * present = a chevron column after the check; the chevron, → and ← toggle
+   * the face's `expanded`. Painted only while expanded, above the open target.
+   */
+  expansion?: ReactNode;
 }
 
 function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
@@ -190,15 +211,18 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
   checked,
   open,
   peekOpen,
+  expanded,
   enterIndex,
   onOpen,
   onToggleCheck,
   onTogglePeek,
+  onToggleExpand,
   face,
   testIdPrefix,
   quickLook,
   rowAttrs,
   trailingAction,
+  expansion,
 }: TriageRowProps<Row, Model>) {
   const openRef = useRef<HTMLButtonElement>(null);
   const id = (part: string) => `${testIdPrefix}-${part}`;
@@ -272,6 +296,21 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
             }}
           />
         </span>
+        {expansion !== undefined ? (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Fold the lines' : 'Unfold the lines'}
+            data-testid={id('expand')}
+            onClick={() => onToggleExpand(model.key)}
+            className={cn(
+              'pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-md text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
+              focusRing('control', 'neutral'),
+            )}
+          >
+            <ChevronRight aria-hidden className={cn('size-3.5 transition-transform duration-150', expanded && 'rotate-90')} />
+          </button>
+        ) : null}
         {face.state != null ? (
           <span className="flex w-28 shrink-0" data-testid={id('state')}>
             <LifecycleCode state={face.state} srLabel={null} className="max-w-full">
@@ -282,6 +321,7 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
         {face.photo ? (
           <PhotoHoverPeek
             src={face.photo.url}
+            fullSrc={face.photo.fullUrl}
             alt={face.title}
             className={cn('block size-8 shrink-0 overflow-hidden rounded-md ring-1 ring-inset ring-mode-rule', face.photo.url ? 'bg-surface-card' : 'bg-mode-well')}
           >
@@ -325,8 +365,17 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
             (face.identityDisplay ?? face.identity)
           )}
         </span>
-        <span className={cn(denseRecordTitle, 'truncate text-mode-ink', face.wide ? 'w-80 shrink-0' : 'min-w-32 flex-1')} title={face.title}>
-          {face.title}
+        {face.strip ? (
+          <span className="flex shrink-0 items-center" data-testid={id('strip')}>
+            {face.strip}
+          </span>
+        ) : null}
+        <span
+          className={cn(denseRecordTitle, 'flex items-center gap-1.5 text-mode-ink', face.wide ? 'w-80 shrink-0' : 'min-w-32 flex-1')}
+          title={face.titleTip ?? face.title}
+        >
+          {face.titleIcon ? <span aria-hidden className="flex shrink-0 text-mode-muted">{face.titleIcon}</span> : null}
+          <span className="min-w-0 truncate">{face.title}</span>
         </span>
         {face.facts.slice(0, face.wide ? 8 : 4).map((fact, i) => (
           // A fact's full text (a note, a status's why) shows in the house tooltip, never the native
@@ -415,6 +464,12 @@ function TriageRowImpl<Row, Model extends TriageCardModelBase<Row>>({
           ) : null}
         </span>
       </div>
+      {expansion !== undefined && expanded ? (
+        // Under the identity: past the check (pl-5 + w-7) and chevron (size-6) columns.
+        <div data-testid={id('lines')} className="relative z-10 min-w-0 pb-2 pl-20 pr-3">
+          {expansion}
+        </div>
+      ) : null}
       {quickLook ? <AnimatePresence initial={false}>{peekOpen ? quickLook : null}</AnimatePresence> : null}
     </motion.article>
   );

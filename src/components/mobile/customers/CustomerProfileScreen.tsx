@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Mail, MapPin, Package, Phone, User } from '@/components/Icons';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { MobileDataListRow } from '@/design-system/components/MobileDataListRow';
 import {
   MobileRecordFact,
@@ -99,9 +98,7 @@ export function CustomerProfileScreen({ customerId }: { customerId: number }) {
         lead={<span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-text-muted"><User className="size-4" /></span>}
       />
 
-      {loading && !record ? (
-        <UniversalLoader isLoading label="Loading customer" className="min-h-64" />
-      ) : failed && !record ? (
+      {loading && !record ? null : failed && !record ? (
         <p role="alert" className="px-mode-page py-12 text-center text-role-data font-semibold text-text-danger">
           Couldn&apos;t load this customer.
         </p>

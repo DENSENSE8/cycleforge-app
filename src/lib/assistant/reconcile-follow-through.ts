@@ -1,34 +1,27 @@
 /**
- * The reconcile follow-up chips that ACT — "Import the missing ones as
- * purchase orders" / "Add the missing ones as new orders" (`follow-ups.ts`).
+ * The reconcile follow-up chip that ACTS — "Add the missing ones as new
+ * orders" (`follow-ups.ts`).
  *
  * The chip's text carries no numbers, and the model must not retype them: the
  * refs come server-side from this thread's last `reconcile_refs` table as it
  * was persisted (its "Not in system" rows), and the route runs the draft tool
- * itself — the PO card prefilled with the tracking numbers, or the order card
- * prefilled with the order number — with no model round. The card's own
- * "Still needed" asks for the rest.
+ * itself — the order card prefilled with the order number — with no model
+ * round. The card's own "Still needed" asks for the rest.
  */
 
 import type { OrgId } from '@/lib/tenancy/constants';
-import { trackingEntry } from '@/lib/inbound/po-import-draft';
 import { detectCarrier, extractCanonicalTracking } from '@/lib/tracking-format';
 import { REF_GROUP_LABELS } from '@/lib/assistant/tools/reconcile-refs-tool';
-import { RECONCILE_ADD_ORDERS_CHIP, RECONCILE_IMPORT_PO_CHIP } from './follow-ups';
+import { RECONCILE_ADD_ORDERS_CHIP } from './follow-ups';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { AssistantToolRunResult } from '@/lib/assistant/tools/types';
 import type { SessionArtifact } from './ui-artifacts';
 
-export type ReconcileFollowThrough = 'po' | 'orders';
-
 const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-/** Which chip this message is (typed or clicked), or null. */
-export function reconcileFollowThroughKind(message: string): ReconcileFollowThrough | null {
-  const said = squash(message);
-  if (said === squash(RECONCILE_IMPORT_PO_CHIP)) return 'po';
-  if (said === squash(RECONCILE_ADD_ORDERS_CHIP)) return 'orders';
-  return null;
+/** Whether this message is the chip (typed or clicked). */
+export function isReconcileFollowThrough(message: string): boolean {
+  return squash(message) === squash(RECONCILE_ADD_ORDERS_CHIP);
 }
 
 /** The "Not in system" refs of this thread's newest reconcile table, in paste order. */
@@ -59,58 +52,36 @@ export async function loadReconcileMissingRefs(query: Query, orgId: OrgId, sessi
 }
 
 export interface FollowThroughPlan {
-  tool: 'draft_po_import' | 'draft_manual_order';
+  tool: 'draft_manual_order';
   input: Record<string, unknown>;
   /** The refs the draft carries. */
   used: string[];
-  /** Missing refs this draft does not carry (another order, not a tracking number). */
+  /** Missing refs this draft does not carry (the next orders). */
   rest: string[];
 }
 
 /**
- * The draft each chip opens. A PO carries the refs a carrier recognizes as
- * tracking (all number-shaped refs when none is); an order carries ONE order
- * number — the first ref that is not a tracking number (else the first) — and
- * names the rest for the next order.
+ * The draft the chip opens: ONE order number — the first ref that is not a
+ * tracking number (else the first) — naming the rest for the next order.
  */
-export function planFollowThrough(kind: ReconcileFollowThrough, refs: readonly string[]): FollowThroughPlan | null {
-  const isTracking = (ref: string) => detectCarrier(extractCanonicalTracking(ref)) !== 'Unknown';
-  if (kind === 'po') {
-    const carrierKnown = refs.filter(isTracking);
-    const used = (carrierKnown.length ? carrierKnown : refs.filter((r) => trackingEntry(r) != null)).slice(0, 10);
-    if (used.length === 0) return null;
-    return {
-      tool: 'draft_po_import',
-      input: { newPo: true, trackingNumbers: used },
-      used,
-      rest: refs.filter((r) => !used.includes(r)),
-    };
-  }
-  const orderLike = refs.filter((r) => !isTracking(r));
-  const first = (orderLike.length ? orderLike : refs)[0];
+export function planFollowThrough(refs: readonly string[]): FollowThroughPlan | null {
+  const orderLike = refs.filter((r) => detectCarrier(extractCanonicalTracking(r)) === 'Unknown');
+  const pool = orderLike.length ? orderLike : refs;
+  const first = pool[0];
   if (!first) return null;
   return {
     tool: 'draft_manual_order',
     input: { newOrder: true, orderNumber: first },
     used: [first],
-    rest: (orderLike.length ? orderLike : refs).filter((r) => r !== first),
+    rest: pool.filter((r) => r !== first),
   };
 }
 
 /** The operator's sentence for the opened draft, from its card's own "Still needed". */
 export function followThroughAnswer(plan: FollowThroughPlan, missing: readonly string[]): string {
-  const n = plan.used.length;
-  const head =
-    plan.tool === 'draft_po_import'
-      ? `Opened a purchase order draft with the ${n === 1 ? 'missing tracking number' : `${n} missing tracking numbers`} (${plan.used.join(', ')}).`
-      : `Opened an order draft for ${plan.used[0]}.`;
-  const rest = plan.rest.length
-    ? plan.tool === 'draft_po_import'
-      ? ` Not added (not tracking numbers): ${plan.rest.join(', ')}.`
-      : ` Next after this one: ${plan.rest.join(', ')}.`
-    : '';
+  const rest = plan.rest.length ? ` Next after this one: ${plan.rest.join(', ')}.` : '';
   const needs = missing.length ? ` Still needed: ${missing.join(', ')}.` : '';
-  return `${head}${rest}${needs}`;
+  return `Opened an order draft for ${plan.used[0]}.${rest}${needs}`;
 }
 
 export interface FollowThroughTurn {
@@ -125,18 +96,16 @@ export interface FollowThroughTurn {
  * missing refs (the model answers the message as usual).
  */
 export async function runReconcileFollowThrough(
-  kind: ReconcileFollowThrough,
   orgId: OrgId,
   sessionId: string,
   run: (tool: string, input: Record<string, unknown>) => Promise<AssistantToolRunResult>,
   query: Query = async (o, text, params) => ({ rows: (await tenantQuery(o, text, [...params])).rows as Array<Record<string, unknown>> }),
 ): Promise<FollowThroughTurn | null> {
-  const plan = planFollowThrough(kind, await loadReconcileMissingRefs(query, orgId, sessionId));
+  const plan = planFollowThrough(await loadReconcileMissingRefs(query, orgId, sessionId));
   if (!plan) return null;
   const result = await run(plan.tool, plan.input);
   if (!result.ok) return { tool: plan.tool, input: plan.input, result, text: `Could not open the draft — ${result.error}` };
   const artifact = (result.data as { artifact?: SessionArtifact } | null)?.artifact;
-  const missing =
-    artifact?.kind === 'po_draft' ? artifact.missing.map((m) => m.label) : artifact?.kind === 'order_draft' ? artifact.missing : [];
+  const missing = artifact?.kind === 'order_draft' ? artifact.missing : [];
   return { tool: plan.tool, input: plan.input, result, text: followThroughAnswer(plan, missing) };
 }

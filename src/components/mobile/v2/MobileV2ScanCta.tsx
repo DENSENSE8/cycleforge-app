@@ -2,10 +2,11 @@
 
 /** The mobile SCAN control — one host-owned CTA, pinned top-right on every mobile page that shows {@link MobileTopBar}. */
 
-import { useCallback } from 'react';
+import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ScanBarcode } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { WAREHOUSE_PATHS } from '@/lib/nav/route-tree';
 import { cn } from '@/utils/_cn';
 import { MOBILE_BAR_CELL_CLASS } from './MobileV2ActionSlot';
 
@@ -38,20 +39,24 @@ export function MobileV2ScanCta({
   const router = useRouter();
   const pathname = usePathname();
 
-  const onClick = useCallback(() => {
-    const returnToAllocate = pathname === '/m/orders' || pathname === '/m/work';
-    const defaultDestination = returnToAllocate
+  const target =
+    destination ??
+    (pathname === '/m/orders' || pathname === '/m/work'
       ? `${MOBILE_SCAN_PATH}?returnTo=/m/orders`
-      : pathname === '/m/stock'
-        ? `${MOBILE_SCAN_PATH}?intent=location&returnTo=/m/stock`
-        : MOBILE_SCAN_PATH;
-    router.push(destination ?? defaultDestination);
-  }, [destination, pathname, router]);
+      : pathname === WAREHOUSE_PATHS.stock
+        ? `${MOBILE_SCAN_PATH}?intent=location&returnTo=${WAREHOUSE_PATHS.stock}`
+        : MOBILE_SCAN_PATH);
+
+  // Warm the scan route while the operator is still on this page, so the tap
+  // only swaps the client tree and the camera comes up at once.
+  useEffect(() => {
+    router.prefetch(target);
+  }, [router, target]);
 
   return (
     <IconButton
       size="touch"
-      onClick={onClick}
+      onClick={() => router.push(target)}
       // `ScanBarcode`, not `Barcode` (operator 2026-09-15). A bare barcode is
       // an identity mark, not an instruction to activate the camera.
       icon={<ScanBarcode className="h-5 w-5" />}

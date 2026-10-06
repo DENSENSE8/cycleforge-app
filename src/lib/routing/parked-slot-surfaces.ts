@@ -5,7 +5,7 @@
  * landing on the nearest retained surface instead of a 404.
  */
 
-import { SEARCH_PATHS } from '@/lib/nav/route-tree';
+import { RECEIVING_PATHS, SEARCH_PATHS } from '@/lib/nav/route-tree';
 
 const PARKED_INVENTORY_PATHS = new Set([
   '/inventory',
@@ -144,4 +144,18 @@ export function parkedSlotSurfaceDestination(
   if (pathname === '/m/pack') return '/m/pick';
 
   return null;
+}
+
+/**
+ * `/incoming?lane=purchases` (Deliveries › Purchases, 2026-10-04/05) → `/purchasing`,
+ * Purchasing's own Receiving-mode route (owner 2026-10-05), carrying every other
+ * param (its window, facets, sort, Find) and dropping `lane`. `null` for any other
+ * `/incoming` URL. Issued as a PERMANENT redirect by `src/app/incoming/page.tsx`
+ * (`permanentRedirect`, 308) — the edge table above answers 307.
+ */
+export function legacyIncomingPurchasesDestination(searchParams: URLSearchParams): string | null {
+  if (String(searchParams.get('lane') ?? '').trim().toLowerCase() !== 'purchases') return null;
+  const next = new URLSearchParams(searchParams);
+  next.delete('lane');
+  return withParams(RECEIVING_PATHS.purchasing, next);
 }

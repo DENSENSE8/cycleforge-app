@@ -387,6 +387,7 @@ export const ROUTE_BUILDERS: Readonly<Record<string, string>> = {
   'fnsku-labels': 'PRINT_STATION_PATHS.fnskuLabels',
   'print-stations': 'PRINT_STATION_PATHS.stations',
   'print-station-device': 'printStationDeviceHref({ code })',
+  purchasing: 'RECEIVING_PATHS.purchasing',
 };
 
 const BUILDER_IMPORT = "import { … } from '@/lib/nav/route-tree'";

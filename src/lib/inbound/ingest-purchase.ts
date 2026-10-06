@@ -34,6 +34,12 @@ interface IngestPurchaseInput {
   sku?: string | null;
   itemName?: string | null;
   quantityExpected?: number;
+  /**
+   * The grade the item was BOUGHT at — pre-selects unbox's grade picker
+   * (`receiving_line_testing.condition_grade`). Never stamps
+   * `condition_graded_at`: grading stays an unbox act. Omitted → BRAND_NEW on
+   * birth, and an existing line keeps its grade.
+   */
   conditionGrade?: string;
   /**
    * Optional resolved sku_catalog.id — stamped on INSERT and on existing-row
@@ -331,6 +337,18 @@ export async function ingestPurchase(
           [receivingLineId, input.sku?.trim() || null, input.itemName?.trim() || null, skuCatalogId, listingUrl, orgId],
         );
       }
+    }
+
+    // A re-save carrying the bought-as grade re-seeds the picker until unbox grades the line.
+    if (!created && input.conditionGrade != null) {
+      await client.query(
+        `UPDATE receiving_line_testing
+            SET condition_grade = $2::condition_grade_enum, updated_at = NOW()
+          WHERE receiving_line_id = $1 AND organization_id = $3::uuid
+            AND condition_graded_at IS NULL
+            AND condition_grade IS DISTINCT FROM $2::condition_grade_enum`,
+        [receivingLineId, conditionGrade, orgId],
+      );
     }
 
     // Primary purchase-identity link + spine-cache dual-write + marketplace facts,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchProductsByEcwidCategory, normalizeIdentifier } from '@/lib/product-manuals';
+import { fetchProductsByEcwidCategory } from '@/lib/product-manuals';
+import { normalizeIdentifier } from '@/lib/manuals/identifier-key';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
 import { withAuth } from '@/lib/auth/withAuth';

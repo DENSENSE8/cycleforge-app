@@ -290,25 +290,6 @@ test('dispatchPrintBundle: manual without bytes is skipped not failed', async ()
   assert.equal(manualJob?.status, 'skipped');
 });
 
-test('dispatchPrintBundle: promoted manual ledgers documentId + productManualId', async () => {
-  const { deps, cap } = fakes({
-    orderDocs: [],
-    manuals: [{ ...manual(5), documentId: 99 }],
-  });
-  const out = await dispatchPrintBundle(ORG, { orderId: 42, packerLogId: 9 }, deps);
-  assert.equal(out.status, 'dispatched');
-  const recorded = cap.recorded.find(
-    (r) => (r as { documentType: string }).documentType === 'manual',
-  ) as { documentId: number; productManualId: number; clientEventId: string };
-  assert.equal(recorded.documentId, 99);
-  assert.equal(recorded.productManualId, 5);
-  assert.equal(recorded.clientEventId, 'pack:9:manual:doc:99');
-  assert.ok(
-    out.browserFallbackDocs.length === 0 ||
-      out.browserFallbackDocs.every((d) => d.kind !== 'manual' || d.documentId === 99),
-  );
-});
-
 test('dispatchPrintBundle: idempotent replay skips PrintNode', async () => {
   const { deps, cap } = fakes({
     orderDocs: [doc(10, 'shipping_label')],

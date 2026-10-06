@@ -10,9 +10,9 @@ import {
 } from '@/lib/receiving/mobile-feed-query-key';
 import { arrivalHistoryEntries } from './arrival-station-tape';
 
-export function useArrivalHistory() {
+/** `enabled: false` reads nothing until the operator asks (the scan page's "Recent scans"). */
+export function useArrivalHistory({ enabled }: { enabled: boolean }) {
   const query = useQuery({
-    // The key the `/m/triage` server seed dehydrates into, to the character.
     queryKey: mobileFeedQueryKey('triage'),
     queryFn: async (): Promise<ReceivingLineRow[]> => {
       const res = await fetch(`/api/receiving-lines?${mobileFeedParams('triage').toString()}`);
@@ -20,15 +20,18 @@ export function useArrivalHistory() {
       const json = (await res.json()) as { receiving_lines?: ReceivingLineRow[] };
       return Array.isArray(json.receiving_lines) ? json.receiving_lines : [];
     },
-    // The seed is a starting point, not a live feed: once the operator is
-    // scanning, THIS session is the truth and a refetch would fight it.
+    // A starting point, not a live feed: once the operator is scanning, THIS
+    // session is the truth and a refetch would fight it.
     staleTime: 60_000,
     refetchOnWindowFocus: false,
+    enabled,
   });
 
   return {
     history: query.data ? arrivalHistoryEntries(query.data) : [],
-    /** True when the seed could not be read — NOT the same as an empty door. */
+    /** Asked for and still on its first read. */
+    loading: query.isLoading,
+    /** True when the history could not be read — NOT the same as an empty door. */
     isError: query.isError,
     retry: query.refetch,
   };

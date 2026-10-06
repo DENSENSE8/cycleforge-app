@@ -24,7 +24,6 @@ import { Button } from '@/design-system/primitives';
 import { describePutawaySuggestion } from '@/lib/receiving/suggested-putaway-location';
 import { StationNewLocationForm } from './StationNewLocationForm';
 import type { StationLocationPlacementPort } from './station-location-port';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 /** What committing a row does. `new` swaps the list for the create form. */
 type LocationsMode = 'place' | 'print' | 'new';
@@ -214,13 +213,7 @@ export function StationLocationsDisplay({
                     </div>
                   }
                 />
-              ) : (
-                <UniversalLoader
-                  isLoading
-                  label="Finding where this goes"
-                  className="min-h-16"
-                />
-              )}
+              ) : null}
             </div>
           ) : null}
 
@@ -236,13 +229,7 @@ export function StationLocationsDisplay({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto py-2">
-            {locationsLoading ? (
-              <UniversalLoader
-                isLoading
-                label="Loading locations"
-                className="min-h-28"
-              />
-            ) : rows.length === 0 ? (
+            {locationsLoading ? null : rows.length === 0 ? (
               // Two empty answers, never one: a filter that excluded everything
               // is not the same as a warehouse with no shelves.
               <div

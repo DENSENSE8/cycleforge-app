@@ -5,7 +5,8 @@
  * (or "N selected") · status chips (or, with anything checked, the
  * selection's verbs) · pager · per-page · density (Compact · Full switch, where
  * the host offers it) · view switch (In place · Split) · fullscreen (always
- * last). No Find: the page has ONE field — the sidebar's, or
+ * last — list focus mode where the host offers it, else the stage's split ⤢).
+ * No Find: the page has ONE field — the sidebar's, or
  * the global header's while the sidebar is closed (owner 2026-09-28). Law 5:
  * the verbs live ONLY here, the same list in the same order at 1 or N checked.
  * Mobile first: under @3xl the chips / verbs take their own full-width row and
@@ -18,6 +19,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { DeskRecordViewSwitch } from '@/design-system/components/DeskRecordViewSwitch';
 import { DeskFullscreenToggle } from '@/design-system/components/DeskFullscreenToggle';
+import { ListFocusToggle } from '@/design-system/components/ListFocusToggle';
 import { SegmentedGlyphSwitch, type SegmentedGlyphOption } from '@/design-system/components/SegmentedGlyphSwitch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -161,6 +163,7 @@ export function TriageSelectBar({
   viewControls = true,
   summaryInline = false,
   densityControl,
+  focusToggle = false,
 }: {
   /** What the list holds ("order" / "orders") — aria labels. */
   noun: { one: string; many: string };
@@ -188,6 +191,11 @@ export function TriageSelectBar({
   viewControls?: boolean;
   /** The Compact / Full switch — painted before the fullscreen toggle when the host offers the choice. */
   densityControl?: TriageDensityControl;
+  /**
+   * List focus mode (`ListFocusToggle`) takes the bar's last,
+   * top-right-most slot in place of the stage's split ⤢ — one ⤢ per bar.
+   */
+  focusToggle?: boolean;
   /**
    * Keep the chips on the bar's one line at every width — between the count
    * and the pager, scrolling sideways — instead of wrapping under it below
@@ -340,7 +348,11 @@ export function TriageSelectBar({
               {/* How a record opens — In place or Split — seen and switched before one is open. */}
               {viewControls ? <DeskRecordViewSwitch /> : null}
               {/* ⤢ always the bar's last, top-right-most control (owner 2026-09-27). */}
-              {viewControls ? <DeskFullscreenToggle /> : null}
+              {focusToggle ? (
+                <ListFocusToggle size="md" radius="control" />
+              ) : viewControls ? (
+                <DeskFullscreenToggle />
+              ) : null}
             </>
           )}
         </span>

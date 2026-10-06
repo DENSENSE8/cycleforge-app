@@ -11,51 +11,6 @@ test('ingestion stages before parsing and persists the resolver result', async (
   });
   assert.equal(result.ingestion.state, 'MATCHED'); assert.equal(calls.indexOf('store') < calls.findIndex((call) => call.includes("state='MATCHED'")), true);
 });
-test('bulk parses printable evidence but never resolves an order', async () => {
-  let resolved = false;
-  const tracking = '9400100000000000000004';
-  const result = await createLabelIngestion({
-    organizationId: org,
-    actorStaffId: 2,
-    clientEventId: '00000000-0000-4000-8000-000000000009',
-    observedAt: '2026-10-04T00:00:00.000Z',
-    fileBasename: 'bulk-label.pdf',
-    bytes: Buffer.from('%PDF-bulk'),
-    matchOrder: false,
-  }, {
-    query: async () => ({ rows: [] }),
-    transaction: async (_org, fn) => fn({ query: async (sql: string) => ({
-      rows: [sql.includes("state='QUARANTINED'")
-        ? row('QUARANTINED', {
-            parser_version: 'v2',
-            tracking_number_raw: tracking,
-            tracking_number_normalized: tracking,
-            staged_object_key: 'label-ingestions/o/bulk.pdf',
-            quarantine_reason_code: 'ORDER_NOT_FOUND',
-          })
-        : row('RECEIVED')],
-    }) } as never),
-    store: { put: async () => {}, get: async () => Buffer.from('%PDF-bulk') },
-    parse: async () => ({
-      parserVersion: 'v2',
-      cycleforgeReference: null,
-      marketplaceOrderId: 'CF-TEST-PH-000002',
-      accountSource: 'Phone',
-      trackingNumberRaw: tracking,
-      trackingNumberNormalized: tracking,
-      carrier: 'USPS',
-      multiPackageEvidence: false,
-    }),
-    resolve: async () => {
-      resolved = true;
-      throw new Error('bulk must not resolve an order');
-    },
-  });
-  assert.equal(result.ingestion.state, 'QUARANTINED');
-  assert.equal(result.ingestion.trackingNumberNormalized, tracking);
-  assert.equal(result.ingestion.matchedOrderId, null);
-  assert.equal(resolved, false);
-});
 test('a paired label hands its tracking to every row of its order; a failed attach leaves the pairing standing', async () => {
   const attached: unknown[] = [];
   const deps = (attach: (input: unknown) => Promise<void>) => ({

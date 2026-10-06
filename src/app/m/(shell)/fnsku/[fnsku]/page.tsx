@@ -13,6 +13,7 @@ import type { FnskuRecord } from '@/components/mobile/fnsku/useFnskuRecord';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { DetailHubScreen } from '@/design-system/components/DetailHubScreen';
 import { useStaffPrintBridgeClient } from '@/hooks/useStaffPrintBridgeClient';
+import { fnskuConditionMissing, fnskuConditionRequiredMessage } from '@/lib/print-station/fnsku';
 import { toast } from '@/lib/toast';
 
 type FnskuVerb = 'reprint' | 'scan';
@@ -30,7 +31,11 @@ function FnskuHubInner() {
   const printer = bridge.target;
   const printerState = printer ? printStationState(printer, 'label', bridge.now) : null;
 
-  const reprint = async (fnsku: string) => {
+  const reprint = async (fnsku: string, condition: string | null) => {
+    if (fnskuConditionMissing(condition)) {
+      toast.error(fnskuConditionRequiredMessage(fnsku));
+      return;
+    }
     if (printerState !== 'Ready') {
       setStationOpen(true);
       return;
@@ -83,13 +88,13 @@ function FnskuHubInner() {
               label: sending ? 'Sending…' : copies > 1 ? `Reprint ${labels}` : 'Reprint label',
               icon: <Printer />,
               primary: true,
-              disabled: sending,
+              disabled: sending || fnskuConditionMissing(r.condition),
             },
             { id: 'scan', label: 'Scan next', icon: <ScanBarcode /> },
           ]}
           onVerb={(verb) => {
             if (verb === 'scan') router.push('/m/scan');
-            else void reprint(r.fnsku);
+            else void reprint(r.fnsku, r.condition);
           }}
         />
       )}

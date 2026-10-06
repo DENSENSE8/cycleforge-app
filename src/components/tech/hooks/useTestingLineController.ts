@@ -186,7 +186,7 @@ export function useTestingLineController(
       next: TestingVerdict,
       /** The fault being claimed. */
       failureModeId: number | null,
-    ) => {
+    ): Promise<boolean> => {
       const priorStatus = serial.current_status;
       const optimisticStatus = verdictToUnitStatus(next);
       const receivingId = row.receiving_id;
@@ -224,7 +224,7 @@ export function useTestingLineController(
           toast.error(data?.error || `Verdict save failed (${res.status})`);
           applyStatus(priorStatus); // roll back the optimistic verdict
           if (next === 'TESTING_FAILED' && lineId === row.id) setClaimOpen(false);
-          return;
+          return false;
         }
 
         // Name the fault on the unit.
@@ -265,10 +265,12 @@ export function useTestingLineController(
               typeof data.line.tested_count === 'number' ? data.line.tested_count : undefined,
           });
         }
+        return true;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Verdict request failed');
         applyStatus(priorStatus); // roll back the optimistic verdict
         if (next === 'TESTING_FAILED' && lineId === row.id) setClaimOpen(false);
+        return false;
       } finally {
         setIsMutating(false);
       }
@@ -715,30 +717,32 @@ export function useTestingLineController(
     }
   }, [row, activeSlot, findNextOpenSibling]);
 
+  /**
+   * Pass · Print Label — passes the active unit (unless it already passed) and
+   * prints its label in one go: the dock button, Enter, and the `p` key. A
+   * failed unit never prints; re-pass it from the verdict row first.
+   */
   const handlePrimary = useCallback(async () => {
     if (!activeSerial) {
       toast.info('Scan a serial for this slot before printing.');
       return;
     }
     const verdict = unitStatusToVerdict(activeSerial.current_status);
-    if (verdict !== 'PASS') {
-      toast.info(
-        verdict === 'TESTING_FAILED'
-          ? 'Use the Claim button to file a ticket. No label will print on Fail.'
-          : 'Mark this unit Pass before printing.',
-      );
+    if (verdict === 'TESTING_FAILED') {
+      toast.info('This unit failed testing — no label prints on Fail.');
       return;
     }
     setIsPrinting(true);
     try {
+      if (verdict !== 'PASS' && !(await handleSlotVerdict(row.id, activeSerial, 'PASS', null))) return;
       const ok = await issueAndPrintLabel();
       if (!ok) return;
-      toast.success('Label printed');
+      toast.success(verdict === 'PASS' ? 'Label printed' : 'Passed · label printed');
       await advanceAfterPrint();
     } finally {
       setIsPrinting(false);
     }
-  }, [activeSerial, issueAndPrintLabel, advanceAfterPrint]);
+  }, [activeSerial, row.id, handleSlotVerdict, issueAndPrintLabel, advanceAfterPrint]);
 
   const handleApplyAndPrint = useCallback(
     async (draft: TestingLabelDraft) => {

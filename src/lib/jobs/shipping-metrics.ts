@@ -1,6 +1,12 @@
 /** Phase G — observability for carrier tracking / receiving-delivered health. */
 import pool from '@/lib/db';
 import { getDeliveredUnscannedCount } from '@/lib/receiving/delivered-unscanned';
+import {
+  carrierSyncHealthSql,
+  summarizeCarrierSyncHealth,
+  type CarrierSyncHealth,
+  type CarrierSyncHealthRow,
+} from '@/lib/shipping/carrier-sync-health';
 
 interface CarrierThroughput {
   carrier: 'UPS' | 'USPS' | 'FEDEX';
@@ -11,7 +17,7 @@ interface CarrierThroughput {
   errorStuck: number;      // consecutive_error_count >= 5, non-terminal
 }
 
-interface ShippingTrackingMetrics {
+export interface ShippingTrackingMetrics {
   deliveredUnscanned: number;
   blockedTotal: number;
   uspsBlocked: number;
@@ -22,6 +28,8 @@ interface ShippingTrackingMetrics {
   openReceivingExceptions: number;
   unmatchedTracking: number; // receiving rows w/ tracking# but no shipment_id (90d)
   perCarrier: CarrierThroughput[];
+  /** Is each carrier being refreshed: last successful poll, failing open rows, credentials fault (cross-org). */
+  carrierSync: CarrierSyncHealth[];
 }
 
 interface MetricAlert {
@@ -35,6 +43,8 @@ interface MetricAlert {
 const DETECTION_VOLUME_FLOOR = Number(process.env.SHIPPING_DETECTION_VOLUME_FLOOR || 20);
 /** error-stuck backlog size that warrants a warning. */
 const ERROR_STUCK_WARN = Number(process.env.SHIPPING_ERROR_STUCK_WARN || 250);
+/** Hours without one successful poll of an enabled carrier with open shipments before it alerts. */
+const SYNC_STALE_HOURS = Number(process.env.SHIPPING_SYNC_STALE_HOURS || 6);
 
 const CARRIERS: Array<'UPS' | 'USPS' | 'FEDEX'> = ['UPS', 'USPS', 'FEDEX'];
 
@@ -86,6 +96,7 @@ export async function collectShippingTrackingMetrics(): Promise<ShippingTracking
   );
 
   const deliveredUnscanned = await getDeliveredUnscannedCount(pool);
+  const carrierSync = await pool.query<CarrierSyncHealthRow>(carrierSyncHealthSql(false));
   const s = stn.rows[0];
 
   return {
@@ -109,12 +120,37 @@ export async function collectShippingTrackingMetrics(): Promise<ShippingTracking
         errorStuck: r?.error_stuck ?? 0,
       };
     }),
+    carrierSync: summarizeCarrierSyncHealth(carrierSync.rows),
   };
 }
 
 /** G2 — derive alerts from a snapshot. Empty array = healthy. */
-export function detectMetricAlerts(m: ShippingTrackingMetrics): MetricAlert[] {
+export function detectMetricAlerts(m: ShippingTrackingMetrics, now: Date = new Date()): MetricAlert[] {
   const alerts: MetricAlert[] = [];
+
+  // Carrier sync: a missing credential polls nothing; a carrier with open
+  // shipments and no successful poll in SYNC_STALE_HOURS is silently stale.
+  for (const c of m.carrierSync) {
+    if (!c.enabled) continue;
+    if (c.configFault) {
+      alerts.push({
+        level: 'error',
+        code: 'CARRIER_CREDENTIALS_MISSING',
+        message: `${c.carrier}: credentials missing in this deployment — ${c.open} open shipment(s) are not being polled.`,
+        value: c.open,
+      });
+      continue;
+    }
+    const lastOkMs = c.lastOkAt ? Date.parse(c.lastOkAt) : null;
+    if (c.open > 0 && (lastOkMs === null || now.getTime() - lastOkMs > SYNC_STALE_HOURS * 3_600_000)) {
+      alerts.push({
+        level: 'error',
+        code: 'CARRIER_SYNC_STALE',
+        message: `${c.carrier}: no successful poll since ${c.lastOkAt ?? 'ever'}; ${c.failingOpen}/${c.open} open shipment(s) failing${c.lastError ? ` (${c.lastError.slice(0, 160)})` : ''}.`,
+        value: c.failingOpen,
+      });
+    }
+  }
 
   if (m.uspsBlocked > 0) {
     alerts.push({

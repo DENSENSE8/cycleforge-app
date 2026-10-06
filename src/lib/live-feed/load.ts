@@ -40,7 +40,14 @@ import { orderTrackingMatchKeys } from '@/lib/tracking-format';
 import { addDaysToDateKey, getCurrentPSTDateKey, WAREHOUSE_TIME_ZONE, warehouseDayUtcBounds } from '@/utils/date';
 import { loadPickupCutoffsForDay } from '@/lib/live-feed/pickup-cutoffs';
 import { LIVE_FEED_PAGE_SIZE, type LiveFeedFilters } from '@/lib/live-feed/route';
-import { PACKAGE_STAGES, PACKAGE_STALL_HOURS, type PackageStage } from '@/lib/live-feed/stages';
+import {
+  PACKAGE_STAGES,
+  PACKAGE_STALL_HOURS,
+  resolvePackageSorts,
+  type PackageSort,
+  type PackageSorts,
+  type PackageStage,
+} from '@/lib/live-feed/stages';
 import type {
   CarrierLoad,
   LiveFeedFacets,
@@ -204,18 +211,22 @@ const warehouseHourSql = (at: string) => `extract(hour FROM timezone('${WAREHOUS
 
 /**
  * Lane order over alias `a`, one ordering valid across stages so a single
- * window function pages every column: open = late, due today, then oldest in
- * stage; Scanned out = newest first.
+ * window function pages every column. Each column orders by its own choice
+ * (`PackageSorts`): `urgent` = late, due today, then oldest in stage; `latest`
+ * = newest arrival in the stage first (Scanned out: the latest scan-out, its
+ * `entered_at`); `oldest` = the reverse. The modes are a closed enum, written
+ * into the SQL as literals — never a caller's text.
  */
-function laneOrderSql(a: string): string {
-  return `CASE WHEN ${a}.stage = 'scanned_out' THEN 0
-                ELSE CASE ${URGENCY_SQL(`${a}.deadline_at`)} WHEN 'late' THEN 0 WHEN 'due_today' THEN 1 ELSE 2 END
-           END,
-           CASE WHEN ${a}.stage = 'scanned_out' THEN -extract(epoch FROM ${a}.scanned_out_at)
-                ELSE extract(epoch FROM ${a}.entered_at)
-           END NULLS LAST,
-           CASE WHEN ${a}.stage = 'scanned_out' THEN -${a}.order_row_id ELSE ${a}.order_row_id END`;
+function laneOrderSql(a: string, sorts: PackageSorts = DEFAULT_SORTS): string {
+  const byStage = (arm: (sort: PackageSort) => string) =>
+    `CASE ${a}.stage ${PACKAGE_STAGES.map((stage) => `WHEN '${stage}' THEN ${arm(sorts[stage])}`).join(' ')} END`;
+  const rank = `CASE ${URGENCY_SQL(`${a}.deadline_at`)} WHEN 'late' THEN 0 WHEN 'due_today' THEN 1 ELSE 2 END`;
+  return `${byStage((sort) => (sort === 'urgent' ? rank : '0'))},
+           ${byStage((sort) => `${sort === 'latest' ? '-' : ''}extract(epoch FROM ${a}.entered_at)`)} NULLS LAST,
+           ${byStage((sort) => `${sort === 'latest' ? '-' : ''}${a}.order_row_id`)}`;
 }
+
+const DEFAULT_SORTS = resolvePackageSorts(null);
 
 /** Today's members: everything in the building plus what left today (`m_all`), and yesterday's scan-outs (`m_prev`). */
 const MEMBERS_SQL = `
@@ -246,12 +257,12 @@ const FACETS_SELECT_SQL = `
 /**
  * The board in ONE statement, so the backlog is scanned once: every stage's
  * counts and its first `$5` cards (page size + 1 — the extra row says
- * "more"), the hourly pace, each carrier's load and the facet counts.
+ * "more") in that column's order, the hourly pace, each carrier's load and the facet counts.
  */
-const BOARD_SQL = `${MEMBERS_SQL},
+const boardSql = (sorts: PackageSorts) => `${MEMBERS_SQL},
   pg AS (
     SELECT * FROM (
-      SELECT m.*, row_number() OVER (PARTITION BY m.stage ORDER BY ${laneOrderSql('m')}) AS ord
+      SELECT m.*, row_number() OVER (PARTITION BY m.stage ORDER BY ${laneOrderSql('m', sorts)}) AS ord
         FROM m
     ) ranked
      WHERE ranked.ord <= ${LIMIT}::int
@@ -293,12 +304,12 @@ const BOARD_SQL = `${MEMBERS_SQL},
 const FACETS_SQL = `${MEMBERS_SQL}
   SELECT ${FACETS_SELECT_SQL}`;
 
-/** One page of `stage`: cards `$6 + 1 … $6 + $5`, in lane order, filters applied. */
-function lanePageSql(stage: PackageStage): string {
+/** One page of `stage`: cards `$6 + 1 … $6 + $5`, in the column's order, filters applied. */
+function lanePageSql(stage: PackageStage, sorts: PackageSorts): string {
   return `${MEMBERS_SQL},
   pg AS (
     SELECT * FROM (
-      SELECT m.*, row_number() OVER (ORDER BY ${laneOrderSql('m')}) AS ord FROM m WHERE m.stage = '${stage}'
+      SELECT m.*, row_number() OVER (ORDER BY ${laneOrderSql('m', sorts)}) AS ord FROM m WHERE m.stage = '${stage}'
     ) ranked
      WHERE ranked.ord > ${OFFSET}::int AND ranked.ord <= ${OFFSET}::int + ${LIMIT}::int
   )
@@ -558,7 +569,7 @@ export async function loadLiveFeedBoard(orgId: OrgId, filters: LiveFeedFilters |
   values[0] = orgId;
   const todayStart = values[1] as string;
   const [{ rows }, cutoffs] = await Promise.all([
-    tenantQueryOneTrip<BoardRow>(orgId, BOARD_SQL, values),
+    tenantQueryOneTrip<BoardRow>(orgId, boardSql(resolvePackageSorts(filters?.sorts ?? null)), values),
     loadPickupCutoffsForDay(orgId, getCurrentPSTDateKey()),
   ]);
   const board = rows[0]!;
@@ -618,7 +629,7 @@ export async function loadLiveFeedLane(
 ): Promise<PackageLanePage> {
   const values = binds(filters, { offset });
   values[0] = orgId;
-  const { rows } = await tenantQueryOneTrip<CardRow>(orgId, lanePageSql(stage), values);
+  const { rows } = await tenantQueryOneTrip<CardRow>(orgId, lanePageSql(stage, resolvePackageSorts(filters?.sorts ?? null)), values);
   return {
     stage,
     offset,

@@ -2,8 +2,10 @@
  * /api/receiving/inbound/orders — the one door for an inbound order.
  *
  *   POST   { draft, dryRun? }  dryRun → what landing it would do (never writes);
- *                              else → ingestInboundOrder (one transaction). A
- *                              RETURN also tags the return and files its claim.
+ *                              else → ingestInboundOrder (one transaction; a
+ *                              RETURN's facts land there too). A RETURN then
+ *                              receives lines whose carton is already unboxed
+ *                              and files its claim.
  *   DELETE ?id=<inbound_order_id> → deleteInboundOrder (only before anything
  *                              physical happened).
  */
@@ -19,7 +21,6 @@ import { readIdempotencyKey } from '@/lib/api-idempotency';
 import { getHelpdeskProvider, HELPDESK_CONNECT_HINT, HELPDESK_NOT_CONNECTED_MESSAGE } from '@/lib/integrations/helpdesk';
 import { fileReceivingClaim } from '@/lib/receiving/file-receiving-claim';
 import { poReceivingLink } from '@/lib/receiving-claim-photos';
-import { tagInboundAsReturn } from '@/lib/inbound/tag-inbound-return';
 import { receiveImportedLineIfCartonUnboxed } from '@/lib/inbound/receive-if-carton-unboxed';
 import {
   deleteInboundOrder,
@@ -84,14 +85,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   if (isReturn && !result.unchanged) {
     const d = draft as { returnReason?: string; rmaId?: string; lines?: Array<{ listingUrl?: string }> };
     const line = result.lines[0];
-    await tagInboundAsReturn(ctx.organizationId, {
-      receivingLineId: line.receivingLineId,
-      sourceType: result.identity.sourceType,
-      sourceOrderId: result.identity.externalOrderId,
-      returnReason: d.returnReason?.trim() || null,
-      rmaRef: d.rmaId?.trim() || null,
-    });
-    await receiveImportedLineIfCartonUnboxed(ctx.organizationId, line.receivingLineId);
+    for (const landed of result.lines) {
+      await receiveImportedLineIfCartonUnboxed(ctx.organizationId, landed.receivingLineId);
+    }
     if (result.receivingId != null && helpdesk) {
       const claim = await fileReceivingClaim(
         {

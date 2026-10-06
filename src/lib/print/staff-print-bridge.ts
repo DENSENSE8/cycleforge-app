@@ -4,6 +4,7 @@
  */
 
 import type { LocationSegments } from '@/lib/barcode-routing';
+import { qcLabelUsesInternalSerial } from '@/lib/labels/qc-label-row';
 import {
   MAX_PAPERWORK_PRINT_ORDERS,
   MAX_TOTE_PRINT_RUN,
@@ -100,16 +101,20 @@ const QC_UNIT_KEY_WIRE_RE = /^[A-Za-z0-9._-]{1,100}$/;
 
 /**
  * The key a `qc_label` job names a label by: its package uid when the label
- * names a package, else the unit's minted `unit_uid`, else its serial — or
- * null when none can ride the wire (the sender says so instead of sending a
- * job every station would drop).
+ * names a package, else the unit's minted `unit_uid`, else its OEM serial, else
+ * the `U-{serial_unit_id}` handle of a unit with no OEM serial — or null when
+ * none can ride the wire (the sender says so instead of sending a job every
+ * station would drop).
  */
 export function qcLabelWireKey(unit: {
   unit_uid: string | null;
   serial_number: string | null;
+  serial_unit_id?: number;
   package?: { uid: string } | null;
 }): string | null {
-  for (const raw of [unit.package?.uid, unit.unit_uid, unit.serial_number]) {
+  const serial = qcLabelUsesInternalSerial(unit.serial_number) ? null : unit.serial_number?.trim() || null;
+  const handle = !serial && unit.serial_unit_id != null ? `U-${unit.serial_unit_id}` : null;
+  for (const raw of [unit.package?.uid, unit.unit_uid, serial, handle]) {
     const key = (raw ?? '').trim();
     if (QC_UNIT_KEY_WIRE_RE.test(key)) return key;
   }
@@ -119,7 +124,8 @@ export function qcLabelWireKey(unit: {
 /**
  * One desk document a station prints, by id only: the station rebuilds its
  * same-origin bytes URL from the id and never trusts a sender's URL.
- * Label → `ingestionId`, packing slip → `documentId`, manual → `manualId`.
+ * Label → `ingestionId` (ledger label) or `documentId` (a shipping-label
+ * document with no ingestion), packing slip → `documentId`, manual → `manualId`.
  */
 export type StationDocumentRef = {
   kind: 'label' | 'packing_slip' | 'manual';
@@ -251,12 +257,6 @@ function positiveId(value: unknown): number | null {
   return n != null && Number.isInteger(n) && n > 0 ? n : null;
 }
 
-const STATION_DOCUMENT_ID_FIELD = {
-  label: 'ingestionId',
-  packing_slip: 'documentId',
-  manual: 'manualId',
-} as const satisfies Record<StationDocumentRef['kind'], keyof StationDocumentRef>;
-
 /** One station document ref, or null when its kind, id or title is junk. */
 function parseStationDocumentRef(raw: unknown, stock: StaffPrintRole): StationDocumentRef | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -272,11 +272,21 @@ function parseStationDocumentRef(raw: unknown, stock: StaffPrintRole): StationDo
     orderId = positiveId(rec.orderId);
     if (orderId == null) return null;
   }
-  const id = positiveId(rec[STATION_DOCUMENT_ID_FIELD[kind]]);
-  if (id == null) return null;
-  if (kind === 'label') return { kind, orderId, title, ingestionId: id };
-  if (kind === 'packing_slip') return { kind, orderId, title, documentId: id };
-  return { kind, orderId, title, manualId: id };
+  if (kind === 'label') {
+    // A ledger label prints by its ingestion (any other id is dropped); a label document with no ingestion by its document.
+    if (rec.ingestionId != null) {
+      const ingestionId = positiveId(rec.ingestionId);
+      return ingestionId == null ? null : { kind, orderId, title, ingestionId };
+    }
+    const documentId = positiveId(rec.documentId);
+    return documentId == null ? null : { kind, orderId, title, documentId };
+  }
+  if (kind === 'packing_slip') {
+    const documentId = positiveId(rec.documentId);
+    return documentId == null ? null : { kind, orderId, title, documentId };
+  }
+  const manualId = positiveId(rec.manualId);
+  return manualId == null ? null : { kind, orderId, title, manualId };
 }
 
 function parseStationDocuments(raw: unknown): StaffPrintDocumentsPayload | null {
@@ -291,7 +301,7 @@ function parseStationDocuments(raw: unknown): StaffPrintDocumentsPayload | null 
   for (const row of rec.items) {
     const item = parseStationDocumentRef(row, stock);
     if (!item) return null;
-    const key = `${item.kind}:${item.ingestionId ?? item.documentId ?? item.manualId}`;
+    const key = item.ingestionId != null ? `ingestion:${item.ingestionId}` : `${item.kind}:${item.documentId ?? item.manualId}`;
     if (seen.has(key)) continue;
     seen.add(key);
     items.push(item);

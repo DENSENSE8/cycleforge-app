@@ -1,12 +1,12 @@
 import 'server-only';
 
-import type { PoolClient } from 'pg';
+import type { PoolClient, QueryResultRow } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { normalizeIdentifier } from '@/lib/product-manuals';
+import { normalizeIdentifier } from '@/lib/manuals/identifier-key';
 import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { deactivateProductManual } from '@/lib/neon/product-manuals-queries';
-import { unlinkManualDocumentFromSku } from '@/lib/documents/manual-documents';
+import { productPaperworkMatchSql, skuKeySql } from '@/lib/manuals/paperwork-match-sql';
 import { productManualContentPath } from '@/lib/blob/vercel-blob-url';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
@@ -24,6 +24,8 @@ import {
   type PaperworkPairScope,
   type PaperworkSource,
 } from '@/lib/manuals/paperwork-pairing';
+import type { PrepackManual } from '@/lib/prepack/types';
+import { MANUAL_USAGE_SELECT, toManualWithUsage, type ManualUsageRow } from '@/lib/manuals/manual-usage';
 
 /** Paperwork for one order — manuals, packing lists and any other `product_manuals` row — behind `/api/orders/[id]/manuals` (the To-ship… */
 
@@ -91,10 +93,10 @@ const MANUAL_SELECT = `SELECT pm.id, pm.display_name, pm.type, pm.file_name, pm.
   FROM product_manuals pm
   LEFT JOIN sku_catalog sc ON sc.id = pm.sku_catalog_id AND sc.organization_id = pm.organization_id`;
 
-/** SQL twin of normalizeIdentifier: UPPER alnum, leading zeros stripped. */
-const ITEM_KEY_SQL = `regexp_replace(regexp_replace(UPPER(TRIM(COALESCE(pm.item_number, ''))), '[^A-Z0-9]', '', 'g'), '^0+', '')`;
-/** SQL twin of paperworkSkuKey: UPPER alnum. */
-const SKU_KEY_SQL = `regexp_replace(UPPER(TRIM(COALESCE(pm.sku, ''))), '[^A-Z0-9]', '', 'g')`;
+/** The SKU tier of the paperwork match (`productPaperworkMatchSql`): pinned to the catalog row, or to the SKU key. */
+const skuTierSql = (catalogParam: string, keyParam: string) =>
+  `(${catalogParam}::int IS NOT NULL AND pm.sku_catalog_id = ${catalogParam}::int)
+          OR (${keyParam}::text <> '' AND ${skuKeySql('pm.sku')} = ${keyParam}::text)`;
 
 /** `/api/product-manuals/{id}/content` when the manual has http-stored bytes. */
 export function manualContentUrl(id: number, sourceUrl: string | null | undefined): string | null {
@@ -258,32 +260,12 @@ async function writePairing(
   );
 }
 
-/**
- * The testing / pack projection (`documents` + SKU link) follows the row: once
- * a row leaves catalog X, drop its X link. Best effort — the live row is the SoT.
- */
-async function dropCatalogProjection(orgId: OrgId, manualId: number, before: number | null, after: number | null) {
-  if (before == null || before === after) return;
-  try {
-    await unlinkManualDocumentFromSku(orgId, manualId, before);
-  } catch (error) {
-    console.warn('[order-manuals] catalog projection unlink failed:', error);
-  }
-}
-
 async function resolveOrderRows(orgId: OrgId, ctx: OrderPaperworkContext): Promise<ManualRow[]> {
   const res = await tenantQuery<ManualRow>(
     orgId,
     `${MANUAL_SELECT}
       WHERE pm.organization_id = $1
-        AND pm.is_active = TRUE
-        AND pm.status = 'assigned'
-        AND (
-          pm.order_id = $2::int
-          OR ($3::text <> '' AND ${ITEM_KEY_SQL} = $3::text)
-          OR ($4::int IS NOT NULL AND pm.sku_catalog_id = $4::int)
-          OR ($5::text <> '' AND ${SKU_KEY_SQL} = $5::text)
-        )`,
+        AND ${productPaperworkMatchSql({ pm: 'pm', lineId: '$2::int', itemKey: '$3::text', catalogId: '$4::int', skuKey: '$5::text' })}`,
     [orgId, ctx.orderId, ctx.itemKey, ctx.skuCatalogId, ctx.skuKey],
   );
   return res.rows;
@@ -333,6 +315,31 @@ export async function listOrderPaperworkForPrint(orgId: OrgId, orderId: number):
       sku: manual.pairing.sku,
       itemNumber: manual.pairing.itemNumber,
     }));
+}
+
+/**
+ * The SKU tier of the same resolution for one catalog row: the row pack print
+ * reads for an order of this SKU (newest first, as `comparePaperwork` orders a
+ * tier) unless an order / item-number row outranks it. Null when unpaired.
+ */
+export async function resolveSkuPaperworkManual(
+  run: <T extends QueryResultRow>(sql: string, params: unknown[]) => Promise<{ rows: T[] }>,
+  orgId: OrgId,
+  skuCatalogId: number,
+  sku: string | null,
+): Promise<PrepackManual | null> {
+  const res = await run<ManualUsageRow>(
+    `${MANUAL_USAGE_SELECT}
+      WHERE pm.organization_id = $1
+        AND pm.is_active = TRUE
+        AND pm.status = 'assigned'
+        AND (${skuTierSql('$2', '$3')})
+      ORDER BY pm.updated_at DESC NULLS LAST, pm.id DESC
+      LIMIT 1`,
+    [orgId, skuCatalogId, paperworkSkuKey(sku)],
+  );
+  const row = res.rows[0];
+  return row ? toManualWithUsage(row) : null;
 }
 
 /** Upload a new paperwork file pinned to this order, its item number or its SKU. */
@@ -394,16 +401,15 @@ export async function pairExistingManualToOrder(
   const ctx = await loadOrderContext(orgId, orderId);
   const added = scopePairing(pairTo ?? defaultPairScope(ctx), ctx);
 
-  const { row, before, after } = await withTenantTransaction(orgId, async (client) => {
+  const { row, before } = await withTenantTransaction(orgId, async (client) => {
     const existing = await lockManual(client, orgId, manualId);
     if (!existing) throw new OrderManualError('Manual not found', 404);
     const current = pairingOf(existing);
     const target = mergePairing(current, added);
     const skuCatalogId = await catalogIdForSku(orgId, ctx, target.sku, current);
     await writePairing(client, orgId, manualId, target, skuCatalogId);
-    return { row: await readManual(client, orgId, manualId), before: current, after: skuCatalogId };
+    return { row: await readManual(client, orgId, manualId), before: current };
   });
-  await dropCatalogProjection(orgId, manualId, before.skuCatalogId, after);
   await bustManualCaches(orgId);
   return { manual: toOrderManual(row, ctx), before };
 }
@@ -426,12 +432,11 @@ export async function updateOrderManual(
     throw new OrderManualError('displayName, type or pairing is required', 400);
   }
   const ctx = await loadOrderContext(orgId, orderId);
-  const { row, before, after } = await withTenantTransaction(orgId, async (client) => {
+  const { row, before } = await withTenantTransaction(orgId, async (client) => {
     const existing = await lockOrderManual(client, orgId, ctx, manualId);
     const current = pairingOf(existing);
-    let skuCatalogId = current.skuCatalogId;
     if (patch.pairing) {
-      skuCatalogId = await catalogIdForSku(orgId, ctx, patch.pairing.sku, current);
+      const skuCatalogId = await catalogIdForSku(orgId, ctx, patch.pairing.sku, current);
       await writePairing(client, orgId, manualId, patch.pairing, skuCatalogId);
     }
     if (patch.displayName !== undefined || patch.type !== undefined) {
@@ -444,9 +449,8 @@ export async function updateOrderManual(
         [manualId, orgId, patch.displayName?.trim() ?? null, patch.type?.trim() || null, patch.type !== undefined],
       );
     }
-    return { row: await readManual(client, orgId, manualId), before: current, after: skuCatalogId };
+    return { row: await readManual(client, orgId, manualId), before: current };
   });
-  await dropCatalogProjection(orgId, manualId, before.skuCatalogId, after);
   await bustManualCaches(orgId);
   return { manual: toOrderManual(row, ctx), before };
 }
@@ -522,7 +526,6 @@ export async function removeOrderManual(
     return pairingOf(existing);
   });
   if (mode === 'delete') await deactivateProductManual(manualId, orgId);
-  await dropCatalogProjection(orgId, manualId, before.skuCatalogId, null);
   await bustManualCaches(orgId);
   return before;
 }
@@ -607,6 +610,27 @@ export interface ManualSkuLink {
   before: PaperworkPairing;
 }
 
+/** ADD the catalog row's SKU key to a locked manual, keeping its order / item-number keys. */
+async function pinLockedManualToCatalog(
+  client: PoolClient,
+  orgId: OrgId,
+  existing: ManualRow,
+  catalog: { id: number; sku: string },
+): Promise<ManualSkuLink> {
+  const manualId = Number(existing.id);
+  const before = pairingOf(existing);
+  const target = mergePairing(before, { orderId: null, itemNumber: null, sku: catalog.sku.trim() });
+  await writePairing(client, orgId, manualId, target, Number(catalog.id));
+  return {
+    manualId,
+    displayName: existing.display_name?.trim() || existing.file_name?.trim() || `Manual ${manualId}`,
+    fileName: existing.file_name || null,
+    sku: catalog.sku.trim(),
+    skuCatalogId: Number(catalog.id),
+    before,
+  };
+}
+
 /**
  * Pin an org manual to a catalog SKU inside the caller's transaction (the
  * assistant's `product_manual.link_sku` apply). Like pairing from an order it
@@ -634,17 +658,47 @@ export async function linkManualToSkuInTx(
   );
   const hit = catalog.rows[0];
   if (!hit) throw new OrderManualError(`SKU ${sku.trim()} is not in the catalog`, 404);
+  return pinLockedManualToCatalog(client, orgId, existing, hit);
+}
+
+/** Same pin by catalog id (a receiving line's resolved SKU). */
+export async function linkManualToCatalogInTx(
+  client: PoolClient,
+  orgId: OrgId,
+  manualId: number,
+  skuCatalogId: number,
+): Promise<ManualSkuLink> {
+  const existing = await lockManual(client, orgId, manualId);
+  if (!existing) throw new OrderManualError(`Manual ${manualId} not found`, 404);
+  const catalog = await client.query<{ id: number; sku: string }>(
+    `SELECT id, sku FROM sku_catalog WHERE id = $1 AND organization_id = $2`,
+    [skuCatalogId, orgId],
+  );
+  const hit = catalog.rows[0];
+  if (!hit) throw new OrderManualError(`Catalog SKU ${skuCatalogId} not found`, 404);
+  return pinLockedManualToCatalog(client, orgId, existing, hit);
+}
+
+/**
+ * Take a manual off a catalog SKU: clears its SKU key (catalog id and SKU
+ * text) and keeps its order / item-number keys; a row left with no key goes
+ * back to the library unassigned. 404 when it is not pinned to that SKU.
+ * Returns its prior pairing.
+ */
+export async function unlinkManualFromCatalogInTx(
+  client: PoolClient,
+  orgId: OrgId,
+  manualId: number,
+  skuCatalogId: number,
+): Promise<PaperworkPairing> {
+  const existing = await lockManual(client, orgId, manualId);
+  if (!existing) throw new OrderManualError(`Manual ${manualId} not found`, 404);
   const before = pairingOf(existing);
-  const target = mergePairing(before, { orderId: null, itemNumber: null, sku: hit.sku.trim() });
-  await writePairing(client, orgId, manualId, target, Number(hit.id));
-  return {
-    manualId,
-    displayName: existing.display_name?.trim() || existing.file_name?.trim() || `Manual ${manualId}`,
-    fileName: existing.file_name || null,
-    sku: hit.sku.trim(),
-    skuCatalogId: Number(hit.id),
-    before,
-  };
+  if (existing.sku_catalog_id == null || Number(existing.sku_catalog_id) !== skuCatalogId) {
+    throw new OrderManualError('Manual is not paired to this SKU', 404);
+  }
+  await restoreManualPairingInTx(client, orgId, manualId, { ...before, sku: null, skuCatalogId: null });
+  return before;
 }
 
 /**
@@ -674,13 +728,7 @@ export async function restoreManualPairingInTx(
   );
 }
 
-/** After a link / restore commits: the old catalog's projection goes, caches bust. */
-export async function settleManualRepair(
-  orgId: OrgId,
-  manualId: number,
-  beforeCatalogId: number | null,
-  afterCatalogId: number | null,
-): Promise<void> {
-  await dropCatalogProjection(orgId, manualId, beforeCatalogId, afterCatalogId);
+/** After a link / restore commits: the manual caches bust. */
+export async function settleManualRepair(orgId: OrgId): Promise<void> {
   await bustManualCaches(orgId);
 }

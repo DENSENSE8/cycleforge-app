@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { PastedListPage } from '@/components/search/pasted-list/PastedListPage';
 import { PastedListBack } from '@/components/search/pasted-list/PastedListBack';
 
@@ -16,7 +15,7 @@ export default function PastedListRoute() {
         </Suspense>
       }
     >
-      <Suspense fallback={<UniversalLoader isLoading label="Loading the pasted list" className="h-full" />}>
+      <Suspense fallback={null}>
         <PastedListPage />
       </Suspense>
     </DeskPageLayout>

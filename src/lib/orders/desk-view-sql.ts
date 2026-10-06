@@ -5,6 +5,7 @@ import type { DeskQueueViewId } from '@/lib/outbound/desk-views';
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan, sqlStationActivityMatchesOrder } from '@/lib/orders/order-grain-sql';
 import { ORDER_PICK_SCAN_ACTIVITY_TYPES, PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
+import { BUYER_CANCELLED_STATUS } from '@/lib/orders/buyer-cancelled';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 
@@ -85,6 +86,26 @@ export interface OrderStageSignals {
   packedBy: string;
 }
 
+/** Buyer cancel leaves Allocate. The row stays; search still finds it. */
+export function sqlOrderNotBuyerCancelled(orderAlias = 'o'): string {
+  const o = alias(orderAlias);
+  return `LOWER(COALESCE(${o}.status, '')) <> '${BUYER_CANCELLED_STATUS}'`;
+}
+
+/**
+ * Open (unshipped) order — Allocate's default row feed (`/api/orders` with no
+ * scope flags): not carrier-shipped, no dock SHIP_CONFIRM, not Amazon-fulfilled.
+ * Expects `stn` = the order's shipping_tracking_numbers join (LEFT JOIN on `shipment_id`).
+ */
+export function sqlOrderOpenUnshipped(orderAlias = 'o'): string {
+  const o = alias(orderAlias);
+  return `(
+      NOT ${SHIPPED_BY_CARRIER_SQL}
+      AND NOT ${sqlOrderHasShipConfirm(o)}
+      AND COALESCE(${o}.fulfillment_channel, '') <> 'AFN'
+    )`;
+}
+
 /**
  * In-warehouse To-ship membership — `/api/orders?inWarehouse=true` (the To-ship desk's row feed) spelled as one predicate for the counts feed.
  * A counter pickup (`fulfillment_channel = 'PICKUP'`) never gets a label or tracking, so it belongs without them.
@@ -92,9 +113,8 @@ export interface OrderStageSignals {
 export function sqlOrderInWarehouseToShip(orderAlias = 'o'): string {
   const o = alias(orderAlias);
   return `(
-      NOT ${SHIPPED_BY_CARRIER_SQL}
-      AND NOT ${sqlOrderHasShipConfirm(o)}
-      AND COALESCE(${o}.fulfillment_channel, '') <> 'AFN'
+      ${sqlOrderOpenUnshipped(o)}
+      AND ${sqlOrderNotBuyerCancelled(o)}
       AND (
         ${o}.fulfillment_channel = '${PICKUP_FULFILLMENT_CHANNEL}'
         OR (${o}.shipment_id IS NOT NULL AND COALESCE(TRIM(stn.tracking_number_raw), '') <> '')

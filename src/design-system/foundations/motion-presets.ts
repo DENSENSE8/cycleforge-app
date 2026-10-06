@@ -58,6 +58,8 @@ export const motionDuration = {
   photoContextPanelMount: 0.22,
   /** Nav spine push column — one symmetric width toggle that reflows the frame */
   sidebarNavColumnMount: 0.24,
+  /** List focus mode (`useListFocusMode`) — the shell chrome (sidebar column · global header · page title band) slides away / back. */
+  listFocusChrome: 0.32,
   /** Global detail-stack overlay card (full-height flyout) — slow, soft enter/exit */
   detailStackOverlayMount: 0.4,
   /**
@@ -68,7 +70,7 @@ export const motionDuration = {
   workbenchPaneSettle: 0.3,
   /** Station carton→carton swap — scan cadence, enter only (exit is instant) */
   stationCartonSwap: 0.12,
-  /** Contextual sidebar top ↔ section cross-fade (Vercel: ~100–150 ms, no slide) */
+  /** Contextual sidebar top ↔ section body fade-in (Vercel: ~100–150 ms, no slide) */
   sidebarScopeSwap: 0.13,
   /** Find / ⌘K hint roll — perceived settle of the whole line's spring (hover-only, read at a glance) */
   findHintRoll: 0.22,
@@ -172,6 +174,18 @@ export const motionTransition = {
   sidebarNavColumnMount: {
     duration: motionDuration.sidebarNavColumnMount,
     ease: motionBezier.layout,
+  } satisfies Transition,
+
+  /**
+   * List focus mode (`useListFocusMode`): the sidebar column's width + slide, the
+   * global header's and the desk title band's height (`Collapse` `timing`) — one ease-in-out
+   * tween, symmetric, so the chrome leaves and returns as one motion. Never a spring: every
+   * sibling lays out against these sizes.
+   */
+  listFocusChrome: {
+    type: 'tween' as const,
+    duration: motionDuration.listFocusChrome,
+    ease: motionBezier.easeInOutCubic,
   } satisfies Transition,
 
   /** Procedure Focus Deck layout settle — margin pull-up, face height, peek geometry on step pointer advance via Motion `layout` FLIP… */
@@ -308,7 +322,7 @@ export const motionTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /** Contextual sidebar top ↔ section cross-fade — pair with `motionPresence.sidebarScopeSwap`. */
+  /** Contextual sidebar top ↔ section body fade-in — pair with `motionPresence.sidebarScopeSwap`. */
   sidebarScopeSwap: {
     duration: motionDuration.sidebarScopeSwap,
     ease: motionBezier.easeOut,
@@ -669,8 +683,9 @@ export const motionPresence = {
   },
   /**
    * Contextual sidebar body swap (top lane map ↔ a page's section panel):
-   * old labels fade + blur out while the new ones fade in over them. No
-   * translation — the host stacks both faces in one grid cell.
+   * the new face fades + un-blurs in. No translation. The host hard-cuts the
+   * old face (it never stacks two bodies, operator 2026-10-05), so the body
+   * uses no `exit`; `exit` serves NavFilters' active-count badge.
    */
   sidebarScopeSwap: {
     initial: { opacity: 0, filter: 'blur(4px)' },
@@ -1208,4 +1223,6 @@ export const motionVariants: Record<string, Variants> = {
       },
     },
   },
+  /** Tab pager slide by direction — `custom={dir}`; pair with `motionTransition.tabPager` (reduced → `tabPagerReduced`). */
+  tabPager: tabPagerVariants,
 };

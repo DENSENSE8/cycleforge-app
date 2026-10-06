@@ -1,14 +1,17 @@
 /**
- * Bulk inbound: many rows (a CSV, a sync page) → orders → the one writer.
+ * Bulk inbound: many rows (an import file, a sync page) → orders → the one writer.
  *
- *   1. rows are grouped into InboundOrderDrafts — one per (source, platform,
- *      order number), each row one line;
+ *   1. rows are grouped into InboundOrderDrafts — one per (type, platform,
+ *      order number), each row one line (`draftsFromDeskRows`);
  *   2. dry run: every order is previewed (nothing is written — not even the
  *      batch row) and reported new / updated / unchanged by content hash;
- *   3. commit: the batch is recorded (`inbound_import_batch`), every order
- *      lands in its own transaction through `ingestInboundOrder` (its ledger
- *      row keyed by (file hash, order)), so one bad order never takes the
- *      batch down and never lands half-written; an unchanged order is skipped.
+ *   3. commit: the batch is recorded (`inbound_import_batch`, with the file's
+ *      name, preset, header row and column map), every order lands in its own
+ *      transaction through `ingestInboundOrder` (its ledger row keyed by
+ *      (file hash, order)), so one bad order never takes the batch down and
+ *      never lands half-written; an unchanged order is skipped. Then every
+ *      data row of the file is kept (`inbound_import_row`: the raw cells, the
+ *      order / line it landed as, its status) for the upload check.
  *
  * An order the caller already found problems on (`problems`) is held whole —
  * reported, never previewed or landed.
@@ -20,16 +23,16 @@
 import { createHash } from 'node:crypto';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
-import { deskRowFromCsvRecord, resolveCatalogByAsinSku } from './desk-import';
+import { resolveCatalogByAsinSku } from './desk-import';
 import type { DeskImportRow } from './desk-csv';
 import {
+  assignInboundLineKeys,
   emptyInboundOrderDraft,
   emptyInboundOrderLine,
-  AUTHORED_INBOUND_ORDER_TYPES,
+  filledInboundLines,
   INBOUND_PRIORITY_AUTO,
   normalizeInboundOrderNumber,
   type InboundOrderDraft,
-  type AuthoredInboundOrderType,
 } from './inbound-order-draft';
 import {
   ingestInboundOrder,
@@ -38,8 +41,8 @@ import {
   type InboundOrderOrigin,
   type IngestInboundOrderResult,
 } from './ingest-inbound-order';
-import { tagInboundAsReturn } from './tag-inbound-return';
 import { receiveImportedLineIfCartonUnboxed } from './receive-if-carton-unboxed';
+import type { ImportRowStatus } from './import-check';
 
 export interface BatchOrderDraft {
   /** Row indexes (into the input) that became this order's lines, in line order. */
@@ -55,8 +58,10 @@ export interface BatchSkippedRow {
 }
 
 const NOTES_MAX = 2000;
+/** `inboundOrderDraftSchema.tracking` max. */
+const TRACKING_MAX = 500;
 
-/** Group desk rows into order drafts. Amazon native returns resolve their catalog item by SKU, then ASIN. */
+/** Group desk rows into order drafts. A row with `catalogLookup` resolves its catalog item by those needles, in order. */
 export async function draftsFromDeskRows(
   orgId: OrgId,
   rows: readonly DeskImportRow[],
@@ -77,26 +82,20 @@ export async function draftsFromDeskRows(
       skipped.push({ row: index, reason: 'no order number' });
       continue;
     }
-    const upper = (row.receivingType ?? '').trim().toUpperCase() || (row.kind === 'return' ? 'RETURN' : 'PO');
-    const type: AuthoredInboundOrderType = (AUTHORED_INBOUND_ORDER_TYPES as readonly string[]).includes(upper)
-      ? (upper as AuthoredInboundOrderType)
-      : 'PO';
+    const type = row.receivingType;
 
-    let skuCatalogId = row.skuCatalogId ?? null;
+    let skuCatalogId: number | null = null;
     let sku = row.sku?.trim() ?? '';
     let title = row.itemName?.trim() ?? '';
-    if (skuCatalogId == null && row.amazonNativeReturn) {
-      for (const needle of [sku, row.amazonAsin?.trim() ?? ''].filter(Boolean)) {
-        const hit = await resolveCatalog(orgId, needle);
-        if (hit) {
-          skuCatalogId = hit.id;
-          sku = hit.sku;
-          title ||= hit.product_title;
-          break;
-        }
+    for (const needle of row.catalogLookup) {
+      const hit = await resolveCatalog(orgId, needle);
+      if (hit) {
+        skuCatalogId = hit.id;
+        sku = hit.sku;
+        title ||= hit.product_title;
+        break;
       }
     }
-    if (!sku && !title && skuCatalogId == null) title = row.amazonNativeReturn ? `Amazon return ${orderNumber}` : '';
 
     const key = `${type}|${platform.toLowerCase()}|${normalizeInboundOrderNumber(orderNumber)}`;
     let order = byKey.get(key);
@@ -108,41 +107,54 @@ export async function draftsFromDeskRows(
           platform,
           orderNumber,
           vendor: row.seller?.trim() ?? '',
-          accountName: row.accountName?.trim() ?? '',
           priority: row.priorityTier != null ? (String(row.priorityTier) as InboundOrderDraft['priority']) : INBOUND_PRIORITY_AUTO,
-          orderDate: row.orderDate ?? null,
-          expectedDate: row.expectedDate ?? null,
+          orderDate: row.orderDate,
+          expectedDate: row.expectedDate,
           tracking: [],
           lines: [],
-          returnReason: row.returnReason?.trim() ?? '',
-          rmaId: row.rmaId?.trim() ?? '',
         },
       };
       byKey.set(key, order);
       notesByKey.set(key, []);
     }
-    order.draft.orderDate ??= row.orderDate ?? null;
-    order.draft.expectedDate ??= row.expectedDate ?? null;
+    const draft = order.draft;
+    // An order's first row that carries a header fact wins.
+    draft.orderDate ??= row.orderDate;
+    draft.expectedDate ??= row.expectedDate;
+    draft.returnReason ||= row.returnReason?.trim() ?? '';
+    draft.rmaId ||= row.rmaId?.trim() ?? '';
+    if (row.returnRequestDate) draft.returnRequestDate ??= row.returnRequestDate;
     const notes = notesByKey.get(key)!;
     for (const fragment of (row.notes ?? '').split('\n').map((s) => s.trim())) {
       if (fragment && !notes.includes(fragment)) notes.push(fragment);
     }
     order.rows.push(index);
-    order.draft.lines.push({
+    draft.lines.push({
       ...emptyInboundOrderLine(),
       lineKey: row.lineItemId?.trim() ?? '',
       skuCatalogId,
       sku,
       title,
-      // Absent (legacy desk rows) = one; null = the file left it blank — kept null so the order asks.
-      quantity: row.quantity === undefined ? 1 : row.quantity,
-      unitCostCents: row.unitCostCents ?? null,
+      // Null = the file left it blank — kept null so the order asks.
+      quantity: row.quantity,
+      unitCostCents: row.unitCostCents,
       listingUrl: row.listingUrl?.trim() ?? '',
-      itemNumber: row.itemNumber?.trim() || row.amazonAsin?.trim() || '',
+      itemNumber: row.itemNumber?.trim() ?? '',
+      conditionGrade: row.conditionGrade,
+      listingSerials: row.listingSerials,
+      fnsku: row.fnsku ?? '',
+      licensePlateNumber: row.licensePlateNumber ?? '',
+      disposition: row.disposition ?? '',
+      customerComment: row.customerComment ?? '',
+      // Per-row return facts — a report row per returned unit keeps its own reason / RMA / request date
+      // (absent when blank, so a purchase line's content hash is unchanged).
+      ...(row.returnReason?.trim() ? { returnReason: row.returnReason.trim() } : {}),
+      ...(row.rmaId?.trim() ? { rmaId: row.rmaId.trim() } : {}),
+      ...(row.returnRequestDate ? { returnRequestDate: row.returnRequestDate } : {}),
     });
     const tracking = row.trackingNumber?.trim();
-    if (tracking && !order.draft.tracking.some((t) => t.number === tracking) && order.draft.tracking.length < 10) {
-      order.draft.tracking.push({ number: tracking, carrier: row.carrierCode?.trim() ?? '' });
+    if (tracking && !draft.tracking.some((t) => t.number === tracking) && draft.tracking.length < TRACKING_MAX) {
+      draft.tracking.push({ number: tracking, carrier: row.carrierCode?.trim() ?? '' });
     }
   }
   for (const [key, order] of byKey) {
@@ -178,28 +190,34 @@ export interface InboundImportBatchResult {
   counts: { landed: number; unchanged: number; valid: number; invalid: number; failed: number; skipped: number };
 }
 
-/** A RETURN that lands tags its lines and receives any whose carton was already unboxed. */
-async function finishReturn(orgId: OrgId, result: IngestInboundOrderResult, draft: InboundOrderDraft): Promise<void> {
-  for (const line of result.lines) {
-    await tagInboundAsReturn(orgId, {
-      receivingLineId: line.receivingLineId,
-      sourceType: result.identity.sourceType,
-      sourceOrderId: result.identity.externalOrderId,
-      returnReason: draft.returnReason || null,
-      rmaRef: draft.rmaId || null,
-    });
-    await receiveImportedLineIfCartonUnboxed(orgId, line.receivingLineId);
-  }
-}
-
 /** The writer seams — real by default, faked in tests. */
 export interface InboundBatchDeps {
   query: typeof tenantQuery;
   preview: typeof previewInboundOrder;
   ingest: typeof ingestInboundOrder;
+  /** A landed RETURN line whose carton was already unboxed is received now. */
+  receiveIfUnboxed: typeof receiveImportedLineIfCartonUnboxed;
 }
 
-const defaultBatchDeps: InboundBatchDeps = { query: tenantQuery, preview: previewInboundOrder, ingest: ingestInboundOrder };
+const defaultBatchDeps: InboundBatchDeps = {
+  query: tenantQuery,
+  preview: previewInboundOrder,
+  ingest: ingestInboundOrder,
+  receiveIfUnboxed: receiveImportedLineIfCartonUnboxed,
+};
+
+/** The uploaded file, kept row by row with the batch (`inbound_import_row`) for the upload check. */
+export interface InboundImportFile {
+  name: string;
+  preset: string;
+  headers: string[];
+  /** field → header, as used. */
+  columnMap: Record<string, string>;
+  /** Every data row, header → raw cell text. Order `rows` / skipped `row` index into it. */
+  rows: ReadonlyArray<Record<string, string>>;
+  /** Problems per file row (0-based) — the held rows' reasons, including rows that grouped into no order. */
+  problemsByRow: ReadonlyMap<number, string[]>;
+}
 
 export interface InboundDraftBatchInput {
   orders: readonly BatchOrderDraft[];
@@ -212,7 +230,71 @@ export interface InboundDraftBatchInput {
   source: string;
   staffId: number | null;
   label?: string | null;
+  /** The file itself; absent for a sync page (no rows are kept). */
+  file?: InboundImportFile | null;
   dryRun: boolean;
+}
+
+interface ImportRowRecord {
+  row_number: number;
+  cells: Record<string, string>;
+  order_key: string | null;
+  line_key: string | null;
+  status: ImportRowStatus;
+  problem: string | null;
+  inbound_order_id: number | null;
+  receiving_line_id: number | null;
+}
+
+const ROW_STATUS: Record<BatchOrderOutcome['status'], ImportRowStatus> = {
+  landed: 'landed',
+  unchanged: 'unchanged',
+  valid: 'landed',
+  invalid: 'held',
+  failed: 'failed',
+};
+
+/** One `inbound_import_row` per file data row, from the orders' outcomes. */
+function importRowRecords(
+  file: InboundImportFile,
+  orders: readonly BatchOrderDraft[],
+  outcomes: readonly BatchOrderOutcome[],
+  landedLines: ReadonlyMap<number, IngestInboundOrderResult['lines']>,
+  skipped: readonly BatchSkippedRow[],
+): ImportRowRecord[] {
+  const records: ImportRowRecord[] = file.rows.map((cells, i) => ({
+    row_number: i + 1,
+    cells,
+    order_key: null,
+    line_key: null,
+    status: 'held',
+    problem: file.problemsByRow.get(i)?.join('; ') ?? null,
+    inbound_order_id: null,
+    receiving_line_id: null,
+  }));
+  for (const s of skipped) {
+    const record = records[s.row];
+    if (record) record.problem ??= s.reason;
+  }
+  orders.forEach((order, o) => {
+    const outcome = outcomes[o];
+    const filled = filledInboundLines(order.draft);
+    const keys = assignInboundLineKeys(filled);
+    const lines = landedLines.get(o) ?? [];
+    order.rows.forEach((fileRow, l) => {
+      const record = records[fileRow];
+      if (!record) return;
+      const at = filled.indexOf(order.draft.lines[l]);
+      const lineKey = at >= 0 ? keys[at] : null;
+      record.order_key = order.draft.orderNumber;
+      record.line_key = lineKey;
+      record.status = ROW_STATUS[outcome.status];
+      record.inbound_order_id = outcome.inboundOrderId ?? null;
+      record.receiving_line_id = lines.find((line) => line.lineKey === lineKey)?.receivingLineId ?? null;
+      if (record.status !== 'landed' && record.status !== 'unchanged') record.problem ??= outcome.error ?? null;
+    });
+  });
+  return records;
 }
 
 /** Grouped orders → preview (dry run) or the one writer (commit). */
@@ -221,21 +303,35 @@ export async function runInboundDraftBatch(
   input: InboundDraftBatchInput,
   deps: InboundBatchDeps = defaultBatchDeps,
 ): Promise<InboundImportBatchResult> {
-  const { orders, skipped } = input;
+  const { orders, skipped, file } = input;
   const landable = orders.filter((o) => !o.problems?.length).length;
   let batchId: number | null = null;
   if (!input.dryRun) {
     const batch = await deps.query<{ id: number }>(
       orgId,
-      `INSERT INTO inbound_import_batch (organization_id, origin, source, label, status, total, created_by)
-       VALUES ($1, $2, $3, $4, 'committing', $5, $6) RETURNING id`,
-      [orgId, input.origin, input.source, input.label ?? null, landable, input.staffId],
+      `INSERT INTO inbound_import_batch
+         (organization_id, origin, source, label, status, total, created_by, file_name, preset, headers, column_map)
+       VALUES ($1, $2, $3, $4, 'committing', $5, $6, $7, $8, $9::jsonb, $10::jsonb) RETURNING id`,
+      [
+        orgId,
+        input.origin,
+        input.source,
+        input.label ?? null,
+        landable,
+        input.staffId,
+        file?.name ?? null,
+        file?.preset ?? null,
+        file ? JSON.stringify(file.headers) : null,
+        file ? JSON.stringify(file.columnMap) : null,
+      ],
     );
     batchId = Number(batch.rows[0].id);
   }
 
   const outcomes: BatchOrderOutcome[] = [];
-  for (const order of orders) {
+  /** Order index → the lines the writer landed it as. */
+  const landedLines = new Map<number, IngestInboundOrderResult['lines']>();
+  for (const [index, order] of orders.entries()) {
     const base = {
       orderNumber: order.draft.orderNumber,
       rows: order.rows,
@@ -275,7 +371,11 @@ export async function runInboundDraftBatch(
         batchId,
         sourceEventId: `${input.source}:${input.fileHash}:${normalizeInboundOrderNumber(order.draft.orderNumber)}:${order.draft.platform}`,
       });
-      if (order.draft.type === 'RETURN' && !result.unchanged) await finishReturn(orgId, result, order.draft);
+      landedLines.set(index, result.lines);
+      // The writer lands the return facts in its transaction; a line whose carton was unboxed before the report arrived is received now.
+      if (order.draft.type === 'RETURN' && !result.unchanged) {
+        for (const line of result.lines) await deps.receiveIfUnboxed(orgId, line.receivingLineId);
+      }
       outcomes.push({
         ...base,
         status: result.unchanged ? 'unchanged' : 'landed',
@@ -305,6 +405,18 @@ export async function runInboundDraftBatch(
     skipped: skipped.length,
   };
   if (batchId != null) {
+    if (file && file.rows.length > 0) {
+      await deps.query(
+        orgId,
+        `INSERT INTO inbound_import_row
+           (organization_id, batch_id, row_number, cells, order_key, line_key, status, problem, inbound_order_id, receiving_line_id)
+         SELECT $1, $2, r.row_number, r.cells, r.order_key, r.line_key, r.status, r.problem, r.inbound_order_id, r.receiving_line_id
+           FROM jsonb_to_recordset($3::jsonb) AS r(
+             row_number int, cells jsonb, order_key text, line_key text, status text, problem text,
+             inbound_order_id bigint, receiving_line_id int)`,
+        [orgId, batchId, JSON.stringify(importRowRecords(file, orders, outcomes, landedLines, skipped))],
+      );
+    }
     await deps.query(
       orgId,
       `UPDATE inbound_import_batch
@@ -328,33 +440,6 @@ export async function runInboundDraftBatch(
 /** Stable hash of an uploaded file's rows — the ledger's re-post key. */
 export function inboundFileHash(rows: unknown): string {
   return createHash('sha256').update(JSON.stringify(rows)).digest('hex').slice(0, 24);
-}
-
-/** Desk-shaped CSV records (returns import, legacy desk CSV) → orders → the writer. */
-export async function runInboundImportBatch(
-  orgId: OrgId,
-  input: {
-    rows: ReadonlyArray<Record<string, string>>;
-    origin: Exclude<InboundOrderOrigin, 'manual'>;
-    source: string;
-    staffId: number | null;
-    label?: string | null;
-    dryRun: boolean;
-  },
-): Promise<InboundImportBatchResult> {
-  const deskRows = input.rows.map((record) => deskRowFromCsvRecord(record));
-  const { orders, skipped } = await draftsFromDeskRows(orgId, deskRows);
-  return runInboundDraftBatch(orgId, {
-    orders,
-    skipped,
-    total: deskRows.length,
-    fileHash: inboundFileHash(input.rows),
-    origin: input.origin,
-    source: input.source,
-    staffId: input.staffId,
-    label: input.label,
-    dryRun: input.dryRun,
-  });
 }
 
 // ─── reconciliation ──────────────────────────────────────────────────────────

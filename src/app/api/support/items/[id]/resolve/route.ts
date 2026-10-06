@@ -31,6 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       reason: parsed.reason ?? null,
       override: parsed.override === true,
       checkInDisposition: parsed.checkInDisposition ?? null,
+      checkInOutcome: parsed.checkInOutcome ?? null,
     });
     if (!r.ok) {
       return NextResponse.json(
@@ -46,7 +47,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         entityId: id,
         ...(r.override ? { reasonCode: 'SUPPORT_RESOLVE_OVERRIDE' } : {}),
         note: parsed.reason ?? null,
-        after: { blockers: r.blockers, override: r.override, checkInDisposition: parsed.checkInDisposition ?? null },
+        after: {
+          blockers: r.blockers,
+          override: r.override,
+          checkInDisposition: parsed.checkInDisposition ?? null,
+          checkInOutcome: parsed.checkInOutcome ?? null,
+        },
       });
     }
     const bundle = await readSupportItemBundle(orgId, id);

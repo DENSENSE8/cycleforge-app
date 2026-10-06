@@ -4,6 +4,7 @@ import { SUPPORT_CHECK_IN_DELAYS_MS } from './config';
 import {
   collectCheckInContacts,
   deriveOrderCheckInState,
+  storedCheckInClosure,
   type CheckInDerivationInput,
   type CheckInFollowUpFact,
   type CheckInMessageFact,
@@ -111,24 +112,54 @@ test('customer_replied: the customer had the last word and nothing is owed', () 
   assert.equal(d.nextFollowUpAtMs, null);
 });
 
-test('resolved: default disposition resolved, closed at resolution; stored no_response_closed kept', () => {
+test('resolved: default disposition resolved with no outcome, closed at resolution; stored no_response_closed kept', () => {
   const resolvedItem = { lifecycle: 'resolved' as const, resolvedAtMs: T0, resolvedByStaffId: 9 };
   const d = deriveOrderCheckInState(input({ item: resolvedItem, messages: [out(1, T0 - DAY)] }));
   assert.equal(d.state, 'resolved');
-  assert.deepEqual(d.closure, { disposition: 'resolved', reason: null, closedAtMs: T0, closedByStaffId: 9 });
+  assert.deepEqual(d.closure, { disposition: 'resolved', outcome: null, reason: null, closedAtMs: T0, closedByStaffId: 9 });
   assert.equal(d.contactMessageId, 1);
 
-  const closure = { disposition: 'no_response_closed' as const, reason: 'Two chases, no answer', closedAtMs: T0, closedByStaffId: 4 };
+  const closure = { disposition: 'no_response_closed' as const, outcome: null, reason: 'Two chases, no answer', closedAtMs: T0, closedByStaffId: 4 };
   const n = deriveOrderCheckInState(input({ item: resolvedItem, storedClosure: closure }));
   assert.equal(n.state, 'no_response_closed');
   assert.deepEqual(n.closure, closure);
 });
 
-test('reopened after closure: closure cleared, state re-derived', () => {
-  const closure = { disposition: 'resolved' as const, reason: null, closedAtMs: T0 - DAY, closedByStaffId: 4 };
+test('a stored outcome survives every re-derivation while the closure stands', () => {
+  const resolvedItem = { lifecycle: 'resolved' as const, resolvedAtMs: T0, resolvedByStaffId: 9 };
+  for (const outcome of ['happy', 'issue'] as const) {
+    const closure = { disposition: 'resolved' as const, outcome, reason: null, closedAtMs: T0, closedByStaffId: 4 };
+    // A later sweep (time passed, a new message landed) re-derives from the same stored closure.
+    const later = deriveOrderCheckInState(
+      input({ nowMs: T0 + 30 * DAY, item: resolvedItem, storedClosure: closure, messages: [out(1, T0 - DAY), inb(2, T0 + DAY, 'no_reply_required')] }),
+    );
+    assert.equal(later.state, 'resolved');
+    assert.equal(later.closure?.outcome, outcome);
+  }
+});
+
+test('reopened after closure: closure and its outcome cleared, state re-derived', () => {
+  const closure = { disposition: 'resolved' as const, outcome: 'happy' as const, reason: null, closedAtMs: T0 - DAY, closedByStaffId: 4 };
   const d = deriveOrderCheckInState(input({ storedClosure: closure, messages: [out(1, T0 - 2 * DAY), inb(2, T0 - 1000)] }));
   assert.equal(d.state, 'staff_reply_due');
   assert.equal(d.closure, null);
+});
+
+test('stored closure: the outcome is read back on resolved only; a cleared closure reads as none', () => {
+  const row = { disposition: 'resolved', outcome: 'happy', reason: null, closedAtMs: T0, closedByStaffId: 4 };
+  assert.deepEqual(storedCheckInClosure(row), { disposition: 'resolved', outcome: 'happy', reason: null, closedAtMs: T0, closedByStaffId: 4 });
+  // Persist → re-derive (the sweep) → persist again: the outcome is unchanged.
+  const resolvedItem = { lifecycle: 'resolved' as const, resolvedAtMs: T0, resolvedByStaffId: 9 };
+  const swept = deriveOrderCheckInState(input({ nowMs: T0 + 7 * DAY, item: resolvedItem, storedClosure: storedCheckInClosure(row) }));
+  assert.equal(swept.closure?.outcome, 'happy');
+  // Reopen: the derivation drops the closure, the refresh writes nulls, and the next read has no outcome.
+  const reopened = deriveOrderCheckInState(input({ storedClosure: storedCheckInClosure(row) }));
+  assert.equal(reopened.closure, null);
+  assert.equal(storedCheckInClosure({ disposition: null, outcome: null, reason: null, closedAtMs: null, closedByStaffId: null }), null);
+  // An outcome never rides on no_response_closed; an unknown word reads as none.
+  assert.equal(storedCheckInClosure({ ...row, disposition: 'no_response_closed', reason: 'No answer' })?.outcome, null);
+  assert.equal(storedCheckInClosure({ ...row, outcome: 'meh' })?.outcome, null);
+  assert.equal(storedCheckInClosure({ ...row, closedAtMs: null }), null);
 });
 
 test('collectCheckInContacts: oldest first; message-recording follow-ups merge; unproven messages drop their follow-ups', () => {

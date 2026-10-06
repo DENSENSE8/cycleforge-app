@@ -4,6 +4,7 @@ import {
   parsePhotoMoveSearch,
   resolvePhotoMoveTargetTitle,
 } from '@/lib/receiving/photo-move-targets-shared';
+import { NOT_LISTING_PHOTO_SQL } from '@/lib/receiving/photo-intent';
 import { UNBOX_OPENED_PREDICATE_SQL } from '@/lib/receiving/unbox-scan-opened-sql';
 import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -74,6 +75,7 @@ function photoCountSql(receivingIdExpr: string, orgIdExpr: string): string {
             ON l.entity_type = 'RECEIVING_LINE' AND rl_ph.id = l.entity_id
     WHERE p.organization_id = ${orgIdExpr}
       AND ${receivingIdExpr} IS NOT NULL
+      AND ${NOT_LISTING_PHOTO_SQL}
       AND (
         (l.entity_type = 'RECEIVING' AND l.entity_id = ${receivingIdExpr})
         OR (l.entity_type = 'RECEIVING_LINE' AND rl_ph.receiving_id = ${receivingIdExpr})

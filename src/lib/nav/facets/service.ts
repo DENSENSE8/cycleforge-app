@@ -9,15 +9,23 @@ import { outboundFacets, type FacetSqlRunner } from '@/lib/nav/facets/outbound';
 import { pickupFacets } from '@/lib/nav/facets/pickup';
 import { inventoryStockFacets } from '@/lib/nav/facets/inventory-stock';
 import { inventoryRackFacets } from '@/lib/nav/facets/inventory-racks';
-import { shippedFacets } from '@/lib/nav/facets/shipped';
 import { incomingPipelineFacets } from '@/lib/nav/facets/incoming-pipeline';
 import { getIncomingSummary } from '@/lib/receiving/incoming-summary';
 import { incomingDockedFacets } from '@/lib/nav/facets/incoming-docked';
 import { unboxFacets } from '@/lib/nav/facets/unbox';
+import { purchasingFacets } from '@/lib/nav/facets/purchasing';
+import { getNavPurchases } from '@/lib/nav/purchases/service';
+import { fulfilledFacets } from '@/lib/nav/facets/fulfilled';
+import { navFulfilledDeps } from '@/lib/nav/fulfilled/read';
+import { getNavFulfilled } from '@/lib/nav/fulfilled/service';
 import { parseReceivingLinesQuery } from '@/lib/receiving/lines/query';
 import { fetchReceivingLinesPage, resolveReceivingLinesReadFlags } from '@/lib/receiving/lines/list-page';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isRepairFacetContext, repairFacets } from '@/lib/nav/facets/repair';
+import { labelIntakeFilesFacets } from '@/lib/nav/facets/label-intake-files';
+import { labelIntakeOrdersFacets } from '@/lib/nav/facets/label-intake-orders';
+import { countOrderPackets } from '@/lib/label-prints/order-packets';
+import { countPrintFiles } from '@/lib/label-prints/print-files';
 import { stationLiveFacets } from '@/lib/nav/facets/station-live';
 import { liveFeedFacets } from '@/lib/nav/facets/live-feed';
 import type { LiveFeedFilters } from '@/lib/live-feed/route';
@@ -106,11 +114,16 @@ export async function getNavFacets(
   if (context === 'live-feed') {
     return { ok: true, body: await liveFeedFacets(params, (filters) => deps.liveFeedFacets(caller.orgId, filters)) };
   }
+  if (context === 'label-intake.uploads') {
+    return { ok: true, body: await labelIntakeFilesFacets(params, (query) => countPrintFiles(caller.orgId, query)) };
+  }
+  if (context === 'label-intake.orders') {
+    return { ok: true, body: await labelIntakeOrdersFacets(params, (query) => countOrderPackets(caller.orgId, query)) };
+  }
   const run: FacetSqlRunner = (sql, bind) => deps.run(caller.orgId, sql, bind);
   if (context === 'stations-live') return { ok: true, body: await stationLiveFacets(caller.orgId, params, run) };
   if (context === 'stock.all') return { ok: true, body: await inventoryStockFacets(caller.orgId, params, run) };
   if (context === 'inventory.racks') return { ok: true, body: await inventoryRackFacets(caller.orgId, params, run) };
-  if (context === 'outbound.shipped') return { ok: true, body: await shippedFacets(caller.orgId, params, run) };
   if (context === 'incoming.pipeline') {
     return { ok: true, body: await incomingPipelineFacets(params, () => getIncomingSummary(caller.orgId)) };
   }
@@ -119,6 +132,30 @@ export async function getNavFacets(
   }
   if (context === 'incoming.unboxed' || context === 'receive') {
     return { ok: true, body: await unboxFacets(context, params, (listParams) => readReceivingLines(caller.orgId, caller.staffId, listParams)) };
+  }
+  if (context === 'purchasing') {
+    // The sheet's own read (`GET /api/nav/purchases`); the same permission already held here.
+    return {
+      ok: true,
+      body: await purchasingFacets(params, async (apiParams) => {
+        const answer = await getNavPurchases({ orgId: caller.orgId, permissions: caller.permissions }, apiParams);
+        return answer.ok ? answer.body : null;
+      }),
+    };
+  }
+  if (context === 'fulfilled') {
+    // The sheet's own read (`GET /api/nav/fulfilled`); the same permission already held here.
+    return {
+      ok: true,
+      body: await fulfilledFacets(
+        params,
+        async (apiParams) => {
+          const answer = await getNavFulfilled({ orgId: caller.orgId, permissions: caller.permissions }, apiParams, navFulfilledDeps);
+          return answer.ok ? answer.body : null;
+        },
+        caller.staffId ?? null,
+      ),
+    };
   }
   if (isRepairFacetContext(context)) return { ok: true, body: await repairFacets(context, caller.orgId, params, run) };
   if (context === 'imports.runs' || context === 'imports.rows') {

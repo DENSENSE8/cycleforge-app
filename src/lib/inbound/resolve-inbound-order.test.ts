@@ -39,6 +39,31 @@ describe('resolveInboundCartonByOrderId', () => {
     });
   });
 
+  it('a return LPN / FNSKU scan matches the return line not yet received (normalized like an order #)', async () => {
+    let sql = '';
+    let params: unknown[] = [];
+    const deps: ResolveInboundOrderDeps = {
+      query: (async (_org: OrgId, text: string, p: unknown[]) => {
+        sql = text;
+        params = p;
+        return { rows: [{ receiving_id: 61, receiving_line_id: 12, source_type: 'amazon', source_order_id: '114-1' }], rowCount: 1 };
+      }) as ResolveInboundOrderDeps['query'],
+      withTx: (async () => {
+        throw new Error('should not create carton');
+      }) as ResolveInboundOrderDeps['withTx'],
+      ensureReceivingForInboundOrder: (async () => {
+        throw new Error('should not ensure');
+      }) as ResolveInboundOrderDeps['ensureReceivingForInboundOrder'],
+    };
+    const hit = await resolveInboundCartonByOrderId(ORG, 'lpn-ab12', deps);
+    assert.equal(hit?.receivingLineId, 12);
+    assert.deepEqual(params, [ORG, 'LPNAB12']);
+    assert.match(sql, /FROM receiving_line_return rr/);
+    assert.match(sql, /rr\.license_plate_number/);
+    assert.match(sql, /rr\.fnsku/);
+    assert.match(sql, /COALESCE\(rl\.quantity_received, 0\) < COALESCE\(rl\.quantity_expected, 1\)/);
+  });
+
   it('mints a carton when the line is EXPECTED with null receiving_id', async () => {
     let ensured = false;
     const deps: ResolveInboundOrderDeps = {

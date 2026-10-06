@@ -29,36 +29,19 @@ const UNSHIPPED_VIEW_PARAMS = [
   'cardStatus',
 ] as const;
 
-/** Shipped board saved views — matches the Shipped ledger's feed (`useShippedTableFilters`). */
-const SHIPPED_VIEW_PARAMS = [
-  'shippedFilter',
-  'shippedSearchField',
-  'ostatus',
-  'staff',
-  'pickedBy',
-  'packedBy',
-  'exceptions',
-  // The Shipped card list's status pills (`outbound.shipped`, `?cardStatus=`) — a saved view keeps the cut.
-  'cardStatus',
-] as const;
-
 /** Packed tab — staff + packed-at window (exact staged list). */
 const PACKED_VIEW_PARAMS = ['staff', 'dateFrom', 'dateTo', 'allDates'] as const;
 
 export const UNSHIPPED_SAVED_VIEWS_KEY = 'unshipped_saved_views';
-export const SHIPPED_SAVED_VIEWS_KEY = 'shipped_saved_views';
 export const PACKED_SAVED_VIEWS_KEY = 'packed_saved_views';
 
 /** Mode → saved-views (storageKey, paramKeys) — the ONE resolver both the rail list ({@link OutboundSavedViewsList}) and the Band-3 Views… */
-export function outboundSavedViewsConfig(mode: 'unshipped' | 'packed' | 'shipped'): {
+export function outboundSavedViewsConfig(mode: 'unshipped' | 'packed'): {
   storageKey: string;
   paramKeys: readonly string[];
 } {
   if (mode === 'packed') {
     return { storageKey: PACKED_SAVED_VIEWS_KEY, paramKeys: PACKED_VIEW_PARAMS };
-  }
-  if (mode === 'shipped') {
-    return { storageKey: SHIPPED_SAVED_VIEWS_KEY, paramKeys: SHIPPED_VIEW_PARAMS };
   }
   return { storageKey: UNSHIPPED_SAVED_VIEWS_KEY, paramKeys: UNSHIPPED_VIEW_PARAMS };
 }

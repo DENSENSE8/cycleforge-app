@@ -10,7 +10,7 @@
  * reply is not contact.
  *
  * Precedence (first match wins):
- *   resolved / no_response_closed  the item is resolved (disposition kept, default `resolved`)
+ *   resolved / no_response_closed  the item is resolved (disposition + outcome kept, default `resolved`, no outcome)
  *   staff_reply_due                a customer message is still pending a reply
  *   customer_replied               the customer had the last word and nothing is owed
  *   follow_up_due                  contacted, silent customer, chase instant passed
@@ -19,7 +19,7 @@
  *   due                            not contacted, due instant passed
  *   not_due                        not contacted, not yet due
  */
-import type { DeliveryState, OrderCheckInState, SupportLifecycle } from '@/lib/support/conversation/model';
+import { CHECK_IN_OUTCOMES, type CheckInOutcome, type DeliveryState, type OrderCheckInState, type SupportLifecycle } from '@/lib/support/conversation/model';
 import { SUPPORT_CHECK_IN_DELAYS_MS } from './config';
 
 /** Follow-up channels that reach the customer (a `note` is staff-only). */
@@ -83,9 +83,33 @@ export function collectCheckInContacts(
 
 export interface CheckInClosure {
   disposition: 'resolved' | 'no_response_closed';
+  /** How a `resolved` close ended (staff choose it); always null for `no_response_closed` and the default closure. */
+  outcome: CheckInOutcome | null;
   reason: string | null;
   closedAtMs: number;
   closedByStaffId: number | null;
+}
+
+/**
+ * The closure a projection row stores: null unless a disposition AND its close
+ * instant stand (a reopen cleared both); the outcome rides only on `resolved`.
+ */
+export function storedCheckInClosure(row: {
+  disposition: string | null;
+  outcome: string | null;
+  reason: string | null;
+  closedAtMs: number | null;
+  closedByStaffId: number | null;
+}): CheckInClosure | null {
+  if ((row.disposition !== 'resolved' && row.disposition !== 'no_response_closed') || row.closedAtMs == null) return null;
+  const known = (CHECK_IN_OUTCOMES as readonly string[]).includes(row.outcome ?? '');
+  return {
+    disposition: row.disposition,
+    outcome: row.disposition === 'resolved' && known ? (row.outcome as CheckInOutcome) : null,
+    reason: row.reason,
+    closedAtMs: row.closedAtMs,
+    closedByStaffId: row.closedByStaffId,
+  };
 }
 
 export interface CheckInDerivationInput {
@@ -154,6 +178,7 @@ export function deriveOrderCheckInState(input: CheckInDerivationInput): DerivedC
   if (input.item.lifecycle === 'resolved') {
     const closure: CheckInClosure = input.storedClosure ?? {
       disposition: 'resolved',
+      outcome: null,
       reason: null,
       closedAtMs: input.item.resolvedAtMs ?? input.nowMs,
       closedByStaffId: input.item.resolvedByStaffId,

@@ -3,7 +3,7 @@ import { printOutboundDocuments, type PrintableOutboundDocument } from '@/lib/pr
 
 /**
  * Pack-bundle browser fallback (JIT Phase 2–3).
- * Manuals prefer `/api/documents/[id]/content` when promoted; else product-manuals proxy.
+ * Manuals print through the product-manuals content proxy.
  * Labels + slip print in ONE dialog: documents by id, paired labels (no documents
  * row yet) by the `src` the server sent.
  */
@@ -26,22 +26,15 @@ export function printPackBundleFallback(
       papers.push({ id: Number(item.documentId), isPdf: item.isPdf !== false });
     }
   }
-  const manuals = items.filter((i) => {
-    if (i.kind !== 'manual') return false;
-    return Number(i.documentId) > 0 || Number(i.productManualId) > 0;
-  });
+  const manualIds = items
+    .filter((i) => i.kind === 'manual' && Number(i.productManualId) > 0)
+    .map((i) => Number(i.productManualId));
 
   const printed = printOutboundDocuments(papers);
-  if (manuals.length === 0) return printed;
+  if (manualIds.length === 0) return printed;
 
-  const pages = manuals
-    .map((m) => {
-      const src =
-        Number(m.documentId) > 0
-          ? `/api/documents/${Number(m.documentId)}/content`
-          : `/api/product-manuals/${Number(m.productManualId)}/content`;
-      return `<div class="doc-page"><embed src="${src}" type="application/pdf" /></div>`;
-    })
+  const pages = manualIds
+    .map((id) => `<div class="doc-page"><embed src="/api/product-manuals/${id}/content" type="application/pdf" /></div>`)
     .join('\n');
 
   const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Print manuals</title>

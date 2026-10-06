@@ -3,7 +3,6 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { getQcChecks } from '@/lib/neon/sku-catalog-queries';
 import { resolveLineCatalog } from '@/lib/receiving/line-catalog';
-import { listManualDocumentsForSku } from '@/lib/documents/manual-documents';
 
 /** GET /api/receiving-lines/[id]/testing-bundle */
 function lineIdFromPath(pathname: string): number {
@@ -41,9 +40,8 @@ export const GET = withAuth(async (request, ctx) => {
   );
   const category = cat.rows[0]?.category ?? null;
 
-  const [checklist, docManuals, legacyManuals] = await Promise.all([
+  const [checklist, manuals] = await Promise.all([
     getQcChecks(resolved.skuCatalogId, category, { publishedOnly: true }),
-    listManualDocumentsForSku(ctx.organizationId, resolved.skuCatalogId),
     tenantQuery<{
       id: number;
       display_name: string | null;
@@ -63,56 +61,6 @@ export const GET = withAuth(async (request, ctx) => {
     ),
   ]);
 
-  const byPmId = new Map<
-    number,
-    {
-      id: number;
-      display_name: string | null;
-      type: string | null;
-      source_url: string | null;
-      thumbnail_url: string | null;
-      file_name: string | null;
-      document_id: number | null;
-    }
-  >();
-
-  for (const d of docManuals) {
-    const pmId = d.productManualId ?? d.documentId;
-    byPmId.set(pmId, {
-      id: pmId,
-      display_name: d.displayName,
-      type: d.manualType,
-      source_url: d.sourceUrl,
-      thumbnail_url: null,
-      file_name: d.fileName,
-      document_id: d.documentId,
-    });
-  }
-
-  for (const m of legacyManuals.rows) {
-    const existing = byPmId.get(Number(m.id));
-    if (existing) {
-      byPmId.set(Number(m.id), {
-        ...existing,
-        display_name: existing.display_name || m.display_name,
-        type: existing.type || m.type,
-        source_url: existing.source_url || m.source_url,
-        thumbnail_url: m.thumbnail_url,
-        file_name: existing.file_name || m.file_name,
-      });
-      continue;
-    }
-    byPmId.set(Number(m.id), {
-      id: Number(m.id),
-      display_name: m.display_name,
-      type: m.type,
-      source_url: m.source_url,
-      thumbnail_url: m.thumbnail_url,
-      file_name: m.file_name,
-      document_id: null,
-    });
-  }
-
   return NextResponse.json({
     ok: true,
     skuCatalogId: resolved.skuCatalogId,
@@ -129,6 +77,6 @@ export const GET = withAuth(async (request, ctx) => {
       pass_min: c.pass_min ?? null,
       pass_max: c.pass_max ?? null,
     })),
-    manuals: Array.from(byPmId.values()),
+    manuals: manuals.rows.map((m) => ({ ...m, id: Number(m.id) })),
   });
 }, { permission: 'tech.qc_pass' });

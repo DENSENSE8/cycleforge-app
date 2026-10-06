@@ -51,6 +51,57 @@ export function resolveConditionGrade(code: string | null | undefined): string {
   return CONDITION_GRADE_ALIASES[c] ?? c;
 }
 
+/**
+ * Marketplace listing condition words (eBay / Amazon / ShopGoodwill ladders)
+ * the grade aliases above do not name, keyed by the folded word (upper-case,
+ * every non-alphanumeric run → one space).
+ */
+const LISTING_CONDITION_WORDS: Record<string, ConditionGrade> = {
+  'NEW WITH TAGS': 'BRAND_NEW',
+  'NEW WITH BOX': 'BRAND_NEW',
+  'NEW SEALED': 'BRAND_NEW',
+  'FACTORY SEALED': 'BRAND_NEW',
+  'NEW OTHER': 'LIKE_NEW',
+  'NEW OPEN BOX': 'LIKE_NEW',
+  'OPEN BOX': 'LIKE_NEW',
+  'USED LIKE NEW': 'LIKE_NEW',
+  'USEDLIKENEW': 'LIKE_NEW',
+  REFURBISHED: 'REFURBISHED',
+  'CERTIFIED REFURBISHED': 'REFURBISHED',
+  'SELLER REFURBISHED': 'REFURBISHED',
+  'MANUFACTURER REFURBISHED': 'REFURBISHED',
+  RENEWED: 'REFURBISHED',
+  'VERY GOOD': 'USED_A',
+  'USED VERY GOOD': 'USED_A',
+  'USEDVERYGOOD': 'USED_A',
+  EXCELLENT: 'USED_A',
+  GOOD: 'USED_B',
+  'USED GOOD': 'USED_B',
+  'USEDGOOD': 'USED_B',
+  ACCEPTABLE: 'USED_C',
+  'USED ACCEPTABLE': 'USED_C',
+  'USEDACCEPTABLE': 'USED_C',
+  FAIR: 'USED_C',
+  'FOR PARTS OR NOT WORKING': 'PARTS',
+  'PARTS ONLY': 'PARTS',
+  'AS IS': 'PARTS',
+  SALVAGE: 'PARTS',
+};
+
+/**
+ * The grade a listing's condition text names — a grade code, a grade alias
+ * or a marketplace condition word; null when it names none (bare "Used" is
+ * not a grade). The CSV import's reader for "condition bought at".
+ */
+export function conditionGradeFromListing(raw: string | null | undefined): ConditionGrade | null {
+  const value = String(raw || '').trim();
+  if (!value) return null;
+  const direct = resolveConditionGrade(value);
+  if ((CONDITION_GRADES as readonly string[]).includes(direct)) return direct as ConditionGrade;
+  const folded = value.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+  return CONDITION_GRADE_ALIASES[folded] ?? LISTING_CONDITION_WORDS[folded] ?? null;
+}
+
 export type ConditionLabelVariant =
   | 'pill'
   | 'table'

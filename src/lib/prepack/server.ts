@@ -1,17 +1,17 @@
 import 'server-only';
 
 import type { QueryResultRow } from 'pg';
-import { unwrapScannedSerial } from '@/lib/barcode-routing';
-import { recordUnitEvent } from '@/lib/inventory/unit-events';
+import { routeScan, unwrapScannedSerial } from '@/lib/barcode-routing';
+import { QC_LABEL_INTERNAL_SERIAL_SQL_RE } from '@/lib/labels/qc-label-row';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { skuCatalogImageUrlSql } from '@/lib/photos/sku-catalog-image-sql';
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery } from '@/lib/tenancy/db';
+import { resolveSkuPaperworkManual } from '@/lib/manuals/order-manuals';
 import {
   PREPACK_KIT_PART_TYPES,
   parsePrepackProvenance,
   type PrepackCatalogChoice,
   type PrepackContentFact,
-  type PrepackEvidence,
   type PrepackKit,
   type PrepackKitPartType,
   type PrepackUnit,
@@ -26,128 +26,60 @@ interface Queryable {
 
 const KIT_TYPES_SQL = PREPACK_KIT_PART_TYPES.map((type) => `'${type}'`).join(', ');
 
-export async function searchPrepackCatalog(
-  orgId: OrgId,
-  input: { query?: string | null; sku?: string | null; limit?: number },
-): Promise<PrepackCatalogChoice[]> {
-  const q = String(input.query ?? '').trim();
-  const sku = String(input.sku ?? '').trim();
-  const limit = Math.min(Math.max(input.limit ?? 20, 1), 50);
-  const terms = Array.from(new Set(
-    q.toLocaleLowerCase('en-US')
-      .normalize('NFKD')
-      .replace(/[^a-z0-9-]+/g, ' ')
-      .split(/\s+/)
-      .filter((term) => term.length >= 2),
-  )).slice(0, 10);
-  const { rows } = await tenantQuery<CatalogChoiceRow>(
-    orgId,
-    sku
-      ? `SELECT sc.id, sc.sku, sc.product_title, COALESCE(sc.is_active, false) AS is_active,
-                COALESCE(sc.is_provisional, false) AS is_provisional, NULLIF(BTRIM(sc.mpn), '') AS mpn,
-                ${skuCatalogImageUrlSql('sc')} AS image_url
-           FROM sku_catalog sc
-          WHERE sc.organization_id = $1 AND UPPER(BTRIM(sc.sku)) = UPPER(BTRIM($2))
-          LIMIT 1`
-      : `WITH candidates AS (
-           SELECT id, sku, product_title, COALESCE(is_active, false) AS is_active,
-                  COALESCE(is_provisional, false) AS is_provisional,
-                  upc, ean, gtin, NULLIF(BTRIM(mpn), '') AS mpn,
-                  LOWER(CONCAT_WS(' ', sku, product_title, upc, ean, gtin, mpn)) AS search_text
-             FROM sku_catalog
-            WHERE organization_id = $1
-         ), ranked AS (
-           SELECT candidate.*,
-                  match.term_count,
-                  match.matched_terms,
-                  match.term_score
-             FROM candidates candidate
-       CROSS JOIN LATERAL (
-                  SELECT COUNT(*)::int AS term_count,
-                         COUNT(*) FILTER (
-                           WHERE candidate.search_text LIKE '%' || term || '%'
-                              OR (LENGTH(term) >= 4
-                                  AND word_similarity(term, candidate.search_text) >= 0.60)
-                         )::int AS matched_terms,
-                         COALESCE(AVG(GREATEST(
-                           CASE WHEN candidate.search_text LIKE '%' || term || '%' THEN 1.0 ELSE 0.0 END,
-                           CASE WHEN LENGTH(term) >= 4
-                                THEN word_similarity(term, candidate.search_text)
-                                ELSE 0.0 END
-                         )), 0) AS term_score
-                    FROM UNNEST($4::text[]) AS term
-                  ) match
-         )
-         SELECT id, sku, product_title, is_active, is_provisional, mpn,
-                -- Evaluated after ORDER BY / LIMIT: only the returned rows look up a photo.
-                (SELECT ${skuCatalogImageUrlSql('sc')} FROM sku_catalog sc
-                  WHERE sc.organization_id = $1 AND sc.id = ranked.id) AS image_url
-           FROM ranked
-          WHERE $2::text = ''
-             OR sku ILIKE '%' || $2 || '%'
-             OR product_title ILIKE '%' || $2 || '%'
-             OR upc = $2 OR ean = $2 OR gtin = $2
-             OR UPPER(mpn) = UPPER(BTRIM($2))
-             OR (term_count > 0 AND matched_terms = term_count)
-          ORDER BY CASE
-                     WHEN UPPER(BTRIM(sku)) = UPPER(BTRIM($2)) THEN 0
-                     WHEN UPPER(BTRIM(COALESCE(gtin, ''))) = UPPER(BTRIM($2))
-                       OR BTRIM(COALESCE(upc, '')) = BTRIM($2)
-                       OR BTRIM(COALESCE(ean, '')) = BTRIM($2) THEN 1
-                     WHEN UPPER(COALESCE(mpn, '')) = UPPER(BTRIM($2)) THEN 2
-                     WHEN UPPER(BTRIM(product_title)) = UPPER(BTRIM($2)) THEN 3
-                     WHEN product_title ILIKE '%' || $2 || '%' THEN 4
-                     ELSE 5
-                   END,
-                   term_score DESC,
-                   is_active DESC,
-                   product_title,
-                   sku
-          LIMIT $3`,
-    sku ? [orgId, sku] : [orgId, q, limit, terms],
-  );
-  return rows.map(catalogChoiceOf);
-}
-
-type CatalogChoiceRow = {
+/** The columns every prepack catalog read selects: `id, sku, product_title, image_url` (`skuCatalogImageUrlSql`). */
+export type CatalogChoiceRow = {
   id: number;
   sku: string;
   product_title: string;
-  is_active: boolean;
-  is_provisional: boolean;
-  mpn: string | null;
   image_url: string | null;
 };
 
-function catalogChoiceOf(row: CatalogChoiceRow): PrepackCatalogChoice {
+export function catalogChoiceOf(row: CatalogChoiceRow): PrepackCatalogChoice {
   return {
     id: Number(row.id),
     sku: row.sku,
     title: row.product_title,
-    mpn: row.mpn,
-    isActive: row.is_active,
-    isProvisional: row.is_provisional,
     imageUrl: row.image_url,
   };
 }
 
-type RelatedSku = { sku: string; product_title: string; category: string | null; notes: string | null };
+type RelatedSku = {
+  id: number;
+  sku: string;
+  product_title: string;
+  category: string | null;
+  notes: string | null;
+};
 
-function remoteSkuFor(partName: string, related: readonly RelatedSku[]): string | null {
-  const words = partName.toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 2);
+/**
+ * The child SKU a part is paired to. `sku_kit_parts` carries no child link, so
+ * the pairing is read off the parent → child edges: an edge whose notes name
+ * the part (what `addPrepackKitPart` writes) wins outright, then the child SKU
+ * spelled in the part name, then the part's type word and shared name words.
+ */
+function pairedChildSku(
+  partName: string,
+  partType: PrepackKitPartType,
+  related: readonly RelatedSku[],
+): string | null {
+  const name = partName.trim().toLowerCase();
+  const words = name.split(/[^a-z0-9]+/).filter((word) => word.length > 2);
+  const typeWord = partType.toLowerCase();
   const ranked = related
     .map((row) => {
       const haystack = `${row.sku} ${row.product_title} ${row.category ?? ''} ${row.notes ?? ''}`.toLowerCase();
-      const remote = /remote/.test(haystack) ? 20 : 0;
+      const named = row.notes?.trim().toLowerCase() === name ? 1000 : 0;
+      const exactSku = name.includes(row.sku.toLowerCase()) ? 100 : 0;
+      const typed = haystack.includes(typeWord) ? 20 : 0;
       const overlap = words.reduce((score, word) => score + (haystack.includes(word) ? 5 : 0), 0);
-      const exactSku = partName.toLowerCase().includes(row.sku.toLowerCase()) ? 100 : 0;
-      return { row, score: remote + overlap + exactSku };
+      return { row, score: named + exactSku + typed + overlap };
     })
     .filter((candidate) => candidate.score > 0)
     .sort((a, b) => b.score - a.score || a.row.sku.localeCompare(b.row.sku));
   return ranked[0]?.row.sku ?? null;
 }
 
+/** The product's pairing facts: parts list, paired child SKUs and the manual pack print reads at SKU level. */
 export async function loadPrepackKit(
   orgId: OrgId,
   skuCatalogId: number,
@@ -155,22 +87,15 @@ export async function loadPrepackKit(
 ): Promise<PrepackKit | null> {
   const query = <T extends QueryResultRow>(sql: string, params?: unknown[]) =>
     db ? db.query<T>(sql, params) : tenantQuery<T>(orgId, sql, params);
-  const catalogResult = await query<CatalogChoiceRow & { catalog_photo_count: number }>(
-    `SELECT sc.id, sc.sku, sc.product_title, COALESCE(sc.is_active, false) AS is_active,
-            COALESCE(sc.is_provisional, false) AS is_provisional,
-            NULLIF(BTRIM(sc.mpn), '') AS mpn,
-            ${skuCatalogImageUrlSql('sc')} AS image_url,
-            (SELECT COUNT(*)::int
-               FROM photo_entity_links link
-              WHERE link.organization_id = sc.organization_id
-                AND link.entity_type = 'SKU' AND link.entity_id = sc.id) AS catalog_photo_count
+  const catalogResult = await query<CatalogChoiceRow>(
+    `SELECT sc.id, sc.sku, sc.product_title, ${skuCatalogImageUrlSql('sc')} AS image_url
        FROM sku_catalog sc WHERE sc.id = $1 AND sc.organization_id = $2 LIMIT 1`,
     [skuCatalogId, orgId],
   );
   const catalogRow = catalogResult.rows[0];
   if (!catalogRow) return null;
 
-  const [partsResult, relatedResult] = await Promise.all([
+  const [partsResult, relatedResult, manual] = await Promise.all([
     query<{
       id: number;
       component_name: string;
@@ -185,7 +110,7 @@ export async function loadPrepackKit(
       [orgId, skuCatalogId],
     ),
     query<RelatedSku>(
-      `SELECT child.sku, child.product_title, child.category, rel.notes
+      `SELECT child.id, child.sku, child.product_title, child.category, rel.notes
          FROM sku_relationships rel
          JOIN sku_catalog child
            ON child.id = rel.child_sku_id AND child.organization_id = rel.organization_id
@@ -193,6 +118,7 @@ export async function loadPrepackKit(
         ORDER BY child.product_title, child.sku`,
       [orgId, skuCatalogId],
     ),
+    resolveSkuPaperworkManual(query, orgId, skuCatalogId, catalogRow.sku),
   ]);
 
   return {
@@ -204,17 +130,51 @@ export async function loadPrepackKit(
         componentName: row.component_name,
         componentType,
         qtyRequired: Math.max(1, Number(row.qty_required) || 1),
-        componentSku:
-          componentType === 'REMOTE' ? remoteSkuFor(row.component_name, relatedResult.rows) : null,
+        componentSku: pairedChildSku(row.component_name, componentType, relatedResult.rows),
       };
     }),
-    catalogPhotoCount: Number(catalogRow.catalog_photo_count) || 0,
+    children: relatedResult.rows.map((row) => ({
+      id: Number(row.id),
+      sku: row.sku,
+      title: row.product_title,
+    })),
+    manual,
   };
 }
 
 /**
- * Any serial unit the org owns, whatever stage it reached first — a serial
- * never seen at Unbox is a prepack fact too (`createPrepackUnit`). Shipped and
+ * The unit a typed or scanned key names: its OEM serial, its minted
+ * `unit_uid`, the `U-{OEM serial}` face of a unit with no uid, or — only for a
+ * unit with no OEM serial (`AUTO-…` surrogate) — its `U-{id}` handle. A bare
+ * number never names an id. Save resolves every package serial through this.
+ */
+export async function findPrepackUnitId(orgId: OrgId, raw: string, db?: Queryable): Promise<number | null> {
+  const key = unwrapScannedSerial(raw);
+  if (!key) return null;
+  // The existing QC product face falls back to `U-{OEM serial}` when the unit
+  // has no minted uid. That is a unit barcode, not a second serial identity.
+  const handleSerial = /^U-(.+)$/i.exec(key)?.[1]?.trim() || key;
+  const handleId = routeScan(raw)?.type === 'serial-unit' && /^\d{1,9}$/.test(key) ? Number(key) : null;
+  const params = [orgId, key, handleSerial, handleId, QC_LABEL_INTERNAL_SERIAL_SQL_RE];
+  const sql = `SELECT su.id FROM serial_units su
+      WHERE su.organization_id = $1
+        AND (
+          su.normalized_serial = UPPER(BTRIM($2))
+          OR su.normalized_serial = UPPER(BTRIM($3))
+          OR su.unit_uid = BTRIM($2)
+          OR (su.id = $4::int AND su.normalized_serial ~ $5)
+        )
+      ORDER BY (su.unit_uid = BTRIM($2)) IS TRUE DESC,
+               (su.normalized_serial = UPPER(BTRIM($2))) DESC,
+               (su.normalized_serial = UPPER(BTRIM($3))) DESC
+      LIMIT 1`;
+  const { rows } = db ? await db.query<{ id: number }>(sql, params) : await tenantQuery<{ id: number }>(orgId, sql, params);
+  return rows[0] ? Number(rows[0].id) : null;
+}
+
+/**
+ * Any serial unit the org owns, whatever stage it reached first. A serial
+ * CycleForge has never seen answers null (save creates it). Shipped and
  * order-allocated units load so the form can refuse them by name.
  */
 export async function loadPrepackUnit(
@@ -222,11 +182,8 @@ export async function loadPrepackUnit(
   raw: string,
   db?: Queryable,
 ): Promise<PrepackUnit | null> {
-  const key = unwrapScannedSerial(raw);
-  if (!key) return null;
-  // The existing QC product face falls back to `U-{OEM serial}` when the unit
-  // has no minted uid. That is a unit barcode, not a second serial identity.
-  const handleSerial = /^U-(.+)$/i.exec(key)?.[1]?.trim() || key;
+  const unitId = await findPrepackUnitId(orgId, raw, db);
+  if (unitId == null) return null;
   const query = <T extends QueryResultRow>(sql: string, params?: unknown[]) =>
     db ? db.query<T>(sql, params) : tenantQuery<T>(orgId, sql, params);
   const unitResult = await query<{
@@ -293,36 +250,25 @@ export async function loadPrepackUnit(
           WHERE item.organization_id = su.organization_id AND item.serial_unit_id = su.id
           LIMIT 1
        ) pkg ON TRUE
-      WHERE su.organization_id = $1
-        AND (
-          su.normalized_serial = UPPER(BTRIM($2))
-          OR su.normalized_serial = UPPER(BTRIM($3))
-          OR su.unit_uid = BTRIM($2)
-        )
-      ORDER BY (su.unit_uid = BTRIM($2)) DESC,
-               (su.normalized_serial = UPPER(BTRIM($2))) DESC
-      LIMIT 1`,
-    [orgId, key, handleSerial],
+      WHERE su.organization_id = $1 AND su.id = $2`,
+    [orgId, unitId],
   );
   const row = unitResult.rows[0];
   if (!row) return null;
-  const [contentsResult, evidence] = await Promise.all([
-    query<{
-      kit_part_id: number | null;
-      component_name: string;
-      component_type: PrepackKitPartType;
-      qty_required: number;
-      component_sku: string | null;
-      included: boolean;
-    }>(
-      `SELECT kit_part_id, component_name, component_type, qty_required, component_sku, included
-         FROM serial_unit_prepack_contents
-        WHERE organization_id = $1 AND serial_unit_id = $2
-        ORDER BY id`,
-      [orgId, row.id],
-    ),
-    loadPrepackEvidence(orgId, Number(row.id), db),
-  ]);
+  const contentsResult = await query<{
+    kit_part_id: number | null;
+    component_name: string;
+    component_type: PrepackKitPartType;
+    qty_required: number;
+    component_sku: string | null;
+    included: boolean;
+  }>(
+    `SELECT kit_part_id, component_name, component_type, qty_required, component_sku, included
+       FROM serial_unit_prepack_contents
+      WHERE organization_id = $1 AND serial_unit_id = $2
+      ORDER BY id`,
+    [orgId, row.id],
+  );
   return {
     id: Number(row.id),
     serialNumber: row.serial_number,
@@ -349,106 +295,5 @@ export async function loadPrepackUnit(
       componentSku: content.component_sku,
       included: content.included,
     })),
-    evidence,
-  };
-}
-
-/**
- * A serial CycleForge has never seen, met first at prepack: created through
- * the canonical unit writer (`recordUnitEvent`, origin `manual`) as UNKNOWN,
- * stamped with the package's catalog product when one is chosen. Finish moves
- * it UNKNOWN → RECEIVED → STOCKED through the guarded state machine. An
- * existing serial is returned untouched (find-or-create).
- */
-export async function createPrepackUnit(
-  orgId: OrgId,
-  input: { serial: string; skuCatalogId: number | null; actorStaffId: number | null },
-): Promise<PrepackUnit | null> {
-  const serial = unwrapScannedSerial(input.serial);
-  if (!serial) return null;
-  const existing = await loadPrepackUnit(orgId, serial);
-  if (existing) return existing;
-  await withTenantTransaction(orgId, async (client) => {
-    const catalog = input.skuCatalogId
-      ? (await client.query<{ id: number; sku: string }>(
-          `SELECT id, sku FROM sku_catalog WHERE organization_id = $1 AND id = $2 LIMIT 1`,
-          [orgId, input.skuCatalogId],
-        )).rows[0] ?? null
-      : null;
-    await recordUnitEvent(
-      {
-        organizationId: orgId,
-        serialNumber: serial,
-        sku: catalog?.sku ?? null,
-        skuCatalogId: catalog ? Number(catalog.id) : null,
-        originSource: 'manual',
-        targetStatus: 'UNKNOWN',
-        eventType: 'NOTE',
-        station: 'MOBILE',
-        actorStaffId: input.actorStaffId,
-        notes: 'Serial first seen at prepack',
-        payload: { source: 'prepack' },
-        writeTechSerial: false,
-      },
-      client,
-    );
-  });
-  return loadPrepackUnit(orgId, serial);
-}
-
-/** Find is empty: the catalog products prepacked or received most recently, one row per product. */
-export async function listRecentPrepackProducts(orgId: OrgId, limit = 20): Promise<PrepackCatalogChoice[]> {
-  const { rows } = await tenantQuery<CatalogChoiceRow>(
-    orgId,
-    `WITH touched AS (
-       SELECT su.sku_catalog_id, MAX(GREATEST(su.prepacked_at, su.received_at)) AS touched_at
-         FROM serial_units su
-        WHERE su.organization_id = $1
-          AND su.sku_catalog_id IS NOT NULL
-          AND (su.prepacked_at IS NOT NULL OR su.received_at IS NOT NULL)
-        GROUP BY su.sku_catalog_id
-        ORDER BY touched_at DESC
-        LIMIT $2
-     )
-     SELECT sc.id, sc.sku, sc.product_title, COALESCE(sc.is_active, false) AS is_active,
-            COALESCE(sc.is_provisional, false) AS is_provisional, NULLIF(BTRIM(sc.mpn), '') AS mpn,
-            ${skuCatalogImageUrlSql('sc')} AS image_url
-       FROM touched
-       JOIN sku_catalog sc ON sc.id = touched.sku_catalog_id AND sc.organization_id = $1
-      ORDER BY touched.touched_at DESC, sc.sku`,
-    [orgId, Math.min(Math.max(limit, 1), 50)],
-  );
-  return rows.map(catalogChoiceOf);
-}
-
-/**
- * Typed prepack evidence on one unit: SERIAL_UNIT links to `prepack` photos,
- * counted by `photo_aspect`. Catalog (SKU) photos never count here.
- */
-export async function loadPrepackEvidence(
-  orgId: OrgId,
-  serialUnitId: number,
-  db?: Queryable,
-): Promise<PrepackEvidence> {
-  const query = <T extends QueryResultRow>(sql: string, params?: unknown[]) =>
-    db ? db.query<T>(sql, params) : tenantQuery<T>(orgId, sql, params);
-  const { rows } = await query<{ serial_n: number; condition_n: number; contents_n: number }>(
-    `SELECT COUNT(*) FILTER (WHERE p.photo_aspect = 'serial')::int AS serial_n,
-            COUNT(*) FILTER (
-              WHERE p.photo_aspect IN ('condition', 'front', 'back', 'side', 'bottom')
-            )::int AS condition_n,
-            COUNT(*) FILTER (WHERE p.photo_aspect = 'included')::int AS contents_n
-       FROM photo_entity_links link
-       JOIN photos p ON p.id = link.photo_id AND p.organization_id = link.organization_id
-      WHERE link.organization_id = $1
-        AND link.entity_type = 'SERIAL_UNIT' AND link.entity_id = $2
-        AND lower(COALESCE(p.photo_type, '')) = 'prepack'`,
-    [orgId, serialUnitId],
-  );
-  const row = rows[0];
-  return {
-    serial: Number(row?.serial_n) || 0,
-    condition: Number(row?.condition_n) || 0,
-    contents: Number(row?.contents_n) || 0,
   };
 }

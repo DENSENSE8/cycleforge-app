@@ -204,6 +204,7 @@ function CardPhoto({ line, size }: { line: RecordCardLine; size: 'lg' | 'sm' }) 
   return (
     <PhotoHoverPeek
       src={line.photoUrl}
+      fullSrc={line.photoFullUrl}
       alt={line.title}
       // A photo FILLS the square (owner 2026-09-29: never letterbox bars); the gray well is only the no-photo placeholder.
       className={cn(

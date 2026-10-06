@@ -43,6 +43,10 @@ test('placeholder names the destination (I4)', () => {
     stationComposerModePlaceholder('ticket', { hasTicket: true, ticketLabel: '#2231' }),
     /#2231/,
   );
+  assert.match(
+    stationComposerModePlaceholder('ticket', { hasTicket: true, ticketLabel: '#2231' }),
+    /Ctrl\+Enter/,
+  );
   // Unlinked used to read "Create or link a ticket above" — a pointer at the
   // claim form that mounted over the dock. That form is gone (2026-08-30): the
   // field itself is the claim body now, so the destination it names is filing.

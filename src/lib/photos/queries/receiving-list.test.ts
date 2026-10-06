@@ -35,15 +35,18 @@ test('sqlPoLevelPhotoCount counts RECEIVING entity only', () => {
   assert.doesNotMatch(sql, /RECEIVING_LINE/);
 });
 
-test('sqlLinePhotoCount counts a single receiving line', () => {
+test('sqlLinePhotoCount counts a single receiving line — never its listing photos', () => {
   const sql = sqlLinePhotoCount('rl.id', 'rl.organization_id');
   assert.match(sql, /RECEIVING_LINE/);
   assert.match(sql, /rl\.id/);
+  assert.match(sql, /COALESCE\(p\.photo_type, ''\) <> 'listing'/);
 });
 
-test('sqlLineIdsPhotoCount accepts int array param', () => {
+test('sqlLineIdsPhotoCount accepts int array param and skips listing photos', () => {
   const sql = sqlLineIdsPhotoCount('$2::int[]', 'rl.organization_id');
   assert.match(sql, /\$2::int\[\]/);
+  assert.match(sql, /<> 'listing'/);
+  assert.match(sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id'), /<> 'listing'/);
 });
 
 test('sqlCartonStagePhotoCount package pins entity + package types and excludes receiving_item', () => {

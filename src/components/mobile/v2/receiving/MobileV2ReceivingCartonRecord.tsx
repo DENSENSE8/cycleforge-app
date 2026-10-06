@@ -17,6 +17,7 @@ import { useCartonHub } from '@/components/mobile/receiving/useCartonHub';
 import { useCompleteCarton } from '@/components/mobile/receiving/useCompleteCarton';
 import { MobileV2DetailTopBar } from '@/components/mobile/v2/MobileV2DetailTopBar';
 import { MobileV2InboundOrderDoor } from '@/components/mobile/v2/inbound/MobileV2InboundOrderDoor';
+import { MobileV2AsListedSection } from '@/components/mobile/v2/receiving/MobileV2AsListedSection';
 import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { DetailDock } from '@/design-system/components/DetailDock';
@@ -229,6 +230,8 @@ export function MobileV2ReceivingCartonRecord() {
                     <div className="border-r border-border-soft px-2 py-2"><strong className={cn('block truncate text-sm', conditionGradeTextClass(selected.condition_grade || ''))}>{conditionGradeTableLabel(selected.condition_grade || '')}</strong><span className="text-[10px] text-text-muted">Condition</span></div>
                     <div className="px-2 py-2"><strong className={cn('block truncate text-sm', workflowStageBadge(selected.workflow_status || 'EXPECTED'))}>{workflowStageLabel(selected.workflow_status || 'EXPECTED')}</strong><span className="text-[10px] text-text-muted">Status</span></div>
                   </div>
+
+                  <MobileV2AsListedSection line={selected} />
 
                   {selected.serials && selected.serials.length > 0 ? (
                     <div className="border border-border-soft bg-surface-card">

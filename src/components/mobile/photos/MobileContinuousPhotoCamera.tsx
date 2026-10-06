@@ -8,6 +8,7 @@ import {
   captureFrameDimensions,
   CONTINUOUS_CAMERA_CONSTRAINTS,
 } from '@/lib/photos/capture-session';
+import { warmCamera } from '@/lib/scan/warm-camera';
 
 interface MobileContinuousPhotoCameraProps {
   count: number;
@@ -60,6 +61,9 @@ export function MobileContinuousPhotoCamera({
 
   useEffect(() => {
     let alive = true;
+    // One lens at a time: a scan stream parked by the capture window gives way
+    // (iOS would mute it anyway; Android would open the camera twice).
+    warmCamera.release();
     void navigator.mediaDevices
       .getUserMedia(CONTINUOUS_CAMERA_CONSTRAINTS)
       .then(async (stream) => {

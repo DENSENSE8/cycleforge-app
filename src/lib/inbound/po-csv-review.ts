@@ -1,5 +1,5 @@
 /**
- * Purchase-order CSV import — what the operator reviews (client + server safe).
+ * Inbound order import — what the operator reviews (client + server safe).
  *
  * The dry run (`runPoCsvImport`) answers per order: status, change, rows,
  * problems. The review needs more than that to show each order as a card —
@@ -14,11 +14,12 @@
 
 import type { BatchOrderOutcome } from './import-batch';
 import {
-  poPresetForPlatform,
+  PO_PRESETS,
   poRowToDeskRow,
   type PoColumnIdentification,
   type PoField,
   type PoIdentifiedColumn,
+  type PoPresetId,
   type PoRowProblem,
 } from './po-columns';
 
@@ -68,7 +69,9 @@ export interface PoReviewGroup {
 export interface PoReviewInput {
   rows: ReadonlyArray<Record<string, string>>;
   mapping: Partial<Record<PoField, string>>;
+  /** The operator's platform pick (read only by the `generic` preset). */
   platform: string;
+  preset: PoPresetId;
   outcomes: readonly BatchOrderOutcome[];
   rowProblems: readonly PoRowProblem[];
 }
@@ -82,7 +85,7 @@ export function poReviewStatus(outcome: Pick<BatchOrderOutcome, 'status' | 'chan
 
 function reviewLine(input: Omit<PoReviewInput, 'outcomes'>, row: number): PoReviewLine {
   const raw = input.rows[row] ?? {};
-  const { deskRow } = poRowToDeskRow(raw, row, { mapping: input.mapping, preset: poPresetForPlatform(input.platform), platform: input.platform });
+  const { deskRow } = poRowToDeskRow(raw, row, { mapping: input.mapping, preset: PO_PRESETS[input.preset], platform: input.platform });
   const cell = (field: PoField) => {
     const header = input.mapping[field];
     const value = header ? (raw[header] ?? '').trim() : '';

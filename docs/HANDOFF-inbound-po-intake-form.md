@@ -1,3 +1,13 @@
+> **Superseded 2026-10-06.** The desk form now lives at **`/purchasing/new`** (`?type=PO|RETURN`,
+> `?id=<inbound order id>` to fix a landed order) — `src/app/purchasing/new/page.tsx` →
+> `src/components/receiving/purchases/order-form/**`, opened from Add (top right) on Purchasing and
+> Deliveries. One model for desk and phone: `src/lib/inbound/use-inbound-order-form.ts` (state,
+> dry run, listing photos held per line and uploaded after landing) + `inbound-order-compose.ts`
+> (pure edits, `inboundOrderFormHref`, `?type=`/`?id=` parsing). The phone face is
+> `/m/receiving/order` (`src/components/mobile/v2/inbound/**`). `/incoming/new`,
+> `order-composer/**` and `new-inbound-order-path.ts` are deleted; trade-in / pickup land from the
+> kiosk and `/m/receiving/pickup/new`. The sections below describe the 2026-09-28 form.
+
 # HANDOFF: Inbound: add an inbound order / purchase order through ONE form (2026-09-28)
 
 Paste the **Prompt** block at the bottom into a fresh session. The sections above it hold the state

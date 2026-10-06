@@ -84,6 +84,7 @@ export function stockRecordCard(
         id: rowId(item),
         title: item.source === 'empty' ? 'Empty location' : stockRecordTitle(item),
         photoUrl: item.image_url,
+        photoFullUrl: item.cover_photo_url,
         facts: {
           qty: { kind: 'count', value: item.qty },
           // The rack face already appears once in the identity. Only a

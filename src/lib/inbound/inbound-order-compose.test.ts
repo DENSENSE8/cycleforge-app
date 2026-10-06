@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  addInboundLineSerials,
   addInboundTracking,
   appendInboundLine,
   formatInboundMoney,
+  inboundAutoPriorityLabel,
   inboundLineCatalogPatch,
   inboundLineName,
   inboundLineSkuPatch,
@@ -14,6 +16,7 @@ import {
   patchInboundLine,
   removeInboundLine,
   removeInboundTracking,
+  splitPastedList,
 } from './inbound-order-compose';
 import { emptyInboundOrderDraft, emptyInboundOrderLine, inboundOrderMissing } from './inbound-order-draft';
 
@@ -23,10 +26,12 @@ test('typed quantity: whole 1..10 000 only; anything else is "not said yet"', ()
   for (const raw of ['', '0', '-1', '1.5', 'two', '10001']) assert.equal(parseInboundQuantityInput(raw), null, raw);
 });
 
-test('priority choices: Auto first, then the shared 0..3 tiers escalating to Priority', () => {
-  const choices = inboundPriorityChoices();
+test('priority choices: Auto first (named by what it resolves to), then the shared 0..3 tiers escalating to Priority', () => {
+  const choices = inboundPriorityChoices(inboundAutoPriorityLabel('goodwill', 'Goodwill'));
   assert.deepEqual(choices.map((c) => c.value), ['auto', '3', '2', '1', '0']);
+  assert.equal(choices[0]?.label, 'Auto — Goodwill: tier 3 Low');
   assert.equal(choices.at(-1)?.label, 'Priority');
+  assert.equal(inboundAutoPriorityLabel('', null), 'Auto — follows platform');
 });
 
 test('a catalog pick names the line; clearing it keeps the typed text; a new SKU unpairs', () => {
@@ -56,14 +61,23 @@ test('lines: the blank starter line is replaced, removal keeps one line, patches
   assert.equal(inboundLineName({ title: ' ', sku: 'B-2' }), 'B-2');
 });
 
-test('tracking: a scan fills the empty slot, repeats are ignored, removal keeps one slot', () => {
+test('tracking: a scan fills the empty slot, repeats are ignored, a paste adds many, removal keeps one slot', () => {
   const d0 = emptyInboundOrderDraft('PO');
-  const d1 = addInboundTracking(d0, ' 1Z999AA10123456784 ');
+  const d1 = addInboundTracking(d0, [' 1Z999AA10123456784 ']);
   assert.deepEqual(d1.tracking, [{ number: '1Z999AA10123456784', carrier: '' }]);
-  assert.equal(addInboundTracking(d1, '1Z999AA10123456784'), d1);
-  const d2 = addInboundTracking(d1, '9400111899223197428490');
+  assert.equal(addInboundTracking(d1, ['1Z999AA10123456784']), d1);
+  const d2 = addInboundTracking(d1, ['9400111899223197428490']);
   assert.equal(d2.tracking.length, 2);
   assert.deepEqual(removeInboundTracking(removeInboundTracking(d2, 0), 0).tracking, [{ number: '', carrier: '' }]);
+  const pasted = splitPastedList('1Z999AA10123456784, 9400111899223197428490\n9400111899223197428491 9400111899223197428491');
+  assert.deepEqual(pasted, ['1Z999AA10123456784', '9400111899223197428490', '9400111899223197428491']);
+  const many = Array.from({ length: 12 }, (_, i) => `94001118992231974284${String(i).padStart(2, '0')}`);
+  assert.equal(addInboundTracking(d0, many).tracking.length, 12);
+});
+
+test('listing serials: a paste adds many, a repeat (spaces, case) is skipped', () => {
+  const line = { ...emptyInboundOrderLine(), listingSerials: ['SN-1'] };
+  assert.deepEqual(addInboundLineSerials(line, splitPastedList('sn-1\nSN-2, SN-3')), { listingSerials: ['SN-1', 'SN-2', 'SN-3'] });
 });
 
 test('cost: subtotal of costed lines, count of uncosted; money never guesses', () => {

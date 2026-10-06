@@ -415,18 +415,6 @@ export const MUTATION_KINDS = {
       'Create a manual phone order from a chat draft: customer (existing or new), every line under one order number, ship-by, parcel — held in the cage. Payload: { draft } (the manual order field contract). Proposed by create_manual_order — use that tool, not propose_mutation. Not revertable (cancel the order instead).',
     permission: 'orders.create',
   },
-  // review — a purchase order imported from chat (`import_purchase_order`).
-  // The operator's next-turn "yes" (or any reviewer) approves it; approval
-  // lands every line on the Incoming spine through ingestPurchase and links
-  // the tracking to the PO's inbound carton.
-  'receiving.import_po': {
-    label: 'Import purchase order',
-    trust: 'review',
-    targetKind: 'receiving',
-    description:
-      'Import a purchase order drafted in chat onto the Incoming spine: PO number, vendor, every item (SKU or title, quantity, cost), tracking linked for the arrival scan, expected date. Payload: { draft } (the PO import field contract). Proposed by import_purchase_order — use that tool, not propose_mutation. Not revertable.',
-    permission: 'receiving.scan_po',
-  },
   // review — "this PO is for order 1125" (`link_po_to_order`): the
   // receiving_order_link edge between a purchase order and outbound orders.
   'receiving.link_order': {

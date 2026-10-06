@@ -1,18 +1,22 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Copy } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
-import { toast } from '@/lib/toast';
 import { CopyChip } from '@/components/ui/CopyChip';
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { SkuOpenInMenu } from '@/design-system/components/record-ledger/RecordItemIdentity';
+import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
 import { cn } from '@/utils/_cn';
 import { stockLocationFace, stockRecordTitle } from './stock-record';
 import { StockPhotoTile } from './StockPhotoTile';
 
-
-/** The shared Item face for populated and empty stock records. */
+/**
+ * The shared Item face for populated and empty stock records, read in an F
+ * (owner 2026-10-05): the title leads top-left, the stock count is the big
+ * headline top-right of the same line, then the SKU, then where it sits —
+ * room first (heavier), then the location as a copy chip. A missing tote,
+ * room or stock is never spelled out here; Locations below owns that.
+ */
 export function StockItemCard({
   record,
   titleContent,
@@ -20,7 +24,6 @@ export function StockItemCard({
   photoTitle,
   showSku = true,
   onChanged,
-  elsewhereQty = 0,
 }: {
   record: LocationStockTableRow;
   titleContent?: ReactNode;
@@ -28,21 +31,12 @@ export function StockItemCard({
   photoTitle?: string;
   showSku?: boolean;
   onChanged?: () => void;
-  /** Same SKU at OTHER locations now — separates "nothing anywhere" from "stocked elsewhere". */
-  elsewhereQty?: number;
 }) {
   const face = stockLocationFace(record);
   const title = (photoTitle ?? stockRecordTitle(record)) || 'Add SKU';
-  // One sentence per empty shape (owner 2026-09-30): no stock HERE vs no stock
-  // ANYWHERE vs no tote assigned. Never a bare zero.
-  const emptyLine =
-    record.qty > 0
-      ? null
-      : elsewhereQty > 0
-        ? `Nothing here — ${elsewhereQty} at other location${elsewhereQty === 1 ? '' : 's'}`
-        : record.sku
-          ? 'Nothing here'
-          : null;
+  const provisional = record.is_provisional || isProvisionalSku(record.sku);
+  // An empty location's add form has no count of its own yet.
+  const counted = record.source !== 'empty';
 
   return (
     <div className="flex min-w-0 items-start gap-4 px-4 py-3" data-testid="stock-record-item">
@@ -53,61 +47,56 @@ export function StockItemCard({
         fullPhotoUrl={record.cover_photo_url}
         title={title}
         onChanged={onChanged}
-        showVerbs={false}
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5" data-testid="stock-record-location">
-          {face ? (
-            <span className="flex min-w-0 items-baseline gap-1">
-              <span className="min-w-0 truncate font-mono text-[17px] font-semibold leading-tight tracking-tight text-text-default">
-                {face}
-              </span>
-              <IconButton
-                icon={<Copy className="size-3.5" aria-hidden />}
-                ariaLabel={`Copy barcode ${record.location_barcode ?? face}`}
-                title="Copy raw barcode"
-                size="xs"
-                radius="pill"
-                tone="neutral"
-                className="self-center"
-                onClick={() => {
-                  const code = record.location_barcode ?? face;
-                  void navigator.clipboard.writeText(code).then(
-                    () => toast.success(`Copied ${code}`),
-                    () => toast.error('Could not copy the barcode.'),
-                  );
-                }}
-                data-testid="stock-record-copy-barcode"
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="min-w-0 flex-1">
+            {titleContent ?? (
+              <p
+                className="line-clamp-2 min-w-0 text-role-title font-semibold leading-snug text-text-default [overflow-wrap:anywhere]"
+                title={title}
+                data-testid="stock-record-item-title"
+              >
+                {title}
+              </p>
+            )}
+          </div>
+          {counted ? (
+            <div className="flex shrink-0 flex-col items-end" data-testid="stock-record-count">
+              <AnimatedStat
+                value={record.qty}
+                profile="kpi"
+                className={cn(
+                  'text-role-display font-semibold leading-none tabular-nums',
+                  record.qty > 0 ? 'text-text-default' : 'text-text-warning',
+                )}
               />
-            </span>
-          ) : (
-            <span className="text-[17px] font-semibold leading-tight text-text-warning">No tote</span>
-          )}
-          <span className={cn('truncate text-xs font-medium', record.room ? 'text-text-muted' : 'text-text-warning')}>
-            {record.room ?? 'No room'}
-          </span>
+              <span className="mt-1 text-role-caption font-medium text-text-muted">on hand</span>
+            </div>
+          ) : null}
         </div>
-        {emptyLine ? (
-          <p className="text-xs font-semibold text-text-warning" data-testid="stock-record-empty-line">
-            {emptyLine}
-          </p>
-        ) : null}
-        {titleContent ?? (
-          <p
-            className="line-clamp-2 min-w-0 text-[13px] font-normal leading-snug text-text-soft [overflow-wrap:anywhere]"
-            title={title}
-            data-testid="stock-record-item-title"
-          >
-            {title}
-          </p>
-        )}
         {showSku ? (
           skuContent ?? (
             <span className="flex min-w-0 items-center gap-1">
               <CopyChip value={record.sku} display={record.sku} tone="sku" fitDisplayWidth />
-              <SkuOpenInMenu sku={record.sku} />
+              {provisional ? null : <SkuOpenInMenu sku={record.sku} />}
             </span>
           )
+        ) : null}
+        {face || record.room ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5" data-testid="stock-record-location">
+            {record.room ? (
+              <span className="truncate text-role-data font-semibold text-text-default">{record.room}</span>
+            ) : null}
+            {face ? (
+              <CopyChip
+                value={record.location_barcode ?? face}
+                display={face}
+                tone="bin"
+                fitDisplayWidth
+              />
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>

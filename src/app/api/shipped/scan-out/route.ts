@@ -238,14 +238,7 @@ export const GET = withAuth(
                    WHERE sal.activity_type = 'SHIP_CONFIRM'
                      AND sal.shipment_id = o.shipment_id
                      AND sal.organization_id = o.organization_id
-                ) AS already_confirmed,
-                EXISTS (
-                  SELECT 1 FROM packer_logs pl
-                   WHERE pl.organization_id = o.organization_id
-                     AND pl.shipment_id = o.shipment_id
-                     AND pl.tracking_type = 'ORDERS'
-                     AND pl.completion_state = 'COMPLETED'
-                ) AS is_packed
+                ) AS already_confirmed
            FROM orders o
            LEFT JOIN shipping_tracking_numbers stn
                   ON stn.id = o.shipment_id
@@ -279,10 +272,7 @@ export const GET = withAuth(
         });
       }
 
-      const blockReason = scanOutBlockReason(
-        row.order_status,
-        row.is_packed === true || row.is_packed === 't',
-      );
+      const blockReason = scanOutBlockReason(row.order_status);
       const blocked = blockReason != null;
       const alreadyConfirmed = row.already_confirmed === true || row.already_confirmed === 't';
       return NextResponse.json({

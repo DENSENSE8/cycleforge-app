@@ -40,7 +40,11 @@ const WORK_STATE: UnboxScanState = {
   poNumber: null,
 };
 
-/** Classify a scan against the carton's live state, with the facts the receipt needs to render. */
+/**
+ * Classify a scan against the carton's live state, with the facts the receipt
+ * needs to render. A carton whose lines still owe units stays work after
+ * `unboxed_at` (the next box of a multi-box purchase order).
+ */
 export async function resolveUnboxScanState(
   organizationId: string,
   receivingId: number,
@@ -52,7 +56,13 @@ export async function resolveUnboxScanState(
     const res = await deps.query(
       `SELECT ru.unboxed_at,
               staff_unbox.name AS unboxed_by_name,
-              rc.zoho_purchaseorder_number
+              rc.zoho_purchaseorder_number,
+              EXISTS (
+                SELECT 1 FROM receiving_line rl
+                 WHERE rl.receiving_id = rc.id AND rl.organization_id = rc.organization_id
+                   AND rl.workflow_status <> 'DONE'
+                   AND COALESCE(rl.quantity_expected, 0) > COALESCE(rl.quantity_received, 0)
+              ) AS units_outstanding
          FROM receiving_carton rc
          LEFT JOIN receiving_unbox ru
            ON ru.receiving_id = rc.id AND ru.organization_id = rc.organization_id
@@ -65,7 +75,7 @@ export async function resolveUnboxScanState(
     if (!row) return WORK_STATE;
     const unboxedAt = (row.unboxed_at ?? null) as string | null;
     return {
-      kind: classifyScanKind(intakeSurface, { unboxedAt }),
+      kind: classifyScanKind(intakeSurface, { unboxedAt, unitsOutstanding: row.units_outstanding === true }),
       unboxedAt,
       unboxedByName: (row.unboxed_by_name ?? null) as string | null,
       poNumber: (row.zoho_purchaseorder_number ?? null) as string | null,

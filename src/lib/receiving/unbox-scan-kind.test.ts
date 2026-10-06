@@ -8,6 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   RECEIVING_LOOKUP_SCAN_EVENT,
+  cachedLookupUnboxedAt,
   classifyScanKind,
   classifyUnboxScanKind,
   lookupScanClientEventId,
@@ -27,6 +28,20 @@ test('an opened-but-not-unboxed carton is still work (resuming mid-unbox)', () =
 test('an unboxed carton is a lookup', () => {
   assert.equal(classifyUnboxScanKind({ unboxedAt: '2026-07-10T18:03:00.000Z' }), 'lookup');
   assert.equal(classifyUnboxScanKind({ unboxedAt: new Date('2026-07-10') }), 'lookup');
+});
+
+test('an unboxed carton still owed units is work — the next box of a multi-box PO', () => {
+  // One PO, ten boxes, one carton: box 1 stamps unboxed_at; box 2 must open the work, not a "done" receipt.
+  assert.equal(classifyUnboxScanKind({ unboxedAt: '2026-10-06T08:07:01.000Z', unitsOutstanding: true }), 'work');
+  assert.equal(classifyUnboxScanKind({ unboxedAt: '2026-10-06T08:07:01.000Z', unitsOutstanding: false }), 'lookup');
+});
+
+test('a cached row only short-circuits to lookup once its line owes no units', () => {
+  const unboxedAt = '2026-10-06T08:07:01.000Z';
+  assert.equal(cachedLookupUnboxedAt({ unboxed_at: unboxedAt, quantity_expected: 2, quantity_received: 0 }), null);
+  assert.equal(cachedLookupUnboxedAt({ unboxed_at: unboxedAt, quantity_expected: 2, quantity_received: 2 }), unboxedAt);
+  assert.equal(cachedLookupUnboxedAt({ unboxed_at: unboxedAt, quantity_expected: 2, quantity_received: 0, workflow_status: 'DONE' }), unboxedAt);
+  assert.equal(cachedLookupUnboxedAt({ unboxed_at: null, quantity_expected: 1, quantity_received: 1 }), null);
 });
 
 test('triage door scans are always work, even on an unboxed carton', () => {

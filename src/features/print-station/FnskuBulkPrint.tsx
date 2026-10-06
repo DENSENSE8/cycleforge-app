@@ -18,7 +18,7 @@ import { Button, Panel } from '@/design-system/primitives';
 import { AnchoredLayer, type AnchoredPlacement } from '@/design-system/primitives/AnchoredLayer';
 import { usePrintStations } from '@/hooks/usePrintStations';
 import { clampLabelCopies } from '@/lib/print/labelCopies';
-import type { PrintStationFnskuRow } from '@/lib/print-station/fnsku';
+import { fnskuConditionMissing, fnskuConditionRequiredMessage, type PrintStationFnskuRow } from '@/lib/print-station/fnsku';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
 import { QuantityPicker } from './FnskuQuantityPicker';
@@ -48,32 +48,37 @@ function FnskuPrintPanel({
   const [chosenId, setChosenId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const chosen = resolvePrintStation(stations, chosenId);
-  const blocked = chosen ? stationBlocked(chosen) : 'Choose a print station';
-  const single = rows.length === 1 ? rows[0]!.fnsku : null;
+  const missing = rows.filter((row) => fnskuConditionMissing(row.condition));
+  const ready = rows.filter((row) => !fnskuConditionMissing(row.condition));
+  const stationBlock = chosen ? stationBlocked(chosen) : 'Choose a print station';
+  const conditionBlock = ready.length === 0 ? fnskuConditionRequiredMessage(missing[0]?.fnsku ?? 'This FNSKU') : null;
+  const blocked = conditionBlock ?? stationBlock;
+  const single = ready.length === 1 ? ready[0]!.fnsku : rows.length === 1 ? rows[0]!.fnsku : null;
 
   const print = async () => {
-    if (!chosen || blocked) return;
+    if (!chosen || stationBlock || ready.length === 0) return;
     setSending(true);
     const count = clampLabelCopies(copies);
     let printed = 0;
-    // One job per FNSKU, in list order, so the stickers come off the printer in the order the operator checked them.
-    for (const row of rows) {
+    // One job per FNSKU that already has a saved condition. A blank one never leaves.
+    for (const row of ready) {
       if (chosen.thisComputer) {
         // Lazy, as the record's Print: the local print driver stays out of the page bundle until a label prints here.
         const { printFnskuStationJob } = await import('@/lib/print/printFnskuStationJob');
         const outcome = await printFnskuStationJob({ fnsku: row.fnsku, copies: count }, safeRandomUUID()).catch(() => null);
         if (outcome && outcome.printed > 0 && !outcome.failure) printed += 1;
         if (outcome?.cancelled) break;
-      } else if (await stations.sendFnsku(chosen.stationId, row.fnsku, count)) {
+      } else if ((await stations.sendFnsku(chosen.stationId, row.fnsku, count)) == null) {
         printed += 1;
       }
     }
     setSending(false);
     const where = chosen.thisComputer ? 'here' : `at ${chosen.stationName}`;
-    const each = single ? `${count} ${count === 1 ? 'label' : 'labels'} of ${single}` : null;
-    if (printed === rows.length) toast.success(each ? `Printing ${each} ${where}` : `Printing ${fnskus(printed)} ${where}, ${count} each`);
-    else if (printed > 0) toast.error(`${fnskus(printed)} of ${rows.length} sent ${where} — the rest did not print`);
-    else toast.error(chosen.thisComputer ? 'Nothing printed here' : `${chosen.stationName} did not answer — nothing was printed`);
+    const each = single && missing.length === 0 ? `${count} ${count === 1 ? 'label' : 'labels'} of ${single}` : null;
+    const skipped = missing.length ? ` ${fnskuConditionRequiredMessage(missing.map((row) => row.fnsku).join(', '))}` : '';
+    if (printed === ready.length && printed > 0) toast.success(`${each ? `Printing ${each} ${where}` : `Printing ${fnskus(printed)} ${where}, ${count} each`}${skipped ? `.${skipped}` : ''}`);
+    else if (printed > 0) toast.error(`${fnskus(printed)} of ${ready.length} sent ${where} — the rest did not print.${skipped}`);
+    else toast.error(`${chosen.thisComputer ? 'Nothing printed here' : `${chosen.stationName} did not answer — nothing was printed`}.${skipped}`);
     if (printed > 0) onPrinted();
     onClose();
   };
@@ -103,9 +108,13 @@ function FnskuPrintPanel({
             onClick={() => void print()}
             data-testid={`${testId}-go`}
           >
-            {`Print ${copies * rows.length} ${copies * rows.length === 1 ? 'label' : 'labels'} → ${chosen?.thisComputer ? 'this computer' : (chosen?.stationName ?? '…')}`}
+            {`Print ${copies * Math.max(ready.length, 1)} ${copies * Math.max(ready.length, 1) === 1 ? 'label' : 'labels'} → ${chosen?.thisComputer ? 'this computer' : (chosen?.stationName ?? '…')}`}
           </Button>
-          {blocked ? <p className="text-right text-role-caption text-text-warning">{chosen ? `${chosen.stationName}: ${blocked}.` : `${blocked}.`}</p> : null}
+          {conditionBlock ? <p className="text-right text-role-caption text-text-warning">{conditionBlock}</p> : null}
+          {!conditionBlock && missing.length > 0 ? (
+            <p className="text-right text-role-caption text-text-warning">{fnskuConditionRequiredMessage(missing.map((row) => row.fnsku).join(', '))}</p>
+          ) : null}
+          {!conditionBlock && stationBlock ? <p className="text-right text-role-caption text-text-warning">{chosen ? `${chosen.stationName}: ${stationBlock}.` : `${stationBlock}.`}</p> : null}
         </div>
         <p className="border-t border-border-hairline px-4 pt-3 text-role-caption text-text-muted">Print at</p>
         <div className="min-h-0 flex-1 overflow-y-auto">

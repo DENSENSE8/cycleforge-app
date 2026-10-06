@@ -151,6 +151,10 @@ const ASSIGNMENT_EVENTS = {
     key: 'order_note.mentioned',
     label: 'Mentioned you',
   },
+  'support_ticket.mentioned': {
+    key: 'support_ticket.mentioned',
+    label: 'Mentioned you on a ticket',
+  },
   'work_task.follow_up_alert': {
     key: 'work_task.follow_up_alert',
     label: 'Follow up',
@@ -164,6 +168,9 @@ export const WORK_TASK_ASSIGNED: AssignmentEventKey = 'work_task.assigned';
 
 /** The event key an order-note @mention writes onto its inbox row. */
 export const ORDER_NOTE_MENTIONED: AssignmentEventKey = 'order_note.mentioned';
+
+/** The event key a new ticket's @mention writes onto its inbox row. */
+export const SUPPORT_TICKET_MENTIONED: AssignmentEventKey = 'support_ticket.mentioned';
 
 /** The event key a "follow up on this task" alert writes onto its inbox row. */
 export const WORK_TASK_FOLLOW_UP_ALERT: AssignmentEventKey = 'work_task.follow_up_alert';

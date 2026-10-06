@@ -111,6 +111,8 @@ export type PoLineSummary = {
   inbound_source_type: string | null;
   receiving_type: string | null;
   condition_grade: string | null;
+  /** The grading ACT; with it the stub row never re-commits a default grade over a graded line. */
+  condition_graded_at?: string | null;
 };
 
 export type ReceivingPackageMeta = {
@@ -120,6 +122,9 @@ export type ReceivingPackageMeta = {
   return_platform: string | null;
   source_platform: string | null;
   is_return: boolean;
+  /** Carton urgency (`receiving_carton.priority_tier`, null = Auto) — the stub row paints it before hydration. */
+  priority_tier?: number | null;
+  is_priority?: boolean;
 };
 
 export type PoContext = {
@@ -173,6 +178,8 @@ export function parseReceivingPackage(raw: unknown): ReceivingPackageMeta | null
     return_platform: o.return_platform != null ? String(o.return_platform) : null,
     source_platform: o.source_platform != null ? String(o.source_platform) : null,
     is_return: Boolean(o.is_return),
+    priority_tier: o.priority_tier != null && Number.isFinite(Number(o.priority_tier)) ? Number(o.priority_tier) : null,
+    is_priority: Boolean(o.is_priority),
   };
 }
 
@@ -189,6 +196,7 @@ export function mapApiLineToPoSummary(l: {
   inbound_source_type?: string | null;
   receiving_type?: string | null;
   condition_grade?: string | null;
+  condition_graded_at?: string | null;
 }): PoLineSummary {
   return {
     id: l.id,
@@ -203,6 +211,7 @@ export function mapApiLineToPoSummary(l: {
     inbound_source_type: l.inbound_source_type ?? null,
     receiving_type: l.receiving_type ?? 'PO',
     condition_grade: l.condition_grade ?? 'USED_A',
+    condition_graded_at: l.condition_graded_at ?? null,
   };
 }
 
@@ -520,7 +529,7 @@ export function buildMatchedStubRow(
   receivingId: number,
   trackingNumber: string,
   line: PoLineSummary,
-  sourcePlatform: string | null = null,
+  pkg: Pick<ReceivingPackageMeta, 'source_platform' | 'priority_tier' | 'is_priority'> | null = null,
 ): ReceivingLineRow {
   return {
     id: line.id,
@@ -545,6 +554,7 @@ export function buildMatchedStubRow(
     // moment the pane opens; the hydration fetch reconciles it in place. Falls
     // back to '' (don't auto-mark the Condition step) when the summary lacks one.
     condition_grade: line.condition_grade ?? '',
+    condition_graded_at: line.condition_graded_at ?? null,
     disposition_audit: [],
     needs_test: true,
     assigned_tech_id: null,
@@ -555,7 +565,10 @@ export function buildMatchedStubRow(
     notes: null,
     created_at: null,
     image_url: line.image_url,
-    source_platform: sourcePlatform,
+    source_platform: pkg?.source_platform ?? null,
+    // The carton's urgency, so the header never reads the platform default over a set tier.
+    priority_tier: pkg?.priority_tier ?? null,
+    is_priority: pkg?.is_priority ?? false,
     receiving_source: null,
   };
 }

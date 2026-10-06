@@ -18,7 +18,6 @@
 import { z } from 'zod';
 import { CONDITION_GRADES } from '@/lib/conditions';
 import { manualOrderDraftSchema } from '@/lib/orders/manual-order-draft';
-import { poImportDraftSchema } from '@/lib/inbound/po-import-draft';
 
 /**
  * An in-app route the record card navigates to. `^\/` alone admits
@@ -226,42 +225,6 @@ export const artifactPaymentSchema = z.object({
   orderNumber: z.string().trim().min(1).max(120),
   /** The method the request was made with — the rail's opening tab. */
   method: z.enum(['square_link', 'square_invoice']).optional(),
-});
-
-/**
- * A purchase order being imported through chat — inline triage card. Carries
- * the PO import field contract (`poImportDraftSchema`, the payload
- * `import_purchase_order` files), the "Still needed" checklist (each item a
- * one-click prompt) and what already exists. Produced only by
- * `draft_po_import` (the envelope brand); the import itself answers with a
- * record card linking to the receiving view.
- */
-export const artifactPoDraftSchema = z.object({
-  kind: z.literal('po_draft'),
-  title: artifactTitle,
-  draft: poImportDraftSchema,
-  missing: z
-    .array(
-      z.object({
-        field: z.enum(['po_number', 'vendor', 'items', 'quantity', 'tracking', 'order']),
-        label: z.string().max(200),
-        question: z.string().max(200),
-        prompt: z.string().max(80),
-      }),
-    )
-    .max(30),
-  /** The PO number or a tracking number already on the Incoming spine. */
-  duplicates: z
-    .array(
-      z.object({
-        field: z.enum(['po_number', 'tracking']),
-        value: z.string().max(120),
-        path: appPath.nullable(),
-      }),
-    )
-    .max(12),
-  /** Plain notes, e.g. a SKU not in the catalog that imports by title. */
-  notes: z.array(z.string().max(200)).max(20),
 });
 
 /**
@@ -492,7 +455,6 @@ export const sessionArtifactUnion = z.discriminatedUnion('kind', [
   artifactDocumentSchema,
   artifactPaymentSchema,
   artifactOrderDraftSchema,
-  artifactPoDraftSchema,
   artifactReportSchema,
   artifactCapabilitySchema,
 ]);
@@ -536,7 +498,6 @@ export type ArtifactImportTriage = z.infer<typeof artifactImportTriageSchema>;
 export type ArtifactDocument = z.infer<typeof artifactDocumentSchema>;
 export type ArtifactPayment = z.infer<typeof artifactPaymentSchema>;
 export type ArtifactOrderDraft = z.infer<typeof artifactOrderDraftSchema>;
-export type ArtifactPoDraft = z.infer<typeof artifactPoDraftSchema>;
 export type ArtifactCapability = z.infer<typeof artifactCapabilitySchema>;
 export type ArtifactReport = z.infer<typeof artifactReportSchema>;
 export type ArtifactReportKpi = z.infer<typeof artifactReportKpiSchema>;
@@ -556,7 +517,6 @@ export const SESSION_ARTIFACT_KINDS = [
   'document',
   'payment',
   'order_draft',
-  'po_draft',
   'report',
   'capability',
 ] as const;

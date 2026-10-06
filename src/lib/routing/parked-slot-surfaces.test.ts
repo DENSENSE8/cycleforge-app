@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parkedSlotSurfaceDestination } from './parked-slot-surfaces';
+import { legacyIncomingPurchasesDestination, parkedSlotSurfaceDestination } from './parked-slot-surfaces';
 
 function destination(url: string): string | null {
   const parsed = new URL(url, 'http://cycleforge.test');
@@ -98,4 +98,17 @@ test('deleted RMA desk and phone pack queue land on the jobs that replace them',
   // The pack JOB stays: pick hands off to it.
   assert.equal(destination('/m/pack/start/7'), null);
   assert.equal(destination('/warehouse/replenishment'), null);
+});
+
+test('Deliveries › Purchases forwards to Purchasing, carrying every param but the lane', () => {
+  const forward = (query: string) => legacyIncomingPurchasesDestination(new URLSearchParams(query));
+  assert.equal(forward('lane=purchases&axis=delivered&vendor=x'), '/purchasing?axis=delivered&vendor=x');
+  assert.equal(forward('lane=purchases'), '/purchasing');
+  assert.equal(
+    forward('axis=unboxed&lane=purchases&from=2026-07-01&colsort=po&coldir=asc&recon=waiting&find=PO-1'),
+    '/purchasing?axis=unboxed&from=2026-07-01&colsort=po&coldir=asc&recon=waiting&find=PO-1',
+  );
+  for (const query of ['', 'lane=docked', 'lane=unboxed&vendor=x']) assert.equal(forward(query), null, query);
+  // The edge table leaves /incoming mounted; the page issues the 308.
+  assert.equal(destination('/incoming?lane=purchases&axis=delivered&vendor=x'), null);
 });

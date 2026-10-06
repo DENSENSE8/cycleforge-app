@@ -10,6 +10,7 @@ export function MobileV2ScanStation({
   itemOpen,
   untitledLabel,
   empty,
+  more,
   captureWindow,
 }: {
   entries: readonly StationTapeEntry[];
@@ -17,6 +18,8 @@ export function MobileV2ScanStation({
   itemOpen?: (entry: StationTapeEntry) => (() => void) | null;
   untitledLabel: string;
   empty?: React.ReactNode;
+  /** Under the rows, when there are rows: how to reach more of them. */
+  more?: React.ReactNode;
   captureWindow: React.ReactNode;
 }) {
   return (
@@ -27,6 +30,7 @@ export function MobileV2ScanStation({
         itemActions={itemActions}
         itemOpen={itemOpen}
         empty={empty}
+        more={more}
       />
       {captureWindow}
     </div>

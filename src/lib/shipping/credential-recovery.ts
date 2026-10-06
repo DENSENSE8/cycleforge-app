@@ -2,7 +2,7 @@
  * A lane can start before carrier secrets are provisioned. Those failures are
  * normally placed under exponential backoff; once the matching credentials
  * exist, make only that exact configuration failure immediately eligible so a
- * restart heals the backlog instead of waiting up to 24 hours.
+ * restart heals the backlog instead of waiting out the 12 hour backoff.
  */
 export function shippingCredentialRecoveryPredicate(credentials: {
   ups: boolean;

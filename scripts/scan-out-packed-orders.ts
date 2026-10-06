@@ -15,11 +15,16 @@
  * refused by the domain function and reported, never forced.
  *
  *   node --env-file=.env --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     scripts/scan-out-packed-orders.ts [--org=<uuid>] [--staff=<id>] [--packed-before=YYYY-MM-DD] [--apply]
+ *     scripts/scan-out-packed-orders.ts [--org=<uuid>] [--staff=<id>] [--packed-before=YYYY-MM-DD] \
+ *     [--orders=<order number>,…] [--at-pack-time] [--apply]
  *
  * Dry run by default. `--staff` defaults to 1 (the owner), which is who every
  * earlier bulk scan-out in the dogfood org is attributed to. `--packed-before`
  * keeps only shipments packed before that day's midnight, Pacific time.
+ * `--orders` narrows to the shipments carrying those order numbers (`orders.order_id`);
+ * a number that matches no order row is refused before anything is written.
+ * `--at-pack-time` stamps each SHIP_CONFIRM at its shipment's pack time
+ * instead of now — the backfill convention (scan-out sits 0 min after the pack).
  */
 import pool from '@/lib/db';
 import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
@@ -35,6 +40,8 @@ const APPLY = process.argv.includes('--apply');
 const ORG = arg('org') ?? DOGFOOD_ORG_ID;
 const STAFF = Number(arg('staff') ?? 1);
 const PACKED_BEFORE = arg('packed-before');
+const ORDER_NUMBERS = [...new Set((arg('orders') ?? '').split(',').map((s) => s.trim()).filter(Boolean))];
+const AT_PACK_TIME = process.argv.includes('--at-pack-time');
 
 /** Midnight at the start of `day` (YYYY-MM-DD) in America/Los_Angeles, as an instant. */
 function pacificMidnight(day: string): Date {
@@ -66,7 +73,26 @@ async function main(): Promise<void> {
   if (!staff.rows[0]) throw new Error(`--staff=${STAFF} is not a staff member of ${ORG}`);
 
   const cutoff = PACKED_BEFORE ? pacificMidnight(PACKED_BEFORE) : null;
-  const shipments = (await loadPackedOnToShip(ORG)).filter((s) => !cutoff || new Date(s.packed_at) < cutoff);
+  let orderRowIds: number[] | null = null;
+  if (ORDER_NUMBERS.length > 0) {
+    const found = await pool.query<{ id: number; order_id: string }>(
+      `SELECT id, order_id FROM orders WHERE organization_id = $1 AND order_id = ANY($2::text[])`,
+      [ORG, ORDER_NUMBERS],
+    );
+    const missing = ORDER_NUMBERS.filter((n) => !found.rows.some((r) => r.order_id === n));
+    if (missing.length > 0) throw new Error(`--orders not found in ${ORG}: ${missing.join(', ')}`);
+    orderRowIds = found.rows.map((r) => r.id);
+  }
+  const shipments = (await loadPackedOnToShip(ORG, orderRowIds)).filter(
+    (s) => !cutoff || new Date(s.packed_at) < cutoff,
+  );
+  if (orderRowIds) {
+    const covered = new Set(shipments.flatMap((s) => s.order_ids));
+    const notPacked = ORDER_NUMBERS.filter((n) => !covered.has(n));
+    if (notPacked.length > 0) {
+      console.log(`Not packed on To ship (already scanned out, carrier-shipped, or never packed): ${notPacked.join(', ')}`);
+    }
+  }
   if (cutoff) console.log(`Packed before ${PACKED_BEFORE} (Pacific) = before ${cutoff.toISOString()}`);
   const orderCount = shipments.reduce((n, s) => n + s.order_row_ids.length, 0);
   const unfoundCount = shipments.filter((s) => s.order_row_ids.length === 0).length;
@@ -101,7 +127,7 @@ async function main(): Promise<void> {
         shipmentId: Number(shipment.shipment_id),
         scan: shipment.tracking,
         actorStaffId: STAFF,
-        createdAt: null,
+        createdAt: AT_PACK_TIME ? new Date(shipment.packed_at).toISOString() : null,
         origin: 'bulk',
       });
       const detail =

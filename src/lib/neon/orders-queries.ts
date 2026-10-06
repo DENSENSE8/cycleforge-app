@@ -5,6 +5,9 @@ import { getShippedSearchFieldConfig, type ShippedSearchField } from '@/lib/ship
 import { buildRankedSearchSql, buildTextSearchVariants, type RankedSearchVariant } from '@/lib/search/sql-ranked-search';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { PoolClient } from 'pg';
+import { transition } from '@/lib/inventory/state-machine';
+import { recordInventoryEvent } from '@/lib/inventory/events';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import { sqlStationActivityMatchesOrder } from '@/lib/orders/order-grain-sql';
 import { ORDER_PICK_SCAN_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
@@ -1555,8 +1558,107 @@ export class OrderDeleteBlockedError extends Error {
   }
 }
 
+/**
+ * Remove an order's allocation edges before removing the order itself.
+ *
+ * The allocation FK remains restrictive as a guard against raw SQL deleting
+ * an order and stranding a unit in an outbound state. This is the controlled
+ * delete path: it returns live outbound units to STOCKED, preserves terminal
+ * physical states (such as SHIPPED), and removes the allocation rows in the
+ * same transaction as the parent delete.
+ */
+export async function releaseOrderAllocationsForDeletion(
+  client: PoolClient,
+  input: { orderId: number; orgId: OrgId; actorStaffId?: number | null },
+): Promise<number> {
+  const allocations = await client.query<{
+    id: number;
+    serial_unit_id: number;
+    allocation_state: string;
+    unit_status: string;
+    sku: string | null;
+  }>(
+    `SELECT a.id,
+            a.serial_unit_id,
+            a.state::text AS allocation_state,
+            su.current_status::text AS unit_status,
+            su.sku
+       FROM order_unit_allocations a
+       JOIN serial_units su ON su.id = a.serial_unit_id
+      WHERE a.order_id = $1
+        AND a.organization_id = $2
+      ORDER BY a.id ASC
+      FOR UPDATE OF a, su`,
+    [input.orderId, input.orgId],
+  );
+
+  const returnableStates = new Set(['ALLOCATED', 'PICKED', 'PACKED', 'LABELED', 'STAGED']);
+  for (const allocation of allocations.rows) {
+    // Historical RELEASED rows do not need another transition or event.
+    if (allocation.allocation_state === 'RELEASED') continue;
+
+    const payload = {
+      source: 'orders.delete',
+      order_id: input.orderId,
+      allocation_id: allocation.id,
+      previous_allocation_state: allocation.allocation_state,
+    };
+    const notes = `Released while deleting order ${input.orderId}`;
+
+    if (returnableStates.has(allocation.unit_status)) {
+      const moved = await transition(
+        {
+          unitId: allocation.serial_unit_id,
+          to: 'STOCKED',
+          eventType: 'RELEASED',
+          actorStaffId: input.actorStaffId ?? null,
+          station: 'SYSTEM',
+          notes,
+          payload,
+        },
+        client,
+        input.orgId,
+      );
+      if (!moved.ok) {
+        throw new Error(
+          `order deletion could not return unit ${allocation.serial_unit_id} (${allocation.unit_status}) to STOCKED: ${moved.error}`,
+        );
+      }
+    } else {
+      // Never rewrite a terminal/non-outbound physical state merely because
+      // its order is being deleted; retain the audit event instead.
+      await recordInventoryEvent(
+        {
+          event_type: 'RELEASED',
+          actor_staff_id: input.actorStaffId ?? null,
+          station: 'SYSTEM',
+          serial_unit_id: allocation.serial_unit_id,
+          sku: allocation.sku,
+          prev_status: allocation.unit_status,
+          next_status: allocation.unit_status,
+          notes,
+          payload,
+        },
+        client,
+        input.orgId,
+      );
+    }
+  }
+
+  await client.query(
+    `DELETE FROM order_unit_allocations
+      WHERE order_id = $1 AND organization_id = $2`,
+    [input.orderId, input.orgId],
+  );
+  return allocations.rows.length;
+}
+
 /** Delete an order by ID. */
-export async function deleteOrder(id: number, orgId?: OrgId): Promise<boolean> {
+export async function deleteOrder(
+  id: number,
+  orgId?: OrgId,
+  actorStaffId?: number | null,
+): Promise<boolean> {
   if (!orgId) {
     const result = await pool.query('DELETE FROM orders WHERE id = $1', [id]);
     return (result.rowCount ?? 0) > 0;
@@ -1573,16 +1675,10 @@ export async function deleteOrder(id: number, orgId?: OrgId): Promise<boolean> {
     if (order.rows.length === 0) return false;
 
     const blockers = await client.query<{
-      has_allocations: boolean;
       has_applied_labels: boolean;
       has_label_ingestion_links: boolean;
     }>(
       `SELECT
-         EXISTS (
-           SELECT 1
-             FROM order_unit_allocations
-            WHERE organization_id = $2 AND order_id = $1
-         ) AS has_allocations,
          EXISTS (
            SELECT 1
              FROM label_ingestions
@@ -1603,16 +1699,13 @@ export async function deleteOrder(id: number, orgId?: OrgId): Promise<boolean> {
         'This order has an applied shipping-label ingestion. Void or unlink the label before deleting the order.',
       );
     }
-    if (blocker?.has_allocations) {
-      throw new OrderDeleteBlockedError(
-        'This order has inventory allocations. Release the allocations before deleting it.',
-      );
-    }
     if (blocker?.has_label_ingestion_links) {
       throw new OrderDeleteBlockedError(
         'This order has a shipping-label ingestion link. Resolve the label ingestion before deleting it.',
       );
     }
+
+    await releaseOrderAllocationsForDeletion(client, { orderId: id, orgId, actorStaffId });
 
     const result = await client.query(
       'DELETE FROM orders WHERE id = $1 AND organization_id = $2',

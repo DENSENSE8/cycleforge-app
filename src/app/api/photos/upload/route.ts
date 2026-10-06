@@ -17,6 +17,7 @@ import { stageFromPhotoType } from '@/lib/photos/stages';
 import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { publishEntityMediaInsert } from '@/lib/photos/publish-entity-media';
 import { assertTaskInOrg } from '@/lib/tasks/task-links-db';
+import { isListingPhotoType } from '@/lib/receiving/photo-intent';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,7 +110,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const thumbUrl = await resolvePhotoAccessUrl(result.id, ctx.organizationId, 'thumb');
 
     let claimTicketId: number | null = null;
-    if (entityType === 'RECEIVING' || entityType === 'RECEIVING_LINE') {
+    // The seller's listing photos are not receiving evidence — never claim evidence either.
+    if ((entityType === 'RECEIVING' || entityType === 'RECEIVING_LINE') && !isListingPhotoType(photoType)) {
       // Dual-link to the carton's claim (best-effort) when one exists, so a photo
       // captured after the claim was filed still lands under the claim umbrella.
       claimTicketId = await linkReceivingPhotoToClaim({

@@ -1,4 +1,4 @@
-import { normalizeIdentifier } from '@/lib/product-manuals';
+import { normalizeIdentifier } from '@/lib/manuals/identifier-key';
 
 interface ManualServerFile {
   name: string;

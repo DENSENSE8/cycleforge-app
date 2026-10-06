@@ -209,6 +209,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     return respond({
       success: true,
       already_attached: true,
+      listing_serial_confirmed: result.listing_serial_confirmed,
       serial_unit: result.serial_unit,
       line_state: result.line_state,
     });
@@ -305,6 +306,8 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // scan flips the workspace WITHOUT the heavy /api/receiving-lines refetch.
     line_patch: linePatch,
     warnings: serialResult.warnings,
+    // The scan matched a serial the purchase listing showed — the unbox reference flips to confirmed.
+    listing_serial_confirmed: serialResult.listing_serial_confirmed,
     line_state: result.line_state,
     inventory_event_id: result.inventory_event_id,
   });

@@ -1,88 +1,88 @@
 /**
- * Shipping › Labels & docs — three saved views: `label-intake.uploads` (the
- * bare route: one card per uploaded label PDF — a batch — its pages the
- * batch's labels), `label-intake.labels` (4×6 labels not yet printed),
- * `label-intake.paperwork` (packing slips and manuals). Print history remains
- * on each document; it is not a fourth saved view. On order-tied views one
- * card per ORDER (every label shipping it rides one card; an unpaired label is
- * its own card): platform + order number on top, its products with quantities
- * beneath — nothing else on the card. The cards are a fixed-width rail; the
- * open card's documents fill the rest (`record.rail`).
+ * Shipping › Labels & docs — two saved views: `label-intake.uploads` (the
+ * bare route, named **Bulk**: one row per uploaded PDF, a file explorer —
+ * `FilesDesk`) and `label-intake.orders` (`?view=orders`, named **Orders**:
+ * one row per ORDER shaped as the slots that ship with it — `OrdersDesk`).
+ * Print history remains on each file and document; it is not a third saved
+ * view.
  */
 
-import { triageView, type TriageViewDecl } from '@/design-system/components/triage-card-list/triage-view';
+import { triageView } from '@/design-system/components/triage-card-list/triage-view';
+import { ORDER_PACKET_STATUS_PARAM } from '@/lib/label-prints/order-packet-contracts';
+import { PRINT_FILE_STATUS_PARAM } from '@/lib/label-prints/print-file-contracts';
 
 /** The desk's views, bare route first (`?view=`; `uploads` also rides the bare URL). */
-export const LABEL_INTAKE_VIEWS = ['uploads', 'labels', 'paperwork'] as const;
+export const LABEL_INTAKE_VIEWS = ['uploads', 'orders'] as const;
 export type LabelIntakeView = (typeof LABEL_INTAKE_VIEWS)[number];
 
-/** Uploads: the open batch's URL param. */
-export const LABEL_BATCH_PARAM = 'batch';
-
-/** Uploads: the print-state cut — its status chips and their one URL param. */
-export const LABEL_BATCH_PRINTING_PARAM = 'printing';
-export const LABEL_BATCH_PRINTING_KEYS = ['to-print', 'printed'] as const;
-export type LabelBatchPrintingKey = (typeof LABEL_BATCH_PRINTING_KEYS)[number];
-export const LABEL_BATCH_PRINTING_LABEL: Readonly<Record<LabelBatchPrintingKey, string>> = { 'to-print': 'To print', printed: 'Printed' };
-
-/** The pairing cut — the status chips and their one URL param. */
-export const LABEL_PAIRING_PARAM = 'pairing';
-export const LABEL_PAIRING_KEYS = ['unpaired', 'paired'] as const;
-export type LabelPairingKey = (typeof LABEL_PAIRING_KEYS)[number];
-export const LABEL_PAIRING_LABEL: Readonly<Record<LabelPairingKey, string>> = { unpaired: 'No order', paired: 'Paired' };
-
-const SHARED = {
-  grain: 'order',
-  noun: { one: 'order', many: 'orders' },
-  recordParams: [],
-  chips: { owner: 'face', param: LABEL_PAIRING_PARAM },
-  paging: 'client',
-  // No status on a print card (owner 2026-09-27, `LabelCard`): the order and its products, nothing else.
-  status: 'none',
-  slots: { identity: 'order number', channel: 'brand', person: 'none', quickLook: 'none', photo: 'none' },
-  // A line reads ×quantity · product title; carrier, tracking and prints live on the open record.
-  facts: [{ id: 'qty', tier: 'always' }],
-  sections: null,
-  // The card paints no next step; Print / Reprint is the open record's one verb.
-  next: [],
-} as const satisfies Omit<TriageViewDecl, 'id' | 'listLabel' | 'testIdPrefix' | 'bodyTestId' | 'storageKeys'>;
+/** `?view=` → the view; anything else is the bare route (Bulk). */
+export function parseLabelIntakeView(raw: string | null | undefined): LabelIntakeView {
+  return raw === 'orders' ? 'orders' : 'uploads';
+}
 
 /**
- * One card per uploaded PDF (`BatchCard`): the top-right is its print state
- * ("12 to print" / "All printed"), the upload date reads on line 2; the open
- * batch is `?batch=`.
+ * Bulk — one compact row per uploaded PDF (`PrintFileList`, `TriageRow`):
+ * uploaded time · Printed badge (Printed / Printed x/y / none) · PDF icon +
+ * file name, then pages, uploader and last print as the row's width allows.
+ * Day headers follow the sidebar's Sort (upload day, or last-printed day with
+ * never-printed files last) — dated, so the list labels them itself. Print
+ * status, Sort, Find and both date windows are the sidebar's (`?printing=` ·
+ * `?sort=` · `?q=` · `?from=`/`?to=` · `?printedFrom=`/`?printedTo=`),
+ * narrowed on the server. Nothing opens as a record: a row click previews the
+ * file in the dock's pane.
  */
 export const LABEL_INTAKE_UPLOADS_VIEW = triageView({
-  ...SHARED,
   id: 'label-intake.uploads',
-  grain: 'batch',
-  noun: { one: 'batch', many: 'batches' },
-  listLabel: 'Bulk files',
-  testIdPrefix: 'batch-card',
-  bodyTestId: 'batch-cards',
-  storageKeys: { pageMode: 'cf:batch-cards:scroll', scrollTop: 'cf:batch-cards:scroll-top' },
-  recordParams: [LABEL_BATCH_PARAM],
-  chips: { owner: 'face', param: LABEL_BATCH_PRINTING_PARAM },
+  grain: 'file',
+  noun: { one: 'file', many: 'files' },
+  listLabel: 'Bulk',
+  testIdPrefix: 'print-file-row',
+  bodyTestId: 'print-file-rows',
+  storageKeys: { pageMode: 'cf:print-file-rows:scroll', scrollTop: 'cf:print-file-rows:scroll-top' },
+  recordParams: [],
+  // The status is the sidebar's single choice (`?printing=`), answered by the server — the face never cuts it.
+  chips: { owner: 'host', param: PRINT_FILE_STATUS_PARAM },
+  paging: 'server',
   status: 'state',
-  slots: { identity: 'PDF file name', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
-  // A batch has no product lines; its pages and print state live on the open record.
-  facts: [],
+  slots: { identity: 'uploaded time', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
+  // Most-needed first; the row discloses them by its own width (`@container/row`).
+  facts: [
+    { id: 'pages', tier: 'always' },
+    { id: 'uploaded-by', tier: 'label' },
+    { id: 'printed', tier: 'detail' },
+  ],
+  sections: null,
+  next: [],
 });
 
-export const LABEL_INTAKE_LABELS_VIEW = triageView({
-  ...SHARED,
-  id: 'label-intake.labels',
-  listLabel: 'Shipping labels',
-  testIdPrefix: 'label-card',
-  bodyTestId: 'label-cards',
-  storageKeys: { pageMode: 'cf:label-cards:scroll', scrollTop: 'cf:label-cards:scroll-top' },
-});
-
-export const LABEL_INTAKE_PAPERWORK_VIEW = triageView({
-  ...SHARED,
-  id: 'label-intake.paperwork',
-  listLabel: 'Packing slips',
-  testIdPrefix: 'paperwork-card',
-  bodyTestId: 'paperwork-cards',
-  storageKeys: { pageMode: 'cf:paperwork-cards:scroll', scrollTop: 'cf:paperwork-cards:scroll-top' },
+/**
+ * Orders — one compact row per order (`OrderPacketList`, `TriageRow`): state
+ * badge (Missing / Ready / Printed) · platform mark + order number (last 8) ·
+ * the slot strip (Shipping label · Packing slip · Product paperwork), then
+ * gaps, ship-by and Printed ×N. The chevron (→ / ←) folds the order's lines
+ * under the row; the open order is reviewed in the dock's pane, never a
+ * record. Status, Missing slot, Channel, Sort and Find are the sidebar's
+ * (`?status=` · `?gap=` · `?channel=` · `?sort=` · `?q=`), narrowed on the server.
+ */
+export const LABEL_INTAKE_ORDERS_VIEW = triageView({
+  id: 'label-intake.orders',
+  grain: 'order',
+  noun: { one: 'order', many: 'orders' },
+  listLabel: 'Orders',
+  testIdPrefix: 'order-packet-row',
+  bodyTestId: 'order-packet-rows',
+  storageKeys: { pageMode: 'cf:order-packet-rows:scroll', scrollTop: 'cf:order-packet-rows:scroll-top' },
+  recordParams: [],
+  // The status is the sidebar's single choice (`?status=`), answered by the server — the face never cuts it.
+  chips: { owner: 'host', param: ORDER_PACKET_STATUS_PARAM },
+  paging: 'server',
+  status: 'state',
+  slots: { identity: 'platform mark + order number', channel: 'none', person: 'none', quickLook: 'none', photo: 'none' },
+  facts: [
+    { id: 'gaps', tier: 'always' },
+    { id: 'ship-by', tier: 'label' },
+    { id: 'printed', tier: 'detail' },
+  ],
+  sections: null,
+  next: [],
 });

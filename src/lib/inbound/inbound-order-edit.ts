@@ -7,12 +7,16 @@
  * marks the landing "updated".
  *
  * Current rows are the truth (a desk edit may have changed a quantity after
- * the landing); the last landed ledger payload only fills facts the rows do
- * not keep (buyer account, return facts, item numbers, pickup receipt).
+ * the landing): line identity, the bought-as grade, the listing serials and a
+ * return's facts (`receiving_line_return`) read back from their tables; the
+ * last landed ledger payload only fills facts the rows do not keep (buyer
+ * account, item numbers, pickup receipt). `lineEvidence` carries what is not
+ * in the draft at all: each landed line's listing photos.
  *
  * Client-safe and pure: the server loader is `load-inbound-order-edit.ts`.
  */
 
+import { CONDITION_GRADES, type ConditionGrade } from '@/lib/conditions';
 import {
   assignInboundLineKeys,
   emptyInboundOrderDraft,
@@ -45,6 +49,7 @@ export interface InboundOrderHeaderRow {
 }
 
 export interface InboundOrderLineRow {
+  id: number;
   line_key: string;
   sku: string | null;
   item_name: string | null;
@@ -53,11 +58,32 @@ export interface InboundOrderLineRow {
   quantity_received: number | null;
   unit_cost_cents: number | null;
   listing_url: string | null;
+  purchase_condition_grade: string | null;
+  /** `receiving_line_listing_serial.serial`, first seen first. */
+  listing_serials: string[] | null;
+  /** `photos.id` of the line's listing photos (photo_type 'listing'), oldest first. */
+  listing_photo_ids: number[] | null;
+  /** `receiving_line_return` — null when the line has no return row. */
+  return_reason: string | null;
+  rma_ref: string | null;
+  return_requested_on: string | null;
+  fnsku: string | null;
+  license_plate_number: string | null;
+  disposition: string | null;
+  customer_comment: string | null;
 }
 
 export interface InboundOrderTrackingRow {
   tracking: string | null;
   carrier: string | null;
+}
+
+/** What a landed line carries outside the draft — the form shows and deletes these. */
+export interface InboundOrderLineEvidence {
+  lineKey: string;
+  receivingLineId: number;
+  /** `url` = `/api/photos/${id}/content`; delete with `DELETE /api/photos/${id}`. */
+  listingPhotos: Array<{ id: number; url: string }>;
 }
 
 export interface InboundOrderEditRecord {
@@ -72,6 +98,8 @@ export interface InboundOrderEditRecord {
   receivedByLineKey: Record<string, number>;
   /** Why this order cannot be corrected by hand; null = editable. */
   refusal: string | null;
+  /** One entry per landed line, in line order. */
+  lineEvidence: InboundOrderLineEvidence[];
 }
 
 /** An inbound order behind a carton — the phone carton record's door to correct it. */
@@ -130,8 +158,16 @@ export function inboundOrderEditRecordFrom(args: {
   const ledgerKeys = assignInboundLineKeys(ledgerLines);
   const ledgerLine = new Map(ledgerLines.map((l, i) => [ledgerKeys[i], l]));
 
+  // The order's return facts: the last landing's own values, else the first line's row (the writer stamps
+  // the order's values on every line whose own are blank). A line keeps its own only where it differs.
+  const firstRow = args.lines[0];
+  const orderReturnReason = ledger ? ledger.returnReason : firstRow?.return_reason ?? base.returnReason;
+  const orderRmaId = ledger ? ledger.rmaId : firstRow?.rma_ref ?? base.rmaId;
+  const orderReturnRequestDate = ledger ? ledger.returnRequestDate : firstRow?.return_requested_on ?? base.returnRequestDate;
+
   const lines: InboundOrderLine[] = args.lines.map((row) => {
     const prior = ledgerLine.get(row.line_key);
+    const grade = row.purchase_condition_grade as ConditionGrade | null;
     return {
       ...emptyInboundOrderLine(),
       ...prior,
@@ -142,6 +178,17 @@ export function inboundOrderEditRecordFrom(args: {
       quantity: row.quantity_expected == null ? null : Math.max(1, Number(row.quantity_expected)),
       unitCostCents: row.unit_cost_cents == null ? null : Number(row.unit_cost_cents),
       listingUrl: row.listing_url?.trim() || prior?.listingUrl || '',
+      conditionGrade: grade && CONDITION_GRADES.includes(grade) ? grade : null,
+      listingSerials: row.listing_serials ?? [],
+      // Absent stays absent (undefined), so an untouched reopen re-hashes as unchanged.
+      fnsku: row.fnsku ?? prior?.fnsku,
+      licensePlateNumber: row.license_plate_number ?? prior?.licensePlateNumber,
+      disposition: row.disposition ?? prior?.disposition,
+      customerComment: row.customer_comment ?? prior?.customerComment,
+      returnReason: row.return_reason != null && row.return_reason !== orderReturnReason ? row.return_reason : undefined,
+      rmaId: row.rma_ref != null && row.rma_ref !== orderRmaId ? row.rma_ref : undefined,
+      returnRequestDate:
+        row.return_requested_on != null && row.return_requested_on !== orderReturnRequestDate ? row.return_requested_on : undefined,
     };
   });
 
@@ -161,7 +208,10 @@ export function inboundOrderEditRecordFrom(args: {
     expectedDate: header.expected_date ?? base.expectedDate,
     priority: header.priority_tier == null ? INBOUND_PRIORITY_AUTO : (String(header.priority_tier) as InboundOrderDraft['priority']),
     notes: header.notes ?? base.notes,
-    tracking: (tracking.length ? tracking : [{ number: '', carrier: '' }]).slice(0, 10),
+    returnReason: orderReturnReason,
+    rmaId: orderRmaId,
+    returnRequestDate: orderReturnRequestDate,
+    tracking: tracking.length ? tracking : [{ number: '', carrier: '' }],
     lines: lines.length ? lines : [emptyInboundOrderLine()],
   };
 
@@ -174,5 +224,10 @@ export function inboundOrderEditRecordFrom(args: {
     landedLineKeys: args.lines.map((l) => l.line_key),
     receivedByLineKey: Object.fromEntries(args.lines.map((l) => [l.line_key, Number(l.quantity_received ?? 0)])),
     refusal: inboundOrderEditRefusal(header),
+    lineEvidence: args.lines.map((l) => ({
+      lineKey: l.line_key,
+      receivingLineId: Number(l.id),
+      listingPhotos: (l.listing_photo_ids ?? []).map((id) => ({ id: Number(id), url: `/api/photos/${id}/content` })),
+    })),
   };
 }

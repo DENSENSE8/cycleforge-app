@@ -1,23 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AtSign, ChevronDown, Pin } from '@/components/Icons';
+import { ChevronDown, Pin } from '@/components/Icons';
+import { StaffMentionListbox, useStaffMentionField } from '@/components/mentions/StaffMentionField';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { RECORD_LABEL_CLASS, RECORD_RECESS_CLASS } from '@/design-system/tokens/record';
 import { useOrderChannel } from '@/hooks/useCatalog';
 import { useAppendOrderNote, useOrderNotes } from '@/hooks/useOrderNotes';
-import {
-  activeMentionQuery,
-  decodeNoteMentions,
-  encodeNoteMentions,
-  splitNoteMentions,
-  type PickedMention,
-} from '@/lib/orders/note-mentions';
+import { decodeNoteMentions, encodeNoteMentions, splitNoteMentions } from '@/lib/orders/note-mentions';
 import { platformMetaBrandDot } from '@/lib/source-platform';
-import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { timeAgo } from '@/utils/_date';
@@ -101,45 +94,34 @@ const STATUS_FACE: Readonly<Record<SaveStatus, string>> = {
   error: 'Not saved',
 };
 
-function useStaffRoster(enabled: boolean) {
-  return useQuery({
-    queryKey: ['staff-picker'],
-    enabled,
-    staleTime: 5 * 60_000,
-    queryFn: async (): Promise<StaffRecipient[]> => {
-      const res = await fetch('/api/auth/staff-picker', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`staff ${res.status}`);
-      const data = (await res.json()) as { staff?: StaffRecipient[] };
-      return data.staff ?? [];
-    },
-  });
-}
-
-const MENTION_LIMIT = 6;
-
 function NoteComposer({ orderId, latestNote }: { orderId: number; latestNote: string | null }) {
   const seeded = useMemo(() => decodeNoteMentions(latestNote ?? ''), [latestNote]);
   const [draft, setDraft] = useState(seeded.display);
   const [status, setStatus] = useState<SaveStatus>('idle');
-  const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
-  const [active, setActive] = useState(0);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const draftRef = useRef(seeded.display);
-  const pickedRef = useRef<PickedMention[]>(seeded.picked);
   const committedRef = useRef((latestNote ?? '').trim());
   const { mutateAsync } = useAppendOrderNote(orderId);
-  const roster = useStaffRoster(mention !== null);
   const statusId = useId();
-  const listId = useId();
+  const mentions = useStaffMentionField({
+    areaRef,
+    textRef: draftRef,
+    onText: useCallback((next: string) => {
+      draftRef.current = next;
+      setDraft(next);
+    }, []),
+    initialPicked: seeded.picked,
+  });
+  const { pickedRef, reset: resetPicked } = mentions;
 
   // A refreshed note face lands while idle; never under the caret.
   useEffect(() => {
     committedRef.current = (latestNote ?? '').trim();
     if (document.activeElement === areaRef.current) return;
     draftRef.current = seeded.display;
-    pickedRef.current = seeded.picked;
+    resetPicked(seeded.picked);
     setDraft(seeded.display);
-  }, [latestNote, seeded]);
+  }, [latestNote, seeded, resetPicked]);
 
   useOrderNoteFocus(
     orderId,
@@ -166,7 +148,7 @@ function NoteComposer({ orderId, latestNote }: { orderId: number; latestNote: st
         toast.error('Could not save the note');
       },
     );
-  }, [mutateAsync]);
+  }, [mutateAsync, pickedRef]);
 
   const commitRef = useRef(commit);
   useEffect(() => {
@@ -174,45 +156,9 @@ function NoteComposer({ orderId, latestNote }: { orderId: number; latestNote: st
   }, [commit]);
   useEffect(() => () => commitRef.current(), []);
 
-  const matches = useMemo(() => {
-    if (!mention) return [];
-    const q = mention.query.trim().toLowerCase();
-    return (roster.data ?? [])
-      .filter((s) => !q || s.name.toLowerCase().includes(q))
-      .slice(0, MENTION_LIMIT);
-  }, [mention, roster.data]);
-
-  const syncMention = (text: string, caret: number) => {
-    const next = activeMentionQuery(text, caret);
-    setMention(next);
-    setActive(0);
-  };
-
-  const pick = (staff: StaffRecipient) => {
-    const area = areaRef.current;
-    if (!area || !mention) return;
-    const name = staff.name.trim();
-    const caret = area.selectionStart ?? draftRef.current.length;
-    const text = draftRef.current;
-    const insert = `@${name} `;
-    const next = text.slice(0, mention.start) + insert + text.slice(caret);
-    if (!pickedRef.current.some((p) => p.staffId === staff.id)) {
-      pickedRef.current = [...pickedRef.current, { staffId: staff.id, name }];
-    }
-    draftRef.current = next;
-    setDraft(next);
-    setMention(null);
-    const at = mention.start + insert.length;
-    requestAnimationFrame(() => {
-      area.focus();
-      area.setSelectionRange(at, at);
-    });
-  };
-
-  const open = mention !== null && matches.length > 0;
-
   return (
     <div className="relative flex w-full flex-col gap-1">
+      {/* ds-raw-button: the @mention combobox needs native caret/selection control on the textarea */}
       <textarea
         ref={areaRef}
         value={draft}
@@ -220,38 +166,15 @@ function NoteComposer({ orderId, latestNote }: { orderId: number; latestNote: st
           draftRef.current = event.target.value;
           setDraft(event.target.value);
           if (status !== 'saving') setStatus('idle');
-          syncMention(event.target.value, event.target.selectionStart ?? event.target.value.length);
+          mentions.sync(event.target.value, event.target.selectionStart ?? event.target.value.length);
         }}
-        onSelect={(event) => {
-          const el = event.currentTarget;
-          if (mention) syncMention(el.value, el.selectionStart ?? el.value.length);
-        }}
+        onSelect={(event) => mentions.onSelect(event.currentTarget)}
         onBlur={() => {
-          // A listbox click lands after blur; let it pick first.
-          setTimeout(() => setMention(null), 150);
+          mentions.dismiss();
           commit();
         }}
         onKeyDown={(event) => {
-          if (open) {
-            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-              event.preventDefault();
-              const step = event.key === 'ArrowDown' ? 1 : -1;
-              setActive((i) => (i + step + matches.length) % matches.length);
-              return;
-            }
-            if (event.key === 'Enter' || event.key === 'Tab') {
-              event.preventDefault();
-              event.stopPropagation();
-              pick(matches[active] ?? matches[0]);
-              return;
-            }
-            if (event.key === 'Escape') {
-              event.preventDefault();
-              event.stopPropagation();
-              setMention(null);
-              return;
-            }
-          }
+          if (mentions.onKeyDown(event)) return;
           if ((event.key === 'Enter' && !event.shiftKey) || event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
@@ -263,10 +186,7 @@ function NoteComposer({ orderId, latestNote }: { orderId: number; latestNote: st
         placeholder="Add a note"
         aria-label="Order note"
         aria-describedby={statusId}
-        aria-autocomplete="list"
-        aria-expanded={open}
-        aria-controls={open ? listId : undefined}
-        aria-activedescendant={open ? `${listId}-${active}` : undefined}
+        {...mentions.ariaProps}
         data-testid="order-note-composer"
         className={cn(
           'block min-h-mode-hit w-full resize-y rounded-mode-control bg-mode-well p-1.5 text-role-caption text-mode-ink',
@@ -274,35 +194,7 @@ function NoteComposer({ orderId, latestNote }: { orderId: number; latestNote: st
           focusRing('field'),
         )}
       />
-      {open ? (
-        <ul
-          id={listId}
-          role="listbox"
-          aria-label="Mention staff"
-          className="absolute left-0 top-full z-20 mt-1 w-56 overflow-hidden rounded-mode-control border border-mode-edge bg-mode-panel py-1 shadow-lg"
-        >
-          {matches.map((s, i) => (
-            <li
-              key={s.id}
-              id={`${listId}-${i}`}
-              role="option"
-              aria-selected={i === active}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                pick(s);
-              }}
-              onMouseEnter={() => setActive(i)}
-              className={cn(
-                'flex cursor-pointer items-center gap-1.5 px-2 py-1 text-role-caption text-mode-ink',
-                i === active && 'bg-mode-hover',
-              )}
-            >
-              <AtSign className="h-3 w-3 shrink-0 text-mode-muted" />
-              <span className="truncate">{s.name}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <StaffMentionListbox field={mentions} className="absolute left-0 top-full mt-1" />
       <span
         id={statusId}
         aria-live="polite"

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { logger } from '@/lib/observability/logger';
+import { captureError } from '@/lib/observability/errors';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import {
@@ -40,12 +41,16 @@ export async function GET(req: NextRequest) {
       openReceivingExceptions: metrics.openReceivingExceptions,
       unmatchedTracking: metrics.unmatchedTracking,
       perCarrier: metrics.perCarrier,
+      carrierSync: metrics.carrierSync,
     }, '[metrics.shipping.tracking]');
 
     for (const alert of alerts) {
       const line = '[alert.shipping.tracking]';
-      if (alert.level === 'error') console.error(line, alert);
-      else console.warn(line, alert);
+      if (alert.level === 'error') {
+        console.error(line, alert);
+        // Error-level alerts page through the error reporter (Sentry when SENTRY_DSN is set).
+        captureError(new Error(`${alert.code}: ${alert.message}`), { route: '/api/cron/shipping/metrics', alert });
+      } else console.warn(line, alert);
     }
 
     return NextResponse.json({ ok: true, metrics, alerts });

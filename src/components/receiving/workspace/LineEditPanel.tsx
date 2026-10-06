@@ -60,6 +60,7 @@ import {
 } from '@/components/station/collapse';
 import { StationTicketPane } from '@/components/composer';
 import { UnboxReturnCallout } from '@/components/receiving/unbox/UnboxReturnCallout';
+import { AsListedBlock } from './line-edit/AsListedBlock';
 import { StationDisplaysPushStack } from '@/components/station/displays/StationDisplaysPushStack';
 import { useStationTaskController } from '@/components/station/useStationTaskController';
 import { STATION_DISPLAY_INDEX } from '@/components/station/displays/display-index';
@@ -625,6 +626,7 @@ export function LineEditPanel({
                   />
                 ) : (
                 <>
+                  <AsListedBlock line={row} className="mx-2 mt-2" />
                   <UnboxReturnCallout row={row} />
                   <motion.div initial={false} animate="show" variants={revealContainer}>
                     <motion.div variants={revealItem}>{unboxOverview}</motion.div>

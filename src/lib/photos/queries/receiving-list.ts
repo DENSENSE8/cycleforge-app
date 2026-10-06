@@ -2,6 +2,7 @@ import pool from '@/lib/db';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { PhotoLinkRole } from '@/lib/photos/types';
 import {
+  NOT_LISTING_PHOTO_SQL,
   receivingPhotoIntentSql,
   type ReceivingPhotoListIntent,
 } from '@/lib/receiving/photo-intent';
@@ -177,6 +178,7 @@ export async function listReceivingPhotos(input: {
   return res.rows.map((r) => mapRow(r, toUrl));
 }
 
+/** Receiving evidence counts never include the seller's listing photos (`NOT_LISTING_PHOTO_SQL`). */
 export function sqlReceivingPhotoCount(receivingIdExpr: string, orgIdExpr: string): string {
   return `(SELECT COUNT(DISTINCT p.id)
      FROM photos p
@@ -185,6 +187,7 @@ export function sqlReceivingPhotoCount(receivingIdExpr: string, orgIdExpr: strin
             ON l.entity_type = 'RECEIVING_LINE' AND rl_ph.id = l.entity_id
     WHERE p.organization_id = ${orgIdExpr}
       AND ${receivingIdExpr} IS NOT NULL
+      AND ${NOT_LISTING_PHOTO_SQL}
       AND (
         (l.entity_type = 'RECEIVING' AND l.entity_id = ${receivingIdExpr})
         OR (l.entity_type = 'RECEIVING_LINE' AND rl_ph.receiving_id = ${receivingIdExpr})
@@ -232,13 +235,15 @@ export function sqlCartonStagePhotoCount(
       AND l.entity_id = ${receivingIdExpr}${receivingPhotoIntentSql(intent)})`;
 }
 
+/** A line's unbox photo evidence — the photo policy's item count. Listing photos never satisfy it. */
 export function sqlLinePhotoCount(lineIdExpr: string, orgIdExpr: string): string {
   return `(SELECT COUNT(DISTINCT p.id)
      FROM photos p
      INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
     WHERE p.organization_id = ${orgIdExpr}
       AND l.entity_type = 'RECEIVING_LINE'
-      AND l.entity_id = ${lineIdExpr})`;
+      AND l.entity_id = ${lineIdExpr}
+      AND ${NOT_LISTING_PHOTO_SQL})`;
 }
 
 export function sqlLineIdsPhotoCount(lineIdsParam: string, orgIdExpr: string): string {
@@ -247,7 +252,8 @@ export function sqlLineIdsPhotoCount(lineIdsParam: string, orgIdExpr: string): s
      INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
     WHERE p.organization_id = ${orgIdExpr}
       AND l.entity_type = 'RECEIVING_LINE'
-      AND l.entity_id = ANY(${lineIdsParam}))`;
+      AND l.entity_id = ANY(${lineIdsParam})
+      AND ${NOT_LISTING_PHOTO_SQL})`;
 }
 
 export async function getReceivingPhotosByIds(input: {

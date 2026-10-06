@@ -12,7 +12,6 @@ import {
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
-import { LoaderFieldCover, UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 
 const UnboxWorkspaceView = dynamic(
@@ -20,7 +19,7 @@ const UnboxWorkspaceView = dynamic(
     import('@/components/receiving/unbox/UnboxWorkspaceView').then(
       (m) => m.UnboxWorkspaceView,
     ),
-  { ssr: false, loading: () => <UniversalLoader isLoading label="Loading Unbox desk" /> },
+  { ssr: false },
 );
 import { UnboxPreviewLock } from './UnboxPreviewLock';
 import { UnboxLookupReceipt } from '@/components/receiving/unbox/UnboxLookupReceipt';
@@ -115,16 +114,9 @@ export function UnboxLineWorkspace({
         inert={showOverlay ? true : undefined}
         style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
       >
-        {/* This pane stays mounted but `visibility: hidden` while the carton
-            overlay owns the middle — tell any loading field inside it not to
-            paint a second, invisible copy of the one on top. */}
-        <LoaderFieldCover covered={showOverlay}>
-          {showRestoreSkeleton ? (
-            <UniversalLoader isLoading label="Restoring carton" />
-          ) : (
-            deskMounted ? <UnboxWorkspaceView selectedLine={row} /> : null
-          )}
-        </LoaderFieldCover>
+        {showRestoreSkeleton || !deskMounted ? null : (
+          <UnboxWorkspaceView selectedLine={row} />
+        )}
       </div>
 
       {/* Defensive canvas plate under the keyed overlay — matches station fill

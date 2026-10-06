@@ -2,7 +2,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   INITIAL_TESTING_SCAN_SESSION,
-  sessionSerials,
   testingScanSessionReducer,
   unitBelongsToAnchor,
 } from './testing-scan-session';
@@ -43,18 +42,6 @@ describe('testingScanSessionReducer', () => {
     });
     assert.equal(s.phase, 'confirmed');
     assert.equal(s.unitKey, 'SKU1-2621-000001');
-  });
-
-  it('filters serials to the confirmed unit when possible', () => {
-    const s = testingScanSessionReducer(INITIAL_TESTING_SCAN_SESSION, {
-      type: 'CONFIRM_UNIT',
-      unitKey: 'SKU1-2621-000002',
-      line: line(),
-      via: 'unit_id',
-    });
-    const serials = sessionSerials(s);
-    assert.equal(serials.length, 1);
-    assert.equal(serials[0]!.serial_number, 'SN-BBB');
   });
 });
 

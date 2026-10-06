@@ -151,69 +151,6 @@
         }
       ],
       "updatedAt": "2026-08-30T15:58:21.907Z"
-    },
-    "/m/home": {
-      "module": "src/lib/queries/mobile-feed-seed.server.ts",
-      "seeds": [
-        {
-          "label": "Mobile Unbox feed",
-          "keyPrefix": [
-            "receiving-lines-table",
-            "rail",
-            "unbox-opened"
-          ],
-          "observedKey": [
-            "receiving-lines-table",
-            "rail",
-            "unbox-opened",
-            "mobile-unbox"
-          ],
-          "minRows": 20
-        }
-      ],
-      "updatedAt": "2026-08-30T15:58:21.907Z"
-    },
-    "/m/triage": {
-      "module": "src/lib/queries/mobile-feed-seed.server.ts",
-      "seeds": [
-        {
-          "label": "Mobile Arrival feed",
-          "keyPrefix": [
-            "receiving-lines-table",
-            "rail",
-            "scanned"
-          ],
-          "observedKey": [
-            "receiving-lines-table",
-            "rail",
-            "scanned",
-            "mobile-triage"
-          ],
-          "minRows": 20
-        }
-      ],
-      "updatedAt": "2026-08-30T15:58:21.907Z"
-    },
-    "/m/receive": {
-      "module": "src/lib/queries/mobile-feed-seed.server.ts",
-      "seeds": [
-        {
-          "label": "Mobile Arrival feed",
-          "keyPrefix": [
-            "receiving-lines-table",
-            "rail",
-            "scanned"
-          ],
-          "observedKey": [
-            "receiving-lines-table",
-            "rail",
-            "scanned",
-            "mobile-triage"
-          ],
-          "minRows": 20
-        }
-      ],
-      "updatedAt": "2026-08-30T15:58:21.907Z"
     }
   }
 }

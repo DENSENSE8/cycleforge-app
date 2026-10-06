@@ -130,7 +130,7 @@ test('per-staff feeds are read for the caller; org-wide feeds are not narrowed t
   await runNavRecentAdapter('pickup.orders', args, deps);
   await runNavRecentAdapter('identify.opened', args, deps);
   await runNavRecentAdapter('receiving.viewed', args, deps);
-  assert.deepEqual(calls.packer, { organizationId: ORG, packerId: 5, limit: 12 });
+  assert.deepEqual(calls.packer, { organizationId: ORG, population: 'packed', packerId: 5, limit: 12 });
   assert.deepEqual(calls.labels, { limit: 12, staffId: 5 });
   assert.deepEqual(calls.pickup, { status: '', q: '', limit: 500 });
   assert.deepEqual(calls.identify, { staffId: 5, limit: 12 });

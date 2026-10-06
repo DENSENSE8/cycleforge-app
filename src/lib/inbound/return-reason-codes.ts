@@ -27,6 +27,11 @@ const RETURN_REASON_CODE_LABELS: Readonly<Record<string, string>> = {
   POOR_FIT: 'Poor fit',
   APPAREL_TOO_SMALL: 'Too small',
   APPAREL_TOO_LARGE: 'Too large',
+  // FBA customer returns report (`reason`).
+  CUSTOMER_DAMAGED: 'Damaged by the buyer',
+  NO_REASON_GIVEN: 'No reason given',
+  UNDELIVERABLE_REFUSED: 'Refused at delivery',
+  UNDELIVERABLE_UNKNOWN: 'Undeliverable',
 };
 
 const CODE_SHAPE = /^[A-Z0-9]+(?:[-_][A-Z0-9]+)*$/;
@@ -40,11 +45,12 @@ const CODE_SHAPE = /^[A-Z0-9]+(?:[-_][A-Z0-9]+)*$/;
 export function readReturnReason(raw: string | null | undefined): { label: string; code: string | null } | null {
   const value = raw?.trim();
   if (!value) return null;
-  // Carton-level fallbacks carry the RMA after ` · ` (`tagInboundAsReturn`).
+  // Carton-level fallbacks carry the RMA after ` · ` (`tagInboundReturnInTx`).
   const [head, ...rest] = value.split(' · ');
   const tail = rest.length ? ` · ${rest.join(' · ')}` : '';
   const code = head.trim();
-  if (!CODE_SHAPE.test(code) || !/[_-]/.test(code)) return { label: value, code: null };
-  const label = RETURN_REASON_CODE_LABELS[code.replace(/^(?:CR|AMZ-PG)-/, '').replace(/-/g, '_')];
+  const label = CODE_SHAPE.test(code) ? RETURN_REASON_CODE_LABELS[code.replace(/^(?:CR|AMZ-PG)-/, '').replace(/-/g, '_')] : undefined;
+  // A bare word (FBA's `DEFECTIVE`) is a code only when it is a known one; anything else is free text.
+  if (!CODE_SHAPE.test(code) || (!/[_-]/.test(code) && !label)) return { label: value, code: null };
   return { label: `${label ?? code}${tail}`, code: label ? code : null };
 }

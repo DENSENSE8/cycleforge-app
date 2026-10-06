@@ -1,22 +1,76 @@
 'use client';
 
-/** Spreadsheet ZOOM — a percentage with a menu, the way a spreadsheet does it. */
+/**
+ * Spreadsheet ZOOM — ONE dropdown whose face is just the percent (`100%▾`),
+ * the way a spreadsheet does it (operator 2026-10-05: no − / + buttons).
+ * `ZoomMenu` is the face every grid shares: the sheet (`PastedListSheet`,
+ * per-layout zoom in `useSheetColumns`) and DataTable (`DataTableZoomToggle`,
+ * one stored percent for every grid) hand it their own value, rungs and setter.
+ */
 
-import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, Search } from '@/components/Icons';
+import { useEffect, useState } from 'react';
+import { Check, ChevronDown } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/design-system/primitives/radix-popover';
-import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
-import {
-  DATA_TABLE_TOOLBAR_CORNER,
-  DROPDOWN_ITEM_CORNER,
-  DROPDOWN_SHELL_CORNER,
-} from '@/design-system/tokens/radius';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
+
+/** The zoom dropdown: the percent as its face, one item per rung. Presentational — the host owns the value. */
+export function ZoomMenu({
+  value,
+  steps,
+  onChange,
+  testId,
+  className,
+}: {
+  /** The zoom now, percent. */
+  value: number;
+  /** The rungs offered, percent, smallest first. */
+  steps: readonly number[];
+  onChange: (next: number) => void;
+  testId?: string;
+  className?: string;
+}) {
+  return (
+    <DropdownMenu>
+      <HoverTooltip label="Zoom" asChild>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            ariaLabel={`Zoom, ${value}%`}
+            iconRight={<ChevronDown aria-hidden />}
+            data-testid={testId}
+            // The neighbours' 28px hit box (IconButton `sm`, the toolbar row face).
+            className={cn('h-7 shrink-0 gap-0.5 px-1.5 tabular-nums', className)}
+          >
+            {value}%
+          </Button>
+        </DropdownMenuTrigger>
+      </HoverTooltip>
+      <DropdownMenuContent align="end" className="min-w-24">
+        {steps.map((step) => (
+          <DropdownMenuItem
+            key={step}
+            role="menuitemradio"
+            aria-checked={step === value}
+            onSelect={() => onChange(step)}
+            data-testid={testId ? `${testId}-${step}` : undefined}
+            className={cn('justify-between tabular-nums', step === value && 'font-semibold')}
+          >
+            {step}%
+            {step === value ? <Check aria-hidden className="size-3.5" /> : null}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /**
  * The rungs, as percentages. Coarse on purpose — a continuous slider on a WMS
@@ -36,9 +90,9 @@ function readStored(): number {
   }
 }
 
+/** DataTable's zoom: one stored percent, applied as `--cf-density` on the document. */
 export function DataTableZoomToggle({ className }: { className?: string }) {
   const [percent, setPercent] = useState<number>(DEFAULT_PERCENT);
-  const [open, setOpen] = useState(false);
 
   // After mount only: the server has no localStorage, and painting the stored
   // zoom during SSR would hydrate-mismatch every grid on the page.
@@ -55,58 +109,5 @@ export function DataTableZoomToggle({ className }: { className?: string }) {
     }
   }, [percent]);
 
-  const pick = useCallback((next: number) => {
-    setPercent(next);
-    setOpen(false);
-  }, []);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          data-testid="data-table-zoom"
-          aria-label={`Zoom, ${percent}%`}
-          aria-expanded={open}
-          className={cn(
-            'ds-raw-button inline-flex shrink-0 items-center gap-1 px-1.5 text-role-caption',
-            'transition-colors duration-100 ease-out',
-            PRIMARY_CHROME_ROW_FACE,
-            DATA_TABLE_TOOLBAR_CORNER,
-            focusRing('control'),
-            'text-text-muted hover:bg-surface-hover hover:text-text-default',
-            className,
-          )}
-        >
-          <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span className="tabular-nums">{percent}%</span>
-          <ChevronDown className="h-3 w-3 shrink-0" aria-hidden />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={2}
-        className={cn(DROPDOWN_SHELL_CORNER, 'w-24 overflow-hidden p-0.5')}
-      >
-        {STEPS.map((step) => (
-          <button
-            key={step}
-            type="button"
-            onClick={() => pick(step)}
-            data-testid={`data-table-zoom-${step}`}
-            className={cn(
-              'ds-raw-button flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-role-caption tabular-nums',
-              DROPDOWN_ITEM_CORNER,
-              focusRing('control'),
-              step === percent
-                ? 'bg-surface-sunken font-semibold text-text-default'
-                : 'text-text-soft hover:bg-surface-hover hover:text-text-default',
-            )}
-          >
-            {step}%
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
-  );
+  return <ZoomMenu value={percent} steps={STEPS} onChange={setPercent} testId="data-table-zoom" className={className} />;
 }

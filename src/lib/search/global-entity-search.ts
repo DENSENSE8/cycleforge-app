@@ -29,6 +29,7 @@ import { formatRepairPaperTicketNumber } from '@/lib/repair/repair-paper-ticket'
 import { formatDateKeyShort, toPSTDateKey } from '@/utils/date';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
+import { ALLOCATE_STAGE_FACTS_JOIN, sqlAllocateSearchStatus } from '@/lib/search/allocate-search-status';
 
 /** Match `serial_units.normalized_serial` (trim + upper) without pulling neon queries. */
 function normalizeSerialQuery(raw: string): string {
@@ -85,13 +86,7 @@ const ORDER_SEARCH_SELECT = `SELECT o.id,
             o.product_title,
             o.sku,
             o.account_source,
-            o.status,
-            BOOL_OR(
-              COALESCE(stn.is_delivered, false)
-              OR COALESCE(stn_link.is_delivered, false)
-              OR UPPER(COALESCE(stn.latest_status_category, '')) = 'DELIVERED'
-              OR UPPER(COALESCE(stn_link.latest_status_category, '')) = 'DELIVERED'
-            ) AS carrier_delivered,
+            MAX(${sqlAllocateSearchStatus()}) AS allocate_status,
             o.condition,
             o.order_date,
             o.created_at,
@@ -127,6 +122,7 @@ const ORDER_SEARCH_SELECT = `SELECT o.id,
        ON c.id = o.customer_id
       AND c.organization_id = o.organization_id
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+     ${ALLOCATE_STAGE_FACTS_JOIN}
      LEFT JOIN shipment_links sl
        ON sl.owner_type = 'ORDER'
       AND sl.owner_id = o.id
@@ -170,13 +166,32 @@ function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
   });
 }
 
-/** Carrier truth outranks the stale internal workflow status in search faces. */
-export function orderSearchDisplayStatus(row: {
-  status?: unknown;
-  carrier_delivered?: unknown;
-}): string | null {
-  if (row.carrier_delivered === true) return 'delivered';
-  return row.status != null ? String(row.status) : null;
+/** Allocate stage (`sqlAllocateSearchStatus`). Channel `orders.status` is not a chip. */
+export function orderSearchDisplayStatus(row: { allocate_status?: unknown }): string {
+  const label = String(row.allocate_status ?? '').trim();
+  return label || 'To pick';
+}
+
+/** Allocate chip for the order ids a search already chose. Indexed docs still store the channel word until the next rebuild. */
+export async function loadAllocateSearchStatuses(
+  orgId: OrgId,
+  orderIds: readonly number[],
+): Promise<Map<number, string>> {
+  const ids = [...new Set(orderIds.filter((id) => Number.isSafeInteger(id) && id > 0))];
+  if (ids.length === 0) return new Map();
+  const res = await tenantQueryOneTrip<{ id: number; allocate_status: string }>(
+    orgId,
+    `SELECT o.id, ${sqlAllocateSearchStatus()} AS allocate_status
+       FROM orders o
+       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+       ${ALLOCATE_STAGE_FACTS_JOIN}
+      WHERE o.organization_id = $1
+        AND o.id = ANY($2::int[])`,
+    [orgId, ids],
+  );
+  const out = new Map<number, string>();
+  for (const row of res.rows) out.set(Number(row.id), orderSearchDisplayStatus(row));
+  return out;
 }
 
 /** A phone typed or pasted any way → its last 10 digits; '' when the query is not phone-shaped. */
@@ -1102,8 +1117,10 @@ async function searchInternalIds(
                   o.sku,
                   o.account_source,
                   o.shipment_id,
-                  o.status
+                  ${sqlAllocateSearchStatus()} AS allocate_status
            FROM orders o
+           LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+           ${ALLOCATE_STAGE_FACTS_JOIN}
            WHERE o.organization_id = $1
              AND (
                   (cardinality($2::bigint[]) > 0 AND o.id = ANY($2::bigint[]))
@@ -1217,7 +1234,7 @@ async function searchInternalIds(
       href: searchHitHref('ORDER', id),
       matchField: matchedShipment ? 'shipment' : 'id',
       facets: {
-        status: row.status != null ? String(row.status) : null,
+        status: orderSearchDisplayStatus(row),
         source_platform: row.account_source != null ? String(row.account_source) : null,
         order_id: row.order_id != null ? String(row.order_id) : null,
       },

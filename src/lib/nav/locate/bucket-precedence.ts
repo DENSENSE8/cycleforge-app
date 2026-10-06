@@ -13,7 +13,7 @@
  * the precedence, then the answer's order.
  */
 
-import type { NavLocateScope, NavLocator } from '@/lib/nav/context/schema';
+import type { NavLocateBucket, NavLocateScope, NavLocator } from '@/lib/nav/context/schema';
 import { INBOUND_BUCKET_IDS } from '@/lib/nav/locate/inbound';
 import { OUTBOUND_LOCATE_STATUSES } from '@/lib/nav/locate/outbound-params';
 import { SUPPORT_LOCATE_STATUSES } from '@/lib/nav/locate/support-params';
@@ -33,6 +33,74 @@ export const LOCATE_BUCKET_PRECEDENCE: Readonly<Record<NavLocator, readonly stri
   outbound: ['exceptions', ...OUTBOUND_LOCATE_STATUSES.filter((id) => id !== 'exceptions')],
   support: SUPPORT_LOCATE_STATUSES,
 };
+
+/**
+ * Fulfillment › Fulfilled (`GET /api/nav/fulfilled`): where a shipped order
+ * is on its JOURNEY — carrier half (did it reach the customer?) then the
+ * customer half (did we check in, did they answer, how did it end). ONE id
+ * per row, first match wins in this order (carrier predicates
+ * `src/lib/nav/fulfilled/bucket.ts`, customer stages `./journey.ts`). Every
+ * declared bucket is answered, zero counts included.
+ *
+ * `section` is the urgency band the board groups columns under (operator
+ * 2026-10-05): `act` = past or at a threshold, a verb is owed now; `watch` =
+ * moving inside its threshold; `done` = nothing owed. Order inside a section
+ * is the board's column order.
+ */
+export const FULFILLED_SECTIONS = [
+  { id: 'act', label: 'Act now' },
+  { id: 'watch', label: 'Watch' },
+  { id: 'done', label: 'Done' },
+] as const;
+export type FulfilledSectionId = (typeof FULFILLED_SECTIONS)[number]['id'];
+
+export const FULFILLED_BUCKETS = [
+  // ── Act now ──
+  { id: 'exception', label: 'Exception', tone: 'danger', section: 'act' },
+  { id: 'returned', label: 'Returned', tone: 'warning', section: 'act' },
+  { id: 'reply_due', label: 'Reply due', tone: 'danger', section: 'act' },
+  { id: 'no_movement', label: 'No movement', tone: 'danger', section: 'act' },
+  { id: 'stalled', label: 'Stalled', tone: 'warning', section: 'act' },
+  { id: 'late', label: 'Late', tone: 'warning', section: 'act' },
+  { id: 'check_in_due', label: 'Check-in due', tone: 'warning', section: 'act' },
+  { id: 'tracking_stale', label: 'Tracking stale', tone: 'warning', section: 'act' },
+  { id: 'no_tracking', label: 'No tracking', tone: 'warning', section: 'act' },
+  // ── Watch ──
+  { id: 'awaiting', label: 'Awaiting pickup', tone: 'neutral', section: 'watch' },
+  { id: 'in_transit', label: 'In transit', tone: 'info', section: 'watch' },
+  { id: 'out_for_delivery', label: 'Out for delivery', tone: 'info', section: 'watch' },
+  { id: 'untracked', label: 'Untracked', tone: 'neutral', section: 'watch' },
+  { id: 'check_in_scheduled', label: 'Check-in scheduled', tone: 'info', section: 'watch' },
+  { id: 'checked_in', label: 'Checked in', tone: 'info', section: 'watch' },
+  // ── Done ──
+  { id: 'happy', label: 'Happy', tone: 'success', section: 'done' },
+  { id: 'issue', label: 'Had an issue', tone: 'warning', section: 'done' },
+  { id: 'no_reply', label: 'No reply', tone: 'neutral', section: 'done' },
+  { id: 'closed', label: 'Closed', tone: 'neutral', section: 'done' },
+  { id: 'delivered', label: 'Delivered', tone: 'success', section: 'done' },
+] as const satisfies ReadonlyArray<{
+  id: string;
+  label: string;
+  tone: NavLocateBucket['tone'];
+  section: FulfilledSectionId;
+}>;
+export type FulfilledBucketId = (typeof FULFILLED_BUCKETS)[number]['id'];
+export const FULFILLED_BUCKET_IDS = FULFILLED_BUCKETS.map((bucket) => bucket.id) as readonly FulfilledBucketId[];
+
+/** Each bucket's urgency band. */
+export const FULFILLED_BUCKET_SECTION: Readonly<Record<FulfilledBucketId, FulfilledSectionId>> = Object.fromEntries(
+  FULFILLED_BUCKETS.map((bucket) => [bucket.id, bucket.section]),
+) as Record<FulfilledBucketId, FulfilledSectionId>;
+
+/** The first of `ids` in {@link FULFILLED_BUCKETS} precedence (an order's packages → its one bucket). */
+export function fulfilledPrimaryBucket(ids: readonly FulfilledBucketId[]): FulfilledBucketId | null {
+  let best = -1;
+  for (const id of ids) {
+    const rank = FULFILLED_BUCKET_IDS.indexOf(id);
+    if (rank >= 0 && (best < 0 || rank < best)) best = rank;
+  }
+  return best < 0 ? null : FULFILLED_BUCKET_IDS[best];
+}
 
 /** `inbound:received` → inbound / received; a bare id belongs to the scope's own locator. */
 function sectionOf(id: string, scope: NavLocateScope): { locator: NavLocator | null; own: string; elsewhere: boolean } {

@@ -9,6 +9,8 @@ import {
   INBOUND_SOURCE_PARAM,
 } from '@/lib/receiving/inbound-lane';
 import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
+import { PURCHASES_ONLY_PARAMS, PURCHASES_STATUS_PARAM } from '@/lib/receiving/purchases-params';
+import { FULFILLED_ONLY_PARAMS, FULFILLED_STATUS_PARAM } from '@/lib/outbound/fulfilled-params';
 import { REPAIR_CHANNEL_PARAM } from '@/lib/repair/repair-channel';
 import { REPAIR_SORT_PARAM } from '@/lib/repair/repair-sort';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
@@ -52,6 +54,8 @@ type StationSurfaceKey =
   | 'packer_history'
   | 'receiving_history'
   | 'receiving_incoming'
+  | 'receiving_purchases'
+  | 'outbound_fulfilled'
   | 'testing_history'
   | 'repair_queue';
 
@@ -92,6 +96,26 @@ export const SAVED_VIEW_PARAM_KEYS: Record<StationSurfaceKey, readonly string[]>
     GRID_COLUMN_DIR_PARAM,
     INBOUND_FIND_PARAM,
   ],
+  // Exactly what Purchasing reads (`/purchasing`, `purchases-params.ts`):
+  // the date axis and window, source, vendor, who unboxed, the column sort and
+  // the body's status chip.
+  receiving_purchases: [
+    ...PURCHASES_ONLY_PARAMS,
+    GRID_COLUMN_SORT_PARAM,
+    GRID_COLUMN_DIR_PARAM,
+    PURCHASES_STATUS_PARAM,
+  ],
+  // Exactly what Fulfilled reads (`/fulfilled`, `fulfilled-params.ts`): the
+  // date axis and window, channel, carrier, packer, Packed by me, scan source,
+  // row grain, body layout (board · sheet), the board's display toggles (Done ·
+  // Untracked · Cards · Group), the column sort and the body's status chip.
+  // Find (`q`) stays out.
+  outbound_fulfilled: [
+    ...FULFILLED_ONLY_PARAMS,
+    GRID_COLUMN_SORT_PARAM,
+    GRID_COLUMN_DIR_PARAM,
+    FULFILLED_STATUS_PARAM,
+  ],
   testing_history: [LAYOUT_PARAM, SCOPE_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM, 'view'],
   // Repair cards (`/repair`, Sales › Repair service): workflow scope, ingress,
   // card order, status/exclusion facets and sidebar Find.
@@ -111,6 +135,8 @@ export const SAVED_VIEW_STORAGE_KEY: Record<StationSurfaceKey, string> = {
   packer_history: 'packer_history_saved_views',
   receiving_history: 'receiving_history_saved_views',
   receiving_incoming: 'receiving_incoming_saved_views',
+  receiving_purchases: 'receiving_purchases_saved_views',
+  outbound_fulfilled: 'outbound_fulfilled_saved_views',
   testing_history: 'testing_history_saved_views',
   repair_queue: 'repair_queue_saved_views',
 };

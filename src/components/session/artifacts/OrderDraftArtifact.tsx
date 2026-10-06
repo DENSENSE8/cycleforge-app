@@ -89,7 +89,7 @@ export function OrderDraftArtifact({ artifact }: { artifact: ArtifactOrderDraft 
           {draft.shipBy ? shipByFace(draft.shipBy) : <span className="text-ai-faint">Not set</span>}
           {draft.isUrgent ? <span className="ml-2 font-medium text-text-warning">Urgent</span> : null}
         </dd>
-        <dt className={LABEL}>Channel</dt>
+        <dt className={LABEL}>Platform</dt>
         <dd className="min-w-0" data-order-channel>
           {draft.channelLabel || draft.channel || <span className="text-ai-faint">Not picked yet</span>}
           {!created && channelChoices.length > 1 ? (

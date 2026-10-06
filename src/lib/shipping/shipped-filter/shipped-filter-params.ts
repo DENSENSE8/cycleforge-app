@@ -1,33 +1,14 @@
-import { fromZonedTime } from 'date-fns-tz';
-import type { CarrierCode, ShipmentStatusCategory } from '@/lib/shipping/shipment-status';
 import {
   addDaysToDateKey,
   dateKeyToLocalDate,
   isDateKey,
   localDateToDateKey,
-  normalizePSTTimestamp,
   warehouseCivilTimeToInstant,
-  WAREHOUSE_TIME_ZONE,
 } from '@/utils/date';
 import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
-import { VALID_CARRIERS, VALID_STATUS, type ShippedTypeFilter } from './shipped-filter-constants';
+import type { ShippedTypeFilter } from './shipped-filter-constants';
 
 type ParamReader = URLSearchParams | { get: (k: string) => string | null };
-
-export function readShippedCarrierFilter(searchParams: ParamReader): CarrierCode | null {
-  const raw = String(searchParams.get('carrier') || '').toUpperCase();
-  return VALID_CARRIERS.has(raw as CarrierCode) ? (raw as CarrierCode) : null;
-}
-
-export function readShippedStatusFilter(searchParams: ParamReader): ShipmentStatusCategory | null {
-  const raw = String(searchParams.get('statusCategory') || '').toUpperCase();
-  return VALID_STATUS.has(raw as ShipmentStatusCategory) ? (raw as ShipmentStatusCategory) : null;
-}
-
-export function readShippedExceptionsFilter(searchParams: ParamReader): boolean {
-  const raw = String(searchParams.get('exceptions') || '').toLowerCase();
-  return raw === '1' || raw === 'true';
-}
 
 function readShippedTypeFilter(searchParams: ParamReader): ShippedTypeFilter {
   const raw = String(searchParams.get('shippedFilter') || '').toLowerCase();
@@ -158,26 +139,6 @@ export function shippedTimeWindow(t: ShippedTimeParams): { fromIso: string; toIs
 export function readShippedTimeWindow(searchParams: ParamReader): { fromIso: string; toIso: string } | null {
   const t = readShippedTimeParams(searchParams);
   return t ? shippedTimeWindow(t) : null;
-}
-
-/**
- * The browser trim for a time window: is this shipped row's stamp inside
- * `[fromIso, toIso)`? Rows carry `created_at` as a naive warehouse wall clock
- * (the pool's session zone), so it is read in that zone — the same instant the
- * server compared, never the host's zone.
- */
-export function shippedStampInWindow(stamp: string, window: { fromIso: string; toIso: string }): boolean {
-  const raw = stamp.trim();
-  if (!raw) return false;
-  let ms: number;
-  if (/(Z|[+-]\d{2}:?\d{2})$/i.test(raw)) {
-    ms = Date.parse(raw);
-  } else {
-    const normalized = normalizePSTTimestamp(raw, { fallbackToNow: false });
-    if (!normalized) return false;
-    ms = fromZonedTime(normalized.replace(' ', 'T'), WAREHOUSE_TIME_ZONE).getTime();
-  }
-  return Number.isFinite(ms) && ms >= Date.parse(window.fromIso) && ms < Date.parse(window.toIso);
 }
 
 /** `?pickedBy` — the staffer who picked the order; positive int, else unset. */

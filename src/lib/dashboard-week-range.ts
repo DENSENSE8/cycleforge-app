@@ -60,40 +60,6 @@ function mondayOf(dateKey: string): string {
 }
 
 /**
- * Canonical Mon–Sun week buckets covering [startKey, endKey] inclusive.
- * Stable cache units shared across overlapping ranges.
- */
-export function getWeekBucketsForRange(
-  startKey: string,
-  endKey: string,
-): { weekStart: string; weekEnd: string }[] {
-  if (!startKey || !endKey || !parseDateKey(startKey) || !parseDateKey(endKey)) return [];
-  const buckets: { weekStart: string; weekEnd: string }[] = [];
-  let cursor = mondayOf(startKey);
-  const endMonday = mondayOf(endKey);
-  let guard = 0;
-  while (cursor <= endMonday && guard < 260) {
-    buckets.push({
-      weekStart: cursor,
-      weekEnd: addDaysToDateKey(cursor, 6),
-    });
-    cursor = addDaysToDateKey(cursor, 7);
-    guard += 1;
-  }
-  return buckets;
-}
-
-/** Monday (YYYY-MM-DD) of the current warehouse week — the immutability boundary. */
-function getCurrentWeekStartKey(): string {
-  return mondayOf(getCurrentPSTDateKey());
-}
-
-/** A week bucket is immutable once it starts strictly before the current week. */
-export function isPastWeekStart(weekStartKey: string): boolean {
-  return weekStartKey < getCurrentWeekStartKey();
-}
-
-/**
  * The current week + the previous `count - 1` weeks as Mon–Sun buckets (newest
  * first). Used to warm the cache on idle so common period presets resolve fast.
  */

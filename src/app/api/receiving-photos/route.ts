@@ -111,6 +111,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const photoIntent =
       photoIntentRaw === 'package' ||
       photoIntentRaw === 'item' ||
+      photoIntentRaw === 'listing' ||
       photoIntentRaw === 'unbox_carton' ||
       photoIntentRaw === 'carton'
         ? photoIntentRaw

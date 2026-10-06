@@ -26,6 +26,10 @@ const SECTION_TONE_CLASS: Readonly<Record<TriageSectionTone, string>> = {
 
 export type TriageSectionTone = 'danger' | 'warning' | 'muted';
 
+/** Card density: a section head that follows a card draws the hairline that card would otherwise end without — at the cards' 20px inset. */
+const SECTION_HEAD_RULE =
+  "[&>[data-triage-section]:not(:first-child)]:before:pointer-events-none [&>[data-triage-section]:not(:first-child)]:before:absolute [&>[data-triage-section]:not(:first-child)]:before:inset-x-5 [&>[data-triage-section]:not(:first-child)]:before:top-0 [&>[data-triage-section]:not(:first-child)]:before:h-px [&>[data-triage-section]:not(:first-child)]:before:bg-border-hairline [&>[data-triage-section]:not(:first-child)]:before:content-['']";
+
 /**
  * A sticky section header in the card list. No layout tween (owner
  * 2026-09-27: the header text slid sideways and down with the cards): key it
@@ -50,6 +54,7 @@ export function TriageSectionHeader({
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...SPRING, delay: CARD_LIST_SETTLE_S }}
       data-testid={testId}
+      data-triage-section=""
       className="sticky left-0 top-0 z-20 -mx-1 flex items-center gap-2 bg-surface-card/90 pb-1.5 pl-5 pr-4 pt-3 backdrop-blur-sm"
     >
       <span className={cn('text-xs font-semibold', SECTION_TONE_CLASS[tone])}>{label}</span>
@@ -315,8 +320,10 @@ export function TriageListBody({
           ) : (
             // Cards divide themselves with a hairline above (`[&+&]:before`), so
             // the list closes with its own hairline under the last card — the
-            // table's bottom edge, the same inset as the dividers. Rows close
-            // themselves (`border-b`), so their list only opens with one.
+            // table's bottom edge, the same inset as the dividers — and a
+            // section head that follows a card draws that card's rule above
+            // itself, so no card ends a section unruled. Rows close themselves
+            // (`border-b`), so their list only opens with one.
             <ul
               role="list"
               aria-label={listLabel}
@@ -324,7 +331,10 @@ export function TriageListBody({
               className={
                 density === 'row'
                   ? 'flex flex-col border-t border-mode-rule'
-                  : "flex min-w-0 max-w-full flex-col overflow-x-clip px-1 after:block after:h-px after:w-full after:bg-border-hairline after:content-['']"
+                  : cn(
+                      "flex min-w-0 max-w-full flex-col overflow-x-clip px-1 after:block after:h-px after:w-full after:bg-border-hairline after:content-['']",
+                      SECTION_HEAD_RULE,
+                    )
               }
             >
               <AnimatePresence initial={false}>{items}</AnimatePresence>

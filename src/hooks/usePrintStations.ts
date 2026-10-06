@@ -16,8 +16,10 @@ import { useAblyClient } from '@/contexts/AblyContext';
 import { useStaffPrintBridgeClient } from '@/hooks/useStaffPrintBridgeClient';
 import { currentPrintRoute } from '@/lib/label-prints/current-print-route';
 import type { PrintStock } from '@/lib/label-prints/print-route';
+import { fnskuConditionMissing, fnskuConditionRequiredMessage } from '@/lib/print-station/fnsku';
 import {
   PRINT_STATION_CHANGED_EVENT,
+  PRINT_STATION_PICK_CHANGED_EVENT,
   printStationPickStorage,
   readPrintStation,
   readRememberedPrintStationId,
@@ -85,6 +87,8 @@ export interface PrintStationEntry {
 
 const NO_ASSIGNMENT: PrintStationAssignment = { label: null, paper: null };
 const NO_PICKS: Record<PrintStock, string | null> = { label: null, paper: null };
+/** `PRINT_STATION_PICK_CHANGED_EVENT` detail: whose pick, for which stock, now which station. */
+type PrintStationPickChange = { orgId: string; staffId: number; stock: PrintStock; stationId: string | null };
 /** How long a sender keeps listening for a station's progress after it acked. */
 const PROGRESS_LISTEN_MS = 10 * 60_000;
 /** One product label should settle quickly; do not leave the prepack button spinning indefinitely. */
@@ -137,10 +141,11 @@ export interface PrintStations {
     onProgress?: (done: number, total: number) => void,
   ) => Promise<boolean>;
   /**
-   * `copies` (1–99) FBA labels of one FNSKU at a named station; resolves true when it acked.
+   * `copies` (1–99) FBA labels of one FNSKU at a named station. Null once the station acked;
+   * a string is why nothing was sent (no condition, or the station did not answer).
    * `test`: a test print — the same face, no reprint logged.
    */
-  sendFnsku: (stationId: string, fnsku: string, copies: number, options?: { test?: boolean }) => Promise<boolean>;
+  sendFnsku: (stationId: string, fnsku: string, copies: number, options?: { test?: boolean }) => Promise<string | null>;
   /** One unit's QC label at a named station; null after print + ledger, otherwise the operator-facing failure. */
   sendQcLabel: (stationId: string, unitKey: string) => Promise<string | null>;
   /** Location (`bin`) or bay (`rack`) stickers at a named station — it registers and prints them; true when it acked. */
@@ -186,7 +191,8 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
     };
   }, []);
 
-  // The per-stock pick belongs to the staffer on this device; a staff switch reloads it.
+  // The per-stock pick belongs to the staffer on this device; a staff switch reloads it,
+  // and a pick made in any other mounted picker (the desk rail, a settings gear) repaints here.
   const [picks, setPicks] = useState<Record<PrintStock, string | null>>(NO_PICKS);
   useEffect(() => {
     const storage = printStationPickStorage();
@@ -194,6 +200,13 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
       label: readRememberedPrintStationId(storage, orgId, staffId, 'label'),
       paper: readRememberedPrintStationId(storage, orgId, staffId, 'paper'),
     });
+    const onPick = (event: Event) => {
+      const detail = (event as CustomEvent<PrintStationPickChange>).detail;
+      if (!detail || detail.orgId !== orgId || detail.staffId !== staffId) return;
+      setPicks((prev) => (prev[detail.stock] === detail.stationId ? prev : { ...prev, [detail.stock]: detail.stationId }));
+    };
+    window.addEventListener(PRINT_STATION_PICK_CHANGED_EVENT, onPick);
+    return () => window.removeEventListener(PRINT_STATION_PICK_CHANGED_EVENT, onPick);
   }, [orgId, staffId]);
 
   const stations = useMemo<PrintStationEntry[]>(() => {
@@ -285,8 +298,11 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
 
   const pick = useCallback(
     (stock: PrintStock, stationId: string | null) => {
-      setPicks((prev) => ({ ...prev, [stock]: stationId?.trim() || null }));
-      rememberPrintStationId(printStationPickStorage(), orgId, staffId, stationId, stock);
+      const next = stationId?.trim() || null;
+      setPicks((prev) => ({ ...prev, [stock]: next }));
+      rememberPrintStationId(printStationPickStorage(), orgId, staffId, next, stock);
+      const detail: PrintStationPickChange = { orgId, staffId, stock, stationId: next };
+      window.dispatchEvent(new CustomEvent(PRINT_STATION_PICK_CHANGED_EVENT, { detail }));
     },
     [orgId, staffId],
   );
@@ -551,12 +567,19 @@ export function usePrintStations({ active = true }: { active?: boolean } = {}): 
   );
 
   const sendFnsku = useCallback(
-    (stationId: string, fnsku: string, copies: number, options?: { test?: boolean }): Promise<boolean> =>
-      sendStationJob(stationId, {
+    async (stationId: string, fnsku: string, copies: number, options?: { test?: boolean }): Promise<string | null> => {
+      const catalog = await fetch(`/api/admin/fba-fnskus/${encodeURIComponent(fnsku)}`, { cache: 'no-store' });
+      if (catalog.ok) {
+        const row = ((await catalog.json()) as { fnsku?: { condition?: string | null } }).fnsku;
+        if (fnskuConditionMissing(row?.condition)) return fnskuConditionRequiredMessage(fnsku);
+      }
+      const outcome = await sendStationJob(stationId, {
         grain: 'fnsku',
         role: 'label',
         fnsku: options?.test ? { fnsku, copies, test: true } : { fnsku, copies },
-      }).then((outcome) => outcome.acked),
+      });
+      return outcome.acked ? null : `${stationId} did not answer — nothing was printed.`;
+    },
     [sendStationJob],
   );
 

@@ -16,7 +16,6 @@ import type { SessionArtifact } from '../../src/lib/assistant/ui-artifacts';
 import { CARD_NUMBER_REFUSAL } from '../../src/lib/assistant/pan-guard';
 import { countStoredCardNumbers, type PaymentFixture } from './payment-fixture';
 import { takeCreatedPhoneOrder } from './phone-order-fixture';
-import { cleanupImportedPo, readImportedPo } from './po-import-fixture';
 import { anyOrderGoldens } from './any-order-goldens';
 import { chatWritesGoldens } from './chat-writes-goldens';
 import { chatPrintGoldens } from './chat-print-goldens';
@@ -314,7 +313,6 @@ export function buildGoldens(
     },
     // ─── end SquarePaymentRail ────────────────────────────────────────────────
     ...phoneOrderGoldens(f, run),
-    ...poImportGoldens(f, run),
     ...anyOrderGoldens(f, run), // AnyChannelOrderChat
     ...chatWritesGoldens(f, run), // ChatWrites
     ...chatPrintGoldens(f, run), // ChatPrint
@@ -536,91 +534,3 @@ function phoneOrderGoldens(f: EvalFixtures, run: { startedAt: Date }): Golden[] 
   ];
 }
 // ─── end OrderDraftChat ──────────────────────────────────────────────────────
-
-// ─── PoImportChat: a purchase order imported through the completeness loop ───
-// Paste a PO without tracking → the card asks for the tracking number; give it
-// → complete; "Import this PO" → the confirm-before-write proposal; "yes" →
-// the spine rows exist (SELECT) with the tracking linked to the PO's carton.
-// A second thread pastes the same PO number → flagged as already imported;
-// its check removes every row the import wrote.
-
-function poImportGoldens(f: EvalFixtures, run: { startedAt: Date }): Golden[] {
-  const tag = run.startedAt.getTime().toString(36).toUpperCase();
-  const po = `EVPO-${tag}`;
-  const vendor = `Eval Vendor ${tag}`;
-  const tracking = `EVTRK${String(run.startedAt.getTime()).slice(-10)}`;
-  const sku = f.multiBin.sku;
-  const draftCard = (r: TurnResult) => r.artifacts.some((a) => a.producedBy === 'draft_po_import' && a.kind === 'po_draft' && has(a.title ?? '', po));
-  return [
-    {
-      id: 'po-paste',
-      thread: 'po-import',
-      question: `Import this purchase order:\nPO number: ${po}\nVendor: ${vendor}\n2 x SKU ${sku} @ $45.50\nExpected: Friday`,
-      bins: [],
-      check: (r) => [
-        ['tool draft_po_import', called(r, 'draft_po_import')],
-        ['PO card for the PO', draftCard(r)],
-        ['asks for the tracking number', /tracking number/i.test(r.text) && r.text.trim().endsWith('?')],
-        ['nothing written yet', !called(r, 'import_purchase_order')],
-      ],
-    },
-    {
-      id: 'po-tracking',
-      thread: 'po-import',
-      question: `Tracking number: ${tracking}`,
-      bins: [],
-      check: (r) => [
-        ['tool draft_po_import', called(r, 'draft_po_import')],
-        ['same PO card, updated', draftCard(r)],
-        ['no longer asks for tracking', !/what is the tracking number/i.test(r.text)],
-        ['nothing written yet', !called(r, 'import_purchase_order')],
-      ],
-    },
-    {
-      id: 'po-import',
-      thread: 'po-import',
-      question: 'Import this PO',
-      bins: [],
-      check: (r) => [
-        ['tool import_purchase_order (propose)', called(r, 'import_purchase_order')],
-        ['asks for a yes', /\byes\b/i.test(r.text)],
-      ],
-    },
-    {
-      id: 'po-confirm',
-      thread: 'po-import',
-      question: 'yes',
-      bins: [],
-      check: async (r) => {
-        const rows = await readImportedPo(f.orgId, po, tracking);
-        const line = rows[0];
-        return [
-          ['settled on the confirmation path', r.done?.mode === 'confirmation'],
-          ['record card links to receiving', r.artifacts.some((x) => x.producedBy === 'import_purchase_order' && x.kind === 'record')],
-          ['one EXPECTED PO line', rows.length === 1 && line.workflow_status === 'EXPECTED' && line.receiving_type === 'PO'],
-          [`${sku} × 2 (got ${line?.sku ?? '∅'} × ${line?.quantity_expected ?? '∅'})`, line?.sku?.toUpperCase() === sku.toUpperCase() && Number(line?.quantity_expected) === 2],
-          ['tracking linked to the PO carton', line?.receiving_id != null && line.carton_tracking_linked === true],
-          ['vendor on the PO mirror', line?.mirror_vendor === vendor],
-        ];
-      },
-    },
-    {
-      id: 'po-duplicate',
-      thread: 'po-duplicate',
-      question: `Import this purchase order:\nPO number: ${po}\nVendor: ${vendor}\n1 x SKU ${sku}\nTracking: ${tracking}`,
-      bins: [],
-      check: async (r) => {
-        const checks: Check[] = [
-          ['tool draft_po_import', called(r, 'draft_po_import')],
-          ['PO card for the PO', draftCard(r)],
-          ['says it is already imported', /already/i.test(r.text)],
-          ['nothing written', !called(r, 'import_purchase_order')],
-        ];
-        await cleanupImportedPo(f.orgId, po, tracking);
-        checks.push(['cleaned up', (await readImportedPo(f.orgId, po, tracking)).length === 0]);
-        return checks;
-      },
-    },
-  ];
-}
-// ─── end PoImportChat ────────────────────────────────────────────────────────

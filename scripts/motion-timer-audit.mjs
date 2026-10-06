@@ -49,7 +49,6 @@ const REVIEWED_TIMERS = {
   'src/components/ui/card-fan-carousel.tsx': ['interaction-lifetime', 'hover-leave stabilization'],
   'src/design-system/ai/AiTurnActions.tsx': ['acknowledgement', 'copied/action acknowledgement lifetime'],
   'src/design-system/components/FindField.tsx': ['mixed-lifecycle', 'placeholder tour and input debounce'],
-  'src/design-system/components/UniversalLoader.tsx': ['acknowledgement', 'loader label pacing'],
   'src/design-system/components/record-card/RecordCard.tsx': ['interaction-lifetime', 'hover-card enter and leave delays'],
 };
 

@@ -305,6 +305,9 @@ function modeLaneOf(page: SidebarPageNav | null): (typeof SPINE_SECTIONS)[number
  * section, id `<page>.<lane>.modes`, painted as the mode switcher under
  * `‹ <Lane>`.
  */
+/** Receiving is an operational switcher. Sourcing stays reachable as its own Inbound page. Purchasing (owner 2026-10-05) is a mode, never a top-level row. */
+const RECEIVING_MODE_PAGE_IDS: Record<string, true> = { incoming: true, purchasing: true, pickup: true, repair: true };
+
 function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInput, currentPageId: string): SectionRow[] {
   const group = { id: `${lane.id}.modes`, label: 'Mode' };
   const visibleCurrentPageId = fulfillmentVisiblePageId(currentPageId);
@@ -322,7 +325,10 @@ function laneModeRows(lane: (typeof SPINE_SECTIONS)[number], input: PipelineInpu
   const pages = mergeOrgNav(getSidebarNavItems({ permissions: input.permissions }), input.orgNav).filter(
     (row) => spineSectionIdForPage(row) === lane.id,
   );
-  const ordered = [...pages.filter((row) => row.id === doorId), ...pages.filter((row) => row.id !== doorId)];
+  const modePages = lane.id === 'inbound'
+    ? pages.filter((row) => RECEIVING_MODE_PAGE_IDS[row.id] === true)
+    : pages;
+  const ordered = [...modePages.filter((row) => row.id === doorId), ...modePages.filter((row) => row.id !== doorId)];
   // One page is no choice: a lane with a single reachable page has no switcher.
   return ordered.length > 1 ? ordered.map(toRow) : [];
 }
@@ -373,29 +379,22 @@ function surfaceFor(pageId: string, activeId: string | null): NavSurfaceDecl {
   return { ...pageDecl, ...(activeId ? items?.[activeId] : undefined) };
 }
 
-const FULFILLED_PAGE_ID = 'fulfilled';
-const SHIPPED_FACET_CONTEXT = 'outbound.shipped';
-
 function searchFor(
   pageId: string,
   activeId: string | null,
   decl: NavSurfaceDecl,
   permissions: ReadonlySet<string>,
 ): NavSearch {
-  // The archive keeps the packer-log contract (`outbound.shipped`) even though
-  // it is its own page. A fresh scope would split the desk store and the facet counts.
   const outboundOrders = pageId === SHIPPING_PAGE_ID && activeId === 'orders';
-  const scope = pageId === FULFILLED_PAGE_ID
-    ? SHIPPED_FACET_CONTEXT
-    : outboundOrders
-      ? 'outbound.orders'
-      : activeId
-        ? `${pageId}.${activeId}`
-        : pageId;
-  if (pageId === FULFILLED_PAGE_ID || outboundOrders) {
+  const scope = outboundOrders
+    ? 'outbound.orders'
+    : activeId
+      ? `${pageId}.${activeId}`
+      : pageId;
+  if (outboundOrders) {
     return {
       scope,
-      placeholder: pageId === FULFILLED_PAGE_ID ? 'Search shipments' : 'Search orders to allocate',
+      placeholder: 'Search orders to allocate',
       source: 'desk-store',
       ...(permissions.has(OUTBOUND_LOCATE_PERMISSION) ? { locate: { ...OUTBOUND_LOCATE } } : {}),
     };
@@ -435,11 +434,7 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
   viewPathnames.add(pathname);
 
   const decl = surfaceFor(pageId, activeId);
-  const facetContext = pageId === FULFILLED_PAGE_ID
-    ? SHIPPED_FACET_CONTEXT
-    : activeId
-        ? `${pageId}.${activeId}`
-        : pageId;
+  const facetContext = activeId ? `${pageId}.${activeId}` : pageId;
   const actions = (decl.actions ?? [])
     .filter((entry) => !entry.requires || permissions.has(entry.requires))
     .map((entry) => entry.action);

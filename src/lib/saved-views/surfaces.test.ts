@@ -3,11 +3,7 @@ import test from 'node:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import {
-  PACKED_SAVED_VIEWS_KEY,
-  SHIPPED_SAVED_VIEWS_KEY,
-  UNSHIPPED_SAVED_VIEWS_KEY,
-} from '@/components/unshipped/outbound-sidebar-shared';
+import { PACKED_SAVED_VIEWS_KEY, UNSHIPPED_SAVED_VIEWS_KEY } from '@/components/unshipped/outbound-sidebar-shared';
 import { SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { MY_DAY_SAVED_VIEWS_KEY } from '@/lib/my-day/my-day-saved-views';
 import {
@@ -106,7 +102,7 @@ test('surfaceFromStorageKey maps Home Today + outbound + station keys', () => {
   assert.equal(surfaceFromStorageKey(MY_DAY_SAVED_VIEWS_KEY), 'home_today');
   assert.equal(surfaceFromStorageKey(UNSHIPPED_SAVED_VIEWS_KEY), 'dashboard_unshipped');
   assert.equal(surfaceFromStorageKey(PACKED_SAVED_VIEWS_KEY), 'dashboard_packed');
-  assert.equal(surfaceFromStorageKey(SHIPPED_SAVED_VIEWS_KEY), 'dashboard_shipped');
+  assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.outbound_fulfilled), 'outbound_fulfilled');
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.tech_history), 'tech_history');
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.packer_history), 'packer_history');
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.receiving_history), 'receiving_history');

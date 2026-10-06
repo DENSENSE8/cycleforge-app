@@ -1,60 +1,10 @@
 'use client';
 
-/** Testing scan bridge — sidebar scan band → middle workspace. */
+/** Testing scan bridge — sidebar scan band ⇄ middle workspace: a scan's pending multi-match pick. */
 
 import { useEffect, useState } from 'react';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ResolvedVia } from '@/lib/testing/resolve-testing-scan';
-import {
-  INITIAL_TESTING_SCAN_SESSION,
-  type TestingScanSession,
-} from '@/lib/testing/testing-scan-session';
-
-/** Module-local: the publisher and the hook below are the only legal doors. */
-const TESTING_SCAN_SESSION_EVENT = 'testing-scan-session-changed';
-
-/** Last published session, kept module-level so a workspace that mounts AFTER the scan (the normal order — the scan is what opens the line)… */
-let lastSession: TestingScanSession = INITIAL_TESTING_SCAN_SESSION;
-
-export function publishTestingScanSession(session: TestingScanSession): void {
-  lastSession = session;
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(
-    new CustomEvent<TestingScanSession>(TESTING_SCAN_SESSION_EVENT, { detail: session }),
-  );
-}
-
-/** Subscribe to the published session. Seeds from the last publish on mount. */
-export function useTestingScanSession(): TestingScanSession {
-  const [session, setSession] = useState<TestingScanSession>(lastSession);
-
-  useEffect(() => {
-    setSession(lastSession);
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<TestingScanSession>).detail;
-      setSession(detail ?? INITIAL_TESTING_SCAN_SESSION);
-    };
-    window.addEventListener(TESTING_SCAN_SESSION_EVENT, handler);
-    return () => window.removeEventListener(TESTING_SCAN_SESSION_EVENT, handler);
-  }, []);
-
-  return session;
-}
-
-/** Does this session describe the line the workspace currently has open? */
-export function sessionMatchesLine(
-  session: TestingScanSession,
-  row: { id?: number | null; receiving_id?: number | null } | null | undefined,
-): boolean {
-  if (!row || session.phase === 'idle' || !session.line) return false;
-  if (session.line.id != null && row.id != null) return session.line.id === row.id;
-  if (session.line.receiving_id != null && row.receiving_id != null) {
-    return session.line.receiving_id === row.receiving_id;
-  }
-  return false;
-}
-
-// ─── Pending multi-match pick ────────────────────────────────────────────────
 
 /**
  * A scan that resolved to MORE THAN ONE candidate line (`kind: 'multi'` from

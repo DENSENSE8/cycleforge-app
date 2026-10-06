@@ -14,21 +14,11 @@ import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
-import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
-import { IncomingPoImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingPoImportStagingHost';
 import { IncomingDeliveriesLedger } from '@/components/receiving/incoming/IncomingDeliveriesLedger';
 import { PastedNumbersLedger } from '@/components/receiving/incoming/PastedNumbersLedger';
 import { useIncomingStatusChords } from '@/components/receiving/incoming/useIncomingStatusChords';
 import { DockedPackagesLedger } from '@/components/receiving/docked/DockedPackagesLedger';
 import { UnboxedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
-import { useTableImportParam } from '@/hooks/useTableImportParam';
-import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
-import { INBOUND_PO_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-po-import-descriptor';
-import {
-  clearTableImportDraft,
-  useTableImportDraft,
-} from '@/lib/tables/import/staging-store';
 import {
   defaultDirForIncomingGridSort,
   isIncomingGridSortable,
@@ -158,69 +148,6 @@ export function ReceivingLedgers({
   const reconciling = refSelection.refs.length > 0;
   const recon = reconciling ? parseReconParam(searchParams.get(RECON_PARAM)) : null;
   const inboundCheck = useInboundCheck(refSelection);
-
-  // Returns CSV/TSV staging — session draft + `?import=csv` (Orders golden path).
-  const returnsImportDraft = useTableImportDraft(
-    INBOUND_RETURNS_IMPORT_DESCRIPTOR.surfaceId,
-  );
-  const { active: returnsImportActive, setActive: setReturnsImportActive } =
-    useTableImportParam(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
-  // Inbound desk only — the Unbox Inbound tab never hosts the returns import.
-  const showReturnsImportStaging =
-    isInboundDeskHost && isIncomingMode && returnsImportActive && Boolean(returnsImportDraft);
-  // Purchase-order CSV staging shares `?import=csv`; whichever family holds a draft paints.
-  const poImportDraft = useTableImportDraft(INBOUND_PO_IMPORT_DESCRIPTOR.surfaceId);
-  const { active: poImportActive } = useTableImportParam(INBOUND_PO_IMPORT_DESCRIPTOR);
-  const showPoImportStaging =
-    isInboundDeskHost && isIncomingMode && poImportActive && Boolean(poImportDraft) && !showReturnsImportStaging;
-
-  useEffect(() => {
-    if (!isIncomingMode) return;
-    if (returnsImportDraft || poImportDraft) return;
-    // Session draft is gone — only clear a stale `?import=csv` deep link / refresh.
-    // Do not call setActive(false) on every draft-null frame; that races Confirm's
-    // soft-replace to `?inkind=return` and can wipe the post-commit filter.
-    if (searchParams.get('import') !== 'csv') return;
-    setReturnsImportActive(false);
-  }, [
-    isIncomingMode,
-    returnsImportDraft,
-    poImportDraft,
-    searchParams,
-    setReturnsImportActive,
-  ]);
-
-  const returnsStagingWasOpen = useRef(false);
-  useEffect(() => {
-    if (!isIncomingMode) return;
-    if (!returnsImportDraft) {
-      returnsStagingWasOpen.current = false;
-      return;
-    }
-    if (returnsImportActive) {
-      returnsStagingWasOpen.current = true;
-      return;
-    }
-    if (!returnsStagingWasOpen.current) return;
-    returnsStagingWasOpen.current = false;
-    clearTableImportDraft(INBOUND_RETURNS_IMPORT_DESCRIPTOR.surfaceId);
-  }, [isIncomingMode, returnsImportDraft, returnsImportActive]);
-
-  const poStagingWasOpen = useRef(false);
-  useEffect(() => {
-    if (!isIncomingMode) return;
-    if (!poImportDraft) {
-      poStagingWasOpen.current = false;
-      return;
-    }
-    if (poImportActive) {
-      poStagingWasOpen.current = true;
-      return;
-    }
-    if (!poStagingWasOpen.current) return;
-    poStagingWasOpen.current = false;
-    clearTableImportDraft(INBOUND_PO_IMPORT_DESCRIPTOR.surfaceId);
-  }, [isIncomingMode, poImportDraft, poImportActive]);
 
   // `mode.id === 'history'` is shared by THREE hosts — `/receiving/history`, the Unbox workbench's History tab (`embedded`), and…
   const isHistorySurface = isHistoryMode && !embedded && !isInboundUnboxed;
@@ -516,13 +443,8 @@ export function ReceivingLedgers({
       isInboundDeskHost ? body : <ModeRegion mode="triage" className="contents">{body}</ModeRegion>;
     return inTriageRegion(
       <>
-        {showReturnsImportStaging ? <IncomingReturnsImportStagingRail /> : null}
         {
-            showReturnsImportStaging ? (
-              <IncomingReturnsImportStagingHost />
-            ) : showPoImportStaging ? (
-              <IncomingPoImportStagingHost />
-            ) : isIncomingMode ? (
+            isIncomingMode ? (
               incomingDegraded ? (
                 <div className="p-3">
                   <GridDegradedBox onRetry={refetch} />

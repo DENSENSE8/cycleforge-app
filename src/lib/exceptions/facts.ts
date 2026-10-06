@@ -53,10 +53,12 @@ export interface PaperworkExceptionFacts {
   order: ExceptionOrderRef;
   /** G3: a shipping-label document is linked to the order. */
   hasShippingLabelDocument: boolean;
-  /** G2: a non-label document is linked to the order or its catalog SKU. */
+  /** G2: a non-label document linked to the order, or product paperwork resolved for it (order › item number › SKU). */
   hasDocuments: boolean;
-  /** The explicit G2 exemption (`orders.docs_not_required`). */
+  /** The order-level G2 exemption (`orders.docs_not_required`). */
   docsNotRequired: boolean;
+  /** The SKU-level G2 exemption (`sku_catalog.paperwork_not_required`). */
+  skuPaperworkNotRequired: boolean;
   /** What fails, in gate order. */
   missing: Array<'documents' | 'label'>;
 }
@@ -116,6 +118,8 @@ export interface UnmatchedScanExceptionFacts {
     notes: string | null;
     /** ISO. */
     createdAt: string;
+    /** The scan's package (`shipment_id`, Fulfilled's `?shipment=` record that resolves it); null when none is known. */
+    shipmentId: number | null;
   };
 }
 

@@ -24,10 +24,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
-import { Bell, ListChecks, User } from '@/components/Icons';
+import { ListChecks, User } from '@/components/Icons';
 import { useReplaceSearchParams } from '@/components/sidebar/contextual/useReplaceSearchParams';
 import { useColumnBoardPager } from '@/design-system/components/column-board/ColumnBoardPhone';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { SearchField } from '@/design-system/primitives/SearchField';
@@ -35,14 +35,19 @@ import { Spinner } from '@/design-system/primitives/Spinner';
 import { useIsMobile } from '@/hooks/_ui';
 import { requestDeskSearchFocus } from '@/lib/outbound/desk-search-store';
 import { LIVE_FEED_QUERY_ROOT, liveFeedBoardQuery, liveFeedPackagesQuery } from '@/lib/live-feed/query';
-import { LIVE_FEED_PARAMS, readLiveFeedFilters, readLiveFeedOpen } from '@/lib/live-feed/route';
-import { isPackageStage, PACKAGE_STAGES, type PackageStage } from '@/lib/live-feed/stages';
+import { LIVE_FEED_PARAMS, liveFeedSortParam, readLiveFeedFilters, readLiveFeedOpen } from '@/lib/live-feed/route';
+import {
+  isPackageStage,
+  PACKAGE_STAGES,
+  resolvePackageSorts,
+  type PackageSort,
+  type PackageStage,
+} from '@/lib/live-feed/stages';
 import type { PackageCard, PackageColumn } from '@/lib/live-feed/types';
 import { Headline, LiveDot } from './BoardHeadline';
 import { LiveFeedBulkBar } from './BulkBar';
 import { FindResults } from './FindResults';
 import { useLiveFeedRealtime, useNow } from './live-feed-hooks';
-import { useLiveFeedSound } from './live-feed-sound';
 import { PaceStrip } from './PaceStrip';
 import { PackageDetail } from './PackageDetail';
 import { PickupStrip } from './PickupStrip';
@@ -50,12 +55,18 @@ import { StageColumn } from './StageColumn';
 import { StageTabs } from './StageTabs';
 
 const EMPTY_PARAMS = new URLSearchParams();
+/** The open package rail on a desk: a 24rem panel plus the 1rem gap it pushes in — the slot AND the panel width. */
+const RAIL_WIDTH = '25rem';
+/** After the rail's width tween (`motionRole.push.rail`, 0.24 s) and the sheet's spring settle. */
+const OPEN_URL_SYNC_MS = 400;
 
 export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'phone'; viewerStaffId: number | null }) {
   const searchParams = useSearchParams() ?? EMPTY_PARAMS;
   const replace = useReplaceSearchParams();
   const queryClient = useQueryClient();
-  const filterKey = [LIVE_FEED_PARAMS.carrier, LIVE_FEED_PARAMS.channel, LIVE_FEED_PARAMS.staff].map((name) => searchParams.get(name) ?? '').join('|');
+  const filterKey = [LIVE_FEED_PARAMS.carrier, LIVE_FEED_PARAMS.channel, LIVE_FEED_PARAMS.staff, LIVE_FEED_PARAMS.sort]
+    .map((name) => searchParams.get(name) ?? '')
+    .join('|');
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `filterKey` is the filters' identity.
   const filters = useMemo(() => readLiveFeedFilters(searchParams), [filterKey]);
   const q = searchParams.get(LIVE_FEED_PARAMS.q)?.trim() ?? '';
@@ -68,7 +79,6 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
   const query = useQuery(liveFeedBoardQuery(filters));
   const board = query.data;
   const columns = useMemo(() => board?.columns ?? [], [board]);
-  const sound = useLiveFeedSound(board);
 
   // ── The open package: the board's fresh copy when it lists it, else the card as opened, else (a deep link past page 1) fetched.
   const [opened, setOpened] = useState<PackageCard | null>(null);
@@ -93,13 +103,29 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
       }),
     [replace],
   );
-  const writeOpen = useCallback(
-    (nextOpen: number | null) => {
-      setOpenId(nextOpen);
-      writeParam(LIVE_FEED_PARAMS.open, nextOpen == null ? null : String(nextOpen));
-    },
-    [writeParam],
+  // ── Each column's order lives in the URL (`sort`, non-defaults only); the board and every lane page read it.
+  const sorts = useMemo(() => resolvePackageSorts(filters.sorts), [filters.sorts]);
+  const setSort = useCallback(
+    (stage: PackageStage, sort: PackageSort) => writeParam(LIVE_FEED_PARAMS.sort, liveFeedSortParam({ ...filters.sorts, [stage]: sort })),
+    [filters.sorts, writeParam],
   );
+  // The URL sync re-renders every `useSearchParams` reader on the page (sidebar included), which
+  // would stall the rail's open/close motion; the state flips now, the URL follows once it settles.
+  const openSync = useRef<number | null>(null);
+  const latestWriteParam = useRef(writeParam);
+  latestWriteParam.current = writeParam;
+  useEffect(() => () => {
+    if (openSync.current != null) window.clearTimeout(openSync.current);
+  }, []);
+  const writeOpen = useCallback((nextOpen: number | null) => {
+    setOpenId(nextOpen);
+    if (openSync.current != null) window.clearTimeout(openSync.current);
+    openSync.current = window.setTimeout(() => {
+      openSync.current = null;
+      // The newest writer: a find or filter written meanwhile must not be rolled back.
+      latestWriteParam.current(LIVE_FEED_PARAMS.open, nextOpen == null ? null : String(nextOpen));
+    }, OPEN_URL_SYNC_MS);
+  }, []);
   const open = useCallback(
     (card: PackageCard) => {
       setOpened(card);
@@ -177,6 +203,10 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
     return () => window.removeEventListener('wedge-scan', onScan);
   }, [writeParam]);
 
+  // The desk rail pushes the board aside (the house in-flow rail: one symmetric width tween),
+  // and a package → package step crossfades inside it. Both collapse under reduced motion.
+  const railPush = useMotionRole(motionRole.push.rail);
+  const railSwap = useMotionRole(motionRole.swap.focus);
   const detail = openCard ? (
     <PackageDetail
       card={openCard}
@@ -200,19 +230,6 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
       }}
     />
   );
-  const soundToggle = (
-    <IconButton
-      icon={<Bell className="size-4" />}
-      ariaLabel={sound.on ? 'Turn the chime off' : 'Chime on new orders and late packages'}
-      title={sound.on ? 'Chime on — new orders, late packages' : 'Chime off'}
-      aria-pressed={sound.on}
-      tone={sound.on ? 'accent' : 'neutral'}
-      size="sm"
-      radius="pill"
-      onClick={sound.toggle}
-      data-testid="live-feed-sound"
-    />
-  );
 
   if (columns.length === 0) {
     return (
@@ -228,6 +245,8 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
       key={column.stage}
       column={column}
       filters={filters}
+      sort={sorts[column.stage]}
+      onSort={setSort}
       now={now}
       selectedId={openId}
       checkedIds={checkedIds}
@@ -279,7 +298,6 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
             onClick={() => (selectMode || checked.size > 0 ? clearChecks() : setSelectMode(true))}
             data-testid="live-feed-select"
           />
-          {soundToggle}
         </div>
         {find}
         <StageTabs columns={columns} active={activeStage} onPick={pager.show} />
@@ -323,34 +341,56 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
           <Headline columns={columns} />
           {board ? <PaceStrip pace={board.pace} inBuilding={inBuilding} now={now} /> : null}
         </div>
-        <div className="flex items-center gap-3">
-          {soundToggle}
-          <LiveDot updatedAt={query.dataUpdatedAt} now={now} fetching={query.isFetching} />
-        </div>
+        <LiveDot updatedAt={query.dataUpdatedAt} now={now} fetching={query.isFetching} />
       </div>
       <PickupStrip pickups={board?.pickups ?? []} now={now} />
       {find}
-      <div className="flex min-h-0 flex-1 gap-4">
-        <div className="grid min-h-0 min-w-0 flex-1 auto-cols-[minmax(17rem,1fr)] grid-flow-col gap-3 overflow-x-auto">
-          {columns.map((column) => columnFor(column))}
+      <div className="flex min-h-0 flex-1">
+        {/* All four stages always fit: the columns give way (and the cards compact) as the rail pushes in.
+            The bulk bar floats over the columns' bottom edge only — never over the open package rail. */}
+        <div className="relative flex min-h-0 min-w-0 flex-1">
+          <div className="grid min-h-0 min-w-0 flex-1 auto-cols-[minmax(0,1fr)] grid-flow-col gap-3">
+            {columns.map((column) => columnFor(column))}
+          </div>
+          {bulk}
         </div>
         <AnimatePresence initial={false}>
           {detail ? (
             <motion.aside
               key="detail"
               aria-label="Package"
-              className="w-[26rem] shrink-0 overflow-hidden rounded-2xl shadow-xl ring-1 ring-slate-900/10"
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 24 }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              // `relative z-raised`: the columns are stacking contexts (`@container`), so an unpositioned rail
+              // would paint UNDER any column it touches. Width carries the gap (pl-4) so the columns reflow
+              // in one motion; clip only while moving.
+              className="relative z-raised flex shrink-0 justify-end"
+              initial={{ width: 0, overflow: 'hidden' }}
+              animate={{ width: RAIL_WIDTH, transitionEnd: { overflow: 'visible' } }}
+              exit={{ width: 0, overflow: 'hidden' }}
+              transition={railPush.transition}
             >
-              {detail}
+              <motion.div
+                className="h-full shrink-0 pl-4"
+                // The panel's width is the slot's width — never its content's — so it can never spill left over the columns.
+                style={{ width: RAIL_WIDTH }}
+                initial={{ ...railPush.presence.initial, x: 32 }}
+                animate={{ ...railPush.presence.animate, x: 0 }}
+                exit={{ ...railPush.presence.exit, x: 32 }}
+                transition={railPush.transition}
+              >
+                <motion.div
+                  key={openCard?.orderRowId}
+                  className="h-full min-w-0 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-900/10"
+                  initial={railSwap.presence.initial}
+                  animate={railSwap.presence.animate}
+                  transition={railSwap.transition}
+                >
+                  {detail}
+                </motion.div>
+              </motion.div>
             </motion.aside>
           ) : null}
         </AnimatePresence>
       </div>
-      {bulk}
     </div>
   );
 }

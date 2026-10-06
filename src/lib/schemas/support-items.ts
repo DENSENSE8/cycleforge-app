@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 import { SUPPORT_MESSAGE_BODY_MAX } from '@/lib/support/conversation/ingest-core';
-import { SUPPORT_CHANNELS } from '@/lib/support/conversation/model';
+import { CHECK_IN_OUTCOMES, SUPPORT_CHANNELS } from '@/lib/support/conversation/model';
 
 const id = z.number().int().positive().max(2_147_483_647);
 const bigId = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -111,16 +111,25 @@ export const SupportReplySchema = z
   });
 export type SupportReplyBody = z.infer<typeof SupportReplySchema>;
 
-/** POST /api/support/items/[id]/resolve. */
+/** POST /api/support/items/[id]/resolve. Closing a check-in as `resolved` names how it ended. */
 export const SupportResolveSchema = z
   .strictObject({
     reason: shortText(2000).nullable().optional(),
     override: z.boolean().optional(),
     checkInDisposition: z.enum(['resolved', 'no_response_closed']).optional(),
+    checkInOutcome: z.enum(CHECK_IN_OUTCOMES).optional(),
   })
   .refine((b) => !b.override || (b.reason?.trim().length ?? 0) > 0, { message: 'an override needs a reason', path: ['reason'] })
   .refine((b) => b.checkInDisposition !== 'no_response_closed' || (b.reason?.trim().length ?? 0) > 0, {
     message: 'closing with no response needs a reason',
     path: ['reason'],
+  })
+  .refine((b) => b.checkInDisposition !== 'resolved' || b.checkInOutcome != null, {
+    message: 'closing a check-in as resolved needs its outcome',
+    path: ['checkInOutcome'],
+  })
+  .refine((b) => b.checkInOutcome == null || b.checkInDisposition === 'resolved', {
+    message: 'an outcome only closes a check-in as resolved',
+    path: ['checkInOutcome'],
   });
 export type SupportResolveBody = z.infer<typeof SupportResolveSchema>;

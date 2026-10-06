@@ -35,6 +35,7 @@ export const PHOTO_PEEK_BOX_CLASS = 'size-72';
 
 export function PhotoHoverPeek({
   src,
+  fullSrc,
   alt,
   onOpen,
   className,
@@ -43,6 +44,8 @@ export function PhotoHoverPeek({
 }: {
   /** The photo the peek paints; null = no peek (and, without `onOpen`, no open). */
   src: string | null | undefined;
+  /** Original image for fullscreen; `src` remains the lightweight thumbnail / peek source. */
+  fullSrc?: string | null | undefined;
   /** Names the photo — the peek's alt and the trigger's aria label. */
   alt: string;
   /** Replace the built-in single-photo viewer (e.g. a lane that loads every photo of the item); keeps the thumb clickable with no `src`. */
@@ -64,6 +67,7 @@ export function PhotoHoverPeek({
   useEffect(() => clear, []);
 
   const url = src?.trim() || null;
+  const fullUrl = fullSrc?.trim() || url;
   const enter = (event: PointerEvent) => {
     if (event.pointerType !== 'mouse' || !url) return;
     clear();
@@ -146,10 +150,10 @@ export function PhotoHoverPeek({
           </motion.figure>
         </PopoverContent>
       </Popover>
-      {viewerOpen && url ? (
+      {viewerOpen && fullUrl ? (
         // The viewer portals to <body>, but its events still bubble through the React tree into the row.
         <span className="contents" onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-          <LightboxPortal photos={[url]} onClose={() => setViewerOpen(false)} />
+          <LightboxPortal photos={[{ url: fullUrl, thumbUrl: url ?? undefined }]} onClose={() => setViewerOpen(false)} />
         </span>
       ) : null}
     </>

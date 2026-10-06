@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { normalizeIdentifier } from '@/lib/product-manuals';
+import { normalizeIdentifier } from '@/lib/manuals/identifier-key';
 import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { withAuth } from '@/lib/auth/withAuth';
 

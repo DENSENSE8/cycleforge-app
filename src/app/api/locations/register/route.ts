@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { registerPrintedLocations } from '@/lib/neon/location-queries';
 import { withAuth } from '@/lib/auth/withAuth';
-import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import pool from '@/lib/db';
+import { registerLocationsAudited } from '@/lib/locations/location-registration';
 import type { LocationSegments } from '@/lib/barcode-routing';
 
 /** POST /api/locations/register */
@@ -59,28 +57,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     });
   }
 
-  const result = await registerPrintedLocations({
+  const result = await registerLocationsAudited(req, ctx, {
     room,
     segments,
     binType: typeof body?.binType === 'string' ? body.binType.trim() || null : null,
     capacity: typeof body?.capacity === 'number' ? body.capacity : null,
-  }, ctx.organizationId);
-
-  // Audit floor — log only when we actually inserted/reactivated rows
-  // (re-prints of existing live bins are silent).
-  if (result.registered > 0) {
-    await recordAudit(pool, ctx, req, {
-      source: 'inventory.label.register',
-      action: AUDIT_ACTION.BIN_CREATE,
-      entityType: AUDIT_ENTITY.BIN,
-      entityId: result.bins.map((b) => b.id).join(','),
-      after: {
-        room,
-        registered: result.registered,
-        barcodes: result.bins.map((b) => b.barcode).filter(Boolean),
-      },
-    });
-  }
+  });
 
   return NextResponse.json({ success: true, ...result });
 }, { permission: 'print.label' });

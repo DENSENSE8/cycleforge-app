@@ -117,13 +117,18 @@ const CHIP_TONE_FOR_STATE: Record<StateName, ChipTone> = {
   success: 'emerald',
 };
 
-/** Raw `orders.status` → tone. */
+/** Allocate stage label (and leftover channel words) → tone. */
 const ORDER_STATUS_TONE: Record<string, ChipTone> = {
   delivered: 'emerald',
   completed: 'emerald',
   closed: 'emerald',
+  fulfilled: CHIP_TONE_FOR_STATE[LIFECYCLE.shipped.tone],
+  'scanned out': CHIP_TONE_FOR_STATE[LIFECYCLE.shipped.tone],
   shipped: CHIP_TONE_FOR_STATE[LIFECYCLE.shipped.tone],
   packed: CHIP_TONE_FOR_STATE[LIFECYCLE.packed.tone],
+  picked: CHIP_TONE_FOR_STATE[LIFECYCLE.picked.tone],
+  'to pick': 'amber',
+  'buyer cancel': 'rose',
   processing: 'blue',
   open: 'amber',
   pending: 'amber',

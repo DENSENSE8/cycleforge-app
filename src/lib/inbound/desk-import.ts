@@ -1,9 +1,7 @@
-/** Catalog resolvers for desk / CSV inbound rows (Amazon returns ASIN gate, identity PATCH). Rows land through `import-batch.ts`. */
+/** Catalog resolvers for imported inbound rows (Amazon returns: the ASIN is the catalog SKU) and the identity PATCH. Rows land through `import-batch.ts`. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
-
-export { deskRowFromCsvRecord } from './desk-csv';
 
 /**
  * Resolve sku_catalog where sku equals ASIN (case-insensitive, org-scoped).

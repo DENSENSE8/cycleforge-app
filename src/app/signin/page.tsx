@@ -56,7 +56,6 @@ import { CheckCircle2, Fingerprint } from 'lucide-react';
 import { Button } from '@/design-system/primitives/Button';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { Panel } from '@/design-system/primitives/Panel';
-import { RadiantLines } from '@/components/ui/radiant-lines';
 import {
   Dialog,
   DialogContent,
@@ -1268,13 +1267,6 @@ function SignInTitle({ workspaceName }: { workspaceName: string | null }) {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-modal overflow-y-auto overscroll-none bg-surface-canvas text-text-default antialiased">
-      <div className="pointer-events-none fixed inset-0 z-base bg-surface-canvas" aria-hidden />
-      <RadiantLines
-        className="bg-transparent opacity-30"
-        colors={["#60A5FA", "#2DD4BF", "#FBBF24", "#94A3B8"]}
-        starCount={180}
-        displacement={0.35}
-      />
       <div className="relative z-sticky flex min-h-full flex-col items-center justify-center px-6 py-12">
         {/* NO mount entrance here. */}
         <div className="flex w-full justify-center">{children}</div>

@@ -101,7 +101,7 @@ export async function POST(
       before: { manualId, pairing: before },
       after: { manualId, pairing: manual.pairing },
     });
-    return NextResponse.json({ success: true, manual });
+    return NextResponse.json({ success: true, manual, before });
   } catch (error) {
     if (error instanceof OrderManualError || error instanceof PaperworkPairingError || error instanceof ManualFileError) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.status });

@@ -45,11 +45,7 @@ import { toast } from '@/lib/toast';
 import { resolveTestingTerminal } from './testing-panel/terminal/testing-terminal';
 import { useTestingPrimaryAction } from './testing-panel/useTestingPrimaryAction';
 import { TestingCartonHeader } from './testing-panel/TestingCartonHeader';
-import { TestingScanSessionFeedback } from './testing-panel/TestingScanSessionFeedback';
-import {
-  sessionMatchesLine,
-  useTestingScanSession,
-} from '@/lib/testing/testing-scan-session-bridge';
+import { TestingVerdictBar } from './testing-panel/TestingVerdictBar';
 import { TestingPoUnboxingSection } from './testing-panel/TestingPoUnboxingSection';
 import { TestingPanelModals } from './testing-panel/TestingPanelModals';
 import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
@@ -266,10 +262,6 @@ export function TestingPanel({
     build: buildTerminal,
   });
 
-  const scanSession = useTestingScanSession();
-  const scanSessionForThisLine = sessionMatchesLine(scanSession, row);
-
-
   const exitToList = useCallback(() => {
     if (onBackToBrowse) onBackToBrowse();
     else dispatchSelectLine(null);
@@ -349,11 +341,6 @@ export function TestingPanel({
                 reserveIdentityClearance={false}
                 bodyGap="none"
                 bodyFill={ticketMode || photosActive}
-                entityContext={
-                  scanSessionForThisLine ? (
-                    <TestingScanSessionFeedback session={scanSession} />
-                  ) : null
-                }
                 dock={dock}
               >
                 {ticketMode ? (
@@ -390,6 +377,8 @@ export function TestingPanel({
                           onViewAllUnits={openUnits}
                         />
                       ),
+                      // Cartoned lines judge here; an uncartoned line's inline slot carries its own verdict.
+                      after: row.receiving_id != null ? <TestingVerdictBar c={c} row={row} /> : null,
                     },
                     {
                       id: 'label',

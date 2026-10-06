@@ -1,21 +1,12 @@
 /**
  * /m/scan — identification kernel (packages + PO tracking).
  *
- * Server-seeded from the receiving feed so the tape paints without a fetch.
+ * No server await: the Scan button swaps straight to the camera. Earlier
+ * scans load only when the operator asks for them.
  */
 
 import MobileScanIdentify from '@/components/mobile/scan/MobileScanIdentify';
-import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
-import { seedMobileReceivingFeed } from '@/lib/queries/mobile-feed-seed.server';
 
-/** Session-scoped seed (`cookies()`): never a static prerender. */
-export const dynamic = 'force-dynamic';
-
-export default async function MobileScanPage() {
-  const seed = await seedMobileReceivingFeed('triage');
-  return (
-    <ShellQuerySeed state={seed}>
-      <MobileScanIdentify />
-    </ShellQuerySeed>
-  );
+export default function MobileScanPage() {
+  return <MobileScanIdentify />;
 }

@@ -393,11 +393,11 @@ const scanOutSpec: ConfirmableWriteSpec<typeof scanFields, ScanPayload> = {
     for (const n of orderNumbers) {
       if (!named.some((l) => l.orderNumber === n && onDesk.has(l.id))) unmatched.push({ token: n, why: 'not packed on To ship, or already scanned out' });
     }
-    const columns = ['Order #', 'Tracking', 'Channel', 'Packed'];
+    const columns = ['Order #', 'Tracking', 'Platform', 'Packed'];
     const rows = packed.flatMap((s) => {
       const common = {
         Tracking: s.tracking,
-        Channel: s.account_source ?? '(unfound)',
+        Platform: s.account_source ?? '(unfound)',
         Packed: new Date(s.packed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
       };
       return s.order_ids.length

@@ -15,33 +15,45 @@ export interface BulkEntry extends NavLocateEntry {
   pending: boolean;
 }
 
-/** The pasted list, where each number lives, and the verbs over it. */
-export interface BulkList {
+/**
+ * Located records a list surface reads — the statuses, rows and verbs the
+ * sheet, its status chips and the shared view (`useBulkListView`) need, from
+ * ANY source: a pasted list (`BulkList`, the locate answer) or a query's
+ * answer (Receiving › Purchasing, `GET /api/nav/purchases`). Same entry
+ * shape (`NavLocateEntry`), same buckets, same status filter.
+ */
+export interface LocatedRecords {
   scope: NavLocateScope;
-  selection: RefSelection;
-  response: NavLocateResponse | undefined;
   loading: boolean;
   error: string | null;
   refetch: () => void;
-  /** One per pasted number, in paste order. */
+  /** One per record, in the source's order (paste order, or the query's sort). */
   entries: BulkEntry[];
-  /** The locator's buckets, in its order — counts are pasted numbers found in each. */
+  /** The buckets, in their order — counts are records found in each. */
   buckets: NavLocateBucket[];
-  /** The bucket filter (a bucket id, or {@link NAV_LOCATE_NOWHERE}), or null for every number. */
+  /** The bucket filter (a bucket id, or {@link NAV_LOCATE_NOWHERE}), or null for every record. */
   status: string | null;
   setStatus: (status: string | null) => void;
   /** The facet filter inside {@link status} (an entry's `facet.id`), or null. */
   facet: string | null;
+  /** Ask again for one record; a source with no per-record ask re-reads its whole answer. */
+  recheck: (ref: string) => void;
+  /** Numbers the paste carried more than once (ref → times pasted); empty for a query. */
+  repeats: ReadonlyMap<string, number>;
+  /** Drop one record from the list — a held list only; a query's answer has no such verb. */
+  remove?: (ref: string) => void;
+}
+
+/** The pasted list, where each number lives, and the verbs over it. */
+export interface BulkList extends LocatedRecords {
+  selection: RefSelection;
+  response: NavLocateResponse | undefined;
   /** A paste of 2+ numbers → the list. False for a single number (it stays a Find). */
   paste: (text: string) => boolean;
   remove: (ref: string) => void;
   /** Replace one number with whatever was typed (a comma list expands in place). */
   replaceRef: (ref: string, text: string) => void;
-  /** Ask the locator again for one number alone; the rest keep their answers. */
-  recheck: (ref: string) => void;
   clear: () => void;
-  /** Numbers the paste carried more than once (ref → times pasted); the list itself keeps one. */
-  repeats: ReadonlyMap<string, number>;
 }
 
 const NO_REPEATS: ReadonlyMap<string, number> = new Map();

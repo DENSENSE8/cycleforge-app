@@ -84,10 +84,11 @@ const SupportTicketLinkagesBody = z
   })
   .optional();
 
-/** Station-generic ticket create. */
+/** Station-generic ticket create. `test: true` validates and previews without creating anything (no helpdesk call, no writes, no inbox rings). */
 export const SupportTicketCreateBody = z.object({
   subject: z.string().trim().min(1).max(300),
   note: z.string().trim().max(5000).optional(),
   anchor: SupportTicketCreateAnchor.optional(),
   linkages: SupportTicketLinkagesBody,
+  test: z.boolean().optional(),
 });

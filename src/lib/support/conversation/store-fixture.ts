@@ -6,7 +6,7 @@ import type { TaskHold } from '@/design-system/tokens/task-status';
 import type { TaskDeskStatus } from '@/lib/tasks/task-desk-row';
 
 import type { SupportPostCommit } from './ingest-core';
-import type { SupportDraftKind } from './model';
+import type { CheckInOutcome, SupportDraftKind } from './model';
 import type {
   StoredSupportMessage,
   SupportFollowUpInsert,
@@ -48,7 +48,7 @@ export interface FakeState {
   events: SupportTimelineEventInsert[];
   orderLinks: Array<{ itemId: number; orderId: number }>;
   checkInRefreshes: number[];
-  checkInCloses: Array<{ itemId: number; disposition: string }>;
+  checkInCloses: Array<{ itemId: number; disposition: string; outcome: CheckInOutcome | null }>;
   staff: number[];
 }
 
@@ -271,7 +271,7 @@ function storeOn(s: FakeState, nowIso: () => string): SupportStore {
       s.checkInRefreshes.push(itemId);
     },
     async closeCheckIn(itemId, a) {
-      s.checkInCloses.push({ itemId, disposition: a.disposition });
+      s.checkInCloses.push({ itemId, disposition: a.disposition, outcome: a.outcome });
     },
     async recordEvent(e) {
       s.events.push(e);

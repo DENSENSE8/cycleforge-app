@@ -45,6 +45,7 @@ import {
   receivingPriorityTone,
 } from '@/components/receiving/workspace/line-edit/receiving-priority';
 import { priorityOverrideTier } from '@/lib/receiving/priority-override';
+import { defaultInboundTierForPlatform } from '@/lib/receiving/display/precedence';
 import {
   allowedTypesForPlatform,
   isTypeSettledForPlatform,
@@ -311,8 +312,8 @@ export function CartonContextCard({
   const derivedRank = receivingPriorityRank(isUnmatched, platformValue, false);
   const derivedTone = receivingPriorityTone(derivedRank);
   const overrideMeta = priorityOverrideTier(priorityTier);
-  const RANK_TO_TIER: Record<number, number> = { 0: 0, 1: 1, 2: 1, 3: 2, 4: 3 };
-  const derivedTierEquivalent = priorityTier == null ? RANK_TO_TIER[derivedRank] ?? null : null;
+  // What Auto resolves to — an unmatched carton reads as a blank platform.
+  const derivedTierEquivalent = priorityTier == null ? defaultInboundTierForPlatform(isUnmatched ? '' : platformValue) : null;
   const headerUrgencyTier =
     priorityTier != null && priorityTier !== 0
       ? priorityTier

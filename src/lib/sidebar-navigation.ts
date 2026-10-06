@@ -31,6 +31,7 @@ import {
   Search,
   Settings,
   SalesPrice,
+  Receipt,
   SalesModeCounter,
   Radar,
   Share2,
@@ -63,7 +64,7 @@ import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/lib/outbound/route-contract';
 import { SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
-import { FULFILLED_VIEWS, resolveFulfilledView, SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
+import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { LIVE_FEED_PATH } from '@/lib/live-feed/route';
 import { LIVE_FEED_PERMISSION } from '@/lib/live-feed/stages';
 import { QC_LABELS_PATH } from '@/lib/labels/qc-label-views';
@@ -71,7 +72,8 @@ import { PRINT_STATION_PATH, PRINT_STATION_FNSKU_PARAM, PRINT_STATION_VIEW_PARAM
 import { PRINT_STATIONS_PATH, PRINT_STATIONS_STATION_PARAM } from '@/lib/print-station/stations';
 import { DESK_LANDING_VIEW, deskViewHref } from '@/lib/outbound/desk-views';
 import { FBM_DESTINATIONS, FBM_LANDING_DESTINATION, resolveFbmDestination } from '@/lib/nav/fbm-destinations';
-import { CUSTOMER_PATHS, QUALITY_CONTROL_PATHS, SUPPORT_PATHS } from '@/lib/nav/route-tree';
+import { parseLabelIntakeView } from '@/lib/triage/views/label-intake';
+import { CUSTOMER_PATHS, QUALITY_CONTROL_PATHS, RECEIVING_PATHS, SUPPORT_PATHS } from '@/lib/nav/route-tree';
 import { SUPPORT_LIST_VIEWS, SUPPORT_LIST_VIEW_LABEL, parseSupportListView, type SupportListView } from '@/lib/support/list/support-list';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
@@ -343,6 +345,7 @@ const MOBILE_ALLOWED_PREFIXES: ReadonlyArray<string> = [
   '/unbox',
   '/triage',
   '/incoming',
+  RECEIVING_PATHS.purchasing,
   '/pickup',
   '/repair',
   '/pack',
@@ -407,6 +410,9 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Repair service is a Receiving MODE (owner 2026-09-29) — the repair tickets,
   // split into Shipped in · Dropped off by `repair_service.intake_channel`.
   { id: 'repair',            label: 'Repair service', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  tone: SCAN_STATION_TONES.repair, kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view' },
+  // Purchasing is a Receiving MODE (owner 2026-10-05): every purchase-order line in a window,
+  // whatever stage it reached. Behind the lane door like every Receiving mode — never a top-level row.
+  { id: 'purchasing',        label: 'Purchasing',   href: RECEIVING_PATHS.purchasing, icon: Receipt, tone: 'text-emerald-600', kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view', keywords: ['purchasing', 'purchases', 'purchase orders', 'pos', 'unreceived', 'not received', 'vendors'] },
   // Quality Control (`/test`) and the Picker desk (`/pick`) are separate
   // first-class Scan Stations (owner 2026-09-27). Picking is not a testing bench,
   // so the Picker row carries no `testing` subgroup.
@@ -442,7 +448,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // old "Shipping" desk; the old name still finds it in ⌘K.
   { id: 'outbound',          label: 'FBM',         href: deskViewHref(DESK_LANDING_VIEW.id), icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view', description: 'Fulfilled by merchant · all channels', keywords: ['shipping', 'ship', 'fulfilled by merchant', 'merchant fulfilled', 'mfn', 'to ship', 'allocate'] },
   // Fulfilled is the archive of every package that left — peer of FBM, not its child.
-  { id: 'fulfilled',         label: 'Fulfilled',   href: SHIPPING_SHIPPED_PATH, icon: PackageCheck, kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.view', description: 'Every package that left the building', keywords: ['fulfilled', 'shipped', 'scan out', 'delivered', 'tracking'] },
+  { id: 'fulfilled',         label: 'Fulfilled',   href: SHIPPING_SHIPPED_PATH, icon: PackageCheck, kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.view', description: 'Every order that left the building', keywords: ['fulfilled', 'shipped', 'scan out', 'delivered', 'tracking', 'no movement', 'carrier'] },
   // FBA rides the Fulfillment lane beside FBM (operator 2026-09-14).
   { id: 'fba',               label: 'FBA',         href: OUTBOUND_MODE_PATHS.fba, icon: SHIPPING_NAV_ICONS.fba, kind: 'domain', domainGroup: 'fulfillment', requires: 'fba.view', description: 'Fulfilled by Amazon' },
   // ── Sales ───────────────────────────────────────────────────────────────── Own root (D4) — front-desk history, not a fulfillment lane.
@@ -589,6 +595,8 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/unbox' || pathname.startsWith('/unbox/')) return 'receiving';
   if (pathname === '/triage' || pathname.startsWith('/triage/')) return 'receiving';
   if (pathname === '/incoming' || pathname.startsWith('/incoming/')) return 'receiving';
+  // Purchasing (Receiving mode) mounts the same receiving frame as Deliveries.
+  if (pathname === RECEIVING_PATHS.purchasing || pathname.startsWith(`${RECEIVING_PATHS.purchasing}/`)) return 'receiving';
   // Local Pickup is the Inbound lane's receiving ledger; the route still
   // mounts the shared receiving right pane.
   if (pathname === '/pickup' || pathname.startsWith('/pickup/')) return 'receiving';
@@ -650,6 +658,7 @@ export function getSidebarNavPageId(
   if (pathname === '/unbox' || pathname.startsWith('/unbox/')) return 'receive';
   if (pathname === '/triage' || pathname.startsWith('/triage/')) return 'triage';
   if (pathname === '/incoming' || pathname.startsWith('/incoming/')) return 'incoming';
+  if (pathname === RECEIVING_PATHS.purchasing || pathname.startsWith(`${RECEIVING_PATHS.purchasing}/`)) return 'purchasing';
   if (pathname === '/pickup' || pathname.startsWith('/pickup/')) return 'pickup';
   if (pathname === '/repair' || pathname.startsWith('/repair/')) return 'repair';
   // Legacy `/receiving` (+ history) lands on Unbox — same default as before.
@@ -851,6 +860,7 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/unbox',              permission: 'receiving.view' },
   { prefix: '/triage',             permission: 'receiving.view' },
   { prefix: '/incoming',           permission: 'receiving.view' },
+  { prefix: RECEIVING_PATHS.purchasing, permission: 'receiving.view' },
   { prefix: '/pickup',             permission: 'receiving.view' },
   // `/test` is the Quality Control bench (legacy `/tech`).
   { prefix: '/test',               permission: 'tech.view' },
@@ -958,6 +968,7 @@ const TRIAGE = '/triage';
 const PICKUP = '/pickup';
 const REPAIR = '/repair';
 const INCOMING = '/incoming';
+const PURCHASING = RECEIVING_PATHS.purchasing;
 const INVENTORY = '/inventory';
 const SOURCING = '/sourcing';
 const PRODUCTS = '/products';
@@ -1304,6 +1315,13 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return channel === 'pickup' ? 'dropped-off' : channel === 'shipment' ? 'shipped-in' : 'all';
     },
   },
+  // Purchasing (Receiving mode, owner 2026-10-05): every purchase-order line in a window
+  // (`purchases-params.ts`), one sheet with its status chips in the body. View-less.
+  {
+    id: 'purchasing', label: 'Purchasing', href: PURCHASING, icon: Receipt, tone: 'text-emerald-600',
+    kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
+    railless: true,
+  },
   {
     id: 'testing', label: 'Quality control', href: TECH, icon: TECH_NAV_ICONS.testing, tone: SCAN_STATION_TONES.testing,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
@@ -1400,48 +1418,32 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     resolveChild: ({ params }) => resolveFbaModeFromSearchParams(params),
   },
   // ── Labels & docs (Outbound lane, beside Shipping) ────────────────────── Label printing + document intake over the label ledger.
-  // Its three saved views live in the contextual sidebar, not a tab row. Allocate stays first while inside
-  // Labels & docs, then Bulk (bare) · Shipping labels · Packing slips are terminal numeric choices.
+  // Its two saved views live in the contextual sidebar, not a tab row. Allocate stays first while inside
+  // Labels & docs (child id `allocate`: `orders` is the Orders view's), then Bulk (bare) · Orders are terminal numeric choices.
   {
     id: 'label-intake', label: 'Labels & docs', href: SHIPPING_LABEL_INTAKE_PATH, icon: SHIPPING_NAV_ICONS.labels, tone: 'text-teal-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.review',
     railless: true,
     children: [
       {
-        id: FBM_LANDING_DESTINATION.id,
+        id: 'allocate',
         label: FBM_LANDING_DESTINATION.label,
         icon: FBM_LANDING_DESTINATION.icon,
         requires: FBM_LANDING_DESTINATION.requires,
         to: () => ({ pathname: FBM_LANDING_DESTINATION.pathname, params: {} }),
       },
-      { id: 'uploads',   label: 'Bulk',            icon: Upload,   to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: null } }) },
-      { id: 'labels',    label: 'Shipping labels', icon: Printer,  to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: 'labels' } }) },
-      { id: 'paperwork', label: 'Packing slips',   icon: FileText, to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: 'paperwork' } }) },
+      { id: 'uploads', label: 'Bulk',   icon: Upload,        to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: null } }) },
+      { id: 'orders',  label: 'Orders', icon: ClipboardList, to: () => ({ pathname: SHIPPING_LABEL_INTAKE_PATH, params: { view: 'orders' } }) },
     ],
     resolveChild: ({ pathname, params }) => {
       if (pathname !== SHIPPING_LABEL_INTAKE_PATH && !pathname.startsWith(`${SHIPPING_LABEL_INTAKE_PATH}/`)) return null;
-      const view = params.get('view');
-      return view === 'labels' || view === 'paperwork' ? view : 'uploads';
+      return parseLabelIntakeView(params.get('view'));
     },
   },
-  // ── Fulfilled (Fulfillment lane) ────────────────────────────────────────── Every package that left. Saved views are presets, never a child named Fulfilled.
+  // ── Fulfilled (Fulfillment lane) ────────────────────────────────────────── Every shipped order as one sheet. No views: its saved views are presets in the panel body, never children.
   {
     id: 'fulfilled', label: 'Fulfilled', href: SHIPPING_SHIPPED_PATH, icon: PackageCheck, tone: 'text-emerald-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.view',
     railless: true,
-    description: 'Every package that left the building',
-    children: FULFILLED_VIEWS.map((view) => ({
-      id: view.id,
-      label: view.label,
-      icon: view.id === 'online' ? ShoppingCart
-        : view.id === 'fba' ? SHIPPING_NAV_ICONS.fba
-        : view.id === 'sku' ? Tags
-        : view.id === 'delivered' ? Check
-        : List,
-      to: () => ({ pathname: SHIPPING_SHIPPED_PATH, params: { ...view.params } }),
-    })),
-    resolveChild: ({ pathname, params }) => {
-      if (pathname !== SHIPPING_SHIPPED_PATH && !pathname.startsWith(`${SHIPPING_SHIPPED_PATH}/`)) return null;
-      return resolveFulfilledView(params);
-    },
+    description: 'Every order that left the building',
   },
   // ── FBM (Fulfilled by merchant — Fulfillment lane) ──────────────────────────
   // Visible workspaces only. Internal desk routes (notably the legacy

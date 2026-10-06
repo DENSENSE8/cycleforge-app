@@ -10,7 +10,6 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { withAuth } from '@/lib/auth/withAuth';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
-import { readShippedDeskFilters } from '@/lib/shipping/shipped-filter/shipped-filter-sql';
 import { readShippedDateWindow, readShippedPickedBy, readShippedTimeWindow, shippedTimeWindow } from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
@@ -28,10 +27,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const offset = parseInt(searchParams.get('offset') || '0');
     const weekStart = searchParams.get('weekStart') || '';
     const weekEnd = searchParams.get('weekEnd') || '';
-    // The Shipped desk's view filters (`shippedFilter`, `carrier`,
-    // `statusCategory`, `exceptions`, `channel`, `cardStatus`) — answered in
-    // SQL, one predicate with the sidebar facet counts. Absent params narrow nothing.
-    const shippedFilters = readShippedDeskFilters(searchParams);
     // A picked day (`dateFrom`/`dateTo`) is the list window even with no
     // time-of-day. The week bucket around that day must not leak in.
     const dateWindow = readShippedDateWindow(searchParams);
@@ -48,23 +43,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const staffNum = staffParam ? parseInt(staffParam) : null;
     // The bench find box.
     const searchTerm = (searchParams.get('q') || '').trim();
-    // Spine-first: `phase=spine` returns the immediate-paint columns only; the
-    // deferred fields are filled via POST /api/packerlogs/hydrate.
-    const spineOnly = searchParams.get('phase') === 'spine';
+    // `?population=packed` — a pack station's own packs, before any scan-out.
+    // Absent = the Fulfilled list.
+    const population = searchParams.get('population') === 'packed' ? 'packed' : 'fulfilled';
 
     const { rows, cacheTTL, cacheHit } = await fetchPackerLogRows({
         organizationId: ctx.organizationId,
+        population,
         packerId: packerIdNum != null && !Number.isNaN(packerIdNum) ? packerIdNum : null,
         staffId: staffNum != null && !Number.isNaN(staffNum) ? staffNum : null,
         limit,
         offset,
         weekStart,
         weekEnd,
-        shippedFilters,
         shippedFrom: timeWindow?.fromIso ?? null,
         shippedTo: timeWindow?.toIso ?? null,
         pickedBy,
-        spineOnly,
         searchTerm,
         sort: searchParams.get('sort'),
     });

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isScanOutTrackingCommit } from '@/components/outbound/scan-out/scan-out-commit';
+import { isMobileScanOutCommit, isScanOutTrackingCommit } from '@/components/outbound/scan-out/scan-out-commit';
 
 test('UPS 1Z and long alnum blobs are tracking commits', () => {
   assert.equal(isScanOutTrackingCommit('1Z999AA10123456784'), true);
@@ -20,4 +20,11 @@ test('prose and multi-line are notes, not scans', () => {
 test('marketplace order shapes are never treated as carrier tracking', () => {
   assert.equal(isScanOutTrackingCommit('12-34567-89012'), false);
   assert.equal(isScanOutTrackingCommit('123-1234567-1234567'), false);
+});
+
+test('phone Out scans out a carrier label or any desk-station label', () => {
+  assert.equal(isMobileScanOutCommit('1Z999AA10123456784', 'carrier-tracking'), true);
+  assert.equal(isMobileScanOutCommit('FBA15ABCDEFGH', 'bin'), true);
+  assert.equal(isMobileScanOutCommit('corner dent on left speaker', 'sku'), false);
+  assert.equal(isMobileScanOutCommit('123456789', 'carrier-tracking'), true);
 });

@@ -6,7 +6,12 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { skuCatalogImageUrlSql } from '@/lib/photos/sku-catalog-image-sql';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import type { QcLabelView } from '@/lib/labels/qc-label-views';
-import type { QcLabelPrintUnit, QcLabelRow } from '@/lib/labels/qc-label-row';
+import {
+  QC_LABEL_INTERNAL_SERIAL_SQL_RE,
+  qcLabelUsesInternalSerial,
+  type QcLabelPrintUnit,
+  type QcLabelRow,
+} from '@/lib/labels/qc-label-row';
 import { routeScan, unwrapScannedSerial } from '@/lib/barcode-routing';
 
 /** Rows painted per load; the footer says when the list is capped. */
@@ -69,6 +74,9 @@ export async function listQcLabels(
               WHERE i.sku = su.sku AND i.organization_id = su.organization_id AND i.status = 'active'
               ORDER BY i.id LIMIT 1) AS zoho_item_title,
             su.condition_grade::text AS condition_grade,
+            NULLIF(BTRIM(su.metadata->'qc_label'->>'title'), '') AS label_title,
+            NULLIF(BTRIM(su.metadata->'qc_label'->>'color'), '') AS label_color,
+            NULLIF(BTRIM(su.metadata->'qc_label'->>'text'), '') AS label_text,
             su.current_status::text AS current_status,
             COALESCE(loc.name, loc.barcode, su.current_location) AS location,
             qc.tested_by_name,
@@ -158,8 +166,10 @@ type TitleParts = { catalog_product_title: string | null; zoho_item_title: strin
 /**
  * The label a print request names: the scanned QC label (unit_uid, GS1, `U-`),
  * a typed serial, or a package label (`KIT-…`, a SEALED PREBOX manifest). Never
- * a bare id — a numeric serial must not print another unit's sticker. `null`
- * when nothing matches.
+ * a bare id — a numeric serial must not print another unit's sticker; `U-{id}`
+ * resolves by id only for a unit with no OEM serial (`qcLabelHandle`). `null`
+ * when nothing matches. A private surrogate serial answers `serial_number: null`
+ * so the face prints no serial.
  */
 export async function findQcLabelPrintUnit(orgId: OrgId, raw: string): Promise<QcLabelPrintUnit | null> {
   const route = routeScan(raw);
@@ -169,10 +179,14 @@ export async function findQcLabelPrintUnit(orgId: OrgId, raw: string): Promise<Q
   // The product face falls back to U-{OEM serial} when no minted unit uid
   // exists. Treat that printed handle as the serial it names.
   const handleSerial = /^U-(.+)$/i.exec(key)?.[1]?.trim() || key;
+  const handleId = route?.type === 'serial-unit' && /^\d{1,9}$/.test(key) ? Number(key) : null;
   const { rows } = await tenantQuery<Omit<QcLabelPrintUnit, 'title' | 'package'> & TitleParts>(
     orgId,
     `SELECT su.id AS serial_unit_id, su.unit_uid, su.serial_number, su.sku,
             su.condition_grade::text AS condition_grade,
+            NULLIF(BTRIM(su.metadata->'qc_label'->>'title'), '') AS label_title,
+            NULLIF(BTRIM(su.metadata->'qc_label'->>'color'), '') AS label_color,
+            NULLIF(BTRIM(su.metadata->'qc_label'->>'text'), '') AS label_text,
             sc.product_title AS catalog_product_title,
             (SELECT i.name FROM items i
               WHERE i.sku = su.sku AND i.organization_id = su.organization_id AND i.status = 'active'
@@ -182,16 +196,20 @@ export async function findQcLabelPrintUnit(orgId: OrgId, raw: string): Promise<Q
        FROM serial_units su
   LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('su')}
       WHERE su.organization_id = $1
-        AND (su.normalized_serial = UPPER(BTRIM($2)) OR su.unit_uid = BTRIM($3))
-      ORDER BY (su.unit_uid = BTRIM($3)) DESC
+        AND (su.normalized_serial = UPPER(BTRIM($2))
+             OR su.unit_uid = BTRIM($3)
+             OR (su.id = $5::int AND su.normalized_serial ~ $6))
+      ORDER BY (su.unit_uid = BTRIM($3)) IS TRUE DESC,
+               (su.normalized_serial = UPPER(BTRIM($2))) DESC
       LIMIT 1`,
-    [orgId, handleSerial, key, QC_LABEL_TEMPLATE],
+    [orgId, handleSerial, key, QC_LABEL_TEMPLATE, handleId, QC_LABEL_INTERNAL_SERIAL_SQL_RE],
   );
   const row = rows[0];
   if (!row) return null;
   const { catalog_product_title, zoho_item_title, ...unit } = row;
   return {
     ...unit,
+    serial_number: qcLabelUsesInternalSerial(unit.serial_number) ? null : unit.serial_number,
     title: resolveSkuIdentityTitle({ catalog_product_title, zoho_item_title, sku: unit.sku }) || unit.sku || 'Unknown SKU',
     package: null,
   };
@@ -215,6 +233,9 @@ async function findQcLabelPrintPackage(orgId: OrgId, packageUid: string): Promis
             su.id AS serial_unit_id, su.unit_uid, su.serial_number,
             pk.sku,
             COALESCE(NULLIF(BTRIM(m.condition_grade), ''), su.condition_grade::text) AS condition_grade,
+            NULLIF(BTRIM(m.label_face->>'title'), '') AS label_title,
+            NULLIF(BTRIM(m.label_face->>'color'), '') AS label_color,
+            NULLIF(BTRIM(m.label_face->>'text'), '') AS label_text,
             sc.product_title AS catalog_product_title,
             (SELECT i.name FROM items i
               WHERE i.sku = pk.sku AND i.organization_id = m.organization_id AND i.status = 'active'

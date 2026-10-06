@@ -81,6 +81,8 @@ function drawFittedText(
 
 interface ProductLabelFields {
   titleLines: string[];
+  /** Custom line under the title; '' prints nothing. */
+  note: string;
   cond: string;
   color: string;
   data: string;
@@ -107,6 +109,7 @@ function productFieldsFor(input: PrintProductLabelInput): ProductLabelFields {
     serialNumber: input.serialNumber,
     condition: input.condition,
     color: input.color,
+    note: input.note,
     serialCount: input.serialCount,
     matrix,
   });
@@ -114,6 +117,7 @@ function productFieldsFor(input: PrintProductLabelInput): ProductLabelFields {
   return {
     titleLines: wrap(title, 24, 2),
     cond: sanitize(face.bottomLeft),
+    note: sanitize(face.center),
     color: sanitize(face.bottomRight),
     data: sanitize(matrix.value),
   };
@@ -159,6 +163,7 @@ function productTspl(f: ProductLabelFields, size: PaperSize, copies: number): st
     L.push(`TEXT ${padding},${y},"2",0,1,1,"${line}"`);
     y += 26;
   }
+  if (f.note) L.push(`TEXT ${padding},${y + 4},"2",0,1,1,"${f.note}"`);
   L.push(`TEXT ${padding},${hDots - 37},"3",0,1,1,"${f.cond}"`);
   const colorX = Math.max(padding, infoRight - Math.max(56, f.color.length * 12));
   L.push(`TEXT ${colorX},${hDots - 29},"2",0,1,1,"${f.color}"`);
@@ -179,6 +184,7 @@ function productZpl(f: ProductLabelFields, size: PaperSize, copies: number): str
     L.push(`^FO12,${y}^A0N,22,22^FD${line}^FS`);
     y += 26;
   }
+  if (f.note) L.push(`^FO12,${y + 4}^A0N,22,22^FD${f.note}^FS`);
   L.push(`^FO12,${hDots - 43}^A0N,30,30^FD${f.cond}^FS`);
   L.push(`^FO${Math.round(wDots * 0.45)},${hDots - 33}^A0N,22,22^FD${f.color}^FS`);
   if (f.data) L.push(`^FO${dmX},20^BXN,6,200^FD${f.data}^FS`);
@@ -192,6 +198,7 @@ function productEscpos(f: ProductLabelFields, copies: number): string {
     `${ESC}@` +
     `${ESC}a\x01` +
     `${ESC}!\x18${f.titleLines.join('\n')}\n` +
+    (f.note ? `${ESC}!\x00${f.note}\n` : '') +
     `${ESC}!\x10${f.cond}   ${f.color}\n` +
     `${ESC}!\x00\n` +
     escposQr(f.data) +
@@ -247,6 +254,7 @@ export function buildProductLabelBitmapCommands(
     drawFittedText(context, line, padding, titleY, infoWidth, LABEL_FACE_FONT_SIZE, 700);
     titleY += 22;
   }
+  if (f.note) drawFittedText(context, f.note, padding, titleY + 6, infoWidth, LABEL_FACE_FONT_SIZE, 600);
 
   drawFittedText(
     context,

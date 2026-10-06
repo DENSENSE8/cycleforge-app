@@ -10,6 +10,7 @@ import {
   type ReleaseGateFacts,
 } from './release-gates';
 import { exceptionHeldSql } from './exception-membership';
+import { G2_DOCUMENT_COUNT_SQL, G2_SKU_PAPERWORK_NOT_REQUIRED_SQL } from './g2-paperwork-sql';
 import {
   PARCEL_FALLBACK_SELECT_SQL,
   parcelFallbackJoinSql,
@@ -21,26 +22,6 @@ import {
 } from './parcel-dims';
 
 type Client = Pick<PoolClient, 'query'>;
-
-/** Documents that satisfy **G2**. */
-const G2_DOCUMENT_COUNT_SQL = `(
-  SELECT COUNT(*)::int
-    FROM documents d
-   WHERE d.organization_id = o.organization_id
-     AND COALESCE(d.document_type, '') <> 'shipping_label'
-     AND EXISTS (
-       SELECT 1
-         FROM document_entity_links l
-        WHERE l.document_id = d.id
-          AND l.organization_id = o.organization_id
-          AND (
-            (l.entity_type = 'ORDER' AND l.entity_id = o.id)
-            OR (o.sku_catalog_id IS NOT NULL
-                AND l.entity_type = 'SKU'
-                AND l.entity_id = o.sku_catalog_id)
-          )
-     )
-)`;
 
 /** A shipping label exists for this order — **G3**. */
 export const G3_LABEL_EXISTS_SQL = `EXISTS (
@@ -92,6 +73,7 @@ interface RawGateRow {
   released_at: string | null;
   released_by: number | string | null;
   docs_not_required: boolean | null;
+  sku_paperwork_not_required: boolean | null;
   fulfillment_channel: string | null;
   tracking_number: string | null;
   linked_document_count: number | string | null;
@@ -126,6 +108,8 @@ export interface CagedOrderRecord {
   releasedAt: string | null;
   releasedBy: number | null;
   docsNotRequired: boolean;
+  /** `sku_catalog.paperwork_not_required` for this line's SKU — the SKU-level G2 exemption. */
+  skuPaperworkNotRequired: boolean;
   /** `fulfillment_channel = 'PICKUP'` — walk-in / counter pickup: no label, no tracking. */
   pickup: boolean;
   trackingNumber: string | null;
@@ -180,6 +164,7 @@ const GATE_SELECT = `
     o.parcel_height_in,
     NULLIF(TRIM(COALESCE(stn.tracking_number_raw, '')), '') AS tracking_number,
     ${G2_DOCUMENT_COUNT_SQL}       AS linked_document_count,
+    ${G2_SKU_PAPERWORK_NOT_REQUIRED_SQL} AS sku_paperwork_not_required,
     ${G3_LABEL_EXISTS_SQL}         AS shipping_label_linked,
     ${G3_LABEL_PURCHASED_SQL}      AS shipping_label_purchased,
     EXISTS (
@@ -199,6 +184,7 @@ function factsFromRow(row: RawGateRow): ReleaseGateFacts {
     trackingNumber: row.tracking_number,
     linkedDocumentCount: Number(row.linked_document_count ?? 0),
     docsNotRequired: row.docs_not_required === true,
+    skuPaperworkNotRequired: row.sku_paperwork_not_required === true,
     shippingLabelLinked: row.shipping_label_linked === true,
     shippingLabelPurchased: row.shipping_label_purchased === true,
     skuCatalogId: row.sku_catalog_id == null ? null : Number(row.sku_catalog_id),
@@ -232,6 +218,7 @@ function mapRow(row: RawGateRowWithParcel): CagedOrderRecord {
     releasedAt: row.released_at,
     releasedBy: row.released_by == null ? null : Number(row.released_by),
     docsNotRequired: row.docs_not_required === true,
+    skuPaperworkNotRequired: row.sku_paperwork_not_required === true,
     pickup: row.fulfillment_channel === PICKUP_FULFILLMENT_CHANNEL,
     trackingNumber: row.tracking_number,
     linkedDocumentCount: Number(row.linked_document_count ?? 0),

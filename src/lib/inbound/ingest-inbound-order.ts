@@ -1,13 +1,18 @@
 /**
  * ingestInboundOrder — the ONE writer that lands an inbound order on the
- * Incoming spine, for every source (triage form, CSV, chat, marketplace / Zoho
- * sync, auto-replenish).
+ * Incoming spine, for every source (the purchase-order form, CSV import,
+ * marketplace / Zoho sync, auto-replenish, a repair ticket's drop-off).
  *
  * One order = one transaction: the `inbound_order` header, every line
  * (`ingestPurchase` on the same client, keyed by line_key), the carton +
- * tracking links, the carton classifiers, and the ledger row all commit or
- * none do. A failure is recorded in the ledger on its own connection so it
- * stays visible (and retryable) after the rollback.
+ * tracking links, the carton classifiers, the listing evidence unbox checks
+ * against (bought-as grade → `receiving_line.purchase_condition_grade` and the
+ * grade picker; listing serials → `receiving_line_listing_serial`), a
+ * RETURN's facts (`receiving_line_return` + carton return classifiers), and
+ * the ledger row all commit or none do. A failure is recorded in the ledger
+ * on its own connection so it stays visible (and retryable) after the
+ * rollback. Listing photos are not in the draft: the form uploads them
+ * against the landed `receiving_line` ids (`photo_type = 'listing'`).
  *
  * Also here: the dry-run preview the form's outcome panel and a CSV staging
  * pass read, and the guarded delete for an order entered by mistake.
@@ -20,7 +25,9 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { writeLineFact } from '@/lib/receiving/facts/store';
 import { ensureReceivingForInboundOrder } from '@/lib/receiving/attach-box';
+import { normalizeSerial } from '@/lib/neon/serial-units-queries';
 import { ingestPurchase, type IngestPurchaseDeps } from './ingest-purchase';
+import { tagInboundReturnInTx } from './tag-inbound-return';
 import { upsertInboundMirror } from './mirror';
 import { upsertPurchaseLink, type TxClient } from './purchase-links';
 import { recordEquivalence } from './equivalence';
@@ -40,9 +47,10 @@ import {
   type InboundOrderDraft,
   type InboundOrderIdentity,
   type InboundOrderNeed,
+  type InboundOrderLine,
 } from './inbound-order-draft';
 
-export type InboundOrderOrigin = 'manual' | 'csv' | 'chat' | 'sync' | 'auto_replenish' | 'backfill';
+export type InboundOrderOrigin = 'manual' | 'csv' | 'sync' | 'auto_replenish' | 'backfill';
 
 /** Ledger source of the one writer allowed to land a REPAIR drop-off: the repair ticket itself. */
 export const REPAIR_DROP_OFF_SOURCE = 'repair_intake';
@@ -59,7 +67,7 @@ export class InboundOrderRefused extends Error {
 
 export interface IngestInboundOrderContext {
   origin: InboundOrderOrigin;
-  /** Ledger source: 'form' · 'csv' · 'chat' · 'zoho' · 'ebay' · 'amazon' · 'replenish' · 'repair_intake'. */
+  /** Ledger source: 'form' · 'csv' · 'zoho' · 'ebay' · 'amazon' · 'replenish' · 'repair_intake'. */
   source: string;
   staffId: number | null;
   /** The source's idempotency handle; defaults to the order identity + content hash. */
@@ -287,6 +295,79 @@ export async function findZohoTwin(
 }
 
 const SHIPMENT_SOURCE: Record<string, string> = { ebay: 'ebay_purchase', amazon: 'amazon_purchase', manual: 'manual_inbound' };
+
+/**
+ * What the listing said, onto each landed line: the bought-as grade and the
+ * listing's serials. An operator landing (form, CSV) is the truth: its grade
+ * (null clears) and serial list replace what is stored. A machine landing
+ * (sync, replenish, backfill) only fills — its blank grade and missing
+ * serials never erase what an operator typed. A field the draft leaves out
+ * (`undefined`) is always left as stored. Serials sync by normalized value:
+ * new ones are inserted (first seen now), kept ones keep their
+ * `first_seen_at`, and removed ones are deleted only while unbox has not
+ * confirmed them. Lines that resolve to the same receiving line (a Zoho
+ * twin's lead line) merge their evidence.
+ */
+async function landListingEvidence(
+  query: Query,
+  orgId: OrgId,
+  lines: readonly InboundOrderLine[],
+  landed: readonly IngestedInboundLine[],
+  origin: InboundOrderOrigin,
+): Promise<void> {
+  const operator = origin === 'manual' || origin === 'csv';
+  const byLine = new Map<number, { grade: InboundOrderLine['conditionGrade']; serials: Map<string, string> | null }>();
+  for (const [i, line] of lines.entries()) {
+    const receivingLineId = landed[i]?.receivingLineId;
+    if (receivingLineId == null) continue;
+    const entry = byLine.get(receivingLineId) ?? { grade: undefined, serials: null };
+    if (entry.grade == null && (operator || line.conditionGrade != null)) entry.grade = line.conditionGrade;
+    if (line.listingSerials !== undefined) {
+      entry.serials ??= new Map();
+      for (const raw of line.listingSerials) {
+        const norm = normalizeSerial(raw);
+        if (norm && !entry.serials.has(norm)) entry.serials.set(norm, raw.trim());
+      }
+    }
+    byLine.set(receivingLineId, entry);
+  }
+
+  // `receiving_line_listing_serial.source`: who first said the listing shows this serial.
+  const source = origin === 'csv' ? 'csv' : origin === 'manual' ? 'form' : 'sync';
+  for (const [receivingLineId, { grade, serials }] of byLine) {
+    if (grade !== undefined) {
+      await query(
+        `UPDATE receiving_line
+            SET purchase_condition_grade = $3::condition_grade_enum, updated_at = NOW()
+          WHERE organization_id = $1 AND id = $2
+            AND purchase_condition_grade IS DISTINCT FROM $3::condition_grade_enum`,
+        [orgId, receivingLineId, grade],
+      );
+    }
+    if (serials) {
+      const norms = [...serials.keys()];
+      if (operator) {
+        await query(
+          `DELETE FROM receiving_line_listing_serial
+            WHERE organization_id = $1 AND receiving_line_id = $2
+              AND confirmed_at IS NULL AND NOT (serial_norm = ANY($3::text[]))`,
+          [orgId, receivingLineId, norms],
+        );
+      }
+      if (norms.length > 0) {
+        await query(
+          `INSERT INTO receiving_line_listing_serial (organization_id, receiving_line_id, serial, serial_norm, source)
+           SELECT $1, $2, s.serial, s.serial_norm, $5
+             FROM unnest($3::text[], $4::text[]) AS s(serial_norm, serial)
+           ON CONFLICT (organization_id, receiving_line_id, serial_norm) DO UPDATE
+             SET serial = EXCLUDED.serial, updated_at = NOW()
+             WHERE receiving_line_listing_serial.serial IS DISTINCT FROM EXCLUDED.serial`,
+          [orgId, receivingLineId, norms, [...serials.values()], source],
+        );
+      }
+    }
+  }
+}
 
 /**
  * Pickup is authored once as an inbound order, then projected into the legacy
@@ -581,14 +662,16 @@ export async function ingestInboundOrderInTx(
     inboundOrderId,
     receivingType: draft.type,
     currency: draft.currency.toUpperCase(),
-    // Hand / CSV / chat re-saves correct a line's identity; syncs only fill blanks.
-    operatorResave: ctx.origin === 'manual' || ctx.origin === 'csv' || ctx.origin === 'chat',
+    // Hand / CSV re-saves correct a line's identity; syncs only fill blanks.
+    operatorResave: ctx.origin === 'manual' || ctx.origin === 'csv',
   };
 
   // One purchase = one spine line: an eBay buyer order that IS a Zoho PO
   // already on the spine (`matchZohoPo` — the eBay ↔ Zoho merge's rule) links
   // to that PO's lines instead of minting a twin line + carton. The merge
-  // (`mergeEbayLinesIntoZohoPo`) covers the other order of arrival.
+  // (`mergeEbayLinesIntoZohoPo`) covers the other order of arrival. The
+  // listing evidence still lands on the PO's lines; return facts do not (a
+  // Zoho PO line is a purchase, never a return).
   const twin = await findZohoTwin(query, orgId, identity, tracking, inboundOrderId);
   if (twin) {
     await upsertInboundMirror(
@@ -628,6 +711,7 @@ export async function ingestInboundOrderInTx(
         { withTx: (_o, fn) => fn(client) },
       );
     }
+    await landListingEvidence(query, orgId, lines, attached, ctx.origin);
     await deps.recordEquivalence(
       orgId,
       {
@@ -678,6 +762,7 @@ export async function ingestInboundOrderInTx(
         itemName: line.title.trim() || hit?.title || null,
         skuCatalogId: hit?.id ?? null,
         quantityExpected: line.quantity ?? 1,
+        conditionGrade: line.conditionGrade ?? undefined,
         unitCostCents: line.unitCostCents,
         listingUrl: line.listingUrl.trim() || null,
         trackingNumber: firstTracking?.number ?? null,
@@ -711,6 +796,8 @@ export async function ingestInboundOrderInTx(
     receivingId ??= r.receivingId;
   }
 
+  await landListingEvidence(query, orgId, lines, landed, ctx.origin);
+
   // Carton-level classifiers (the Incoming paint + priority), on this transaction.
   if (identity.paintPlatform || priorityTier != null) {
     await query(
@@ -723,6 +810,28 @@ export async function ingestInboundOrderInTx(
                          WHERE rl.organization_id = $3 AND rl.inbound_order_id = $4 AND rl.receiving_id IS NOT NULL)`,
       [identity.paintPlatform, priorityTier, orgId, inboundOrderId],
     );
+  }
+
+  if (draft.type === 'RETURN') {
+    // An operator landing states the return; a machine landing only fills what it carries.
+    const operator = ctx.origin === 'manual' || ctx.origin === 'csv';
+    const said = (value: string | undefined) => (value === undefined ? undefined : value.trim() || (operator ? null : undefined));
+    for (const [i, line] of lines.entries()) {
+      // A return report's row may carry its own reason / RMA / request date; blank = the order's.
+      const requestedOn = line.returnRequestDate || draft.returnRequestDate;
+      await tagInboundReturnInTx(client, orgId, {
+        receivingLineId: landed[i]!.receivingLineId,
+        sourceType: identity.sourceType,
+        sourceOrderId: identity.externalOrderId,
+        returnReason: said(line.returnReason?.trim() || draft.returnReason),
+        rmaRef: said(line.rmaId?.trim() || draft.rmaId),
+        fnsku: said(line.fnsku),
+        licensePlateNumber: said(line.licensePlateNumber),
+        disposition: said(line.disposition),
+        customerComment: said(line.customerComment),
+        returnRequestedOn: requestedOn == null && !operator ? undefined : requestedOn,
+      });
+    }
   }
 
   receivingId = (await projectRepairDropOff(client, orgId, draft, identity, inboundOrderId, landed)) ?? receivingId;

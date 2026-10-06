@@ -400,8 +400,6 @@ interface DeletedOutboundDocument {
 interface DeleteOutboundDocumentOptions {
   /** When set, a document of a different type 404s instead of deleting — lets a type-scoped caller (e.g. */
   expectedDocumentType?: OutboundDocumentType;
-  /** Used by remove-unlinked so a concurrent pair can never be deleted. */
-  requireUnlinked?: boolean;
 }
 
 /** Unlink + delete a document. Cascades to document_entity_links via FK. */
@@ -423,20 +421,6 @@ export async function deleteOutboundDocument(
     const row = existing.rows[0];
     if (opts.expectedDocumentType && row.document_type !== opts.expectedDocumentType) {
       throw new OutboundDocumentNotFoundError(`document not found: ${documentId}`);
-    }
-    if (opts.requireUnlinked) {
-      const linked = await client.query(
-        `SELECT 1 FROM document_entity_links
-          WHERE organization_id = $1::uuid AND document_id = $2 AND entity_type = 'ORDER'
-          LIMIT 1`,
-        [orgId, documentId],
-      );
-      if (
-        linked.rowCount !== 0 ||
-        ((row.entity_type === 'ORDER' || row.entity_type === 'SHIPPING_LABEL') && Number(row.entity_id) > 0)
-      ) {
-        throw new OutboundDocumentConflictError('Document is linked to an order');
-      }
     }
     const ingestionRows = await client.query<{ id: number }>(
       `DELETE FROM label_ingestions
@@ -918,8 +902,8 @@ export async function storeOutboundDocumentFromBytes(
   }
 }
 
-/** Stored outbound rows that deliberately have no order identity. */
-export async function listUnlinkedOutboundDocuments(
+/** Stored outbound rows that deliberately have no order identity — the read-back of an unlinked store. */
+async function listUnlinkedOutboundDocuments(
   orgId: OrgId,
   documentType?: OutboundDocumentType,
   deps: OutboundDocumentDeps = defaultDeps,

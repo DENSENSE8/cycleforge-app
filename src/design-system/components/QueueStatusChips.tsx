@@ -42,6 +42,7 @@ export function StatusChipRail<K extends string>({
   active,
   onToggle,
   onReset,
+  all,
   label = 'Filter by status',
   testId,
 }: {
@@ -50,12 +51,22 @@ export function StatusChipRail<K extends string>({
   active: ReadonlySet<K>;
   onToggle: (key: K) => void;
   onReset: () => void;
+  /**
+   * A leading All chip (one-of-N rails whose unset param IS a choice — Labels &
+   * docs › Bulk: All · Unprinted · Printed): lit while nothing is active,
+   * pressing it resets. It replaces the Reset pill.
+   */
+  all?: { label: string; count: number };
   /** The rail's accessible name. */
   label?: string;
   testId: string;
 }) {
   const railRef = useRef<HTMLSpanElement>(null);
   useHorizontalWheelScroll(railRef);
+  const faces: { key: string; face: string; toneName: StatusChipTone; count: number; on: boolean; press: () => void }[] = [
+    ...(all ? [{ key: 'all', face: all.label, toneName: 'neutral' as const, count: all.count, on: active.size === 0, press: onReset }] : []),
+    ...chips.map((chip) => ({ key: chip.id, face: chip.label, toneName: chip.tone, count: chip.count, on: active.has(chip.id), press: () => onToggle(chip.id) })),
+  ];
   return (
     <span
       ref={railRef}
@@ -66,9 +77,8 @@ export function StatusChipRail<K extends string>({
       // plain wheel scrolls it, no scrollbar, a right-edge fade says there is more.
       className="flex w-full min-w-0 snap-x snap-proximity items-center gap-1.5 overflow-x-auto overscroll-x-contain py-0.5 pr-6 [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      {chips.map(({ id: key, label: face, tone: toneName, count }) => {
+      {faces.map(({ key, face, toneName, count, on, press }) => {
         const tone = typeof toneName === 'string' ? STATE_TONE_CLASSES[toneName] : toneName;
-        const on = active.has(key);
         return (
           <motion.button
             key={key}
@@ -76,7 +86,7 @@ export function StatusChipRail<K extends string>({
             aria-pressed={on}
             data-testid={`status-filter-${key}`}
             disabled={count === 0 && !on}
-            onClick={() => onToggle(key)}
+            onClick={press}
             whileTap={{ scale: 0.94 }}
             transition={CHIP_SPRING}
             className={cn(
@@ -101,7 +111,7 @@ export function StatusChipRail<K extends string>({
         );
       })}
       <AnimatePresence initial={false}>
-        {active.size > 0 ? (
+        {active.size > 0 && !all ? (
           <HoverTooltip key="reset" asChild label="Reset filters" shortcut="Esc">
           <motion.button
             type="button"

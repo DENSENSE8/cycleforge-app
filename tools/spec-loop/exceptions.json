@@ -18,8 +18,6 @@
     "rule": "layout.sidebar-owns-table-controls",
     "files": [
       "src/components/outbound/orders/CsvImportStagingHost.tsx",
-      "src/components/sidebar/receiving/incoming/IncomingPoImportStagingHost.tsx",
-      "src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx",
       "src/components/products/catalog/CatalogImportReview.tsx"
     ],
     "ruling": {

@@ -3,11 +3,10 @@
  *
  *  - `resolvePoOrderRefs`: the order refs the operator said, each resolved
  *    through the find_records door identity-first (`resolveOrderTokens`) to
- *    exactly one order, or left unresolved with the reason. The PO draft card
- *    (`draft_po_import`) carries them as its "For order" field.
+ *    exactly one order, or left unresolved with the reason.
  *  - `link_po_to_order` (YELLOW, confirm-before-write): link or unlink an
- *    EXISTING PO — named by PO number or tracking, else the PO drafted or
- *    imported in this conversation — to outbound orders. Files a
+ *    EXISTING PO — named by PO number or tracking, else the PO this
+ *    conversation last linked — to outbound orders. Files a
  *    `receiving.link_order` agent mutation (`po-order-link.ts`) the operator's
  *    next-turn yes applies; revertable.
  */
@@ -16,7 +15,6 @@ import { z } from 'zod';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { brandReportEnvelope } from '@/lib/assistant/tool-artifact';
 import type { ArtifactRecord } from '@/lib/assistant/ui-artifacts';
-import { extractPoFields, mentionedOrderRefs, type PoImportOrderRef } from '@/lib/inbound/po-import-draft';
 import {
   PO_ORDER_LINK_KIND,
   orderLinkTargets,
@@ -38,12 +36,62 @@ import {
 } from './confirmable-write';
 import { resolveOrderTokens } from './order-status-tools';
 import type { AssistantToolCtx } from './types';
-// Runtime-only use (inside `propose`), so the module cycle with po-import-tools is safe.
-import { draftPoImport } from './po-import-tools';
+
+/** An order ref as said, resolved to one order or left unresolved with the reason. */
+export interface PoOrderRef {
+  /** As the operator said it. */
+  ref: string;
+  /** The resolved order number (`orders.order_id`); '' when unresolved. */
+  orderNumber: string;
+  /** The order's first line row (`orders.id`); `null` = unresolved. */
+  orderId: number | null;
+  channel: string;
+  title: string;
+  /** Why it did not resolve ("no order matches", "matches 2 orders"). */
+  why: string;
+}
 
 export const LINK_PO_TO_ORDER_TOOL = 'link_po_to_order';
 
 const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+// ─── the message → PO number, order refs, unlink intent ──────────────────────
+
+const ORDER_REF = String.raw`#?[A-Za-z0-9][A-Za-z0-9-]{1,40}`;
+/** "for order 1125", "is for orders 1125 and 1136", "linked to customer order #1125", "For order: 1125". */
+const FOR_ORDER = new RegExp(
+  String.raw`\b(?:for|fulfil+(?:s|ing)?|fill(?:s|ing)?|link(?:ed)?\s+(?:it\s+)?to|against|goes\s+(?:with|to))\s+(?:(?:our|customer'?s?|sales|outbound)\s+)*orders?\s*(?:#|no\.?|number|num)?\s*[:#=]?\s*(${ORDER_REF}(?:\s*(?:,|and|&|\/)\s*${ORDER_REF})*)`,
+  'gi',
+);
+/** An order named on its own: "customer order #1125". Never "purchase order". */
+const NOTE_ORDER = new RegExp(String.raw`(?<!purchase\s)\borders?\s*(?:#|no\.?|number|num)?\s*[:#=]?\s*(${ORDER_REF})`, 'gi');
+const ORDER_LIST = new RegExp(String.raw`(?<!purchase\s)\borders?\s*(?:#|no\.?|number|num)?\s*[:#=]?\s*${ORDER_REF}((?:\s*(?:,|and|&|\/)\s*${ORDER_REF})+)`, 'gi');
+const NO_ORDER = /\b(?:not\s+for\s+(?:an?\s+|any\s+)?orders?|no\s+(?:linked\s+)?orders?|(?:remove|clear|drop)\s+(?:the\s+)?orders?(?:\s+link)?|unlink\s+(?:the\s+)?orders?)\b/i;
+const PO_NUMBER = /\b(?:p\.?\s?o\.?|purchase\s+order)(?:\s*(?:#|no\.?|number|num))?\s*(?:is\s+|[:#=]\s*|\s)\s*#?\s*([A-Za-z0-9][A-Za-z0-9\-_/]{1,40})/i;
+
+const withoutUrls = (text: string) => text.replace(/\bhttps?:\/\/[^\s<>"')]+|\bwww\.[^\s<>"')]+/gi, ' ');
+
+/** The PO number the message names ("PO 55123", "purchase order #A-7"), or null. */
+function saidPoNumber(text: string): string | null {
+  const po = withoutUrls(text).match(PO_NUMBER);
+  return po && /\d/.test(po[1]) ? po[1].toUpperCase() : null;
+}
+
+/** Every order # a message names ("link PO 7 to order 1125", "orders 1125 and 1136"). */
+function mentionedOrderRefs(text: string, poNumber: string | null): string[] {
+  const po = poNumber?.toUpperCase() ?? null;
+  const out: string[] = [];
+  const add = (token: string) => {
+    const ref = token.replace(/^#/, '').trim();
+    if (!/\d/.test(ref) || ref.length < 2 || ref.toUpperCase() === po) return;
+    if (!out.some((r) => r.toUpperCase() === ref.toUpperCase())) out.push(ref);
+  };
+  const split = (list: string) => list.split(/\s*(?:,|\band\b|&|\/)\s*/i).forEach(add);
+  for (const m of text.matchAll(FOR_ORDER)) split(m[1]);
+  for (const m of text.matchAll(NOTE_ORDER)) add(m[1]);
+  for (const m of text.matchAll(ORDER_LIST)) split(m[1]);
+  return out.slice(0, 10);
+}
 
 // ─── order refs → orders (identity-first) ────────────────────────────────────
 
@@ -52,8 +100,8 @@ export async function resolvePoOrderRefs(
   ctx: Pick<AssistantToolCtx, 'organizationId' | 'staffId'>,
   refs: readonly string[],
   deps: Pick<ConfirmableWriteDeps, 'find' | 'query'> = realConfirmableDeps,
-): Promise<PoImportOrderRef[]> {
-  const out: PoImportOrderRef[] = [];
+): Promise<PoOrderRef[]> {
+  const out: PoOrderRef[] = [];
   for (const ref of refs.slice(0, 10)) {
     const { lines, unmatched } = await resolveOrderTokens(ctx, [ref], deps, false);
     const first = lines[0];
@@ -76,21 +124,17 @@ export async function resolvePoOrderRefs(
 
 // ─── link_po_to_order ────────────────────────────────────────────────────────
 
-/** The PO this conversation drafted or imported last (its card). */
-const THREAD_PO_SQL = `SELECT COALESCE(
-         NULLIF(a.value->'artifact'->'draft'->>'poNumber', ''),
-         (SELECT x->>'value' FROM jsonb_array_elements(
+/** The PO this conversation last linked (its record card). */
+const THREAD_PO_SQL = `SELECT (SELECT x->>'value' FROM jsonb_array_elements(
             CASE WHEN jsonb_typeof(a.value->'artifact'->'identity'->'ids') = 'array'
                  THEN a.value->'artifact'->'identity'->'ids' ELSE '[]'::jsonb END) x
-           WHERE x->>'label' = 'PO' LIMIT 1)
-       ) AS po_number,
-       a.value->>'producedBy' AS produced_by
+           WHERE x->>'label' = 'PO' LIMIT 1) AS po_number
   FROM ai_chat_messages m
   CROSS JOIN LATERAL jsonb_array_elements(
     CASE WHEN jsonb_typeof(m.analysis->'artifacts') = 'array' THEN m.analysis->'artifacts' ELSE '[]'::jsonb END
   ) WITH ORDINALITY AS a(value, ord)
  WHERE m.organization_id = $1 AND m.session_id = $2 AND m.role = 'assistant' AND m.superseded_at IS NULL
-   AND a.value->>'producedBy' IN ('draft_po_import', 'import_purchase_order', '${LINK_PO_TO_ORDER_TOOL}')
+   AND a.value->>'producedBy' = '${LINK_PO_TO_ORDER_TOOL}'
  ORDER BY m.id DESC, a.ord DESC
  LIMIT 1`;
 
@@ -100,7 +144,7 @@ const fields = z.object({
     .trim()
     .max(120)
     .optional()
-    .describe('The PO number (or a tracking number on it). Omit for the PO drafted or imported in this conversation.'),
+    .describe('The PO number (or a tracking number on it). Omit for the PO linked last in this conversation.'),
   orders: z
     .array(z.string().trim().min(1).max(120))
     .max(10)
@@ -137,15 +181,11 @@ function linkRecord(title: string, po: ResolvedPo, orders: readonly LinkedOrder[
   };
 }
 
-async function threadPo(
-  deps: ConfirmableWriteDeps,
-  orgId: OrgId,
-  sessionId: string | null | undefined,
-): Promise<{ poNumber: string; drafting: boolean } | null> {
+async function threadPo(deps: ConfirmableWriteDeps, orgId: OrgId, sessionId: string | null | undefined): Promise<string | null> {
   if (!sessionId) return null;
   const row = (await deps.query(orgId, THREAD_PO_SQL, [orgId, sessionId])).rows[0];
   const poNumber = typeof row?.po_number === 'string' ? row.po_number.trim() : '';
-  return poNumber ? { poNumber, drafting: row?.produced_by === 'draft_po_import' } : null;
+  return poNumber || null;
 }
 
 export const linkPoToOrderSpec: ConfirmableWriteSpec<typeof fields, PoOrderLinkPayload> = {
@@ -153,26 +193,14 @@ export const linkPoToOrderSpec: ConfirmableWriteSpec<typeof fields, PoOrderLinkP
   kind: PO_ORDER_LINK_KIND,
   permission: 'receiving.scan_po',
   description:
-    'Link an ALREADY-IMPORTED purchase order to the outbound order(s) it was bought for ("PO 55123 is for order 1125"), or unlink it (unlink: true). po = the PO number or its tracking (omit for the PO in this conversation); orders are read from the message. Two steps: action "propose" shows the change and returns needs_confirmation — ASK the user to confirm and stop. On their next message, "confirm" (yes) or "cancel" (no) with no other arguments. NOT for a PO card still being drafted or being imported — its "For order" goes on the card (draft_po_import) and import_purchase_order writes the link.',
+    'Link an ALREADY-IMPORTED purchase order to the outbound order(s) it was bought for ("PO 55123 is for order 1125"), or unlink it (unlink: true). po = the PO number or its tracking (omit for the PO linked last in this conversation); orders are read from the message. Two steps: action "propose" shows the change and returns needs_confirmation — ASK the user to confirm and stop. On their next message, "confirm" (yes) or "cancel" (no) with no other arguments.',
   fields,
   propose: async (ctx, input, deps) => {
     const message = String(ctx.userMessage ?? '');
-    const said = extractPoFields(message);
-    const thread = await threadPo(deps, ctx.organizationId, ctx.sessionId);
-    const poRef = input.po?.trim() || said.poNumber || thread?.poNumber;
+    const saidPo = saidPoNumber(message);
+    const poRef = input.po?.trim() || saidPo || (await threadPo(deps, ctx.organizationId, ctx.sessionId));
     if (!poRef) return { ok: false, error: 'Which purchase order? Ask for the PO number. Nothing was changed.' };
     const po = await resolvePoAnchor(deps.query, ctx.organizationId, poRef, extractCanonicalTracking(poRef));
-    if (!po && thread?.drafting && norm(thread.poNumber) === norm(poRef)) {
-      // The PO is this conversation's open draft, not imported yet: its order
-      // goes ON THE CARD (the import writes the link), so update the card here.
-      const refs = input.orders?.length ? input.orders : mentionedOrderRefs(message, thread.poNumber);
-      if (refs.length > 0 && input.unlink !== true) {
-        const card = await draftPoImport.run(draftPoImport.inputSchema.parse({ forOrders: refs }), ctx, { query: (o, t, p) => deps.query(o, t, p ?? []) });
-        return { ok: true, answer: card as Record<string, unknown> };
-      }
-      const summary = `PO ${thread.poNumber} is not imported yet — it is the draft card in this conversation. Its "For order" belongs on the card (draft_po_import {"forOrders":[…]}) and import_purchase_order writes the link with the import. If the user asked to import it, call import_purchase_order {"action":"propose"} and ask its question. Nothing was linked.`;
-      return { ok: true, answer: { ok: true, status: 'po_is_draft', summary } };
-    }
     if (!po) {
       return {
         ok: false,
@@ -181,10 +209,10 @@ export const linkPoToOrderSpec: ConfirmableWriteSpec<typeof fields, PoOrderLinkP
     }
     const refs = input.orders?.length ? input.orders : mentionedOrderRefs(message, po.poNumber);
     const existing = await readPoOrderLinks(deps.query, ctx.organizationId, po);
-    const unlink = input.unlink === true || (said.noOrder && !input.orders?.length);
+    const unlink = input.unlink === true || (NO_ORDER.test(withoutUrls(message)) && !input.orders?.length);
 
     let orders: LinkedOrder[];
-    let unmatched: PoImportOrderRef[] = [];
+    let unmatched: PoOrderRef[] = [];
     if (unlink) {
       const wanted = refs.map(norm);
       orders = refs.length ? existing.filter((e) => wanted.includes(norm(e.orderNumber))) : existing;

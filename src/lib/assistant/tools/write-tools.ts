@@ -15,7 +15,6 @@ import type { AssistantToolCtx, AssistantToolDef } from './types';
 import { buildManualLinkTool, type ManualLinkDeps } from './manual-link-tools';
 import { buildRequestPaymentTool, type RequestPaymentDeps } from './request-payment-tool';
 import { buildCreateManualOrderTool, type ManualOrderToolDeps } from './manual-order-tools';
-import { buildImportPurchaseOrderTool, type PoImportToolDeps } from './po-import-tools';
 import { buildLinkPoToOrderTool } from './po-order-link-tools';
 import { buildOrderStatusTools } from './order-status-tools';
 import { buildCreateTaskTool } from './task-tools';
@@ -27,7 +26,6 @@ import { buildEnableCapabilityTool, buildImportEbayProductsTool } from './capabi
 const DEDICATED_TOOL_KINDS: Record<string, string> = {
   'product_manual.link_sku': 'link_manual_to_sku',
   'order.create_manual': 'create_manual_order',
-  'receiving.import_po': 'import_purchase_order',
   'receiving.link_order': 'link_po_to_order',
   'order.set_flag': 'set_order_flag',
   'order.mark_out_of_stock': 'mark_out_of_stock',
@@ -61,7 +59,6 @@ export function buildWriteTools(
     manualLinkDeps?: ManualLinkDeps;
     requestPaymentDeps?: RequestPaymentDeps;
     manualOrderDeps?: ManualOrderToolDeps;
-    poImportDeps?: PoImportToolDeps;
   },
 ) {
   const allowedKinds = (
@@ -159,7 +156,6 @@ export function buildWriteTools(
   if (turn) tools.push(buildManualLinkTool(sessionId, turn.startedAt, turn.manualLinkDeps) as WriteTool);
   if (turn) tools.push(buildRequestPaymentTool(turn.requestPaymentDeps) as WriteTool);
   if (turn) tools.push(buildCreateManualOrderTool(sessionId, turn.startedAt, turn.manualOrderDeps) as WriteTool);
-  if (turn) tools.push(buildImportPurchaseOrderTool(sessionId, turn.startedAt, turn.poImportDeps) as WriteTool);
   if (turn) tools.push(buildLinkPoToOrderTool(sessionId, turn.startedAt) as WriteTool);
   if (turn) tools.push(...(buildOrderStatusTools(sessionId, turn.startedAt) as WriteTool[]), buildCreateTaskTool(sessionId, turn.startedAt) as WriteTool);
   // Self-scoped, reversible watch — no confirmation turn, but still a write (Ask only refuses it).

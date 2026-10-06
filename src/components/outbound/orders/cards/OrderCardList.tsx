@@ -299,6 +299,7 @@ export function OrderCardList({
     <TriageCardList
       family={family}
       densityControl={densityControl}
+      focusToggle
       rowScroll
       feed={triageFeed}
       cut={cut}

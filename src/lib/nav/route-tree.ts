@@ -44,7 +44,10 @@ export type TermId =
   | 'internal-record'
   | 'check-in'
   | 'inbound'
-  | 'outbound';
+  | 'outbound'
+  | 'purchase'
+  | 'fulfilled-order'
+  | 'platform';
 
 export interface VocabularyTerm {
   id: TermId;
@@ -101,6 +104,35 @@ export const VOCABULARY: readonly VocabularyTerm[] = [
     banned: ['Out (as the scan direction)', 'scan out (as the direction name)'],
     owner: 'scan-stations',
     decided: { by: 'owner', date: '2026-10-04', note: 'The Scan switcher reads Inbound | Outbound on web and iOS.' },
+  },
+  {
+    id: 'purchase',
+    label: 'Purchase',
+    plural: 'Purchases',
+    definition:
+      'One purchase-order line we bought from a vendor (Zoho, eBay, Amazon, Walmart…), followed from ordered through delivered to unboxed — received or not.',
+    banned: [],
+    industry: 'purchase order (PO) line',
+    owner: 'receiving',
+    decided: {
+      by: 'owner',
+      date: '2026-10-05',
+      note: 'Purchasing is its own Receiving mode at /purchasing (peer of Deliveries · Local Pickup · Repair service), never a Deliveries view. ⌘K also finds it by purchases, purchase orders, POs, unreceived, vendors.',
+    },
+  },
+  {
+    id: 'fulfilled-order',
+    label: 'Fulfilled order',
+    plural: 'Fulfilled orders',
+    definition:
+      'A channel order that left the building — scanned out at the dock, or marked shipped by its channel and never scanned out — followed from hand-off through carrier movement to delivered or returned. One row per order (its lines combined) or per order line.',
+    banned: ['Shipped (as the page name)', 'package archive'],
+    owner: 'fulfillment',
+    decided: {
+      by: 'owner',
+      date: '2026-10-05',
+      note: 'Fulfilled (/fulfilled) is the outbound twin of Purchasing: one datasheet, status chips over the header, carrier truth (No movement · Stalled · Untracked …). `/shipping/shipped` forwards here.',
+    },
   },
   {
     id: 'warehouse',
@@ -279,11 +311,21 @@ export const VOCABULARY: readonly VocabularyTerm[] = [
     owner: 'support',
     decided: { by: 'owner', date: '2026-10-04', note: 'Shown as the "Post-purchase check-ins" Support view.' },
   },
+  {
+    id: 'platform',
+    label: 'Platform',
+    plural: 'Platforms',
+    definition: 'The marketplace or storefront an order came from (orders.account_source): Amazon, eBay, Ecwid, Shopify, Square.',
+    segment: 'channel',
+    banned: ['channel (as the order source label)', 'marketplace (as the column name)'],
+    owner: 'fulfillment',
+    decided: { by: 'owner', date: '2026-10-05', note: 'Channel renamed to Platform on sheets, facets and sort; the ?channel= param stays.' },
+  },
 ] as const;
 
 // ── Tree ────────────────────────────────────────────────────────────────────
 
-export type LaneId = 'sales' | 'scan-stations' | 'warehouse' | 'receiving' | 'search' | 'print-station' | 'tasks' | 'support';
+export type LaneId = 'sales' | 'scan-stations' | 'warehouse' | 'receiving' | 'fulfillment' | 'search' | 'print-station' | 'tasks' | 'support';
 
 export type RouteNodeKind =
   /** A lane: the menu group, and (target) its landing page. */
@@ -434,9 +476,9 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     target: '/m/prepack',
     page: 'src/app/m/(shell)/prepack/page.tsx',
     status: 'live',
-    query: ['mode', 'step', 'unit', 'catalogId', 'condition', 'provenance', 'serialRequestId'],
+    query: ['unit', 'catalogId', 'serialRequestId'],
     links: ['prepack-desktop'],
-    note: 'One responsive mobile-first form for one package of one or more serials. Single: unit → facts → evidence → contents → label; Bulk: product → unit → evidence → contents → label. No location: packing puts the package away. `unit` repeats once per serial; `serialRequestId` is the phone serial handoff reply. Build every URL with prepackHref(); /m/qc remains Quality control.',
+    note: 'One fast prepack form: scan the serial (or pick the product), set how many packages — one label each, own condition and serials — confirm contents (pairing missing parts or the manual inline) and print. No modes, no steps, no photo requirement; packing puts the packages away. `unit` is the scanned serial and `catalogId` the product, so a reload restores the form; `serialRequestId` is the phone serial handoff reply. Build every URL with prepackHref(); /m/qc remains Quality control.',
   },
   {
     id: 'prepack-desktop',
@@ -447,9 +489,9 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     target: '/inventory/qc-labels',
     page: 'src/app/inventory/qc-labels/page.tsx',
     status: 'live',
-    query: ['task', 'mode', 'step', 'unit', 'catalogId', 'condition', 'provenance'],
+    query: ['task', 'unit', 'catalogId'],
     links: ['prepack-mobile'],
-    note: 'The same prepack form framed on the desk inside the QC labels ledger (`?task=prepack`). Same query contract as /m/prepack minus the phone-only handoff replies.',
+    note: 'The same prepack form on the desk inside the QC labels ledger (`?task=prepack`): form left, context column right. Same query contract as /m/prepack minus the phone-only handoff reply.',
   },
   {
     id: 'warehouse',
@@ -636,6 +678,128 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     note: 'H-#### handling unit = a tote. UI copy says Tote, never LPN.',
   },
   {
+    id: 'receiving',
+    parent: null,
+    kind: 'lane',
+    label: 'Receiving',
+    path: null,
+    target: '/incoming',
+    page: null,
+    status: 'planned',
+    note: 'Desktop. One lane door (Deliveries, `/incoming`); its mode card reaches every mode — G D Deliveries · G U Purchasing · G P Local Pickup · G R Repair service · G S Sourcing (`NAV_GO_KEYS.inbound`). Its modes never paint at the top level.',
+  },
+  {
+    id: 'purchasing',
+    parent: 'receiving',
+    kind: 'collection',
+    label: 'Purchasing',
+    owns: 'purchase',
+    path: '/purchasing',
+    target: '/purchasing',
+    page: 'src/app/purchasing/page.tsx',
+    status: 'live',
+    query: ['axis', 'from', 'to', 'source', 'vendor', 'unboxedBy', 'recon', 'find', 'colsort', 'coldir'],
+    note: 'Owner 2026-10-05: every purchase-order line in a window on one date axis (ordered · delivered · unboxed), as the shared sheet (`PurchasesSheet`). A Receiving MODE on the lane\'s mode card, never a top-level row. URL contract: `src/lib/receiving/purchases-params.ts`. Legacy `/incoming?lane=purchases` forwards here (308).',
+  },
+  {
+    id: 'purchase-new',
+    parent: 'purchasing',
+    kind: 'task',
+    label: 'Add purchase order',
+    owns: 'purchase',
+    path: '/purchasing/new',
+    target: '/purchasing/new',
+    page: 'src/app/purchasing/new/page.tsx',
+    status: 'live',
+    query: ['type', 'id'],
+    note: 'Owner 2026-10-06: the one desk form that adds or fixes an inbound order (PO or Return) — form 2/3 left, live confirmation 1/3 right. Opened from Add (top right) on Purchasing. `?id=` reopens a landed order. Lands through ingestInboundOrder.',
+  },
+  {
+    id: 'purchase-new-mobile',
+    parent: 'purchasing',
+    kind: 'task',
+    label: 'Add purchase order',
+    owns: 'purchase',
+    path: '/m/receiving/order',
+    target: '/m/receiving/order',
+    page: 'src/app/m/(shell)/receiving/order/page.tsx',
+    status: 'live',
+    query: ['type', 'id', 'fill'],
+    note: 'The phone face of `purchase-new`: same draft, checklist and writer. `?fill=1` opens Paste or photo first.',
+  },
+  {
+    id: 'purchase-import',
+    parent: 'purchasing',
+    kind: 'task',
+    label: 'Import orders',
+    owns: 'purchase',
+    path: '/purchasing/import',
+    target: '/purchasing/import',
+    page: 'src/app/purchasing/import/page.tsx',
+    status: 'live',
+    note: 'One file import for every inbound export (Amazon seller-fulfilled / Prime / FBA returns, eBay, Goodwill, our template): preview, then land through runInboundDraftBatch. Lists recent uploads; each opens its upload check.',
+  },
+  {
+    id: 'purchase-import-mobile',
+    parent: 'purchasing',
+    kind: 'task',
+    label: 'Import orders',
+    owns: 'purchase',
+    path: '/m/receiving/import-csv',
+    target: '/m/receiving/import-csv',
+    page: 'src/app/m/(shell)/receiving/import-csv/page.tsx',
+    status: 'live',
+    note: 'The phone face of `purchase-import`.',
+  },
+  {
+    id: 'purchase-import-check',
+    parent: 'purchase-import',
+    kind: 'record',
+    label: 'Upload check',
+    owns: 'purchase',
+    path: '/purchasing/import/[batchId]',
+    target: '/purchasing/import/[batchId]',
+    page: 'src/app/purchasing/import/[batchId]/page.tsx',
+    status: 'live',
+    query: ['show'],
+    note: 'One uploaded file, row by row: every file cell beside the value saved in inbound_order / receiving_line / receiving_line_return, mismatches marked (inbound_import_row).',
+  },
+  {
+    id: 'fulfillment',
+    parent: null,
+    kind: 'lane',
+    label: 'Fulfillment',
+    path: null,
+    target: '/shipping/orders',
+    page: null,
+    status: 'planned',
+    note: 'Desktop. The outbound lane: FBM (`/shipping/orders`, its landing) · Fulfilled · FBA are peers (`domainGroup: fulfillment` in sidebar-navigation).',
+  },
+  {
+    id: 'fulfilled',
+    parent: 'fulfillment',
+    kind: 'collection',
+    label: 'Fulfilled',
+    owns: 'fulfilled-order',
+    path: '/fulfilled',
+    target: '/fulfilled',
+    page: 'src/app/fulfilled/page.tsx',
+    status: 'live',
+    query: ['axis', 'from', 'to', 'channel', 'carrier', 'packer', 'mine', 'scan', 'grain', 'layout', 'done', 'untracked', 'cards', 'group', 'status', 'q', 'shipment', 'openOrderId', 'back', 'colsort', 'coldir'],
+    note: 'Owner 2026-10-05: every shipped order in a window on one date axis (shipped · delivered · ordered · ship-by). Opens on the full-screen BOARD (`FulfilledBoard`, `src/features/fulfilled-board`, built in the image of the Live feed: a headline, then one column per bucket under Act now · Watch · Done, each card its clock); `?layout=sheet` is the shared sheet (`PastedListSheet` over `GET /api/nav/fulfilled`, grain toggle orders · lines, status chips). URL contract: `src/lib/outbound/fulfilled-params.ts`. A card or row opens its package (`?shipment=`) in split — what a triage card opens (`recordDetailsHref` → `?openOrderId=`). `/shipping/shipped` forwards here.',
+  },
+  {
+    id: 'fulfilled-mobile',
+    parent: 'fulfillment',
+    kind: 'collection',
+    label: 'Fulfilled',
+    path: '/m/fulfilled',
+    target: '/m/fulfilled',
+    page: 'src/app/m/(shell)/fulfilled/page.tsx',
+    status: 'live',
+    note: 'Phone face of the post-ship journey (operator 2026-10-05, SURFACE_LAW): the same `GET /api/nav/fulfilled` at its defaults as Act now · Watch · Done bands of RecordCardMobile cards, worst clock first. A card opens its package (`/m/shipping/shipments/<id>`), or on a check-in stage its Support item (`/m/t/<id>`). Same name as the desk list: one collection, two surfaces.',
+  },
+  {
     id: 'search',
     parent: null,
     kind: 'lane',
@@ -678,7 +842,7 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     target: '/print-station',
     page: 'src/app/print-station/page.tsx',
     status: 'live',
-    query: ['view', 'q', 'fnsku', 'page'],
+    query: ['view', 'q', 'condition', 'fnsku', 'page'],
     note: 'Find an Amazon FBA unit label and print it at a station; views All FNSKUs (bare) · Reprinted.',
   },
   {
@@ -768,6 +932,20 @@ export const SEARCH_PATHS = {
   pastedList: livePath('pasted-list'),
 } as const;
 
+/** Receiving lane live paths (its modes registered here; Deliveries · Local Pickup · Repair service predate the tree). */
+export const RECEIVING_PATHS = {
+  purchasing: livePath('purchasing'),
+  purchaseNew: livePath('purchase-new'),
+  purchaseNewMobile: livePath('purchase-new-mobile'),
+  purchaseImport: livePath('purchase-import'),
+  purchaseImportMobile: livePath('purchase-import-mobile'),
+} as const;
+
+/** The upload check of one import batch. */
+export function purchaseImportCheckHref(batchId: number): string {
+  return livePath('purchase-import-check').replace('[batchId]', String(batchId));
+}
+
 /** Customer surfaces share this route contract across desktop and mobile. */
 export const CUSTOMER_PATHS = {
   desktop: livePath('customers'),
@@ -780,6 +958,12 @@ export const QUALITY_CONTROL_PATHS = {
   mobile: livePath('quality-control-mobile'),
 } as const;
 
+/** Fulfilled's two faces: the desk board/sheet and the phone journey. */
+export const FULFILLED_PATHS = {
+  desktop: livePath('fulfilled'),
+  mobile: livePath('fulfilled-mobile'),
+} as const;
+
 /** The single mobile-first prepack form: on the phone at /m/prepack, on the desk inside QC labels. */
 export const PREPACK_PATHS = {
   form: livePath('prepack-mobile'),
@@ -787,24 +971,17 @@ export const PREPACK_PATHS = {
 } as const;
 
 export type PrepackSurface = 'mobile' | 'desktop';
-export type PrepackStepId = 'product' | 'unit' | 'facts' | 'evidence' | 'contents' | 'label';
 
 export interface PrepackRouteState {
-  mode?: 'single' | 'bulk' | null;
-  step?: PrepackStepId | null;
-  /** Every serial key in the package (unit_uid, OEM serial or `U-` handle), in order — one `unit` param each. */
-  units?: readonly string[] | null;
+  /** The scanned serial (OEM serial, unit_uid or `U-` handle) the form was started from. */
+  unit?: string | null;
   catalogId?: number | null;
-  condition?: string | null;
-  provenance?: string | null;
   /** Phone only: reply to this desk serial request. */
   serialRequestId?: string | null;
 }
 
 /** Every query key the prepack form owns — a surface strips these when it leaves the task. */
-export const PREPACK_QUERY_KEYS = [
-  'task', 'mode', 'step', 'unit', 'catalogId', 'condition', 'provenance', 'serialRequestId',
-] as const;
+export const PREPACK_QUERY_KEYS = ['task', 'unit', 'catalogId', 'serialRequestId'] as const;
 
 /**
  * `/m/prepack?…` or `/inventory/qc-labels?task=prepack&…`. `keep` carries the
@@ -819,15 +996,11 @@ export function prepackHref(surface: PrepackSurface, state: PrepackRouteState = 
   }
   if (surface === 'desktop') query.set('task', 'prepack');
   const params: Record<string, string | null | undefined> = {
-    mode: state.mode,
-    step: state.step,
+    unit: state.unit?.trim(),
     catalogId: positiveId(state.catalogId),
-    condition: state.condition,
-    provenance: state.provenance,
     serialRequestId: surface === 'mobile' ? state.serialRequestId?.trim() : null,
   };
   for (const [key, value] of Object.entries(params)) if (value) query.set(key, value);
-  for (const unit of state.units ?? []) if (unit.trim()) query.append('unit', unit.trim());
   const path = surface === 'desktop' ? PREPACK_PATHS.desktop : PREPACK_PATHS.form;
   const qs = query.toString();
   return qs ? `${path}?${qs}` : path;

@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import { ChevronRight, User } from '@/components/Icons';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { DESK_RECORD_KEY_ATTR } from '@/design-system/components/DeskRecordPlane';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
@@ -24,7 +23,7 @@ export function CustomerDirectoryList({
   narrowed: boolean;
   onOpen: (customerId: number) => void;
 }) {
-  if (loading && rows.length === 0) return <UniversalLoader isLoading label="Loading customers" className="min-h-64" />;
+  if (loading && rows.length === 0) return null;
   if (failed) return <div className="p-4"><EvidenceNotice tone="warn">Couldn&apos;t load customers.</EvidenceNotice></div>;
   if (rows.length === 0) {
     return <div className="p-4"><EvidenceNotice>{narrowed ? 'No customers match that contact.' : 'No customers yet.'}</EvidenceNotice></div>;

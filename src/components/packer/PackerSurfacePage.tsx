@@ -35,6 +35,8 @@ export async function PackerSurfacePage({
       queryFn: async () => {
         const { rows } = await fetchPackerLogRows({
           organizationId: user.organizationId,
+          // Same answer `usePackerLogs` reads: the packer's own packs.
+          population: 'packed',
           packerId,
           limit: 1000,
           weekStart: weekRange.startStr,

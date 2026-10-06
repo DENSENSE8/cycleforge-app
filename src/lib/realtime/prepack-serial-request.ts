@@ -1,13 +1,11 @@
-/** Desktop ↔ phone handoff for scanning a serial into a prepack run. */
+/** Desktop ↔ phone handoff for scanning a serial into the desk prepack form. */
 
 import { getStaffStationBridgeChannelName, safeChannelName } from './channels';
 import { prepackHref } from '@/lib/nav/route-tree';
 
 export const PREPACK_SERIAL_REQUEST_EVENT = 'prepack_serial_request';
 export const PREPACK_SERIAL_SELECTED_EVENT = 'prepack_serial_selected';
-export const PREPACK_CATALOG_PHOTO_REQUEST_EVENT = 'prepack_catalog_photo_request';
 const LOCAL_PREPACK_SERIAL_REQUEST_KEY = 'cf:local-prepack-serial-request';
-const LOCAL_PREPACK_CATALOG_PHOTO_REQUEST_KEY = 'cf:local-prepack-catalog-photo-request';
 const LOCAL_REQUEST_TTL_MS = 60_000;
 
 interface BridgeClient {
@@ -16,14 +14,6 @@ interface BridgeClient {
 
 export interface PrepackSerialRequest {
   requestId: string;
-  skuCatalogId: number | null;
-  mode: 'single' | 'bulk';
-}
-
-export interface PrepackCatalogPhotoRequest {
-  requestId: string;
-  skuCatalogId: number;
-  sku: string;
 }
 
 function channelName(orgId: string | null | undefined, staffId: number): string {
@@ -60,7 +50,7 @@ export async function publishPrepackSerialRequest(
   client: BridgeClient | null,
   orgId: string | null | undefined,
   staffId: number,
-  input: { requestId: string; skuCatalogId: number | null; mode: 'single' | 'bulk' },
+  input: PrepackSerialRequest,
 ): Promise<void> {
   const channel = channelName(orgId, staffId);
   const requestId = input.requestId.trim();
@@ -68,8 +58,6 @@ export async function publishPrepackSerialRequest(
   markLocal(LOCAL_PREPACK_SERIAL_REQUEST_KEY, requestId);
   await client.channels.get(channel).publish(PREPACK_SERIAL_REQUEST_EVENT, {
     request_id: requestId,
-    sku_catalog_id: input.skuCatalogId != null && input.skuCatalogId > 0 ? input.skuCatalogId : null,
-    mode: input.mode,
     requested_by_staff_id: staffId,
   });
 }
@@ -90,55 +78,14 @@ export async function publishPrepackSerialSelected(
   });
 }
 
-/** Opens the existing catalog-photo camera on the signed-in phone. */
-export async function publishPrepackCatalogPhotoRequest(
-  client: BridgeClient | null,
-  orgId: string | null | undefined,
-  staffId: number,
-  input: PrepackCatalogPhotoRequest,
-): Promise<void> {
-  const channel = channelName(orgId, staffId);
-  const requestId = input.requestId.trim();
-  if (!client || !channel || !requestId || input.skuCatalogId <= 0 || !input.sku.trim()) return;
-  markLocal(LOCAL_PREPACK_CATALOG_PHOTO_REQUEST_KEY, requestId);
-  await client.channels.get(channel).publish(PREPACK_CATALOG_PHOTO_REQUEST_EVENT, {
-    request_id: requestId,
-    sku_catalog_id: input.skuCatalogId,
-    sku: input.sku.trim(),
-    requested_by_staff_id: staffId,
-  });
-}
-
-export function parsePrepackCatalogPhotoRequest(data: unknown): PrepackCatalogPhotoRequest | null {
-  if (!data || typeof data !== 'object') return null;
-  const row = data as Record<string, unknown>;
-  const requestId = String(row.request_id ?? '').trim();
-  const sku = String(row.sku ?? '').trim();
-  const skuCatalogId = Number(row.sku_catalog_id);
-  if (!requestId || !sku || !Number.isInteger(skuCatalogId) || skuCatalogId <= 0) return null;
-  return { requestId, skuCatalogId, sku };
-}
-
 export function parsePrepackSerialRequest(data: unknown): PrepackSerialRequest | null {
   if (!data || typeof data !== 'object') return null;
-  const row = data as Record<string, unknown>;
-  const requestId = String(row.request_id ?? '').trim();
-  if (!requestId) return null;
-  const skuCatalogId = Number(row.sku_catalog_id);
-  return {
-    requestId,
-    skuCatalogId: row.sku_catalog_id != null && Number.isInteger(skuCatalogId) && skuCatalogId > 0 ? skuCatalogId : null,
-    mode: row.mode === 'bulk' ? 'bulk' : 'single',
-  };
+  const requestId = String((data as Record<string, unknown>).request_id ?? '').trim();
+  return requestId ? { requestId } : null;
 }
 
 export function prepackSerialHandoffHref(request: PrepackSerialRequest): string {
-  return prepackHref('mobile', {
-    mode: request.mode,
-    step: 'unit',
-    catalogId: request.skuCatalogId,
-    serialRequestId: request.requestId,
-  });
+  return prepackHref('mobile', { serialRequestId: request.requestId });
 }
 
 export function prepackSerialBridgeChannel(
@@ -151,9 +98,4 @@ export function prepackSerialBridgeChannel(
 /** True once, only in the tab that dispatched the handoff. */
 export function consumeLocalPrepackSerialRequest(requestId: string): boolean {
   return consumeLocal(LOCAL_PREPACK_SERIAL_REQUEST_KEY, requestId);
-}
-
-/** True only in the tab that dispatched the catalog-photo handoff. */
-export function consumeLocalPrepackCatalogPhotoRequest(requestId: string): boolean {
-  return consumeLocal(LOCAL_PREPACK_CATALOG_PHOTO_REQUEST_KEY, requestId);
 }

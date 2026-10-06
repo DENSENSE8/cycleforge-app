@@ -58,6 +58,7 @@ import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { stageReturnCartonToReturnsTestBin } from '@/lib/receiving/stage-return-to-returns-bin';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { photoStageForScanIntakeSurface } from '@/lib/receiving/photo-intent';
+import { cachedLookupUnboxedAt } from '@/lib/receiving/unbox-scan-kind';
 
 // `TrackingScanResult` now lives in `scan-types` (shared with scan-apply);
 // re-exported here for the existing import surface (ReceivingSidebarPanel, …).
@@ -336,7 +337,7 @@ export function useTrackingScan({
                     trackingNumber,
                     railRow: internal.pick ?? null,
                     touchScan: {},
-                    unboxedAt: internal.pick?.unboxed_at ?? null,
+                    unboxedAt: cachedLookupUnboxedAt(internal.pick),
                   });
                 } else {
                   clearUnboxPendingRail();
@@ -407,7 +408,7 @@ export function useTrackingScan({
                   receivingId: cached.receivingId,
                   trackingNumber,
                   touchScan: { tracking: cached.row.tracking_number ?? trackingNumber },
-                  unboxedAt: cached.row.unboxed_at ?? null,
+                  unboxedAt: cachedLookupUnboxedAt(cached.row),
                 });
               } else {
                 void fetch('/api/receiving/touch-scan', {
@@ -464,7 +465,7 @@ export function useTrackingScan({
                 trackingNumber,
                 railRow: local.pick ?? null,
                 touchScan: {},
-                unboxedAt: local.pick?.unboxed_at ?? null,
+                unboxedAt: cachedLookupUnboxedAt(local.pick),
               });
             } else {
               // Triage re-scan: stamp scanned_by only (no unbox-open semantics).

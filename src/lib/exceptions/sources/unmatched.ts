@@ -1,8 +1,10 @@
 /**
  * `unmatched` — an open unmatched pack / dock scan: an `orders_exceptions`
- * row matching `sqlOpenUnmatchedScan` (the predicate Fulfilled's unmatched
- * desk and `GET /api/orders-exceptions/unmatched` read), org-scoped
- * explicitly and GUC-wrapped (`tenantQueryOneTrip`) for the RLS backstop.
+ * row matching `sqlOpenUnmatchedScan` (the predicate
+ * `GET /api/orders-exceptions/unmatched` reads), org-scoped explicitly and
+ * GUC-wrapped (`tenantQueryOneTrip`) for the RLS backstop. Its package is the
+ * row's stamped shipment, else its latest scan's — where Fulfilled's package
+ * record (`?shipment=`) resolves it.
  */
 
 import { sqlOpenUnmatchedScan, type UnmatchedScanSourceStation } from '@/lib/orders-exceptions';
@@ -15,7 +17,13 @@ const UNMATCHED_FROM = `FROM orders_exceptions oe
   LEFT JOIN staff s ON s.id = oe.staff_id AND s.organization_id = oe.organization_id`;
 const UNMATCHED_WHERE = `WHERE oe.organization_id = $1 AND ${sqlOpenUnmatchedScan('oe')}`;
 const UNMATCHED_SELECT = `SELECT oe.id, oe.shipping_tracking_number AS tracking, oe.source_station, oe.notes,
-         oe.created_at, COALESCE(s.name, oe.staff_name) AS staff_name`;
+         oe.created_at, COALESCE(s.name, oe.staff_name) AS staff_name,
+         COALESCE(oe.shipment_id, (
+           SELECT sal.shipment_id FROM station_activity_logs sal
+            WHERE sal.orders_exception_id = oe.id AND sal.organization_id = oe.organization_id
+              AND sal.shipment_id IS NOT NULL
+            ORDER BY sal.id DESC LIMIT 1
+         )) AS shipment_id`;
 
 interface UnmatchedSqlRow {
   id: number | string;
@@ -24,6 +32,7 @@ interface UnmatchedSqlRow {
   notes: string | null;
   created_at: Date | string;
   staff_name: string | null;
+  shipment_id: number | string | null;
 }
 
 /** The scan's station, as the floor names it. */
@@ -60,6 +69,7 @@ function toFacts(row: UnmatchedSqlRow): UnmatchedScanExceptionFacts {
       staffName: text(row.staff_name),
       notes: text(row.notes),
       createdAt: isoOrNull(row.created_at) ?? '',
+      shipmentId: positiveIntId(String(row.shipment_id ?? '')),
     },
   };
 }

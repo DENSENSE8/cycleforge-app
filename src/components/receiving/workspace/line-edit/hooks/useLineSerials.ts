@@ -28,6 +28,7 @@ import {
   type LineSerial,
 } from '@/lib/receiving/optimistic-serials';
 import type { ReceivingLineUnitView } from '@/lib/receiving/receiving-line-row';
+import { publishListingSerialConfirmed } from '../listing-serial-confirm';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { pulseScanLine } from '@/lib/scan-feedback/visual';
 import type { useSerialLookup } from '../../SerialMatchResult';
@@ -166,10 +167,26 @@ export function useLineSerials({
         return;
       }
 
-      // Same serial already on this line — friendly no-op.
+      // The serial matched one the purchase listing showed — flip its reference to confirmed.
+      if (data.listing_serial_confirmed) {
+        publishListingSerialConfirmed(
+          queryClient,
+          row.receiving_id,
+          lineId,
+          serial,
+          lineId === row.id ? row.listing_serials : null,
+        );
+      }
+
+      // Same serial already on this line — friendly no-op (or the listing confirm it was).
       if (data.already_attached) {
-        toast.info(`Already added — ${serial}`);
         publish(lineId, rollbackOptimisticSerial(readLineSerials(lineId), tempId));
+        if (data.listing_serial_confirmed) {
+          toast.success(`Confirmed — ${serial}`);
+          playScanFeedback('success');
+          return;
+        }
+        toast.info(`Already added — ${serial}`);
         playScanFeedback('reject');
         return;
       }
@@ -301,6 +318,7 @@ export function useLineSerials({
     serialInput,
     row.receiving_id,
     row.id,
+    row.listing_serials,
     staffId,
     receivingType,
     serialLookup,

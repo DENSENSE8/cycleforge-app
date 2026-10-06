@@ -34,10 +34,15 @@ export interface ReleaseGateFacts {
   itemNumber?: string | null;
   /** Carrier tracking, resolved through `orders.shipment_id`. */
   trackingNumber?: string | null;
-  /** How many documents are linked to this order's item (or the order itself). */
+  /**
+   * G2 paperwork on this line: non-label documents linked to it plus the
+   * product paperwork it resolves (order › item number › SKU) — `G2_DOCUMENT_COUNT_SQL`.
+   */
   linkedDocumentCount?: number | null;
-  /** `orders.docs_not_required` — the explicit G2 exemption. */
+  /** `orders.docs_not_required` — the order-level G2 exemption. */
   docsNotRequired?: boolean | null;
+  /** `sku_catalog.paperwork_not_required` — this line's SKU never ships with paperwork (SKU-level G2 exemption). */
+  skuPaperworkNotRequired?: boolean | null;
   /** A shipping-label document is linked to this order. */
   shippingLabelLinked?: boolean | null;
   /** A label was purchased through the existing buy path. */
@@ -93,7 +98,7 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
   if (!hasTracking && !pickup) g1Missing.push('tracking number');
 
   const docCount = Number(facts.linkedDocumentCount ?? 0);
-  const docsExempt = facts.docsNotRequired === true;
+  const docsExempt = facts.docsNotRequired === true || facts.skuPaperworkNotRequired === true;
   const hasDocs = Number.isFinite(docCount) && docCount > 0;
 
   const labelLinked = facts.shippingLabelLinked === true;
@@ -116,7 +121,7 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
       reason:
         hasDocs || docsExempt
           ? null
-          : 'Link a manual or paperwork to the item number, or mark that it does not require documents.',
+          : 'Pair a manual or paperwork to the SKU or item number, or mark that it does not require documents.',
     },
     {
       id: 'G3',

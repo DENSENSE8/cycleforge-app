@@ -97,6 +97,11 @@ export function outboundOrderIdentity(orderId: string, channel: Pick<PlatformDis
   return operationalIdentity('order', orderId, platform, null);
 }
 
+/** Inbound import: an order number as an uploaded file carries it, on the platform the import stamps. */
+export function importedOrderIdentity(orderNumber: string, platformSlug: string | null | undefined): OperationalIdentity {
+  return operationalIdentity('order', orderNumber, operationalPlatform(platformSlug), null);
+}
+
 /** Inbound sources whose type names the marketplace the purchase was made on (`zoho` / `manual` name none). */
 const MARKETPLACE_SOURCE_TYPES: Readonly<Record<string, true>> = { ebay: true, amazon: true };
 

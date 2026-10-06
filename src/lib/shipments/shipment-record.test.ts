@@ -8,6 +8,7 @@ import {
   type ShipmentStationRow,
   type ShipmentStnRow,
 } from './shipment-record';
+import type { CarrierEventRow } from './carrier-events';
 
 const ORG = '00000000-0000-0000-0000-00000000000a' as OrgId;
 
@@ -36,8 +37,11 @@ function stn(over: Partial<ShipmentStnRow> = {}): ShipmentStnRow {
 }
 
 function station(over: Partial<ShipmentStationRow> & Pick<ShipmentStationRow, 'id' | 'activity_type'>): ShipmentStationRow {
+  const createdAt = over.created_at ?? new Date('2026-08-28T23:00:00Z');
   return {
-    created_at: new Date('2026-08-28T23:00:00Z'),
+    created_at: createdAt,
+    // Written at the instant it stamps unless a test says otherwise.
+    updated_at: createdAt,
     station: 'OUTBOUND',
     scan_ref: '1Z23A1E90339190802',
     staff_id: 1,
@@ -63,6 +67,9 @@ function rows(over: Partial<ShipmentRecordRows> = {}): ShipmentRecordRows {
     carrier: [],
     inventory: [],
     photos: [],
+    journeyStn: null,
+    handOff: null,
+    checkIn: null,
     ...over,
   };
 }
@@ -100,6 +107,24 @@ test('a live dock scan-out is not backfilled, and the NEWEST scan-out is the shi
   assert.equal(record.shipOut?.backfilled, false);
   assert.equal(record.shipOut?.staffName, 'Ana');
   assert.equal(record.shipOut?.at, '2026-08-29T01:00:00.000Z');
+});
+
+test('a live-origin scan-out written a day after the instant it stamps is backdated, so backfilled', () => {
+  const record = buildShipmentRecord(
+    rows({
+      station: [
+        station({
+          id: 3,
+          activity_type: 'SHIP_CONFIRM',
+          created_at: '2026-08-28T23:00:00Z',
+          updated_at: '2026-08-29T20:00:00Z',
+          metadata: { source: 'shipped-scan-out' },
+        }),
+      ],
+    }),
+  );
+  assert.equal(record.shipOut?.backfilled, true);
+  assert.equal(record.actions.find((a) => a.id === 'station:3')?.label, 'Scan-out backfilled');
 });
 
 test('actions merge every source newest first, and equal instants keep a stable order', () => {
@@ -228,4 +253,87 @@ test('getShipmentRecord is null for a package the org cannot see', async () => {
 
   assert.equal(out, null);
   assert.deepEqual(seen, [[ORG, 43308]]);
+});
+
+function carrierEvent(id: number, at: string, category: string): CarrierEventRow {
+  return {
+    id,
+    event_occurred_at: at,
+    normalized_status_category: category,
+    external_status_label: null,
+    external_status_description: null,
+    event_city: null,
+    event_state: null,
+    exception_description: null,
+    signed_by: null,
+  };
+}
+
+test('journey: hand-off is the STAFFED scan-out, the first scan the earliest moving event, the promise the first ETA', () => {
+  const record = buildShipmentRecord(
+    rows({
+      stn: stn({ carrier_accepted_at: new Date('2026-08-29T15:00:00Z'), delivered_at: new Date('2026-09-02T20:00:00Z') }),
+      station: [
+        // Newest first: an unstaffed (system) scan-out never stands for the dock hand-off.
+        station({ id: 9, activity_type: 'SHIP_CONFIRM', staff_id: 0, created_at: '2026-08-29T01:00:00Z' }),
+        station({ id: 8, activity_type: 'SHIP_CONFIRM', staff_id: 4, created_at: '2026-08-28T23:00:00Z' }),
+      ],
+      carrier: [
+        carrierEvent(3, '2026-09-02T20:00:00Z', 'DELIVERED'),
+        carrierEvent(2, '2026-08-29T15:00:00Z', 'ACCEPTED'),
+        carrierEvent(1, '2026-08-28T23:30:00Z', 'LABEL_CREATED'),
+      ],
+      journeyStn: { first_estimated_delivery_at: new Date('2026-09-01T23:59:00Z'), source_system: 'ups', consecutive_error_count: 0 },
+      handOff: { shipstation_ship_at: new Date('2026-08-28T07:00:00Z'), shipstation_created_at: null, label_printed_at: null },
+    }),
+  );
+
+  assert.deepEqual(record.journey, {
+    handOffAt: '2026-08-28T23:00:00.000Z',
+    firstCarrierScanAt: '2026-08-29T15:00:00.000Z',
+    promisedAt: '2026-09-01T23:59:00.000Z',
+    deliveredAt: '2026-09-02T20:00:00.000Z',
+    checkIn: null,
+  });
+});
+
+test('journey: never scanned out → the ShipStation ship date is the hand-off; a synthetic scan stamp is no carrier scan', () => {
+  const record = buildShipmentRecord(
+    rows({
+      stn: stn({ carrier_accepted_at: new Date('2026-08-29T15:00:00Z'), label_created_at: new Date('2026-08-27T18:00:00Z') }),
+      journeyStn: { first_estimated_delivery_at: null, source_system: 'scan', consecutive_error_count: 0 },
+      handOff: { shipstation_ship_at: new Date('2026-08-28T07:00:00Z'), shipstation_created_at: null, label_printed_at: null },
+    }),
+  );
+
+  assert.equal(record.journey.handOffAt, '2026-08-28T07:00:00.000Z');
+  assert.equal(record.journey.firstCarrierScanAt, null);
+});
+
+test('journey: the check-in reads its state, outcome and reply; an unknown state is no check-in', () => {
+  const checkIn = {
+    state: 'resolved',
+    support_ticket_id: '812',
+    trigger_at: new Date('2026-09-02T20:00:00Z'),
+    due_at: new Date('2026-09-05T16:00:00Z'),
+    contacted_at: new Date('2026-09-05T17:00:00Z'),
+    next_follow_up_at: null,
+    closed_at: new Date('2026-09-07T18:00:00Z'),
+    outcome: 'happy',
+    replied_at: new Date('2026-09-06T02:00:00Z'),
+  };
+  const record = buildShipmentRecord(rows({ checkIn }));
+  assert.deepEqual(record.journey.checkIn, {
+    state: 'resolved',
+    supportItemId: 812,
+    triggerAt: '2026-09-02T20:00:00.000Z',
+    dueAt: '2026-09-05T16:00:00.000Z',
+    contactedAt: '2026-09-05T17:00:00.000Z',
+    nextFollowUpAt: null,
+    repliedAt: '2026-09-06T02:00:00.000Z',
+    closedAt: '2026-09-07T18:00:00.000Z',
+    outcome: 'happy',
+  });
+
+  assert.equal(buildShipmentRecord(rows({ checkIn: { ...checkIn, state: 'archived' } })).journey.checkIn, null);
 });

@@ -753,6 +753,7 @@ export function CommandBar() {
                   >
                     <Icon className="size-4 text-text-faint" />
                     <span className="min-w-0 flex-1 truncate">{row.label}</span>
+                    {row.context ? <span className="shrink-0 text-xs text-text-faint">{row.context}</span> : null}
                   </CommandItem>
                 );
               })}

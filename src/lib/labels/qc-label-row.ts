@@ -35,6 +35,10 @@ export interface QcLabelRow {
   package_serial_count: number | null;
   /** The product photo (`skuCatalogImageUrlSql`); null paints initials. */
   image_url: string | null;
+  /** The unit's own hand-edited face (`serial_units.metadata.qc_label`); null prints the default. */
+  label_title: string | null;
+  label_color: string | null;
+  label_text: string | null;
 }
 
 /** Where the labelled unit is in the outbound loop. */
@@ -49,14 +53,38 @@ export function qcLabelStage(row: Pick<QcLabelRow, 'current_status' | 'allocatio
   return SELLABLE.has(row.current_status) ? 'stock' : 'held';
 }
 
-/** The sticker's scannable identity: the minted unit id, else the `U-{serial}` handle. */
+/**
+ * The sticker's scannable identity: the minted unit id, else the `U-{serial}`
+ * handle — or `U-{serial_unit_id}` when the unit has no OEM serial (its stored
+ * serial is a private surrogate, never printed).
+ */
 export function qcLabelHandle(row: Pick<QcLabelRow, 'unit_uid' | 'serial_number' | 'serial_unit_id'>): string {
-  return row.unit_uid?.trim() || (row.serial_number?.trim() ? `U-${row.serial_number.trim()}` : `U-${row.serial_unit_id}`);
+  const uid = row.unit_uid?.trim();
+  if (uid) return uid;
+  const serial = row.serial_number?.trim();
+  return serial && !qcLabelUsesInternalSerial(serial) ? `U-${serial}` : `U-${row.serial_unit_id}`;
 }
 
-/** Legacy storage surrogate for a physical unit whose maker supplied no serial. */
+/**
+ * Private storage surrogates for a physical unit whose maker supplied no
+ * serial (`serial_units.serial_number` is NOT NULL): receiving
+ * (`AUTO-RLU-{line unit id}`) and prepack (`AUTO-PP-{token}`). Postgres regex
+ * over `normalized_serial` (upper-case); {@link qcLabelUsesInternalSerial} is
+ * the same test in TypeScript.
+ */
+export const QC_LABEL_INTERNAL_SERIAL_SQL_RE = '^AUTO-(RLU|PP)-';
+
+const INTERNAL_SERIAL_RE = new RegExp(QC_LABEL_INTERNAL_SERIAL_SQL_RE, 'i');
+
 export function qcLabelUsesInternalSerial(serial: string | null): boolean {
-  return /^AUTO-RLU-/i.test(serial?.trim() ?? '');
+  return INTERNAL_SERIAL_RE.test(serial?.trim() ?? '');
+}
+
+/** The private serial of a unit created at prepack with no OEM serial (`AUTO-PP-…`). */
+export function prepackSyntheticSerial(token: string): string {
+  const safe = token.replace(/[^A-Za-z0-9-]/g, '');
+  if (!safe) throw new Error('prepack synthetic serial needs a token');
+  return `AUTO-PP-${safe}`;
 }
 
 /** A prepacked package (SEALED PREBOX `label_manifests` row) carrying N≥2 serial units under one label. */
@@ -82,4 +110,8 @@ export interface QcLabelPrintUnit {
   printed: boolean;
   /** The package this label names; null for a single unit's label. */
   package: QcLabelPackage | null;
+  /** Hand-edited face (prepack label editor); null prints the default. A package label reads its PREBOX manifest's face. */
+  label_title: string | null;
+  label_color: string | null;
+  label_text: string | null;
 }

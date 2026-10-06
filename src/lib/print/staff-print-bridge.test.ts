@@ -240,10 +240,12 @@ describe('parseStaffPrintJob', () => {
       assert.equal(paper([{ kind: 'manual', title: 'Manual', documentId: 88 }]), null);
       assert.equal(paper([{ kind: 'manual', title: 'Manual', manualId: 0 }]), null);
       assert.equal(paper([{ kind: 'packing_slip', title: 'Slip', documentId: 1.5 }]), null);
-      assert.equal(
-        parseStaffPrintJob({ ...base, documents: { stock: 'label', batchId: BATCH, items: [{ kind: 'label', title: 'L', documentId: 12 }] } }),
-        null,
-      );
+      const labels = (items: unknown[]) => parseStaffPrintJob({ ...base, documents: { stock: 'label', batchId: BATCH, items } });
+      assert.equal(labels([{ kind: 'label', title: 'L', manualId: 12 }]), null);
+      assert.equal(labels([{ kind: 'label', title: 'L', ingestionId: 0, documentId: 12 }]), null);
+      // A shipping-label document with no ingestion (Bulk) prints by its document; still a label job.
+      assert.deepEqual(labels([{ kind: 'label', title: 'L', documentId: 12 }])?.documents?.items, [{ kind: 'label', orderId: null, title: 'L', documentId: 12 }]);
+      assert.equal(paper([{ kind: 'label', title: 'L', documentId: 12 }]), null);
     });
 
     it('rejects junk: one bad item sinks the job, never a partial print', () => {

@@ -26,6 +26,7 @@ import {
   sqlReceivingZendeskTicketColumn,
 } from './sql-receiving-ticket';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from './sql-receiving-image';
+import { RECEIVING_LINE_LISTING_EVIDENCE_SQL } from './sql-listing-evidence';
 import {
   SHIPMENT_DELIVERY_ATTEMPTS_SQL,
   SHIPMENT_SIGNED_BY_SQL,
@@ -163,6 +164,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 stn.is_delivered             AS shipment_is_delivered,
                 stn.delivered_at             AS shipment_delivered_at,
                 ${RECEIVING_LINE_IMAGE_URL_SQL},
+                ${RECEIVING_LINE_LISTING_EVIDENCE_SQL},
                 sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -342,6 +344,7 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                   stn.is_delivered             AS shipment_is_delivered,
                   stn.delivered_at             AS shipment_delivered_at,
                   ${RECEIVING_LINE_IMAGE_URL_SQL},
+                  ${RECEIVING_LINE_LISTING_EVIDENCE_SQL},
                   sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the
@@ -1175,6 +1178,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 stn.is_delivered             AS shipment_is_delivered,
                 stn.delivered_at             AS shipment_delivered_at,
                 ${RECEIVING_LINE_IMAGE_URL_SQL},
+                ${RECEIVING_LINE_LISTING_EVIDENCE_SQL},
                 sc.product_title             AS catalog_product_title,
                 -- Zoho item title (canonical SoT). Always preferred for display
                 -- over the PO line's listing-style item_name and over the

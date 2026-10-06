@@ -5,7 +5,7 @@
  * `qc_label` job.
  */
 
-import { qcLabelHandle, type QcLabelPrintUnit } from '@/lib/labels/qc-label-row';
+import { qcLabelHandle, qcLabelUsesInternalSerial, type QcLabelPrintUnit } from '@/lib/labels/qc-label-row';
 import type { StaffPrintQcLabelPayload } from '@/lib/print/staff-print-bridge';
 import { printProductLabel } from '@/lib/print/printProductLabel';
 import type { PrintProductLabelInput } from '@/lib/print/unitLabelCore';
@@ -34,25 +34,29 @@ const STAFF_QC_LABEL_API: QcLabelStationJobApi = {
 /**
  * What a QC label's face prints — one source for the sticker and every
  * on-screen preview. A package label names the package: its SKU, condition
- * and serial count, never one member's serial.
+ * and serial count, never one member's serial. A hand-edited face (prepack)
+ * overrides the title and adds the color and custom line.
  */
 export function qcLabelFaceInput(unit: QcLabelPrintUnit): PrintProductLabelInput {
   const pkg = unit.package;
+  const face = { color: unit.label_color, note: unit.label_text };
   if (pkg) {
     return {
       sku: unit.sku ?? '',
-      title: unit.sku ? `${unit.sku} · ${unit.title}` : unit.title,
+      title: unit.label_title ?? (unit.sku ? `${unit.sku} · ${unit.title}` : unit.title),
       qrPayload: pkg.uid,
       condition: unit.condition_grade,
       serialCount: pkg.serial_count,
+      ...face,
     };
   }
   return {
     sku: unit.sku ?? '',
-    title: unit.title,
-    serialNumber: unit.serial_number ?? undefined,
+    title: unit.label_title ?? unit.title,
+    serialNumber: unit.serial_number && !qcLabelUsesInternalSerial(unit.serial_number) ? unit.serial_number : undefined,
     qrPayload: qcLabelHandle(unit),
     condition: unit.condition_grade,
+    ...face,
   };
 }
 

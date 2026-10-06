@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { inboundOrderEditRecordFrom, inboundPlatformForIdentity, type InboundOrderHeaderRow } from './inbound-order-edit';
+import {
+  inboundOrderEditRecordFrom,
+  inboundPlatformForIdentity,
+  type InboundOrderHeaderRow,
+  type InboundOrderLineRow,
+} from './inbound-order-edit';
 import { listCartonInboundOrders, loadInboundOrderEdit, type LoadInboundOrderEditDeps } from './load-inbound-order-edit';
 import { appendInboundLine, patchInboundLine } from './inbound-order-compose';
 import {
@@ -33,9 +38,14 @@ const HEADER: InboundOrderHeaderRow = {
   notes: null,
 };
 
-const LINES = [
-  { line_key: 'L1', sku: 'A-1', item_name: 'Wrong title', sku_catalog_id: null, quantity_expected: 2, quantity_received: 1, unit_cost_cents: 500, listing_url: null },
-  { line_key: 'L2', sku: null, item_name: 'Saddle', sku_catalog_id: null, quantity_expected: 1, quantity_received: 0, unit_cost_cents: null, listing_url: null },
+const NO_EVIDENCE = {
+  purchase_condition_grade: null, listing_serials: null, listing_photo_ids: null,
+  return_reason: null, rma_ref: null, return_requested_on: null,
+  fnsku: null, license_plate_number: null, disposition: null, customer_comment: null,
+};
+const LINES: InboundOrderLineRow[] = [
+  { ...NO_EVIDENCE, id: 101, line_key: 'L1', sku: 'A-1', item_name: 'Wrong title', sku_catalog_id: null, quantity_expected: 2, quantity_received: 1, unit_cost_cents: 500, listing_url: null },
+  { ...NO_EVIDENCE, id: 102, line_key: 'L2', sku: null, item_name: 'Saddle', sku_catalog_id: null, quantity_expected: 1, quantity_received: 0, unit_cost_cents: null, listing_url: null },
 ];
 
 /** The draft the CSV landed with — its buyer account and item numbers live only in the ledger. */
@@ -89,6 +99,51 @@ test('a ledger payload of another order is ignored; Zoho and repair orders are r
   assert.deepEqual(record.draft.tracking, [{ number: '', carrier: '' }]);
   assert.match(inboundOrderEditRecordFrom({ header: { ...HEADER, source_type: 'zoho', source_platform: 'none' }, lines: [], tracking: [], ledgerPayload: null }).refusal ?? '', /Zoho/);
   assert.match(inboundOrderEditRecordFrom({ header: { ...HEADER, receiving_type: 'REPAIR' }, lines: [], tracking: [], ledgerPayload: null }).refusal ?? '', /repair/);
+});
+
+test('the listing evidence, return facts and every tracking number round-trip; listing photos ride lineEvidence', () => {
+  const tracking = Array.from({ length: 12 }, (_, i) => ({ tracking: `1Z999AA1012345${String(6700 + i)}`, carrier: 'UPS' }));
+  const record = inboundOrderEditRecordFrom({
+    header: { ...HEADER, receiving_type: 'RETURN' },
+    lines: [{
+      ...LINES[0],
+      purchase_condition_grade: 'USED_B',
+      listing_serials: ['SN-1', 'SN-2'],
+      listing_photo_ids: [7, 9],
+      return_reason: 'Defective', rma_ref: 'R-9', return_requested_on: '2026-10-01',
+      fnsku: 'X00A', license_plate_number: 'LPN1', disposition: 'CUSTOMER_DAMAGED', customer_comment: 'broken',
+    }],
+    tracking,
+    ledgerPayload: null,
+  });
+  const [line] = record.draft.lines;
+  assert.equal(line.conditionGrade, 'USED_B');
+  assert.deepEqual(line.listingSerials, ['SN-1', 'SN-2']);
+  assert.deepEqual([line.fnsku, line.licensePlateNumber, line.disposition, line.customerComment], ['X00A', 'LPN1', 'CUSTOMER_DAMAGED', 'broken']);
+  assert.deepEqual([record.draft.returnReason, record.draft.rmaId, record.draft.returnRequestDate], ['Defective', 'R-9', '2026-10-01']);
+  assert.equal(record.draft.tracking.length, 12, 'one PO in 10+ boxes keeps every number');
+  assert.deepEqual(record.lineEvidence, [{
+    lineKey: 'L1',
+    receivingLineId: 101,
+    listingPhotos: [{ id: 7, url: '/api/photos/7/content' }, { id: 9, url: '/api/photos/9/content' }],
+  }]);
+});
+
+test("a return line's own reason / RMA / request date round-trips only where it differs from the order's", () => {
+  const ret = { return_reason: 'Defective', rma_ref: 'R-9', return_requested_on: '2026-10-01' };
+  const record = inboundOrderEditRecordFrom({
+    header: { ...HEADER, receiving_type: 'RETURN' },
+    lines: [
+      { ...LINES[0], ...ret },
+      { ...LINES[1], ...ret, return_reason: 'Wrong item', return_requested_on: '2026-10-03' },
+    ],
+    tracking: [],
+    ledgerPayload: null,
+  });
+  assert.deepEqual([record.draft.returnReason, record.draft.rmaId, record.draft.returnRequestDate], ['Defective', 'R-9', '2026-10-01']);
+  const [first, second] = record.draft.lines;
+  assert.deepEqual([first.returnReason, first.rmaId, first.returnRequestDate], [undefined, undefined, undefined]);
+  assert.deepEqual([second.returnReason, second.rmaId, second.returnRequestDate], ['Wrong item', undefined, '2026-10-03']);
 });
 
 function fakeReads(rows: Record<string, unknown[]>): { deps: LoadInboundOrderEditDeps; sql: string[]; params: unknown[][] } {

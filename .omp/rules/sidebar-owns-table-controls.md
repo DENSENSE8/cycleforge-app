@@ -11,7 +11,7 @@ scope:
   - 'tool:write(**/src/**/*.tsx)'
   - 'tool:edit(**/src/**/*.tsx)'
 globs:
-  - '!{**/src/components/sidebar/**/*,**/src/components/layout/SidebarShell.tsx,**/src/design-system/**/*,**/src/components/tables/**/*,**/src/components/ui/FilterMenu.tsx,**/src/components/saved-views/WorkbenchViewsMenu.tsx,**/src/components/receiving/incoming/IncomingStatusChips.tsx,**/src/components/layout/GlobalHeaderSearch.tsx,**/src/app/m/**/*,**/src/components/mobile/**/*,**/src/components/outbound/orders/CsvImportStagingHost.tsx,**/src/components/sidebar/receiving/incoming/IncomingPoImportStagingHost.tsx,**/src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx,**/src/components/products/catalog/CatalogImportReview.tsx,**/*.test.*,*}'
+  - '!{**/src/components/sidebar/**/*,**/src/components/layout/SidebarShell.tsx,**/src/design-system/**/*,**/src/components/tables/**/*,**/src/components/ui/FilterMenu.tsx,**/src/components/saved-views/WorkbenchViewsMenu.tsx,**/src/components/receiving/incoming/IncomingStatusChips.tsx,**/src/components/layout/GlobalHeaderSearch.tsx,**/src/app/m/**/*,**/src/components/mobile/**/*,**/src/components/outbound/orders/CsvImportStagingHost.tsx,**/src/components/products/catalog/CatalogImportReview.tsx,**/*.test.*,*}'
 interruptMode: always
 ---
 STOP — this puts a record-selection control (filter, sort, date window, views, status chips, find) in the page body. Operator law 2026-10-04: every control that changes WHICH records show or IN WHAT ORDER lives in the LEFT contextual sidebar. Read `rule://sidebar-controls-contract`, then do this instead:
@@ -29,4 +29,4 @@ Not a selection control (stays in the body): layout / density / display toggles 
 
 Escape clause: "the sidebar can't do X" only with a citation of the missing field in `src/lib/nav/context/schema.ts`; then extend `NavControlsSchema` + `NavFilters`, never the page.
 
-Exempt (not this file): mobile `src/app/m/**` + `src/components/mobile/**` (pending mobile ruling); the four CSV staging surfaces (deferred: the three staging hosts + `src/components/products/catalog/CatalogImportReview.tsx`); `src/components/layout/GlobalHeaderSearch.tsx`; the control and sidebar homes (`src/components/sidebar/**`, `src/components/layout/SidebarShell.tsx`, `src/design-system/**`, `src/components/tables/**`, `src/components/ui/FilterMenu.tsx`).
+Exempt (not this file): mobile `src/app/m/**` + `src/components/mobile/**` (pending mobile ruling); the two CSV staging surfaces (deferred: `src/components/outbound/orders/CsvImportStagingHost.tsx` + `src/components/products/catalog/CatalogImportReview.tsx`); `src/components/layout/GlobalHeaderSearch.tsx`; the control and sidebar homes (`src/components/sidebar/**`, `src/components/layout/SidebarShell.tsx`, `src/design-system/**`, `src/components/tables/**`, `src/components/ui/FilterMenu.tsx`).

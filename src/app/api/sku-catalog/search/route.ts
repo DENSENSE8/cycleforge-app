@@ -6,6 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { escapeLike } from '@/lib/sql-like';
 import { getOrSet, createCacheLookupKey } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
+import { skuCatalogImageUrlSql } from '@/lib/photos/sku-catalog-image-sql';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
@@ -50,7 +51,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         return searchFromZohoCatalog(q, excludeSkuSuffix, limit, orgId);
       }
 
-      // `catalog`: the internal item master — SKU or title, no external mirror.
+      // `catalog`: the internal item master — SKU, title, UPC / EAN / GTIN / MPN,
+      // platform ids and external ids (ASIN, FNSKU, …); no external mirror rows.
       return searchFromCatalog(q, category, ecwidOnly, excludeSkuSuffix, limit, orgId, searchField === 'catalog');
     },
   );
@@ -337,28 +339,70 @@ async function searchFromCatalog(
   }
 
   if (excludeSkuSuffix) {
-    params.push(`%${excludeSkuSuffix}`);
+    params.push(`%${escapeLike(excludeSkuSuffix)}`);
     filterClauses.push(`sc.sku NOT ILIKE $${params.length}`);
   }
 
-  let exactIdx: number | null = null;
+  // Rank: exact SKU, then an exact identifier (UPC / EAN / GTIN / MPN /
+  // platform id / external id such as ASIN or FNSKU), then the rest by title.
+  let rankSql = '0';
   if (q) {
-    params.push(`%${q}%`);
+    params.push(`%${escapeLike(q)}%`);
     const likeIdx = params.length;
     params.push(q);
-    exactIdx = params.length;
+    const exactIdx = params.length;
+    const like = `$${likeIdx}`;
+    const exact = `UPPER($${exactIdx})`;
     filterClauses.push(
       matchTitle
-        ? `(sc.sku ILIKE $${likeIdx}
-            OR sc.product_title ILIKE $${likeIdx}
+        ? `(sc.sku ILIKE ${like}
+            OR sc.product_title ILIKE ${like}
+            OR sc.upc ILIKE ${like}
+            OR sc.ean ILIKE ${like}
+            OR sc.gtin ILIKE ${like}
+            OR sc.mpn ILIKE ${like}
             OR EXISTS (
               SELECT 1 FROM sku_platform_ids spi_search
                WHERE spi_search.organization_id = sc.organization_id
                  AND (spi_search.sku_catalog_id = sc.id OR spi_search.platform_sku = sc.sku)
-                 AND spi_search.platform_item_id ILIKE $${likeIdx}
+                 AND (spi_search.platform_item_id ILIKE ${like} OR spi_search.platform_sku ILIKE ${like})
+            )
+            OR EXISTS (
+              SELECT 1 FROM catalog_external_ids external_id
+               WHERE external_id.organization_id = sc.organization_id
+                 AND external_id.sku_catalog_id = sc.id
+                 AND (
+                   external_id.external_id ILIKE ${like}
+                   OR external_id.external_sku ILIKE ${like}
+                   OR external_id.external_name ILIKE ${like}
+                 )
             ))`
-        : `sc.sku ILIKE $${likeIdx}`,
+        : `sc.sku ILIKE ${like}`,
     );
+    rankSql = matchTitle
+      ? `CASE
+           WHEN UPPER(BTRIM(sc.sku)) = ${exact} THEN 0
+           WHEN UPPER(BTRIM(sc.upc)) = ${exact}
+             OR UPPER(BTRIM(sc.ean)) = ${exact}
+             OR UPPER(BTRIM(sc.gtin)) = ${exact}
+             OR UPPER(BTRIM(sc.mpn)) = ${exact}
+             OR EXISTS (
+               SELECT 1 FROM sku_platform_ids spi_exact
+                WHERE spi_exact.organization_id = sc.organization_id
+                  AND (spi_exact.sku_catalog_id = sc.id OR spi_exact.platform_sku = sc.sku)
+                  AND (UPPER(BTRIM(spi_exact.platform_item_id)) = ${exact}
+                       OR UPPER(BTRIM(spi_exact.platform_sku)) = ${exact})
+             )
+             OR EXISTS (
+               SELECT 1 FROM catalog_external_ids external_exact
+                WHERE external_exact.organization_id = sc.organization_id
+                  AND external_exact.sku_catalog_id = sc.id
+                  AND (UPPER(BTRIM(external_exact.external_id)) = ${exact}
+                       OR UPPER(BTRIM(external_exact.external_sku)) = ${exact})
+             ) THEN 1
+           ELSE 2
+         END`
+      : `CASE WHEN UPPER(sc.sku) = ${exact} THEN 0 ELSE 1 END`;
   }
 
   if (category) {
@@ -369,33 +413,40 @@ async function searchFromCatalog(
   params.push(limit);
   const limitIdx = params.length;
 
-  const orderBy = exactIdx
-    ? `CASE WHEN UPPER(sc.sku) = UPPER($${exactIdx}) THEN 0 ELSE 1 END, sc.product_title ASC`
-    : 'sc.product_title ASC';
-
-  const sql = `SELECT
+  // Rank + LIMIT first; the photo, the ecwid row and the platform ids are
+  // resolved only for the returned rows.
+  const sql = `WITH hits AS (
+       SELECT sc.id, ${rankSql} AS match_rank
+         FROM sku_catalog sc
+        WHERE ${filterClauses.join(' AND ')}
+        ORDER BY match_rank, sc.product_title ASC
+        LIMIT $${limitIdx}
+     )
+     SELECT
        sc.id,
        sc.sku,
        sc.sku AS zoho_sku,
        COALESCE(sp_ecwid.display_name, sc.product_title) AS product_title,
        sc.category,
        sc.upc,
-       COALESCE(sp_ecwid.image_url, sc.image_url) AS image_url,
+       COALESCE(${skuCatalogImageUrlSql('sc')}, sp_ecwid.image_url) AS image_url,
        sc.is_active,
-       COALESCE(
-         json_agg(
-           json_build_object(
-             'platform', sp.platform,
-             'platform_sku', sp.platform_sku,
-             'platform_item_id', sp.platform_item_id,
-             'account_name', sp.account_name
-           )
-         ) FILTER (WHERE sp.id IS NOT NULL),
-         '[]'
-       ) AS platform_ids
-     FROM sku_catalog sc
-     LEFT JOIN sku_platform_ids sp
-       ON (sp.sku_catalog_id = sc.id OR sp.platform_sku = sc.sku) AND sp.is_active = true${orgId ? '\n         AND sp.organization_id = sc.organization_id' : ''}
+       COALESCE(platforms.platform_ids, '[]'::json) AS platform_ids
+     FROM hits
+     JOIN sku_catalog sc ON sc.id = hits.id${orgId ? ' AND sc.organization_id = $1' : ''}
+     LEFT JOIN LATERAL (
+       SELECT json_agg(
+                json_build_object(
+                  'platform', sp.platform,
+                  'platform_sku', sp.platform_sku,
+                  'platform_item_id', sp.platform_item_id,
+                  'account_name', sp.account_name
+                )
+              ) AS platform_ids
+         FROM sku_platform_ids sp
+        WHERE (sp.sku_catalog_id = sc.id OR sp.platform_sku = sc.sku)
+          AND sp.is_active = true${orgId ? '\n          AND sp.organization_id = sc.organization_id' : ''}
+     ) platforms ON TRUE
      LEFT JOIN LATERAL (
        SELECT image_url, display_name
        FROM sku_platform_ids
@@ -405,10 +456,7 @@ async function searchFromCatalog(
        ORDER BY created_at DESC NULLS LAST
        LIMIT 1
      ) sp_ecwid ON TRUE
-     WHERE ${filterClauses.join(' AND ')}
-     GROUP BY sc.id, sp_ecwid.image_url, sp_ecwid.display_name
-     ORDER BY ${orderBy}
-     LIMIT $${limitIdx}`;
+     ORDER BY hits.match_rank, sc.product_title ASC`;
   const result = orgId
     ? await tenantQuery(orgId, sql, params)
     : await pool.query(sql, params);

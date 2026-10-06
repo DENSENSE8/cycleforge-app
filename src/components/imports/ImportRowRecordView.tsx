@@ -46,7 +46,7 @@ export function ImportRowRecordView({
         <EvidenceFacts>
           <EvidenceFact label="Order #" mono>{row.externalOrderId}</EvidenceFact>
           <EvidenceFact label="Order id" mono>{row.orderRowId ?? '—'}</EvidenceFact>
-          <EvidenceFact label="Channel">
+          <EvidenceFact label="Platform">
             {channel.label}
             {channel.connectionName ? ` · ${channel.connectionName}` : ''}
           </EvidenceFact>

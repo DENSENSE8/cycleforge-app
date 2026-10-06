@@ -1,33 +1,35 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { labelBatchFileName, labelBatchListQuerySchema, labelBatchPageFileName, labelBatchUploadWindow } from './contracts';
+import { labelBatchFileName, labelBatchPageFileName, labelBatchUploadFieldsSchema, warehouseDayWindow } from './contracts';
 
-test('upload window: a civil day opens at warehouse midnight and closes at the next', () => {
+test('day window: a civil day opens at warehouse midnight and closes at the next', () => {
   // PDT (UTC-7).
-  assert.deepEqual(labelBatchUploadWindow({ from: '2026-09-28', to: '2026-09-28' }), {
+  assert.deepEqual(warehouseDayWindow({ from: '2026-09-28', to: '2026-09-28' }), {
     fromIso: '2026-09-28T07:00:00.000Z',
     toIso: '2026-09-29T07:00:00.000Z',
   });
 });
 
-test('upload window: the DST fall-back day is 25 hours long', () => {
-  assert.deepEqual(labelBatchUploadWindow({ from: '2026-11-01', to: '2026-11-01' }), {
+test('day window: the DST fall-back day is 25 hours long', () => {
+  assert.deepEqual(warehouseDayWindow({ from: '2026-11-01', to: '2026-11-01' }), {
     fromIso: '2026-11-01T07:00:00.000Z',
     toIso: '2026-11-02T08:00:00.000Z',
   });
 });
 
-test('upload window: either side may be open; a reversed pair is swapped', () => {
-  assert.deepEqual(labelBatchUploadWindow({ from: '2026-09-28' }), { fromIso: '2026-09-28T07:00:00.000Z', toIso: null });
-  assert.deepEqual(labelBatchUploadWindow({ to: '2026-09-28' }), { fromIso: null, toIso: '2026-09-29T07:00:00.000Z' });
-  assert.deepEqual(labelBatchUploadWindow({}), { fromIso: null, toIso: null });
-  assert.deepEqual(labelBatchUploadWindow({ from: '2026-09-30', to: '2026-09-28' }), labelBatchUploadWindow({ from: '2026-09-28', to: '2026-09-30' }));
+test('day window: either side may be open; a reversed pair is swapped', () => {
+  assert.deepEqual(warehouseDayWindow({ from: '2026-09-28' }), { fromIso: '2026-09-28T07:00:00.000Z', toIso: null });
+  assert.deepEqual(warehouseDayWindow({ to: '2026-09-28' }), { fromIso: null, toIso: '2026-09-29T07:00:00.000Z' });
+  assert.deepEqual(warehouseDayWindow({}), { fromIso: null, toIso: null });
+  assert.deepEqual(warehouseDayWindow({ from: '2026-09-30', to: '2026-09-28' }), warehouseDayWindow({ from: '2026-09-28', to: '2026-09-30' }));
 });
 
-test('list query: dates must be civil YYYY-MM-DD, blank q is no filter', () => {
-  assert.equal(labelBatchListQuerySchema.safeParse({ from: '2026-09-28T00:00:00Z' }).success, false);
-  assert.equal(labelBatchListQuerySchema.safeParse({ organizationId: 'x' }).success, false);
-  assert.equal(labelBatchListQuerySchema.parse({ q: '   ' }).q, undefined);
+test('upload fields: a client event id, and only `stock=label` as the override', () => {
+  const clientEventId = '7d1c1f8e-2c3a-4b5d-8e9f-0a1b2c3d4e5f';
+  assert.ok(labelBatchUploadFieldsSchema.safeParse({ clientEventId }).success);
+  assert.ok(labelBatchUploadFieldsSchema.safeParse({ clientEventId, stock: 'label' }).success);
+  assert.equal(labelBatchUploadFieldsSchema.safeParse({ clientEventId, stock: 'paper' }).success, false);
+  assert.equal(labelBatchUploadFieldsSchema.safeParse({ clientEventId, organizationId: 'x' }).success, false);
 });
 
 test('page names: <base>-p<n>.pdf; a one-page PDF keeps its own name', () => {

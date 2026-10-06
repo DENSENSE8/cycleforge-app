@@ -5,6 +5,7 @@ import {
   blockedOrderStatus,
   scanOutBlockedMessage,
   scanOutBlockReason,
+  scanOutCanRegister,
   scanOutKnownShipment,
   scanOutLabel,
   type ScanOutContext,
@@ -14,6 +15,22 @@ import {
 } from './scan-out';
 
 const ORG = '00000000-0000-0000-0000-00000000000a';
+
+/** Enough of an anonymous session for the writer to thread into the audit. */
+function auditRequestCtx(staffId: number): ScanOutAuditRequest['ctx'] {
+  return {
+    user: null,
+    session: null,
+    staffId,
+    organizationId: ORG,
+    role: null,
+    permissions: new Set(),
+    authorizationMode: null,
+    storedPermissions: new Set(),
+    can: () => false,
+    markAuditWritten: () => {},
+  };
+}
 
 function context(over: Partial<ScanOutContext['carton']> = {}, carrier: Partial<ScanOutContext> = {}): ScanOutContext {
   return {
@@ -107,7 +124,7 @@ function assertNoWrites(cap: Captured) {
 
 test('an unresolvable label is held as an outbound unmatched scan and audited, with no scan-out', async () => {
   const { deps, cap } = fakes({ shipmentId: null });
-  const reqCtx = { organizationId: ORG, staffId: 5 } as unknown as ScanOutAuditRequest['ctx'];
+  const reqCtx = auditRequestCtx(5);
   const out = await scanOutLabel(
     { ...bulk, scan: 'X-UNKNOWN-1', origin: 'dock', actorStaffId: 8, auditRequest: { ctx: reqCtx, req: null } },
     deps,
@@ -173,15 +190,12 @@ test('a cancelled order is refused before scan-out, regardless of carrier status
   assertNoWrites(cap);
 });
 
-test('an unpacked order is refused before duplicate lookup and writes nothing', async () => {
-  const { deps, cap } = fakes({
-    ctx: context({}, { isPacked: false }),
-    existing: { createdAt: '2026-09-20 10:00:00' },
-  });
-  const out = await scanOutLabel(bulk, deps);
-  assert.equal(out.kind, 'blocked');
-  assert.equal(out.kind === 'blocked' && out.blockReason, 'not_packed');
-  assertNoWrites(cap);
+test('an unpacked order still scans out', async () => {
+  const { deps, cap } = fakes({ ctx: context({}, { isPacked: false }) });
+  const out = await scanOutLabel({ ...bulk, origin: 'dock' }, deps);
+  assert.equal(out.kind, 'confirmed');
+  assert.equal(cap.created.length, 1);
+  assert.equal(cap.unmatched.length, 0);
 });
 
 test('carrier-delivered and terminal packages still scan out', async () => {
@@ -234,7 +248,7 @@ test('bulk origin writes SHIP_CONFIRM + system audit attributed to the actor and
 test('desk selection threads the request ctx into the audit and flags the event; a failing mirror does not fail the scan', async () => {
   const { deps, cap } = fakes({ mirrorThrows: true });
   // A stand-in session: only identity matters — the domain threads it through untouched.
-  const reqCtx = { organizationId: ORG, staffId: 5 } as unknown as ScanOutAuditRequest['ctx'];
+  const reqCtx = auditRequestCtx(5);
   const out = await scanOutLabel(
     { ...bulk, origin: 'desk-selection', actorStaffId: 8, auditRequest: { ctx: reqCtx, req: null } },
     deps,
@@ -297,13 +311,17 @@ test('a replayed dock miss on a cancelled order is still refused', async () => {
   assertNoWrites(cap);
 });
 
-test('scan-out preconditions name cancellation and missing pack records', () => {
+test('scan-out refuses a cancelled order and records any other label', () => {
   assert.equal(blockedOrderStatus('CANCELLED'), 'cancelled');
   assert.equal(blockedOrderStatus('packed'), null);
   assert.equal(blockedOrderStatus(null), null);
   assert.equal(blockedOrderStatus('constructor'), null);
-  assert.equal(scanOutBlockReason('packed', false), 'not_packed');
-  assert.equal(scanOutBlockReason(' Canceled ', true), 'canceled');
-  assert.equal(scanOutBlockReason('packed', true), null);
-  assert.equal(scanOutBlockedMessage('not_packed'), 'Order is not packed — pack it before scan-out.');
+  assert.equal(scanOutBlockReason('packed'), null);
+  assert.equal(scanOutBlockReason(' Canceled '), 'canceled');
+  assert.equal(scanOutBlockedMessage('canceled'), 'Order is cancelled — do not ship. Pull this package.');
+  assert.equal(scanOutCanRegister('FBA15ABCDEFGH'), true);
+  assert.equal(scanOutCanRegister('1Z999AA10123456784'), true);
+  assert.equal(scanOutCanRegister('X001234567'), false);
+  assert.equal(scanOutCanRegister('SKU:2'), false);
+  assert.equal(scanOutCanRegister('1234'), false);
 });

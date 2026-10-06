@@ -1,11 +1,12 @@
 /** Station side of a phone-sent FNSKU reprint (`grain: 'fnsku'`), and the Print station's own "this computer" press. */
 
 import type { StaffPrintFnskuPayload } from '@/lib/print/staff-print-bridge';
+import { fnskuConditionMissing, fnskuConditionRequiredMessage } from '@/lib/print-station/fnsku';
 import { silentRawLabelProfile } from '@/lib/print/browserPrint';
 import { readPrintStation } from '@/lib/print/print-station';
 import { beginWork } from '@/lib/background-work/store';
 
-type FnskuCatalogRow = { fnsku: string; product_title: string | null; condition: string | null };
+type FnskuCatalogRow = { fnsku: string; product_title: string | null; condition: string | null; label_mark: string | null };
 
 export interface FnskuStationJobOutcome {
   /** Stickers sent to the printer (the dialog counts every copy it was handed). */
@@ -96,12 +97,19 @@ async function printFnsku(
   }
   const row = ((await res.json()) as { fnsku?: FnskuCatalogRow }).fnsku;
   if (!row?.fnsku) return refused(`Could not load ${job.fnsku} for its label`);
+  // The sticker prints the condition. A blank catalog value must not reach the head,
+  // including a silent job that another computer already sent.
+  if (fnskuConditionMissing(row.condition)) return refused(fnskuConditionRequiredMessage(row.fnsku));
 
   // Dynamic on purpose: the bridge host mounts on every desk page, and a static
   // import would put bwip-js (~250 KB gz) in all of them — load it on the print.
   const { printFnskuLabelJob } = await import('@/lib/print/fnskuLabel');
   // A test print is the real face (owner 2026-10-04: barcode, FNSKU, title, condition — never a print stamp).
-  const run = await printFnskuLabelJob({ fnsku: row.fnsku, title: row.product_title ?? '', condition: row.condition ?? '' }, job.copies, control);
+  const run = await printFnskuLabelJob(
+    { fnsku: row.fnsku, title: row.product_title ?? '', condition: row.condition ?? '', mark: row.label_mark },
+    job.copies,
+    control,
+  );
 
   // A test print is not a reprint: nothing is logged, so the reprint count stays true.
   if (job.test || run.printed === 0) return { printed: run.printed, cancelled: run.cancelled, failure: null };

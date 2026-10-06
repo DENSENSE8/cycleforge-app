@@ -22,7 +22,7 @@ export async function GET(
 
     const result = await tenantQuery(
       gate.ctx.organizationId,
-      `SELECT fnsku, product_title, asin, sku, condition, is_active, last_seen_at, created_at, updated_at
+      `SELECT fnsku, product_title, asin, sku, condition, label_mark, is_active, last_seen_at, created_at, updated_at
        FROM fba_fnskus
        WHERE fnsku = $1 AND organization_id = $2`,
       [normalizedFnsku, gate.ctx.organizationId]
@@ -44,8 +44,9 @@ export async function GET(
 
 // ── PATCH /api/admin/fba-fnskus/[fnsku] ──────────────────────────────────────
 // Update mutable metadata on an FNSKU.
-// Body (all optional): { product_title, asin, sku, condition, is_active }. `condition` is an
-// FBA_CONDITIONS value or null (cleared) — it prints on the FNSKU label.
+// Body (all optional): { product_title, asin, sku, condition, label_mark, is_active }. `condition` is an
+// FBA_CONDITIONS value or null (cleared) — it prints on the FNSKU label. `label_mark` is the
+// bottom-right corner; null prints the color or series read from the title.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Params }
@@ -74,6 +75,7 @@ export async function PATCH(
     if ('asin' in body) setField('asin', String(body.asin || '').trim().toUpperCase() || null);
     if ('sku' in body) setField('sku', body.sku || null);
     if ('is_active' in body) setField('is_active', Boolean(body.is_active));
+    if ('label_mark' in body) setField('label_mark', String(body.label_mark ?? '').trim().slice(0, 40) || null);
     if ('condition' in body) {
       if (body.condition !== null && !isFbaConditionValue(body.condition)) {
         return NextResponse.json({ success: false, error: 'Unknown condition' }, { status: 400 });

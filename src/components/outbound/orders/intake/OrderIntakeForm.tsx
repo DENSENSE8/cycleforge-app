@@ -470,9 +470,9 @@ export function OrderIntakeForm({
               value={channelOptions.find((o) => o.value.toLowerCase() === state.channel.toLowerCase())?.value ?? null}
               onChange={(value) => value != null && patch({ channel: String(value) })}
               options={channelOptions}
-              label="Channel"
-              placeholder="Pick the channel"
-              ariaLabel="Channel"
+              label="Platform"
+              placeholder="Pick the platform"
+              ariaLabel="Platform"
               disabled={bound}
               testId="intake-channel"
               className="h-11 rounded-mode-control px-3.5 pb-1 pt-5 text-sm"

@@ -75,6 +75,24 @@ test('G2 passes on the explicit "does not require documents" exemption', () => {
   assert.equal(gate({ ...GREEN, linkedDocumentCount: 0, docsNotRequired: true }, 'G2').passed, true);
 });
 
+test('G2 passes when the SKU never ships with paperwork (SKU-level Not required)', () => {
+  const g = gate(
+    { ...GREEN, linkedDocumentCount: 0, docsNotRequired: false, skuPaperworkNotRequired: true },
+    'G2',
+  );
+  assert.equal(g.passed, true);
+  assert.equal(g.reason, null);
+});
+
+test('G2 SKU exemption is its own fact — a cleared SKU flag does not exempt the line', () => {
+  const g = gate(
+    { ...GREEN, linkedDocumentCount: 0, docsNotRequired: false, skuPaperworkNotRequired: false },
+    'G2',
+  );
+  assert.equal(g.passed, false);
+  assert.match(g.reason ?? '', /SKU/);
+});
+
 test('G2 fails with no documents and no exemption', () => {
   const g = gate({ ...GREEN, linkedDocumentCount: 0, docsNotRequired: false }, 'G2');
   assert.equal(g.passed, false);

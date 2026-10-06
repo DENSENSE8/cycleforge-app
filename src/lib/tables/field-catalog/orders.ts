@@ -156,7 +156,7 @@ const ORDERS_INDEX_ONLY_FIELDS = [
   {
     id: 'orders.channel',
     family: 'orders',
-    label: 'Channel',
+    label: 'Platform',
     displayType: 'tag',
     slotKinds: ['status'],
     paths: { value: 'account_source', fba: 'fulfillment_channel' },

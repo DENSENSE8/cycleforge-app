@@ -6,7 +6,7 @@ import { useFocusTrap } from '@/design-system/hooks';
 import {
   X, Download, ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
   AlertCircle, Trash2, Info, RotateCcw, RefreshCw, ExternalLink, ArrowLeftRight, MoreVertical,
-  Upload, Loader2,
+  Upload, Loader2, Ticket,
 } from '../../Icons';
 import { PhotoContextPanel } from './PhotoContextPanel';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -78,6 +78,10 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const allPhotosError = photoItems.every((p) => p.full === 'error' || p.status === 'error');
   const canDownloadCurrent = !g.downloading && !currentPhotoError;
   const canDownloadAll = !g.downloading && !allPhotosError && photoItems.length > 0;
+  // A generic single-photo lightbox has no entity-level actions. Do not show a
+  // menu trigger that opens an empty menu; when a host supplies an action, the
+  // same shared menu becomes available without page-specific viewer chrome.
+  const hasMoreActions = Boolean(g.canUpload || g.libraryHref || g.canReassignCurrent || g.onSendToTicket);
 
   // Close overflow menus when the photo changes; keep the viewer open.
   useEffect(() => {
@@ -305,7 +309,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
           {/* More actions (⋮) → Details → Download → Delete → Close (fixed
               order). Upload and other secondary actions live inside the ⋮ menu
               so the inline toolbar is an identical, minimal row on every page. */}
-          <div ref={moreRef} className="relative">
+          {hasMoreActions ? <div ref={moreRef} className="relative">
             <HoverTooltip label="More actions" asChild>
               <IconButton
                 onClick={(e) => {
@@ -387,10 +391,26 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                       Move to another PO
                     </button>
                   ) : null}
+
+                  {g.onSendToTicket ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMoreOpen(false);
+                        g.onSendToTicket?.();
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15"
+                    >
+                      <Ticket className="h-4 w-4 shrink-0" />
+                      Send to ticket
+                    </button>
+                  ) : null}
                 </motion.div>
               ) : null}
             </AnimatePresence>
-          </div>
+          </div> : null}
 
           {/* Details toggle — a persistent primary control (industry standard for image viewers: */}
           <HoverTooltip label={g.panelOpen ? 'Hide details (i)' : 'Show details (i)'} asChild>

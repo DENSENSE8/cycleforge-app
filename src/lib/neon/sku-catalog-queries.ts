@@ -1,4 +1,5 @@
 import pool from '../db';
+import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { upsertSkuPackProfileLink } from '@/lib/neon/pack-profile-links';
@@ -794,7 +795,7 @@ export async function getKitPartsForCatalogIds(
   return out;
 }
 
-/** Create one kit part (BOM row) under a SKU. */
+/** Create one kit part (BOM row) under a SKU; `client` runs it inside the caller's tenant transaction. */
 export async function createKitPart(
   params: {
     skuCatalogId: number;
@@ -809,6 +810,7 @@ export async function createKitPart(
     documentMime?: string | null;
   },
   orgId?: OrgId,
+  client?: PoolClient,
 ): Promise<SkuKitPartRow> {
   const requiredForArr =
     params.requiredFor != null && params.requiredFor.length > 0 ? params.requiredFor : null;
@@ -841,11 +843,12 @@ export async function createKitPart(
      WHERE id = $1 AND is_active = false${orgId ? ' AND organization_id = $2' : ''}`;
 
   if (orgId) {
-    return await withTenantTransaction(orgId, async (client) => {
-      const result = await client.query<SkuKitPartRow>(insertSql, insertValues);
-      await client.query(reactivateSql, [params.skuCatalogId, orgId]);
+    const write = async (tx: PoolClient) => {
+      const result = await tx.query<SkuKitPartRow>(insertSql, insertValues);
+      await tx.query(reactivateSql, [params.skuCatalogId, orgId]);
       return result.rows[0];
-    });
+    };
+    return client ? write(client) : withTenantTransaction(orgId, write);
   }
 
   const result = await pool.query<SkuKitPartRow>(insertSql, insertValues);

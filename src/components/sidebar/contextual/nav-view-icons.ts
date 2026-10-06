@@ -36,7 +36,6 @@ import {
   Share2,
   ShieldCheck,
   ShoppingCart,
-  ShippingModeFba,
   Tags,
   Star,
   TicketHelp,
@@ -81,12 +80,6 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'outbound.triage': { icon: Truck, tone: 'text-blue-600' },
   'outbound.shipped': { icon: PackageCheck, tone: 'text-emerald-600' },
   'outbound.exceptions': { icon: AlertTriangle, tone: 'text-amber-600', alertCount: true },
-  // Fulfilled saved views — same glyphs the lane row's children wear.
-  'fulfilled.all': { icon: List, tone: 'text-emerald-600' },
-  'fulfilled.online': { icon: ShoppingCart, tone: 'text-emerald-700' },
-  'fulfilled.fba': { icon: ShippingModeFba, tone: 'text-purple-600' },
-  'fulfilled.sku': { icon: Tags, tone: 'text-teal-600' },
-  'fulfilled.delivered': { icon: Check, tone: 'text-emerald-500' },
   // Deliveries lifecycle: three distinct inks make the switcher scannable
   // before its label — inbound transit, docked package, opened carton.
   'incoming.pipeline': { icon: Truck, tone: 'text-blue-600' },
@@ -156,12 +149,11 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'fba.shipped': { icon: PackageCheck, tone: 'text-purple-700' },
   'fba.catalog': { icon: Barcode, tone: 'text-violet-700' },
   // Labels & docs: every terminal job has its own ink so the switcher scans
-  // by icon before text — Allocate, intake, label, document, history.
+  // by icon before text — Allocate, Bulk intake, Orders, history.
+  'label-intake.allocate': { icon: Truck, tone: 'text-indigo-600' },
   'label-intake.uploads': { icon: Upload, tone: 'text-cyan-600' },
-  'label-intake.orders': { icon: Truck, tone: 'text-indigo-600' },
+  'label-intake.orders': { icon: ClipboardList, tone: 'text-amber-600' },
   'label-intake.label-intake': { icon: Printer, tone: 'text-teal-600' },
-  'label-intake.labels': { icon: Printer, tone: 'text-teal-600' },
-  'label-intake.paperwork': { icon: FileText, tone: 'text-amber-600' },
   'label-intake.printed': { icon: History, tone: 'text-violet-600' },
   // Sourcing wears its lane row's indigo; the same glyphs as its nav children.
   'sourcing.queue': { icon: AlertCircle, tone: 'text-amber-600' },

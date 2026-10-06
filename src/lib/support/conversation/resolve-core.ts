@@ -5,9 +5,9 @@
  */
 import type { OrgId } from '@/lib/tenancy/constants';
 
-import type { SupportResolveBlocker } from './model';
+import type { CheckInOutcome, SupportResolveBlocker } from './model';
 import type { SupportTransaction } from './store';
-import { resolveInStore } from './transitions';
+import { resolveInStore, type ResolveRefusal } from './transitions';
 
 export interface ResolveSupportItemInput {
   orgId: OrgId;
@@ -16,13 +16,15 @@ export interface ResolveSupportItemInput {
   reason?: string | null;
   override?: boolean;
   checkInDisposition?: 'resolved' | 'no_response_closed' | null;
+  /** Required with `checkInDisposition: 'resolved'`, refused with anything else. */
+  checkInOutcome?: CheckInOutcome | null;
 }
 
 export type ResolveSupportItemResult =
   | { ok: true; idempotent: boolean; override: boolean; blockers: SupportResolveBlocker[] }
   | { ok: false; status: 404; error: string }
   | { ok: false; status: 409; error: 'blocked'; blockers: SupportResolveBlocker[] }
-  | { ok: false; status: 422; error: 'reason_required' };
+  | { ok: false; status: 422; error: ResolveRefusal };
 
 export interface ResolveSupportItemDeps {
   transaction: SupportTransaction;
@@ -47,6 +49,7 @@ export async function resolveSupportItemCore(
       reason,
       override: input.override === true,
       checkInDisposition: input.checkInDisposition ?? null,
+      checkInOutcome: input.checkInOutcome ?? null,
       nowMs: d.now(),
     });
     if (result.ok) return result;

@@ -65,7 +65,7 @@ function OrderInfoInner() {
               <DetailFact label="Item #" value={itemNumber || null} mono copy={itemNumber} />
               <DetailFact label="Quantity" value={String(Number(work?.product.quantity ?? order.quantity) || 1)} />
               <DetailFact label="Condition" value={isEmptyMetaDash(condition) ? null : condition} />
-              <DetailFact label="Channel" value={orderChannel(work?.source ?? order.account_source) ?? null} />
+              <DetailFact label="Platform" value={orderChannel(work?.source ?? order.account_source) ?? null} />
             </DetailFacts>
             <DetailSectionHeading>Shipping</DetailSectionHeading>
             <DetailFacts label="Shipping">

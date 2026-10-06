@@ -13,10 +13,10 @@ import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import { requestConfirm } from '@/design-system/components/confirm';
 import type { PrintStations } from '@/hooks/usePrintStations';
-import { LABEL_BATCHES_QUERY_ROOT } from '@/lib/label-batches/http-client';
 import { LABEL_INGESTIONS_QUERY_KEY } from '@/lib/label-ingestions/http-client';
 import { currentPrintRoute } from '@/lib/label-prints/current-print-route';
 import { LABEL_PRINTS_QUERY_ROOT } from '@/lib/label-prints/http-client';
+import { PRINT_FILES_KEY_ROOT } from '@/lib/label-prints/print-files-client';
 import { printDocuments, type DeskDocument, type PrintOutcome } from '@/lib/label-prints/print-labels';
 import type { PrintStock } from '@/lib/label-prints/print-route';
 import { readPrintStation } from '@/lib/print/print-station';
@@ -36,7 +36,7 @@ export interface PressInput {
   confirm?: string | null;
 }
 
-/** What a label carries that the reprint warning names. */
+/** What a printed document (label or paperwork) carries that the reprint warning names. */
 export interface PrintedLabelFace {
   name: string;
   printCount: number;
@@ -49,7 +49,7 @@ const WHEN = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric'
 
 /**
  * The warn-before-reprinting sentence for a press, or null when nothing in it
- * was printed before (owner 2026-09-28). Names the first printed label with
+ * was printed before (owner 2026-09-28). Names the first printed document with
  * its count and last print so the operator can tell a real reprint from a
  * double-press; the rest are counted.
  */
@@ -63,9 +63,9 @@ export function reprintWarning(labels: readonly PrintedLabelFace[]): string | nu
     first.lastStationName,
   ].filter(Boolean).join(' · ');
   const lead = `${first.name} was printed ${first.printCount === 1 ? 'once' : `${first.printCount} times`}${last ? ` (last ${last})` : ''}.`;
-  const more = printed.length > 1 ? ` ${printed.length - 1} more label${printed.length === 2 ? ' was' : 's were'} printed before too.` : '';
+  const more = printed.length > 1 ? ` ${printed.length - 1} more document${printed.length === 2 ? ' was' : 's were'} printed before too.` : '';
   const fresh = labels.length - printed.length;
-  const of = fresh === 0 ? '' : fresh === 1 ? ' The other label prints for the first time.' : ` The other ${fresh} print for the first time.`;
+  const of = fresh === 0 ? '' : fresh === 1 ? ' The other document prints for the first time.' : ` The other ${fresh} print for the first time.`;
   return `${lead}${more}${of}`;
 }
 
@@ -104,7 +104,7 @@ export function useDeskPress(stations: PrintStations, refreshRoutes: () => void)
   const refresh = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: LABEL_PRINTS_QUERY_ROOT }),
-      queryClient.invalidateQueries({ queryKey: LABEL_BATCHES_QUERY_ROOT }),
+      queryClient.invalidateQueries({ queryKey: PRINT_FILES_KEY_ROOT }),
       // The ingestion ledger AND every label's print log (`['v1', 'label-ingestions', id, 'prints']`).
       queryClient.invalidateQueries({ queryKey: LABEL_INGESTIONS_QUERY_KEY }),
     ]);

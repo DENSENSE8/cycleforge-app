@@ -1,7 +1,6 @@
 'use client';
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { ShippedSearchField } from '@/lib/shipped-search';
 import {
   ZERO_QUEUE_COUNTS,
@@ -393,105 +392,4 @@ export async function fetchDashboardShippedData({
   // When shippedFilter is provided the server already scopes the results;
   // fall back to client-side FBA exclusion only for backward-compat callers.
   return shippedFilter ? records : records.filter(isNonFbaRecord);
-}
-
-export async function fetchDashboardPackedRecords({
-  packedBy,
-  staffId,
-  weekStart,
-  weekEnd,
-  shippedFilter,
-  carrier,
-  channel,
-  cardStatus,
-  statusCategory,
-  exceptionsOnly = false,
-  searchTerm = '',
-  shippedTime = null,
-  pickedBy,
-  limit = 1000,
-  offset = 0,
-  phase = 'full',
-  sort = null,
-}: {
-  packedBy?: number;
-  staffId?: number;
-  weekStart?: string;
-  weekEnd?: string;
-  shippedFilter?: string;
-  /** Shipped desk view filters, answered in SQL by `/api/packerlogs` (one predicate with the facet counts). */
-  carrier?: string | null;
-  statusCategory?: string | null;
-  /** `?channel` — comma-separated, lower-cased. Same predicate as the facet counts. */
-  channel?: string | null;
-  /** `?cardStatus` — package-status pills, comma list. Same predicate as the facet counts. */
-  cardStatus?: string | null;
-  exceptionsOnly?: boolean;
-  /** The desk's find text, answered in SQL by `/api/packerlogs?q=`. */
-  searchTerm?: string;
-  /** Exact shipped-instant window (`?dateFrom/dateTo` + `?timeFrom/timeTo`); null = none. */
-  shippedTime?: { dateFrom: string; dateTo: string; timeFrom?: string; timeTo?: string } | null;
-  /** `?pickedBy` — the order's picker. */
-  pickedBy?: number;
-  limit?: number;
-  offset?: number;
-  /** Spine-first: 'spine' returns immediate-paint columns only (deferred fields
-   *  arrive via fetchShippedHydration); 'full' is the complete row (default). */
-  phase?: 'spine' | 'full';
-  sort?: string | null;
-}) {
-  const params = new URLSearchParams({ limit: String(limit) });
-  if (offset) params.set('offset', String(offset));
-  if (weekStart) params.set('weekStart', weekStart);
-  if (weekEnd) params.set('weekEnd', weekEnd);
-  if (packedBy !== undefined) params.set('packedBy', String(packedBy));
-  if (staffId !== undefined) params.set('staff', String(staffId));
-  if (shippedFilter) params.set('shippedFilter', shippedFilter);
-  if (carrier) params.set('carrier', carrier);
-  if (statusCategory) params.set('statusCategory', statusCategory);
-  if (channel) params.set('channel', channel);
-  if (cardStatus) params.set('cardStatus', cardStatus);
-  if (exceptionsOnly) params.set('exceptions', '1');
-  if (searchTerm.trim()) params.set('q', searchTerm.trim());
-  if (shippedTime) {
-    params.set('dateFrom', shippedTime.dateFrom);
-    params.set('dateTo', shippedTime.dateTo);
-    if (shippedTime.timeFrom) params.set('timeFrom', shippedTime.timeFrom);
-    if (shippedTime.timeTo) params.set('timeTo', shippedTime.timeTo);
-  }
-  if (pickedBy !== undefined) params.set('pickedBy', String(pickedBy));
-  if (phase === 'spine') params.set('phase', 'spine');
-  if (sort && sort !== 'ship_confirmed_at') params.set('sort', sort);
-
-  const res = await fetch(`/api/packerlogs?${params.toString()}`, FRESH_FETCH_OPTIONS);
-  if (!res.ok) {
-    throw new Error('Failed to fetch packed records');
-  }
-
-  const data = await res.json();
-  return (Array.isArray(data) ? data : []) as PackerRecord[];
-}
-
-/** Spine-first deferred fields, keyed by station_activity_logs id. */
-export interface ShippedHydrationEntry {
-  ship_by_date: string | null;
-  deadline_at: string | null;
-  packer_photos_url: Array<{ id: number; url: string; uploadedAt: string }>;
-}
-
-/** Fetch the deferred (work_assignments deadline + photos) fields for a page of shipped rows so the spine-first table can fill them… */
-export async function fetchShippedHydration(salIds: number[]): Promise<Record<number, ShippedHydrationEntry>> {
-  if (salIds.length === 0) return {};
-  try {
-    const res = await fetch('/api/packerlogs/hydrate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ salIds }),
-    });
-    if (!res.ok) return {};
-    const data = await res.json();
-    return (data && typeof data === 'object' ? data : {}) as Record<number, ShippedHydrationEntry>;
-  } catch {
-    return {};
-  }
 }

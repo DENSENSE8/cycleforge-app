@@ -106,6 +106,11 @@ export interface TriageFamily<Row, Model extends TriageCardModelBase<Row>> {
   section?: (band: string) => { label: string; tone: TriageSectionTone };
   /** A Find that names exactly one card opens it (`query` is trimmed, lower-cased). */
   exactFind?: (query: string, model: Model) => boolean;
+  /**
+   * The card folds its lines beneath it (`TriageRow` `expansion`): → unfolds,
+   * ← folds the card under the cursor (else the open / cursor record's card).
+   */
+  expandable?: boolean;
   renderCard: (props: TriageCardSlotProps<Row, Model>) => ReactNode;
 }
 
@@ -167,6 +172,12 @@ export interface TriageFeed<Row> {
   open: {
     /** The open record's id, or null. */
     id: number | null;
+    /**
+     * The row the J/K cursor stands on when the host previews it elsewhere
+     * instead of opening a record (Bulk's selection pane). X checks it like an
+     * open record; nothing opens in the plane.
+     */
+    cursorId?: number | null;
     open: (row: Row, event?: RecordOpenEvent) => void;
     close: () => void;
   };
@@ -232,6 +243,8 @@ export interface TriageCardListProps<Row, Model extends TriageCardModelBase<Row>
    * The family's `renderCard` switches its face on the same value.
    */
   densityControl?: TriageDensityControl;
+  /** Paint the list focus mode toggle (`ListFocusToggle`) as the bar's last control. */
+  focusToggle?: boolean;
   /** Replace host bands with stable first-seen state bands and derive their headers. */
   sections?: 'by-state';
 }
@@ -252,6 +265,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
   density: fixedDensity = 'card',
   rowScroll = false,
   densityControl,
+  focusToggle,
 }: TriageCardListProps<Row, Model, K>) {
   const density = densityControl?.value ?? fixedDensity;
   const { rowId, groupKey } = family;
@@ -414,7 +428,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
   useTriageCardKeys({
     enabled: true,
     rootRef: scrollRef,
-    openKey: openId != null ? String(openId) : null,
+    openKey: openId != null ? String(openId) : open.cursorId != null ? String(open.cursorId) : null,
     onCheck: (recordKey, event) => {
       const card = cardOf(recordKey);
       if (card) toggleCheck(card, event);
@@ -427,6 +441,19 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
       const card = cardOf(recordKey);
       if (card) openRow(card.lead);
     },
+    onExpand: family.expandable
+      ? (recordKey, on) => {
+          const card = cardOf(recordKey);
+          if (!card) return;
+          setExpanded((prev) => {
+            if (prev.has(card.key) === on) return prev;
+            const next = new Set(prev);
+            if (on) next.add(card.key);
+            else next.delete(card.key);
+            return next;
+          });
+        }
+      : undefined,
   });
 
   // ── Find an exact record name → open it ───────────────────────────────────
@@ -607,6 +634,7 @@ export function TriageCardList<Row, Model extends TriageCardModelBase<Row>, K ex
       // A rail desk has one view — nothing to switch.
       viewControls={!railBar}
       densityControl={densityControl}
+      focusToggle={focusToggle}
     />
   );
   const list = (

@@ -8,6 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveShipmentOrgId } from './resolve-shipment-org';
 import { extractCanonicalTracking } from '@/lib/tracking-format';
 import { shippingCredentialRecoveryPredicate } from './credential-recovery';
+import { missingCarrierCredentials } from './carrier-credentials';
 
 // ─── Tenancy note ─────────────────────────────────────────────────────────────
 
@@ -170,9 +171,11 @@ export async function getDueShipments(
     params.push([...ENABLED_SYNC_CARRIERS]);
     const enabledCarrierParam = `$${params.length}::text[]`;
     const credentialRecovery = shippingCredentialRecoveryPredicate({
-      ups: Boolean(process.env.UPS_CLIENT_ID?.trim() && process.env.UPS_CLIENT_SECRET?.trim()),
-      fedex: Boolean(process.env.FEDEX_CLIENT_ID?.trim() && process.env.FEDEX_CLIENT_SECRET?.trim()),
+      ups: missingCarrierCredentials('UPS').length === 0,
+      fedex: missingCarrierCredentials('FEDEX').length === 0,
     });
+    // next_check_at alone paces retries: updateShipmentError owns the backoff
+    // (a row failing 5+ times in a row retries every 12h, never stranded).
     const dueNow = credentialRecovery
       ? `((next_check_at IS NULL OR next_check_at <= now()) OR ${credentialRecovery})`
       : `(next_check_at IS NULL OR next_check_at <= now())`;
@@ -182,14 +185,6 @@ export async function getDueShipments(
       // `upper(carrier)`, not `carrier`: see isCarrierSyncEnabled. A lowercase
       // row must not fall out of the sweep silently.
       `upper(carrier) = ANY(${enabledCarrierParam})`,
-      // Retry repeatedly failing rows once per day. A hard cap permanently
-      // stranded shipments after credentials were repaired; next_check_at
-      // already supplies exponential backoff and a 24h auth-error cadence.
-      credentialRecovery
-        ? `(consecutive_error_count < 5
-          OR last_checked_at <= now() - INTERVAL '24 hours'
-          OR ${credentialRecovery})`
-        : `(consecutive_error_count < 5 OR last_checked_at <= now() - INTERVAL '24 hours')`,
     ];
 
     if (carriers && carriers.length > 0) {
@@ -240,6 +235,66 @@ export async function getDueShipments(
   } finally {
     client.release();
   }
+}
+
+/** One open shipment the resync re-polls, with the facts its summary prints. */
+export interface ResyncCandidate {
+  id: number;
+  organizationId: OrgId | null;
+  carrier: string;
+  trackingNumber: string;
+  previousStatus: string | null;
+  consecutiveErrorCount: number;
+  nextCheckAt: string | null;
+}
+
+/**
+ * Open (non-terminal) shipments of `carriers` for the operator resync —
+ * IGNORING next_check_at and the error backoff, which is the point: it re-polls
+ * what the sweep is waiting out. Cross-org (owner pool); each row carries its
+ * org so the poll is written under it. `onlyFailing` keeps rows whose latest
+ * poll failed; `tracking` narrows to one number. Failing first, then the
+ * rows longest unpolled.
+ */
+export async function getOpenShipmentsForResync(options: {
+  carriers: readonly string[];
+  onlyFailing?: boolean;
+  tracking?: string | null;
+  limit: number;
+}): Promise<ResyncCandidate[]> {
+  const params: unknown[] = [options.carriers.map((c) => c.toUpperCase()), options.limit];
+  const where = ['is_terminal = false', 'upper(carrier) = ANY($1::text[])'];
+  if (options.onlyFailing) where.push('consecutive_error_count > 0');
+  if (options.tracking) {
+    params.push(extractCanonicalTracking(options.tracking));
+    where.push(`tracking_number_normalized = $${params.length}`);
+  }
+  const { rows } = await pool.query<{
+    id: number;
+    organization_id: OrgId | null;
+    carrier: string;
+    tracking_number_normalized: string;
+    latest_status_category: string | null;
+    consecutive_error_count: number;
+    next_check_at: Date | null;
+  }>(
+    `SELECT id, organization_id, carrier, tracking_number_normalized, latest_status_category,
+            consecutive_error_count, next_check_at
+       FROM shipping_tracking_numbers
+      WHERE ${where.join(' AND ')}
+      ORDER BY (consecutive_error_count > 0) DESC, last_checked_at ASC NULLS FIRST, id
+      LIMIT $2`,
+    params,
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    organizationId: r.organization_id,
+    carrier: r.carrier,
+    trackingNumber: r.tracking_number_normalized,
+    previousStatus: r.latest_status_category,
+    consecutiveErrorCount: r.consecutive_error_count,
+    nextCheckAt: r.next_check_at ? new Date(r.next_check_at).toISOString() : null,
+  }));
 }
 
 export async function getShipmentEvents(shipmentId: number, orgId?: OrgId): Promise<TrackingEventRow[]> {
@@ -383,7 +438,7 @@ export async function updateShipmentSummary(
     const storedStatus = deliveredNow && status !== 'RETURNED' ? 'DELIVERED' : status;
     const nextCheck = isTerminal ? null : computeNextCheckAt(status, 0);
 
-    await client.query(
+    const written = await client.query(
       `UPDATE shipping_tracking_numbers SET
          latest_status_code        = $1,
          latest_status_label       = $2,
@@ -430,6 +485,8 @@ export async function updateShipmentSummary(
          -- Carrier ETA: newest promise wins; a delivered parcel has no ETA.
          estimated_delivery_at    = CASE WHEN (is_delivered OR $9::boolean) THEN NULL
                                          ELSE COALESCE($31::timestamptz, estimated_delivery_at) END,
+         -- The FIRST promise: filled once, never overwritten, never cleared on delivery (Late reads it).
+         first_estimated_delivery_at = COALESCE(first_estimated_delivery_at, $31::timestamptz),
          latest_payload           = $21::jsonb,
          metadata                 = COALESCE(metadata, '{}'::jsonb) || $22::jsonb,
          updated_at               = now()
@@ -472,6 +529,12 @@ export async function updateShipmentSummary(
         result.estimatedDelivery ?? null,              // $31 estimated_delivery_at
       ]
     );
+    // A poll only counts once its result is stored. RLS (tenant GUC) filters an
+    // UPDATE to zero rows without raising, so surface that as a sync failure
+    // instead of reporting a fresh check that never landed.
+    if (written.rowCount !== 1) {
+      throw new Error(`shipment ${shipmentId} summary write matched ${written.rowCount ?? 0} rows`);
+    }
 
     // If carrier just accepted the package, drain boxed_stock for this
     // shipment. Idempotent: helper skips if a SHIPPED row already exists
@@ -521,16 +584,21 @@ export async function updateShipmentError(
     : null;
 
   // NEEDS-COL: GUC-wrap when orgId present; no org predicate possible on UPDATE.
+  // `last_checked_at` is the last SUCCESSFUL carrier poll (only
+  // updateShipmentSummary stamps it), so a failed poll never reads as a fresh
+  // check. The attempt itself is recorded by check_attempt_count, the error
+  // columns and next_check_at. Backoff: 1h, 2h, 4h, 8h, then every 12h once a
+  // row has failed 5 times in a row; carrier access walls wait 24h.
   const sql = `UPDATE shipping_tracking_numbers SET
          consecutive_error_count = consecutive_error_count + 1,
          check_attempt_count     = check_attempt_count + 1,
-         last_checked_at         = now(),
          last_error_code         = $1,
          last_error_message      = $2,
          tracking_blocked_reason = CASE WHEN $4::boolean THEN $5::text ELSE tracking_blocked_reason END,
          next_check_at           = CASE
                                      WHEN $4::boolean THEN now() + INTERVAL '24 hours'
-                                     ELSE now() + (INTERVAL '1 hour' * LEAST(POWER(2, consecutive_error_count), 16))
+                                     WHEN consecutive_error_count >= 4 THEN now() + INTERVAL '12 hours'
+                                     ELSE now() + (INTERVAL '1 hour' * POWER(2, consecutive_error_count))
                                    END,
          updated_at              = now()
        WHERE id = $3`;

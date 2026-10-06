@@ -21,6 +21,7 @@ import {
   Printer,
   Repeat,
   RotateCcw,
+  PackageX,
   Tag,
   Ticket,
   Trash2,
@@ -33,6 +34,7 @@ import { bustFulfillmentCaches, bustScanOutCaches } from '@/lib/outbound/outboun
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { deleteOrdersWithUndo } from '@/lib/orders/deferred-order-delete';
+import { afterDismissPaint, hideRecords, markDismissed, restoreRecords } from '@/design-system/components/triage-card-list/dismiss';
 import {
   applyMorphingGutterClick,
   isMorphingMobileUrl,
@@ -191,7 +193,7 @@ function bulkStripVerbs(verbs: readonly RecordActionVerb[]): RecordActionVerb[] 
  * Selection actions in importance order. Record-only links follow the shared
  * workflow verbs; destructive actions remain last and overflow automatically.
  */
-const TRIAGE_BAR_PRIMARY_IDS: readonly string[] = ['paste', 'resolve', 'out-of-stock', 'urgent', 'scan-out', 'documents'];
+const TRIAGE_BAR_PRIMARY_IDS: readonly string[] = ['paste', 'resolve', 'out-of-stock', 'buyer-cancelled', 'urgent', 'scan-out', 'documents'];
 const TRIAGE_BAR_DROPPED_IDS: ReadonlySet<string> = new Set(['more-info', 'select', 'notes', 'label']);
 
 /**
@@ -213,10 +215,16 @@ function triageBarVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[]
     return verb ? [verb] : [];
   });
   const primaryIds = new Set(primary.map((verb) => verb.id));
+  const deleteVerb = byId.get('delete');
   const remaining = verbs.filter(
-    (verb) => !primaryIds.has(verb.id) && !TRIAGE_BAR_DROPPED_IDS.has(verb.id),
+    (verb) => !primaryIds.has(verb.id) && !TRIAGE_BAR_DROPPED_IDS.has(verb.id) && verb.id !== 'delete',
   );
-  return [...primary, ...remaining, ...recordLinkVerbs(record)];
+  return [
+    ...primary,
+    ...remaining,
+    ...recordLinkVerbs(record),
+    ...(deleteVerb ? [deleteVerb] : []),
+  ];
 }
 
 /** The open record's own controls, when the strip is armed for it. */
@@ -422,6 +430,40 @@ function useOrderActionVerbs({
    * swipe left off the list now; the ONE delete route (permission + step-up
    * there) hears about it when the Undo window ends.
    */
+  const buyerCancel = () => {
+    const ids = actionIds.length > 0 ? actionIds : [orderId];
+    onFinished();
+    markDismissed(ids);
+    void afterDismissPaint().then(async () => {
+      hideRecords(ids);
+      // Confirmation as the rows leave — the house toaster is bottom-right.
+      const confirmed = toast.success(
+        ids.length === 1 ? 'Buyer cancelled' : `${ids.length} orders buyer cancelled`,
+        { duration: 6000 },
+      );
+      try {
+        const res = await fetch('/api/orders/buyer-cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: ids }),
+        });
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        if (!res.ok) {
+          toast.dismiss(confirmed);
+          restoreRecords(ids);
+          toast.error(body?.error || 'Could not mark the order buyer cancelled');
+          return;
+        }
+        bustFulfillmentCaches(queryClient);
+        refreshDomain('orders.outbound');
+      } catch {
+        toast.dismiss(confirmed);
+        restoreRecords(ids);
+        toast.error('Could not mark the order buyer cancelled');
+      }
+    });
+  };
+
   const deleteOrder = () => {
     const ids = actionIds.length > 0 ? actionIds : [orderId];
     onFinished();
@@ -635,6 +677,14 @@ function useOrderActionVerbs({
       },
     });
   }
+  verbs.push({
+    id: 'buyer-cancelled',
+    label: actionIds.length > 1 ? `Buyer cancelled ${actionIds.length}` : 'Buyer cancelled',
+    icon: <PackageX />,
+    tone: 'danger',
+    scope: 'both',
+    run: buyerCancel,
+  });
   verbs.push({
     id: 'delete',
     label: actionIds.length > 1 ? `Delete ${actionIds.length}` : 'Delete',

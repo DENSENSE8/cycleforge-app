@@ -41,6 +41,8 @@ export type PrintProductLabelInput = {
   orgSlug?: string | null;
   condition?: string | null;
   color?: string | null;
+  /** Custom line under the title (the face's centre); empty hides it. */
+  note?: string | null;
   /** Serial units under this label — a package of N≥2 says so on the face. */
   serialCount?: number | null;
 };
@@ -51,6 +53,7 @@ export function unitLabelToFace(input: {
   serialNumber?: string | null;
   condition?: string | null;
   color?: string | null;
+  note?: string | null;
   serialCount?: number | null;
   matrix: LabelFaceModel['matrix'];
 }): LabelFaceModel {
@@ -60,7 +63,7 @@ export function unitLabelToFace(input: {
     kind: 'product',
     topLeft: title || input.sku,
     topRight: '',
-    center: '',
+    center: (input.note ?? '').trim(),
     bottomLeft: conditionChipLabel(input.condition),
     bottomRight: [(input.color ?? '').trim(), serialCount > 1 ? `${serialCount} serials` : '']
       .filter(Boolean)
@@ -88,6 +91,7 @@ export function productLabelFace(input: PrintProductLabelInput) {
     serialNumber: input.serialNumber,
     condition: input.condition,
     color: input.color,
+    note: input.note,
     serialCount: input.serialCount,
     matrix,
   });

@@ -118,6 +118,10 @@ interface StockLedgerProps {
   loadedRoomFilter: string | null;
   /** Aisle value used for this server payload. */
   loadedAisleFilter: string | null;
+  /** Omitted rooms used for this server payload. */
+  loadedExcludedRoomFilter: string | null;
+  /** Omitted aisles used for this server payload. */
+  loadedExcludedAisleFilter: string | null;
   /** Sort value used while producing this server payload. */
   loadedSortFilter: string | null;
   /** Pairs matching `?q=` across the selected room, before the row cap. */
@@ -133,6 +137,8 @@ export function StockLedger({
   rooms,
   loadedRoomFilter,
   loadedAisleFilter,
+  loadedExcludedRoomFilter,
+  loadedExcludedAisleFilter,
   loadedSortFilter,
   totalCount,
   counts,
@@ -143,6 +149,8 @@ export function StockLedger({
   const [pending, startTransition] = useTransition();
   const roomFilter = searchParams.get('room')?.trim() || null;
   const aisleFilter = searchParams.get('aisle')?.trim() || null;
+  const excludedRoomFilter = searchParams.get('excludeRoom')?.trim() || null;
+  const excludedAisleFilter = searchParams.get('excludeAisle')?.trim() || null;
   const sortFilter = searchParams.get('sort')?.trim() || null;
   useEffect(() => {
     // Contextual controls update the native URL first. Refresh that exact URL
@@ -150,6 +158,8 @@ export function StockLedger({
     if (
       roomFilter !== loadedRoomFilter ||
       aisleFilter !== loadedAisleFilter ||
+      excludedRoomFilter !== loadedExcludedRoomFilter ||
+      excludedAisleFilter !== loadedExcludedAisleFilter ||
       sortFilter !== loadedSortFilter
     ) {
       startTransition(() => router.refresh());
@@ -157,9 +167,13 @@ export function StockLedger({
   }, [
     aisleFilter,
     loadedAisleFilter,
+    loadedExcludedAisleFilter,
+    loadedExcludedRoomFilter,
     loadedRoomFilter,
     loadedSortFilter,
     roomFilter,
+    excludedAisleFilter,
+    excludedRoomFilter,
     router,
     sortFilter,
     startTransition,
@@ -197,6 +211,15 @@ export function StockLedger({
     () => new Set(parseLocationStockAisles(loadedAisleFilter)),
     [loadedAisleFilter],
   );
+  const excludedHealth = useMemo(
+    () =>
+      new Set(
+        (searchParams.get('excludeStatus') ?? '')
+          .split(',')
+          .filter((value): value is StockHealth => STOCK_HEALTH_KEYS.includes(value as StockHealth)),
+      ),
+    [searchParams],
+  );
   const locationWalkActive = selectedRooms.size > 0 || selectedAisles.size > 0;
   const locationSort = parseLocationStockSort(searchParams.get('sort'));
   const scopedRows = useMemo(
@@ -216,8 +239,13 @@ export function StockLedger({
     [locationGroups],
   );
   const bands = useMemo(
-    () => filterBands(allBands, (group) => group.key, stockHealth),
-    [filterBands, allBands],
+    () =>
+      filterBands(allBands, (group) => group.key, (row) =>
+        excludedHealth.size > 0 && stockHealth(row).some((health) => excludedHealth.has(health))
+          ? []
+          : stockHealth(row),
+      ),
+    [filterBands, allBands, excludedHealth],
   );
   const painted = useMemo(() => bands.flatMap(([, groups]) => groups.flatMap((group) => group.rows)), [bands]);
 
@@ -534,7 +562,7 @@ export function StockLedger({
   // The list read as a whole: server counts over the SAME matched set — the
   // numbers never move when the health filter narrows the rows on screen.
   const summary = useMemo(() => stockSummary(totalCount, counts, rooms), [counts, rooms, totalCount]);
-  const narrowed = Boolean(searchParams.get('q')?.trim()) || selectedRooms.size > 0 || selectedAisles.size > 0 || cut.url.statusFilter.size > 0;
+  const narrowed = Boolean(searchParams.get('q')?.trim()) || selectedRooms.size > 0 || selectedAisles.size > 0 || cut.url.statusFilter.size > 0 || excludedHealth.size > 0;
 
   return (
     <>
@@ -659,19 +687,12 @@ export function StockLedger({
         }
         allClear={<TriageAllClear title="No stock on any shelf" detail="Counts land here from the floor." />}
         record={{
-          // The record reads what is here and what it is (owner 2026-09-30): the stock on the left, the product title after it.
+          // The title alone, top left (owner 2026-10-05): the stock count is the
+          // record's top-right headline (StockEvidence), never beside the title.
           // Where it sits (tote · room) is the item card's location line, not the header.
           title: openRecord ? (
-            <span className="flex min-w-0 items-baseline gap-3" data-testid="stock-record-title">
-              <span
-                className={cn('shrink-0 tabular-nums', openRecord.qty > 0 ? 'text-text-default' : 'text-text-warning')}
-                data-testid="stock-record-title-qty"
-              >
-                {openRecord.qty}
-              </span>
-              <span className="min-w-0 truncate">
-                {openRecord.source === 'empty' ? 'Empty location' : stockRecordTitle(openRecord)}
-              </span>
+            <span className="min-w-0 truncate" data-testid="stock-record-title">
+              {openRecord.source === 'empty' ? 'Empty location' : stockRecordTitle(openRecord)}
             </span>
           ) : (
             'Not in this list'
@@ -680,7 +701,6 @@ export function StockLedger({
             openRecord && openRecord.source !== 'empty' ? (
               <StockRecordActions
                 record={openRecord}
-                onChanged={() => router.refresh()}
                 onPaired={() => {
                   closeRecord();
                   router.refresh();

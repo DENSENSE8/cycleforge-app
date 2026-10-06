@@ -107,12 +107,17 @@ const defaultCreateSupportTicketDeps: CreateSupportTicketDeps = {
   },
 };
 
+/** Exactly what the helpdesk receives for a new ticket — the live create and the test-mode preview share it. */
+export function providerTicketContent(subject: string, note: string | null | undefined): { subject: string; body: string } {
+  const title = subject.trim() || 'Support ticket';
+  return { subject: title, body: (note && note.trim()) || title };
+}
+
 export async function createSupportTicket(
   input: CreateSupportTicketInput,
   deps: CreateSupportTicketDeps = defaultCreateSupportTicketDeps,
 ): Promise<CreateSupportTicketResult> {
-  const subject = input.subject.trim() || 'Support ticket';
-  const body = (input.note && input.note.trim()) || subject;
+  const { subject, body } = providerTicketContent(input.subject, input.note);
 
   let resolved: OrderLinkage | null = null;
   if (hasSupportTicketLinkages(input.linkages) && deps.resolveLinkage) {

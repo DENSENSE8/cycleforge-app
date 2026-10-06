@@ -195,7 +195,7 @@ export function ReceivingFeedRail({
       deleteEvent={feed.listenLineDelete === false ? undefined : 'receiving-line-deleted'}
       deleteGroupEvent="receiving-entry-deleted"
       refreshEvents={feed.refreshEvents}
-      // Workspace header chevrons (`LineEditToolbar`) dispatch this channel — same contract as TestingRecentRail ↔ testing-navigate-rail.
+      // Workspace header chevrons (`LineEditToolbar`) dispatch this channel — the QC Recent rail (`testingRecent`) steps on `testing-navigate-rail`.
       navigateEvent={
         feedId === 'testingRecent' ? 'testing-navigate-rail' : 'receiving-navigate-table'
       }

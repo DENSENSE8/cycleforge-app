@@ -892,12 +892,17 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
 }
 
 /* ── Ops spreadsheet skin (LedgerGrid) — quiet row rules only (1B) ──
-   BOTTOM hairlines separate rows; NO vertical column cage so data pops and
-   structure recedes. `--cf-grid-line` = `border-hairline` (near-invisible).
+   BOTTOM rules separate rows; NO vertical column cage so data pops and
+   structure recedes. `--cf-grid-line` = `border-default` (owner 2026-10-05: a
+   rule under EVERY row). `border-hairline` (#ebebeb) was too faint: on a
+   fractional device-pixel ratio a 1px rule lands across two pixels on
+   alternate rows, and those split rules vanished — the grid read as zebra.
+   `--cf-grid-col-line` keeps the opt-in column rules at the hairline.
    Outer frame is `[data-table-surface]`. Opt-in via `data-grid-skin="airtable"`.
    Never border-strong (the black cage). */
 [data-grid-skin='airtable'] {
-  --cf-grid-line: var(--ds-color-border-hairline);
+  --cf-grid-line: var(--ds-color-border-default);
+  --cf-grid-col-line: var(--ds-color-border-hairline);
   --cf-grid-line-w: var(--ds-border-width-thin);
   --cf-queue-row-px: 0px;
   background-color: var(--ds-color-background-surface);
@@ -918,10 +923,10 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
 
 /* Sheet column rules — the ONE opt-in exception to 1B (owner 2026-10-04, the
    Pasted list's Google-Sheets read): under `[data-grid-col-rules]` each cell
-   but the last draws the same hairline on its right, header and body alike. */
+   but the last draws a hairline (`--cf-grid-col-line`) on its right, header and body alike. */
 [data-grid-col-rules] [data-grid-skin='airtable'] [data-grid-col-header] [role='row'] > :not(:last-child),
 [data-grid-col-rules] [data-grid-skin='airtable'] [data-grid-row] > :not(:last-child) {
-  border-right: var(--cf-grid-line-w) solid var(--cf-grid-line);
+  border-right: var(--cf-grid-line-w) solid var(--cf-grid-col-line);
 }
 
 /* Drop React container hairlines so cell bottom rules are the only seams (no doubles). */

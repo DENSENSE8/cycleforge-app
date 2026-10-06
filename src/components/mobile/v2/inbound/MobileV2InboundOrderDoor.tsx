@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Pencil } from '@/components/Icons';
 import { MobileDataListRow } from '@/design-system/components/MobileDataListRow';
 import { fetchCartonInboundOrders } from '@/lib/inbound/inbound-order-client';
+import { inboundOrderFormHref } from '@/lib/inbound/inbound-order-compose';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { INBOUND_ROW_CLASS, InboundRowText } from './MobileV2InboundParts';
 
@@ -28,7 +29,7 @@ export function MobileV2InboundOrderDoor({ receivingId, returnTo }: { receivingI
       {editable.map((order) => (
         <MobileDataListRow
           key={order.inboundOrderId}
-          href={withJobReturn(`/m/receiving/order?id=${order.inboundOrderId}`, returnTo)}
+          href={withJobReturn(inboundOrderFormHref('phone', { id: order.inboundOrderId }), returnTo)}
           ariaLabel={`Fix purchase order ${order.orderNumber}`}
           testId={`m-inbound-fix-${order.inboundOrderId}`}
         >

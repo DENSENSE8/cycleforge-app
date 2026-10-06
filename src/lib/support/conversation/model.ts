@@ -105,6 +105,14 @@ export const ORDER_CHECK_IN_STATES = [
 export type OrderCheckInState = (typeof ORDER_CHECK_IN_STATES)[number];
 export type OrderCheckInTrigger = 'delivered' | 'picked_up' | 'shipped_fallback';
 
+/**
+ * How a resolved check-in ended for the customer (operator 2026-10-05: "are
+ * they enjoying it, or having an issue"). Chosen by the staffer who closes
+ * the check-in as resolved; null = closed before the outcome existed.
+ */
+export const CHECK_IN_OUTCOMES = ['happy', 'issue'] as const;
+export type CheckInOutcome = (typeof CHECK_IN_OUTCOMES)[number];
+
 // ── Work flags ─────────────────────────────────────────────────────────────
 
 export const SUPPORT_WORK_FLAGS = [
@@ -296,6 +304,8 @@ export interface OrderCheckInView {
   chaseCount: number;
   disposition: string | null;
   dispositionReason: string | null;
+  /** How a `resolved` check-in ended (Happy / Had an issue); null otherwise. */
+  outcome: CheckInOutcome | null;
   closedAt: string | null;
   closedBy: SupportStaffRef | null;
 }

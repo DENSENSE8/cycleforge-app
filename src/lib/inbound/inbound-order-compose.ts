@@ -1,9 +1,10 @@
 /**
  * The inbound-order form's shared editing model — every face of the one form
- * (the desk `/incoming/new`, the phone `/m/receiving/order`) edits an
+ * (the desk `/purchasing/new`, the phone `/m/receiving/order`) edits an
  * `InboundOrderDraft` through these helpers, so the two faces cannot drift on
- * what a typed quantity means, what a catalog pick writes, or how a cost
- * totals. Validation stays `inboundOrderMissing` (inbound-order-draft.ts).
+ * what a typed quantity means, what a catalog pick writes, how a pasted list
+ * of tracking numbers or serials splits, or how a cost totals. Validation
+ * stays `inboundOrderMissing` (inbound-order-draft.ts).
  *
  * Client-safe and pure: no React, no server imports. Money is integer cents.
  */
@@ -15,10 +16,49 @@ import {
   INBOUND_RETURN_REASONS,
   type InboundOrderDraft,
   type InboundOrderLine,
+  type InboundOrderTracking,
   type InboundOrderType,
 } from '@/lib/inbound/inbound-order-draft';
-import { priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
+import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
+import { defaultInboundTierForPlatform } from '@/lib/receiving/display/precedence';
+import { priorityOverrideTier, priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
+import { detectCarrier, extractCanonicalTracking } from '@/lib/tracking-format';
 import { formatCurrency } from '@/utils/_number';
+
+/** `inboundOrderDraftSchema` caps: tracking numbers per order, listing serials per line. */
+const TRACKING_LIMIT = 500;
+const LISTING_SERIALS_LIMIT = 200;
+
+// ─── the form's URL ──────────────────────────────────────────────────────────
+
+/** The types the form adds — trade-ins and pickups land from the kiosk and the phone pickup door. */
+export const INBOUND_FORM_TYPES = ['PO', 'RETURN'] as const satisfies readonly InboundOrderType[];
+export type InboundFormType = (typeof INBOUND_FORM_TYPES)[number];
+/** `?type=` — the type a new order opens on. */
+export const INBOUND_FORM_TYPE_PARAM = 'type';
+/** `?id=` — the landed inbound order the form reopens to fix. */
+export const INBOUND_FORM_ID_PARAM = 'id';
+
+/** `?type=` → the form type; anything else (missing, unknown) opens a PO. */
+export function parseInboundFormType(raw: string | null | undefined): InboundFormType {
+  return raw?.trim().toUpperCase() === 'RETURN' ? 'RETURN' : 'PO';
+}
+
+/** `?id=` → a landed inbound order id; null when absent or not an id. */
+export function parseInboundFormOrderId(raw: string | null | undefined): number | null {
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+/**
+ * The form's href on a face (desk `/purchasing/new`, phone `/m/receiving/order`):
+ * `id` reopens a landed order; else `type` (PO is the default, never written).
+ */
+export function inboundOrderFormHref(face: 'desk' | 'phone', opts: { type?: InboundFormType; id?: number } = {}): string {
+  const base = face === 'desk' ? RECEIVING_PATHS.purchaseNew : RECEIVING_PATHS.purchaseNewMobile;
+  if (opts.id != null) return `${base}?${INBOUND_FORM_ID_PARAM}=${opts.id}`;
+  return opts.type && opts.type !== 'PO' ? `${base}?${INBOUND_FORM_TYPE_PARAM}=${opts.type}` : base;
+}
 
 export interface InboundOrderChoice {
   value: string;
@@ -27,10 +67,20 @@ export interface InboundOrderChoice {
   hint?: string;
 }
 
-/** Auto (the platform's default tier) first, then the manual override tiers (same 0..3 as `priority_tier`). */
-export function inboundPriorityChoices(): InboundOrderChoice[] {
+/**
+ * What Auto resolves to for the picked platform — the platform's default tier
+ * (`defaultInboundTierForPlatform`): "Auto — Goodwill: tier 3 Low".
+ */
+export function inboundAutoPriorityLabel(platform: string, platformLabel: string | null): string {
+  if (!platform.trim()) return 'Auto — follows platform';
+  const tier = defaultInboundTierForPlatform(platform);
+  return `Auto — ${platformLabel || platform}: tier ${tier} ${priorityOverrideTier(tier)?.label ?? ''}`.trimEnd();
+}
+
+/** Auto (labelled with what it resolves to) first, then the manual override tiers (same 0..3 as `priority_tier`). */
+export function inboundPriorityChoices(autoLabel = 'Auto — follows platform'): InboundOrderChoice[] {
   return [
-    { value: INBOUND_PRIORITY_AUTO, label: 'Auto — follows platform' },
+    { value: INBOUND_PRIORITY_AUTO, label: autoLabel },
     ...priorityOverrideTiersForPicker().map((tier) => ({ value: String(tier.value), label: tier.label, hint: tier.title })),
   ];
 }
@@ -136,20 +186,73 @@ export function inboundLineName(line: Pick<InboundOrderLine, 'title' | 'sku'>): 
   return line.title.trim() || line.sku.trim() || 'Untitled item';
 }
 
+// ─── pasted lists ────────────────────────────────────────────────────────────
+
+/** A pasted / typed list → its entries: split on newlines, commas, semicolons and spaces; blanks and repeats dropped. */
+export function splitPastedList(text: string): string[] {
+  return [...new Set(text.split(/[\s,;]+/).map((part) => part.trim()).filter(Boolean))];
+}
+
 // ─── tracking ────────────────────────────────────────────────────────────────
 
-/** Puts a scanned / typed number in the first empty tracking slot (or a new one, up to the schema's 10). */
-export function addInboundTracking(draft: InboundOrderDraft, number: string): InboundOrderDraft {
-  const value = number.trim();
-  if (!value || draft.tracking.some((t) => t.number.trim() === value)) return draft;
-  const blank = draft.tracking.findIndex((t) => !t.number.trim());
-  if (blank >= 0) return { ...draft, tracking: draft.tracking.map((t, i) => (i === blank ? { ...t, number: value } : t)) };
-  if (draft.tracking.length >= 10) return draft;
-  return { ...draft, tracking: [...draft.tracking, { number: value, carrier: '' }] };
+/** The comparable form of a typed tracking number (canonical when it parses, else as typed). */
+function trackingKey(raw: string): string {
+  const value = raw.trim();
+  return extractCanonicalTracking(value) || value;
+}
+
+/**
+ * Adds scanned / pasted numbers (canonical): each fills the first empty slot,
+ * else a new one, up to the schema's cap; a number already on the order is
+ * skipped. Unchanged draft (same object) when nothing new was added.
+ */
+export function addInboundTracking(draft: InboundOrderDraft, numbers: readonly string[]): InboundOrderDraft {
+  const tracking = [...draft.tracking];
+  const seen = new Set(tracking.map((t) => trackingKey(t.number)).filter(Boolean));
+  let changed = false;
+  for (const raw of numbers) {
+    const number = trackingKey(raw);
+    if (!number || seen.has(number)) continue;
+    const blank = tracking.findIndex((t) => !t.number.trim());
+    if (blank >= 0) tracking[blank] = { ...tracking[blank], number };
+    else if (tracking.length < TRACKING_LIMIT) tracking.push({ number, carrier: '' });
+    else break;
+    seen.add(number);
+    changed = true;
+  }
+  return changed ? { ...draft, tracking } : draft;
 }
 
 /** Drops one tracking number; the form always keeps one slot. */
 export function removeInboundTracking(draft: InboundOrderDraft, index: number): InboundOrderDraft {
   const tracking = draft.tracking.filter((_, i) => i !== index);
   return { ...draft, tracking: tracking.length ? tracking : [{ number: '', carrier: '' }] };
+}
+
+/** The carrier a row names: the typed one, else detected from the number; null while unknown. */
+export function inboundTrackingCarrier(tracking: InboundOrderTracking): string | null {
+  if (tracking.carrier.trim()) return tracking.carrier.trim();
+  const number = extractCanonicalTracking(tracking.number.trim());
+  if (number.length < 8) return null;
+  const carrier = String(detectCarrier(number));
+  return carrier === 'Unknown' ? null : carrier;
+}
+
+// ─── listing serials ─────────────────────────────────────────────────────────
+
+/**
+ * Adds serials the listing shows to a line (paste many at once); a serial
+ * already on the line — compared without spaces, case-blind — is skipped.
+ */
+export function addInboundLineSerials(line: Pick<InboundOrderLine, 'listingSerials'>, serials: readonly string[]): Partial<InboundOrderLine> {
+  const listingSerials = [...(line.listingSerials ?? [])];
+  const key = (serial: string) => serial.replace(/\s+/g, '').toUpperCase();
+  const seen = new Set(listingSerials.map(key));
+  for (const raw of serials) {
+    const serial = raw.trim();
+    if (!serial || seen.has(key(serial)) || listingSerials.length >= LISTING_SERIALS_LIMIT) continue;
+    seen.add(key(serial));
+    listingSerials.push(serial);
+  }
+  return { listingSerials };
 }

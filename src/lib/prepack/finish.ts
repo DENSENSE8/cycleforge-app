@@ -1,18 +1,16 @@
 import 'server-only';
 
+import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
+import { recordUnitEvent } from '@/lib/inventory/unit-events';
 import { createSealedPackageTx } from '@/lib/labels/manifest';
+import { prepackSyntheticSerial, qcLabelHandle, qcLabelUsesInternalSerial } from '@/lib/labels/qc-label-row';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { loadPrepackEvidence, loadPrepackKit } from './server';
-import {
-  missingPackageEvidence,
-  packageEvidenceRefusal,
-  type PrepackCondition,
-  type PrepackKit,
-  type PrepackProvenance,
-} from './types';
+import { findPrepackUnitId, loadPrepackKit } from './server';
+import type { PrepackKit, PrepackLabelFace, PrepackPackageInput, PrepackSaveInput } from './types';
 
 export class PrepackRefusal extends Error {
   constructor(message: string, readonly status = 409) {
@@ -20,65 +18,106 @@ export class PrepackRefusal extends Error {
   }
 }
 
-export interface FinishPackageInput {
-  serialUnitIds: number[];
-  skuCatalogId: number;
-  conditionGrade: PrepackCondition;
-  refurbProvenance: PrepackProvenance;
-  contents: { kitPartId: number; included: boolean }[];
-  clientEventId?: string;
+export interface FinishPackagesInput extends PrepackSaveInput {
   actorStaffId: number | null;
 }
 
-export interface FinishedPackage {
+export interface FinishedPackages {
   kit: PrepackKit;
-  /** Serial keys in package order (unit_uid, else serial) — what the caller reloads. */
-  serials: string[];
-  /** The SEALED PREBOX package; null for a one-serial package, whose label is the unit's own. */
-  package: { id: number; uid: string } | null;
+  /** One scan key per package, in request order: the PREBOX uid, else the unit's label handle (`qcLabelHandle`). */
+  printKeys: string[];
 }
 
 interface LockedUnit {
   id: number;
   serial_number: string;
+  unit_uid: string | null;
   sku: string | null;
   sku_catalog_id: number | null;
   current_status: string;
 }
 
+interface ResolvedPackage {
+  input: PrepackPackageInput;
+  ids: number[];
+}
+
 /**
- * Finish is the only prepack writer. One transaction for the whole package:
- * every serial is validated (not shipped, not on an open order, not packed
- * elsewhere, the package's product) and stamped with the package's grade,
- * provenance and contents; a package of two or more serials becomes one
- * SEALED PREBOX manifest (one label). Prepack never stores: the packers put
- * the package away. A serial first seen at prepack is received (UNKNOWN →
- * RECEIVED) so it is real inventory awaiting putaway.
+ * Save is the only prepack writer. One transaction for every package of the
+ * request: each serial resolves to its unit or is created (a serial first
+ * seen at prepack), a package with no serial gets one unit with a private
+ * `AUTO-PP-…` serial, every unit is validated (not shipped, not on an open
+ * order, not on hold, not scrapped, not packed elsewhere, the request's
+ * product) and stamped with its package's grade, provenance and the contents;
+ * a package of two or more serials becomes one SEALED PREBOX manifest (one
+ * label). The hand-edited label face is stored on what the label names: the
+ * manifest (`label_face`), else the one unit (`metadata.qc_label`); an
+ * all-default face clears it. Prepack never stores: the packers put the package away. A unit
+ * still UNKNOWN is received (UNKNOWN → RECEIVED) so it is real inventory
+ * awaiting putaway.
  */
-export async function finishPrepackPackage(
+export async function finishPrepackPackages(
   db: PoolClient,
   orgId: OrgId,
-  input: FinishPackageInput,
-): Promise<FinishedPackage> {
-  const ids = Array.from(new Set(input.serialUnitIds));
+  input: FinishPackagesInput,
+): Promise<FinishedPackages> {
+  const kit = await loadPrepackKit(orgId, input.skuCatalogId, db);
+  if (!kit) throw new PrepackRefusal('That product no longer exists — choose the product again.', 404);
+
+  const decisions = new Map(input.contents.map((row) => [row.kitPartId, row.included]));
+  if (decisions.size !== kit.parts.length || kit.parts.some((part) => !decisions.has(part.id))) {
+    throw new PrepackRefusal('Mark every expected piece Included or Missing.', 400);
+  }
+
+  // A retry with the same clientEventId finds the serial-less units it created.
+  const syntheticToken = input.clientEventId?.replace(/[^A-Za-z0-9-]/g, '') || randomUUID();
+  const packages: ResolvedPackage[] = [];
+  const typedBy = new Map<number, string>();
+  for (const [index, pkg] of input.packages.entries()) {
+    const ids: number[] = [];
+    if (pkg.serials.length === 0) {
+      const serial = prepackSyntheticSerial(`${syntheticToken}-${index + 1}`);
+      ids.push((await findPrepackUnitId(orgId, serial, db)) ?? (await mintUnitAtPrepack(db, orgId, kit, serial, input.actorStaffId)));
+    }
+    for (const raw of pkg.serials) {
+      const serial = unwrapScannedSerial(raw);
+      if (!serial) throw new PrepackRefusal(`Package ${index + 1} has an empty serial — type it again.`, 400);
+      let id = await findPrepackUnitId(orgId, raw, db);
+      if (id == null) {
+        if (qcLabelUsesInternalSerial(serial)) {
+          throw new PrepackRefusal(`${serial} is not in CycleForge — scan the unit's label, or leave the package without a serial.`, 404);
+        }
+        id = await mintUnitAtPrepack(db, orgId, kit, serial, input.actorStaffId);
+      }
+      if (typedBy.has(id)) {
+        throw new PrepackRefusal(`${serial} is in this save twice — remove one.`, 400);
+      }
+      typedBy.set(id, serial);
+      ids.push(id);
+    }
+    packages.push({ input: pkg, ids });
+  }
+
+  const allIds = packages.flatMap((pkg) => pkg.ids);
   const locked = await db.query<LockedUnit>(
-    `SELECT id, serial_number, sku, sku_catalog_id, current_status::text AS current_status
+    `SELECT id, serial_number, unit_uid, sku, sku_catalog_id, current_status::text AS current_status
        FROM serial_units
       WHERE organization_id = $1 AND id = ANY($2::int[])
       ORDER BY id
       FOR UPDATE`,
-    [orgId, ids],
+    [orgId, allIds],
   );
-  const byId = new Map(locked.rows.map((row) => [Number(row.id), row]));
-  const units = ids.map((id) => byId.get(id));
-  const missingIndex = units.findIndex((unit) => !unit);
-  if (missingIndex >= 0) {
-    throw new PrepackRefusal(`Serial unit ${ids[missingIndex]} is no longer in CycleForge — remove it and scan it again.`, 404);
+  const byId = new Map(locked.rows.map((row) => [Number(row.id), { ...row, id: Number(row.id) }]));
+  const missingId = allIds.find((id) => !byId.has(id));
+  if (missingId != null) {
+    throw new PrepackRefusal(`${typedBy.get(missingId) ?? `Unit ${missingId}`} is no longer in CycleForge — remove it and scan it again.`, 404);
   }
-  const members = units as LockedUnit[];
-
-  const kit = await loadPrepackKit(orgId, input.skuCatalogId, db);
-  if (!kit) throw new PrepackRefusal('That product no longer exists — choose the product again.', 404);
+  const unitOf = (id: number) => byId.get(id)!;
+  // A serial-less unit is named by its label handle, never its private serial.
+  const nameOf = (unit: LockedUnit) =>
+    qcLabelUsesInternalSerial(unit.serial_number)
+      ? qcLabelHandle({ unit_uid: unit.unit_uid, serial_number: unit.serial_number, serial_unit_id: unit.id })
+      : unit.serial_number;
 
   const allocations = await db.query<{ serial_unit_id: number; order_label: string | null }>(
     `SELECT DISTINCT ON (a.serial_unit_id) a.serial_unit_id, o.order_id AS order_label
@@ -87,12 +126,13 @@ export async function finishPrepackPackage(
       WHERE a.organization_id = $1 AND a.serial_unit_id = ANY($2::int[])
         AND a.state::text NOT IN ('RELEASED', 'RETURNED', 'SHIPPED')
       ORDER BY a.serial_unit_id, a.allocated_at DESC, a.id DESC`,
-    [orgId, ids],
+    [orgId, allIds],
   );
   const allocatedTo = new Map(allocations.rows.map((row) => [Number(row.serial_unit_id), row.order_label]));
 
-  for (const unit of members) {
-    const serial = unit.serial_number;
+  for (const id of allIds) {
+    const unit = unitOf(id);
+    const serial = nameOf(unit);
     if (unit.current_status === 'SHIPPED') {
       throw new PrepackRefusal(`${serial} already shipped — remove it from this package.`);
     }
@@ -126,114 +166,164 @@ export async function finishPrepackPackage(
        FROM label_manifest_items item
        JOIN label_manifests lm ON lm.id = item.manifest_id AND lm.organization_id = item.organization_id
       WHERE item.organization_id = $1 AND item.serial_unit_id = ANY($2::int[])`,
-    [orgId, ids],
+    [orgId, allIds],
   );
-  let reuse: { id: number; uid: string } | null = null;
+  const reuseFor = new Map<ResolvedPackage, { id: number; uid: string }>();
   for (const row of memberships.rows) {
+    const unitId = Number(row.serial_unit_id);
+    const pkg = packages.find((candidate) => candidate.ids.includes(unitId))!;
     const memberIds = row.member_ids.map(Number);
     const exact =
       row.manifest_type === 'PREBOX' && row.status === 'SEALED' &&
-      memberIds.length === ids.length && memberIds.every((id) => byId.has(id));
+      memberIds.length === pkg.ids.length && memberIds.every((id) => pkg.ids.includes(id));
     if (!exact) {
-      const serial = byId.get(Number(row.serial_unit_id))?.serial_number ?? `unit ${row.serial_unit_id}`;
-      throw new PrepackRefusal(`${serial} is already packed in ${row.manifest_uid} — scan every serial of that package, or dissolve it under Label manifests first.`);
+      throw new PrepackRefusal(`${nameOf(unitOf(unitId))} is already packed in ${row.manifest_uid} — scan every serial of that package, or dissolve it under Label manifests first.`);
     }
-    reuse = { id: Number(row.manifest_id), uid: row.manifest_uid };
+    reuseFor.set(pkg, { id: Number(row.manifest_id), uid: row.manifest_uid });
   }
 
-  const decisionMap = new Map(input.contents.map((row) => [row.kitPartId, row.included]));
-  if (decisionMap.size !== kit.parts.length || kit.parts.some((part) => !decisionMap.has(part.id))) {
-    throw new PrepackRefusal('Mark every expected piece Included or Missing.', 400);
-  }
+  const included = kit.parts.filter((part) => decisions.get(part.id) === true).length;
+  const missing = kit.parts.length - included;
+  const printKeys: string[] = [];
+  for (const [index, pkg] of packages.entries()) {
+    const { condition, provenance } = pkg.input;
+    for (const id of pkg.ids) {
+      const unit = unitOf(id);
+      await writeContents(db, orgId, id, kit, decisions);
+      if (unit.current_status !== 'UNKNOWN') continue;
+      const received = await transition({
+        unitId: id,
+        to: 'RECEIVED',
+        eventType: 'RECEIVED',
+        actorStaffId: input.actorStaffId,
+        station: 'MOBILE',
+        clientEventId: input.clientEventId ? `${input.clientEventId}:${id}:received` : null,
+        notes: 'Received at prepack — awaiting putaway by packing',
+        payload: { source: 'prepack' },
+        expectedFrom: 'UNKNOWN',
+        binId: null,
+      }, db, orgId);
+      if (!received.ok) throw new PrepackRefusal(received.error, received.status);
+    }
 
-  const evidence = await Promise.all(
-    members.map(async (unit) => ({ id: unit.id, evidence: await loadPrepackEvidence(orgId, unit.id, db) })),
-  );
-  const evidenceRefusal = packageEvidenceRefusal(missingPackageEvidence(evidence, kit.parts.length), members.length);
-  if (evidenceRefusal) throw new PrepackRefusal(evidenceRefusal);
-
-  for (const unit of members) {
-    await writeContents(db, orgId, unit.id, kit, decisionMap);
-    if (unit.current_status !== 'UNKNOWN') continue;
-    const received = await transition({
-      unitId: unit.id,
-      to: 'RECEIVED',
-      eventType: 'RECEIVED',
-      actorStaffId: input.actorStaffId,
-      station: 'MOBILE',
-      clientEventId: input.clientEventId ? `${input.clientEventId}:${unit.id}:received` : null,
-      notes: 'Received at prepack — awaiting putaway by packing',
-      payload: { source: 'prepack' },
-      expectedFrom: 'UNKNOWN',
-      binId: null,
-    }, db, orgId);
-    if (!received.ok) throw new PrepackRefusal(received.error, received.status);
-  }
-
-  await db.query(
-    `UPDATE serial_units
-        SET sku_catalog_id = $3,
-            sku = $4,
-            condition_grade = $5::condition_grade_enum,
-            prepacked_at = NOW(),
-            prepacked_by_staff_id = $6,
-            refurb_provenance = $7,
-            updated_at = NOW()
-      WHERE organization_id = $2 AND id = ANY($1::int[])`,
-    [
-      ids,
-      orgId,
-      kit.catalog.id,
-      kit.catalog.sku,
-      input.conditionGrade,
-      input.actorStaffId,
-      input.refurbProvenance,
-    ],
-  );
-
-  let pkg = reuse;
-  if (reuse) {
     await db.query(
-      `UPDATE label_manifests
-          SET sku = $3, sku_catalog_id = $4, condition_grade = $5, updated_at = now()
-        WHERE organization_id = $1 AND id = $2`,
-      [orgId, reuse.id, kit.catalog.sku, kit.catalog.id, input.conditionGrade],
+      `UPDATE serial_units
+          SET sku_catalog_id = $3,
+              sku = $4,
+              condition_grade = $5::condition_grade_enum,
+              prepacked_at = NOW(),
+              prepacked_by_staff_id = $6,
+              refurb_provenance = $7,
+              updated_at = NOW()
+        WHERE organization_id = $2 AND id = ANY($1::int[])`,
+      [pkg.ids, orgId, kit.catalog.id, kit.catalog.sku, condition, input.actorStaffId, provenance],
     );
-  } else if (members.length > 1) {
-    const created = await createSealedPackageTx(db, orgId, {
+
+    // The face lives on the labelled thing: the PREBOX manifest, else the one unit.
+    const labelFace = labelFaceJson(pkg.input.label);
+    let packed = reuseFor.get(pkg) ?? null;
+    if (packed) {
+      await db.query(
+        `UPDATE label_manifests
+            SET sku = $3, sku_catalog_id = $4, condition_grade = $5, label_face = $6::jsonb, updated_at = now()
+          WHERE organization_id = $1 AND id = $2`,
+        [orgId, packed.id, kit.catalog.sku, kit.catalog.id, condition, labelFace],
+      );
+    } else if (pkg.ids.length > 1) {
+      const created = await createSealedPackageTx(db, orgId, {
+        sku: kit.catalog.sku,
+        skuCatalogId: kit.catalog.id,
+        conditionGrade: condition,
+        createdBy: input.actorStaffId,
+        notes: 'Prepack package',
+        serialUnitIds: pkg.ids,
+      });
+      packed = { id: created.id, uid: created.manifest_uid };
+      await db.query(
+        `UPDATE label_manifests SET label_face = $3::jsonb WHERE organization_id = $1 AND id = $2`,
+        [orgId, packed.id, labelFace],
+      );
+    } else {
+      await db.query(
+        `UPDATE serial_units
+            SET metadata = CASE WHEN $3::jsonb IS NULL THEN COALESCE(metadata, '{}'::jsonb) - 'qc_label'
+                                ELSE jsonb_set(COALESCE(metadata, '{}'::jsonb), '{qc_label}', $3::jsonb) END
+          WHERE organization_id = $1 AND id = $2`,
+        [orgId, pkg.ids[0], labelFace],
+      );
+    }
+
+    for (const id of pkg.ids) {
+      await recordInventoryEvent({
+        event_type: 'NOTE',
+        actor_staff_id: input.actorStaffId,
+        station: 'MOBILE',
+        serial_unit_id: id,
+        sku: kit.catalog.sku,
+        bin_id: null,
+        client_event_id: input.clientEventId ? `${input.clientEventId}:${id}:note` : null,
+        notes: 'Prepack finished',
+        payload: {
+          source: 'prepack',
+          package_uid: packed?.uid ?? null,
+          package_index: index + 1,
+          package_serials: pkg.input.serials.length,
+          included,
+          missing,
+          condition,
+          provenance,
+        },
+      }, db, orgId);
+    }
+
+    const lead = unitOf(pkg.ids[0]!);
+    printKeys.push(
+      packed?.uid ?? qcLabelHandle({ unit_uid: lead.unit_uid, serial_number: lead.serial_number, serial_unit_id: lead.id }),
+    );
+  }
+
+  return { kit, printKeys };
+}
+
+/** The stored face (`{title,color,text}` JSON), or null when every field prints the default. */
+function labelFaceJson(face: PrepackLabelFace): string | null {
+  const title = face.title?.trim() || null;
+  const color = face.color?.trim() || null;
+  const text = face.text?.trim() || null;
+  return title || color || text ? JSON.stringify({ title, color, text }) : null;
+}
+
+/**
+ * A unit first met at prepack — an OEM serial CycleForge has never seen, or
+ * the private `AUTO-PP-…` serial of a package with no serial — created through
+ * the canonical unit writer (`recordUnitEvent`, origin `manual`) as UNKNOWN and
+ * stamped with the product, which mints its `unit_uid`. Save then receives it.
+ */
+async function mintUnitAtPrepack(
+  db: PoolClient,
+  orgId: OrgId,
+  kit: PrepackKit,
+  serial: string,
+  actorStaffId: number | null,
+): Promise<number> {
+  const created = await recordUnitEvent(
+    {
+      organizationId: orgId,
+      serialNumber: serial,
       sku: kit.catalog.sku,
       skuCatalogId: kit.catalog.id,
-      conditionGrade: input.conditionGrade,
-      createdBy: input.actorStaffId,
-      notes: 'Prepack package',
-      serialUnitIds: ids,
-    });
-    pkg = { id: created.id, uid: created.manifest_uid };
-  }
-
-  for (const unit of members) {
-    await recordInventoryEvent({
-      event_type: 'NOTE',
-      actor_staff_id: input.actorStaffId,
+      originSource: 'manual',
+      targetStatus: 'UNKNOWN',
+      eventType: 'NOTE',
       station: 'MOBILE',
-      serial_unit_id: unit.id,
-      sku: kit.catalog.sku,
-      bin_id: null,
-      client_event_id: input.clientEventId ? `${input.clientEventId}:${unit.id}:note` : null,
-      notes: 'Prepack finished',
-      payload: {
-        source: 'prepack',
-        package_uid: pkg?.uid ?? null,
-        package_serials: members.length,
-        included: kit.parts.filter((part) => decisionMap.get(part.id) === true).length,
-        missing: kit.parts.filter((part) => decisionMap.get(part.id) === false).length,
-        condition: input.conditionGrade,
-        provenance: input.refurbProvenance,
-      },
-    }, db, orgId);
-  }
-
-  return { kit, serials: members.map((unit) => unit.serial_number), package: pkg };
+      actorStaffId,
+      notes: qcLabelUsesInternalSerial(serial) ? 'Unit with no serial created at prepack' : 'Serial first seen at prepack',
+      payload: { source: 'prepack' },
+      writeTechSerial: false,
+    },
+    db,
+  );
+  return Number(created.unit.id);
 }
 
 async function writeContents(

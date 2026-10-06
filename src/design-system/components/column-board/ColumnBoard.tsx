@@ -42,8 +42,14 @@ const STRIP_CLASS: Record<ColumnBoardLayout, string> = {
     '@container/board relative flex min-h-0 min-w-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden md:snap-proximity',
 };
 
-/** The house scroll shadow (TriageListBody's bottom edge), turned to face sideways. */
-const EDGE_CLASS = 'pointer-events-none absolute inset-y-0 z-10 w-12 from-black/[0.11] via-black/[0.04] to-transparent transition-opacity duration-200';
+/**
+ * The edge fade a sideways-scrolling board paints on a side with hidden lanes:
+ * a LIGHT scroll shade (operator 2026-10-05 — never a heavy drop shadow).
+ * Every board with a hidden-scroll strip uses this one class; add the side
+ * (`left-0 bg-gradient-to-r` / `right-0 bg-gradient-to-l`) and the opacity.
+ */
+export const COLUMN_BOARD_EDGE_FADE_CLASS =
+  'pointer-events-none absolute inset-y-0 z-10 w-8 from-black/[0.04] via-black/[0.015] to-transparent transition-opacity duration-200';
 
 export function ColumnBoard({
   testId,
@@ -111,13 +117,13 @@ export function ColumnBoard({
         aria-hidden
         data-testid={`${testId}-edge-start`}
         data-visible={edges.start ? '' : undefined}
-        className={cn(EDGE_CLASS, 'left-0 border-l border-border-hairline bg-gradient-to-r', edges.start ? 'opacity-100' : 'opacity-0')}
+        className={cn(COLUMN_BOARD_EDGE_FADE_CLASS, 'left-0 bg-gradient-to-r', edges.start ? 'opacity-100' : 'opacity-0')}
       />
       <span
         aria-hidden
         data-testid={`${testId}-edge-end`}
         data-visible={edges.end ? '' : undefined}
-        className={cn(EDGE_CLASS, 'right-0 border-r border-border-hairline bg-gradient-to-l', edges.end ? 'opacity-100' : 'opacity-0')}
+        className={cn(COLUMN_BOARD_EDGE_FADE_CLASS, 'right-0 bg-gradient-to-l', edges.end ? 'opacity-100' : 'opacity-0')}
       />
     </div>
   );

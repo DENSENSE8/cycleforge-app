@@ -14,7 +14,6 @@ import { ExternalLink, Package } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
 import { LocationBadge } from '@/design-system/components/LocationBadge';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
   PaneHeader,
@@ -64,9 +63,7 @@ export function ProductPeek({ sku, onClose }: { sku: string; onClose: () => void
         />
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-          {isLoading ? (
-            <UniversalLoader isLoading label="Loading product" className="h-40" />
-          ) : !face ? (
+          {isLoading ? null : !face ? (
             <p className="text-role-caption text-text-muted">No catalog product has this SKU.</p>
           ) : (
             <>

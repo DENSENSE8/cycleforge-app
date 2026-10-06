@@ -39,11 +39,6 @@ interface ApiResponse {
 const FEED_EMPTY_TITLE = 'No packages yet';
 const FEED_EMPTY_HINT = 'Scan a tracking number on the desktop to drop one in here.';
 
-// The feed's query key and list params are shared with the SERVER SEED
-// (`mobile-feed-seed.server.ts`) — they live in
-// `@/lib/receiving/mobile-feed-query-key` because a seed only works while both
-// sides agree on the key to the character.
-
 /**
  * Phone Unbox photo feed (`/m/receiving`) — single scrollable list of
  * receiving lines opened on the bench, newest pinned at the bottom in an

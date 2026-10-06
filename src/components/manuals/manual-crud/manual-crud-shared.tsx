@@ -133,6 +133,7 @@ export const TYPE_OPTIONS = [
   { value: 'manual',       label: 'Manual' },
   { value: 'packing-list', label: 'Packing List' },
   { value: 'pl-plus-m',    label: 'PL + M' },
+  { value: 'insert',       label: 'Insert' },
 ];
 
 export const STATUS_OPTIONS = [

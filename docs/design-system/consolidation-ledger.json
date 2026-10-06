@@ -590,7 +590,6 @@
         "src/components/ui/CopyChip.tsx",
         "src/design-system/components/record-card/record-fact.tsx",
         "src/components/dashboard/OrdersQueueFirstPaint.tsx",
-        "src/components/shipped/ledger/ShippedPackageRow.tsx",
         "src/components/receiving/history/cards/CartonCard.tsx",
         "src/components/receiving/incoming/cards/PastedNumberCard.tsx",
         "src/components/receiving/incoming/incoming-delivery-state.ts",

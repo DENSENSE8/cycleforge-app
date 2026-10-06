@@ -1,7 +1,7 @@
 /**
  * Every triage view → the adapter that paints its card, and the faces that
  * adapter paints: its REAL model builder run over sample records (a card with
- * no model — `LabelCard`, `BatchCard`, the one-row `TriageRow` faces — states
+ * no model — the one-row `TriageRow` faces — states
  * its one fixed face). `checkCardViews()` runs each through
  * `cardViewMismatches` (`card-view-contract.ts`); `triage-views.test.ts`
  * fails on any mismatch or on a view with no entry here, and
@@ -27,7 +27,6 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { pickupCardModel, pickupOrderRecords, pickupRecordCard } from '@/lib/receiving/pickup/pickup-card-model';
 import type { PickupLine } from '@/lib/receiving/pickup/pickup-lines';
 import { repairCardModel } from '@/lib/repair/repair-card-model';
-import type { DerivedPackerRecord } from '@/lib/shipped-records';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { outboundOrderIdentity } from '@/lib/operational-identity';
 import { ExceptionCardPeek } from '@/components/exceptions/cards/ExceptionCard';
@@ -45,8 +44,6 @@ import { ReceiptCardPeek } from '@/components/receiving/incoming/cards/IncomingD
 import { receiptCardModel, receiptRecordCard } from '@/components/receiving/incoming/cards/receipt-card-model';
 import { PickupCardPeek } from '@/components/receiving/pickup/cards/PickupCard';
 import { RepairCardPeek } from '@/components/repair/cards/RepairCard';
-import { ShippedCardPeek } from '@/components/shipped/ledger/ShippedPackageCard';
-import { shippedRecordCard } from '@/components/shipped/ledger/shipped-card-model';
 import { rackRecordCard } from '@/components/warehouse/racks/rack-card-model';
 import { fnskuRecordCard } from '@/features/print-station/FnskuPrintDesk';
 import type { RackSummary } from '@/lib/locations/rack-types';
@@ -195,20 +192,6 @@ const exception: ExceptionRow = {
   raisedAt: NOW,
 };
 
-const shipped = {
-  id: 7001,
-  order_id: '21-15192-45235',
-  account_source: 'ebay',
-  package_tracking: '1Z3Y496R0398693994',
-  carrier: 'UPS',
-  product_title: 'Bose 251 speaker',
-  sku: 'BOSE-251-BLK',
-  ship_confirmed_at: NOW,
-  row_source: 'packer',
-  outboundState: 'SCANNED_OUT',
-  package_lines: [],
-} as unknown as DerivedPackerRecord;
-
 const pickupLine: PickupLine = {
   id: 1,
   order_id: 41,
@@ -329,16 +312,16 @@ export const CARD_VIEW_ADAPTERS: readonly CardViewAdapter[] = [
   },
   {
     view: views.LABEL_INTAKE_UPLOADS_VIEW,
-    adapter: 'src/features/labels-docs/BatchCard.tsx',
-    // Fixed anatomy: file name … the print state pill ("12 to print" / "All printed"); no channel, person, peek or photo.
+    adapter: 'src/features/labels-docs/files/PrintFileList.tsx#printFileRowFace',
+    // Fixed anatomy (TriageRow): uploaded time · Printed badge (none when never printed) · file name; no channel, person, peek or photo.
     faces: () => [{ status: 'state', channel: false, person: false, quickLook: false, photo: false }],
   },
-  ...[views.LABEL_INTAKE_LABELS_VIEW, views.LABEL_INTAKE_PAPERWORK_VIEW].map((view) => ({
-    view,
-    adapter: 'src/features/labels-docs/LabelCard.tsx',
-    // Fixed anatomy: order number + the platform's dot and name; its products beneath (titles, no photo); no status, person or peek.
-    faces: () => [{ status: 'none', channel: true, person: false, quickLook: false, photo: false }] as const,
-  })),
+  {
+    view: views.LABEL_INTAKE_ORDERS_VIEW,
+    adapter: 'src/features/labels-docs/orders/order-packet-row.tsx#orderPacketRowFace',
+    // Fixed anatomy (TriageRow): Missing / Ready / Printed state · platform mark + order last 8 · slot strip; no channel, person, peek or photo.
+    faces: () => [{ status: 'state', channel: false, person: false, quickLook: false, photo: false }],
+  },
   {
     view: views.IMPORT_RUNS_VIEW,
     adapter: 'src/components/imports/cards/ImportRunCard.tsx',
@@ -370,11 +353,6 @@ export const CARD_VIEW_ADAPTERS: readonly CardViewAdapter[] = [
       ),
   },
   { view: views.INVENTORY_REPLENISH_VIEW, adapter: 'src/components/replenish/ReplenishmentNeedTable.tsx → TriageRow', faces: () => [TRIAGE_ROW_FACE] },
-  {
-    view: views.OUTBOUND_SHIPPED_VIEW,
-    adapter: 'src/components/shipped/ledger/ShippedPackageCard.tsx',
-    faces: () => recordCards([shippedRecordCard({ key: '1Z3Y496R0398693994', ids: [7001], lead: shipped })], ShippedCardPeek),
-  },
   { view: views.PRODUCTS_CATALOG_VIEW, adapter: 'src/components/products/catalog/ProductCatalogList.tsx → TriageRow', faces: () => [TRIAGE_ROW_FACE] },
   {
     view: views.PRODUCTS_CATALOG_IMPORT_VIEW,

@@ -1,29 +1,31 @@
-import { HydrationBoundary } from '@tanstack/react-query';
-import { cookies } from 'next/headers';
-import { ShippedWorkspace } from '@/components/outbound/workspaces/ShippedWorkspace';
-import {
-  parseShippedTypeFilter,
-  SHIPPED_FILTER_COOKIE,
-} from '@/lib/shipping/shipped-feed-config';
-import { seedShippedLedger } from '@/lib/queries/shipped-ledger-seed.server';
+import { Suspense } from 'react';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { FulfilledDesk } from '@/components/outbound/fulfilled/FulfilledSheet';
 
-/** `/fulfilled` — every package that left the building. */
-export default async function FulfilledPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
-  const urlFilter = Array.isArray(params.shippedFilter)
-    ? params.shippedFilter[0]
-    : params.shippedFilter;
-  const cookieFilter = (await cookies()).get(SHIPPED_FILTER_COOKIE)?.value;
-  const shippedFilter = parseShippedTypeFilter(urlFilter ?? cookieFilter);
-  const seed = await seedShippedLedger(shippedFilter);
-
+/**
+ * `/fulfilled` — Fulfilled (route tree node `fulfilled`, owner 2026-10-05):
+ * every shipped order in a window, on the full-screen board (default) or as
+ * the shared sheet (`?layout=sheet`). Its controls, facets and Find are the
+ * contextual sidebar's (`NAV_PAGE_DECLS.fulfilled`); the URL contract is
+ * `fulfilled-params.ts`. No seed: the body asks one set-based query
+ * (`GET /api/nav/fulfilled`). `/shipping/shipped` redirects here.
+ */
+export default function FulfilledPage() {
   return (
-    <HydrationBoundary state={seed.state}>
-      <ShippedWorkspace initialShippedFilter={seed.shippedFilter} />
-    </HydrationBoundary>
+    <>
+      <SurfaceParamHygiene />
+      {/* The desk frame reads the URL (`useSearchParams`: the board runs full-bleed, the sheet keeps the fixed measure);
+          SSR paints the neutral canvas in the frame until it mounts. */}
+      <Suspense
+        fallback={
+          <DeskPageLayout bare className="h-full">
+            <div className="min-h-0 w-full flex-1 bg-surface-canvas" aria-busy="true" aria-label="Fulfilled orders" />
+          </DeskPageLayout>
+        }
+      >
+        <FulfilledDesk />
+      </Suspense>
+    </>
   );
 }

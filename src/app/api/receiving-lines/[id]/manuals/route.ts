@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
-import { tenantQuery } from '@/lib/tenancy/db';
-import type { OrgId } from '@/lib/tenancy/constants';
+import { withTenantTransaction } from '@/lib/tenancy/db';
+import { resolveLineCatalog, resolveOrCreateLineCatalog } from '@/lib/receiving/line-catalog';
 import {
-  getProductManualById,
-  setManualSkuCatalogId,
-} from '@/lib/neon/product-manuals-queries';
-import { resolveOrCreateLineCatalog } from '@/lib/receiving/line-catalog';
-import {
-  promoteProductManualToDocument,
-  unlinkManualDocumentFromSku,
-} from '@/lib/documents/manual-documents';
+  OrderManualError,
+  linkManualToCatalogInTx,
+  settleManualRepair,
+  unlinkManualFromCatalogInTx,
+} from '@/lib/manuals/order-manuals';
 
-/** Pair / unpair a library manual to the SKU catalog row resolved from a receiving line. */
+/** Pair / unpair a library manual to the SKU catalog row resolved from a receiving line (`product_manuals` SKU key). */
 function lineIdFromPath(pathname: string): number {
   const segments = pathname.split('/').filter(Boolean);
   // .../api/receiving-lines/[id]/manuals → id is segments[-2]
@@ -29,19 +26,11 @@ async function manualIdFromBody(request: Request): Promise<number> {
   return Number(body.manualId);
 }
 
-/** Ownership gate for unpair. */
-async function manualOwnedByOrg(manualId: number, orgId: OrgId): Promise<boolean> {
-  const res = await tenantQuery<{ id: number }>(
-    orgId,
-    `SELECT pm.id
-       FROM product_manuals pm
-       JOIN sku_catalog sc ON sc.id = pm.sku_catalog_id
-      WHERE pm.id = $1 AND pm.is_active = TRUE
-        AND sc.organization_id = $2
-      LIMIT 1`,
-    [manualId, orgId],
-  );
-  return res.rows.length > 0;
+function manualErrorResponse(error: unknown): NextResponse {
+  if (error instanceof OrderManualError) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
+  }
+  throw error;
 }
 
 export const POST = withAuth(async (request, ctx) => {
@@ -58,33 +47,22 @@ export const POST = withAuth(async (request, ctx) => {
   if (!resolved) {
     return NextResponse.json({ ok: false, error: 'line not found' }, { status: 404 });
   }
-  if (resolved.skuCatalogId == null) {
+  const skuCatalogId = resolved.skuCatalogId;
+  if (skuCatalogId == null) {
     return NextResponse.json(
       { ok: false, error: 'could not resolve or create a catalog entry for this SKU' },
       { status: 409 },
     );
   }
-  const manual = await setManualSkuCatalogId(manualId, resolved.skuCatalogId, ctx.organizationId);
-  if (!manual) {
-    return NextResponse.json({ ok: false, error: 'manual not found' }, { status: 404 });
-  }
-  let documentId: number | null = null;
   try {
-    const promoted = await promoteProductManualToDocument(
-      ctx.organizationId,
-      manualId,
-      resolved.skuCatalogId,
+    const manual = await withTenantTransaction(ctx.organizationId, (client) =>
+      linkManualToCatalogInTx(client, ctx.organizationId, manualId, skuCatalogId),
     );
-    documentId = promoted?.documentId ?? null;
-  } catch (promoteErr) {
-    console.warn('[POST /api/receiving-lines/[id]/manuals] promote failed:', promoteErr);
+    await settleManualRepair(ctx.organizationId);
+    return NextResponse.json({ ok: true, skuCatalogId, manual });
+  } catch (error) {
+    return manualErrorResponse(error);
   }
-  return NextResponse.json({
-    ok: true,
-    skuCatalogId: resolved.skuCatalogId,
-    manual,
-    documentId,
-  });
 }, {
   permission: 'tech.qc_pass',
   audit: {
@@ -105,28 +83,23 @@ export const DELETE = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'manualId is required' }, { status: 400 });
   }
 
-  if (!(await manualOwnedByOrg(manualId, ctx.organizationId))) {
-    return NextResponse.json({ ok: false, error: 'manual not found' }, { status: 404 });
+  const resolved = await resolveLineCatalog(lineId, ctx.organizationId);
+  if (!resolved) {
+    return NextResponse.json({ ok: false, error: 'line not found' }, { status: 404 });
   }
-  const before = await getProductManualById(manualId, ctx.organizationId);
-  const priorCatalogId =
-    before?.sku_catalog_id != null && Number(before.sku_catalog_id) > 0
-      ? Number(before.sku_catalog_id)
-      : null;
-
-  if (priorCatalogId != null) {
-    try {
-      await unlinkManualDocumentFromSku(ctx.organizationId, manualId, priorCatalogId);
-    } catch (unlinkErr) {
-      console.warn('[DELETE /api/receiving-lines/[id]/manuals] unlink failed:', unlinkErr);
-    }
+  const skuCatalogId = resolved.skuCatalogId;
+  if (skuCatalogId == null) {
+    return NextResponse.json({ ok: false, error: 'Manual is not paired to this SKU' }, { status: 404 });
   }
-
-  const manual = await setManualSkuCatalogId(manualId, null, ctx.organizationId);
-  if (!manual) {
-    return NextResponse.json({ ok: false, error: 'manual not found' }, { status: 404 });
+  try {
+    const before = await withTenantTransaction(ctx.organizationId, (client) =>
+      unlinkManualFromCatalogInTx(client, ctx.organizationId, manualId, skuCatalogId),
+    );
+    await settleManualRepair(ctx.organizationId);
+    return NextResponse.json({ ok: true, manual: { manualId, before } });
+  } catch (error) {
+    return manualErrorResponse(error);
   }
-  return NextResponse.json({ ok: true, manual });
 }, {
   permission: 'tech.qc_pass',
   audit: {

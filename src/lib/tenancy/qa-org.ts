@@ -257,7 +257,7 @@ const QA_FIXTURE_PHOTO_COUNT =
 
 /** Triage decision fixtures (Foundation 0 item 4, HANDOFF-cross-client-outbound- foundation.md) — one deterministic record per decision the… */
 export const QA_TRIAGE_FIXTURES = {
-  /** Arrived, door-scanned, not unboxed; tagged RETURN through tagInboundAsReturn. */
+  /** Arrived, door-scanned, not unboxed; tagged RETURN through tagInboundReturnInTx. */
   returnPackage: {
     tracking: '9400100000000000000304',
     itemName: 'QA Return — Bose SoundLink Mini II',

@@ -1,6 +1,6 @@
 /** Paperwork pairing — which `product_manuals` rows (manuals, packing lists, PL + M, any insert) an order resolves, and under which source. */
 
-import { normalizeIdentifier } from '@/lib/product-manuals';
+import { normalizeIdentifier } from '@/lib/manuals/identifier-key';
 
 export type PaperworkSource = 'order' | 'item_number' | 'sku';
 
@@ -118,10 +118,16 @@ export function parsePairScope(raw: unknown): PaperworkPairScope | null {
   throw new PaperworkPairingError('pairTo must be order, item_number or sku');
 }
 
-/** Item number when the order has one, else SKU, else the order itself. */
+/**
+ * SKU first (operator ruling 2026-10-05: pair at the true scope — one pair
+ * fixes every open order of the SKU), else item number, else the order itself.
+ * `sku` is the governing SKU: the catalog row's SKU when the line resolves to
+ * one (`loadOrderContext`), so a line with a catalog id always defaults to SKU,
+ * and `catalogIdForSku` pins that catalog id on the write.
+ */
 export function defaultPairScope(order: { itemNumber: string | null; sku: string | null }): PaperworkPairScope {
-  if (normalizeIdentifier(order.itemNumber ?? '')) return 'item_number';
   if (paperworkSkuKey(order.sku)) return 'sku';
+  if (normalizeIdentifier(order.itemNumber ?? '')) return 'item_number';
   return 'order';
 }
 

@@ -148,6 +148,8 @@ interface ReceivingLineLite {
   quantity_received: number;
   item_name: string | null;
   image_url: string | null;
+  condition_grade: string | null;
+  condition_graded_at: string | null;
 }
 
 /** The line shape every branch of this route puts on the wire. */
@@ -164,6 +166,10 @@ function serializeLookupLine(l: ReceivingLineLite) {
     inbound_source_type: l.inbound_source_type,
     quantity_expected: l.quantity_expected,
     quantity_received: l.quantity_received,
+    // The unbox stub row seeds from these: the first paint shows the stored (bought-as)
+    // grade and never auto-commits a default grade over a line already graded.
+    condition_grade: l.condition_grade,
+    condition_graded_at: l.condition_graded_at,
   };
 }
 
@@ -174,10 +180,14 @@ async function fetchLines(receivingId: number, orgId: string): Promise<Receiving
     `SELECT rl.id, rl.sku, rz.zoho_item_id, rz.zoho_purchaseorder_id,
             rz.zoho_purchaseorder_number, rl.source_order_id, rl.inbound_source_type,
             rl.quantity_expected, rl.quantity_received, rl.item_name,
+            rlt.condition_grade::text AS condition_grade,
+            rlt.condition_graded_at::text AS condition_graded_at,
             ${RECEIVING_LINE_IMAGE_URL_SQL}
      FROM receiving_line rl
      LEFT JOIN receiving_line_zoho rz
        ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+     LEFT JOIN receiving_line_testing rlt
+       ON rlt.receiving_line_id = rl.id AND rlt.organization_id = rl.organization_id
      LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
      WHERE rl.receiving_id = $1
      ORDER BY rl.id ASC`,
@@ -193,6 +203,8 @@ interface ReceivingPackage {
   return_platform: string | null;
   source_platform: string | null;
   is_return: boolean;
+  priority_tier: number | null;
+  is_priority: boolean;
 }
 
 async function fetchReceivingPackage(receivingId: number, orgId: string): Promise<ReceivingPackage | null> {
@@ -205,7 +217,9 @@ async function fetchReceivingPackage(receivingId: number, orgId: string): Promis
             r.created_at::text AS created_at,
             r.return_platform::text AS return_platform,
             r.source_platform,
-            COALESCE(r.is_return, false) AS is_return
+            COALESCE(r.is_return, false) AS is_return,
+            r.priority_tier,
+            COALESCE(r.is_priority, false) AS is_priority
      FROM receiving_carton r
      LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
      LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id

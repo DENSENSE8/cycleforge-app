@@ -33,7 +33,7 @@ function view(itemId: number, state: OrderCheckInState): OrderCheckInView {
     orderId: 1, orderNumber: null, state, triggerKind: 'delivered', triggerAt: null, dueAt: null,
     supportItemId: itemId, taskId: null, contactedAt: null, contactMessageId: null, contactFollowUpId: null,
     latestInboundMessageId: null, nextFollowUpAt: null, chaseCount: 0, disposition: null, dispositionReason: null,
-    closedAt: null, closedBy: null,
+    outcome: null, closedAt: null, closedBy: null,
   };
 }
 

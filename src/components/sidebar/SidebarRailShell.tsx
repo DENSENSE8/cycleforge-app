@@ -13,7 +13,6 @@ import {
   type CollapseStripPeekCtx,
 } from '@/components/sidebar/context-panel-collapse-context';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { useNavRegion } from '@/lib/keyboard/nav-keys';
 import { cn } from '@/utils/_cn';
 import {
@@ -222,14 +221,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     // No eyebrow band.
     // an edit pencil at its right; the operator removed it 2026-08-22. It spent a
     <section className={cn('min-w-0', sectionTopRule, appSurfaceFillClass('chrome'))}>
-      {showSkeleton ? (
-        // Column-scoped: the field sizes to the rail, so the rail sweeps on its
-        // own clock instead of showing a slice of the middle's pass. It replaced
-        // four pulsing bars — the last drawn skeleton in the rail engine.
-        <div className="relative min-h-40 flex-1">
-          <UniversalLoader isLoading label="Loading recent activity" />
-        </div>
-      ) : (
+      {showSkeleton ? null : (
         <>
           {/* Mount the list host only once rows have painted (`listPainted` latches on the first non-empty render and stays true so the last carton… */}
           {listPainted || rows.length > 0 ? (

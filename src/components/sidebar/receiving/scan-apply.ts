@@ -247,12 +247,7 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     if (pickForOpen) {
       ctx.setLineAccordionBootstrap(ctx.accordionBootstrapRef.current);
       ctx.setSelectedLine(
-        buildMatchedStubRow(
-          poCtx.receiving_id,
-          ctx.trackingNumber,
-          pickForOpen,
-          poCtx.receiving_package?.source_platform ?? null,
-        ),
+        buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, pickForOpen, poCtx.receiving_package),
       );
       ctx.setScanDriven(true);
     }
@@ -262,12 +257,7 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   // frame — the hydration fetch below reconciles serials in the background.
   // Cache stays carton-keyed (all lines); UI scopes to the active PO at read time.
   const stubRows = allLines.map((l) =>
-    buildMatchedStubRow(
-      poCtx.receiving_id,
-      ctx.trackingNumber,
-      l,
-      poCtx.receiving_package?.source_platform ?? null,
-    ),
+    buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, l, poCtx.receiving_package),
   );
   seedReceivingSiblingsCache(
     ctx.queryClient,

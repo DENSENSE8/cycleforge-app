@@ -66,9 +66,12 @@ export function AnimatedStat({
     );
   }
 
+  // Motion+ paints its digit layer at `z-index: -1` with the off-screen reel digits stacked above
+  // and below it. `isolate` keeps that layer inside the number (never behind a tab or card
+  // background); `overflow-hidden` keeps the reel inside the line box while a parent resizes.
   return (
     <AnimateNumber
-      className={cn('inline-flex tabular-nums', className)}
+      className={cn('isolate inline-flex overflow-hidden tabular-nums', className)}
       locales={locales}
       format={format}
       prefix={prefix}

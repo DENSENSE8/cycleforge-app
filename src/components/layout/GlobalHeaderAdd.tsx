@@ -1,11 +1,14 @@
 'use client';
 
 /**
- * Global header "+ Add" — three ways in, one list of things to add, in two
+ * Global header "+ Add" — three ways in, one list of things to add, in three
  * labelled groups:
  *  - **Outbound** — `S` new sales order, `I` import a Square invoice.
  *  - **Inbound** — `P` new purchase order, `R` new return (both open the
- *    inbound-order form at `/incoming/new?type=…`, whose details differ by type).
+ *    inbound-order form at `/purchasing/new`, `?type=RETURN` for a return),
+ *    `U` import orders from a file (`/purchasing/import`).
+ *  - **Support** — `T` new ticket: opens the helpdesk composer in place
+ *    (`NewTicketHost`), so filing a ticket never leaves the page.
  * Every surface paints a small muted group label above each group's rows.
  * The disclosure is the sidebar mode switcher's (NavModeSwitcher):
  *  - **Hover** (mouse) TEACHES the keys: a `KeyHintPopover` hangs under the
@@ -14,7 +17,7 @@
  *  - **Click**: a dropdown anchored under the pill with the grouped list only —
  *    no header row, no keys (hover already taught them); arrows + Enter.
  *  - **`C`** (outside a text field): a small card in the middle of the screen
- *    naming the NEXT key (`S`, `I`, `P`, `R`); Esc cancels. (No Ecwid row:
+ *    naming the NEXT key (`S`, `I`, `P`, `R`, `U`); Esc cancels. (No Ecwid row:
  *    storefront orders already arrive through the Ecwid API sync — owner
  *    2026-09-27.) Same grammar as `G` then a letter (NavGoKeys); ⌘K stays
  *    find. A scanner burst that starts with `C` never arms: the next wedge key
@@ -25,7 +28,8 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Plus, Receipt, RotateCcw, ShoppingCart } from '@/components/Icons';
+import { FileText, Package, Plus, Receipt, RotateCcw, ShoppingCart, Ticket } from '@/components/Icons';
+import { NEW_TICKET_LABEL, openNewTicket } from '@/components/support/new-ticket/open-new-ticket';
 import { KeyHintPopover, type KeyHintAt } from '@/components/sidebar/contextual/NavGoKeys';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
@@ -44,12 +48,13 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { GO_SCAN_BURST_MS } from '@/lib/keyboard/go-keys';
-import { newInboundOrderHref } from '@/lib/inbound/new-inbound-order-path';
+import { inboundOrderFormHref } from '@/lib/inbound/inbound-order-compose';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { CREATE_LEADER } from '@/lib/keyboard/key-registry';
 import { currentPageCreate, usePageCreate } from '@/lib/keyboard/page-create-key';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
 import { NEW_SALES_ORDER_PATH } from '@/lib/orders/manual-order-draft';
+import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { cn } from '@/utils/_cn';
 import { HEADER_PILL_CLASS, TOP_CHROME_ICON_FACE } from './header-shell';
@@ -62,18 +67,24 @@ const ARMED_TIMEOUT_MS = 4000;
 /** The leader key that arms the Add sequence (the key law's create letter). */
 const LEADER = CREATE_LEADER.toUpperCase();
 
-/** The two groups every surface labels, in order. */
-const ADD_GROUPS = ['Outbound', 'Inbound'] as const;
+/** The groups every surface labels, in order. */
+const ADD_GROUPS = ['Outbound', 'Inbound', 'Support'] as const;
 type AddGroup = (typeof ADD_GROUPS)[number];
 
-type AddKey = { key: string; label: string; href: string; icon: ComponentType<{ className?: string }>; group: AddGroup };
+/** A row either navigates (`href`) or opens an in-place composer (`open`). */
+type AddKey = { key: string; label: string; icon: ComponentType<{ className?: string }>; group: AddGroup } & (
+  | { href: string }
+  | { open: () => void }
+);
 
-/** One flat list (keys never collide: S, I, P, R); grouped for display by `ADD_KEY_GROUPS`. */
+/** One flat list (keys never collide: S, I, P, R, U, T); grouped for display by `ADD_KEY_GROUPS`. */
 const NEXT_KEYS: ReadonlyArray<AddKey> = [
   { key: 's', label: 'New sales order', href: NEW_SALES_ORDER_PATH, icon: ShoppingCart, group: 'Outbound' },
   { key: 'i', label: 'Import a Square invoice', href: `${NEW_SALES_ORDER_PATH}?mode=import`, icon: Receipt, group: 'Outbound' },
-  { key: 'p', label: 'New purchase order', href: newInboundOrderHref('PO'), icon: Package, group: 'Inbound' },
-  { key: 'r', label: 'New return', href: newInboundOrderHref('RETURN'), icon: RotateCcw, group: 'Inbound' },
+  { key: 'p', label: 'New purchase order', href: inboundOrderFormHref('desk'), icon: Package, group: 'Inbound' },
+  { key: 'r', label: 'New return', href: inboundOrderFormHref('desk', { type: 'RETURN' }), icon: RotateCcw, group: 'Inbound' },
+  { key: 'u', label: 'Import orders', href: RECEIVING_PATHS.purchaseImport, icon: FileText, group: 'Inbound' },
+  { key: 't', label: NEW_TICKET_LABEL, open: openNewTicket, icon: Ticket, group: 'Support' },
 ];
 
 const ADD_KEY_GROUPS = ADD_GROUPS.map((group) => ({ group, keys: NEXT_KEYS.filter((n) => n.group === group) }));
@@ -113,9 +124,10 @@ export function GlobalHeaderAdd() {
     timer.current = window.setTimeout(disarm, ARMED_TIMEOUT_MS);
   }, [disarm]);
   const run = useCallback(
-    (href: string) => {
+    (n: AddKey) => {
       disarm();
-      router.push(href);
+      if ('open' in n) n.open();
+      else router.push(n.href);
     },
     [disarm, router],
   );
@@ -137,7 +149,7 @@ export function GlobalHeaderAdd() {
         if (next && !event.metaKey && !event.ctrlKey && !event.altKey) {
           event.preventDefault();
           event.stopPropagation();
-          run(next.href);
+          run(next);
         } else if (event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
@@ -243,7 +255,7 @@ export function GlobalHeaderAdd() {
                   return (
                     <DropdownMenuItem
                       key={n.key}
-                      onSelect={() => router.push(n.href)}
+                      onSelect={() => run(n)}
                       className="cursor-pointer gap-2 text-role-body"
                       data-testid={`global-add-menu-${n.key}`}
                     >
@@ -277,7 +289,7 @@ export function GlobalHeaderAdd() {
 }
 
 /** The small card in the middle of the screen: which key comes next. */
-function NextKeysCard({ on, onRun }: { on: boolean; onRun: (href: string) => void }) {
+function NextKeysCard({ on, onRun }: { on: boolean; onRun: (n: AddKey) => void }) {
   const presence = useMotionPresence(motionPresence.dropdownPanel);
   const transition = useMotionTransition(motionTransition.dropdownOpen);
   return (
@@ -312,7 +324,7 @@ function NextKeysCard({ on, onRun }: { on: boolean; onRun: (href: string) => voi
                     key={n.key}
                     type="button"
                     tabIndex={-1}
-                    onClick={() => onRun(n.href)}
+                    onClick={() => onRun(n)}
                     className={cn(
                       'ds-raw-button flex min-w-[15rem] cursor-pointer items-center gap-3 rounded-mode-control px-2 py-1.5 text-left text-role-body text-text-default hover:bg-surface-hover',
                       focusRing('control'),

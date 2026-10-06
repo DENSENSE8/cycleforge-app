@@ -9,6 +9,7 @@ import { resolveOrgAiConfig, type OrgAiConfig } from '@/lib/ai/org-provider';
 import { recordAiUsage, type RecordAiUsage } from '@/lib/ai/usage';
 import { sqlSkuBrandSearchText } from '@/lib/brands/lookup';
 import { SKU_BRAND_JOIN_ON_SQL, SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
+import { ALLOCATE_STAGE_FACTS_JOIN, sqlAllocateSearchStatus } from '@/lib/search/allocate-search-status';
 import {
   buildSearchText,
   isSearchEntityType,
@@ -78,7 +79,7 @@ function carriedSkuBrandSql(skuExpr: string, orgExpr: string): string {
 const LOADER_SQL: Record<SearchEntityType, string> = {
   ORDER: `
     SELECT o.id, o.order_id, o.product_title, o.sku, o.account_source,
-           o.status, o.condition, o.notes, o.order_date, o.created_at,
+           MAX(${sqlAllocateSearchStatus()}) AS status, o.condition, o.notes, o.order_date, o.created_at,
            -- Buyer identity. An operator answering a "where is my order" call
            -- holds a NAME, not an order number, and until this join existed the
            -- console could not turn one into the other. COALESCE order follows
@@ -115,6 +116,7 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
       )
     )
     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+    ${ALLOCATE_STAGE_FACTS_JOIN}
     LEFT JOIN shipment_links sl
       ON sl.owner_type = 'ORDER'
      AND sl.owner_id = o.id

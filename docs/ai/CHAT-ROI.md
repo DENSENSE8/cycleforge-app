@@ -3,7 +3,7 @@
 **Corpus:** 142 session files in `~/.omp/agent/sessions/*cycleforge*` (`-Projects-cycleforge-app` 36, `-lanes` 1, `-lanes-prod` 88, `-lanes-v1-outbound` 17). 1,749 user turns → 1,676 operator messages after I stripped system reminders and sub-agent assignments and deduped. Clustering used intent regexes, and I checked each cluster by reading its messages. Counts are **messages / distinct sessions**. They are dev-session asks, so they include some UI-styling talk inside the cluster.
 **Chat coverage** was checked against `src/lib/assistant/tools/index.ts` (READ_TOOLS), `tools/write-tools.ts` (`propose_mutation`, `revert_mutation`, `link_manual_to_sku`, `request_payment`, `create_manual_order`) and the UI tools in `agent-loop.ts` (`navigate`, `highlight`, `render_artifact`, `print_handling_unit_labels`, `request_connection`, studio tools).
 **ROI** = sessions × minutes saved per occurrence ÷ build cost (S=1, M=2, L=3). Minutes saved and build cost are my own estimates, marked `[INFERENCE]`.
-🔨 = being built now: PO import from chat, order creation on any channel and phone orders, payments, documents, and print labels.
+🔨 = being built now: order creation on any channel and phone orders, payments, documents, and print labels. Row 1's PO import from chat (`draft_po_import` / `import_purchase_order`) was built and then retired (2026-10-06): inbound orders are authored on Purchasing › Add purchase order (`/purchasing/new`) and the order import (`/purchasing/import`), both through the one inbound writer; the chat keeps `link_po_to_order` for an existing PO.
 
 ## Ranked table (top 12)
 

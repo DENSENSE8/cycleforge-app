@@ -121,7 +121,7 @@ export function StockAddForm({
   const missing = busy
     ? null
     : record && !product
-      ? 'Pair Zoho SKU'
+      ? 'Choose SKU'
       : !product && titleLength < TITLE_MIN
         ? 'Title — pick a product or name a new one'
         : barcode == null
@@ -256,18 +256,18 @@ export function StockAddForm({
               </>
             ) : null
           }
-          testId="stock-zoho-sku-row"
+          testId="stock-sku-row"
         >
           {product ? (
             <CopyChip value={product.sku} display={product.sku} tone="sku" fitDisplayWidth />
           ) : (
             <label className="min-w-0 flex-1">
-              <span className="sr-only">Pair Zoho SKU</span>
+              <span className="sr-only">Choose SKU</span>
               <input
                 value={title}
                 maxLength={TITLE_MAX}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="Pair Zoho SKU"
+                placeholder="Find a SKU…"
                 className={cn(
                   'w-full rounded-mode-control border border-border-default bg-surface-card px-2 text-sm font-medium text-text-default placeholder:text-text-faint',
                   isMobile ? 'h-11 text-base' : 'h-8',
@@ -301,8 +301,8 @@ export function StockAddForm({
                 />
               </RecordGroup>
               <RecordGroup
-                title="Zoho SKU"
-                testId="stock-zoho-sku"
+                title="SKU"
+                testId="stock-sku"
                 action={
                   record.source === 'empty' ? (
                     <Button

@@ -10,7 +10,6 @@ import { operationsJourneyFocusedQuery } from '@/lib/queries/operations-journey-
 import { unitTimelinePhotosQuery } from '@/lib/timeline/journey-photos';
 import { serialJourneyFilters } from '@/lib/serial/serial-journey';
 import { mergeStationUnitJourneys } from './merge-station-unit-journeys';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 export function StationUnitJourneys({
   serials,
@@ -67,9 +66,7 @@ export function StationUnitJourneys({
   );
 
   if (serialsLoading && list.length === 0) {
-    return (
-      <UniversalLoader isLoading label="Loading serials" className="min-h-24" />
-    );
+    return null;
   }
 
   if (!serialsLoading && list.length === 0) {

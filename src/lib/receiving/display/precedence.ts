@@ -31,6 +31,18 @@ export function platformPriorityRank(
   return hit ? hit.rank : PRIORITY_RANK_OTHER;
 }
 
+/** Platform rank → the manual tier it reads as (0 Priority · 1 High · 2 Medium · 3 Low); ranks off the map read Low. */
+const RANK_TO_TIER: Readonly<Record<number, 0 | 1 | 2 | 3>> = { 0: 0, 1: 1, 2: 1, 3: 2, 4: 3 };
+
+/**
+ * The tier an order on `platform` gets when its priority is Auto — what Auto
+ * resolves to (Goodwill → 3 Low). Same rank data as {@link platformPriorityRank};
+ * a blank platform reads as unmatched.
+ */
+export function defaultInboundTierForPlatform(platform: string | null): 0 | 1 | 2 | 3 {
+  return RANK_TO_TIER[platformPriorityRank(false, platform)] ?? 3;
+}
+
 /** Column/expression names for {@link priorityRankSql} (lets carton/line callers vary the alias). */
 interface PriorityRankSqlCols {
   /** Manual override column, e.g. 'r.priority_tier'. */

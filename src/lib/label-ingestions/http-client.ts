@@ -5,6 +5,7 @@
  */
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { LabelPairingCandidates, PublicLabelIngestion } from './ingestion-service';
+import type { LabelIngestionState } from './types';
 
 export type LabelIngestionDto = PublicLabelIngestion;
 
@@ -33,8 +34,11 @@ async function readEnvelope<T>(response: Response): Promise<{ data: T; replayed:
   return { data: payload.data, replayed: payload.replayed === true };
 }
 
-export async function listLabelIngestionsHttp(): Promise<LabelIngestionDto[]> {
-  const response = await fetch(`${ENDPOINT}?limit=100`, { credentials: 'same-origin', cache: 'no-store' });
+/** The newest 100 ingestions, optionally in one state (`QUARANTINED` = uploaded labels waiting for their order). */
+export async function listLabelIngestionsHttp(state?: LabelIngestionState): Promise<LabelIngestionDto[]> {
+  const params = new URLSearchParams({ limit: '100' });
+  if (state) params.set('state', state);
+  const response = await fetch(`${ENDPOINT}?${params}`, { credentials: 'same-origin', cache: 'no-store' });
   return (await readEnvelope<LabelIngestionDto[]>(response)).data;
 }
 
@@ -51,11 +55,6 @@ export async function uploadLabelPdf(file: File): Promise<{ data: LabelIngestion
     form.set('sha256', Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(''));
   }
   return readEnvelope<LabelIngestionDto>(await fetch(ENDPOINT, { method: 'POST', body: form, credentials: 'same-origin' }));
-}
-
-export async function retryLabelIngestionHttp(id: number): Promise<LabelIngestionDto> {
-  const response = await fetch(`${ENDPOINT}/${id}/retry`, { method: 'POST', credentials: 'same-origin' });
-  return (await readEnvelope<LabelIngestionDto>(response)).data;
 }
 
 export async function applyLabelIngestionHttp(id: number, expectedRowVersion: number): Promise<void> {
@@ -87,4 +86,26 @@ export async function confirmLabelOrderHttp(id: number, orderId: number, expecte
     body: JSON.stringify({ orderId, expectedRowVersion }),
   });
   return (await readEnvelope<{ ingestion: LabelIngestionDto; repaired: LabelIngestionDto[] }>(response)).data;
+}
+
+/**
+ * Put one stored label on `orderId` for good: a label with no order yet (a
+ * quarantined page) is confirmed onto it first, then applied. Refuses a label
+ * that resolved to another order. Answers the buyer's other labels the confirm
+ * re-paired.
+ */
+export async function fileLabelOnOrderHttp(
+  label: { id: number; rowVersion: number; matchedOrderId: number | null },
+  orderId: number,
+): Promise<{ repaired: number }> {
+  let ingestion = label;
+  let repaired = 0;
+  if (label.matchedOrderId == null) {
+    const confirmed = await confirmLabelOrderHttp(label.id, orderId, label.rowVersion);
+    ingestion = confirmed.ingestion;
+    repaired = confirmed.repaired.length;
+  }
+  if (ingestion.matchedOrderId !== orderId) throw new Error('The label resolved to another order and was not filed.');
+  await applyLabelIngestionHttp(ingestion.id, ingestion.rowVersion);
+  return { repaired };
 }

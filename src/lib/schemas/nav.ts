@@ -2,6 +2,12 @@ import { z } from 'zod';
 import { NAV_RECENT_SURFACE_IDS, type NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
 import { NAV_FACET_CONTEXTS } from '@/lib/nav/facets/contexts';
 import { NAV_LOCATE_SCOPES } from '@/lib/nav/context/schema';
+import { INBOUND_BUCKET_IDS } from '@/lib/nav/locate/inbound';
+import { INBOUND_SOURCE_TYPES } from '@/lib/inbound/source-registry';
+import { PURCHASES_AXES, PURCHASES_SORTS } from '@/lib/receiving/purchases-params';
+import { FULFILLED_AXES, FULFILLED_GRAINS, FULFILLED_SCANS, FULFILLED_SORTS } from '@/lib/outbound/fulfilled-params';
+import { FULFILLED_BUCKET_IDS, type FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
+import { parseDateKey } from '@/utils/date';
 
 /** Request schemas for `/api/nav/recents` and `/api/nav/facets` (the contextual sidebar). */
 
@@ -57,3 +63,60 @@ export const NavLocateQuery = z
     message: 'Pass exactly one of q or refs',
   });
 export type NavLocateQuery = z.infer<typeof NavLocateQuery>;
+
+/** A `YYYY-MM-DD` PT civil day that exists on the calendar. */
+const CivilDay = z
+  .string()
+  .trim()
+  .refine((raw) => parseDateKey(raw) !== null, { message: 'Expected a YYYY-MM-DD day' });
+
+/**
+ * `GET /api/nav/purchases` — Receiving › Purchasing (`src/lib/nav/purchases`).
+ * `from` / `to` are PT civil days on `axis`, inclusive; neither = the last
+ * 90 days, `from=all` = no lower bound. `find` is the page's Find text (`q`
+ * the same). `status` (one inbound bucket) narrows `entries` only.
+ */
+export const NavPurchasesQuery = z
+  .object({
+    status: z.enum(INBOUND_BUCKET_IDS).optional(),
+    axis: z.enum(PURCHASES_AXES).default('ordered'),
+    from: z.union([z.literal('all'), CivilDay]).optional(),
+    to: CivilDay.optional(),
+    source: z.enum(INBOUND_SOURCE_TYPES).optional(),
+    vendor: z.string().trim().min(1).max(200).optional(),
+    unboxedBy: z.coerce.number().int().positive().optional(),
+    sort: z.enum(PURCHASES_SORTS).default('ordered'),
+    dir: z.enum(['asc', 'desc']).optional(),
+    find: z.string().trim().max(200).optional(),
+    q: z.string().trim().max(200).optional(),
+  })
+  .refine((query) => !query.to || !query.from || query.from === 'all' || query.from <= query.to, {
+    message: 'from is after to',
+  });
+export type NavPurchasesQuery = z.infer<typeof NavPurchasesQuery>;
+
+/**
+ * `GET /api/nav/fulfilled` — Fulfillment › Fulfilled (`src/lib/nav/fulfilled`).
+ * `from` / `to` are PT civil days on `axis`, inclusive; neither = the last
+ * 90 days, `from=all` = no lower bound. `q` is the page's Find text.
+ * `status` (one `FULFILLED_BUCKETS` id) narrows `entries` only.
+ */
+export const NavFulfilledQuery = z
+  .object({
+    status: z.enum(FULFILLED_BUCKET_IDS as [FulfilledBucketId, ...FulfilledBucketId[]]).optional(),
+    axis: z.enum(FULFILLED_AXES).default('shipped'),
+    from: z.union([z.literal('all'), CivilDay]).optional(),
+    to: CivilDay.optional(),
+    channel: z.string().trim().toLowerCase().min(1).max(100).optional(),
+    carrier: z.string().trim().toUpperCase().min(1).max(40).optional(),
+    packer: z.coerce.number().int().positive().optional(),
+    scan: z.enum(FULFILLED_SCANS).optional(),
+    grain: z.enum(FULFILLED_GRAINS).default('order'),
+    sort: z.enum(FULFILLED_SORTS).default('shipped'),
+    dir: z.enum(['asc', 'desc']).optional(),
+    q: z.string().trim().max(200).optional(),
+  })
+  .refine((query) => !query.to || !query.from || query.from === 'all' || query.from <= query.to, {
+    message: 'from is after to',
+  });
+export type NavFulfilledQuery = z.infer<typeof NavFulfilledQuery>;

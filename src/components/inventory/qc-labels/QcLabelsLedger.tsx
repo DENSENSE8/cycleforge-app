@@ -16,9 +16,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DataTable } from '@/components/tables/DataTable';
-import { PrepackFlow } from '@/features/prepack/PrepackFlow';
+import { PrepackForm } from '@/features/prepack/PrepackForm';
 import { DeskRecordLayout, DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
-import { MobileFirstFrame } from '@/design-system/components/MobileFirstFrame';
 import { useRecordSlot } from '@/design-system/components/record-ledger/useRecordSlot';
 import { useQcUnitRecord } from '@/components/qc/qc-unit-record';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
@@ -39,8 +38,6 @@ import { RECORD_ROOT_CLASS, qcLabelReprintVerb } from './QcLabelRecord';
 import { QcLabelGridRow } from './grid/QcLabelGridRow';
 import { QC_LABELS_TABLE_BINDING } from './grid/qc-labels-table-definition';
 import type { QcLabelsGridColumn, QcLabelsGridColumnKey } from './grid/qc-labels-grid-layout';
-import { PrepackProductsColumn } from './PrepackProductsColumn';
-import { PrepackPrintedColumn } from './PrepackPrintedColumn';
 import { PrepackSerialField } from './PrepackSerialField';
 
 const qcRowId = (row: QcLabelRow): number => row.serial_unit_id;
@@ -50,8 +47,6 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
   const searchParams = useSearchParams();
   const taskIsPrepack = searchParams.get('task') === 'prepack';
   const [printing, setPrinting] = useState(taskIsPrepack);
-  /** A side-pane click asks the form to load a product; `seq` makes a repeat click a new request. */
-  const [productRequest, setProductRequest] = useState<{ catalogId: number; seq: number } | null>(null);
 
   useEffect(() => {
     setPrinting(taskIsPrepack);
@@ -135,24 +130,14 @@ export function QcLabelsLedger({ rows, totalCount, capped }: { rows: QcLabelRow[
   const narrowed = Boolean(searchParams.get('q')?.trim()) || Boolean(searchParams.get('view'));
 
   if (printing) {
-    const activeCatalogId = Number(searchParams.get('catalogId')) || null;
-    const loadProduct = (catalogId: number) => setProductRequest((current) => ({ catalogId, seq: (current?.seq ?? 0) + 1 }));
     return (
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col" data-testid="qc-labels-prepack-task">
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 xl:grid-cols-[minmax(16rem,1fr)_minmax(25rem,34rem)_minmax(16rem,1fr)]">
-          <PrepackProductsColumn activeCatalogId={activeCatalogId} onChoose={(product) => loadProduct(product.id)} />
-          <MobileFirstFrame testId="qc-labels-prepack-frame" width="column">
-            <PrepackFlow
-              surface="desktop"
-              initial={parsePrepackRouteState(searchParams)}
-              serialEntry={PrepackSerialField}
-              productRequest={productRequest}
-              onExit={closeRecord}
-              onPrinted={() => router.refresh()}
-            />
-          </MobileFirstFrame>
-          <PrepackPrintedColumn rows={rows} onChoose={loadProduct} />
-        </div>
+        <PrepackForm
+          surface="desktop"
+          initial={parsePrepackRouteState(searchParams)}
+          serialEntry={PrepackSerialField}
+          onPrinted={() => router.refresh()}
+        />
       </div>
     );
   }

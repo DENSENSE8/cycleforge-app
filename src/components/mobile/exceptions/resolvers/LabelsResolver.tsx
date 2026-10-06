@@ -113,7 +113,7 @@ export function LabelsResolver({ facts, onResolved }: PhoneResolverProps<LabelsE
       </DetailFacts>
       <DetailFacts label="Order">
         <DetailFact label="Order" value={orderRef} mono copy={order.orderNumber} />
-        <DetailFact label="Channel" value={order.accountSource} />
+        <DetailFact label="Platform" value={order.accountSource} />
         <DetailFact label="SKU" value={order.sku} mono copy={order.sku} />
         <DetailFact label="Tracking" value={order.trackingNumber} mono copy={order.trackingNumber} />
       </DetailFacts>

@@ -1,10 +1,11 @@
 'use client';
 
 /**
- * The label-upload tray — transient: one row per PDF sent (a batch — the
- * server split it into labels), each Added · Already on file · Failed with
- * what landed ("38 labels added · 2 already on file") or why it failed, and an
- * N-of-M meter while the pick is still sending.
+ * The upload tray — transient: one row per file sent, each Added · Already on
+ * file · Failed with what landed ("38 labels added · 2 already on file") or why
+ * it failed, and an N-of-M meter while the pick is still sending. `kind`
+ * names what was sent: an order slot's shipping-label PDFs (a batch each —
+ * the server splits it into labels) or Labels & docs files (`usePrintFileUploads`).
  * Dismiss drops the finished rows. Renders nothing when there is nothing to
  * report.
  */
@@ -31,22 +32,28 @@ const STATUS_GLYPH: Record<LabelUploadItem['status'], ReactNode> = {
   failed: <AlertTriangle aria-hidden />,
 };
 
+const TRAY_WORDS = {
+  labels: { sending: 'Uploading labels', done: 'Label uploads', dismiss: 'Dismiss label uploads' },
+  files: { sending: 'Uploading files', done: 'Uploads', dismiss: 'Dismiss uploads' },
+} as const;
+
 /**
- * @param uploads the desk's `useLabelUploads()` result — the tray reads its rows and dismisses through it.
+ * @param uploads the `useLabelUploads()` / `usePrintFileUploads()` result — the tray reads its rows and dismisses through it.
  */
-export function LabelUploadTray({ uploads }: { uploads: LabelUploads }) {
+export function LabelUploadTray({ uploads, kind = 'labels' }: { uploads: LabelUploads; kind?: keyof typeof TRAY_WORDS }) {
   const { items, pending, clear } = uploads;
   if (items.length === 0) return null;
+  const words = TRAY_WORDS[kind];
   const done = items.filter((item) => item.status !== 'uploading').length;
   const failed = items.filter((item) => item.status === 'failed').length;
-  const title = pending ? `Uploading labels · ${done} of ${items.length}` : `Label uploads · ${items.length}${failed > 0 ? ` · ${failed} failed` : ''}`;
+  const title = pending ? `${words.sending} · ${done} of ${items.length}` : `${words.done} · ${items.length}${failed > 0 ? ` · ${failed} failed` : ''}`;
 
   return (
     <RecordGroup
       title={title}
-      testId="label-upload-tray"
+      testId={kind === 'labels' ? 'label-upload-tray' : 'file-upload-tray'}
       action={
-        <Button variant="ghost" size="sm" icon={<X />} onClick={clear} aria-label="Dismiss label uploads">
+        <Button variant="ghost" size="sm" icon={<X />} onClick={clear} aria-label={words.dismiss}>
           Dismiss
         </Button>
       }

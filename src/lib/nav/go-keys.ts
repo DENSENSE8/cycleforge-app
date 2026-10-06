@@ -14,7 +14,8 @@ export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Recor
   // Scan Stations mirrors the contextual parent switcher.
   floor: { l: 'stations-live', a: 'triage', u: 'receive', q: 'testing', p: 'ready-to-pack', k: 'packer', s: 'scan-out' },
   fulfillment: { s: 'outbound', f: 'fba', l: 'label-intake' },
-  inbound: { d: 'incoming', p: 'pickup', r: 'repair', s: 'sourcing' },
+  // Purchasing (owner 2026-10-05) takes U — P is Local Pickup's.
+  inbound: { d: 'incoming', u: 'purchasing', p: 'pickup', r: 'repair', s: 'sourcing' },
   inventory: { s: 'stock', l: 'inventory', q: 'qc-labels' },
 };
 

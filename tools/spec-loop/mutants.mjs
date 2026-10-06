@@ -27,7 +27,6 @@ const SIDEBAR_NAV = 'src/lib/sidebar-navigation.ts';
 const NAV_ROLLOUT = 'src/lib/nav/context/rollout.ts';
 const LANES = 'src/lib/nav/lanes.ts';
 const ORDER_CARD_LIST = 'src/components/outbound/orders/cards/OrderCardList.tsx';
-const SHIPPED_CARD_MODEL = 'src/components/shipped/ledger/shipped-card-model.ts';
 
 /** @type {SpecMutant[]} */
 export const MUTANTS = [
@@ -191,20 +190,6 @@ export default function StockShortcutsPage() {
       },
     ],
     expect: [{ anchor: 'contracts', rule: 'layout.sidebar-owns-table-controls', file: ORDER_CARD_LIST }],
-  },
-  {
-    id: 'identifier-hand-rolled-last8',
-    describe: 'A card model grows its own `last8` (slice(-8)) instead of getLast8 / CopyChip displayWidth="last8" — a second last-8 helper.',
-    rules: ['identity.last8-one-helper'],
-    edits: [
-      {
-        file: SHIPPED_CARD_MODEL,
-        find: 'export type ShippedCardModel = TriageCardModelBase<DerivedPackerRecord>;',
-        replace:
-          'export type ShippedCardModel = TriageCardModelBase<DerivedPackerRecord>;\n\n/** The tracking number\'s short face on the card. */\nexport function last8(value: string): string {\n  return value.slice(-8);\n}',
-      },
-    ],
-    expect: [{ anchor: 'contracts', rule: 'identity.last8-one-helper', file: SHIPPED_CARD_MODEL }],
   },
   // `<ruleId>--plant` of each accepted rule (tools/spec-loop/accepted.mjs).
   ...ACCEPTED.mutants,

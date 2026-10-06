@@ -11,7 +11,10 @@
 
 import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sidebar-shared';
 import { walkInStationHref } from '@/lib/walk-in/jobs';
+import { PRINT_STATION_CONDITION_OPTIONS, PRINT_STATION_CONDITION_PARAM } from '@/lib/print-station/fnsku';
 import type { NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
+import { inboundOrderFormHref } from '@/lib/inbound/inbound-order-compose';
+import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
 import type { NavAction, NavControls, NavSearch } from './schema';
 import {
   TASK_BOARD_GROUP_BYS,
@@ -37,6 +40,39 @@ import {
 } from '@/lib/receiving/inbound-lane';
 import { DOCKED_KIND_OPTIONS } from '@/lib/receiving/docked-record-state';
 import {
+  PURCHASES_AXES,
+  PURCHASES_AXIS_LABEL,
+  PURCHASES_AXIS_PARAM,
+  PURCHASES_DEFAULT_AXIS,
+  PURCHASES_DEFAULT_SORT,
+  PURCHASES_DEFAULT_WINDOW_LABEL,
+  PURCHASES_DIR_PARAM,
+  PURCHASES_FROM_PARAM,
+  PURCHASES_SORT_PARAM,
+  PURCHASES_TO_PARAM,
+  PURCHASES_UNBOXED_BY_PARAM,
+} from '@/lib/receiving/purchases-params';
+import {
+  FULFILLED_AXES,
+  FULFILLED_AXIS_LABEL,
+  FULFILLED_AXIS_PARAM,
+  FULFILLED_DEFAULT_AXIS,
+  FULFILLED_DEFAULT_SORT,
+  FULFILLED_DEFAULT_WINDOW_LABEL,
+  FULFILLED_DIR_PARAM,
+  FULFILLED_CARDS_PARAM,
+  FULFILLED_DONE_PARAM,
+  FULFILLED_FIND_PARAM,
+  FULFILLED_FROM_PARAM,
+  FULFILLED_GROUP_PARAM,
+  FULFILLED_MINE_PARAM,
+  FULFILLED_MINE_VALUE,
+  FULFILLED_PACKER_PARAM,
+  FULFILLED_SORT_PARAM,
+  FULFILLED_TO_PARAM,
+  FULFILLED_UNTRACKED_PARAM,
+} from '@/lib/outbound/fulfilled-params';
+import {
   SOURCING_ALERT_STATUS_OPTIONS,
   SOURCING_SCOUT_BY_OPTIONS,
   SOURCING_SUPPLIER_TYPE_OPTIONS,
@@ -54,13 +90,21 @@ import { QUEUE_STATUS_CHIPS } from '@/lib/orders/to-ship-queue';
 import { SUPPORT_LOCATE } from '@/lib/nav/locate/support-params';
 import { CHANNEL_DISPOSITION_LABELS } from '@/lib/channel-allocation/types';
 import {
-  LABEL_BATCH_PRINTING_KEYS,
-  LABEL_BATCH_PRINTING_LABEL,
-  LABEL_BATCH_PRINTING_PARAM,
-  LABEL_PAIRING_KEYS,
-  LABEL_PAIRING_LABEL,
-  LABEL_PAIRING_PARAM,
-} from '@/lib/triage/views/label-intake';
+  ORDER_PACKET_SORT_LABEL,
+  ORDER_PACKET_SORT_PARAM,
+  ORDER_PACKET_SORTS,
+  ORDER_PACKET_QUERY_PARAM,
+} from '@/lib/label-prints/order-packet-contracts';
+import {
+  PRINT_FILE_PRINTED_FROM_PARAM,
+  PRINT_FILE_PRINTED_TO_PARAM,
+  PRINT_FILE_QUERY_PARAM,
+  PRINT_FILE_SORT_LABEL,
+  PRINT_FILE_SORT_PARAM,
+  PRINT_FILE_SORTS,
+  PRINT_FILE_UPLOADED_FROM_PARAM,
+  PRINT_FILE_UPLOADED_TO_PARAM,
+} from '@/lib/label-prints/print-file-contracts';
 import {
   SUPPORT_LIST_DEFAULT_GROUP,
   SUPPORT_LIST_DEFAULT_SORT,
@@ -216,7 +260,6 @@ export const NAV_SCAN_GRAMMARS = [
 export type NavScanGrammar = (typeof NAV_SCAN_GRAMMARS)[number];
 
 const UNSHIPPED_VIEWS = outboundSavedViewsConfig('unshipped');
-const SHIPPED_VIEWS = outboundSavedViewsConfig('shipped');
 
 const DOCKED_VIEWS = {
   storageKey: SAVED_VIEW_STORAGE_KEY.receiving_history,
@@ -318,6 +361,59 @@ const PIPELINE_CONTROLS: NavControls = {
   // ledger body's chips over its list (operator 2026-10-04), never a sidebar row.
 };
 
+const PURCHASES_VIEWS = {
+  storageKey: SAVED_VIEW_STORAGE_KEY.receiving_purchases,
+  paramKeys: SAVED_VIEW_PARAM_KEYS.receiving_purchases,
+};
+
+/**
+ * Purchasing (`/purchasing`, a Receiving mode; `purchases-params.ts`):
+ * every purchase-order line in a window on one date axis (ordered · delivered
+ * · unboxed; neither end set = the last 90 days), by who unboxed it, in a
+ * column order. Source and Vendor are counted facets
+ * (`NAV_FACET_GROUPS.purchasing`). The status chips (`?recon=`)
+ * are the sheet's own pasted-list row in the body, never a sidebar row.
+ */
+const PURCHASES_CONTROLS: NavControls = {
+  choices: [
+    {
+      id: 'axis',
+      label: 'Date',
+      param: PURCHASES_AXIS_PARAM,
+      options: PURCHASES_AXES.map((value) => ({ value, label: PURCHASES_AXIS_LABEL[value] })),
+      defaultValue: PURCHASES_DEFAULT_AXIS,
+      clearParams: [],
+    },
+  ],
+  dateRanges: [
+    {
+      id: 'window',
+      label: 'Window',
+      fromParam: PURCHASES_FROM_PARAM,
+      toParam: PURCHASES_TO_PARAM,
+      clearParams: [],
+      placeholder: PURCHASES_DEFAULT_WINDOW_LABEL,
+    },
+  ],
+  staff: [{ id: 'unboxed-by', param: PURCHASES_UNBOXED_BY_PARAM, label: 'Unboxed by' }],
+  sort: {
+    param: PURCHASES_SORT_PARAM,
+    dirParam: PURCHASES_DIR_PARAM,
+    defaultValue: PURCHASES_DEFAULT_SORT,
+    options: [
+      { value: 'ordered', label: 'Ordered, newest first' },
+      { value: 'delivered', label: 'Delivered, newest first', dir: 'desc' },
+      { value: 'unboxed', label: 'Unboxed, newest first', dir: 'desc' },
+      { value: 'waiting', label: 'Oldest delivered, not unboxed', dir: 'asc' },
+      { value: 'po', label: 'Purchase order, A to Z', dir: 'asc' },
+      { value: 'vendor', label: 'Vendor, A to Z', dir: 'asc' },
+      { value: 'product', label: 'Product, A to Z', dir: 'asc' },
+      { value: 'status', label: 'Status', dir: 'asc' },
+      { value: 'units', label: 'Most units first', dir: 'desc' },
+    ],
+  },
+};
+
 /**
  * FBM's queue list (Allocate). Staff roles: the
  * universal `?staff=` assignee filter (`STAFF_FILTER_PARAM`, `sqlOrderAssignedToStaff`)
@@ -416,39 +512,114 @@ const REPAIR_VIEWS = {
   paramKeys: SAVED_VIEW_PARAM_KEYS.repair_queue,
 };
 
+const FULFILLED_VIEWS = {
+  storageKey: SAVED_VIEW_STORAGE_KEY.outbound_fulfilled,
+  paramKeys: SAVED_VIEW_PARAM_KEYS.outbound_fulfilled,
+};
+
 /**
- * Shipped's period picker (`useShippedTableFilters.setPeriodRange`), now with
- * a time of day at each end (`timeFrom`/`timeTo`, PT), plus who shipped it:
- * `?staff=` (`effStaffId`), `?pickedBy=`, `?packedBy=`.
+ * Fulfilled (`/fulfilled`; `fulfilled-params.ts`): every shipped order in a
+ * window on one date axis (shipped · delivered · ordered · ship-by; neither
+ * end set = the last 90 days), by who packed it, in a column order. Channel,
+ * Carrier and Scan source are counted facets (`NAV_FACET_GROUPS.fulfilled`).
+ * Packed by me (`mine=me`) narrows server-side as the viewer's own `packer`
+ * (`fulfilledApiParams`), so counts agree. The board's display rows — Done
+ * columns, Untracked, Cards, Group by carrier (operator 2026-10-06) — are
+ * defaulted choices / the group row the board reads client-side.
+ * The status chips (`?status=`) and the row grain (`?grain=`) are the sheet's
+ * own, in the body — never a sidebar row.
  */
-const SHIPPED_CONTROLS: NavControls = {
-  staff: [
-    { id: 'any', param: 'staff', label: 'Staff' },
-    { id: 'picked-by', param: 'pickedBy', label: 'Picked by' },
-    { id: 'packed-by', param: 'packedBy', label: 'Packed by' },
-  ],
-  dateRanges: [
+const FULFILLED_CONTROLS: NavControls = {
+  choices: [
     {
-      id: 'shipped',
-      label: 'Fulfilled',
-      fromParam: 'dateFrom',
-      toParam: 'dateTo',
-      clearParams: ['shippedWeekOffset', 'allDates'],
-      // No range = every shipped package (`shippedEffectiveDateWindow`'s all-time default).
-      placeholder: 'All dates',
-      fromTimeParam: 'timeFrom',
-      toTimeParam: 'timeTo',
+      id: 'axis',
+      label: 'Date',
+      param: FULFILLED_AXIS_PARAM,
+      options: FULFILLED_AXES.map((value) => ({ value, label: FULFILLED_AXIS_LABEL[value] })),
+      defaultValue: FULFILLED_DEFAULT_AXIS,
+      clearParams: [],
+    },
+    {
+      id: 'mine',
+      label: 'Packed by me',
+      param: FULFILLED_MINE_PARAM,
+      options: [
+        { value: 'all', label: 'Everyone' },
+        { value: FULFILLED_MINE_VALUE, label: 'Only mine' },
+      ],
+      defaultValue: 'all',
+      // Mine and a named packer answer the same question — picking either side drops the other.
+      clearParams: [FULFILLED_PACKER_PARAM],
+    },
+    {
+      id: 'done',
+      label: 'Done columns',
+      param: FULFILLED_DONE_PARAM,
+      options: [
+        { value: 'show', label: 'Show' },
+        { value: 'hide', label: 'Hide' },
+      ],
+      defaultValue: 'show',
+      clearParams: [],
+    },
+    {
+      id: 'untracked',
+      label: 'Untracked',
+      param: FULFILLED_UNTRACKED_PARAM,
+      options: [
+        { value: 'show', label: 'Show' },
+        { value: 'hide', label: 'Hide' },
+      ],
+      defaultValue: 'show',
+      clearParams: [],
+    },
+    {
+      id: 'cards',
+      label: 'Cards',
+      param: FULFILLED_CARDS_PARAM,
+      options: [
+        { value: 'full', label: 'Full' },
+        { value: 'compact', label: 'Compact' },
+      ],
+      defaultValue: 'full',
+      clearParams: [],
     },
   ],
-  sort: {
-    param: 'sort',
-    defaultValue: 'ship_confirmed_at',
+  group: {
+    param: FULFILLED_GROUP_PARAM,
+    defaultValue: 'none',
     options: [
-      { value: 'ship_confirmed_at', label: 'Scanned out, newest' },
-      { value: 'ship_confirmed_at_asc', label: 'Scanned out, oldest' },
-      { value: 'delivered_at', label: 'Delivered, newest' },
-      { value: 'status', label: 'Carrier state' },
-      { value: 'sale_amount', label: 'Order total' },
+      { value: 'none', label: 'No grouping' },
+      { value: 'carrier', label: 'Carrier' },
+    ],
+  },
+  dateRanges: [
+    {
+      id: 'window',
+      label: 'Window',
+      fromParam: FULFILLED_FROM_PARAM,
+      toParam: FULFILLED_TO_PARAM,
+      clearParams: [],
+      placeholder: FULFILLED_DEFAULT_WINDOW_LABEL,
+    },
+  ],
+  staff: [{ id: 'packer', param: FULFILLED_PACKER_PARAM, label: 'Packed by' }],
+  sort: {
+    param: FULFILLED_SORT_PARAM,
+    dirParam: FULFILLED_DIR_PARAM,
+    defaultValue: FULFILLED_DEFAULT_SORT,
+    options: [
+      { value: 'shipped', label: 'Scanned out, newest first' },
+      { value: 'delivered', label: 'Delivered, newest first', dir: 'desc' },
+      { value: 'ordered', label: 'Ordered, newest first', dir: 'desc' },
+      { value: 'shipBy', label: 'Ship-by, soonest first', dir: 'asc' },
+      { value: 'lastEvent', label: 'Last carrier event, newest first', dir: 'desc' },
+      { value: 'order', label: 'Order number, A to Z', dir: 'asc' },
+      { value: 'channel', label: 'Platform, A to Z', dir: 'asc' },
+      { value: 'carrier', label: 'Carrier, A to Z', dir: 'asc' },
+      { value: 'status', label: 'Status', dir: 'asc' },
+      { value: 'packer', label: 'Packer, A to Z', dir: 'asc' },
+      { value: 'item', label: 'Item, A to Z', dir: 'asc' },
     ],
   },
 };
@@ -467,44 +638,62 @@ const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
 ];
 
 /**
- * The Labels & docs header split CTA (handoff print-stations §3.2): three bulk
- * prints by stock, then the two bulk uploads. A print view's face is its own
- * stock and carries ⌘P (the desk binds ⌘P to "print all of this view's
- * stock"); Printed has no stock of its own, so no verb there wears ⌘P.
- * Uploads' face is the upload itself (⌘O rides it everywhere), then the labels.
+ * The Labels & docs header split CTA. Bulk (the bare route, operator
+ * 2026-10-06): the face is **Upload** (⌘O — PDFs, no type choice), then
+ * **Print** (⌘P — the checked files, else the open one). Orders
+ * (`?view=orders`, 2026-10-05): the face is **Print order** (⌘P — the
+ * checked orders, else the open one), then **Upload** (⌘O — the open order's
+ * first missing slot, typed and targeted) and **Buy label** (the desk's own
+ * compose, `?buy=1`).
  */
-function labelsDocsActions(view: 'uploads' | 'labels' | 'paperwork'): readonly NavActionDecl[] {
-  const printKey = (stock: 'labels' | 'paperwork') => (view === stock ? { hotkey: 'mod+p' } : {});
-  const printLabels: NavAction = { id: 'labels-docs.print-labels', label: 'Print all labels', intent: 'labels-docs:print-labels', ...printKey('labels') };
-  const printPaperwork: NavAction = { id: 'labels-docs.print-paperwork', label: 'Print all paperwork', intent: 'labels-docs:print-paperwork', ...printKey('paperwork') };
-  const printAll: NavAction = { id: 'labels-docs.print-all', label: 'Print all (labels + paperwork)', intent: 'labels-docs:print-all' };
-  const upload: NavAction = { id: 'labels-docs.upload', label: 'Upload label PDFs', intent: 'labels-docs:upload', hotkey: 'mod+o' };
-  const uploadSlips: NavAction = { id: 'labels-docs.upload-slips', label: 'Upload packing slips', intent: 'labels-docs:upload-slips' };
-  // In-app ShipStation buying (owner 2026-10-01): the Labels view's face opens
-  // the desk's OWN Buy a label compose record — no order required.
-  const buyLabel: NavAction = { id: 'labels-docs.buy-label', label: 'Buy label', href: '/shipping/label-intake?view=labels&buy=1' };
-  const order =
-    view === 'uploads' ? [upload, printLabels, printPaperwork, printAll, uploadSlips]
-    : view === 'paperwork' ? [uploadSlips, printPaperwork, printLabels, printAll, upload]
-    : [buyLabel, printLabels, printPaperwork, printAll, upload, uploadSlips];
-  return order.map((action) => ({ action }));
+function labelsDocsActions(view: 'uploads' | 'orders'): readonly NavActionDecl[] {
+  if (view === 'uploads') {
+    return [
+      { action: { id: 'labels-docs.upload', label: 'Upload', intent: 'labels-docs:upload', hotkey: 'mod+o' } },
+      { action: { id: 'labels-docs.print-selected', label: 'Print', intent: 'labels-docs:print-selected', hotkey: 'mod+p' } },
+    ];
+  }
+  return [
+    { action: { id: 'labels-docs.print-orders', label: 'Print order', intent: 'labels-docs:print-orders', hotkey: 'mod+p' } },
+    { action: { id: 'labels-docs.upload', label: 'Upload', intent: 'labels-docs:upload', hotkey: 'mod+o' } },
+    { action: { id: 'labels-docs.buy-label', label: 'Buy label', href: '/shipping/label-intake?view=orders&buy=1' } },
+  ];
 }
 
-// Labels & docs status cuts (ruling A4) — once the desk body's chip rails.
-const LABEL_PRINTING_CHOICE: NonNullable<NavControls['choices']>[number] = {
-  id: 'printing',
-  label: 'Printing',
-  param: LABEL_BATCH_PRINTING_PARAM,
-  options: LABEL_BATCH_PRINTING_KEYS.map((value) => ({ value, label: LABEL_BATCH_PRINTING_LABEL[value] })),
-  clearParams: ['page'],
-};
-const LABEL_PAIRING_CHOICE: NonNullable<NavControls['choices']>[number] = {
-  id: 'pairing',
-  label: 'Pairing',
-  param: LABEL_PAIRING_PARAM,
-  options: LABEL_PAIRING_KEYS.map((value) => ({ value, label: LABEL_PAIRING_LABEL[value] })),
-  clearParams: ['page'],
-};
+/**
+ * Labels & docs › Bulk, the file list (operator 2026-10-06): Sort (Newest
+ * uploaded · Oldest uploaded · Last printed — the day headers follow it),
+ * then the Uploaded and Printed windows. Print status (All · Not printed ·
+ * Partly printed · Printed) is a counted facet
+ * (`NAV_FACET_GROUPS['label-intake.uploads']`); Find is the page's search.
+ * Every change drops the page.
+ */
+const FILES_CONTROLS = {
+  order: ['sort', 'facets', 'dateRanges'],
+  sort: {
+    param: PRINT_FILE_SORT_PARAM,
+    defaultValue: 'newest',
+    options: PRINT_FILE_SORTS.map((value) => ({ value, label: PRINT_FILE_SORT_LABEL[value] })),
+  },
+  dateRanges: [
+    { id: 'uploaded', label: 'Uploaded', fromParam: PRINT_FILE_UPLOADED_FROM_PARAM, toParam: PRINT_FILE_UPLOADED_TO_PARAM, clearParams: ['page'], placeholder: 'Any date' },
+    { id: 'printed', label: 'Printed', fromParam: PRINT_FILE_PRINTED_FROM_PARAM, toParam: PRINT_FILE_PRINTED_TO_PARAM, clearParams: ['page'], placeholder: 'Any date' },
+  ],
+} satisfies NavControls;
+
+/**
+ * Labels & docs › Orders (2026-10-05): Sort only — Status (Missing · Ready ·
+ * Printed · All), Missing slot and Channel are counted facets
+ * (`NAV_FACET_GROUPS['label-intake.orders']`), all answered by the one
+ * `/api/shipping/label-intake/orders` statement.
+ */
+const ORDERS_CONTROLS = {
+  sort: {
+    param: ORDER_PACKET_SORT_PARAM,
+    defaultValue: 'priority',
+    options: ORDER_PACKET_SORTS.map((value) => ({ value, label: ORDER_PACKET_SORT_LABEL[value] })),
+  },
+} satisfies NavControls;
 
 /**
  * Media Library selection (operator law 2026-10-04): the body's Filters menu
@@ -554,6 +743,19 @@ const MEDIA_UNBOXING_CONTROLS: NavControls = {
   ],
 };
 
+/** FNSKU labels: one Amazon condition, `none` for a blank condition, or unset for every row. Stations has no catalog to cut. */
+const FNSKU_CONDITION_CONTROLS: NavControls = {
+  choices: [
+    {
+      id: 'condition',
+      label: 'Condition',
+      param: PRINT_STATION_CONDITION_PARAM,
+      options: PRINT_STATION_CONDITION_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+      clearParams: ['page'],
+    },
+  ],
+};
+
 export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
   // The MasterNav Chat row's `+` and its thread list (`SidebarNavList.tsx`
   // Chat branches → `ChatSessionsNav`). Find narrows the threads (the desk
@@ -574,15 +776,12 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       orders: { savedViews: UNSHIPPED_VIEWS, actions: TO_SHIP_ACTIONS, controls: QUEUE_CONTROLS },
     },
   },
+  // Find narrows the sheet server-side (`q`) — no locator; a pasted list is the search bar's.
   fulfilled: {
-    viewKeys: true,
-    items: {
-      all: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
-      online: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
-      fba: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
-      sku: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
-      delivered: { savedViews: SHIPPED_VIEWS, controls: SHIPPED_CONTROLS },
-    },
+    recentsPanel: true,
+    search: { placeholder: 'Find fulfilled orders', source: 'url-param', param: FULFILLED_FIND_PARAM },
+    savedViews: FULFILLED_VIEWS,
+    controls: FULFILLED_CONTROLS,
   },
   // Header split action `IncomingDeskAddAction` — the Global Add inbound leaves.
   // Find narrows the ledger in place through `?find=` (`INBOUND_FIND_PARAM`;
@@ -628,17 +827,25 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       },
     },
     actions: [
-      { action: { id: 'incoming.add-po', label: 'Add purchase order', intent: 'global-add:incoming-po' } },
-      { action: { id: 'incoming.add-return', label: 'Add return', intent: 'global-add:incoming-return' } },
-      {
-        action: { id: 'incoming.import-returns', label: 'Import returns (CSV/TSV)', intent: 'global-add:incoming-returns-csv' },
-      },
+      { action: { id: 'incoming.add-po', label: 'Add purchase order', href: inboundOrderFormHref('desk') } },
+      { action: { id: 'incoming.add-return', label: 'Add return', href: inboundOrderFormHref('desk', { type: 'RETURN' }) } },
+      { action: { id: 'incoming.import-orders', label: 'Import orders', href: RECEIVING_PATHS.purchaseImport } },
       { action: { id: 'incoming.import-zoho', label: 'Import Zoho POs', intent: 'global-add:incoming-zoho' } },
       {
         action: { id: 'incoming.import-ebay', label: 'Import eBay purchases', intent: 'global-add:incoming-ebay' },
         requires: 'integrations.ebay',
       },
     ],
+  },
+  // Purchasing (Receiving mode, owner 2026-10-05): every PO line in a window.
+  // View-less, but it opens its own panel (‹ Receiving, the lane's modes,
+  // Find, controls, facets) — the `recentsPanel` switch, as on Local Pickup.
+  // Find narrows the sheet in place — no locator, a pasted list is Inbound's.
+  purchasing: {
+    recentsPanel: true,
+    search: { placeholder: 'Find purchases', source: 'url-param', param: INBOUND_FIND_PARAM },
+    savedViews: PURCHASES_VIEWS,
+    controls: PURCHASES_CONTROLS,
   },
   // Sourcing (Inbound lane, `G S`): the views were the desk tab row, the
   // filters were the old context panel's pill sliders (`SourcingSidebarPanel`,
@@ -838,7 +1045,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       { action: { id: 'qc-labels.print', label: 'Print QC label', intent: 'qc-labels:print' }, requires: 'print.label' },
     ],
   },
-  // Print station (owner 2026-09-29; modes 2026-10-04): two modes on the card, `G` then a letter — FNSKU labels
+  // Print station (owner 2026-09-29; modes 2026-10-04; condition filter 2026-10-05): two modes on the card, `G` then a letter — FNSKU labels
   // (printing: Find is the master route to an FNSKU, narrowed on the server, an exact FNSKU opens it) and
   // Stations (managing: Find narrows the org's print stations by name).
   'print-station': {
@@ -846,6 +1053,8 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     viewKeys: true,
     search: { placeholder: 'FNSKU, ASIN, SKU or title…', source: 'url-param', param: 'q' },
     items: {
+      fnsku: { controls: FNSKU_CONDITION_CONTROLS },
+      'fnsku-reprinted': { controls: FNSKU_CONDITION_CONTROLS },
       'stations-all': { search: { placeholder: 'Station name or printer…', source: 'url-param', param: 'q' } },
     },
   },
@@ -1240,28 +1449,28 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       },
     },
   },
-  // Labels & docs: Bulk (bare) · Shipping labels · Packing slips are the
-  // three saved views; print state remains within each record. Find
-  // narrows the list through the desk store. The header split CTA's face is
-  // the view's own job — Uploads uploads label PDFs, a print view prints all of
-  // its stock (⌘P); ⌘O uploads label PDFs everywhere (`LabelsDocsDesk`
-  // registers the intents). Uploads filters by upload date (`?from=`/`?to=`).
+  // Labels & docs: Bulk (bare) · Orders (`?view=orders`) are the two saved
+  // views. The header split CTA's face is the view's own job — Bulk uploads
+  // PDFs (⌘O) then prints the checked or open file (⌘P); Orders prints the
+  // checked or open order (⌘P). Both narrow on the SERVER through `?q=`: Bulk
+  // over file name, tracking and matched order number (`FILES_CONTROLS` + the
+  // `label-intake.uploads` facets); Orders over order number, tracking, SKU,
+  // item number and product title (`ORDERS_CONTROLS` + the
+  // `label-intake.orders` facets).
   'label-intake': {
     viewKeys: true,
-    search: { placeholder: 'Search labels', source: 'desk-store' },
+    search: { placeholder: 'File, tracking or order', source: 'url-param', param: PRINT_FILE_QUERY_PARAM },
     actions: labelsDocsActions('uploads'),
     items: {
       uploads: {
-        search: { placeholder: 'Search uploads', source: 'desk-store' },
-        controls: {
-          dateRanges: [
-            { id: 'uploaded', label: 'Uploaded', fromParam: 'from', toParam: 'to', clearParams: [], placeholder: 'Any date' },
-          ],
-          choices: [LABEL_PRINTING_CHOICE],
-        },
+        search: { placeholder: 'File, tracking or order', source: 'url-param', param: PRINT_FILE_QUERY_PARAM },
+        controls: FILES_CONTROLS,
       },
-      labels: { actions: labelsDocsActions('labels'), controls: { choices: [LABEL_PAIRING_CHOICE] } },
-      paperwork: { actions: labelsDocsActions('paperwork'), controls: { choices: [LABEL_PAIRING_CHOICE] } },
+      orders: {
+        search: { placeholder: 'Order, tracking, SKU or product', source: 'url-param', param: ORDER_PACKET_QUERY_PARAM },
+        actions: labelsDocsActions('orders'),
+        controls: ORDERS_CONTROLS,
+      },
     },
   },
   // The import record: Runs (bare) · Orders (`?view=rows`). Find narrows the

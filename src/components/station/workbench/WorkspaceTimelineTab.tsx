@@ -27,7 +27,6 @@ import {
 import { StationUnitJourneys } from './StationUnitJourneys';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 /** Flush Displays body — no WorkspaceCard glass island (scan-station SoT). */
 const TIMELINE_FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
@@ -191,9 +190,7 @@ function CarrierPanel({ carrier }: { carrier: CarrierLoadState }) {
     return <CarrierTrackingSection shipment={carrier.shipment} stationCompact />;
   }
   if (carrier.loading) {
-    return (
-      <UniversalLoader isLoading label="Loading tracking" className="min-h-24" />
-    );
+    return null;
   }
   return (
     <div

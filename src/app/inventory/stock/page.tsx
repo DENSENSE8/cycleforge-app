@@ -14,7 +14,9 @@ export default async function InventoryStockPage({
   searchParams: Promise<{
     q?: string;
     room?: string;
+    excludeRoom?: string;
     aisle?: string;
+    excludeAisle?: string;
     status?: string;
     sku?: string;
     sort?: string;
@@ -46,6 +48,8 @@ export default async function InventoryStockPage({
     query: params.q ?? null,
     room,
     aisle: params.aisle ?? null,
+    excludeRoom: params.excludeRoom ?? null,
+    excludeAisle: params.excludeAisle ?? null,
   });
 
   return (
@@ -55,6 +59,8 @@ export default async function InventoryStockPage({
         rooms={rooms}
         loadedRoomFilter={room}
         loadedAisleFilter={params.aisle?.trim() || null}
+        loadedExcludedRoomFilter={params.excludeRoom?.trim() || null}
+        loadedExcludedAisleFilter={params.excludeAisle?.trim() || null}
         loadedSortFilter={params.sort?.trim() || null}
         totalCount={totalCount}
         counts={counts}

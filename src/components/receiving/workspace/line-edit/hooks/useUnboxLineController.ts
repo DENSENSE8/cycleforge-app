@@ -71,10 +71,15 @@ export function useUnboxLineController(
     !row.disposition_code || row.disposition_code === 'HOLD' ? 'ACCEPT' : row.disposition_code,
   );
   // Unfound cartons carry a placeholder carton grade (BRAND_NEW); the real grade
-  // lives per line and defaults to USED_A.
-  const initialCond =
-    row.receiving_source === 'unmatched' ? 'USED_A' : row.condition_grade || 'USED_A';
-  const [cond, setCond] = useState(initialCond);
+  // lives per line and defaults to USED_A. Otherwise the stored grade — on an
+  // inbound line that is the grade it was bought at.
+  const rowCond = row.receiving_source === 'unmatched' ? 'USED_A' : row.condition_grade || 'USED_A';
+  // Keyed to the line so a newly opened line never reads the previous line's
+  // grade: child mount effects (PoLineCaptureRow's default-grade commit) run
+  // before this hook's reset effect would.
+  const [condState, setCondState] = useState({ lineId: row.id, value: rowCond });
+  const cond = condState.lineId === row.id ? condState.value : rowCond;
+  const setCond = useCallback((value: string) => setCondState({ lineId: row.id, value }), [row.id]);
   // Effective condition of the selected unit on a multi-qty line (reported up
   // from ReceivingUnitRows). Null on single-qty lines.
   const [unitLabelCondition, setUnitLabelCondition] = useState<string | null>(null);
@@ -116,9 +121,9 @@ export function useUnboxLineController(
   useEffect(() => {
     setQa(!row.qa_status || row.qa_status === 'PENDING' ? 'PASSED' : row.qa_status);
     setDisp(!row.disposition_code || row.disposition_code === 'HOLD' ? 'ACCEPT' : row.disposition_code);
-    setCond(row.receiving_source === 'unmatched' ? 'USED_A' : row.condition_grade || 'USED_A');
+    setCond(rowCond);
     setUnitLabelCondition(null);
-  }, [row.id, row.qa_status, row.disposition_code, row.condition_grade, row.receiving_source]);
+  }, [row.id, row.qa_status, row.disposition_code, rowCond, setCond]);
 
   // Hydrate each buffer from its OWN durable column on line change AND whenever the persisted value updates (own blur-save echo, another…
   useEffect(() => {

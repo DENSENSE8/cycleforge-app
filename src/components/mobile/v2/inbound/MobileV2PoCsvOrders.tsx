@@ -1,14 +1,17 @@
 'use client';
 
 /**
- * The orders of a purchase-order CSV, as the phone shows them in the import's
+ * The orders of an order import file, as the phone shows them in the import's
  * Review and Import steps: one `MobileRecordCard` per order, grouped by status
  * (what needs a fix first), and the order's drill sheet — every line of that
  * order as its own card, with the exact file row and field of each problem.
- * The card never lists lines inline; tapping it is the pinpoint view.
+ * The card never lists lines inline; tapping it is the pinpoint view. After a
+ * commit the Import step links to the batch's upload check (desk page).
  */
 
+import { ChevronRight } from '@/components/Icons';
 import { MobileV2ActionSheet } from '@/components/mobile/v2/MobileV2ActionSheet';
+import { MobileDataListRow } from '@/design-system/components/MobileDataListRow';
 import {
   MobileRecordCard,
   MobileRecordCardList,
@@ -20,8 +23,9 @@ import { PO_COLUMNS } from '@/lib/inbound/po-columns';
 import type { PoCsvOrderSummary } from '@/lib/inbound/po-csv-import';
 import type { PoReviewGroup, PoReviewLine, PoReviewOrder, PoReviewStatus } from '@/lib/inbound/po-csv-review';
 import { formatDateKeyMedium } from '@/utils/date';
+import { InboundRowText } from './MobileV2InboundParts';
 
-/** The file carries no currency column; CSV purchase orders are dollars. */
+/** The file carries no currency column; imported orders are dollars. */
 const CSV_CURRENCY = 'USD';
 
 /** `review` = the dry run (before Import); `result` = what the writer did. */
@@ -192,7 +196,7 @@ export function PoOrderSheet({ order, phase, onClose }: { order: PoReviewOrder |
   );
 }
 
-/** Step 3 "Review orders": the dry run's counts, then the order cards by status. */
+/** Step 4 "Review orders": the dry run's counts, then the order cards by status. */
 export function PoReviewStep({
   summary,
   checking,
@@ -235,11 +239,12 @@ export function PoReviewStep({
   );
 }
 
-/** Step 4 "Import": in flight, failed, or what the writer did — grouped like the review. */
+/** Step 5 "Import": in flight, failed, or what the writer did — grouped like the review. */
 export function PoImportStep({
   importing,
   error,
   summary,
+  checkHref,
   groups,
   orphans,
   onOpen,
@@ -248,6 +253,8 @@ export function PoImportStep({
   importing: number | null;
   error: string | null;
   summary: PoCsvOrderSummary | null;
+  /** The batch's upload check (`purchaseImportCheckHref`); null when no batch was written. */
+  checkHref: string | null;
   groups: readonly PoReviewGroup[];
   orphans: readonly PoReviewLine[];
   onOpen: (orderKey: string) => void;
@@ -267,6 +274,16 @@ export function PoImportStep({
           .filter(Boolean)
           .join(' · ')}
       </p>
+      {checkHref ? (
+        <MobileDataListRow href={checkHref} ariaLabel="Check the upload" className="mt-3 border-y border-mode-rule" testId="m-po-csv-check-link">
+          <span className="flex items-center gap-3 px-mode-page py-2.5">
+            <span className="min-w-0 flex-1">
+              <InboundRowText title="Check the upload" meta="Every column, file value against saved value — opens the desk check." />
+            </span>
+            <ChevronRight aria-hidden className="h-5 w-5 shrink-0 text-mode-muted" />
+          </span>
+        </MobileDataListRow>
+      ) : null}
       <PoOrderGroups groups={groups} orphans={orphans} phase="result" onOpen={onOpen} />
     </>
   );

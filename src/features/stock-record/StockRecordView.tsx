@@ -7,14 +7,15 @@
  * `DetailRecordFrame`). Owner 2026-09-30: the phone edits everything the desk
  * record edits, with the SAME components.
  *
- * - An empty location → `StockAddForm` in record mode (Pair Zoho SKU, count,
+ * - An empty location → `StockAddForm` in record mode (choose SKU, count,
  *   **Create TMP SKU**); a landed add re-opens the new pair (`onOpenKey`).
  * - A stocked pair → `StockEvidence` (item card with Upload · Phone, home
  *   tote, Locations with count controls + Add location, Photos, Send to
  *   staff, Movement). A `TMP-` placeholder swaps its work column for the
- *   SKU exception's own (`SkuExceptionEvidence`: title + description, Pair
- *   to Zoho SKU) and leads the aside with its facts (`SkuExceptionFacts`),
- *   kept live by the SKU-exception realtime feed.
+ *   SKU exception's own (`SkuExceptionEvidence`: title + description) and
+ *   leads the aside with its facts (`SkuExceptionFacts`), kept live by the
+ *   SKU-exception realtime feed. Pair to SKU (the header verb, or the pencil
+ *   on the temporary SKU) opens `SkuPairSheet`, never a block in the record.
  *
  * `DeskRecordLayout` stacks main then aside below its container breakpoint,
  * so the phone reads it as one column.
@@ -26,6 +27,7 @@ import { SkuExceptionEvidence, SkuExceptionFacts } from '@/components/inventory/
 import { StockAddForm } from '@/components/inventory/stock/StockAddForm';
 import { StockEvidence } from '@/components/inventory/stock/StockEvidence';
 import { StockRecordActions } from '@/components/inventory/stock/StockRecordActions';
+import { StockTemporarySku } from '@/components/inventory/stock/StockTemporarySku';
 
 export interface StockRecordViewProps {
   /** The open pair, or null when the link names a pair no longer listed. */
@@ -66,25 +68,22 @@ export function StockRecordView({ record, rows, onChanged, onOpenKey, onClose, s
   }
   if (!record) return null;
 
-  const elsewhereQty =
-    rows?.filter((row) => row.sku === record.sku && row.location_id !== record.location_id && row.qty > 0).length ?? 0;
+  const paired = () => {
+    onClose();
+    onChanged();
+  };
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
       {showActions ? (
         <StockRecordActions
           record={record}
-          onChanged={onChanged}
-          onPaired={() => {
-            onClose();
-            onChanged();
-          }}
+          onPaired={paired}
         />
       ) : null}
       <StockEvidence
       record={record}
       onCounted={onChanged}
-      elsewhereQty={elsewhereQty}
       placeholder={
         record?.is_provisional
           ? {
@@ -96,7 +95,6 @@ export function StockRecordView({ record, rows, onChanged, onOpenKey, onClose, s
                   error={provisional.isError ? provisional.error : null}
                   mergedInto={provisional.mergedInto}
                   itemRow={itemRow}
-                  pairAfterItem
                   hidePair
                   onExit={() => {
                     onClose();
@@ -105,6 +103,7 @@ export function StockRecordView({ record, rows, onChanged, onOpenKey, onClose, s
                 />
               ),
               aside: provisional.data ? <SkuExceptionFacts item={provisional.data} /> : null,
+              skuContent: <StockTemporarySku sku={record.sku} item={provisional.data ?? null} onPaired={paired} />,
             }
           : undefined
       }

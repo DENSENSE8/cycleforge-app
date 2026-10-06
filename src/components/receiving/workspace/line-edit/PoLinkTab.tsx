@@ -23,7 +23,6 @@ import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface PoCandidate {
   zoho_purchaseorder_id: string;
@@ -366,9 +365,7 @@ export function PoLinkTab({
         >
           Couldn’t load orders. Try again.
         </p>
-      ) : isFetching && candidates.length === 0 && orderCandidates.length === 0 ? (
-        <UniversalLoader isLoading label="Loading orders" className="min-h-28" />
-      ) : (
+      ) : isFetching && candidates.length === 0 && orderCandidates.length === 0 ? null : (
         // Flush stack: `-space-y-px` pulls each row up onto its neighbour's border so adjacent 1px edges collapse into ONE hairline seam.
         <div className="-space-y-px">
           {/*

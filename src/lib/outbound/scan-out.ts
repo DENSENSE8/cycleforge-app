@@ -1,10 +1,12 @@
-/** Dock scan-out — "this packed carton physically left the building". */
+/** Dock scan-out — "this carton physically left the building". A missing pack scan does not refuse it. */
 
 import type { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 import type { AnonymousAuthContext, AuthContext } from '@/lib/auth/auth-context';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
+import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY, type RecordAuditArgs } from '@/lib/audit-logs';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
@@ -16,29 +18,36 @@ import { publishOrderChanged } from '@/lib/realtime/publish';
 import { upsertOpenOrderException } from '@/lib/orders-exceptions';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/** Reasons the dock must refuse a physical handoff. */
-export type ScanOutBlockReason = 'canceled' | 'cancelled' | 'not_packed';
+/** Reasons the dock must refuse a physical handoff. A missing pack scan is not one. */
+export type ScanOutBlockReason = 'canceled' | 'cancelled';
 
 /** Order states that must never leave the building. */
 const BLOCKED_ORDER_STATUSES: Readonly<Record<string, true>> = { canceled: true, cancelled: true };
 
 /** The normalized blocking status, or null when status itself permits shipping. */
-export function blockedOrderStatus(status: unknown): Exclude<ScanOutBlockReason, 'not_packed'> | null {
+export function blockedOrderStatus(status: unknown): ScanOutBlockReason | null {
   const normalized = String(status ?? '').trim().toLowerCase();
-  return BLOCKED_ORDER_STATUSES[normalized] === true
-    ? normalized as Exclude<ScanOutBlockReason, 'not_packed'>
-    : null;
+  return BLOCKED_ORDER_STATUSES[normalized] === true ? (normalized as ScanOutBlockReason) : null;
 }
 
 /** One decision for the API POST and read-only identification face. */
-export function scanOutBlockReason(status: unknown, isPacked: boolean): ScanOutBlockReason | null {
-  return blockedOrderStatus(status) ?? (isPacked ? null : 'not_packed');
+export function scanOutBlockReason(status: unknown): ScanOutBlockReason | null {
+  return blockedOrderStatus(status);
 }
 
-export function scanOutBlockedMessage(reason: ScanOutBlockReason): string {
-  return reason === 'not_packed'
-    ? 'Order is not packed — pack it before scan-out.'
-    : 'Order is cancelled — do not ship. Pull this package.';
+export function scanOutBlockedMessage(_reason: ScanOutBlockReason): string {
+  return 'Order is cancelled — do not ship. Pull this package.';
+}
+
+/**
+ * A label the dock can record even when nothing in the building matches it.
+ * Mirrors `registerShipmentPermissive` (no `SKU:QTY`, at least 8 canonical
+ * characters) and keeps an FNSKU / ASIN off the shipment registry.
+ */
+export function scanOutCanRegister(scan: string): boolean {
+  const raw = scan.trim();
+  if (!raw || raw.includes(':') || looksLikeFnsku(raw)) return false;
+  return extractCanonicalTracking(raw).length >= 8;
 }
 
 /**
@@ -236,15 +245,8 @@ async function scanOutResolvedShipment(
   const context = await deps.loadContext(organizationId, shipmentId, scan);
   const { carton } = context;
 
-  /*
-   * Preconditions: cancellation and an absent completed pack both fail closed.
-   * A replayed miss already left the building, so only a cancellation refuses
-   * to record it — a missing pack scan is exactly why it was held.
-   */
-  const blockReason =
-    origin === 'resolved-miss'
-      ? blockedOrderStatus(carton.orderStatus)
-      : scanOutBlockReason(carton.orderStatus, context.isPacked);
+  // A forgotten pack scan still leaves. Only a cancelled order is pulled.
+  const blockReason = blockedOrderStatus(carton.orderStatus);
   if (blockReason) return { kind: 'blocked', blockReason, carton };
 
 
@@ -473,14 +475,23 @@ async function loadScanOutContext(
 /**
  * The dock's label → shipment resolution: the registry first (registers/syncs a
  * recognized carrier tracking the same way the pack station does), then the
- * orders / exception fallback. Null = unmatched.
+ * orders / exception fallback. A label that matches nothing — an FBA carton, a
+ * forgotten pack, any other tracking-shaped scan — still gets a shipment row
+ * so the scan-out has a `shipment_id`. Null only when the scan cannot be a
+ * tracking number ({@link scanOutCanRegister}).
  */
 export async function resolveScanOutShipment(scan: string, organizationId: string): Promise<number | null> {
   const id =
     (await resolveShipmentId(scan, organizationId)).shipmentId ??
     (await resolveShipmentViaOrderOrException(scan, organizationId));
+  if (id != null) return Number(id);
+  if (!scanOutCanRegister(scan)) return null;
+  const registered = await registerShipmentPermissive(
+    { trackingNumber: scan, sourceSystem: 'scan' },
+    organizationId as OrgId,
+  );
   // pg hands bigint ids back as strings despite the declared `number`.
-  return id == null ? null : Number(id);
+  return registered?.id == null ? null : Number(registered.id);
 }
 
 const defaultScanOutDeps: ScanOutDeps = {

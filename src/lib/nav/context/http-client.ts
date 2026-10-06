@@ -8,11 +8,15 @@ import { z } from 'zod';
 import {
   NavContextSchema,
   NavFacetsResponseSchema,
+  NavFulfilledResponseSchema,
   NavLocateResponseSchema,
+  NavPurchasesResponseSchema,
   NavRecentRowSchema,
   type NavContext,
   type NavFacetsResponse,
+  type NavFulfilledResponse,
   type NavLocateResponse,
+  type NavPurchasesResponse,
   type NavLocateScope,
   type NavRecentRow,
   type NavRecents,
@@ -89,6 +93,16 @@ export async function fetchNavLocate(
     qs.set('refs', refs);
   }
   return NavLocateResponseSchema.parse(await getJson(`/api/nav/locate?${qs}`, signal));
+}
+
+/** `GET /api/nav/purchases?<params>` — Receiving › Purchasing (`NavPurchasesQuery` names the params). */
+export async function fetchNavPurchases(params: URLSearchParams, signal?: AbortSignal): Promise<NavPurchasesResponse> {
+  return NavPurchasesResponseSchema.parse(await getJson(`/api/nav/purchases?${params}`, signal));
+}
+
+/** `GET /api/nav/fulfilled?<params>` — Fulfillment › Fulfilled (`NavFulfilledQuery` names the params; `fulfilledApiParams` builds them). */
+export async function fetchNavFulfilled(params: URLSearchParams, signal?: AbortSignal): Promise<NavFulfilledResponse> {
+  return NavFulfilledResponseSchema.parse(await getJson(`/api/nav/fulfilled?${params}`, signal));
 }
 
 const NavRecentsResponseSchema = z.object({

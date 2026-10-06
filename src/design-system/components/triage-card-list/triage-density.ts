@@ -22,7 +22,6 @@ export type TriageDensity = 'card' | 'row';
 /** The surfaces that offer the switch — one prefs key each. */
 export type TriageDensitySurface =
   | 'outbound.allocate'
-  | 'outbound.fulfilled'
   | 'incoming.pasted'
   | 'inventory.stock'
   | 'incoming.pipeline'

@@ -3,6 +3,7 @@ import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { PoolClient } from 'pg';
+import { normalizeIdentifier } from '@/lib/manuals/identifier-key';
 
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 const ECWID_PAGE_LIMIT = 100;
@@ -36,14 +37,6 @@ interface EcwidRawProduct {
   name?: string | null;
   sku?: string | null;
   categoryIds?: Array<number | string>;
-}
-
-export function normalizeIdentifier(rawValue: string): string {
-  const cleaned = String(rawValue || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
-  return cleaned.replace(/^0+/, '') || '';
 }
 
 function extractGoogleDocId(input: string): string {

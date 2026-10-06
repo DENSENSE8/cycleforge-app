@@ -80,12 +80,15 @@ export function MobileV2ScanRecentList({
   itemActions,
   itemOpen,
   empty,
+  more,
 }: {
   entries: readonly StationTapeEntry[];
   untitledLabel: string;
   itemActions?: (entry: StationTapeEntry) => readonly StationItemAction[] | null;
   itemOpen?: (entry: StationTapeEntry) => (() => void) | null;
   empty?: React.ReactNode;
+  /** Under the rows: a way to reach more of them (an on-demand history read). */
+  more?: React.ReactNode;
 }) {
   const [now, setNow] = useState(() => Date.now());
   const projected = useMemo(() => projectMobileV2ScanRecents(entries, untitledLabel), [entries, untitledLabel]);
@@ -117,6 +120,7 @@ export function MobileV2ScanRecentList({
           </div>
         ))}
       </div>
+      {more ? <div className="flex justify-center px-3 py-2">{more}</div> : null}
     </section>
   );
 }

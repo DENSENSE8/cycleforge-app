@@ -1,7 +1,7 @@
 /**
- * The ONE "awaiting your yes" lookup for a chat thread. Two YELLOW tools ask
- * before they write — `link_manual_to_sku`, `create_manual_order` and
- * `import_purchase_order` — and a
+ * The ONE "awaiting your yes" lookup for a chat thread. The YELLOW tools ask
+ * before they write — `link_manual_to_sku`, `create_manual_order`,
+ * `link_po_to_order` and the confirmable chat writes — and a
  * bare yes / no on the next turn answers whichever this thread proposed LAST.
  * The route settles it through that tool (same dispatch gate, same review
  * path); a longer reply carries `note` to the model instead.
@@ -11,7 +11,6 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { LINK_MANUAL_TOOL_NAME, pendingManualLinkNote } from './manual-link-tools';
 import { CREATE_MANUAL_ORDER_TOOL_NAME, pendingManualOrderNote } from './manual-order-tools';
-import { IMPORT_PO_TOOL_NAME, pendingPoImportNote } from './po-import-tools';
 import { pendingConfirmableNote } from './confirmable-write';
 import { CHAT_WRITE_SPECS } from './task-tools';
 import { LINK_PO_TO_ORDER_TOOL, linkPoToOrderSpec } from './po-order-link-tools';
@@ -29,7 +28,6 @@ export interface PendingConfirmation {
 const CONFIRMABLE: Record<string, { toolName: string; permission: string }> = {
   'product_manual.link_sku': { toolName: LINK_MANUAL_TOOL_NAME, permission: 'product_manuals.manage' },
   'order.create_manual': { toolName: CREATE_MANUAL_ORDER_TOOL_NAME, permission: 'orders.create' },
-  'receiving.import_po': { toolName: IMPORT_PO_TOOL_NAME, permission: 'receiving.scan_po' },
   'receiving.link_order': { toolName: LINK_PO_TO_ORDER_TOOL, permission: 'receiving.scan_po' },
   'order.set_flag': { toolName: 'set_order_flag', permission: 'orders.create' },
   'order.mark_out_of_stock': { toolName: 'mark_out_of_stock', permission: 'orders.create' },
@@ -64,8 +62,6 @@ export async function loadPendingConfirmation(
       ? await pendingManualOrderNote(orgId, sessionId)
       : toolName === LINK_MANUAL_TOOL_NAME
         ? await pendingManualLinkNote(orgId, sessionId)
-        : toolName === IMPORT_PO_TOOL_NAME
-          ? await pendingPoImportNote(orgId, sessionId)
           : toolName === LINK_PO_TO_ORDER_TOOL
             ? await pendingConfirmableNote(linkPoToOrderSpec, orgId, sessionId)
             : toolName && Object.hasOwn(CHAT_WRITE_SPECS, toolName)

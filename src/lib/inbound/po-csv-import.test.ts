@@ -34,6 +34,8 @@ const fixture = parseCsv(readFileSync(new URL('./fixtures/goodwill-po-synthetic.
 function fakeDb() {
   const orders = new Map<string, { id: number; hash: string }>();
   const batchWrites: string[] = [];
+  /** Every `inbound_import_row` INSERT: its SQL, params and the decoded row records. */
+  const importRowInserts: { sql: string; params: ReadonlyArray<unknown>; rows: Array<Record<string, unknown>> }[] = [];
   const client: TxClient = {
     query: (async (text: string, params: ReadonlyArray<unknown> = []) => {
       if (/SELECT id, content_hash FROM inbound_order/.test(text)) {
@@ -77,17 +79,32 @@ function fakeDb() {
   }) as typeof previewInboundOrder;
   const ingest = ((org: OrgId, draft: unknown, ctx: Parameters<typeof ingestInboundOrder>[2]) =>
     ingestInboundOrderInTx(client, org, draft, ctx, ingestDeps)) as typeof ingestInboundOrder;
-  const query = (async (_org: OrgId, sql: string) => {
-    batchWrites.push(sql.trim().split(/\s+/).slice(0, 2).join(' '));
+  const query = (async (_org: OrgId, sql: string, params: ReadonlyArray<unknown> = []) => {
+    const write = /^(INSERT INTO|UPDATE)\s+(\w+)/.exec(sql.trim());
+    batchWrites.push(write ? `${write[1]} ${write[2]}` : sql.trim().split(/\s+/)[0]);
+    if (write?.[2] === 'inbound_import_row') {
+      const rows = JSON.parse(String(params[2])) as Array<Record<string, unknown>>;
+      importRowInserts.push({ sql, params, rows });
+      return { rows: [], rowCount: rows.length };
+    }
     return { rows: [{ id: 501 }], rowCount: 1 };
   }) as unknown as typeof tenantQuery;
-  const deps: InboundBatchDeps = { query, preview, ingest };
-  return { orders, batchWrites, deps };
+  const deps: InboundBatchDeps = { query, preview, ingest, receiveIfUnboxed: async () => null };
+  return { orders, batchWrites, importRowInserts, deps };
+}
+
+/** The writer stamps the tenant on every kept file row: organization_id is the first column, bound to $1 = the org. */
+function assertImportRowsStamped(insert: { sql: string; params: ReadonlyArray<unknown> }) {
+  assert.match(insert.sql, /INSERT INTO inbound_import_row\s*\(\s*organization_id,/);
+  assert.match(insert.sql, /SELECT \$1,/);
+  assert.equal(insert.params[0], ORG);
 }
 
 const goodwill = (over: Partial<PoCsvImportInput> = {}): PoCsvImportInput => ({
+  fileName: 'goodwill-po-synthetic.csv',
   headers: fixture.headers,
   rows: fixture.rows,
+  preset: 'goodwill',
   platform: 'goodwill',
   dryRun: true,
   staffId: 7,
@@ -113,13 +130,22 @@ test('dry run writes nothing; same file twice → unchanged (dry run and commit)
   const db = fakeDb();
   await runPoCsvImport(ORG, goodwill(), { batch: db.deps });
   assert.deepEqual(db.batchWrites, [], 'a dry run records no batch');
+  assert.deepEqual(db.importRowInserts, [], 'a dry run keeps no file rows');
   assert.equal(db.orders.size, 0);
 
   const landed = await runPoCsvImport(ORG, goodwill({ dryRun: false }), { batch: db.deps });
   assert.equal(landed.summary.landed, 3);
   assert.equal(landed.summary.new, 3);
-  assert.deepEqual(db.batchWrites, ['INSERT INTO', 'UPDATE inbound_import_batch']);
+  assert.deepEqual(db.batchWrites, ['INSERT INTO inbound_import_batch', 'INSERT INTO inbound_import_row', 'UPDATE inbound_import_batch']);
   assert.equal(db.orders.size, 3);
+  // One INSERT keeps the whole file, one record per data row, numbered from 1.
+  assert.equal(db.importRowInserts.length, 1);
+  const [kept] = db.importRowInserts;
+  assertImportRowsStamped(kept);
+  assert.deepEqual(kept.rows.map((r) => r.row_number), fixture.rows.map((_, i) => i + 1));
+  assert.deepEqual(kept.rows.map((r) => r.status), fixture.rows.map(() => 'landed'));
+  assert.deepEqual(kept.rows.map((r) => r.order_key), ['99990001', '99990001', '99990002', '99990003']);
+  assert.deepEqual(kept.rows[0].cells, fixture.rows[0]);
 
   // Re-parse the same bytes, as a re-upload would.
   const again = parseCsv(readFileSync(new URL('./fixtures/goodwill-po-synthetic.csv', import.meta.url), 'utf8'));
@@ -146,7 +172,8 @@ test('needs-fix rows hold their whole order with the exact field; a row without 
     { PO: 'C-300', Title: '', Qty: '1', Price: 'free' },
   ];
   const db = fakeDb();
-  const r = await runPoCsvImport(ORG, { headers, rows, platform: 'ebay', dryRun: true, staffId: null }, { batch: db.deps });
+  const input = { fileName: 'tools.csv', headers, rows, preset: 'generic', platform: 'ebay', staffId: null } as const;
+  const r = await runPoCsvImport(ORG, { ...input, dryRun: true }, { batch: db.deps });
 
   assert.deepEqual(
     r.rowProblems.map((p) => [p.row, p.field]),
@@ -161,9 +188,16 @@ test('needs-fix rows hold their whole order with the exact field; a row without 
   assert.ok(!r.batch!.orders.some((o) => o.rows.includes(3)), 'the orphan row belongs to no order — it is in rowProblems');
 
   // Commit lands only the clean order.
-  const committed = await runPoCsvImport(ORG, { headers, rows, platform: 'ebay', dryRun: false, staffId: null }, { batch: db.deps });
+  const committed = await runPoCsvImport(ORG, { ...input, dryRun: false }, { batch: db.deps });
   assert.equal(committed.summary.landed, 1);
   assert.deepEqual([...db.orders.keys()], ['B-200']);
+  // Every file row is kept — held rows (including the orphan) with their reason.
+  assert.equal(db.importRowInserts.length, 1);
+  const [kept] = db.importRowInserts;
+  assertImportRowsStamped(kept);
+  assert.deepEqual(kept.rows.map((r) => [r.row_number, r.status]), [[1, 'held'], [2, 'held'], [3, 'landed'], [4, 'held'], [5, 'held']]);
+  assert.equal(kept.rows[3].order_key, null);
+  assert.equal(kept.rows[3].problem, 'Order # is blank');
 });
 
 test('required columns still missing → no grouping; the AI runs only when asked', async () => {
@@ -186,12 +220,12 @@ test('required columns still missing → no grouping; the AI runs only when aske
   }) as never;
   const db = fakeDb();
 
-  const plain = await runPoCsvImport(ORG, { headers, rows, platform: 'goodwill', dryRun: true, staffId: null }, { batch: db.deps, propose });
+  const plain = await runPoCsvImport(ORG, { fileName: 'bits.csv', headers, rows, preset: 'goodwill', dryRun: true, staffId: null }, { batch: db.deps, propose });
   assert.equal(calls, 0);
   assert.equal(plain.batch, null);
   assert.deepEqual(plain.identification.missingRequired, ['order_number', 'item_title']);
 
-  const assisted = await runPoCsvImport(ORG, { headers, rows, platform: 'goodwill', dryRun: true, assist: true, staffId: null }, { batch: db.deps, propose });
+  const assisted = await runPoCsvImport(ORG, { fileName: 'bits.csv', headers, rows, preset: 'goodwill', dryRun: true, assist: true, staffId: null }, { batch: db.deps, propose });
   assert.equal(calls, 1);
   assert.equal(assisted.identification.mapping.order_number, 'Thing');
   assert.equal(assisted.identification.columns.find((c) => c.header === 'Thing')?.reason, 'ai');

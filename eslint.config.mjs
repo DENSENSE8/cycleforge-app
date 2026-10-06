@@ -498,12 +498,12 @@ export default [
       'src/components/mobile/unit/UnitLineSheets.tsx',
       'src/components/mobile/unit/UnitSheetParts.tsx',
       // Header chrome sits outside the page's RouteModeRegion; re-resolves it.
+      'src/components/outbound/fulfilled/ResolveShipmentExceptionDialog.tsx',
       'src/components/outbound/orders/LinkLabelDialog.tsx',
       'src/components/outbound/orders/OrderLabelEntries.tsx',
       'src/components/outbound/orders/paperwork/PaperworkWalkHost.tsx',
       'src/components/right-rail/RightRailHost.tsx',
       'src/components/receiving/ReceivingLedgers.tsx',
-      'src/components/shipped/ledger/ResolveShipmentExceptionDialog.tsx',
       'src/components/ui/command.tsx',
       // Raw `createPortal` outside src/design-system + src/components/ui.
       'src/components/admin/access/AddRolePopover.tsx',
@@ -630,7 +630,6 @@ export default [
       'src/components/shipping/shipped-filter/ShippedFilterControls.tsx',
       'src/components/sidebar/receiving/incoming-details/EbayTab.tsx',
       'src/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel.tsx',
-      'src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx',
       'src/components/sku/BinStockNumpadSheet.tsx',
       'src/components/sku/LocationDetailView.tsx',
       'src/components/sku/SkuDetailView.tsx',

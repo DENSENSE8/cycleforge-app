@@ -96,8 +96,9 @@ export function pickOrderDocument(
   return ofType.reduce((a, b) => (Date.parse(b.createdAt) > Date.parse(a.createdAt) ? b : a));
 }
 
-export function useOrderManuals(orderId: number) {
-  return useQuery({
+/** `GET /api/orders/[id]/manuals` as query options — `useOrderManuals` and imperative `fetchQuery` reads share one cache. */
+export function orderManualsQuery(orderId: number) {
+  return {
     queryKey: orderManualsKey(orderId),
     queryFn: async () =>
       readJson<OrderManualsResponse>(
@@ -106,7 +107,11 @@ export function useOrderManuals(orderId: number) {
       ),
     enabled: Number.isFinite(orderId) && orderId > 0,
     staleTime: 30_000,
-  });
+  };
+}
+
+export function useOrderManuals(orderId: number) {
+  return useQuery(orderManualsQuery(orderId));
 }
 
 function formFor(file: File, fields: Record<string, string>): FormData {
@@ -140,17 +145,72 @@ export async function replaceDocumentBytes(documentId: number, file: File) {
   return readJson<{ document: OutboundDocument }>(res, 'Could not replace the document.');
 }
 
-export async function pairStoredOrderDocument(
+/** What a manual write answers: the manual now, and the pinning it had before the write (the undo target). */
+export interface OrderManualWrite {
+  manual: OrderManual;
+  before: PaperworkPairing;
+}
+
+/** Upload one paperwork file onto an order line, pinned at `pairTo` (server default when absent) as `type`. */
+export async function uploadOrderManual(
   orderId: number,
-  document: Pick<OutboundDocument, 'id' | 'documentType'>,
-) {
-  const res = await fetch(`/api/orders/${orderId}/documents`, {
+  file: File,
+  options: { pairTo?: PaperworkSource; type?: string } = {},
+): Promise<{ manual: OrderManual }> {
+  const fields: Record<string, string> = { displayName: file.name.replace(/\.[a-z0-9]+$/i, '') };
+  if (options.pairTo) fields.pairTo = options.pairTo;
+  if (options.type) fields.type = options.type;
+  const res = await fetch(`/api/orders/${orderId}/manuals`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    body: formFor(file, fields),
+  });
+  return readJson<{ manual: OrderManual }>(res, 'Upload failed.');
+}
+
+/** Pair a library row to an order line: ADDS the `pairTo` key, keeps its other keys. */
+export async function pairOrderManual(orderId: number, manualId: number, pairTo: PaperworkSource): Promise<OrderManualWrite> {
+  const res = await fetch(`/api/orders/${orderId}/manuals`, {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ documentId: document.id, documentType: document.documentType }),
+    body: JSON.stringify({ manualId, pairTo }),
   });
-  return readJson<{ document: OutboundDocument }>(res, 'Could not pair the stored document.');
+  return readJson<OrderManualWrite>(res, 'Could not pair it.');
+}
+
+export type OrderManualPatch = {
+  displayName?: string;
+  type?: string | null;
+  /** The COMPLETE new pinning. */
+  pairing?: Pick<PaperworkPairing, 'orderId' | 'itemNumber' | 'sku'>;
+};
+
+/** Rename / retype / re-pair a manual that resolves for the order line. */
+export async function patchOrderManual(orderId: number, manualId: number, patch: OrderManualPatch): Promise<OrderManualWrite> {
+  const res = await fetch(`/api/orders/${orderId}/manuals/${manualId}`, {
+    method: 'PATCH',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  return readJson<OrderManualWrite>(res, 'Could not save it.');
+}
+
+/** `unpair` clears every key (back to the library, unassigned); `delete` deactivates it. Answers the prior pinning. */
+export async function removeOrderManualHttp(
+  orderId: number,
+  manualId: number,
+  mode: 'unpair' | 'delete',
+): Promise<{ before: PaperworkPairing }> {
+  const res = await fetch(`/api/orders/${orderId}/manuals/${manualId}?mode=${mode}`, {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  });
+  return readJson<{ before: PaperworkPairing }>(
+    res,
+    mode === 'delete' ? 'Could not delete the manual.' : 'Could not unpair the manual.',
+  );
 }
 
 /**
@@ -182,15 +242,7 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
       type?: string;
     }) => {
       if (kind === 'manual') {
-        const fields: Record<string, string> = { displayName: file.name.replace(/\.[a-z0-9]+$/i, '') };
-        if (pairTo) fields.pairTo = pairTo;
-        if (type) fields.type = type;
-        const res = await fetch(`/api/orders/${orderId}/manuals`, {
-          method: 'POST',
-          credentials: 'same-origin',
-          body: formFor(file, fields),
-        });
-        await readJson(res, 'Upload failed.');
+        await uploadOrderManual(orderId, file, { pairTo, type });
         return;
       }
       await uploadOrderDocument(orderId, orderRef, kind, file);
@@ -247,13 +299,7 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
 
   const pairManual = useMutation({
     mutationFn: async ({ manualId, pairTo }: { manualId: number; pairTo: PaperworkSource }) => {
-      const res = await fetch(`/api/orders/${orderId}/manuals`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manualId, pairTo }),
-      });
-      await readJson(res, 'Could not pair it.');
+      await pairOrderManual(orderId, manualId, pairTo);
     },
     onSuccess: () => {
       toast.success('Paired');
@@ -264,22 +310,8 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
 
   /** Rename / retype / re-pair (`pairing` is the complete new pinning). */
   const updateManual = useMutation({
-    mutationFn: async ({
-      manualId,
-      ...patch
-    }: {
-      manualId: number;
-      displayName?: string;
-      type?: string | null;
-      pairing?: Pick<PaperworkPairing, 'orderId' | 'itemNumber' | 'sku'>;
-    }) => {
-      const res = await fetch(`/api/orders/${orderId}/manuals/${manualId}`, {
-        method: 'PATCH',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      await readJson(res, 'Could not save it.');
+    mutationFn: async ({ manualId, ...patch }: { manualId: number } & OrderManualPatch) => {
+      await patchOrderManual(orderId, manualId, patch);
     },
     onSuccess: (_data, { pairing }) => {
       if (pairing) toast.success('Pairing saved');
@@ -306,11 +338,7 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
 
   const removeManual = useMutation({
     mutationFn: async ({ manualId, mode }: { manualId: number; mode: 'unpair' | 'delete' }) => {
-      const res = await fetch(`/api/orders/${orderId}/manuals/${manualId}?mode=${mode}`, {
-        method: 'DELETE',
-        credentials: 'same-origin',
-      });
-      await readJson(res, mode === 'delete' ? 'Could not delete the manual.' : 'Could not unpair the manual.');
+      await removeOrderManualHttp(orderId, manualId, mode);
     },
     onSuccess: (_data, { mode }) => {
       toast.success(mode === 'delete' ? 'Deleted from the library' : 'Unpaired — back in the library');

@@ -26,6 +26,35 @@ test('UPS: live 43308 payload parses the MP scan at its true instant, identity u
   assert.equal(result.latestEventAt, '2026-07-23T18:40:34.000Z');
 });
 
+test('UPS: a typeless currentStatus ("160 · We Have Your Package") reads the newest activity, never UNKNOWN', () => {
+  // Live 1Z16D1R0YW22415180 on 2026-10-06: currentStatus has code + words, no type.
+  const result = parseUPSTrackingPayload({
+    trackResponse: {
+      shipment: [
+        {
+          package: [
+            {
+              trackingNumber: '1Z16D1R0YW22415180',
+              currentStatus: { description: 'We Have Your Package', code: '160' },
+              activity: [
+                {
+                  location: { address: { city: 'Anaheim', stateProvince: 'CA' } },
+                  status: { type: 'I', description: 'Arrived at Facility', code: 'OR', statusCode: '160' },
+                  gmtDate: '20261006',
+                  gmtTime: '03:54:02',
+                },
+                { status: { type: 'M', description: 'Shipper created a label', code: 'MP' }, gmtDate: '20261002', gmtTime: '22:19:52' },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  });
+  assert.ok(result);
+  assert.equal(result.latestStatusCategory, 'IN_TRANSIT');
+});
+
 test('UPS: gmtDate/gmtTime win; local date/time + gmtOffset is the fallback', () => {
   const act = { date: '20260723', time: '114034', gmtDate: '20260723', gmtTime: '18:40:34', gmtOffset: '-07:00' };
   assert.equal(upsActivityInstant(act), '2026-07-23T18:40:34.000Z');

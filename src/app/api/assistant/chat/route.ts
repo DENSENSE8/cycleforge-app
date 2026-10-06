@@ -45,7 +45,7 @@ import { sessionArtifactSchema } from '@/lib/assistant/ui-artifacts';
 import { generateSessionTitle } from '@/lib/ai/session-title';
 import type { AssistantToolCtx, AssistantToolRunResult } from '@/lib/assistant/tools/types';
 import { identifierTurnAnswer, identifierTurnMissed, planIdentifierTurn } from '@/lib/assistant/identifier-turn';
-import { reconcileFollowThroughKind, runReconcileFollowThrough } from '@/lib/assistant/reconcile-follow-through';
+import { isReconcileFollowThrough, runReconcileFollowThrough } from '@/lib/assistant/reconcile-follow-through';
 import { resolveOrgAiChain, type OrgAiConfig } from '@/lib/ai/org-provider';
 import { isSelfHostedAiRuntime } from '@/lib/ai/provider';
 import { estimateCostMicrocents } from '@/lib/ai/model-pricing';
@@ -578,13 +578,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           return;
         }
 
-        // Reconcile chips that act ("Import the missing ones as purchase
-        // orders" / "Add the missing ones as new orders"): the refs come from
-        // this thread's persisted reconcile table, never the model, and the
-        // draft opens here prefilled (`reconcile-follow-through.ts`).
-        const followKind = reconcileFollowThroughKind(userText);
-        const followed = followKind
-          ? await runReconcileFollowThrough(followKind, orgId, sessionId, (tool, input) =>
+        // The reconcile chip that acts ("Add the missing ones as new
+        // orders"): the refs come from this thread's persisted reconcile
+        // table, never the model, and the draft opens here prefilled
+        // (`reconcile-follow-through.ts`).
+        const followed = isReconcileFollowThrough(userText)
+          ? await runReconcileFollowThrough(orgId, sessionId, (tool, input) =>
               dispatchToolCall(tool, input, toolCtx, new Map(), runAssistantTool),
             ).catch(() => null)
           : null;

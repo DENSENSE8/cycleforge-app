@@ -16,6 +16,7 @@
 import { z } from 'zod';
 import { NAV_RECENT_ROW_VERBS } from '@/lib/nav/recents/surfaces';
 import { CHECK_ZOHO_RECEIVED_MAX_INPUTS } from '@/lib/receiving/tracking-paste';
+import { CHECK_IN_OUTCOMES, ORDER_CHECK_IN_STATES } from '@/lib/support/conversation/model';
 
 export const NAV_ITEM_KINDS = ['link', 'drill', 'filter', 'toggle'] as const;
 export type NavItemKind = (typeof NAV_ITEM_KINDS)[number];
@@ -92,9 +93,13 @@ export const NavFilterGroupSchema = z
     label: z.string().min(1),
     /** URL param the group writes. */
     param: z.string().min(1),
+    /** Optional comma-list param that removes matching facet options. */
+    excludeParam: z.string().min(1).optional(),
     multi: z.boolean(),
   /** Options render inline, always open (short ordered sets like aisles). */
   inline: z.boolean().optional(),
+  /** A long open set (vendors): a filter field narrows the options by name. */
+  searchable: z.boolean().optional(),
   })
   .strict();
 export type NavFilterGroup = z.infer<typeof NavFilterGroupSchema>;
@@ -107,6 +112,13 @@ export const NavFiltersSchema = z
   })
   .strict();
 export type NavFilters = z.infer<typeof NavFiltersSchema>;
+
+/**
+ * The default paint order of {@link NavControls}' kinds (`controls.order` overrides it).
+ * `facets` is where the context's counted facet groups (`NavContext.filters`) paint — last by default.
+ */
+export const NAV_CONTROL_KINDS = ['sort', 'group', 'staff', 'dates', 'dateRanges', 'choices', 'exclude', 'facets'] as const;
+export type NavControlKind = (typeof NAV_CONTROL_KINDS)[number];
 
 /**
  * View controls that are not facet groups (no option counts), rendered
@@ -244,6 +256,13 @@ export const NavControlsSchema = z
           .strict(),
       )
       .optional(),
+    /**
+     * Paint order of the control KINDS when a page's spec fixes one (Labels &
+     * docs › Bulk: Sort · Print status (its facet) · Uploaded · Printed).
+     * Omitted = the default order {@link NAV_CONTROL_KINDS}. A kind left out
+     * of the list paints after the listed ones.
+     */
+    order: z.array(z.enum(NAV_CONTROL_KINDS)).optional(),
   })
   .strict();
 export type NavControls = z.infer<typeof NavControlsSchema>;
@@ -537,6 +556,18 @@ export type NavLocateStaff = z.infer<typeof NavLocateStaffSchema>;
  *   left out of `lines` / `units` / every fact and named in `duplicates`
  *   (its receiving_line ids) — a data defect to clean up, never a short.
  *   Outbound: `duplicates` is always `[]`.
+ * - fulfilled (`GET /api/nav/fulfilled` only; optional, absent elsewhere):
+ *   `channel` (label), `customer`, `qty`, `orderTotal`, `orderedAt`
+ *   (`COALESCE(order_date, created_at)`), `scannedOutBy`, `scanSource`
+ *   (`live` = the dock's scan-out, `backfill` = a backdated stamp, null =
+ *   never scanned out), the package's `carrier` / `service` /
+ *   `labelCreatedAt` / `labelCost`, carrier `firstScanAt` / `lastEvent` /
+ *   `eta` / `attempts` / `exceptionCode`, `lastPoll` (`error` non-null = the
+ *   poll is failing), `packages` + `trackings` (every tracking when > 1),
+ *   `returnRef` (a receiving return naming the order), `shipstationStatus`,
+ *   `transitDays`, `claim` (carrier claim window, no-movement / stalled /
+ *   exception rows only), `lineCount` (order grain: lines combined).
+ *   Absent = null (the Fulfilled wire omits nulls, {@link NavFulfilledResponseSchema}).
  */
 export const NavLocateFactsSchema = z
   .object({
@@ -557,6 +588,64 @@ export const NavLocateFactsSchema = z
     unboxedAt: z.string().nullable(),
     unboxedBy: NavLocateStaffSchema.nullable(),
     units: z.object({ received: z.number().nonnegative(), expected: z.number().nonnegative().nullable() }).strict().nullable(),
+    channel: z.string().nullable().optional(),
+    customer: z.string().nullable().optional(),
+    qty: z.number().nullable().optional(),
+    orderTotal: z.number().nullable().optional(),
+    orderedAt: z.string().nullable().optional(),
+    scannedOutBy: NavLocateStaffSchema.nullable().optional(),
+    scanSource: z.enum(['live', 'backfill']).nullable().optional(),
+    carrier: z.string().nullable().optional(),
+    service: z.string().nullable().optional(),
+    labelCreatedAt: z.string().nullable().optional(),
+    labelCost: z.number().nullable().optional(),
+    firstScanAt: z.string().nullable().optional(),
+    /** The latest carrier event: the carrier's words, when, and (Fulfilled) the plain status word of its normalized category (`In transit`). */
+    lastEvent: z.object({ label: z.string().nullable(), at: z.string().nullable(), status: z.string().nullable().optional() }).strict().nullable().optional(),
+    /** Where the latest carrier event happened (`City, ST`), null when the carrier gave no place. Fulfilled only. */
+    lastEventPlace: z.string().nullable().optional(),
+    eta: z.string().nullable().optional(),
+    attempts: z.number().int().nonnegative().nullable().optional(),
+    exceptionCode: z.string().nullable().optional(),
+    lastPoll: z.object({ at: z.string().nullable(), error: z.string().nullable() }).strict().nullable().optional(),
+    packages: z.number().int().nonnegative().nullable().optional(),
+    trackings: z.array(z.string()).nullable().optional(),
+    returnRef: z.string().nullable().optional(),
+    shipstationStatus: z.string().nullable().optional(),
+    transitDays: z.number().nullable().optional(),
+    claim: z.object({ opensAt: z.string(), closesAt: z.string() }).strict().nullable().optional(),
+    lineCount: z.number().int().nonnegative().nullable().optional(),
+    /**
+     * Journey (Fulfilled only, operator 2026-10-05). `shipmentId` = the lead
+     * package (`shipping_tracking_numbers.id`, the record `?shipment=` opens);
+     * `promisedAt` = the carrier's FIRST promised delivery instant
+     * (`first_estimated_delivery_at`, kept after delivery — `eta` is the
+     * newest promise and clears on delivery); `clock` = when the row's
+     * current bucket started (`since`) and when it breaches its threshold
+     * (`due`, null = no threshold: the age alone is painted) — the client
+     * computes age / ratio against its own now (`journeyClockFace`);
+     * `checkIn` = the order's post-purchase check-in
+     * (`order_support_follow_ups`, null = no projection: before the program
+     * start, or never delivered).
+     */
+    shipmentId: z.number().int().positive().nullable().optional(),
+    promisedAt: z.string().nullable().optional(),
+    clock: z.object({ since: z.string(), due: z.string().nullable() }).strict().nullable().optional(),
+    checkIn: z
+      .object({
+        state: z.enum(ORDER_CHECK_IN_STATES),
+        supportItemId: z.number().int().positive().nullable(),
+        dueAt: z.string().nullable(),
+        contactedAt: z.string().nullable(),
+        nextFollowUpAt: z.string().nullable(),
+        /** The latest inbound customer message's instant. */
+        repliedAt: z.string().nullable(),
+        closedAt: z.string().nullable(),
+        outcome: z.enum(CHECK_IN_OUTCOMES).nullable(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
   })
   .strict();
 export type NavLocateFacts = z.infer<typeof NavLocateFactsSchema>;
@@ -565,6 +654,8 @@ export const NavLocateEntrySchema = z
   .object({
     /** As pasted. */
     ref: z.string().min(1),
+    /** A unique row key when `ref` can repeat (`GET /api/nav/fulfilled`: `order:<order #>` / `line:<orders.id>`); absent = `ref` is the key. */
+    key: z.string().min(1).optional(),
     /** Bucket ids holding it, in bucket order; `[]` = found nowhere. */
     buckets: z.array(z.string().min(1)),
     /** What it is ("PO 4471 · Acme"), when found. */
@@ -602,3 +693,162 @@ export const NavLocateResponseSchema = z
   })
   .strict();
 export type NavLocateResponse = z.infer<typeof NavLocateResponseSchema>;
+
+/** One facet value with the purchases it holds (every OTHER filter applied). */
+const NavPurchasesFacetOptionSchema = z
+  .object({ value: z.string().min(1), label: z.string().min(1), count: z.number().int().nonnegative() })
+  .strict();
+
+export const NavPurchasesFacetsSchema = z
+  .object({
+    /** The row's vendor label (`facts.vendor`) — `?vendor=` matches it exactly. */
+    vendors: z.array(NavPurchasesFacetOptionSchema),
+    /** The purchase's source (`INBOUND_SOURCE_TYPES`), labelled `INBOUND_SOURCE_LABELS`. */
+    sources: z.array(NavPurchasesFacetOptionSchema),
+    /** Who unboxed it (`facts.unboxedBy`, by staff id). */
+    unboxedBy: z
+      .array(z.object({ id: z.number().int().positive(), name: z.string().nullable(), count: z.number().int().nonnegative() }).strict()),
+  })
+  .strict();
+export type NavPurchasesFacets = z.infer<typeof NavPurchasesFacetsSchema>;
+
+/**
+ * `GET /api/nav/purchases` — every inbound purchase in a window (Deliveries ›
+ * Purchases, `src/lib/nav/purchases`), read as the pasted list reads a
+ * number: one entry per purchase (ref = its PO# / order number) with the
+ * inbound locator's own buckets, detail, record and facts.
+ */
+export const NavPurchasesResponseSchema = z
+  .object({
+    locator: z.literal('inbound'),
+    /** The inbound buckets in their order, counted over every filter EXCEPT `status` (zero counts included). */
+    buckets: z.array(NavLocateBucketSchema),
+    /** The purchases every filter keeps (`status` too), sorted server-side. */
+    entries: z.array(NavLocateEntrySchema),
+    /** `entries.length`. */
+    total: z.number().int().nonnegative(),
+    facets: NavPurchasesFacetsSchema,
+  })
+  .strict();
+export type NavPurchasesResponse = z.infer<typeof NavPurchasesResponseSchema>;
+
+/** One Fulfilled facet value with the rows it holds (every OTHER filter applied). */
+const NavFulfilledFacetOptionSchema = z
+  .object({ value: z.string().min(1), label: z.string().min(1), count: z.number().int().nonnegative() })
+  .strict();
+
+export const NavFulfilledFacetsSchema = z
+  .object({
+    /** Lower-cased `orders.account_source` — `?channel=` matches it exactly. */
+    channels: z.array(NavFulfilledFacetOptionSchema),
+    /** Upper-cased package carrier — `?carrier=`. */
+    carriers: z.array(NavFulfilledFacetOptionSchema),
+    /** Who packed it (`facts.packer`, by staff id) — `?packer=`. */
+    packers: z
+      .array(z.object({ id: z.number().int().positive(), name: z.string().nullable(), count: z.number().int().nonnegative() }).strict()),
+    /** `live` / `backfill` / `none` (`FULFILLED_SCANS`) — `?scan=`. */
+    scans: z.array(NavFulfilledFacetOptionSchema),
+  })
+  .strict();
+export type NavFulfilledFacets = z.infer<typeof NavFulfilledFacetsSchema>;
+
+/**
+ * The Fulfilled facts the wire leaves out when they hold their common value
+ * — the one list the route compacts by and {@link NavFulfilledWireFactsSchema}
+ * restores from. A row whose value differs (null included) sends it.
+ */
+export const NAV_FULFILLED_WIRE_DEFAULTS = {
+  section: 'outbound',
+  lines: 1,
+  duplicates: [] as number[],
+  channelStatus: 'shipped',
+  scanSource: 'backfill',
+  packages: 1,
+  attempts: 0,
+} as const;
+const WIRE = NAV_FULFILLED_WIRE_DEFAULTS;
+
+/**
+ * One Fulfilled row ON THE WIRE: a {@link NavLocateEntrySchema} with every
+ * null and every {@link NAV_FULFILLED_WIRE_DEFAULTS} value left out
+ * (thousands of rows, most facts empty or alike) — parsing restores them, so
+ * the client holds plain `NavLocateEntry`s.
+ */
+const NavFulfilledWireFactsSchema = NavLocateFactsSchema.extend({
+  section: z.enum(NAV_LOCATORS).default(WIRE.section),
+  title: z.string().nullable().default(null),
+  sku: z.string().nullable().default(null),
+  tracking: z.string().nullable().default(null),
+  deliveredAt: z.string().nullable().default(null),
+  channelStatus: z.string().nullable().default(WIRE.channelStatus),
+  shipBy: z.string().nullable().default(null),
+  packedAt: z.string().nullable().default(null),
+  shippedAt: z.string().nullable().default(null),
+  packer: NavLocateStaffSchema.nullable().default(null),
+  po: z.string().nullable().default(null),
+  vendor: z.string().nullable().default(null),
+  lines: z.number().int().nonnegative().default(WIRE.lines),
+  duplicates: z.array(z.number().int()).default(() => []),
+  unboxedAt: z.string().nullable().default(null),
+  unboxedBy: NavLocateStaffSchema.nullable().default(null),
+  units: NavLocateFactsSchema.shape.units.default(null),
+  scanSource: z.enum(['live', 'backfill']).nullable().default(WIRE.scanSource),
+  packages: z.number().int().nonnegative().nullable().default(WIRE.packages),
+  attempts: z.number().int().nonnegative().nullable().default(WIRE.attempts),
+});
+const NavFulfilledWireEntrySchema = NavLocateEntrySchema.extend({
+  title: z.string().nullable().default(null),
+  detail: z.string().nullable().default(null),
+  recordHref: z.string().startsWith('/').nullable().default(null),
+  facts: NavFulfilledWireFactsSchema.nullable().optional(),
+});
+
+/**
+ * Is each carrier's tracking being refreshed (`CarrierSyncHealth`,
+ * src/lib/shipping/carrier-sync-health.ts) — the board's "UPS sync failing
+ * since …". `lastOkAt` = newest successful poll; `configFault` = the runtime
+ * lacks the carrier's credentials, so none of it is polled.
+ */
+const NavFulfilledSyncHealthSchema = z
+  .object({
+    carriers: z.array(
+      z
+        .object({
+          carrier: z.enum(['UPS', 'FEDEX', 'USPS']),
+          enabled: z.boolean(),
+          open: z.number().int().nonnegative(),
+          failingOpen: z.number().int().nonnegative(),
+          lastOkAt: z.string().nullable(),
+          configFault: z.boolean(),
+          lastError: z.string().nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export type NavFulfilledSyncHealth = z.infer<typeof NavFulfilledSyncHealthSchema>;
+
+/**
+ * `GET /api/nav/fulfilled` — every shipped order in a window (Fulfillment ›
+ * Fulfilled, `src/lib/nav/fulfilled`): one entry per order (or per order line
+ * at `grain=line`), ref = the channel order #, exactly one bucket
+ * (`FULFILLED_BUCKETS`), its record and facts. Entries travel compact
+ * ({@link NavFulfilledWireEntrySchema}); `NavFulfilledResponse` is the parsed,
+ * complete shape, `NavFulfilledWire` what the route sends.
+ */
+export const NavFulfilledResponseSchema = z
+  .object({
+    locator: z.literal('outbound'),
+    /** `FULFILLED_BUCKETS` in precedence order, counted over every filter EXCEPT `status` (zero counts included). */
+    buckets: z.array(NavLocateBucketSchema),
+    /** The rows every filter keeps (`status` too), sorted server-side. */
+    entries: z.array(NavFulfilledWireEntrySchema),
+    /** `entries.length`. */
+    total: z.number().int().nonnegative(),
+    facets: NavFulfilledFacetsSchema,
+    /** Carrier sync health for the org; absent when its read failed (the list still answers). */
+    syncHealth: NavFulfilledSyncHealthSchema.optional(),
+  })
+  .strict();
+export type NavFulfilledResponse = z.output<typeof NavFulfilledResponseSchema>;
+export type NavFulfilledWire = z.input<typeof NavFulfilledResponseSchema>;

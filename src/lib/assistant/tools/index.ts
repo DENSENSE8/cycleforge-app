@@ -38,7 +38,6 @@ import {
 import { getOrderDocuments } from './order-document-tools';
 import { listLocationContents, locateProduct } from './wms-tools';
 import { draftManualOrder } from './manual-order-tools';
-import { draftPoImport } from './po-import-tools';
 import { printOrderPaperwork } from './order-paperwork-print-tool';
 import { reconcileRefs } from './reconcile-refs-tool';
 import { getCustomer } from './customer-dossier-tool';
@@ -92,9 +91,6 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   // channel / catalog / listing / customer reads and an inline order card, no
   // writes. Creating it is create_manual_order (a write).
   draftManualOrder,
-  // A purchase order imported from pasted text — catalog / duplicate reads and
-  // an inline PO card, no writes. Importing it is import_purchase_order (a write).
-  draftPoImport,
   // ChatReads (chat-roi rows 3, 9, 8, 11, 12): pasted-list reconcile, the
   // customer dossier, ranked worklists, staff reports, live carrier status.
   reconcileRefs,

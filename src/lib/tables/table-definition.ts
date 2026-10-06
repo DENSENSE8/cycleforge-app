@@ -167,6 +167,8 @@ const TABLE_ENTITY_FAMILIES = [
   'sku-ledger',
   /** `/search` find plane — one row = one cross-entity search HIT. */
   'search-hits',
+  /** Purchasing › Upload check — one row = one data row of an uploaded order file beside what landed. */
+  'inbound-import-check',
 ] as const;
 
 /** Warehouse-dense default ceiling: */

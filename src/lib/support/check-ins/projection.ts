@@ -10,6 +10,7 @@ import type { PoolClient } from 'pg';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type {
+  CheckInOutcome,
   DeliveryState,
   OrderCheckInState,
   OrderCheckInTrigger,
@@ -19,7 +20,7 @@ import type {
 import { SUPPORT_CHECK_IN_PROGRAM } from './config';
 import {
   deriveOrderCheckInState,
-  type CheckInClosure,
+  storedCheckInClosure,
   type CheckInFollowUpFact,
   type CheckInMessageFact,
 } from './state';
@@ -44,6 +45,8 @@ interface ProjectionRow {
   chase_count: number;
   disposition: string | null;
   disposition_reason: string | null;
+  /** CHECK-constrained to CHECK_IN_OUTCOMES (2026-10-05_check_in_outcome.sql). */
+  outcome: CheckInOutcome | null;
   closed_at: Date | string | null;
   closed_by_staff_id: number | null;
   closed_by_name: string | null;
@@ -53,7 +56,7 @@ const PROJECTION_VIEW_SELECT = `
   SELECT f.id, f.order_id, o.order_id AS order_number, f.state, f.trigger_kind, f.trigger_at, f.due_at,
          f.support_ticket_id, f.assignment_id, f.contacted_at, f.contact_message_id, f.contact_follow_up_id,
          f.latest_inbound_message_id, f.next_follow_up_at, f.chase_count, f.disposition, f.disposition_reason,
-         f.closed_at, f.closed_by_staff_id, s.name AS closed_by_name
+         f.outcome, f.closed_at, f.closed_by_staff_id, s.name AS closed_by_name
     FROM order_support_follow_ups f
     LEFT JOIN orders o ON o.id = f.order_id AND o.organization_id = f.organization_id
     LEFT JOIN staff s ON s.id = f.closed_by_staff_id AND s.organization_id = f.organization_id`;
@@ -87,6 +90,7 @@ function checkInViewFromRow(row: ProjectionRow): OrderCheckInView {
     chaseCount: Number(row.chase_count ?? 0),
     disposition: row.disposition ?? null,
     dispositionReason: row.disposition_reason ?? null,
+    outcome: row.outcome ?? null,
     closedAt: toIso(row.closed_at),
     closedBy:
       row.closed_by_staff_id != null
@@ -142,6 +146,7 @@ interface LockedRow {
   due_at: Date | string | null;
   disposition: string | null;
   disposition_reason: string | null;
+  outcome: string | null;
   closed_at: Date | string | null;
   closed_by_staff_id: number | null;
 }
@@ -172,7 +177,7 @@ export async function refreshOrderCheckInForItem(
   if (orderId == null) return null;
 
   let rowRes = await client.query<LockedRow>(
-    `SELECT id, support_ticket_id, due_at, disposition, disposition_reason, closed_at, closed_by_staff_id
+    `SELECT id, support_ticket_id, due_at, disposition, disposition_reason, outcome, closed_at, closed_by_staff_id
        FROM order_support_follow_ups
       WHERE organization_id = $1
         AND program = $2
@@ -188,7 +193,7 @@ export async function refreshOrderCheckInForItem(
       `INSERT INTO order_support_follow_ups (organization_id, order_id, program, state, due_at, support_ticket_id)
        VALUES ($1, $2, $3, 'due', $4::timestamptz, $5)
        ON CONFLICT (organization_id, order_id, program) DO UPDATE SET updated_at = now()
-       RETURNING id, support_ticket_id, due_at, disposition, disposition_reason, closed_at, closed_by_staff_id`,
+       RETURNING id, support_ticket_id, due_at, disposition, disposition_reason, outcome, closed_at, closed_by_staff_id`,
       [orgId, orderId, SUPPORT_CHECK_IN_PROGRAM, new Date(nowMs).toISOString(), supportItemId],
     );
   }
@@ -260,15 +265,15 @@ export async function refreshOrderCheckInForItem(
   }));
   const taskNextFollowUpAtMs = toMs(taskRow?.next_follow_up_at ?? null);
 
-  const storedClosure: CheckInClosure | null =
-    (row.disposition === 'resolved' || row.disposition === 'no_response_closed') && row.closed_at != null
-      ? {
-          disposition: row.disposition,
-          reason: row.disposition_reason,
-          closedAtMs: toMs(row.closed_at) ?? nowMs,
-          closedByStaffId: row.closed_by_staff_id,
-        }
-      : null;
+  // The stored closure — with its outcome — stands while the item stays resolved; a reopen derives no
+  // closure, so the UPDATE below clears disposition, outcome and closed_at together.
+  const storedClosure = storedCheckInClosure({
+    disposition: row.disposition,
+    outcome: row.outcome,
+    reason: row.disposition_reason,
+    closedAtMs: row.closed_at == null ? null : (toMs(row.closed_at) ?? nowMs),
+    closedByStaffId: row.closed_by_staff_id,
+  });
 
   const derived = deriveOrderCheckInState({
     nowMs,
@@ -300,6 +305,7 @@ export async function refreshOrderCheckInForItem(
             disposition_reason = $13,
             closed_at = $14::timestamptz,
             closed_by_staff_id = $15,
+            outcome = $16,
             updated_at = now()
       WHERE organization_id = $1 AND id = $2`,
     [
@@ -318,6 +324,7 @@ export async function refreshOrderCheckInForItem(
       derived.closure?.reason ?? null,
       msIso(derived.closure?.closedAtMs ?? null),
       derived.closure?.closedByStaffId ?? null,
+      derived.closure?.outcome ?? null,
     ],
   );
 
@@ -335,7 +342,8 @@ export async function refreshOrderCheckInForItem(
 
 /**
  * Record how a resolved check-in closed — call inside the resolve transaction
- * AFTER the item is marked resolved. `no_response_closed` requires a reason.
+ * AFTER the item is marked resolved. `resolved` requires its outcome (Happy /
+ * Had an issue); `no_response_closed` requires a reason and carries none.
  * Null for an item that is not a check-in.
  */
 export async function closeOrderCheckInForItem(
@@ -345,6 +353,7 @@ export async function closeOrderCheckInForItem(
     supportItemId: number;
     staffId: number | null;
     disposition: 'resolved' | 'no_response_closed';
+    outcome: CheckInOutcome | null;
     reason: string | null;
     nowMs: number;
   },
@@ -353,17 +362,24 @@ export async function closeOrderCheckInForItem(
   if (args.disposition === 'no_response_closed' && !reason) {
     throw new Error('no_response_closed requires a reason');
   }
+  if (args.disposition === 'resolved' && args.outcome == null) {
+    throw new Error('resolved check-in requires an outcome');
+  }
+  if (args.disposition === 'no_response_closed' && args.outcome != null) {
+    throw new Error('no_response_closed carries no outcome');
+  }
   const linked = await refreshOrderCheckInForItem(client, args);
   if (!linked) return null;
   await client.query(
     `UPDATE order_support_follow_ups
-        SET disposition = $3, disposition_reason = $4, closed_at = $5::timestamptz,
-            closed_by_staff_id = $6, updated_at = now()
-      WHERE organization_id = $1 AND program = $2 AND support_ticket_id = $7`,
+        SET state = $3, disposition = $3, outcome = $4, disposition_reason = $5, closed_at = $6::timestamptz,
+            closed_by_staff_id = $7, updated_at = now()
+      WHERE organization_id = $1 AND program = $2 AND support_ticket_id = $8`,
     [
       args.orgId,
       SUPPORT_CHECK_IN_PROGRAM,
       args.disposition,
+      args.outcome,
       reason,
       new Date(args.nowMs).toISOString(),
       args.staffId,

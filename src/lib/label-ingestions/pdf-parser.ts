@@ -128,3 +128,16 @@ export async function parseLabelPdf(bytes: Uint8Array, loader: PdfLoader = loadP
     throw new LabelPdfParseError('PARSE_FAILED', 'The PDF could not be parsed.');
   } finally { pdf.destroy?.(); }
 }
+
+/** A PDF's text, page by page (bounded like a label parse) — a packing-slip page's evidence for the slip matcher. */
+export async function extractPdfText(bytes: Uint8Array, loader: PdfLoader = loadPdfDocument): Promise<string> {
+  const pdf = await bounded(loader(bytes));
+  try {
+    let text = '';
+    for (let pageNumber = 1; pageNumber <= Math.min(pdf.numPages, MAX_LABEL_PDF_PAGES) && text.length <= MAX_LABEL_EXTRACTED_TEXT_CHARS; pageNumber += 1) {
+      const content = await bounded((await bounded(pdf.getPage(pageNumber))).getTextContent());
+      text += content.items.map((item) => typeof item.str === 'string' ? item.str : '').join(' ') + '\n';
+    }
+    return text.slice(0, MAX_LABEL_EXTRACTED_TEXT_CHARS);
+  } finally { pdf.destroy?.(); }
+}

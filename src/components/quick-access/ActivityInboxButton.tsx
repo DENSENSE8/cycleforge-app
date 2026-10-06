@@ -5,18 +5,14 @@ import { usePathname } from 'next/navigation';
 import { Inbox } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system/primitives';
 import { ActivityInboxPopover } from '@/components/quick-access/ActivityInboxPopover';
-import { useActivityInboxFeed } from '@/contexts/ActivityInboxContext';
 import { HEADER_PILL_CLASS, TOP_CHROME_ICON_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 /**
- * The header's Inbox CTA — `[inbox] Inbox 3` on the shared pill face (owner
- * 2026-09-28: Add · Inbox · Sync are all labelled CTAs), and the panel it opens.
+ * The header's Inbox CTA on the shared pill face, and the panel it opens.
  */
 export function ActivityInboxButton() {
   const pathname = usePathname();
-  const inbox = useActivityInboxFeed();
-  const count = inbox?.items.length ?? 0;
   const [open, setOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
 
@@ -29,7 +25,7 @@ export function ActivityInboxButton() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label={count > 0 ? `Inbox — ${count} new` : 'Inbox'}
+        aria-label="Inbox"
         aria-expanded={open}
         data-state={open ? 'open' : 'closed'}
         data-testid="global-inbox-button"
@@ -37,11 +33,6 @@ export function ActivityInboxButton() {
       >
         <Inbox className={cn(TOP_CHROME_ICON_FACE, 'size-4')} aria-hidden />
         <span>Inbox</span>
-        {count > 0 ? (
-          <span className="flex h-4 min-w-4 items-center justify-center rounded-mode-pill bg-rose-600 px-1 text-role-micro leading-none tabular-nums text-white">
-            {count > 9 ? '9+' : count}
-          </span>
-        ) : null}
       </button>
       <AnchoredLayer
         open={open}

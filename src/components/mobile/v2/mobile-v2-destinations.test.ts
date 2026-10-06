@@ -26,11 +26,8 @@ describe('Mobile V2 navigation contract', () => {
       ],
     );
     assert.equal(MOBILE_V2_FULFILLMENT_DESTINATIONS.find(({ id }) => id === 'fbm')?.ported, undefined);
-    assert.ok(
-      MOBILE_V2_FULFILLMENT_DESTINATIONS
-        .filter(({ id }) => id !== 'fbm')
-        .every(({ ported }) => ported === false),
-    );
+    assert.equal(MOBILE_V2_FULFILLMENT_DESTINATIONS.find(({ id }) => id === 'fulfilled')?.ported, undefined);
+    assert.equal(MOBILE_V2_FULFILLMENT_DESTINATIONS.find(({ id }) => id === 'fba')?.ported, false);
   });
 
   it('has one Stock and one Products destination without adjustment forks', () => {

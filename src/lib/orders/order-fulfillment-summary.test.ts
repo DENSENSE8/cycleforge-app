@@ -40,6 +40,20 @@ describe('fulfillment summary', () => {
     assert.deepEqual(fulfillmentCurrentStatus(lines), { label: 'Awaiting carrier scan' });
   });
 
+  test('a buyer cancel replaces Fulfilled on the record', () => {
+    assert.deepEqual(
+      fulfillmentCurrentStatus([
+        line({
+          status: 'buyer_cancelled',
+          is_shipped: true,
+          is_delivered: true,
+          latest_status_label: 'Delivered',
+        }),
+      ]),
+      { label: 'Buyer cancel' },
+    );
+  });
+
   test('carrier truth becomes the current status and delivered always wins', () => {
     const inTransit = line({
       is_shipped: true,

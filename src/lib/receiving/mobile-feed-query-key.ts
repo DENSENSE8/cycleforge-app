@@ -1,4 +1,4 @@
-/** The mobile receiving feed's react-query keys — shared by the client hook that owns the feed (`MobileReceivingList`) and the server seed… */
+/** The mobile receiving feed's react-query keys — shared by the client hooks that read it (`MobileReceivingList`, `useArrivalHistory`). */
 export type MobileFeedSurface = 'triage' | 'unbox';
 
 export const mobileFeedQueryKey = (surface: MobileFeedSurface) =>
@@ -6,18 +6,12 @@ export const mobileFeedQueryKey = (surface: MobileFeedSurface) =>
     ? (['receiving-lines-table', 'rail', 'scanned', 'mobile-triage'] as const)
     : (['receiving-lines-table', 'rail', 'unbox-opened', 'mobile-unbox'] as const);
 
-/** Rows the SERVER SEED paints. */
-export const MOBILE_FEED_SEED_LIMIT = 20;
-
-/** The list request the feed makes — one definition, used by hook and seed. */
-export function mobileFeedParams(
-  surface: MobileFeedSurface,
-  limit: number = 100,
-): URLSearchParams {
+/** The list request the feed makes — one definition for every reader. */
+export function mobileFeedParams(surface: MobileFeedSurface): URLSearchParams {
   const params = new URLSearchParams({
     // Display windows to ≤20 rows (useCaptureStackWindow) — 100 gives
     // carton-grouping headroom; the old 500-row window was pure over-fetch.
-    limit: String(limit),
+    limit: '100',
     offset: '0',
     include: 'serials',
   });

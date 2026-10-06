@@ -6,6 +6,7 @@
  * pulse that shows the board is current.
  */
 
+import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import type { PackageColumn } from '@/lib/live-feed/types';
 import { cn } from '@/utils/_cn';
 
@@ -29,7 +30,9 @@ export function Headline({ columns, compact = false }: { columns: readonly Packa
             <p className={cn('whitespace-nowrap font-medium uppercase tracking-wider', compact ? 'text-role-micro' : 'text-xs', figure.labelTone)}>
               {figure.label}
             </p>
-            <p className={cn('font-semibold tabular-nums tracking-tight', compact ? 'text-2xl' : 'text-3xl', figure.tone)}>{figure.value}</p>
+            <p className={cn('font-semibold tabular-nums tracking-tight', compact ? 'text-2xl' : 'text-3xl', figure.tone)}>
+              <AnimatedStat value={figure.value} />
+            </p>
           </div>
         ))}
     </div>

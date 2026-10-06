@@ -5,7 +5,6 @@ import { ChevronRight, User } from '@/components/Icons';
 import { useMobileV2Search } from '@/components/mobile/v2/MobileV2SearchContext';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { MobileDataListRow } from '@/design-system/components/MobileDataListRow';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import type { CustomerDirectoryPayload } from '@/lib/customers/customer-throughput';
 import { customerMobilePath } from '@/lib/nav/route-tree';
@@ -45,9 +44,7 @@ export function CustomersScreen() {
 
   return (
     <div className="flex min-h-full flex-col bg-surface-card" data-testid="mobile-customers">
-      {customers.isPending && rows.length === 0 ? (
-        <UniversalLoader isLoading label="Loading customers" className="min-h-56" />
-      ) : customers.isError ? (
+      {customers.isPending && rows.length === 0 ? null : customers.isError ? (
         <p role="alert" className="px-mode-page py-10 text-center text-role-data font-semibold text-text-danger">
           Couldn&apos;t load customers.
         </p>

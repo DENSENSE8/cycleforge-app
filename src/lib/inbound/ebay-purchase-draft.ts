@@ -70,7 +70,7 @@ export function ebayPurchaseToInboundOrderDraft(
   const tracking: InboundOrderDraft['tracking'] = [];
   for (const l of lines) {
     const number = clip(l.trackingNumber, 80);
-    if (!number || tracking.some((t) => t.number === number) || tracking.length >= 10) continue;
+    if (!number || tracking.some((t) => t.number === number) || tracking.length >= 500) continue;
     tracking.push({ number, carrier: clip(l.carrierCode, 40) });
   }
 

@@ -5,6 +5,10 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
+import { useListFocusMode } from '@/lib/shell/list-focus-mode';
+import { motionTransition } from '../foundations/motion-presets';
+import { useMotionTransition } from '../foundations/motion-presets-hooks';
+import { Collapse } from './Collapse';
 import {
   DESK_SPLIT_SHORTCUT,
   DeskStageProvider,
@@ -73,7 +77,11 @@ export function DeskPageChrome({
   measure: measureKind = 'fixed',
 }: DeskPageChromeProps) {
   const fullscreen = view !== 'in-place';
-  const full = fullscreen || measureKind === 'full';
+  // List focus mode (`useListFocusMode`): the title band slides away with the shell's
+  // chrome and the stage takes the full measure — the list fills the viewport.
+  const focusOn = useListFocusMode().on;
+  const focusTransition = useMotionTransition(motionTransition.listFocusChrome);
+  const full = fullscreen || measureKind === 'full' || focusOn;
   const measure = full ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
   const gutter = measureKind === 'full' ? DESK_STAGE_BOARD_GUTTER_CLASS : DESK_STAGE_GUTTER_CLASS;
 
@@ -86,6 +94,8 @@ export function DeskPageChrome({
     if (!fullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented || hasOpenOverlay()) return;
+      // Claimed: one exit per press — full screen (`useListFocusEscape`) waits for the next Esc.
+      event.preventDefault();
       viewRef.current.onViewChange('in-place');
     };
     window.addEventListener('keydown', onKeyDown);
@@ -128,10 +138,12 @@ export function DeskPageChrome({
         {/*
           The page header is page FURNITURE: it does not exist in fullscreen.
           Not hidden — unrendered, so the card's flex-basis is the whole canvas.
+          In list focus mode it collapses away (the shell's ease-in-out tween).
           There is no tab row: a desk's views live in the left contextual
           sidebar (owner 2026-09-28).
         */}
         {fullscreen ? null : (
+          <Collapse open={!focusOn} timing={{ open: focusTransition, close: focusTransition }} frameClassName="shrink-0">
             <div
               data-testid="desk-page-header"
               className={cn(
@@ -163,6 +175,7 @@ export function DeskPageChrome({
               {/* Overall actions (Export) then the primary CTA. */}
               {addSlot}
             </div>
+          </Collapse>
         )}
 
         {/* ── The card ────────────────────────────────────────────────────── */}

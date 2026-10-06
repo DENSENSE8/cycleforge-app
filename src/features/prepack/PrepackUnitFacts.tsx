@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 import { Check, X } from '@/components/Icons';
-import { PREPACK_EVIDENCE_KINDS, PREPACK_EVIDENCE_LABEL, PREPACK_PROVENANCE_LABEL } from '@/lib/prepack/types';
+import { PREPACK_PROVENANCE_LABEL } from '@/lib/prepack/types';
 import { fetchPrepackUnit } from './prepack-client';
 
 /** Saved prepack state shared by the unit hub and the existing pack station. */
@@ -41,8 +41,6 @@ export function PrepackUnitFacts({ unitRef, compact = false }: { unitRef: string
             {unit.conditionGrade ? unit.conditionGrade.replace(/_/g, ' ') : 'No grade'}
             {' · '}
             {unit.refurbProvenance ? PREPACK_PROVENANCE_LABEL[unit.refurbProvenance] : 'Provenance not recorded'}
-            {' · '}
-            {PREPACK_EVIDENCE_KINDS.map((kind) => `${PREPACK_EVIDENCE_LABEL[kind]} ${unit.evidence[kind] ?? 0}`).join(' · ')}
           </p>
         ) : null}
       </div>

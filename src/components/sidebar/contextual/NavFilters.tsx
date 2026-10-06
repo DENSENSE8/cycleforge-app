@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { navControlParams, type NavContext, type NavFilters as NavFiltersSpec } from '@/lib/nav/context/schema';
+import { NAV_CONTROL_KINDS, navControlParams, type NavContext, type NavControlKind, type NavFilters as NavFiltersSpec } from '@/lib/nav/context/schema';
 import { fetchNavFacets } from '@/lib/nav/context/http-client';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
@@ -16,6 +16,7 @@ import { Collapse } from '@/design-system/components/Collapse';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import { Calendar, Check, ChevronRight, Clock, User } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { SIDEBAR_CHIP_CORNER, SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
@@ -45,6 +46,12 @@ const VALUE_CHIP_CLASS = cn(
 function readValues(raw: string | null, multi: boolean): string[] {
   if (!raw) return [];
   return multi ? raw.split(',').filter(Boolean) : [raw];
+}
+
+/** The control kinds in paint order: the declared `controls.order` first, then every other kind in the default order. */
+function controlOrder(controls: NavControls | undefined): readonly NavControlKind[] {
+  const declared = controls?.order ?? [];
+  return [...declared, ...NAV_CONTROL_KINDS.filter((kind) => !declared.includes(kind))];
 }
 
 /**
@@ -77,7 +84,7 @@ export function NavFilters({
 
   // Sort and Group by order / band the list; they are not filters, so Reset and the count leave them.
   const ownedParams = [
-    ...(filters?.groups.map((group) => group.param) ?? []),
+    ...(filters?.groups.flatMap((group) => group.excludeParam ? [group.param, group.excludeParam] : [group.param]) ?? []),
     ...navControlParams(controls ? { ...controls, sort: undefined, group: undefined } : undefined),
   ];
   const activeCount = ownedParams.filter((param) => searchParams?.has(param)).length;
@@ -106,6 +113,16 @@ export function NavFilters({
           : [value];
       if (next.length === 0) params.delete(group.param);
       else params.set(group.param, next.join(','));
+    });
+
+  const toggleExcludedValue = (group: NavFiltersSpec['groups'][number], value: string) =>
+    replace((params) => {
+      if (!group.excludeParam) return;
+      const current = readValues(params.get(group.excludeParam), true);
+      const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+      if (next.length) params.set(group.excludeParam, next.join(','));
+      else params.delete(group.excludeParam);
+      params.delete('page');
     });
 
   const badgePresence = useMotionPresence(motionPresence.sidebarScopeSwap);
@@ -150,102 +167,168 @@ export function NavFilters({
       </header>
 
       <div className="flex flex-col gap-px">
-        {controls?.sort ? (
-          <SortRow id="sort" label="Sort" spec={controls.sort} open={open.has('sort')} onToggle={toggleOpen} />
-        ) : null}
-        {controls?.group ? (
-          <SortRow id="group" label="Group by" spec={controls.group} open={open.has('group')} onToggle={toggleOpen} />
-        ) : null}
-        {controls?.staff?.map((row) => <StaffRow key={row.id} id={row.id} param={row.param} label={row.label} />)}
-        {controls?.dates?.map((row) => <SingleDateRow key={row.id} spec={row} />)}
-        {controls?.dateRanges?.map((range) => <DateRow key={range.id} spec={range} />)}
-        {controls?.choices?.map((choice) => (
-          <ChoiceRow key={choice.id} spec={choice} open={open.has(choice.id)} onToggle={toggleOpen} />
-        ))}
-        {controls?.exclude ? (
-          <ExcludeRow
-            spec={controls.exclude}
-            facetGroup={facets.data?.groups.find((group) => group.param === controls.exclude?.param)}
-            open={open.has(controls.exclude.id)}
-            onToggle={toggleOpen}
-          />
-        ) : null}
-        {filters
-          ? filters.groups.map((declared) => {
-              const group = facets.data?.groups.find((g) => g.id === declared.id);
-              const active = readValues(searchParams?.get(declared.param) ?? null, declared.multi);
-              // A context serving several tabs (the Unbox station) answers a group the open tab does not read with no options.
-              if (group?.options.length === 0 && active.length === 0) return null;
-              const summary =
-                active.length === 0
-                  ? null
-                  : active.length > 1
-                    ? `${active.length} selected`
-                    : (group?.options.find((o) => o.value === active[0])?.label ?? active[0]);
-              return declared.inline ? (
-                <div key={declared.id} className="py-px">
-                  <span className="flex h-7 items-center gap-1.5 px-2 text-role-micro font-semibold uppercase tracking-wide text-text-faint">
-                    {declared.label}
-                  </span>
-                  {group ? (
-                    <FacetOptionList declared={declared} group={group} active={active} onToggle={toggleValue} />
-                  ) : facets.isError ? (
-                    <NavSlotError label="Filters unavailable" onRetry={() => void facets.refetch()} />
-                  ) : (
-                    <div className="flex flex-col gap-1.5 px-2 py-1.5">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-4 w-1/2" />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Disclosure
-                  key={declared.id}
-                  id={declared.id}
-                  label={declared.label}
-                  summary={summary}
-                  open={open.has(declared.id)}
+        {controlOrder(controls).map((kind) => {
+          switch (kind) {
+            case 'sort':
+              return controls?.sort ? (
+                <SortRow key="sort" id="sort" label="Sort" spec={controls.sort} open={open.has('sort')} onToggle={toggleOpen} />
+              ) : null;
+            case 'group':
+              return controls?.group ? (
+                <SortRow key="group" id="group" label="Group by" spec={controls.group} open={open.has('group')} onToggle={toggleOpen} />
+              ) : null;
+            case 'staff':
+              return controls?.staff?.map((row) => <StaffRow key={`staff:${row.id}`} id={row.id} param={row.param} label={row.label} />);
+            case 'dates':
+              return controls?.dates?.map((row) => <SingleDateRow key={`date:${row.id}`} spec={row} />);
+            case 'dateRanges':
+              return controls?.dateRanges?.map((range) => <DateRow key={`range:${range.id}`} spec={range} />);
+            case 'choices':
+              return controls?.choices?.map((choice) => (
+                <ChoiceRow key={`choice:${choice.id}`} spec={choice} open={open.has(choice.id)} onToggle={toggleOpen} />
+              ));
+            case 'exclude':
+              return controls?.exclude ? (
+                <ExcludeRow
+                  key="exclude"
+                  spec={controls.exclude}
+                  facetGroup={facets.data?.groups.find((group) => group.param === controls.exclude?.param)}
+                  open={open.has(controls.exclude.id)}
                   onToggle={toggleOpen}
-                >
-                  {group ? (
-                    <FacetOptionList declared={declared} group={group} active={active} onToggle={toggleValue} />
-                  ) : facets.isError ? (
-                    <NavSlotError label="Filters unavailable" onRetry={() => void facets.refetch()} />
-                  ) : (
-                    <div className="flex flex-col gap-1.5 px-2 py-1.5">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-4 w-1/2" />
-                    </div>
-                  )}
-                </Disclosure>
-              );
-            })
-          : null}
+                />
+              ) : null;
+            case 'facets':
+              return filters?.groups.map((declared) => {
+                const group = facets.data?.groups.find((g) => g.id === declared.id);
+                const active = readValues(searchParams?.get(declared.param) ?? null, declared.multi);
+                const excluded = readValues(searchParams?.get(declared.excludeParam ?? '') ?? null, true);
+                // A context serving several tabs (the Unbox station) answers a group the open tab does not read with no options.
+                if (group?.options.length === 0 && active.length === 0) return null;
+                const summary = active.length > 0
+                  ? active.length > 1
+                    ? `${active.length} selected`
+                    : (group?.options.find((o) => o.value === active[0])?.label ?? active[0])
+                  : excluded.length > 0
+                    ? `${excluded.length} excluded`
+                    : null;
+                return declared.inline ? (
+                  <div key={declared.id} className="py-px">
+                    <span className="flex h-7 items-center gap-1.5 px-2 text-role-micro font-semibold uppercase tracking-wide text-text-faint">
+                      {declared.label}
+                    </span>
+                    {group ? (
+                      <FacetOptionList declared={declared} group={group} active={active} excluded={excluded} onToggle={toggleValue} onToggleExcluded={toggleExcludedValue} />
+                    ) : facets.isError ? (
+                      <NavSlotError label="Filters unavailable" onRetry={() => void facets.refetch()} />
+                    ) : (
+                      <div className="flex flex-col gap-1.5 px-2 py-1.5">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Disclosure
+                    key={declared.id}
+                    id={declared.id}
+                    label={declared.label}
+                    summary={summary}
+                    open={open.has(declared.id)}
+                    onToggle={toggleOpen}
+                  >
+                    {group ? (
+                      <FacetOptionList declared={declared} group={group} active={active} excluded={excluded} onToggle={toggleValue} onToggleExcluded={toggleExcludedValue} />
+                    ) : facets.isError ? (
+                      <NavSlotError label="Filters unavailable" onRetry={() => void facets.refetch()} />
+                    ) : (
+                      <div className="flex flex-col gap-1.5 px-2 py-1.5">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                    )}
+                  </Disclosure>
+                );
+              });
+          }
+        })}
       </div>
     </section>
   );
 }
+
+/** A searchable group shows its filter field past this many options (a short list scans faster than it filters). */
+const FACET_FILTER_MIN_OPTIONS = 8;
 
 /** The option list a facet group paints — shared by the inline and collapsed rows. */
 function FacetOptionList({
   declared,
   group,
   active,
+  excluded,
   onToggle,
+  onToggleExcluded,
 }: {
   declared: NavFiltersSpec['groups'][number];
   group: { options: readonly { value: string; label: string; count: number }[] };
   active: string[];
+  excluded: string[];
   onToggle: (group: NavFiltersSpec['groups'][number], value: string) => void;
+  onToggleExcluded: (group: NavFiltersSpec['groups'][number], value: string) => void;
 }) {
+  const [mode, setMode] = useState<'include' | 'exclude'>('include');
+  const [needle, setNeedle] = useState('');
+  const excluding = mode === 'exclude' && declared.excludeParam != null;
+  const selectedValues = excluding ? excluded : active;
+  const toggle = excluding ? onToggleExcluded : onToggle;
+  // A searchable group (vendors) narrows its options by name; a picked option never hides.
+  const filterable = declared.searchable === true && group.options.length > FACET_FILTER_MIN_OPTIONS;
+  const query = filterable ? needle.trim().toLowerCase() : '';
+  const visible = query
+    ? group.options.filter((option) => selectedValues.includes(option.value) || option.label.toLowerCase().includes(query))
+    : group.options;
   return (
     <div
       role="group"
       aria-label={declared.label}
       className={cn('divide-y divide-border-hairline border border-border-soft bg-surface-card', SIDEBAR_CONTROL_CORNER)}
     >
-      {orderOptions(group.options, active).map((option) => {
-        const selected = active.includes(option.value);
+      {declared.excludeParam ? (
+        <div className="flex h-8 items-center gap-1 border-b border-border-hairline px-1.5" role="group" aria-label={`${declared.label} mode`}>
+          <button
+            type="button"
+            aria-pressed={!excluding}
+            onClick={() => setMode('include')}
+            className={cn('ds-raw-button h-6 flex-1 px-2 text-role-micro font-medium transition-colors', !excluding ? 'bg-surface-sunken text-text-default' : 'text-text-muted hover:bg-surface-hover', focusRing('control', 'accent'))}
+          >
+            Include
+          </button>
+          <button
+            type="button"
+            aria-pressed={excluding}
+            onClick={() => setMode('exclude')}
+            className={cn('ds-raw-button h-6 flex-1 px-2 text-role-micro font-medium transition-colors', excluding ? 'bg-surface-sunken text-text-default' : 'text-text-muted hover:bg-surface-hover', focusRing('control', 'accent'))}
+          >
+            Exclude
+          </button>
+        </div>
+      ) : null}
+      {filterable ? (
+        <Input
+          type="search"
+          value={needle}
+          onChange={(event) => setNeedle(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape' || !needle) return;
+            event.stopPropagation();
+            setNeedle('');
+          }}
+          aria-label={`Filter ${declared.label.toLowerCase()} options`}
+          placeholder={`Filter ${declared.label.toLowerCase()}…`}
+          className="h-8 rounded-mode-control border-0 bg-transparent px-2 text-role-caption"
+        />
+      ) : null}
+      {orderOptions(visible, selectedValues).map((option) => {
+        const selected = selectedValues.includes(option.value);
         const empty = option.count === 0 && !selected;
         return (
           <button
@@ -255,7 +338,7 @@ function FacetOptionList({
             aria-checked={selected}
             data-nav-filter-option={option.value}
             data-empty={empty || undefined}
-            onClick={() => onToggle(declared, option.value)}
+            onClick={() => toggle(declared, option.value)}
             className={cn(
               'ds-raw-button flex h-8 w-full items-center gap-2 px-2 text-left text-role-caption',
               'transition-colors hover:bg-surface-hover',
@@ -271,6 +354,9 @@ function FacetOptionList({
           </button>
         );
       })}
+      {query && visible.length === 0 ? (
+        <p className="flex h-8 items-center px-2 text-role-caption text-text-faint">No {declared.label.toLowerCase()} matches</p>
+      ) : null}
     </div>
   );
 }

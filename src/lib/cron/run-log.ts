@@ -4,11 +4,14 @@ import pool from '@/lib/db';
  * Wraps a cron/job body so every invocation is persisted to `cron_runs`. The
  * body receives the ledger row id (null when the ledger insert failed) so it
  * can link its own records — e.g. `order_import_runs.cron_run_id`.
+ * `failureOf` turns a RETURNED result into a failed run (its message on
+ * `error`, the result still on `summary`) — for a job that finishes but could
+ * not do its work, e.g. a carrier sweep with no carrier credentials.
  */
 export async function withCronRun<T>(
   job: string,
   fn: (runId: number | null) => Promise<T>,
-  opts?: { trigger?: 'cron' | 'manual' },
+  opts?: { trigger?: 'cron' | 'manual'; failureOf?: (result: T) => string | null },
 ): Promise<T> {
   const trigger = opts?.trigger ?? 'cron';
   const startedAt = Date.now();
@@ -34,12 +37,13 @@ export async function withCronRun<T>(
     if (runId != null) {
       const summary =
         result && typeof result === 'object' ? JSON.stringify(result) : null;
+      const failure = opts?.failureOf?.(result) ?? null;
       await pool
         .query(
           `UPDATE cron_runs
-              SET status = 'success', finished_at = NOW(), duration_ms = $2, summary = $3
+              SET status = $4, finished_at = NOW(), duration_ms = $2, summary = $3, error = $5
             WHERE id = $1`,
-          [runId, durationMs, summary],
+          [runId, durationMs, summary, failure ? 'failed' : 'success', failure?.slice(0, 2000) ?? null],
         )
         .catch(() => {});
     }

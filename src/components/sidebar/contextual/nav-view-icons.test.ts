@@ -16,13 +16,13 @@ test('Deliveries lifecycle switchers use distinct semantic colors', () => {
 });
 
 test('Labels & docs terminal icons each use a distinct color', () => {
-  const tones = ['orders', 'uploads', 'labels', 'paperwork', 'printed'].map(
+  const tones = ['allocate', 'uploads', 'orders', 'printed'].map(
     (id) => NAV_VIEW_ICONS[`label-intake.${id}`]?.tone,
   );
 
   assert.ok(tones.every(Boolean));
   assert.equal(new Set(tones).size, tones.length);
-  assert.notEqual(NAV_VIEW_ICONS['label-intake.orders']?.tone, 'text-blue-600', 'Allocate must not repeat FBM parent blue');
+  assert.notEqual(NAV_VIEW_ICONS['label-intake.allocate']?.tone, 'text-blue-600', 'Allocate must not repeat FBM parent blue');
 });
 
 test('Stock and Locations sibling icons each use a distinct color', () => {

@@ -427,6 +427,49 @@ test('resolve: an override needs a reason; with one it resolves past blockers an
   assert.equal(ev?.after.reason, 'Customer called; handled by phone.');
 });
 
+test('resolve: closing a check-in as resolved requires its outcome and hands it to the check-in close', async () => {
+  const h = harness();
+  const a = await ingestSupportMessageCore(inbound({ externalMessageId: 'c:1' }), h.ingestDeps);
+  assert.ok(a.ok);
+  await recordSupportReplyCore(
+    { orgId: ORG, supportItemId: a.supportItemId, staffId: 2, action: 'log', body: 'Glad it arrived.', clientEventId: 'reply-0003' },
+    h.replyDeps,
+  );
+  const base = { orgId: ORG, supportItemId: a.supportItemId, staffId: 2 };
+  const missing = await resolveSupportItemCore({ ...base, checkInDisposition: 'resolved' }, h.actionDeps);
+  assert.ok(!missing.ok && missing.status === 422 && missing.error === 'outcome_required');
+  assert.equal(h.state.items[0].lifecycle, 'open', 'nothing is written without the outcome');
+  assert.deepEqual(h.state.checkInCloses, []);
+
+  const stray = await resolveSupportItemCore(
+    { ...base, reason: 'No answer', checkInDisposition: 'no_response_closed', checkInOutcome: 'happy' },
+    h.actionDeps,
+  );
+  assert.ok(!stray.ok && stray.status === 422 && stray.error === 'outcome_not_allowed');
+  assert.equal(h.state.items[0].lifecycle, 'open');
+
+  const ok = await resolveSupportItemCore({ ...base, checkInDisposition: 'resolved', checkInOutcome: 'issue' }, h.actionDeps);
+  assert.ok(ok.ok);
+  assert.equal(h.state.items[0].lifecycle, 'resolved');
+  assert.deepEqual(h.state.checkInCloses, [{ itemId: a.supportItemId, disposition: 'resolved', outcome: 'issue' }]);
+  const ev = h.state.events.find((e) => e.action === AUDIT_ACTION.SUPPORT_ITEM_RESOLVE);
+  assert.equal(ev?.after.checkInOutcome, 'issue');
+});
+
+test('resolve: a generic resolve never closes the check-in, so no outcome is stored', async () => {
+  const h = harness();
+  const a = await ingestSupportMessageCore(inbound({ externalMessageId: 'c:1' }), h.ingestDeps);
+  assert.ok(a.ok);
+  await recordSupportReplyCore(
+    { orgId: ORG, supportItemId: a.supportItemId, staffId: 2, action: 'log', body: 'Done.', clientEventId: 'reply-0004' },
+    h.replyDeps,
+  );
+  const ok = await resolveSupportItemCore({ orgId: ORG, supportItemId: a.supportItemId, staffId: 2 }, h.actionDeps);
+  assert.ok(ok.ok);
+  assert.deepEqual(h.state.checkInCloses, []);
+  assert.deepEqual(h.state.checkInRefreshes.at(-1), a.supportItemId);
+});
+
 test('purpose: customer → internal record sets every live draft aside in the same transaction', async () => {
   const h = harness();
   const a = await ingestSupportMessageCore(inbound({ externalMessageId: 'c:1' }), h.ingestDeps);

@@ -77,7 +77,7 @@ const ledgerColumns = 'id, client_event_id, state, row_version, sha256, file_bas
 function basename(input: string): string { const value = input.trim(); if (!value || value.length > 255 || value.includes('/') || value.includes('\\')) throw new LabelIngestionServiceError('INVALID_PDF', 'A safe PDF filename is required.'); return value; }
 function key(org: OrgId, hash: string): string { return `label-ingestions/${org}/${hash.slice(0, 2)}/${hash}.pdf`; }
 
-export async function createLabelIngestion(input: { organizationId: OrgId; actorStaffId: number; clientEventId: string; observedAt: string; fileBasename: string; bytes: Buffer; expectedSha256?: string; /** Bulk reads label evidence but intentionally skips order resolution, even when text names an order. */ matchOrder?: boolean }, overrides: Partial<LabelIngestionDependencies> = {}): Promise<{ ingestion: PublicLabelIngestion; replayed: boolean }> {
+export async function createLabelIngestion(input: { organizationId: OrgId; actorStaffId: number; clientEventId: string; observedAt: string; fileBasename: string; bytes: Buffer; expectedSha256?: string }, overrides: Partial<LabelIngestionDependencies> = {}): Promise<{ ingestion: PublicLabelIngestion; replayed: boolean }> {
   const deps = { ...dependencies, ...overrides };
   if (!input.bytes.length || input.bytes.length > MAX_LABEL_PDF_BYTES) throw new LabelIngestionServiceError('PAYLOAD_TOO_LARGE', 'PDF exceeds the permitted size.');
   if (input.bytes.subarray(0, 5).toString('ascii') !== '%PDF-') throw new LabelIngestionServiceError('INVALID_PDF', 'The uploaded file is not a PDF.');
@@ -88,12 +88,7 @@ export async function createLabelIngestion(input: { organizationId: OrgId; actor
     const sameEventDifferentBytes = existing.rows.some((row) => row.client_event_id === input.clientEventId && row.sha256 !== sha256);
     if (sameEventDifferentBytes) throw new LabelIngestionServiceError('CLIENT_EVENT_PAYLOAD_MISMATCH', 'This client event was already used for different bytes.');
     const sameHash = existing.rows.find((row) => row.sha256 === sha256);
-    if (sameHash) {
-      if (input.matchOrder === false && sameHash.matched_order_id != null) {
-        throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'These label bytes are already linked to an order.');
-      }
-      return { ingestion: publicRow(sameHash), replayed: true };
-    }
+    if (sameHash) return { ingestion: publicRow(sameHash), replayed: true };
   }
   const received = await deps.transaction(input.organizationId, async (client) => {
     const result = await client.query<LedgerRow>(`INSERT INTO label_ingestions (organization_id, actor_staff_id, client_event_id, sha256, file_basename, byte_size, observed_at, source, state) VALUES ($1,$2,$3,$4,$5,$6,$7,'MANUAL_UPLOAD','RECEIVED') ON CONFLICT DO NOTHING RETURNING ${ledgerColumns}`, [input.organizationId, input.actorStaffId, input.clientEventId, sha256, fileBasename, input.bytes.length, input.observedAt]);
@@ -103,28 +98,12 @@ export async function createLabelIngestion(input: { organizationId: OrgId; actor
     if (sameEventDifferentBytes) throw new LabelIngestionServiceError('CLIENT_EVENT_PAYLOAD_MISMATCH', 'This client event was already used for different bytes.');
     const sameHash = concurrent.rows.find((row) => row.sha256 === sha256);
     if (!sameHash) throw new LabelIngestionServiceError('INGESTION_PROCESSING_FAILED', 'The ingestion ledger could not be created.');
-    if (input.matchOrder === false && sameHash.matched_order_id != null) {
-      throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'These label bytes are already linked to an order.');
-    }
     return { row: sameHash, replayed: true };
   });
   if (received.replayed) return { ingestion: publicRow(received.row), replayed: true };
   const objectKey = key(input.organizationId, sha256);
   try { await deps.store.put({ organizationId: input.organizationId, objectKey, bytes: input.bytes }); }
   catch { await deps.transaction(input.organizationId, async (client) => { await client.query(`UPDATE label_ingestions SET state='FAILED', error_code='STAGING_FAILED', error_detail='Object staging failed', attempt_count=attempt_count+1, row_version=row_version+1 WHERE organization_id=$1 AND id=$2`, [input.organizationId, received.row.id]); }); throw new LabelIngestionServiceError('INGESTION_PROCESSING_FAILED', 'The PDF could not be staged.'); }
-  if (input.matchOrder === false) {
-    let evidence: ParsedLabelEvidence | undefined;
-    let reason: LabelQuarantineReasonCode = 'ORDER_NOT_FOUND';
-    try {
-      evidence = await deps.parse(input.bytes);
-    } catch (error) {
-      reason = error instanceof LabelPdfParseError && error.code === 'PDF_LIMIT_EXCEEDED' ? 'PDF_LIMIT_EXCEEDED' : 'PARSE_FAILED';
-    }
-    const unpaired = await deps.transaction(input.organizationId, (client) =>
-      updateQuarantine(client, input.organizationId, Number(received.row.id), objectKey, reason, evidence),
-    );
-    return { ingestion: publicRow(unpaired), replayed: false };
-  }
   return { ingestion: await processStagedLabel({ organizationId: input.organizationId, ingestionId: Number(received.row.id), bytes: input.bytes, deps, objectKey }), replayed: false };
 }
 

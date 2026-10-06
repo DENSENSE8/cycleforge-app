@@ -2,7 +2,7 @@
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { normalizeIdentifier } from '@/lib/product-manuals';
+import { normalizeIdentifier } from '@/lib/manuals/identifier-key';
 
 export type ParcelSource = 'order' | 'sku' | 'item_number';
 

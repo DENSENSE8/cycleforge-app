@@ -80,8 +80,11 @@ export function MobileCaptureWindow({
   manualLabel?: string;
   collapsedFrame?: (scan: React.ReactNode) => React.ReactNode;
 }) {
-  const scanner = useBarcodeScanner({ dedupMs });
-  const { acceptScan, lastScannedValue, resetLastScan, startScanning, stopScanning } = scanner;
+  // Warm: leaving the screen parks the lens (decoding stopped) for the next
+  // capture window to reattach — the scan → record → scan loop never re-opens
+  // the camera. The `/m` shell bounds the park (grace, hidden page, shell exit).
+  const scanner = useBarcodeScanner({ dedupMs, keepWarm: true });
+  const { acceptScan, lastScannedValue, resetLastScan, startScanning, stopScanning, parkScanning } = scanner;
 
   /** Open = the panel is up and the lens is running. */
   const [open, setOpen] = useState(initiallyArmed);
@@ -103,22 +106,21 @@ export function MobileCaptureWindow({
   const resetRef = useRef(resetLastScan);
   resetRef.current = resetLastScan;
 
-  // Armed while the panel is up, stopped the moment it is put away. The cleanup
-  // runs on Done as well as on unmount, so the lens is never left running
-  // behind a collapsed bar — an armed camera nobody is aiming still commits.
+  // Armed while the panel is up, stopped the moment it is put away — Done
+  // turns the lens off, so it is never left running behind a collapsed bar (an
+  // armed camera nobody is aiming still commits). Typing and leaving the
+  // screen only park it: decoding stops, the stream waits for the lens to come
+  // back (a lens still decoding behind a keyed entry can commit a label that
+  // drifts through frame while they are mid-word).
   useEffect(() => {
-    // Stopped when the camera is away AND when the operator is typing: a lens
-    // still decoding behind a keyed entry can commit a label that drifts
-    // through frame while they are mid-word.
-    if (!open || manualOpen) {
+    if (!open) {
       void stopScanning();
       return;
     }
+    if (manualOpen) return;
     void startScanning();
-    return () => {
-      void stopScanning();
-    };
-  }, [open, manualOpen, startScanning, stopScanning]);
+    return parkScanning;
+  }, [open, manualOpen, startScanning, stopScanning, parkScanning]);
 
   useEffect(() => {
     if (!lastScannedValue) return;

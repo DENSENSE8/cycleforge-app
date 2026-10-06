@@ -87,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       before: pairing ? { manualId, pairing: before } : undefined,
       after: { manualId, displayName: manual.displayName, type: manual.type, pairing: manual.pairing },
     });
-    return NextResponse.json({ success: true, manual });
+    return NextResponse.json({ success: true, manual, before });
   } catch (error) {
     if (error instanceof OrderManualError || error instanceof PaperworkPairingError || error instanceof ManualFileError) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.status });
@@ -121,7 +121,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       entityId: orderId,
       before: { manualId, pairing: before },
     });
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, before });
   } catch (error) {
     if (error instanceof OrderManualError) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.status });

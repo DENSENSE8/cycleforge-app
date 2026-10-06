@@ -17,6 +17,8 @@ export interface RecordCardLine {
   id: number;
   title: string;
   photoUrl: string | null;
+  /** Original photo used by the fullscreen viewer when `photoUrl` is a thumbnail. */
+  photoFullUrl?: string | null;
   facts: Readonly<Record<string, RecordFactFace | null>>;
   /** A line that needs attention (orders: out of stock) — danger ground in the status popover, counted while folded. */
   alert: boolean;

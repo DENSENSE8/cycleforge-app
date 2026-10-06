@@ -74,10 +74,12 @@ test('patchLabelFaceDocument updates receiving center without touching other slo
   assert.equal(tl.textContent, 'Goodwill');
 });
 
-test('patchLabelFaceDocument updates product title slot', () => {
+test('patchLabelFaceDocument updates product title and custom line slots', () => {
   const ptitle = stubNode('Old title');
+  const center = stubNode('');
   const doc = makeDoc({
     '.ptitle': ptitle,
+    '.center': center,
     '.bl': stubNode('A'),
     '.br': stubNode('Black'),
   });
@@ -86,13 +88,14 @@ test('patchLabelFaceDocument updates product title slot', () => {
     kind: 'product',
     topLeft: 'New title',
     topRight: '',
-    center: '',
+    center: 'Includes remote',
     bottomLeft: 'A',
     bottomRight: 'Black',
     matrix: { value: 'SKU', symbology: 'datamatrix' },
   });
 
   assert.equal(ptitle.textContent, 'New title');
+  assert.equal(center.textContent, 'Includes remote');
 });
 
 test('patchLabelFaceDocument updates the location code slot', () => {

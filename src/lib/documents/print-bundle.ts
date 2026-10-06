@@ -8,11 +8,8 @@ import {
 } from '@/lib/documents/outbound-documents';
 import type { OutboundDocument, OutboundDocumentType } from '@/lib/documents/types';
 import { readOutboundDocumentBytes } from '@/lib/documents/read-bytes';
-import {
-  listAssignedManualsForOrder,
-  readProductManualBytes,
-  type PackBundleManual,
-} from '@/lib/documents/pack-bundle-manuals';
+import { readProductManualBytes, type PackBundleManual } from '@/lib/documents/pack-bundle-manuals';
+import { listOrderPaperworkForPrint } from '@/lib/manuals/order-manuals';
 import {
   recordDocumentPrintJob,
   getDocumentPrintJobByEventId,
@@ -48,9 +45,9 @@ export interface PairedLabelIngestion {
 
 interface PrintableBundleItem {
   kind: 'outbound' | 'manual' | 'label_ingestion';
-  /** documents.id when kind=outbound, or manual documents row when promoted */
+  /** documents.id when kind=outbound */
   documentId?: number;
-  /** product_manuals.id when kind=manual (bridge / dual-write) */
+  /** product_manuals.id when kind=manual */
   productManualId?: number;
   /** label_ingestions.id when kind=label_ingestion */
   labelIngestionId?: number;
@@ -111,7 +108,7 @@ interface PrinterProfileRow {
 export interface PrintBundleDeps {
   listDocumentsForOrder: typeof listDocumentsForOrder;
   listDocumentsForShipment: typeof listDocumentsForShipment;
-  listAssignedManualsForOrder: typeof listAssignedManualsForOrder;
+  listAssignedManualsForOrder: (orgId: OrgId, orderId: number) => Promise<PackBundleManual[]>;
   listPairedLabelIngestionsForOrder: typeof listPairedLabelIngestionsForOrder;
   readOutboundDocumentBytes: typeof readOutboundDocumentBytes;
   readProductManualBytes: typeof readProductManualBytes;
@@ -191,7 +188,7 @@ export function labelIngestionContentPath(orderId: number, ingestionId: number):
 const defaultDeps: PrintBundleDeps = {
   listDocumentsForOrder,
   listDocumentsForShipment,
-  listAssignedManualsForOrder,
+  listAssignedManualsForOrder: listOrderPaperworkForPrint,
   listPairedLabelIngestionsForOrder,
   readOutboundDocumentBytes,
   readProductManualBytes,
@@ -351,14 +348,13 @@ function bundlePrintItems(
     });
   }
   for (const manual of resolved.manuals) {
-    const documentId = manual.documentId != null && manual.documentId > 0 ? manual.documentId : undefined;
     items.push({
       ns: 'manual',
-      key: documentId != null ? `doc:${documentId}` : String(manual.id),
+      key: String(manual.id),
       title: `manual · ${manual.displayName}`,
       printNodeSource: 'cycleforge.pack-bundle.manual',
-      ledger: { documentId, productManualId: manual.id, documentType: 'manual' },
-      fallback: (isPdf) => ({ kind: 'manual', documentId, productManualId: manual.id, documentType: 'manual', isPdf }),
+      ledger: { productManualId: manual.id, documentType: 'manual' },
+      fallback: (isPdf) => ({ kind: 'manual', productManualId: manual.id, documentType: 'manual', isPdf }),
       load: async () => {
         const loaded = await deps.readProductManualBytes(manual);
         if (!loaded) return null;

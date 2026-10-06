@@ -16,7 +16,7 @@ interface UnitPhotoRequestPayload {
   unit_key?: string | null;
   request_id?: string;
   requested_by_staff_id?: number;
-  stage?: 'testing' | 'prepack' | 'packing' | string;
+  stage?: 'testing' | 'packing' | string;
   packer_log_id?: number | null;
   po_ref?: string | null;
   aspect?: string | null;
@@ -64,7 +64,7 @@ export function UnitPhotoRequestCamera() {
         unitPhotoCaptureHref(id, {
           requestId,
           unit: msg?.data?.unit_key ?? null,
-          stage: requestedStage === 'packing' || requestedStage === 'prepack' ? requestedStage : 'testing',
+          stage: requestedStage === 'packing' ? 'packing' : 'testing',
           aspect: parsePhotoAspect(msg?.data?.aspect),
           packerLogId: Number(msg?.data?.packer_log_id),
           poRef: msg?.data?.po_ref ?? null,

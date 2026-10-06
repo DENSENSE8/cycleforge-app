@@ -49,11 +49,20 @@ export async function handleTrackingScan(
 
     onTrackingOrderLoaded?.();
 
-    // Surgical cache insert — avoids full invalidation for same-tab scans.
-    if (data.techSerialId) {
+    // Surgical cache insert — avoids full invalidation for same-tab scans. The
+    // record carries the identity `GET /api/picking/desk/logs` gives this scan
+    // (`id` = its station_activity_logs row, `order_db_id` = the matched order),
+    // so the server echo replaces it in place. Any other id is a second row the
+    // echo throws away, and the scan drops off the Recent rail. An exception
+    // scan's payload is `buildOrderPayload(null)`, so the same mapping reads it.
+    const salId = Number(data.salId ?? data.techActivityId);
+    if (Number.isFinite(salId) && salId > 0) {
       window.dispatchEvent(new CustomEvent('tech-log-added', {
         detail: {
-          id: data.techSerialId,
+          id: salId,
+          source_row_id: salId,
+          source_kind: 'tech_scan',
+          tech_serial_id: null,
           order_db_id: data.order.id ?? null,
           shipment_id: data.order.shipmentId ?? null,
           created_at: data.order.testDateTime ?? null,
@@ -72,35 +81,6 @@ export async function handleTrackingScan(
           quantity: String(data.order.quantity || '1'),
           is_shipped: data.order.isShipped ?? false,
           ship_by_date: data.order.shipByDate ?? null,
-          is_out_of_stock: false,
-        },
-      }));
-    } else if (data.techActivityId) {
-      // Exception scan (no order found): SAL row id maps to the negative id format.
-      window.dispatchEvent(new CustomEvent('tech-log-added', {
-        detail: {
-          id: -1000000000 - data.techActivityId,
-          source_row_id: data.techActivityId,
-          source_kind: 'tech_scan',
-          tech_serial_id: null,
-          created_at: data.order.testDateTime ?? null,
-          shipping_tracking_number: data.order.tracking ?? '',
-          serial_number: '',
-          tested_by: data.order.testedBy ?? null,
-          shipment_id: null,
-          order_db_id: null,
-          order_id: null,
-          product_title: 'Unknown Product',
-          item_number: null,
-          sku: null,
-          condition: null,
-          status: null,
-          status_history: [],
-          notes: 'Tracking recorded in orders_exceptions',
-          account_source: null,
-          quantity: '1',
-          is_shipped: false,
-          ship_by_date: null,
           is_out_of_stock: false,
         },
       }));

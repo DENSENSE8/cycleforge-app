@@ -199,3 +199,131 @@ These are the shipped order-details target that `/fulfilled?openOrderId=` must k
 3. **Backfilled scan-outs.** 84 % of 30-day rows have backdated stamps. Should "Scanned out" show them as is with a "Backfill" marker, or should late-ship and pack→ship be computed from live scans only?
 4. **No-movement threshold.** N hours vs business hours, and whether to use carrier claim windows. UPS is 60 days per the tariff. USPS lost-package is 15–60 days from mailing [INFERENCE]. FedEx is 60 days [INFERENCE].
 5. **Grain.** One row per order line (today 445 lines = 445 orders in 30 days) or one per package? Split packages exist on 9 orders in 30 days.
+
+## Phase 2: built (2026-10-05)
+
+**Operator answers:**
+
+1. UPS/FedEx credentials are reported as set.
+2. Channel-shipped orders that were never scanned out are rows. Their scan reads "Not scanned".
+3. Backdated scan-outs are shown with a "Backfill" marker.
+4. **No movement** = 1 warehouse business day (Mon–Fri PT) after hand-off with no carrier scan. Before that the row is **Awaiting pickup**.
+   - Basis: Amazon Valid Tracking requires a physical carrier scan; carriers scan at pickup the same or next business day.
+   - Claim windows: USPS lost-package claims open on day 15 (Priority Mail Express day 7) and close on day 60 (usps.com/help/claims.htm). UPS and FedEx close on day 60.
+5. Grain toggle **Orders · Lines**, default Orders (`?grain=`).
+
+**What was built:**
+
+| Part | Where |
+|---|---|
+| Endpoint | `GET /api/nav/fulfilled` (`src/lib/nav/fulfilled/{sql,service,bucket,read}.ts`, `src/lib/outbound/fulfilled-params.ts`) |
+| Sheet | `src/components/outbound/fulfilled/*`, a host of `PastedListSheet` |
+| Shipment details | the record slot, rehosted beside the sheet |
+| Sidebar | `NAV_PAGE_DECLS.fulfilled` plus the facets context `fulfilled` |
+| Scan provenance | one rule: `src/lib/outbound/scan-out-provenance.ts`, a source naming backfill/catch-up/staging, or `|updated_at − created_at| > 120 s` |
+| Locator | org predicate at `outbound.ts:190` |
+| Carrier polling truth | in `src/lib/shipping/repository.ts`: `last_checked_at` now means the last *successful* poll, and retries are paced by `next_check_at` |
+| Key18 order match under RLS | `shipping_tracking_numbers.tracking_raw_key18` (stored generated column) plus `idx_stn_tracking_raw_key18_col` |
+
+The old `/fulfilled` ledger, its hooks, the seed, `/api/packerlogs/hydrate` and the `outbound.shipped` facets are deleted.
+
+**Migrations applied:**
+
+- `2026-10-05_stn_tracking_raw_key18_column.sql`: held the lock for about 0.58 s.
+- `2026-10-05b_stn_tracking_raw_key18_index.sql`: CONCURRENTLY, then `ANALYZE`; the index is valid (`indisvalid`).
+- `2026-10-05b_saved_views_fulfilled.sql`: adds `outbound_fulfilled` to the saved-views CHECK; no values dropped.
+
+**Measured at :3050:**
+
+- **Chip counts match the API exactly.** 90 days: All 1,733 · Delivered 493 · Exception 1 · Untracked 1,204 · No movement 4 · Awaiting pickup 5 · Stalled 16 · Out for delivery 1 · In transit 9.
+- **Copy:** clicking a cell shows the toast "Copied FEDEX", and the clipboard holds the same value.
+- **Open:** Enter opens `?shipment=<id>`, and `?openOrderId=` resolves to the same shipment record.
+- **Line grain:** 1,733 lines.
+- **Statement:** about 110 ms exec at every window.
+- **Payload:** 595 B/row, 1.03 MB for 90 days. The dev lane serves it uncompressed.
+- **Facets:** the owner-role packer-log counts dropped from 1.7–3.0 s to 0.09–0.41 s as app_tenant.
+
+**Still open:**
+
+- **Vercel Production's UPS/FedEx variables don't reach the runtime.** Every credential error comes from prod deployments. The likely cause is that the 2026-07-09 bulk re-update wrote empty values; `NEXT_PUBLIC_NAS_PHOTOS_BASE_URL` is provably empty in the prod bundle. The worktree `.env` polls fine, and the backlog was re-polled from it (about 420 rows OK, 242 events). Fix: re-enter the values and redeploy.
+- **USPS** stays unpolled (IP Agreement).
+
+## Phase 3: the post-ship journey (2026-10-05)
+
+**Operator ask:** for every fulfilled order, show the most valuable post-ship question at a glance: did the carrier take it, is it moving, did it arrive and when, did we check in with the customer, did they answer, were they happy or did they have an issue. Board first on the desk; cards in urgency sections on the phone.
+
+**One status word + one clock per order.** `FULFILLED_BUCKETS` (`src/lib/nav/locate/bucket-precedence.ts`) is now the journey, grouped into three sections. The array order is both the precedence and the board's column order.
+
+| Section | Buckets |
+|---|---|
+| Act now | Exception · Returned · Reply due · No movement · Stalled · Late · Check-in due · Tracking stale · No tracking |
+| Watch | Awaiting pickup · In transit · Out for delivery · Untracked · Check-in scheduled · Checked in |
+| Done | Happy · Had an issue · No reply · Closed · Delivered |
+
+- **Carrier half** (`bucket.ts`):
+  - **Tracking stale** = a polled carrier with no *successful* poll in 24 h. It outranks No movement and Stalled, so a carrier that has gone quiet is never blamed while we have stopped asking it.
+  - **Late** = not delivered after the carrier's *first* promise (`shipping_tracking_numbers.first_estimated_delivery_at`, set once and never cleared).
+  - **Synthetic stamps** (scan-written, with no moving event and no good poll) are not movement. They are judged on moving events, so the list and the shipment record agree.
+- **Customer half** (`journey.ts`): a delivered order takes its check-in stage from `order_support_follow_ups`. An undelivered order whose check-in reply is due competes with the carrier bucket by precedence.
+- **Clock** (`facts.clock {since, due}`; `journey-clock.ts` is the only face): age in the bucket against its threshold.
+  - Thresholds: pickup = 1 business day · silence = 72 h · promise = first ETA · check-in = `due_at` · reply = 24 h · stale poll = 24 h.
+  - Tone: calm below 50% · near 50–100% · over at 100% and above.
+  - Rows sort by share of the threshold used, then by age.
+
+**Surfaces:**
+
+| Part | Where |
+|---|---|
+| Desk board (default) | `src/features/fulfilled-board/FulfilledBoard.tsx` (operator 2026-10-05: rebuilt in the Live feed's image, no `ColumnBoard`): full-screen; headline (Act now · over, Late / Stalled / No movement, Check-ins due, Delivered, freshness); columns per bucket grouped Act now · Watch · Done in one hidden-scrollbar strip with a light edge fade (`COLUMN_BOARD_EDGE_FADE_CLASS`); exact counts, `<n> over · oldest <age>`, 60-card cap → "Show all in sheet" |
+| Sheet | `?layout=sheet`; a core **Clock** column after Status (`JourneyClockCell`) |
+| Record | `ShipmentJourneyRail` (`src/lib/shipments/shipment-journey.ts`): Handed off · Carrier scan · Delivered (promised / late) · Check-in sent · Customer replied · Outcome, with gaps; the gap that broke its threshold is over-toned |
+| Phone | `/m/fulfilled` (`MobileFulfilledJourney`): Act now · Watch · Done bands of `RecordCardMobile`. A tap opens the package, or the check-in conversation on a customer stage. `RecordCardMobile.location` is optional (no "No bin" on a shipped order) |
+| Outcome capture | Support close of a check-in requires **Happy** or **Had an issue** (`order_support_follow_ups.outcome`). The outcome survives the sweep and clears on reopen |
+| Toolbar (root, every sheet) | One row: status chips left (zero counts hidden, overflow into "More · N"); icon-only Copy · Export · Recheck all · Columns, labels on hover; layout toggles; `ZoomMenu` (`100%▾`, shared with `DataTable`); full screen last, top right |
+| Vocabulary | **Platform** (`orders.account_source`) replaces "Channel" in UI copy; `?channel=` is unchanged |
+
+**Migrations applied:** `2026-10-05_first_promised_eta.sql` (column plus a one-time backfill from `estimated_delivery_at`) and `2026-10-05_check_in_outcome.sql` (`outcome` with two CHECKs).
+
+**Measured at :3050 (90 days, 1,763 orders):**
+
+- Exception 1 · No movement 13 · Stalled 9 · Check-in due 1 · Awaiting pickup 7 · In transit 8 · Out for delivery 1 · Untracked 1,230 · Check-in scheduled 5 · Delivered 488.
+- Phone: Act now 24 · Watch 1,251 · Done 488.
+
+**Still open:**
+
+- **262 `shipment_tracking_events` rows have `organization_id IS NULL`.** They are invisible to tenant reads (RLS), so the list loses their attempts, return-to-sender and exception codes. This needs a backfill from the parent `shipping_tracking_numbers.organization_id`.
+- **Vercel Production UPS/FedEx credentials.** Until they are fixed, every UPS/FedEx row turns **Tracking stale** 24 h after its last good poll. That is the honest face of the outage.
+- **USPS polling** is pending API access. USPS rows stay **Untracked**, which is most of Watch.
+- **Check-ins exist only for orders from `SUPPORT_CHECK_IN_PROGRAM_START`** (2026-10-04). Older delivered orders read **Delivered**.
+
+## Phase 4: live carrier sync (2026-10-06)
+
+**Trigger:** the operator compared 1Z16D1R0YW22415180 against the carrier. UPS said it was **in transit** (Anaheim, CA; 10/5 8:54 PM PT; due 10/9). The board still showed **"Shipment Ready for UPS"**.
+
+**Root cause:** in Vercel Production, `UPS_CLIENT_ID` / `UPS_CLIENT_SECRET` / `FEDEX_CLIENT_ID` / `FEDEX_CLIENT_SECRET` existed but were blank.
+
+- Every poll failed with "credentials are required". Each row then backed off for 12 h.
+- The 5-minute cron kept logging `success, synced 0, errors 0`, so the stale data was silent.
+- Measured: 150 of 152 open UPS rows and 294 of 294 open FedEx rows were failing. No carrier event had been recorded since 2026-10-05 21:56 UTC.
+
+**Fixes:**
+
+- **Missing credentials are a config fault, not a per-package error** (`src/lib/shipping/carrier-credentials.ts`).
+  - The sweep checks once per run and leaves rows' backoff alone.
+  - The cron returns 503 and records `cron_runs` as failed.
+  - The metrics cron sends error alerts through Sentry: `CARRIER_CREDENTIALS_MISSING`, and `CARRIER_SYNC_STALE` (no successful poll in 6 h).
+  - `GET /api/nav/fulfilled` returns `syncHealth`, and the board prints "UPS sync failing since …".
+- **UPS status read as UNKNOWN:** the UPS current status often has no type (for example "160 · We Have Your Package"). It now falls back to the newest activity's status (`providers/ups.ts`; regression test in `carrier-event-instant.test.ts`).
+- **FedEx "not found" was hidden:** a 200 response carrying `TRACKING.TRACKINGNUMBER.NOTFOUND` used to save as UNKNOWN. It is now an error with the reason, so the row backs off instead.
+- **Resync tool:** `scripts/shipping-resync.ts` uses the same writer as the cron (`syncShipment`) and ignores backoff.
+- **Run on 2026-10-06:** 447 open UPS/FedEx shipments re-polled. 388 succeeded and 94 events were inserted. 1Z16D1R0YW22415180 went LABEL_CREATED → IN_TRANSIT, with its Anaheim scan.
+  - The 59 failures were UPS `TV1002 Invalid inquiry number`: test or fake numbers such as `1Z999AA1…` and `1ZCFTEST…`.
+- **Board cards** show the carrier's latest words, the place and time, and the ETA or delivered time. They also show "Checked n ago" with a sync-failing warning and a **Refresh now** button (`POST /api/shipping/track/sync-one`).
+- **Sidebar toggles:** Packed by me · Done columns · Untracked · Cards · Group by carrier.
+- **Production credentials re-entered:** the four values were copied from the worktree `.env` into Vercel Production on 2026-10-06 (`vercel env add --force`, each reported "Overrode"). They take effect on the next production deploy.
+
+**Still open:**
+
+- **Carrier push webhooks are not wired.** Commit `0eaf4a990` (2026-06-22) deleted the subscribe side, and no row has ever reached COMPLETED. Polling is the only freshness source.
+- **228 open FedEx-labelled inbound rows are numbers FedEx does not know** (`receiving_scan:zoho_po`; prefixes `000`, `700`, `420`, `962`), most likely the wrong carrier. 14 UPS rows read "007 Shipment Canceled" and have no void/terminal status.
+- **Deploy gate:** a build-time check for blank carrier credentials (`scripts/check-required-env.mjs --deploy-gate`) has not been added yet. The owner decides.

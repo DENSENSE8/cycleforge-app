@@ -92,9 +92,11 @@ read everything). It is a route, not a layer:
   exceptions, then the desk's view order) — on every surface and in the CSV;
   chips keep membership, so it still counts under both.
 - **Layout (Google-Sheets feel):** Back is the first element of the title
-  line (`titleLead`). The status chips open the page body top-left; sort
-  chips · Copy shown · Export (CSV of exactly the columns and rows on screen)
-  · Recheck all · zoom − / % / + on the right. No find field in the page —
+  line (`titleLead`). The status chips open the page body top-left on ONE
+  line (overflow folds into `More · N`); on the same row, right, icon first
+  (word on hover): Copy shown · Export (CSV of exactly the columns and rows on
+  screen) · Recheck all · zoom dropdown (`100%▾`) · full screen last
+  (operator 2026-10-05). No find field in the page —
   its Find is the sidebar field (`NAV_PAGE_DECLS.search`, desk store).
 - **Table (canonical DataTable, display method HIGH):** # · Number (frozen,
   ×N when the paste carried it N times, hover icon opens the record) · Status
@@ -118,6 +120,19 @@ read everything). It is a route, not a layer:
   screen it opens in place; from anywhere else it navigates with
   `recordBack`, and closing the record (Esc) returns to the sheet — same URL,
   same scroll. The cards write through the same `setRecordDetailsParam`.
+
+## One sheet, two sources — Receiving › Purchasing
+
+The sheet is `PastedListSheet` (`src/components/search/pasted-list/PastedListSheet.tsx`)
+over `LocatedRecords` (`use-bulk-list.ts` — the pasted list's `BulkList`
+extends it). `/search/list` hands it the locate answer (client sort, Esc =
+Back). `/purchasing` (`PurchasesSheet`, a Receiving-lane mode) hands it
+`usePurchasesList`: `GET /api/nav/purchases` over the URL
+(`src/lib/receiving/purchases-params.ts` → `purchasesApiParams`: date axis +
+window, source, vendor, unboxed by, sort, Find). The query sorts and finds;
+status (`?recon=`) narrows client-side so the chips count the whole window.
+The view's filters, Sort, saved views and Find are its sidebar
+(`NAV_PAGE_DECLS.purchasing`); footer reads "N purchases".
 
 ## Recent lists
 

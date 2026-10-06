@@ -35,7 +35,7 @@ test('live-feed facets: the board loader answers with the URL filters; Carrier Â
     deps(seen),
   );
   assert.ok(result.ok);
-  assert.deepEqual(seen[0], { carriers: ['USPS'], channels: null, staffId: 4 });
+  assert.deepEqual(seen[0], { carriers: ['USPS'], channels: null, staffId: 4, sorts: null });
   assert.equal(result.body.context, 'live-feed');
   assert.deepEqual(
     result.body.groups.map((group) => [group.id, group.param, group.options.map((o) => [o.value, o.label, o.count])]),

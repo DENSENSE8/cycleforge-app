@@ -1,8 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  NOT_LISTING_PHOTO_SQL,
   RECEIVING_PHOTO_ITEM,
   RECEIVING_PHOTO_LEGACY_PACKAGE,
+  RECEIVING_PHOTO_LISTING,
   RECEIVING_PHOTO_PACKAGE,
   RECEIVING_PHOTO_STAGES,
   RECEIVING_PHOTO_UNBOX_CARTON,
@@ -149,6 +151,8 @@ describe('stage ↔ type ↔ entity ↔ intent', () => {
       receivingStageFromPhotoType('RECEIVING_LINE', RECEIVING_PHOTO_PACKAGE),
       'unbox_item',
     );
+    // …except the seller's listing photos: never unbox evidence.
+    assert.equal(receivingStageFromPhotoType('RECEIVING_LINE', RECEIVING_PHOTO_LISTING), null);
     assert.equal(receivingStageFromPhotoType('SERIAL_UNIT', 'testing_photo'), null);
   });
 });
@@ -159,9 +163,11 @@ describe('validateReceivingPhotoWrite matrix', () => {
     ['RECEIVING', RECEIVING_PHOTO_UNBOX_CARTON],
     ['RECEIVING', RECEIVING_PHOTO_LEGACY_PACKAGE],
     ['RECEIVING_LINE', RECEIVING_PHOTO_ITEM],
+    ['RECEIVING_LINE', RECEIVING_PHOTO_LISTING],
   ];
   const invalid: Array<[string, string | null]> = [
     ['RECEIVING', RECEIVING_PHOTO_ITEM],
+    ['RECEIVING', RECEIVING_PHOTO_LISTING],
     ['RECEIVING', 'testing_photo'],
     ['RECEIVING', null],
     ['RECEIVING_LINE', RECEIVING_PHOTO_PACKAGE],
@@ -215,15 +221,21 @@ describe('receivingPhotoIntentSql', () => {
     assert.match(sql, /'receiving_unbox_carton'/);
   });
 
-  it('item is entity-only — no photo_type escape hatch', () => {
+  it('item is the line entity minus the seller listing photos — no other photo_type escape hatch', () => {
     const sql = receivingPhotoIntentSql('item');
     assert.match(sql, /l\.entity_type = 'RECEIVING_LINE'/);
-    assert.doesNotMatch(sql, /photo_type/);
+    assert.match(sql, /COALESCE\(p\.photo_type, ''\) <> 'listing'/);
     assert.doesNotMatch(sql, / OR /);
   });
 
-  it('all adds nothing', () => {
-    assert.equal(receivingPhotoIntentSql('all'), '');
+  it('listing pins the line entity AND the listing type', () => {
+    const sql = receivingPhotoIntentSql('listing');
+    assert.match(sql, /l\.entity_type = 'RECEIVING_LINE'/);
+    assert.match(sql, /p\.photo_type = 'listing'/);
+  });
+
+  it('all is every receiving shot but never the seller listing photos', () => {
+    assert.equal(receivingPhotoIntentSql('all'), ` AND ${NOT_LISTING_PHOTO_SQL}`);
   });
 });
 

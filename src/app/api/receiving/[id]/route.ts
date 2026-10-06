@@ -26,6 +26,7 @@ import {
 import type { OrgId } from '@/lib/tenancy/constants';
 import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from '@/lib/receiving/lines/sql-receiving-image';
+import { RECEIVING_LINE_LISTING_EVIDENCE_SQL } from '@/lib/receiving/lines/sql-listing-evidence';
 import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import { SOURCE_PLATFORMS as SOURCE_PLATFORM_REGISTRY } from '@/lib/source-platform';
 import { CARTON_ORDER_LINKS_SQL, toCartonOrderLinks } from '@/lib/orders/po-order-link';
@@ -225,6 +226,8 @@ export async function GET(
          stn_line.tracking_number_raw AS tracking_number,
          rl.notes,
          ${RECEIVING_LINE_IMAGE_URL_SQL},
+         rl.purchase_condition_grade::text AS purchase_condition_grade,
+         ${RECEIVING_LINE_LISTING_EVIDENCE_SQL},
          sc.product_title AS catalog_product_title,
          (SELECT name FROM items
            WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'

@@ -4,6 +4,7 @@ import type { OrderCheckInView, SupportItemView, SupportMessageView } from '@/li
 import {
   supportCanCloseNoResponse,
   supportCheckInFacts,
+  supportCheckInStateLabel,
   supportComposerCommit,
   supportComposerMode,
   supportDismissBody,
@@ -146,6 +147,26 @@ test('Close — no response needs a reason and carries the check-in disposition'
   );
 });
 
+test('closing a check-in as resolved needs its outcome — Happy or Had an issue', () => {
+  const missing = supportResolveRequest({ blockers: [], override: false, reason: '', disposition: 'resolved' });
+  assert.equal(missing.ok, false);
+  assert.equal(supportResolveRequest({ blockers: [], override: false, reason: '', disposition: 'resolved', outcome: null }).ok, false);
+  assert.deepEqual(supportResolveRequest({ blockers: [], override: false, reason: '', disposition: 'resolved', outcome: 'happy' }), {
+    ok: true,
+    body: { checkInDisposition: 'resolved', checkInOutcome: 'happy' },
+  });
+  assert.deepEqual(
+    supportResolveRequest({ blockers: [], override: false, reason: ' Replacement sent ', disposition: 'resolved', outcome: 'issue' }),
+    { ok: true, body: { reason: 'Replacement sent', checkInDisposition: 'resolved', checkInOutcome: 'issue' } },
+  );
+  // No response carries no outcome; a resolve that is not a check-in close carries none either.
+  assert.deepEqual(
+    supportResolveRequest({ blockers: [], override: false, reason: 'No answer', disposition: 'no_response_closed', outcome: 'happy' }),
+    { ok: true, body: { reason: 'No answer', checkInDisposition: 'no_response_closed' } },
+  );
+  assert.deepEqual(supportResolveRequest({ blockers: [], override: false, reason: '', outcome: 'happy' }), { ok: true, body: {} });
+});
+
 const checkIn = (over: Partial<OrderCheckInView> = {}): OrderCheckInView => ({
   orderId: 501,
   orderNumber: '12-34567-89012',
@@ -163,6 +184,7 @@ const checkIn = (over: Partial<OrderCheckInView> = {}): OrderCheckInView => ({
   chaseCount: 0,
   disposition: null,
   dispositionReason: null,
+  outcome: null,
   closedAt: null,
   closedBy: null,
   ...over,
@@ -236,4 +258,14 @@ test('check-in facts: only what nothing else on the record says — products, da
   assert.equal(byId.state, 'Contacted');
   // Not a check-in → no facts.
   assert.deepEqual(supportCheckInFacts({ ...item, checkIn: null }, String), []);
+});
+
+test('the check-in state names how a resolved check-in ended', () => {
+  assert.equal(supportCheckInStateLabel(checkIn({ state: 'resolved', outcome: 'happy' })), 'Resolved · Happy');
+  assert.equal(supportCheckInStateLabel(checkIn({ state: 'resolved', outcome: 'issue' })), 'Resolved · Had an issue');
+  // Resolved without the check-in close (generic resolve) has no outcome.
+  assert.equal(supportCheckInStateLabel(checkIn({ state: 'resolved', outcome: null })), 'Resolved');
+  assert.equal(supportCheckInStateLabel(checkIn({ state: 'no_response_closed' })), 'Closed — no response');
+  const facts = supportCheckInFacts({ checkIn: checkIn({ state: 'resolved', outcome: 'issue' }), primaryOrder: null }, String);
+  assert.equal(facts.find((f) => f.id === 'state')?.value, 'Resolved · Had an issue');
 });

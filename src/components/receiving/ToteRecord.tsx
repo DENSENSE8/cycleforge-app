@@ -14,7 +14,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Archive } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { SearchEntityRecord } from '@/components/search/dossier/SearchEntityRecord';
 import { useHandlingUnitDetail } from '@/hooks/useHandlingUnitDetail';
 import { conditionLabel } from '@/lib/conditions';
@@ -50,7 +49,7 @@ export function ToteRecord({ toteRef, onBack }: { toteRef: string; onBack?: () =
     refetchOnWindowFocus: false,
   });
 
-  if (detail.isLoading) return <UniversalLoader isLoading label="Loading tote" />;
+  if (detail.isLoading) return null;
   if (!tote) {
     return (
       <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card p-8">

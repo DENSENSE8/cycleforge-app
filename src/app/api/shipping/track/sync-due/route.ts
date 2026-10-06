@@ -15,8 +15,9 @@ export const POST = withAuth(async (req: NextRequest) => {
   try {
     const body = (await req.json().catch(() => ({}))) as ShippingSyncDuePayload;
     const result = await runShippingSyncDueJob(body);
-    ok = true;
-    return NextResponse.json(result);
+    ok = result.ok;
+    // A config fault (carrier credentials missing) polled nothing for that carrier.
+    return NextResponse.json(result, { status: result.ok ? 200 : 503 });
   } catch (err: any) {
     console.error('[shipping/sync-due]', err);
     return NextResponse.json({ ok: false, error: err?.message }, { status: 500 });

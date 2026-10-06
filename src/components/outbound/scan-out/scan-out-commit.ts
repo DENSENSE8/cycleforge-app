@@ -30,3 +30,12 @@ export function isScanOutTrackingCommit(raw: string): boolean {
   if (compact.length < 10) return false;
   return true;
 }
+
+/**
+ * Phone Out (`/m/scan`): a classified carrier label, or any label the desk
+ * scan-out station would confirm. FBA carton ids are not carrier-shaped and
+ * still leave.
+ */
+export function isMobileScanOutCommit(raw: string, routeType: string | null | undefined): boolean {
+  return routeType === 'carrier-tracking' || isScanOutTrackingCommit(raw);
+}

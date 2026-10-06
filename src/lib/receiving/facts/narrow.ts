@@ -139,6 +139,13 @@ export interface ReturnFactsInput {
   returnReason?: string | null;
   sourceOrderId?: string | null;
   rmaRef?: string | null;
+  /** Amazon return-report unit identity (2026-10-06_inbound_listing_evidence.sql). */
+  fnsku?: string | null;
+  licensePlateNumber?: string | null;
+  disposition?: string | null;
+  customerComment?: string | null;
+  /** YYYY-MM-DD — the day the buyer asked to return. */
+  returnRequestedOn?: string | null;
 }
 
 export function upsertReceivingLineReturn(
@@ -152,6 +159,11 @@ export function upsertReceivingLineReturn(
     return_reason: f.returnReason,
     source_order_id: f.sourceOrderId,
     rma_ref: f.rmaRef,
+    fnsku: f.fnsku,
+    license_plate_number: f.licensePlateNumber,
+    disposition: f.disposition,
+    customer_comment: f.customerComment,
+    return_requested_on: f.returnRequestedOn,
   }, deps);
 }
 

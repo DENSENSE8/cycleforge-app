@@ -22,8 +22,6 @@ export interface ManualRow {
   source_url: string | null;
   thumbnail_url: string | null;
   file_name: string | null;
-  /** documents.id when promoted (JIT Phase 3 dual-read). */
-  document_id?: number | null;
 }
 
 export interface UnitResult {

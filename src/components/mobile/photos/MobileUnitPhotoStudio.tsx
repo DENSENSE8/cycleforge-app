@@ -27,13 +27,13 @@ interface MobileUnitPhotoStudioProps {
   maxPhotos?: number;
   /** Drives the per-photo `unit_photo_uploaded` echo back to the desktop. */
   requestId?: string | null;
-  /** `testing` (default), `prepack`, or later `packing` — selects photo_type. */
-  stage?: 'testing' | 'prepack' | 'packing';
+  /** `testing` (default) or `packing` — selects photo_type. */
+  stage?: 'testing' | 'packing';
   /** When packing, dual-link uploads to this packer_logs.id. */
   packerLogId?: number | null;
   /** Order / shipment ref for poRef. */
   poRef?: string | null;
-  /** What these shots show (e.g. prepack serial) — stored as photos.photo_aspect. */
+  /** What these shots show — stored as photos.photo_aspect. */
   aspect?: PhotoAspect | null;
 }
 
@@ -152,11 +152,7 @@ export function MobileUnitPhotoStudio({
       header={
         <div className="min-w-0">
           <p className="text-role-micro text-white/60">
-            {stage === 'packing'
-              ? 'Add packing photos'
-              : stage === 'prepack'
-                ? 'Add prepack photos'
-                : 'Add testing photos'}
+            {stage === 'packing' ? 'Add packing photos' : 'Add testing photos'}
             {aspect ? ` · ${photoAspectLabel(aspect)}` : ''}
           </p>
           <p className="truncate text-sm font-semibold text-white">{headerLabel}</p>

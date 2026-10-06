@@ -51,6 +51,16 @@ export interface TicketReason {
   ticket: string | null;
 }
 
+/** A serial the purchase listing showed (`receiving_line_listing_serial`) — unbox confirms it by scanning it. */
+export interface ListingSerialRef {
+  id: number;
+  serial: string;
+  /** When CycleForge first saw it — the listing time, not unbox. */
+  first_seen_at: string;
+  /** Stamped when a scanned serial matched; null = still to confirm. */
+  confirmed_at: string | null;
+}
+
 export interface ReceivingLineRow {
   id: number;
   receiving_id: number | null;
@@ -85,6 +95,15 @@ export interface ReceivingLineRow {
   workflow_status: string | null;
   disposition_code: string;
   condition_grade: string;
+  /**
+   * "As listed" (sql-listing-evidence.ts) — what the purchase listing said:
+   * the bought-as grade (`receiving_line.purchase_condition_grade`), the
+   * listing's serials and the listing photo ids (`/api/photos/<id>/content`).
+   * Absent on optimistic / placeholder rows.
+   */
+  purchase_condition_grade?: string | null;
+  listing_serials?: ListingSerialRef[];
+  listing_photo_ids?: number[];
   disposition_audit: unknown[];
   needs_test: boolean;
   assigned_tech_id: number | null;

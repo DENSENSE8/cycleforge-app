@@ -55,6 +55,7 @@ import {
   readDataTablePageSize,
   writeDataTablePageSize,
   type DataTablePageSize,
+  type DataTableRowNoun,
 } from '@/lib/tables/data-table-pagination';
 import {
   clearDataTableVisibleIds,
@@ -215,6 +216,8 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    * same as a page.
    */
   unpaged?: boolean;
+  /** What the footer calls the rows ("purchases"); default "rows". */
+  rowNoun?: DataTableRowNoun;
   /** Filename for the CSV export button. Defaults to `export.csv`. */
   exportFilename?: string;
 
@@ -699,6 +702,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   actionStrip,
   bulkBar,
   unpaged = false,
+  rowNoun,
 }: DataTableProps<Row, K, C>) {
   const selectedRows = useTableSelection<Row>(selectionScope ?? '__idle__');
   const selectedCount = selectionScope ? selectedRows.length : 0;
@@ -914,12 +918,12 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
             setPageSize(size);
           }}
         />
-        {/* The order, left to right (operator ruling 2026-09-01, verbs 2026-09-04): */}
+        {/* Right side, left to right (operator 2026-10-05): actions · layout toggles · zoom last. */}
         <span className="ml-auto inline-flex shrink-0 items-center gap-1">
           {showExportGlyph ? exportControl : null}
-          <DataTableZoomToggle />
           {/* Renders nothing at all off a desk stage — see the component. */}
           <DeskRecordViewSwitch />
+          <DataTableZoomToggle />
         </span>
       </div> : null}
         <div
@@ -974,6 +978,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         shown={paged.shown}
         // `totalCount` was DECLARED and then dropped on the floor:
         total={totalCount ?? paged.total}
+        rowNoun={rowNoun}
         selected={selectedCount}
         pager={{
           pageIndex: paged.pageIndex,

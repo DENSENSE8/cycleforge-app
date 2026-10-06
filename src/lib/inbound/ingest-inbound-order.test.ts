@@ -106,6 +106,63 @@ test('a 3-line order with no typed line ids lands 3 distinct lines (L1..L3), one
   assert.ok(f.sql.some((s) => /INSERT INTO inbound_ingest_event/.test(s.text) && s.params[7] === 'landed'), 'ledger records the landing');
 });
 
+test('every landed line carries its listing evidence: bought-as grade, listing serials', async () => {
+  const f = fakes();
+  await ingestInboundOrderInTx(
+    f.client,
+    ORG,
+    draft({
+      lines: [
+        { ...emptyInboundOrderLine(), sku: 'A-1', quantity: 1, conditionGrade: 'USED_B', listingSerials: [' sn-1 ', 'SN-1', 'sn-2'] },
+        { ...emptyInboundOrderLine(), sku: 'B-2', quantity: 1, conditionGrade: undefined, listingSerials: undefined },
+      ],
+    }),
+    CTX,
+    f.deps,
+  );
+  // The grade pre-selects unbox's picker through ingestPurchase; a line that says nothing keeps today's default.
+  assert.deepEqual(f.ingested.map((i) => i.conditionGrade), ['USED_B', undefined]);
+  const grade = f.sql.filter((s) => /SET purchase_condition_grade/.test(s.text));
+  assert.deepEqual(grade.map((s) => s.params), [[ORG, 101, 'USED_B']], 'a line that leaves the grade out is left as stored');
+  // Serials sync by normalized value; unconfirmed removals only; source from the origin.
+  const removed = f.sql.find((s) => /DELETE FROM receiving_line_listing_serial/.test(s.text))!;
+  assert.match(removed.text, /confirmed_at IS NULL/);
+  assert.deepEqual(removed.params, [ORG, 101, ['SN-1', 'SN-2']]);
+  const inserted = f.sql.filter((s) => /INSERT INTO receiving_line_listing_serial/.test(s.text));
+  assert.equal(inserted.length, 1, 'only the line that lists serials syncs them');
+  assert.deepEqual(inserted[0].params, [ORG, 101, ['SN-1', 'SN-2'], ['sn-1', 'sn-2'], 'form']);
+  assert.match(inserted[0].text, /ON CONFLICT \(organization_id, receiving_line_id, serial_norm\)/);
+});
+
+test('a RETURN lands its return facts for every line on the same transaction', async () => {
+  const f = fakes();
+  await ingestInboundOrderInTx(
+    f.client,
+    ORG,
+    draft({
+      type: 'RETURN',
+      platform: 'amazon',
+      orderNumber: '113-1',
+      returnReason: 'Defective',
+      rmaId: 'R-9',
+      returnRequestDate: '2026-10-01',
+      lines: [
+        { ...emptyInboundOrderLine(), sku: 'A-1', quantity: 1, fnsku: 'X00A', licensePlateNumber: 'LPN1', disposition: 'CUSTOMER_DAMAGED', customerComment: 'broken' },
+        { ...emptyInboundOrderLine(), sku: 'B-2', quantity: 1, returnReason: 'Wrong item', returnRequestDate: '2026-10-03' },
+      ],
+    }),
+    { origin: 'csv', source: 'csv', staffId: 7 },
+    f.deps,
+  );
+  const facts = f.sql.filter((s) => /INSERT INTO receiving_line_return/.test(s.text));
+  assert.equal(facts.length, 2);
+  assert.match(facts[0].text, /fnsku, license_plate_number, disposition, customer_comment, return_requested_on/);
+  assert.deepEqual(facts[0].params, [101, ORG, 'AMZ', 'Defective', '113-1', 'R-9', 'X00A', 'LPN1', 'CUSTOMER_DAMAGED', 'broken', '2026-10-01']);
+  // A line the report says nothing about leaves those columns as stored; its own reason / date win over the order's.
+  assert.doesNotMatch(facts[1].text, /fnsku/);
+  assert.deepEqual(facts[1].params, [102, ORG, 'AMZ', 'Wrong item', '113-1', 'R-9', '2026-10-03']);
+});
+
 test('a re-post of identical content writes nothing and reports unchanged', async () => {
   const first = fakes();
   await ingestInboundOrderInTx(first.client, ORG, draft(), CTX, first.deps);
@@ -226,8 +283,8 @@ test('a REPAIR drop-off from any source but its repair ticket is refused before 
   assert.equal(f.ingested.length, 0);
 });
 
-test('operator re-saves (form · CSV · chat) may correct line identity; syncs may not', async () => {
-  for (const origin of ['manual', 'csv', 'chat'] as const) {
+test('operator re-saves (form · CSV) may correct line identity; syncs may not', async () => {
+  for (const origin of ['manual', 'csv'] as const) {
     const f = fakes();
     await ingestInboundOrderInTx(f.client, ORG, draft(), { ...CTX, origin }, f.deps);
     assert.ok(f.ingested.every((i) => i.operatorResave === true), `${origin} re-save wins`);

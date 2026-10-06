@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Mail, MapPin, Package, Phone } from '@/components/Icons';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
@@ -27,7 +26,7 @@ export function CustomerRecord({ customerId }: { customerId: number }) {
   const history = useQuery({ queryKey: ['customers.orders', customerId], queryFn: () => getCustomerJson<CustomerOrderHistoryPayload>(`/api/customers/${customerId}/orders`) });
   const record = customer.data?.customer ?? null;
   const failed = customer.isError || stats.isError || history.isError;
-  if ((customer.isPending || stats.isPending || history.isPending) && !record) return <UniversalLoader isLoading label="Loading customer" className="min-h-64" />;
+  if ((customer.isPending || stats.isPending || history.isPending) && !record) return null;
   if (!record) return <div className="p-4"><EvidenceNotice tone="warn">{failed ? 'Couldn’t load this customer.' : 'Customer not found.'}</EvidenceNotice></div>;
 
   const address = customerAddressLines(record);

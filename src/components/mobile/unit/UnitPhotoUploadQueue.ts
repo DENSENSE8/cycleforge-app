@@ -6,7 +6,7 @@ import {
   downscaleImageTo720,
 } from '@/lib/image/downscale';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { UNIT_PACKING_PHOTO_TYPE, UNIT_PREPACK_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
+import { UNIT_PACKING_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 
 /** Module-singleton store for in-flight SERIAL_UNIT testing-scan photo uploads — the exact mirror of the receiving `photoUploadQueue`, in a… */
@@ -24,12 +24,12 @@ interface UnitPhotoScope {
    * Capture context: `testing` (default) → testing_photo; `packing` → packer_photo.
    * Packing captures may also dual-link to a PACKER_LOG via packerLogId.
    */
-  stage?: 'testing' | 'prepack' | 'packing';
+  stage?: 'testing' | 'packing';
   /** When set (packing stage), dual-link the photo to this packer_logs.id. */
   packerLogId?: number | null;
   /** Order / shipment ref for poRef filing. */
   poRef?: string | null;
-  /** What the shot shows (prepack serial / condition / contents) — photos.photo_aspect. */
+  /** What the shot shows (serial / condition / contents) — photos.photo_aspect. */
   photoAspect?: PhotoAspect | null;
   /** Device-reported capture instant (epoch ms) from `CapturedShot.capturedAtMs` — stored as `photos.client_captured_at`, beside (never… */
   capturedAtMs?: number | null;
@@ -169,11 +169,7 @@ async function postPhoto(
 ): Promise<{ id: number; url: string }> {
   const { uploadPhotoClient, linkPhotoClient } = await import('@/lib/photos/upload-client');
   const isPacking = entry.scope.stage === 'packing';
-  const photoType = isPacking
-    ? UNIT_PACKING_PHOTO_TYPE
-    : entry.scope.stage === 'prepack'
-      ? UNIT_PREPACK_PHOTO_TYPE
-      : UNIT_TESTING_PHOTO_TYPE;
+  const photoType = isPacking ? UNIT_PACKING_PHOTO_TYPE : UNIT_TESTING_PHOTO_TYPE;
   const result = await uploadPhotoClient({
     file: blob,
     entityType: 'SERIAL_UNIT',

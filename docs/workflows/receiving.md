@@ -43,23 +43,28 @@ triage `RecordLedger` frame over the existing receiving roots:
   kind switch covers **Purchase order** (one PO, N lines, each with its own listing URL; pasted
   text or screenshots fill the draft via `extract-po`; submits to `confirm-po`) and **Return**
   (inventory item + return tracking; submits to `import-purchase`, which files the support
-  ticket and carries the listing URL). Close/Cancel returns the ledger. CSV return intake
-  remains a separate import path.
-- **Import purchase orders (CSV)** (Add menu; phone `/m/receiving/import-csv`) bulk-loads POs for
-  platforms without a purchase API (Goodwill). Columns bind by `identifyColumns`
-  (`src/lib/inbound/po-columns.ts`): platform-preset header words, registry header words, then
-  value shape (tracking numbers, money, dates, URLs, ids, titles); the AI header mapping runs only
-  when asked while required fields stay unmapped. The Goodwill preset stamps platform `goodwill`,
-  tier 3, vendor "Goodwill" and one item per row when the file has no quantity column (a blank
-  cell in a quantity column is flagged, never assumed). `POST /api/receiving/inbound/import-po-csv`
-  dry-runs (new / updated / unchanged by content hash, writes nothing) or lands every clean order
-  through `ingestInboundOrder`; an order with any problem row is held whole and named per row.
-  The phone runs it as four steps under `MobileStepProgress` — Choose file → Match columns (only
-  unmatched / weakly guessed / required-missing columns open) → Review orders (one
-  `MobileRecordCard` per order, grouped Needs fix first; a card opens the order's lines with file
-  row + field of each problem, `src/lib/inbound/po-csv-review.ts`) → Import (the result, grouped
-  the same way). Platform pickers show full names (`inboundPlatformOptions`), never catalog
-  abbreviations like "GW".
+  ticket and carries the listing URL). Close/Cancel returns the ledger. File imports are their own
+  page (below).
+- **Import orders** (`/purchasing/import`, Add ▸ Import orders; phone `/m/receiving/import-csv`)
+  bulk-loads every inbound file through ONE engine (`src/lib/inbound/po-columns.ts`) and ONE route
+  (`POST /api/receiving/inbound/import-po-csv`). A preset names the export format and is detected
+  from the header row (`detectPoPreset`, operator can override): `amazon_returns` (Seller Central
+  Manage Returns flat file, TAB-delimited, and the Prime CSV with hyphenated headers — RETURN,
+  platform amazon, line key `RMA:ASIN`, listing `amazon.com/dp/<ASIN>`, cancelled return requests
+  kept as held rows, buyer order money never mapped), `amazon_fba_returns` (FBA customer returns:
+  FNSKU, license plate #, detailed disposition, customer comments, no tracking), `ebay_returns`
+  (UNVERIFIED headers — the screen says to check the column matches), `goodwill` (tier 3, vendor
+  Goodwill, one item per row) and the generic template. Columns bind by preset header words,
+  registry header words, then value shape (only for unverified / generic formats); each field's
+  `target.column` names the DB column it lands in. Condition lands as
+  `receiving_line.purchase_condition_grade` (`conditionGradeFromListing`), return facts in
+  `receiving_line_return`, listing serials in `receiving_line_listing_serial`. Rows group into one
+  order per (type, platform, order #), each row a line. The dry run reports new / updated /
+  unchanged by content hash; Import lands every clean order through `ingestInboundOrder` (an order
+  with any problem row is held whole, named per row) and keeps the file row by row
+  (`inbound_import_row`). The upload check (`/purchasing/import/[batchId]`,
+  `GET /api/receiving/inbound/imports/[batchId]`) shows each file cell beside the saved value read
+  back through `target.column` — equal, different, or not saved.
 - **Docked** (`/incoming?lane=docked`) is a separate warehouse-lifecycle ledger over the history
   feed. It presents `SCANNED`, `UNBOXED`, `RECEIVED`, `ON_HOLD`, and `EXCEPTION` without changing
   the triage/unbox timestamp laws above.

@@ -4,6 +4,8 @@
  * station and the phone `/m/scan` Out direction so both speak the same contract.
  */
 
+import type { SCAN_OUT_DESK_SOURCE } from './scan-out-desk-stamp';
+
 export interface ScanOutResult {
   ok: boolean;
   matched: boolean;
@@ -30,11 +32,15 @@ export interface ScanOutResult {
   exceptionId?: number | null;
 }
 
-export async function postScanOut(tracking: string): Promise<ScanOutResult> {
+/** `source: 'desk-selection'` marks a selection verb (not a gun read) on the SHIP_CONFIRM row. */
+export async function postScanOut(
+  tracking: string,
+  options: { source?: typeof SCAN_OUT_DESK_SOURCE } = {},
+): Promise<ScanOutResult> {
   const res = await fetch('/api/shipped/scan-out', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ trackingNumber: tracking }),
+    body: JSON.stringify({ trackingNumber: tracking, ...(options.source ? { source: options.source } : null) }),
   });
   if (!res.ok) throw new Error(`scan-out failed (${res.status})`);
   return res.json();

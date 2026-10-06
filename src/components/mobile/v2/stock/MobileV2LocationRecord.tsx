@@ -30,7 +30,8 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { locationHubPath } from '@/lib/mobile/location-hub-href';
-import { withJobReturn } from '@/lib/mobile/nav-trail';
+import { previousMobilePath, withJobReturn } from '@/lib/mobile/nav-trail';
+import { locationScanLanding, withLocationScanLanding } from '@/lib/mobile/location-scan-landing';
 import { containerPath } from '@/lib/nav/route-tree';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocationLabelPrint } from '@/hooks/useLocationLabelPrint';
@@ -313,6 +314,10 @@ export function MobileV2LocationRecord(props: {
   returnTo: string;
   verificationToken: string | null;
   backHref: string;
+  /** A one-item location scan: open this SKU's stock sheet on adjust. */
+  adjustSku: string | null;
+  /** A several-item location scan: loose rows first, as the item picker. */
+  pick: boolean;
 }) {
   const address = parseRackCode(props.record.code);
   if (address && rackLevel(address) === 'rack') {
@@ -327,14 +332,18 @@ function StockLocationRecord({
   returnTo,
   verificationToken,
   backHref,
+  adjustSku,
+  pick,
 }: {
   record: LocationRecord;
   returnTo: string;
   verificationToken: string | null;
   backHref: string;
+  adjustSku: string | null;
+  pick: boolean;
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>(pick ? 'loose' : 'all');
   const [selected, setSelected] = useState<LocationHandlingUnit | null>(null);
   const [parkingTote, setParkingTote] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -365,6 +374,36 @@ function StockLocationRecord({
   }, [rack, rackAddress, record.code, record.walk]);
   const queryClient = useQueryClient();
   const openLocation = (code: string) => router.replace(withJobReturn(locationHubPath(code), backHref));
+  // A record opened by a location scan carries its proof: that is the scan loop.
+  const inScanLoop = verificationToken != null;
+  const nextCode = walk?.next ?? null;
+  // Warm the next location while the operator adjusts this one, so Next paints at once.
+  useEffect(() => {
+    if (!inScanLoop || !nextCode) return;
+    void queryClient.prefetchQuery({
+      queryKey: locationRecordQueryKey(nextCode),
+      queryFn: () => fetchLocationRecord(nextCode, parseLocationCodeFlat(nextCode)),
+      staleTime: 30_000,
+    });
+  }, [inScanLoop, nextCode, queryClient]);
+  /** The next location, landed the way a scan lands: one item opens on its adjust (the count path — no scan proof there). */
+  const openNext = () => {
+    if (!nextCode) return;
+    void queryClient
+      .fetchQuery({
+        queryKey: locationRecordQueryKey(nextCode),
+        queryFn: () => fetchLocationRecord(nextCode, parseLocationCodeFlat(nextCode)),
+        staleTime: 30_000,
+      })
+      .then((next) => router.replace(withLocationScanLanding(withJobReturn(locationHubPath(nextCode), backHref), locationScanLanding(next))))
+      .catch(() => openLocation(nextCode));
+  };
+  /** Done in the scan loop: back to the camera (the scan page itself, or a location scan that keeps this record's way home). */
+  const returnToScan = () => {
+    const scanPath = '/m/scan';
+    if (previousMobilePath() === scanPath) router.back();
+    else router.replace(backHref.split(/[?#]/)[0] === scanPath ? backHref : `${scanPath}?intent=location&returnTo=${encodeURIComponent(backHref)}`);
+  };
   const openRack = () => {
     if (rack) router.push(withJobReturn(locationHubPath(rack.code), returnTo));
   };
@@ -645,7 +684,17 @@ function StockLocationRecord({
 
       <div className="flex-1">
         {showLpns ? shownLpns.map((unit) => <LpnRow key={unit.id} unit={unit} onOpen={() => setSelected(unit)} />) : null}
-        {showLoose ? <LocationStockPositions record={record} returnTo={returnTo} verificationToken={verificationToken} /> : null}
+        {showLoose ? (
+          <LocationStockPositions
+            record={record}
+            returnTo={returnTo}
+            verificationToken={verificationToken}
+            adjustSku={adjustSku}
+            pick={pick}
+            next={nextCode && neighbourFaces.next ? { face: neighbourFaces.next, open: openNext } : null}
+            doneReturn={inScanLoop ? returnToScan : null}
+          />
+        ) : null}
         {((showLpns && shownLpns.length === 0) && (!showLoose || record.contents.length === 0)) ? (
           <div className="px-6 py-16 text-center">
             <Package className="mx-auto h-6 w-6 text-text-faint" />

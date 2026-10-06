@@ -47,6 +47,20 @@ test('regression: receiving.view gates recent-staged-location', () => {
   assert.deepEqual(r.methods, ['GET']);
 });
 
+test('regression: receiving.view gates the Purchases read (the Inbound ledger, every purchase)', () => {
+  const r = routeByPath('/api/nav/purchases/route.ts');
+  assert.ok(r);
+  assert.equal(r.permission, 'receiving.view');
+  assert.deepEqual(r.methods, ['GET']);
+});
+
+test('regression: packing.view gates the Fulfilled read (every shipped order, /fulfilled)', () => {
+  const r = routeByPath('/api/nav/fulfilled/route.ts');
+  assert.ok(r);
+  assert.equal(r.permission, 'packing.view');
+  assert.deepEqual(r.methods, ['GET']);
+});
+
 test('regression: tech.qc_pass gates the QC queue read, same as the QC receiving lines', () => {
   const paths = routesGatedBy('tech.qc_pass').map((r) => r.path);
   assert.ok(paths.includes('/api/qc/queue/route.ts'));
@@ -589,6 +603,22 @@ test('regression: order manuals — reads are orders.view, every manual write is
   assert.ok(one, 'the per-manual route should be in the manifest');
   assert.equal(one.permission, 'product_manuals.manage');
   assert.deepEqual([...one.methods].sort(), ['DELETE', 'PATCH']);
+});
+
+test('regression: SKU paperwork — reach is orders.view, Not required is product_manuals.manage', () => {
+  // Labels & docs › Orders (2026-10-05): the pane reads how many open orders a
+  // SKU-scope pair reaches, and marks a SKU as never shipping with paperwork.
+  const reach = routeByPath('/api/sku-catalog/[id]/paperwork-reach/route.ts');
+  assert.ok(reach, 'the SKU paperwork-reach route should be in the manifest');
+  assert.equal(reach.gate, 'requireRoutePerm');
+  assert.equal(reach.permission, 'orders.view');
+  assert.deepEqual([...reach.methods], ['GET']);
+
+  const required = routeByPath('/api/sku-catalog/[id]/paperwork-required/route.ts');
+  assert.ok(required, 'the SKU paperwork-required route should be in the manifest');
+  assert.equal(required.gate, 'requireRoutePerm');
+  assert.equal(required.permission, 'product_manuals.manage');
+  assert.deepEqual([...required.methods], ['PATCH']);
 });
 
 test('regression: receiving-lines PATCH assign-only accepts tech.qc_pass in-handler', () => {

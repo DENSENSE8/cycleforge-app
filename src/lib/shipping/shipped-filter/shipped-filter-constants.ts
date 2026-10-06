@@ -1,11 +1,4 @@
-import type { HorizontalSliderItem } from '@/lib/ui/horizontal-slider-item';
-import type { CarrierCode, ShipmentStatusCategory } from '@/lib/shipping/shipment-status';
-
-export const CARRIERS: ReadonlyArray<{ value: CarrierCode; label: string }> = [
-  { value: 'UPS', label: 'UPS' },
-  { value: 'USPS', label: 'USPS' },
-  { value: 'FEDEX', label: 'FedEx' },
-];
+import type { ShipmentStatusCategory } from '@/lib/shipping/shipment-status';
 
 export const STATUS_CATEGORIES: ReadonlyArray<{ value: ShipmentStatusCategory; label: string }> = [
   { value: 'LABEL_CREATED', label: 'Label created' },
@@ -17,16 +10,4 @@ export const STATUS_CATEGORIES: ReadonlyArray<{ value: ShipmentStatusCategory; l
   { value: 'RETURNED', label: 'Returned' },
 ];
 
-export const VALID_CARRIERS = new Set(CARRIERS.map((c) => c.value));
-export const VALID_STATUS = new Set(STATUS_CATEGORIES.map((s) => s.value));
-
 export type ShippedTypeFilter = 'all' | 'orders' | 'sku' | 'fba';
-
-
-// Type filter is a *view switcher* (Shopify-style segmented tabs), not a refinement.
-export const TYPE_ITEMS: HorizontalSliderItem[] = [
-  { id: 'all', label: 'All' },
-  { id: 'orders', label: 'Online' },
-  { id: 'sku', label: 'SKU' },
-  { id: 'fba', label: 'FBA' },
-];
