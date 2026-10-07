@@ -481,11 +481,8 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['param', 'fnsku', 'src/features/print-station/FnskuPrintDesk.tsx (the open FNSKU)'],
     ['param', 'station', 'src/features/print-station/PrintStationsDesk.tsx (the open station)', 'stations'],
   ],
-  // `/search/list` — the pasted list's body chip rows (bucket facet + sort), moved to its panel (ruling A1/A4).
-  search: [
-    ['param', 'status', 'src/components/search/pasted-list/PastedListPage.tsx (body BulkStatusChips — the located-bucket facet)'],
-    ['param', 'sort', 'src/components/search/pasted-list/PastedListPage.tsx (body BulkSortChips — Pasted · Order ID · Status)'],
-  ],
+  // `/records` (2026-10-06): born contextual — Sort, controls and facets were never anywhere else.
+  records: [],
   studio: [
     ['view', 'graph', 'src/lib/sidebar-navigation.ts:1304'],
     ['view', 'rules', 'src/lib/sidebar-navigation.ts:1306'],

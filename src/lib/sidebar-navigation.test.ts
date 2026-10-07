@@ -465,8 +465,8 @@ test('mode ids are unique within each page', () => {
 });
 
 // Every page id must be a real nav route OR one of the URL-only surfaces that deliberately own no spine row
-// (`search`: the pasted list, opened from the search bar — registered only for its contextual panel):
-const URL_ONLY_PAGE_IDS = new Set(['receiving', 'tech', 'label-intake', 'search']);
+// (`records`: the Records sheet, opened from the search bar — registered only for its contextual panel):
+const URL_ONLY_PAGE_IDS = new Set(['receiving', 'tech', 'label-intake', 'records']);
 
 test('SIDEBAR_PAGE_NAV pages are prod-nav or URL-only, with resolvers when modeful', () => {
   const navIds = new Set(APP_SIDEBAR_NAV.map((item) => item.id));
@@ -490,7 +490,7 @@ test('getSidebarHref resolves every sidebar page to its real route', () => {
   assert.equal(getSidebarHref('operations'), '/operations');
   assert.equal(getSidebarHref('admin'), null, 'admin is dissolved — resolves like any unknown id');
   assert.equal(getSidebarHref('settings'), '/settings');
-  assert.equal(getSidebarHref('search'), '/search/list', 'search is off the spine; its one live page is the pasted list');
+  assert.equal(getSidebarHref('records'), '/records', 'Records is off the spine; the search lane\'s one live page');
   // Unknown ids resolve to null (caller falls back to current path).
   assert.equal(getSidebarHref('nope'), null);
 });
@@ -505,9 +505,9 @@ test('resolveSidebarChild returns null for pages without modes', () => {
     assert.equal(getSidebarPageNav(pageId)?.children, undefined);
     assert.equal(resolveSidebarChild(pageId, { pathname: '/scan-station', params: new URLSearchParams() }), null);
   }
-  // The pasted list (`search`) is registered for its own panel (bucket facet + Sort) but declares no modes.
-  assert.equal(getSidebarPageNav('search')?.children, undefined);
-  assert.equal(resolveSidebarChild('search', { pathname: '/search/list', params: new URLSearchParams() }), null);
+  // Records is registered for its own panel (Sort, controls, facets) but declares no modes.
+  assert.equal(getSidebarPageNav('records')?.children, undefined);
+  assert.equal(resolveSidebarChild('records', { pathname: '/records', params: new URLSearchParams() }), null);
 });
 
 test('every floor station mounts its working panel inside the contextual sidebar', () => {

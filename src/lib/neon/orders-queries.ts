@@ -1587,77 +1587,122 @@ export async function releaseOrderAllocationsForDeletion(
   return allocations.rows.length;
 }
 
-/** Delete an order by ID. */
-export async function deleteOrder(
-  id: number,
-  orgId?: OrgId,
-  actorStaffId?: number | null,
+/**
+ * Remove what points at deleted `orders` rows without a cascading FK, on the
+ * caller's transaction: the rows' pick / pack / test assignments, their To-ship
+ * feed rows, their ORDER shipment links (the tracking rows themselves stay —
+ * other owners and carrier history may hold them), and every customer in
+ * `customerIds` that was made for these orders alone (no other order or record
+ * names it, not a Zoho contact, not a repair contact).
+ */
+export async function deleteOrderDependentsInTx(
+  client: Pick<PoolClient, 'query'>,
+  orgId: OrgId,
+  orderIds: readonly number[],
+  customerIds: readonly number[],
+): Promise<void> {
+  if (orderIds.length === 0) return;
+  const ids = [...orderIds];
+  await client.query(
+    `DELETE FROM work_assignments WHERE organization_id = $2 AND entity_type = 'ORDER' AND entity_id = ANY($1::bigint[])`,
+    [ids, orgId],
+  );
+  await client.query(
+    `DELETE FROM feed_memberships WHERE organization_id = $2::uuid AND entity_type = 'ORDER' AND entity_id = ANY($1::bigint[])`,
+    [ids, orgId],
+  );
+  await client.query(
+    `DELETE FROM shipment_links WHERE organization_id = $2 AND owner_type = 'ORDER' AND owner_id = ANY($1::int[])`,
+    [ids, orgId],
+  );
+  const customers = [...new Set(customerIds.filter((id) => Number.isFinite(id) && id > 0))];
+  if (customers.length === 0) return;
+  await client.query(
+    `DELETE FROM customers c
+      WHERE c.organization_id = $2 AND c.id = ANY($1::int[])
+        AND c.zoho_contact_id IS NULL
+        AND c.entity_type IS NULL
+        AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id)
+        AND NOT EXISTS (SELECT 1 FROM counter_transactions t WHERE t.customer_id = c.id)
+        AND NOT EXISTS (SELECT 1 FROM repair_service r WHERE r.customer_id = c.id)
+        AND NOT EXISTS (SELECT 1 FROM rma_authorizations a WHERE a.customer_id = c.id)
+        AND NOT EXISTS (SELECT 1 FROM sales_orders s WHERE s.contact_id = c.id)
+        AND NOT EXISTS (SELECT 1 FROM support_interactions i WHERE i.customer_id = c.id)
+        AND NOT EXISTS (SELECT 1 FROM warranty_claims w WHERE w.customer_id = c.id)`,
+    [customers, orgId],
+  );
+}
+
+/**
+ * Delete one order row on the caller's transaction — the one delete path
+ * (`DELETE /api/orders/[id]`, the Records sheet). Refuses (throws
+ * {@link OrderDeleteBlockedError}) before writing anything when a shipping-label
+ * ingestion holds the row; returns false when the row is not in the org.
+ */
+export async function deleteOrderInTx(
+  client: PoolClient,
+  input: { orderId: number; orgId: OrgId; actorStaffId?: number | null },
 ): Promise<boolean> {
-  if (!orgId) {
-    const result = await pool.query('DELETE FROM orders WHERE id = $1', [id]);
-    return (result.rowCount ?? 0) > 0;
+  const { orderId: id, orgId, actorStaffId } = input;
+  const order = await client.query<{ id: number; customer_id: number | null }>(
+    `SELECT id, customer_id
+       FROM orders
+      WHERE id = $1 AND organization_id = $2
+      FOR UPDATE`,
+    [id, orgId],
+  );
+  if (order.rows.length === 0) return false;
+
+  const blockers = await client.query<{
+    has_applied_labels: boolean;
+    has_label_ingestion_links: boolean;
+  }>(
+    `SELECT
+       EXISTS (
+         SELECT 1
+           FROM label_ingestions
+          WHERE organization_id = $2
+            AND matched_order_id = $1
+            AND state = 'APPLIED'
+       ) AS has_applied_labels,
+       EXISTS (
+         SELECT 1
+           FROM label_ingestion_orders
+          WHERE organization_id = $2 AND order_id = $1
+       ) AS has_label_ingestion_links`,
+    [id, orgId],
+  );
+  const blocker = blockers.rows[0];
+  if (blocker?.has_applied_labels) {
+    throw new OrderDeleteBlockedError(
+      'This order has an applied shipping-label ingestion. Void or unlink the label before deleting the order.',
+    );
+  }
+  if (blocker?.has_label_ingestion_links) {
+    throw new OrderDeleteBlockedError(
+      'This order has a shipping-label ingestion link. Resolve the label ingestion before deleting it.',
+    );
   }
 
-  return withTenantTransaction(orgId, async (client) => {
-    const order = await client.query<{ id: number }>(
-      `SELECT id
-         FROM orders
-        WHERE id = $1 AND organization_id = $2
-        FOR UPDATE`,
-      [id, orgId],
-    );
-    if (order.rows.length === 0) return false;
+  await releaseOrderAllocationsForDeletion(client, { orderId: id, orgId, actorStaffId });
 
-    const blockers = await client.query<{
-      has_applied_labels: boolean;
-      has_label_ingestion_links: boolean;
-    }>(
-      `SELECT
-         EXISTS (
-           SELECT 1
-             FROM label_ingestions
-            WHERE organization_id = $2
-              AND matched_order_id = $1
-              AND state = 'APPLIED'
-         ) AS has_applied_labels,
-         EXISTS (
-           SELECT 1
-             FROM label_ingestion_orders
-            WHERE organization_id = $2 AND order_id = $1
-         ) AS has_label_ingestion_links`,
-      [id, orgId],
-    );
-    const blocker = blockers.rows[0];
-    if (blocker?.has_applied_labels) {
-      throw new OrderDeleteBlockedError(
-        'This order has an applied shipping-label ingestion. Void or unlink the label before deleting the order.',
-      );
-    }
-    if (blocker?.has_label_ingestion_links) {
-      throw new OrderDeleteBlockedError(
-        'This order has a shipping-label ingestion link. Resolve the label ingestion before deleting it.',
-      );
-    }
+  const result = await client.query(
+    'DELETE FROM orders WHERE id = $1 AND organization_id = $2',
+    [id, orgId],
+  );
+  if ((result.rowCount ?? 0) === 0) return false;
+  const customerId = order.rows[0].customer_id;
+  await deleteOrderDependentsInTx(client, orgId, [id], customerId != null ? [Number(customerId)] : []);
+  return true;
+}
 
-    await releaseOrderAllocationsForDeletion(client, { orderId: id, orgId, actorStaffId });
-
-    const result = await client.query(
-      'DELETE FROM orders WHERE id = $1 AND organization_id = $2',
-      [id, orgId],
-    );
-    if ((result.rowCount ?? 0) === 0) return false;
-    // The order's pick / pack / test assignments and its To-ship feed row go
-    // with it — nothing polymorphic points at a deleted order afterwards.
-    await client.query(
-      `DELETE FROM work_assignments WHERE organization_id = $2 AND entity_type = 'ORDER' AND entity_id = $1`,
-      [id, orgId],
-    );
-    await client.query(
-      `DELETE FROM feed_memberships WHERE organization_id = $2::uuid AND entity_type = 'ORDER' AND entity_id = $1::bigint`,
-      [id, orgId],
-    );
-    return true;
-  });
+/** Delete an order by ID in its own tenant transaction ({@link deleteOrderInTx}). */
+export async function deleteOrder(
+  id: number,
+  orgId: OrgId,
+  actorStaffId?: number | null,
+): Promise<boolean> {
+  return withTenantTransaction(orgId, (client) => deleteOrderInTx(client, { orderId: id, orgId, actorStaffId }));
 }
 
 /** Fetch one raw `orders` row by id (record-route GET). */

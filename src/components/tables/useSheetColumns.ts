@@ -83,7 +83,8 @@ export function useSheetColumns<C extends LedgerGridColumnModel>(storageKey: str
       return {
         ...column,
         width: rem ? (flex ? `minmax(${rem}, 1fr)` : `minmax(${rem}, ${rem})`) : column.width,
-        frozen: prefs.frozenThrough === null ? column.frozen : index <= through && !flex,
+        // The right-pinned trailing pane (`frozenEnd`) is never left-frozen.
+        frozen: (prefs.frozenThrough === null ? column.frozen : index <= through && !flex) && column.frozenEnd !== true,
       };
     });
   }, [base, prefs]);

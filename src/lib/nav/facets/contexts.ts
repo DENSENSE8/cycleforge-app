@@ -25,6 +25,7 @@ import { exceptionKindsOf } from '@/lib/exceptions/types';
 import { DOCKED_FLAG_PARAM } from '@/lib/receiving/inbound-lane';
 import { FULFILLED_CARRIER_PARAM, FULFILLED_CHANNEL_PARAM, FULFILLED_SCAN_PARAM } from '@/lib/outbound/fulfilled-params';
 import { PURCHASES_SOURCE_PARAM, PURCHASES_VENDOR_PARAM } from '@/lib/receiving/purchases-params';
+import { RECORDS_FACETS } from '@/lib/nav/records/params';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
 import { SUPPORT_LIST_VIEWS } from '@/lib/support/list/support-list';
 
@@ -69,6 +70,8 @@ export const NAV_FACET_CONTEXTS = [
   'incoming.unboxed',
   // Purchasing (`/purchasing`, a Receiving mode): Source · Vendor counted by the sheet's own read (`purchasing.ts`).
   'purchasing',
+  // Records (`/records`): every RECORDS_FACETS group counted by the sheet's own read (`records.ts`).
+  'records',
   // Fulfilled (`/fulfilled`): Channel · Carrier · Scan counted by the sheet's own read (`fulfilled.ts`).
   'fulfilled',
   // The Unbox station (`/unbox`): one context for every `?unboxview=` tab (`unbox.ts`).
@@ -160,6 +163,16 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     { id: 'source', label: 'Source', param: PURCHASES_SOURCE_PARAM, multi: false },
     { id: 'vendor', label: 'Vendor', param: PURCHASES_VENDOR_PARAM, multi: false, searchable: true },
   ],
+  // Records: the sheet's own `facets` (`GET /api/nav/records`, `records.ts`) — each group with its exclude param.
+  records: RECORDS_FACETS.map((facet) => ({
+    id: facet.id,
+    label: facet.label,
+    param: facet.param,
+    excludeParam: facet.excludeParam,
+    multi: facet.multi,
+    ...('inline' in facet ? { inline: facet.inline } : null),
+    ...('searchable' in facet ? { searchable: facet.searchable } : null),
+  })),
   // Fulfilled: the sheet's own `facets` (`GET /api/nav/fulfilled`, `fulfilled.ts`). Packer is the
   // page's staff row (`NAV_PAGE_DECLS.fulfilled.controls.staff`); status is the body's chip row.
   fulfilled: [
@@ -244,6 +257,8 @@ export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | rea
   receive: 'receiving.view',
   // The sheet's own read (`GET /api/nav/purchases`).
   purchasing: 'receiving.view',
+  // The sheet's own read (`GET /api/nav/records`, `NAV_RECORDS_PERMISSION`): either direction's list permission.
+  records: ['orders.view', 'receiving.view'],
   // The sheet's own read (`GET /api/nav/fulfilled`).
   fulfilled: 'packing.view',
   exceptions: [...new Set(Object.values(EXCEPTION_KIND_PERMISSION))],

@@ -18,6 +18,9 @@ import { getNavPurchases } from '@/lib/nav/purchases/service';
 import { fulfilledFacets } from '@/lib/nav/facets/fulfilled';
 import { navFulfilledDeps } from '@/lib/nav/fulfilled/read';
 import { getNavFulfilled } from '@/lib/nav/fulfilled/service';
+import { recordsFacets } from '@/lib/nav/facets/records';
+import { navRecordsDeps } from '@/lib/nav/records/read';
+import { getNavRecords } from '@/lib/nav/records/service';
 import { parseReceivingLinesQuery } from '@/lib/receiving/lines/query';
 import { fetchReceivingLinesPage, resolveReceivingLinesReadFlags } from '@/lib/receiving/lines/list-page';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -155,6 +158,16 @@ export async function getNavFacets(
         },
         caller.staffId ?? null,
       ),
+    };
+  }
+  if (context === 'records') {
+    // The sheet's own read (`GET /api/nav/records`); the caller's permissions pick its directions there too.
+    return {
+      ok: true,
+      body: await recordsFacets(params, async (apiParams) => {
+        const answer = await getNavRecords({ orgId: caller.orgId, permissions: caller.permissions, staffId: caller.staffId }, apiParams, navRecordsDeps);
+        return answer.ok ? answer.body : null;
+      }),
     };
   }
   if (isRepairFacetContext(context)) return { ok: true, body: await repairFacets(context, caller.orgId, params, run) };

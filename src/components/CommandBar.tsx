@@ -68,7 +68,7 @@ import { CollapseItem } from '@/design-system/components/Collapse';
 import { motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { useLocalBulkList } from '@/lib/nav/locate/use-bulk-list';
-import { pastedListHref } from '@/lib/nav/route-tree';
+import { recordsHref } from '@/lib/nav/route-tree';
 import { NavBulkPanel } from '@/components/sidebar/contextual/NavBulkPanel';
 import { useBulkListSort } from '@/components/sidebar/contextual/bulk-list-view';
 
@@ -558,13 +558,13 @@ export function CommandBar() {
     });
   }, [router, setDialogOpen, trimmedQuery]);
 
-  // The held list's own page; Esc there comes back to the page under the palette.
+  // The held list as the Records sheet; Esc there comes back to the page under the palette.
   const openPastedFull = useCallback(() => {
     const back = `${window.location.pathname}${window.location.search}`;
-    const href = pastedListHref({ refs: pasted.selection.refs, locator: pasted.scope, status: pasted.status, back, repeats: pasted.repeats });
+    const href = recordsHref({ refs: pasted.selection.refs, back });
     setDialogOpen(false);
     window.requestAnimationFrame(() => router.push(href));
-  }, [pasted.selection.refs, pasted.scope, pasted.status, router, setDialogOpen]);
+  }, [pasted.selection.refs, router, setDialogOpen]);
 
   return (
     <CommandDialog open={open} onOpenChange={setDialogOpen}>

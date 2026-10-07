@@ -46,7 +46,7 @@ import {
   isGridColumnPaintTrack,
   isGridColumnResizable,
 } from './grid-column-editability';
-import { gridFrozenLeft, gridTemplate } from './grid-column-geometry';
+import { gridFrozenLeft, gridFrozenRight, gridTemplate } from './grid-column-geometry';
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from './grid-header-align';
 import type { GridSortDir } from './grid-sort-dir';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
@@ -327,6 +327,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   onFreezeColumn?: (key: string) => void;
 }) {
   const frozen = Boolean(column.frozen);
+  const frozenEnd = Boolean(column.frozenEnd);
   const cellRef = useRef<HTMLDivElement>(null);
   const originRef = useRef<{ x: number; y: number } | null>(null);
   const didReorderRef = useRef(false);
@@ -336,6 +337,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
     Boolean(onReorderColumn) &&
     !isGridColumnFillTrack(column) &&
     !isGridColumnPaintTrack(column) &&
+    !frozenEnd &&
     column.key !== 'select';
   const resizable = Boolean(onResizeColumn) && isGridColumnResizable(column);
   const flushTrack = isGridColumnFlushTrack(column);
@@ -436,7 +438,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         // affordance and the column rule at different x than the cells under it.
         ledgerGridCell({ rule: !last, inset: flushTrack ? 'none' : 'grid' }),
         flushTrack && 'overflow-hidden p-0',
-        frozen && LEDGER_GRID_FROZEN_CELL,
+        (frozen || frozenEnd) && LEDGER_GRID_FROZEN_CELL,
         tableHeader,
         'text-text-default',
         sortActive && 'cursor-pointer',
@@ -444,14 +446,14 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         // reflow the whole header row mid-drag (AGENTS.md: no layout tweens).
         dragOver && 'bg-surface-sunken',
       )}
-      style={frozen ? { left: gridFrozenLeft(columns, column.key) } : undefined}
+      style={frozen ? { left: gridFrozenLeft(columns, column.key) } : frozenEnd ? { right: gridFrozenRight(columns, column.key) } : undefined}
     >
       <GridHeaderLabel
         column={column}
         sortDir={isActiveSort ? sortDir : null}
         sortable={sortActive}
       />
-      {onFreezeColumn && !flushTrack ? (
+      {onFreezeColumn && !flushTrack && !frozenEnd ? (
         <HoverTooltip label={column.key === frozenEdgeKey ? 'Unfreeze columns' : 'Freeze through this column'} asChild>
           <IconButton
             ariaLabel={column.key === frozenEdgeKey ? 'Unfreeze columns' : `Freeze through ${label}`}

@@ -39,6 +39,12 @@ export interface LedgerGridColumnModel {
   /** Part of the frozen IDENTITY PANE — pinned left while the fact columns scroll, immovable under drag-reorder, and never in-cell editable. */
   frozen?: boolean;
   /**
+   * Part of the trailing pane pinned to the RIGHT edge (the Records sheet's
+   * Internal | External statuses): always the last tracks, sticky right while
+   * the fact columns scroll, immovable under drag-reorder, never left-frozen.
+   */
+  frozenEnd?: boolean;
+  /**
    * Staff-preference key this track answers to (`staff_preferences
    * .tableColumns[tableId]`). Columns WITHOUT a `hideKey` are structural — they
    * never appear in the Fields menu and can never be toggled off.

@@ -3,6 +3,7 @@
  * on non-Zoho-locked marketplace / manual rows.
  */
 
+import type { PoolClient } from 'pg';
 import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getInboundMirror, upsertInboundMirror } from './mirror';
@@ -32,12 +33,21 @@ export async function updateInboundIdentity(
   orgId: OrgId,
   input: UpdateInboundIdentityInput,
 ): Promise<UpdateInboundIdentityResult> {
+  return withTenantTransaction(orgId, (client) => updateInboundIdentityInTx(client, orgId, input));
+}
+
+/** {@link updateInboundIdentity} on the caller's tenant transaction. */
+export async function updateInboundIdentityInTx(
+  client: PoolClient,
+  orgId: OrgId,
+  input: UpdateInboundIdentityInput,
+): Promise<UpdateInboundIdentityResult> {
   const receivingLineId = Number(input.receivingLineId);
   if (!Number.isFinite(receivingLineId) || receivingLineId <= 0) {
     throw new Error('inbound: receiving_line_id is required');
   }
 
-  return withTenantTransaction(orgId, async (client) => {
+  {
     const lineRes = await client.query<{
       inbound_source_type: string | null;
       source_order_id: string | null;
@@ -238,5 +248,5 @@ export async function updateInboundIdentity(
       sourceOrderId,
       zohoLocked: false,
     };
-  });
+  }
 }

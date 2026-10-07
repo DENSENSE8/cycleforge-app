@@ -61,8 +61,8 @@ export const NAV_CONTEXT_ROLLOUT: Readonly<Record<string, NavRolloutState>> = {
   exceptions: 'contextual',
   // Born contextual (owner 2026-09-29): Find + its one view are the whole panel.
   'print-station': 'contextual',
-  // `/search/list` (2026-10-04): the pasted list's bucket facet + Sort left the body (ruling A1/A4).
-  search: 'contextual',
+  // Born contextual (2026-10-06): Records (`/records`) — Sort, controls and counted facets; the old `/search/list` forwards here.
+  records: 'contextual',
 };
 
 /** Settings value set of `nav.contextual.<pageId>`; `inherit` defers to the next level. */

@@ -1164,26 +1164,39 @@ export async function deleteInboundOrder(orgId: OrgId, inboundOrderId: number): 
     const cartonIds = [...new Set(lines.rows.flatMap((l) => (l.receiving_id != null ? [Number(l.receiving_id)] : [])))];
     const deletedCartons = await deleteInboundLinesInTx(client as unknown as TxClient, orgId, lineIds, cartonIds);
 
-    await client.query(
-      `DELETE FROM inbound_purchase_order_mirror m
-        USING inbound_order io
-        WHERE io.organization_id = $1 AND io.id = $2
-          AND m.organization_id = io.organization_id AND m.source_type = io.source_type
-          AND m.source_order_id = io.external_order_id
-          AND NOT EXISTS (SELECT 1 FROM inbound_purchase_order_links l
-                           WHERE l.organization_id = m.organization_id AND l.source_type = m.source_type
-                             AND l.source_order_id = m.source_order_id)`,
-      [orgId, inboundOrderId],
-    );
-    // The ledger keeps its history; the event says the order it landed was deleted.
-    await client.query(
-      `UPDATE inbound_ingest_event
-          SET outcome = COALESCE(outcome, '{}'::jsonb) || jsonb_build_object('deletedOrderId', $2::bigint, 'deletedAt', now()),
-              updated_at = now()
-        WHERE organization_id = $1 AND inbound_order_id = $2`,
-      [orgId, inboundOrderId],
-    );
-    await client.query(`DELETE FROM inbound_order WHERE organization_id = $1 AND id = $2`, [orgId, inboundOrderId]);
+    await deleteInboundOrderShellInTx(client as unknown as TxClient, orgId, inboundOrderId);
     return { inboundOrderId, deletedLineIds: lineIds, deletedCartonIds: deletedCartons, orderDeleted: true };
   });
+}
+
+/**
+ * Remove an inbound order whose lines are already gone, on the caller's tx:
+ * its mirror (when no purchase link still names it), a note on its ingest
+ * ledger rows, then the header.
+ */
+export async function deleteInboundOrderShellInTx(
+  client: Pick<TxClient, 'query'>,
+  orgId: OrgId,
+  inboundOrderId: number,
+): Promise<void> {
+  await client.query(
+    `DELETE FROM inbound_purchase_order_mirror m
+      USING inbound_order io
+      WHERE io.organization_id = $1 AND io.id = $2
+        AND m.organization_id = io.organization_id AND m.source_type = io.source_type
+        AND m.source_order_id = io.external_order_id
+        AND NOT EXISTS (SELECT 1 FROM inbound_purchase_order_links l
+                         WHERE l.organization_id = m.organization_id AND l.source_type = m.source_type
+                           AND l.source_order_id = m.source_order_id)`,
+    [orgId, inboundOrderId],
+  );
+  // The ledger keeps its history; the event says the order it landed was deleted.
+  await client.query(
+    `UPDATE inbound_ingest_event
+        SET outcome = COALESCE(outcome, '{}'::jsonb) || jsonb_build_object('deletedOrderId', $2::bigint, 'deletedAt', now()),
+            updated_at = now()
+      WHERE organization_id = $1 AND inbound_order_id = $2`,
+    [orgId, inboundOrderId],
+  );
+  await client.query(`DELETE FROM inbound_order WHERE organization_id = $1 AND id = $2`, [orgId, inboundOrderId]);
 }

@@ -14,7 +14,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import { MoreVertical } from '@/components/Icons';
+import { Zap } from 'lucide-react';
+import { MoreVertical, X } from '@/components/Icons';
+import {
+  LIQUID_METAL_CHIP_CLASS,
+  LIQUID_METAL_GHOST_CLASS,
+  LIQUID_METAL_STYLE,
+  LIQUID_METAL_TEXT_CLASS,
+} from '@/design-system/tokens/liquid-metal';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useSelectionInlineHotkeysRevealed } from '@/hooks/useSelectionStatusBarHotkeys';
 import { useRecordActionStripKeys } from './useRecordActionStripKeys';
@@ -65,9 +72,31 @@ interface RecordActionStripProps {
    * header that became the bulk bar (the header owns the rule and the fill).
    * `inline`: a shrink-wrapped row of icon+text verbs, no border and no width
    * of its own — sits in a title row.
+   * `dock`: the floating selection dock (operator 2026-10-06) — ONE
+   * liquid-metal pill (black, grained) with white controls:
+   * `N selected · Actions · [quick] · ×`. Every verb lives
+   * in the Actions menu; a verb's `display` opens as a card above the pill.
+   * Requires {@link dock}.
    */
-  face?: 'strip' | 'header' | 'inline';
+  face?: 'strip' | 'header' | 'inline' | 'dock';
+  /** The `dock` face's selection facts: the count, Clear, and an optional one-press icon verb beside Actions. */
+  dock?: RecordActionDock;
 }
+
+export interface RecordActionDock {
+  count: number;
+  /** "selected" by default — the word after the count. */
+  noun?: string;
+  onClear: () => void;
+  /** One verb as a round icon button between Actions and Clear (Linear's pointer). */
+  quick?: RecordActionVerb;
+}
+
+/** The dock: a liquid-metal pill (black in every theme); its controls are white chips on it. */
+const DOCK_PILL_CLASS = cn('pointer-events-auto flex items-center gap-1.5 rounded-full py-1.5 pl-4 pr-1.5', LIQUID_METAL_TEXT_CLASS);
+const DOCK_CHIP_CLASS = cn('inline-flex h-9 items-center gap-2 rounded-full px-4 text-sm font-semibold', LIQUID_METAL_CHIP_CLASS);
+const DOCK_ROUND_CLASS = cn('inline-flex size-9 items-center justify-center rounded-full', LIQUID_METAL_CHIP_CLASS);
+const DOCK_CLEAR_CLASS = cn('inline-flex size-9 items-center justify-center rounded-full', LIQUID_METAL_GHOST_CLASS)
 
 const STRIP_CLASS =
   'flex w-full min-w-0 items-center gap-1 border-b border-border-soft bg-surface-card px-2 py-1.5';
@@ -110,6 +139,7 @@ export function RecordActionStrip({
   testId = 'record-action-strip',
   onDismiss,
   face = 'strip',
+  dock,
 }: RecordActionStripProps) {
   const shellClass = face === 'header' ? HEADER_FACE_CLASS : face === 'inline' ? INLINE_FACE_CLASS : STRIP_CLASS;
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -141,6 +171,76 @@ export function RecordActionStrip({
 
   const displayOpen = active != null;
   useRecordActionStripKeys({ verbs, displayOpen, press, done, onDismiss });
+
+  if (face === 'dock' && dock) {
+    return (
+      <div className="relative" data-testid={testId} data-view={active ? active.id : 'verbs'}>
+        {active?.display ? (
+          // A verb's own display opens as a card ABOVE the pill; the pill stays put.
+          <div
+            role="group"
+            aria-label={`${label}: ${active.label}`}
+            className="pointer-events-auto absolute bottom-full left-1/2 mb-2 w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl bg-surface-card p-2 text-text-default shadow-xl ring-1 ring-inset ring-border-soft"
+            data-testid={`${testId}-display`}
+          >
+            {active.display(done)}
+          </div>
+        ) : null}
+        <div role="toolbar" aria-label={label} className={DOCK_PILL_CLASS} style={LIQUID_METAL_STYLE}>
+          <span className="whitespace-nowrap pr-1 text-sm font-medium tabular-nums" data-testid={`${testId}-count`}>
+            {dock.count} {dock.noun ?? 'selected'}
+          </span>
+          {idle ? null : (
+            <DropdownMenu modal={false} open={moreOpen} onOpenChange={setMoreOpen}>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className={DOCK_CHIP_CLASS} data-testid={`${testId}-menu`}>
+                  <Zap className="size-4" strokeWidth={2.25} />
+                  Actions
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" side="top" sideOffset={10}>
+                {verbs.map((verb) => (
+                  <DropdownMenuItem
+                    key={verb.id}
+                    disabled={verb.disabled}
+                    title={verb.disabled ? verb.disabledReason : undefined}
+                    data-testid={`${testId}-${verb.id}`}
+                    tone={verb.tone === 'danger' ? 'danger' : 'default'}
+                    onSelect={() => press(verb)}
+                  >
+                    {verb.icon}
+                    {verb.label}
+                    {showHotkeys && verb.hotkey ? (
+                      <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {dock.quick ? (
+            <HoverTooltip label={dock.quick.disabled ? (dock.quick.disabledReason ?? dock.quick.label) : dock.quick.label} asChild placement="above">
+              <button
+                type="button"
+                className={DOCK_ROUND_CLASS}
+                aria-label={dock.quick.label}
+                disabled={dock.quick.disabled}
+                data-testid={`${testId}-${dock.quick.id}`}
+                onClick={() => press(dock.quick!)}
+              >
+                {dock.quick.icon}
+              </button>
+            </HoverTooltip>
+          ) : null}
+          <HoverTooltip label="Clear selection" shortcut="Esc" asChild placement="above">
+            <button type="button" className={DOCK_CLEAR_CLASS} aria-label="Clear selection" onClick={dock.onClear} data-testid={`${testId}-clear`}>
+              <X className="size-4" />
+            </button>
+          </HoverTooltip>
+        </div>
+      </div>
+    );
+  }
 
   if (idle) return null;
 

@@ -16,6 +16,31 @@ import type { NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
 import { ORDER_DATE_LABEL } from '@/lib/orders/order-dates';
 import { inboundOrderFormHref } from '@/lib/inbound/inbound-order-compose';
 import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
+import {
+  RECORDS_AXES,
+  RECORDS_AXIS_LABEL,
+  RECORDS_AXIS_PARAM,
+  RECORDS_DEFAULT_AXIS,
+  RECORDS_DEFAULT_GRAIN,
+  RECORDS_DEFAULT_WINDOW_LABEL,
+  RECORDS_DIR_PARAM,
+  RECORDS_EVENTS,
+  RECORDS_EVENT_BY_PARAM,
+  RECORDS_EVENT_FROM_PARAM,
+  RECORDS_EVENT_LABEL,
+  RECORDS_EVENT_PARAM,
+  RECORDS_EVENT_TO_PARAM,
+  RECORDS_FIND_PARAM,
+  RECORDS_FROM_PARAM,
+  RECORDS_GRAINS,
+  RECORDS_GRAIN_LABEL,
+  RECORDS_GRAIN_PARAM,
+  RECORDS_SORTS,
+  RECORDS_SORT_DIR,
+  RECORDS_SORT_LABEL,
+  RECORDS_SORT_PARAM,
+  RECORDS_TO_PARAM,
+} from '@/lib/nav/records/params';
 import type { NavAction, NavControls, NavSearch } from './schema';
 import {
   TASK_BOARD_GROUP_BYS,
@@ -1304,31 +1329,67 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
       },
     ],
   },
-  // `/search/list` — the pasted list, full screen (owner 2026-10-04): its ONE
-  // find is this sidebar field, narrowing the rows over every fact the sheet
-  // paints (the page reads the desk store keyed by its path). A multi-number
-  // paste here holds a NEW list in the bar, whose full-screen button replaces
-  // the page's list. Sort (`?sort=`, unset = as pasted) is this sidebar's
-  // Sort row; the status chips (`?status=`) are the page BODY's, left-aligned
-  // over the sheet's header row (operator 2026-10-04: one status control,
-  // never in the sidebar) — both the page's own params (`use-url-bulk-list`,
-  // route spec `PASTED_LIST_ROUTE_PARAMS`). `recentsPanel`: view-less, but
-  // the page opens its own panel (the `pickup` switch).
-  search: {
+  // `/records` — the Records sheet (owner 2026-10-06, docs/refactors/records):
+  // Find narrows the query server-side (`q`). WHERE before WHAT: Sort leads,
+  // then the grain, the date axis + its window, who did what when (event,
+  // staffer, its own day window), then the counted facets with include and
+  // exclude (`NAV_FACET_GROUPS.records`). The body paints records only.
+  // `recentsPanel`: view-less, but the page opens its own panel.
+  records: {
     recentsPanel: true,
-    search: { placeholder: 'Find in the pasted list', source: 'desk-store' },
+    search: { placeholder: 'Find records', source: 'url-param', param: RECORDS_FIND_PARAM },
     controls: {
+      order: ['sort', 'choices', 'dateRanges', 'staff', 'facets'],
       sort: {
-        param: 'sort',
-        defaultValue: 'pasted',
-        options: [
-          { value: 'pasted', label: 'As pasted' },
-          { value: 'id', label: 'Order ID, A to Z' },
-          { value: 'id-desc', label: 'Order ID, Z to A' },
-          { value: 'status', label: 'Status' },
-          { value: 'status-desc', label: 'Status, reversed' },
-        ],
+        param: RECORDS_SORT_PARAM,
+        dirParam: RECORDS_DIR_PARAM,
+        defaultValue: 'date',
+        options: RECORDS_SORTS.map((value) => ({ value, label: RECORDS_SORT_LABEL[value], dir: RECORDS_SORT_DIR[value] })),
       },
+      choices: [
+        {
+          id: 'grain',
+          label: 'Grain',
+          param: RECORDS_GRAIN_PARAM,
+          options: RECORDS_GRAINS.map((value) => ({ value, label: RECORDS_GRAIN_LABEL[value] })),
+          defaultValue: RECORDS_DEFAULT_GRAIN,
+          clearParams: [],
+        },
+        {
+          id: 'axis',
+          label: 'Date',
+          param: RECORDS_AXIS_PARAM,
+          options: RECORDS_AXES.map((value) => ({ value, label: RECORDS_AXIS_LABEL[value] })),
+          defaultValue: RECORDS_DEFAULT_AXIS,
+          clearParams: [],
+        },
+        {
+          id: 'event',
+          label: 'Event',
+          param: RECORDS_EVENT_PARAM,
+          options: RECORDS_EVENTS.map((value) => ({ value, label: RECORDS_EVENT_LABEL[value] })),
+          clearParams: [],
+        },
+      ],
+      dateRanges: [
+        {
+          id: 'window',
+          label: 'Window',
+          fromParam: RECORDS_FROM_PARAM,
+          toParam: RECORDS_TO_PARAM,
+          clearParams: [],
+          placeholder: RECORDS_DEFAULT_WINDOW_LABEL,
+        },
+        {
+          id: 'event-day',
+          label: 'Event day',
+          fromParam: RECORDS_EVENT_FROM_PARAM,
+          toParam: RECORDS_EVENT_TO_PARAM,
+          clearParams: [],
+          placeholder: 'Any day',
+        },
+      ],
+      staff: [{ id: 'event-by', param: RECORDS_EVENT_BY_PARAM, label: 'By' }],
     },
   },
   // ── Scan Stations ───────────────────────────────────────────────────────

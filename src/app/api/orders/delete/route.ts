@@ -5,8 +5,8 @@ import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
-import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { releaseOrderAllocationsForDeletion } from '@/lib/neon/orders-queries';
+import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { deleteOrderDependentsInTx, releaseOrderAllocationsForDeletion } from '@/lib/neon/orders-queries';
 
 /** POST /api/orders/delete - Delete one or more orders Body: */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -36,7 +36,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             WHERE t.id = ANY($1::int[]) AND t.order_id IS NOT NULL AND t.order_id <> ''
               AND t.organization_id = $2
          )
-         SELECT o.id, o.order_id, o.product_title, o.sku, o.condition, o.status, o.shipment_id, o.created_at
+         SELECT o.id, o.order_id, o.product_title, o.sku, o.condition, o.status, o.shipment_id, o.customer_id, o.created_at
            FROM orders o
           WHERE o.organization_id = $2
             AND (
@@ -75,26 +75,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return { notFound: true as const };
     }
 
-    await client.query(
-      `DELETE FROM work_assignments
-        WHERE organization_id = $2
-          AND entity_type = 'ORDER'
-          AND entity_id = ANY($1::bigint[])`,
-      [idsToDelete, ctx.organizationId],
-    );
-    await client.query(
-      `DELETE FROM feed_memberships
-        WHERE organization_id = $2::uuid
-          AND entity_type = 'ORDER'
-          AND entity_id = ANY($1::bigint[])`,
-      [idsToDelete, ctx.organizationId],
+    await deleteOrderDependentsInTx(
+      client,
+      ctx.organizationId,
+      idsToDelete,
+      expanded.rows.flatMap((r) => (r.customer_id != null ? [Number(r.customer_id)] : [])),
     );
 
     // One audit row per deleted order, with full before snapshot.
     for (const row of beforeRows.rows) {
       await recordAudit(client, ctx, req, {
         source: 'orders.delete',
-        action: 'orders.delete',
+        action: AUDIT_ACTION.ORDER_DELETE,
         entityType: AUDIT_ENTITY.ORDER,
         entityId: Number(row.id),
         before: row,

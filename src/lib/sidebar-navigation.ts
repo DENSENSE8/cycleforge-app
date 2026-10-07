@@ -73,7 +73,7 @@ import { PRINT_STATIONS_PATH, PRINT_STATIONS_STATION_PARAM } from '@/lib/print-s
 import { DESK_LANDING_VIEW, deskViewHref } from '@/lib/outbound/desk-views';
 import { FBM_DESTINATIONS, FBM_LANDING_DESTINATION, resolveFbmDestination } from '@/lib/nav/fbm-destinations';
 import { parseLabelIntakeView } from '@/lib/triage/views/label-intake';
-import { CUSTOMER_PATHS, QUALITY_CONTROL_PATHS, RECEIVING_PATHS, SUPPORT_PATHS } from '@/lib/nav/route-tree';
+import { CUSTOMER_PATHS, QUALITY_CONTROL_PATHS, RECEIVING_PATHS, SEARCH_PATHS, SUPPORT_PATHS } from '@/lib/nav/route-tree';
 import { SUPPORT_LIST_VIEWS, SUPPORT_LIST_VIEW_LABEL, parseSupportListView, type SupportListView } from '@/lib/support/list/support-list';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
@@ -129,6 +129,7 @@ export type SidebarRouteKey =
   | 'audit-log'
   | 'settings'
   | 'search'
+  | 'records'
   | 'unknown';
 
 export type SidebarIconComponent = (props: { className?: string }) => JSX.Element;
@@ -644,6 +645,8 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
   // `/search` — header find + SearchBrowseShell; `?sel=type:id` opens full-bleed detail.
   if (pathname === '/search' || pathname.startsWith('/search/')) return 'search';
+  // `/records` — the Records sheet (route-tree `records`), its own contextual panel.
+  if (pathname === SEARCH_PATHS.records || pathname.startsWith(`${SEARCH_PATHS.records}/`)) return 'records';
   return 'unknown';
 }
 
@@ -1271,11 +1274,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
           ? 'fnsku-reprinted'
           : 'fnsku',
   },
-  // ── Pasted list (`/search/list`, route-tree `pasted-list`) ────────────────
+  // ── Records (`/records`, route-tree `records`) ──────────────────────────────
   // Off the spine (not in APP_SIDEBAR_NAV — reached from the search bar's
-  // full-screen button). Registered so the resolver opens its own panel:
-  // the bucket facet + Sort that left the page body (ruling A1/A4).
-  { id: 'search', label: 'Pasted list', href: '/search/list', icon: Search, kind: 'top' },
+  // full-screen button and the palette). Registered so the resolver opens its
+  // own panel: Sort, grain, dates, who-did-what and the counted facets
+  // (`NAV_PAGE_DECLS.records`). View-less.
+  { id: 'records', label: 'Records', href: SEARCH_PATHS.records, icon: Search, kind: 'top' },
   // ── Receiving family ─────── Arrival / Unbox are physical stations; Local
   // Pickup and Repair service are modes of the Receiving desk lane.
   {

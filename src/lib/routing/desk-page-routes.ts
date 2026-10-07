@@ -36,9 +36,24 @@ import {
 } from '@/lib/print-station/fnsku';
 import { PRINT_STATIONS_PATH, PRINT_STATIONS_STATION_PARAM, PRINT_STATION_ID_RE } from '@/lib/print-station/stations';
 import { CUSTOMER_PATHS, PRINT_STATION_PATHS, SEARCH_PATHS, SUPPORT_PATHS } from '@/lib/nav/route-tree';
-import { NAV_LOCATE_SCOPES } from '@/lib/nav/context/schema';
 import { SUPPORT_LOCATE_REFS_PARAM, SUPPORT_LOCATE_STATUS_PARAM } from '@/lib/nav/locate/support-params';
 import { parseRefInParam, serializeRefIn } from '@/lib/receiving/reconcile';
+import {
+  RECORDS_AXES,
+  RECORDS_AXIS_PARAM,
+  RECORDS_EVENTS,
+  RECORDS_EVENT_BY_PARAM,
+  RECORDS_EVENT_FROM_PARAM,
+  RECORDS_EVENT_PARAM,
+  RECORDS_EVENT_TO_PARAM,
+  RECORDS_FACETS,
+  RECORDS_FIND_PARAM,
+  RECORDS_FROM_PARAM,
+  RECORDS_GRAINS,
+  RECORDS_GRAIN_PARAM,
+  RECORDS_REFS_PARAM,
+  RECORDS_TO_PARAM,
+} from '@/lib/nav/records/params';
 import {
   SUPPORT_LIST_GROUPS,
   SUPPORT_LIST_SORTS,
@@ -274,23 +289,32 @@ const PRINT_STATION_DEVICE_ROUTE_PARAMS = defineRouteParams({
   },
 });
 
-/** `/search/list` — the pasted list, full screen (route-tree `pasted-list`). */
-const PASTED_LIST_ROUTE_PARAMS = defineRouteParams({
-  route: SEARCH_PATHS.pastedList,
+/**
+ * `/records` — the Records sheet (route-tree `records`, `src/lib/nav/records/params.ts`):
+ * the pasted numbers, Find, grain, the date axis + window, who did what when,
+ * and every facet's include / exclude list. Its Sort is the carried
+ * `colsort` / `coldir`; `back` is where Esc returns.
+ */
+const RECORDS_ROUTE_PARAMS = defineRouteParams({
+  route: SEARCH_PATHS.records,
   owns: {
-    /** The pasted numbers (the bar's parse and cap). */
-    refs: paramCanonical((raw) => serializeRefIn(parseRefInParam(raw).refs) || null),
-    /** Whose buckets answer the paste. */
-    locator: paramRoundTrip((raw) => ((NAV_LOCATE_SCOPES as readonly string[]).includes(raw) ? raw : null)),
-    /** One located bucket — the sidebar's Status facet (a live bucket id, `<locator>:<id>` when found elsewhere). */
-    status: paramText,
-    /** Paste repeats (`parsePastedListRepeats`). */
-    rep: paramText,
-    /** The sidebar's Sort (`pasted` default unset · `id` · `status`, `-desc` reversed). */
-    sort: paramEnum(['id', 'id-desc', 'status', 'status-desc'] as const),
+    /** The pasted numbers (the bar's parse and cap); none = Query mode. */
+    [RECORDS_REFS_PARAM]: paramCanonical((raw) => serializeRefIn(parseRefInParam(raw).refs) || null),
+    [RECORDS_FIND_PARAM]: paramText,
+    [RECORDS_GRAIN_PARAM]: paramEnum(RECORDS_GRAINS),
+    [RECORDS_AXIS_PARAM]: paramEnum(RECORDS_AXES),
+    [RECORDS_FROM_PARAM]: paramDateKey,
+    [RECORDS_TO_PARAM]: paramDateKey,
+    [RECORDS_EVENT_PARAM]: paramEnum(RECORDS_EVENTS),
+    [RECORDS_EVENT_BY_PARAM]: paramPositiveInt,
+    [RECORDS_EVENT_FROM_PARAM]: paramDateKey,
+    [RECORDS_EVENT_TO_PARAM]: paramDateKey,
+    /** Each facet's include and exclude comma lists. */
+    ...Object.fromEntries(RECORDS_FACETS.flatMap((facet) => [[facet.param, paramText], [facet.excludeParam, paramText]])),
     /** Where Esc returns. */
     back: paramText,
   },
+  carries: ['colsort', 'coldir', 'recordBack'],
 });
 
 export const DESK_PAGE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
@@ -306,5 +330,5 @@ export const DESK_PAGE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   PRINT_STATIONS_ROUTE_PARAMS,
   PRINT_STATION_ROUTE_PARAMS,
   PRINT_STATION_DEVICE_ROUTE_PARAMS,
-  PASTED_LIST_ROUTE_PARAMS,
+  RECORDS_ROUTE_PARAMS,
 ];

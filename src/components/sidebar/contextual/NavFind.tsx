@@ -38,7 +38,7 @@ import { SIDEBAR_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { useReplaceSearchParams } from './useReplaceSearchParams';
 import { BulkListToken, NavBulkDrop, useNavBulkList, usePasteListHotkey } from './NavBulkList';
-import { pastedListHref } from '@/lib/nav/route-tree';
+import { recordsHref } from '@/lib/nav/route-tree';
 import { useBulkListSort } from './bulk-list-view';
 import { KeyHintPopover } from './NavGoKeys';
 import { FIND_KEY, findKeyRows, useFindKeyCard } from './find-key-card';
@@ -207,7 +207,7 @@ function useSearchFace(list: BulkList, findLabel: string | null, focusField: () 
   const router = useRouter();
   const pathname = usePathname() || '/';
   const searchParams = useSearchParams();
-  // The list's own page; Esc there returns here.
+  // The list as the Records sheet; Esc there returns here.
   const backHere = () => {
     const query = searchParams?.toString();
     return query ? `${pathname}?${query}` : pathname;
@@ -215,15 +215,7 @@ function useSearchFace(list: BulkList, findLabel: string | null, focusField: () 
   const openFull = () => {
     if (held === 0) return;
     setOpen(false);
-    router.push(
-      pastedListHref({
-        refs: list.selection.refs,
-        locator: list.scope,
-        status: list.status,
-        back: backHere(),
-        repeats: list.repeats,
-      }),
-    );
+    router.push(recordsHref({ refs: list.selection.refs, back: backHere() }));
   };
   // A recent list comes back through the paste path, then its panel opens.
   const restore = (item: RecentList) => {
@@ -233,7 +225,7 @@ function useSearchFace(list: BulkList, findLabel: string | null, focusField: () 
   };
   const openRecentFull = (item: RecentList) => {
     setOpen(false);
-    router.push(pastedListHref({ refs: item.refs, locator: item.scope, back: backHere() }));
+    router.push(recordsHref({ refs: item.refs, back: backHere() }));
   };
   const show = () => {
     setOpen(true);

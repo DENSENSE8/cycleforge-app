@@ -112,8 +112,8 @@ function joined(values: ReadonlyArray<string | null>): string | null {
   return distinct.length > 0 ? distinct.join(' · ') : null;
 }
 
-/** The channel's face: the catalog account's label (`USAV`), else the platform registry's name, else the stored key. */
-function channelLabel(channel: string, accountLabel: string | null): string {
+/** The channel's face: the catalog account's label (`USAV`), else the platform registry's name, else the stored key. Records reads it too. */
+export function channelLabel(channel: string, accountLabel: string | null): string {
   if (accountLabel) return accountLabel;
   if (channel === 'fba') return 'Amazon FBA';
   const meta = sourcePlatformMeta(channel);

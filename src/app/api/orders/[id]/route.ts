@@ -142,7 +142,7 @@ export async function DELETE(
 
     await recordAudit(pool, gate.ctx, req, {
       source: 'orders-api',
-      action: 'orders.delete',
+      action: AUDIT_ACTION.ORDER_DELETE,
       entityType: AUDIT_ENTITY.ORDER,
       entityId: id,
       before: { ...before },

@@ -1019,3 +1019,30 @@ test('regression: carrier pickup cutoffs read on packing.view, replace on admin.
   const source = readFileSync(join(process.cwd(), 'src/app/api/live-feed/pickup-cutoffs/route.ts'), 'utf8');
   assert.match(source, /export const PUT = withAuth\([^]*?permission: 'admin\.manage_features'/);
 });
+
+test('regression: Records sheet writes gate each target direction in-handler (outbound order perms, inbound receiving)', () => {
+  // One request may name outbound AND inbound lines; withAuth holds one permission,
+  // so gateRecordTargets enforces the per-direction pair the per-entity routes use.
+  for (const path of [
+    '/api/records/tracking/route.ts',
+    '/api/records/tracking/unlink/route.ts',
+    '/api/records/order-number/route.ts',
+    '/api/records/delete/route.ts',
+    '/api/records/actions/route.ts',
+  ]) {
+    const r = routeByPath(path);
+    assert.ok(r, `${path} should be in the manifest`);
+    assert.equal(r.gate, 'withAuth (no permission)');
+    assert.deepEqual(r.methods, ['POST']);
+    const source = readFileSync(join(process.cwd(), 'src/app', path), 'utf8');
+    const perms = path.endsWith('/delete/route.ts') ? 'RECORD_DELETE_PERMISSIONS' : 'RECORD_EDIT_PERMISSIONS';
+    assert.match(source, new RegExp(`gateRecordTargets\\(req, ctx, parsed\\.targets, ${perms}\\)`), path);
+  }
+  const support = readFileSync(join(process.cwd(), 'src/lib/records/sheet-actions/route-support.ts'), 'utf8');
+  assert.match(support, /RECORD_EDIT_PERMISSIONS[^]*?outbound: 'orders\.create',\s*inbound: 'receiving\.mark_received'/);
+  assert.match(support, /RECORD_DELETE_PERMISSIONS[^]*?outbound: 'orders\.void',\s*inbound: 'receiving\.mark_received'/);
+  // The outbound delete permission is the one the order delete routes use.
+  const orderDelete = readFileSync(join(process.cwd(), 'src/app/api/orders/[id]/route.ts'), 'utf8');
+  assert.match(orderDelete, /export async function DELETE[^]*?requireRoutePerm\(req, 'orders\.void'\)/);
+  assert.ok(routesGatedBy('orders.void').some((r) => r.path === '/api/orders/delete/route.ts'));
+});

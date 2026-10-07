@@ -10,20 +10,23 @@
  * on the cursor row.
  */
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { motionDuration, motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { LedgerGridLeafRow, gridCellAlignClass } from '@/design-system/components/grid';
 import { LEDGER_GRID_FROZEN_CELL, ledgerGridCell } from '@/design-system/components/grid/grid-cell-chrome';
 import { IconButton } from '@/design-system/primitives';
+import { InlineEditableValue } from '@/design-system/components/InlineEditableValue';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { ExternalLink } from '@/components/Icons';
+import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
+import { ChevronDown, ChevronRight, ExternalLink, Pencil } from '@/components/Icons';
 import { StaffCell } from '@/components/identity/StaffCell';
 import { GridCellDash } from '@/components/ui/grid-cells';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { formatOrderIdDisplay, getLast8 } from '@/lib/copy-chip-format';
+import { RECORD_STATUS_TONE_CLASSES } from '@/lib/status/record-status';
 import { RowVerdict } from '@/components/sidebar/contextual/NavBulkRow';
 import { PastedListUnits } from './PastedListUnits';
 import { JourneyClockCell } from '@/components/outbound/fulfilled/JourneyClockCell';
@@ -33,9 +36,11 @@ import {
   pastedListCellHint,
   pastedListCellText,
   pastedListFrozenLeft,
+  pastedListFrozenRight,
   pastedListGridTemplate,
   pastedTimes,
   lastCarrierEventText,
+  recordStatusOf,
   trackingsOf,
   type PastedListColumn,
   type PastedListColumnKey,
@@ -80,6 +85,41 @@ export function rangeEdgeShadow(slice: RowRangeSlice, index: number): string | u
   return parts.length > 0 ? parts.join(', ') : undefined;
 }
 
+/** A Records status pill — the record-status tone's light ground + dark ink (`RECORD_STATUS_TONE_CLASSES`). */
+const STATUS_PILL = 'inline-flex min-w-0 max-w-full items-center truncate rounded-mode-pill px-1.5 text-role-micro font-semibold';
+
+/** A hover verb inside a cell (edit, open), revealed on the row's hover; a press never reaches the cell's copy. */
+const CELL_VERB = 'hidden size-5 shrink-0 place-content-center rounded-full text-text-muted hover:text-text-default group-hover/row:grid';
+
+/** In-place edit of one identifier cell (Records Order # / Tracking), on the house inline editor. */
+export interface RowCellEdit {
+  /** The cell now being edited on this row, or null. */
+  key: PastedListColumnKey | null;
+  /** The cells this row may edit (empty = none; a stable list). */
+  keys: readonly PastedListColumnKey[];
+  start: (key: PastedListColumnKey) => void;
+  commit: (key: PastedListColumnKey, value: string) => void;
+  cancel: () => void;
+}
+
+function CellEditor({ initial, label, onCommit, onCancel }: { initial: string; label: string; onCommit: (value: string) => void; onCancel: () => void }) {
+  const [draft, setDraft] = useState(initial);
+  return (
+    <InlineEditableValue
+      value={draft}
+      onChange={setDraft}
+      onSubmit={() => onCommit(draft.trim())}
+      onCancel={onCancel}
+      autoFocus
+      monospace
+      showEditIcon={false}
+      ariaLabel={label}
+      className="w-full"
+      inputClassName="h-5 text-role-caption"
+    />
+  );
+}
+
 export const PastedListGridRow = memo(function PastedListGridRow({
   row,
   index,
@@ -90,6 +130,10 @@ export const PastedListGridRow = memo(function PastedListGridRow({
   flash,
   onPoint,
   onOpen,
+  checked,
+  onToggle,
+  onExpand,
+  edit,
 }: {
   row: PastedListRow;
   /** Position in the shown list (the cascade step, and the range's row index). */
@@ -106,6 +150,14 @@ export const PastedListGridRow = memo(function PastedListGridRow({
   onPoint: () => void;
   /** Open the number's record (or the list that holds it). */
   onOpen: () => void;
+  /** The row's check in the `select` column; undefined = no check (a member line, or a sheet that selects nothing). */
+  checked?: boolean;
+  /** Toggle the check; Shift extends from the last toggled row. */
+  onToggle?: (event: { shiftKey: boolean }) => void;
+  /** A condensed grain's head: open / close its lines in place. */
+  onExpand?: () => void;
+  /** In-place identifier edit; absent = read-only. */
+  edit?: RowCellEdit;
 }) {
   const presence = useMotionPresence(motionPresence.findListRow);
   const settle = useMotionTransition(motionTransition.findListRow);
@@ -115,17 +167,75 @@ export const PastedListGridRow = memo(function PastedListGridRow({
   const facts = entry.facts ?? null;
   const times = pastedTimes(row);
 
+  const editVerb = (key: PastedListColumnKey, what: string) =>
+    edit?.keys.includes(key) ? (
+      <HoverTooltip label={`Edit ${what}`} focusable={false} asChild>
+        <IconButton
+          tabIndex={-1}
+          ariaLabel={`Edit ${what}`}
+          data-cell-edit={key}
+          onClick={(event) => {
+            event.stopPropagation();
+            edit.start(key);
+          }}
+          className={CELL_VERB}
+          icon={<Pencil aria-hidden className="size-3" />}
+        />
+      </HoverTooltip>
+    ) : null;
+
   const renderValue = (key: PastedListColumnKey) => {
     const text = pastedListCellText(row, key);
+    if (edit?.key === key) {
+      const initial = key === 'order' ? (facts?.orderNumber ?? entry.ref) : (facts?.tracking ?? '');
+      return (
+        <CellEditor
+          initial={initial}
+          label={key === 'order' ? `Order number of ${entry.ref}` : `Tracking of ${entry.ref}`}
+          onCommit={(value) => edit.commit(key, value)}
+          onCancel={edit.cancel}
+        />
+      );
+    }
     switch (key) {
       case 'pos':
         return <span className="tabular-nums text-text-faint">{position}</span>;
+      case 'select':
+        return checked === undefined ? null : (
+          <GridRowCheckbox
+            checked={checked}
+            onToggle={(event) => onToggle?.(event)}
+            label={`Select ${row.group ? `${row.group.lines.length} lines of ` : ''}${entry.ref}`}
+            chrome="hover"
+          />
+        );
       case 'ref':
       case 'order':
-        // Fulfilled's Order wears the last-8 face (identifier law); the copy and the hover stay the full number.
+        // Fulfilled's / Records' Order wears the last-8 face (identifier law); the copy and the hover stay the full number.
         return (
-          <span className="flex min-w-0 flex-1 items-center gap-1">
+          <span className={cn('flex min-w-0 flex-1 items-center gap-1', row.member && 'pl-3 font-normal text-text-muted')}>
+            {onExpand && row.group ? (
+              <HoverTooltip label={row.group.open ? 'Close its lines' : 'Open its lines'} focusable={false} asChild>
+                <IconButton
+                  tabIndex={-1}
+                  ariaLabel={`${row.group.open ? 'Close' : 'Open'} the ${row.group.lines.length} lines of ${entry.ref}`}
+                  aria-expanded={row.group.open}
+                  data-group-toggle
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onExpand();
+                  }}
+                  className="grid size-4 shrink-0 place-content-center text-text-muted hover:text-text-default"
+                  icon={row.group.open ? <ChevronDown aria-hidden className="size-3" /> : <ChevronRight aria-hidden className="size-3" />}
+                />
+              </HoverTooltip>
+            ) : null}
             <span className="min-w-0 truncate">{key === 'order' ? formatOrderIdDisplay(entry.ref) : entry.ref}</span>
+            {row.group && row.group.lines.length > 1 ? (
+              <span data-group-count={row.group.lines.length} className={CELL_MARKER}>
+                {row.group.lines.length}
+              </span>
+            ) : null}
             {times > 1 ? (
               <HoverTooltip label={`Pasted ×${times} — the list keeps one row`} focusable={false} asChild>
                 <span data-pasted-times={times} className={CELL_MARKER}>
@@ -133,6 +243,7 @@ export const PastedListGridRow = memo(function PastedListGridRow({
                 </span>
               </HoverTooltip>
             ) : null}
+            {editVerb(key, 'order number')}
             <HoverTooltip label="Open its record" shortcut="Enter" focusable={false} asChild>
               <IconButton
                 tabIndex={-1}
@@ -142,7 +253,7 @@ export const PastedListGridRow = memo(function PastedListGridRow({
                   event.stopPropagation();
                   onOpen();
                 }}
-                className="ml-auto hidden size-5 shrink-0 place-content-center rounded-full text-text-muted hover:text-text-default group-hover/row:grid"
+                className={cn('ml-auto', CELL_VERB)}
                 icon={<ExternalLink aria-hidden className="size-3" />}
               />
             </HoverTooltip>
@@ -156,14 +267,36 @@ export const PastedListGridRow = memo(function PastedListGridRow({
         return <JourneyClockCell clock={facts?.clock} />;
       case 'tracking': {
         const trackings = trackingsOf(row);
-        if (trackings.length === 0) return <GridCellDash />;
+        if (trackings.length === 0) {
+          return edit?.keys.includes('tracking') ? (
+            <span className="flex min-w-0 flex-1 items-center gap-1">
+              <GridCellDash />
+              {editVerb('tracking', 'tracking')}
+            </span>
+          ) : (
+            <GridCellDash />
+          );
+        }
         return (
-          <span className="flex min-w-0 items-center gap-1">
+          <span className="flex min-w-0 flex-1 items-center gap-1">
             <span className="min-w-0 truncate font-mono text-text-muted">{getLast8(trackings[0])}</span>
             {trackings.length > 1 ? <span className={CELL_MARKER}>+{trackings.length - 1}</span> : null}
+            {editVerb('tracking', 'tracking')}
           </span>
         );
       }
+      case 'internal':
+      case 'external': {
+        const status = recordStatusOf(row, key);
+        if (!status) return text ? <span className="min-w-0 truncate text-text-faint">{text}</span> : <GridCellDash />;
+        return <span className={cn(STATUS_PILL, RECORD_STATUS_TONE_CLASSES[status.tone].pill)}>{status.label}</span>;
+      }
+      case 'pickedBy':
+        return facts?.pickedBy ? <StaffCell staffId={facts.pickedBy.id} name={facts.pickedBy.name} /> : <GridCellDash />;
+      case 'unboxedBy':
+        return facts?.unboxedBy ? <StaffCell staffId={facts.unboxedBy.id} name={facts.unboxedBy.name} /> : <GridCellDash />;
+      case 'receivedBy':
+        return facts?.receivedBy ? <StaffCell staffId={facts.receivedBy.id} name={facts.receivedBy.name} /> : <GridCellDash />;
       case 'scannedOut':
         if (!text) return <GridCellDash />;
         if (facts?.scanSource == null) return <span className="min-w-0 truncate text-text-faint">{text}</span>;
@@ -242,7 +375,7 @@ export const PastedListGridRow = memo(function PastedListGridRow({
     <LedgerGridLeafRow<PastedListColumn>
       columns={columns}
       template={pastedListGridTemplate(columns)}
-      selected={lit}
+      selected={lit || checked === true}
       capabilities={PASTED_LIST_CAPABILITIES}
       data-pasted-list-row={position}
       data-range-row={index}
@@ -251,6 +384,7 @@ export const PastedListGridRow = memo(function PastedListGridRow({
       onPointerEnter={onPoint}
       renderCell={(col) => {
         const frozen = col.frozen === true;
+        const frozenEnd = col.frozenEnd === true;
         const hint = pastedListCellHint(row, col.key);
         const at = columns.indexOf(col);
         const inRange = range != null && at >= range.c0 && at <= range.c1;
@@ -263,9 +397,9 @@ export const PastedListGridRow = memo(function PastedListGridRow({
             className={cn(
               ledgerGridCell({ inset: 'none' }),
               'relative overflow-hidden',
-              PASTED_LIST_CELL,
+              col.key === 'select' ? 'items-stretch p-0' : PASTED_LIST_CELL,
               gridCellAlignClass(col),
-              frozen && LEDGER_GRID_FROZEN_CELL,
+              (frozen || frozenEnd) && LEDGER_GRID_FROZEN_CELL,
               'min-w-0 text-role-caption text-text-default',
               (col.key === 'ref' || col.key === 'order') && 'font-mono font-semibold',
               // The staff accent's selection tint (it matches the range's accent outline); the anchor a step stronger.
@@ -273,7 +407,15 @@ export const PastedListGridRow = memo(function PastedListGridRow({
               inRange && 'bg-gradient-to-r',
               inRange && (range.anchorCol === at ? 'from-accent-bg/20 to-accent-bg/20' : 'from-accent-bg/10 to-accent-bg/10'),
             )}
-            style={frozen || edge ? { left: frozen ? pastedListFrozenLeft(columns, col.key) : undefined, boxShadow: edge } : undefined}
+            style={
+              frozen || frozenEnd || edge
+                ? {
+                    left: frozen ? pastedListFrozenLeft(columns, col.key) : undefined,
+                    right: frozenEnd ? pastedListFrozenRight(columns, col.key) : undefined,
+                    boxShadow: edge,
+                  }
+                : undefined
+            }
           >
             {renderValue(col.key)}
             <AnimatePresence>

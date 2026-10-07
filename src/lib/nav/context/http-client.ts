@@ -11,12 +11,14 @@ import {
   NavFulfilledResponseSchema,
   NavLocateResponseSchema,
   NavPurchasesResponseSchema,
+  NavRecordsResponseSchema,
   NavRecentRowSchema,
   type NavContext,
   type NavFacetsResponse,
   type NavFulfilledResponse,
   type NavLocateResponse,
   type NavPurchasesResponse,
+  type NavRecordsResponse,
   type NavLocateScope,
   type NavRecentRow,
   type NavRecents,
@@ -103,6 +105,11 @@ export async function fetchNavPurchases(params: URLSearchParams, signal?: AbortS
 /** `GET /api/nav/fulfilled?<params>` — Fulfillment › Fulfilled (`NavFulfilledQuery` names the params; `fulfilledApiParams` builds them). */
 export async function fetchNavFulfilled(params: URLSearchParams, signal?: AbortSignal): Promise<NavFulfilledResponse> {
   return NavFulfilledResponseSchema.parse(await getJson(`/api/nav/fulfilled?${params}`, signal));
+}
+
+/** `GET /api/nav/records?<params>` — the Records sheet (`src/lib/nav/records/params.ts` names the params; the page's URL passes through). */
+export async function fetchNavRecords(params: URLSearchParams, signal?: AbortSignal): Promise<NavRecordsResponse> {
+  return NavRecordsResponseSchema.parse(await getJson(`/api/nav/records?${params}`, signal));
 }
 
 const NavRecentsResponseSchema = z.object({

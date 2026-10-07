@@ -47,7 +47,8 @@ export type TermId =
   | 'outbound'
   | 'purchase'
   | 'fulfilled-order'
-  | 'platform';
+  | 'platform'
+  | 'record';
 
 export interface VocabularyTerm {
   id: TermId;
@@ -320,6 +321,20 @@ export const VOCABULARY: readonly VocabularyTerm[] = [
     banned: ['channel (as the order source label)', 'marketplace (as the column name)'],
     owner: 'fulfillment',
     decided: { by: 'owner', date: '2026-10-05', note: 'Channel renamed to Platform on sheets, facets and sort; the ?channel= param stays.' },
+  },
+  {
+    id: 'record',
+    label: 'Record',
+    plural: 'Records',
+    definition: 'One line of an inbound or outbound order, as the Records sheet shows it.',
+    segment: 'records',
+    banned: ['pasted list (as the page name)', 'row (as the thing a record is)'],
+    owner: 'search',
+    decided: {
+      by: 'owner',
+      date: '2026-10-06',
+      note: 'The Records sheet (/records) replaces the Pasted list; a pasted list is one way of filling it (`?refs=`).',
+    },
   },
 ] as const;
 
@@ -808,19 +823,33 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     target: '/search',
     page: null,
     status: 'planned',
-    note: 'Desktop. The search field (NavFind) and the ⌘K palette are its faces; `/search` itself is parked (it forwards to the record a `?sel=` names). Its one live page is the pasted list.',
+    note: 'Desktop. The search field (NavFind) and the ⌘K palette are its faces; `/search` itself is parked (it forwards to the record a `?sel=` names). Its one live page is Records (`/records`) — a held pasted list opens there.',
+  },
+  {
+    id: 'records',
+    parent: 'search',
+    kind: 'collection',
+    label: 'Records',
+    owns: 'record',
+    path: '/records',
+    target: '/records',
+    page: 'src/app/records/page.tsx',
+    status: 'live',
+    query: ['refs', 'back', 'q', 'grain', 'axis', 'from', 'to', 'event', 'by', 'efrom', 'eto', 'colsort', 'coldir'],
+    note: 'Owner 2026-10-06 (docs/refactors/records): every LINE of an inbound or outbound order as ONE sheet — Query mode narrowed by the sidebar, Paste mode (`?refs=`, the search bar\'s held list or a paste into the sheet). Identifiers frozen left, Internal | External pinned right, grain per line · order · item number · product, Linear selection + the floating dock. URL contract: `src/lib/nav/records/params.ts`; `?back=` is where Esc returns.',
   },
   {
     id: 'pasted-list',
-    parent: 'search',
-    kind: 'task',
-    label: 'Pasted list',
+    parent: 'records',
+    kind: 'compat',
+    label: 'Records from a paste',
     path: '/search/list',
-    target: '/search/list',
+    target: '/records',
     page: 'src/app/search/list/page.tsx',
     status: 'live',
-    query: ['refs', 'locator', 'status', 'back'],
-    note: 'Owner 2026-10-04: the search bar\'s held list, full screen — every pasted number with its physical facts (delivered, unboxed + who, units, carrier word, follow-up, statuses, PO / title, vendor, record link). Opened from the full-screen button at the top-left of the bar\'s or the palette\'s list, or ↵ on the token (no chord: ⌘⇧L is the browser\'s); `?refs=` is the list (same parse and cap as the bar), `?locator=` whose buckets, `?status=` one bucket, `?back=` where Esc returns.',
+    query: ['refs', 'back'],
+    forwardsTo: 'records',
+    note: 'The old full-screen pasted list (owner 2026-10-04). Forwards to Records with `?refs=` and `?back=` kept (2026-10-06).',
   },
   {
     id: 'print-station',
@@ -929,6 +958,7 @@ export const WAREHOUSE_PATHS = {
 
 /** Desktop Search lane live paths. */
 export const SEARCH_PATHS = {
+  records: livePath('records'),
   pastedList: livePath('pasted-list'),
 } as const;
 
@@ -1125,36 +1155,12 @@ export function rackLabelsHref(params?: { rack?: string | null; back?: string | 
 }
 
 /**
- * `/search/list?refs=&locator=&status=&back=&rep=` — the held pasted list,
- * full screen. `refs` as the bar holds them (comma-joined, the `?ref_in=`
- * shape); `rep` = the numbers the paste carried more than once, `<times>*<ref>`
- * comma-joined ({@link parsePastedListRepeats}).
+ * `/records?refs=&back=` — the Records sheet. `refs` as the bar holds them
+ * (comma-joined, the `?ref_in=` shape; empty = Query mode), `back` where Esc
+ * returns. Every other param is the sidebar's (`src/lib/nav/records/params.ts`).
  */
-export function pastedListHref(params: {
-  refs: readonly string[];
-  locator: string;
-  status?: string | null;
-  back?: string | null;
-  repeats?: ReadonlyMap<string, number>;
-}): string {
-  const rep = [...(params.repeats ?? [])].map(([ref, times]) => `${times}*${ref}`).join(',');
-  return withQuery(SEARCH_PATHS.pastedList, {
-    refs: params.refs.join(','),
-    locator: params.locator,
-    status: params.status,
-    back: params.back,
-    rep,
-  });
-}
-
-/** `?rep=` → ref → times pasted (malformed pieces are skipped). */
-export function parsePastedListRepeats(raw: string | null | undefined): ReadonlyMap<string, number> {
-  const repeats = new Map<string, number>();
-  for (const piece of String(raw ?? '').split(',')) {
-    const match = /^(\d+)\*(.+)$/.exec(piece.trim());
-    if (match && Number(match[1]) > 1) repeats.set(match[2]!, Number(match[1]));
-  }
-  return repeats;
+export function recordsHref(params: { refs?: readonly string[]; back?: string | null } = {}): string {
+  return withQuery(SEARCH_PATHS.records, { refs: params.refs?.join(','), back: params.back });
 }
 
 // ── Lookups (the guard and the MCP read these) ──────────────────────────────

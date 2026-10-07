@@ -277,6 +277,16 @@ export const AUDIT_ACTION = {
   RECEIVING_LISTING_LINK_WRITE: 'receiving.listing_link.write',
   /** Manual n8n-style lifecycle advance through transitionReceivingLine(). */
   RECEIVING_LINE_ADVANCE:    'receiving_line.advance',
+  /** Records sheet: a tracking number made this line's primary or linked as another box (`receiving_line.shipment_id` + RECEIVING_LINE link). */
+  RECEIVING_LINE_TRACKING_SET: 'receiving_line.tracking.set',
+  /** Records sheet: a tracking number unlinked from this line; the tracking row stays. */
+  RECEIVING_LINE_TRACKING_UNLINK: 'receiving_line.tracking.unlink',
+  /** Records sheet: a line deleted before anything physical happened to it (`INBOUND_LINE_DELETE_BLOCKER_SQL`). */
+  RECEIVING_LINE_DELETE: 'receiving_line.delete',
+  /** Records sheet: a note appended to the line's `notes`. */
+  RECEIVING_LINE_NOTE_ADD: 'receiving_line.note.add',
+  /** Records sheet: the inbound order's display number (`inbound_order.order_number`) changed. */
+  INBOUND_ORDER_RENUMBER: 'inbound_order.renumber',
   /** Real "Save for unbox" transition — stamps receiving.triage_complete. */
   RECEIVING_TRIAGE_COMPLETE: 'receiving.triage.complete',
   /** An operator confirmed this carton's contents against its line list — the `contents` step of the Unbox procedure… */
@@ -614,8 +624,12 @@ export const AUDIT_ACTION = {
   RMA_UPDATE: 'rma.update',
   RMA_CANCEL: 'rma.cancel',
   RMA_DISPOSITION: 'rma.disposition',
-  // Order record edit (delete uses the legacy 'orders.delete' literal)
+  // Order record edit
   ORDER_UPDATE: 'orders.update',
+  /** The legacy delete literal, named (DELETE /api/orders/[id], POST /api/orders/delete, the Records sheet). */
+  ORDER_DELETE: 'orders.delete',
+  /** Records sheet: the line re-keyed under another order number (`orders.order_id`). */
+  ORDER_RENUMBER: 'order.renumber',
   // Fulfillment substitution — the unit that ships deviates from what was
   // ordered/listed. Re-allocation event recorded in order_unit_amendments;
   // approve/reject gate the block_until_approved enforcement path.
@@ -660,6 +674,8 @@ export const AUDIT_ACTION = {
   // A manual edit swapped the order's primary tracking for another number; the
   // old and new numbers ride in `after` so the history reads for every role.
   TRACKING_REPLACED: 'orders.tracking.replaced',
+  // A manual edit unlinked a tracking from the order line; the tracking row stays.
+  TRACKING_UNLINKED: 'orders.tracking.unlinked',
   LABEL_PRINTED: 'orders.label.printed',
   // Carrier-API label lifecycle (ShipStation outbound station): buying a
   // rate-shopped label and voiding/refunding it. LABEL_PRINTED still fires on

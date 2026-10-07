@@ -1,5 +1,6 @@
 import 'server-only';
 
+import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { MENTION_INBOX_ITEM_SQL, mentionInboxItemParams } from '@/lib/notifications/assign-inbox-item';
@@ -202,23 +203,36 @@ export async function createOrderNotesBulk({
   const ids = [...new Set(orderIds.filter((id) => Number.isFinite(id) && id > 0))];
   if (ids.length === 0) return { updatedIds: [] };
 
-  return withTenantTransaction(organizationId, async (client) => {
-    const owned = await client.query<{ id: number }>(
-      'SELECT id FROM orders WHERE id = ANY($1::int[])',
-      [ids],
-    );
-    const updatedIds = owned.rows.map((r) => Number(r.id));
-    if (updatedIds.length === 0) return { updatedIds };
+  return withTenantTransaction(organizationId, (client) => createOrderNotesInTx(client, ids, body, staffId));
+}
 
-    await client.query(
-      `INSERT INTO order_notes (order_id, note_text, author_staff_id)
-       SELECT unnest($1::int[]), $2, $3`,
-      [updatedIds, body, staffId],
-    );
-    await client.query('UPDATE orders SET notes = $1 WHERE id = ANY($2::int[])', [
-      body,
-      updatedIds,
-    ]);
-    return { updatedIds };
-  });
+/**
+ * {@link createOrderNotesBulk} on the caller's tenant transaction: one
+ * `order_notes` row per order the org owns, plus the denormalized latest note.
+ */
+export async function createOrderNotesInTx(
+  client: Pick<PoolClient, 'query'>,
+  orderIds: readonly number[],
+  noteText: string,
+  staffId: number | null,
+): Promise<{ updatedIds: number[] }> {
+  const body = noteText.trim();
+  if (!body || orderIds.length === 0) return { updatedIds: [] };
+  const owned = await client.query<{ id: number }>(
+    'SELECT id FROM orders WHERE id = ANY($1::int[])',
+    [[...orderIds]],
+  );
+  const updatedIds = owned.rows.map((r) => Number(r.id));
+  if (updatedIds.length === 0) return { updatedIds };
+
+  await client.query(
+    `INSERT INTO order_notes (order_id, note_text, author_staff_id)
+     SELECT unnest($1::int[]), $2, $3`,
+    [updatedIds, body, staffId],
+  );
+  await client.query('UPDATE orders SET notes = $1 WHERE id = ANY($2::int[])', [
+    body,
+    updatedIds,
+  ]);
+  return { updatedIds };
 }

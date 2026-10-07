@@ -18,6 +18,7 @@ interface HeaderLike extends TrackLike {
 interface FrozenTrackLike extends TrackLike {
   key: string;
   frozen?: boolean;
+  frozenEnd?: boolean;
 }
 
 /**
@@ -116,6 +117,17 @@ export function gridFrozenLeft(columns: readonly FrozenTrackLike[], key: string)
     parts.push(
       `var(${gridColVar(k)}, ${col ? densityScaledRem(gridColumnTrackRem(col)) : '0px'})`,
     );
+  }
+  return `calc(${parts.join(' + ')})`;
+}
+
+/** Sticky-`right` offset for a trailing-pane cell (`frozenEnd`) — the row inset plus the width vars of the pinned columns *after* it. */
+export function gridFrozenRight(columns: readonly FrozenTrackLike[], key: string): string {
+  const pinned = columns.filter((column) => column.frozenEnd);
+  const idx = pinned.findIndex((column) => column.key === key);
+  const parts = [GRID_ROW_PX];
+  for (const col of pinned.slice(idx + 1)) {
+    parts.push(`var(${gridColVar(col.key)}, ${densityScaledRem(gridColumnTrackRem(col))})`);
   }
   return `calc(${parts.join(' + ')})`;
 }

@@ -18,6 +18,8 @@ import { NAV_RECENT_ROW_VERBS } from '@/lib/nav/recents/surfaces';
 import { CHECK_ZOHO_RECEIVED_MAX_INPUTS } from '@/lib/receiving/tracking-paste';
 import { CHECK_IN_OUTCOMES, ORDER_CHECK_IN_STATES } from '@/lib/support/conversation/model';
 import { PICKED_BY_SOURCES } from '@/lib/picking/picked-by';
+import { RECORDS_FACETS, RECORDS_FLAGS, RECORDS_TYPES, type RecordsFacetId } from '@/lib/nav/records/params';
+import { CARRIER_STATUSES, INBOUND_INTERNAL_STATUSES, OUTBOUND_INTERNAL_STATUSES } from '@/lib/status/record-status';
 
 export const NAV_ITEM_KINDS = ['link', 'drill', 'filter', 'toggle'] as const;
 export type NavItemKind = (typeof NAV_ITEM_KINDS)[number];
@@ -562,6 +564,9 @@ export const NavLocatePickedBySchema = NavLocateStaffSchema.extend({ source: z.e
  *   left out of `lines` / `units` / every fact and named in `duplicates`
  *   (its receiving_line ids) — a data defect to clean up, never a short.
  *   Outbound: `duplicates` is always `[]`.
+ * - purchases (`GET /api/nav/purchases` only; optional, absent elsewhere):
+ *   `orderedOn` (`YYYY-MM-DD`, the PO / order date) and `importedAt` (ISO
+ *   instant the purchase was first on record — `src/lib/nav/purchases/sql.ts`).
  * - fulfilled (`GET /api/nav/fulfilled` only; optional, absent elsewhere):
  *   `channel` (label), `customer`, `qty`, `orderTotal`, `orderedAt`
  *   (`placedElseImportedSql`), `scannedOutBy`, `scanSource`
@@ -623,6 +628,8 @@ export const NavLocateFactsSchema = z
     transitDays: z.number().nullable().optional(),
     claim: z.object({ opensAt: z.string(), closesAt: z.string() }).strict().nullable().optional(),
     lineCount: z.number().int().nonnegative().nullable().optional(),
+    orderedOn: z.string().nullable().optional(),
+    importedAt: z.string().nullable().optional(),
     /**
      * Journey (Fulfilled only, operator 2026-10-05). `shipmentId` = the lead
      * package (`shipping_tracking_numbers.id`, the record `?shipment=` opens);
@@ -654,6 +661,51 @@ export const NavLocateFactsSchema = z
       .strict()
       .nullable()
       .optional(),
+    /**
+     * The order's desk follow-up (Fulfilled only, operator 2026-10-06,
+     * `HANDOFF-fulfilled-drilldown.md` R6–R7). `orderRowId` = the lead line
+     * (`orders.id`) the order's thread is written to; `lastNote` = the newest
+     * staff note on any of the order's lines (mention tokens as `@Name`);
+     * `mentionsMe` = the viewer holds an unread @mention on the order; `owner`
+     * = the staffer the order is assigned to, with its due instant.
+     */
+    orderRowId: z.number().int().positive().nullable().optional(),
+    lastNote: z.object({ text: z.string(), at: z.string(), author: z.string().nullable() }).strict().nullable().optional(),
+    mentionsMe: z.boolean().optional(),
+    owner: z.object({ id: z.number().int().positive(), name: z.string(), dueAt: z.string().nullable() }).strict().nullable().optional(),
+    /**
+     * Records sheet (`GET /api/nav/records` only, `src/lib/nav/records`; absent
+     * elsewhere). One row = one LINE: `direction` + `recordId` (`orders.id` /
+     * `receiving_line.id`) name it; `orderNumber` = the channel order # /
+     * PO # / marketplace order id; the grain keys — `orderKey`
+     * (`o:<account_source>|<order #>` outbound, `i:<inbound_order id>` /
+     * `i:c<carton id>` / `i:l<line id>` inbound), `itemNumber` (outbound
+     * listing item number, inbound listing reference), `productKey`
+     * (`c:<sku_catalog_id>` else `s:<UPPER(sku)>`); `internalStatus` /
+     * `externalStatus` = the record-status keys (`src/lib/status/record-status.ts`);
+     * prices in the order's currency — `unitPrice` (outbound `orders.unit_price`,
+     * inbound `unit_cost_cents / 100`), `lineTotal` (unit × qty, else the
+     * one-line order's `sale_amount`); `placedAt` = Placed only (no Imported
+     * fallback — that is `orderedAt`); `receivedAt` / `receivedBy` = units
+     * counted in (inbound); `flags` = `RECORDS_FLAGS` the line carries;
+     * `inboundOrderId` / `cartonId` = the inbound line's header and carton.
+     */
+    direction: z.enum(RECORDS_TYPES).optional(),
+    recordId: z.number().int().positive().optional(),
+    orderNumber: z.string().nullable().optional(),
+    orderKey: z.string().min(1).optional(),
+    itemNumber: z.string().nullable().optional(),
+    productKey: z.string().nullable().optional(),
+    internalStatus: z.enum([...OUTBOUND_INTERNAL_STATUSES, ...INBOUND_INTERNAL_STATUSES]).optional(),
+    externalStatus: z.enum(CARRIER_STATUSES).nullable().optional(),
+    unitPrice: z.number().nullable().optional(),
+    lineTotal: z.number().nullable().optional(),
+    placedAt: z.string().nullable().optional(),
+    receivedAt: z.string().nullable().optional(),
+    receivedBy: NavLocateStaffSchema.nullable().optional(),
+    flags: z.array(z.enum(RECORDS_FLAGS)).optional(),
+    inboundOrderId: z.number().int().positive().nullable().optional(),
+    cartonId: z.number().int().positive().nullable().optional(),
   })
   .strict();
 export type NavLocateFacts = z.infer<typeof NavLocateFactsSchema>;
@@ -862,3 +914,91 @@ export const NavFulfilledResponseSchema = z
   .strict();
 export type NavFulfilledResponse = z.output<typeof NavFulfilledResponseSchema>;
 export type NavFulfilledWire = z.input<typeof NavFulfilledResponseSchema>;
+
+/** One Records facet value with the lines it holds (every OTHER facet's filter applied). */
+const NavRecordsFacetOptionSchema = z
+  .object({ value: z.string().min(1), label: z.string().min(1), count: z.number().int().nonnegative() })
+  .strict();
+
+/** Every `RECORDS_FACETS` id → its options, each counted with its own include AND exclude lifted. */
+export const NavRecordsFacetsSchema = z
+  .object(
+    Object.fromEntries(RECORDS_FACETS.map((facet) => [facet.id, z.array(NavRecordsFacetOptionSchema)])) as Record<
+      RecordsFacetId,
+      z.ZodArray<typeof NavRecordsFacetOptionSchema>
+    >,
+  )
+  .strict();
+export type NavRecordsFacets = z.infer<typeof NavRecordsFacetsSchema>;
+
+/**
+ * The Records facts the wire leaves out when they hold their common value —
+ * the one list the route compacts by and {@link NavRecordsWireFactsSchema}
+ * restores from. A row whose value differs (null included) sends it.
+ */
+export const NAV_RECORDS_WIRE_DEFAULTS = {
+  section: 'outbound',
+  direction: 'outbound',
+  lines: 1,
+  duplicates: [] as number[],
+  flags: [] as string[],
+} as const;
+
+/**
+ * One Records row ON THE WIRE: every null and every
+ * {@link NAV_RECORDS_WIRE_DEFAULTS} value left out (thousands of lines, most
+ * facts empty or alike) — parsing restores them, so the client holds plain
+ * `NavLocateEntry`s. Optional facts left out read as absent (= null).
+ */
+const NavRecordsWireFactsSchema = NavLocateFactsSchema.extend({
+  section: z.enum(NAV_LOCATORS).default(NAV_RECORDS_WIRE_DEFAULTS.section),
+  title: z.string().nullable().default(null),
+  sku: z.string().nullable().default(null),
+  tracking: z.string().nullable().default(null),
+  deliveredAt: z.string().nullable().default(null),
+  channelStatus: z.string().nullable().default(null),
+  shipBy: z.string().nullable().default(null),
+  pickedAt: z.string().nullable().default(null),
+  pickedBy: NavLocatePickedBySchema.nullable().default(null),
+  packedAt: z.string().nullable().default(null),
+  shippedAt: z.string().nullable().default(null),
+  packer: NavLocateStaffSchema.nullable().default(null),
+  po: z.string().nullable().default(null),
+  vendor: z.string().nullable().default(null),
+  lines: z.number().int().nonnegative().default(NAV_RECORDS_WIRE_DEFAULTS.lines),
+  duplicates: z.array(z.number().int()).default(() => []),
+  unboxedAt: z.string().nullable().default(null),
+  unboxedBy: NavLocateStaffSchema.nullable().default(null),
+  units: NavLocateFactsSchema.shape.units.default(null),
+  direction: z.enum(RECORDS_TYPES).default(NAV_RECORDS_WIRE_DEFAULTS.direction),
+  flags: z.array(z.enum(RECORDS_FLAGS)).default(() => []),
+});
+const NavRecordsWireEntrySchema = NavLocateEntrySchema.extend({
+  title: z.string().nullable().default(null),
+  detail: z.string().nullable().default(null),
+  recordHref: z.string().startsWith('/').nullable().default(null),
+  facts: NavRecordsWireFactsSchema.nullable().optional(),
+});
+
+/**
+ * `GET /api/nav/records` — the Records sheet (`/records`, `src/lib/nav/records`):
+ * one entry per LINE (outbound `orders` row, inbound `receiving_line`),
+ * key `out:<orders.id>` / `in:<receiving_line.id>`, ref = the order number,
+ * buckets = [its internal status], server-sorted. A pasted list adds one
+ * entry per ref that matched nothing (key `miss:<canonical key>`, buckets
+ * `[]`, facts null, detail `Not found`). Entries travel compact
+ * ({@link NavRecordsWireEntrySchema}); `NavRecordsResponse` is the parsed,
+ * complete shape, `NavRecordsWire` what the route sends.
+ */
+export const NavRecordsResponseSchema = z
+  .object({
+    entries: z.array(NavRecordsWireEntrySchema),
+    /** Lines every filter keeps, before `RECORDS_ROW_LIMIT` (misses not counted). */
+    total: z.number().int().nonnegative(),
+    /** `total` exceeded `RECORDS_ROW_LIMIT`: `entries` holds the first that many. */
+    truncated: z.boolean(),
+    facets: NavRecordsFacetsSchema,
+  })
+  .strict();
+export type NavRecordsResponse = z.output<typeof NavRecordsResponseSchema>;
+export type NavRecordsWire = z.input<typeof NavRecordsResponseSchema>;
