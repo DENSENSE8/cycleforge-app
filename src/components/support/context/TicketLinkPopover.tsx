@@ -1,24 +1,43 @@
 'use client';
 
 /**
- * TicketLinkPopover — search + pick an existing Zendesk ticket and link it to
- * a resolved anchor (receiving / tracking / shipment / order / repair). Shared by the
- * Support Context Hub LinkageStrip across Support / Unbox / packing surfaces.
- * {@link TicketLinkPicker} is its body, for hosts that render the picker inline.
+ * TicketLinkPopover — read an existing Zendesk ticket, then link it to a
+ * resolved anchor (receiving / tracking / shipment / order / serial unit).
+ * Full-screen two panes (handoff 2026-10-06, Print documents layout): left the
+ * search and candidates, right the selected ticket and its whole thread, with
+ * the one Link control in the right pane's footer. Shared by the station
+ * composer, the Support Context customer card and the pickup record.
+ * {@link TicketLinkPicker} is the compact inline body (repair record).
  */
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Link2, Search, X } from '@/components/Icons';
-import { Panel, Button } from '@/design-system/primitives';
+import { Button, IconButton, Spinner } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/design-system/components/Dialog';
+import { FindField } from '@/design-system/components/FindField';
+import { TicketStatusPill } from '@/design-system/components/TicketStatusPill';
+import { TicketChip } from '@/components/ui/CopyChip';
 import { TicketPickRow } from '@/components/ui/TicketPickRow';
+import { MergedRecordStream } from '@/components/support/zendesk/chat/MergedRecordStream';
+import { requesterFrom, requesterLabel } from '@/components/support/zendesk/chat/support-chat-utils';
+import { isNotConfigured, useZendeskTicket } from '@/hooks/useZendeskQueries';
+import { supportTicketIdFace } from '@/lib/support/ticket-refs';
+import { formatDateTimePST } from '@/utils/date';
 import { toast } from '@/lib/toast';
 import { invalidateSupportContextCaches } from '@/hooks';
 import type { SupportContextLinkable } from '@/lib/support/context-types';
 import {
   parseTicketIdQuery,
   resolveTicketIdForLink,
+  type TicketIdentityMatch,
   type TicketLinkCandidate,
 } from '@/lib/support/ticket-link-query';
+import { cn } from '@/utils/_cn';
 
 export type { TicketLinkCandidate };
 export { parseTicketIdQuery, resolveTicketIdForLink };
@@ -107,78 +126,14 @@ function anchorToBody(linkable: SupportContextLinkable) {
   return { type: 'order' as const, orderId: linkable.anchorId };
 }
 
-export function TicketLinkPopover({
-  linkable,
-  open,
-  onClose,
-  onLinked,
-  initialQuery = '',
-  title = 'Link ticket',
-}: {
-  linkable: SupportContextLinkable;
-  open: boolean;
-  onClose: () => void;
-  onLinked?: (ticketNumber: string) => void;
-  /** Seed the search box (and the first candidates fetch) with a known identifier — the Unbox unfound lane passes the carton's tracking… */
-  initialQuery?: string;
-  /** Eyebrow label — the shared strip surfaces a scoped variant. */
-  title?: string;
-}) {
-  // Unmounting the picker on close resets its search + pick for the next open.
-  if (!open) return null;
-
-  return (
-    <Panel radius="xl" padding="sm" elevation="md">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-role-eyebrow text-text-soft">{title}</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="ds-raw-button rounded-md p-1 text-text-faint hover:bg-surface-hover hover:text-text-muted"
-          aria-label="Close"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-      <TicketLinkPicker
-        linkable={linkable}
-        initialQuery={initialQuery}
-        onLinked={(ticketNumber) => {
-          onLinked?.(ticketNumber);
-          onClose();
-        }}
-      />
-    </Panel>
-  );
-}
-
-/** Search box + candidate list + Link button — the popover's body, mountable inline. */
-export function TicketLinkPicker({
-  linkable,
-  onLinked,
-  initialQuery = '',
-}: {
-  linkable: SupportContextLinkable;
-  onLinked?: (ticketNumber: string) => void;
-  /** Seed the search box (and the first candidates fetch) with a known identifier. */
-  initialQuery?: string;
-}) {
-  const qc = useQueryClient();
-  const [query, setQuery] = useState(initialQuery);
-  const [debounced, setDebounced] = useState(initialQuery.trim());
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(query.trim()), 300);
-    return () => clearTimeout(t);
-  }, [query]);
-
-  const candidates = useQuery({
-    queryKey: ['ticket-link-candidates', linkable, debounced],
-    enabled: linkable.canLinkTicket,
+/** Candidates for the link search — the same GET for the full-screen surface and the inline picker. */
+function useTicketLinkCandidates(linkable: SupportContextLinkable, query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['ticket-link-candidates', linkable, query],
+    enabled: enabled && linkable.canLinkTicket,
     staleTime: 10_000,
     queryFn: async () => {
-      const res = await fetch(candidatesUrl(linkable, debounced));
+      const res = await fetch(candidatesUrl(linkable, query));
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) {
         throw new Error(data?.error || `link candidates ${res.status}`);
@@ -189,8 +144,15 @@ export function TicketLinkPicker({
       };
     },
   });
+}
 
-  const link = useMutation({
+/** The link write — receiving or the support waist, per {@link linkRequest}. */
+function useTicketLinkMutation(
+  linkable: SupportContextLinkable,
+  onLinked: ((ticketNumber: string) => void) | undefined,
+) {
+  const qc = useQueryClient();
+  return useMutation({
     mutationFn: async (ticketId: number) => {
       const { url, body } = linkRequest(linkable, ticketId);
       const res = await fetch(url, {
@@ -207,12 +169,361 @@ export function TicketLinkPicker({
     onSuccess: (data) => {
       invalidateSupportContextCaches(qc);
       toast.success(`Linked ${data.ticketNumber}`);
-      setSelectedId(null);
       onLinked?.(data.ticketNumber);
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Could not link ticket');
     },
+  });
+}
+
+export function TicketLinkPopover({
+  linkable,
+  open,
+  onClose,
+  onLinked,
+  initialQuery = '',
+  title,
+  match = null,
+  matchLoading = false,
+}: {
+  linkable: SupportContextLinkable;
+  open: boolean;
+  onClose: () => void;
+  onLinked?: (ticketNumber: string) => void;
+  /** Seed the search box only when the operator already typed an identifier. An identity miss stays empty. */
+  initialQuery?: string;
+  /** Heading when nothing matched. A selected identity match replaces this with the pair face. */
+  title?: string;
+  /** Ticket already on this tracking number or order number — opens selected. */
+  match?: TicketIdentityMatch | null;
+  /** Identity lookup still in flight — hold the list so the match can land selected. */
+  matchLoading?: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent
+        hideClose
+        className="flex h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-none flex-col gap-0 overflow-hidden rounded-3xl border-0 p-0"
+        data-testid="ticket-link-dialog"
+      >
+        {open ? (
+          <TicketLinkSurface
+            linkable={linkable}
+            initialQuery={initialQuery}
+            title={title}
+            match={match}
+            matchLoading={matchLoading}
+            onClose={onClose}
+            onLinked={(ticketNumber) => {
+              onLinked?.(ticketNumber);
+              onClose();
+            }}
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const SEARCH_HINTS = ['Search or paste #ticket…'] as const;
+
+/** Header · left control plane (search + candidates) · right ticket preview with the Link footer. */
+function TicketLinkSurface({
+  linkable,
+  initialQuery,
+  title,
+  match,
+  matchLoading,
+  onClose,
+  onLinked,
+}: {
+  linkable: SupportContextLinkable;
+  initialQuery: string;
+  title?: string;
+  match: TicketIdentityMatch | null;
+  matchLoading: boolean;
+  onClose: () => void;
+  onLinked: (ticketNumber: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState(match ? '' : initialQuery);
+  const [selectedId, setSelectedId] = useState<number | null>(match?.id ?? null);
+
+  // The identity lookup can settle after the surface opens: land on it once,
+  // unless the operator already picked something.
+  const matchId = match?.id ?? null;
+  useEffect(() => {
+    if (matchId != null) setSelectedId((current) => current ?? matchId);
+  }, [matchId]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const trimmed = query.trim();
+  const candidates = useTicketLinkCandidates(linkable, trimmed, !matchLoading);
+  const preview = useZendeskTicket(selectedId);
+  const link = useTicketLinkMutation(linkable, onLinked);
+
+  const rows = candidates.data?.tickets ?? [];
+  const hiddenLinked = candidates.data?.hiddenLinked ?? 0;
+  // The match leads the list even when the recent page does not carry it.
+  const listed =
+    match && !trimmed && !rows.some((t) => t.id === match.id)
+      ? [{ id: match.id, subject: match.subject, status: match.status ?? '', linkedToThis: false }, ...rows]
+      : rows;
+
+  const paired = match != null && selectedId === match.id;
+  const heading = paired ? 'Pair to existing ticket' : (title ?? 'Link to an existing ticket?');
+  // A host-seeded query is a search term, never an id the operator typed.
+  const seed = initialQuery.trim();
+  const parsedId = seed && trimmed === seed ? null : parseTicketIdQuery(query);
+  const canLink = selectedId != null && preview.isSuccess && !link.isPending;
+
+  const onSearchKey = (event: KeyboardEvent<HTMLInputElement>, draft: string) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    // A typed #id opens that ticket to read; a loaded selection links.
+    const typed = seed && draft.trim() === seed ? null : parseTicketIdQuery(draft);
+    if (typed != null && typed !== selectedId) {
+      setSelectedId(resolveTicketIdForLink(draft, rows));
+      return;
+    }
+    if (canLink && selectedId != null) link.mutate(selectedId);
+  };
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <header
+        className={cn(
+          'flex min-w-0 items-center gap-3 border-b border-border-soft px-5 py-2.5',
+          paired && 'bg-surface-success',
+        )}
+        data-testid="ticket-link-header"
+        data-paired={paired || undefined}
+      >
+        <DialogTitle className={cn(paired && 'text-orange-600')}>{heading}</DialogTitle>
+        <DialogDescription className={cn('min-w-0 truncate text-sm', paired && 'text-orange-600')}>
+          {matchLoading
+            ? 'Checking this tracking and order…'
+            : paired
+              ? `Already on this ${match?.via === 'order' ? 'order' : 'tracking'} — read it, then pair.`
+              : 'Pick a ticket, read it, then link.'}
+        </DialogDescription>
+        <IconButton
+          icon={<X />}
+          size="md"
+          radius="control"
+          ariaLabel="Close"
+          onClick={onClose}
+          className="ml-auto shrink-0"
+          data-testid="ticket-link-close"
+        />
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        <aside
+          className="flex w-96 shrink-0 flex-col border-r border-border-soft"
+          aria-label="Tickets"
+          data-testid="ticket-link-list"
+        >
+          <div className="shrink-0 px-3 py-2.5">
+            <FindField
+              value={query}
+              onChange={setQuery}
+              label="Find a ticket"
+              hints={SEARCH_HINTS}
+              inputRef={inputRef}
+              debounceMs={300}
+              size="bar"
+              onKeyDown={onSearchKey}
+              testId="ticket-link-search"
+            />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {matchLoading ? (
+              <p className="flex items-center gap-2 px-4 py-4 text-role-caption text-text-soft">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Checking tracking and order…
+              </p>
+            ) : candidates.isError ? (
+              <p className="px-4 py-4 text-role-caption text-text-danger">{candidates.error.message}</p>
+            ) : candidates.isLoading ? (
+              <p className="flex items-center gap-2 px-4 py-4 text-role-caption text-text-soft">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Loading tickets…
+              </p>
+            ) : listed.length === 0 ? (
+              <p className="px-4 py-4 text-role-caption text-text-faint">
+                {trimmed
+                  ? parsedId != null
+                    ? `Press Enter to open #${parsedId}`
+                    : 'No tickets found — try pasting #ticket id'
+                  : hiddenLinked > 0
+                    ? `${hiddenLinked} recent ticket(s) already linked elsewhere — search by #`
+                    : 'Recent tickets appear here — or paste #ticket id'}
+              </p>
+            ) : (
+              <ul>
+                {listed.map((t) => {
+                  const selected = selectedId === t.id;
+                  return (
+                    <li key={t.id}>
+                      {/* ds-raw-button: full-width master-detail row around a composite TicketPickRow; Button's fixed control heights do not fit a two-line identity. */}
+                      <button
+                        type="button"
+                        disabled={t.linkedToThis}
+                        aria-current={selected || undefined}
+                        onClick={() => setSelectedId(t.id)}
+                        className={cn(
+                          'ds-raw-button w-full border-b border-border-hairline px-4 py-2.5 text-left',
+                          selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
+                          t.linkedToThis && 'opacity-50',
+                        )}
+                        data-testid="ticket-link-row"
+                        data-ticket-id={t.id}
+                      >
+                        <TicketPickRow
+                          ticketId={t.id}
+                          subject={t.subject}
+                          emptySubject="Untitled"
+                          trailing={
+                            <span className="shrink-0 text-role-eyebrow text-text-faint">
+                              {t.linkedToThis ? 'linked' : t.status}
+                            </span>
+                          }
+                        />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {/* A search whose only match is anchored to ANOTHER item would otherwise read as "no tickets found". */}
+            {hiddenLinked > 0 && listed.length > 0 ? (
+              <p className="px-4 py-2.5 text-role-micro text-text-faint">
+                {hiddenLinked} more match{hiddenLinked === 1 ? '' : 'es'} already linked to another item
+              </p>
+            ) : null}
+          </div>
+        </aside>
+
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label="Selected ticket">
+          <div data-conversation-port className="min-h-0 flex-1 overflow-y-auto" data-testid="ticket-link-preview">
+            {selectedId == null ? (
+              <p className="flex h-full items-center justify-center text-role-body text-text-faint">
+                Select a ticket to read it.
+              </p>
+            ) : (
+              <TicketLinkPreview ticketId={selectedId} preview={preview} />
+            )}
+          </div>
+          <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-border-soft px-5 py-2.5">
+            <Button
+              variant="primary"
+              icon={<Link2 />}
+              loading={link.isPending}
+              disabled={!canLink}
+              onClick={() => {
+                if (canLink && selectedId != null) link.mutate(selectedId);
+              }}
+              data-testid="ticket-link-submit"
+            >
+              {paired ? 'Pair' : 'Link ticket'}
+            </Button>
+          </footer>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/** The selected ticket, read in full: subject, keys, then the whole thread oldest first. */
+function TicketLinkPreview({
+  ticketId,
+  preview,
+}: {
+  ticketId: number;
+  preview: ReturnType<typeof useZendeskTicket>;
+}) {
+  if (preview.isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+  if (preview.isError || !preview.data) {
+    return (
+      <p className="flex h-full items-center justify-center px-6 text-center text-role-body text-text-muted">
+        {isNotConfigured(preview.error)
+          ? 'The helpdesk isn’t connected — this ticket can’t be read here.'
+          : `Couldn’t load #${ticketId}${preview.error ? ` — ${preview.error.message}` : ''}`}
+      </p>
+    );
+  }
+
+  const ticket = preview.data;
+  const face = supportTicketIdFace(String(ticket.id ?? ticketId));
+  const requester = requesterFrom(ticket);
+  return (
+    <>
+      <div className="flex flex-col gap-2 border-b border-border-soft px-5 py-4">
+        <h2 className="text-role-title font-semibold text-text-default">
+          {ticket.subject?.trim() || 'Untitled ticket'}
+        </h2>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-role-caption text-text-muted">
+          <TicketChip value={face.value} display={face.display} dense />
+          {ticket.status ? <TicketStatusPill status={ticket.status} /> : null}
+          {ticket.priority ? <span>Priority {ticket.priority}</span> : null}
+          <span>Created {formatDateTimePST(ticket.created_at)}</span>
+          <span>Updated {formatDateTimePST(ticket.updated_at)}</span>
+        </div>
+      </div>
+      <MergedRecordStream
+        ticketId={ticketId}
+        requesterId={ticket.requester_id}
+        requesterName={requesterLabel(ticket)}
+        requesterEmail={requester.email}
+        followEnd={false}
+      />
+    </>
+  );
+}
+
+/** Search box + candidate list + Link button — the compact inline body (repair record). */
+export function TicketLinkPicker({
+  linkable,
+  onLinked,
+  initialQuery = '',
+  match = null,
+  matchLoading = false,
+  active = true,
+}: {
+  linkable: SupportContextLinkable;
+  onLinked?: (ticketNumber: string) => void;
+  /** Seed the search box (and the first candidates fetch) with a known identifier. */
+  initialQuery?: string;
+  /** Prefetched tracking/order hit. Replaces the search with one pair action. */
+  match?: TicketIdentityMatch | null;
+  matchLoading?: boolean;
+  /** False while the host is closed — don't fetch a candidate list in the background. */
+  active?: boolean;
+}) {
+  const [query, setQuery] = useState(initialQuery);
+  const [debounced, setDebounced] = useState(initialQuery.trim());
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const candidates = useTicketLinkCandidates(linkable, debounced, active && !match && !matchLoading);
+  const link = useTicketLinkMutation(linkable, (ticketNumber) => {
+    setSelectedId(null);
+    onLinked?.(ticketNumber);
   });
 
   const rows = candidates.data?.tickets ?? [];
@@ -243,6 +554,37 @@ export function TicketLinkPicker({
     e.preventDefault();
     submitLink();
   };
+
+  if (matchLoading) {
+    return (
+      <p className="flex items-center gap-2 text-role-caption text-text-soft">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Checking tracking and order…
+      </p>
+    );
+  }
+
+  if (match) {
+    const subject = match.subject?.trim();
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-role-caption font-semibold text-orange-600">
+          #{match.id}
+          {subject ? ` · ${subject}` : ''}
+        </p>
+        <Button
+          size="sm"
+          variant="primary"
+          icon={<Link2 />}
+          loading={link.isPending}
+          onClick={() => link.mutate(match.id)}
+          className="w-full"
+        >
+          Pair
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>

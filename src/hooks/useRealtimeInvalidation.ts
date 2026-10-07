@@ -179,9 +179,14 @@ export function useRealtimeInvalidation({
   useAblyChannel(
     stationChannel,
     'receiving-log.changed',
-    () => {
-      // The Ably echo of a LOCAL scan/receive arrives just after this client already ran invalidateReceivingFeeds optimistically.
-      const localCovered = receivingFeedsRecentlyInvalidatedLocally();
+    (message: unknown) => {
+      // The Ably echo of a LOCAL scan/receive arrives just after this client
+      // already ran invalidateReceivingFeeds — or re-scanned a carton the rail
+      // already shows (nothing changed on it) — so the feed refetch is redundant.
+      const rowId = Number(readEventData(message).rowId);
+      const localCovered = receivingFeedsRecentlyInvalidatedLocally(
+        Number.isFinite(rowId) && rowId > 0 ? rowId : null,
+      );
       if (!localCovered) queryClient.invalidateQueries({ queryKey: ['receiving'] });
       queryClient.invalidateQueries({ queryKey: ['receiving-pending-unboxing'] });
       if (!localCovered) queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });

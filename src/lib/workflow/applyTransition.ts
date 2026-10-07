@@ -1,5 +1,6 @@
 /** applyTransition — the unified mutate-and-tap chokepoint (engine Phase 1.1). */
 
+import type { PoolClient } from 'pg';
 import { transition } from '@/lib/inventory/state-machine';
 import type { SerialState } from '@/lib/inventory/state-machine';
 import {
@@ -48,6 +49,14 @@ interface ApplyTransitionArgs {
   source?: WorkflowTapArgs['source'];
   /** Suppress the engine tap (still does the guarded status write + atomic inventory_event + idempotent-identity handling). */
   skipTap?: boolean;
+  /**
+   * Caller-owned transaction client (executor pattern): the guarded write and
+   * the idempotent re-entry event run on it, so they commit or roll back with
+   * the caller's other writes. Omitted, transition() opens its own tenant
+   * transaction. A caller passing `db` should also pass `skipTap` and tap after
+   * its commit — the engine reads the unit on another connection.
+   */
+  db?: Pick<PoolClient, 'query'>;
 }
 
 type ApplyTransitionResult =
@@ -65,13 +74,17 @@ type ApplyTransitionResult =
 /** Injectable collaborators (real impls by default; fakes in tests). */
 export interface ApplyTransitionDeps {
   transition: typeof transition;
-  recordEvent: (input: RecordInventoryEventInput, orgId: OrgId) => Promise<{ id: number }>;
+  recordEvent: (
+    input: RecordInventoryEventInput,
+    db: Pick<PoolClient, 'query'> | undefined,
+    orgId: OrgId,
+  ) => Promise<{ id: number }>;
   tap: (args: WorkflowTapArgs) => Promise<void>;
 }
 
 const defaultDeps: ApplyTransitionDeps = {
   transition,
-  recordEvent: (input, orgId) => recordInventoryEvent(input, undefined, orgId),
+  recordEvent: recordInventoryEvent,
   tap: tapWorkflow,
 };
 
@@ -82,7 +95,8 @@ export async function applyTransition(
   const orgId = args.orgId;
 
   // 1. Guarded status write + atomic inventory_event. transition() owns the
-  //    FOR UPDATE lock, the guard, and (when orgId is set) its own GUC-wrapped tx.
+  //    FOR UPDATE lock and the guard; it runs on the caller's client when one is
+  //    passed, else in its own GUC-wrapped tx.
   const result = await deps.transition(
     {
       unitId: args.unitId,
@@ -99,7 +113,7 @@ export async function applyTransition(
       binId: args.binId,
       expectedFrom: args.expectedFrom,
     },
-    undefined,
+    args.db,
     orgId,
   );
 
@@ -127,6 +141,7 @@ export async function applyTransition(
         notes: args.notes ?? null,
         payload: args.payload ?? {},
       },
+      args.db,
       orgId,
     );
     await tapAfter(args, deps);

@@ -5,13 +5,12 @@ import assert from 'node:assert/strict';
 import {
   planLineUnits,
   ensureLineUnits,
-  fetchLineUnits,
   type EnsureLineUnitsDeps,
   type EnsureLineUnitsLine,
   type ExistingLineUnit,
   type LineUnitPlan,
-  type FetchLineUnitsDeps,
 } from './ensure-line-units';
+import { fetchLineUnits, type FetchLineUnitsDeps } from './line-units-read';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 const ORG = '00000000-0000-4000-8000-000000000001' as OrgId;

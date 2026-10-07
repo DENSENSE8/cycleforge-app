@@ -15,6 +15,7 @@ import { PRINT_STATION_CONDITION_OPTIONS, PRINT_STATION_CONDITION_PARAM } from '
 import type { NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
 import { ORDER_DATE_LABEL } from '@/lib/orders/order-dates';
 import { inboundOrderFormHref } from '@/lib/inbound/inbound-order-compose';
+import { LOCATION_STOCK_SORT_OPTIONS } from '@/lib/inventory/location-stock-row';
 import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
 import {
   RECORDS_AXES,
@@ -32,6 +33,7 @@ import {
   RECORDS_EVENT_TO_PARAM,
   RECORDS_FIND_PARAM,
   RECORDS_FROM_PARAM,
+  RECORDS_REFS_PARAM,
   RECORDS_GRAINS,
   RECORDS_GRAIN_LABEL,
   RECORDS_GRAIN_PARAM,
@@ -432,9 +434,10 @@ const PURCHASES_CONTROLS: NavControls = {
     defaultValue: PURCHASES_DEFAULT_SORT,
     options: [
       { value: 'ordered', label: 'Ordered, newest first' },
+      { value: 'imported', label: 'Imported, newest first', dir: 'desc' },
       { value: 'delivered', label: 'Delivered, newest first', dir: 'desc' },
       { value: 'unboxed', label: 'Unboxed, newest first', dir: 'desc' },
-      { value: 'waiting', label: 'Oldest delivered, not unboxed', dir: 'asc' },
+      { value: 'waiting', label: 'Delivered longest, not received', dir: 'asc' },
       { value: 'po', label: 'Purchase order, A to Z', dir: 'asc' },
       { value: 'vendor', label: 'Vendor, A to Z', dir: 'asc' },
       { value: 'product', label: 'Product, A to Z', dir: 'asc' },
@@ -764,6 +767,13 @@ const MEDIA_UNBOXING_CONTROLS: NavControls = {
   ],
 };
 
+/** Stock ledger order — location walk, on-hand total, or oldest cycle count. */
+const STOCK_LIST_SORT = {
+  param: 'sort',
+  defaultValue: 'location-asc',
+  options: LOCATION_STOCK_SORT_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+};
+
 /** FNSKU labels: one Amazon condition, `none` for a blank condition, or unset for every row. Stations has no catalog to cut. */
 const FNSKU_CONDITION_CONTROLS: NavControls = {
   choices: [
@@ -965,42 +975,15 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     items: {
       all: {
         search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
-        controls: {
-          sort: {
-            param: 'sort',
-            defaultValue: 'location-asc',
-            options: [
-              { value: 'location-asc', label: 'Earliest location first' },
-              { value: 'location-desc', label: 'Latest location first' },
-            ],
-          },
-        },
+        controls: { sort: STOCK_LIST_SORT },
       },
       'low-stock': {
         search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
-        controls: {
-          sort: {
-            param: 'sort',
-            defaultValue: 'location-asc',
-            options: [
-              { value: 'location-asc', label: 'Earliest location first' },
-              { value: 'location-desc', label: 'Latest location first' },
-            ],
-          },
-        },
+        controls: { sort: STOCK_LIST_SORT },
       },
       'out-of-stock': {
         search: { placeholder: 'Title, SKU, location, room or qty…', source: 'url-param', param: 'q' },
-        controls: {
-          sort: {
-            param: 'sort',
-            defaultValue: 'location-asc',
-            options: [
-              { value: 'location-asc', label: 'Earliest location first' },
-              { value: 'location-desc', label: 'Latest location first' },
-            ],
-          },
-        },
+        controls: { sort: STOCK_LIST_SORT },
       },
       replenish: {
         search: { placeholder: 'Filter SKU…', source: 'url-param', param: 'rsku' },
@@ -1009,9 +992,6 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
             { id: 'rstatus', label: 'Status', param: 'rstatus', options: [...REPLENISH_STATUS_OPTIONS], clearParams: [] },
           ],
         },
-      },
-      fifo: {
-        search: { placeholder: 'Filter SKU…', source: 'url-param', param: 'rsku' },
       },
     },
   },
@@ -1380,6 +1360,8 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
           toParam: RECORDS_TO_PARAM,
           clearParams: [],
           placeholder: RECORDS_DEFAULT_WINDOW_LABEL,
+          // A pasted list has no window (`recordsWindow`): the row says so instead of a window it is not using.
+          unsetWith: { param: RECORDS_REFS_PARAM, placeholder: 'Any day' },
         },
         {
           id: 'event-day',

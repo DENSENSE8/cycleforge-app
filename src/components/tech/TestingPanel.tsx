@@ -118,7 +118,7 @@ export function TestingPanel({
   }, [selectTask]);
 
   const c = useTestingLineController(row, staffId, { onOpenClaim });
-  const { primaryDisabled, primaryLabel, primaryTitle } = useTestingPrimaryAction(c, row);
+  const { primaryTitle } = useTestingPrimaryAction(c, row);
   const claimTicketId = c.providerTicketId ?? null;
   const sellerClaimed = useSellerClaimedCondition(row, c.activeSerial);
 
@@ -246,13 +246,10 @@ export function TestingPanel({
   const buildTerminal = useCallback(
     (kind: string) =>
       resolveTestingTerminal(kind, {
-        primaryLabel,
         primaryTitle,
-        primaryDisabled,
-        isPrinting: c.isPrinting,
         onPrimary: () => void c.handlePrimary(),
       }),
-    [primaryLabel, primaryTitle, primaryDisabled, c],
+    [primaryTitle, c],
   );
 
   const terminalVm = useStationTerminalAction({

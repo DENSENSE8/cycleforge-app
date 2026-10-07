@@ -3,6 +3,7 @@
 /** Selected-carton Unbox workspace with inline tasks and an optional fallback Displays column. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -13,9 +14,7 @@ import { Button } from '@/design-system/primitives';
 import { WorkspaceCard, type SectionTab } from '@/design-system/components';
 import { History, PackageOpen } from '@/components/Icons';
 import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
-import { ReceivingAuditPanel } from './ReceivingAuditPanel';
 import type { ReceiveResult } from './line-edit/hooks/useReceiveAction';
-import { StationPhotosTask } from '@/components/station/StationPhotosTask';
 import { TrackingNumbersEditor } from './line-edit/TrackingNumbersEditor';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
@@ -30,14 +29,19 @@ import {
   invalidateReceivingFeeds,
   patchReceivingRailTicketByCarton,
 } from '@/lib/queries/receiving-queries';
-import { StationContextBar } from '@/components/station/entity-context';
+import { StationContextBar, StationNextActionHeadline } from '@/components/station/entity-context';
+import { UnboxLabelPreview } from './line-edit/UnboxLabelPreview';
+import { UnboxPutawayLinkControl } from './line-edit/UnboxPutawayLinkControl';
+import { UnboxReceivedByBubble } from './line-edit/UnboxReceivedByBubble';
+import { putawayKindForType, unboxNextAction } from '@/lib/station/next-action/receiving';
+import { usePutawayTargets } from '@/hooks/usePutawayTargets';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
   StationPanelRoot,
   StationScanPaneHost,
+  StationWorkspaceSkeleton,
   STATION_WORKBENCH_COLUMN,
-  WorkspaceTimelineTab,
 } from '@/components/station/workbench';
 import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
 
@@ -58,12 +62,36 @@ import {
   useBandCollapse,
   useLineCollapse,
 } from '@/components/station/collapse';
-import { StationTicketPane } from '@/components/composer';
 import { UnboxReturnCallout } from '@/components/receiving/unbox/UnboxReturnCallout';
-import { AsListedBlock } from './line-edit/AsListedBlock';
-import { StationDisplaysPushStack } from '@/components/station/displays/StationDisplaysPushStack';
 import { useStationTaskController } from '@/components/station/useStationTaskController';
 import { STATION_DISPLAY_INDEX } from '@/components/station/displays/display-index';
+
+// Task panes paint the station skeleton while their chunk loads, never blank.
+const paneLoading = () => <StationWorkspaceSkeleton header="none" bodyColumnClassName="" />;
+const ReceivingAuditPanel = dynamic(
+  () => import('./ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel),
+  { ssr: false, loading: paneLoading },
+);
+const StationPhotosTask = dynamic(
+  () => import('@/components/station/StationPhotosTask').then((m) => m.StationPhotosTask),
+  { ssr: false, loading: paneLoading },
+);
+const WorkspaceTimelineTab = dynamic(
+  () => import('@/components/station/workbench/WorkspaceTimelineTab').then((m) => m.WorkspaceTimelineTab),
+  { ssr: false, loading: paneLoading },
+);
+const StationTicketPane = dynamic(
+  () => import('@/components/composer/StationTicketPane').then((m) => m.StationTicketPane),
+  { ssr: false, loading: paneLoading },
+);
+const AsListedBlock = dynamic(
+  () => import('./line-edit/AsListedBlock').then((m) => m.AsListedBlock),
+  { ssr: false },
+);
+const StationDisplaysPushStack = dynamic(
+  () => import('@/components/station/displays/StationDisplaysPushStack').then((m) => m.StationDisplaysPushStack),
+  { ssr: false },
+);
 
 
 const UNBOX_MIDDLE_NAV_LABELS = [
@@ -96,7 +124,7 @@ export function LineEditPanel({
   // global switcher, composer mode, and display rail as one state machine.
   const qc = useQueryClient();
   const bandCollapse = useAutoCollapse();
-  const bands = useBandCollapse(bandCollapse, { label: false });
+  const bands = useBandCollapse(bandCollapse);
   const lineCollapse = useLineCollapse(row.id ?? null);
   const {
     activeTask,
@@ -117,11 +145,6 @@ export function LineEditPanel({
   const trackingTriggerRef = useRef<HTMLElement | null>(null);
   const ticketLinkedRef = useRef(false);
   const previousScanDrivenRef = useRef(false);
-
-  useEffect(() => {
-    bands.close('label');
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when the active line changes
-  }, [row.id]);
 
   const onOpenClaim = useCallback(
     (_mode: 'create' | 'link') => {
@@ -158,14 +181,18 @@ export function LineEditPanel({
 
   // Browse navigation defaults to work. A scan-opened carton with a linked
   // ticket selects Ticket so the scan result has one immediate destination.
+  const cartonGateRef = useRef({ hasTicketId, scanDriven, selectTask });
+  cartonGateRef.current = { hasTicketId, scanDriven, selectTask };
+  // Carton key: a sibling line (or the stub → hydrated swap) keeps the tab.
+  const cartonKey = row.receiving_id ?? row.id;
   useEffect(() => {
+    const gate = cartonGateRef.current;
     setTrackingEditorOpen(false);
     trackingTriggerRef.current = null;
-    ticketLinkedRef.current = hasTicketId;
-    previousScanDrivenRef.current = scanDriven;
-    selectTask(scanDriven && hasTicketId ? 'ticket' : 'work');
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- carton gate
-  }, [row.receiving_id ?? row.id]);
+    ticketLinkedRef.current = gate.hasTicketId;
+    previousScanDrivenRef.current = gate.scanDriven;
+    gate.selectTask(gate.scanDriven && gate.hasTicketId ? 'ticket' : 'work');
+  }, [cartonKey]);
 
   // Ticket pairing can settle after a scan-opened carton renders. Promote that
   // new result once, without auto-opening tickets during browse navigation.
@@ -242,6 +269,9 @@ export function LineEditPanel({
   const ticketDraftModel = useWorkspaceTicketDraft({
     row,
     ticketId: c.providerTicketId,
+    // Template fetch waits for a claim surface: the Ticket tab, or a body
+    // typed into the bottom composer (which files with the same subject).
+    previewClaim: claimViewActive || ticketDraftFilled,
     onTicketCreated: onClaimTicketCreated,
   });
 
@@ -440,7 +470,7 @@ export function LineEditPanel({
     ],
   );
   const fallbackDisplayTabs = useMemo<SectionTab[]>(() => {
-    if (row.receiving_id == null) return [];
+    if (!displaysOpen || row.receiving_id == null) return [];
     return [
       {
         id: 'timeline',
@@ -464,16 +494,31 @@ export function LineEditPanel({
       },
     ];
   }, [
+    displaysOpen,
     closeDisplays,
     row.receiving_id,
     row.tracking_number,
     row.zoho_purchaseorder_id,
   ]);
 
-
+  // The Type pill drives the step; the org's linked rack for that Type rides it (no request on a pill change).
+  const putawayTargets = usePutawayTargets().data ?? null;
+  const putawayKind = putawayKindForType(c.receivingType);
   const stationContextBar = (
     <StationContextBar
       placement="flow"
+      bubbles={{
+        nextStep: (
+          <StationNextActionHeadline
+            action={unboxNextAction(c.receivingType, putawayTargets)}
+            hoverAction={
+              <UnboxPutawayLinkControl kind={putawayKind} linked={putawayTargets?.[putawayKind] ?? null} />
+            }
+          />
+        ),
+        summary: <UnboxReceivedByBubble row={row} />,
+        label: <UnboxLabelPreview row={row} c={c} chrome="peek" />,
+      }}
       identity={
         <LineCartonContextSection
           row={row}
@@ -525,7 +570,7 @@ export function LineEditPanel({
               reserveScrollClearance="pager"
               reserveIdentityClearance={false}
               bodyFill={ticketMode || photosMode}
-
+              bodyGap="none"
               dock={
                 <div
                   className={`${slicedActionDockWrapperClass({ docked: false })} !px-0 sm:!px-0`}
@@ -566,7 +611,6 @@ export function LineEditPanel({
                     {terminalVm ? (
                       <WorkspaceNotesCard
                         ticketDraftModel={ticketDraftModel}
-                        onNoteTyped={() => bands.open('label')}
                         row={row}
                         c={c}
                         chrome="raised"
@@ -584,6 +628,7 @@ export function LineEditPanel({
                         primaryActionDisabled={Boolean(terminalVm.disabled)}
                         onOpenStatusHistory={() => openDisplay('timeline')}
                         onTicketDraftFilledChange={setTicketDraftFilled}
+                        onTicketLinked={onClaimTicketCreated}
                         progressPercent={procedurePercent}
                         headerAction={
                           recentVerdict && !liveReceiveFeedback

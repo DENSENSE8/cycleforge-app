@@ -27,7 +27,7 @@ import {
   addVerifiedEmail,
 } from '@/lib/identity/accounts';
 import { seedOrgCatalog } from '@/lib/neon/catalog-queries';
-import { generateInternalGtin } from '@/lib/inventory/internal-gtin';
+import { generateInternalGtin } from '@/lib/inventory/internal-gtin-format';
 import { seedDefaultWorkflowForOrg } from '@/lib/studio/seed-org-workflow';
 import { upsertOrderTracking } from '@/lib/neon/orders-tracking-queries';
 import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize';

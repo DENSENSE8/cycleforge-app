@@ -36,7 +36,6 @@ export function TestingPanelModals({
         unitLabel={c.pendingFail?.label ?? 'this unit'}
         onConfirm={c.confirmPendingFail}
         onClose={c.cancelPendingFail}
-        busy={c.isMutating}
       />
     </>
   );

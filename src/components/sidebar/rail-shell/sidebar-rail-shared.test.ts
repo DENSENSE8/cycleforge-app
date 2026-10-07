@@ -121,22 +121,19 @@ describe('unboxRecent feed', () => {
   });
 });
 
-describe('triage feeds door-scan axis', () => {
-  it('labels triageCombined / scanned by door-scan, not created_at', () => {
-    for (const id of ['triageCombined', 'scanned', 'triageUnfound', 'unboxQueue'] as const) {
-      const feed = RECEIVING_RAIL_FEEDS[id];
-      assert.equal(
-        feed.getActivityAt?.({
-          id: 1,
-          scanned_at: '2026-07-20T18:00:00Z',
-          created_at: '2026-01-01T00:00:00Z',
-          last_activity_at: '2026-07-19T00:00:00Z',
-          unbox_opened_at: '2026-07-21T00:00:00Z',
-        } as never),
-        '2026-07-20T18:00:00Z',
-        id,
-      );
-    }
+describe('triage feed door-scan axis', () => {
+  it('labels triageCombined by door-scan, not created_at', () => {
+    const feed = RECEIVING_RAIL_FEEDS.triageCombined;
+    assert.equal(
+      feed.getActivityAt?.({
+        id: 1,
+        scanned_at: '2026-07-20T18:00:00Z',
+        created_at: '2026-01-01T00:00:00Z',
+        last_activity_at: '2026-07-19T00:00:00Z',
+        unbox_opened_at: '2026-07-21T00:00:00Z',
+      } as never),
+      '2026-07-20T18:00:00Z',
+    );
   });
 
   it('does not fall through to bare created_at when intake stamps are missing', () => {

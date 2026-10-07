@@ -14,12 +14,12 @@ import type { SupportContextBundle } from '@/lib/support/context-types';
 import { primaryTicketLabel, secondaryProviderLabel } from '@/lib/support/ticket-refs';
 import { cn } from '@/utils/_cn';
 import { resolveLinkageProviderTicketId } from './linkage-provider-ticket-id';
-import { TicketLinkPopover, anchorToParams, invalidateSupportContextCaches } from './TicketLinkPopover';
+import { anchorToParams, invalidateSupportContextCaches } from './TicketLinkPopover';
 
 /**
  * Closed-loop linkage strip + link/unlink affordances for the Support Context Hub.
- * Primary Kinetic Ledger action: dashed empty-slot chips
- * (Link ticket / Link tracking / Link order).
+ * Dashed empty-slot chips for Link tracking / Link order.
+ * Link ticket lives on the station composer, above the draft.
  */
 export function LinkageStrip({
   bundle,
@@ -43,7 +43,6 @@ export function LinkageStrip({
   const qc = useQueryClient();
   const { has, isLoaded } = useAuth();
   const canZendesk = !isLoaded || has('integrations.zendesk');
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const { linkage, ticket, linkable } = bundle;
@@ -102,9 +101,7 @@ export function LinkageStrip({
 
   const helpText = canLinkTicket ? (
     <p className="text-role-caption text-text-faint">
-      {showTeachingEmpty
-        ? 'Link ticket #… to connect this carton or order.'
-        : 'No ticket linked yet — use Link ticket to paste #id or search.'}
+      No ticket linked yet.
     </p>
   ) : canLinkOrder ? (
     <p className="text-role-caption text-text-faint">
@@ -122,25 +119,6 @@ export function LinkageStrip({
 
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
-      {canLinkTicket && linkable ? (
-        <div className="relative">
-          <DashedLinkChip
-            label="Link ticket"
-            onClick={() => setPickerOpen((o) => !o)}
-            aria-expanded={pickerOpen}
-          />
-          {pickerOpen ? (
-            <div className="absolute left-0 z-panelPopover mt-2 w-[min(100%,22rem)]">
-              <TicketLinkPopover
-                linkable={linkable}
-                open={pickerOpen}
-                onClose={() => setPickerOpen(false)}
-              />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
       {ticket && linkable && canZendesk ? (
         <div className="flex items-center gap-2">
           {hideTicketEmbed ? null : (

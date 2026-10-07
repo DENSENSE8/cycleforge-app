@@ -90,7 +90,7 @@ const CHECK: Record<string, CheckZohoReceivedRow> = {
   // Zoho says received, nothing scanned: the carrier fact decides (in transit), never a Zoho label.
   'PO-3': checkRow('PO-3', { po_number: 'PO-3', status: 'received' }),
   'PO-4': checkRow('PO-4', { reason: 'ambiguous', local: { ...LOCAL, known: false } }),
-  NOPE: checkRow('NOPE', { reason: 'no_match', status: null, local: { ...LOCAL, known: false } }),
+  'NOPE-9': checkRow('NOPE-9', { reason: 'no_match', status: null, local: { ...LOCAL, known: false } }),
   'MANUAL-7': checkRow('MANUAL-7', { reason: 'no_match', status: null, local: { ...LOCAL, known: false } }),
 };
 
@@ -198,7 +198,13 @@ test('outbound needs orders.view; everywhere skips it silently', async () => {
   });
   assert.deepEqual(await getNavLocate(caller, 'inbound', { q: 'PO-1' }, deps).then((r) => r.ok), true);
   const everywhere = await ok(await getNavLocate(caller, 'everywhere', { refs: 'PO-1' }, deps));
-  assert.deepEqual(everywhere.buckets.map((b) => b.id), ['inbound:awaiting_tracking', 'inbound:received', 'inbound:not_received', 'inbound:exceptions']);
+  assert.deepEqual(everywhere.buckets.map((b) => b.id), [
+    'inbound:awaiting_tracking',
+    'inbound:received',
+    'inbound:not_received',
+    'inbound:delivered',
+    'inbound:exceptions',
+  ]);
   assert.ok(cap.statements.length === 0, 'no outbound statement ran');
   const denied = await getNavLocate({ orgId: ORG, permissions: new Set(['orders.view']) }, 'inbound', { q: 'x' }, deps);
   assert.equal(denied.ok ? null : denied.permission, 'receiving.view');
@@ -324,7 +330,7 @@ test('outbound: the number an order row shows (its id chip face) finds that orde
 test('a section never says "Not found" for a ref another readable section holds', async () => {
   const { deps, cap } = fakes();
   const body = await ok(
-    await getNavLocate({ orgId: ORG, permissions: EVERY }, 'outbound', { refs: '02-15212-00001,PO-1,ZZZ' }, deps),
+    await getNavLocate({ orgId: ORG, permissions: EVERY }, 'outbound', { refs: '02-15212-00001,PO-1,ZZZ-9' }, deps),
   );
   assert.equal(body.locator, 'outbound');
   // The page's own buckets first, unprefixed and complete; another section's only where it holds a ref.
@@ -340,10 +346,10 @@ test('a section never says "Not found" for a ref another readable section holds'
     ['02-15212-00001', ['triage'], '02-15212-00001 · Bose QC45'],
     ['PO-1', ['inbound:received'], 'PO PO-1 · Acme'],
     // In neither section: still found nowhere.
-    ['ZZZ', [], null],
+    ['ZZZ-9', [], null],
   ]);
   // Only the refs the page did not hold were asked of Receiving.
-  assert.deepEqual(cap.checked, [['PO-1', 'ZZZ']]);
+  assert.deepEqual(cap.checked, [['PO-1', 'ZZZ-9']]);
 
   // Without the other section's permission the answer stays the page's own.
   const ordersOnly = await ok(
@@ -359,7 +365,7 @@ test('inbound: the Check answer per ref — received, not received, nowhere', as
     await getNavLocate(
       { orgId: ORG, permissions: EVERY },
       'inbound',
-      { refs: 'PO-1,PO-2,PO-3,PO-4,NOPE,MANUAL-7' },
+      { refs: 'PO-1,PO-2,PO-3,PO-4,NOPE-9,MANUAL-7' },
       deps,
     ),
   );
@@ -367,6 +373,7 @@ test('inbound: the Check answer per ref — received, not received, nowhere', as
     ['awaiting_tracking', '/incoming?state=AWAITING_TRACKING'],
     ['received', '/incoming?recon=received'],
     ['not_received', '/incoming?recon=not_received'],
+    ['delivered', '/incoming?recon=delivered'],
     ['exceptions', '/incoming?lane=exceptions'],
   ]);
   // A number with no carton line opens its Incoming card all the same — the card's placeholder row
@@ -388,17 +395,17 @@ test('inbound: the Check answer per ref — received, not received, nowhere', as
     ['PO-3', ['not_received']],
     // A badge with nothing in the Exceptions view stays owed, reason in detail.
     ['PO-4', ['not_received']],
-    ['NOPE', []],
+    ['NOPE-9', []],
     ['MANUAL-7', ['received']],
   ]);
-  assert.deepEqual(counts(body), { awaiting_tracking: 0, received: 2, not_received: 3, exceptions: 0 });
+  assert.deepEqual(counts(body), { awaiting_tracking: 0, received: 2, not_received: 3, delivered: 0, exceptions: 0 });
   assert.equal(body.entries[0].title, 'PO PO-1 · Acme');
   assert.equal(body.entries[3].detail, 'Several POs match');
   assert.equal(body.entries[4].detail, null);
-  assert.deepEqual(cap.checked, [['PO-1', 'PO-2', 'PO-3', 'PO-4', 'NOPE', 'MANUAL-7']]);
+  assert.deepEqual(cap.checked, [['PO-1', 'PO-2', 'PO-3', 'PO-4', 'NOPE-9', 'MANUAL-7']]);
 
   const text = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { q: 'PO-3' }, deps));
-  assert.deepEqual(counts(text), { awaiting_tracking: 0, received: 0, not_received: 1, exceptions: 0 });
+  assert.deepEqual(counts(text), { awaiting_tracking: 0, received: 0, not_received: 1, delivered: 0, exceptions: 0 });
   assert.equal(body.entries[2].detail, 'In transit');
   assert.deepEqual(text.entries, []);
 });
@@ -466,7 +473,7 @@ test('inbound facts: the pasted page row off the reconcile lines — unboxer by 
       unbox_opened_by_id: 9,
     }),
   ];
-  const body = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { refs: 'PO-1,NOPE' }, deps));
+  const body = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'inbound', { refs: 'PO-1,NOPE-9' }, deps));
   const [po1, nope] = body.entries;
   assert.deepEqual(po1.facts, {
     section: 'inbound',
@@ -507,7 +514,7 @@ test('inbound facts: the pasted page row off the reconcile lines — unboxer by 
 test('everywhere: every permitted locator, ids and labels prefixed, entries merged per ref', async () => {
   const { deps } = fakes();
   const body = await ok(
-    await getNavLocate({ orgId: ORG, permissions: EVERY }, 'everywhere', { refs: '02-15212-00001,PO-1,ZZZ' }, deps),
+    await getNavLocate({ orgId: ORG, permissions: EVERY }, 'everywhere', { refs: '02-15212-00001,PO-1,ZZZ-9' }, deps),
   );
   assert.deepEqual(body.locator, 'everywhere');
   assert.deepEqual(body.buckets.map((b) => b.id), [
@@ -515,6 +522,7 @@ test('everywhere: every permitted locator, ids and labels prefixed, entries merg
     'inbound:awaiting_tracking',
     'inbound:received',
     'inbound:not_received',
+    'inbound:delivered',
     'inbound:exceptions',
   ]);
   assert.equal(body.buckets.find((b) => b.id === 'outbound:triage')?.label, 'Allocate');
@@ -522,7 +530,7 @@ test('everywhere: every permitted locator, ids and labels prefixed, entries merg
   assert.deepEqual(body.entries.map((e) => [e.ref, e.buckets, e.title]), [
     ['02-15212-00001', ['outbound:triage'], '02-15212-00001 · Bose QC45'],
     ['PO-1', ['inbound:received'], 'PO PO-1 · Acme'],
-    ['ZZZ', [], null],
+    ['ZZZ-9', [], null],
   ]);
 });
 
@@ -541,4 +549,47 @@ test('the outbound statements read visible FBM and Fulfilled membership only', (
   const likeIndex = text.params.indexOf('%Bose%');
   assert.ok(likeIndex > 0);
   assert.ok(text.sql.includes(sqlPackerLogSearch(`$${likeIndex + 1}`)));
+});
+
+test('outbound refs: an order in no queue is on file, a package no order owns is found with its carrier side', async () => {
+  const { deps, cap } = fakes();
+  const run = deps.run;
+  deps.run = async (orgId, sql, params) => {
+    if (sql.includes('act.shipped_at')) {
+      cap.statements.push({ orgId, sql, params });
+      const refs = params[1] as string[];
+      return refs.flatMap((ref, index) =>
+        ref === '1Z229W110371320191'
+          ? [{ ord: index + 1, shipment_id: 9, tracking_number: ref, delivered_at: null, shipped_at: new Date('2026-10-05T20:00:00Z'), packed_at: null,
+               carrier: 'UPS', carrier_category: 'IN_TRANSIT', carrier_label: 'We Have Your Package', carrier_event_at: new Date('2026-10-06T03:54:00Z'),
+               carrier_eta: null, carrier_checked_at: null, carrier_error: null, carrier_place: 'Anaheim, CA' }]
+          : [],
+      );
+    }
+    if (sql.includes('WITH r AS') && (params[1] as string[]).includes('PACKED-1')) {
+      cap.statements.push({ orgId, sql, params });
+      return [{ ord: (params[1] as string[]).indexOf('PACKED-1') + 1, id: 21, order_id: 'PACKED-1', product_title: 'Wave', status: 'packed' }];
+    }
+    return run(orgId, sql, params);
+  };
+  const body = await ok(await getNavLocate({ orgId: ORG, permissions: EVERY }, 'outbound', { refs: 'PACKED-1\n1Z229W110371320191\nNOPE-1' }, deps));
+  const [packed, pkg, nope] = body.entries;
+  assert.deepEqual(packed.buckets, ['on_file']);
+  assert.equal(packed.detail, 'Packed · not scanned out');
+  assert.deepEqual(pkg.buckets, ['package_only']);
+  assert.equal(pkg.detail, 'Scanned out · no order');
+  assert.equal(pkg.facts?.carrier, 'UPS');
+  assert.deepEqual(pkg.facts?.lastEvent, { label: 'We Have Your Package', at: '2026-10-06T03:54:00.000Z', status: 'In transit' });
+  assert.equal(pkg.facts?.lastEventPlace, 'Anaheim, CA');
+  assert.deepEqual(nope.buckets, []);
+  assert.equal(counts(body).on_file, 1);
+  assert.equal(counts(body).package_only, 1);
+});
+
+test('outbound refs: without packing.view neither on-file nor package-only is told', async () => {
+  const { deps, cap } = fakes();
+  const caller = { orgId: ORG, permissions: new Set(['orders.view']) };
+  const body = await ok(await getNavLocate(caller, 'outbound', { refs: '1Z999AA10123456784\n1Z229W110371320191' }, deps));
+  assert.deepEqual(body.entries.map((e) => e.buckets), [[], []]);
+  assert.ok(cap.statements.every((s) => !s.sql.includes('act.shipped_at')), 'packages never asked');
 });

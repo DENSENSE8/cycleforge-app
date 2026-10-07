@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { FileText } from '@/components/Icons';
 import { Spinner } from '@/design-system/primitives';
-import { FetchedPdfFrame } from '@/design-system/components/FetchedPdfFrame';
+import { FetchedPdfFrame, type PdfFit } from '@/design-system/components/FetchedPdfFrame';
 import { cn } from '@/utils/_cn';
 import {
   resolveDocumentPreviewMime,
@@ -20,6 +20,8 @@ interface DocumentPreviewFrameProps {
   emptyHint?: string;
   meta?: ReactNode;
   className?: string;
+  /** PDF only: fit the whole page or its width (an image always fits). */
+  pdfFit?: PdfFit;
 }
 
 /**
@@ -35,6 +37,7 @@ export function DocumentPreviewFrame({
   emptyHint,
   meta,
   className,
+  pdfFit,
 }: DocumentPreviewFrameProps) {
   const kind = resolveDocumentPreviewMime(src, mimeHint);
 
@@ -60,7 +63,7 @@ export function DocumentPreviewFrame({
               className="max-h-full max-w-full rounded-lg border border-border-soft bg-surface-card object-contain"
             />
           ) : (
-            <FetchedPdfFrame src={src} title={title} className="rounded-lg border border-border-soft" />
+            <FetchedPdfFrame src={src} title={title} fit={pdfFit} className="rounded-lg border border-border-soft" />
           )
         ) : loading ? (
           <div className="flex flex-col items-center gap-2 px-6 text-center">

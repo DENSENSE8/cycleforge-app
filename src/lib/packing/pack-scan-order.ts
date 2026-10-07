@@ -29,26 +29,32 @@ const defaultDeps: PackScanDeps = {
   findUnitOrder: findOpenOrderForUnitScan,
 };
 
+/** The one identifier kind an armed Packing mode restricts the resolve to. */
+export type PackScanKind = 'tote' | 'unit';
+
 /**
  * Tote first (a house `H-` plate or an external tote barcode), then a unit
  * (label handle, unit_uid or typed serial). `null` = the scan names neither,
- * and the caller treats it as a tracking / SKU scan exactly as before. Any
- * known unit with no open order lands on its prepack facts, regardless of
- * whether the packer scanned OEM serial, unit label, or GS1.
+ * and the caller treats it as a tracking scan. Any known unit with no open
+ * order lands on its prepack facts, regardless of whether the packer scanned
+ * OEM serial, unit label, or GS1. `only` (an armed mode) searches that one
+ * kind and nothing else.
  */
 export async function resolvePackScan(
   client: Queryable,
   orgId: OrgId,
   raw: string,
   deps: PackScanDeps = defaultDeps,
+  only: PackScanKind | null = null,
 ): Promise<PackScanTarget | null> {
-  const tote = await deps.resolveTote(orgId, raw, client);
+  const tote = only === 'unit' ? null : await deps.resolveTote(orgId, raw, client);
   if (tote) {
     const refusal = toteScanRefusal(tote);
     if (refusal) return { kind: 'refused', error: refusal };
     if (tote.orderId == null) return { kind: 'refused', error: `tote ${tote.code} is not carrying an order` };
     return { kind: 'order', via: 'tote', orderId: tote.orderId, toteCode: tote.code };
   }
+  if (only === 'tote') return null;
 
   const scan = pickScanKey(raw);
   // A package label (`KIT-…`) names no single unit; it is not a pack-unit scan.

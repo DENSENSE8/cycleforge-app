@@ -1,8 +1,7 @@
 /** Lazy materialisation of `receiving_line_unit` — Phase 1 of the per-unit "no serial" plan… */
 
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import type { ReceivingLineUnitView } from '@/lib/receiving/receiving-line-row';
 import { refreshReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
 
 /** A `receiving_line_unit` row as the planner needs it. */
@@ -151,7 +150,7 @@ async function loadLineUnits(
   const grouped = new Map<number, ExistingLineUnit[]>();
   if (lineIds.length === 0) return grouped;
 
-  const result = await tenantQuery(
+  const result = await tenantQueryOneTrip(
     orgId,
     `SELECT id, receiving_line_id, ordinal, serial_unit_id, serial_absent
        FROM receiving_line_unit
@@ -275,67 +274,29 @@ export async function ensureLineUnits(
   return plans;
 }
 
-/** Injectable collaborators for {@link fetchLineUnits} (real impl by default). */
-export interface FetchLineUnitsDeps {
-  query: typeof tenantQuery;
-}
-
-const defaultFetchDeps: FetchLineUnitsDeps = { query: tenantQuery };
-
-/** Read the materialised units for a set of lines, grouped by line id and ordered by ordinal — the wire shape both /api/receiving-lines and… */
-export async function fetchLineUnits(
-  lineIds: number[],
-  orgId: OrgId,
-  deps: FetchLineUnitsDeps = defaultFetchDeps,
-): Promise<Map<number, ReceivingLineUnitView[]>> {
-  const grouped = new Map<number, ReceivingLineUnitView[]>();
-  const ids = Array.from(new Set(lineIds.map(toPositiveInt).filter((n): n is number => n != null)));
-  if (ids.length === 0) return grouped;
-
-  const result = await deps.query(
-    orgId,
-    // condition_grade is an enum — cast to text so the driver hands back a
-    // plain string rather than the enum's OID-typed value.
-    `SELECT u.receiving_line_id, u.id, u.ordinal, u.serial_unit_id,
-            su.serial_number, u.serial_absent, u.serial_absent_reason,
-            u.condition_grade::text AS condition_grade
-       FROM receiving_line_unit u
-       LEFT JOIN serial_units su
-         ON su.id = u.serial_unit_id AND su.organization_id = u.organization_id
-      WHERE u.organization_id = $2 AND u.receiving_line_id = ANY($1::int[])
-      ORDER BY u.receiving_line_id ASC, u.ordinal ASC`,
-    [ids, orgId],
-  );
-
-  for (const row of result.rows) {
-    const lineId = Number(row.receiving_line_id);
-    if (!Number.isFinite(lineId)) continue;
-    const view: ReceivingLineUnitView = {
-      // BIGSERIAL arrives as a string from node-postgres (no int8 parser here).
-      id: Number(row.id),
-      ordinal: Number(row.ordinal),
-      serial_unit_id: row.serial_unit_id != null ? Number(row.serial_unit_id) : null,
-      serial: (row.serial_number as string | null) ?? null,
-      serial_absent: !!row.serial_absent,
-      serial_absent_reason: (row.serial_absent_reason as string | null) ?? null,
-      condition_grade: (row.condition_grade as string | null) ?? null,
-    };
-    const bucket = grouped.get(lineId);
-    if (bucket) bucket.push(view);
-    else grouped.set(lineId, [view]);
-  }
-
-  return grouped;
-}
-
-/** Best-effort {@link ensureLineUnits} for read paths — materialisation must never fail the read that triggered it. */
+/**
+ * Best-effort {@link ensureLineUnits} for read paths — materialisation must never fail the read that triggered it.
+ *
+ * `existing`, when the caller already read every listed line's units (lines without units simply absent),
+ * replaces the load. Resolves true when something was (or may have been) written — the caller's units are stale.
+ */
 export async function ensureLineUnitsSafe(
   orgId: OrgId,
   lines: ReadonlyArray<EnsureLineUnitsLine>,
-): Promise<void> {
+  existing?: ReadonlyMap<number, ExistingLineUnit[]>,
+): Promise<boolean> {
   try {
-    await ensureLineUnits(orgId, lines);
+    const plans = await ensureLineUnits(
+      orgId,
+      lines,
+      existing
+        ? { ...defaultDeps, loadUnits: async () => new Map(existing) }
+        : defaultDeps,
+    );
+    for (const plan of plans.values()) if (!plan.noop) return true;
+    return false;
   } catch (err) {
     console.warn('[receiving-line-unit] materialisation failed (non-fatal)', err);
+    return true;
   }
 }

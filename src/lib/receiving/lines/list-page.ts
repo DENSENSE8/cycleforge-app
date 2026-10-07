@@ -6,7 +6,7 @@
  * rail and its sidebar recents list can never disagree on membership or order.
  */
 
-import { tenantQueriesOneTrip, tenantQuery, withTenantConnection } from '@/lib/tenancy/db';
+import { tenantQueriesOneTrip, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   buildUnmatchedEmptyReceivingLine,
@@ -72,20 +72,15 @@ interface PageStatement {
   params: unknown[];
 }
 
-/** The page's independent reads, in order. `withTotal` = one tenant transaction; else one round trip, no COUNTs. */
+/** Statements in ONE round trip (one implicit transaction), results aligned with the input; all-null input never connects. */
 async function runPageStatements(
   orgId: OrgId,
   statements: ReadonlyArray<PageStatement | null>,
-  withTotal: boolean,
 ): Promise<Array<Array<Record<string, unknown>> | null>> {
   const live = statements.filter((s): s is PageStatement => s !== null);
-  const results = withTotal
-    ? await withTenantConnection(orgId, async (client) => {
-        const out: Array<Array<Record<string, unknown>>> = [];
-        for (const s of live) out.push((await client.query(s.sql, s.params)).rows);
-        return out;
-      })
-    : (await tenantQueriesOneTrip(orgId, live.map((s) => ({ text: s.sql, params: s.params })))).map((r) => r.rows);
+  const results = (await tenantQueriesOneTrip(orgId, live.map((s) => ({ text: s.sql, params: s.params })))).map(
+    (r) => r.rows,
+  );
   let next = 0;
   return statements.map((s) => (s === null ? null : results[next++]!));
 }
@@ -100,47 +95,53 @@ export async function fetchReceivingLinesPage(
   // Pre-limit the Unbox recents rail before the display laterals run.
   query = await maybePreLimitUnboxOpened(query, orgId, offset);
 
-  // Gate-before-decorate for `view=scanned` (the /triage rail's cold-load shape):
-  const scannedLineIdIn = await maybePreLimitScannedLineIds(
-    query,
-    orgId,
-    offset,
-    applyScannedZohoExclusion,
-    unboxRailColumnRead,
-  );
-
-  // Paginated list — all lines, optionally filtered.
-  const built = buildReceivingLinesListSql({
-    query,
-    orgId,
-    viewerStaffId,
-    universalIncoming,
-    applyScannedZohoExclusion,
-    unboxRailColumnRead,
-    warehousePostal: input.warehousePostal,
-    ...(scannedLineIdIn ? { scannedLineIdIn } : {}),
-  });
-  // The list, the lineless-carton placeholders and their counts do not
-  // depend on each other: they are read together, not one after another.
+  // The list, its count and the lineless-carton placeholders do not depend on
+  // each other: they are read in parallel round trips, not one after another.
+  // The placeholders do not depend on the scanned pre-limit either, so their
+  // trip starts alongside it.
   const withTotal = input.countTotal !== false;
   const unmatched = shouldIncludeUnmatchedPlaceholders(query) ? buildUnmatchedPlaceholdersSql(query, orgId) : null;
   const unboxOpened = shouldIncludeUnboxOpenedPlaceholders(query)
     ? buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead)
     : null;
-  const [listRows, countRows, unmatchedRows, unmatchedCountRows, unboxRows, unboxCountRows] = await runPageStatements(
-    orgId,
-    [
-      input.columns
-        ? { sql: `SELECT ${input.columns.map((c) => `l.${c}`).join(', ')} FROM (${built.list.sql}) l`, params: built.list.params }
-        : built.list,
-      withTotal ? built.count : null,
+  const readList = async () => {
+    // Gate-before-decorate for `view=scanned` (the /triage rail's cold-load shape):
+    const scannedLineIdIn = await maybePreLimitScannedLineIds(
+      query,
+      orgId,
+      offset,
+      applyScannedZohoExclusion,
+      unboxRailColumnRead,
+    );
+    // Paginated list — all lines, optionally filtered.
+    const built = buildReceivingLinesListSql({
+      query,
+      orgId,
+      viewerStaffId,
+      universalIncoming,
+      applyScannedZohoExclusion,
+      unboxRailColumnRead,
+      warehousePostal: input.warehousePostal,
+      ...(scannedLineIdIn ? { scannedLineIdIn } : {}),
+    });
+    return Promise.all([
+      runPageStatements(orgId, [
+        input.columns
+          ? { sql: `SELECT ${input.columns.map((c) => `l.${c}`).join(', ')} FROM (${built.list.sql}) l`, params: built.list.params }
+          : built.list,
+      ]),
+      runPageStatements(orgId, [withTotal ? built.count : null]),
+    ]);
+  };
+  const [[[listRows], [countRows]], [unmatchedRows, unmatchedCountRows, unboxRows, unboxCountRows]] = await Promise.all([
+    readList(),
+    runPageStatements(orgId, [
       unmatched?.list ?? null,
       unmatched && withTotal ? unmatched.count : null,
       unboxOpened?.list ?? null,
       unboxOpened && withTotal ? unboxOpened.count : null,
-    ],
-    withTotal,
-  );
+    ]),
+  ]);
 
   let normalizedList = listRows!.map(normalizeRow);
   let total = withTotal ? Number(countRows?.[0]?.total ?? 0) : normalizedList.length;
@@ -290,7 +291,7 @@ async function maybePreLimitScannedLineIds(
       applyScannedZohoExclusion,
       unboxRailColumnRead,
     });
-    const res = await tenantQuery<{ id: number }>(orgId, built.sql, built.params);
+    const res = await tenantQueryOneTrip<{ id: number }>(orgId, built.sql, built.params);
     const ids = res.rows
       .map((r) => Number(r.id))
       .filter((n) => Number.isFinite(n) && n > 0);
@@ -318,7 +319,7 @@ async function maybePreLimitUnboxOpened(
 
   const limit = Number.isFinite(query.limit) && query.limit > 0 ? query.limit : 50;
   try {
-    const ranked = await tenantQuery<{ receiving_id: number }>(
+    const ranked = await tenantQueryOneTrip<{ receiving_id: number }>(
       orgId,
       `SELECT ru.receiving_id
          FROM receiving_unbox ru

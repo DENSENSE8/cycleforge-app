@@ -7,11 +7,27 @@ import type { RowGroup } from '@/lib/group-rows';
 export type LocationStockSource = 'bin' | 'unit' | 'exception' | 'empty';
 
 
-export const LOCATION_STOCK_SORTS = ['location-asc', 'location-desc'] as const;
+export const LOCATION_STOCK_SORTS = ['location-asc', 'location-desc', 'qty-desc', 'qty-asc', 'counted-asc'] as const;
 export type LocationStockSort = (typeof LOCATION_STOCK_SORTS)[number];
 
+/** Sidebar sort control for the stock ledger. Values are {@link LOCATION_STOCK_SORTS}. */
+export const LOCATION_STOCK_SORT_OPTIONS: readonly { value: LocationStockSort; label: string }[] = [
+  { value: 'location-asc', label: 'Earliest location first' },
+  { value: 'location-desc', label: 'Latest location first' },
+  { value: 'qty-desc', label: 'Most on hand' },
+  { value: 'qty-asc', label: 'Least on hand' },
+  { value: 'counted-asc', label: 'Longest since count' },
+];
+
+const LOCATION_STOCK_SORT_SET: ReadonlySet<string> = new Set(LOCATION_STOCK_SORTS);
+
 export function parseLocationStockSort(raw: string | null | undefined): LocationStockSort {
-  return raw === 'location-desc' ? raw : 'location-asc';
+  return raw != null && LOCATION_STOCK_SORT_SET.has(raw) ? (raw as LocationStockSort) : 'location-asc';
+}
+
+/** A counted bin with no cycle count. Units have no count column; empty places are capacity. */
+export function locationStockNeverCounted(row: Pick<LocationStockTableRow, 'source' | 'last_counted'>): boolean {
+  return row.source === 'bin' && row.last_counted == null;
 }
 
 export interface LocationStockTableRow {
@@ -184,8 +200,7 @@ export function locationStockWalkRows(
       byLocation.set(key, row);
     }
   }
-  const direction = sort === 'location-desc' ? -1 : 1;
-  return [...byLocation.values()].sort((left, right) => compareLocationRows(left, right, direction));
+  return [...byLocation.values()].sort((left, right) => compareStockSort(left, right, [left], [right], sort));
 }
 
 /**
@@ -217,8 +232,51 @@ export function locationStockRackGroups(
       return place || LOCATION_COLLATOR.compare(left.sku, right.sku);
     }),
   }));
-  const direction = sort === 'location-desc' ? -1 : 1;
-  return groups.sort((left, right) => compareLocationRows(left.rows[0]!, right.rows[0]!, direction));
+  return groups.sort((left, right) => compareStockSort(left.rows[0]!, right.rows[0]!, left.rows, right.rows, sort));
+}
+
+function onHandTotal(rows: readonly LocationStockTableRow[], sort: 'qty-desc' | 'qty-asc'): number {
+  const stocked = rows.filter((row) => row.source !== 'empty');
+  // An empty address is capacity. It stays at the end of both quantity orders.
+  if (stocked.length === 0) return sort === 'qty-desc' ? -1 : Number.POSITIVE_INFINITY;
+  return stocked.reduce((sum, row) => sum + Math.max(0, row.qty), 0);
+}
+
+/**
+ * Cycle-count rank for a card. An uncounted bin is first; a card with no bins
+ * (units, empty places) is last, because it has no cycle count to age.
+ */
+function countRank(rows: readonly LocationStockTableRow[]): number {
+  const bins = rows.filter((row) => row.source === 'bin');
+  if (bins.length === 0) return Number.POSITIVE_INFINITY;
+  let oldest = Number.POSITIVE_INFINITY;
+  for (const row of bins) {
+    if (row.last_counted == null) return Number.NEGATIVE_INFINITY;
+    const ms = Date.parse(row.last_counted);
+    if (Number.isNaN(ms)) return Number.NEGATIVE_INFINITY;
+    if (ms < oldest) oldest = ms;
+  }
+  return oldest;
+}
+
+function compareStockSort(
+  left: LocationStockTableRow,
+  right: LocationStockTableRow,
+  leftRows: readonly LocationStockTableRow[],
+  rightRows: readonly LocationStockTableRow[],
+  sort: LocationStockSort,
+): number {
+  if (sort === 'qty-desc' || sort === 'qty-asc') {
+    const qty = onHandTotal(leftRows, sort) - onHandTotal(rightRows, sort);
+    if (qty !== 0) return sort === 'qty-desc' ? -qty : qty;
+    return compareLocationRows(left, right, 1);
+  }
+  if (sort === 'counted-asc') {
+    const rank = countRank(leftRows) - countRank(rightRows);
+    if (rank !== 0) return rank;
+    return compareLocationRows(left, right, 1);
+  }
+  return compareLocationRows(left, right, sort === 'location-desc' ? -1 : 1);
 }
 
 /** Rows with no room collapse into one honest bucket keyed this. */

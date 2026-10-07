@@ -2,6 +2,7 @@
 
 export { CartonContextCard } from './CartonContextCard';
 export { StationContextBar } from './StationContextBar';
+export { StationNextActionHeadline } from './StationNextActionHeadline';
 export { StationMoreDetails } from './StationMoreDetails';
 export {
   stationContextBarHostClass,

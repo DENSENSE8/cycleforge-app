@@ -593,10 +593,17 @@ test('Purchasing is a Receiving mode on the lane’s mode card, never a top-leve
 
 test('the Unbox station has no Sort-by or KPI-priority control', () => {
   const station = at('/unbox');
-  assert.equal(station.filters?.facetContext, 'receive');
-  assert.deepEqual(station.filters?.groups.map((group) => group.param), ['dflag']);
   assert.equal(station.controls?.sort, undefined);
   assert.deepEqual(station.controls?.choices ?? [], [], 'Inbound’s Source is no /unbox param');
+});
+
+test('the Unbox station declares its Status facet only on the History tab that reads it', () => {
+  for (const href of ['/unbox', '/unbox?unboxview=viewed', '/unbox?unboxview=incoming']) {
+    assert.equal(at(href).filters, undefined, href);
+  }
+  const history = at('/unbox?unboxview=history');
+  assert.equal(history.filters?.facetContext, 'receive');
+  assert.deepEqual(history.filters?.groups.map((group) => group.param), ['dflag']);
 });
 
 test('no Scan Station exposes Sort-by or a KPI-priority facet', () => {
@@ -622,7 +629,9 @@ test('every facet context names a real page or section view, and every recents s
     const item = itemId === undefined ? null : stops.flatMap(items).find((row) => row.id === itemId);
     assert.ok(itemId === undefined || item, `${context}: no ${itemId} row on ${pageId}`);
     const isMode = stops.some((stop) => stop.sections.some((section) => isPageModeSection(stop)(section) && section.items.some((row) => row.id === itemId)));
-    if (!isMode) assert.equal(at(item?.href ?? page.href).filters?.facetContext, context, context);
+    // The Unbox station's facets live on its History tab only (the tab that reads them).
+    const href = item?.href ?? (context === 'receive' ? '/unbox?unboxview=history' : page.href);
+    if (!isMode) assert.equal(at(href).filters?.facetContext, context, context);
   }
   const surfaces = new Set<string>(NAV_RECENT_SURFACE_IDS);
   for (const { href, ctx } of everyContext()) {
@@ -832,7 +841,7 @@ test('the parent map paints the Operations band in the ruled order and closes wi
   // Owner 2026-10-04: Support sits between the Live feed and Scan Stations.
   // Unnamed rows (Sales) keep their relative order between Warehouse and Products.
   assert.deepEqual(
-    items(map).slice(0, 13).map((item) => item.label),
+    items(map).slice(0, 14).map((item) => item.label),
     [
       'Chat',
       'Tasks',
@@ -844,6 +853,7 @@ test('the parent map paints the Operations band in the ruled order and closes wi
       'Scan Stations',
       'Receiving',
       'Fulfillment',
+      'Inventory',
       'Warehouse',
       'Sales',
       'Products',

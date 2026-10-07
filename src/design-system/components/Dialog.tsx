@@ -36,7 +36,7 @@ const DialogContent = React.forwardRef<
     /** Classes for the scrim — a different z band (`z-takeover` for a dialog that must clear a detail slide-over), a blur, or a heavier ink. */
     overlayClassName?: string;
   }
->(({ className, children, hideClose = false, overlayClassName, ...props }, ref) => (
+>(({ className, children, hideClose = false, overlayClassName, onInteractOutside, ...props }, ref) => (
   <DialogPrimitive.Portal>
     <DialogOverlay className={overlayClassName} />
     <DialogPrimitive.Content
@@ -46,6 +46,11 @@ const DialogContent = React.forwardRef<
         elevationClass('overlay'),
         className,
       )}
+      onInteractOutside={(event) => {
+        // A toast's Undo is not "outside": pressing it must not dismiss the dialog it reports on.
+        if (event.target instanceof Element && event.target.closest('[data-sonner-toaster]')) event.preventDefault();
+        onInteractOutside?.(event);
+      }}
       {...props}
     >
       {children}

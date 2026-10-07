@@ -3,17 +3,9 @@
 import type { ReceivingRailFeedId } from './feeds';
 import type { ReceivingRailFeedKey } from '@/lib/receiving/rail-exclusions';
 
-const TRIAGE_FEEDS: ReadonlySet<string> = new Set(['triageCombined', 'triageUnfound', 'triageDone']);
-const UNBOX_FEEDS: ReadonlySet<string> = new Set(['unboxRecent', 'unboxQueue', 'viewed']);
-
-export function railExclusionFeedKey(
-  feedId: ReceivingRailFeedId,
-  scope?: string,
-): ReceivingRailFeedKey | null {
-  if (TRIAGE_FEEDS.has(feedId)) return 'receiving_triage';
-  if (UNBOX_FEEDS.has(feedId)) return 'receiving_unbox';
-  // The shared Scanned feed: 'triage' scope = Prioritize (triage), else Queue (unbox).
-  if (feedId === 'scanned') return scope === 'triage' ? 'receiving_triage' : 'receiving_unbox';
+export function railExclusionFeedKey(feedId: ReceivingRailFeedId): ReceivingRailFeedKey | null {
+  if (feedId === 'triageCombined') return 'receiving_triage';
+  if (feedId === 'unboxRecent') return 'receiving_unbox';
   return null;
 }
 

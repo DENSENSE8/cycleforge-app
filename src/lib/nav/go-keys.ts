@@ -16,7 +16,9 @@ export const NAV_GO_KEYS: Readonly<Partial<Record<SpineSectionId, Readonly<Recor
   fulfillment: { s: 'outbound', f: 'fba', l: 'label-intake' },
   // Purchasing (owner 2026-10-05) takes U — P is Local Pickup's.
   inbound: { d: 'incoming', u: 'purchasing', p: 'pickup', r: 'repair', s: 'sourcing' },
-  inventory: { s: 'stock', l: 'inventory', q: 'qc-labels' },
+  // Inventory is Stock only. Warehouse is Locations (L) and QC labels (Q).
+  inventory: { s: 'stock' },
+  warehouse: { l: 'inventory', q: 'qc-labels' },
 };
 
 /**

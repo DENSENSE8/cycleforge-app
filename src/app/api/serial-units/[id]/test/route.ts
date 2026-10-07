@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import pool from '@/lib/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
@@ -63,6 +63,8 @@ export const POST = withAuth(async (request, ctx) => {
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
 
   try {
+    // The response returns once the unit status and line rollup commit; the
+    // audit trail, feeds, pass-allocate and stage-facts refresh run after it.
     const result = await recordTestVerdict({
       serialUnitId,
       verdict,
@@ -70,31 +72,33 @@ export const POST = withAuth(async (request, ctx) => {
       clientEventId,
       actorStaffId,
       organizationId: ctx.organizationId,
+      defer: (work) => after(work),
     });
     if (!result) {
       return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
     }
 
-    // Formal audit-log row. recordAudit pulls actor/role/ip/request-id from
-    // the auth context + headers and never throws (failures are logged and
+    // Formal audit-log row. recordAudit never throws (failures are logged and
     // dropped), so it can't break the verdict.
-    await recordAudit(pool, ctx, request, {
-      source: 'tech.qc-verdict',
-      action: VERDICT_TO_AUDIT_ACTION[verdict],
-      entityType: AUDIT_ENTITY.SERIAL_UNIT,
-      entityId: result.unit.id,
-      method: 'manual',
-      before: { status: result.prevStatus },
-      after: { status: result.nextStatus },
-      note: notes,
-      extra: {
-        verdict,
-        receiving_line_id: result.unit.origin_receiving_line_id,
-        serial_number: result.unit.serial_number,
-        sku: result.unit.sku,
-        inventory_event_id: result.eventId,
-      },
-    });
+    after(() =>
+      recordAudit(pool, ctx, request, {
+        source: 'tech.qc-verdict',
+        action: VERDICT_TO_AUDIT_ACTION[verdict],
+        entityType: AUDIT_ENTITY.SERIAL_UNIT,
+        entityId: result.unit.id,
+        method: 'manual',
+        before: { status: result.prevStatus },
+        after: { status: result.nextStatus },
+        note: notes,
+        extra: {
+          verdict,
+          receiving_line_id: result.unit.origin_receiving_line_id,
+          serial_number: result.unit.serial_number,
+          sku: result.unit.sku,
+          inventory_event_id: result.eventId,
+        },
+      }),
+    );
 
     return NextResponse.json({
       ok: true,

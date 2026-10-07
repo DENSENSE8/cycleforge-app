@@ -27,7 +27,7 @@ test('Labels & docs terminal icons each use a distinct color', () => {
 
 test('Stock and Locations sibling icons each use a distinct color', () => {
   for (const [page, ids] of [
-    ['stock', ['all', 'replenish', 'fifo', 'low-stock', 'out-of-stock']],
+    ['stock', ['overview', 'all', 'replenish', 'low-stock', 'out-of-stock']],
     ['inventory', ['locations', 'rooms', 'racks', 'map', 'labels']],
   ] as const) {
     const tones = ids.map((id) => NAV_VIEW_ICONS[`${page}.${id}`]?.tone);

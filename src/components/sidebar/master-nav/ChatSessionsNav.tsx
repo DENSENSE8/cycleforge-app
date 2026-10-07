@@ -34,8 +34,6 @@ import { displaySessionTitle } from '@/lib/ai/session-title-text';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
-/** Accidental-delete recovery window; matches the repo's other undo rows. */
-const UNDO_WINDOW_MS = 10_000;
 const NEW_CONVERSATION = 'New conversation';
 
 /** Let modified clicks (new tab / window) through to the browser; route plain ones. */
@@ -82,14 +80,10 @@ function SessionRow({
       toast.error('Could not delete that chat');
       return;
     }
-    toast.success(`Deleted “${title}”`, {
-      duration: UNDO_WINDOW_MS,
-      action: {
-        label: 'Undo',
-        onClick: async () => {
-          if (await onRestore(session.id)) toast.success(`Restored “${title}”`);
-          else toast.error('Could not restore that chat');
-        },
+    toast.undo(`Deleted “${title}”`, {
+      onUndo: async () => {
+        if (await onRestore(session.id)) toast.success(`Restored “${title}”`);
+        else toast.error('Could not restore that chat');
       },
     });
   }, [onDelete, onRestore, session.id, title]);

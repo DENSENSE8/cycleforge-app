@@ -1,6 +1,6 @@
 /** The LANE registry — one taxonomy, both surfaces. */
 
-import { Inbox, SalesPrice, Tags, TicketHelp, Warehouse } from '@/components/Icons';
+import { Inbox, SalesPrice, ShelvingUnit, Tags, TicketHelp, Warehouse } from '@/components/Icons';
 import { STATION_PAGE_ICONS } from '@/lib/nav/station-nav-icons';
 // Type-only, so it is ERASED at build time: the phone imports lanes without
 // pulling the desk registry into its bundle. The icon type stays where its
@@ -11,6 +11,7 @@ export type DomainGroupId =
   | 'inbound'
   | 'catalog'
   | 'inventory'
+  | 'warehouse'
   | 'fulfillment'
   | 'sales'
   | 'support';
@@ -27,8 +28,11 @@ export const DOMAIN_GROUPS = [
   { id: 'sales', label: 'Sales', icon: SalesPrice },
   { id: 'inbound', label: 'Receiving', icon: Inbox, keywords: ['inbound'] },
   { id: 'fulfillment', label: 'Fulfillment', icon: STATION_PAGE_ICONS.outbound, keywords: ['outbound'] },
-  // Warehouse (operator 2026-10-03: "Inventory changed to Warehouse with a warehouse icon"); aligns with route-tree's lane name.
-  { id: 'inventory', label: 'Warehouse', icon: Warehouse, keywords: ['inventory'] },
+  // Inventory and Warehouse are two doors (owner 2026-10-06). Inventory is the
+  // quantity job (stock). Warehouse is the building (locations, racks, labels).
+  // The October 3 rename had folded both into one Warehouse door.
+  { id: 'inventory', label: 'Inventory', icon: ShelvingUnit, keywords: ['stock'] },
+  { id: 'warehouse', label: 'Warehouse', icon: Warehouse },
   { id: 'catalog', label: 'Products', icon: Tags },
   // Support (owner 2026-10-04): its own Workspaces lane — the `/support` workspace on the local model.
   { id: 'support', label: 'Support', icon: TicketHelp },
@@ -57,9 +61,11 @@ export const LANE_DOORS: Readonly<Partial<Record<string, string>>> = {
   // Inbound (operator 2026-09-27): Deliveries is the landing page; its mode
   // switcher reaches Sourcing.
   inbound: 'incoming',
-  // Warehouse lands on the stock ledger; its mode switcher reaches Locations
-  // and QC labels.
+  // Inventory lands on the stock ledger. Its views (All, Low, Out, Replenish)
+  // are that page's children — one page, so the lane paints no mode switcher.
   inventory: 'stock',
+  // Warehouse lands on Locations. QC labels is the other mode.
+  warehouse: 'inventory',
   // Support lands on its one page (`/support`, row "Support items"); views live in its sidebar.
   support: 'support',
 };
@@ -90,6 +96,7 @@ export const LANE_MOBILE_FIRST: Readonly<Record<GatedLaneId, LaneMobileFirstStat
   inbound: 'desk-only',
   fulfillment: 'ported',
   inventory: 'desk-only',
+  warehouse: 'desk-only',
   catalog: 'desk-only',
   // Operator 2026-09-16: restore the Sales desk door only; its phone route is
   // still absent from the mobile registry, so this does not create a mobile row.

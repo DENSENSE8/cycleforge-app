@@ -4,17 +4,15 @@ import { resolveTestingTerminal } from './testing-terminal';
 import type { TestingTerminalInput } from './types';
 
 const baseInput: TestingTerminalInput = {
-  primaryLabel: 'Pass + Print',
-  primaryTitle: 'Pass testing and print',
-  primaryDisabled: false,
-  isPrinting: false,
+  primaryTitle: 'Pass this unit and print its label',
   onPrimary: () => {},
 };
 
-test('mode-default returns Pass · Print carton terminal', () => {
+test('mode-default is the one Pass CTA: never disabled, P painted in it', () => {
   const vm = resolveTestingTerminal('mode-default', baseInput);
-  assert.equal(vm?.label, 'Pass + Print');
-  assert.equal(vm?.disabled, false);
+  assert.equal(vm?.label, 'Pass');
+  assert.ok(!vm?.disabled && !vm?.loading, 'the Pass CTA is never greyed out');
+  assert.equal(vm?.hotkey, 'P');
 });
 
 test('unknown kinds return null — Ticket is not a dock terminal', () => {

@@ -32,15 +32,14 @@ test('Receiving hover teaching includes Deliveries, Purchasing, Local Pickup, Re
   for (const pageId of ['incoming', 'purchasing', 'pickup', 'repair', 'sourcing']) assert.deepEqual(navGoDestinations(pageId), expected, pageId);
 });
 
-test('Warehouse G keys open Stock with S and Locations with L', () => {
-  const expected = [
-    { letter: 's', pageId: 'stock' },
+test('Inventory G S opens Stock; Warehouse G L and G Q open Locations and QC labels', () => {
+  assert.deepEqual(navGoDestinations('stock'), [{ letter: 's', pageId: 'stock' }]);
+  const warehouse = [
     { letter: 'l', pageId: 'inventory' },
     { letter: 'q', pageId: 'qc-labels' },
   ];
-
-  for (const pageId of ['stock', 'inventory', 'qc-labels']) {
-    assert.deepEqual(navGoDestinations(pageId), expected, pageId);
+  for (const pageId of ['inventory', 'qc-labels']) {
+    assert.deepEqual(navGoDestinations(pageId), warehouse, pageId);
   }
 });
 

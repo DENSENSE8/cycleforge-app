@@ -127,7 +127,7 @@ test('checkZohoReceived: mirror hit received vs issued; Zoho fallback; no_match'
           }),
         ],
         ['MISS1', null],
-        ['GARBAGE', null],
+        ['GARBAGE9', null],
       ]),
     searchZoho: async (tracking) => {
       if (tracking === 'MISS1') {
@@ -146,7 +146,7 @@ test('checkZohoReceived: mirror hit received vs issued; Zoho fallback; no_match'
 
   const result = await checkZohoReceived(
     ORG,
-    'RECV1\nOPEN1\nMISS1\nGARBAGE',
+    'RECV1\nOPEN1\nMISS1\nGARBAGE9',
     deps,
   );
   assert.ok(!('error' in result));
@@ -163,7 +163,7 @@ test('checkZohoReceived: mirror hit received vs issued; Zoho fallback; no_match'
   const open = result.not_received_in_zoho[0]!;
   assert.equal(open.status, 'issued');
   assert.equal(open.reason, 'matched');
-  assert.deepEqual(result.undetermined.map((r) => r.tracking), ['GARBAGE']);
+  assert.deepEqual(result.undetermined.map((r) => r.tracking), ['GARBAGE9']);
   assert.equal(result.undetermined[0]!.reason, 'no_match');
   assert.equal(result.stats.mirror_hits, 2);
   assert.equal(result.stats.zoho_lookups, 2);

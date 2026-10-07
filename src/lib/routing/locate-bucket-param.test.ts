@@ -13,7 +13,7 @@ import { routeParamsFor } from './registry';
 import { isLocateBucketId } from './locate-bucket-param';
 
 test('every inbound bucket id survives Incoming hygiene, junk does not', () => {
-  for (const id of ['awaiting_tracking', 'received', 'not_received', 'exceptions', 'outbound:triage', 'nowhere']) {
+  for (const id of ['awaiting_tracking', 'received', 'not_received', 'delivered', 'exceptions', 'outbound:triage', 'nowhere']) {
     const next = parseRouteParams(INCOMING_ROUTE_PARAMS, new URLSearchParams(`ref_in=A-1,B-2&recon=${id}`));
     assert.equal(next.get('recon'), id, id);
   }

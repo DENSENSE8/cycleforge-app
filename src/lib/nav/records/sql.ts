@@ -166,6 +166,8 @@ export interface RecordLineRow {
   mine: boolean;
   /** Paste positions (1-based) this line answers; empty in Query mode. */
   matchedRefs: number[];
+  /** A carton with no lines yet (`recordId` is the carton's id, never a line's): a row to find, not to write to. */
+  cartonOnly: boolean;
 }
 
 /** Each event's instant and staffer over the unified line `l`. */
@@ -214,6 +216,9 @@ function windowCut(instant: string | null): string {
 
 /** A last note is one line on the sheet; the record holds the whole note. */
 const NOTE_SNIPPET_CHARS = 160;
+
+/** A number is being looked for — a pasted list (`$14`) or Find (`$9`): the read then also answers line-less cartons. */
+const LOOKING_SQL = '(cardinality($14::text[]) > 0 OR $9::text IS NOT NULL)';
 
 /**
  * One side's price chain over `base` (`record_id, order_key, unit_price, qty,
@@ -359,6 +364,12 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
             JOIN in_carton_pkg cp ON cp.carton_id = rl.receiving_id
            WHERE rl.organization_id = $1
              AND NOT EXISTS (SELECT 1 FROM in_line_pkg lp WHERE lp.owner_id = rl.id)
+          UNION ALL
+          -- A carton with no lines yet ('c'): its own packages, read only when a number is being looked for.
+          SELECT 'c', cp.carton_id, cp.shipment_id, cp.is_primary
+            FROM in_carton_pkg cp
+           WHERE ${LOOKING_SQL}
+             AND NOT EXISTS (SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = cp.carton_id AND rl.organization_id = $1)
         ) x
        ORDER BY x.dir, x.owner_id, x.shipment_id, x.is_primary DESC
     ),
@@ -550,7 +561,8 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
              ARRAY[${canon('o.order_id')}, ${canon('o.item_number')}] AS ref_keys,
              pa.trk_keys,
              pa.trk18,
-             COALESCE(pa.find_hit, false) AS find_trk
+             COALESCE(pa.find_hit, false) AS find_trk,
+             false AS carton_only
         FROM orders o
         LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id AND sc.organization_id = o.organization_id
         LEFT JOIN customers cust ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
@@ -645,7 +657,8 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
                    ${canon('rc.zoho_purchaseorder_number')}] AS ref_keys,
              pa.trk_keys,
              pa.trk18,
-             COALESCE(pa.find_hit, false) AS find_trk
+             COALESCE(pa.find_hit, false) AS find_trk,
+             false AS carton_only
         FROM receiving_line rl
         LEFT JOIN receiving_carton rc ON rc.id = rl.receiving_id AND rc.organization_id = rl.organization_id
         LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
@@ -673,10 +686,99 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
         JOIN price_in pr ON pr.record_id = rl.id
        WHERE $3 AND rl.organization_id = $1
     ),
+    -- A carton with no lines yet: one row of its own when a number is being looked for (paste, Find), so a
+    -- pasted box that arrived is never "Not found". It names no line, so it carries no write target.
+    cl AS (
+      SELECT 'inbound'::text AS direction,
+             rc.id AS record_id,
+             COALESCE(NULLIF(BTRIM(rc.zoho_purchaseorder_number), ''), NULLIF(BTRIM(rc.source_order_id), '')) AS order_number,
+             'i:c' || rc.id AS order_key,
+             NULL::text AS item_number,
+             NULL::int AS sku_catalog_id,
+             NULL::text AS title,
+             NULL::text AS sku,
+             NULL::numeric AS qty,
+             NULL::numeric AS unit_price,
+             NULL::numeric AS line_total,
+             NULL::numeric AS shipstation_total, false AS shipstation_priced, NULL::numeric AS marketplace_total,
+             NULL::numeric AS line_total_sum, 0::bigint AS priced_lines,
+             1::bigint AS order_lines,
+             NULLIF(LOWER(BTRIM(COALESCE(rc.source_platform::text, ''))), '') AS platform,
+             NULL::text AS platform_account_label,
+             NULL::text AS customer,
+             NULLIF(BTRIM(mirror.vendor_name), '') AS vendor,
+             NULLIF(BTRIM(rc.zoho_purchaseorder_number), '') AS po,
+             NULL::text AS channel_status,
+             mirror.po_date::timestamp AT TIME ZONE 'America/Los_Angeles' AS placed_at,
+             to_char(mirror.po_date, 'YYYY-MM-DD') AS placed_on,
+             rc.created_at AS imported_at,
+             NULL::int AS imported_by,
+             COALESCE(mirror.po_date::timestamp AT TIME ZONE 'America/Los_Angeles', rc.created_at) AS ordered_at,
+             NULL::text AS ship_by_date,
+             NULL::timestamptz AS ship_by_at,
+             NULL::timestamptz AS picked_at,
+             NULL::int AS picked_by,
+             NULL::text AS picked_source,
+             NULL::text AS picked_by_name,
+             NULL::timestamptz AS packed_at,
+             NULL::int AS packer_id,
+             NULL::text AS packer_name,
+             NULL::timestamptz AS scanned_at,
+             NULL::int AS scanned_by,
+             NULL::text AS scanned_by_name,
+             pa.shipped_at,
+             pa.delivered_at,
+             ru.unboxed_at,
+             COALESCE(ru.unboxed_by, ru.opened_by) AS unboxed_by,
+             staff_unbox.name AS unboxed_by_name,
+             NULL::timestamptz AS received_at,
+             NULL::int AS received_by,
+             NULL::text AS received_by_name,
+             NULL::int AS units_received,
+             NULL::int AS units_expected,
+             false AS received_done,
+             NULL::bigint AS inbound_order_id,
+             rc.id AS carton_id,
+             NULL::text AS service,
+             pa.packages,
+             false AS buyer_cancelled,
+             false AS scanned_out,
+             NULL::text AS release_state,
+             false AS out_of_stock,
+             false AS hold_flag,
+             false AS packed,
+             false AS picked,
+             NULL::text AS line_status,
+             NULL::text AS workflow_status,
+             NULLIF(BTRIM(rc.exception_code::text), '') AS exception_code,
+             NULLIF(BTRIM(rc.notes), '') AS note_text,
+             CASE WHEN NULLIF(BTRIM(rc.notes), '') IS NOT NULL THEN rc.updated_at END AS note_at,
+             NULL::text AS note_author,
+             NULL::int AS owner_id,
+             NULL::text AS owner_name,
+             NULL::timestamptz AS owner_due_at,
+             false AS mine,
+             ARRAY[${canon('rc.zoho_purchaseorder_number')}, ${canon('rc.source_order_id')}, ${canon('mirror.reference_number')}] AS ref_keys,
+             pa.trk_keys,
+             pa.trk18,
+             COALESCE(pa.find_hit, false) AS find_trk,
+             true AS carton_only
+        FROM receiving_carton rc
+        LEFT JOIN zoho_po_mirror mirror ON mirror.zoho_purchaseorder_id = rc.zoho_purchaseorder_id AND mirror.organization_id = rc.organization_id
+        LEFT JOIN receiving_unbox ru ON ru.receiving_id = rc.id AND ru.organization_id = rc.organization_id
+        LEFT JOIN staff staff_unbox
+          ON staff_unbox.id = COALESCE(ru.unboxed_by, ru.opened_by) AND staff_unbox.organization_id = rc.organization_id
+        LEFT JOIN pkg_agg pa ON pa.dir = 'c' AND pa.owner_id = rc.id
+       WHERE $3 AND rc.organization_id = $1
+         AND ${LOOKING_SQL}
+         AND NOT EXISTS (SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = rc.id AND rl.organization_id = $1)
+    ),
     lines AS (
       SELECT * FROM ol
       UNION ALL
       SELECT * FROM il
+      UNION ALL
+      SELECT * FROM cl
     )
     -- Only what the service reads: the wire to the app is the read's main cost (thousands of lines).
     SELECT l.direction, l.record_id, l.order_number, l.order_key, l.item_number, l.sku_catalog_id, l.title, l.sku,
@@ -690,7 +792,7 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
            l.buyer_cancelled, l.scanned_out, l.release_state, l.out_of_stock, l.hold_flag, l.packed, l.picked,
            l.line_status, l.workflow_status, l.exception_code,
            left(l.note_text, ${NOTE_SNIPPET_CHARS}) AS note_text, l.note_at, l.note_author,
-           l.owner_id, l.owner_name, l.owner_due_at, l.mine,
+           l.owner_id, l.owner_name, l.owner_due_at, l.mine, l.carton_only,
            m.matched_refs
       FROM lines l
       CROSS JOIN LATERAL (
@@ -831,5 +933,6 @@ export function recordLineRowOf(row: Record<string, unknown>): RecordLineRow {
     owner: ownerId !== null ? { id: ownerId, name: text(row.owner_name) ?? `#${ownerId}`, dueAt: stamp(row.owner_due_at) } : null,
     mine: row.mine === true,
     matchedRefs: Array.isArray(row.matched_refs) ? row.matched_refs.map(Number) : [],
+    cartonOnly: row.carton_only === true,
   };
 }

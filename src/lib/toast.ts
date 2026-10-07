@@ -19,6 +19,9 @@ type Title = (() => ReactNode) | ReactNode;
 type LifetimeFields = Pick<ExternalToast, 'id' | 'duration' | 'style' | 'className'>;
 type PromiseArgs<T> = Parameters<typeof sonnerToast.promise<T>>;
 
+/** How long a reversible write's Undo stays on screen — the house undo window (chat delete, recents, carton delete alike). */
+export const UNDO_WINDOW_MS = 10_000;
+
 /**
  * Drain keyframe last used per caller-supplied id. Sonner restarts a toast's
  * timer on every in-place update, so each update flips the keyframe and the
@@ -87,12 +90,12 @@ export const toast = Object.assign(
     dismiss: sonnerToast.dismiss.bind(sonnerToast),
     getHistory: sonnerToast.getHistory.bind(sonnerToast),
     getToasts: sonnerToast.getToasts.bind(sonnerToast),
-    /** A done-and-reversible write: the message plus one "Undo" action (6 s by default). */
+    /** A done-and-reversible write: the message plus one "Undo" action, held for the house undo window ({@link UNDO_WINDOW_MS}). */
     undo: (message: string, opts: { onUndo: () => void; duration?: number }): string | number =>
       sonnerToast.success(
         message,
         mergeOptions('success', {
-          duration: opts.duration ?? 6000,
+          duration: opts.duration ?? UNDO_WINDOW_MS,
           action: { label: 'Undo', onClick: () => opts.onUndo() },
         }),
       ),

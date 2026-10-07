@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse, after } from 'next/server';
-import { normalizeRow } from '@/lib/receiving/lines/normalize-row';
-import { tenantQuery, withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
+import { normalizeRow, type NormalizedReceivingLine } from '@/lib/receiving/lines/normalize-row';
+import { tenantQuery, tenantQueriesOneTrip, tenantQueryOneTrip, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
@@ -41,8 +41,16 @@ import {
   type ZohoFactsInput,
 } from '@/lib/receiving/facts/narrow';
 import { acknowledgeUnbox } from '@/lib/receiving/acknowledge-unbox';
-import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
-import { attachCustomFieldsToRows } from '@/lib/custom-fields/queries';
+import { ensureLineUnitsSafe } from '@/lib/receiving/ensure-line-units';
+import { existingLineUnitsFromViews, fetchLineUnits } from '@/lib/receiving/line-units-read';
+import {
+  applyCustomFieldMaps,
+  attachCustomFieldsToRows,
+  customFieldValuesExistStatement,
+  hasCustomFieldValues,
+  hydrateCustomFieldMaps,
+} from '@/lib/custom-fields/queries';
+import type { CustomFieldValueMap } from '@/lib/custom-fields/types';
 
 // `receiving_line_unit` materialises LAZILY, on the two BOUNDED `include=serials` reads below — `?id=` (one line) and `?receiving_id=`…
 
@@ -56,6 +64,36 @@ const CONDITIONS   = new Set(['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 
 function parsePositiveTechId(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+}
+
+/**
+ * `include=serials`: current serials, then materialised units, onto `rows` in
+ * place. Serials and units are read in parallel; the lazy unit
+ * materialisation plans from the units already read and re-reads them only
+ * when it wrote.
+ */
+async function attachSerialsAndUnits(orgId: OrgId, rows: NormalizedReceivingLine[]): Promise<void> {
+  const lineIds = rows.map((row) => row.id);
+  const [serialsByLine, unitsRead] = await Promise.all([
+    fetchSerialsForLines(lineIds, orgId),
+    fetchLineUnits(lineIds, orgId),
+  ]);
+  for (const row of rows) {
+    (row as Record<string, unknown>).serials = serialsByLine.get(row.id) ?? [];
+  }
+  const stale = await ensureLineUnitsSafe(
+    orgId,
+    rows.map((row) => ({
+      lineId: row.id,
+      expectedQty: row.quantity_expected,
+      serialIds: (serialsByLine.get(row.id) ?? []).map((s) => s.id),
+    })),
+    existingLineUnitsFromViews(unitsRead),
+  );
+  const unitsByLine = stale ? await fetchLineUnits(lineIds, orgId) : unitsRead;
+  for (const row of rows) {
+    (row as Record<string, unknown>).units = unitsByLine.get(row.id) ?? [];
+  }
 }
 
 // ─── GET ────────────────────────────────────────────────────────────────────── ?id=<n> → single row ?receiving_id=<n> → all lines for a…
@@ -119,7 +157,7 @@ export async function handleReceivingLinesGet(
       ).slice(0, 50); // cap the batch — a feed page is far smaller than this
       const serialsByLine: Record<number, LineSerial[]> = {};
       if (receivingIds.length > 0) {
-        const lineRows = await tenantQuery<{ id: number }>(
+        const lineRows = await tenantQueryOneTrip<{ id: number }>(
           orgId,
           `SELECT id FROM receiving_line
             WHERE receiving_id = ANY($1::int[]) AND organization_id = $2`,
@@ -140,30 +178,22 @@ export async function handleReceivingLinesGet(
     // Single row
     if (Number.isFinite(id) && id > 0) {
       const single = buildReceivingLineByIdSql(id, orgId);
-      const one = await tenantQuery(orgId, single.sql, single.params);
-      if (one.rows.length === 0) {
+      const [one, customExist] = await tenantQueriesOneTrip(orgId, [
+        { text: single.sql, params: single.params },
+        customFieldValuesExistStatement(orgId, 'RECEIVING'),
+      ]);
+      if (one!.rows.length === 0) {
         return NextResponse.json({ success: false, error: 'receiving_line not found' }, { status: 404 });
       }
-      const normalized = normalizeRow(one.rows[0]);
-      if (includeSerials) {
-        const serialsByLine = await fetchSerialsForLines([normalized.id], orgId);
-        (normalized as Record<string, unknown>).serials = serialsByLine.get(normalized.id) ?? [];
-        await ensureLineUnitsSafe(orgId, [
-          {
-            lineId: normalized.id,
-            expectedQty: normalized.quantity_expected,
-            serialIds: (serialsByLine.get(normalized.id) ?? []).map((s) => s.id),
-          },
-        ]);
-        const unitsByLine = await fetchLineUnits([normalized.id], orgId);
-        (normalized as Record<string, unknown>).units = unitsByLine.get(normalized.id) ?? [];
-      }
+      const normalized = normalizeRow(one!.rows[0]);
+      const [customMaps] = await Promise.all([
+        customExist!.rows[0]?.has_values === true
+          ? hydrateCustomFieldMaps(orgId, 'RECEIVING', [normalized.id])
+          : new Map<number, CustomFieldValueMap>(),
+        includeSerials ? attachSerialsAndUnits(orgId, [normalized]) : null,
+      ]);
       // Mobile `/receiving/lines/:id` historically read `receiving_lines[]`; desktop sidebar uses `receiving_line`.
-      const [withCustom] = await attachCustomFieldsToRows(
-        orgId,
-        'RECEIVING',
-        [normalized],
-      );
+      const [withCustom] = applyCustomFieldMaps([normalized], customMaps);
       return NextResponse.json({
         success: true,
         receiving_line: withCustom,
@@ -174,43 +204,30 @@ export async function handleReceivingLinesGet(
     // All lines for a specific package
     if (Number.isFinite(receivingId) && receivingId > 0) {
       const byReceiving = buildReceivingLinesByReceivingIdSql(receivingId, orgId);
-      const [rows, pkgRes] = await withTenantConnection(orgId, (client) => Promise.all([
-        client.query(byReceiving.lines.sql, byReceiving.lines.params),
-        client.query(byReceiving.pkg.sql, byReceiving.pkg.params),
-      ]));
-      const normalizedRows = rows.rows.map(normalizeRow);
-      if (includeSerials) {
-        const serialsByLine = await fetchSerialsForLines(normalizedRows.map((r) => r.id), orgId);
-        for (const row of normalizedRows) {
-          (row as Record<string, unknown>).serials = serialsByLine.get(row.id) ?? [];
-        }
-        await ensureLineUnitsSafe(
-          orgId,
-          normalizedRows.map((row) => ({
-            lineId: row.id,
-            expectedQty: row.quantity_expected,
-            serialIds: (serialsByLine.get(row.id) ?? []).map((s) => s.id),
-          })),
-        );
-        const unitsByLine = await fetchLineUnits(
-          normalizedRows.map((row) => row.id),
-          orgId,
-        );
-        for (const row of normalizedRows) {
-          (row as Record<string, unknown>).units = unitsByLine.get(row.id) ?? [];
-        }
-      }
-      const receiving_package = pkgRes.rows[0]
+      const [rows, pkgRes, customExist] = await tenantQueriesOneTrip(orgId, [
+        { text: byReceiving.lines.sql, params: byReceiving.lines.params },
+        { text: byReceiving.pkg.sql, params: byReceiving.pkg.params },
+        customFieldValuesExistStatement(orgId, 'RECEIVING'),
+      ]);
+      const normalizedRows = rows!.rows.map(normalizeRow);
+      const [customMaps] = await Promise.all([
+        customExist!.rows[0]?.has_values === true
+          ? hydrateCustomFieldMaps(orgId, 'RECEIVING', normalizedRows.map((r) => r.id))
+          : new Map<number, CustomFieldValueMap>(),
+        includeSerials ? attachSerialsAndUnits(orgId, normalizedRows) : null,
+      ]);
+      const pkg = pkgRes!.rows[0];
+      const receiving_package = pkg
         ? {
-            received_at: (pkgRes.rows[0].received_at as string | null) ?? null,
-            unboxed_at: (pkgRes.rows[0].unboxed_at as string | null) ?? null,
-            created_at: (pkgRes.rows[0].created_at as string | null) ?? null,
-            return_platform: (pkgRes.rows[0].return_platform as string | null) ?? null,
-            source_platform: (pkgRes.rows[0].source_platform as string | null) ?? null,
-            is_return: !!pkgRes.rows[0].is_return,
+            received_at: (pkg.received_at as string | null) ?? null,
+            unboxed_at: (pkg.unboxed_at as string | null) ?? null,
+            created_at: (pkg.created_at as string | null) ?? null,
+            return_platform: (pkg.return_platform as string | null) ?? null,
+            source_platform: (pkg.source_platform as string | null) ?? null,
+            is_return: !!pkg.is_return,
           }
         : null;
-      const withCustom = await attachCustomFieldsToRows(orgId, 'RECEIVING', normalizedRows);
+      const withCustom = applyCustomFieldMaps(normalizedRows, customMaps);
       return NextResponse.json({
         success: true,
         receiving_lines: withCustom,
@@ -243,22 +260,16 @@ export async function handleReceivingLinesGet(
       const unboxOpened = shouldIncludeUnboxOpenedPlaceholders(query)
         ? buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead)
         : null;
-      const [listCntRes, unmatchedCntRes, unboxCntRes] = await withTenantConnection(
+      const [listCntRes, ...placeholderCntRes] = await tenantQueriesOneTrip(
         orgId,
-        (client) => Promise.all([
-          client.query(countBuilt.count.sql, countBuilt.count.params),
-          unmatched
-            ? client.query(unmatched.count.sql, unmatched.count.params)
-            : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
-          unboxOpened
-            ? client.query(unboxOpened.count.sql, unboxOpened.count.params)
-            : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
-        ]),
+        [countBuilt.count, unmatched?.count, unboxOpened?.count]
+          .filter((s) => s != null)
+          .map((s) => ({ text: s.sql, params: s.params })),
       );
-      const countOnlyTotal =
-        Number(listCntRes.rows[0]?.total ?? 0)
-        + Number(unmatchedCntRes.rows[0]?.n ?? 0)
-        + Number(unboxCntRes.rows[0]?.n ?? 0);
+      const countOnlyTotal = placeholderCntRes.reduce(
+        (sum, res) => sum + Number(res.rows[0]?.n ?? 0),
+        Number(listCntRes?.rows[0]?.total ?? 0),
+      );
       return NextResponse.json({
         success: true,
         receiving_lines: [],
@@ -270,15 +281,20 @@ export async function handleReceivingLinesGet(
 
     // Paginated list (+ pre-limits, serials, lineless placeholders) — the same
     // page read the station nav recents adapters use.
-    const page = await fetchReceivingLinesPage({
-      query,
-      orgId,
-      viewerStaffId,
-      warehousePostal,
-      universalIncoming,
-      applyScannedZohoExclusion,
-      unboxRailColumnRead,
-    });
+    // The org's custom-field presence rides alongside the page, so an org with
+    // no RECEIVING values never pays the dependent custom-field round trip.
+    const [page, hasCustomFields] = await Promise.all([
+      fetchReceivingLinesPage({
+        query,
+        orgId,
+        viewerStaffId,
+        warehousePostal,
+        universalIncoming,
+        applyScannedZohoExclusion,
+        unboxRailColumnRead,
+      }),
+      hasCustomFieldValues(orgId, 'RECEIVING'),
+    ]);
     let normalizedList = page.rows;
     let total = page.total;
 
@@ -294,11 +310,9 @@ export async function handleReceivingLinesGet(
       }
     }
 
-    const receiving_lines = await attachCustomFieldsToRows(
-      orgId,
-      'RECEIVING',
-      normalizedList,
-    );
+    const receiving_lines = hasCustomFields
+      ? await attachCustomFieldsToRows(orgId, 'RECEIVING', normalizedList)
+      : normalizedList;
     return NextResponse.json({
       success: true,
       receiving_lines,

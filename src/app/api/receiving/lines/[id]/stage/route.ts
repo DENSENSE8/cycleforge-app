@@ -200,6 +200,16 @@ export const POST = withAuth(
             organizationId: ctx.organizationId,
             action: 'update',
             rowId: String(result.receiving_id),
+            // The line's new putaway face — an open Unbox desk repaints its
+            // Location pill from this when the phone placed the line.
+            row: {
+              receiving_line_id: lineId,
+              staged_at: result.staged_at,
+              staged_location_id: result.staged_location_id,
+              staged_location_name: result.location?.name ?? null,
+              staged_location_barcode: result.location?.barcode ?? null,
+              staged_location_room: result.location?.room ?? null,
+            },
             source: 'receiving.lines.stage',
           });
         }

@@ -21,7 +21,7 @@
  * focuses find.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { ListChecks, User } from '@/components/Icons';
@@ -46,6 +46,9 @@ import {
 import type { PackageCard, PackageColumn } from '@/lib/live-feed/types';
 import { Headline, LiveDot } from './BoardHeadline';
 import { LiveFeedBulkBar } from './BulkBar';
+import { LiveFeedDocsContext, type OpenCardDocs } from './card-docs';
+import type { DocTab } from './docs-triage/doc-tabs';
+import { PrintPacketsDialog } from './PrintPacketsDialog';
 import { FindResults } from './FindResults';
 import { useLiveFeedRealtime, useNow } from './live-feed-hooks';
 import { PaceStrip } from './PaceStrip';
@@ -55,6 +58,7 @@ import { StageColumn } from './StageColumn';
 import { StageTabs } from './StageTabs';
 
 const EMPTY_PARAMS = new URLSearchParams();
+const EMPTY_IDS: readonly number[] = [];
 /** The open package rail on a desk: a 24rem panel plus the 1rem gap it pushes in — the slot AND the panel width. */
 const RAIL_WIDTH = '25rem';
 /** After the rail's width tween (`motionRole.push.rail`, 0.24 s) and the sheet's spring settle. */
@@ -126,6 +130,8 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
       latestWriteParam.current(LIVE_FEED_PARAMS.open, nextOpen == null ? null : String(nextOpen));
     }, OPEN_URL_SYNC_MS);
   }, []);
+  const [docsFor, setDocsFor] = useState<{ ids: number[]; tab: DocTab } | null>(null);
+  const openCardDocs = useCallback<OpenCardDocs>((card, tab) => setDocsFor({ ids: [card.orderRowId], tab }), []);
   const open = useCallback(
     (card: PackageCard) => {
       setOpened(card);
@@ -224,6 +230,7 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
       cards={[...checked.values()]}
       surface={phone ? 'phone' : 'desk'}
       onClear={clearChecks}
+      onOpen={open}
       onDone={() => {
         clearChecks();
         void queryClient.invalidateQueries({ queryKey: LIVE_FEED_QUERY_ROOT });
@@ -257,9 +264,22 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
     />
   );
 
+  // A card's label / paperwork icon opens the print popover on that one order.
+  const withDocs = (node: ReactNode) => (
+    <LiveFeedDocsContext.Provider value={openCardDocs}>
+      {node}
+      <PrintPacketsDialog
+        open={docsFor != null}
+        onOpenChange={(next) => !next && setDocsFor(null)}
+        orderRowIds={docsFor?.ids ?? EMPTY_IDS}
+        tab={docsFor?.tab ?? 'label'}
+      />
+    </LiveFeedDocsContext.Provider>
+  );
+
   if (phone) {
     const mine = viewerStaffId != null && filters.staffId === viewerStaffId;
-    return (
+    return withDocs(
       <div className="relative flex h-full min-h-0 flex-col gap-3 bg-slate-50 px-3 pt-3" data-testid="live-feed-board" data-surface="phone">
         <div className="flex items-center justify-between gap-2">
           <Headline columns={columns} compact />
@@ -334,7 +354,7 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
     );
   }
 
-  return (
+  return withDocs(
     <div className="relative flex h-full min-h-0 flex-col gap-4 bg-slate-50 p-4" data-testid="live-feed-board" data-surface="desk">
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
         <div className="flex flex-wrap items-end gap-x-8 gap-y-3">

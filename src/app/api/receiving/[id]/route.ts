@@ -3,7 +3,12 @@ import { syncPoHeaderNotesToZoho } from '@/lib/receiving/zoho-po-notes-sync';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { resolveCartonZohoPoId } from '@/lib/receiving/resolve-carton-po-id';
 import pool from '@/lib/db';
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import {
+  tenantQuery,
+  tenantQueriesOneTrip,
+  tenantQueryOneTrip,
+  withTenantTransaction,
+} from '@/lib/tenancy/db';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
@@ -24,7 +29,13 @@ import {
   type CartonTriagePatch,
 } from '@/lib/receiving/streets/carton-street-write';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
+import { ensureLineUnitsSafe } from '@/lib/receiving/ensure-line-units';
+import {
+  CARTON_LINE_UNITS_SQL,
+  existingLineUnitsFromViews,
+  fetchLineUnits,
+  groupLineUnitRows,
+} from '@/lib/receiving/line-units-read';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from '@/lib/receiving/lines/sql-receiving-image';
 import { RECEIVING_LINE_LISTING_EVIDENCE_SQL } from '@/lib/receiving/lines/sql-listing-evidence';
 import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
@@ -51,6 +62,90 @@ const RETURN_PLATFORMS = new Set([
   'ECWID',
 ]);
 
+/**
+ * The carton's recent timeline (30 events) with staff/bin/serial names. The
+ * timeline is non-fatal if inventory_events is unavailable; the name lookups
+ * share one round trip.
+ */
+async function readCartonEvents(receivingId: number, orgId: OrgId) {
+  let recentEvents: Awaited<ReturnType<typeof readTimeline>> = [];
+  try {
+    recentEvents = await readTimeline({ receiving_id: receivingId, limit: 30 }, orgId);
+  } catch (timelineErr) {
+    console.warn('receiving/[id] GET: readTimeline failed (events omitted)', timelineErr);
+  }
+
+  const staffIds = Array.from(
+    new Set(recentEvents.map((e) => e.actor_staff_id).filter((v): v is number => v != null)),
+  );
+  const binIds = Array.from(
+    new Set(
+      recentEvents
+        .flatMap((e) => [e.bin_id, e.prev_bin_id])
+        .filter((v): v is number => v != null),
+    ),
+  );
+  const serialIds = Array.from(
+    new Set(recentEvents.map((e) => e.serial_unit_id).filter((v): v is number => v != null)),
+  );
+
+  const lookups: Array<{ text: string; params: unknown[]; into: Map<number, string> }> = [];
+  const staffMap = new Map<number, string>();
+  const binMap = new Map<number, string>();
+  const serialMap = new Map<number, string>();
+  if (staffIds.length > 0) {
+    lookups.push({
+      text: `SELECT id, name FROM staff WHERE id = ANY($1::int[]) AND organization_id = $2`,
+      params: [staffIds, orgId],
+      into: staffMap,
+    });
+  }
+  if (binIds.length > 0) {
+    lookups.push({
+      text: `SELECT id, name FROM locations WHERE id = ANY($1::int[]) AND organization_id = $2`,
+      params: [binIds, orgId],
+      into: binMap,
+    });
+  }
+  if (serialIds.length > 0) {
+    lookups.push({
+      text: `SELECT id, serial_number AS name FROM serial_units WHERE id = ANY($1::int[]) AND organization_id = $2`,
+      params: [serialIds, orgId],
+      into: serialMap,
+    });
+  }
+  if (lookups.length > 0) {
+    const results = await tenantQueriesOneTrip<{ id: number; name: string }>(orgId, lookups);
+    results.forEach((r, i) => {
+      for (const row of r.rows) lookups[i]!.into.set(row.id, row.name);
+    });
+  }
+
+  return recentEvents.map((e) => ({
+    id: e.id,
+    occurred_at: e.occurred_at,
+    event_type: e.event_type,
+    actor_staff_id: e.actor_staff_id,
+    actor_name:
+      e.actor_staff_id != null ? staffMap.get(e.actor_staff_id) ?? null : null,
+    station: e.station,
+    sku: e.sku,
+    serial_unit_id: e.serial_unit_id,
+    serial_number:
+      e.serial_unit_id != null ? serialMap.get(e.serial_unit_id) ?? null : null,
+    bin_id: e.bin_id,
+    bin_name: e.bin_id != null ? binMap.get(e.bin_id) ?? null : null,
+    prev_bin_id: e.prev_bin_id,
+    prev_bin_name:
+      e.prev_bin_id != null ? binMap.get(e.prev_bin_id) ?? null : null,
+    prev_status: e.prev_status,
+    next_status: e.next_status,
+    notes: e.notes,
+    payload: e.payload,
+    receiving_line_id: e.receiving_line_id,
+  }));
+}
+
 /** GET /api/receiving/:id Full carton view used by the mobile /m/r/:id page. */
 export async function GET(
   request: NextRequest,
@@ -69,9 +164,13 @@ export async function GET(
       );
     }
 
-    const cartonRes = await tenantQuery(
-      orgId,
-      `SELECT
+    // Every read below is independent and keyed on the carton id, so they go out
+    // together, each in one round trip; only the timeline's name enrichment and a
+    // unit materialisation (rare — a non-converged line) add a second trip.
+    const [cartonRes, linesRes, [serialsRes, unitsRes], orderLinks, events] = await Promise.all([
+      tenantQueryOneTrip(
+        orgId,
+        `SELECT
          r.id,
          r.shipment_id,
          stn.tracking_number_raw AS tracking,
@@ -189,19 +288,11 @@ export async function GET(
        LEFT JOIN staff staff_recv ON staff_recv.id = COALESCE(recv_done.received_by, ru.unboxed_by)
        WHERE r.id = $1 AND r.organization_id = $2
        LIMIT 1`,
-      [id, orgId],
-    );
-    const carton = cartonRes.rows[0];
-    if (!carton) {
-      return NextResponse.json(
-        { success: false, error: 'Package not found' },
-        { status: 404 },
-      );
-    }
-
-    const linesRes = await tenantQuery(
-      orgId,
-      `SELECT
+        [id, orgId],
+      ),
+      tenantQueryOneTrip(
+        orgId,
+        `SELECT
          rl.id,
          rl.receiving_id,
          rl.sku,
@@ -249,45 +340,68 @@ export async function GET(
        LEFT JOIN shipping_tracking_numbers stn_line ON stn_line.id = r_cart.shipment_id
        WHERE rl.receiving_id = $1 AND rl.organization_id = $2
        ORDER BY rl.id ASC`,
-      [id, orgId],
-    );
-    const lines = linesRes.rows;
-
-    const lineIds = lines.map((l) => Number(l.id)).filter(Number.isFinite);
-    let serialsByLine = new Map<number, Array<Record<string, unknown>>>();
-    if (lineIds.length > 0) {
-      const serialsRes = await tenantQuery(
-        orgId,
-        // Phase 3: filter + group by origin line via serial_unit_provenance.
-        `SELECT su.id, su.serial_number, su.current_status::text AS current_status,
+        [id, orgId],
+      ),
+      tenantQueriesOneTrip(orgId, [
+        {
+          // Phase 3: filter + group by origin line via serial_unit_provenance —
+          // the origin lines are this carton's lines (the set read above).
+          text: `SELECT su.id, su.serial_number, su.current_status::text AS current_status,
                 su.current_location, su.condition_grade::text AS condition_grade,
                 p.origin_id AS origin_receiving_line_id, su.received_at, su.updated_at
          FROM serial_units su
          JOIN serial_unit_provenance p
            ON p.serial_unit_id = su.id AND p.origin_type = 'RECEIVING_LINE'
-          AND p.origin_id = ANY($1::int[]) AND p.organization_id = $2
+          AND p.origin_id IN (SELECT rl.id FROM receiving_line rl
+                               WHERE rl.receiving_id = $1 AND rl.organization_id = $2)
+          AND p.organization_id = $2
          WHERE su.organization_id = $2
          ORDER BY su.created_at ASC, su.id ASC`,
-        [lineIds, orgId],
+          params: [id, orgId],
+        },
+        { text: CARTON_LINE_UNITS_SQL, params: [id, orgId] },
+      ]),
+      // The outbound orders this carton's PO was bought for (receiving_order_link) —
+      // non-fatal.
+      tenantQueryOneTrip(orgId, CARTON_ORDER_LINKS_SQL, [orgId, id]).then(
+        (r) => toCartonOrderLinks(r.rows),
+        (err: unknown) => {
+          console.warn('receiving/[id] GET: order links failed (omitted)', err);
+          return [];
+        },
+      ),
+      readCartonEvents(id, orgId),
+    ]);
+    const carton = cartonRes.rows[0];
+    if (!carton) {
+      return NextResponse.json(
+        { success: false, error: 'Package not found' },
+        { status: 404 },
       );
-      for (const row of serialsRes.rows) {
-        const lid = Number(row.origin_receiving_line_id);
-        if (!Number.isFinite(lid)) continue;
-        const bucket = serialsByLine.get(lid) ?? [];
-        bucket.push({
-          id: row.id,
-          serial_number: row.serial_number,
-          current_status: row.current_status,
-          current_location: row.current_location,
-          condition_grade: row.condition_grade,
-        });
-        serialsByLine.set(lid, bucket);
-      }
+    }
+    const lines = linesRes.rows;
+
+    const lineIds = lines.map((l) => Number(l.id)).filter(Number.isFinite);
+    const serialsByLine = new Map<number, Array<Record<string, unknown>>>();
+    for (const row of serialsRes.rows) {
+      const lid = Number(row.origin_receiving_line_id);
+      if (!Number.isFinite(lid)) continue;
+      const bucket = serialsByLine.get(lid) ?? [];
+      bucket.push({
+        id: row.id,
+        serial_number: row.serial_number,
+        current_status: row.current_status,
+        current_location: row.current_location,
+        condition_grade: row.condition_grade,
+      });
+      serialsByLine.set(lid, bucket);
     }
 
     // Materialise `receiving_line_unit` then attach the shared wire shape so this carton open and /api/receiving-lines?include=serials cannot…
+    // The units were read above; the planner reuses them, and they are re-read only if it wrote.
+    let unitsByLine = groupLineUnitRows(unitsRes.rows);
     if (lineIds.length > 0) {
-      await ensureLineUnitsSafe(
+      const unitsStale = await ensureLineUnitsSafe(
         orgId as OrgId,
         lines.map((l) => {
           const lineId = Number(l.id);
@@ -300,10 +414,10 @@ export async function GET(
               .filter((n) => Number.isFinite(n) && n > 0),
           };
         }),
+        existingLineUnitsFromViews(unitsByLine),
       );
+      if (unitsStale) unitsByLine = await fetchLineUnits(lineIds, orgId as OrgId);
     }
-    const unitsByLine =
-      lineIds.length > 0 ? await fetchLineUnits(lineIds, orgId as OrgId) : new Map();
 
     const enrichedLines = lines.map((l) => {
       const lineId = Number(l.id);
@@ -346,92 +460,6 @@ export async function GET(
       { expected: 0, received: 0, lines: 0, lines_complete: 0 },
     );
 
-    // The outbound orders this carton's PO was bought for (receiving_order_link) —
-    // read alongside the timeline; non-fatal.
-    const orderLinks = tenantQuery(orgId, CARTON_ORDER_LINKS_SQL, [orgId, id]).then(
-      (r) => toCartonOrderLinks(r.rows),
-      (err: unknown) => {
-        console.warn('receiving/[id] GET: order links failed (omitted)', err);
-        return [];
-      },
-    );
-
-    // Recent timeline for this carton — non-fatal if inventory_events is unavailable.
-    let recentEvents: Awaited<ReturnType<typeof readTimeline>> = [];
-    try {
-      recentEvents = await readTimeline({ receiving_id: id, limit: 30 }, orgId);
-    } catch (timelineErr) {
-      console.warn('receiving/[id] GET: readTimeline failed (events omitted)', timelineErr);
-    }
-
-    // Enrich event subject names (staff, bin, serial).
-    const staffIds = Array.from(
-      new Set(recentEvents.map((e) => e.actor_staff_id).filter((v): v is number => v != null)),
-    );
-    const binIds = Array.from(
-      new Set(
-        recentEvents
-          .flatMap((e) => [e.bin_id, e.prev_bin_id])
-          .filter((v): v is number => v != null),
-      ),
-    );
-    const serialIds = Array.from(
-      new Set(recentEvents.map((e) => e.serial_unit_id).filter((v): v is number => v != null)),
-    );
-
-    const staffMap = new Map<number, string>();
-    const binMap = new Map<number, string>();
-    const serialMap = new Map<number, string>();
-
-    if (staffIds.length > 0) {
-      const r = await tenantQuery<{ id: number; name: string }>(
-        orgId,
-        `SELECT id, name FROM staff WHERE id = ANY($1::int[]) AND organization_id = $2`,
-        [staffIds, orgId],
-      );
-      for (const row of r.rows) staffMap.set(row.id, row.name);
-    }
-    if (binIds.length > 0) {
-      const r = await tenantQuery<{ id: number; name: string }>(
-        orgId,
-        `SELECT id, name FROM locations WHERE id = ANY($1::int[]) AND organization_id = $2`,
-        [binIds, orgId],
-      );
-      for (const row of r.rows) binMap.set(row.id, row.name);
-    }
-    if (serialIds.length > 0) {
-      const r = await tenantQuery<{ id: number; serial_number: string }>(
-        orgId,
-        `SELECT id, serial_number FROM serial_units WHERE id = ANY($1::int[]) AND organization_id = $2`,
-        [serialIds, orgId],
-      );
-      for (const row of r.rows) serialMap.set(row.id, row.serial_number);
-    }
-
-    const events = recentEvents.map((e) => ({
-      id: e.id,
-      occurred_at: e.occurred_at,
-      event_type: e.event_type,
-      actor_staff_id: e.actor_staff_id,
-      actor_name:
-        e.actor_staff_id != null ? staffMap.get(e.actor_staff_id) ?? null : null,
-      station: e.station,
-      sku: e.sku,
-      serial_unit_id: e.serial_unit_id,
-      serial_number:
-        e.serial_unit_id != null ? serialMap.get(e.serial_unit_id) ?? null : null,
-      bin_id: e.bin_id,
-      bin_name: e.bin_id != null ? binMap.get(e.bin_id) ?? null : null,
-      prev_bin_id: e.prev_bin_id,
-      prev_bin_name:
-        e.prev_bin_id != null ? binMap.get(e.prev_bin_id) ?? null : null,
-      prev_status: e.prev_status,
-      next_status: e.next_status,
-      notes: e.notes,
-      payload: e.payload,
-      receiving_line_id: e.receiving_line_id,
-    }));
-
     return NextResponse.json({
       success: true,
       receiving: carton,
@@ -439,7 +467,7 @@ export async function GET(
       lines: enrichedLines,
       totals,
       events,
-      order_links: await orderLinks,
+      order_links: orderLinks,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load package';

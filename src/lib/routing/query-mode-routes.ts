@@ -415,8 +415,8 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
 export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/stock',
   owns: {
-    /** Named stock workspace; absent = the complete stock ledger. */
-    view: paramEnum(['replenish'] as const),
+    /** `all` is the ledger. Absent is the Inventory overview. `replenish` is Needs replenishment. */
+    view: paramEnum(['all', 'replenish'] as const),
     /** Replenishment view's namespaced filters. */
     rsku: paramText,
     rtab: paramText,
@@ -428,8 +428,10 @@ export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
     /** Numeric aisle multi-select, comma-separated. */
     aisle: paramText,
     excludeAisle: paramText,
-    /** Physical location order in the stock walk. */
+    /** Location walk, on-hand total, or oldest cycle count. */
     sort: paramEnum(LOCATION_STOCK_SORTS),
+    /** `never` keeps bin pairs that have no cycle count. */
+    counted: paramEnum(['never'] as const),
     /** Operational state funnel: open placeholders or catalog-paired stock. */
     status: paramText,
     excludeStatus: paramText,

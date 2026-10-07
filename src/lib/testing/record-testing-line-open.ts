@@ -1,6 +1,4 @@
-import { TESTING_LINE_OPENED_EVENT } from '@/lib/testing/testing-line-opened-event';
-
-export { TESTING_LINE_OPENED_EVENT };
+import { refreshDomain } from '@/lib/refresh/bus';
 
 /**
  * Stamp this operator's QC recents for a line opened in the Testing workspace.
@@ -18,9 +16,7 @@ export function recordTestingLineOpen(lineId: number, receivingId?: number | nul
     }),
   })
     .then((res) => {
-      if (!res.ok) return;
-      if (typeof window === 'undefined') return;
-      window.dispatchEvent(new Event(TESTING_LINE_OPENED_EVENT));
+      if (res.ok) refreshDomain('testing.lines');
     })
     .catch(() => {});
 }

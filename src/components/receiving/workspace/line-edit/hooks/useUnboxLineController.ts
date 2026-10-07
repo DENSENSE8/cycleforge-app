@@ -148,13 +148,15 @@ export function useUnboxLineController(
   // Serial is per line; seed the label/receive buffer once when the active
   // line changes. Do NOT re-seed on every `row.serials` publish — optimistic
   // confirm used to clear then refill serialInput and bounce the workspace.
+  const serialsRef = useRef(row.serials);
+  serialsRef.current = row.serials;
   useEffect(() => {
-    const localSerials = (row.serials ?? []) as Array<{ serial_number?: string | null }>;
+    const localSerials = (serialsRef.current ?? []) as Array<{ serial_number?: string | null }>;
     const latest = localSerials.length > 0
       ? String(localSerials[localSerials.length - 1]?.serial_number || '').trim()
       : '';
     setSerialInput(latest);
-  }, [row.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: line switch only
+  }, [row.id]);
 
   // Seed the no-serial waiver from the line's DURABLE value on line change AND whenever the persisted fact updates — a fresh open, a reload,…
   useEffect(() => {

@@ -46,6 +46,7 @@ const QUARANTINE_COPY: Record<LabelQuarantineReasonCode, string> = {
   STAGING_FAILED: 'The PDF could not be stored. Reprocess to try again.',
   BUYER_NOT_FOUND: 'No open order has the buyer named on this label.',
   BUYER_AMBIGUOUS: 'This buyer has several open orders — confirm which one this label ships.',
+  OPERATOR_UNPAIRED: 'Taken off its order — file it on an order again, or remove it.',
 };
 
 /**

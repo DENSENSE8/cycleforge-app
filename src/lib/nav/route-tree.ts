@@ -139,12 +139,12 @@ export const VOCABULARY: readonly VocabularyTerm[] = [
     id: 'warehouse',
     label: 'Warehouse',
     plural: 'Warehouse',
-    definition: 'The lane for the building and everything stored in it: stock, locations, racks, containers.',
+    definition: 'The lane for the building: locations, racks, containers. Quantity is the Inventory lane.',
     segment: 'warehouse',
-    banned: ['inventory (as a lane name)'],
+    banned: [],
     industry: 'D365 warehouse · SAP EWM warehouse number',
     owner: 'warehouse',
-    decided: { by: 'owner', date: '2026-10-03', note: 'Inventory is renamed Warehouse; the URL tree grows from /m/warehouse.' },
+    decided: { by: 'owner', date: '2026-10-06', note: 'Inventory is its own desk door (stock). Warehouse is the building door (locations, QC labels). Phone URLs still grow from /m/warehouse.' },
   },
   {
     id: 'stock',
@@ -518,7 +518,7 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     target: '/m/warehouse',
     page: null,
     status: 'planned',
-    note: 'Today the phone menu group is `inventory` (DOMAIN_GROUPS label "Inventory"). Phase 2 renames the lane to Warehouse on both surfaces; the desktop row now called "Warehouse" must become "Locations" in the same change (nav-name law).',
+    note: 'Desk doors (2026-10-06): Inventory opens Stock; Warehouse opens Locations, with QC labels as its other mode. Phone URLs still target /m/warehouse. The Locations row never wears the Warehouse name.',
   },
   {
     id: 'stock',
@@ -780,6 +780,19 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     note: 'One uploaded file, row by row: every file cell beside the value saved in inbound_order / receiving_line / receiving_line_return, mismatches marked (inbound_import_row).',
   },
   {
+    id: 'lpn-location-mobile',
+    parent: 'receiving',
+    kind: 'task',
+    label: 'LPN location',
+    owns: 'lpn',
+    path: '/m/r/[id]/location',
+    target: '/m/r/[id]/location',
+    page: 'src/app/m/(shell)/r/[id]/location/page.tsx',
+    status: 'live',
+    query: ['line', 'back'],
+    note: 'Operator 2026-10-07: the phone leg of the Unbox Location pill (its "Scan on phone" entry and the desk `L` key send a `receiving_location_request`; the phone bridge acks and opens this). Shows the R-* plate, opens the camera and takes a typed or wedge location. `?line=` places that receiving line (`POST /api/receiving/lines/[id]/stage`); without it the LPN itself is placed (`POST /api/receiving/[id]/arrival` place). Build every URL with lpnLocationMobileHref().',
+  },
+  {
     id: 'fulfillment',
     parent: null,
     kind: 'lane',
@@ -800,8 +813,8 @@ export const ROUTE_TREE: readonly RouteNode[] = [
     target: '/fulfilled',
     page: 'src/app/fulfilled/page.tsx',
     status: 'live',
-    query: ['axis', 'from', 'to', 'channel', 'carrier', 'packer', 'mine', 'scan', 'grain', 'layout', 'done', 'untracked', 'cards', 'group', 'status', 'q', 'shipment', 'openOrderId', 'back', 'colsort', 'coldir'],
-    note: 'Owner 2026-10-05: every shipped order in a window on one date axis (shipped · delivered · ordered · ship-by). Opens on the full-screen BOARD (`FulfilledBoard`, `src/features/fulfilled-board`, built in the image of the Live feed: a headline, then one column per bucket under Act now · Watch · Done, each card its clock); `?layout=sheet` is the shared sheet (`PastedListSheet` over `GET /api/nav/fulfilled`, grain toggle orders · lines, status chips). URL contract: `src/lib/outbound/fulfilled-params.ts`. A card or row opens its package (`?shipment=`) in split — what a triage card opens (`recordDetailsHref` → `?openOrderId=`). `/shipping/shipped` forwards here.',
+    query: ['axis', 'from', 'to', 'channel', 'carrier', 'packer', 'mine', 'scan', 'grain', 'layout', 'done', 'group', 'col', 'status', 'q', 'shipment', 'openOrderId', 'back', 'colsort', 'coldir'],
+    note: 'Owner 2026-10-05: every shipped order in a window on one date axis (shipped · delivered · ordered · ship-by). Opens on the full-screen BOARD (`FulfilledBoard`, `src/features/fulfilled-board`, built in the image of the Live feed: a headline, then the carrier-facing seven columns under Act now · Watch · Done, each card its clock); the other actionable buckets are sidebar views (`?col=<bucket>`, owner 2026-10-06), and `?col=` on a board column expands it over the board. `?layout=sheet` is the shared sheet (`PastedListSheet` over `GET /api/nav/fulfilled`, grain toggle orders · lines, status chips). URL contract: `src/lib/outbound/fulfilled-params.ts`. A card or row opens its package (`?shipment=`) in split — what a triage card opens (`recordDetailsHref` → `?openOrderId=`). `/shipping/shipped` forwards here.',
   },
   {
     id: 'fulfilled-mobile',
@@ -1142,6 +1155,17 @@ export function qualityControlLpnMobilePath(id: string | number): string {
 /** `/m/stock/<stockId>/photos?sku=&back=`. */
 export function stockPhotosHref(stockId: string | number, params: { sku?: string | null; back?: string | null }): string {
   return withQuery(fill(livePath('stock-photos'), 'stockId', String(stockId)), params);
+}
+
+/** `/m/r/<receivingId>/location?line=&back=` — place an LPN (or one of its lines) from the phone. */
+export function lpnLocationMobileHref(
+  receivingId: string | number,
+  params?: { line?: number | null; back?: string | null },
+): string {
+  return withQuery(fill(livePath('lpn-location-mobile'), 'id', String(receivingId)), {
+    line: positiveId(params?.line),
+    back: params?.back,
+  });
 }
 
 /** `/m/labels?code=&kind=&back=` — the location / bay sticker builder. */

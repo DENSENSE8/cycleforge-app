@@ -83,7 +83,7 @@ export function pastedNumberStatusFace(entry: ReconEntry): { face: string; tone:
   if (entry.pending) return { face: entry.detail, tone: 'neutral' };
   return {
     face: `${RECON_STATUS_LABELS[entry.status]} · ${entry.detail}`,
-    tone: entry.status === 'received' ? 'success' : 'warning',
+    tone: entry.status === 'received' ? 'success' : entry.status === 'delivered' ? 'info' : 'warning',
   };
 }
 

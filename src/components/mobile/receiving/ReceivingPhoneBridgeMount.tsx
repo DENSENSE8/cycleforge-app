@@ -2,6 +2,7 @@
 
 import { ReceivingShareToPhoneSheet } from '@/components/mobile/receiving/ReceivingShareToPhoneSheet';
 import { ReceivingPhotoRequestCamera } from '@/components/mobile/receiving/ReceivingPhotoRequestCamera';
+import { ReceivingLocationRequestReceiver } from '@/components/mobile/receiving/ReceivingLocationRequestReceiver';
 import { UnitPhotoRequestCamera } from '@/components/mobile/unit/UnitPhotoRequestCamera';
 import { SkuStockPhotoRequestCamera } from '@/components/mobile/stock/SkuStockPhotoRequestCamera';
 import { PackerScanReadyCamera } from '@/components/mobile/packer/PackerScanReadyCamera';
@@ -13,6 +14,7 @@ export function ReceivingPhoneBridgeMount() {
     <>
       <ReceivingShareToPhoneSheet />
       <ReceivingPhotoRequestCamera />
+      <ReceivingLocationRequestReceiver />
       <UnitPhotoRequestCamera />
       <SkuStockPhotoRequestCamera />
       <PackerScanReadyCamera />

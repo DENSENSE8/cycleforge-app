@@ -1,76 +1,70 @@
 'use client';
 
-/** Rail selector for the receiving sidebar's scrollable body. */
+/**
+ * The receiving scan stations' Recent rail. Arrival shows the combined door
+ * feed (`triageCombined`: Prioritize ∪ Unfound, one row per carton — a scanned
+ * carton never leaves it); Unbox shows the cartons it opened (`unboxRecent`).
+ */
 
-import { TriageSidebarBody } from '@/components/sidebar/receiving/TriageSidebarBody';
 import { ReceivingFeedRail } from '@/components/sidebar/receiving/ReceivingFeedRail';
 import {
-  isPendingTriageScanRow,
+  isPendingScanRow,
   type ReceivingMode,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { useTriageStagingMap } from '@/components/sidebar/receiving/useTriageStagingMap';
+import { TriageStagingChips } from '@/components/sidebar/receiving/TriageStagingChips';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-
-interface ReceivingRailBodyProps {
-  mode: ReceivingMode;
-  selectedLine: ReceivingLineRow | null;
-  /** Pre-resolve triage scan stub (tracking #) for the combined Triage tab. */
-  triageLeadingRow?: ReceivingLineRow | null;
-  /** Live filter text for the triage Found/Unfound lists. */
-  triageFilterText: string;
-  /** Facet keep-filter for the Triage combined dock. */
-  triageIncludeRow?: (row: ReceivingLineRow) => boolean;
-  /** Live filter text for the Unboxed recent dock (`feed=unboxRecent`). */
-  unboxFilterText?: string;
-  /** Facet keep-filter for the Unboxed recent dock. */
-  unboxIncludeRow?: (row: ReceivingLineRow) => boolean;
-}
 
 export function ReceivingRailBody({
   mode,
   selectedLine,
-  triageLeadingRow = null,
-  triageFilterText,
-  triageIncludeRow,
-  unboxFilterText = '',
-  unboxIncludeRow,
-}: ReceivingRailBodyProps) {
-  const selectedLineId = selectedLine?.id ?? null;
-  // Unfound cartons are lineless stubs (negative id) but still open a workspace
-  // keyed on receiving_id — pass them through so the rail highlight + pin stay
-  // in sync with the right pane. Pending pre-resolve stubs (`scan:…`) likewise.
+}: {
+  mode: Extract<ReceivingMode, 'triage' | 'receive'>;
+  selectedLine: ReceivingLineRow | null;
+}) {
+  // Selection follows the REAL carton / line only — a scan still resolving
+  // (the pending row) never highlights or pins a rail row. Unfound cartons are
+  // lineless stubs (negative id) but carry receiving_id, so they still select.
   const selectedRow =
-    selectedLine
-    && (selectedLine.id > 0
-      || selectedLine.receiving_id != null
-      || isPendingTriageScanRow(selectedLine))
+    selectedLine && !isPendingScanRow(selectedLine)
+    && (selectedLine.id > 0 || selectedLine.receiving_id != null)
       ? selectedLine
       : null;
-
-  if (mode === 'history') return null;
+  const selectedLineId = selectedRow?.id ?? null;
 
   if (mode === 'triage') {
-    // Bulk dismiss enters via the row ⋮ menu's Select verb, matching Unbox rail chrome.
-    // Right-pane table left-gutter owns multi-select, not rail dismiss.
-    return (
-      <TriageSidebarBody
-        selectedLineId={selectedLineId}
-        selectedRow={selectedRow}
-        leadingRow={triageLeadingRow}
-        filterText={triageFilterText}
-        includeRow={triageIncludeRow}
-      />
-    );
+    return <ArrivalRail selectedLineId={selectedLineId} selectedRow={selectedRow} />;
   }
-
-  // Unbox (and any other non-triage/history mode that still mounts this rail):
   return (
     <ReceivingFeedRail
       key="rail-unbox-recent"
       feed="unboxRecent"
       selectedLineId={selectedLineId}
       selectedRow={selectedRow}
-      filterText={unboxFilterText}
-      includeRow={unboxIncludeRow}
+      getRowDisabled={isPendingScanRow}
+    />
+  );
+}
+
+function ArrivalRail({
+  selectedLineId,
+  selectedRow,
+}: {
+  selectedLineId: number | null;
+  selectedRow: ReceivingLineRow | null;
+}) {
+  // E10 — a carton that finished triage stays here (re-sorted, never hidden);
+  // the staging map adds its "Staged" badge + shelf/lane chip.
+  const stagingMap = useTriageStagingMap();
+  return (
+    <ReceivingFeedRail
+      key="rail-triage-combined"
+      feed="triageCombined"
+      selectedLineId={selectedLineId}
+      selectedRow={selectedRow}
+      renderPopoverContext={(row) => (
+        <TriageStagingChips ctx={row.receiving_id != null ? stagingMap.get(row.receiving_id) : undefined} />
+      )}
     />
   );
 }

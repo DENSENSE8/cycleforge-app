@@ -448,6 +448,79 @@ export async function deleteOutboundDocument(
   };
 }
 
+/** Thrown when an unlink targets a label that a `label_ingestions` row owns —
+ * those unpair through `POST /api/v1/label-ingestions/[id]/unpair` instead. */
+export class OutboundDocumentIngestionBackedError extends Error {}
+
+export interface UnlinkedOutboundDocument {
+  id: number;
+  documentType: OutboundDocumentType;
+  /** Order the document was filed on before the unlink (null if none). */
+  orderId: number | null;
+  /** ORDER/SHIPMENT link rows dropped by the unlink. */
+  droppedLinks: { entityType: string; entityId: number }[];
+}
+
+/** Move a packing slip / shipping label to the UNLINKED pool, keeping the file.
+ * Drops its ORDER/SHIPMENT entity links and sets `entity_type='UNLINKED'`
+ * (`entity_id` 0 — the column is NOT NULL; matches how UNLINKED rows are inserted).
+ * Re-filing goes through `attachOutboundDocument` with `documentId`. */
+export async function unlinkOutboundDocument(
+  orgId: OrgId,
+  documentId: number,
+  deps: OutboundDocumentDeps = defaultDeps,
+): Promise<UnlinkedOutboundDocument> {
+  return deps.withTenantTransaction(orgId, async (client) => {
+    const existing = await client.query<{ document_type: string; entity_type: string; entity_id: number }>(
+      `SELECT document_type, entity_type, entity_id FROM documents
+        WHERE id = $1 AND organization_id = $2::uuid
+        FOR UPDATE`,
+      [documentId, orgId],
+    );
+    if (existing.rowCount === 0) {
+      throw new OutboundDocumentNotFoundError(`document not found: ${documentId}`);
+    }
+    const row = existing.rows[0];
+    if (row.document_type !== 'packing_slip' && row.document_type !== 'shipping_label') {
+      throw new OutboundDocumentValidationError(`only packing slips and shipping labels can be unlinked (got ${row.document_type})`);
+    }
+    const ingestion = await client.query<{ id: number }>(
+      `SELECT id FROM label_ingestions
+        WHERE organization_id = $1::uuid AND document_id = $2
+        LIMIT 1`,
+      [orgId, documentId],
+    );
+    if ((ingestion.rowCount ?? 0) > 0) {
+      throw new OutboundDocumentIngestionBackedError(
+        `document ${documentId} belongs to label ingestion ${ingestion.rows[0].id}; unpair it through the label route`,
+      );
+    }
+    const dropped = await client.query<{ entity_type: string; entity_id: number }>(
+      `DELETE FROM document_entity_links
+        WHERE organization_id = $1::uuid
+          AND document_id = $2
+          AND entity_type IN ('ORDER', 'SHIPMENT')
+      RETURNING entity_type, entity_id`,
+      [orgId, documentId],
+    );
+    await client.query(
+      `UPDATE documents
+          SET entity_type = 'UNLINKED', entity_id = 0, updated_at = NOW()
+        WHERE id = $1 AND organization_id = $2::uuid`,
+      [documentId, orgId],
+    );
+    const orderLink = dropped.rows.find((link) => link.entity_type === 'ORDER');
+    return {
+      id: documentId,
+      documentType: row.document_type as OutboundDocumentType,
+      orderId: row.entity_type === 'ORDER'
+        ? Number(row.entity_id)
+        : orderLink ? Number(orderLink.entity_id) : null,
+      droppedLinks: dropped.rows.map((link) => ({ entityType: link.entity_type, entityId: Number(link.entity_id) })),
+    };
+  });
+}
+
 interface ReplaceOutboundDocumentUrlInput {
   url: string;
   filename?: string | null;

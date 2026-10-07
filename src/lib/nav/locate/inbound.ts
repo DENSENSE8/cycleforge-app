@@ -3,7 +3,7 @@
  * `reconcileCheck` over the Check rows (`checkZohoReceived`) and the
  * `view=reconcile` lines (the warehouse-only fallback), exactly what the
  * Inbound ledger's `?ref_in=` / `?recon=` read. Bucket ids are the recon
- * statuses (`received`, `not_received`) so `?recon=` keeps filtering the
+ * statuses (`received`, `not_received`, `delivered`) so `?recon=` keeps filtering the
  * ledger, plus `exceptions` — a ref whose lines sit in the Exceptions view
  * (`ReconEntry.exception.inView`); it keeps its status bucket too. A badge
  * with nothing in that view (several POs, lookup failed) stays in `detail`:
@@ -42,7 +42,7 @@ import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 /** The Check's own gate (`POST …/check-zoho-received`) and the ledger's. */
 export const INBOUND_LOCATE_PERMISSION = 'receiving.view';
 
-export const INBOUND_BUCKET_IDS = ['awaiting_tracking', 'received', 'not_received', 'exceptions'] as const;
+export const INBOUND_BUCKET_IDS = ['awaiting_tracking', 'received', 'not_received', 'delivered', 'exceptions'] as const;
 type InboundBucketId = (typeof INBOUND_BUCKET_IDS)[number];
 
 function inboundLedgerHref(status: ReconStatus): string {
@@ -59,6 +59,7 @@ const INBOUND_BUCKETS: Readonly<Record<InboundBucketId, Omit<NavLocateBucket, 'i
   // The ledger under `?recon=` — the same list the chips count. Null left Enter with nowhere to go.
   received: { label: RECON_STATUS_LABELS.received, tone: 'success', href: inboundLedgerHref('received') },
   not_received: { label: RECON_STATUS_LABELS.not_received, tone: 'warning', href: inboundLedgerHref('not_received') },
+  delivered: { label: RECON_STATUS_LABELS.delivered, tone: 'info', href: inboundLedgerHref('delivered') },
   exceptions: { label: 'Exceptions', tone: 'danger', href: `${INCOMING_SURFACE_ROUTE}?lane=exceptions` },
 };
 
@@ -185,6 +186,7 @@ export async function locateInbound(
     awaiting_tracking: 0,
     received: 0,
     not_received: 0,
+    delivered: 0,
     exceptions: 0,
   };
   const now = new Date();

@@ -8,6 +8,8 @@ import {
   OutboundDocumentConflictError,
   OutboundDocumentNotFoundError,
   OutboundDocumentValidationError,
+  OutboundDocumentIngestionBackedError,
+  unlinkOutboundDocument,
   type OutboundDocumentDeps,
 } from './outbound-documents';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -28,6 +30,8 @@ interface Script {
   deleteRow?: Record<string, unknown> | null;
   pairRow?: Record<string, unknown> | null;
   allowedUrlBases?: string[];
+  ingestionId?: number | null;
+  droppedLinks?: { entity_type: string; entity_id: number }[];
 }
 
 interface Captured {
@@ -66,6 +70,13 @@ function fakeClientQuery(cap: Captured, script: Script) {
       return { rows: script.pairRow ? [script.pairRow] : [], rowCount: script.pairRow ? 1 : 0 };
     }
     if (text.includes('DELETE FROM document_entity_links')) {
+      const rows = script.droppedLinks ?? [];
+      return { rows, rowCount: rows.length || 1 };
+    }
+    if (text.includes('SELECT id FROM label_ingestions')) {
+      return script.ingestionId != null ? { rows: [{ id: script.ingestionId }], rowCount: 1 } : { rows: [], rowCount: 0 };
+    }
+    if (text.includes("SET entity_type = 'UNLINKED'")) {
       return { rows: [], rowCount: 1 };
     }
     if (text.includes("UPDATE documents\n            SET entity_type = 'ORDER'")) {
@@ -374,4 +385,42 @@ test('replaceOutboundDocument: atomically changes bytes while preserving existin
     !cap.queries.some((query) => query.text.includes('DELETE FROM documents')),
     'replacement must not delete the existing document row',
   );
+});
+
+test('unlinkOutboundDocument: drops ORDER/SHIPMENT links and moves the slip to UNLINKED', async () => {
+  const { deps, cap } = fakes({
+    pairRow: { document_type: 'packing_slip', entity_type: 'ORDER', entity_id: 42 },
+    droppedLinks: [{ entity_type: 'ORDER', entity_id: 42 }],
+  });
+
+  const result = await unlinkOutboundDocument(ORG, 7, deps);
+
+  assert.equal(result.orderId, 42);
+  assert.deepEqual(result.droppedLinks, [{ entityType: 'ORDER', entityId: 42 }]);
+  const del = cap.queries.find((q) => q.text.includes('DELETE FROM document_entity_links'));
+  assert.ok(del && del.text.includes("entity_type IN ('ORDER', 'SHIPMENT')"));
+  const upd = cap.queries.find((q) => q.text.includes("SET entity_type = 'UNLINKED'"));
+  assert.ok(upd, 'document must move to the UNLINKED pool');
+  assert.deepEqual(upd!.params, [7, ORG]);
+  assert.ok(!cap.queries.some((q) => q.text.includes('DELETE FROM documents')), 'unlink keeps the file');
+});
+
+test('unlinkOutboundDocument: refuses an ingestion-backed label without touching links', async () => {
+  const { deps, cap } = fakes({
+    pairRow: { document_type: 'shipping_label', entity_type: 'ORDER', entity_id: 42 },
+    ingestionId: 9,
+  });
+
+  await assert.rejects(unlinkOutboundDocument(ORG, 7, deps), OutboundDocumentIngestionBackedError);
+  assert.ok(!cap.queries.some((q) => q.text.includes('DELETE FROM document_entity_links')));
+  assert.ok(!cap.queries.some((q) => q.text.includes("SET entity_type = 'UNLINKED'")));
+});
+
+test('unlinkOutboundDocument: refuses other document types and missing documents', async () => {
+  const invoice = fakes({ pairRow: { document_type: 'invoice', entity_type: 'ORDER', entity_id: 42 } });
+  await assert.rejects(unlinkOutboundDocument(ORG, 7, invoice.deps), OutboundDocumentValidationError);
+  assert.ok(!invoice.cap.queries.some((q) => q.text.includes('DELETE FROM document_entity_links')));
+
+  const missing = fakes({ pairRow: null });
+  await assert.rejects(unlinkOutboundDocument(ORG, 7, missing.deps), OutboundDocumentNotFoundError);
 });

@@ -27,7 +27,7 @@
  * every OTHER filter applied. Bucket counts ignore `status`; entries honour it.
  */
 
-import type { NavLocateBucket, NavLocateEntry, NavPurchasesFacets, NavPurchasesResponse } from '@/lib/nav/context/schema';
+import type { NavLocateBucket, NavLocateEntry, NavLocateFacts, NavPurchasesFacets, NavPurchasesResponse } from '@/lib/nav/context/schema';
 import { INBOUND_SOURCE_LABELS, type InboundSourceType } from '@/lib/inbound/source-registry';
 import { matchZohoPo } from '@/lib/inbound/purchase-match';
 import { LOCATE_BUCKET_PRECEDENCE, primaryBucketId } from '@/lib/nav/locate/bucket-precedence';
@@ -35,7 +35,7 @@ import { INBOUND_LOCATE_PERMISSION, locateInbound, type InboundLocateDeps } from
 import { readInboundAwaiting, readInboundCheck, readInboundLines } from '@/lib/nav/locate/service';
 import { buildPurchasesSql, purchaseRowOf, type PurchaseRow, type PurchasesWindow } from '@/lib/nav/purchases/sql';
 import { readInboundFollowups } from '@/lib/receiving/inbound-followups-store';
-import type { PurchasesSort } from '@/lib/receiving/purchases-params';
+import { PURCHASES_SORT_DIR, type PurchasesSort } from '@/lib/receiving/purchases-params';
 import { NavPurchasesQuery } from '@/lib/schemas/nav';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -108,6 +108,8 @@ export interface Purchase {
   source: InboundSourceType;
   vendor: string | null;
   orderedOn: string | null;
+  /** ISO-8601 UTC: first on record (`PurchaseRow.importedAt`), earliest across the number's own rows. */
+  importedAt: string | null;
   inWindow: boolean;
   matchesFind: boolean;
 }
@@ -220,9 +222,14 @@ export function foldPurchases(rows: readonly PurchaseRow[]): Purchase[] {
   groups.forEach((group, at) => {
     if (group.into !== null) return;
     const { lead } = group;
-    // The number's own rows (never a folded twin's) decide its window and order date.
+    // The number's own rows (never a folded twin's) decide its window and dates.
     const orderedOn = group.members.reduce<string | null>(
       (latest, member) => (member.orderedOn && (!latest || member.orderedOn > latest) ? member.orderedOn : latest),
+      null,
+    );
+    // ISO-8601 UTC strings order as their instants.
+    const importedAt = group.members.reduce<string | null>(
+      (first, member) => (member.importedAt && (!first || member.importedAt < first) ? member.importedAt : first),
       null,
     );
     purchases.push({
@@ -231,6 +238,7 @@ export function foldPurchases(rows: readonly PurchaseRow[]): Purchase[] {
       source: lead.source,
       vendor: group.members.find((member) => member.vendor)?.vendor ?? null,
       orderedOn,
+      importedAt,
       inWindow: group.members.some((member) => member.inWindow),
       matchesFind: foundByFind.has(at),
     });
@@ -246,42 +254,72 @@ interface Located {
   unboxedBy: { id: number; name: string | null } | null;
 }
 
+/** A purchase no line or Check answers yet: what the enumeration alone knows about it. */
+function purchaseOnlyFacts(purchase: Purchase): NavLocateFacts {
+  return {
+    section: 'inbound',
+    title: null,
+    sku: null,
+    tracking: null,
+    deliveredAt: null,
+    channelStatus: null,
+    shipBy: null,
+    pickedAt: null,
+    pickedBy: null,
+    packedAt: null,
+    shippedAt: null,
+    packer: null,
+    po: null,
+    vendor: purchase.vendor,
+    lines: 0,
+    duplicates: [],
+    unboxedAt: null,
+    unboxedBy: null,
+    units: null,
+  };
+}
+
 type SortValue = string | number | null;
 
 const INBOUND_PRECEDENCE = LOCATE_BUCKET_PRECEDENCE.inbound;
 
-/** Each sort's key (null sorts last either way) and its direction when `dir` is absent. */
-const SORTS: Readonly<Record<PurchasesSort, { key: (row: Located) => SortValue; dir: 'asc' | 'desc' }>> = {
-  ordered: { key: (row) => row.purchase.orderedOn, dir: 'desc' },
-  delivered: { key: (row) => row.entry.facts?.deliveredAt ?? null, dir: 'desc' },
-  unboxed: { key: (row) => row.entry.facts?.unboxedAt ?? null, dir: 'desc' },
-  // Delivered and not yet received (no unbox, no dock scan — the verdict, not one stamp), longest wait first.
-  waiting: {
-    key: (row) =>
-      row.entry.buckets.includes('received') || row.entry.facts?.unboxedAt ? null : (row.entry.facts?.deliveredAt ?? null),
-    dir: 'asc',
+/** Each sort's key (null sorts last either way); its direction when `dir` is absent is `PURCHASES_SORT_DIR`. */
+const SORT_KEYS: Readonly<Record<PurchasesSort, (row: Located) => SortValue>> = {
+  ordered: (row) => row.purchase.orderedOn,
+  imported: (row) => row.purchase.importedAt,
+  delivered: (row) => row.entry.facts?.deliveredAt ?? null,
+  unboxed: (row) => row.entry.facts?.unboxedAt ?? null,
+  // Delivered and not yet scanned or unboxed here (the Delivered status), longest wait first.
+  waiting: (row) => (row.entry.buckets.includes('delivered') ? (row.entry.facts?.deliveredAt ?? null) : null),
+  po: (row) => row.purchase.ref,
+  vendor: (row) => row.vendor,
+  product: (row) => row.entry.facts?.title ?? null,
+  status: (row) => {
+    const id = primaryBucketId(row.entry.buckets, 'inbound');
+    return id ? INBOUND_PRECEDENCE.indexOf(id) : null;
   },
-  po: { key: (row) => row.purchase.ref, dir: 'asc' },
-  vendor: { key: (row) => row.vendor, dir: 'asc' },
-  product: { key: (row) => row.entry.facts?.title ?? null, dir: 'asc' },
-  status: {
-    key: (row) => {
-      const id = primaryBucketId(row.entry.buckets, 'inbound');
-      return id ? INBOUND_PRECEDENCE.indexOf(id) : null;
-    },
-    dir: 'asc',
-  },
-  units: { key: (row) => row.entry.facts?.units?.expected ?? row.entry.facts?.units?.received ?? null, dir: 'desc' },
+  units: (row) => row.entry.facts?.units?.expected ?? row.entry.facts?.units?.received ?? null,
 };
 
 const TEXT_ORDER = new Intl.Collator('en-US', { numeric: true, sensitivity: 'base' });
 
-/** Sorted by `sort` / `dir`, nulls last; ties fall to the newest order, then the number. */
+/**
+ * Sorted by `sort` / `dir`, nulls last; ties fall to the order date, then the
+ * import instant, then the number — newest first, except under a date sort
+ * (Ordered / Imported), whose ties follow its own direction.
+ */
 function sortLocated(rows: Located[], sort: PurchasesSort, dir: 'asc' | 'desc' | undefined): Located[] {
-  const { key } = SORTS[sort];
-  const sign = (dir ?? SORTS[sort].dir) === 'asc' ? 1 : -1;
+  const key = SORT_KEYS[sort];
+  const sign = (dir ?? PURCHASES_SORT_DIR[sort]) === 'asc' ? 1 : -1;
+  const tieSign = sort === 'ordered' || sort === 'imported' ? sign : -1;
+  const byDate = (a: string | null, b: string | null): number => {
+    if (a === b) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
+    return (a < b ? -1 : 1) * tieSign;
+  };
   return rows
-    .map((row) => ({ row, value: key(row), orderedOn: row.purchase.orderedOn }))
+    .map((row) => ({ row, value: key(row) }))
     .sort((a, b) => {
       if (a.value !== b.value) {
         if (a.value === null) return 1;
@@ -292,12 +330,11 @@ function sortLocated(rows: Located[], sort: PurchasesSort, dir: 'asc' | 'desc' |
             : TEXT_ORDER.compare(String(a.value), String(b.value));
         if (by !== 0) return by * sign;
       }
-      if (a.orderedOn !== b.orderedOn) {
-        if (a.orderedOn === null) return 1;
-        if (b.orderedOn === null) return -1;
-        return a.orderedOn < b.orderedOn ? 1 : -1;
-      }
-      return TEXT_ORDER.compare(a.row.purchase.ref, b.row.purchase.ref);
+      return (
+        byDate(a.row.purchase.orderedOn, b.row.purchase.orderedOn) ||
+        byDate(a.row.purchase.importedAt, b.row.purchase.importedAt) ||
+        TEXT_ORDER.compare(a.row.purchase.ref, b.row.purchase.ref)
+      );
     })
     .map(({ row }) => row);
 }
@@ -372,7 +409,12 @@ export async function getNavPurchases(
   );
 
   const located: Located[] = visible.map((purchase, at) => {
-    const entry = answer.entries[at]!;
+    const found = answer.entries[at]!;
+    // The sheet's Ordered / Imported columns ride the entry's facts — a purchase found nowhere still has its dates.
+    const entry: NavLocateEntry = {
+      ...found,
+      facts: { ...(found.facts ?? purchaseOnlyFacts(purchase)), orderedOn: purchase.orderedOn, importedAt: purchase.importedAt },
+    };
     const unboxedBy = entry.facts?.unboxedBy;
     return {
       purchase,

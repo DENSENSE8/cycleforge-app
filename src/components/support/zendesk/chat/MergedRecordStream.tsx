@@ -320,6 +320,7 @@ export function MergedRecordStream({
   events,
   bottomInsetPx = 0,
   previewComments,
+  followEnd = true,
 }: {
   ticketId: number;
   requesterId?: number;
@@ -330,6 +331,8 @@ export function MergedRecordStream({
   bottomInsetPx?: number;
   /** Unfiled station draft — render these instead of fetching the helpdesk. */
   previewComments?: readonly ZendeskComment[];
+  /** Pin the newest message on load and window older ones. Off for read-from-the-top hosts (the ticket link preview): the whole thread shows. */
+  followEnd?: boolean;
 }) {
   const live = useTicketComments(previewComments ? null : ticketId);
   const { data: agents = [] } = useZendeskAgents();
@@ -401,13 +404,14 @@ export function MergedRecordStream({
   const [windowSize, setWindowSize] = useState(STREAM_PAGE);
   useEffect(() => setWindowSize(STREAM_PAGE), [ticketId]);
 
-  const hiddenCount = Math.max(0, rows.length - windowSize);
+  // Reading from the top needs the whole thread — the oldest message is the description.
+  const hiddenCount = followEnd ? Math.max(0, rows.length - windowSize) : 0;
   const visible = hiddenCount > 0 ? rows.slice(hiddenCount) : rows;
 
   const endRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' });
-  }, [rows.length]);
+    if (followEnd) endRef.current?.scrollIntoView({ block: 'end' });
+  }, [rows.length, followEnd]);
 
   // A growing composer (auto-grow textarea, CC strip, staged thumbs) eats the band the newest message occupies.
   useEffect(() => {

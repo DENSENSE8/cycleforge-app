@@ -277,6 +277,304 @@
         }
       }
     },
+    "/api/v1/label-ingestions/{id}/unpair-check": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What an unpair takes off the order: the tracking that comes off and the scan-out on that tracking, if any"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not on an order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}/unpair": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedRowVersion"
+                ],
+                "properties": {
+                  "expectedRowVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "remove": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Unpaired back to the waiting pool (QUARANTINED); `ingestion` is null when `remove` also deleted it"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale row version, not on an order, or a unit moved on",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}/unpair/undo": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedRowVersion"
+                ],
+                "properties": {
+                  "expectedRowVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Put back exactly what the label's latest unpair took off; `ingestion` is the restored row"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Changed since the unpair, nothing to undo, or its tracking is now on another order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}/file-check": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "tracking",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What filing this label on that order would do: { tracking, carrier, source (label | typed | null), otherOrders[], orderTracking[], sameAlready }"
+          },
+          "404": {
+            "description": "Label or order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}/file-on-order": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "expectedRowVersion"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "expectedRowVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "tracking": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "carrier": {
+                    "type": "string",
+                    "maxLength": 32
+                  },
+                  "withoutTracking": {
+                    "type": "boolean"
+                  },
+                  "collision": {
+                    "type": "string",
+                    "enum": [
+                      "move",
+                      "keep"
+                    ]
+                  },
+                  "existing": {
+                    "type": "string",
+                    "enum": [
+                      "replace",
+                      "add"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Filed: applied on the order (`mode: applied`), or stored as its shipping-label document with no tracking (`mode: withoutTracking`)"
+          },
+          "404": {
+            "description": "Label or order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "FILING_ANSWER_REQUIRED (error.check + error.needs), stale row version, filed elsewhere, or an apply conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/label-batches": {
       "post": {
         "requestBody": {
@@ -1473,6 +1771,8 @@
                   "ROW_VERSION_CONFLICT",
                   "INGESTION_APPLY_CONFLICT",
                   "INGESTION_PROCESSING_FAILED",
+                  "LABEL_APPLIED_TERMINAL",
+                  "FILING_ANSWER_REQUIRED",
                   "SHIPSTATION_NOT_CONNECTED",
                   "SHIP_FROM_NOT_CONFIGURED",
                   "LABEL_TEST_MODE_BLOCKED",
@@ -1528,7 +1828,8 @@
           "MULTI_PACKAGE_EVIDENCE",
           "STAGING_FAILED",
           "BUYER_NOT_FOUND",
-          "BUYER_AMBIGUOUS"
+          "BUYER_AMBIGUOUS",
+          "OPERATOR_UNPAIRED"
         ]
       },
       "LabelPrintChannel": {

@@ -11,6 +11,7 @@
  * existing row shapes so print, preview and press code stays one path.
  */
 import { z } from 'zod';
+import type { ListingLink } from '@/utils/external-item-url';
 import type { LabelOrderLine, LabelPrintRow, PaperworkDocumentRow } from './contracts';
 
 export const PACKET_SLOT_STATES = ['filled', 'missing', 'not_required', 'review'] as const;
@@ -66,6 +67,8 @@ export const orderPacketQuerySchema = z
     channel: z.array(z.string().trim().min(1).max(64)).max(20).optional(),
     sort: z.enum(ORDER_PACKET_SORTS).default('priority'),
     q: z.string().trim().max(200).optional(),
+    /** Exactly these order rows' orders (any line of the order) — another surface's selection (the Live feed's print). */
+    ids: z.array(z.coerce.number().int().positive()).min(1).max(100).optional(),
     limit: z.coerce.number().int().min(1).max(MAX_ORDER_PACKET_PAGE_SIZE).default(ORDER_PACKET_PAGE_SIZE),
     offset: z.coerce.number().int().min(0).default(0),
   })
@@ -129,6 +132,29 @@ export interface OrderPacketLine extends LabelOrderLine {
   state: PacketSlotState;
   /** `kind === 'manual'` rows (any `product_manuals.type`: manual, packing list, PL + M, insert) resolved for this line. */
   documents: PaperworkDocumentRow[];
+  /** The listing on the order's platform (`resolveListingLink`), or why there is none. */
+  listing: ListingLink;
+}
+
+/** The order's shipment as the identity strip names it. */
+export interface OrderPacketShipment {
+  trackingNumber: string;
+  carrier: string | null;
+}
+
+/**
+ * A label on the order whose own evidence disagrees with the order (docs
+ * popover QoL 3): its tracking is none of the order's shipments, or the
+ * ship-to name read off it is not the order's buyer.
+ */
+export interface PacketLabelMismatch {
+  /** `label:<label_ingestions.id>` | `doc:<documents.id>`. */
+  labelKey: string;
+  kind: 'tracking' | 'ship_to';
+  /** What the label reads. */
+  label: string;
+  /** What the order holds. */
+  order: string;
 }
 
 export interface OrderPacket {
@@ -143,6 +169,11 @@ export interface OrderPacket {
   pickup: boolean;
   /** `orders.docs_not_required` — the order-level exemption (slip + product paperwork). */
   docsNotRequired: boolean;
+  /** Who it ships to (ShipStation ship-to, then the customer book). */
+  buyerName: string | null;
+  shipment: OrderPacketShipment | null;
+  /** Labels whose tracking or ship-to name disagrees with this order. */
+  labelMismatches: PacketLabelMismatch[];
   label: OrderPacketLabelSlot;
   slip: OrderPacketSlipSlot;
   lines: OrderPacketLine[];

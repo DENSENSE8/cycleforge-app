@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { peekNextUnitId } from '@/lib/inventory/unit-id';
 import { resolveSkuCatalogRow } from '@/lib/inventory/resolve-sku-catalog';
 import { getOrCreateInternalGtin } from '@/lib/inventory/internal-gtin';
+import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,9 @@ export const POST = withAuth(async (request, ctx) => {
     Number.isFinite(skuCatalogIdInput) && skuCatalogIdInput > 0
       ? Math.floor(skuCatalogIdInput)
       : null;
+  const serialUnitIdInput = Number(body?.serial_unit_id);
+  const serialUnitId =
+    Number.isFinite(serialUnitIdInput) && serialUnitIdInput > 0 ? Math.floor(serialUnitIdInput) : null;
 
   if (!skuInput && !explicitId) {
     return NextResponse.json(
@@ -35,8 +39,31 @@ export const POST = withAuth(async (request, ctx) => {
     );
   }
 
-  // 2. Ensure GTIN exists (catalog data; not encoded on the products label).
-  const gtin = resolved.gtin && resolved.gtin.trim() ? resolved.gtin.trim() : await getOrCreateInternalGtin(resolved.id, orgId);
+  // 2. Ensure GTIN exists (catalog data; not encoded on the products label) and,
+  //    for a known unit, read the id it already wears (minted at receiving).
+  const [gtin, ownUid] = await Promise.all([
+    resolved.gtin && resolved.gtin.trim() ? resolved.gtin.trim() : getOrCreateInternalGtin(resolved.id, orgId),
+    serialUnitId == null
+      ? null
+      : tenantQuery<{ unit_uid: string | null }>(
+          orgId,
+          `SELECT unit_uid FROM serial_units WHERE id = $1 AND organization_id = $2`,
+          [serialUnitId, orgId],
+        ).then(({ rows }) => rows[0]?.unit_uid?.trim() || null),
+  ]);
+
+  if (ownUid) {
+    // The label prints the unit's own id — never a peek at the next one.
+    return NextResponse.json({
+      ok: true,
+      unitId: ownUid,
+      existing: true,
+      gtin,
+      skuCatalogId: resolved.id,
+      sku: resolved.sku,
+      productTitle: resolved.product_title,
+    });
+  }
 
   // 3. Peek the next unit serial — preview only, does NOT advance the
   //    sequence. The real per-serial allocation happens at print time.
@@ -46,6 +73,7 @@ export const POST = withAuth(async (request, ctx) => {
   return NextResponse.json({
     ok: true,
     unitId: preview.unitId,
+    existing: false,
     gtin,
     skuCatalogId: resolved.id,
     sku: resolved.sku,

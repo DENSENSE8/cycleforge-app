@@ -61,10 +61,11 @@ export const TOAST_CLASSNAMES = {
   icon: 'shrink-0 text-current opacity-90 group-data-[type=loading]:hidden [&>svg]:block',
   closeButton:
     'absolute right-2 top-2 rounded-md p-1 text-current/45 transition-colors hover:bg-scrim/5 hover:text-current',
+  // The action sits right of the message and never shrinks — a long title wraps, "Undo" does not.
   actionButton:
-    'mt-1.5 rounded-md border border-current/20 bg-surface-card/80 px-2.5 py-1 text-role-caption font-semibold text-current hover:bg-surface-card',
+    'ml-auto shrink-0 self-center whitespace-nowrap rounded-md border border-current/20 bg-surface-card/80 px-2.5 py-1 text-role-caption font-semibold text-current hover:bg-surface-card',
   cancelButton:
-    'mt-1.5 rounded-md px-2.5 py-1 text-role-caption font-medium text-current/70 hover:text-current',
+    'shrink-0 self-center whitespace-nowrap rounded-md px-2.5 py-1 text-role-caption font-medium text-current/70 hover:text-current',
   success: 'border-border-success bg-surface-success text-text-success',
   error: 'border-border-danger bg-surface-danger text-text-danger',
   warning: 'border-border-warning bg-surface-warning text-text-warning',

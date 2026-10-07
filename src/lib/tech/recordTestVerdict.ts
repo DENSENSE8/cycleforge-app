@@ -1,8 +1,10 @@
 /** recordTestVerdict — the per-unit testing verdict, extracted from POST /api/serial-units/[id]/test so it has a reusable lib entry point… */
 
+import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { drizzleOnClient } from '@/lib/drizzle/tenant-db';
 import { appendInventoryEvent } from '@/lib/repositories/inventory/inventoryEvents';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { tapWorkflow } from '@/lib/workflow/tap';
@@ -15,6 +17,7 @@ import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { SerialState } from '@/lib/inventory/state-machine';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
 import { refreshReceivingUnitStageFacts } from '@/lib/receiving/receiving-unit-stage-facts';
+import { passAllocateUnitToPendingOrder } from '@/lib/automations/pass-allocate-to-pending';
 
 /** Thrown when the unified-engine chokepoint refuses a verdict's status transition (the guarded allow-list rejected it — e.g. */
 export class GuardRejectedError extends Error {
@@ -93,6 +96,14 @@ interface RecordTestVerdictArgs {
   actorStaffId?: number | null;
   /** Tenant id (ctx.organizationId) — REQUIRED, un-defaulted. */
   organizationId: OrgId;
+  /**
+   * Where the verdict's follow-on work runs — audit rows, the Recently-Tested
+   * feed, signals, the workflow tap, pass→pending-order allocate and the
+   * stage-facts refresh. The route passes Next's `after()` so the response
+   * returns once the unit status and line rollup are committed; omitted, the
+   * work runs before the call resolves.
+   */
+  defer?: (work: () => Promise<void>) => void;
 }
 
 interface RecordTestVerdictResult {
@@ -102,14 +113,6 @@ interface RecordTestVerdictResult {
   nextStatus: string;
   line: TestLineRollup | null;
   eventId: number;
-  /** Present when PASS triggered listing→pending allocate (best-effort). */
-  passAllocate?: {
-    matched: boolean;
-    orderId: number | null;
-    allocationId: number | null;
-    packAssigned: boolean;
-    reason?: string;
-  } | null;
 }
 
 /**
@@ -144,22 +147,23 @@ export async function recordTestVerdict(
   const orgId = args.organizationId;
   // Verdict→status mapping — hardcoded by default; per-org override behind
   // UNIFIED_ENGINE_VERDICT_CONFIG (flag off ⇒ no settings read, identical behavior).
-  const mapping = await resolveVerdictMapping(verdict, orgId);
-
-  // 1. Fetch existing unit + its parent receiving_line (org-scoped).
+  // 1. Fetch existing unit + its parent receiving_line (org-scoped), in parallel.
   // Phase 3: origin line (the frozen birth line) via the reconstruction view.
-  const existing = await pool.query<TestedUnit>(
-    orgId
-      ? `SELECT su.id, su.serial_number, su.current_status::text AS current_status, su.sku,
-                vo.origin_receiving_line_id, su.organization_id
-           FROM serial_units su JOIN v_serial_unit_origins vo ON vo.serial_unit_id = su.id
-          WHERE su.id = $1 AND su.organization_id = $2`
-      : `SELECT su.id, su.serial_number, su.current_status::text AS current_status, su.sku,
-                vo.origin_receiving_line_id, su.organization_id
-           FROM serial_units su JOIN v_serial_unit_origins vo ON vo.serial_unit_id = su.id
-          WHERE su.id = $1`,
-    orgId ? [serialUnitId, orgId] : [serialUnitId],
-  );
+  const [mapping, existing] = await Promise.all([
+    resolveVerdictMapping(verdict, orgId),
+    pool.query<TestedUnit>(
+      orgId
+        ? `SELECT su.id, su.serial_number, su.current_status::text AS current_status, su.sku,
+                  vo.origin_receiving_line_id, su.organization_id
+             FROM serial_units su JOIN v_serial_unit_origins vo ON vo.serial_unit_id = su.id
+            WHERE su.id = $1 AND su.organization_id = $2`
+        : `SELECT su.id, su.serial_number, su.current_status::text AS current_status, su.sku,
+                  vo.origin_receiving_line_id, su.organization_id
+             FROM serial_units su JOIN v_serial_unit_origins vo ON vo.serial_unit_id = su.id
+            WHERE su.id = $1`,
+      orgId ? [serialUnitId, orgId] : [serialUnitId],
+    ),
+  ]);
   if (existing.rows.length === 0) return null;
   const prev = existing.rows[0];
   const lineId = prev.origin_receiving_line_id;
@@ -173,59 +177,95 @@ export async function recordTestVerdict(
   // True when THIS call produced a brand-new inventory_event; false when the event already existed (a retry with the same clientEventId —…
   let eventCreated = true;
 
-  if (onOrder) {
-    // No transition; the event is written at step 4.
-  } else if (useChokepoint) {
-    const applied = await applyTransition({
-      unitId: serialUnitId,
-      to: mapping.nextStatus as SerialState,
-      eventType: mapping.eventType,
-      tapEvent: 'test_verdict',
-      tapInput: { verdict },
-      actorStaffId,
-      station: 'TECH',
-      clientEventId: args.clientEventId ?? null,
-      notes,
-      payload: { verdict },
-      receivingLineId: lineId,
-      binId: null, // testing changes no placement — keep the event's bin_id null
-      sku: prev.sku,
-      orgId: args.organizationId,
-      source: 'manual',
-    });
-    if (!applied.ok) {
-      // Unit vanished between the read and the write → not-found (route 404).
-      if (applied.status === 404) return null;
-      // The guard refused the transition (held/shipped/illegal source state).
-      // The legacy path force-wrote; the chokepoint enforces the allow-list, so
-      // surface it for the route to map to 409 instead of silently forcing.
-      throw new GuardRejectedError(applied.error, applied.from ?? prev.current_status);
-    }
-    // current_status is the only field that changed; everything else mirrors prev.
-    unit = { ...prev, current_status: mapping.nextStatus };
-    eventId = applied.eventId;
-    eventCreated = !applied.idempotent;
-  } else if (prev.current_status !== mapping.nextStatus) {
-    // Phase 3: origin_receiving_line_id dropped from RETURNING (immutable here,
-    // never read off `unit` downstream) and carried over from prev below.
-    const updated = await pool.query<Omit<TestedUnit, 'origin_receiving_line_id'>>(
-      orgId
-        ? `UPDATE serial_units
-              SET current_status = $2::serial_status_enum, updated_at = NOW()
-            WHERE id = $1 AND organization_id = $3
-            RETURNING id, serial_number, current_status::text AS current_status,
-                      sku, organization_id`
-        : `UPDATE serial_units
-              SET current_status = $2::serial_status_enum, updated_at = NOW()
-            WHERE id = $1
-            RETURNING id, serial_number, current_status::text AS current_status,
-                      sku, organization_id`,
-      orgId ? [serialUnitId, mapping.nextStatus, orgId] : [serialUnitId, mapping.nextStatus],
-    );
-    unit = { ...updated.rows[0], origin_receiving_line_id: prev.origin_receiving_line_id };
-  }
+  let lineRollup: TestLineRollup | null = null;
 
-  // 3. Audit row in tech_serial_numbers.
+  // 2, 4 and 5 commit as ONE tenant transaction: the unit's status write, its
+  // inventory_event and the line rollup. A guard refusal throws (rolls back);
+  // a unit that vanished between the read and the write returns not-found.
+  const found = await withTenantTransaction(orgId, async (client) => {
+    if (onOrder) {
+      // No transition; the event is written at step 4.
+    } else if (useChokepoint) {
+      const applied = await applyTransition({
+        unitId: serialUnitId,
+        to: mapping.nextStatus as SerialState,
+        eventType: mapping.eventType,
+        // The engine tap runs with the follow-on work (step 6), not in the transaction.
+        skipTap: true,
+        actorStaffId,
+        station: 'TECH',
+        clientEventId: args.clientEventId ?? null,
+        notes,
+        payload: { verdict },
+        receivingLineId: lineId,
+        binId: null, // testing changes no placement — keep the event's bin_id null
+        sku: prev.sku,
+        orgId: args.organizationId,
+        source: 'manual',
+        db: client,
+      });
+      if (!applied.ok) {
+        // Unit vanished between the read and the write → not-found (route 404).
+        if (applied.status === 404) return false;
+        // The guard refused the transition (held/shipped/illegal source state).
+        // The legacy path force-wrote; the chokepoint enforces the allow-list, so
+        // surface it for the route to map to 409 instead of silently forcing.
+        throw new GuardRejectedError(applied.error, applied.from ?? prev.current_status);
+      }
+      // current_status is the only field that changed; everything else mirrors prev.
+      unit = { ...prev, current_status: mapping.nextStatus };
+      eventId = applied.eventId;
+      eventCreated = !applied.idempotent;
+    } else if (prev.current_status !== mapping.nextStatus) {
+      // Phase 3: origin_receiving_line_id dropped from RETURNING (immutable here,
+      // never read off `unit` downstream) and carried over from prev below.
+      const updated = await client.query<Omit<TestedUnit, 'origin_receiving_line_id'>>(
+        `UPDATE serial_units
+            SET current_status = $2::serial_status_enum, updated_at = NOW()
+          WHERE id = $1 AND organization_id = $3
+          RETURNING id, serial_number, current_status::text AS current_status,
+                    sku, organization_id`,
+        [serialUnitId, mapping.nextStatus, orgId],
+      );
+      if (!updated.rows[0]) return false;
+      unit = { ...updated.rows[0], origin_receiving_line_id: prev.origin_receiving_line_id };
+    }
+
+    // 4. inventory_events row for the unit timeline (LEGACY path and units on an order — the chokepoint already wrote the event inside applyTransition at step 2).
+    if (!useChokepoint || onOrder) {
+      const { event, created } = await appendInventoryEvent(
+        {
+          eventType: mapping.eventType,
+          organizationId: args.organizationId,
+          clientEventId: args.clientEventId ?? null,
+          actorStaffId,
+          station: 'TECH',
+          serialUnitId: unit.id,
+          receivingLineId: lineId,
+          sku: unit.sku,
+          prevStatus: prev.current_status,
+          nextStatus: statusAfter,
+          notes,
+          payload: { verdict },
+        },
+        drizzleOnClient(client),
+      );
+      eventId = event.id;
+      eventCreated = created;
+    }
+
+    // 5. Line rollup. Only when the unit has a parent line and is not on an
+    //    order (the tally counts TESTED / ON_HOLD / IN_TEST units only).
+    if (lineId != null && !onOrder) {
+      lineRollup = await rollUpTestLine(client, lineId, unit.organization_id, actorStaffId);
+    }
+    return true;
+  });
+  if (!found) return null;
+
+  // 3 + 4b. Audit rows (tech_serial_numbers, the Recently-Tested feed) and the
+  //    fail signals: follow-on work, run via `args.defer` with steps 6–8.
+  const recordAuditTrail = async () => {
   if (lineId != null) {
     try {
       await attachTechSerial({
@@ -244,27 +284,6 @@ export async function recordTestVerdict(
     }
   }
 
-  // 4. inventory_events row for the unit timeline (LEGACY path and units on an order — the chokepoint already wrote the event inside applyTransition at step 2).
-  if (!useChokepoint || onOrder) {
-    const { event, created } = await appendInventoryEvent({
-      eventType: mapping.eventType,
-      organizationId: args.organizationId,
-      clientEventId: args.clientEventId ?? null,
-      actorStaffId,
-      station: 'TECH',
-      serialUnitId: unit.id,
-      receivingLineId: lineId,
-      sku: unit.sku,
-      prevStatus: prev.current_status,
-      nextStatus: statusAfter,
-      notes,
-      payload: { verdict },
-    });
-    eventId = event.id;
-    eventCreated = created;
-  }
-
-  // 4b. Recently-Tested feed row.
   if (eventCreated) {
     try {
       await pool.query(
@@ -319,186 +338,59 @@ export async function recordTestVerdict(
       }
     }
   }
+  };
 
-  // 5. Line rollup. Only runs when the unit has a parent line and is not on an
-  //    order (the tally counts TESTED / ON_HOLD / IN_TEST units only).
-  let lineRollup: TestLineRollup | null = null;
+  // 6–8 run with the audit trail as one follow-on job (see `args.defer`).
+  const followOn = async () => {
+    await recordAuditTrail();
 
-  if (lineId != null && !onOrder) {
-    // Run the count-then-write rollup inside ONE transaction that locks the receiving_line FOR UPDATE *before* counting.
-    const rollupOrg = unit.organization_id;
-    lineRollup = await withTenantTransaction(rollupOrg, async (client) => {
-      // Serialize concurrent rollups on this line.
-      const lockedLine = await client.query<{ workflow_status: string | null }>(
-        `SELECT workflow_status::text AS workflow_status
-           FROM receiving_line
-          WHERE id = $1 AND organization_id = $2
-          FOR UPDATE`,
-        [lineId, rollupOrg],
-      );
-      const currentWorkflow = lockedLine.rows[0]?.workflow_status ?? null;
-
-      const tally = await client.query<{
-        quantity_expected: number | null;
-        total_units: string;
-        tested_units: string;
-        failed_units: string;
-        in_test_units: string;
-      }>(
-        `SELECT rl.quantity_expected,
-                COUNT(su.id) FILTER (WHERE su.id IS NOT NULL)            AS total_units,
-                COUNT(su.id) FILTER (WHERE su.current_status = 'TESTED')  AS tested_units,
-                COUNT(su.id) FILTER (WHERE su.current_status = 'ON_HOLD') AS failed_units,
-                COUNT(su.id) FILTER (WHERE su.current_status = 'IN_TEST') AS in_test_units
-           FROM receiving_line rl
-      LEFT JOIN serial_unit_provenance p ON p.origin_type = 'RECEIVING_LINE'
-             AND p.origin_id = rl.id AND p.organization_id = rl.organization_id
-      LEFT JOIN serial_units su ON su.id = p.serial_unit_id
-          WHERE rl.id = $1 AND rl.organization_id = $2
-          GROUP BY rl.id, rl.quantity_expected`,
-        [lineId, rollupOrg],
-      );
-
-      const t = tally.rows[0];
-      if (!t) return null;
-
-      const expected = Number(t.quantity_expected || 0);
-      const tested = Number(t.tested_units || 0);
-      const failed = Number(t.failed_units || 0);
-      const inTest = Number(t.in_test_units || 0);
-
-      // Rollup rules:
-      let nextWorkflow: string;
-      let nextQa: string;
-      let nextDisposition: string | null = null;
-      if (failed > 0) {
-        nextWorkflow = 'FAILED';
-        nextQa = 'FAILED_FUNCTIONAL';
-      } else if (expected > 0 && tested >= expected) {
-        nextWorkflow = 'DONE';
-        nextQa = 'PASSED';
-        nextDisposition = 'ACCEPT';
-      } else if (tested + inTest > 0) {
-        nextWorkflow = 'IN_TEST';
-        nextQa = 'PENDING';
-      } else {
-        // No verdict landed yet (rare — should at least be the unit we
-        // just touched, but defensive).
-        nextWorkflow = 'IN_TEST';
-        nextQa = 'PENDING';
-      }
-
-      // Facts half (Wave-3 writer inversion):
-      const rolled = nextDisposition
-        ? await client.query<Omit<TestLineRollup, 'workflow_status'>>(
-            `INSERT INTO receiving_line_testing (
-                receiving_line_id, organization_id, qa_status, disposition_code)
-             VALUES ($1, $3, $2::qa_status_enum, $4::disposition_enum)
-             ON CONFLICT (receiving_line_id) DO UPDATE SET
-               qa_status        = EXCLUDED.qa_status,
-               disposition_code = EXCLUDED.disposition_code,
-               updated_at       = now()
-             RETURNING receiving_line_id AS id, qa_status::text AS qa_status,
-                       disposition_code::text AS disposition_code`,
-            [lineId, nextQa, rollupOrg, nextDisposition],
-          )
-        : await client.query<Omit<TestLineRollup, 'workflow_status'>>(
-            `INSERT INTO receiving_line_testing (
-                receiving_line_id, organization_id, qa_status)
-             VALUES ($1, $3, $2::qa_status_enum)
-             ON CONFLICT (receiving_line_id) DO UPDATE SET
-               qa_status  = EXCLUDED.qa_status,
-               updated_at = now()
-             RETURNING receiving_line_id AS id, qa_status::text AS qa_status,
-                       disposition_code::text AS disposition_code`,
-            [lineId, nextQa, rollupOrg],
-          );
-      const rolledRow = rolled.rows[0];
-      if (!rolledRow) return null;
-
-      // Status half: only rows whose workflow_status actually changes route through the guarded chokepoint, inside THIS tx (executor mode — the…
-      let finalWorkflow = currentWorkflow;
-      if (currentWorkflow !== nextWorkflow) {
-        const transitioned = await transitionReceivingLine(
-          {
-            receivingLineId: lineId,
-            to: nextWorkflow,
-            actorStaffId,
-            station: 'TECH',
-            skipEvent: true,
-          },
-          client,
-          rollupOrg,
-        );
-        if (transitioned.ok) {
-          finalWorkflow = transitioned.to;
-        } else {
-          // Unreachable in practice (no expectedFrom, non-strict, row locked by
-          // this tx so it can't vanish) — keep the pre-rollup status visible.
-          console.warn(
-            `[recordTestVerdict] line ${lineId} rollup transition → ${nextWorkflow} refused (${transitioned.status}): ${transitioned.error}`,
-          );
-        }
-      }
-      return { ...rolledRow, workflow_status: finalWorkflow };
-    });
-  }
-
-  // 6. Workflow-engine tap (LEGACY path only — fire-and-forget, never throws).
-  //    The chokepoint path already tapped inside applyTransition at step 2. The
-  //    inspection node maps PASS → pass, TESTING_FAILED → fail; TEST_AGAIN re-parks.
-  //    A unit on an order is past inspection: no tap.
-  if (!useChokepoint && !onOrder) {
-    await tapWorkflow({
-      serialUnitId: unit.id,
-      event: 'test_verdict',
-      input: { verdict },
-      staffId: actorStaffId,
-      source: 'manual',
-      orgId: args.organizationId,
-    });
-  }
-
-  // 7. Listing automation: PASS + pending to-ship order with matching item
-  //    number → allocate this unit and apply PACK assign. Best-effort — never
-  //    fails the verdict. Skips idempotent replays (eventCreated=false).
-  let passAllocate: RecordTestVerdictResult['passAllocate'] = null;
-  if (
-    verdict === 'PASS' &&
-    eventCreated &&
-    orgId &&
-    !onOrder &&
-    mapping.nextStatus === 'TESTED'
-  ) {
-    try {
-      const { passAllocateUnitToPendingOrder } = await import(
-        '@/lib/automations/pass-allocate-to-pending'
-      );
-      passAllocate = await passAllocateUnitToPendingOrder({
-        organizationId: orgId,
+    // 6. Workflow-engine tap (never throws) — both paths; the chokepoint call
+    //    skips its own tap so it can run here. The inspection node maps
+    //    PASS → pass, TESTING_FAILED → fail; TEST_AGAIN re-parks.
+    //    A unit on an order is past inspection: no tap.
+    if (!onOrder) {
+      await tapWorkflow({
         serialUnitId: unit.id,
-        actorStaffId,
-        clientEventId: args.clientEventId ?? null,
+        event: 'test_verdict',
+        input: { verdict },
+        staffId: actorStaffId,
+        source: 'manual',
+        orgId: args.organizationId,
       });
-    } catch (err) {
-      console.warn('[recordTestVerdict] pass-allocate skipped (non-fatal):', err);
     }
-  }
-  // 8. Order QC reads this verdict off order_stage_facts: refresh every order
-  //    the unit is allocated to (including one pass-allocate just chose).
-  //    After commit, like the steps above — a failure leaves the cron sweep to fix it.
-  try {
-    await refreshOrderStageFacts(unit.organization_id as OrgId, { serialUnitIds: [unit.id] });
-  } catch (err) {
-    console.warn('[recordTestVerdict] order stage facts refresh failed (non-fatal):', err);
-  }
-  try {
-    await refreshReceivingUnitStageFacts(unit.organization_id as OrgId, {
-      serialUnitIds: [unit.id],
-    });
-  } catch (err) {
-    console.warn('[recordTestVerdict] receiving unit stage facts refresh failed (non-fatal):', err);
-  }
+
+    // 7. Listing automation: PASS + pending to-ship order with matching item
+    //    number → allocate this unit and apply PACK assign. Best-effort — never
+    //    fails the verdict. Skips idempotent replays (eventCreated=false).
+    if (verdict === 'PASS' && eventCreated && orgId && !onOrder && mapping.nextStatus === 'TESTED') {
+      try {
+        await passAllocateUnitToPendingOrder({
+          organizationId: orgId,
+          serialUnitId: unit.id,
+          actorStaffId,
+          clientEventId: args.clientEventId ?? null,
+        });
+      } catch (err) {
+        console.warn('[recordTestVerdict] pass-allocate skipped (non-fatal):', err);
+      }
+    }
+
+    // 8. Order QC reads this verdict off order_stage_facts: refresh every order
+    //    the unit is allocated to (including one pass-allocate just chose).
+    //    A failure leaves the cron sweep to fix it.
+    try {
+      await refreshOrderStageFacts(unit.organization_id as OrgId, { serialUnitIds: [unit.id] });
+    } catch (err) {
+      console.warn('[recordTestVerdict] order stage facts refresh failed (non-fatal):', err);
+    }
+    try {
+      await refreshReceivingUnitStageFacts(unit.organization_id as OrgId, { serialUnitIds: [unit.id] });
+    } catch (err) {
+      console.warn('[recordTestVerdict] receiving unit stage facts refresh failed (non-fatal):', err);
+    }
+  };
+  if (args.defer) args.defer(followOn);
+  else await followOn();
 
   return {
     unit,
@@ -506,6 +398,132 @@ export async function recordTestVerdict(
     nextStatus: statusAfter,
     line: lineRollup,
     eventId,
-    passAllocate,
   };
+}
+
+/**
+ * The receiving-line testing rollup, on the verdict's own transaction client.
+ * Locks the receiving_line FOR UPDATE *before* counting so concurrent verdicts
+ * on one line serialize (count-then-write).
+ */
+async function rollUpTestLine(
+  client: PoolClient,
+  lineId: number,
+  rollupOrg: OrgId,
+  actorStaffId: number | null,
+): Promise<TestLineRollup | null> {
+  // Serialize concurrent rollups on this line.
+  const lockedLine = await client.query<{ workflow_status: string | null }>(
+    `SELECT workflow_status::text AS workflow_status
+       FROM receiving_line
+      WHERE id = $1 AND organization_id = $2
+      FOR UPDATE`,
+    [lineId, rollupOrg],
+  );
+  const currentWorkflow = lockedLine.rows[0]?.workflow_status ?? null;
+
+  const tally = await client.query<{
+    quantity_expected: number | null;
+    total_units: string;
+    tested_units: string;
+    failed_units: string;
+    in_test_units: string;
+  }>(
+    `SELECT rl.quantity_expected,
+            COUNT(su.id) FILTER (WHERE su.id IS NOT NULL)            AS total_units,
+            COUNT(su.id) FILTER (WHERE su.current_status = 'TESTED')  AS tested_units,
+            COUNT(su.id) FILTER (WHERE su.current_status = 'ON_HOLD') AS failed_units,
+            COUNT(su.id) FILTER (WHERE su.current_status = 'IN_TEST') AS in_test_units
+       FROM receiving_line rl
+  LEFT JOIN serial_unit_provenance p ON p.origin_type = 'RECEIVING_LINE'
+         AND p.origin_id = rl.id AND p.organization_id = rl.organization_id
+  LEFT JOIN serial_units su ON su.id = p.serial_unit_id
+      WHERE rl.id = $1 AND rl.organization_id = $2
+      GROUP BY rl.id, rl.quantity_expected`,
+    [lineId, rollupOrg],
+  );
+
+  const t = tally.rows[0];
+  if (!t) return null;
+
+  const expected = Number(t.quantity_expected || 0);
+  const tested = Number(t.tested_units || 0);
+  const failed = Number(t.failed_units || 0);
+  const inTest = Number(t.in_test_units || 0);
+
+  // Rollup rules:
+  let nextWorkflow: string;
+  let nextQa: string;
+  let nextDisposition: string | null = null;
+  if (failed > 0) {
+    nextWorkflow = 'FAILED';
+    nextQa = 'FAILED_FUNCTIONAL';
+  } else if (expected > 0 && tested >= expected) {
+    nextWorkflow = 'DONE';
+    nextQa = 'PASSED';
+    nextDisposition = 'ACCEPT';
+  } else if (tested + inTest > 0) {
+    nextWorkflow = 'IN_TEST';
+    nextQa = 'PENDING';
+  } else {
+    // No verdict landed yet (rare — should at least be the unit we
+    // just touched, but defensive).
+    nextWorkflow = 'IN_TEST';
+    nextQa = 'PENDING';
+  }
+
+  // Facts half (Wave-3 writer inversion):
+  const rolled = nextDisposition
+    ? await client.query<Omit<TestLineRollup, 'workflow_status'>>(
+        `INSERT INTO receiving_line_testing (
+            receiving_line_id, organization_id, qa_status, disposition_code)
+         VALUES ($1, $3, $2::qa_status_enum, $4::disposition_enum)
+         ON CONFLICT (receiving_line_id) DO UPDATE SET
+           qa_status        = EXCLUDED.qa_status,
+           disposition_code = EXCLUDED.disposition_code,
+           updated_at       = now()
+         RETURNING receiving_line_id AS id, qa_status::text AS qa_status,
+                   disposition_code::text AS disposition_code`,
+        [lineId, nextQa, rollupOrg, nextDisposition],
+      )
+    : await client.query<Omit<TestLineRollup, 'workflow_status'>>(
+        `INSERT INTO receiving_line_testing (
+            receiving_line_id, organization_id, qa_status)
+         VALUES ($1, $3, $2::qa_status_enum)
+         ON CONFLICT (receiving_line_id) DO UPDATE SET
+           qa_status  = EXCLUDED.qa_status,
+           updated_at = now()
+         RETURNING receiving_line_id AS id, qa_status::text AS qa_status,
+                   disposition_code::text AS disposition_code`,
+        [lineId, nextQa, rollupOrg],
+      );
+  const rolledRow = rolled.rows[0];
+  if (!rolledRow) return null;
+
+  // Status half: only rows whose workflow_status actually changes route through
+  // the guarded chokepoint, inside THIS tx (executor mode).
+  let finalWorkflow = currentWorkflow;
+  if (currentWorkflow !== nextWorkflow) {
+    const transitioned = await transitionReceivingLine(
+      {
+        receivingLineId: lineId,
+        to: nextWorkflow,
+        actorStaffId,
+        station: 'TECH',
+        skipEvent: true,
+      },
+      client,
+      rollupOrg,
+    );
+    if (transitioned.ok) {
+      finalWorkflow = transitioned.to;
+    } else {
+      // Unreachable in practice (no expectedFrom, non-strict, row locked by
+      // this tx so it can't vanish) — keep the pre-rollup status visible.
+      console.warn(
+        `[recordTestVerdict] line ${lineId} rollup transition → ${nextWorkflow} refused (${transitioned.status}): ${transitioned.error}`,
+      );
+    }
+  }
+  return { ...rolledRow, workflow_status: finalWorkflow };
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { PaintSurface } from '@/lib/observability/paint-timing';
 import { getStaffName } from '@/utils/staff';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
@@ -14,9 +15,6 @@ import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRe
 import type { SidebarRailShellProps } from '@/components/sidebar/rail-shell/sidebar-rail-shared';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { RailRowActionsResolver } from '@/components/sidebar/rail-shell/rail-row-actions';
-import { buildRailRowActions } from '@/lib/receiving/rail/row-actions';
-import { shareRecordLink } from '@/lib/share-link';
-import { receivingShareUrl } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
   RAIL_ENTRY_RESTORED_EVENT,
   RAIL_LINE_RESTORED_EVENT,
@@ -41,7 +39,7 @@ import {
   receivingRailRowTitle,
   type ReceivingRailRowTitleMode,
 } from '@/lib/receiving/po-group-title';
-import { receivingRailReconcileId } from '@/lib/queries/receiving-queries';
+import { receivingRailReconcileId, receivingSiblingsSerialsQuery } from '@/lib/queries/receiving-queries';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
 export interface ApiResponse {
@@ -57,9 +55,7 @@ interface RecentActivityRailBaseProps {
   selectedLineId: number | null;
   /** Full selected row, when available — keeps the active line always present. */
   selectedRow?: ReceivingLineRow | null;
-  /** Optimistic row pinned at the top until its real row lands (e.g. triage "importing" stub). */
-  leadingRow?: ReceivingLineRow | null;
-  /** Suppress row clicks while a row is still resolving (e.g. triage importing stub). */
+  /** Suppress row clicks while a row is still resolving (the Unbox pending scan row). */
   getRowDisabled?: (row: ReceivingLineRow) => boolean;
   /** Cap on rendered rows. */
   limit?: number;
@@ -72,22 +68,11 @@ interface RecentActivityRailBaseProps {
    * of blanking the rail. See {@link SidebarRailShellProps.excludedIds}.
    */
   excludedIds?: ReadonlySet<number>;
-  /**
-   * Client-side keep filter — see {@link SidebarRailShellProps.includeRow}.
-   */
-  includeRow?: (row: ReceivingLineRow) => boolean;
-  /**
-   * Cold-reload first-paint seed (Upstash-backed). See
-   * {@link SidebarRailShellProps.loadSnapshot} / `persistSnapshot`. Unset = off.
-   */
-  loadSnapshot?: () => Promise<ReceivingLineRow[] | null>;
-  persistSnapshot?: (rows: ReceivingLineRow[]) => void;
   updateEvent?: string;
   /** Optimistic delete event ({ id }); drops the row from the rail immediately. */
   deleteEvent?: string;
   /** Optimistic group-delete event (detail = receiving_id); drops the whole carton's rows. */
   deleteGroupEvent?: string;
-  refreshEvents: string[];
   /** prev/next CustomEvent name that steps rail selection — drives header chevrons. */
   navigateEvent?: string;
   /** Per-row ⋮ menu. */
@@ -96,8 +81,6 @@ interface RecentActivityRailBaseProps {
   /** Rail name — the listbox's accessible name; no longer painted as a band. */
   eyebrowTitle: string;
   emptyText?: string;
-  autoSelectFirstWhenEmpty?: boolean;
-  canAutoSelectFirst?: () => boolean;
   /**
    * Forwarded to the shell. False = strict sort order, no selected-row hoist
    * (the unbox rail sets this so a receive can't bounce a row to the top and
@@ -128,8 +111,6 @@ interface RecentActivityRailBaseProps {
   renderPopoverContext?: (row: ReceivingLineRow) => ReactNode;
   /** Row title axis — default `line`; unbox Recent uses `po-group`. */
   rowTitleMode?: ReceivingRailRowTitleMode;
-  /** Flag rows that already have a filed claim/ticket (`row.zendesk_ticket`) with an inline ticket chip on the collapsed row + a "Claim… */
-  showTicketFlag?: boolean;
 }
 
 /** Filed claim/ticket number on a line, normalized to a `#NNNN` label; null if none. */
@@ -174,37 +155,6 @@ function railStatusBadgeTone(dot: string, fallbackWorkflowStatus: string): strin
   return WORKFLOW_BADGE[fallbackWorkflowStatus] ?? 'bg-surface-sunken text-text-muted';
 }
 
-/** Receiving row verbs for a rail mounted OUTSIDE `ReceivingFeedRail` — today just the Testing dock. */
-const readOnlyReceivingRowActions: RailRowActionsResolver<ReceivingLineRow> = (row) => {
-  const cartonId = Number(row.receiving_id);
-  const hasCarton = Number.isFinite(cartonId) && cartonId > 0;
-  return buildRailRowActions('receiving', {
-    select: null,
-    share: hasCarton
-      ? () => void shareRecordLink(receivingShareUrl(cartonId, row.id), rowShareTitle(row))
-      : null,
-    hide: null,
-    remove: null,
-  });
-};
-
-/** Share-sheet title for a row — the PO when it has one, else the package id. */
-function rowShareTitle(row: ReceivingLineRow): string {
-  const po = (row.zoho_purchaseorder_number || '').trim();
-  return `Receiving — ${po || `Package #${row.receiving_id}`}`;
-}
-
-function canAutoSelectReceivingRailFirst(): boolean {
-  if (typeof window === 'undefined') return false;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('recvId')) return false;
-  // Unbox (`receive`, the bare path) and the triage rails (`triage`) auto-select
-  // the top of their queue so a mode shows its most-recent item, not an empty
-  // background. Each rail only renders in its own mode, so allowing both is safe.
-  const m = params.get('mode') ?? 'receive';
-  return m === 'receive' || m === 'triage';
-}
-
 /**
  * Receiving/Testing recent-activity rail. A thin domain wrapper over the
  * generic {@link SidebarRailShell} — it supplies the ReceivingLineRow row body
@@ -213,26 +163,19 @@ function canAutoSelectReceivingRailFirst(): boolean {
 export function RecentActivityRailBase({
   selectedLineId,
   selectedRow = null,
-  leadingRow = null,
   getRowDisabled,
   limit = 25,
   queryKey,
   fetchFn,
   excludedIds,
-  includeRow,
-  loadSnapshot,
-  persistSnapshot,
   updateEvent,
   deleteEvent,
   deleteGroupEvent,
-  refreshEvents,
   refreshDomains,
   navigateEvent,
   rowActions,
   eyebrowTitle,
   emptyText,
-  autoSelectFirstWhenEmpty = false,
-  canAutoSelectFirst: canAutoSelectFirstProp,
   pinSelectedLead = true,
   preserveServerOrder = false,
   staggerRevealMotion,
@@ -244,7 +187,6 @@ export function RecentActivityRailBase({
   getPreviewQty,
   renderPopoverContext,
   rowTitleMode = 'line',
-  showTicketFlag = true,
 }: RecentActivityRailBaseProps) {
   const resolvePlatformMeta = usePlatformMeta();
   const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
@@ -265,9 +207,6 @@ export function RecentActivityRailBase({
       queryKey={queryKey}
       fetchFn={async () => (await fetchFn()).receiving_lines ?? []}
       excludedIds={excludedIds}
-      includeRow={includeRow}
-      loadSnapshot={loadSnapshot}
-      persistSnapshot={persistSnapshot}
       updateEvent={updateEvent}
       deleteEvent={deleteEvent}
       deleteGroupEvent={deleteGroupEvent}
@@ -276,13 +215,11 @@ export function RecentActivityRailBase({
       // clearable or the row would be refetched and filtered straight back out.
       restoreEvent={deleteEvent ? RAIL_LINE_RESTORED_EVENT : undefined}
       restoreGroupEvent={deleteGroupEvent ? RAIL_ENTRY_RESTORED_EVENT : undefined}
-      refreshEvents={refreshEvents}
       refreshDomains={refreshDomains}
       navigateEvent={navigateEvent}
-      rowActions={rowActions ?? readOnlyReceivingRowActions}
+      rowActions={rowActions}
       selectedId={selectedLineId}
       selectedRow={selectedRow}
-      leadingRow={leadingRow}
       getRowDisabled={getRowDisabled}
       limit={limit}
       pinSelectedLead={pinSelectedLead}
@@ -300,11 +237,6 @@ export function RecentActivityRailBase({
       }}
       eyebrowTitle={eyebrowTitle}
       emptyText={emptyText}
-      autoSelectFirstWhenEmpty={autoSelectFirstWhenEmpty}
-      canAutoSelectFirst={
-        canAutoSelectFirstProp
-          ?? (autoSelectFirstWhenEmpty ? canAutoSelectReceivingRailFirst : undefined)
-      }
       getId={getRowId}
       getReconcileId={getRowReconcileId}
       getGroupId={getRowGroupId}
@@ -319,7 +251,7 @@ export function RecentActivityRailBase({
           ctx={ctx}
           renderQuantity={renderQuantity}
           title={rowTitle(row)}
-          ticket={showTicketFlag ? railTicketNumber(row) : null}
+          ticket={railTicketNumber(row)}
         />
       )}
       renderPopover={(row, p) => (
@@ -330,7 +262,7 @@ export function RecentActivityRailBase({
           getQty={getPreviewQty}
           statusDot={getStatusDot(row)}
           statusLabel={shortStatusLabel(row)}
-          ticket={showTicketFlag ? railTicketNumber(row) : null}
+          ticket={railTicketNumber(row)}
           contextSlot={renderPopoverContext?.(row)}
         />
       )}
@@ -412,7 +344,15 @@ function ReceivingPopoverContent({
 
   const skuValue = (row.sku || '').trim();
   const poValue = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
-  const serialsCsv = (row.serials ?? []).map((s) => (s.serial_number || '').trim()).filter(Boolean).join(', ');
+  // Rail rows carry no serials; the peek reads them from the carton's shared
+  // `include=serials` cache entry (the line pane's own), loaded on peek open.
+  const cartonId = Number(row.receiving_id);
+  const { data: cartonSerials } = useQuery({
+    ...receivingSiblingsSerialsQuery(cartonId),
+    enabled: row.serials == null && row.id > 0 && cartonId > 0,
+  });
+  const serials = row.serials ?? cartonSerials?.receiving_lines.find((r) => r.id === row.id)?.serials ?? [];
+  const serialsCsv = serials.map((s) => (s.serial_number || '').trim()).filter(Boolean).join(', ');
   const isPickup = isLocalPickupFulfillment(row);
   const pickupLabel = fulfillmentModeLabel(row);
   const displayTrk = displayTrackingNumber(row);

@@ -54,8 +54,9 @@ interface IncomingAttachTrackingPopoverProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   /**
-   * Fired after a successful attach — lets a host that owns its own query keys
-   * (e.g. the incoming delivery record) refresh beyond the shared receiving feeds.
+   * Fired after a successful attach, and again after its Undo — lets a host
+   * that owns its own query keys (e.g. the incoming delivery record, the
+   * Purchasing sheet) refresh beyond the shared receiving feeds.
    */
   onAttached?: () => void;
 }
@@ -97,6 +98,11 @@ export function IncomingAttachTrackingPopover({
   const [selected, setSelected] = useState<PoHit | null>(presetSelected);
   const [tracking, setTracking] = useState('');
   const [boxes, setBoxes] = useState<AttachedBox[]>([]);
+  // The PO on screen now — an Undo for another PO (the toast outlives the dialog) only refreshes caches.
+  const selectedPoRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedPoRef.current = selected?.po_id ?? null;
+  }, [selected]);
   const [attaching, setAttaching] = useState(false);
 
   const reset = useCallback(() => {
@@ -191,6 +197,33 @@ export function IncomingAttachTrackingPopover({
   // Session attaches (POST response) win; otherwise show what's already linked.
   const shownBoxes = boxes.length > 0 ? boxes : (existingBoxes ?? []);
 
+  // Undo one fresh attach (`DELETE …/attach-box`): the link goes, the box list and every feed refresh.
+  const undoAttach = useCallback(
+    async (made: { poId: string; label: string; tracking: string; receivingId: number; shipmentId: number }) => {
+      try {
+        const res = await fetch(`/api/receiving/po/${encodeURIComponent(made.poId)}/attach-box`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ receivingId: made.receivingId, shipmentId: made.shipmentId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!data?.success) {
+          toast.error(data?.error || 'Could not undo — the tracking number is still linked');
+          return;
+        }
+        const nextBoxes: AttachedBox[] = Array.isArray(data.boxes) ? data.boxes : [];
+        if (selectedPoRef.current === made.poId) setBoxes(nextBoxes);
+        queryClient.setQueryData(['incoming-attach-po-boxes', made.poId], nextBoxes);
+        toast.success(`Removed ${made.tracking} from ${made.label}`);
+        invalidateReceivingFeeds(queryClient);
+        onAttached?.();
+      } catch {
+        toast.error('Could not undo — the tracking number is still linked');
+      }
+    },
+    [queryClient, onAttached],
+  );
+
   const attach = useCallback(
     async (rawTracking: string) => {
       const value = rawTracking.trim();
@@ -211,12 +244,20 @@ export function IncomingAttachTrackingPopover({
           return;
         }
         const nextBoxes: AttachedBox[] = Array.isArray(data.boxes) ? data.boxes : [];
+        const poId = selected.po_id;
         setBoxes(nextBoxes);
         // Keep the preload cache current so a close/reopen shows the same list.
-        queryClient.setQueryData(['incoming-attach-po-boxes', selected.po_id], nextBoxes);
+        queryClient.setQueryData(['incoming-attach-po-boxes', poId], nextBoxes);
         setTracking('');
         if (data.already_attached) toast.success('Tracking already linked to this PO');
-        else toast.success(`Box ${data.box_count} linked to ${selected.po_number}`);
+        else {
+          // A fresh link can be taken back (wrong PO, wrong row) — the box was linked, never scanned.
+          const label = selected.po_number || poId;
+          toast.undo(`${value} linked to ${label} as box ${data.box_count}`, {
+            duration: 10_000,
+            onUndo: () => void undoAttach({ poId, label, tracking: value, receivingId: data.receiving_id, shipmentId: data.shipment_id }),
+          });
+        }
         invalidateReceivingFeeds(queryClient);
         onAttached?.();
       } catch {
@@ -225,7 +266,7 @@ export function IncomingAttachTrackingPopover({
         setAttaching(false);
       }
     },
-    [selected, queryClient, onAttached],
+    [selected, queryClient, onAttached, undoAttach],
   );
 
   // Escape, focus trap, focus restore, scroll lock and the scrim all come from

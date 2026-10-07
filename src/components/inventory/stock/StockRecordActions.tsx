@@ -4,13 +4,15 @@
  * The stock record's verbs, one strip: three icon+text buttons and a vertical
  * ⋮ for the rest. A temporary SKU promotes Pair to SKU into that row; it
  * opens the `SkuPairSheet` action over the record, so the record never moves.
- * Upload / Send to phone live on the item's photo tile (`StockPhotoTile`).
+ * A zero-stock placeholder can be deleted from the same menu. Upload / Send
+ * to phone live on the item's photo tile (`StockPhotoTile`).
  */
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Box, Link2, Package, PackageSearch, Send } from '@/components/Icons';
+import { Box, Link2, Package, PackageSearch, Send, Trash2 } from '@/components/Icons';
 import { RecordTaskForm } from '@/components/tasks/RecordTaskActions';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { SkuPairSheet } from '@/components/inventory/sku-exceptions/SkuPairSheet';
 import {
   RecordActionStrip,
@@ -19,6 +21,7 @@ import {
 import { useProvisionalSku } from '@/hooks/useProvisionalSkus';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
+import { toast } from '@/lib/toast';
 import { stockLocationFace } from './stock-record';
 
 const GLYPH = 'size-3.5';
@@ -83,6 +86,35 @@ export function StockRecordActions({
       run: () => setPairOpen(true),
     };
     const primary = temporary ? [products, inventory, pair] : [products, inventory, bin];
+    const holdsStock = record.qty > 0;
+    const remove: RecordActionVerb = {
+      id: 'delete',
+      label: 'Delete',
+      icon: <Trash2 className={GLYPH} />,
+      tone: 'danger',
+      disabled: holdsStock,
+      disabledReason: 'It still holds stock — pair it to a real SKU instead of deleting it.',
+      run: async () => {
+        const confirmed = await requestConfirm({
+          title: 'Delete placeholder',
+          description: `Delete ${sku}? It leaves every location. This cannot be undone.`,
+          confirmLabel: 'Delete',
+          tone: 'danger',
+        });
+        if (!confirmed) return;
+        const res = await fetch(`/api/sku-catalog/provisional/${encodeURIComponent(sku)}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        const body = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null;
+        if (!res.ok || body?.success === false) {
+          toast.error(body?.error || 'Could not delete the placeholder.');
+          return;
+        }
+        toast.success(`Deleted ${sku}`);
+        onPaired();
+      },
+    };
     const overflow: RecordActionVerb[] = [
       ...(temporary ? [bin] : []),
       {
@@ -94,9 +126,10 @@ export function StockRecordActions({
           setTaskOpen(true);
         },
       },
+      ...(temporary ? [remove] : []),
     ];
     return [...primary, ...overflow];
-  }, [provisional, record.location_barcode, router, sku, temporary]);
+  }, [onPaired, provisional, record.location_barcode, record.qty, router, sku, temporary]);
 
   return (
     <div className="flex shrink-0 flex-col items-start gap-2">

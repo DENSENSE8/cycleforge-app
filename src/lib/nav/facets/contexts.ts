@@ -164,6 +164,7 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
   ],
   'stock.all': [
     { id: 'health', label: 'Stock health', param: 'status', excludeParam: 'excludeStatus', multi: true },
+    { id: 'count', label: 'Cycle count', param: 'counted', multi: false, inline: true },
     { id: 'room', label: 'Room', param: 'room', excludeParam: 'excludeRoom', multi: false },
     { id: 'aisle', label: 'Aisle', param: 'aisle', excludeParam: 'excludeAisle', multi: true, inline: true },
   ],

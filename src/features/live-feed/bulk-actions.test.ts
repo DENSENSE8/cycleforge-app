@@ -1,17 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { OutboundDocument } from '@/lib/documents/types';
 import {
-  describeLabelPrint,
+  removableOrderRowIds,
   describeScanOut,
-  planLabelPrint,
   planScanOut,
   selectedOrderRowIds,
   selectionInStage,
 } from './bulk-actions';
-
-const label = (id: number, url = `https://x/label-${id}.pdf`): OutboundDocument =>
-  ({ id, documentType: 'shipping_label', data: { url } }) as unknown as OutboundDocument;
 
 test('selectedOrderRowIds keeps selection order and drops repeats', () => {
   assert.deepEqual(selectedOrderRowIds([{ orderRowId: 3 }, { orderRowId: 1 }, { orderRowId: 3 }]), [3, 1]);
@@ -46,34 +41,26 @@ test('a scan-out run reports refusals, repeats and failures without hiding the b
   assert.equal(describeScanOut([], 2).message, '2 packages skipped — no label');
 });
 
-test('a shared box label prints once; orders without a label are skipped and counted', () => {
-  const plan = planLabelPrint([
-    { orderRowId: 1, labels: [label(10)] },
-    { orderRowId: 2, labels: [label(10)] },
-    { orderRowId: 3, labels: [] },
-    { orderRowId: 4, labels: null },
-    { orderRowId: 5, labels: [label(11, 'https://x/label.png')] },
-  ]);
-  assert.deepEqual(plan.docs, [
-    { id: 10, isPdf: true },
-    { id: 11, isPdf: false },
-  ]);
-  assert.equal(plan.printedOrders, 3);
-  assert.equal(plan.skippedNoLabel, 1);
-  assert.equal(plan.unreachable, 1);
-  assert.deepEqual(describeLabelPrint(plan), {
-    ok: true,
-    message: 'Printing 2 labels for 3 orders · 1 order skipped — no label bought · 1 order could not be read',
-  });
+test('an unlinked scan-out (no order) never joins an order write', () => {
+  assert.deepEqual(
+    selectedOrderRowIds([
+      { orderRowId: 3, link: 'order' },
+      { orderRowId: -182938, link: 'package' },
+      { orderRowId: -1000000042, link: 'scan' },
+    ]),
+    [3],
+  );
 });
 
-test('nothing to print refuses with the reason', () => {
-  assert.deepEqual(describeLabelPrint(planLabelPrint([{ orderRowId: 1, labels: null }])), {
-    ok: false,
-    message: 'Could not read the shipping documents — retry in a moment',
-  });
-  assert.deepEqual(describeLabelPrint(planLabelPrint([{ orderRowId: 1, labels: [] }])), {
-    ok: false,
-    message: 'No shipping labels on the selected packages · 1 order skipped — no label bought',
-  });
+test('Remove from list takes only order cards still in the building', () => {
+  assert.deepEqual(
+    removableOrderRowIds([
+      { orderRowId: 3, link: 'order', stage: 'packed' },
+      { orderRowId: 4, link: 'order', stage: 'scanned_out' },
+      { orderRowId: -182938, link: 'package', stage: 'scanned_out' },
+      { orderRowId: 3, link: 'order', stage: 'packed' },
+      { orderRowId: 5, link: 'order', stage: 'to_pick' },
+    ]),
+    [3, 5],
+  );
 });

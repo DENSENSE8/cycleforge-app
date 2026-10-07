@@ -34,6 +34,10 @@ export function useEntitySupportTicket(args: {
   receivingId?: number | null;
   serialUnitId?: number | null;
   enabled?: boolean;
+  /** lookup-po found a linked ticket. Painted at once; by-entity still
+   *  confirms in the background (lookup-po only sees RECEIVING links, so a
+   *  'no ticket' answer from it is never trusted). */
+  initialTicket?: EntitySupportTicket | null;
 }) {
   const { lineId, receivingId } = normalizeReceivingTicketEntityRefs({
     lineId: args.lineId ?? null,
@@ -59,6 +63,8 @@ export function useEntitySupportTicket(args: {
       }
       return (data.ticket as EntitySupportTicket | null) ?? null;
     },
+    initialData: args.initialTicket ?? undefined,
+    initialDataUpdatedAt: 0,
     enabled,
     staleTime: 15_000,
   });

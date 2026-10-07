@@ -29,6 +29,8 @@ import { PRODUCT_NAME } from "@/lib/branding/constants";
 import { cfSans } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 import { appViewport } from '@/design-system/tokens/mobile-viewport';
+import { NAV_CONTRACT } from '@/lib/nav/context/contract.server';
+import { NAV_CONTRACT_META_NAME } from '@/components/sidebar/contextual/nav-context-snapshot';
 
 /** Next owns the single viewport tag. A manual tag would duplicate its default. */
 export const viewport: Viewport = appViewport;
@@ -102,6 +104,8 @@ export default async function RootLayout({
                 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
                 <meta name="apple-mobile-web-app-title" content={PRODUCT_NAME} />
                 <meta name="mobile-web-app-capable" content="yes" />
+                {/* The sidebar's persisted snapshots paint only under this contract. */}
+                <meta name={NAV_CONTRACT_META_NAME} content={NAV_CONTRACT} />
                 {/* Pre-paint scripts, streamed into the server HTML only (never a
                     React-rendered <script>): URL-only trial flags, the cached
                     theme / station skin / station depth (no light→dark flash),

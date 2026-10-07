@@ -85,3 +85,10 @@ test('a hand-edited deep link degrades instead of breaking the page', () => {
   const many = Array.from({ length: CHECK_ZOHO_RECEIVED_MAX_INPUTS + 60 }, (_, i) => `T${String(i).padStart(9, '0')}`).join(',');
   assert.equal(parseTrackingInParam(many).keys.length, CHECK_ZOHO_RECEIVED_MAX_INPUTS);
 });
+
+test('a spreadsheet copy: quoted multi-line cells lose their quotes, a word cell is no number', () => {
+  const parsed = parseTrackingPaste('383902923442\nMissing tracking number\n"1Z1A375J4215202508\n1ZJ22B100323054688"\nZZZ');
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+  assert.deepEqual(parsed.trackings, ['383902923442', '1Z1A375J4215202508', '1ZJ22B100323054688']);
+});

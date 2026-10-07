@@ -3,8 +3,7 @@ import assert from 'node:assert/strict';
 import { QueryClient } from '@tanstack/react-query';
 import {
   TESTING_RAIL_SEGMENT,
-  TRIAGE_RAIL_SEGMENTS,
-  UNBOX_QUEUE_SEGMENT,
+  TRIAGE_RAIL_SEGMENT,
   UNBOX_RAIL_SEGMENT,
   patchTestingRailByLine,
   patchReceivingRailTicketByCarton,
@@ -20,8 +19,11 @@ import {
   restoreReceivingRailSnapshot,
   snapshotReceivingRailByCarton,
   upsertReceivingRailRows,
+  insertArrivalRailRows,
   type ReceivingRailRow,
 } from './receiving-queries';
+import { RECEIVING_RAIL_FEEDS } from '@/lib/receiving/rail/feeds';
+import { receivingRailQueryKey } from '@/lib/receiving/rail/rail-query-key';
 
 function railKey(segment: string) {
   return ['receiving-lines-table', 'rail', segment, 'default', '', 'all'] as const;
@@ -57,21 +59,17 @@ describe('receivingRailReconcileId', () => {
 });
 
 describe('removeReceivingRailByCarton / ByLine', () => {
-  it('drops carton rows from Unboxed and Queue caches', () => {
+  it('drops carton rows from the Unboxed cache', () => {
     const qc = new QueryClient();
     const rows: ReceivingRailRow[] = [
       { id: 1, receiving_id: 10, client_event_id: 'carton:10' },
       { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
     ];
     qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), rows);
-    qc.setQueryData(railKey(UNBOX_QUEUE_SEGMENT), [...rows]);
 
     removeReceivingRailByCarton(qc, 10);
 
     assert.deepEqual(qc.getQueryData(railKey(UNBOX_RAIL_SEGMENT)), [
-      { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
-    ]);
-    assert.deepEqual(qc.getQueryData(railKey(UNBOX_QUEUE_SEGMENT)), [
       { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
     ]);
   });
@@ -111,29 +109,18 @@ describe('removeReceivingRailByCarton / ByLine', () => {
 });
 
 describe('removePendingScanRailRow', () => {
-  it('drops the pre-resolve scan: stub so carton: upsert does not double-list', () => {
+  it('drops the pre-resolve pending row; a real carton row under the same key survives', () => {
     const qc = new QueryClient();
     qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), [
-      { id: -1, receiving_id: null, client_event_id: 'scan:ABC123', tracking_number: 'ABC123' },
-      { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
+      { id: -1, receiving_id: null, client_event_id: 'stn:ABC123', tracking_number: 'ABC123' },
+      { id: 2, receiving_id: 20, client_event_id: 'stn:XYZ789' },
     ] satisfies ReceivingRailRow[]);
 
-    removePendingScanRailRow(qc, 'scan:ABC123');
-    upsertReceivingRailRows(qc, [
-      {
-        id: -99,
-        receiving_id: 99,
-        client_event_id: 'carton:99',
-        tracking_number: 'ABC123',
-        item_name: 'Unfound PO',
-      },
-    ]);
+    removePendingScanRailRow(qc, 'stn:ABC123');
+    removePendingScanRailRow(qc, 'stn:XYZ789');
 
     const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
-    assert.equal(next?.length, 2);
-    assert.ok(next?.every((r) => r.client_event_id !== 'scan:ABC123'));
-    assert.ok(next?.some((r) => r.client_event_id === 'carton:99'));
-    assert.ok(next?.some((r) => r.client_event_id === 'carton:20'));
+    assert.deepEqual(next?.map((r) => r.client_event_id), ['stn:XYZ789']);
   });
 });
 
@@ -560,51 +547,57 @@ describe('purgeTriageRailsAfterUnboxOpen', () => {
     { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
   ];
 
-  it('drops the opened carton from every triage segment, leaves siblings', () => {
+  it('drops the opened carton from the Arrival rail, leaves siblings', () => {
     const qc = new QueryClient();
-    for (const segment of TRIAGE_RAIL_SEGMENTS) {
-      qc.setQueryData(railKey(segment), triageRows());
-    }
+    qc.setQueryData(railKey(TRIAGE_RAIL_SEGMENT), triageRows());
 
     purgeTriageRailsAfterUnboxOpen(qc, 10);
 
-    for (const segment of TRIAGE_RAIL_SEGMENTS) {
-      assert.deepEqual(
-        qc.getQueryData(railKey(segment)),
-        [{ id: 2, receiving_id: 20, client_event_id: 'carton:20' }],
-        `segment ${segment} should drop carton 10 only`,
-      );
-    }
+    assert.deepEqual(qc.getQueryData(railKey(TRIAGE_RAIL_SEGMENT)), [
+      { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
+    ]);
   });
 
-  it('never touches Unbox rails (Unboxed / Queue keep the carton)', () => {
+  it('never touches the Unboxed rail', () => {
     const qc = new QueryClient();
     qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), triageRows());
-    qc.setQueryData(railKey(UNBOX_QUEUE_SEGMENT), triageRows());
 
     purgeTriageRailsAfterUnboxOpen(qc, 10);
 
     assert.deepEqual(qc.getQueryData(railKey(UNBOX_RAIL_SEGMENT)), triageRows());
-    assert.deepEqual(qc.getQueryData(railKey(UNBOX_QUEUE_SEGMENT)), triageRows());
   });
 
-  it('marks triage rail queries stale so the next mount refetches server truth', () => {
+  it('marks the Arrival rail stale so the next mount refetches server truth', () => {
     const qc = new QueryClient();
-    for (const segment of TRIAGE_RAIL_SEGMENTS) {
-      qc.setQueryData(railKey(segment), triageRows());
-    }
+    qc.setQueryData(railKey(TRIAGE_RAIL_SEGMENT), triageRows());
     qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), triageRows());
 
     purgeTriageRailsAfterUnboxOpen(qc, 10);
 
-    for (const segment of TRIAGE_RAIL_SEGMENTS) {
-      assert.equal(
-        qc.getQueryState(railKey(segment))?.isInvalidated,
-        true,
-        `segment ${segment} should be invalidated`,
-      );
-    }
+    assert.equal(qc.getQueryState(railKey(TRIAGE_RAIL_SEGMENT))?.isInvalidated, true);
     assert.equal(qc.getQueryState(railKey(UNBOX_RAIL_SEGMENT))?.isInvalidated, false);
+  });
+
+  it('an Arrival scan lands on the mounted Arrival rail (staff-filtered or not) — added if new, untouched if listed', () => {
+    const qc = new QueryClient();
+    const segment = RECEIVING_RAIL_FEEDS.triageCombined.segment;
+    const keys = [null, 1].map((staffId) => receivingRailQueryKey(segment, undefined, '', staffId));
+    for (const key of keys) qc.setQueryData(key, triageRows());
+    const unboxed = receivingRailQueryKey(RECEIVING_RAIL_FEEDS.unboxRecent.segment, undefined, '', null);
+    qc.setQueryData(unboxed, []);
+
+    const listed = triageRows()[0];
+    insertArrivalRailRows(qc, [
+      { ...listed, client_event_id: 'carton:changed' } as ReceivingRailRow,
+      { id: 77, receiving_id: 77, client_event_id: 'carton:77', item_name: 'New' } as ReceivingRailRow,
+    ]);
+
+    for (const key of keys) {
+      const rows = qc.getQueryData<ReceivingRailRow[]>(key) ?? [];
+      assert.equal(rows[0].receiving_id, 77);
+      assert.deepEqual(rows.slice(1), triageRows());
+    }
+    assert.deepEqual(qc.getQueryData(unboxed), []);
   });
 
   it('no-ops on a non-materialized receiving id', () => {

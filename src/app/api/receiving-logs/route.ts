@@ -41,41 +41,19 @@ async function checkReceivingScansTableExists(): Promise<boolean> {
 }
 
 /**
- * Hard deletion ordinarily cannot cross an arrival scan: those scans are
- * append-only evidence. Clearly marked E2E fixtures are the exception, so test
- * runs can remove their own cartons without opening a delete path for live
- * receiving evidence. The matching database guard accepts this transaction-
- * local capability only for `E2E-` tracking numbers.
+ * Delete the carton and every row that cascades with it, including arrival
+ * scans. Those scans are append-only except inside this transaction, which
+ * arms `app.receiving_carton_delete`; the evidence guard then lets a scan go
+ * only once its own carton is gone (the cascade), never on its own.
  */
 async function deleteReceivingCartons(orgId: OrgId, ids: readonly number[]) {
     return withTenantTransaction(orgId, async (client) => {
-        const scanClass = await client.query<{ has_operational_scan: boolean; has_e2e_scan: boolean }>(
-            `SELECT
-                COALESCE(BOOL_OR(tracking_number NOT ILIKE 'E2E-%'), false) AS has_operational_scan,
-                COALESCE(BOOL_OR(tracking_number ILIKE 'E2E-%'), false) AS has_e2e_scan
-               FROM receiving_scans
-              WHERE receiving_id = ANY($1::int[])`,
-            [ids],
-        );
-        const { has_operational_scan: hasOperationalScan, has_e2e_scan: hasE2eScan } = scanClass.rows[0] ?? {
-            has_operational_scan: false,
-            has_e2e_scan: false,
-        };
-        if (hasOperationalScan) {
-            return {
-                deleted: [] as number[],
-                error: 'Arrival-scanned cartons are retained as evidence. Hide the carton from your list instead.',
-                ok: false as const,
-            };
-        }
-        if (hasE2eScan) {
-            await client.query("SELECT set_config('app.receiving_e2e_cleanup', 'on', true)");
-        }
+        await client.query("SELECT set_config('app.receiving_carton_delete', 'on', true)");
         const deleted = await client.query<{ id: number }>(
-            'DELETE FROM receiving_carton WHERE id = ANY($1::int[]) RETURNING id',
-            [ids],
+            'DELETE FROM receiving_carton WHERE id = ANY($1::int[]) AND organization_id = $2 RETURNING id',
+            [ids, orgId],
         );
-        return { deleted: deleted.rows.map((row) => Number(row.id)), ok: true as const };
+        return deleted.rows.map((row) => Number(row.id));
     });
 }
 
@@ -261,11 +239,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
                 { status: 400 }
             );
         }
-        const result = await deleteReceivingCartons(orgId, ids);
-        if (!result.ok) {
-            return NextResponse.json({ error: result.error }, { status: 409 });
-        }
-        const deleted = result.deleted;
+        const deleted = await deleteReceivingCartons(orgId, ids);
         await invalidateReceivingViews(ctx.organizationId);
         // Count, not the id list — listeners only refetch on this event,
         // and an unbounded id string risks the broker's message size cap.
@@ -288,13 +262,9 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
         );
     }
 
-    const result = await deleteReceivingCartons(orgId, [id]);
+    const deleted = await deleteReceivingCartons(orgId, [id]);
 
-    if (!result.ok) {
-        return NextResponse.json({ error: result.error }, { status: 409 });
-    }
-
-    if (result.deleted.length === 0) {
+    if (deleted.length === 0) {
         return NextResponse.json(
             { error: 'Receiving log not found' },
             { status: 404 }

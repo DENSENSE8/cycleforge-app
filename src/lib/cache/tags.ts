@@ -59,10 +59,6 @@ export const CACHE_NS = {
   poByRef: 'po-by-ref',
   opsDashboard: 'ops-dashboard',
   catalog: 'catalog',
-  /** Per-viewer receiving sidebar-rail first-paint seed (localStorage → Redis).
-   *  Seed-only: written client-side from the rows a rail just rendered, read to
-   *  paint the next reload before the authoritative query resolves. */
-  receivingRail: 'receiving-rail',
 
   // ── Phase 2 hot-path read wraps (B2–B5) ─────────────────────────────────── Registered now so the tag/namespace SoT is complete before…
   /** `/api/fba/stage-counts` — GROUP BY status over fba_shipment_items (120s poll). */

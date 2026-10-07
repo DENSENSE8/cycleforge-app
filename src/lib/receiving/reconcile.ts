@@ -20,6 +20,7 @@ import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 import { CHECK_ZOHO_RECEIVED_MAX_INPUTS, parseTrackingKeys } from '@/lib/receiving/tracking-paste';
 import type { CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { deriveReceivingLineStatus } from '@/lib/receiving/workflow-stages';
 import { CARRIER_STATUS, INBOUND_INTERNAL_STATUS } from '@/lib/status/record-status';
 
 /** The pasted list. One name, imported — never re-typed at a call site. */
@@ -41,16 +42,31 @@ export const RECONCILE_ROW_LIMIT = 5 * CHECK_ZOHO_RECEIVED_MAX_INPUTS;
 export const RECONCILE_CAP_NOTE = `Only the first ${RECONCILE_ROW_LIMIT} lines are shown`;
 
 /**
- * A pasted list's STATUSES — received or not. "Needs a person" is not a third
- * status: it is the Exceptions VIEW, and a number that belongs there carries an
- * {@link ReconEntry.exception} badge instead.
+ * A pasted list's STATUSES — where the goods physically are:
+ * - received: the warehouse holds it — scanned at the dock, unboxed, or
+ *   counted into stock;
+ * - not received: still on the way (ordered, shipped, in transit) — never
+ *   anything the carrier delivered or the warehouse touched;
+ * - delivered: the carrier delivered it and nobody here has scanned or
+ *   unboxed it yet (the dock's queue).
+ * "Needs a person" is not a status: it is the Exceptions VIEW, and a number
+ * that belongs there carries an {@link ReconEntry.exception} badge instead.
+ * Appended in this order so the Incoming status chords keep their keys.
+ *
+ * A filter collapse of the two status axes (`src/lib/status/record-status.ts`),
+ * not a third vocabulary: received = internal Received or Unboxed, or a dock
+ * scan (internal Not received, in our custody); not received = internal Not
+ * received / Awaiting tracking; delivered = internal Not received AND
+ * external Delivered. The words are the module's. Its reasons walk the
+ * internal order: Received here › Unboxed › Scanned at dock.
  */
-export const RECON_STATUSES = ['received', 'not_received'] as const;
+export const RECON_STATUSES = ['received', 'not_received', 'delivered'] as const;
 export type ReconStatus = (typeof RECON_STATUSES)[number];
 
 export const RECON_STATUS_LABELS: Readonly<Record<ReconStatus, string>> = {
   received: INBOUND_INTERNAL_STATUS.received.label,
   not_received: INBOUND_INTERNAL_STATUS.not_received.label,
+  delivered: CARRIER_STATUS.delivered.label,
 };
 
 export function parseReconParam(raw: string | null | undefined): ReconStatus | null {
@@ -95,7 +111,7 @@ export const RECON_REASON_STATUS: Readonly<Record<ReconReason, ReconStatus>> = {
   unboxed: 'received',
   scanned: 'received',
   received_here: 'received',
-  delivered_not_scanned: 'not_received',
+  delivered_not_scanned: 'delivered',
   in_transit: 'not_received',
   open_po: 'not_received',
   warehouse_owed: 'not_received',
@@ -209,8 +225,10 @@ function tablesDecide(row: CheckZohoReceivedRow): boolean {
 
 /**
  * One Check row → its status and reason. Received = the warehouse scanned or
- * unboxed it (physical-first). Everything else is still owed, by its physical
- * or carrier fact; a number nothing identifies is owed AND an exception.
+ * unboxed it (physical-first); delivered = the carrier's word, untouched here;
+ * everything else is still on the way, by its carrier fact; a number nothing
+ * identifies is owed AND an exception. The Check's local facts stop at the
+ * unbox; units counted in come from the lines ({@link reconOfWarehouseRows}).
  */
 export function reconOfCheckRow(row: CheckZohoReceivedRow): Verdict {
   const local = row.local;
@@ -245,25 +263,49 @@ function lineException(lines: readonly ReceivingLineRow[]): ReconEntry['exceptio
  * A number the Check had no ERP answer for, that our receiving lines carry
  * (a manual or marketplace receipt, or one live Zoho was never asked about):
  * the lines are the answer. Same physical-first rule as
- * {@link reconOfCheckRow}: an unbox or a dock scan (or units received here)
- * is received; anything else is still owed.
+ * {@link reconOfCheckRow}, in the inbound walk's order (Received comes AFTER
+ * Unboxed): units counted into stock › an unbox › a dock scan; a carrier
+ * delivery nobody touched is delivered; anything else is still on the way.
  */
 export function reconOfWarehouseRows(rows: readonly ReceivingLineRow[]): Verdict {
-  if (rows.some((row) => Boolean(row.unboxed_at))) return verdict('unboxed');
-  if (rows.some((row) => Boolean(row.received_at || row.scanned_at) || row.delivery_state === 'DELIVERED_NOT_UNBOXED')) {
-    return verdict('scanned');
-  }
-  if (rows.some((row) => Number(row.quantity_received) > 0 || row.delivery_state === 'RECEIVED')) {
+  if (
+    rows.some(
+      (row) =>
+        Number(row.quantity_received) > 0 ||
+        Boolean(row.received_done_at) ||
+        deriveReceivingLineStatus(row.workflow_status) === 'RECEIVED',
+    )
+  ) {
     return verdict('received_here');
+  }
+  if (rows.some((row) => Boolean(row.unboxed_at) || deriveReceivingLineStatus(row.workflow_status) === 'UNBOXED')) {
+    return verdict('unboxed');
+  }
+  // `delivery_state` RECEIVED with no units counted = past EXPECTED (arrived / matched): on the dock.
+  if (
+    rows.some(
+      (row) =>
+        Boolean(row.received_at || row.scanned_at) ||
+        row.delivery_state === 'DELIVERED_NOT_UNBOXED' ||
+        row.delivery_state === 'RECEIVED',
+    )
+  ) {
+    return verdict('scanned');
   }
   if (rows.some((row) => row.delivery_state === 'DELIVERED_UNOPENED')) return verdict('delivered_not_scanned');
   return verdict('warehouse_owed');
 }
 
+/** How far along the goods are — the lines' physical fact may only move a number forward. */
+const STATUS_PROGRESS: Readonly<Record<ReconStatus, number>> = { not_received: 0, delivered: 1, received: 2 };
+
 /**
  * Check rows → one entry per pasted number, in the operator's paste order.
  * `lineRows` (the `view=reconcile` answer) settles every number the ERP had
- * no answer for but the warehouse has lines for — our tables are the truth.
+ * no answer for but the warehouse has lines for — our tables are the truth —
+ * and overrules any Check answer once a line was unboxed or scanned here, or
+ * its carrier delivered it: a number the warehouse physically holds is never
+ * "not received", and one on the dock is never "still on the way".
  */
 export function reconcileCheck(
   selection: RefSelection,
@@ -299,17 +341,22 @@ export function reconcileCheck(
         ref,
         key,
         ...verdict,
-        exception: verdict.status === 'not_received' ? lineException(lines) : null,
+        exception: verdict.status === 'received' ? null : lineException(lines),
         poNumber: lead.zoho_purchaseorder_number || null,
         vendor: lead.vendor_name ?? null,
       };
     }
-    const verdict = reconOfCheckRow(row);
+    const checked = reconOfCheckRow(row);
+    const physical = lines.length > 0 ? reconOfWarehouseRows(lines) : null;
+    // The further along of the two: received › delivered › still on the way.
+    const verdict = physical && STATUS_PROGRESS[physical.status] > STATUS_PROGRESS[checked.status] ? physical : checked;
     return {
       ref,
       key,
       ...verdict,
-      exception: verdict.exception ?? (verdict.status === 'not_received' ? lineException(lines) : null),
+      // Received clears every badge; otherwise the Check's own (several POs, lookup failed) outlives a lines' Delivered.
+      exception:
+        verdict.status === 'received' ? null : (verdict.exception ?? checked.exception ?? lineException(lines)),
       poNumber: row.po_number,
       vendor: row.vendor_name,
     };

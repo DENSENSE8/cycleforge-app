@@ -4,8 +4,10 @@
  * never sends a tenant — the session cookie is the only authority.
  */
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import type { LabelFileCheck, LabelFileOnOrderResult, LabelFilingAnswerRequiredDetail, LabelFilingAnswers, LabelFilingQuestion } from './file-on-order-contracts';
 import type { LabelPairingCandidates, PublicLabelIngestion } from './ingestion-service';
 import type { LabelIngestionState } from './types';
+import type { LabelUnpairCheck } from './unpair';
 
 export type LabelIngestionDto = PublicLabelIngestion;
 
@@ -13,7 +15,13 @@ export const LABEL_INGESTIONS_QUERY_KEY = ['v1', 'label-ingestions'] as const;
 const ENDPOINT = '/api/v1/label-ingestions';
 
 class LabelIngestionHttpError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(
+    readonly status: number,
+    message: string,
+    /** The v1 `error.code`, and the error object's extras (`check` / `needs` on FILING_ANSWER_REQUIRED). */
+    readonly code: string | null = null,
+    readonly detail: Record<string, unknown> | null = null,
+  ) {
     super(message);
     this.name = 'LabelIngestionHttpError';
   }
@@ -21,7 +29,7 @@ class LabelIngestionHttpError extends Error {
 
 async function readEnvelope<T>(response: Response): Promise<{ data: T; replayed: boolean }> {
   const payload = (await response.json().catch(() => null)) as
-    | { data?: T; replayed?: boolean; error?: { message?: string } | string; message?: string }
+    | { data?: T; replayed?: boolean; error?: { message?: string; code?: string } | string; message?: string }
     | null;
   if (!response.ok || payload?.data === undefined) {
     const error = payload?.error;
@@ -29,7 +37,7 @@ async function readEnvelope<T>(response: Response): Promise<{ data: T; replayed:
       (typeof error === 'object' ? error?.message : undefined) ??
       payload?.message ??
       `Label intake request failed (${response.status}).`;
-    throw new LabelIngestionHttpError(response.status, message);
+    throw new LabelIngestionHttpError(response.status, message, typeof error === 'object' ? error?.code ?? null : null, typeof error === 'object' && error ? error : null);
   }
   return { data: payload.data, replayed: payload.replayed === true };
 }
@@ -57,16 +65,6 @@ export async function uploadLabelPdf(file: File): Promise<{ data: LabelIngestion
   return readEnvelope<LabelIngestionDto>(await fetch(ENDPOINT, { method: 'POST', body: form, credentials: 'same-origin' }));
 }
 
-export async function applyLabelIngestionHttp(id: number, expectedRowVersion: number): Promise<void> {
-  const response = await fetch(`${ENDPOINT}/${id}/apply`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ expectedRowVersion }),
-  });
-  await readEnvelope<unknown>(response);
-}
-
 export async function deleteUnlinkedLabelIngestionHttp(id: number): Promise<void> {
   const response = await fetch(`${ENDPOINT}/${id}`, { method: 'DELETE', credentials: 'same-origin' });
   await readEnvelope<unknown>(response);
@@ -77,35 +75,84 @@ export async function fetchLabelPairingCandidates(id: number, signal?: AbortSign
   return (await readEnvelope<LabelPairingCandidates>(response)).data;
 }
 
-/** Pair a quarantined label to an order; `repaired` = the buyer's other waiting labels that paired on their own as a result. */
-export async function confirmLabelOrderHttp(id: number, orderId: number, expectedRowVersion: number): Promise<{ ingestion: LabelIngestionDto; repaired: LabelIngestionDto[] }> {
-  const response = await fetch(`${ENDPOINT}/${id}/confirm-order`, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ orderId, expectedRowVersion }),
-  });
-  return (await readEnvelope<{ ingestion: LabelIngestionDto; repaired: LabelIngestionDto[] }>(response)).data;
+export type { LabelFileCheck, LabelFilingQuestion };
+
+/** A filing that waits on the operator: `needs` says what to ask, `check` what the label and order already hold. */
+export class LabelFilingAnswerRequired extends Error {
+  constructor(readonly check: LabelFileCheck, readonly needs: LabelFilingQuestion[], message: string) {
+    super(message);
+    this.name = 'LabelFilingAnswerRequired';
+  }
+}
+
+/** What filing label `id` on `q.orderId` would do — with `q.tracking` as typed when the page has none. */
+export async function fetchLabelFileCheck(id: number, q: { orderId: number; tracking?: string }): Promise<LabelFileCheck> {
+  const params = new URLSearchParams({ orderId: String(q.orderId) });
+  if (q.tracking?.trim()) params.set('tracking', q.tracking.trim());
+  const response = await fetch(`${ENDPOINT}/${id}/file-check?${params}`, { credentials: 'same-origin', cache: 'no-store' });
+  return (await readEnvelope<LabelFileCheck>(response)).data;
 }
 
 /**
- * Put one stored label on `orderId` for good: a label with no order yet (a
- * quarantined page) is confirmed onto it first, then applied. Refuses a label
- * that resolved to another order. Answers the buyer's other labels the confirm
- * re-paired.
+ * Put one stored label on `orderId` for good, server-side in one call
+ * (`file-on-order`: operator evidence → confirm → apply, or stored as the
+ * order's document without tracking). `opts` carries the operator's answers;
+ * a filing that still needs one throws `LabelFilingAnswerRequired`. Answers
+ * the buyer's other labels the confirm re-paired.
  */
 export async function fileLabelOnOrderHttp(
   label: { id: number; rowVersion: number; matchedOrderId: number | null },
   orderId: number,
+  opts: LabelFilingAnswers & { tracking?: string; carrier?: string } = {},
 ): Promise<{ repaired: number }> {
-  let ingestion = label;
-  let repaired = 0;
-  if (label.matchedOrderId == null) {
-    const confirmed = await confirmLabelOrderHttp(label.id, orderId, label.rowVersion);
-    ingestion = confirmed.ingestion;
-    repaired = confirmed.repaired.length;
+  const response = await fetch(`${ENDPOINT}/${label.id}/file-on-order`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ orderId, expectedRowVersion: label.rowVersion, ...opts }),
+  });
+  try {
+    const { data } = await readEnvelope<LabelFileOnOrderResult>(response);
+    return { repaired: data.repaired };
+  } catch (error) {
+    if (error instanceof LabelIngestionHttpError && error.code === 'FILING_ANSWER_REQUIRED' && error.detail) {
+      const { check, needs } = error.detail as unknown as LabelFilingAnswerRequiredDetail;
+      throw new LabelFilingAnswerRequired(check, needs, error.message);
+    }
+    throw error;
   }
-  if (ingestion.matchedOrderId !== orderId) throw new Error('The label resolved to another order and was not filed.');
-  await applyLabelIngestionHttp(ingestion.id, ingestion.rowVersion);
-  return { repaired };
+}
+
+export type { LabelUnpairCheck };
+
+/** What unpairing this label takes off its order: the tracking that comes off, and the scan-out to warn about. */
+export async function fetchLabelUnpairCheck(id: number): Promise<LabelUnpairCheck> {
+  const response = await fetch(`${ENDPOINT}/${id}/unpair-check`, { credentials: 'same-origin', cache: 'no-store' });
+  return (await readEnvelope<LabelUnpairCheck>(response)).data;
+}
+
+/**
+ * Take a filed label back off its order (back to the waiting pool). `remove`
+ * also deletes the label and its document and answers `ingestion: null`.
+ * Undo of an unpair = `undoLabelUnpairHttp(ingestion.id, ingestion.rowVersion)`.
+ */
+export async function unpairLabelIngestionHttp(id: number, expectedRowVersion: number, opts: { remove?: boolean } = {}): Promise<{ ingestion: LabelIngestionDto | null }> {
+  const response = await fetch(`${ENDPOINT}/${id}/unpair`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ expectedRowVersion, ...(opts.remove ? { remove: true } : {}) }),
+  });
+  return (await readEnvelope<{ ingestion: LabelIngestionDto | null }>(response)).data;
+}
+
+/** Put back exactly what this label's latest unpair took off (the toast's Undo). `expectedRowVersion` = the unpaired row's version. */
+export async function undoLabelUnpairHttp(id: number, expectedRowVersion: number): Promise<{ ingestion: LabelIngestionDto }> {
+  const response = await fetch(`${ENDPOINT}/${id}/unpair/undo`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ expectedRowVersion }),
+  });
+  return (await readEnvelope<{ ingestion: LabelIngestionDto }>(response)).data;
 }

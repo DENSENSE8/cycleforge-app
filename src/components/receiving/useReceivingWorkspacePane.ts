@@ -142,10 +142,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     queryKey: unboxRailQueryKey,
     queryFn: async () => {
       const feed = RECEIVING_RAIL_FEEDS.unboxRecent;
-      const data = await feed.buildFetcher!({
-        staffId: unboxRailStaffId,
-        query: '',
-      })();
+      const data = await feed.buildFetcher!({ staffId: unboxRailStaffId })();
       return data.receiving_lines ?? [];
     },
     enabled: wantMruAutoOpen,

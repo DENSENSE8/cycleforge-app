@@ -5,8 +5,13 @@
  * (`sqlOrderInWarehouseToShip`) split by `sqlOrderDeskStage` over the
  * `order_stage_facts` signals — pending → To pick, picked, packed — minus the
  * in-person orders (counter pickups and Square sales: no box leaves the dock).
- * Scanned out = the order's shipment took its FIRST dock SHIP_CONFIRM today
- * (the warehouse day). One card per order row, Allocate's grain.
+ * Scanned out = EVERY package whose FIRST dock SHIP_CONFIRM falls today (the
+ * warehouse day), linked or not (operator 2026-10-06: the board shows what the
+ * database holds, however ugly): one card per order that owns the box (its
+ * `shipment_id` or a `shipment_links` ORDER row), else ONE card for the box
+ * itself (`link = 'package'`), else — a scan that never resolved to a package
+ * — one card for the scan (`link = 'scan'`). Unlinked cards carry a negative
+ * synthetic id ({@link unlinkedPackageId} / {@link unlinkedScanId}).
  *
  * The board is counts for every stage plus the first page of each; a column's
  * later pages come one at a time (`loadLiveFeedLane`). Cards carry their
@@ -28,13 +33,18 @@ import {
   sqlOrderTestDeadlineAt,
 } from '@/lib/orders/desk-view-sql';
 import { ORDER_STAGE_FACTS_JOIN, ORDER_STAGE_FACTS_SIGNALS } from '@/lib/orders/order-stage-facts';
+import { G3_LABEL_EXISTS_SQL } from '@/lib/orders/caged-orders';
+import {
+  G2_LINKED_DOCUMENT_EXISTS_SQL,
+  G2_PRODUCT_PAPERWORK_EXISTS_SQL,
+  G2_SKU_PAPERWORK_NOT_REQUIRED_SQL,
+} from '@/lib/orders/g2-paperwork-sql';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import { orderLineImageSql } from '@/lib/photos/order-line-image-sql';
 import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
 import { sqlTrackingNumberMatches } from '@/lib/search/order-tracking-match-sql';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import { sourcePlatformMeta, UNKNOWN_PLATFORM } from '@/lib/source-platform';
-import { placedElseImportedSql } from '@/lib/orders/order-dates';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
@@ -56,9 +66,12 @@ import type {
   PackageCard,
   PackageColumn,
   PackageLanePage,
+  PackageLink,
+  PackagePaperwork,
   PackageUrgency,
   PickupCountdown,
 } from '@/lib/live-feed/types';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 
 /**
  * The statements' binds — ONE list for every read (an unreferenced bind is
@@ -109,6 +122,29 @@ function staffOkSql(extra = ''): string {
 const IDS_OK_SQL = `(${IDS}::int[] IS NULL OR o.id = ANY(${IDS}::int[]))`;
 
 /**
+ * The card's order has a shipping label — what the print popover's label slot
+ * counts (Labels & docs packets): a linked label document (G3,
+ * `G3_LABEL_EXISTS_SQL`) or a stored label file matched to it and not held, on
+ * ANY line of the order number. The inner `o` shadows the card's row on purpose
+ * (G3 is written over alias `o`); `cur` carries the card's own keys in.
+ */
+const CARD_LABEL_LINKED_SQL = `(o.id IS NOT NULL AND EXISTS (
+      SELECT 1
+        FROM (SELECT o.id AS id, o.order_id AS ref, o.organization_id AS org) cur
+        JOIN orders o
+          ON o.organization_id = cur.org
+         AND (o.id = cur.id OR (NULLIF(cur.ref, '') IS NOT NULL AND o.order_id = cur.ref))
+       WHERE ${G3_LABEL_EXISTS_SQL}
+          OR EXISTS (
+            SELECT 1 FROM label_ingestions li
+             WHERE li.organization_id = o.organization_id AND li.matched_order_id = o.id
+               AND li.staged_object_key IS NOT NULL
+               AND COALESCE(li.state, '') NOT IN ('QUARANTINED', 'FAILED')
+          )
+    ))`;
+
+
+/**
  * Every carrier order still in the building, with its stage, the instant it
  * entered that stage, its ship-by and its facet keys. A stage fact with no
  * instant falls back to the step before it.
@@ -126,7 +162,10 @@ const OPEN_MEMBERS_CTE = `m_open AS MATERIALIZED (
            NULL::int AS scanned_out_by,
            ${CARRIER_KEY_SQL} AS carrier_key,
            ${CHANNEL_KEY_SQL} AS channel_key,
-           ${staffOkSql()} AS staff_ok
+           ${staffOkSql()} AS staff_ok,
+           o.shipment_id::bigint AS shipment_id,
+           NULL::text AS scan_ref,
+           'order'::text AS link
       FROM orders o
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
       ${ORDER_STAGE_FACTS_JOIN}
@@ -138,6 +177,11 @@ const OPEN_MEMBERS_CTE = `m_open AS MATERIALIZED (
        AND ${IDS_OK_SQL}
   )`;
 
+/** Synthetic card ids for a scan-out no order owns — negative, so they never collide with `orders.id`. */
+const UNLINKED_SCAN_ID_BASE = 1_000_000_000;
+export const unlinkedPackageId = (shipmentId: number): number => -shipmentId;
+export const unlinkedScanId = (scanId: number): number => -(UNLINKED_SCAN_ID_BASE + scanId);
+
 /**
  * Packages whose FIRST dock scan-out falls in `[fromRef, toRef)` — a re-scan
  * of a box that already left does not bring it back. The scan-out's staffer is
@@ -146,6 +190,8 @@ const OPEN_MEMBERS_CTE = `m_open AS MATERIALIZED (
 function scannedOutShipmentsCte(name: string, fromRef: string, toRef: string): string {
   return `${name} AS MATERIALIZED (
     SELECT sal.shipment_id::bigint AS shipment_id,
+           NULL::bigint AS scan_id,
+           NULL::text AS scan_ref,
            MIN(sal.created_at) AS scanned_out_at,
            (array_agg(sal.staff_id ORDER BY sal.created_at, sal.id) FILTER (WHERE sal.staff_id > 0))[1]::int AS scanned_out_by
       FROM station_activity_logs sal
@@ -162,12 +208,32 @@ function scannedOutShipmentsCte(name: string, fromRef: string, toRef: string): s
             AND sal_prior.created_at < ${fromRef}::timestamptz
        )
      GROUP BY 1
+    UNION ALL
+    -- A scan-out that never resolved to a package: one row per scanned text, its first scan in the window.
+    SELECT NULL::bigint,
+           MIN(sal.id)::bigint,
+           MIN(NULLIF(BTRIM(sal.scan_ref), '')),
+           MIN(sal.created_at),
+           (array_agg(sal.staff_id ORDER BY sal.created_at, sal.id) FILTER (WHERE sal.staff_id > 0))[1]::int
+      FROM station_activity_logs sal
+     WHERE sal.organization_id = ${ORG}
+       AND sal.activity_type = 'SHIP_CONFIRM'
+       AND sal.shipment_id IS NULL
+       AND sal.created_at >= ${fromRef}::timestamptz
+       AND sal.created_at < ${toRef}::timestamptz
+     GROUP BY COALESCE(UPPER(NULLIF(BTRIM(sal.scan_ref), '')), sal.id::text)
   )`;
 }
 
-/** The carrier orders in scanned-out shipments `shipmentsCte`, member-shaped. */
+/**
+ * Every scan-out in `shipmentsCte`, member-shaped: one row per order that owns
+ * the box (`orders.shipment_id` or a `shipment_links` ORDER row — never
+ * filtered by channel: a box that left is shown), else one row for the box,
+ * else one row for the unresolved scan.
+ */
 function scannedOutMembersSql(shipmentsCte: string): string {
-  return `SELECT o.id AS order_row_id,
+  const scanStaffOk = `(${STAFF}::int IS NULL OR so.scanned_out_by = ${STAFF}::int)`;
+  return `SELECT o.id::bigint AS order_row_id,
            'scanned_out'::text AS stage,
            so.scanned_out_at AS entered_at,
            NULL::timestamptz AS deadline_at,
@@ -175,14 +241,60 @@ function scannedOutMembersSql(shipmentsCte: string): string {
            so.scanned_out_by,
            ${CARRIER_KEY_SQL} AS carrier_key,
            ${CHANNEL_KEY_SQL} AS channel_key,
-           ${staffOkSql(` OR so.scanned_out_by = ${STAFF}::int`)} AS staff_ok
+           ${staffOkSql(` OR so.scanned_out_by = ${STAFF}::int`)} AS staff_ok,
+           so.shipment_id,
+           NULL::text AS scan_ref,
+           'order'::text AS link
       FROM ${shipmentsCte} so
-      JOIN orders o ON o.organization_id = ${ORG} AND o.shipment_id = so.shipment_id
-      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      JOIN LATERAL (
+        SELECT o0.id FROM orders o0 WHERE o0.organization_id = ${ORG} AND o0.shipment_id = so.shipment_id
+        UNION
+        SELECT sl.owner_id FROM shipment_links sl
+         WHERE sl.organization_id = ${ORG} AND sl.owner_type = 'ORDER' AND sl.shipment_id = so.shipment_id
+      ) own ON TRUE
+      JOIN orders o ON o.id = own.id AND o.organization_id = ${ORG}
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = so.shipment_id
       ${ORDER_STAGE_FACTS_JOIN}
-     WHERE COALESCE(o.fulfillment_channel, '') <> 'AFN'
-       AND NOT ${IN_PERSON_SQL}
-       AND ${IDS_OK_SQL}`;
+     WHERE so.shipment_id IS NOT NULL
+       AND ${IDS_OK_SQL}
+    UNION ALL
+    SELECT (-so.shipment_id)::bigint,
+           'scanned_out'::text,
+           so.scanned_out_at,
+           NULL::timestamptz,
+           so.scanned_out_at,
+           so.scanned_out_by,
+           ${CARRIER_KEY_SQL},
+           NULL::text,
+           ${scanStaffOk},
+           so.shipment_id,
+           NULL::text,
+           'package'::text
+      FROM ${shipmentsCte} so
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = so.shipment_id AND stn.organization_id = ${ORG}
+     WHERE so.shipment_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM orders o0 WHERE o0.organization_id = ${ORG} AND o0.shipment_id = so.shipment_id)
+       AND NOT EXISTS (
+         SELECT 1 FROM shipment_links sl
+          WHERE sl.organization_id = ${ORG} AND sl.owner_type = 'ORDER' AND sl.shipment_id = so.shipment_id
+       )
+       AND (${IDS}::int[] IS NULL OR -so.shipment_id = ANY(${IDS}::int[]))
+    UNION ALL
+    SELECT (-(${UNLINKED_SCAN_ID_BASE} + so.scan_id))::bigint,
+           'scanned_out'::text,
+           so.scanned_out_at,
+           NULL::timestamptz,
+           so.scanned_out_at,
+           so.scanned_out_by,
+           NULL::text,
+           NULL::text,
+           ${scanStaffOk},
+           NULL::bigint,
+           so.scan_ref,
+           'scan'::text
+      FROM ${shipmentsCte} so
+     WHERE so.shipment_id IS NULL
+       AND (${IDS}::int[] IS NULL OR -(${UNLINKED_SCAN_ID_BASE} + so.scan_id) = ANY(${IDS}::int[]))`;
 }
 
 /** The sidebar filters over member alias `m`; a facet's own dimension is left out of its counts. */
@@ -331,7 +443,9 @@ function dressedCardsSql(src: string): string {
          pg.deadline_at,
          ${URGENCY_SQL('pg.deadline_at')} AS urgency,
          ${stalledSql('pg')} AS stalled,
-         o.id AS order_row_id,
+         pg.order_row_id,
+         pg.link,
+         pg.scan_ref,
          o.order_id AS order_number,
          o.sku,
          o.product_title,
@@ -344,10 +458,11 @@ function dressedCardsSql(src: string): string {
          o.currency,
          NULLIF(BTRIM(o.account_source), '') AS platform,
          COALESCE(NULLIF(BTRIM(c.display_name), ''), NULLIF(BTRIM(c.customer_name), '')) AS customer,
-         o.shipment_id,
-         NULLIF(BTRIM(stn.tracking_number_raw), '') AS tracking,
+         COALESCE(pg.shipment_id, o.shipment_id) AS shipment_id,
+         COALESCE(NULLIF(BTRIM(stn.tracking_number_raw), ''), pg.scan_ref) AS tracking,
          NULLIF(BTRIM(stn.carrier), '') AS carrier,
          COALESCE(o.is_out_of_stock, false) AS blocked,
+         NULLIF(BTRIM(stn.latest_status_label), '') AS carrier_status,
          ${ORDERED_AT_SQL} AS ordered_at,
          osf.picked_at,
          osf.picked_by,
@@ -361,10 +476,23 @@ function dressedCardsSql(src: string): string {
          COALESCE(nt.n, 0) AS note_count,
          nt.latest AS latest_note,
          COALESCE(tg.tags, ARRAY[]::text[]) AS tags,
-         COALESCE(bx.ids, ARRAY[]::int[]) AS box_mates
+         COALESCE(bx.ids, ARRAY[]::int[]) AS box_mates,
+         ${CARD_LABEL_LINKED_SQL} AS label_linked,
+         CASE
+           WHEN o.id IS NULL THEN NULL
+           WHEN ${G2_LINKED_DOCUMENT_EXISTS_SQL} THEN 'linked'
+           WHEN COALESCE(o.docs_not_required, false) THEN 'not_required'
+           ELSE 'missing'
+         END AS slip,
+         CASE
+           WHEN o.id IS NULL THEN NULL
+           WHEN ${G2_PRODUCT_PAPERWORK_EXISTS_SQL} THEN 'linked'
+           WHEN COALESCE(o.docs_not_required, false) OR ${G2_SKU_PAPERWORK_NOT_REQUIRED_SQL} THEN 'not_required'
+           ELSE 'missing'
+         END AS paperwork
     FROM ${src} pg
-    JOIN orders o ON o.id = pg.order_row_id AND o.organization_id = ${ORG}
-    LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+    LEFT JOIN orders o ON pg.link = 'order' AND o.id = pg.order_row_id AND o.organization_id = ${ORG}
+    LEFT JOIN shipping_tracking_numbers stn ON stn.id = COALESCE(pg.shipment_id, o.shipment_id)
     ${ORDER_STAGE_FACTS_JOIN}
     LEFT JOIN sku_catalog sc ON ${skuCatalogJoinOnSql('o', 'sc')}
     LEFT JOIN LATERAL (
@@ -410,11 +538,12 @@ const FIND_SQL = `${MEMBERS_SQL},
   hit AS (
     SELECT m_all.order_row_id
       FROM m_all
-      JOIN orders o ON o.id = m_all.order_row_id AND o.organization_id = ${ORG}
-      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      LEFT JOIN orders o ON m_all.link = 'order' AND o.id = m_all.order_row_id AND o.organization_id = ${ORG}
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = COALESCE(m_all.shipment_id, o.shipment_id)
      WHERE ${sqlIdentifierEqualsQuery('o.order_id', '$11')}
         OR UPPER(BTRIM(COALESCE(o.sku, ''))) = UPPER(BTRIM($11))
         OR (stn.id IS NOT NULL AND ${sqlTrackingNumberMatches({ stnAlias: 'stn', likeParam: '$12', canonicalParam: '$13', key18Param: '$14', last8Param: '$15' })})
+        OR UPPER(m_all.scan_ref) LIKE '%' || UPPER(BTRIM($11)) || '%'
   ),
   pg AS (
     SELECT m_all.*, row_number() OVER (ORDER BY ${laneOrderSql('m_all')}) AS ord
@@ -443,7 +572,9 @@ interface CardRow {
   entered_at: Date | string | null;
   urgency: PackageUrgency | null;
   deadline_at: Date | string | null;
-  order_row_id: number;
+  order_row_id: number | string;
+  link: PackageLink;
+  scan_ref: string | null;
   order_number: string | null;
   sku: string | null;
   product_title: string | null;
@@ -460,6 +591,7 @@ interface CardRow {
   tracking: string | null;
   carrier: string | null;
   blocked: boolean;
+  carrier_status: string | null;
   ordered_at: Date | string | null;
   picked_at: Date | string | null;
   picked_by: number | null;
@@ -475,6 +607,9 @@ interface CardRow {
   tags: string[];
   stalled: boolean;
   box_mates: number[];
+  label_linked: boolean;
+  slip: PackagePaperwork | null;
+  paperwork: PackagePaperwork | null;
 }
 
 const iso = (value: Date | string | null): string | null => (value == null ? null : new Date(value).toISOString());
@@ -485,15 +620,21 @@ function toCard(row: CardRow, todayStart: string): PackageCard {
   const grade = lineCondition(row);
   return {
     orderRowId: Number(row.order_row_id),
+    link: row.link,
     orderNumber: row.order_number?.trim() || null,
     stage: row.stage,
     title:
-      resolveSkuIdentityTitle({
-        catalog_product_title: row.catalog_product_title,
-        zoho_item_title: row.zoho_item_title,
-        item_name: row.product_title,
-        sku: row.sku,
-      }) || 'Untitled item',
+      row.link === 'package'
+        ? 'Not linked to an order'
+        : row.link === 'scan'
+          ? 'Scan not matched to a package'
+          : resolveSkuIdentityTitle({
+              catalog_product_title: row.catalog_product_title,
+              zoho_item_title: row.zoho_item_title,
+              item_name: row.product_title,
+              sku: row.sku,
+            }) || 'Untitled item',
+    carrierStatus: row.carrier_status?.trim() || null,
     sku: row.sku?.trim() || null,
     photoUrl: row.image_url,
     qty: Number.isFinite(qty) && row.quantity != null ? qty : null,
@@ -526,6 +667,8 @@ function toCard(row: CardRow, todayStart: string): PackageCard {
     noteCount: Number(row.note_count) || 0,
     latestNote: row.latest_note?.trim() || null,
     tags: row.tags ?? [],
+    // An unlinked scan-out has no order to hold documents.
+    docs: row.link === 'order' ? { label: row.label_linked === true, slip: row.slip ?? 'missing', paperwork: row.paperwork ?? 'missing' } : null,
   };
 }
 

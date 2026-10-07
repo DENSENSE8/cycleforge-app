@@ -3,7 +3,7 @@
  * operators see; provider-native ids (Zendesk today) live in external_ticket_id.
  * Polymorphic entity linkage stays on ticket_links.
  */
-import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
+import { tenantQueriesOneTrip, tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 
 export { looksLikeTicketScan, parseTicketScanValue } from '@/lib/support/ticket-scan';
 
@@ -211,7 +211,7 @@ async function resolveReceivingId(args: {
 }): Promise<number | null> {
   if (args.receivingId != null) return args.receivingId;
   if (args.lineId == null) return null;
-  const parent = await tenantQuery<{ receiving_id: number | null }>(
+  const parent = await tenantQueryOneTrip<{ receiving_id: number | null }>(
     args.orgId,
     `SELECT receiving_id FROM receiving_line
       WHERE id = $1 AND organization_id = $2 LIMIT 1`,
@@ -225,7 +225,7 @@ async function supportTicketFromZendeskId(
   orgId: string,
   zendeskTicketId: number,
 ): Promise<SupportTicketRow> {
-  const existing = await tenantQuery<SupportTicketDbRow>(
+  const existing = await tenantQueryOneTrip<SupportTicketDbRow>(
     orgId,
     `SELECT id, provider, external_ticket_id, subject_cache, status_cache
        FROM support_tickets
@@ -243,13 +243,39 @@ async function supportTicketFromZendeskId(
   });
 }
 
+interface TicketReadStatement {
+  text: string;
+  params: unknown[];
+}
+
+/** A ticket_links hit: its registry row, or the pre-registry Zendesk id it still carries. */
+type TicketLinkDbRow = SupportTicketDbRow & {
+  zendesk_ticket_id: string | null;
+  linked_at: string | null;
+  linked_by_name: string | null;
+};
+
+function positiveZendeskId(value: number | null): number | null {
+  return value != null && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+async function ticketFromLinkRow(
+  orgId: string,
+  row: TicketLinkDbRow | undefined,
+): Promise<SupportTicketRow | null> {
+  if (!row) return null;
+  if (row.id) return mapRow(row);
+  const zd = positiveZendeskId(row.zendesk_ticket_id != null ? Number(row.zendesk_ticket_id) : null);
+  return zd != null ? supportTicketFromZendeskId(orgId, zd) : null;
+}
+
 /** Direct ticket_links on RECEIVING / RECEIVING_LINE (incl. pre-migration rows). */
-async function ticketFromDirectEntityLinks(args: {
+function directEntityLinksStatement(args: {
   orgId: string;
   serialUnitId?: number | null;
   lineId?: number | null;
   receivingId?: number | null;
-}): Promise<SupportTicketRow | null> {
+}): TicketReadStatement | null {
   const { orgId, serialUnitId, lineId, receivingId } = args;
   if (serialUnitId == null && lineId == null && receivingId == null) return null;
 
@@ -274,13 +300,8 @@ async function ticketFromDirectEntityLinks(args: {
     }
   }
 
-  const res = await tenantQuery<SupportTicketDbRow & {
-    zendesk_ticket_id: string | null;
-    linked_at: string | null;
-    linked_by_name: string | null;
-  }>(
-    orgId,
-    `SELECT st.id, st.provider, st.external_ticket_id, st.subject_cache, st.status_cache,
+  return {
+    text: `SELECT st.id, st.provider, st.external_ticket_id, st.subject_cache, st.status_cache,
             tl.zendesk_ticket_id,
             tl.created_at AS linked_at,
             s.name AS linked_by_name
@@ -298,67 +319,18 @@ async function ticketFromDirectEntityLinks(args: {
         tl.created_at DESC
       LIMIT 1`,
     params,
-  );
-  const row = res.rows[0];
-  if (!row) return null;
-  if (row.id) return mapRow(row);
-  const zd = row.zendesk_ticket_id != null ? Number(row.zendesk_ticket_id) : null;
-  if (zd != null && Number.isFinite(zd) && zd > 0) {
-    return supportTicketFromZendeskId(orgId, zd);
-  }
-  return null;
-}
-
-/** ticket_links on SHIPMENT (STN id) for the carton's receiving.shipment_id. */
-async function ticketFromShipmentLink(
-  orgId: string,
-  receivingId: number,
-): Promise<SupportTicketRow | null> {
-  const res = await tenantQuery<SupportTicketDbRow & {
-    zendesk_ticket_id: string | null;
-    linked_at: string | null;
-    linked_by_name: string | null;
-  }>(
-    orgId,
-    `SELECT st.id, st.provider, st.external_ticket_id, st.subject_cache, st.status_cache,
-            tl.zendesk_ticket_id,
-            tl.created_at AS linked_at,
-            s.name AS linked_by_name
-       FROM receiving_carton r
-       JOIN ticket_links tl
-         ON tl.organization_id = r.organization_id
-        AND tl.entity_type = 'SHIPMENT'
-        AND tl.entity_id = r.shipment_id
-       LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
-       LEFT JOIN staff s ON s.id = tl.created_by
-      WHERE r.organization_id = $1
-        AND r.id = $2
-        AND r.shipment_id IS NOT NULL
-      -- is_primary first: a ticket ANCHORED to this STN is about the shipment;
-      -- one that merely references it (among several STNs) is weaker evidence.
-      ORDER BY tl.is_primary DESC, tl.created_at DESC
-      LIMIT 1`,
-    [orgId, receivingId],
-  );
-  const row = res.rows[0];
-  if (!row) return null;
-  if (row.id) return mapRow(row);
-  const zd = row.zendesk_ticket_id != null ? Number(row.zendesk_ticket_id) : null;
-  if (zd != null && Number.isFinite(zd) && zd > 0) {
-    return supportTicketFromZendeskId(orgId, zd);
-  }
-  return null;
+  };
 }
 
 /**
  * Photos on this carton/line that also carry a ZENDESK_TICKET link — same source
  * the media library uses for claims ticket chips (#9395).
  */
-async function ticketFromPhotoEntityLinks(args: {
+function photoEntityLinksStatement(args: {
   orgId: string;
   lineId?: number | null;
   receivingId?: number | null;
-}): Promise<SupportTicketRow | null> {
+}): TicketReadStatement | null {
   const { orgId, lineId, receivingId } = args;
   if (lineId == null && receivingId == null) return null;
 
@@ -373,9 +345,8 @@ async function ticketFromPhotoEntityLinks(args: {
     recvClauses.push(`(pel_recv.entity_type = 'RECEIVING_LINE' AND pel_recv.entity_id = $${params.length})`);
   }
 
-  const res = await tenantQuery<{ zendesk_ticket_id: string }>(
-    orgId,
-    `SELECT pel_z.entity_id AS zendesk_ticket_id
+  return {
+    text: `SELECT pel_z.entity_id AS zendesk_ticket_id
        FROM photo_entity_links pel_recv
        JOIN photo_entity_links pel_z
          ON pel_z.photo_id = pel_recv.photo_id
@@ -386,48 +357,23 @@ async function ticketFromPhotoEntityLinks(args: {
       ORDER BY pel_z.entity_id::bigint DESC
       LIMIT 1`,
     params,
-  );
-  const zd = res.rows[0]?.zendesk_ticket_id != null ? Number(res.rows[0].zendesk_ticket_id) : null;
-  if (zd == null || !Number.isFinite(zd) || zd <= 0) return null;
-  return supportTicketFromZendeskId(orgId, zd);
-}
-
-/** Denormalized display-cache fallback: */
-async function ticketFromReceivingColumn(args: {
-  orgId: string;
-  lineId?: number | null;
-  receivingId?: number | null;
-}): Promise<SupportTicketRow | null> {
-  const { orgId, lineId, receivingId } = args;
-  if (lineId == null && receivingId == null) return null;
-
-  const readZendeskId = async (sql: string, id: number): Promise<number | null> => {
-    const res = await tenantQuery<{ zendesk_ticket: string | null }>(orgId, sql, [orgId, id]);
-    const raw = res.rows[0]?.zendesk_ticket?.trim();
-    const digits = raw ? raw.match(/\d+/)?.[0] : null;
-    const zd = digits ? Number(digits) : NaN;
-    return Number.isFinite(zd) && zd > 0 ? zd : null;
   };
-
-  // Prefer the specific line's column, then the carton's.
-  let zd: number | null = null;
-  if (lineId != null) {
-    zd = await readZendeskId(
-      `SELECT zendesk_ticket FROM receiving_line WHERE organization_id = $1 AND id = $2 LIMIT 1`,
-      lineId,
-    );
-  }
-  if (zd == null && receivingId != null) {
-    zd = await readZendeskId(
-      `SELECT zendesk_ticket FROM receiving_carton WHERE organization_id = $1 AND id = $2 LIMIT 1`,
-      receivingId,
-    );
-  }
-  if (zd == null) return null;
-  return supportTicketFromZendeskId(orgId, zd);
 }
 
-/** Primary ticket linked to a receiving carton, line, or physical unit. */
+function zendeskIdFromColumn(row: { zendesk_ticket: string | null } | undefined): number | null {
+  const raw = row?.zendesk_ticket?.trim();
+  const digits = raw ? raw.match(/\d+/)?.[0] : null;
+  return positiveZendeskId(digits ? Number(digits) : NaN);
+}
+
+/**
+ * Primary ticket linked to a receiving carton, line, or physical unit.
+ *
+ * Evidence in precedence order: direct ticket_links → the carton's STN link →
+ * claim photos' ZENDESK_TICKET links → the denormalized `zendesk_ticket` column
+ * (line, then carton). Every candidate read is independent, so they travel as
+ * ONE round trip and the first hit in that order wins.
+ */
 export async function getPrimarySupportTicketForReceiving(args: {
   orgId: string;
   lineId?: number | null;
@@ -438,7 +384,7 @@ export async function getPrimarySupportTicketForReceiving(args: {
   let resolvedLineId = args.lineId ?? null;
 
   if (serialUnitId != null && resolvedLineId == null) {
-    const parent = await tenantQuery<{ receiving_line_id: number | null }>(
+    const parent = await tenantQueryOneTrip<{ receiving_line_id: number | null }>(
       orgId,
       `SELECT origin_id AS receiving_line_id
          FROM serial_unit_provenance
@@ -458,33 +404,74 @@ export async function getPrimarySupportTicketForReceiving(args: {
   if (serialUnitId == null && lineId == null && receivingIdArg == null) return null;
 
   const receivingId = await resolveReceivingId({ orgId, lineId, receivingId: receivingIdArg });
+  const cartonId = receivingId ?? receivingIdArg ?? null;
 
-  const direct = await ticketFromDirectEntityLinks({
-    orgId,
-    serialUnitId,
-    lineId,
-    receivingId: receivingId ?? receivingIdArg ?? null,
-  });
-  if (direct) return direct;
+  const direct = directEntityLinksStatement({ orgId, serialUnitId, lineId, receivingId: cartonId });
+  // ticket_links on SHIPMENT (STN id) for the carton's receiving.shipment_id.
+  const viaShipment: TicketReadStatement | null =
+    receivingId != null
+      ? {
+          text: `SELECT st.id, st.provider, st.external_ticket_id, st.subject_cache, st.status_cache,
+            tl.zendesk_ticket_id,
+            tl.created_at AS linked_at,
+            s.name AS linked_by_name
+       FROM receiving_carton r
+       JOIN ticket_links tl
+         ON tl.organization_id = r.organization_id
+        AND tl.entity_type = 'SHIPMENT'
+        AND tl.entity_id = r.shipment_id
+       LEFT JOIN support_tickets st ON st.id = tl.support_ticket_id
+       LEFT JOIN staff s ON s.id = tl.created_by
+      WHERE r.organization_id = $1
+        AND r.id = $2
+        AND r.shipment_id IS NOT NULL
+      -- is_primary first: a ticket ANCHORED to this STN is about the shipment;
+      -- one that merely references it (among several STNs) is weaker evidence.
+      ORDER BY tl.is_primary DESC, tl.created_at DESC
+      LIMIT 1`,
+          params: [orgId, receivingId],
+        }
+      : null;
+  const viaPhotos = photoEntityLinksStatement({ orgId, lineId, receivingId: cartonId });
+  // The denormalized `zendesk_ticket` display-cache columns — the line's, then the carton's.
+  const lineColumn: TicketReadStatement | null =
+    lineId != null
+      ? {
+          text: `SELECT zendesk_ticket FROM receiving_line WHERE organization_id = $1 AND id = $2 LIMIT 1`,
+          params: [orgId, lineId],
+        }
+      : null;
+  const cartonColumn: TicketReadStatement | null =
+    cartonId != null
+      ? {
+          text: `SELECT zendesk_ticket FROM receiving_carton WHERE organization_id = $1 AND id = $2 LIMIT 1`,
+          params: [orgId, cartonId],
+        }
+      : null;
 
-  if (receivingId != null) {
-    const viaShipment = await ticketFromShipmentLink(orgId, receivingId);
-    if (viaShipment) return viaShipment;
-  }
+  const statements = [direct, viaShipment, viaPhotos, lineColumn, cartonColumn].filter(
+    (s): s is TicketReadStatement => s != null,
+  );
+  const results = await tenantQueriesOneTrip(orgId, statements);
+  const firstRow = <T>(statement: TicketReadStatement | null): T | undefined =>
+    statement ? (results[statements.indexOf(statement)]?.rows[0] as T | undefined) : undefined;
 
-  const viaPhotos = await ticketFromPhotoEntityLinks({
-    orgId,
-    lineId,
-    receivingId: receivingId ?? receivingIdArg ?? null,
-  });
-  if (viaPhotos) return viaPhotos;
+  const fromDirect = await ticketFromLinkRow(orgId, firstRow<TicketLinkDbRow>(direct));
+  if (fromDirect) return fromDirect;
 
-  // Last resort: the denormalized `zendesk_ticket` display column.
-  return ticketFromReceivingColumn({
-    orgId,
-    lineId,
-    receivingId: receivingId ?? receivingIdArg ?? null,
-  });
+  const fromShipment = await ticketFromLinkRow(orgId, firstRow<TicketLinkDbRow>(viaShipment));
+  if (fromShipment) return fromShipment;
+
+  const photoRow = firstRow<{ zendesk_ticket_id: string | null }>(viaPhotos);
+  const photoZd = positiveZendeskId(
+    photoRow?.zendesk_ticket_id != null ? Number(photoRow.zendesk_ticket_id) : null,
+  );
+  if (photoZd != null) return supportTicketFromZendeskId(orgId, photoZd);
+
+  // Last resort: the denormalized `zendesk_ticket` display column — the line's, then the carton's.
+  const columnZd =
+    zendeskIdFromColumn(firstRow(lineColumn)) ?? zendeskIdFromColumn(firstRow(cartonColumn));
+  return columnZd != null ? supportTicketFromZendeskId(orgId, columnZd) : null;
 }
 
 /** Resolve a scanned value to a materialized receiving carton via support_tickets. */

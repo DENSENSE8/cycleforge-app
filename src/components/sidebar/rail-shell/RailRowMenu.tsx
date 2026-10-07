@@ -40,9 +40,6 @@ export function RailRowMenu({
   open,
   onOpenChange,
   isFocusedRow,
-  /** True while the row hover peek is up — the ⋮ sits on the path into that
-   *  card; it must not steal the pointer (exceptions copy chips, Unbox peek). */
-  peekOpen = false,
 }: {
   actions: RailRowAction[];
   /** Row identity for the accessible name — never a bare "More". */
@@ -50,7 +47,6 @@ export function RailRowMenu({
   open: boolean;
   onOpenChange: (next: boolean) => void;
   isFocusedRow: boolean;
-  peekOpen?: boolean;
 }) {
   if (actions.length === 0) return null;
 
@@ -73,19 +69,17 @@ export function RailRowMenu({
           // this trigger holds focus it is driving, not the list, so its keys
           // must not also step or open the row underneath it.
           onKeyDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           aria-label={`Actions for ${rowLabel}`}
           className={cn(
-            'absolute inset-y-0 right-0 z-raised flex items-center justify-end text-text-faint',
-            'w-8',
+            'absolute inset-y-0 right-0 z-raised flex w-8 items-center justify-end text-text-faint',
             'opacity-0 transition-opacity duration-100 ease-out',
-            peekOpen
-              ? 'pointer-events-none group-hover/railrow:pointer-events-none'
-              : cn(
-                  'pointer-events-none',
-                  'group-hover/railrow:pointer-events-auto group-hover/railrow:opacity-100',
-                  'hover:text-text-default focus:pointer-events-auto focus:opacity-100',
-                ),
-            'group-hover/railrow:opacity-100',
+            // The hover peek opens the instant the pointer enters the row. The
+            // ⋮ still has to receive the click — otherwise it only looks like
+            // a button and the row underneath takes the press.
+            'pointer-events-none',
+            'group-hover/railrow:pointer-events-auto group-hover/railrow:opacity-100',
+            'hover:text-text-default focus:pointer-events-auto focus:opacity-100',
             'data-[state=open]:pointer-events-auto data-[state=open]:text-text-default data-[state=open]:opacity-100',
             'coarse:pointer-events-auto coarse:w-11 coarse:opacity-100',
             focusRing('control', 'accent'),
@@ -102,7 +96,7 @@ export function RailRowMenu({
         align="start"
         sideOffset={0}
         collisionPadding={8}
-        className="min-w-[10rem]"
+        className="z-navPeek min-w-[10rem]"
       >
         {groups.map((group, i) => (
           <Fragment key={group[0].id}>

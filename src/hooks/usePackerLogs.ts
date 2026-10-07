@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { invalidatePackerCounts } from '@/lib/queries/station-cache-patch';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
@@ -195,29 +194,6 @@ export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = 
     },
     !!stationChannel,
   );
-
-  // ── Local surgical insert (same-tab scans dispatched via CustomEvent) ─────
-  useEffect(() => {
-    const handleNewLog = (e: any) => {
-      const record = e?.detail as PackerRecord | null;
-      if (!record?.id || record.packed_by !== packerId) return;
-
-      const currentWeek = computeCurrentPSTWeek();
-      queryClient.setQueryData<PackerRecord[]>(
-        ['packer-logs', packerId, { weekStart: currentWeek.startStr, weekEnd: currentWeek.endStr, q: '' }],
-        (prev) => {
-          if (!prev) return undefined;
-          if (prev.some((r) => r.id === record.id)) return prev;
-          return [record, ...prev];
-        },
-      );
-      invalidatePackerCounts(queryClient);
-    };
-    window.addEventListener('packer-log-added', handleNewLog);
-    return () => window.removeEventListener('packer-log-added', handleNewLog);
-  }, [queryClient, packerId]);
-
-  // ── Full invalidation for manual refreshes ────────────────────────────────
 
   return query;
 }

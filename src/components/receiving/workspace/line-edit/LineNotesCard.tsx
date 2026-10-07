@@ -56,6 +56,7 @@ import { UnboxNotesLocationControl } from './UnboxNotesLocationControl';
 import { UnboxNotesStatusDialog } from './UnboxNotesStatusDialog';
 import type { LineStatusExactSource } from '@/lib/receiving/unbox-notes-status';
 import { ZohoReceiveSyncControl } from '@/components/zoho/ZohoReceiveSyncControl';
+import { ComposerLinkTicket } from './ComposerLinkTicket';
 
 /** Item-note composer — the operator's durable note on this line (`receiving_line.notes`). */
 
@@ -87,6 +88,9 @@ export function LineNotesCard({
   onComposerModeChange,
   onComposerFocus,
   onTicketDraftFilledChange,
+  trackingNumber,
+  orderNumber,
+  onTicketLinked,
   progressPercent = 0,
   progressTone = 'idle',
   onProgressClick,
@@ -170,6 +174,12 @@ export function LineNotesCard({
    * sense once there is something to file, and only this card knows the draft.
    */
   onTicketDraftFilledChange?: (filled: boolean) => void;
+  /** Carton tracking — prefetched against existing tickets before the link card opens. */
+  trackingNumber?: string | null;
+  /** Marketplace order # — same prefetch, used when tracking does not hit. */
+  orderNumber?: string | null;
+  /** The linked ticket is on the row. Switch the station thread onto it. */
+  onTicketLinked?: (ticketNumber: string) => void;
   /** Procedure fill for the composer bottom-right progress ring. */
   progressPercent?: number;
   progressTone?: 'idle' | 'selected';
@@ -542,6 +552,15 @@ export function LineNotesCard({
 
   return (
     <>
+      {!hasTicket && canPostTicket && receivingId != null && receivingId > 0 ? (
+        <ComposerLinkTicket
+          receivingId={receivingId}
+          lineId={lineId}
+          trackingNumber={trackingNumber}
+          orderNumber={orderNumber}
+          onLinked={onTicketLinked}
+        />
+      ) : null}
       <StationComposerHost
         labelValue={notes}
         onLabelChange={(next) => {
@@ -599,6 +618,7 @@ export function LineNotesCard({
         locationAction={
           <UnboxNotesLocationControl
             lineId={lineId}
+            receivingId={receivingId}
             currentLocationName={statusStamps?.staged_location_name}
             currentLocationBarcode={statusStamps?.staged_location_barcode}
             currentLocationRoom={statusStamps?.staged_location_room}

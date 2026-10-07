@@ -7,10 +7,10 @@
  */
 
 import type { CSSProperties } from 'react';
+import { GRAIN_TILE_SIZE, grainTileUrl } from './grain';
 
-/** Fine monochrome grain (SVG fractal noise), tiled. */
-const GRAIN_URL =
-  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.28'/></svg>\")";
+/** Liquid metal wears the house grain strong. */
+const GRAIN_URL = grainTileUrl(0.28);
 
 export const LIQUID_METAL_STYLE: CSSProperties = {
   backgroundColor: '#0b0b0d',
@@ -21,7 +21,7 @@ export const LIQUID_METAL_STYLE: CSSProperties = {
     // Brushed graphite: the metal's slow light bands.
     'linear-gradient(112deg, #0a0a0c 0%, #26272c 34%, #0f0f12 52%, #34353b 76%, #0c0c0e 100%)',
   ].join(', '),
-  backgroundSize: '160px 160px, 100% 100%, 100% 100%',
+  backgroundSize: `${GRAIN_TILE_SIZE}, 100% 100%, 100% 100%`,
   boxShadow:
     'inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.65), 0 1px 2px rgba(0,0,0,0.35), 0 16px 36px -10px rgba(0,0,0,0.6)',
 };

@@ -11,6 +11,7 @@
  */
 
 import { useSyncExternalStore, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { Toaster } from 'sonner';
 import {
   AlertCircle,
@@ -48,9 +49,16 @@ function useDocumentHidden() {
   );
 }
 
+const noSubscribe = () => () => {};
+
 export function AppToaster() {
   const documentHidden = useDocumentHidden();
-  return (
+  // The toaster renders on `document.body`, beside the modal portals. Inside
+  // `#app-root` (a fixed box, so its own stacking context) its z band could
+  // never clear a dialog: an Undo toast for a verb pressed in a dialog sat behind it.
+  const host = useSyncExternalStore(noSubscribe, () => document.body, () => null);
+  if (!host) return null;
+  return createPortal(
     // Band 2 (globals.css motion bands): licenses the pending bar's
     // opacity-only breathing. It is bounded by a real event — a loading toast
     // lives exactly until its work settles — and reduced motion holds it static.
@@ -82,6 +90,7 @@ export function AppToaster() {
           style: toastStyle,
         }}
       />
-    </div>
+    </div>,
+    host,
   );
 }

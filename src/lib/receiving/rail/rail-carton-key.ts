@@ -1,17 +1,21 @@
 /** Stable per-row rail keys — a dependency-free, server-safe home for the rail's React / AnimatePresence identity. */
 
-import { normalizeScanKey } from '@/lib/receiving/scan/normalize';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 
 /** Stable React list key for one carton (no shipment / trackingless rows). */
 export function receivingRailCartonKey(receivingId: number): string {
   return `carton:${receivingId}`;
 }
 
-/** Stable React list key for one SHIPMENT, derived from its tracking number. */
+/**
+ * Stable React list key for one SHIPMENT, derived from its CANONICAL tracking
+ * number — a USPS IMpb (`420`+ZIP) or FedEx GS1 (`96…`) label spelling keys
+ * the same as the stored tracking, so a re-scan lands on the carton's own row.
+ */
 export function receivingRailShipmentKey(
   trackingNumber: string | null | undefined,
 ): string | null {
-  const key = normalizeScanKey(String(trackingNumber ?? ''));
+  const key = extractCanonicalTracking(String(trackingNumber ?? ''));
   return key ? `stn:${key}` : null;
 }
 

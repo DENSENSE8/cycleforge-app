@@ -1,6 +1,6 @@
 /** Inbox read + triage domain helpers. */
 
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueriesOneTrip, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { QueryResult, QueryResultRow } from 'pg';
 import {
@@ -19,11 +19,17 @@ interface InboxDeps {
     text: string,
     params?: ReadonlyArray<unknown>,
   ) => Promise<QueryResult<T>>;
+  /** Several independent reads in one round trip (the feed page + its counts). */
+  readBatch: (
+    orgId: OrgId,
+    statements: ReadonlyArray<{ text: string; params?: ReadonlyArray<unknown> }>,
+  ) => Promise<Array<QueryResult<QueryResultRow>>>;
   now: () => Date;
 }
 
 const defaultInboxDeps: InboxDeps = {
   query: tenantQuery,
+  readBatch: tenantQueriesOneTrip,
   now: () => new Date(),
 };
 
@@ -51,10 +57,11 @@ export async function getInboxFeed(
   const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
   const now = deps.now();
 
-  // 'active' = what needs attention now:
-  const rows = await deps.query<InboxRow>(
-    args.orgId,
-    `SELECT i.id, i.entity_type, i.entity_id, i.event_key, i.reason, i.state,
+  // The page and its badge counts are independent reads — one round trip.
+  const [rows, counts] = await deps.readBatch(args.orgId, [
+    // 'active' = what needs attention now:
+    {
+      text: `SELECT i.id, i.entity_type, i.entity_id, i.event_key, i.reason, i.state,
             i.collapse_count, i.snoozed_until, i.occurred_at, i.last_event_at,
             i.actor_staff_id, i.subscription_id, i.payload,
             -- Live follow state for the row's bell. Joined on the ENTITY, not on
@@ -80,25 +87,26 @@ export async function getInboxFeed(
         )
       ORDER BY i.last_event_at DESC, i.id DESC
       LIMIT $6`,
-    [args.orgId, args.staffId, allowed, now, filter, limit],
-  );
-
-  const counts = await deps.query<{ state: string; n: string }>(
-    args.orgId,
-    `SELECT state, COUNT(*)::text AS n
+      params: [args.orgId, args.staffId, allowed, now, filter, limit],
+    },
+    {
+      text: `SELECT state, COUNT(*)::text AS n
        FROM staff_inbox_items
       WHERE organization_id = $1
         AND staff_id = $2
         AND entity_type = ANY($3::text[])
         AND state IN ('unread','snoozed')
       GROUP BY state`,
-    [args.orgId, args.staffId, allowed],
+      params: [args.orgId, args.staffId, allowed],
+    },
+  ]);
+
+  const byState = new Map(
+    (counts!.rows as Array<{ state: string; n: string }>).map((r) => [r.state, Number(r.n)]),
   );
 
-  const byState = new Map(counts.rows.map((r) => [r.state, Number(r.n)]));
-
   return {
-    items: rows.rows.map(toItemDto),
+    items: (rows!.rows as InboxRow[]).map(toItemDto),
     counts: {
       unread: byState.get('unread') ?? 0,
       snoozed: byState.get('snoozed') ?? 0,

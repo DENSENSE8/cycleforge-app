@@ -93,12 +93,13 @@ export function isRefListPaste(message: string): boolean {
 
 // ─── Classification (pure) ───────────────────────────────────────────────────
 
-export const REF_GROUPS = ['received', 'not_received', 'not_in_system', 'pending', 'shipped', 'other'] as const;
+export const REF_GROUPS = ['received', 'not_received', 'delivered', 'not_in_system', 'pending', 'shipped', 'other'] as const;
 export type RefGroup = (typeof REF_GROUPS)[number];
 
 export const REF_GROUP_LABELS: Readonly<Record<RefGroup, string>> = {
   received: 'Received',
   not_received: 'Not received',
+  delivered: 'Delivered',
   not_in_system: 'Not in system',
   pending: 'Pending',
   shipped: 'Shipped',
@@ -166,7 +167,7 @@ export function classifyRefs(entries: readonly ReconEntry[], lines: readonly Ide
     if (!inboundUnowned(entry)) {
       return {
         ref: entry.ref,
-        group: entry.status === 'received' ? 'received' : 'not_received',
+        group: entry.status,
         what: 'Inbound delivery',
         status: entry.detail,
         record: entry.poNumber,
@@ -238,7 +239,9 @@ function refList(rows: readonly RefRow[], group: RefGroup, max = 8): string {
 export function buildReconcileEnvelope(rows: readonly RefRow[], truncated: number): ToolArtifactEnvelope {
   const counts = countGroups(rows);
   const ordered = REF_GROUPS.flatMap((g) => rows.filter((r) => r.group === g));
-  const refIn = serializeRefIn(rows.filter((r) => r.group === 'received' || r.group === 'not_received').map((r) => r.ref));
+  const refIn = serializeRefIn(
+    rows.filter((r) => r.group === 'received' || r.group === 'not_received' || r.group === 'delivered').map((r) => r.ref),
+  );
   const href = `/incoming?${REF_IN_PARAM}=${encodeURIComponent(refIn)}`;
   const artifact: ArtifactTable = {
     kind: 'table',
@@ -264,6 +267,7 @@ export function buildReconcileEnvelope(rows: readonly RefRow[], truncated: numbe
   };
   const needs: string[] = [];
   if (counts.not_received) needs.push(`not received: ${refList(rows, 'not_received')}`);
+  if (counts.delivered) needs.push(`delivered, not scanned here yet: ${refList(rows, 'delivered')}`);
   if (counts.not_in_system) needs.push(`not in system: ${refList(rows, 'not_in_system')}`);
   if (counts.pending) needs.push(`pending (still to ship): ${refList(rows, 'pending')}`);
   const cap = truncated > 0 ? ` Only the first ${rows.length} were checked; ${truncated} more were not.` : '';

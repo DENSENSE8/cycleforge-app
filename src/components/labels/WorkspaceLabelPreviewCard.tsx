@@ -23,6 +23,10 @@ import { LabelTypeSelect, type LabelTypeOption } from '@/components/labels/Label
 import { unitLabelToFace } from '@/lib/print/printProductLabel';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
 import { cn } from '@/utils/_cn';
+import { LabelFacePeek } from './LabelFacePeek';
+
+/** The `peek` chrome's resting face: 0.8 × the 2 × 1 in sticker — half the bubble height of a column-filling face. */
+const PEEK_FACE_SCALE = 0.8;
 
 export function WorkspaceLabelPreviewCard({
   sku,
@@ -59,9 +63,11 @@ export function WorkspaceLabelPreviewCard({
   onApplyAndPrint?: (draft: ProductLabelDraft) => void;
   /**
    * `worksheet` — glass + nested field (Testing / standalone).
-   * `procedure` — bare host; deck focus card owns chrome (Unbox Label step).
+   * `procedure` — bare host filling its column (QC Label band).
+   * `peek` — bare host, small fixed face; hover grows the big face + actual size
+   *   ({@link LabelFacePeek}) — the Unbox label bubble.
    */
-  chrome?: 'worksheet' | 'procedure';
+  chrome?: 'worksheet' | 'procedure' | 'peek';
   /**
    * Hover type-select + Edit overlays. Defaults **on** for `worksheet`, **off**
    * for `procedure` (Unbox — dock owns kind + Edit).
@@ -103,7 +109,8 @@ export function WorkspaceLabelPreviewCard({
     });
   const builtInEditor = !faceOverride && Boolean(onApplyAndPrint);
   const canEdit = Boolean(onEdit) || builtInEditor;
-  const procedure = chrome === 'procedure';
+  const peek = chrome === 'peek';
+  const procedure = chrome === 'procedure' || peek;
   const hoverChrome = showHoverChrome ?? !procedure;
 
   const typeSelect: ReactNode =
@@ -122,7 +129,8 @@ export function WorkspaceLabelPreviewCard({
       <LabelFacePreview
         model={face}
         embedded
-        fit={procedure ? 'host' : 'capped'}
+        fit={chrome === 'procedure' ? 'host' : 'capped'}
+        maxScale={peek ? PEEK_FACE_SCALE : undefined}
         slotHits={slotHits ?? (useProductHits ? productSlots.slotHits : undefined)}
       />
       {typeSelect ? (
@@ -160,7 +168,9 @@ export function WorkspaceLabelPreviewCard({
 
   return (
     <>
-      {procedure ? (
+      {peek ? (
+        <LabelFacePeek face={face}>{faceHost}</LabelFacePeek>
+      ) : procedure ? (
         faceHost
       ) : (
         // Nested glass + rounded-xl inset — same concentric corners as Notes.

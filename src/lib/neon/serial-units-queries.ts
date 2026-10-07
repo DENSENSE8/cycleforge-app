@@ -1,5 +1,5 @@
 import pool from '../db';
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { shortSku, isoWeekParts, formatUnitId } from '@/lib/inventory/unit-id-format';
 
@@ -78,6 +78,12 @@ export interface UpsertSerialUnitInput {
   condition_grade?: string | null;
   location?: string | null;
   target_status?: SerialStatus;
+  /**
+   * Apply `target_status` only when the row is born; an existing unit keeps
+   * its status. A product-label print is not a lifecycle move — a TESTED unit
+   * stays TESTED (never the outbound LABELED a carrier label means).
+   */
+  target_status_on_create_only?: boolean;
 }
 
 export interface UpsertSerialUnitResult {
@@ -512,7 +518,7 @@ export async function resolveCurrentReceivingLineIds(
 ): Promise<Map<number, number>> {
   const map = new Map<number, number>();
   if (serialUnitIds.length === 0) return map;
-  const result = await tenantQuery<{ serial_unit_id: number; receiving_line_id: number | null }>(
+  const result = await tenantQueryOneTrip<{ serial_unit_id: number; receiving_line_id: number | null }>(
     orgId,
     // Phase 3 (serial_unit_provenance):
     `SELECT su.id AS serial_unit_id,
@@ -759,10 +765,9 @@ export async function upsertSerialUnit(
     }
 
     const prior = existing.rows[0];
-    const { next, is_return, warnings } = resolveTransition(
-      prior.current_status,
-      targetStatus,
-    );
+    const { next, is_return, warnings } = input.target_status_on_create_only
+      ? { next: prior.current_status, is_return: false, warnings: [] as string[] }
+      : resolveTransition(prior.current_status, targetStatus);
 
     const metadataPatch: Record<string, unknown> = {
       last_touch: {

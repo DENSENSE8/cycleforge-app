@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { requirePermission } from '@/lib/auth/page-guard';
 import { getStockByLocation, getStockRoomFacets, LOCATION_STOCK_ROW_CAP } from '@/lib/neon/location-stock-queries';
+import { InventoryGlance } from '@/components/inventory/stock/InventoryGlance';
 import { StockLedger } from '@/components/inventory/stock/StockLedger';
 import { ReplenishWorkspace } from '@/components/replenish/ReplenishWorkspace';
 import { resolveExplicitStockRoom } from '@/lib/inventory/location-stock-row';
@@ -31,6 +32,13 @@ export default async function InventoryStockPage({
   // Same permission as the desk's own nav row (`sku_stock.view`).
   const user = await requirePermission('sku_stock.view');
   const params = await searchParams;
+  const ledger =
+    params.view === 'all' ||
+    Boolean(params.status || params.q || params.room || params.aisle || params.sort || params.open);
+  if (!ledger && params.view !== 'replenish') {
+    const { counts } = await getStockByLocation({ orgId: user.organizationId, limit: 1 });
+    return <InventoryGlance counts={counts} />;
+  }
   if (params.view === 'replenish') {
     return (
       <Suspense fallback={null}>
@@ -50,6 +58,7 @@ export default async function InventoryStockPage({
     aisle: params.aisle ?? null,
     excludeRoom: params.excludeRoom ?? null,
     excludeAisle: params.excludeAisle ?? null,
+    sort: params.sort ?? null,
   });
 
   return (

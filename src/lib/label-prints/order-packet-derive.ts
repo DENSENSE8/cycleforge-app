@@ -15,6 +15,8 @@
  *          (`sku_catalog.paperwork_not_required`) or the order is exempt; else missing.
  */
 import { normalizeBuyerName, sameBuyer } from '@/lib/label-ingestions/exact-resolver';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
+import { orderStorefront, resolveListingLink, type StoredListing } from '@/utils/external-item-url';
 import type { LabelOrderLine, LabelPrintRow, PaperworkDocumentRow } from './contracts';
 import {
   isPacketGap,
@@ -28,6 +30,8 @@ import {
   type OrderPacketStatus,
   type PacketLabelDocument,
   type PacketLabelSuggestion,
+  type PacketLabelMismatch,
+  type OrderPacketShipment,
   type PacketSlotState,
 } from './order-packet-contracts';
 
@@ -128,6 +132,49 @@ export function matchLabelSuggestions(
   return out;
 }
 
+// ── Mismatch (QoL 3) ───────────────────────────────────────────────────────
+
+/** One label as the mismatch rule reads it. */
+export interface LabelEvidence {
+  key: string;
+  trackingNumber: string | null;
+  shipToName: string | null;
+}
+
+/** Same parcel: one canonical number, or one is the other behind a routing prefix (USPS `420<zip>`). */
+function sameTracking(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [short, long] = a.length < b.length ? [a, b] : [b, a];
+  return short.length >= 12 && long.endsWith(short);
+}
+
+/**
+ * Labels on the order that disagree with it: a tracking number that is none
+ * of the order's shipments (only when the order holds any), or a ship-to name
+ * that is not the order's buyer under the resolver's own rule (`sameBuyer`,
+ * both sides two words or more). A label with nothing read stays quiet.
+ */
+export function packetLabelMismatches(input: {
+  buyerNames: readonly string[];
+  trackingNumbers: readonly string[];
+  labels: readonly LabelEvidence[];
+}): PacketLabelMismatch[] {
+  const orderTracking = [...new Set(input.trackingNumbers.map(extractCanonicalTracking).filter(Boolean))];
+  const buyers = input.buyerNames.map(normalizeBuyerName).filter((name) => name.split(' ').length > 1);
+  const out: PacketLabelMismatch[] = [];
+  for (const label of input.labels) {
+    const tracking = label.trackingNumber ? extractCanonicalTracking(label.trackingNumber) : '';
+    if (tracking && orderTracking.length > 0 && !orderTracking.some((own) => sameTracking(own, tracking))) {
+      out.push({ labelKey: label.key, kind: 'tracking', label: tracking, order: orderTracking.join(', ') });
+    }
+    const shipTo = label.shipToName ? normalizeBuyerName(label.shipToName) : '';
+    if (shipTo.split(' ').length > 1 && buyers.length > 0 && !buyers.some((buyer) => sameBuyer(shipTo, buyer))) {
+      out.push({ labelKey: label.key, kind: 'ship_to', label: label.shipToName!.trim(), order: input.buyerNames[0]! });
+    }
+  }
+  return out;
+}
+
 // ── The packet ─────────────────────────────────────────────────────────────
 
 export interface PacketSourceLine extends LabelOrderLine {
@@ -135,6 +182,8 @@ export interface PacketSourceLine extends LabelOrderLine {
   paperworkNotRequired: boolean;
   /** This line's own `orders.docs_not_required`. */
   docsNotRequired: boolean;
+  /** Active `sku_platform_ids` rows for the line's item number, catalog SKU or SKU text. */
+  storedListings?: StoredListing[];
 }
 
 /** Everything one order's packet derives from — the projection's raw read, mapped. */
@@ -142,6 +191,8 @@ export interface PacketSource {
   orderId: number;
   orderRef: string;
   accountSource: string | null;
+  /** The catalog platform slug `account_source` names (a seller account resolves to its platform). */
+  platformSlug?: string | null;
   orderedAt: string | null;
   shipByAt: string | null;
   pickup: boolean;
@@ -149,6 +200,12 @@ export interface PacketSource {
   docsNotRequired: boolean;
   /** Who the order ships to (ShipStation ship-to, customer book names) — the buyer-name suggestion key. */
   buyerNames: string[];
+  /** The order's own shipment (`orders.shipment_id`), when it has one. */
+  shipment?: OrderPacketShipment | null;
+  /** Every shipment's tracking number on any line (`orders.shipment_id` + `shipment_links`). */
+  trackingNumbers?: string[];
+  /** The ship-to name each ingestion read off its label. */
+  labelShipTo?: { ingestionId: number; name: string }[];
   labels: LabelPrintRow[];
   labelDocuments: PacketLabelDocument[];
   /** Packing slips and product paperwork, as the paperwork resolution yields them. */
@@ -163,10 +220,25 @@ export function buildOrderPacket(source: PacketSource, unpaired: readonly Unpair
   const labelState = deriveLabelSlotState({ pickup: source.pickup, labels: canonical.labels, documents: canonical.documents });
   const slips = source.documents.filter((doc) => doc.kind === 'packing_slip');
   const slipState = deriveSlipSlotState({ docsNotRequired: source.docsNotRequired, slips });
-  const lines: OrderPacketLine[] = source.lines.map(({ docsNotRequired, ...line }) => {
+  const storefront = orderStorefront(source.orderRef, source.platformSlug ?? source.accountSource);
+  const lines: OrderPacketLine[] = source.lines.map(({ docsNotRequired, storedListings, ...line }) => {
     const documents = linePaperwork(source.documents, line.orderLineId);
     const orderExempt = source.docsNotRequired || docsNotRequired;
-    return { ...line, state: deriveLineSlotState({ paperworkNotRequired: line.paperworkNotRequired, orderExempt, documents }), documents };
+    return {
+      ...line,
+      state: deriveLineSlotState({ paperworkNotRequired: line.paperworkNotRequired, orderExempt, documents }),
+      documents,
+      listing: resolveListingLink({ storefront, itemNumber: line.itemNumber, stored: storedListings }),
+    };
+  });
+  const shipTo = new Map((source.labelShipTo ?? []).map((row) => [row.ingestionId, row.name]));
+  const labelMismatches = packetLabelMismatches({
+    buyerNames: source.buyerNames,
+    trackingNumbers: source.trackingNumbers ?? (source.shipment ? [source.shipment.trackingNumber] : []),
+    labels: [
+      ...canonical.labels.map((row) => ({ key: `label:${row.id}`, trackingNumber: row.trackingNumber, shipToName: shipTo.get(row.id) ?? null })),
+      ...canonical.documents.map((doc) => ({ key: doc.key, trackingNumber: doc.trackingNumber, shipToName: null })),
+    ],
   });
   const gapCount = [labelState, slipState, ...lines.map((line) => line.state)].filter(isPacketGap).length;
 
@@ -184,6 +256,9 @@ export function buildOrderPacket(source: PacketSource, unpaired: readonly Unpair
     shipByAt: source.shipByAt,
     pickup: source.pickup,
     docsNotRequired: source.docsNotRequired,
+    buyerName: source.buyerNames[0] ?? null,
+    shipment: source.shipment ?? null,
+    labelMismatches,
     label: {
       state: labelState,
       labels: canonical.labels,

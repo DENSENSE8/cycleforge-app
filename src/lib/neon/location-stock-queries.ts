@@ -10,6 +10,7 @@ import {
   locationStockRoomId,
   parseLocationStockAisles,
   parseLocationStockRoomIds,
+  parseLocationStockSort,
   type LocationStockRoomFacet,
   type LocationStockTableRow,
 } from '../inventory/location-stock-row';
@@ -64,6 +65,7 @@ interface StockByLocationDbRow {
   on_hold_pairs: number;
   low_stock_pairs: number;
   out_pairs: number;
+  never_counted_pairs: number;
 }
 
 /** Scoped health counts for the pills and the tally — server truth, uncapped. */
@@ -74,6 +76,8 @@ export interface StockScopeCounts {
   onHoldPairs: number;
   lowStockPairs: number;
   outPairs: number;
+  /** Bin pairs with no cycle count (`last_counted` null), same scope as the other health counts. */
+  neverCountedPairs: number;
 }
 
 interface StockByLocationPage {
@@ -97,12 +101,16 @@ function isoOrNull(value: Date | string | null): string | null {
 }
 
 /**
- * Every (location, sku, source) pairing holding stock, in warehouse walking
- * order: location sort → room → row → column → biggest qty first.
+ * Every (location, sku, source) pairing holding stock. Location sorts walk
+ * room → rack → position. Quantity and count sorts lead the cap so a full
+ * warehouse still keeps the racks those orders are about; the desk re-sorts
+ * the loaded cards by rack total and oldest cycle count.
  */
 export async function getStockByLocation(args: {
   orgId: OrgId;
   limit?: number;
+  /** Sidebar `?sort=`. Unknown values walk earliest location first. */
+  sort?: string | null;
   /** The desk's find box, verbatim. Whitespace-only is NO query. */
   query?: string | null;
   /** The contextual room/zone filter, applied before the cap. */
@@ -129,6 +137,7 @@ export async function getStockByLocation(args: {
   const excludedAisles = parseLocationStockAisles(args.excludeAisle);
   const excludedAisleFilter = excludedAisles.length ? excludedAisles : null;
   const locationWalk = Boolean(roomFilter?.length || aisles?.length);
+  const sort = parseLocationStockSort(args.sort);
   const flattened = needle.replace(/[^A-Za-z0-9]/g, '');
   const flatLike = needle && flattened ? `%${flattened}%` : null;
 
@@ -386,7 +395,8 @@ export async function getStockByLocation(args: {
         COALESCE(SUM(m.qty) FILTER (WHERE m.qty > 0), 0)::int                                           AS in_stock_units,
         COUNT(*) FILTER (WHERE COALESCE(m.is_provisional, false))::int                                   AS on_hold_pairs,
         COUNT(*) FILTER (WHERE m.min_qty IS NOT NULL AND m.qty <= m.min_qty)::int                         AS low_stock_pairs,
-        COUNT(*) FILTER (WHERE m.qty <= 0 AND m.source <> 'empty')::int                                  AS out_pairs
+        COUNT(*) FILTER (WHERE m.qty <= 0 AND m.source <> 'empty')::int                                  AS out_pairs,
+        COUNT(*) FILTER (WHERE m.source = 'bin' AND m.last_counted IS NULL)::int                         AS never_counted_pairs
       FROM scoped_matches m
     )
     SELECT
@@ -419,11 +429,19 @@ export async function getStockByLocation(args: {
       c.on_hold_pairs,
       c.low_stock_pairs,
       c.out_pairs,
+      c.never_counted_pairs,
       COUNT(*) OVER ()::int                    AS total_count
     FROM scoped_matches m
     CROSS JOIN counts c
     ORDER BY
-      CASE WHEN $4::text IS NULL AND $6::text[] IS NULL AND $7::int[] IS NULL AND m.source = 'empty' THEN 1 ELSE 0 END ASC,
+      CASE
+        WHEN $11::text IN ('qty-desc', 'qty-asc', 'counted-asc') THEN 0
+        WHEN $4::text IS NULL AND $6::text[] IS NULL AND $7::int[] IS NULL AND m.source = 'empty' THEN 1
+        ELSE 0
+      END ASC,
+      CASE WHEN $11::text = 'qty-desc' THEN m.qty END DESC,
+      CASE WHEN $11::text = 'qty-asc' THEN m.qty END ASC,
+      CASE WHEN $11::text = 'counted-asc' THEN m.last_counted END ASC NULLS FIRST,
       CASE
         WHEN $8::boolean THEN ROW_NUMBER() OVER (
           PARTITION BY m.location_id
@@ -467,6 +485,7 @@ export async function getStockByLocation(args: {
     locationWalk,
     excludedRoomFilter,
     excludedAisleFilter,
+    sort,
   ]);
 
   return {
@@ -522,6 +541,7 @@ export async function getStockByLocation(args: {
       onHoldPairs: Number(result.rows[0]?.on_hold_pairs) || 0,
       lowStockPairs: Number(result.rows[0]?.low_stock_pairs) || 0,
       outPairs: Number(result.rows[0]?.out_pairs) || 0,
+      neverCountedPairs: Number(result.rows[0]?.never_counted_pairs) || 0,
     },
   };
 }

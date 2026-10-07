@@ -1,20 +1,20 @@
 {
   "summary": {
-    "total": 1216,
-    "withAuth": 861,
-    "tenantWrapped": 960,
-    "delegatedTenantWrapped": 899,
-    "orgIdRef": 1080,
-    "rawPool": 358,
+    "total": 1233,
+    "withAuth": 872,
+    "tenantWrapped": 971,
+    "delegatedTenantWrapped": 910,
+    "orgIdRef": 1092,
+    "rawPool": 364,
     "drizzle": 19,
     "transitional": 6,
-    "cron": 44,
+    "cron": 45,
     "byRisk": {
-      "critical": 24,
+      "critical": 26,
       "high": 25,
       "medium": 61,
-      "low": 653,
-      "info": 453
+      "low": 661,
+      "info": 460
     }
   },
   "routes": [
@@ -513,6 +513,48 @@
       "touched": [
         "locations",
         "sku_stock"
+      ],
+      "risk": "critical"
+    },
+    {
+      "route": "/api/records/tracking",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": null,
+      "orgIdRef": false,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "orders"
+      ],
+      "risk": "critical"
+    },
+    {
+      "route": "/api/records/tracking/unlink",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": null,
+      "orgIdRef": false,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "orders"
       ],
       "risk": "critical"
     },
@@ -4655,6 +4697,28 @@
       "risk": "low"
     },
     {
+      "route": "/api/documents/[id]/unlink",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": true,
+      "touched": [
+        "documents",
+        "orders"
+      ],
+      "risk": "low"
+    },
+    {
       "route": "/api/documents/download-zip",
       "methods": [
         "GET"
@@ -5793,6 +5857,27 @@
       "touched": [
         "cycle_forge_run_steps",
         "cycle_forge_runs"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/fulfilled/thread",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": "packing.view",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": false,
+      "touched": [
+        "orders"
       ],
       "risk": "low"
     },
@@ -8076,6 +8161,27 @@
       "risk": "low"
     },
     {
+      "route": "/api/orders/[id]/paperwork-suggestions",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": false,
+      "touched": [
+        "orders"
+      ],
+      "risk": "low"
+    },
+    {
       "route": "/api/orders/[id]/pick-tasks",
       "methods": [
         "GET"
@@ -8157,6 +8263,29 @@
       "touched": [
         "order_unit_allocations",
         "serial_units",
+        "orders",
+        "sku"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/orders/[id]/sku-suggestions",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": true,
+      "touched": [
         "orders",
         "sku"
       ],
@@ -8533,8 +8662,6 @@
       "isPathParam": false,
       "mutates": true,
       "touched": [
-        "feed_memberships",
-        "work_assignments",
         "orders",
         "sku"
       ],
@@ -8793,6 +8920,28 @@
         "shipping_tracking_numbers",
         "orders",
         "sku"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/orders/list-removal",
+      "methods": [
+        "POST",
+        "DELETE"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "orders"
       ],
       "risk": "low"
     },
@@ -9280,13 +9429,10 @@
         "shipping_tracking_numbers",
         "fba_shipment_tracking",
         "fba_shipment_items",
-        "sku_platform_ids",
         "work_assignments",
         "fba_shipments",
         "packer_logs",
-        "sku_catalog",
         "fba_fnskus",
-        "sku_stock",
         "orders",
         "photos",
         "staff",
@@ -10296,7 +10442,6 @@
       "touched": [
         "station_activity_logs",
         "tech_serial_numbers",
-        "label_print_jobs",
         "sku"
       ],
       "risk": "low"
@@ -11060,6 +11205,7 @@
         "receiving_line",
         "serial_units",
         "orders",
+        "types",
         "sku"
       ],
       "risk": "low"
@@ -11524,6 +11670,27 @@
         "items",
         "staff",
         "sku"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/receiving/[id]/acknowledge-unbox",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": "receiving.mark_received",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": true,
+      "touched": [
+        "receiving_unbox"
       ],
       "risk": "low"
     },
@@ -12093,8 +12260,10 @@
         "receiving_triage",
         "receiving_scans",
         "receiving_unbox",
+        "support_tickets",
         "receiving_line",
         "zoho_po_mirror",
+        "ticket_links",
         "sku_catalog",
         "items",
         "sku"
@@ -12269,7 +12438,8 @@
       "route": "/api/receiving/po/[poId]/attach-box",
       "methods": [
         "GET",
-        "POST"
+        "POST",
+        "DELETE"
       ],
       "withAuth": false,
       "permission": null,
@@ -12315,6 +12485,28 @@
         "receiving_line",
         "photos",
         "sku"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/receiving/putaway-targets",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": "receiving.view",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [
+        "sku_stock"
       ],
       "risk": "low"
     },
@@ -16649,6 +16841,7 @@
       "isPathParam": false,
       "mutates": true,
       "touched": [
+        "serial_units",
         "sku_catalog",
         "sku"
       ],
@@ -16805,6 +16998,27 @@
       "mutates": true,
       "touched": [
         "orders"
+      ],
+      "risk": "low"
+    },
+    {
+      "route": "/api/v1/label-ingestions/[id]/file-on-order",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": "packing.complete_order",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": true,
+      "touched": [
+        "documents"
       ],
       "risk": "low"
     },
@@ -18787,6 +19001,25 @@
     },
     {
       "route": "/api/cron/notification-outbox",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": false,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": true,
+      "isPathParam": false,
+      "mutates": false,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/cron/qc-print-pass",
       "methods": [
         "GET"
       ],
@@ -20796,8 +21029,8 @@
       "withAuth": true,
       "permission": "packing.view",
       "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
       "rawPool": false,
       "drizzle": false,
       "transitional": false,
@@ -20863,6 +21096,25 @@
       "isCron": false,
       "isPathParam": false,
       "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/nav/records",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": false,
       "touched": [],
       "risk": "info"
     },
@@ -21962,6 +22214,25 @@
       "risk": "info"
     },
     {
+      "route": "/api/qc/units/[id]/print-pass",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
       "route": "/api/ready",
       "methods": [
         "GET"
@@ -22091,25 +22362,6 @@
       "isCron": false,
       "isPathParam": false,
       "mutates": false,
-      "touched": [],
-      "risk": "info"
-    },
-    {
-      "route": "/api/receiving/[id]/acknowledge-unbox",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "receiving.mark_received",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": true,
-      "mutates": true,
       "touched": [],
       "risk": "info"
     },
@@ -22685,26 +22937,6 @@
       "risk": "info"
     },
     {
-      "route": "/api/receiving/rail-snapshot",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "receiving.view",
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [],
-      "risk": "info"
-    },
-    {
       "route": "/api/receiving/recent-label-note",
       "methods": [
         "GET"
@@ -22752,25 +22984,6 @@
       "orgIdRef": true,
       "tenantWrapped": false,
       "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": false,
-      "touched": [],
-      "risk": "info"
-    },
-    {
-      "route": "/api/receiving/scan-verdict",
-      "methods": [
-        "GET"
-      ],
-      "withAuth": true,
-      "permission": "receiving.view",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
       "rawPool": false,
       "drizzle": false,
       "transitional": false,
@@ -22947,6 +23160,63 @@
       "orgIdRef": true,
       "tenantWrapped": true,
       "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/records/actions",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": null,
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": true,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/records/delete",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": null,
+      "orgIdRef": false,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": false,
+      "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/records/order-number",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": null,
+      "orgIdRef": false,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
       "rawPool": false,
       "drizzle": false,
       "transitional": false,
@@ -25138,6 +25408,25 @@
       "risk": "info"
     },
     {
+      "route": "/api/v1/label-ingestions/[id]/file-check",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": "packing.review",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": false,
+      "touched": [],
+      "risk": "info"
+    },
+    {
       "route": "/api/v1/label-ingestions/[id]/pdf",
       "methods": [
         "GET"
@@ -25177,6 +25466,63 @@
     },
     {
       "route": "/api/v1/label-ingestions/[id]/retry",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": "packing.complete_order",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/v1/label-ingestions/[id]/unpair",
+      "methods": [
+        "POST"
+      ],
+      "withAuth": true,
+      "permission": "packing.complete_order",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": true,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/v1/label-ingestions/[id]/unpair-check",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": true,
+      "permission": "packing.review",
+      "orgIdRef": true,
+      "tenantWrapped": true,
+      "delegatedTenantWrapped": true,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": false,
+      "isPathParam": true,
+      "mutates": false,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/v1/label-ingestions/[id]/unpair/undo",
       "methods": [
         "POST"
       ],

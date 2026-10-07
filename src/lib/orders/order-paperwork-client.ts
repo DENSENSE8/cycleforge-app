@@ -136,6 +136,49 @@ export async function deleteDocument(documentId: number) {
   await readJson(res, 'Could not delete the document.');
 }
 
+type SlipOrLabel = 'packing_slip' | 'shipping_label';
+
+/** Move a slip / label without an ingestion to the UNLINKED pool; the file stays. Undo = `relinkDocument`. */
+export async function unlinkDocument(documentId: number): Promise<void> {
+  const res = await fetch(`/api/documents/${documentId}/unlink`, { method: 'POST', credentials: 'same-origin' });
+  await readJson(res, 'Could not unlink the document.');
+}
+
+/** Re-file an existing document row on an order — the attach-existing-documentId path (POST /api/orders/[id]/documents). */
+export async function relinkDocument(input: { orderId: number; documentId: number; documentType: SlipOrLabel }): Promise<void> {
+  const res = await fetch(`/api/orders/${input.orderId}/documents`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ documentType: input.documentType, documentId: input.documentId }),
+  });
+  await readJson(res, 'Could not re-link the document.');
+}
+
+function filenameFromDisposition(header: string | null): string | null {
+  const match = header?.match(/filename="([^"]+)"/);
+  return match ? match[1] : null;
+}
+
+/** Hard delete that keeps the bytes client-side so `restore()` can re-file them on the order. */
+export async function deleteDocumentKeepingBytes(input: {
+  documentId: number;
+  orderId: number;
+  documentType: SlipOrLabel;
+}): Promise<{ restore(): Promise<void> }> {
+  const content = await fetch(`/api/documents/${input.documentId}/content`, { credentials: 'same-origin' });
+  if (!content.ok) throw new Error('Could not read the document before deleting it.');
+  const blob = await content.blob();
+  const filename = filenameFromDisposition(content.headers.get('content-disposition')) ?? `document-${input.documentId}`;
+  const file = new File([blob], filename, { type: blob.type || content.headers.get('content-type') || 'application/pdf' });
+  await deleteDocument(input.documentId);
+  return {
+    async restore() {
+      await uploadOrderDocument(input.orderId, String(input.orderId), input.documentType, file);
+    },
+  };
+}
+
 export async function replaceDocumentBytes(documentId: number, file: File) {
   const res = await fetch(`/api/documents/${documentId}`, {
     method: 'PATCH',

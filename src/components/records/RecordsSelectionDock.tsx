@@ -14,6 +14,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
+import { useStepUp } from '@/components/providers/StepUpProvider';
 import { format } from 'date-fns';
 import { Pause } from 'lucide-react';
 import { Archive, ArrowLeftRight, Calendar, Hash, MessageSquare, Play, Plus, Trash2, Unlink, User } from '@/components/Icons';
@@ -33,6 +34,9 @@ import { DateRangePickerField } from '@/design-system/components/DateRangePicker
 import { TextField } from '@/design-system/primitives/TextField';
 import { ACTION_DOCK_LIFT } from '@/design-system/tokens/dock-clearance';
 import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
+import { ListRemovalPicker } from '@/components/orders/ListRemovalPicker';
+import { listRemovalReasonLabel } from '@/lib/orders/list-removal';
+import { removeFromList, restoreToList } from '@/lib/orders/list-removal-client';
 import type { BulkEntry } from '@/lib/nav/locate/use-bulk-list';
 import type { RecordsGrain } from '@/lib/nav/records/params';
 import type { RefSelection } from '@/lib/receiving/reconcile';
@@ -102,6 +106,8 @@ export function RecordsSelectionDock({
   const [busy, setBusy] = useState(false);
   const [assign, setAssign] = useState<'pick' | 'pack' | null>(null);
   const [typedDelete, setTypedDelete] = useState<string | null>(null);
+  // Delete (`orders.void`) can ask for a fresh PIN: the house step-up opens and the write retries.
+  const requestStepUp = useStepUp();
 
   const targets = useMemo(() => recordTargets(lines), [lines]);
   const outbound = useMemo(() => lines.filter((line) => line.facts?.direction === 'outbound'), [lines]);
@@ -115,7 +121,7 @@ export function RecordsSelectionDock({
     const send = async (write: RecordWrite, did: string, undo?: () => void): Promise<boolean> => {
       setBusy(true);
       try {
-        const summary = summarizeRecordResults(await postRecordWrite(write));
+        const summary = summarizeRecordResults(await postRecordWrite(write, requestStepUp));
         for (const refusal of summary.refused) toast.error(`${plural(refusal.count, 'line', 'lines')} refused: ${refusal.reason}`);
         if (summary.done > 0) {
           const message = `${did} · ${plural(summary.done, 'line', 'lines')}`;
@@ -292,7 +298,7 @@ export function RecordsSelectionDock({
       },
     ];
 
-    // Remove from list (Paste mode): the paste drops its numbers — no write.
+    // Remove from list: a paste drops its numbers (no write); a query takes outbound orders off the To-ship list.
     if (pasteMode) {
       out.push({
         id: 'remove-from-list',
@@ -310,6 +316,45 @@ export function RecordsSelectionDock({
           onClear();
           toast.undo(`Removed ${plural(dropped.length, 'number', 'numbers')} from the list`, { onUndo: () => writeRefs(before) });
         },
+      });
+    } else {
+      const orderIds = outboundTargets.map((target) => target.id);
+      out.push({
+        id: 'remove-from-list',
+        label: 'Remove from list…',
+        icon: <Archive className="size-4" />,
+        disabled: busy || orderIds.length === 0,
+        disabledReason: busy ? BUSY_REASON : 'Only outbound orders leave the To-ship list',
+        display: (done) => (
+          <ListRemovalPicker
+            count={orderIds.length}
+            busy={busy}
+            onCancel={done}
+            onConfirm={async (reason, note) => {
+              setBusy(true);
+              try {
+                const removed = await removeFromList(orderIds, reason, note);
+                done();
+                onDone();
+                toast.undo(`Removed ${removed.length} from the list · ${listRemovalReasonLabel(reason)}`, {
+                  onUndo: () => {
+                    void restoreToList(removed)
+                      .then((restored) => {
+                        toast.success(`Put ${restored.length} back on the list`);
+                        onDone();
+                      })
+                      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not put them back'));
+                  },
+                });
+              } catch (error: unknown) {
+                // The list-removal table is another lane's migration — its refusal is shown as it is.
+                toast.error(error instanceof Error ? error.message : 'Could not remove from the list');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        ),
       });
     }
 
@@ -339,7 +384,7 @@ export function RecordsSelectionDock({
       });
     }
     return out;
-  }, [aggregate, busy, latest, lines, loaded, onClear, onDone, outbound, outboundTargets, pasteMode, pasted, targets, writeRefs]);
+  }, [aggregate, busy, latest, lines, loaded, onClear, onDone, outbound, outboundTargets, pasteMode, pasted, requestStepUp, targets, writeRefs]);
 
   if (count === 0) return null;
 
@@ -415,7 +460,7 @@ export function RecordsSelectionDock({
   async function runWrite(write: RecordWrite, did: string) {
     setBusy(true);
     try {
-      const summary = summarizeRecordResults(await postRecordWrite(write));
+      const summary = summarizeRecordResults(await postRecordWrite(write, requestStepUp));
       for (const refusal of summary.refused) toast.error(`${plural(refusal.count, 'line', 'lines')} refused: ${refusal.reason}`);
       if (summary.done > 0) toast.success(`${did} · ${plural(summary.done, 'line', 'lines')}`);
       onDone();

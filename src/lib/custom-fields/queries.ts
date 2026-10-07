@@ -3,7 +3,7 @@
  * All reads/writes are org-scoped via tenantQuery / withTenantTransaction.
  */
 
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type {
   CustomFieldDef,
@@ -105,11 +105,48 @@ export async function archiveCustomFieldDef(
   return row ? mapDef(row) : null;
 }
 
+/** The live values {@link hydrateCustomFieldMaps} aggregates: `$1` org, `$2` entity type. */
+const LIVE_CUSTOM_FIELD_VALUES_SQL = `FROM custom_field_values v
+     INNER JOIN custom_field_defs d
+       ON d.id = v.field_id
+      AND d.organization_id = v.organization_id
+     WHERE v.organization_id = $1
+       AND v.entity_type = $2
+       AND d.archived_at IS NULL`;
+
+/**
+ * Statement: does the org hold ANY live custom-field value of `entityType`
+ * (column `has_values`)? False means {@link hydrateCustomFieldMaps} finds
+ * nothing for any id, so a page can skip that dependent round trip. Ride it in
+ * a trip the page already makes (`tenantQueriesOneTrip`), or use
+ * {@link hasCustomFieldValues}.
+ */
+export function customFieldValuesExistStatement(
+  orgId: OrgId,
+  entityType: CustomFieldEntityType,
+): { text: string; params: unknown[] } {
+  return {
+    text: `SELECT EXISTS (SELECT 1 ${LIVE_CUSTOM_FIELD_VALUES_SQL}) AS has_values`,
+    params: [orgId, entityType],
+  };
+}
+
+/** {@link customFieldValuesExistStatement} in its own round trip. */
+export async function hasCustomFieldValues(
+  orgId: OrgId,
+  entityType: CustomFieldEntityType,
+): Promise<boolean> {
+  const { text, params } = customFieldValuesExistStatement(orgId, entityType);
+  const result = await tenantQueryOneTrip<{ has_values: boolean }>(orgId, text, params);
+  return result.rows[0]?.has_values === true;
+}
+
 /**
  * One aggregated read for a virtualized page — never N joins per field.
- * Returns Map<entityId, { [defKey]: value }>.
+ * Returns Map<entityId, { [defKey]: value }>. Read it alongside a page's other
+ * reads, then {@link applyCustomFieldMaps} once the rows are final.
  */
-async function hydrateCustomFieldMaps(
+export async function hydrateCustomFieldMaps(
   orgId: OrgId,
   entityType: CustomFieldEntityType,
   entityIds: readonly number[],
@@ -117,7 +154,7 @@ async function hydrateCustomFieldMaps(
   const out = new Map<number, CustomFieldValueMap>();
   if (entityIds.length === 0) return out;
 
-  const result = await tenantQuery<{
+  const result = await tenantQueryOneTrip<{
     entity_id: number;
     custom_fields: CustomFieldValueMap | null;
   }>(
@@ -132,14 +169,8 @@ async function hydrateCustomFieldMaps(
                 ELSE to_jsonb(v.value_text)
               END
             ) AS custom_fields
-     FROM custom_field_values v
-     INNER JOIN custom_field_defs d
-       ON d.id = v.field_id
-      AND d.organization_id = v.organization_id
-     WHERE v.organization_id = $1
-       AND v.entity_type = $2
+     ${LIVE_CUSTOM_FIELD_VALUES_SQL}
        AND v.entity_id = ANY($3::bigint[])
-       AND d.archived_at IS NULL
      GROUP BY v.entity_id`,
     [orgId, entityType, entityIds],
   );
@@ -217,6 +248,19 @@ export async function upsertCustomFieldValue(
   });
 }
 
+/** Put hydrated `customFields` onto rows (copies only the rows that carry fields). */
+export function applyCustomFieldMaps<T extends { id: number }>(
+  rows: T[],
+  maps: ReadonlyMap<number, CustomFieldValueMap>,
+): Array<T & { customFields?: CustomFieldValueMap }> {
+  return rows.map((row) => {
+    const customFields = maps.get(row.id);
+    return customFields && Object.keys(customFields).length > 0
+      ? { ...row, customFields }
+      : row;
+  });
+}
+
 /** Attach `customFields` onto rows that already have numeric `id`. */
 export async function attachCustomFieldsToRows<T extends { id: number }>(
   orgId: OrgId,
@@ -224,15 +268,8 @@ export async function attachCustomFieldsToRows<T extends { id: number }>(
   rows: T[],
 ): Promise<Array<T & { customFields?: CustomFieldValueMap }>> {
   if (rows.length === 0) return rows;
-  const maps = await hydrateCustomFieldMaps(
-    orgId,
-    entityType,
-    rows.map((r) => r.id),
+  return applyCustomFieldMaps(
+    rows,
+    await hydrateCustomFieldMaps(orgId, entityType, rows.map((r) => r.id)),
   );
-  return rows.map((row) => {
-    const customFields = maps.get(row.id);
-    return customFields && Object.keys(customFields).length > 0
-      ? { ...row, customFields }
-      : row;
-  });
 }

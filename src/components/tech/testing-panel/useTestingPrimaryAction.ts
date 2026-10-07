@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { unitStatusToVerdict } from '@/components/receiving/workspace/TestingStatusPills';
+import type { TestingVerdict } from '@/components/receiving/workspace/TestingStatusPills';
 import { createScanFieldLetterKey } from '@/lib/keyboard/scan-field-letter-key';
+import { QC_VERDICTS } from '@/lib/qc/qc-verdict';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
+import { isGoArmed } from '@/components/sidebar/contextual/go-keys-store';
 
 interface TestingPrimaryAction {
-  primaryDisabled: boolean;
-  primaryLabel: string;
   primaryTitle: string;
 }
 
@@ -20,44 +20,25 @@ function appendToScanField(field: HTMLInputElement, text: string): void {
 }
 
 /**
- * View-model for the "Pass · Print Label" floating action: derives its
- * enabled/label/tooltip from the active serial's verdict + line state, and wires
- * its keys — bare Enter (ignored while typing in a field) and `P`, which also
- * fires from the empty, focused scan field.
+ * The Pass CTA's tooltip, and the station's verdict keys — the same letters as
+ * the QC record (`QC_VERDICTS`): `P` (and bare Enter outside a field) passes
+ * and prints, `T` tests again, `F` fails. Letters fire from the page or the
+ * empty, focused scan field (`createScanFieldLetterKey`). Pass is never
+ * disabled: a press with no serial says so instead.
  */
 export function useTestingPrimaryAction(c: TestingController, row: ReceivingLineRow): TestingPrimaryAction {
-  const { activeSerial, isPrinting, saving, handlePrimary } = c;
-  const activeVerdict = unitStatusToVerdict(activeSerial?.current_status);
   const hasSku = Boolean((row.sku || '').trim());
-  const hasActiveSerial = activeSerial != null;
+  const primaryTitle = !hasSku
+    ? 'Add a SKU first — open Package Pairing → Purchase Order → Acknowledge by Inventory SKU (or scan a unit serial)'
+    : !c.activeSerial
+      ? 'Scan a serial for this slot before printing'
+      : 'Pass this unit and print its label (P or Enter)';
 
-  const primaryDisabled =
-    !hasActiveSerial ||
-    activeVerdict === 'TESTING_FAILED' ||
-    isPrinting ||
-    saving ||
-    !hasSku ||
-    row.receiving_id == null;
+  const live = useRef(c);
+  live.current = c;
+  const rowId = row.id;
 
-  const primaryTitle = row.receiving_id == null
-    ? 'Line is not linked to a carton'
-    : !hasSku
-      ? 'Add a SKU first — open Package Pairing → Purchase Order → Acknowledge by Inventory SKU (or scan a unit serial)'
-      : !hasActiveSerial
-        ? 'Scan a serial for this slot before printing'
-        : activeVerdict === 'TESTING_FAILED'
-          ? 'This unit failed testing — Fail never prints a label'
-          : 'Pass this unit and print its label (P or Enter)';
-
-  const primaryLabel = isPrinting
-    ? 'Printing…'
-    : !hasSku
-      ? 'Pass · No SKU'
-      : !hasActiveSerial
-        ? 'Pass · No Serial'
-        : 'Pass · Print Label';
-
-  // Bare Enter (not while typing) fires the primary action.
+  // Bare Enter (not while typing) passes and prints.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Enter' || event.defaultPrevented) return;
@@ -71,33 +52,46 @@ export function useTestingPrimaryAction(c: TestingController, row: ReceivingLine
       ) {
         return;
       }
-      if (primaryDisabled || isPrinting) return;
       event.preventDefault();
-      void handlePrimary();
+      void live.current.handlePrimary();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [primaryDisabled, isPrinting, handlePrimary]);
-
-  // `P` passes and prints in one press — from the page or the empty scan field.
-  const pRef = useRef({ primaryDisabled, handlePrimary });
-  pRef.current = { primaryDisabled, handlePrimary };
-  useEffect(() => {
-    const key = createScanFieldLetterKey({
-      letter: 'p',
-      // The Quality control scan field (`TestingSidebarPanel`'s scan bar).
-      scanField: (target) =>
-        target instanceof HTMLInputElement && target.closest('[data-testing-scan]') ? target : null,
-      enabled: () => !pRef.current.primaryDisabled,
-      onPress: () => void pRef.current.handlePrimary(),
-      giveBack: appendToScanField,
-    });
-    window.addEventListener('keydown', key.onKeyDown, true);
-    return () => {
-      window.removeEventListener('keydown', key.onKeyDown, true);
-      key.dispose();
-    };
   }, []);
 
-  return { primaryDisabled, primaryLabel, primaryTitle };
+  // P / T / F — one letter key per verdict.
+  useEffect(() => {
+    const press = (verdict: TestingVerdict) => {
+      const ctl = live.current;
+      if (verdict === 'PASS') {
+        void ctl.handlePrimary();
+        return;
+      }
+      if (ctl.activeSerial) ctl.requestSlotVerdict(rowId, ctl.activeSerial, verdict);
+    };
+    const keys = QC_VERDICTS.map((spec) =>
+      createScanFieldLetterKey({
+        letter: spec.hotkey,
+        // The Quality control scan field (`TestingSidebarPanel`'s scan bar).
+        scanField: (target) =>
+          target instanceof HTMLInputElement && target.closest('[data-testing-scan]') ? target : null,
+        // Test again / Fail need a unit to judge; Pass always answers.
+        enabled: () => spec.verdict === 'PASS' || live.current.activeSerial != null,
+        onPress: () => press(spec.verdict),
+        giveBack: appendToScanField,
+      }),
+    );
+    const onKeyDown = (event: KeyboardEvent) => {
+      // `G` then F/T/P is a go sequence, never a verdict.
+      if (isGoArmed()) return;
+      for (const key of keys) key.onKeyDown(event);
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true);
+      for (const key of keys) key.dispose();
+    };
+  }, [rowId]);
+
+  return { primaryTitle };
 }

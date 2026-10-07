@@ -344,32 +344,3 @@ export function pickLocalPoId(probe: ScanMatchProbe, cartonPoId: string | null):
   if (probe.poRef[0]) return probe.poRef[0];
   return probe.poNear.length === 1 ? probe.poNear[0] : null;
 }
-
-export type ScanVerdict = 'found' | 'unfound';
-
-export interface ScanVerdictResult {
-  verdict: ScanVerdict;
-  /** The carton this tracking already landed on, if any. */
-  receivingId: number | null;
-  /** The PO the tracking resolves to locally, if any. */
-  poId: string | null;
-  lineCount: number;
-}
-
-/**
- * Found vs unfound, the way lookup-po will decide it — a local PO for the
- * tracking, an Incoming-mirror order, or a carton that already carries lines.
- * Anything else lands as an unfound carton.
- */
-export function scanVerdictFromProbe(probe: ScanMatchProbe): ScanVerdictResult {
-  const carton = pickCartonMatch(probe);
-  const poId = pickLocalPoId(probe, carton?.poId ?? null);
-  const lineCount = carton?.lineCount ?? 0;
-  const found = poId != null || carton?.tier === 'inbound' || lineCount > 0;
-  return {
-    verdict: found ? 'found' : 'unfound',
-    receivingId: carton?.receivingId ?? null,
-    poId,
-    lineCount,
-  };
-}

@@ -208,10 +208,12 @@ export function locateRecordLine(line: RecordLineRow, nowMs: number): Located {
 
   const channel = platformLabel(line);
   const ref = line.orderNumber ?? primary?.tracking ?? `#${line.recordId}`;
+  // A carton with no lines yet names no line: no write target, and its own words where the item goes.
+  const carton = line.cartonOnly;
   const outbound = line.direction === 'outbound';
   const facts: NavLocateFacts = {
     section: line.direction,
-    title: line.title,
+    title: carton ? 'Carton · no lines yet' : line.title,
     sku: line.sku,
     tracking: primary?.tracking ?? null,
     deliveredAt,
@@ -252,7 +254,7 @@ export function locateRecordLine(line: RecordLineRow, nowMs: number): Located {
     lastNote: line.lastNote,
     owner: line.owner,
     direction: line.direction,
-    recordId: line.recordId,
+    ...(carton ? {} : { recordId: line.recordId }),
     orderNumber: line.orderNumber,
     orderKey: line.orderKey,
     itemNumber: line.itemNumber,
@@ -272,14 +274,14 @@ export function locateRecordLine(line: RecordLineRow, nowMs: number): Located {
   return {
     line,
     entry: {
-      key: recordTargetKey({ direction: line.direction, id: line.recordId }),
+      key: carton ? `carton:${line.recordId}` : recordTargetKey({ direction: line.direction, id: line.recordId }),
       ref,
       buckets: [internal],
-      title: line.title,
+      title: carton ? 'Carton · no lines yet' : line.title,
       detail: lead?.statusLabel ?? null,
       recordHref: outbound
         ? recordDetailsHref({ kind: 'order', orderId: line.recordId, shipped: line.scannedOut })
-        : recordDetailsHref({ kind: 'receiving-number', ref, lineId: line.recordId }),
+        : recordDetailsHref({ kind: 'receiving-number', ref, lineId: carton ? null : line.recordId }),
       facts,
     },
     internal,

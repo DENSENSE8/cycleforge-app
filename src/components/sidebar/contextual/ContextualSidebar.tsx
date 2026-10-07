@@ -32,6 +32,7 @@ import { NavFind } from './NavFind';
 import { NavSlotError } from './NavSlotError';
 import { NavModeSwitcher, isNavModeSection } from './NavModeSwitcher';
 import { NavViewSwitcher } from './NavViewSwitcher';
+import { StockViewList } from './StockViewList';
 import { NavGoKeys } from './NavGoKeys';
 import { useRememberLaneView } from './useLaneDoorHref';
 import { handleSidebarNavigationKeyDown } from '@/components/sidebar/sidebar-keyboard-navigation';
@@ -186,7 +187,10 @@ export function ContextualSidebar() {
             {modeSection && !peekTop ? <NavModeSwitcher section={modeSection} currentPageId={nav.page.id} /> : null}
             {/* Scan Stations stay one tier deep: their working rail owns the
                 page-level state instead of adding an Arrival/QC view switcher. */}
-            {!peekTop && !inlineScanStation ? (
+            {!peekTop && !inlineScanStation && nav.page.id === 'stock' ? (
+              <StockViewList items={viewSections.flatMap((section) => section.items)} />
+            ) : null}
+            {!peekTop && !inlineScanStation && nav.page.id !== 'stock' ? (
               <NavViewSwitcher sections={viewSections} pageId={nav.page.id} viewKeys={nav.viewKeys === true} />
             ) : null}
           </div>

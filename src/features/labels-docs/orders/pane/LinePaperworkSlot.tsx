@@ -1,11 +1,13 @@
 'use client';
 
 /**
- * One order line's product paperwork — THE line-slot control, in two
+ * One order line's product paperwork — THE line-slot control, in three
  * placements: `pane` (the order pane: photo, SKU-identity title, qty, every
- * resolved document with its source, every verb) and `row` (the expanded
+ * resolved document with its source, every verb), `row` (the expanded
  * list row: one line — state, source, Pair · Upload · N/R — that unfolds the
- * same panels in place).
+ * same panels in place) and `sheet` (the Live feed docs sheet: the sheet
+ * lists the documents, suggestions and library search itself — `children` —
+ * and links from its viewer; the slot keeps Upload, Not required and the drop).
  *
  * Pairing scope defaults to `defaultPairScope(line)` (SKU first) and the verb
  * names its reach ("Pair to SKU · 14 open orders"). Pair and Upload open the
@@ -17,7 +19,7 @@
  * write is reversible from its toast (`useLinePaperwork`).
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CirclePause, Link2, Pencil, Unlink, Upload, X } from '@/components/Icons';
 import { Badge } from '@/components/ui/badge';
 import { PairingControls } from '@/components/outbound/orders/paperwork/PaperworkPairingControls';
@@ -28,7 +30,7 @@ import type { PaperworkDocumentRow } from '@/lib/label-prints/contracts';
 import { isPacketGap, type OrderPacket, type OrderPacketLine } from '@/lib/label-prints/order-packet-contracts';
 import { defaultPairScope, type PaperworkSource } from '@/lib/manuals/paperwork-pairing';
 import { PAPERWORK_SOURCE_FACE, PAPERWORK_UPLOAD_TYPES, printedFace, SLOT_STATE_FACE } from './slot-faces';
-import { SlotDocument, SlotFrame, useFilePicker } from './SlotFrame';
+import { SlotDocument, SlotFrame, SlotHeading, useFilePicker } from './SlotFrame';
 import { LineIdentity, RepinPanel } from './pane-parts';
 import { useLinePaperwork } from './use-line-paperwork';
 
@@ -53,13 +55,23 @@ export function LinePaperworkSlot({
   packet,
   line,
   placement,
+  children,
 }: {
   packet: OrderPacket;
   line: OrderPacketLine;
-  placement: 'pane' | 'row';
+  placement: 'pane' | 'row' | 'sheet';
+  /** `sheet` only: the sheet's own rows for this line, painted inside the slot's frame (and drop zone). */
+  children?: ReactNode;
 }) {
   const writes = useLinePaperwork(line);
   const [scope, setScope] = useState<PaperworkSource>(() => defaultPairScope(line));
+  // A line linked to its SKU here pairs to the SKU from then on (future orders of it resolve the same paperwork).
+  const skuCatalogId = line.skuCatalogId;
+  const lastCatalogId = useRef(skuCatalogId);
+  useEffect(() => {
+    if (lastCatalogId.current == null && skuCatalogId != null) setScope('sku');
+    lastCatalogId.current = skuCatalogId;
+  }, [skuCatalogId]);
   const [type, setType] = useState('manual');
   const [panel, setPanel] = useState<Panel>(null);
   const [repinId, setRepinId] = useState<number | null>(null);
@@ -119,22 +131,24 @@ export function LinePaperworkSlot({
     onFiles: (files: File[]) => writes.upload.mutate({ files, scope, type }),
   };
 
-  const verbs = (compact: boolean) => (
+  const verbs = (compact: boolean, withPair = true) => (
     <>
-      <Button
-        variant={compact ? 'ghost' : 'secondary'}
-        size="sm"
-        radius="control"
-        icon={<Link2 />}
-        aria-expanded={panel === 'pair'}
-        aria-keyshortcuts="P"
-        title={pairVerb(scope, writes.reach)}
-        onClick={() => openPanel('pair')}
-        className="min-w-0"
-        data-testid="line-paperwork-pair"
-      >
-        <span className="truncate">{compact ? 'Pair' : pairVerb(scope, writes.reach)}</span>
-      </Button>
+      {withPair ? (
+        <Button
+          variant={compact ? 'ghost' : 'secondary'}
+          size="sm"
+          radius="control"
+          icon={<Link2 />}
+          aria-expanded={panel === 'pair'}
+          aria-keyshortcuts="P"
+          title={pairVerb(scope, writes.reach)}
+          onClick={() => openPanel('pair')}
+          className="min-w-0"
+          data-testid="line-paperwork-pair"
+        >
+          <span className="truncate">{compact ? 'Pair' : pairVerb(scope, writes.reach)}</span>
+        </Button>
+      ) : null}
       <Button
         variant={compact ? 'ghost' : 'secondary'}
         size="sm"
@@ -249,6 +263,31 @@ export function LinePaperworkSlot({
       </>
     );
 
+  if (placement === 'sheet') {
+    return (
+      <SlotFrame
+        name={name}
+        state={line.state}
+        drop={drop}
+        keys={{ upload: keys.upload, notRequired: keys.notRequired }}
+        testId="line-paperwork-sheet"
+        className="px-3 py-2"
+      >
+        {picker.input}
+        <SlotHeading title={line.sku ? `SKU ${line.sku} · ${line.title}` : line.title} state={line.state} />
+        {line.state === 'not_required' ? <p className="mt-1 min-w-0 text-role-caption text-text-muted">{why}</p> : null}
+        {children}
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">{verbs(!gap && !skuExempt, false)}</div>
+        {gap && scope === 'sku' && line.sku ? (
+          <p className="mt-1 min-w-0 text-role-caption text-text-muted" data-testid="line-paperwork-sku-note">
+            Links and uploads pin to SKU {line.sku} — every order of it gets this paperwork.
+          </p>
+        ) : null}
+        {panels}
+      </SlotFrame>
+    );
+  }
+
   if (placement === 'row') {
     const first = line.documents[0];
     return (
@@ -304,6 +343,11 @@ export function LinePaperworkSlot({
         <p className="mt-1 min-w-0 text-role-caption text-text-muted">{why}</p>
       ) : null}
       {gap || skuExempt ? <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">{verbs(false)}</div> : null}
+      {(gap || skuExempt) && scope === 'sku' && line.sku ? (
+        <p className="mt-1 min-w-0 text-role-caption text-text-muted" data-testid="line-paperwork-sku-note">
+          Pairs to SKU {line.sku} for future use — every order of it gets this paperwork.
+        </p>
+      ) : null}
       {!gap && !skuExempt ? (
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
           <Button variant="ghost" size="sm" radius="control" icon={<Link2 />} aria-keyshortcuts="P" onClick={() => openPanel('pair')} data-testid="line-paperwork-pair-more">

@@ -1,5 +1,3 @@
-import { normalizeSku } from '@/utils/sku';
-
 /**
  * Pure network layer for the unit-label workspace. No React — each function
  * fetches an endpoint and returns a normalized result (or throws), so the
@@ -44,7 +42,8 @@ interface ResolvedUnitId {
  */
 export async function lookupProductInfo(skuValue: string): Promise<ProductInfo> {
   const baseSku = skuValue.includes(':') ? skuValue.split(':')[0] : skuValue;
-  const res = await fetch(`/api/get-title-by-sku?sku=${encodeURIComponent(normalizeSku(baseSku))}`);
+  // As typed: the server matches the canonical key; never zero-strip.
+  const res = await fetch(`/api/get-title-by-sku?sku=${encodeURIComponent(baseSku.trim())}`);
   const data = await res.json();
   return {
     title: data.title || '',
@@ -63,7 +62,8 @@ export async function peekNextUnitId(
   skuValue: string,
   catalogIdHint?: number | null,
 ): Promise<NextUnitId> {
-  const body: Record<string, unknown> = { sku: normalizeSku(skuValue) };
+  // The SKU goes as typed; the server owns canonical padding. Never zero-strip.
+  const body: Record<string, unknown> = { sku: skuValue.trim() };
   if (catalogIdHint && Number.isFinite(catalogIdHint)) {
     body.sku_catalog_id = catalogIdHint;
   }

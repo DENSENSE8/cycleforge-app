@@ -64,9 +64,12 @@ interface ParamReader {
   get(name: string): string | null;
 }
 
+/** A card id: an `orders.id` (positive) or an unlinked scan-out's synthetic id (negative, `load.ts`). */
+const isCardId = (id: number): boolean => Number.isSafeInteger(id) && id !== 0;
+
 export function readLiveFeedOpen(params: ParamReader): number | null {
   const id = Number(params.get(LIVE_FEED_PARAMS.open));
-  return Number.isInteger(id) && id > 0 ? id : null;
+  return isCardId(id) ? id : null;
 }
 
 export function readLiveFeedStage(params: ParamReader): PackageStage | null {
@@ -127,7 +130,7 @@ export function readLiveFeedIds(params: ParamReader): number[] {
       (params.get(LIVE_FEED_PARAMS.ids) ?? '')
         .split(',')
         .map(Number)
-        .filter((id) => Number.isInteger(id) && id > 0),
+        .filter(isCardId),
     ),
   ].slice(0, 50);
 }

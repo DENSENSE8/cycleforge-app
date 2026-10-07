@@ -62,6 +62,8 @@ interface WorkspaceNotesCardProps {
   onComposerModeChange?: (mode: StationComposerMode) => void;
   /** Ticket draft has a body — drives the carton-context draft number badge. */
   onTicketDraftFilledChange?: (filled: boolean) => void;
+  /** Linked ticket is on the row. Switch the station thread onto it. */
+  onTicketLinked?: (ticketNumber: string) => void;
   onComposerFocus?: () => void;
   /** Procedure fill for the composer bottom-right {@link ScanStationProgressRing}. */
   progressPercent?: number;
@@ -89,6 +91,7 @@ export function WorkspaceNotesCard({
   headerAction,
   onComposerModeChange,
   onTicketDraftFilledChange,
+  onTicketLinked,
   onComposerFocus,
   progressPercent,
   progressTone,
@@ -132,6 +135,9 @@ export function WorkspaceNotesCard({
         headerAction={headerAction}
         onComposerModeChange={onComposerModeChange}
         onTicketDraftFilledChange={onTicketDraftFilledChange}
+        onTicketLinked={onTicketLinked}
+        trackingNumber={row.tracking_number}
+        orderNumber={row.return_source_order_id || row.source_order_id || null}
         onComposerFocus={onComposerFocus}
         progressPercent={progressPercent}
         progressTone={progressTone}

@@ -40,12 +40,39 @@ const RECEIVING_FEED_ROOTS: ReadonlyArray<ReadonlyArray<string>> = [
 let lastLocalReceivingInvalidationAt = 0;
 
 /**
- * True when {@link invalidateReceivingFeeds} ran locally within `withinMs`.
- * The realtime invalidation handler consults this to suppress the redundant
- * echo-driven refetch of the desktop rails right after a local scan.
+ * Cartons this client re-scanned while they already sat on the Unboxed rail,
+ * with when. Their `receiving-log.changed` echo carries nothing the rail lacks
+ * — the scan changed no row — so the realtime handler skips its feed refetch.
  */
-export function receivingFeedsRecentlyInvalidatedLocally(withinMs = 800): boolean {
-  return Date.now() - lastLocalReceivingInvalidationAt < withinMs;
+const localRescanAt = new Map<number, number>();
+/** The echo publishes after the scan route's deferred work settles (~1–3 s). */
+const LOCAL_RESCAN_ECHO_MS = 10_000;
+
+/**
+ * True when {@link invalidateReceivingFeeds} ran locally within `withinMs`, or
+ * the echo is for a carton this client just re-scanned in place. The realtime
+ * invalidation handler consults this to suppress the redundant echo-driven
+ * refetch of the desktop rails right after a local scan.
+ */
+export function receivingFeedsRecentlyInvalidatedLocally(
+  echoReceivingId?: number | null,
+  withinMs = 800,
+): boolean {
+  const now = Date.now();
+  if (now - lastLocalReceivingInvalidationAt < withinMs) return true;
+  if (echoReceivingId == null) return false;
+  const at = localRescanAt.get(echoReceivingId);
+  return at != null && now - at < LOCAL_RESCAN_ECHO_MS;
+}
+
+/** Stamp a local re-scan of a carton already on the rail (see {@link receivingFeedsRecentlyInvalidatedLocally}). */
+export function noteLocalReceivingRescan(receivingId: number): void {
+  const now = Date.now();
+  lastLocalReceivingInvalidationAt = now;
+  for (const [id, at] of localRescanAt) {
+    if (now - at >= LOCAL_RESCAN_ECHO_MS) localRescanAt.delete(id);
+  }
+  localRescanAt.set(receivingId, now);
 }
 
 /** Invalidate every receiving feed so all rails + tiles refetch atomically. */
@@ -65,14 +92,8 @@ export const UNBOX_RAIL_SEGMENT = 'received' as const;
  */
 export const TESTING_RAIL_SEGMENT = 'tested' as const;
 
-/**
- * Unbox "Queue" — triage door-scanned matched POs waiting to unbox. The ONLY
- * feed that mirrors triage found-PO scans into Unbox mode.
- */
-export const UNBOX_QUEUE_SEGMENT = 'unbox-queue' as const;
-
-/** Triage sidebar rail segments — never refresh from an Unbox-surface scan. */
-export const TRIAGE_RAIL_SEGMENTS = new Set(['scanned', 'triage-combined', 'unfound']);
+/** The Arrival rail's segment (`triageCombined`) — never refreshed from an Unbox-surface scan. */
+export const TRIAGE_RAIL_SEGMENT = 'triage-combined' as const;
 
 type ReceivingIntakeSurface = 'triage' | 'unbox';
 
@@ -84,68 +105,24 @@ export interface ReceivingRailRow {
   unbox_opened_at?: string | null;
 }
 
-/** Scoped target for `receiving-lines-prepended` — prevents cross-mode rail bleed. */
+/** `receiving-lines-prepended` — the station LINES TABLE's optimistic prepend (rails write their cache directly). */
 interface ReceivingLinesPrependedDetail {
-  segments: string[];
-  /** When set, only rails whose query key carries this scope accept the prepend. */
-  scope?: string;
   intakeSurface: ReceivingIntakeSurface;
   rows: ReceivingRailRow[];
 }
 
-function isReceivingLinesTableKey(key: readonly unknown[]): boolean {
-  return Array.isArray(key) && key[0] === 'receiving-lines-table';
-}
-
-function isUnboxQueueQueryKey(key: readonly unknown[]): boolean {
-  return (
-    isReceivingLinesTableKey(key)
-    && key[1] === 'rail'
-    && key[2] === UNBOX_QUEUE_SEGMENT
-  );
-}
-
-function isTriageReceivingQueryKey(key: readonly unknown[]): boolean {
-  if (!isReceivingLinesTableKey(key)) return false;
-  if (key[1] === 'rail') {
-    return typeof key[2] === 'string' && TRIAGE_RAIL_SEGMENTS.has(key[2]);
-  }
-  return false;
-}
-
-/** Parse legacy (bare row[]) and scoped prepend payloads. */
+/** Parse a `receiving-lines-prepended` payload. */
 export function parseReceivingPrependedDetail(raw: unknown): {
   rows: ReceivingRailRow[];
-  segments: string[] | null;
-  scope: string | null;
   intakeSurface: ReceivingIntakeSurface | null;
 } {
-  if (Array.isArray(raw)) {
-    return { rows: raw as ReceivingRailRow[], segments: null, scope: null, intakeSurface: null };
-  }
   if (!raw || typeof raw !== 'object') {
-    return { rows: [], segments: null, scope: null, intakeSurface: null };
+    return { rows: [], intakeSurface: null };
   }
   const d = raw as Partial<ReceivingLinesPrependedDetail>;
   const rows = Array.isArray(d.rows) ? (d.rows as ReceivingRailRow[]) : [];
-  const segments = Array.isArray(d.segments) ? d.segments.map(String) : null;
-  const scope = typeof d.scope === 'string' ? d.scope : null;
   const intakeSurface = d.intakeSurface === 'unbox' || d.intakeSurface === 'triage' ? d.intakeSurface : null;
-  return { rows, segments, scope, intakeSurface };
-}
-
-/** True when a rail's query key should accept a scoped prepend event. */
-export function receivingPrependMatchesRail(
-  queryKey: readonly unknown[],
-  segments: string[] | null,
-  scope: string | null,
-): boolean {
-  if (!segments || segments.length === 0) return false;
-  if (!isReceivingLinesTableKey(queryKey) || queryKey[1] !== 'rail') return false;
-  const seg = String(queryKey[2] ?? '');
-  if (!segments.includes(seg)) return false;
-  if (scope != null && String(queryKey[3] ?? 'default') !== scope) return false;
-  return true;
+  return { rows, intakeSurface };
 }
 
 export function dispatchReceivingLinesPrepended(detail: ReceivingLinesPrependedDetail): void {
@@ -153,48 +130,15 @@ export function dispatchReceivingLinesPrepended(detail: ReceivingLinesPrependedD
   window.dispatchEvent(new CustomEvent('receiving-lines-prepended', { detail }));
 }
 
-/** Triage-only refresh — Unbox rails must not listen. */
-export function dispatchReceivingTriageRefresh(): void {
-  window.dispatchEvent(new CustomEvent('receiving-triage-refresh'));
-}
-
-/** Invalidate only the Unbox Queue (triage found-PO bridge). */
-function invalidateUnboxQueueFeeds(queryClient: QueryClient): void {
-  lastLocalReceivingInvalidationAt = Date.now();
-  void queryClient.invalidateQueries({
-    predicate: (q) => isUnboxQueueQueryKey(q.queryKey),
-  });
-}
-
-/**
- * After a triage found-PO scan: refresh triage rails AND the Unbox Queue mirror.
- * This is the only deliberate cross-mode invalidation.
- */
-function invalidateTriageAndUnboxQueueFeeds(queryClient: QueryClient): void {
-  invalidateTriageReceivingFeeds(queryClient);
-  invalidateUnboxQueueFeeds(queryClient);
-}
-
-/** Invalidate triage rails + the triage unfound queue cache root. */
+/** Invalidate the Arrival rail + the triage unfound queue cache root. */
 function invalidateTriageReceivingFeeds(queryClient: QueryClient): void {
   lastLocalReceivingInvalidationAt = Date.now();
-  void queryClient.invalidateQueries({
-    predicate: (q) => isTriageReceivingQueryKey(q.queryKey),
-  });
+  void queryClient.invalidateQueries({ queryKey: ['receiving-lines-table', 'rail', TRIAGE_RAIL_SEGMENT] });
   void queryClient.invalidateQueries({ queryKey: ['receiving'] });
 }
 
 export function deferInvalidateTriageReceivingFeeds(queryClient: QueryClient): void {
   const run = () => invalidateTriageReceivingFeeds(queryClient);
-  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-    window.requestIdleCallback(run, { timeout: 2_000 });
-  } else {
-    setTimeout(run, 16);
-  }
-}
-
-export function deferInvalidateTriageAndUnboxQueueFeeds(queryClient: QueryClient): void {
-  const run = () => invalidateTriageAndUnboxQueueFeeds(queryClient);
   if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
     window.requestIdleCallback(run, { timeout: 2_000 });
   } else {
@@ -210,6 +154,29 @@ export function receivingSiblingsQueryKey(receivingId: number) {
 /** TanStack key for the parallel serials-hydration fetch (`include=serials`). */
 export function receivingSiblingsSerialsQueryKey(receivingId: number) {
   return ['receiving-siblings-serials', receivingId] as const;
+}
+
+/** The `include=serials` carton envelope stored under {@link receivingSiblingsSerialsQueryKey}. */
+export interface ReceivingSiblingsSerialsData {
+  success: boolean;
+  receiving_lines: ReceivingLineRow[];
+  receiving_package?: unknown;
+}
+
+/**
+ * The ONE `include=serials` carton read. The scan's open, the line pane and
+ * the rail peek share this cache entry, so a carton's serials load once.
+ */
+export function receivingSiblingsSerialsQuery(receivingId: number) {
+  return {
+    queryKey: receivingSiblingsSerialsQueryKey(receivingId),
+    queryFn: async (): Promise<ReceivingSiblingsSerialsData> => {
+      const res = await fetch(`/api/receiving-lines?receiving_id=${receivingId}&include=serials`);
+      if (!res.ok) throw new Error('Failed to fetch serials');
+      return res.json();
+    },
+    staleTime: 15_000,
+  };
 }
 
 /** The `{ success, receiving_lines }` envelope stored under {@link receivingSiblingsQueryKey}. */
@@ -400,9 +367,18 @@ function isIdentityOnlyRailRow(row: ReceivingRailRow): boolean {
   );
 }
 
+/**
+ * How a write meets the rail cache:
+ * - `upsert` — merge onto the matching carton in place, else prepend (a first open).
+ * - `patch`  — merge onto the matching carton in place; never add a row.
+ * - `insert` — add only rows the rail does not already hold; never touch one it does.
+ */
+type RailMergeMode = 'upsert' | 'patch' | 'insert';
+
 function mergeRailRows(
   old: ReceivingRailRow[] | undefined,
   normalized: ReceivingRailRow[],
+  mode: RailMergeMode,
 ): ReceivingRailRow[] | undefined {
   if (!Array.isArray(old)) return old;
   let next = [...old];
@@ -412,9 +388,14 @@ function mergeRailRows(
     const idx = next.findIndex(
       (r) =>
         (rid != null && r.receiving_id === rid)
-        || (key != null && r.client_event_id === key),
+        || (key != null && r.client_event_id === key)
+        || (mode === 'insert' && r.id === row.id),
     );
     if (idx >= 0) {
+      if (mode === 'insert') continue;
+      // A pending scan row never lands on a real carton row — it would null
+      // the carton's identity and repaint it as a fresh scan.
+      if (rid == null && next[idx].receiving_id != null) continue;
       // Key preference:
       const existingKey = next[idx].client_event_id;
       const nextKey =
@@ -428,13 +409,13 @@ function mergeRailRows(
         merged.unbox_opened_at = next[idx].unbox_opened_at;
       }
       next[idx] = merged;
-    } else if (isIdentityOnlyRailRow(row)) {
+    } else if (mode === 'patch' || isIdentityOnlyRailRow(row)) {
       // Workspace identity keep-alive with no matching carton — do not invent
       // a Line # stub. Membership comes from scan-apply / view=unbox_opened.
       continue;
     } else {
-      // New carton only — prepend so a first Unbox scan lands at the top until
-      // the authoritative refetch settles (same first-open stamp).
+      // New carton only — prepend so a first scan lands at the top until the
+      // authoritative refetch settles (same first-open stamp).
       next = [row, ...next];
     }
   }
@@ -445,21 +426,35 @@ function upsertRailSegmentRows(
   queryClient: QueryClient,
   segment: string,
   rows: ReceivingRailRow[],
+  mode: RailMergeMode,
 ): void {
   if (rows.length === 0) return;
   const normalized = normalizeRailRows(rows);
   queryClient.setQueriesData<ReceivingRailRow[]>(
     { queryKey: ['receiving-lines-table', 'rail', segment] },
-    (old) => mergeRailRows(old, normalized),
+    (old) => mergeRailRows(old, normalized, mode),
   );
 }
 
-/** Upsert into the Unbox "Unboxed" rail only (`segment=received`). */
+/** Write into the Unbox "Unboxed" rail only (`segment=received`); default `upsert`. */
 export function upsertReceivingRailRows(
   queryClient: QueryClient,
   rows: ReceivingRailRow[],
+  mode: Exclude<RailMergeMode, 'insert'> = 'upsert',
 ): void {
-  upsertRailSegmentRows(queryClient, UNBOX_RAIL_SEGMENT, rows);
+  upsertRailSegmentRows(queryClient, UNBOX_RAIL_SEGMENT, rows, mode);
+}
+
+/** Add scanned cartons the Arrival rail does not already list; a listed one is left exactly as it is. */
+export function insertArrivalRailRows(queryClient: QueryClient, rows: ReceivingRailRow[]): void {
+  upsertRailSegmentRows(queryClient, TRIAGE_RAIL_SEGMENT, rows, 'insert');
+}
+
+/** True when the Unboxed rail cache already lists this carton. */
+export function unboxRailHasCarton(queryClient: QueryClient, receivingId: number): boolean {
+  return queryClient
+    .getQueriesData<ReceivingRailRow[]>({ queryKey: ['receiving-lines-table', 'rail', UNBOX_RAIL_SEGMENT] })
+    .some(([, rows]) => Array.isArray(rows) && rows.some((r) => r.receiving_id === receivingId));
 }
 
 /** Title-only rename on the Unboxed dock, keyed by carton. */
@@ -613,29 +608,19 @@ export function patchTestingRailByLine(
 }
 
 /**
- * Drop a pre-resolve `scan:{tracking}` pending stub from the Unboxed rail so
- * the final `carton:{id}` upsert does not double-list.
+ * Drop a scan's pre-resolve pending row (no carton yet) from the Unboxed rail.
+ * Only a carton-less row can match — a real carton row is never removed here.
  */
 export function removePendingScanRailRow(
   queryClient: QueryClient,
-  clientEventId: string,
+  clientEventId: string | null,
 ): void {
   if (!clientEventId) return;
   filterRailSegmentRows(
     queryClient,
     UNBOX_RAIL_SEGMENT,
-    (r) => r.client_event_id !== clientEventId,
+    (r) => r.receiving_id != null || r.client_event_id !== clientEventId,
   );
-}
-
-/**
- * Mirror triage found-PO scans into the Unbox Queue — the only cross-mode write.
- */
-export function upsertUnboxQueueRows(
-  queryClient: QueryClient,
-  rows: ReceivingRailRow[],
-): void {
-  upsertRailSegmentRows(queryClient, UNBOX_QUEUE_SEGMENT, rows);
 }
 
 function filterRailSegmentRows(
@@ -659,9 +644,7 @@ export function purgeTriageRailsAfterUnboxOpen(
   receivingId: number,
 ): void {
   if (!Number.isFinite(receivingId) || receivingId <= 0) return;
-  for (const segment of TRIAGE_RAIL_SEGMENTS) {
-    filterRailSegmentRows(queryClient, segment, (r) => r.receiving_id !== receivingId);
-  }
+  filterRailSegmentRows(queryClient, TRIAGE_RAIL_SEGMENT, (r) => r.receiving_id !== receivingId);
   invalidateTriageReceivingFeeds(queryClient);
 }
 
@@ -677,7 +660,6 @@ export function removeReceivingRailByCarton(
   if (!Number.isFinite(receivingId)) return;
   const keep = (r: ReceivingRailRow) => r.receiving_id !== receivingId;
   filterRailSegmentRows(queryClient, UNBOX_RAIL_SEGMENT, keep);
-  filterRailSegmentRows(queryClient, UNBOX_QUEUE_SEGMENT, keep);
 }
 
 type CartonRailSnapshot = {

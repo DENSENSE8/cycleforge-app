@@ -17,7 +17,8 @@
  * sortable header writes the same sort (`columnSort`, server-side). The sheet
  * scrolls both ways under a sticky header with the identity pane frozen left
  * (and a source's trailing pane — `frozenEnd`, Records' statuses — pinned
- * right); columns resize / fit (double-click the edge) / freeze from their header and persist (`useSheetColumns`);
+ * right); columns resize / fit (double-click the edge) / move (drag a header
+ * onto another) / freeze from their header and persist (`useSheetColumns`);
  * Export writes exactly the columns and rows on screen, in screen order.
  *
  * Opt-in (Records, operator 2026-10-06): `selection` — a `select` column of
@@ -59,7 +60,6 @@ import {
   pastedListCellText,
   type PastedListColumn,
   type PastedListColumnKey,
-  PASTED_LIST_COLUMN_SET,
   type PastedListColumnSet,
   type PastedListRow,
 } from './pasted-list-table';
@@ -132,8 +132,8 @@ export interface PastedListSheetProps {
   keysGroup: { id: string; title: string };
   /** Esc leaves the sheet (a Back); absent = Esc is not the sheet's. */
   onEscape?: () => void;
-  /** The columns this sheet can paint and mounts; default the pasted list's (`PASTED_LIST_COLUMN_SET`). Keep it stable (a module constant or memoized). */
-  columns?: PastedListColumnSet;
+  /** The columns this sheet can paint and mounts. Keep it stable (a module constant or memoized). */
+  columns: PastedListColumnSet;
   /** First on the tool row, before the status chips — a Back for a sheet entered from another page. */
   lead?: ReactNode;
   /** The host's tools and layout toggles (not filters), on the tool row after Recheck all, before zoom and full screen. Icon-first. */
@@ -182,7 +182,7 @@ export function PastedListSheet({
   empty,
   keysGroup,
   onEscape,
-  columns = PASTED_LIST_COLUMN_SET,
+  columns,
   lead,
   tools,
   onEmptyCell,
@@ -550,6 +550,7 @@ export function PastedListSheet({
           binding={binding}
           columns={sheet.columns}
           onResizeColumn={sheet.onResizeColumn}
+          onReorderColumn={sheet.onReorderColumn}
           onFreezeColumn={sheet.onFreezeColumn}
           className={SHEET_HEADER}
           hideToolbar

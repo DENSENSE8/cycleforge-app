@@ -26,6 +26,7 @@ import { PastedListSheet } from '@/components/search/pasted-list/PastedListSheet
 import { PastedListBack, usePastedListBack } from '@/components/search/pasted-list/PastedListBack';
 import { RECORDS_COLUMN_SET, type PastedListColumnKey, type PastedListRow } from '@/components/search/pasted-list/pasted-list-table';
 import { useReplaceSearchParams } from '@/components/sidebar/contextual/useReplaceSearchParams';
+import { useStepUp } from '@/components/providers/StepUpProvider';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import type { BulkEntry, LocatedRecords } from '@/lib/nav/locate/use-bulk-list';
@@ -169,6 +170,7 @@ export function RecordsSheetBody({ list, defaultGrain, defaultSort, layoutKey, e
   entriesRef.current = list.entries;
   const latest = useCallback(() => new Map(entriesRef.current.map((entry) => [recordsEntryKey(entry), entry] as const)), []);
   const refetch = list.refetch;
+  const requestStepUp = useStepUp();
 
   // ── In-place edit: one row's Order # or Tracking, at the grain shown (a head = every line it holds). ──
   const edit = useMemo(
@@ -203,11 +205,12 @@ export function RecordsSheetBody({ list, defaultGrain, defaultSort, layoutKey, e
         const previous = facts?.tracking ?? null;
         const undoTracking =
           key === 'tracking' && previous
-            ? () => void postRecordWrite({ path: '/api/records/tracking', body: { targets, tracking: previous, mode: 'set' } }).then(refetch, (error: unknown) =>
+            ? () =>
+                void postRecordWrite({ path: '/api/records/tracking', body: { targets, tracking: previous, mode: 'set' } }, requestStepUp).then(refetch, (error: unknown) =>
                 toast.error(error instanceof Error ? error.message : 'Could not restore the tracking'),
               )
             : undefined;
-        void postRecordWrite(write).then(
+        void postRecordWrite(write, requestStepUp).then(
           (response) => {
             const summary = summarizeRecordResults(response);
             for (const refusal of summary.refused) toast.error(`Refused: ${refusal.reason}`);
@@ -222,7 +225,7 @@ export function RecordsSheetBody({ list, defaultGrain, defaultSort, layoutKey, e
         );
       },
     }),
-    [grain, refetch],
+    [grain, refetch, requestStepUp],
   );
 
   // ── Paste mode: ⌘V on the sheet (nothing editable focused) holds a new list. ──

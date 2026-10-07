@@ -17,6 +17,7 @@ function row(patch: Partial<PurchaseRow> & Pick<PurchaseRow, 'ref'>): PurchaseRo
     source: 'zoho',
     vendor: null,
     orderedOn: '2026-09-01',
+    importedAt: null,
     inWindow: true,
     matchesFind: true,
     purchaseId: null,
@@ -50,10 +51,10 @@ function line(patch: Partial<ReceivingLineRow>): ReceivingLineRow {
 
 /** The window's purchases: an unboxed one, one in transit, one delivered and sealed (stalled: an exception), one awaiting tracking. */
 const ROWS: PurchaseRow[] = [
-  row({ ref: '64589584', orderedOn: '2026-09-20' }),
-  row({ ref: '64589585', orderedOn: '2026-09-10' }),
+  row({ ref: '64589584', orderedOn: '2026-09-20', importedAt: '2026-09-21T16:00:00.000Z' }),
+  row({ ref: '64589585', orderedOn: '2026-09-10', importedAt: '2026-10-01T16:00:00.000Z' }),
   row({ ref: '64589586', orderedOn: '2026-09-30' }),
-  row({ ref: '27-15150-59879', source: 'ebay', purchaseId: '27-15150-59879', orderedOn: '2026-08-02' }),
+  row({ ref: '27-15150-59879', source: 'ebay', purchaseId: '27-15150-59879', orderedOn: '2026-08-02', importedAt: '2026-08-03T16:00:00.000Z' }),
 ];
 
 const CHECK: Record<string, CheckZohoReceivedRow> = {
@@ -209,7 +210,8 @@ test('purchases: each entry IS the locate answer for its number — status, deta
   const byRef = new Map(answer.entries.map((entry) => [entry.ref, entry]));
   assert.deepEqual(byRef.get('64589584')!.buckets, ['received']);
   assert.deepEqual(byRef.get('64589585')!.buckets, ['awaiting_tracking', 'not_received']);
-  assert.deepEqual(byRef.get('64589586')!.buckets, ['not_received', 'exceptions']);
+  // Delivered by the carrier, never scanned or unboxed here: Delivered, not "not received".
+  assert.deepEqual(byRef.get('64589586')!.buckets, ['delivered', 'exceptions']);
   // No ERP answer (our tables only): the eBay order's lines decide it.
   assert.deepEqual(byRef.get('27-15150-59879')!.buckets, ['received']);
   const unboxed = byRef.get('64589584')!;
@@ -217,14 +219,17 @@ test('purchases: each entry IS the locate answer for its number — status, deta
   assert.equal(unboxed.facts?.vendor, 'Goodwill');
   assert.deepEqual(unboxed.facts?.unboxedBy, { id: 7, name: 'Kai' });
   assert.equal(unboxed.facts?.deliveredAt, '2026-09-24T17:00:00.000Z');
+  // The purchase's own dates ride its facts — the sheet's Ordered / Imported columns.
+  assert.equal(unboxed.facts?.orderedOn, '2026-09-20');
+  assert.equal(unboxed.facts?.importedAt, '2026-09-21T16:00:00.000Z');
 });
 
 test('purchases: bucket counts cover every filter but status; entries honour status', async () => {
   const { deps } = fakes();
   const all = body(await ask('', deps));
   const counts = Object.fromEntries(all.buckets.map((bucket) => [bucket.id, bucket.count]));
-  assert.deepEqual(counts, { awaiting_tracking: 1, received: 2, not_received: 2, exceptions: 1 });
-  assert.deepEqual(all.buckets.map((bucket) => bucket.label), ['Awaiting tracking', 'Received', 'Not received', 'Exceptions']);
+  assert.deepEqual(counts, { awaiting_tracking: 1, received: 2, not_received: 1, delivered: 1, exceptions: 1 });
+  assert.deepEqual(all.buckets.map((bucket) => bucket.label), ['Awaiting tracking', 'Received', 'Not received', 'Delivered', 'Exceptions']);
 
   const received = body(await ask('status=received', deps));
   assert.deepEqual(received.buckets, all.buckets);
@@ -236,6 +241,7 @@ test('purchases: bucket counts cover every filter but status; entries honour sta
     awaiting_tracking: 1,
     received: 1,
     not_received: 1,
+    delivered: 0,
     exceptions: 0,
   });
   assert.deepEqual(goodwill.entries.map((entry) => entry.ref), ['64589585']);
@@ -280,10 +286,13 @@ test('purchases: sorted server-side — newest order first by default, nulls las
   assert.deepEqual(await refs('sort=ordered&dir=asc'), ['27-15150-59879', '64589585', '64589584', '64589586']);
   // Numbers order as numbers ("64589584" < "64589585"), never char by char across lengths.
   assert.deepEqual(await refs('sort=po'), ['27-15150-59879', '64589584', '64589585', '64589586']);
-  // Most specific status first (exceptions › awaiting › not received › received); ties fall to the newest order.
+  // Most specific status first (exceptions › awaiting › not received › delivered › received); ties fall to the newest order.
   assert.deepEqual(await refs('sort=status'), ['64589586', '64589585', '64589584', '27-15150-59879']);
   // Delivered and not received, longest wait first; the rest after, newest order first.
   assert.deepEqual(await refs('sort=waiting'), ['64589586', '64589584', '64589585', '27-15150-59879']);
+  // Imported, newest first; never stamped last either way.
+  assert.deepEqual(await refs('sort=imported'), ['64589585', '64589584', '27-15150-59879', '64589586']);
+  assert.deepEqual(await refs('sort=imported&dir=asc'), ['27-15150-59879', '64589584', '64589585', '64589586']);
   // Unboxed stamps, newest first; never-unboxed last either way.
   assert.deepEqual(await refs('sort=unboxed'), ['64589584', '27-15150-59879', '64589586', '64589585']);
   assert.deepEqual(await refs('sort=unboxed&dir=asc'), ['27-15150-59879', '64589584', '64589586', '64589585']);
@@ -292,17 +301,19 @@ test('purchases: sorted server-side — newest order first by default, nulls las
 
 test('fold: one number is one purchase — two POs sharing a PO#, an eBay order whose id IS the PO#', () => {
   const folded = foldPurchases([
-    row({ ref: '271516079713', purchaseId: 'po-a', orderedOn: '2026-09-01', inWindow: false }),
-    row({ ref: '27-15160-79713', source: 'ebay', purchaseId: '27-15160-79713', orderedOn: '2026-09-03' }),
+    row({ ref: '271516079713', purchaseId: 'po-a', orderedOn: '2026-09-01', importedAt: '2026-09-04T10:00:00.000Z', inWindow: false }),
+    row({ ref: '27-15160-79713', source: 'ebay', purchaseId: '27-15160-79713', orderedOn: '2026-09-03', importedAt: '2026-09-03T10:00:00.000Z' }),
     row({ ref: '271516079713', purchaseId: 'po-b', orderedOn: '2026-09-02' }),
   ]);
   assert.equal(folded.length, 1);
+  // The latest order date, the FIRST time any of its records landed.
   assert.deepEqual(folded[0], {
     ref: '271516079713',
     key: '271516079713',
     source: 'zoho',
     vendor: null,
     orderedOn: '2026-09-03',
+    importedAt: '2026-09-03T10:00:00.000Z',
     inWindow: true,
     matchesFind: true,
   });

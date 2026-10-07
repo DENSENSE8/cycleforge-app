@@ -16,6 +16,8 @@ export const RAIL_ROW_ACTIONS = {
   receiving: { verbs: RECEIVING_VERBS },
   /** `/search` Recently searched. */
   searchRecent: { verbs: RECEIVING_VERBS.filter((v) => v !== 'hide') },
+  /** Quality Control Recent — lines owned by the receiving surfaces; link out only. */
+  testing: { verbs: ['share'] },
 } as const satisfies Record<string, { verbs: readonly RailRowVerb[] }>;
 
 /** Registry ids — the key a feed binds by (`rowActions: 'receiving'`). */

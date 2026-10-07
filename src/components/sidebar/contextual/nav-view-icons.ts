@@ -15,6 +15,7 @@ import {
   Images,
   Inbox,
   Layers,
+  LayoutDashboard,
   Link2,
   List,
   ListChecks,
@@ -169,7 +170,8 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'products.labels': { icon: Barcode, tone: 'text-teal-600' },
   'products.pairing': { icon: Link2, tone: 'text-indigo-600' },
   'products.qc': { icon: Check, tone: 'text-amber-600' },
-  // Stock: five jobs, five glyphs and five inks. None repeats the blue parent.
+  // Stock: overview is the glance; the rest are the ledger jobs. None repeats another's ink.
+  'stock.overview': { icon: LayoutDashboard, tone: 'text-orange-600' },
   'stock.all': { icon: Package, tone: 'text-sky-600' },
   'stock.replenish': { icon: History, tone: 'text-emerald-600' },
   'stock.fifo': { icon: Truck, tone: 'text-indigo-600' },

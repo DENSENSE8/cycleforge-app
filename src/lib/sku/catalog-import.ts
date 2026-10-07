@@ -13,6 +13,10 @@
  *   3. A SKU the catalog lacks is added with the row's name as its title.
  *      A SKU the catalog has is never retitled — the catalog title is owned
  *      in CycleForge — a different name is reported as a title conflict.
+ *      A SKU that only differs from a catalog SKU by padding or case
+ *      (`89-P-1` beside `00089-P-1`, same `fn_normalize_sku` key) is not
+ *      added — reported as a twin — unless the Zoho mirror carries it as
+ *      written (`36` beside `00036` are two Zoho products).
  *   4. The Zoho item id is the row's when it reads as one (a spreadsheet turns
  *      the 19-digit id into `5.62341E+18`), else the items mirror's for the
  *      SKU; it lands in `catalog_external_ids`, never as the key.
@@ -34,7 +38,7 @@ export interface CatalogImportInputRow {
   ean?: string | null;
 }
 
-export const CATALOG_IMPORT_OUTCOMES = ['new', 'title_differs', 'present', 'old', 'no_sku', 'no_title', 'duplicate'] as const;
+export const CATALOG_IMPORT_OUTCOMES = ['new', 'title_differs', 'present', 'old', 'no_sku', 'no_title', 'duplicate', 'padding_twin'] as const;
 export type CatalogImportOutcome = (typeof CATALOG_IMPORT_OUTCOMES)[number];
 
 export const CATALOG_IMPORT_OUTCOME_LABELS: Readonly<Record<CatalogImportOutcome, string>> = {
@@ -45,6 +49,7 @@ export const CATALOG_IMPORT_OUTCOME_LABELS: Readonly<Record<CatalogImportOutcome
   no_sku: 'No SKU',
   no_title: 'No title',
   duplicate: 'Duplicate SKU',
+  padding_twin: 'Same key as a catalog SKU',
 };
 
 export interface CatalogImportPlanRow {
@@ -58,6 +63,8 @@ export interface CatalogImportPlanRow {
   outcome: CatalogImportOutcome;
   /** The catalog's own title, when the SKU is already there. */
   catalogTitle: string | null;
+  /** The catalog SKU this one only differs from by padding/case (`89-P-1` vs `00089-P-1`). */
+  twinSku: string | null;
   zohoItemId: string | null;
   upc: string | null;
   ean: string | null;
@@ -76,6 +83,11 @@ export interface CatalogImportContext {
   catalogTitles: ReadonlyMap<string, string>;
   /** Zoho items mirror ids by exact SKU (this org). */
   mirrorItemIds: ReadonlyMap<string, string>;
+  /**
+   * By looked-up SKU: catalog SKUs sharing its canonical key
+   * (`fn_normalize_sku`) but spelled differently (this org).
+   */
+  paddingTwins: ReadonlyMap<string, readonly string[]>;
 }
 
 const trimmed = (value: string | null | undefined): string => String(value ?? '').trim();
@@ -114,6 +126,11 @@ export function planCatalogImport(rows: readonly CatalogImportInputRow[], contex
     const sku = rawSku ? normalizeCatalogSku(rawSku, isKnown) : '';
     const ownId = trimmed(input.zohoItemId);
     const catalogTitle = sku ? (context.catalogTitles.get(sku) ?? null) : null;
+    // A SKU Zoho itself carries as written is its own product (`36` beside `00036`).
+    const twinSku =
+      sku && catalogTitle == null && !context.mirrorItemIds.has(sku)
+        ? ((context.paddingTwins.get(sku) ?? []).find((twin) => twin !== sku) ?? null)
+        : null;
     const base = {
       line: index + 1,
       rawSku,
@@ -121,6 +138,7 @@ export function planCatalogImport(rows: readonly CatalogImportInputRow[], contex
       padded: sku !== rawSku,
       title,
       catalogTitle,
+      twinSku,
       zohoItemId: (ZOHO_ITEM_ID_RE.test(ownId) ? ownId : null) ?? (sku ? (context.mirrorItemIds.get(sku) ?? null) : null),
       upc: trimmed(input.upc) || null,
       ean: trimmed(input.ean) || null,
@@ -130,6 +148,7 @@ export function planCatalogImport(rows: readonly CatalogImportInputRow[], contex
     else if (!sku) outcome = 'no_sku';
     else if (!title) outcome = 'no_title';
     else if (seen.has(sku)) outcome = 'duplicate';
+    else if (twinSku) outcome = 'padding_twin';
     else if (catalogTitle == null) outcome = 'new';
     else outcome = normTitle(catalogTitle) === normTitle(title) ? 'present' : 'title_differs';
     if (outcome !== 'old' && sku) seen.add(sku);

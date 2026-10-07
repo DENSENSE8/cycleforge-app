@@ -19,6 +19,7 @@ export function ArrivalCartonNotesEntry({
   onPrimaryAction,
   primaryActionDisabled,
   onOpenStatusHistory,
+  onTicketLinked,
 }: {
   row: ReceivingLineRow;
   ticketDraftModel: WorkspaceTicketDraftModel;
@@ -30,6 +31,8 @@ export function ArrivalCartonNotesEntry({
   primaryActionDisabled?: boolean;
   /** Header ⓘ → Arrival Displays → Timeline (scans · stamps · audit). */
   onOpenStatusHistory?: () => void;
+  /** Linked ticket is on the row. Switch the station thread onto it. */
+  onTicketLinked?: (ticketNumber: string) => void;
 }) {
   const receivingId = row.receiving_id ?? null;
   const committed = row.receiving_support_notes ?? '';
@@ -87,6 +90,7 @@ export function ArrivalCartonNotesEntry({
       onPrimaryAction={onPrimaryAction}
       primaryActionDisabled={primaryActionDisabled}
       onOpenStatusHistory={onOpenStatusHistory}
+      onTicketLinked={onTicketLinked}
     />
   );
 }

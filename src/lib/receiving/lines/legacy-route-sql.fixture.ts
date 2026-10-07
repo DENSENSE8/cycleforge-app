@@ -173,6 +173,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
+                sc.gtin                      AS catalog_gtin,
                 ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
                 -- ticket_links (authoritative) → denormalized columns fallback.
                 ${sqlReceivingZendeskTicketColumn()}
@@ -353,6 +354,7 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                   sc.id                        AS sku_catalog_id,
+                  sc.gtin                      AS catalog_gtin,
                   ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
                   ${sqlReceivingZendeskTicketColumn()}
            FROM receiving_line rl
@@ -1187,6 +1189,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
+                sc.gtin                      AS catalog_gtin,
                 ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
                 -- ticket_links (authoritative) → denormalized columns fallback.
                 ${sqlReceivingZendeskTicketColumn()}

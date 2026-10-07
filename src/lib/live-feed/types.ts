@@ -13,13 +13,24 @@ export interface PackageStep {
 export type PackageUrgency = 'late' | 'due_today';
 
 /**
+ * What a card stands for: an order row (`order`), a scanned-out box no order
+ * owns (`package`), or a scan-out that never resolved to a box (`scan`).
+ * Only `order` cards take order writes (comments, tags, assign, print, scan out).
+ */
+export type PackageLink = 'order' | 'package' | 'scan';
+
+/**
  * One package on the board — an Allocate order row (one line), which is the
  * grain Allocate counts. Orders that share a box share `shipmentId` and
- * `tracking`.
+ * `tracking`. A scan-out nothing links is still a card (`link`), so the
+ * board shows everything the dock recorded.
  */
 export interface PackageCard {
-  /** `orders.id` — the record key, the comment and tag anchor. */
+  /** `orders.id` — the record key, the comment and tag anchor. Negative (synthetic) when `link` is not `order`. */
   orderRowId: number;
+  link: PackageLink;
+  /** The carrier's latest words for the box, when polled. */
+  carrierStatus: string | null;
   /** The marketplace order number. */
   orderNumber: string | null;
   stage: PackageStage;
@@ -58,7 +69,16 @@ export interface PackageCard {
   noteCount: number;
   latestNote: string | null;
   tags: string[];
+  /**
+   * The order's documents, as the docs popover's tabs count them: a shipping
+   * label, a packing slip (a linked non-label document) and its product
+   * paperwork (manuals / inserts). Null on an unlinked scan-out (no order).
+   */
+  docs: { label: boolean; slip: PackagePaperwork; paperwork: PackagePaperwork } | null;
 }
+
+/** An order's slip or product paperwork: on file, still owed, or exempt (the order, or for paperwork its SKU). */
+export type PackagePaperwork = 'linked' | 'missing' | 'not_required';
 
 export interface PackageColumn {
   stage: PackageStage;

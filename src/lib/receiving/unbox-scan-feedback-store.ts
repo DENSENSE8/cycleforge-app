@@ -5,11 +5,11 @@
  * history (newest first, this tab's session). Pure model + tests:
  * `unbox-scan-feedback.ts`.
  *
- *  1. {@link checkUnboxScanVerdict} — at scan time, found / unfound in one
- *     round trip (`/api/receiving/scan-verdict`) while lookup-po still opens
- *     the carton.
- *  2. {@link pairUnboxUnfoundTicket} — once lookup-po created the unfound
- *     carton, search Zendesk for the tracking and link the ticket to it
+ *  1. {@link beginUnboxScanVerdict} / {@link settleUnboxScanVerdict} — the scan
+ *     reads "Checking…" until the rung that resolved it (rail cache, local
+ *     lines, lookup-po) says found / unfound. No request of its own.
+ *  2. {@link pairUnboxUnfoundTicket} — once the unfound carton exists, search
+ *     Zendesk for the tracking and link the ticket to it
  *     (`/api/receiving/zendesk-claim/link`, the same route Claim → Link uses).
  *  3. {@link noteUnboxTicketLinked} — a ticket linked by hand (Claim → Link)
  *     lands on the same entry.
@@ -18,6 +18,7 @@
 import { useSyncExternalStore } from 'react';
 import {
   decideUnfoundPairing,
+  findCheckingFeedback,
   findFeedbackForCarton,
   pairedFrom,
   patchFeedback,
@@ -76,30 +77,26 @@ function begin(fields: Omit<UnboxScanFeedback, 'id' | 'at'>): number {
   return id;
 }
 
-/** Ask the server found / unfound for a scanned tracking; the newest scan owns the line. */
-export async function checkUnboxScanVerdict(tracking: string): Promise<void> {
+/** A scanned tracking starts "Checking…"; the newest scan owns the line. */
+export function beginUnboxScanVerdict(tracking: string): void {
   const value = tracking.trim();
   if (!value) return;
-  const id = begin({ tracking: value, receivingId: null, phase: 'checking', lineCount: 0, ticket: null });
-  try {
-    const res = await fetch(`/api/receiving/scan-verdict?tracking=${encodeURIComponent(value)}`, {
-      cache: 'no-store',
-    });
-    const data = (await res.json()) as { verdict?: string; lineCount?: number; receivingId?: number | null };
-    const current = log.find((entry) => entry.id === id);
-    // lookup-po may already have said unfound (and started the ticket step).
-    if (current?.phase === 'unfound') return;
-    const phase = res.ok && (data.verdict === 'found' || data.verdict === 'unfound') ? data.verdict : 'error';
-    const receivingId = Number(data.receivingId) > 0 ? Number(data.receivingId) : null;
-    patch(id, { phase, lineCount: Number(data.lineCount) || 0, receivingId });
-    // An unfound tracking that already has its carton (a rescan / reopen):
-    // pair its ticket now instead of waiting for lookup-po. A brand-new carton
-    // is paired from `applyUnmatchedCarton` once lookup-po mints it.
-    if (phase === 'unfound' && receivingId != null) {
-      void pairUnboxUnfoundTicket({ receivingId, tracking: value });
-    }
-  } catch {
-    patch(id, { phase: 'error' });
+  begin({ tracking: value, receivingId: null, phase: 'checking', lineCount: 0, ticket: null });
+}
+
+/**
+ * Settle the newest still-checking entry for `tracking` from the rung that
+ * resolved the scan. An unfound carton that already exists pairs its ticket
+ * (pairing opens its own entry when this scan never began one).
+ */
+export function settleUnboxScanVerdict(
+  tracking: string,
+  verdict: { phase: 'found' | 'unfound' | 'error'; receivingId: number | null; lineCount: number },
+): void {
+  const entry = findCheckingFeedback(log, tracking);
+  if (entry) patch(entry.id, verdict);
+  if (verdict.phase === 'unfound' && verdict.receivingId != null) {
+    pairUnboxUnfoundTicketAfterPaint({ receivingId: verdict.receivingId, tracking });
   }
 }
 
@@ -141,6 +138,18 @@ async function postLink(
       url: data.ticketUrl ?? ticket.url,
     }),
   };
+}
+
+/** Let the carton paint, then search. Two frames is after the scan's first paint. */
+export function pairUnboxUnfoundTicketAfterPaint(args: { receivingId: number; tracking: string }): void {
+  const run = () => {
+    void pairUnboxUnfoundTicket(args);
+  };
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => requestAnimationFrame(run));
+    return;
+  }
+  setTimeout(run, 0);
 }
 
 /**

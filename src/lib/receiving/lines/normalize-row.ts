@@ -69,6 +69,8 @@ export function normalizeRow(row: Record<string, unknown>) {
     // Canonical sku_catalog.id for this line's SKU (joined). Keys the SKU
     // pairing surface; null when the SKU isn't catalogued yet.
     sku_catalog_id:           row.sku_catalog_id != null ? Number(row.sku_catalog_id) : null,
+    // Joined sku_catalog.gtin — the client derives the unit-label GTIN from it (else generateInternalGtin).
+    catalog_gtin:             (row.catalog_gtin as string | null) ?? null,
     sku:                      (row.sku as string | null) ?? null,
     quantity_received:        Number(row.quantity_received ?? 0),
     quantity_expected:        row.quantity_expected != null ? Number(row.quantity_expected) : null,
@@ -102,7 +104,7 @@ export function normalizeRow(row: Record<string, unknown>) {
     staged_by_name:           (row.staged_by_name as string | null) ?? null,
     // Denormalized serial projection (rlt.serial_projection) surfaced by the list builders as `serials` — the FAST DEFAULT for first-frame…
     serials:                  Array.isArray(row.serials)
-                              ? (row.serials as Array<{ id: number; serial_number: string; condition_grade: string | null }>)
+                              ? (row.serials as Array<{ id: number; serial_number: string; condition_grade: string | null; unit_uid?: string | null }>)
                               : undefined,
     disposition_audit:        (row.disposition_audit as unknown[]) ?? [],
     needs_test:               !!row.needs_test,

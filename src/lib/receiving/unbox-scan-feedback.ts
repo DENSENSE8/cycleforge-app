@@ -203,3 +203,38 @@ export function findFeedbackForCarton(
   if (!tracking) return null;
   return log.find((entry) => entry.receivingId == null && sameTracking(entry.tracking, tracking)) ?? null;
 }
+
+/** The newest entry for this tracking still waiting on its verdict. */
+export function findCheckingFeedback(
+  log: readonly UnboxScanFeedback[],
+  tracking: string,
+): UnboxScanFeedback | null {
+  return log.find((entry) => entry.phase === 'checking' && sameTracking(entry.tracking, tracking)) ?? null;
+}
+
+/**
+ * Found vs unfound for a carton a client rung resolved from rows it already
+ * holds — the same rule the server probe applies: a PO / order on the carton,
+ * or real lines on it, is found; anything else is an unfound carton.
+ */
+export function cartonScanVerdict(
+  rows: ReadonlyArray<{
+    id: number;
+    receiving_id?: number | null;
+    receiving_source?: string | null;
+    zoho_purchaseorder_id?: string | null;
+    zoho_purchaseorder_number?: string | null;
+    source_order_id?: string | null;
+  }>,
+): { phase: 'found' | 'unfound'; receivingId: number | null; lineCount: number } {
+  const lineCount = rows.filter((r) => r.id > 0).length;
+  const hasOrder = rows.some(
+    (r) => Boolean(r.zoho_purchaseorder_id || r.zoho_purchaseorder_number || r.source_order_id),
+  );
+  const unmatched = rows.every((r) => r.receiving_source === 'unmatched');
+  return {
+    phase: hasOrder || (lineCount > 0 && !unmatched) ? 'found' : 'unfound',
+    receivingId: rows.find((r) => r.receiving_id != null)?.receiving_id ?? null,
+    lineCount,
+  };
+}

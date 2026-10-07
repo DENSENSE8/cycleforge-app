@@ -32,6 +32,38 @@ interface TicketLinkCandidate {
 /** `anchor` — picking the ONE entity a ticket is about. */
 export type TicketLinkCandidateMode = 'anchor' | 'reference';
 
+/**
+ * Mirrored tickets whose subject or description matches — the complement to
+ * the Zendesk search, which can lag a just-created ticket. Never a substitute
+ * for it: only some tickets carry a mirrored payload.
+ */
+async function localMirroredTickets(orgId: string, query: string): Promise<ZendeskTicket[]> {
+  const needle = `%${query.replace(/[%_\\]/g, '')}%`;
+  if (needle === '%%') return [];
+  try {
+    const res = await pool.query<{ ticket_payload: ZendeskTicket | null }>(
+      `SELECT ticket_payload
+         FROM support_tickets
+        WHERE organization_id = $1
+          AND provider = 'zendesk'
+          AND ticket_payload IS NOT NULL
+          AND (
+            subject_cache ILIKE $2
+            OR ticket_payload->>'description' ILIKE $2
+          )
+        ORDER BY mirrored_at DESC NULLS LAST
+        LIMIT 20`,
+      [orgId, needle],
+    );
+    return res.rows
+      .map((row) => row.ticket_payload)
+      .filter((ticket): ticket is ZendeskTicket => ticket != null && Number(ticket.id) > 0);
+  } catch (err) {
+    console.warn('[ticket-link] local mirror search failed', err);
+    return [];
+  }
+}
+
 export async function listTicketLinkCandidates(args: {
   orgId: string;
   entityType: string;
@@ -51,7 +83,13 @@ export async function listTicketLinkCandidates(args: {
     const ticket = await getTicket(queryKind.ticketId, args.orgId);
     tickets = ticket ? [ticket] : [];
   } else {
-    tickets = (await searchTickets(queryKind.query, { perPage }, args.orgId)).results;
+    const [remote, local] = await Promise.all([
+      searchTickets(queryKind.query, { perPage }, args.orgId),
+      localMirroredTickets(args.orgId, queryKind.query),
+    ]);
+    // Zendesk's ranking first; mirror hits it did not return fill in after.
+    const remoteIds = new Set(remote.results.map((t) => t.id));
+    tickets = [...remote.results, ...local.filter((t) => !remoteIds.has(t.id))].slice(0, perPage);
   }
 
   // Resolve existing links for the whole result page in two bulk queries

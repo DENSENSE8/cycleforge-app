@@ -5,6 +5,7 @@ import { Check, Pencil, Wrench, X } from '@/components/Icons';
 import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
+import { KeyboardKey } from '@/design-system/primitives';
 
 /** Verdict the tech assigns to a receiving line during the testing step. */
 export type TestingVerdict = 'PASS' | 'TEST_AGAIN' | 'TESTING_FAILED';
@@ -29,6 +30,12 @@ interface Props {
   collapsedLabel?: boolean;
   /** Expanded strip prints each verdict's word beside its glyph (the station's middle verdict row). */
   labeled?: boolean;
+  /**
+   * Each verdict's key, painted as a KeyboardKey inside its button (owner
+   * 2026-10-06, the Quality control station's verdict row; see
+   * design-system/pinned.json "KeyboardKey").
+   */
+  hotkeys?: Readonly<Partial<Record<TestingVerdict, string>>>;
 }
 
 const VERDICT_ICON = {
@@ -46,13 +53,13 @@ const TEST_OPTS: Array<{
   tone: { active: string; inactive: string };
 }> = [
   {
-    value: 'PASS',
-    label: 'Pass',
-    short: 'Pass',
-    face: VERDICT_ICON.PASS,
+    value: 'TESTING_FAILED',
+    label: 'Testing Failed',
+    short: 'Fail',
+    face: VERDICT_ICON.TESTING_FAILED,
     tone: {
-      active: 'bg-emerald-600 text-white shadow-none ring-emerald-700',
-      inactive: 'bg-surface-card text-emerald-800 ring-emerald-200 hover:bg-emerald-50',
+      active: 'bg-rose-600 text-white shadow-none ring-rose-700',
+      inactive: 'bg-surface-card text-rose-800 ring-rose-200 hover:bg-rose-50',
     },
   },
   {
@@ -66,13 +73,13 @@ const TEST_OPTS: Array<{
     },
   },
   {
-    value: 'TESTING_FAILED',
-    label: 'Testing Failed',
-    short: 'Fail',
-    face: VERDICT_ICON.TESTING_FAILED,
+    value: 'PASS',
+    label: 'Pass',
+    short: 'Pass',
+    face: VERDICT_ICON.PASS,
     tone: {
-      active: 'bg-rose-600 text-white shadow-none ring-rose-700',
-      inactive: 'bg-surface-card text-rose-800 ring-rose-200 hover:bg-rose-50',
+      active: 'bg-emerald-600 text-white shadow-none ring-emerald-700',
+      inactive: 'bg-surface-card text-emerald-800 ring-emerald-200 hover:bg-emerald-50',
     },
   },
 ];
@@ -97,7 +104,7 @@ const PENCIL_FACE =
 
 /**
  * Testing verdict picker — station primary action. Trailing fill-width band:
- * Check · Wrench · X share equal thirds. Collapsed: selected face pins end;
+ * X · Wrench · Check share equal thirds, Pass rightmost. Collapsed: selected face pins end;
  * hover expands the full band. HoverTooltip carries the teaching name.
  */
 export function TestingStatusPills({
@@ -109,6 +116,7 @@ export function TestingStatusPills({
   onExpandedChange,
   collapsedLabel = true,
   labeled = false,
+  hotkeys,
 }: Props) {
   const selected = (value ?? '').toUpperCase() as TestingVerdict | '';
   const selectedOpt = TEST_OPTS.find((o) => o.value === selected) ?? null;
@@ -203,6 +211,7 @@ export function TestingStatusPills({
               role="radio"
               aria-checked={isActive}
               aria-label={opt.label}
+              aria-keyshortcuts={hotkeys?.[opt.value]}
               onClick={() => {
                 onChange(opt.value);
                 if (collapsible) setExpanded(false);
@@ -212,6 +221,11 @@ export function TestingStatusPills({
             >
               {opt.face}
               {labeled ? <span className="truncate">{opt.short}</span> : null}
+              {hotkeys?.[opt.value] ? (
+                <KeyboardKey size="xs" tone="inverse" aria-hidden>
+                  {hotkeys[opt.value]}
+                </KeyboardKey>
+              ) : null}
             </button>
           </HoverTooltip>
         );

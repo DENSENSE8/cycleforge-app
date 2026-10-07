@@ -33,6 +33,7 @@ import { StockRecordActions } from '@/components/inventory/stock/StockRecordActi
 import type { RowGroup } from '@/lib/group-rows';
 import { isStockDeltaActivity } from '@/lib/inventory/stock-live-refresh';
 import {
+  locationStockNeverCounted,
   locationStockRowId,
   resolveLocationStockRow,
   locationStockRackFace,
@@ -221,13 +222,15 @@ export function StockLedger({
     [searchParams],
   );
   const locationWalkActive = selectedRooms.size > 0 || selectedAisles.size > 0;
+  const neverCountedOnly = searchParams.get('counted') === 'never';
   const locationSort = parseLocationStockSort(searchParams.get('sort'));
   const scopedRows = useMemo(
     () => rows.filter((row) => (
       (selectedRooms.size === 0 || selectedRooms.has(row.room?.trim() || '(none)')) &&
-      (selectedAisles.size === 0 || (row.aisle != null && selectedAisles.has(row.aisle)))
+      (selectedAisles.size === 0 || (row.aisle != null && selectedAisles.has(row.aisle))) &&
+      (!neverCountedOnly || locationStockNeverCounted(row))
     )),
-    [rows, selectedAisles, selectedRooms],
+    [neverCountedOnly, rows, selectedAisles, selectedRooms],
   );
   const locationGroups = useMemo(
     () => locationStockRackGroups(scopedRows, locationSort),
@@ -562,7 +565,7 @@ export function StockLedger({
   // The list read as a whole: server counts over the SAME matched set — the
   // numbers never move when the health filter narrows the rows on screen.
   const summary = useMemo(() => stockSummary(totalCount, counts, rooms), [counts, rooms, totalCount]);
-  const narrowed = Boolean(searchParams.get('q')?.trim()) || selectedRooms.size > 0 || selectedAisles.size > 0 || cut.url.statusFilter.size > 0 || excludedHealth.size > 0;
+  const narrowed = Boolean(searchParams.get('q')?.trim()) || selectedRooms.size > 0 || selectedAisles.size > 0 || cut.url.statusFilter.size > 0 || excludedHealth.size > 0 || neverCountedOnly;
 
   return (
     <>
@@ -677,6 +680,7 @@ export function StockLedger({
                     params.delete('room');
                     params.delete('aisle');
                     params.delete('status');
+                    params.delete('counted');
                   })
                 }
               >

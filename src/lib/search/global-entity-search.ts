@@ -31,8 +31,8 @@ import { formatDateKeyShort, toPSTDateKey } from '@/utils/date';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { ALLOCATE_STAGE_FACTS_JOIN, sqlAllocateSearchStatus } from '@/lib/search/allocate-search-status';
-
 import { OUTBOUND_INTERNAL_STATUS } from '@/lib/status/record-status';
+
 /** Match `serial_units.normalized_serial` (trim + upper) without pulling neon queries. */
 function normalizeSerialQuery(raw: string): string {
   return String(raw || '').trim().toUpperCase();

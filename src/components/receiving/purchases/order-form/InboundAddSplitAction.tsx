@@ -15,6 +15,7 @@ import { DeskHeaderSplitAction } from '@/design-system/components/DeskHeaderSpli
 import type { SlicedActionMenuItem } from '@/design-system/primitives/SlicedActionDock';
 import { inboundOrderFormHref } from '@/lib/inbound/inbound-order-compose';
 import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
+import { ReceivingStnTicketLink } from './ReceivingStnTicketLink';
 
 export function InboundAddSplitAction({ more = [], testId }: { more?: readonly SlicedActionMenuItem[]; testId: string }) {
   const router = useRouter();
@@ -41,7 +42,8 @@ export function InboundAddSplitAction({ more = [], testId }: { more?: readonly S
     [addOrder, more, router],
   );
   return (
-    <div className="flex shrink-0" data-testid={testId}>
+    <div className="flex shrink-0 items-center gap-2" data-testid={testId}>
+      <ReceivingStnTicketLink />
       <DeskHeaderSplitAction
         tone="blue"
         icon={<Package aria-hidden className="h-3.5 w-3.5" />}

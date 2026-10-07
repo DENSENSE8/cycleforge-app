@@ -31,6 +31,8 @@ export function narrowTestingWorkspacePatch(
     condition_grade: line.condition_grade,
     item_name: line.item_name,
     sku: line.sku,
+    sku_catalog_id: line.sku_catalog_id,
+    catalog_gtin: line.catalog_gtin,
     catalog_product_title: line.catalog_product_title,
     zoho_item_title: line.zoho_item_title,
   };

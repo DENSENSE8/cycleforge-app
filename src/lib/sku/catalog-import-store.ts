@@ -18,8 +18,8 @@ import {
 export const CATALOG_IMPORT_SOURCE = 'catalog-import';
 
 export async function readCatalogImportContext(orgId: OrgId, skus: readonly string[]): Promise<CatalogImportContext> {
-  if (skus.length === 0) return { catalogTitles: new Map(), mirrorItemIds: new Map() };
-  const [catalog, mirror] = await Promise.all([
+  if (skus.length === 0) return { catalogTitles: new Map(), mirrorItemIds: new Map(), paddingTwins: new Map() };
+  const [catalog, mirror, twins] = await Promise.all([
     tenantQuery<{ sku: string; product_title: string }>(
       orgId,
       `SELECT sku, product_title FROM sku_catalog WHERE organization_id = $1 AND sku = ANY($2::text[])`,
@@ -34,10 +34,29 @@ export async function readCatalogImportContext(orgId: OrgId, skus: readonly stri
         ORDER BY btrim(sku), (status = 'active') DESC, updated_at DESC`,
       [orgId, skus],
     ),
+    // Same canonical key (fn_normalize_sku, indexed), different spelling.
+    tenantQuery<{ input: string; sku: string }>(
+      orgId,
+      `SELECT x.input, sc.sku
+         FROM unnest($2::text[]) AS x(input)
+         JOIN sku_catalog sc
+           ON sc.organization_id = $1
+          AND fn_normalize_sku(sc.sku) = fn_normalize_sku(x.input)
+          AND sc.sku <> x.input
+        ORDER BY x.input, sc.sku`,
+      [orgId, skus],
+    ),
   ]);
+  const paddingTwins = new Map<string, string[]>();
+  for (const row of twins.rows) {
+    const list = paddingTwins.get(row.input);
+    if (list) list.push(row.sku);
+    else paddingTwins.set(row.input, [row.sku]);
+  }
   return {
     catalogTitles: new Map(catalog.rows.map((row) => [row.sku, row.product_title])),
     mirrorItemIds: new Map(mirror.rows.map((row) => [row.sku, row.zoho_item_id])),
+    paddingTwins,
   };
 }
 

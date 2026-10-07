@@ -68,19 +68,32 @@ export function resolveTestingLineTitle(
   );
 }
 
-/** Print a product/testing unit label. */
-export function printProductLabel(input: PrintProductLabelInput): void {
-  if (typeof window === 'undefined') return;
+/**
+ * Load the print shell + raw-command builders ahead of the first press, so a
+ * station's print dispatches in the press's own tick instead of behind a chunk
+ * fetch.
+ */
+export function preloadProductLabelPrint(): Promise<unknown> {
+  return Promise.all([import('@/lib/print/printLabel'), import('@/lib/print/productLabelCommands')]);
+}
+
+/**
+ * Print a product/testing unit label. Resolves once the print is dispatched
+ * (frame / dialog / raw job handed off), so a caller can keep its own network
+ * work behind the print.
+ */
+export function printProductLabel(input: PrintProductLabelInput): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
 
   const built = productLabelFace(input);
-  if (!built) return;
+  if (!built) return Promise.resolve();
 
   const { sku, matrix } = built;
   const silent = isSilentPrintEnabled();
   // Reserve while the station button still owns the gesture on old WebKit.
   const legacyPopup = reserveLegacyPrintPopup();
 
-  void (async () => {
+  return (async () => {
     // Lazy: the print shell + raw-command builders carry the bwip-js barcode engine (~250 KB gz); this module's light helpers…
     const [{ printLabel, buildLabelHtml }, { buildProductLabelBitmapCommands, buildProductLabelCommands }] =
       await Promise.all([

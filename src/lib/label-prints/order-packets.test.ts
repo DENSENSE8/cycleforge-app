@@ -9,6 +9,7 @@ import {
   deriveLabelSlotState,
   matchLabelSuggestions,
   orderPacketQueue,
+  packetLabelMismatches,
   type PacketSource,
   type UnpairedLabelCandidate,
 } from './order-packet-derive';
@@ -212,6 +213,67 @@ test('suggestions: the order number on the label, then the buyer-name rule; only
   assert.equal(buildOrderPacket(source({ labels: [label()] }), candidates).label.suggestions.length, 0);
 });
 
+test('mismatch: a label whose tracking is none of the order\'s boxes, or whose ship-to is not the buyer, is flagged', () => {
+  const order = { buyerNames: ['Jane Doe', 'Doe Household'], trackingNumbers: ['9400111111111111111111', '1Z999AA10123456784'] };
+  const evidence = (key: string, trackingNumber: string | null, shipToName: string | null) => ({ key, trackingNumber, shipToName });
+
+  // Agreeing labels stay quiet: a second box, a spaced / lower-case number, the resolver's same-buyer rule.
+  assert.deepEqual(
+    packetLabelMismatches({ ...order, labels: [evidence('label:1', '1z999aa1 0123456784', 'JANE Q DOE'), evidence('doc:2', '9400 1111 1111 1111 1111 11', null)] }),
+    [],
+  );
+  // USPS routing prefix (420 + ZIP) in front of the order's number is the same parcel.
+  assert.deepEqual(packetLabelMismatches({ ...order, labels: [evidence('label:1', '420902109400111111111111111111', null)] }), []);
+
+  assert.deepEqual(packetLabelMismatches({ ...order, labels: [evidence('label:3', '9400222222222222222222', 'John Smith')] }), [
+    { labelKey: 'label:3', kind: 'tracking', label: '9400222222222222222222', order: '9400111111111111111111, 1Z999AA10123456784' },
+    { labelKey: 'label:3', kind: 'ship_to', label: 'John Smith', order: 'Jane Doe' },
+  ]);
+
+  // Nothing to compare against is not a mismatch: no order tracking yet, a one-word name either side, nothing read.
+  assert.deepEqual(packetLabelMismatches({ buyerNames: ['Jane Doe'], trackingNumbers: [], labels: [evidence('label:4', '9400222222222222222222', null)] }), []);
+  assert.deepEqual(packetLabelMismatches({ ...order, labels: [evidence('label:5', null, 'Smith')] }), []);
+  assert.deepEqual(packetLabelMismatches({ buyerNames: ['Jane'], trackingNumbers: [], labels: [evidence('label:6', null, 'John Smith')] }), []);
+  assert.deepEqual(packetLabelMismatches({ ...order, labels: [evidence('label:7', null, null)] }), []);
+});
+
+test('packet: mismatches read the ingestion ship-to and every box; the primary shipment stands in when no box list is given', () => {
+  const held = label({ id: 8, state: 'APPLIED', documentId: 5, trackingNumber: '9400222222222222222222' });
+  const packet = buildOrderPacket(
+    source({
+      labels: [held],
+      labelShipTo: [{ ingestionId: 8, name: 'John Smith' }],
+      trackingNumbers: ['9400222222222222222222', '9400111111111111111111'],
+    }),
+    [],
+  );
+  assert.deepEqual(packet.labelMismatches.map((m) => [m.labelKey, m.kind]), [['label:8', 'ship_to']]);
+
+  const primaryOnly = buildOrderPacket(source({ labels: [held], shipment: { trackingNumber: '9400111111111111111111', carrier: 'USPS' } }), []);
+  assert.deepEqual(primaryOnly.labelMismatches.map((m) => [m.labelKey, m.kind]), [['label:8', 'tracking']]);
+});
+
+test('packet lines carry their listing on the order\'s platform', () => {
+  const ebay = buildOrderPacket(source({ orderRef: '19-15205-47811', accountSource: 'ebay purchasing', lines: [line(10, { itemNumber: '226611849000' })] }), []);
+  assert.deepEqual(ebay.lines[0]!.listing, { href: 'https://www.ebay.com/itm/226611849000', source: 'built', storefront: 'ebay', missing: null });
+
+  const ecwid = buildOrderPacket(
+    source({
+      orderRef: '5067',
+      accountSource: 'usav',
+      platformSlug: 'ecwid',
+      lines: [line(10, { sku: '01241', skuCatalogId: null, storedListings: [{ platform: 'ecwid', itemId: null, url: 'https://usavshop.com/01241-p1.html' }] })],
+    }),
+    [],
+  );
+  assert.equal(ecwid.lines[0]!.listing.href, 'https://usavshop.com/01241-p1.html');
+  assert.equal(ecwid.lines[0]!.listing.source, 'stored');
+
+  const bare = buildOrderPacket(source({ orderRef: '5067', accountSource: 'ecwid', lines: [line(10, { sku: '01241' })] }), []);
+  assert.equal(bare.lines[0]!.listing.href, null);
+  assert.match(bare.lines[0]!.listing.missing ?? '', /Ecwid/);
+});
+
 test('queue: rows under every filter, sorted and paged; each facet counted under every OTHER filter', () => {
   const packets = [
     buildOrderPacket(source({ orderId: 1, orderRef: 'A1', accountSource: 'eBay', shipByAt: '2026-10-09T00:00:00.000Z' }), []),
@@ -248,9 +310,10 @@ test('URL params: multi facets as comma lists or repeated; unknown values refuse
 });
 
 test('params: org first, Find escaped for ILIKE, last 8 digits for an order or tracking number', () => {
-  assert.deepEqual(orderPacketsParams(ORG, {}), [ORG, null, null]);
-  assert.deepEqual(orderPacketsParams(ORG, { q: '50%_off' }), [ORG, '%50\\%\\_off%', null]);
-  assert.deepEqual(orderPacketsParams(ORG, { q: '12-34567-89012' }), [ORG, '%12-34567-89012%', '56789012']);
+  assert.deepEqual(orderPacketsParams(ORG, {}), [ORG, null, null, null]);
+  assert.deepEqual(orderPacketsParams(ORG, { q: '50%_off' }), [ORG, '%50\\%\\_off%', null, null]);
+  assert.deepEqual(orderPacketsParams(ORG, { q: '12-34567-89012' }), [ORG, '%12-34567-89012%', '56789012', null]);
+  assert.deepEqual(orderPacketsParams(ORG, { ids: [7, 9] }), [ORG, null, null, [7, 9]]);
 });
 
 test('tenant isolation: every table the Orders statement reads is predicated on the org ($1)', () => {
@@ -267,5 +330,6 @@ test('tenant isolation: every table the Orders statement reads is predicated on 
     assert.match(sql, new RegExp(`\\b${alias}\\.organization_id = (\\$1\\b|\\w+\\.organization_id)`), `${table} ${alias} is not predicated on organization_id`);
   }
   assert.doesNotMatch(sql, /\$\{/);
-  assert.doesNotMatch(sql, /\$4\b/);
+  // Four binds (org, Find LIKE, Find last-8, named order rows) — none past them.
+  assert.doesNotMatch(sql, /\$5\b/);
 });

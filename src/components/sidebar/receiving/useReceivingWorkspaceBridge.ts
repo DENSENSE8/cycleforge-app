@@ -9,10 +9,7 @@ import {
   dispatchReceivingWorkspaceNavState,
 } from '@/utils/events';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import {
-  isPendingTriageScanRow,
-  type ReceivingMode,
-} from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 
 interface UseReceivingWorkspaceBridgeArgs {
@@ -62,12 +59,6 @@ export function useReceivingWorkspaceBridge({
   useEffect(() => {
     if (isTableOnlyMode || !selectedLine) {
       if (hasOpenedRef.current) dispatchReceivingWorkspaceClose();
-      return;
-    }
-    // Pending rail stubs (tracking# title, receiving_source null) stay
-    // display-only. Optimistic unmatched pane stubs are openable so Unbox can
-    // show the empty PO-items surface while lookup runs.
-    if (isPendingTriageScanRow(selectedLine)) {
       return;
     }
     hasOpenedRef.current = true;

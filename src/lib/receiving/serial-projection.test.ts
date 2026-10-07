@@ -29,14 +29,14 @@ function serial(id: number, sn: string, extra: Partial<LineSerial> = {}): LineSe
   };
 }
 
-test('toSerialProjection: keeps only id/serial_number/condition_grade', () => {
+test('toSerialProjection: keeps only id/serial_number/condition_grade/unit_uid', () => {
   const out = toSerialProjection([
     serial(1, 'SN-A', { condition_grade: 'USED_A', current_status: 'IN_TEST', unit_uid: 'U-1' }),
     serial(2, 'SN-B'),
   ]);
   assert.deepEqual(out, [
-    { id: 1, serial_number: 'SN-A', condition_grade: 'USED_A' },
-    { id: 2, serial_number: 'SN-B', condition_grade: null },
+    { id: 1, serial_number: 'SN-A', condition_grade: 'USED_A', unit_uid: 'U-1' },
+    { id: 2, serial_number: 'SN-B', condition_grade: null, unit_uid: null },
   ]);
 });
 
@@ -94,7 +94,7 @@ test('refreshLineSerialProjection: writes the expected jsonb per line (attach)',
   await refreshLineSerialProjection(ORG, 10, deps);
   assert.equal(writes.length, 1);
   assert.equal(writes[0].lineId, 10);
-  assert.deepEqual(writes[0].projection, [{ id: 1, serial_number: 'SN-1', condition_grade: 'USED_A' }]);
+  assert.deepEqual(writes[0].projection, [{ id: 1, serial_number: 'SN-1', condition_grade: 'USED_A', unit_uid: null }]);
 });
 
 test('refreshLineSerialProjection: a line with no serials writes an empty projection (detach to zero)', async () => {
@@ -121,7 +121,7 @@ test('refreshLineSerialProjection: current-line move refreshes BOTH old and new 
   await refreshLineSerialProjection(ORG, [10, 20], deps);
   const byLine = new Map(writes.map((w) => [w.lineId, w.projection]));
   assert.deepEqual(byLine.get(10), []); // old line cleared
-  assert.deepEqual(byLine.get(20), [{ id: 5, serial_number: 'SN-5', condition_grade: null }]);
+  assert.deepEqual(byLine.get(20), [{ id: 5, serial_number: 'SN-5', condition_grade: null, unit_uid: null }]);
 });
 
 test('refreshLineSerialProjection: de-dupes + ignores non-positive ids', async () => {

@@ -12,7 +12,13 @@ import {
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
-import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
+import { loadReceivingLineWorkspace } from '@/components/receiving/workspace/receiving-line-workspace-loader';
+import { StationWorkspaceSkeleton } from '@/components/station/workbench';
+
+const ReceivingLineWorkspace = dynamic(
+  () => loadReceivingLineWorkspace().then((m) => m.ReceivingLineWorkspace),
+  { ssr: false, loading: () => <StationWorkspaceSkeleton body="unbox-overview" /> },
+);
 
 const UnboxWorkspaceView = dynamic(
   () =>

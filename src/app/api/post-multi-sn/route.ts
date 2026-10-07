@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getSkuCatalogBySku } from '@/lib/neon/sku-catalog-queries';
-import { upsertSerialUnit } from '@/lib/neon/serial-units-queries';
-import { recordInventoryEvent } from '@/lib/inventory/events';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
-import { recordLabelPrintJob } from '@/lib/labels/print-jobs';
+import { recordUnitLabelPrint } from '@/lib/labels/record-unit-label-print';
 import {
   resolveLabelIssueSerials,
   type LabelPrintClass,
@@ -113,9 +111,11 @@ export const POST = withAuth(
     try {
       const logRes = await tenantQuery<{ id: number }>(
         orgId,
+        // $5 is the org uuid: typed ::uuid at every use, ::text only inside the
+        // lock hash (an untyped $5 there infers text and breaks `uuid = text`).
         `WITH lock_key AS MATERIALIZED (
            SELECT pg_advisory_xact_lock(
-             hashtextextended($5::text || ':' || $6::text, 0)
+             hashtextextended($5::uuid::text || ':' || $6::text, 0)
            )
             WHERE $6::text IS NOT NULL
          ),
@@ -123,15 +123,15 @@ export const POST = withAuth(
            SELECT logs.id
              FROM station_activity_logs AS logs
              CROSS JOIN lock_key
-            WHERE logs.organization_id = $5
-              AND logs.metadata->>'client_event_id' = $6
+            WHERE logs.organization_id = $5::uuid
+              AND logs.metadata->>'client_event_id' = $6::text
             ORDER BY logs.id ASC
             LIMIT 1
          ),
          inserted AS (
            INSERT INTO station_activity_logs
              (station, activity_type, staff_id, scan_ref, notes, metadata, organization_id)
-           SELECT 'LABELS', 'LABEL_PRINTED', $1, $2, $3, $4::jsonb, $5
+           SELECT 'LABELS', 'LABEL_PRINTED', $1, $2, $3, $4::jsonb, $5::uuid
             WHERE NOT EXISTS (SELECT 1 FROM existing)
            RETURNING id
          )
@@ -169,99 +169,57 @@ export const POST = withAuth(
     // will print. Each physical unit owns exactly one {SKU}-{YYWW}-{SEQ6}.
     const units: Array<{ serial: string; unitUid: string | null }> = [];
     for (const serial of serialNumbers) {
-      // 2. Canonical upsert — handles status transitions, return detection, metadata patching, AND mints this serial's own unit_uid at birth…
-      let upserted;
+      // 2. The print record: canonical upsert (mints this serial's own unit_uid
+      //    at birth; an existing unit keeps its id and status), the LABELED
+      //    event and the label_print_jobs row.
+      let printed;
       try {
-        upserted = await upsertSerialUnit({
-          serial_number: serial,
+        printed = await recordUnitLabelPrint({
+          serialNumber: serial,
           sku: skuForStorage,
-          sku_catalog_id: catalogId,
-          origin_source: 'manual',
-          actor_id: actorId,
-          condition_grade: condition,
+          skuCatalogId: catalogId,
+          conditionGrade: condition,
           location,
-          target_status: 'LABELED',
-        }, undefined, orgId);
+          actorStaffId: actorId,
+          notes,
+          gtin,
+          symbology,
+          qrPayload,
+          scanTokenFallback: unitId,
+          clientEventId,
+          eventPayload: {
+            print_class: printClass,
+            synthetic_serial: syntheticSerial,
+            station_activity_log_id: stationActivityLogId,
+          },
+        }, orgId);
       } catch (err) {
         console.error('[post-multi-sn] upsertSerialUnit failed', { serial, err });
         continue;
       }
-      if (!upserted) continue;
+      if (!printed) continue;
 
-      const serialUnitId = upserted.unit.id;
+      const serialUnitId = printed.upserted.unit.id;
       serialUnitIds.push(serialUnitId);
       // The authoritative id is whatever landed on the row (minted at birth, or
       // the pre-existing id for a relabel). This is what the label prints and
       // what scan tokens point at.
-      const effectiveUid = upserted.unit.unit_uid ?? null;
-      units.push({ serial, unitUid: effectiveUid });
+      units.push({ serial, unitUid: printed.unitUid });
 
-      // The three tail writes depend on the unit identity but not on each
-      // other. Run them concurrently to avoid three serial connection cycles
-      // per label while retaining each write's non-fatal behavior.
-      await Promise.all([
-        (async () => {
-          try {
-            await attachTechSerial({
-              serialNumber: serial,
-              serialUnitId,
-              stationSource: 'ADMIN',
-              testedBy: actorId,
-              scanRef: effectiveUid ?? qrPayload,
-              sourceSkuId: catalogId,
-              contextStationActivityLogId: stationActivityLogId,
-            }, undefined, orgId);
-          } catch (err) {
-            console.warn('[post-multi-sn] tech_serial_numbers insert failed (non-fatal)', err);
-          }
-        })(),
-        (async () => {
-          try {
-            await recordInventoryEvent({
-              event_type: 'LABELED',
-              actor_staff_id: actorId,
-              station: 'SYSTEM',
-              serial_unit_id: serialUnitId,
-              sku: skuForStorage,
-              prev_status: upserted.prior_status,
-              next_status: 'LABELED',
-              scan_token: effectiveUid ?? qrPayload ?? unitId,
-              client_event_id: clientEventId ? `${clientEventId}:inventory:${serial}` : null,
-              notes,
-              payload: {
-                unit_id: effectiveUid ?? unitId,
-                gtin,
-                symbology,
-                print_class: printClass,
-                synthetic_serial: syntheticSerial,
-                station_activity_log_id: stationActivityLogId,
-              },
-            }, undefined, orgId);
-          } catch (err) {
-            console.warn('[post-multi-sn] recordInventoryEvent failed (non-fatal)', err);
-          }
-        })(),
-        (async () => {
-          try {
-            await recordLabelPrintJob(
-              {
-                jobType: 'UNIT',
-                serialUnitId,
-                unitUid: effectiveUid,
-                qrPayload: effectiveUid ?? qrPayload ?? serial,
-                symbology: symbology ?? 'datamatrix',
-                templateId: 'product',
-                isReprint: upserted.prior_status === 'LABELED',
-                actorStaffId: actorId,
-                clientEventId: clientEventId ? `${clientEventId}:${serial}` : null,
-              },
-              orgId,
-            );
-          } catch (err) {
-            console.warn('[post-multi-sn] label_print_jobs insert failed (non-fatal)', err);
-          }
-        })(),
-      ]);
+      // No source_sku_id: that column points at a legacy `sku` bucket row (a
+      // colon-SKU pull), never at sku_catalog.
+      try {
+        await attachTechSerial({
+          serialNumber: serial,
+          serialUnitId,
+          stationSource: 'ADMIN',
+          testedBy: actorId,
+          scanRef: printed.unitUid ?? qrPayload,
+          contextStationActivityLogId: stationActivityLogId,
+        }, undefined, orgId);
+      } catch (err) {
+        console.warn('[post-multi-sn] tech_serial_numbers insert failed (non-fatal)', err);
+      }
     }
 
     const issuanceComplete =

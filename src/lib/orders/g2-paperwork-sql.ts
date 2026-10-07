@@ -84,3 +84,9 @@ export const G2_SKU_PAPERWORK_NOT_REQUIRED_SQL = `EXISTS (
      AND g2nr.paperwork_not_required = TRUE
      AND g2nr.id = ${G2_LINE_CATALOG_ID_SQL}
 )`;
+
+/** The line has a linked non-label document (a packing slip, an invoice) — the slip half of G2. */
+export const G2_LINKED_DOCUMENT_EXISTS_SQL = `EXISTS (SELECT 1 ${G2_LINKED_DOCUMENTS_FROM_SQL})`;
+
+/** The line resolves product paperwork (manuals, inserts) — the paperwork half of G2. */
+export const G2_PRODUCT_PAPERWORK_EXISTS_SQL = `EXISTS (SELECT 1 ${G2_PRODUCT_PAPERWORK_FROM_SQL})`;

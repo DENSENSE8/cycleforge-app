@@ -2,7 +2,8 @@
 
 /**
  * Every product-paperwork write for one order line, each reversible: pair
- * from the library, upload, repin, unpair, and the SKU's Not required. Writes
+ * from the library, upload, repin, unpair, remove (delete the file), and the
+ * SKU's Not required. Writes
  * go through the order-manual writers (`order-paperwork-client`) and the SKU
  * writer (`sku-paperwork-client`); each success toasts with Undo that runs the
  * inverse writer, and every settle re-reads the Orders view.
@@ -20,6 +21,7 @@ import {
   type OrderManualPatch,
 } from '@/lib/orders/order-paperwork-client';
 import { toast } from '@/lib/toast';
+import { holdFile } from './held-file';
 import { usePacketRefresh } from './use-packet-refresh';
 
 export const skuPaperworkReachKey = (skuCatalogId: number) => ['sku-paperwork-reach', skuCatalogId] as const;
@@ -30,7 +32,7 @@ export const skuPaperworkReachKey = (skuCatalogId: number) => ['sku-paperwork-re
  * before the exact pinning is written; an empty old pinning is the library
  * (unpaired).
  */
-async function restorePairing(lineId: number, manualId: number, before: PaperworkPairing, anchor: PaperworkSource) {
+export async function restorePairing(lineId: number, manualId: number, before: PaperworkPairing, anchor: PaperworkSource) {
   if (before.orderId == null && !before.itemNumber && !before.sku) {
     await removeOrderManualHttp(lineId, manualId, 'unpair');
     return;
@@ -114,6 +116,28 @@ export function useLinePaperwork(line: OrderPacketLine) {
     onSettled: refresh,
   });
 
+  /**
+   * Delete the file (`mode=delete`). Its bytes are read first, so Undo files
+   * the same bytes on this line again and re-pins them exactly as before.
+   */
+  const remove = useMutation({
+    mutationFn: async ({ manualId, title, src }: { manualId: number; title: string; src: string; anchor: PaperworkSource }) => {
+      const file = await holdFile(src, title);
+      const { before } = await removeOrderManualHttp(lineId, manualId, 'delete');
+      return { file, before };
+    },
+    onSuccess: ({ file, before }, { title, anchor }) => {
+      toast.undo(`Deleted ${title}`, {
+        onUndo: undo(async () => {
+          const { manual } = await uploadOrderManual(lineId, file, { pairTo: anchor });
+          await restorePairing(lineId, manual.id, before, anchor);
+        }, `${title} restored`),
+      });
+    },
+    onError: fail,
+    onSettled: refresh,
+  });
+
   const notRequired = useMutation({
     mutationFn: async (next: boolean) => {
       if (skuCatalogId == null) throw new Error('This line has no catalog SKU.');
@@ -136,7 +160,8 @@ export function useLinePaperwork(line: OrderPacketLine) {
     upload,
     repin,
     unpair,
+    remove,
     notRequired,
-    pending: pair.isPending || upload.isPending || repin.isPending || unpair.isPending || notRequired.isPending,
+    pending: pair.isPending || upload.isPending || repin.isPending || unpair.isPending || remove.isPending || notRequired.isPending,
   };
 }

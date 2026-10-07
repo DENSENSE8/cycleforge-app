@@ -18,6 +18,7 @@ import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import type { UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
 import type { TestingController } from './testing-panel-types';
 import { TestingLineSlot } from './TestingLineSlot';
+import { refreshDomain } from '@/lib/refresh/bus';
 
 /** Narrow accordion serials to TestingLineSlot's required-id shape. */
 function toUnitSlotSerials(serials: readonly ActiveRowSerial[]): UnitSlotSerial[] {
@@ -46,7 +47,7 @@ export function TestingUnitsDisplay({
     bench: active ? <QcUnitBench key={active.id} unitId={active.id} unitStatus={active.current_status} /> : undefined,
     onRecorded: () => {
       void c.refreshLineWithSerials(row.id);
-      window.dispatchEvent(new CustomEvent('testing-result-recorded'));
+      refreshDomain('testing.lines');
     },
   });
   const slot = useRecordSlot(qc.record?.model ?? null, qc.record?.verbs ?? [], active ? `SN ${active.serial_number} actions` : 'Unit actions', 'qc-record');

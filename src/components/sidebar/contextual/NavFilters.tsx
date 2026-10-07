@@ -128,6 +128,21 @@ export function NavFilters({
   const badgePresence = useMotionPresence(motionPresence.sidebarScopeSwap);
   const badgeTransition = useMotionTransition(motionTransition.sidebarScopeSwap);
 
+  // A context serving several tabs (the Unbox station) answers a group the open tab does not read with no options.
+  const hiddenFacetIds = new Set(
+    filters?.groups
+      .filter((declared) =>
+        facets.data?.groups.find((g) => g.id === declared.id)?.options.length === 0 &&
+        readValues(searchParams?.get(declared.param) ?? null, declared.multi).length === 0)
+      .map((declared) => declared.id),
+  );
+  // Nothing to paint (no control rows, every facet group empty): no hairline, no padding.
+  const paintsRow =
+    Boolean(controls?.sort || controls?.group || controls?.exclude) ||
+    Boolean(controls?.staff?.length || controls?.dates?.length || controls?.dateRanges?.length || controls?.choices?.length) ||
+    Boolean(filters?.groups.some((declared) => !hiddenFacetIds.has(declared.id)));
+  if (!paintsRow) return null;
+
   return (
     <section data-nav-filters aria-label="Filters" aria-busy={facets.isFetching || undefined} className="px-2 pt-2">
       {/* A hairline opens the category, like every other sidebar category — no
@@ -202,8 +217,7 @@ export function NavFilters({
                 const group = facets.data?.groups.find((g) => g.id === declared.id);
                 const active = readValues(searchParams?.get(declared.param) ?? null, declared.multi);
                 const excluded = readValues(searchParams?.get(declared.excludeParam ?? '') ?? null, true);
-                // A context serving several tabs (the Unbox station) answers a group the open tab does not read with no options.
-                if (group?.options.length === 0 && active.length === 0) return null;
+                if (hiddenFacetIds.has(declared.id)) return null;
                 const summary = active.length > 0
                   ? active.length > 1
                     ? `${active.length} selected`
@@ -536,6 +550,8 @@ function DateRow({ spec }: { spec: NonNullable<NavControls['dateRanges']>[number
   const from = parseISODate(searchParams?.get(spec.fromParam) ?? '');
   const to = parseISODate(searchParams?.get(spec.toParam) ?? '');
   const timed = Boolean(spec.fromTimeParam || spec.toTimeParam);
+  // A window another param switches off (a pasted list) says so, never the default window it is not using.
+  const placeholder = spec.unsetWith && searchParams?.get(spec.unsetWith.param) ? spec.unsetWith.placeholder : spec.placeholder;
   const setTime = (param: string | undefined, value: string) => {
     if (!param) return;
     replace((params) => {
@@ -550,7 +566,7 @@ function DateRow({ spec }: { spec: NonNullable<NavControls['dateRanges']>[number
         <span className="min-w-0 flex-1 truncate">{spec.label}</span>
         <DateRangePickerField
           value={from && to ? { from, to } : undefined}
-          placeholder={spec.placeholder}
+          placeholder={placeholder}
           className="h-7 w-auto max-w-[9.5rem] border-transparent bg-transparent px-1.5 text-role-micro font-medium shadow-none hover:border-border-soft hover:bg-surface-card"
           onChange={(next) => {
             const nextFrom = toISODate(next?.from);

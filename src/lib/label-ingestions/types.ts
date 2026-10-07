@@ -56,6 +56,8 @@ export const LABEL_QUARANTINE_REASON_CODES = [
   'BUYER_NOT_FOUND',
   /** Several open orders carry this buyer and none can be picked by rule — the confirmation exception. */
   'BUYER_AMBIGUOUS',
+  /** An operator took this label back off its order (unpair.ts) — waiting to be filed again. */
+  'OPERATOR_UNPAIRED',
 ] as const;
 
 export type LabelQuarantineReasonCode = (typeof LABEL_QUARANTINE_REASON_CODES)[number];
@@ -129,6 +131,22 @@ export interface ApplyLabelIngestionInput {
   ingestionId: number;
   actorStaffId: number;
   expectedRowVersion: number;
+  /**
+   * The operator's answer when the tracking is already another order's
+   * (`file-on-order`): `move` detaches that shipment from the other order in
+   * this transaction; `keep` ships one box on both. Absent → refused
+   * (`TRACKING_OWNED_BY_OTHER_ORDER`).
+   */
+  collision?: 'move' | 'keep';
+  /**
+   * The operator's answer when the order already ships on another tracking:
+   * `replace` makes this label's shipment primary and detaches the order's
+   * other shipments (their tracking rows, labels and documents stay as
+   * history); `add` keeps the order's current primary and files this one as
+   * another box. Absent → the standing rule (a new tracking is an additional
+   * box; one already on the order becomes primary).
+   */
+  existing?: 'replace' | 'add';
 }
 
 export const APPLY_CONFLICT_CODES = [

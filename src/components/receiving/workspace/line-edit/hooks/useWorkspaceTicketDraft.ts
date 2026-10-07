@@ -22,10 +22,13 @@ export interface WorkspaceTicketDraftModel {
 export function useWorkspaceTicketDraft({
   row,
   ticketId,
+  previewClaim = true,
   onTicketCreated,
 }: {
   row: ReceivingLineRow;
   ticketId: number | null | undefined;
+  /** True only while the Ticket tab is the claim surface. */
+  previewClaim?: boolean;
   onTicketCreated?: (ticketNumber: string) => void;
 }): WorkspaceTicketDraftModel {
   const [isPublic, setIsPublic] = useState(true);
@@ -35,6 +38,7 @@ export function useWorkspaceTicketDraft({
   const claim = useComposerTicketClaim({
     row,
     hasTicket,
+    preview: previewClaim,
     notePublic: isPublic,
     ccEmails: ccs,
     onTicketCreated,

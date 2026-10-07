@@ -14,6 +14,8 @@ export const REFRESH_DOMAINS = [
   'repairs',
   /** Replenish sidebar counts (need-to-order). */
   'replenish',
+  /** Quality Control lines this operator opened / recorded results on (the QC Recent rail). */
+  'testing.lines',
   /** Work-order assignments + the scheduling calendar. */
   'work-orders',
 ] as const;

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  locationStockNeverCounted,
   locationStockRoomId,
   locationStockPositionFace,
   locationStockRackFace,
@@ -83,6 +84,35 @@ test('desktop rack cards group the rack sentinel and numbered positions without 
   assert.deepEqual(groups[0]?.rows.map((item) => item.sku), ['TMP-RACK', 'TMP-POSITION']);
   assert.equal(locationStockRackFace(groups[0]!.rows[0]!), 'A-01-01-1');
   assert.equal(locationStockPositionFace(groups[0]!.rows[1]!), 'A-01-01-1-01');
+});
+
+test('rack cards sort by on-hand total, with location order breaking a tie', () => {
+  const rows = [
+    row(1, 'A-01-01-1-00', 1, 1, 1, 0, 'SMALL', 2),
+    row(2, 'A-01-01-2-00', 1, 1, 2, 0, 'BIG', 5),
+    row(3, 'A-01-01-2-01', 1, 1, 2, 1, 'BIG-POS', 4),
+  ];
+  assert.equal(locationStockRackFace(locationStockRackGroups(rows, 'qty-desc')[0]!.rows[0]!), 'A-01-01-2');
+  assert.equal(locationStockRackFace(locationStockRackGroups(rows, 'qty-asc')[0]!.rows[0]!), 'A-01-01-1');
+});
+
+test('longest since count leads with a rack that has no cycle count', () => {
+  const rows = [
+    { ...row(2, 'A-01-01-2-00', 1, 1, 2, 0, 'NEW', 1), last_counted: '2026-01-01T00:00:00.000Z' },
+    { ...row(1, 'A-01-01-1-00', 1, 1, 1, 0, 'OLD', 9), last_counted: '2020-01-01T00:00:00.000Z' },
+    { ...row(3, 'A-01-01-3-00', 1, 1, 3, 0, 'NONE', 1), last_counted: null },
+  ];
+  assert.deepEqual(
+    locationStockRackGroups(rows, 'counted-asc').map((group) => group.rows[0]!.sku),
+    ['NONE', 'OLD', 'NEW'],
+  );
+});
+
+test('never counted is a bin pair with no cycle count', () => {
+  assert.equal(locationStockNeverCounted(row(1, 'A-01-01-1-00', 1, 1, 1, 0, 'BIN')), true);
+  assert.equal(locationStockNeverCounted({ ...row(1, 'A-01-01-1-00', 1, 1, 1, 0, 'BIN'), last_counted: '2026-01-01T00:00:00.000Z' }), false);
+  assert.equal(locationStockNeverCounted({ ...row(1, 'A-01-01-1-00', 1, 1, 1, 0, 'UNIT'), source: 'unit' }), false);
+  assert.equal(locationStockNeverCounted({ ...row(1, 'A-01-01-1-00', 1, 1, 1, 0, ''), source: 'empty' }), false);
 });
 
 test('comma-bearing room names survive the comma-list room wire', () => {

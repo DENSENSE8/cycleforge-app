@@ -9,23 +9,23 @@
 
 | metric | count |
 |---|---|
-| total route files | 1216 |
-| withAuth | 861 |
-| GUC-wrapped (tenantQuery/withTenantConnection/withTenantTransaction) | 960 |
-| tenant-wrapped through an org-threaded helper | 899 |
-| references organizationId | 1080 |
-| raw @/lib/db pool import | 358 |
+| total route files | 1233 |
+| withAuth | 872 |
+| GUC-wrapped (tenantQuery/withTenantConnection/withTenantTransaction) | 971 |
+| tenant-wrapped through an org-threaded helper | 910 |
+| references organizationId | 1092 |
+| raw @/lib/db pool import | 364 |
 | drizzle / neon-http | 19 |
 | uses DOGFOOD_ORG_ID / transitionalDogfoodOrgId | 6 |
-| cron routes | 44 |
+| cron routes | 45 |
 
 | risk | count |
 |---|---|
-| critical | 24 |
+| critical | 26 |
 | high | 25 |
 | medium | 61 |
-| low | 653 |
-| info | 453 |
+| low | 661 |
+| info | 460 |
 
 ## Routes by risk (critical + high first)
 
@@ -54,6 +54,8 @@
 | critical | `/api/racks/[code]/move` | POST | — | — | — | locations, sku_stock |
 | critical | `/api/racks/[code]/shelves` | POST | — | — | — | locations, sku_stock |
 | critical | `/api/racks/adopt` | POST | ✅ | — | — | locations, sku_stock |
+| critical | `/api/records/tracking` | POST | ✅ | — | — | orders |
+| critical | `/api/records/tracking/unlink` | POST | ✅ | — | — | orders |
 | critical | `/api/v1/session` | POST/GET/DELETE | ✅ | — | — | memberships |
 | high | `/api/admin/po-gmail/connect` | GET | ✅ | — | — | accounts |
 | high | `/api/auth/account/passkey` | GET | — | — | — | memberships |
@@ -242,6 +244,7 @@
 | low | `/api/debug-tracking` | GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, work_assignments, packer_logs, orders |
 | low | `/api/documents/[id]` | PATCH/DELETE | — | ✅ | ✅ | documents, orders |
 | low | `/api/documents/[id]/content` | GET | — | ✅ | ✅ | documents, orders, photos, types |
+| low | `/api/documents/[id]/unlink` | POST | — | ✅ | ✅ | documents, orders |
 | low | `/api/documents/download-zip` | GET | — | ✅ | ✅ | documents, orders |
 | low | `/api/ebay/accounts` | GET/PUT/DELETE | ✅ | ✅ | ✅ | ebay_accounts, accounts |
 | low | `/api/ebay/callback` | GET | — | ✅ | ✅ | platform_accounts, ebay_accounts |
@@ -288,6 +291,7 @@
 | low | `/api/fba/stage-counts` | GET | ✅ | ✅ | ✅ | fba_shipment_items |
 | low | `/api/forge/ingest` | POST | ✅ | ✅ | ✅ | cycle_forge_run_steps, cycle_forge_runs |
 | low | `/api/forge/runs` | GET | ✅ | ✅ | ✅ | cycle_forge_run_steps, cycle_forge_runs |
+| low | `/api/fulfilled/thread` | GET | ✅ | ✅ | ✅ | orders |
 | low | `/api/get-title-by-sku` | GET | ✅ | ✅ | ✅ | sku_platform_ids, sku_catalog, sku_stock, items, sku |
 | low | `/api/google-sheets/execute-script` | POST | ✅ | ✅ | ✅ | tech_serial_numbers, orders_exceptions, packer_logs, orders |
 | low | `/api/handling-units` | GET/POST | ✅ | ✅ | ✅ | handling_units, items |
@@ -389,10 +393,12 @@
 | low | `/api/orders/[id]/notes` | GET/POST | — | ✅ | ✅ | orders |
 | low | `/api/orders/[id]/pack-checklist` | GET | ✅ | ✅ | ✅ | sku_stock, sku |
 | low | `/api/orders/[id]/packing-checks` | POST | ✅ | ✅ | ✅ | staff |
+| low | `/api/orders/[id]/paperwork-suggestions` | GET | — | ✅ | ✅ | orders |
 | low | `/api/orders/[id]/pick-tasks` | GET | ✅ | ✅ | ✅ | orders |
 | low | `/api/orders/[id]/possible-duplicates` | GET | — | ✅ | ✅ | orders |
 | low | `/api/orders/[id]/price-breakdown` | GET | — | ✅ | ✅ | orders |
 | low | `/api/orders/[id]/release` | POST | ✅ | ✅ | ✅ | order_unit_allocations, serial_units, orders, sku |
+| low | `/api/orders/[id]/sku-suggestions` | GET/POST | — | ✅ | ✅ | orders, sku |
 | low | `/api/orders/[id]/substitute` | POST | ✅ | ✅ | ✅ | serial_units, orders, sku |
 | low | `/api/orders/[id]/tags` | GET/POST | — | ✅ | ✅ | orders |
 | low | `/api/orders/[id]/timeline` | GET | — | ✅ | ✅ | shipping_tracking_numbers, order_unit_allocations, station_activity_logs, tech_serial_numbers, rma_authorizations, inventory_events +12 |
@@ -408,7 +414,7 @@
 | low | `/api/orders/buyer-cancel` | POST | — | ✅ | ✅ | orders |
 | low | `/api/orders/caged` | GET | ✅ | ✅ | ✅ | orders |
 | low | `/api/orders/check-shipped` | POST | ✅ | ✅ | ✅ | station_activity_logs, orders |
-| low | `/api/orders/delete` | POST | ✅ | ✅ | ✅ | feed_memberships, work_assignments, orders, sku |
+| low | `/api/orders/delete` | POST | ✅ | ✅ | ✅ | orders, sku |
 | low | `/api/orders/desk-counts` | GET | ✅ | ✅ | ✅ | orders |
 | low | `/api/orders/exceptions` | GET | ✅ | ✅ | ✅ | orders |
 | low | `/api/orders/import-csv` | POST | ✅ | ✅ | ✅ | orders, sku |
@@ -421,6 +427,7 @@
 | low | `/api/orders/intake/square-invoices/link` | POST | ✅ | ✅ | ✅ | orders |
 | low | `/api/orders/intake/square-invoices/payment` | GET | ✅ | ✅ | ✅ | orders |
 | low | `/api/orders/integrity-check` | POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, orders, sku |
+| low | `/api/orders/list-removal` | POST/DELETE | — | ✅ | ✅ | orders |
 | low | `/api/orders/lookup/[orderId]` | GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, tech_serial_numbers, work_assignments, order_notes, customers, orders +2 |
 | low | `/api/orders/missing-parts` | POST | ✅ | ✅ | ✅ | orders, staff, sku |
 | low | `/api/orders/next` | GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, work_assignments, orders, staff, sku |
@@ -441,7 +448,7 @@
 | low | `/api/pack/ship` | POST | ✅ | ✅ | ✅ | order_unit_allocations, order_unit_amendments, inventory_events, sku_stock_ledger, serial_units, orders +1 |
 | low | `/api/packerlogs` | GET/POST/PUT/DELETE | ✅ | ✅ | ✅ | orders, photos, staff, types |
 | low | `/api/packerlogs/counts` | GET | ✅ | ✅ | ✅ | staff |
-| low | `/api/packing-logs` | GET/POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, fba_shipment_tracking, fba_shipment_items, sku_platform_ids, work_assignments, fba_shipments +9 |
+| low | `/api/packing-logs` | GET/POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, fba_shipment_tracking, fba_shipment_items, work_assignments, fba_shipments, packer_logs +6 |
 | low | `/api/packing-logs/draft` | POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, orders, staff |
 | low | `/api/packing-logs/history` | GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, photo_entity_links, packer_logs, orders, photos, sku |
 | low | `/api/packing-logs/save-photo` | POST | ✅ | ✅ | ✅ | photos, types |
@@ -486,7 +493,7 @@
 | low | `/api/picking/desk/unpick` | POST | ✅ | ✅ | ✅ | orders |
 | low | `/api/picking/units/scan` | POST | ✅ | ✅ | ✅ | order_unit_allocations, inventory_events, serial_units, orders, sku |
 | low | `/api/picking/units/unscan` | POST | ✅ | ✅ | ✅ | serial_units, orders |
-| low | `/api/post-multi-sn` | POST | ✅ | ✅ | ✅ | station_activity_logs, tech_serial_numbers, label_print_jobs, sku |
+| low | `/api/post-multi-sn` | POST | ✅ | ✅ | ✅ | station_activity_logs, tech_serial_numbers, sku |
 | low | `/api/prepack/catalog/[id]` | GET | — | ✅ | ✅ | sku_stock |
 | low | `/api/prepack/catalog/[id]/manual` | POST/DELETE | — | ✅ | ✅ | product_manuals, types |
 | low | `/api/prepack/catalog/[id]/manual/upload` | POST | — | ✅ | ✅ | product_manuals |
@@ -519,7 +526,7 @@
 | low | `/api/reason-codes` | GET/POST | ✅ | ✅ | ✅ | reason_codes, sku_stock |
 | low | `/api/reason-codes/[id]` | GET/PATCH/DELETE | — | ✅ | ✅ | sku_stock |
 | low | `/api/receiving-entry` | POST/GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, receiving_line_zoho, receiving_carton, work_assignments, receiving_line |
-| low | `/api/receiving-lines` | GET/POST/PATCH/DELETE | ✅ | ✅ | ✅ | shipping_tracking_numbers, receiving_line_testing, serial_unit_provenance, station_scan_sessions, receiving_line_zoho, receiving_carton +6 |
+| low | `/api/receiving-lines` | GET/POST/PATCH/DELETE | ✅ | ✅ | ✅ | shipping_tracking_numbers, receiving_line_testing, serial_unit_provenance, station_scan_sessions, receiving_line_zoho, receiving_carton +7 |
 | low | `/api/receiving-lines/[id]/ensure-catalog` | POST | ✅ | ✅ | ✅ | sku_catalog |
 | low | `/api/receiving-lines/[id]/qc-checks` | POST/PUT/DELETE | ✅ | ✅ | ✅ | qc_check_templates, sku |
 | low | `/api/receiving-lines/[id]/testing-bundle` | GET | ✅ | ✅ | ✅ | product_manuals, sku_catalog, sku |
@@ -539,6 +546,7 @@
 | low | `/api/receiving-logs/search` | GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, receiving_carton |
 | low | `/api/receiving-photos` | GET/POST/DELETE | ✅ | ✅ | ✅ | receiving_carton, receiving_triage, receiving_scans, photos |
 | low | `/api/receiving/[id]` | GET/PATCH | — | ✅ | ✅ | shipping_tracking_numbers, receiving_line_testing, serial_unit_provenance, local_pickup_orders, receiving_line_zoho, receiving_carton +12 |
+| low | `/api/receiving/[id]/acknowledge-unbox` | POST | ✅ | ✅ | ✅ | receiving_unbox |
 | low | `/api/receiving/[id]/amazon-return-lookup` | POST | — | ✅ | ✅ | shipping_tracking_numbers, receiving_carton |
 | low | `/api/receiving/[id]/inventory-sync` | POST | — | ✅ | ✅ | receiving_carton |
 | low | `/api/receiving/add-unmatched-line` | POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, receiving_carton, sku_platform_ids, receiving_line, repair_service, items +1 |
@@ -563,15 +571,16 @@
 | low | `/api/receiving/lines/[id]/timeline` | GET | — | ✅ | ✅ | serial_units, locations, staff, sku |
 | low | `/api/receiving/lines/[id]/units/[unitId]/condition` | PATCH | ✅ | ✅ | ✅ | receiving_line_unit, receiving_line |
 | low | `/api/receiving/lines/[id]/units/[unitId]/serial-absent` | POST | ✅ | ✅ | ✅ | receiving_line_unit, receiving_line |
-| low | `/api/receiving/lookup-po` | POST | ✅ | ✅ | ✅ | receiving_line_testing, receiving_line_zoho, receiving_carton, receiving_triage, receiving_scans, receiving_unbox +5 |
+| low | `/api/receiving/lookup-po` | POST | ✅ | ✅ | ✅ | receiving_line_testing, receiving_line_zoho, receiving_carton, receiving_triage, receiving_scans, receiving_unbox +7 |
 | low | `/api/receiving/mark-received-po` | POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, serial_unit_provenance, receiving_line_zoho, receiving_carton, receiving_unbox, receiving_line +5 |
 | low | `/api/receiving/match` | POST/GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, receiving_line_testing, receiving_line_zoho, receiving_carton, work_assignments, receiving_line +3 |
 | low | `/api/receiving/pending-unboxing` | GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, receiving_line_testing, receiving_line_zoho, receiving_carton, receiving_triage, receiving_unbox +3 |
 | low | `/api/receiving/pending-work` | GET | ✅ | ✅ | ✅ | items |
 | low | `/api/receiving/po-search` | GET | ✅ | ✅ | ✅ | zoho_po_mirror, sku_catalog, orders, items, sku |
 | low | `/api/receiving/po/[poId]` | GET | ✅ | ✅ | ✅ | receiving_line_testing, receiving_line_zoho, receiving_carton, receiving_line, sku_catalog, photos +2 |
-| low | `/api/receiving/po/[poId]/attach-box` | GET/POST | — | ✅ | ✅ | inbound_purchase_order_links, receiving_line_zoho, receiving_carton, receiving_line, zoho_po_mirror |
+| low | `/api/receiving/po/[poId]/attach-box` | GET/POST/DELETE | — | ✅ | ✅ | inbound_purchase_order_links, receiving_line_zoho, receiving_carton, receiving_line, zoho_po_mirror |
 | low | `/api/receiving/po/list` | GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, receiving_line_zoho, receiving_carton, receiving_triage, receiving_line, photos +1 |
+| low | `/api/receiving/putaway-targets` | GET/POST | ✅ | ✅ | ✅ | sku_stock |
 | low | `/api/receiving/rail-exclusions` | GET/POST/DELETE | ✅ | ✅ | ✅ | items |
 | low | `/api/receiving/relink` | POST | ✅ | ✅ | ✅ | sku |
 | low | `/api/receiving/scan-serial` | POST/DELETE | ✅ | ✅ | ✅ | receiving_line_zoho, receiving_line, sku |
@@ -759,7 +768,7 @@
 | low | `/api/tracking-exceptions/[id]` | GET/PATCH/DELETE | — | ✅ | ✅ | tracking_exceptions, receiving_carton, staff |
 | low | `/api/tracking-exceptions/[id]/refresh` | POST | — | ✅ | ✅ | tracking_exceptions, receiving_carton, receiving_scans, sku |
 | low | `/api/transfers` | POST | ✅ | ✅ | ✅ | inventory_events, locations, sku |
-| low | `/api/units/next-id` | POST | ✅ | ✅ | ✅ | sku_catalog, sku |
+| low | `/api/units/next-id` | POST | ✅ | ✅ | ✅ | serial_units, sku_catalog, sku |
 | low | `/api/units/pack-placement` | GET | ✅ | ✅ | ✅ | locations, orders |
 | low | `/api/units/pack-placement/move` | POST | ✅ | ✅ | ✅ | orders |
 | low | `/api/units/resolve-id` | POST | ✅ | ✅ | ✅ | sku_catalog, sku |
@@ -767,6 +776,7 @@
 | low | `/api/v1/label-batches/[id]` | GET/DELETE | ✅ | ✅ | ✅ | orders |
 | low | `/api/v1/label-buys` | POST | ✅ | ✅ | ✅ | orders |
 | low | `/api/v1/label-ingestions/[id]` | GET/DELETE | ✅ | ✅ | ✅ | orders |
+| low | `/api/v1/label-ingestions/[id]/file-on-order` | POST | ✅ | ✅ | ✅ | documents |
 | low | `/api/v1/outbound/work` | GET | ✅ | ✅ | ✅ | orders |
 | low | `/api/v1/paperwork-prints` | POST | ✅ | ✅ | ✅ | items |
 | low | `/api/v1/picking/sessions` | POST | ✅ | ✅ | ✅ | orders |
@@ -924,13 +934,14 @@
 - ✅ `/api/forge/ingest` (low)
 - ✅ `/api/forge/runs` (low)
 
-### `documents` — 22 routes, 4 not yet GUC-safe
+### `documents` — 24 routes, 4 not yet GUC-safe
 
 - ⛔ `/api/cron/documents/ecwid-packing-slips` (high)
 - ⛔ `/api/cron/documents/ensure-outbound` (high)
 - ⛔ `/api/cron/documents/nas-mirror` (high)
 - ✅ `/api/documents/[id]` (low)
 - ✅ `/api/documents/[id]/content` (low)
+- ✅ `/api/documents/[id]/unlink` (low)
 - ✅ `/api/documents/download-zip` (low)
 - ✅ `/api/order-labels` (low)
 - ✅ `/api/orders/[id]/documents` (low)
@@ -948,6 +959,7 @@
 - ✅ `/api/tasks/[id]/documents` (low)
 - ✅ `/api/tasks/[id]/documents/comments` (low)
 - ⛔ `/api/tasks/plan-files` (high)
+- ✅ `/api/v1/label-ingestions/[id]/file-on-order` (low)
 
 ### `ebay_accounts` — 4 routes, 1 not yet GUC-safe
 
@@ -1126,10 +1138,9 @@
 - ✅ `/api/fba/shipments/active-with-details` (low)
 - ✅ `/api/fba/shipments/split-for-paired-review` (low)
 
-### `feed_memberships` — 2 routes, 0 not yet GUC-safe
+### `feed_memberships` — 1 routes, 0 not yet GUC-safe
 
 - ✅ `/api/cron/feed-membership-projection` (low)
-- ✅ `/api/orders/delete` (low)
 
 ### `google_oauth_tokens` — 3 routes, 3 not yet GUC-safe
 
@@ -1300,10 +1311,6 @@
 - ⛔ `/api/zoho/oauth/authorize` (high)
 - ⛔ `/api/zoho/purchase-orders` (medium)
 
-### `label_print_jobs` — 1 routes, 0 not yet GUC-safe
-
-- ✅ `/api/post-multi-sn` (low)
-
 ### `listing_photos` — 1 routes, 0 not yet GUC-safe
 
 - ✅ `/api/serial-units/[id]` (low)
@@ -1448,7 +1455,7 @@
 - ✅ `/api/orders/[id]/amendments` (low)
 - ✅ `/api/pack/ship` (low)
 
-### `orders` — 198 routes, 15 not yet GUC-safe
+### `orders` — 205 routes, 17 not yet GUC-safe
 
 - ✅ `/api/admin/fix-status` (low)
 - ✅ `/api/admin/po-gmail/missing-orders` (low)
@@ -1468,12 +1475,14 @@
 - ✅ `/api/debug-tracking` (low)
 - ✅ `/api/documents/[id]` (low)
 - ✅ `/api/documents/[id]/content` (low)
+- ✅ `/api/documents/[id]/unlink` (low)
 - ✅ `/api/documents/download-zip` (low)
 - ✅ `/api/ebay/search` (low)
 - ⛔ `/api/ecwid/order-search` (high)
 - ✅ `/api/ecwid/recent-repair-orders` (low)
 - ✅ `/api/ecwid/sync-exception-tracking` (low)
 - ✅ `/api/fba/fnsku-scan` (low)
+- ✅ `/api/fulfilled/thread` (low)
 - ✅ `/api/google-sheets/execute-script` (low)
 - ✅ `/api/identification/jobs/[jobId]` (low)
 - ✅ `/api/imports/rows` (low)
@@ -1525,10 +1534,12 @@
 - ✅ `/api/orders/[id]/manuals` (low)
 - ✅ `/api/orders/[id]/manuals/[manualId]` (low)
 - ✅ `/api/orders/[id]/notes` (low)
+- ✅ `/api/orders/[id]/paperwork-suggestions` (low)
 - ✅ `/api/orders/[id]/pick-tasks` (low)
 - ✅ `/api/orders/[id]/possible-duplicates` (low)
 - ✅ `/api/orders/[id]/price-breakdown` (low)
 - ✅ `/api/orders/[id]/release` (low)
+- ✅ `/api/orders/[id]/sku-suggestions` (low)
 - ✅ `/api/orders/[id]/substitute` (low)
 - ✅ `/api/orders/[id]/tags` (low)
 - ✅ `/api/orders/[id]/timeline` (low)
@@ -1561,6 +1572,7 @@
 - ✅ `/api/orders/intake/square-invoices/link` (low)
 - ✅ `/api/orders/intake/square-invoices/payment` (low)
 - ✅ `/api/orders/integrity-check` (low)
+- ✅ `/api/orders/list-removal` (low)
 - ✅ `/api/orders/lookup/[orderId]` (low)
 - ✅ `/api/orders/missing-parts` (low)
 - ✅ `/api/orders/next` (low)
@@ -1599,6 +1611,8 @@
 - ✅ `/api/receiving/inbound/orders/for-carton` (low)
 - ✅ `/api/receiving/match` (low)
 - ✅ `/api/receiving/po-search` (low)
+- ⛔ `/api/records/tracking` (critical)
+- ⛔ `/api/records/tracking/unlink` (critical)
 - ✅ `/api/replenish/shipped-fifo` (low)
 - ✅ `/api/reports/records/export` (low)
 - ✅ `/api/scan-tracking` (low)
@@ -2027,10 +2041,11 @@
 - ✅ `/api/receiving/triage/metrics` (low)
 - ✅ `/api/receiving/triage/staging-map` (low)
 
-### `receiving_unbox` — 8 routes, 0 not yet GUC-safe
+### `receiving_unbox` — 9 routes, 0 not yet GUC-safe
 
 - ✅ `/api/receiving-logs` (low)
 - ✅ `/api/receiving/[id]` (low)
+- ✅ `/api/receiving/[id]/acknowledge-unbox` (low)
 - ✅ `/api/receiving/lookup-po` (low)
 - ✅ `/api/receiving/mark-received-po` (low)
 - ✅ `/api/receiving/pending-unboxing` (low)
@@ -2077,7 +2092,7 @@
 - ✅ `/api/receiving/mark-received-po` (low)
 - ✅ `/api/sku/by-tracking` (low)
 
-### `serial_units` — 39 routes, 0 not yet GUC-safe
+### `serial_units` — 40 routes, 0 not yet GUC-safe
 
 - ✅ `/api/fba/items/[id]/link-unit` (low)
 - ✅ `/api/fba/shipments/[id]/ship-units` (low)
@@ -2117,6 +2132,7 @@
 - ✅ `/api/serial-units/[id]/release` (low)
 - ✅ `/api/serial-units/[id]/timeline-photos` (low)
 - ✅ `/api/sku/by-tracking` (low)
+- ✅ `/api/units/next-id` (low)
 - ✅ `/api/workflow/flow-audit` (low)
 
 ### `shifts` — 2 routes, 0 not yet GUC-safe
@@ -2188,7 +2204,7 @@
 - ✅ `/api/shipped/lookup-order` (low)
 - ✅ `/api/shipped/scan-out` (low)
 
-### `sku` — 217 routes, 8 not yet GUC-safe
+### `sku` — 218 routes, 8 not yet GUC-safe
 
 - ✅ `/api/activity/feed` (low)
 - ✅ `/api/admin/fba-fnskus` (low)
@@ -2265,6 +2281,7 @@
 - ✅ `/api/orders/[id]/cage-release` (low)
 - ✅ `/api/orders/[id]/pack-checklist` (low)
 - ✅ `/api/orders/[id]/release` (low)
+- ✅ `/api/orders/[id]/sku-suggestions` (low)
 - ✅ `/api/orders/[id]/substitute` (low)
 - ✅ `/api/orders/[id]/timeline` (low)
 - ✅ `/api/orders/assign` (low)
@@ -2408,7 +2425,7 @@
 - ✅ `/api/work-orders` (low)
 - ⛔ `/api/zoho/purchase-orders` (medium)
 
-### `sku_catalog` — 47 routes, 0 not yet GUC-safe
+### `sku_catalog` — 46 routes, 0 not yet GUC-safe
 
 - ✅ `/api/cron/sku-catalog/refresh-suggestions` (low)
 - ✅ `/api/ecwid/recent-repair-orders` (low)
@@ -2421,7 +2438,6 @@
 - ✅ `/api/manuals/recent` (low)
 - ✅ `/api/manuals/resolve` (low)
 - ✅ `/api/manuals/upsert` (low)
-- ✅ `/api/packing-logs` (low)
 - ✅ `/api/product-manuals/bulk` (low)
 - ✅ `/api/product-manuals/by-category` (low)
 - ✅ `/api/product-manuals/rename-folder` (low)
@@ -2471,7 +2487,7 @@
 
 - ✅ `/api/sku-catalog/pairing-queue` (low)
 
-### `sku_platform_ids` — 22 routes, 0 not yet GUC-safe
+### `sku_platform_ids` — 21 routes, 0 not yet GUC-safe
 
 - ✅ `/api/ecwid/recent-repair-orders` (low)
 - ✅ `/api/get-title-by-sku` (low)
@@ -2479,7 +2495,6 @@
 - ✅ `/api/manuals/recent` (low)
 - ✅ `/api/manuals/resolve` (low)
 - ✅ `/api/manuals/upsert` (low)
-- ✅ `/api/packing-logs` (low)
 - ✅ `/api/products/[sku]` (low)
 - ✅ `/api/receiving/add-unmatched-line` (low)
 - ✅ `/api/reports/dead-stock` (low)
@@ -2540,7 +2555,6 @@
 - ✅ `/api/manuals/upsert` (low)
 - ✅ `/api/need-to-order` (low)
 - ✅ `/api/orders/[id]/pack-checklist` (low)
-- ✅ `/api/packing-logs` (low)
 - ⛔ `/api/packing/policy` (medium)
 - ✅ `/api/pending-skus` (low)
 - ✅ `/api/photos/[id]` (low)
@@ -2563,6 +2577,7 @@
 - ⛔ `/api/racks/adopt` (critical)
 - ✅ `/api/reason-codes` (low)
 - ✅ `/api/reason-codes/[id]` (low)
+- ✅ `/api/receiving/putaway-targets` (low)
 - ✅ `/api/replenish/shipped-fifo` (low)
 - ✅ `/api/reports/dead-stock` (low)
 - ✅ `/api/reports/velocity` (low)
@@ -2924,6 +2939,10 @@
 - ✅ `/api/suppliers` (low)
 - ✅ `/api/suppliers/[id]` (low)
 
+### `support_tickets` — 1 routes, 0 not yet GUC-safe
+
+- ✅ `/api/receiving/lookup-po` (low)
+
 ### `sync_cursors` — 1 routes, 0 not yet GUC-safe
 
 - ✅ `/api/admin/po-mirror/health` (low)
@@ -2960,6 +2979,10 @@
 - ✅ `/api/orders/[id]/timeline` (low)
 - ✅ `/api/threads/[id]/messages` (low)
 
+### `ticket_links` — 1 routes, 0 not yet GUC-safe
+
+- ✅ `/api/receiving/lookup-po` (low)
+
 ### `tool_registry` — 1 routes, 0 not yet GUC-safe
 
 - ✅ `/api/tool-forge/requests` (low)
@@ -2970,7 +2993,7 @@
 - ✅ `/api/tracking-exceptions/[id]` (low)
 - ✅ `/api/tracking-exceptions/[id]/refresh` (low)
 
-### `types` — 47 routes, 11 not yet GUC-safe
+### `types` — 48 routes, 11 not yet GUC-safe
 
 - ✅ `/api/assistant/chat` (low)
 - ⛔ `/api/auth/account/passkey/authenticate/finish` (medium)
@@ -3007,6 +3030,7 @@
 - ✅ `/api/prepack/catalog/[id]/parts` (low)
 - ✅ `/api/prepack/package` (low)
 - ✅ `/api/prepack/unit` (low)
+- ✅ `/api/receiving-lines` (low)
 - ✅ `/api/receiving-lines/incoming/refresh/stream` (low)
 - ✅ `/api/repair/square-payment-link` (low)
 - ✅ `/api/serial-units/[id]/grade` (low)
@@ -3057,7 +3081,7 @@
 - ✅ `/api/warranty/claims/[id]/restore` (low)
 - ✅ `/api/warranty/claims/bulk/restore` (low)
 
-### `work_assignments` — 23 routes, 0 not yet GUC-safe
+### `work_assignments` — 22 routes, 0 not yet GUC-safe
 
 - ✅ `/api/assignments/next` (low)
 - ✅ `/api/assignments/sku-search` (low)
@@ -3069,7 +3093,6 @@
 - ✅ `/api/fba/shipments/today/duplicate-yesterday` (low)
 - ✅ `/api/fba/shipments/today/items` (low)
 - ✅ `/api/local-pickups` (low)
-- ✅ `/api/orders/delete` (low)
 - ✅ `/api/orders/lookup/[orderId]` (low)
 - ✅ `/api/orders/next` (low)
 - ✅ `/api/orders/recent` (low)

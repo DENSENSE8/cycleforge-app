@@ -5,18 +5,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import {
-  deferInvalidateTriageAndUnboxQueueFeeds,
-  dispatchReceivingLinesPrepended,
   removePendingScanRailRow,
   upsertReceivingRailRows,
-  upsertUnboxQueueRows,
-  receivingRailRowKey,
 } from '@/lib/queries/receiving-queries';
 import {
   resolveCachedCarton,
   resolveInternalCode,
   resolveLocalTracking,
   resolveViaLookupPo,
+  type CachedCartonResolution,
   type LocalTrackingResolution,
   type ScanResolutionMode,
   type ScanIntakeSurface,
@@ -26,6 +23,7 @@ import {
   applyUnboxCartonOpened,
   applyUnmatchedCarton,
   refocusScanInput,
+  showOnArrivalRail,
 } from './scan-apply';
 import type { ScanApplyCtx, TrackingScanResult } from './scan-types';
 import { toast } from '@/lib/toast';
@@ -35,13 +33,13 @@ import {
   looksLikeReceivingCode,
 } from '@/lib/testing/resolve-testing-scan';
 import { type UnboxScanMode } from '@/components/sidebar/receiving/ReceivingUnboxScanBar';
-import {
-  buildOptimisticUnmatchedPaneStub,
-  buildPendingScanStubRow,
-  pendingScanReconcileKey,
-} from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { buildPendingScanRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
-import { checkUnboxScanVerdict } from '@/lib/receiving/unbox-scan-feedback-store';
+import {
+  beginUnboxScanVerdict,
+  settleUnboxScanVerdict,
+} from '@/lib/receiving/unbox-scan-feedback-store';
+import { cartonScanVerdict } from '@/lib/receiving/unbox-scan-feedback';
 
 // `ScanResolutionMode` now lives with the scan pipeline (src/lib/receiving/scan) and is re-exported here for the existing import surface.
 export type { ScanResolutionMode };
@@ -92,8 +90,6 @@ interface UseTrackingScanArgs {
   setArmedLineId: React.Dispatch<React.SetStateAction<number | null>>;
   /** Active sidebar mode — drives UNBOX_SCAN_OPENED stamping when `receive`. */
   receivingMode: ReceivingMode;
-  /** Triage only: paint the pre-resolve leading row the moment a scan starts. */
-  onTriageScanStart?: (trackingNumber: string) => void;
 }
 
 export interface TrackingScanState {
@@ -162,7 +158,6 @@ export function useTrackingScan({
   setPoContext,
   setArmedLineId,
   receivingMode,
-  onTriageScanStart,
 }: UseTrackingScanArgs): TrackingScanState {
   const [bulkTracking, setBulkTracking] = useState('');
   const [unboxScanMode, setUnboxScanMode] = useState<UnboxScanMode | null>(null);
@@ -231,68 +226,17 @@ export function useTrackingScan({
       // scan launched in, even if the operator switches modes mid-lookup.
       const scanSurface = intakeSurfaceRef.current;
 
-      // Unbox: known-carrier tracking always opens immediately (including unfound)
-      // — no mid-carton Stay/Switch hard-stop. Incomplete prior cartons stay in
-      // the queue; the operator can return without confirming Switch first.
-
-      setBulkTracking('');
-      const scanStartedAt = Date.now();
-      setTrackingLookupInFlight((n) => n + 1);
-      if (scanSurface === 'triage' && !resolveOnly) {
-        onTriageScanStart?.(trackingNumber);
-      }
-      // Unbox empty-pane-first: rail shows raw tracking#; right pane always
-      // replaces with an optimistic unmatched empty PO-items workspace. Lookup
-      // (or Phase-0 / local-tracking) fills header / accordion / label in place.
-      if (scanSurface === 'unbox' && !resolveOnly) {
-        upsertReceivingRailRows(queryClient, [buildPendingScanStubRow(trackingNumber)]);
-        const paneStub = buildOptimisticUnmatchedPaneStub(trackingNumber);
-        setLineAccordionBootstrap(accordionBootstrapRef.current);
-        setSelectedLine(paneStub);
-        setScanDriven(true);
-      }
-      // Found / unfound in one round trip, in parallel with the open chain
-      // below — the header's top-left line says it before the carton opens.
-      if (
-        scanSurface === 'unbox'
-        && !resolveOnly
-        && (lookupMode === 'tracking'
-          || (lookupMode === 'auto'
-            && !looksLikeTicketScan(trackingNumber)
-            && !looksLikeReceivingCode(trackingNumber)
-            && !trackingNumber.includes('-')))
-      ) {
-        void checkUnboxScanVerdict(trackingNumber);
-      }
-
-      // Triage arms the surface-tagged in-flight loader. Unbox uses the real
-      // unmatched empty pane as its in-flight display (no Opening skeleton).
-      const armScanLoader = () => {
-        window.dispatchEvent(
-          new CustomEvent('receiving-scan-in-flight', {
-            detail: { tracking: trackingNumber, startedAt: scanStartedAt, surface: scanSurface },
-          }),
-        );
-      };
-      if (scanSurface !== 'unbox' && !resolveOnly) {
-        armScanLoader();
-      }
-
-      const clearUnboxPendingRail = () => {
-        if (scanSurface === 'unbox') {
-          removePendingScanRailRow(queryClient, pendingScanReconcileKey(trackingNumber));
-        }
-      };
-
-      /** Order/ticket miss / hard error: drop optimistic pane + pending rail. */
-      const clearUnboxOptimisticOpen = () => {
-        clearUnboxPendingRail();
-        if (scanSurface === 'unbox' && isCurrent()) {
-          setSelectedLine(null);
-          setScanDriven(false);
-          setScanMatchedRows([]);
-        }
-      };
+      // A carrier tracking scan — not a ticket#, internal handle or order#. On
+      // Unbox it skips the internal-code rung and is answered by the rail
+      // cache first. Every cache key / lookup compares the CANONICAL tracking
+      // (IMpb / GS1 label spellings fold onto the stored number).
+      const isCarrierTrackingScan =
+        lookupMode === 'tracking'
+        || (lookupMode === 'auto'
+          && !looksLikeTicketScan(trackingNumber)
+          && !looksLikeReceivingCode(trackingNumber)
+          && !trackingNumber.includes('-'));
+      const unboxTrackingScan = scanSurface === 'unbox' && isCarrierTrackingScan;
 
       // Fire the per-scan audio/haptic confirm alongside the caller's onResult:
       const fireResult = (result: TrackingScanResult) => {
@@ -300,19 +244,125 @@ export function useTrackingScan({
         opts?.onResult?.(result);
       };
 
+      /** Phase 0 hit — open the already-materialized carton in place (zero lookup). */
+      const openCachedCarton = (cached: CachedCartonResolution) => {
+        fireResult({
+          tracking: trackingNumber,
+          matched: true,
+          po_ids: cached.poIds,
+          receiving_id: cached.receivingId,
+        });
+        if (resolveOnly) {
+          emitReceiving('receiving-scan-resolved');
+          return;
+        }
+        if (intakeSurfaceRef.current === 'unbox') {
+          settleUnboxScanVerdict(
+            trackingNumber,
+            cartonScanVerdict(
+              collectCachedReceivingRows(queryClient).filter((r) => r.receiving_id === cached.receivingId),
+            ),
+          );
+          // The open chokepoint: a carton already on the Unboxed rail stays put,
+          // untouched; touch-scan stamps scanned_by + the unbox-open milestone.
+          applyUnboxCartonOpened(queryClient, {
+            receivingId: cached.receivingId,
+            trackingNumber,
+            railRow: cached.row,
+            touchScan: { tracking: cached.row.tracking_number ?? trackingNumber },
+            unboxedAt: cachedLookupUnboxedAt(cached.row),
+          });
+        } else {
+          void fetch('/api/receiving/touch-scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              receiving_id: cached.receivingId,
+              tracking_number: cached.row.tracking_number ?? trackingNumber,
+            }),
+          }).catch(() => {});
+          showOnArrivalRail(queryClient, [cached.row]);
+        }
+        maybeStageReturnCarton(cached.receivingId, cached.row);
+        // Open via the rail's own select event so the sidebar selectedLine, rail highlight, and right-pane workspace stay in lockstep — this is…
+        if (shouldOpen()) dispatchSelectLine(cached.row);
+        window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
+      };
+      const resolveFromCache = (): CachedCartonResolution | null => {
+        try {
+          return resolveCachedCarton(
+            { value: trackingNumber, mode: lookupMode },
+            { readCachedRows: () => collectCachedReceivingRows(queryClient) },
+          );
+        } catch {
+          return null; // shape mismatch — fall through to the network rungs
+        }
+      };
+
+      setBulkTracking('');
+      if (unboxTrackingScan && !resolveOnly) beginUnboxScanVerdict(trackingNumber);
+
+      // Unbox carrier scan: the rail cache answers BEFORE anything paints, so a
+      // re-scan of a carton already listed opens it in place — no pending row,
+      // no reorder, no status change, no lookup.
+      if (unboxTrackingScan) {
+        const cached = resolveFromCache();
+        if (cached) {
+          openCachedCarton(cached);
+          return;
+        }
+      }
+
+      const scanStartedAt = Date.now();
+      setTrackingLookupInFlight((n) => n + 1);
+      // Unbox empty-pane-first on a cache miss: ONE pending row — the openable
+      // empty pane, and (for a carrier scan) the rail's pending row under the
+      // canonical shipment key, upgraded in place when the carton resolves.
+      const pendingRow = scanSurface === 'unbox' && !resolveOnly ? buildPendingScanRow(trackingNumber) : null;
+      if (pendingRow) {
+        if (unboxTrackingScan) upsertReceivingRailRows(queryClient, [pendingRow]);
+        setLineAccordionBootstrap(accordionBootstrapRef.current);
+        setSelectedLine(pendingRow);
+        setScanDriven(true);
+      }
+      // Warm the carton editor and the Ticket pane (a linked-ticket scan opens
+      // straight onto it). A chunk-load failure here is retried by the real
+      // render, so it is swallowed rather than left unhandled.
+      if (scanSurface === 'unbox') {
+        void import('@/components/receiving/workspace/receiving-line-workspace-loader')
+          .then((m) => m.loadReceivingLineWorkspace())
+          .catch(() => {});
+        void import('@/components/composer/StationTicketPane').catch(() => {});
+      }
+
+      // Triage arms the surface-tagged in-flight loader. Unbox uses the real
+      // unmatched empty pane as its in-flight display (no Opening skeleton).
+      if (scanSurface !== 'unbox' && !resolveOnly) {
+        window.dispatchEvent(
+          new CustomEvent('receiving-scan-in-flight', {
+            detail: { tracking: trackingNumber, startedAt: scanStartedAt, surface: scanSurface },
+          }),
+        );
+      }
+
+      /** Order/ticket miss / hard error: drop the pending row + pane; the header says so. */
+      const clearUnboxOptimisticOpen = () => {
+        if (scanSurface !== 'unbox') return;
+        settleUnboxScanVerdict(trackingNumber, { phase: 'error', receivingId: null, lineCount: 0 });
+        if (pendingRow) removePendingScanRailRow(queryClient, pendingRow.client_event_id ?? null);
+        if (isCurrent()) {
+          setSelectedLine(null);
+          setScanDriven(false);
+          setScanMatchedRows([]);
+        }
+      };
+
       void (async () => {
         try {
           // Serial / unit / carton-handle / receiving-id scan → jump straight to the PO line it belongs to, bypassing carrier tracking intake.
           try {
             // Canonical internal codes — carton/line/unit/handling-unit/repair handles (R-/RCV-/H-/L-/U-/REP-) and printed unit-ids — always resolve…
-            const skipInternalForUnboxTracking =
-              intakeSurfaceRef.current === 'unbox'
-              && (lookupMode === 'tracking'
-                || (lookupMode === 'auto'
-                  && !looksLikeTicketScan(trackingNumber)
-                  && !looksLikeReceivingCode(trackingNumber)
-                  && !trackingNumber.includes('-')));
-            const internal = skipInternalForUnboxTracking
+            const internal = unboxTrackingScan
               ? null
               : await resolveInternalCode(
                   { value: trackingNumber, mode: lookupMode },
@@ -339,31 +389,9 @@ export function useTrackingScan({
                     touchScan: {},
                     unboxedAt: cachedLookupUnboxedAt(internal.pick),
                   });
-                } else {
-                  clearUnboxPendingRail();
                 }
-              } else if (internal.rows.length > 0) {
-                dispatchReceivingLinesPrepended({
-                  segments: ['scanned', 'triage-combined'],
-                  scope: 'triage',
-                  intakeSurface: 'triage',
-                  rows: internal.rows,
-                });
-                const pick = internal.pick ?? internal.rows[0];
-                if (pick && internal.receivingId != null) {
-                  upsertUnboxQueueRows(queryClient, [
-                    {
-                      ...pick,
-                      client_event_id: String(
-                        receivingRailRowKey({
-                          tracking_number: pick.tracking_number ?? trackingNumber,
-                          receiving_id: internal.receivingId,
-                        }),
-                      ),
-                    },
-                  ]);
-                }
-                deferInvalidateTriageAndUnboxQueueFeeds(queryClient);
+              } else {
+                showOnArrivalRail(queryClient, internal.rows);
               }
               // Echo the resolution back to the caller (phone-paired scans listen for this to render their matched/unmatched result) — the code…
               setScanMatchedRows(internal.rows);
@@ -383,52 +411,14 @@ export function useTrackingScan({
             /* fall through to carrier tracking intake */
           }
 
-          // Phase 0 — Recent-list instant select (zero fetch, no loader).
-          try {
-            // Phase-0 rung (pure, src/lib/receiving/scan): read the feed caches
-            // and resolve to a materialized carton; the hook owns the effects.
-            const cached = resolveCachedCarton(
-              { value: trackingNumber, mode: lookupMode },
-              { readCachedRows: () => collectCachedReceivingRows(queryClient) },
-            );
+          // Phase 0 — Recent-list instant select (zero fetch, no loader). An
+          // Unbox carrier scan already asked the cache before painting.
+          if (!unboxTrackingScan) {
+            const cached = resolveFromCache();
             if (cached) {
-              fireResult({
-                tracking: trackingNumber,
-                matched: true,
-                po_ids: cached.poIds,
-                receiving_id: cached.receivingId,
-              });
-              if (resolveOnly) {
-                emitReceiving('receiving-scan-resolved');
-                return;
-              }
-              // Stamp scanned_by for the signed-in operator (same lightweight touch-scan the local-tracking short-circuit uses) — no blocking lookup-po…
-              if (intakeSurfaceRef.current === 'unbox') {
-                applyUnboxCartonOpened(queryClient, {
-                  receivingId: cached.receivingId,
-                  trackingNumber,
-                  touchScan: { tracking: cached.row.tracking_number ?? trackingNumber },
-                  unboxedAt: cachedLookupUnboxedAt(cached.row),
-                });
-              } else {
-                void fetch('/api/receiving/touch-scan', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    receiving_id: cached.receivingId,
-                    tracking_number: cached.row.tracking_number ?? trackingNumber,
-                  }),
-                }).catch(() => {});
-                clearUnboxPendingRail();
-              }
-              maybeStageReturnCarton(cached.receivingId, cached.row);
-              // Open via the rail's own select event so the sidebar selectedLine, rail highlight, and right-pane workspace stay in lockstep — this is…
-              if (shouldOpen()) dispatchSelectLine(cached.row);
-              window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
+              openCachedCarton(cached);
               return;
             }
-          } catch {
-            /* cache miss / shape mismatch — fall through to lookup-po */
           }
 
           // Local-first tracking short-circuit (Triage + Unbox). On a hit, upgrade
@@ -457,8 +447,9 @@ export function useTrackingScan({
               return;
             }
             if (intakeSurfaceRef.current === 'unbox') {
-              // Client short-circuit skips lookup-po — the open chokepoint drops
-              // the stub, upserts Unboxed, purges Arrival, and fires touch-scan
+              settleUnboxScanVerdict(trackingNumber, cartonScanVerdict(local.rows));
+              // Client short-circuit skips lookup-po — the open chokepoint lands
+              // or keeps the carton row, purges Arrival, and fires touch-scan
               // (scanned_by + unbox-open stamp) in one place.
               applyUnboxCartonOpened(queryClient, {
                 receivingId: local.receivingId,
@@ -477,27 +468,7 @@ export function useTrackingScan({
                   tracking_number: trackingNumber,
                 }),
               }).catch(() => {});
-              clearUnboxPendingRail();
-              dispatchReceivingLinesPrepended({
-                segments: ['scanned', 'triage-combined'],
-                scope: 'triage',
-                intakeSurface: 'triage',
-                rows: local.rows,
-              });
-              if (local.pick && local.receivingId != null) {
-                upsertUnboxQueueRows(queryClient, [
-                  {
-                    ...local.pick,
-                    client_event_id: String(
-                      receivingRailRowKey({
-                        tracking_number: local.pick.tracking_number ?? trackingNumber,
-                        receiving_id: local.receivingId,
-                      }),
-                    ),
-                  },
-                ]);
-              }
-              deferInvalidateTriageAndUnboxQueueFeeds(queryClient);
+              showOnArrivalRail(queryClient, local.rows);
             }
             if (shouldOpen()) {
               setScanMatchedRows(local.rows);
@@ -654,7 +625,6 @@ export function useTrackingScan({
       setScanDriven,
       setPoContext,
       setArmedLineId,
-      onTriageScanStart,
     ],
   );
 

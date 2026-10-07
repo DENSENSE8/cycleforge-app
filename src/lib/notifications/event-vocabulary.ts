@@ -159,6 +159,10 @@ const ASSIGNMENT_EVENTS = {
     key: 'work_task.follow_up_alert',
     label: 'Follow up',
   },
+  'qc.print_pass.failed': {
+    key: 'qc.print_pass.failed',
+    label: 'Not saved',
+  },
 } as const;
 
 type AssignmentEventKey = keyof typeof ASSIGNMENT_EVENTS;
@@ -174,6 +178,9 @@ export const SUPPORT_TICKET_MENTIONED: AssignmentEventKey = 'support_ticket.ment
 
 /** The event key a "follow up on this task" alert writes onto its inbox row. */
 export const WORK_TASK_FOLLOW_UP_ALERT: AssignmentEventKey = 'work_task.follow_up_alert';
+
+/** The event key a QC Pass / label print that could not be saved in the background writes onto the tech's inbox row. */
+export const QC_PRINT_PASS_FAILED: AssignmentEventKey = 'qc.print_pass.failed';
 
 /** Label for any inbox row, from whichever registry owns its key. */
 export function eventLabelFor(key: string): string {

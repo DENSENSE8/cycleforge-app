@@ -369,7 +369,7 @@ interface CandidateRow {
   is_active: boolean;
 }
 
-async function readLocationCandidates(orgId: OrgId, scanned: string): Promise<LocationCandidate[]> {
+export async function readLocationCandidates(orgId: OrgId, scanned: string): Promise<LocationCandidate[]> {
   const keys = locationCandidateKeys(scanned);
   if (keys.length === 0) return [];
   const { rows } = await tenantQuery<CandidateRow>(

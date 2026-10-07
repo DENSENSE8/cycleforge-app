@@ -10,7 +10,8 @@
  * PDF batch through the label upload writer, filed onto THIS order), Buy
  * label (the one order-bound buy flow, `BuyLabelSection`). Pickup orders need
  * no label. Every write files through `fileLabelOnOrderHttp` (confirm, then
- * apply) and re-reads the Orders view.
+ * apply) and re-reads the Orders view. In the docs sheet the sheet lists the
+ * labels itself and lends the slot its upload intake (`sheet`).
  */
 
 import { useMutation } from '@tanstack/react-query';
@@ -26,7 +27,7 @@ import { isPacketGap, type OrderPacket } from '@/lib/label-prints/order-packet-c
 import { toast } from '@/lib/toast';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { LabelUploadTray } from '../../upload/LabelUploadTray';
-import { useLabelUploads } from '../../upload/use-label-uploads';
+import { useLabelUploads, type LabelPageUploads } from '../../upload/use-label-uploads';
 import { LABEL_DROP_TYPES, printedFace } from './slot-faces';
 import { SlotDocument, SlotFrame, SlotHeading, useFilePicker } from './SlotFrame';
 import { UnpairedLabelPicker } from './pane-parts';
@@ -42,7 +43,7 @@ const MATCH_FACE: Readonly<Record<string, string>> = {
 };
 
 /** A ledger label on this order that is not yet filed: matched but unapplied, or held. */
-const HELD_FACE: Readonly<Record<string, string>> = {
+export const HELD_FACE: Readonly<Record<string, string>> = {
   QUARANTINED: 'Held — confirm it is this order’s',
   MATCHED: 'Matched — not filed yet',
   PARSED: 'Read — not filed yet',
@@ -53,12 +54,25 @@ const HELD_FACE: Readonly<Record<string, string>> = {
 
 type Panel = 'pair' | 'buy' | null;
 
-export function LabelSlot({ packet }: { packet: OrderPacket }) {
+export function LabelSlot({
+  packet,
+  sheet,
+}: {
+  packet: OrderPacket;
+  /**
+   * The docs sheet: it lists the order's labels itself (selectable, with their
+   * verbs) and owns the order's one label intake, so an owed label opens with
+   * the uploaded-label search already showing and every upload lands in the
+   * sheet's tray.
+   */
+  sheet?: { uploads: LabelPageUploads };
+}) {
   const refresh = usePacketRefresh();
   const slot = packet.label;
   const gap = isPacketGap(slot.state);
-  const [panel, setPanel] = useState<Panel>(null);
-  const uploads = useLabelUploads({ targetOrderId: packet.orderId, targetOrderRef: packet.orderRef, onSettled: refresh });
+  const [panel, setPanel] = useState<Panel>(() => (sheet && gap ? 'pair' : null));
+  const own = useLabelUploads({ targetOrderId: packet.orderId, targetOrderRef: packet.orderRef, onSettled: refresh });
+  const uploads = sheet?.uploads ?? own;
   const picker = useFilePicker(LABEL_DROP_TYPES, uploads.submit);
   const several = slot.labels.length + slot.documents.length > 1;
 
@@ -115,7 +129,7 @@ export function LabelSlot({ packet }: { packet: OrderPacket }) {
     >
       {picker.input}
       <SlotHeading title="Shipping label" state={slot.state} />
-      {slot.labels.length + slot.documents.length > 0 ? (
+      {!sheet && slot.labels.length + slot.documents.length > 0 ? (
         <ul className="mt-1 flex min-w-0 flex-col">
           {slot.labels.map((row, index) => (
             <SlotDocument
@@ -227,6 +241,7 @@ export function LabelSlot({ packet }: { packet: OrderPacket }) {
           pending={file.isPending}
           onPick={(label) => file.mutate({ id: label.id, rowVersion: label.rowVersion, matchedOrderId: null })}
           onClose={() => setPanel(null)}
+          autoFocus={!sheet}
         />
       ) : null}
       {panel === 'buy' ? (

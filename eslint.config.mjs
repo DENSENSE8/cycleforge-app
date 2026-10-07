@@ -816,6 +816,10 @@ export default [
       'src/components/sidebar/contextual/NavKeyStrip.tsx',
       // A key-binding editor: the bound key is the control's VALUE, not a hint.
       'src/components/scan/ScanHotkeyControl.tsx',
+      // Owner 2026-10-06 exception: the Quality control station paints its verdict keys
+      // (P / T / F) inside the Fail · Test again · Pass buttons and the Pass dock CTA.
+      'src/components/receiving/workspace/TestingStatusPills.tsx',
+      'src/design-system/primitives/SlicedActionDock.tsx',
     ],
     languageOptions: {
       parser: tsParser,

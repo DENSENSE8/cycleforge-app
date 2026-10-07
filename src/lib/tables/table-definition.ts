@@ -169,6 +169,8 @@ const TABLE_ENTITY_FAMILIES = [
   'search-hits',
   /** Purchasing › Upload check — one row = one data row of an uploaded order file beside what landed. */
   'inbound-import-check',
+  /** Fulfillment › Fulfilled, one board column zoomed in (L2) — one row = one fulfilled order in that bucket (`/fulfilled?col=`). */
+  'fulfilled-column',
 ] as const;
 
 /** Warehouse-dense default ceiling: */

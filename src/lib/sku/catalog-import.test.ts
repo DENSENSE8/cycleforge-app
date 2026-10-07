@@ -14,7 +14,15 @@ const CONTEXT: CatalogImportContext = {
     ['36', 'Silver Metalic Permanent Markers 36 Packs'],
     ['00185', 'Bose Lifestyle System'],
   ]),
-  mirrorItemIds: new Map([['01113', '5623409000001876359']]),
+  mirrorItemIds: new Map([
+    ['01113', '5623409000001876359'],
+    ['036', '5623409000009990001'],
+  ]),
+  paddingTwins: new Map([
+    ['89-P-1', ['00089-P-1']],
+    ['01103:B95', ['1103:B95']],
+    ['036', ['00036', '36']],
+  ]),
 };
 
 test('a retired [OLD] row is dropped whatever its SKU, and never counts toward the catalog', () => {
@@ -80,6 +88,25 @@ test('a SKU twice in one file (also once zero-stripped) is added once; the later
     CONTEXT,
   );
   assert.deepEqual(plan.rows.map((r) => r.outcome), ['new', 'duplicate']);
+});
+
+test('a padding twin of a catalog SKU is reported, not added — unless Zoho carries it as written', () => {
+  const plan = planCatalogImport(
+    [
+      { sku: '89-P-1', title: 'Bose Bluetooth Audio Adapter' },
+      { sku: '01103:B95', title: 'Speaker grille' },
+      { sku: '036', title: 'A Zoho item spelled 036' },
+      { sku: '00189-P-1', title: 'Control Console' },
+    ],
+    CONTEXT,
+  );
+  assert.deepEqual(plan.rows.map((r) => [r.sku, r.outcome, r.twinSku]), [
+    ['89-P-1', 'padding_twin', '00089-P-1'],
+    ['01103:B95', 'padding_twin', '1103:B95'],
+    ['036', 'new', null],
+    ['00189-P-1', 'new', null],
+  ]);
+  assert.equal(plan.summary.padding_twin, 2);
 });
 
 test('a row with no SKU or no title is reported, never added', () => {

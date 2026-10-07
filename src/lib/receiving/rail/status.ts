@@ -162,15 +162,6 @@ function getReceivedActivityAt(r: ReceivingLineRow): string | null {
   );
 }
 
-/**
- * Time label for the "Viewed" rail = when YOU opened each line. The server folds
- * the viewer's own `viewed_at` into `last_activity_at` for view=viewed, so the
- * rail reads "you opened this 3m ago" rather than the unrelated scan/line time.
- */
-export function getViewedAt(r: ReceivingLineRow): string | null {
-  return r.last_activity_at ?? r.updated_at ?? r.created_at ?? null;
-}
-
 /** QC Recent age axis — last open on Testing only. Never verdict / carton age. */
 export function getTestingOpenedAt(r: ReceivingLineRow): string | null {
   return r.testing_opened_at ?? null;

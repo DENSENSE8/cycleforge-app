@@ -21,7 +21,7 @@ test('order# stays in poDisplay — SKU never fills the order chip', () => {
       orderId: 'ORD-12345678',
       sku: 'SKU-999',
       tracking: '1Z999AA10123456784',
-      scanType: 'SKU',
+      scanType: 'ORDERS',
     }),
   );
   assert.equal(chips.poDisplay, 'ORD-12345678');
@@ -35,7 +35,7 @@ test('missing order# is a dash — never tracking, still never SKU', () => {
       orderId: '',
       sku: 'SKU-ONLY',
       tracking: '9400111899223344556677',
-      scanType: 'SKU',
+      scanType: 'ORDERS',
     }),
   );
   assert.equal(chips.poDisplay, '\u2014');

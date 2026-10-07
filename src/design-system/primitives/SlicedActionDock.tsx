@@ -14,6 +14,7 @@ import {
   cornerClass,
 } from '@/design-system/tokens/radius';
 import { Popover } from './Popover';
+import { KeyboardKey } from './KeyboardKey';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +68,18 @@ export interface SlicedActionDockProps {
   loading?: boolean;
   /** Title attribute for the CTA (explains disabled states). */
   title?: string;
+  /**
+   * The CTA's key, painted as a KeyboardKey inside the button. Owner
+   * 2026-10-06: the Quality control station paints its keys in the buttons
+   * (see design-system/pinned.json "KeyboardKey").
+   */
+  hotkey?: string;
+  /**
+   * Paint {@link hotkey}'s keycap. Default true. False keeps
+   * `aria-keyshortcuts` but hides the cap while the key is asleep (a text
+   * field holds focus, so the letter types instead).
+   */
+  hotkeyCap?: boolean;
   /** Tone preset. Ignored when `toneClasses` is set. Defaults to `accent`. */
   tone?: SlicedActionTone;
   /** Override the tone with arbitrary Tailwind classes (e.g. a per-row theme). */
@@ -247,6 +260,8 @@ export function SlicedActionDock({
   disabled = false,
   loading = false,
   title,
+  hotkey,
+  hotkeyCap = true,
   tone = 'accent',
   toneClasses,
   menu,
@@ -493,6 +508,7 @@ export function SlicedActionDock({
       }}
       disabled={isDisabled}
       title={title}
+      aria-keyshortcuts={hotkey}
       className={cn(
         'inline-flex min-w-0 items-center justify-center gap-2 bg-transparent text-sm font-semibold outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-60',
         ink.text,
@@ -511,6 +527,7 @@ export function SlicedActionDock({
     >
       {leadingIcon}
       <span className="truncate">{label}</span>
+      {hotkey && hotkeyCap ? <KeyboardKey size="sm" tone="inverse" aria-hidden>{hotkey}</KeyboardKey> : null}
     </button>
   ) : null;
 
@@ -558,6 +575,7 @@ export function SlicedActionDock({
           onClick={onClick}
           disabled={isDisabled}
           title={title}
+          aria-keyshortcuts={hotkey}
           whileTap={isDisabled ? undefined : { scale: 0.99 }}
           transition={spring}
           data-testid="sliced-action-dock"
@@ -582,6 +600,7 @@ export function SlicedActionDock({
         >
           {leadingIcon}
           <span className="truncate">{label}</span>
+          {hotkey && hotkeyCap ? <KeyboardKey size="sm" tone="inverse" aria-hidden>{hotkey}</KeyboardKey> : null}
         </motion.button>
       )}
     </>

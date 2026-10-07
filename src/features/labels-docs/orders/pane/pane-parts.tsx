@@ -54,10 +54,13 @@ export function UnpairedLabelPicker({
   pending,
   onPick,
   onClose,
+  autoFocus = true,
 }: {
   pending: boolean;
   onPick: (label: LabelIngestionDto) => void;
   onClose: () => void;
+  /** Off where the picker opens on its own (the docs sheet) — focus there belongs to the sheet's keys. */
+  autoFocus?: boolean;
 }) {
   const waiting = useQuery({
     queryKey: [...LABEL_INGESTIONS_QUERY_KEY, 'state', 'QUARANTINED'],
@@ -90,7 +93,7 @@ export function UnpairedLabelPicker({
           }}
           loading={waiting.isFetching}
           disabled={pending}
-          autoFocus
+          autoFocus={autoFocus}
           placeholder={pending ? 'Filing…' : 'Pick an uploaded label…'}
           searchPlaceholder="File name, tracking or carrier…"
           emptyMessage={waiting.isError ? 'Could not read the uploaded labels.' : 'No uploaded label is waiting for an order'}

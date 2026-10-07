@@ -68,7 +68,7 @@ export interface SidebarRailRowContext {
 }
 
 export interface SidebarRailShellProps<TRow> {
-  /** React-query key. */
+  /** React-query key — the cache entry under it is the rail's ONLY row store (optimistic writes land there). */
   queryKey: ReadonlyArray<unknown>;
   /** Fetcher returning the rows directly. */
   fetchFn: () => Promise<TRow[]>;
@@ -100,27 +100,11 @@ export interface SidebarRailShellProps<TRow> {
   refreshDomains?: readonly RefreshDomain[];
   /** Client-side subtractive DISPLAY filter — row ids hidden for THIS viewer (e.g. */
   excludedIds?: ReadonlySet<number>;
-  /**
-   * Client-side keep filter — rows that return false are hidden as a pure
-   * DISPLAY filter (same contract as {@link excludedIds}: not in the queryKey,
-   * so toggling facets re-filters in place). Unset = keep every row.
-   */
-  includeRow?: (row: TRow) => boolean;
-  /** Opt-in cold-reload continuity. */
-  loadSnapshot?: () => Promise<TRow[] | null>;
-  /**
-   * Persist the rows the rail just rendered as the next reload's seed. Called
-   * with the settled authoritative rows; the provider debounces + fires the
-   * write. Pair with {@link loadSnapshot}; unset = no persistence.
-   */
-  persistSnapshot?: (rows: TRow[]) => void;
   /** When set, a CustomEvent<'prev' | 'next'> on this name steps the selection to the adjacent rendered row and fires `onSelect` — the wiring… */
   navigateEvent?: string;
 
   selectedId: number | null;
   selectedRow?: TRow | null;
-  /** Optimistic row pinned at the very top until its real row lands in the feed — e.g. */
-  leadingRow?: TRow | null;
   limit?: number;
   /** When true (default), a selected row that falls outside the top-N window is hoisted to `rows[0]` (pinned lead) so the active line stays… */
   pinSelectedLead?: boolean;
@@ -138,13 +122,6 @@ export interface SidebarRailShellProps<TRow> {
    */
   eyebrowTitle: string;
   emptyText?: string;
-  /**
-   * When true, selects the first row once data loads if nothing is selected yet.
-   * Re-selects when selection is cleared (e.g. switching back to Receive mode).
-   */
-  autoSelectFirstWhenEmpty?: boolean;
-  /** Optional guard — return false to skip auto-select (deep links, wrong mode). */
-  canAutoSelectFirst?: () => boolean;
   /**
    * When true, rows cascade in (stagger reveal) the first time the feed loads,
    * and freshly-arriving rows slide in individually. Off by default so callers
@@ -182,7 +159,7 @@ export interface SidebarRailShellProps<TRow> {
   getCollapsePinFacts?: (row: TRow) => RailPeekFact[] | null | undefined;
 
   getId: (row: TRow) => number;
-  /** Durable RENDER identity, preferred over {@link getId} for the React `key` AND the {@link leadingRow} dedup. */
+  /** Durable RENDER identity, preferred over {@link getId} for the React `key`. */
   getReconcileId?: (row: TRow) => string | number;
   /** Grouping key (e.g. receiving_id). Return null for no grouping. */
   getGroupId?: (row: TRow) => number | null;

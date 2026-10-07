@@ -15,7 +15,6 @@ interface TestingFailReasonSheetProps {
   unitLabel: string;
   /** Fires with the chosen failure-mode id; the caller records the verdict. */
   onConfirm: (failureModeId: number) => void;
-  busy?: boolean;
 }
 
 export function TestingFailReasonSheet({
@@ -23,7 +22,6 @@ export function TestingFailReasonSheet({
   onClose,
   unitLabel,
   onConfirm,
-  busy = false,
 }: TestingFailReasonSheetProps) {
   const modes = useFailureModes();
   const [modeId, setModeId] = useState<number | null>(null);
@@ -86,11 +84,11 @@ export function TestingFailReasonSheet({
               <Button
                 variant="danger"
                 size="lg"
-                disabled={modeId == null || busy}
+                disabled={modeId == null}
                 onClick={() => modeId != null && onConfirm(modeId)}
                 className="w-full sm:w-auto"
               >
-                {busy ? 'Working…' : 'Fail this unit'}
+                Fail this unit
               </Button>
               <Button variant="ghost" size="lg" onClick={close} className="w-full sm:w-auto">
                 Cancel

@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { classifyScan } from '@/utils/packer';
-import { normalizeSku } from '@/utils/sku';
 import { upsertOpenOrderException } from '@/lib/orders-exceptions';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
 import { createCacheLookupKey, getCachedJson, invalidateCacheTags, setCachedJson } from '@/lib/cache/upstash-cache';
-import { normalizePSTTimestamp, getCurrentPSTDateKey } from '@/utils/date';
+import { normalizePSTTimestamp } from '@/utils/date';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { refreshOrderStageFacts } from '@/lib/orders/order-stage-facts';
@@ -19,11 +18,12 @@ import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-in
 import { mirrorLegacyPackingToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
-import { writeLedgerDelta } from '@/lib/inventory/write-ledger-delta';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import type { ScanClassification } from '@/utils/packer';
-import { createPackerLog, touchPackerLog } from '@/lib/packing/packer-log-writer';
+import { createPackerLog } from '@/lib/packing/packer-log-writer';
 import { packScanNoTrackingError, resolvePackScan } from '@/lib/packing/pack-scan-order';
+import { writePackScanLog } from '@/lib/packing/pack-scan-log';
+import { PACK_SKU_REFUSAL, parsePackingLogsScanMode } from '@/lib/packing/pack-scan-mode';
 import { releasePackedTotes } from '@/lib/picking/tote-scan';
 
 /** The order a tote / unit pack scan named, in the tracking ladder's row shape. */
@@ -70,48 +70,6 @@ function _packTierFromCleanSize(cleanSize?: ScanClassification['cleanSize']): 'S
     if (cleanSize === 'SMALL') return 'SMALL';
     return null;
 }
-
-/** Compute Sun–Sat PST week range from the current server time (matches client). */
-function getCurrentPSTWeekRange(): { startStr: string; endStr: string } {
-    const dateKey = getCurrentPSTDateKey();
-    const [year, month, day] = dateKey.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
-    const daysFromSunday = date.getDay();
-    const sunday = new Date(date);
-    sunday.setDate(date.getDate() - daysFromSunday);
-    const saturday = new Date(sunday);
-    saturday.setDate(sunday.getDate() + 6);
-    const fmt = (d: Date) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return { startStr: fmt(sunday), endStr: fmt(saturday) };
-}
-
-/**
- * Prepend a single new PackerRecord to the current week's Redis cache for this
- * packer (keyed by staffId + week) without invalidating the whole list.
- */
-async function prependToPackerLogsCache(staffId: number, newRecord: Record<string, unknown>, orgId: string) {
-    const { startStr, endStr } = getCurrentPSTWeekRange();
-    const cacheKey = createCacheLookupKey({
-        org: orgId,
-        packerId: String(staffId),
-        limit: 1000,
-        offset: 0,
-        weekStart: startStr,
-        weekEnd: endStr,
-    });
-    const existing = await getCachedJson<any[]>('api:packing-logs', cacheKey);
-    if (Array.isArray(existing)) {
-        await setCachedJson(
-            'api:packing-logs',
-            cacheKey,
-            [newRecord, ...existing].slice(0, 1000),
-            120,
-            ['packing-logs'],
-        );
-    }
-}
-
 export const GET = withAuth(async (req: NextRequest, ctx) => {
     const { searchParams } = new URL(req.url);
     // Admin-style filter `?packerId=` can still pin to a specific packer
@@ -181,7 +139,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
 
     // Request-level idempotency (client UUID). Natural shipment_id dedup still
-    // helps order re-scans; non-order / SKU path always INSERTs without a key.
+    // helps order re-scans; the non-order path always INSERTs without a key.
     const out = await withIdempotencyClaim(pool, {
         orgId: ctx.organizationId,
         idempotencyKey,
@@ -197,6 +155,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const scanInput = String(trackingNumber || '').trim();
         if (!scanInput) {
             return NextResponse.json({ error: 'trackingNumber is required' }, { status: 400 });
+        }
+        // An armed station mode searches that one identifier kind only.
+        const scanMode = parsePackingLogsScanMode(body.mode);
+        if (!scanMode) {
+            return NextResponse.json({ error: `Unknown packing scan mode: ${String(body.mode)}` }, { status: 400 });
         }
         // The scan as the operator made it — the station normalizes tracking
         // input, which would mangle a tote code or a unit label.
@@ -226,7 +189,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         // A tote or a unit (label / serial) names the order to pack; the pack
         // then runs on that order's primary tracking exactly like a label scan.
-        const packScan = await resolvePackScan(client, ctx.organizationId, packScanInput);
+        // Tracking mode skips both; tote / serial mode searches only its kind.
+        const packScan = scanMode === 'tracking'
+            ? null
+            : await resolvePackScan(
+                client,
+                ctx.organizationId,
+                packScanInput,
+                undefined,
+                scanMode === 'tote' ? 'tote' : scanMode === 'serial' ? 'unit' : null,
+            );
         if (packScan?.kind === 'refused') {
             return NextResponse.json({ error: packScan.error }, { status: 409 });
         }
@@ -237,6 +209,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 serialUnitId: packScan.serialUnitId,
                 unitKey: packScan.unitKey,
             }, { status: 404 });
+        }
+        if (!packScan && (scanMode === 'tote' || scanMode === 'serial')) {
+            const kind = scanMode === 'tote' ? 'tote' : 'unit';
+            return NextResponse.json({ error: `No ${kind} matches ${packScanInput}` }, { status: 404 });
         }
         let scannedOrder: PackScanOrderRow | null = null;
         if (packScan?.kind === 'order') {
@@ -263,6 +239,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const classification: ScanClassification = scannedOrder
             ? { ...classifyScan(String(scannedOrder.tracking_number)), trackingType: 'ORDERS' }
             : scanClassification;
+
+        // Packing scans FNSKU, never a SKU: refuse before anything is written.
+        // Checked on the raw scan too — tracking normalization strips the `:`.
+        if (
+            classification.trackingType === 'SKU'
+            || (!scannedOrder && classifyScan(packScanInput).trackingType === 'SKU')
+        ) {
+            return NextResponse.json({ error: PACK_SKU_REFUSAL }, { status: 400 });
+        }
+        if (scanMode === 'tracking' && classification.trackingType !== 'ORDERS') {
+            return NextResponse.json({ error: `${scanInput} is not a tracking number` }, { status: 400 });
+        }
 
         if (classification.trackingType === 'ORDERS') {
             // FedEx GS1 SoT: unwrap gun-scanned 96… envelopes to the short human
@@ -420,7 +408,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     };
 
                     await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'fba-board']);
-                    if (fbaRecord.id) await prependToPackerLogsCache(staffId, fbaRecord, ctx.organizationId);
 
                     // Hand off to a paired phone (if any) for the photo flow.
                     publishPackerScanReady({
@@ -479,9 +466,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
                 const { shipmentId: nfShipmentId, scanRef: nfScanRef } = await resolveShipmentId(scanInput, ctx.organizationId);
 
-                // Check for an existing row by shipment_id or scan_ref last-8 to avoid duplicates
-                const nfExisting = await client.query(`
-                    SELECT id, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at
+                // Re-scan of a box already logged (shipment_id or scan_ref last-8):
+                // reuse its row; this scan's activity still lands at the scan instant.
+                const nfExisting = await client.query<{ id: number }>(`
+                    SELECT id
                     FROM packer_logs
                     WHERE organization_id = $3
                       AND ((shipment_id IS NOT NULL AND shipment_id = $1)
@@ -490,30 +478,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     ORDER BY id DESC LIMIT 1
                 `, [nfShipmentId, trackingLast8, ctx.organizationId]);
 
-                let notFoundPackerLogId: number | null;
-                let notFoundCreatedAt: string;
-                if (nfExisting.rows.length > 0) {
-                    notFoundPackerLogId = nfExisting.rows[0].id;
-                    notFoundCreatedAt = nfExisting.rows[0].created_at ?? packDateTime;
-                    await touchPackerLog(client, {
-                        organizationId: ctx.organizationId,
-                        packerLogId: Number(notFoundPackerLogId),
-                        packedBy: staffId,
-                        source: 'packing-logs.not-found-rescan',
-                    });
-                } else {
-                    const notFoundLog = await createPackerLog(client, {
-                        organizationId: ctx.organizationId,
+                const nfLog = await writePackScanLog(client, {
+                    organizationId: ctx.organizationId,
+                    existingPackerLogId: nfExisting.rows[0] ? Number(nfExisting.rows[0].id) : null,
+                    scanAt: packDateTime,
+                    packedBy: staffId,
+                    create: {
                         shipmentId: nfShipmentId,
                         scanRef: nfScanRef,
                         trackingType: classification.trackingType,
-                        createdAt: packDateTime,
-                        packedBy: staffId,
                         source: 'packing-logs.not-found',
-                    });
-                    notFoundPackerLogId = notFoundLog?.id ?? null;
-                    notFoundCreatedAt = notFoundLog?.createdAt ?? packDateTime;
-                }
+                    },
+                    rescanSource: 'packing-logs.not-found-rescan',
+                });
+                const notFoundPackerLogId = nfLog.packerLogId;
 
                 if (notFoundPackerLogId) {
                     await mirrorLegacyPackingToAllocations({
@@ -539,7 +517,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
                 const notFoundRecord = {
                     id: notFoundPackerLogId,
-                    created_at: notFoundCreatedAt,
+                    created_at: nfLog.activityAt,
                     tracking_number: scanInput,
                     packed_by: staffId,
                     order_id: null,
@@ -564,7 +542,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         tracking_type: classification.trackingType,
                         tracking: scanInput,
                     },
-                    createdAt: notFoundCreatedAt,
+                    createdAt: nfLog.activityAt,
                 });
                 await refreshOrderStageFacts(ctx.organizationId, { shipmentIds: [nfShipmentId] }, client);
                 await recordAudit(client, ctx, req, {
@@ -583,7 +561,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
                 await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders', 'orders-next', 'shipped']);
                 if (nfSalId) publishActivityLogged({ organizationId: ctx.organizationId, id: nfSalId, station: 'PACK', activityType: 'PACK_COMPLETED', staffId, scanRef: nfScanRef ?? scanInput, fnsku: null, source: 'packing-logs' }).catch(() => {});
-                if (notFoundRecord.id) await prependToPackerLogsCache(staffId, notFoundRecord, ctx.organizationId);
 
                 publishPackerScanReady({
                     organizationId: ctx.organizationId,
@@ -657,39 +634,30 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
             const orderShipmentId: number | null = order.shipment_id ?? null;
 
-            // Check for an existing row by shipment_id to avoid duplicate rows on re-scan
-            const foundExisting = await client.query(`
-                SELECT id, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at
+            // Re-scan of a packed shipment reuses its row (no duplicate on re-scan);
+            // this scan's activity still lands at the scan instant.
+            const foundExisting = await client.query<{ id: number }>(`
+                SELECT id
                 FROM packer_logs
                 WHERE shipment_id = $1
                   AND organization_id = $2
                 ORDER BY id DESC LIMIT 1
             `, [orderShipmentId, ctx.organizationId]);
 
-            let foundPackerLogId: number | null;
-            let foundCreatedAt: string;
-            if (foundExisting.rows.length > 0) {
-                foundPackerLogId = foundExisting.rows[0].id;
-                foundCreatedAt = foundExisting.rows[0].created_at ?? packDateTime;
-                await touchPackerLog(client, {
-                    organizationId: ctx.organizationId,
-                    packerLogId: Number(foundPackerLogId),
-                    packedBy: staffId,
-                    source: 'packing-logs.order-rescan',
-                });
-            } else {
-                const foundLog = await createPackerLog(client, {
-                    organizationId: ctx.organizationId,
+            const foundLog = await writePackScanLog(client, {
+                organizationId: ctx.organizationId,
+                existingPackerLogId: foundExisting.rows[0] ? Number(foundExisting.rows[0].id) : null,
+                scanAt: packDateTime,
+                packedBy: staffId,
+                create: {
                     shipmentId: orderShipmentId,
                     scanRef: null,
                     trackingType: classification.trackingType,
-                    createdAt: packDateTime,
-                    packedBy: staffId,
                     source: 'packing-logs.order',
-                });
-                foundPackerLogId = foundLog?.id ?? null;
-                foundCreatedAt = foundLog?.createdAt ?? packDateTime;
-            }
+                },
+                rescanSource: 'packing-logs.order-rescan',
+            });
+            const foundPackerLogId = foundLog.packerLogId;
 
             if (foundPackerLogId) {
                 await mirrorLegacyPackingToAllocations({
@@ -720,7 +688,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
             const foundRecord = {
                 id: foundPackerLogId,
-                created_at: foundCreatedAt,
+                created_at: foundLog.activityAt,
                 tracking_number: order.tracking_number ?? null,
                 packed_by: staffId,
                 order_id: order.order_id ?? null,
@@ -747,7 +715,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     order_id: order.order_id ?? null,
                     order_row_id: Number(order.id),
                 },
-                createdAt: foundCreatedAt,
+                createdAt: foundLog.activityAt,
             });
             await refreshOrderStageFacts(ctx.organizationId, { orderIds: [order.id], shipmentIds: [orderShipmentId] }, client);
             await recordAudit(client, ctx, req, {
@@ -767,7 +735,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
             await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders', 'orders-next', 'shipped']);
             if (foundSalId) publishActivityLogged({ organizationId: ctx.organizationId, id: foundSalId, station: 'PACK', activityType: 'PACK_COMPLETED', staffId, scanRef: order.tracking_number ?? scanInput, fnsku: null, source: 'packing-logs' }).catch(() => {});
-            if (foundRecord.id) await prependToPackerLogsCache(staffId, foundRecord, ctx.organizationId);
 
             // Broadcast to all devices so UpNext + Pending grid update instantly
             await Promise.allSettled([
@@ -833,70 +800,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             });
         }
 
-        // Non-order scans (SKU, FNSKU, etc.):
-        let skuUpdated = false;
-        let resolvedSkuTitle: string | null = null;
-        let resolvedSkuBase: string | null = null;
-        let resolvedSkuQty: number | null = null;
-
-        if (classification.trackingType === 'SKU' && classification.skuBase) {
-            const addQty = classification.skuQty || 1;
-            const normalizedBase = normalizeSku(classification.skuBase || '');
-            resolvedSkuBase = normalizedBase;
-            resolvedSkuQty = addQty;
-
-            // 1) Prefer the Ecwid platform mapping (sku_platform_ids platform='ecwid').
-            const ecwidLookup = await client.query(
-                `SELECT COALESCE(
-                            NULLIF(BTRIM(sc.product_title), ''),
-                            NULLIF(BTRIM(sp.display_name), '')
-                        ) AS product_title
-                 FROM sku_platform_ids sp
-                 LEFT JOIN sku_catalog sc ON sc.id = sp.sku_catalog_id
-                 WHERE sp.platform = 'ecwid'
-                   AND sp.is_active = true
-                   AND sp.organization_id = $2
-                   AND (
-                       BTRIM(sp.platform_sku) = $1
-                       OR BTRIM(sp.platform_item_id) = $1
-                       OR regexp_replace(UPPER(TRIM(COALESCE(sp.platform_sku, ''))), '^0+', '') =
-                          regexp_replace(UPPER($1), '^0+', '')
-                   )
-                 ORDER BY
-                   CASE WHEN NULLIF(BTRIM(COALESCE(sc.product_title, '')), '') IS NOT NULL THEN 0 ELSE 1 END,
-                   sp.created_at DESC NULLS LAST,
-                   sp.id DESC
-                 LIMIT 1`,
-                [normalizedBase, ctx.organizationId],
-            );
-            resolvedSkuTitle = ecwidLookup.rows[0]?.product_title || null;
-
-            // 2) Read sku_stock for title fallback; quantity changes go through ledger.
-            const skuRows = await client.query(
-                'SELECT id, stock, sku, product_title FROM sku_stock WHERE organization_id = $1',
-                [ctx.organizationId],
-            );
-            const target = skuRows.rows.find(
-                (r: any) => normalizeSku(String(r.sku || '')) === normalizedBase
-            );
-
-            if (!resolvedSkuTitle) {
-                resolvedSkuTitle = target?.product_title || null;
-            }
-
-            if (addQty !== 0) {
-                await writeLedgerDelta(client, {
-                    orgId: ctx.organizationId,
-                    sku: normalizedBase,
-                    delta: addQty,
-                    reason: 'PACKER_SCAN',
-                    staffId,
-                    notes: `packing-logs non-order scan ${classification.normalizedInput}`,
-                });
-            }
-            skuUpdated = addQty !== 0;
-        }
-
+        // Non-order scans (CLEAN, FBA- commands): a SKU never reaches here.
         const nonOrderLog = await createPackerLog(client, {
             organizationId: ctx.organizationId,
             shipmentId: null,
@@ -936,10 +840,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             tracking_number: classification.normalizedInput,
             packed_by: staffId,
             order_id: null,
-            product_title: resolvedSkuTitle,
+            product_title: null,
             condition: null,
-            quantity: resolvedSkuQty,
-            sku: resolvedSkuBase,
+            quantity: null,
+            sku: null,
         };
 
         const nonOrderSalId = await createStationActivityLog(client, {
@@ -959,20 +863,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         if (nonOrderSalId) publishActivityLogged({ organizationId: ctx.organizationId, id: nonOrderSalId, station: 'PACK', activityType: 'PACK_SCAN', staffId, scanRef: classification.normalizedInput, fnsku: null, source: 'packing-logs' }).catch(() => {});
 
         await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders', 'orders-next', 'shipped']);
-        if (nonOrderRecord.id) await prependToPackerLogsCache(staffId, nonOrderRecord, ctx.organizationId);
 
         return NextResponse.json({
             success: true,
             trackingType: classification.trackingType,
             shippingTrackingNumber: classification.normalizedInput,
-            productTitle: resolvedSkuTitle,
-            sku: resolvedSkuBase,
-            qty: resolvedSkuQty,
+            productTitle: null,
             packedBy: staffId,
             packDateTime,
             packerRecord: nonOrderRecord,
             photosCount: Array.isArray(photos) ? photos.length : 0,
-            skuUpdated,
         });
         });
     } catch (error: any) {

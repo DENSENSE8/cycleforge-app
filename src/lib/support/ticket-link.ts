@@ -28,7 +28,9 @@ import {
   listTicketLinkCandidates,
   type TicketLinkCandidateMode,
 } from '@/lib/zendesk-link-candidates';
+import { normalizeTrackingKey } from '@/lib/tracking-format';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import type { TicketIdentityMatch } from '@/lib/support/ticket-link-query';
 import {
   pickTicketLinkAnchor,
   upsertSupportTicket,
@@ -219,6 +221,79 @@ export async function listCandidatesForAnchor(args: {
     query: args.query,
     mode: args.mode,
   });
+}
+
+/**
+ * Ticket already on this tracking number or order number — local `ticket_links`
+ * only, so the composer triage card can paint before the operator opens it.
+ * Tracking wins when both match.
+ */
+export async function findTicketIdentityMatch(args: {
+  orgId: OrgId;
+  trackingNumber?: string | null;
+  orderNumber?: string | null;
+}): Promise<TicketIdentityMatch | null> {
+  const tracking = normalizeTrackingKey(args.trackingNumber);
+  const orderNumber = (args.orderNumber ?? '').trim();
+  if (!tracking && !orderNumber) return null;
+
+  const res = await tenantQuery<{
+    id: string;
+    subject: string | null;
+    status: string | null;
+    via: 'tracking' | 'order';
+  }>(
+    args.orgId,
+    `SELECT id, subject, status, via
+       FROM (
+         SELECT tl.zendesk_ticket_id AS id,
+                st.subject_cache AS subject,
+                st.status_cache AS status,
+                'tracking'::text AS via,
+                0 AS rank
+           FROM ticket_links tl
+           JOIN shipping_tracking_numbers stn ON stn.id = tl.entity_id
+           JOIN support_tickets st
+             ON st.id = tl.support_ticket_id
+            AND st.organization_id = tl.organization_id
+          WHERE tl.organization_id = $1
+            AND tl.entity_type = 'SHIPMENT'
+            AND tl.zendesk_ticket_id IS NOT NULL
+            AND $2 <> ''
+            AND stn.tracking_number_normalized = $2
+         UNION ALL
+         SELECT tl.zendesk_ticket_id,
+                st.subject_cache,
+                st.status_cache,
+                'order'::text,
+                1
+           FROM ticket_links tl
+           JOIN orders o
+             ON o.id = tl.entity_id
+            AND o.organization_id = tl.organization_id
+           JOIN support_tickets st
+             ON st.id = tl.support_ticket_id
+            AND st.organization_id = tl.organization_id
+          WHERE tl.organization_id = $1
+            AND tl.entity_type = 'ORDER'
+            AND tl.zendesk_ticket_id IS NOT NULL
+            AND $3 <> ''
+            AND o.order_id = $3
+       ) matched
+      ORDER BY rank
+      LIMIT 1`,
+    [args.orgId, tracking, orderNumber],
+  );
+  const row = res.rows[0];
+  if (!row) return null;
+  const id = Number(row.id);
+  if (!Number.isSafeInteger(id) || id <= 0) return null;
+  return {
+    id,
+    subject: row.subject,
+    status: row.status,
+    via: row.via === 'order' ? 'order' : 'tracking',
+  };
 }
 
 export interface AnchorLinkedTicket {

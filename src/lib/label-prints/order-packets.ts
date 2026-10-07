@@ -2,6 +2,7 @@ import 'server-only';
 import { documentContentUrl } from '@/lib/documents/display-url';
 import { sqlOrderNotBuyerCancelled, sqlOrderOpenUnshipped } from '@/lib/orders/desk-view-sql';
 import { WA_DEADLINE_LATERAL } from '@/lib/orders/orders-list';
+import { orderPlatformSlugSql, storedListingsSql, toStoredListings } from '@/lib/orders/line-listing-sql';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import { listingCoverThumbUrlSql } from '@/lib/photos/listing-photos';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -52,6 +53,11 @@ const PACKET_PRELUDE_CTES = `pk_src AS (
       LEFT JOIN shipping_tracking_numbers stn ON stn.organization_id = $1 AND stn.id = o.shipment_id
      WHERE o.organization_id = $1 AND ${sqlOrderOpenUnshipped('o')} AND ${sqlOrderNotBuyerCancelled('o')}
     UNION ALL
+    -- A named selection (\`ids\`) is a packet whatever its stage.
+    SELECT o.id, NULL::timestamptz
+      FROM orders o
+     WHERE o.organization_id = $1 AND $4::int[] IS NOT NULL AND o.id = ANY($4::int[])
+    UNION ALL
     SELECT li.matched_order_id, li.observed_at
       FROM label_ingestions li
      WHERE li.organization_id = $1 AND li.staged_object_key IS NOT NULL AND li.matched_order_id IS NOT NULL
@@ -72,7 +78,15 @@ const digitsLast8 = (expr: string) => `RIGHT(regexp_replace(COALESCE(${expr}, ''
 /** The candidates Find keeps: any line of the order matches. */
 const PACKET_CAND_SQL = `SELECT pg.order_id, pg.observed_at, true AS paired
       FROM pk_group pg
-     WHERE $2::text IS NULL OR EXISTS (
+     WHERE ($4::int[] IS NULL OR EXISTS (
+       SELECT 1
+         FROM orders ih
+         JOIN orders il
+           ON il.organization_id = $1
+          AND (il.id = ih.id OR (NULLIF(ih.order_id, '') IS NOT NULL AND il.order_id = ih.order_id))
+        WHERE ih.organization_id = $1 AND ih.id = pg.order_id AND il.id = ANY($4::int[])
+     ))
+       AND ($2::text IS NULL OR EXISTS (
        SELECT 1
          FROM orders qh
          JOIN orders ql
@@ -88,7 +102,7 @@ const PACKET_CAND_SQL = `SELECT pg.order_id, pg.observed_at, true AS paired
                            WHERE ql_li.organization_id = $1 AND ql_li.matched_order_id = ql.id
                              AND (ql_li.tracking_number_normalized ILIKE $2
                                   OR ($3::text IS NOT NULL AND ${digitsLast8('ql_li.tracking_number_normalized')} = $3))))
-     )`;
+     ))`;
 
 /**
  * A line's photo — the order list's ladder (`orders-list.ts`): catalog photo,
@@ -133,15 +147,32 @@ const LINE_PHOTO_SQL = `COALESCE(
 /** After the paperwork CTEs: each head's facts, lines, labels, label documents and paperwork; then the unpaired labels. */
 const PACKET_TAIL_SQL = `,
   pk_heads AS (
-    SELECT h.order_id, h.order_ref, o.account_source,
+    SELECT h.order_id, h.order_ref, o.account_source, ${orderPlatformSlugSql('o', '$1')} AS platform_slug,
            ${placedElseImportedSql('o')} AS ordered_at, wa_deadline.deadline_at AS ship_by_at,
            COALESCE(o.fulfillment_channel = '${PICKUP_FULFILLMENT_CHANNEL}', false) AS pickup,
            COALESCE(o.docs_not_required, false) AS docs_not_required,
            ARRAY_REMOVE(ARRAY[ss.ship_to->>'name', c.display_name, c.customer_name,
-                              NULLIF(btrim(concat_ws(' ', c.first_name, c.last_name)), '')], NULL) AS buyer_names
+                              NULLIF(btrim(concat_ws(' ', c.first_name, c.last_name)), '')], NULL) AS buyer_names,
+           NULLIF(BTRIM(COALESCE(sh.tracking_number_raw, sh.tracking_number_normalized)), '') AS tracking_number,
+           NULLIF(NULLIF(BTRIM(sh.carrier), ''), 'UNKNOWN') AS tracking_carrier,
+           -- Every box on any line — the primary pointer and the additional ones (shipment_links).
+           (SELECT COALESCE(array_agg(DISTINCT t.tn), '{}')
+              FROM (SELECT st.tracking_number_normalized AS tn
+                      FROM keys tk
+                      JOIN orders tl ON tl.organization_id = $1 AND tl.id = tk.line_id
+                      JOIN shipping_tracking_numbers st ON st.organization_id = $1 AND st.id = tl.shipment_id
+                     WHERE tk.head_id = h.order_id
+                    UNION
+                    SELECT st.tracking_number_normalized
+                      FROM keys tk
+                      JOIN shipment_links sl ON sl.organization_id = $1 AND sl.owner_type = 'ORDER' AND sl.owner_id = tk.line_id
+                      JOIN shipping_tracking_numbers st ON st.organization_id = $1 AND st.id = sl.shipment_id
+                     WHERE tk.head_id = h.order_id) t
+             WHERE NULLIF(BTRIM(t.tn), '') IS NOT NULL) AS tracking_numbers
       FROM heads h
       JOIN orders o ON o.organization_id = $1 AND o.id = h.order_id
       ${WA_DEADLINE_LATERAL}
+      LEFT JOIN shipping_tracking_numbers sh ON sh.organization_id = $1 AND sh.id = o.shipment_id
       LEFT JOIN customers c ON c.organization_id = $1 AND c.id = o.customer_id
       LEFT JOIN LATERAL (
         SELECT r.ship_to FROM shipstation_order_refs r
@@ -161,7 +192,8 @@ const PACKET_TAIL_SQL = `,
              'quantity', CASE WHEN rl.quantity ~ '^[0-9]+$' THEN rl.quantity::int ELSE 1 END,
              'photo_url', ${LINE_PHOTO_SQL},
              'paperwork_not_required', COALESCE(sc.paperwork_not_required, false),
-             'docs_not_required', COALESCE(rl.docs_not_required, false)
+             'docs_not_required', COALESCE(rl.docs_not_required, false),
+             'stored_listings', ${storedListingsSql('$1', { itemNumber: 'rl.item_number', skuCatalogId: 'k.catalog_id', sku: 'rl.sku' })}
            ) ORDER BY rl.id) AS lines
       FROM keys k
       JOIN orders rl ON rl.organization_id = $1 AND rl.id = k.line_id
@@ -170,7 +202,7 @@ const PACKET_TAIL_SQL = `,
   ),
   pk_labels AS (
     SELECT k.head_id, json_agg(lr ORDER BY lr.observed_at, lr.id) AS labels
-      FROM (${labelRowSelectSql()}
+      FROM (${labelRowSelectSql(', li.detected_ship_to_name')}
              WHERE li.organization_id = $1 AND li.staged_object_key IS NOT NULL
                AND li.matched_order_id IN (SELECT line_id FROM keys)) lr
       JOIN keys k ON k.line_id = lr.matched_order_id
@@ -225,9 +257,10 @@ const PACKET_TAIL_SQL = `,
      GROUP BY d.head_id
   )
 SELECT (SELECT COALESCE(json_agg(json_build_object(
-          'order_id', ph.order_id, 'order_ref', ph.order_ref, 'account_source', ph.account_source,
+          'order_id', ph.order_id, 'order_ref', ph.order_ref, 'account_source', ph.account_source, 'platform_slug', ph.platform_slug,
           'ordered_at', ph.ordered_at, 'ship_by_at', ph.ship_by_at, 'pickup', ph.pickup,
           'docs_not_required', ph.docs_not_required, 'buyer_names', ph.buyer_names,
+          'tracking_number', ph.tracking_number, 'tracking_carrier', ph.tracking_carrier, 'tracking_numbers', ph.tracking_numbers,
           'lines', pl.lines, 'labels', pb.labels, 'label_documents', pd.label_documents, 'documents', pw.documents
         ) ORDER BY ph.order_id), '[]'::json)
           FROM pk_heads ph
@@ -248,17 +281,18 @@ SELECT (SELECT COALESCE(json_agg(json_build_object(
 /** The whole Orders statement — exported for the tenancy test and the read-only smoke. */
 export const ORDER_PACKETS_SQL = `${paperworkDocsSql(PACKET_CAND_SQL, PACKET_PRELUDE_CTES)}${PACKET_TAIL_SQL}`;
 
-/** The bound values of {@link ORDER_PACKETS_SQL}, in `$n` order: org, Find LIKE, Find last-8 digits. */
-export function orderPacketsParams(organizationId: OrgId, query: Pick<OrderPacketParsedQuery, 'q'>): unknown[] {
+/** The bound values of {@link ORDER_PACKETS_SQL}, in `$n` order: org, Find LIKE, Find last-8 digits, named order rows. */
+export function orderPacketsParams(organizationId: OrgId, query: Pick<OrderPacketParsedQuery, 'q' | 'ids'>): unknown[] {
   const q = query.q?.trim() || null;
   const { last8 } = q ? orderTrackingMatchKeys(q) : { last8: '' };
-  return [organizationId, q ? `%${q.replace(/[\\%_]/g, '\\$&')}%` : null, /^\d{8}$/.test(last8) ? last8 : null];
+  return [organizationId, q ? `%${q.replace(/[\\%_]/g, '\\$&')}%` : null, /^\d{8}$/.test(last8) ? last8 : null, query.ids?.length ? query.ids : null];
 }
 
 interface RawPacketLine extends RawOrderLine {
   photo_url: string | null;
   paperwork_not_required: boolean;
   docs_not_required: boolean;
+  stored_listings: unknown;
 }
 
 interface RawLabelDocument {
@@ -274,11 +308,15 @@ interface RawPacket {
   order_id: number;
   order_ref: string;
   account_source: string | null;
+  platform_slug: string | null;
   ordered_at: string | null;
   ship_by_at: string | null;
   pickup: boolean;
   docs_not_required: boolean;
   buyer_names: string[] | null;
+  tracking_number: string | null;
+  tracking_carrier: string | null;
+  tracking_numbers: string[] | null;
   lines: RawPacketLine[] | null;
   labels: LabelQueueRow[] | null;
   label_documents: RawLabelDocument[] | null;
@@ -321,11 +359,17 @@ function toPacketSource(raw: RawPacket): PacketSource {
     orderId: Number(raw.order_id),
     orderRef: raw.order_ref,
     accountSource: raw.account_source,
+    platformSlug: raw.platform_slug,
     orderedAt: iso(raw.ordered_at),
     shipByAt: iso(raw.ship_by_at),
     pickup: raw.pickup,
     docsNotRequired: raw.docs_not_required,
     buyerNames: raw.buyer_names ?? [],
+    shipment: raw.tracking_number ? { trackingNumber: raw.tracking_number, carrier: raw.tracking_carrier } : null,
+    trackingNumbers: raw.tracking_numbers ?? [],
+    labelShipTo: (raw.labels ?? []).flatMap((row) =>
+      typeof row.detected_ship_to_name === 'string' && row.detected_ship_to_name.trim() ? [{ ingestionId: Number(row.id), name: row.detected_ship_to_name }] : [],
+    ),
     labels: (raw.labels ?? []).map(toLabelRow),
     labelDocuments: (raw.label_documents ?? []).map(toLabelDocument),
     documents: (raw.documents ?? []).map(toPaperworkDocument),
@@ -334,6 +378,7 @@ function toPacketSource(raw: RawPacket): PacketSource {
       photoUrl: lines[index]!.photo_url,
       paperworkNotRequired: lines[index]!.paperwork_not_required,
       docsNotRequired: lines[index]!.docs_not_required,
+      storedListings: toStoredListings(lines[index]!.stored_listings),
     })),
   };
 }
@@ -383,6 +428,7 @@ export function parseOrderPacketSearchParams(params: Pick<URLSearchParams, 'get'
     channel: list('channel'),
     sort: one('sort'),
     q: one('q'),
+    ...(list('ids') ? { ids: list('ids') } : {}),
     limit: one('limit'),
     offset: one('offset'),
   });

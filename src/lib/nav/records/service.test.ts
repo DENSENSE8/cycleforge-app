@@ -89,6 +89,7 @@ function outLine(patch: Partial<RecordLineRow> = {}): RecordLineRow {
     owner: null,
     mine: false,
     matchedRefs: [],
+    cartonOnly: false,
     ...patch,
   };
 }
@@ -299,6 +300,26 @@ test('a pasted list answers in paste order, with a miss entry where a ref matche
   // Another sort: misses go last, in paste order.
   const { body: byDate } = await read(lines, { refs: 'PO-0042,ZZZ-404,B-2,C-3,1Z999', colsort: 'price' });
   assert.equal(byDate.entries.at(-1)!.key, 'miss:ZZZ404');
+});
+
+test('a pasted box with no lines yet is a carton row — found, not a miss, and nothing to write to', async () => {
+  const carton = inLine({
+    recordId: 53019,
+    cartonOnly: true,
+    orderNumber: 'PO-0099',
+    title: null,
+    orderKey: 'i:c53019',
+    inboundOrderId: null,
+    cartonId: 53019,
+    matchedRefs: [1],
+  });
+  const { body } = await read([carton], { refs: 'PO-0099' });
+  assert.deepEqual(body.entries.map((entry) => entry.key), ['carton:53019']);
+  const row = byKey(body, 'carton:53019');
+  assert.equal(row.facts!.recordId, undefined);
+  assert.equal(row.facts!.title, 'Carton · no lines yet');
+  assert.equal(row.facts!.internalStatus, 'not_received');
+  assert.equal(row.facts!.cartonId, 53019);
 });
 
 test('flags: late, exception, note, mine; the same number under two orders is a duplicate', async () => {

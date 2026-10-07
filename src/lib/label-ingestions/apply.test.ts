@@ -618,3 +618,93 @@ describe('applyLabelIngestion', () => {
     assert.equal(links.find((row) => row.shipment_id === result.shipmentId)?.is_primary, false);
   });
 });
+
+describe('applyLabelIngestion — the operator’s collision / existing answers', () => {
+  const LABEL_TRACKING = '1Z999AA10123456784';
+  const OLD_TRACKING = '9400111899223856928499';
+
+  /** The real detach (deleteShipmentTrackingLink) on the fake state: links go, the pointer clears, the tracking row stays. */
+  function withDetach(harness: FakeHarness): Partial<ApplyLabelIngestionDependencies> {
+    return {
+      ...harness.dependencies(),
+      detachShipment: async (_orgId, orderIds, shipmentId, client) => {
+        const working = (client as unknown as FakeClient).state;
+        working.shipmentLinks = working.shipmentLinks.filter((row) => !(orderIds.includes(row.owner_id) && row.shipment_id === shipmentId));
+        for (const row of working.orders) if (orderIds.includes(row.id) && row.shipment_id === shipmentId) row.shipment_id = null;
+      },
+    };
+  }
+
+  /** The label's tracking already ships another logical order (201). */
+  function seedCollision(): FakeState {
+    const state = seedState();
+    state.shipments.push({ id: 800, organization_id: ORG_A, tracking_number_raw: LABEL_TRACKING, tracking_number_normalized: LABEL_TRACKING, carrier: 'UPS' });
+    state.orders.push({ id: 201, organization_id: ORG_A, account_source: 'EBAY_MAIN', order_id: 'MARKET-7000', status: 'AWAITING_SHIPMENT', shipment_id: 800 });
+    state.shipmentLinks.push({ id: 1, organization_id: ORG_A, owner_id: 201, shipment_id: 800, is_primary: true });
+    return state;
+  }
+
+  /** Order 9001 already ships on another tracking (800, primary). */
+  function seedExisting(): FakeState {
+    const state = seedState();
+    state.shipments.push({ id: 800, organization_id: ORG_A, tracking_number_raw: OLD_TRACKING, tracking_number_normalized: OLD_TRACKING, carrier: 'USPS' });
+    for (const order of state.orders) order.shipment_id = 800;
+    state.shipmentLinks.push(
+      { id: 1, organization_id: ORG_A, owner_id: 101, shipment_id: 800, is_primary: true },
+      { id: 2, organization_id: ORG_A, owner_id: 102, shipment_id: 800, is_primary: true },
+    );
+    return state;
+  }
+
+  test('no answer still refuses a tracking another order holds', async () => {
+    const state = seedCollision();
+    const result = await applyLabelIngestion(applyInput, withDetach(new FakeHarness(state)));
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.code, 'TRACKING_OWNED_BY_OTHER_ORDER');
+  });
+
+  test('move detaches the shipment from the other order and files it here', async () => {
+    const state = seedCollision();
+    const result = await applyLabelIngestion({ ...applyInput, collision: 'move' }, withDetach(new FakeHarness(state)));
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(result.shipmentId, 800);
+    assert.equal(state.orders.find((row) => row.id === 201)?.shipment_id, null);
+    assert.equal(state.shipmentLinks.some((row) => row.owner_id === 201), false);
+    assert.deepEqual(state.orders.filter((row) => row.order_id === 'MARKET-9001').map((row) => row.shipment_id), [800, 800]);
+  });
+
+  test('keep ships one box on both orders', async () => {
+    const state = seedCollision();
+    const result = await applyLabelIngestion({ ...applyInput, collision: 'keep' }, withDetach(new FakeHarness(state)));
+    assert.equal(result.ok, true);
+    assert.equal(state.orders.find((row) => row.id === 201)?.shipment_id, 800);
+    assert.deepEqual(state.shipmentLinks.filter((row) => row.shipment_id === 800).map((row) => row.owner_id).sort(), [101, 102, 201]);
+  });
+
+  test('replace makes the label primary and detaches the old shipment, keeping its tracking row', async () => {
+    const state = seedExisting();
+    const result = await applyLabelIngestion({ ...applyInput, existing: 'replace' }, withDetach(new FakeHarness(state)));
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.deepEqual(state.orders.map((row) => row.shipment_id), [result.shipmentId, result.shipmentId]);
+    assert.equal(state.shipmentLinks.some((row) => row.shipment_id === 800), false);
+    assert.ok(state.shipments.some((row) => row.id === 800));
+  });
+
+  test('add keeps the order’s primary even when the label’s tracking is already linked as a box', async () => {
+    const state = seedExisting();
+    // The ingestion's best-effort tracking attach already linked the label's number as a non-primary box.
+    state.shipments.push({ id: 801, organization_id: ORG_A, tracking_number_raw: LABEL_TRACKING, tracking_number_normalized: LABEL_TRACKING, carrier: 'UPS' });
+    state.shipmentLinks.push({ id: 3, organization_id: ORG_A, owner_id: 101, shipment_id: 801, is_primary: false });
+    const result = await applyLabelIngestion({ ...applyInput, existing: 'add' }, withDetach(new FakeHarness(state)));
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(result.shipmentId, 801);
+    assert.deepEqual(state.orders.map((row) => row.shipment_id), [800, 800]);
+    const links = state.shipmentLinks.filter((row) => row.owner_id === 101);
+    assert.equal(links.find((row) => row.shipment_id === 800)?.is_primary, true);
+    assert.equal(links.find((row) => row.shipment_id === 801)?.is_primary, false);
+  });
+});

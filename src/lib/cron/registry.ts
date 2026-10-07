@@ -67,6 +67,7 @@ export const CRON_JOBS: CronJobDef[] = [
   { job: 'notification-outbox', label: 'Notification queue', category: 'System', schedule: 'every 2 min', expectedEveryMs: 2 * MIN },
   { job: 'search-outbox', label: 'Search projection queue', category: 'System', schedule: 'every 5 min', expectedEveryMs: 5 * MIN },
   { job: 'ticket-outbox', label: 'Helpdesk ticket queue', category: 'System', schedule: 'every 5 min', expectedEveryMs: 5 * MIN },
+  { job: 'qc-print-pass', label: 'QC pass & label queue', category: 'System', schedule: 'every 1 min', expectedEveryMs: MIN },
   { job: 'support-loop', label: 'Support loop', category: 'System', schedule: 'every 10 min', expectedEveryMs: 10 * MIN },
   { job: 'workflow.node_stats', label: 'Workflow node statistics', category: 'System', schedule: 'hourly', expectedEveryMs: HOUR },
   { job: 'insights.signal_rollup', label: 'Signal → insight rollup', category: 'System', schedule: 'nightly 00:50', expectedEveryMs: DAY },

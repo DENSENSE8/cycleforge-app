@@ -204,6 +204,7 @@ function recordLineOf(rows: readonly FulfilledPackageRow[]): RecordLineRow {
     owner: null,
     mine: false,
     matchedRefs: [],
+    cartonOnly: false,
   };
 }
 

@@ -20,6 +20,8 @@ export interface SkuCatalogItem {
     platform_sku: string | null;
     platform_item_id: string | null;
     account_name: string | null;
+    /** `sku_platform_ids.listing_url` (`searchField: 'catalog'` rows). */
+    listing_url?: string | null;
   }>;
 }
 

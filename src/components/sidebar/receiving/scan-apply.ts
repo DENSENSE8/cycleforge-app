@@ -1,16 +1,16 @@
 /** Receiving scan — the effectful APPLY layer. */
 
 import {
-  deferInvalidateTriageAndUnboxQueueFeeds,
   deferInvalidateTriageReceivingFeeds,
   dispatchReceivingLinesPrepended,
-  dispatchReceivingTriageRefresh,
+  insertArrivalRailRows,
+  noteLocalReceivingRescan,
   purgeTriageRailsAfterUnboxOpen,
-  receivingSiblingsQueryKey,
+  receivingSiblingsSerialsQuery,
   removePendingScanRailRow,
   seedReceivingSiblingsCache,
+  unboxRailHasCarton,
   upsertReceivingRailRows,
-  upsertUnboxQueueRows,
   receivingRailCartonKey,
   receivingRailRowKey,
   receivingRailShipmentKey,
@@ -24,7 +24,6 @@ import {
   buildUnboxRailUnmatchedRow,
   mapApiLineToPoSummary,
   parseReceivingPackage,
-  pendingScanReconcileKey,
   type PoContext,
   type PoLineSummary,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
@@ -33,7 +32,7 @@ import type { ScanApplyCtx } from './scan-types';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { photoStageForScanIntakeSurface } from '@/lib/receiving/photo-intent';
-import { pairUnboxUnfoundTicket } from '@/lib/receiving/unbox-scan-feedback-store';
+import { settleUnboxScanVerdict } from '@/lib/receiving/unbox-scan-feedback-store';
 
 /** Announce that this scan was an INSPECTION of finished work, not work. */
 /** Read the lookup verdict off a lookup-po response. */
@@ -47,6 +46,37 @@ function lookupScanFieldsFrom(d: LookupPoData): {
     unboxedAt: typeof d.unboxed_at === 'string' ? d.unboxed_at : null,
     unboxedByName: typeof d.unboxed_by_name === 'string' ? d.unboxed_by_name : null,
     poNumber: typeof d.po_number === 'string' ? d.po_number : null,
+  };
+}
+
+function withLookupHeaderSeed(row: ReceivingLineRow, d: LookupPoData): ReceivingLineRow {
+  const pkg = d.receiving_package;
+  if (pkg && typeof pkg === 'object') {
+    const listing = (pkg as { listing_url?: unknown }).listing_url;
+    if (typeof listing === 'string' && listing.trim()) {
+      row = { ...row, receiving_listing_url: listing };
+    }
+  }
+  // Seed only a FOUND ticket: lookup-po sees carton links only, so its
+  // "none" is not authoritative and by-entity must still answer.
+  const raw = d.support_ticket;
+  if (raw == null || typeof raw !== 'object') return row;
+  const ticket = raw as Record<string, unknown>;
+  const id = Number(ticket.id);
+  if (!Number.isFinite(id) || id <= 0) return row;
+  const providerTicketId = Number(ticket.providerTicketId);
+  return {
+    ...row,
+    linked_support_ticket: {
+      id,
+      label: typeof ticket.label === 'string' ? ticket.label : `#${id}`,
+      provider: typeof ticket.provider === 'string' ? ticket.provider : 'zendesk',
+      externalTicketId: typeof ticket.externalTicketId === 'string' ? ticket.externalTicketId : null,
+      providerTicketId: Number.isFinite(providerTicketId) && providerTicketId > 0 ? providerTicketId : null,
+      openUrl: typeof ticket.openUrl === 'string' ? ticket.openUrl : null,
+      subject: typeof ticket.subject === 'string' ? ticket.subject : null,
+      status: typeof ticket.status === 'string' ? ticket.status : null,
+    },
   };
 }
 
@@ -73,7 +103,7 @@ export function applyUnboxCartonOpened(
   args: {
     receivingId: number;
     trackingNumber: string;
-    /** Carton row for the Unboxed rail; null/omitted when already cached. */
+    /** Row to add for a carton the Unboxed rail does not list yet; ignored when it does. */
     railRow?: ReceivingLineRow | null;
     /** Fire touch-scan; `tracking` overrides the scanned value (Phase-0 uses the carton's own). */
     touchScan?: { tracking?: string };
@@ -84,24 +114,11 @@ export function applyUnboxCartonOpened(
     poNumber?: string | null;
   },
 ): void {
-  // The carton's own durable key. Shipment-first, so a TRACKING scan resolves to
-  // the very key the pending stub already holds — nothing to drop, and the row
-  // updates in place instead of exiting and re-entering.
-  const cartonKey = String(
-    receivingRailRowKey({
-      tracking_number: args.railRow?.tracking_number ?? args.trackingNumber,
-      receiving_id: args.receivingId,
-    }),
-  );
-
-  // Sweep the pre-resolve stub — OUR optimistic artifact, so clearing it is cleanup, not a mutation of the operator's rail.
-  const sparedKey = !args.unboxedAt && args.railRow ? cartonKey : null;
-  for (const stale of [
-    pendingScanReconcileKey(args.trackingNumber),
-    receivingRailShipmentKey(args.trackingNumber),
-  ]) {
-    if (stale && stale !== sparedKey) removePendingScanRailRow(queryClient, stale);
-  }
+  // A carton already on the rail is a RE-SCAN: its row stays exactly where and
+  // what it is (no optimistic overwrite, no reorder), and the realtime echo of
+  // this scan is ours, so it must not refetch the rail either.
+  const onRail = unboxRailHasCarton(queryClient, args.receivingId);
+  if (onRail) noteLocalReceivingRescan(args.receivingId);
 
   if (args.unboxedAt) {
     // READ-ONLY against the rail.
@@ -113,11 +130,26 @@ export function applyUnboxCartonOpened(
       poNumber: args.poNumber ?? null,
     });
   } else {
-    if (args.railRow) {
-      upsertReceivingRailRows(queryClient, [{ ...args.railRow, client_event_id: cartonKey }]);
-    }
     purgeTriageRailsAfterUnboxOpen(queryClient, args.receivingId);
   }
+
+  if (!onRail && !args.unboxedAt && args.railRow) {
+    // First open: the carton row lands on the scan's pending row (same
+    // canonical shipment key) and upgrades it in place — no exit / re-enter.
+    upsertReceivingRailRows(queryClient, [
+      {
+        ...args.railRow,
+        client_event_id: String(
+          receivingRailRowKey({
+            tracking_number: args.railRow.tracking_number ?? args.trackingNumber,
+            receiving_id: args.receivingId,
+          }),
+        ),
+      },
+    ]);
+  }
+  // Whatever pending row is left for this scan was ours; only a carton-less row can go.
+  removePendingScanRailRow(queryClient, receivingRailShipmentKey(args.trackingNumber));
 
   // `touchScan` still fires for BOTH kinds — it is what records the
   // RECEIVING_LOOKUP_SCAN event for the client short-circuit rungs. Skipping it
@@ -152,24 +184,16 @@ export function applyUnboxCartonOpened(
   }
 }
 
-function dispatchTriageMatchedFeedRows(
-  ctx: ScanApplyCtx,
-  rows: ReceivingLineRow[],
-): void {
+/**
+ * Every Arrival scan lands on the Arrival rail: add the carton if the rail does
+ * not list it yet (a listed one is left as is), then reconcile against the
+ * server. The station lines table takes the same rows over its own event.
+ */
+export function showOnArrivalRail(queryClient: QueryClient, rows: ReceivingLineRow[]): void {
   if (rows.length === 0) return;
-  dispatchReceivingLinesPrepended({
-    segments: ['scanned', 'triage-combined'],
-    scope: 'triage',
-    intakeSurface: 'triage',
-    rows,
-  });
-  const byCarton = rows.find((r) => r.receiving_id != null) ?? rows[0];
-  if (byCarton) {
-    upsertUnboxQueueRows(ctx.queryClient, [
-      { ...byCarton, client_event_id: receivingRailCartonKey(byCarton.receiving_id!) },
-    ]);
-  }
-  deferInvalidateTriageAndUnboxQueueFeeds(ctx.queryClient);
+  insertArrivalRailRows(queryClient, rows);
+  dispatchReceivingLinesPrepended({ intakeSurface: 'triage', rows });
+  deferInvalidateTriageReceivingFeeds(queryClient);
 }
 
 function pickPoLineSummary(lines: PoLineSummary[]): PoLineSummary | null {
@@ -247,7 +271,10 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     if (pickForOpen) {
       ctx.setLineAccordionBootstrap(ctx.accordionBootstrapRef.current);
       ctx.setSelectedLine(
-        buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, pickForOpen, poCtx.receiving_package),
+        withLookupHeaderSeed(
+          buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, pickForOpen, poCtx.receiving_package),
+          d,
+        ),
       );
       ctx.setScanDriven(true);
     }
@@ -268,6 +295,11 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
 
   const unboxRailLine = pickPoLineSummary(poCtx.lines);
   if (ctx.intakeSurface === 'unbox') {
+    settleUnboxScanVerdict(ctx.trackingNumber, {
+      phase: 'found',
+      receivingId: poCtx.receiving_id,
+      lineCount: allLines.length,
+    });
     // Server already stamped unbox_opened (lookup-po intakeSurface):
     applyUnboxCartonOpened(ctx.queryClient, {
       receivingId: poCtx.receiving_id,
@@ -279,7 +311,7 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     });
   } else if (unboxRailLine) {
     const now = new Date().toISOString();
-    dispatchTriageMatchedFeedRows(ctx, [
+    showOnArrivalRail(ctx.queryClient, [
       {
         ...buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, unboxRailLine),
         item_name: ctx.trackingNumber,
@@ -306,31 +338,34 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   // cache are enough to paint the workspace; hydration reconciles in the background.
   window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
 
-  // Fetch full ReceivingLineRow[] so the unified LineEditPanel can open directly.
+  // Full ReceivingLineRow[] so the unified LineEditPanel can open directly —
+  // the SAME `include=serials` read the line pane runs, so it loads once.
   void (async () => {
     try {
-      // include=serials matches PoLinesAccordion's own query exactly, so the cache this seeds is a drop-in — the accordion mounts with full data…
       const linesData = await ctx.queryClient.fetchQuery({
-        queryKey: receivingSiblingsQueryKey(poCtx.receiving_id),
-        queryFn: async () => {
-          const r = await fetch(
-            `/api/receiving-lines?receiving_id=${poCtx.receiving_id}&include=serials`,
-          );
-          return r.json();
-        },
+        ...receivingSiblingsSerialsQuery(poCtx.receiving_id),
         retry: false,
       });
-      const rows = Array.isArray(linesData?.receiving_lines)
-        ? (linesData.receiving_lines as ReceivingLineRow[])
-        : [];
+      const rows = Array.isArray(linesData?.receiving_lines) ? linesData.receiving_lines : [];
       if (rows.length > 0) {
+        // The pane's metadata cache gets the full rows over the lookup stubs.
+        seedReceivingSiblingsCache(
+          ctx.queryClient,
+          poCtx.receiving_id,
+          rows,
+          linesData.receiving_package ?? poCtx.receiving_package,
+        );
         if (ctx.intakeSurface === 'unbox') {
           const openRows = rows.filter(
             (r) => r.quantity_expected == null || r.quantity_received < (r.quantity_expected ?? 0),
           );
           const railPick = openRows[0] ?? rows[0];
-          if (railPick) {
-            upsertReceivingRailRows(ctx.queryClient, [
+          // In place only — the carton's rail row is already where it belongs
+          // (first open landed it; a re-scan never moves it). mergeRailRows keeps
+          // the first-open unbox_opened_at so nothing reshuffles.
+          upsertReceivingRailRows(
+            ctx.queryClient,
+            [
               {
                 ...railPick,
                 client_event_id: String(
@@ -339,13 +374,12 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
                     receiving_id: poCtx.receiving_id,
                   }),
                 ),
-                // Do not stamp `now` here — mergeRailRows keeps the first-open
-                // unbox_opened_at so a re-scan cannot reshuffle the Unboxed rail.
               },
-            ]);
-          }
+            ],
+            'patch',
+          );
         } else {
-          dispatchTriageMatchedFeedRows(ctx, rows);
+          showOnArrivalRail(ctx.queryClient, rows);
         }
       }
       // Open/select only if still on this scan's mode (stale-guard).
@@ -421,7 +455,6 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
 
   if (unmatchedReceivingId != null && !isUnbox) {
     const now = new Date().toISOString();
-    dispatchReceivingTriageRefresh();
     const triageStubRow: ReceivingLineRow = {
       ...buildUnmatchedStubRow(unmatchedReceivingId, ctx.trackingNumber),
       item_name: ctx.trackingNumber,
@@ -430,26 +463,25 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
       created_at: now,
       last_activity_at: now,
     };
-    dispatchReceivingLinesPrepended({
-      segments: ['triage-combined'],
-      intakeSurface: 'triage',
-      rows: [triageStubRow],
-    });
-    deferInvalidateTriageReceivingFeeds(ctx.queryClient);
+    showOnArrivalRail(ctx.queryClient, [triageStubRow]);
   }
 
   if (unmatchedReceivingId != null && isUnbox) {
+    // Unfound: the header line says so, then finds the Zendesk ticket that
+    // mentions this tracking and links it to the carton.
+    settleUnboxScanVerdict(ctx.trackingNumber, {
+      phase: 'unfound',
+      receivingId: unmatchedReceivingId,
+      lineCount: 0,
+    });
     // Server stamped unbox_opened for this unfound carton (lookup-po
-    // intakeSurface) — chokepoint drops the stub, upserts Unboxed, purges Arrival.
+    // intakeSurface) — chokepoint lands the carton row, purges Arrival.
     applyUnboxCartonOpened(ctx.queryClient, {
       receivingId: unmatchedReceivingId,
       trackingNumber: ctx.trackingNumber,
       railRow: buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber),
       ...lookupScanFieldsFrom(d),
     });
-    // Unfound: find the Zendesk ticket that mentions this tracking and link it
-    // to the carton — the header's top-left line reports each step.
-    void pairUnboxUnfoundTicket({ receivingId: unmatchedReceivingId, tracking: ctx.trackingNumber });
   }
 
   // Auto-open the unfound workspace so the operator can immediately add items via
@@ -469,9 +501,12 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     if (ctx.isCurrent()) {
       ctx.setLineAccordionBootstrap(ctx.accordionBootstrapRef.current);
       ctx.setSelectedLine(
-        isUnbox
-          ? buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber)
-          : buildUnmatchedStubRow(unmatchedReceivingId, ctx.trackingNumber),
+        withLookupHeaderSeed(
+          isUnbox
+            ? buildUnboxRailUnmatchedRow(unmatchedReceivingId, ctx.trackingNumber)
+            : buildUnmatchedStubRow(unmatchedReceivingId, ctx.trackingNumber),
+          d,
+        ),
       );
       ctx.setScanDriven(true);
       refocusScanInput(ctx);
@@ -483,24 +518,16 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
       void (async () => {
         try {
           const linesData = await ctx.queryClient.fetchQuery({
-            queryKey: receivingSiblingsQueryKey(unmatchedReceivingId),
-            queryFn: async () => {
-              const r = await fetch(
-                `/api/receiving-lines?receiving_id=${unmatchedReceivingId}&include=serials`,
-              );
-              return r.json();
-            },
+            ...receivingSiblingsSerialsQuery(unmatchedReceivingId),
             retry: false,
           });
-          const rows = Array.isArray(linesData?.receiving_lines)
-            ? (linesData.receiving_lines as ReceivingLineRow[])
-            : [];
+          const rows = Array.isArray(linesData?.receiving_lines) ? linesData.receiving_lines : [];
           if (rows.length > 0) {
             seedReceivingSiblingsCache(
               ctx.queryClient,
               unmatchedReceivingId,
               rows,
-              linesData?.receiving_package,
+              linesData.receiving_package,
             );
           }
           const realRow = rows[0] ?? null;

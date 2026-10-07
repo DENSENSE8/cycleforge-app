@@ -61,10 +61,3 @@ export function toStubRow(r: UnfoundQueueRow): ReceivingLineRow {
     photo_count: Number(r.photo_count ?? 0),
   };
 }
-
-export function matchesQuery(r: UnfoundQueueRow, q: string): boolean {
-  if (!q) return true;
-  return [r.context, r.product_title, r.serial_numbers].some((x) =>
-    (x || '').toLowerCase().includes(q),
-  );
-}

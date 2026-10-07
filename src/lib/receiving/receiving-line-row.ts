@@ -88,6 +88,8 @@ export interface ReceivingLineRow {
   catalog_product_title?: string | null;
   /** Canonical sku_catalog.id for this line's SKU. Keys the SKU pairing surface; null when the SKU isn't catalogued yet. */
   sku_catalog_id?: number | null;
+  /** Joined sku_catalog.gtin; null when unset (the label then uses generateInternalGtin(sku_catalog_id)). */
+  catalog_gtin?: string | null;
   sku: string | null;
   quantity_received: number;
   quantity_expected: number | null;
@@ -290,6 +292,17 @@ export interface ReceivingLineRow {
   photo_count?: number;
   /** Any support ticket on the line, its carton or its shipment, stored as "#<id>". */
   zendesk_ticket?: string | null;
+  /** Ticket lookup-po found on the carton; a paint-first seed, by-entity confirms. */
+  linked_support_ticket?: {
+    id: number;
+    label: string;
+    provider: string;
+    externalTicketId: string | null;
+    providerTicketId: number | null;
+    openUrl: string | null;
+    subject: string | null;
+    status: string | null;
+  } | null;
   /** A ticket FILED on this line or carton (`sqlReceivingZendeskTicketColumn`); a shipment mention is not. */
   claim_ticket?: string | null;
   /**

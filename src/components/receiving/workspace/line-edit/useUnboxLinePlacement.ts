@@ -5,39 +5,9 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
+import { postLineStage } from '@/lib/receiving/line-stage-client';
 import { formatStagedLocationFace } from '@/lib/receiving/recent-staged-location';
 import { toast } from '@/lib/toast';
-
-type StageResponse = {
-  success?: boolean;
-  error?: string;
-  line?: {
-    staged_at?: string | null;
-    staged_location_id?: number | null;
-  };
-  location?: {
-    id?: number;
-    name?: string | null;
-    barcode?: string | null;
-    room?: string | null;
-  } | null;
-};
-
-async function postStage(
-  lineId: number,
-  body: { location_id?: number; barcode?: string },
-): Promise<StageResponse> {
-  const res = await fetch(`/api/receiving/lines/${lineId}/stage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = (await res.json().catch(() => null)) as StageResponse | null;
-  if (!res.ok || !data?.success) {
-    throw new Error(data?.error || 'Could not update location');
-  }
-  return data;
-}
 
 export function useUnboxLinePlacement(lineId: number | null | undefined) {
   const enabled = lineId != null && Number.isFinite(lineId) && lineId > 0;
@@ -63,7 +33,7 @@ export function useUnboxLinePlacement(lineId: number | null | undefined) {
       if (!enabled || busy) return false;
       setBusy(true);
       try {
-        const data = await postStage(lineId!, body);
+        const data = await postLineStage(lineId!, body);
         const loc = data.location;
         const face =
           faceHint ||

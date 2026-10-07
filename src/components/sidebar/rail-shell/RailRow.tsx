@@ -230,14 +230,9 @@ export function RailRow<TRow>({
           actions={rowActions}
           rowLabel={rowLabel ?? String(reconcileKey ?? index + 1)}
           open={menuOpen}
-          peekOpen={previewOpen}
           onOpenChange={(next) => {
-            if (next) {
-              dismiss();
-              requestAnimationFrame(() => setMenuOpen(true));
-              return;
-            }
-            setMenuOpen(false);
+            if (next) dismiss();
+            setMenuOpen(next);
           }}
           isFocusedRow={isFocused}
         />

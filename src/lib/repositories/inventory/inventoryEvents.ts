@@ -2,7 +2,12 @@
 import { db } from '@/lib/drizzle/db';
 import { inventoryEvents } from '@/lib/drizzle/schema';
 import type { InventoryEvent } from '@/lib/drizzle/schema';
+import type * as schema from '@/lib/drizzle/schema';
 import { and, desc, eq, sql } from 'drizzle-orm';
+import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
+
+/** The HTTP `db` or a drizzle over a caller's open tenant transaction (`drizzleOnClient`). */
+type InventoryEventsExecutor = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 /**
  * Canonical event_type values. The DB column is TEXT (not enum) for
@@ -62,9 +67,10 @@ interface AppendEventInput {
   payload?: Record<string, unknown>;
 }
 
-/** Append an inventory event. */
+/** Append an inventory event. Pass `executor` to write inside a caller's transaction. */
 export async function appendInventoryEvent(
   input: AppendEventInput,
+  executor: InventoryEventsExecutor = db,
 ): Promise<{ event: InventoryEvent; created: boolean }> {
   // Idempotency lookup, org-scoped whenever the caller has an org in hand.
   const idempotencyMatch = input.clientEventId
@@ -77,11 +83,11 @@ export async function appendInventoryEvent(
     : null;
 
   if (idempotencyMatch) {
-    const existing = await db.select().from(inventoryEvents).where(idempotencyMatch).limit(1);
+    const existing = await executor.select().from(inventoryEvents).where(idempotencyMatch).limit(1);
     if (existing[0]) return { event: existing[0], created: false };
   }
 
-  const inserted = await db
+  const inserted = await executor
     .insert(inventoryEvents)
     .values({
       eventType: input.eventType,
@@ -109,7 +115,7 @@ export async function appendInventoryEvent(
 
   // Conflict path: fetch the row that won the race — same org scope as above.
   if (idempotencyMatch) {
-    const existing = await db.select().from(inventoryEvents).where(idempotencyMatch).limit(1);
+    const existing = await executor.select().from(inventoryEvents).where(idempotencyMatch).limit(1);
     if (existing[0]) return { event: existing[0], created: false };
     // The insert was swallowed by the global UNIQUE, yet no row matches under this org:
     if (input.organizationId) {

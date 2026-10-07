@@ -38,6 +38,10 @@ interface StationLocationPillProps {
   menuLabel?: string;
   icon?: ReactNode;
   testId?: string;
+  /** The pill's key (`aria-keyshortcuts` + keycap) — see SlicedActionDock `hotkey`. */
+  hotkey?: string;
+  /** Paint the keycap — false while the key is asleep (a text field holds focus). */
+  hotkeyCap?: boolean;
 }
 
 /** Composer-footer twin of Print: */
@@ -52,6 +56,8 @@ export function StationLocationPill({
   menuLabel = 'Location options',
   icon,
   testId = 'station-location-pill',
+  hotkey,
+  hotkeyCap,
 }: StationLocationPillProps) {
   const scanInputRef = useRef<HTMLInputElement>(null);
   const [armed, setArmed] = useState(false);
@@ -94,6 +100,8 @@ export function StationLocationPill({
         tone="surface"
         label={face}
         title={tooltip || face}
+        hotkey={hotkey}
+        hotkeyCap={hotkeyCap}
         icon={icon ?? <MapPin className="h-3.5 w-3.5 shrink-0" />}
         onClick={() => undefined}
         disabled={isDisabled}

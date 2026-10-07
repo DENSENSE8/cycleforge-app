@@ -1,21 +1,30 @@
 'use client';
 
-import React, { useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-presets-hooks';
-import { Barcode, AlertCircle } from '../Icons';
+import { AlertCircle, Archive, MapPin, Package, ScanBarcode } from '../Icons';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { useLast8TrackingSearch } from '@/hooks/useLast8TrackingSearch';
 import { formatPSTTimestamp } from '@/utils/date';
-import { ThemedStationScanBar } from '@/components/station/scan-bar';
-import { ScanBandShell } from '@/components/station/scan-bar';
+import {
+  ScanBandShell,
+  StationScanModeRail,
+  ThemedStationScanBar,
+  isScanPreview,
+  useScanModeRelease,
+  useScanStance,
+  type StationScanModeDefinition,
+} from '@/components/station/scan-bar';
+import { composeStationScanBarRightContent } from '@/components/station/scan-bar/station-scan-preview-rail';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { routeScan, scannedUnitKey, unwrapScannedSerial } from '@/lib/barcode-routing';
+import type { PackScanMode } from '@/lib/packing/pack-scan-mode';
 import { useRegisterScanSink } from '@/lib/station-scan-sink';
 import { useAssistantContext } from '@/hooks/useAssistantContext';
 import { STATION_SKILL } from '@/lib/assistant/page-skills';
@@ -45,7 +54,7 @@ interface ActivePackingOrder {
   qty: number;
   condition: string;
   tracking: string;
-  scanType?: 'ORDERS' | 'SKU' | 'REPAIR' | 'UNIT';
+  scanType?: 'ORDERS' | 'REPAIR' | 'UNIT';
   sku?: string;
   serialUnitId?: number | null;
   unitKey?: string | null;
@@ -55,6 +64,21 @@ interface ActivePackingOrder {
 }
 
 type PackMode = 'standard' | 'fragile' | 'multi';
+
+/** Packing's manual lookups — each searches ONE identifier kind (`@/lib/packing/pack-scan-mode`). */
+const PACK_SCAN_MODES: readonly StationScanModeDefinition<PackScanMode>[] = [
+  { mode: 'tracking', label: 'Tracking', Icon: MapPin, armedClass: 'text-blue-700' },
+  { mode: 'tote', label: 'Tote', Icon: Archive, armedClass: 'text-amber-700' },
+  { mode: 'serial', label: 'Serial', Icon: ScanBarcode, armedClass: 'text-emerald-700' },
+  { mode: 'fnsku', label: 'FNSKU', Icon: Package, armedClass: 'text-violet-700' },
+];
+
+const PACK_SCAN_MODE_FULL_LABEL: Record<PackScanMode, string> = {
+  tracking: 'Tracking #',
+  tote: 'Tote',
+  serial: 'Unit label / serial',
+  fnsku: 'FNSKU',
+};
 
 const PACK_MODE_LABELS: Record<PackMode, string> = {
   standard: 'Standard',
@@ -71,11 +95,6 @@ interface PackScanColumnProps {
   packMode?: PackMode;
   /** Recent-activity rail rendered below the scan band (the sidebar's `PackRecentPacksRail`). */
   railSlot: ReactNode;
-  /**
-   * Pinned band below the rail's scroll port — the rail's client-side filter
-   * (`TechRailSearchBar`), below the rail's scroll port.
-   */
-  railFooter?: ReactNode;
 }
 
 export default function PackScanColumn({
@@ -85,7 +104,6 @@ export default function PackScanColumn({
   onComplete,
   packMode = 'standard',
   railSlot,
-  railFooter,
 }: PackScanColumnProps) {
   // Global-assistant context: station Q&A skill fragment (plan §-2.2).
   useAssistantContext({ page: 'packing-station', station: 'PACKING', skill: STATION_SKILL });
@@ -132,7 +150,13 @@ export default function PackScanColumn({
     });
   }, [activeOrder]);
 
-  const { theme: themeColor, inputTheme: activeColor } = useStationTheme({ staffId });
+  const { theme: themeColor } = useStationTheme({ staffId });
+  const stance = useScanStance();
+  // Armed lookup — one-shot like Picker: the next submit searches only this
+  // kind, then the bar falls back to Auto. Esc on the field releases it.
+  const [armedMode, setArmedMode] = useState<PackScanMode | null>(null);
+  const releaseArmedMode = useCallback(() => setArmedMode(null), []);
+  useScanModeRelease(armedMode != null, releaseArmedMode);
   const { normalizeTracking } = useLast8TrackingSearch();
 
   const { user } = useAuth();
@@ -196,16 +220,17 @@ export default function PackScanColumn({
     onComplete?.();
   };
 
-  const handleSubmit = async (eventOrRaw?: React.FormEvent | string) => {
+  const handleSubmit = async (eventOrRaw?: React.FormEvent | string, mode: PackScanMode | null = armedMode) => {
     if (eventOrRaw && typeof eventOrRaw !== 'string') eventOrRaw.preventDefault();
     const scan =
       typeof eventOrRaw === 'string' ? eventOrRaw.trim() : inputValue.trim();
     if (!scan || isLoading) return;
+    if (mode) setArmedMode(null);
 
     // §1b dual-link:
     const priorPackerLogId =
       activeOrder &&
-      (activeOrder.scanType === 'ORDERS' || activeOrder.scanType === 'SKU') &&
+      activeOrder.scanType === 'ORDERS' &&
       typeof activeOrder.packerLogId === 'number' &&
       activeOrder.packerLogId > 0
         ? activeOrder.packerLogId
@@ -220,10 +245,13 @@ export default function PackScanColumn({
     try {
       // A unit label (or a tote) first tries the order it is on: pack + print.
       // Only a unit on no open order falls back to the prepack photo path.
-      const unitKey = scannedUnitKey(scan);
+      // An armed tracking / tote / FNSKU lookup never reads the scan as a unit.
+      const unitKey = mode === null || mode === 'serial' ? scannedUnitKey(scan) : null;
 
-      // ── FBA path: FNSKU detected ───────────────────────────────────────────
-      if (!unitKey && looksLikeFnsku(scan)) {
+      // ── FBA path: FNSKU (auto by shape, or the armed FNSKU lookup) ─────────
+      if (mode === 'fnsku' && !looksLikeFnsku(scan)) {
+        setErrorMessage(`${scan} is not an FNSKU`);
+      } else if (mode === 'fnsku' || (mode === null && !unitKey && looksLikeFnsku(scan))) {
         const res = await fetch('/api/fba/items/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -251,11 +279,17 @@ export default function PackScanColumn({
       } else {
         // ── Regular packing path ───────────────────────────────────────────
         // Pre-normalize: strip USPS IMpb routing prefix (420+ZIP) for tracking inputs.
-        // SKU (has `:`) and special commands (clean/FBA-) pass through raw.
-        const isTrackingInput = !scan.includes(':') && !/^(clean|fba-)/i.test(scan);
+        // Special commands (clean/FBA-) pass through raw.
+        const isTrackingInput = !/^(clean|fba-)/i.test(scan);
 
-        // FBA combined-shipment ship-on-scan (never a unit label or a tote plate):
-        if (isTrackingInput && !unitKey && routeScan(scan)?.type !== 'handling-unit') {
+        // FBA combined-shipment ship-on-scan — a tracking lookup (auto or armed
+        // Tracking), never a unit label or a tote plate:
+        if (
+          (mode === null || mode === 'tracking') &&
+          isTrackingInput &&
+          !unitKey &&
+          routeScan(scan)?.type !== 'handling-unit'
+        ) {
           const shipRes = await fetch('/api/fba/shipments/mark-shipped', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -299,6 +333,8 @@ export default function PackScanColumn({
               trackingNumber: normalizedScan,
               // Tote codes and unit labels resolve on the scan as made.
               rawScan: scan,
+              // Armed lookup: the server searches only this identifier kind.
+              mode: mode ?? 'auto',
               photos: [],
               packerId: String(userId),
               packerName: userName,
@@ -325,14 +361,9 @@ export default function PackScanColumn({
             combinedPackScannedQty: Number(data.fba.total_qty ?? 0),
             isNew: false,
           });
-        } else if (resolvedScanType === 'ORDERS' || resolvedScanType === 'SKU') {
-          // SKU scans (e.g. '1071-B:A12') resolve productTitle via the Ecwid
-          // platform mapping in /api/packing-logs, so render the same active
-          // card the order path uses — but show the SKU in place of TRK#.
-          const isSku = resolvedScanType === 'SKU';
-          const skuValue = String(data?.sku || '').trim();
+        } else if (resolvedScanType === 'ORDERS') {
           const orderRowIdRaw = Number(data?.orderRowId);
-          const packerLogIdRaw = Number(data?.packerLogId ?? data?.packerRecord?.id);
+          const packerLogIdRaw = Number(data?.packerRecord?.id);
           const orderId = String(data?.orderId || '').trim();
           const orderRowId =
             Number.isFinite(orderRowIdRaw) && orderRowIdRaw > 0 ? orderRowIdRaw : null;
@@ -348,17 +379,16 @@ export default function PackScanColumn({
             qty: Math.max(1, Number(data?.qty ?? data?.quantity ?? data?.orderQty ?? 1) || 1),
             condition: String(data?.condition || '').trim() || '—',
             tracking: String(data?.shippingTrackingNumber || scan).trim(),
-            scanType: isSku ? 'SKU' : 'ORDERS',
-            sku: skuValue || undefined,
+            scanType: 'ORDERS',
+            sku: String(data?.sku || '').trim() || undefined,
             packerLogId:
               Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null,
             isUnknownOrder,
           });
 
-          // JIT pack Phase 1 — PoPC after ORDERS pack (not SKU-only / unknown).
+          // JIT pack Phase 1 — PoPC after ORDERS pack (not unknown).
           // Status + Reprint render in PackOrderPanel (middle), not this column.
           if (
-            !isSku &&
             !isUnknownOrder &&
             orderRowId &&
             data?.printBundleSuggested
@@ -382,9 +412,8 @@ export default function PackScanColumn({
         }
 
         onComplete?.();
-        if (data.packerRecord?.id) {
-          window.dispatchEvent(new CustomEvent('packer-log-added', { detail: data.packerRecord }));
-        }
+        // The rail refetches through the refresh bus (`packer.logs`) — the
+        // server stamps this scan's activity row at the scan instant.
         refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
       }
     } catch (err: any) {
@@ -394,6 +423,17 @@ export default function PackScanColumn({
       setIsLoading(false);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
+  };
+
+  const toggleMode = (mode: PackScanMode) => {
+    const next = armedMode === mode ? null : mode;
+    setArmedMode(next);
+    // Arming with a value already in the field runs that lookup now (Picker parity).
+    if (next && inputValue.trim() && !isScanPreview()) {
+      void handleSubmit(inputValue, next);
+      return;
+    }
+    queueMicrotask(() => inputRef.current?.focus());
   };
 
   useRegisterScanSink({
@@ -416,14 +456,40 @@ export default function PackScanColumn({
             onSubmit={handleSubmit}
             inputRef={inputRef}
             staffId={staffId}
-            placeholder="Tracking · Tote · Serial · SKU"
-            icon={<Barcode className="h-[17px] w-[17px]" />}
-            iconClassName={activeColor.text}
+            placeholder={
+              stance === 'preview'
+                ? ''
+                : armedMode
+                  ? `Scan ${PACK_SCAN_MODE_FULL_LABEL[armedMode]}`
+                  : 'Tracking \u00b7 Tote \u00b7 Serial \u00b7 FNSKU'
+            }
             // Align icon/text to SIDEBAR_SCAN_DOCK_LEADING_ROW (Unbox/Testing SoT) — not MasterNav deep inset.
             leadingColumn="rail"
             autoFocus
             isResolving={isLoading}
             className="w-full"
+            rightContent={composeStationScanBarRightContent(
+              stance,
+              undefined,
+              <StationScanModeRail
+                modes={PACK_SCAN_MODES}
+                armedMode={armedMode}
+                onToggleMode={toggleMode}
+                size="compact"
+                getAriaLabel={(m, armed) => {
+                  const full = PACK_SCAN_MODE_FULL_LABEL[m.mode];
+                  return armed
+                    ? `${full} armed for next scan. Click again to auto-detect.`
+                    : `Arm ${full}: force the next scan to search ${full}.`;
+                }}
+                getTitle={(m, armed) => {
+                  const full = PACK_SCAN_MODE_FULL_LABEL[m.mode];
+                  return armed
+                    ? `${full} armed \u2014 next scan. Click again to auto-detect.`
+                    : `Search by ${full}`;
+                }}
+              />,
+            )}
           />
         </ScanBandShell>
 
@@ -458,11 +524,8 @@ export default function PackScanColumn({
           {/* The FBA scan card and the active-order card BOTH left this column on 2026-08-02. */}
         </div>
 
-        {/* Recent-activity rail — the single scroll port of this column. Its
-            bottom-anchored filter band rides in `railFooter` (below the scroll
-            port, same anatomy as the Testing / Shipping sidebars). */}
+        {/* Recent-activity rail — the single scroll port of this column. */}
         {railSlot ? <SidebarRailScrollport>{railSlot}</SidebarRailScrollport> : null}
-        {railSlot ? railFooter : null}
       </div>
     </div>
   );

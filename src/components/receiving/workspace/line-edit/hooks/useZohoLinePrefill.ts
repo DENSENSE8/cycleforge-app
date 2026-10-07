@@ -2,7 +2,7 @@
 
 /** Prefill Zendesk ticket, listing URL, and serial from the line's Zoho PO (notes + matching line-item description). */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { readReceivingLineDetailsScratch } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
   parseSerialFromLineDescription,
@@ -23,13 +23,17 @@ export function useZohoLinePrefill({
   setListingLink,
   setSerialInput,
 }: UseZohoLinePrefillArgs) {
+  // Keyed on line identity only; everything else is read through a ref so a
+  // serial publish or a typed value never re-runs this and overwrites input.
+  const latest = useRef({ row, setZendesk, setListingLink, setSerialInput });
+  latest.current = { row, setZendesk, setListingLink, setSerialInput };
   useEffect(() => {
+    const { row, setZendesk, setListingLink, setSerialInput } = latest.current;
     const poId = (row.zoho_purchaseorder_id || '').trim();
     if (!poId) return;
 
     const rid = row.receiving_id;
     const scratch = readReceivingLineDetailsScratch(rid);
-
     // LOCAL-FIRST serial: the incoming Zoho sync already copied the line's
     // description into receiving_lines.notes (= row.notes), so parse the serial
     // from there instead of pinging Zoho. A local serial_units value still wins.
@@ -39,7 +43,9 @@ export function useZohoLinePrefill({
       if (snLocal) setSerialInput(snLocal);
     }
 
-    // Zendesk + listing come from the PO *header* notes, which the local mirror (header-only) doesn't carry — so they're the only reason to…
+    // Zendesk + listing come from the PO *header* notes, which neither the local
+    // mirror nor lookup-po carry — the fetch is skipped only when both are
+    // already on the row (lookup-po's listing_url seed counts) or in scratch.
     const zendeskSatisfied = !!(scratch.zendesk.trim() || (row.zendesk_ticket || '').trim());
     const listingSatisfied = !!((row.receiving_listing_url || '').trim() || scratch.listing.trim());
     if (zendeskSatisfied && listingSatisfied) return;
@@ -66,6 +72,5 @@ export function useZohoLinePrefill({
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.id, row.receiving_id, row.zoho_purchaseorder_id, row.zoho_line_item_id]);
 }

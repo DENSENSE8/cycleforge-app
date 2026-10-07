@@ -1,6 +1,6 @@
 import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -260,10 +260,10 @@ export async function readTimeline(
      ORDER BY ie.occurred_at DESC, ie.id DESC
      LIMIT $${params.length}`;
 
-  // When org-scoped, run through the tenant connection so the GUC + RLS
-  // backstop are in force; otherwise preserve the original raw pool read.
+  // When org-scoped, run through the tenant GUC (one round trip — a read) so the
+  // RLS backstop is in force; otherwise preserve the original raw pool read.
   const result = orgId
-    ? await tenantQuery<InventoryEventRow>(orgId, sql, params)
+    ? await tenantQueryOneTrip<InventoryEventRow>(orgId, sql, params)
     : await pool.query<InventoryEventRow>(sql, params);
   return result.rows;
 }

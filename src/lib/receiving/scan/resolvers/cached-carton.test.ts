@@ -38,6 +38,15 @@ test('matches tracking in tracking mode, normalizing case + punctuation', () => 
   assert.equal(res?.row, r);
 });
 
+test('matches a USPS IMpb label spelling (420+ZIP) to the stored human tracking', () => {
+  const r = row({ receiving_id: 201, tracking_number: '9400100000382441843263' });
+  const res = resolveCachedCarton(
+    { value: '420902109400100000382441843263', mode: 'auto' },
+    { readCachedRows: () => [r] },
+  );
+  assert.equal(res?.receivingId, 201);
+});
+
 test('order mode matches the PO#, ignoring a tracking-only row', () => {
   const tnRow = row({ id: 2, receiving_id: 2, tracking_number: 'PO1234' });
   const poRow = row({ id: 1, receiving_id: 1, zoho_purchaseorder_number: 'PO-1234' });

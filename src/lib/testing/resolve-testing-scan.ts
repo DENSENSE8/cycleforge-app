@@ -7,6 +7,7 @@ import {
   serializeTrackingIn,
   TRACKING_IN_PARAM,
 } from '@/lib/receiving/tracking-paste';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 
 /** Minimal carton header from GET /api/receiving/:id — used when lines are empty. */
 type ReceivingCartonHeader = {
@@ -268,11 +269,10 @@ export async function fetchLinesByTracking(tracking: string) {
   const data = await res.json();
   const all = (data?.receiving_lines ?? []) as ReceivingLineRow[];
   // Narrow to rows whose tracking_number actually matches (ILIKE search may
-  // hit other columns). Compare canonicalized form so dashes/spaces in the
-  // scan don't keep us from finding a row stored without them.
-  const canon = (v: string) => v.replace(/[^A-Z0-9]/gi, '').toUpperCase();
-  const want = canon(tracking);
-  return all.filter((row) => canon(String(row.tracking_number || '')) === want);
+  // hit other columns). Compare CANONICAL forms so dashes/spaces and a USPS
+  // IMpb / FedEx GS1 label spelling still find the row stored as the human number.
+  const want = extractCanonicalTracking(tracking);
+  return all.filter((row) => extractCanonicalTracking(String(row.tracking_number || '')) === want);
 }
 
 async function fetchLineByUnitId(unitId: string): Promise<ReceivingLineRow | null> {

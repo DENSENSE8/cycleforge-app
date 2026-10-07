@@ -40,8 +40,10 @@ phone↔desktop bridges, scan logs, and AI session streaming. **Live.**
 
 **There is exactly ONE ack event: `station_device_ack`**, carrying the
 `request_id` it answers plus a `kind`. It is the reply to every desk-initiated
-send-to-device request — `receiving_photo_request` and `receiving_share_to_phone`
-on `staffstation:{staffId}`, `scan_ready` on `packer:{staffId}`.
+send-to-device request — `receiving_photo_request`, `receiving_location_request`
+(Unbox Location pill / `L` → `/m/r/[id]/location`, kind `receiving_location`)
+and `receiving_share_to_phone` on `staffstation:{staffId}`, `scan_ready` on
+`packer:{staffId}`.
 
 Why it exists: an Ably `publish()` resolves with **zero subscribers**, so a desk
 that published a capture request and said "Sent to phone" had confirmed only

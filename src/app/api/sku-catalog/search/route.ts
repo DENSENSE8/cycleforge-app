@@ -440,7 +440,8 @@ async function searchFromCatalog(
                   'platform', sp.platform,
                   'platform_sku', sp.platform_sku,
                   'platform_item_id', sp.platform_item_id,
-                  'account_name', sp.account_name
+                  'account_name', sp.account_name,
+                  'listing_url', NULLIF(BTRIM(sp.listing_url), '')
                 )
               ) AS platform_ids
          FROM sku_platform_ids sp

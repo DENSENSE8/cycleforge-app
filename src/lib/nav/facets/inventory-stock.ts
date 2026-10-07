@@ -104,6 +104,7 @@ export async function inventoryStockFacets(
   const roomDeclaration = declarations.find((group) => group.id === 'room')!;
   const aisleDeclaration = declarations.find((group) => group.id === 'aisle')!;
   const healthDeclaration = declarations.find((group) => group.id === 'health')!;
+  const countDeclaration = declarations.find((group) => group.id === 'count')!;
 
   const roomLabels = new Map<string, string>();
   for (const row of rows) roomLabels.set(roomId(row), row.room ?? 'No room');
@@ -151,6 +152,14 @@ export async function inventoryStockFacets(
           { value: 'low-stock', label: 'Low stock', count: counts.lowStockPairs },
           { value: 'out-of-stock', label: 'Out of stock', count: counts.outPairs },
           { value: 'on-hold', label: 'On hold', count: counts.onHoldPairs },
+        ],
+      },
+      {
+        id: countDeclaration.id,
+        label: countDeclaration.label,
+        param: countDeclaration.param,
+        options: [
+          { value: 'never', label: 'Never counted', count: counts.neverCountedPairs },
         ],
       },
     ],

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   elevationClass,
   type RaisedIntensity,
@@ -61,6 +61,8 @@ interface WorkspaceCardProps {
   variant?: WorkspaceCardVariant;
   /** Raised intensity for `variant="glass"` only (ignored on solid). */
   elevation?: RaisedIntensity;
+  /** Material painted on the solid surface (e.g. `stationBubbleMaterialStyle` — wash + grain). */
+  surfaceStyle?: CSSProperties;
   children: ReactNode;
 }
 
@@ -84,6 +86,7 @@ export function WorkspaceCard({
   overflow = 'hidden',
   variant = 'solid',
   elevation = GLASS_RAISED_DEFAULT,
+  surfaceStyle,
   children,
 }: WorkspaceCardProps) {
   const overflowClass = overflow === 'visible' ? 'overflow-visible' : 'overflow-hidden';
@@ -107,6 +110,7 @@ export function WorkspaceCard({
   return (
     <section
       className={cn('relative', overflowClass, surfaceClass, className)}
+      style={surfaceStyle}
     >
       {glass ? (
         <>

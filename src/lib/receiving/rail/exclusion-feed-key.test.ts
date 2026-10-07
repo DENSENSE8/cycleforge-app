@@ -7,22 +7,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { railExclusionFeedKey, exclusionToRailId } from './exclusion-feed-key';
 
-test('railExclusionFeedKey: triage feeds → receiving_triage', () => {
+test('railExclusionFeedKey: each station rail dismisses into its own feed key', () => {
   assert.equal(railExclusionFeedKey('triageCombined'), 'receiving_triage');
-  assert.equal(railExclusionFeedKey('triageUnfound'), 'receiving_triage');
-  assert.equal(railExclusionFeedKey('triageDone'), 'receiving_triage');
-});
-
-test('railExclusionFeedKey: unbox feeds → receiving_unbox', () => {
   assert.equal(railExclusionFeedKey('unboxRecent'), 'receiving_unbox');
-  assert.equal(railExclusionFeedKey('unboxQueue'), 'receiving_unbox');
-  assert.equal(railExclusionFeedKey('viewed'), 'receiving_unbox');
-});
-
-test('railExclusionFeedKey: the shared Scanned feed splits by scope', () => {
-  assert.equal(railExclusionFeedKey('scanned', 'triage'), 'receiving_triage');
-  assert.equal(railExclusionFeedKey('scanned', 'unbox'), 'receiving_unbox');
-  assert.equal(railExclusionFeedKey('scanned'), 'receiving_unbox'); // default (Queue)
 });
 
 test('railExclusionFeedKey: QC Recent has no dismiss feed', () => {

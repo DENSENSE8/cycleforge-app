@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getActiveNasBaseUrl, getAllNasBaseUrls } from '@/lib/tenancy/settings';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -12,7 +12,7 @@ import {
   countReceivingPhotos,
 } from '@/lib/photos/queries/receiving-list';
 import { resolvePoRef } from '@/lib/photos/resolve-po-ref';
-import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
+import { resolveFullPhotoAccessUrls, resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { attachPhotoWithLegacyUrl, deletePhoto } from '@/lib/photos/service';
 import { linkReceivingPhotoToClaim } from '@/lib/photos/claim-link';
 import { autoArchiveClaimPhotosAfterCapture } from '@/lib/receiving-claim-archive';
@@ -137,58 +137,55 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           })()
         : null;
 
-    const rows = aspectFilterMatchesNothing
-      ? []
-      : await listReceivingPhotos({
-          organizationId: ctx.organizationId,
-          receivingId,
-          lineId,
-          scope: scope === 'po' ? 'po' : 'all',
-          photoIntent,
-          photoAspects,
-        });
+    const orgId = ctx.organizationId as OrgId;
+    // The photo list, the carton stamp and the operator's NAS folder are independent reads — run them together.
+    const [rows, cartonRes, nas] = await Promise.all([
+      aspectFilterMatchesNothing
+        ? []
+        : listReceivingPhotos({
+            organizationId: ctx.organizationId,
+            receivingId,
+            lineId,
+            scope: scope === 'po' ? 'po' : 'all',
+            photoIntent,
+            photoAspects,
+          }),
+      // Surface when this carton was physically scanned/received so the NAS picker can anchor the "PO scan time" sort on the moment the photos…
+      tenantQueryOneTrip<{ created_at: string | null }>(
+        orgId,
+        `SELECT to_char(
+                  COALESCE(
+                    rt.door_received_at,
+                    (SELECT MIN(rs.scanned_at) FROM receiving_scans rs WHERE rs.receiving_id = r.id),
+                    r.created_at
+                  ) AT TIME ZONE 'UTC',
+                  'YYYY-MM-DD"T"HH24:MI:SS"Z"'
+                ) AS created_at
+           FROM receiving_carton r
+           LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+          WHERE r.id = $1 AND r.organization_id = $2 LIMIT 1`,
+        [receivingId, ctx.organizationId],
+      ),
+      // Resolve the folder the picker should auto-open for THIS operator (their primary station → the org's admin-configured…
+      Promise.all([getOrganization(orgId), resolveOperatorNasFolder(orgId, ctx.staffId)])
+        .then(([org, folder]) => ({
+          initialNasFolder: folder,
+          nasBaseUrl: org ? getActiveNasBaseUrl(org.settings) : '',
+        }))
+        .catch(() => ({ initialNasFolder: '', nasBaseUrl: '' })),
+    ]);
+    const { initialNasFolder, nasBaseUrl } = nas;
 
-    // Surface when this carton was physically scanned/received so the NAS picker can anchor the "PO scan time" sort on the moment the photos…
-    const cartonRes = await tenantQuery<{ created_at: string | null }>(
-      ctx.organizationId as OrgId,
-      `SELECT to_char(
-                COALESCE(
-                  rt.door_received_at,
-                  (SELECT MIN(rs.scanned_at) FROM receiving_scans rs WHERE rs.receiving_id = r.id),
-                  r.created_at
-                ) AT TIME ZONE 'UTC',
-                'YYYY-MM-DD"T"HH24:MI:SS"Z"'
-              ) AS created_at
-         FROM receiving_carton r
-         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
-        WHERE r.id = $1 AND r.organization_id = $2 LIMIT 1`,
-      [receivingId, ctx.organizationId],
+    const fullUrls = await resolveFullPhotoAccessUrls(
+      rows.map((row) => row.id),
+      ctx.organizationId,
     );
-
-    // Resolve the folder the picker should auto-open for THIS operator (their primary station → the org's admin-configured…
-    let initialNasFolder = '';
-    let nasBaseUrl = '';
-    try {
-      const orgId = ctx.organizationId as OrgId;
-      const [org, folder] = await Promise.all([
-        getOrganization(orgId),
-        resolveOperatorNasFolder(orgId, ctx.staffId),
-      ]);
-      initialNasFolder = folder;
-      nasBaseUrl = org ? getActiveNasBaseUrl(org.settings) : '';
-    } catch {
-      initialNasFolder = '';
-      nasBaseUrl = '';
-    }
-
     const photos = await Promise.all(
-      rows.map(async (row) => {
-        const [photoUrl, thumbUrl] = await Promise.all([
-          resolvePhotoAccessUrl(row.id, ctx.organizationId, 'full'),
-          resolvePhotoAccessUrl(row.id, ctx.organizationId, 'thumb'),
-        ]);
-        return { ...mapRow(row), photoUrl, thumbUrl };
-      }),
+      rows.map(async (row) => ({
+        ...mapRow(row),
+        photoUrl: fullUrls.get(row.id)!,
+        thumbUrl: await resolvePhotoAccessUrl(row.id, ctx.organizationId, 'thumb'),
+      })),
     );
 
     return NextResponse.json({

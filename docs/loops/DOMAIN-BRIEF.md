@@ -129,7 +129,7 @@ The UI paints the canonical label. Banned words never stand in for it in nav lab
 | Quality control | Testing workflow for returned, repaired and newly unboxed serialized units | QC (as a navigation label); testing (as the page name) |
 | Inbound | Scan direction for packages arriving at the door | In (as the scan direction); receive (as the scan direction) |
 | Outbound | Scan direction for packages leaving the building | Out (as the scan direction); scan out (as the direction name) |
-| Warehouse | Lane for the building and everything stored in it | inventory (as a lane name) |
+| Warehouse | Lane for the building: locations, racks, containers. Quantity is the Inventory lane | |
 | Stock | One SKU's quantity at one location ("on hand" is the number) | quant; inventory row; bin contents |
 | Room (Rooms) | Top of the address: Room › Aisle › Bay › Level › Position | zone; area; storage type |
 | Aisle (Aisles) | A row of bays inside a room | row |

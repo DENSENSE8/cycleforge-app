@@ -45,6 +45,8 @@ export interface TerminalActionVm {
   disabled?: boolean;
   loading?: boolean;
   title?: string;
+  /** The CTA's key, painted inside the button (Quality control's `P`). */
+  hotkey?: string;
   tone?: TerminalTone;
   /** Override tone with arbitrary Tailwind classes (e.g. per-tech theme). */
   toneClasses?: { bg: string; hover: string };

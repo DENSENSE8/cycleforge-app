@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { LineEditPanel } from './LineEditPanel';
+import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
+import { RECEIVING_PHOTO_LIST_INTENT_CARTON } from '@/lib/receiving/photo-intent';
 import { TriagePanel } from '../triage/TriagePanel';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
@@ -53,6 +55,12 @@ export function ReceivingLineWorkspace({
     unboxPrimaryPaint?.onPrimaryPainted();
   }, [variant, unboxPrimaryPaint]);
   // Record this open into the operator's recents (server-backed, per-staff) so the Recent tab can list recently-opened lines.
+  const [photosReady, setPhotosReady] = useState(false);
+  useEffect(() => {
+    setPhotosReady(false);
+    const frame = requestAnimationFrame(() => setPhotosReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, [row.receiving_id]);
   useEffect(() => {
     if (!(row.id > 0) || !recordView) return;
     void fetch('/api/receiving-lines/view', {
@@ -65,7 +73,7 @@ export function ReceivingLineWorkspace({
   return (
     // Plain wrapper — NO per-line key/crossfade.
     <div
-      className="flex h-full w-full flex-col bg-surface-canvas"
+      className="relative flex h-full w-full flex-col bg-surface-canvas"
       data-testid="receiving-workspace"
       // E2E hook: distinguishes a matched-PO carton ('zoho_po') from an unfound
       // intake carton ('unmatched'), so the scan-resolution spec can assert a
@@ -94,6 +102,14 @@ export function ReceivingLineWorkspace({
           />
         )}
       </div>
+      {variant === 'unbox' && photosReady && row.receiving_id != null ? (
+        <ReceivingPhotoPeek
+          receivingId={row.receiving_id}
+          staffId={Number(staffId) || 0}
+          poRef={row.zoho_purchaseorder_number}
+          photoIntent={RECEIVING_PHOTO_LIST_INTENT_CARTON}
+        />
+      ) : null}
     </div>
   );
 }

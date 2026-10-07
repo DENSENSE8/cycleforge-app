@@ -256,6 +256,7 @@ export function buildReceivingLineByIdSql(id: number, orgId: string): BuiltSql {
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
+                sc.gtin                      AS catalog_gtin,
                 ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
                 -- ticket_links (authoritative) → denormalized columns fallback.
                 ${sqlReceivingZendeskTicketColumn()}
@@ -430,6 +431,7 @@ export function buildReceivingLinesByReceivingIdSql(
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                   sc.id                        AS sku_catalog_id,
+                  sc.gtin                      AS catalog_gtin,
                   ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
                   ${sqlReceivingZendeskTicketColumn()}
            FROM receiving_line rl
@@ -1532,6 +1534,7 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)                   AS zoho_item_title,
                 sc.id                        AS sku_catalog_id,
+                sc.gtin                      AS catalog_gtin,
                 ${sqlReceivingPhotoCount('rl.receiving_id', 'rl.organization_id')} AS photo_count,
                 -- ticket_links (authoritative) → denormalized columns fallback.
                 ${sqlReceivingZendeskTicketColumn()}

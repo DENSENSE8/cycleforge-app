@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   receivingSiblingsQueryKey,
-  receivingSiblingsSerialsQueryKey,
+  receivingSiblingsSerialsQuery,
   seedReceivingSiblingsCache,
   upsertSiblingLine,
 } from '@/lib/queries/receiving-queries';
@@ -71,10 +71,8 @@ export function usePoLinesData({
 }: Args): PoLinesData {
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => receivingSiblingsQueryKey(receivingId), [receivingId]);
-  const serialsKey = useMemo(
-    () => receivingSiblingsSerialsQueryKey(receivingId),
-    [receivingId],
-  );
+  const serialsQueryOptions = useMemo(() => receivingSiblingsSerialsQuery(receivingId), [receivingId]);
+  const serialsKey = serialsQueryOptions.queryKey;
   const enabled = Number.isFinite(receivingId) && receivingId > 0;
 
   // Single-line placeholder so a cold open paints the clicked line immediately
@@ -152,17 +150,10 @@ export function usePoLinesData({
   });
 
   // Parallel serial+units hydration — the heavy `include=serials` resolution runs on its own cache so the metadata query never waits for it.
+  // Shared with the scan open + rail peek, so whichever needs it first loads it once.
   const serialsQuery = useQuery<ApiResponse>({
-    queryKey: serialsKey,
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/receiving-lines?receiving_id=${receivingId}&include=serials`,
-      );
-      if (!res.ok) throw new Error('Failed to fetch serials');
-      return res.json();
-    },
+    ...serialsQueryOptions,
     enabled,
-    staleTime: 15_000,
     refetchOnWindowFocus: false,
   });
 

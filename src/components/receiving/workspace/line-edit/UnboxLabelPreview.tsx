@@ -17,6 +17,7 @@ export function UnboxLabelPreview({
   row,
   c,
   onReveal,
+  chrome = 'procedure',
 }: {
   row: {
     id?: number;
@@ -32,6 +33,8 @@ export function UnboxLabelPreview({
    * signals reach it.
    */
   onReveal?: () => void;
+  /** `procedure` fills the QC Label band; `peek` is the Unbox label bubble (small face, hover grows it). */
+  chrome?: 'procedure' | 'peek';
 }) {
   const [cartonEditorOpen, setCartonEditorOpen] = useState(false);
   const [asListedEditorOpen, setAsListedEditorOpen] = useState(false);
@@ -136,7 +139,7 @@ export function UnboxLabelPreview({
     <div data-testid="unbox-label-preview">
       <div data-testid="unbox-label-open">
         <WorkspaceLabelPreviewCard
-          chrome="procedure"
+          chrome={chrome}
           showHoverChrome={false}
           sku={sku || unitMatrixValue}
           title={title || sku}

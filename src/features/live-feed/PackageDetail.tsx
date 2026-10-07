@@ -174,22 +174,39 @@ export function PackageDetail({
           </Section>
         ) : null}
 
+        {card.link === 'order' ? null : (
+          <Section title="Not linked">
+            <p className="text-sm text-slate-600" data-testid="live-feed-unlinked">
+              {card.link === 'package'
+                ? 'This box was scanned out at the dock, but no order owns its tracking number. It is shown so nothing the dock recorded is hidden.'
+                : 'This scan-out never matched a package on file. The scanned text is shown as the tracking.'}
+            </p>
+            {card.carrierStatus ? <p className="mt-1 text-sm text-slate-500">Carrier: {card.carrierStatus}</p> : null}
+          </Section>
+        )}
+
         <Section title="Journey">
           <StageTimeline card={card} />
         </Section>
 
-        <Section title="Tags">
-          <PackageTags orderRowId={card.orderRowId} tags={card.tags} />
-        </Section>
+        {card.link === 'order' ? (
+          <>
+            <Section title="Tags">
+              <PackageTags orderRowId={card.orderRowId} tags={card.tags} />
+            </Section>
 
-        <Section title="Comments" aside={card.noteCount > 0 ? <span className="text-xs text-slate-400">{card.noteCount}</span> : null}>
-          <PackageCommentThread orderRowId={card.orderRowId} />
-        </Section>
+            <Section title="Comments" aside={card.noteCount > 0 ? <span className="text-xs text-slate-400">{card.noteCount}</span> : null}>
+              <PackageCommentThread orderRowId={card.orderRowId} />
+            </Section>
+          </>
+        ) : null}
       </div>
 
-      <footer className="border-t border-slate-100 px-4 py-3">
-        <PackageCommentComposer orderRowId={card.orderRowId} />
-      </footer>
+      {card.link === 'order' ? (
+        <footer className="border-t border-slate-100 px-4 py-3">
+          <PackageCommentComposer orderRowId={card.orderRowId} />
+        </footer>
+      ) : null}
     </div>
   );
 }

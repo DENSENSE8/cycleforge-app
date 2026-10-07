@@ -19,9 +19,15 @@ export const CHECK_ZOHO_RECEIVED_MAX_INPUTS = 300;
 /** The list-filter URL param. One name, imported — never re-typed at a call site. */
 export const TRACKING_IN_PARAM = 'tracking_in';
 
+/**
+ * Quote marks a spreadsheet copy wraps around a multi-line cell
+ * (`"1Z…\n1Z…"` arrives as `"1Z…` and `1Z…"`) — never part of a number.
+ */
+const PASTE_QUOTES_RE = /["'\u201C\u201D\u2018\u2019`]/g;
+
 /** Expand one paste token into tracking string(s). */
 function expandPasteToken(token: string): string[] {
-  const trimmed = String(token ?? '').trim();
+  const trimmed = String(token ?? '').replace(PASTE_QUOTES_RE, '').trim();
   if (!trimmed) return [];
   const parts = trimmed.split(/\s+/).filter(Boolean);
   if (parts.length <= 1) return [trimmed];
@@ -68,6 +74,9 @@ export function parseTrackingPaste(
   for (const raw of parts) {
     const trimmed = String(raw ?? '').trim();
     if (!trimmed) continue;
+    // A sheet's word cell — a header ("note"), a status ("Delivered"), a note ("Missing tracking number") —
+    // is letters and spaces only; every order, tracking or PO number carries a digit or a separator.
+    if (/^[\p{L}\s]+$/u.test(trimmed)) continue;
     input_count += 1;
     const canon = canonicalizeTrackingKey(trimmed);
     if (!canon) continue;

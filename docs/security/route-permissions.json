@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-07T06:23:49Z",
-  "totalRoutes": 1222,
+  "generatedAt": "2026-10-07T08:34:09Z",
+  "totalRoutes": 1233,
   "summary": {
-    "permissionGated": 991,
+    "permissionGated": 1001,
     "authenticatedNoPermission": 145,
     "anonymousIntentional": 37,
-    "serviceToService": 49,
+    "serviceToService": 50,
     "ungatedRead": 0,
     "ungatedWrite": 0
   },
@@ -1881,6 +1881,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/cron/qc-print-pass/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "cron bearer secret",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/cron/receiving/claims-escalation/route.ts",
       "methods": [
         "GET"
@@ -2318,6 +2327,15 @@
       "methods": [
         "DELETE",
         "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/documents/[id]/unlink/route.ts",
+      "methods": [
+        "POST"
       ],
       "gate": "requireRoutePerm",
       "permission": "orders.create",
@@ -2871,6 +2889,15 @@
       ],
       "gate": "withAuth",
       "permission": "assistant.chat",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/fulfilled/thread/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.view",
       "exemptReason": null
     },
     {
@@ -4780,6 +4807,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/[id]/paperwork-suggestions/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/[id]/pick-tasks/route.ts",
       "methods": [
         "GET"
@@ -4821,6 +4857,16 @@
         "DELETE",
         "GET",
         "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/sku-suggestions/route.ts",
+      "methods": [
+        "GET",
+        "POST"
       ],
       "gate": "requireRoutePerm",
       "permission": "orders.view",
@@ -5116,6 +5162,16 @@
       ],
       "gate": "withAuth",
       "permission": "admin.manage_features",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/list-removal/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {
@@ -6361,6 +6417,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/qc/units/[id]/print-pass/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "tech.qc_pass",
+      "exemptReason": null
+    },
+    {
       "path": "/api/quality/dashboard/route.ts",
       "methods": [
         "GET"
@@ -7319,6 +7384,7 @@
     {
       "path": "/api/receiving/po/[poId]/attach-box/route.ts",
       "methods": [
+        "DELETE",
         "GET",
         "POST"
       ],
@@ -7354,9 +7420,8 @@
       "exemptReason": null
     },
     {
-      "path": "/api/receiving/rail-exclusions/route.ts",
+      "path": "/api/receiving/putaway-targets/route.ts",
       "methods": [
-        "DELETE",
         "GET",
         "POST"
       ],
@@ -7365,8 +7430,9 @@
       "exemptReason": null
     },
     {
-      "path": "/api/receiving/rail-snapshot/route.ts",
+      "path": "/api/receiving/rail-exclusions/route.ts",
       "methods": [
+        "DELETE",
         "GET",
         "POST"
       ],
@@ -7418,15 +7484,6 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.mark_received",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/scan-verdict/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
       "exemptReason": null
     },
     {
@@ -10503,6 +10560,24 @@
       "exemptReason": null
     },
     {
+      "path": "/api/v1/label-ingestions/[id]/file-check/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-ingestions/[id]/file-on-order/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.complete_order",
+      "exemptReason": null
+    },
+    {
       "path": "/api/v1/label-ingestions/[id]/pdf/route.ts",
       "methods": [
         "GET"
@@ -10537,6 +10612,33 @@
       ],
       "gate": "withAuth",
       "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-ingestions/[id]/unpair-check/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-ingestions/[id]/unpair/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.complete_order",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-ingestions/[id]/unpair/undo/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.complete_order",
       "exemptReason": null
     },
     {

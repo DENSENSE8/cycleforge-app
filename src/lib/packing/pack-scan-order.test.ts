@@ -117,3 +117,23 @@ test('resolvePackScan: a typed serial on an open order packs; anything else stay
     unitKey: 'SN123',
   });
 });
+
+test('resolvePackScan: an armed kind searches that kind only', async () => {
+  const both = {
+    tote: { code: 'H-12', status: 'STAGED', orderId: 77, tracking: '1Z999' },
+    unit: { serialUnitId: 9, orderId: 42 },
+  };
+  const toteOnly = deps(both);
+  assert.equal(await resolvePackScan(client, ORG, 'SN123', deps({ unit: both.unit }), 'tote'), null);
+  assert.equal((await resolvePackScan(client, ORG, 'H-12', toteOnly, 'tote'))?.kind, 'order');
+  assert.deepEqual(toteOnly.unitScans, [], 'tote mode never looks up a unit');
+
+  const unitOnly = deps(both);
+  // The deps' tote matches any raw — unit mode must never ask it.
+  assert.deepEqual(await resolvePackScan(client, ORG, 'SN123', unitOnly, 'unit'), {
+    kind: 'order',
+    via: 'unit',
+    orderId: 42,
+    serialUnitId: 9,
+  });
+});

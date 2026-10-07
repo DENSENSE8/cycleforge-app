@@ -155,8 +155,9 @@ export const NavControlsSchema = z
      * Civil-date ranges (`DateRangePickerField variant="compact"`): picking
      * one writes `fromParam`/`toParam` (YYYY-MM-DD) and deletes every
      * `clearParams` key; `placeholder` names the window the list shows with
-     * neither set. With `fromTimeParam`/`toTimeParam` the range also takes a
-     * time of day (HH:mm, warehouse time) at each end.
+     * neither set — or, while the URL carries `unsetWith.param`, its own
+     * words (a pasted list has no window). With `fromTimeParam`/`toTimeParam`
+     * the range also takes a time of day (HH:mm, warehouse time) at each end.
      */
     dateRanges: z
       .array(
@@ -168,6 +169,7 @@ export const NavControlsSchema = z
             toParam: z.string().min(1),
             clearParams: z.array(z.string().min(1)),
             placeholder: z.string().min(1),
+            unsetWith: z.object({ param: z.string().min(1), placeholder: z.string().min(1) }).strict().optional(),
             fromTimeParam: z.string().min(1).optional(),
             toTimeParam: z.string().min(1).optional(),
           })

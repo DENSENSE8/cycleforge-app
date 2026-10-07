@@ -49,7 +49,16 @@ export const ORDER_UPLOAD_INTENT = 'labels-docs:upload-order';
 
 const STOCK_NOUN: Readonly<Record<PrintStock, string>> = { label: 'Labels', paper: 'Paperwork' };
 
-export function OrderPane({ packet, onClose }: { packet: OrderPacket; onClose?: () => void }) {
+export function OrderPane({
+  packet,
+  onClose,
+  hostPrints = false,
+}: {
+  packet: OrderPacket;
+  onClose?: () => void;
+  /** The host prints (the Live feed's print popover, bottom right): the pane keeps its slots and the exemption, not its own Print order. */
+  hostPrints?: boolean;
+}) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const refresh = usePacketRefresh();
   const channel = useOrderChannel();
@@ -136,6 +145,8 @@ export function OrderPane({ packet, onClose }: { packet: OrderPacket; onClose?: 
       </div>
 
       <footer className="shrink-0 border-t border-mode-divide bg-surface-card px-3 py-3" data-testid="order-pane-actions">
+        {hostPrints ? null : (
+          <>
         <Button
           variant="primary"
           size="md"
@@ -161,7 +172,9 @@ export function OrderPane({ packet, onClose }: { packet: OrderPacket; onClose?: 
             {notice}
           </p>
         ) : null}
-        <label className="mt-2 flex min-w-0 items-center gap-2 text-role-caption text-text-default">
+          </>
+        )}
+        <label className={cn('flex min-w-0 items-center gap-2 text-role-caption text-text-default', hostPrints ? null : 'mt-2')}>
           <Checkbox
             checked={packet.docsNotRequired}
             disabled={exemption.isPending}

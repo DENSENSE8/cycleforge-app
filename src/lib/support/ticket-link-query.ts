@@ -9,6 +9,14 @@ export interface TicketLinkCandidate {
   linkedToThis: boolean;
 }
 
+/** A ticket already tied to this carton's tracking number or order number. */
+export interface TicketIdentityMatch {
+  id: number;
+  subject: string | null;
+  status: string | null;
+  via: 'tracking' | 'order';
+}
+
 /** How {@link listTicketLinkCandidates} should resolve a link-search box query. */
 type TicketLinkQueryKind =
   | { kind: 'recent' }

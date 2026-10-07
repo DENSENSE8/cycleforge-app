@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import type { ReconEntry, ReconReason } from '@/lib/receiving/reconcile';
+import { RECON_REASON_STATUS, type ReconEntry, type ReconReason } from '@/lib/receiving/reconcile';
 import {
   carrierFactText,
   duplicatePurchaseLineIds,
@@ -35,7 +35,7 @@ function entry(reasonCode: ReconReason | null, patch: Partial<ReconEntry> = {}):
   return {
     ref: '17-15191-28624',
     key: '171519128624',
-    status: reasonCode === 'unboxed' || reasonCode === 'scanned' || reasonCode === 'received_here' ? 'received' : 'not_received',
+    status: reasonCode ? RECON_REASON_STATUS[reasonCode] : 'not_received',
     reasonCode,
     detail: reasonCode ? reasonCode : 'Checking…',
     pending: reasonCode == null,

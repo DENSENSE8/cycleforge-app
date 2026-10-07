@@ -6,7 +6,8 @@
  * `uploadOrderDocument` — toast with Undo, which deletes the slip just filed)
  * and Fetch from the channel (the order's platform fetch,
  * `useOrderPaperworkActions().fetchFromPlatform`). An order marked "needs no
- * paperwork" shows Not required.
+ * paperwork" shows Not required. In the docs sheet (`sheet`) the sheet lists
+ * the slips itself, selectable, with their verbs.
  */
 
 import { useMutation } from '@tanstack/react-query';
@@ -19,7 +20,7 @@ import { PAPERWORK_UPLOAD_TYPES, printedFace } from './slot-faces';
 import { SlotDocument, SlotFrame, SlotHeading, useFilePicker } from './SlotFrame';
 import { usePacketRefresh } from './use-packet-refresh';
 
-export function SlipSlot({ packet }: { packet: OrderPacket }) {
+export function SlipSlot({ packet, sheet = false }: { packet: OrderPacket; sheet?: boolean }) {
   const refresh = usePacketRefresh();
   const slot = packet.slip;
   const fetchFromPlatform = useOrderPaperworkActions(packet.orderId, packet.orderRef, () => void refresh()).fetchFromPlatform;
@@ -65,7 +66,7 @@ export function SlipSlot({ packet }: { packet: OrderPacket }) {
       {slot.state === 'not_required' && slot.documents.length === 0 ? (
         <p className="mt-1 text-role-caption text-text-muted">This order needs no paperwork.</p>
       ) : null}
-      {slot.documents.length > 0 ? (
+      {!sheet && slot.documents.length > 0 ? (
         <ul className="mt-1 flex min-w-0 flex-col">
           {slot.documents.map((doc) => (
             <SlotDocument

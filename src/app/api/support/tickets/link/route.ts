@@ -17,6 +17,7 @@ import {
   addTicketShipmentReference,
   isHelpdeskNotConnected,
   linkTicketToAnchor,
+  findTicketIdentityMatch,
   listCandidatesForAnchor,
   listTicketShipmentReferences,
   listTicketsLinkedToAnchor,
@@ -49,6 +50,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ticketId,
       });
       return NextResponse.json({ success: true, shipments });
+    }
+
+    // ?list=identity&tracking=&order= — a ticket already on this tracking or order.
+    // Local ticket_links only, so the composer card is ready before it opens.
+    if (sp.get('list') === 'identity') {
+      const match = await findTicketIdentityMatch({
+        orgId: ctx.organizationId,
+        trackingNumber: sp.get('tracking'),
+        orderNumber: sp.get('order'),
+      });
+      return NextResponse.json({ success: true, match });
     }
 
     // ?list=linked&anchorType=… — tickets already linked to this anchor (ticket_links; no helpdesk call).

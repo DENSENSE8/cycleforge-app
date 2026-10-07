@@ -47,6 +47,8 @@ import { NAV_FACET_GROUPS, isNavFacetContext, mayReadNavFacet } from '@/lib/nav/
 import { getNavRecentSurface } from '@/lib/nav/recents/surfaces';
 import { OUTBOUND_LOCATE, OUTBOUND_LOCATE_PERMISSION } from '@/lib/nav/locate/outbound-params';
 import { routeParamsFor } from '@/lib/routing/registry';
+import { readReceivingModeState } from '@/lib/receiving/receiving-mode-state';
+import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import {
   NAV_PAGE_DECLS,
   NAV_SIDEBAR_NAVIGATION_SURFACE,
@@ -450,7 +452,11 @@ export function buildNavContext(input: ResolveNavContextInput): NavContext {
     rollout: input.rolloutOverrides?.[pageId] ?? NAV_CONTEXT_ROLLOUT[pageId] ?? 'legacy',
   };
   // Facet groups are offered only when the caller can read their endpoint.
-  if (isNavFacetContext(facetContext) && mayReadNavFacet(permissions, facetContext)) {
+  // The Unbox station's one context serves every `?unboxview=` tab, but only
+  // History (the Unboxed ledger) cuts by Status: no other tab declares the row,
+  // so it never paints from the declaration and then vanishes when counts land.
+  const stationTabReadsFacets = pageId !== 'receive' || readReceivingModeState(UNBOX_SURFACE_ROUTE, params).isHistoryMode;
+  if (stationTabReadsFacets && isNavFacetContext(facetContext) && mayReadNavFacet(permissions, facetContext)) {
     context.filters = { facetContext, groups: NAV_FACET_GROUPS[facetContext].map((group) => ({ ...group })) };
   }
   if (decl.controls) {

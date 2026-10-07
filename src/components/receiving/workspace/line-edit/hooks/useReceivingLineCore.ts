@@ -109,6 +109,7 @@ export function useReceivingLineCore(
     // Pending scan stubs + lineless pre-open must not hit by-entity (negative
     // hash must never become a fake carton id).
     enabled: row.receiving_id != null,
+    initialTicket: row.linked_support_ticket ?? null,
   });
   const supportTicket = supportTicketQuery.data ?? null;
   const [listingLink, setListingLink] = useState('');

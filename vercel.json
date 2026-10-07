@@ -81,6 +81,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/qc-print-pass",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/zendesk/ticket-watch",
       "schedule": "*/10 * * * *"
     },

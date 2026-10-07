@@ -29,7 +29,7 @@ import {
 type NavigationView = 'root' | SpineNavigationBand | MobileV2NavigationGroupId | 'fbm';
 
 const FAMILY_IDS = new Set<NavigationView>(['utility', 'business', 'bottom']);
-const GROUP_IDS = new Set<NavigationView>(['floor', 'sales', 'inbound', 'fulfillment', 'inventory', 'catalog']);
+const GROUP_IDS = new Set<NavigationView>(['floor', 'sales', 'inbound', 'fulfillment', 'inventory', 'warehouse', 'catalog']);
 
 export function MobileV2AppSwitcher() {
   const pathname = usePathname();

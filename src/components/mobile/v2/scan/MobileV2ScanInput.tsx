@@ -34,6 +34,8 @@ interface ScanInputProps {
   cameraSuspended?: boolean;
   /** A lookup is in flight for the last scan. */
   isResolving?: boolean;
+  /** Open the camera as the surface mounts (a screen whose whole job is one scan). */
+  cameraOnMount?: boolean;
 }
 
 export function MobileV2ScanInput({
@@ -44,8 +46,9 @@ export function MobileV2ScanInput({
   prominentCamera = false,
   cameraSuspended = false,
   isResolving = false,
+  cameraOnMount = false,
 }: ScanInputProps) {
-  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraActive, setCameraActive] = useState(cameraOnMount);
   const [input, setInput] = useState('');
   const scanner = useBarcodeScanner({ dedupMs: 2000 });
   const { user } = useAuth();

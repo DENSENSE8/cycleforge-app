@@ -47,6 +47,14 @@ test('regression: receiving.view gates recent-staged-location', () => {
   assert.deepEqual(r.methods, ['GET']);
 });
 
+test('regression: putaway targets read on receiving.view (POST gated in-source on sku_stock.manage)', () => {
+  const r = routeByPath('/api/receiving/putaway-targets/route.ts');
+  assert.ok(r);
+  assert.equal(r.gate, 'withAuth');
+  assert.equal(r.permission, 'receiving.view');
+  assert.deepEqual(r.methods, ['GET', 'POST']);
+});
+
 test('regression: receiving.view gates the Purchases read (the Inbound ledger, every purchase)', () => {
   const r = routeByPath('/api/nav/purchases/route.ts');
   assert.ok(r);
@@ -65,6 +73,11 @@ test('regression: tech.qc_pass gates the QC queue read, same as the QC receiving
   const paths = routesGatedBy('tech.qc_pass').map((r) => r.path);
   assert.ok(paths.includes('/api/qc/queue/route.ts'));
   assert.ok(paths.includes('/api/qc/receiving-lines/route.ts'));
+});
+
+test('regression: tech.qc_pass gates the QC print-pass enqueue', () => {
+  const paths = routesGatedBy('tech.qc_pass').map((r) => r.path);
+  assert.ok(paths.includes('/api/qc/units/[id]/print-pass/route.ts'));
 });
 
 test('permissionsWithRouteCount is sorted descending by routeCount', () => {

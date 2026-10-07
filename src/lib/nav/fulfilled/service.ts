@@ -362,6 +362,7 @@ function orphanLine(pkg: FulfilledPackageRow): RecordLineRow {
     owner: null,
     mine: false,
     matchedRefs: [],
+    cartonOnly: false,
   };
 }
 

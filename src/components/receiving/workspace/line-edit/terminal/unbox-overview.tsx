@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Boxes, Tag } from '@/components/Icons';
+import { Boxes } from '@/components/Icons';
 import {
   StationBandStack,
   type BandCollapseController,
@@ -10,7 +10,6 @@ import {
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { UnboxLineController } from '../unbox-line-controller';
 import { POUnboxingSection } from '../POUnboxingSection';
-import { UnboxLabelPreview } from '../UnboxLabelPreview';
 
 interface BuildUnboxOverviewInput {
   row: ReceivingLineRow;
@@ -27,7 +26,7 @@ interface BuildUnboxOverviewInput {
   onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
   /** The dock's active procedure step. */
   activeStep?: string | null;
-  /** Items and Label render as one full-width accordion stack. */
+  /** Items renders as a full-width accordion band. */
   collapse?: {
     bands: BandCollapseController;
     collapseAll?: () => void;
@@ -36,7 +35,7 @@ interface BuildUnboxOverviewInput {
   lineCollapse?: LineCollapseController;
 }
 
-/** The inline Unbox work plane: PO lines, capture controls and label preview. */
+/** The inline Unbox work plane: PO lines and capture controls. The label lives in the headline row. */
 export function buildUnboxOverview(input: BuildUnboxOverviewInput): ReactNode {
   const {
     row,
@@ -71,22 +70,8 @@ export function buildUnboxOverview(input: BuildUnboxOverviewInput): ReactNode {
       lineCollapse={lineCollapse}
     />
   );
-  const label = (
-    <UnboxLabelPreview
-      row={row}
-      c={c}
-      onReveal={collapse ? () => collapse.bands.open('label') : undefined}
-    />
-  );
 
-  if (!collapse) {
-    return (
-      <div className="space-y-0">
-        {items}
-        {label}
-      </div>
-    );
-  }
+  if (!collapse) return items;
 
   return (
     <StationBandStack
@@ -98,13 +83,6 @@ export function buildUnboxOverview(input: BuildUnboxOverviewInput): ReactNode {
           icon: Boxes,
           body: items,
           testId: 'unbox-band-items',
-        },
-        {
-          id: 'label',
-          label: 'Label',
-          icon: Tag,
-          body: label,
-          testId: 'unbox-band-label',
         },
       ]}
       onCollapseAll={

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { defaultGcsBucket, gcsAdapter } from '@/lib/photos/storage/gcs-adapter';
 import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
+import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { applyLabelIngestion } from './apply';
@@ -387,4 +388,64 @@ export async function confirmLabelIngestionOrder(input: { organizationId: OrgId;
     }
   }
   return { ingestion: publicRow(settled.row), repaired };
+}
+
+/**
+ * The operator's own evidence for filing a label by hand (`file-on-order`),
+ * written before the ordinary confirm → apply: a tracking number TYPED for a
+ * label none was read from (raw + `normalizeTrackingNumber`, carrier), and/or
+ * releasing a MATCHED — never APPLIED — label from the order the resolver
+ * picked, so the operator's order governs. Leaves the row QUARANTINED under
+ * its row version and audits `label_ingestion.operator_entered`.
+ */
+export async function recordOperatorLabelEvidence(input: {
+  organizationId: OrgId;
+  actorStaffId: number;
+  ingestionId: number;
+  expectedRowVersion: number;
+  tracking: { raw: string; carrier: string | null } | null;
+  /** Release a MATCHED row from its resolved order. */
+  release: boolean;
+}): Promise<PublicLabelIngestion> {
+  const { organizationId, ingestionId } = input;
+  const raw = input.tracking?.raw.trim() ?? null;
+  const normalized = raw ? normalizeTrackingNumber(raw) : null;
+  if (input.tracking && !normalized) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'That is not a tracking number.');
+  return withTenantTransaction(organizationId, async (client) => {
+    const locked = await client.query<LedgerRow>(`SELECT ${ledgerColumns} FROM label_ingestions WHERE organization_id=$1 AND id=$2 FOR UPDATE`, [organizationId, ingestionId]);
+    const row = locked.rows[0];
+    if (!row) throw new LabelIngestionServiceError('INGESTION_NOT_FOUND', 'Label ingestion was not found.');
+    if (Number(row.row_version) !== input.expectedRowVersion) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'This label changed. Refresh and try again.');
+    const releasable = row.state === 'MATCHED' && input.release;
+    if (row.state !== 'QUARANTINED' && !releasable) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'Only a label still waiting for its order can take the operator’s evidence.');
+    if (normalized && row.tracking_number_normalized) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', `This label already carries tracking ${row.tracking_number_raw}.`);
+    if (!normalized && !releasable) return publicRow(row);
+    const updated = await client.query<LedgerRow>(
+      `UPDATE label_ingestions
+          SET state='QUARANTINED', match_method=NULL, matched_order_id=NULL,
+              quarantine_reason_code=COALESCE(quarantine_reason_code, 'AMBIGUOUS_ORDER_MATCH'),
+              tracking_number_raw=COALESCE($3::text, tracking_number_raw),
+              tracking_number_normalized=COALESCE($4::text, tracking_number_normalized),
+              carrier=CASE WHEN $3::text IS NULL THEN carrier ELSE $5::text END,
+              row_version=row_version+1
+        WHERE organization_id=$1 AND id=$2 AND row_version=$6
+        RETURNING ${ledgerColumns}`,
+      [organizationId, ingestionId, normalized ? raw : null, normalized, input.tracking?.carrier ?? null, input.expectedRowVersion],
+    );
+    const next = updated.rows[0];
+    if (!next) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'This label changed. Refresh and try again.');
+    await client.query(
+      `INSERT INTO audit_logs (actor_staff_id, organization_id, source, action, entity_type, entity_id, before_data, after_data, metadata)
+       VALUES ($1, $2, 'label-ingestion', 'label_ingestion.operator_entered', 'label_ingestion', $3, $4::jsonb, $5::jsonb, $6::jsonb)`,
+      [
+        input.actorStaffId,
+        organizationId,
+        String(ingestionId),
+        JSON.stringify({ state: row.state, trackingNumberRaw: row.tracking_number_raw, carrier: row.carrier, matchedOrderId: row.matched_order_id == null ? null : Number(row.matched_order_id), rowVersion: Number(row.row_version) }),
+        JSON.stringify({ state: next.state, trackingNumberRaw: next.tracking_number_raw, carrier: next.carrier, matchedOrderId: null, rowVersion: Number(next.row_version) }),
+        JSON.stringify({ typed_tracking: normalized != null, released_from_order_id: releasable && row.matched_order_id != null ? Number(row.matched_order_id) : null }),
+      ],
+    );
+    return publicRow(next);
+  });
 }

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { generateInternalGtin } from '@/lib/inventory/internal-gtin-format';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   unitStatusToVerdict,
@@ -16,10 +18,10 @@ import { dispatchSelectLine } from '@/components/station/receiving-lines-table-h
 import { takeSerialEditHandoff } from '@/components/receiving/workspace/serialEditHandoff';
 import {
   buildUnitPayload,
+  preloadProductLabelPrint,
   printProductLabel,
   resolveTestingLineTitle,
 } from '@/lib/print/printProductLabel';
-import { normalizeSku } from '@/utils/sku';
 import { useReceivingLineCore } from '@/components/receiving/workspace/line-edit/hooks/useReceivingLineCore';
 import { useCartonLabelEditor } from '@/components/receiving/workspace/line-edit/hooks/useCartonLabelEditor';
 import type { LabelEditDraft } from '@/components/receiving/workspace/line-edit/LabelEditPopover';
@@ -29,6 +31,7 @@ import {
 } from '@/components/tech/testing-line-events';
 import { patchTestingRailByLine } from '@/lib/queries/receiving-queries';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
+import { refreshDomain } from '@/lib/refresh/bus';
 import {
   TESTING_LABEL_KINDS,
   labelOptionsForSelect,
@@ -38,19 +41,19 @@ import {
   type WorkspaceLabelContext,
 } from '@/lib/print/workspace-label-kinds';
 
-interface NextIdResponse {
+/** `POST /api/qc/units/:id/print-pass` — 202 once the outbox row is queued. */
+interface PrintPassResponse {
   ok: boolean;
-  unitId: string;
-  gtin: string | null;
-  qrUrl: string | null;
+  outbox_id?: number;
+  /** The id the label wears — minted by the route when the unit had none. */
+  unit_uid?: string | null;
   error?: string;
 }
 
-interface AllocatedUnit {
-  unitId: string;
-  gtin: string | null;
-  qrUrl: string | null;
-}
+/** First re-read after a print-pass 202; each re-read that still finds the Pass unsaved doubles the wait. */
+const PRINT_PASS_RECONCILE_MS = 2000;
+/** Re-reads before the line takes the server's word over a still-unsaved Pass (2 + 4 + 8 + 16 s). */
+const PRINT_PASS_RECONCILE_TRIES = 4;
 
 type TestingLabelDraft = {
   title: string;
@@ -90,7 +93,6 @@ export function useTestingLineController(
   const serialSubmittingRef = useRef(false);
   /** Dock draft — same grain as Unbox `itemNote` (`receiving_line.notes`). */
   const [itemNote, setItemNote] = useState<string>('');
-  const [isPrinting, setIsPrinting] = useState(false);
   // Back-compat aliases — callers that still say `notes` / `setNotes`.
   const notes = itemNote;
   const setNotes = setItemNote;
@@ -110,11 +112,26 @@ export function useTestingLineController(
     [onOpenClaim],
   );
   const [activeSlotByLine, setActiveSlotByLine] = useState<Record<number, number>>({});
-  const [previewBySerialUnit, setPreviewBySerialUnit] = useState<Record<number, AllocatedUnit>>({});
-  const [isMutating, setIsMutating] = useState(false);
   const [headerSerialEdit, setHeaderSerialEdit] = useState<UnitSlotSerial | null>(null);
+  // The line as of the last paint. Presses read and paint through it, so a
+  // second press before the re-render composes with the first, and the advance
+  // reads the status just painted. A new `row` from the parent replaces it.
+  const rowRef = useRef(row);
+  const seenRowRef = useRef(row);
+  if (seenRowRef.current !== row) {
+    seenRowRef.current = row;
+    rowRef.current = row;
+  }
 
   const lineTitle = useMemo(() => resolveTestingLineTitle(row), [row]);
+  // The unit label's GTIN from the line alone: the catalog's, else the internal
+  // one `getOrCreateInternalGtin` persists for this catalog row.
+  const labelGtin = useMemo(() => {
+    const catalogGtin = row.catalog_gtin?.trim();
+    if (catalogGtin) return catalogGtin;
+    const catalogId = Number(row.sku_catalog_id);
+    return Number.isInteger(catalogId) && catalogId > 0 ? generateInternalGtin(catalogId) : null;
+  }, [row.catalog_gtin, row.sku_catalog_id]);
 
   // Bootstrap notes each time the line changes.
   useEffect(() => {
@@ -141,10 +158,15 @@ export function useTestingLineController(
     if (row.id > 0) void refreshLineWithSerials(row.id);
   }, [row.id, refreshLineWithSerials]);
 
+  // The first Pass must not wait on the print chunk.
+  useEffect(() => {
+    void preloadProductLabelPrint();
+  }, []);
+
   // Write a unit's new current_status into the accordion's siblings query cache
   // — the same store the verdict pills render from — so the highlight holds.
   const patchSiblingUnitStatus = useCallback(
-    (receivingId: number, lineId: number, serialId: number, status: string) => {
+    (receivingId: number, lineId: number, serialId: number, status: string | undefined) => {
       queryClient.setQueryData(
         ['receiving-siblings', receivingId],
         (prev: { success?: boolean; receiving_lines?: ReceivingLineRow[] } | undefined) => {
@@ -169,6 +191,99 @@ export function useTestingLineController(
   );
 
   /**
+   * Paint one unit's fields into both stores the pills read from: the open
+   * line (through {@link rowRef}) and the accordion's siblings cache.
+   */
+  const paintSerial = useCallback(
+    (
+      lineId: number,
+      serialId: number,
+      patch: { current_status?: string; unit_uid?: string | null },
+    ) => {
+      const current = rowRef.current;
+      if (lineId === current.id) {
+        const serials = (current.serials ?? []).map((s) =>
+          s.id === serialId ? { ...s, ...patch } : s,
+        );
+        rowRef.current = { ...current, serials };
+        dispatchTestingLineUpdated({ id: lineId, serials });
+      }
+      if ('current_status' in patch && typeof current.receiving_id === 'number') {
+        patchSiblingUnitStatus(current.receiving_id, lineId, serialId, patch.current_status);
+      }
+    },
+    [patchSiblingUnitStatus],
+  );
+
+  // Keep a pressed unit active: the default slot follows "first unit with no
+  // verdict", which would jump away the moment its verdict paints.
+  const pinSlot = useCallback((lineId: number, serialId: number) => {
+    if (lineId !== rowRef.current.id) return;
+    const index = (rowRef.current.serials ?? []).findIndex((s) => s.id === serialId);
+    if (index >= 0) setActiveSlotByLine((m) => (m[lineId] === index ? m : { ...m, [lineId]: index }));
+  }, []);
+
+  /** The rail's tested count, from the open line's painted units — no round trip. */
+  const patchRailTestedCount = useCallback(
+    (lineId: number) => {
+      if (lineId !== rowRef.current.id) return;
+      const tested = (rowRef.current.serials ?? []).filter(
+        (s) => unitStatusToVerdict(s.current_status) === 'PASS',
+      ).length;
+      patchTestingRailByLine(queryClient, lineId, { tested_count: tested });
+    },
+    [queryClient],
+  );
+
+  /**
+   * Delayed re-read after a print-pass request settles: the rail
+   * (`testing.lines` refresh domain) and the line pick up what the outbox job
+   * committed. A later press on the same line restarts the wait, so a run of
+   * presses re-reads once, after the last. While a passed unit still reads
+   * un-passed on the server (its job has not committed yet) the re-read keeps
+   * the paint and waits again, doubling, up to {@link PRINT_PASS_RECONCILE_TRIES}
+   * reads; the last read wins either way, so a job that failed shows.
+   */
+  const reconcileTimersRef = useRef(new Map<number, number>());
+  const awaitingPassRef = useRef(new Map<number, Set<number>>());
+  const scheduleReconcile = useCallback((lineId: number, passedSerialId?: number) => {
+    const awaiting = awaitingPassRef.current.get(lineId) ?? new Set<number>();
+    if (passedSerialId != null) awaiting.add(passedSerialId);
+    awaitingPassRef.current.set(lineId, awaiting);
+    const timers = reconcileTimersRef.current;
+    const run = (attempt: number, delay: number) => {
+      window.clearTimeout(timers.get(lineId));
+      timers.set(
+        lineId,
+        window.setTimeout(async () => {
+          timers.delete(lineId);
+          let line: ReceivingLineRow | null = null;
+          try {
+            const res = await fetch(`/api/receiving-lines?id=${lineId}&include=serials`);
+            const data = await res.json();
+            if (data?.success && data.receiving_line) line = data.receiving_line as ReceivingLineRow;
+          } catch {
+            /* the next press or line open re-reads */
+          }
+          if (!line) return;
+          const passed = verdictToUnitStatus('PASS');
+          const pending = (line.serials ?? []).some(
+            (s) => awaiting.has(s.id) && s.current_status !== passed,
+          );
+          if (pending && attempt < PRINT_PASS_RECONCILE_TRIES) {
+            run(attempt + 1, delay * 2);
+            return;
+          }
+          awaitingPassRef.current.delete(lineId);
+          refreshDomain('testing.lines');
+          dispatchTestingLineUpdated(narrowTestingWorkspacePatch(line));
+        }, delay),
+      );
+    };
+    run(1, PRINT_PASS_RECONCILE_MS);
+  }, []);
+
+  /**
    * A fail press waiting on its fault — one unit pill, or a whole line's units.
    * Null whenever the sheet is closed.
    */
@@ -188,27 +303,12 @@ export function useTestingLineController(
       failureModeId: number | null,
     ): Promise<boolean> => {
       const priorStatus = serial.current_status;
-      const optimisticStatus = verdictToUnitStatus(next);
-      const receivingId = row.receiving_id;
 
-      // Write one status to this serial across both stores the pills read from.
-      const applyStatus = (status: string | null | undefined) => {
-        if (status && lineId === row.id) {
-          const nextSerials = (row.serials ?? []).map((s) =>
-            s.id === serial.id ? { ...s, current_status: status } : s,
-          );
-          dispatchTestingLineUpdated({ id: lineId, serials: nextSerials });
-        }
-        if (status && typeof receivingId === 'number') {
-          patchSiblingUnitStatus(receivingId, lineId, serial.id, status);
-        }
-      };
-
-      applyStatus(optimisticStatus);
-      window.dispatchEvent(new CustomEvent('testing-result-recorded'));
+      paintSerial(lineId, serial.id, { current_status: verdictToUnitStatus(next) });
+      pinSlot(lineId, serial.id);
+      refreshDomain('testing.lines');
       if (next === 'TESTING_FAILED' && lineId === row.id) openClaimModal('create');
 
-      setIsMutating(true);
       try {
         const res = await fetch(`/api/serial-units/${serial.id}/test`, {
           method: 'POST',
@@ -216,13 +316,15 @@ export function useTestingLineController(
           body: JSON.stringify({
             verdict: next,
             notes: notes.trim() || null,
-            client_event_id: `testing-verdict-${serial.id}-${next}`,
+            // One id per press: a fixed `{unit}-{verdict}` id replayed the first
+            // press on every later one (Pass → Test again → Pass never stuck).
+            client_event_id: `testing-verdict-${serial.id}-${next}-${safeRandomUUID()}`,
           }),
         });
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.ok) {
           toast.error(data?.error || `Verdict save failed (${res.status})`);
-          applyStatus(priorStatus); // roll back the optimistic verdict
+          paintSerial(lineId, serial.id, { current_status: priorStatus }); // roll back the optimistic verdict
           if (next === 'TESTING_FAILED' && lineId === row.id) setClaimOpen(false);
           return false;
         }
@@ -244,7 +346,7 @@ export function useTestingLineController(
           }
         }
 
-        // The server's unit status already equals `optimisticStatus`, so leave
+        // The server's unit status already equals the painted verdict, so leave
         // it (re-dispatching could clobber a newer press); only reconcile the
         // derived line-level state the server computes across all units.
         if (data.line) {
@@ -256,7 +358,7 @@ export function useTestingLineController(
           };
           dispatchTestingLineUpdated(linePatch);
           // Testing dock is opted off the bus — allowlisted RQ write for instant
-          // status/qty chrome; membership still refreshes on testing-result-recorded.
+          // status/qty chrome; membership still refreshes on the `testing.lines` domain.
           patchTestingRailByLine(queryClient, lineId, {
             workflow_status: data.line.workflow_status,
             qa_status: data.line.qa_status,
@@ -268,14 +370,12 @@ export function useTestingLineController(
         return true;
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Verdict request failed');
-        applyStatus(priorStatus); // roll back the optimistic verdict
+        paintSerial(lineId, serial.id, { current_status: priorStatus }); // roll back the optimistic verdict
         if (next === 'TESTING_FAILED' && lineId === row.id) setClaimOpen(false);
         return false;
-      } finally {
-        setIsMutating(false);
       }
     },
-    [row.id, row.serials, row.receiving_id, notes, patchSiblingUnitStatus, openClaimModal, queryClient],
+    [row.id, notes, paintSerial, pinSlot, openClaimModal, queryClient],
   );
 
   const handleSlotCondition = useCallback(
@@ -347,46 +447,6 @@ export function useTestingLineController(
       await refreshLineWithSerials(lineId);
     },
     [handleSlotVerdict, refreshLineWithSerials],
-  );
-
-  /** The ONE door every verdict press goes through. */
-  const requestSlotVerdict = useCallback(
-    (lineId: number, serial: UnitSlotSerial, next: TestingVerdict) => {
-      if (next === 'TESTING_FAILED') {
-        setPendingFail({
-          lineId,
-          serials: [serial],
-          label: serial.serial_number || 'this unit',
-        });
-        return;
-      }
-      void handleSlotVerdict(lineId, serial, next, null);
-    },
-    [handleSlotVerdict],
-  );
-
-  /** Line grain — the same gate. One fault covers every unit the press failed. */
-  const requestLineVerdict = useCallback(
-    (lineId: number, serials: ReadonlyArray<UnitSlotSerial>, next: TestingVerdict) => {
-      if (next === 'TESTING_FAILED') {
-        const targets = serials.filter((s) => s.id != null);
-        if (targets.length === 0) {
-          toast.info('Scan a serial first, then set a verdict.');
-          return;
-        }
-        setPendingFail({
-          lineId,
-          serials: targets,
-          label:
-            targets.length === 1
-              ? targets[0].serial_number || 'this unit'
-              : `${targets.length} units`,
-        });
-        return;
-      }
-      void applyLineVerdict(lineId, serials, next, null);
-    },
-    [applyLineVerdict],
   );
 
   const confirmPendingFail = useCallback(
@@ -520,25 +580,6 @@ export function useTestingLineController(
     [submitSerial],
   );
 
-  const allocateUnitId = useCallback(async (sku: string): Promise<NextIdResponse | null> => {
-    try {
-      const res = await fetch('/api/units/next-id', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sku: normalizeSku(sku) }),
-      });
-      const data = (await res.json()) as NextIdResponse;
-      if (!res.ok || !data?.ok) {
-        toast.error(`Can't allocate unit id: ${data?.error || res.status}`);
-        return null;
-      }
-      return data;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'next-id failed');
-      return null;
-    }
-  }, []);
-
   const defaultActiveSlot = useCallback((line: ReceivingLineRow): number => {
     const serials = line.serials ?? [];
     const expected = line.quantity_expected ?? serials.length;
@@ -559,106 +600,123 @@ export function useTestingLineController(
     [row, activeSlot],
   );
 
-  useEffect(() => {
-    if (!row.sku || !activeSerial) return;
-    if (previewBySerialUnit[activeSerial.id]) return;
-    let cancelled = false;
-    void (async () => {
-      const allocation = await allocateUnitId(row.sku!);
-      if (cancelled || !allocation) return;
-      setPreviewBySerialUnit((m) => ({
-        ...m,
-        [activeSerial.id]: { unitId: allocation.unitId, gtin: allocation.gtin, qrUrl: allocation.qrUrl },
-      }));
-    })();
-    return () => { cancelled = true; };
-  }, [row.sku, activeSerial, previewBySerialUnit, allocateUnitId]);
+  /** The id the active unit wears (minted at receiving) — its label prints it as is. */
+  const activeUnitUid = (row.serials ?? [])[activeSlot]?.unit_uid?.trim() || null;
 
   useEffect(() => {
-    setPreviewBySerialUnit({});
     setHeaderSerialEdit(null);
     const handoff = row.id != null ? takeSerialEditHandoff(row.id) : null;
     if (handoff) setHeaderSerialEdit(handoff as UnitSlotSerial);
   }, [row.id]);
 
-  const previewPayload = useMemo(() => {
-    if (!row.sku) return null;
-    const allocation = activeSerial ? previewBySerialUnit[activeSerial.id] : undefined;
-    return buildUnitPayload({
-      sku: allocation?.unitId || row.sku,
-      serialNumber: activeSerial?.serial_number ?? null,
-      qrPayload: allocation?.qrUrl ?? null,
-      gtin: allocation?.gtin ?? null,
-      orgSlug,
-    });
-  }, [row.sku, activeSerial, previewBySerialUnit, orgSlug]);
-
-  const activeAllocation = activeSerial ? previewBySerialUnit[activeSerial.id] : undefined;
-
-  const issueAndPrintLabel = useCallback(
-    async (draft?: Partial<TestingLabelDraft>): Promise<boolean> => {
-      if (!row.sku) {
+  /**
+   * Print one unit's label, then record it with ONE request. A unit that wears
+   * its id prints first, in the press's own gesture; the request
+   * (`POST /api/qc/units/:id/print-pass`, keepalive, fire and forget) leaves
+   * only once the print is dispatched, and the server's outbox job records the
+   * print and, when `pass`, the PASS verdict. Only a unit with no id yet waits
+   * on that request for the id the route mints, then prints it. A refused or
+   * lost request rolls the PASS paint back and says why — a toast, never a
+   * modal. Resolves once this press's print is dispatched (false: nothing to
+   * print).
+   */
+  const printAndRecord = useCallback(
+    (serial: UnitSlotSerial, pass: boolean, draft?: Partial<TestingLabelDraft>): Promise<boolean> => {
+      const current = rowRef.current;
+      if (!current.sku) {
         toast.error('Line has no SKU — cannot issue label');
-        return false;
+        return Promise.resolve(false);
       }
-      if (!activeSerial) {
-        toast.error('No serial on this slot — scan one first');
-        return false;
-      }
-      let allocation = previewBySerialUnit[activeSerial.id];
-      if (!allocation) {
-        const next = await allocateUnitId(row.sku);
-        if (!next) return false;
-        allocation = { unitId: next.unitId, gtin: next.gtin, qrUrl: next.qrUrl };
-      }
+      const lineId = current.id;
+      const live = (current.serials ?? []).find((s) => s.id === serial.id);
+      const unitUid = live?.unit_uid?.trim() || null;
+      const priorStatus = live?.current_status ?? serial.current_status;
       const title = (draft?.title ?? lineTitle).trim() || lineTitle;
-      const condition = draft?.condition ?? (row.condition_grade || 'USED_A');
+      const condition = draft?.condition ?? (current.condition_grade || 'USED_A');
       const color = (draft?.color ?? labelColor).trim() || undefined;
-      const payload = buildUnitPayload({
-        sku: allocation.unitId,
-        serialNumber: activeSerial.serial_number,
-        qrPayload: allocation.qrUrl,
-        gtin: allocation.gtin,
-        orgSlug,
-      });
-      try {
-        await fetch('/api/post-multi-sn', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sku: allocation.unitId,
-            productSku: row.sku,
-            unitId: allocation.unitId,
-            gtin: allocation.gtin ?? undefined,
-            qrPayload: payload.value,
-            symbology: payload.symbology,
-            serialNumbers: [activeSerial.serial_number],
-            notes,
-            condition,
-            printClass: 'print',
-          }),
+      const printedToast = pass ? 'Passed · label printed' : 'Label printed';
+      const print = (id: string) =>
+        printProductLabel({
+          sku: id,
+          title,
+          serialNumber: serial.serial_number,
+          gtin: labelGtin ?? undefined,
+          orgSlug,
+          condition,
+          color,
         });
-      } catch (err) {
-        console.warn('post-multi-sn failed (label still prints):', err);
+
+      const printed = unitUid ? print(unitUid) : Promise.resolve();
+      if (pass) {
+        paintSerial(lineId, serial.id, { current_status: verdictToUnitStatus('PASS') });
+        patchRailTestedCount(lineId);
       }
-      printProductLabel({
-        sku: allocation.unitId,
-        title,
-        serialNumber: activeSerial.serial_number,
-        gtin: allocation.gtin ?? undefined,
+
+      const { symbology } = buildUnitPayload({
+        sku: unitUid ?? current.sku,
+        serialNumber: serial.serial_number,
+        gtin: labelGtin,
         orgSlug,
-        qrPayload: allocation.qrUrl ?? undefined,
+      });
+      const body = JSON.stringify({
+        client_event_id: `testing-print-pass-${serial.id}-${safeRandomUUID()}`,
+        pass,
+        unit_uid: unitUid,
+        serial_number: serial.serial_number,
+        product_sku: current.sku,
+        sku_catalog_id: current.sku_catalog_id ?? null,
+        gtin: labelGtin,
+        symbology,
         condition,
-        color,
+        notes: notes.trim() || null,
       });
-      setPreviewBySerialUnit((m) => {
-        const next = { ...m };
-        delete next[activeSerial.id];
-        return next;
+      if (unitUid) toast.success(printedToast);
+      // The request never leads the print; a print that throws still records the press.
+      return printed.catch(() => undefined).then(() => {
+        void fetch(`/api/qc/units/${serial.id}/print-pass`, {
+          method: 'POST',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body,
+        })
+          .then(async (res) => {
+            const data = (await res.json().catch(() => null)) as PrintPassResponse | null;
+            if (!res.ok || !data?.ok) {
+              throw new Error(data?.error || `Label record failed (${res.status})`);
+            }
+            if (!unitUid) {
+              const minted = data.unit_uid?.trim();
+              if (minted) {
+                void print(minted);
+                paintSerial(lineId, serial.id, { unit_uid: minted });
+                toast.success(printedToast);
+              } else {
+                toast.error('No unit id came back — label not printed');
+              }
+            }
+            scheduleReconcile(lineId, pass ? serial.id : undefined);
+          })
+          .catch((err: unknown) => {
+            toast.error(err instanceof Error ? err.message : 'Label record failed');
+            if (pass) {
+              paintSerial(lineId, serial.id, { current_status: priorStatus });
+              patchRailTestedCount(lineId);
+            }
+            scheduleReconcile(lineId);
+          });
+        return true;
       });
-      return true;
     },
-    [row.sku, row.condition_grade, lineTitle, activeSerial, previewBySerialUnit, allocateUnitId, notes, labelColor, orgSlug],
+    [
+      lineTitle,
+      labelColor,
+      labelGtin,
+      orgSlug,
+      notes,
+      paintSerial,
+      patchRailTestedCount,
+      scheduleReconcile,
+    ],
   );
 
   const findNextOpenSibling = useCallback(
@@ -683,88 +741,130 @@ export function useTestingLineController(
     [],
   );
 
-  const advanceAfterPrint = useCallback(async () => {
-    const serials = row.serials ?? [];
-    const expected = row.quantity_expected ?? serials.length;
-    const cap = Math.max(serials.length, expected);
-    let nextSlot: number | null = null;
-    for (let i = activeSlot + 1; i < cap; i++) {
-      const s = serials[i];
-      if (!s || unitStatusToVerdict(s.current_status) !== 'PASS') {
-        nextSlot = i;
-        break;
-      }
-    }
-    if (nextSlot == null) {
-      for (let i = 0; i <= activeSlot; i++) {
+  /**
+   * After a Pass, move to the next unit still waiting on one. Reads the painted
+   * line ({@link rowRef}), so the unit just passed already counts as passed; a
+   * line with every unit passed opens the carton's next open line.
+   */
+  const advanceAfterPrint = useCallback(
+    async (passedSerialId: number) => {
+      const current = rowRef.current;
+      const serials = current.serials ?? [];
+      const from = serials.findIndex((s) => s.id === passedSerialId);
+      const cap = Math.max(serials.length, current.quantity_expected ?? serials.length);
+      for (let step = 1; step <= cap; step++) {
+        const i = (from + step) % cap;
+        if (i === from) continue;
         const s = serials[i];
         if (!s || unitStatusToVerdict(s.current_status) !== 'PASS') {
-          if (i === activeSlot && s) continue;
-          nextSlot = i;
-          break;
+          setActiveSlotByLine((m) => ({ ...m, [current.id]: i }));
+          return;
         }
       }
-    }
-    if (nextSlot != null) {
-      setActiveSlotByLine((m) => ({ ...m, [row.id]: nextSlot! }));
-      return;
-    }
-    const next = await findNextOpenSibling(row);
-    if (next) {
-      dispatchSelectLine(next);
-    } else {
-      toast.success('Carton complete — all units tested', { duration: 2500 });
-    }
-  }, [row, activeSlot, findNextOpenSibling]);
+      const next = await findNextOpenSibling(current);
+      if (next) {
+        dispatchSelectLine(next);
+      } else {
+        toast.success('Carton complete — all units tested', { duration: 2500 });
+      }
+    },
+    [findNextOpenSibling],
+  );
 
   /**
-   * Pass · Print Label — passes the active unit (unless it already passed) and
-   * prints its label in one go: the dock button, Enter, and the `p` key. A
-   * failed unit never prints; re-pass it from the verdict row first.
+   * Pass — one press passes a unit and prints its label: the dock button, the
+   * verdict row's Pass (bar and unit rows), Enter and `P`. Print, paint, then —
+   * once the print is dispatched — one fire-and-forget request and the
+   * advance: nothing awaited on the network, nothing greyed, every press stands
+   * alone. Pass on a passed unit reprints; on a failed unit it passes and prints.
    */
-  const handlePrimary = useCallback(async () => {
+  const pressPass = useCallback(
+    (serial: UnitSlotSerial) => {
+      const live = (rowRef.current.serials ?? []).find((s) => s.id === serial.id) ?? serial;
+      const wasPassed = unitStatusToVerdict(live.current_status) === 'PASS';
+      const lineId = rowRef.current.id;
+      pinSlot(lineId, serial.id);
+      void printAndRecord(serial, !wasPassed).then((printed) => {
+        if (printed && rowRef.current.id === lineId) void advanceAfterPrint(serial.id);
+      });
+    },
+    [printAndRecord, pinSlot, advanceAfterPrint],
+  );
+
+  const handlePrimary = useCallback(() => {
     if (!activeSerial) {
       toast.info('Scan a serial for this slot before printing.');
       return;
     }
-    const verdict = unitStatusToVerdict(activeSerial.current_status);
-    if (verdict === 'TESTING_FAILED') {
-      toast.info('This unit failed testing — no label prints on Fail.');
-      return;
-    }
-    setIsPrinting(true);
-    try {
-      if (verdict !== 'PASS' && !(await handleSlotVerdict(row.id, activeSerial, 'PASS', null))) return;
-      const ok = await issueAndPrintLabel();
-      if (!ok) return;
-      toast.success(verdict === 'PASS' ? 'Label printed' : 'Passed · label printed');
-      await advanceAfterPrint();
-    } finally {
-      setIsPrinting(false);
-    }
-  }, [activeSerial, row.id, handleSlotVerdict, issueAndPrintLabel, advanceAfterPrint]);
+    pressPass(activeSerial);
+  }, [activeSerial, pressPass]);
 
+  /** Save & print with a draft — the same print-first path; prints, never passes. */
   const handleApplyAndPrint = useCallback(
-    async (draft: TestingLabelDraft) => {
+    (draft: TestingLabelDraft) => {
       if (!activeSerial) {
         toast.info('Scan a serial for this slot before printing.');
         return;
       }
-      const verdict = unitStatusToVerdict(activeSerial.current_status);
-      if (verdict !== 'PASS') {
+      if (unitStatusToVerdict(activeSerial.current_status) !== 'PASS') {
         toast.info('Mark this unit Pass before printing.');
         return;
       }
-      setIsPrinting(true);
-      try {
-        const ok = await issueAndPrintLabel(draft);
-        if (!ok) return;
-        toast.success('Label printed');
-      } finally {
-        setIsPrinting(false);
-      }
+      void printAndRecord(activeSerial, false, draft);
     },
-    [activeSerial, issueAndPrintLabel],
+    [activeSerial, printAndRecord],
+  );
+
+  /**
+   * The ONE door every verdict press goes through. Pass on the open line is
+   * {@link pressPass} (print first); Test again saves through `/test`; Fail
+   * asks for its fault first.
+   */
+  const requestSlotVerdict = useCallback(
+    (lineId: number, serial: UnitSlotSerial, next: TestingVerdict) => {
+      if (next === 'PASS' && lineId === rowRef.current.id) {
+        pressPass(serial);
+        return;
+      }
+      if (next === 'TESTING_FAILED') {
+        setPendingFail({
+          lineId,
+          serials: [serial],
+          label: serial.serial_number || 'this unit',
+        });
+        return;
+      }
+      void handleSlotVerdict(lineId, serial, next, null);
+    },
+    [handleSlotVerdict, pressPass],
+  );
+
+  /** Line grain — the same gate. One fault covers every unit the press failed. */
+  const requestLineVerdict = useCallback(
+    (lineId: number, serials: ReadonlyArray<UnitSlotSerial>, next: TestingVerdict) => {
+      const targets = serials.filter((s) => s.id != null);
+      if (next === 'PASS' && lineId === rowRef.current.id && targets.length === 1) {
+        pressPass(targets[0]);
+        return;
+      }
+      if (next === 'TESTING_FAILED') {
+        if (targets.length === 0) {
+          toast.info('Scan a serial first, then set a verdict.');
+          return;
+        }
+        setPendingFail({
+          lineId,
+          serials: targets,
+          label:
+            targets.length === 1
+              ? targets[0].serial_number || 'this unit'
+              : `${targets.length} units`,
+        });
+        return;
+      }
+      void applyLineVerdict(lineId, serials, next, null);
+    },
+    [applyLineVerdict, pressPass],
   );
 
   // ── Unbox-shaped label bag (UnboxLabelPreview + WorkspaceNotesCard) ────────
@@ -780,14 +880,12 @@ export function useTestingLineController(
 
   const unitInput = useMemo(() => {
     if (!row.sku) return null;
-    const allocation = activeSerial ? previewBySerialUnit[activeSerial.id] : undefined;
     return {
-      sku: allocation?.unitId || row.sku,
+      sku: activeUnitUid || row.sku,
       title: lineTitle,
       serialNumber: activeSerial?.serial_number ?? undefined,
-      gtin: allocation?.gtin ?? undefined,
+      gtin: labelGtin ?? undefined,
       orgSlug,
-      qrPayload: allocation?.qrUrl ?? undefined,
       condition: row.condition_grade || 'USED_A',
       color: labelColor || undefined,
     };
@@ -795,7 +893,8 @@ export function useTestingLineController(
     row.sku,
     row.condition_grade,
     activeSerial,
-    previewBySerialUnit,
+    activeUnitUid,
+    labelGtin,
     lineTitle,
     orgSlug,
     labelColor,
@@ -858,7 +957,7 @@ export function useTestingLineController(
   /** UnboxLabelPreview unit Save & print → same path as Pass · Print draft. */
   const applyUnitAndPrint = useCallback(
     (draft: TestingLabelDraft) => {
-      void handleApplyAndPrint(draft);
+      handleApplyAndPrint(draft);
     },
     [handleApplyAndPrint],
   );
@@ -869,9 +968,8 @@ export function useTestingLineController(
     ...core,
     itemNote, setItemNote,
     notes, setNotes,
-    serialSubmitting, headerSerialEdit, setHeaderSerialEdit, isMutating,
-    activeSlotByLine, setActiveSlotByLine, activeSlot, activeSerial, activeAllocation,
-    previewPayload, isPrinting,
+    serialSubmitting, headerSerialEdit, setHeaderSerialEdit,
+    activeSlotByLine, setActiveSlotByLine, activeSlot, activeSerial,
     handleSlotVerdict, requestSlotVerdict, requestLineVerdict, refreshLineWithSerials,
     handleSlotCondition, applyLineVerdict, deriveLineVerdict,
     pendingFail, confirmPendingFail, cancelPendingFail,

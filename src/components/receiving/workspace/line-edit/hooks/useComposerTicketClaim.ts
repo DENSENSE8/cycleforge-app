@@ -44,6 +44,7 @@ export interface ComposerTicketClaim {
 export function useComposerTicketClaim({
   row,
   hasTicket,
+  preview = false,
   notePublic = false,
   ccEmails,
   onTicketCreated,
@@ -51,6 +52,9 @@ export function useComposerTicketClaim({
   row?: ReceivingLineRow | null;
   /** A linked ticket means the composer replies instead of filing. */
   hasTicket: boolean;
+  /** Ticket tab is open. Only the template FETCH waits for it; the draft
+   *  stays mounted so a typed claim survives a Work ↔ Ticket toggle. */
+  preview?: boolean;
   notePublic?: boolean;
   ccEmails?: string[];
   onTicketCreated?: (ticketNumber: string) => void;
@@ -79,7 +83,7 @@ export function useComposerTicketClaim({
 
   const template = useClaimTemplate({
     open: isClaim,
-    active: isClaim,
+    active: isClaim && preview,
     receivingId,
     lineId,
     claimType,

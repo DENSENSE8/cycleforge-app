@@ -51,17 +51,22 @@ function buildUpsertSql(table: 'receiving_triage' | 'receiving_unbox', specs: Co
   );
 }
 
+/** One street upsert, ready for `client.query` or a one-trip batch. */
+export interface StreetUpsertStatement {
+  text: string;
+  params: unknown[];
+}
+
 /**
- * Upsert the carton's TRIAGE street row. Door stamps are COALESCE-once (a
+ * The carton's TRIAGE street upsert. Door stamps are COALESCE-once (a
  * re-scan never re-stamps the door); staging/lane/pairing/triage_* overwrite
  * when present (the picker can change or clear them).
  */
-export async function upsertReceivingTriage(
-  client: StreetClient,
+export function receivingTriageUpsertStatement(
   orgId: string,
   receivingId: number,
   patch: CartonTriagePatch,
-): Promise<void> {
+): StreetUpsertStatement {
   const params: unknown[] = [receivingId, orgId];
   const push = (v: unknown): string => {
     params.push(v);
@@ -107,16 +112,26 @@ export async function upsertReceivingTriage(
     specs.push({ col: 'triage_client_event_id', insertExpr: push(patch.triageClientEventId), updateExpr: 'EXCLUDED.triage_client_event_id' });
   }
 
-  await client.query(buildUpsertSql('receiving_triage', specs), params);
+  return { text: buildUpsertSql('receiving_triage', specs), params };
 }
 
-/** Upsert the carton's UNBOX street row. */
-export async function upsertReceivingUnbox(
+/** Upsert the carton's TRIAGE street row — see {@link receivingTriageUpsertStatement}. */
+export async function upsertReceivingTriage(
   client: StreetClient,
   orgId: string,
   receivingId: number,
-  patch: CartonUnboxPatch,
+  patch: CartonTriagePatch,
 ): Promise<void> {
+  const { text, params } = receivingTriageUpsertStatement(orgId, receivingId, patch);
+  await client.query(text, params);
+}
+
+/** The carton's UNBOX street upsert. */
+export function receivingUnboxUpsertStatement(
+  orgId: string,
+  receivingId: number,
+  patch: CartonUnboxPatch,
+): StreetUpsertStatement {
   const params: unknown[] = [receivingId, orgId];
   const push = (v: unknown): string => {
     params.push(v);
@@ -172,5 +187,16 @@ export async function upsertReceivingUnbox(
     });
   }
 
-  await client.query(buildUpsertSql('receiving_unbox', specs), params);
+  return { text: buildUpsertSql('receiving_unbox', specs), params };
+}
+
+/** Upsert the carton's UNBOX street row — see {@link receivingUnboxUpsertStatement}. */
+export async function upsertReceivingUnbox(
+  client: StreetClient,
+  orgId: string,
+  receivingId: number,
+  patch: CartonUnboxPatch,
+): Promise<void> {
+  const { text, params } = receivingUnboxUpsertStatement(orgId, receivingId, patch);
+  await client.query(text, params);
 }

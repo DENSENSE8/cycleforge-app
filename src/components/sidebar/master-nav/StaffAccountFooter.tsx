@@ -180,11 +180,6 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                       {' · '}
                       {user.role.replace(/_/g, ' ')}
                     </div>
-                    {user.authorizationMode === 'authenticated-only' ? (
-                      <div className="mt-1 text-role-micro font-semibold text-amber-700">
-                        Access: Dogfood full access
-                      </div>
-                    ) : null}
                   </div>
                   {otherOrgs.length > 0 ? (
                     <div className="space-y-0.5 border-b border-border-hairline p-1">

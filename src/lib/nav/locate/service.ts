@@ -234,7 +234,8 @@ interface LocatedPart {
  * stays the bare status: "Received", never "Receiving · Received"; the client
  * names a section only to tell two same-word statuses apart), one entry per
  * pasted ref in paste order with every part's buckets; title / detail /
- * record / facet from the first part that has one. A part answers by ref, so
+ * record / facet from the first part that has one (a facet from a part that
+ * found the ref first). A part answers by ref, so
  * a part asked about only some refs (the fall-through) merges the same way.
  */
 function mergeLocated(
@@ -254,7 +255,8 @@ function mergeLocated(
       title: hits.find((hit) => hit?.title)?.title ?? null,
       detail: hits.find((hit) => hit?.detail)?.detail ?? null,
       recordHref: hits.find((hit) => hit?.recordHref)?.recordHref ?? null,
-      facet: hits.find((hit) => hit?.facet)?.facet ?? null,
+      // A part that found the ref names its facet; a found-nowhere part's ("No match anywhere") only when no part found it.
+      facet: (hits.find((hit) => hit?.facet && hit.buckets.length > 0) ?? hits.find((hit) => hit?.facet))?.facet ?? null,
       facts: hits.find((hit) => hit?.facts)?.facts ?? null,
     };
   });

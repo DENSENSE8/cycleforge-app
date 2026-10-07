@@ -214,8 +214,9 @@ export function stationSubgroupOfPage(
 /**
  * Spine sections, in the order the Operations band paints them (operator
  * 2026-10-03: "Operations → Live feed, Scan Stations, Receiving, Fulfillment,
- * Inventory changed to Warehouse … and Products at the bottom"). The rows the
- * ruling did not name keep their prior relative order between Warehouse and
+ * then Inventory and Warehouse … and Products at the bottom"). Inventory is
+ * stock; Warehouse is the building (owner 2026-10-06). The rows the ruling
+ * did not name keep their prior relative order between Warehouse and
  * Products. Support sits between the Live feed and Scan Stations (owner
  * 2026-10-04). Root pages and lead / trail lanes slot in via
  * {@link SPINE_LEADING_PAGE_IDS} / {@link SPINE_LEADING_SECTION_IDS} /
@@ -228,6 +229,7 @@ export const SPINE_SECTIONS = [
   domainLane('inbound'),
   domainLane('fulfillment'),
   domainLane('inventory'),
+  domainLane('warehouse'),
   domainLane('sales'),
   MAIN_GROUPS[0], // Operations (monitor)
   domainLane('catalog'),
@@ -437,13 +439,13 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'incoming',          label: 'Deliveries', href: '/incoming',           icon: RECEIVING_NAV_ICONS.incoming, kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view', keywords: ['inbound', 'incoming', 'arrivals', 'on the way', 'cartons', 'deliveries'] },
   // ── Catalog ─────────────────────────────────────────────────────────────── Manage Products.
   { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view' },
-  // ── Warehouse (lane `inventory`) ──────────────────────────────────────────
-  // Lane is Warehouse (operator 2026-10-03). This row is Locations so it does not
-  // share the lane name (nav-name law). The default locations view is "All".
-  { id: 'stock',             label: 'Stock',       href: '/inventory/stock',     icon: Package,        kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view', keywords: ['inventory', 'stock', 'replenish', 'move stock', 'warehouse'] },
-  { id: 'inventory',         label: 'Locations',   href: '/inventory/locations', icon: ShelvingUnit,   kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view', keywords: ['locations', 'rooms', 'racks', 'aisles', 'bays', 'warehouse'] },
+  // ── Inventory and Warehouse (owner 2026-10-06) ────────────────────────────
+  // Two doors. Inventory is Stock. Warehouse is Locations, and QC labels is its
+  // other mode. Neither row wears its lane's name.
+  { id: 'stock',             label: 'Stock',       href: '/inventory/stock', icon: Package, kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view', keywords: ['inventory', 'stock', 'replenish', 'move stock'] },
+  { id: 'inventory',         label: 'Locations',   href: '/inventory/locations', icon: ShelvingUnit,   kind: 'domain', domainGroup: 'warehouse', requires: 'sku_stock.view', keywords: ['locations', 'rooms', 'racks', 'aisles', 'bays', 'warehouse'] },
   // QC labels rides the Warehouse lane beside Locations (owner 2026-09-28): the per-unit QC / pre-box label the picker scans.
-  { id: 'qc-labels',         label: 'QC labels',   href: QC_LABELS_PATH,        icon: ScanBarcode,     kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view', keywords: ['qc label', 'prebox label', 'pre-box', 'unit label', 'reprint', 'serial label'] },
+  { id: 'qc-labels',         label: 'QC labels',   href: QC_LABELS_PATH,        icon: ScanBarcode,     kind: 'domain', domainGroup: 'warehouse', requires: 'sku_stock.view', keywords: ['qc label', 'prebox label', 'pre-box', 'unit label', 'reprint', 'serial label'] },
   // Sourcing rides the INBOUND lane (N4, operator 2026-09-14): demand → PO →
   // on the way → received is one direction. The 2026-08-03 ruling only kept it
   // out of *Warehouse*; the row itself is unchanged.
@@ -1562,24 +1564,26 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'stock', label: 'Stock', href: `${INVENTORY}/stock`, icon: Package, tone: 'text-blue-600', kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
     children: [
-      { id: 'all', label: 'All stock', icon: Package, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: null, status: null, rtab: null, rsku: null, rstatus: null } }) },
+      { id: 'overview', label: 'Overview', icon: LayoutDashboard, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: null, status: null, rtab: null, rsku: null, rstatus: null, q: null, room: null, aisle: null, sort: null, open: null } }) },
+      { id: 'all', label: 'All stock', icon: Package, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: 'all', status: null, rtab: null, rsku: null, rstatus: null } }) },
       { id: 'replenish', label: 'Needs replenishment', icon: History, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: 'replenish', rtab: null, status: null } }) },
-      { id: 'fifo', label: 'Shipped FIFO', icon: Truck, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: 'replenish', rtab: 'fifo', status: null } }) },
       { id: 'low-stock', label: 'Low stock', icon: AlertTriangle, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: null, status: 'low-stock', rtab: null, rsku: null, rstatus: null } }) },
       { id: 'out-of-stock', label: 'Out of stock', icon: PackageX, to: () => ({ pathname: `${INVENTORY}/stock`, params: { view: null, status: 'out-of-stock', rtab: null, rsku: null, rstatus: null } }) },
     ],
     resolveChild: ({ params }) => {
-      if (params.get('view') === 'replenish') return params.get('rtab') === 'fifo' ? 'fifo' : 'replenish';
+      if (params.get('view') === 'replenish') return 'replenish';
       if (params.get('status') === 'low-stock') return 'low-stock';
       if (params.get('status') === 'out-of-stock') return 'out-of-stock';
-      return 'all';
+      if (params.get('view') === 'all') return 'all';
+      if (params.get('q') || params.get('room') || params.get('aisle') || params.get('sort') || params.get('open')) return 'all';
+      return 'overview';
     },
   },
   // ── Locations ─────────────────────────────────────────────────────────────
   {
     // `tone` (owner 2026-09-28): emerald — worn by no other mode. Label "Locations":
     // the lane is Warehouse (operator 2026-10-03); the row must not share that name.
-    id: 'inventory', label: 'Locations', href: `${INVENTORY}/locations`, icon: ShelvingUnit, tone: 'text-emerald-600', kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
+    id: 'inventory', label: 'Locations', href: `${INVENTORY}/locations`, icon: ShelvingUnit, tone: 'text-emerald-600', kind: 'domain', domainGroup: 'warehouse', requires: 'sku_stock.view',
     children: [
       { id: 'locations', label: 'All', icon: List, to: () => ({ pathname: `${INVENTORY}/locations`, params: { tab: null, code: null, room: null, new: null } }) },
       { id: 'rooms', label: 'Rooms', icon: Warehouse, to: () => ({ pathname: `${INVENTORY}/locations`, params: { tab: 'rooms', code: null, room: null, new: null } }) },
@@ -1607,7 +1611,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // One record per labelled serial unit: the QC / pre-box sticker (unit_uid +
   // serial) the picker scans, which binds that serial to the order at pick.
   {
-    id: 'qc-labels', label: 'QC labels', href: QC_LABELS_PATH, icon: ScanBarcode, tone: 'text-amber-600', kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
+    id: 'qc-labels', label: 'QC labels', href: QC_LABELS_PATH, icon: ScanBarcode, tone: 'text-amber-600', kind: 'domain', domainGroup: 'warehouse', requires: 'sku_stock.view',
     railless: true,
     children: [
       { id: 'all',   label: 'All',        icon: ScanBarcode,  to: () => ({ pathname: QC_LABELS_PATH, params: { view: null } }) },

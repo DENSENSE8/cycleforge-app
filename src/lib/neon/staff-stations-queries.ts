@@ -1,7 +1,7 @@
 /** Per-staff station assignment queries (primary + secondary). */
 
 import pool from '@/lib/db';
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { VELOCITY_ACTIVITY_TYPES } from '@/lib/station-activity';
 
@@ -34,7 +34,7 @@ interface StaffStationRow {
 export async function getStaffStations(staffId: number, orgId?: OrgId): Promise<StaffStationRow[]> {
   // `staff_stations` has no organization_id column → scope via its `staff` parent.
   const r = orgId
-    ? await tenantQuery(
+    ? await tenantQueryOneTrip(
         orgId,
         `SELECT ss.station, ss.is_primary
            FROM staff_stations ss

@@ -4,6 +4,11 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { getQcChecks, getKitParts } from '@/lib/neon/sku-catalog-queries';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
+import {
+    pickSkuCatalogMatch,
+    SKU_CANONICAL_KEY_MATCH_SQL,
+    SKU_EXACT_MATCH_FLAG_SQL,
+} from '@/lib/inventory/resolve-sku-catalog';
 
 /**
  * The stable slice of a SKU resolution — everything EXCEPT the volatile
@@ -15,10 +20,25 @@ interface StableSkuSlice {
   title: string; // from items/ecwid/catalog only — NOT from sku_stock
   imageUrl: string;
   skuCatalogId: number | null;
+  /** The resolved catalog row's SKU — the live stock row must be this one's. */
+  catalogSku: string | null;
+  /** The input's canonical key matched several catalog SKUs; nothing was picked. */
+  ambiguous: boolean;
   gtin: string | null;
   packNotes: string | null;
   qcFlags: Array<{ id: number; label: string; category: string | null }>;
   kitParts: Array<{ id: number; name: string; type: string; qty: number; critical: boolean }>;
+}
+
+/** The sku_catalog columns this route reads. `category` is never selected here. */
+interface CatalogRow {
+  id: number;
+  sku: string;
+  product_title: string;
+  image_url: string | null;
+  gtin: string | null;
+  notes: string | null;
+  category?: string | null;
 }
 
 /** GET /api/get-title-by-sku?sku=<value> */
@@ -39,9 +59,9 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
         return NextResponse.json({ error: 'Empty sku' }, { status: 400 });
     }
 
-    // Cache key: case-fold + strip leading zeros (the DB match is leading-zero
-    // tolerant, so '1103' and '01103' resolve to the same product → same key).
-    const normSku = trimmedSku.toUpperCase().replace(/^0+(?=.)/, '');
+    // Cache key: case-fold only. `36` and `00036` are different products, so
+    // a zero-stripped key would serve one's bundle for the other.
+    const normSku = trimmedSku.toUpperCase();
     const condKey = condition ?? '';
 
     // ── STABLE slice (cached) — everything except live stock/location.
@@ -52,7 +72,8 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
         600, // 10 min; TTL is a backstop — writes invalidate the tags
         [CACHE_TAGS.skuCatalog, CACHE_TAGS.skuKitParts, CACHE_TAGS.qcChecks],
         async () => {
-            // Three stable lookups, tolerant of case/whitespace/leading zeros.
+            // Zoho/Ecwid lookups tolerate case/whitespace/leading zeros; the
+            // catalog matches by canonical key with the ambiguity guard.
             const [zohoItem, ecwid, catalogDirect] = await Promise.all([
                 tenantQuery(
                     orgId,
@@ -89,30 +110,46 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                           LIMIT 1`,
                     [trimmedSku, orgId],
                 ),
-                tenantQuery(
+                tenantQuery<CatalogRow & { exact: boolean }>(
                     orgId,
-                    `SELECT id, sku, product_title, image_url, gtin, notes
+                    `SELECT id, sku, product_title, image_url, gtin, notes,
+                            ${SKU_EXACT_MATCH_FLAG_SQL} AS exact
                            FROM sku_catalog
                           WHERE organization_id = $2
-                            AND (
-                              UPPER(TRIM(sku)) = UPPER(TRIM($1))
-                              OR regexp_replace(UPPER(TRIM(sku)), '^0+', '')
-                                 = regexp_replace(UPPER(TRIM($1)), '^0+', '')
-                            )
-                          ORDER BY (UPPER(TRIM(sku)) = UPPER(TRIM($1))) DESC
-                          LIMIT 1`,
+                            AND ${SKU_CANONICAL_KEY_MATCH_SQL}
+                          ORDER BY exact DESC, id
+                          LIMIT 2`,
                     [trimmedSku, orgId],
                 ),
             ]);
 
+            // An ambiguous key (`036` vs `00036` and `36`) names no product:
+            // don't let a zero-tolerant Zoho/Ecwid hit pair one's title with
+            // the other's catalog id.
+            const catalogMatch = pickSkuCatalogMatch(catalogDirect.rows);
+            if (catalogMatch.kind === 'ambiguous') {
+                return {
+                    found: false,
+                    title: '',
+                    imageUrl: '',
+                    skuCatalogId: null,
+                    catalogSku: null,
+                    ambiguous: true,
+                    gtin: null,
+                    packNotes: null,
+                    qcFlags: [],
+                    kitParts: [],
+                };
+            }
+
             const zohoRow = zohoItem.rows[0] ?? null;
             const ecwidRow = ecwid.rows[0] ?? null;
-            let catalogRow = catalogDirect.rows[0] ?? null;
+            let catalogRow: CatalogRow | null = catalogMatch.kind === 'match' ? catalogMatch.row : null;
 
             // If the Ecwid row links to a catalog row we missed by SKU text
             // (because the catalog SKU isn't the Ecwid platform_sku), fetch it.
             if (!catalogRow && ecwidRow?.sku_catalog_id) {
-                const linked = await tenantQuery(
+                const linked = await tenantQuery<CatalogRow>(
                     orgId,
                     `SELECT id, sku, product_title, image_url, gtin, notes
                            FROM sku_catalog WHERE id = $1 AND organization_id = $2 LIMIT 1`,
@@ -181,6 +218,8 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                           catalogRow?.image_url ||
                           ''),
                 skuCatalogId: resolvedCatalogId,
+                catalogSku: catalogRow?.sku ?? null,
+                ambiguous: false,
                 gtin: catalogRow?.gtin || null,
                 packNotes: catalogRow?.notes || null,
                 qcFlags,
@@ -190,23 +229,29 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     );
 
     // ── LIVE stock/location — never cached (decrements every pick/pack). ────
-    const stockPromise = tenantQuery(
+    // Same canonical key as the catalog. The stock row must be the resolved
+    // catalog SKU's own (`36` must not show `00036`'s stock); with no catalog
+    // row the guard applies on sku_stock alone; an ambiguous key takes none.
+    const stockPromise = tenantQuery<{ sku: string; stock: number | null; location: string | null; product_title: string | null; exact: boolean }>(
         orgId,
-        `SELECT sku, stock, location, product_title
+        `SELECT sku, stock, location, product_title, ${SKU_EXACT_MATCH_FLAG_SQL} AS exact
                FROM sku_stock
               WHERE organization_id = $2
-                AND (
-                  UPPER(TRIM(sku)) = UPPER(TRIM($1))
-                  OR regexp_replace(UPPER(TRIM(sku)), '^0+', '')
-                     = regexp_replace(UPPER(TRIM($1)), '^0+', '')
-                )
-              ORDER BY (UPPER(TRIM(sku)) = UPPER(TRIM($1))) DESC
-              LIMIT 1`,
+                AND ${SKU_CANONICAL_KEY_MATCH_SQL}
+              ORDER BY exact DESC
+              LIMIT 3`,
         [trimmedSku, orgId],
     );
 
     const [stable, stock] = await Promise.all([stablePromise, stockPromise]);
-    const stockRow = stock.rows[0] ?? null;
+    const stockMatch = pickSkuCatalogMatch(stock.rows);
+    const stockRow = stable.ambiguous
+        ? null
+        : stable.catalogSku
+          ? (stock.rows.find((r) => r.sku === stable.catalogSku) ?? null)
+          : stockMatch.kind === 'match'
+            ? stockMatch.row
+            : null;
 
     if (!stable.found && !stockRow) {
         return NextResponse.json({

@@ -5,7 +5,7 @@
  * but every surface PAINTS one identifier: the most specific, by the
  * precedence declared here once per locator, over that locator's own ids.
  *
- * - inbound: exceptions › awaiting tracking › not received › received;
+ * - inbound: exceptions › awaiting tracking › not received › delivered › received;
  * - outbound: exceptions, then the desk's own view order;
  * - support: the local statuses in chip order (live work before resolved).
  *
@@ -25,6 +25,7 @@ const INBOUND_PRECEDENCE = [
   'exceptions',
   'awaiting_tracking',
   'not_received',
+  'delivered',
   'received',
 ] as const satisfies readonly InboundBucketId[];
 

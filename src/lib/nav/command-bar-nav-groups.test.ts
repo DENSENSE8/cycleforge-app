@@ -24,7 +24,7 @@ test('buildCommandBarNavGroups order is Pin → the spine order (fixedSpineOrder
   // Fulfillment, Inventory changed to Warehouse … and Products at the bottom."
   // Owner 2026-10-04: Support sits between the Live feed and Scan Stations.
   // The palette reads the same composer as the spine and the page map.
-  assert.deepEqual(ids, ['pin', 'root', 'support', 'floor', 'inbound', 'fulfillment', 'inventory', 'sales', 'catalog']);
+  assert.deepEqual(ids, ['pin', 'root', 'support', 'floor', 'inbound', 'fulfillment', 'inventory', 'warehouse', 'sales', 'catalog']);
   const sectionIds = ids.filter((id) => id !== 'pin' && id !== 'root');
   const order = SPINE_SECTIONS.map((s) => String(s.id));
   assert.deepEqual(
@@ -139,11 +139,13 @@ test('domain bands own their pages; the desk / print grab-bags are gone', () => 
 
   assert.ok(idsIn('inbound').includes('incoming'), 'Inbound missing Incoming');
   assert.ok(idsIn('catalog').includes('products'), 'Catalog missing the products page');
-  assert.ok(idsIn('inventory').includes('inventory'), 'Inventory missing inventory page');
+  assert.deepEqual(idsIn('inventory'), ['stock'], 'Inventory is the stock door');
+  assert.ok(idsIn('warehouse').includes('inventory'), 'Warehouse missing Locations');
+  assert.ok(idsIn('warehouse').includes('qc-labels'), 'Warehouse missing QC labels');
   assert.equal(
-    idsIn('inventory').includes('warehouse'),
+    idsIn('warehouse').includes('stock'),
     false,
-    'Locations is Inventory L2, not a spine page',
+    'Stock is the Inventory door, not a Warehouse page',
   );
   // Sourcing folded into the Inbound lane (N4, operator 2026-09-14): the row
   // survives, its band changed. There is no `sourcing` band to look in.
@@ -157,6 +159,7 @@ test('domain bands own their pages; the desk / print grab-bags are gone', () => 
     'inbound',
     'catalog',
     'inventory',
+    'warehouse',
     'fulfillment',
     'sales',
     'support',

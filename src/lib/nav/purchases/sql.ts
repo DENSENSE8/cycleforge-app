@@ -10,6 +10,9 @@
  * - an eBay / Amazon / manual order: an `inbound_order` header with
  *   `receiving_type = 'PO'` (returns, pickups and repairs are not purchases),
  *   not cancelled. Number = its order id (`external_order_id`).
+ * A PO# containing "LCPU" is a local pickup recorded as a Zoho PO, not a
+ * purchase (operator 2026-10-06), so it is never listed — like a pickup-type
+ * `inbound_order`.
  * Twins of one physical purchase are folded in `foldPurchases` (the eBay ↔
  * Zoho rule needs `matchZohoPo`), so the window and the Find text are flags,
  * not a cut: the read returns the rows they keep, plus every row a fold may
@@ -23,8 +26,10 @@
  * of its shipments (line or carton); `unboxed` = the latest unbox of its
  * cartons. Bounds arrive as PT civil days (`ordered`) and their UTC instants
  * (`delivered` / `unboxed`, upper bound exclusive) — computed once in
- * `purchasesWindow`. Every predicate names the org: the owner role bypasses
- * RLS, so the predicate is the scope.
+ * `purchasesWindow`. `imported_at` is a fact, not an axis: the first instant
+ * the purchase was on record (its header, its first line, or the Zoho PO's
+ * own creation, whichever came first). Every predicate names the org: the
+ * owner role bypasses RLS, so the predicate is the scope.
  */
 
 import type { InboundSourceType } from '@/lib/inbound/source-registry';
@@ -50,6 +55,8 @@ export interface PurchaseRow {
   vendor: string | null;
   /** YYYY-MM-DD. */
   orderedOn: string | null;
+  /** ISO-8601 UTC — when the purchase was first on record here (header, first line, or the Zoho PO's creation). */
+  importedAt: string | null;
   inWindow: boolean;
   matchesFind: boolean;
   // Twin signals: set on the rows a fold may read (module doc), null / empty on the rest.
@@ -95,6 +102,8 @@ purchase AS (
          COALESCE(m.po_date, io.order_date) AS ordered_on,
          NULLIF(btrim(m.reference_number), '') AS reference_number,
          io.created_at AS header_at,
+         CASE WHEN m.raw->>'created_time' ~ '^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])T([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d([+-]\\d{2}:?\\d{2}|Z)?$'
+              THEN (m.raw->>'created_time')::timestamptz END AS created_at,
          NULL::bigint AS inbound_order_id
     FROM zoho_ids z
     LEFT JOIN zoho_po_mirror m ON m.organization_id = $1 AND m.zoho_purchaseorder_id = z.po_id
@@ -102,7 +111,7 @@ purchase AS (
    WHERE COALESCE(m.status, '') <> 'cancelled' AND COALESCE(io.status, '') <> 'cancelled'
   UNION ALL
   SELECT io.source_type, io.external_order_id, btrim(io.external_order_id),
-         NULLIF(btrim(io.vendor_name), ''), io.order_date, NULL, io.created_at, io.id
+         NULLIF(btrim(io.vendor_name), ''), io.order_date, NULL, io.created_at, NULL, io.id
     FROM inbound_order io
    WHERE io.organization_id = $1 AND io.source_type <> 'zoho' AND io.receiving_type = 'PO' AND io.status <> 'cancelled'
 ),
@@ -176,6 +185,7 @@ dated AS (
          COALESCE(s.trackings, '{}') AS trackings,
          COALESCE(e.equivalents, '{}') AS equivalents,
          COALESCE(p.ordered_on, (COALESCE(l.first_line_at, p.header_at) AT TIME ZONE 'America/Los_Angeles')::date) AS ordered_on,
+         LEAST(p.header_at, l.first_line_at, p.created_at) AS imported_at,
          s.delivered_at, u.unboxed_at,
          COALESCE(s.tracking_hit, false) OR COALESCE(l.text_hit, false) AS line_hit
     FROM purchase p
@@ -184,6 +194,8 @@ dated AS (
     LEFT JOIN line_agg l USING (source, purchase_id)
     LEFT JOIN equivalent_agg e USING (source, purchase_id)
    WHERE p.ref IS NOT NULL
+     -- A local pickup is never a purchase on this sheet (operator 2026-10-06): its PO# says LCPU.
+     AND p.ref NOT ILIKE '%LCPU%'
 ),
 flagged AS (
   SELECT d.*,
@@ -227,7 +239,9 @@ signaled AS (
            OR f.last8s && ARRAY(SELECT k FROM order_key) AS twin_signals
     FROM flagged f
 )
-SELECT s.source, s.ref, s.vendor, s.ordered_on::text AS ordered_on, s.in_window, s.matches_find,
+SELECT s.source, s.ref, s.vendor, s.ordered_on::text AS ordered_on,
+       to_char(s.imported_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS imported_at,
+       s.in_window, s.matches_find,
        CASE WHEN s.twin_signals THEN s.purchase_id END AS purchase_id,
        CASE WHEN s.twin_signals THEN s.reference_number END AS reference_number,
        CASE WHEN s.twin_signals THEN s.trackings END AS trackings,
@@ -263,6 +277,7 @@ export function purchaseRowOf(row: Record<string, unknown>): PurchaseRow {
     trackings: Array.isArray(row.trackings) ? row.trackings.map(String) : [],
     equivalents: Array.isArray(row.equivalents) ? row.equivalents.map(String) : [],
     orderedOn: text(row.ordered_on),
+    importedAt: text(row.imported_at),
     inWindow: row.in_window === true,
     matchesFind: row.matches_find === true,
   };

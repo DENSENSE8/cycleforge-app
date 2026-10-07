@@ -156,9 +156,6 @@ export function AuthProvider({ initial = null, kioskHost = false, children }: Pr
     // cache — customer PII in this tab — is cleared.
     flushSync(() => setUser(null));
     clearWorkbenchCache();
-    // Rail first-paint seeds now live in Upstash keyed per org + viewer with a
-    // short TTL (see rail-snapshot-cache.ts) — no browser-side purge needed; a
-    // different login simply reads its own (or an empty) seed.
     if (typeof window !== 'undefined') {
       window.location.href = '/signin';
     }

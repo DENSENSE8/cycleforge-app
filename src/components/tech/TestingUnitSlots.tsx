@@ -34,8 +34,6 @@ interface Props {
   expected?: number | null;
   /** Line-level verdict, derived from the saved serials' statuses. */
   verdict: TestingVerdict | null;
-  /** True while a verdict mutation is in flight. */
-  isMutating?: boolean;
   /** True while a serial add/replace is in flight. */
   isSubmitting?: boolean;
   /** Disable the whole panel (no carton, line locked, saving, etc.). */
@@ -148,7 +146,6 @@ export function TestingLinePanel({
   saved,
   expected = null,
   verdict,
-  isMutating = false,
   isSubmitting = false,
   disabled = false,
   autoFocus = false,
@@ -174,7 +171,6 @@ export function TestingLinePanel({
         lineId={lineId}
         saved={saved}
         total={total}
-        isMutating={isMutating}
         isSubmitting={isSubmitting}
         disabled={disabled}
         selectedIndex={selectedIndex}
@@ -230,8 +226,8 @@ export function TestingLinePanel({
       showCondition={saved[0]?.id != null && onSetUnitCondition != null}
       verdict={verdict}
       onVerdictChange={onSetVerdict}
-      verdictDisabled={disabled || isMutating || saved.length === 0}
-      conditionLocked={disabled || isMutating}
+      verdictDisabled={disabled || saved.length === 0}
+      conditionLocked={disabled}
       serialSlot={serialSlot}
     />
   );
@@ -241,7 +237,6 @@ interface TestingUnitRowsProps {
   lineId: number;
   saved: ReadonlyArray<UnitSlotSerial>;
   total: number;
-  isMutating: boolean;
   isSubmitting: boolean;
   disabled: boolean;
   selectedIndex?: number;
@@ -261,7 +256,6 @@ function TestingUnitRows({
   lineId,
   saved,
   total,
-  isMutating,
   isSubmitting,
   disabled,
   selectedIndex,
@@ -314,8 +308,8 @@ function TestingUnitRows({
           onVerdictChange={(next) => {
             if (serial) onSetUnitVerdict(serial as UnitSlotSerial, next);
           }}
-          verdictDisabled={disabled || isMutating || serial == null}
-          conditionLocked={disabled || isMutating}
+          verdictDisabled={disabled || serial == null}
+          conditionLocked={disabled}
         />
       )}
       renderCollapsedMeta={(serial) => (

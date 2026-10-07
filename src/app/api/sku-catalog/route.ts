@@ -93,6 +93,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
+    // A padding/case twin of a catalog SKU (`89-P-1` beside `00089-P-1`) is
+    // the same key to label resolution — refuse unless Zoho carries it as written.
+    const twinSku = known.mirrorItemIds.has(sku)
+      ? null
+      : ((known.paddingTwins.get(parsed.sku) ?? []).find((twin) => twin !== sku) ?? null);
+    if (twinSku) {
+      return NextResponse.json(
+        { success: false, error: `SKU ${sku} has the same key as catalog SKU ${twinSku}`, sku, twinSku },
+        { status: 409 },
+      );
+    }
+
     // upsert reactivates a previously soft-deleted row or inserts a new one.
     const catalog = await upsertSkuCatalog({
       sku,

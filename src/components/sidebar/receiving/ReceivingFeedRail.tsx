@@ -4,13 +4,9 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { railSnapshotFeedParam } from '@/lib/receiving/rail/rail-snapshot-cache';
-import { fetchRailSnapshot, persistRailSnapshot } from '@/lib/receiving/rail/rail-snapshot-client';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { parseStaffParam } from '@/lib/station/table-url-params';
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
-import { useHydrateVisibleSerials } from './useHydrateVisibleSerials';
 import { useRailExclusions } from './useRailExclusions';
 import { useRailRowDismiss } from './useRailRowDismiss';
 import { useRailRowDelete } from './useRailRowDelete';
@@ -33,26 +29,12 @@ import { RAIL_QTY } from '@/lib/receiving/rail/quantity';
 import { RAIL_STATUS } from '@/lib/receiving/rail/status';
 
 interface ReceivingFeedRailProps {
-  /** Which feed to render — the registry key (`"unboxRecent"`, `"scanned"`, …). */
+  /** Which feed to render — the registry key (`"unboxRecent"`, `"triageCombined"`, `"testingRecent"`). */
   feed: ReceivingRailFeedId;
   selectedLineId: number | null;
   selectedRow?: ReceivingLineRow | null;
-  /** Optimistic row pinned at the top until its real row lands (triage importing stub). */
-  leadingRow?: ReceivingLineRow | null;
+  /** Rows that are still resolving (the Unbox pending scan row) take no click / peek. */
   getRowDisabled?: (row: ReceivingLineRow) => boolean;
-  /**
-   * Cache scope for feeds that mount in more than one mode (the Scanned feed is
-   * the unbox Queue AND the triage Prioritize) — keeps each mode's cache entry
-   * distinct so one mode's in-flight/stale rows can't flash into the other.
-   */
-  scope?: string;
-  /** Desktop search text (filters the feed's rows). */
-  filterText?: string;
-  /**
-   * Client-side keep filter (priority / type / platform facets). Same display
-   * contract as rail dismiss — not part of the queryKey.
-   */
-  includeRow?: (row: ReceivingLineRow) => boolean;
   emptyText?: string;
   /** Optional read-only context node under the popover badges (e.g. unfound exception dot). */
   renderPopoverContext?: (row: ReceivingLineRow) => ReactNode;
@@ -62,11 +44,7 @@ export function ReceivingFeedRail({
   feed: feedId,
   selectedLineId,
   selectedRow = null,
-  leadingRow = null,
   getRowDisabled,
-  scope,
-  filterText = '',
-  includeRow,
   emptyText,
   renderPopoverContext,
 }: ReceivingFeedRailProps) {
@@ -78,57 +56,36 @@ export function ReceivingFeedRail({
   const staffId = feed.usesStaffFilter
     ? parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'))
     : null;
-  const q = filterText.trim().toLowerCase();
 
   // Phase 4 read filter:
-  const exclusionFeedKey = railExclusionFeedKey(feedId, scope);
+  const exclusionFeedKey = railExclusionFeedKey(feedId);
   const excluded = useRailExclusions(exclusionFeedKey);
 
-  // Distinct, isolated cache entry per feed/scope/staff/query — still under the ['receiving-lines-table'] prefix so broad invalidations…
+  // Distinct, isolated cache entry per feed/staff — still under the ['receiving-lines-table'] prefix so broad invalidations reach it.
   const queryKey = useMemo(
-    () => receivingRailQueryKey(feed.segment, scope, q, staffId),
-    [feed.segment, scope, q, staffId],
+    () => receivingRailQueryKey(feed.segment, undefined, '', staffId),
+    [feed.segment, staffId],
   );
 
-  const rt: RailFetchRuntime = { staffId, query: q };
-  const baseFetchFn = feed.buildFetcher
-    ? feed.buildFetcher(rt)
-    : () =>
-        fetchReceivingLines(
-          { segment: feed.segment, view: feed.view!, sort: feed.sort, postFilter: feed.postFilter },
-          rt,
-        );
-
-  // Fetch is exclusion-agnostic now (dismissed rows are dropped at display time,
+  // Fetch is exclusion-agnostic (dismissed rows are dropped at display time,
   // see `excluded` → `excludedIds` below). This only layers PO-level adaptive
   // title context onto the fetched rows when the feed opts in.
   const fetchFn = useMemo<() => Promise<ApiResponse>>(() => {
+    const rt: RailFetchRuntime = { staffId };
+    const baseFetchFn = feed.buildFetcher
+      ? feed.buildFetcher(rt)
+      : () =>
+          fetchReceivingLines(
+            { segment: feed.segment, view: feed.view!, sort: feed.sort, postFilter: feed.postFilter },
+            rt,
+          );
     if (feed.stampRailTitleContext !== 'po') return baseFetchFn;
     return async () => {
       const data = await baseFetchFn();
       const rows = stampPoRailTitleContext(data.receiving_lines ?? []);
       return { ...data, receiving_lines: rows, total: rows.length };
     };
-    // baseFetchFn is rebuilt each render from rt (staffId/query); the stable
-    // inputs below track a real fetch-shape change (baseFetchFn itself is
-    // intentionally omitted — it has a new identity every render).
-  }, [feed.segment, feed.stampRailTitleContext, scope, q, staffId]);
-
-  // Cold-reload continuity:
-  const snapshotFeedParam = useMemo(
-    () => (q === '' ? railSnapshotFeedParam({ feedId, scope, staffFilterId: staffId }) : null),
-    [q, feedId, scope, staffId],
-  );
-  const loadSnapshot = useMemo(
-    () => (snapshotFeedParam ? () => fetchRailSnapshot(snapshotFeedParam) : undefined),
-    [snapshotFeedParam],
-  );
-  const persistSnapshot = useMemo(
-    () => (snapshotFeedParam
-      ? (rows: ReceivingLineRow[]) => persistRailSnapshot(snapshotFeedParam, rows)
-      : undefined),
-    [snapshotFeedParam],
-  );
+  }, [feed, staffId]);
 
   const qty = RAIL_QTY[feed.qty];
   const dot = RAIL_STATUS[feed.status];
@@ -166,35 +123,21 @@ export function ReceivingFeedRail({
     };
   }, [rowActionsId, exclusionFeedKey, dismissRow, deleteCarton, canDelete, editMode]);
 
-  // Tier A serial pre-seed:
-  const queryClient = useQueryClient();
-  const railRows = useQuery<ReceivingLineRow[]>({
-    queryKey,
-    queryFn: async () => (await fetchFn()).receiving_lines ?? [],
-    enabled: false,
-    notifyOnChangeProps: ['data'],
-  }).data;
-  useHydrateVisibleSerials(queryClient, railRows, queryKey);
-
   return (
     <RecentActivityRailBase
       selectedLineId={selectedLineId}
       selectedRow={selectedRow}
-      leadingRow={leadingRow}
       getRowDisabled={getRowDisabled}
       limit={feed.limit ?? 25}
       queryKey={queryKey}
       fetchFn={fetchFn}
       excludedIds={excluded}
-      includeRow={includeRow}
-      loadSnapshot={loadSnapshot}
-      persistSnapshot={persistSnapshot}
       updateEvent={
         feed.acceptLineUpdateBus === false ? undefined : 'receiving-line-updated'
       }
       deleteEvent={feed.listenLineDelete === false ? undefined : 'receiving-line-deleted'}
       deleteGroupEvent="receiving-entry-deleted"
-      refreshEvents={feed.refreshEvents}
+      refreshDomains={feed.refreshDomains}
       // Workspace header chevrons (`LineEditToolbar`) dispatch this channel — the QC Recent rail (`testingRecent`) steps on `testing-navigate-rail`.
       navigateEvent={
         feedId === 'testingRecent' ? 'testing-navigate-rail' : 'receiving-navigate-table'
@@ -202,8 +145,6 @@ export function ReceivingFeedRail({
       rowActions={rowActions}
       eyebrowTitle={feed.eyebrowTitle}
       emptyText={emptyText}
-      autoSelectFirstWhenEmpty={feed.autoSelectFirstWhenEmpty}
-      canAutoSelectFirst={feed.canAutoSelectFirst}
       pinSelectedLead={feed.pinSelectedLead}
       preserveServerOrder={feed.preserveServerOrder}
       staggerRevealMotion={feed.staggerRevealMotion}

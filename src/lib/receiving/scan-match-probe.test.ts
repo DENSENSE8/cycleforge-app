@@ -5,7 +5,6 @@ import {
   pickCartonMatch,
   pickLocalPoId,
   SCAN_MATCH_PROBE_SQL,
-  scanVerdictFromProbe,
   type ProbeCartonRow,
   type ScanMatchProbe,
 } from './scan-match-probe';
@@ -129,15 +128,4 @@ test('PO id: carton first, then Reference# exact, then a single near-miss', () =
   assert.equal(pickLocalPoId(probe({ poRef: ['R'], poNear: ['N'] }), null), 'R');
   assert.equal(pickLocalPoId(probe({ poNear: ['N'] }), null), 'N');
   assert.equal(pickLocalPoId(probe({ poNear: ['N', 'M'] }), null), null);
-});
-
-test('verdict: an empty unfound carton stays unfound; lines, Incoming or a PO make it found', () => {
-  assert.equal(scanVerdictFromProbe(probe()).verdict, 'unfound');
-  assert.equal(scanVerdictFromProbe(probe({ stnExact: [carton()] })).verdict, 'unfound');
-  assert.equal(scanVerdictFromProbe(probe({ stnExact: [carton({ line_count: 3 })] })).verdict, 'found');
-  assert.equal(scanVerdictFromProbe(probe({ inbound: [carton()] })).verdict, 'found');
-  const byRef = scanVerdictFromProbe(probe({ poRef: ['R'] }));
-  assert.equal(byRef.verdict, 'found');
-  assert.equal(byRef.poId, 'R');
-  assert.equal(byRef.receivingId, null);
 });

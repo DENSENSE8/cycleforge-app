@@ -1,6 +1,7 @@
 /** Phase 0 resolver — find an already-MATERIALIZED carton row (`receiving_id` set) among the receiving-feed rows that matches the scanned… */
 
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 import type { CachedCartonDeps, CachedCartonResolution, ScanInput } from '../types';
 import { normalizeScanKey } from '../normalize';
 
@@ -10,6 +11,9 @@ export function resolveCachedCarton(
 ): CachedCartonResolution | null {
   const key = normalizeScanKey(input.value);
   if (!key) return null;
+  // Tracking compares CANONICAL forms: an IMpb / GS1-concat label spelling
+  // must hit the carton stored under its human tracking number.
+  const trackingKey = extractCanonicalTracking(input.value);
 
   // Armed mode matches only its own field; `auto` deep-scans PO# / tracking# /
   // ticket# (ticket only when the value looks like `#NNNN`) so an already-open
@@ -25,7 +29,7 @@ export function resolveCachedCarton(
     if (matchOrder && r.zoho_purchaseorder_number && normalizeScanKey(r.zoho_purchaseorder_number) === key) {
       return true;
     }
-    if (matchTracking && r.tracking_number && normalizeScanKey(r.tracking_number) === key) {
+    if (matchTracking && r.tracking_number && extractCanonicalTracking(r.tracking_number) === trackingKey) {
       return true;
     }
     // `zendesk_ticket` is stored as `#<id>` (rail / carton-context chip); strip

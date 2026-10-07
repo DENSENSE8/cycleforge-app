@@ -1,6 +1,6 @@
 /** Serial projection — the read-model denorm behind instant serial display. */
 
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   resolveCurrentReceivingLineIds,
@@ -26,6 +26,8 @@ export interface SerialProjectionEntry {
   id: number;
   serial_number: string;
   condition_grade: string | null;
+  /** Minted unit identity (serial_units.unit_uid) — the id a unit label prints. */
+  unit_uid: string | null;
 }
 
 /** Injectable collaborators for {@link fetchSerialsForLines} (real impls by default). */
@@ -35,7 +37,7 @@ export interface FetchSerialsDeps {
 }
 
 const defaultFetchDeps: FetchSerialsDeps = {
-  query: tenantQuery,
+  query: tenantQueryOneTrip,
   resolveCurrentLines: resolveCurrentReceivingLineIds,
 };
 
@@ -112,6 +114,7 @@ export function toSerialProjection(serials: LineSerial[]): SerialProjectionEntry
     id: s.id,
     serial_number: s.serial_number,
     condition_grade: s.condition_grade ?? null,
+    unit_uid: s.unit_uid ?? null,
   }));
 }
 

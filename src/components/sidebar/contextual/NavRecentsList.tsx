@@ -34,8 +34,6 @@ import { NAV_BLOCK_CLASS, NAV_BLOCK_PLATE_CLASS } from './nav-block';
 import { NavSlotError } from './NavSlotError';
 
 const RECENTS_STALE_MS = 30_000;
-/** Accidental-delete recovery window; matches the repo's other undo rows. */
-const UNDO_WINDOW_MS = 10_000;
 
 type RowActions = NonNullable<NavRecents['rowActions']>;
 
@@ -287,19 +285,15 @@ function RecentRow({
       return;
     }
     onChanged();
-    toast.success(`Deleted “${row.title}”`, {
-      duration: UNDO_WINDOW_MS,
-      action: {
-        label: 'Undo',
-        onClick: async () => {
-          try {
-            await runNavRecentRowVerb(rowActions, row.entityId, { kind: 'restore' });
-            onChanged();
-            toast.success(`Restored “${row.title}”`);
-          } catch {
-            toast.error(`Could not restore “${row.title}”`);
-          }
-        },
+    toast.undo(`Deleted “${row.title}”`, {
+      onUndo: async () => {
+        try {
+          await runNavRecentRowVerb(rowActions, row.entityId, { kind: 'restore' });
+          onChanged();
+          toast.success(`Restored “${row.title}”`);
+        } catch {
+          toast.error(`Could not restore “${row.title}”`);
+        }
       },
     });
   };

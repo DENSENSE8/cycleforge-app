@@ -2,7 +2,8 @@ import pool from '@/lib/db';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
-import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
+import { receivingTriageUpsertStatement } from '@/lib/receiving/streets/carton-street-write';
+import { tenantQueriesOneTrip } from '@/lib/tenancy/db';
 import { promoteShipmentTicketToReceiving } from '@/lib/support/ticket-link';
 import { NOTIFIABLE_EVENTS } from '@/lib/notifications/event-vocabulary';
 import { promoteWatchedArrival } from '@/lib/receiving/watched-arrival';
@@ -72,18 +73,24 @@ async function linkScanToStn(
   }
 }
 
-/** Idempotent scan audit row — upserts scanned_at + scanned_by per operator. */
-export async function recordReceivingScan(
+/**
+ * The writes that put a scan on a rail: the `receiving_scans` row (Arrival
+ * membership, and the scan id every follow-up keys on) and, for a triage work
+ * scan, the COALESCE-once door stamp. The FIRST statement returns the scan id.
+ * Statements only — the caller sends them, ideally in the same round trip as
+ * its own read. Everything else a scan does is {@link recordReceivingScanFollowups}.
+ */
+export function receivingScanMembershipStatements(
+  orgId: string,
   receivingId: number,
   trackingNumber: string,
   carrier: string,
   staffId: number | null,
   source: ReceivingScanSource,
-  options: RecordReceivingScanOptions = {},
-): Promise<number> {
+  options: Pick<RecordReceivingScanOptions, 'intakeSurface' | 'scanKind'> = {},
+): Array<{ text: string; params: unknown[] }> {
   const intakeSurface: ReceivingIntakeSurface = options.intakeSurface ?? 'triage';
-  const scanKind: UnboxScanKind = options.scanKind ?? 'work';
-  const isLookup = scanKind === 'lookup';
+  const isLookup = (options.scanKind ?? 'work') === 'lookup';
 
   // A lookup keeps the existing attribution.
   const conflictSet = isLookup
@@ -94,29 +101,53 @@ export async function recordReceivingScan(
            carrier = COALESCE(EXCLUDED.carrier, receiving_scans.carrier),
            intake_surface = COALESCE(receiving_scans.intake_surface, EXCLUDED.intake_surface)`;
 
-  const result = await pool.query<{ id: number }>(
-    `INSERT INTO receiving_scans
-       (receiving_id, tracking_number, carrier, scanned_at, scanned_by, source, organization_id, intake_surface)
-     VALUES ($1, $2, $3, NOW(), $4, $5, (SELECT organization_id FROM receiving_carton WHERE id = $1), $6)
-     ON CONFLICT (tracking_number, receiving_id) DO UPDATE
-       ${conflictSet}
-     RETURNING id`,
-    [receivingId, trackingNumber, carrier || null, staffId, source, intakeSurface],
-  );
-  const scanId = Number(result.rows[0].id);
+  const statements: Array<{ text: string; params: unknown[] }> = [
+    {
+      text: `INSERT INTO receiving_scans
+               (receiving_id, tracking_number, carrier, scanned_at, scanned_by, source, organization_id, intake_surface)
+             VALUES ($1, $2, $3, NOW(), $4, $5, $6::uuid, $7)
+             ON CONFLICT (tracking_number, receiving_id) DO UPDATE
+               ${conflictSet}
+             RETURNING id`,
+      params: [receivingId, trackingNumber, carrier || null, staffId, source, orgId, intakeSurface],
+    },
+  ];
+  // Door-arrival stamp — TRIAGE surface only.
+  if (intakeSurface === 'triage' && !isLookup) {
+    statements.push(
+      receivingTriageUpsertStatement(orgId, receivingId, {
+        doorReceivedAt: 'now', // rendered as SQL NOW() by the helper
+        doorReceivedBy: staffId,
+      }),
+    );
+  }
+  return statements;
+}
 
-  // Resolved once — used by both the ops-event stamp and the triage door stamp.
-  const orgRow = await pool.query<{ organization_id: string }>(
-    'SELECT organization_id FROM receiving_carton WHERE id = $1 LIMIT 1',
-    [receivingId],
-  );
-  const orgId = orgRow.rows[0]?.organization_id ?? null;
+/**
+ * What a recorded scan does after its membership writes landed: the
+ * TRACKING_SCANNED ops event, the STN link (and the shipment→receiving ticket
+ * promotion it carries), and for a triage work scan the arrival event and the
+ * watched-arrival promotion. None of it decides which rail shows the carton.
+ */
+export async function recordReceivingScanFollowups(
+  orgId: string,
+  scanId: number,
+  receivingId: number,
+  trackingNumber: string,
+  carrier: string,
+  staffId: number | null,
+  source: ReceivingScanSource,
+  options: RecordReceivingScanOptions = {},
+): Promise<void> {
+  const intakeSurface: ReceivingIntakeSurface = options.intakeSurface ?? 'triage';
+  const isLookup = (options.scanKind ?? 'work') === 'lookup';
 
   try {
     // TRACKING_SCANNED is the WORK event. A lookup records its own
     // RECEIVING_LOOKUP_SCAN event instead (recordUnboxLookupScan), so the two
     // never blur in throughput or actor-attribution reads.
-    if (orgId && !isLookup) {
+    if (!isLookup) {
       // Phase 2 (ops-events unification):
       const workflowNodeId = await resolveSurfaceWorkflowNodeId(
         intakeSurface === 'unbox' ? 'unbox' : 'triage',
@@ -148,13 +179,7 @@ export async function recordReceivingScan(
     await linkScanToStn(scanId, receivingId, trackingNumber, source);
   }
 
-  // Door-arrival stamp — TRIAGE surface only.
-  if (intakeSurface === 'triage' && orgId && !isLookup) {
-    await upsertReceivingTriage(pool, orgId, receivingId, {
-      doorReceivedAt: 'now', // rendered as SQL NOW() by the helper
-      doorReceivedBy: staffId,
-    });
-
+  if (intakeSurface === 'triage' && !isLookup) {
     /* ARRIVAL — the event a pre-arrival tracking watch waits on. */
     try {
       const arrivalEventId = await recordOpsEvent({
@@ -209,6 +234,30 @@ export async function recordReceivingScan(
       console.warn('[recordReceivingScan] watched-arrival promotion skipped:', err);
     }
   }
+}
 
+/** Idempotent scan audit row — upserts scanned_at + scanned_by per operator. */
+export async function recordReceivingScan(
+  receivingId: number,
+  trackingNumber: string,
+  carrier: string,
+  staffId: number | null,
+  source: ReceivingScanSource,
+  options: RecordReceivingScanOptions = {},
+): Promise<number> {
+  const orgRow = await pool.query<{ organization_id: string }>(
+    'SELECT organization_id FROM receiving_carton WHERE id = $1 LIMIT 1',
+    [receivingId],
+  );
+  const orgId = orgRow.rows[0]?.organization_id;
+  if (!orgId) throw new Error(`recordReceivingScan: receiving ${receivingId} not found`);
+
+  const [scan] = await tenantQueriesOneTrip<{ id: number }>(
+    orgId as OrgId,
+    receivingScanMembershipStatements(orgId, receivingId, trackingNumber, carrier, staffId, source, options),
+    pool,
+  );
+  const scanId = Number(scan!.rows[0]!.id);
+  await recordReceivingScanFollowups(orgId, scanId, receivingId, trackingNumber, carrier, staffId, source, options);
   return scanId;
 }

@@ -39,7 +39,7 @@ export const ORDER_WRITE_QUERY_KEYS: readonly QueryKey[] = [
 
 const REFRESH_DOMAIN_QUERY_KEYS: Record<RefreshDomain, readonly QueryKey[]> = {
   'orders.outbound': ORDER_WRITE_QUERY_KEYS,
-  'packer.logs': [['packer-logs']],
+  'packer.logs': [['packer-logs'], ['packer-logs-counts']],
   'receiving.lines': [
     ['receiving-lines-table'],
     ['receiving-lines'],
@@ -48,6 +48,8 @@ const REFRESH_DOMAIN_QUERY_KEYS: Record<RefreshDomain, readonly QueryKey[]> = {
   'receiving.poLines': [['receiving-siblings'], ['receiving-po-detail']],
   repairs: [qk.repairs.all],
   replenish: [['replenish-need']],
+  // The Quality Control Recent rail (`testingRecent`, segment `tested`).
+  'testing.lines': [['receiving-lines-table', 'rail', 'tested']],
   // A work-order assignment writes the order / repair row's tech + packer.
   'work-orders': [qk.dashboardTable.unshipped, qk.dashboardTable.pending, ...OUTBOUND_QUERY_PREFIXES, qk.repairs.all],
 };

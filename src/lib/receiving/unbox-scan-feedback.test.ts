@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   UNBOX_FEEDBACK_LOG_CAP,
+  cartonScanVerdict,
   decideUnfoundPairing,
+  findCheckingFeedback,
   findFeedbackForCarton,
   pushFeedback,
   unboxFeedbackFace,
@@ -107,4 +109,26 @@ test('a carton finds its own scan: stamped first, else the newest unstamped same
   assert.equal(findFeedbackForCarton(log, 50, '9400111206260370400001')?.id, 2);
   assert.equal(findFeedbackForCarton(log, 51, '9400111206260370400001')?.id, 3);
   assert.equal(findFeedbackForCarton(log, 52, 'NOPE'), null);
+});
+
+test('verdict from rows a rung already holds: a PO or real lines are found; a lineless unfound carton is not', () => {
+  assert.deepEqual(
+    cartonScanVerdict([{ id: -42, receiving_id: 42, receiving_source: 'unmatched' }]),
+    { phase: 'unfound', receivingId: 42, lineCount: 0 },
+  );
+  assert.equal(
+    cartonScanVerdict([{ id: 7, receiving_id: 42, receiving_source: null, zoho_purchaseorder_number: 'PO-1' }]).phase,
+    'found',
+  );
+  assert.equal(cartonScanVerdict([{ id: 7, receiving_id: 42, receiving_source: null }]).phase, 'found');
+});
+
+test('a verdict settles the newest scan of that tracking still checking', () => {
+  const base = { receivingId: null, lineCount: 0, ticket: null, at: 0 } as const;
+  const log: UnboxScanFeedback[] = [
+    { ...base, id: 3, tracking: '1Z 999', phase: 'checking' },
+    { ...base, id: 2, tracking: '1Z999', phase: 'found' },
+  ];
+  assert.equal(findCheckingFeedback(log, '1z999')?.id, 3);
+  assert.equal(findCheckingFeedback(log, '1Z000'), null);
 });

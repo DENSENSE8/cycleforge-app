@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
            product_title ILIKE $1
            OR display_name ILIKE $1
            OR item_number ILIKE $1
+           OR COALESCE(sku, '') ILIKE $1
            OR COALESCE(file_name, '') ILIKE $1
            OR COALESCE(relative_path, '') ILIKE $1
            OR COALESCE(source_url, '') ILIKE $1
@@ -88,7 +89,8 @@ export async function GET(request: NextRequest) {
 
 function normalizeRow(row: any) {
   return {
-    id: row.id,
+    // `product_manuals.id` is BIGINT: pg hands it over as a string; every client compares it as a number.
+    id: Number(row.id),
     sku: row.sku || null,
     item_number: row.item_number || null,
     product_title: row.product_title || null,

@@ -1042,7 +1042,7 @@ test('filterPageChildren fails CLOSED when no permission set is supplied', () =>
 
 test('Support is its own Workspaces lane: one door to /support, Queue plus the list views, never under Tasks', () => {
   // Support → (Scan Stations) → Receiving → Fulfillment → Warehouse → Sales → (Operations, parked) → Products.
-  assert.deepEqual(DESK_SPINE_SECTIONS.map((lane) => lane.id), ['support', 'inbound', 'fulfillment', 'inventory', 'sales', 'catalog']);
+  assert.deepEqual(DESK_SPINE_SECTIONS.map((lane) => lane.id), ['support', 'inbound', 'fulfillment', 'inventory', 'warehouse', 'sales', 'catalog']);
   const lane = DESK_SPINE_SECTIONS.find((section) => section.id === 'support');
   assert.equal(lane?.label, 'Support');
   // Painted orange (owner 2026-10-04), the house orange family.

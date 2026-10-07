@@ -66,6 +66,11 @@ export function publishGoArmed(armed: boolean) {
   if (snapshot.armed !== armed) publish({ armed });
 }
 
+/** True between `G` and its letter — that letter belongs to the go sequence. */
+export function isGoArmed(): boolean {
+  return snapshot.armed;
+}
+
 /** A key fired: its cap presses in for one beat. */
 export function publishKeyPressed(id: string) {
   window.clearTimeout(pressTimer);

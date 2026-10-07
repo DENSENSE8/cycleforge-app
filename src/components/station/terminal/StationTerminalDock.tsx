@@ -47,6 +47,7 @@ export function StationTerminalDock({
         disabled={vm.disabled}
         loading={vm.loading}
         title={vm.title}
+        hotkey={vm.hotkey}
         tone={vm.tone ?? 'accent'}
         toneClasses={toneClasses}
         menu={vm.menu}
@@ -95,6 +96,7 @@ export function StationTerminalDock({
             disabled={vm.disabled}
             loading={vm.loading}
             title={vm.title}
+            hotkey={vm.hotkey}
             tone={vm.tone ?? 'accent'}
             toneClasses={toneClasses}
             menu={vm.menu}

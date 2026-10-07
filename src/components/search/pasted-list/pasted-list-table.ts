@@ -5,8 +5,8 @@
  * cells, columns the staffer resizes / fits / freezes (`useSheetColumns`).
  * Display method: DataTable, HIGH — hundreds of rows × 10 compared facts at a
  * desk. Column sets: Records' ({@link RECORDS_COLUMN_SET} — the pasted list
- * and Fulfilled are ways of filling it) and the pasted list's
- * ({@link PASTED_LIST_COLUMN_SET}, also Purchasing's).
+ * and Fulfilled are ways of filling it) and Purchasing's
+ * ({@link PURCHASES_COLUMN_SET}).
  */
 
 import { makeGridSurfaceDescriptor, type GridSurfaceCapabilities, type GridSurfaceDescriptor, type LedgerGridColumnModel } from '@/design-system/components/grid';
@@ -30,6 +30,7 @@ import { FULFILLED_SCAN_LABEL } from '@/lib/outbound/fulfilled-params';
 import { FULFILLED_BUCKETS } from '@/lib/nav/locate/bucket-precedence';
 import { journeyClockFace, journeyClockSpanText } from '@/lib/nav/fulfilled/journey-clock';
 import { formatMonthDayTimePST } from '@/utils/date';
+import type { PurchasesSort } from '@/lib/receiving/purchases-params';
 import { formatCurrency } from '@/utils/_number';
 import { orderTotalSourceLabel } from '@/lib/orders/order-total';
 
@@ -88,7 +89,8 @@ export type PastedListColumnKey =
   | 'shipstationStatus'
   | 'returnRef'
   | 'claimBy'
-  // The record's import instant (`facts.importedAt`).
+  // Purchasing — the purchase's own dates (`facts.orderedOn` / `facts.importedAt`).
+  | 'orderedOn'
   | 'imported';
 
 export interface PastedListColumn extends LedgerGridColumnModel {
@@ -142,22 +144,6 @@ export const PASTED_LIST_COLUMNS: readonly PastedListColumn[] = [
   { key: 'detail', width: 'minmax(18rem, 1fr)', label: 'Why · carrier · follow-up', gridLabel: 'Detail', type: 'text', sortable: false },
 ];
 
-/** Always mounted — what every number has, whichever section holds it. */
-const STRUCTURAL: ReadonlySet<PastedListColumnKey> = new Set(['pos', 'ref', 'where', 'product', 'detail']);
-
-/**
- * The columns this list mounts: the structural five, plus each fact column
- * some number in the WHOLE list carries (not the filtered rows — a chip or a
- * find never makes columns jump). An inbound list reads PO · Vendor ·
- * Delivered · Unboxed · Units; an outbound one SKU · Tracking · Ship by ·
- * Shipped · Packer.
- */
-export function pastedListMountedColumns(rows: readonly PastedListRow[]): PastedListColumn[] {
-  return PASTED_LIST_COLUMNS.filter(
-    (column) => STRUCTURAL.has(column.key) || rows.some((row) => pastedListCellText(row, column.key) !== ''),
-  );
-}
-
 /** The columns a sheet can paint, and which of them its list mounts. */
 export interface PastedListColumnSet {
   /** Every column the sheet knows — Find matches over all of them. */
@@ -168,8 +154,44 @@ export interface PastedListColumnSet {
   capabilities?: GridSurfaceCapabilities;
 }
 
-/** The pasted list's (and Purchasing's) columns: the structural five plus every fact some record carries. */
-export const PASTED_LIST_COLUMN_SET: PastedListColumnSet = { all: PASTED_LIST_COLUMNS, mount: pastedListMountedColumns };
+/**
+ * Purchasing (`/purchasing`): one row per purchase, every track always
+ * mounted (a filter never makes columns jump). The number IS the purchase
+ * order (a Zoho PO#, else the marketplace order id), so there is no second PO
+ * column; `#` is the row's place in the sorted list. Ordered · Imported lead
+ * the facts: when it was bought and when it landed here.
+ */
+export const PURCHASES_COLUMNS: readonly PastedListColumn[] = [
+  { key: 'pos', width: 'minmax(2.75rem, 2.75rem)', label: 'Row', gridLabel: '#', type: 'number', align: 'end', frozen: true },
+  { key: 'ref', width: 'minmax(10rem, 10rem)', label: 'Purchase order', gridLabel: 'Purchase order', type: 'id', frozen: true, headerForceLabel: true },
+  { key: 'where', width: 'minmax(9.5rem, 9.5rem)', label: 'Status', gridLabel: 'Status', type: 'tag' },
+  { key: 'orderedOn', width: 'minmax(6.75rem, 6.75rem)', label: 'Ordered', gridLabel: 'Ordered', type: 'date', headerForceLabel: true },
+  { key: 'imported', width: 'minmax(7.75rem, 7.75rem)', label: 'Imported', gridLabel: 'Imported', type: 'date', headerForceLabel: true },
+  { key: 'product', width: 'minmax(16rem, 16rem)', label: 'Product title', gridLabel: 'Product title', type: 'text' },
+  { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', gridLabel: 'SKU', type: 'text', headerForceLabel: true },
+  { key: 'vendor', width: 'minmax(9rem, 9rem)', label: 'Vendor', gridLabel: 'Vendor', type: 'text' },
+  { key: 'tracking', width: 'minmax(9rem, 9rem)', label: 'Tracking', gridLabel: 'Tracking', type: 'text' },
+  { key: 'delivered', width: 'minmax(7.75rem, 7.75rem)', label: 'Delivered', gridLabel: 'Delivered', type: 'date', headerForceLabel: true },
+  { key: 'unboxed', width: 'minmax(11rem, 11rem)', label: 'Unboxed', gridLabel: 'Unboxed', type: 'text' },
+  { key: 'units', width: 'minmax(4.5rem, 4.5rem)', label: 'Units counted / bought', gridLabel: 'Units', type: 'number', align: 'end', headerForceLabel: true },
+  // The last track absorbs the sheet's slack.
+  { key: 'detail', width: 'minmax(18rem, 1fr)', label: 'Why · carrier · follow-up', gridLabel: 'Detail', type: 'text' },
+];
+
+export const PURCHASES_COLUMN_SET: PastedListColumnSet = { all: PURCHASES_COLUMNS, mount: () => PURCHASES_COLUMNS };
+
+/** Purchasing's header sort: each sortable column ↔ the query's `sort` (`purchases-params.ts`). */
+export const PURCHASES_SORT_BY: Readonly<Partial<Record<PastedListColumnKey, PurchasesSort>>> = {
+  ref: 'po',
+  where: 'status',
+  orderedOn: 'ordered',
+  imported: 'imported',
+  product: 'product',
+  vendor: 'vendor',
+  delivered: 'delivered',
+  unboxed: 'unboxed',
+  units: 'units',
+};
 
 /**
  * The Records sheet (`/records`, handoff 2026-10-06 §4; Fulfilled paints it
@@ -386,6 +408,8 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
       return facts?.returnRef ?? '';
     case 'claimBy':
       return day(facts?.claim?.closesAt);
+    case 'orderedOn':
+      return day(facts?.orderedOn);
     case 'imported':
       return instant(facts?.importedAt);
     case 'select':

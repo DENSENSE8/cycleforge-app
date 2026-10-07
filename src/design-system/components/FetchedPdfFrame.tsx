@@ -5,6 +5,9 @@ import { Spinner } from '@/design-system/primitives';
 import { useFetchedDocumentObjectUrl } from '@/hooks/useFetchedDocumentObjectUrl';
 import { cn } from '@/utils/_cn';
 
+/** How the PDF viewer fits the page: the whole page, or the page's width. Absent = the viewer's default. */
+export type PdfFit = 'page' | 'width';
+
 /**
  * PDF canvas that paints. Fetches bytes, then iframes a `blob:` URL so Chrome's
  * viewer is not pointed at a hanging stream or a Vercel Blob CSP.
@@ -13,10 +16,12 @@ export function FetchedPdfFrame({
   src,
   title,
   className,
+  fit,
 }: {
   src: string;
   title: string;
   className?: string;
+  fit?: PdfFit;
 }) {
   const { url, loading, error } = useFetchedDocumentObjectUrl(src);
 
@@ -52,7 +57,9 @@ export function FetchedPdfFrame({
 
   return (
     <iframe
-      src={`${url}#toolbar=1&navpanes=0`}
+      // A fit change re-opens the viewer — it reads the fragment on load only.
+      key={fit ?? 'default'}
+      src={`${url}#toolbar=1&navpanes=0${fit === 'page' ? '&view=Fit' : fit === 'width' ? '&view=FitH' : ''}`}
       title={title}
       className={cn('h-full min-h-0 w-full border-0 bg-surface-card', className)}
     />

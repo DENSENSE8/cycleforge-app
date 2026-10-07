@@ -16,25 +16,16 @@ import {
   packerRecordToPackPane,
 } from '@/components/station/packer-record-mappers';
 import {
-  filterPackerRailRows,
+  collapsePackerRailRows,
   getPackerRecordStatusDot,
   getPackerRecordStatusDotLabel,
   packerRecordToRailVM,
 } from './pack-record-rail-vm';
-import {
-  EMPTY_STATION_HISTORY_RAIL_FACETS,
-  matchesStationHistoryRailFacets,
-  type StationHistoryRailFacets,
-} from '@/components/sidebar/rail-shell/StationHistoryRailFilters';
 import { emitPackerFocusScan } from '@/lib/print/pack-print-bundle-client';
 
 interface Props {
   /** Signed-in packer's staff id. */
   packerId: number;
-  /** Client-side filter over the loaded history rows. */
-  filterText?: string;
-  /** Platform facet keep-filter (account_source). */
-  facets?: StationHistoryRailFacets;
 }
 
 const PACK_HISTORY_LIMIT = 25;
@@ -60,12 +51,7 @@ function PackRowMain({ row }: { row: PackerRecord }) {
   return <RailRowBody className="flex-1" vm={packerRecordToRailVM(row)} />;
 }
 
-export function PackRecentPacksRail({
-  packerId,
-  filterText = '',
-  facets = EMPTY_STATION_HISTORY_RAIL_FACETS,
-}: Props) {
-  const trimmedFilter = filterText.trim();
+export function PackRecentPacksRail({ packerId }: Props) {
   const activePane = useActivePackPane();
 
   // Same week range the `/pack` server prefetch and the History table use, so
@@ -77,25 +63,20 @@ export function PackRecentPacksRail({
 
   const { data: records = [] } = usePackerLogs(packerId, { weekRange });
 
-  const filteredRecords = useMemo(
-    () =>
-      filterPackerRailRows(records, trimmedFilter).filter((row) =>
-        matchesStationHistoryRailFacets(row.account_source, facets),
-      ),
-    [records, trimmedFilter, facets],
-  );
+  // One row per package — a re-scan moves the package to the top.
+  const railRecords = useMemo(() => collapsePackerRailRows(records), [records]);
 
   const recordsVersion = useMemo(
-    () => filteredRecords.map((row) => packerRecordRailId(row)).join('|'),
-    [filteredRecords],
+    () => railRecords.map((row) => packerRecordRailId(row)).join('|'),
+    [railRecords],
   );
 
   const queryKey = useMemo(
-    () => ['pack-recent-packs-rail', packerId, trimmedFilter, recordsVersion] as const,
-    [packerId, trimmedFilter, recordsVersion],
+    () => ['pack-recent-packs-rail', packerId, recordsVersion] as const,
+    [packerId, recordsVersion],
   );
 
-  const fetchFn = useCallback(async (): Promise<PackerRecord[]> => filteredRecords, [filteredRecords]);
+  const fetchFn = useCallback(async (): Promise<PackerRecord[]> => railRecords, [railRecords]);
 
   // Row ids are station-activity ids (unique); the pane carries a `packerLogId`
   // (and always a tracking/order identity). Resolve selection by FINDING the
@@ -104,13 +85,13 @@ export function PackRecentPacksRail({
     if (!activePane) return null;
     const logId = activePane.packerLogId ?? 0;
     const tracking = activePane.tracking.trim().toUpperCase();
-    const hit = filteredRecords.find((row) => {
+    const hit = railRecords.find((row) => {
       if (logId > 0 && Number(row.packer_log_id ?? 0) === logId) return true;
       if (!tracking) return false;
       return String(row.shipping_tracking_number || '').trim().toUpperCase() === tracking;
     });
     return hit ? packerRecordRailId(hit) : null;
-  }, [activePane, filteredRecords]);
+  }, [activePane, railRecords]);
 
   const handleSelect = useCallback(
     (row: PackerRecord) => {

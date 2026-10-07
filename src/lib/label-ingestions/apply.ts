@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import { createDocumentEntityLink } from '@/lib/documents/links';
 import { transition, type TransitionInput, type TransitionResult } from '@/lib/inventory/state-machine';
+import { deleteShipmentTrackingLink } from '@/lib/neon/orders-tracking-queries';
 import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize';
 import { linkShipment, type LinkShipmentInput, type ShipmentLinkRow } from '@/lib/shipping/shipment-links';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -94,6 +95,8 @@ export interface ApplyLabelIngestionDependencies {
     },
     client?: Tx,
   ): Promise<unknown>;
+  /** Detach one shipment from these orders (shipment_links rows + the `orders.shipment_id` pointer); the tracking row stays. */
+  detachShipment(orgId: OrgId, orderIds: readonly number[], shipmentId: number, client: Tx): Promise<void>;
   /** Test seam only. Throwing here must roll the entire caller transaction back. */
   afterPhase?(phase: ApplyPhase, client: Tx): Promise<void> | void;
   waitBeforeLockRetry?(attempt: number): Promise<void>;
@@ -104,6 +107,7 @@ const defaultDependencies: ApplyLabelIngestionDependencies = {
   transitionUnit: transition,
   linkShipment,
   createDocumentLink: createDocumentEntityLink,
+  detachShipment: (_orgId, orderIds, shipmentId, client) => deleteShipmentTrackingLink([...orderIds], shipmentId, client),
   waitBeforeLockRetry: async (attempt) => {
     await new Promise((resolve) => setTimeout(resolve, 20 * 2 ** (attempt - 1)));
   },
@@ -191,14 +195,26 @@ async function replayApplied(
   };
 }
 
+/** The shipment the label ships on, and what the operator's answers moved to get there. */
+interface ShipmentResolution {
+  shipmentId: number;
+  /** `existing: 'replace'` — the order's former shipments, detached (kept as tracking history). */
+  detachedShipmentIds: number[];
+  /** `collision: 'move'` — the other orders the shipment was detached from. */
+  movedFromOrderIds: number[];
+  /** `collision: 'keep'` — the other orders still shipping on this box. */
+  sharedWithOrderIds: number[];
+}
+
 async function resolveOrCreateShipment(
   client: Tx,
   orgId: OrgId,
   ingestionId: number,
   ingestion: IngestionRow,
   orderRows: readonly OrderRow[],
+  answers: Pick<ApplyLabelIngestionInput, 'collision' | 'existing'>,
   deps: ApplyLabelIngestionDependencies,
-): Promise<number> {
+): Promise<ShipmentResolution> {
   const orderIds = orderRows.map((row) => asPositiveInteger(row.id, 'order id'));
   const rawTracking = String(ingestion.tracking_number_raw ?? '').trim();
   const persistedNormalized = String(ingestion.tracking_number_normalized ?? '').trim();
@@ -232,6 +248,9 @@ async function resolveOrCreateShipment(
 
   let shipmentId: number | null = null;
   let additionalPackage = false;
+  let detachedShipmentIds: number[] = [];
+  let movedFromOrderIds: number[] = [];
+  let sharedWithOrderIds: number[] = [];
   if (currentShipmentIds.size > 0) {
     const ids = [...currentShipmentIds].sort((a, b) => a - b);
     const currentShipments = await client.query<{
@@ -257,7 +276,18 @@ async function resolveOrCreateShipment(
       (row) => row.tracking_number_normalized === persistedNormalized,
     );
     if (sameTracking) shipmentId = asPositiveInteger(sameTracking.id, 'shipment id');
-    else additionalPackage = true;
+    const others = ids.filter((id) => id !== shipmentId);
+    if (others.length > 0) {
+      if (answers.existing === 'replace') {
+        detachedShipmentIds = others;
+      } else if (answers.existing === 'add') {
+        // The order's primary stays; this label is (or stays) another box.
+        const primaryIds = new Set(orderRows.map((row) => (row.shipment_id == null ? null : Number(row.shipment_id))));
+        additionalPackage = shipmentId == null || !primaryIds.has(shipmentId);
+      } else {
+        additionalPackage = shipmentId == null;
+      }
+    }
   }
 
   if (shipmentId == null) {
@@ -278,7 +308,7 @@ async function resolveOrCreateShipment(
 
   if (shipmentId != null) {
     const [otherLinks, otherPrimaryOrders] = await Promise.all([
-      client.query(
+      client.query<{ owner_id: number | string }>(
         `SELECT owner_id
            FROM shipment_links
           WHERE organization_id = $1
@@ -288,7 +318,7 @@ async function resolveOrCreateShipment(
           ORDER BY owner_id ASC`,
         [orgId, shipmentId, orderIds],
       ),
-      client.query(
+      client.query<{ id: number | string }>(
         `SELECT id
            FROM orders
           WHERE organization_id = $1
@@ -298,12 +328,23 @@ async function resolveOrCreateShipment(
         [orgId, shipmentId, orderIds],
       ),
     ]);
-    if ((otherLinks.rowCount ?? 0) > 0 || (otherPrimaryOrders.rowCount ?? 0) > 0) {
-      throw new ApplyConflict(
-        'TRACKING_OWNED_BY_OTHER_ORDER',
-        ingestionId,
-        'Tracking is already attached to another logical order',
-      );
+    const otherOrderIds = [...new Set([
+      ...otherLinks.rows.map((row) => asPositiveInteger(row.owner_id, 'order id')),
+      ...otherPrimaryOrders.rows.map((row) => asPositiveInteger(row.id, 'order id')),
+    ])].sort((a, b) => a - b);
+    if (otherOrderIds.length > 0) {
+      if (answers.collision === 'move') {
+        await deps.detachShipment(orgId, otherOrderIds, shipmentId, client);
+        movedFromOrderIds = otherOrderIds;
+      } else if (answers.collision === 'keep') {
+        sharedWithOrderIds = otherOrderIds;
+      } else {
+        throw new ApplyConflict(
+          'TRACKING_OWNED_BY_OTHER_ORDER',
+          ingestionId,
+          'Tracking is already attached to another logical order',
+        );
+      }
     }
   }
 
@@ -366,7 +407,11 @@ async function resolveOrCreateShipment(
     );
   }
 
-  return shipmentId;
+  for (const detached of detachedShipmentIds) {
+    await deps.detachShipment(orgId, orderIds, detached, client);
+  }
+
+  return { shipmentId, detachedShipmentIds, movedFromOrderIds, sharedWithOrderIds };
 }
 
 async function persistDocument(
@@ -579,14 +624,16 @@ async function runApply(
   }
   await phase(deps, 'LOCKED_SERIAL_UNITS', client);
 
-  const shipmentId = await resolveOrCreateShipment(
+  const shipment = await resolveOrCreateShipment(
     client,
     orgId,
     ingestionId,
     ingestion,
     ordersResult.rows,
+    { collision: input.collision, existing: input.existing },
     deps,
   );
+  const { shipmentId } = shipment;
   await phase(deps, 'ATTACHED_TRACKING', client);
 
   const documentId = await persistDocument(
@@ -624,7 +671,10 @@ async function runApply(
         to: 'LABELED',
         eventType: 'LABELED',
         actorStaffId,
-        clientEventId: `label-ingestion:${ingestion.client_event_id}:${unitId}`,
+        // Keyed by the row version applied from: an unpaired-then-refiled label
+        // (unpair.ts) labels the same units again and must record a new event,
+        // not replay the first apply's (inventory_events dedupes on this key).
+        clientEventId: `label-ingestion:${ingestion.client_event_id}:${unitId}:v${input.expectedRowVersion}`,
         expectedFrom: 'PACKED',
         notes: 'Shipping label attached by V1 label ingestion',
         payload: {
@@ -670,6 +720,9 @@ async function runApply(
         shipment_id: shipmentId,
         document_id: documentId,
         sha256: ingestion.sha256,
+        // The operator's answers and what they moved (file-on-order); absent on a plain apply.
+        ...(input.collision ? { collision: input.collision, moved_from_order_ids: shipment.movedFromOrderIds, shared_with_order_ids: shipment.sharedWithOrderIds } : {}),
+        ...(input.existing ? { existing: input.existing, detached_shipment_ids: shipment.detachedShipmentIds } : {}),
       }),
     ],
   );

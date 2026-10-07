@@ -300,6 +300,8 @@ export const motionTransition = {
    * Physics = `springSnappy`. Pair with `motionPresence.navPeekCorner`.
    */
   navPeekCorner: springSnappy,
+  /** Station label bubble's hover peek — the big label grows out of the bubble's top-right corner. */
+  labelPeek: springSnappy,
 
   /** Horizontal slide between rows inside the modal — `springSnappy` */
   workOrderSlideSpring: springSnappy,
@@ -680,6 +682,15 @@ export const motionPresence = {
     initial: { opacity: 0, scale: 0.92 },
     animate: { opacity: 1, scale: 1 },
     exit: { opacity: 0, scale: 0.92 },
+  },
+  /**
+   * Station label bubble's hover peek — grows from the top-right corner.
+   * Host pins the top-right origin (`origin-top-right`). Pair with `motionTransition.labelPeek`.
+   */
+  labelPeek: {
+    initial: { opacity: 0, scale: 0.6 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.6 },
   },
   /**
    * Contextual sidebar body swap (top lane map ↔ a page's section panel):

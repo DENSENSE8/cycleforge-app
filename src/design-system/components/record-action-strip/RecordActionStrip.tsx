@@ -88,14 +88,17 @@ export interface RecordActionDock {
   /** "selected" by default — the word after the count. */
   noun?: string;
   onClear: () => void;
-  /** One verb as a round icon button between Actions and Clear (Linear's pointer). */
+  /** One verb between Actions and Clear: a round icon button (Linear's pointer), or an icon + text pill when {@link quickText} is set. */
   quick?: RecordActionVerb;
+  /** Visible text for {@link quick}; turns the round icon into a compact icon + text pill. */
+  quickText?: string;
 }
 
 /** The dock: a liquid-metal pill (black in every theme); its controls are white chips on it. */
 const DOCK_PILL_CLASS = cn('pointer-events-auto flex items-center gap-1.5 rounded-full py-1.5 pl-4 pr-1.5', LIQUID_METAL_TEXT_CLASS);
 const DOCK_CHIP_CLASS = cn('inline-flex h-9 items-center gap-2 rounded-full px-4 text-sm font-semibold', LIQUID_METAL_CHIP_CLASS);
 const DOCK_ROUND_CLASS = cn('inline-flex size-9 items-center justify-center rounded-full', LIQUID_METAL_CHIP_CLASS);
+const DOCK_QUICK_PILL_CLASS = cn('inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold', LIQUID_METAL_CHIP_CLASS);
 const DOCK_CLEAR_CLASS = cn('inline-flex size-9 items-center justify-center rounded-full', LIQUID_METAL_GHOST_CLASS)
 
 const STRIP_CLASS =
@@ -222,13 +225,14 @@ export function RecordActionStrip({
             <HoverTooltip label={dock.quick.disabled ? (dock.quick.disabledReason ?? dock.quick.label) : dock.quick.label} asChild placement="above">
               <button
                 type="button"
-                className={DOCK_ROUND_CLASS}
+                className={dock.quickText ? DOCK_QUICK_PILL_CLASS : DOCK_ROUND_CLASS}
                 aria-label={dock.quick.label}
                 disabled={dock.quick.disabled}
                 data-testid={`${testId}-${dock.quick.id}`}
                 onClick={() => press(dock.quick!)}
               >
                 {dock.quick.icon}
+                {dock.quickText ? <span>{dock.quickText}</span> : null}
               </button>
             </HoverTooltip>
           ) : null}

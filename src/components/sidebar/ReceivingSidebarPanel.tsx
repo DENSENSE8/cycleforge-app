@@ -444,15 +444,9 @@ export function ReceivingSidebarPanel() {
               />
             ) : null}
 
-            {mode === 'receive' ? (
-              <SidebarRailScrollport>
-                <ReceivingRailBody
-                  mode={mode}
-                  selectedLine={selectedLine}
-                  triageFilterText=""
-                />
-              </SidebarRailScrollport>
-            ) : null}
+            <SidebarRailScrollport>
+              <ReceivingRailBody mode={mode} selectedLine={selectedLine} />
+            </SidebarRailScrollport>
 
           </>
         )}

@@ -13,8 +13,8 @@ export function packerRecordRailId(record: PackerRecord): number {
  */
 export function packerRecordToPackPane(record: PackerRecord): PackActiveOrderPane {
   const trackingType = String(record.tracking_type || 'ORDERS').toUpperCase();
-  const scanType: PackActiveOrderPane['scanType'] =
-    trackingType === 'SKU' ? 'SKU' : trackingType === 'REPAIR' ? 'REPAIR' : 'ORDERS';
+  // Legacy SKU pack rows (Packing no longer scans SKUs) open as plain order rows.
+  const scanType: PackActiveOrderPane['scanType'] = trackingType === 'REPAIR' ? 'REPAIR' : 'ORDERS';
   const qtyRaw = Number(record.quantity ?? 1);
   const orderRowIdRaw = Number(record.order_row_id ?? 0);
   const packerLogIdRaw = Number(record.packer_log_id ?? 0);

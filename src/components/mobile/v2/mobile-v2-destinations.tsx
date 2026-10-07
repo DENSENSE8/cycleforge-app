@@ -5,6 +5,7 @@ import {
   Inbox,
   LayoutDashboard,
   ListChecks,
+  Package,
   PackageCheck,
   Printer,
   ScanBarcode,
@@ -109,7 +110,7 @@ export const MOBILE_V2_DESTINATIONS: readonly MobileV2Destination[] = [
     label: 'Stock',
     description: 'Find and adjust stock by room',
     href: WAREHOUSE_PATHS.stock,
-    icon: DOMAIN_GROUPS.find(({ id }) => id === 'inventory')!.icon,
+    icon: Package,
     tone: 'text-emerald-600',
     requires: 'sku_stock.view',
   },
@@ -300,7 +301,8 @@ const GROUP_DESCRIPTION: Readonly<Record<MobileV2NavigationGroupId, string>> = {
   sales: 'Customers and sales history',
   inbound: 'Purchase orders and arrivals',
   fulfillment: 'Allocate, pick, pack and ship',
-  inventory: 'Stock, locations and adjustments',
+  inventory: 'On-hand stock, low stock and replenishment',
+  warehouse: 'Locations, racks and labels',
   catalog: 'Catalog identity, listings and photos',
 };
 
@@ -309,7 +311,8 @@ const GROUP_DESTINATION_IDS: Readonly<Record<MobileV2NavigationGroupId, readonly
   sales: ['customers'],
   inbound: ['receiving', 'inbound-new'],
   fulfillment: [],
-  inventory: ['stock', 'locations', 'labels', 'racks'],
+  inventory: ['stock'],
+  warehouse: ['locations', 'labels', 'racks'],
   catalog: ['products'],
 };
 

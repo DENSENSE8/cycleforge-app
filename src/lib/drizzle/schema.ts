@@ -1539,7 +1539,7 @@ export const receivingLineTesting = pgTable('receiving_line_testing', {
   /** The operator confirmed they read this line's printed label face — the gate for the Label procedure step (2026-08-02). */
   labelPreviewedAt: timestamp('label_previewed_at', { withTimezone: true }),
   labelPreviewedBy: integer('label_previewed_by').references(() => staff.id, { onDelete: 'set null' }),
-  /** Denormalized serial projection — a jsonb array of `{ id, serial_number, condition_grade }` for the serials whose CURRENT receiving line… */
+  /** Denormalized serial projection — a jsonb array of `{ id, serial_number, condition_grade, unit_uid }` for the serials whose CURRENT receiving line is this line (fast first-frame default; maintained by refreshLineSerialProjection). */
   serialProjection: jsonb('serial_projection').notNull().default([]),
   /** Operator waived the serial for this line (no serial available — cable / bulk part / return with none). */
   serialAbsent: boolean('serial_absent').notNull().default(false),
@@ -3051,12 +3051,21 @@ export const locations = pgTable('locations', {
    * Migration 2026-10-03_locations_arrival_priority_tier.sql.
    */
   arrivalPriorityTier: smallint('arrival_priority_tier'),
+  /**
+   * Directed-putaway receipt type this rack/shelf receives: PO | RETURN |
+   * TRADE_IN (PUTAWAY_INTAKE_KINDS). One location per type per org. NULL = none.
+   * Migration 2026-10-07_locations_putaway_intake_kind.sql.
+   */
+  putawayIntakeKind: text('putaway_intake_kind'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   orgArrivalTierIdx: index('idx_locations_org_arrival_tier')
     .on(table.organizationId, table.arrivalPriorityTier, table.sortOrder, table.id)
     .where(sql`is_active = true AND arrival_priority_tier IS NOT NULL`),
+  orgPutawayIntakeKindUx: uniqueIndex('ux_locations_org_putaway_intake_kind')
+    .on(table.organizationId, table.putawayIntakeKind)
+    .where(sql`putaway_intake_kind IS NOT NULL`),
 }));
 
 /**
@@ -4301,6 +4310,37 @@ export const workflowTapOutbox = pgTable('workflow_tap_outbox', {
   ),
   // Partial pending index (WHERE status='PENDING') lives in the migration —
   // Drizzle models the full-column shape only.
+}));
+
+// qc_print_pass_outbox — QC instant print + pass outbox (2026-10-07 migration).
+export const qcPrintPassOutbox = pgTable('qc_print_pass_outbox', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  serialUnitId: bigint('serial_unit_id', { mode: 'number' })
+    .notNull()
+    .references(() => serialUnits.id, { onDelete: 'cascade' }),
+  clientEventId: text('client_event_id').notNull(),
+  actorStaffId: integer('actor_staff_id'),
+  /** true = record the PASS verdict after the print record; false = reprint (print record only). */
+  pass: boolean('pass').notNull(),
+  /** The unit id the label printed (serial_units.unit_uid). */
+  unitUid: text('unit_uid').notNull(),
+  // { gtin, symbology, condition, notes, product_sku, sku_catalog_id, serial_number }
+  payload: jsonb('payload').notNull().default(sql`'{}'::jsonb`),
+  status: text('status').notNull().default('PENDING'), // PENDING | DONE | FAILED (CHECK in migration)
+  attempts: integer('attempts').notNull().default(0),
+  claimedAt: timestamp('claimed_at', { withTimezone: true }),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  eventUx: uniqueIndex('ux_qc_print_pass_outbox_event').on(table.organizationId, table.clientEventId),
+  orgUnitIdx: index('idx_qc_print_pass_outbox_org_unit').on(
+    table.organizationId,
+    table.serialUnitId,
+    table.createdAt,
+  ),
+  // Partial pending index (WHERE status='PENDING') lives in the migration.
 }));
 
 // workflow_node_stats — daily per-node queue-depth snapshots for the Studio Flow² lens (queue growth / age trends that a point-in-time…

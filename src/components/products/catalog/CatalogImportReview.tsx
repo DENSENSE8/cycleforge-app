@@ -47,13 +47,14 @@ const OUTCOME_FACE: Readonly<Record<CatalogImportOutcome, RecordStateFace>> = {
   title_differs: { id: 'title_differs', code: 'DIF', label: CATALOG_IMPORT_OUTCOME_LABELS.title_differs, tone: 'warning', icon: 'package-search' },
   present: { id: 'present', code: 'CAT', label: CATALOG_IMPORT_OUTCOME_LABELS.present, tone: 'success', icon: 'check' },
   duplicate: { id: 'duplicate', code: 'DUP', label: CATALOG_IMPORT_OUTCOME_LABELS.duplicate, tone: 'danger', icon: 'package-x' },
+  padding_twin: { id: 'padding_twin', code: 'TWN', label: CATALOG_IMPORT_OUTCOME_LABELS.padding_twin, tone: 'warning', icon: 'package-search' },
   no_sku: { id: 'no_sku', code: 'NSK', label: CATALOG_IMPORT_OUTCOME_LABELS.no_sku, tone: 'danger', icon: 'package-x' },
   no_title: { id: 'no_title', code: 'NTL', label: CATALOG_IMPORT_OUTCOME_LABELS.no_title, tone: 'danger', icon: 'package-x' },
   old: { id: 'old', code: 'OLD', label: CATALOG_IMPORT_OUTCOME_LABELS.old, tone: 'neutral', icon: 'circle-pause' },
 };
 
 /** Chip order: what will change first, then what needs a person, then what is left alone. */
-const CHIP_ORDER: readonly CatalogImportOutcome[] = ['new', 'title_differs', 'duplicate', 'no_sku', 'no_title', 'present', 'old'];
+const CHIP_ORDER: readonly CatalogImportOutcome[] = ['new', 'title_differs', 'padding_twin', 'duplicate', 'no_sku', 'no_title', 'present', 'old'];
 
 type ImportRowModel = { key: string; ids: readonly number[]; lead: CatalogImportPlanRow };
 
@@ -75,14 +76,23 @@ function CatalogImportRowImpl(props: TriageCardSlotProps<CatalogImportPlanRow, I
           width: 'short',
           tone: 'muted',
         },
-        {
-          id: 'catalog',
-          label: row.outcome === 'title_differs' ? 'Catalog' : undefined,
-          value: row.outcome === 'title_differs' ? row.catalogTitle : null,
-          width: 'long',
-          tone: 'warn',
-          tip: row.catalogTitle ?? undefined,
-        },
+        row.outcome === 'padding_twin'
+          ? {
+              id: 'catalog',
+              label: 'Catalog SKU',
+              value: row.twinSku,
+              copy: row.twinSku ? { value: row.twinSku, tone: 'sku' } : undefined,
+              width: 'short',
+              tone: 'warn',
+            }
+          : {
+              id: 'catalog',
+              label: row.outcome === 'title_differs' ? 'Catalog' : undefined,
+              value: row.outcome === 'title_differs' ? row.catalogTitle : null,
+              width: 'long',
+              tone: 'warn',
+              tip: row.catalogTitle ?? undefined,
+            },
         {
           id: 'zoho',
           label: row.zohoItemId ? 'Zoho' : undefined,

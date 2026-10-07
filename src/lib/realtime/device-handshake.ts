@@ -21,6 +21,7 @@ const SEND_TO_DEVICE_TIMEOUT_MS = 6_000;
 /** Which desk action is being acknowledged. Extend this, not the event list. */
 export type DeviceAckKind =
   | 'receiving_photo'
+  | 'receiving_location'
   | 'receiving_share'
   | 'pack_scan'
   | 'unit_photo'

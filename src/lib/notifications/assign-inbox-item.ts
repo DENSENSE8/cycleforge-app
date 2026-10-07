@@ -1,6 +1,6 @@
 /** The inbox's missing CREATE path — a directly-addressed row. */
 
-import { WORK_TASK_ASSIGNED, WORK_TASK_FOLLOW_UP_ALERT } from './event-vocabulary';
+import { QC_PRINT_PASS_FAILED, WORK_TASK_ASSIGNED, WORK_TASK_FOLLOW_UP_ALERT } from './event-vocabulary';
 import type { InboxContact } from './types';
 
 /** Idempotency + collapse keys for a thrown task. */
@@ -135,6 +135,39 @@ export function taskAlertInboxItemParams(organizationId: string, args: TaskAlert
       contacts: args.contacts,
       urgent: false,
     }),
+    key,
+    key,
+  ];
+}
+
+/** The QC print-pass failure twin of `ASSIGN_INBOX_ITEM_SQL` — reason 'acted': the tech's own press did not save; the background job (no actor) writes it. */
+export const QC_PRINT_PASS_FAILED_INBOX_ITEM_SQL = ASSIGN_INBOX_ITEM_SQL.replace("'assigned'", "'acted'");
+
+interface QcPrintPassFailedInboxItemArgs {
+  /** The tech who pressed — the row lands in their own inbox. */
+  staffId: number;
+  serialUnitId: number;
+  /** qc_print_pass_outbox.id — one inbox row per failed press. */
+  outboxId: number;
+  /** The row's one-line face: what did not save, on which serial. */
+  title: string;
+  /** Why it failed. */
+  note: string;
+}
+
+export function qcPrintPassFailedInboxItemParams(
+  organizationId: string,
+  args: QcPrintPassFailedInboxItemArgs,
+): unknown[] {
+  const key = `qc-print-pass:${args.outboxId}`;
+  return [
+    organizationId,
+    args.staffId,
+    'serial_unit',
+    args.serialUnitId,
+    QC_PRINT_PASS_FAILED,
+    null,
+    JSON.stringify({ title: args.title, note: args.note, urgent: true }),
     key,
     key,
   ];

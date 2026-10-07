@@ -7,21 +7,14 @@ import {
   transformUnboxOpenedRows,
   UNBOX_SIDEBAR_LIMIT,
 } from '@/lib/receiving/rail/unbox-opened-rows';
-import { getViewedAt, getTestingOpenedAt, type RailStatusId } from './status';
+import { getTestingOpenedAt, type RailStatusId } from './status';
 import type { RailQtyId } from './quantity';
 import type { RailRowActionsId } from './row-actions';
 import {
   toStubRow,
-  matchesQuery as matchesUnfoundQueue,
   type UnfoundQueueRow,
 } from './unfound-stub';
-import {
-  toDoneStubRow,
-  matchesDoneQuery,
-  type TriageDoneRow,
-} from './done-stub';
 import { QC_RECEIVING_LINES_API } from '@/lib/surface-isolation';
-import { TESTING_LINE_OPENED_EVENT } from '@/lib/testing/testing-line-opened-event';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
 type ReceivingLinesView = 'activity' | 'scanned' | 'viewed' | 'unbox_opened' | 'testing_opened';
@@ -31,8 +24,6 @@ type ReceivingLinesSort = 'unboxed_newest' | 'priority';
 export interface RailFetchRuntime {
   /** `?staff=` filter, when the feed is staff-scoped. */
   staffId?: number | null;
-  /** Already trimmed + lowercased search text; '' = no filter. */
-  query?: string;
 }
 
 /** Narrow spec the standard `/api/receiving-lines` fetcher reads. */
@@ -56,13 +47,8 @@ interface ReceivingRailFeed {
    * Omit and the rail paints no row menu at all.
    */
   rowActions?: RailRowActionsId;
-  /** Module-scope array — stable identity for the shell's refresh listener. */
-  refreshEvents: string[];
-  /** Refresh domains this rail renders (see `@/lib/refresh/domains`). */
-  refreshDomains?: readonly RefreshDomain[];
-  autoSelectFirstWhenEmpty?: boolean;
-  /** Gate for auto-select — omit to use the receiving-page default. */
-  canAutoSelectFirst?: () => boolean;
+  /** Refresh domains this rail renders (see `@/lib/refresh/domains`) — the rail's only refresh signal. */
+  refreshDomains: readonly RefreshDomain[];
   /** false ONLY for the unbox Recent feed (strict unboxed_at order, no pin bounce). */
   pinSelectedLead?: boolean;
   /**
@@ -100,34 +86,11 @@ interface ReceivingRailFeed {
   ) => () => Promise<ApiResponse>;
 }
 
-// NOTE: `receiving-entry-deleted` is deliberately NOT a refresh event.
-const TRIAGE_REFRESH: string[] = [
-  'receiving-triage-refresh',
-  'receiving-entry-added',
-];
-
-const UNBOX_REFRESH: string[] = ['receiving-unbox-refresh'];
-
-const TESTING_REFRESH: string[] = ['testing-result-recorded', TESTING_LINE_OPENED_EVENT];
-
 /** Both receiving rails render the lines list. */
 const RECEIVING_RAIL_DOMAINS = ['receiving.lines'] as const satisfies readonly RefreshDomain[];
-const TESTING_RAIL_DOMAINS = ['orders.outbound'] as const satisfies readonly RefreshDomain[];
+const TESTING_RAIL_DOMAINS = ['orders.outbound', 'testing.lines'] as const satisfies readonly RefreshDomain[];
 
 const notUnmatched = (r: ReceivingLineRow) => r.receiving_source !== 'unmatched';
-
-/** Search match for a real receiving line (tracking / sku / item / PO). */
-function matchesReceivingLine(row: ReceivingLineRow, q: string): boolean {
-  if (!q) return true;
-  const hay = [
-    row.tracking_number,
-    row.sku,
-    row.item_name,
-    row.zoho_purchaseorder_number,
-    row.zoho_purchaseorder_id,
-  ].map((x) => (x || '').toLowerCase());
-  return hay.some((h) => h.includes(q));
-}
 
 /** Best-available recency for the combined sort (newest scanned first). */
 function recencyMs(row: ReceivingLineRow): number {
@@ -139,7 +102,7 @@ function recencyMs(row: ReceivingLineRow): number {
   return 0;
 }
 
-/** Standard `/api/receiving-lines` fetch (view + sort + staff + post/query filter). */
+/** Standard `/api/receiving-lines` fetch (view + sort + staff + post filter). */
 export async function fetchReceivingLines(
   spec: ReceivingLinesQuery,
   rt: RailFetchRuntime,
@@ -157,8 +120,6 @@ export async function fetchReceivingLines(
   const data = (await res.json()) as ApiResponse;
   let rows = data.receiving_lines ?? [];
   if (spec.postFilter) rows = rows.filter(spec.postFilter);
-  const q = (rt.query ?? '').trim().toLowerCase();
-  if (q) rows = rows.filter((r) => matchesReceivingLine(r, q));
   return { success: true, receiving_lines: rows, total: rows.length };
 }
 
@@ -205,18 +166,16 @@ function triageDoorScanAt(row: ReceivingLineRow): string | null {
   return row.scanned_at ?? row.received_at ?? row.last_activity_at ?? null;
 }
 
-/** Unfound-queue rows mapped to stub lines (reused by the unfound + combined feeds). */
-async function fetchUnfoundStubs(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
+/** Unfound-queue rows mapped to stub lines (the combined feed's unfound half). */
+async function fetchUnfoundStubs(): Promise<ReceivingLineRow[]> {
   const res = await fetch(
     '/api/receiving/unfound-queue?kind=unmatched_receiving&checked=false&limit=200&exclude_unbox_intake=true',
     { cache: 'no-store' },
   );
   if (!res.ok) throw new Error('unfound queue fetch failed');
   const data = (await res.json()) as { rows?: UnfoundQueueRow[] };
-  const q = (rt.query ?? '').trim().toLowerCase();
   return (data.rows ?? [])
     .filter((r) => Number.isFinite(Number(r.source_id)))
-    .filter((r) => matchesUnfoundQueue(r, q))
     .map(toStubRow);
 }
 
@@ -229,7 +188,7 @@ function buildTriageCombinedFetcher(rt: RailFetchRuntime): () => Promise<ApiResp
   return async () => {
     const [scanned, unfound] = await Promise.all([
       fetchScannedRows(rt).catch(() => [] as ReceivingLineRow[]),
-      fetchUnfoundStubs(rt).catch(() => [] as ReceivingLineRow[]),
+      fetchUnfoundStubs().catch(() => [] as ReceivingLineRow[]),
     ]);
     // IMPORTANT: keep triage stable by carton identity.
     const bestByCarton = new Map<number, ReceivingLineRow>();
@@ -288,36 +247,9 @@ function buildUnboxReceivedFetcher(
   };
 }
 
-/** Unfound feed — unmatched cartons (no PO yet) as stub lines. */
-function buildUnfoundFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
-  return async () => {
-    const rows = await fetchUnfoundStubs(rt);
-    return { success: true, receiving_lines: rows, total: rows.length };
-  };
-}
-
-/** Done-tab rows (`receiving.triage_complete = true`) mapped to stub lines. */
-async function fetchDoneStubs(rt: RailFetchRuntime): Promise<ReceivingLineRow[]> {
-  const params = new URLSearchParams({ limit: '200' });
-  if (rt.query) params.set('q', rt.query);
-  const res = await fetch(`/api/receiving/triage/done?${params.toString()}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error('triage done fetch failed');
-  const data = (await res.json()) as { rows?: TriageDoneRow[] };
-  const q = (rt.query ?? '').trim().toLowerCase();
-  return (data.rows ?? []).filter((r) => matchesDoneQuery(r, q)).map(toDoneStubRow);
-}
-
-/** Done feed — cartons staged + saved for unbox, newest-completed first. */
-function buildDoneFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
-  return async () => {
-    const rows = await fetchDoneStubs(rt);
-    return { success: true, receiving_lines: rows, total: rows.length };
-  };
-}
-
 const TESTING_SIDEBAR_LIMIT = 50;
 
-function buildTestingOpenedFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
+function buildTestingOpenedFetcher(): () => Promise<ApiResponse> {
   return async () => {
     const params = new URLSearchParams({
       limit: String(TESTING_SIDEBAR_LIMIT),
@@ -327,9 +259,7 @@ function buildTestingOpenedFetcher(rt: RailFetchRuntime): () => Promise<ApiRespo
     const res = await fetch(`${QC_RECEIVING_LINES_API}?${params.toString()}`);
     if (!res.ok) throw new Error('testing opened fetch failed');
     const data = (await res.json()) as ApiResponse;
-    let rows = data.receiving_lines ?? [];
-    const q = (rt.query ?? '').trim().toLowerCase();
-    if (q) rows = rows.filter((r) => matchesReceivingLine(r, q));
+    const rows = data.receiving_lines ?? [];
     return { success: true, receiving_lines: rows, total: rows.length };
   };
 }
@@ -360,65 +290,9 @@ const FEEDS = {
     acceptLineUpdateBus: false,
     // Honors the shared `?staff=` header filter (P1-WORK-02):
     usesStaffFilter: true,
-    autoSelectFirstWhenEmpty: false,
     limit: UNBOX_SIDEBAR_LIMIT,
-    refreshEvents: UNBOX_REFRESH,
     refreshDomains: RECEIVING_RAIL_DOMAINS,
     rowTitleMode: 'adaptive-po',
-  },
-  /**
-   * Unbox "Queue" — triage door-scanned matched POs waiting to unbox. The only
-   * feed that reads triage intake data inside Unbox mode.
-   */
-  unboxQueue: {
-    segment: 'unbox-queue',
-    eyebrowTitle: 'Door queue',
-    qty: 'scanned',
-    status: 'receiving',
-    rowActions: 'receiving',
-    view: 'scanned',
-    sort: 'priority',
-    postFilter: notUnmatched,
-    getActivityAt: triageDoorScanAt,
-    usesStaffFilter: true,
-    autoSelectFirstWhenEmpty: false,
-    limit: 50,
-    refreshEvents: [...UNBOX_REFRESH, 'receiving-triage-refresh'],
-    refreshDomains: RECEIVING_RAIL_DOMAINS,
-    rowTitleMode: 'adaptive-po',
-    stampRailTitleContext: 'po',
-  },
-  /** Triage "Prioritize" — door-scanned matched cartons, not yet unboxed. */
-  scanned: {
-    segment: 'scanned',
-    eyebrowTitle: 'At dock',
-    qty: 'scanned',
-    status: 'receiving',
-    rowActions: 'receiving',
-    view: 'scanned',
-    sort: 'priority',
-    postFilter: notUnmatched,
-    getActivityAt: triageDoorScanAt,
-    usesStaffFilter: true,
-    autoSelectFirstWhenEmpty: true,
-    limit: 50,
-    refreshEvents: TRIAGE_REFRESH,
-    refreshDomains: RECEIVING_RAIL_DOMAINS,
-    rowTitleMode: 'adaptive-po',
-    stampRailTitleContext: 'po',
-  },
-  /** Unbox "Viewed" — lines this operator recently opened (per-staff). */
-  viewed: {
-    segment: 'viewed',
-    eyebrowTitle: 'Viewed',
-    qty: 'received',
-    status: 'receiving',
-    rowActions: 'receiving',
-    view: 'viewed',
-    getActivityAt: getViewedAt,
-    autoSelectFirstWhenEmpty: false,
-    refreshEvents: UNBOX_REFRESH,
-    refreshDomains: RECEIVING_RAIL_DOMAINS,
   },
   /** Triage default — Prioritize ∪ Unfound, newest-scanned first. */
   triageCombined: {
@@ -430,64 +304,7 @@ const FEEDS = {
     buildFetcher: buildTriageCombinedFetcher,
     getActivityAt: triageDoorScanAt,
     usesStaffFilter: true,
-    autoSelectFirstWhenEmpty: true,
     limit: 200,
-    refreshEvents: TRIAGE_REFRESH,
-    refreshDomains: RECEIVING_RAIL_DOMAINS,
-  },
-  /** Triage "Unfound" — cartons Zoho can't match to a PO yet. */
-  triageUnfound: {
-    segment: 'unfound',
-    eyebrowTitle: 'Unfound',
-    qty: 'unfound',
-    status: 'receiving',
-    rowActions: 'receiving',
-    buildFetcher: buildUnfoundFetcher,
-    getActivityAt: triageDoorScanAt,
-    autoSelectFirstWhenEmpty: true,
-    limit: 200,
-    refreshEvents: TRIAGE_REFRESH,
-    refreshDomains: RECEIVING_RAIL_DOMAINS,
-  },
-  /** `/search` "Recently searched" — the records this operator recently opened. */
-  searchRecent: {
-    segment: 'search-recent',
-    eyebrowTitle: 'Recently searched',
-    qty: 'received',
-    status: 'receiving',
-    rowActions: 'searchRecent',
-    view: 'viewed',
-    getActivityAt: getViewedAt,
-    autoSelectFirstWhenEmpty: true,
-    canAutoSelectFirst: () => {
-      if (typeof window === 'undefined') return false;
-      const params = new URLSearchParams(window.location.search);
-      if ((params.get('sel') ?? '').trim()) return false;
-      if ((params.get('q') ?? '').trim()) return false;
-      return window.location.pathname.startsWith('/search');
-    },
-    // The server orders by this viewer's `viewed_at DESC` — "most recently
-    // opened" is the axis, so a client re-sort could only fight it.
-    preserveServerOrder: true,
-    pinSelectedLead: false,
-    staggerRevealMotion: 'slide',
-    limit: 20,
-    refreshEvents: UNBOX_REFRESH,
-    refreshDomains: RECEIVING_RAIL_DOMAINS,
-    rowTitleMode: 'adaptive-po',
-  },
-  /** Triage "Done" — cartons staged + saved for unbox (triage_complete = true). */
-  triageDone: {
-    segment: 'done',
-    eyebrowTitle: 'Done',
-    qty: 'unfound',
-    status: 'receiving',
-    rowActions: 'receiving',
-    buildFetcher: buildDoneFetcher,
-    getActivityAt: triageDoorScanAt,
-    autoSelectFirstWhenEmpty: true,
-    limit: 200,
-    refreshEvents: [...TRIAGE_REFRESH, 'receiving-triage-completed'],
     refreshDomains: RECEIVING_RAIL_DOMAINS,
   },
   /**
@@ -499,15 +316,15 @@ const FEEDS = {
     eyebrowTitle: 'Recent',
     qty: 'tested',
     status: 'testing',
+    // QC rows are lines another surface owns — share a link, nothing more.
+    rowActions: 'testing',
     buildFetcher: buildTestingOpenedFetcher,
     getActivityAt: getTestingOpenedAt,
     pinSelectedLead: false,
     preserveServerOrder: true,
     staggerRevealMotion: 'slide',
     acceptLineUpdateBus: false,
-    autoSelectFirstWhenEmpty: false,
     limit: TESTING_SIDEBAR_LIMIT,
-    refreshEvents: TESTING_REFRESH,
     refreshDomains: TESTING_RAIL_DOMAINS,
     rowTitleMode: 'adaptive-po',
   },

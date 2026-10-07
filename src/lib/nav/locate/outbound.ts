@@ -54,6 +54,8 @@ import { escapeLike } from '@/lib/sql-like';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { orderTrackingMatchKeys, trackingDigitsLast8Strict } from '@/lib/tracking-format';
 import { SHIPPED_ALL_DATES_PARAM } from '@/lib/shipping/shipped-filter/shipped-filter-params';
+import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
+import { FULFILLED_FIND_PARAM } from '@/lib/outbound/fulfilled-params';
 
 /** The Shipped list's gate (`/api/packerlogs`) — without it the bucket is omitted, not the answer. */
 export const SHIPPED_BUCKET_PERMISSION = 'packing.view';
@@ -152,7 +154,7 @@ const STN_LAST8_SQL = `right(regexp_replace(s.tracking_number_normalized, '\\D',
  * key-18 / last-8 / raw forms — each an indexed lookup; the imported
  * predicates then decide.
  */
-export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], withShipped: boolean) {
+function refParams(orgId: OrgId, refs: readonly string[]): unknown[] {
   const canon: string[] = [];
   const key18: string[] = [];
   const last8: string[] = [];
@@ -170,14 +172,93 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
     key4.push(ref.toLowerCase().replace(/[^a-z0-9]/g, '').slice(-4));
     digits8.push(digits.length === 8 ? digits : '');
   }
-  const params: unknown[] = [orgId, [...refs], canon, key18, last8, trackish, key4, digits8];
-  const trackingMatches = sqlTrackingNumberMatches({
-    stnAlias: 'stn_trk',
-    likeParam: 'r.ref',
-    canonicalParam: 'r.canon',
-    key18Param: 'r.key18',
-    last8Param: 'r.last8',
-  });
+  return [orgId, [...refs], canon, key18, last8, trackish, key4, digits8];
+}
+
+/** The refs table (`$2`–`$8`, one row per ref, `ord` = paste position) and the packages each tracking-like ref names. */
+function refTrackingCtes(trackingMatches: string): string {
+  return `r AS (
+      SELECT *
+        FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::boolean[], $7::text[], $8::text[])
+             WITH ORDINALITY AS r(ref, canon, key18, last8, trackish, key4, digits8, ord)
+    ),
+    tracking_candidate AS (
+      SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND s.tracking_number_normalized = r.canon
+      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND ${STN_KEY18_SQL} = NULLIF(r.key18, '')
+      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND ${STN_LAST8_SQL} = NULLIF(r.last8, '')
+      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND lower(s.tracking_number_raw) = lower(r.ref)
+    ),
+    tracking_hit AS (
+      SELECT r.ord, stn_trk.id
+        FROM tracking_candidate c
+        JOIN r ON r.ord = c.ord
+        JOIN shipping_tracking_numbers stn_trk ON stn_trk.id = c.id
+       WHERE ${trackingMatches}
+    )`;
+}
+
+const REF_TRACKING_MATCH = {
+  stnAlias: 'stn_trk',
+  likeParam: 'r.ref',
+  canonicalParam: 'r.canon',
+  key18Param: 'r.key18',
+  last8Param: 'r.last8',
+} as const;
+
+/** The carrier's side of a package (`stn`), as `outboundCarrierFacts` reads it. */
+const CARRIER_COLUMNS_SQL = `stn.carrier AS carrier,
+           stn.latest_status_category AS carrier_category,
+           COALESCE(NULLIF(BTRIM(stn.latest_status_label), ''), NULLIF(BTRIM(stn.latest_status_description), '')) AS carrier_label,
+           stn.latest_event_at AS carrier_event_at,
+           stn.estimated_delivery_at AS carrier_eta,
+           stn.last_checked_at AS carrier_checked_at,
+           NULLIF(BTRIM(stn.last_error_message), '') AS carrier_error,
+           carrier_place.place AS carrier_place`;
+
+/** Where the package's latest placed carrier event happened ("Anaheim, CA") — one indexed row per package. */
+const CARRIER_PLACE_LATERAL = `LEFT JOIN LATERAL (
+        SELECT CONCAT_WS(', ', INITCAP(NULLIF(BTRIM(e.event_city), '')), UPPER(NULLIF(BTRIM(e.event_state), ''))) AS place
+          FROM shipment_tracking_events e
+         WHERE e.shipment_id = stn.id
+           AND e.event_occurred_at IS NOT NULL
+           AND (NULLIF(BTRIM(e.event_city), '') IS NOT NULL OR NULLIF(BTRIM(e.event_state), '') IS NOT NULL)
+         ORDER BY e.event_occurred_at DESC
+         LIMIT 1
+      ) carrier_place ON true`;
+
+/**
+ * Packages the refs name that NO order owns (a label bought outside the order
+ * feed, an FBA carton): the same tracking match as {@link buildOutboundRefsSql},
+ * read from the package itself — its scan-out / pack stamps and carrier side.
+ */
+export function buildOutboundPackageRefsSql(orgId: OrgId, refs: readonly string[]) {
+  const params = refParams(orgId, refs);
+  const sql = `
+    WITH ${refTrackingCtes(sqlTrackingNumberMatches(REF_TRACKING_MATCH))}
+    SELECT DISTINCT ON (t.ord)
+           t.ord::int AS ord,
+           stn.id AS shipment_id,
+           stn.tracking_number_raw AS tracking_number,
+           stn.delivered_at,
+           act.shipped_at,
+           act.packed_at,
+           ${CARRIER_COLUMNS_SQL}
+      FROM tracking_hit t
+      JOIN shipping_tracking_numbers stn ON stn.id = t.id AND stn.organization_id = $1
+      ${CARRIER_PLACE_LATERAL}
+      LEFT JOIN LATERAL (
+        SELECT max(a.created_at) FILTER (WHERE a.activity_type = 'SHIP_CONFIRM' AND a.staff_id > 0) AS shipped_at,
+               max(a.created_at) FILTER (WHERE a.activity_type = 'PACK_COMPLETED') AS packed_at
+          FROM station_activity_logs a
+         WHERE a.organization_id = $1 AND a.shipment_id = stn.id
+      ) act ON true
+     ORDER BY t.ord, stn.id DESC`;
+  return { sql, params };
+}
+
+export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], withShipped: boolean) {
+  const params = refParams(orgId, refs);
+  const trackingMatches = sqlTrackingNumberMatches(REF_TRACKING_MATCH);
   let shipped = 'false';
   if (withShipped) {
     const { conditions } = buildPackerLogBaseWhere({ organizationId: orgId }, params);
@@ -195,35 +276,35 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
                ))
            AND ${conditions.join('\n           AND ')}
            AND ${sqlOrderOwnsShipment('o', 'sal.shipment_id')}
+      )
+      -- The Fulfilled sheet's rows (\`buildFulfilledSql\`): a staffed dock scan-out on any package the
+      -- line owns, or shipped on the channel (ShipStation and the like) without one.
+      OR LOWER(o.status) = 'shipped'
+      OR EXISTS (
+        SELECT 1
+          FROM station_activity_logs so
+         WHERE so.organization_id = o.organization_id
+           AND so.activity_type = 'SHIP_CONFIRM'
+           AND so.staff_id > 0
+           AND so.shipment_id = ANY (ARRAY(
+                 SELECT o.shipment_id
+                 UNION
+                 SELECT sl_out.shipment_id
+                   FROM shipment_links sl_out
+                  WHERE sl_out.organization_id = o.organization_id AND sl_out.owner_type = 'ORDER' AND sl_out.owner_id = o.id
+               ))
       )`;
   }
   const orderArm = (key: string, ref: string) => `SELECT r.ord, r.ref, o.id
         FROM r
         JOIN orders o ON o.organization_id = $1 AND ${key} = ${ref}`;
   const sql = `
-    WITH r AS (
-      SELECT *
-        FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::boolean[], $7::text[], $8::text[])
-             WITH ORDINALITY AS r(ref, canon, key18, last8, trackish, key4, digits8, ord)
-    ),
+    WITH ${refTrackingCtes(trackingMatches)},
     order_candidate AS (
       ${orderArm(ORDER_KEY_SQL('o.order_id'), 'r.key4')}
       UNION ${orderArm(ORDER_DIGITS8_SQL('o.order_id'), 'NULLIF(r.digits8, \'\')')}
       UNION ${orderArm(ORDER_KEY_SQL('o.item_number'), 'r.key4')}
       UNION ${orderArm(ORDER_DIGITS8_SQL('o.item_number'), 'NULLIF(r.digits8, \'\')')}
-    ),
-    tracking_candidate AS (
-      SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND s.tracking_number_normalized = r.canon
-      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND ${STN_KEY18_SQL} = NULLIF(r.key18, '')
-      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND ${STN_LAST8_SQL} = NULLIF(r.last8, '')
-      UNION SELECT r.ord, s.id FROM r JOIN shipping_tracking_numbers s ON r.trackish AND lower(s.tracking_number_raw) = lower(r.ref)
-    ),
-    tracking_hit AS (
-      SELECT r.ord, stn_trk.id
-        FROM tracking_candidate c
-        JOIN r ON r.ord = c.ord
-        JOIN shipping_tracking_numbers stn_trk ON stn_trk.id = c.id
-       WHERE ${trackingMatches}
     ),
     hit AS (
       SELECT c.ord, o.id
@@ -265,10 +346,12 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
            COALESCE(osf.packed_by, osf.packer_id) AS packer_id,
            staff_packer.name AS packer_name,
            -- Left the warehouse: the dock scan-out, else the packer log the Shipped list reads.
-           COALESCE(ship_out.ship_confirmed_at, osf.packed_at) AS shipped_at
+           COALESCE(ship_out.ship_confirmed_at, osf.packed_at) AS shipped_at,
+           ${CARRIER_COLUMNS_SQL}
       FROM hit h
       JOIN orders o ON o.id = h.id
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      ${CARRIER_PLACE_LATERAL}
       LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
       ${WA_DEADLINE_LATERAL}
       ${ORDER_STAGE_FACTS_JOIN}
@@ -329,15 +412,44 @@ export async function locateOutboundRefs(
     if (list) list.push(row);
     else byRef.set(ord, [row]);
   }
+  const seesEverything = ids.includes('shipped');
+  // A ref no order answers may still name a package (no order owns it): ask once, for those refs only —
+  // a package is a Fulfilled fact, so only for a caller who sees Shipped.
+  const orphanRefs = seesEverything ? refs.filter((_, index) => !byRef.has(index + 1)) : [];
+  const packages = new Map<string, Record<string, unknown>>();
+  if (orphanRefs.length > 0) {
+    const pkg = buildOutboundPackageRefsSql(orgId, orphanRefs);
+    for (const row of await deps.run(pkg.sql, pkg.params)) packages.set(orphanRefs[Number(row.ord) - 1]!, row);
+  }
   const counts: Partial<Record<DeskViewId, number>> = {};
   let buyerCancels = 0;
+  let onFile = 0;
+  let packageOnly = 0;
   const entries = refs.map((ref, index): NavLocateEntry => {
     const hits = byRef.get(index + 1) ?? [];
     const lead = hits[0];
+    const pkg = lead ? undefined : packages.get(ref);
+    if (pkg) {
+      packageOnly += 1;
+      const tracking = String(pkg.tracking_number ?? ref);
+      return {
+        ref,
+        buckets: [PACKAGE_ONLY_BUCKET_ID],
+        title: null,
+        detail: pkg.shipped_at ? 'Scanned out · no order' : pkg.packed_at ? 'Packed · no order' : 'Label only · no order',
+        recordHref: `${SHIPPING_SHIPPED_PATH}?${new URLSearchParams({ [FULFILLED_FIND_PARAM]: tracking })}`,
+        facts: outboundFacts({ ...pkg, fact_title: null, status: null }, 0),
+      };
+    }
     const membership = ids.filter((id) => hits.some((hit) => hit[`in_${id}`] === true));
-    const buckets = locateBucketsForBuyerCancel(lead?.status, membership);
+    const queued = locateBucketsForBuyerCancel(lead?.status, membership);
+    // Found, but in no queue (packed and never scanned out, on hold, …): still found. Only for a caller who
+    // sees every outbound bucket — without Shipped, "in no queue" could be a shipped order it may not see.
+    const unqueued = lead !== undefined && queued.length === 0 && seesEverything;
+    const buckets = unqueued ? [ON_FILE_BUCKET_ID] : queued;
     const buyerCancel = buckets.length === 1 && buckets[0] === BUYER_CANCEL_BUCKET_ID;
     if (buyerCancel) buyerCancels += 1;
+    else if (unqueued) onFile += 1;
     else for (const id of buckets) if (isDeskBucket(id)) counts[id] = (counts[id] ?? 0) + 1;
     return {
       ref,
@@ -345,13 +457,16 @@ export async function locateOutboundRefs(
       title: lead
         ? [lead.order_id, lead.product_title].filter((part) => part != null && String(part).trim() !== '').join(' · ') || null
         : null,
-      detail: hits.length > 1 ? `${hits.length} order lines` : null,
+      detail:
+        [unqueued ? onFileDetail(lead?.status) : null, hits.length > 1 ? `${hits.length} order lines` : null]
+          .filter(Boolean)
+          .join(' · ') || null,
       // The order card's own open (`/shipping/orders?openOrderId=`); a package that left opens on Fulfilled.
       // A buyer cancel opens the search record, which paints "Buyer cancel".
       recordHref:
         hits.length !== 1 || !lead
           ? null
-          : buyerCancel
+          : buyerCancel || unqueued
             ? orderRecordHref(Number(lead.id))
             : recordDetailsHref({
                 kind: 'order',
@@ -371,7 +486,28 @@ export async function locateOutboundRefs(
       count: buyerCancels,
     });
   }
+  if (packageOnly > 0) {
+    buckets.push({ id: PACKAGE_ONLY_BUCKET_ID, label: PACKAGE_ONLY_LABEL, tone: 'neutral', href: null, count: packageOnly });
+  }
+  if (onFile > 0) {
+    buckets.push({ id: ON_FILE_BUCKET_ID, label: ON_FILE_LABEL, tone: 'neutral', href: null, count: onFile });
+  }
   return { buckets, entries };
+}
+
+/** An order the locate found that sits in none of the caller's buckets — found, never "No match anywhere". */
+export const ON_FILE_BUCKET_ID = 'on_file';
+const ON_FILE_LABEL = 'Order on file';
+
+/** A package the locate found that no order owns. */
+export const PACKAGE_ONLY_BUCKET_ID = 'package_only';
+const PACKAGE_ONLY_LABEL = 'Package, no order';
+
+/** Why an on-file order is in no queue, in the order's own status word. */
+function onFileDetail(status: unknown): string {
+  const word = String(status ?? '').trim().toLowerCase();
+  if (word === 'packed') return 'Packed · not scanned out';
+  return word ? `Status: ${word.replace(/_/g, ' ')}` : 'In no queue';
 }
 
 function isDeskBucket(id: string): id is DeskViewId {

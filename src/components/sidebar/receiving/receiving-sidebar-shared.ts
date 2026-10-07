@@ -125,6 +125,7 @@ export type ReceivingPackageMeta = {
   /** Carton urgency (`receiving_carton.priority_tier`, null = Auto) — the stub row paints it before hydration. */
   priority_tier?: number | null;
   is_priority?: boolean;
+  listing_url?: string | null;
 };
 
 export type PoContext = {
@@ -180,6 +181,7 @@ export function parseReceivingPackage(raw: unknown): ReceivingPackageMeta | null
     is_return: Boolean(o.is_return),
     priority_tier: o.priority_tier != null && Number.isFinite(Number(o.priority_tier)) ? Number(o.priority_tier) : null,
     is_priority: Boolean(o.is_priority),
+    listing_url: o.listing_url != null ? String(o.listing_url) : null,
   };
 }
 
@@ -333,7 +335,7 @@ export const CLAIM_TYPE_OPTIONS: ReadonlyArray<{
   { value: 'repair_service',   label: 'Repair service',   active: 'bg-sky-600 text-white',     inactive: 'bg-sky-50 text-sky-700' },
 ];
 
-import { normalizeScanKey } from '@/lib/receiving/scan/normalize';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 import {
   isReceivingRailShipmentKey,
   receivingRailRowKey,
@@ -342,79 +344,37 @@ import {
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
-
-
-/** Legacy `scan:{value}` key for a scan still in flight. */
-export function pendingScanReconcileKey(trackingNumber: string): string {
-  return `scan:${normalizeScanKey(trackingNumber)}`;
-}
-
 /** Negative line id for a pre-resolve pending scan — cannot collide with DB ids. */
-function pendingScanLineId(trackingNumber: string): number {
-  const key = normalizeScanKey(trackingNumber);
+function pendingScanLineId(canonicalTracking: string): number {
   let h = 5381;
-  for (let i = 0; i < key.length; i++) {
-    h = ((h << 5) + h) ^ key.charCodeAt(i);
+  for (let i = 0; i < canonicalTracking.length; i++) {
+    h = ((h << 5) + h) ^ canonicalTracking.charCodeAt(i);
   }
   return -(Math.abs(h) || 1);
 }
 
-/** Instant rail row shown the moment a tracking # is scanned, before lookup-po returns. */
-export function buildPendingScanStubRow(trackingNumber: string): ReceivingLineRow {
-  const trimmed = trackingNumber.trim();
+/**
+ * The ONE pre-resolve row for an Unbox scan that missed the rail cache — the
+ * rail's pending row AND the openable empty unmatched pane, keyed
+ * `stn:<canonical tracking>` so the resolved carton row upgrades it in place.
+ * The rail never highlights it ({@link isPendingScanRow}); selection follows
+ * the real carton / line once a rung resolves.
+ */
+export function buildPendingScanRow(trackingNumber: string): ReceivingLineRow {
+  const canonical = extractCanonicalTracking(trackingNumber) || trackingNumber.trim();
   const now = new Date().toISOString();
   return {
-    id: pendingScanLineId(trimmed),
+    id: pendingScanLineId(canonical),
     receiving_id: null,
-    client_event_id: receivingRailShipmentKey(trimmed) ?? pendingScanReconcileKey(trimmed),
-    tracking_number: trimmed,
+    client_event_id: receivingRailShipmentKey(canonical) ?? `stn:${canonical}`,
+    tracking_number: canonical,
     carrier: null,
     zoho_item_id: null,
     zoho_line_item_id: null,
     zoho_purchase_receive_id: null,
     zoho_purchaseorder_id: null,
     zoho_purchaseorder_number: null,
-    item_name: trimmed,
-    sku: null,
-    quantity_received: 0,
-    quantity_expected: null,
-    qa_status: 'PENDING',
-    workflow_status: 'ARRIVED',
-    disposition_code: 'HOLD',
-    condition_grade: '',
-    disposition_audit: [],
-    needs_test: true,
-    assigned_tech_id: null,
-    zoho_sync_source: null,
-    zoho_last_modified_time: null,
-    zoho_synced_at: null,
-    receiving_type: 'PO',
-    notes: null,
-    created_at: now,
-    last_activity_at: now,
-    scanned_at: now,
-    image_url: null,
-    source_platform: null,
-    receiving_source: null,
-  };
-}
-
-/** Openable Unbox right-pane stub painted at scan t=0 (Phase-0 miss): */
-export function buildOptimisticUnmatchedPaneStub(trackingNumber: string): ReceivingLineRow {
-  const trimmed = trackingNumber.trim();
-  const now = new Date().toISOString();
-  return {
-    id: pendingScanLineId(trimmed),
-    receiving_id: null,
-    client_event_id: pendingScanReconcileKey(trimmed),
-    tracking_number: trimmed,
-    carrier: null,
-    zoho_item_id: null,
-    zoho_line_item_id: null,
-    zoho_purchase_receive_id: null,
-    zoho_purchaseorder_id: null,
-    zoho_purchaseorder_number: null,
-    item_name: null,
+    item_name: canonical,
     sku: null,
     quantity_received: 0,
     quantity_expected: null,
@@ -439,24 +399,9 @@ export function buildOptimisticUnmatchedPaneStub(trackingNumber: string): Receiv
   };
 }
 
-/** True for the Unbox optimistic unmatched pane stub (openable, writes gated). */
-export function isOptimisticUnmatchedPaneStub(row: ReceivingLineRow): boolean {
-  return (
-    row.receiving_id == null
-    && row.receiving_source === 'unmatched'
-    && typeof row.client_event_id === 'string'
-    && row.client_event_id.startsWith('scan:')
-  );
-}
-
-/** True while a row is the pre-resolve rail leading stub (tracking# title, not clickable). */
-export function isPendingTriageScanRow(row: ReceivingLineRow): boolean {
-  return (
-    row.receiving_id == null
-    && typeof row.client_event_id === 'string'
-    && (row.client_event_id.startsWith('scan:') || isReceivingRailShipmentKey(row.client_event_id))
-    && !isOptimisticUnmatchedPaneStub(row)
-  );
+/** True for the {@link buildPendingScanRow} row — no carton yet, writes gated, never a rail selection. */
+export function isPendingScanRow(row: ReceivingLineRow): boolean {
+  return row.receiving_id == null && row.id < 0 && isReceivingRailShipmentKey(row.client_event_id);
 }
 
 /** Synthesize a ReceivingLineRow for an unmatched carton that has no receiving_lines rows yet (operator just scanned the tracking; no items… */
@@ -529,7 +474,7 @@ export function buildMatchedStubRow(
   receivingId: number,
   trackingNumber: string,
   line: PoLineSummary,
-  pkg: Pick<ReceivingPackageMeta, 'source_platform' | 'priority_tier' | 'is_priority'> | null = null,
+  pkg: Pick<ReceivingPackageMeta, 'source_platform' | 'priority_tier' | 'is_priority' | 'listing_url'> | null = null,
 ): ReceivingLineRow {
   return {
     id: line.id,
@@ -566,6 +511,7 @@ export function buildMatchedStubRow(
     created_at: null,
     image_url: line.image_url,
     source_platform: pkg?.source_platform ?? null,
+    receiving_listing_url: pkg?.listing_url ?? null,
     // The carton's urgency, so the header never reads the platform default over a set tier.
     priority_tier: pkg?.priority_tier ?? null,
     is_priority: pkg?.is_priority ?? false,

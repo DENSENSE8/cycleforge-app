@@ -71,7 +71,6 @@
     "src/lib/receiving/photo-move-targets-shared.ts",
     "src/lib/receiving/photo-move-targets.ts",
     "src/lib/receiving/po-group-title.ts",
-    "src/lib/receiving/rail/done-stub.ts",
     "src/lib/receiving/rail/unfound-stub.ts",
     "src/lib/receiving/receive-line.ts",
     "src/lib/receiving/receiving-line-row.ts",

@@ -88,6 +88,8 @@ export const AUDIT_ENTITY = {
   SERIAL_UNIT: 'serial_unit',
   HANDLING_UNIT: 'handling_unit',
   LABEL_MANIFEST: 'label_manifest',
+  /** V1 shipping-label ledger row (`label_ingestions`) — matches the literal apply/confirm already write. */
+  LABEL_INGESTION: 'label_ingestion',
   TECH_SERIAL: 'tech_serial_number',
   SKU: 'sku',
   SKU_RELATIONSHIP: 'sku_relationship',
@@ -334,6 +336,9 @@ export const AUDIT_ACTION = {
   RACK_SHELVES_EDIT:  'rack.shelves.edit',
   RACK_ADOPT:         'rack.adopt',
   RACK_LABELS_PRINT:  'rack.labels.print',
+  /** A receipt type (PO / RETURN / TRADE_IN) linked to / unlinked from a rack or shelf — src/lib/receiving/putaway-targets.ts. */
+  RACK_PUTAWAY_KIND_LINK:   'rack.putaway_kind.link',
+  RACK_PUTAWAY_KIND_UNLINK: 'rack.putaway_kind.unlink',
   // Serial unit (scanner verbs)
   SERIAL_SCAN:   'serial.scan',
   SERIAL_CREATE: 'serial.create',
@@ -689,11 +694,19 @@ export const AUDIT_ACTION = {
   LABEL_UNLINKED: 'orders.label.unlinked',
   LABEL_TICKET_LINKED: 'orders.label.ticket_linked',
   LABEL_TICKET_UNLINKED: 'orders.label.ticket_unlinked',
+  // V1 label ingestion taken back off its order (src/lib/label-ingestions/unpair.ts):
+  // unpaired = back to the waiting pool; removed = unpaired, then the row + its document deleted.
+  LABEL_INGESTION_UNPAIRED: 'label_ingestion.unpaired',
+  LABEL_INGESTION_REMOVED: 'label_ingestion.removed',
+  /** An unpair put back exactly from its `label_ingestion.unpaired` row's restore record. */
+  LABEL_INGESTION_UNPAIR_UNDONE: 'label_ingestion.unpair_undone',
   // Outbound documents (docs/outbound-documents-plan.md) — packing slips + shipping labels stored on `documents` + linked via…
   ORDER_DOCUMENT_ATTACH: 'order.document.attach',
   ORDER_DOCUMENT_FETCH:  'order.document.fetch',
   ORDER_DOCUMENT_REPLACE: 'order.document.replace',
   ORDER_DOCUMENT_DELETE: 'order.document.delete',
+  /** Slip/label moved to the UNLINKED pool (file kept) — POST /api/documents/[id]/unlink. */
+  ORDER_DOCUMENT_UNLINK: 'order.document.unlink',
   /** JIT pack Phase 1 — print bundle at pack-confirm (PrintNode or browser fallback). */
   ORDER_DOCUMENT_BUNDLE_PRINT: 'order.document.bundle_print',
   /** Explicit reprint of an already-printed pack bundle (never re-buys postage). */

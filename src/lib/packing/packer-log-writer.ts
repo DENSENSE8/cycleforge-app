@@ -19,7 +19,7 @@ interface PackerLogWriteRow {
   completionState: PackerLogCompletionState;
 }
 
-interface CreatePackerLogInput {
+export interface CreatePackerLogInput {
   organizationId: OrgId;
   shipmentId?: number | null;
   scanRef?: string | null;

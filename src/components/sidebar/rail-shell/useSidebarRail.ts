@@ -6,13 +6,8 @@ import { useRailEditMode } from '@/components/sidebar/rail-edit-mode';
 import {
   mergeRailUpdatePatch,
   orderRailRowsByActivity,
-  railActivitySortMs,
   type SidebarRailShellProps,
 } from './sidebar-rail-shared';
-import {
-  parseReceivingPrependedDetail,
-  receivingPrependMatchesRail,
-} from '@/lib/queries/receiving-queries';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
@@ -25,24 +20,17 @@ const EMPTY_EXCLUDED: ReadonlySet<number> = new Set();
 /** Debounce/defer window for the reconciling refetch triggered by refresh events. */
 const RAIL_REFRESH_DEBOUNCE_MS = 350;
 
-/** Owns the generic sidebar-rail engine: */
+/** Owns the generic sidebar-rail engine. The React Query cache under `queryKey` is the ONLY row store: every optimistic write lands there. */
 export function useSidebarRail<TRow>({
   queryKey, fetchFn, updateEvent, deleteEvent, deleteGroupEvent, refreshEvents, refreshDomains,
   restoreEvent, restoreGroupEvent,
   navigateEvent,
-  excludedIds = EMPTY_EXCLUDED, includeRow, loadSnapshot, persistSnapshot,
-  selectedId, selectedRow = null, leadingRow = null, limit = 25,
-  autoSelectFirstWhenEmpty = false,
-  canAutoSelectFirst,
+  excludedIds = EMPTY_EXCLUDED,
+  selectedId, selectedRow = null, limit = 25,
   pinSelectedLead = true,
   preserveServerOrder = false,
-  getId, getGroupId, getActivityAt, getReconcileId, getRowDisabled, onSelect,
+  getId, getGroupId, getActivityAt, getRowDisabled, onSelect,
 }: SidebarRailShellProps<TRow>) {
-  // Render identity:
-  const reconcileKey = useCallback(
-    (r: TRow): string | number => (getReconcileId ? getReconcileId(r) : getId(r)),
-    [getReconcileId, getId],
-  );
   const queryClient = useQueryClient();
   // Pencil-toggle multi-select (provided by the owning panel; inactive default
   // when no provider). While active, row clicks toggle checkboxes instead of
@@ -52,7 +40,7 @@ export function useSidebarRail<TRow>({
   const editAnchorIdRef = useRef<number | null>(null);
   useEffect(() => { editAnchorIdRef.current = null; }, [editMode.active]);
 
-  const { data, isPending, isFetching, isPlaceholderData, dataUpdatedAt } = useQuery<TRow[]>({
+  const { data, isPending, isFetching } = useQuery<TRow[]>({
     queryKey,
     queryFn: fetchFn,
     staleTime: 20_000,
@@ -60,97 +48,45 @@ export function useSidebarRail<TRow>({
     placeholderData: keepPreviousData,
   });
 
-  const sortRowsByActivity = useCallback((rows: TRow[]): TRow[] => {
-    return orderRailRowsByActivity(rows, {
-      preserveServerOrder,
-      getActivityAt,
-      getId,
-    });
-  }, [preserveServerOrder, getActivityAt, getId]);
-
-  const [localRows, setLocalRows] = useState<TRow[] | null>(null);
-  // Mirror query data.
+  // Never-self-blank: an established feed that refetches empty keeps painting
+  // its last rows (a transient empty page must not flash the rail away).
   const queryKeySig = useMemo(() => JSON.stringify(queryKey), [queryKey]);
-  const prevKeySigRef = useRef<string>(queryKeySig);
-  // Once this feed has rendered real rows, never swap back to the full skeleton on background refetch — that remount kills stagger + hover…
-  const hadRowsForKeyRef = useRef(false);
+  const lastRowsRef = useRef<{ keySig: string; rows: TRow[] } | null>(null);
+  const sortedRows = useMemo<TRow[] | null>(() => {
+    if (!Array.isArray(data)) return null;
+    const sorted = orderRailRowsByActivity(data, { preserveServerOrder, getActivityAt, getId });
+    const last = lastRowsRef.current;
+    if (sorted.length === 0 && last?.keySig === queryKeySig && last.rows.length > 0) return last.rows;
+    return sorted;
+  }, [data, preserveServerOrder, getActivityAt, getId, queryKeySig]);
   useEffect(() => {
-    const keyChanged = prevKeySigRef.current !== queryKeySig;
-    if (keyChanged) {
-      prevKeySigRef.current = queryKeySig;
-      hadRowsForKeyRef.current = false;
-    }
-    if (Array.isArray(data)) {
-      const sorted = sortRowsByActivity(data);
-      // Never-self-blank: keep prior rows when an established feed refetches empty.
-      if (sorted.length === 0 && !keyChanged && hadRowsForKeyRef.current) {
-        return;
-      }
-      setLocalRows(sorted);
-      // Persist non-empty settled rows only — never overwrite an Upstash seed with [].
-      // Skip placeholder data: during a key change `keepPreviousData` briefly
-      // returns the PREVIOUS feed's rows, which must not be saved for this feed.
-      if (persistSnapshot && !isPlaceholderData && sorted.length > 0) {
-        persistSnapshot(sorted);
-      }
-      return;
-    }
-    if (keyChanged) {
-      setLocalRows(null);
-    }
-  }, [
-    data, dataUpdatedAt, isPlaceholderData, sortRowsByActivity, queryKeySig,
-    persistSnapshot,
-  ]);
+    if (sortedRows) lastRowsRef.current = { keySig: queryKeySig, rows: sortedRows };
+  }, [sortedRows, queryKeySig]);
 
-  // First-mount cold-reload seed.
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (seededRef.current || !loadSnapshot) return;
-    seededRef.current = true;
-    if (Array.isArray(data)) return; // authoritative rows already present
-    let cancelled = false;
-    void loadSnapshot().then((snap) => {
-      if (cancelled || !snap || snap.length === 0) return;
-      setLocalRows((prev) => {
-        if (prev != null) return prev; // authoritative already won the paint
-        hadRowsForKeyRef.current = true;
-        return sortRowsByActivity(snap);
-      });
-    });
-    return () => { cancelled = true; };
-    // Keyed on loadSnapshot identity only (memoized by the provider); data is
-    // read fresh inside and the one-shot guard prevents a re-seed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadSnapshot]);
-
+  // Optimistic by-id patch — merged straight into the query cache.
   useEffect(() => {
     if (!updateEvent) return;
     const handlePatch = (event: Event) => {
       const updated = (event as CustomEvent<{ id?: number } & Partial<TRow>>).detail;
       if (!updated || typeof updated.id !== 'number') return;
-      setLocalRows((rows) => {
-        if (!rows) return rows;
+      queryClient.setQueryData<TRow[]>(queryKey, (rows) => {
+        if (!Array.isArray(rows)) return rows;
         const idx = rows.findIndex((r) => getId(r) === updated.id);
         if (idx < 0) return rows;
-        const existing = rows[idx];
         // Never let a Testing-style full by-id dump (or any patch that can't
         // reproduce this feed's getActivityAt axis) blank the rail age / reorder.
-        const merged = mergeRailUpdatePatch(existing, updated as Partial<TRow>, getActivityAt);
-        const prevMs = getActivityAt ? railActivitySortMs(getActivityAt(existing)) : 0;
-        const nextMs = getActivityAt ? railActivitySortMs(getActivityAt(merged)) : prevMs;
         const next = rows.slice();
-        next[idx] = merged;
-        // Re-sort only when the feed's activity axis actually moved — partial
-        // by-id refreshes must not shuffle rows that still share the same stamp.
-        return nextMs !== prevMs ? sortRowsByActivity(next) : next;
+        next[idx] = mergeRailUpdatePatch(rows[idx], updated as Partial<TRow>, getActivityAt);
+        return next;
       });
     };
     window.addEventListener(updateEvent, handlePatch);
     return () => window.removeEventListener(updateEvent, handlePatch);
-  }, [updateEvent, getId, getActivityAt, sortRowsByActivity]);
+  }, [updateEvent, queryClient, queryKey, getId, getActivityAt]);
 
-  // Ids removed via `deleteEvent`/`deleteGroupEvent`.
+  // Ids removed via `deleteEvent`/`deleteGroupEvent` — a sticky display filter,
+  // so a refetch racing the server delete cannot resurrect the row. The
+  // dispatchers drop the rows from the cache themselves.
   const [deletedIds, setDeletedIds] = useState<ReadonlySet<number>>(() => new Set());
   const [deletedGroupIds, setDeletedGroupIds] = useState<ReadonlySet<number>>(() => new Set());
 
@@ -160,12 +96,11 @@ export function useSidebarRail<TRow>({
       const detail = (event as CustomEvent<{ id?: number }>).detail;
       if (!detail || typeof detail.id !== 'number') return;
       const id = detail.id;
-      setLocalRows((rows) => (rows ? rows.filter((r) => getId(r) !== id) : rows));
       setDeletedIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     };
     window.addEventListener(deleteEvent, handleDelete);
     return () => window.removeEventListener(deleteEvent, handleDelete);
-  }, [deleteEvent, getId]);
+  }, [deleteEvent]);
 
   // Whole-carton delete:
   useEffect(() => {
@@ -173,7 +108,6 @@ export function useSidebarRail<TRow>({
     const handleGroupDelete = (event: Event) => {
       const groupId = Number((event as CustomEvent<unknown>).detail);
       if (!Number.isFinite(groupId)) return;
-      setLocalRows((rows) => (rows ? rows.filter((r) => getGroupId(r) !== groupId) : rows));
       setDeletedGroupIds((prev) => (prev.has(groupId) ? prev : new Set(prev).add(groupId)));
     };
     window.addEventListener(deleteGroupEvent, handleGroupDelete);
@@ -213,74 +147,24 @@ export function useSidebarRail<TRow>({
     return () => window.removeEventListener(restoreGroupEvent, handleRestoreGroup);
   }, [restoreGroupEvent]);
 
-  // Optimistic prepend — scan apply dispatches this with the freshly-matched rows
-  // so the rail shows the new carton instantly instead of waiting for a full
-  // refetch (which can take seconds on the heavy receiving-lines query).
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const parsed = parseReceivingPrependedDetail((event as CustomEvent<unknown>).detail);
-      const { rows: detail, segments, scope } = parsed;
-      if (!Array.isArray(detail) || detail.length === 0) return;
-      if (!receivingPrependMatchesRail(queryKey, segments, scope)) return;
-      setLocalRows((rows) => {
-        const base = rows ?? [];
-        const seenLine = new Set(base.map((r) => getId(r)));
-        const seenCarton = getGroupId
-          ? new Set(
-              base
-                .map((r) => getGroupId(r))
-                .filter((id): id is number => id != null && Number.isFinite(id)),
-            )
-          : null;
-        const fresh = detail.filter((r) => {
-          if (seenLine.has(getId(r as TRow))) return false;
-          if (seenCarton && getGroupId) {
-            const gid = getGroupId(r as TRow);
-            if (gid != null && seenCarton.has(gid)) return false;
-          }
-          return true;
-        }) as TRow[];
-        if (fresh.length === 0) return base.length > 0 ? base : null;
-        return sortRowsByActivity([...fresh, ...base]);
-      });
-    };
-    window.addEventListener('receiving-lines-prepended', handler);
-    return () => window.removeEventListener('receiving-lines-prepended', handler);
-  }, [getId, getGroupId, sortRowsByActivity, queryKey]);
-
-
-  // Same debounced reconciliation, driven by refresh DOMAINS instead of raw
-  // event names — the rail wakes only for writes that touched its data.
-  const domainRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useRefreshSignal(refreshDomains ?? EMPTY_DOMAINS, () => {
-    if (domainRefreshTimer.current) clearTimeout(domainRefreshTimer.current);
-    domainRefreshTimer.current = setTimeout(() => {
-      domainRefreshTimer.current = null;
-      queryClient.invalidateQueries({ queryKey });
+  // Debounced reconciling refetch, driven by refresh DOMAINS — the rail wakes
+  // only for writes that touched its data — or the rail's own `refreshEvents`.
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const scheduleRefresh = useCallback(() => {
+    clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      void queryClient.invalidateQueries({ queryKey });
     }, RAIL_REFRESH_DEBOUNCE_MS);
-  });
+  }, [queryClient, queryKey]);
+  useEffect(() => () => clearTimeout(refreshTimer.current), []);
+  useRefreshSignal(refreshDomains ?? EMPTY_DOMAINS, scheduleRefresh);
 
   useEffect(() => {
     if (!refreshEvents || refreshEvents.length === 0) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const handler = () => {
-      // Debounce + defer the reconciling refetch (see RAIL_REFRESH_DEBOUNCE_MS):
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        timer = null;
-        queryClient.invalidateQueries({ queryKey });
-      }, RAIL_REFRESH_DEBOUNCE_MS);
-    };
-    refreshEvents.forEach((ev) => window.addEventListener(ev, handler));
-    return () => {
-      if (timer) clearTimeout(timer);
-      refreshEvents.forEach((ev) => window.removeEventListener(ev, handler));
-    };
-  }, [queryClient, queryKey, refreshEvents]);
+    refreshEvents.forEach((ev) => window.addEventListener(ev, scheduleRefresh));
+    return () => refreshEvents.forEach((ev) => window.removeEventListener(ev, scheduleRefresh));
+  }, [refreshEvents, scheduleRefresh]);
 
-  // Defensive: a queryKey collision (another useQuery caching a different shape
-  // under the same key) can hand us a non-array `data`. Never let that crash
-  // the whole sidebar — coerce to [] and render empty instead.
   const isRowDeleted = useCallback(
     (r: TRow) => {
       if (deletedIds.has(getId(r))) return true;
@@ -292,24 +176,11 @@ export function useSidebarRail<TRow>({
     },
     [deletedIds, deletedGroupIds, getId, getGroupId],
   );
-  // Drop deleted rows AND this viewer's dismissed rows (excludedIds), then any facet keep-filter (`includeRow`).
-  const mirroredRows = localRows ?? (Array.isArray(data) ? sortRowsByActivity(data) : null);
-  const baseRows = (Array.isArray(mirroredRows) ? mirroredRows : []).filter(
-    (r) =>
-      !isRowDeleted(r)
-      && !excludedIds.has(getId(r))
-      && (includeRow ? includeRow(r) : true),
+  // Drop deleted rows AND this viewer's dismissed rows (excludedIds).
+  const allRows = useMemo(
+    () => (sortedRows ?? []).filter((r) => !isRowDeleted(r) && !excludedIds.has(getId(r))),
+    [sortedRows, isRowDeleted, excludedIds, getId],
   );
-  // An optimistic leading row (e.g.
-  const allRows = (() => {
-    if (leadingRow == null) return baseRows;
-    const leadId = getId(leadingRow);
-    const leadKey = reconcileKey(leadingRow);
-    const rest = baseRows.filter(
-      (r) => getId(r) !== leadId && reconcileKey(r) !== leadKey,
-    );
-    return [leadingRow, ...rest];
-  })();
   // `pinnedLead` marks that rows[0] is a selected row hoisted in from beyond the
   // top-N window (so the active line stays visible). `topCount` is the count of
   // genuine recent rows (excludes the pin) for the eyebrow headline.
@@ -404,33 +275,7 @@ export function useSidebarRail<TRow>({
     return () => window.removeEventListener(navigateEvent, handler);
   }, [navigateEvent, rows, visibleIndices, selectedId, selectedRow, getId, getGroupId, onSelect]);
 
-  const autoSelectedRef = useRef(false);
-  useEffect(() => {
-    if (!autoSelectFirstWhenEmpty) return;
-    if (selectedId != null) {
-      autoSelectedRef.current = true;
-      return;
-    }
-    autoSelectedRef.current = false;
-  }, [autoSelectFirstWhenEmpty, selectedId]);
-
-  useEffect(() => {
-    if (!autoSelectFirstWhenEmpty || autoSelectedRef.current) return;
-    if (selectedId != null || isPending || rows.length === 0) return;
-    if (canAutoSelectFirst && !canAutoSelectFirst()) return;
-    autoSelectedRef.current = true;
-    onSelect(rows[0]);
-  }, [autoSelectFirstWhenEmpty, canAutoSelectFirst, selectedId, isPending, rows, onSelect]);
-
-  if (rows.length > 0) {
-    hadRowsForKeyRef.current = true;
-  }
-
-  const showSkeleton =
-    isPending &&
-    rows.length === 0 &&
-    !hadRowsForKeyRef.current &&
-    !loadSnapshot;
+  const showSkeleton = isPending && rows.length === 0;
 
   const focusRow = useCallback((idx: number) => {
     const btn = listRef.current?.querySelector<HTMLButtonElement>(`button[data-rail-row][data-rail-index="${idx}"]`);

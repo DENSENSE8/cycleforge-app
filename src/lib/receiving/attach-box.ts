@@ -2,7 +2,9 @@ import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
-import { linkShipment } from '@/lib/shipping/shipment-links';
+import { linkShipment, setPrimaryShipmentLink, unlinkShipment } from '@/lib/shipping/shipment-links';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { SHIPMENT_SCAN_MATCH_CONDITION } from '@/lib/receiving/delivered-unscanned';
 
 /** Tenant-tx or pool — ingest threads the GUC client so carton writes aren't RLS-blind. */
 type SqlClient = {
@@ -77,8 +79,13 @@ export async function attachBoxToReceiving(params: {
   const { receivingId, staffId, organizationId } = params;
 
   return withTenantTransaction<AttachBoxResult>(organizationId, async (client) => {
+    // Who received the carton lives on its triage row now (`receiving_triage.door_received_by`, 2026-07-11d).
     const cartonRes = await client.query<{ shipment_id: number | null; received_by: number | null }>(
-      `SELECT shipment_id, received_by FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      `SELECT r.shipment_id, rt.door_received_by AS received_by
+         FROM receiving_carton r
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+        WHERE r.id = $1 AND r.organization_id = $2
+        LIMIT 1`,
       [receivingId, organizationId],
     );
     const carton = cartonRes.rows[0];
@@ -140,11 +147,15 @@ export async function attachBoxToReceiving(params: {
       boxIsPrimary = box.is_primary;
 
       // When this box became the carton's primary anchor, stamp receiving_carton.shipment_id
-      // (only if empty — never overwrite the reference# anchor).
+      // (only if empty — never overwrite the reference# anchor). A carton the dock already
+      // scanned is never anchored to a box added afterwards: the scan match reads every scan
+      // of an anchored carton as that shipment's scan (`SHIPMENT_SCAN_MATCH_CONDITION`), so the
+      // new, unarrived tracking would read "scanned at dock".
       if (makePrimary && !carton.shipment_id) {
         await client.query(
           `UPDATE receiving_carton SET shipment_id = $2, updated_at = NOW()
-           WHERE id = $1 AND shipment_id IS NULL`,
+           WHERE id = $1 AND shipment_id IS NULL
+             AND NOT EXISTS (SELECT 1 FROM receiving_scans rs WHERE rs.receiving_id = $1)`,
           [receivingId, shipmentId],
         );
       }
@@ -170,6 +181,164 @@ export async function attachBoxToReceiving(params: {
       boxCount: boxes.length,
       boxes,
     };
+  });
+}
+
+export type DetachBoxResult =
+  | { ok: false; error: string; status: number }
+  | { ok: true; boxCount: number; boxes: AttachedBox[] };
+
+/** How long after its attach a box may still be taken back (the toast's Undo, a stale tab). */
+const DETACH_WINDOW = '15 minutes';
+
+/**
+ * Undo {@link attachBoxToReceiving}: drop one box link from a carton. Touches
+ * links only — never a scan, a door receipt or an unbox, so nothing physical
+ * is rewritten. Only a box this writer linked in the last
+ * {@link DETACH_WINDOW} is detachable — never a reference# anchor or an
+ * ingest-linked box — and never one the dock has scanned since (by the
+ * Check's own scan match, `SHIPMENT_SCAN_MATCH_CONDITION`: it is evidence
+ * now, not a typo). When the dropped box was the carton's primary, the next
+ * box (lowest `box_seq`) becomes the primary anchor, else the carton is left
+ * without one — exactly as before the attach.
+ */
+export async function detachBoxFromReceiving(params: {
+  receivingId: number;
+  shipmentId: number;
+  organizationId: string;
+}): Promise<DetachBoxResult> {
+  const { receivingId, shipmentId, organizationId } = params;
+  const orgId = organizationId as OrgId;
+  return withTenantTransaction<DetachBoxResult>(organizationId, async (client) => {
+    const carton = await client.query<{ shipment_id: number | null }>(
+      `SELECT shipment_id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1 FOR UPDATE`,
+      [receivingId, organizationId],
+    );
+    if (!carton.rows[0]) return { ok: false, error: 'Receiving carton not found', status: 404 };
+    const link = await client.query<{ is_primary: boolean; fresh: boolean }>(
+      `SELECT is_primary,
+              (source = 'receiving.attach-box' AND linked_at > NOW() - INTERVAL '${DETACH_WINDOW}') AS fresh
+         FROM shipment_links
+        WHERE organization_id = $1 AND owner_type = 'RECEIVING' AND owner_id = $2 AND shipment_id = $3 LIMIT 1`,
+      [organizationId, receivingId, shipmentId],
+    );
+    if (!link.rows[0]) return { ok: false, error: 'That tracking number is not on this purchase', status: 404 };
+    if (!link.rows[0].fresh) {
+      return { ok: false, error: 'Only a tracking number added in the last 15 minutes can be undone', status: 409 };
+    }
+    const scanned = await client.query(
+      `SELECT 1
+         FROM shipping_tracking_numbers stn
+         JOIN receiving_scans rs ON rs.organization_id = $1 AND rs.receiving_id = $2
+         JOIN receiving_carton r2 ON r2.id = rs.receiving_id
+        WHERE stn.id = $3 AND ${SHIPMENT_SCAN_MATCH_CONDITION}
+        LIMIT 1`,
+      [organizationId, receivingId, shipmentId],
+    );
+    if (scanned.rows.length > 0) {
+      return { ok: false, error: 'That box was already scanned here — it can no longer be undone', status: 409 };
+    }
+
+    await unlinkShipment(orgId, 'RECEIVING', receivingId, shipmentId, client);
+    const next = await client.query<{ shipment_id: number }>(
+      `SELECT shipment_id FROM shipment_links
+        WHERE organization_id = $1 AND owner_type = 'RECEIVING' AND owner_id = $2
+        ORDER BY is_primary DESC, box_seq ASC, shipment_id ASC
+        LIMIT 1`,
+      [organizationId, receivingId],
+    );
+    // pg hands bigint ids over as strings — compare as numbers.
+    const heir = next.rows[0]?.shipment_id != null ? Number(next.rows[0].shipment_id) : null;
+    if (link.rows[0].is_primary && heir != null) {
+      await setPrimaryShipmentLink(orgId, 'RECEIVING', receivingId, heir, client);
+      // The new primary is the carton's anchor box now.
+      await client.query(
+        `UPDATE shipment_links SET role = 'PO_ANCHOR', updated_at = NOW()
+          WHERE organization_id = $1 AND owner_type = 'RECEIVING' AND owner_id = $2 AND shipment_id = $3`,
+        [organizationId, receivingId, heir],
+      );
+    }
+    if (carton.rows[0].shipment_id != null && Number(carton.rows[0].shipment_id) === shipmentId) {
+      await client.query(
+        `UPDATE receiving_carton SET shipment_id = $2, updated_at = NOW() WHERE id = $1 AND organization_id = $3`,
+        [receivingId, heir, organizationId],
+      );
+    }
+    const boxes = await listBoxesForReceiving(receivingId, client);
+    return { ok: true, boxCount: boxes.length, boxes };
+  });
+}
+
+/** A marketplace / manual purchase (`inbound_order`, `receiving_type = 'PO'`) by its order number. */
+interface InboundPurchaseHit {
+  inboundOrderId: number;
+  sourceType: 'ebay' | 'amazon' | 'manual';
+  sourceOrderId: string;
+}
+
+/**
+ * The ONE open marketplace / manual purchase whose order number matches
+ * `orderNumber` (punctuation and case ignored — the number Purchasing lists),
+ * or null when none or several (two platforms sharing a number) match.
+ */
+async function findInboundPurchase(db: SqlClient, organizationId: string, orderNumber: string): Promise<InboundPurchaseHit | null> {
+  const { rows } = await db.query<{ id: number; source_type: InboundPurchaseHit['sourceType']; external_order_id: string }>(
+    `SELECT id, source_type, btrim(external_order_id) AS external_order_id
+       FROM inbound_order
+      WHERE organization_id = $1::uuid
+        AND source_type IN ('ebay', 'amazon', 'manual')
+        AND receiving_type = 'PO'
+        AND status <> 'cancelled'
+        AND upper(regexp_replace(external_order_id, '[^A-Za-z0-9]', '', 'g')) = upper(regexp_replace($2, '[^A-Za-z0-9]', '', 'g'))
+      LIMIT 2`,
+    [organizationId, orderNumber],
+  );
+  if (rows.length !== 1) return null;
+  return { inboundOrderId: Number(rows[0].id), sourceType: rows[0].source_type, sourceOrderId: rows[0].external_order_id };
+}
+
+/**
+ * Read-only: the carton of a marketplace / manual purchase — its lines'
+ * carton, else the pre-arrival carton by order number — or null.
+ */
+export async function findInboundPurchaseCarton(organizationId: string, orderNumber: string): Promise<number | null> {
+  return withTenantTransaction<number | null>(organizationId, async (client) => {
+    const db = client as unknown as SqlClient;
+    const hit = await findInboundPurchase(db, organizationId, orderNumber);
+    if (!hit) return null;
+    const { rows } = await db.query<{ id: number }>(
+      `SELECT receiving_id AS id FROM receiving_line
+        WHERE organization_id = $1::uuid AND inbound_order_id = $2 AND receiving_id IS NOT NULL
+       UNION ALL
+       SELECT id FROM receiving_carton
+        WHERE organization_id = $1::uuid AND source = $3 AND source_order_id = $4
+       LIMIT 1`,
+      [organizationId, hit.inboundOrderId, hit.sourceType, hit.sourceOrderId],
+    );
+    return rows[0] ? Number(rows[0].id) : null;
+  });
+}
+
+/**
+ * Get-or-create the carton of a marketplace / manual purchase by order number
+ * (`ensureReceivingForInboundOrder`), its unlinked lines joined to it — the
+ * same join the desk's identity edit makes. Creates no scan, receipt or unbox.
+ */
+export async function ensureReceivingForInboundPurchase(
+  organizationId: string,
+  orderNumber: string,
+): Promise<(InboundPurchaseHit & { receivingId: number }) | null> {
+  return withTenantTransaction(organizationId, async (client) => {
+    const db = client as unknown as SqlClient;
+    const hit = await findInboundPurchase(db, organizationId, orderNumber);
+    if (!hit) return null;
+    const receivingId = await ensureReceivingForInboundOrder({ ...hit, organizationId, db });
+    await db.query(
+      `UPDATE receiving_line SET receiving_id = $1, updated_at = NOW()
+        WHERE organization_id = $2::uuid AND inbound_order_id = $3 AND receiving_id IS NULL`,
+      [receivingId, organizationId, hit.inboundOrderId],
+    );
+    return { ...hit, receivingId };
   });
 }
 

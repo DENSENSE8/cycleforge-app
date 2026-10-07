@@ -31,12 +31,33 @@ export const PURCHASES_SOURCE_PARAM = 'source';
 export const PURCHASES_VENDOR_PARAM = 'vendor';
 export const PURCHASES_UNBOXED_BY_PARAM = 'unboxedBy';
 
-/** The sidebar's Sort row — the house column-sort params, mapped to the API's `sort` / `dir`. */
+/** The sidebar's Sort row and the sheet's header clicks — the house column-sort params, mapped to the API's `sort` / `dir`. */
 export const PURCHASES_SORT_PARAM = GRID_COLUMN_SORT_PARAM;
 export const PURCHASES_DIR_PARAM = GRID_COLUMN_DIR_PARAM;
-export const PURCHASES_SORTS = ['ordered', 'delivered', 'unboxed', 'waiting', 'po', 'vendor', 'product', 'status', 'units'] as const;
+export const PURCHASES_SORTS = ['ordered', 'imported', 'delivered', 'unboxed', 'waiting', 'po', 'vendor', 'product', 'status', 'units'] as const;
 export type PurchasesSort = (typeof PURCHASES_SORTS)[number];
 export const PURCHASES_DEFAULT_SORT: PurchasesSort = 'ordered';
+/** Each sort's direction when `dir` is absent — the server's order and the header's arrow read the same one. */
+export const PURCHASES_SORT_DIR: Readonly<Record<PurchasesSort, 'asc' | 'desc'>> = {
+  ordered: 'desc',
+  imported: 'desc',
+  delivered: 'desc',
+  unboxed: 'desc',
+  waiting: 'asc',
+  po: 'asc',
+  vendor: 'asc',
+  product: 'asc',
+  status: 'asc',
+  units: 'desc',
+};
+
+/** The page URL's sort → the one the query runs (an unknown value is the default) and its direction. */
+export function readPurchasesSort(url: Pick<URLSearchParams, 'get'>): { sort: PurchasesSort; dir: 'asc' | 'desc' } {
+  const raw = url.get(PURCHASES_SORT_PARAM)?.trim() ?? '';
+  const sort = (PURCHASES_SORTS as readonly string[]).includes(raw) ? (raw as PurchasesSort) : PURCHASES_DEFAULT_SORT;
+  const dir = url.get(PURCHASES_DIR_PARAM)?.trim();
+  return { sort, dir: dir === 'asc' || dir === 'desc' ? dir : PURCHASES_SORT_DIR[sort] };
+}
 
 /** The status chips (a bucket id) — the Incoming pasted list's own param. */
 export const PURCHASES_STATUS_PARAM = RECON_PARAM;
@@ -61,13 +82,15 @@ export function purchasesApiParams(url: Pick<URLSearchParams, 'get'>, find: stri
     [PURCHASES_SOURCE_PARAM, 'source'],
     [PURCHASES_VENDOR_PARAM, 'vendor'],
     [PURCHASES_UNBOXED_BY_PARAM, 'unboxedBy'],
-    [PURCHASES_SORT_PARAM, 'sort'],
-    [PURCHASES_DIR_PARAM, 'dir'],
   ];
   for (const [from, to] of copy) {
     const value = url.get(from)?.trim();
     if (value) api.set(to, value);
   }
+  // The sort the header paints — a stale / foreign `colsort` reads as the default, never a 400.
+  const { sort, dir } = readPurchasesSort(url);
+  api.set('sort', sort);
+  api.set('dir', dir);
   if (find.trim()) api.set('find', find.trim());
   return api;
 }

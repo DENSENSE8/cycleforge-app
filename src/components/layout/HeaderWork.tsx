@@ -32,6 +32,7 @@ import { inboxContactsLine } from '@/lib/notifications/inbox-contacts';
 import { scrubRelayAddresses } from '@/lib/support/contact-face';
 import type { InboxItemDto } from '@/lib/notifications/types';
 import { pageNextActions } from '@/lib/nav/next-actions';
+import { useStationHeadlineShown } from '@/lib/station/next-action/headline-presence';
 import { unboxFeedbackFace, unboxFeedbackLine } from '@/lib/receiving/unbox-scan-feedback';
 import { retireUnboxScanLine, useUnboxScanFeedback } from '@/lib/receiving/unbox-scan-feedback-store';
 import { cn } from '@/utils/_cn';
@@ -84,6 +85,8 @@ function OverflowLine({ text, className }: { text: string; className?: string })
 
 // ── Top-left: your next step ─────────────────────────────────────────────────
 
+const NO_HINTS: readonly string[] = [];
+
 export function HeaderNextAction() {
   const look = useHintActivity();
   const pageId = useNavContext(useCurrentNavPath()).data?.page.id;
@@ -109,7 +112,10 @@ export function HeaderNextAction() {
         .filter(Boolean)
         .join(' · ')}`
     : null;
-  const pageHints = pageNextActions(pageId);
+  // An open station record paints its own next step in the centre headline;
+  // the static page line stays for the idle station only.
+  const headlineShown = useStationHeadlineShown();
+  const pageHints = headlineShown ? NO_HINTS : pageNextActions(pageId);
   const feedbackLine = shown ? unboxFeedbackLine(shown) : null;
   const topLine = feedbackLine ?? alertLine;
   const hints = useMemo(() => (topLine ? [topLine] : pageHints), [topLine, pageHints]);

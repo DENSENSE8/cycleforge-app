@@ -50,26 +50,22 @@ export function packerRecordToRailVM(record: PackerRecord): RailRowVM {
   };
 }
 
-/** Client-side filter over the loaded recent-packs rows. */
-export function filterPackerRailRows(rows: PackerRecord[], query: string): PackerRecord[] {
-  const trimmed = query.trim();
-  if (!trimmed) return rows;
-  const tokens = trimmed.toLowerCase().split(/\s+/);
+/**
+ * One rail row per package: every scan writes its own PACK activity row, so a
+ * re-scan of a packed box yields a second row on the same `packer_log_id`.
+ * Keep only the newest scan, so a re-scan moves the package to the top instead
+ * of listing it twice. Rows without a packer log stay as they are.
+ */
+export function collapsePackerRailRows(rows: PackerRecord[]): PackerRecord[] {
+  const newestByLog = new Map<number, PackerRecord>();
+  for (const row of rows) {
+    const logId = Number(row.packer_log_id ?? 0);
+    if (!(logId > 0)) continue;
+    const kept = newestByLog.get(logId);
+    if (!kept || Date.parse(row.created_at) > Date.parse(kept.created_at)) newestByLog.set(logId, row);
+  }
   return rows.filter((row) => {
-    const haystack = [
-      row.product_title,
-      row.sku,
-      row.order_id,
-      row.shipping_tracking_number,
-      row.serial_number,
-      row.item_number,
-      row.account_source,
-      row.fnsku,
-      row.condition,
-      String(row.id),
-    ]
-      .map((part) => String(part || '').toLowerCase())
-      .join(' ');
-    return tokens.every((token) => haystack.includes(token));
+    const logId = Number(row.packer_log_id ?? 0);
+    return !(logId > 0) || newestByLog.get(logId) === row;
   });
 }

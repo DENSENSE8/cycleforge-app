@@ -12,6 +12,7 @@ const NO_COUNTS: StockScopeCountReader = async () => ({
   onHoldPairs: 0,
   lowStockPairs: 0,
   outPairs: 0,
+  neverCountedPairs: 0,
 });
 
 test('stock room and aisle facets cross-filter with comma-safe room ids', async () => {
@@ -70,7 +71,7 @@ test('stock health counts come from the list scope counts on the chip ids', asyn
     async () => [],
     async (args) => {
       seen.push(args);
-      return { inStockPairs: 9, inStockProducts: 4, inStockUnits: 30, onHoldPairs: 1, lowStockPairs: 3, outPairs: 2 };
+      return { inStockPairs: 9, inStockProducts: 4, inStockUnits: 30, onHoldPairs: 1, lowStockPairs: 3, outPairs: 2, neverCountedPairs: 6 };
     },
   );
 
@@ -90,6 +91,9 @@ test('stock health counts come from the list scope counts on the chip ids', asyn
     { value: 'out-of-stock', label: 'Out of stock', count: 2 },
     { value: 'on-hold', label: 'On hold', count: 1 },
   ]);
+  const count = result.groups.find((group) => group.id === 'count');
+  assert.equal(count?.param, 'counted');
+  assert.deepEqual(count?.options, [{ value: 'never', label: 'Never counted', count: 6 }]);
 });
 
 test('inventory stock facets require sku_stock.view', async () => {
