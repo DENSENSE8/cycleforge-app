@@ -571,26 +571,58 @@ function dressedCardsSql(src: string): string {
 }
 
 /**
+ * Shipments whose tracking matches the Find keys (`$12`–`$15`), whatever day
+ * they left — the integrity fallback: a tracking search always resolves its
+ * box, even after the board's today-window stopped carrying it.
+ */
+function trackedShipmentsCte(name: string): string {
+  return `${name} AS MATERIALIZED (
+    SELECT sal.shipment_id::bigint AS shipment_id,
+           NULL::bigint AS scan_id,
+           NULL::text AS scan_ref,
+           MIN(sal.created_at) AS scanned_out_at,
+           (array_agg(sal.staff_id ORDER BY sal.created_at, sal.id) FILTER (WHERE sal.staff_id > 0))[1]::int AS scanned_out_by
+      FROM station_activity_logs sal
+      JOIN shipping_tracking_numbers stn
+        ON stn.id = sal.shipment_id AND stn.organization_id = ${ORG}
+     WHERE sal.organization_id = ${ORG}
+       AND sal.activity_type = 'SHIP_CONFIRM'
+       AND sal.shipment_id IS NOT NULL
+       AND ${sqlTrackingNumberMatches({ stnAlias: 'stn', likeParam: '$12', canonicalParam: '$13', key18Param: '$14', last8Param: '$15' })}
+     GROUP BY 1
+  )`;
+}
+
+/**
  * Find: the board's members whose order number, SKU or tracking (the box's
  * own shipment) matches — matched over the ~board-sized member set only, never
- * the org's whole order history. Binds `$11` text, `$12` ILIKE pattern, `$13`
- * canonical tracking, `$14` key-18, `$15` digits last-8 ('' = off).
+ * the org's whole order history; plus one integrity fallback: a tracking that
+ * names a box an earlier day carried (it already left) resolves to that box's
+ * member row, so nothing a scan touched is ever unfindable. Binds `$11` text,
+ * `$12` ILIKE pattern, `$13` canonical tracking, `$14` key-18, `$15` digits
+ * last-8 ('' = off).
  */
 const FIND_SQL = `${MEMBERS_SQL},
+  ${trackedShipmentsCte('so_tracked')},
+  m_extra AS (
+    SELECT x.* FROM (${scannedOutMembersSql('so_tracked')}) x
+     WHERE NOT EXISTS (SELECT 1 FROM m_all m2 WHERE m2.order_row_id = x.order_row_id)
+  ),
+  m_find AS (SELECT * FROM m_all UNION ALL SELECT * FROM m_extra),
   hit AS (
-    SELECT m_all.order_row_id
-      FROM m_all
-      LEFT JOIN orders o ON m_all.link = 'order' AND o.id = m_all.order_row_id AND o.organization_id = ${ORG}
-      LEFT JOIN shipping_tracking_numbers stn ON stn.id = COALESCE(m_all.shipment_id, o.shipment_id)
+    SELECT m_find.order_row_id
+      FROM m_find
+      LEFT JOIN orders o ON m_find.link = 'order' AND o.id = m_find.order_row_id AND o.organization_id = ${ORG}
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = COALESCE(m_find.shipment_id, o.shipment_id)
      WHERE ${sqlIdentifierEqualsQuery('o.order_id', '$11')}
         OR UPPER(BTRIM(COALESCE(o.sku, ''))) = UPPER(BTRIM($11))
         OR (stn.id IS NOT NULL AND ${sqlTrackingNumberMatches({ stnAlias: 'stn', likeParam: '$12', canonicalParam: '$13', key18Param: '$14', last8Param: '$15' })})
-        OR UPPER(m_all.scan_ref) LIKE '%' || UPPER(BTRIM($11)) || '%'
+        OR UPPER(m_find.scan_ref) LIKE '%' || UPPER(BTRIM($11)) || '%'
   ),
   pg AS (
-    SELECT m_all.*, row_number() OVER (ORDER BY ${laneOrderSql('m_all')}) AS ord
-      FROM m_all
-     WHERE m_all.order_row_id IN (SELECT order_row_id FROM hit)
+    SELECT m_find.*, row_number() OVER (ORDER BY ${laneOrderSql('m_find')}) AS ord
+      FROM m_find
+     WHERE m_find.order_row_id IN (SELECT order_row_id FROM hit)
   )
   SELECT * FROM (${dressedCardsSql('pg')}) cards WHERE cards.ord <= ${LIMIT}::int ORDER BY cards.ord`;
 
