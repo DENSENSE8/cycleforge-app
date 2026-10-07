@@ -10,25 +10,23 @@
  * - INTERNAL — what the warehouse has done.
  *   Outbound: To pick → Picked → Packed → Scanned out (Allocate's words),
  *   plus On hold and Buyer cancel. Inbound: Awaiting tracking → Not received
- *   → Received → Unboxed.
+ *   → Unboxed → Received (operator ruling 2026-10-06).
  * - EXTERNAL — what the carrier says. ONE set for both directions: Label
  *   created → On the way → In transit → Out for delivery → Delivered, plus
  *   Exception and Returned.
  *
- * Inbound, confirmed against `src/lib/receiving/reconcile.ts` (the paste
- * verdict) and `src/lib/receiving/workflow-stages.ts`:
+ * Inbound, aligned with the receiving workflow's coarse line status
+ * (`deriveReceivingLineStatus` in `src/lib/receiving/workflow-stages.ts`:
+ * INCOMING → SCANNED → UNBOXED → RECEIVED):
  * - Awaiting tracking = an order with no tracking yet (reason `open_po`
  *   "Ordered · no tracking"; Incoming `?state=AWAITING_TRACKING`).
- * - Not received = owed: in transit, warehouse-owed, or carrier-delivered and
- *   untouched here (reasons `in_transit`, `warehouse_owed`,
- *   `delivered_not_scanned`). Reconcile's third status "delivered" is NOT an
+ * - Not received = not yet opened here: owed, in transit, carrier-delivered,
+ *   or sitting scanned at the dock (reasons `in_transit`, `warehouse_owed`,
+ *   `delivered_not_scanned`, `scanned`). Reconcile's "delivered" is NOT an
  *   internal status: it is Not received + external Delivered.
- * - Received = the dock took custody (reasons `scanned`, `received_here`).
- * - Unboxed = the carton was opened (reason `unboxed`).
- * Discrepancy for the operator: the receiving WORKFLOW's coarse line status
- * (`deriveReceivingLineStatus`) runs INCOMING → SCANNED → UNBOXED → RECEIVED,
- * i.e. its "Received" means past unboxing (in test / done), while the paste
- * verdict and this vocabulary use Received = dock custody, BEFORE Unboxed.
+ * - Unboxed = the carton was opened (reason `unboxed`; coarse UNBOXED).
+ * - Received = units counted into stock — past unboxing (reason
+ *   `received_here`; coarse RECEIVED: awaiting test → done).
  *
  * ACCEPTED (the carrier's first acceptance / origin scan / pickup) is
  * **On the way**: the carrier has it and it is leaving us. **In transit** is
@@ -178,23 +176,39 @@ export function resolveOutboundInternalStatus(signals: OutboundInternalSignals):
 
 // ─── Inbound internal ────────────────────────────────────────────────────────
 
-/** The inbound pipeline, in walk order. */
-export const INBOUND_INTERNAL_STATUSES = ['awaiting_tracking', 'not_received', 'received', 'unboxed'] as const;
+/** The inbound pipeline, in walk order — Received comes AFTER Unboxed. */
+export const INBOUND_INTERNAL_STATUSES = ['awaiting_tracking', 'not_received', 'unboxed', 'received'] as const;
 export type InboundInternalStatus = (typeof INBOUND_INTERNAL_STATUSES)[number];
 
 /**
  * Precedence: the furthest physical fact wins (reconcile's physical-first
- * rule — a dock scan or an unbox can only advance a record). Tones beyond
- * Received are a proposal pending the operator (prompt open question 2):
- * Awaiting tracking gray (nothing to follow yet), Not received yellow (owed,
- * like In transit), Received green, Unboxed teal (opened — past Received).
+ * rule — an unbox or a receive can only advance a record). Tones (operator
+ * 2026-10-06): Awaiting tracking gray, Not received yellow, Unboxed teal,
+ * Received green.
  */
 export const INBOUND_INTERNAL_STATUS: Readonly<Record<InboundInternalStatus, RecordStatusSpec>> = {
-  unboxed: { label: 'Unboxed', tone: 'teal', precedence: 0 },
-  received: { label: 'Received', tone: 'green', precedence: 1 },
+  received: { label: 'Received', tone: 'green', precedence: 0 },
+  unboxed: { label: 'Unboxed', tone: 'teal', precedence: 1 },
   not_received: { label: 'Not received', tone: 'yellow', precedence: 2 },
   awaiting_tracking: { label: 'Awaiting tracking', tone: 'gray', precedence: 3 },
 };
+
+export interface InboundInternalSignals {
+  /** The line (or its carton) carries a tracking number. */
+  hasTracking: boolean;
+  /** Carton opened: `unboxed_at`, or coarse UNBOXED. */
+  unboxed: boolean;
+  /** Units counted into stock: `quantity_received > 0`, `received_done_at`, or coarse RECEIVED. */
+  received: boolean;
+}
+
+/** One inbound line's internal status from its signals, by {@link INBOUND_INTERNAL_STATUS} precedence. */
+export function resolveInboundInternalStatus(signals: InboundInternalSignals): InboundInternalStatus {
+  const held: InboundInternalStatus[] = [signals.hasTracking ? 'not_received' : 'awaiting_tracking'];
+  if (signals.unboxed) held.push('unboxed');
+  if (signals.received) held.push('received');
+  return leadStatus(INBOUND_INTERNAL_STATUS, held)!;
+}
 
 // ─── External (carrier) ──────────────────────────────────────────────────────
 

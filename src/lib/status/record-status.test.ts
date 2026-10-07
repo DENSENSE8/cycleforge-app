@@ -14,6 +14,7 @@ import {
   carrierPhaseOfCategory,
   carrierStatusLabel,
   leadStatus,
+  resolveInboundInternalStatus,
   resolveOutboundInternalStatus,
   type RecordStatusSpec,
 } from './record-status';
@@ -73,7 +74,25 @@ test('outbound internal precedence: buyer cancel › scanned out › on hold ›
   assert.equal(resolveOutboundInternalStatus({ ...none, scannedOut: true, buyerCancelled: true }), 'buyer_cancel');
 });
 
-test('inbound internal precedence: the furthest physical fact wins', () => {
-  assert.equal(leadStatus(INBOUND_INTERNAL_STATUS, ['awaiting_tracking', 'not_received', 'received', 'unboxed']), 'unboxed');
-  assert.equal(leadStatus(INBOUND_INTERNAL_STATUS, ['not_received', 'received']), 'received');
+test('inbound internal walk: Awaiting tracking → Not received → Unboxed → Received', () => {
+  assert.deepEqual(
+    [...INBOUND_INTERNAL_STATUSES].sort((a, b) => INBOUND_INTERNAL_STATUS[b].precedence - INBOUND_INTERNAL_STATUS[a].precedence),
+    ['awaiting_tracking', 'not_received', 'unboxed', 'received'],
+  );
+  const none = { hasTracking: false, unboxed: false, received: false };
+  assert.equal(resolveInboundInternalStatus(none), 'awaiting_tracking');
+  assert.equal(resolveInboundInternalStatus({ ...none, hasTracking: true }), 'not_received');
+  assert.equal(resolveInboundInternalStatus({ ...none, hasTracking: true, unboxed: true }), 'unboxed');
+  // Received is past unboxing; an opened carton whose units were counted in reads Received.
+  assert.equal(resolveInboundInternalStatus({ ...none, hasTracking: true, unboxed: true, received: true }), 'received');
+  // A physical fact advances a line that never got tracking.
+  assert.equal(resolveInboundInternalStatus({ ...none, unboxed: true }), 'unboxed');
+});
+
+test('approved status colours (operator 2026-10-06)', () => {
+  assert.deepEqual(
+    Object.fromEntries(INBOUND_INTERNAL_STATUSES.map((key) => [key, INBOUND_INTERNAL_STATUS[key].tone])),
+    { awaiting_tracking: 'gray', not_received: 'yellow', unboxed: 'teal', received: 'green' },
+  );
+  assert.equal(CARRIER_STATUS.out_for_delivery.tone, 'teal');
 });
