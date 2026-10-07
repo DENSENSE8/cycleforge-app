@@ -83,7 +83,7 @@ test('classifyRefs: inbound verdict wins when inbound owns the number; outbound 
       entry('PO-2', { detail: 'PO issued', poNumber: 'PO-2' }),
       entry('21-1', { exception: { reason: 'No match anywhere', inView: false } }),
       // A local tracking row alone (no PO) does not make an outbound tracking "not received".
-      entry('9400', { detail: 'In transit' }),
+      entry('9400', { reasonCode: 'in_transit', detail: 'In transit' }),
       entry('SHIP-9', { exception: { reason: 'No match anywhere', inView: false } }),
       entry('NOPE-1', { exception: { reason: 'No match anywhere', inView: false } }),
     ],

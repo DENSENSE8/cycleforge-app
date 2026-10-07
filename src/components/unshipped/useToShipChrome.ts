@@ -19,6 +19,7 @@ import { parseStaffParam } from '@/lib/station/table-url-params';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { cagedOrdersCountQuery } from '@/lib/queries/caged-orders-queries';
 import { fulfillmentLaneTotals } from '@/lib/unshipped-state';
+import { OUTBOUND_INTERNAL_STATUS } from '@/lib/status/record-status';
 import type { DataTableFilterOption } from '@/components/tables/DataTable';
 
 /** Facet order in the filter menu. */
@@ -30,10 +31,11 @@ const TRIAGE_FACETS = [
   'caged',
 ] as const satisfies readonly ToShipTriageFacet[];
 
+/** `?stage=` ids (`DESK_STAGES`); the words are the outbound internal status (`DESK_STAGE_STATUS`). */
 const STAGE_OPTIONS = [
-  { id: 'pending', label: 'Pending' },
-  { id: 'picked', label: 'Picked' },
-  { id: 'packed', label: 'Packed · waiting' },
+  { id: 'pending', label: OUTBOUND_INTERNAL_STATUS.to_pick.label },
+  { id: 'picked', label: OUTBOUND_INTERNAL_STATUS.picked.label },
+  { id: 'packed', label: OUTBOUND_INTERNAL_STATUS.packed.label },
 ] as const;
 const AGING_OPTIONS = [
   { id: 'overdue', label: 'Overdue' },

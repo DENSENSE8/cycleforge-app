@@ -27,6 +27,7 @@ import type { NavFacetsResponse } from '@/lib/nav/context/schema';
 import { readDeskRefinements, type DeskRefinements } from '@/lib/orders/desk-view-filters';
 import {
   DESK_AGING_BUCKETS,
+  DESK_STAGE_STATUS,
   DESK_STAGES,
   sqlDeskAgingBucket,
   sqlDeskQueueScope,
@@ -38,6 +39,7 @@ import {
   type DeskQueueView,
   type DeskStage,
 } from '@/lib/orders/desk-view-sql';
+import { OUTBOUND_INTERNAL_STATUS } from '@/lib/status/record-status';
 
 type ParamReader = Pick<URLSearchParams, 'get'>;
 
@@ -55,7 +57,6 @@ export interface QueueFacetCombo {
   n: number;
 }
 
-const STAGE_LABEL: Record<DeskStage, string> = { pending: 'Not picked', picked: 'Picked', packed: 'Packed · waiting' };
 const AGING_LABEL: Record<DeskAgingBucket, string> = {
   overdue: 'Overdue',
   today: 'Due today',
@@ -75,7 +76,7 @@ function queueDimensions(context: NavFacetContext): FacetDimension<QueueFacetCom
   return [
     {
       groupId: 'stage', label: g('stage').label, param: g('stage').param,
-      options: DESK_STAGES.map((value) => ({ value, label: STAGE_LABEL[value] })),
+      options: DESK_STAGES.map((value) => ({ value, label: OUTBOUND_INTERNAL_STATUS[DESK_STAGE_STATUS[value]].label })),
       matches: (row, value) => row.stage === value,
     },
     {

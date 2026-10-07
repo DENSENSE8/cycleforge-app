@@ -145,7 +145,7 @@ const NO_INBOUND_ANSWER: Record<string, true> = { 'No match anywhere': true, 'Lo
 function inboundUnowned(entry: ReconEntry): boolean {
   if (entry.status === 'received') return false;
   if (entry.exception && Object.hasOwn(NO_INBOUND_ANSWER, entry.exception.reason)) return true;
-  return entry.poNumber === null && (entry.detail === 'In transit' || entry.detail === 'Delivered · not scanned');
+  return entry.poNumber === null && (entry.reasonCode === 'in_transit' || entry.reasonCode === 'delivered_not_scanned');
 }
 
 /** The order number an identify order candidate carries ("21-15107-47310 · eBay"). */

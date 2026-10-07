@@ -58,6 +58,15 @@ exception an exit criterion so it can be revisited.
 | `deletedPaths` | Files that must stay absent after retirement. |
 | `forbiddenSource` | Exact source strings that must never return under `src/`. |
 
+## Status vocabulary
+
+A record's status words, tones and precedence live in ONE module,
+`src/lib/status/record-status.ts` (internal outbound, internal inbound, and the
+shared external carrier set). Before painting, filtering or sorting a status,
+read it from there. The ladders not yet folded in are queued under category
+`status-vocabulary`: `status-outbound-ladders`, `status-desk-stage-pending-id`,
+`status-inbound-delivery-vocabulary`, `status-tone-maps`.
+
 ## Review question
 
 Every new table or destructive action should be answerable in one sentence:

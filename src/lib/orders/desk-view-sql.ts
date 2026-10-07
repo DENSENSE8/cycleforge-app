@@ -8,6 +8,7 @@ import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { BUYER_CANCELLED_STATUS } from '@/lib/orders/buyer-cancelled';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
+import type { OutboundInternalStatus } from '@/lib/status/record-status';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 
 const SQL_ALIAS = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -155,8 +156,16 @@ export function sqlDeskQueueScope(view: DeskQueueView, orderAlias = 'o'): string
   return sqlOrderInWarehouseToShip(o);
 }
 
+/** `?stage=` wire ids (persisted in monitor configs and queue counts — `pending` is To pick). */
 export const DESK_STAGES = ['pending', 'picked', 'packed'] as const;
 export type DeskStage = (typeof DESK_STAGES)[number];
+
+/** Each desk stage's outbound internal status — its word and tone (`src/lib/status/record-status.ts`). */
+export const DESK_STAGE_STATUS: Readonly<Record<DeskStage, OutboundInternalStatus>> = {
+  pending: 'to_pick',
+  picked: 'picked',
+  packed: 'packed',
+};
 
 /**
  * `?stage=` on the To-ship desk, order-grain (CF-03 / CF-04): picked = pick

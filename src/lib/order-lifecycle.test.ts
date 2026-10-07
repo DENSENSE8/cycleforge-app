@@ -8,7 +8,6 @@ import {
   hasLeftWarehouse,
   FULFILLMENT_BOARD_LANES,
   UNSHIPPED_LIFECYCLE_RULES,
-  SHIPMENT_STATUS_CATEGORIES,
   type OrderLifecycleSignals,
   type OutboundSignals,
   workStageLifecycleState,
@@ -139,13 +138,6 @@ test('carrierHasCustody + hasLeftWarehouse match the legacy predicates', () => {
 });
 
 // ─── SQL vocabulary: generated IN-clause fragments must equal the originals ───
-test('SHIPMENT_STATUS_CATEGORIES equals the original orders-route tuple', () => {
-  assert.deepEqual(
-    [...SHIPMENT_STATUS_CATEGORIES],
-    ['LABEL_CREATED', 'ACCEPTED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'EXCEPTION', 'RETURNED', 'UNKNOWN'],
-  );
-});
-
 test('sqlInList generated fragments are byte-identical to the replaced SQL literals', () => {
   // orders/route.ts  →  activity_type IN (<this>)
   assert.equal(sqlInList(PACK_ACTIVITY_TYPES), `'PACK_COMPLETED', 'PACK_SCAN'`);

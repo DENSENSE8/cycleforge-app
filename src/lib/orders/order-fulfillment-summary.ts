@@ -1,8 +1,8 @@
 import { nonSentinelTimestamp } from '@/components/dashboard/orders-queue/helpers';
 import type { StateName } from '@/design-system/tokens/lifecycle';
-import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
+import { CARRIER_STATUS, OUTBOUND_INTERNAL_STATUS, carrierStatusLabel } from '@/lib/status/record-status';
 import type { ShippedOrder } from '@/types/orders';
-import { BUYER_CANCEL_LABEL, isBuyerCancelledStatus } from './buyer-cancelled';
+import { isBuyerCancelledStatus } from './buyer-cancelled';
 import { orderFulfillmentBadge, type OrderFulfillmentLine } from './order-fulfillment-badge';
 
 export type FulfillmentSummaryLine = OrderFulfillmentLine &
@@ -59,24 +59,20 @@ function latestCarrierLine(lines: readonly FulfillmentSummaryLine[]): Fulfillmen
 /** One plain-language answer for “where is this order now?” */
 export function fulfillmentCurrentStatus(lines: readonly FulfillmentSummaryLine[]): FulfillmentCurrentStatus {
   if (lines.some((line) => isBuyerCancelledStatus(line.status))) {
-    return { label: BUYER_CANCEL_LABEL };
+    return { label: OUTBOUND_INTERNAL_STATUS.buyer_cancel.label };
   }
 
   const delivered = lines.find((line) => line.is_delivered === true);
   if (delivered) {
     return {
-      label: 'Delivered',
+      label: CARRIER_STATUS.delivered.label,
       detail: delivered.latest_status_description?.trim() || undefined,
     };
   }
 
   const carrierLine = latestCarrierLine(lines);
   if (carrierLine) {
-    const category = carrierLine.latest_status_category?.trim() || null;
-    const label =
-      carrierLine.latest_status_label?.trim() ||
-      sentenceCaseLabel(category) ||
-      'With carrier';
+    const label = carrierLine.latest_status_label?.trim() || carrierStatusLabel(carrierLine.latest_status_category) || 'With carrier';
     return {
       label,
       detail: carrierLine.latest_status_description?.trim() || undefined,

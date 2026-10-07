@@ -8,7 +8,7 @@
 
 import { createCacheLookupKey } from '@/lib/cache/upstash-cache';
 import { parsePackedDateKey } from '@/lib/packed/packed-filters';
-import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
+import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/shipping/types';
 import { DESK_PAIR_PARAM } from '@/lib/outbound/desk-views';
 import {
   parseDeskPairParam,

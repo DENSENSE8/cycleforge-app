@@ -20,6 +20,7 @@ import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 import { CHECK_ZOHO_RECEIVED_MAX_INPUTS, parseTrackingKeys } from '@/lib/receiving/tracking-paste';
 import type { CheckZohoReceivedRow } from '@/lib/receiving/check-zoho-received';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { CARRIER_STATUS, INBOUND_INTERNAL_STATUS } from '@/lib/status/record-status';
 
 /** The pasted list. One name, imported — never re-typed at a call site. */
 export const REF_IN_PARAM = 'ref_in';
@@ -48,8 +49,8 @@ export const RECON_STATUSES = ['received', 'not_received'] as const;
 export type ReconStatus = (typeof RECON_STATUSES)[number];
 
 export const RECON_STATUS_LABELS: Readonly<Record<ReconStatus, string>> = {
-  received: 'Received',
-  not_received: 'Not received',
+  received: INBOUND_INTERNAL_STATUS.received.label,
+  not_received: INBOUND_INTERNAL_STATUS.not_received.label,
 };
 
 export function parseReconParam(raw: string | null | undefined): ReconStatus | null {
@@ -77,11 +78,11 @@ export type ReconReason = (typeof RECON_REASONS)[number];
 
 /** Each reason's words — the entry's `detail` and the reason chip's label. */
 export const RECON_REASON_LABELS: Readonly<Record<ReconReason, string>> = {
-  unboxed: 'Unboxed',
+  unboxed: INBOUND_INTERNAL_STATUS.unboxed.label,
   scanned: 'Scanned at dock',
   received_here: 'Received here',
   delivered_not_scanned: 'Delivered · not scanned',
-  in_transit: 'In transit',
+  in_transit: CARRIER_STATUS.in_transit.label,
   open_po: 'Ordered · no tracking',
   warehouse_owed: 'Warehouse record · not received',
   no_match: 'No match anywhere',

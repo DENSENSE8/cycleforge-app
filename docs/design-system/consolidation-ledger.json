@@ -794,6 +794,77 @@
         "src/lib/picking/picked-by.ts"
       ],
       "exitCriteria": "No client expression coalesces picker_* with picked_*: \"Picked by\" (cell, sort, filter) reads only picked_by / picked_by_name / picked_source, the assigned picker is its own labelled value (`?pickerId=`), and the Allocate Picker column paints and sorts by the same one of the two (operator to choose which the column is)."
+    },
+    {
+      "id": "status-outbound-ladders",
+      "state": "queued",
+      "category": "status-vocabulary",
+      "problem": "Phase 1 slice 5 (2026-10-06): an order's outbound internal status is ONE vocabulary (src/lib/status/record-status.ts OUTBOUND_INTERNAL_STATUS: To pick › Picked › Packed › Scanned out, On hold, Buyer cancel, with precedence and tone). Three older outbound ladders still name the same states in their own words: the design-token LIFECYCLE (toPick / picked / packed / shipped 'Shipped' / onHold, tones as StateName — also reused for non-order things like QC labels), order-lifecycle.ts OrderLifecycleStage (AWAITING_LABEL / PENDING / PICKED / PACKED_STAGED / BLOCKED) + FulfillmentLane for the Dashboard Unshipped board, and order-fulfillment-badge.ts's Shopify words (Unfulfilled / In progress / Packed / Partially packed / On hold / Fulfilled). The package cannot import src/lib, and the two order ladders feed CSV export, monitors and the Unshipped board, so they were not rewritten in this slice.",
+      "currentPaths": [
+        "packages/design-tokens/src/lifecycle.ts",
+        "src/lib/order-lifecycle.ts",
+        "src/lib/orders/order-fulfillment-badge.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/status/record-status.ts"
+      ],
+      "exitCriteria": "No outbound order surface paints an order-status word that is not an OUTBOUND_INTERNAL_STATUS label: resolveOrderLifecycleStage / orderFulfillmentBadge either project onto OutboundInternalStatus (resolveOutboundInternalStatus) or are deleted with their callers migrated, and LIFECYCLE's toPick / picked / packed / onHold labels are no longer read for an order (grep `LIFECYCLE.toPick.label|LIFECYCLE.picked.label|LIFECYCLE.packed.label` under src/ returns 0 order call sites)."
+    },
+    {
+      "id": "status-desk-stage-pending-id",
+      "state": "queued",
+      "category": "status-vocabulary",
+      "problem": "Allocate's `?stage=` wire id for To pick is `pending` (DESK_STAGES), while the status module, the Live feed and the search chip key it `to_pick`. `pending` is persisted (monitor configs `coarseStage`, queue-count `byStage.pending`, dashboard search-state URLs), so desk-view-sql.ts carries DESK_STAGE_STATUS to translate it; the words already come from OUTBOUND_INTERNAL_STATUS.",
+      "currentPaths": [
+        "src/lib/orders/desk-view-sql.ts",
+        "src/lib/orders/queue-counts.ts",
+        "src/lib/orders/queue-counts-normalize.ts",
+        "src/lib/monitors/resolve-value.ts",
+        "src/utils/dashboard-search-state.ts",
+        "src/components/unshipped/useToShipChrome.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/status/record-status.ts"
+      ],
+      "exitCriteria": "`?stage=` values are OUTBOUND_PIPELINE keys (to_pick / picked / packed), queue counts expose byStage.to_pick, a data migration rewrites stored monitor `coarseStage: 'pending'`, and DESK_STAGE_STATUS is deleted (grep `DESK_STAGE_STATUS` under src/ returns 0)."
+    },
+    {
+      "id": "status-inbound-delivery-vocabulary",
+      "state": "queued",
+      "category": "status-vocabulary",
+      "problem": "Inbound status is two axes in src/lib/status/record-status.ts — INBOUND_INTERNAL_STATUS (Awaiting tracking › Not received › Received › Unboxed) and the shared CARRIER_STATUS — but inbound surfaces still paint four older collapsed vocabularies: the paste verdict's RECON_STATUSES received / not_received / delivered (a URL filter `?recon=` and Incoming chord keys; its words now come from the module), the Incoming delivery state (INBOUND_DELIVERY tokens + incoming-delivery-state-face.ts + incoming-record-status.ts + incoming-sections.ts mixing carrier facts with dock facts), the receiving workflow's coarse line status (INCOMING / SCANNED / UNBOXED / RECEIVED, where RECEIVED means past unboxing — the opposite order from the module, flagged to the operator), and the locate inbound buckets (INBOUND_BUCKET_IDS / INBOUND_PRECEDENCE).",
+      "currentPaths": [
+        "src/lib/receiving/reconcile.ts",
+        "packages/design-tokens/src/inbound-delivery.ts",
+        "src/lib/receiving/incoming-delivery-state-face.ts",
+        "src/lib/receiving/incoming-record-status.ts",
+        "src/lib/receiving/incoming-sections.ts",
+        "src/lib/receiving/workflow-stages.ts",
+        "src/lib/receiving/rail/status.ts",
+        "src/lib/nav/locate/inbound.ts",
+        "src/lib/nav/locate/bucket-precedence.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/status/record-status.ts"
+      ],
+      "exitCriteria": "Operator confirms the inbound internal list and tones (prompt open question 2); the reconcile verdict carries an InboundInternalStatus and a CarrierStatus instead of the three-way ReconStatus; the Records sheet's Internal / External facets replace `?recon=`; Incoming delivery-state faces and the rail's coarse status paint INBOUND_INTERNAL_STATUS / CARRIER_STATUS words and RECORD_STATUS_TONE_CLASSES, and RECON_STATUS_LABELS is deleted."
+    },
+    {
+      "id": "status-tone-maps",
+      "state": "queued",
+      "category": "status-vocabulary",
+      "problem": "A record status's hue is RECORD_STATUS_TONE_CLASSES[spec.tone] (src/lib/status/record-status.ts; the Live feed's STAGE_LOOK already reads it). Other surfaces still hand-pick a hue for the same statuses and disagree with the operator's spec: search-result-chips ORDER_STATUS_TONE paints To pick amber (spec gray) and Scanned out / Fulfilled emerald via LIFECYCLE; FULFILLED_BUCKETS paints In transit and Out for delivery `info` blue (spec In transit yellow) and Returned `warning`; shipment-record-face / mobile shipment-faces paint Scanned out purple `fulfillment`; nav-locate-tone maps locate bucket tones to CSS vars.",
+      "currentPaths": [
+        "src/components/search/search-result-chips.ts",
+        "src/lib/nav/locate/bucket-precedence.ts",
+        "src/components/outbound/fulfilled/shipment-record-face.ts",
+        "src/components/mobile/shipping/shipment/shipment-faces.ts",
+        "src/components/sidebar/contextual/nav-locate-tone.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/status/record-status.ts"
+      ],
+      "exitCriteria": "Every chip, pill, dot or column that paints a status declared in record-status.ts takes its classes from RECORD_STATUS_TONE_CLASSES[status.tone]: ORDER_STATUS_TONE has no entry for an OUTBOUND_INTERNAL_STATUS label, the carrier FULFILLED_BUCKETS columns paint their CARRIER_STATUS tone, and Scanned out reads green on every surface (checked at :3050)."
     }
   ]
 }

@@ -27,12 +27,11 @@ import type { FulfilledPackageRow } from '@/lib/nav/fulfilled/sql';
 import { pickupWindowElapsed } from '@/lib/shipping/carrier-pickup-window';
 import { isCarrierSyncEnabled } from '@/lib/shipping/enabled-carriers';
 import { isStalled } from '@/lib/shipping/shipment-status';
+import { carrierPhaseOfCategory } from '@/lib/status/record-status';
 
 /** Hours since the last successful carrier poll before a polled package reads "tracking stale". */
 export const POLL_STALE_HOURS = 24;
 const HOUR_MS = 3_600_000;
-
-const MOVED_CATEGORIES: Readonly<Record<string, true>> = { ACCEPTED: true, IN_TRANSIT: true, OUT_FOR_DELIVERY: true };
 
 type PackageFacts = Omit<FulfilledPackageRow, 'orderRowId' | 'orderKey'>;
 
@@ -85,10 +84,10 @@ export function firstCarrierScanAt(pkg: CarrierScanFacts): string | null {
   return null;
 }
 
-/** Did a carrier physically scan it? */
+/** Did a carrier physically scan it? (Its category's carrier status is On the way / In transit / Out for delivery.) */
 export function packageMoved(pkg: PackageFacts): boolean {
   if (firstCarrierScanAt(pkg)) return true;
-  return !syntheticStamps(pkg) && pkg.category !== null && MOVED_CATEGORIES[pkg.category] === true;
+  return !syntheticStamps(pkg) && carrierPhaseOfCategory(pkg.category) === 'moving';
 }
 
 /** The package's one bucket as of `now`. */

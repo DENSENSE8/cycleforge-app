@@ -1,20 +1,23 @@
 /**
  * Each stage's face on the Live feed: one glyph and one hue, carried by the
  * column's icon tile, the card's track, the phone tab and the timeline — the
- * colour alone says where a package is. The glyph is Allocate's own
- * (`LIFECYCLE` → `LIFECYCLE_GLYPH`), so a stage wears one icon on both desks.
+ * colour alone says where a package is. The hue is the stage's status tone
+ * (`OUTBOUND_INTERNAL_STATUS` → `RECORD_STATUS_TONE_CLASSES`,
+ * `src/lib/status/record-status.ts`); the glyph is Allocate's own (`LIFECYCLE`
+ * → `LIFECYCLE_GLYPH`), so a stage wears one icon on both desks.
  */
 
 import type { ComponentType } from 'react';
 import { LIFECYCLE_GLYPH } from '@/design-system/components/record-ledger/LifecycleCode';
-import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
+import { LIFECYCLE, type LifecycleState } from '@/design-system/tokens/lifecycle';
 import type { PackageStage } from '@/lib/live-feed/stages';
+import { OUTBOUND_INTERNAL_STATUS, RECORD_STATUS_TONE_CLASSES } from '@/lib/status/record-status';
 
 export interface StageLook {
   Icon: ComponentType<{ className?: string }>;
   /** Solid fill — a track segment, the active tab, a timeline node. */
   solid: string;
-  /** Soft tile behind the glyph. */
+  /** Soft tile behind the glyph (callers add `ring-1 ring-inset`). */
   tile: string;
   /** Ink on white. */
   ink: string;
@@ -22,33 +25,14 @@ export interface StageLook {
   outline: string;
 }
 
+function stageLook(stage: PackageStage, glyph: LifecycleState): StageLook {
+  const tone = RECORD_STATUS_TONE_CLASSES[OUTBOUND_INTERNAL_STATUS[stage].tone];
+  return { Icon: LIFECYCLE_GLYPH[LIFECYCLE[glyph].icon], solid: tone.dot, tile: `${tone.pill} ${tone.ring}`, ink: tone.ink, outline: tone.border };
+}
+
 export const STAGE_LOOK: Readonly<Record<PackageStage, StageLook>> = {
-  to_pick: {
-    Icon: LIFECYCLE_GLYPH[LIFECYCLE.toPick.icon],
-    solid: 'bg-amber-500',
-    tile: 'bg-amber-50 text-amber-600 ring-amber-200/70',
-    ink: 'text-amber-700',
-    outline: 'border-amber-300',
-  },
-  picked: {
-    Icon: LIFECYCLE_GLYPH[LIFECYCLE.picked.icon],
-    solid: 'bg-sky-500',
-    tile: 'bg-sky-50 text-sky-600 ring-sky-200/70',
-    ink: 'text-sky-700',
-    outline: 'border-sky-300',
-  },
-  packed: {
-    Icon: LIFECYCLE_GLYPH[LIFECYCLE.packed.icon],
-    solid: 'bg-violet-500',
-    tile: 'bg-violet-50 text-violet-600 ring-violet-200/70',
-    ink: 'text-violet-700',
-    outline: 'border-violet-300',
-  },
-  scanned_out: {
-    Icon: LIFECYCLE_GLYPH[LIFECYCLE.shipped.icon],
-    solid: 'bg-emerald-500',
-    tile: 'bg-emerald-50 text-emerald-600 ring-emerald-200/70',
-    ink: 'text-emerald-700',
-    outline: 'border-emerald-300',
-  },
+  to_pick: stageLook('to_pick', 'toPick'),
+  picked: stageLook('picked', 'picked'),
+  packed: stageLook('packed', 'packed'),
+  scanned_out: stageLook('scanned_out', 'shipped'),
 };

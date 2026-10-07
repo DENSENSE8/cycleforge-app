@@ -2,17 +2,20 @@
  * Command Search order chip — Allocate's own stage, never the channel status
  * ShipStation writes onto `orders.status`.
  *
- * Same partition as the live feed (`sqlOrderDeskStage` over the To-ship
- * scope): To pick · Picked · Packed, then Scanned out once the dock confirms.
- * A carrier that has actually moved the package is Fulfilled (that order has
- * left Allocate). Buyer cancel wins over every stage.
+ * The outbound internal status (`src/lib/status/record-status.ts`) over the
+ * live feed's partition (`sqlOrderDeskStage` over the To-ship scope): To pick
+ * · Picked · Packed, then Scanned out once the dock confirms. A carrier that
+ * has actually moved the package is Fulfilled (that order has left Allocate).
+ * Buyer cancel wins over every stage.
  */
 
-import { BUYER_CANCEL_LABEL, BUYER_CANCELLED_STATUS } from '@/lib/orders/buyer-cancelled';
+import { BUYER_CANCELLED_STATUS } from '@/lib/orders/buyer-cancelled';
 import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
-import { PACKAGE_STAGE_META } from '@/lib/live-feed/stages';
 import { getDeskView } from '@/lib/outbound/desk-views';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
+import { OUTBOUND_INTERNAL_STATUS, resolveOutboundInternalStatus } from '@/lib/status/record-status';
+
+const word = OUTBOUND_INTERNAL_STATUS;
 
 /** Fulfilled desk label — the archive, not ShipStation's "shipped". */
 export const ALLOCATE_SEARCH_FULFILLED = getDeskView('shipped').label;
@@ -29,15 +32,10 @@ export interface AllocateSearchSignals {
   picked: boolean;
 }
 
-/** The chip word for one order. First match wins. */
+/** The chip word for one order: Buyer cancel, then Fulfilled once it left Allocate, then the internal status. */
 export function allocateSearchStatus(signals: AllocateSearchSignals): string {
-  if (signals.buyerCancelled) return BUYER_CANCEL_LABEL;
-  if (signals.amazonFulfilled) return ALLOCATE_SEARCH_FULFILLED;
-  if (signals.carrierMoved) return ALLOCATE_SEARCH_FULFILLED;
-  if (signals.scannedOut) return PACKAGE_STAGE_META.scanned_out.label;
-  if (signals.packed) return PACKAGE_STAGE_META.packed.label;
-  if (signals.picked) return PACKAGE_STAGE_META.picked.label;
-  return PACKAGE_STAGE_META.to_pick.label;
+  if (!signals.buyerCancelled && (signals.amazonFulfilled || signals.carrierMoved)) return ALLOCATE_SEARCH_FULFILLED;
+  return word[resolveOutboundInternalStatus(signals)].label;
 }
 
 /**
@@ -55,12 +53,12 @@ export const ALLOCATE_STAGE_FACTS_JOIN = `
  */
 export function sqlAllocateSearchStatus(): string {
   return `CASE
-    WHEN LOWER(COALESCE(o.status, '')) = '${BUYER_CANCELLED_STATUS}' THEN '${BUYER_CANCEL_LABEL}'
+    WHEN LOWER(COALESCE(o.status, '')) = '${BUYER_CANCELLED_STATUS}' THEN '${word.buyer_cancel.label}'
     WHEN COALESCE(o.fulfillment_channel, '') = 'AFN' THEN '${ALLOCATE_SEARCH_FULFILLED}'
     WHEN ${SHIPPED_BY_CARRIER_SQL} THEN '${ALLOCATE_SEARCH_FULFILLED}'
-    WHEN ${sqlOrderHasShipConfirm('o')} THEN '${PACKAGE_STAGE_META.scanned_out.label}'
-    WHEN COALESCE(osf.has_pack_scan, false) THEN '${PACKAGE_STAGE_META.packed.label}'
-    WHEN COALESCE(osf.has_pick_scan, false) THEN '${PACKAGE_STAGE_META.picked.label}'
-    ELSE '${PACKAGE_STAGE_META.to_pick.label}'
+    WHEN ${sqlOrderHasShipConfirm('o')} THEN '${word.scanned_out.label}'
+    WHEN COALESCE(osf.has_pack_scan, false) THEN '${word.packed.label}'
+    WHEN COALESCE(osf.has_pick_scan, false) THEN '${word.picked.label}'
+    ELSE '${word.to_pick.label}'
   END`;
 }

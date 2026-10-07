@@ -41,7 +41,7 @@ import {
 import { recordDetailsHref } from '@/lib/records/record-details';
 import { NavFulfilledQuery } from '@/lib/schemas/nav';
 import { carrierClaimWindow } from '@/lib/shipping/carrier-pickup-window';
-import { STATUS_CATEGORIES } from '@/lib/shipping/shipped-filter/shipped-filter-constants';
+import { carrierStatusLabel } from '@/lib/status/record-status';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -192,7 +192,7 @@ function locate(rows: readonly FulfilledPackageRow[], key: string | undefined, n
         ? {
             label: lead.statusLabel,
             at: lead.latestEventAt,
-            status: STATUS_CATEGORIES.find((category) => category.value === lead.category)?.label ?? null,
+            status: carrierStatusLabel(lead.category),
           }
         : null,
     lastEventPlace: lead?.lastEventPlace ?? null,

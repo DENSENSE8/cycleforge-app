@@ -31,6 +31,7 @@ import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-iden
 import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 import { ALLOCATE_STAGE_FACTS_JOIN, sqlAllocateSearchStatus } from '@/lib/search/allocate-search-status';
 
+import { OUTBOUND_INTERNAL_STATUS } from '@/lib/status/record-status';
 /** Match `serial_units.normalized_serial` (trim + upper) without pulling neon queries. */
 function normalizeSerialQuery(raw: string): string {
   return String(raw || '').trim().toUpperCase();
@@ -169,7 +170,7 @@ function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
 /** Allocate stage (`sqlAllocateSearchStatus`). Channel `orders.status` is not a chip. */
 export function orderSearchDisplayStatus(row: { allocate_status?: unknown }): string {
   const label = String(row.allocate_status ?? '').trim();
-  return label || 'To pick';
+  return label || OUTBOUND_INTERNAL_STATUS.to_pick.label;
 }
 
 /** Allocate chip for the order ids a search already chose. Indexed docs still store the channel word until the next rebuild. */

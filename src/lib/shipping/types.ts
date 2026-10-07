@@ -1,14 +1,21 @@
 export type CarrierCode = 'UPS' | 'USPS' | 'FEDEX';
 
-export type NormalizedShipmentStatus =
-  | 'LABEL_CREATED'
-  | 'ACCEPTED'
-  | 'IN_TRANSIT'
-  | 'OUT_FOR_DELIVERY'
-  | 'DELIVERED'
-  | 'EXCEPTION'
-  | 'RETURNED'
-  | 'UNKNOWN';
+/**
+ * The normalized carrier status category (`shipping_tracking_numbers.latest_status_category`,
+ * `shipment_tracking_events.normalized_status_category`) — the storage vocabulary every carrier
+ * normalizer writes. Its painted words are `CARRIER_STATUS` (`src/lib/status/record-status.ts`).
+ */
+export const SHIPMENT_STATUS_CATEGORIES = [
+  'LABEL_CREATED',
+  'ACCEPTED',
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+  'DELIVERED',
+  'EXCEPTION',
+  'RETURNED',
+  'UNKNOWN',
+] as const;
+export type NormalizedShipmentStatus = (typeof SHIPMENT_STATUS_CATEGORIES)[number];
 
 export interface CarrierTrackingEvent {
   externalEventId?: string | null;

@@ -28,11 +28,8 @@
  */
 
 import type { NavLocateBucket, NavLocateEntry } from '@/lib/nav/context/schema';
-import {
-  BUYER_CANCEL_BUCKET_ID,
-  BUYER_CANCEL_LABEL,
-  locateBucketsForBuyerCancel,
-} from '@/lib/orders/buyer-cancelled';
+import { BUYER_CANCEL_BUCKET_ID, locateBucketsForBuyerCancel } from '@/lib/orders/buyer-cancelled';
+import { OUTBOUND_INTERNAL_STATUS } from '@/lib/status/record-status';
 import { orderRecordHref } from '@/lib/search/search-hit';
 import { outboundFacts } from '@/lib/nav/locate/outbound-facts';
 import { buildPackerLogBaseWhere, sqlPackerLogSearch } from '@/lib/neon/packer-logs-week';
@@ -368,7 +365,7 @@ export async function locateOutboundRefs(
   if (buyerCancels > 0) {
     buckets.push({
       id: BUYER_CANCEL_BUCKET_ID,
-      label: BUYER_CANCEL_LABEL,
+      label: OUTBOUND_INTERNAL_STATUS.buyer_cancel.label,
       tone: 'warning',
       href: null,
       count: buyerCancels,

@@ -13,10 +13,8 @@ import type { RecordStateFace } from '@/design-system/tokens/record';
 import type { StateName } from '@/design-system/tokens/lifecycle';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReconEntry, ReconReason } from '@/lib/receiving/reconcile';
-import { STATUS_CATEGORIES } from '@/lib/shipping/shipped-filter/shipped-filter-constants';
+import { carrierStatusLabel } from '@/lib/status/record-status';
 import { matchZohoPo } from '@/lib/inbound/purchase-match';
-
-const STATUS_WORD = new Map<string, string>(STATUS_CATEGORIES.map((status) => [status.value, status.label]));
 
 const DAY_MS = 86_400_000;
 
@@ -85,7 +83,7 @@ export function carrierFactOf(lines: readonly ReceivingLineRow[]): PastedCarrier
   if (eta) return { kind: 'eta', at: eta };
   const status = lines.map((line) => trimmed(line.shipment_status)).find(Boolean);
   // The carrier's status category in words ("IN_TRANSIT" → "In transit"); an uncategorized one reads as given.
-  return status ? { kind: 'moving', label: STATUS_WORD.get(status) ?? status } : { kind: 'unknown' };
+  return status ? { kind: 'moving', label: carrierStatusLabel(status) ?? status } : { kind: 'unknown' };
 }
 
 const DAY_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });

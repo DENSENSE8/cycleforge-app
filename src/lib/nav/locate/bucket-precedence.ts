@@ -17,6 +17,7 @@ import type { NavLocateBucket, NavLocateScope, NavLocator } from '@/lib/nav/cont
 import { INBOUND_BUCKET_IDS } from '@/lib/nav/locate/inbound';
 import { OUTBOUND_LOCATE_STATUSES } from '@/lib/nav/locate/outbound-params';
 import { SUPPORT_LOCATE_STATUSES } from '@/lib/nav/locate/support-params';
+import { CARRIER_STATUS } from '@/lib/status/record-status';
 
 type InboundBucketId = (typeof INBOUND_BUCKET_IDS)[number];
 
@@ -46,6 +47,11 @@ export const LOCATE_BUCKET_PRECEDENCE: Readonly<Record<NavLocator, readonly stri
  * 2026-10-05): `act` = past or at a threshold, a verb is owed now; `watch` =
  * moving inside its threshold; `done` = nothing owed. Order inside a section
  * is the board's column order.
+ *
+ * These are support follow-up buckets, not record statuses: the carrier
+ * buckets that ARE a carrier status (Exception, Returned, In transit, Out for
+ * delivery, Delivered) wear its word from `CARRIER_STATUS`
+ * (`src/lib/status/record-status.ts`); the rest are journey verdicts.
  */
 export const FULFILLED_SECTIONS = [
   { id: 'act', label: 'Act now' },
@@ -56,8 +62,8 @@ export type FulfilledSectionId = (typeof FULFILLED_SECTIONS)[number]['id'];
 
 export const FULFILLED_BUCKETS = [
   // ── Act now ──
-  { id: 'exception', label: 'Exception', tone: 'danger', section: 'act' },
-  { id: 'returned', label: 'Returned', tone: 'warning', section: 'act' },
+  { id: 'exception', label: CARRIER_STATUS.exception.label, tone: 'danger', section: 'act' },
+  { id: 'returned', label: CARRIER_STATUS.returned.label, tone: 'warning', section: 'act' },
   { id: 'reply_due', label: 'Reply due', tone: 'danger', section: 'act' },
   { id: 'no_movement', label: 'No movement', tone: 'danger', section: 'act' },
   { id: 'stalled', label: 'Stalled', tone: 'warning', section: 'act' },
@@ -67,8 +73,8 @@ export const FULFILLED_BUCKETS = [
   { id: 'no_tracking', label: 'No tracking', tone: 'warning', section: 'act' },
   // ── Watch ──
   { id: 'awaiting', label: 'Awaiting pickup', tone: 'neutral', section: 'watch' },
-  { id: 'in_transit', label: 'In transit', tone: 'info', section: 'watch' },
-  { id: 'out_for_delivery', label: 'Out for delivery', tone: 'info', section: 'watch' },
+  { id: 'in_transit', label: CARRIER_STATUS.in_transit.label, tone: 'info', section: 'watch' },
+  { id: 'out_for_delivery', label: CARRIER_STATUS.out_for_delivery.label, tone: 'info', section: 'watch' },
   { id: 'untracked', label: 'Untracked', tone: 'neutral', section: 'watch' },
   { id: 'check_in_scheduled', label: 'Check-in scheduled', tone: 'info', section: 'watch' },
   { id: 'checked_in', label: 'Checked in', tone: 'info', section: 'watch' },
@@ -77,7 +83,7 @@ export const FULFILLED_BUCKETS = [
   { id: 'issue', label: 'Had an issue', tone: 'warning', section: 'done' },
   { id: 'no_reply', label: 'No reply', tone: 'neutral', section: 'done' },
   { id: 'closed', label: 'Closed', tone: 'neutral', section: 'done' },
-  { id: 'delivered', label: 'Delivered', tone: 'success', section: 'done' },
+  { id: 'delivered', label: CARRIER_STATUS.delivered.label, tone: 'success', section: 'done' },
 ] as const satisfies ReadonlyArray<{
   id: string;
   label: string;

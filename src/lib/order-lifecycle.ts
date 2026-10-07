@@ -2,6 +2,7 @@
 
 import type { LifecycleState } from '@cycleforge/design-tokens';
 import type { OutboundWarehouseStage } from '@/lib/outbound/work-contract';
+import { carrierPhaseOfCategory } from '@/lib/status/record-status';
 
 /** The full pre‑dock pipeline stage vocabulary. */
 export type OrderLifecycleStage =
@@ -146,34 +147,15 @@ export interface OutboundSignals {
   stalled?: boolean | null;
 }
 
-/** The full normalized carrier status-category vocabulary (`shipping_tracking_numbers.latest_status_category`). */
-export const SHIPMENT_STATUS_CATEGORIES = [
-  'LABEL_CREATED',
-  'ACCEPTED',
-  'IN_TRANSIT',
-  'OUT_FOR_DELIVERY',
-  'DELIVERED',
-  'EXCEPTION',
-  'RETURNED',
-  'UNKNOWN',
-] as const;
-
 /**
- * Carrier status categories that mean the carrier physically has the package.
- * Single SoT for "is the carrier holding it" — the one vocabulary every
+ * Carrier has physical custody (accepted or further along): the category's
+ * carrier status is moving or terminal (`CARRIER_STATUS` phase,
+ * `src/lib/status/record-status.ts`) — the one vocabulary every
  * custody/shipped predicate reads.
  */
-const CUSTODY_CATEGORIES: ReadonlySet<string> = new Set([
-  'ACCEPTED',
-  'IN_TRANSIT',
-  'OUT_FOR_DELIVERY',
-  'DELIVERED',
-  'RETURNED',
-]);
-
-/** Carrier has physical custody (accepted or further along). */
 export function carrierHasCustody(input: OutboundSignals): boolean {
-  return CUSTODY_CATEGORIES.has(String(input.latestStatusCategory ?? '').toUpperCase());
+  const phase = carrierPhaseOfCategory(input.latestStatusCategory);
+  return phase === 'moving' || phase === 'terminal';
 }
 
 /**

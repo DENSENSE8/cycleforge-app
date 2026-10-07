@@ -36,6 +36,7 @@ import {
 } from '@/lib/receiving/reconcile';
 import { INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { recordDetailsHref } from '@/lib/records/record-details';
+import { INBOUND_INTERNAL_STATUS } from '@/lib/status/record-status';
 import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 
 /** The Check's own gate (`POST …/check-zoho-received`) and the ledger's. */
@@ -49,9 +50,9 @@ function inboundLedgerHref(status: ReconStatus): string {
 }
 
 const INBOUND_BUCKETS: Readonly<Record<InboundBucketId, Omit<NavLocateBucket, 'id' | 'count'>>> = {
-  // The Incoming status chip's words — the list `?state=AWAITING_TRACKING` opens.
+  // The inbound internal status's word — the list `?state=AWAITING_TRACKING` opens.
   awaiting_tracking: {
-    label: 'Awaiting tracking',
+    label: INBOUND_INTERNAL_STATUS.awaiting_tracking.label,
     tone: 'warning',
     href: `${INCOMING_SURFACE_ROUTE}?state=AWAITING_TRACKING`,
   },

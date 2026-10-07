@@ -1,19 +1,23 @@
 /**
  * The Live feed's four stages — where an outbound carrier package is in the
- * building, in pipeline order. The three open stages are Allocate's own
- * `?stage=` partition of the To-ship scope (`sqlOrderDeskStage`: pending →
- * To pick, picked, packed); Scanned out is the dock's SHIP_CONFIRM. A package
- * past the dock is done here — the carrier's own statuses are not tracked.
- * Client-safe.
+ * building: the outbound internal pipeline (`OUTBOUND_PIPELINE`,
+ * `src/lib/status/record-status.ts`), its keys and words. The three open
+ * stages are Allocate's own `?stage=` partition of the To-ship scope
+ * (`sqlOrderDeskStage`, `DESK_STAGE_STATUS`); Scanned out is the dock's
+ * SHIP_CONFIRM. A package past the dock is done here — the carrier's own
+ * statuses are not tracked. Client-safe.
  */
 
-export const PACKAGE_STAGES = ['to_pick', 'picked', 'packed', 'scanned_out'] as const;
-export type PackageStage = (typeof PACKAGE_STAGES)[number];
+import { OUTBOUND_INTERNAL_STATUS, OUTBOUND_PIPELINE } from '@/lib/status/record-status';
+
+export const PACKAGE_STAGES = OUTBOUND_PIPELINE;
+export type PackageStage = (typeof OUTBOUND_PIPELINE)[number];
 
 /** Open = still in the building (the whole backlog shows); done = scanned out today. */
 export type PackageStageKind = 'open' | 'done';
 
 export interface PackageStageMeta {
+  /** The status word (`OUTBOUND_INTERNAL_STATUS`). */
   label: string;
   /** The step's name on a package's track (what happened to reach this stage). */
   step: string;
@@ -22,11 +26,13 @@ export interface PackageStageMeta {
   kind: PackageStageKind;
 }
 
+const status = OUTBOUND_INTERNAL_STATUS;
+
 export const PACKAGE_STAGE_META: Readonly<Record<PackageStage, PackageStageMeta>> = {
-  to_pick: { label: 'To pick', step: 'Ordered', empty: 'Nothing waiting on a pick.', kind: 'open' },
-  picked: { label: 'Picked', step: 'Picked', empty: 'Nothing picked and waiting to pack.', kind: 'open' },
-  packed: { label: 'Packed', step: 'Packed', empty: 'Nothing packed and waiting at the dock.', kind: 'open' },
-  scanned_out: { label: 'Scanned out', step: 'Scanned out', empty: 'Nothing scanned out yet today.', kind: 'done' },
+  to_pick: { label: status.to_pick.label, step: 'Ordered', empty: 'Nothing waiting on a pick.', kind: 'open' },
+  picked: { label: status.picked.label, step: status.picked.label, empty: 'Nothing picked and waiting to pack.', kind: 'open' },
+  packed: { label: status.packed.label, step: status.packed.label, empty: 'Nothing packed and waiting at the dock.', kind: 'open' },
+  scanned_out: { label: status.scanned_out.label, step: status.scanned_out.label, empty: 'Nothing scanned out yet today.', kind: 'done' },
 };
 
 export function isPackageStage(raw: string | null | undefined): raw is PackageStage {
