@@ -2,9 +2,10 @@
 
 /**
  * Hover peek for a small label face (operator 2026-10-07): the station shows
- * the sticker small; hovering (or focusing) it grows a big face out of the
- * top-right corner, with the true 2 × 1 in size beside it so the operator
- * sees both what it says and how big it really prints.
+ * the sticker small; hovering (or focusing) it grows the label out of the
+ * top-right corner filling the panel — the same HTML face the operator
+ * always edited, `slotHits` included, at the width the old Label band had.
+ * One face only; unhover folds it back to the sticker.
  */
 
 import { useState, type ReactNode } from 'react';
@@ -13,13 +14,20 @@ import { motionPresence, motionTransition } from '@/design-system/foundations/mo
 import { LabelFacePreview } from '@/design-system/components/LabelFacePreview';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import type { LabelFaceSlotHandlers } from '@/components/labels/LabelFaceSlotOverlay';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
 import { cn } from '@/utils/_cn';
 
-/** The big face's cap — readable from arm's length, still inside the panel. */
-const PEEK_SCALE = 2.5;
-
-export function LabelFacePeek({ face, children }: { face: LabelFaceModel; children: ReactNode }) {
+export function LabelFacePeek({
+  face,
+  slotHits,
+  children,
+}: {
+  face: LabelFaceModel;
+  /** The real face's edit slots — the grown label edits exactly like the old preview. */
+  slotHits?: LabelFaceSlotHandlers;
+  children: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const reduceMotion = useReducedMotion();
   return (
@@ -38,7 +46,7 @@ export function LabelFacePeek({ face, children }: { face: LabelFaceModel; childr
         {open ? (
           <motion.div
             className={cn(
-              'absolute right-0 top-0 z-dropdown flex w-lg origin-top-right flex-col gap-3 bg-surface-card p-4',
+              'absolute right-0 top-0 z-dropdown w-[min(32rem,90vw)] origin-top-right bg-surface-card p-3',
               cornerClass('canvas'),
               elevationClass('overlay'),
             )}
@@ -46,13 +54,7 @@ export function LabelFacePeek({ face, children }: { face: LabelFaceModel; childr
             transition={reduceMotion ? { duration: 0 } : motionTransition.labelPeek}
             data-testid="label-face-peek-panel"
           >
-            <LabelFacePreview model={face} embedded fit="capped" maxScale={PEEK_SCALE} />
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-role-caption text-text-muted">Actual size · 2 × 1 in</span>
-              <div className="w-48 shrink-0">
-                <LabelFacePreview model={face} embedded fit="capped" maxScale={1} />
-              </div>
-            </div>
+            <LabelFacePreview model={face} embedded fit="host" slotHits={slotHits} />
           </motion.div>
         ) : null}
       </AnimatePresence>
