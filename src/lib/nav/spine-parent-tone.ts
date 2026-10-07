@@ -61,8 +61,8 @@ const tones: Readonly<Record<string, SpineParentTone>> = {
   // Warehouse (owner 2026-10-06): the building door, stone so it does not wear Inventory's orange.
   warehouse: {
     icon: 'text-stone-700/85', marker: 'bg-stone-600/80',
-    row: `${sharedRow} data-[active=true]:bg-stone-50/35 data-[active=true]:ring-stone-200/60 data-[active=true]:hover:bg-stone-50/45`,
-    section: `${sharedSection} data-[owns-current=true]:bg-stone-50/35 data-[owns-current=true]:ring-stone-200/60`,
+    row: `${sharedRow} data-[active=true]:bg-stone-50/35 data-[active=true]:hover:bg-stone-50/45`,
+    section: `${sharedSection} data-[owns-current=true]:bg-stone-50/35`,
   },
   catalog: {
     icon: 'text-indigo-700/85', marker: 'bg-indigo-600/80',

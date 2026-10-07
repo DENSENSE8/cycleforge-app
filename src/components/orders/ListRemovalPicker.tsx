@@ -57,8 +57,8 @@ export function ListRemovalPicker({
                 <span
                   aria-hidden
                   className={cn(
-                    'mt-1 flex size-4 shrink-0 items-center justify-center rounded-full ring-1 ring-inset',
-                    on ? 'bg-surface-inverse ring-surface-inverse' : 'ring-border-strong',
+                    'mt-1 flex size-4 shrink-0 items-center justify-center rounded-full border',
+                    on ? 'border-surface-inverse bg-surface-inverse' : 'border-border-strong',
                   )}
                 >
                   {on ? <span className="size-1.5 rounded-full bg-surface-card" /> : null}

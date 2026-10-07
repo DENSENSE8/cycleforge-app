@@ -56,8 +56,14 @@ export interface RouteTreeFinding {
 export const ROUTE_TREE_LAW =
   'Every Warehouse URL, nav name and domain word comes from src/lib/nav/route-tree.ts (owner 2026-10-03). Write paths with WAREHOUSE_PATHS and the builders, never a literal; paint the VOCABULARY label, never a banned synonym. Unsure of a name or URL → ds_route / ds_vocabulary; no answer → ask the operator. Never invent a path or a synonym.';
 
-/** The phone menu group that IS the Warehouse lane today (phase 2 renames it). */
-export const WAREHOUSE_MENU_GROUP = 'inventory';
+/**
+ * The phone menu group that is the Warehouse lane (owner 2026-10-06).
+ * Stock stays on the Inventory door even though its route parent is Warehouse.
+ */
+export const WAREHOUSE_MENU_GROUP = 'warehouse';
+
+/** Warehouse-tree destinations the Inventory door is allowed to paint. */
+const INVENTORY_DOOR_DESTINATION_IDS = new Set(['stock']);
 
 /** Where Warehouse pages live today; every page.tsx under them must be a node's `page`. */
 export const WAREHOUSE_PAGE_DIRS: readonly string[] = [
@@ -189,6 +195,12 @@ export function findMenuOwnerViolations(): RouteTreeFinding[] {
     if (where === `group ${group.id}`) continue;
     const node = routeForPath(destination.href);
     if (!isWarehouseNode(node)) continue;
+    if (
+      INVENTORY_DOOR_DESTINATION_IDS.has(destination.id) &&
+      (where === 'MOBILE_V2_DESTINATIONS' || where === 'group inventory')
+    ) {
+      continue;
+    }
     const misplaced = where.startsWith('group ') || !inGroup.has(destination.id);
     const key = `${where}:${destination.id}`;
     if (misplaced && !seen.has(key)) {
