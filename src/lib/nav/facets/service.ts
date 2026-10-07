@@ -15,7 +15,7 @@ import { incomingDockedFacets } from '@/lib/nav/facets/incoming-docked';
 import { unboxFacets } from '@/lib/nav/facets/unbox';
 import { purchasingFacets } from '@/lib/nav/facets/purchasing';
 import { getNavPurchases } from '@/lib/nav/purchases/service';
-import { fulfilledFacets } from '@/lib/nav/facets/fulfilled';
+import { fulfilledFacets, isFulfilledFacetContext, type FulfilledFacetRead } from '@/lib/nav/facets/fulfilled';
 import { navFulfilledDeps } from '@/lib/nav/fulfilled/read';
 import { getNavFulfilled } from '@/lib/nav/fulfilled/service';
 import { recordsFacets } from '@/lib/nav/facets/records';
@@ -78,6 +78,34 @@ function sharedSupportRows(orgId: OrgId, q: string | null, nowMs: number): Promi
   supportRowsShared.set(key, { at: nowMs, rows });
   rows.catch(() => supportRowsShared.delete(key));
   return rows;
+}
+
+/**
+ * One /fulfilled load asks for the counts of every sidebar view at once
+ * (seven contexts) over the same window, so concurrent and back-to-back
+ * requests for one org + query share ONE `getNavFulfilled` read for a couple
+ * of seconds — the {@link sharedSupportRows} rule.
+ */
+const FULFILLED_READ_SHARE_MS = 2_000;
+const fulfilledReadsShared = new Map<string, { at: number; read: Promise<FulfilledFacetRead | null> }>();
+function sharedFulfilledRead(
+  caller: { orgId: OrgId; permissions: ReadonlySet<string> },
+  apiParams: URLSearchParams,
+  nowMs: number,
+): Promise<FulfilledFacetRead | null> {
+  const key = `${caller.orgId}\u001f${apiParams.toString()}`;
+  const hit = fulfilledReadsShared.get(key);
+  if (hit && nowMs - hit.at < FULFILLED_READ_SHARE_MS) return hit.read;
+  for (const [k, v] of fulfilledReadsShared) if (nowMs - v.at >= FULFILLED_READ_SHARE_MS) fulfilledReadsShared.delete(k);
+  // Counts only: no lines, no mentions — the list's, never read here.
+  const read = getNavFulfilled({ orgId: caller.orgId, permissions: caller.permissions }, apiParams, {
+    ...navFulfilledDeps,
+    recordLines: undefined,
+    mentions: undefined,
+  }).then((answer) => (answer.ok ? answer.body : null));
+  fulfilledReadsShared.set(key, { at: nowMs, read });
+  read.catch(() => fulfilledReadsShared.delete(key));
+  return read;
 }
 
 /** `GET /api/receiving-lines`' list read (`handleReceivingLinesGet`) for one query string, rows only. */
@@ -146,16 +174,14 @@ export async function getNavFacets(
       }),
     };
   }
-  if (context === 'fulfilled') {
+  if (isFulfilledFacetContext(context)) {
     // The sheet's own read (`GET /api/nav/fulfilled`); the same permission already held here.
     return {
       ok: true,
       body: await fulfilledFacets(
+        context,
         params,
-        async (apiParams) => {
-          const answer = await getNavFulfilled({ orgId: caller.orgId, permissions: caller.permissions }, apiParams, navFulfilledDeps);
-          return answer.ok ? answer.body : null;
-        },
+        (apiParams) => sharedFulfilledRead(caller, apiParams, Date.now()),
         caller.staffId ?? null,
       ),
     };

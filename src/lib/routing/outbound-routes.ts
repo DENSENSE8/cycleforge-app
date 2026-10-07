@@ -41,25 +41,23 @@ import {
   FULFILLED_AXES,
   FULFILLED_AXIS_PARAM,
   FULFILLED_CARRIER_PARAM,
-  FULFILLED_CHANNEL_PARAM,
   FULFILLED_FIND_PARAM,
   FULFILLED_FROM_PARAM,
-  FULFILLED_CARDS_PARAM,
+  FULFILLED_COLUMN_PARAM,
   FULFILLED_DONE_PARAM,
   FULFILLED_GRAIN_PARAM,
   FULFILLED_GROUP_PARAM,
-  FULFILLED_GRAINS,
   FULFILLED_LAYOUT_PARAM,
   FULFILLED_LAYOUTS,
   FULFILLED_MINE_PARAM,
   FULFILLED_MINE_VALUE,
   FULFILLED_PACKER_PARAM,
+  FULFILLED_PLATFORM_PARAM,
   FULFILLED_SCAN_PARAM,
   FULFILLED_SCANS,
-  FULFILLED_STATUS_PARAM,
   FULFILLED_TO_PARAM,
-  FULFILLED_UNTRACKED_PARAM,
 } from '@/lib/outbound/fulfilled-params';
+import { RECORDS_GRAINS } from '@/lib/nav/records/params';
 import { FULFILLED_BUCKET_IDS } from '@/lib/nav/locate/bucket-precedence';
 import { SHIPMENT_RECORD_PARAM } from '@/lib/shipments/shipment-record-types';
 import { RECORD_DETAILS_PARAM } from '@/lib/records/record-details';
@@ -217,16 +215,19 @@ const FBA_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/fulfilled` — Fulfilled, every shipped order on the journey board or as one
- * sheet (`fulfilled-params.ts`): which date the window reads, the window (PT
- * civil days; neither = the last 90 days), channel, carrier, packer, Packed by
- * me (`mine=me`), scan source, the row grain, the body layout (`layout`: board
- * is absence, `sheet` the sheet — owned here, so the station tables' ambient
- * `layout` is not carried), the board's display toggles (`done`, `untracked`,
- * `cards`, `group`) and Find (`q`, server-side). Its Sort is the carried `colsort` /
- * `coldir`; its status chips are `status` (client-side). The open package is
- * `shipment`; `openOrderId` (what `recordDetailsHref` writes for a shipped
- * order) resolves to its package, then drops.
+ * `/fulfilled` — Fulfilled, every shipped order on the journey board or as the
+ * Records sheet (`fulfilled-params.ts`): which date the window reads (the
+ * Records axes), the window (PT civil days; neither = the last 90 days),
+ * platform and carrier (the Records params), packer, Packed by me
+ * (`mine=me`), scan source, the Records grain, the body layout (`layout`:
+ * board is absence, `sheet` the sheet — owned here, so the station tables'
+ * ambient `layout` is not carried), the board's display toggles (`done`,
+ * `group`), the journey bucket narrowed to (`col`: any bucket) and Find
+ * (`q`, server-side). Its Sort is the carried `colsort` / `coldir` (Records
+ * sort words). The open package is `shipment`; `openOrderId` (what
+ * `recordDetailsHref` writes for a shipped order) resolves to its package,
+ * then drops. A link with the old words is rewritten once by the page
+ * (`fulfilledLegacySearch`).
  */
 const SHIPPED_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_SHIPPED_PATH,
@@ -234,18 +235,16 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
     [FULFILLED_AXIS_PARAM]: paramRoundTrip((raw) => FULFILLED_AXES.find((axis) => axis === raw)),
     [FULFILLED_FROM_PARAM]: paramDateKey,
     [FULFILLED_TO_PARAM]: paramDateKey,
-    [FULFILLED_CHANNEL_PARAM]: paramText,
+    [FULFILLED_PLATFORM_PARAM]: paramText,
     [FULFILLED_CARRIER_PARAM]: paramText,
     [FULFILLED_PACKER_PARAM]: paramPositiveInt,
     [FULFILLED_SCAN_PARAM]: paramEnum(FULFILLED_SCANS),
-    [FULFILLED_GRAIN_PARAM]: paramEnum(FULFILLED_GRAINS),
+    [FULFILLED_GRAIN_PARAM]: paramEnum(RECORDS_GRAINS),
     [FULFILLED_LAYOUT_PARAM]: paramEnum(FULFILLED_LAYOUTS),
-    [FULFILLED_STATUS_PARAM]: paramRoundTrip((raw) => FULFILLED_BUCKET_IDS.find((id) => id === raw)),
     [FULFILLED_FIND_PARAM]: paramText,
     [FULFILLED_MINE_PARAM]: paramEnum([FULFILLED_MINE_VALUE] as const),
     [FULFILLED_DONE_PARAM]: paramEnum(['hide'] as const),
-    [FULFILLED_UNTRACKED_PARAM]: paramEnum(['hide'] as const),
-    [FULFILLED_CARDS_PARAM]: paramEnum(['compact'] as const),
+    [FULFILLED_COLUMN_PARAM]: paramRoundTrip((raw) => FULFILLED_BUCKET_IDS.find((id) => id === raw)),
     [FULFILLED_GROUP_PARAM]: paramEnum(['carrier'] as const),
     /** The open package (`SHIPMENT_RECORD_PARAM`): a `shipping_tracking_numbers.id`. */
     [SHIPMENT_RECORD_PARAM]: paramPositiveInt,

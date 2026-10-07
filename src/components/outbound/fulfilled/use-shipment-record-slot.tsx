@@ -3,7 +3,8 @@
 /** Fulfilled's package record: one shipment read, one shared record slot — what a shipped order's details open (`/fulfilled?openOrderId=` → `?shipment=`). */
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { Copy, ExternalLink, PackageCheck, Truck } from '@/components/Icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { Copy, ExternalLink, PackageCheck, RefreshCw, Truck } from '@/components/Icons';
 import { CarrierEventsRail } from '@/design-system/components/record-ledger/CarrierEventsRail';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RecordFullId } from '@/design-system/components/record-ledger/RecordFullId';
@@ -12,22 +13,27 @@ import type { RecordModel, RecordVerb } from '@/design-system/components/record-
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import { Button } from '@/design-system/primitives/Button';
 import type { CarrierEvent } from '@/lib/queries/carrier-events-query';
-import { useShipmentRecord } from '@/lib/shipments/shipment-record-client';
+import { FULFILLED_BUCKETS } from '@/lib/nav/locate/bucket-precedence';
+import type { BulkEntry } from '@/lib/nav/locate/use-bulk-list';
+import { useRefreshShipmentTracking, useShipmentRecord } from '@/lib/shipments/shipment-record-client';
 import type { ShipmentRecord } from '@/lib/shipments/shipment-record-types';
 import { writeClipboardText } from '@/lib/clipboard';
 import { toast } from '@/lib/toast';
 import { formatDateTimePST } from '@/utils/date';
 import { ResolveShipmentExceptionDialog } from './ResolveShipmentExceptionDialog';
 import { ShipmentJourneyRail } from './ShipmentJourneyRail';
+import { JourneyClockCell } from './JourneyClockCell';
+import { OrderThread } from './OrderThread';
 import { isOpenExceptionStatus, shipmentRecordFace } from './shipment-record-face';
+import { NAV_FULFILLED_QUERY_ROOT } from './useFulfilledList';
 
 const ICON_CLASS = 'size-3.5';
 
 /** The record's test id — RecordView prefixes its own parts with it; the External half's rails follow suit. */
 const RECORD_TEST_ID = 'shipped-record';
 
-/** `nowMs` = the read's instant: the journey's live gap runs to it. */
-function shipmentModel(record: ShipmentRecord, onOpenShipment: (shipmentId: number) => void, nowMs: number): RecordModel {
+/** `nowMs` = the read's instant: the journey's live gap runs to it. `thread` = the order's one thread (notes, alerts, carrier changes). */
+function shipmentModel(record: ShipmentRecord, onOpenShipment: (shipmentId: number) => void, nowMs: number, thread: ReactNode): RecordModel {
   const face = shipmentRecordFace(record);
   const fulfilled = record.shipOut != null;
   // Each order once, in line order: [face, order number] — a line with no number shows its row id.
@@ -51,10 +57,11 @@ function shipmentModel(record: ShipmentRecord, onOpenShipment: (shipmentId: numb
 
   return {
     key: `shipment:${record.shipmentId}`,
+    // The order leads (L3 is the ORDER, operator 2026-10-06): its full number and platform; the tracking is a movement fact.
     title: {
-      ref: record.tracking,
+      ref: record.items.find((item) => item.orderRef)?.orderRef ?? record.tracking,
       platform: null,
-      channel: record.carrier ?? 'Package',
+      channel: record.items.find((item) => item.channel)?.channel ?? record.carrier ?? 'Package',
       date: record.shipOut
         ? { label: formatDateTimePST(record.shipOut.at), tip: `Scanned out ${formatDateTimePST(record.shipOut.at)}` }
         : record.pack
@@ -160,7 +167,8 @@ function shipmentModel(record: ShipmentRecord, onOpenShipment: (shipmentId: numb
     expectedUnits: totalUnits || undefined,
     notes: [],
     activity: [],
-    staffNote: null,
+    staffNote: thread,
+    notesTitle: 'Thread',
     price: null,
     currency: null,
     refresh: null,
@@ -217,19 +225,30 @@ export interface ShipmentRecordSlot {
   view: ReactNode;
 }
 
-/** One place Fulfilled reads and presents an open package. */
+/**
+ * One place Fulfilled reads and presents an open order: its package record,
+ * headed by the order (number, platform, customer, its status word and clock
+ * from the desk's own row `entry`), with the order's thread.
+ */
 export function useShipmentRecordSlot(
   shipmentId: number | null,
   onOpenShipment: (shipmentId: number) => void,
+  entry: BulkEntry | null,
 ): ShipmentRecordSlot | null {
   const query = useShipmentRecord(shipmentId);
   const record = query.data ?? null;
   const [resolveOpen, setResolveOpen] = useState(false);
-  const model = useMemo(
-    () => (record ? shipmentModel(record, onOpenShipment, query.dataUpdatedAt) : null),
-    [record, onOpenShipment, query.dataUpdatedAt],
-  );
+  const queryClient = useQueryClient();
+  const refresh = useRefreshShipmentTracking(shipmentId ?? 0);
+  const model = useMemo(() => {
+    if (!record) return null;
+    const orderRowIds = [...new Set(record.items.map((item) => item.orderRowId).filter((id) => id > 0))];
+    const thread = <OrderThread orderRowIds={orderRowIds} carrierActions={record.actions} testId={`${RECORD_TEST_ID}-thread`} />;
+    return shipmentModel(record, onOpenShipment, query.dataUpdatedAt, thread);
+  }, [record, onOpenShipment, query.dataUpdatedAt]);
   const exceptionOpen = record?.exception != null && isOpenExceptionStatus(record.exception.status);
+  const refreshing = refresh.isPending;
+  const refreshNow = refresh.mutateAsync;
   const verbs = useMemo<RecordVerb[]>(() => {
     if (!record) return [];
     const list: RecordVerb[] = [];
@@ -242,6 +261,21 @@ export function useShipmentRecordSlot(
         run: () => setResolveOpen(true),
       });
     }
+    // Ask the carrier again now, then re-read the record and the desk so both show what it just said.
+    list.push({
+      id: 'refresh',
+      label: refreshing ? 'Refreshing…' : 'Refresh now',
+      icon: <RefreshCw className={ICON_CLASS} />,
+      disabled: refreshing,
+      run: async () => {
+        try {
+          await refreshNow();
+        } catch (error) {
+          toast.error(`Couldn't refresh ${record.tracking}: ${error instanceof Error ? error.message : 'unknown error'}`);
+        }
+        await queryClient.invalidateQueries({ queryKey: [NAV_FULFILLED_QUERY_ROOT] });
+      },
+    });
     list.push({
       id: 'copy-tracking',
       label: 'Copy tracking',
@@ -261,7 +295,7 @@ export function useShipmentRecordSlot(
       });
     }
     return list;
-  }, [exceptionOpen, record]);
+  }, [exceptionOpen, record, refreshing, refreshNow, queryClient]);
   const slot = useRecordSlot(model, verbs, record ? `Package ${record.tracking} actions` : 'Package actions', RECORD_TEST_ID);
 
   if (shipmentId == null) return null;
@@ -280,7 +314,12 @@ export function useShipmentRecordSlot(
   if (!slot || !record) return null;
 
   return {
-    title: slot.title,
+    title: (
+      <span className="flex min-w-0 items-center gap-3">
+        {slot.title}
+        {entry ? <OrderHead entry={entry} /> : null}
+      </span>
+    ),
     actions: slot.actions,
     view: (
       <>
@@ -289,4 +328,16 @@ export function useShipmentRecordSlot(
       </>
     ),
   };
+}
+
+/** The order's head beside its number: the customer, then its status word and time in status against the limit. */
+function OrderHead({ entry }: { entry: BulkEntry }) {
+  const facts = entry.facts ?? null;
+  const bucket = FULFILLED_BUCKETS.find((candidate) => candidate.id === entry.buckets[0]);
+  return (
+    <span className="flex min-w-0 items-center gap-2 text-role-caption text-text-muted" data-testid={`${RECORD_TEST_ID}-head`}>
+      {facts?.customer ? <span className="min-w-0 truncate font-medium text-text-default">{facts.customer}</span> : null}
+      {bucket ? <JourneyClockCell clock={facts?.clock} status={bucket.label} className="shrink-0" /> : null}
+    </span>
+  );
 }

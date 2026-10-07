@@ -312,23 +312,31 @@ const ROWS: Readonly<Record<string, readonly Row[]>> = {
     ['action', 'orders.add', 'e7dc59d^:src/components/outbound/orders/OrdersDeskAddAction.tsx:160-165 (?triage=new)'],
     ['savedViews', 'unshipped_saved_views', 'e7dc59d^:src/components/outbound/orders/OutboundOrdersLedger.tsx:482-488; src/components/dashboard/orders-queue/useOrdersQueueFeed.ts:253-256'],
   ],
-  // Fulfilled (owner 2026-10-05): the shared sheet over `GET /api/nav/fulfilled` — every control it reads (`fulfilled-params.ts`).
+  // Fulfilled (owner 2026-10-05): the board and the Records sheet over `GET /api/nav/fulfilled` — every control it reads (`fulfilled-params.ts`).
+  // Its views (owner 2026-10-06): the board, and one per off-board bucket (`?col=`, `FULFILLED_VIEW_BUCKET_IDS`).
   fulfilled: [
+    ['view', 'board', 'src/lib/sidebar-navigation.ts (fulfilled children: Board, no col)'],
+    ['view', 'returned', 'src/lib/nav/locate/bucket-precedence.ts FULFILLED_BUCKETS (place: view)'],
+    ['view', 'reply_due', 'src/lib/nav/locate/bucket-precedence.ts FULFILLED_BUCKETS (place: view)'],
+    ['view', 'late', 'src/lib/nav/locate/bucket-precedence.ts FULFILLED_BUCKETS (place: view)'],
+    ['view', 'no_tracking', 'src/lib/nav/locate/bucket-precedence.ts FULFILLED_BUCKETS (place: view)'],
+    ['view', 'awaiting', 'src/lib/nav/locate/bucket-precedence.ts FULFILLED_BUCKETS (place: view)'],
+    ['view', 'untracked', 'src/lib/nav/locate/bucket-precedence.ts FULFILLED_BUCKETS (place: view)'],
+    ['param', 'col', 'src/lib/nav/facets/contexts.ts NAV_FACET_GROUPS fulfilled (Journey facet: the bucket the sheet narrows to — a view, a board column, a check-in stage)'],
     ['savedViews', 'outbound_fulfilled_saved_views', 'src/lib/station/table-url-params.ts (outbound_fulfilled)'],
-    ['param', 'axis', 'src/lib/outbound/fulfilled-params.ts FULFILLED_AXIS_PARAM (Date row)'],
+    ['param', 'axis', 'src/lib/outbound/fulfilled-params.ts FULFILLED_AXIS_PARAM (Date row, the Records axes)'],
+    ['param', 'grain', 'src/lib/outbound/fulfilled-params.ts FULFILLED_GRAIN_PARAM (Grain row, the Records grain)'],
     ['param', 'from', 'src/lib/outbound/fulfilled-params.ts FULFILLED_FROM_PARAM (Window row)'],
     ['param', 'to', 'src/lib/outbound/fulfilled-params.ts FULFILLED_TO_PARAM (Window row)'],
-    ['param', 'channel', 'src/lib/nav/facets/contexts.ts NAV_FACET_GROUPS fulfilled (Channel facet)'],
+    ['param', 'platform', 'src/lib/nav/facets/contexts.ts NAV_FACET_GROUPS fulfilled (Platform facet, the Records param)'],
     ['param', 'carrier', 'src/lib/nav/facets/contexts.ts NAV_FACET_GROUPS fulfilled (Carrier facet)'],
     ['param', 'scan', 'src/lib/nav/facets/contexts.ts NAV_FACET_GROUPS fulfilled (Scan facet)'],
     ['param', 'packer', 'src/lib/outbound/fulfilled-params.ts FULFILLED_PACKER_PARAM (Packed by row)'],
     ['param', 'mine', 'src/lib/outbound/fulfilled-params.ts FULFILLED_MINE_PARAM (Packed by me row → packer=<viewer>)'],
     ['param', 'done', 'src/lib/outbound/fulfilled-params.ts FULFILLED_DONE_PARAM (Done columns row, board)'],
-    ['param', 'untracked', 'src/lib/outbound/fulfilled-params.ts FULFILLED_UNTRACKED_PARAM (Untracked row, board)'],
-    ['param', 'cards', 'src/lib/outbound/fulfilled-params.ts FULFILLED_CARDS_PARAM (Cards row, board)'],
     ['param', 'group', 'src/lib/outbound/fulfilled-params.ts FULFILLED_GROUP_PARAM (Group by row, board)'],
-    ['param', 'colsort', 'src/components/outbound/fulfilled/FulfilledSheet.tsx (column sort)'],
-    ['param', 'coldir', 'src/components/outbound/fulfilled/FulfilledSheet.tsx (column sort)'],
+    ['param', 'colsort', 'src/lib/nav/context/pages.ts FULFILLED_SORT_CONTROL (Sort row, the Records sorts; a header press writes it)'],
+    ['param', 'coldir', 'src/lib/nav/context/pages.ts FULFILLED_SORT_CONTROL (Sort row direction)'],
   ],
   // New page (no old UI): Live feed — the outbound package board (always today); its record selection is sidebar chrome.
   'live-feed': [

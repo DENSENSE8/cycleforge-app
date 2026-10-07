@@ -2,8 +2,8 @@
 
 /**
  * `/m/fulfilled` — the post-ship JOURNEY on the phone (operator 2026-10-05):
- * every fulfilled order of the default window (`GET /api/nav/fulfilled`,
- * order grain, `useMobileFulfilled`) as Act now · Watch · Done, each a band of
+ * every fulfilled order of the default window (`GET /api/nav/fulfilled`'s
+ * lines folded to one per order, `fulfilledOrderHeads`) as Act now · Watch · Done, each a band of
  * {@link RecordCardMobile} cards worst first (`compareJourneyUrgency`) — the
  * house phone band (the QC queue's), not the desk's boxed sections. A card
  * is order last 8 · customer or item · carrier · `<stage> · <age> / <limit>`;
@@ -22,6 +22,7 @@ import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { ITEM_RECORD_MOBILE_ROW } from '@/design-system/tokens/item-record-mobile';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { FULFILLED_PATHS } from '@/lib/nav/route-tree';
+import { fulfilledOrderHeads } from '@/lib/nav/fulfilled/order-heads';
 import { cn } from '@/utils/_cn';
 import { fulfilledMobileSections } from './fulfilled-card-model';
 
@@ -31,7 +32,7 @@ export function MobileFulfilledJourney() {
   const [doneOpen, setDoneOpen] = useState(false);
   const data = list.data;
   const nowMs = useMemo(() => Date.now(), [data]); // eslint-disable-line react-hooks/exhaustive-deps -- the clocks restamp with each read
-  const sections = useMemo(() => fulfilledMobileSections(data?.entries ?? [], nowMs), [data, nowMs]);
+  const sections = useMemo(() => fulfilledMobileSections(fulfilledOrderHeads(data?.entries ?? []), nowMs), [data, nowMs]);
 
   return (
     <div className={cn('flex h-full min-h-full flex-col', appMobilePageGroundClass)} data-testid="mobile-fulfilled">

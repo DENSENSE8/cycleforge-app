@@ -1,49 +1,43 @@
 /**
  * Fulfillment › Fulfilled (`GET /api/nav/fulfilled`) — every shipped order in
- * a window, read the way the pasted list reads a number: one entry per
- * channel order number (`grain=order`, every line combined) or per order line
- * (`grain=line`), ref = the channel order #, exactly ONE bucket
- * (`FULFILLED_BUCKETS`), its record and the shared outbound facts
- * (`outboundFacts`, extended with the sheet's own).
+ * a window, answered as the Records sheet's LINES (operator 2026-10-07:
+ * Fulfilled renders exactly as a pasted list does).
  *
- * Reads: ONE set-based statement (`./sql.ts`, `tenantQueryOneTrip`) — window
- * and Find are in it — and, beside it, the org's carrier sync health
- * (`syncHealth`). Each package's carrier bucket is decided once
- * (`./bucket.ts`); a line / order is delivered only when every package is,
- * else the precedence over its packages. The order's check-in then gives the
- * JOURNEY stage the row is painted with, and its clock (`./journey.ts`).
- * Channel / carrier / packer / scan source are the row's own facts, so they
- * filter the grouped entries here, and each facet counts with every OTHER
- * filter applied. Bucket counts ignore `status`; entries honour it.
+ * Two statements, each the one way of what it decides:
+ * - the Fulfilled enumeration (`./sql.ts`) decides WHICH orders shipped in
+ *   the window (dock scan-out or channel-shipped; a scan-out no order owns
+ *   is its own row) and each order's JOURNEY — its packages' buckets
+ *   (`./bucket.ts`), the order's one bucket, its check-in stage and clock
+ *   (`./journey.ts`), and the label / poll / claim facts the journey reads;
+ * - the Records statement (`buildRecordsSql` with `orderIds`) gives every
+ *   kept line its Records facts through `locateRecordLine` — the same
+ *   Internal | External status, prices, staff and identifiers `/records`
+ *   paints — and each line then carries its order's journey.
+ *
+ * Platform / carrier / packer / scan source filter ORDERS here, each facet
+ * counted with every OTHER filter applied; bucket counts are orders too.
+ * Lines sort by the Records sorter (`sortRecords`), the journey's own sorts
+ * included; an order's lines fold under it on the client (the Records grain).
  */
 
-import {
-  NAV_FULFILLED_WIRE_DEFAULTS,
-  type NavFulfilledFacets,
-  type NavFulfilledSyncHealth,
-  type NavFulfilledWire,
-  type NavLocateBucket,
-  type NavLocateEntry,
-  type NavLocateFacts,
-} from '@/lib/nav/context/schema';
+import type { NavFulfilledFacets, NavFulfilledSyncHealth, NavFulfilledWire, NavLocateBucket, NavLocateFacts } from '@/lib/nav/context/schema';
 import { fulfilledGroupBucket, firstCarrierScanAt, fulfilledPackageBucket } from '@/lib/nav/fulfilled/bucket';
 import { journeyClock, journeyStage } from '@/lib/nav/fulfilled/journey';
 import type { FulfilledPackageRow, FulfilledWindow } from '@/lib/nav/fulfilled/sql';
-import { FULFILLED_BUCKET_IDS, FULFILLED_BUCKETS, type FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
-import { outboundFacts, type OutboundFulfilledFacts } from '@/lib/nav/locate/outbound-facts';
+import { FULFILLED_BUCKETS, type FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
+import { channelLabel, locateRecordLine, recordsWireEntry, sortRecords, type Located } from '@/lib/nav/records/service';
+import type { RecordLineRow } from '@/lib/nav/records/sql';
 import {
+  FULFILLED_COLUMN_PARAM,
   FULFILLED_DEFAULT_WINDOW_DAYS,
+  FULFILLED_LAYOUT_PARAM,
   FULFILLED_SCAN_LABEL,
-  FULFILLED_STATUS_PARAM,
   type FulfilledScan,
-  type FulfilledSort,
 } from '@/lib/outbound/fulfilled-params';
-import { recordDetailsHref } from '@/lib/records/record-details';
+import { RECORDS_SORT_DIR } from '@/lib/nav/records/params';
 import { NavFulfilledQuery } from '@/lib/schemas/nav';
 import { carrierClaimWindow } from '@/lib/shipping/carrier-pickup-window';
-import { carrierStatusLabel } from '@/lib/status/record-status';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
-import { sourcePlatformMeta } from '@/lib/source-platform';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { addDaysToDateKey, warehouseDayUtcBounds } from '@/utils/date';
 
@@ -54,11 +48,18 @@ export const NAV_FULFILLED_PERMISSION = 'packing.view';
 export interface NavFulfilledDeps {
   /** The enumeration statement (`buildFulfilledSql`), one round trip. */
   rows(orgId: OrgId, window: FulfilledWindow, q: string | null): Promise<FulfilledPackageRow[]>;
+  /**
+   * The Records lines of exactly these orders' lines (`buildRecordsSql` with `orderIds`), one round trip.
+   * Absent = counts only (the sidebar's facet read): buckets and facets, no entries.
+   */
+  recordLines?(orgId: OrgId, orderIds: readonly number[], viewerStaffId: number | null): Promise<RecordLineRow[]>;
   /** Today's PT civil day (`YYYY-MM-DD`). */
   today(): string;
   now(): Date;
   /** Carrier sync health for the org (`carrierSyncHealth`), read beside the rows; null when that read failed. */
   syncHealth?(orgId: OrgId): Promise<NavFulfilledSyncHealth['carriers'] | null>;
+  /** The order lines (`orders.id`) on which `viewerStaffId` holds an unread @mention. Read after the window is cut. */
+  mentions?(orgId: OrgId, orderRowIds: readonly number[], viewerStaffId: number): Promise<ReadonlySet<number>>;
 }
 
 export type NavFulfilledResult =
@@ -83,41 +84,54 @@ export function fulfilledWindow(query: Pick<NavFulfilledQuery, 'axis' | 'from' |
   };
 }
 
-/** One sheet row (an order or a line) with the attributes its filters and sorts read. */
-export interface Located {
-  entry: NavLocateEntry & { facts: NonNullable<NavLocateEntry['facts']> };
+/** What only the journey knows — every line of the order carries it. */
+export type JourneyFacts = Required<
+  Pick<
+    NavLocateFacts,
+    | 'journey'
+    | 'clock'
+    | 'checkIn'
+    | 'promisedAt'
+    | 'scanSource'
+    | 'labelCreatedAt'
+    | 'labelCost'
+    | 'firstScanAt'
+    | 'transitDays'
+    | 'attempts'
+    | 'exceptionCode'
+    | 'claim'
+    | 'lastPoll'
+    | 'shipstationStatus'
+    | 'returnRef'
+  >
+>;
+
+/** One shipped ORDER: its journey and what its filters read. */
+export interface FulfilledOrder {
+  key: string;
   bucket: FulfilledBucketId;
-  channel: string | null;
+  journey: JourneyFacts;
+  /** Canonical `account_source` (the platform facet's value). */
+  platform: string | null;
+  platformLabel: string | null;
   carrier: string | null;
   packer: { id: number; name: string | null } | null;
   scan: FulfilledScan;
-  /** The window's shipped instant: the latest hand-off. */
-  handOffAt: string | null;
-  shipByAt: string | null;
+  /** Over its clock's limit, in ms (negative = time left); null = the bucket has no limit. The Records `overdue` sort reads it. */
+  overdueMs: number | null;
+  /** The order's lines (`orders.id`); empty for a scan-out no order owns. */
+  orderRowIds: number[];
+  /** A scan-out no order owns: its one package row (it has no Records line). */
+  orphan: FulfilledPackageRow | null;
 }
 
 const latest = (values: ReadonlyArray<string | null>): string | null =>
   values.reduce<string | null>((best, at) => (at !== null && (best === null || Date.parse(at) > Date.parse(best)) ? at : best), null);
-const earliest = (values: ReadonlyArray<string | null>): string | null =>
-  values.reduce<string | null>((best, at) => (at !== null && (best === null || Date.parse(at) < Date.parse(best)) ? at : best), null);
-
-function sumOrNull(values: ReadonlyArray<number | null>): number | null {
-  const known = values.filter((value): value is number => value !== null);
-  return known.length > 0 ? known.reduce((a, b) => a + b, 0) : null;
-}
 
 /** Distinct non-empty values joined in first-seen order (an order's lines combined). */
 function joined(values: ReadonlyArray<string | null>): string | null {
   const distinct = [...new Set(values.filter((value): value is string => !!value))];
   return distinct.length > 0 ? distinct.join(' · ') : null;
-}
-
-/** The channel's face: the catalog account's label (`USAV`), else the platform registry's name, else the stored key. Records reads it too. */
-export function channelLabel(channel: string, accountLabel: string | null): string {
-  if (accountLabel) return accountLabel;
-  if (channel === 'fba') return 'Amazon FBA';
-  const meta = sourcePlatformMeta(channel);
-  return meta.value ? meta.label : channel;
 }
 
 /** The carrier's fault, so a lost-package claim may apply (Tracking stale is ours: we stopped asking). */
@@ -126,11 +140,8 @@ const DAY_MS = 86_400_000;
 /** A poll error's face: its first line, at most this long (the hover says why polling fails, not the response body). */
 const POLL_ERROR_CHARS = 80;
 
-/**
- * One row of the sheet from its order lines' package rows (one line at
- * `grain=line`; every line of the order number at `grain=order`).
- */
-function locate(rows: readonly FulfilledPackageRow[], key: string | undefined, now: Date): Located {
+/** One order from its lines' package rows: the journey (bucket, clock, check-in) and the label / poll / claim facts of its lead package. */
+function journeyOf(rows: readonly FulfilledPackageRow[], now: Date): FulfilledOrder {
   const lines = new Map<number, FulfilledPackageRow>();
   const packages = new Map<number, { pkg: FulfilledPackageRow; bucket: FulfilledBucketId }>();
   for (const row of rows) {
@@ -145,211 +156,101 @@ function locate(rows: readonly FulfilledPackageRow[], key: string | undefined, n
   const carrierBucket = fulfilledGroupBucket(boxes.map((box) => box.bucket));
   const checkIn = lineRows.find((line) => line.checkIn !== null)?.checkIn ?? null;
   const bucket = journeyStage(carrierBucket, checkIn);
-  // The package the row's carrier status speaks for: the one holding that bucket, latest hand-off first.
+  // The package the journey speaks for: the one holding that bucket, latest hand-off first.
   const lead =
     boxes
       .filter((box) => box.bucket === carrierBucket)
       .sort((a, b) => Date.parse(b.pkg.handOffAt ?? '') - Date.parse(a.pkg.handOffAt ?? '') || 0)[0]?.pkg ??
     boxes[0]?.pkg ??
     null;
-
-  const scanned = boxes.filter((box) => box.pkg.scannedAt !== null);
-  const lastScan = scanned.reduce<FulfilledPackageRow | null>(
-    (best, { pkg }) => (best === null || Date.parse(pkg.scannedAt!) > Date.parse(best.scannedAt!) ? pkg : best),
-    null,
-  );
+  const lastScan = boxes
+    .filter((box) => box.pkg.scannedAt !== null)
+    .reduce<FulfilledPackageRow | null>((best, { pkg }) => (best === null || Date.parse(pkg.scannedAt!) > Date.parse(best.scannedAt!) ? pkg : best), null);
   // Backfill marks the shown scan-out instant (the latest) when it was backdated (`scanOutBackdated`).
   const scan: FulfilledScan = lastScan === null ? 'none' : lastScan.scanBackdated ? 'backfill' : 'live';
-  const handOffAt = latest(boxes.map((box) => box.pkg.handOffAt));
-  const shipByAt = earliest(lineRows.map((line) => line.shipByAt));
-  const shipByDate = lineRows.find((line) => line.shipByAt === shipByAt)?.shipByDate ?? null;
-  const packerLine = lineRows.find((line) => line.packerId !== null || line.packerName !== null) ?? null;
-  // The order's pick finished with its last-picked line.
-  const pickedAt = latest(lineRows.map((line) => (line.pickedBy ? line.pickedAt : null)));
-  const pickLine = lineRows.find((line) => line.pickedBy !== null && line.pickedAt === pickedAt) ?? null;
   const deliveredAt = carrierBucket === 'delivered' ? latest(boxes.map((box) => box.pkg.deliveredAt)) : (lead?.deliveredAt ?? null);
   const firstScanAt = lead ? firstCarrierScanAt(lead) : null;
   const leadHandOff = lead?.handOffAt ?? null;
   const transitFrom = firstScanAt ?? leadHandOff;
   const transitTo = deliveredAt ?? (firstScanAt ? now.toISOString() : null);
-  const trackings = boxes.map((box) => box.pkg.tracking).filter((tracking): tracking is string => !!tracking);
-
-  const fulfilled: OutboundFulfilledFacts = {
-    channel: head.channel ? channelLabel(head.channel, head.channelAccountLabel) : null,
-    customer: joined(lineRows.map((line) => line.customer)),
-    qty: sumOrNull(lineRows.map((line) => line.qty)),
-    orderTotal: sumOrNull(lineRows.map((line) => line.saleAmount)),
-    orderedAt: earliest(lineRows.map((line) => line.orderedAt)),
-    scannedOutBy: lastScan && (lastScan.scannedById || lastScan.scannedByName) ? { id: lastScan.scannedById, name: lastScan.scannedByName } : null,
-    scanSource: scan === 'none' ? null : scan,
-    carrier: lead?.carrier ?? null,
-    service: lead?.service ?? null,
-    labelCreatedAt: lead?.labelCreatedAt ?? null,
-    labelCost: sumOrNull(boxes.map((box) => box.pkg.labelCost)),
-    firstScanAt,
-    lastEvent:
-      lead && (lead.statusLabel || lead.latestEventAt)
+  const labelCosts = boxes.flatMap((box) => (box.pkg.labelCost !== null ? [box.pkg.labelCost] : []));
+  const clock = journeyClock(bucket, { lead, deliveredAt, checkIn });
+  const packerLine = lineRows.find((line) => line.packerId !== null) ?? null;
+  return {
+    key: head.orderKey,
+    bucket,
+    journey: {
+      journey: bucket,
+      clock,
+      checkIn: checkIn
         ? {
-            label: lead.statusLabel,
-            at: lead.latestEventAt,
-            status: carrierStatusLabel(lead.category),
+            state: checkIn.state,
+            supportItemId: checkIn.supportItemId,
+            dueAt: checkIn.dueAt,
+            contactedAt: checkIn.contactedAt,
+            nextFollowUpAt: checkIn.nextFollowUpAt,
+            repliedAt: checkIn.repliedAt,
+            closedAt: checkIn.closedAt,
+            outcome: checkIn.outcome,
           }
         : null,
-    lastEventPlace: lead?.lastEventPlace ?? null,
-    eta: lead?.estimatedDeliveryAt ?? null,
-    attempts: lead ? lead.attempts : null,
-    exceptionCode: lead?.exceptionCode ?? null,
-    // The error's first line (`USPS auth failed: 401`), not the carrier's whole response body. An
-    // Untracked row's carrier is not polled at all, so a stale poll error there says nothing new.
-    lastPoll:
-      lead && carrierBucket !== 'untracked' && (lead.lastCheckedAt || lead.lastError)
-        ? { at: lead.lastCheckedAt, error: lead.lastError?.split('\n')[0]!.trim().slice(0, POLL_ERROR_CHARS) || null }
-        : null,
-    packages: boxes.length,
-    trackings: trackings.length > 1 ? trackings : null,
-    returnRef: joined(lineRows.map((line) => line.returnRef)),
-    shipstationStatus: head.shipstationStatus,
-    transitDays: transitFrom && transitTo ? Math.max(0, Math.round(((Date.parse(transitTo) - Date.parse(transitFrom)) / DAY_MS) * 10) / 10) : null,
-    claim: CLAIM_BUCKETS[carrierBucket] && lead && leadHandOff ? carrierClaimWindow(lead.carrier, new Date(leadHandOff), lead.service) : null,
-    // Only when lines were combined (the sheet paints "+N").
-    lineCount: lineRows.length > 1 ? lineRows.length : null,
-  };
-  const facts = {
-    ...outboundFacts(
-      {
-        // The first line's; the sheet adds "+N" from `lineCount`.
-        fact_title: head.title,
-        sku: head.sku,
-        tracking_number: lead?.tracking ?? null,
-        delivered_at: deliveredAt,
-        status: head.channelStatus,
-        ship_by_date: shipByDate,
-        picked_at: pickLine?.pickedAt ?? null,
-        picked_by: pickLine?.pickedBy?.id ?? null,
-        picked_by_name: pickLine?.pickedBy?.name ?? null,
-        picked_source: pickLine?.pickedBy?.source ?? null,
-        packed_at: latest(lineRows.map((line) => line.packedAt)),
-        packer_id: packerLine?.packerId ?? null,
-        packer_name: packerLine?.packerName ?? null,
-        shipped_at: lastScan?.scannedAt ?? null,
-      },
-      lineRows.length,
-      fulfilled,
-    ),
-    shipmentId: lead?.shipmentId ?? null,
-    promisedAt: lead?.promisedAt ?? null,
-    clock: journeyClock(bucket, { lead, deliveredAt, checkIn }),
-    checkIn: checkIn
-      ? {
-          state: checkIn.state,
-          supportItemId: checkIn.supportItemId,
-          dueAt: checkIn.dueAt,
-          contactedAt: checkIn.contactedAt,
-          nextFollowUpAt: checkIn.nextFollowUpAt,
-          repliedAt: checkIn.repliedAt,
-          closedAt: checkIn.closedAt,
-          outcome: checkIn.outcome,
-        }
-      : null,
-  } satisfies NavLocateFacts;
-  return {
-    entry: {
-      key,
-      ref: head.orderId ?? head.orderKey,
-      buckets: [bucket],
-      // The item is `facts.title`, the carrier's words `facts.lastEvent` — never sent twice.
-      title: null,
-      detail: null,
-      recordHref: head.orderRowId > 0
-        ? recordDetailsHref({ kind: 'order', orderId: head.orderRowId, shipped: true })
-        : null,
-      facts,
+      promisedAt: lead?.promisedAt ?? null,
+      scanSource: scan === 'none' ? null : scan,
+      labelCreatedAt: lead?.labelCreatedAt ?? null,
+      labelCost: labelCosts.length > 0 ? labelCosts.reduce((a, b) => a + b, 0) : null,
+      firstScanAt,
+      transitDays: transitFrom && transitTo ? Math.max(0, Math.round(((Date.parse(transitTo) - Date.parse(transitFrom)) / DAY_MS) * 10) / 10) : null,
+      attempts: lead ? lead.attempts : null,
+      exceptionCode: lead?.exceptionCode ?? null,
+      claim: CLAIM_BUCKETS[carrierBucket] && lead && leadHandOff ? carrierClaimWindow(lead.carrier, new Date(leadHandOff), lead.service) : null,
+      // The error's first line (`USPS auth failed: 401`), not the carrier's whole response body. An
+      // Untracked order's carrier is not polled at all, so a stale poll error there says nothing new.
+      lastPoll:
+        lead && carrierBucket !== 'untracked' && (lead.lastCheckedAt || lead.lastError)
+          ? { at: lead.lastCheckedAt, error: lead.lastError?.split('\n')[0]!.trim().slice(0, POLL_ERROR_CHARS) || null }
+          : null,
+      shipstationStatus: head.shipstationStatus,
+      returnRef: joined(lineRows.map((line) => line.returnRef)),
     },
-    bucket,
-    channel: head.channel,
+    platform: head.channel,
+    platformLabel: head.channel ? channelLabel(head.channel, head.channelAccountLabel) : null,
     carrier: lead?.carrier ?? null,
     packer: packerLine?.packerId ? { id: packerLine.packerId, name: packerLine.packerName } : null,
     scan,
-    handOffAt,
-    shipByAt,
+    overdueMs: clock?.due ? now.getTime() - Date.parse(clock.due) : null,
+    orderRowIds: lineRows.flatMap((line) => (line.orderRowId > 0 ? [line.orderRowId] : [])),
+    orphan: head.orderRowId > 0 ? null : head,
   };
 }
 
-/** The statement's rows → one {@link Located} per line or per order number, in first-seen order. */
-export function groupFulfilled(rows: readonly FulfilledPackageRow[], grain: 'order' | 'line', now: Date): Located[] {
+/** The statement's rows → one {@link FulfilledOrder} per order key, in first-seen order. */
+export function groupFulfilledOrders(rows: readonly FulfilledPackageRow[], now: Date): FulfilledOrder[] {
   const groups = new Map<string, FulfilledPackageRow[]>();
   for (const row of rows) {
-    const key = grain === 'line' ? `line:${row.orderRowId}` : row.orderKey;
-    const group = groups.get(key);
+    const group = groups.get(row.orderKey);
     if (group) group.push(row);
-    else groups.set(key, [row]);
+    else groups.set(row.orderKey, [row]);
   }
-  // An order number is its own row key; a line needs one (its `ref` repeats across the order's lines).
-  return [...groups].map(([key, group]) => locate(group, grain === 'line' ? key : undefined, now));
+  return [...groups.values()].map((group) => journeyOf(group, now));
 }
 
-type SortValue = string | number | null;
+type FulfilledFilter = 'platform' | 'carrier' | 'packer' | 'scan';
 
-const instant = (at: string | null | undefined): number | null => (at ? Date.parse(at) : null);
-
-/** Each sort's key (null sorts last either way) and its direction when `dir` is absent. */
-const SORTS: Readonly<Record<FulfilledSort, { key: (row: Located) => SortValue; dir: 'asc' | 'desc' }>> = {
-  shipped: { key: (row) => instant(row.handOffAt), dir: 'desc' },
-  delivered: { key: (row) => instant(row.entry.facts.deliveredAt), dir: 'desc' },
-  ordered: { key: (row) => instant(row.entry.facts.orderedAt), dir: 'desc' },
-  shipBy: { key: (row) => instant(row.shipByAt), dir: 'desc' },
-  order: { key: (row) => row.entry.ref, dir: 'asc' },
-  channel: { key: (row) => row.entry.facts.channel ?? null, dir: 'asc' },
-  carrier: { key: (row) => row.carrier, dir: 'asc' },
-  status: { key: (row) => FULFILLED_BUCKET_IDS.indexOf(row.bucket), dir: 'asc' },
-  packer: { key: (row) => row.entry.facts.packer?.name ?? null, dir: 'asc' },
-  item: { key: (row) => row.entry.facts.title, dir: 'asc' },
-  lastEvent: { key: (row) => instant(row.entry.facts.lastEvent?.at), dir: 'desc' },
-};
-
-const TEXT_ORDER = new Intl.Collator('en-US', { numeric: true, sensitivity: 'base' });
-
-/** Sorted by `sort` / `dir`, nulls last; ties fall to the latest hand-off, then the number. */
-export function sortFulfilled(rows: readonly Located[], sort: FulfilledSort, dir: 'asc' | 'desc' | undefined): Located[] {
-  const { key } = SORTS[sort];
-  const sign = (dir ?? SORTS[sort].dir) === 'asc' ? 1 : -1;
-  return rows
-    .map((row) => ({ row, value: key(row), handOff: instant(row.handOffAt) }))
-    .sort((a, b) => {
-      if (a.value !== b.value) {
-        if (a.value === null) return 1;
-        if (b.value === null) return -1;
-        const by =
-          typeof a.value === 'number' && typeof b.value === 'number'
-            ? a.value - b.value
-            : TEXT_ORDER.compare(String(a.value), String(b.value));
-        if (by !== 0) return by * sign;
-      }
-      if (a.handOff !== b.handOff) {
-        if (a.handOff === null) return 1;
-        if (b.handOff === null) return -1;
-        return b.handOff - a.handOff;
-      }
-      return TEXT_ORDER.compare(a.row.entry.ref, b.row.entry.ref);
-    })
-    .map(({ row }) => row);
-}
-
-type FulfilledFilter = 'channel' | 'carrier' | 'packer' | 'scan';
-
-/** The row passes the query's channel / carrier / packer / scan filters, `except` one (its own facet counts without it). */
-function keeps(row: Located, query: NavFulfilledQuery, except?: FulfilledFilter): boolean {
+/** The order passes the query's platform / carrier / packer / scan filters, `except` one (its own facet counts without it). */
+function keeps(order: FulfilledOrder, query: NavFulfilledQuery, except?: FulfilledFilter): boolean {
   return (
-    (except === 'channel' || query.channel === undefined || row.channel === query.channel) &&
-    (except === 'carrier' || query.carrier === undefined || row.carrier === query.carrier) &&
-    (except === 'packer' || query.packer === undefined || row.packer?.id === query.packer) &&
-    (except === 'scan' || query.scan === undefined || row.scan === query.scan)
+    (except === 'platform' || query.platform === undefined || order.platform === query.platform) &&
+    (except === 'carrier' || query.carrier === undefined || order.carrier === query.carrier) &&
+    (except === 'packer' || query.packer === undefined || order.packer?.id === query.packer) &&
+    (except === 'scan' || query.scan === undefined || order.scan === query.scan)
   );
 }
 
-/** Each facet over the rows every OTHER filter keeps; most first, then by label. */
-export function countFulfilledFacets(rows: readonly Located[], query: NavFulfilledQuery): NavFulfilledFacets {
-  const channels = new Map<string, { value: string; label: string; count: number }>();
+const TEXT_ORDER = new Intl.Collator('en-US', { numeric: true, sensitivity: 'base' });
+
+/** Each facet over the orders every OTHER filter keeps; most first, then by label. */
+export function countFulfilledFacets(orders: readonly FulfilledOrder[], query: NavFulfilledQuery): NavFulfilledFacets {
+  const platforms = new Map<string, { value: string; label: string; count: number }>();
   const carriers = new Map<string, { value: string; label: string; count: number }>();
   const scans = new Map<string, { value: string; label: string; count: number }>();
   const packers = new Map<number, { id: number; name: string | null; count: number }>();
@@ -358,28 +259,132 @@ export function countFulfilledFacets(rows: readonly Located[], query: NavFulfill
     option.count += 1;
     map.set(value, option);
   };
-  for (const row of rows) {
-    if (row.channel && keeps(row, query, 'channel')) tally(channels, row.channel, row.entry.facts.channel ?? row.channel);
-    if (row.carrier && keeps(row, query, 'carrier')) tally(carriers, row.carrier, row.carrier);
-    if (keeps(row, query, 'scan')) tally(scans, row.scan, FULFILLED_SCAN_LABEL[row.scan]);
-    if (row.packer && keeps(row, query, 'packer')) {
-      const option = packers.get(row.packer.id) ?? { ...row.packer, count: 0 };
+  for (const order of orders) {
+    if (order.platform && keeps(order, query, 'platform')) tally(platforms, order.platform, order.platformLabel ?? order.platform);
+    if (order.carrier && keeps(order, query, 'carrier')) tally(carriers, order.carrier, order.carrier);
+    if (keeps(order, query, 'scan')) tally(scans, order.scan, FULFILLED_SCAN_LABEL[order.scan]);
+    if (order.packer && keeps(order, query, 'packer')) {
+      const option = packers.get(order.packer.id) ?? { ...order.packer, count: 0 };
       option.count += 1;
-      packers.set(row.packer.id, option);
+      packers.set(order.packer.id, option);
     }
   }
   const mostFirst = <T extends { count: number }>(values: Iterable<T>, label: (value: T) => string): T[] =>
     [...values].sort((a, b) => b.count - a.count || TEXT_ORDER.compare(label(a), label(b)));
   return {
-    channels: mostFirst(channels.values(), (option) => option.label),
+    platforms: mostFirst(platforms.values(), (option) => option.label),
     carriers: mostFirst(carriers.values(), (option) => option.label),
     packers: mostFirst(packers.values(), (option) => option.name ?? ''),
     scans: mostFirst(scans.values(), (option) => option.label),
   };
 }
 
+/**
+ * A scan-out no order owns, as a Records line: its one package, scanned out
+ * by its staffer. It names no order line, so it carries no write target
+ * (`recordId`) and opens no order record — its package is its record.
+ */
+function orphanLine(pkg: FulfilledPackageRow): RecordLineRow {
+  const scannedBy = pkg.scannedById !== null || pkg.scannedByName !== null ? { id: pkg.scannedById, name: pkg.scannedByName } : null;
+  return {
+    direction: 'outbound',
+    recordId: 0,
+    orderNumber: null,
+    orderKey: pkg.orderKey,
+    itemNumber: null,
+    skuCatalogId: null,
+    title: null,
+    sku: null,
+    qty: null,
+    unitPrice: null,
+    lineTotal: null,
+    orderTotal: null,
+    orderLines: 1,
+    platform: null,
+    platformAccountLabel: null,
+    customer: null,
+    vendor: null,
+    po: null,
+    channelStatus: null,
+    placedAt: null,
+    importedAt: null,
+    orderedAt: null,
+    shipByDate: null,
+    shipByAt: null,
+    pickedAt: null,
+    pickedBy: null,
+    packedAt: null,
+    packer: null,
+    scannedAt: pkg.scannedAt,
+    scannedBy,
+    shippedAt: pkg.handOffAt,
+    unboxedAt: null,
+    unboxedBy: null,
+    receivedAt: null,
+    receivedBy: null,
+    unitsReceived: null,
+    unitsExpected: null,
+    receivedDone: false,
+    inboundOrderId: null,
+    cartonId: null,
+    service: pkg.service,
+    packages:
+      pkg.shipmentId !== null
+        ? [
+            {
+              shipmentId: pkg.shipmentId,
+              tracking: pkg.tracking,
+              carrier: pkg.carrier,
+              category: pkg.category,
+              statusLabel: pkg.statusLabel,
+              latestEventAt: pkg.latestEventAt,
+              eta: pkg.estimatedDeliveryAt,
+              deliveredAt: pkg.isDelivered ? pkg.deliveredAt : null,
+              place: pkg.lastEventPlace,
+              primary: true,
+            },
+          ]
+        : [],
+    buyerCancelled: false,
+    scannedOut: pkg.scannedAt !== null,
+    releaseState: null,
+    outOfStock: false,
+    holdFlag: false,
+    packed: false,
+    picked: false,
+    lineStatus: null,
+    workflowStatus: null,
+    exceptionCode: null,
+    lastNote: null,
+    hasNote: false,
+    owner: null,
+    mine: false,
+    matchedRefs: [],
+  };
+}
+
+/** A Records line carrying its order's journey: the order's bucket heads `buckets`, its clock the `overdue` sort. */
+function withJourney(row: Located, order: FulfilledOrder, mentionsMe: boolean): Located {
+  const orphan = order.orphan !== null;
+  return {
+    ...row,
+    overdueMs: order.overdueMs,
+    entry: {
+      ...row.entry,
+      ...(orphan ? { key: order.key, recordHref: null } : null),
+      buckets: [order.bucket],
+      facts: {
+        ...row.entry.facts,
+        ...order.journey,
+        ...(orphan ? { recordId: undefined, orderRowId: null } : null),
+        ...(mentionsMe ? { mentionsMe } : null),
+      },
+    },
+  };
+}
+
 export async function getNavFulfilled(
-  caller: { orgId: OrgId; permissions: ReadonlySet<string> },
+  caller: { orgId: OrgId; permissions: ReadonlySet<string>; staffId?: number | null },
   params: URLSearchParams,
   deps: NavFulfilledDeps,
 ): Promise<NavFulfilledResult> {
@@ -398,68 +403,65 @@ export async function getNavFulfilled(
     };
   }
   const query = parsed.data;
+  const viewerStaffId = caller.staffId ?? null;
   const [rows, syncCarriers] = await Promise.all([
     deps.rows(caller.orgId, fulfilledWindow(query, deps.today()), query.q?.trim() || null),
     deps.syncHealth?.(caller.orgId) ?? null,
   ]);
-  const located = groupFulfilled(rows, query.grain, deps.now());
+  const now = deps.now();
+  const orders = groupFulfilledOrders(rows, now);
 
-  const facets = countFulfilledFacets(located, query);
-  const kept = located.filter((row) => keeps(row, query));
+  const facets = countFulfilledFacets(orders, query);
+  const kept = orders.filter((order) => keeps(order, query));
   const counts = new Map<FulfilledBucketId, number>();
-  for (const row of kept) counts.set(row.bucket, (counts.get(row.bucket) ?? 0) + 1);
+  for (const order of kept) counts.set(order.bucket, (counts.get(order.bucket) ?? 0) + 1);
   const buckets: NavLocateBucket[] = FULFILLED_BUCKETS.map((bucket) => ({
     id: bucket.id,
     label: bucket.label,
     tone: bucket.tone,
-    href: `${SHIPPING_SHIPPED_PATH}?${new URLSearchParams({ [FULFILLED_STATUS_PARAM]: bucket.id })}`,
+    href: `${SHIPPING_SHIPPED_PATH}?${new URLSearchParams({ [FULFILLED_COLUMN_PARAM]: bucket.id, [FULFILLED_LAYOUT_PARAM]: 'sheet' })}`,
     count: counts.get(bucket.id) ?? 0,
   }));
-  const entries = sortFulfilled(
-    query.status === undefined ? kept : kept.filter((row) => row.bucket === query.status),
-    query.sort,
-    query.dir,
-  ).map((row) => wireEntry(row.entry));
+
+  // Every kept order's lines, as Records lines (the one place their facts are made), then its journey.
+  const sorted = deps.recordLines ? await fulfilledLines(caller.orgId, kept, query, viewerStaffId, now.getTime(), deps.recordLines, deps.mentions) : [];
 
   return {
     ok: true,
     body: {
       locator: 'outbound',
       buckets,
-      entries,
-      total: entries.length,
+      entries: sorted.map((row) => recordsWireEntry(row.entry)),
+      total: kept.length,
       facets,
       ...(syncCarriers ? { syncHealth: { carriers: syncCarriers } } : {}),
     },
   };
 }
 
-type WireEntry = NavFulfilledWire['entries'][number];
-
-const WIRE_DEFAULT: Readonly<Record<string, unknown>> = NAV_FULFILLED_WIRE_DEFAULTS;
-
-/**
- * An entry as it travels: every null left out, and every fact holding its
- * `NAV_FULFILLED_WIRE_DEFAULTS` value — `NavFulfilledResponseSchema` restores
- * both on parse. A defaulted fact that differs (null included) is sent.
- */
-function wireEntry(entry: Located['entry']): WireEntry {
-  const facts: Record<string, unknown> = {};
-  for (const [name, value] of Object.entries(entry.facts)) {
-    if (value === undefined) continue;
-    if (Object.hasOwn(WIRE_DEFAULT, name)) {
-      const fallback = WIRE_DEFAULT[name];
-      const same = Array.isArray(fallback) ? Array.isArray(value) && value.length === 0 : value === fallback;
-      if (!same) facts[name] = value;
-    } else if (value !== null) {
-      facts[name] = value;
-    }
-  }
-  return {
-    ...(entry.key ? { key: entry.key } : null),
-    ref: entry.ref,
-    buckets: entry.buckets,
-    ...(entry.recordHref ? { recordHref: entry.recordHref } : null),
-    facts: facts as NonNullable<WireEntry['facts']>,
-  };
+/** The kept orders' lines — Records lines with their order's journey — in the query's Records sort. */
+async function fulfilledLines(
+  orgId: OrgId,
+  kept: readonly FulfilledOrder[],
+  query: NavFulfilledQuery,
+  viewerStaffId: number | null,
+  nowMs: number,
+  recordLines: NonNullable<NavFulfilledDeps['recordLines']>,
+  mentions: NavFulfilledDeps['mentions'],
+): Promise<Located[]> {
+  const orderRowIds = kept.flatMap((order) => order.orderRowIds);
+  const [lineRows, mentioned] = await Promise.all([
+    orderRowIds.length > 0 ? recordLines(orgId, orderRowIds, viewerStaffId) : [],
+    viewerStaffId !== null && orderRowIds.length > 0 && mentions ? mentions(orgId, orderRowIds, viewerStaffId) : null,
+  ]);
+  const byId = new Map(lineRows.map((line) => [line.recordId, line] as const));
+  const located = kept.flatMap((order): Located[] => {
+    if (order.orphan) return [withJourney(locateRecordLine(orphanLine(order.orphan), nowMs), order, false)];
+    const mentionsMe = order.orderRowIds.some((id) => mentioned?.has(id) ?? false);
+    return order.orderRowIds.flatMap((id) => {
+      const line = byId.get(id);
+      return line ? [withJourney(locateRecordLine(line, nowMs), order, mentionsMe)] : [];
+    });
+  });
+  return sortRecords(located, { sort: query.sort, dir: query.dir ?? RECORDS_SORT_DIR[query.sort], axis: query.axis, event: null, refs: [] });
 }

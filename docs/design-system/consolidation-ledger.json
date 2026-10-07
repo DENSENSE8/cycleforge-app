@@ -865,6 +865,21 @@
         "src/lib/status/record-status.ts"
       ],
       "exitCriteria": "Every chip, pill, dot or column that paints a status declared in record-status.ts takes its classes from RECORD_STATUS_TONE_CLASSES[status.tone]: ORDER_STATUS_TONE has no entry for an OUTBOUND_INTERNAL_STATUS label, the carrier FULFILLED_BUCKETS columns paint their CARRIER_STATUS tone, and Scanned out reads green on every surface (checked at :3050)."
+    },
+    {
+      "id": "fulfilled-row-set-statement",
+      "state": "queued",
+      "category": "records-read",
+      "problem": "Fulfilled renders as the Records sheet (operator 2026-10-07): every line's facts come from the Records statement (buildRecordsSql with orderIds → locateRecordLine), and the board, its zoom and the sheet read one answer. But WHICH orders shipped in the window, and each order's journey (package buckets, check-in, clock, label cost, polls), still come from a second statement (buildFulfilledSql) with its own hand-off rule (scan-out › ShipStation ship date › label › carrier acceptance) beside Records' shipped_at (scan-out › acceptance › first transit › label). Measured 2026-10-07 on the 90-day shipped window: 2,161 Fulfilled rows vs 1,735 Records lines; 438 Fulfilled rows are scan-outs no order owns (no Records line), 6 lines only in Fulfilled, 18 only in Records (the hand-off rules differ).",
+      "currentPaths": [
+        "src/lib/nav/fulfilled/sql.ts",
+        "src/lib/nav/fulfilled/service.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/nav/records/sql.ts",
+        "src/lib/nav/records/service.ts"
+      ],
+      "exitCriteria": "The Records statement models a scan-out no order owns as an outbound package record, carries the journey's package inputs (acceptance, first transit, out for delivery, promise, poll stamps, attempts, label cost) and the order's check-in, and uses one hand-off rule; GET /api/nav/fulfilled is then the Records read with a journey preset (or is deleted), buildFulfilledSql is deleted, and the board, its zoom and /records agree on the shipped set for the same window."
     }
   ]
 }

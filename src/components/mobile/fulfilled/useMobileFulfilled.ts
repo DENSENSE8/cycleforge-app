@@ -3,8 +3,9 @@
 /**
  * The phone's read of Fulfilled: the SAME `GET /api/nav/fulfilled` the desk
  * reads (`fetchNavFulfilled`, parsed by `NavFulfilledResponseSchema`), at the
- * view's defaults — order grain, default window, no filters. The desk hook is
- * bound to the desk URL (status chips, Find), so the phone keeps its own.
+ * view's defaults — default window, no filters; its lines fold to one card
+ * per order on the page. The desk hook is bound to the desk URL, so the
+ * phone keeps its own.
  */
 
 import { useQuery } from '@tanstack/react-query';

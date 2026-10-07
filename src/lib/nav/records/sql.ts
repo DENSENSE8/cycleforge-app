@@ -39,6 +39,7 @@
 import { accountSourceAccountLabelSql } from '@/lib/orders/account-source';
 import { WA_TEST_DEADLINE_RANK_ORDER_SQL } from '@/lib/orders/desk-view-sql';
 import { placedElseImportedSql } from '@/lib/orders/order-dates';
+import { noteMentionsToPlain } from '@/lib/orders/note-mentions';
 import { PICKED_BY_IS_PICKED_SQL, PICKED_BY_LATERAL, pickedByFromRow, type PickedBy } from '@/lib/picking/picked-by';
 import type { RecordsAxis, RecordsEvent } from '@/lib/nav/records/params';
 import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
@@ -65,6 +66,13 @@ export interface RecordsSqlInput {
   /** The pasted refs in paste order (the operator's strings); empty = Query mode. */
   refs: readonly string[];
   viewerStaffId: number | null;
+  /**
+   * Exactly these outbound lines (`orders.id`), whatever their dates — a
+   * caller that decided the row set itself (Fulfilled: the shipped orders of
+   * its window) and wants the Records facts of each. Null = every line the
+   * other cuts keep.
+   */
+  orderIds?: readonly number[] | null;
 }
 
 /** One package a line owns, as the statement aggregates it. */
@@ -283,6 +291,7 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
     ...findParams(input.find),
     ...refParams(input.refs),
     input.viewerStaffId,
+    input.orderIds ?? null,
   ];
   const trackingHit = sqlTrackingNumberMatches({
     stnAlias: 'stn',
@@ -330,10 +339,12 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
           SELECT 'o'::text AS dir, o.id AS owner_id, o.shipment_id, true AS is_primary
             FROM orders o
            WHERE $2 AND o.organization_id = $1 AND o.shipment_id IS NOT NULL
+             AND ($18::int[] IS NULL OR o.id = ANY ($18::int[]))
           UNION ALL
           SELECT 'o', sl.owner_id, sl.shipment_id, sl.is_primary
             FROM shipment_links sl
            WHERE $2 AND sl.organization_id = $1 AND sl.owner_type = 'ORDER'
+             AND ($18::int[] IS NULL OR sl.owner_id = ANY ($18::int[]))
           UNION ALL
           SELECT 'i', lp.owner_id, lp.shipment_id, lp.is_primary FROM in_line_pkg lp
           UNION ALL
@@ -545,6 +556,7 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
         ${PICKED_BY_LATERAL}
         JOIN price_out pr ON pr.record_id = o.id
        WHERE $2 AND o.organization_id = $1
+         AND ($18::int[] IS NULL OR o.id = ANY ($18::int[]))
          AND ${windowCut(OUT_AXIS_SQL[input.axis])}
     ),
     il AS (
@@ -720,7 +732,8 @@ function staffOf(id: unknown, name: unknown): { id: number | null; name: string 
 
 export function recordLineRowOf(row: Record<string, unknown>): RecordLineRow {
   const ownerId = positiveId(row.owner_id);
-  const noteText = text(row.note_text);
+  // A note's mention tokens read as `@Name`, on one line — the snippet the sheet paints.
+  const noteText = text(row.note_text) ? noteMentionsToPlain(String(row.note_text)).replace(/\s+/g, ' ').trim() || null : null;
   const noteAt = stamp(row.note_at);
   return {
     direction: row.direction === 'inbound' ? 'inbound' : 'outbound',

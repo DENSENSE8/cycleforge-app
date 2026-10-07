@@ -281,11 +281,12 @@ test('permission filtering removes the rows a role cannot reach', () => {
   assert.ok(!itemIds(at('/shipping/orders', { permissions: noPackingReview })).includes('label-intake'));
 
   // Packing-only roles reach one Fulfillment door (Fulfilled): one page is no
-  // choice, so no lane rows paint — and the sheet has no view rows of its own.
+  // choice, so no lane rows paint — only Fulfilled's own views (the board and
+  // the off-board buckets, owner 2026-10-06).
   const shippedOnly = new Set(['shipping.view', 'packing.view']);
   const archive = at('/fulfilled', { permissions: shippedOnly });
   assert.equal(archive.scope, 'section');
-  assert.deepEqual(itemIds(archive), []);
+  assert.deepEqual(itemIds(archive), ['board', 'returned', 'reply_due', 'late', 'no_tracking', 'awaiting', 'untracked']);
 
   // No child door at all: no Shipping section, and no Shipping row on the map.
   const noDoor = at('/shipping/orders', { permissions: new Set(['shipping.view', 'receiving.view']) });
@@ -439,12 +440,15 @@ test('a 150-number pasted list and its status + reason filters survive the Inbou
 });
 
 test('each Shipping view carries the filters and controls its own list reads', () => {
-  // Fulfilled is a page like any other: its search is its own `?q=`, its facets its own context.
+  // Fulfilled is a page like any other: its search is its own `?q=`, its facets its own context — one per view.
   const fulfilled = at('/fulfilled');
   assert.equal(fulfilled.search.source, 'url-param');
   assert.equal(fulfilled.search.param, 'q');
   assert.equal(fulfilled.search.placeholder, 'Find fulfilled orders');
-  assert.equal(fulfilled.filters?.facetContext, 'fulfilled');
+  assert.equal(fulfilled.filters?.facetContext, 'fulfilled.board');
+  assert.equal(at('/fulfilled?col=late').filters?.facetContext, 'fulfilled.late');
+  // A board column zoomed into is still the board's view.
+  assert.equal(at('/fulfilled?col=stalled').filters?.facetContext, 'fulfilled.board');
   const allocate = at('/shipping/orders').controls;
   const allocateControls = navControlParams(allocate);
   for (const key of ['staff', 'pickedBy', 'shipByFrom', 'shipByTo', 'orderFrom', 'orderTo', 'sort', 'dir']) {

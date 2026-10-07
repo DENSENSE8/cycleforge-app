@@ -23,7 +23,8 @@ import {
 import { PRINT_FILE_STATUS_PARAM } from '@/lib/label-prints/print-file-contracts';
 import { exceptionKindsOf } from '@/lib/exceptions/types';
 import { DOCKED_FLAG_PARAM } from '@/lib/receiving/inbound-lane';
-import { FULFILLED_CARRIER_PARAM, FULFILLED_CHANNEL_PARAM, FULFILLED_SCAN_PARAM } from '@/lib/outbound/fulfilled-params';
+import { FULFILLED_CARRIER_PARAM, FULFILLED_COLUMN_PARAM, FULFILLED_PLATFORM_PARAM, FULFILLED_SCAN_PARAM } from '@/lib/outbound/fulfilled-params';
+import { FULFILLED_VIEW_BUCKET_IDS } from '@/lib/nav/locate/bucket-precedence';
 import { PURCHASES_SOURCE_PARAM, PURCHASES_VENDOR_PARAM } from '@/lib/receiving/purchases-params';
 import { RECORDS_FACETS } from '@/lib/nav/records/params';
 import { REPAIR_STATUS_CHIP_PARAM } from '@/lib/repair/repair-status-chips';
@@ -36,6 +37,14 @@ import { SUPPORT_LIST_VIEWS } from '@/lib/support/list/support-list';
  */
 const SUPPORT_FACET_CONTEXTS = ['support.queue', ...SUPPORT_LIST_VIEWS.map((view) => `support.${view}` as const)] as const;
 type SupportFacetContextId = (typeof SUPPORT_FACET_CONTEXTS)[number];
+
+/**
+ * Fulfilled (`/fulfilled`): one context per sidebar view — the board
+ * (`fulfilled.board`, no `?col=`) and each view bucket — all counted by the
+ * sheet's own read (`src/lib/nav/facets/fulfilled.ts`).
+ */
+export const FULFILLED_FACET_CONTEXTS = ['fulfilled.board', ...FULFILLED_VIEW_BUCKET_IDS.map((bucket) => `fulfilled.${bucket}` as const)] as const;
+export type FulfilledFacetContextId = (typeof FULFILLED_FACET_CONTEXTS)[number];
 
 /**
  * The repair desk (`RepairCardList`): `/repair`'s channel views and Sales ›
@@ -72,8 +81,8 @@ export const NAV_FACET_CONTEXTS = [
   'purchasing',
   // Records (`/records`): every RECORDS_FACETS group counted by the sheet's own read (`records.ts`).
   'records',
-  // Fulfilled (`/fulfilled`): Channel · Carrier · Scan counted by the sheet's own read (`fulfilled.ts`).
-  'fulfilled',
+  // Fulfilled (`/fulfilled`): Platform · Carrier · Scan counted by the sheet's own read, per view (`fulfilled.ts`).
+  ...FULFILLED_FACET_CONTEXTS,
   // The Unbox station (`/unbox`): one context for every `?unboxview=` tab (`unbox.ts`).
   'receive',
   // The Exceptions hub (`/exceptions`): one context per kind plus the whole
@@ -131,6 +140,17 @@ const SUPPORT_GROUPS: readonly NavFacetGroupDecl[] = [
 const REPAIR_GROUPS: readonly NavFacetGroupDecl[] = [{ id: 'repairStatus', label: 'Stage', param: REPAIR_STATUS_CHIP_PARAM, multi: true }];
 /** Unboxed cartons' attention pills (`?dflag=`, any-of) — `UnboxedReceiptsLedger`'s cut (`unbox.ts`). */
 const UNBOXED_STATUS: NavFacetGroupDecl = { id: 'status', label: 'Status', param: DOCKED_FLAG_PARAM, multi: true, inline: true };
+/**
+ * Fulfilled's facets (`fulfilled-params.ts`) — the same on every view: Platform and Carrier (the Records
+ * params), Scan source, and the Journey bucket the sheet narrows to (`?col=`, every bucket — the check-in
+ * family included, which no board column or view holds).
+ */
+export const FULFILLED_GROUPS: readonly NavFacetGroupDecl[] = [
+  { id: 'journey', label: 'Journey', param: FULFILLED_COLUMN_PARAM, multi: false },
+  { id: 'platform', label: 'Platform', param: FULFILLED_PLATFORM_PARAM, multi: false },
+  { id: 'carrier', label: 'Carrier', param: FULFILLED_CARRIER_PARAM, multi: false },
+  { id: 'scan', label: 'Scan', param: FULFILLED_SCAN_PARAM, multi: false },
+];
 
 export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFacetGroupDecl[]>> = {
   'stations-live': [
@@ -173,13 +193,9 @@ export const NAV_FACET_GROUPS: Readonly<Record<NavFacetContext, readonly NavFace
     ...('inline' in facet ? { inline: facet.inline } : null),
     ...('searchable' in facet ? { searchable: facet.searchable } : null),
   })),
-  // Fulfilled: the sheet's own `facets` (`GET /api/nav/fulfilled`, `fulfilled.ts`). Packer is the
-  // page's staff row (`NAV_PAGE_DECLS.fulfilled.controls.staff`); status is the body's chip row.
-  fulfilled: [
-    { id: 'channel', label: 'Platform', param: FULFILLED_CHANNEL_PARAM, multi: false },
-    { id: 'carrier', label: 'Carrier', param: FULFILLED_CARRIER_PARAM, multi: false },
-    { id: 'scan', label: 'Scan', param: FULFILLED_SCAN_PARAM, multi: false },
-  ],
+  // Fulfilled: the sheet's own `facets` (`GET /api/nav/fulfilled`, `fulfilled.ts`), every view alike. Packer is the
+  // page's staff row (`NAV_PAGE_DECLS.fulfilled.controls.staff`); status is the sheet's chip row.
+  ...(Object.fromEntries(FULFILLED_FACET_CONTEXTS.map((context) => [context, FULFILLED_GROUPS])) as Record<FulfilledFacetContextId, readonly NavFacetGroupDecl[]>),
   'outbound.orders': [STAGE, AGING, LATE, URGENT, OUT_OF_STOCK],
   // Print status Not printed · Partly printed · Printed (absence = All) —
   // `/api/shipping/label-intake/files`' own param, counted under every OTHER filter.
@@ -260,7 +276,7 @@ export const NAV_FACET_PERMISSION: Readonly<Record<NavFacetContext, string | rea
   // The sheet's own read (`GET /api/nav/records`, `NAV_RECORDS_PERMISSION`): either direction's list permission.
   records: ['orders.view', 'receiving.view'],
   // The sheet's own read (`GET /api/nav/fulfilled`).
-  fulfilled: 'packing.view',
+  ...(Object.fromEntries(FULFILLED_FACET_CONTEXTS.map((context) => [context, 'packing.view'])) as Record<FulfilledFacetContextId, string>),
   exceptions: [...new Set(Object.values(EXCEPTION_KIND_PERMISSION))],
   'exceptions.fulfillment': [...new Set(exceptionKindsOf('fulfillment').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],
   'exceptions.inventory': [...new Set(exceptionKindsOf('inventory').map((kind) => EXCEPTION_KIND_PERMISSION[kind]))],

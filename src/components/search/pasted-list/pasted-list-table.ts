@@ -5,8 +5,8 @@
  * cells, columns the staffer resizes / fits / freezes (`useSheetColumns`).
  * Display method: DataTable, HIGH — hundreds of rows × 10 compared facts at a
  * desk. Column sets: Records' ({@link RECORDS_COLUMN_SET} — the pasted list
- * is one way of filling it), the pasted list's ({@link PASTED_LIST_COLUMN_SET},
- * also Purchasing's) and Fulfilled's ({@link FULFILLED_COLUMNS}).
+ * and Fulfilled are ways of filling it) and the pasted list's
+ * ({@link PASTED_LIST_COLUMN_SET}, also Purchasing's).
  */
 
 import { makeGridSurfaceDescriptor, type GridSurfaceCapabilities, type GridSurfaceDescriptor, type LedgerGridColumnModel } from '@/design-system/components/grid';
@@ -27,6 +27,7 @@ import type { BulkRowView } from '@/components/sidebar/contextual/bulk-list-view
 import type { NavLocateFacts } from '@/lib/nav/context/schema';
 import { shortDay } from '@/lib/receiving/pasted-number-facts';
 import { FULFILLED_SCAN_LABEL } from '@/lib/outbound/fulfilled-params';
+import { FULFILLED_BUCKETS } from '@/lib/nav/locate/bucket-precedence';
 import { journeyClockFace, journeyClockSpanText } from '@/lib/nav/fulfilled/journey-clock';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { formatCurrency } from '@/utils/_number';
@@ -47,39 +48,17 @@ export type PastedListColumnKey =
   | 'unboxed'
   | 'units'
   | 'detail'
-  // Fulfilled (`FULFILLED_COLUMNS`) — the outbound read of a shipped order.
+  // Records (`RECORDS_COLUMNS`) — one line of an inbound or outbound order.
   | 'order'
   | 'channel'
-  // Time in the journey bucket against its threshold (`journeyClockFace`).
-  | 'clock'
-  | 'scannedOut'
   | 'scannedOutBy'
   | 'carrier'
   | 'lastEvent'
   | 'item'
   | 'qty'
-  | 'customer'
   | 'orderTotal'
-  | 'ordered'
-  | 'packed'
-  | 'scanSource'
-  | 'firstScan'
-  | 'transitDays'
   | 'service'
-  | 'labelCreated'
-  | 'labelCost'
   | 'eta'
-  | 'attempts'
-  | 'exceptionCode'
-  | 'lastPoll'
-  | 'channelStatus'
-  | 'shipstationStatus'
-  | 'packages'
-  | 'returnRef'
-  | 'claimBy'
-  // The record's import instant (`facts.importedAt`).
-  | 'imported'
-  // Records (`RECORDS_COLUMNS`) — one line of an inbound or outbound order.
   | 'select'
   | 'type'
   | 'unitPrice'
@@ -89,8 +68,27 @@ export type PastedListColumnKey =
   | 'pickedBy'
   | 'unboxedBy'
   | 'receivedBy'
+  | 'owner'
+  | 'note'
   | 'internal'
-  | 'external';
+  | 'external'
+  // The Fulfilled journey (`GET /api/nav/fulfilled` lines carry it): the order's bucket, its clock
+  // (time there against its threshold, `journeyClockFace`), how it left, its label, polls and claim.
+  | 'journey'
+  | 'clock'
+  | 'scanSource'
+  | 'firstScan'
+  | 'transitDays'
+  | 'labelCreated'
+  | 'labelCost'
+  | 'attempts'
+  | 'exceptionCode'
+  | 'lastPoll'
+  | 'shipstationStatus'
+  | 'returnRef'
+  | 'claimBy'
+  // The record's import instant (`facts.importedAt`).
+  | 'imported';
 
 export interface PastedListColumn extends LedgerGridColumnModel {
   key: PastedListColumnKey;
@@ -117,7 +115,7 @@ export interface PastedListRow {
 /**
  * The located-records catalog the table definition (`pasted-list.full`)
  * declares — the old pasted list's tracks. Every live sheet mounts its own
- * set (Records, Purchasing, Fulfilled).
+ * set (Records, Purchasing).
  */
 export const PASTED_LIST_COLUMNS: readonly PastedListColumn[] = [
   { key: 'pos', width: 'minmax(2.25rem, 2.25rem)', label: 'Pasted position', gridLabel: '#', type: 'number', align: 'end', frozen: true },
@@ -172,62 +170,23 @@ export interface PastedListColumnSet {
 export const PASTED_LIST_COLUMN_SET: PastedListColumnSet = { all: PASTED_LIST_COLUMNS, mount: pastedListMountedColumns };
 
 /**
- * Fulfilled (`/fulfilled`, Phase 1 report COLUMNS): the eleven `core` tracks are
- * the default read — Order · Channel · Status · Clock · Scanned out · By ·
- * Carrier · Tracking · Last event · Delivered · Item; every `optional` track
- * mounts when the staffer shows it (the sheet's Columns menu).
- */
-export const FULFILLED_COLUMNS: readonly PastedListColumn[] = [
-  { key: 'order', width: 'minmax(8.5rem, 8.5rem)', label: 'Order', gridLabel: 'Order', type: 'id', frozen: true, tier: 'core' },
-  { key: 'channel', width: 'minmax(6.5rem, 6.5rem)', label: 'Platform', gridLabel: 'Platform', type: 'text', sortable: false, tier: 'core' },
-  { key: 'where', width: 'minmax(9rem, 9rem)', label: 'Status', gridLabel: 'Status', type: 'tag', sortable: false, tier: 'core' },
-  // The journey clock: time in the status against its threshold. Not sortable — the sheet's order is the server's.
-  { key: 'clock', width: 'minmax(6rem, 6rem)', label: 'Clock', gridLabel: 'Clock', type: 'text', sortable: false, tier: 'core', headerForceLabel: true },
-  { key: 'scannedOut', width: 'minmax(10rem, 10rem)', label: 'Scanned out', gridLabel: 'Scanned out', type: 'date', sortable: false, tier: 'core', headerForceLabel: true },
-  { key: 'scannedOutBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Scanned out by', gridLabel: 'By', type: 'text', sortable: false, tier: 'core', headerForceLabel: true },
-  { key: 'carrier', width: 'minmax(5rem, 5rem)', label: 'Carrier', gridLabel: 'Carrier', type: 'text', sortable: false, tier: 'core' },
-  { key: 'tracking', width: 'minmax(7.5rem, 7.5rem)', label: 'Tracking', gridLabel: 'Tracking', type: 'text', sortable: false, tier: 'core' },
-  { key: 'lastEvent', width: 'minmax(14rem, 14rem)', label: 'Last carrier event', gridLabel: 'Last event', type: 'text', sortable: false, tier: 'core' },
-  { key: 'delivered', width: 'minmax(7.75rem, 7.75rem)', label: 'Delivered', gridLabel: 'Delivered', type: 'date', sortable: false, tier: 'core', headerForceLabel: true },
-  // The last default track absorbs the sheet's slack.
-  { key: 'item', width: 'minmax(16rem, 1fr)', label: 'Item', gridLabel: 'Item', type: 'text', sortable: false, tier: 'core' },
-  { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', gridLabel: 'SKU', type: 'text', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Quantity', gridLabel: 'Qty', type: 'number', align: 'end', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'customer', width: 'minmax(9rem, 9rem)', label: 'Customer', gridLabel: 'Customer', type: 'text', sortable: false, tier: 'optional' },
-  { key: 'orderTotal', width: 'minmax(6rem, 6rem)', label: 'Order total', gridLabel: 'Total', type: 'number', align: 'end', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'ordered', width: 'minmax(7.75rem, 7.75rem)', label: 'Ordered', gridLabel: 'Ordered', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'shipBy', width: 'minmax(5.5rem, 5.5rem)', label: 'Ship by', gridLabel: 'Ship by', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'packed', width: 'minmax(7.75rem, 7.75rem)', label: 'Packed', gridLabel: 'Packed', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'packer', width: 'minmax(12.5rem, 12.5rem)', label: 'Packed by', gridLabel: 'Packer', type: 'text', sortable: false, tier: 'optional' },
-  { key: 'scanSource', width: 'minmax(6rem, 6rem)', label: 'Scan source', gridLabel: 'Scan', type: 'text', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'firstScan', width: 'minmax(7.75rem, 7.75rem)', label: 'First carrier scan', gridLabel: 'First scan', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'transitDays', width: 'minmax(4.5rem, 4.5rem)', label: 'Days in transit', gridLabel: 'Transit', type: 'number', align: 'end', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'service', width: 'minmax(8rem, 8rem)', label: 'Carrier service', gridLabel: 'Service', type: 'text', sortable: false, tier: 'optional' },
-  { key: 'labelCreated', width: 'minmax(7.75rem, 7.75rem)', label: 'Label created', gridLabel: 'Label created', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'labelCost', width: 'minmax(5rem, 5rem)', label: 'Label cost', gridLabel: 'Label $', type: 'number', align: 'end', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'eta', width: 'minmax(5.5rem, 5.5rem)', label: 'Estimated delivery', gridLabel: 'ETA', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'attempts', width: 'minmax(4.5rem, 4.5rem)', label: 'Delivery attempts', gridLabel: 'Attempts', type: 'number', align: 'end', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'exceptionCode', width: 'minmax(7rem, 7rem)', label: 'Exception code', gridLabel: 'Exception', type: 'text', sortable: false, tier: 'optional' },
-  { key: 'lastPoll', width: 'minmax(9rem, 9rem)', label: 'Last carrier poll', gridLabel: 'Last poll', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'channelStatus', width: 'minmax(7rem, 7rem)', label: 'Channel status', gridLabel: 'Channel status', type: 'text', sortable: false, tier: 'optional' },
-  { key: 'shipstationStatus', width: 'minmax(7rem, 7rem)', label: 'ShipStation status', gridLabel: 'ShipStation', type: 'text', sortable: false, tier: 'optional' },
-  { key: 'packages', width: 'minmax(4.5rem, 4.5rem)', label: 'Packages', gridLabel: 'Pkgs', type: 'number', align: 'end', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'returnRef', width: 'minmax(7rem, 7rem)', label: 'Return', gridLabel: 'Return', type: 'text', sortable: false, tier: 'optional' },
-  { key: 'claimBy', width: 'minmax(6rem, 6rem)', label: 'Carrier claim by', gridLabel: 'Claim by', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-];
-
-/**
- * The Records sheet (`/records`, handoff 2026-10-06 §4): one row per LINE of
- * an inbound or outbound order, every track always mounted. Select · Order #
- * · Tracking are the frozen identity pane (left); Internal | External are the
- * trailing pane pinned RIGHT on every row, in that order, whatever the Type
- * filter (operator ruling §2.7). The carrier's last word absorbs the slack.
+ * The Records sheet (`/records`, handoff 2026-10-06 §4; Fulfilled paints it
+ * too, operator 2026-10-07): one row per LINE of an inbound or outbound
+ * order. Select · Order # · Tracking are the frozen identity pane (left);
+ * Internal | External are the trailing pane pinned RIGHT on every row, in
+ * that order, whatever the Type filter (operator ruling §2.7). The Fulfilled
+ * journey's tracks (Journey, Clock, Scan source, Label …, Check-in) mount
+ * only when the loaded lines carry them (`RECORDS_COLUMN_SET.mount`). The
+ * carrier's last word absorbs the slack.
  */
 export const RECORDS_COLUMNS: readonly PastedListColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', label: 'Select', type: 'text', sortable: false, frozen: true },
   { key: 'order', width: 'minmax(8.5rem, 8.5rem)', label: 'Order number', gridLabel: 'Order #', type: 'id', frozen: true, headerForceLabel: true },
   { key: 'tracking', width: 'minmax(8rem, 8rem)', label: 'Tracking', gridLabel: 'Tracking', type: 'tracking', frozen: true },
   { key: 'type', width: 'minmax(5.5rem, 5.5rem)', label: 'Type', gridLabel: 'Type', type: 'tag', headerForceLabel: true },
+  { key: 'journey', width: 'minmax(8rem, 8rem)', label: 'Journey', gridLabel: 'Journey', type: 'tag', headerForceLabel: true },
+  // Time in the journey bucket against its threshold.
+  { key: 'clock', width: 'minmax(6rem, 6rem)', label: 'Clock', gridLabel: 'Clock', type: 'text', headerForceLabel: true },
   { key: 'item', width: 'minmax(16rem, 16rem)', label: 'Item', gridLabel: 'Item', type: 'text' },
   { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', gridLabel: 'SKU', type: 'text', headerForceLabel: true },
   { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Quantity', gridLabel: 'Qty', type: 'number', align: 'end', headerForceLabel: true },
@@ -243,11 +202,25 @@ export const RECORDS_COLUMNS: readonly PastedListColumn[] = [
   { key: 'pickedBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Picked by', gridLabel: 'Picked by', type: 'text', headerForceLabel: true },
   { key: 'packer', width: 'minmax(12.5rem, 12.5rem)', label: 'Packed by', gridLabel: 'Packed by', type: 'text', headerForceLabel: true },
   { key: 'scannedOutBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Scanned out by', gridLabel: 'Scanned out by', type: 'text', headerForceLabel: true },
+  { key: 'scanSource', width: 'minmax(6rem, 6rem)', label: 'Scan source', gridLabel: 'Scan', type: 'text', headerForceLabel: true },
   { key: 'unboxedBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Unboxed by', gridLabel: 'Unboxed by', type: 'text', headerForceLabel: true },
   { key: 'receivedBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Received by', gridLabel: 'Received by', type: 'text', headerForceLabel: true },
   { key: 'carrier', width: 'minmax(5rem, 5rem)', label: 'Carrier', gridLabel: 'Carrier', type: 'text' },
   { key: 'service', width: 'minmax(8rem, 8rem)', label: 'Carrier service', gridLabel: 'Service', type: 'text' },
+  { key: 'labelCreated', width: 'minmax(7.75rem, 7.75rem)', label: 'Label created', gridLabel: 'Label created', type: 'date', headerForceLabel: true },
+  { key: 'labelCost', width: 'minmax(5rem, 5rem)', label: 'Label cost', gridLabel: 'Label $', type: 'number', align: 'end', headerForceLabel: true },
+  { key: 'firstScan', width: 'minmax(7.75rem, 7.75rem)', label: 'First carrier scan', gridLabel: 'First scan', type: 'date', headerForceLabel: true },
+  { key: 'transitDays', width: 'minmax(4.5rem, 4.5rem)', label: 'Days in transit', gridLabel: 'Transit', type: 'number', align: 'end', headerForceLabel: true },
   { key: 'eta', width: 'minmax(5.5rem, 5.5rem)', label: 'Estimated delivery', gridLabel: 'ETA', type: 'date', headerForceLabel: true },
+  { key: 'delivered', width: 'minmax(7.75rem, 7.75rem)', label: 'Delivered', gridLabel: 'Delivered', type: 'date', headerForceLabel: true },
+  { key: 'attempts', width: 'minmax(4.5rem, 4.5rem)', label: 'Delivery attempts', gridLabel: 'Attempts', type: 'number', align: 'end', headerForceLabel: true },
+  { key: 'exceptionCode', width: 'minmax(7rem, 7rem)', label: 'Exception code', gridLabel: 'Exception', type: 'text' },
+  { key: 'claimBy', width: 'minmax(6rem, 6rem)', label: 'Carrier claim by', gridLabel: 'Claim by', type: 'date', headerForceLabel: true },
+  { key: 'lastPoll', width: 'minmax(9rem, 9rem)', label: 'Last carrier poll', gridLabel: 'Last poll', type: 'date', headerForceLabel: true },
+  { key: 'shipstationStatus', width: 'minmax(7rem, 7rem)', label: 'ShipStation status', gridLabel: 'ShipStation', type: 'text' },
+  { key: 'returnRef', width: 'minmax(7rem, 7rem)', label: 'Return', gridLabel: 'Return', type: 'text' },
+  { key: 'owner', width: 'minmax(8rem, 8rem)', label: 'Owner', gridLabel: 'Owner', type: 'text', headerForceLabel: true },
+  { key: 'note', width: 'minmax(14rem, 14rem)', label: 'Last note', gridLabel: 'Last note', type: 'text' },
   { key: 'lastEvent', width: 'minmax(16rem, 1fr)', label: 'Last carrier event', gridLabel: 'Last carrier event', type: 'text' },
   { key: 'internal', width: 'minmax(7.5rem, 7.5rem)', label: 'Internal status', gridLabel: 'Internal', type: 'tag', frozenEnd: true, headerForceLabel: true },
   { key: 'external', width: 'minmax(7.5rem, 7.5rem)', label: 'External status', gridLabel: 'External', type: 'tag', frozenEnd: true, headerForceLabel: true },
@@ -294,14 +267,11 @@ export function trackingsOf(row: PastedListRow): readonly string[] {
   return facts?.tracking ? [facts.tracking] : [];
 }
 
-/** Fulfilled's bucket for a tracked carrier the house never polls (USPS today) — its last event reads "Not polled". */
-const UNTRACKED_BUCKET = 'untracked';
-
-/** The carrier's last word for a shipped record: its last event + when, or "Not polled" for an unpolled carrier; '' when the source says nothing. */
+/** The carrier's last word for a shipped record: its last event + when, or "Not polled" for an unpolled carrier (journey Untracked); '' when the source says nothing. */
 export function lastCarrierEventText(row: PastedListRow): string {
   const facts = factsOf(row);
   if (facts?.lastEvent === undefined) return '';
-  if (row.view.primary?.bucket.id === UNTRACKED_BUCKET) return 'Not polled';
+  if (facts.journey === 'untracked') return 'Not polled';
   const label = facts.lastEvent?.label ?? null;
   const status = facts.lastEvent?.status ?? null;
   // The plain word leads ("In transit · We Have Your Package") unless the carrier's own words already say it.
@@ -369,11 +339,8 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
       return facts?.channel ?? '';
     case 'clock':
       return journeyClockSpanText(journeyClockFace(facts?.clock, Date.now()));
-    case 'scannedOut':
-      // Fulfilled always says how it left (null = never scanned out); absent = a source that does not know.
-      if (facts?.scanSource === undefined) return '';
-      if (facts.scanSource === null) return FULFILLED_SCAN_LABEL.none;
-      return [instant(facts.shippedAt), facts.scanSource === 'backfill' ? FULFILLED_SCAN_LABEL.backfill : null].filter(Boolean).join(' · ');
+    case 'journey':
+      return facts?.journey ? (FULFILLED_BUCKETS.find((bucket) => bucket.id === facts.journey)?.label ?? '') : '';
     case 'scannedOutBy':
       return staffAt(facts?.scannedOutBy, facts?.shippedAt);
     case 'carrier':
@@ -387,17 +354,11 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
       return facts.lineCount != null && facts.lineCount > 1 ? `${facts.title} +${facts.lineCount - 1}` : facts.title;
     case 'qty':
       return count(facts?.qty);
-    case 'customer':
-      return facts?.customer ?? '';
     case 'orderTotal':
       return money(facts?.orderTotal);
-    case 'ordered':
-      return instant(facts?.orderedAt);
-    case 'packed':
-      return instant(facts?.packedAt);
     case 'scanSource':
-      if (facts?.scanSource === undefined) return '';
-      return FULFILLED_SCAN_LABEL[facts.scanSource ?? 'none'];
+      // A journey line always says how it left (none = never scanned out); a Records line does not know.
+      return facts?.journey ? FULFILLED_SCAN_LABEL[facts.scanSource ?? 'none'] : '';
     case 'firstScan':
       return instant(facts?.firstScanAt);
     case 'transitDays':
@@ -411,17 +372,14 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
     case 'eta':
       return day(facts?.eta);
     case 'attempts':
-      return count(facts?.attempts);
+      // No attempt is no news: only a carrier that tried says so.
+      return facts?.attempts ? String(facts.attempts) : '';
     case 'exceptionCode':
       return facts?.exceptionCode ?? '';
     case 'lastPoll':
       return facts?.lastPoll ? [instant(facts.lastPoll.at), facts.lastPoll.error ? `Failing: ${facts.lastPoll.error}` : null].filter(Boolean).join(' · ') : '';
-    case 'channelStatus':
-      return facts?.channelStatus ?? '';
     case 'shipstationStatus':
       return facts?.shipstationStatus ?? '';
-    case 'packages':
-      return facts?.packages ? String(facts.packages) : '';
     case 'returnRef':
       return facts?.returnRef ?? '';
     case 'claimBy':
@@ -446,6 +404,10 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
       return staffAt(facts?.unboxedBy, facts?.unboxedAt);
     case 'receivedBy':
       return staffAt(facts?.receivedBy, facts?.receivedAt);
+    case 'owner':
+      return facts?.owner ? [facts.owner.name, facts.owner.dueAt ? `due ${instant(facts.owner.dueAt)}` : null].filter(Boolean).join(' · ') : '';
+    case 'note':
+      return facts?.lastNote ? [facts.lastNote.author, facts.lastNote.text].filter(Boolean).join(': ') : '';
     case 'internal':
       // A pasted number that matched nothing says so here (`detail` = "Not found").
       return recordStatusOf(row, 'internal')?.label ?? (facts ? '' : (entry.detail ?? ''));

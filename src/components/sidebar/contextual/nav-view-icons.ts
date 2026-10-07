@@ -48,7 +48,7 @@ import {
   Zap,
 } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
-import { SUPPORT_VIEW_ICONS } from '@/lib/sidebar-navigation';
+import { FULFILLED_VIEW_ICONS, SUPPORT_VIEW_ICONS } from '@/lib/sidebar-navigation';
 import { TASK_BOARD_TYPE_FACE } from '@/lib/task-board/task-board-model';
 import { TASK_STATUS_FACE } from '@/design-system/tokens/task-status';
 
@@ -245,6 +245,15 @@ export const NAV_VIEW_ICONS: Readonly<Record<string, NavViewIcon>> = {
   'support.unassigned': { icon: SUPPORT_VIEW_ICONS.unassigned, tone: 'text-teal-600' },
   'support.sync-failed': { icon: SUPPORT_VIEW_ICONS['sync-failed'], tone: 'text-red-600', alertCount: true },
   'support.check-ins': { icon: SUPPORT_VIEW_ICONS['check-ins'], tone: 'text-emerald-600' },
+  // Fulfilled (operator 2026-10-06): the board, then each view's trouble (`FULFILLED_VIEW_ICONS`);
+  // the orders owed a verb count amber while above zero.
+  'fulfilled.board': { icon: FULFILLED_VIEW_ICONS.board, tone: 'text-emerald-600' },
+  'fulfilled.returned': { icon: FULFILLED_VIEW_ICONS.returned, tone: 'text-orange-600', alertCount: true },
+  'fulfilled.reply_due': { icon: FULFILLED_VIEW_ICONS.reply_due, tone: 'text-rose-600', alertCount: true },
+  'fulfilled.late': { icon: FULFILLED_VIEW_ICONS.late, tone: 'text-amber-600', alertCount: true },
+  'fulfilled.no_tracking': { icon: FULFILLED_VIEW_ICONS.no_tracking, tone: 'text-amber-600', alertCount: true },
+  'fulfilled.awaiting': { icon: FULFILLED_VIEW_ICONS.awaiting, tone: 'text-sky-600' },
+  'fulfilled.untracked': { icon: FULFILLED_VIEW_ICONS.untracked, tone: 'text-slate-600' },
 };
 
 /**

@@ -65,3 +65,23 @@ export function useResolveShipmentException(shipmentId: number) {
     },
   });
 }
+
+/**
+ * Re-poll this one package now (`POST /api/shipping/track/sync-one`), then
+ * re-read its record so the carrier's newest words show. A failure
+ * (credentials missing, the carrier timing out) rejects with its reason.
+ */
+export function useRefreshShipmentTracking(shipmentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      const res = await fetch('/api/shipping/track/sync-one', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ shipmentId }),
+      });
+      if (!res.ok) throw await readError(res, 'Refresh failed');
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: shipmentRecordKey(shipmentId) }),
+  });
+}

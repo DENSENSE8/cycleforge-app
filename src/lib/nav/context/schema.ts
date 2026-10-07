@@ -567,18 +567,16 @@ export const NavLocatePickedBySchema = NavLocateStaffSchema.extend({ source: z.e
  * - purchases (`GET /api/nav/purchases` only; optional, absent elsewhere):
  *   `orderedOn` (`YYYY-MM-DD`, the PO / order date) and `importedAt` (ISO
  *   instant the purchase was first on record — `src/lib/nav/purchases/sql.ts`).
- * - fulfilled (`GET /api/nav/fulfilled` only; optional, absent elsewhere):
- *   `channel` (label), `customer`, `qty`, `orderTotal`, `orderedAt`
- *   (`placedElseImportedSql`), `scannedOutBy`, `scanSource`
- *   (`live` = the dock's scan-out, `backfill` = a backdated stamp, null =
- *   never scanned out), the package's `carrier` / `service` /
- *   `labelCreatedAt` / `labelCost`, carrier `firstScanAt` / `lastEvent` /
- *   `eta` / `attempts` / `exceptionCode`, `lastPoll` (`error` non-null = the
- *   poll is failing), `packages` + `trackings` (every tracking when > 1),
- *   `returnRef` (a receiving return naming the order), `shipstationStatus`,
- *   `transitDays`, `claim` (carrier claim window, no-movement / stalled /
- *   exception rows only), `lineCount` (order grain: lines combined).
- *   Absent = null (the Fulfilled wire omits nulls, {@link NavFulfilledResponseSchema}).
+ * - the Fulfilled journey (`GET /api/nav/fulfilled` lines only; optional,
+ *   absent elsewhere — the ORDER's, on every line of it): `journey` (the
+ *   bucket), `clock`, `checkIn`, `promisedAt`, `scanSource` (`live` = the
+ *   dock's scan-out, `backfill` = a backdated stamp; absent on a journey
+ *   line = never scanned out), `labelCreatedAt` / `labelCost`,
+ *   `firstScanAt` / `transitDays` / `attempts` / `exceptionCode`,
+ *   `lastPoll` (`error` non-null = the poll is failing), `claim` (carrier
+ *   claim window, no-movement / stalled / exception / late only),
+ *   `shipstationStatus`, `returnRef`, `mentionsMe`. The board's order card
+ *   adds `lineCount` (its lines). Absent = null (the wire omits nulls).
  */
 export const NavLocateFactsSchema = z
   .object({
@@ -645,6 +643,8 @@ export const NavLocateFactsSchema = z
      */
     shipmentId: z.number().int().positive().nullable().optional(),
     promisedAt: z.string().nullable().optional(),
+    /** The ORDER's journey bucket (a `FULFILLED_BUCKETS` id) — every line of the order carries it; the clock is its time there. */
+    journey: z.string().min(1).optional(),
     clock: z.object({ since: z.string(), due: z.string().nullable() }).strict().nullable().optional(),
     checkIn: z
       .object({
@@ -714,7 +714,7 @@ export const NavLocateEntrySchema = z
   .object({
     /** As pasted. */
     ref: z.string().min(1),
-    /** A unique row key when `ref` can repeat (`GET /api/nav/fulfilled`: `order:<order #>` / `line:<orders.id>`); absent = `ref` is the key. */
+    /** A unique row key when `ref` can repeat (a Records line: `out:<orders.id>` / `in:<receiving_line.id>`; Fulfilled's scan-out with no order: `scan:<shipment id>`); absent = `ref` is the key. */
     key: z.string().min(1).optional(),
     /** Bucket ids holding it, in bucket order; `[]` = found nowhere. */
     buckets: z.array(z.string().min(1)),
@@ -799,8 +799,8 @@ const NavFulfilledFacetOptionSchema = z
 
 export const NavFulfilledFacetsSchema = z
   .object({
-    /** Lower-cased `orders.account_source` — `?channel=` matches it exactly. */
-    channels: z.array(NavFulfilledFacetOptionSchema),
+    /** Canonical `orders.account_source` — `?platform=` (the Records param) matches it exactly. */
+    platforms: z.array(NavFulfilledFacetOptionSchema),
     /** Upper-cased package carrier — `?carrier=`. */
     carriers: z.array(NavFulfilledFacetOptionSchema),
     /** Who packed it (`facts.packer`, by staff id) — `?packer=`. */
@@ -811,59 +811,6 @@ export const NavFulfilledFacetsSchema = z
   })
   .strict();
 export type NavFulfilledFacets = z.infer<typeof NavFulfilledFacetsSchema>;
-
-/**
- * The Fulfilled facts the wire leaves out when they hold their common value
- * — the one list the route compacts by and {@link NavFulfilledWireFactsSchema}
- * restores from. A row whose value differs (null included) sends it.
- */
-export const NAV_FULFILLED_WIRE_DEFAULTS = {
-  section: 'outbound',
-  lines: 1,
-  duplicates: [] as number[],
-  channelStatus: 'shipped',
-  scanSource: 'backfill',
-  packages: 1,
-  attempts: 0,
-} as const;
-const WIRE = NAV_FULFILLED_WIRE_DEFAULTS;
-
-/**
- * One Fulfilled row ON THE WIRE: a {@link NavLocateEntrySchema} with every
- * null and every {@link NAV_FULFILLED_WIRE_DEFAULTS} value left out
- * (thousands of rows, most facts empty or alike) — parsing restores them, so
- * the client holds plain `NavLocateEntry`s.
- */
-const NavFulfilledWireFactsSchema = NavLocateFactsSchema.extend({
-  section: z.enum(NAV_LOCATORS).default(WIRE.section),
-  title: z.string().nullable().default(null),
-  sku: z.string().nullable().default(null),
-  tracking: z.string().nullable().default(null),
-  deliveredAt: z.string().nullable().default(null),
-  channelStatus: z.string().nullable().default(WIRE.channelStatus),
-  shipBy: z.string().nullable().default(null),
-  pickedAt: z.string().nullable().default(null),
-  pickedBy: NavLocatePickedBySchema.nullable().default(null),
-  packedAt: z.string().nullable().default(null),
-  shippedAt: z.string().nullable().default(null),
-  packer: NavLocateStaffSchema.nullable().default(null),
-  po: z.string().nullable().default(null),
-  vendor: z.string().nullable().default(null),
-  lines: z.number().int().nonnegative().default(WIRE.lines),
-  duplicates: z.array(z.number().int()).default(() => []),
-  unboxedAt: z.string().nullable().default(null),
-  unboxedBy: NavLocateStaffSchema.nullable().default(null),
-  units: NavLocateFactsSchema.shape.units.default(null),
-  scanSource: z.enum(['live', 'backfill']).nullable().default(WIRE.scanSource),
-  packages: z.number().int().nonnegative().nullable().default(WIRE.packages),
-  attempts: z.number().int().nonnegative().nullable().default(WIRE.attempts),
-});
-const NavFulfilledWireEntrySchema = NavLocateEntrySchema.extend({
-  title: z.string().nullable().default(null),
-  detail: z.string().nullable().default(null),
-  recordHref: z.string().startsWith('/').nullable().default(null),
-  facts: NavFulfilledWireFactsSchema.nullable().optional(),
-});
 
 /**
  * Is each carrier's tracking being refreshed (`CarrierSyncHealth`,
@@ -889,31 +836,6 @@ const NavFulfilledSyncHealthSchema = z
   })
   .strict();
 export type NavFulfilledSyncHealth = z.infer<typeof NavFulfilledSyncHealthSchema>;
-
-/**
- * `GET /api/nav/fulfilled` — every shipped order in a window (Fulfillment ›
- * Fulfilled, `src/lib/nav/fulfilled`): one entry per order (or per order line
- * at `grain=line`), ref = the channel order #, exactly one bucket
- * (`FULFILLED_BUCKETS`), its record and facts. Entries travel compact
- * ({@link NavFulfilledWireEntrySchema}); `NavFulfilledResponse` is the parsed,
- * complete shape, `NavFulfilledWire` what the route sends.
- */
-export const NavFulfilledResponseSchema = z
-  .object({
-    locator: z.literal('outbound'),
-    /** `FULFILLED_BUCKETS` in precedence order, counted over every filter EXCEPT `status` (zero counts included). */
-    buckets: z.array(NavLocateBucketSchema),
-    /** The rows every filter keeps (`status` too), sorted server-side. */
-    entries: z.array(NavFulfilledWireEntrySchema),
-    /** `entries.length`. */
-    total: z.number().int().nonnegative(),
-    facets: NavFulfilledFacetsSchema,
-    /** Carrier sync health for the org; absent when its read failed (the list still answers). */
-    syncHealth: NavFulfilledSyncHealthSchema.optional(),
-  })
-  .strict();
-export type NavFulfilledResponse = z.output<typeof NavFulfilledResponseSchema>;
-export type NavFulfilledWire = z.input<typeof NavFulfilledResponseSchema>;
 
 /** One Records facet value with the lines it holds (every OTHER facet's filter applied). */
 const NavRecordsFacetOptionSchema = z
@@ -1002,3 +924,29 @@ export const NavRecordsResponseSchema = z
   .strict();
 export type NavRecordsResponse = z.output<typeof NavRecordsResponseSchema>;
 export type NavRecordsWire = z.input<typeof NavRecordsResponseSchema>;
+
+/**
+ * `GET /api/nav/fulfilled` — every shipped order in a window (Fulfillment ›
+ * Fulfilled, `src/lib/nav/fulfilled`) as the Records sheet's LINES: one
+ * entry per order line (key `out:<orders.id>`, the Records facts of that
+ * line) plus one per scan-out no order owns (key `scan:<shipment id>`),
+ * buckets = [the ORDER's journey bucket] (`FULFILLED_BUCKETS`), every line of
+ * an order carrying the order's journey facts. Entries travel as Records
+ * entries do ({@link NavRecordsWireEntrySchema}).
+ */
+export const NavFulfilledResponseSchema = z
+  .object({
+    locator: z.literal('outbound'),
+    /** `FULFILLED_BUCKETS` in precedence order, ORDERS counted over every filter (zero counts included). */
+    buckets: z.array(NavLocateBucketSchema),
+    /** The lines of the orders every filter keeps, sorted server-side (an order's lines stay together). */
+    entries: z.array(NavRecordsWireEntrySchema),
+    /** Orders kept. */
+    total: z.number().int().nonnegative(),
+    facets: NavFulfilledFacetsSchema,
+    /** Carrier sync health for the org; absent when its read failed (the list still answers). */
+    syncHealth: NavFulfilledSyncHealthSchema.optional(),
+  })
+  .strict();
+export type NavFulfilledResponse = z.output<typeof NavFulfilledResponseSchema>;
+export type NavFulfilledWire = z.input<typeof NavFulfilledResponseSchema>;

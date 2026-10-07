@@ -22,7 +22,7 @@ import {
   type NavRecordsFacets,
   type NavRecordsWire,
 } from '@/lib/nav/context/schema';
-import { channelLabel } from '@/lib/nav/fulfilled/service';
+import { FULFILLED_BUCKET_IDS, type FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
 import {
   RECORDS_DEFAULT_WINDOW_DAYS,
   RECORDS_FACETS,
@@ -112,8 +112,8 @@ export function recordsWindow(query: Pick<RecordsQuery, 'from' | 'to' | 'refs'>,
   return { fromAt: dayStart(query.from), toBefore: query.to ? dayStart(addDaysToDateKey(query.to, 1)) : null };
 }
 
-/** One sheet row with what its filters, counts and sorts read. */
-interface Located {
+/** One sheet row with what its filters, counts and sorts read. Fulfilled builds its lines as these too (`locateRecordLine`). */
+export interface Located {
   line: RecordLineRow;
   entry: NavLocateEntry & { facts: NavLocateFacts };
   internal: RecordsInternalStatus;
@@ -123,6 +123,14 @@ interface Located {
   values: Readonly<Record<RecordsFacetId, readonly string[]>>;
   /** Over its time limit, in ms (negative = time left); null = no limit applies. */
   overdueMs: number | null;
+}
+
+/** The channel's face: the catalog account's label (`USAV`), else the platform registry's name, else the stored key. */
+export function channelLabel(channel: string, accountLabel: string | null): string {
+  if (accountLabel) return accountLabel;
+  if (channel === 'fba') return 'Amazon FBA';
+  const meta = sourcePlatformMeta(channel);
+  return meta.value ? meta.label : channel;
 }
 
 /** The platform's face: outbound the catalog account / platform registry; inbound the inbound source's name. */
@@ -142,8 +150,8 @@ function priceBand(lineTotal: number | null): string {
   );
 }
 
-/** One line → its sheet row (statuses, flags but `duplicate`, facts, facet values). */
-function locate(line: RecordLineRow, nowMs: number): Located {
+/** One line → its sheet row (statuses, flags but `duplicate`, facts, facet values). The one place a line's Records facts are made. */
+export function locateRecordLine(line: RecordLineRow, nowMs: number): Located {
   const internal: RecordsInternalStatus =
     line.direction === 'outbound'
       ? resolveOutboundInternalStatus({
@@ -441,7 +449,7 @@ function staffName(row: Located, event: RecordsQuery['event']): string | null {
 }
 
 /** Sorted by `query.sort` / `query.dir`, nulls last; ties fall to the axis instant (newest first), then the key. */
-function sortRecords(rows: readonly Located[], query: Pick<RecordsQuery, 'sort' | 'dir' | 'axis' | 'event' | 'refs'>): Located[] {
+export function sortRecords(rows: readonly Located[], query: Pick<RecordsQuery, 'sort' | 'dir' | 'axis' | 'event' | 'refs'>): Located[] {
   const sort: RecordsSort = query.sort === 'pasted' && query.refs.length === 0 ? 'date' : query.sort;
   const key = (row: Located): SortValue => {
     const facts = row.entry.facts;
@@ -505,6 +513,39 @@ function sortRecords(rows: readonly Located[], query: Pick<RecordsQuery, 'sort' 
         return instant(facts.eta);
       case 'last_event':
         return instant(facts.lastEvent?.at);
+      case 'delivered':
+        return instant(facts.deliveredAt);
+      case 'owner':
+        return facts.owner?.name ?? null;
+      case 'note':
+        return instant(facts.lastNote?.at);
+      // The Fulfilled journey's (`RECORDS_JOURNEY_SORTS`): a Records line holds none, so they sort last.
+      case 'journey': {
+        const rank = facts.journey ? FULFILLED_BUCKET_IDS.indexOf(facts.journey as FulfilledBucketId) : -1;
+        return rank < 0 ? null : rank;
+      }
+      case 'scan_source':
+        return facts.journey ? (facts.scanSource ?? 'none') : null;
+      case 'label_created':
+        return instant(facts.labelCreatedAt);
+      case 'label_cost':
+        return facts.labelCost ?? null;
+      case 'first_scan':
+        return instant(facts.firstScanAt);
+      case 'transit':
+        return facts.transitDays ?? null;
+      case 'attempts':
+        return facts.attempts ?? null;
+      case 'exception_code':
+        return facts.exceptionCode ?? null;
+      case 'claim_by':
+        return instant(facts.claim?.closesAt);
+      case 'last_poll':
+        return instant(facts.lastPoll?.at);
+      case 'shipstation_status':
+        return facts.shipstationStatus ?? null;
+      case 'return':
+        return facts.returnRef ?? null;
     }
   };
   const sign = query.dir === 'asc' ? 1 : -1;
@@ -536,7 +577,7 @@ const WIRE_DEFAULT: Readonly<Record<string, unknown>> = NAV_RECORDS_WIRE_DEFAULT
  * An entry as it travels: every null left out, and every fact holding its
  * `NAV_RECORDS_WIRE_DEFAULTS` value — `NavRecordsResponseSchema` restores both.
  */
-function wireEntry(entry: NavLocateEntry): WireEntry {
+export function recordsWireEntry(entry: NavLocateEntry): WireEntry {
   const base = {
     ...(entry.key ? { key: entry.key } : null),
     ref: entry.ref,
@@ -586,7 +627,7 @@ export async function getNavRecords(
     viewerStaffId: caller.staffId ?? null,
   });
   const nowMs = deps.now().getTime();
-  const located = lines.map((line) => locate(line, nowMs));
+  const located = lines.map((line) => locateRecordLine(line, nowMs));
   markDuplicates(located);
 
   const cut = facetCut(query);
@@ -621,7 +662,7 @@ export async function getNavRecords(
   return {
     ok: true,
     body: {
-      entries: entries.map(wireEntry),
+      entries: entries.map(recordsWireEntry),
       total: kept.length,
       truncated: kept.length > RECORDS_ROW_LIMIT,
       facets,

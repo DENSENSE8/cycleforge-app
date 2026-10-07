@@ -2,11 +2,12 @@
 
 /**
  * The Fulfilled board's first level of disclosure, in the Live feed's
- * headline style: what needs a hand now (and how many of those are over
- * their threshold), the named pressures — Late, Stalled, No movement — each
- * only when it says something, the check-ins due, and what the carriers
- * delivered in the window — and, only when true, one quiet line that a
- * carrier's sync is failing (`fulfilledSyncWarning`); then a dot that says how fresh the answer is.
+ * headline style: what needs a hand now on the board (and how many of those
+ * are over their threshold), the named pressures — Stalled, No movement —
+ * each only when it says something, and what the carriers delivered in the
+ * window; then a dot that says how fresh the answer is. Late and the
+ * check-ins are off the board (a sidebar view, the record); a failing carrier
+ * sync is the board's own banner.
  */
 
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
@@ -14,7 +15,7 @@ import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { cn } from '@/utils/_cn';
 import type { FulfilledHeadlineFigures } from './fulfilled-board-model';
 
-export function FulfilledHeadline({ figures, syncWarning }: { figures: FulfilledHeadlineFigures; syncWarning: string | null }) {
+export function FulfilledHeadline({ figures }: { figures: FulfilledHeadlineFigures }) {
   const pressing = figures.actNowOver > 0;
   const rows = [
     {
@@ -26,7 +27,6 @@ export function FulfilledHeadline({ figures, syncWarning }: { figures: Fulfilled
       note: pressing ? `${figures.actNowOver} over` : null,
       show: true,
     },
-    { id: 'late', label: 'Late', value: figures.late, tone: STATE_TONE_CLASSES.warning.text, labelTone: STATE_TONE_CLASSES.warning.text, note: null, show: figures.late > 0 },
     { id: 'stalled', label: 'Stalled', value: figures.stalled, tone: STATE_TONE_CLASSES.warning.text, labelTone: STATE_TONE_CLASSES.warning.text, note: null, show: figures.stalled > 0 },
     {
       id: 'no-movement',
@@ -37,12 +37,10 @@ export function FulfilledHeadline({ figures, syncWarning }: { figures: Fulfilled
       note: null,
       show: figures.noMovement > 0,
     },
-    { id: 'check-ins', label: 'Check-ins due', value: figures.checkInsDue, tone: 'text-text-default', labelTone: 'text-text-muted', note: null, show: true },
     { id: 'delivered', label: 'Delivered', value: figures.delivered, tone: STATE_TONE_CLASSES.success.text, labelTone: 'text-text-muted', note: null, show: true },
   ];
   return (
-    <div className="flex flex-col gap-1" data-testid="fulfilled-board-headline">
-      <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+    <div className="flex flex-wrap items-end gap-x-6 gap-y-2" data-testid="fulfilled-board-headline">
       {rows
         .filter((row) => row.show)
         .map((row) => (
@@ -56,12 +54,6 @@ export function FulfilledHeadline({ figures, syncWarning }: { figures: Fulfilled
             </p>
           </div>
         ))}
-      </div>
-      {syncWarning ? (
-        <p className={cn('text-xs font-medium', STATE_TONE_CLASSES.warning.text)} role="status" data-testid="fulfilled-board-sync-warning">
-          {syncWarning}
-        </p>
-      ) : null}
     </div>
   );
 }

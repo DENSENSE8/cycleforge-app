@@ -8,6 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { firstCarrierScanAt, fulfilledPackageBucket } from './bucket';
 import { getNavFulfilled, type NavFulfilledDeps, type NavFulfilledResult } from './service';
 import type { FulfilledCheckInRow, FulfilledPackageRow, FulfilledWindow } from './sql';
+import type { RecordLineRow } from '@/lib/nav/records/sql';
 
 const ORG = '00000000-0000-0000-0000-000000000001' as OrgId;
 const CALLER = { orgId: ORG, permissions: new Set(['packing.view']) };
@@ -25,7 +26,7 @@ function pkg(patch: Partial<FulfilledPackageRow> = {}): FulfilledPackageRow {
     orderKey: '113-0000000-0000001',
     orderId: '113-0000000-0000001',
     channel: 'amazon',
-    channelRaw: 'Amazon',
+    channelAccountLabel: null,
     channelStatus: 'shipped',
     orderedAt: '2026-09-28T16:00:00.000Z',
     qty: 1,
@@ -119,14 +120,101 @@ function checkIn(state: FulfilledCheckInRow['state'], patch: Partial<FulfilledCh
 
 interface Captured {
   reads: Array<{ orgId: OrgId; window: FulfilledWindow; q: string | null }>;
+  lineReads: Array<{ orderIds: readonly number[]; viewer: number | null }>;
+}
+
+/** The Records line the Records statement answers for one order line, from the line's package rows. */
+function recordLineOf(rows: readonly FulfilledPackageRow[]): RecordLineRow {
+  const head = rows[0]!;
+  const scanned = rows.find((row) => row.scannedAt !== null) ?? null;
+  return {
+    direction: 'outbound',
+    recordId: head.orderRowId,
+    orderNumber: head.orderId,
+    orderKey: head.orderKey,
+    itemNumber: null,
+    skuCatalogId: null,
+    title: head.title,
+    sku: head.sku,
+    qty: head.qty,
+    unitPrice: null,
+    lineTotal: head.saleAmount,
+    orderTotal: null,
+    orderLines: 1,
+    platform: head.channel,
+    platformAccountLabel: head.channelAccountLabel,
+    customer: head.customer,
+    vendor: null,
+    po: null,
+    channelStatus: head.channelStatus,
+    placedAt: head.orderedAt,
+    importedAt: head.orderedAt,
+    orderedAt: head.orderedAt,
+    shipByDate: head.shipByDate,
+    shipByAt: head.shipByAt,
+    pickedAt: head.pickedAt,
+    pickedBy: head.pickedBy,
+    packedAt: head.packedAt,
+    packer: head.packerId !== null ? { id: head.packerId, name: head.packerName } : null,
+    scannedAt: scanned?.scannedAt ?? null,
+    scannedBy: scanned ? { id: scanned.scannedById, name: scanned.scannedByName } : null,
+    shippedAt: head.handOffAt,
+    unboxedAt: null,
+    unboxedBy: null,
+    receivedAt: null,
+    receivedBy: null,
+    unitsReceived: null,
+    unitsExpected: null,
+    receivedDone: false,
+    inboundOrderId: null,
+    cartonId: null,
+    service: head.service,
+    packages: rows.flatMap((row) =>
+      row.shipmentId === null
+        ? []
+        : [
+            {
+              shipmentId: row.shipmentId,
+              tracking: row.tracking,
+              carrier: row.carrier,
+              category: row.category,
+              statusLabel: row.statusLabel,
+              latestEventAt: row.latestEventAt,
+              eta: row.estimatedDeliveryAt,
+              deliveredAt: row.isDelivered ? row.deliveredAt : null,
+              place: row.lastEventPlace,
+              primary: true,
+            },
+          ],
+    ),
+    buyerCancelled: false,
+    scannedOut: scanned !== null,
+    releaseState: null,
+    outOfStock: false,
+    holdFlag: false,
+    packed: head.packedAt !== null,
+    picked: head.pickedBy !== null,
+    lineStatus: null,
+    workflowStatus: null,
+    exceptionCode: null,
+    lastNote: null,
+    hasNote: false,
+    owner: null,
+    mine: false,
+    matchedRefs: [],
+  };
 }
 
 function fakes(rows: FulfilledPackageRow[], now: Date = NOW) {
-  const cap: Captured = { reads: [] };
+  const cap: Captured = { reads: [], lineReads: [] };
   const deps: NavFulfilledDeps = {
     rows: async (orgId, window, q) => {
       cap.reads.push({ orgId, window, q });
       return rows;
+    },
+    recordLines: async (_orgId, orderIds, viewer) => {
+      cap.lineReads.push({ orderIds, viewer });
+      return orderIds.map((id) => recordLineOf(rows.filter((row) => row.orderRowId === id)));
     },
     today: () => TODAY,
     now: () => now,
@@ -228,64 +316,52 @@ test('claim window: USPS opens at 15 days (Express 7) and closes at 60; UPS/FedE
 
 // ── The read ───────────────────────────────────────────────────────────────
 
-test('getNavFulfilled: order grain is delivered only when every package is; line grain paints each line', async () => {
+test('getNavFulfilled: every line is a Records line carrying its ORDER\'s journey; buckets count orders', async () => {
   const delivered = { category: 'DELIVERED', deliveredAt: '2026-10-03T20:00:00.000Z', isDelivered: true };
   const rows = [
-    // Order A: two lines, two packages — one delivered, one still in transit.
+    // Order A: two lines, two packages — one delivered, one still in transit: the order is in transit.
     pkg({ orderRowId: 1, shipmentId: 100, ...delivered }),
     pkg({ orderRowId: 2, shipmentId: 101, tracking: '1Z0000000000000002', title: 'Gadget', sku: 'G-1', qty: 2, saleAmount: 5 }),
     // Order B: two lines sharing one delivered package.
     pkg({ orderRowId: 3, orderKey: '114-B', orderId: '114-B', shipmentId: 200, tracking: '1Z0000000000000003', ...delivered }),
     pkg({ orderRowId: 4, orderKey: '114-B', orderId: '114-B', shipmentId: 200, tracking: '1Z0000000000000003', ...delivered }),
   ];
-  const orders = body(await getNavFulfilled(CALLER, new URLSearchParams(), fakes(rows).deps));
-  assert.equal(orders.total, 2);
-  const a = orders.entries.find((entry) => entry.ref === '113-0000000-0000001')!;
-  assert.deepEqual(a.buckets, ['in_transit']);
-  assert.equal(a.facts?.lineCount, 2);
-  assert.equal(a.facts?.packages, 2);
-  assert.equal(a.facts?.qty, 3);
-  assert.equal(a.facts?.orderTotal, 15);
-  // The first line's title; the sheet adds "+1" from lineCount.
-  assert.equal(a.facts?.title, 'Widget');
-  assert.deepEqual(a.facts?.trackings, ['1Z0000000000000001', '1Z0000000000000002']);
-  assert.equal(a.recordHref, '/fulfilled?openOrderId=1');
-  const b = orders.entries.find((entry) => entry.ref === '114-B')!;
-  assert.deepEqual(b.buckets, ['delivered']);
-  assert.equal(b.facts?.packages, 1);
-  assert.equal(b.facts?.trackings, undefined);
-  assert.equal(b.facts?.lineCount, 2);
-  assert.equal(b.facts?.lines, 2);
-  // Order rows are keyed by their number; the wire omits nulls and the parse restores the base ones.
-  assert.equal(b.key, undefined);
-  assert.equal(b.title, null);
-  assert.equal(b.facts?.po, null);
-  assert.equal(b.facts?.section, 'outbound');
-
-  const lines = body(await getNavFulfilled(CALLER, new URLSearchParams({ grain: 'line' }), fakes(rows).deps));
-  assert.equal(lines.total, 4);
-  assert.deepEqual(new Set(lines.entries.map((entry) => entry.key)), new Set(['line:1', 'line:2', 'line:3', 'line:4']));
-  assert.deepEqual(counts(lines), { ...counts(orders), delivered: 3, in_transit: 1 });
-  assert.ok(lines.total >= orders.total);
+  const { deps, cap } = fakes(rows);
+  const response = body(await getNavFulfilled(CALLER, new URLSearchParams(), deps));
+  // Orders are counted; every line is answered, once, as a Records line (`out:<orders.id>`).
+  assert.equal(response.total, 2);
+  assert.deepEqual(cap.lineReads.map((read) => [...read.orderIds].sort()), [[1, 2, 3, 4]]);
+  assert.deepEqual(new Set(response.entries.map((entry) => entry.key)), new Set(['out:1', 'out:2', 'out:3', 'out:4']));
+  assert.deepEqual(counts(response), { ...Object.fromEntries(FULFILLED_BUCKET_IDS.map((id) => [id, 0])), in_transit: 1, delivered: 1 });
+  const line = (id: number) => response.entries.find((entry) => entry.key === `out:${id}`)!;
+  // The journey is the order's: the delivered line of an in-transit order is in transit with it.
+  assert.deepEqual(line(1).buckets, ['in_transit']);
+  assert.deepEqual(line(2).buckets, ['in_transit']);
+  assert.equal(line(1).facts?.journey, 'in_transit');
+  assert.deepEqual(line(1).facts?.clock, line(2).facts?.clock);
+  // The line's own facts are its Records facts: its item, its package's carrier status, its write target.
+  assert.equal(line(2).facts?.title, 'Gadget');
+  assert.equal(line(1).facts?.externalStatus, 'delivered');
+  assert.equal(line(2).facts?.externalStatus, 'in_transit');
+  assert.equal(line(1).facts?.internalStatus, 'scanned_out');
+  assert.equal(line(2).facts?.direction, 'outbound');
+  assert.equal(line(2).facts?.recordId, 2);
+  assert.equal(line(3).facts?.orderKey, '114-B');
+  assert.deepEqual(line(4).buckets, ['delivered']);
 });
 
-test('getNavFulfilled: an order reads the picker of its last-picked line, with the resolver source', async () => {
-  const rows = [
-    pkg({ orderRowId: 1, pickedAt: '2026-09-29T15:00:00.000Z', pickedBy: { id: 4, name: 'Tuan', source: 'pick_scan' } }),
-    pkg({ orderRowId: 2, pickedAt: '2026-09-29T16:00:00.000Z', pickedBy: { id: 5, name: 'Kai', source: 'inventory_event' } }),
-    pkg({ orderRowId: 3, orderKey: '114-B', orderId: '114-B', shipmentId: 200, tracking: '1Z0000000000000003' }),
-  ];
-  const orders = body(await getNavFulfilled(CALLER, new URLSearchParams(), fakes(rows).deps));
-  const a = orders.entries.find((entry) => entry.ref === '113-0000000-0000001')!;
-  assert.equal(a.facts?.pickedAt, '2026-09-29T16:00:00.000Z');
-  assert.deepEqual(a.facts?.pickedBy, { id: 5, name: 'Kai', source: 'inventory_event' });
-  // No pick on record: null, never the pick assignee.
-  const b = orders.entries.find((entry) => entry.ref === '114-B')!;
-  assert.equal(b.facts?.pickedBy, null);
-  assert.equal(b.facts?.pickedAt, null);
+test('getNavFulfilled: a counts-only read (no Records lines) answers buckets and facets without a line', async () => {
+  const rows = [pkg({ orderRowId: 1, orderKey: 'A', orderId: 'A' }), pkg({ orderRowId: 2, orderKey: 'B', orderId: 'B', shipmentId: 2, ...DELIVERED })];
+  const { deps, cap } = fakes(rows);
+  const response = body(await getNavFulfilled(CALLER, new URLSearchParams(), { ...deps, recordLines: undefined }));
+  assert.deepEqual(response.entries, []);
+  assert.equal(response.total, 2);
+  assert.equal(counts(response).delivered, 1);
+  assert.deepEqual(response.facets.platforms, [{ value: 'amazon', label: 'Amazon', count: 2 }]);
+  assert.deepEqual(cap.lineReads, []);
 });
 
-test('getNavFulfilled: buckets count the window (status ignored), sum to the total, zero buckets included', async () => {
+test('getNavFulfilled: buckets sum to the orders kept, zero buckets included; scan source reads never-scanned as absent', async () => {
   const rows = [
     pkg({ orderRowId: 1, orderKey: 'A', orderId: 'A' }),
     pkg({ orderRowId: 2, orderKey: 'B', orderId: 'B', shipmentId: 2, ...UNMOVED, handOffAt: '2026-10-05T16:00:00.000Z' }),
@@ -300,14 +376,13 @@ test('getNavFulfilled: buckets count the window (status ignored), sum to the tot
     awaiting: 1,
     in_transit: 1,
   });
-  const narrowed = body(await getNavFulfilled(CALLER, new URLSearchParams({ status: 'awaiting' }), fakes(rows).deps));
-  assert.deepEqual(narrowed.entries.map((entry) => entry.ref), ['B']);
-  assert.deepEqual(counts(narrowed), counts(all));
-  assert.equal(narrowed.entries[0]!.facts?.scanSource, 'live');
-  assert.equal(all.entries.find((entry) => entry.ref === 'C')!.facts?.scanSource, null);
+  // A bucket's link opens the sheet narrowed to it.
+  assert.equal(all.buckets.find((bucket) => bucket.id === 'awaiting')!.href, '/fulfilled?col=awaiting&layout=sheet');
+  assert.equal(all.entries.find((entry) => entry.ref === 'B')!.facts?.scanSource, 'live');
+  assert.equal(all.entries.find((entry) => entry.ref === 'C')!.facts?.scanSource, undefined);
 });
 
-test('getNavFulfilled: a delivered order is painted with its check-in stage; delivered axis and facts stay', async () => {
+test('getNavFulfilled: a delivered order is painted with its check-in stage; delivered facts stay', async () => {
   const rows = [
     pkg({ orderRowId: 1, orderKey: 'A', orderId: 'A', ...DELIVERED }),
     pkg({
@@ -335,12 +410,7 @@ test('getNavFulfilled: a delivered order is painted with its check-in stage; del
   });
   assert.deepEqual(byRef.C!.buckets, ['check_in_scheduled']);
   assert.deepEqual(byRef.C!.facts?.clock, { since: '2026-10-03T20:00:00.000Z', due: '2026-10-05T20:00:00.000Z' });
-  // Every row is delivered on the delivered axis, whatever its stage.
-  assert.ok(response.entries.every((entry) => entry.facts?.deliveredAt === '2026-10-03T20:00:00.000Z'));
   assert.equal(counts(response).delivered, 1);
-
-  const happy = body(await getNavFulfilled(CALLER, new URLSearchParams({ status: 'happy' }), fakes(rows).deps));
-  assert.deepEqual(happy.entries.map((entry) => entry.ref), ['B']);
 });
 
 test('getNavFulfilled: a not-delivered order whose customer is owed a reply is Reply due, outranking In transit; claim stays the carrier\'s', async () => {
@@ -349,7 +419,7 @@ test('getNavFulfilled: a not-delivered order whose customer is owed a reply is R
     pkg({ orderRowId: 2, orderKey: 'B', orderId: 'B', shipmentId: 2, checkIn: checkIn('contacted', { contactedAt: ago(5) }) }),
     pkg({ orderRowId: 3, orderKey: 'C', orderId: 'C', shipmentId: 3, promisedAt: ago(3) }),
   ];
-  const response = body(await getNavFulfilled(CALLER, new URLSearchParams({ sort: 'status' }), fakes(rows).deps));
+  const response = body(await getNavFulfilled(CALLER, new URLSearchParams({ sort: 'journey' }), fakes(rows).deps));
   assert.deepEqual(response.entries.map((entry) => [entry.ref, entry.buckets[0]]), [
     ['A', 'reply_due'],
     ['C', 'late'],
@@ -379,20 +449,20 @@ test('scan provenance: backdated = a scripted catch-up source, or written > 2 mi
   assert.equal(scanOutBackdated({ source: null, createdAt: at, updatedAt: later }), true);
 });
 
-test('getNavFulfilled: each facet counts with every OTHER filter, never its own', async () => {
+test('getNavFulfilled: each facet counts orders with every OTHER filter, never its own', async () => {
   const rows = [
     pkg({ orderRowId: 1, orderKey: 'A', orderId: 'A', carrier: 'UPS', channel: 'amazon' }),
     pkg({ orderRowId: 2, orderKey: 'B', orderId: 'B', shipmentId: 2, carrier: 'USPS', channel: 'amazon', eventCount: 0, scanBackdated: true }),
-    pkg({ orderRowId: 3, orderKey: 'C', orderId: 'C', shipmentId: 3, carrier: 'USPS', channel: 'ebay', channelRaw: 'eBay', eventCount: 0 }),
+    pkg({ orderRowId: 3, orderKey: 'C', orderId: 'C', shipmentId: 3, carrier: 'USPS', channel: 'ebay', eventCount: 0 }),
   ];
   const response = body(await getNavFulfilled(CALLER, new URLSearchParams({ carrier: 'ups' }), fakes(rows).deps));
   assert.deepEqual(response.entries.map((entry) => entry.ref), ['A']);
-  // Carrier ignores its own filter; channel and scan count only the UPS row.
+  // Carrier ignores its own filter; platform and scan count only the UPS order.
   assert.deepEqual(response.facets.carriers, [
     { value: 'USPS', label: 'USPS', count: 2 },
     { value: 'UPS', label: 'UPS', count: 1 },
   ]);
-  assert.deepEqual(response.facets.channels, [{ value: 'amazon', label: 'Amazon', count: 1 }]);
+  assert.deepEqual(response.facets.platforms, [{ value: 'amazon', label: 'Amazon', count: 1 }]);
   assert.deepEqual(response.facets.scans, [{ value: 'live', label: 'Live', count: 1 }]);
   assert.deepEqual(response.facets.packers, [{ id: 7, name: 'Pat', count: 1 }]);
 
@@ -402,18 +472,9 @@ test('getNavFulfilled: each facet counts with every OTHER filter, never its own'
     { value: 'live', label: 'Live', count: 2 },
     { value: 'backfill', label: 'Backfill', count: 1 },
   ]);
-});
-
-test('getNavFulfilled: sorts put nulls last in either direction', async () => {
-  const rows = [
-    pkg({ orderRowId: 1, orderKey: 'A', orderId: 'A', deliveredAt: null }),
-    pkg({ orderRowId: 2, orderKey: 'B', orderId: 'B', shipmentId: 2, category: 'DELIVERED', deliveredAt: '2026-10-01T00:00:00.000Z' }),
-    pkg({ orderRowId: 3, orderKey: 'C', orderId: 'C', shipmentId: 3, category: 'DELIVERED', deliveredAt: '2026-10-03T00:00:00.000Z' }),
-  ];
-  const desc = body(await getNavFulfilled(CALLER, new URLSearchParams({ sort: 'delivered' }), fakes(rows).deps));
-  assert.deepEqual(desc.entries.map((entry) => entry.ref), ['C', 'B', 'A']);
-  const asc = body(await getNavFulfilled(CALLER, new URLSearchParams({ sort: 'delivered', dir: 'asc' }), fakes(rows).deps));
-  assert.deepEqual(asc.entries.map((entry) => entry.ref), ['B', 'C', 'A']);
+  // The platform is the Records param.
+  const byPlatform = body(await getNavFulfilled(CALLER, new URLSearchParams({ platform: 'ebay' }), fakes(rows).deps));
+  assert.deepEqual(byPlatform.entries.map((entry) => entry.ref), ['C']);
 });
 
 test('getNavFulfilled: threads the org, the default 90-day shipped window and the Find text into the read', async () => {
@@ -427,18 +488,17 @@ test('getNavFulfilled: threads the org, the default 90-day shipped window and th
     },
   ]);
   const allTime = fakes([]);
-  body(await getNavFulfilled(CALLER, new URLSearchParams({ axis: 'ordered', from: 'all' }), allTime.deps));
-  assert.deepEqual(allTime.cap.reads[0]!.window, { axis: 'ordered', fromAt: null, toBefore: null });
+  body(await getNavFulfilled(CALLER, new URLSearchParams({ axis: 'placed', from: 'all' }), allTime.deps));
+  assert.deepEqual(allTime.cap.reads[0]!.window, { axis: 'placed', fromAt: null, toBefore: null });
 });
 
-test('getNavFulfilled: a scan-out with no order is its own row, opened by its shipment', async () => {
+test('getNavFulfilled: a scan-out with no order is its own line, opened by its shipment and writing to no order', async () => {
   const rows = [
     pkg({
       orderRowId: -50,
       orderKey: 'scan:50',
       orderId: 'FBA15ABCDEFGH',
       channel: null,
-      channelRaw: null,
       channelStatus: null,
       title: null,
       sku: null,
@@ -454,14 +514,19 @@ test('getNavFulfilled: a scan-out with no order is its own row, opened by its sh
       packerName: null,
     }),
   ];
-  const response = body(await getNavFulfilled(CALLER, new URLSearchParams(), fakes(rows).deps));
+  const { deps, cap } = fakes(rows);
+  const response = body(await getNavFulfilled(CALLER, new URLSearchParams(), deps));
   assert.equal(response.total, 1);
+  assert.deepEqual(cap.lineReads, []);
   const entry = response.entries[0]!;
+  assert.equal(entry.key, 'scan:50');
   assert.equal(entry.ref, 'FBA15ABCDEFGH');
   assert.equal(entry.recordHref, null);
+  assert.equal(entry.facts?.recordId, undefined);
   assert.equal(entry.facts?.shipmentId, 50);
   assert.equal(entry.facts?.tracking, 'FBA15ABCDEFGH');
   assert.equal(entry.facts?.scanSource, 'live');
+  assert.equal(entry.facts?.internalStatus, 'scanned_out');
   assert.deepEqual(entry.buckets, ['untracked']);
 });
 
@@ -473,4 +538,41 @@ test('getNavFulfilled: refuses without packing.view and rejects a bad query, rea
   assert.equal(bad.ok, false);
   assert.equal(!bad.ok && bad.status, 400);
   assert.equal(cap.reads.length, 0);
+});
+
+test('getNavFulfilled: the viewer\'s unread mention on any line marks every line of the order; the viewer is asked for', async () => {
+  const rows = [
+    pkg({ orderRowId: 1 }),
+    pkg({ orderRowId: 2, sku: 'W-2' }),
+    pkg({ orderRowId: 3, orderKey: '113-0000000-0000009', orderId: '113-0000000-0000009', shipmentId: 101, tracking: '1Z0000000000000009' }),
+  ];
+  const asked: Array<{ ids: readonly number[]; viewer: number }> = [];
+  const base = fakes(rows);
+  const deps: NavFulfilledDeps = {
+    ...base.deps,
+    mentions: async (_orgId, ids, viewer) => {
+      asked.push({ ids, viewer });
+      return new Set([2]);
+    },
+  };
+  const response = body(await getNavFulfilled({ ...CALLER, staffId: 42 }, new URLSearchParams(), deps));
+  assert.deepEqual(asked.map(({ ids, viewer }) => [[...ids].sort(), viewer]), [[[1, 2, 3], 42]]);
+  assert.deepEqual(base.cap.lineReads.map((read) => read.viewer), [42]);
+  const mentioned = response.entries.filter((entry) => entry.facts?.mentionsMe).map((entry) => entry.key);
+  assert.deepEqual(new Set(mentioned), new Set(['out:1', 'out:2']));
+});
+
+test('getNavFulfilled: Most over limit first sorts by how far past its clock\'s limit each order is; no limit last', async () => {
+  const order = (n: number, patch: Partial<FulfilledPackageRow>) =>
+    pkg({ orderRowId: n, orderKey: `K-${n}`, orderId: `K-${n}`, shipmentId: 100 + n, tracking: `1Z00000000000000${n}`, ...patch });
+  const rows = [
+    order(1, { latestEventAt: ago(10) }),
+    order(2, { latestEventAt: ago(60) }),
+    order(3, DELIVERED),
+  ];
+  const response = body(await getNavFulfilled(CALLER, new URLSearchParams({ sort: 'overdue' }), fakes(rows).deps));
+  assert.deepEqual(
+    response.entries.map((entry) => entry.ref),
+    ['K-2', 'K-1', 'K-3'],
+  );
 });

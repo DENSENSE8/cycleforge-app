@@ -1,10 +1,11 @@
 /**
  * The Fulfilled enumeration — ONE set-based statement over our tables that
- * lists every shipped order line of the org with its packages and every fact
- * the sheet paints (`GET /api/nav/fulfilled`). One row per (order line,
- * owned package); a line with no package (channel-shipped, no tracking) is
- * one row with a null package. The service groups rows to the line or order
- * grain and decides each package's bucket (`./bucket.ts`).
+ * decides WHICH order lines shipped in a window and every package fact the
+ * journey reads (`GET /api/nav/fulfilled`). One row per (order line, owned
+ * package); a line with no package (channel-shipped, no tracking) is one row
+ * with a null package. The service groups rows to the order, decides each
+ * package's bucket (`./bucket.ts`) and the order's journey; each line's sheet
+ * facts are the Records statement's (`buildRecordsSql` with `orderIds`).
  *
  * ROWS (operator 2026-10-05):
  * - scanned out: a staffed dock `SHIP_CONFIRM` on any package the line owns
@@ -21,12 +22,12 @@
  *
  * Hand-off (per package) = the scan-out, else the ShipStation ship date, else
  * label created, else the carrier's acceptance. The window reads one instant
- * per ORDER NUMBER, so both grains hold the same orders: shipped = the latest
- * hand-off, delivered = the latest delivery, ordered = the earliest
- * `placedElseImportedSql` (85% of order_date is NULL), ship-by =
- * the earliest TEST deadline. Find (`q`) keeps every row of an order number
- * any row of which matches (order # incl. last 8 / chip face, tracking incl.
- * last 8 / key18, SKU, title, customer).
+ * per ORDER (the Records `orderKey`: storefront + order #), so every line of
+ * a kept order is kept: shipped = the latest hand-off, delivered = the latest
+ * delivery, placed = the earliest `placedElseImportedSql` (85% of order_date
+ * is NULL), ship-by = the earliest TEST deadline. Find (`q`) keeps every row
+ * of an order any row of which matches (order # incl. last 8 / chip face,
+ * tracking incl. last 8 / key18, SKU, title, customer).
  *
  * Customer half: the order's post-purchase check-in
  * (`order_support_follow_ups`, program `post_purchase`) is keyed to the
@@ -87,7 +88,7 @@ export interface FulfilledCheckInRow {
 /** One (order line, package) row as the statement returns it. Stamps are ISO strings or null. */
 export interface FulfilledPackageRow {
   orderRowId: number;
-  /** The channel order # (`orders.order_id`), else `#<orders.id>`. */
+  /** The order's key — the Records `orderKey` (`o:<account_source>|<order #>`, else `o:#<orders.id>`); a scan-out no order owns is `scan:<shipment id>`. */
   orderKey: string;
   orderId: string | null;
   /** Canonical `account_source` (src/lib/orders/account-source.ts); null when blank. */
@@ -156,12 +157,12 @@ export interface FulfilledPackageRow {
   checkIn: FulfilledCheckInRow | null;
 }
 
-/** Per-order axis instant (one per order number, so both grains window alike). */
+/** Per-order axis instant (one per order, so its lines window alike). */
 const AXIS_SQL: Readonly<Record<FulfilledAxis, string>> = {
   shipped: 'max(r.hand_off_at)',
   delivered: 'max(r.delivered_at)',
-  ordered: 'min(r.ordered_at)',
-  shipBy: 'min(r.ship_by_at)',
+  placed: 'min(r.ordered_at)',
+  ship_by: 'min(r.ship_by_at)',
 };
 
 /** Find parameters (`$4`–`$8`): text, LIKE pattern, tracking canonical / key18 / digits last-8. */
@@ -330,7 +331,9 @@ export function buildFulfilledSql(orgId: OrgId, window: FulfilledWindow, q: stri
     ),
     r AS MATERIALIZED (
       SELECT o.id AS order_row_id,
-             COALESCE(NULLIF(BTRIM(o.order_id), ''), '#' || o.id) AS order_key,
+             CASE WHEN NULLIF(BTRIM(o.order_id), '') IS NOT NULL
+                  THEN 'o:' || COALESCE(o.account_source, '') || '|' || BTRIM(o.order_id)
+                  ELSE 'o:#' || o.id END AS order_key,
              o.order_id,
              NULLIF(o.account_source, '') AS channel,
              ${accountSourceAccountLabelSql('o')} AS channel_account_label,

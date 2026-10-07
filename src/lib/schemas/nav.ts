@@ -5,8 +5,9 @@ import { NAV_LOCATE_SCOPES } from '@/lib/nav/context/schema';
 import { INBOUND_BUCKET_IDS } from '@/lib/nav/locate/inbound';
 import { INBOUND_SOURCE_TYPES } from '@/lib/inbound/source-registry';
 import { PURCHASES_AXES, PURCHASES_SORTS } from '@/lib/receiving/purchases-params';
-import { FULFILLED_AXES, FULFILLED_GRAINS, FULFILLED_SCANS, FULFILLED_SORTS } from '@/lib/outbound/fulfilled-params';
-import { FULFILLED_BUCKET_IDS, type FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
+import { FULFILLED_AXES, FULFILLED_DEFAULT_AXIS, FULFILLED_DEFAULT_SORT, FULFILLED_SCANS, FULFILLED_SORTS } from '@/lib/outbound/fulfilled-params';
+import type { RecordsSort } from '@/lib/nav/records/params';
+import { FULFILLED_THREAD_MAX_LINES } from '@/lib/outbound/fulfilled-thread';
 import { parseDateKey } from '@/utils/date';
 
 /** Request schemas for `/api/nav/recents` and `/api/nav/facets` (the contextual sidebar). */
@@ -103,16 +104,14 @@ export type NavPurchasesQuery = z.infer<typeof NavPurchasesQuery>;
  */
 export const NavFulfilledQuery = z
   .object({
-    status: z.enum(FULFILLED_BUCKET_IDS as [FulfilledBucketId, ...FulfilledBucketId[]]).optional(),
-    axis: z.enum(FULFILLED_AXES).default('shipped'),
+    axis: z.enum(FULFILLED_AXES).default(FULFILLED_DEFAULT_AXIS),
     from: z.union([z.literal('all'), CivilDay]).optional(),
     to: CivilDay.optional(),
-    channel: z.string().trim().toLowerCase().min(1).max(100).optional(),
+    platform: z.string().trim().toLowerCase().min(1).max(100).optional(),
     carrier: z.string().trim().toUpperCase().min(1).max(40).optional(),
     packer: z.coerce.number().int().positive().optional(),
     scan: z.enum(FULFILLED_SCANS).optional(),
-    grain: z.enum(FULFILLED_GRAINS).default('order'),
-    sort: z.enum(FULFILLED_SORTS).default('shipped'),
+    sort: z.enum(FULFILLED_SORTS as [RecordsSort, ...RecordsSort[]]).default(FULFILLED_DEFAULT_SORT),
     dir: z.enum(['asc', 'desc']).optional(),
     q: z.string().trim().max(200).optional(),
   })
@@ -120,3 +119,17 @@ export const NavFulfilledQuery = z
     message: 'from is after to',
   });
 export type NavFulfilledQuery = z.infer<typeof NavFulfilledQuery>;
+
+/**
+ * `GET /api/fulfilled/thread?orders=1,2` — one fulfilled order's thread: its
+ * lines (`orders.id`), comma-joined (`src/lib/outbound/fulfilled-thread.ts`).
+ */
+export const FulfilledThreadQuery = z
+  .object({
+    orders: z
+      .string()
+      .trim()
+      .transform((raw) => [...new Set(raw.split(',').map((part) => Number(part.trim())))])
+      .pipe(z.array(z.number().int().positive()).min(1).max(FULFILLED_THREAD_MAX_LINES)),
+  })
+  .strict();

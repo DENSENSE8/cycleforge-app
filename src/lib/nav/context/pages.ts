@@ -35,6 +35,7 @@ import {
   RECORDS_GRAINS,
   RECORDS_GRAIN_LABEL,
   RECORDS_GRAIN_PARAM,
+  RECORDS_JOURNEY_SORTS,
   RECORDS_SORTS,
   RECORDS_SORT_DIR,
   RECORDS_SORT_LABEL,
@@ -49,6 +50,7 @@ import {
   TASK_BOARD_SORT_LABEL,
 } from '@/lib/task-board/task-board-model';
 import { INBOUND_LOCATE } from '@/lib/nav/locate/inbound-params';
+import { FULFILLED_VIEW_BUCKET_IDS } from '@/lib/nav/locate/bucket-precedence';
 import {
   SAVED_VIEW_PARAM_KEYS,
   SAVED_VIEW_STORAGE_KEY,
@@ -83,20 +85,22 @@ import {
   FULFILLED_AXIS_LABEL,
   FULFILLED_AXIS_PARAM,
   FULFILLED_DEFAULT_AXIS,
+  FULFILLED_DEFAULT_GRAIN,
   FULFILLED_DEFAULT_SORT,
   FULFILLED_DEFAULT_WINDOW_LABEL,
   FULFILLED_DIR_PARAM,
-  FULFILLED_CARDS_PARAM,
   FULFILLED_DONE_PARAM,
   FULFILLED_FIND_PARAM,
   FULFILLED_FROM_PARAM,
+  FULFILLED_GRAIN_PARAM,
   FULFILLED_GROUP_PARAM,
   FULFILLED_MINE_PARAM,
   FULFILLED_MINE_VALUE,
   FULFILLED_PACKER_PARAM,
+  FULFILLED_SORTS,
   FULFILLED_SORT_PARAM,
   FULFILLED_TO_PARAM,
-  FULFILLED_UNTRACKED_PARAM,
+  FULFILLED_ZOOM_SORT,
 } from '@/lib/outbound/fulfilled-params';
 import {
   SOURCING_ALERT_STATUS_OPTIONS,
@@ -545,18 +549,35 @@ const FULFILLED_VIEWS = {
 
 /**
  * Fulfilled (`/fulfilled`; `fulfilled-params.ts`): every shipped order in a
- * window on one date axis (shipped · delivered · ordered · ship-by; neither
- * end set = the last 90 days), by who packed it, in a column order. Channel,
- * Carrier and Scan source are counted facets (`NAV_FACET_GROUPS.fulfilled`).
- * Packed by me (`mine=me`) narrows server-side as the viewer's own `packer`
- * (`fulfilledApiParams`), so counts agree. The board's display rows — Done
- * columns, Untracked, Cards, Group by carrier (operator 2026-10-06) — are
- * defaulted choices / the group row the board reads client-side.
- * The status chips (`?status=`) and the row grain (`?grain=`) are the sheet's
- * own, in the body — never a sidebar row.
+ * window on one date axis (shipped · delivered · placed · ship-by; neither
+ * end set = the last 90 days), by who packed it. Its views are the board and
+ * one per off-board bucket (`?col=`, the sidebar children); Journey,
+ * Platform, Carrier and Scan source are counted facets on every view
+ * (`NAV_FACET_GROUPS['fulfilled.<view>']`). Sort, the grain, the axis, the
+ * platform and the carrier are the Records params and words — the body is
+ * the Records sheet. Packed by me (`mine=me`) narrows server-side as the
+ * viewer's own `packer` (`fulfilledApiParams`), so counts agree. The
+ * board's display rows — Done columns, Group by carrier (operator
+ * 2026-10-06) — are defaulted choices / the group row the board reads
+ * client-side.
  */
+const FULFILLED_SORT_CONTROL = {
+  param: FULFILLED_SORT_PARAM,
+  dirParam: FULFILLED_DIR_PARAM,
+  defaultValue: FULFILLED_DEFAULT_SORT,
+  options: FULFILLED_SORTS.map((value) => ({ value, label: RECORDS_SORT_LABEL[value], dir: RECORDS_SORT_DIR[value] })),
+};
+const FULFILLED_GRAIN_CHOICE = {
+  id: 'grain',
+  label: 'Grain',
+  param: FULFILLED_GRAIN_PARAM,
+  options: RECORDS_GRAINS.map((value) => ({ value, label: RECORDS_GRAIN_LABEL[value] })),
+  defaultValue: FULFILLED_DEFAULT_GRAIN,
+  clearParams: [],
+};
 const FULFILLED_CONTROLS: NavControls = {
   choices: [
+    FULFILLED_GRAIN_CHOICE,
     {
       id: 'axis',
       label: 'Date',
@@ -588,28 +609,6 @@ const FULFILLED_CONTROLS: NavControls = {
       defaultValue: 'show',
       clearParams: [],
     },
-    {
-      id: 'untracked',
-      label: 'Untracked',
-      param: FULFILLED_UNTRACKED_PARAM,
-      options: [
-        { value: 'show', label: 'Show' },
-        { value: 'hide', label: 'Hide' },
-      ],
-      defaultValue: 'show',
-      clearParams: [],
-    },
-    {
-      id: 'cards',
-      label: 'Cards',
-      param: FULFILLED_CARDS_PARAM,
-      options: [
-        { value: 'full', label: 'Full' },
-        { value: 'compact', label: 'Compact' },
-      ],
-      defaultValue: 'full',
-      clearParams: [],
-    },
   ],
   group: {
     param: FULFILLED_GROUP_PARAM,
@@ -630,24 +629,20 @@ const FULFILLED_CONTROLS: NavControls = {
     },
   ],
   staff: [{ id: 'packer', param: FULFILLED_PACKER_PARAM, label: 'Packed by' }],
-  sort: {
-    param: FULFILLED_SORT_PARAM,
-    dirParam: FULFILLED_DIR_PARAM,
-    defaultValue: FULFILLED_DEFAULT_SORT,
-    options: [
-      { value: 'shipped', label: 'Scanned out, newest first' },
-      { value: 'delivered', label: 'Delivered, newest first', dir: 'desc' },
-      { value: 'ordered', label: `${ORDER_DATE_LABEL.placed}, newest first`, dir: 'desc' },
-      { value: 'shipBy', label: 'Ship-by, soonest first', dir: 'asc' },
-      { value: 'lastEvent', label: 'Last carrier event, newest first', dir: 'desc' },
-      { value: 'order', label: 'Order number, A to Z', dir: 'asc' },
-      { value: 'channel', label: 'Platform, A to Z', dir: 'asc' },
-      { value: 'carrier', label: 'Carrier, A to Z', dir: 'asc' },
-      { value: 'status', label: 'Status', dir: 'asc' },
-      { value: 'packer', label: 'Packer, A to Z', dir: 'asc' },
-      { value: 'item', label: 'Item, A to Z', dir: 'asc' },
-    ],
-  },
+  sort: FULFILLED_SORT_CONTROL,
+};
+
+/**
+ * A Fulfilled VIEW (Returned, Late, … — `?col=`, operator 2026-10-06): one
+ * bucket's orders on the Records sheet, worst first, so its Sort defaults to
+ * Most over limit; the board's own display rows (Done columns, Group by) do
+ * not apply.
+ */
+const FULFILLED_VIEW_CONTROLS: NavControls = {
+  choices: FULFILLED_CONTROLS.choices?.filter((choice) => choice.param !== FULFILLED_DONE_PARAM),
+  dateRanges: FULFILLED_CONTROLS.dateRanges,
+  staff: FULFILLED_CONTROLS.staff,
+  sort: { ...FULFILLED_SORT_CONTROL, defaultValue: FULFILLED_ZOOM_SORT },
 };
 
 /** The To-ship desk header (OrdersDeskAddAction · Past imports · Labels walk), removed 2026-09-26. */
@@ -808,6 +803,7 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
     search: { placeholder: 'Find fulfilled orders', source: 'url-param', param: FULFILLED_FIND_PARAM },
     savedViews: FULFILLED_VIEWS,
     controls: FULFILLED_CONTROLS,
+    items: Object.fromEntries(FULFILLED_VIEW_BUCKET_IDS.map((bucket) => [bucket, { controls: FULFILLED_VIEW_CONTROLS }])),
   },
   // Header split action `IncomingDeskAddAction` — the Global Add inbound leaves.
   // Find narrows the ledger in place through `?find=` (`INBOUND_FIND_PARAM`;
@@ -1344,7 +1340,12 @@ export const NAV_PAGE_DECLS: Readonly<Record<string, NavPageDecl>> = {
         param: RECORDS_SORT_PARAM,
         dirParam: RECORDS_DIR_PARAM,
         defaultValue: 'date',
-        options: RECORDS_SORTS.map((value) => ({ value, label: RECORDS_SORT_LABEL[value], dir: RECORDS_SORT_DIR[value] })),
+        // A Records line carries no journey: those sorts are Fulfilled's (`RECORDS_JOURNEY_SORTS`).
+        options: RECORDS_SORTS.filter((value) => !(RECORDS_JOURNEY_SORTS as readonly string[]).includes(value)).map((value) => ({
+          value,
+          label: RECORDS_SORT_LABEL[value],
+          dir: RECORDS_SORT_DIR[value],
+        })),
       },
       choices: [
         {

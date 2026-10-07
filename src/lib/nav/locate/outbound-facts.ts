@@ -1,8 +1,8 @@
 /**
- * The ONE outbound row-facts builder (`NavLocateFacts`, section `outbound`):
- * the outbound locator's refs answer (`./outbound.ts`) and the Fulfilled
- * sheet (`src/lib/nav/fulfilled/service.ts`) both paint through it. Pure — no
- * database import — so either caller's domain tests run DB-free.
+ * The outbound locator's row-facts builder (`NavLocateFacts`, section
+ * `outbound`) for its refs answer (`./outbound.ts`). Pure — no database
+ * import — so its domain tests run DB-free. (Fulfilled's lines are Records
+ * lines: `locateRecordLine`.)
  */
 
 import type { NavLocateFacts } from '@/lib/nav/context/schema';
@@ -17,40 +17,8 @@ function stampText(value: unknown): string | null {
 
 const textOf = (value: unknown): string | null => (value == null ? null : String(value).trim() || null);
 
-/** The Fulfilled sheet's extra facts (`GET /api/nav/fulfilled`, `src/lib/nav/fulfilled/service.ts`); absent on locator answers. */
-export type OutboundFulfilledFacts = Required<
-  Pick<
-    NavLocateFacts,
-    | 'channel'
-    | 'customer'
-    | 'qty'
-    | 'orderTotal'
-    | 'orderedAt'
-    | 'scannedOutBy'
-    | 'scanSource'
-    | 'carrier'
-    | 'service'
-    | 'labelCreatedAt'
-    | 'labelCost'
-    | 'firstScanAt'
-    | 'lastEvent'
-    | 'lastEventPlace'
-    | 'eta'
-    | 'attempts'
-    | 'exceptionCode'
-    | 'lastPoll'
-    | 'packages'
-    | 'trackings'
-    | 'returnRef'
-    | 'shipstationStatus'
-    | 'transitDays'
-    | 'claim'
-    | 'lineCount'
-  >
->;
-
-/** One matched order's row facts (the ref's lead order when it names several), plus the Fulfilled sheet's when it reads them. */
-export function outboundFacts(row: Record<string, unknown>, lines: number, fulfilled?: OutboundFulfilledFacts): NavLocateFacts {
+/** One matched order's row facts (the ref's lead order when it names several). */
+export function outboundFacts(row: Record<string, unknown>, lines: number): NavLocateFacts {
   const packerId = Number(row.packer_id);
   const packerName = textOf(row.packer_name);
   const hasPacker = Number.isInteger(packerId) && packerId > 0;
@@ -75,6 +43,5 @@ export function outboundFacts(row: Record<string, unknown>, lines: number, fulfi
     unboxedAt: null,
     unboxedBy: null,
     units: null,
-    ...fulfilled,
   };
 }

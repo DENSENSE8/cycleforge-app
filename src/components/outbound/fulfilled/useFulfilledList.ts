@@ -1,27 +1,25 @@
 'use client';
 
 /**
- * Fulfilled's records — `GET /api/nav/fulfilled` over the view's URL
- * (`fulfilledApiParams`: date axis + window, channel, carrier, packer, scan
- * source, sort, Find, and the grain on the sheet — the board is always order
- * grain) — as `LocatedRecords`, the shape the shared sheet (`PastedListSheet`),
- * its status chips and the board (`FulfilledBoard`) read, plus when the
- * answer last arrived (the board's freshness dot). The status chips
- * (`?status=`) narrow the answer here, client-side, so they count the whole
- * window; the board reads every entry and ignores them. The twin of
- * `usePurchasesList`.
+ * Fulfilled's lines — `GET /api/nav/fulfilled` over the view's URL
+ * (`fulfilledApiParams`: date axis + window, platform, carrier, packer, scan
+ * source, sort, Find) — as `LocatedRecords`: the shipped orders' Records
+ * lines, each carrying its order's journey. The board (`FulfilledBoard`,
+ * one card per order) and the Records sheet (`RecordsSheetBody`, one row per
+ * line, the whole window or one bucket) read the same answer, so a column's
+ * count and its zoomed rows never disagree. Plus when the answer last
+ * arrived (the board's freshness dot) and the carrier sync health.
  */
 
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchNavFulfilled } from '@/lib/nav/context/http-client';
 import type { NavFulfilledResponse } from '@/lib/nav/context/schema';
 import { useNavStaffKey } from '@/lib/nav/context/use-nav-staff-key';
 import type { BulkEntry, LocatedRecords } from '@/lib/nav/locate/use-bulk-list';
-import { FULFILLED_FIND_PARAM, FULFILLED_STATUS_PARAM, fulfilledApiParams } from '@/lib/outbound/fulfilled-params';
-import { useReplaceSearchParams } from '@/components/sidebar/contextual/useReplaceSearchParams';
+import { FULFILLED_FIND_PARAM, fulfilledApiParams } from '@/lib/outbound/fulfilled-params';
 
 const NO_REPEATS: ReadonlyMap<string, number> = new Map();
 
@@ -37,7 +35,6 @@ export interface FulfilledList extends LocatedRecords {
 
 export function useFulfilledList(): FulfilledList {
   const searchParams = useSearchParams();
-  const replace = useReplaceSearchParams();
   const staffKey = useNavStaffKey();
   const viewerStaffId = useAuth().user?.staffId ?? null;
   const search = searchParams?.toString() ?? '';
@@ -57,30 +54,26 @@ export function useFulfilledList(): FulfilledList {
     [query.data],
   );
   const buckets = useMemo(() => query.data?.buckets ?? [], [query.data]);
-  const rawStatus = searchParams?.get(FULFILLED_STATUS_PARAM)?.trim() || null;
-  // A filter naming no bucket filters nothing.
-  const status = rawStatus && buckets.some((bucket) => bucket.id === rawStatus) ? rawStatus : null;
-  const setStatus = useCallback(
-    (next: string | null) =>
-      replace((params) => {
-        if (next) params.set(FULFILLED_STATUS_PARAM, next);
-        else params.delete(FULFILLED_STATUS_PARAM);
-      }),
-    [replace],
-  );
-  const refetch = query.refetch;
+  // A write changes the counts too: the sidebar's facets (NavFilters, `nav-facets`) re-read with the rows.
+  const queryClient = useQueryClient();
+  const rowsRefetch = query.refetch;
+  const refetch = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['nav-facets'] });
+    void rowsRefetch();
+  }, [queryClient, rowsRefetch]);
   return {
     scope: 'outbound',
     loading: query.isFetching,
     error: query.error ? query.error.message || 'Could not read the fulfilled orders' : null,
-    refetch: () => void refetch(),
+    refetch,
     entries,
     buckets,
-    status,
-    setStatus,
+    // The bucket is the URL's `?col=`, narrowed by the page — never the sheet's chip row.
+    status: null,
+    setStatus: () => undefined,
     facet: null,
     // The query answers as a whole: asking again for one order re-reads the window.
-    recheck: () => void refetch(),
+    recheck: refetch,
     repeats: NO_REPEATS,
     updatedAt: query.dataUpdatedAt,
     syncHealth: query.data?.syncHealth ?? null,

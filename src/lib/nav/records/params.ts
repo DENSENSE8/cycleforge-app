@@ -96,9 +96,31 @@ export const RECORDS_COLUMN_SORTS = [
   'service',
   'eta',
   'last_event',
+  'delivered',
+  'owner',
+  'note',
 ] as const;
 export type RecordsColumnSort = (typeof RECORDS_COLUMN_SORTS)[number];
-export const RECORDS_SORTS = [...RECORDS_VIEW_SORTS, ...RECORDS_COLUMN_SORTS] as const;
+/**
+ * The Fulfilled journey's columns: a row of `GET /api/nav/fulfilled` carries
+ * them (its order's bucket, clock, label, polls, check-in); a Records line
+ * does not, so `/records`' Sort row leaves them out.
+ */
+export const RECORDS_JOURNEY_SORTS = [
+  'journey',
+  'scan_source',
+  'label_created',
+  'label_cost',
+  'first_scan',
+  'transit',
+  'attempts',
+  'exception_code',
+  'claim_by',
+  'last_poll',
+  'shipstation_status',
+  'return',
+] as const;
+export const RECORDS_SORTS = [...RECORDS_VIEW_SORTS, ...RECORDS_COLUMN_SORTS, ...RECORDS_JOURNEY_SORTS] as const;
 export type RecordsSort = (typeof RECORDS_SORTS)[number];
 export const RECORDS_SORT_LABEL: Readonly<Record<RecordsSort, string>> = {
   pasted: 'As pasted',
@@ -130,6 +152,21 @@ export const RECORDS_SORT_LABEL: Readonly<Record<RecordsSort, string>> = {
   service: 'Carrier service',
   eta: 'Estimated delivery, soonest first',
   last_event: 'Last carrier event, newest first',
+  journey: 'Journey status',
+  delivered: 'Delivered, newest first',
+  scan_source: 'Scan source',
+  label_created: 'Label created, newest first',
+  label_cost: 'Label cost, highest first',
+  first_scan: 'First carrier scan, newest first',
+  transit: 'Days in transit, most first',
+  attempts: 'Delivery attempts, most first',
+  exception_code: 'Exception code',
+  claim_by: 'Carrier claim by, soonest first',
+  last_poll: 'Last carrier poll, oldest first',
+  shipstation_status: 'ShipStation status',
+  return: 'Return',
+  owner: 'Owner, A to Z',
+  note: 'Last note, newest first',
 };
 /** Each sort's direction when `dir` is absent. */
 export const RECORDS_SORT_DIR: Readonly<Record<RecordsSort, 'asc' | 'desc'>> = {
@@ -162,6 +199,21 @@ export const RECORDS_SORT_DIR: Readonly<Record<RecordsSort, 'asc' | 'desc'>> = {
   service: 'asc',
   eta: 'asc',
   last_event: 'desc',
+  journey: 'asc',
+  delivered: 'desc',
+  scan_source: 'asc',
+  label_created: 'desc',
+  label_cost: 'desc',
+  first_scan: 'desc',
+  transit: 'desc',
+  attempts: 'desc',
+  exception_code: 'asc',
+  claim_by: 'asc',
+  last_poll: 'asc',
+  shipstation_status: 'asc',
+  return: 'asc',
+  owner: 'asc',
+  note: 'desc',
 };
 
 /** Price bands — the Price facet (include / exclude, counted). Bounds in dollars on the LINE total, [min, max). */

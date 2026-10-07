@@ -310,19 +310,6 @@ export const PastedListGridRow = memo(function PastedListGridRow({
         return <StaffAt staff={facts?.unboxedBy} at={facts?.unboxedAt} />;
       case 'receivedBy':
         return <StaffAt staff={facts?.receivedBy} at={facts?.receivedAt} />;
-      case 'scannedOut':
-        if (!text) return <GridCellDash />;
-        if (facts?.scanSource == null) return <span className="min-w-0 truncate text-text-faint">{text}</span>;
-        return (
-          <span className="flex min-w-0 items-center gap-1">
-            <span className="shrink-0 tabular-nums text-text-muted">{formatMonthDayTimePST(facts.shippedAt ?? '')}</span>
-            {facts.scanSource === 'backfill' ? (
-              <HoverTooltip label="A backdated scan-out stamp, not a live dock scan" focusable={false} asChild>
-                <span data-scan-backfill className={CELL_MARKER}>Backfill</span>
-              </HoverTooltip>
-            ) : null}
-          </span>
-        );
       case 'scannedOutBy':
         return <StaffAt staff={facts?.scannedOutBy} at={facts?.shippedAt} />;
       case 'lastEvent': {

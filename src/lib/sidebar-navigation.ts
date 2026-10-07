@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlarmClock,
   AlertCircle,
   Barcode,
   BarChart3,
@@ -10,6 +11,7 @@ import {
   Cpu,
   ClipboardList,
   Clock,
+  EyeOff,
   FileText,
   History,
   Download,
@@ -34,6 +36,7 @@ import {
   Receipt,
   SalesModeCounter,
   Radar,
+  RotateCcw,
   Share2,
   ShieldCheck,
   ShoppingCart,
@@ -65,6 +68,8 @@ import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/lib/outbound/route-contract';
 import { SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
+import { FULFILLED_COLUMN_PARAM } from '@/lib/outbound/fulfilled-params';
+import { FULFILLED_BUCKETS, FULFILLED_VIEW_BUCKET_IDS, type FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
 import { LIVE_FEED_PATH } from '@/lib/live-feed/route';
 import { LIVE_FEED_PERMISSION } from '@/lib/live-feed/stages';
 import { QC_LABELS_PATH } from '@/lib/labels/qc-label-views';
@@ -1034,6 +1039,39 @@ function supportView(view: SupportListView | null): ChildNavTarget {
   return { pathname: SUPPORT_PATHS.desktop, params: { view, item: null } };
 }
 
+/** The no-`col` Fulfilled child: the journey board. */
+export const FULFILLED_BOARD_VIEW_ID = 'board';
+
+/** Each Fulfilled view's glyph — its trouble, read before its word (`NAV_VIEW_ICONS['fulfilled.<view>']` adds the ink). */
+export const FULFILLED_VIEW_ICONS: Readonly<Record<typeof FULFILLED_BOARD_VIEW_ID | FulfilledBucketId, SidebarIconComponent>> = {
+  board: LayoutDashboard,
+  exception: AlertTriangle,
+  returned: RotateCcw,
+  reply_due: Reply,
+  no_movement: PackageX,
+  stalled: Clock,
+  late: AlarmClock,
+  check_in_due: MessageSquare,
+  tracking_stale: Radar,
+  no_tracking: Barcode,
+  awaiting: Truck,
+  in_transit: Truck,
+  out_for_delivery: Truck,
+  untracked: EyeOff,
+  check_in_scheduled: MessageSquare,
+  checked_in: MessageSquare,
+  happy: Check,
+  issue: AlertCircle,
+  no_reply: MessageSquare,
+  closed: Check,
+  delivered: PackageCheck,
+};
+
+/** A Fulfilled view: `?col=` (null = the board); the open record is dropped. */
+function fulfilledView(bucket: FulfilledBucketId | null): ChildNavTarget {
+  return { pathname: SHIPPING_SHIPPED_PATH, params: { [FULFILLED_COLUMN_PARAM]: bucket } };
+}
+
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Tasks (was Daily, was Home) ───────────────────────────────────────────
   // Owner 2026-09-29: task-first follow-up desk on the house two-tier sidebar
@@ -1443,11 +1481,27 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return parseLabelIntakeView(params.get('view'));
     },
   },
-  // ── Fulfilled (Fulfillment lane) ────────────────────────────────────────── Every shipped order as one sheet. No views: its saved views are presets in the panel body, never children.
+  // ── Fulfilled (Fulfillment lane) ────────────────────────────────────────── Operator 2026-10-06
+  // (HANDOFF-fulfilled-drilldown R3–R4): the default view is the journey BOARD (the carrier-facing
+  // seven columns); every other actionable bucket is a view of its own beside it — `?col=<bucket>`,
+  // the same one-bucket list a board column expands into. A view switch drops the open record.
   {
     id: 'fulfilled', label: 'Fulfilled', href: SHIPPING_SHIPPED_PATH, icon: PackageCheck, tone: 'text-emerald-600', kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.view',
     railless: true,
     description: 'Every order that left the building',
+    children: [
+      { id: FULFILLED_BOARD_VIEW_ID, label: 'Board', icon: FULFILLED_VIEW_ICONS.board, to: () => fulfilledView(null) },
+      ...FULFILLED_VIEW_BUCKET_IDS.map((bucket) => ({
+        id: bucket,
+        label: FULFILLED_BUCKETS.find((entry) => entry.id === bucket)!.label,
+        icon: FULFILLED_VIEW_ICONS[bucket],
+        to: () => fulfilledView(bucket),
+      })),
+    ],
+    resolveChild: ({ params }) => {
+      const col = params.get(FULFILLED_COLUMN_PARAM) ?? '';
+      return (FULFILLED_VIEW_BUCKET_IDS as readonly string[]).includes(col) ? col : FULFILLED_BOARD_VIEW_ID;
+    },
   },
   // ── FBM (Fulfilled by merchant — Fulfillment lane) ──────────────────────────
   // Visible workspaces only. Internal desk routes (notably the legacy

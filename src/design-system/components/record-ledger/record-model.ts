@@ -123,6 +123,8 @@ export interface RecordModel {
   activityTitle?: string;
   /** The inline staff-note editor under the serials. */
   staffNote: ReactNode | null;
+  /** The notes group's title when it holds more than notes (Fulfilled's order thread); default "Staff notes". */
+  notesTitle?: string;
   /** The Items group's money footer; null = no price known. */
   price: { rows: readonly RecordPriceRow[] } | null;
   /** The currency every price on the record reads in. */

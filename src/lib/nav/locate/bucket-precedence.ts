@@ -48,6 +48,12 @@ export const LOCATE_BUCKET_PRECEDENCE: Readonly<Record<NavLocator, readonly stri
  * moving inside its threshold; `done` = nothing owed. Order inside a section
  * is the board's column order.
  *
+ * `place` is where the desk paints the bucket (operator 2026-10-06,
+ * `HANDOFF-fulfilled-drilldown.md` R3–R5): `board` = a board column (the
+ * carrier-facing seven); `view` = a left-sidebar view of its own; `record` =
+ * neither — the status still files the order, reads on its record and filters
+ * the sheet's status chips.
+ *
  * These are support follow-up buckets, not record statuses: the carrier
  * buckets that ARE a carrier status (Exception, Returned, In transit, Out for
  * delivery, Delivered) wear its word from `CARRIER_STATUS`
@@ -59,36 +65,38 @@ export const FULFILLED_SECTIONS = [
   { id: 'done', label: 'Done' },
 ] as const;
 export type FulfilledSectionId = (typeof FULFILLED_SECTIONS)[number]['id'];
+export type FulfilledBucketPlace = 'board' | 'view' | 'record';
 
 export const FULFILLED_BUCKETS = [
   // ── Act now ──
-  { id: 'exception', label: CARRIER_STATUS.exception.label, tone: 'danger', section: 'act' },
-  { id: 'returned', label: CARRIER_STATUS.returned.label, tone: 'warning', section: 'act' },
-  { id: 'reply_due', label: 'Reply due', tone: 'danger', section: 'act' },
-  { id: 'no_movement', label: 'No movement', tone: 'danger', section: 'act' },
-  { id: 'stalled', label: 'Stalled', tone: 'warning', section: 'act' },
-  { id: 'late', label: 'Late', tone: 'warning', section: 'act' },
-  { id: 'check_in_due', label: 'Check-in due', tone: 'warning', section: 'act' },
-  { id: 'tracking_stale', label: 'Tracking stale', tone: 'warning', section: 'act' },
-  { id: 'no_tracking', label: 'No tracking', tone: 'warning', section: 'act' },
+  { id: 'exception', label: CARRIER_STATUS.exception.label, tone: 'danger', section: 'act', place: 'board' },
+  { id: 'returned', label: CARRIER_STATUS.returned.label, tone: 'warning', section: 'act', place: 'view' },
+  { id: 'reply_due', label: 'Reply due', tone: 'danger', section: 'act', place: 'view' },
+  { id: 'no_movement', label: 'No movement', tone: 'danger', section: 'act', place: 'board' },
+  { id: 'stalled', label: 'Stalled', tone: 'warning', section: 'act', place: 'board' },
+  { id: 'late', label: 'Late', tone: 'warning', section: 'act', place: 'view' },
+  { id: 'check_in_due', label: 'Check-in due', tone: 'warning', section: 'act', place: 'record' },
+  { id: 'tracking_stale', label: 'Tracking stale', tone: 'warning', section: 'act', place: 'board' },
+  { id: 'no_tracking', label: 'No tracking', tone: 'warning', section: 'act', place: 'view' },
   // ── Watch ──
-  { id: 'awaiting', label: 'Awaiting pickup', tone: 'neutral', section: 'watch' },
-  { id: 'in_transit', label: CARRIER_STATUS.in_transit.label, tone: 'info', section: 'watch' },
-  { id: 'out_for_delivery', label: CARRIER_STATUS.out_for_delivery.label, tone: 'info', section: 'watch' },
-  { id: 'untracked', label: 'Untracked', tone: 'neutral', section: 'watch' },
-  { id: 'check_in_scheduled', label: 'Check-in scheduled', tone: 'info', section: 'watch' },
-  { id: 'checked_in', label: 'Checked in', tone: 'info', section: 'watch' },
+  { id: 'awaiting', label: 'Awaiting pickup', tone: 'neutral', section: 'watch', place: 'view' },
+  { id: 'in_transit', label: CARRIER_STATUS.in_transit.label, tone: 'info', section: 'watch', place: 'board' },
+  { id: 'out_for_delivery', label: CARRIER_STATUS.out_for_delivery.label, tone: 'info', section: 'watch', place: 'board' },
+  { id: 'untracked', label: 'Untracked', tone: 'neutral', section: 'watch', place: 'view' },
+  { id: 'check_in_scheduled', label: 'Check-in scheduled', tone: 'info', section: 'watch', place: 'record' },
+  { id: 'checked_in', label: 'Checked in', tone: 'info', section: 'watch', place: 'record' },
   // ── Done ──
-  { id: 'happy', label: 'Happy', tone: 'success', section: 'done' },
-  { id: 'issue', label: 'Had an issue', tone: 'warning', section: 'done' },
-  { id: 'no_reply', label: 'No reply', tone: 'neutral', section: 'done' },
-  { id: 'closed', label: 'Closed', tone: 'neutral', section: 'done' },
-  { id: 'delivered', label: CARRIER_STATUS.delivered.label, tone: 'success', section: 'done' },
+  { id: 'happy', label: 'Happy', tone: 'success', section: 'done', place: 'record' },
+  { id: 'issue', label: 'Had an issue', tone: 'warning', section: 'done', place: 'record' },
+  { id: 'no_reply', label: 'No reply', tone: 'neutral', section: 'done', place: 'record' },
+  { id: 'closed', label: 'Closed', tone: 'neutral', section: 'done', place: 'record' },
+  { id: 'delivered', label: CARRIER_STATUS.delivered.label, tone: 'success', section: 'done', place: 'board' },
 ] as const satisfies ReadonlyArray<{
   id: string;
   label: string;
   tone: NavLocateBucket['tone'];
   section: FulfilledSectionId;
+  place: FulfilledBucketPlace;
 }>;
 export type FulfilledBucketId = (typeof FULFILLED_BUCKETS)[number]['id'];
 export const FULFILLED_BUCKET_IDS = FULFILLED_BUCKETS.map((bucket) => bucket.id) as readonly FulfilledBucketId[];
@@ -97,6 +105,19 @@ export const FULFILLED_BUCKET_IDS = FULFILLED_BUCKETS.map((bucket) => bucket.id)
 export const FULFILLED_BUCKET_SECTION: Readonly<Record<FulfilledBucketId, FulfilledSectionId>> = Object.fromEntries(
   FULFILLED_BUCKETS.map((bucket) => [bucket.id, bucket.section]),
 ) as Record<FulfilledBucketId, FulfilledSectionId>;
+
+type BucketIn<P extends FulfilledBucketPlace> = Extract<(typeof FULFILLED_BUCKETS)[number], { place: P }>['id'];
+export type FulfilledBoardBucketId = BucketIn<'board'>;
+export type FulfilledViewBucketId = BucketIn<'view'>;
+
+/** The board's columns, in column order (R3). */
+export const FULFILLED_BOARD_BUCKET_IDS = FULFILLED_BUCKETS.filter((bucket) => bucket.place === 'board').map(
+  (bucket) => bucket.id,
+) as readonly FulfilledBoardBucketId[];
+/** The sidebar's views beside the board, in sidebar order (R4). */
+export const FULFILLED_VIEW_BUCKET_IDS = FULFILLED_BUCKETS.filter((bucket) => bucket.place === 'view').map(
+  (bucket) => bucket.id,
+) as readonly FulfilledViewBucketId[];
 
 /** The first of `ids` in {@link FULFILLED_BUCKETS} precedence (an order's packages → its one bucket). */
 export function fulfilledPrimaryBucket(ids: readonly FulfilledBucketId[]): FulfilledBucketId | null {

@@ -442,7 +442,7 @@ export function RecordView({ model, panel, testId = 'record' }: { model: RecordM
         </RecordGroup>
       ) : null}
       {model.staffNote || model.notes.length > 0 ? (
-        <RecordGroup title="Staff notes" testId={`${prefix}-notes`}>
+        <RecordGroup title={model.notesTitle ?? 'Staff notes'} testId={`${prefix}-notes`}>
           {model.notes.length > 0 ? <RecordFacts facts={model.notes} /> : null}
           {model.staffNote ? <div className="px-4 pb-3">{model.staffNote}</div> : null}
         </RecordGroup>

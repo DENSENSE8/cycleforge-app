@@ -4,18 +4,20 @@
  * One bucket of the Fulfilled board, as the Live feed's `StageColumn`: a
  * header that answers "how many, how bad" — the bucket, its exact count, how
  * many are over their threshold and the oldest — over a list of cards that
- * scrolls on its own, worst first. A column paints at most
- * {@link FULFILLED_BOARD_CARD_CAP} cards; the rest open in the sheet narrowed
- * to the bucket. An empty bucket folds to a slim rail (count + label read top
+ * scrolls on its own, worst first. The header (its word, or the expand icon)
+ * zooms into the column: every order in it, over the board (`?col=`, L2). A
+ * column paints at most {@link FULFILLED_BOARD_CARD_CAP} cards; Show all is
+ * the same zoom. An empty bucket folds to a slim rail (count + label read top
  * to bottom) that unfolds on click.
  */
 
 import { memo } from 'react';
-import { ArrowRight } from '@/components/Icons';
+import { Maximize2 } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
 import { motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { Button } from '@/design-system/primitives/Button';
+import { IconButton } from '@/design-system/primitives/IconButton';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import type { BulkEntry } from '@/lib/nav/locate/use-bulk-list';
 import type { FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
@@ -38,21 +40,15 @@ export const JourneyColumn = memo(function JourneyColumn({
   column,
   openShipmentId,
   onOpen,
-  onShowInSheet,
-  now,
-  compact,
+  onExpand,
   groupByCarrier,
 }: {
   column: FulfilledBoardColumn<BulkEntry>;
   /** The package open in the record plane — its card wears the open outline. */
   openShipmentId: number | null;
   onOpen: (entry: BulkEntry) => void;
-  /** The sheet narrowed to this bucket (`?layout=sheet&status=`). */
-  onShowInSheet: (bucket: FulfilledBucketId) => void;
-  /** The viewer's now — each card's `Checked 3h ago`. */
-  now: number | null;
-  /** The sidebar's Cards › Compact. */
-  compact: boolean;
+  /** Zoom into this column (`?col=`): every order in it, over the board. */
+  onExpand: (bucket: FulfilledBucketId) => void;
   /** The sidebar's Group by › Carrier: the cards under UPS / FedEx / USPS sub-headers. */
   groupByCarrier: boolean;
 }) {
@@ -61,7 +57,7 @@ export const JourneyColumn = memo(function JourneyColumn({
   const meta = fulfilledColumnMeta(column);
   const reveal = useMotionRole(motionRole.swap.focus);
   const cardList = (cards: readonly FulfilledBoardCard<BulkEntry>[]) => (
-    <ul className={cn('flex flex-col', compact ? 'gap-1.5' : 'gap-2')}>
+    <ul className="flex flex-col gap-1.5">
       {cards.map(({ entry }) => (
         <li key={entry.key ?? entry.ref}>
           <JourneyCard
@@ -70,8 +66,6 @@ export const JourneyColumn = memo(function JourneyColumn({
             look={look}
             open={openShipmentId != null && entry.facts?.shipmentId === openShipmentId}
             onOpen={onOpen}
-            now={now}
-            compact={compact}
           />
         </li>
       ))}
@@ -82,12 +76,11 @@ export const JourneyColumn = memo(function JourneyColumn({
       type="button"
       variant="ghost"
       size="sm"
-      iconRight={<ArrowRight className="size-3.5" />}
-      onClick={() => onShowInSheet(column.id)}
+      onClick={() => onExpand(column.id)}
       data-testid={`fulfilled-board-show-all-${column.id}`}
       className="h-6 px-2 text-xs font-medium"
     >
-      Show all in sheet
+      Show all
     </Button>
   );
 
@@ -102,18 +95,36 @@ export const JourneyColumn = memo(function JourneyColumn({
       transition={reveal.transition}
     >
       <span aria-hidden className={cn('mx-3 mt-3 h-1 rounded-full', look.bar)} />
-      <header className="group/col-head flex items-start gap-3 px-3 pb-2 pt-2.5">
+      <header className="group/col-head flex items-start gap-2 px-3 pb-2 pt-2.5">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold text-text-default">
-            <HoverTooltip label={FULFILLED_BUCKET_HINT[column.id]} openDelayMs={400}>
-              {column.label}
+          <h2 className="-ml-2 flex min-w-0 text-sm font-semibold text-text-default">
+            <HoverTooltip label={FULFILLED_BUCKET_HINT[column.id]} asChild openDelayMs={400}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onExpand(column.id)}
+                data-testid={`fulfilled-board-column-${column.id}-open`}
+                className="h-6 min-w-0 truncate px-2 text-sm font-semibold"
+              >
+                {column.label}
+              </Button>
             </HoverTooltip>
           </h2>
           <p className="truncate text-xs tabular-nums text-text-muted" data-testid={`fulfilled-board-column-${column.id}-meta`}>
             {column.over > 0 ? <span className={cn('font-semibold', look.ink)}>{meta}</span> : meta || (column.count === 0 ? 'None in this window' : '\u00a0')}
           </p>
-          <span className="-ml-2 mt-0.5 flex opacity-0 transition-opacity focus-within:opacity-100 group-hover/col-head:opacity-100">{showAll}</span>
         </div>
+        <HoverTooltip label="Open column" asChild>
+          <IconButton
+            ariaLabel={`Open ${column.label}: every order in it`}
+            size="xs"
+            icon={<Maximize2 className="size-3.5" />}
+            onClick={() => onExpand(column.id)}
+            data-testid={`fulfilled-board-column-${column.id}-expand`}
+            className="mt-0.5 shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover/col-head:opacity-100"
+          />
+        </HoverTooltip>
         <span className="text-3xl font-semibold tabular-nums tracking-tight text-text-default" data-testid={`fulfilled-board-column-${column.id}-count`}>
           <AnimatedStat value={column.count} />
         </span>

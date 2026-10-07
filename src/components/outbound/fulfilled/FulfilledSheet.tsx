@@ -2,19 +2,21 @@
 
 /**
  * Fulfillment › Fulfilled (`/fulfilled`) — every shipped order in a date
- * window, in one of two body layouts (`?layout=`, `fulfilled-params.ts`):
+ * window, in one of two faces (`fulfilled-params.ts`):
  * - the BOARD (default): a full-screen desk board in the Live feed's image —
- *   a headline, then one column per bucket under Act now · Watch · Done, each
- *   card its clock (`FulfilledBoard`, `src/features/fulfilled-board`); always
- *   order grain, no status chip;
- * - the SHEET (`layout=sheet`): the same `PastedListSheet` Purchasing and the
- *   pasted list paint (status chips left over the header row, click-to-copy,
- *   Enter / O open, zoom, freeze, resize) with Fulfilled's own columns
- *   (`FULFILLED_COLUMNS`, the Clock beside the Status).
- * Both read the fulfilled query (`useFulfilledList`). Filters, Sort and Find
- * are the left contextual sidebar's (`NAV_PAGE_DECLS.fulfilled`), all in the
- * URL; the body adds only layout toggles — Board · Sheet, then on the sheet
- * the row grain (orders · lines) and which optional columns show.
+ *   a headline, then one column per bucket under Act now · Watch · Done,
+ *   one card per order with its clock (`FulfilledBoard`,
+ *   `src/features/fulfilled-board`);
+ * - the RECORDS SHEET (`layout=sheet`, or one bucket: `?col=`): exactly the
+ *   sheet `/records` paints (`RecordsSheetBody`, operator 2026-10-07) — the
+ *   same columns and cells, Internal | External, the selection dock and keys
+ *   — over the shipped orders' lines, each carrying its order's journey
+ *   (Journey, Clock, …). A board column zoomed into (`?col=`, a header press
+ *   or a sidebar view) is that sheet narrowed to the bucket; the crumb or Esc
+ *   returns to the board where its strip was scrolled.
+ * Both read one answer (`useFulfilledList`), so a column's count and its
+ * zoomed rows never disagree. Filters, Sort, the grain and Find are the left
+ * sidebar's (`NAV_PAGE_DECLS.fulfilled`), all in the URL.
  *
  * Opening a card or a row is what a triage card opens: the order's package
  * as `?shipment=` in the record plane beside / over the list
@@ -26,56 +28,54 @@
  * close returns there (`DeskRecordPlane`).
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { RecordsSheetBody, type RecordsSheetSource } from '@/components/records/RecordsSheet';
+import { PASTED_LIST_BACK_PARAM, PastedListBack, usePastedListBack } from '@/components/search/pasted-list/PastedListBack';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useReplaceSearchParams } from '@/components/sidebar/contextual/useReplaceSearchParams';
 import { DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
-import { PastedListSheet } from '@/components/search/pasted-list/PastedListSheet';
-import { PASTED_LIST_BACK_PARAM, PastedListBack, usePastedListBack } from '@/components/search/pasted-list/PastedListBack';
-import { FULFILLED_COLUMNS, type PastedListColumnSet } from '@/components/search/pasted-list/pasted-list-table';
-import { useReplaceSearchParams } from '@/components/sidebar/contextual/useReplaceSearchParams';
+import { Button } from '@/design-system/primitives/Button';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import type { BulkEntry } from '@/lib/nav/locate/use-bulk-list';
-import type { FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
+import { FULFILLED_BUCKETS, type FulfilledBucketId } from '@/lib/nav/locate/bucket-precedence';
 import {
+  FULFILLED_COLUMN_PARAM,
+  FULFILLED_DEFAULT_GRAIN,
+  FULFILLED_DEFAULT_SORT,
   FULFILLED_FIND_PARAM,
-  FULFILLED_GRAIN_PARAM,
-  FULFILLED_LAYOUT_PARAM,
-  FULFILLED_STATUS_PARAM,
+  FULFILLED_ZOOM_SORT,
   readFulfilledLayout,
-  type FulfilledGrain,
 } from '@/lib/outbound/fulfilled-params';
+import { readFulfilledColumn } from '@/lib/outbound/fulfilled-url';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { isInternalPath, RECORD_BACK_PARAM, RECORD_DETAILS_PARAM, recordDetailsNavigation } from '@/lib/records/record-details';
 import { fetchOrderLinePackageId } from '@/lib/shipments/shipment-order-search';
 import { SHIPMENT_RECORD_PARAM } from '@/lib/shipments/shipment-record-types';
-import type { DataTableRowNoun } from '@/lib/tables/data-table-pagination';
+import { FULFILLED_BUCKET_HINT } from '@/features/fulfilled-board/fulfilled-board-model';
 import { FulfilledBoard } from '@/features/fulfilled-board/FulfilledBoard';
-import { FulfilledColumnsMenu, FulfilledGrainSwitch, FulfilledLayoutSwitch, useShownFulfilledColumns } from './FulfilledSheetTools';
+import { FulfilledLayoutSwitch } from './FulfilledSheetTools';
 import { useFulfilledList } from './useFulfilledList';
 import { useShipmentRecordSlot } from './use-shipment-record-slot';
 
-const NOUN: Readonly<Record<FulfilledGrain, DataTableRowNoun>> = {
-  order: { one: 'order', many: 'orders' },
-  line: { one: 'line', many: 'lines' },
-};
 const KEYS_GROUP = { id: 'fulfilled', title: 'Fulfilled' } as const;
-/** Its own column layout + zoom, apart from the pasted list's and Purchasing's. */
+/** Its own column layout + zoom, apart from `/records`' (the same columns; the staffer's widths are per page). */
 const LAYOUT_KEY = 'cf:sheet-columns:fulfilled';
 const ORDER_PARAM = RECORD_DETAILS_PARAM.order;
 
 /**
  * The desk frame for `/fulfilled`: the board runs full-bleed (`measure="full"`,
- * as the Live feed's page mounts its board); the sheet keeps the fixed
- * measure. The layout is URL state the toggle rewrites in place, so the frame
- * reads it here, on the client.
+ * as the Live feed's page mounts its board); the sheet keeps `/records`'
+ * frame. The face is URL state, so the frame reads it here, on the client.
  */
 export function FulfilledDesk() {
   const searchParams = useSearchParams();
-  const board = readFulfilledLayout(searchParams ?? new URLSearchParams()) === 'board';
+  const url = searchParams ?? new URLSearchParams();
+  const board = readFulfilledLayout(url) === 'board' && readFulfilledColumn(url) === null;
   return (
-    <DeskPageLayout bare measure={board ? 'full' : 'fixed'} className={board ? 'h-full min-h-0' : 'h-full'}>
+    <DeskPageLayout bare measure={board ? 'full' : undefined} className={board ? 'h-full min-h-0' : 'h-full'}>
       <FulfilledSheet />
     </DeskPageLayout>
   );
@@ -85,20 +85,12 @@ function FulfilledSheet() {
   const searchParams = useSearchParams();
   const replace = useReplaceSearchParams();
   const list = useFulfilledList();
+  const url = searchParams ?? new URLSearchParams();
   const find = searchParams?.get(FULFILLED_FIND_PARAM)?.trim() ?? '';
-  const layout = readFulfilledLayout(searchParams ?? new URLSearchParams());
-  const grain: FulfilledGrain = searchParams?.get(FULFILLED_GRAIN_PARAM) === 'line' ? 'line' : 'order';
+  const layout = readFulfilledLayout(url);
+  const column = readFulfilledColumn(url);
+  const board = layout === 'board' && column === null;
   const enteredFromElsewhere = Boolean(searchParams?.get(PASTED_LIST_BACK_PARAM));
-
-  // Optional tracks the staffer turned on (per browser, beside the sheet's widths and zoom).
-  const [shown, toggleShown] = useShownFulfilledColumns(LAYOUT_KEY);
-  const columns = useMemo<PastedListColumnSet>(
-    () => ({
-      all: FULFILLED_COLUMNS,
-      mount: () => FULFILLED_COLUMNS.filter((column) => column.tier !== 'optional' || shown.includes(column.key)),
-    }),
-    [shown],
-  );
 
   // ── The open package: `?shipment=`; `?openOrderId=` (a row's / a card's open) resolves to it. ──
   const openKey = searchParams?.get(SHIPMENT_RECORD_PARAM)?.trim() || null;
@@ -135,21 +127,41 @@ function FulfilledSheet() {
     setPackageless(null);
     replace((params) => params.delete(SHIPMENT_RECORD_PARAM));
   }, [replace]);
-  const slot = useShipmentRecordSlot(shipmentId, openShipment);
+  // The desk's own line for the open package — its status word, clock and customer head the record.
+  const openEntry = useMemo(
+    () => (shipmentId == null ? null : (list.entries.find((entry) => entry.facts?.shipmentId === shipmentId) ?? null)),
+    [list.entries, shipmentId],
+  );
+  const slot = useShipmentRecordSlot(shipmentId, openShipment, openEntry);
   const open = shipmentId != null || packageless != null;
-  // Esc: the open record first (the way its ✕ / ← does — back to where it was opened from, else the sheet),
-  // then the page Back when the sheet was entered from another page. Split's Esc is the plane's own.
   const router = useRouter();
+  const pathname = usePathname();
   const goBack = usePastedListBack();
   const closeRecord = useCallback(() => {
     const back = searchParams?.get(RECORD_BACK_PARAM) ?? null;
     if (isInternalPath(back)) router.push(back, { scroll: false });
     else close();
   }, [searchParams, router, close]);
-  const onEscape = open ? closeRecord : enteredFromElsewhere ? goBack : undefined;
+
+  // ── The zoom: one bucket as the Records sheet over the board, `?col=`. ──
+  // Where the board's strip was scrolled, so coming back from a column lands where it left.
+  const boardScroll = useRef(0);
+  const zoomTo = useCallback(
+    (bucket: FulfilledBucketId | null) => {
+      const params = new URLSearchParams(searchParams?.toString() ?? '');
+      if (bucket) params.set(FULFILLED_COLUMN_PARAM, bucket);
+      else params.delete(FULFILLED_COLUMN_PARAM);
+      const search = params.toString();
+      // A push, so the browser's Back walks out of the column too.
+      router.push(`${pathname ?? ''}${search ? `?${search}` : ''}`, { scroll: false });
+    },
+    [searchParams, router, pathname],
+  );
+  const leaveZoom = useCallback(() => zoomTo(null), [zoomTo]);
+  // Esc: the open record first, then out of the bucket, then the page Back.
+  const onEscape = open ? closeRecord : column ? leaveZoom : enteredFromElsewhere ? goBack : undefined;
 
   // ── The board's opens. A card names its package; one without (no tracking on file) opens the way a row does. ──
-  const pathname = usePathname();
   const openCard = useCallback(
     (entry: BulkEntry) => {
       const packageId = entry.facts?.shipmentId ?? null;
@@ -168,17 +180,9 @@ function FulfilledSheet() {
     },
     [replace, pathname, searchParams, router],
   );
-  const showInSheet = useCallback(
-    (bucket: FulfilledBucketId) =>
-      replace((params) => {
-        params.set(FULFILLED_LAYOUT_PARAM, 'sheet');
-        params.set(FULFILLED_STATUS_PARAM, bucket);
-      }),
-    [replace],
-  );
   // The sheet binds its own keys (Esc among them); on the board, Esc closes the record in place, else goes Back.
   useEffect(() => {
-    if (layout !== 'board' || !onEscape) return;
+    if (!board || !onEscape) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented || hasOpenOverlay() || isEditableKeyTarget(event.target)) return;
       event.preventDefault();
@@ -186,8 +190,16 @@ function FulfilledSheet() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [layout, onEscape]);
-  const lead = enteredFromElsewhere ? <PastedListBack /> : null;
+  }, [board, onEscape]);
+
+  // The sheet's lines: the window's, or the zoomed bucket's (every line of its orders).
+  const source = useMemo<RecordsSheetSource>(
+    () => (column ? { ...list, entries: list.entries.filter((entry) => entry.buckets[0] === column) } : list),
+    [list, column],
+  );
+  const bucket = column ? FULFILLED_BUCKETS.find((one) => one.id === column) : null;
+  const orders = column ? (list.buckets.find((one) => one.id === column)?.count ?? 0) : null;
+  const backLead = enteredFromElsewhere ? <PastedListBack /> : null;
 
   return (
     <DeskRecordPlane
@@ -200,40 +212,55 @@ function FulfilledSheet() {
       splitPane="open"
       testId="fulfilled-record"
       list={
-        layout === 'board' ? (
+        board ? (
           <FulfilledBoard
             list={list}
             openShipmentId={shipmentId}
             onOpen={openCard}
-            onShowInSheet={showInSheet}
-            lead={lead}
-            tools={<FulfilledLayoutSwitch layout={layout} />}
+            onExpand={zoomTo}
+            scrollMemory={boardScroll}
+            lead={backLead}
+            tools={<FulfilledLayoutSwitch layout="board" />}
           />
         ) : (
-          <PastedListSheet
-            list={list}
-            // Find is the query's (server-side), so the sheet narrows nothing more.
-            query=""
-            noun={NOUN[grain]}
+          <RecordsSheetBody
+            list={source}
+            defaultGrain={FULFILLED_DEFAULT_GRAIN}
+            defaultSort={column ? FULFILLED_ZOOM_SORT : FULFILLED_DEFAULT_SORT}
             layoutKey={LAYOUT_KEY}
-            exportName="fulfilled"
-            ariaLabel="Fulfilled orders"
-            empty={{
-              none: find
-                ? `No fulfilled order in this window matches “${find}”.`
-                : 'No order shipped in this window. Widen the dates in the sidebar.',
-            }}
+            exportName={bucket ? `fulfilled-${bucket.id}` : 'fulfilled'}
+            ariaLabel={bucket ? `Fulfilled · ${bucket.label}` : 'Fulfilled orders'}
             keysGroup={KEYS_GROUP}
-            columns={columns}
-            lead={lead}
-            onEscape={onEscape}
-            tools={
-              <>
-                <FulfilledColumnsMenu shown={shown} onToggle={toggleShown} />
-                <FulfilledGrainSwitch grain={grain} />
-                <FulfilledLayoutSwitch layout={layout} />
-              </>
+            empty={
+              bucket
+                ? `No order is ${bucket.label.toLowerCase()} in this window.`
+                : find
+                  ? `No fulfilled order in this window matches “${find}”.`
+                  : 'No order shipped in this window. Widen the dates in the sidebar.'
             }
+            lead={
+              bucket ? (
+                <nav aria-label="Breadcrumb" data-testid="fulfilled-column-crumb" className="flex min-w-0 items-center gap-1 whitespace-nowrap text-sm">
+                  {backLead}
+                  <Button type="button" variant="ghost" size="sm" onClick={leaveZoom} data-testid="fulfilled-column-back">
+                    Fulfilled
+                  </Button>
+                  <span aria-hidden className="text-text-faint">
+                    ›
+                  </span>
+                  <HoverTooltip label={FULFILLED_BUCKET_HINT[bucket.id]} openDelayMs={400}>
+                    <span aria-current="page" data-testid="fulfilled-column-title" className="font-semibold text-text-default">
+                      {bucket.label}
+                    </span>
+                  </HoverTooltip>
+                  <span className="tabular-nums text-text-muted">({orders})</span>
+                </nav>
+              ) : (
+                backLead
+              )
+            }
+            tools={<FulfilledLayoutSwitch layout="sheet" />}
+            onEscape={onEscape}
           />
         )
       }

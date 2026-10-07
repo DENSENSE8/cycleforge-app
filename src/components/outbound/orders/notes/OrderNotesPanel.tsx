@@ -206,8 +206,8 @@ function NoteComposer({ orderId, latestNote }: { orderId: number; latestNote: st
   );
 }
 
-/** Note body with `@[Name](staff:ID)` tokens painted as `@Name` chips. */
-function NoteText({ text }: { text: string }) {
+/** Note body with `@[Name](staff:ID)` tokens painted as `@Name` chips — the order's notes and the Fulfilled thread alike. */
+export function NoteText({ text }: { text: string }) {
   return (
     <p className="whitespace-pre-wrap break-words text-role-caption text-mode-ink">
       {splitNoteMentions(text).map((seg, i) =>

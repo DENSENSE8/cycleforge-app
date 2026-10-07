@@ -7,6 +7,11 @@
  * questions at a glance. A column's count is the answer's own bucket count —
  * never the cards painted (a column paints at most
  * {@link FULFILLED_BOARD_CARD_CAP}).
+ *
+ * The board's columns are the carrier-facing seven
+ * (`FULFILLED_BOARD_BUCKET_IDS`, operator 2026-10-06 R3); an order whose
+ * bucket is a sidebar view (Returned, Late, …) or a check-in stage is not on
+ * the board — it lives in that view, its record and the sheet.
  */
 
 import { displayCarrierFromHint } from '@/lib/carrier-brand';
@@ -18,6 +23,7 @@ import {
   type JourneyClockFace,
 } from '@/lib/nav/fulfilled/journey-clock';
 import {
+  FULFILLED_BOARD_BUCKET_IDS,
   FULFILLED_BUCKET_SECTION,
   FULFILLED_BUCKETS,
   type FulfilledBucketId,
@@ -73,23 +79,24 @@ export interface FulfilledBoardColumn<E extends NavLocateEntry = NavLocateEntry>
   oldest: string | null;
 }
 
-/** The entries filed by bucket, each column most urgent first, in {@link FULFILLED_BUCKETS} order. */
+/** One list per bucket in `ids` (default: the board's columns), each most urgent first, in {@link FULFILLED_BUCKETS} order. */
 export function fulfilledBoardColumns<E extends NavLocateEntry>(
   entries: readonly E[],
   buckets: readonly NavLocateBucket[],
   now: number | null,
+  ids: readonly FulfilledBucketId[] = FULFILLED_BOARD_BUCKET_IDS,
 ): FulfilledBoardColumn<E>[] {
   const byBucket = new Map<string, FulfilledBoardCard<E>[]>();
   for (const entry of entries) {
     const id = entry.buckets[0];
-    if (!id) continue;
+    if (!id || !ids.includes(id as FulfilledBucketId)) continue;
     const face = now == null ? null : journeyClockFace(entry.facts?.clock, now);
     const cards = byBucket.get(id);
     if (cards) cards.push({ entry, face });
     else byBucket.set(id, [{ entry, face }]);
   }
   const counts = new Map(buckets.map((bucket) => [bucket.id, bucket.count]));
-  return FULFILLED_BUCKETS.map((bucket) => {
+  return FULFILLED_BUCKETS.filter((bucket) => ids.includes(bucket.id)).map((bucket) => {
     const cards = byBucket.get(bucket.id) ?? [];
     cards.sort((a, b) => compareJourneyUrgency(a.face, b.face));
     let over = 0;
@@ -119,14 +126,12 @@ export function fulfilledColumnMeta(column: Pick<FulfilledBoardColumn, 'cards' |
 }
 
 export interface FulfilledHeadlineFigures {
-  /** Orders in the Act now section (exact bucket counts). */
+  /** Orders in the board's Act now columns (exact bucket counts). */
   actNow: number;
   /** Act now cards at or past their threshold. */
   actNowOver: number;
-  late: number;
   stalled: number;
   noMovement: number;
-  checkInsDue: number;
   /** Orders in the window the carrier marked delivered (`facts.deliveredAt`). */
   delivered: number;
 }
@@ -144,20 +149,15 @@ export function fulfilledHeadline(columns: readonly FulfilledBoardColumn[], entr
   return {
     actNow,
     actNowOver,
-    late: count('late'),
     stalled: count('stalled'),
     noMovement: count('no_movement'),
-    checkInsDue: count('check_in_due'),
     delivered: entries.reduce((sum, entry) => sum + (entry.facts?.deliveredAt ? 1 : 0), 0),
   };
 }
 
-/** The columns the board paints under its sidebar display toggles: Done section and Untracked hidden on request. */
-export function visibleBoardColumns<C extends Pick<FulfilledBoardColumn, 'id' | 'section'>>(
-  columns: readonly C[],
-  display: Pick<FulfilledBoardDisplay, 'hideDone' | 'hideUntracked'>,
-): C[] {
-  return columns.filter((column) => !(display.hideDone && column.section === 'done') && !(display.hideUntracked && column.id === 'untracked'));
+/** The columns the board paints under its sidebar display toggles: the Done section hidden on request. */
+export function visibleBoardColumns<C extends Pick<FulfilledBoardColumn, 'section'>>(columns: readonly C[], display: Pick<FulfilledBoardDisplay, 'hideDone'>): C[] {
+  return display.hideDone ? columns.filter((column) => column.section !== 'done') : [...columns];
 }
 
 /** The sub-header of cards whose package names no carrier. */
