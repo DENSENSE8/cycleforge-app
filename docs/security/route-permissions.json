@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-07T08:34:09Z",
-  "totalRoutes": 1233,
+  "generatedAt": "2026-10-07T22:04:55Z",
+  "totalRoutes": 1234,
   "summary": {
-    "permissionGated": 1001,
+    "permissionGated": 1002,
     "authenticatedNoPermission": 145,
     "anonymousIntentional": 37,
     "serviceToService": 50,
@@ -5181,6 +5181,15 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/mark-packed/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {
