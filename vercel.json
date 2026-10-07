@@ -145,8 +145,8 @@
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/integrations/sync?providers=square",
-      "schedule": "*/15 * * * *"
+      "path": "/api/cron/integrations/sync",
+      "schedule": "4,19,34,49 * * * *"
     },
     {
       "path": "/api/cron/cleanup",
