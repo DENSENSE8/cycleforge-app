@@ -28,7 +28,8 @@ import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
 import { wouldExceedPlanCeiling, planLimitResponseBody } from '@/lib/billing/plan-ceilings';
 import { getOrgTypes } from '@/lib/catalog/org-catalog';
 import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
-import { insertCustomerInTx, setCustomerShipToInTx } from '@/lib/neon/customer-queries';
+import { setCustomerShipToInTx } from '@/lib/neon/customer-queries';
+import { buyerDepsInTx, resolveOrderBuyers, staffEnteredBuyer } from '@/lib/orders/resolve-buyer-customers';
 import { resolveOrCreateSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import { upsertOrderUnshippedMembership } from '@/lib/orders/feed-membership-projection';
@@ -294,12 +295,16 @@ export async function insertOrderRowsInTx(
 }
 
 /**
- * The order's customer: an existing row of THIS org (its ship-to updated with
- * whatever was given), or a new one. `null` = none given.
+ * The order's customer: an existing row of THIS org picked by staff (its
+ * ship-to updated with whatever was given), else the one buyer resolver
+ * (email › phone › this order number › name, creating only when none match).
+ * `null` = none given.
  */
 export async function resolveOrderCustomerInTx(
   client: OrderTxClient,
   orgId: OrgId,
+  orderNumber: string,
+  accountSource: string,
   customer: OrderCreateCustomer | null,
 ): Promise<{ ok: true; id: number | null; created: boolean } | { ok: false; error: string }> {
   if (!customer) return { ok: true, id: null, created: false };
@@ -315,13 +320,12 @@ export async function resolveOrderCustomerInTx(
     });
     return found ? { ok: true, id: customer.id, created: false } : { ok: false, error: 'Customer not found' };
   }
-  const created = await insertCustomerInTx(client, orgId, {
-    name: customer.name,
-    phone: customer.phone,
-    email: customer.email,
-    shipTo: customer.shipTo,
-  });
-  return { ok: true, id: created.id, created: true };
+  const [resolved] = await resolveOrderBuyers(
+    orgId,
+    [{ accountSource: canonicalAccountSource(accountSource, orderNumber), orderNumber, buyer: staffEnteredBuyer(customer), name: customer.name, placedAt: new Date() }],
+    buyerDepsInTx(client),
+  );
+  return { ok: true, id: resolved.customerId, created: resolved.created };
 }
 
 // ─── POST /api/orders/add ────────────────────────────────────────────────────
@@ -411,7 +415,7 @@ export async function createOrder(
   }
 
   const committed = await deps.transaction(orgId, async (client) => {
-    const customer = await resolveOrderCustomerInTx(client, orgId, input.customer);
+    const customer = await resolveOrderCustomerInTx(client, orgId, input.orderId, input.accountSource, input.customer);
     if (!customer.ok) return { error: customer.error } as const;
     const rows = await insertOrderRowsInTx(
       client,
@@ -600,6 +604,8 @@ export async function createManualOrderInTx(
   const customer = await resolveOrderCustomerInTx(
     client,
     orgId,
+    orderNumber,
+    draft.channel,
     c.id != null
       ? { id: c.id, shipTo: c.shipTo }
       : { name: c.name, phone: c.phone, email: c.email, shipTo: c.shipTo },

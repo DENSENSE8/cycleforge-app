@@ -4,10 +4,10 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { CustomerBillTo } from '@/lib/customers/customer-display';
 import {
-  insertCustomerInTx,
   replaceCustomerShipToInTx,
   updateCustomerContactInTx,
 } from '@/lib/neon/customer-queries';
+import { buyerDepsInTx, resolveOrderBuyers, staffEnteredBuyer } from '@/lib/orders/resolve-buyer-customers';
 import type { CustomerCreate, OrderBuyerPatch } from '@/lib/schemas/customers';
 
 export type OrderBuyerUpdateResult =
@@ -127,22 +127,34 @@ export async function updateOrderBuyer(
     const plan = buyerFromShipToSnapshot(shipToSnapshot, patch);
     if (!plan.ok) return { ok: false, status: 400, error: plan.error };
 
-    const created = await insertCustomerInTx(client, orgId, plan.input);
-    if (patch.shipTo) await replaceCustomerShipToInTx(client, orgId, created.id, patch.shipTo);
+    // The one buyer resolver: an existing customer with this email / phone /
+    // order number / name is linked (and gets the staff edits), else one is created.
+    const [resolved] = await resolveOrderBuyers(
+      orgId,
+      [{ accountSource: '', orderNumber: String(order.order_id ?? ''), buyer: staffEnteredBuyer(plan.input), name: plan.input.name, placedAt: new Date() }],
+      buyerDepsInTx(client),
+    );
+    const customerId = resolved.customerId;
+    if (customerId == null) return { ok: false, status: 400, error: 'Name is required — this order has no buyer on file' };
+    if (!resolved.created) {
+      const contact = await updateCustomerContactInTx(client, orgId, customerId, { name: patch.name, email: patch.email, phone: patch.phone });
+      if (!contact.ok) return contact;
+    }
+    if (patch.shipTo) await replaceCustomerShipToInTx(client, orgId, customerId, patch.shipTo);
     await client.query(
       `UPDATE orders SET customer_id = $1
         WHERE organization_id = $2 AND id = ANY($3::bigint[]) AND customer_id IS NULL`,
-      [created.id, orgId, orderRowIds],
+      [customerId, orgId, orderRowIds],
     );
     return {
       ok: true,
       orderRowIds,
-      customerId: created.id,
-      customerCreated: true,
+      customerId,
+      customerCreated: resolved.created,
       changed: true,
       repairIds: [],
       before: { customer_id: null, shipstation_ship_to: shipToSnapshot },
-      after: { customer_id: created.id, ...plan.input },
+      after: { customer_id: customerId, ...plan.input },
     };
   });
 }

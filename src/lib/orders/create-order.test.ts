@@ -178,7 +178,7 @@ test('customer create is scoped to the caller org — an org in the body is neve
   );
   const insert = tx.calls.find((c) => c.text.includes('INSERT INTO customers'));
   assert.ok(insert);
-  assert.equal(insert.params.at(-1), ORG);
+  assert.equal(insert.params[0], ORG);
   assert.equal(insert.params.includes(OTHER_ORG), false);
   assert.match(insert.text, /'customer'/);
 });

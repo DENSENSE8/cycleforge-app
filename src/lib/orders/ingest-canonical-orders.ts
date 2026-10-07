@@ -2,7 +2,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import pool from '@/lib/db';
 import { db } from '@/lib/drizzle/db';
-import { customers as customersTable, orders as ordersTable } from '@/lib/drizzle/schema';
+import { orders as ordersTable } from '@/lib/drizzle/schema';
 import { withTenantDrizzle } from '@/lib/drizzle/tenant-db';
 import { transitionalDogfoodOrgId, tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -30,10 +30,7 @@ import {
   groupCanonicalOrderLines,
   type CanonicalOrderLine,
 } from '@/lib/orders/canonical-order';
-import {
-  buyerIdentityKey,
-  resolveBuyerCustomers,
-} from '@/lib/orders/resolve-buyer-customers';
+import { resolveOrderBuyers } from '@/lib/orders/resolve-buyer-customers';
 import { normalizeItemNumber } from '@/lib/automations/listing-match';
 import {
   crossSourceBackfillPolicy,
@@ -148,103 +145,6 @@ function compactUpdateValues(values: Record<string, unknown>) {
       return true;
     }),
   );
-}
-
-function pickLatestByKey<T extends { createdAt: Date | null }>(rows: T[], getKey: (row: T) => string) {
-  const result = new Map<string, T>();
-  rows.forEach((row) => {
-    const key = getKey(row);
-    if (!key || result.has(key)) return;
-    result.set(key, row);
-  });
-  return result;
-}
-
-/** Match key for a buyer name — trimmed, case- and whitespace-insensitive. */
-function customerNameKey(name: string): string {
-  return name.trim().replace(/\s+/g, ' ').toLowerCase();
-}
-
-/** `customerNameKey` in SQL. */
-function customerNameKeySql(expr: string): string {
-  return `lower(btrim(regexp_replace(${expr}, '\\s+', ' ', 'g')))`;
-}
-
-/** Resolve name-only buyers to `customers` rows, match-then-create, in two queries total regardless of batch size. */
-async function resolveCustomersByName(
-  requests: Array<{ name: string; sourceOrderId: string }>,
-  effectiveOrgId: OrgId,
-  orgId?: OrgId,
-): Promise<Map<string, number>> {
-  const resolved = new Map<string, number>();
-
-  // First sighting of each name wins the `order_id` stamp — later duplicates
-  // are the same person, and one customer per name is the point.
-  const wanted = new Map<string, { name: string; sourceOrderId: string }>();
-  requests.forEach(({ name, sourceOrderId }) => {
-    const trimmed = String(name || '').trim();
-    if (!trimmed) return;
-    const key = customerNameKey(trimmed);
-    if (!wanted.has(key)) wanted.set(key, { name: trimmed, sourceOrderId });
-  });
-  if (wanted.size === 0) return resolved;
-
-  const keys = Array.from(wanted.keys());
-  const runQuery = <T extends Record<string, unknown>>(sql: string, params: unknown[]) =>
-    orgId ? tenantQuery<T>(orgId, sql, params) : pool.query<T>(sql, params);
-
-  // Match on customer_name OR display_name — the same two columns
-  // `findCustomerByName` reads, so a customer created by any other surface is
-  // found here rather than duplicated.
-  const nameKeyExpr = customerNameKeySql(
-    "COALESCE(NULLIF(btrim(customer_name), ''), display_name, '')",
-  );
-  const existing = await runQuery<{ id: number; match_key: string }>(
-    `SELECT id, ${nameKeyExpr} AS match_key
-       FROM customers
-      WHERE organization_id = $2
-        AND ${nameKeyExpr} = ANY($1::text[])
-      ORDER BY created_at ASC, id ASC`,
-    [keys, effectiveOrgId],
-  );
-  // Oldest first, so the earliest row wins a name with duplicates already in
-  // the book — new orders join the established customer, not a later copy.
-  existing.rows.forEach((row) => {
-    const key = String(row.match_key || '');
-    if (key && !resolved.has(key)) resolved.set(key, Number(row.id));
-  });
-
-  const toCreate = keys.filter((key) => !resolved.has(key)).map((key) => wanted.get(key)!);
-  if (toCreate.length === 0) return resolved;
-
-  const values: unknown[] = [];
-  const tuples = toCreate.map(({ name, sourceOrderId }, i) => {
-    const parts = name.split(/\s+/);
-    const base = i * 5;
-    values.push(
-      effectiveOrgId,
-      name,
-      parts[0] || '',
-      parts.length > 1 ? parts.slice(1).join(' ') : '',
-      sourceOrderId || null,
-    );
-    return `($${base + 1}, $${base + 2}, $${base + 2}, $${base + 3}, $${base + 4}, 'customer', $${base + 5}, now(), now())`;
-  });
-
-  const created = await runQuery<{ id: number; match_key: string }>(
-    `INSERT INTO customers (
-       organization_id, customer_name, display_name, first_name, last_name,
-       contact_type, order_id, created_at, updated_at
-     ) VALUES ${tuples.join(', ')}
-     RETURNING id, ${customerNameKeySql('customer_name')} AS match_key`,
-    values,
-  );
-  created.rows.forEach((row) => {
-    const key = String(row.match_key || '');
-    if (key) resolved.set(key, Number(row.id));
-  });
-
-  return resolved;
 }
 
 /**
@@ -518,28 +418,6 @@ export async function ingestCanonicalOrders(
         .where(inArray(ordersTable.orderId, sourceOrderIds))
         .orderBy(desc(ordersTable.createdAt));
 
-  const customerProjectionCols = {
-    id: customersTable.id,
-    orderId: customersTable.orderId,
-    createdAt: customersTable.createdAt,
-  } as const;
-
-  const sourceCustomers = orgId
-    ? await withTenantDrizzle(orgId, (tx) =>
-        tx
-          .select(customerProjectionCols)
-          .from(customersTable)
-          .where(
-            and(inArray(customersTable.orderId, sourceOrderIds), eq(customersTable.organizationId, orgId)),
-          )
-          .orderBy(desc(customersTable.createdAt)),
-      )
-    : await db
-        .select(customerProjectionCols)
-        .from(customersTable)
-        .where(inArray(customersTable.orderId, sourceOrderIds))
-        .orderBy(desc(customersTable.createdAt));
-
   const toProjection = (order: (typeof existingOrders)[number]): OrderProjection => ({
     id: Number(order.id),
     orderId: order.orderId,
@@ -581,39 +459,19 @@ export async function ingestCanonicalOrders(
     allOrdersByOrderId.set(orderId, byId);
   });
 
-  const latestCustomerByOrderId = pickLatestByKey(sourceCustomers, (customer) =>
-    String(customer.orderId || '').trim(),
-  );
-
-  // ─── Resolve buyers with real identity ────────────────────────────── The strong tier ABOVE the name resolution below:
-  const customerIdByBuyer = await resolveBuyerCustomers(
-    {
-      orgId: effectiveOrgId,
-      buyers: canonicalOrders
-        .filter((order) => order.buyer && buyerIdentityKey(buyerChannel(order), order.buyer))
-        .map((order) => ({ accountSource: buyerChannel(order), buyer: order.buyer!, placedAt: order.orderDate })),
-    },
-    {
-      runQuery: (org, sql, params) =>
-        orgId ? tenantQuery(org, sql, params) : pool.query(sql, params),
-    },
-  );
-
-  // ─── Resolve name-only buyers to real customers ───────────────────── A source that carries a buyer NAME but no id/email/phone (a mapped…
-  const customerIdByName = await resolveCustomersByName(
-    canonicalOrders
-      .filter(
-        (order) =>
-          !order.buyer &&
-          !latestCustomerByOrderId.get(String(order.externalOrderId || '').trim()),
-      )
-      .map((order) => ({
-        name: order.customerName,
-        sourceOrderId: String(order.externalOrderId || '').trim(),
-      })),
+  // ─── Buyers: the one resolver (strong identity › order number › name) ──
+  const resolvedBuyers = await resolveOrderBuyers(
     effectiveOrgId,
-    orgId,
+    canonicalOrders.map((order) => ({
+      accountSource: buyerChannel(order),
+      orderNumber: String(order.externalOrderId || '').trim(),
+      buyer: order.buyer ?? null,
+      name: order.customerName,
+      placedAt: order.orderDate,
+    })),
+    { runQuery: (org, sql, params) => (orgId ? tenantQuery(org, sql, params) : pool.query(sql, params)) },
   );
+  const customerIdByOrder = new Map(canonicalOrders.map((order, i) => [order, resolvedBuyers[i].customerId]));
 
   // ─── Hydrate catalog identity ───────────────────────────────────────
   const titleBySku = new Map<string, string>();
@@ -854,15 +712,7 @@ export async function ingestCanonicalOrders(
       });
     }
 
-    const matchedCustomer = latestCustomerByOrderId.get(orderId);
-    const matchedCustomerId = matchedCustomer ? Number(matchedCustomer.id) : Number.NaN;
-    // Identity precedence:
-    const buyerKey = order.buyer ? buyerIdentityKey(buyerChannel(order), order.buyer) : null;
-    const customerId =
-      (Number.isFinite(matchedCustomerId) ? matchedCustomerId : null) ??
-      (buyerKey ? (customerIdByBuyer.get(buyerKey) ?? null) : null) ??
-      customerIdByName.get(customerNameKey(order.customerName || '')) ??
-      null;
+    const customerId = customerIdByOrder.get(order) ?? null;
     if (customerId) matchedCustomers++;
     else unmatchedCustomers++;
 

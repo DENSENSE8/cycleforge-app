@@ -1,4 +1,13 @@
-/** Resolve canonical BUYER identities (channel id / email / phone) to real `customers` rows — match-then-stamp-then-create, batched. */
+/**
+ * THE order-buyer resolver: every writer that links an order to a buyer
+ * (canonical ingest, manual / assistant order create, staff buyer correction)
+ * calls {@link resolveOrderBuyers}. Precedence, first wins:
+ *   1. strong identity — channel customer id › email › phone (match, adopt by
+ *      stamping the channel id, or create with everything the source knew);
+ *   2. the customer already created for this order number (`customers.order_id`);
+ *   3. the buyer's name (`customer_name` / `display_name`), else a new customer.
+ * Batched: a fixed number of queries per tier regardless of batch size.
+ */
 
 import type { CanonicalOrderLine } from './canonical-order';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -31,10 +40,24 @@ export interface BuyerEntry {
   placedAt?: Date | null;
 }
 
-interface ResolveBuyerCustomersArgs {
-  /** Buyers to resolve, one per canonical order (duplicates collapsed here). */
-  buyers: BuyerEntry[];
-  orgId: OrgId;
+/** One order's buyer evidence for {@link resolveOrderBuyers}. */
+export interface OrderBuyerRequest {
+  /** Keys `buyer.channelCustomerId`: the system that issued it (an aggregator), else the order's source. */
+  accountSource: string;
+  /** The order's external number — a customer created for it carries it on `customers.order_id`. */
+  orderNumber: string;
+  /** Contact + ship-to the source carried; null for a name-only source (sheet / CSV buyer column). */
+  buyer: BuyerBlock | null;
+  /** Name-only evidence, read when `buyer` is null. */
+  name: string;
+  placedAt?: Date | null;
+}
+
+export interface ResolvedOrderBuyer {
+  /** The linked customer; null when the request carried no buyer evidence at all. */
+  customerId: number | null;
+  /** True when this call created the customer row. */
+  created: boolean;
 }
 
 export interface ResolveBuyerCustomersDeps {
@@ -56,7 +79,7 @@ const defaultDeps: ResolveBuyerCustomersDeps = {
  * source carries one, else the email, else the phone's last 10 digits. `null`
  * when the buyer has none of those — the caller drops it to the name tier.
  */
-export function buyerIdentityKey(accountSource: string, buyer: BuyerBlock): string | null {
+function buyerIdentityKey(accountSource: string, buyer: BuyerBlock): string | null {
   const channelId = buyer.channelCustomerId.trim();
   if (channelId) return `id\u0000${accountSource}\u0000${channelId}`;
   const email = buyer.email.trim().toLowerCase();
@@ -67,15 +90,18 @@ export function buyerIdentityKey(accountSource: string, buyer: BuyerBlock): stri
 }
 
 /**
- * Resolve + persist buyers. Returns customerId keyed by `buyerIdentityKey`.
- * Rows found by email/phone are adopted (channel id stamped); genuinely-new
- * buyers are created with everything the source knew.
+ * Tier 1 — resolve + persist buyers by strong identity. Rows found by
+ * email/phone are adopted (channel id stamped); genuinely-new buyers are
+ * created with everything the source knew.
  */
-export async function resolveBuyerCustomers(
-  args: ResolveBuyerCustomersArgs,
-  deps: ResolveBuyerCustomersDeps = defaultDeps,
-): Promise<Map<string, number>> {
+async function resolveByIdentity(
+  orgId: OrgId,
+  buyers: readonly BuyerEntry[],
+  deps: ResolveBuyerCustomersDeps,
+): Promise<{ ids: Map<string, number>; created: Set<string> }> {
   const resolved = new Map<string, number>();
+  const created = new Set<string>();
+  const args = { orgId, buyers };
 
   // Collapse to unique buyers — LAST sighting wins: connectors emit in source
   // recency order (ShipStation lists by modifyDate ASC), so the final entry is
@@ -85,7 +111,7 @@ export async function resolveBuyerCustomers(
     const key = buyerIdentityKey(entry.accountSource, entry.buyer);
     if (key) wanted.set(key, entry);
   }
-  if (wanted.size === 0) return resolved;
+  if (wanted.size === 0) return { ids: resolved, created };
 
   const pending = new Map(wanted);
 
@@ -177,10 +203,158 @@ export async function resolveBuyerCustomers(
   // ── Create genuinely-new buyers ──────────────────────────────────────
   await forEachLimited(Array.from(pending), UPSERT_CONCURRENCY, async ([key, entry]) => {
     const id = await upsertResolvedCustomer(args.orgId, null, entry, deps);
-    if (id != null) resolved.set(key, id);
+    if (id != null) {
+      resolved.set(key, id);
+      created.add(key);
+    }
   });
 
-  return resolved;
+  return { ids: resolved, created };
+}
+
+/** Resolver deps that run inside the caller's transaction. */
+export function buyerDepsInTx(client: { query: (sql: string, params: unknown[]) => Promise<{ rows: unknown[] }> }): ResolveBuyerCustomersDeps {
+  return { runQuery: async (_orgId, sql, params) => (await client.query(sql, params)) as never };
+}
+
+/** A buyer typed by staff (manual order, buyer correction) in the resolver's shape — no channel id. */
+export function staffEnteredBuyer(input: {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  shipTo?: { address1: string; address2?: string | null; city: string; state: string; postalCode: string; country: string } | null;
+}): BuyerBlock {
+  const s = input.shipTo;
+  return {
+    channelCustomerId: '',
+    name: input.name.trim(),
+    email: (input.email ?? '').trim(),
+    phone: (input.phone ?? '').trim(),
+    shipTo: s && (s.address1.trim() || s.city.trim())
+      ? { address1: s.address1, address2: s.address2 || null, city: s.city, state: s.state, postalCode: s.postalCode, country: s.country, residential: null }
+      : null,
+  };
+}
+
+/** Match key for a buyer name — trimmed, case- and whitespace-insensitive. */
+function customerNameKey(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/** `customerNameKey` in SQL. */
+const customerNameKeySql = (expr: string) => `lower(btrim(regexp_replace(${expr}, '\\s+', ' ', 'g')))`;
+
+/**
+ * Resolve every order's buyer — the one entry point (see the module doc for
+ * the precedence). Returns one answer per request, same order.
+ */
+export async function resolveOrderBuyers(
+  orgId: OrgId,
+  requests: readonly OrderBuyerRequest[],
+  deps: ResolveBuyerCustomersDeps = defaultDeps,
+): Promise<ResolvedOrderBuyer[]> {
+  const out: ResolvedOrderBuyer[] = requests.map(() => ({ customerId: null, created: false }));
+
+  // ── 1. Strong identity ──────────────────────────────────────────────
+  const keyOf = requests.map((r) => (r.buyer ? buyerIdentityKey(r.accountSource, r.buyer) : null));
+  const strong = await resolveByIdentity(
+    orgId,
+    requests.flatMap((r, i) => (keyOf[i] ? [{ accountSource: r.accountSource, buyer: r.buyer!, placedAt: r.placedAt }] : [])),
+    deps,
+  );
+  keyOf.forEach((key, i) => {
+    const id = key ? strong.ids.get(key) : undefined;
+    if (id != null) out[i] = { customerId: id, created: strong.created.has(key!) };
+  });
+
+  // ── 2. The buyer this order number already has ──────────────────────
+  // Another line of the same order linked to a customer, else the customer
+  // created for this number (`customers.order_id`).
+  const open = () => out.flatMap((o, i) => (o.customerId == null && !keyOf[i] ? [i] : []));
+  const numbers = [...new Set(open().map((i) => requests[i].orderNumber.trim()).filter(Boolean))];
+  if (numbers.length > 0) {
+    const rows = await deps.runQuery<{ id: number; order_id: string }>(
+      orgId,
+      `SELECT DISTINCT ON (order_id) id, order_id
+         FROM (
+           SELECT o.customer_id AS id, o.order_id, 0 AS rank, o.created_at
+             FROM orders o
+            WHERE o.organization_id = $2 AND o.order_id = ANY($1::text[]) AND o.customer_id IS NOT NULL
+           UNION ALL
+           SELECT c.id, c.order_id, 1 AS rank, c.created_at
+             FROM customers c
+            WHERE c.organization_id = $2 AND c.order_id = ANY($1::text[])
+         ) known
+        ORDER BY order_id, rank, created_at DESC, id DESC`,
+      [numbers, orgId],
+    );
+    const byNumber = new Map(rows.rows.map((r) => [r.order_id, Number(r.id)]));
+    for (const i of open()) {
+      const id = byNumber.get(requests[i].orderNumber.trim());
+      if (id != null) out[i] = { customerId: id, created: false };
+    }
+  }
+
+  // ── 3. Name ─────────────────────────────────────────────────────────
+  const named = open().flatMap((i) => {
+    const name = (requests[i].buyer?.name ?? requests[i].name).trim();
+    return name ? [{ i, name, key: customerNameKey(name) }] : [];
+  });
+  if (named.length === 0) return out;
+
+  // Match on customer_name OR display_name, oldest first, so a new order joins
+  // the established customer rather than a later copy.
+  const nameKeyExpr = customerNameKeySql("COALESCE(NULLIF(btrim(customer_name), ''), display_name, '')");
+  const existing = await deps.runQuery<{ id: number; match_key: string }>(
+    orgId,
+    `SELECT id, ${nameKeyExpr} AS match_key
+       FROM customers
+      WHERE organization_id = $2 AND ${nameKeyExpr} = ANY($1::text[])
+      ORDER BY created_at ASC, id ASC`,
+    [[...new Set(named.map((n) => n.key))], orgId],
+  );
+  const byName = new Map<string, number>();
+  for (const row of existing.rows) if (!byName.has(row.match_key)) byName.set(row.match_key, Number(row.id));
+
+  // A request with a buyer block (contact without email/phone, a ship-to)
+  // refreshes or creates its row with all of it; a bare name is batch-created.
+  const bareToCreate = new Map<string, { name: string; orderNumber: string }>();
+  await forEachLimited(named, UPSERT_CONCURRENCY, async ({ i, name, key }) => {
+    const r = requests[i];
+    const matched = byName.get(key) ?? null;
+    if (!r.buyer) {
+      if (matched != null) out[i] = { customerId: matched, created: false };
+      else if (!bareToCreate.has(key)) bareToCreate.set(key, { name, orderNumber: r.orderNumber.trim() });
+      return;
+    }
+    const id = await upsertResolvedCustomer(orgId, matched, { accountSource: r.accountSource, buyer: r.buyer, placedAt: r.placedAt }, deps);
+    if (id != null) out[i] = { customerId: id, created: matched == null };
+  });
+
+  if (bareToCreate.size > 0) {
+    const values: unknown[] = [];
+    const tuples = Array.from(bareToCreate.values(), ({ name, orderNumber }, n) => {
+      const { first, last } = splitName(name);
+      const b = n * 5;
+      values.push(orgId, name, first, last, orderNumber || null);
+      return `($${b + 1}, $${b + 2}, $${b + 2}, $${b + 3}, $${b + 4}, 'customer', $${b + 5}, now(), now())`;
+    });
+    const created = await deps.runQuery<{ id: number; match_key: string }>(
+      orgId,
+      `INSERT INTO customers (
+         organization_id, customer_name, display_name, first_name, last_name,
+         contact_type, order_id, created_at, updated_at
+       ) VALUES ${tuples.join(', ')}
+       RETURNING id, ${customerNameKeySql('customer_name')} AS match_key`,
+      values,
+    );
+    const createdByKey = new Map(created.rows.map((row) => [row.match_key, Number(row.id)]));
+    for (const { i, key } of named) {
+      const id = out[i].customerId == null ? createdByKey.get(key) : undefined;
+      if (id != null) out[i] = { customerId: id, created: true };
+    }
+  }
+  return out;
 }
 
 const UPSERT_CONCURRENCY = 8;

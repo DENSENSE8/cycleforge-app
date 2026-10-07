@@ -1,7 +1,12 @@
 {
   "version": 1,
   "updated": "2026-10-04",
-  "states": ["queued", "in_progress", "exception", "retired"],
+  "states": [
+    "queued",
+    "in_progress",
+    "exception",
+    "retired"
+  ],
   "entries": [
     {
       "id": "nav-find-side-bulk-list",
@@ -760,6 +765,20 @@
         "src/components/sidebar/contextual/NavFilters.tsx"
       ],
       "exitCriteria": "PhotoLibraryFindRow mounts no views menu: the photo library's views are SIDEBAR_PAGE_NAV children / NAV_PAGE_DECLS['ops-photos'] declarations proved at :3050; WorkbenchViewsMenu and MediaViewsMenu then have 0 body importers (loop rule `layout.sidebar-owns-table-controls`) and either move under src/components/sidebar/** or are deleted and retired with forbiddenSource ['WorkbenchViewsMenu', 'MediaViewsMenu']."
+    },
+    {
+      "id": "customer-matchers-outside-order-resolver",
+      "state": "queued",
+      "category": "buyer-identity",
+      "problem": "Order writers resolve buyers through ONE resolver (resolveOrderBuyers, src/lib/orders/resolve-buyer-customers.ts: channel id › email › phone › order number › name). Non-order customer writers still match or create customers their own way: createCustomer/insertCustomerInTx (POST /api/customers, no dedupe), findOrCreateRepairCustomer (exact phone string then exact name), resolveProviderCustomerId / findCustomerIdByContact (email OR last-10 phone, creates via createRepairCustomer), findCounterCustomerByPhoneDigits (last-10 phone, newest-updated first, ignores mobile). The same person typed at the counter, on a repair and on an order can land on three rows.",
+      "currentPaths": [
+        "src/lib/neon/customer-queries.ts",
+        "src/lib/counter/submit-counter-transaction.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/orders/resolve-buyer-customers.ts"
+      ],
+      "exitCriteria": "Every code path that finds-or-creates a customers row calls resolveOrderBuyers (or a thin wrapper over its tiers); grep for INSERT INTO customers outside resolve-buyer-customers.ts returns only the resolver."
     }
   ]
 }
