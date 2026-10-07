@@ -11,7 +11,7 @@ import {
   type SheetColumnIndices,
 } from '@/lib/orders/sources/google-sheet-rows';
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
-import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
+import { ingestCanonicalOrders, type IngestCanonicalOrdersResult } from '@/lib/orders/ingest-canonical-orders';
 import type {
   ImportExceptionReason,
   ImportExceptionRow,
@@ -29,7 +29,7 @@ export type ImportExceptionDeps = {
   ingest: (
     lines: CanonicalOrderLine[],
     opts: { orgId: OrgId; source: string; collapseDuplicates?: boolean },
-  ) => Promise<{ insertedOrderIds: number[] }>;
+  ) => Promise<Pick<IngestCanonicalOrdersResult, 'insertedOrderIds' | 'ambiguousOrderIds'>>;
   invalidate?: (orgId: OrgId, tags: string[]) => Promise<unknown>;
 };
 
@@ -198,6 +198,11 @@ export async function resolveImportException(
     // Resolving one row must never delete another order that shares its id.
     collapseDuplicates: false,
   });
+  // The row names no platform and no order carries its number: a new order is
+  // never written without its channel (account-source.ts), so it stays open.
+  if (ingestResult.ambiguousOrderIds.length > 0) {
+    return { ok: false, error: 'This row names no platform and no order carries its number', status: 409 };
+  }
   const orderId = ingestResult.insertedOrderIds[0] ?? null;
 
   const updated = await deps.withTx(orgId, async (client) => {

@@ -32,6 +32,7 @@ function fakes(opts: {
   listRows?: QueryResultRow[];
   listTotal?: number;
   ingestOrderIds?: number[];
+  ingestAmbiguous?: string[];
 } = {}) {
   const queries: QueryCall[] = [];
   const ingestCalls: Array<{ lines: unknown[]; opts: { orgId: OrgId; source: string } }> = [];
@@ -108,7 +109,7 @@ function fakes(opts: {
     },
     ingest: async (lines, ingestOpts) => {
       ingestCalls.push({ lines, opts: ingestOpts });
-      return { insertedOrderIds: opts.ingestOrderIds ?? [42] };
+      return { insertedOrderIds: opts.ingestOrderIds ?? [42], ambiguousOrderIds: opts.ingestAmbiguous ?? [] };
     },
     invalidate: async (orgId, tags) => {
       invalidateCalls.push({ orgId, tags });
@@ -272,6 +273,25 @@ describe('resolveImportException', () => {
     assert.deepEqual(update!.params, ['ITEM-42', 99, 7, ORG]);
     assert.equal(f.getTxOrg(), ORG);
     assert.equal(f.invalidateCalls.length, 1);
+  });
+
+  it('keeps the exception open when the row names no platform and no order carries its number', async () => {
+    const f = fakes({
+      selectRow: {
+        id: 7,
+        status: 'open',
+        reason: 'no_item_number',
+        raw_row: ['', 'ZD 9533', '', 'Bose Repair Service', '1', '', '', '1Z999', '', ''],
+        col_indices: FIXED_COL_INDICES_DEFAULT,
+      },
+      ingestOrderIds: [],
+      ingestAmbiguous: ['ZD 9533'],
+    });
+    const res = await resolveImportException(ORG, { id: 7, itemNumber: 'ITEM-42' }, f.deps);
+    assert.equal(res.ok, false);
+    if (res.ok) return;
+    assert.equal(res.status, 409);
+    assert.equal(f.queries.some((q) => /SET status = 'resolved'/i.test(q.sql)), false, 'never marked resolved');
   });
 
   it('returns 409 when the resolve UPDATE races and finds no open row', async () => {

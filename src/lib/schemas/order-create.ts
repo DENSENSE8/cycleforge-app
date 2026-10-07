@@ -136,7 +136,8 @@ export function parseOrderCreateBody(
   body: Record<string, unknown>,
 ): { ok: true; input: OrderCreateInput } | { ok: false; error: string } {
   const hasLines = Array.isArray(body.lines) && body.lines.length > 0;
-  if (!body.orderId || !body.accountSource || (!hasLines && !body.productTitle)) {
+  // A whitespace channel would store a blank platform (account-source.ts): it is missing.
+  if (!body.orderId || !String(body.accountSource ?? '').trim() || (!hasLines && !body.productTitle)) {
     return { ok: false, error: 'Missing required fields: orderId, productTitle, accountSource' };
   }
   const parsed = OrderCreateBody.safeParse(body);

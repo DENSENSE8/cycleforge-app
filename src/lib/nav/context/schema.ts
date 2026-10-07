@@ -603,6 +603,8 @@ export const NavLocateFactsSchema = z
     customer: z.string().nullable().optional(),
     qty: z.number().nullable().optional(),
     orderTotal: z.number().nullable().optional(),
+    /** Where `orderTotal` came from (`resolveOrderTotal`, `src/lib/orders/order-total.ts`) — the cell's hover says so. */
+    orderTotalSource: z.enum(['shipstation', 'marketplace', 'lines']).nullable().optional(),
     orderedAt: z.string().nullable().optional(),
     scannedOutBy: NavLocateStaffSchema.nullable().optional(),
     scanSource: z.enum(['live', 'backfill']).nullable().optional(),
@@ -686,7 +688,9 @@ export const NavLocateFactsSchema = z
      * prices in the order's currency — `unitPrice` (outbound `orders.unit_price`,
      * inbound `unit_cost_cents / 100`), `lineTotal` (unit × qty, else the
      * one-line order's `sale_amount`); `placedAt` = Placed only (no Imported
-     * fallback — that is `orderedAt`); `receivedAt` / `receivedBy` = units
+     * fallback — that is `orderedAt`), `placedOn` = the same Placed as its
+     * `YYYY-MM-DD` when the source is a calendar date with no time (an
+     * inbound PO / order date); `receivedAt` / `receivedBy` = units
      * counted in (inbound); `flags` = `RECORDS_FLAGS` the line carries;
      * `inboundOrderId` / `cartonId` = the inbound line's header and carton.
      */
@@ -701,6 +705,7 @@ export const NavLocateFactsSchema = z
     unitPrice: z.number().nullable().optional(),
     lineTotal: z.number().nullable().optional(),
     placedAt: z.string().nullable().optional(),
+    placedOn: z.string().nullable().optional(),
     receivedAt: z.string().nullable().optional(),
     receivedBy: NavLocateStaffSchema.nullable().optional(),
     flags: z.array(z.enum(RECORDS_FLAGS)).optional(),

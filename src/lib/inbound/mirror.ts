@@ -3,6 +3,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { assertRegisteredInboundSource, type InboundSourceType } from './source-registry';
+import { isScientificNotationTracking } from '@/lib/tracking-format';
 
 /** Upstream statuses that mean "this purchase is done" → drop it off Incoming. */
 const MIRROR_TERMINAL_STATUSES = ['cancelled', 'canceled', 'closed', 'received', 'completed', 'refunded', 'returned'] as const;
@@ -127,7 +128,8 @@ export async function upsertInboundMirror(
       input.paymentStatus ?? null,
       input.poDate ?? null,
       input.expectedDeliveryDate ?? null,
-      input.trackingNumber ?? null,
+      // A rounded `9.43e+21` is no tracking number: never stored (the sheet would paint it).
+      isScientificNotationTracking(input.trackingNumber) ? null : (input.trackingNumber ?? null),
       input.carrierCode ?? null,
       JSON.stringify(input.lineItems ?? []),
       input.rawPayload != null ? JSON.stringify(input.rawPayload) : null,

@@ -108,6 +108,23 @@ export function extractCanonicalTracking(input: string): string {
 }
 
 /**
+ * A tracking "number" a spreadsheet or a numeric parse already rounded:
+ * `9.434608106245533e+21`. Its digits are gone — it can never match the real
+ * package, so every writer refuses it; it is never stored (2026-09 eBay
+ * imports, Zoho PO references pasted from a spreadsheet). The DB holds the
+ * same rule (`stn_tracking_not_scientific_chk`).
+ */
+export const SCIENTIFIC_NOTATION_TRACKING = /^\d+(\.\d+)?e[+-]?\d+$/i;
+
+export function isScientificNotationTracking(value: string | null | undefined): boolean {
+  return SCIENTIFIC_NOTATION_TRACKING.test(String(value ?? '').trim());
+}
+
+/** The refusal every writer shows for {@link isScientificNotationTracking}. */
+export const SCIENTIFIC_NOTATION_TRACKING_MESSAGE =
+  'Tracking number is in scientific notation (e.g. 9.43e+21) — its digits were lost; paste the full number';
+
+/**
  * Return a shorter carrier-searchable number only when the supplied value is
  * a real barcode/routing envelope. The caller keeps the original for audit
  * and “copy full”; this value powers the explicit “copy shortened” action.

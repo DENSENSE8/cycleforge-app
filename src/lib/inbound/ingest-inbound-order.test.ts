@@ -11,7 +11,6 @@ import {
   assignInboundLineKeys,
   emptyInboundOrderDraft,
   emptyInboundOrderLine,
-  isScientificNotationTracking,
   type InboundOrderDraft,
 } from './inbound-order-draft';
 import type { TxClient } from './purchase-links';
@@ -377,8 +376,4 @@ test('a tracking number in scientific notation is refused at the boundary, befor
     (err: unknown) => err instanceof InboundOrderRefused && err.status === 400 && /scientific notation/.test(err.message),
   );
   assert.equal(f.sql.length, 0);
-  assert.equal(isScientificNotationTracking('9.434608106245533E+21'), true);
-  assert.equal(isScientificNotationTracking('9E21'), true);
-  assert.equal(isScientificNotationTracking('9434608106245533522453'), false);
-  assert.equal(isScientificNotationTracking('1Z999AA10123456784'), false);
 });

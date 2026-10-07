@@ -22,7 +22,12 @@
 import { z } from 'zod';
 import { CONDITION_GRADES } from '@/lib/conditions';
 import { inboundSourcePlatformForRaw, inboundSourceTypeForPlatform } from '@/lib/inbound/desk-csv';
-import { detectCarrier, extractCanonicalTracking } from '@/lib/tracking-format';
+import {
+  detectCarrier,
+  extractCanonicalTracking,
+  isScientificNotationTracking,
+  SCIENTIFIC_NOTATION_TRACKING_MESSAGE,
+} from '@/lib/tracking-format';
 
 const text = (max: number) => z.string().trim().max(max);
 
@@ -85,17 +90,6 @@ export const inboundOrderLineSchema = z.object({
 export type InboundOrderLine = z.infer<typeof inboundOrderLineSchema>;
 
 /**
- * A tracking "number" a spreadsheet or a numeric parse already rounded:
- * `9.434608106245533e+21`. Its digits are gone — it can never match the real
- * package, so it is refused, never stored (2026-09 eBay imports).
- */
-export const SCIENTIFIC_NOTATION_TRACKING = /^\d+(\.\d+)?e[+-]?\d+$/i;
-
-export function isScientificNotationTracking(value: string | null | undefined): boolean {
-  return SCIENTIFIC_NOTATION_TRACKING.test(String(value ?? '').trim());
-}
-
-/**
  * Is `digits` the number a scientific-notation tracking value was rounded
  * from? Exact: the value was produced by JS `String(Number(digits))`, so the
  * same rendering of a candidate reproduces it bit for bit. Lets a repair
@@ -130,7 +124,7 @@ export function trueTrackingFor(sci: string, candidates: readonly (string | null
 
 export const inboundOrderTrackingSchema = z.object({
   number: text(80).refine((value) => !isScientificNotationTracking(value), {
-    message: 'Tracking number is in scientific notation (e.g. 9.43e+21) — its digits were lost; paste the full number',
+    message: SCIENTIFIC_NOTATION_TRACKING_MESSAGE,
   }),
   /** Display carrier; blank = detect from the number. */
   carrier: text(40),

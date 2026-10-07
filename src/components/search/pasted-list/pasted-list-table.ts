@@ -31,6 +31,7 @@ import { FULFILLED_BUCKETS } from '@/lib/nav/locate/bucket-precedence';
 import { journeyClockFace, journeyClockSpanText } from '@/lib/nav/fulfilled/journey-clock';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { formatCurrency } from '@/utils/_number';
+import { orderTotalSourceLabel } from '@/lib/orders/order-total';
 
 export type PastedListColumnKey =
   | 'pos'
@@ -94,6 +95,7 @@ export interface PastedListColumn extends LedgerGridColumnModel {
   key: PastedListColumnKey;
   type?: ColumnType;
   sortable?: boolean;
+  /** The table definition's density tier (`pasted-list.full`): `optional` tracks sit outside its ten-track default. */
   tier?: 'core' | 'optional';
 }
 
@@ -397,7 +399,8 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
     case 'party':
       return (facts?.direction === 'inbound' ? facts.vendor : facts?.customer) ?? '';
     case 'placed':
-      return instant(facts?.placedAt);
+      // A calendar-date Placed (an inbound PO / order date) is a day, never a midnight instant.
+      return facts?.placedOn ? day(facts.placedOn) : instant(facts?.placedAt);
     case 'pickedBy':
       return staffAt(facts?.pickedBy, facts?.pickedAt);
     case 'unboxedBy':
@@ -464,6 +467,8 @@ export function pastedListCellHint(row: PastedListRow, key: PastedListColumnKey)
     case 'order':
       // A condensed grain's head names how many lines it holds; the copy stays the number.
       return row.group ? `${text} · ${row.group.lines.length} lines` : text;
+    case 'orderTotal':
+      return text && facts?.orderTotalSource ? `${text} · ${orderTotalSourceLabel(facts.orderTotalSource, facts.channel ?? null)}` : text;
     case 'lastEvent':
       return facts?.lastPoll?.error ? `${text} — ${facts.lastPoll.error}` : text;
     case 'clock':

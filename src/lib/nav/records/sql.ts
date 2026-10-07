@@ -23,10 +23,10 @@
  * (slice 6; NULL for collapsed multi-item ShipStation rows) /
  * `receiving_line.unit_cost_cents / 100`; line
  * total = unit × qty, else the outbound `sale_amount` of a ONE-line order
- * (a ShipStation row is the whole SS order); order total = the ShipStation
- * order total when linked, else the sum of the order's line totals when every
- * line has one — a window over ALL the org's lines, so a window cut never
- * shortens a total.
+ * (a ShipStation row is the whole SS order); order total = `resolveOrderTotal`
+ * (`@/lib/orders/order-total`: ShipStation → the importer's whole-order total
+ * → the sum of line totals when every line has one) over the order's facts —
+ * a window over ALL the org's lines, so a window cut never shortens a total.
  *
  * Cut here: direction (permission), the date window on one axis, the event
  * (who did what, when), Find, and a pasted list (`matched_refs` = the paste
@@ -40,6 +40,7 @@ import { accountSourceAccountLabelSql } from '@/lib/orders/account-source';
 import { WA_TEST_DEADLINE_RANK_ORDER_SQL } from '@/lib/orders/desk-view-sql';
 import { placedElseImportedSql } from '@/lib/orders/order-dates';
 import { noteMentionsToPlain } from '@/lib/orders/note-mentions';
+import { marketplaceOrderTotalSql, resolveOrderTotal, shipStationOrderPricedSql, type OrderTotalSource } from '@/lib/orders/order-total';
 import { PICKED_BY_IS_PICKED_SQL, PICKED_BY_LATERAL, pickedByFromRow, type PickedBy } from '@/lib/picking/picked-by';
 import type { RecordsAxis, RecordsEvent } from '@/lib/nav/records/params';
 import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
@@ -104,6 +105,8 @@ export interface RecordLineRow {
   unitPrice: number | null;
   lineTotal: number | null;
   orderTotal: number | null;
+  /** Where `orderTotal` came from (`resolveOrderTotal`); null with no total. */
+  orderTotalSource: OrderTotalSource | null;
   /** Lines of the line's order (every line of the org, not only the window's). */
   orderLines: number;
   /** Canonical platform key (outbound `account_source`, inbound source); null when blank. */
@@ -115,6 +118,8 @@ export interface RecordLineRow {
   po: string | null;
   channelStatus: string | null;
   placedAt: string | null;
+  /** `YYYY-MM-DD` when Placed is a calendar date with no time (an inbound PO / order date); null otherwise. */
+  placedOn: string | null;
   importedAt: string | null;
   /** Placed, else Imported (`placedElseImportedSql`); inbound: the PO / order date, else the line's landing. */
   orderedAt: string | null;
@@ -212,10 +217,10 @@ const NOTE_SNIPPET_CHARS = 160;
 
 /**
  * One side's price chain over `base` (`record_id, order_key, unit_price, qty,
- * sale_amount, linked_total`): line total = unit × qty, else the sale amount
- * of a ONE-line order (a ShipStation row is the whole SS order); order total
- * = the linked ShipStation order total, else the sum of line totals when
- * every line has one.
+ * sale_amount, shipstation_total, shipstation_priced, marketplace_total`):
+ * line total = unit × qty, else the sale amount of a ONE-line order (a
+ * ShipStation row is the whole SS order); the order-total FACTS windowed over
+ * the order, for `resolveOrderTotal` to pick one (`recordLineRowOf`).
  */
 function priceCtes(name: string, base: string): string {
   return `${name}_line AS (
@@ -231,10 +236,11 @@ function priceCtes(name: string, base: string): string {
     ),
     ${name} AS MATERIALIZED (
       SELECT p.record_id, p.order_key, p.qty, p.unit_price, p.order_lines, p.line_total,
-             COALESCE(
-               max(p.linked_total) OVER w,
-               CASE WHEN count(p.line_total) OVER w = count(*) OVER w THEN sum(p.line_total) OVER w END
-             ) AS order_total
+             max(p.shipstation_total) OVER w AS shipstation_total,
+             COALESCE(bool_or(p.shipstation_priced) OVER w, false) AS shipstation_priced,
+             max(p.marketplace_total) OVER w AS marketplace_total,
+             sum(p.line_total) OVER w AS line_total_sum,
+             count(p.line_total) OVER w AS priced_lines
         FROM ${name}_lined p
       WINDOW w AS (PARTITION BY p.order_key)
     )`;
@@ -426,7 +432,8 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
          AND wa.status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
     ),
     sor AS MATERIALIZED (
-      SELECT DISTINCT ON (ref.order_row_id) ref.order_row_id, ref.customer_username, ref.order_total
+      SELECT DISTINCT ON (ref.order_row_id) ref.order_row_id, ref.customer_username, ref.order_total,
+             ${shipStationOrderPricedSql('ref')} AS order_priced
         FROM shipstation_order_refs ref
        WHERE $2 AND ref.organization_id = $1 AND ref.order_row_id IS NOT NULL
        ORDER BY ref.order_row_id, ref.last_seen_at DESC NULLS LAST, ref.id DESC
@@ -449,7 +456,9 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
              o.unit_price,
              CASE WHEN o.quantity ~ '^\\s*[0-9]+(\\.[0-9]+)?\\s*$' THEN BTRIM(o.quantity)::numeric END AS qty,
              o.sale_amount,
-             sor.order_total AS linked_total
+             sor.order_total AS shipstation_total,
+             COALESCE(sor.order_priced, false) AS shipstation_priced,
+             ${marketplaceOrderTotalSql('o')} AS marketplace_total
         FROM orders o
         LEFT JOIN sor ON sor.order_row_id = o.id
        WHERE $2 AND o.organization_id = $1`,
@@ -463,7 +472,9 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
              rl.unit_cost_cents / 100.0 AS unit_price,
              COALESCE(rl.quantity_expected, NULLIF(rl.quantity_received, 0))::numeric AS qty,
              NULL::numeric AS sale_amount,
-             NULL::numeric AS linked_total
+             NULL::numeric AS shipstation_total,
+             false AS shipstation_priced,
+             NULL::numeric AS marketplace_total
         FROM receiving_line rl
        WHERE $3 AND rl.organization_id = $1`,
     )},
@@ -479,7 +490,7 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
              pr.qty,
              pr.unit_price,
              pr.line_total,
-             pr.order_total,
+             pr.shipstation_total, pr.shipstation_priced, pr.marketplace_total, pr.line_total_sum, pr.priced_lines,
              pr.order_lines,
              NULLIF(o.account_source, '') AS platform,
              ${accountSourceAccountLabelSql('o')} AS platform_account_label,
@@ -488,6 +499,7 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
              NULL::text AS po,
              o.status AS channel_status,
              o.order_date AS placed_at,
+             NULL::text AS placed_on,
              o.created_at AS imported_at,
              NULL::int AS imported_by,
              ${placedElseImportedSql('o')} AS ordered_at,
@@ -571,7 +583,7 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
              pr.qty,
              pr.unit_price,
              pr.line_total,
-             pr.order_total,
+             pr.shipstation_total, pr.shipstation_priced, pr.marketplace_total, pr.line_total_sum, pr.priced_lines,
              pr.order_lines,
              NULLIF(LOWER(BTRIM(COALESCE(io.source_type, rl.inbound_source_type, rc.source_platform::text, ''))), '') AS platform,
              NULL::text AS platform_account_label,
@@ -580,6 +592,7 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
              po.po_number AS po,
              COALESCE(io.status, rl.workflow_status::text) AS channel_status,
              ${INBOUND_PLACED_SQL} AS placed_at,
+             to_char(COALESCE(io.order_date, mirror.po_date), 'YYYY-MM-DD') AS placed_on,
              rl.created_at AS imported_at,
              io.created_by AS imported_by,
              COALESCE(${INBOUND_PLACED_SQL}, rl.created_at) AS ordered_at,
@@ -667,8 +680,9 @@ export function buildRecordsSql(orgId: OrgId, input: RecordsSqlInput): { sql: st
     )
     -- Only what the service reads: the wire to the app is the read's main cost (thousands of lines).
     SELECT l.direction, l.record_id, l.order_number, l.order_key, l.item_number, l.sku_catalog_id, l.title, l.sku,
-           l.qty, l.unit_price, l.line_total, l.order_total, l.order_lines, l.platform, l.platform_account_label,
-           l.customer, l.vendor, l.po, l.channel_status, l.placed_at, l.imported_at, l.ordered_at,
+           l.qty, l.unit_price, l.line_total, l.shipstation_total, l.shipstation_priced, l.marketplace_total, l.line_total_sum,
+           l.priced_lines, l.order_lines, l.platform, l.platform_account_label,
+           l.customer, l.vendor, l.po, l.channel_status, l.placed_at, l.placed_on, l.imported_at, l.ordered_at,
            l.ship_by_date, l.ship_by_at, l.picked_at, l.picked_by, l.picked_source, l.picked_by_name,
            l.packed_at, l.packer_id, l.packer_name, l.scanned_at, l.scanned_by, l.scanned_by_name, l.shipped_at,
            l.unboxed_at, l.unboxed_by, l.unboxed_by_name, l.received_at, l.received_by, l.received_by_name,
@@ -735,6 +749,14 @@ export function recordLineRowOf(row: Record<string, unknown>): RecordLineRow {
   // A note's mention tokens read as `@Name`, on one line — the snippet the sheet paints.
   const noteText = text(row.note_text) ? noteMentionsToPlain(String(row.note_text)).replace(/\s+/g, ' ').trim() || null : null;
   const noteAt = stamp(row.note_at);
+  const orderTotal = resolveOrderTotal({
+    shipstationTotal: num(row.shipstation_total),
+    shipstationPriced: row.shipstation_priced === true,
+    marketplaceTotal: num(row.marketplace_total),
+    lineTotalSum: num(row.line_total_sum),
+    pricedLines: num(row.priced_lines) ?? 0,
+    lines: num(row.order_lines) ?? 1,
+  });
   return {
     direction: row.direction === 'inbound' ? 'inbound' : 'outbound',
     recordId: Number(row.record_id),
@@ -747,7 +769,8 @@ export function recordLineRowOf(row: Record<string, unknown>): RecordLineRow {
     qty: num(row.qty),
     unitPrice: num(row.unit_price),
     lineTotal: num(row.line_total),
-    orderTotal: num(row.order_total),
+    orderTotal: orderTotal?.amount ?? null,
+    orderTotalSource: orderTotal?.source ?? null,
     orderLines: num(row.order_lines) ?? 1,
     platform: text(row.platform),
     platformAccountLabel: text(row.platform_account_label),
@@ -756,6 +779,7 @@ export function recordLineRowOf(row: Record<string, unknown>): RecordLineRow {
     po: text(row.po),
     channelStatus: text(row.channel_status),
     placedAt: stamp(row.placed_at),
+    placedOn: text(row.placed_on),
     importedAt: stamp(row.imported_at),
     orderedAt: stamp(row.ordered_at),
     shipByDate: text(row.ship_by_date),

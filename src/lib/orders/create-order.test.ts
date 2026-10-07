@@ -153,6 +153,11 @@ test('body validation keeps the historical sentences, in the historical order', 
     return parsed.ok ? null : parsed.error;
   };
   assert.equal(err({ orderId: 'X', accountSource: 'Manual' }), 'Missing required fields: orderId, productTitle, accountSource');
+  assert.equal(
+    err({ orderId: 'ZD 9061', productTitle: 'T', accountSource: '   ' }),
+    'Missing required fields: orderId, productTitle, accountSource',
+    'a whitespace channel is no channel — never a blank platform',
+  );
   assert.match(String(err({ orderId: 'X', productTitle: 'T', accountSource: 'M', condition: 'good', quantity: 0 })), /^condition must be one of: BRAND_NEW/);
   assert.equal(
     err({ orderId: 'X', productTitle: 'T', accountSource: 'M', saleAmount: 'abc', quantity: 0 }),

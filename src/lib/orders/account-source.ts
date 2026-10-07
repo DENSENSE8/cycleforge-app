@@ -11,9 +11,12 @@
  * and `order_import_run_rows.account_source` stores {@link canonicalAccountSource}.
  * The DB enforces the shape (`orders_account_source_canonical_chk`).
  *
- * Blank is reserved for an order whose source text AND order number name no
- * channel. QA / test seed sources collapse to {@link QA_ACCOUNT_SOURCE} so a
- * surface can filter them out as one value.
+ * A NEW order row always names its channel: when the canonical value is blank
+ * (neither the source text nor the order number names one) the writer refuses
+ * the order — `POST /api/orders/add` answers 400, `ingestCanonicalOrders`
+ * reports it `no_platform` — so blank is legacy only (pre-2026-10 rows, named by
+ * scripts/data-integrity-coverage.ts). QA / test seed sources collapse to
+ * {@link QA_ACCOUNT_SOURCE} so a surface can filter them out as one value.
  */
 
 import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';

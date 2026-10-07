@@ -92,6 +92,7 @@ const IMPORT_ROW_REASON_LABEL: Readonly<Record<string, string>> = {
   fbaShipment: 'FBA shipment',
   duplicate: 'Duplicate paste',
   ambiguous_match: 'Ambiguous match',
+  no_platform: 'No platform',
   cancelled: 'Cancelled',
   awaiting_payment: 'Awaiting payment',
   ignored_exception: 'Ignored in Review',

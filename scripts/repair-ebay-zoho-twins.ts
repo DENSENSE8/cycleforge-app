@@ -121,7 +121,8 @@ async function main(): Promise<void> {
   const { withTenantTransaction } = await import('@/lib/tenancy/db');
   const { duplicatePurchaseLineIds } = await import('@/lib/receiving/pasted-number-facts');
   const { matchZohoPo } = await import('@/lib/inbound/purchase-match');
-  const { SCIENTIFIC_NOTATION_TRACKING, isScientificRenderingOf, scientificTrackingProbe } = await import('@/lib/inbound/inbound-order-draft');
+  const { isScientificRenderingOf, scientificTrackingProbe } = await import('@/lib/inbound/inbound-order-draft');
+  const { SCIENTIFIC_NOTATION_TRACKING } = await import('@/lib/tracking-format');
   const { INBOUND_LINE_DELETE_BLOCKER_SQL, INBOUND_LINE_HISTORY_SQL, deleteInboundLinesInTx } = await import('@/lib/inbound/ingest-inbound-order');
   const { upsertPurchaseLink } = await import('@/lib/inbound/purchase-links');
   const { recordEquivalence } = await import('@/lib/inbound/equivalence');

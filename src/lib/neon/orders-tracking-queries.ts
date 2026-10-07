@@ -1,6 +1,7 @@
 /** orders-tracking-queries.ts ───────────────────────────────────────────────────────────────── Shipment-backbone tracking writes for orders. */
 import type { PoolClient } from 'pg';
 import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
+import { isScientificNotationTracking, SCIENTIFIC_NOTATION_TRACKING_MESSAGE } from '@/lib/tracking-format';
 import { resolveStoredCarrier, UNKNOWN_CARRIER } from '@/lib/shipping/carrier-resolution';
 import { isCarrierSyncEnabled } from '@/lib/shipping/enabled-carriers';
 import { transitionalDogfoodOrgId, withTenantTransaction } from '@/lib/tenancy/db';
@@ -10,6 +11,14 @@ import { healShipmentOrganizationId, healShipmentOrganizationIdByTracking } from
 
 /** Minimal pg client surface the helpers need (a pool client mid-transaction). */
 type Tx = Pick<PoolClient, 'query'>;
+
+/** The stored key of a typed / pasted tracking number; refuses a rounded `9.43e+21` and anything that normalizes to nothing. */
+function storableTrackingKey(rawTracking: string): string {
+  if (isScientificNotationTracking(rawTracking)) throw new Error(SCIENTIFIC_NOTATION_TRACKING_MESSAGE);
+  const key = normalizeTrackingNumber(rawTracking);
+  if (!key) throw new Error('Tracking number is invalid');
+  return key;
+}
 
 /** Carrier + trackability for one pasted tracking number. */
 function resolveTrackingCarrier(normalizedTracking: string, reportedCarrier?: string | null): {
@@ -91,10 +100,7 @@ export async function upsertOrderTracking(
     return;
   }
 
-  const normalizedTracking = normalizeTrackingNumber(rawTracking);
-  if (!normalizedTracking) {
-    throw new Error('Tracking number is invalid');
-  }
+  const normalizedTracking = storableTrackingKey(rawTracking);
 
   const { carrierForStorage, isUnknownCarrier, unknownCarrierMessage } =
     resolveTrackingCarrier(normalizedTracking, reportedCarrier);
@@ -303,8 +309,7 @@ export async function updateShipmentTrackingById(
   const rawTracking = String(shippingTrackingNumber || '').trim();
   if (!rawTracking) throw new Error('Tracking number is required');
 
-  const normalizedTracking = normalizeTrackingNumber(rawTracking);
-  if (!normalizedTracking) throw new Error('Tracking number is invalid');
+  const normalizedTracking = storableTrackingKey(rawTracking);
 
   const ownershipCheck = await client.query(
     `SELECT 1
@@ -420,8 +425,7 @@ export async function createAdditionalShipmentLink(
   const rawTracking = String(shippingTrackingNumber || '').trim();
   if (!rawTracking) throw new Error('Tracking number is required');
 
-  const normalizedTracking = normalizeTrackingNumber(rawTracking);
-  if (!normalizedTracking) throw new Error('Tracking number is invalid');
+  const normalizedTracking = storableTrackingKey(rawTracking);
 
   const existingShipment = await client.query(
     `SELECT id
@@ -620,8 +624,7 @@ async function reconcileOrderTrackingSet(
   for (const entry of desiredRaw) {
     const raw = String(entry || '').trim();
     if (!raw) continue;
-    const key = normalizeTrackingNumber(raw);
-    if (!key) throw new Error('Tracking number is invalid');
+    const key = storableTrackingKey(raw);
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
     desired.push({ raw, key });

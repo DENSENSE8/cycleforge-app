@@ -9,7 +9,6 @@ import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { linkShipment, stampInboundLineShipment } from '@/lib/shipping/shipment-links';
 import { ensureReceivingForInboundOrder, ensureReceivingForPo } from '@/lib/receiving/attach-box';
-import { SCIENTIFIC_NOTATION_TRACKING } from './inbound-order-draft';
 
 /** condition_grade_enum values (mirror of the DB enum). */
 const CONDITION_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
@@ -432,18 +431,12 @@ export async function ingestPurchase(
         let cartonId: number;
         if (meta?.receiving_id != null) {
           cartonId = Number(meta.receiving_id);
-          // A shipment whose number a numeric parse rounded (`9.43e+21`, digits
-          // lost) is replaced by the true number on re-land; any other stays.
           await client.query(
-            `UPDATE receiving_carton rc
+            `UPDATE receiving_carton
                 SET shipment_id = $2,
                     updated_at  = NOW()
-              WHERE rc.id = $1 AND rc.organization_id = $3::uuid
-                AND (rc.shipment_id IS NULL
-                     OR EXISTS (SELECT 1 FROM shipping_tracking_numbers stn
-                                 WHERE stn.id = rc.shipment_id
-                                   AND stn.tracking_number_raw ~* $4))`,
-            [cartonId, shipmentId, orgId, SCIENTIFIC_NOTATION_TRACKING.source],
+              WHERE id = $1 AND organization_id = $3::uuid AND shipment_id IS NULL`,
+            [cartonId, shipmentId, orgId],
           );
         } else if (existingStnCartonId != null) {
           // Already-scanned / existing STN carton — attach the imported line

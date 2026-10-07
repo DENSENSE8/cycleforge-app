@@ -11,6 +11,7 @@ import {
 } from '@/lib/orders/order-source-match';
 import { planOrderRowBackfill, type BackfillPolicy, type BackfillRow } from '@/lib/orders/order-row-backfill';
 import { canonicalAccountSource } from '@/lib/orders/account-source';
+import { knownShipStationTotal } from '@/lib/orders/order-total';
 import type { ImportRowRecord } from '@/lib/imports/types';
 
 // ─── Store → platform ────────────────────────────────────────────────────────
@@ -177,8 +178,8 @@ export function toCanonicalLine(group: readonly ShipStationV1Order[], accountSou
   // A total of 0 with no priced line is "ShipStation does not know" (manual
   // orders), not a free sale.
   const priced = items.some((it) => (it.unitPrice ?? 0) > 0);
-  const total = primary.orderTotal;
-  const saleAmount = total != null && (total > 0 || priced) ? total.toFixed(2) : null;
+  const total = knownShipStationTotal(primary.orderTotal, priced);
+  const saleAmount = total == null ? null : total.toFixed(2);
   // One unit price only when the order holds exactly one (non-adjustment) item:
   // a collapsed multi-item order has none. A 0 counts only when the order is
   // priced at all (same "0 = unknown" rule as the total).

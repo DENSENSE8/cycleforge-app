@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import pool from '@/lib/db';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
 import { resolveSpreadsheetShipByDate } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
@@ -118,13 +117,10 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         // The mapped `note` column is an operator REMARK, and lands in the legacy scalar `orders.notes` the writer owns on insert.
         notes: canonical.note || '',
         customerName: canonical.customer_name || '',
-        // Platform acknowledgment: an Amazon 3-7-7 / eBay 2-5-5 order number
-        // names its own channel, so a file with no platform column still
-        // stores the inferred slug instead of a blank `account_source`.
-        accountSource:
-          canonical.platform
-          || inferMarketplaceFromOrderId(canonical.order_number)
-          || '',
+        // The writer canonicalizes: a blank platform takes the channel the order
+        // number proves (Amazon 3-7-7, eBay 2-5-5, FBA, Walmart); a new order whose
+        // number proves none is refused, never stored with a blank platform.
+        accountSource: canonical.platform,
         trackings: canonical.tracking_number ? [canonical.tracking_number] : [],
         // END of the named warehouse civil day — a ship-by is a deadline, and
         // a blank/unparseable cell is unknown (null), never today. Shared
@@ -147,7 +143,12 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     );
     inserted = result.insertedOrders;
     insertedOrderIds = result.insertedOrderIds;
-    updated = result.processedOrders - result.insertedOrders;
+    // Refused (no platform named, no order carries the number): not written.
+    updated = result.processedOrders - result.insertedOrders - result.ambiguousOrderIds.length;
+    const rowByOrderNumber = new Map(deduped.map(({ index, canonical }) => [canonical.order_number, index]));
+    for (const orderNumber of result.ambiguousOrderIds) {
+      errors.push({ row: rowByOrderNumber.get(orderNumber) ?? -1, reason: 'No platform: the row names no channel and no order carries its number' });
+    }
     // Reserve units for the rows that just landed, so an uploaded file produces a pick list rather than an unallocated backlog.
     await autoAllocateAfterIngest(result.insertedOrderIds, {
       orgId: ctx.organizationId,

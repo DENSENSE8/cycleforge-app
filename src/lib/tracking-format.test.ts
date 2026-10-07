@@ -16,6 +16,7 @@ import {
   trackingDigitsLast8Strict,
   trackingCanonicalLast8,
   trackingRawTail8,
+  isScientificNotationTracking,
 } from './tracking-format';
 
 // ─── The reconciliation invariant ─────────────────────────────────────────────
@@ -257,4 +258,13 @@ test('last-8 variants keep each call site\'s matching semantics', () => {
   assert.equal(trackingRawTail8('TBA123456789012'), '56789012');
   assert.equal(trackingRawTail8('abc'), 'abc');
   assert.equal(trackingRawTail8(undefined), '');
+});
+
+test('a number a spreadsheet rounded to scientific notation is recognised; real numbers are not', () => {
+  assert.equal(isScientificNotationTracking('9.434608106245533E+21'), true);
+  assert.equal(isScientificNotationTracking(' 9.434608106244568e+21 '), true);
+  assert.equal(isScientificNotationTracking('9E21'), true);
+  assert.equal(isScientificNotationTracking('9434608106245533522453'), false);
+  assert.equal(isScientificNotationTracking('1Z999AA10123456784'), false);
+  assert.equal(isScientificNotationTracking(null), false);
 });

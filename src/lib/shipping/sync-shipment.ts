@@ -1,5 +1,9 @@
 import type { CarrierCode, CarrierTrackingResult, ShipmentRow } from './types';
-import { extractCanonicalTracking } from '@/lib/tracking-format';
+import {
+  extractCanonicalTracking,
+  isScientificNotationTracking,
+  SCIENTIFIC_NOTATION_TRACKING_MESSAGE,
+} from '@/lib/tracking-format';
 import { detectCarrier } from './normalize';
 import {
   getShipmentById,
@@ -210,6 +214,7 @@ export async function registerShipment(params: {
   carrier?: CarrierCode;
   sourceSystem?: string;
 }, orgId?: OrgId) {
+  if (isScientificNotationTracking(params.trackingNumber)) throw new Error(SCIENTIFIC_NOTATION_TRACKING_MESSAGE);
   // Canonical key so GS1 scans join/create the short human STN; preserve raw input.
   const normalized = extractCanonicalTracking(params.trackingNumber);
   if (!normalized) throw new Error('Invalid tracking number');
@@ -251,8 +256,9 @@ export async function registerShipmentPermissive(params: {
 }, orgId?: OrgId): Promise<ShipmentRow | null> {
   const raw = (params.trackingNumber ?? '').trim();
   if (!raw) return null;
-  // SKU-formatted scans ("PROD:qty", ":tag") are never carrier tracking numbers.
-  if (raw.includes(':')) return null;
+  // SKU-formatted scans ("PROD:qty", ":tag") are never carrier tracking numbers,
+  // and a rounded `9.43e+21` (a spreadsheet's) can never match its package.
+  if (raw.includes(':') || isScientificNotationTracking(raw)) return null;
 
   const normalized = extractCanonicalTracking(raw);
   if (!normalized || normalized.length < 8) return null;

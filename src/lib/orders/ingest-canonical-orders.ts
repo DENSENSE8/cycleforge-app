@@ -93,8 +93,9 @@ export interface IngestCanonicalOrdersResult {
   updatedOrdersTracking: number;
   updatedOrdersFields: number;
   deletedDuplicateOrders: number;
-  /** Aggregator orders left untouched because their number sits under more
-   *  than one platform (or beside a legacy aggregator row) — the caller
+  /** Orders left untouched: an aggregator number under more than one platform
+   *  (or beside a legacy aggregator row) — `ambiguous_match` — or a NEW order
+   *  whose source and number name no channel — `no_platform`. The caller
    *  quarantines them. */
   ambiguousOrderIds: string[];
   /** Non-blank tracking values that failed carrier detection (not linked). */
@@ -663,7 +664,10 @@ export async function ingestCanonicalOrders(
         : aggregator
           ? matchAggregatorOrderRows(order.accountSource, rowsForNumber, aggregator.platformOf)
           : matchMarketplaceOrderRows(order.accountSource, rowsForNumber);
-    if (crossSource?.kind === 'ambiguous') {
+    // Nothing to write onto and nothing names the channel: a new order names its
+    // platform (account-source.ts), so it is reported, never inserted blank.
+    const unnamedNewOrder = !existingOrder && !crossSource?.rows.length && !order.accountSource;
+    if (crossSource?.kind === 'ambiguous' || unnamedNewOrder) {
       ambiguousOrderIds.push(orderId);
       detailsAmbiguous.push({
         orderId,
@@ -676,7 +680,7 @@ export async function ingestCanonicalOrders(
         skuCatalogId: catalogLink.skuCatalogId,
         orderRowId: null,
         outcome: 'ambiguous',
-        quarantineReason: 'ambiguous_match',
+        quarantineReason: unnamedNewOrder ? 'no_platform' : 'ambiguous_match',
         filledFields: [],
       });
       continue;
@@ -872,7 +876,7 @@ export async function ingestCanonicalOrders(
           status: order.status || 'unassigned',
           statusHistory: [],
           customerId,
-          accountSource: order.accountSource || '',
+          accountSource: order.accountSource,
           saleAmount: order.saleAmount,
           unitPrice: order.unitPrice,
           currency: order.currency ?? 'USD',
