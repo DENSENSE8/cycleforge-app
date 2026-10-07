@@ -161,17 +161,31 @@ export async function ingestPurchase(
       `inbound:${orgId}:${sourceType}:${sourceOrderId}:${sourceLineItemId ?? ''}`,
     ]);
 
-    // Resolve the buyer/storefront account id from its label (platform slug === source).
+    // Resolve the buyer/storefront account id from its label. Platform = the
+    // source slug OR any platform this account's store link names (connect
+    // pairing); scope matches the bare label plus both role-prefixed forms
+    // the eBay mirror writes ('seller:…' / 'buyer:…').
     let platformAccountId: number | null = null;
     if (input.accountLabel?.trim()) {
+      const label = input.accountLabel.trim();
       const acct = await client.query<{ id: number }>(
         `SELECT pa.id
            FROM platform_accounts pa
            JOIN platforms p
              ON p.id = pa.platform_id AND p.organization_id = pa.organization_id
-          WHERE pa.organization_id = $1 AND p.slug = $2 AND pa.integration_scope = $3
+          WHERE pa.organization_id = $1
+            AND (
+              p.slug = $2
+              OR EXISTS (SELECT 1 FROM integration_store_links l
+                          WHERE l.organization_id = $1 AND l.provider = $2
+                            AND l.external_store_id = $3
+                            AND l.platform_id = p.id)
+            )
+            AND (pa.integration_scope = $3
+                 OR pa.integration_scope = ('seller:' || $3)
+                 OR pa.integration_scope = ('buyer:' || $3))
           LIMIT 1`,
-        [orgId, sourceType, input.accountLabel.trim()],
+        [orgId, sourceType, label],
       );
       platformAccountId = acct.rows[0]?.id ?? null;
     }

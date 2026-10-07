@@ -3,8 +3,15 @@
 import pool from '@/lib/db';
 import { decryptIntegrationPayload } from '@/lib/integrations/crypto';
 
-/** State freshness window — aligned with the connect cookie's maxAge (10 min). */
-export const EBAY_STATE_TTL_MS = 10 * 60 * 1000;
+/**
+ * State freshness window — aligned with the connect cookie's maxAge. 30 min:
+ * eBay imposes no clock on its consent screen (state is an opaque echo), so
+ * this window only bounds how long the operator may sit on eBay's sign-in
+ * (a full login + 2FA — we send prompt=login) before the redirect back.
+ * eBay's own expiry, the single-use authorization code (~5 min), starts at
+ * consent and is exchanged server-side within seconds.
+ */
+export const EBAY_STATE_TTL_MS = 30 * 60 * 1000;
 
 /** Shape minted by /api/ebay/connect (encryptIntegrationPayload). */
 interface EbayOauthState {
@@ -13,6 +20,8 @@ interface EbayOauthState {
   environment?: string;
   /** 'seller' | 'buyer' — the purchasing-account discriminator (default seller). */
   role?: string;
+  /** Catalog platform pairing chosen in the connect popover (optional). */
+  platformId?: number | null;
   createdBy?: number | null;
   nonce?: string;
   issuedAt?: number;
@@ -24,6 +33,8 @@ interface VerifiedEbayOauthState {
   accountName: string;
   environment?: string;
   role?: string;
+  /** Catalog platform pairing chosen in the connect popover (null = default). */
+  platformId?: number | null;
   createdBy: number;
   nonce: string;
   issuedAt: number;

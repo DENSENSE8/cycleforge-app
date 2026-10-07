@@ -3,8 +3,16 @@
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/** The only aggregator that links stores today. */
+/** The only aggregator that links whole stores today. */
 export const SHIPSTATION_STORE_PROVIDER = 'shipstation';
+
+/**
+ * eBay seller/buyer accounts link by their `ebay_accounts.account_name` —
+ * the connect popover's platform pairing (2026-10-07). The account→
+ * platform_accounts mirror follows this link; it never touches
+ * `platform_accounts.integration_scope` (that holds the eBay vault scope).
+ */
+export const EBAY_ACCOUNT_STORE_PROVIDER = 'ebay';
 
 export interface StoreLinkRow {
   id: number;

@@ -12,6 +12,7 @@ import {
 } from '@/lib/ebay/oauth-config';
 import { connectActorStillMember, verifyEbayCallbackState } from '@/lib/ebay/callback-verify';
 import { syncEbayAccountsToPlatformAccounts } from '@/lib/neon/catalog-queries';
+import { EBAY_ACCOUNT_STORE_PROVIDER, upsertStoreLink } from '@/lib/catalog/integration-store-links';
 import { enableOrgFeatureFlag, INCOMING_UNIVERSAL_FLAG } from '@/lib/feature-flags';
 import { ensureEbayInboundSourceEnabled } from '@/lib/inbound/org-settings';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -166,6 +167,26 @@ export async function GET(req: NextRequest) {
       ],
     );
 
+    // Platform pairing (connect popover): point the account's store link at
+    // the chosen platform BEFORE the mirror runs so the account lands under
+    // it. Upsert semantics — re-connecting with a different platform re-links.
+    const platformId = verdict.state.platformId ?? null;
+    if (platformId != null) {
+      try {
+        await upsertStoreLink(organizationId, {
+          provider: EBAY_ACCOUNT_STORE_PROVIDER,
+          externalStoreId: accountName,
+          platformId,
+          platformAccountId: null,
+        });
+      } catch (linkErr: unknown) {
+        console.warn(
+          '[ebay/callback] platform pairing link failed:',
+          linkErr instanceof Error ? linkErr.message : linkErr,
+        );
+      }
+    }
+
     // Keep platform_accounts (catalog + Incoming account chip) aligned with the
     // new seller/buyer row — seedOrgCatalog only runs at org creation, not on connect.
     try {
@@ -206,7 +227,7 @@ export async function GET(req: NextRequest) {
         entityId: accountName,
         organizationIdOverride: organizationId,
         actorStaffIdOverride: createdBy,
-        after: { ebayUserId: ebayUserId || null, environment, accountRole },
+        after: { ebayUserId: ebayUserId || null, environment, accountRole, platformId },
       });
     } catch (auditErr: any) {
       console.warn('[ebay/callback] audit write failed:', auditErr?.message || auditErr);

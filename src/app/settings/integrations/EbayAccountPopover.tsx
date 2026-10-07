@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Popover } from '@/design-system/primitives/Popover';
 import { Button } from '@/design-system/primitives/Button';
@@ -9,6 +9,9 @@ import { RefreshCw, Trash2 } from '@/components/Icons';
 import type { AccountSummary } from './registry';
 import { FIELD_INPUT_CLS } from './form-styles';
 import { ebayConnectLoopbackWarning } from '@/lib/ebay/oauth-config';
+import { PlatformPickOrCreateField } from '@/components/settings/PlatformPickOrCreateField';
+import { usePlatformCatalog } from '@/hooks/useCatalog';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EbayConnectPopoverProps {
   role: 'seller' | 'buyer';
@@ -33,6 +36,17 @@ export function EbayConnectPopover({
   const [label, setLabel] = useState(suggested);
   const [error, setError] = useState<string | null>(null);
   const kind = role === 'buyer' ? 'Purchasing' : 'Selling';
+  const auth = useAuth();
+  const { rows: platformRows, isLoading: platformsLoading } = usePlatformCatalog();
+  const [platformId, setPlatformId] = useState<number | null>(null);
+  // Today's default: the org's seeded 'ebay' platform — zero extra clicks when
+  // the account is not its own channel. Never auto-picks an arbitrary platform.
+  useEffect(() => {
+    if (platformId != null || platformRows.length === 0) return;
+    const ebay = platformRows.find((p) => p.slug === 'ebay');
+    if (ebay) setPlatformId(Number(ebay.id));
+  }, [platformId, platformRows]);
+  const canCreatePlatform = auth.isLoaded && auth.has('admin.manage_features');
 
   const connect = () => {
     const trimmed = label.trim();
@@ -45,7 +59,8 @@ export function EbayConnectPopover({
       return;
     }
     const roleParam = role === 'buyer' ? '&role=buyer' : '';
-    window.location.href = `${oauthStartPath}?accountName=${encodeURIComponent(trimmed)}${roleParam}`;
+    const platformParam = platformId != null ? `&platformId=${platformId}` : '';
+    window.location.href = `${oauthStartPath}?accountName=${encodeURIComponent(trimmed)}${roleParam}${platformParam}`;
   };
 
   const isBuyer = role === 'buyer';
@@ -53,7 +68,7 @@ export function EbayConnectPopover({
     typeof window !== 'undefined' ? ebayConnectLoopbackWarning(window.location.hostname) : null;
 
   return (
-    <Popover open={open} onClose={onClose} anchorRef={anchorRef} placement="bottom-start" className={isBuyer ? 'w-96' : 'w-80'} role="dialog" aria-label={`Connect eBay ${kind} account`}>
+    <Popover open={open} onClose={onClose} anchorRef={anchorRef} placement="bottom-start" className="w-96" role="dialog" aria-label={`Connect eBay ${kind} account`}>
       <div className="space-y-3 p-1">
         <div>
           <p className="text-role-body font-semibold text-text-default">Connect {kind} account</p>
@@ -94,6 +109,18 @@ export function EbayConnectPopover({
             autoFocus
           />
         </label>
+        <div>
+          <PlatformPickOrCreateField
+            value={platformId}
+            onChange={setPlatformId}
+            canCreate={canCreatePlatform}
+            placeholder={platformsLoading && platformRows.length === 0 ? 'Loading platforms…' : 'Pick a platform'}
+            testId="ebay-connect-platform"
+          />
+          <p className="mt-1 text-role-caption text-text-soft">
+            Where this account sells — its orders and purchase lines attribute to this platform. Add a new one when this account is its own channel.
+          </p>
+        </div>
         {loopbackWarning && (
           <p className="text-role-caption font-medium text-amber-800">{loopbackWarning}</p>
         )}

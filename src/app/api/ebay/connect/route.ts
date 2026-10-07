@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { withAuth } from '@/lib/auth/withAuth';
+import { getPlatformById } from '@/lib/neon/catalog-queries';
 import { assertCanConnectProvider } from '@/lib/integrations/connectors/connections';
 import { assertIntegrationKmsConfigured, encryptIntegrationPayload } from '@/lib/integrations/crypto';
 import { getEbayAppCreds } from '@/lib/ebay/credentials';
@@ -12,7 +13,7 @@ import {
   EBAY_OAUTH_STATE_COOKIE,
 } from '@/lib/ebay/oauth-config';
 
-const STATE_COOKIE_MAX_AGE = 600; // 10 min — matches the callback TTL window
+const STATE_COOKIE_MAX_AGE = 1800; // 30 min — matches the callback TTL window
 
 /** GET /api/ebay/connect Starts the multi-tenant eBay OAuth consent flow. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -30,6 +31,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // Plan ceiling: connecting a NEW provider must fit the org's maxIntegrations.
     const refusal = await assertCanConnectProvider(ctx.organizationId, 'ebay');
     if (refusal) return NextResponse.json(refusal, { status: 403 });
+
+    // Platform pairing (connect popover): the catalog platform this account
+    // sells on. Validated org-scoped; an unknown/foreign id is dropped with a
+    // warning rather than blocking the token connect.
+    const platformIdRaw = Number(searchParams.get('platformId'));
+    let platformId: number | null = null;
+    if (Number.isInteger(platformIdRaw) && platformIdRaw > 0) {
+      const platform = await getPlatformById(ctx.organizationId, platformIdRaw);
+      if (platform) platformId = platformIdRaw;
+      else console.warn('[ebay/connect] ignoring platformId not found in this org');
+    }
 
     // Encryption-at-rest is required to store the OAuth state (and tokens) —
     // hard-fail in production if the KMS key is missing.
@@ -80,6 +92,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       accountName: accountName.trim(),
       environment: creds.environment,
       role,
+      platformId,
       createdBy: ctx.staffId,
       nonce,
       issuedAt: Date.now(),

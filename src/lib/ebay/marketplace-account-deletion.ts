@@ -297,21 +297,25 @@ export async function purgeEbayUserData(opts: {
     const accountName = await deleteEbayAccount(orgId, row.id);
     if (!accountName) continue;
 
-    // Best-effort catalog deactivate — connect mirrors vault scope onto platform_accounts.
+    // Best-effort catalog deactivate — the connect mirror may place this
+    // account on ANY platform (connect-popover pairing via store links), not
+    // just the seeded 'ebay' one. Scope prefixes prove a row is this account's
+    // mirror; a bare-slug row only counts on the platform its store link names.
     try {
       await tenantQuery(
         orgId,
         `UPDATE platform_accounts pa
             SET is_active = false, updated_at = NOW()
-           FROM platforms p
           WHERE pa.organization_id = $1
-            AND pa.platform_id = p.id
-            AND p.organization_id = $1
-            AND p.slug = 'ebay'
             AND (
-              pa.slug = $2
-              OR pa.integration_scope = ('seller:' || $2)
+              pa.integration_scope = ('seller:' || $2)
               OR pa.integration_scope = ('buyer:' || $2)
+              OR (pa.slug = $2 AND EXISTS (
+                    SELECT 1 FROM integration_store_links l
+                     WHERE l.organization_id = $1
+                       AND l.provider = 'ebay'
+                       AND l.external_store_id = $2
+                       AND l.platform_id = pa.platform_id))
             )`,
         [orgId, accountName],
       );

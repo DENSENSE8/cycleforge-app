@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-04",
+  "updated": "2026-10-07",
   "states": [
     "queued",
     "in_progress",
@@ -880,6 +880,20 @@
         "src/lib/nav/records/service.ts"
       ],
       "exitCriteria": "The Records statement models a scan-out no order owns as an outbound package record, carries the journey's package inputs (acceptance, first transit, out for delivery, promise, poll stamps, attempts, label cost) and the order's check-in, and uses one hand-off rule; GET /api/nav/fulfilled is then the Records read with a journey preset (or is deleted), buildFulfilledSql is deleted, and the board, its zoom and /records agree on the shipped set for the same window."
+    }
+    ,
+    {
+      "id": "pick-or-create-platform-field",
+      "state": "queued",
+      "category": "form-field",
+      "problem": "Two pick-or-create platform fields after 2026-10-07: SupportPlatformField (Support item, platform + account rows) and PlatformPickOrCreateField (eBay connect popover, platform rows only) each own the same addPlatform fetch to POST /api/catalog/platforms, optimistic added-row state and invalidation.",
+      "replacementPaths": [
+        "src/components/settings/PlatformPickOrCreateField.tsx"
+      ],
+      "currentPaths": [
+        "src/features/support/SupportPlatformField.tsx"
+      ],
+      "exitCriteria": "SupportPlatformField composes PlatformPickOrCreateField (its account rows stay a local overlay) and has no direct fetch to /api/catalog/platforms; then retire with forbiddenSource [] kept empty (both files survive, only the duplicate create logic dies)."
     }
   ]
 }

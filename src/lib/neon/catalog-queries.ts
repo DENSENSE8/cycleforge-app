@@ -2,6 +2,7 @@
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { EBAY_ACCOUNT_STORE_PROVIDER } from '@/lib/catalog/integration-store-links';
 import { SUBSTITUTION_REASONS } from '@/lib/fulfillment/substitution-reasons';
 import { SHORT_PICK_REASONS } from '@/lib/picking/short-pick-reasons';
 import { REPAIR_FAILURE_REASONS } from '@/lib/repair/repair-failure-reasons';
@@ -214,36 +215,75 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
   });
 }
 
-/** Mirror eBay seller/buyer rows in `ebay_accounts` into `platform_accounts` so the catalog + Incoming account chip stay in sync after… */
+/**
+ * Mirror eBay seller/buyer rows in `ebay_accounts` into `platform_accounts`
+ * so the catalog + Incoming account chip stay in sync after connect. Each
+ * account lands under the platform its `integration_store_links` row
+ * (provider EBAY_ACCOUNT_STORE_PROVIDER) names — the connect popover's
+ * pairing; unlinked accounts default to the org's `ebay` platform. A
+ * re-link moves the account: stale mirror rows under the old platform are
+ * retired so pickers never list the account twice.
+ */
 export async function syncEbayAccountsToPlatformAccounts(
   organizationId: OrgId,
   client?: { query: (text: string, params?: unknown[]) => Promise<unknown> },
 ): Promise<void> {
-  const sql = `INSERT INTO platform_accounts (organization_id, platform_id, slug, label, integration_scope, is_active)
-       SELECT ea.organization_id,
-              p.id,
-              ea.account_name,
-              ea.account_name,
-              CASE
-                WHEN lower(COALESCE(ea.account_role, 'seller')) = 'buyer'
-                  THEN 'buyer:' || ea.account_name
-                ELSE 'seller:' || ea.account_name
-              END,
-              COALESCE(ea.is_active, true)
-         FROM ebay_accounts ea
-         JOIN platforms p ON p.organization_id = ea.organization_id AND p.slug = 'ebay'
-        WHERE ea.organization_id = $1
-          AND (ea.platform = 'EBAY' OR ea.platform IS NULL)
-          AND ea.account_name IS NOT NULL AND BTRIM(ea.account_name) <> ''
-       ON CONFLICT (organization_id, platform_id, slug) DO UPDATE SET
-         integration_scope = EXCLUDED.integration_scope,
-         is_active         = EXCLUDED.is_active,
-         updated_at        = NOW()`;
+  // One account → its target platform (link wins, seeded 'ebay' is the default).
+  const target = `WITH target AS (
+      SELECT ea.account_name,
+             ea.account_role,
+             COALESCE(ea.is_active, true) AS is_active,
+             COALESCE(
+               l.platform_id,
+               (SELECT p2.id FROM platforms p2
+                 WHERE p2.organization_id = ea.organization_id AND p2.slug = 'ebay')
+             ) AS platform_id
+        FROM ebay_accounts ea
+        LEFT JOIN integration_store_links l
+          ON l.organization_id = ea.organization_id
+         AND l.provider = $2
+         AND l.external_store_id = ea.account_name
+       WHERE ea.organization_id = $1
+         AND (ea.platform = 'EBAY' OR ea.platform IS NULL)
+         AND ea.account_name IS NOT NULL AND BTRIM(ea.account_name) <> ''
+    )`;
+  const insertSql = `${target}
+    INSERT INTO platform_accounts (organization_id, platform_id, slug, label, integration_scope, is_active)
+    SELECT $1, t.platform_id, t.account_name, t.account_name,
+           CASE
+             WHEN lower(COALESCE(t.account_role, 'seller')) = 'buyer'
+               THEN 'buyer:' || t.account_name
+             ELSE 'seller:' || t.account_name
+           END,
+           t.is_active
+      FROM target t
+     WHERE t.platform_id IS NOT NULL
+    ON CONFLICT (organization_id, platform_id, slug) DO UPDATE SET
+      integration_scope = EXCLUDED.integration_scope,
+      is_active         = EXCLUDED.is_active,
+      updated_at        = NOW()`;
+  // Retire mirror rows left under a platform the account no longer targets.
+  // Scope prefix ('seller:'/'buyer:') proves the row is this account's mirror,
+  // never a same-named manual account on an unrelated platform.
+  const retireSql = `${target}
+    UPDATE platform_accounts pa
+       SET is_active = false, updated_at = NOW()
+      FROM target t
+     WHERE pa.organization_id = $1
+       AND pa.slug = t.account_name
+       AND t.platform_id IS NOT NULL
+       AND pa.platform_id <> t.platform_id
+       AND pa.is_active
+       AND (pa.integration_scope = ('seller:' || t.account_name)
+            OR pa.integration_scope = ('buyer:' || t.account_name))`;
+  const params = [organizationId, EBAY_ACCOUNT_STORE_PROVIDER];
   if (client) {
-    await client.query(sql, [organizationId]);
+    await client.query(insertSql, params);
+    await client.query(retireSql, params);
     return;
   }
-  await tenantQuery(organizationId, sql, [organizationId]);
+  await tenantQuery(organizationId, insertSql, params);
+  await tenantQuery(organizationId, retireSql, params);
 }
 
 /** lowercase-kebab/underscore slug from a free-text label. */
