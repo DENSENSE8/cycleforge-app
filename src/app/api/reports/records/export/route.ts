@@ -5,6 +5,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { serializeRows } from '@/lib/tables/export/serialize';
 import { getCurrentPSTDateKey } from '@/utils/date';
+import { ORDER_DATE_LABEL, placedElseImportedSql } from '@/lib/orders/order-dates';
 
 const Query = z.object({
   record: z.enum(['inbound', 'outbound']),
@@ -61,11 +62,11 @@ export const GET = withAuth(async (request: NextRequest, context) => {
            account_source, fulfillment_channel, order_date::text, created_at::text
       FROM orders
      WHERE organization_id = $1
-       AND (timezone('America/Los_Angeles', COALESCE(order_date, created_at)))::date = $2::date
-     ORDER BY COALESCE(order_date, created_at) DESC
+       AND (timezone('America/Los_Angeles', ${placedElseImportedSql('orders')}))::date = $2::date
+     ORDER BY ${placedElseImportedSql('orders')} DESC
      LIMIT 50000`, [context.organizationId, day]);
   const csv = serializeRows(
-    ['Row id', 'Order number', 'Item number', 'SKU', 'Product', 'Quantity', 'Status', 'Platform', 'Fulfillment', 'Ordered at', 'Imported at'],
+    ['Row id', 'Order number', 'Item number', 'SKU', 'Product', 'Quantity', 'Status', 'Platform', 'Fulfillment', ORDER_DATE_LABEL.placed, ORDER_DATE_LABEL.imported],
     result.rows.map((row) => [row.id, row.order_id, row.item_number, row.sku, row.product_title, row.quantity, row.status, row.account_source, row.fulfillment_channel, row.order_date, row.created_at]),
     'csv',
   );

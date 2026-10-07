@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { ExactOrderIdentity, LabelMatchMethod, LabelQuarantineReasonCode, ParsedLabelEvidence } from './types';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 
 type Queryable = Pick<PoolClient, 'query'>;
 
@@ -52,7 +53,7 @@ export async function findBuyerOrders(client: Queryable, organizationId: OrgId, 
   if (words.length < 2) return [];
   const rows = await client.query<{ id: number; account_source: string; order_id: string; ordered_at: Date | null; buyer: string }>(
     `WITH named AS (
-       SELECT o.id, o.account_source, o.order_id, COALESCE(o.order_date, o.created_at) AS ordered_at,
+       SELECT o.id, o.account_source, o.order_id, ${placedElseImportedSql('o')} AS ordered_at,
               unnest(ARRAY[ss.ship_to->>'name', c.display_name, c.customer_name,
                            NULLIF(btrim(concat_ws(' ', c.first_name, c.last_name)), '')]) AS buyer
          FROM orders o

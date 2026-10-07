@@ -2,6 +2,7 @@
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { DataTableColumnLayout } from '@/lib/tables/data-table-column-layout';
+import { ORDER_DATE_LABEL } from '@/lib/orders/order-dates';
 
 export const ORDERS_FIELD_CATALOG = [
   {
@@ -140,7 +141,8 @@ const ORDERS_INDEX_ONLY_FIELDS = [
   {
     id: 'orders.order_date',
     family: 'orders',
-    label: 'Date',
+    // Placed, else Imported when the channel gave no placed date.
+    label: ORDER_DATE_LABEL.placed,
     displayType: 'date',
     slotKinds: ['status'],
     paths: { at: 'order_date|created_at' },

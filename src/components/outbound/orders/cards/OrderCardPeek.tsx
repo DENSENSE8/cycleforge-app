@@ -18,6 +18,7 @@ import { customerAddressLines, customerPhone } from '@/lib/customers/customer-di
 import { resolveOrdersIndexValue } from '@/lib/tables/field-catalog/orders-resolve';
 import type { OrderCardModel } from '@/lib/orders/order-card-model';
 import type { OrderStage } from '@/lib/orders/order-stages';
+import { ORDER_DATE_LABEL } from '@/lib/orders/order-dates';
 import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';
 
@@ -94,7 +95,7 @@ export function OrderCardPeek({ model, todayKey }: { model: OrderCardModel; toda
               <span className="text-text-faint">None on file</span>
             )}
           </Fact>
-          <Fact label="Ordered">{placed?.kind === 'placed' ? placed.face : '—'}</Fact>
+          <Fact label={ORDER_DATE_LABEL.placed}>{placed?.kind === 'placed' ? placed.face : '—'}</Fact>
           <Fact label="Ship by">{model.sla.tip ?? model.sla.face}</Fact>
           <Fact label="Tracking" wide>
             <span className={cn('inline-flex min-w-0 items-center gap-1', tracking ? 'font-mono text-xs' : 'text-text-faint')}>

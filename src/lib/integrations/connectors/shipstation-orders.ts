@@ -1,6 +1,6 @@
 /** ShipStation orders → the org's `orders` rows: */
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
-import type { ShipStationV1Order, ShipStationV1Store } from '@/lib/shipping/shipstation/orders-v1';
+import { shipStationV1Instant, type ShipStationV1Order, type ShipStationV1Store } from '@/lib/shipping/shipstation/orders-v1';
 import type { ShipAddress } from '@/lib/shipping/shipstation/types';
 import { shipstationMarketplaceSlug } from '@/lib/catalog/shipstation-store-sync';
 import {
@@ -180,8 +180,8 @@ export function toCanonicalLine(group: readonly ShipStationV1Order[], accountSou
   const total = primary.orderTotal;
   const saleAmount = total != null && (total > 0 || priced) ? total.toFixed(2) : null;
 
-  const shipByDate = primary.shipByDate ? new Date(primary.shipByDate) : null;
-  const orderDate = primary.orderDate ? new Date(primary.orderDate) : null;
+  const shipByDate = shipStationV1Instant(primary.shipByDate);
+  const orderDate = shipStationV1Instant(primary.orderDate);
   const live = group.filter((o) => !isCancelled(o));
 
   return {
@@ -219,8 +219,8 @@ export function toCanonicalLine(group: readonly ShipStationV1Order[], accountSou
       : null,
     accountSource,
     trackings: [],
-    shipByDate: shipByDate && !Number.isNaN(shipByDate.getTime()) ? shipByDate : null,
-    orderDate: orderDate && !Number.isNaN(orderDate.getTime()) ? orderDate : null,
+    shipByDate,
+    orderDate,
     saleAmount,
     currency: 'USD',
     status: groupStatus(live),
@@ -319,6 +319,7 @@ function wouldEnrich(
         // Presence only: the real id is resolved by the writer.
         customerId: hasCustomer ? 1 : null,
         shipmentIds: [],
+        orderDate: line.orderDate,
       },
       { ...policyOf(row), statusAuthoritative: true },
     );

@@ -13,6 +13,7 @@ import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sideba
 import { walkInStationHref } from '@/lib/walk-in/jobs';
 import { PRINT_STATION_CONDITION_OPTIONS, PRINT_STATION_CONDITION_PARAM } from '@/lib/print-station/fnsku';
 import type { NavRecentSurfaceId } from '@/lib/nav/recents/surfaces';
+import { ORDER_DATE_LABEL } from '@/lib/orders/order-dates';
 import { inboundOrderFormHref } from '@/lib/inbound/inbound-order-compose';
 import { RECEIVING_PATHS } from '@/lib/nav/route-tree';
 import type { NavAction, NavControls, NavSearch } from './schema';
@@ -433,7 +434,7 @@ const QUEUE_CONTROLS: NavControls = {
   ],
   dateRanges: [
     { id: 'ship-by', label: 'Ship-by date', fromParam: 'shipByFrom', toParam: 'shipByTo', clearParams: [], placeholder: 'Any day' },
-    { id: 'ordered', label: 'Order date', fromParam: 'orderFrom', toParam: 'orderTo', clearParams: [], placeholder: 'Any day' },
+    { id: 'ordered', label: ORDER_DATE_LABEL.placed, fromParam: 'orderFrom', toParam: 'orderTo', clearParams: [], placeholder: 'Any day' },
   ],
   exclude: {
     id: 'exclude-status',
@@ -611,7 +612,7 @@ const FULFILLED_CONTROLS: NavControls = {
     options: [
       { value: 'shipped', label: 'Scanned out, newest first' },
       { value: 'delivered', label: 'Delivered, newest first', dir: 'desc' },
-      { value: 'ordered', label: 'Ordered, newest first', dir: 'desc' },
+      { value: 'ordered', label: `${ORDER_DATE_LABEL.placed}, newest first`, dir: 'desc' },
       { value: 'shipBy', label: 'Ship-by, soonest first', dir: 'asc' },
       { value: 'lastEvent', label: 'Last carrier event, newest first', dir: 'desc' },
       { value: 'order', label: 'Order number, A to Z', dir: 'asc' },

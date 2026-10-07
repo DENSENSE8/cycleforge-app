@@ -92,7 +92,7 @@ export function toShippedOrderFromApi(raw: Record<string, unknown> | null | unde
     status_history: raw.status_history ?? null,
     status: asNullableString(raw.status),
     order_date: asNullableString(raw.order_date),
-    created_at: asNullableString(raw.created_at) ?? asNullableString(raw.order_date),
+    created_at: asNullableString(raw.created_at),
     ship_by_date: asNullableString(raw.ship_by_date) ?? asNullableString(raw.deadline_at),
     deadline_at: asNullableString(raw.deadline_at),
     customer_id: asNullableNumber(raw.customer_id),

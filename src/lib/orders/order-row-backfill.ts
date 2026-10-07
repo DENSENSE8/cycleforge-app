@@ -25,6 +25,8 @@ export interface BackfillRow {
   skuCatalogId?: number | null;
   saleAmount?: string | null;
   currency?: string | null;
+  /** Placed — the channel's order date (`orders.order_date`); null when no channel gave one. */
+  orderDate: Date | string | null;
 }
 
 /** The incoming order, after catalog + customer + tracking resolution. */
@@ -43,6 +45,8 @@ export interface BackfillIncoming {
   accountSource: string;
   customerId: number | null;
   shipmentIds: number[];
+  /** Placed, as the source knows it; null when it does not. */
+  orderDate: Date | null;
 }
 
 export interface BackfillPolicy {
@@ -113,6 +117,8 @@ export function planOrderRowBackfill(
   const filledShipment = row.shipmentId == null && primaryShipmentId != null;
   if (filledShipment) values.shipmentId = primaryShipmentId;
   if (row.customerId == null && incoming.customerId) values.customerId = incoming.customerId;
+  // Placed is a fact of the sale: the first channel that knows it fills it, nothing rewrites it.
+  if (row.orderDate == null && incoming.orderDate) values.orderDate = incoming.orderDate;
   if (
     incoming.accountSource
     && (policy.sourceWrite === 'rekey' || (policy.sourceWrite === 'fill' && isBlank(row.accountSource)))

@@ -22,6 +22,7 @@ const row = (over: Partial<BackfillRow> = {}): BackfillRow => ({
   skuCatalogId: null,
   saleAmount: null,
   currency: null,
+  orderDate: null,
   ...over,
 });
 
@@ -40,6 +41,7 @@ const incoming = (over: Partial<BackfillIncoming> = {}): BackfillIncoming => ({
   accountSource: 'eBay',
   customerId: 12,
   shipmentIds: [77],
+  orderDate: null,
   ...over,
 });
 
@@ -75,4 +77,12 @@ test('a marketplace re-key of the aggregator row reports account_source', () => 
   const existing = row({ accountSource: 'shipstation', itemNumber: 'ITEM1', sku: 'SKU1', condition: 'Used', customerId: 12, shipmentId: 77, saleAmount: '19.99', currency: 'USD' });
   const { values } = planOrderRowBackfill(existing, incoming({ skuCatalogId: null }), { ...fill, sourceWrite: 'rekey' });
   assert.deepEqual(filledOrderColumns(existing, values), ['account_source']);
+});
+
+test('Placed: the first channel that knows it fills a blank; a known Placed is never rewritten', () => {
+  const placed = new Date('2026-09-20T17:00:00.000Z');
+  const blank = planOrderRowBackfill(row(), incoming({ orderDate: placed }), fill);
+  assert.equal(blank.values.orderDate, placed);
+  const known = planOrderRowBackfill(row({ orderDate: '2026-09-19T08:00:00.000Z' }), incoming({ orderDate: placed }), fill);
+  assert.equal('orderDate' in known.values, false);
 });

@@ -13,6 +13,7 @@ import type {
   CustomerOrderHistoryEntry,
   CustomerOrderLine,
 } from './customer-throughput';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 
 interface DirectoryRow extends CustomerRecord {
   order_count: number | string | null;
@@ -56,8 +57,8 @@ export async function listCustomerDirectory(
     `WITH order_rollup AS (
        SELECT o.customer_id,
               COUNT(DISTINCT COALESCE(NULLIF(BTRIM(o.order_id), ''), 'row:' || o.id))::int AS order_count,
-              MIN(COALESCE(o.order_date, o.created_at)) AS first_order_at,
-              MAX(COALESCE(o.order_date, o.created_at)) AS last_order_at,
+              MIN(${placedElseImportedSql('o')}) AS first_order_at,
+              MAX(${placedElseImportedSql('o')}) AS last_order_at,
               ARRAY_AGG(DISTINCT LOWER(BTRIM(o.account_source)))
                 FILTER (WHERE NULLIF(BTRIM(o.account_source), '') IS NOT NULL) AS platforms
          FROM orders o
@@ -83,12 +84,12 @@ export async function listCustomerDirectory(
        LEFT JOIN order_rollup r ON r.customer_id = c.id
        LEFT JOIN LATERAL (
          SELECT o.id, o.order_id, o.product_title, o.status, o.account_source,
-                COALESCE(o.order_date, o.created_at) AS placed_at
+                ${placedElseImportedSql('o')} AS placed_at
            FROM orders o
           WHERE o.organization_id = c.organization_id
             AND o.customer_id = c.id
             AND LOWER(COALESCE(o.status, '')) NOT IN ('cancelled', 'canceled')
-          ORDER BY COALESCE(o.order_date, o.created_at) DESC NULLS LAST, o.id DESC
+          ORDER BY ${placedElseImportedSql('o')} DESC NULLS LAST, o.id DESC
           LIMIT 1
        ) latest ON TRUE
       WHERE c.organization_id = $1
@@ -132,7 +133,7 @@ export async function listCustomerOrderHistory(
        SELECT o.id,
               COALESCE(NULLIF(BTRIM(o.order_id), ''), 'row:' || o.id) AS order_key,
               NULLIF(BTRIM(o.order_id), '') AS order_ref,
-              COALESCE(o.order_date, o.created_at) AS placed_at,
+              ${placedElseImportedSql('o')} AS placed_at,
               NULLIF(BTRIM(o.status), '') AS status,
               NULLIF(BTRIM(o.account_source), '') AS platform,
               COALESCE(NULLIF(BTRIM(o.product_title), ''), NULLIF(BTRIM(o.sku), '')) AS title,

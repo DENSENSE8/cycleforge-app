@@ -8,9 +8,13 @@
  * `src/lib/receiving/purchases-params.ts`.
  */
 
+import { ORDER_DATE_LABEL } from '@/lib/orders/order-dates';
 import { GRID_COLUMN_DIR_PARAM, GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 
-/** Which date the window reads: when it left the dock, was delivered, was ordered, or was due to ship. */
+/**
+ * Which date the window reads: when it left the dock, was delivered, was placed, or was due to ship.
+ * `ordered` reads Placed, else Imported (`placedElseImportedSql`) — labelled Placed.
+ */
 export const FULFILLED_AXIS_PARAM = 'axis';
 export const FULFILLED_AXES = ['shipped', 'delivered', 'ordered', 'shipBy'] as const;
 export type FulfilledAxis = (typeof FULFILLED_AXES)[number];
@@ -18,7 +22,7 @@ export const FULFILLED_DEFAULT_AXIS: FulfilledAxis = 'shipped';
 export const FULFILLED_AXIS_LABEL: Readonly<Record<FulfilledAxis, string>> = {
   shipped: 'Shipped',
   delivered: 'Delivered',
-  ordered: 'Ordered',
+  ordered: ORDER_DATE_LABEL.placed,
   shipBy: 'Ship-by',
 };
 
@@ -64,7 +68,7 @@ export const FULFILLED_DEFAULT_SORT: FulfilledSort = 'shipped';
 export const FULFILLED_SORT_LABEL: Readonly<Record<FulfilledSort, string>> = {
   shipped: 'Shipped',
   delivered: 'Delivered',
-  ordered: 'Ordered',
+  ordered: ORDER_DATE_LABEL.placed,
   shipBy: 'Ship-by',
   order: 'Order #',
   channel: 'Platform',

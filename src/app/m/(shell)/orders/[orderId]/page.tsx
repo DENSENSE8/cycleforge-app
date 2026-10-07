@@ -10,6 +10,7 @@ import { useOrderHub } from '@/components/mobile/orders/useOrderHub';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { DetailHubScreen } from '@/design-system/components/DetailHubScreen';
 import { formatOrderStamp, type OrderHubData } from '@/lib/orders/order-hub';
+import { ORDER_DATE_LABEL, placedElseImported } from '@/lib/orders/order-dates';
 import { toast } from '@/lib/toast';
 
 type OrderVerb = 'documents' | 'copy' | 'scan';
@@ -41,8 +42,8 @@ function OrderHubInner() {
         backHref: hub.back ?? undefined,
         close: hub.back != null,
         meta: (d) => {
-          const at = formatOrderStamp(d.order.order_date ?? d.order.created_at);
-          return at ? `Ordered ${at}` : undefined;
+          const at = formatOrderStamp(placedElseImported(d.order));
+          return at ? `${ORDER_DATE_LABEL.placed} ${at}` : undefined;
         },
       }}
       card={(d) => <OrderInfoCard data={d} href={hub.link(`${hub.base}/info`)} stagePending={hub.workPending} />}

@@ -197,7 +197,7 @@ export function ordersOrderedAt(
   if (placedKey && placedKey !== 'Unknown') {
     return {
       label: formatDateKeyShort(placedKey),
-      tip: `Ordered · ${formatDateKeyMedium(placedKey, { weekday: 'short', withYear: true })}`,
+      tip: `Placed · ${formatDateKeyMedium(placedKey, { weekday: 'short', withYear: true })}`,
       dateKey: placedKey,
     };
   }

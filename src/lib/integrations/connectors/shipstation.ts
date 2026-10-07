@@ -126,7 +126,7 @@ async function findOrderRows(orgId: OrgId, numbers: string[]): Promise<Map<strin
     `SELECT id, order_id, order_id AS "orderId", item_number AS "itemNumber", product_title AS "productTitle",
             quantity, sku, condition, notes, customer_id AS "customerId", shipment_id::int AS "shipmentId",
             account_source AS "accountSource", status, sale_amount::text AS "saleAmount", currency,
-            sku_catalog_id AS "skuCatalogId"
+            sku_catalog_id AS "skuCatalogId", order_date AS "orderDate"
        FROM orders
       WHERE organization_id = $1 AND order_id = ANY($2::text[])`,
     [orgId, numbers],

@@ -103,6 +103,7 @@ const existing = (over: Partial<BackfillRow> = {}): BackfillRow => ({
   status: 'unassigned',
   saleAmount: '19.99',
   currency: 'USD',
+  orderDate: '2026-09-20T17:00:00.000Z',
   ...over,
 });
 
@@ -121,6 +122,7 @@ const shipstationCopy = (over: Partial<BackfillIncoming> = {}): BackfillIncoming
   accountSource: 'Amazon',
   customerId: 77,
   shipmentIds: [],
+  orderDate: null,
   ...over,
 });
 

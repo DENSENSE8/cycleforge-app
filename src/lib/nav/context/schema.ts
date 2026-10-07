@@ -564,7 +564,7 @@ export const NavLocatePickedBySchema = NavLocateStaffSchema.extend({ source: z.e
  *   Outbound: `duplicates` is always `[]`.
  * - fulfilled (`GET /api/nav/fulfilled` only; optional, absent elsewhere):
  *   `channel` (label), `customer`, `qty`, `orderTotal`, `orderedAt`
- *   (`COALESCE(order_date, created_at)`), `scannedOutBy`, `scanSource`
+ *   (`placedElseImportedSql`), `scannedOutBy`, `scanSource`
  *   (`live` = the dock's scan-out, `backfill` = a backdated stamp, null =
  *   never scanned out), the package's `carrier` / `service` /
  *   `labelCreatedAt` / `labelCost`, carrier `firstScanAt` / `lastEvent` /

@@ -23,7 +23,7 @@
  * label created, else the carrier's acceptance. The window reads one instant
  * per ORDER NUMBER, so both grains hold the same orders: shipped = the latest
  * hand-off, delivered = the latest delivery, ordered = the earliest
- * `COALESCE(order_date, created_at)` (85% of order_date is NULL), ship-by =
+ * `placedElseImportedSql` (85% of order_date is NULL), ship-by =
  * the earliest TEST deadline. Find (`q`) keeps every row of an order number
  * any row of which matches (order # incl. last 8 / chip face, tracking incl.
  * last 8 / key18, SKU, title, customer).
@@ -58,6 +58,7 @@ import {
   type CheckInOutcome,
   type OrderCheckInState,
 } from '@/lib/support/conversation/model';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 
 /** The window on one axis as instants (PT civil days resolved by the service); null = unbounded. */
 export interface FulfilledWindow {
@@ -334,7 +335,7 @@ export function buildFulfilledSql(orgId: OrgId, window: FulfilledWindow, q: stri
              NULLIF(o.account_source, '') AS channel,
              ${accountSourceAccountLabelSql('o')} AS channel_account_label,
              o.status,
-             COALESCE(o.order_date, o.created_at) AS ordered_at,
+             ${placedElseImportedSql('o')} AS ordered_at,
              CASE WHEN o.quantity ~ '^\\s*[0-9]+(\\.[0-9]+)?\\s*$' THEN BTRIM(o.quantity)::numeric END AS qty,
              o.sale_amount,
              COALESCE(NULLIF(BTRIM(cust.display_name), ''), NULLIF(BTRIM(cust.customer_name), ''), NULLIF(BTRIM(sor.customer_username), '')) AS customer,

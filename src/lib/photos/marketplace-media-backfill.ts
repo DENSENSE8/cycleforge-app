@@ -14,6 +14,7 @@ import { listConnections } from '@/lib/integrations/connectors/connections';
 import { productImageUrl } from './product-image-url';
 import { addPhotosToListingInTx } from './listing-photos';
 import { attachPhotoWithLegacyUrlInTx } from './service';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 
 export type MarketplaceProvider = 'amazon' | 'ebay' | 'shopify' | 'ecwid';
 
@@ -634,7 +635,7 @@ const ORDER_IMAGE_ROWS_SQL = `
          AND NULLIF(BTRIM(spi.platform_item_id), '') IS NOT NULL
     ) refs ON TRUE
    WHERE o.organization_id = $1
-     AND COALESCE(o.order_date, o.created_at) >= $2
+     AND ${placedElseImportedSql('o')} >= $2
    ORDER BY o.id`;
 
 async function loadOrderRows(orgId: OrgId, since: Date): Promise<OrderImageRow[]> {

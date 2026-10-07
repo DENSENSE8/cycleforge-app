@@ -17,6 +17,7 @@ import {
   plural,
   type OrderHubData,
 } from '@/lib/orders/order-hub';
+import { ORDER_DATE_LABEL, placedElseImported } from '@/lib/orders/order-dates';
 
 const words = (raw: string | null | undefined) => (raw ? raw.replace(/_/g, ' ').toLowerCase() : null);
 
@@ -99,7 +100,11 @@ function OrderInfoInner() {
                 value={work ? `${work.stock.ready} ready` : null}
                 hint={work && work.stock.received > 0 ? `${work.stock.received} received, not tested` : undefined}
               />
-              <DetailFact label="Ordered" value={formatOrderStamp(order.order_date ?? order.created_at) ?? null} />
+              <DetailFact
+                label={ORDER_DATE_LABEL.placed}
+                value={formatOrderStamp(placedElseImported(order)) ?? null}
+                hint={order.order_date ? undefined : `${ORDER_DATE_LABEL.imported} — the channel gave no placed date`}
+              />
               <DetailFact label="Notes" value={order.note_count > 0 ? plural(order.note_count, 'note') : 'None'} />
             </DetailFacts>
           </div>

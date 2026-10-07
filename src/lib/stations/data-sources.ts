@@ -1,6 +1,7 @@
 /** Data-source registry — named, typed read feeds an integration exposes to the station builder. */
 
 import type { DataSourceDefinition, DataSourceMeta, SourceRow, FieldDef, FilterDef } from './contract';
+import { ORDER_DATE_LABEL } from '@/lib/orders/order-dates';
 
 const registry = new Map<string, DataSourceDefinition>();
 
@@ -545,7 +546,7 @@ const ebayOpenOrders: DataSourceDefinition = {
     // source-platform slug — render as plain text, not the platform chip.
     { key: 'account', label: 'Account', kind: 'text' },
     { key: 'tracking_number', label: 'Tracking', kind: 'tracking_ref' },
-    { key: 'order_date', label: 'Ordered', kind: 'timestamp' },
+    { key: 'order_date', label: ORDER_DATE_LABEL.placed, kind: 'timestamp' },
   ],
   filters: [
     { key: 'open_only', label: 'Unshipped only', kind: 'boolean', default: true },

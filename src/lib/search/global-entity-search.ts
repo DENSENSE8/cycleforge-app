@@ -2,6 +2,7 @@
 
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { placedElseImported } from '@/lib/orders/order-dates';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
 import { looksLikeIdentifier, searchHitHref, skuRecordHref, toteRecordHref } from '@/lib/search/search-hit';
@@ -133,10 +134,8 @@ const ORDER_SEARCH_SELECT = `SELECT o.id,
 function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
   return rows.map((row: any) => {
     const serial = String(row.serial_number || '').trim() || null;
-    const happened =
-      row.order_date || row.created_at
-        ? new Date(row.order_date || row.created_at).toISOString()
-        : null;
+    const placedElseImportedAt = placedElseImported(row);
+    const happened = placedElseImportedAt ? new Date(placedElseImportedAt).toISOString() : null;
     return {
       id: Number(row.id),
       entityType: 'order' as const,

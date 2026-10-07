@@ -4,6 +4,8 @@
  * The query runner is `possible-duplicates-query.ts`.
  */
 
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
+
 export const DUPLICATE_WINDOW_DEFAULT_DAYS = 30;
 export const DUPLICATE_WINDOW_MAX_DAYS = 365;
 const DUPLICATE_MATCH_LIMIT = 20;
@@ -54,7 +56,7 @@ export function buildPossibleDuplicatesSql(
 ): { text: string; values: [string, number, number] } {
   const text = `
     WITH cur AS (
-      SELECT o.id, o.order_id, o.customer_id, COALESCE(o.order_date, o.created_at) AS placed_at
+      SELECT o.id, o.order_id, o.customer_id, ${placedElseImportedSql('o')} AS placed_at
         FROM orders o
        WHERE o.id = $2 AND o.organization_id = $1
     ),
@@ -69,7 +71,7 @@ export function buildPossibleDuplicatesSql(
     SELECT cur.placed_at AS this_order_date,
            o.id AS order_row_id,
            o.order_id AS order_number,
-           COALESCE(o.order_date, o.created_at) AS order_date,
+           ${placedElseImportedSql('o')} AS order_date,
            sc.sku AS catalog_sku,
            o.sku AS line_sku,
            o.quantity
@@ -83,11 +85,11 @@ export function buildPossibleDuplicatesSql(
        AND NULLIF(BTRIM(o.order_id), '') IS NOT NULL
        AND o.order_id IS DISTINCT FROM cur.order_id
        AND LOWER(COALESCE(o.status, '')) NOT IN ('cancelled', 'canceled')
-       AND COALESCE(o.order_date, o.created_at)
+       AND ${placedElseImportedSql('o')}
            BETWEEN cur.placed_at - make_interval(days => $3::int)
                AND cur.placed_at + make_interval(days => $3::int)
        AND ${skuKeySql('sc', 'o')} IN (SELECT sku_key FROM cur_keys WHERE sku_key <> '')
-     ORDER BY COALESCE(o.order_date, o.created_at) DESC, o.id DESC
+     ORDER BY ${placedElseImportedSql('o')} DESC, o.id DESC
      LIMIT ${DUPLICATE_MATCH_LIMIT}`;
   return { text, values: [orgId, orderRowId, days] };
 }

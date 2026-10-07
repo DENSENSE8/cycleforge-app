@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { ShipStationV1Order, ShipStationV1Store } from '@/lib/shipping/shipstation/orders-v1';
+import { shipStationV1Instant, type ShipStationV1Order, type ShipStationV1Store } from '@/lib/shipping/shipstation/orders-v1';
 import type { PlatformOf } from '@/lib/orders/order-source-match';
 import {
   attributeStore,
@@ -131,11 +131,28 @@ function existing(id: number, orderId: string, accountSource: string | null, ove
     status: 'unassigned',
     saleAmount: '10.00',
     currency: 'USD',
+    orderDate: '2026-09-20T17:00:00.000Z',
     ...over,
   };
 }
 
 const attributions = buildStoreAttributions(STORES, CATALOG);
+
+test('Placed: ShipStation v1 wall time is Pacific whatever the host zone; a row with no Placed is enriched', () => {
+  assert.equal(shipStationV1Instant('2026-09-20T10:00:00.0000000')?.toISOString(), '2026-09-20T17:00:00.000Z');
+  assert.equal(shipStationV1Instant('2026-01-20T10:00:00.0000000')?.toISOString(), '2026-01-20T18:00:00.000Z', 'PST in winter');
+  assert.equal(shipStationV1Instant('2026-09-20T10:00:00Z')?.toISOString(), '2026-09-20T10:00:00.000Z', 'an explicit offset is honoured');
+  assert.equal(shipStationV1Instant(''), null);
+
+  const idle = { storeId: 1, customerId: null, customerEmail: null, shipTo: null, customerUsername: null };
+  const { planned } = planShipStationOrders([order({ orderNumber: 'P1', ...idle })], {
+    attributions,
+    rowsByNumber: new Map([['P1', [existing(60, 'P1', 'amazon', { orderDate: null })]]]),
+    platformOf,
+    ignored: new Set(),
+  });
+  assert.equal(planned[0].plan.outcome, 'enrich', 'the blank Placed is filled from ShipStation');
+});
 
 function plan(orders: ShipStationV1Order[], rows: ExistingOrderRow[] = [], ignored: string[] = []) {
   const rowsByNumber = new Map<string, ExistingOrderRow[]>();

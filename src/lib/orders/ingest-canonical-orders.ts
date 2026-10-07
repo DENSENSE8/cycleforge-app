@@ -80,6 +80,8 @@ type OrderProjection = {
   // every re-sync rewrites the price (found live 2026-09-15).
   saleAmount?: string | null;
   currency?: string | null;
+  /** Placed — read so the backfill fills it only while blank. */
+  orderDate: Date | string | null;
 };
 
 export interface IngestCanonicalOrdersResult {
@@ -402,6 +404,7 @@ export async function ingestCanonicalOrders(
     // back, a source that carries a price would rewrite it on every sync.
     saleAmount: ordersTable.saleAmount,
     currency: ordersTable.currency,
+    orderDate: ordersTable.orderDate,
   } as const;
 
   const existingOrders = orgId
@@ -437,6 +440,7 @@ export async function ingestCanonicalOrders(
     // never sees a Decimal object it would stringify wrongly.
     saleAmount: order.saleAmount == null ? null : String(order.saleAmount),
     currency: order.currency ?? null,
+    orderDate: order.orderDate ?? null,
   });
 
   // Rows arrive newest-first, so the first sighting of an order id is latest.
@@ -761,6 +765,7 @@ export async function ingestCanonicalOrders(
           accountSource: order.accountSource,
           customerId,
           shipmentIds: shipmentIdList,
+          orderDate: order.orderDate,
         },
         { ...policy, statusAuthoritative: !!authoritative.status },
       );

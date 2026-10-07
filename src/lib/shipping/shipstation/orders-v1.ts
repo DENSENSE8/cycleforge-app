@@ -1,7 +1,9 @@
 /** ShipStation legacy v1 order client — the ORDER-DATA source. */
 
 import { z } from 'zod';
+import { fromZonedTime } from 'date-fns-tz';
 import type { ShipAddress, WeightUnit } from './types';
+import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 
 const DEFAULT_BASE_URL = process.env.SHIPSTATION_V1_BASE_URL ?? 'https://ssapi.shipstation.com';
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -15,6 +17,21 @@ class ShipStationV1Error extends Error {
   get isNotConnected(): boolean {
     return this.httpStatus === 401 || this.httpStatus === 403;
   }
+}
+
+/**
+ * A ShipStation v1 timestamp as the instant it names. v1 sends Pacific wall
+ * time with no offset (`2026-09-23T14:30:18.0870000`); `new Date()` would read
+ * it in the HOST zone, so the same order got a different Placed on a UTC
+ * server than on a Pacific laptop. A value that carries an offset is honoured.
+ */
+export function shipStationV1Instant(raw: string | null | undefined): Date | null {
+  const text = String(raw ?? '').trim();
+  if (!text) return null;
+  const at = /(Z|[+-]\d{2}:?\d{2})$/i.test(text)
+    ? new Date(text)
+    : fromZonedTime(text.replace(/(\.\d{3})\d+$/, '$1'), WAREHOUSE_TIME_ZONE);
+  return Number.isNaN(at.getTime()) ? null : at;
 }
 
 /** One line item on a v1 order. */

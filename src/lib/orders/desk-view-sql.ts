@@ -300,6 +300,7 @@ export function sqlDeskRefinementClauses(
   if (r.packedBy != null) out.push(`${signals?.packedBy ?? sqlOrderPackedByStaffId(o)} = ${paramRef(bind(r.packedBy))}`);
   if (r.pickerId != null) out.push(`${signals?.pickerId ?? sqlOrderPickAssigneeId(o)} = ${paramRef(bind(r.pickerId))}`);
   if (r.pickedBy != null) out.push(`${signals?.pickedBy ?? sqlOrderPickedById(o)} = ${paramRef(bind(r.pickedBy))}`);
+  // orderFrom/orderTo filter on Placed only (`order_date`) — no Imported fallback.
   if (r.orderFrom) out.push(sqlWarehouseDayOnOrAfter(`${o}.order_date`, bind(r.orderFrom)));
   if (r.orderTo) out.push(sqlWarehouseDayOnOrBefore(`${o}.order_date`, bind(r.orderTo)));
   // A NULL ship-by fails both comparisons, so either bound drops unscheduled orders.

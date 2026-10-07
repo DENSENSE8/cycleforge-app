@@ -20,6 +20,7 @@ import {
   type RawOrderLine,
   type RawPaperworkDoc,
 } from './print-queue';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 
 /**
  * Labels & docs › Orders (`GET /api/shipping/label-intake/orders`) — one row
@@ -133,7 +134,7 @@ const LINE_PHOTO_SQL = `COALESCE(
 const PACKET_TAIL_SQL = `,
   pk_heads AS (
     SELECT h.order_id, h.order_ref, o.account_source,
-           COALESCE(o.order_date, o.created_at) AS ordered_at, wa_deadline.deadline_at AS ship_by_at,
+           ${placedElseImportedSql('o')} AS ordered_at, wa_deadline.deadline_at AS ship_by_at,
            COALESCE(o.fulfillment_channel = '${PICKUP_FULFILLMENT_CHANNEL}', false) AS pickup,
            COALESCE(o.docs_not_required, false) AS docs_not_required,
            ARRAY_REMOVE(ARRAY[ss.ship_to->>'name', c.display_name, c.customer_name,

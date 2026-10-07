@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { isBuyerNoteSignals } from '@/lib/feature-flags';
+import { placedElseImported } from '@/lib/orders/order-dates';
 import { recordEntitySignal, type RecordEntitySignalInput, type RecordEntitySignalResult } from './record-entity-signal';
 
 export interface BuyerNoteCandidateRow {
@@ -83,7 +84,7 @@ export async function deriveBuyerNoteSignals(
         entityId: row.id,
         signalKind: 'buyer_note',
         notes: note,
-        occurredAt: row.order_date ?? row.created_at ?? null,
+        occurredAt: placedElseImported(row),
         sourceRef: buyerNoteSourceRef(row.id, note),
         meta: {
           accountSource: row.account_source,

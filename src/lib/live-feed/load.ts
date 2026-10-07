@@ -34,6 +34,7 @@ import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
 import { sqlTrackingNumberMatches } from '@/lib/search/order-tracking-match-sql';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import { sourcePlatformMeta, UNKNOWN_PLATFORM } from '@/lib/source-platform';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
@@ -87,7 +88,7 @@ const OPEN_STAGE_SQL = `CASE
           ELSE 'to_pick'
         END`;
 
-const ORDERED_AT_SQL = 'COALESCE(o.order_date, o.created_at)';
+const ORDERED_AT_SQL = placedElseImportedSql('o');
 const PACKED_AT_SQL = 'COALESCE(osf.pack_activity_at, osf.packed_at)';
 
 /** Facet keys — the sidebar's `carrier` / `channel` values (`readLiveFeedFilters` normalizes the URL the same way). */

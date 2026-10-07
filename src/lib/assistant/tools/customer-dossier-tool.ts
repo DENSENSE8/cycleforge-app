@@ -27,6 +27,7 @@ import { formatSearchSel } from '@/lib/search/search-selection';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQueryOneTrip } from '@/lib/tenancy/db';
 import type { AssistantToolDef } from './types';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 
 // ─── Query shape (pure) ──────────────────────────────────────────────────────
 
@@ -197,11 +198,11 @@ const DOSSIER_SQL = `WITH c AS (
 SELECT c.*,
   (SELECT COUNT(*)::int FROM orders o WHERE o.organization_id = $1 AND o.customer_id = c.id) AS order_count,
   (SELECT COALESCE(json_agg(x ORDER BY x.sort_at DESC NULLS LAST, x.id DESC), '[]'::json)
-     FROM (SELECT o.id, o.order_id, COALESCE(o.order_date, o.created_at)::text AS at, o.status,
-                  o.product_title, o.account_source, COALESCE(o.order_date, o.created_at) AS sort_at
+     FROM (SELECT o.id, o.order_id, ${placedElseImportedSql('o')}::text AS at, o.status,
+                  o.product_title, o.account_source, ${placedElseImportedSql('o')} AS sort_at
              FROM orders o
             WHERE o.organization_id = $1 AND o.customer_id = c.id
-            ORDER BY COALESCE(o.order_date, o.created_at) DESC NULLS LAST, o.id DESC
+            ORDER BY ${placedElseImportedSql('o')} DESC NULLS LAST, o.id DESC
             LIMIT ${ORDERS_SHOWN}) x) AS orders,
   (SELECT COALESCE(json_agg(t ORDER BY t.updated_at DESC NULLS LAST), '[]'::json)
      FROM (SELECT DISTINCT st.id, st.external_ticket_id, st.subject_cache, st.status_cache, st.updated_at

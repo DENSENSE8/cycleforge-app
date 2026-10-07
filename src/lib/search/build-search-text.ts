@@ -5,6 +5,7 @@ import {
   receivingSearchTitle,
 } from '@/lib/search/receiving-search-title';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
+import { placedElseImported } from '@/lib/orders/order-dates';
 
 export type SearchEntityType =
   | 'ORDER'
@@ -168,7 +169,7 @@ function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
       trackingNumber: strOrNull(row.tracking_number),
       carrier: strOrNull(row.carrier),
       serialNumber: null,
-      happenedAt: dateOrNull(row.order_date, row.created_at),
+      happenedAt: dateOrNull(placedElseImported(row)),
       brandId: idOrNull(row.brand_id),
     },
   };

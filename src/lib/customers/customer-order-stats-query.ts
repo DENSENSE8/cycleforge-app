@@ -9,6 +9,7 @@ import {
   type CustomerOrderStats,
   type CustomerSpendByCurrency,
 } from './customer-order-stats';
+import { placedElseImportedSql } from '@/lib/orders/order-dates';
 
 type StatsRow = Pick<CustomerRecord, 'id' | 'email' | 'display_name' | 'customer_name' | 'first_name' | 'last_name'> & {
   order_count: number;
@@ -34,7 +35,7 @@ export async function getCustomerOrderStats(customerId: number, orgId: OrgId): P
     orgId,
     `WITH lines AS (
        SELECT COALESCE(NULLIF(BTRIM(o.order_id), ''), 'row:' || o.id) AS order_key,
-              COALESCE(o.order_date, o.created_at) AS placed_at,
+              ${placedElseImportedSql('o')} AS placed_at,
               o.sale_amount,
               o.currency
          FROM orders o
