@@ -170,8 +170,10 @@ export function locateRecordLine(line: RecordLineRow, nowMs: number): Located {
             resolveReceivingLineStatus(line.lineStatus, line.workflowStatus) === 'RECEIVED',
         });
 
-  // External: the carrier status of the line's packages (the one furthest behind / needing a person).
-  const statuses = line.packages.map((pkg) => carrierStatusOfCategory(pkg.category));
+  // External: the carrier status of the line's packages (the one furthest behind / needing a person). A package
+  // marked delivered with no carrier category (a dock scan closed it, `reconcile-delivered.ts`) is Delivered — the
+  // fact the Fulfilled buckets read too (`fulfilledPackageBucket`).
+  const statuses = line.packages.map((pkg) => carrierStatusOfCategory(pkg.category) ?? (pkg.deliveredAt ? 'delivered' : null));
   const external = leadStatus(
     CARRIER_STATUS,
     statuses.filter((status): status is CarrierStatus => status !== null),

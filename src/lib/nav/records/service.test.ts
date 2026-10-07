@@ -173,6 +173,10 @@ test('every line reads its Internal and External status through record-status', 
     inLine({ recordId: 503, unboxedAt: '2026-10-04T18:00:00Z' }),
     inLine({ recordId: 504, unitsReceived: 3, packages: [pkg({ shipmentId: 9, category: 'DELIVERED', deliveredAt: '2026-10-02T20:00:00Z' })] }),
     inLine({ recordId: 505, lineStatus: null, workflowStatus: 'AWAITING_TEST' }),
+    // Marked delivered by a dock scan, the carrier never polled: no category, still Delivered.
+    outLine({ recordId: 6, scannedOut: true, packages: [pkg({ category: null, statusLabel: null, deliveredAt: '2026-10-02T18:00:00Z' })] }),
+    // No category and not delivered: no carrier status at all.
+    outLine({ recordId: 7, scannedOut: true, packages: [pkg({ category: null, statusLabel: null })] }),
   ]);
   const status = (key: string) => [byKey(body, key).facts!.internalStatus, byKey(body, key).facts!.externalStatus ?? null];
   assert.deepEqual(status('out:1'), ['packed', null]);
@@ -185,6 +189,8 @@ test('every line reads its Internal and External status through record-status', 
   assert.deepEqual(status('in:503'), ['unboxed', 'in_transit']);
   assert.deepEqual(status('in:504'), ['received', 'delivered']);
   assert.deepEqual(status('in:505'), ['received', 'in_transit']);
+  assert.deepEqual(status('out:6'), ['scanned_out', 'delivered']);
+  assert.deepEqual(status('out:7'), ['scanned_out', null]);
   // The bucket is the internal status; the detail the carrier's words.
   assert.deepEqual(byKey(body, 'out:1').buckets, ['packed']);
   assert.equal(byKey(body, 'in:502').detail, 'Departed facility');
