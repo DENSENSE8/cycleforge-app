@@ -184,7 +184,7 @@ export const FULFILLED_COLUMNS: readonly PastedListColumn[] = [
   // The journey clock: time in the status against its threshold. Not sortable — the sheet's order is the server's.
   { key: 'clock', width: 'minmax(6rem, 6rem)', label: 'Clock', gridLabel: 'Clock', type: 'text', sortable: false, tier: 'core', headerForceLabel: true },
   { key: 'scannedOut', width: 'minmax(10rem, 10rem)', label: 'Scanned out', gridLabel: 'Scanned out', type: 'date', sortable: false, tier: 'core', headerForceLabel: true },
-  { key: 'scannedOutBy', width: 'minmax(7.5rem, 7.5rem)', label: 'Scanned out by', gridLabel: 'By', type: 'text', sortable: false, tier: 'core', headerForceLabel: true },
+  { key: 'scannedOutBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Scanned out by', gridLabel: 'By', type: 'text', sortable: false, tier: 'core', headerForceLabel: true },
   { key: 'carrier', width: 'minmax(5rem, 5rem)', label: 'Carrier', gridLabel: 'Carrier', type: 'text', sortable: false, tier: 'core' },
   { key: 'tracking', width: 'minmax(7.5rem, 7.5rem)', label: 'Tracking', gridLabel: 'Tracking', type: 'text', sortable: false, tier: 'core' },
   { key: 'lastEvent', width: 'minmax(14rem, 14rem)', label: 'Last carrier event', gridLabel: 'Last event', type: 'text', sortable: false, tier: 'core' },
@@ -198,7 +198,7 @@ export const FULFILLED_COLUMNS: readonly PastedListColumn[] = [
   { key: 'ordered', width: 'minmax(7.75rem, 7.75rem)', label: 'Ordered', gridLabel: 'Ordered', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
   { key: 'shipBy', width: 'minmax(5.5rem, 5.5rem)', label: 'Ship by', gridLabel: 'Ship by', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
   { key: 'packed', width: 'minmax(7.75rem, 7.75rem)', label: 'Packed', gridLabel: 'Packed', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
-  { key: 'packer', width: 'minmax(7.5rem, 7.5rem)', label: 'Packed by', gridLabel: 'Packer', type: 'text', sortable: false, tier: 'optional' },
+  { key: 'packer', width: 'minmax(12.5rem, 12.5rem)', label: 'Packed by', gridLabel: 'Packer', type: 'text', sortable: false, tier: 'optional' },
   { key: 'scanSource', width: 'minmax(6rem, 6rem)', label: 'Scan source', gridLabel: 'Scan', type: 'text', sortable: false, tier: 'optional', headerForceLabel: true },
   { key: 'firstScan', width: 'minmax(7.75rem, 7.75rem)', label: 'First carrier scan', gridLabel: 'First scan', type: 'date', sortable: false, tier: 'optional', headerForceLabel: true },
   { key: 'transitDays', width: 'minmax(4.5rem, 4.5rem)', label: 'Days in transit', gridLabel: 'Transit', type: 'number', align: 'end', sortable: false, tier: 'optional', headerForceLabel: true },
@@ -239,11 +239,12 @@ export const RECORDS_COLUMNS: readonly PastedListColumn[] = [
   { key: 'placed', width: 'minmax(7.75rem, 7.75rem)', label: 'Placed', gridLabel: 'Placed', type: 'date', headerForceLabel: true },
   { key: 'imported', width: 'minmax(7.75rem, 7.75rem)', label: 'Imported', gridLabel: 'Imported', type: 'date', headerForceLabel: true },
   { key: 'shipBy', width: 'minmax(5.5rem, 5.5rem)', label: 'Ship by', gridLabel: 'Ship by', type: 'date', headerForceLabel: true },
-  { key: 'pickedBy', width: 'minmax(7.5rem, 7.5rem)', label: 'Picked by', gridLabel: 'Picked by', type: 'text', headerForceLabel: true },
-  { key: 'packer', width: 'minmax(7.5rem, 7.5rem)', label: 'Packed by', gridLabel: 'Packed by', type: 'text', headerForceLabel: true },
-  { key: 'scannedOutBy', width: 'minmax(7.5rem, 7.5rem)', label: 'Scanned out by', gridLabel: 'Scanned out by', type: 'text', headerForceLabel: true },
-  { key: 'unboxedBy', width: 'minmax(7.5rem, 7.5rem)', label: 'Unboxed by', gridLabel: 'Unboxed by', type: 'text', headerForceLabel: true },
-  { key: 'receivedBy', width: 'minmax(7.5rem, 7.5rem)', label: 'Received by', gridLabel: 'Received by', type: 'text', headerForceLabel: true },
+  // "… by" = when, then who ("Oct 6, 2:14 PM · (avatar) Kai").
+  { key: 'pickedBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Picked by', gridLabel: 'Picked by', type: 'text', headerForceLabel: true },
+  { key: 'packer', width: 'minmax(12.5rem, 12.5rem)', label: 'Packed by', gridLabel: 'Packed by', type: 'text', headerForceLabel: true },
+  { key: 'scannedOutBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Scanned out by', gridLabel: 'Scanned out by', type: 'text', headerForceLabel: true },
+  { key: 'unboxedBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Unboxed by', gridLabel: 'Unboxed by', type: 'text', headerForceLabel: true },
+  { key: 'receivedBy', width: 'minmax(12.5rem, 12.5rem)', label: 'Received by', gridLabel: 'Received by', type: 'text', headerForceLabel: true },
   { key: 'carrier', width: 'minmax(5rem, 5rem)', label: 'Carrier', gridLabel: 'Carrier', type: 'text' },
   { key: 'service', width: 'minmax(8rem, 8rem)', label: 'Carrier service', gridLabel: 'Service', type: 'text' },
   { key: 'eta', width: 'minmax(5.5rem, 5.5rem)', label: 'Estimated delivery', gridLabel: 'ETA', type: 'date', headerForceLabel: true },
@@ -267,6 +268,9 @@ function productOf(row: PastedListRow): string {
 const day = (value: string | null | undefined): string => (value ? shortDay(value) : '');
 /** An instant as the house's dense ledger face, warehouse time: "Sep 9, 2:14 PM". */
 const instant = (value: string | null | undefined): string => (value ? formatMonthDayTimePST(value) : '');
+/** A "… by" cell as text — when, then who (the row's face, `StaffAt`); '' when nobody did it. */
+const staffAt = (staff: { name: string | null } | null | undefined, at: string | null | undefined): string =>
+  staff?.name ? [instant(at), staff.name].filter(Boolean).join(' · ') : '';
 
 const DAY_MS = 86_400_000;
 
@@ -348,7 +352,7 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
     case 'shipped':
       return instant(facts?.shippedAt);
     case 'packer':
-      return facts?.packer?.name ?? '';
+      return staffAt(facts?.packer, facts?.packedAt);
     case 'unboxed':
       return facts?.unboxedAt ? [instant(facts.unboxedAt), facts.unboxedBy?.name].filter(Boolean).join(' · ') : '';
     case 'units':
@@ -371,7 +375,7 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
       if (facts.scanSource === null) return FULFILLED_SCAN_LABEL.none;
       return [instant(facts.shippedAt), facts.scanSource === 'backfill' ? FULFILLED_SCAN_LABEL.backfill : null].filter(Boolean).join(' · ');
     case 'scannedOutBy':
-      return facts?.scannedOutBy?.name ?? '';
+      return staffAt(facts?.scannedOutBy, facts?.shippedAt);
     case 'carrier':
       return facts?.carrier ?? '';
     case 'lastEvent': {
@@ -437,11 +441,11 @@ export function pastedListCellText(row: PastedListRow, key: PastedListColumnKey)
     case 'placed':
       return instant(facts?.placedAt);
     case 'pickedBy':
-      return facts?.pickedBy?.name ?? '';
+      return staffAt(facts?.pickedBy, facts?.pickedAt);
     case 'unboxedBy':
-      return facts?.unboxedBy?.name ?? '';
+      return staffAt(facts?.unboxedBy, facts?.unboxedAt);
     case 'receivedBy':
-      return facts?.receivedBy?.name ?? '';
+      return staffAt(facts?.receivedBy, facts?.receivedAt);
     case 'internal':
       // A pasted number that matched nothing says so here (`detail` = "Not found").
       return recordStatusOf(row, 'internal')?.label ?? (facts ? '' : (entry.detail ?? ''));
@@ -524,8 +528,30 @@ export const PASTED_LIST_CAPABILITIES: GridSurfaceCapabilities = {
 /** The Records sheet: rows are checked (the selection dock) and Order # / Tracking edit in place. */
 export const RECORDS_CAPABILITIES: GridSurfaceCapabilities = { ...PASTED_LIST_CAPABILITIES, multiSelect: true, inCellEdit: true };
 
-/** Records: every track always mounted (a filter never makes columns jump). */
-export const RECORDS_COLUMN_SET: PastedListColumnSet = { all: RECORDS_COLUMNS, mount: () => RECORDS_COLUMNS, capabilities: RECORDS_CAPABILITIES };
+/** Always mounted on Records: the check, the identifiers, what the line is, and its two statuses. */
+const RECORDS_STRUCTURAL: Readonly<Partial<Record<PastedListColumnKey, true>>> = {
+  select: true,
+  order: true,
+  tracking: true,
+  type: true,
+  item: true,
+  internal: true,
+  external: true,
+};
+
+/**
+ * Records mounts what the LOADED list carries (operator 2026-10-07): an
+ * all-inbound list never shows Ship by / Picked by / Packed by / Scanned out
+ * by; an all-outbound one never shows Unboxed by / Received by. The rows are
+ * the server's answer to the sidebar's filters, so a filter that changes the
+ * mix changes the columns; Find (client-side) never does.
+ */
+export const RECORDS_COLUMN_SET: PastedListColumnSet = {
+  all: RECORDS_COLUMNS,
+  mount: (rows) =>
+    RECORDS_COLUMNS.filter((column) => RECORDS_STRUCTURAL[column.key] || rows.some((row) => pastedListCellText(row, column.key) !== '')),
+  capabilities: RECORDS_CAPABILITIES,
+};
 
 /** Which header keys sort, and which sort descending on their first press. Default: the pasted list's. */
 export interface PastedListHeaderSort {

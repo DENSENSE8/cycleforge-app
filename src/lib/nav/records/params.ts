@@ -69,7 +69,36 @@ export const RECORDS_EVENT_TO_PARAM = 'eto';
 /** Sort — the sidebar's Sort row and the header clicks (the house column-sort params). */
 export const RECORDS_SORT_PARAM = GRID_COLUMN_SORT_PARAM;
 export const RECORDS_DIR_PARAM = GRID_COLUMN_DIR_PARAM;
-export const RECORDS_SORTS = ['pasted', 'internal', 'external', 'date', 'staff', 'platform', 'party', 'price', 'overdue'] as const;
+/** The views' orders — the sidebar's own words for the ways a list is worked. */
+const RECORDS_VIEW_SORTS = ['pasted', 'internal', 'external', 'date', 'staff', 'platform', 'party', 'price', 'overdue'] as const;
+/**
+ * One sort per remaining column, so every header sorts (operator 2026-10-07).
+ * Each reads the same value the column paints; staff columns sort by name.
+ */
+export const RECORDS_COLUMN_SORTS = [
+  'order',
+  'tracking',
+  'type',
+  'item',
+  'sku',
+  'qty',
+  'unit',
+  'order_total',
+  'placed',
+  'imported',
+  'ship_by',
+  'picked_by',
+  'packed_by',
+  'scanned_out_by',
+  'unboxed_by',
+  'received_by',
+  'carrier',
+  'service',
+  'eta',
+  'last_event',
+] as const;
+export type RecordsColumnSort = (typeof RECORDS_COLUMN_SORTS)[number];
+export const RECORDS_SORTS = [...RECORDS_VIEW_SORTS, ...RECORDS_COLUMN_SORTS] as const;
 export type RecordsSort = (typeof RECORDS_SORTS)[number];
 export const RECORDS_SORT_LABEL: Readonly<Record<RecordsSort, string>> = {
   pasted: 'As pasted',
@@ -81,6 +110,26 @@ export const RECORDS_SORT_LABEL: Readonly<Record<RecordsSort, string>> = {
   party: 'Buyer / vendor, A to Z',
   price: 'Price, highest first',
   overdue: 'Most over its time limit first',
+  order: 'Order number',
+  tracking: 'Tracking',
+  type: 'Type',
+  item: 'Item, A to Z',
+  sku: 'SKU, A to Z',
+  qty: 'Quantity, most first',
+  unit: 'Unit price, highest first',
+  order_total: 'Order total, highest first',
+  placed: 'Placed, newest first',
+  imported: 'Imported, newest first',
+  ship_by: 'Ship by, soonest first',
+  picked_by: 'Picked by',
+  packed_by: 'Packed by',
+  scanned_out_by: 'Scanned out by',
+  unboxed_by: 'Unboxed by',
+  received_by: 'Received by',
+  carrier: 'Carrier',
+  service: 'Carrier service',
+  eta: 'Estimated delivery, soonest first',
+  last_event: 'Last carrier event, newest first',
 };
 /** Each sort's direction when `dir` is absent. */
 export const RECORDS_SORT_DIR: Readonly<Record<RecordsSort, 'asc' | 'desc'>> = {
@@ -93,6 +142,26 @@ export const RECORDS_SORT_DIR: Readonly<Record<RecordsSort, 'asc' | 'desc'>> = {
   party: 'asc',
   price: 'desc',
   overdue: 'desc',
+  order: 'asc',
+  tracking: 'asc',
+  type: 'asc',
+  item: 'asc',
+  sku: 'asc',
+  qty: 'desc',
+  unit: 'desc',
+  order_total: 'desc',
+  placed: 'desc',
+  imported: 'desc',
+  ship_by: 'asc',
+  picked_by: 'asc',
+  packed_by: 'asc',
+  scanned_out_by: 'asc',
+  unboxed_by: 'asc',
+  received_by: 'asc',
+  carrier: 'asc',
+  service: 'asc',
+  eta: 'asc',
+  last_event: 'desc',
 };
 
 /** Price bands — the Price facet (include / exclude, counted). Bounds in dollars on the LINE total, [min, max). */

@@ -72,9 +72,6 @@ export const SHEET_HEADER = cn(
   '[&_[role=columnheader]]:px-[calc(0.25rem*var(--cf-density,1))] [&_[role=columnheader]]:py-0',
 );
 
-/** The first paint's cascade runs this long; rows that mount later (scrolled in, filtered in) arrive as they are. */
-const CASCADE_WINDOW_MS = 900;
-
 /** Shift+arrow → how the range's focus corner moves (rows, columns). */
 const ARROW_STEP: Readonly<Record<string, readonly [number, number]>> = {
   ArrowUp: [-1, 0],
@@ -205,11 +202,6 @@ export function PastedListSheet({
   const mounted = useMemo(() => columns.mount(allRows), [columns, allRows]);
   const sheet = useSheetColumns(layoutKey, mounted);
   const [cursor, setCursor] = useState(0);
-  const [cascade, setCascade] = useState(true);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setCascade(false), CASCADE_WINDOW_MS);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   const needle = query.trim().toLowerCase();
   const lines = useMemo(
@@ -622,7 +614,6 @@ export function PastedListSheet({
         index={index}
         columns={visible}
         lit={index === safeCursor}
-        cascade={cascade}
         range={slice}
         flash={flash?.row === index ? flash : null}
         onPoint={() => setCursor(index)}

@@ -444,6 +444,7 @@ function staffName(row: Located, event: RecordsQuery['event']): string | null {
 function sortRecords(rows: readonly Located[], query: Pick<RecordsQuery, 'sort' | 'dir' | 'axis' | 'event' | 'refs'>): Located[] {
   const sort: RecordsSort = query.sort === 'pasted' && query.refs.length === 0 ? 'date' : query.sort;
   const key = (row: Located): SortValue => {
+    const facts = row.entry.facts;
     switch (sort) {
       case 'pasted':
         return row.line.matchedRefs[0] ?? null;
@@ -463,6 +464,47 @@ function sortRecords(rows: readonly Located[], query: Pick<RecordsQuery, 'sort' 
         return row.line.lineTotal;
       case 'overdue':
         return row.overdueMs;
+      // One per column — the value the column paints (`RECORDS_COLUMN_SORTS`).
+      case 'order':
+        return facts.orderNumber ?? row.entry.ref;
+      case 'tracking':
+        return facts.tracking ?? null;
+      case 'type':
+        return facts.direction ?? null;
+      case 'item':
+        return facts.title ?? null;
+      case 'sku':
+        return facts.sku ?? null;
+      case 'qty':
+        return facts.qty ?? null;
+      case 'unit':
+        return facts.unitPrice ?? null;
+      case 'order_total':
+        return facts.orderTotal ?? null;
+      case 'placed':
+        return instant(facts.placedAt);
+      case 'imported':
+        return instant(facts.importedAt);
+      case 'ship_by':
+        return instant(facts.shipBy);
+      case 'picked_by':
+        return facts.pickedBy?.name ?? null;
+      case 'packed_by':
+        return facts.packer?.name ?? null;
+      case 'scanned_out_by':
+        return facts.scannedOutBy?.name ?? null;
+      case 'unboxed_by':
+        return facts.unboxedBy?.name ?? null;
+      case 'received_by':
+        return facts.receivedBy?.name ?? null;
+      case 'carrier':
+        return facts.carrier ?? null;
+      case 'service':
+        return facts.service ?? null;
+      case 'eta':
+        return instant(facts.eta);
+      case 'last_event':
+        return instant(facts.lastEvent?.at);
     }
   };
   const sign = query.dir === 'asc' ? 1 : -1;

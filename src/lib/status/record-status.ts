@@ -59,6 +59,13 @@ export interface RecordStatusToneClasses {
   dot: string;
   /** Ink on white. */
   ink: string;
+  /**
+   * The whole-cell fill a sheet's status column paints under default
+   * (black) text — one step deeper than the pill ground so the hue fills
+   * the cell (operator 2026-10-07). `*-100` is re-stepped for dark mode in
+   * `src/styles/globals.css`.
+   */
+  cell: string;
 }
 
 /**
@@ -74,31 +81,35 @@ export const RECORD_STATUS_TONE_CLASSES: Readonly<Record<RecordStatusTone, Recor
     border: 'border-border-soft',
     dot: 'bg-text-faint',
     ink: 'text-text-secondary',
+    cell: 'bg-surface-sunken',
   },
-  blue: { pill: 'bg-blue-50 text-blue-700', ring: 'ring-blue-200', border: 'border-blue-200', dot: 'bg-blue-500', ink: 'text-blue-700' },
-  sky: { pill: 'bg-sky-50 text-sky-700', ring: 'ring-sky-200', border: 'border-sky-200', dot: 'bg-sky-500', ink: 'text-sky-700' },
+  blue: { pill: 'bg-blue-50 text-blue-700', ring: 'ring-blue-200', border: 'border-blue-200', dot: 'bg-blue-500', ink: 'text-blue-700', cell: 'bg-blue-100' },
+  sky: { pill: 'bg-sky-50 text-sky-700', ring: 'ring-sky-200', border: 'border-sky-200', dot: 'bg-sky-500', ink: 'text-sky-700', cell: 'bg-sky-100' },
   yellow: {
     pill: 'bg-yellow-50 text-yellow-700',
     ring: 'ring-yellow-200',
     border: 'border-yellow-200',
     dot: 'bg-yellow-500',
     ink: 'text-yellow-700',
+    cell: 'bg-yellow-100',
   },
-  teal: { pill: 'bg-teal-50 text-teal-700', ring: 'ring-teal-200', border: 'border-teal-200', dot: 'bg-teal-500', ink: 'text-teal-700' },
+  teal: { pill: 'bg-teal-50 text-teal-700', ring: 'ring-teal-200', border: 'border-teal-200', dot: 'bg-teal-500', ink: 'text-teal-700', cell: 'bg-teal-100' },
   green: {
     pill: 'bg-emerald-50 text-emerald-700',
     ring: 'ring-emerald-200',
     border: 'border-emerald-200',
     dot: 'bg-emerald-500',
     ink: 'text-emerald-700',
+    cell: 'bg-emerald-100',
   },
-  red: { pill: 'bg-red-50 text-red-700', ring: 'ring-red-200', border: 'border-red-200', dot: 'bg-red-500', ink: 'text-red-700' },
+  red: { pill: 'bg-red-50 text-red-700', ring: 'ring-red-200', border: 'border-red-200', dot: 'bg-red-500', ink: 'text-red-700', cell: 'bg-red-100' },
   orange: {
     pill: 'bg-orange-50 text-orange-700',
     ring: 'ring-orange-200',
     border: 'border-orange-200',
     dot: 'bg-orange-500',
     ink: 'text-orange-700',
+    cell: 'bg-orange-100',
   },
   violet: {
     pill: 'bg-violet-50 text-violet-700',
@@ -106,6 +117,7 @@ export const RECORD_STATUS_TONE_CLASSES: Readonly<Record<RecordStatusTone, Recor
     border: 'border-violet-200',
     dot: 'bg-violet-500',
     ink: 'text-violet-700',
+    cell: 'bg-violet-100',
   },
 };
 

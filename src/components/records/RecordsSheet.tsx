@@ -49,13 +49,33 @@ const SELECTION_SCOPE = 'records-sheet';
 const IDENTIFIERS: readonly PastedListColumnKey[] = ['order', 'tracking'];
 const NO_EDIT: readonly PastedListColumnKey[] = [];
 
-/** Header → the sidebar's Sort (`RECORDS_SORTS`), first press in that sort's own direction. */
+/** Header → the sidebar's Sort (`RECORDS_SORTS`), first press in that sort's own direction. Every column but the check sorts. */
 const SORT_BY: Readonly<Partial<Record<PastedListColumnKey, RecordsSort>>> = {
-  internal: 'internal',
-  external: 'external',
+  order: 'order',
+  tracking: 'tracking',
+  type: 'type',
+  item: 'item',
+  sku: 'sku',
+  qty: 'qty',
+  unitPrice: 'unit',
+  lineTotal: 'price',
+  orderTotal: 'order_total',
   channel: 'platform',
   party: 'party',
-  lineTotal: 'price',
+  placed: 'placed',
+  imported: 'imported',
+  shipBy: 'ship_by',
+  pickedBy: 'picked_by',
+  packer: 'packed_by',
+  scannedOutBy: 'scanned_out_by',
+  unboxedBy: 'unboxed_by',
+  receivedBy: 'received_by',
+  carrier: 'carrier',
+  service: 'service',
+  eta: 'eta',
+  lastEvent: 'last_event',
+  internal: 'internal',
+  external: 'external',
 };
 const SORTABLE = Object.fromEntries(Object.entries(SORT_BY).map(([key, sort]) => [key, RECORDS_SORT_DIR[sort]])) as Readonly<
   Partial<Record<PastedListColumnKey, 'asc' | 'desc'>>

@@ -10,9 +10,9 @@
  * on the cursor row.
  */
 
-import { memo, useState } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { motionDuration, motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
+import { motionPresence, motionTransition } from '@/design-system/foundations/motion-presets';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-presets-hooks';
 import { LedgerGridLeafRow, gridCellAlignClass } from '@/design-system/components/grid';
 import { LEDGER_GRID_FROZEN_CELL, ledgerGridCell } from '@/design-system/components/grid/grid-cell-chrome';
@@ -50,12 +50,13 @@ import {
 /** A small marker beside a cell's value (×2 pasted, Backfill). */
 const CELL_MARKER = 'shrink-0 rounded-sm bg-surface-sunken px-1 text-role-micro font-medium text-text-muted';
 
-/** A sheet cell: 4px side pad and 2px top/bottom at 100%, scaled by the sheet's zoom (`--cf-density`); one line. */
+/**
+ * A sheet cell: 4px side pad, one line, and ONE row height for every row —
+ * the staff avatar's (owner 2026-10-07: a row never grows or shrinks with
+ * what it holds). All scaled by the sheet's zoom (`--cf-density`).
+ */
 export const PASTED_LIST_CELL =
-  'whitespace-nowrap px-[calc(0.25rem*var(--cf-density,1))] py-[calc(0.125rem*var(--cf-density,1))]';
-
-/** Rows past this one arrive together — the cascade never makes the tail wait. */
-const CASCADE_ROWS = 14;
+  'whitespace-nowrap px-[calc(0.25rem*var(--cf-density,1))] h-[calc(1.5rem*var(--cf-density,1))]';
 
 /** Dock-to-stock: amber from 2 days delivered and not unboxed, red from 5. */
 function waitTone(days: number): string {
@@ -85,8 +86,19 @@ export function rangeEdgeShadow(slice: RowRangeSlice, index: number): string | u
   return parts.length > 0 ? parts.join(', ') : undefined;
 }
 
-/** A Records status pill — the record-status tone's light ground + dark ink (`RECORD_STATUS_TONE_CLASSES`). */
-const STATUS_PILL = 'inline-flex min-w-0 max-w-full items-center truncate rounded-mode-pill px-1.5 text-role-micro font-semibold';
+/** A status cell's word — default ink over the tone's whole-cell fill (`RECORD_STATUS_TONE_CLASSES[tone].cell`). */
+const STATUS_WORD = 'relative min-w-0 truncate text-role-caption font-semibold text-text-default';
+
+/** Who did a step, and when: the instant (warehouse time) then the staffer — one face for every "… by" column. */
+function StaffAt({ staff, at }: { staff: { id: number | null; name: string | null } | null | undefined; at: string | null | undefined }): ReactNode {
+  if (!staff) return <GridCellDash />;
+  return (
+    <span className="flex min-w-0 items-center gap-1">
+      {at ? <span className="shrink-0 tabular-nums text-text-muted">{formatMonthDayTimePST(at)}</span> : null}
+      <StaffCell staffId={staff.id} name={staff.name} />
+    </span>
+  );
+}
 
 /** A hover verb inside a cell (edit, open), revealed on the row's hover; a press never reaches the cell's copy. */
 const CELL_VERB = 'hidden size-5 shrink-0 place-content-center rounded-full text-text-muted hover:text-text-default group-hover/row:grid';
@@ -125,7 +137,6 @@ export const PastedListGridRow = memo(function PastedListGridRow({
   index,
   columns,
   lit,
-  cascade,
   range,
   flash,
   onPoint,
@@ -136,13 +147,11 @@ export const PastedListGridRow = memo(function PastedListGridRow({
   edit,
 }: {
   row: PastedListRow;
-  /** Position in the shown list (the cascade step, and the range's row index). */
+  /** Position in the shown list (the range's row index). */
   index: number;
   columns: readonly PastedListColumn[];
   /** The keyboard cursor. */
   lit: boolean;
-  /** First paint of the page: rows settle in top → bottom. */
-  cascade: boolean;
   /** The selected cells on this row, or null. */
   range: RowRangeSlice | null;
   /** The cell just copied (a fading wash), `n` restarts it. */
@@ -159,8 +168,6 @@ export const PastedListGridRow = memo(function PastedListGridRow({
   /** In-place identifier edit; absent = read-only. */
   edit?: RowCellEdit;
 }) {
-  const presence = useMotionPresence(motionPresence.findListRow);
-  const settle = useMotionTransition(motionTransition.findListRow);
   const washPresence = useMotionPresence(motionPresence.findCellCopied);
   const wash = useMotionTransition(motionTransition.findCellCopied);
   const { entry, position, primary } = row.view;
@@ -289,14 +296,20 @@ export const PastedListGridRow = memo(function PastedListGridRow({
       case 'external': {
         const status = recordStatusOf(row, key);
         if (!status) return text ? <span className="min-w-0 truncate text-text-faint">{text}</span> : <GridCellDash />;
-        return <span className={cn(STATUS_PILL, RECORD_STATUS_TONE_CLASSES[status.tone].pill)}>{status.label}</span>;
+        // The tone fills the whole cell; the word stays default ink (operator 2026-10-07).
+        return (
+          <>
+            <span aria-hidden data-status-fill={status.tone} className={cn('pointer-events-none absolute inset-0', RECORD_STATUS_TONE_CLASSES[status.tone].cell)} />
+            <span className={STATUS_WORD}>{status.label}</span>
+          </>
+        );
       }
       case 'pickedBy':
-        return facts?.pickedBy ? <StaffCell staffId={facts.pickedBy.id} name={facts.pickedBy.name} /> : <GridCellDash />;
+        return <StaffAt staff={facts?.pickedBy} at={facts?.pickedAt} />;
       case 'unboxedBy':
-        return facts?.unboxedBy ? <StaffCell staffId={facts.unboxedBy.id} name={facts.unboxedBy.name} /> : <GridCellDash />;
+        return <StaffAt staff={facts?.unboxedBy} at={facts?.unboxedAt} />;
       case 'receivedBy':
-        return facts?.receivedBy ? <StaffCell staffId={facts.receivedBy.id} name={facts.receivedBy.name} /> : <GridCellDash />;
+        return <StaffAt staff={facts?.receivedBy} at={facts?.receivedAt} />;
       case 'scannedOut':
         if (!text) return <GridCellDash />;
         if (facts?.scanSource == null) return <span className="min-w-0 truncate text-text-faint">{text}</span>;
@@ -311,7 +324,7 @@ export const PastedListGridRow = memo(function PastedListGridRow({
           </span>
         );
       case 'scannedOutBy':
-        return facts?.scannedOutBy ? <StaffCell staffId={facts.scannedOutBy.id} name={facts.scannedOutBy.name} /> : <GridCellDash />;
+        return <StaffAt staff={facts?.scannedOutBy} at={facts?.shippedAt} />;
       case 'lastEvent': {
         const said = lastCarrierEventText(row);
         if (!said) return <GridCellDash />;
@@ -337,7 +350,7 @@ export const PastedListGridRow = memo(function PastedListGridRow({
           <GridCellDash />
         );
       case 'packer':
-        return facts?.packer ? <StaffCell staffId={facts.packer.id} name={facts.packer.name} /> : <GridCellDash />;
+        return <StaffAt staff={facts?.packer} at={facts?.packedAt} />;
       case 'units':
         return facts?.units && text ? <PastedListUnits facts={facts} /> : <GridCellDash />;
       case 'detail': {
@@ -402,22 +415,27 @@ export const PastedListGridRow = memo(function PastedListGridRow({
               (frozen || frozenEnd) && LEDGER_GRID_FROZEN_CELL,
               'min-w-0 text-role-caption text-text-default',
               (col.key === 'ref' || col.key === 'order') && 'font-mono font-semibold',
-              // The staff accent's selection tint (it matches the range's accent outline); the anchor a step stronger.
-              // A gradient LAYER, not a background colour: a frozen cell keeps its opaque fill under the tint.
-              inRange && 'bg-gradient-to-r',
-              inRange && (range.anchorCol === at ? 'from-accent-bg/20 to-accent-bg/20' : 'from-accent-bg/10 to-accent-bg/10'),
             )}
             style={
-              frozen || frozenEnd || edge
+              frozen || frozenEnd
                 ? {
                     left: frozen ? pastedListFrozenLeft(columns, col.key) : undefined,
                     right: frozenEnd ? pastedListFrozenRight(columns, col.key) : undefined,
-                    boxShadow: edge,
                   }
                 : undefined
             }
           >
             {renderValue(col.key)}
+            {inRange ? (
+              // The range's tint + outline as an OVERLAY, never the cell's own background: a frozen cell keeps its
+              // opaque fill, so a scrolled column never shows through a just-pressed identifier (operator 2026-10-07).
+              <span
+                aria-hidden
+                data-range-tint
+                className={cn('pointer-events-none absolute inset-0', range.anchorCol === at ? 'bg-accent-bg/20' : 'bg-accent-bg/10')}
+                style={edge ? { boxShadow: edge } : undefined}
+              />
+            ) : null}
             <AnimatePresence>
               {flash?.col === col.key ? (
                 <motion.span
@@ -436,14 +454,5 @@ export const PastedListGridRow = memo(function PastedListGridRow({
       }}
     />
   );
-  return (
-    <motion.div
-      // Read once, at mount: rows that scroll in later arrive as they are.
-      initial={cascade ? presence.initial : false}
-      animate={presence.animate}
-      transition={{ ...settle, delay: cascade ? Math.min(index, CASCADE_ROWS) * motionDuration.findListRowStagger : 0 }}
-    >
-      {leaf}
-    </motion.div>
-  );
+  return leaf;
 });

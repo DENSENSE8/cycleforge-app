@@ -755,7 +755,8 @@ export function recordLineRowOf(row: Record<string, unknown>): RecordLineRow {
     scannedBy: staffOf(row.scanned_by, row.scanned_by_name),
     shippedAt: stamp(row.shipped_at),
     unboxedAt: stamp(row.unboxed_at),
-    unboxedBy: staffOf(row.unboxed_by, row.unboxed_by_name),
+    // A carton only OPENED (no unbox stamp) has no "Unboxed by": the cell would name someone for a step the status says never happened.
+    unboxedBy: row.unboxed_at ? staffOf(row.unboxed_by, row.unboxed_by_name) : null,
     receivedAt: stamp(row.received_at),
     receivedBy: staffOf(row.received_by, row.received_by_name),
     unitsReceived: num(row.units_received),
