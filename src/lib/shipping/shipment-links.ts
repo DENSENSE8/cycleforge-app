@@ -4,7 +4,8 @@ import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-export type ShipmentOwnerType = 'RECEIVING' | 'ORDER';
+/** `RECEIVING` = a carton, `RECEIVING_LINE` = one receiving_line, `ORDER` = one orders row. */
+export type ShipmentOwnerType = 'RECEIVING' | 'RECEIVING_LINE' | 'ORDER';
 export type ShipmentDirection = 'INBOUND' | 'OUTBOUND';
 
 export interface LinkShipmentInput {
@@ -86,6 +87,43 @@ export async function linkShipment(
 
   if (client) return run(client);
   return withTenantTransaction<ShipmentLinkRow>(orgId, run);
+}
+
+/**
+ * Per-line inbound tracking: stamp `receiving_line.shipment_id` and its primary
+ * RECEIVING_LINE link, on the caller's transaction. A line that already carries
+ * a DIFFERENT shipment keeps it (no row returns, no link) — so a split
+ * shipment's extra tracking, re-landed on line 0, never steals line 0's
+ * primary. Returns whether the line now carries `shipmentId`.
+ */
+export async function stampInboundLineShipment(
+  orgId: OrgId,
+  input: { receivingLineId: number; shipmentId: number; source: string | null },
+  client: Client,
+): Promise<boolean> {
+  const stamped = await client.query<{ id: number }>(
+    `UPDATE receiving_line
+        SET shipment_id = $3
+      WHERE id = $1 AND organization_id = $2::uuid
+        AND (shipment_id IS NULL OR shipment_id = $3)
+      RETURNING id`,
+    [input.receivingLineId, orgId, input.shipmentId],
+  );
+  if (!stamped.rows[0]) return false;
+  await linkShipment(
+    orgId,
+    {
+      ownerType: 'RECEIVING_LINE',
+      ownerId: input.receivingLineId,
+      shipmentId: input.shipmentId,
+      direction: 'INBOUND',
+      isPrimary: true,
+      role: 'LINE',
+      source: input.source,
+    },
+    client,
+  );
+  return true;
 }
 
 /** Promote one link to primary (demoting the owner's others). */

@@ -74,6 +74,8 @@ function toCanonicalLine(order: SquareOrder): CanonicalOrderLine {
     // Square money is integer cents — unlike Shopify's decimal string.
     saleAmount:
       typeof order.total_money?.amount === 'number' ? String(order.total_money.amount / 100) : null,
+    // The order total over every line — no single unit price.
+    unitPrice: null,
     currency: order.total_money?.currency || 'USD',
     // In-store Square sales are realized at the register; mark shipped so they
     // land in the tracker as completed (mirrors Amazon FBA read-only ingest).

@@ -7,7 +7,7 @@ import { upsertPurchaseLink, type TxClient } from './purchase-links';
 import { upsertInboundMirror } from './mirror';
 import { upsertReceivingLineTesting } from '@/lib/receiving/facts/narrow';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
-import { linkShipment } from '@/lib/shipping/shipment-links';
+import { linkShipment, stampInboundLineShipment } from '@/lib/shipping/shipment-links';
 import { ensureReceivingForInboundOrder, ensureReceivingForPo } from '@/lib/receiving/attach-box';
 import { SCIENTIFIC_NOTATION_TRACKING } from './inbound-order-draft';
 
@@ -506,6 +506,14 @@ export async function ingestPurchase(
               AND organization_id = $3::uuid
               AND receiving_id IS NULL`,
           [receivingLineId, cartonId, orgId],
+        );
+
+        // Per-line tracking: this line arrives on this shipment. A line already
+        // on a different shipment keeps it (split-shipment re-land on line 0).
+        await stampInboundLineShipment(
+          orgId,
+          { receivingLineId, shipmentId, source: shipmentSource },
+          client as unknown as Parameters<typeof stampInboundLineShipment>[2],
         );
       }
     }

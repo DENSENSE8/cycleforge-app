@@ -1097,6 +1097,10 @@ export async function deleteInboundLinesInTx(
       [orgId, lineIds],
     );
     await client.query(`UPDATE inbound_purchase_merge_log SET loser_line_id = NULL WHERE organization_id = $1 AND loser_line_id = ANY($2::int[])`, [orgId, lineIds]);
+    await client.query(
+      `DELETE FROM shipment_links WHERE organization_id = $1 AND owner_type = 'RECEIVING_LINE' AND owner_id = ANY($2::int[])`,
+      [orgId, lineIds],
+    );
     await client.query(`DELETE FROM receiving_line WHERE organization_id = $1 AND id = ANY($2::int[])`, [orgId, lineIds]);
   }
   const deletedCartons: number[] = [];

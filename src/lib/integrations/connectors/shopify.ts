@@ -132,6 +132,8 @@ function toCanonicalLine(node: ShopifyOrderNode): CanonicalOrderLine {
       rawAmount != null && rawAmount !== '' && Number.isFinite(Number(rawAmount))
         ? String(Number(rawAmount))
         : null,
+    // The order total over every line (tax + shipping included) — no single unit price.
+    unitPrice: null,
     currency: node.currentTotalPriceSet?.shopMoney?.currencyCode || 'USD',
     // A fully fulfilled Shopify order is realized — mark shipped so it lands in
     // the tracker as completed (mirrors Square/Amazon read-only ingestion).

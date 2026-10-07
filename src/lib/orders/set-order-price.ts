@@ -53,8 +53,11 @@ export interface SetOrderPriceDeps {
   }) => Promise<Array<OrderPriceLine & { orderNumber: string | null }>>;
   /**
    * Write `sale_amount` on ONE line. `currency: null` means leave it alone —
-   * clearing an amount must not wipe the channel's currency. Resolves to the
-   * post-write row, or `null` when the row vanished under a concurrent delete.
+   * clearing an amount must not wipe the channel's currency. On a one-unit line
+   * the total IS the unit price, so `unit_price` follows it (null clears both);
+   * any other line keeps its unit price — a multi-unit total does not say which
+   * part is per-unit (a collapsed ShipStation order is several items). Resolves
+   * to the post-write row, or `null` when the row vanished under a concurrent delete.
    */
   writeSaleAmount: (args: {
     organizationId: OrgId;
@@ -109,6 +112,7 @@ const defaultDeps: SetOrderPriceDeps = {
       organizationId,
       `UPDATE orders
           SET sale_amount = $1::numeric,
+              unit_price = CASE WHEN btrim(quantity) = '1' THEN $1::numeric ELSE unit_price END,
               currency = COALESCE($2::text, currency)
         WHERE id = $3
           AND organization_id = $4

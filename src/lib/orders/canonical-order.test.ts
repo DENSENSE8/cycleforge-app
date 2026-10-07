@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   groupCanonicalOrderLines,
   parseSaleAmount,
+  unitPriceFromLineTotal,
   type CanonicalOrderLine,
 } from './canonical-order';
 
@@ -22,6 +23,7 @@ function line(overrides: Partial<CanonicalOrderLine> = {}): CanonicalOrderLine {
     shipByDate: null,
     orderDate: null,
     saleAmount: null,
+    unitPrice: null,
     currency: null,
     ...overrides,
   };
@@ -60,6 +62,25 @@ describe('groupCanonicalOrderLines', () => {
     // deliberate change, not an accident.
     assert.equal(grouped[0].sku, 'LAST');
     assert.equal(grouped[0].lineCount, 2);
+  });
+
+  it('a folded multi-line order has no single unit price; a one-line order keeps its own', () => {
+    const [folded, single] = groupCanonicalOrderLines([
+      line({ externalOrderId: 'A', unitPrice: '5.00' }),
+      line({ externalOrderId: 'A', unitPrice: '7.00' }),
+      line({ externalOrderId: 'B', unitPrice: '9.00' }),
+    ]);
+    assert.equal(folded.unitPrice, null);
+    assert.equal(single.unitPrice, '9.00');
+  });
+
+  it('unitPriceFromLineTotal: total ÷ whole-number quantity, else null', () => {
+    assert.equal(unitPriceFromLineTotal('19.99', '3'), '6.66');
+    assert.equal(unitPriceFromLineTotal(78, '2'), '39.00');
+    assert.equal(unitPriceFromLineTotal('10', ''), null);
+    assert.equal(unitPriceFromLineTotal('10', '1.5'), null);
+    assert.equal(unitPriceFromLineTotal('10', '0'), null);
+    assert.equal(unitPriceFromLineTotal(null, '1'), null);
   });
 
   it('unions trackings across every line, de-duplicated, first-seen order', () => {

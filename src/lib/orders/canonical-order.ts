@@ -71,6 +71,9 @@ export interface CanonicalOrderLine {
   orderDate: Date | null;
   /** Decimal string (matches `orders.sale_amount` numeric), or null. */
   saleAmount: string | null;
+  /** Price of ONE unit, decimal string (→ `orders.unit_price`); null when the source has
+   *  no single unit price (a multi-item order, an order total). */
+  unitPrice: string | null;
   /** ISO currency code, or null when the SOURCE DOES NOT CARRY ONE. */
   currency: string | null;
 }
@@ -111,12 +114,15 @@ export function groupCanonicalOrderLines(lines: CanonicalOrderLine[]): Canonical
       if (clean && !trackings.includes(clean)) trackings.push(clean);
     }
 
-    // Last line wins the scalars; trackings accumulate across all of them.
+    // Last line wins the scalars; trackings accumulate across all of them. A
+    // folded multi-line order has no single unit price.
+    const lineCount = (existing?.lineCount ?? 0) + 1;
     byOrderId.set(orderId, {
       ...line,
       externalOrderId: orderId,
       trackings,
-      lineCount: (existing?.lineCount ?? 0) + 1,
+      unitPrice: lineCount > 1 ? null : line.unitPrice,
+      lineCount,
     });
   }
 
@@ -145,4 +151,21 @@ export function resolveSaleAmountWrite(
   // must block the write just like any other value.
   if (existing != null && String(existing).trim() !== '') return null;
   return incoming;
+}
+
+/**
+ * Per-unit price from a LINE total over its quantity: total ÷ quantity, to the
+ * cent, when the quantity is a positive whole number; else null (no honest unit
+ * price). Mirrors the orders.unit_price backfill in
+ * 2026-10-06_records_line_tracking_unit_price.sql.
+ */
+export function unitPriceFromLineTotal(
+  lineTotal: number | string | null | undefined,
+  quantity: number | string | null | undefined,
+): string | null {
+  if (lineTotal == null || String(lineTotal).trim() === '') return null;
+  const total = Number(lineTotal);
+  const qtyText = String(quantity ?? '').trim();
+  if (!Number.isFinite(total) || !/^[1-9][0-9]{0,8}$/.test(qtyText)) return null;
+  return (Math.round(Math.round(total * 100) / Number(qtyText)) / 100).toFixed(2);
 }

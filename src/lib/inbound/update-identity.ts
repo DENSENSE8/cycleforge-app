@@ -7,7 +7,7 @@ import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getInboundMirror, upsertInboundMirror } from './mirror';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
-import { linkShipment } from '@/lib/shipping/shipment-links';
+import { linkShipment, stampInboundLineShipment } from '@/lib/shipping/shipment-links';
 import { ensureReceivingForInboundOrder } from '@/lib/receiving/attach-box';
 import { INBOUND_SOURCE_FACT_KIND, assertRegisteredInboundSource } from './source-registry';
 import { readLineFact, writeLineFact } from '@/lib/receiving/facts/store';
@@ -223,6 +223,11 @@ export async function updateInboundIdentity(
             source: shipmentSource,
           },
           client as unknown as Parameters<typeof linkShipment>[2],
+        );
+        await stampInboundLineShipment(
+          orgId,
+          { receivingLineId, shipmentId, source: shipmentSource },
+          client as unknown as Parameters<typeof stampInboundLineShipment>[2],
         );
       }
     }

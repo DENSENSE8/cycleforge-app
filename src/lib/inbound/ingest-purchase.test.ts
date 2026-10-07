@@ -6,7 +6,12 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 const ORG = '00000000-0000-0000-0000-000000000001' as unknown as OrgId;
 
-function fakes(opts: { existingLineId?: number | null; accountId?: number | null } = {}) {
+function fakes(opts: {
+  existingLineId?: number | null;
+  accountId?: number | null;
+  /** The line's carton and current shipment, for the tracking path. */
+  line?: { receivingId: number; shipmentId: number | null };
+} = {}) {
   const calls: Array<{ sql: string; params: unknown[] }> = [];
   const linkCalls: Array<Record<string, unknown>> = [];
   const mirrorCalls: Array<Record<string, unknown>> = [];
@@ -23,6 +28,14 @@ function fakes(opts: { existingLineId?: number | null; accountId?: number | null
         return { rows: opts.existingLineId != null ? [{ receiving_line_id: opts.existingLineId }] : [], rowCount: opts.existingLineId != null ? 1 : 0 };
       }
       if (/INSERT INTO receiving_line/.test(sql)) return { rows: [{ id: 100 }], rowCount: 1 };
+      if (opts.line && /FROM receiving_line rl\s+LEFT JOIN receiving_line_zoho/.test(sql)) {
+        return { rows: [{ receiving_id: opts.line.receivingId, zoho_purchaseorder_id: null, zoho_purchaseorder_number: null }], rowCount: 1 };
+      }
+      if (opts.line && /SET shipment_id = \$3/.test(sql)) {
+        // The stamp's guard: a line on a DIFFERENT shipment is not touched.
+        const free = opts.line.shipmentId == null || opts.line.shipmentId === params[2];
+        return { rows: free ? [{ id: params[0] }] : [], rowCount: free ? 1 : 0 };
+      }
       return { rows: [], rowCount: 1 };
     }) as TxClient['query'],
   };
@@ -150,4 +163,31 @@ test('rejects a blank order id and an unregistered source before any tx', async 
   const b = fakes();
   await assert.rejects(() => ingestPurchase(ORG, { sourceType: 'etsy', sourceOrderId: 'E-1', sku: 'X' }, b.deps), /unregistered source_type/);
   assert.equal(b.calls.length, 0);
+});
+
+test('tracking: the line is stamped with its shipment and gets a primary RECEIVING_LINE link', async () => {
+  const { deps, calls } = fakes({ existingLineId: 55, line: { receivingId: 300, shipmentId: null } });
+  await ingestPurchase(ORG, { sourceType: 'ebay', sourceOrderId: '12-345', trackingNumber: '1Z999', shipmentId: 900 }, deps);
+  const stamp = calls.find((c) => /SET shipment_id = \$3/.test(c.sql));
+  assert.ok(stamp, 'the line stamp runs');
+  assert.match(stamp.sql, /shipment_id IS NULL OR shipment_id = \$3/, 'guarded: never moves a line off another shipment');
+  assert.deepEqual(stamp.params, [55, ORG, 900]);
+  const links = calls.filter((c) => /INSERT INTO shipment_links/.test(c.sql) && c.params[1] === 'RECEIVING_LINE');
+  assert.equal(links.length, 1);
+  // (org, owner_type, owner_id, shipment_id, box_seq, is_primary, direction, role, source, …)
+  assert.deepEqual(links[0].params.slice(0, 4), [ORG, 'RECEIVING_LINE', 55, 900]);
+  assert.deepEqual(links[0].params.slice(5, 9), [true, 'INBOUND', 'LINE', 'ebay_purchase']);
+});
+
+test('tracking: a line already on another shipment keeps it — no line link (split-shipment re-land)', async () => {
+  const { deps, calls } = fakes({ existingLineId: 55, line: { receivingId: 300, shipmentId: 800 } });
+  await ingestPurchase(ORG, { sourceType: 'ebay', sourceOrderId: '12-345', trackingNumber: '1Z888', shipmentId: 900 }, deps);
+  assert.ok(
+    !calls.some((c) => /INSERT INTO shipment_links/.test(c.sql) && c.params[1] === 'RECEIVING_LINE'),
+    "line 0's primary is not stolen",
+  );
+  assert.ok(
+    calls.some((c) => /INSERT INTO shipment_links/.test(c.sql) && c.params[1] === 'RECEIVING' && c.params[3] === 900),
+    'the carton still links the extra tracking',
+  );
 });

@@ -132,6 +132,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         shipByDate: resolveSpreadsheetShipByDate(canonical.ship_by_date),
         orderDate: null,
         saleAmount: null,
+        unitPrice: null,
         currency: null,
         status: null,
       })),

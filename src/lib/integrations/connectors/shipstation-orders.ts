@@ -179,6 +179,12 @@ export function toCanonicalLine(group: readonly ShipStationV1Order[], accountSou
   const priced = items.some((it) => (it.unitPrice ?? 0) > 0);
   const total = primary.orderTotal;
   const saleAmount = total != null && (total > 0 || priced) ? total.toFixed(2) : null;
+  // One unit price only when the order holds exactly one (non-adjustment) item:
+  // a collapsed multi-item order has none. A 0 counts only when the order is
+  // priced at all (same "0 = unknown" rule as the total).
+  const only = items.length === 1 ? items[0] : null;
+  const unitPrice =
+    only?.unitPrice != null && (only.unitPrice > 0 || saleAmount != null) ? only.unitPrice.toFixed(2) : null;
 
   const shipByDate = shipStationV1Instant(primary.shipByDate);
   const orderDate = shipStationV1Instant(primary.orderDate);
@@ -222,6 +228,7 @@ export function toCanonicalLine(group: readonly ShipStationV1Order[], accountSou
     shipByDate,
     orderDate,
     saleAmount,
+    unitPrice,
     currency: 'USD',
     status: groupStatus(live),
   };
@@ -314,6 +321,7 @@ function wouldEnrich(
         notes: line.notes,
         status: line.status,
         saleAmount: line.saleAmount,
+        unitPrice: line.unitPrice,
         currency: line.currency,
         accountSource: line.accountSource,
         // Presence only: the real id is resolved by the writer.

@@ -37,6 +37,7 @@ const incoming = (over: Partial<BackfillIncoming> = {}): BackfillIncoming => ({
   notes: '',
   status: null,
   saleAmount: '19.99',
+  unitPrice: null,
   currency: 'USD',
   accountSource: 'eBay',
   customerId: 12,
@@ -85,4 +86,14 @@ test('Placed: the first channel that knows it fills a blank; a known Placed is n
   assert.equal(blank.values.orderDate, placed);
   const known = planOrderRowBackfill(row({ orderDate: '2026-09-19T08:00:00.000Z' }), incoming({ orderDate: placed }), fill);
   assert.equal('orderDate' in known.values, false);
+});
+
+test('unit price: a source value fills a blank; a priced row is never rewritten', () => {
+  const blank = planOrderRowBackfill(row(), incoming({ unitPrice: '19.99' }), fill);
+  assert.equal(blank.values.unitPrice, '19.99');
+  assert.ok(filledOrderColumns(row(), blank.values).includes('unit_price'));
+  const priced = planOrderRowBackfill(row({ unitPrice: '18.00' }), incoming({ unitPrice: '19.99' }), fill);
+  assert.equal('unitPrice' in priced.values, false, 'first write wins, like sale_amount');
+  const none = planOrderRowBackfill(row(), incoming({ unitPrice: null }), fill);
+  assert.equal('unitPrice' in none.values, false, 'no source unit price is no write');
 });

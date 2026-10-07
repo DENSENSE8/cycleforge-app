@@ -1085,6 +1085,10 @@ export const orders = pgTable('orders', {
   /** Realized sale price of this order line — what it sold for on its platform.
    *  Per-transaction fact (varies by platform/time), filled at ingestion. */
   saleAmount: numeric('sale_amount', { precision: 12, scale: 2 }),
+  /** Price of ONE unit on this line (orders.currency) — set only when the source states a
+   *  single per-unit price or sale_amount is a line total over a whole-number quantity;
+   *  null for a collapsed multi-item order. 2026-10-06_records_line_tracking_unit_price.sql. */
+  unitPrice: numeric('unit_price', { precision: 12, scale: 2 }),
   currency: text('currency').default('USD'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   /** FK to sku_catalog — central product hub */
@@ -1260,7 +1264,7 @@ export const receiving = pgTable('receiving_carton', {
 export const shipmentLinks = pgTable('shipment_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
-  ownerType: text('owner_type').notNull(), // 'RECEIVING' | 'ORDER'
+  ownerType: text('owner_type').notNull(), // 'RECEIVING' | 'RECEIVING_LINE' | 'ORDER'
   ownerId: integer('owner_id').notNull(),
   shipmentId: bigint('shipment_id', { mode: 'number' }).notNull(),
   boxSeq: integer('box_seq').notNull().default(1),

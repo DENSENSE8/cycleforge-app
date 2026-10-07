@@ -79,6 +79,7 @@ type OrderProjection = {
   // and toProjection below must both carry it or the guard reads undefined and
   // every re-sync rewrites the price (found live 2026-09-15).
   saleAmount?: string | null;
+  unitPrice?: string | null;
   currency?: string | null;
   /** Placed — read so the backfill fills it only while blank. */
   orderDate: Date | string | null;
@@ -403,6 +404,7 @@ export async function ingestCanonicalOrders(
     // price (operator ruling 2026-09-15): without reading the current value
     // back, a source that carries a price would rewrite it on every sync.
     saleAmount: ordersTable.saleAmount,
+    unitPrice: ordersTable.unitPrice,
     currency: ordersTable.currency,
     orderDate: ordersTable.orderDate,
   } as const;
@@ -439,6 +441,7 @@ export async function ingestCanonicalOrders(
     // NUMERIC arrives as a string; normalise so the first-write-wins guard
     // never sees a Decimal object it would stringify wrongly.
     saleAmount: order.saleAmount == null ? null : String(order.saleAmount),
+    unitPrice: order.unitPrice == null ? null : String(order.unitPrice),
     currency: order.currency ?? null,
     orderDate: order.orderDate ?? null,
   });
@@ -761,6 +764,7 @@ export async function ingestCanonicalOrders(
           notes: order.notes,
           status: order.status,
           saleAmount: order.saleAmount,
+          unitPrice: order.unitPrice,
           currency: order.currency,
           accountSource: order.accountSource,
           customerId,
@@ -870,6 +874,7 @@ export async function ingestCanonicalOrders(
           customerId,
           accountSource: order.accountSource || '',
           saleAmount: order.saleAmount,
+          unitPrice: order.unitPrice,
           currency: order.currency ?? 'USD',
           orderDate: order.orderDate,
         },

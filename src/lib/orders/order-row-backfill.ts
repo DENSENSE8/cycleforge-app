@@ -1,6 +1,6 @@
 /**
  * The additive backfill of ONE existing `orders` row by an incoming canonical order — pure, so the ingest writer's update rules (and the…
- * Price + currency are first-write-wins (operator ruling 2026-09-15).
+ * Price, unit price + currency are first-write-wins (operator ruling 2026-09-15).
  */
 import { resolveSaleAmountWrite } from '@/lib/orders/canonical-order';
 
@@ -24,6 +24,8 @@ export interface BackfillRow {
   /** Current catalog link; when known, an equal incoming link is not rewritten. */
   skuCatalogId?: number | null;
   saleAmount?: string | null;
+  /** `orders.unit_price`; read so a priced row is never rewritten. */
+  unitPrice?: string | null;
   currency?: string | null;
   /** Placed — the channel's order date (`orders.order_date`); null when no channel gave one. */
   orderDate: Date | string | null;
@@ -41,6 +43,8 @@ export interface BackfillIncoming {
   notes: string;
   status: string | null;
   saleAmount: string | null;
+  /** Per-unit price (decimal string), or null when the source has none. */
+  unitPrice: string | null;
   currency: string | null;
   accountSource: string;
   customerId: number | null;
@@ -110,6 +114,12 @@ export function planOrderRowBackfill(
     row.saleAmount == null ? null : String(row.saleAmount),
   );
   if (saleAmountWrite != null) values.saleAmount = saleAmountWrite;
+  // The unit price is the same fact at unit grain: it fills a blank, never rewrites.
+  const unitPriceWrite = resolveSaleAmountWrite(
+    incoming.unitPrice,
+    row.unitPrice == null ? null : String(row.unitPrice),
+  );
+  if (unitPriceWrite != null) values.unitPrice = unitPriceWrite;
   if (incoming.currency && isBlank(row.currency)) values.currency = incoming.currency;
 
   const primaryShipmentId =

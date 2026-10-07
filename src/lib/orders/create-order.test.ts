@@ -140,6 +140,7 @@ test('single-line form path: legacy body still creates ONE row with the historic
   assert.equal(inserts.length, 1);
   assert.equal(inserts[0].params[5], 42, 'catalog id resolved the legacy way');
   assert.equal(inserts[0].params[6], 12.5);
+  assert.equal(inserts[0].params[24], '4.17', 'unit_price = line total ÷ quantity');
   assert.equal(inserts[0].params[13], '3');
   assert.equal(inserts[0].params[14], '');
   assert.equal(inserts[0].params[15], null, 'no customer given, none written');
@@ -226,6 +227,7 @@ test('chat phone order: SKU and title come from THIS org\'s catalog, rows are ca
   assert.equal(insert.params[1], 'old title');
   assert.equal(insert.params[2], '00005');
   assert.equal(insert.params[6], 78, 'sale_amount = 2 × $39.00');
+  assert.equal(insert.params[24], '39.00', 'unit_price = the typed unit price');
   assert.equal(insert.params[17], 'caged');
   assert.deepEqual(insert.params.slice(18, 22), [40, 12, 10, 8]);
   const catalogRead = calls.find((c) => c.text.includes('FROM sku_catalog sc'));

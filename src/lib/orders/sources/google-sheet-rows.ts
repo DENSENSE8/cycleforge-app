@@ -3,6 +3,7 @@ import {
   cleanText,
   parseSaleAmount,
   resolveSpreadsheetShipByDate,
+  unitPriceFromLineTotal,
   type CanonicalOrderLine,
 } from '@/lib/orders/canonical-order';
 
@@ -120,6 +121,8 @@ export function mapSheetRowsToCanonicalLines(
 
   return rows.map((row) => {
     const tracking = cell(row, colIndices.tracking);
+    const quantity = cell(row, colIndices.quantity) || '1';
+    const saleAmount = parseSaleAmount(row[colIndices.salePrice] ?? '');
     return {
       externalOrderId: cell(row, colIndices.orderNumber),
       itemNumber: cell(row, colIndices.itemNumber),
@@ -127,7 +130,7 @@ export function mapSheetRowsToCanonicalLines(
       sku: cell(row, colIndices.usavSku),
       condition: cell(row, colIndices.condition),
       // A blank quantity cell means one unit, not zero.
-      quantity: cell(row, colIndices.quantity) || '1',
+      quantity,
       notes: cell(row, colIndices.note),
       // The sheet layout has no customer column, so there is no buyer name to
       // resolve. Its `note` cell stays a note — it is an operator remark, not
@@ -139,7 +142,10 @@ export function mapSheetRowsToCanonicalLines(
       trackings: tracking ? [tracking] : [],
       shipByDate: resolveSpreadsheetShipByDate(row[colIndices.shipByDate]),
       orderDate: resolveSheetOrderDate(row[colIndices.orderDate]),
-      saleAmount: parseSaleAmount(row[colIndices.salePrice] ?? ''),
+      saleAmount,
+      // The sheet's price cell is the row's line total (the CanonicalOrderLine
+      // contract), so a unit price is that over a whole-number quantity.
+      unitPrice: unitPriceFromLineTotal(saleAmount, quantity),
       // Null when the sheet has no Currency column at all, so the writer
       // defaults on insert and leaves an existing order's currency alone.
       currency: hasCurrencyColumn ? cell(row, colIndices.currency) || 'USD' : null,

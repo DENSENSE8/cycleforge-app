@@ -130,6 +130,7 @@ function existing(id: number, orderId: string, accountSource: string | null, ove
     accountSource,
     status: 'unassigned',
     saleAmount: '10.00',
+    unitPrice: '10.00',
     currency: 'USD',
     orderDate: '2026-09-20T17:00:00.000Z',
     ...over,
@@ -224,6 +225,25 @@ test('canonical line: never a "ShipStation order" title; all lines summarized; n
   const empty = toCanonicalLine([order({ orderNumber: '100602', items: [], orderTotal: 0 })], 'Manual');
   assert.equal(empty.productTitle, '', 'no invented title for an order ShipStation holds no items for');
   assert.equal(empty.saleAmount, null, 'a 0 total with nothing priced is unknown, not free');
+  assert.equal(empty.unitPrice, null);
+});
+
+test('canonical line: a unit price only for a one-item order (adjustments are not items)', () => {
+  const single = toCanonicalLine(
+    [order({ items: [{ ...order().items[0], quantity: 2, unitPrice: 24.5 }, { ...order().items[0], sku: null, name: 'Discount', unitPrice: -1, adjustment: true }], orderTotal: 52.13 })],
+    'Amazon',
+  );
+  assert.equal(single.unitPrice, '24.50', "the one item's unitPrice, not the order total over units");
+  assert.equal(single.saleAmount, '52.13', 'the total is unchanged');
+
+  const two = toCanonicalLine(
+    [order({ items: [order().items[0], { ...order().items[0], sku: 'SKU-2', unitPrice: 5 }], orderTotal: 15 })],
+    'Amazon',
+  );
+  assert.equal(two.unitPrice, null, 'a collapsed multi-item order has no single unit price');
+
+  const unknown = toCanonicalLine([order({ items: [{ ...order().items[0], unitPrice: 0 }], orderTotal: 0 })], 'Manual');
+  assert.equal(unknown.unitPrice, null, 'a 0 unit price on an unpriced order is unknown, not free');
 });
 
 test('canonical line: duplicate copies ship when one ships; a real split only when every part does', () => {

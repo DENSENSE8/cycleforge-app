@@ -2,6 +2,7 @@
 import {
   cleanText,
   parseSaleAmount,
+  unitPriceFromLineTotal,
   type CanonicalOrderLine,
 } from '@/lib/orders/canonical-order';
 
@@ -60,6 +61,13 @@ function resolveEcwidLineSaleAmount(item: Record<string, unknown>, units: number
   return ((Math.round(Number(unitPrice) * 100) * units) / 100).toFixed(2);
 }
 
+/** This line's per-unit price: Ecwid's transacted `price`, else the line total ÷ whole units. */
+function resolveEcwidLineUnitPrice(item: Record<string, unknown>, lineTotal: string | null): string | null {
+  const unitPrice = parseSaleAmount(item.price ?? item.productPrice);
+  if (unitPrice !== null) return (Math.round(Number(unitPrice) * 100) / 100).toFixed(2);
+  return unitPriceFromLineTotal(lineTotal, cleanText(item.quantity) || '1');
+}
+
 /** Map raw Ecwid order payloads to canonical lines — one line per item. */
 export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): CanonicalOrderLine[] {
   const lines: CanonicalOrderLine[] = [];
@@ -115,6 +123,7 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
       const item = (rawItem ?? {}) as Record<string, any>;
       const sku = cleanText(item.sku);
       if (isRepairServiceSku(sku)) continue;
+      const saleAmount = resolveEcwidLineSaleAmount(item, parseEcwidLineUnits(item.quantity));
 
       lines.push({
         externalOrderId,
@@ -134,7 +143,8 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
         trackings: tracking ? [tracking] : [],
         shipByDate: null,
         orderDate,
-        saleAmount: resolveEcwidLineSaleAmount(item, parseEcwidLineUnits(item.quantity)),
+        saleAmount,
+        unitPrice: resolveEcwidLineUnitPrice(item, saleAmount),
         currency,
       });
     }

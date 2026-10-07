@@ -10,6 +10,7 @@ import {
   type ReleaseGateFacts,
 } from './release-gates';
 import { exceptionHeldSql } from './exception-membership';
+import { unitPriceFromLineTotal } from './canonical-order';
 import { G2_DOCUMENT_COUNT_SQL, G2_SKU_PAPERWORK_NOT_REQUIRED_SQL } from './g2-paperwork-sql';
 import {
   PARCEL_FALLBACK_SELECT_SQL,
@@ -404,10 +405,15 @@ export async function setHeldOrderLine(
               quantity = $6,
               condition = $7,
               sale_amount = $8,
-              item_number = $9
+              item_number = $9,
+              -- The cart's unit price follows its line total and quantity.
+              unit_price = $10
         WHERE organization_id = $1 AND id = $2
           AND COALESCE(release_state, '') <> 'released'`,
-      [orgId, orderId, line.productTitle, line.sku, line.skuCatalogId ?? null, line.quantity, line.condition, line.saleAmount, line.itemNumber],
+      [
+        orgId, orderId, line.productTitle, line.sku, line.skuCatalogId ?? null, line.quantity, line.condition,
+        line.saleAmount, line.itemNumber, unitPriceFromLineTotal(line.saleAmount, line.quantity),
+      ],
     );
     if ((updated.rowCount ?? 0) === 0) return null;
     await client.query(

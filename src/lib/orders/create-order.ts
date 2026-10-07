@@ -51,6 +51,7 @@ import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-iden
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { canonicalAccountSource } from '@/lib/orders/account-source';
+import { unitPriceFromLineTotal } from '@/lib/orders/canonical-order';
 
 type Row = Record<string, unknown>;
 /** A tenant transaction's client (or a test fake) — only `query` is used. */
@@ -189,6 +190,8 @@ export interface OrderRowsPlan {
     condition: string | null;
     /** Line total, dollars. */
     saleAmount: number | null;
+    /** One unit's price, decimal string (`orders.unit_price`); null when unknown. */
+    unitPrice: string | null;
     /** `orders.item_number` — the marketplace listing it sold from. */
     itemNumber?: string | null;
   }>;
@@ -227,9 +230,10 @@ export async function insertOrderRowsInTx(
           sku_catalog_id, sale_amount, currency, organization_id, shipment_id,
           condition, type_id, is_urgent, quantity, external_line_id,
           customer_id, buyer_note, release_state,
-          parcel_weight_oz, parcel_length_in, parcel_width_in, parcel_height_in, item_number, fulfillment_channel
+          parcel_weight_oz, parcel_length_in, parcel_width_in, parcel_height_in, item_number, fulfillment_channel,
+          unit_price
         ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9::uuid, $10, $11, $12, $13, $14, $15,
-                  $16, $17, $18, $19, $20, $21, $22, $23, $24)
+                  $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
         RETURNING id, order_id, product_title, sku, shipment_id, condition, quantity, created_at`,
       [
         plan.orderId,
@@ -256,6 +260,7 @@ export async function insertOrderRowsInTx(
         plan.parcel?.heightIn ?? null,
         line.itemNumber || null,
         plan.fulfillmentChannel,
+        line.unitPrice,
       ],
     );
     const row = inserted.rows[0] as Row;
@@ -388,6 +393,7 @@ export async function createOrder(
       quantity: line.quantity,
       condition: line.condition,
       saleAmount: line.saleAmount,
+      unitPrice: unitPriceFromLineTotal(line.saleAmount, line.quantity),
     });
   }
 
@@ -630,6 +636,7 @@ export async function createManualOrderInTx(
         quantity: String(l.quantity),
         condition: l.condition,
         saleAmount: l.unitPriceCents == null ? null : (l.unitPriceCents * l.quantity) / 100,
+        unitPrice: l.unitPriceCents == null ? null : (l.unitPriceCents / 100).toFixed(2),
         itemNumber: l.itemNumber || null,
       })),
       shipmentIds,
