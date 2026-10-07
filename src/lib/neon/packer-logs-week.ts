@@ -119,7 +119,7 @@ export interface PackerLogBaseFilter {
    */
   shippedFrom?: string | null;
   shippedTo?: string | null;
-  /** `?pickedBy` — the order's picker (PICK_FACTS_LATERALS source priority). */
+  /** `?pickedBy` — who picked the order (the picked-by resolver's precedence). */
   pickedBy?: number | null;
 }
 

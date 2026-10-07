@@ -51,6 +51,7 @@ import { orderTrackingMatchKeys, trackingDigitsLast8Strict } from '@/lib/trackin
 import { escapeLike } from '@/lib/sql-like';
 import { SUPPORT_CHECK_IN_PROGRAM } from '@/lib/support/check-ins/config';
 import { accountSourceAccountLabelSql } from '@/lib/orders/account-source';
+import { pickedByFromRow, type PickedBy } from '@/lib/picking/picked-by';
 import {
   CHECK_IN_OUTCOMES,
   ORDER_CHECK_IN_STATES,
@@ -104,6 +105,9 @@ export interface FulfilledPackageRow {
   packedAt: string | null;
   packerId: number | null;
   packerName: string | null;
+  /** Who picked the line, and when (the picked-by resolver, `src/lib/picking/picked-by.ts`). */
+  pickedAt: string | null;
+  pickedBy: PickedBy | null;
   shipstationStatus: string | null;
   returnRef: string | null;
   // The package (all null when the line owns none).
@@ -341,6 +345,10 @@ export function buildFulfilledSql(orgId: OrgId, window: FulfilledWindow, q: stri
              COALESCE(osf.packed_at, osf.pack_activity_at) AS packed_at,
              COALESCE(osf.packed_by, osf.packer_id) AS packer_id,
              staff_packer.name AS packer_name,
+             osf.picked_at,
+             osf.picked_by,
+             osf.picked_source,
+             staff_picked.name AS picked_by_name,
              sor.shipstation_status,
              ret.return_ref,
              ow.shipment_id,
@@ -406,6 +414,7 @@ export function buildFulfilledSql(orgId: OrgId, window: FulfilledWindow, q: stri
         LEFT JOIN wa_deadline wa ON wa.entity_id = o.id
         LEFT JOIN staff staff_packer
           ON staff_packer.id = COALESCE(osf.packed_by, osf.packer_id) AND staff_packer.organization_id = o.organization_id
+        LEFT JOIN staff staff_picked ON staff_picked.id = osf.picked_by AND staff_picked.organization_id = o.organization_id
         LEFT JOIN staff staff_scan ON staff_scan.id = so.scanned_by AND staff_scan.organization_id = o.organization_id
         LEFT JOIN sor ON sor.order_row_id = o.id
         LEFT JOIN ss_by_tracking ss_t ON ss_t.order_row_id = o.id AND ss_t.tracking_key = stn.tracking_number_normalized
@@ -422,6 +431,7 @@ export function buildFulfilledSql(orgId: OrgId, window: FulfilledWindow, q: stri
              'scan:' || stn.id,
              stn.tracking_number_raw,
              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+             NULL, NULL, NULL, NULL,
              stn.id,
              stn.tracking_number_raw,
              NULLIF(UPPER(BTRIM(stn.carrier)), ''),
@@ -547,6 +557,8 @@ export function fulfilledPackageRowOf(row: Record<string, unknown>): FulfilledPa
     packedAt: stamp(row.packed_at),
     packerId: staffId(row.packer_id),
     packerName: text(row.packer_name),
+    pickedAt: stamp(row.picked_at),
+    pickedBy: pickedByFromRow(row),
     shipstationStatus: text(row.shipstation_status),
     returnRef: text(row.return_ref),
     shipmentId: num(row.shipment_id),

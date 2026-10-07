@@ -2,8 +2,9 @@
 
 import type { DeskRefinements } from '@/lib/orders/desk-view-filters';
 import type { DeskQueueViewId } from '@/lib/outbound/desk-views';
-import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan, sqlStationActivityMatchesOrder } from '@/lib/orders/order-grain-sql';
-import { ORDER_PICK_SCAN_ACTIVITY_TYPES, PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { sqlOrderHasPackScan, sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
+import { sqlOrderIsPicked, sqlOrderPickedById } from '@/lib/picking/picked-by';
+import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { BUYER_CANCELLED_STATUS } from '@/lib/orders/buyer-cancelled';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
@@ -71,8 +72,8 @@ export function sqlOrderAwaitingPick(orderAlias = 'o'): string {
 
 /**
  * Where an order's stage signals are read from, as SQL expressions over the
- * order alias. Omitted: the live source probes (`sqlOrderHasPickScan`,
- * `sqlOrderPickedByStaffId`, …). `/api/orders` passes the
+ * order alias. Omitted: the live source probes (`sqlOrderIsPicked`,
+ * `sqlOrderPickedById`, …). `/api/orders` passes the
  * `order_stage_facts` columns it has joined.
  */
 export interface OrderStageSignals {
@@ -169,7 +170,7 @@ export function sqlOrderDeskStage(
   signals?: Pick<OrderStageSignals, 'hasPickScan' | 'hasPackScan'>,
 ): string {
   const o = alias(orderAlias);
-  const pick = signals?.hasPickScan ?? sqlOrderHasPickScan(o);
+  const pick = signals?.hasPickScan ?? sqlOrderIsPicked(o);
   const pack = signals?.hasPackScan ?? sqlOrderHasPackScan(o);
   if (stage === 'packed') return pack;
   if (stage === 'picked') return `(${pick} AND NOT ${pack})`;
@@ -250,60 +251,9 @@ export function sqlOrderPickAssigneeId(orderAlias = 'o'): string {
     )`;
 }
 
-/**
- * Who actually picked the order, as a scalar: the same four sources, in the
- * same priority, as `PICK_FACTS_LATERALS` (`picked_by` on the list rows) —
- * allocation pick event › picking session › pick scan (matched exactly as
- * `sqlOrderHasPickScan` matches it) › serial taken. Keep the two in step.
- */
-export function sqlOrderPickedByStaffId(orderAlias = 'o'): string {
-  const o = alias(orderAlias);
-  return `COALESCE(
-      (
-        SELECT pk_ie.actor_staff_id
-          FROM order_unit_allocations pk_oua
-          JOIN inventory_events pk_ie
-            ON pk_ie.serial_unit_id = pk_oua.serial_unit_id
-           AND pk_ie.organization_id = pk_oua.organization_id
-           AND pk_ie.event_type IN ('PICKED', 'FORCE_PICK')
-           AND pk_ie.occurred_at >= pk_oua.allocated_at
-         WHERE pk_oua.order_id = ${o}.id
-           AND pk_oua.organization_id = ${o}.organization_id
-           AND pk_oua.state IN ('PICKED', 'PACKED', 'SHIPPED', 'RETURNED')
-         ORDER BY pk_ie.occurred_at DESC NULLS LAST, pk_ie.id DESC
-         LIMIT 1
-      ),
-      (
-        SELECT pk_ps.picker_staff_id
-          FROM picking_sessions pk_ps
-         WHERE pk_ps.order_id = ${o}.id
-           AND pk_ps.organization_id = ${o}.organization_id
-           AND NOT pk_ps.abandoned
-         ORDER BY COALESCE(pk_ps.ended_at, pk_ps.started_at) DESC, pk_ps.id DESC
-         LIMIT 1
-      ),
-      (
-        SELECT pk_sal.staff_id
-          FROM station_activity_logs pk_sal
-         WHERE pk_sal.activity_type IN (${sqlInList(ORDER_PICK_SCAN_ACTIVITY_TYPES)})
-           AND ${sqlStationActivityMatchesOrder('pk_sal', o)}
-         ORDER BY pk_sal.created_at DESC, pk_sal.id DESC
-         LIMIT 1
-      ),
-      (
-        SELECT pk_tsn.tested_by
-          FROM tech_serial_numbers pk_tsn
-         WHERE pk_tsn.order_id = ${o}.id
-           AND pk_tsn.organization_id = ${o}.organization_id
-         ORDER BY pk_tsn.created_at DESC, pk_tsn.id DESC
-         LIMIT 1
-      )
-    )`;
-}
-
 /** `?pickedBy=` — the order was picked by the staffer bound at `staffParam` (e.g. `$4`). */
 export function sqlOrderPickedByStaff(orderAlias: string, staffParam: string): string {
-  return `${sqlOrderPickedByStaffId(orderAlias)} = ${paramRef(staffParam)}`;
+  return `${sqlOrderPickedById(alias(orderAlias))} = ${paramRef(staffParam)}`;
 }
 
 /** A timestamptz expression's warehouse civil day. */
@@ -340,7 +290,7 @@ export function sqlDeskRefinementClauses(
   const out: string[] = [];
   if (r.packedBy != null) out.push(`${signals?.packedBy ?? sqlOrderPackedByStaffId(o)} = ${paramRef(bind(r.packedBy))}`);
   if (r.pickerId != null) out.push(`${signals?.pickerId ?? sqlOrderPickAssigneeId(o)} = ${paramRef(bind(r.pickerId))}`);
-  if (r.pickedBy != null) out.push(`${signals?.pickedBy ?? sqlOrderPickedByStaffId(o)} = ${paramRef(bind(r.pickedBy))}`);
+  if (r.pickedBy != null) out.push(`${signals?.pickedBy ?? sqlOrderPickedById(o)} = ${paramRef(bind(r.pickedBy))}`);
   if (r.orderFrom) out.push(sqlWarehouseDayOnOrAfter(`${o}.order_date`, bind(r.orderFrom)));
   if (r.orderTo) out.push(sqlWarehouseDayOnOrBefore(`${o}.order_date`, bind(r.orderTo)));
   // A NULL ship-by fails both comparisons, so either bound drops unscheduled orders.

@@ -6,6 +6,7 @@
  */
 
 import type { NavLocateFacts } from '@/lib/nav/context/schema';
+import { pickedByFromRow } from '@/lib/picking/picked-by';
 
 /** A wire stamp: node-pg hands timestamptz back as `Date`. */
 function stampText(value: unknown): string | null {
@@ -62,6 +63,8 @@ export function outboundFacts(row: Record<string, unknown>, lines: number, fulfi
     // The source's word (`orders.status`), never the warehouse stage — that is the bucket.
     channelStatus: textOf(row.status),
     shipBy: textOf(row.ship_by_date),
+    pickedAt: stampText(row.picked_at),
+    pickedBy: pickedByFromRow(row),
     packedAt: stampText(row.packed_at),
     shippedAt: stampText(row.shipped_at),
     packer: hasPacker || packerName ? { id: hasPacker ? packerId : null, name: packerName } : null,

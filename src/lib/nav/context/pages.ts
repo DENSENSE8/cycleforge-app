@@ -417,7 +417,7 @@ const PURCHASES_CONTROLS: NavControls = {
 /**
  * FBM's queue list (Allocate). Staff roles: the
  * universal `?staff=` assignee filter (`STAFF_FILTER_PARAM`, `sqlOrderAssignedToStaff`)
- * and `?pickedBy=` / `?packedBy=` — who ACTUALLY picked (`PICK_FACTS_LATERALS`) and
+ * and `?pickedBy=` / `?packedBy=` — who ACTUALLY picked (the picked-by resolver, `src/lib/picking/picked-by.ts`) and
  * packed (`order_stage_facts.packed_by`), plus the pick assignee (`?pickerId=`). Dates: order date and ship-by
  * (PT civil days). Sort: the queue's own `?sort=`/`?dir=` alphabet
  * (`queue-display-sort.ts`), ship-by soonest first by default — every view

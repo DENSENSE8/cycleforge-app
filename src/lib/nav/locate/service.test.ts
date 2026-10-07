@@ -42,6 +42,10 @@ const ORDERS: Record<string, Array<Record<string, unknown>>> = {
       sku: 'QC45-BLK',
       tracking_number: '1ZA677K10318827054',
       delivered_at: null,
+      picked_at: new Date('2026-10-04T15:00:00Z'),
+      picked_by: 7,
+      picked_by_name: ' Kai ',
+      picked_source: 'picking_session',
       packed_at: new Date('2026-10-04T17:00:00Z'),
       packer_id: 4,
       packer_name: 'Tuan',
@@ -224,7 +228,7 @@ test('outbound refs: one entry per ref in paste order, [] when found nowhere, co
   assert.equal(single.title, '02-15212-00001 · Bose QC45');
   assert.ok(single.recordHref?.startsWith('/'));
   assert.equal(shipped.title, '113-0000000-0000001');
-  // The order's row facts, read in the same statement: ship-by, packer by staff id, packed stamp.
+  // The order's row facts, read in the same statement: ship-by, picker with its resolver source, packer by staff id, packed stamp.
   assert.deepEqual(single.facts, {
     section: 'outbound',
     title: 'Bose QuietComfort 45',
@@ -233,6 +237,8 @@ test('outbound refs: one entry per ref in paste order, [] when found nowhere, co
     deliveredAt: null,
     channelStatus: 'unshipped',
     shipBy: '2026-10-06',
+    pickedAt: '2026-10-04T15:00:00.000Z',
+    pickedBy: { id: 7, name: 'Kai', source: 'picking_session' },
     packedAt: '2026-10-04T17:00:00.000Z',
     shippedAt: null,
     packer: { id: 4, name: 'Tuan' },
@@ -471,6 +477,8 @@ test('inbound facts: the pasted page row off the reconcile lines — unboxer by 
     deliveredAt: '2026-09-18T20:00:00.000Z',
     channelStatus: null,
     shipBy: null,
+    pickedAt: null,
+    pickedBy: null,
     packedAt: null,
     shippedAt: null,
     packer: null,

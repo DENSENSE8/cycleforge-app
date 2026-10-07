@@ -111,6 +111,8 @@ function inboundFacts(lines: readonly ReceivingLineRow[], duplicates: readonly n
     deliveredAt: sheet?.carrier.kind === 'delivered' ? isoInstant(sheet.carrier.at) : null,
     channelStatus: null,
     shipBy: null,
+    pickedAt: null,
+    pickedBy: null,
     packedAt: null,
     shippedAt: null,
     packer: null,

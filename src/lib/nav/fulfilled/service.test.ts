@@ -38,6 +38,8 @@ function pkg(patch: Partial<FulfilledPackageRow> = {}): FulfilledPackageRow {
     packedAt: '2026-09-29T17:00:00.000Z',
     packerId: 7,
     packerName: 'Pat',
+    pickedAt: null,
+    pickedBy: null,
     shipstationStatus: null,
     returnRef: null,
     shipmentId: 100,
@@ -265,6 +267,22 @@ test('getNavFulfilled: order grain is delivered only when every package is; line
   assert.deepEqual(new Set(lines.entries.map((entry) => entry.key)), new Set(['line:1', 'line:2', 'line:3', 'line:4']));
   assert.deepEqual(counts(lines), { ...counts(orders), delivered: 3, in_transit: 1 });
   assert.ok(lines.total >= orders.total);
+});
+
+test('getNavFulfilled: an order reads the picker of its last-picked line, with the resolver source', async () => {
+  const rows = [
+    pkg({ orderRowId: 1, pickedAt: '2026-09-29T15:00:00.000Z', pickedBy: { id: 4, name: 'Tuan', source: 'pick_scan' } }),
+    pkg({ orderRowId: 2, pickedAt: '2026-09-29T16:00:00.000Z', pickedBy: { id: 5, name: 'Kai', source: 'inventory_event' } }),
+    pkg({ orderRowId: 3, orderKey: '114-B', orderId: '114-B', shipmentId: 200, tracking: '1Z0000000000000003' }),
+  ];
+  const orders = body(await getNavFulfilled(CALLER, new URLSearchParams(), fakes(rows).deps));
+  const a = orders.entries.find((entry) => entry.ref === '113-0000000-0000001')!;
+  assert.equal(a.facts?.pickedAt, '2026-09-29T16:00:00.000Z');
+  assert.deepEqual(a.facts?.pickedBy, { id: 5, name: 'Kai', source: 'inventory_event' });
+  // No pick on record: null, never the pick assignee.
+  const b = orders.entries.find((entry) => entry.ref === '114-B')!;
+  assert.equal(b.facts?.pickedBy, null);
+  assert.equal(b.facts?.pickedAt, null);
 });
 
 test('getNavFulfilled: buckets count the window (status ignored), sum to the total, zero buckets included', async () => {

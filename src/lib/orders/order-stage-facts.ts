@@ -21,9 +21,10 @@
  * automation-written assignments).
  */
 import 'server-only';
-import { PICK_FACTS_LATERALS, PICKED_AT_SQL, PICKED_BY_SQL, WA_PICK_LATERAL } from '@/lib/neon/orders-queries';
+import { WA_PICK_LATERAL } from '@/lib/neon/orders-queries';
 import type { OrderStageSignals } from '@/lib/orders/desk-view-sql';
-import { sqlOrderHasPackScan, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPackScan } from '@/lib/orders/order-grain-sql';
+import { PICKED_BY_IS_PICKED_SQL, PICKED_BY_LATERAL } from '@/lib/picking/picked-by';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -88,7 +89,7 @@ const PACK_LATERALS = `
 
 const FACT_COLUMNS = [
   'qc_verdict', 'qc_at', 'qc_by', 'qc_inherited',
-  'picked_at', 'picked_by',
+  'picked_at', 'picked_by', 'picked_source',
   'packer_log_id', 'packed_at', 'packed_by', 'pack_activity_at', 'pack_activity_by',
   'picker_id', 'packer_id',
   'has_pick_scan', 'has_pack_scan',
@@ -109,8 +110,9 @@ export function buildOrderStageFactsRefreshSql(targetSql: string): string {
       qc.created_at,
       qc.tested_by,
       COALESCE(qc.created_at < o.created_at, false),
-      ${PICKED_AT_SQL},
-      ${PICKED_BY_SQL},
+      pick_fact.picked_at,
+      pick_fact.picked_by,
+      pick_fact.picked_source,
       pl_latest.packer_log_id,
       pl_latest.packed_at,
       COALESCE(pack_activity.staff_id, pl_latest.packed_by),
@@ -118,12 +120,12 @@ export function buildOrderStageFactsRefreshSql(targetSql: string): string {
       pack_activity.staff_id,
       wa_pick.picker_id,
       wa_p.assigned_packer_id,
-      ${sqlOrderHasPickScan('o')},
+      ${PICKED_BY_IS_PICKED_SQL},
       ${sqlOrderHasPackScan('o')},
       now()
     FROM orders o
     ${QC_LATERAL}
-    ${PICK_FACTS_LATERALS}
+    ${PICKED_BY_LATERAL}
     ${WA_PICK_LATERAL}
     ${WA_PACK_LATERAL}
     ${PACK_LATERALS}

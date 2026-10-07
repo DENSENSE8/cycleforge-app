@@ -9,7 +9,8 @@ import {
   type FetchOutboundDocumentsResult,
 } from '@/lib/documents/outbound-documents';
 import type { OutboundDocument, OutboundDocumentType } from '@/lib/documents/types';
-import { sqlOrderHasPickScan, sqlOrderHasPackScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPackScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderIsPicked } from '@/lib/picking/picked-by';
 import { listSweepOrgIds } from '@/lib/cron/for-each-org';
 
 const BUNDLE_TYPES: OutboundDocumentType[] = ['shipping_label', 'packing_slip'];
@@ -141,7 +142,7 @@ async function listPackReadyOrdersMissingOutboundDocs(
   orgId: OrgId,
   limit = 25,
 ): Promise<number[]> {
-  const hasPick = sqlOrderHasPickScan('o');
+  const hasPick = sqlOrderIsPicked('o');
   const hasPack = sqlOrderHasPackScan('o');
   const res = await tenantQuery<{ id: number }>(
     orgId,

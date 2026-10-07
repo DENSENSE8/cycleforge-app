@@ -44,7 +44,7 @@ export interface Order {
   /** PACK work_assignment (realtime may populate before next /api/orders/next fetch) */
   packer_id?: number | null;
   packer_name?: string | null;
-  /** True when the order has been picked (`sqlOrderHasPickScan`: serial taken or desk/FBA pick scan). */
+  /** True when the order has been picked (`sqlOrderIsPicked`: any source of the picked-by resolver). */
   has_pick_scan?: boolean;
   /** Derived from shipping_tracking_numbers carrier status */
   is_shipped?: boolean;

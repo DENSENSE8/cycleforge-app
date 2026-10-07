@@ -46,13 +46,12 @@ export interface ShippedOrder {
   picker_name?: string | null;
   /** Assigned picker `staff.color_hex`. */
   picker_color_hex?: string | null;
-  /**
-   * Pick actor — first of: inventory_events.actor_staff_id (PICKED / FORCE_PICK),
-   * picking_sessions.picker_staff_id, the Picker desk's PICK / PICK_SCANNED scan.
-   */
+  /** Who picked the line, and when — the picked-by resolver (`src/lib/picking/picked-by.ts`). */
   picked_by?: number | null;
   picked_by_name?: string | null;
-  picked_at?: string | null;       // the same arm's timestamp
+  picked_at?: string | null;
+  /** Which resolver source the pick came from (`PickedBySource`), null = not picked. */
+  picked_source?: string | null;
   /** Staff ID assigned to pack — sourced from work_assignments.assigned_packer_id */
   packer_id: number | null;
   packed_by: number | null;

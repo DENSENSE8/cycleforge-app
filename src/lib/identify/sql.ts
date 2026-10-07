@@ -12,7 +12,8 @@
  * `entity_search_docs`, capped per line.
  */
 
-import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPackScan, sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
+import { sqlOrderIsPicked } from '@/lib/picking/picked-by';
 import { sqlDeskQueueScope } from '@/lib/orders/desk-view-sql';
 import { DESK_VIEW_ORDER, isDeskQueueView } from '@/lib/outbound/desk-views';
 import { sqlOrderInExceptionQueue } from '@/lib/orders/exception-membership';
@@ -461,7 +462,7 @@ function enrichSql(brandSql: string): string {
     ) zi ON true
     LEFT JOIN LATERAL (
       SELECT ${stage} AS desk_view,
-             ${sqlOrderHasPickScan('o')} AS has_pick_scan,
+             ${sqlOrderIsPicked('o')} AS has_pick_scan,
              ${sqlOrderHasPackScan('o')} AS packed
        WHERE h.kind = 'order' AND o.id IS NOT NULL
     ) sig ON true

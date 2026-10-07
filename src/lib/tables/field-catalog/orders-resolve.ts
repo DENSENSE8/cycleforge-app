@@ -81,8 +81,8 @@ function staffId(...candidates: unknown[]): number | null {
 
 /**
  * Pick step facts, off the feed's own pick projection (`picked_by_name` /
- * `picked_by` / `picked_at` — allocation pick, picking session, or the Picker
- * desk's PICK_SCANNED scan). Never QC facts, never the PICK assignee
+ * `picked_by` / `picked_at` — the picked-by resolver,
+ * `src/lib/picking/picked-by.ts`). Never QC facts, never the PICK assignee
  * (`picker_*` is who it is ASSIGNED to, not who picked it).
  */
 function pickedStep(row: OrdersRow): SlotValue {

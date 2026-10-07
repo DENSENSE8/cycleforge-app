@@ -384,11 +384,12 @@ export function buildOrdersListSql(
       staff_qc.name            AS tested_by_name,
       staff_pack_assignee.name AS packer_name,
       staff_packed_by.name     AS packed_by_name,
-      /* Pick facts: allocation pick event › picking session › Picker-desk scan
-       * (PICK_FACTS_LATERALS, materialized on the facts row). */
+      /* Pick facts: the picked-by resolver (src/lib/picking/picked-by.ts),
+       * materialized on the facts row. */
       osf.picked_by AS picked_by,
       s_picked.name AS picked_by_name,
       to_char(osf.picked_at, 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
+      osf.picked_source AS picked_source,
       /*
        * Dock scan-out. The field catalog documented this column as "dashes
        * honestly on a feed that does not stamp it yet" — this is that feed,

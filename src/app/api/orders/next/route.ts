@@ -5,7 +5,7 @@ import { parsePositiveInt } from '@/utils/number';
 import { TECH_EMPLOYEE_IDS } from '@/utils/staff';
 import { isTransientDbError, queryWithRetry } from '@/lib/db-retry';
 import { withAuth } from '@/lib/auth/withAuth';
-import { sqlOrderHasPickScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderIsPicked } from '@/lib/picking/picked-by';
 
 /** GET /api/orders/next - Get next order(s) for the signed-in tech. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -61,8 +61,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     );
 
     // $1 = techIdScope array — used for the assignment visibility filter throughout
-    // CF-04: order-grain pick scan — sibling orders sharing a carton stay in Up Next.
-    const notPickedClause = `NOT ${sqlOrderHasPickScan('o')}`;
+    // CF-04: order-grain pick (the picked-by resolver) — sibling orders sharing a carton stay in Up Next.
+    const notPickedClause = `NOT ${sqlOrderIsPicked('o')}`;
 
     // Joins shared by both the count query and the main query
     const sharedJoins = `
@@ -97,7 +97,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ) wa_deadline ON TRUE
       LEFT JOIN staff staff_pick ON staff_pick.id = wa_pick.assigned_tech_id AND staff_pick.organization_id = o.organization_id
       LEFT JOIN LATERAL (
-        SELECT ${sqlOrderHasPickScan('o')} AS has_scan
+        SELECT ${sqlOrderIsPicked('o')} AS has_scan
       ) sal_scan ON true
     `;
 

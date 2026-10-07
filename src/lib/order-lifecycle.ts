@@ -20,7 +20,7 @@ export interface OrderLifecycleSignals {
   shipmentId?: number | string | null;
   /** Walk-in / counter pickup (`orders.fulfillment_channel = 'PICKUP'`) — never labeled, never awaiting one. */
   pickup?: boolean | null;
-  /** The order has been picked (order-grain pick scan or serial taken — `sqlOrderHasPickScan`). Not QC. */
+  /** The order has been picked — any source of the picked-by resolver (`sqlOrderIsPicked`). Not QC. */
   hasPickScan?: boolean | null;
   /** PACK event timestamp (pack completed, not merely a packer assigned). */
   packedAt?: string | null;

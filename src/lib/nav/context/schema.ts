@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { NAV_RECENT_ROW_VERBS } from '@/lib/nav/recents/surfaces';
 import { CHECK_ZOHO_RECEIVED_MAX_INPUTS } from '@/lib/receiving/tracking-paste';
 import { CHECK_IN_OUTCOMES, ORDER_CHECK_IN_STATES } from '@/lib/support/conversation/model';
+import { PICKED_BY_SOURCES } from '@/lib/picking/picked-by';
 
 export const NAV_ITEM_KINDS = ['link', 'drill', 'filter', 'toggle'] as const;
 export type NavItemKind = (typeof NAV_ITEM_KINDS)[number];
@@ -522,6 +523,9 @@ export const NavLocateStaffSchema = z
   .strict();
 export type NavLocateStaff = z.infer<typeof NavLocateStaffSchema>;
 
+/** Who picked an order line, plus which picked-by resolver source said so (`src/lib/picking/picked-by.ts`). */
+export const NavLocatePickedBySchema = NavLocateStaffSchema.extend({ source: z.enum(PICKED_BY_SOURCES) }).strict();
+
 /**
  * The facts the pasted-list page paints per number — ONE shape for both
  * sections, so the page renders one row type. `section` names whose facts
@@ -539,10 +543,12 @@ export type NavLocateStaff = z.infer<typeof NavLocateStaffSchema>;
  *   imported as `shipped` with its tracking, never packed or scanned out
  *   here, reads channel `shipped` in Allocate — a real gap, not a
  *   contradiction), `shipBy` (`YYYY-MM-DD`, the ship-by
- *   deadline the desk sorts by), `packedAt` + `packer` (who packed it, else
- *   the pack assignee), `shippedAt` (dock scan-out `SHIP_CONFIRM`, else the
- *   packer log the Shipped list reads; the warehouse's own stamps only);
- *   `lines` = order lines the ref names;
+ *   deadline the desk sorts by), `pickedAt` + `pickedBy` (who picked it and
+ *   when, with the resolver `source` — `src/lib/picking/picked-by.ts`; null =
+ *   no pick on record, never the pick assignee), `packedAt` + `packer` (who
+ *   packed it, else the pack assignee), `shippedAt` (dock scan-out
+ *   `SHIP_CONFIRM`, else the packer log the Shipped list reads; the
+ *   warehouse's own stamps only); `lines` = order lines the ref names;
  * - inbound (the number's receiving lines): `po` (the PO# the Check /
  *   lines name — `ReconEntry.poNumber`), `vendor`, `lines` (receiving
  *   lines it holds), `unboxedAt` + `unboxedBy` (latest unbox; who completed
@@ -578,6 +584,8 @@ export const NavLocateFactsSchema = z
     deliveredAt: z.string().nullable(),
     channelStatus: z.string().nullable(),
     shipBy: z.string().nullable(),
+    pickedAt: z.string().nullable(),
+    pickedBy: NavLocatePickedBySchema.nullable(),
     packedAt: z.string().nullable(),
     shippedAt: z.string().nullable(),
     packer: NavLocateStaffSchema.nullable(),
@@ -782,6 +790,8 @@ const NavFulfilledWireFactsSchema = NavLocateFactsSchema.extend({
   deliveredAt: z.string().nullable().default(null),
   channelStatus: z.string().nullable().default(WIRE.channelStatus),
   shipBy: z.string().nullable().default(null),
+  pickedAt: z.string().nullable().default(null),
+  pickedBy: NavLocatePickedBySchema.nullable().default(null),
   packedAt: z.string().nullable().default(null),
   shippedAt: z.string().nullable().default(null),
   packer: NavLocateStaffSchema.nullable().default(null),

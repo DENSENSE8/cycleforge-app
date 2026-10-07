@@ -259,6 +259,11 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
            COALESCE(sc.sku, o.sku) AS sku,
            stn.tracking_number_raw AS tracking_number,
            stn.delivered_at,
+           -- Who picked it, and when (the picked-by resolver, materialized on the facts row).
+           osf.picked_at,
+           osf.picked_by,
+           osf.picked_source,
+           staff_picked.name AS picked_by_name,
            COALESCE(osf.packed_at, osf.pack_activity_at) AS packed_at,
            COALESCE(osf.packed_by, osf.packer_id) AS packer_id,
            staff_packer.name AS packer_name,
@@ -270,6 +275,9 @@ export function buildOutboundRefsSql(orgId: OrgId, refs: readonly string[], with
       LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
       ${WA_DEADLINE_LATERAL}
       ${ORDER_STAGE_FACTS_JOIN}
+      LEFT JOIN staff staff_picked
+        ON staff_picked.id = osf.picked_by
+       AND staff_picked.organization_id = o.organization_id
       -- Who packed it, else who it is assigned to pack (the Pack field's \`packed_by_name|packer_name\`).
       LEFT JOIN staff staff_packer
         ON staff_packer.id = COALESCE(osf.packed_by, osf.packer_id)

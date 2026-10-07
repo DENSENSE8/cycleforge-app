@@ -164,6 +164,9 @@ function locate(rows: readonly FulfilledPackageRow[], key: string | undefined, n
   const shipByAt = earliest(lineRows.map((line) => line.shipByAt));
   const shipByDate = lineRows.find((line) => line.shipByAt === shipByAt)?.shipByDate ?? null;
   const packerLine = lineRows.find((line) => line.packerId !== null || line.packerName !== null) ?? null;
+  // The order's pick finished with its last-picked line.
+  const pickedAt = latest(lineRows.map((line) => (line.pickedBy ? line.pickedAt : null)));
+  const pickLine = lineRows.find((line) => line.pickedBy !== null && line.pickedAt === pickedAt) ?? null;
   const deliveredAt = carrierBucket === 'delivered' ? latest(boxes.map((box) => box.pkg.deliveredAt)) : (lead?.deliveredAt ?? null);
   const firstScanAt = lead ? firstCarrierScanAt(lead) : null;
   const leadHandOff = lead?.handOffAt ?? null;
@@ -221,6 +224,10 @@ function locate(rows: readonly FulfilledPackageRow[], key: string | undefined, n
         delivered_at: deliveredAt,
         status: head.channelStatus,
         ship_by_date: shipByDate,
+        picked_at: pickLine?.pickedAt ?? null,
+        picked_by: pickLine?.pickedBy?.id ?? null,
+        picked_by_name: pickLine?.pickedBy?.name ?? null,
+        picked_source: pickLine?.pickedBy?.source ?? null,
         packed_at: latest(lineRows.map((line) => line.packedAt)),
         packer_id: packerLine?.packerId ?? null,
         packer_name: packerLine?.packerName ?? null,

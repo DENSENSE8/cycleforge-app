@@ -779,6 +779,21 @@
         "src/lib/orders/resolve-buyer-customers.ts"
       ],
       "exitCriteria": "Every code path that finds-or-creates a customers row calls resolveOrderBuyers (or a thin wrapper over its tiers); grep for INSERT INTO customers outside resolve-buyer-customers.ts returns only the resolver."
+    },
+    {
+      "id": "picker-cell-assignee-actor-fallback",
+      "state": "queued",
+      "category": "data-accuracy",
+      "problem": "Phase 1 slice 4 (2026-10-06): who picked an order line is ONE resolver (src/lib/picking/picked-by.ts → order_stage_facts.picked_by / picked_at / picked_source). Allocate's Picker cell still answers two questions in one value and in opposite orders: useOrdersQueueFeed paints the PICK assignee (picker_id / picker_name) first and falls back to the actor (picked_by / picked_by_name), queue-row-compare sorts the same column actor-first then assignee, and morphingAssignedName shows assignee-then-actor. A row assigned to A but picked by B paints A and sorts as B, and an assignee is never evidence of a pick.",
+      "currentPaths": [
+        "src/components/dashboard/orders-queue/useOrdersQueueFeed.ts",
+        "src/components/dashboard/orders-queue/queue-row-compare.ts",
+        "src/lib/outbound/morphing-row-action.ts"
+      ],
+      "replacementPaths": [
+        "src/lib/picking/picked-by.ts"
+      ],
+      "exitCriteria": "No client expression coalesces picker_* with picked_*: \"Picked by\" (cell, sort, filter) reads only picked_by / picked_by_name / picked_source, the assigned picker is its own labelled value (`?pickerId=`), and the Allocate Picker column paints and sorts by the same one of the two (operator to choose which the column is)."
     }
   ]
 }
