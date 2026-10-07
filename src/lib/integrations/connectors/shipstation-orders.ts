@@ -10,6 +10,7 @@ import {
   type PlatformOf,
 } from '@/lib/orders/order-source-match';
 import { planOrderRowBackfill, type BackfillPolicy, type BackfillRow } from '@/lib/orders/order-row-backfill';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 import type { ImportRowRecord } from '@/lib/imports/types';
 
 // ─── Store → platform ────────────────────────────────────────────────────────
@@ -31,34 +32,15 @@ export type StoreAttribution =
 
 export interface AttributionCatalog {
   /** Store links: ShipStation store id → the linked platform slug and, when
-   *  the link names an account, that account's slug (else null → the org's
-   *  spelling for the platform). */
+   *  the link names an account, that account's canonical key (else null → the
+   *  platform itself). */
   bindings: ReadonlyMap<number, { platform: string; accountSource: string | null }>;
-  /** This org's existing `orders.account_source` values, with how many orders
-   *  use each and the platform the catalog places each on (null = unplaced). */
-  spellings: ReadonlyArray<{ accountSource: string; platform: string | null; count: number }>;
 }
 
 function storePlatform(store: ShipStationV1Store): string | null {
   const name = String(store.marketplace ?? store.marketplaceName ?? '').trim().toLowerCase();
   if (name === 'shipstation') return MANUAL_ORDERS_PLATFORM;
   return shipstationMarketplaceSlug(store);
-}
-
-/** The org's spelling for a platform: its most-used account_source placed on
- *  that platform (an unplaced value counts under its own lower-case text),
- *  ties broken alphabetically; else the platform key itself. */
-function spellingFor(platform: string, spellings: AttributionCatalog['spellings']): string {
-  let best: { accountSource: string; count: number } | null = null;
-  for (const s of spellings) {
-    const source = s.accountSource.trim();
-    if (!source) continue;
-    if ((s.platform ?? source.toLowerCase()) !== platform) continue;
-    if (!best || s.count > best.count || (s.count === best.count && source < best.accountSource)) {
-      best = { accountSource: source, count: s.count };
-    }
-  }
-  return best?.accountSource ?? platform;
 }
 
 export function buildStoreAttributions(
@@ -73,7 +55,7 @@ export function buildStoreAttributions(
         kind: 'platform',
         storeId: store.storeId,
         platform: bound.platform,
-        accountSource: bound.accountSource ?? spellingFor(bound.platform, catalog.spellings),
+        accountSource: canonicalAccountSource(bound.accountSource) || canonicalAccountSource(bound.platform),
         via: 'binding',
       });
       continue;
@@ -86,7 +68,7 @@ export function buildStoreAttributions(
             kind: 'platform',
             storeId: store.storeId,
             platform,
-            accountSource: spellingFor(platform, catalog.spellings),
+            accountSource: canonicalAccountSource(platform),
             via: 'marketplace',
           }
         : {

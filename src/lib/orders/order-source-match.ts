@@ -87,10 +87,9 @@ function isPlatformPlaceholder(source: string | null | undefined, platformOf: Pl
 }
 
 /**
- * Adopted rows filed under the bare platform (`eBay`) that an incoming account
- * on that platform (`DRAGON`, from a store link) re-keys: the platform was a
- * placeholder for the account. Rows under two spellings of the placeholder
- * (`eBay`, `ebay`) re-key none — both would collide on the account's key.
+ * Adopted rows filed under the bare platform (`ebay`) that an incoming account
+ * on that platform (`dragon`, from a store link) re-keys: the platform was a
+ * placeholder for the account.
  */
 export function placeholderRowsToRekey<R extends { accountSource: string | null }>(
   incomingSource: string | null | undefined,
@@ -100,11 +99,9 @@ export function placeholderRowsToRekey<R extends { accountSource: string | null 
   const incoming = String(incomingSource ?? '').trim();
   const platform = incoming ? platformOf(incoming) : null;
   if (!platform || isPlatformPlaceholder(incoming, platformOf)) return new Set();
-  const rows = adoptedRows.filter(
-    (r) => isPlatformPlaceholder(r.accountSource, platformOf) && platformOf(r.accountSource) === platform,
+  return new Set(
+    adoptedRows.filter((r) => isPlatformPlaceholder(r.accountSource, platformOf) && platformOf(r.accountSource) === platform),
   );
-  const spellings = new Set(rows.map((r) => String(r.accountSource ?? '').trim()));
-  return spellings.size === 1 ? new Set(rows) : new Set();
 }
 
 /**

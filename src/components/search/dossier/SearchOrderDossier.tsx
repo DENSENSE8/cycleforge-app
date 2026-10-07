@@ -32,6 +32,8 @@ import {
   type SearchDossierLink,
 } from '@/lib/search/search-dossier-model';
 import { getCurrentPSTDateKey } from '@/utils/date';
+import { useOrderChannel } from '@/hooks/useCatalog';
+import { platformDisplayName } from '@/lib/platform-display';
 
 const EMPTY_TIMELINE = {
   events: [],
@@ -55,6 +57,7 @@ export function SearchOrderDossier({
   onBack?: () => void;
 }) {
   const token = String(orderId ?? '').trim();
+  const channelOf = useOrderChannel();
   const orderPk = Number(orderId);
   const resolveByPk = Number.isSafeInteger(orderPk) && orderPk > 0;
   const byIdQuery = useQuery({
@@ -132,7 +135,7 @@ export function SearchOrderDossier({
   const qty = presentFact(order.quantity);
   const marketplaceId = presentFact(order.order_id);
   const itemNumber = presentFact(order.item_number);
-  const platform = presentFact(order.account_source);
+  const platform = presentFact(order.account_source) ? platformDisplayName(channelOf(order.order_id, order.account_source)) : '';
   const carrier = presentFact(order.carrier);
   const title = presentFact(view.title) || presentFact(order.product_title) || marketplaceId || `Order ${order.id}`;
   const facts: SearchDossierFact[] = [

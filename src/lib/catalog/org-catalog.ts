@@ -123,27 +123,6 @@ function receivingTypeSlug(input: { intakeType?: string | null; isReturn?: boole
   return 'po'; // default carton flow when no explicit type is set
 }
 
-/** A resolved order channel: which platform an `account_source` value belongs to. */
-interface ResolvedChannel {
-  platform: PlatformRow | null;
-  account: PlatformAccountRow | null;
-  /** Canonical label to show (platform label wins; account label as a fallback). */
-  label: string | null;
-}
-
-/** Resolve `orders.account_source` (hybrid grain: */
-async function resolveOrderChannel(orgId: string, accountSource: string | null | undefined): Promise<ResolvedChannel> {
-  const key = String(accountSource ?? '').trim().toLowerCase();
-  if (!key) return { platform: null, account: null, label: null };
-  const [accounts, platforms] = await Promise.all([getOrgPlatformAccounts(orgId), getOrgPlatforms(orgId)]);
-  // account-grain first (eBay account names), then platform-grain.
-  const account = accounts.find((a) => a.slug.toLowerCase() === key) ?? null;
-  const platform = account
-    ? platforms.find((p) => p.id === account.platform_id) ?? null
-    : platforms.find((p) => p.slug.toLowerCase() === key) ?? null;
-  return { platform, account, label: platform?.label ?? account?.label ?? null };
-}
-
 /** Drop cached lists for one org (or all when omitted). Call on any CRUD write.
  *  Clears the L1 Map (this instance) and fires an org-scoped L2 Redis bust so a
  *  cold instance rebuilds fresh; other instances' L1 clears on their own TTL. */

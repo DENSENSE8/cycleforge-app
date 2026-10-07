@@ -3,6 +3,7 @@ import { EbayClient } from '@/lib/ebay/client';
 import { EBAY_PLATFORM_PREDICATE } from '@/lib/ebay/credentials';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 
 export const maxDuration = 60;
 
@@ -201,7 +202,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         updates.push(`order_date = $${idx++}`); values.push(orderDate);
       }
       if (isBlank(order.account_source) && matchedAccount) {
-        updates.push(`account_source = $${idx++}`); values.push(matchedAccount);
+        updates.push(`account_source = $${idx++}`); values.push(canonicalAccountSource(matchedAccount));
       }
       // Fill sale_amount/currency only when still null (never overwrite an existing value).
       if (saleAmount != null) {

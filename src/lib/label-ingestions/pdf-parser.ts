@@ -4,6 +4,7 @@ import { LABEL_PARSER_VERSION, MAX_LABEL_EXTRACTED_TEXT_CHARS, MAX_LABEL_PARSE_M
 import { decodeLabelRaster, type LabelRaster } from './label-barcodes';
 import { layoutRuns, readShipToName, readTrackingFromRuns, readTrackingValue, type LabelTextItem, type TrackingRead } from './label-text-layout';
 import type { ParsedLabelEvidence } from './types';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 
 export class LabelPdfParseError extends Error {
   constructor(readonly code: 'INVALID_PDF' | 'PDF_LIMIT_EXCEEDED' | 'PARSE_FAILED', message: string) {
@@ -116,7 +117,7 @@ export async function parseLabelPdf(bytes: Uint8Array, loader: PdfLoader = loadP
       parserVersion: LABEL_PARSER_VERSION,
       cycleforgeReference: labelled(text, 'CycleForge Reference'),
       marketplaceOrderId: labelled(text, 'Marketplace Order ID'),
-      accountSource: labelled(text, '(?:Marketplace|Account)'),
+      accountSource: canonicalAccountSource(labelled(text, '(?:Marketplace|Account)')) || null,
       trackingNumberRaw: tracking?.raw ?? null,
       trackingNumberNormalized: tracking?.normalized ?? null,
       carrier: tracking?.carrier || null,

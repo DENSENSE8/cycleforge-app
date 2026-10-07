@@ -92,25 +92,17 @@ async function loadContext(orgId: OrgId, client: ShipStationV1Client, apply: boo
       console.warn('[shipstation-sync] store catalog mirror skipped:', e);
     }
   }
-  const [platforms, accounts, links, spellingRows] = await Promise.all([
+  const [platforms, accounts, links] = await Promise.all([
     listPlatforms(orgId, { includeInactive: true }),
     listPlatformAccounts(orgId, { includeInactive: true }),
     listStoreLinks(orgId, SHIPSTATION_STORE_PROVIDER),
-    tenantQuery<{ account_source: string; n: number }>(
-      orgId,
-      `SELECT account_source, count(*)::int AS n
-         FROM orders
-        WHERE organization_id = $1 AND btrim(coalesce(account_source, '')) <> ''
-        GROUP BY 1`,
-      [orgId],
-    ),
   ]);
   const lookup = buildAccountSourceLookup(platforms, accounts);
   const platformOf: PlatformOf = (source) => lookup(source).platform?.slug.trim().toLowerCase() ?? null;
   const platformSlugById = new Map(platforms.map((p) => [String(p.id), p.slug.trim().toLowerCase()]));
 
   // A link naming an account that has since been retired attributes to the
-  // platform (org spelling) rather than to a hidden account.
+  // platform rather than to a hidden account.
   const activeAccountSlugById = new Map(accounts.filter((a) => a.is_active).map((a) => [String(a.id), a.slug]));
   const bindings: AttributionCatalog['bindings'] = new Map(
     links.flatMap((link) => {
@@ -121,12 +113,7 @@ async function loadContext(orgId: OrgId, client: ShipStationV1Client, apply: boo
       return [[Number(link.external_store_id), { platform, accountSource }] as const];
     }),
   );
-  const spellings = spellingRows.rows.map((r) => ({
-    accountSource: r.account_source,
-    platform: platformOf(r.account_source),
-    count: Number(r.n),
-  }));
-  return { orgId, client, attributions: buildStoreAttributions(stores, { bindings, spellings }), platformOf, progress };
+  return { orgId, client, attributions: buildStoreAttributions(stores, { bindings }), platformOf, progress };
 }
 
 // ─── DB reads ────────────────────────────────────────────────────────────────

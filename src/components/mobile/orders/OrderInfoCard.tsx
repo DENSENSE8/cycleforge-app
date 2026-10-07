@@ -5,14 +5,8 @@ import { LIFECYCLE, LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { isEmptyMetaDash, orderRowConditionLabel } from '@/lib/conditions';
 import { workStageLifecycleState } from '@/lib/order-lifecycle';
 import { orderHubTitle, orderHubTracking, type OrderHubData } from '@/lib/orders/order-hub';
-import { sourcePlatformMeta } from '@/lib/source-platform';
-
-/** The channel an order came in on, in words, or null. */
-export function orderChannel(source: string | null | undefined): string | null {
-  if (!source) return null;
-  const meta = sourcePlatformMeta(source);
-  return meta.value ? meta.label : source;
-}
+import { useOrderChannel } from '@/hooks/useCatalog';
+import { platformDisplayName } from '@/lib/platform-display';
 
 /** The order hub's read-only summary on {@link DetailSummaryCard}: */
 export function OrderInfoCard({
@@ -25,6 +19,8 @@ export function OrderInfoCard({
   stagePending: boolean;
 }) {
   const { order, work } = data;
+  const channelOf = useOrderChannel();
+  const source = work?.source ?? order.account_source;
   const tracking = orderHubTracking(data);
   const shipping = tracking.number ? [tracking.number, tracking.carrier].filter(Boolean).join(' · ') : 'No shipping label yet';
   const quantity = Number(work?.product.quantity ?? order.quantity) || 1;
@@ -32,7 +28,7 @@ export function OrderInfoCard({
   const facts = [
     `Qty ${quantity}`,
     isEmptyMetaDash(condition) ? null : condition,
-    orderChannel(work?.source ?? order.account_source),
+    source ? platformDisplayName(channelOf(order.order_id, source)) : null,
   ].filter(Boolean);
   const state = work ? workStageLifecycleState(work.warehouseStage, { urgent: work.priority.urgent }) : null;
   return (

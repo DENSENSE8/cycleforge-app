@@ -4,6 +4,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { resolveOrCreateSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 
 export interface ShippedFormData {
   order_id: string;
@@ -55,10 +56,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   // Stamp organization_id so the new row is owned by the caller's tenant.
   const insertResult = await withTenantTransaction(orgId, (client) =>
     client.query(
-      `INSERT INTO orders (order_id, product_title, condition, sku, status, created_at, sku_catalog_id, organization_id)
-         VALUES ($1, $2, $3, $4, 'shipped', NOW(), $5, $6)
+      `INSERT INTO orders (order_id, product_title, condition, sku, status, created_at, sku_catalog_id, organization_id, account_source)
+         VALUES ($1, $2, $3, $4, 'shipped', NOW(), $5, $6, $7)
          RETURNING id`,
-      [order_id, finalProductTitle, condition, sku?.trim() || null, skuCatalogId, orgId]
+      [order_id, finalProductTitle, condition, sku?.trim() || null, skuCatalogId, orgId, canonicalAccountSource(null, order_id)]
     )
   );
   const insertedId = insertResult.rows[0]?.id ?? null;

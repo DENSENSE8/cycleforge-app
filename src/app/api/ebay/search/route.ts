@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 
 /** GET /api/ebay/search Search orders across all eBay accounts */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -75,7 +76,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   // Filter by account
   if (accountFilter && accountFilter.trim() !== '') {
     sql += ` AND o.account_source = $${paramCount++}`;
-    params.push(accountFilter.trim());
+    params.push(canonicalAccountSource(accountFilter));
   }
 
   // Filter by status

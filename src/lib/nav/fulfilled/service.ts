@@ -112,11 +112,12 @@ function joined(values: ReadonlyArray<string | null>): string | null {
   return distinct.length > 0 ? distinct.join(' · ') : null;
 }
 
-/** The channel's face: the platform registry's name, else the stored word (`USAV`, `MEKONG`). */
-function channelLabel(channel: string, raw: string | null): string {
+/** The channel's face: the catalog account's label (`USAV`), else the platform registry's name, else the stored key. */
+function channelLabel(channel: string, accountLabel: string | null): string {
+  if (accountLabel) return accountLabel;
   if (channel === 'fba') return 'Amazon FBA';
   const meta = sourcePlatformMeta(channel);
-  return meta.value ? meta.label : (raw ?? channel);
+  return meta.value ? meta.label : channel;
 }
 
 /** The carrier's fault, so a lost-package claim may apply (Tracking stale is ours: we stopped asking). */
@@ -171,7 +172,7 @@ function locate(rows: readonly FulfilledPackageRow[], key: string | undefined, n
   const trackings = boxes.map((box) => box.pkg.tracking).filter((tracking): tracking is string => !!tracking);
 
   const fulfilled: OutboundFulfilledFacts = {
-    channel: head.channel ? channelLabel(head.channel, head.channelRaw) : null,
+    channel: head.channel ? channelLabel(head.channel, head.channelAccountLabel) : null,
     customer: joined(lineRows.map((line) => line.customer)),
     qty: sumOrNull(lineRows.map((line) => line.qty)),
     orderTotal: sumOrNull(lineRows.map((line) => line.saleAmount)),

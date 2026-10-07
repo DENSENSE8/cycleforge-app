@@ -11,6 +11,7 @@ import { recordInventoryEvent } from '@/lib/inventory/events';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import { sqlStationActivityMatchesOrder } from '@/lib/orders/order-grain-sql';
 import { ORDER_PICK_SCAN_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 
 // Order record with shipping information.
 import type { ShippedOrder } from '@/types/orders';
@@ -1465,7 +1466,7 @@ export async function updateOrder(
     if (key === 'shipByDate') continue;
     if (value !== undefined && columnMap[key]) {
       setClauses.push(`${columnMap[key]} = $${idx++}`);
-      params.push(value);
+      params.push(key === 'accountSource' && value != null ? canonicalAccountSource(String(value)) : value);
     }
   }
 

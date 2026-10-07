@@ -49,6 +49,7 @@ import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { resolveSkuIdentityTitle, skuCatalogJoinOnSql } from '@/lib/sku/sku-identity-law';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 
 type Row = Record<string, unknown>;
 /** A tenant transaction's client (or a test fake) — only `query` is used. */
@@ -233,7 +234,7 @@ export async function insertOrderRowsInTx(
         plan.orderId,
         line.productTitle,
         line.sku || null,
-        plan.accountSource,
+        canonicalAccountSource(plan.accountSource, plan.orderId),
         plan.status,
         line.skuCatalogId,
         line.saleAmount,

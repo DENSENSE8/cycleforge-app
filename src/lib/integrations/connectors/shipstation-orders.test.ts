@@ -40,20 +40,7 @@ const STORES = [
   store(7, 'Walmart'),
 ];
 
-// The org's existing account_source spellings, as the catalog places them.
-const CATALOG: AttributionCatalog = {
-  bindings: new Map(),
-  spellings: [
-    { accountSource: 'Amazon', platform: 'amazon', count: 1873 },
-    { accountSource: 'amazon', platform: 'amazon', count: 8 },
-    { accountSource: 'eBay', platform: 'ebay', count: 1090 },
-    { accountSource: 'MEKONG', platform: 'ebay', count: 82 },
-    { accountSource: 'ecwid', platform: 'ecwid', count: 480 },
-    { accountSource: 'ECWID', platform: 'ecwid', count: 8 },
-    { accountSource: 'Walmart', platform: 'walmart', count: 109 },
-    { accountSource: 'Manual', platform: null, count: 60 },
-  ],
-};
+const CATALOG: AttributionCatalog = { bindings: new Map() };
 
 const platformOf: PlatformOf = (source) => {
   const s = (source ?? '').trim().toLowerCase();
@@ -156,22 +143,22 @@ function plan(orders: ShipStationV1Order[], rows: ExistingOrderRow[] = [], ignor
   return planShipStationOrders(orders, { attributions, rowsByNumber, platformOf, ignored: new Set(ignored) });
 }
 
-test('stores map to the platform spelling the org already uses; ShipStation plumbing is unattributed', () => {
+test('stores map to their canonical platform key; ShipStation plumbing is unattributed', () => {
   const source = (id: number) => {
     const a = attributeStore(id, attributions);
     return a.kind === 'platform' ? a.accountSource : `unattributed`;
   };
-  assert.equal(source(1), 'Amazon', 'the most-used Amazon spelling, not the slug');
-  assert.equal(source(2), 'eBay', 'store grain folds to the platform unless explicitly bound');
+  assert.equal(source(1), 'amazon');
+  assert.equal(source(2), 'ebay', 'store grain folds to the platform unless explicitly bound');
   assert.equal(source(3), 'ecwid', 'Ecwid by Lightspeed is the ecwid platform');
-  assert.equal(source(4), 'shopify', 'a platform the org has no orders for yet is its slug');
-  assert.equal(source(5), 'Manual', 'ShipStation Manual Orders is the org\'s manual channel');
+  assert.equal(source(4), 'shopify');
+  assert.equal(source(5), 'manual', 'ShipStation Manual Orders is the org\'s manual channel');
   assert.equal(source(6), 'unattributed');
   assert.equal(source(99), 'unattributed', 'a store missing from /stores is never guessed');
   assert.equal(attributeStore(null, attributions).kind, 'unattributed');
 });
 
-test('a store link wins over the marketplace: its account, else the linked platform in the org spelling', () => {
+test('a store link wins over the marketplace: its account, else the linked platform — both canonical', () => {
   const bound = buildStoreAttributions(STORES, {
     ...CATALOG,
     bindings: new Map([
@@ -181,11 +168,11 @@ test('a store link wins over the marketplace: its account, else the linked platf
     ]),
   });
   const mekong = attributeStore(2, bound);
-  assert.equal(mekong.kind === 'platform' && mekong.accountSource, 'MEKONG');
+  assert.equal(mekong.kind === 'platform' && mekong.accountSource, 'mekong', 'the catalog slug, stored canonical');
   assert.equal(mekong.kind === 'platform' && mekong.via, 'binding');
   const relinked = attributeStore(4, bound);
   assert.equal(relinked.kind === 'platform' && relinked.platform, 'ecwid');
-  assert.equal(relinked.kind === 'platform' && relinked.accountSource, 'ecwid', 'the org spelling, not "shopify"');
+  assert.equal(relinked.kind === 'platform' && relinked.accountSource, 'ecwid', 'the linked platform, not "shopify"');
 });
 
 test('canonical line: never a "ShipStation order" title; all lines summarized; notes, gift, service and bill-to kept', () => {
@@ -236,12 +223,12 @@ test('plan: new → import; same-platform row → enrich or unchanged; no ShipSt
   const { planned, counts } = plan(
     [fresh, known, idle],
     [
-      existing(10, 'K1', 'Amazon'),
-      existing(11, 'K2', 'Walmart', { status: 'unassigned' }),
+      existing(10, 'K1', 'amazon'),
+      existing(11, 'K2', 'walmart', { status: 'unassigned' }),
     ],
   );
   const byNumber = Object.fromEntries(planned.map((p) => [p.orderNumber, p.plan]));
-  assert.deepEqual(byNumber.N1, { outcome: 'import', accountSource: 'Amazon' });
+  assert.deepEqual(byNumber.N1, { outcome: 'import', accountSource: 'amazon' });
   assert.equal(byNumber.K1.outcome, 'enrich', 'the untouched status moves to shipped');
   assert.equal(byNumber.K2.outcome, 'unchanged');
   assert.equal(counts.imported, 1);
@@ -250,10 +237,10 @@ test('plan: new → import; same-platform row → enrich or unchanged; no ShipSt
   for (const p of planned) assert.notEqual(p.line?.accountSource?.toLowerCase(), 'shipstation');
 });
 
-test('plan: another spelling of the platform is adopted (source kept); a legacy "shipstation" row is claimed', () => {
+test('plan: another account on the platform is adopted (source kept); a legacy "shipstation" row is claimed', () => {
   const { planned, counts } = plan(
-    [order({ orderNumber: 'A1', storeId: 3 }), order({ orderNumber: 'L1', storeId: 3 })],
-    [existing(20, 'A1', 'ECWID'), existing(21, 'L1', 'shipstation', { productTitle: 'ShipStation order L1' })],
+    [order({ orderNumber: 'A1', storeId: 2 }), order({ orderNumber: 'L1', storeId: 3 })],
+    [existing(20, 'A1', 'mekong'), existing(21, 'L1', 'shipstation', { productTitle: 'ShipStation order L1' })],
   );
   const a1 = planned.find((p) => p.orderNumber === 'A1')!.plan;
   const l1 = planned.find((p) => p.orderNumber === 'L1')!.plan;
@@ -263,16 +250,16 @@ test('plan: another spelling of the platform is adopted (source kept); a legacy 
   assert.equal(counts.reasons['match.claimed'], 1);
 });
 
-test('plan: a store linked to an account re-keys rows under the bare platform; two placeholder spellings stay put', () => {
+test('plan: a store linked to an account re-keys every row filed under the bare platform', () => {
   const bound = buildStoreAttributions(STORES, {
     ...CATALOG,
     bindings: new Map([[2, { platform: 'ebay', accountSource: 'MEKONG' }]]),
   });
   const idle = { storeId: 2, customerId: null, customerEmail: null, shipTo: null, customerUsername: null };
   const rows = [
-    existing(40, 'E1', 'eBay'),
-    existing(41, 'E2', 'eBay'),
-    existing(42, 'E2', 'ebay'),
+    existing(40, 'E1', 'ebay'),
+    existing(41, 'E2', 'ebay'),
+    existing(42, 'E2', 'ebay', { sku: 'SKU-2' }),
   ];
   const rowsByNumber = new Map<string, ExistingOrderRow[]>();
   for (const r of rows) rowsByNumber.set(r.orderId!, [...(rowsByNumber.get(r.orderId!) ?? []), r]);
@@ -283,11 +270,11 @@ test('plan: a store linked to an account re-keys rows under the bare platform; t
     ignored: new Set(),
   });
   const get = (n: string) => planned.find((p) => p.orderNumber === n)!.plan;
-  assert.deepEqual(get('E1'), { outcome: 'enrich', accountSource: 'MEKONG', match: 'adopted', rowIds: [40] }, '"eBay" was a placeholder for the account');
-  assert.equal(get('E2').outcome, 'unchanged', 're-keying both spellings would collide on the MEKONG key');
+  assert.deepEqual(get('E1'), { outcome: 'enrich', accountSource: 'mekong', match: 'adopted', rowIds: [40] }, '"ebay" was a placeholder for the account');
+  assert.deepEqual(get('E2'), { outcome: 'enrich', accountSource: 'mekong', match: 'adopted', rowIds: [41, 42] }, 'each line of the order re-keys');
 
   // Unbound, the store writes the platform itself: nothing to re-key.
-  const { planned: unbound } = plan([order({ orderNumber: 'E1', ...idle })], [existing(40, 'E1', 'eBay')]);
+  const { planned: unbound } = plan([order({ orderNumber: 'E1', ...idle })], [existing(40, 'E1', 'ebay')]);
   assert.equal(unbound[0].plan.outcome, 'unchanged');
 });
 

@@ -281,7 +281,7 @@ test('chat marketplace order: an unpaired listing line is written with its item 
   const insert = calls.find((c) => c.text.includes('INSERT INTO orders'));
   assert.ok(insert);
   assert.equal(insert.params[0], '12-34567-89012');
-  assert.equal(insert.params[3], 'USAV', 'account_source is the picked account');
+  assert.equal(insert.params[3], 'usav', 'account_source is the picked account, stored canonical');
   assert.equal(insert.params[9], 9001, 'shipment_id is the tracking shipment');
   assert.equal(insert.params[22], '397944288197', 'item_number');
   assert.equal(insert.params[5], null, 'no catalog id until paired');

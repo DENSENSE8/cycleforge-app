@@ -2,7 +2,8 @@
 
 import { Suspense } from 'react';
 import { DetailFact, DetailFacts, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
-import { orderChannel } from '@/components/mobile/orders/OrderInfoCard';
+import { useOrderChannel } from '@/hooks/useCatalog';
+import { platformDisplayName } from '@/lib/platform-display';
 import { useOrderHub } from '@/components/mobile/orders/useOrderHub';
 import { DetailRecordFrame } from '@/design-system/components/DetailHubScreen';
 import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
@@ -26,6 +27,7 @@ const words = (raw: string | null | undefined) => (raw ? raw.replace(/_/g, ' ').
  */
 function OrderInfoInner() {
   const hub = useOrderHub();
+  const channelOf = useOrderChannel();
   return (
     <DetailRecordFrame<OrderHubData>
       record={hub.data}
@@ -65,7 +67,10 @@ function OrderInfoInner() {
               <DetailFact label="Item #" value={itemNumber || null} mono copy={itemNumber} />
               <DetailFact label="Quantity" value={String(Number(work?.product.quantity ?? order.quantity) || 1)} />
               <DetailFact label="Condition" value={isEmptyMetaDash(condition) ? null : condition} />
-              <DetailFact label="Platform" value={orderChannel(work?.source ?? order.account_source) ?? null} />
+              <DetailFact
+                label="Platform"
+                value={(work?.source ?? order.account_source) ? platformDisplayName(channelOf(order.order_id, work?.source ?? order.account_source)) : null}
+              />
             </DetailFacts>
             <DetailSectionHeading>Shipping</DetailSectionHeading>
             <DetailFacts label="Shipping">

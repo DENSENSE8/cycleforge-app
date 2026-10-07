@@ -9,6 +9,7 @@ import { listSweepOrgIds } from '@/lib/cron/for-each-org';
 import { logger } from '@/lib/observability/logger';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 import { recordProviderSync, type ImportRecordDeps, type ImportRunMeta } from './import-record';
 
 /** Rows per INSERT: 16 binds each, far under Postgres' 65535-bind ceiling. */
@@ -19,8 +20,8 @@ function rowValues(row: ImportRowRecord): unknown[] {
   return [
     row.orderRowId,
     row.externalOrderId,
-    row.accountSource,
-    row.platform,
+    row.accountSource == null ? null : canonicalAccountSource(row.accountSource, row.externalOrderId) || null,
+    row.platform == null ? null : canonicalAccountSource(row.platform) || null,
     row.outcome,
     row.reason ?? null,
     row.filledFields ?? [],

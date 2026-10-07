@@ -104,7 +104,7 @@ async function cleanup() {
 async function createOrder(client: any, orderId: string, title: string): Promise<number> {
   const r = await client.query(
     `INSERT INTO orders (order_id, product_title, sku, status, quantity, account_source, order_date, created_at, condition)
-     VALUES ($1, $2, $3, 'unassigned', '1', 'TEST', NOW(), NOW(), 'New')
+     VALUES ($1, $2, $3, 'unassigned', '1', 'qa', NOW(), NOW(), 'New')
      RETURNING id`,
     [orderId, title, 'TEST-SKU'],
   );

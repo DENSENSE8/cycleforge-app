@@ -50,6 +50,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { orderTrackingMatchKeys, trackingDigitsLast8Strict } from '@/lib/tracking-format';
 import { escapeLike } from '@/lib/sql-like';
 import { SUPPORT_CHECK_IN_PROGRAM } from '@/lib/support/check-ins/config';
+import { accountSourceAccountLabelSql } from '@/lib/orders/account-source';
 import {
   CHECK_IN_OUTCOMES,
   ORDER_CHECK_IN_STATES,
@@ -87,9 +88,10 @@ export interface FulfilledPackageRow {
   /** The channel order # (`orders.order_id`), else `#<orders.id>`. */
   orderKey: string;
   orderId: string | null;
-  /** Lower-cased trimmed `account_source`; null when blank. */
+  /** Canonical `account_source` (src/lib/orders/account-source.ts); null when blank. */
   channel: string | null;
-  channelRaw: string | null;
+  /** The org catalog's label for the seller account `channel` names (`USAV`), else null. */
+  channelAccountLabel: string | null;
   channelStatus: string | null;
   orderedAt: string | null;
   qty: number | null;
@@ -325,8 +327,8 @@ export function buildFulfilledSql(orgId: OrgId, window: FulfilledWindow, q: stri
       SELECT o.id AS order_row_id,
              COALESCE(NULLIF(BTRIM(o.order_id), ''), '#' || o.id) AS order_key,
              o.order_id,
-             NULLIF(LOWER(BTRIM(o.account_source)), '') AS channel,
-             NULLIF(BTRIM(o.account_source), '') AS channel_raw,
+             NULLIF(o.account_source, '') AS channel,
+             ${accountSourceAccountLabelSql('o')} AS channel_account_label,
              o.status,
              COALESCE(o.order_date, o.created_at) AS ordered_at,
              CASE WHEN o.quantity ~ '^\\s*[0-9]+(\\.[0-9]+)?\\s*$' THEN BTRIM(o.quantity)::numeric END AS qty,
@@ -532,7 +534,7 @@ export function fulfilledPackageRowOf(row: Record<string, unknown>): FulfilledPa
     orderKey: String(row.order_key),
     orderId: text(row.order_id),
     channel: text(row.channel),
-    channelRaw: text(row.channel_raw),
+    channelAccountLabel: text(row.channel_account_label),
     channelStatus: text(row.status),
     orderedAt: stamp(row.ordered_at),
     qty: num(row.qty),

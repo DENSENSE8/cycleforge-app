@@ -75,6 +75,7 @@ import type { TxClient } from '@/lib/inbound/purchase-links';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { createProvisionalSku } from '@/lib/neon/provisional-sku-queries';
 import { createTask } from '@/lib/tasks/create-task';
+import { QA_ACCOUNT_SOURCE } from '@/lib/orders/account-source';
 
 const DATABASE_URL = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 const FIXTURES_ONLY = process.argv.includes('--fixtures-only');
@@ -701,7 +702,7 @@ async function createFixtureOrder(
   orderId: string,
   title: string,
   sku: string,
-  accountSource = 'QA-TEST',
+  accountSource = QA_ACCOUNT_SOURCE,
 ): Promise<number> {
   const r = await client.query<{ id: number }>(
     `INSERT INTO orders
@@ -866,7 +867,7 @@ async function seedDemoOrderVolume(client: PoolClient, orgId: string) {
       qaDemoOrderId('awaiting', i),
       `QA demo awaiting — ${product.title}`,
       product.sku,
-      'QA-DEMO',
+      QA_ACCOUNT_SOURCE,
     );
   }
 
@@ -878,7 +879,7 @@ async function seedDemoOrderVolume(client: PoolClient, orgId: string) {
       qaDemoOrderId('pending', i),
       `QA demo pending — ${product.title}`,
       product.sku,
-      'QA-DEMO',
+      QA_ACCOUNT_SOURCE,
     );
     const tracking = qaDemoTrackingNumber(trackingSeq++);
     await assignFixtureTracking(client, orgId, orderRowId, tracking);
@@ -893,7 +894,7 @@ async function seedDemoOrderVolume(client: PoolClient, orgId: string) {
       qaDemoOrderId('packed', i),
       `QA demo packed — ${product.title}`,
       product.sku,
-      'QA-DEMO',
+      QA_ACCOUNT_SOURCE,
     );
     await assignFixtureTracking(client, orgId, orderRowId, tracking);
     const shipmentId = await stampPackCompleted(client, orgId, orderRowId, tracking);
@@ -916,7 +917,7 @@ async function seedDemoOrderVolume(client: PoolClient, orgId: string) {
       qaDemoOrderId('shipped', i),
       `QA demo shipped — ${product.title}`,
       product.sku,
-      'QA-DEMO',
+      QA_ACCOUNT_SOURCE,
     );
     await assignFixtureTracking(client, orgId, orderRowId, tracking);
     const shipmentId = await stampPackCompleted(client, orgId, orderRowId, tracking);
@@ -1312,7 +1313,7 @@ async function ensureTriageOrder(
     `INSERT INTO orders
        (organization_id, order_id, product_title, sku, sku_catalog_id, item_number, release_state,
         status, quantity, account_source, order_date, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'unassigned', '1', 'QA-TEST', NOW(), NOW())
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'unassigned', '1', '${QA_ACCOUNT_SOURCE}', NOW(), NOW())
      RETURNING id`,
     [orgId, o.orderId, o.title, o.sku, o.skuCatalogId, o.itemNumber, o.releaseState],
   );

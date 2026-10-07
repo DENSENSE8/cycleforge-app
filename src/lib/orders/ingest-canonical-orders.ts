@@ -45,6 +45,7 @@ import {
   type PlatformOf,
 } from '@/lib/orders/order-source-match';
 import { filledOrderColumns, isBlank, planOrderRowBackfill } from '@/lib/orders/order-row-backfill';
+import { canonicalAccountSource } from '@/lib/orders/account-source';
 import type { BackfillPolicy } from '@/lib/orders/order-row-backfill';
 
 /** Whose customer id the buyer block carries: its own `channel` (an aggregator
@@ -394,7 +395,10 @@ export async function ingestCanonicalOrders(
   }: IngestCanonicalOrdersOptions,
 ): Promise<IngestCanonicalOrdersResult> {
   const effectiveOrgId: OrgId = orgId ?? transitionalDogfoodOrgId();
-  const canonicalOrders = groupCanonicalOrderLines(lines);
+  // One platform vocabulary at the door: every source's channel text is stored canonical.
+  const canonicalOrders = groupCanonicalOrderLines(
+    lines.map((line) => ({ ...line, accountSource: canonicalAccountSource(line.accountSource, line.externalOrderId) })),
+  );
   if (canonicalOrders.length === 0) return emptyIngestResult();
 
   // NUL as the joiner: `accountSource` is a free-text channel label that may
