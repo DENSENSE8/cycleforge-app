@@ -33,6 +33,7 @@ import {
   sqlOrderTestDeadlineAt,
 } from '@/lib/orders/desk-view-sql';
 import { ORDER_STAGE_FACTS_JOIN, ORDER_STAGE_FACTS_SIGNALS } from '@/lib/orders/order-stage-facts';
+import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { G3_LABEL_EXISTS_SQL } from '@/lib/orders/caged-orders';
 import {
   G2_LINKED_DOCUMENT_EXISTS_SQL,
@@ -147,7 +148,11 @@ const CARD_LABEL_LINKED_SQL = `(o.id IS NOT NULL AND EXISTS (
 /**
  * Every carrier order still in the building, with its stage, the instant it
  * entered that stage, its ship-by and its facet keys. A stage fact with no
- * instant falls back to the step before it.
+ * instant falls back to the step before it. A box a pack scan touched but no
+ * order carries (an import that never matched) is still in the building, so
+ * its pack is a card too — `link='package'`, keyed by the negative shipment id
+ * (the unlinked scan-out convention), held to a 30-day pack window so the
+ * historical tail cannot drown the lane.
  */
 const OPEN_MEMBERS_CTE = `m_open AS MATERIALIZED (
     SELECT o.id AS order_row_id,
@@ -175,6 +180,43 @@ const OPEN_MEMBERS_CTE = `m_open AS MATERIALIZED (
        AND ${sqlOrderInWarehouseToShip('o')}
        AND NOT ${IN_PERSON_SQL}
        AND ${IDS_OK_SQL}
+    UNION ALL
+    SELECT (-ps.shipment_id)::bigint AS order_row_id,
+           'packed'::text AS stage,
+           ps.packed_at AS entered_at,
+           NULL::timestamptz AS deadline_at,
+           NULL::timestamptz AS scanned_out_at,
+           NULL::int AS scanned_out_by,
+           NULLIF(UPPER(BTRIM(stn.carrier)), '') AS carrier_key,
+           NULL::text AS channel_key,
+           (${STAFF}::int IS NULL OR ps.packed_by = ${STAFF}::int) AS staff_ok,
+           ps.shipment_id::bigint AS shipment_id,
+           NULL::text AS scan_ref,
+           'package'::text AS link
+      FROM (
+        SELECT sal.shipment_id::bigint AS shipment_id,
+               MIN(sal.created_at) AS packed_at,
+               (array_agg(sal.staff_id ORDER BY sal.created_at, sal.id) FILTER (WHERE sal.staff_id > 0))[1]::int AS packed_by
+          FROM station_activity_logs sal
+         WHERE sal.organization_id = ${ORG}
+           AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
+           AND sal.shipment_id IS NOT NULL
+           AND sal.created_at >= now() - interval '30 days'
+         GROUP BY 1
+      ) ps
+      JOIN shipping_tracking_numbers stn ON stn.id = ps.shipment_id AND stn.organization_id = ${ORG}
+     WHERE NOT EXISTS (SELECT 1 FROM orders o0 WHERE o0.organization_id = ${ORG} AND o0.shipment_id = ps.shipment_id)
+       AND NOT EXISTS (
+         SELECT 1 FROM shipment_links sl
+          WHERE sl.organization_id = ${ORG} AND sl.owner_type = 'ORDER' AND sl.shipment_id = ps.shipment_id
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM station_activity_logs sout
+          WHERE sout.organization_id = ${ORG}
+            AND sout.activity_type = 'SHIP_CONFIRM'
+            AND sout.shipment_id = ps.shipment_id
+       )
+       AND (${IDS}::int[] IS NULL OR -ps.shipment_id = ANY(${IDS}::int[]))
   )`;
 
 /** Synthetic card ids for a scan-out no order owns — negative, so they never collide with `orders.id`. */

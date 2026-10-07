@@ -151,15 +151,39 @@ export function LiveFeedBoard({ surface, viewerStaffId }: { surface: 'desk' | 'p
   // ── Bulk selection (the bulk bar's records). A desk shows checks on hover; a phone opts in with Select.
   const [checked, setChecked] = useState<ReadonlyMap<number, PackageCard>>(new Map());
   const [selectMode, setSelectMode] = useState(false);
-  const toggleCheck = useCallback((card: PackageCard) => {
-    setChecked((was) => {
-      const next = new Map(was);
-      if (next.has(card.orderRowId)) next.delete(card.orderRowId);
-      else next.set(card.orderRowId, card);
-      return next;
-    });
-  }, []);
+  // The last singly-checked card — shift-click takes everything between it and
+  // the click, over the board's own lane order (column by column, every stage).
+  const checkAnchor = useRef<PackageCard | null>(null);
+  const flatCards = useMemo(() => columns.flatMap((column) => column.items ?? []), [columns]);
+  const toggleCheck = useCallback(
+    (card: PackageCard, event?: { shiftKey?: boolean }) => {
+      const anchor = checkAnchor.current;
+      if (event?.shiftKey && anchor && anchor.orderRowId !== card.orderRowId) {
+        const ids = flatCards.map((candidate) => candidate.orderRowId);
+        const from = ids.indexOf(anchor.orderRowId);
+        const to = ids.indexOf(card.orderRowId);
+        if (from >= 0 && to >= 0) {
+          const between = flatCards.slice(Math.min(from, to), Math.max(from, to) + 1);
+          setChecked((was) => {
+            const next = new Map(was);
+            for (const betweenCard of between) next.set(betweenCard.orderRowId, betweenCard);
+            return next;
+          });
+          return;
+        }
+      }
+      checkAnchor.current = card;
+      setChecked((was) => {
+        const next = new Map(was);
+        if (next.has(card.orderRowId)) next.delete(card.orderRowId);
+        else next.set(card.orderRowId, card);
+        return next;
+      });
+    },
+    [flatCards],
+  );
   const clearChecks = useCallback(() => {
+    checkAnchor.current = null;
     setChecked(new Map());
     setSelectMode(false);
   }, []);

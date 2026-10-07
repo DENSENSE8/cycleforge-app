@@ -7,6 +7,7 @@ import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { ORDER_STAGE_FACTS_JOIN, ORDER_STAGE_FACTS_SIGNALS } from '@/lib/orders/order-stage-facts';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
 import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
+import { sqlOrderRemovedFromList } from '@/lib/orders/list-removal';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 
 /** Lane → feed tone (FeedMembershipTone / TimelineTone). */
@@ -142,6 +143,7 @@ export async function projectOrdersUnshippedMemberships(
        AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
        AND NOT ${sql.raw(sqlOrderHasShipConfirm('o'))}
        AND NOT ${sql.raw(ORDER_STAGE_FACTS_SIGNALS.hasPackScan)}
+       AND NOT ${sql.raw(sqlOrderRemovedFromList('o'))}
        AND COALESCE(wa.deadline_at, o.created_at) >= NOW() - make_interval(days => ${days})
   `);
   const rows = fetched.rows as RawOrderRow[];
@@ -205,6 +207,7 @@ export async function projectOrdersUnshippedMemberships(
             )
             AND NOT ${sql.raw(SHIPPED_BY_CARRIER_SQL)}
             AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
+            AND NOT ${sql.raw(sqlOrderRemovedFromList('o'))}
             AND NOT EXISTS (
               SELECT 1 FROM station_activity_logs sal
               WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id

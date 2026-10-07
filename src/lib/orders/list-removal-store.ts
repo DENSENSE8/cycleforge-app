@@ -37,6 +37,19 @@ export async function removeOrdersFromList(client: PoolClient, args: RemoveArgs)
       BUYER_CANCELLED_STATUS,
     ]);
   }
+  // A delivered removal is also the carrier's word: stamp the shipment so every
+  // carrier-status surface (Shipped board, tracking lookups) agrees with the operator.
+  if (args.reason === 'delivered' && removed.length > 0) {
+    await client.query(
+      `UPDATE shipping_tracking_numbers stn
+          SET is_delivered = true,
+              delivered_at = COALESCE(stn.delivered_at, now())
+         FROM orders o
+        WHERE o.organization_id = $1 AND o.id = ANY($2::int[])
+          AND o.shipment_id = stn.id`,
+      [args.orgId, removed],
+    );
+  }
   return removed;
 }
 
@@ -64,6 +77,21 @@ export async function restoreOrdersToList(
           AND r.restored_at IS NOT NULL
           AND r.restored_at = (SELECT max(r2.restored_at) FROM order_list_removals r2 WHERE r2.organization_id = $1 AND r2.order_id = o.id)`,
       [args.orgId, restored, BUYER_CANCELLED_STATUS],
+    );
+    // Undoing a delivered removal takes the operator's carrier word back; a real
+    // carrier refresh re-stamps it on the next poll.
+    await client.query(
+      `UPDATE shipping_tracking_numbers stn
+          SET is_delivered = false,
+              delivered_at = NULL
+         FROM orders o
+         JOIN order_list_removals r
+           ON r.organization_id = o.organization_id AND r.order_id = o.id
+        WHERE o.organization_id = $1 AND o.id = ANY($2::int[])
+          AND o.shipment_id = stn.id
+          AND r.reason = 'delivered'
+          AND r.restored_at IS NOT NULL`,
+      [args.orgId, restored],
     );
   }
   return restored;

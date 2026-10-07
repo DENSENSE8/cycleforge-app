@@ -116,6 +116,8 @@ interface BuyLabelSectionProps {
    * the Labels queue (no order documents, no void pane — print from the rail).
    */
   manual?: LabelBuyManualSource | null;
+  /** The purpose the section opens on — the Send-replacement dialog presets 'replacement'. */
+  initialPurpose?: LabelPurpose;
 }
 
 /** The no-order buy: a typed address and parcel, an optional reference/product link. */
@@ -142,13 +144,14 @@ export function BuyLabelSection({
   onRatesError,
   onPurchased,
   manual = null,
+  initialPurpose = 'outbound',
 }: BuyLabelSectionProps) {
   // Mode corners: a card / a control in triage, square on the floor.
   const face = 'rounded-mode';
   const faceSm = 'rounded-mode-control';
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   // Why this label is bought:
-  const [purpose, setPurpose] = useState<LabelPurpose>('outbound');
+  const [purpose, setPurpose] = useState<LabelPurpose>(initialPurpose);
   // The evidence column's Label block reads the purchase ledger; a buy or a
   // void changes it.
   const queryClient = useQueryClient();

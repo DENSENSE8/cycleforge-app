@@ -7,6 +7,7 @@ import { sqlOrderIsPicked, sqlOrderPickedById } from '@/lib/picking/picked-by';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { BUYER_CANCELLED_STATUS } from '@/lib/orders/buyer-cancelled';
+import { sqlOrderRemovedFromList } from '@/lib/orders/list-removal';
 import { PICKUP_FULFILLMENT_CHANNEL } from '@/lib/orders/release-gates';
 import type { OutboundInternalStatus } from '@/lib/status/record-status';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
@@ -96,7 +97,8 @@ export function sqlOrderNotBuyerCancelled(orderAlias = 'o'): string {
 
 /**
  * Open (unshipped) order — Allocate's default row feed (`/api/orders` with no
- * scope flags): not carrier-shipped, no dock SHIP_CONFIRM, not Amazon-fulfilled.
+ * scope flags): not carrier-shipped, no dock SHIP_CONFIRM, not Amazon-fulfilled,
+ * no active list removal (`order_list_removals`).
  * Expects `stn` = the order's shipping_tracking_numbers join (LEFT JOIN on `shipment_id`).
  */
 export function sqlOrderOpenUnshipped(orderAlias = 'o'): string {
@@ -105,6 +107,7 @@ export function sqlOrderOpenUnshipped(orderAlias = 'o'): string {
       NOT ${SHIPPED_BY_CARRIER_SQL}
       AND NOT ${sqlOrderHasShipConfirm(o)}
       AND COALESCE(${o}.fulfillment_channel, '') <> 'AFN'
+      AND NOT ${sqlOrderRemovedFromList(o)}
     )`;
 }
 

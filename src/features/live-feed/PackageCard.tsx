@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * One package on the board. Hierarchy, top to bottom: WHAT (photo + product
- * title), WHOSE (channel · order number · carrier), then one row with the
- * PRESSURE on the left (the ship-by SLA, stalled, out of stock, its box, its
- * tags) and the line's facts on the right (`PackageFacts`: quantity above
- * one, grade, price), then WHERE (the stage track, how long it has sat
+ * One package on the board. Hierarchy, top to bottom: WHOSE (the id strip —
+ * # + the order number's last 8 top left, the platform top middle, the
+ * tracking's last 8 top right), WHAT (photo + product title), then one row
+ * with the PRESSURE on the left (the ship-by SLA, stalled, out of stock, its
+ * box, its tags) and the line's facts on the right (`PackageFacts`: quantity
+ * above one, grade, price), then WHERE (the stage track, how long it has sat
  * there, comments, who touched it last).
  *
  * The whole card opens the package (a full-card target under the content, as
@@ -19,6 +20,7 @@ import { memo, type MouseEvent } from 'react';
 import { Boxes, MessageSquare } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
+import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 import { CardCheck } from '@/design-system/components/record-card/RecordCard';
 import { STATE_OUTLINE_CLASS } from '@/design-system/components/record-card/record-card-outline';
 import { RecordPhoto } from '@/design-system/components/record-ledger/RecordPhoto';
@@ -27,7 +29,7 @@ import { resolveMarketplaceChipIdentity } from '@/lib/marketplace-order-id';
 import type { PackageCard as PackageCardData, PackageStep } from '@/lib/live-feed/types';
 import { platformMetaBrandDot, sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
-import { formatLaneAgeCompact, formatTime12hPST } from '@/utils/date';
+import { formatDatePST, formatLaneAgeCompact, formatMonthDayTimePST, formatTime12hPST } from '@/utils/date';
 import { PackageFacts } from './PackageFacts';
 import { Pill, ShipByPill, TagPill } from './pills';
 import { STAGE_LOOK } from './stage-look';
@@ -70,6 +72,12 @@ export const PackageCard = memo(function PackageCard({
   const platform = resolveMarketplaceChipIdentity(card.orderNumber, stored.value ? stored.label : null).meta;
   const step = lastStep(card);
   const done = card.stage === 'scanned_out';
+  // The board's operator law: ALWAYS eight digits on the face — not the house
+  // chip's dash-segment abbreviation (`getLast8`), which renders eBay's 2-5-5
+  // tail as five.
+  const orderDigitsTail = card.orderNumber
+    ? card.orderNumber.replace(/[^0-9]/g, '').slice(-8) || card.orderNumber.slice(-8)
+    : null;
   // Scanned out is today's: the time it left. Open stages: how long it has sat.
   const age = done ? formatTime12hPST(card.enteredAt) : now != null ? formatLaneAgeCompact(card.enteredAt, now) : null;
   const showCheck = checkMode !== 'off';
@@ -94,15 +102,36 @@ export const PackageCard = memo(function PackageCard({
         onClick={onCard}
         className={cn('absolute inset-0 z-0 cursor-pointer rounded-[inherit]', focusRing('cell'))}
       />
-      {/* Identity first: the order number top left, the platform it came from top right. */}
-      <div className="pointer-events-none relative z-10 mb-2 flex min-w-0 items-center justify-between gap-2 text-xs">
-        <span className="truncate font-mono font-medium tabular-nums text-slate-700" title={card.orderNumber ?? undefined} data-testid="live-feed-card-order">
-          {card.orderNumber ?? (card.link === 'order' ? 'No order #' : 'Not linked')}
+      {/* Identity first: the id chip's last-8 top left (its `#` paints the platform), the platform top middle, the tracking chip's last-8 top right (blue). Both chips copy the complete id. */}
+      <div className="pointer-events-none relative z-10 mb-2 flex min-w-0 items-center gap-2 text-xs">
+        <span className="pointer-events-auto flex min-w-0 flex-1 items-center" data-testid="live-feed-card-order">
+          {card.orderNumber ? (
+            <OrderIdChip
+              value={card.orderNumber}
+              display={orderDigitsTail ?? undefined}
+              displayWidth="last8"
+              platformLabel={platform.value ? platform.label : sourcePlatformLabel(card.platform)}
+            />
+          ) : (
+            <span className="truncate font-mono font-medium tabular-nums text-slate-700">
+              {card.link === 'order' ? 'No order #' : 'Not linked'}
+            </span>
+          )}
         </span>
         <span className="flex shrink-0 items-center gap-1.5 text-slate-500">
           <BrandIdentityDot {...platformMetaBrandDot(platform)} />
           {platform.value ? platform.label : sourcePlatformLabel(card.platform)}
         </span>
+        {card.tracking ? (
+          <span
+            className="pointer-events-auto flex min-w-0 flex-1 items-center justify-end @max-[13rem]/card:hidden"
+            data-testid="live-feed-card-tracking"
+          >
+            <TrackingChip value={card.tracking} showIcon carrierHint={card.carrier} />
+          </span>
+        ) : (
+          <span className="flex min-w-0 flex-1 @max-[13rem]/card:hidden" aria-hidden />
+        )}
       </div>
       <div className="pointer-events-none relative z-10 flex gap-3 @max-[15rem]/card:gap-2">
         <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-inset ring-slate-900/5 @max-[15rem]/card:size-9">
@@ -120,7 +149,21 @@ export const PackageCard = memo(function PackageCard({
         </span>
         <div className="min-w-0 flex-1">
           <p className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900">{card.title}</p>
-          {card.carrier ? <p className="mt-1 truncate text-xs text-slate-500 @max-[15rem]/card:hidden">{card.carrier}</p> : null}
+          {/* The carrier line carries the order/import date on its right — directly above the price. */}
+          {card.carrier || card.steps.ordered.at ? (
+            <p className="mt-1 flex min-w-0 items-center gap-2 text-xs text-slate-500">
+              {card.carrier ? <span className="truncate @max-[15rem]/card:hidden">{card.carrier}</span> : null}
+              {card.steps.ordered.at ? (
+                <span
+                  className="ml-auto shrink-0 tabular-nums"
+                  title={`Ordered (placed, else imported) ${formatMonthDayTimePST(card.steps.ordered.at)}`}
+                  data-testid="live-feed-card-ordered"
+                >
+                  {formatDatePST(card.steps.ordered.at, { shortYear: true })}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
         </div>
       </div>
 

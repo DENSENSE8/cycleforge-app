@@ -16,17 +16,18 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import type { PackageCard } from '@/lib/live-feed/types';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
-import { postScanOut } from '@/lib/outbound/scan-out-client';
+import { postScanOut, undoScanOut } from '@/lib/outbound/scan-out-client';
 import { SCAN_OUT_DESK_SOURCE } from '@/lib/outbound/scan-out-desk-stamp';
 import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
+import { markPacked } from '@/lib/outbound/mark-packed-client';
 import {
   RecordActionStrip,
   type RecordActionVerb,
 } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { ACTION_DOCK_LIFT } from '@/design-system/tokens/dock-clearance';
-import { Archive, FileText, PackageOpen, Printer, ScanLine, UserRound } from 'lucide-react';
+import { Archive, FileText, PackageCheck, PackageOpen, Printer, ScanLine, Undo2, UserRound } from 'lucide-react';
 import { ListRemovalPicker } from '@/components/orders/ListRemovalPicker';
 import { listRemovalReasonLabel } from '@/lib/orders/list-removal';
 import { removeFromList, restoreToList } from '@/lib/orders/list-removal-client';
@@ -60,17 +61,22 @@ export function LiveFeedBulkBar({
   const barRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const [assignOpen, setAssignOpen] = useState(false);
+  const [packOpen, setPackOpen] = useState(false);
   const [printFocus, setPrintFocus] = useState<DocTab | null>(null);
   const [scanningOut, setScanningOut] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [packing, setPacking] = useState(false);
+  const [undoing, setUndoing] = useState(false);
   // Error toasts and cache rollback belong to the mutation (useOptimisticMutation).
   const assignment = useOrderAssignment();
   const assigning = assignment.isPending;
-  const busy = assigning || scanningOut || removing;
+  const busy = assigning || scanningOut || removing || packing || undoing;
 
   const orderRowIds = useMemo(() => selectedOrderRowIds(cards), [cards]);
   const assignable = useMemo(() => selectionInStage(cards, 'to_pick'), [cards]);
+  const packable = useMemo(() => selectionInStage(cards, 'picked'), [cards]);
   const scanOutable = useMemo(() => selectionInStage(cards, 'packed'), [cards]);
+  const undoable = useMemo(() => selectionInStage(cards, 'scanned_out'), [cards]);
   const removable = useMemo(() => removableOrderRowIds(cards), [cards]);
 
   const verbs = useMemo<RecordActionVerb[]>(() => {
@@ -167,6 +173,49 @@ export function LiveFeedBulkBar({
         run: () => setAssignOpen(true),
       });
     }
+    if (undoable) {
+      // Scanned out lane: bring a box back — the dock's undo writer, once per
+      // box. A scan that never resolved to a package has nothing to undo.
+      out.push({
+        id: 'undo-scan-out',
+        label: undoing ? 'Undoing…' : 'Undo scan out',
+        icon: <Undo2 className="h-4 w-4" />,
+        disabled: busy || cards.every((card) => card.shipmentId == null),
+        disabledReason: busy ? BUSY_REASON : 'Only a scan that resolved to a box can be undone',
+        run: async () => {
+          const shipmentIds = [...new Set(cards.map((card) => card.shipmentId).filter((id): id is number => id != null))];
+          setUndoing(true);
+          try {
+            const results = await Promise.all(shipmentIds.map((id) => undoScanOut(id).then(() => true).catch(() => false)));
+            const undone = results.filter(Boolean).length;
+            if (undone === 0) {
+              toast.error('Could not undo the scan out');
+              return;
+            }
+            toast.success(
+              `Put ${undone} box${undone === 1 ? '' : 'es'} back in the building${undone < shipmentIds.length ? ` · ${shipmentIds.length - undone} refused` : ''}`,
+            );
+            bustScanOutCaches(queryClient);
+            refreshDomain('orders.outbound');
+            onDone();
+          } finally {
+            setUndoing(false);
+          }
+        },
+      });
+    }
+    if (packable) {
+      // Picked aisle: say who packed it — the same PACK_COMPLETED a pack-station
+      // scan leaves (`markPacked`), destructive Remove from list stays last.
+      out.push({
+        id: 'mark-as-packed',
+        label: packing ? 'Marking…' : 'Mark as packed…',
+        icon: <PackageCheck className="h-4 w-4" />,
+        disabled: busy || orderRowIds.length === 0,
+        disabledReason: busy ? BUSY_REASON : 'Only picked packages can be marked packed',
+        run: () => setPackOpen(true),
+      });
+    }
     if (scanOutable) {
       out.push({
         id: 'scan-out',
@@ -179,7 +228,7 @@ export function LiveFeedBulkBar({
     }
     // Destructive last (RecordActionStrip law): prints, the stage verbs, then Remove from list.
     return [...printVerbs, ...out.filter((verb) => verb !== remove), remove];
-  }, [assignable, assigning, busy, cards, onDone, orderRowIds, queryClient, removable, removing, scanOutable, scanningOut]);
+  }, [assignable, assigning, busy, cards, onDone, orderRowIds, packable, packing, queryClient, removable, removing, scanOutable, scanningOut, undoable, undoing]);
 
   if (cards.length === 0) return null;
 
@@ -198,6 +247,25 @@ export function LiveFeedBulkBar({
         },
       },
     );
+  };
+
+  const commitPacked = (staffId: number | null, staffName: string | null) => {
+    // The popover offers no current packer, so a pick is always a staffer.
+    if (staffId == null) return;
+    const orderIds = orderRowIds;
+    setPacking(true);
+    markPacked(orderIds, staffId)
+      .then((result) => {
+        const skipped =
+          result.skipped.length > 0 ? ` · ${result.skipped.length} skipped (no shipment)` : '';
+        toast.success(`Marked ${result.markedIds.length} packed as ${staffName ?? 'staffer'}${skipped}`);
+        refreshDomain('orders.outbound');
+        onDone();
+      })
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : 'Could not mark as packed');
+      })
+      .finally(() => setPacking(false));
   };
 
   const phone = surface === 'phone';
@@ -249,6 +317,15 @@ export function LiveFeedBulkBar({
         role="technician"
         selectedStaffId={null}
         onCommit={commitPicker}
+      />
+      <StageStaffAssignPopover
+        open={packOpen}
+        onClose={() => setPackOpen(false)}
+        anchorRef={barRef}
+        label={`Mark ${orderRowIds.length} order${orderRowIds.length === 1 ? '' : 's'} packed as`}
+        role="packer"
+        selectedStaffId={null}
+        onCommit={commitPacked}
       />
     </div>
   );

@@ -8,14 +8,17 @@
  * the sidebar facets say.
  */
 
-import { useEffect, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Send } from 'lucide-react';
 import { X } from '@/components/Icons';
+import { Button } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { Spinner } from '@/design-system/primitives/Spinner';
-import { liveFeedFindQuery } from '@/lib/live-feed/query';
+import { LIVE_FEED_QUERY_ROOT, liveFeedFindQuery } from '@/lib/live-feed/query';
 import type { PackageCard } from '@/lib/live-feed/types';
 import { PackageMiniRow } from './PackageMiniRow';
+import { SendReplacementPopover } from './SendReplacementPopover';
 
 export function FindResults({
   q,
@@ -29,7 +32,11 @@ export function FindResults({
   onClear: () => void;
 }) {
   const find = useQuery(liveFeedFindQuery(q));
+  const queryClient = useQueryClient();
   const packages = find.data?.packages ?? null;
+  const [replaceOpen, setReplaceOpen] = useState(false);
+  /** The one order the find resolved to — the replacement CTA's target. */
+  const sole = packages && packages.length === 1 && packages[0].link === 'order' ? packages[0] : null;
 
   // One match opens itself — once per search, so closing it does not reopen it.
   const autoOpened = useRef<string | null>(null);
@@ -61,7 +68,20 @@ export function FindResults({
             `${packages.length} packages`
           )}
         </span>
-        <IconButton icon={<X className="size-4" />} ariaLabel="Clear find" size="sm" radius="pill" className="ml-auto" onClick={onClear} />
+        {sole ? (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            icon={<Send className="h-3.5 w-3.5" />}
+            className="ml-auto"
+            data-testid="find-send-replacement"
+            onClick={() => setReplaceOpen(true)}
+          >
+            Send replacement…
+          </Button>
+        ) : null}
+        <IconButton icon={<X className="size-4" />} ariaLabel="Clear find" size="sm" radius="pill" className={sole ? '' : 'ml-auto'} onClick={onClear} />
       </div>
       {packages && packages.length > 1 ? (
         <ul className="flex flex-col gap-1">
@@ -71,6 +91,14 @@ export function FindResults({
             </li>
           ))}
         </ul>
+      ) : null}
+      {sole ? (
+        <SendReplacementPopover
+          card={sole}
+          open={replaceOpen}
+          onOpenChange={setReplaceOpen}
+          onChange={() => void queryClient.invalidateQueries({ queryKey: LIVE_FEED_QUERY_ROOT })}
+        />
       ) : null}
     </section>
   );

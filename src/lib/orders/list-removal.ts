@@ -8,12 +8,15 @@
  * The reasons are the ways an order leaves a fulfillment queue without a dock
  * scan-out (operator 2026-10-06). `buyer_cancelled` also writes
  * `orders.status = 'buyer_cancelled'` so search keeps saying "Buyer cancel".
+ * `delivered` also stamps the shipment `is_delivered` so carrier-status
+ * surfaces (Shipped board, tracking lookups) agree with the operator's word.
  */
 
 export const LIST_REMOVAL_REASONS = [
   { id: 'buyer_cancelled', label: 'Buyer cancelled', hint: 'The buyer cancelled before it shipped' },
   { id: 'shipped_elsewhere', label: 'Already shipped', hint: 'Left the building without a dock scan-out' },
   { id: 'delivered', label: 'Delivered', hint: 'The carrier shows it delivered' },
+  { id: 'customer_picked_up', label: 'Customer picked up', hint: 'The buyer took it in person — nothing ships' },
   { id: 'duplicate', label: 'Duplicate order', hint: 'The same order is on the list twice' },
   { id: 'refunded', label: 'Refunded before shipping', hint: 'The buyer was refunded; nothing ships' },
   { id: 'seller_cancelled', label: 'Cancelled by us', hint: 'We cancelled it (out of stock, cannot fulfil)' },

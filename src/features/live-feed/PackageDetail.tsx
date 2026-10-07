@@ -23,6 +23,7 @@ import { liveFeedPackagesQuery } from '@/lib/live-feed/query';
 import { PACKAGE_STAGE_META } from '@/lib/live-feed/stages';
 import type { PackageCard } from '@/lib/live-feed/types';
 import { platformMetaBrandDot, sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
+import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { PackageCommentComposer, PackageCommentThread } from './PackageComments';
 import { PackageFacts } from './PackageFacts';
@@ -137,6 +138,14 @@ export function PackageDetail({
         </div>
 
         <div className="flex flex-col gap-1 px-5 pb-4">
+          {card.steps.ordered.at ? (
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-slate-500">Ordered</span>
+              <span className="tabular-nums text-slate-700" title="Placed, else imported">
+                {formatMonthDayTimePST(card.steps.ordered.at)}
+              </span>
+            </div>
+          ) : null}
           {card.orderNumber ? (
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="text-slate-500">Order</span>
