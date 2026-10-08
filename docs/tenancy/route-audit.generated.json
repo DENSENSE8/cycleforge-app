@@ -1,11 +1,11 @@
 {
   "summary": {
-    "total": 1237,
+    "total": 1236,
     "withAuth": 874,
-    "tenantWrapped": 975,
-    "delegatedTenantWrapped": 912,
-    "orgIdRef": 1096,
-    "rawPool": 366,
+    "tenantWrapped": 974,
+    "delegatedTenantWrapped": 911,
+    "orgIdRef": 1095,
+    "rawPool": 365,
     "drizzle": 19,
     "transitional": 6,
     "cron": 45,
@@ -13,7 +13,7 @@
       "critical": 26,
       "high": 25,
       "medium": 61,
-      "low": 664,
+      "low": 663,
       "info": 461
     }
   },
@@ -8562,27 +8562,6 @@
     },
     {
       "route": "/api/orders/bulk-flag",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": false,
-      "permission": null,
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": true,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "orders"
-      ],
-      "risk": "low"
-    },
-    {
-      "route": "/api/orders/buyer-cancel",
       "methods": [
         "POST"
       ],

@@ -9,12 +9,12 @@
 
 | metric | count |
 |---|---|
-| total route files | 1237 |
+| total route files | 1236 |
 | withAuth | 874 |
-| GUC-wrapped (tenantQuery/withTenantConnection/withTenantTransaction) | 975 |
-| tenant-wrapped through an org-threaded helper | 912 |
-| references organizationId | 1096 |
-| raw @/lib/db pool import | 366 |
+| GUC-wrapped (tenantQuery/withTenantConnection/withTenantTransaction) | 974 |
+| tenant-wrapped through an org-threaded helper | 911 |
+| references organizationId | 1095 |
+| raw @/lib/db pool import | 365 |
 | drizzle / neon-http | 19 |
 | uses DOGFOOD_ORG_ID / transitionalDogfoodOrgId | 6 |
 | cron routes | 45 |
@@ -24,7 +24,7 @@
 | critical | 26 |
 | high | 25 |
 | medium | 61 |
-| low | 664 |
+| low | 663 |
 | info | 461 |
 
 ## Routes by risk (critical + high first)
@@ -411,7 +411,6 @@
 | low | `/api/orders/backfill/ecwid-price` | POST | ✅ | ✅ | ✅ | orders, sku |
 | low | `/api/orders/batch` | POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, tech_serial_numbers, packer_logs, orders, staff, sku |
 | low | `/api/orders/bulk-flag` | POST | — | ✅ | ✅ | orders |
-| low | `/api/orders/buyer-cancel` | POST | — | ✅ | ✅ | orders |
 | low | `/api/orders/caged` | GET | ✅ | ✅ | ✅ | orders |
 | low | `/api/orders/check-shipped` | POST | ✅ | ✅ | ✅ | station_activity_logs, orders |
 | low | `/api/orders/delete` | POST | ✅ | ✅ | ✅ | orders, sku |
@@ -1460,7 +1459,7 @@
 - ✅ `/api/orders/[id]/amendments` (low)
 - ✅ `/api/pack/ship` (low)
 
-### `orders` — 207 routes, 17 not yet GUC-safe
+### `orders` — 206 routes, 17 not yet GUC-safe
 
 - ✅ `/api/admin/fix-status` (low)
 - ✅ `/api/admin/po-gmail/missing-orders` (low)
@@ -1557,7 +1556,6 @@
 - ✅ `/api/orders/backfill/ecwid-price` (low)
 - ✅ `/api/orders/batch` (low)
 - ✅ `/api/orders/bulk-flag` (low)
-- ✅ `/api/orders/buyer-cancel` (low)
 - ✅ `/api/orders/caged` (low)
 - ✅ `/api/orders/check-shipped` (low)
 - ✅ `/api/orders/delete` (low)

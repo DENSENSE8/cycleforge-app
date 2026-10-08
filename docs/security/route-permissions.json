@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-08T09:31:20Z",
-  "totalRoutes": 1237,
+  "generatedAt": "2026-10-08T18:54:43Z",
+  "totalRoutes": 1236,
   "summary": {
-    "permissionGated": 1005,
+    "permissionGated": 1004,
     "authenticatedNoPermission": 145,
     "anonymousIntentional": 37,
     "serviceToService": 50,
@@ -4976,15 +4976,6 @@
     },
     {
       "path": "/api/orders/bulk-flag/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "requireRoutePerm",
-      "permission": "orders.create",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/orders/buyer-cancel/route.ts",
       "methods": [
         "POST"
       ],
