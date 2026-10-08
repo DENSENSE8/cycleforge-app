@@ -15,9 +15,6 @@ import { orderDocumentsKey, pickOrderDocument, printDocument } from '@/lib/order
 import { dispatchOpenOrderPaperwork } from '@/utils/events';
 import { toast } from '@/lib/toast';
 
-/** The print-slip record key and verb letter — P is the strip's Print (product labels). */
-export const PRINT_SLIP_HOTKEY = 'm';
-
 export function usePrintPackingSlip(orderId: number): { print: () => void; pending: boolean } {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);

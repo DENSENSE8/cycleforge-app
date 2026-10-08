@@ -2,13 +2,16 @@
 
 /**
  * Print a rack's labels — the phone's Rack → Shelves → Print, on the desk: the
- * placard and every shelf selected, Print runs them through
- * `useLocationLabelPrint` (which records `location.labels.printed`). No room
- * is ever printed.
+ * placard and every shelf selected, Print (focused; Enter anywhere in the
+ * form) runs them through `useLocationLabelPrint` (which records
+ * `location.labels.printed`). No room is ever printed. The rack record hosts it
+ * in the Print labels verb's centered dialog (`onDone`: a landed print shows
+ * the done face); the create flow's last step paints it in place.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Printer } from '@/components/Icons';
+import { VerbDoneState } from '@/design-system/components/record-action-strip/VerbDoneState';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
 import { Button, Checkbox, ProgressBar } from '@/design-system/primitives';
@@ -23,13 +26,26 @@ type RunState =
   | { phase: 'printing'; done: number; total: number }
   | { phase: 'done'; message: string; ok: boolean };
 
-export function RackPrintPanel({ rack, testId = 'rack-print' }: { rack: RackDetail; testId?: string }) {
+export function RackPrintPanel({
+  rack,
+  testId = 'rack-print',
+  onDone,
+}: {
+  rack: RackDetail;
+  testId?: string;
+  /** Dialog host: a landed print swaps to the done face, whose Done closes. */
+  onDone?: () => void;
+}) {
   const print = useLocationLabelPrint();
   const [placard, setPlacard] = useState(true);
   const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set(rack.shelves.map((s) => s.code)));
   const [run, setRun] = useState<RunState>({ phase: 'idle' });
   const shelves = useMemo(() => [...rack.shelves].sort((a, b) => a.shelf - b.shelf), [rack.shelves]);
   const count = (placard ? 1 : 0) + picked.size;
+  const goRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (onDone) goRef.current?.focus({ preventScroll: true });
+  }, [onDone]);
 
   const toggle = (code: string, on: boolean) =>
     setPicked((current) => {
@@ -40,6 +56,7 @@ export function RackPrintPanel({ rack, testId = 'rack-print' }: { rack: RackDeta
     });
 
   const runPrint = async () => {
+    if (count === 0 || run.phase === 'printing') return;
     const rows = rackLabelRows(rack, { placard, shelfCodes: picked });
     setRun({ phase: 'printing', done: 0, total: rows.length });
     try {
@@ -52,9 +69,22 @@ export function RackPrintPanel({ rack, testId = 'rack-print' }: { rack: RackDeta
     }
   };
 
+  // Enter prints from anywhere in the form — a checkbox swallows Enter, a real button presses itself.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter') return;
+    const target = event.target;
+    if (target instanceof HTMLButtonElement && target.getAttribute('role') !== 'checkbox') return;
+    event.preventDefault();
+    void runPrint();
+  };
+
+  if (onDone && run.phase === 'done' && run.ok) {
+    return <VerbDoneState title="Labels printed" detail={run.message} onDone={onDone} testId={`${testId}-done`} />;
+  }
+
   return (
-    <div className="flex min-w-0 flex-col gap-4" data-testid={testId}>
-      <RecordGroup title="Labels to print">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-4" data-testid={testId} onKeyDown={onKeyDown}>
+      <RecordGroup title="Labels to print" className="min-h-0 flex-1 overflow-y-auto">
         <ul className="flex flex-col px-4 pb-2">
           <li className="flex items-center gap-3 border-b border-mode-fact py-2">
             <Checkbox
@@ -90,6 +120,7 @@ export function RackPrintPanel({ rack, testId = 'rack-print' }: { rack: RackDeta
         <EvidenceNotice tone={run.ok ? undefined : 'warn'}>{run.message}</EvidenceNotice>
       ) : null}
       <Button
+        ref={goRef}
         variant="primary"
         icon={<Printer aria-hidden />}
         loading={run.phase === 'printing'}

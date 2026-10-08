@@ -650,7 +650,7 @@ const FULFILLED_VIEW_CONTROLS: NavControls = {
 const TO_SHIP_ACTIONS: readonly NavActionDecl[] = [
   // Face = the page's manual verb (owner 2026-09-28). Syncing, demo sync, test
   // orders and Labels left this menu: syncing is the global header Sync (its
-  // history — past imports — is Operations › Sync); the Labels walk keeps `L`.
+  // history — past imports — is Operations › Sync); the Labels walk keeps ⌥/Alt+L.
   { action: { id: 'orders.add', label: 'Add manual order', href: '/orders/new' } },
   {
     action: { id: 'orders.upload-csv', label: 'Upload orders CSV', intent: 'orders-intake:file' },

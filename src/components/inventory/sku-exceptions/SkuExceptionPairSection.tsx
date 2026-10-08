@@ -4,7 +4,7 @@
  * Missing pairs, placeholder side — pair a floor-minted `TMP-` SKU into the
  * permanent catalog SKU: its stock, photos and description move onto that SKU
  * and the exception closes (`merge-placeholder`). The stock record pairs
- * through `SkuPairSheet` instead; both share `useSkuPairSearch`.
+ * through `SkuPairDialog` (its Pair to SKU verb's dialog) instead; both share `useSkuPairSearch`.
  */
 
 import { EVIDENCE_CONTROL_CLASS } from '@/design-system/components/record-ledger/RecordEvidence';

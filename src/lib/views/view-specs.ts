@@ -116,7 +116,7 @@ const WORK_QUEUE_RECORD = [
 
 const WORK_QUEUE_VERBS = {
   primary: 'label',
-  secondary: ['scan-out', 'out-of-stock', 'urgent', 'notes', 'create-rule'],
+  secondary: ['scan-out', 'out-of-stock', 'pair-sku-location', 'urgent', 'notes', 'create-rule'],
   bulk: ['urgent', 'print', 'out-of-stock'],
 } as const;
 

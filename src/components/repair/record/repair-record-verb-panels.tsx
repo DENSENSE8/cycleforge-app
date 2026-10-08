@@ -1,12 +1,14 @@
 'use client';
 
 /**
- * The repair record verbs' writers and panel bodies — print through the house
+ * The repair record verbs' writers and dialog bodies — print through the house
  * hidden-iframe path, Square checkout, Cancel (with its reason), the Zendesk
  * ticket # editor and the pickup signing sheet — wired by `useRepairRecordVerbs`.
  */
 
 import { useState } from 'react';
+import { Trash2 } from '@/components/Icons';
+import { VerbDoneState } from '@/design-system/components/record-action-strip/VerbDoneState';
 import { Button, Layer, TextField } from '@/design-system/primitives';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { printHtmlInIframe, reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
@@ -51,10 +53,17 @@ export async function openSquareCheckout(repair: RSRecord): Promise<void> {
   }
 }
 
-/** Cancel asks why — the reason rides the soft-cancel (`DELETE ?reason=`) into the audit row. */
-export function CancelRepairPanel({ repair, onCancelled }: { repair: RSRecord; onCancelled: () => void }) {
+/**
+ * Cancel repair (danger) in the centered verb dialog: the reason field is
+ * focused, and the ONE confirm button submits it — Enter in the field
+ * confirms. The verb carries no key, so no double press can cancel. The
+ * reason rides the soft-cancel (`DELETE ?reason=`) into the audit row; the
+ * done face's Done closes the record (`onCancelled`).
+ */
+export function CancelRepairPanel({ repair, onCancelled, done }: { repair: RSRecord; onCancelled: () => void; done: () => void }) {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
   const submit = async () => {
     if (!reason.trim() || busy) return;
     setBusy(true);
@@ -62,59 +71,88 @@ export function CancelRepairPanel({ repair, onCancelled }: { repair: RSRecord; o
       const res = await fetch(`/api/repair-service/${repair.id}?reason=${encodeURIComponent(reason.trim())}`, { method: 'DELETE' });
       const body = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null;
       if (!res.ok || !body?.success) throw new Error(body?.error || `Cancel failed (${res.status})`);
-      toast.success('Repair cancelled');
-      onCancelled();
+      setCancelled(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Cancel failed');
     } finally {
       setBusy(false);
     }
   };
+  if (cancelled) {
+    return (
+      <VerbDoneState
+        title="Repair cancelled"
+        detail="It left every queue; it stays on file under All."
+        onDone={() => {
+          // The record closes with the dialog — refetching first would drop it from an open-only list under the dialog.
+          done();
+          onCancelled();
+        }}
+        testId="repair-record-cancel-done"
+      />
+    );
+  }
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex h-full min-h-0 flex-col gap-3"
       data-testid="repair-record-cancel"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
       }}
     >
-      <p className="text-role-data text-mode-muted">The ticket leaves every queue; it stays on file under All.</p>
-      <TextField label="Why is this repair cancelled?" value={reason} onChange={setReason} multiline rows={3} autoFocus />
-      <div className="flex justify-end">
-        <Button type="submit" variant="danger" size="sm" loading={busy} disabled={!reason.trim()} data-testid="repair-record-cancel-confirm">
+      <p className="text-role-caption text-text-soft">The ticket leaves every queue; it stays on file under All.</p>
+      <TextField label="Why is this repair cancelled?" value={reason} onChange={setReason} autoFocus />
+      <div className="mt-auto flex flex-col gap-1.5 border-t border-border-soft pt-3">
+        <Button type="submit" variant="danger" size="md" icon={<Trash2 />} className="w-full" loading={busy} disabled={!reason.trim()} data-testid="repair-record-cancel-confirm">
           Cancel repair
+        </Button>
+        <p className="text-center text-role-micro text-text-soft">Enter confirms</p>
+        <Button type="button" variant="ghost" size="sm" className="w-full" disabled={busy} onClick={done}>
+          Keep the repair
         </Button>
       </div>
     </form>
   );
 }
 
-/** The Zendesk ticket # the repair carries (`PATCH /api/repair-service { field: 'ticket_number' }`). */
-export function TicketNumberPanel({ repair, onSaved }: { repair: RSRecord; onSaved: () => void }) {
+/** The Zendesk ticket # the repair carries (`PATCH /api/repair-service { field: 'ticket_number' }`); Enter saves. */
+export function TicketNumberPanel({ repair, onSaved, done }: { repair: RSRecord; onSaved: () => void; done: () => void }) {
   const [value, setValue] = useState(String(repair.ticket_number || '').replace(/^RS-?\d+$/i, ''));
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
   const save = async () => {
     if (busy) return;
     setBusy(true);
+    const ticket = value.trim().replace(/^#/, '');
     try {
       const res = await fetch('/api/repair-service', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: repair.id, field: 'ticket_number', value: value.trim().replace(/^#/, '') }),
+        body: JSON.stringify({ id: repair.id, field: 'ticket_number', value: ticket }),
       });
       if (!res.ok) throw new Error(`Ticket # save failed (${res.status})`);
-      toast.success('Ticket # saved');
       onSaved();
+      setSaved(ticket);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Ticket # save failed');
     } finally {
       setBusy(false);
     }
   };
+  if (saved != null) {
+    return (
+      <VerbDoneState
+        title={saved ? 'Ticket # saved' : 'Ticket # cleared'}
+        detail={saved ? `#${saved}` : undefined}
+        onDone={done}
+        testId="repair-record-ticket-number-done"
+      />
+    );
+  }
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex h-full min-h-0 flex-col gap-3"
       data-testid="repair-record-ticket-number"
       onSubmit={(event) => {
         event.preventDefault();
@@ -122,8 +160,8 @@ export function TicketNumberPanel({ repair, onSaved }: { repair: RSRecord; onSav
       }}
     >
       <TextField label="Zendesk ticket #" value={value} onChange={setValue} mono autoFocus />
-      <div className="flex justify-end">
-        <Button type="submit" variant="ink" size="sm" loading={busy} data-testid="repair-record-ticket-number-save">
+      <div className="mt-auto flex justify-end border-t border-border-soft pt-3">
+        <Button type="submit" variant="ink" size="md" loading={busy} data-testid="repair-record-ticket-number-save">
           Save ticket #
         </Button>
       </div>

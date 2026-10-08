@@ -1,12 +1,13 @@
 'use client';
 
 /**
- * Repair record ticket panels — the Link ticket / Create ticket verb bodies.
- * Both reuse the support waist's own UI ({@link TicketLinkPicker},
- * {@link SupportCreateTicketForm}) anchored on `{ type: 'repair', repairId }`;
- * the record owns Back, so neither renders its own dismiss.
+ * Repair record ticket dialogs — the Link ticket / Create ticket verb bodies in
+ * the centered verb dialog (operator 2026-10-08). Both reuse the support
+ * waist's own UI ({@link TicketLinkPicker}, {@link SupportCreateTicketForm})
+ * anchored on `{ type: 'repair', repairId }`; the dialog owns dismissal, and a
+ * landed link / create shows the done face.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Unlink } from '@/components/Icons';
 import { TicketPickRow } from '@/components/ui/TicketPickRow';
@@ -17,6 +18,7 @@ import {
 } from '@/components/support/context/TicketLinkPopover';
 import { SupportCreateTicketForm } from '@/components/support/service-workspace/SupportCreateTicketModal';
 import { useCreateSupportTicket } from '@/components/support/service-workspace/useSupportTicketClaimHost';
+import { VerbDoneState } from '@/design-system/components/record-action-strip/VerbDoneState';
 import { Button } from '@/design-system/primitives';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
@@ -49,16 +51,20 @@ export function useRepairLinkedTickets(repairId: number) {
   });
 }
 
-/** Link an EXISTING helpdesk ticket to this repair; lists what is linked now, each with Unlink. */
-export function RepairLinkTicketPanel({ repair, onDone }: { repair: RSRecord; onDone: () => void }) {
+/**
+ * Link an EXISTING helpdesk ticket to this repair; lists what is linked now,
+ * each with Unlink (the list updates in place). `onChanged` refetches the record.
+ */
+export function RepairLinkTicketPanel({ repair, onChanged, done }: { repair: RSRecord; onChanged: () => void; done: () => void }) {
   const qc = useQueryClient();
   const linkable = useMemo(() => repairLinkable(repair.id), [repair.id]);
   const linked = useRepairLinkedTickets(repair.id);
+  const [linkedNow, setLinkedNow] = useState<string | null>(null);
 
   const afterWrite = () => {
     invalidateSupportContextCaches(qc);
     void qc.invalidateQueries({ queryKey: qk.repairs.workbench(repair.id, 'ticket-link') });
-    onDone();
+    onChanged();
   };
 
   const unlink = useMutation({
@@ -79,8 +85,12 @@ export function RepairLinkTicketPanel({ repair, onDone }: { repair: RSRecord; on
 
   const rows = linked.data ?? [];
 
+  if (linkedNow) {
+    return <VerbDoneState title="Ticket linked" detail={`Ticket #${linkedNow.replace(/^#/, '')} is linked to this repair`} onDone={done} testId="repair-link-ticket-done" />;
+  }
+
   return (
-    <div className="flex min-w-0 flex-col gap-4" data-testid="repair-link-ticket">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-4 overflow-y-auto" data-testid="repair-link-ticket">
       <section className="flex flex-col gap-1.5">
         <p className={RECORD_LABEL_CLASS}>Linked tickets</p>
         {linked.isError ? (
@@ -121,7 +131,13 @@ export function RepairLinkTicketPanel({ repair, onDone }: { repair: RSRecord; on
 
       <section className="flex flex-col gap-1.5">
         <p className={RECORD_LABEL_CLASS}>Link an existing ticket</p>
-        <TicketLinkPicker linkable={linkable} onLinked={afterWrite} />
+        <TicketLinkPicker
+          linkable={linkable}
+          onLinked={(ticketNumber) => {
+            afterWrite();
+            setLinkedNow(ticketNumber);
+          }}
+        />
       </section>
     </div>
   );
@@ -140,19 +156,24 @@ function repairTicketSubject(repair: RSRecord): string {
 }
 
 /** Create a helpdesk ticket anchored to this repair — the support create form, prefilled from the repair. */
-export function RepairCreateTicketPanel({ repair, onDone }: { repair: RSRecord; onDone: () => void }) {
+export function RepairCreateTicketPanel({ repair, onCreated, done }: { repair: RSRecord; onCreated: () => void; done: () => void }) {
   const qc = useQueryClient();
   const anchor = useMemo(() => ({ type: 'repair' as const, repairId: repair.id }), [repair.id]);
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const create = useCreateSupportTicket(anchor, {
     onSuccess: (created) => {
-      toast.success(`Ticket #${created.providerTicketId} created`);
       void qc.invalidateQueries({ queryKey: qk.repairs.workbench(repair.id, 'ticket-link') });
-      onDone();
+      onCreated();
+      setCreatedId(String(created.providerTicketId));
     },
   });
 
+  if (createdId) {
+    return <VerbDoneState title="Ticket created" detail={`Ticket #${createdId} is linked to this repair`} onDone={done} testId="repair-create-ticket-done" />;
+  }
+
   return (
-    <div className="flex min-h-0 min-w-0 flex-col" data-testid="repair-create-ticket">
+    <div className="flex h-full min-h-0 min-w-0 flex-col" data-testid="repair-create-ticket">
       <SupportCreateTicketForm
         defaultSubject={repairTicketSubject(repair)}
         defaultNote={repair.issue?.trim() || undefined}

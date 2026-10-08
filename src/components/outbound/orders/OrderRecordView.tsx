@@ -25,6 +25,7 @@ import type { StageStepFacts } from '@/lib/tables/field-catalog/slot-value';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { orderAdminUrl } from '@/utils/order-platform';
 import { ListingLinkEditor, OrderAdminLinkAction } from './order-link-editors';
+import { OrderOutOfStockNotice } from './oos/OrderOutOfStockNotice';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
 import { EvidenceDisclosure } from '@/design-system/components/record-ledger/EvidenceDisclosure';
@@ -329,13 +330,12 @@ export function OrderRecordView({
     );
   };
 
-  // The record's own keys (T · N · E · M), listed in the `?` overview as "This record".
+  // The record's own keys (W · N · M, `ORDER_RECORD_KEYS`), listed in the `?` overview as "This record".
   const slip = usePrintPackingSlip(Number(record.id));
   useOrderRecordKeys({
     enabled: paperwork == null,
     onReplaceTracking: shows.has('facts') ? () => setReplacingTracking(true) : undefined,
     onFocusNote: shows.has('note') ? () => requestOrderNoteFocus(Number(record.id)) : undefined,
-    onEditShipping: shows.has('facts') ? () => setEditingShipping((open) => !open) : undefined,
     onPrintSlip: slip.print,
   });
 
@@ -493,6 +493,8 @@ export function OrderRecordView({
       {/* Allocate leads with the process answer, not item metadata. The buyer's
           note follows it because it can change how the item is fulfilled. */}
       {allocateDetail ? fulfilmentGroup : null}
+      {/* Out of stock leads the note: the order cannot move until it is cleared. */}
+      <OrderOutOfStockNotice lines={lines} />
       {allocateDetail && shows.has('buyer-note') && buyerNote ? (
         <RecordGroup title="Customer note" testId="order-record-buyer-note">
           <div className="px-4 pb-3">

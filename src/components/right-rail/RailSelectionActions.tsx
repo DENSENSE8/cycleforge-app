@@ -5,6 +5,7 @@
 import { useSyncExternalStore } from 'react';
 import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
 import { Button } from '@/design-system/primitives';
+import { DangerZone } from '@/design-system/components/danger-zone/DangerZone';
 import {
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
@@ -201,28 +202,18 @@ export function RailActionRegion({ className }: { className?: string }) {
           </div>
         </div>
       ))}
-      {danger.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-soft pt-3">
-          {danger.map(({ action, resolved }) => (
-            <Button
-              key={action.key}
-              type="button"
-              variant="danger"
-              size="sm"
-              icon={action.icon}
-              aria-label={resolved.label}
-              onClick={() => {
-                void action.run(
-                  rows,
-                  resolved.direction ? { direction: resolved.direction } : undefined,
-                );
-              }}
-            >
-              {resolved.label}
-            </Button>
-          ))}
-        </div>
-      ) : null}
+      {/* Red verbs paint in full in the Danger zone; each confirms in the square popover first. */}
+      <DangerZone
+        testId="rail-actions"
+        className="mt-3"
+        items={danger.map(({ action, resolved }) => ({
+          id: action.key,
+          label: resolved.label,
+          icon: action.icon,
+          confirmDetail: `${resolved.label} — ${rows.length === 1 ? 'the selected row' : `${rows.length} selected rows`}.`,
+          run: () => action.run(rows, resolved.direction ? { direction: resolved.direction } : undefined),
+        }))}
+      />
     </div>
   );
 }

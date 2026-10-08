@@ -206,9 +206,7 @@ export function FnskuPrintDesk({
         id: 'print',
         label: 'Print labels',
         icon: <Printer className="size-4" aria-hidden />,
-        display: (done) => (
-          <FnskuBulkPrint rows={checked} done={done} onPrinted={refreshList} />
-        ),
+        dialog: (done) => <FnskuBulkPrint rows={checked} done={done} onPrinted={refreshList} />,
       },
       {
         id: 'copy',

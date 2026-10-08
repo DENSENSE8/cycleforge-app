@@ -43,6 +43,7 @@ export function ReplacementBoughtCard({
   orderNumber,
   bought,
   buyerName,
+  replacement,
   reason,
   onVoided,
 }: {
@@ -50,6 +51,8 @@ export function ReplacementBoughtCard({
   orderNumber: string;
   bought: ReplacementPurchase;
   buyerName: string | null;
+  /** A replacement (its buyer email offered); false = the order's first label. */
+  replacement: boolean;
   reason: ReplacementReason | null;
   /** The void landed — the host forgets the purchase and refreshes. */
   onVoided: () => void;
@@ -117,7 +120,7 @@ export function ReplacementBoughtCard({
       <div className={`${PHONE_CARD_FACE} border border-border-success bg-surface-success px-4 py-3`}>
         <p className="flex items-center gap-1.5 text-role-caption font-semibold text-text-success">
           <Check className="h-4 w-4" />
-          {bought.idempotent ? 'Replacement label already purchased' : 'Replacement label purchased'}
+          {`${replacement ? 'Replacement label' : 'Label'} ${bought.idempotent ? 'already purchased' : 'purchased'}`}
         </p>
         <dl className="mt-2 grid grid-cols-3 gap-3">
           <div className="min-w-0">
@@ -179,16 +182,19 @@ export function ReplacementBoughtCard({
         >
           Print slip
         </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<Mail />}
-          disabled={!tracking}
-          onClick={() => void copyEmail()}
-          data-testid="send-replacement-copy-email"
-        >
-          Copy buyer email
-        </Button>
+        {/* The buyer hears a first label from the marketplace; only a replacement needs our own note. */}
+        {replacement ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Mail />}
+            disabled={!tracking}
+            onClick={() => void copyEmail()}
+            data-testid="send-replacement-copy-email"
+          >
+            Copy buyer email
+          </Button>
+        ) : null}
         {voidOpen ? null : (
           <Button
             variant="ghost"

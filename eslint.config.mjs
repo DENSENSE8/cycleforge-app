@@ -808,6 +808,8 @@ export default [
       'src/design-system/primitives/HotkeyScrim.tsx',
       'src/components/tables/TableStatusBar.tsx',
       'src/design-system/components/record-action-strip/RecordActionStrip.tsx',
+      // Danger zone: every danger verb painted in full with its key (operator 2026-10-08).
+      'src/design-system/components/danger-zone/DangerZone.tsx',
       'src/components/settings/sections/KeyboardSection.tsx',
       // Leader HUDs painted only after the staffer presses the leader (C, Y, held Shift, G) — summoned, never at rest.
       'src/components/layout/GlobalHeaderAdd.tsx',

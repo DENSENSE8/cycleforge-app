@@ -21,7 +21,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, ListChecks, Maximize2 } from '@/components/Icons';
-import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { RecordLedgerSummaryPane, type RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { TriageAllClear } from '@/design-system/components/triage-card-list/TriageListBody';
@@ -90,34 +89,6 @@ function useRepairSelection(rows: readonly RSRecord[], scopeKey: string) {
     [ids],
   );
   return { port, selected: rows.filter((row) => ids.has(row.id)) };
-}
-
-/**
- * The strip's Change status morph: the house status list, anchored under the
- * strip. A pick (or Esc / a press outside) morphs the strip back.
- */
-function BulkStatusDisplay({ repairs, onPick, done }: { repairs: readonly RSRecord[]; onPick: (next: string) => void; done: () => void }) {
-  const anchorRef = useRef<HTMLSpanElement>(null);
-  const first = repairs[0]?.status ?? '';
-  // The list ticks the current status only when every checked repair shares it.
-  const current = repairs.every((repair) => repair.status === first) ? first : '';
-  return (
-    <>
-      <span ref={anchorRef} className="truncate text-role-caption text-text-soft">
-        Set the status of {repairs.length} repair{repairs.length === 1 ? '' : 's'}
-      </span>
-      <AnchoredLayer open onClose={done} anchorRef={anchorRef} placement="bottom-start" level="panelPopover" gap={6}>
-        <RepairStatusList
-          current={current}
-          testId="repair-bulk-status-list"
-          onPick={(next) => {
-            done();
-            onPick(next);
-          }}
-        />
-      </AnchoredLayer>
-    </>
-  );
 }
 
 interface RepairCardListProps {
@@ -257,13 +228,19 @@ export function RepairCardList({ defaultTab }: RepairCardListProps) {
         label: 'Change status',
         icon: <ListChecks className="size-4" aria-hidden />,
         // Each repair goes through the one status writer (history entry, SLA start); a refused write puts its old status back.
-        display: (done) => (
-          <BulkStatusDisplay
-            repairs={checked}
-            done={done}
-            onPick={(next) => void Promise.all(checked.map((repair) => changeStatus(repair, next)))}
-          />
-        ),
+        dialog: (done) => {
+          const first = checked[0]?.status ?? '';
+          return (
+            <RepairStatusList
+              // The list ticks the current status only when every checked repair shares it.
+              current={checked.every((repair) => repair.status === first) ? first : ''}
+              subject={`${checked.length} repair${checked.length === 1 ? '' : 's'}`}
+              testId="repair-bulk-status-list"
+              onPick={async (next) => (await Promise.all(checked.map((repair) => changeStatus(repair, next)))).every(Boolean)}
+              done={done}
+            />
+          );
+        },
       },
     ];
   }, [checked, open, changeStatus]);

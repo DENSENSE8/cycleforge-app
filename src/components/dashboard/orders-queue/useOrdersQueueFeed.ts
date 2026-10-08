@@ -81,6 +81,8 @@ export function queueRowStaff(
 
 interface UseOrdersQueueFeedOptions {
   records: ShippedOrder[];
+  /** The desk's unfiltered rows (before its lane / status cut) — the open record stays on these after a write moves it out of view. */
+  retainedRecords?: readonly ShippedOrder[];
   searchValue: string;
   /** See `UseOrdersSpreadsheetOptions.searchAnsweredBy`. */
   searchAnsweredBy: 'client' | 'server';
@@ -146,6 +148,7 @@ interface OrdersQueueFeed extends OrdersQueueCommits {
 /** The outbound queue FEED — every data / behaviour hook an outbound lane needs, with no presentation: */
 export function useOrdersQueueFeed({
   records,
+  retainedRecords,
   searchValue,
   searchAnsweredBy,
   onOpenRecord,
@@ -173,6 +176,11 @@ export function useOrdersQueueFeed({
     const found = searchAnsweredBy === 'server' ? records : filterShippedOrdersByQuery(records, searchValue);
     return hidden.size === 0 ? found : found.filter((row) => !hidden.has(Number(row.id)));
   }, [records, searchValue, searchAnsweredBy, hidden]);
+  // A deleted / buyer-cancelled order (hidden while its Undo is open) is gone — its record closes.
+  const retained = useMemo(
+    () => (retainedRecords && hidden.size > 0 ? retainedRecords.filter((row) => !hidden.has(Number(row.id))) : retainedRecords),
+    [retainedRecords, hidden],
+  );
   const { orderGroupsByDate: allOrderGroupsByDate, displayedRecords } = useOrdersQueueRows({
     records: painted,
     sort,
@@ -195,6 +203,7 @@ export function useOrdersQueueFeed({
   // record cursor, external-open adoption, Labels replace-tracking).
   const plane = useOrdersQueuePlane({
     displayedRecords,
+    retainedRecords: retained,
     orderGroupsByDate,
     onOpenRecord,
     onCloseRecord,

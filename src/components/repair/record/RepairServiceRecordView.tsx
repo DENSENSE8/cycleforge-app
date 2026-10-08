@@ -14,11 +14,11 @@
  *
  * Verbs live in the Actions panel right under Customer · Ticket
  * (`RecordActionStrip face="panel"`, built in `repair-record-verbs.tsx`;
- * operator 2026-10-08), never the header; a panel verb swaps the main body
- * for its panel and the Actions panel stays beside it.
+ * operator 2026-10-08), never the header; a form verb opens the strip's
+ * centered dialog, never a swap of the record body.
  */
 
-import { useCallback, type ReactNode } from 'react';
+import { useCallback } from 'react';
 import { StaffNotesEditor } from '@/components/sidebar/receiving/incoming-details/NotesTab';
 import { LedgerOpenAction } from '@/components/outbound/orders/outbound-orders-ledger-editors';
 import { CopyableCellValue } from '@/components/ui/CopyChip';
@@ -38,20 +38,12 @@ import { RecordFulfillmentSources } from '@/design-system/components/record-ledg
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { RecordItem } from '@/design-system/components/record-ledger/RecordItem';
 import { RecordSerials } from '@/design-system/components/record-ledger/RecordSerials';
-import { Button } from '@/design-system/primitives';
 import { RECORD_ID_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { RECORD_DEADLINE_DOT_CLASS, RECORD_DEADLINE_TONE_CLASS } from '@/design-system/tokens/record-card';
 import type { RepairRecordModel } from '@/lib/repair/repair-record-model';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { cn } from '@/utils/_cn';
-
-/** A verb's panel, in place of the record body while it is open. */
-export interface RepairRecordPanel {
-  title: string;
-  body: ReactNode;
-  onBack: () => void;
-}
 
 /** The record header's title — the ticket identifier, or "No ticket #" when it has none. */
 export function RepairRecordTitle({ title }: { title: RepairRecordModel['title'] }) {
@@ -68,12 +60,10 @@ export function RepairRecordTitle({ title }: { title: RepairRecordModel['title']
 
 export function RepairServiceRecordView({
   model,
-  panel,
   actions,
   onUpdate,
 }: {
   model: RepairRecordModel;
-  panel: RepairRecordPanel | null;
   /** The ticket's verbs — painted in the Actions panel under Customer · Ticket, never the header (operator 2026-10-08). */
   actions: { verbs: readonly RecordActionVerb[]; label: string };
   /** Refetch the record after a write. */
@@ -91,36 +81,12 @@ export function RepairServiceRecordView({
     },
     [model.id, onUpdate],
   );
-  // The panel stays beside a verb's open panel too, so the ticket's keys keep firing.
   const actionsPanel =
     actions.verbs.length > 0 ? (
       <RecordGroup title="Actions" testId="repair-record-actions-panel">
         <RecordActionStrip face="panel" verbs={actions.verbs} label={actions.label} testId="repair-record-actions" />
       </RecordGroup>
     ) : null;
-
-  if (panel) {
-    return (
-      <div className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid="repair-record-view" data-panel="">
-        <DeskRecordLayout
-          main={
-            <RecordGroup
-              title={panel.title}
-              testId="repair-record-panel"
-              action={
-                <Button type="button" variant="ghost" size="sm" onClick={panel.onBack} data-testid="repair-record-panel-back">
-                  Back
-                </Button>
-              }
-            >
-              <div className="px-4 pb-4 pt-1">{panel.body}</div>
-            </RecordGroup>
-          }
-          aside={actionsPanel}
-        />
-      </div>
-    );
-  }
 
   const { device } = model;
   const fulfillment = (

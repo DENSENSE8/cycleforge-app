@@ -13,6 +13,7 @@ export function ReplacementBuyFooter({
   confirming,
   stale,
   orderRef,
+  noun,
   reasonLabel,
   buying,
   error,
@@ -25,6 +26,8 @@ export function ReplacementBuyFooter({
   /** The parcel, insurance or ship-to changed since the quote. */
   stale: boolean;
   orderRef: string;
+  /** What is bought — "label" (the order's first) or "replacement label". */
+  noun: string;
   reasonLabel: string | null;
   buying: boolean;
   error: string | null;
@@ -39,7 +42,7 @@ export function ReplacementBuyFooter({
         <div className="flex flex-wrap items-center gap-3">
           <p className="min-w-0 flex-1 text-role-caption text-text-default">
             Buy this <span className="font-semibold">{total}</span> {selectedRate.carrierName} {selectedRate.serviceName}{' '}
-            replacement label for {orderRef}
+            {noun} for {orderRef}
             {reasonLabel ? ` · ${reasonLabel}` : ''}?
           </p>
           {error ? (
@@ -71,7 +74,7 @@ export function ReplacementBuyFooter({
             onClick={onConfirmOpen}
             data-testid="send-replacement-buy"
           >
-            {total ? `Buy ${total} replacement label` : 'Buy replacement label'}
+            {total ? `Buy ${total} ${noun}` : `Buy ${noun}`}
           </Button>
         </div>
       )}

@@ -18,6 +18,7 @@ import {
   Bookmark,
   Copy,
   FileText,
+  MapPin,
   Printer,
   Repeat,
   RotateCcw,
@@ -35,12 +36,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { deleteOrdersWithUndo } from '@/lib/orders/deferred-order-delete';
 import { afterDismissPaint, hideRecords, markDismissed, restoreRecords } from '@/design-system/components/triage-card-list/dismiss';
-import {
-  applyMorphingGutterClick,
-  isMorphingMobileUrl,
-  MORPHING_MORE_INFO_HOTKEY,
-  MORPHING_NOTES_HOTKEY,
-} from '@/lib/outbound/morphing-row-action';
+import { applyMorphingGutterClick, isMorphingMobileUrl } from '@/lib/outbound/morphing-row-action';
 import { rememberRowPlaneOpen } from '@/lib/tables/row-plane';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { dispatchOpenShippedDetails, dispatchOpenListingStaffRules, dispatchOpenOrderPaperwork } from '@/utils/events';
@@ -59,8 +55,9 @@ import { SearchField } from '@/design-system/primitives/SearchField';
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStaffName } from '@/utils/staff';
-import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
+import { cn } from '@/utils/_cn';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/record';
+import { StaffPickList } from '@/components/staff-assign/StaffPickList';
 import { refreshDomain } from '@/lib/refresh/bus';
 import {
   SCAN_OUT_DESK_MAX_BACKDATE_MS,
@@ -83,28 +80,23 @@ import {
   morphingOosStaysPacked,
   type MorphingOosRow,
 } from '@/lib/outbound/morphing-oos';
-import { shortageIdentityFromRow, type OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
-import { PRINT_SLIP_HOTKEY, usePrintPackingSlip } from '@/components/outbound/orders/record-keys/print-slip';
+import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
+import { usePrintPackingSlip } from '@/components/outbound/orders/record-keys/print-slip';
+import { ORDER_VERB_HOTKEYS, orderCatalogHotkeys } from '@/components/outbound/orders/record-keys/order-key-table';
 import type { KitComposition } from '@/lib/orders/order-kit-composition';
 import { VIEW_SPECS, viewOffersVerb, type OrderViewKey } from '@/lib/views/view-specs';
 import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
+import { useClearOutOfStock } from '@/components/outbound/orders/oos/useClearOutOfStock';
 import { buildRecordTaskVerb } from '@/components/tasks/RecordTaskActions';
 import { supportCreateTicketHref } from '@/lib/support/order-support-routes';
-import { COPY_HOTKEY, DELETE_HOTKEY } from '@/lib/keyboard/key-registry';
 import { isOrderShipped } from '@/components/shipped/details-panel/shipped-details-logic';
-import { SendReplacementPopover } from '@/components/outbound/labels/SendReplacementPopover';
+import { OrderLabelBuyDialog } from '@/components/outbound/labels/OrderLabelBuyDialog';
 import { ReturnLabelDialog } from '@/components/outbound/labels/ReturnLabelDialog';
 import { pickOrderDocument, useOrderDocuments } from '@/lib/orders/order-paperwork-client';
 import { SELECTION_STATUS_BAR_META } from '@/hooks/useSelectionStatusBarHotkeys';
-
-/** The record key that opens a shipped order's replacement-label buy ("rEplacement"; R is Resolve / Create rule). */
-const REPLACEMENT_LABEL_HOTKEY = 'e';
-/** Return label ("Home" — back to the warehouse). */
-const RETURN_LABEL_HOTKEY = 'h';
-/** Create customer ticket. */
-const CUSTOMER_TICKET_HOTKEY = 't';
-/** Buyer cancelled. */
-const BUYER_CANCELLED_HOTKEY = 'z';
+import { VerbDoneState } from '@/design-system/components/record-action-strip/VerbDoneState';
+import { PairSkuLocationDialog } from './PairSkuLocationDialog';
+import { BuyerCancelDialog } from './BuyerCancelDialog';
 
 function orderIdOf(row: unknown): number | null {
   if (!row || typeof row !== 'object' || !('id' in row)) return null;
@@ -210,19 +202,35 @@ function bulkStripVerbs(verbs: readonly RecordActionVerb[]): RecordActionVerb[] 
 const TRIAGE_BAR_PRIMARY_IDS: readonly string[] = ['paste', 'resolve', 'out-of-stock', 'buyer-cancelled', 'urgent', 'scan-out', 'documents'];
 const TRIAGE_BAR_DROPPED_IDS: ReadonlySet<string> = new Set(['more-info', 'select', 'notes', 'label']);
 
+type AllocateLead = readonly { id: string; face?: Partial<Pick<RecordActionVerb, 'label' | 'tone'>> }[];
+
 /**
  * The allocate record's lead verbs, in order, with the face each wears there
- * (owner 2026-09-29; operator 2026-10-08): the service verbs a caller rings
- * for lead — Buy replacement label, Return label, Create customer ticket
- * (vivid orange) — then Assign task and Report out of stock.
+ * (owner 2026-09-29; operator 2026-10-08) — by stage:
+ * - shipped on a tracking: the service verbs a caller rings for lead — Buy
+ *   replacement label, Return label, Create customer ticket (vivid orange),
+ *   then Pair SKU to location, Assign task, Report out of stock.
+ * - no tracking linked yet: the order still has to leave — Buy label, Mark
+ *   urgent, Pair SKU to location lead; the ticket follows as a plain row.
  */
-const ALLOCATE_HEADER_PRIMARY: readonly { id: string; face?: Partial<Pick<RecordActionVerb, 'label' | 'tone'>> }[] = [
+const ALLOCATE_LEAD_SHIPPED: AllocateLead = [
   { id: 'urgent' },
   { id: 'replacement-label' },
   { id: 'return-label' },
   { id: 'customer-ticket', face: { tone: 'orange' } },
+  // Right under the ticket; a filled amber CTA while the SKU has no home location.
+  { id: 'pair-sku-location' },
   { id: 'task' },
   { id: 'out-of-stock' },
+];
+const ALLOCATE_LEAD_UNSHIPPED: AllocateLead = [
+  { id: 'buy-label' },
+  { id: 'urgent' },
+  { id: 'pair-sku-location' },
+  { id: 'customer-ticket' },
+  { id: 'task' },
+  { id: 'out-of-stock' },
+  { id: 'return-label' },
 ];
 
 function triageBarVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[]): RecordActionVerb[] {
@@ -268,7 +276,7 @@ interface OrderActionVerbsOptions {
    * in the split pane. Present ⇒ a `documents` verb stands where Label does.
    */
   onOpenDocuments?: (record: ShippedOrder) => void;
-  /** Mobile URL: Notes opens the sheet instead of morphing the strip. */
+  /** Mobile URL: Notes opens the phone's bottom sheet instead of the centered dialog. */
   onOpenNotesSheet?: () => void;
   /** A verb that ends the strip's job (Delete, Resolve, More information). */
   onFinished: () => void;
@@ -380,33 +388,7 @@ function useOrderActionVerbs({
   };
 
   const selectionIsOutOfStock = stateRows.length > 0 && stateRows.every(isOutOfStockRow);
-  const clearOutOfStock = () => {
-    // Undo re-reports each order with the shortage it carried before the clear.
-    const cleared = actionRows
-      .filter(isOutOfStockRow)
-      .map((row) => ({
-        id: orderIdOf(row),
-        identity: shortageIdentityFromRow(row) ?? morphingListingIdentity(row as MorphingOosRow),
-      }))
-      .filter((entry): entry is { id: number; identity: OrderShortageIdentity } => entry.id != null);
-    assign.mutate(
-      { orderIds: actionIds, isOutOfStock: false },
-      {
-        onSuccess: () =>
-          toast.undo(actionIds.length === 1 ? 'Out of stock cleared' : 'Cleared out of stock on selected orders', {
-            onUndo: () => {
-              for (const entry of cleared) {
-                assign.mutate(morphingOosAssignPayload([entry.id], entry.identity), {
-                  onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not undo the clear'),
-                });
-              }
-            },
-          }),
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : 'Could not clear out of stock'),
-      },
-    );
-  };
+  const clearOutOfStock = useClearOutOfStock();
   const oosRows = actionRows.map((row) => row as MorphingOosRow);
   // Several orders that each carry one known product commit at once; one
   // order (or a kit) picks the short product in the display.
@@ -448,38 +430,51 @@ function useOrderActionVerbs({
   };
 
   /**
-   * Delete every checked order (one order → that order), with Undo: they
-   * swipe left off the list now; the ONE delete route (permission + step-up
-   * there) hears about it when the Undo window ends.
+   * Buyer cancelled — every checked order (one order → that order) leaves the
+   * list with the `buyer_cancelled` reason (`/api/orders/list-removal`, which
+   * also sets the order's Buyer cancel status). Undo on the bottom-right toast
+   * puts them back with their prior status (`DELETE`, same route).
    */
   const buyerCancel = () => {
     const ids = actionIds.length > 0 ? actionIds : [orderId];
     onFinished();
     markDismissed(ids);
+    const settle = () => {
+      bustFulfillmentCaches(queryClient);
+      refreshDomain('orders.outbound');
+    };
     void afterDismissPaint().then(async () => {
       hideRecords(ids);
-      // Confirmation as the rows leave — the house toaster is bottom-right.
-      const confirmed = toast.success(
-        ids.length === 1 ? 'Buyer cancelled' : `${ids.length} orders buyer cancelled`,
-        { duration: 6000 },
-      );
       try {
-        const res = await fetch('/api/orders/buyer-cancel', {
+        const res = await fetch('/api/orders/list-removal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderIds: ids }),
+          body: JSON.stringify({ orderIds: ids, reason: 'buyer_cancelled' }),
         });
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         if (!res.ok) {
-          toast.dismiss(confirmed);
           restoreRecords(ids);
           toast.error(body?.error || 'Could not mark the order buyer cancelled');
           return;
         }
-        bustFulfillmentCaches(queryClient);
-        refreshDomain('orders.outbound');
+        settle();
+        toast.undo(ids.length === 1 ? 'Buyer cancelled' : `${ids.length} orders buyer cancelled`, {
+          onUndo: () => {
+            void fetch('/api/orders/list-removal', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderIds: ids }),
+            }).then((undo) => {
+              if (!undo.ok) {
+                toast.error('Could not undo the buyer cancel');
+                return;
+              }
+              restoreRecords(ids);
+              settle();
+            });
+          },
+        });
       } catch {
-        toast.dismiss(confirmed);
         restoreRecords(ids);
         toast.error('Could not mark the order buyer cancelled');
       }
@@ -517,30 +512,52 @@ function useOrderActionVerbs({
     verbs.push({
       id: 'paste',
       label: 'Paste item #',
-      hotkey: 'v',
+      hotkey: ORDER_VERB_HOTKEYS.paste,
       scope: 'single',
-      display: (done) => (
-        <ExceptionPasteDisplay record={record} onAmbiguous={openExceptionResolve} done={done} />
-      ),
+      // The centered dialog every order form shares: the field focused, Enter matches.
+      dialog: (done) => <ExceptionPasteDialog record={record} onAmbiguous={openExceptionResolve} done={done} />,
     });
   }
   // The record's own Resolve section is the open record's pairing form.
   if (viewOffersVerb(viewKey, 'resolve') && !openRecord) {
-    verbs.push({ id: 'resolve', label: 'Resolve', hotkey: 'r', scope: 'single', run: openExceptionResolve });
+    verbs.push({ id: 'resolve', label: 'Resolve', hotkey: ORDER_VERB_HOTKEYS.resolve, scope: 'single', run: openExceptionResolve });
   }
   if (viewOffersVerb(viewKey, 'out-of-stock')) {
+    verbs.push(
+      selectionIsOutOfStock
+        ? // Clearing is the recovery, not a danger verb: one press, Undo on the toast.
+          { id: 'out-of-stock', label: 'Mark not out of stock', icon: <AlertTriangle />, hotkey: ORDER_VERB_HOTKEYS['out-of-stock'], pressed: true, run: () => clearOutOfStock(actionRows) }
+        : {
+            id: 'out-of-stock',
+            label: 'Report out of stock',
+            icon: <AlertTriangle />,
+            hotkey: ORDER_VERB_HOTKEYS['out-of-stock'],
+            tone: 'danger',
+            ...(oosCommitsAtOnce
+              ? {
+                  run: commitOosEach,
+                  confirmDetail: `Each of the ${actionIds.length} orders is reported short of its one product and leaves the pick queue.`,
+                }
+              : // The short product is picked in a centered dialog that catches the eye — never in line, never a dropdown; Enter commits.
+                { dialog: (done: () => void) => <OosDialog rows={oosRows} done={done} /> }),
+          },
+    );
+  }
+  if (viewOffersVerb(viewKey, 'pair-sku-location')) {
+    const sku = String(record.sku ?? '').trim();
+    const homeless = Boolean(sku) && !record.sku_home_location;
     verbs.push({
-      id: 'out-of-stock',
-      label: selectionIsOutOfStock ? 'Clear out of stock' : 'Report out of stock',
-      icon: <AlertTriangle />,
-      hotkey: 'o',
-      tone: 'danger',
-      pressed: selectionIsOutOfStock,
-      ...(selectionIsOutOfStock
-        ? { run: clearOutOfStock }
-        : oosCommitsAtOnce
-          ? { run: commitOosEach }
-          : { display: (done: () => void) => <OosDisplay rows={oosRows} done={done} /> }),
+      id: 'pair-sku-location',
+      // No home location yet: the filled amber CTA right under the ticket, so it cannot be missed.
+      label: 'Pair SKU to location',
+      icon: <MapPin />,
+      hotkey: ORDER_VERB_HOTKEYS['pair-sku-location'],
+      tone: homeless ? 'warning' : undefined,
+      scope: 'single',
+      disabled: !sku,
+      disabledReason: 'This order has no SKU to pair',
+      // The centered picker dialog — the same shape as Report out of stock; Enter pairs (operator 2026-10-08).
+      dialog: (done) => <PairSkuLocationDialog record={record} done={done} />,
     });
   }
   if (viewOffersVerb(viewKey, 'urgent') && !selectionShipped) {
@@ -548,7 +565,7 @@ function useOrderActionVerbs({
       id: 'urgent',
       label: selectionIsUrgent ? 'Clear urgent' : 'Mark urgent',
       icon: <Zap />,
-      hotkey: 'u',
+      hotkey: ORDER_VERB_HOTKEYS.urgent,
       tone: 'yellow',
       pressed: selectionIsUrgent,
       run: markUrgent,
@@ -560,7 +577,7 @@ function useOrderActionVerbs({
           id: 'documents',
           label: 'Documents',
           icon: <FileText />,
-          hotkey: 'l',
+          hotkey: ORDER_VERB_HOTKEYS.documents,
           scope: 'single',
           run: () => {
             onFinished();
@@ -571,39 +588,34 @@ function useOrderActionVerbs({
           id: 'label',
           label: 'Label',
           icon: <FileText />,
-          hotkey: 'l',
+          hotkey: ORDER_VERB_HOTKEYS.documents,
           scope: 'single',
-          display: (done) => <LabelDisplay record={record} onOpenLabels={onOpenLabels} done={done} />,
+          dialog: (done) => <LabelDialog record={record} onOpenLabels={onOpenLabels} done={done} />,
         },
   );
   verbs.push({
     id: 'scan-out',
     label: scanOut?.label ?? 'Mark fulfilled',
     icon: <Truck />,
-    // S, not X: X checks the record under the cursor on every list (Law 5).
-    hotkey: 's',
+    hotkey: ORDER_VERB_HOTKEYS['scan-out'],
     disabled: scanOut?.disabled,
     disabledReason: scanOut?.reason,
     ...(scanOut?.direction === 'undo'
       ? { run: undoScanOut }
-      : { display: (done: () => void) => <ScanOutDisplay rows={actionRows} done={done} /> }),
+      : { dialog: (done: () => void) => <ScanOutDialog rows={actionRows} done={done} /> }),
   });
   verbs.push(
     onOpenNotesSheet
-      ? { id: 'notes', label: 'Notes', hotkey: MORPHING_NOTES_HOTKEY, scope: 'single', run: onOpenNotesSheet }
+      ? { id: 'notes', label: 'Notes', hotkey: ORDER_VERB_HOTKEYS.notes, scope: 'single', run: onOpenNotesSheet }
       : {
           id: 'notes',
           label: 'Notes',
-          hotkey: MORPHING_NOTES_HOTKEY,
+          hotkey: ORDER_VERB_HOTKEYS.notes,
           scope: 'single',
-          display: () => (
-            <OrderNotesTrail
-              orderId={orderId}
-              legacyNote={record.notes}
-              autoFocus
-              variant="strip"
-              className="min-w-0 flex-1"
-            />
+          dialog: () => (
+            <div className="h-full min-h-0 overflow-y-auto" data-testid="order-notes-dialog">
+              <OrderNotesTrail orderId={orderId} legacyNote={record.notes} autoFocus />
+            </div>
           ),
         },
   );
@@ -617,9 +629,8 @@ function useOrderActionVerbs({
       run: () => toggle(record, { shiftKey: false }),
     });
   }
-  // ⌘/Ctrl+C, never bare C: C is create app-wide (`key-registry`).
-  verbs.push(...catalogVerb('copy', 'Copy', <Copy />, COPY_HOTKEY));
-  verbs.push(...catalogVerb('print', 'Print', <Printer />, 'p'));
+  verbs.push(...catalogVerb('copy', 'Copy', <Copy />, ORDER_VERB_HOTKEYS.copy));
+  verbs.push(...catalogVerb('print', 'Print', <Printer />, ORDER_VERB_HOTKEYS.print));
 
   // ── ⋮ overflow ──
   if (viewOffersVerb(viewKey, 'create-rule')) {
@@ -627,7 +638,7 @@ function useOrderActionVerbs({
       id: 'create-rule',
       label: 'Create rule',
       icon: <Bookmark />,
-      hotkey: viewOffersVerb(viewKey, 'resolve') ? undefined : 'r',
+      hotkey: viewOffersVerb(viewKey, 'resolve') ? undefined : ORDER_VERB_HOTKEYS.resolve,
       run: () => {
         const rule = catalog.find((action) => action.key === 'listing-rule');
         if (rule) void rule.run(actionRows);
@@ -641,8 +652,7 @@ function useOrderActionVerbs({
       id: key,
       label: r.label,
       icon: r.action.icon,
-      // The selection bar's letter for the same verb (Download photos → I); the record's own verbs win a shared letter.
-      hotkey: SELECTION_STATUS_BAR_META[key]?.hotkey,
+      // Keyed below: the selection bar's letter for the same verb, unless an order key holds it.
       disabled: r.disabled,
       disabledReason: r.reason,
       run: () => r.action.run(actionRows, r.direction ? { direction: r.direction } : undefined),
@@ -653,64 +663,84 @@ function useOrderActionVerbs({
       id: 'print-slip',
       label: 'Print packing slip',
       icon: <Printer />,
-      hotkey: PRINT_SLIP_HOTKEY,
+      hotkey: ORDER_VERB_HOTKEYS['print-slip'],
       scope: 'single',
       disabled: slip.pending,
       run: slip.print,
     });
   }
+  const hasTracking = Boolean(trackingOf(record));
+  const refreshLabels = () => {
+    bustFulfillmentCaches(queryClient);
+    refreshDomain('orders.outbound');
+  };
   verbs.push(
     {
       id: 'return-label',
       label: 'Return label',
       icon: <RotateCcw />,
-      hotkey: RETURN_LABEL_HOTKEY,
+      hotkey: ORDER_VERB_HOTKEYS['return-label'],
       // A filled lead CTA once shipped (the caller wants it back); a row before that.
       tone: selectionShipped ? 'success' : undefined,
       scope: 'single',
       display: (done) => (
-        <ReturnLabelDialog
-          orderId={orderId}
-          orderRef={orderRef}
-          onClose={done}
-          onChange={() => {
-            bustFulfillmentCaches(queryClient);
-            refreshDomain('orders.outbound');
-          }}
-        />
+        <ReturnLabelDialog orderId={orderId} orderRef={orderRef} onClose={done} onChange={refreshLabels} />
       ),
     },
-    {
-      id: 'replacement-label',
-      label: 'Buy replacement label',
-      icon: <Repeat />,
-      hotkey: REPLACEMENT_LABEL_HOTKEY,
-      // Solid blue once shipped — the record's lead CTA; tonal otherwise.
-      tone: selectionShipped ? 'primary' : 'blue',
-      scope: 'single',
-      // The open record's lead verb once the order shipped: spelled out, key painted.
-      standingKeycap: Boolean(openRecord) && selectionShipped,
-      // The buy opens over the record (ship-to + parcel prefilled); the label lands on this order.
-      display: (done) => (
-        <SendReplacementPopover
-          order={{ orderRowId: orderId, orderNumber: orderRef, title: String(record.product_title ?? ''), tracking: trackingOf(record) }}
-          open
-          onOpenChange={(open) => {
-            if (!open) done();
-          }}
-          onChange={() => {
-            bustFulfillmentCaches(queryClient);
-            refreshDomain('orders.outbound');
-          }}
-        />
-      ),
-    },
+    // The label this order needs next (operator 2026-10-08): no tracking linked
+    // yet → Buy label leads; once it has shipped on one → Buy replacement label.
+    hasTracking
+      ? {
+          id: 'replacement-label',
+          label: 'Buy replacement label',
+          icon: <Repeat />,
+          hotkey: ORDER_VERB_HOTKEYS['label-buy'],
+          // Solid blue once shipped — the record's lead CTA; tonal otherwise.
+          tone: selectionShipped ? 'primary' : 'blue',
+          scope: 'single',
+          // The open record's lead verb once the order shipped: spelled out, key painted.
+          standingKeycap: Boolean(openRecord) && selectionShipped,
+          // The buy opens over the record (ship-to + parcel prefilled); the label lands on this order.
+          display: (done) => (
+            <OrderLabelBuyDialog
+              purpose="replacement"
+              order={{ orderRowId: orderId, orderNumber: orderRef, title: String(record.product_title ?? ''), tracking: trackingOf(record) }}
+              open
+              onOpenChange={(open) => {
+                if (!open) done();
+              }}
+              onChange={refreshLabels}
+            />
+          ),
+        }
+      : {
+          id: 'buy-label',
+          label: 'Buy label',
+          icon: <Tag />,
+          hotkey: ORDER_VERB_HOTKEYS['label-buy'],
+          tone: 'primary',
+          scope: 'single',
+          standingKeycap: Boolean(openRecord),
+          // This morning's label form (oz, L × W × H, ship-to editor, rate shop) on the
+          // outbound purpose — no replacement reason; the label lands on this order.
+          display: (done) => (
+            <OrderLabelBuyDialog
+              purpose="outbound"
+              order={{ orderRowId: orderId, orderNumber: orderRef, title: String(record.product_title ?? '') }}
+              open
+              onOpenChange={(open) => {
+                if (!open) done();
+              }}
+              onChange={refreshLabels}
+            />
+          ),
+        },
   );
   verbs.push({
     id: 'customer-ticket',
     label: 'Create customer ticket',
     icon: <Ticket />,
-    hotkey: CUSTOMER_TICKET_HOTKEY,
+    hotkey: ORDER_VERB_HOTKEYS['customer-ticket'],
     scope: 'single',
     run: () => router.push(supportCreateTicketHref(orderId)),
   });
@@ -720,7 +750,7 @@ function useOrderActionVerbs({
       id: 'more-info',
       label: 'More information',
       icon: <Tag />,
-      hotkey: MORPHING_MORE_INFO_HOTKEY,
+      hotkey: ORDER_VERB_HOTKEYS['more-info'],
       scope: 'single',
       run: () => {
         onFinished();
@@ -732,46 +762,69 @@ function useOrderActionVerbs({
     id: 'buyer-cancelled',
     label: actionIds.length > 1 ? `Buyer cancelled ${actionIds.length}` : 'Buyer cancelled',
     icon: <PackageX />,
-    hotkey: BUYER_CANCELLED_HOTKEY,
+    hotkey: ORDER_VERB_HOTKEYS['buyer-cancelled'],
     tone: 'danger',
     scope: 'both',
-    run: buyerCancel,
+    // The centered dialog every order form shares; only its focused button (Enter) confirms, never Z again.
+    dialog: (done) => (
+      <BuyerCancelDialog
+        rows={actionRows}
+        onCancel={done}
+        onConfirm={() => {
+          done();
+          buyerCancel();
+        }}
+      />
+    ),
   });
   verbs.push({
     id: 'delete',
     label: actionIds.length > 1 ? `Delete ${actionIds.length}` : 'Delete',
     icon: <Trash2 />,
-    hotkey: DELETE_HOTKEY,
-    confirm: true,
+    hotkey: ORDER_VERB_HOTKEYS.delete,
     tone: 'danger',
     scope: 'both',
+    confirmDetail:
+      actionIds.length > 1
+        ? `${actionIds.length} orders are deleted. Undo stays on the toast for a few seconds.`
+        : `Order ${orderRef} is deleted. Undo stays on the toast for a few seconds.`,
     run: deleteOrder,
   });
-  // Every verb carries a key. The record's own verbs claim their letters first;
-  // a catalog verb whose selection-bar letter is taken (or claimed twice) goes keyless.
-  const catalogIds = new Set(resolved.keys());
-  const claimed = new Set(
-    verbs.filter((verb) => !catalogIds.has(verb.id) && verb.hotkey).map((verb) => verb.hotkey!.toLowerCase()),
+  // Every verb carries a key. The strip's own verbs, the record's keys and the
+  // list's keys claim their letters first; a catalog verb whose selection-bar
+  // letter is taken (or claimed twice) goes keyless.
+  const catalogKeys = orderCatalogHotkeys(
+    [...resolved.keys()]
+      .filter((key) => !STRIP_OWNED_CATALOG_KEYS[key])
+      .map((id) => ({ id, hotkey: SELECTION_STATUS_BAR_META[id]?.hotkey })),
+    verbs.flatMap((verb) => (verb.hotkey ? [verb.hotkey] : [])),
   );
-  return verbs.map((verb) => {
-    const key = verb.hotkey?.toLowerCase();
-    if (!key || !catalogIds.has(verb.id)) return verb;
-    if (claimed.has(key)) return { ...verb, hotkey: undefined };
-    claimed.add(key);
-    return verb;
-  });
+  return verbs.map((verb) => (catalogKeys.has(verb.id) ? { ...verb, hotkey: catalogKeys.get(verb.id) } : verb));
 }
 
-/** Scan out — who and when (backdated at most `SCAN_OUT_DESK_MAX_BACKDATE_MS`), then Save. */
-function ScanOutDisplay({ rows, done }: { rows: readonly ShippedOrder[]; done: () => void }) {
+/**
+ * Mark fulfilled — the centered dialog form (operator 2026-10-08): when
+ * (backdated at most `SCAN_OUT_DESK_MAX_BACKDATE_MS`) and who, then Save —
+ * focused, so Enter saves the default (you, now). The staff list is in place
+ * (search, Enter picks); picking hands focus back to Save.
+ */
+function ScanOutDialog({ rows, done }: { rows: readonly ShippedOrder[]; done: () => void }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [staffId, setStaffId] = useState<number | null>(user?.staffId ?? null);
   const [at, setAt] = useState<Date | undefined>(() => new Date());
   const [saving, setSaving] = useState(false);
-  const [staffOpen, setStaffOpen] = useState(false);
-  const staffRef = useRef<HTMLButtonElement>(null);
+  const [shipped, setShipped] = useState<number | null>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
   const from = new Date(Date.now() - SCAN_OUT_DESK_MAX_BACKDATE_MS);
+  const labelled = rows.filter((row) => trackingOf(row) != null).length;
+
+  // Opens on Save when a staffer is known (Enter saves); else the staff search keeps focus.
+  // Read once: a later pick focuses Save itself.
+  const [opensOnSave] = useState(() => user?.staffId != null);
+  useEffect(() => {
+    if (opensOnSave) saveRef.current?.focus({ preventScroll: true });
+  }, [opensOnSave]);
 
   const save = () => {
     if (saving) return;
@@ -818,7 +871,6 @@ function ScanOutDisplay({ rows, done }: { rows: readonly ShippedOrder[]; done: (
       if (ok > 0) {
         bustScanOutCaches(queryClient);
         refreshDomain('orders.outbound');
-        toast.success(ok === 1 ? 'Marked as shipped' : `${ok} orders marked as shipped`);
       }
       if (failed > 0) {
         const first = results.find((row) => row.status === 'rejected');
@@ -829,104 +881,114 @@ function ScanOutDisplay({ rows, done }: { rows: readonly ShippedOrder[]; done: (
         );
       }
       setSaving(false);
-      if (ok > 0 && failed === 0) done();
+      if (ok > 0 && failed === 0) setShipped(ok);
     });
   };
 
+  if (shipped != null) {
+    return (
+      <VerbDoneState
+        title="Marked as shipped"
+        detail={[shipped > 1 ? `${shipped} orders` : null, staffId != null ? getStaffName(staffId) : null, at?.toLocaleString()]
+          .filter(Boolean)
+          .join(' · ')}
+        onDone={done}
+        testId="order-scan-out-done"
+      />
+    );
+  }
+
   return (
-    <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1" data-testid="order-scan-out-display">
-      <Button
-        ref={staffRef}
-        type="button"
-        variant="secondary"
-        size="sm"
-        radius="pill"
-        aria-haspopup="listbox"
-        aria-expanded={staffOpen}
-        ariaLabel="Staff who scanned out"
-        data-testid="order-scan-out-staff"
-        onClick={() => setStaffOpen(true)}
-      >
-        {staffId != null ? (
-          <span className="flex min-w-0 items-center gap-2">
-            <StaffAvatar staffId={staffId} name={getStaffName(staffId)} size="sm" colorRing alt="" />
-            <span className="truncate">{getStaffName(staffId)}</span>
-          </span>
-        ) : (
-          'Staff'
-        )}
-      </Button>
-      <StageStaffAssignPopover
-        open={staffOpen}
-        onClose={() => setStaffOpen(false)}
-        anchorRef={staffRef}
-        label="Staff who scanned out"
-        role="all"
-        selectedStaffId={staffId}
-        onCommit={(next) => setStaffId(next)}
-      />
-      <DateTimePickerField
-        value={at}
-        onChange={setAt}
-        placeholder="Date and time"
-        fromDate={from}
-        toDate={new Date()}
-        className="w-[13.5rem] shrink-0"
-      />
-      <Button
-        type="button"
-        variant="success"
-        size="sm"
-        radius="pill"
-        className="ml-auto shrink-0"
-        disabled={saving}
-        data-testid="order-scan-out-save"
-        onClick={save}
-      >
-        {saving ? 'Saving…' : 'Save'}
-      </Button>
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3" data-testid="order-scan-out-dialog">
+      <p className="text-role-caption text-text-soft">
+        {labelled === rows.length
+          ? rows.length === 1
+            ? 'The order is marked shipped on its label.'
+            : `${rows.length} orders are marked shipped on their labels.`
+          : `${labelled} of ${rows.length} orders carry a shipping label; only those are marked shipped.`}
+      </p>
+      <div className="flex flex-col gap-1.5">
+        <span className={cn(RECORD_LABEL_CLASS, 'text-text-muted')}>When</span>
+        <DateTimePickerField value={at} onChange={setAt} placeholder="Date and time" fromDate={from} toDate={new Date()} />
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+        <span className={cn(RECORD_LABEL_CLASS, 'text-text-muted')}>
+          Who scanned out{staffId != null ? ` · ${getStaffName(staffId)}` : ''}
+        </span>
+        <StaffPickList
+          role="all"
+          selectedStaffId={staffId}
+          onPick={(next) => {
+            setStaffId(next);
+            saveRef.current?.focus({ preventScroll: true });
+          }}
+          ariaLabel="Staff who scanned out"
+          testId="order-scan-out-staff"
+          className="min-h-0 flex-1"
+        />
+      </div>
+      <div className="flex flex-col gap-1.5 border-t border-border-soft pt-3">
+        <Button
+          ref={saveRef}
+          type="button"
+          variant="success"
+          size="md"
+          icon={<Truck />}
+          className="w-full"
+          disabled={saving || staffId == null}
+          data-testid="order-scan-out-save"
+          onClick={save}
+        >
+          {saving ? 'Saving…' : 'Mark as shipped'}
+        </Button>
+        <p className="text-center text-role-micro text-text-soft">Enter saves</p>
+      </div>
     </div>
   );
 }
 
-/** Out of stock — pick the short product (a kit's part from its catalog composition), commit. */
-function OosDisplay({ rows, done }: { rows: readonly MorphingOosRow[]; done: () => void }) {
+/**
+ * Report out of stock — the centered dialog's product combobox: search open
+ * and focused, the order's own products (a kit's parts from its catalog
+ * composition) first, Enter marks the highlighted product short.
+ */
+function OosDialog({ rows, done }: { rows: readonly MorphingOosRow[]; done: () => void }) {
   const assign = useOrderAssignment();
   const router = useRouter();
   const [kitByCatalog, setKitByCatalog] = useState<Map<number, KitComposition>>(new Map());
-  const [loading, setLoading] = useState(false);
 
   const catalogKey = rows.map((row) => Number(row.sku_catalog_id) || 0).join(',');
   useEffect(() => {
     const ids = [...new Set(catalogKey.split(',').map(Number).filter((id) => id > 0))];
     if (ids.length === 0) return;
     let cancelled = false;
-    setLoading(true);
     void Promise.all(
       ids.map(async (catalogId) => {
         const res = await fetch(`/api/sku-catalog/${catalogId}/composition`);
         const body = (await res.json().catch(() => null)) as { composition?: KitComposition } | null;
         return [catalogId, body?.composition ?? null] as const;
       }),
-    )
-      .then((pairs) => {
-        if (cancelled) return;
-        setKitByCatalog(new Map(pairs.filter((pair): pair is readonly [number, KitComposition] => pair[1] != null)));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    ).then((pairs) => {
+      if (cancelled) return;
+      setKitByCatalog(new Map(pairs.filter((pair): pair is readonly [number, KitComposition] => pair[1] != null)));
+    });
     return () => {
       cancelled = true;
     };
   }, [catalogKey]);
 
-  const commit = (row: MorphingOosRow, identity: OrderShortageIdentity) => {
+  // The done face: what was marked, until the operator taps Done (or Enter).
+  const [marked, setMarked] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const commit = (row: MorphingOosRow, identity: OrderShortageIdentity, label: string) => {
     const id = morphingOosOrderId(row);
     if (id == null) {
       toast.error('Select an order first');
       return;
     }
+    if (saving) return;
+    setSaving(true);
     assign.mutate(morphingOosAssignPayload([id], identity), {
       onSuccess: () => {
         showOosPendingToast({
@@ -936,29 +998,45 @@ function OosDisplay({ rows, done }: { rows: readonly MorphingOosRow[]; done: () 
           staysPacked: morphingOosStaysPacked([row]),
           onViewExceptions: () => router.push(OOS_ORDERS_HREF),
         });
-        done();
+        setMarked(label);
       },
       onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not mark out of stock'),
+      onSettled: () => setSaving(false),
     });
   };
 
+  if (marked) {
+    return <VerbDoneState title="Marked out of stock" detail={marked} onDone={done} testId="order-oos-done" />;
+  }
+
   return (
-    <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1" data-testid="order-oos-display">
+    <div className="flex h-full min-h-0 min-w-0 flex-col" data-testid="order-oos-dialog">
       <OosProductCombobox
+        surface="open"
         lines={[...rows]}
         compositionByCatalogId={kitByCatalog}
-        disabled={loading}
         onPick={(orderRowId, identity) => {
           const target = rows.find((row) => morphingOosOrderId(row) === orderRowId) ?? rows[0];
-          if (target) commit(target, identity);
+          if (target) commit(target, identity, identity.title || identity.sku || 'This product');
         }}
       />
     </div>
   );
 }
 
-/** Label — link a packing slip / shipping label the packer scan prints, or walk the labels. */
-function LabelDisplay({
+/** What each upload links, for its target and its done face. */
+const LABEL_UPLOADS: Record<'packing_slip' | 'shipping_label', { label: string; done: string; icon: ReactNode }> = {
+  packing_slip: { label: 'Upload packing slip', done: 'Packing slip linked', icon: <FileText /> },
+  shipping_label: { label: 'Upload shipping label', done: 'Shipping label linked', icon: <Truck /> },
+};
+
+/**
+ * Label — the centered dialog (operator 2026-10-08): link a packing slip or a
+ * shipping label the packer scan prints, two large targets (the first
+ * focused; Enter opens the file picker), or walk the labels. A landed upload
+ * shows the done face.
+ */
+function LabelDialog({
   record,
   onOpenLabels,
   done,
@@ -968,67 +1046,94 @@ function LabelDisplay({
   done: () => void;
 }) {
   const queryClient = useQueryClient();
-  const slipInputRef = useRef<HTMLInputElement>(null);
-  const labelInputRef = useRef<HTMLInputElement>(null);
+  const inputRefs = useRef(new Map<keyof typeof LABEL_UPLOADS, HTMLInputElement>());
+  const [uploading, setUploading] = useState<keyof typeof LABEL_UPLOADS | null>(null);
+  const [linked, setLinked] = useState<keyof typeof LABEL_UPLOADS | null>(null);
   const id = Number(record.id);
+  const orderRef = String(record.order_id ?? '').trim() || String(id);
 
-  const upload = (documentType: 'packing_slip' | 'shipping_label', file: File | undefined) => {
-    if (!file) return;
+  const upload = (documentType: keyof typeof LABEL_UPLOADS, file: File | undefined) => {
+    if (!file || uploading) return;
     const form = new FormData();
     form.set('file', file);
     form.set('documentType', documentType);
     form.set('orderRef', String(record.order_id || id));
-    void fetch(`/api/orders/${id}/documents/upload`, { method: 'POST', body: form }).then(async (res) => {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) {
-        toast.error(body?.error || 'Could not upload the document');
-        return;
-      }
-      await queryClient.invalidateQueries({ queryKey: ['order-documents', id] });
-      refreshDomain('orders.outbound');
-      toast.success(
-        documentType === 'packing_slip'
-          ? 'Packing slip linked — packer scan will print it'
-          : 'Shipping label linked — packer scan will print it',
-      );
-      done();
-    });
+    setUploading(documentType);
+    void fetch(`/api/orders/${id}/documents/upload`, { method: 'POST', body: form })
+      .then(async (res) => {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        if (!res.ok) {
+          toast.error(body?.error || 'Could not upload the document');
+          return;
+        }
+        await queryClient.invalidateQueries({ queryKey: ['order-documents', id] });
+        refreshDomain('orders.outbound');
+        setLinked(documentType);
+      })
+      .catch(() => toast.error('Could not upload the document'))
+      .finally(() => setUploading(null));
   };
 
+  if (linked) {
+    return (
+      <VerbDoneState
+        title={LABEL_UPLOADS[linked].done}
+        detail={`Order ${orderRef} · the packer scan prints it`}
+        onDone={done}
+        testId="order-label-done"
+      />
+    );
+  }
+
+  const kinds = Object.keys(LABEL_UPLOADS) as (keyof typeof LABEL_UPLOADS)[];
   return (
-    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1" data-testid="order-label-display">
-      <input
-        ref={slipInputRef}
-        type="file"
-        accept="application/pdf,image/*"
-        className="sr-only"
-        onChange={(event) => {
-          upload('packing_slip', event.target.files?.[0]);
-          event.currentTarget.value = '';
-        }}
-      />
-      <input
-        ref={labelInputRef}
-        type="file"
-        accept="application/pdf,image/*"
-        className="sr-only"
-        onChange={(event) => {
-          upload('shipping_label', event.target.files?.[0]);
-          event.currentTarget.value = '';
-        }}
-      />
-      <Button type="button" variant="secondary" size="sm" radius="pill" icon={<FileText />} onClick={() => slipInputRef.current?.click()}>
-        Upload packing slip
-      </Button>
-      <Button type="button" variant="secondary" size="sm" radius="pill" icon={<Truck />} onClick={() => labelInputRef.current?.click()}>
-        Upload shipping label
-      </Button>
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3" data-testid="order-label-dialog">
+      <p className="text-role-caption text-text-soft">
+        Link a document to order <span className="font-mono text-text-default">{orderRef}</span>; the packer scan prints it.
+      </p>
+      {kinds.map((kind) => (
+        // ds-raw-button: hidden file input behind the upload target — no file primitive exists.
+        <input
+          key={kind}
+          ref={(node) => {
+            if (node) inputRefs.current.set(kind, node);
+            else inputRefs.current.delete(kind);
+          }}
+          type="file"
+          accept="application/pdf,image/*"
+          tabIndex={-1}
+          className="sr-only"
+          data-testid={`order-label-${kind}-input`}
+          onChange={(event) => {
+            upload(kind, event.target.files?.[0]);
+            event.currentTarget.value = '';
+          }}
+        />
+      ))}
+      <div className="flex flex-1 flex-col gap-2">
+        {kinds.map((kind, index) => (
+          <Button
+            key={kind}
+            type="button"
+            variant="secondary"
+            size="xl"
+            icon={LABEL_UPLOADS[kind].icon}
+            autoFocus={index === 0}
+            className="min-h-20 w-full flex-1 justify-start"
+            disabled={uploading != null}
+            data-testid={`order-label-${kind}`}
+            onClick={() => inputRefs.current.get(kind)?.click()}
+          >
+            {uploading === kind ? 'Uploading…' : LABEL_UPLOADS[kind].label}
+          </Button>
+        ))}
+      </div>
       {onOpenLabels ? (
         <Button
           type="button"
-          variant="secondary"
+          variant="ghost"
           size="sm"
-          radius="pill"
+          className="w-full"
           data-testid="order-label-walk"
           onClick={() => {
             done();
@@ -1042,8 +1147,12 @@ function LabelDisplay({
   );
 }
 
-/** Exceptions — paste the item number or listing URL; a unique match backfills the order. */
-function ExceptionPasteDisplay({
+/**
+ * Paste item # — the centered dialog (operator 2026-10-08): the item number
+ * or listing URL field is focused; Enter matches. A unique match backfills
+ * the order and shows the done face; several matches hand off to Resolve.
+ */
+function ExceptionPasteDialog({
   record,
   onAmbiguous,
   done,
@@ -1055,10 +1164,12 @@ function ExceptionPasteDisplay({
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState('');
   const [pasting, setPasting] = useState(false);
+  const [matched, setMatched] = useState<{ title: string; detail: string } | null>(null);
+  const orderRef = String(record.order_id ?? '').trim() || String(record.id);
 
   const commit = (value: string) => {
     const next = value.trim();
-    if (!next) return;
+    if (!next || pasting) return;
     setPasting(true);
     void commitExceptionsItemPaste(next, [
       { id: Number(record.id), itemNumber: record.item_number ?? null, accountSource: record.account_source ?? null },
@@ -1070,25 +1181,32 @@ function ExceptionPasteDisplay({
       }
       if (result.outcome === 'ambiguous') {
         toast.error('Several catalog matches — pick one in Resolve.');
+        done();
         onAmbiguous();
         return;
       }
-      if (result.outcome === 'saved-item') {
-        toast.success('Saved the item number. Open Resolve if it still needs a catalog SKU.');
-      } else {
-        toast.success(
-          result.ordersUpdated > 1
-            ? `Matched — backfilled ${result.ordersUpdated} orders.`
-            : `Matched ${result.sku} and backfilled the order.`,
-        );
-      }
       await queryClient.invalidateQueries({ queryKey: exceptionsQueryKey });
-      done();
+      setMatched(
+        result.outcome === 'saved-item'
+          ? { title: 'Item number saved', detail: 'Open Resolve if it still needs a catalog SKU.' }
+          : {
+              title: `Matched ${result.sku}`,
+              detail: result.ordersUpdated > 1 ? `Backfilled ${result.ordersUpdated} orders.` : `Backfilled order ${orderRef}.`,
+            },
+      );
     });
   };
 
+  if (matched) {
+    return <VerbDoneState title={matched.title} detail={matched.detail} onDone={done} testId="exceptions-paste-item-done" />;
+  }
+
   return (
-    <div className="min-w-0 max-w-md flex-1" data-testid="exceptions-paste-item-field">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3" data-testid="exceptions-paste-item-field">
+      <p className="text-role-caption text-text-soft">
+        Order <span className="font-mono text-text-default">{orderRef}</span> — paste its item number or listing URL; a
+        unique catalog match backfills the order.
+      </p>
       <SearchField
         value={draft}
         onChange={setDraft}
@@ -1096,12 +1214,11 @@ function ExceptionPasteDisplay({
         placeholder="Item number or listing URL…"
         autoFocus
         hideLeadingIcon
-        hideUnderline
-        fillHost
         tone="neutral"
         isSearching={pasting}
         debounceMs={0}
       />
+      <p className="text-role-micro text-text-soft">Enter matches</p>
     </div>
   );
 }
@@ -1148,7 +1265,8 @@ export function OrderRecordActionStrip({
 
     // Escalation actions lead in importance order. Everything else follows.
     const byId = new Map(allVerbs.map((verb) => [verb.id, verb]));
-    const primary = ALLOCATE_HEADER_PRIMARY.flatMap(({ id, face }) => {
+    const lead = byId.has('buy-label') ? ALLOCATE_LEAD_UNSHIPPED : ALLOCATE_LEAD_SHIPPED;
+    const primary = lead.flatMap(({ id, face }) => {
       const verb = byId.get(id);
       return verb ? [{ ...verb, ...face }] : [];
     });
@@ -1171,11 +1289,12 @@ export function OrderRecordActionStrip({
     const seen = new Set(primary.map((verb) => verb.id));
     const overflow: RecordActionVerb[] = [];
     for (const verb of [...allVerbs, ...recordMoreVerbs(record, allVerbs)]) {
-      if (skip.has(verb.id) || seen.has(verb.id) || (!verb.run && !verb.display)) continue;
+      // A verb opens something or runs: `run`, an in-place `display` or the centered `dialog`.
+      if (skip.has(verb.id) || seen.has(verb.id) || (!verb.run && !verb.display && !verb.dialog)) continue;
       seen.add(verb.id);
       overflow.push(verb);
     }
-    overflow.push({ ...paperworkVerb(record, 'Documents'), hotkey: 'l' });
+    overflow.push({ ...paperworkVerb(record, 'Documents'), hotkey: ORDER_VERB_HOTKEYS.documents });
     if (scanOut) overflow.push(scanOut);
     if (deleteVerb) overflow.push(deleteVerb);
     return [...primary, ...overflow];
@@ -1216,7 +1335,7 @@ function recordMoreVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[
     paperworkVerb(record),
     ...verbs.filter(
       (verb) =>
-        (verb.run || verb.display) &&
+        (verb.run || verb.display || verb.dialog) &&
         !ORDER_BULK_VERB_IDS.has(verb.id) &&
         !RECORD_INLINE_VERB_IDS.has(verb.id),
     ),

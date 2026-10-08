@@ -1,21 +1,22 @@
 'use client';
 
 /**
- * Print station › the FNSKU **Print** popover (owner 2026-10-04): FNSKUs →
+ * Print station › the FNSKU **Print** form (owner 2026-10-04): FNSKUs →
  * how many labels of each → Print (directly under the count) → one station.
  * Two openers share it:
- * - the check-set's **Print labels** ({@link FnskuBulkPrint}), anchored under
- *   the select bar the way Repair's Change status is;
+ * - the check-set's **Print labels** ({@link FnskuBulkPrint}), in the select
+ *   bar's centered dialog (operator 2026-10-08);
  * - a row's hover **Print** at its right edge ({@link FnskuRowPrint}), so one
  *   FNSKU prints without opening its record.
  * Each FNSKU is the same `fnsku` station job the open record's Print sends;
  * this computer prints them here.
  */
 
-import { useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Printer } from '@/components/Icons';
 import { Button, Panel } from '@/design-system/primitives';
-import { AnchoredLayer, type AnchoredPlacement } from '@/design-system/primitives/AnchoredLayer';
+import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
+import { VerbDoneState } from '@/design-system/components/record-action-strip/VerbDoneState';
 import { usePrintStations } from '@/hooks/usePrintStations';
 import { clampLabelCopies } from '@/lib/print/labelCopies';
 import { fnskuConditionMissing, fnskuConditionRequiredMessage, type PrintStationFnskuRow } from '@/lib/print-station/fnsku';
@@ -26,22 +27,34 @@ import { StationPicker, resolvePrintStation, stationBlocked } from './StationPic
 
 const fnskus = (n: number) => `${n} ${n === 1 ? 'FNSKU' : 'FNSKUs'}`;
 
-/** The popover itself: mounted only while open, so a list of rows never subscribes to the station registry. */
-function FnskuPrintPanel({
+/** What a Print sent: how many FNSKUs printed, whether every ready one did, and the sentence that says so. */
+interface FnskuPrintSent {
+  printed: number;
+  complete: boolean;
+  message: string;
+}
+
+/**
+ * The form both openers host: how many labels → Print → which station. Mounted
+ * only while open, so a list of rows never subscribes to the station registry.
+ * A short or failed send toasts here; a complete one is the host's to report.
+ */
+function FnskuPrintForm({
   rows,
-  anchorRef,
-  placement,
-  onClose,
+  focusPrint = false,
   onPrinted,
+  onSent,
   testId,
+  className,
 }: {
   rows: readonly PrintStationFnskuRow[];
-  anchorRef: RefObject<HTMLElement | null>;
-  placement: AnchoredPlacement;
-  onClose: () => void;
+  /** Focus Print the moment it can print, so Enter prints (the centered dialog). */
+  focusPrint?: boolean;
   /** At least one label printed: the list re-reads (Reprinted / recency order). */
   onPrinted: () => void;
+  onSent: (sent: FnskuPrintSent) => void;
   testId: string;
+  className: string;
 }) {
   const stations = usePrintStations();
   const [copies, setCopies] = useState(1);
@@ -54,6 +67,15 @@ function FnskuPrintPanel({
   const conditionBlock = ready.length === 0 ? fnskuConditionRequiredMessage(missing[0]?.fnsku ?? 'This FNSKU') : null;
   const blocked = conditionBlock ?? stationBlock;
   const single = ready.length === 1 ? ready[0]!.fnsku : rows.length === 1 ? rows[0]!.fnsku : null;
+
+  // Print takes focus once, when the station roster first lets it print — never again, so a station pick keeps its focus.
+  const goRef = useRef<HTMLButtonElement>(null);
+  const focusedRef = useRef(false);
+  useEffect(() => {
+    if (!focusPrint || blocked || focusedRef.current) return;
+    focusedRef.current = true;
+    goRef.current?.focus({ preventScroll: true });
+  }, [focusPrint, blocked]);
 
   const print = async () => {
     if (!chosen || stationBlock || ready.length === 0) return;
@@ -76,74 +98,89 @@ function FnskuPrintPanel({
     const where = chosen.thisComputer ? 'here' : `at ${chosen.stationName}`;
     const each = single && missing.length === 0 ? `${count} ${count === 1 ? 'label' : 'labels'} of ${single}` : null;
     const skipped = missing.length ? ` ${fnskuConditionRequiredMessage(missing.map((row) => row.fnsku).join(', '))}` : '';
-    if (printed === ready.length && printed > 0) toast.success(`${each ? `Printing ${each} ${where}` : `Printing ${fnskus(printed)} ${where}, ${count} each`}${skipped ? `.${skipped}` : ''}`);
-    else if (printed > 0) toast.error(`${fnskus(printed)} of ${ready.length} sent ${where} — the rest did not print.${skipped}`);
-    else toast.error(`${chosen.thisComputer ? 'Nothing printed here' : `${chosen.stationName} did not answer — nothing was printed`}.${skipped}`);
+    const complete = printed === ready.length && printed > 0;
+    const message = complete
+      ? `${each ? `Printing ${each} ${where}` : `Printing ${fnskus(printed)} ${where}, ${count} each`}${skipped ? `.${skipped}` : ''}`
+      : printed > 0
+        ? `${fnskus(printed)} of ${ready.length} sent ${where} — the rest did not print.${skipped}`
+        : `${chosen.thisComputer ? 'Nothing printed here' : `${chosen.stationName} did not answer — nothing was printed`}.${skipped}`;
+    if (!complete) toast.error(message);
     if (printed > 0) onPrinted();
-    onClose();
+    onSent({ printed, complete, message });
   };
 
-  const name = single ? `Print ${single}` : `Print ${fnskus(rows.length)}`;
+  const total = copies * Math.max(ready.length, 1);
   return (
-    <AnchoredLayer open onClose={onClose} anchorRef={anchorRef} placement={placement} level="panelPopover" gap={6}>
-      <Panel
-        padding="none"
-        radius="xl"
-        elevation="overlay"
-        aria-label={name}
-        data-testid={testId}
-        className="flex max-h-[var(--anchored-available-height,none)] w-96 flex-col gap-1 py-2"
-      >
-        <p className="px-4 pt-1 text-role-caption text-text-muted">{single ? 'Labels' : 'Labels of each'}</p>
-        <QuantityPicker copies={copies} onCopies={setCopies} disabled={sending} />
-        {/* The CTA sits directly under the count (owner 2026-10-04); the stations below scroll when the roster outgrows the viewport. */}
-        <div className="flex flex-col items-end gap-1 px-4 pb-2">
-          <Button
-            variant="primary"
-            size="lg"
-            radius="control"
-            icon={<Printer />}
-            loading={sending}
-            disabled={Boolean(blocked)}
-            onClick={() => void print()}
-            data-testid={`${testId}-go`}
-          >
-            {`Print ${copies * Math.max(ready.length, 1)} ${copies * Math.max(ready.length, 1) === 1 ? 'label' : 'labels'} → ${chosen?.thisComputer ? 'this computer' : (chosen?.stationName ?? '…')}`}
-          </Button>
-          {conditionBlock ? <p className="text-right text-role-caption text-text-warning">{conditionBlock}</p> : null}
-          {!conditionBlock && missing.length > 0 ? (
-            <p className="text-right text-role-caption text-text-warning">{fnskuConditionRequiredMessage(missing.map((row) => row.fnsku).join(', '))}</p>
-          ) : null}
-          {!conditionBlock && stationBlock ? <p className="text-right text-role-caption text-text-warning">{chosen ? `${chosen.stationName}: ${stationBlock}.` : `${stationBlock}.`}</p> : null}
-        </div>
-        <p className="border-t border-border-hairline px-4 pt-3 text-role-caption text-text-muted">Print at</p>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <StationPicker port={stations} chosenId={chosen?.stationId ?? null} onChoose={setChosenId} disabled={sending} />
-        </div>
-      </Panel>
-    </AnchoredLayer>
+    <div role="group" aria-label={single ? `Print ${single}` : `Print ${fnskus(rows.length)}`} data-testid={testId} className={className}>
+      <p className="px-4 pt-1 text-role-caption text-text-muted">{single ? 'Labels' : 'Labels of each'}</p>
+      <QuantityPicker copies={copies} onCopies={setCopies} disabled={sending} />
+      {/* The CTA sits directly under the count (owner 2026-10-04); the stations below scroll when the roster outgrows the viewport. */}
+      <div className="flex flex-col items-end gap-1 px-4 pb-2">
+        <Button
+          ref={goRef}
+          variant="primary"
+          size="lg"
+          radius="control"
+          icon={<Printer />}
+          loading={sending}
+          disabled={Boolean(blocked)}
+          onClick={() => void print()}
+          data-testid={`${testId}-go`}
+        >
+          {`Print ${total} ${total === 1 ? 'label' : 'labels'} → ${chosen?.thisComputer ? 'this computer' : (chosen?.stationName ?? '…')}`}
+        </Button>
+        {conditionBlock ? <p className="text-right text-role-caption text-text-warning">{conditionBlock}</p> : null}
+        {!conditionBlock && missing.length > 0 ? (
+          <p className="text-right text-role-caption text-text-warning">{fnskuConditionRequiredMessage(missing.map((row) => row.fnsku).join(', '))}</p>
+        ) : null}
+        {!conditionBlock && stationBlock ? <p className="text-right text-role-caption text-text-warning">{chosen ? `${chosen.stationName}: ${stationBlock}.` : `${stationBlock}.`}</p> : null}
+      </div>
+      <p className="border-t border-border-hairline px-4 pt-3 text-role-caption text-text-muted">Print at</p>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <StationPicker port={stations} chosenId={chosen?.stationId ?? null} onChoose={setChosenId} disabled={sending} />
+      </div>
+    </div>
   );
 }
 
-/** The select bar's **Print labels**: every checked FNSKU, the same count of each. */
+/**
+ * The select bar's **Print labels** — the strip's centered dialog body: every
+ * checked FNSKU, the same count of each. Print is focused (Enter prints); once
+ * a label is sent the done face says where.
+ */
 export function FnskuBulkPrint({
   rows,
   done,
   onPrinted,
 }: {
   rows: readonly PrintStationFnskuRow[];
-  /** Morphs the select bar back to its verbs. */
+  /** Closes the dialog. */
   done: () => void;
   onPrinted: () => void;
 }) {
-  const anchorRef = useRef<HTMLSpanElement>(null);
+  const [sent, setSent] = useState<FnskuPrintSent | null>(null);
+  if (sent) {
+    return (
+      <VerbDoneState
+        title={sent.complete ? 'Labels sent' : 'Some labels sent'}
+        detail={sent.message}
+        onDone={done}
+        testId="fnsku-bulk-print-done"
+      />
+    );
+  }
   return (
-    <>
-      <span ref={anchorRef} className="truncate text-role-caption text-text-soft">
-        Print {fnskus(rows.length)}
-      </span>
-      <FnskuPrintPanel rows={rows} anchorRef={anchorRef} placement="bottom-start" onClose={done} onPrinted={onPrinted} testId="fnsku-bulk-print" />
-    </>
+    <FnskuPrintForm
+      rows={rows}
+      focusPrint
+      onPrinted={onPrinted}
+      // Nothing sent keeps the form up (the toast says why) so the operator can pick another station.
+      onSent={(next) => {
+        if (next.printed > 0) setSent(next);
+      }}
+      testId="fnsku-bulk-print"
+      className="-mx-4 flex h-full min-h-0 flex-col gap-1"
+    />
   );
 }
 
@@ -171,7 +208,20 @@ export function FnskuRowPrint({ row, onPrinted }: { row: PrintStationFnskuRow; o
         Print
       </Button>
       {open ? (
-        <FnskuPrintPanel rows={[row]} anchorRef={anchorRef} placement="bottom-end" onClose={() => setOpen(false)} onPrinted={onPrinted} testId="fnsku-row-print-panel" />
+        <AnchoredLayer open onClose={() => setOpen(false)} anchorRef={anchorRef} placement="bottom-end" level="panelPopover" gap={6}>
+          <Panel padding="none" radius="xl" elevation="overlay" className="flex max-h-[var(--anchored-available-height,none)] w-96 flex-col py-2">
+            <FnskuPrintForm
+              rows={[row]}
+              onPrinted={onPrinted}
+              onSent={(sent) => {
+                if (sent.complete) toast.success(sent.message);
+                setOpen(false);
+              }}
+              testId="fnsku-row-print-panel"
+              className="flex min-h-0 flex-1 flex-col gap-1"
+            />
+          </Panel>
+        </AnchoredLayer>
       ) : null}
     </>
   );

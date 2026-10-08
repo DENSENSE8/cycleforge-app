@@ -206,7 +206,8 @@ export function OrderAdminLinkAction({
       <CopyChipHoverMenu
         menuLabel="Order number actions"
         denseLabel
-        placement={revealOpenOnHover ? 'top' : 'auto'}
+        // The header's menu flies out to the RIGHT of the full id — never over it (operator 2026-10-08).
+        placement={revealOpenOnHover ? 'end' : 'auto'}
         align={revealOpenOnHover ? 'center' : 'start'}
         className={cn('min-w-0 shrink', fill && 'flex-1')}
         items={[

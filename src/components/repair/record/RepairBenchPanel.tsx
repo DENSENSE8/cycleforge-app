@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, Play, Wrench } from '@/components/Icons';
+import { VerbDoneState } from '@/design-system/components/record-action-strip/VerbDoneState';
 import { Button } from '@/design-system/primitives';
 import { TextField } from '@/design-system/primitives/TextField';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
@@ -73,8 +74,12 @@ function missingFor(draft: WorkDraft): string | null {
   return null;
 }
 
-/** Desktop bench timer, work writer, and repair-action timeline. */
-export function RepairBenchPanel({ repair }: { repair: RSRecord }) {
+/**
+ * Bench log — the bench timer, the work writer and the repair-action timeline
+ * in the centered verb dialog (operator 2026-10-08). Saved work shows the done
+ * face; Done closes the dialog.
+ */
+export function RepairBenchPanel({ repair, done }: { repair: RSRecord; done: () => void }) {
   const actionsQuery = useQuery({
     queryKey: ['repairs', 'workbench', repair.id, 'actions'],
     queryFn: async ({ signal }) => (await responseJson<{ actions?: RepairActionRecord[] }>(`/api/repair/actions?repairId=${repair.id}`, signal)).actions ?? [],
@@ -87,7 +92,7 @@ export function RepairBenchPanel({ repair }: { repair: RSRecord }) {
   const [logging, setLogging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [highlightId, setHighlightId] = useState<number | null>(null);
+  const [logged, setLogged] = useState<string | null>(null);
   const serverOffset = useMemo(
     () => serverClockOffsetMs(sessionsQuery.data?.serverNow ?? '', Date.now()),
     [sessionsQuery.data?.serverNow],
@@ -155,10 +160,8 @@ export function RepairBenchPanel({ repair }: { repair: RSRecord }) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || !body?.success) throw new Error(body?.details || body?.error || `HTTP ${response.status}`);
-      setHighlightId(Number(body.action?.id) || null);
-      setDraft(EMPTY_DRAFT);
-      setLogging(false);
-      await actionsQuery.refetch();
+      setLogged([repairActionLabel(draft.actionType), draft.partName.trim()].filter(Boolean).join(' — '));
+      void actionsQuery.refetch();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Save failed');
     } finally {
@@ -178,8 +181,12 @@ export function RepairBenchPanel({ repair }: { repair: RSRecord }) {
     }
   };
 
+  if (logged) {
+    return <VerbDoneState title="Work logged" detail={logged} onDone={done} testId="repair-record-work-logged" />;
+  }
+
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col divide-y divide-mode-rule">
+    <div className="flex h-full min-h-0 flex-col divide-y divide-mode-rule overflow-y-auto" data-testid="repair-record-bench">
       <section aria-labelledby="repair-bench-timer">
         <h3 id="repair-bench-timer" className="bg-mode-bar px-mode-page py-2 text-role-label font-semibold text-mode-ink">Bench timer</h3>
         <div className="flex items-center gap-3 bg-mode-panel px-mode-page py-3">
@@ -204,14 +211,14 @@ export function RepairBenchPanel({ repair }: { repair: RSRecord }) {
 
       {logging ? (
         <form className="grid gap-4 bg-mode-panel p-mode-page" onSubmit={(event) => { event.preventDefault(); void saveWork(); }}>
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3" role="group" aria-label="Work type">
+          <div className="grid grid-cols-3 gap-2" role="group" aria-label="Work type">
             {ACTION_TYPES.map((type) => (
               <Button key={type} type="button" variant={draft.actionType === type ? 'primary' : 'secondary'} onClick={() => setDraft((current) => ({ ...current, actionType: type }))}>
                 {REPAIR_ACTION_COPY[type].label}
               </Button>
             ))}
           </div>
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             <TextField label={draft.actionType === 'awaiting_part' ? 'Part needed' : 'Part or assembly'} value={draft.partName} onChange={(partName) => setDraft((current) => ({ ...current, partName }))} disabled={busy} />
             <TextField label="Notes" value={draft.notes} onChange={(notes) => setDraft((current) => ({ ...current, notes }))} multiline rows={3} disabled={busy} />
             <TextField label="Old SKU" value={draft.oldSku} onChange={(oldSku) => setDraft((current) => ({ ...current, oldSku }))} mono disabled={busy} />
@@ -223,8 +230,8 @@ export function RepairBenchPanel({ repair }: { repair: RSRecord }) {
             <TextField label="Component quantity" value={draft.componentQty} onChange={(componentQty) => setDraft((current) => ({ ...current, componentQty: componentQty.replace(/[^0-9]/g, '').slice(0, 3) }))} inputMode="numeric" disabled={busy} />
           </div>
           {draft.actionType === 'replaced' ? (
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="flex gap-2" role="group" aria-label="Installed part source">
+            <div className="grid gap-3">
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Installed part source">
                 {(['new_stock', 'customer_part', 'donor_unit'] as const).map((source) => (
                   <Button key={source} type="button" size="sm" variant={draft.donorSource === source ? 'primary' : 'secondary'} onClick={() => setDraft((current) => ({ ...current, donorSource: source }))}>{source.replaceAll('_', ' ')}</Button>
                 ))}
@@ -252,7 +259,7 @@ export function RepairBenchPanel({ repair }: { repair: RSRecord }) {
           {actions.map((action) => {
             const ticket = ticketPostView(action, Date.now());
             return (
-              <li key={action.id} className={action.id === highlightId ? 'bg-emerald-50 px-mode-page py-3' : 'px-mode-page py-3'}>
+              <li key={action.id} className="px-mode-page py-3">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="font-semibold text-mode-ink">{repairActionLabel(action.action_type)}{action.part_name ? ` — ${action.part_name}` : ''}</p>
                   <time dateTime={action.created_at} className="shrink-0 text-role-micro text-mode-muted">{formatMonthDayTimePST(action.created_at)}</time>

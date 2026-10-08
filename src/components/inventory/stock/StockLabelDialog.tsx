@@ -1,23 +1,26 @@
 'use client';
 
 /**
- * Inventory › Stock record › **Print label** (operator 2026-10-08): a 4 × 6
- * product label built in three sections under a step bar —
+ * Inventory › Stock record › **Print label** (operator 2026-10-08): the verb's
+ * centered dialog, a 4 × 6 product label built in three sections under a step
+ * bar —
  *   1 Image — any of the SKU's photos (the Photos group's source), the cover first;
  *   2 Notes — one free-text box, remembered per SKU on this browser;
- *   3 Preview & print — the label exactly as it prints, scaled.
+ *   3 Preview & print — the label exactly as it prints, scaled; Print is
+ *     focused, so Enter prints.
  * **Print** sends it silently to the label station; **Browser print** opens
- * the 4 × 6 dialog here (`useStockLabelPrint`, shared with the list's bulk print).
+ * the 4 × 6 dialog here (`useStockLabelPrint`, shared with the list's bulk
+ * print). A print that went shows the done face; Done (Enter) closes.
  */
 
-import { useEffect, useMemo, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { fetchSkuDetail } from '@/components/sku/sku-detail/sku-detail-api';
 import { useAuth } from '@/contexts/AuthContext';
 import { MobileStepProgress } from '@/design-system/components/MobileStepProgress';
+import { VerbDoneState } from '@/design-system/components/record-action-strip/VerbDoneState';
 import { Button } from '@/design-system/primitives/Button';
-import { Popover } from '@/design-system/primitives/Popover';
 import { TextField } from '@/design-system/primitives/TextField';
 import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
 import { readStockLabelNotes, rememberStockLabelNotes, stockLabelNotesStorage } from '@/lib/inventory/stock-label-notes';
@@ -42,16 +45,7 @@ const STEPS = [
 ] as const;
 const LAST_STEP = STEPS.length - 1;
 
-export function StockLabelPopover({
-  record,
-  anchorRef,
-  onClose,
-}: {
-  record: LocationStockTableRow;
-  /** The record's verb strip: the popover hangs under it. */
-  anchorRef: RefObject<HTMLElement | null>;
-  onClose: () => void;
-}) {
+export function StockLabelDialog({ record, done }: { record: LocationStockTableRow; done: () => void }) {
   const sku = record.sku;
   const orgId = useAuth().user?.organizationId ?? '';
   const [step, setStep] = useState(0);
@@ -59,6 +53,7 @@ export function StockLabelPopover({
   const [notes, setNotes] = useState(() => readStockLabelNotes(stockLabelNotesStorage(), orgId, sku));
   const [preview, setPreview] = useState<{ url: string } | { error: string } | null>(null);
   const print = useStockLabelPrint();
+  const [printed, setPrinted] = useState(false);
 
   // The Photos group's own read (`fetchSkuDetail(sku).photos`); its refresh invalidates this key too.
   const photos = useQuery({
@@ -104,23 +99,15 @@ export function StockLabelPopover({
     };
   }, [face, step]);
 
-  return (
-    <Popover
-      open
-      onClose={onClose}
-      anchorRef={anchorRef}
-      placement="bottom-start"
-      gap={6}
-      level="panelPopover"
-      aria-label={`Print label for ${sku}`}
-      data-testid="stock-label-popover"
-      className="flex w-[min(24rem,calc(100vw-1rem))] flex-col"
-    >
-      <div className="pt-1">
-        <MobileStepProgress steps={STEPS} currentIndex={step} onStepPress={setStep} testId="stock-label-steps" />
-      </div>
+  if (printed) {
+    return <VerbDoneState title="Label printed" detail={sku} onDone={done} testId="stock-label-done" />;
+  }
 
-      <div className="flex min-h-0 flex-col gap-3 px-4 pb-3 pt-1">
+  return (
+    <div className="flex h-full min-h-0 min-w-0 flex-col" data-testid="stock-label-form">
+      <MobileStepProgress steps={STEPS} currentIndex={step} onStepPress={setStep} testId="stock-label-steps" />
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-3 pt-1">
         {step === 0 ? (
           photos.isPending && sku.trim() !== '' ? (
             <p className="text-role-caption text-text-muted">Loading photos…</p>
@@ -157,7 +144,7 @@ export function StockLabelPopover({
         ) : null}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-border-hairline px-4 py-3">
+      <div className="flex items-center justify-between gap-2 border-t border-border-hairline pt-3">
         {step > 0 ? (
           <Button type="button" variant="secondary" icon={<ChevronLeft />} disabled={print.busy != null} onClick={() => setStep(step - 1)} data-testid="stock-label-back">
             Back
@@ -170,6 +157,7 @@ export function StockLabelPopover({
             type="button"
             variant="primary"
             iconRight={<ChevronRight />}
+            autoFocus
             onClick={() => {
               // Leaving Notes commits them: the next print of this SKU starts from these.
               if (step === 1) rememberStockLabelNotes(stockLabelNotesStorage(), orgId, sku, notes);
@@ -180,9 +168,9 @@ export function StockLabelPopover({
             Next
           </Button>
         ) : (
-          <StockLabelPrintButtons print={print} faces={faces} verb="Print" onPrinted={onClose} />
+          <StockLabelPrintButtons print={print} faces={faces} verb="Print" onPrinted={() => setPrinted(true)} autoFocus />
         )}
       </div>
-    </Popover>
+    </div>
   );
 }

@@ -7,13 +7,14 @@
  * the strip owns the face and the order, the destructive verb last). Every
  * verb acts on the selected LINES, already widened to the grain shown
  * (`selectedRecordLines`), and rides `/api/records/*`
- * (`records-actions-client.ts`). A verb that needs a value opens its own card
- * above the pill (`display`). Refusals toast per reason; tracking writes and
+ * (`records-actions-client.ts`). A verb that needs a value or a pick opens the
+ * strip's centered dialog (`dialog`, operator 2026-10-08) and ends on its done
+ * face. Refusals toast per reason; tracking writes and
  * holds carry Undo; Delete confirms by name (type-to-confirm past one line)
  * and is not offered on an aggregate grain (handoff §4.3).
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useStepUp } from '@/components/providers/StepUpProvider';
 import { format } from 'date-fns';
 import { Pause } from 'lucide-react';
@@ -30,11 +31,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/design-system/components/AlertDialog';
-import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
+import { ShipByDialog } from './RecordsShipByDialog';
 import { TextField } from '@/design-system/primitives/TextField';
 import { ACTION_DOCK_LIFT } from '@/design-system/tokens/dock-clearance';
-import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
-import { ListRemovalPicker } from '@/components/orders/ListRemovalPicker';
+import { StaffAssignDialog } from '@/components/staff-assign/StaffAssignDialog';
+import { ListRemovalDialog } from '@/components/orders/ListRemovalDialog';
 import { listRemovalReasonLabel } from '@/lib/orders/list-removal';
 import { removeFromList, restoreToList } from '@/lib/orders/list-removal-client';
 import type { BulkEntry } from '@/lib/nav/locate/use-bulk-list';
@@ -44,7 +45,7 @@ import type { RecordTarget } from '@/lib/records/sheet-actions-contract';
 import { toast } from '@/lib/toast';
 import { postRecordWrite, type RecordWrite } from './records-actions-client';
 import { orderNumberTargets, recordTargetOf, recordTargets, recordsEntryKey, refsOfLines, summarizeRecordResults } from './records-grain';
-import { ValueCard } from './RecordsValueCard';
+import { ValueDialog } from './RecordsValueDialog';
 import { DELETE_HOTKEY } from '@/lib/keyboard/key-registry';
 
 const BUSY_REASON = 'Working on the last action…';
@@ -103,9 +104,7 @@ export function RecordsSelectionDock({
   /** A write landed: re-read the sheet. */
   onDone: () => void;
 }) {
-  const anchorRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
-  const [assign, setAssign] = useState<'pick' | 'pack' | null>(null);
   const [typedDelete, setTypedDelete] = useState<string | null>(null);
   // Delete (`orders.void`) can ask for a fresh PIN: the house step-up opens and the write retries.
   const requestStepUp = useStepUp();
@@ -118,7 +117,7 @@ export function RecordsSelectionDock({
   const noun = RECORDS_UNIT_NOUN[grain];
 
   const verbs = useMemo<RecordActionVerb[]>(() => {
-    /** One write → its toasts; true when it reached the server. */
+    /** One write → its toasts; true when any line took it. */
     const send = async (write: RecordWrite, did: string, undo?: () => void): Promise<boolean> => {
       setBusy(true);
       try {
@@ -130,7 +129,7 @@ export function RecordsSelectionDock({
           else toast.success(message);
         }
         onDone();
-        return true;
+        return summary.done > 0;
       } catch (error: unknown) {
         toast.error(error instanceof Error ? error.message : 'Could not save');
         return false;
@@ -165,18 +164,19 @@ export function RecordsSelectionDock({
         label: 'Add tracking…',
         icon: <Plus className="size-4" />,
         ...needsLines,
-        display: (done) => (
-          <ValueCard
-            title={`Add a tracking number to ${plural(targets.length, 'line', 'lines')}`}
+        dialog: (done) => (
+          <ValueDialog
+            caption={`Add a tracking number to ${plural(targets.length, 'line', 'lines')}`}
             label="Tracking number"
             submit="Add tracking"
+            doneTitle="Tracking added"
             mono
-            busy={busy}
-            onCancel={done}
-            onSubmit={async (tracking) => {
+            testId="records-add-tracking"
+            done={done}
+            onSubmit={(tracking) => {
               const before = [...lines];
               // A line with no number takes it as its primary — reversible; beside a primary it is another box.
-              if (await send({ path: '/api/records/tracking', body: { targets, tracking, mode: 'add' } }, `Added ${tracking}`, allUntracked ? restoreTracking(before) : undefined)) done();
+              return send({ path: '/api/records/tracking', body: { targets, tracking, mode: 'add' } }, `Added ${tracking}`, allUntracked ? restoreTracking(before) : undefined);
             }}
           />
         ),
@@ -186,18 +186,16 @@ export function RecordsSelectionDock({
         label: 'Replace tracking…',
         icon: <ArrowLeftRight className="size-4" />,
         ...needsLines,
-        display: (done) => (
-          <ValueCard
-            title={`Replace the tracking of ${plural(targets.length, 'line', 'lines')}`}
+        dialog: (done) => (
+          <ValueDialog
+            caption={`Replace the tracking of ${plural(targets.length, 'line', 'lines')}`}
             label="New tracking number"
             submit="Replace tracking"
+            doneTitle="Tracking replaced"
             mono
-            busy={busy}
-            onCancel={done}
-            onSubmit={async (tracking) => {
-              const before = [...lines];
-              if (await send({ path: '/api/records/tracking', body: { targets, tracking, mode: 'set' } }, `Tracking set to ${tracking}`, restoreTracking(before))) done();
-            }}
+            testId="records-replace-tracking"
+            done={done}
+            onSubmit={(tracking) => send({ path: '/api/records/tracking', body: { targets, tracking, mode: 'set' } }, `Tracking set to ${tracking}`, restoreTracking([...lines]))}
           />
         ),
       },
@@ -227,17 +225,16 @@ export function RecordsSelectionDock({
         label: 'Change order number…',
         icon: <Hash className="size-4" />,
         ...needsLines,
-        display: (done) => (
-          <ValueCard
-            title={`Change the order number of ${plural(targets.length, 'line', 'lines')}`}
+        dialog: (done) => (
+          <ValueDialog
+            caption={`Change the order number of ${plural(targets.length, 'line', 'lines')}`}
             label="New order number"
             submit="Change order number"
+            doneTitle="Order number changed"
             mono
-            busy={busy}
-            onCancel={done}
-            onSubmit={async (orderNumber) => {
-              if (await send({ path: '/api/records/order-number', body: { targets: orderNumberTargets(lines, loaded), orderNumber } }, `Order number changed to ${orderNumber}`)) done();
-            }}
+            testId="records-order-number"
+            done={done}
+            onSubmit={(orderNumber) => send({ path: '/api/records/order-number', body: { targets: orderNumberTargets(lines, loaded), orderNumber } }, `Order number changed to ${orderNumber}`)}
           />
         ),
       },
@@ -246,41 +243,66 @@ export function RecordsSelectionDock({
         label: 'Set ship-by…',
         icon: <Calendar className="size-4" />,
         ...outboundOnly,
-        display: (done) => (
-          <div className="flex flex-col gap-2 p-1">
-            <p className="px-1 text-sm font-semibold text-text-default">Ship-by for {plural(outboundTargets.length, 'outbound line', 'outbound lines')}</p>
-            <DateRangePickerField
-              variant="compact"
-              value={undefined}
-              ariaLabel="Ship-by date"
-              onChange={async (day) => {
-                if (await send({ path: '/api/records/actions', body: { action: 'ship_by', targets: outboundTargets, date: format(day, 'yyyy-MM-dd') } }, `Ship-by ${format(day, 'MMM d')}`)) done();
-              }}
-              onClear={async () => {
-                if (await send({ path: '/api/records/actions', body: { action: 'ship_by', targets: outboundTargets, date: null } }, 'Ship-by cleared')) done();
-              }}
-            />
-          </div>
+        dialog: (done) => (
+          <ShipByDialog
+            caption={`Ship-by for ${plural(outboundTargets.length, 'outbound line', 'outbound lines')}`}
+            done={done}
+            onPick={(day) =>
+              send(
+                { path: '/api/records/actions', body: { action: 'ship_by', targets: outboundTargets, date: day ? format(day, 'yyyy-MM-dd') : null } },
+                day ? `Ship-by ${format(day, 'MMM d')}` : 'Ship-by cleared',
+              )
+            }
+          />
         ),
       },
-      { id: 'assign-pick', label: 'Assign picker…', icon: <User className="size-4" />, ...outboundOnly, run: () => setAssign('pick') },
-      { id: 'assign-pack', label: 'Assign packer…', icon: <User className="size-4" />, ...outboundOnly, run: () => setAssign('pack') },
+      {
+        id: 'assign-pick',
+        label: 'Assign picker…',
+        icon: <User className="size-4" />,
+        ...outboundOnly,
+        dialog: (done) => (
+          <StaffAssignDialog
+            role="technician"
+            caption={`Assign a picker to ${plural(outboundTargets.length, 'line', 'lines')}`}
+            doneTitle="Picker assigned"
+            testId="records-assign-pick"
+            done={done}
+            onAssign={(staffId) => send({ path: '/api/records/actions', body: { action: 'assign', targets: outboundTargets, stage: 'pick', staffId } }, 'Picker assigned')}
+          />
+        ),
+      },
+      {
+        id: 'assign-pack',
+        label: 'Assign packer…',
+        icon: <User className="size-4" />,
+        ...outboundOnly,
+        dialog: (done) => (
+          <StaffAssignDialog
+            role="packer"
+            caption={`Assign a packer to ${plural(outboundTargets.length, 'line', 'lines')}`}
+            doneTitle="Packer assigned"
+            testId="records-assign-pack"
+            done={done}
+            onAssign={(staffId) => send({ path: '/api/records/actions', body: { action: 'assign', targets: outboundTargets, stage: 'pack', staffId } }, 'Packer assigned')}
+          />
+        ),
+      },
       {
         id: 'note',
         label: 'Add note…',
         icon: <MessageSquare className="size-4" />,
         ...needsLines,
-        display: (done) => (
-          <ValueCard
-            title={`Add a note to ${plural(targets.length, 'line', 'lines')}`}
+        dialog: (done) => (
+          <ValueDialog
+            caption={`Add a note to ${plural(targets.length, 'line', 'lines')}`}
             label="Note"
             submit="Add note"
+            doneTitle="Note added"
             multiline
-            busy={busy}
-            onCancel={done}
-            onSubmit={async (text) => {
-              if (await send({ path: '/api/records/actions', body: { action: 'note', targets, text } }, 'Note added')) done();
-            }}
+            testId="records-note"
+            done={done}
+            onSubmit={(text) => send({ path: '/api/records/actions', body: { action: 'note', targets, text } }, 'Note added')}
           />
         ),
       },
@@ -326,16 +348,14 @@ export function RecordsSelectionDock({
         icon: <Archive className="size-4" />,
         disabled: busy || orderIds.length === 0,
         disabledReason: busy ? BUSY_REASON : 'Only outbound orders leave the To-ship list',
-        display: (done) => (
-          <ListRemovalPicker
+        dialog: (done) => (
+          <ListRemovalDialog
             count={orderIds.length}
-            busy={busy}
-            onCancel={done}
+            done={done}
             onConfirm={async (reason, note) => {
               setBusy(true);
               try {
                 const removed = await removeFromList(orderIds, reason, note);
-                done();
                 onDone();
                 toast.undo(`Removed ${removed.length} from the list · ${listRemovalReasonLabel(reason)}`, {
                   onUndo: () => {
@@ -347,9 +367,11 @@ export function RecordsSelectionDock({
                       .catch((error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not put them back'));
                   },
                 });
+                return removed.length;
               } catch (error: unknown) {
                 // The list-removal table is another lane's migration — its refusal is shown as it is.
                 toast.error(error instanceof Error ? error.message : 'Could not remove from the list');
+                return null;
               } finally {
                 setBusy(false);
               }
@@ -361,6 +383,8 @@ export function RecordsSelectionDock({
 
     // Delete: never on an aggregate (an item number or a product is not a record); last, danger.
     if (!aggregate) {
+      const only = lines.find((line) => recordTargetOf(line));
+      const name = only?.facts?.orderNumber ?? only?.ref ?? 'this line';
       out.push({
         id: 'delete',
         label: 'Delete…',
@@ -368,20 +392,17 @@ export function RecordsSelectionDock({
         tone: 'danger',
         hotkey: DELETE_HOTKEY,
         ...needsLines,
+        // The square confirmation (Danger zone) asks first; several lines still type the count.
+        confirmDetail:
+          targets.length > 1
+            ? `Delete ${plural(targets.length, 'line', 'lines')} — next you type the count.`
+            : `Delete ${only?.facts?.direction === 'inbound' ? 'the inbound line' : 'the order line'} ${name}${only?.facts?.title ? ` · ${only.facts.title}` : ''}. A line that was picked, packed, scanned out, unboxed or received is refused.`,
         run: async () => {
           if (targets.length > 1) {
             setTypedDelete('');
             return;
           }
-          const only = lines.find((line) => recordTargetOf(line));
-          const name = only?.facts?.orderNumber ?? only?.ref ?? 'this line';
-          const ok = await requestConfirm({
-            title: 'Delete this line?',
-            description: `Delete ${only?.facts?.direction === 'inbound' ? 'the inbound line' : 'the order line'} ${name}${only?.facts?.title ? ` · ${only.facts.title}` : ''}. A line that was picked, packed, scanned out, unboxed or received is refused.`,
-            confirmLabel: 'Delete',
-            tone: 'danger',
-          });
-          if (ok) await send({ path: '/api/records/delete', body: { targets } }, 'Deleted');
+          await send({ path: '/api/records/delete', body: { targets } }, 'Deleted');
         },
       });
     }
@@ -399,7 +420,7 @@ export function RecordsSelectionDock({
       data-testid="records-selection-dock"
       className={'pointer-events-none absolute inset-x-0 bottom-0 z-sticky flex justify-center ' + ACTION_DOCK_LIFT}
     >
-      <div ref={anchorRef} role="region" aria-label={`${plural(count, noun.one, noun.many)} selected`} className="pointer-events-auto">
+      <div role="region" aria-label={`${plural(count, noun.one, noun.many)} selected`} className="pointer-events-auto">
         <RecordActionStrip
           verbs={verbs}
           label={label}
@@ -408,20 +429,6 @@ export function RecordsSelectionDock({
           dock={{ count, noun: `${count === 1 ? noun.one : noun.many} selected`, onClear }}
         />
       </div>
-      <StageStaffAssignPopover
-        open={assign != null}
-        onClose={() => setAssign(null)}
-        anchorRef={anchorRef}
-        label={`Assign ${assign === 'pack' ? 'packer' : 'picker'} to ${plural(outboundTargets.length, 'line', 'lines')}`}
-        role={assign === 'pack' ? 'packer' : 'technician'}
-        selectedStaffId={null}
-        onCommit={(staffId) => {
-          const stage = assign;
-          setAssign(null);
-          if (!stage) return;
-          void postAssign(stage, staffId);
-        }}
-      />
       <AlertDialog open={typedDelete != null} onOpenChange={(open) => !open && setTypedDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -451,20 +458,12 @@ export function RecordsSelectionDock({
     </div>
   );
 
-  async function postAssign(stage: 'pick' | 'pack', staffId: number | null) {
-    await runWrite({ path: '/api/records/actions', body: { action: 'assign', targets: outboundTargets, stage, staffId } }, stage === 'pick' ? 'Picker assigned' : 'Packer assigned');
-  }
-
   async function postDelete() {
-    await runWrite({ path: '/api/records/delete', body: { targets } }, 'Deleted');
-  }
-
-  async function runWrite(write: RecordWrite, did: string) {
     setBusy(true);
     try {
-      const summary = summarizeRecordResults(await postRecordWrite(write, requestStepUp));
+      const summary = summarizeRecordResults(await postRecordWrite({ path: '/api/records/delete', body: { targets } }, requestStepUp));
       for (const refusal of summary.refused) toast.error(`${plural(refusal.count, 'line', 'lines')} refused: ${refusal.reason}`);
-      if (summary.done > 0) toast.success(`${did} · ${plural(summary.done, 'line', 'lines')}`);
+      if (summary.done > 0) toast.success(`Deleted · ${plural(summary.done, 'line', 'lines')}`);
       onDone();
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Could not save');

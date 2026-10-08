@@ -19,7 +19,7 @@ import {
   Trash2,
   User,
 } from '@/components/Icons';
-import { ReceivingBulkLocationDisplay } from '@/components/receiving/ReceivingBulkLocationDisplay';
+import { ReceivingBulkLocationDialog } from '@/components/receiving/ReceivingBulkLocationDialog';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { receivingShareUrl } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { emitReceiving } from '@/components/receiving/receiving-events';
@@ -216,7 +216,7 @@ export function useReceivingLineBulkSelection({
         enabled: (rows) => receivingPackageIds(rows).length > 0,
         disabledReason: 'No package is linked to the selected row',
         run: () => {},
-        display: (rows, done) => <ReceivingBulkLocationDisplay rows={rows} done={done} />,
+        dialog: (rows, done) => <ReceivingBulkLocationDialog rows={rows} done={done} />,
       },
       {
         key: 'ticket',

@@ -153,12 +153,15 @@ export function StockLabelPrintButtons({
   faces,
   verb,
   onPrinted,
+  autoFocus = false,
 }: {
   print: StockLabelPrint;
   faces: readonly StockLabelFace[];
   /** The primary press's word: `Print`, `Print all`. */
   verb: string;
   onPrinted: () => void;
+  /** Focus the primary press on mount, so Enter prints (the record's Print label dialog). */
+  autoFocus?: boolean;
 }) {
   const press = async (dialog: boolean) => {
     if (await print.print(faces, dialog)) onPrinted();
@@ -182,6 +185,7 @@ export function StockLabelPrintButtons({
         loading={print.busy === 'station'}
         disabled={faces.length === 0 || print.blocked != null || print.busy === 'dialog'}
         title={print.blocked ?? undefined}
+        autoFocus={autoFocus}
         onClick={() => void press(false)}
         data-testid="stock-label-print"
       >

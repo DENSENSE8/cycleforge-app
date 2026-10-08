@@ -2,19 +2,18 @@
 
 /**
  * The stock record's Actions panel (under Movement, operator 2026-10-08):
- * Print label (the 4 × 6 product label, `StockLabelPopover`, hung under the
- * strip), Products (or Pair to SKU for a temporary SKU) and the rest. Pair
- * opens the `SkuPairSheet` over the record, so the record never moves. A
- * zero-stock placeholder can be deleted from the same panel. Upload / Send to
- * phone live on the item's photo tile (`StockPhotoTile`).
+ * Print label (the 4 × 6 product label, `StockLabelDialog`), Products (or Pair
+ * to SKU for a temporary SKU, `SkuPairDialog`) and the rest. Both forms open in
+ * the verb's centered dialog, so the record never moves. A zero-stock
+ * placeholder can be deleted from the same panel. Upload / Send to phone live
+ * on the item's photo tile (`StockPhotoTile`).
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link2, Package, Printer, Trash2 } from '@/components/Icons';
 import { buildRecordTaskVerb } from '@/components/tasks/RecordTaskActions';
-import { requestConfirm } from '@/design-system/components/confirm';
-import { SkuPairSheet } from '@/components/inventory/sku-exceptions/SkuPairSheet';
+import { SkuPairDialog } from '@/components/inventory/sku-exceptions/SkuPairDialog';
 import {
   RecordActionStrip,
   type RecordActionVerb,
@@ -25,7 +24,7 @@ import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import type { LocationStockTableRow } from '@/lib/inventory/location-stock-row';
 import { toast } from '@/lib/toast';
 import { stockLocationFace } from './stock-record';
-import { StockLabelPopover } from './StockLabelPopover';
+import { StockLabelDialog } from './StockLabelDialog';
 import { DELETE_HOTKEY } from '@/lib/keyboard/key-registry';
 
 const GLYPH = 'size-3.5';
@@ -41,9 +40,6 @@ export function StockRecordActions({
   const router = useRouter();
   const temporary = record.is_provisional || isProvisionalSku(record.sku);
   const provisional = useProvisionalSku(temporary ? record.sku : null).data ?? null;
-  const [pairOpen, setPairOpen] = useState(false);
-  const [labelOpen, setLabelOpen] = useState(false);
-  const stripRef = useRef<HTMLDivElement>(null);
   const face = stockLocationFace(record);
   const sku = record.sku;
 
@@ -56,7 +52,7 @@ export function StockRecordActions({
       hotkey: 'l',
       disabled: !sku,
       disabledReason: 'This record has no SKU to print',
-      run: () => setLabelOpen(true),
+      dialog: (done) => <StockLabelDialog record={record} done={done} />,
     };
     const products: RecordActionVerb = {
       id: 'products',
@@ -75,7 +71,7 @@ export function StockRecordActions({
       tone: 'yellow',
       disabled: provisional == null,
       disabledReason: 'Loading the temporary SKU',
-      run: () => setPairOpen(true),
+      dialog: provisional ? (done) => <SkuPairDialog item={provisional} onPaired={onPaired} done={done} /> : undefined,
     };
     const primary = temporary ? [printLabel, products, pair] : [printLabel, products];
     const holdsStock = record.qty > 0;
@@ -87,14 +83,8 @@ export function StockRecordActions({
       hotkey: DELETE_HOTKEY,
       disabled: holdsStock,
       disabledReason: 'It still holds stock — pair it to a real SKU instead of deleting it.',
+      confirmDetail: `${sku} leaves every location. This cannot be undone.`,
       run: async () => {
-        const confirmed = await requestConfirm({
-          title: 'Delete placeholder',
-          description: `Delete ${sku}? It leaves every location. This cannot be undone.`,
-          confirmLabel: 'Delete',
-          tone: 'danger',
-        });
-        if (!confirmed) return;
         const res = await fetch(`/api/sku-catalog/provisional/${encodeURIComponent(sku)}`, {
           method: 'DELETE',
           credentials: 'include',
@@ -113,17 +103,11 @@ export function StockRecordActions({
       ...(temporary ? [remove] : []),
     ];
     return [...primary, ...overflow];
-  }, [face, onPaired, provisional, record.qty, router, sku, temporary]);
+  }, [face, onPaired, provisional, record, router, sku, temporary]);
 
   return (
     <RecordGroup title="Actions" testId="stock-record-actions-panel">
-      <div ref={stripRef} className="flex min-w-0 flex-col gap-2">
-        <RecordActionStrip face="panel" verbs={verbs} label={`Stock ${sku || face || 'record'} actions`} testId="stock-record-actions" />
-        {labelOpen ? <StockLabelPopover record={record} anchorRef={stripRef} onClose={() => setLabelOpen(false)} /> : null}
-        {temporary ? (
-          <SkuPairSheet open={pairOpen} onClose={() => setPairOpen(false)} item={provisional} onPaired={onPaired} />
-        ) : null}
-      </div>
+      <RecordActionStrip face="panel" verbs={verbs} label={`Stock ${sku || face || 'record'} actions`} testId="stock-record-actions" />
     </RecordGroup>
   );
 }

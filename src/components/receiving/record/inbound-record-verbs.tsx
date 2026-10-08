@@ -38,7 +38,7 @@ import { MovePhotosBetweenPoPanel } from '@/components/receiving/workspace/line-
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { CartonRecord } from '@/components/receiving/history/use-carton-record';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
-import { IncomingAttachTrackingPopover } from '@/components/sidebar/receiving/IncomingAttachTrackingPopover';
+import { IncomingAttachTrackingForm } from '@/components/sidebar/receiving/IncomingAttachTrackingForm';
 import { EbayTab } from '@/components/sidebar/receiving/incoming-details/EbayTab';
 import { EmailTab } from '@/components/sidebar/receiving/incoming-details/EmailTab';
 import { PairingTab } from '@/components/sidebar/receiving/incoming-details/PairingTab';
@@ -172,20 +172,9 @@ export function buildInboundDeliveryVerbs({
       label: 'Attach tracking',
       icon: <Link2 aria-hidden />,
       tone: 'yellow',
-      // The attach dialog over the record; the header reads which verb is open.
-      display: (done) => (
-        <>
-          <span className="truncate text-role-caption text-mode-muted">Attaching tracking…</span>
-          <IncomingAttachTrackingPopover
-            presetPo={{ poId, poNumber: po }}
-            open
-            trigger={null}
-            onOpenChange={(open) => {
-              if (!open) done();
-            }}
-            onAttached={c.invalidateIncoming}
-          />
-        </>
+      // The centered dialog: tracking field focused, Enter attaches, the done face says so.
+      dialog: (done) => (
+        <IncomingAttachTrackingForm presetPo={{ poId, poNumber: po }} onAttached={c.invalidateIncoming} onDone={done} />
       ),
     });
   }

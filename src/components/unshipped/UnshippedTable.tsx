@@ -795,6 +795,8 @@ export function UnshippedTable({
           chrome={chrome}
           searchPending={!cagedOnly && query.isFetching}
           records={records}
+          // The desk's rows before its status cut: Report out of stock moves an order to Blocked, its record stays open.
+          retainedRecords={cagedOnly ? undefined : allRecords}
           loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
           onOpenRecord={handleOpenRecord}
           onCloseRecord={dispatchCloseShippedDetails}

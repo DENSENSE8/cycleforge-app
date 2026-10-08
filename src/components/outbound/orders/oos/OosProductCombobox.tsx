@@ -4,7 +4,7 @@
  * First-class Zoho product combobox for item-level OOS.
  * Reuses IntakeCombobox + searchField=zoho_catalog. Never paints line-N.
  *
- * Callers: MorphingRowActionMenu, MobileOosProductSheet.
+ * Callers: MorphingRowActionMenu (the Report out of stock dialog).
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -28,12 +28,15 @@ export function OosProductCombobox({
   onPick,
   disabled = false,
   className,
+  surface = 'trigger',
 }: {
   lines: readonly OosComboboxLine[];
   compositionByCatalogId?: ReadonlyMap<number, KitComposition>;
   onPick: (orderRowId: number, identity: OrderShortageIdentity) => void;
   disabled?: boolean;
   className?: string;
+  /** `open`: search and list in place, search focused — inside the Report out of stock dialog. */
+  surface?: 'trigger' | 'open';
 }) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -66,7 +69,7 @@ export function OosProductCombobox({
   }, [bindId, compositionByCatalogId, lines, search.data]);
 
   return (
-    <div className={cn('min-w-[14rem] max-w-[22rem] flex-1', className)}>
+    <div className={cn(surface === 'open' ? 'flex h-full min-h-0 w-full flex-col' : 'min-w-[14rem] max-w-[22rem] flex-1', className)}>
       <IntakeCombobox
         value={null}
         onChange={(value) => {
@@ -83,7 +86,7 @@ export function OosProductCombobox({
         }}
         options={options}
         placeholder="Select product…"
-        searchPlaceholder="Search Zoho products…"
+        searchPlaceholder="Search products by name or SKU…"
         emptyMessage="No products"
         disabled={disabled}
         ariaLabel="Out of stock product"
@@ -91,6 +94,8 @@ export function OosProductCombobox({
         query={query}
         onQueryChange={setQuery}
         loading={debounced.length > 0 && search.isFetching}
+        surface={surface}
+        className={surface === 'open' ? 'flex-1' : undefined}
       />
     </div>
   );

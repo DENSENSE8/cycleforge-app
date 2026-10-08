@@ -41,11 +41,11 @@ export interface SelectionAction<T> {
   /** Run the verb over the rows. */
   run: (rows: T[], resolved?: { direction: VerbDirection }) => void | Promise<void>;
   /**
-   * Morph the record strip into an inline, progressively disclosed control.
-   * Use this for verbs such as choosing a location; the selected rows stay the
-   * action's subject and `done` restores the verb strip after a successful edit.
+   * OR open this form in the strip's centered picker dialog (`RecordActionVerb.dialog`,
+   * operator 2026-10-08) — e.g. choosing a location. The selected rows stay the
+   * action's subject; `done` closes the dialog.
    */
-  display?: (rows: T[], done: () => void) => ReactNode;
+  dialog?: (rows: T[], done: () => void) => ReactNode;
 }
 
 interface ResolvedSelectionAction<T> {

@@ -14,8 +14,8 @@
  *   staff, Movement). A `TMP-` placeholder swaps its work column for the
  *   SKU exception's own (`SkuExceptionEvidence`: title + description) and
  *   leads the aside with its facts (`SkuExceptionFacts`), kept live by the
- *   SKU-exception realtime feed. Pair to SKU (an Actions panel verb, or the
- *   pencil on the temporary SKU) opens `SkuPairSheet`, never a block in the record.
+ *   SKU-exception realtime feed. Pair to SKU (the Actions panel verb) opens
+ *   `SkuPairDialog` in the verb's centered dialog, never a block in the record.
  * - The record's verbs paint in the Actions panel under Movement
  *   (`StockRecordActions`, operator 2026-10-08), never the header.
  *
@@ -29,7 +29,7 @@ import { SkuExceptionEvidence, SkuExceptionFacts } from '@/components/inventory/
 import { StockAddForm } from '@/components/inventory/stock/StockAddForm';
 import { StockEvidence } from '@/components/inventory/stock/StockEvidence';
 import { StockRecordActions } from '@/components/inventory/stock/StockRecordActions';
-import { StockTemporarySku } from '@/components/inventory/stock/StockTemporarySku';
+import { CopyChip } from '@/components/ui/CopyChip';
 import { StockPhotoVerbs } from '@/components/inventory/stock/StockPhotoTile';
 
 export interface StockRecordViewProps {
@@ -110,7 +110,11 @@ export function StockRecordView({ record, rows, onChanged, onOpenKey, onClose }:
                   }
                 />
               ) : null,
-              skuContent: <StockTemporarySku sku={record.sku} item={provisional.data ?? null} onPaired={paired} />,
+              skuContent: (
+                <span className="flex min-w-0 items-center" data-testid="stock-record-temporary-sku">
+                  <CopyChip value={record.sku} display={record.sku} tone="sku" fitDisplayWidth />
+                </span>
+              ),
             }
           : undefined
       }

@@ -8,6 +8,13 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 interface UseOrdersQueueSelectionOptions {
   /** Records still in the queue — used to re-resolve the selection on data changes. */
   visibleRecords: ShippedOrder[];
+  /**
+   * Rows the open record may stay on after the view's filter drops it — the
+   * desk's unfiltered rows. A write made from the open record (Report out of
+   * stock moves it to Blocked) must not close it under the operator
+   * (operator 2026-10-08); it closes only once the row is gone entirely.
+   */
+  retainedRecords?: readonly ShippedOrder[];
   onOpenRecord?: (record: ShippedOrder) => void;
   onCloseRecord?: (record: ShippedOrder | null) => void;
 }
@@ -25,6 +32,7 @@ interface OrdersQueueSelection {
 /** Owns the open-detail selection for the queue: */
 export function useOrdersQueueSelection({
   visibleRecords,
+  retainedRecords,
   onOpenRecord,
   onCloseRecord,
 }: UseOrdersQueueSelectionOptions): OrdersQueueSelection {
@@ -40,7 +48,9 @@ export function useOrdersQueueSelection({
       return;
     }
     const selectedId = Number(selectedRecord.id);
-    const nextSelected = visibleRecords.find((record) => Number(record.id) === selectedId);
+    const nextSelected =
+      visibleRecords.find((record) => Number(record.id) === selectedId) ??
+      retainedRecords?.find((record) => Number(record.id) === selectedId);
     if (nextSelected) {
       seenSelectedIdRef.current = selectedId;
       if (nextSelected !== selectedRecord) setSelectedRecord(nextSelected);
@@ -52,7 +62,7 @@ export function useOrdersQueueSelection({
       setSelectedRecord(null);
       seenSelectedIdRef.current = null;
     }
-  }, [onCloseRecord, selectedRecord, visibleRecords]);
+  }, [onCloseRecord, retainedRecords, selectedRecord, visibleRecords]);
 
   const openRecord = useCallback((record: ShippedOrder) => {
     onOpenRecord?.(record);

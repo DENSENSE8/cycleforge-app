@@ -8,6 +8,7 @@ export const ORDER_VERB_IDS = [
   'paste',
   'resolve',
   'out-of-stock',
+  'pair-sku-location',
   'urgent',
   'documents',
   'label',

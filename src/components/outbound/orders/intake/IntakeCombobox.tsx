@@ -43,13 +43,14 @@ function CatalogOptionThumb({
   size,
 }: {
   imageUrl?: string | null;
-  size: 'trigger' | 'option';
+  /** `open`: the in-place picker's photo — large enough to tell products apart on a phone. */
+  size: 'trigger' | 'option' | 'open';
 }) {
   return (
     <span
       className={cn(
         'relative flex shrink-0 items-center justify-center overflow-hidden bg-surface-canvas ring-1 ring-border-soft',
-        size === 'trigger' ? 'h-6 w-6' : 'h-10 w-10',
+        size === 'trigger' ? 'h-6 w-6' : size === 'open' ? 'h-12 w-12' : 'h-10 w-10',
         cornerClass('row'),
       )}
       aria-hidden
@@ -94,6 +95,7 @@ export function IntakeCombobox({
   optionTestId,
   contentClassName,
   triggerVariant = 'outline',
+  surface = 'trigger',
 }: {
   value: string | null;
   onChange: (value: string) => void;
@@ -124,6 +126,13 @@ export function IntakeCombobox({
    * Default `outline` = full-width field (order intake).
    */
   triggerVariant?: 'outline' | 'ghost';
+  /**
+   * `trigger` (default): a field button that opens the list in a dropdown.
+   * `open`: the search and list paint in place, search focused — for a host
+   * that is already a popover or dialog (Report out of stock); Enter picks the
+   * highlighted option.
+   */
+  surface?: 'trigger' | 'open';
 }) {
   const [open, setOpen] = React.useState(false);
   const async = typeof onQueryChange === 'function';
@@ -144,6 +153,74 @@ export function IntakeCombobox({
     }
     return order.map((heading) => ({ heading, items: byGroup.get(heading)! }));
   }, [options]);
+
+  const list = (
+    <Command shouldFilter={!async} className={surface === 'open' ? 'h-full min-h-0' : undefined}>
+      <CommandInput
+        autoFocus={surface === 'open'}
+        placeholder={searchPlaceholder}
+        {...(async ? { value: query ?? '', onValueChange: onQueryChange } : {})}
+      />
+      {/* In place, the list takes the host's height (a 2/3-screen dialog), not the dropdown's cap. */}
+      <CommandList className={surface === 'open' ? 'max-h-none min-h-0 flex-1' : undefined}>
+        {loading ? (
+          <div className="px-3 py-2 text-role-micro text-text-faint" role="status">
+            Searching…
+          </div>
+        ) : (
+          <CommandEmpty>{emptyMessage}</CommandEmpty>
+        )}
+        {groups.map(({ heading, items }) => (
+          <CommandGroup key={heading || '__ungrouped'} heading={heading || undefined}>
+            {items.map((opt) => (
+              <CommandItem
+                key={opt.value}
+                value={async ? opt.value : `${opt.label} ${opt.value}`}
+                data-testid={optionTestId?.(opt)}
+                className={surface === 'open' ? 'min-h-14 gap-3' : undefined}
+                onSelect={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+              >
+                {showIcons ? (
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-soft" aria-hidden>
+                    {opt.icon}
+                  </span>
+                ) : showThumbs ? (
+                  <CatalogOptionThumb imageUrl={opt.imageUrl} size={surface === 'open' ? 'open' : 'option'} />
+                ) : null}
+                <span className="min-w-0 flex-1">
+                  <span className={cn('block truncate', opt.mono && 'font-mono')}>
+                    {opt.label}
+                  </span>
+                  {opt.meta ? (
+                    <span className="block truncate text-role-micro text-text-soft">
+                      {opt.meta}
+                    </span>
+                  ) : null}
+                </span>
+                {opt.value === value ? (
+                  <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                ) : null}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
+      </CommandList>
+      {footer ? (
+        <div className="border-t border-border-hairline p-1.5">{footer}</div>
+      ) : null}
+    </Command>
+  );
+
+  if (surface === 'open') {
+    return (
+      <div role="group" aria-label={ariaLabel ?? placeholder} className={cn('flex min-h-0 flex-col overflow-hidden rounded-xl border border-border-soft', className)} data-testid={testId}>
+        {list}
+      </div>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -186,60 +263,7 @@ export function IntakeCombobox({
           contentClassName,
         )}
       >
-        <Command shouldFilter={!async}>
-          <CommandInput
-            placeholder={searchPlaceholder}
-            {...(async ? { value: query ?? '', onValueChange: onQueryChange } : {})}
-          />
-          <CommandList>
-            {loading ? (
-              <div className="px-3 py-2 text-role-micro text-text-faint" role="status">
-                Searching…
-              </div>
-            ) : (
-              <CommandEmpty>{emptyMessage}</CommandEmpty>
-            )}
-            {groups.map(({ heading, items }) => (
-              <CommandGroup key={heading || '__ungrouped'} heading={heading || undefined}>
-                {items.map((opt) => (
-                  <CommandItem
-                    key={opt.value}
-                    value={async ? opt.value : `${opt.label} ${opt.value}`}
-                    data-testid={optionTestId?.(opt)}
-                    onSelect={() => {
-                      onChange(opt.value);
-                      setOpen(false);
-                    }}
-                  >
-                    {showIcons ? (
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-soft" aria-hidden>
-                        {opt.icon}
-                      </span>
-                    ) : showThumbs ? (
-                      <CatalogOptionThumb imageUrl={opt.imageUrl} size="option" />
-                    ) : null}
-                    <span className="min-w-0 flex-1">
-                      <span className={cn('block truncate', opt.mono && 'font-mono')}>
-                        {opt.label}
-                      </span>
-                      {opt.meta ? (
-                        <span className="block truncate text-role-micro text-text-soft">
-                          {opt.meta}
-                        </span>
-                      ) : null}
-                    </span>
-                    {opt.value === value ? (
-                      <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    ) : null}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-          {footer ? (
-            <div className="border-t border-border-hairline p-1.5">{footer}</div>
-          ) : null}
-        </Command>
+        {list}
       </PopoverContent>
     </Popover>
   );

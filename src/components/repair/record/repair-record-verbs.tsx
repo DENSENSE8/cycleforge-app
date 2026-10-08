@@ -6,11 +6,12 @@
  * · Link ticket · Create ticket, then Change status and Start pickup, with
  * Square checkout and Cancel repair behind ⋮. Which verbs show (and why one is
  * disabled) is the pure model's call (`repairRecordVerbs`); this file only
- * wires each to its existing writer. A panel verb swaps the record body for
- * its panel (Back returns); Start pickup opens the customer signing sheet.
+ * wires each to its existing writer. Every form verb opens the ONE centered
+ * verb dialog (operator 2026-10-08) — never a body swap; Start pickup opens
+ * the customer signing sheet. Keys are unique on the strip and stay off the
+ * app-reserved letters (C create, G go, Y sync, ?) and the list's J / K / X.
  */
 
-import type { ReactNode } from 'react';
 import {
   Check,
   Link2,
@@ -45,11 +46,6 @@ import {
   printPage,
 } from './repair-record-verb-panels';
 
-/** An Actions panel verb; `panel` verbs swap the record body for their panel, with Back. */
-export interface RepairRecordVerb extends RecordActionVerb {
-  panel?: (done: () => void) => ReactNode;
-}
-
 /**
  * Every verb the open repair offers, in strip order. `refresh` refetches the
  * open record after a write; `onClose` closes it (after Cancel).
@@ -58,7 +54,7 @@ export function useRepairRecordVerbs(
   repair: RSRecord | null,
   model: RepairRecordModel | null,
   { refresh, onClose }: { refresh: () => void; onClose: () => void },
-): RepairRecordVerb[] {
+): RecordActionVerb[] {
   const changeStatus = useRepairStatusChange();
   const linked = useRepairLinkedTickets(repair?.id ?? 0);
   if (!repair || !model) return [];
@@ -67,25 +63,30 @@ export function useRepairRecordVerbs(
   const triageTicket = linkedTicket ?? typedTicket;
 
   const setStatus = async (next: string) => {
-    await changeStatus(repair, next);
+    const landed = await changeStatus(repair, next);
     refresh();
+    return landed;
   };
 
-  const all: Record<RepairVerbId, RepairRecordVerb> = {
+  const all: Record<RepairVerbId, RecordActionVerb> = {
     'mark-done': {
       id: 'mark-done',
       label: 'Mark done',
       icon: <Check aria-hidden />,
       tone: 'success',
       hotkey: 'd',
-      run: () => setStatus('Done'),
+      run: async () => {
+        await setStatus('Done');
+      },
     },
     'mark-pending': {
       id: 'mark-pending',
       label: 'Mark pending',
       icon: <RotateCcw aria-hidden />,
       hotkey: 'p',
-      run: () => setStatus('Pending Repair'),
+      run: async () => {
+        await setStatus('Pending Repair');
+      },
     },
     pickup: {
       id: 'pickup',
@@ -133,14 +134,14 @@ export function useRepairRecordVerbs(
       label: 'Edit information',
       icon: <Pencil aria-hidden />,
       hotkey: 'i',
-      panel: (done) => <RepairInfoEditor repair={repair} onSaved={refresh} onDone={done} />,
+      dialog: (done) => <RepairInfoEditor repair={repair} onSaved={refresh} onDone={done} />,
     },
     'work-log': {
       id: 'work-log',
       label: 'Bench log',
       icon: <Wrench aria-hidden />,
       hotkey: 'b',
-      panel: () => <RepairBenchPanel repair={repair} />,
+      dialog: (done) => <RepairBenchPanel repair={repair} done={done} />,
     },
     'triage-ticket': {
       id: 'triage-ticket',
@@ -149,7 +150,7 @@ export function useRepairRecordVerbs(
       hotkey: 't',
       disabled: triageTicket == null,
       disabledReason: triageTicket == null ? 'Add or link a support ticket first' : undefined,
-      panel: () => triageTicket == null ? null : (
+      dialog: () => triageTicket == null ? null : (
         <SupportTicketDetail
           ticketId={triageTicket}
           embedded
@@ -164,62 +165,38 @@ export function useRepairRecordVerbs(
       label: 'Link ticket',
       icon: <Link2 aria-hidden />,
       hotkey: 'v',
-      panel: (done) => (
-        <RepairLinkTicketPanel
-          repair={repair}
-          onDone={() => {
-            refresh();
-            done();
-          }}
-        />
-      ),
+      dialog: (done) => <RepairLinkTicketPanel repair={repair} onChanged={refresh} done={done} />,
     },
     'ticket-number': {
       id: 'ticket-number',
       label: model.title.ticket ? 'Edit ticket #' : 'Add ticket #',
       icon: <Pencil aria-hidden />,
       hotkey: 'e',
-      panel: (done) => (
-        <TicketNumberPanel
-          repair={repair}
-          onSaved={() => {
-            refresh();
-            done();
-          }}
-        />
-      ),
+      dialog: (done) => <TicketNumberPanel repair={repair} onSaved={refresh} done={done} />,
     },
     'create-ticket': {
       id: 'create-ticket',
       label: 'Create ticket',
       icon: <Ticket aria-hidden />,
-      hotkey: 'c',
+      // N (new), never C — bare C arms the app-wide Add leader.
+      hotkey: 'n',
       // One helpdesk ticket per repair: create only while none is linked.
       disabled: linkedTicket != null,
       disabledReason: linkedTicket != null ? `Ticket #${linkedTicket} is already linked — unlink it under Link ticket first` : undefined,
-      panel: (done) => (
-        <RepairCreateTicketPanel
-          repair={repair}
-          onDone={() => {
-            refresh();
-            done();
-          }}
-        />
-      ),
+      dialog: (done) => <RepairCreateTicketPanel repair={repair} onCreated={refresh} done={done} />,
     },
     status: {
       id: 'status',
       label: 'Change status',
       icon: <ListChecks aria-hidden />,
       hotkey: 's',
-      panel: (done) => (
+      dialog: (done) => (
         <RepairStatusList
           current={model.status.stored}
+          subject={`Repair ${model.title.face}`}
           testId="repair-record-status-list"
-          onPick={(next) => {
-            done();
-            void setStatus(next);
-          }}
+          onPick={setStatus}
+          done={done}
         />
       ),
     },
@@ -234,9 +211,10 @@ export function useRepairRecordVerbs(
       label: 'Cancel repair',
       icon: <Trash2 aria-hidden />,
       tone: 'danger',
-      panel: () => (
+      dialog: (done) => (
         <CancelRepairPanel
           repair={repair}
+          done={done}
           onCancelled={() => {
             refresh();
             onClose();

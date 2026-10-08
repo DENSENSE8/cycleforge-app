@@ -18,7 +18,7 @@ import { Spinner } from '@/design-system/primitives/Spinner';
 import { LIVE_FEED_QUERY_ROOT, liveFeedFindQuery } from '@/lib/live-feed/query';
 import type { PackageCard } from '@/lib/live-feed/types';
 import { PackageMiniRow } from './PackageMiniRow';
-import { SendReplacementPopover } from '@/components/outbound/labels/SendReplacementPopover';
+import { OrderLabelBuyDialog } from '@/components/outbound/labels/OrderLabelBuyDialog';
 
 export function FindResults({
   q,
@@ -93,7 +93,8 @@ export function FindResults({
         </ul>
       ) : null}
       {sole ? (
-        <SendReplacementPopover
+        <OrderLabelBuyDialog
+          purpose="replacement"
           order={sole}
           open={replaceOpen}
           onOpenChange={setReplaceOpen}

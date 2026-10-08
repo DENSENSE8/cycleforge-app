@@ -15,13 +15,14 @@ import { repairStatusOperatorLabel } from '@/lib/repair-status';
 import { toast } from '@/lib/toast';
 import { qk } from '@/queries/keys';
 
-export function useRepairStatusChange(): (repair: RSRecord, next: string) => Promise<void> {
+/** Writes `next`; resolves `true` once the server took it, `false` after a refused write (already toasted). */
+export function useRepairStatusChange(): (repair: RSRecord, next: string) => Promise<boolean> {
   const queryClient = useQueryClient();
   const inbox = useActivityInboxOptional();
   return useCallback(
     async (repair: RSRecord, next: string) => {
       const previous = repair.status;
-      if (previous === next) return;
+      if (previous === next) return true;
       const paint = (status: string) =>
         queryClient.setQueriesData({ queryKey: qk.repairs.all }, (rows: unknown) =>
           Array.isArray(rows) ? (rows as RSRecord[]).map((row) => (row.id === repair.id ? { ...row, status } : row)) : rows,
@@ -36,9 +37,11 @@ export function useRepairStatusChange(): (repair: RSRecord, next: string) => Pro
         });
         if (!res.ok) throw new Error(`status ${res.status}`);
         inbox?.pushRepairStatusChange({ repairId: repair.id, previousStatus: previous, nextStatus: next });
+        return true;
       } catch {
         paint(previous);
         toast.error(`Could not set the repair to ${repairStatusOperatorLabel(next)}`);
+        return false;
       } finally {
         void queryClient.invalidateQueries({ queryKey: qk.repairs.all });
       }

@@ -2,7 +2,7 @@
 
 /** `RecordActionStrip` — the ONE place a desk record's verbs paint (owner 2026-09-25, supersedes "actions in the record header / right… */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { claimOverlay } from '@/lib/overlay-stack/store';
 import { Button, type ButtonVariant } from '@/design-system/primitives/Button';
 import { IconButton } from '@/design-system/primitives/IconButton';
@@ -12,8 +12,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
+import {
+  DangerZoneButton,
+  DangerZoneLayer,
+  DangerZoneSection,
+  type DangerZoneItem,
+  type DangerZoneView,
+} from '@/design-system/components/danger-zone/DangerZone';
 import { Zap } from 'lucide-react';
 import { MoreVertical, X } from '@/components/Icons';
 import {
@@ -23,6 +32,7 @@ import {
   LIQUID_METAL_TEXT_CLASS,
 } from '@/design-system/tokens/liquid-metal';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
 import { useSelectionInlineHotkeysRevealed } from '@/hooks/useSelectionStatusBarHotkeys';
 import { useRecordActionStripKeys } from './useRecordActionStripKeys';
 import { cn } from '@/utils/_cn';
@@ -62,11 +72,18 @@ export interface RecordActionVerb {
   /** OR morph the strip into this display; `done()` morphs it back. */
   display?: (done: () => void) => ReactNode;
   /**
-   * Destructive: the first press (click or key) only arms the verb — its face
-   * reads "Press again to confirm" for a few seconds; the second press runs it
-   * (operator 2026-10-08: delete is ⌘/Ctrl+⌫, pressed twice).
+   * OR open this form in the centered picker dialog — the ONE shape for "find
+   * one thing and commit it" (operator 2026-10-08: Report out of stock picks the
+   * short product, Pair SKU to location picks the location; search focused,
+   * Enter commits). Titled with the verb's icon and label; `done()` closes it.
    */
-  confirm?: boolean;
+  dialog?: (done: () => void) => ReactNode;
+  /**
+   * `danger` verbs live behind the Danger zone (operator 2026-10-08): a `run`
+   * danger verb opens the square confirmation first — this sentence says
+   * what happens. Its own key again (or Enter) confirms.
+   */
+  confirmDetail?: string;
 }
 
 export type RecordVerbScope = 'single' | 'bulk' | 'both';
@@ -93,10 +110,14 @@ interface RecordActionStripProps {
    * `N selected · Actions · [quick] · ×`. Every verb lives
    * in the Actions menu; a verb's `display` opens as a card above the pill.
    * Requires {@link dock}.
-   * `panel`: a side column's Actions group (operator 2026-10-08) — vertical,
-   * nothing hidden: fill-tone verbs first as full-width filled CTAs, then every
-   * other verb as a full-width ghost row, danger verbs last under a hairline.
-   * Every verb is spelled out with its keycap; no ⋮.
+   * `panel`: a side column's Actions group (operator 2026-10-08) — vertical:
+   * fill-tone verbs first as full-width filled CTAs, then every other verb as
+   * a full-width ghost row, then the Danger zone section under a hairline —
+   * every danger verb painted in full with its keycap, never folded. No ⋮.
+   *
+   * On every face a `run` danger verb confirms in the square popover first,
+   * and a `dialog` verb opens the centered picker dialog;
+   * a menu face lists its danger verbs in full under a "Danger zone" label.
    */
   face?: 'strip' | 'header' | 'inline' | 'dock' | 'panel';
   /** The `dock` face's selection facts: the count, Clear, and an optional one-press icon verb beside Actions. */
@@ -127,8 +148,6 @@ const HEADER_FACE_CLASS =
   '@container/verbs flex w-full min-w-0 flex-1 items-center gap-1 @min-[64rem]/record-head:!min-w-[28rem]';
 const INLINE_FACE_CLASS = 'flex shrink-0 items-center gap-1';
 const PANEL_FACE_CLASS = 'flex w-full min-w-0 flex-col gap-0.5 px-2 pb-2';
-/** How long a `confirm` verb stays armed after its first press. */
-const CONFIRM_ARM_MS = 4000;
 
 /** The Button fill each verb tone wears; the tones with a solid fill lead the `panel` face. */
 const VERB_TONE_FILL: Record<NonNullable<RecordActionVerb['tone']>, { variant: ButtonVariant | null; panelFill: boolean }> = {
@@ -173,8 +192,8 @@ export function partitionRecordActionVerbs(verbs: readonly RecordActionVerb[]): 
 
 /**
  * The `panel` face's grouping: fill-tone verbs lead (filled CTAs), the rest
- * follow as rows, danger verbs close the list. Source order within each group;
- * nothing overflows.
+ * follow as rows, danger verbs close the list in the Danger zone section.
+ * Source order within each group; nothing overflows.
  */
 export function partitionRecordPanelVerbs(verbs: readonly RecordActionVerb[]): {
   filled: RecordActionVerb[];
@@ -224,34 +243,156 @@ export function RecordActionStrip({
   }, [moreOpen]);
   const showHotkeys = useSelectionInlineHotkeysRevealed();
 
+  // A `dialog` verb's centered form, held as pressed: its write may change the
+  // verb itself (Report → Mark not out of stock) while the form shows its done
+  // face. It holds the keyboard like any overlay.
+  const [dialogVerb, setDialogVerb] = useState<RecordActionVerb | null>(null);
+  useEffect(() => {
+    if (!dialogVerb) return;
+    const claim = claimOverlay();
+    return () => claim.release();
+  }, [dialogVerb]);
+
+  // A danger verb's square confirmation — anchored to the verb's own button,
+  // else to the menu trigger it was picked from.
+  const [layerView, setLayerView] = useState<DangerZoneView>(null);
+  const layerAnchorRef = useRef<HTMLElement | null>(null);
+  /** The ⋮ or the dock's Actions chip: the anchor for a verb picked from a menu. */
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const verbButtonRefs = useRef(new Map<string, HTMLElement>());
+  const verbRef = (id: string) => (node: HTMLElement | null) => {
+    if (node) verbButtonRefs.current.set(id, node);
+    else verbButtonRefs.current.delete(id);
+  };
+
   const active = activeId == null ? null : (verbs.find((verb) => verb.id === activeId && verb.display) ?? null);
   const idle = verbs.length === 0;
+  const danger = verbs.filter((verb) => verb.tone === 'danger');
 
   const done = () => {
     setActiveId(null);
   };
 
-  // A `confirm` verb's first press arms it; it disarms itself after a beat.
-  const [armedId, setArmedId] = useState<string | null>(null);
-  useEffect(() => {
-    if (armedId == null) return;
-    const timer = window.setTimeout(() => setArmedId(null), CONFIRM_ARM_MS);
-    return () => window.clearTimeout(timer);
-  }, [armedId]);
-  const labelOf = (verb: RecordActionVerb) => (verb.confirm && armedId === verb.id ? 'Press again to confirm' : verb.label);
-
   const press = (verb: RecordActionVerb) => {
     if (verb.disabled) return;
-    if (verb.confirm && armedId !== verb.id) {
-      setArmedId(verb.id);
+    if (verb.dialog) {
+      setDialogVerb(verb);
       return;
     }
-    setArmedId(null);
+    if (verb.tone === 'danger' && !verb.display) {
+      layerAnchorRef.current = verbButtonRefs.current.get(verb.id) ?? menuTriggerRef.current;
+      setLayerView({ id: verb.id });
+      return;
+    }
     if (verb.display) {
       setActiveId(verb.id);
       return;
     }
     void verb.run?.();
+  };
+
+  const layerItems: DangerZoneItem[] = verbs
+    .filter((verb) => verb.tone === 'danger' && !verb.display && !verb.dialog)
+    .map((verb) => ({
+      id: verb.id,
+      label: verb.label,
+      icon: verb.icon,
+      hotkey: verb.hotkey,
+      disabled: verb.disabled,
+      disabledReason: verb.disabledReason,
+      confirmDetail: verb.confirmDetail,
+      run: verb.run,
+    }));
+  const closeDialog = () => setDialogVerb(null);
+  const dialog = (
+    <Dialog
+      open={dialogVerb != null}
+      onOpenChange={(open) => {
+        if (!open) closeDialog();
+      }}
+    >
+      {dialogVerb?.dialog ? (
+        <DialogContent
+          aria-describedby={undefined}
+          // The picker shape (operator 2026-10-08): command-palette width, tall list — never page-wide.
+          className="flex h-[min(70vh,40rem)] w-[calc(100vw-2rem)] max-w-xl flex-col"
+          data-testid={`${testId}-${dialogVerb.id}-dialog`}
+        >
+          <DialogTitle className="flex items-center gap-2 [&_svg]:size-5">
+            {dialogVerb.icon}
+            {dialogVerb.label}
+          </DialogTitle>
+          <div className="min-h-0 flex-1">{dialogVerb.dialog(closeDialog)}</div>
+        </DialogContent>
+      ) : null}
+    </Dialog>
+  );
+  const layer = (
+    <>
+      {dialog}
+      <DangerZoneLayer
+        items={layerItems}
+        view={layerView}
+        onViewChange={setLayerView}
+        anchorRef={layerAnchorRef}
+        placement={face === 'dock' ? 'top-center' : 'bottom-end'}
+        testId={testId}
+      />
+    </>
+  );
+
+  /** A menu face's items: the ordinary verbs, then every danger verb in full (key painted) under "Danger zone". */
+  const menuItems = (menuVerbs: readonly RecordActionVerb[], withTooltip: boolean) => {
+    const ordinary = menuVerbs.filter((verb) => verb.tone !== 'danger');
+    const dangerous = menuVerbs.filter((verb) => verb.tone === 'danger');
+    const item = (verb: RecordActionVerb) => (
+      <DropdownMenuItem
+        key={verb.id}
+        disabled={verb.disabled}
+        title={verb.disabled ? verb.disabledReason : undefined}
+        data-testid={`${testId}-${verb.id}`}
+        tone={verb.tone === 'danger' ? 'danger' : 'default'}
+        onSelect={() => press(verb)}
+      >
+        {verb.icon}
+        {verb.label}
+        {verb.hotkey && (showHotkeys || verb.tone === 'danger') ? (
+          <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
+        ) : null}
+      </DropdownMenuItem>
+    );
+    return (
+      <>
+        {ordinary.map((verb) =>
+          withTooltip ? (
+            // Hotkeys are disclosed on hover, never painted inline (owner 2026-10-03); `?` still reveals them.
+            <HoverTooltip
+              key={verb.id}
+              label={verb.disabled ? (verb.disabledReason ?? verb.label) : verb.label}
+              shortcut={verb.hotkey ? hotkeyChord(verb.hotkey) : undefined}
+              asChild
+              placement="left"
+              focusable={false}
+            >
+              {item(verb)}
+            </HoverTooltip>
+          ) : (
+            item(verb)
+          ),
+        )}
+        {dangerous.length > 0 ? (
+          <>
+            {ordinary.length > 0 ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuLabel className="text-text-danger">Danger zone</DropdownMenuLabel>
+            {dangerous.map(item)}
+          </>
+        ) : null}
+      </>
+    );
+  };
+  /** The menu closing must not pull focus back from the layer it just opened. */
+  const keepLayerFocus = (event: Event) => {
+    if (layerAnchorRef.current && menuTriggerRef.current === layerAnchorRef.current) event.preventDefault();
   };
 
   const displayOpen = active != null;
@@ -280,32 +421,13 @@ export function RecordActionStrip({
           {idle ? null : (
             <DropdownMenu modal={false} open={moreOpen} onOpenChange={setMoreOpen}>
               <DropdownMenuTrigger asChild>
-                <button type="button" className={DOCK_CHIP_CLASS} data-testid={`${testId}-menu`}>
+                <button ref={menuTriggerRef} type="button" className={DOCK_CHIP_CLASS} data-testid={`${testId}-menu`}>
                   <Zap className="size-4" strokeWidth={2.25} />
                   Actions
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" side="top" sideOffset={10}>
-                {verbs.map((verb) => (
-                  <DropdownMenuItem
-                    key={verb.id}
-                    disabled={verb.disabled}
-                    title={verb.disabled ? verb.disabledReason : undefined}
-                    data-testid={`${testId}-${verb.id}`}
-                    tone={verb.tone === 'danger' ? 'danger' : 'default'}
-                    onSelect={(event) => {
-                      // Arming keeps the menu open so the second press lands on the same item.
-                      if (verb.confirm && armedId !== verb.id) event.preventDefault();
-                      press(verb);
-                    }}
-                  >
-                    {verb.icon}
-                    {labelOf(verb)}
-                    {showHotkeys && verb.hotkey ? (
-                      <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
-                    ) : null}
-                  </DropdownMenuItem>
-                ))}
+              <DropdownMenuContent align="center" side="top" sideOffset={10} onCloseAutoFocus={keepLayerFocus}>
+                {menuItems(verbs, false)}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -317,6 +439,7 @@ export function RecordActionStrip({
               placement="above"
             >
               <button
+                ref={verbRef(dock.quick.id)}
                 type="button"
                 className={dock.quickText ? DOCK_QUICK_PILL_CLASS : DOCK_ROUND_CLASS}
                 aria-label={dock.quick.label}
@@ -335,6 +458,7 @@ export function RecordActionStrip({
             </button>
           </HoverTooltip>
         </div>
+        {layer}
       </div>
     );
   }
@@ -371,28 +495,25 @@ export function RecordActionStrip({
   }
 
   if (face === 'panel') {
-    const { filled, rows, danger } = partitionRecordPanelVerbs(verbs);
+    const { filled, rows } = partitionRecordPanelVerbs(verbs);
     // Spelled out, key always painted (operator 2026-10-08): the side column has the room the header never did.
     const panelVerb = (verb: RecordActionVerb, fill: boolean) => (
       <Button
         key={verb.id}
+        ref={verbRef(verb.id)}
         type="button"
         size={fill ? 'md' : 'sm'}
         variant={fill ? verbVariant(verb) : 'ghost'}
         icon={verb.icon}
         disabled={verb.disabled}
         title={verb.disabled ? verb.disabledReason : undefined}
-        aria-pressed={verb.confirm ? armedId === verb.id : verb.pressed}
-        aria-haspopup={verb.display ? 'true' : undefined}
+        aria-pressed={verb.pressed}
+        aria-haspopup={verb.dialog ? 'dialog' : verb.display ? 'true' : undefined}
         data-testid={`${testId}-${verb.id}`}
-        className={cn(
-          'w-full justify-start',
-          !fill && 'font-medium',
-          verb.tone === 'danger' && 'text-text-danger hover:bg-surface-danger hover:text-text-danger',
-        )}
+        className={cn('w-full justify-start', !fill && 'font-medium')}
         onClick={() => press(verb)}
       >
-        <span className="min-w-0 flex-1 truncate text-left">{labelOf(verb)}</span>
+        <span className="min-w-0 flex-1 truncate text-left">{verb.label}</span>
         {verb.hotkey ? (
           <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone={fill ? 'inverse' : 'default'} />
         ) : null}
@@ -407,11 +528,13 @@ export function RecordActionStrip({
         ) : null}
         {rows.map((verb) => panelVerb(verb, false))}
         {danger.length > 0 ? (
-          <div className="mt-2 flex flex-col gap-0.5 border-t border-border-soft pt-2" data-testid={`${testId}-danger`}>
-            <p className="px-2.5 pb-1 text-left text-role-caption font-semibold text-text-danger">Danger zone</p>
-            {danger.map((verb) => panelVerb(verb, false))}
-          </div>
+          <DangerZoneSection testId={testId}>
+            {danger.map((verb) => (
+              <DangerZoneButton key={verb.id} item={verb} testId={testId} buttonRef={verbRef(verb.id)} onPress={() => press(verb)} />
+            ))}
+          </DangerZoneSection>
         ) : null}
+        {layer}
       </div>
     );
   }
@@ -429,15 +552,16 @@ export function RecordActionStrip({
         placement="above"
       >
         <Button
+          ref={verbRef(verb.id)}
           type="button"
           size="sm"
           radius="pill"
           variant={verbVariant(verb)}
           icon={verb.icon}
-          ariaLabel={labelOf(verb)}
+          ariaLabel={verb.label}
           disabled={verb.disabled}
-          aria-pressed={verb.confirm ? armedId === verb.id : verb.pressed}
-          aria-haspopup={verb.display ? 'true' : undefined}
+          aria-pressed={verb.pressed}
+          aria-haspopup={verb.dialog ? 'dialog' : verb.display ? 'true' : undefined}
           data-testid={`${testId}-${verb.id}`}
           // A record header spends its width on identity first: a verb is a
           // 24px icon, spelled out only once the header has room for it
@@ -452,7 +576,7 @@ export function RecordActionStrip({
           onClick={() => press(verb)}
         >
           <span className={face === 'header' && !verb.standingKeycap ? cn('sr-only', expand?.label, HEADER_FULL_RECORD_LABEL) : undefined}>
-            {labelOf(verb)}
+            {verb.label}
           </span>
           {verb.hotkey && (verb.standingKeycap || (face !== 'header' && showHotkeys)) ? (
             <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-1" />
@@ -496,6 +620,7 @@ export function RecordActionStrip({
             <HoverTooltip label="More actions" asChild placement="above">
               <DropdownMenuTrigger asChild>
                 <IconButton
+                  ref={menuTriggerRef}
                   type="button"
                   size={face === 'header' ? 'xs' : 'sm'}
                   radius="pill"
@@ -506,39 +631,13 @@ export function RecordActionStrip({
                 />
               </DropdownMenuTrigger>
             </HoverTooltip>
-            <DropdownMenuContent align="end" side="bottom">
-              {overflow.map((verb) => (
-                // Hotkeys are disclosed on hover, never painted inline (owner 2026-10-03); `?` still reveals them.
-                <HoverTooltip
-                  key={verb.id}
-                  label={verb.disabled ? (verb.disabledReason ?? verb.label) : verb.label}
-                  shortcut={verb.hotkey ? hotkeyChord(verb.hotkey) : undefined}
-                  asChild
-                  placement="left"
-                  focusable={false}
-                >
-                  <DropdownMenuItem
-                    disabled={verb.disabled}
-                    title={verb.disabled ? verb.disabledReason : undefined}
-                    data-testid={`${testId}-${verb.id}`}
-                    tone={verb.tone === 'danger' ? 'danger' : 'default'}
-                    onSelect={(event) => {
-                      if (verb.confirm && armedId !== verb.id) event.preventDefault();
-                      press(verb);
-                    }}
-                  >
-                    {verb.icon}
-                    {labelOf(verb)}
-                    {showHotkeys && verb.hotkey ? (
-                      <KeyboardChord chord={hotkeyChord(verb.hotkey)} size="sm" tone="default" className="ml-auto" />
-                    ) : null}
-                  </DropdownMenuItem>
-                </HoverTooltip>
-              ))}
+            <DropdownMenuContent align="end" side="bottom" onCloseAutoFocus={keepLayerFocus}>
+              {menuItems(overflow, true)}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
       </div>
+      {layer}
     </div>
   );
 }

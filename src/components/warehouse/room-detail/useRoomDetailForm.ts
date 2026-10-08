@@ -32,7 +32,6 @@ export function useRoomDetailForm() {
   const { rows: bins, loading: binsLoading } = useBinsOverview({ pollMs: 0 });
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   /** Last selection key we seeded the form for (`__new__` | room name). */
   const seededForRef = useRef<string | null>(null);
 
@@ -299,10 +298,8 @@ export function useRoomDetailForm() {
         p.delete('room');
         p.delete('new');
       });
-    } catch (err: any) {
-      toast.error(err?.message || 'Could not delete');
-    } finally {
-      setConfirmDelete(false);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Could not delete');
     }
   }, [selectedRoom, removeRoom, setParam]);
 
@@ -345,7 +342,6 @@ export function useRoomDetailForm() {
     roomsLoading, binsLoading,
     allRoomNames, roomRows,
     form, setForm,
-    confirmDelete, setConfirmDelete,
     stats, usedLetters,
     trimmedName, trimmedLetter,
     nameTaken, renameTaken, canSave, isDirty, saveDisabledReason,

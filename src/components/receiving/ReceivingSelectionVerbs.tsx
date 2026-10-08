@@ -153,7 +153,7 @@ export function ReceivingSelectionVerbs({
           disabledReason: resolved.reason,
           pressed: action.direction ? resolved.direction === 'undo' : undefined,
           run: () => action.run(rows, resolved.direction ? { direction: resolved.direction } : undefined),
-          display: action.display ? (done) => action.display!(rows, done) : undefined,
+          dialog: action.dialog ? (done) => action.dialog!(rows, done) : undefined,
         };
       }),
     ];

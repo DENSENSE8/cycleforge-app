@@ -11,7 +11,7 @@
  * Mount it inside the board's `relative` frame: it floats over the board's bottom edge.
  */
 
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import type { PackageCard } from '@/lib/live-feed/types';
@@ -20,7 +20,7 @@ import { postScanOut, undoScanOut } from '@/lib/outbound/scan-out-client';
 import { SCAN_OUT_DESK_SOURCE } from '@/lib/outbound/scan-out-desk-stamp';
 import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
 import { refreshDomain } from '@/lib/refresh/bus';
-import { StageStaffAssignPopover } from '@/components/staff-assign/StageStaffAssignPopover';
+import { StaffAssignDialog } from '@/components/staff-assign/StaffAssignDialog';
 import { markPacked } from '@/lib/outbound/mark-packed-client';
 import {
   RecordActionStrip,
@@ -28,7 +28,7 @@ import {
 } from '@/design-system/components/record-action-strip/RecordActionStrip';
 import { ACTION_DOCK_LIFT } from '@/design-system/tokens/dock-clearance';
 import { Archive, FileText, PackageCheck, PackageOpen, Printer, ScanLine, Undo2, UserRound } from 'lucide-react';
-import { ListRemovalPicker } from '@/components/orders/ListRemovalPicker';
+import { ListRemovalDialog } from '@/components/orders/ListRemovalDialog';
 import { listRemovalReasonLabel } from '@/lib/orders/list-removal';
 import { removeFromList, restoreToList } from '@/lib/orders/list-removal-client';
 import { cn } from '@/utils/_cn';
@@ -58,18 +58,14 @@ export function LiveFeedBulkBar({
   /** Open a package in the detail rail (the dock's pointer opens the first selected). */
   onOpen?: (card: PackageCard) => void;
 }): ReactNode {
-  const barRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [packOpen, setPackOpen] = useState(false);
   const [printFocus, setPrintFocus] = useState<DocTab | null>(null);
   const [scanningOut, setScanningOut] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [packing, setPacking] = useState(false);
   const [undoing, setUndoing] = useState(false);
   // Error toasts and cache rollback belong to the mutation (useOptimisticMutation).
-  const assignment = useOrderAssignment();
-  const assigning = assignment.isPending;
+  const { mutateAsync: assignPicker, isPending: assigning } = useOrderAssignment();
   const busy = assigning || scanningOut || removing || packing || undoing;
 
   const orderRowIds = useMemo(() => selectedOrderRowIds(cards), [cards]);
@@ -123,6 +119,8 @@ export function LiveFeedBulkBar({
       },
     ];
     // Off the To-ship list with a reason — Undo puts them back (`order_list_removals`).
+    // Every form here is the strip's centered dialog; a landed write clears the
+    // checks (`onDone`) only once its done face closes (`onSettled`).
     const remove: RecordActionVerb = {
       id: 'remove-from-list',
       label: removing ? 'Removing…' : 'Remove from list…',
@@ -130,18 +128,16 @@ export function LiveFeedBulkBar({
       tone: 'danger',
       disabled: busy || removable.length === 0,
       disabledReason: busy ? BUSY_REASON : 'Only orders still in the building can leave the list',
-      display: (done) => (
-        <ListRemovalPicker
+      dialog: (done) => (
+        <ListRemovalDialog
           count={removable.length}
-          busy={removing}
-          onCancel={done}
+          done={done}
+          onSettled={onDone}
           onConfirm={async (reason, note) => {
             setRemoving(true);
             try {
               const removedIds = await removeFromList(removable, reason, note);
-              done();
               refreshDomain('orders.outbound');
-              onDone();
               toast.undo(`Removed ${removedIds.length} from the list · ${listRemovalReasonLabel(reason)}`, {
                 onUndo: () => {
                   void restoreToList(removedIds)
@@ -153,8 +149,10 @@ export function LiveFeedBulkBar({
                     .catch((error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not put them back'));
                 },
               });
+              return removedIds.length;
             } catch (error: unknown) {
               toast.error(error instanceof Error ? error.message : 'Could not remove from the list');
+              return null;
             } finally {
               setRemoving(false);
             }
@@ -166,11 +164,30 @@ export function LiveFeedBulkBar({
     if (assignable) {
       out.push({
         id: 'assign-picker',
-        label: assigning ? 'Assigning…' : 'Assign picker',
+        label: assigning ? 'Assigning…' : 'Assign picker…',
         icon: <UserRound className="h-4 w-4" />,
         disabled: busy,
         disabledReason: BUSY_REASON,
-        run: () => setAssignOpen(true),
+        dialog: (done) => (
+          <StaffAssignDialog
+            role="technician"
+            caption={`Assign a picker to ${orderRowIds.length} order${orderRowIds.length === 1 ? '' : 's'}`}
+            doneTitle="Picker assigned"
+            testId="live-feed-assign-picker"
+            done={done}
+            onSettled={onDone}
+            // The mutation's own error toast and cache rollback cover a refusal; it resolves false here.
+            onAssign={(staffId, staffName) =>
+              assignPicker({ orderIds: orderRowIds, pickerId: staffId, pickerName: staffName }).then(
+                () => {
+                  toast.success(`${staffName} assigned to pick ${orderRowIds.length} order${orderRowIds.length === 1 ? '' : 's'}`);
+                  return true;
+                },
+                () => false,
+              )
+            }
+          />
+        ),
       });
     }
     if (undoable) {
@@ -213,7 +230,31 @@ export function LiveFeedBulkBar({
         icon: <PackageCheck className="h-4 w-4" />,
         disabled: busy || orderRowIds.length === 0,
         disabledReason: busy ? BUSY_REASON : 'Only picked packages can be marked packed',
-        run: () => setPackOpen(true),
+        dialog: (done) => (
+          <StaffAssignDialog
+            role="packer"
+            caption={`Mark ${orderRowIds.length} order${orderRowIds.length === 1 ? '' : 's'} packed as`}
+            doneTitle="Marked packed"
+            testId="live-feed-mark-packed"
+            done={done}
+            onSettled={onDone}
+            onAssign={async (staffId, staffName) => {
+              setPacking(true);
+              try {
+                const result = await markPacked(orderRowIds, staffId);
+                const skipped = result.skipped.length > 0 ? ` · ${result.skipped.length} skipped (no shipment)` : '';
+                toast.success(`Marked ${result.markedIds.length} packed as ${staffName}${skipped}`);
+                refreshDomain('orders.outbound');
+                return true;
+              } catch (error: unknown) {
+                toast.error(error instanceof Error ? error.message : 'Could not mark as packed');
+                return false;
+              } finally {
+                setPacking(false);
+              }
+            }}
+          />
+        ),
       });
     }
     if (scanOutable) {
@@ -228,46 +269,9 @@ export function LiveFeedBulkBar({
     }
     // Destructive last (RecordActionStrip law): prints, the stage verbs, then Remove from list.
     return [...printVerbs, ...out.filter((verb) => verb !== remove), remove];
-  }, [assignable, assigning, busy, cards, onDone, orderRowIds, packable, packing, queryClient, removable, removing, scanOutable, scanningOut, undoable, undoing]);
+  }, [assignPicker, assignable, assigning, busy, cards, onDone, orderRowIds, packable, packing, queryClient, removable, removing, scanOutable, scanningOut, undoable, undoing]);
 
   if (cards.length === 0) return null;
-
-  const commitPicker = (staffId: number | null, staffName: string | null) => {
-    // The popover offers no current picker, so a pick is always a staffer.
-    if (staffId == null) return;
-    const orderIds = orderRowIds;
-    assignment.mutate(
-      { orderIds, pickerId: staffId, pickerName: staffName },
-      {
-        onSuccess: () => {
-          toast.success(
-            `${staffName ?? 'Picker'} assigned to pick ${orderIds.length} order${orderIds.length === 1 ? '' : 's'}`,
-          );
-          onDone();
-        },
-      },
-    );
-  };
-
-  const commitPacked = (staffId: number | null, staffName: string | null) => {
-    // The popover offers no current packer, so a pick is always a staffer.
-    if (staffId == null) return;
-    const orderIds = orderRowIds;
-    setPacking(true);
-    markPacked(orderIds, staffId)
-      .then((result) => {
-        const skipped =
-          result.skipped.length > 0 ? ` · ${result.skipped.length} skipped (no shipment)` : '';
-        toast.success(`Marked ${result.markedIds.length} packed as ${staffName ?? 'staffer'}${skipped}`);
-        refreshDomain('orders.outbound');
-        onDone();
-      })
-      .catch((error: unknown) => {
-        toast.error(error instanceof Error ? error.message : 'Could not mark as packed');
-      })
-      .finally(() => setPacking(false));
-  };
-
   const phone = surface === 'phone';
   const count = cards.length;
 
@@ -282,7 +286,7 @@ export function LiveFeedBulkBar({
         phone && 'px-3',
       )}
     >
-      <div ref={barRef} role="region" aria-label={`${count} selected package${count === 1 ? '' : 's'}`} className="pointer-events-auto">
+      <div role="region" aria-label={`${count} selected package${count === 1 ? '' : 's'}`} className="pointer-events-auto">
         <RecordActionStrip
           verbs={verbs}
           label={`${count} selected package${count === 1 ? '' : 's'} actions`}
@@ -308,24 +312,6 @@ export function LiveFeedBulkBar({
         onOpenChange={(next) => !next && setPrintFocus(null)}
         orderRowIds={orderRowIds}
         tab={printFocus ?? 'label'}
-      />
-      <StageStaffAssignPopover
-        open={assignOpen}
-        onClose={() => setAssignOpen(false)}
-        anchorRef={barRef}
-        label={`Assign picker to ${orderRowIds.length} order${orderRowIds.length === 1 ? '' : 's'}`}
-        role="technician"
-        selectedStaffId={null}
-        onCommit={commitPicker}
-      />
-      <StageStaffAssignPopover
-        open={packOpen}
-        onClose={() => setPackOpen(false)}
-        anchorRef={barRef}
-        label={`Mark ${orderRowIds.length} order${orderRowIds.length === 1 ? '' : 's'} packed as`}
-        role="packer"
-        selectedStaffId={null}
-        onCommit={commitPacked}
       />
     </div>
   );

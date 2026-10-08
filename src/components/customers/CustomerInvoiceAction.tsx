@@ -1,32 +1,24 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Mail } from '@/components/Icons';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/design-system/components/Dialog';
-import { FormField } from '@/design-system/components/FormField';
+import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { VerbDoneState } from '@/design-system/components/record-action-strip/VerbDoneState';
 import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
-import { Button } from '@/design-system/primitives';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { Button } from '@/design-system/primitives/Button';
 import { customerFullName, type CustomerRecord } from '@/lib/customers/customer-display';
 import type { CustomerOrderHistoryPayload } from '@/lib/customers/customer-throughput';
-import { toast } from '@/lib/toast';
-import { cn } from '@/utils/_cn';
 import { customerDateFace, getCustomerJson } from './customer-format';
 
 interface CustomerResponse { ok: true; customer: CustomerRecord }
 
+type CustomerOrder = CustomerOrderHistoryPayload['orders'][number];
+
 /**
  * The customer record's Actions panel (under Identity, operator 2026-10-08):
- * one explicit verb — choose an order, then email its purchase invoice.
+ * one explicit verb — Email invoice, in the verb's centered dialog.
  */
 export function CustomerInvoiceAction({ customerId }: { customerId: number }) {
   const customer = useQuery({
@@ -37,18 +29,10 @@ export function CustomerInvoiceAction({ customerId }: { customerId: number }) {
     queryKey: ['customers.orders', customerId],
     queryFn: () => getCustomerJson<CustomerOrderHistoryPayload>(`/api/customers/${customerId}/orders`),
   });
-  const orders = history.data?.orders ?? [];
+  const orders = useMemo(() => history.data?.orders ?? [], [history.data]);
   const record = customer.data?.customer ?? null;
   const email = record?.email?.trim() || '';
   const name = record ? customerFullName(record) || 'this customer' : 'this customer';
-  const [open, setOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (selectedId == null && orders[0]) setSelectedId(orders[0].primaryOrderId);
-  }, [orders, selectedId]);
 
   const disabledReason = !email
     ? 'Add an email address before sending an invoice'
@@ -61,12 +45,55 @@ export function CustomerInvoiceAction({ customerId }: { customerId: number }) {
     icon: <Mail aria-hidden />,
     disabled: Boolean(disabledReason),
     disabledReason,
-    run: () => setOpen(true),
-  }], [disabledReason]);
+    dialog: (done) => <EmailInvoiceForm customerId={customerId} email={email} orders={orders} done={done} />,
+  }], [customerId, disabledReason, email, orders]);
+
+  return (
+    <RecordGroup title="Actions" testId="customer-record-actions-panel">
+      <RecordActionStrip face="panel" verbs={verbs} label={`${name} actions`} testId="customer-record-actions" />
+    </RecordGroup>
+  );
+}
+
+/**
+ * Choose the order (search open and focused, newest first; Enter picks it),
+ * then Send (focused once an order is picked; Enter sends). The done face says
+ * where it went.
+ */
+function EmailInvoiceForm({
+  customerId,
+  email,
+  orders,
+  done,
+}: {
+  customerId: number;
+  email: string;
+  orders: readonly CustomerOrder[];
+  done: () => void;
+}) {
+  const [selectedId, setSelectedId] = useState<number | null>(orders[0]?.primaryOrderId ?? null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+  const sendRef = useRef<HTMLButtonElement>(null);
+  const [picked, setPicked] = useState(0);
+  useEffect(() => {
+    if (picked > 0) sendRef.current?.focus({ preventScroll: true });
+  }, [picked]);
 
   const selected = orders.find((order) => order.primaryOrderId === selectedId) ?? null;
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
+  const options = useMemo(
+    () =>
+      orders.map((order) => ({
+        value: String(order.primaryOrderId),
+        label: order.orderRef || 'Order without reference',
+        meta: `${customerDateFace(order.placedAt)} · ${order.items.length} ${order.items.length === 1 ? 'line item' : 'line items'}`,
+        mono: Boolean(order.orderRef),
+      })),
+    [orders],
+  );
+
+  const send = async () => {
     if (!selected || sending) return;
     setSending(true);
     setError(null);
@@ -78,8 +105,7 @@ export function CustomerInvoiceAction({ customerId }: { customerId: number }) {
       });
       const body = (await response.json().catch(() => null)) as { ok?: boolean; delivery?: 'sent' | 'preview'; error?: string } | null;
       if (!response.ok || !body?.ok) throw new Error(body?.error || 'Could not email the invoice');
-      setOpen(false);
-      toast.success(body.delivery === 'preview' ? 'Invoice email prepared in development' : `Invoice emailed to ${email}`);
+      setSent(body.delivery === 'preview' ? 'Invoice email prepared in development' : `Sent to ${email}`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not email the invoice');
     } finally {
@@ -87,46 +113,54 @@ export function CustomerInvoiceAction({ customerId }: { customerId: number }) {
     }
   };
 
+  if (sent) {
+    return <VerbDoneState title="Invoice emailed" detail={sent} onDone={done} testId="email-invoice-done" />;
+  }
+
   return (
-    <>
-      <RecordGroup title="Actions" testId="customer-record-actions-panel">
-        <RecordActionStrip face="panel" verbs={verbs} label={`${name} actions`} testId="customer-record-actions" />
-      </RecordGroup>
-      <Dialog open={open} onOpenChange={(next) => { if (!sending) { setOpen(next); setError(null); } }}>
-        <DialogContent data-testid="email-invoice-dialog">
-          <form className="grid gap-4" onSubmit={submit}>
-            <DialogHeader>
-              <DialogTitle>Email invoice</DialogTitle>
-              <DialogDescription>Choose the purchase invoice to send to {email}.</DialogDescription>
-            </DialogHeader>
-            <FormField label="Order" required>
-              <select
-                value={selectedId ?? ''}
-                onChange={(event) => setSelectedId(Number(event.target.value))}
-                disabled={sending}
-                className={cn('h-11 w-full rounded-mode-control border border-border-soft bg-surface-card px-3 text-role-data text-text-default outline-none', focusRing('field'))}
-                data-testid="email-invoice-order"
-              >
-                {orders.map((order) => (
-                  <option key={order.primaryOrderId} value={order.primaryOrderId}>
-                    {order.orderRef || 'Order without reference'} · {customerDateFace(order.placedAt)}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            {selected ? (
-              <p className="text-role-caption text-text-muted">
-                The email includes {selected.items.length} {selected.items.length === 1 ? 'line item' : 'line items'} and the recorded order total. It does not request payment.
-              </p>
-            ) : null}
-            {error ? <p role="alert" className="text-role-caption font-semibold text-text-danger">{error}</p> : null}
-            <DialogFooter>
-              <Button type="button" variant="ghost" disabled={sending} onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="primary" loading={sending} disabled={!selected || sending}>Send invoice</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-2" data-testid="email-invoice-dialog">
+      <p className="text-role-caption text-text-soft">
+        Choose the purchase invoice to send to <span className="text-text-default">{email}</span>.
+      </p>
+      <IntakeCombobox
+        surface="open"
+        value={selectedId == null ? null : String(selectedId)}
+        onChange={(value) => {
+          setSelectedId(Number(value));
+          setError(null);
+          setPicked((count) => count + 1);
+        }}
+        options={options}
+        placeholder="Order"
+        searchPlaceholder="Search order number…"
+        emptyMessage="No matching order"
+        disabled={sending}
+        ariaLabel="Order to invoice"
+        testId="email-invoice-order"
+        className="flex-1"
+      />
+      <div className="flex flex-col gap-1.5 border-t border-border-soft pt-3">
+        {selected ? (
+          <p className="text-role-caption text-text-muted">
+            The email includes {selected.items.length} {selected.items.length === 1 ? 'line item' : 'line items'} and the recorded order total. It does not request payment.
+          </p>
+        ) : null}
+        {error ? <p role="alert" className="text-role-caption font-semibold text-text-danger">{error}</p> : null}
+        <Button
+          ref={sendRef}
+          type="button"
+          variant="primary"
+          size="md"
+          icon={<Mail aria-hidden />}
+          className="w-full"
+          loading={sending}
+          disabled={!selected || sending}
+          onClick={() => void send()}
+          data-testid="email-invoice-send"
+        >
+          {selected ? `Send invoice ${selected.orderRef || ''}`.trim() : 'Choose an order'}
+        </Button>
+      </div>
+    </div>
   );
 }

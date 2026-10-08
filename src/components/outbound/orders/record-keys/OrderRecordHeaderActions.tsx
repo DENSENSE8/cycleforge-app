@@ -10,7 +10,8 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Printer } from '@/components/Icons';
 import { OrderRecordStatus } from '../OrderRecordView';
-import { PRINT_SLIP_HOTKEY, usePrintPackingSlip } from './print-slip';
+import { usePrintPackingSlip } from './print-slip';
+import { ORDER_VERB_HOTKEYS } from './order-key-table';
 import { OrderNoteChip } from '../notes/OrderNoteChip';
 import { VIEW_SPECS, type OrderViewKey } from '@/lib/views/view-specs';
 
@@ -29,7 +30,7 @@ export function OrderRecordHeaderActions({
     <span className="flex min-w-0 items-center gap-1.5" data-testid="order-record-header-actions">
       <OrderNoteChip record={record} />
       <OrderRecordStatus record={record} records={records} />
-      <HoverTooltip label="Print packing slip" shortcut={PRINT_SLIP_HOTKEY.toUpperCase()} asChild placement="above">
+      <HoverTooltip label="Print packing slip" shortcut={ORDER_VERB_HOTKEYS['print-slip'].toUpperCase()} asChild placement="above">
         <IconButton
           icon={<Printer className="h-4 w-4" />}
           ariaLabel="Print packing slip"

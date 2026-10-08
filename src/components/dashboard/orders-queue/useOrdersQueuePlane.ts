@@ -30,6 +30,8 @@ function scrollQueueRowIntoView(id: number | string) {
 interface OrdersQueuePlaneArgs {
   /** Every row the feed holds, sorted — open-record lookups resolve against these. */
   displayedRecords: ShippedOrder[];
+  /** The desk's unfiltered rows — the open record stays open on these after a write moves it out of the view. */
+  retainedRecords?: readonly ShippedOrder[];
   /**
    * The groups ON SCREEN, in screen order — the record cursor's J / K walk and
    * the check-set's Shift-range / select-all (a presenter's `arrangeGroups`
@@ -70,6 +72,7 @@ export interface OrdersQueuePlane {
 
 export function useOrdersQueuePlane({
   displayedRecords,
+  retainedRecords,
   orderGroupsByDate,
   onOpenRecord,
   onCloseRecord,
@@ -80,6 +83,7 @@ export function useOrdersQueuePlane({
 }: OrdersQueuePlaneArgs): OrdersQueuePlane {
   const { selectedRecord, handleRowClick, openRecord, closeRecord } = useOrdersQueueSelection({
     visibleRecords: displayedRecords,
+    retainedRecords,
     onOpenRecord,
     onCloseRecord,
   });

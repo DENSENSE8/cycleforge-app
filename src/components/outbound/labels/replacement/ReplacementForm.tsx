@@ -1,10 +1,11 @@
 'use client';
 
 /**
- * The replacement form's body (inside {@link SendReplacementPopover}): what it
- * ships against + why, then the pinned parcel / insurance / filter band, the
- * one scroll area (rates, or the bought label, then the stub-merge offer), and
- * the sticky Buy footer.
+ * The label-buy form's body (inside `OrderLabelBuyDialog`): what it ships
+ * against (+ why, for a replacement), then the pinned parcel / insurance /
+ * filter band, the one scroll area (rates, or the bought label, then the
+ * replacement's stub-merge offer), and the sticky Buy footer. `outbound` is the
+ * order's first label: the same form with no reason and no stub merge.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -12,6 +13,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderPriceBreakdownKey, useOrderPriceBreakdown } from '@/components/outbound/orders/order-labels-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, ScrollPane, Spinner } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
 import { orderLabelSummaryKey, useOrderLabelSummary } from '@/lib/orders/order-paperwork-client';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -51,18 +53,24 @@ function positiveAmount(text: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** What this form buys: the order's first label, or a shipped order's replacement. */
+export type LabelBuyPurpose = 'outbound' | 'replacement';
+
 export function ReplacementForm({
+  purpose,
   orderId,
   orderNumber,
   currentTracking,
   onChange,
 }: {
+  purpose: LabelBuyPurpose;
   orderId: number;
   orderNumber: string | null;
   currentTracking: string | null;
   onChange: () => void;
 }) {
   const orderRef = orderNumber ?? `order ${orderId}`;
+  const isReplacement = purpose === 'replacement';
   const queryClient = useQueryClient();
   const staffId = useAuth().user?.staffId ?? null;
   const summary = useOrderLabelSummary(orderId);
@@ -151,7 +159,7 @@ export function ReplacementForm({
       signature,
       body: {
         orderId,
-        purpose: 'replacement',
+        purpose,
         weightOz,
         dimensions: { length, width, height, unit: 'inch' },
         ...(insure && declaredValue != null ? { insuredValue: { amount: declaredValue, currency: DECLARED_CURRENCY } } : {}),
@@ -169,7 +177,7 @@ export function ReplacementForm({
   const buyMutation = useMutation<ReplacementPurchase, Error, ShippingRateOption>({
     mutationFn: (rate) => {
       if (!clientEventIdRef.current) clientEventIdRef.current = safeRandomUUID();
-      return purchaseReplacementLabel({ orderId, rateId: rate.rateId, clientEventId: clientEventIdRef.current, reason, note });
+      return purchaseReplacementLabel({ orderId, purpose, rateId: rate.rateId, clientEventId: clientEventIdRef.current, reason, note });
     },
     onSuccess: (data, rate) => {
       setBought(data);
@@ -197,9 +205,11 @@ export function ReplacementForm({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* What it ships against + why — shrinks (and scrolls itself) while the ship-to editor is open. */}
-      <div className="grid min-h-0 shrink grid-cols-1 gap-5 overflow-y-auto px-5 py-3 md:grid-cols-2">
-        <ReplacementReasonFields reason={reason} onReasonChange={setReason} note={note} onNoteChange={setNote} />
+      {/* What it ships against (+ why, for a replacement) — shrinks (and scrolls itself) while the ship-to editor is open. */}
+      <div className={cn('grid min-h-0 shrink grid-cols-1 gap-5 overflow-y-auto px-5 py-3', isReplacement && 'md:grid-cols-2')}>
+        {isReplacement ? (
+          <ReplacementReasonFields reason={reason} onReasonChange={setReason} note={note} onNoteChange={setNote} />
+        ) : null}
         <ReplacementOrderFacts orderId={orderId} labels={summary.data?.labels ?? []} currentTracking={currentTracking} shipTo={shipTo} />
       </div>
 
@@ -247,6 +257,7 @@ export function ReplacementForm({
             orderNumber={orderNumber ?? String(orderId)}
             bought={bought}
             buyerName={shipTo?.name ?? null}
+            replacement={isReplacement}
             reason={reason}
             onVoided={onVoided}
           />
@@ -279,7 +290,7 @@ export function ReplacementForm({
             Live carrier rates for {orderRef} appear here once the parcel is complete.
           </p>
         )}
-        <StubMergePanel orderId={orderId} enabled onMerged={refreshOrder} />
+        {isReplacement ? <StubMergePanel orderId={orderId} enabled onMerged={refreshOrder} /> : null}
       </ScrollPane>
 
       {!bought && hasQuote && allRates.length > 0 ? (
@@ -288,6 +299,7 @@ export function ReplacementForm({
           confirming={confirming}
           stale={stale}
           orderRef={orderRef}
+          noun={isReplacement ? 'replacement label' : 'label'}
           reasonLabel={REPLACEMENT_REASONS.find((r) => r.id === reason)?.label ?? null}
           buying={buyMutation.isPending}
           error={buyMutation.isError ? buyMutation.error.message : null}

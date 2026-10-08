@@ -37,10 +37,12 @@ export const SYNC_LEADER = 'y';
 export const COPY_HOTKEY = 'mod+c';
 /** Copy every shown entry (paste ledgers): ⌘⌥C / Ctrl+Alt+C — never Ctrl+Shift+C (DevTools). */
 export const COPY_SHOWN_HOTKEY = 'mod+alt+c';
+/** Assign task on every open record (`buildRecordTaskVerb`): bare A. */
+export const ASSIGN_TASK_HOTKEY = 'a';
 /**
  * Delete the record / selection: ⌘⌫ on Apple, Ctrl+Backspace elsewhere —
- * never a bare letter (operator 2026-10-08). Every delete verb also asks for
- * a second press before it runs (`RecordActionVerb.confirm`).
+ * never a bare letter (operator 2026-10-08). A delete verb is a danger verb:
+ * the first press opens its square confirmation; ⌘⌫ again (or Enter) runs it.
  */
 export const DELETE_HOTKEY = 'mod+backspace';
 /**

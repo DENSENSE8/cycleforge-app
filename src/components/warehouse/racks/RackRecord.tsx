@@ -4,37 +4,35 @@
  * One movable rack in the desk record plane — the phone's rack record
  * (`/m/loc/RK12`) at desk density: the same shelves, tiers, placement and
  * derived room, the same three verbs (Print labels · Move rack · Add shelf),
- * and Remove on an empty shelf. A verb's flow replaces the body in a
- * phone-width column with Back (SURFACE_LAW §4) — one job tree, no desk-only
- * verb. Reads and writes go through `racks-client` only.
+ * and Remove on an empty shelf. Print labels and Move rack open the ONE
+ * centered picker dialog over the record (operator 2026-10-08) — one job tree,
+ * no desk-only verb. Reads and writes go through `racks-client` only.
  */
 
 import { useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, ChevronLeft, Plus, Printer, Trash2 } from '@/components/Icons';
+import { ArrowRight, Plus, Printer, Trash2 } from '@/components/Icons';
 import { ArmedDangerButton } from '@/design-system/components/ArmedDangerButton';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { RecordActionStrip, type RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { DELETE_HOTKEY } from '@/lib/keyboard/key-registry';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_GROUP_TITLE_CLASS, RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
-import { Button } from '@/design-system/primitives';
+import { RecordGroup } from '@/design-system/components/record-ledger/RecordGroup';
 import { rackErrorMessage, rackPlacementText, rackShelfCountText } from '@/lib/locations/rack-display';
 import { RACK_MAX_SHELVES, type RackDetail, type RackShelf } from '@/lib/locations/rack-types';
 import { deleteRack, editRackShelves, getRack, rackQueryKey } from '@/lib/locations/racks-client';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { toast } from '@/lib/toast';
 import { formatDateTimePST } from '@/utils/date';
-import { RackMovePanel } from './RackMovePanel';
+import { RackMoveDialog } from './RackMoveDialog';
 import { RackPrintPanel } from './RackPrintPanel';
 
 /** The record body on the stage canvas — its groups lift as cards. */
 export const RACK_RECORD_ROOT_CLASS = 'flex-1 bg-mode-canvas p-4 text-mode-ink';
 
-/** A verb's flow, the phone's width, centred (frame law). */
+/** The create flow's column, the phone's width, centred (frame law). */
 export const RACK_FLOW_COLUMN_CLASS = 'mx-auto flex w-full max-w-md min-w-0 flex-col gap-4';
-
-type RackPanel = 'print' | 'move';
 
 export interface RackRecordSlot {
   title: ReactNode;
@@ -42,47 +40,9 @@ export interface RackRecordSlot {
   view: ReactNode;
 }
 
-/**
- * A verb's flow in place of the body: Back + its name over the phone-width
- * column, the rack's Actions panel beside it (operator 2026-10-08).
- */
-export function RackFlowFrame({
-  title,
-  onBack,
-  testId,
-  actions,
-  children,
-}: {
-  title: string;
-  onBack: () => void;
-  testId: string;
-  actions: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className={RACK_RECORD_ROOT_CLASS} data-testid={testId}>
-      <DeskRecordLayout
-        main={
-          <div className={RACK_FLOW_COLUMN_CLASS}>
-            <div className="flex min-h-mode-hit items-center gap-2">
-              <Button variant="ghost" size="sm" icon={<ChevronLeft aria-hidden />} onClick={onBack} data-testid={`${testId}-back`}>
-                Back
-              </Button>
-              <h3 className={RECORD_GROUP_TITLE_CLASS}>{title}</h3>
-            </div>
-            {children}
-          </div>
-        }
-        aside={actions}
-      />
-    </div>
-  );
-}
-
 /** Title + verbs + view for the rack `code` names (any spelling; a shelf code opens its rack); null with none open. */
 export function useRackRecordSlot(code: string | null, onChanged: () => void, onDeleted: () => void): RackRecordSlot | null {
   const queryClient = useQueryClient();
-  const [panel, setPanel] = useState<{ code: string; panel: RackPanel } | null>(null);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -95,8 +55,6 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void, on
   if (!code) return null;
 
   const rack = query.data?.rack ?? null;
-  const active = panel && panel.code === code ? panel.panel : null;
-  const closePanel = () => setPanel(null);
 
   const changed = (next: RackDetail) => {
     queryClient.setQueryData(rackQueryKey(code), { rack: next });
@@ -147,6 +105,8 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void, on
     }
   };
 
+  // Print labels and Move rack open the ONE centered picker dialog (operator
+  // 2026-10-08) — never a body swap.
   const verbs: RecordActionVerb[] = rack
     ? [
         {
@@ -154,15 +114,13 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void, on
           label: 'Print labels',
           icon: <Printer aria-hidden />,
           tone: 'blue',
-          pressed: active === 'print',
-          run: () => setPanel({ code, panel: 'print' }),
+          dialog: (done) => <RackPrintPanel key={rack.code} rack={rack} testId="rack-record-print" onDone={done} />,
         },
         {
           id: 'move',
           label: 'Move rack',
           icon: <ArrowRight aria-hidden />,
-          pressed: active === 'move',
-          run: () => setPanel({ code, panel: 'move' }),
+          dialog: (done) => <RackMoveDialog key={rack.code} rack={rack} onMoved={changed} done={done} />,
         },
         {
           id: 'add-shelf',
@@ -170,11 +128,18 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void, on
           icon: <Plus aria-hidden />,
           disabled: adding || rack.shelves.length >= RACK_MAX_SHELVES,
           disabledReason: adding ? 'Adding a shelf…' : `A rack carries at most ${RACK_MAX_SHELVES} shelves`,
-          // The new shelf lands in the shelves list — leave any open flow so it is visible.
-          run: () => {
-            closePanel();
-            void addShelf();
-          },
+          run: () => void addShelf(),
+        },
+        {
+          id: 'delete',
+          label: 'Delete rack',
+          icon: <Trash2 aria-hidden />,
+          tone: 'danger',
+          hotkey: DELETE_HOTKEY,
+          disabled: deleting,
+          disabledReason: 'Deleting the rack…',
+          confirmDetail: `${rack.code} and its shelves are deleted.`,
+          run: () => void removeRack(),
         },
       ]
     : [];
@@ -182,53 +147,26 @@ export function useRackRecordSlot(code: string | null, onChanged: () => void, on
   const title = rack ? `${rack.name} · ${rack.code}` : code;
   const subtitle = rack ? rackPlacementText(rack) : undefined;
   // The rack's verbs paint in the Actions panel under Placement (its movement
-  // block), never the header (operator 2026-10-08); it stays beside a verb's flow.
+  // block), never the header (operator 2026-10-08).
   const actions = rack ? (
     <RecordGroup title="Actions" testId="rack-record-actions-panel">
       <RecordActionStrip face="panel" verbs={verbs} label={`${rack.name} actions`} testId="rack-record-actions" />
-      <div className="px-2 pb-2">
-        <ArmedDangerButton
-          size="sm"
-          icon={<Trash2 aria-hidden />}
-          label="Delete rack"
-          confirmLabel={`Delete ${rack.code}?`}
-          title="Delete rack"
-          loading={deleting}
-          onConfirm={() => void removeRack()}
-          data-testid="rack-record-delete"
-        />
-      </div>
     </RecordGroup>
   ) : null;
 
-  let view: ReactNode;
-  if (!rack) {
-    view = (
-      <div className={RACK_RECORD_ROOT_CLASS} data-testid="rack-record">
-        <DeskRecordLayout
-          main={
-            <EvidenceNotice tone={query.error ? 'warn' : undefined}>
-              {query.error ? rackErrorMessage(query.error) : 'Reading the rack…'}
-            </EvidenceNotice>
-          }
-        />
-      </div>
-    );
-  } else if (active === 'print') {
-    view = (
-      <RackFlowFrame title="Print labels" onBack={closePanel} testId="rack-record-print" actions={actions}>
-        <RackPrintPanel key={rack.code} rack={rack} />
-      </RackFlowFrame>
-    );
-  } else if (active === 'move') {
-    view = (
-      <RackFlowFrame title="Move rack" onBack={closePanel} testId="rack-record-move" actions={actions}>
-        <RackMovePanel key={rack.code} rack={rack} onMoved={changed} />
-      </RackFlowFrame>
-    );
-  } else {
-    view = <RackRecordBody rack={rack} removing={removing} onRemove={(shelf) => void removeShelf(shelf)} actions={actions} />;
-  }
+  const view = rack ? (
+    <RackRecordBody rack={rack} removing={removing} onRemove={(shelf) => void removeShelf(shelf)} actions={actions} />
+  ) : (
+    <div className={RACK_RECORD_ROOT_CLASS} data-testid="rack-record">
+      <DeskRecordLayout
+        main={
+          <EvidenceNotice tone={query.error ? 'warn' : undefined}>
+            {query.error ? rackErrorMessage(query.error) : 'Reading the rack…'}
+          </EvidenceNotice>
+        }
+      />
+    </div>
+  );
 
   return { title, subtitle, view };
 }

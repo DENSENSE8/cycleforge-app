@@ -91,6 +91,8 @@ interface OrderCardListProps {
   /** Any queue fetch is in flight (a "Load more" included) — next page waits for it. */
   fetching: boolean;
   records: ShippedOrder[];
+  /** The desk's unfiltered rows — the open record stays open after a write (Report out of stock) moves it out of this view. */
+  retainedRecords?: readonly ShippedOrder[];
   loading: boolean;
   onOpenRecord: (record: ShippedOrder) => void;
   onCloseRecord: () => void;
@@ -112,6 +114,7 @@ export function OrderCardList({
   searchPending,
   fetching,
   records,
+  retainedRecords,
   loading,
   onOpenRecord,
   onCloseRecord,
@@ -144,6 +147,7 @@ export function OrderCardList({
 
   const feed = useOrdersQueueFeed({
     records,
+    retainedRecords,
     searchValue,
     // `/api/orders?q=` ran the match over the whole scope; `records` ARE the hits.
     searchAnsweredBy: 'server',

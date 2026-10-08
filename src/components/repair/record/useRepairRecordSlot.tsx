@@ -3,11 +3,11 @@
 /**
  * The repair record's desk slot — the open ticket's title, subtitle and view
  * (its verbs in the view's Actions panel, operator 2026-10-08) for the list's
- * record plane (the inbound twin is `useRecordSlot`). A panel verb's open
- * panel is keyed by the record, so walking J / K closes it.
+ * record plane (the inbound twin is `useRecordSlot`). Form verbs open the
+ * strip's centered dialog; the record body never swaps.
  */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { repairRecordModel } from '@/lib/repair/repair-record-model';
@@ -29,13 +29,7 @@ export function useRepairRecordSlot(
   const todayKey = getCurrentPSTDateKey();
   const model = useMemo(() => (repair ? repairRecordModel(repair, todayKey, getStaffName) : null), [repair, todayKey, getStaffName]);
   const verbs = useRepairRecordVerbs(repair, model, { refresh, onClose });
-  const [open, setOpen] = useState<{ key: string; id: string } | null>(null);
   if (!model) return null;
-  const active = open && open.key === model.key ? (verbs.find((verb) => verb.id === open.id && verb.panel) ?? null) : null;
-  const close = () => setOpen(null);
-  const stripVerbs = verbs.map(({ panel, ...verb }) =>
-    panel ? { ...verb, pressed: active?.id === verb.id, run: () => setOpen({ key: model.key, id: verb.id }) } : verb,
-  );
   return {
     title: <RepairRecordTitle title={model.title} />,
     subtitle: model.subtitle,
@@ -44,8 +38,7 @@ export function useRepairRecordSlot(
         key={model.key}
         model={model}
         onUpdate={refresh}
-        actions={{ verbs: stripVerbs, label: `Repair ${model.title.face} actions` }}
-        panel={active?.panel ? { title: active.label, body: active.panel(close), onBack: close } : null}
+        actions={{ verbs, label: `Repair ${model.title.face} actions` }}
       />
     ),
   };

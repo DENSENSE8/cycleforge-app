@@ -27,14 +27,14 @@ export interface ReplacementRatesRequest {
   signature: string;
   body: {
     orderId: number;
-    purpose: 'replacement';
+    purpose: 'outbound' | 'replacement';
     weightOz: number;
     dimensions: { length: number; width: number; height: number; unit: 'inch' };
     insuredValue?: { amount: number; currency: string };
   };
 }
 
-/** `POST /api/shipping/order-rates` for a replacement parcel. */
+/** `POST /api/shipping/order-rates` for the parcel (outbound or replacement purpose). */
 export async function fetchReplacementRates(body: ReplacementRatesRequest['body']): Promise<ReplacementRatesResponse> {
   const res = await fetch('/api/shipping/order-rates', {
     method: 'POST',
@@ -47,15 +47,17 @@ export async function fetchReplacementRates(body: ReplacementRatesRequest['body'
 }
 
 /**
- * `POST /api/shipping/order-labels/purchase` with `purpose: 'replacement'` —
- * the label lands on the order's label list; the reason + note ride to the
- * label ledger and the order note. `clientEventId` is one per INTENDED
+ * `POST /api/shipping/order-labels/purchase` with the purpose (`outbound` — the
+ * order's first label — or `replacement`) — the label lands on the order's
+ * label list; a replacement's reason + note ride to the label ledger and the
+ * order note. `clientEventId` is one per INTENDED
  * purchase, reused on a retry (the route claims it before charging, so a
  * retry replays instead of buying twice). A held order (buyer note) opens the
  * note before the irreversible purchase.
  */
 export async function purchaseReplacementLabel(input: {
   orderId: number;
+  purpose: 'outbound' | 'replacement';
   rateId: string;
   clientEventId: string;
   reason: ReplacementReason | null;
@@ -70,10 +72,10 @@ export async function purchaseReplacementLabel(input: {
         orderId: input.orderId,
         rateId: input.rateId,
         clientEventId: input.clientEventId,
-        purpose: 'replacement',
+        purpose: input.purpose,
         notifyCustomer: false,
-        ...(input.reason ? { replacementReason: input.reason } : {}),
-        ...(note ? { replacementNote: note } : {}),
+        ...(input.purpose === 'replacement' && input.reason ? { replacementReason: input.reason } : {}),
+        ...(input.purpose === 'replacement' && note ? { replacementNote: note } : {}),
       }),
     }),
   );

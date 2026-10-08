@@ -1,11 +1,10 @@
 'use client';
 
 import { WorkspaceCard, StickyActionBar } from '@/design-system/components';
-import { Button, IconButton } from '@/design-system/primitives';
+import { DangerZone } from '@/design-system/components/danger-zone/DangerZone';
+import { Button } from '@/design-system/primitives';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
-import { ConfirmSheet } from '@/components/ui/ConfirmSheet';
 import { Check, ChevronDown, ChevronLeft, Plus, Trash2, X } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LETTERS } from './room-detail-shared';
 import { RoomStatsCard } from './RoomStatsCard';
 import type { RoomDetailController } from './useRoomDetailForm';
@@ -14,7 +13,7 @@ import { cn } from '@/utils/_cn';
 /** The room edit / create form body (shown when `?room=` or `?new=true`). */
 export function RoomEditForm({ c }: { c: RoomDetailController }) {
   const {
-    creating, selectedRoom, form, setForm, confirmDelete, setConfirmDelete,
+    creating, selectedRoom, form, setForm,
     stats, usedLetters, trimmedName, trimmedLetter,
     nameTaken, renameTaken, canSave, isDirty, saveDisabledReason, roomMutating,
     setParam, goToBins, handleSave, handleDelete, handleDiscard,
@@ -118,44 +117,24 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
         />
       </WorkspaceCard>
 
-      {/* Destructive zone */}
+      {/* Destructive zone: the delete paints in full; its square confirmation opens beside it. */}
       {!creating && selectedRoom && (
-        <WorkspaceCard tone="red" label="Danger zone">
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-text-default">
-                Delete this room
-              </p>
-              <p className="mt-0.5 text-role-caption text-text-soft">
-                Soft delete — bins stay in history and you can recreate the
-                room by printing labels under that name again.
-              </p>
-            </div>
-            <HoverTooltip label="Delete room" asChild>
-              <IconButton
-                ariaLabel="Delete room"
-                title="Delete room"
-                size="lg"
-                radius="pill"
-                icon={<Trash2 className="h-4 w-4" />}
-                onClick={() => setConfirmDelete(true)}
-                disabled={roomMutating}
-                className="border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-700"
-              />
-            </HoverTooltip>
-          </div>
-        </WorkspaceCard>
+        <DangerZone
+          testId="room-edit"
+          items={[
+            {
+              id: 'delete',
+              label: 'Delete room',
+              icon: <Trash2 />,
+              disabled: roomMutating,
+              disabledReason: 'Saving the room…',
+              confirmDetail:
+                'Soft delete — bins stay in history. Recreate the room by printing labels under that name again.',
+              run: handleDelete,
+            },
+          ]}
+        />
       )}
-
-      <ConfirmSheet
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        title={`Delete ${selectedRoom ?? ''}?`}
-        message="Soft delete — bins remain in history. You can recreate the room by printing labels under that name again."
-        confirmLabel="Delete Room"
-        destructive
-        onConfirm={handleDelete}
-      />
 
       <StickyActionBar
         primary={{
