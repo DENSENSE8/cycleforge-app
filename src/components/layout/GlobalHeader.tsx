@@ -8,7 +8,7 @@ import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButt
 import { GlobalHeaderAdd } from './GlobalHeaderAdd';
 import { GlobalHeaderSync } from './GlobalHeaderSync';
 import { HeaderNextAction, PrintJobOverlay } from './HeaderWork';
-import { StaffAccountMenu } from '@/components/sidebar/master-nav/StaffAccountFooter';
+import { StaffAccountMenu } from '@/components/identity/StaffAccountMenu';
 import { HeaderCenter } from './HeaderCenter';
 import {
   HEADER_ICON_CLUSTER,

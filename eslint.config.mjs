@@ -529,7 +529,7 @@ export default [
       'src/components/receiving/workspace/line-edit/LabelEditPopover.tsx',
       'src/components/session/composer/AccessModeSwitch.tsx',
       'src/components/session/composer/ContextUsageRing.tsx',
-      'src/components/sidebar/master-nav/StaffAccountFooter.tsx',
+      'src/components/identity/StaffAccountMenu.tsx',
       // Literal `rounded-none` in a className (Phase D2 / per-file burn-down).
       // src/app entries are here because the merged block covers all of src.
       'src/app/m/\\(shell\\)/h/\\[id\\]/page.tsx',
